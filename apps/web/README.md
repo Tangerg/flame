@@ -142,6 +142,11 @@ whitespace. Agent projections, approval drafts, Tool inspection and conversation
 archives consume those helpers directly, sharing numeric preservation with
 portable reading components.
 
+Pending approval arguments can be edited locally. Cancel or Escape from the
+editor restores the original arguments, clears validation feedback and focuses
+Edit. An admitted approval makes the editor read-only until settlement. Its
+captured arguments remain visible while the response is pending.
+
 Tool inspection keeps arguments secondary when a specialized result presentation
 owns the body, including an empty captured page. Without a specialized presenter,
 the generic inspector opens arguments when the result body is absent or empty.

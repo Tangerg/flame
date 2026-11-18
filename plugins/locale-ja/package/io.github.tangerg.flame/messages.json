@@ -419,7 +419,7 @@
   "approval.action.deny": "拒否",
   "approval.args.label": "引数",
   "approval.args.edit": "編集",
-  "approval.args.invalid": "JSON が不正です —— 修正するか拒否してください",
+  "approval.args.invalid": "JSON オブジェクトを入力してください。",
   "question.progress": "{{current}} / {{total}}",
   "question.recommended": "推奨",
   "question.action.previous": "前の質問",

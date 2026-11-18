@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -25502,6 +25502,63 @@ gzip SHA-256 `6aef6ca64ba03aabffc644d8f584d0980654aa8d03366cdfe3d40efbe8132607`.
 The archive includes the exact manifest, six actual harness sources, qualification,
 full failed gate logs and passing checks. Continue from that resulting main with
 a newly evidenced defect, preserving the two unresolved gate records.
+
+### Canceling approval argument edits (2026-11-19)
+
+The actual Wails conversation on `0c9ad0ab8` enters a generic tool's approval
+arguments through Edit. After replacing `docs/original.md` with
+`docs/unsubmitted.md`, Escape leaves the editor open and there is no visible
+cancel action. Attempting to approve the valid JSON array `[]` keeps the
+request pending and shows `Invalid JSON — fix or decline`.
+
+The approval argument draft owner now exposes Edit and Cancel transitions.
+Cancel restores the original request arguments, clears the validation state and
+closes only the editor. The same header button becomes Edit again and receives
+focus. Escape inside the editable DOM uses that same action and respects events
+already handled or used by an input method. The existing approval admission
+state controls both field read-only behavior and dismissal availability. The
+eight catalogs describe the parser's object requirement.
+
+Read-only ZCode's actual `PermissionDialog.tsx` keeps a keyboard route between
+request details and the decision controls. HeroUI's controlled TextArea
+example illustrates a single value owner. Flame follows better-writing and
+better-accessibility guidance with one local Cancel, exact field feedback and
+focus return to the same control. The actual Wails acceptance below exercises
+the production card over the existing in-memory Workspace transport, with
+only the captured tool and optional test-only settlement hold overlaid.
+
+- EN/light/14 px/Flame Orange at default zoom. Escape restores
+  `{"path":"docs/original.md","limit":3}` and focuses Edit. Submitting `[]`
+  displays `Enter a JSON object.` and leaves the approval waiting. Pointer Cancel
+  and keyboard reentry restore that original object and clear the alert. Escape
+  in the scope menu closes it and returns to its trigger with the editor still
+  open. An in-memory Allow once settles as Approved and the expanded Tool
+  inspector shows the original object. The separate conversation draft becomes
+  `approvaldraftqxtail` at the original caret.
+- ZH/dark/18 px/`#3B82F6` at default zoom, natively left-tiled. Divider Home
+  makes Conversation 440 px wide (AX 39.251%). `请输入 JSON 对象。` and the
+  argument controls fit in the card with the decision actions visible. From the
+  focused textarea, Shift+Tab and Return cancel and return to Edit. After the
+  isolated response is staged with `docs/待确认.md` and limit 7, the textarea
+  remains focusable and read-only. Escape from it and Return on the focusable
+  disabled Cancel preserve the staged arguments. The separate draft becomes
+  `审批前保留草稿继续尾段`. An initial Shift+Tab probe from the pointer-focused
+  approval button did not advance, so the recorded keyboard path starts at the
+  explicitly observed textarea focus.
+
+Scoped Prettier and Web type checks, the eight locale catalogs, `make
+check-native`, the canonical five-document Lab build, the private capture build,
+strict native signatures, 89 Web contracts, bootstrap, installed resources and
+module linkage pass. The production bundle gate passes 26 metadata tests.
+Actual Wails input uses the isolated capture, including the held response.
+Production Runtime execution, remembered permission writes, OS IME, VoiceOver
+and whole-workspace visual acceptance remain unqualified. Browser suites and
+performance benchmarks were outside this review.
+
+All three owned app launches exited, both previews stopped, and the two bundle
+registrations and four private Library paths were retired. Ten checkout output
+roots and the private QA directory, including the overlay, were removed.
+Continue with fresh native evidence from another conversation editing path.
 
 ## Question review and confirmation
 

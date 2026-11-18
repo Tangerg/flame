@@ -424,7 +424,7 @@
   "approval.action.deny": "拒絕",
   "approval.args.label": "參數",
   "approval.args.edit": "編輯",
-  "approval.args.invalid": "JSON 格式錯誤 —— 請修正或拒絕",
+  "approval.args.invalid": "請輸入 JSON 物件。",
   "question.progress": "{{current}} / {{total}}",
   "question.recommended": "推薦",
   "question.action.previous": "上一個問題",

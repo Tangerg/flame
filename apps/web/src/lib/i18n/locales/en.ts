@@ -489,7 +489,7 @@ export const en: Record<string, string> = {
   "approval.action.deny": "Deny",
   "approval.args.label": "Arguments",
   "approval.args.edit": "Edit",
-  "approval.args.invalid": "Invalid JSON — fix or decline",
+  "approval.args.invalid": "Enter a JSON object.",
   "question.progress": "{{current}} of {{total}}",
   "question.recommended": "Recommended",
   "question.action.previous": "Previous question",

@@ -4,7 +4,7 @@ import { useT } from "@/lib/i18n/index";
 import { SectionLabel } from "@/ui/index";
 import { TextButton } from "@/ui/index";
 import { Well } from "@/ui/index";
-import { TextArea, vocab } from "@flame/ui";
+import { isImeKey, TextArea, vocab } from "@flame/ui";
 import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 const ae = stylex.create({
   head: { marginBottom: space.s1, display: "flex", alignItems: "center", gap: space.s2 },
@@ -17,42 +17,63 @@ export function ApprovalArgsEditor({
   argsText,
   invalid,
   disabled,
-  onEditToggle,
+  onEdit,
+  onCancel,
   onTextChange,
 }: {
   editing: boolean;
   argsText: string;
   invalid: boolean;
   disabled: boolean;
-  onEditToggle: (editing: boolean) => void;
+  onEdit: () => void;
+  onCancel: () => void;
   onTextChange: (text: string) => void;
 }) {
   const t = useT();
   const errorId = useId();
   const editor = useRef<HTMLTextAreaElement>(null);
+  const editButton = useRef<HTMLButtonElement>(null);
+  const cancelEdit = () => {
+    onCancel();
+    editButton.current?.focus({ preventScroll: true });
+  };
   useLayoutEffect(() => {
     if (editing) editor.current?.focus();
   }, [editing]);
   return (
-    <div>
+    <div
+      onKeyDown={(event) => {
+        if (
+          !editing ||
+          disabled ||
+          event.key !== "Escape" ||
+          event.defaultPrevented ||
+          isImeKey(event.nativeEvent) ||
+          !event.currentTarget.contains(event.target as Node)
+        )
+          return;
+        event.preventDefault();
+        event.stopPropagation();
+        cancelEdit();
+      }}
+    >
       <div {...stylex.props(ae.head)}>
         <SectionLabel className={stylex.props(ae.label).className}>
           {t("approval.args.label")}
         </SectionLabel>
-        {!editing && (
-          <TextButton
-            type="button"
-            shape="link"
-            tone="accent"
-            size="xs"
-            disabled={disabled}
-            focusableWhenDisabled
-            onClick={() => onEditToggle(true)}
-            className={stylex.props(vocab.strong).className}
-          >
-            {t("approval.args.edit")}
-          </TextButton>
-        )}
+        <TextButton
+          ref={editButton}
+          type="button"
+          shape="link"
+          tone="accent"
+          size="xs"
+          disabled={disabled}
+          focusableWhenDisabled
+          onClick={editing ? cancelEdit : onEdit}
+          className={stylex.props(vocab.strong).className}
+        >
+          {t(editing ? "common.cancel" : "approval.args.edit")}
+        </TextButton>
       </div>
       {editing ? (
         <>

@@ -426,7 +426,7 @@
   "approval.action.deny": "Ablehnen",
   "approval.args.label": "Argumente",
   "approval.args.edit": "Bearbeiten",
-  "approval.args.invalid": "Ungültiges JSON — korrigieren oder ablehnen",
+  "approval.args.invalid": "Gib ein JSON-Objekt ein.",
   "question.progress": "{{current}} von {{total}}",
   "question.recommended": "Empfohlen",
   "question.action.previous": "Vorherige Frage",

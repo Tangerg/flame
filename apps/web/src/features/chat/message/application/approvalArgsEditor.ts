@@ -2,7 +2,8 @@ import { useState } from "react";
 import { equalJSON, isJSONNumber, parseJSON } from "@frame/sdk/json";
 export interface ApprovalArgsEditor {
   editing: boolean;
-  setEditing: (editing: boolean) => void;
+  startEditing: () => void;
+  cancelEditing: () => void;
   argsText: string;
   setArgsText: (text: string) => void;
   invalid: boolean;
@@ -34,13 +35,26 @@ export function useApprovalArgsEditor({
     setInvalid(false);
   };
 
+  const cancelEditing = () => {
+    setArgsText(originalArgs);
+    setEditing(false);
+  };
+
   const commit = (): Record<string, unknown> | undefined | null => {
     const result = commitApprovalArgs(originalArgs, argsText);
     if (result === null) setInvalid(true);
     return result;
   };
 
-  return { editing, setEditing, argsText, setArgsText, invalid, commit };
+  return {
+    editing,
+    startEditing: () => setEditing(true),
+    cancelEditing,
+    argsText,
+    setArgsText,
+    invalid,
+    commit,
+  };
 }
 
 function parseArgs(value: string): { ok: true; value: Record<string, unknown> } | { ok: false } {

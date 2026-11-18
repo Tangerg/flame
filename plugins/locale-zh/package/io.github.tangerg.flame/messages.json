@@ -451,7 +451,7 @@
   "approval.action.deny": "拒绝",
   "approval.args.label": "参数",
   "approval.args.edit": "编辑",
-  "approval.args.invalid": "JSON 格式错误 —— 请修正或拒绝",
+  "approval.args.invalid": "请输入 JSON 对象。",
   "question.progress": "{{current}} / {{total}}",
   "question.recommended": "推荐",
   "question.action.previous": "上一个问题",

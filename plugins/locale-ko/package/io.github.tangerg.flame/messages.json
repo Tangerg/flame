@@ -419,7 +419,7 @@
   "approval.action.deny": "거부",
   "approval.args.label": "인수",
   "approval.args.edit": "편집",
-  "approval.args.invalid": "JSON 형식 오류 —— 수정하거나 거부하세요",
+  "approval.args.invalid": "JSON 객체를 입력하세요.",
   "question.progress": "{{current}} / {{total}}",
   "question.recommended": "추천",
   "question.action.previous": "이전 질문",

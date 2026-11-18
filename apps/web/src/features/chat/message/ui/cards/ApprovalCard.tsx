@@ -130,7 +130,8 @@ export function ApprovalCard({
               argsText={argsEditor.argsText}
               invalid={argsEditor.invalid}
               disabled={argsReadOnly}
-              onEditToggle={argsEditor.setEditing}
+              onEdit={argsEditor.startEditing}
+              onCancel={argsEditor.cancelEditing}
               onTextChange={argsEditor.setArgsText}
             />
           )}

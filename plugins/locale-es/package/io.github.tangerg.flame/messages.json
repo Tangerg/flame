@@ -433,7 +433,7 @@
   "approval.action.deny": "Rechazar",
   "approval.args.label": "Argumentos",
   "approval.args.edit": "Editar",
-  "approval.args.invalid": "JSON inválido — corrige o rechaza",
+  "approval.args.invalid": "Introduce un objeto JSON.",
   "question.progress": "{{current}} de {{total}}",
   "question.recommended": "Recomendado",
   "question.action.previous": "Pregunta anterior",
