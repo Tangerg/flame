@@ -195,11 +195,13 @@ func (i *interactionSession) interactionCheckpointPayload(
 			content:   transcript.CloneContent(pending.content),
 		}
 	}
-	metadata := make([]toolResultMetadata, 0, len(i.state.toolMetadata))
+	metadata := make([]toolCallCapture, 0, len(i.state.toolMetadata))
 	for _, value := range i.state.toolMetadata {
-		metadata = append(metadata, value.clone())
+		if value.Receipt != nil || value.presentation == nil {
+			metadata = append(metadata, value.toolCallCapture)
+		}
 	}
-	slices.SortFunc(metadata, func(left, right toolResultMetadata) int {
+	slices.SortFunc(metadata, func(left, right toolCallCapture) int {
 		return strings.Compare(left.Start.CallID, right.Start.CallID)
 	})
 	i.state.mu.Unlock()

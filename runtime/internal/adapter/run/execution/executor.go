@@ -95,7 +95,7 @@ type InteractionExecutorConfig struct {
 	ModelContextCompactor     ModelContextCompactor
 	ModelContextState         interactionModelContextState
 	LifecycleHooks            interactionLifecycleHooks
-	ToolResultOffload         *ToolResultOffload
+	ToolResultOffloadBytes    *int
 	UnknownEffectPollInterval *time.Duration
 	StatePollInterval         *time.Duration
 }

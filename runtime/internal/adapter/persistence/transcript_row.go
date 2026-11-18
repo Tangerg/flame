@@ -8,7 +8,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-const storedTranscriptColumns = `h.session_id, h.run_id, h.item_id, h.occurred_at, h.payload, h.offload_id, h.offload_model_only`
+const storedTranscriptColumns = `h.session_id, h.run_id, h.item_id, h.occurred_at, h.payload, COALESCE(b.id, ''), COALESCE(b.model_only, 0)`
+const storedTranscriptFrom = `FROM history_items AS h LEFT JOIN tool_result_blobs AS b ON b.item_id = h.item_id`
 
 type storedTranscriptRow struct {
 	sessionID  string
@@ -31,9 +32,6 @@ func (s storedTranscriptRow) snapshot() (transcript.ItemSnapshot, error) {
 	}
 	snapshot.Identity = transcript.ItemIdentity{SessionID: s.sessionID, RunID: s.runID, ItemID: s.itemID, OccurredAt: time.Unix(0, s.occurredAt).UTC()}
 	if s.offloadID == "" {
-		if s.modelOnly {
-			return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: history item %q has an offload mode but no identity", s.itemID)
-		}
 		return snapshot, nil
 	}
 	id, err := transcript.ParseToolResultID(s.offloadID)
@@ -44,11 +42,7 @@ func (s storedTranscriptRow) snapshot() (transcript.ItemSnapshot, error) {
 	if !ok {
 		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: history item %q has an offload identity but no tool invocation", s.itemID)
 	}
-	ref := transcript.ToolResultRef{ID: id, ModelOnly: s.modelOnly}
-	if err := ref.ValidateResult(call.Invocation.Result); err != nil {
-		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: history item %q: %w", s.itemID, err)
-	}
-	call.Invocation.Offload = &ref
+	call.Invocation.Offload = &transcript.ToolResultRef{ID: id, ModelOnly: s.modelOnly}
 	snapshot.Body = call
 	return snapshot, nil
 }
@@ -59,9 +53,6 @@ func (s storedTranscriptRow) materialize(offloaded sql.NullString) (transcript.I
 		return transcript.Item{}, err
 	}
 	if call, ok := snapshot.Body.(transcript.ToolCallBody); ok && call.Invocation.Offload != nil {
-		if !offloaded.Valid {
-			return transcript.Item{}, fmt.Errorf("sqlite: history item %q references missing tool result %q", s.itemID, call.Invocation.Offload.ID)
-		}
 		result, err := call.Invocation.Offload.HydrateResult(call.Invocation.Result, offloaded.String)
 		if err != nil {
 			return transcript.Item{}, fmt.Errorf("sqlite: hydrate history item %q: %w", s.itemID, err)

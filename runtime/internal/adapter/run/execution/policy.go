@@ -50,7 +50,7 @@ func newInteractionExecutionPolicy(config InteractionExecutorConfig) (interactio
 	if statePoll <= 0 {
 		return interactionExecutionPolicy{}, errors.New("execution: interaction policy: state poll interval must be positive")
 	}
-	toolResultOffload, err := newToolResultOffloadPolicy(config.ToolResultOffload)
+	toolResultOffload, err := newToolResultOffloadPolicy(config.ToolResultOffloadBytes)
 	if err != nil {
 		return interactionExecutionPolicy{}, err
 	}

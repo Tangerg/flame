@@ -19,13 +19,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 
 	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/agent/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
-	corecontent "github.com/Tangerg/scope/core/content"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/samber/lo"
 )
@@ -164,16 +162,18 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		output, callErr = result.Output, invokeErr
 	}
 
-	projection, err := o.projectToolResult(ctx, member, start, arguments, output, callErr, mutatedPaths)
+	projection, err := o.projectToolResult(start.ToolName, arguments, output, callErr, mutatedPaths)
 	if err != nil {
 		return toolcontract.Result{}, err
 	}
-	metadata := projection.metadata
-	metadata.ProcessID = invocation.ProcessID().String()
+	metadata := toolCallMetadata{
+		toolCallCapture: toolCallCapture{MemberID: member.MemberID, ProcessID: invocation.ProcessID(), Start: start},
+		presentation:    &projection.presentation,
+	}
 	if err := o.session.rememberToolMetadata(metadata); err != nil {
 		return toolcontract.Result{}, o.projectionFailure(err)
 	}
-	if metadata.Failure == nil || metadata.Failure.Kind != tool.FailureDenied {
+	if projection.presentation.failure == nil || projection.presentation.failure.Kind != tool.FailureDenied {
 		outcomeCtx, cancelOutcome := context.WithTimeout(
 			context.WithoutCancel(ctx), auxiliaryOperationTimeout,
 		)
@@ -203,7 +203,8 @@ func (o *observedInteractionTool) capturePreparedTool(ctx context.Context, invoc
 	proof := toolReceiptEvidence{
 		EffectID: invocation.EffectID(), Release: *o.receiptRelease, Authority: o.sourceFingerprint,
 	}
-	if err := o.session.rememberToolMetadata(toolResultMetadata{MemberID: member.MemberID, ProcessID: invocation.ProcessID().String(), Start: start, Receipt: &proof}); err != nil {
+	capture := toolCallCapture{MemberID: member.MemberID, ProcessID: invocation.ProcessID(), Start: start, Receipt: &proof}
+	if err := o.session.rememberToolMetadata(toolCallMetadata{toolCallCapture: capture}); err != nil {
 		return runs.ToolCallPrepared{}, o.projectionFailure(err)
 	}
 	tree, err := o.session.committedTree(ctx, o.session.rootID)
@@ -227,55 +228,58 @@ func (o *observedInteractionTool) capturePreparedTool(ctx context.Context, invoc
 	return runs.ToolCallPrepared{Start: start, Context: checkpoint, Caller: caller}, nil
 }
 
-// toolResultProjection binds the model outcome and durable result to the same
+// projectedToolResult binds the model outcome and durable result to the same
 // admitted external output, including failures recovered from a Tool receipt.
-type toolResultProjection struct {
-	output   toolcontract.Output
-	metadata toolResultMetadata
-	outcome  error
+type projectedToolResult struct {
+	output       toolcontract.Output
+	presentation toolResultPresentation
+	outcome      error
 }
 
-func (o *observedInteractionTool) projectToolResult(ctx context.Context, member runs.ExecutorMember, start runs.ToolCallStarted, arguments tool.Arguments, output toolcontract.Output, callErr error, mutatedPaths []string) (toolResultProjection, error) {
+func (o *observedInteractionTool) projectToolResult(toolName string, arguments tool.Arguments, output toolcontract.Output, callErr error, mutatedPaths []string) (projectedToolResult, error) {
 	failure, knownFailure := toolcontract.ClassifyFailure(callErr)
 	if callErr != nil {
 		if !knownFailure {
-			return toolResultProjection{}, callErr
+			return projectedToolResult{}, callErr
 		}
 		output = failure.Output()
 	}
 	if err := output.Validate(); err != nil {
-		return toolResultProjection{}, err
+		return projectedToolResult{}, err
 	}
 	output = modeladapter.WithoutToolResultReferences(output)
 	modelOutput := output
-	var offload *transcript.ToolResultRef
+	presentation := toolResultPresentation{mutatedPaths: normalizeMutationPaths(mutatedPaths)}
 	// A definite failed result is model-visible evidence just like success.
 	// Rejection reasons remain intact; unknown outcomes returned above cannot
 	// acquire a completed result merely because they carry observed evidence.
 	if failure == nil || failure.Kind() == toolcontract.FailureKindFailed {
-		modelOutput, offload = o.offload(ctx, start.ToolName, output)
+		var err error
+		modelOutput, presentation.offload, err = o.offloadPolicy.project(toolName, output)
+		if err != nil {
+			return projectedToolResult{}, fmt.Errorf("execution: project offloaded Tool result: %w", err)
+		}
 	}
-	metadata := toolResultMetadata{MemberID: member.MemberID, Start: start, Offload: offload, MutatedPaths: normalizeMutationPaths(mutatedPaths)}
 	structuredOutput := modelOutput
-	if offload != nil && offload.ModelOnly {
+	if presentation.offload != nil && presentation.offload.Ref.ModelOnly {
 		structuredOutput = output
 	}
 	parsed, present, err := runtimeToolResult(structuredOutput)
 	if err != nil {
-		return toolResultProjection{}, err
+		return projectedToolResult{}, err
 	}
 	if present {
 		if o.presenter != nil {
-			parsed, metadata.OutputText = o.presenter.Present(o.ref, arguments, parsed)
+			parsed, presentation.outputText = o.presenter.Present(o.ref, arguments, parsed)
 		}
-		metadata.Result = &parsed
+		presentation.result = &parsed
 	}
 	var outcome error
 	if failure != nil {
-		metadata.Failure = &tool.Failure{Kind: tool.FailureExecution, Detail: run.Diagnostic(callErr)}
+		presentation.failure = &tool.Failure{Kind: tool.FailureExecution, Detail: run.Diagnostic(callErr)}
 		if failure.Kind() == toolcontract.FailureKindRejected {
 			detail, _ := output.Text()
-			metadata.Failure = &tool.Failure{Kind: tool.FailureDenied, Detail: detail}
+			presentation.failure = &tool.Failure{Kind: tool.FailureDenied, Detail: detail}
 		}
 		// Scope settles failures from Failure.Output instead of Result.Output.
 		// Both must receive this projection so external metadata has no bypass.
@@ -283,11 +287,11 @@ func (o *observedInteractionTool) projectToolResult(ctx context.Context, member 
 			Kind: failure.Kind(), Output: modelOutput, Cause: callErr,
 		})
 		if err != nil {
-			return toolResultProjection{}, err
+			return projectedToolResult{}, err
 		}
 		outcome = projected
 	}
-	return toolResultProjection{output: modelOutput, metadata: metadata, outcome: outcome}, nil
+	return projectedToolResult{output: modelOutput, presentation: presentation, outcome: outcome}, nil
 }
 
 // invoke validates the effective arguments before entering the external Tool.
@@ -604,45 +608,6 @@ func (o *observedInteractionTool) resolveToolApproval(
 	}
 	reason, denied := decision.Denied()
 	return arguments, denied, reason, nil
-}
-
-func (o *observedInteractionTool) offload(
-	ctx context.Context,
-	toolName string,
-	output toolcontract.Output,
-) (toolcontract.Output, *transcript.ToolResultRef) {
-	// Rich outputs retain their original structured result. Only eligible text
-	// blocks become previews; the blob reader does not reconstruct a rich value.
-	rich := len(output.Content) > 0 && len(output.Details) > 0
-	for _, block := range output.Content {
-		if block.Kind != corecontent.Text || len(block.Citations) > 0 || len(block.Metadata) > 0 {
-			rich = true
-		}
-	}
-	if rich {
-		return evictToolContent(ctx, o.offloadPolicy, o.start.SessionID, toolName, output)
-	}
-	text, textual := output.Text()
-	if !textual {
-		return output, nil
-	}
-	preview, reference := evictToolResult(ctx, o.offloadPolicy, o.start.SessionID, toolName, text)
-	if reference == nil {
-		return output, nil
-	}
-	projected := toolcontract.NewTextOutput(preview)
-	if len(output.Details) > 0 {
-		// Details-only results were model-visible JSON. Supplying Content gives
-		// the provider a preview while the exact original Details remain intact.
-		reference.ModelOnly = true
-		projected.Details = output.Clone().Details
-	}
-	projected, err := modeladapter.WithToolResultReference(projected, *reference, modeladapter.ToolResultRange{LengthBytes: len(text)})
-	if err != nil {
-		slog.WarnContext(ctx, "execution: project offloaded tool reference", "error", err)
-		return output, nil
-	}
-	return projected, reference
 }
 
 func runtimeToolResult(output toolcontract.Output) (tool.Result, bool, error) {

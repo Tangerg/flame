@@ -4,7 +4,6 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -16,21 +15,26 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// toolResultMetadata retains unpublished call metadata across execution batches
-// and waits, including Delegates admitted before the current child batch.
-// Scope's settled child output remains the sole source of the model result.
-// The checkpoint retains this data when a completed sibling waits for another
-// sibling's input; no completed Tool is rerun to reconstruct its presentation.
-type toolResultMetadata struct {
-	Receipt      *toolReceiptEvidence      `json:"receipt,omitzero"`
-	MemberID     string                    `json:"member_id"`
-	ProcessID    string                    `json:"process_id"`
-	Start        runs.ToolCallStarted      `json:"start"`
-	Result       *tool.Result              `json:"result,omitzero"`
-	Offload      *transcript.ToolResultRef `json:"offload,omitzero"`
-	OutputText   string                    `json:"output_text,omitempty"`
-	MutatedPaths []string                  `json:"mutated_paths,omitempty"`
-	Failure      *tool.Failure             `json:"failure,omitzero"`
+// A checkpoint retains call attribution and receipt authority across waits.
+// A completed outcome is durable only with its Scope settlement and Item.
+type toolCallCapture struct {
+	Receipt   *toolReceiptEvidence `json:"receipt,omitzero"`
+	MemberID  string               `json:"member_id"`
+	ProcessID scoperun.ProcessID   `json:"process_id"`
+	Start     runs.ToolCallStarted `json:"start"`
+}
+
+type toolCallMetadata struct {
+	toolCallCapture
+	presentation *toolResultPresentation
+}
+
+type toolResultPresentation struct {
+	result       *tool.Result
+	offload      *transcript.ToolResultOffload
+	outputText   string
+	mutatedPaths []string
+	failure      *tool.Failure
 }
 
 type toolReceiptEvidence struct {
@@ -54,73 +58,46 @@ func (r toolReceiptEvidence) validate(processID scoperun.ProcessID, source tool.
 	return r.Authority.Validate()
 }
 
-func (t toolResultMetadata) clone() toolResultMetadata {
-	if t.Receipt != nil {
-		t.Receipt = new(*t.Receipt)
-	}
-	t.MutatedPaths = slices.Clone(t.MutatedPaths)
-	if t.Result != nil {
-		t.Result = new(*t.Result)
-	}
-	if t.Offload != nil {
-		t.Offload = new(*t.Offload)
-	}
-	if t.Failure != nil {
-		t.Failure = new(*t.Failure)
-	}
-	return t
-}
-
-func (t toolResultMetadata) validate() error {
+func (t toolCallCapture) validate() error {
 	if err := runs.ValidateMember(t.MemberID); err != nil {
 		return err
 	}
-	processID, err := scoperun.ParseProcessID(t.ProcessID)
 	if t.Start.Source != (tool.Ref{}) && !t.Start.Source.MatchesPublishedName(t.Start.ToolName) {
 		return errors.New("execution: captured tool name changed")
 	}
-	if err != nil || t.Start.ModelCallSequence == 0 || t.Start.SourceCallID == "" || t.Start.ToolName == "" {
+	if !t.ProcessID.Valid() || t.Start.ModelCallSequence == 0 || t.Start.SourceCallID == "" || t.Start.ToolName == "" {
 		return errors.New("execution: invalid Tool metadata attribution")
 	}
-	identity, err := logicalToolCallID(processID, t.Start.ModelCallSequence, t.Start.ToolCallIndex, t.Start.SourceCallID, t.Start.ToolName)
+	identity, err := logicalToolCallID(t.ProcessID, t.Start.ModelCallSequence, t.Start.ToolCallIndex, t.Start.SourceCallID, t.Start.ToolName)
 	if err != nil || identity.String() != t.Start.CallID {
 		return errors.New("execution: Tool metadata logical identity changed")
 	}
 	if t.Receipt != nil {
-		if err := t.Receipt.validate(processID, t.Start.Source); err != nil {
+		if err := t.Receipt.validate(t.ProcessID, t.Start.Source); err != nil {
 			return err
 		}
 	}
-	if _, err := tool.ParseArguments(t.Start.Arguments); err != nil {
-		return err
-	}
-	if t.Offload != nil {
-		if err := t.Offload.ValidateResult(t.Result); err != nil {
-			return err
-		}
-	}
-	if t.Failure != nil {
-		return t.Failure.Validate()
-	}
-	return nil
+	_, err = tool.ParseArguments(t.Start.Arguments)
+	return err
 }
 
-func (i *interactionSession) rememberToolMetadata(metadata toolResultMetadata) error {
+func (i *interactionSession) rememberToolMetadata(metadata toolCallMetadata) error {
 	if err := metadata.validate(); err != nil {
 		return err
 	}
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
 	if i.state.toolMetadata == nil {
-		i.state.toolMetadata = make(map[string]toolResultMetadata)
+		i.state.toolMetadata = make(map[string]toolCallMetadata)
 	}
 	if previous, duplicate := i.state.toolMetadata[metadata.Start.CallID]; duplicate {
-		if previous.Receipt == nil || previous.Result != nil || previous.Failure != nil || previous.Offload != nil || previous.Start != metadata.Start {
+		if previous.Receipt == nil || previous.presentation != nil || metadata.presentation == nil ||
+			previous.Start != metadata.Start || previous.MemberID != metadata.MemberID || previous.ProcessID != metadata.ProcessID {
 			return errors.New("execution: pending call metadata already exists")
 		}
-		metadata.Receipt = new(*previous.Receipt)
+		metadata.toolCallCapture = previous.toolCallCapture
 	}
-	i.state.toolMetadata[metadata.Start.CallID] = metadata.clone()
+	i.state.toolMetadata[metadata.Start.CallID] = metadata
 	return nil
 }
 
@@ -144,12 +121,17 @@ func (i *interactionSession) toolResultProjection(relation scoperun.ProcessID, s
 	}
 	end := runs.ToolCallFinished{CallID: identity.String(), ModelResult: new(entry.Result.Clone())}
 	if prepared {
-		if metadata.MemberID != member.MemberID || metadata.ProcessID != relation.String() {
+		if metadata.MemberID != member.MemberID || metadata.ProcessID != relation {
 			return runs.ExecutorEvent{}, errors.New("execution: result metadata belongs to another member")
 		}
 		start = metadata.Start
-		end.Arguments, end.Result, end.Offload = metadata.Start.Arguments, metadata.Result, metadata.Offload
-		end.OutputText, end.MutatedPaths, end.Failure = metadata.OutputText, metadata.MutatedPaths, metadata.Failure
+		end.Arguments = metadata.Start.Arguments
+		if presentation := metadata.presentation; presentation != nil {
+			end.Result, end.Offload = presentation.result, presentation.offload
+			end.OutputText, end.MutatedPaths, end.Failure = presentation.outputText, presentation.mutatedPaths, presentation.failure
+		} else if metadata.Receipt != nil {
+			return runs.ExecutorEvent{}, errors.New("execution: captured Tool settled without its presentation")
+		}
 	} else if entry.Disposition != interaction.ResultRejected {
 		return runs.ExecutorEvent{}, fmt.Errorf("execution: known Tool result %q lost its product metadata", entry.Call.ID)
 	}
@@ -175,8 +157,12 @@ func (i *interactionSession) retirePublishedToolMetadata(identities []runs.Invoc
 	i.state.mu.Lock()
 	var delegates []*managedDelegateCall
 	for _, identity := range identities {
-		if i.state.toolMetadata[identity.String()].Receipt == nil {
-			delete(i.state.toolMetadata, identity.String())
+		id := identity.String()
+		if metadata := i.state.toolMetadata[id]; metadata.Receipt != nil {
+			metadata.presentation = nil
+			i.state.toolMetadata[id] = metadata
+		} else {
+			delete(i.state.toolMetadata, id)
 		}
 		for _, managed := range i.state.delegateCalls {
 			if managed.callID == identity {
@@ -205,8 +191,8 @@ func (i *interactionSession) retireToolReceiptPrefix(memberID string) {
 	}
 }
 
-func decodeToolMetadata(values []toolResultMetadata, processes map[scoperun.ProcessID]struct{}) (map[string]toolResultMetadata, error) {
-	metadata := make(map[string]toolResultMetadata, len(values))
+func decodeToolCalls(values []toolCallCapture, processes map[scoperun.ProcessID]struct{}) (map[string]toolCallMetadata, error) {
+	metadata := make(map[string]toolCallMetadata, len(values))
 	previous := ""
 	for _, value := range values {
 		if err := value.validate(); err != nil {
@@ -216,12 +202,11 @@ func decodeToolMetadata(values []toolResultMetadata, processes map[scoperun.Proc
 		if _, found := processes[processID]; !found || value.Start.CallID <= previous {
 			return nil, errors.New("execution: noncanonical or foreign Tool metadata")
 		}
-		source, _ := scoperun.ParseProcessID(value.ProcessID)
-		if _, found := processes[source]; !found {
+		if _, found := processes[value.ProcessID]; !found {
 			return nil, errors.New("execution: Tool metadata source is outside the execution tree")
 		}
 		previous = value.Start.CallID
-		metadata[previous] = value.clone()
+		metadata[previous] = toolCallMetadata{toolCallCapture: value}
 	}
 	return metadata, nil
 }

@@ -262,10 +262,7 @@ func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) (
 		if err := s.restoreRuns(ctx, snapshot.Runs); err != nil {
 			return err
 		}
-		if err := s.restoreToolResults(ctx, snapshot.ToolResults); err != nil {
-			return err
-		}
-		return s.appendTranscriptItems(ctx, snapshot.Items)
+		return s.restoreTranscript(ctx, snapshot.Items, snapshot.ToolResults)
 	})
 	if err != nil {
 		return session.Session{}, err
@@ -355,10 +352,7 @@ func (s *SessionStores) ApplyRestore(ctx context.Context, restore sessions.Resto
 		if err := s.restoreRuns(ctx, snapshot.Runs); err != nil {
 			return err
 		}
-		if err := s.restoreToolResults(ctx, snapshot.ToolResults); err != nil {
-			return err
-		}
-		if err := s.appendTranscriptItems(ctx, snapshot.Items); err != nil {
+		if err := s.restoreTranscript(ctx, snapshot.Items, snapshot.ToolResults); err != nil {
 			return err
 		}
 		if retirement, replaced := restore.Retirement(); replaced {
@@ -400,15 +394,6 @@ func (s *SessionStores) savePlanReplacement(ctx context.Context, sessionID strin
 func (s *SessionStores) restoreRuns(ctx context.Context, restored []rundomain.Run) error {
 	for _, run := range restored {
 		if err := s.runs.Restore(ctx, run); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *SessionStores) restoreToolResults(ctx context.Context, blobs []transcript.ToolResultBlob) error {
-	for _, blob := range blobs {
-		if err := s.toolResults.Restore(ctx, blob); err != nil {
 			return err
 		}
 	}
@@ -479,9 +464,6 @@ func (s *SessionStores) clearSessionOwnedStateExceptPlan(ctx context.Context, se
 	if err := s.goals.Clear(ctx, sessionID); err != nil {
 		return err
 	}
-	if err := s.toolResults.DropSession(ctx, sessionID); err != nil {
-		return err
-	}
 	if err := s.deleteChildRunStarts(ctx, sessionID); err != nil {
 		return err
 	}
@@ -520,9 +502,18 @@ func (s *SessionStores) ApplyTerminal(ctx context.Context, terminal sessions.Ter
 	})
 }
 
-func (s *SessionStores) appendTranscriptItems(ctx context.Context, items []transcript.Item) error {
+func (s *SessionStores) restoreTranscript(ctx context.Context, items []transcript.Item, bodies []transcript.ToolResultBlob) error {
+	byID := make(map[transcript.ToolResultID]*transcript.ToolResultBlob, len(bodies))
+	for index := range bodies {
+		byID[bodies[index].ID] = &bodies[index]
+	}
 	for _, item := range items {
-		if err := s.transcript.AppendItem(ctx, item); err != nil {
+		call, _ := item.ToolCall()
+		var body *transcript.ToolResultBlob
+		if ref := call.Invocation.Offload; ref != nil {
+			body = byID[ref.ID]
+		}
+		if err := s.transcript.writeItem(ctx, item, nil, true, body); err != nil {
 			return err
 		}
 	}

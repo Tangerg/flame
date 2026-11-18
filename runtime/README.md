@@ -1473,14 +1473,14 @@ Tool results. Runtime adapts task input and commits assistant content and
 accounting before returning the observed response to Scope. Process termination
 closes the product Segment without another message event, reply cache or
 confirmation handshake. Runtime never reconstructs Delegate output from UI text
-or independently formats Delegate diagnostics. Pending product metadata,
-including effective arguments, mutation paths and offload references, remains in
-the product checkpoint until its result publication is acknowledged. Durable
-receipts retain already published results after this metadata is retired.
+or independently formats Delegate diagnostics. The product checkpoint retains
+captured call attribution and original receipt authority. Result presentation
+becomes durable with the Scope settlement and its Item. Publication receipts
+identify the exact model result across later cuts.
 Completed Delegate siblings keep their original receipts and accounting while
 surviving members wait and resume.
 
-Rejected calls retain their original input as `argumentsText`; parsed `arguments` remains an empty object. Transcript storage, history artifacts, CLI, and Desktop preserve this distinction, including malformed JSON. Existing records need no schema migration; previously omitted results cannot be reconstructed from the database alone. Run aborts persist the first causal diagnostic instead of replacing it with a generic internal error.
+Rejected calls retain their original input as `argumentsText`; parsed `arguments` remains an empty object. Transcript storage, history artifacts, CLI, and Desktop preserve this distinction, including malformed JSON. Run aborts persist the first causal diagnostic.
 
 The persisted execution format changes with this contract. Waiting executions
 from an older build must be completed before upgrade or rejected under the
@@ -1495,7 +1495,10 @@ A lost Run carries its closed loss reason, including an unavailable workspace,
 another build, unrestorable state, changed configuration or unresolved external
 effects. The probe's finer reason and cause stay in the trace.
 
-Waiting checkpoints declare the offloaded result IDs required by their continuation. SQLite saves these references atomically with the checkpoint, verifies Session ownership, and releases them when the checkpoint is replaced or consumed. Startup and failed-write cleanup delete only bodies held by neither a checkpoint nor an Item. Restoring an executor verifies that the declared references exactly match its pending result metadata; old checkpoints missing this ownership information are rejected under the existing recovery policy, without a compatibility reader.
+SQLite commits an offloaded Tool body with its transcript Item and the Scope
+result publication. The body belongs to that Item in the same Session, and
+deleting the Item deletes the body. An acknowledged checkpoint can resume using
+the published reference in Scope's log.
 
 Offload references distinguish plain text replacements from model-only text.
 The transcript owns that distinction: structured results retain their original

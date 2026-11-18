@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 
 	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/sqlite"
@@ -97,14 +96,13 @@ func encodeCheckpointIdentity(checkpoint runs.ExecutorCheckpoint) ([]byte, error
 		resources[index] = contentSource{dependency.InstallationID.String(), dependency.Digest.String()}
 	}
 	return json.Marshal(struct {
-		Root        string                    `json:"root"`
-		Session     string                    `json:"session"`
-		Build       string                    `json:"build"`
-		Payload     []byte                    `json:"payload"`
-		ToolResults []transcript.ToolResultID `json:"toolResults"`
-		Bindings    []string                  `json:"bindings"`
-		Resources   []contentSource           `json:"resources"`
-	}{checkpoint.RootMemberID, checkpoint.SessionID, checkpoint.BuildID, checkpoint.Payload, checkpoint.ToolResultIDs, bindings, resources})
+		Root      string          `json:"root"`
+		Session   string          `json:"session"`
+		Build     string          `json:"build"`
+		Payload   []byte          `json:"payload"`
+		Bindings  []string        `json:"bindings"`
+		Resources []contentSource `json:"resources"`
+	}{checkpoint.RootMemberID, checkpoint.SessionID, checkpoint.BuildID, checkpoint.Payload, bindings, resources})
 }
 
 func (b *Bundle) commitPluginWrite(ctx context.Context, request []byte, fn func(context.Context) error) error {

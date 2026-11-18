@@ -198,9 +198,9 @@ func (i *InteractionExecutor) BeginUncertainExecution(ctx context.Context, ref r
 	return nil
 }
 
-func (i interactionCheckpointState) recoverableReceipts(inspection scoperun.TreeInspection) (map[scoperun.EffectID]toolResultMetadata, error) {
+func (i interactionCheckpointState) recoverableReceipts(inspection scoperun.TreeInspection) (map[scoperun.EffectID]toolCallCapture, error) {
 	rootID := i.tree.Root
-	proofs := make(map[scoperun.EffectID]toolResultMetadata)
+	proofs := make(map[scoperun.EffectID]toolCallCapture)
 	for _, metadata := range i.toolMetadata {
 		if metadata.Receipt == nil {
 			continue
@@ -212,7 +212,7 @@ func (i interactionCheckpointState) recoverableReceipts(inspection scoperun.Tree
 		if _, duplicate := proofs[id]; duplicate {
 			return nil, errors.New("execution: duplicate retained Tool effect identity")
 		}
-		proofs[id] = metadata
+		proofs[id] = metadata.toolCallCapture
 	}
 	if len(proofs) == 0 {
 		return nil, nil
@@ -237,7 +237,7 @@ func (i interactionCheckpointState) recoverableReceipts(inspection scoperun.Tree
 	return proofs, nil
 }
 
-func (i *interactionSession) verifySettledTools(ctx context.Context, tree scoperun.Log, proofs map[scoperun.EffectID]toolResultMetadata, open []runs.RecoveredTool) error {
+func (i *interactionSession) verifySettledTools(ctx context.Context, tree scoperun.Log, proofs map[scoperun.EffectID]toolCallCapture, open []runs.RecoveredTool) error {
 	unverified := make(map[string]struct{}, len(proofs))
 	for _, metadata := range proofs {
 		unverified[metadata.Start.CallID] = struct{}{}
@@ -281,7 +281,7 @@ func (i *interactionSession) verifySettledTools(ctx context.Context, tree scoper
 	return nil
 }
 
-func (i *InteractionExecutor) originalSourcesAvailable(ctx context.Context, checkpoint interactionCheckpointState, inspection scoperun.TreeInspection, proofs map[scoperun.EffectID]toolResultMetadata) (bool, error) {
+func (i *InteractionExecutor) originalSourcesAvailable(ctx context.Context, checkpoint interactionCheckpointState, inspection scoperun.TreeInspection, proofs map[scoperun.EffectID]toolCallCapture) (bool, error) {
 	for id, metadata := range proofs {
 		proof := metadata.Receipt
 		process, found := inspection.Process(id.Process)
@@ -322,7 +322,7 @@ func (i *InteractionExecutor) originalSourcesAvailable(ctx context.Context, chec
 	return true, nil
 }
 
-func (i *interactionSession) validateCapturedToolArguments(inspection scoperun.TreeInspection, proofs map[scoperun.EffectID]toolResultMetadata) error {
+func (i *interactionSession) validateCapturedToolArguments(inspection scoperun.TreeInspection, proofs map[scoperun.EffectID]toolCallCapture) error {
 	for id, metadata := range proofs {
 		process, found := inspection.Process(id.Process)
 		if !found {

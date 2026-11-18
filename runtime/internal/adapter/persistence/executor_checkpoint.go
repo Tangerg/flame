@@ -79,7 +79,7 @@ func (s *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 	})
 }
 
-// The payload and its body references must be read from the same snapshot.
+// The payload and its executable and resource bindings share a snapshot.
 func (s *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error) {
 	if err := runs.ValidateMember(rootMemberID); err != nil {
 		return runs.ExecutorCheckpoint{}, fmt.Errorf("sqlite: load executor checkpoint: %w", err)
@@ -97,10 +97,6 @@ func (s *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 			return runs.ExecutorCheckpoint{}, fmt.Errorf("sqlite: load executor checkpoint %q: %w", rootMemberID, err)
 		}
 		checkpoint := runs.ExecutorCheckpoint{RootMemberID: rootMemberID, SessionID: sessionID, Payload: append([]byte(nil), payload...), BuildID: buildID}
-		checkpoint.ToolResultIDs, err = s.toolResultReferences(ctx, rootMemberID)
-		if err != nil {
-			return runs.ExecutorCheckpoint{}, err
-		}
 		checkpoint.Bindings, checkpoint.Resources, err = s.checkpointReferences(ctx, rootMemberID)
 		if err != nil {
 			return runs.ExecutorCheckpoint{}, err

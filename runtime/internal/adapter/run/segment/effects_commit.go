@@ -260,7 +260,7 @@ func (e *Effects) CommitEvent(ctx context.Context, commit runs.EventCommit) erro
 		if settleErr != nil {
 			err = errors.Join(err, settleErr)
 		}
-		return e.compensateFailedCommit(ctx, commit, err)
+		return err
 	}
 	e.invalidateCompactedContext(commit)
 	return nil
@@ -371,33 +371,7 @@ func (e *Effects) CommitTreeBarrier(ctx context.Context, barrier runs.TreeBarrie
 	if settled {
 		return nil
 	}
-	err = errors.Join(err, settleErr)
-	for _, commit := range commits {
-		err = e.compensateFailedCommit(ctx, commit, err)
-	}
-	return err
-}
-
-const stagedToolResultCleanupTimeout = 5 * time.Second
-
-// compensateFailedCommit removes only unbound blobs staged by the failed
-// event. Cleanup is request-detached because cancellation is one of the failure
-// paths; Discard's unbound predicate makes an ambiguous successful commit safe.
-func (e *Effects) compensateFailedCommit(ctx context.Context, commit runs.EventCommit, commitErr error) error {
-	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), stagedToolResultCleanupTimeout)
-	defer cancel()
-	var cleanupErrs []error
-	for _, write := range commit.Items {
-		call, present := write.Item().ToolCall()
-		invocation := call.Invocation
-		if !present || invocation.Offload == nil {
-			continue
-		}
-		if err := e.toolResults.Discard(cleanupCtx, write.Item().SessionID(), *invocation.Offload); err != nil {
-			cleanupErrs = append(cleanupErrs, fmt.Errorf("segment: discard staged tool result %q: %w", invocation.Offload.ID, err))
-		}
-	}
-	return errors.Join(commitErr, errors.Join(cleanupErrs...))
+	return errors.Join(err, settleErr)
 }
 
 func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) error {

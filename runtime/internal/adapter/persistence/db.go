@@ -372,14 +372,10 @@ func currentSchema() []string {
 			item_id     TEXT    NOT NULL UNIQUE,
 			occurred_at INTEGER NOT NULL,
 			payload     TEXT    NOT NULL,
-			offload_id  TEXT    NOT NULL DEFAULT '',
-			offload_model_only INTEGER NOT NULL DEFAULT 0 CHECK (offload_model_only IN (0, 1)),
-			CHECK (offload_id != '' OR offload_model_only = 0)
+			UNIQUE (item_id, session_id)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_history_items_session
 			ON history_items(session_id, seq)`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_history_items_offload
-			ON history_items(session_id, offload_id) WHERE offload_id != ''`,
 		`CREATE TABLE IF NOT EXISTS providers (
 			id        TEXT PRIMARY KEY,
 			api_key   TEXT CHECK (api_key IS NULL OR length(api_key) > 0),
@@ -633,30 +629,17 @@ func currentSchema() []string {
 			provider  TEXT NOT NULL DEFAULT '',
 			model     TEXT NOT NULL DEFAULT ''
 		)`,
-		// Offloaded tool-result bodies (context eviction): a single tool output
-		// that exceeds the eviction threshold is moved here and model history keeps
-		// only a bounded head+tail preview. history_items.offload_id is the one
-		// link from an Item to its body, used to hydrate transcript reads; a body no
-		// Item or checkpoint names is unbound staging. An id is unique within its
-		// Session only: the preview and conversation text spell it out, so a fork
-		// copies a body under the same id rather than renaming text it cannot
-		// rewrite. created_at_ns preserves the exact portable creation instant.
+		// A fork preserves result IDs embedded in model messages. The composite
+		// foreign key keeps Session-scoped lookup aligned with the owning Item.
 		`CREATE TABLE IF NOT EXISTS tool_result_blobs (
+			item_id     TEXT    PRIMARY KEY NOT NULL,
 			session_id  TEXT    NOT NULL,
 			id          TEXT    NOT NULL,
-			body        TEXT    NOT NULL,
-			created_at_ns INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000000000),
-			PRIMARY KEY(session_id, id)
-		)`,
-		// session_id restates the checkpoint's Session only so both foreign keys
-		// can name it; the first key forces the two to agree.
-		`CREATE TABLE IF NOT EXISTS executor_checkpoint_tool_results (
-			root_member_id TEXT NOT NULL,
-			session_id TEXT NOT NULL,
-			result_id TEXT NOT NULL,
-			PRIMARY KEY(root_member_id, result_id),
-			FOREIGN KEY(root_member_id, session_id) REFERENCES executor_checkpoints(root_member_id, session_id) ON DELETE CASCADE,
-			FOREIGN KEY(session_id, result_id) REFERENCES tool_result_blobs(session_id, id) ON DELETE RESTRICT
+			model_only  INTEGER NOT NULL CHECK (model_only IN (0, 1)),
+			body        TEXT    NOT NULL CHECK (length(CAST(body AS BLOB)) > 0),
+			created_at_ns INTEGER NOT NULL,
+			UNIQUE (session_id, id),
+			FOREIGN KEY (item_id, session_id) REFERENCES history_items(item_id, session_id) ON DELETE CASCADE
 		)`,
 		`CREATE TABLE IF NOT EXISTS executor_checkpoint_bindings (
 			root_member_id TEXT NOT NULL REFERENCES executor_checkpoints(root_member_id) ON DELETE CASCADE,

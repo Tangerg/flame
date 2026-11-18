@@ -82,38 +82,31 @@ func (r ToolResultRef) HydrateResult(result *tool.Result, body string) (tool.Res
 	return tool.NewResult(body)
 }
 
-// ToolResultStage is the complete unbound record persisted only after its
-// rendered preview has proven worth evicting from model context.
-type ToolResultStage struct {
+type ToolResultOffload struct {
+	Ref  ToolResultRef
+	Body string
+}
+
+// ToolResultBlob is the portable body of one transcript Item. Its Session
+// scopes the ID because forks preserve IDs already embedded in model messages.
+type ToolResultBlob struct {
 	ID        ToolResultID
 	SessionID string
 	Body      string
-}
-
-func (s ToolResultStage) Validate() error {
-	var errs []error
-	if err := s.ID.Validate(); err != nil {
-		errs = append(errs, err)
-	}
-	if err := identity.ValidateSession(s.SessionID); err != nil {
-		errs = append(errs, fmt.Errorf("transcript: tool result: %w", err))
-	}
-	if s.Body == "" {
-		errs = append(errs, errors.New("transcript: tool result body is required"))
-	}
-	return errors.Join(errs...)
-}
-
-// ToolResultBlob is the portable, session-owned record needed to restore both
-// transcript reconstruction and deferred result reads on another database.
-// The Item that offloaded it names it; a Blob does not name the Item back.
-type ToolResultBlob struct {
-	ToolResultStage
 	CreatedAt time.Time
 }
 
 func (b ToolResultBlob) Validate() error {
-	errs := []error{b.ToolResultStage.Validate()}
+	var errs []error
+	if err := b.ID.Validate(); err != nil {
+		errs = append(errs, err)
+	}
+	if err := identity.ValidateSession(b.SessionID); err != nil {
+		errs = append(errs, fmt.Errorf("transcript: tool result: %w", err))
+	}
+	if b.Body == "" {
+		errs = append(errs, errors.New("transcript: tool result body is required"))
+	}
 	if b.CreatedAt.IsZero() {
 		errs = append(errs, errors.New("transcript: tool result creation time is required"))
 	}

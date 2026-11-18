@@ -524,16 +524,15 @@ func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]ProjectionE
 		invocation.Input = transcript.AdmittedInput(parsed)
 	}
 	invocation.Result = e.Result
-	invocation.Offload = e.Offload
 	var settlement transcript.Replacement
 	var err error
 	if e.Failure != nil {
 		if validateErr := e.Failure.Validate(); validateErr != nil {
 			return nil, fmt.Errorf("tool %q failure: %w", invocation.Name, validateErr)
 		}
-		settlement, err = ref.item.FailToolCall(invocation, *e.Failure, ref.attemptStartedAt, ref.finishedAt)
+		settlement, err = ref.item.FailToolCall(invocation, e.Offload, *e.Failure, ref.attemptStartedAt, ref.finishedAt)
 	} else {
-		settlement, err = ref.item.CompleteToolCall(invocation, ref.attemptStartedAt, ref.finishedAt)
+		settlement, err = ref.item.CompleteToolCall(invocation, e.Offload, ref.attemptStartedAt, ref.finishedAt)
 	}
 	if err != nil {
 		return nil, err

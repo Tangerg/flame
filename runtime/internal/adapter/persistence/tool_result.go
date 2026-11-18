@@ -11,32 +11,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// ToolResultStore is the single full-body source for oversized tool outputs.
-// Stage creates an unbound row before the tool returns; the transcript Item
-// whose offload names it binds it when the run's atomic event commit appends
-// that Item.
+// ToolResultStore reads the full bodies committed by TranscriptStore.
 type ToolResultStore struct{ db *database }
 
-// newToolResultStore wires a database with the current [Open]-installed schema
-// to the offloaded-tool-result surface.
 func newToolResultStore(db *database) *ToolResultStore {
 	return &ToolResultStore{db: db}
-}
-
-// Stage persists a body under its precomputed identity after the observer has
-// verified that replacing it with a preview reduces model context.
-func (t *ToolResultStore) Stage(ctx context.Context, stage transcript.ToolResultStage) error {
-	return t.db.write(ctx, func(ctx context.Context) error {
-		if err := stage.Validate(); err != nil {
-			return fmt.Errorf("sqlite: stage tool result: %w", err)
-		}
-		_, err := t.db.connection(ctx).ExecContext(ctx, `INSERT INTO tool_result_blobs(id, session_id, body)
-		 VALUES (?, ?, ?)`, stage.ID, stage.SessionID, stage.Body)
-		if err != nil {
-			return fmt.Errorf("sqlite: stage tool result %q: %w", stage.ID, err)
-		}
-		return nil
-	})
 }
 
 // Fetch returns the full offloaded body for (sessionID, id). found is false —
@@ -69,10 +48,8 @@ func (t *ToolResultStore) List(ctx context.Context, sessionID string) ([]transcr
 			return nil, fmt.Errorf("sqlite: list tool results: %w", err)
 		}
 		rows, err := t.db.connection(ctx).QueryContext(ctx, `SELECT id, session_id, body, created_at_ns
-		 FROM tool_result_blobs AS b
-		 WHERE session_id = ? AND EXISTS (
-		   SELECT 1 FROM history_items AS h WHERE h.offload_id = b.id AND h.session_id = b.session_id
-		 )
+		 FROM tool_result_blobs
+		 WHERE session_id = ?
 		 ORDER BY created_at_ns, id`, sessionID)
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list tool results: %w", err)
@@ -102,80 +79,5 @@ func (t *ToolResultStore) List(ctx context.Context, sessionID string) ([]transcr
 			return nil, fmt.Errorf("sqlite: list tool results: %w", err)
 		}
 		return blobs, nil
-	})
-}
-
-// Restore inserts one artifact blob under its exact identity within its
-// Session.
-func (t *ToolResultStore) Restore(ctx context.Context, blob transcript.ToolResultBlob) error {
-	return t.db.write(ctx, func(ctx context.Context) error {
-		if err := blob.Validate(); err != nil {
-			return fmt.Errorf("sqlite: restore tool result: %w", err)
-		}
-		result, err := t.db.connection(ctx).ExecContext(ctx, `INSERT INTO tool_result_blobs(id, session_id, body, created_at_ns)
-		 VALUES (?, ?, ?, ?)
-		 ON CONFLICT(session_id, id) DO NOTHING`, blob.ID, blob.SessionID, blob.Body, blob.CreatedAt.UnixNano())
-		if err != nil {
-			return fmt.Errorf("sqlite: restore tool result %q: %w", blob.ID, err)
-		}
-		if inserted, err := result.RowsAffected(); err != nil {
-			return fmt.Errorf("sqlite: inspect tool-result restore %q: %w", blob.ID, err)
-		} else if inserted == 0 {
-			return fmt.Errorf("%w: session %q already holds tool result %q", transcript.ErrToolResultIdentityConflict, blob.SessionID, blob.ID)
-		}
-		return nil
-	})
-}
-
-const unboundToolResult = `NOT EXISTS (SELECT 1 FROM history_items
-	  WHERE session_id = tool_result_blobs.session_id AND offload_id = tool_result_blobs.id)
-	AND NOT EXISTS (SELECT 1 FROM executor_checkpoint_tool_results
-	  WHERE session_id = tool_result_blobs.session_id AND result_id = tool_result_blobs.id)`
-
-// Discard removes only bodies with neither an Item nor a checkpoint owner.
-// Failed publications must not invalidate a durable waiting continuation.
-func (t *ToolResultStore) Discard(ctx context.Context, sessionID string, ref transcript.ToolResultRef) error {
-	return t.db.write(ctx, func(ctx context.Context) error {
-		if err := identity.ValidateSession(sessionID); err != nil {
-			return fmt.Errorf("sqlite: discard tool result: %w", err)
-		}
-		if err := ref.Validate(); err != nil {
-			return fmt.Errorf("sqlite: discard tool result: %w", err)
-		}
-		if _, err := t.db.connection(ctx).ExecContext(ctx, `DELETE FROM tool_result_blobs WHERE id = ? AND session_id = ? AND `+unboundToolResult, ref.ID, sessionID); err != nil {
-			return fmt.Errorf("sqlite: discard staged tool result %q: %w", ref.ID, err)
-		}
-		return nil
-	})
-}
-
-// PurgeUnbound removes abandoned staging bodies during startup, before new
-// execution begins. Item and checkpoint references are both durable owners.
-func (t *ToolResultStore) PurgeUnbound(ctx context.Context) (int64, error) {
-	return scopedValue(ctx, t.db.write, func(ctx context.Context) (int64, error) {
-		result, err := t.db.connection(ctx).ExecContext(ctx, `DELETE FROM tool_result_blobs WHERE `+unboundToolResult)
-		if err != nil {
-			return 0, fmt.Errorf("sqlite: purge staged tool results: %w", err)
-		}
-		removed, err := result.RowsAffected()
-		if err != nil {
-			return 0, fmt.Errorf("sqlite: inspect staged tool-result purge: %w", err)
-		}
-		return removed, nil
-	})
-}
-
-// DropSession removes every offloaded body owned by sessionID — the blob half
-// of the session-delete cascade. It joins an ambient lifecycle write-set
-// transaction through sqlitebase.Connection(ctx).
-func (t *ToolResultStore) DropSession(ctx context.Context, sessionID string) error {
-	return t.db.write(ctx, func(ctx context.Context) error {
-		if err := identity.ValidateSession(sessionID); err != nil {
-			return fmt.Errorf("sqlite: drop tool results: %w", err)
-		}
-		if _, err := t.db.connection(ctx).ExecContext(ctx, `DELETE FROM tool_result_blobs WHERE session_id = ?`, sessionID); err != nil {
-			return fmt.Errorf("sqlite: drop session tool results: %w", err)
-		}
-		return nil
 	})
 }

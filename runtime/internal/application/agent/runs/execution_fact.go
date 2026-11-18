@@ -186,7 +186,7 @@ type ToolCallFinished struct {
 	// Result remains the independently presented client transcript value.
 	ModelResult  *corechat.ToolResult
 	Result       *tool.Result
-	Offload      *transcript.ToolResultRef
+	Offload      *transcript.ToolResultOffload
 	OutputText   string
 	MutatedPaths []string
 	// Failure is the one structured failure channel for a completed Tool call.

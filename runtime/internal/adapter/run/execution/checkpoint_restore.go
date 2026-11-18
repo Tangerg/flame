@@ -6,19 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
-
-func checkpointToolResultIDs(state interactionCheckpointState) []transcript.ToolResultID {
-	var ids []transcript.ToolResultID
-	for _, metadata := range state.toolMetadata {
-		if metadata.Offload != nil {
-			ids = append(ids, metadata.Offload.ID)
-		}
-	}
-	slices.Sort(ids)
-	return slices.Compact(ids)
-}
 
 func decodeExecutorCheckpoint(checkpoint runs.ExecutorCheckpoint) (interactionCheckpointState, error) {
 	state, err := decodeInteractionCheckpointPayload(checkpoint.Payload)
@@ -27,9 +15,6 @@ func decodeExecutorCheckpoint(checkpoint runs.ExecutorCheckpoint) (interactionCh
 	}
 	if state.handoff.rootID.String() != checkpoint.RootMemberID {
 		return interactionCheckpointState{}, errors.New("execution: checkpoint payload names a different root")
-	}
-	if !slices.Equal(checkpoint.ToolResultIDs, checkpointToolResultIDs(state)) {
-		return interactionCheckpointState{}, errors.New("execution: checkpoint result ownership differs from its continuation")
 	}
 	state.resources = slices.Clone(checkpoint.Resources)
 	for _, activation := range checkpoint.Bindings {

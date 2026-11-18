@@ -5,8 +5,9 @@ package transcript
 // settled at construction; persistence rejects a different current Item rather
 // than overwriting a racing transcript transition.
 type Replacement struct {
-	expected Item
-	state    Item
+	expected   Item
+	state      Item
+	toolResult *ToolResultBlob
 }
 
 func (i Item) replacedBy(state Item, err error) (Replacement, error) {
@@ -21,3 +22,10 @@ func (r Replacement) Expected() Item { return r.expected }
 
 // State returns the complete already-decided replacement Item.
 func (r Replacement) State() Item { return r.state }
+
+func (r Replacement) ToolResult() *ToolResultBlob {
+	if r.toolResult == nil {
+		return nil
+	}
+	return new(*r.toolResult)
+}

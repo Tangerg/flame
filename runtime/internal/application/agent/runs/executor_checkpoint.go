@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 // ErrExecutorCheckpointNotFound reports that no durable executor checkpoint
@@ -39,18 +38,16 @@ type ExecutionScope struct {
 // Resources retain immutable content sources. Admission derives dependencies
 // from those original facts without interpreting continuation state.
 type ExecutorCheckpoint struct {
-	ToolResultIDs []transcript.ToolResultID
-	Bindings      []plugin.Activation
-	Resources     []plugin.Dependency
-	RootMemberID  string
-	SessionID     string
-	Payload       []byte
-	BuildID       string
+	Bindings     []plugin.Activation
+	Resources    []plugin.Dependency
+	RootMemberID string
+	SessionID    string
+	Payload      []byte
+	BuildID      string
 }
 
 // Clone returns an ownership-independent checkpoint value.
 func (e ExecutorCheckpoint) Clone() ExecutorCheckpoint {
-	e.ToolResultIDs = slices.Clone(e.ToolResultIDs)
 	e.Bindings = slices.Clone(e.Bindings)
 	for index := range e.Bindings {
 		e.Bindings[index] = e.Bindings[index].Clone()
@@ -63,9 +60,6 @@ func (e ExecutorCheckpoint) Clone() ExecutorCheckpoint {
 // Validate verifies the host-owned metadata without interpreting the
 // executor payload.
 func (e ExecutorCheckpoint) Validate() error {
-	if err := transcript.ValidateToolResultReferences(e.ToolResultIDs); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpoint, err)
-	}
 	if err := plugin.ValidateDependencies(e.Resources); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpoint, err)
 	}
@@ -133,7 +127,6 @@ func (e ExecutorCheckpoint) ValidateOwnership(rootMemberID, sessionID string) er
 func (e ExecutorCheckpoint) Equal(other ExecutorCheckpoint) bool {
 	return e.RootMemberID == other.RootMemberID && e.SessionID == other.SessionID &&
 		e.BuildID == other.BuildID && bytes.Equal(e.Payload, other.Payload) &&
-		slices.Equal(e.ToolResultIDs, other.ToolResultIDs) &&
 		slices.Equal(e.Resources, other.Resources) &&
 		slices.EqualFunc(e.Bindings, other.Bindings, plugin.Activation.Equal)
 }

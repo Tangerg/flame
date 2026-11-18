@@ -153,21 +153,23 @@ func (i Item) Fork(sessionID flameidentity.SessionID, runID flameidentity.RunID,
 // execution interval reported by the Tool boundary.
 func (i Item) CompleteToolCall(
 	invocation ToolInvocation,
+	offload *ToolResultOffload,
 	executionStartedAt time.Time,
 	finishedAt time.Time,
 ) (Replacement, error) {
-	return i.replacedBy(i.settleToolCall(invocation, nil, ItemCompleted, executionStartedAt, finishedAt))
+	return i.settleToolCall(invocation, offload, nil, ItemCompleted, executionStartedAt, finishedAt)
 }
 
 // FailToolCall settles a started ToolCall with a classified failure and the
 // exact execution interval reported by the Tool boundary.
 func (i Item) FailToolCall(
 	invocation ToolInvocation,
+	offload *ToolResultOffload,
 	failure tool.Failure,
 	executionStartedAt time.Time,
 	finishedAt time.Time,
 ) (Replacement, error) {
-	return i.replacedBy(i.settleToolCall(invocation, &failure, ItemIncomplete, executionStartedAt, finishedAt))
+	return i.settleToolCall(invocation, offload, &failure, ItemIncomplete, executionStartedAt, finishedAt)
 }
 
 // AbandonToolCall records that a running ToolCall never reached a conclusive
@@ -177,7 +179,7 @@ func (i Item) AbandonToolCall(failure *tool.Failure, finishedAt time.Time) (Repl
 	if !ok {
 		return Replacement{}, errors.New("transcript: only a ToolCall can be abandoned")
 	}
-	return i.replacedBy(i.settleToolCall(call.Invocation, failure, ItemIncomplete, time.Time{}, finishedAt))
+	return i.settleToolCall(call.Invocation, nil, failure, ItemIncomplete, time.Time{}, finishedAt)
 }
 
 // AbandonStartedToolCall records an inconclusive started Tool attempt whose
@@ -188,7 +190,7 @@ func (i Item) AbandonStartedToolCall(
 	executionStartedAt time.Time,
 	finishedAt time.Time,
 ) (Replacement, error) {
-	return i.replacedBy(i.settleToolCall(invocation, failure, ItemIncomplete, executionStartedAt, finishedAt))
+	return i.settleToolCall(invocation, nil, failure, ItemIncomplete, executionStartedAt, finishedAt)
 }
 
 // ResolveToolApproval records the exact human verdict accepted for a running
@@ -227,38 +229,55 @@ func (i Item) AnswerQuestion(answers [][]string) (Replacement, error) {
 
 func (i Item) settleToolCall(
 	invocation ToolInvocation,
+	offload *ToolResultOffload,
 	failure *tool.Failure,
 	status ItemStatus,
 	executionStartedAt time.Time,
 	finishedAt time.Time,
-) (Item, error) {
+) (Replacement, error) {
 	call, ok := i.body.(ToolCallBody)
 	if !ok || i.status != ItemRunning {
-		return Item{}, errors.New("transcript: only a running ToolCall can settle")
+		return Replacement{}, errors.New("transcript: only a running ToolCall can settle")
 	}
 	if invocation.Source == (tool.Ref{}) {
 		invocation.Source = call.Invocation.Source
 	}
 	if !call.Invocation.MatchesSource(invocation.Name, invocation.Source) {
-		return Item{}, errors.New("transcript: ToolCall settlement changes tool identity")
+		return Replacement{}, errors.New("transcript: ToolCall settlement changes tool identity")
 	}
 	if finishedAt.IsZero() || finishedAt.Before(i.identity.OccurredAt) {
-		return Item{}, errors.New("transcript: ToolCall finish time precedes its occurrence")
+		return Replacement{}, errors.New("transcript: ToolCall finish time precedes its occurrence")
 	}
 	var executionDuration *time.Duration
 	if !executionStartedAt.IsZero() {
 		if executionStartedAt.Before(i.identity.OccurredAt) || finishedAt.Before(executionStartedAt) {
-			return Item{}, errors.New("transcript: ToolCall execution interval is outside its lifecycle")
+			return Replacement{}, errors.New("transcript: ToolCall execution interval is outside its lifecycle")
 		}
 		executionDuration = new(finishedAt.Sub(executionStartedAt))
 	} else if status == ItemCompleted {
-		return Item{}, errors.New("transcript: completed ToolCall requires an execution interval")
+		return Replacement{}, errors.New("transcript: completed ToolCall requires an execution interval")
+	}
+	if invocation.Offload != nil {
+		return Replacement{}, errors.New("transcript: ToolCall settlement derives its reference from the offload body")
+	}
+	var blob *ToolResultBlob
+	if offload != nil {
+		invocation.Offload = &offload.Ref
+		body := ToolResultBlob{ID: offload.Ref.ID, SessionID: i.SessionID(), Body: offload.Body, CreatedAt: finishedAt.UTC()}
+		if err := body.Validate(); err != nil {
+			return Replacement{}, err
+		}
+		blob = &body
 	}
 	call.Invocation = invocation
 	call.FinishedAt = finishedAt.UTC()
 	call.ExecutionDuration = executionDuration
 	call.Failure = failure
-	return i.with(status, call)
+	state, err := i.with(status, call)
+	if err != nil {
+		return Replacement{}, err
+	}
+	return Replacement{expected: i, state: state, toolResult: blob}, nil
 }
 
 // with is the one exit of every transition: the successor is validated like a

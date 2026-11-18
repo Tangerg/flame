@@ -198,7 +198,6 @@ func buildAssemblyCore(
 		return nil, err
 	}
 	runSegmentConfig.GoalRuns = cfg.stores.Goals
-	runSegmentConfig.ToolResults = cfg.stores.ToolResults
 	runSegmentConfig.RememberedRules = cfg.stores.ApprovalRules
 	runSegmentConfig.AcceptedContinuations = cfg.stores.AcceptedContinuations
 	runSegmentEffects, err := segment.New(runSegmentConfig)
@@ -548,9 +547,6 @@ func startupRunRecovery(stores *persistence.Bundle, pluginCoordinator *plugins.C
 			return err
 		}
 		if !prepared {
-			if _, err := stores.ToolResults.PurgeUnbound(ctx); err != nil {
-				return fmt.Errorf("runtime: reconcile staged tool results: %w", err)
-			}
 			if err := pluginCoordinator.Reclaim(ctx); err != nil {
 				return fmt.Errorf("runtime: reclaim plugin content: %w", err)
 			}

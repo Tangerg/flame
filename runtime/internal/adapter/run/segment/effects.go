@@ -86,10 +86,6 @@ type acceptedContinuationStore interface {
 	Delete(ctx context.Context, rootRunID string) error
 }
 
-type toolResultStore interface {
-	Discard(ctx context.Context, sessionID string, ref transcript.ToolResultRef) error
-}
-
 // modelInvocationJournal applies provider-attempt transitions. It is an
 // operational evidence journal. A known inner response can accompany outer failure;
 // it never creates executable Transcript continuation or advances Run accounting.
@@ -201,7 +197,6 @@ type Config struct {
 	GoalRuns              goalRunRecorder
 	Transcript            TranscriptStore
 	ItemReplacer          ItemReplacer
-	ToolResults           toolResultStore
 	ModelInvocations      modelInvocationJournal
 	ToolInvocations       toolInvocationJournal
 	Conversation          conversationStore
@@ -228,7 +223,6 @@ type Effects struct {
 	goalRuns              goalRunRecorder
 	transcript            TranscriptStore
 	itemReplacer          ItemReplacer
-	toolResults           toolResultStore
 	modelInvocations      modelInvocationJournal
 	toolInvocations       toolInvocationJournal
 	conversation          conversationStore
@@ -280,7 +274,6 @@ func New(cfg Config) (*Effects, error) {
 		{"actor authority", cfg.ActorAuthority},
 		{"command acceptance store", cfg.CommandAcceptances},
 		{"goal run recorder", cfg.GoalRuns},
-		{"tool result store", cfg.ToolResults},
 		{"transactor", cfg.Tx},
 		{"plugin binding transactor", cfg.PluginBindings},
 	}
@@ -298,7 +291,6 @@ func New(cfg Config) (*Effects, error) {
 		goalRuns:              cfg.GoalRuns,
 		transcript:            cfg.Transcript,
 		itemReplacer:          cfg.ItemReplacer,
-		toolResults:           cfg.ToolResults,
 		modelInvocations:      cfg.ModelInvocations,
 		toolInvocations:       cfg.ToolInvocations,
 		conversation:          cfg.Conversation,

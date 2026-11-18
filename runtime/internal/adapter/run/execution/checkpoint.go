@@ -41,7 +41,7 @@ type interactionCheckpointPayloadWire struct {
 	ModelObservers      *[]contributionBindingWire          `json:"model_observers"`
 	MCPManifests        *map[domaintool.Group][]string      `json:"mcp_manifests"`
 	Options             *corechat.Options                   `json:"options"`
-	ToolMetadata        []toolResultMetadata                `json:"tool_metadata,omitempty"`
+	ToolCalls           []toolCallCapture                   `json:"tool_calls,omitempty"`
 	Handoff             *interactionHandoffWire             `json:"handoff"`
 	Instructions        *[]corechat.Message                 `json:"instructions"`
 	Members             []interactionMemberCallsWire        `json:"members,omitempty"`
@@ -105,7 +105,7 @@ type interactionCheckpointState struct {
 	skillDiscoveries    map[domaintool.Group]string
 	mcpManifests        map[domaintool.Group][]domaintool.Ref
 	options             corechat.Options
-	toolMetadata        map[string]toolResultMetadata
+	toolMetadata        map[string]toolCallMetadata
 	tree                scoperun.Log
 	handoff             interactionHandoff
 	callsByProcess      map[scoperun.ProcessID]map[string]int
@@ -138,16 +138,14 @@ func (i *interactionSession) executorCheckpoint(
 	if err != nil {
 		return runs.ExecutorCheckpoint{}, err
 	}
-	decoded, err := decodeInteractionCheckpointPayload(payload)
-	if err != nil {
+	if _, err := decodeInteractionCheckpointPayload(payload); err != nil {
 		return runs.ExecutorCheckpoint{}, err
 	}
 	bindings, resources := i.checkpointPluginReferences()
 	checkpoint := runs.ExecutorCheckpoint{
-		ToolResultIDs: checkpointToolResultIDs(decoded),
-		Bindings:      bindings,
-		Resources:     resources,
-		RootMemberID:  tree.Root.String(), SessionID: i.scope.SessionID,
+		Bindings:     bindings,
+		Resources:    resources,
+		RootMemberID: tree.Root.String(), SessionID: i.scope.SessionID,
 		Payload: payload, BuildID: i.buildID.String(),
 	}
 	if err := checkpoint.Validate(); err != nil {
@@ -163,7 +161,7 @@ func encodeInteractionCheckpointPayload(
 	instructions []corechat.Message,
 	pendingSteers map[scoperun.SignalID]runs.PreparedSteer,
 	pendingContinuation *pendingInteractionContinuation,
-	toolMetadata []toolResultMetadata,
+	toolCalls []toolCallCapture,
 	options corechat.Options,
 	mcpManifests map[domaintool.Group][]string,
 	skillDiscoveries map[domaintool.Group]string,
@@ -188,7 +186,7 @@ func encodeInteractionCheckpointPayload(
 		ModelInputs:      new(contributionBindingsWire(inputs)),
 		MCPManifests:     new(mcpManifests),
 		SkillDiscoveries: skillDiscoveries,
-		ToolMetadata:     toolMetadata, Options: new(options.Clone()),
+		ToolCalls:        toolCalls, Options: new(options.Clone()),
 		Instructions: new(frozenInstructions),
 	}
 	providerJSON, err := encodeModelProvider(provider)
@@ -503,7 +501,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint pending continuation: %w", err)
 	}
-	metadata, err := decodeToolMetadata(wire.ToolMetadata, processes)
+	metadata, err := decodeToolCalls(wire.ToolCalls, processes)
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}

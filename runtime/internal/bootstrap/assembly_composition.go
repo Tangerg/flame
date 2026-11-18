@@ -276,9 +276,7 @@ func buildExecutionComposition(
 		ModelContextState:      workingContexts,
 		LifecycleHooks:         workingContexts,
 		ToolResolver:           toolRuntime.tools.Resolver,
-	}
-	if threshold := cfg.toolResultOffloadThreshold; threshold != nil {
-		interactionConfig.ToolResultOffload = &executionadapter.ToolResultOffload{Store: cfg.stores.ToolResults, Threshold: *threshold}
+		ToolResultOffloadBytes: cfg.toolResultOffloadThreshold,
 	}
 	interactionExecutor, err := executionadapter.NewInteractionExecutor(interactionConfig)
 	if err != nil {

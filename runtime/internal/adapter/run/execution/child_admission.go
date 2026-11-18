@@ -66,9 +66,8 @@ func (i *interactionSession) admitProcess(
 	if err := i.commitFact(ctx, parent, managed.toolStart()); err != nil {
 		return fmt.Errorf("execution: commit Delegate call start: %w", err)
 	}
-	if err := i.rememberToolMetadata(toolResultMetadata{
-		MemberID: parent.MemberID, ProcessID: managed.parentRelation.String(), Start: managed.toolStart(),
-	}); err != nil {
+	capture := toolCallCapture{MemberID: parent.MemberID, ProcessID: managed.parentRelation, Start: managed.toolStart()}
+	if err := i.rememberToolMetadata(toolCallMetadata{toolCallCapture: capture}); err != nil {
 		return err
 	}
 	member := runs.ExecutorMember{

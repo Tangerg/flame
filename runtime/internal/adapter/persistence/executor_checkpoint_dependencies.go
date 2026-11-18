@@ -15,9 +15,6 @@ import (
 
 func (s *ExecutorCheckpointStore) replaceReferences(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
-		if err := s.replaceToolResultReferences(ctx, checkpoint); err != nil {
-			return err
-		}
 		if err := s.replaceResourceReferences(ctx, checkpoint); err != nil {
 			return err
 		}

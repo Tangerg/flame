@@ -5,8 +5,7 @@
 // omitted middle on demand — paging through a large body with byte offsets
 // rather than re-inflating the whole thing into context.
 //
-// It is the read half of the eviction feature whose write half is the engine's
-// tool-result eviction middleware.
+// The owning transcript Item commits and retains the body.
 package builtin
 
 import (

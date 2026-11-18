@@ -58,37 +58,37 @@ func (i *interactionSession) investigateToolReceipts(ctx context.Context) (int, 
 	return resolved, nil
 }
 
-func (i *interactionSession) retainedToolReceipt(tree scoperun.Log, request scoperun.EffectRequest) (toolResultMetadata, *observedInteractionTool, error) {
+func (i *interactionSession) retainedToolReceipt(tree scoperun.Log, request scoperun.EffectRequest) (toolCallCapture, *observedInteractionTool, error) {
 	_, toolEffect, err := interaction.ToolCallFromEffect(request.Effect())
 	if err != nil || !toolEffect {
-		return toolResultMetadata{}, nil, err
+		return toolCallCapture{}, nil, err
 	}
 	invocation, err := interaction.ToolInvocationFromRequest(request)
 	if err != nil {
-		return toolResultMetadata{}, nil, err
+		return toolCallCapture{}, nil, err
 	}
 	reference, err := toolProposalSource(tree, invocation.Reference(), invocation.ToolCall())
 	if err != nil {
-		return toolResultMetadata{}, nil, err
+		return toolCallCapture{}, nil, err
 	}
 	call := invocation.ToolCall()
 	identity, err := logicalToolCallID(reference.process, reference.sequence, reference.index, call.ID, call.Name)
 	if err != nil {
-		return toolResultMetadata{}, nil, err
+		return toolCallCapture{}, nil, err
 	}
 	i.state.mu.Lock()
 	metadata, retained := i.state.toolMetadata[identity.String()]
 	deployments := i.state.deployments
 	i.state.mu.Unlock()
 	if !retained || metadata.Receipt == nil {
-		return toolResultMetadata{}, nil, nil
+		return toolCallCapture{}, nil, nil
 	}
 	proof := *metadata.Receipt
 	owner := deployments.observedTools[request.ProgramRef()][metadata.Start.Source]
 	if request.ID() != proof.EffectID || !owner.matchesReceipt(proof) {
-		return toolResultMetadata{}, nil, errors.New("execution: Tool receipt source differs from the captured Tool")
+		return toolCallCapture{}, nil, errors.New("execution: Tool receipt source differs from the captured Tool")
 	}
-	return metadata, owner, nil
+	return metadata.toolCallCapture, owner, nil
 }
 
 func (o *observedInteractionTool) matchesReceipt(proof toolReceiptEvidence) bool {
@@ -133,25 +133,23 @@ func (i *interactionSession) investigateToolReceipt(ctx context.Context, tree sc
 	return i.publishToolReceipt(publicationCtx, request, owner, metadata, *output, queryErr)
 }
 
-func (i *interactionSession) publishToolReceipt(ctx context.Context, request scoperun.EffectRequest, owner *observedInteractionTool, metadata toolResultMetadata, output toolcontract.Output, outcomeErr error) (bool, error) {
-	arguments, err := tool.ParseArguments(metadata.Start.Arguments)
+func (i *interactionSession) publishToolReceipt(ctx context.Context, request scoperun.EffectRequest, owner *observedInteractionTool, capture toolCallCapture, output toolcontract.Output, outcomeErr error) (bool, error) {
+	arguments, err := tool.ParseArguments(capture.Start.Arguments)
 	if err != nil {
 		return false, err
 	}
-	projection, err := owner.projectToolResult(ctx, runs.ExecutorMember{MemberID: metadata.MemberID}, metadata.Start, arguments, output, outcomeErr, nil)
+	projection, err := owner.projectToolResult(capture.Start.ToolName, arguments, output, outcomeErr, nil)
 	if err != nil {
 		return false, err
 	}
-	projected := projection.metadata
-	projected.ProcessID = request.ID().Process.String()
 	state := interaction.ResultSucceeded
-	if projected.Failure != nil {
+	if failure := projection.presentation.failure; failure != nil {
 		state = interaction.ResultFailed
-		if projected.Failure.Kind == tool.FailureDenied {
+		if failure.Kind == tool.FailureDenied {
 			state = interaction.ResultRejected
 		}
 	}
-	if err := i.rememberToolMetadata(projected); err != nil {
+	if err := i.rememberToolMetadata(toolCallMetadata{toolCallCapture: capture, presentation: &projection.presentation}); err != nil {
 		return false, err
 	}
 	settlement, err := interaction.SettleToolResult(i.state.deployments.interactions[request.ProgramRef()].program, request, toolcontract.Result{Output: projection.output}, state, nil)

@@ -9,20 +9,12 @@ import (
 	framehost "github.com/Tangerg/frame/host"
 )
 
-func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTreeCommit) (commitErr error) {
-	update, commits := tree.Update, tree.Events
+func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTreeCommit) error {
 	if err := tree.Validate(); err != nil {
 		return err
 	}
-	defer func() {
-		if commitErr != nil && !errors.Is(commitErr, framehost.ErrRecoveryRequired) {
-			for _, commit := range commits {
-				commitErr = e.compensateFailedCommit(ctx, commit, commitErr)
-			}
-		}
-	}()
 	var applyErr error
-	err := e.runCheckpointTx(ctx, update.Head.CommitID, tree.Context, func(ctx context.Context) (err error) {
+	err := e.runCheckpointTx(ctx, tree.Update.Head.CommitID, tree.Context, func(ctx context.Context) (err error) {
 		defer func() { applyErr = err }()
 		return e.applyExecutionTree(ctx, tree)
 	})
@@ -35,7 +27,7 @@ func (e *Effects) CommitExecutionTree(ctx context.Context, tree runs.ExecutionTr
 	if applyErr != nil {
 		return err
 	}
-	readCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), stagedToolResultCleanupTimeout)
+	readCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), runCommitReconciliationTimeout)
 	defer cancel()
 	return e.reconcileExecutionTree(readCtx, tree, err)
 }

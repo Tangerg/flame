@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"runtime/debug"
-	"slices"
 	"sync"
 	"time"
 
@@ -75,7 +74,7 @@ type interactionSession struct {
 // invariants and do not belong under this lock.
 type interactionState struct {
 	restoreTree                scoperun.Log
-	toolMetadata               map[string]toolResultMetadata
+	toolMetadata               map[string]toolCallMetadata
 	mu                         sync.Mutex
 	pendingSteers              map[scoperun.SignalID]runs.PreparedSteer
 	pendingContinuation        *pendingInteractionContinuation
@@ -656,7 +655,7 @@ func (i *interactionState) continueExecution() {
 }
 
 func executorCheckpointsEqual(left, right runs.ExecutorCheckpoint) bool {
-	return slices.Equal(left.ToolResultIDs, right.ToolResultIDs) && left.RootMemberID == right.RootMemberID && left.BuildID == right.BuildID &&
+	return left.RootMemberID == right.RootMemberID && left.BuildID == right.BuildID &&
 		left.SessionID == right.SessionID &&
 		bytes.Equal(left.Payload, right.Payload)
 }
