@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import {
   createContext,
   use,
@@ -18,10 +19,15 @@ export interface DiffSourceProps {
   patch: string;
   layout: "unified" | "split";
   label: string;
+  wrapped?: boolean;
 }
 
 export type CodeSourceComponent = ComponentType<CodeSourceProps>;
 export type DiffSourceComponent = ComponentType<DiffSourceProps>;
+
+export const literalSourceStyles = stylex.create({
+  wrapped: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
+});
 
 function PlainCodeSource({ source }: CodeSourceProps) {
   return (
@@ -31,10 +37,10 @@ function PlainCodeSource({ source }: CodeSourceProps) {
   );
 }
 
-function PlainDiffSource({ patch, label }: DiffSourceProps) {
+function PlainDiffSource({ patch, label, wrapped }: DiffSourceProps) {
   return (
     <ScrollRegion label={label}>
-      <pre>
+      <pre {...stylex.props(wrapped && literalSourceStyles.wrapped)}>
         <code>{patch}</code>
       </pre>
     </ScrollRegion>
@@ -65,7 +71,6 @@ export function useCodeSource(): CodeSourceComponent {
   return use(SourceRenderers).code;
 }
 
-export function DiffBody(props: DiffSourceProps) {
-  const Diff = use(SourceRenderers).diff;
-  return <Diff {...props} />;
+export function useDiffSource(): DiffSourceComponent {
+  return use(SourceRenderers).diff;
 }

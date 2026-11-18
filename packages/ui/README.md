@@ -375,6 +375,8 @@ than a pressed toggle whose label reverses meaning; its active visual indicator
 and the shared wrap preference remain unchanged. Syntax color is a host capability:
 `CodeHighlightProvider` supplies the source components for a captured code literal
 and for one Git file patch, which `DiffBody` presents as a scrollable reader.
+`CodeBody` and `DiffBody` project the same page-wide wrap preference. The
+host renderer and the plain patch presentation use it for line layout.
 Without them, code and patches render as plain text. Packages present source
 through these slots rather than bundling a highlighter. The desktop installs Pierre
 File and FileDiff with the `shiki-js` engine and one shared worker pool. Code,

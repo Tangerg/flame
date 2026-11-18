@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -32049,6 +32049,52 @@ Live Runtime reads, VoiceOver, browser visual suites and benchmarks were
 outside this scope. The verification apps and previews are stopped. Both
 private app registrations, profiles, build outputs and temporary logs are
 removed.
+
+### Line wrapping in narrow Diff readers (2026-11-19)
+
+The 320 px Chinese review above also exposes a reading problem.
+`module-023.ts` shows matching line beginnings while the differing
+`// before` and `// after` suffixes sit beyond the right edge. Horizontal
+panning reveals the difference and moves the start out of view. The
+prepared file caption disables the wrap action already available for
+ordinary code and the former literal patch reader.
+
+`CodeCaption`, `CodeBody` and `DiffBody` now use the existing page-wide
+code wrap preference. `DiffBody` projects it through the existing source
+slot. The installed Pierre 1.7.0-beta.3 renderer uses its public
+`overflow` option in Unified and Side by side. The plain patch
+presentation uses the same wrapping rule. The existing localized action
+labels name the next action. Horizontal reading remains available when
+the preference is off. The accepted snapshot supplies the same source
+lines, copy bytes and evidence boundary. Better Typography informs the
+choice to let readers reveal both ends of a line.
+[Pierre Diff layout and wrapping](https://diffs.com/)
+
+- ZH/dark/18 px/`#3B82F6`/motion off in Wails v3.1.0 at Actual Size.
+  In the 320 px Dock, Tab reaches the localized wrap action. Unified
+  displays the beginning and changed suffix together. Side by side
+  keeps the paired changed rows aligned when one side wraps onto more lines.
+  The preference survives native Left tiling, a Files round trip to
+  `reading-guide.md` and a full-width round trip. Ordinary code blocks
+  show the same action state. Disabling wrap restores both columns'
+  horizontal keyboard panning. The file return keeps filter `023` and
+  focuses `module-023.ts`.
+- EN/light/14 px/Flame Orange/full motion. The single-file read of
+  `DockResizer.tsx` keeps the same accepted comparison and time when
+  wrapping. Unicode, tabs and EOF indicators remain available in the
+  named reader. Native Select All selects its rendered evidence.
+  Show changed files opens the workspace scope and focuses the source
+  file row. Collapse and Cmd+L continue the original draft at its
+  verified middle caret, producing `readqxstay`.
+
+`make check-native`, the canonical Lab build, private bundle signatures,
+scoped Prettier, UI/plugin/Web typechecks, the independent packed UI
+consumer, 81 Web schema contract tests and bootstrap, plugin resource,
+bundle and plugin module checks pass. The publisher regenerates the
+tracked Diff ESM. Acceptance uses recorded data at default zoom. Native
+clipboard bytes, VoiceOver, live Runtime, browser visual suites and
+benchmarks were outside this scope. The owned apps, preview, registrations,
+profiles, build outputs and temporary logs are removed.
 
 ### Diff filename and reader-action alignment (2026-11-03)
 

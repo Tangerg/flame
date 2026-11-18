@@ -6,7 +6,12 @@ import { ARTIFACT_SURFACE } from "./artifact-surface";
 import { useCopy } from "./clipboard";
 import { IconButton } from "./icon-button";
 import { selectAllInReader } from "./reader-selection";
-import { useCodeSource } from "./source-renderers";
+import {
+  literalSourceStyles,
+  useCodeSource,
+  useDiffSource,
+  type DiffSourceProps,
+} from "./source-renderers";
 import { color, leading, space, type, weight } from "./tokens.stylex";
 
 let wrapCode = false;
@@ -109,7 +114,6 @@ const styles = stylex.create({
     lineHeight: leading.relaxed,
     userSelect: "text",
   },
-  wrapped: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
 });
 
 export function CodeFrame({
@@ -219,13 +223,19 @@ export function CodeBody({
       {...stylex.props(
         styles.code,
         type.code,
-        wrapped && styles.wrapped,
+        wrapped && literalSourceStyles.wrapped,
         extra,
       )}
     >
       <Source source={children} language={language} wrapped={wrapped} />
     </div>
   );
+}
+
+export function DiffBody(props: Omit<DiffSourceProps, "wrapped">) {
+  const wrapped = useCodeWrap();
+  const Source = useDiffSource();
+  return <Source {...props} wrapped={wrapped} />;
 }
 
 export function CodeBlock({

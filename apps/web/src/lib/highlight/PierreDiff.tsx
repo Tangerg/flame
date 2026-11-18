@@ -5,7 +5,7 @@ import {
   type FileDiffMetadata,
   type PostRenderPhase,
 } from "@pierre/diffs";
-import { FileDiff, useWorkerPool } from "@pierre/diffs/react";
+import { FileDiff, useWorkerPool, type FileDiffOptions } from "@pierre/diffs/react";
 import {
   ScrollRegion,
   scrollWithHorizontalArrow,
@@ -28,7 +28,7 @@ const appearance = `:host {
   --diffs-modified-base: var(--color-info);
 }`;
 
-export function PierreDiff({ patch, layout, label }: DiffSourceProps) {
+export function PierreDiff({ patch, layout, label, wrapped = false }: DiffSourceProps) {
   const pool = useWorkerPool();
   if (!pool) throw new Error("diff rendering requires its shared worker pool");
   const scheme = useScheme();
@@ -57,18 +57,19 @@ export function PierreDiff({ patch, layout, label }: DiffSourceProps) {
     },
     [file],
   );
-  const options = useMemo(
+  const options = useMemo<FileDiffOptions<undefined, undefined>>(
     () => ({
       ...CODE_RENDERING,
       themeType: scheme,
       diffStyle: layout,
+      overflow: wrapped ? "wrap" : "scroll",
       disableFileHeader: true,
-      hunkSeparators: "metadata" as const,
+      hunkSeparators: "metadata",
       parseDiffOptions: { disableLineMatching: true },
       unsafeCSS: appearance,
       onPostRender: rendered,
     }),
-    [scheme, layout, rendered],
+    [scheme, layout, wrapped, rendered],
   );
   return (
     <ScrollRegion
@@ -77,7 +78,7 @@ export function PierreDiff({ patch, layout, label }: DiffSourceProps) {
         if (!visible) return;
         selectAllInReader(event, root.current?.node ?? event.currentTarget);
         const renderer = root.current?.renderer;
-        if (renderer)
+        if (!wrapped && renderer)
           scrollWithHorizontalArrow(event, (delta) => {
             renderer.setCodeScrollLeft(renderer.getCodeScrollLeft() + delta);
           });

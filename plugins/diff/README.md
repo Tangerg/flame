@@ -54,6 +54,9 @@ That zone sits above the Diff body viewport in both Dock and full-width
 presentations. The full workspace path stays in the scrolling body. The same
 viewport owns the file overview and the reader's vertical movement, while
 Pierre owns horizontal panning within a file.
+The patch caption's localized wrap action uses the shared page-wide code
+preference in unified and split layouts. The accepted patch stays the source
+for the independent copy action.
 The accepted comparison, file/workspace scope, real baseline and read time stay
 beside that identity in the reader and overview. Read time records client
 acceptance, not a repository revision. A pending or failed request retains these

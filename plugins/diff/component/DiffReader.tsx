@@ -19,7 +19,6 @@ export function DiffReader({
       <CodeCaption
         language="diff"
         code={patch}
-        wrappable={false}
         labels={{
           copy: t("patch.copy"),
           wrap: t("patch.wrap"),

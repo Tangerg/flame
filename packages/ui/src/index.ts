@@ -105,11 +105,11 @@ export {
   CodeBody,
   CodeCaption,
   CodeFrame,
+  DiffBody,
   type CodeActionLabels,
 } from "./code-block";
 export {
   CodeHighlightProvider,
-  DiffBody,
   type CodeSourceComponent,
   type CodeSourceProps,
   type DiffSourceComponent,
