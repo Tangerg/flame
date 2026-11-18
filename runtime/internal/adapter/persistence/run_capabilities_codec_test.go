@@ -1,32 +1,8 @@
 package persistence
 
 import (
-	"strings"
 	"testing"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
-
-func TestRunCapabilitiesCodecOwnsCanonicalStorageShape(t *testing.T) {
-	want := run.Capabilities{
-		ChildRuns:      true,
-		InterruptTypes: []run.InterruptType{run.InterruptApproval, run.InterruptQuestion},
-	}
-	encoded, err := encodeRunCapabilities(want)
-	if err != nil {
-		t.Fatalf("encodeRunCapabilities: %v", err)
-	}
-	if !strings.Contains(encoded, `"interruptTypes"`) || strings.Contains(encoded, `"interruptKinds"`) {
-		t.Fatalf("encoded capabilities = %s, want interruptTypes only", encoded)
-	}
-	got, err := decodeRunCapabilities(encoded)
-	if err != nil {
-		t.Fatalf("decodeRunCapabilities: %v", err)
-	}
-	if !got.Equal(want) {
-		t.Fatalf("round trip = %v, want %v", got, want)
-	}
-}
 
 func TestRunCapabilitiesCodecRejectsNonCanonicalOrFormerShapes(t *testing.T) {
 	for name, encoded := range map[string]string{

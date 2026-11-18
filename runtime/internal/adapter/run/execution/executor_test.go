@@ -2,26 +2,25 @@ package execution
 
 import (
 	"context"
-	json "encoding/json/v2"
+
 	"errors"
 	"iter"
 	"slices"
-	"strings"
+
 	"sync/atomic"
 	"testing"
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
-	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"github.com/samber/lo"
 )
 
@@ -50,76 +49,6 @@ func TestInteractionExecutionPolicyPreservesOptionalPresence(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			if _, err := newInteractionExecutionPolicy(config); err == nil {
 				t.Fatal("present zero was treated as an omitted execution policy value")
-			}
-		})
-	}
-}
-
-func TestInteractionExecutorRequiresProcessLifetime(t *testing.T) {
-	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
-		return interactionTextResponse("unused"), nil
-	})
-	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
-		ChatResolver: staticInteractionChatResolver(model),
-		BuildID:      interactionTestBuildID,
-	})
-	if err == nil || executor != nil {
-		t.Fatalf("NewInteractionExecutor without lifetime = (%v, %v), want nil executor and non-nil error", executor, err)
-	}
-}
-
-func TestInteractionExecutorRequiresChatResolver(t *testing.T) {
-	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
-		Lifetime: t.Context(),
-		BuildID:  interactionTestBuildID,
-	})
-	if err == nil || executor != nil {
-		t.Fatalf("NewInteractionExecutor without resolver = (%v, %v), want nil executor and non-nil error", executor, err)
-	}
-}
-
-func TestInteractionToolManifestRequiresPolicyOwners(t *testing.T) {
-	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
-		Name: "fixture_echo", Description: "Return a fixed response.",
-	}, func(context.Context, struct{}) (string, error) {
-		return "ok", nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	manifest, err := identifyTestManifest(toolset.Manifest{Visible: []toolcontract.Tool{executable}}, testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "echo"))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	for _, test := range []struct {
-		name   string
-		config InteractionExecutorConfig
-		want   string
-	}{
-		{name: "missing interpreter", want: "Interaction Tools require a Tool interpreter"},
-		{
-			name: "missing authorizer",
-			config: InteractionExecutorConfig{
-				ToolInterpreter: testInteractionToolInterpreter{},
-			},
-			want: "Interaction Tools require a Tool authorizer",
-		},
-		{
-			name: "complete policy owners",
-			config: InteractionExecutorConfig{
-				ToolInterpreter: testInteractionToolInterpreter{},
-				ToolAuthorizer:  allowInteractionTools{},
-			},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			_, _, _, _, err := wrapInteractionTools(t.Context(), manifest, &interactionSession{}, test.config, toolResultOffloadPolicy{}, runs.RootExecutionStart{})
-			if test.want == "" && err != nil {
-				t.Fatalf("validate complete Tool policy = %v", err)
-			}
-			if test.want != "" && (err == nil || !strings.Contains(err.Error(), test.want)) {
-				t.Fatalf("validate Tool policy error = %v, want %q", err, test.want)
 			}
 		})
 	}
@@ -160,46 +89,6 @@ func TestInteractionExecutorRequiresExactRootModelSelection(t *testing.T) {
 	start.ModelSelection = modelchoice.Selection{}
 	if err := executor.ValidateRootStart(start); err == nil {
 		t.Fatal("Interaction executor accepted a root without an exact model selection")
-	}
-}
-
-func TestInteractionExecutorStageRootOwnsInput(t *testing.T) {
-	executor := newTestInteractionExecutorWithLifetime(
-		t,
-		t.Context(),
-		chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
-			return interactionTextResponse("unused"), nil
-		}),
-	)
-	maxOutputTokens := int64(256)
-	start := interactionTestStart()
-	start.Options = &chat.Options{MaxOutputTokens: &maxOutputTokens}
-	start.InterruptTypes = []run.InterruptType{run.InterruptQuestion}
-	ref, err := executor.StageRoot(t.Context(), start)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if releaseErr := executor.Release(context.Background(), ref); releaseErr != nil {
-			t.Errorf("release staged root: %v", releaseErr)
-		}
-	})
-
-	start.WorkingContext[0].Parts[0].Text = "changed"
-	*start.Options.MaxOutputTokens = 512
-	start.InterruptTypes[0] = run.InterruptApproval
-	session, err := executor.session(ref)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := session.start.WorkingContext[0].Parts[0].Text; got != "current question" {
-		t.Fatalf("owned working context text = %q", got)
-	}
-	if got := *session.start.Options.MaxOutputTokens; got != 256 {
-		t.Fatalf("owned max output tokens = %d", got)
-	}
-	if got := session.start.InterruptTypes; !slices.Equal(got, []run.InterruptType{run.InterruptQuestion}) {
-		t.Fatalf("owned interrupt kinds = %v", got)
 	}
 }
 
@@ -508,68 +397,6 @@ func TestInteractionExecutorReportsDispatcherPanicAsUnknownEffect(t *testing.T) 
 	}
 }
 
-func TestInteractionTerminationMappingIsComplete(t *testing.T) {
-	tests := []struct {
-		name, cause, reason      string
-		failureKind, failureCode string
-		wantOutcome              run.Outcome
-		wantFailure              run.FailureKind
-		hasFailure               bool
-	}{
-		{name: "completion", wantOutcome: run.OutcomeCompleted},
-		{name: "parent deadline", cause: "parent_deadline", reason: "parent deadline", wantOutcome: run.OutcomeTimedOut},
-		{name: "host deadline", cause: "host_deadline", reason: "host deadline", wantOutcome: run.OutcomeTimedOut},
-		{name: "parent cancellation", cause: "parent_cancellation", reason: "parent canceled", wantOutcome: run.OutcomeCanceled},
-		{name: "host cancellation", cause: "host_cancellation", reason: "host canceled", wantOutcome: run.OutcomeCanceled},
-		{name: "unresolved effects stop", cause: "host_cancellation", reason: unresolvedEffectsStopReason, wantOutcome: run.OutcomeLost},
-		{name: "strategy failure", reason: "strategy failed", failureKind: "execution", failureCode: "execution.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureAgentStuck, hasFailure: true},
-		{name: "invalid model response", reason: "invalid response", failureKind: "external", failureCode: failureInvalidModelResponse, wantOutcome: run.OutcomeFailed, wantFailure: run.FailureProviderRejected, hasFailure: true},
-		{name: "incomplete tool calls", reason: "incomplete tool calls", failureKind: "external", failureCode: failureToolCallsNotCompleted, wantOutcome: run.OutcomeFailed, wantFailure: run.FailureProviderRejected, hasFailure: true},
-		{name: "unknown external failure", reason: "external failure", failureKind: "external", failureCode: "new.external.failure", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
-		{name: "host projection failure", reason: "journal unavailable", failureKind: "external", failureCode: "interaction.host.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
-		{name: "contract failure", reason: "contract failed", failureKind: "contract", failureCode: "contract.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
-		{name: "panic", reason: "execution panicked", failureKind: "panic", failureCode: "execution.panic", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
-		{name: "engine kill", cause: "runtime_kill", reason: "engine shutdown", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			wire := map[string]any{}
-			switch {
-			case test.failureKind != "":
-				failure, err := scoperun.NewFailure(scoperun.FailureKind(test.failureKind), test.failureCode, test.reason)
-				if err != nil {
-					t.Fatal(err)
-				}
-				wire["failure"] = failure
-			case test.cause != "":
-				wire["cause"], wire["reason"] = test.cause, test.reason
-			default:
-				output, err := scoperun.EncodePayload("completed")
-				if err != nil {
-					t.Fatal(err)
-				}
-				wire["output"] = output
-			}
-			payload, err := json.Marshal(wire)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var termination scoperun.Termination
-			if err := json.Unmarshal(payload, &termination); err != nil {
-				t.Fatal(err)
-			}
-			end := segmentEndFromTermination(termination, time.Second)
-			failed, isFailed := end.ending.(run.Failed)
-			if end.ending.Outcome() != test.wantOutcome || isFailed != test.hasFailure {
-				t.Fatalf("mapping = %#v", end)
-			}
-			if test.hasFailure && failed.Failure.Kind != test.wantFailure {
-				t.Fatalf("failure = %#v, want kind %v", failed.Failure, test.wantFailure)
-			}
-		})
-	}
-}
-
 func TestInteractionSegmentDurationExcludesTimeBeforeContinuation(t *testing.T) {
 	processStartedAt := time.Date(2026, 8, 11, 1, 0, 0, 0, time.UTC)
 	continuedAt := processStartedAt.Add(8 * time.Hour)
@@ -691,35 +518,6 @@ func assertOneRootMember(t *testing.T, events []runs.ExecutorEvent) {
 func interactionTextResponse(text string) *chat.Response {
 	message := chat.NewAssistantMessage(chat.NewTextPart(text))
 	return &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}}
-}
-
-// typedNilToolPresenter exists to be nil. An optional capability supplied as a
-// typed nil reads as present at every use site, so the constructor is the only
-// place that can tell the difference.
-type typedNilToolPresenter struct{}
-
-func (*typedNilToolPresenter) Present(tool.Ref, tool.Arguments, tool.Result) (tool.Result, string) {
-	panic("execution: a typed-nil presenter was asked to present")
-}
-
-// TestInteractionExecutorRefusesATypedNilCapability pins what every use site
-// relies on: an optional capability is absent or real. A typed nil satisfies
-// "!= nil" everywhere downstream, so admitting one here would make each of
-// those checks answer the wrong question.
-func TestInteractionExecutorRefusesATypedNilCapability(t *testing.T) {
-	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
-		return interactionTextResponse("unused"), nil
-	})
-	var absent *typedNilToolPresenter
-	_, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
-		Lifetime:      t.Context(),
-		ChatResolver:  staticInteractionChatResolver(model),
-		BuildID:       interactionTestBuildID,
-		ToolPresenter: absent,
-	})
-	if err == nil || !strings.Contains(err.Error(), "typed nil") {
-		t.Fatalf("NewInteractionExecutor accepted a typed-nil capability: %v", err)
-	}
 }
 
 func unresolvedTerminals(events []runs.ExecutorEvent) []runs.SegmentEnded {

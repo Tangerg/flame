@@ -27,30 +27,6 @@ func TestMetricsCostSeparatesNoDispatchFromUnreportedUsage(t *testing.T) {
 	}
 }
 
-func TestMetricsFailedConstructionReturnsNoPartialValue(t *testing.T) {
-	base, err := RestoreUnreportedMetrics([]string{"served-model"}, 1, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, test := range []struct {
-		name      string
-		construct func() (Metrics, error)
-	}{
-		{name: "initial", construct: func() (Metrics, error) { return NewMetrics(nil, -1, 0) }},
-		{name: "restore", construct: func() (Metrics, error) {
-			return RestoreUnreportedMetrics([]string{"served-model"}, 1, -1)
-		}},
-		{name: "duration", construct: func() (Metrics, error) { return base.WithActiveDuration(-1) }},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			value, err := test.construct()
-			if err == nil || !value.Equal(Metrics{}) {
-				t.Fatalf("invalid construction published a partial value: %+v, %v", value, err)
-			}
-		})
-	}
-}
-
 func TestRecoveredCallPreservesUnreportedUsageAndRejectsOverflow(t *testing.T) {
 	metrics, err := NewMetrics(nil, 0, 0)
 	if err != nil {

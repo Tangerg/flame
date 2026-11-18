@@ -48,10 +48,10 @@ Run from the repository root:
 
 | Command                                 | Responsibility                                                                                                                        |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `make setup`                            | Check the toolchain, prepare immutable candidate modules, install root npm dependencies/hooks and shared assets                       |
+| `make setup`                            | Check the toolchain, prepare immutable candidate modules, install root npm dependencies and shared assets                             |
 | `make generate`                         | Invoke SDK, publisher, Host, consumer and Native generators in dependency order                                                       |
-| `make check`                            | SDK source/test/tool closure guards, clean generated drift, independent Go member and npm checks                                      |
-| `make check-native`                     | Stage the same Web build, test/vet/build Desktop and run its Wails macOS build                                                        |
+| `make check`                            | Generated artifact consistency, independent Go member builds and product/distribution tests                                           |
+| `make check-native`                     | Stage the same Web build, test/build Desktop and run its Wails macOS build                                                            |
 | `make check-author`                     | Export independent author namespaces, pack JS dependencies and verify Go vendor execution without external network or checkout access |
 | `make dev-web` / `make dev-desktop`     | Browser/native development of the same Web product                                                                                    |
 | `make build-runtime` / `make build-cli` | Headless executable and companion plugin distribution                                                                                 |
@@ -73,7 +73,7 @@ external networking. On macOS the deliverables backend suite runs outside that
 enclosing sandbox because Seatbelt refuses a different nested profile. Its real
 process tests verify the production per-invocation file, network and fork denials,
 memory enforcement and refusal under an incompatible inherited profile.
-Each Go member runs test/vet/build with `GOWORK=off` and read-only manifests, so
+Each Go member runs test/build with `GOWORK=off` and read-only manifests, so
 workspace substitution cannot hide missing dependencies. Package tests run
 serially; process-backed fixtures own their compiler and backend concurrency,
 and terminal output checks retain the library's delivery deadlines.
@@ -100,7 +100,11 @@ diff. Run `git diff --check`. Do not change global Go/npm configuration.
 
 Use targeted race tests only for changed concurrent ownership. Do not invent multi-Runtime, multi-client, or multi-server coverage when the product path has one Runtime and one CLI. Use real PTY tests only for terminal mode, input decoding, resize, focus, or restoration. The default test suite must remain offline and credential-independent.
 
-Use focused tests for owner invariants and deterministic failure ordering, then exercise real lifecycle slices through the public binding or protocol. The high-value matrix is Goal creation and completion, Plan replacement and update, steer while running, interruption and resume, context compaction, long context, long execution, restart, and recovery. Test hard bounds and malformed inputs at their owner rather than padding the suite with implementation inventories.
+Use the [UI lab](apps/web/lab/README.md) to inspect components and interactions.
+The Runtime HTTP suite builds and starts local Runtime, CLI and plugin processes
+to verify service behavior. [Runtime HTTP suite](apps/web/tests/integration/runtime-http.e2e.test.ts)
+
+Retain tests that establish a product rule, logical invariant, demonstrated regression or successful distribution. Remove implementation inventories, private representation assertions, duplicate helper tests and speculative scenarios. Compilation and typechecking retain strict type and module checks for distribution. Unused-symbol and style diagnostics stay outside product gates. Use focused tests for owner invariants and deterministic failure ordering, then exercise real lifecycle slices through the public binding or protocol. The high-value matrix is Goal creation and completion, Plan replacement and update, steer while running, interruption and resume, context compaction, long context, long execution, restart, and recovery. Test hard bounds and malformed inputs at their owner rather than padding the suite with implementation inventories.
 
 `runtime/config/config.yaml` may be loaded through production configuration for an explicitly requested bounded live DeepSeek check. Use the production bootstrap and public binding or protocol, cover both success and provider-error paths, and never print or copy its credential. A scheduled build-cache cleanup is not a product failure; rebuild and continue without investigating it.
 

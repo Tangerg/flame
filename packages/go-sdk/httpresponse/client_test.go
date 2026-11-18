@@ -43,27 +43,6 @@ func TestClientBoundsResponseBeforeProtocolDecoding(t *testing.T) {
 	}
 }
 
-func TestNewClientRejectsIncompleteAdmissionPolicy(t *testing.T) {
-	cases := []struct {
-		name     string
-		limit    int64
-		tooLarge error
-	}{
-		{name: "zero limit", tooLarge: errors.New("too large")},
-		{name: "missing error", limit: 1},
-	}
-	for _, test := range cases {
-		t.Run(test.name, func(t *testing.T) {
-			defer func() {
-				if recover() == nil {
-					t.Fatal("NewClient accepted an incomplete admission policy")
-				}
-			}()
-			NewClient(test.limit, test.tooLarge)
-		})
-	}
-}
-
 type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {

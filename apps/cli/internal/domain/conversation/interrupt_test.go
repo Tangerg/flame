@@ -86,20 +86,6 @@ func TestQuestionAnswerRejectsInvalidCustomChoiceValues(t *testing.T) {
 	}
 }
 
-func TestQuestionProjectionOwnsItsAcceptedSnapshotCopy(t *testing.T) {
-	t.Parallel()
-	answers := [][]string{{"linux"}}
-	question := Question{RunID: "run_1", ItemID: "q_1", Title: "Target", Fields: []QuestionField{{Prompt: "Name", Kind: QuestionText}}, Answers: answers}
-	if err := question.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	snapshot := question.Clone()
-	answers[0][0] = "changed"
-	if !snapshot.Answered() || snapshot.Answers[0][0] != "linux" {
-		t.Fatal("snapshot did not retain the original accepted fact")
-	}
-}
-
 func TestApprovalHonorsRememberable(t *testing.T) {
 	approval := runningApproval("a_1", "shell")
 	if err := ValidateAnswer(approval, ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject}); err == nil {

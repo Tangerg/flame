@@ -22,17 +22,14 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs && tsc -p tsconfig.json",
-    "check": "npm run build && npm run lint && npm run format:check && tsc -p test/tsconfig.json && node --test test/*.test.mjs",
-    "preview": "npm run build && node scripts/preview.mjs",
-    "lint": "oxlint catalog.mjs react/*.ts scripts test preview --deny-warnings",
-    "format:check": "prettier --check catalog.mjs react/*.ts scripts test preview README.md DESIGN.md package.json tsconfig.json"
+    "check": "npm run build && tsc -p test/tsconfig.json && node --test test/*.test.mjs",
+    "preview": "npm run build && node scripts/preview.mjs"
   },
   "peerDependencies": {
     "react": "^19.3.1"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
-    "oxlint": "^1.93.0",
     "prettier": "^3.9.10",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

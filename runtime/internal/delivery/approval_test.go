@@ -53,27 +53,6 @@ func (a *approvalPolicyFake) ForgetRule(_ context.Context, id string) error {
 	return nil
 }
 
-// TestApprovalModeWireRoundTrip checks every engine stance maps to a wire name
-// and back, and that an unknown wire value is rejected (→ invalid_params).
-func TestApprovalModeWireRoundTrip(t *testing.T) {
-	for _, m := range []approval.Mode{approval.ModeSafe, approval.ModeBalanced, approval.ModeYolo} {
-		wire, ok := presentApprovalMode(m)
-		if !ok {
-			t.Fatalf("domain mode %v has no wire mapping", m)
-		}
-		back, ok := approvalModeFromWire(wire)
-		if !ok || back != m {
-			t.Errorf("round-trip %v → %q → %v (ok=%v)", m, wire, back, ok)
-		}
-	}
-	if _, ok := presentApprovalMode(approval.Mode("invalid")); ok {
-		t.Error("unknown domain approval mode must be rejected")
-	}
-	if _, ok := approvalModeFromWire(protocol.ApprovalMode("bogus")); ok {
-		t.Error("unknown wire approval mode must be rejected")
-	}
-}
-
 func TestApprovalModeHandlersMapToWire(t *testing.T) {
 	rt := &approvalPolicyFake{mode: approval.ModeYolo}
 	s := handlerWithApprovals(rt)

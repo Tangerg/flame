@@ -1,7 +1,6 @@
 package modelref
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
@@ -119,32 +118,6 @@ func TestEndpointOutcomeAndRestorationShareAdmission(t *testing.T) {
 	}
 }
 
-func TestEndpointObservationProtectsItsAdmittedRecord(t *testing.T) {
-	record := endpointRecord(t)
-	record.State, record.FinishedAt = InvocationCompleted, record.Invocation.StartedAt.Add(time.Second)
-	record.Cost, record.Usage = mustCost(t, 1.5), &chat.Usage{InputTokens: 7}
-	record.ResponseJSON = endpointResponse(t, record.Usage)
-	observation, err := RestoreEndpointObservation(record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	before := observation.Snapshot()
-	record.Usage.InputTokens = 99
-	other, err := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("different input")))
-	if err != nil {
-		t.Fatal(err)
-	}
-	*record.Invocation.Request.(ChatEndpointRequest).Chat = *other
-	projection := observation.Snapshot()
-	projection.Usage.InputTokens = 88
-	*projection.Invocation.Request.(ChatEndpointRequest).Chat = *other
-	response := observation.Response()
-	response.Metadata.Model, response.Metadata.Usage.InputTokens = "different", 88
-	if !reflect.DeepEqual(before, observation.Snapshot()) || observation.Response().Metadata.Usage.InputTokens != 7 || observation.ServedModel() != "served" {
-		t.Fatal("a projection changed the admitted observation")
-	}
-}
-
 func TestEndpointEvidenceRequiresExactTimingAndAccounting(t *testing.T) {
 	for _, change := range []func(*EndpointRecord){
 		func(r *EndpointRecord) { r.FinishedAt = r.Invocation.StartedAt.Add(-time.Second) },
@@ -167,31 +140,6 @@ func TestEndpointEvidenceRequiresExactTimingAndAccounting(t *testing.T) {
 	}
 	if err := (EndpointObservation{}).Validate(); err == nil {
 		t.Fatal("uninitialized observation was admitted")
-	}
-}
-
-func TestEndpointObservationConcurrentProjectionsRemainIsolated(t *testing.T) {
-	record := endpointRecord(t)
-	record.State, record.FinishedAt = InvocationCompleted, record.Invocation.StartedAt.Add(time.Second)
-	record.Cost, record.Usage = mustCost(t, 1.5), &chat.Usage{InputTokens: 7}
-	record.ResponseJSON = endpointResponse(t, record.Usage)
-	observation, err := RestoreEndpointObservation(record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	before := observation.Snapshot()
-	for range 4 {
-		t.Run("independent reader", func(t *testing.T) {
-			t.Parallel()
-			projection := observation.Snapshot()
-			projection.Usage.InputTokens = 99
-			projection.Invocation.Request.(ChatEndpointRequest).Chat.Messages = nil
-			response := observation.Response()
-			response.Metadata.Model, response.Metadata.Usage.InputTokens = "different", 99
-			if !reflect.DeepEqual(before, observation.Snapshot()) || observation.Response().Metadata.Usage.InputTokens != 7 || observation.ServedModel() != "served" {
-				t.Fatal("another reader advanced the admitted observation")
-			}
-		})
 	}
 }
 

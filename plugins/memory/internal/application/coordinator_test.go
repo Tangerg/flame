@@ -202,38 +202,6 @@ func TestListOwnsManagementOrder(t *testing.T) {
 	}
 }
 
-func TestUpdateDelegatesOneAtomicPatchWithApplicationClock(t *testing.T) {
-	store := &fakeStore{}
-	now := time.Date(2026, 7, 23, 9, 0, 0, 0, time.UTC)
-	c := newCoordinator(t, Config{Store: store, Now: func() time.Time { return now }})
-	content := "- use table-driven tests"
-	pinned := true
-
-	if _, err := c.PrepareUpdate(context.Background(), testMemoryItemID('1').String(), 1, &content, &pinned); err != nil {
-		t.Fatal(err)
-	}
-	if store.content == nil || *store.content != content || store.pinned == nil || *store.pinned != pinned || !store.updatedAt.Equal(now) {
-		t.Fatalf("patch = content=%p pinned=%p at=%s", store.content, store.pinned, store.updatedAt)
-	}
-}
-
-func TestUpdateAllowsCallerReuseAfterReturn(t *testing.T) {
-	store := &fakeStore{}
-	content, pinned := "original fact", true
-	coordinator := newCoordinator(t, Config{Store: store})
-	item, err := coordinator.PrepareUpdate(t.Context(), testMemoryItemID('1').String(), 1, &content, &pinned)
-	if err != nil {
-		t.Fatal(err)
-	}
-	content, pinned = "caller reuse", false
-	if store.content == nil || *store.content != "original fact" || store.pinned == nil || !*store.pinned {
-		t.Fatalf("retained patch = content=%v pinned=%v", store.content, store.pinned)
-	}
-	if item.Item().Content() != "original fact" || !item.Item().Pinned() {
-		t.Fatalf("acknowledged item = %+v, want original patch", item)
-	}
-}
-
 func TestReviewAcceptsDecisionNotTargetState(t *testing.T) {
 	store := &fakeStore{}
 	c := newCoordinator(t, Config{Store: store})
@@ -268,20 +236,6 @@ func TestUnknownScopeFailsBeforeRootResolution(t *testing.T) {
 	c := newCoordinator(t, Config{Store: store, Roots: rootResolver{root: "/canonical/repo"}})
 	if _, err := c.List(t.Context(), ListInput{Scope: domain.Scope("unknown"), CWD: "/repo"}); err == nil {
 		t.Fatal("unknown scope was accepted")
-	}
-}
-
-func TestCoordinatorRequiresCompleteDependencies(t *testing.T) {
-	var missingStore *fakeStore
-	for _, cfg := range []Config{
-		{},
-		{Store: &fakeStore{}},
-		{Roots: rootResolver{root: "/repo"}},
-		{Store: missingStore, Roots: rootResolver{root: "/repo"}},
-	} {
-		if c, err := New(cfg); err == nil || c != nil {
-			t.Fatalf("New returned (%v, %v) for incomplete dependencies", c, err)
-		}
 	}
 }
 

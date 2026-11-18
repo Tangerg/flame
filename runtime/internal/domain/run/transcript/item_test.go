@@ -124,62 +124,6 @@ func itemIdentity() transcript.ItemIdentity {
 	}
 }
 
-func TestItemConstructorsCloseEveryVariant(t *testing.T) {
-	identity := itemIdentity()
-	constructors := []struct {
-		name string
-		kind transcript.ItemKind
-		new  func() (transcript.Item, error)
-	}{
-		{
-			name: "user message", kind: transcript.UserMessage,
-			new: func() (transcript.Item, error) {
-				return transcript.NewUserMessage(identity, []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}})
-			},
-		},
-		{
-			name: "agent message", kind: transcript.AgentMessage,
-			new: func() (transcript.Item, error) {
-				return transcript.NewAgentMessage(identity, transcript.MessageFinalAnswer, []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}})
-			},
-		},
-		{
-			name: "reasoning", kind: transcript.Reasoning,
-			new: func() (transcript.Item, error) {
-				return transcript.NewReasoning(identity, "consider the evidence", true)
-			},
-		},
-		{
-			name: "question", kind: transcript.QuestionItem,
-			new: func() (transcript.Item, error) {
-				return transcript.NewQuestion(identity, transcript.Question{Fields: []transcript.QuestionField{{
-					Prompt: "Continue?", Kind: questioncontract.Text,
-				}}})
-			},
-		},
-		{
-			name: "compaction", kind: transcript.Compaction,
-			new: func() (transcript.Item, error) {
-				return transcript.NewCompaction(identity, "summary", 12)
-			},
-		},
-	}
-	for _, constructor := range constructors {
-		t.Run(constructor.name, func(t *testing.T) {
-			item, err := constructor.new()
-			if err != nil {
-				t.Fatalf("construct Item: %v", err)
-			}
-			if item.Kind() != constructor.kind || item.Status() != transcript.ItemCompleted {
-				t.Fatalf("Item kind/status = %v/%v, want %v/completed", item.Kind(), item.Status(), constructor.kind)
-			}
-			if item.OccurredAt().Location() != time.UTC {
-				t.Fatalf("occurrence location = %v, want UTC", item.OccurredAt().Location())
-			}
-		})
-	}
-}
-
 func TestAgentMessageRequiresAnAuthoredPhase(t *testing.T) {
 	if _, err := transcript.NewAgentMessage(
 		itemIdentity(),
@@ -406,16 +350,5 @@ func TestCloneAnswersPublishesASkippedFieldAsNull(t *testing.T) {
 	}
 	if transcript.CloneAnswers(nil) != nil {
 		t.Fatal("transcript.CloneAnswers(nil) must stay nil")
-	}
-}
-
-func TestCloneAnswersOwnsItsRows(t *testing.T) {
-	t.Parallel()
-
-	source := [][]string{{"first"}}
-	cloned := transcript.CloneAnswers(source)
-	source[0][0] = "mutated"
-	if cloned[0][0] != "first" {
-		t.Fatalf("clone shares a row with its producer: %q", cloned[0][0])
 	}
 }

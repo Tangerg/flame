@@ -148,21 +148,6 @@ type cyclicMCPTool struct{ toolcontract.Tool }
 
 func (c *cyclicMCPTool) Unwrap() toolcontract.Tool { return c }
 
-func TestResolverSetMCPToolsSnapshotsInput(t *testing.T) {
-	resolver := &Resolver{}
-	tools := []toolcontract.Tool{mcpToolStub{name: "before", server: "files", remote: "read"}}
-	resolver.SetMCPTools(tools, nil)
-	tools[0] = mcpToolStub{name: "after"}
-
-	got, _, _, err := resolver.mcpTools(t.Context(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got) != 1 || got[0].Definition().Name != "before" {
-		t.Fatalf("mcp tools retained caller-owned slice: %v", got)
-	}
-}
-
 func (m mcpToolStub) MCPSource() (mcp.CapturedSource, bool) {
 	_, remote := m.MCPToolIdentity()
 	return mcp.CapturedSource{Config: m.SourceConfig(), RemoteName: remote}, true

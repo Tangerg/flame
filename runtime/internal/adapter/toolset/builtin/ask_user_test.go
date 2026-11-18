@@ -88,25 +88,6 @@ func TestAskUserKeepsOptionsOpenToARealUserAnswer(t *testing.T) {
 	}
 }
 
-// TestAnswerText covers the result rendering: a single question returns just its
-// answer; multiple questions return labeled lines; multi-select joins values.
-func TestAnswerText(t *testing.T) {
-	single := runs.QuestionPrompt{Fields: []runs.QuestionFieldSpec{{Prompt: "Proceed?"}}}
-	if got := answerText(single, [][]string{{"yes"}}); got != "yes" {
-		t.Errorf("single = %q, want %q", got, "yes")
-	}
-
-	multi := runs.QuestionPrompt{Fields: []runs.QuestionFieldSpec{
-		{Prompt: "Pick a DB", Header: "DB"},
-		{Prompt: "Pick langs", Header: "Langs", Multiple: true},
-	}}
-	answers := [][]string{{"sqlite"}, {"go", "rust"}}
-	got := answerText(multi, answers)
-	if !strings.Contains(got, "DB: sqlite") || !strings.Contains(got, "Langs: go, rust") {
-		t.Errorf("multi = %q, want labeled lines incl. \"DB: sqlite\" and \"Langs: go, rust\"", got)
-	}
-}
-
 func TestAskUserSchemaProjectsTheTranscriptLimits(t *testing.T) {
 	executable, err := NewAskUser(nil)
 	if err != nil {

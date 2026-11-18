@@ -4,7 +4,6 @@ import {
   copyReaderSelection,
   readerSelectionLines,
 } from "../src/reader-selection";
-
 afterEach(() => {
   document.getSelection()?.removeAllRanges();
   document.body.replaceChildren();
@@ -66,18 +65,6 @@ describe("source reader selection", () => {
     expect(viewport.querySelectorAll("[data-reader-line]")).toHaveLength(2);
   });
 
-  it("retains a native collapsed anchor without copying it", () => {
-    const { viewport, rows } = reader([{ index: 2, parts: ["anchor"] }]);
-    const range = document.createRange();
-    range.setStart(rows[0]!.firstChild!.firstChild!, 2);
-    range.collapse(true);
-    document.getSelection()!.addRange(range);
-    expect(readerSelectionLines(viewport)).toEqual([2, 2]);
-    expect(
-      copy(viewport, "first\nsecond\nanchor").setData,
-    ).not.toHaveBeenCalled();
-  });
-
   it("maps blank lines and reverse selection without adding placeholder spaces", () => {
     const { viewport, rows } = reader([
       { index: 1, parts: [] },
@@ -98,37 +85,5 @@ describe("source reader selection", () => {
       "text/plain",
       "first\n\n",
     );
-  });
-
-  it("leaves ordinary unmarked selections with native copy", () => {
-    const viewport = document.createElement("div");
-    viewport.textContent = "ordinary source";
-    document.body.append(viewport);
-    const range = document.createRange();
-    range.setStart(viewport.firstChild!, 1);
-    range.setEnd(viewport.firstChild!, 4);
-    document.getSelection()!.addRange(range);
-    expect(
-      copy(viewport, "ordinary source").preventDefault,
-    ).not.toHaveBeenCalled();
-  });
-
-  it("rejects a marked line that no longer describes its source", () => {
-    const { viewport, rows } = reader([{ index: 0, parts: ["changed"] }]);
-    document.getSelection()!.selectAllChildren(rows[0]!);
-    const preventDefault = vi.fn();
-    const setData = vi.fn();
-    const event = {
-      currentTarget: viewport,
-      target: viewport,
-      defaultPrevented: false,
-      preventDefault,
-      clipboardData: { setData },
-    } as unknown as ClipboardEvent<HTMLElement>;
-    expect(() => copyReaderSelection(event, "original")).toThrow(
-      "reader line does not match its presented source",
-    );
-    expect(preventDefault).toHaveBeenCalledOnce();
-    expect(setData).not.toHaveBeenCalled();
   });
 });

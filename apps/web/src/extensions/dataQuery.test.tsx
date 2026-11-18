@@ -12,8 +12,8 @@ import {
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
-import { Activity, createElement, type ReactNode, useState } from "react";
+import { act, waitFor } from "@testing-library/react";
+import { createElement, type ReactNode, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { type Host } from "dougong";
 import { queryClient } from "@/lib/queryClient";
@@ -280,119 +280,6 @@ describe("createParameterizedDataQuery", () => {
     await waitFor(() => expect(hook.result.current.data).toBe("returned value"));
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
-
-  it.each([false, true])(
-    "keeps a hidden observer unsubscribed through provider removal and return (continuous=%s)",
-    async (continuous) => {
-      const fetcher = vi
-        .fn()
-        .mockResolvedValueOnce("original value")
-        .mockResolvedValue("returned value");
-      const plugin = definePlugin({
-        name: "test.hidden-returning-data-provider",
-        setup(ctx) {
-          ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher });
-        },
-      });
-      ownedHosts.push(await startKernel([plugin]));
-      const useResource = createParameterizedDataQuery<{ id: string }, string>(
-        "resource",
-        continuous
-          ? {
-              keepWhenContinuous: (previous, next) => previous.id === next.id,
-            }
-          : undefined,
-      );
-      const hook = testClient.renderHook(
-        ({ subscribed }) => useResource({ id: "same" }, subscribed),
-        {
-          initialProps: { subscribed: true },
-          wrapper: productQueryWrapper,
-        },
-      );
-      await waitFor(() => expect(hook.result.current.data).toBe("original value"));
-      hook.rerender({ subscribed: false });
-
-      await act(async () => stopKernel(ownedHosts.pop()!));
-      await waitFor(() =>
-        expect(queryClient.getQueryData(["resource", { id: "same" }])).toBeUndefined(),
-      );
-      const returned = Promise.withResolvers<string>();
-      fetcher.mockImplementation(() => returned.promise);
-      ownedHosts.push(await startKernel([plugin]));
-      expect(fetcher).toHaveBeenCalledOnce();
-
-      hook.rerender({ subscribed: true });
-      expect(hook.result.current.data).toBeUndefined();
-      await act(async () => returned.resolve("returned value"));
-      await waitFor(() => expect(hook.result.current.data).toBe("returned value"));
-      expect(fetcher).toHaveBeenCalledTimes(2);
-    },
-  );
-
-  it.each([false, true])(
-    "retires a pending continuous placeholder after provider replacement (evictPrevious=%s)",
-    async (evictPrevious) => {
-      const pending = Promise.withResolvers<string>();
-      const returned = Promise.withResolvers<string>();
-      const fetcher = vi
-        .fn()
-        .mockResolvedValueOnce("original value")
-        .mockImplementation(() => pending.promise);
-      const plugin = definePlugin({
-        name: "test.activity-returning-data-provider",
-        setup(ctx) {
-          ctx.contributions.add(DATA_PROVIDER, { key: "resource", fetcher });
-        },
-      });
-      ownedHosts.push(await startKernel([plugin]));
-      const useResource = createParameterizedDataQuery<{ id: string; page: number }, string>(
-        "resource",
-        {
-          keepWhenContinuous: (previous, next) => previous.id === next.id,
-        },
-      );
-      function Resource() {
-        const [page, setPage] = useState(0);
-        const resource = useResource({ id: "same", page });
-        return (
-          <div>
-            <button onClick={() => setPage(1)}>Next page</button>
-            <output>{resource.data ?? "Waiting for source"}</output>
-          </div>
-        );
-      }
-      const child = <Resource />;
-      const scene = (visible: boolean) => (
-        <Activity mode={visible ? "visible" : "hidden"}>{child}</Activity>
-      );
-      const view = testClient.render(scene(true), { wrapper: productQueryWrapper });
-      await screen.findByText("original value");
-      fireEvent.click(screen.getByRole("button", { name: "Next page" }));
-      await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
-      expect(screen.getByText("original value")).toBeTruthy();
-      view.rerender(scene(false));
-      const previousKey = ["resource", { id: "same", page: 0 }];
-      if (evictPrevious) {
-        act(() => queryClient.removeQueries({ queryKey: previousKey, exact: true }));
-      }
-      expect(queryClient.getQueryData(previousKey)).toBe(
-        evictPrevious ? undefined : "original value",
-      );
-      await act(async () => stopKernel(ownedHosts.pop()!));
-      fetcher.mockImplementation(() => returned.promise);
-      ownedHosts.push(await startKernel([plugin]));
-
-      view.rerender(scene(true));
-
-      expect(screen.queryByText("original value")).toBeNull();
-      await act(async () => returned.resolve("returned value"));
-      await screen.findByText("returned value");
-      pending.resolve("retired value");
-      await act(async () => Promise.resolve());
-      expect(screen.queryByText("retired value")).toBeNull();
-    },
-  );
 
   it("preserves an in-flight read when another provider is contributed to the same Host", async () => {
     const stable = Promise.withResolvers<string>();

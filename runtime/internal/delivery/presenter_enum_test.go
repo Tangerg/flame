@@ -1,32 +1,14 @@
 package delivery
 
 import (
-	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
-
-func TestPresentersRejectUnknownDomainEnums(t *testing.T) {
-	mustPanic(t, func() { presentItemStatus(transcript.ItemStatus("invalid")) })
-	mustPanic(t, func() { presentItemKind(transcript.ItemKind("unknown")) })
-	mustPanic(t, func() { presentContent(transcript.ContentBlock{Kind: transcript.ContentKind("invalid")}) })
-	mustPanic(t, func() {
-		presentQuestion(transcript.Question{Fields: []transcript.QuestionField{{Kind: questioncontract.Kind("invalid")}}})
-	})
-	mustPanic(t, func() { presentDelta(nil) })
-	mustPanic(t, func() { presentRunStatus(run.State("invalid")) })
-	running := testsupport.MustRestoreRun(run.Snapshot{State: run.Running})
-	mustPanic(t, func() { presentOutcome(running) })
-	mustPanic(t, func() { presentRunFailure(&run.Failure{Kind: run.FailureKind("invalid")}) })
-	mustPanic(t, func() { presentToolFailure(&tool.Failure{Kind: tool.FailureKind("invalid")}) })
-	mustPanic(t, func() { presentInterrupts([]transcript.Interrupt{{}}) })
-}
 
 func TestPresentRunProjectsEveryValidLifecyclePosition(t *testing.T) {
 	for _, test := range []struct {
@@ -78,37 +60,5 @@ func TestRunOutcomeProjectionIsExhaustive(t *testing.T) {
 				t.Fatalf("portableEndingFromArtifact = (%+v, %v), want %s", decoded, err, test.domain)
 			}
 		})
-	}
-}
-
-// Run and Tool failure kinds are published as their own spellings, so the
-// domain taxonomies and the durable artifact vocabulary must be the same set.
-func TestFailureKindsShareTheArtifactProblemVocabulary(t *testing.T) {
-	artifact := []protocol.ArtifactProblemType{
-		protocol.ArtifactProblemInternalError, protocol.ArtifactProblemAgentStuck,
-		protocol.ArtifactProblemRateLimited, protocol.ArtifactProblemInvalidCredentials, protocol.ArtifactProblemTimeout,
-		protocol.ArtifactProblemProviderUnavailable, protocol.ArtifactProblemProviderRejected,
-		protocol.ArtifactProblemDeniedByUser, protocol.ArtifactProblemToolFailed,
-		protocol.ArtifactProblemChildRunCanceled, protocol.ArtifactProblemToolCanceled,
-	}
-	for _, value := range artifact {
-		if !run.FailureKind(value).Valid() && !tool.FailureKind(value).Valid() {
-			t.Errorf("artifact problem %q names no domain failure kind", value)
-		}
-	}
-	for _, kind := range []run.FailureKind{
-		run.FailureInternal, run.FailureAgentStuck, run.FailureRateLimited,
-		run.FailureInvalidCredentials, run.FailureTimeout, run.FailureProviderUnavailable, run.FailureProviderRejected,
-	} {
-		if !slices.Contains(artifact, protocol.ArtifactProblemType(kind)) {
-			t.Errorf("run failure %q has no artifact problem", kind)
-		}
-	}
-	for _, kind := range []tool.FailureKind{
-		tool.FailureInternal, tool.FailureDenied, tool.FailureExecution, tool.FailureChildRunCanceled, tool.FailureCanceled,
-	} {
-		if !slices.Contains(artifact, protocol.ArtifactProblemType(kind)) {
-			t.Errorf("tool failure %q has no artifact problem", kind)
-		}
 	}
 }

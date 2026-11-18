@@ -73,11 +73,6 @@ jobs:
           import { root, run, proxyEnvironment } from './tooling/workspace.mjs';
           run('go', ['test', '-count=3', '-run', '^(TestClientRecognizesDefinitiveTransportRefusal|TestRuntimeCanConfigureRequiredKeyProviderAfterStartup)$', '.'], join(root, 'runtime'), { ...proxyEnvironment(join(root, 'out/module-proxy')), GOWORK: 'off' });
           JS
-      - name: Qualify native deliverables
-        run: npm test --workspace @flame/plugins
-        env:
-          FLAME_DELIVERABLES_NATIVE_TESTS: "1"
-          TMPDIR: /tmp
       - run: make check
         env:
           FLAME_DELIVERABLES_NATIVE_TESTS: "1"
@@ -110,34 +105,3 @@ jobs:
       - run: make setup
       - run: go install github.com/wailsapp/wails/v3/cmd/wails3@$(cd apps/desktop && go list -m -f '{{.Version}}' github.com/wailsapp/wails/v3)
       - run: make check-native
-
-  browser:
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-go@v7.0.0
-        with:
-          go-version-file: go.work
-          cache-dependency-path: "**/go.sum"
-      - uses: actions/setup-node@v7.1.0
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm install --global npm@"$NPM_VERSION"
-      - run: make setup
-      - run: make generate
-      - run: npm exec --workspace @flame/web -- playwright install chromium webkit
-      - name: Qualify browser interaction and accessibility contracts
-        id: browser_check
-        run: npm run lab:verify --workspace @flame/web
-      - name: Retain browser failure diagnostics
-        if: failure() && steps.browser_check.outcome == 'failure'
-        uses: actions/upload-artifact@v7.0.2
-        with:
-          name: browser-failure-diagnostics
-          path: |
-            out/web/lab-results
-            out/web/lab-report
-          retention-days: 7

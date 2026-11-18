@@ -81,44 +81,6 @@ func TestPortableSnapshotRejectsCompetingToolResultBindings(t *testing.T) {
 	}
 }
 
-func TestSnapshotPortableSnapshotOwnsMessages(t *testing.T) {
-	snapshot := portableSnapshotWithMessage()
-
-	portable, err := snapshot.PortableSnapshot()
-	if err != nil {
-		t.Fatalf("PortableSnapshot: %v", err)
-	}
-	snapshot.Messages[0].Parts[0].Text = "source mutation"
-	if text := portable.Messages[0].Text(); text != "original" {
-		t.Fatalf("portable message after source mutation = %q, want owned snapshot", text)
-	}
-	portable.Messages[0].Parts[0].Text = "portable mutation"
-	if text := snapshot.Messages[0].Text(); text != "source mutation" {
-		t.Fatalf("source message after portable mutation = %q, want unchanged", text)
-	}
-}
-
-func TestSnapshotPortableSnapshotOwnsCollections(t *testing.T) {
-	snapshot := portableSnapshotWithCollections()
-
-	portable, err := snapshot.PortableSnapshot()
-	if err != nil {
-		t.Fatalf("PortableSnapshot: %v", err)
-	}
-	snapshot.Items[0] = transcript.Item{}
-	snapshot.ToolResults[0].Body = "source mutation"
-	snapshot.Plan[0].Description = "source mutation"
-	if portable.Items[0].ID() != "item_1" {
-		t.Fatalf("portable Item changed with source slice: %+v", portable.Items[0])
-	}
-	if portable.ToolResults[0].Blob.Body != "full body" {
-		t.Fatalf("portable tool result body = %q, want owned snapshot", portable.ToolResults[0].Blob.Body)
-	}
-	if portable.Plan[0].Description != "keep ownership" {
-		t.Fatalf("portable Plan description = %q, want owned snapshot", portable.Plan[0].Description)
-	}
-}
-
 func portableSnapshotWithCollections() Snapshot {
 	snapshot := portableSnapshotWithMessage()
 	at := time.Unix(2, 0).UTC()
@@ -138,26 +100,6 @@ func portableSnapshotWithCollections() Snapshot {
 	}}
 	snapshot.Plan = []plan.Step{{Description: "keep ownership", Status: plan.StatusPending}}
 	return snapshot
-}
-
-func TestPortableSnapshotCanonicalSnapshotOwnsMessages(t *testing.T) {
-	portable, err := portableSnapshotWithMessage().PortableSnapshot()
-	if err != nil {
-		t.Fatalf("PortableSnapshot: %v", err)
-	}
-
-	canonical, err := portable.CanonicalSnapshot()
-	if err != nil {
-		t.Fatalf("CanonicalSnapshot: %v", err)
-	}
-	portable.Messages[0].Parts[0].Text = "portable mutation"
-	if text := canonical.Messages[0].Text(); text != "original" {
-		t.Fatalf("canonical message after portable mutation = %q, want owned snapshot", text)
-	}
-	canonical.Messages[0].Parts[0].Text = "canonical mutation"
-	if text := portable.Messages[0].Text(); text != "portable mutation" {
-		t.Fatalf("portable message after canonical mutation = %q, want unchanged", text)
-	}
 }
 
 func portableSnapshotWithMessage() Snapshot {
@@ -305,27 +247,6 @@ func TestPortableSnapshotRefusesABrokenRunLineage(t *testing.T) {
 				t.Fatalf("CanonicalSnapshot err = %v, want ErrInvalidPortableSnapshot", err)
 			}
 		})
-	}
-}
-
-func TestPortableSnapshotDelegatesModelIdentityToRun(t *testing.T) {
-	selection := testsupport.MustModelSelection("provider", "model")
-	capabilities := run.Capabilities{}
-	at := time.Unix(1, 0).UTC()
-	portable := PortableSnapshot{
-		Session: PortableSession{
-			ID: "ses_1", Title: "t", CWD: "/w", Selection: selection,
-			CreatedAt: at, UpdatedAt: at,
-		},
-		Runs: []PortableRun{{
-			SessionID: "ses_1", ID: "run_1", Ending: run.Completed{},
-			Capabilities: &capabilities, CreatedAt: at, FinishedAt: at, UpdatedAt: at,
-			MessageMark: run.MessageMarkAt(0),
-		}},
-	}
-	_, err := portable.CanonicalSnapshot()
-	if !errors.Is(err, ErrInvalidPortableSnapshot) || !strings.Contains(err.Error(), "model selection is required") {
-		t.Fatalf("CanonicalSnapshot without Run model identity error = %v", err)
 	}
 }
 

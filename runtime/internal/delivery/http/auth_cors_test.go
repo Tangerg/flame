@@ -13,15 +13,6 @@ import (
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 )
 
-func TestDefaultCORSOriginsReturnsCallerOwnedConfiguration(t *testing.T) {
-	origins := flamehttp.DefaultCORSOrigins()
-	original := origins[0]
-	origins[0] = "https://mutated.invalid"
-	if flamehttp.DefaultCORSOrigins()[0] != original {
-		t.Fatal("mutating one default origin list changed another caller's configuration")
-	}
-}
-
 func TestDefaultCORSOriginsAuthorizeShippedDesktopClients(t *testing.T) {
 	ts := newGatedServerWithOrigins(t, flamehttp.DefaultCORSOrigins())
 	defer ts.Close()

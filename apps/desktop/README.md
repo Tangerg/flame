@@ -105,5 +105,5 @@ Cleanup errors remain visible. A failed removal retains its original staging-fil
 owner and blocks another streamed export until cancellation confirms removal;
 closing the file never reauthorizes writes to that transfer.
 
-`make check-native` stages the same Web product, runs native Go test/vet/build
+`make check-native` stages the same Web product, runs native Go test/build
 and the supported Wails build. A browser bundle alone is not native verification.

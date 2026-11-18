@@ -148,7 +148,6 @@ export function PierreFile({
   if ("error" in prepared) throw prepared.error;
   return (
     // Shadow-root selection needs a select-all boundary inside the host reader's tab stop.
-    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <div
       role="group"
       onCopy={copy}

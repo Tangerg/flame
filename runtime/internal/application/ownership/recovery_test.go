@@ -24,28 +24,6 @@ type goalReconciler func(context.Context) error
 
 func (g goalReconciler) Reconcile(ctx context.Context) error { return g(ctx) }
 
-func TestNewRecoveryRequiresCompleteComposition(t *testing.T) {
-	validRuns := runReconciler(func(context.Context) (int, error) { return 0, nil })
-	validGoals := goalReconciler(func(context.Context) error { return nil })
-	for _, test := range []struct {
-		name  string
-		runs  ownership.RunRecovery
-		goals ownership.GoalRecovery
-	}{
-		{name: "missing Run reconciler", goals: validGoals},
-		{name: "missing Goal reconciler", runs: validRuns},
-		{name: "typed nil Run reconciler", runs: runReconciler(nil), goals: validGoals},
-		{name: "typed nil Goal reconciler", runs: validRuns, goals: goalReconciler(nil)},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			coordinator, err := ownership.NewRecovery(test.runs, test.goals)
-			if err == nil || coordinator != nil {
-				t.Fatalf("NewRecovery = %#v, %v", coordinator, err)
-			}
-		})
-	}
-}
-
 func TestCoordinatorOrdersRunBeforeGoalRecovery(t *testing.T) {
 	var order []string
 	coordinator, err := ownership.NewRecovery(

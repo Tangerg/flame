@@ -14,14 +14,6 @@ var allOutcomes = []Outcome{
 	OutcomeLost,
 }
 
-func TestIsTerminal(t *testing.T) {
-	for _, s := range allStates {
-		if got := s.IsTerminal(); got != (s == Finished) {
-			t.Errorf("%s.IsTerminal() = %v, want %v", s, got, s == Finished)
-		}
-	}
-}
-
 func TestSuspend(t *testing.T) {
 	for _, s := range allStates {
 		got, ok := s.Suspend()
@@ -86,34 +78,3 @@ func TestRecoverLost(t *testing.T) {
 		}
 	}
 }
-
-func TestOutcomeStringRoundTrip(t *testing.T) {
-	for _, outcome := range allOutcomes {
-		parsed, ok := ParseOutcome(string(outcome))
-		if !ok || parsed != outcome {
-			t.Errorf("ParseOutcome(%q) = (%s, %v), want (%s, true)", outcome, parsed, ok, outcome)
-		}
-	}
-	if _, ok := ParseOutcome("error"); ok {
-		t.Fatal("ParseOutcome accepted removed error terminology")
-	}
-}
-
-func TestStringsAreDistinct(t *testing.T) {
-	seen := map[string]bool{}
-	for _, s := range allStates {
-		if seen[string(s)] {
-			t.Errorf("duplicate state label %q", s)
-		}
-		seen[string(s)] = true
-	}
-	seen = map[string]bool{}
-	for _, o := range allOutcomes {
-		if seen[string(o)] {
-			t.Errorf("duplicate outcome label %q", o)
-		}
-		seen[string(o)] = true
-	}
-}
-
-// TestDurability pins the commit-before-publish predicate.

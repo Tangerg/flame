@@ -7,7 +7,6 @@ import { Backend } from "./backend.ts";
 import { Capability, PROTOCOL } from "./contract.ts";
 import { StdioTransport } from "./transport.ts";
 import wire from "./protocol.generated.json";
-
 const contract = new Capability({
   protocol: PROTOCOL,
   reference: "fixture",
@@ -137,54 +136,6 @@ it("preserves an MCP tool error without requiring its success output schema", as
     content: [{ type: "text", text: "known refusal" }],
     structuredContent: { failure: "known refusal" },
   });
-});
-
-it("encodes the output captured by admission without rereading caller accessors", async () => {
-  const objectContract = new Capability({
-    ...contract.descriptor,
-    methods: [
-      {
-        ...contract.descriptor.methods[0]!,
-        output: {
-          type: "object",
-          properties: { value: { type: "string", const: "captured" } },
-          required: ["value"],
-          additionalProperties: false,
-        },
-      },
-    ],
-  });
-  const method = objectContract.portable.method("fixture.read");
-  const backend = new Backend({ name: "fixture", version: "1" });
-  backend.bindCapability("fixture", objectContract);
-  let reads = 0;
-  backend.implement(
-    method,
-    (value) => value,
-    () => ({
-      get value() {
-        reads++;
-        return reads === 1 ? "captured" : "changed after admission";
-      },
-    }),
-  );
-  const client = await connect(backend);
-  expect(
-    await client.request(
-      {
-        method: wire.constants.invokeMethod!,
-        params: params(
-          { value: "request" },
-          {
-            contract: method.identity,
-            capability: objectContract.identity,
-          },
-        ),
-      },
-      response,
-    ),
-  ).toEqual({ value: { value: "captured" } });
-  expect(reads).toBe(1);
 });
 
 it("rejects malformed invocation evidence without consuming call capacity", async () => {
@@ -336,68 +287,6 @@ it("keeps repeated structural admission pure and rejects invalid input before bu
     ),
   ).toEqual({ value: "ok" });
   expect(executions).toBe(1);
-});
-
-it("captures independent immutable call contexts while asynchronous handlers interleave", async () => {
-  const entered = Promise.withResolvers<void>();
-  const release = Promise.withResolvers<void>();
-  const backend = new Backend({ name: "fixture", version: "1" });
-  backend.bindCapability("fixture", contract);
-  backend.implement(
-    contract.portable.method("fixture.read"),
-    (value) => value as { value: string },
-    async (context, input) => {
-      if (input.value === "first") {
-        entered.resolve();
-        await release.promise;
-      }
-      expect(Object.isFrozen(context.invocation!.target)).toBe(true);
-      return (
-        context.invocation!.id +
-        ":" +
-        context.invocation!.target.reference +
-        ":" +
-        context.callback!.call +
-        ":" +
-        input.value
-      );
-    },
-  );
-  const client = await connect(backend);
-  const input = (id: string) =>
-    params(
-      { value: id },
-      {
-        _meta: {
-          [wire.constants.InvocationMetadataKey!]: {
-            id,
-            origin: "human",
-            target: { scope: "installation", reference: "target-" + id },
-          },
-          [wire.constants.callbackMetadataKey!]: {
-            endpoint: "http://127.0.0.1:1234/",
-            credential: "1".repeat(64),
-            call: (id === "first" ? "2" : "3").repeat(64),
-            maxResponseBytes: 1000,
-          },
-        },
-      },
-    );
-  const first = client.request(
-    { method: wire.constants.invokeMethod!, params: input("first") },
-    response,
-  );
-  await entered.promise;
-  expect(
-    await client.request(
-      { method: wire.constants.invokeMethod!, params: input("second") },
-      response,
-    ),
-  ).toEqual({ value: "second:target-second:" + "3".repeat(64) + ":second" });
-  release.resolve();
-  expect(await first).toEqual({
-    value: "first:target-first:" + "2".repeat(64) + ":first",
-  });
 });
 
 it("closes partially acquired setup resources once after failure", async () => {

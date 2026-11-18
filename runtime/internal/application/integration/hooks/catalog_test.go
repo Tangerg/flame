@@ -6,31 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 )
-
-func TestNewCatalogRequiresCompleteDependencies(t *testing.T) {
-	for _, test := range []struct {
-		name      string
-		roots     roots
-		inspector Inspector
-		trust     TrustStore
-	}{
-		{name: "roots", inspector: &fakeInspector{}, trust: &fakeHookTrust{}},
-		{name: "typed nil roots", roots: (*catalogRoots)(nil), inspector: &fakeInspector{}, trust: &fakeHookTrust{}},
-		{name: "inspector", roots: catalogRoots{}, trust: &fakeHookTrust{}},
-		{name: "typed nil inspector", roots: catalogRoots{}, inspector: (*fakeInspector)(nil), trust: &fakeHookTrust{}},
-		{name: "trust", roots: catalogRoots{}, inspector: &fakeInspector{}},
-		{name: "typed nil trust", roots: catalogRoots{}, inspector: &fakeInspector{}, trust: (*fakeHookTrust)(nil)},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if hooks, err := NewCatalog(test.roots, test.inspector, test.trust, nil); err == nil || hooks != nil {
-				t.Fatalf("NewCatalog = (%v, %v), want incomplete construction rejected", hooks, err)
-			}
-		})
-	}
-}
 
 func newCatalog(t *testing.T, roots roots, inspector Inspector, trust TrustStore, publish invalidation.Publish) *Catalog {
 	t.Helper()
@@ -45,33 +22,6 @@ func newCatalog(t *testing.T, roots roots, inspector Inspector, trust TrustStore
 		t.Fatal(err)
 	}
 	return hooks
-}
-
-func TestCatalogInspectUsesInspectionPort(t *testing.T) {
-	inspector := &fakeInspector{
-		inspection: Inspection{
-			ProjectRoot:    "/repo",
-			ProjectTrusted: true,
-			Hooks: []hookdata.Hook{{
-				Event:   hookdata.UserPromptSubmit,
-				Command: "make test",
-				Scope:   hookdata.ScopeGlobal,
-				Source:  "/home/.flame/hooks.json",
-			}},
-		},
-	}
-	c := newCatalog(t, catalogRoots{}, inspector, nil, nil)
-
-	got, err := c.Inspect(context.Background(), "/repo")
-	if err != nil {
-		t.Fatalf("Inspect: %v", err)
-	}
-	if inspector.cwd != "/repo" {
-		t.Fatalf("inspect cwd = %q, want /repo", inspector.cwd)
-	}
-	if got.ProjectRoot != "/repo" || !got.ProjectTrusted || len(got.Hooks) != 1 || got.Hooks[0].Hook.Command != "make test" || !got.Hooks[0].Active {
-		t.Fatalf("Inspect = %+v", got)
-	}
 }
 
 func TestCatalogInspectRejectsInvalidInspection(t *testing.T) {

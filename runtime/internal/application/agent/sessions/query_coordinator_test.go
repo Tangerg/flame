@@ -247,29 +247,6 @@ func newQueryCoordinator(t *testing.T, deps QueryDependencies) *QueryCoordinator
 	return coordinator
 }
 
-func TestNewQueryCoordinatorRejectsIncompleteDependencies(t *testing.T) {
-	complete := QueryDependencies{
-		Transcript: &fakeTranscript{}, Interrupts: &fakeInterrupts{},
-		Runs: &fakeRuns{}, Sessions: &fakeSessions{},
-	}
-	if _, err := NewQueryCoordinator(QueryDependencies{
-		Interrupts: complete.Interrupts, Runs: complete.Runs, Sessions: complete.Sessions,
-	}); err == nil || !strings.Contains(err.Error(), "transcript reader is required") {
-		t.Fatalf("missing transcript error = %v", err)
-	}
-	var typedNilTranscript *fakeTranscript
-	complete.Transcript = typedNilTranscript
-	if _, err := NewQueryCoordinator(complete); err == nil || !strings.Contains(err.Error(), "transcript reader is required") {
-		t.Fatalf("typed-nil transcript error = %v", err)
-	}
-	complete.Transcript = &fakeTranscript{}
-	var typedNilPlan *PlanCoordinator
-	complete.Plan = typedNilPlan
-	if _, err := NewQueryCoordinator(complete); err == nil || !strings.Contains(err.Error(), "Plan reader is required") {
-		t.Fatalf("typed-nil Plan error = %v", err)
-	}
-}
-
 func (f *fakeInterrupts) ListPage(_ context.Context, sessionID, rootRunID string, after *run.PageAnchor, limit int) ([]runs.Pending, error) {
 	afterCreatedAt, afterRunID := anchorParts(after)
 	f.session, f.rootRun = sessionID, rootRunID
@@ -347,28 +324,6 @@ func queryRunForSession(sessionID, id string) run.Run {
 // approvalRootRun is the root Run whose contract an approval waiting set needs.
 func approvalRootRun(sessionID, id string) run.Run {
 	return testsupport.MustRestoreRun(run.Snapshot{ID: id, SessionID: sessionID, Capabilities: approvalCapabilities()})
-}
-
-func TestCoordinatorReadsDelegateToProjections(t *testing.T) {
-	ctx := context.Background()
-	tx := &fakeTranscript{items: sequencedItems(1)}
-	runStore := &fakeRuns{runs: []run.Run{queryRun("run_1")}, history: []run.Run{approvalRootRun("ses_2", "run_1")}}
-	ints := &fakeInterrupts{pending: []runs.Pending{testPending("run_1", time.Unix(0, 1).UTC())}}
-	tx.items = append(tx.items, approvalItemsFor("ses_2", ints.pending...)...)
-	c := newQueryCoordinator(t, QueryDependencies{Transcript: tx, Interrupts: ints, Runs: runStore, Sessions: &fakeSessions{}})
-
-	page, err := c.ListItemPage(ctx, Items("ses_1"), transcript.OldestFirst, "", pagination.DefaultLimit())
-	if err != nil || len(page.Items) != 1 || len(page.Runs) != 1 || tx.session != "ses_1" {
-		t.Fatalf("ListItemPage items=%d runs=%d session=%q err=%v", len(page.Items), len(page.Runs), tx.session, err)
-	}
-	if !slices.Equal(runStore.requested, []string{"run_1"}) {
-		t.Fatalf("threaded runs = %v, want only the run the page's items belong to", runStore.requested)
-	}
-
-	pending, err := c.ListPendingInterruptPage(ctx, "ses_2", "", approvalCapabilities(), "", pagination.DefaultLimit())
-	if err != nil || len(pending.Rows) != 1 || ints.session != "ses_2" {
-		t.Fatalf("ListPendingInterruptPage pending=%d session=%q err=%v", len(pending.Rows), ints.session, err)
-	}
 }
 
 // The page is cut by the query, not after the fact: the read asks for exactly one

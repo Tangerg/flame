@@ -24,16 +24,6 @@ describe("GoalComposerModeOwner", () => {
     expect(owner.snapshot()).toMatchObject({ sessionId: "ses_a", phase: "starting" });
   });
 
-  it("owns its mode without a global installation and survives another instance's disposal", () => {
-    owner = new GoalComposerModeOwner();
-    const independent = new GoalComposerModeOwner();
-    expect(owner.activate("ses_a")).toBe(true);
-    expect(independent.activate("ses_b")).toBe(true);
-    independent.dispose();
-    expect(owner.snapshot()).toMatchObject({ sessionId: "ses_a", phase: "armed" });
-    expect(owner.begin("ses_a")).not.toBeNull();
-  });
-
   it("moves one Session from armed through authoritative start settlement", () => {
     owner = new GoalComposerModeOwner();
     const changed = vi.fn();

@@ -278,11 +278,6 @@ func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *
 	}
 }
 
-func runHasOutcome(record run.Run, expected run.Outcome) bool {
-	outcome, terminal := record.Outcome()
-	return terminal && outcome == expected
-}
-
 func assertRunningDelegateCancellationEvents(t *testing.T, events []runs.Event) {
 	t.Helper()
 	childFinished, rootFinished := false, false

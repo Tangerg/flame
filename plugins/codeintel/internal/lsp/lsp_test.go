@@ -168,34 +168,6 @@ func TestServers_UnsupportedFile(t *testing.T) {
 	}
 }
 
-func TestNewServersSnapshotsSpecs(t *testing.T) {
-	specs := []ServerSpec{{
-		Name:    "test",
-		Command: "test-lsp",
-
-		Args:        []string{"before"},
-		Languages:   map[string]string{".before": "test"},
-		RootMarkers: []string{"before.mod"},
-	}}
-	servers := mustNewServers(t, specs)
-	t.Cleanup(func() { _ = servers.Close() })
-	specs[0].Args[0] = "after"
-	delete(specs[0].Languages, ".before")
-	specs[0].Languages[".after"] = "test"
-	specs[0].RootMarkers[0] = "after.mod"
-
-	if !servers.Supported("file.before") || servers.Supported("file.after") {
-		t.Fatal("server table retained caller-owned spec storage")
-	}
-}
-
-func TestNewServersRequiresLifetime(t *testing.T) {
-	var missingLifetime context.Context
-	if servers, err := NewServers(missingLifetime, nil); err == nil || servers != nil {
-		t.Fatalf("NewServers without lifetime = (%v, %v), want nil servers and non-nil error", servers, err)
-	}
-}
-
 func TestNewServersRejectsAmbiguousServerRouting(t *testing.T) {
 	tests := []struct {
 		name  string

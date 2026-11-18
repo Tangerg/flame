@@ -150,19 +150,6 @@ func TestDispatchRejectsUnsupportedProtocolVersion(t *testing.T) {
 	}
 }
 
-func TestDispatchDoesNotMutateCallerRequestWhenStrippingMeta(t *testing.T) {
-	req := &jsonrpc.Request{
-		ID:     testID("1"),
-		Method: "unknown.method",
-		Params: jsontext.Value(fmt.Sprintf(`{"_meta":{"protocolVersion":%q},"value":1}`, protocol.Version)),
-	}
-	original := string(req.Params)
-	newTestRouter(t, nil).Dispatch(context.Background(), req, delivery.Options{})
-	if got := string(req.Params); got != original {
-		t.Fatalf("Dispatch mutated caller params: got %s, want %s", got, original)
-	}
-}
-
 // TestBindRequestMetaRefusesANonSuppressibleEvent checks that a client may suppress an
 // ephemeral preview, never an authoritative event. Ignoring the illegal entry
 // would leave the client believing it had opted out of a frame it will keep

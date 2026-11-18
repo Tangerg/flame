@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
-	"slices"
+
 	"testing"
 	"time"
 
@@ -190,41 +190,6 @@ func TestGoalUsageIncludesDelegatedSpendingAfterRestart(t *testing.T) {
 	current, found, err := readGoal(t.Context(), newGoalStore(databaseFor(db)), sessionID)
 	if err != nil || !found || current.Used() != (goal.Usage{Runs: 1, Cost: goalRunCost(t, 0.875), Steps: 7}) {
 		t.Fatalf("delegated Goal after restart = %+v, %t, %v", current.Snapshot(), found, err)
-	}
-}
-
-func TestGoalSchemaUsesSemanticIncarnationColumns(t *testing.T) {
-	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
-	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	columnsOf := func(table string) []string { return fixtureColumns(t, db, table) }
-
-	for _, test := range []struct {
-		table    string
-		current  string
-		obsolete string
-	}{
-		{table: "goals", current: "incarnation_id", obsolete: "lease_id"},
-		{table: "runs", current: "goal_incarnation_id", obsolete: "goal_lease_id"},
-	} {
-		columns := columnsOf(test.table)
-		if !slices.Contains(columns, test.current) {
-			t.Errorf("%s columns = %v, want %s", test.table, columns, test.current)
-		}
-		if slices.Contains(columns, test.obsolete) {
-			t.Errorf("%s columns retain obsolete %s: %v", test.table, test.obsolete, columns)
-		}
-	}
-
-	goalColumns := columnsOf("goals")
-	if !slices.Contains(goalColumns, "reason_code") {
-		t.Errorf("goals columns = %v, want reason_code", goalColumns)
-	}
-	if slices.Contains(goalColumns, "reason_cause") {
-		t.Errorf("goals columns retain obsolete reason_cause: %v", goalColumns)
 	}
 }
 

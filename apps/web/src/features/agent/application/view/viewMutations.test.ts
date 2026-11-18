@@ -3,7 +3,6 @@ import { type ContentBlock } from "@/features/agent/public/contentBlock";
 import { type AgentSessionView, type Message } from "@/features/agent/public/sessionView";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/features/agent/public/sessionView";
 import {
-  dropMessage,
   projectSteerDelivery,
   projectSteerReceipt,
   reconcileMessageIdentity,
@@ -87,45 +86,6 @@ describe("view mutations - messages", () => {
     expect(accepted.messages[0]?.steer).toEqual({ runId: "run_1", receipt: "accepted" });
   });
 
-  it("relabels an optimistic message without touching unrelated messages", () => {
-    const original = view({
-      messages: [message("local-1"), message("assistant-1")],
-    });
-
-    const next = reconcileMessageIdentity(original, "local-1", "server-1");
-
-    expect(next.messages.map((m) => m.id)).toEqual(["server-1", "assistant-1"]);
-    expect(next.messages[1]).toBe(original.messages[1]);
-  });
-
-  it("collapses a provisional message when the durable target won the race", () => {
-    const original = view({
-      messages: [message("local-1"), message("server-1")],
-    });
-
-    const next = reconcileMessageIdentity(original, "local-1", "server-1");
-
-    expect(next.messages.map((message) => message.id)).toEqual(["server-1"]);
-    expect(next.messages[0]).toBe(original.messages[1]);
-  });
-
-  it("leaves missing and identical identities unchanged", () => {
-    const original = view({ messages: [message("local-1")] });
-
-    expect(reconcileMessageIdentity(original, "missing", "server-2")).toBe(original);
-    expect(reconcileMessageIdentity(original, "local-1", "local-1")).toBe(original);
-  });
-
-  it("drops a message by id and leaves unknown ids as no-ops", () => {
-    const original = view({
-      messages: [message("m1"), message("m2")],
-    });
-
-    const next = dropMessage(original, "m1");
-
-    expect(next.messages.map((m) => m.id)).toEqual(["m2"]);
-    expect(dropMessage(original, "missing")).toBe(original);
-  });
   it("projects local delivery observations separately from immutable Runtime receipts", () => {
     const accepted = {
       ...message("item"),

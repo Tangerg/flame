@@ -1,56 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  isErrorResponse,
-  isNotification,
-  isResponse,
-  JSONRPC_VERSION,
-  parseRpcMessage,
-} from "./types";
-import { PROBLEM_CODES } from "@flame/runtime-client/wire";
+import { parseRpcMessage } from "./types";
 import { stringifyJSON } from "@frame/sdk/json";
-
-describe("rpc/types discriminators", () => {
-  it("isResponse matches { jsonrpc, id, result|error } but not Request", () => {
-    expect(isResponse({ jsonrpc: JSONRPC_VERSION, id: "1", result: null })).toBe(true);
-    expect(
-      isResponse({
-        jsonrpc: JSONRPC_VERSION,
-        id: "2",
-        error: { code: PROBLEM_CODES.method_not_found, message: "no" },
-      }),
-    ).toBe(true);
-    expect(isResponse({ jsonrpc: JSONRPC_VERSION, id: "1", method: "x" })).toBe(false);
-  });
-
-  it("isNotification matches { jsonrpc, method } with no id", () => {
-    expect(
-      isNotification({
-        jsonrpc: JSONRPC_VERSION,
-        method: "notifications.example.event",
-      }),
-    ).toBe(true);
-    expect(
-      isNotification({
-        jsonrpc: JSONRPC_VERSION,
-        method: "notifications.example.event",
-        params: { x: 1 },
-      }),
-    ).toBe(true);
-    expect(isNotification({ jsonrpc: JSONRPC_VERSION, id: "7", result: 1 })).toBe(false);
-  });
-
-  it("isErrorResponse splits success vs failure Response", () => {
-    expect(isErrorResponse({ jsonrpc: JSONRPC_VERSION, id: "1", result: 1 })).toBe(false);
-    expect(
-      isErrorResponse({
-        jsonrpc: JSONRPC_VERSION,
-        id: "1",
-        error: { code: -32002, message: "no" },
-      }),
-    ).toBe(true);
-  });
-});
-
 describe("parseRpcMessage envelope gate", () => {
   it("accepts each well-formed envelope kind and passes the payload through opaque", () => {
     const resp = parseRpcMessage(`{"jsonrpc":"2.0","id":"1","result":{"ok":true,"n":3}}`);

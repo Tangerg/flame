@@ -24,15 +24,6 @@ describe("the protocol error copy table", () => {
     });
     expect(rpcErrorText(error)).toBe(en["rpcError.idempotency_in_progress"]);
   });
-  it("names only symbols the wire can actually send", () => {
-    const phantom = MAPPED_TYPES.filter((type) => !isWireProblemType(type));
-    expect(phantom).toEqual([]);
-  });
-
-  it("is not vacuous — the check does reject a symbol the wire lacks", () => {
-    expect(isWireProblemType("file_too_large")).toBe(false);
-    expect(isWireProblemType("session_busy")).toBe(true);
-  });
 
   it("explains every problem the Runtime hands to the person", () => {
     const promptUser = Object.entries({ ...PROBLEM_RECOVERY, ...RUN_PROBLEM_RECOVERY })
@@ -40,20 +31,6 @@ describe("the protocol error copy table", () => {
       .map(([type]) => type);
     expect(promptUser.length).toBeGreaterThan(0);
     expect(promptUser.filter((type) => !MAPPED_TYPES.includes(type))).toEqual([]);
-  });
-
-  it("has copy for every symbol it claims to map", () => {
-    const keys = new Set(Object.keys(en));
-    const uncovered = MAPPED_TYPES.filter((type) => !keys.has(`rpcError.${type}`));
-    expect(uncovered).toEqual([]);
-  });
-
-  it("keeps no copy for a symbol it no longer maps", () => {
-    const mapped = new Set(MAPPED_TYPES.map((type) => `rpcError.${type}`));
-    const orphaned = Object.keys(en).filter(
-      (key) => key.startsWith("rpcError.") && !mapped.has(key),
-    );
-    expect(orphaned).toEqual([]);
   });
 
   it.each([

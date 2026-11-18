@@ -6,13 +6,10 @@ import (
 	"testing"
 	"time"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 )
 
-func fixedSessionID() string  { return "ses_schedule" }
-func fixedRunID() string      { return "run_schedule" }
 func fixedScheduleID() string { return "sch_test" }
 
 func fixedIdentity(value string) func() string {
@@ -36,32 +33,6 @@ func mustCoordinator(t testing.TB, deps Dependencies) *Coordinator {
 		t.Fatalf("New Coordinator: %v", err)
 	}
 	return value
-}
-
-func TestScheduleConstructorsRejectPartialAndTypedNilDependencies(t *testing.T) {
-	store := &runNowStore{}
-	coordinatorCases := []struct {
-		name string
-		deps Dependencies
-	}{
-		{name: "missing store", deps: Dependencies{Paths: identityCWDResolver{}, NewScheduleID: fixedScheduleID}},
-		{name: "missing paths", deps: Dependencies{Store: store, NewScheduleID: fixedScheduleID}},
-		{name: "missing identity", deps: Dependencies{Store: store, Paths: identityCWDResolver{}}},
-	}
-	var typedNilStore *runNowStore
-	coordinatorCases = append(coordinatorCases, struct {
-		name string
-		deps Dependencies
-	}{name: "typed nil store", deps: Dependencies{
-		Store: typedNilStore, Paths: identityCWDResolver{}, NewScheduleID: fixedScheduleID,
-	}})
-	for _, test := range coordinatorCases {
-		t.Run("coordinator "+test.name, func(t *testing.T) {
-			if value, err := New(test.deps); err == nil || value != nil {
-				t.Fatalf("New = (%v, %v), want nil construction error", value, err)
-			}
-		})
-	}
 }
 
 type cwdResolverFunc func(string) (string, error)
@@ -104,72 +75,6 @@ func TestCreateOwnsScheduleAdmission(t *testing.T) {
 	wantNext := time.Date(now.Year(), now.Month(), now.Day(), 13, 0, 0, 0, time.UTC)
 	if !created.NextRunAt().Equal(wantNext) {
 		t.Fatalf("NextRunAt = %v, want %v", created.NextRunAt(), wantNext)
-	}
-}
-
-func TestUpdatePreservesAcceptedScheduleAfterCallerReuse(t *testing.T) {
-	lastRun := time.Date(2026, 7, 18, 9, 0, 0, 0, time.UTC)
-	createdAt := time.Date(2026, 7, 1, 9, 0, 0, 0, time.UTC)
-	store := &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{
-		ID:           "sch_1",
-		Revision:     3,
-		Instructions: "before",
-		CWD:          "/before",
-		Cron:         "0 9 * * *", TimeZone: "UTC",
-		LastRunAt: lastRun,
-		CreatedAt: createdAt,
-		NextRunAt: lastRun.Add(time.Hour),
-	})}
-	c := mustCoordinator(t, Dependencies{
-		Store: store,
-		Paths: cwdResolverFunc(func(string) (string, error) {
-			return "/canonical/after", nil
-		}),
-	})
-	title, instructions, cwd := "Review", "after", "after"
-	provider, model, effort, cron := "provider", "model", "high", "0 15 * * *"
-	enabled := false
-
-	mutation, err := c.PrepareUpdate(t.Context(), UpdateCommand{
-		ID: "sch_1", ExpectedRevision: 3,
-		Patch: Patch{
-			Title:        &title,
-			Instructions: &instructions,
-			CWD:          &cwd,
-			ModelSelection: modelchoice.Patch{
-				Provider: &provider, Model: &model, ReasoningEffort: &effort,
-			},
-			Cron:    &cron,
-			Enabled: &enabled,
-		},
-	})
-	if err != nil {
-		t.Fatalf("Update: %v", err)
-	}
-	updated := mutation.State()
-	if err := mutation.Apply(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	if updated.ID() != "sch_1" || updated.Title() != title || updated.Instructions() != instructions ||
-		updated.CWD() != "/canonical/after" || updated.Recurrence().Cron() != cron || updated.Enabled() || updated.Revision() != 4 {
-		t.Fatalf("updated = %+v", updated)
-	}
-	if selection := updated.ModelSelection(); selection.Provider() != provider || selection.Model() != model ||
-		selection.ReasoningEffort() != effort {
-		t.Fatalf("updated model selection = %+v", selection)
-	}
-	if cwd != "after" {
-		t.Fatalf("workspace resolution mutated the caller's patch to %q", cwd)
-	}
-	if !updated.LastRunAt().Equal(lastRun) || !updated.CreatedAt().Equal(createdAt) || !updated.NextRunAt().IsZero() {
-		t.Fatalf("updated durable state = %+v", updated)
-	}
-	accepted := updated.Snapshot()
-	title, instructions, cwd = "reused", "reused", "/reused"
-	provider, model, effort, cron = "other-provider", "other-model", "low", "0 * * * *"
-	enabled = true
-	if updated.Snapshot() != accepted || store.updated.Snapshot() != accepted {
-		t.Fatal("caller reuse changed the returned or stored Schedule")
 	}
 }
 

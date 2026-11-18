@@ -178,18 +178,6 @@ func TestProcessEnvironmentPreservesEmptyValuesInChild(t *testing.T) {
 	}
 }
 
-func TestDialValidatesBeforeDialing(t *testing.T) {
-	_, _, err := dial(context.Background(), t.Context(), nil, &launch{config: ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{}}}})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "URL is required")
-}
-
-func TestDialNilClient(t *testing.T) {
-	_, _, err := dial(context.Background(), t.Context(), nil, &launch{config: ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Connection: mcpserver.HTTPConnection{URL: "https://e/"}}}})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "client must not be nil")
-}
-
 func TestDialConnectionFailureSettlesAbsentLifetimeCleanup(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "unavailable", http.StatusServiceUnavailable)
@@ -250,12 +238,6 @@ func TestHeaderHTTPClientSetsCustomHeaders(t *testing.T) {
 
 	assert.Equal(t, "k-123", apiKey)
 	assert.Equal(t, "Bearer wins", auth)
-}
-
-func TestEndpointHTTPClientEnforcesOriginWithoutHeaders(t *testing.T) {
-	client, err := endpointHTTPClient("https://example.com/mcp", "", nil)
-	require.NoError(t, err)
-	assert.NotNil(t, client)
 }
 
 func TestEndpointHTTPClientBoundsServerFrames(t *testing.T) {

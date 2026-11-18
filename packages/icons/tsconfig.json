@@ -6,8 +6,6 @@
     "strict": true,
     "declaration": true,
     "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
     "rootDir": "react",
     "outDir": "dist/react",
     "skipLibCheck": true

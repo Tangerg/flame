@@ -70,32 +70,6 @@ func TestSessionQueryNormalizesFilterTextAndPreservesRuntimePath(t *testing.T) {
 	}
 }
 
-func TestSessionEqualityUsesDurableTimeSemantics(t *testing.T) {
-	created := time.Date(2026, time.August, 13, 8, 30, 0, 0, time.FixedZone("source", 8*60*60))
-	updated := created.Add(time.Minute)
-	session := Session{
-		ID: "ses_1", Title: "Review", Status: protocol.SessionStatusIdle,
-		Provider: "deepseek", Model: "deepseek-v4-flash",
-		Workspace: testWorkspace("/tmp/demo"), CreatedAt: created, UpdatedAt: updated,
-		Favorite: true, Revision: 3,
-	}
-	equivalent := session
-	equivalent.CreatedAt = created.UTC()
-	equivalent.UpdatedAt = updated.UTC()
-	if !session.Equal(equivalent) {
-		t.Fatal("equal instants with different locations changed session identity")
-	}
-	equivalent.Revision++
-	if session.Equal(equivalent) {
-		t.Fatal("a durable session revision change compared equal")
-	}
-	equivalent = session
-	equivalent.ReasoningEffort = "high"
-	if session.Equal(equivalent) {
-		t.Fatal("a reasoning-effort change compared equal")
-	}
-}
-
 func TestSessionSnapshotRestoresDurableProjection(t *testing.T) {
 	snapshot := SessionSnapshot{
 		Session: Session{ID: "ses_1", Status: protocol.SessionStatusWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 2},

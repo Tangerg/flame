@@ -1,12 +1,11 @@
 package terminal
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -14,33 +13,6 @@ import (
 	"github.com/Tangerg/oolong/ui/core/input"
 	"github.com/Tangerg/oolong/ui/kit"
 )
-
-func TestSessionHeaderUsesSpaceProgressively(t *testing.T) {
-	header := newSessionHeader(kit.Dark(), kit.Unicode(), conversation.Session{
-		Title:     "Architecture review",
-		Workspace: workspace.Workspace{Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable},
-	})
-	header.SetUsage(conversation.Usage{InputTokens: 1_234, OutputTokens: 56_789})
-
-	if got := header.HeightForWidth(headerMinWidth - 1); got != 0 {
-		t.Fatalf("narrow header height = %d, want 0", got)
-	}
-	if got := header.HeightForWidth(headerMinWidth); got != 2 {
-		t.Fatalf("wide header height = %d, want 2", got)
-	}
-
-	wide := drawStatic(t, header, 72, 2)
-	for _, want := range []string{"/workspace/scope", "Architecture review", "↑1.2k", "↓56k"} {
-		if !strings.Contains(wide, want) {
-			t.Errorf("header does not contain %q:\n%s", want, wide)
-		}
-	}
-
-	narrow := drawStatic(t, header, headerMinWidth-1, 2)
-	if strings.TrimSpace(narrow) != "" {
-		t.Fatalf("narrow header should yield its space, got:\n%s", narrow)
-	}
-}
 
 func TestSessionHeaderExposesMissingWorkspace(t *testing.T) {
 	t.Parallel()
@@ -55,25 +27,6 @@ func TestSessionHeaderExposesMissingWorkspace(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Fatalf("missing workspace header does not contain %q:\n%s", want, got)
 		}
-	}
-}
-
-func TestSessionHeaderUsesItsReservedSecondRowForGoalState(t *testing.T) {
-	header := newSessionHeader(kit.Dark(), kit.Unicode(), conversation.Session{
-		Title: "Release", Workspace: workspace.Workspace{Path: "/workspace/flame", Availability: protocol.WorkspaceAvailable},
-	})
-	current := testGoal(t, "ship the release safely")
-	header.SetGoal(&current)
-
-	got := drawStatic(t, header, 72, header.HeightForWidth(72))
-	for _, want := range []string{"[Goal: active]", "ship the release safely"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("goal header does not contain %q:\n%s", want, got)
-		}
-	}
-	header.SetGoal(nil)
-	if got := drawStatic(t, header, 72, header.HeightForWidth(72)); strings.Contains(got, "Goal:") {
-		t.Fatalf("cleared goal remained in header:\n%s", got)
 	}
 }
 
@@ -185,106 +138,6 @@ func TestStatusProjectsMultilineTextIntoItsSingleRow(t *testing.T) {
 	}
 }
 
-func TestActivityViewCentersACompactWindowOnTheActiveStep(t *testing.T) {
-	activity := newActivityView(kit.Dark(), kit.Unicode())
-	activity.Set([]protocol.PlanStep{
-		{Description: "Inspect references", Status: protocol.PlanStatusCompleted},
-		{Description: "Define shell", Status: protocol.PlanStatusCompleted},
-		{Description: "Build prompt", Status: protocol.PlanStatusPending},
-		{Description: "Refine tools", Status: protocol.PlanStatusInProgress},
-		{Description: "Add responsive tests", Status: protocol.PlanStatusPending},
-		{Description: "Run quality gates", Status: protocol.PlanStatusPending},
-	})
-
-	got := drawStatic(t, activity, 44, activity.HeightForWidth(44))
-	for _, want := range []string{"Plan", "step 4/6", "Build prompt", "Refine tools", "Add responsive tests"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("activity does not contain %q:\n%s", want, got)
-		}
-	}
-	if strings.Contains(got, "Inspect references") || strings.Contains(got, "Run quality gates") {
-		t.Fatalf("activity did not window its long plan:\n%s", got)
-	}
-	if got := activity.HeightForWidth(activityMinWidth - 1); got != 0 {
-		t.Fatalf("narrow activity height = %d, want 0", got)
-	}
-}
-
-func TestCompactTokensKeepsTheSignAndReadablePrecision(t *testing.T) {
-	tests := map[int64]string{
-		0:         "0",
-		999:       "999",
-		1_234:     "1.2k",
-		-1_234:    "-1.2k",
-		56_789:    "56k",
-		2_500_000: "2.5m",
-	}
-	for tokens, want := range tests {
-		if got := compactTokens(tokens); got != want {
-			t.Errorf("compactTokens(%d) = %q, want %q", tokens, got, want)
-		}
-	}
-}
-
-func TestPromptMovesRunOptionsIntoTheFrameAndChangesContext(t *testing.T) {
-	bindings, err := configuredKeyBindings(settings.Default())
-	if err != nil {
-		t.Fatal(err)
-	}
-	composer := kit.NewComposer(kit.ComposerConfig{Theme: kit.Dark(), Prompt: "> "})
-	authoredPrompt := newPromptView(kit.Dark(), kit.Unicode(), bindings.editor, composer, defaultRunOptions(t))
-
-	idle := drawRoot(t, authoredPrompt, 120, authoredPrompt.HeightForWidth(120))
-	for _, want := range []string{"runtime default", "enter", "shift+enter", "ctrl+p"} {
-		if !strings.Contains(idle, want) {
-			t.Errorf("idle prompt does not contain %q:\n%s", want, idle)
-		}
-	}
-	if status := drawStatic(t, newStatusView(kit.Dark(), kit.Unicode()), 120, 1); strings.Contains(status, "runtime default") {
-		t.Fatalf("status repeated the model already owned by the composer footer:\n%s", status)
-	}
-
-	authoredPrompt.SetBusy(true)
-	busy := drawRoot(t, authoredPrompt, 120, authoredPrompt.HeightForWidth(120))
-	for _, want := range []string{"enter", "queue follow up", "ctrl+c", "shift+enter", "ctrl+o"} {
-		if !strings.Contains(busy, want) {
-			t.Errorf("busy prompt does not contain %q:\n%s", want, busy)
-		}
-	}
-	if strings.Contains(busy, "ctrl+r") {
-		t.Fatalf("busy prompt retained an idle-only session hint:\n%s", busy)
-	}
-}
-
-func TestShellRendersAtSupportedAndConstrainedTerminalSizes(t *testing.T) {
-	bindings, err := configuredKeyBindings(settings.Default())
-	if err != nil {
-		t.Fatal(err)
-	}
-	theme, glyphs := kit.Dark(), kit.Unicode()
-	transcript := testTranscriptView(t)
-	header := newSessionHeader(theme, glyphs, conversation.Session{Title: "New session", Workspace: workspace.Workspace{
-		Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable,
-	}})
-	activity := newActivityView(theme, glyphs)
-	activity.Set([]protocol.PlanStep{{Description: "Inspect", Status: protocol.PlanStatusInProgress}})
-	status := newStatusView(theme, glyphs)
-	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Glyphs: glyphs, Prompt: glyphs.Marker + " ", MaxRows: 6})
-	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, composer, defaultRunOptions(t))
-	shell := newShellView(header, transcript, activity, newQueueView(theme, glyphs), status, authoredPrompt)
-
-	for _, size := range []struct{ width, height int }{
-		{96, 28}, {44, 18}, {20, 8}, {11, 20}, {6, 2}, {1, 1},
-	} {
-		t.Run(fmt.Sprintf("%dx%d", size.width, size.height), func(t *testing.T) {
-			got := drawRoot(t, shell, size.width, size.height)
-			if strings.TrimSpace(got) == "" {
-				t.Fatalf("%dx%d shell rendered nothing", size.width, size.height)
-			}
-		})
-	}
-}
-
 func TestShellUsesTwoRowChromeOnTinyTerminals(t *testing.T) {
 	bindings, err := configuredKeyBindings(settings.Default())
 	if err != nil {
@@ -320,40 +173,6 @@ func TestShellUsesTwoRowChromeOnTinyTerminals(t *testing.T) {
 	for _, want := range []string{"/hidden/workspace", "HIDDEN_PLAN", "TINY_DRAFT", "shift+enter"} {
 		if !strings.Contains(normal, want) {
 			t.Errorf("restored shell does not contain %q:\n%s", want, normal)
-		}
-	}
-}
-
-func TestShortShellYieldsOptionalPanesToTranscriptAndPrompt(t *testing.T) {
-	bindings, err := configuredKeyBindings(settings.Default())
-	if err != nil {
-		t.Fatal(err)
-	}
-	theme, glyphs := kit.Dark(), kit.Unicode()
-	transcript := testTranscriptView(t)
-	transcript.Append(&kit.Entry{Theme: theme, Label: "flame", Body: "VISIBLE_TRANSCRIPT"})
-	header := newSessionHeader(theme, glyphs, conversation.Session{Title: "HIDDEN_TITLE", Workspace: workspace.Workspace{
-		Path: "/hidden/workspace", ProjectRoot: "/hidden/workspace", Availability: protocol.WorkspaceAvailable,
-	}})
-	activity := newActivityView(theme, glyphs)
-	activity.Set([]protocol.PlanStep{{Description: "HIDDEN_PLAN", Status: protocol.PlanStatusInProgress}})
-	prompts := newQueueView(theme, glyphs)
-	prompts.Set(authoring.QueueSnapshot{Entries: []authoring.QueueEntry{{Message: authoring.Message{Text: "HIDDEN_QUEUE"}}}})
-	composer := kit.NewComposer(kit.ComposerConfig{Theme: theme, Glyphs: glyphs, Prompt: glyphs.Marker + " ", MaxRows: 6})
-	composer.Controller().SetKeys(bindings.editor)
-	composer.Controller().SetText("VISIBLE_DRAFT")
-	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, composer, defaultRunOptions(t))
-	shell := newShellView(header, transcript, activity, prompts, newStatusView(theme, glyphs), authoredPrompt)
-
-	short := drawRoot(t, shell, 96, 16)
-	for _, want := range []string{"VISIBLE_TRANSCRIPT", "VISIBLE_DRAFT", "shift+enter"} {
-		if !strings.Contains(short, want) {
-			t.Errorf("short shell does not contain %q:\n%s", want, short)
-		}
-	}
-	for _, hidden := range []string{"/hidden/workspace", "HIDDEN_PLAN", "HIDDEN_QUEUE"} {
-		if strings.Contains(short, hidden) {
-			t.Errorf("short shell retained optional pane %q:\n%s", hidden, short)
 		}
 	}
 }

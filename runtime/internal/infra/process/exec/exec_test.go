@@ -518,3 +518,12 @@ func TestShellsStopAncestorOfRestoredSubtree(t *testing.T) {
 		t.Fatal("subtree retirement returned before its ancestor shell joined")
 	}
 }
+
+func testTimeout(t *testing.T, duration time.Duration) Timeout {
+	t.Helper()
+	timeout, err := NewTimeout(duration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return timeout
+}

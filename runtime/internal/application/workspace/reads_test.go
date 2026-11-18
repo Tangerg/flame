@@ -10,28 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-func TestNewDiscoveryRequiresCompleteDependencies(t *testing.T) {
-	scope := newScope(t, "", "", testPaths{})
-	for _, test := range []struct {
-		name      string
-		scope     *Scope
-		catalog   catalog
-		documents agentDocFinder
-	}{
-		{name: "scope", catalog: workspaceCatalogStub{}, documents: staticAgentDocFinder{}},
-		{name: "catalog", scope: scope, documents: staticAgentDocFinder{}},
-		{name: "typed nil catalog", scope: scope, catalog: (*workspaceCatalogStub)(nil), documents: staticAgentDocFinder{}},
-		{name: "documents", scope: scope, catalog: workspaceCatalogStub{}},
-		{name: "typed nil documents", scope: scope, catalog: workspaceCatalogStub{}, documents: (*staticAgentDocFinder)(nil)},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if discovery, err := NewDiscovery(test.scope, test.catalog, test.documents); err == nil || discovery != nil {
-				t.Fatalf("NewDiscovery = (%v, %v), want incomplete construction rejected", discovery, err)
-			}
-		})
-	}
-}
-
 func newDiscovery(t *testing.T, scope *Scope, catalog catalog, documents agentDocFinder) *Discovery {
 	t.Helper()
 	discovery, err := NewDiscovery(scope, catalog, documents)

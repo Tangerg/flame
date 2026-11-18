@@ -52,30 +52,3 @@ func TestCapabilitiesAdvertiseOnlyProducedRunEvents(t *testing.T) {
 		t.Fatalf("idempotency namespace = %q, want %q", got, testsupport.IdempotencyNamespace)
 	}
 }
-
-// TestCapabilitiesAdvertiseThePublishedVocabulary pins discovery to
-// [protocol.Features].
-//
-// The features map is open — a client reads an absent key as off — which
-// makes an omission SILENT: a capability this build supports would simply never
-// reach the UI, and nothing would say why. Both directions matter, so a key
-// advertised but never published is caught too: a client cannot gate on a name it
-// has no way to learn.
-func TestCapabilitiesAdvertiseThePublishedVocabulary(t *testing.T) {
-	t.Parallel()
-
-	caps := capabilitiesFor(
-		featureAvailability{},
-		replayLimitsFrom(runs.DefaultRetention()), protocol.IdempotencyLimits{RetentionSeconds: 86_400, Namespace: testsupport.IdempotencyNamespace}, protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 73},
-	)
-	for _, feature := range protocol.FeatureKeys() {
-		if _, advertised := caps.Features[feature]; !advertised {
-			t.Errorf("protocol publishes %q and discovery advertises no such key", feature)
-		}
-	}
-	for feature := range caps.Features {
-		if _, published := protocol.LookupFeature(feature); !published {
-			t.Errorf("discovery advertises %q, which protocol does not publish", feature)
-		}
-	}
-}

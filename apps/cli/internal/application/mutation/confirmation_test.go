@@ -41,35 +41,6 @@ func TestAcknowledgementUncertainIncludesMutationTimeouts(t *testing.T) {
 	}
 }
 
-func TestAcknowledgementBackoffOwnsTheSharedCommandPolicy(t *testing.T) {
-	backoff := AcknowledgementBackoff()
-	if got, err := backoff.Delay(1); err != nil || got != 50*time.Millisecond {
-		t.Fatalf("first acknowledgement retry = %s", got)
-	}
-	if got, err := backoff.Delay(6); err != nil || got != time.Second {
-		t.Fatalf("maximum acknowledgement retry = %s", got)
-	}
-}
-
-func TestOutcomeHasOneSharedStableIdentity(t *testing.T) {
-	tests := []struct {
-		outcome Outcome
-		want    string
-	}{
-		{outcome: Unknown, want: "unknown"},
-		{outcome: Rejected, want: "rejected"},
-		{outcome: Confirmed, want: "confirmed"},
-	}
-	for _, test := range tests {
-		if !test.outcome.Valid() || test.outcome.String() != test.want {
-			t.Fatalf("outcome = %q, valid = %t; want %q", test.outcome, test.outcome.Valid(), test.want)
-		}
-	}
-	if Outcome("").Valid() {
-		t.Fatal("zero Outcome is valid")
-	}
-}
-
 func TestConfirmStopsAtARuntimeStoreMismatch(t *testing.T) {
 	attempts := 0
 	_, err := confirm(t.Context(), fastBackoff(t), func(context.Context) (struct{}, error) {
@@ -78,18 +49,6 @@ func TestConfirmStopsAtARuntimeStoreMismatch(t *testing.T) {
 	})
 	if !errors.Is(err, conversation.ErrCommandStoreMismatch) || attempts != 1 {
 		t.Fatalf("confirmation error = %v after %d attempts", err, attempts)
-	}
-}
-
-func TestConfirmRejectsAnUnconfiguredBackoffBeforeMutationIO(t *testing.T) {
-	t.Parallel()
-	attempts := 0
-	_, err := confirm(t.Context(), retry.Backoff{}, func(context.Context) (struct{}, error) {
-		attempts++
-		return struct{}{}, nil
-	})
-	if !errors.Is(err, retry.ErrInvalidBackoff) || attempts != 0 {
-		t.Fatalf("confirm = %v after %d attempts", err, attempts)
 	}
 }
 

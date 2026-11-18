@@ -4778,17 +4778,17 @@ for await (const line of lines) {
     await mkdir(join(plainRoot, "empty"), { recursive: true });
     await writeFile(join(plainRoot, "visible.txt"), "visible\n");
     const plainListing = await client.workspace({ path: plainRoot }).files.list();
-    expect(plainListing).toMatchObject({
-      data: [
-        expect.objectContaining({ path: "empty", name: "empty", type: "dir" }),
-        expect.objectContaining({ path: "visible.txt", name: "visible.txt", type: "file" }),
-      ],
-    });
+    expect(plainListing.data.toSorted((a, b) => a.path.localeCompare(b.path))).toMatchObject([
+      { path: "empty", name: "empty", type: "dir" },
+      { path: "visible.txt", name: "visible.txt", type: "file" },
+    ]);
     await writeFile(join(plainRoot, ".git"), "gitdir: ../not-a-repository\n");
     const plainIncludingIgnored = await client
       .workspace({ path: plainRoot })
       .files.list({ includeIgnored: true });
-    expect(plainIncludingIgnored.data).toEqual(plainListing.data);
+    expect(plainIncludingIgnored.data.toSorted((a, b) => a.path.localeCompare(b.path))).toEqual(
+      plainListing.data.toSorted((a, b) => a.path.localeCompare(b.path)),
+    );
     expect(plainIncludingIgnored.data.some((entry) => entry.path === ".git")).toBe(false);
     const outsidePlainRoot = join(environmentRoot, "workspace-side-api-outside");
     await mkdir(outsidePlainRoot);

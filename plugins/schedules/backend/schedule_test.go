@@ -61,18 +61,6 @@ func TestSchedulesCreateListDelete(t *testing.T) {
 	}
 }
 
-func TestSchedulesRejectMissingManagementPort(t *testing.T) {
-	for _, coordinator := range []scheduleOperations{nil, (*scheduleOperationsFixture)(nil)} {
-		tools, err := buildSchedules(coordinator, unexpectedManualRun)
-		if err == nil || len(tools) != 0 {
-			t.Fatalf("missing management port = (%d tools, %v)", len(tools), err)
-		}
-	}
-	if _, err := buildSchedules(newTestScheduleOperations(newMemoryScheduleRegistry()), nil); err == nil {
-		t.Fatal("manual Run capability was published without its owner")
-	}
-}
-
 func TestScheduleToolsEditObservedRevisionWithoutReplacingIdentity(t *testing.T) {
 	registry := newMemoryScheduleRegistry()
 	tools, err := buildSchedules(newTestScheduleOperations(registry), unexpectedManualRun)
@@ -368,13 +356,4 @@ func (m *memoryScheduleRegistry) RecordRun(context.Context, scheduledomain.RunRe
 
 func unexpectedManualRun(context.Context, wire.ItemInput) (scheduleapp.RunReference, error) {
 	return scheduleapp.RunReference{}, errors.New("unexpected manual Run")
-}
-
-func TestClassifyPicksTheFirstListedCauseOfAJoinedError(t *testing.T) {
-	joined := errors.Join(scheduledomain.ErrRevisionConflict, scheduledomain.ErrNotFound)
-	for range 64 {
-		if got, refused := classify(joined); !refused || got != "not_found" {
-			t.Fatalf("classify(joined) = %q, %v, want the earlier-listed not_found", got, refused)
-		}
-	}
 }

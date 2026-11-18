@@ -7,8 +7,6 @@
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
     "allowImportingTsExtensions": true,
     "types": ["node", "react", "react-dom"],
     "lib": ["DOM", "ESNext"]

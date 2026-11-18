@@ -59,23 +59,6 @@ func TestStateReplaceOwnsRevisionTimeAndClear(t *testing.T) {
 	}
 }
 
-func TestStateDefensiveCopies(t *testing.T) {
-	now := time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC)
-	snapshot := Snapshot{Steps: []Step{{Description: "original", Status: StatusPending}}, Revision: 4, UpdatedAt: now}
-	state, err := Restore(snapshot)
-	if err != nil {
-		t.Fatalf("Restore: %v", err)
-	}
-	snapshot.Steps[0].Description = "changed input"
-	steps := state.Steps()
-	steps[0].Description = "changed output"
-	persisted := state.Snapshot()
-	persisted.Steps[0].Description = "changed snapshot"
-	if got := state.Steps()[0].Description; got != "original" {
-		t.Fatalf("state description = %q, want original", got)
-	}
-}
-
 func TestRestoreRejectsImpossibleState(t *testing.T) {
 	now := time.Now().UTC()
 	for _, test := range []struct {

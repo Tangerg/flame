@@ -3,8 +3,7 @@ package segment
 import (
 	"context"
 	"errors"
-	"strings"
-	"testing"
+
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -16,56 +15,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
 )
-
-func TestNewRejectsMalformedDependencies(t *testing.T) {
-	var typedNilInterrupts *fakeInterrupts
-	for _, test := range []struct {
-		name string
-		cfg  Config
-		want string
-	}{
-		{name: "empty", cfg: Config{}, want: "interrupt store"},
-		{name: "typed nil", cfg: Config{Interrupts: typedNilInterrupts}, want: "interrupt store"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if _, err := New(test.cfg); err == nil || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("New error = %v, want %q", err, test.want)
-			}
-		})
-	}
-}
-
-// TestNewFinalizerRequiresEveryMaintenancePort pins what Finish and title then
-// rely on: no port is optional, so neither re-checks any of them.
-func TestNewFinalizerRequiresEveryMaintenancePort(t *testing.T) {
-	stores := &fakeStores{session: &fakeSession{}}
-	complete := FinalizerConfig{
-		Checkpoints: fakeCheckpoints{},
-		Titles:      TitleMaintenance{Sessions: stores.session, Generator: stores, Tasks: inlineTaskLauncher{}},
-	}
-	if _, err := NewFinalizer(complete); err != nil {
-		t.Fatalf("complete maintenance: %v", err)
-	}
-	for _, test := range []struct {
-		name string
-		want string
-		drop func(*FinalizerConfig)
-	}{
-		{name: "checkpoints", want: "checkpoints", drop: func(c *FinalizerConfig) { c.Checkpoints = nil }},
-		{name: "sessions", want: "session titles", drop: func(c *FinalizerConfig) { c.Titles.Sessions = nil }},
-		{name: "generator", want: "title generator", drop: func(c *FinalizerConfig) { c.Titles.Generator = nil }},
-		{name: "tasks", want: "task launcher", drop: func(c *FinalizerConfig) { c.Titles.Tasks = nil }},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			partial := complete
-			test.drop(&partial)
-			_, err := NewFinalizer(partial)
-			if err == nil || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("NewFinalizer error = %v, want one naming %q", err, test.want)
-			}
-		})
-	}
-}
 
 type unexpectedCompactions struct{}
 

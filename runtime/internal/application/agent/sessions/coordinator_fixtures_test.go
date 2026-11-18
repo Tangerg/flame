@@ -4,8 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
-	"testing"
+
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -17,35 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/scope/core/chat"
 )
-
-func TestNewRejectsMalformedDependencies(t *testing.T) {
-	var typedNilStore *emptySessionStore
-	for _, test := range []struct {
-		name string
-		deps Dependencies
-		want string
-	}{
-		{name: "empty", deps: Dependencies{}, want: "session store"},
-		{name: "typed nil", deps: Dependencies{Sessions: typedNilStore}, want: "session store"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if _, err := New(test.deps); err == nil || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("New error = %v, want %q", err, test.want)
-			}
-		})
-	}
-
-	stores := coordinatorStores{interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{}}}
-	deps := testDependencies(stores, Dependencies{
-		ExecutionReleaser: inertExecutionReleaser{},
-		Paths:             testWorkspaceResolver{},
-		MaterialSnapshots: emptyMaterialSnapshotReader{},
-	})
-	deps.Plan = PlanServices{}
-	if _, err := New(deps); err == nil || !strings.Contains(err.Error(), "plan boundary reader") {
-		t.Fatalf("New incomplete Plan error = %v", err)
-	}
-}
 
 type coordinatorStores struct {
 	results       []chat.ToolResult

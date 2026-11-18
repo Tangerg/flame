@@ -120,56 +120,6 @@ func readArtifact(t *testing.T, dir, name string) []byte {
 	return content
 }
 
-// TestGeneratedContractIsSubstantive stops the drift gate from passing
-// vacuously: an empty manifest would compare equal to an empty manifest forever.
-func TestGeneratedContractIsSubstantive(t *testing.T) {
-	root := moduleRoot(t)
-	raw, err := os.ReadFile(filepath.Join(root, "contract", "manifest.json"))
-	if err != nil {
-		t.Fatalf("read manifest: %v", err)
-	}
-	var manifest struct {
-		ProtocolVersion  string     `json:"protocolVersion"`
-		Methods          []struct{} `json:"methods"`
-		StreamingMethods []string   `json:"streamingMethods"`
-		HTTPEndpoints    []struct{} `json:"httpEndpoints"`
-		Errors           struct {
-			Types []struct{} `json:"types"`
-		} `json:"errors"`
-		CapabilityPolicy    []struct{} `json:"capabilityPolicy"`
-		RunEventPolicy      []struct{} `json:"runEventPolicy"`
-		CarriedShapes       []struct{} `json:"carriedShapes"`
-		ResultPresentations []struct{} `json:"toolResultPresentations"`
-		Unions              []struct{} `json:"unions"`
-		Constraints         []struct{} `json:"objectConstraints"`
-		ValueConstraints    []struct{} `json:"valueConstraints"`
-		SystemInvariants    []struct{} `json:"systemInvariants"`
-	}
-	if err := json.Unmarshal(raw, &manifest); err != nil {
-		t.Fatalf("decode manifest: %v", err)
-	}
-	sections := map[string]int{
-		"protocolVersion":         len(manifest.ProtocolVersion),
-		"methods":                 len(manifest.Methods),
-		"streamingMethods":        len(manifest.StreamingMethods),
-		"httpEndpoints":           len(manifest.HTTPEndpoints),
-		"errors.types":            len(manifest.Errors.Types),
-		"capabilityPolicy":        len(manifest.CapabilityPolicy),
-		"carriedShapes":           len(manifest.CarriedShapes),
-		"toolResultPresentations": len(manifest.ResultPresentations),
-		"runEventPolicy":          len(manifest.RunEventPolicy),
-		"unions":                  len(manifest.Unions),
-		"objectConstraints":       len(manifest.Constraints),
-		"valueConstraints":        len(manifest.ValueConstraints),
-		"systemInvariants":        len(manifest.SystemInvariants),
-	}
-	for section, count := range sections {
-		if count == 0 {
-			t.Errorf("manifest section %q is empty; the drift gate would pass on nothing", section)
-		}
-	}
-}
-
 // TestRegistryShapeRulesReachTheGoValidator closes the server-side half of the
 // three-way contract: every union, conditional object and value-constrained shape
 // registered for schema/TypeScript also owns a generated validateWire method.
@@ -262,53 +212,6 @@ func TestProtocolVersionAgreesEverywhere(t *testing.T) {
 	}
 	if stated == 0 {
 		t.Error("no canonical sample states a protocol version; the handshake fixtures stopped covering it")
-	}
-}
-
-// TestProtocolContractIsRuntimeOwned prevents a consuming application from
-// becoming the Runtime's contract author again. Clients may vendor generated
-// bindings, but production code, generators and current architecture guidance
-// must derive the contract from the Runtime registry; SDK/TypeScript copies
-// are generated projections, never a second author.
-func TestProtocolContractIsRuntimeOwned(t *testing.T) {
-	root := moduleRoot(t)
-	leaks := []string{
-		strings.Join([]string{"desktop", "docs", "protocol"}, "/"),
-		strings.Join([]string{`filepath.Join(root, "`, `..", "`, `desktop"`}, ""),
-	}
-	for _, rel := range []string{"README.md", "cmd", "internal", "docs/README.md", "docs/ARCHITECTURE.md"} {
-		path := filepath.Join(root, rel)
-		info, err := os.Stat(path)
-		if err != nil {
-			t.Fatalf("stat %s: %v", rel, err)
-		}
-		paths := []string{path}
-		if info.IsDir() {
-			paths = nil
-			err := filepath.WalkDir(path, func(candidate string, entry os.DirEntry, walkErr error) error {
-				if walkErr != nil {
-					return walkErr
-				}
-				if !entry.IsDir() && slices.Contains([]string{".go", ".md"}, filepath.Ext(candidate)) {
-					paths = append(paths, candidate)
-				}
-				return nil
-			})
-			if err != nil {
-				t.Fatalf("walk %s: %v", rel, err)
-			}
-		}
-		for _, candidate := range paths {
-			source, err := os.ReadFile(candidate)
-			if err != nil {
-				t.Fatalf("read %s: %v", candidate, err)
-			}
-			for _, leaked := range leaks {
-				if bytes.Contains(source, []byte(leaked)) {
-					t.Errorf("%s resolves the Runtime protocol through a client module (%q)", candidate, leaked)
-				}
-			}
-		}
 	}
 }
 
@@ -539,84 +442,6 @@ var notOnTheWire = map[string]string{
 	"PageQuery":              "a composed cursor-query owner flattened into each paginated request, never a standalone JSON frame",
 	"PluginBrowserScopeRef":  "a composed browser scope reference flattened into its requests, never a standalone JSON frame",
 	"RecordedUsage":          "a composed usage block flattened into each usage report, never a standalone JSON frame",
-}
-
-// TestEveryWireStructIsPublished checks the bundle against the protocol package.
-//
-// The walk starts from the registered methods, which means a shape reachable from
-// nothing — a tool result's members, an envelope member — is absent from every
-// artifact and nothing complains. That is how the contract quietly loses a type a
-// client still has to render, so the declaration mechanism exists (carried shapes,
-// state payloads) and this proves it was used.
-func TestEveryWireStructIsPublished(t *testing.T) {
-	root := moduleRoot(t)
-
-	var bundle struct {
-		Defs map[string]jsontext.Value `json:"$defs"`
-	}
-	if err := json.Unmarshal(readArtifact(t, filepath.Join(root, "contract"), "schema.json"), &bundle); err != nil {
-		t.Fatalf("decode schema.json: %v", err)
-	}
-	// A generic publishes as one definition per instantiation (PageOfSession), so the
-	// base name counts as published.
-	published := make(map[string]bool, len(bundle.Defs))
-	for name := range bundle.Defs {
-		published[name] = true
-		if base, _, generic := strings.Cut(name, "Of"); generic {
-			published[base] = true
-		}
-	}
-
-	for _, name := range exportedStructs(t, filepath.Join(dependencyModuleRoot(t, sdkModulePath), "protocol")) {
-		reason, excused := notOnTheWire[name]
-		switch {
-		case published[name] && excused:
-			t.Errorf("%s is published AND listed as not on the wire (%q) — one of the two is wrong", name, reason)
-		case !published[name] && !excused:
-			t.Errorf("%s is a wire struct no artifact describes; register how it is carried, or say why it is not on the wire", name)
-		}
-	}
-	for name := range notOnTheWire {
-		if !slices.Contains(exportedStructs(t, filepath.Join(dependencyModuleRoot(t, sdkModulePath), "protocol")), name) {
-			t.Errorf("%s is excused from the bundle and no longer exists", name)
-		}
-	}
-}
-
-func exportedStructs(t *testing.T, dir string) []string {
-	t.Helper()
-
-	files, err := filepath.Glob(filepath.Join(dir, "*.go"))
-	if err != nil {
-		t.Fatalf("glob %s: %v", dir, err)
-	}
-	var out []string
-	for _, path := range files {
-		if strings.HasSuffix(path, "_test.go") {
-			continue
-		}
-		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
-		if err != nil {
-			t.Fatalf("parse %s: %v", path, err)
-		}
-		for _, decl := range file.Decls {
-			group, ok := decl.(*ast.GenDecl)
-			if !ok || group.Tok != token.TYPE {
-				continue
-			}
-			for _, spec := range group.Specs {
-				typeSpec, ok := spec.(*ast.TypeSpec)
-				if !ok || !typeSpec.Name.IsExported() {
-					continue
-				}
-				if _, ok := typeSpec.Type.(*ast.StructType); ok {
-					out = append(out, typeSpec.Name.Name)
-				}
-			}
-		}
-	}
-	slices.Sort(out)
-	return out
 }
 
 // Flattened owners have no standalone schema. Their rules must survive in

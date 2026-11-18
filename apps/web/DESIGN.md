@@ -482,8 +482,7 @@ their alpha and read as a bright dot.
 `bg-selected` — an ink wash (`--color-hover` / `--color-selected`), so a row
 lights up the same over a card, a menu or the drawer, and selection stays legible
 while the pointer sits on its neighbour. A surface step as a hover paints a slab
-where there was none; `check-interactive-chrome` fails the build on both that and
-a hand-picked `hover:bg-fg/[…]` alpha.
+where there was none.
 
 This holds identically in **both schemes**; the edge takes the scheme's
 `border-strong`, while elevation uses the scheme's `--shadow-cast`.
@@ -619,7 +618,7 @@ Accent comes from one generated scale and appears only through its roles:
 
 1. **Interactive state** — selected navigation and dock tabs, checked and on
    controls, progress, primary actions (`--color-cta`).
-2. **Focus ring** — `:focus-visible`, a single thin stroke (**no halo / glow**, and never on plain mouse-focus of inputs). One global rule in globals.css draws it; mark `data-focus-inset` where it would land outside the box, `data-chrome-focus` where a row fills instead. The palette derives `--color-focus-ring`. Never drawn at a callsite — `check-interactive-chrome` fails the build.
+2. **Focus ring** — `:focus-visible`, a single thin stroke (**no halo / glow**, and never on plain mouse-focus of inputs). One global rule in globals.css draws it; mark `data-focus-inset` where it would land outside the box, `data-chrome-focus` where a row fills instead. The palette derives `--color-focus-ring`. Never drawn at a callsite.
 3. **Live indicator** — the running `StatusDot`, the live status pill, the reasoning pulse.
    A mark drawn on a plane takes `--color-accent-text`, which is searched to read on
    every plane; the solid `--color-accent` is a fill and may be too light to stand alone

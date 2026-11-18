@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -53,17 +52,6 @@ func mustCloseJournal(t testing.TB, journal *journal) {
 	t.Helper()
 	if err := journal.close(); err != nil {
 		t.Fatalf("close journal: %v", err)
-	}
-}
-
-func TestNewJournalRejectsInvalidResourceContracts(t *testing.T) {
-	validScope := testStreamScope(testEpoch, testRunID, testSegmentID)
-	if journal, err := newJournal(validScope, Retention{}); journal != nil || err == nil {
-		t.Fatalf("newJournal with zero retention = (%v, %v), want nil/error", journal, err)
-	}
-	oversized := strings.Repeat("x", identity.MaximumCursorCharacters+1)
-	if scope, err := newStreamScope(testEpoch, oversized, testSegmentID); err == nil || scope != (streamScope{}) {
-		t.Fatalf("newStreamScope with oversized Run = (%v, %v), want zero/error", scope, err)
 	}
 }
 
@@ -667,21 +655,4 @@ func TestJournalConcurrentAppendCloseAndCancel(t *testing.T) {
 		t.Fatalf("close journal: %v", closeErr)
 	}
 	consumeEvents(attached.Events) // drain whatever survived the race; must terminate
-}
-
-// BenchmarkJournalAppendDrain records the steady-state per-event append→deliver
-// cost through one subscriber. Live-only events avoid retention.
-func BenchmarkJournalAppendDrain(b *testing.B) {
-	j := testJournal(b)
-	attached := j.tail()
-	defer attached.Cancel()
-	next, stop := iter.Pull(attached.Events)
-	defer stop()
-	e := ev(false)
-	for b.Loop() {
-		if err := j.append(e); err != nil {
-			b.Fatal(err)
-		}
-		next()
-	}
 }

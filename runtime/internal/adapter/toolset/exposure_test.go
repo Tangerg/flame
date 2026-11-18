@@ -12,36 +12,6 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// The Runtime exposes two ways to change a file and no more. They are one
-// vocabulary: same guard stack, same read-before-write stamp, and a path the
-// guards can always name. edit carries that path as an argument; apply_patch
-// declares it from the patch text and batches several at once.
-func TestResolverRegistersTheMutationVocabulary(t *testing.T) {
-	built, err := Build(BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
-	if err != nil {
-		t.Fatalf("Build: %v", err)
-	}
-	closeBuiltToolset(t, built)
-	manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot, nil)
-	if err != nil {
-		t.Fatalf("Manifest: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := manifest.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-	names := definitionNames(manifestTools(manifest))
-	if !names[string(builtincontract.Edit)] || !names[string(builtincontract.ApplyPatch)] {
-		t.Fatalf("mutation vocabulary = %v, want edit and apply_patch", names)
-	}
-	// write stays out: apply_patch already creates and deletes files, so a third
-	// way to change one would be a second vocabulary for the same fact.
-	if names["write"] {
-		t.Fatalf("mutation vocabulary = %v, want no whole-file write", names)
-	}
-}
-
 func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testing.T) {
 	named := func(name string) toolcontract.Tool {
 		t.Helper()

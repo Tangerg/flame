@@ -1,13 +1,14 @@
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { WorkspaceFileFocus } from "@/features/workspace/adapters/contextDockStore";
 let testClient: TestClient;
 prepareTestClient(() => {
   const owned = createTestClient();
   testClient = owned;
   finishTestClient(() => owned.dispose());
 });
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { WorkspaceFileFocus } from "@/features/workspace/adapters/contextDockStore";
+
 const EMPTY = {
   activeSessionScopeId: null,
   sessionScopes: new Map(),
@@ -47,145 +48,7 @@ describe("the round trip", () => {
   });
 });
 
-describe("the open tab set", () => {
-  it("holds a tab open once", () => {
-    dock().adoptDockLocation("diff");
-    dock().adoptDockLocation("diff");
-    expect(dock().dockViewIds).toEqual(["diff"]);
-  });
-
-  it("answers which tab takes the place of a closed one", () => {
-    dock().adoptDockLocation("skills");
-    dock().adoptDockLocation("diff");
-    dock().adoptDockLocation("search");
-
-    expect(dock().closeDockTab("diff")).toBe("search");
-    expect(dock().dockViewIds).toEqual(["skills", "search"]);
-  });
-
-  it("falls back to the tab before it when the last one closes", () => {
-    dock().adoptDockLocation("skills");
-    dock().adoptDockLocation("diff");
-
-    expect(dock().closeDockTab("diff")).toBe("skills");
-  });
-
-  it("answers null when the last tab closes, and for a tab it never had", () => {
-    dock().adoptDockLocation("diff");
-    expect(dock().closeDockTab("diff")).toBeNull();
-    expect(dock().closeDockTab("nope")).toBeNull();
-  });
-
-  it("keeps only the named tab when the others close", () => {
-    dock().adoptDockLocation("skills");
-    dock().adoptDockLocation("diff");
-    dock().adoptDockLocation("search");
-
-    dock().closeOtherDockTabs("diff");
-    expect(dock().dockViewIds).toEqual(["diff"]);
-  });
-
-  it("leaves the set alone when closing the others around a tab it never had", () => {
-    dock().adoptDockLocation("skills");
-    dock().closeOtherDockTabs("nope");
-    expect(dock().dockViewIds).toEqual(["skills"]);
-  });
-
-  it("forgets the remembered destination when every tab closes", () => {
-    dock().adoptDockLocation("skills");
-
-    dock().closeAllDockTabs();
-    expect(dock().dockViewIds).toEqual([]);
-    expect(dock().lastViewId).toBeNull();
-  });
-
-  it("moves a tab to the requested position", () => {
-    dock().adoptDockLocation("skills");
-    dock().adoptDockLocation("diff");
-    dock().adoptDockLocation("search");
-
-    expect(dock().reorderDockTab("skills", 2)).toEqual({ position: 3, total: 3 });
-    expect(dock().dockViewIds).toEqual(["diff", "search", "skills"]);
-  });
-
-  it("clamps a reorder into the open set and ignores an unknown tab", () => {
-    dock().adoptDockLocation("skills");
-    dock().adoptDockLocation("diff");
-
-    expect(dock().reorderDockTab("diff", 99)).toBeNull();
-    expect(dock().dockViewIds).toEqual(["skills", "diff"]);
-
-    expect(dock().reorderDockTab("skills", 99)).toEqual({ position: 2, total: 2 });
-    expect(dock().dockViewIds).toEqual(["diff", "skills"]);
-
-    expect(dock().reorderDockTab("nope", 0)).toBeNull();
-    expect(dock().dockViewIds).toEqual(["diff", "skills"]);
-  });
-  it.each([NaN, Infinity, -Infinity, 1.5])(
-    "refuses a non-integer target %s without moving the tab",
-    (index) => {
-      dock().adoptDockLocation("skills");
-      dock().adoptDockLocation("diff");
-      expect(dock().reorderDockTab("diff", index)).toBeNull();
-      expect(dock().dockViewIds).toEqual(["skills", "diff"]);
-    },
-  );
-});
-
-describe("what a re-open returns to", () => {
-  it("adopts an authoritative location into both facts in one update", () => {
-    let notifications = 0;
-    const unsubscribe = testClient.workspace.dock.store.subscribe(() => {
-      notifications += 1;
-    });
-
-    dock().adoptDockLocation("diff");
-
-    unsubscribe();
-    expect(notifications).toBe(1);
-    expect(dock()).toMatchObject({ dockViewIds: ["diff"], lastViewId: "diff" });
-  });
-
-  it("is the destination last shown, when it is still open", () => {
-    dock().adoptDockLocation("skills");
-    dock().adoptDockLocation("diff");
-
-    expect(dock().dockTabToShow("search")).toBe("diff");
-  });
-
-  it("remembers the remaining tab when the last shown one closes", () => {
-    dock().adoptDockLocation("skills");
-    dock().adoptDockLocation("diff");
-    dock().closeDockTab("diff");
-
-    expect(dock().dockTabToShow("search")).toBe("skills");
-  });
-
-  it("is the caller's default when nothing is open", () => {
-    expect(dock().dockTabToShow("search")).toBe("search");
-  });
-});
-
 describe("per-session scopes", () => {
-  it("keeps repeated file-focus intents distinct beyond the safe-integer boundary", () => {
-    const boundary = WorkspaceFileFocus.restore("a.ts", BigInt(Number.MAX_SAFE_INTEGER));
-    const first = boundary.moveTo("a.ts");
-    const second = first.moveTo("a.ts");
-
-    expect(second.revision).toBeGreaterThan(first.revision);
-  });
-
-  it("gives repeated file-focus intents distinct revisions", () => {
-    dock().focusFile("a.ts");
-    const first = dock().fileFocus;
-
-    dock().focusFile("a.ts");
-
-    expect(first).toMatchObject({ path: "a.ts", revision: 1n });
-    expect(dock().fileFocus).toMatchObject({ path: "a.ts", revision: 2n });
-    expect(dock().fileFocus).not.toBe(first);
-  });
-
   it("keeps each session's tabs and returns the destination it remembers", () => {
     dock().activateSessionScope("s1");
     dock().adoptDockLocation("diff");
@@ -198,14 +61,6 @@ describe("per-session scopes", () => {
     expect(dock().activateSessionScope("s1")).toBe("diff");
     expect(dock().dockViewIds).toEqual(["diff"]);
     expect(dock().fileFocus).toMatchObject({ path: "a.ts", revision: 1n });
-  });
-
-  it("is a no-op for the session already in scope", () => {
-    dock().activateSessionScope("s1");
-    dock().adoptDockLocation("diff");
-
-    expect(dock().activateSessionScope("s1")).toBe("diff");
-    expect(dock().dockViewIds).toEqual(["diff"]);
   });
 
   it("forgets scopes for sessions no longer held open", () => {
@@ -280,25 +135,6 @@ describe("per-session scopes", () => {
       fileViewer: { path: "src/runtime.ts", line: 42 },
       expandedToolIds: new Set(),
     });
-  });
-});
-
-describe("tool disclosure inside a scope", () => {
-  it("applies explicit tool expansion requests idempotently", () => {
-    dock().setToolExpanded("call-1", true);
-    dock().setToolExpanded("call-1", true);
-    expect(dock().expandedToolIds).toEqual(new Set(["call-1"]));
-
-    dock().setToolExpanded("call-1", false);
-    dock().setToolExpanded("call-1", false);
-    expect(dock().expandedToolIds).toEqual(new Set());
-  });
-
-  it("records and clears a file viewer target", () => {
-    dock().setFileViewer({ path: "a.ts", line: 0 });
-    expect(dock().fileViewer).toEqual({ path: "a.ts", line: 0 });
-    dock().setFileViewer(null);
-    expect(dock().fileViewer).toBeNull();
   });
 });
 

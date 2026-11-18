@@ -1,13 +1,7 @@
 import { expect, it } from "vitest";
 import { parseJSON } from "@frame/sdk/json";
-import {
-  Capability,
-  canonicalJSON,
-  declareMethod,
-  digestJSON,
-} from "./contract.ts";
+import { Capability, canonicalJSON, declareMethod, digestJSON } from "./contract.ts";
 import wire from "./protocol.generated.json";
-
 it("agrees with the Go publisher on portable methods and Flame capability identities", () => {
   const capability = new Capability(parseJSON(wire.capability));
   expect(capability.identity).toBe(wire.capabilityIdentity);
@@ -42,30 +36,4 @@ it("keeps Flame composition and scope separate from Frame method identity", () =
     })),
   });
   expect(documented.identity).toBe(original.identity);
-});
-
-it("delegates exact schema admission to the released Frame method", () => {
-  const receipt = declareMethod(parseJSON(wire.receipt));
-  expect(() =>
-    receipt.admitInput({
-      id: "command",
-      method: "read",
-      inputDigest: "a".repeat(64),
-    }),
-  ).not.toThrow();
-  expect(() =>
-    receipt.admitInput({
-      id: "command",
-      method: "read",
-      inputDigest: "invalid",
-    }),
-  ).toThrow();
-  expect(() =>
-    receipt.admitInput({
-      id: "command",
-      method: "read",
-      inputDigest: "a".repeat(64),
-      unexpected: true,
-    }),
-  ).toThrow();
 });

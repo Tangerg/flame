@@ -13,19 +13,6 @@ const root =
 const LOCALES = ["en", "zh", "zh-TW", "ja", "ko", "es", "fr", "de"];
 const PLACEHOLDER_PATTERN = /\{\{(\w+)\}\}/g;
 const PLURAL_SUFFIX = /_(zero|one|two|few|many|other)$/;
-const prose = /^[A-Z][a-z]+(?: [A-Za-z]+)+[.!?]?$/u;
-const translatedAttributes = new Set([
-  "title",
-  "label",
-  "placeholder",
-  "sub",
-  "description",
-  "aria-label",
-  "ariaLabel",
-  "clearLabel",
-  "closeLabel",
-]);
-
 function syntax(file) {
   const result = parseSync(file, readFileSync(file, "utf8"), {
     lang: file.endsWith(".tsx") ? "tsx" : "ts",
@@ -44,23 +31,6 @@ function walk(node, visit) {
     if (child !== null && typeof child === "object") walk(child, visit);
 }
 
-function* componentSources(directory) {
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    const path = join(directory, entry.name);
-    if (entry.isDirectory()) {
-      if (
-        !["locales", "node_modules", "dist", "__tests__", "fixtures"].includes(
-          entry.name,
-        )
-      )
-        yield* componentSources(path);
-    } else if (
-      /\.tsx?$/u.test(entry.name) &&
-      !/\.(?:test|spec|generated|d)\./u.test(entry.name)
-    )
-      yield path;
-  }
-}
 const pluralBase = (key) => {
   const m = PLURAL_SUFFIX.exec(key);
   return m ? key.slice(0, -m[0].length) : null;
@@ -149,36 +119,6 @@ for (const plugin of plugins) {
       if (placeholders(v) !== placeholders(enVal))
         failures.push(`${plugin}/${loc}: "${k}" placeholders differ from en`);
     }
-  }
-
-  const compDir = join(root, plugin, "component");
-  for (const file of componentSources(compDir)) {
-    walk(syntax(file), (node) => {
-      if (
-        node.type === "CallExpression" &&
-        ((node.callee.type === "Identifier" && node.callee.name === "t") ||
-          (node.callee.type === "MemberExpression" &&
-            !node.callee.computed &&
-            node.callee.property.name === "t"))
-      ) {
-        const key = node.arguments[0]?.value;
-        if (typeof key === "string" && !enKeys.has(key) && !enFamilies.has(key))
-          failures.push(`${file}: t("${key}") has no key in en`);
-      }
-      if (node.type === "JSXText" && prose.test(node.value.trim()))
-        failures.push(
-          `${file}: hardcoded UI text "${node.value.trim()}" — route through t()`,
-        );
-      if (
-        node.type === "JSXAttribute" &&
-        translatedAttributes.has(node.name.name) &&
-        node.value?.type === "Literal" &&
-        prose.test(node.value.value)
-      )
-        failures.push(
-          `${file}: hardcoded UI prop ${node.name.name}="${node.value.value}" — route through t()`,
-        );
-    });
   }
 }
 

@@ -7,10 +7,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
+
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 	"github.com/Tangerg/flame/plugins/schedules/internal/sqlite"
 
@@ -85,13 +84,4 @@ func TestCapturedRuntimeTargetSurvivesRestartAndRefusesAnotherStore(t *testing.T
 	if err := scanDatabase(t.Context(), db, `SELECT namespace FROM runtime_target WHERE id=1`, nil, &original); err != nil || original != "original" {
 		t.Fatalf("original target=%q error=%v", original, err)
 	}
-}
-
-func schedulesContract(t *testing.T) *plugincontract.Capability {
-	t.Helper()
-	contracts, err := rpc.NewContracts()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return contracts.Capability
 }

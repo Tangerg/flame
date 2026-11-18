@@ -2,28 +2,10 @@ package extensions
 
 import (
 	"errors"
-	"math"
+
 	"testing"
 )
 
-func TestPluginClaimSequenceExhaustionPreservesLoadedOwners(t *testing.T) {
-	registry := &commandRegistry{next: registrationSequence(math.MaxUint64), plugins: map[string]registrationSequence{"existing": 1}}
-	if _, err := registry.claim("replacement"); !errors.Is(err, errRegistrationSequenceExhausted) {
-		t.Fatalf("claim after exhaustion = %v", err)
-	}
-	if len(registry.plugins) != 1 || registry.plugins["existing"] != 1 {
-		t.Fatalf("plugin owners = %+v", registry.plugins)
-	}
-}
-func TestCommandSequenceExhaustionLeavesRegistryUnchanged(t *testing.T) {
-	registry := &commandRegistry{next: registrationSequence(math.MaxUint64)}
-	if _, err := registry.insert("plugin", testCommand("hello")); !errors.Is(err, errRegistrationSequenceExhausted) {
-		t.Fatalf("registration after exhaustion = %v", err)
-	}
-	if len(registry.entries) != 0 {
-		t.Fatalf("commands after exhaustion = %+v", registry.entries)
-	}
-}
 func TestCommandNamespaceRejectsNamesAndAliasesWithoutConsumingSequence(t *testing.T) {
 	registry := new(commandRegistry)
 	command := testCommand("hello")

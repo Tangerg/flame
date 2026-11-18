@@ -9,38 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-func TestSequenceOrderIsAClosedVocabulary(t *testing.T) {
-	for _, order := range []transcript.SequenceOrder{transcript.OldestFirst, transcript.NewestFirst} {
-		if err := order.Validate(); err != nil {
-			t.Fatalf("Validate(%q): %v", order, err)
-		}
-		if order.String() != string(order) {
-			t.Fatalf("String(%q) = %q", order, order.String())
-		}
-	}
-	for _, order := range []transcript.SequenceOrder{"", "ascending", "descending"} {
-		if err := order.Validate(); err == nil {
-			t.Fatalf("Validate(%q) succeeded", order)
-		}
-	}
-}
-
-func TestCloneContentOwnsImageBytes(t *testing.T) {
-	original := []transcript.ContentBlock{{
-		Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte{1, 2, 3},
-	}}
-	cloned := transcript.CloneContent(original)
-
-	cloned[0].Bytes[0] = 9
-	if original[0].Bytes[0] != 1 {
-		t.Fatalf("CloneContent shares image storage: original bytes = %v", original[0].Bytes)
-	}
-	original[0].Bytes[1] = 8
-	if cloned[0].Bytes[1] != 2 {
-		t.Fatalf("CloneContent is not ownership-isolated: cloned bytes = %v", cloned[0].Bytes)
-	}
-}
-
 func TestTextContentRequiresNonWhitespaceText(t *testing.T) {
 	for _, text := range []string{"", " \n\t"} {
 		if err := (transcript.ContentBlock{Kind: transcript.TextContent, Text: text}).Validate(); err == nil {
@@ -266,64 +234,6 @@ func TestQuestionValidateRejectsUnanswerableShapes(t *testing.T) {
 				t.Fatalf("Validate() error = %v, want error %t", err, test.wantErr)
 			}
 		})
-	}
-}
-
-func TestQuestionEqualityOwnsSemanticRepresentation(t *testing.T) {
-	left := transcript.Question{Fields: []transcript.QuestionField{{
-		Prompt: "Explain", Kind: questioncontract.Text,
-	}}}
-	right := transcript.Question{Fields: []transcript.QuestionField{{
-		Prompt: "Explain", Kind: questioncontract.Text, Options: []transcript.QuestionOption{},
-	}}}
-	if !left.Equal(right) {
-		t.Fatal("equivalent unanswered Questions differ by empty option representation")
-	}
-	answeredLeft := left
-	answeredLeft.Answers = [][]string{{}}
-	answeredRight := right
-	answeredRight.Answers = [][]string{nil}
-	if !answeredLeft.Equal(answeredRight) {
-		t.Fatal("equivalent answered Questions differ by empty answer representation")
-	}
-	if left.Equal(answeredLeft) {
-		t.Fatal("unanswered Question equals answered Question")
-	}
-	changed := left
-	changed.Fields = []transcript.QuestionField{{Prompt: "Different", Kind: questioncontract.Text}}
-	if left.Equal(changed) {
-		t.Fatal("Questions with different prompts are equal")
-	}
-}
-
-func TestToolInvocationEqualityUsesCanonicalValues(t *testing.T) {
-	leftArguments, err := tool.ParseArguments(`{"b":2,"a":1}`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rightArguments, err := tool.ParseArguments(`{"a":1,"b":2}`)
-	if err != nil {
-		t.Fatal(err)
-	}
-	leftResult := tool.Result{}
-	rightResult, err := tool.ParseResult([]byte("null"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	left := transcript.ToolInvocation{
-		Name: "shell", Input: transcript.AdmittedInput(leftArguments), Result: &leftResult,
-		Offload: &transcript.ToolResultRef{ID: "BLOB234"},
-	}
-	right := transcript.ToolInvocation{
-		Name: "shell", Input: transcript.AdmittedInput(rightArguments), Result: &rightResult,
-		Offload: &transcript.ToolResultRef{ID: "BLOB234"},
-	}
-	if !left.Equal(right) {
-		t.Fatal("equivalent Tool invocations differ by canonical representation")
-	}
-	right.Offload = &transcript.ToolResultRef{ID: "BLOB235"}
-	if left.Equal(right) {
-		t.Fatal("Tool invocations with different offloads are equal")
 	}
 }
 

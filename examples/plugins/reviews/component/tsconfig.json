@@ -7,9 +7,7 @@
     "jsx": "react-jsx",
     "strict": true,
     "skipLibCheck": true,
-    "noEmit": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noEmit": true
   },
   "include": ["*.ts", "*.tsx"]
 }

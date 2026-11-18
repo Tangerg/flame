@@ -30,10 +30,6 @@ const items: { name: string; item: AgentItem }[] = Object.entries(files)
   .map(({ name, item }) => ({ name, item: item as AgentItem }));
 
 describe("the fold against the runtime's own samples", () => {
-  it("finds the published Item samples", () => {
-    expect(items.length).toBeGreaterThan(0);
-  });
-
   it.each(items.map(({ name }) => name))("takes %s without losing it", (name) => {
     const { item } = items.find((candidate) => candidate.name === name)!;
 

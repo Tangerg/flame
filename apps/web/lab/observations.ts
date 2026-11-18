@@ -187,11 +187,18 @@ class PreviewObservations {
   readonly observe = (name: string, value?: ObservationValue): void => {
     const detail = valueDetail(value);
     if (detail === null) return;
-    this.#send(
-      name === OBSERVATION_NAMES.reactError ? "error" : "event",
-      name,
-      sensitiveField.test(name) ? redactedDetail : detail,
-    );
+    this.#send("event", name, sensitiveField.test(name) ? redactedDetail : detail);
+  };
+
+  readonly fail = (reason: unknown): void => {
+    if (this.#state === "disposed") return;
+    const detail = errorDetail(reason);
+    if (this.#state !== "failed") {
+      this.#state = "failed";
+      delete this.document.documentElement.dataset.labReady;
+      this.document.documentElement.dataset.labError = detail;
+    }
+    this.#send("error", OBSERVATION_NAMES.reactError, detail);
   };
 
   readonly ready = (): void => {
@@ -233,12 +240,6 @@ class PreviewObservations {
 
   #send(kind: ObservationMessage["kind"], name: string, detail: string): void {
     if (this.#state === "disposed") return;
-    // Only the transition into failure projects a reason, so the marker keeps the first cause.
-    if (kind === "error" && this.#state !== "failed") {
-      this.#state = "failed";
-      delete this.document.documentElement.dataset.labReady;
-      this.document.documentElement.dataset.labError = detail;
-    }
     if (this.parent === this.view) return;
     const normalizedName = observationName(name);
     if (!normalizedName) return;

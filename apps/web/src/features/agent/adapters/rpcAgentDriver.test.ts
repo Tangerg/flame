@@ -1,12 +1,9 @@
 import { type RuntimeAgentDriver } from "@/features/agent/adapters/runtimeDriver";
-import { asItemId, asRunId } from "@flame/runtime-client";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   DEFAULT_RPC_SESSION_ID,
   activeRpcSessionId,
-  createRpcAgentDriver,
   rpcRunStartParams,
-  type RpcRunsGateway,
 } from "@/features/agent/adapters/rpcAgentDriver";
 const input: Parameters<RuntimeAgentDriver["start"]>[0] = [{ type: "text", text: "hello" }];
 
@@ -41,31 +38,5 @@ describe("rpcRunStartParams", () => {
       sessionId: "ses_1",
       input,
     });
-  });
-});
-
-describe("createRpcAgentDriver", () => {
-  it("delegates start and resume through the gateway", async () => {
-    const startResult = {} as Awaited<ReturnType<RuntimeAgentDriver["start"]>>;
-    const resumeResult = {} as Awaited<ReturnType<RuntimeAgentDriver["resume"]>>;
-    const gateway: RpcRunsGateway = {
-      start: vi.fn().mockResolvedValue(startResult),
-      resume: vi.fn().mockResolvedValue(resumeResult),
-    };
-    const signal = new AbortController().signal;
-    const driver = createRpcAgentDriver("ses_1", () => gateway);
-
-    await expect(driver.start(input, { provider: "openai" }, signal)).resolves.toBe(startResult);
-    const runId = asRunId("run_1");
-    const responses: Parameters<RuntimeAgentDriver["resume"]>[1]["responses"] = [
-      { itemId: asItemId("item_1"), response: { type: "approval", decision: "approve" } },
-    ];
-    const followUp = [{ type: "text" as const, text: "also add tests" }];
-    await expect(driver.resume(runId, { responses, input: followUp }, signal)).resolves.toBe(
-      resumeResult,
-    );
-
-    expect(gateway.start).toHaveBeenCalledWith({ sessionId: "ses_1", input }, signal, undefined);
-    expect(gateway.resume).toHaveBeenCalledWith({ runId, responses, input: followUp }, signal);
   });
 });

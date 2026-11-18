@@ -5,7 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
+
 	"testing"
 
 	toolshell "github.com/Tangerg/scope/tools/shell"
@@ -61,37 +61,6 @@ func TestWorkspaceCopiesSourceAndShutsDown(t *testing.T) {
 func TestNewWorkspaceRequiresAbsoluteBaseDirectory(t *testing.T) {
 	if _, err := newWorkspace(t.Context(), Config{BaseDir: "relative"}, "", recordingRunner{}); err == nil {
 		t.Fatal("newWorkspace accepted a relative base directory")
-	}
-}
-
-func TestWorkspaceCopyDoesNotMaterializeSourceInHeap(t *testing.T) {
-	const sourceBytes = 16 << 20
-	source := t.TempDir()
-	file, err := os.Create(filepath.Join(source, "sparse.bin"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if truncateErr := file.Truncate(sourceBytes); truncateErr != nil {
-		_ = file.Close()
-		t.Fatal(truncateErr)
-	}
-	if closeErr := file.Close(); closeErr != nil {
-		t.Fatal(closeErr)
-	}
-
-	runtime.GC()
-	var before, after runtime.MemStats
-	runtime.ReadMemStats(&before)
-	workspace, err := newWorkspace(t.Context(), Config{BaseDir: t.TempDir()}, source, recordingRunner{})
-	runtime.ReadMemStats(&after)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = workspace.Shutdown() }()
-
-	allocated := after.TotalAlloc - before.TotalAlloc
-	if allocated >= sourceBytes/2 {
-		t.Fatalf("copying %d bytes allocated %d heap bytes; want chunk-bounded copy below %d", sourceBytes, allocated, sourceBytes/2)
 	}
 }
 

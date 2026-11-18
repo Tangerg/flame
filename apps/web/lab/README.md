@@ -15,9 +15,6 @@ npm run lab --workspace @flame/web
 ```
 
 Vite binds to `127.0.0.1:4174` and opens `/lab/`.
-Default server endpoints are owned by [`labServers.ts`](../labServers.ts).
-Browser scenarios use the current Playwright origin; built-policy checks use
-the configured preview server.
 
 Direct entry points:
 
@@ -109,10 +106,6 @@ does not prevent previewing.
 The same 1–200% scale range applies to fitting, gestures and stored cameras.
 Fit can use less than 20% to retain both complete product boards and the existing
 inset in a narrow or short canvas. Existing valid stored poses remain valid.
-The inspector's camera regression checks complete bounds, independent drafts,
-keyboard fitting and restored local camera coordinates in both browser engines.
-Each capture reveals the complete camera and its toolbar, waits for two
-animation frames, and captures those visible bounds.
 
 The observation panel captures real DOM activations, explicit sample callbacks,
 rendering errors and unhandled failures. It retains only the latest bounded
@@ -133,7 +126,7 @@ English default and canonical custom-color parsing.
 
 `foundationCatalog.ts` and `businessCatalog.ts` are the composition inputs to one
 validated `StoryCatalog`. Navigation, search, variant selectors, preview
-URLs, verification cases and source links are projections of those definitions. The catalog copies
+URLs and source links are projections of those definitions. The catalog copies
 and freezes its descriptions at construction. Production components do not
 import the lab.
 
@@ -142,8 +135,6 @@ Workspace scenario titles have one localized owner in
 preview state rows project those same names and the existing state order.
 English and Chinese use readable titles while reproducible links retain the
 canonical scene IDs. Structural fixture controls keep their existing names.
-Dock containment checks run independently for each registered state, retaining
-the existing assertions and per-test deadline with a specific failure name.
 
 Installed contribution names have a separate author: each package's public
 `declaration.json` component entry. `installVisualWorkspaceFixture.ts` selects
@@ -154,19 +145,10 @@ chooses the visible name; the Lab does not maintain a second translation map.
 Fixture IDs, scopes and captured transport bindings remain fixture-owned. Icon
 gallery is a full-view contribution and is not added to the Dock picker.
 
-Workspace installs the production conversation Find plugin alongside its existing
-shortcut owner. `searchReading.browser.spec.ts` enters Find from an unsent draft
-through the real shortcut, checks visible active matches and keyboard navigation,
-and follows material retirement, focus return, resizing and continued editing in
-both browser engines and locales. Its existing tasks retain the current word
-through ordinary 1120 × 755 and 1280 × 800 window frames, retire that witness after an
-actual nested-code wheel scroll, and resume only on explicit match navigation.
-Restoring the window also checks pending bottom-follow interference and later
-outside focus. These assertions use the existing Workspace scenario, production
-search state and real CSS Highlight ranges. Actual macOS composition is qualified
-separately in the same Lab through native Wails keys; browser text entry does not
-establish OS IME behavior. The scoped native evidence is recorded in
-[UI progress](../UI_PROGRESS.md#conversation-find-and-reading-return).
+Workspace installs the production conversation Find plugin and its shortcuts.
+Use a conversation with an unsent draft to inspect matches, focus return and
+continued editing. Use the native Wails host to inspect macOS composition.
+[Native UI evidence](../UI_PROGRESS.md#conversation-find-and-reading-return)
 
 Each component example owns only its local input, selection or disclosure state.
 Its variant vocabulary is checked against the production public API. Examples
@@ -290,11 +272,9 @@ The transport owns the notification sequence and stops delivery when a subscript
 aborts or closes. The control simulates a captured external filesystem notification,
 not live filesystem access.
 
-`fileTree.browser.spec.ts` follows keyboard Retry, file/source return, retained child
-identity, loading cancellation and unaffected root navigation in both engines.
-Existing fixture and transport unit tests cover automatic retries, cache/reinstall
-boundaries, cancellation and topic routing. These checks establish DOM/ARIA and
-interaction behavior; actual Wails AX outline/child exposure requires native acceptance.
+Use these states to inspect keyboard Retry, file and source return, retained
+children, loading cancellation and root navigation. Check Wails accessibility
+with the native host.
 
 The existing Workspace catalog also owns `dock-skills-catalog`: 80 recorded
 documents alternate project and user scopes, with 40 matching `runtime`.
@@ -389,422 +369,30 @@ components directly. Do not add a wrapper, production prop or compatibility
 branch merely to make a sample possible. Register complete business scenarios
 with `FixtureStory` targets from the existing fixture vocabulary.
 
-After changing a story, verify its real interactions, both themes, a narrow
-viewport and any native popover/modal focus path. Public components may offer
-more combinations than the named examples; these examples are purposeful
-comparisons, not a claim of exhaustive combinatorial coverage.
+After changing a story, verify the affected business or distribution contract.
+Use the existing visual comparisons for manual inspection when relevant.
 
 ## Verify
 
-Run visual cases and migrated interaction coverage through one configuration:
+Inspect visual and interaction changes in the lab with the relevant fixture, theme,
+locale and viewport. The preview reports readiness and displays the first error
+from a failed import or render. The observation log retains document errors
+and unhandled rejections.
+
+The normal Web check builds the production bundle and the lab. The Runtime HTTP
+suite verifies service behavior with local binaries and installed packages.
 
 ```sh
-npm run lab:verify --workspace @flame/web
-npm run lab:verify --workspace @flame/web -- --grep text-field
-npm run lab:verify --workspace @flame/web -- lab.browser.spec.ts
-npm run lab:verify --workspace @flame/web -- scenarios/genui
-npm run lab:verify --workspace @flame/web -- scenarios/computerConsole
-```
-
-`playwright.lab.config.ts` owns all browser verification. Its `light-en` and
-`dark-zh` projects open built, independent preview documents at `127.0.0.1:4175`,
-without gallery chrome or camera transforms. Each test projects every named
-variant directly from the catalog, checks render readiness, extracted StyleX
-rules, console errors, image decoding and horizontal overflow, then attaches a
-full-page screenshot at native scale. Popover and dialog cases also open their
-real controls, wait for their visible settled state and capture the overlay.
-Captures finish finite browser animations; motion behavior has its own interaction
-checks and native qualification. English/light/14 px and Chinese/dark/18 px
-cover catalog widths and 390 px component widths. Complete layouts retain their
-declared desktop dimensions.
-
-Reasoning variants capture both the closed preview and the opened reader. Closing
-must clip the retained body and exclude it from keyboard focus. The same Lab's
-interaction tests check stable toggle names, readable text, keyboard reading and
-return, both directly and within the production Agent fixture.
-
-The `interactions` project retains all migrated `*.browser.spec.ts` tests,
-including the WebKit suites. It uses the same lab's development server at
-`127.0.0.1:4174` because scripted protocol transitions import fixture modules.
-The `security` project runs `*.security.spec.ts` against the built preview's
-document policies and opaque program frames. Computer console tests retain
-their isolated development transport.
-Both servers use `vite.lab.config.ts`, the same catalog, documents, providers and
-fixture owners. There is no separate visual app, browser configuration or
-compatibility route. Stop a manually running lab before starting verification.
-
-Target-spacing checks qualify each fixture independently within the existing
-interaction deadline. Each document must expose actual controls; every undersized
-control retains the same clearance rule. The shared control selector excludes
-hidden native form mirrors, whose visible primitive owns the target. A document
-with only full-sized targets is valid. Font readiness replaces a fixed startup
-delay before measurement.
-
-The Workspace chrome scenario compares all eight dockable contribution names,
-four Settings names and the independent icon-gallery header with their public
-declarations in Chromium and WebKit. It checks complete row/text clipping bounds
-and hit targets inside rounded option edges, then retains the same draft,
-trajectory filter and expanded response through material and Settings return.
-The command scenario also checks the declared names in Chinese and German.
-
-Lab development prebundles the linked `@flame/icons/react` entry. Otherwise each
-isolated preview loads the icon barrel's hundreds of modules independently.
-This uses [Vite's dependency prebundling](https://vite.dev/guide/dep-pre-bundling.html)
-and retains the same package exports and shared runtime deduplication.
-After rebuilding the linked icon package, restart Lab with
-`npm run lab --workspace @flame/web -- --force` to refresh its optimized dependency.
-
-`FLAME_LAB_STORY` can select one catalog story for the capture projects; unknown
-IDs fail. Use file arguments or `--grep` to select interaction coverage. The normal
-Web check runs colocated unit tests; it does not launch browser verification.
-
-The atoms fixture's `popup-retirement` and `popup-retirement-suspense` states
-exercise controlled and uncontrolled Popovers through effect disconnection.
-Their browser cases hide the owner from inside the open panel, then verify
-retirement, outside focus and a fresh draft after restoring the same owner.
-`popup-close-unmount` checks a close callback that synchronously removes its own
-controlled root. `popup-opening-activity` and `popup-opening-suspense` retire an
-opening inside its callback and retain the same connected trigger; only a fresh
-interaction may open the reconnected popup.
-
-When a migrated check fails, trace the current component contract before changing
-its expectation. Scope retained Dock content to its named visible region, measure
-overflow at the actual reading viewport and verify literal captured results rather
-than assuming a particular presentation. Keep keyboard entry, return focus and
-draft continuity assertions. Add regression coverage to the existing scenario;
-do not introduce another fixture application or verification configuration.
-
-Reuse these fixtures in Wails to qualify native window, zoom and menu behavior.
-When a native menu is open, confirm that the input method actually operates that
-menu before attributing a key to the page. A captured menu tree alone does not
-establish keyboard routing. Check exposed menu dismissal and page Escape
-separately, retaining the exact draft and return focus across both.
-
-The existing inline-reference case follows the Workspace task from README source
-through Preview, a narrow viewport, Go to line and keyboard reading, then Escape
-back to the original reference. It also checks the package source's identity,
-return focus, transcript position at an unchanged viewport and continued Composer
-draft. Captures accompany visible-row and scroll observations in that same case.
-
-The existing Subagent header scenario follows completed task 3 of 4 through
-short-window reflow, keyboard and pointer source inspection, list return and an
-exact continued Composer draft. It checks complete source fragments against the
-actual reading viewport and Jump affordance in WebKit, English and Chinese.
-The named title reader's Home/End path retains status, Back and result position;
-its focus stop also belongs to the existing navigation contract. Wails uses the
-same scene for actual native zoom, wheel and window-change qualification.
-
-File failure checks distinguish first entry into the tree from returning to a
-previously focused row. They retain reading focus after Retry, reference return and
-unsent drafts in both languages. Narrow ordinary material uses its existing full-width opener
-and Close action; reference inspection retains its own return action. Captures
-await the admitted business outcome after the normal query retry, rather than
-treating document readiness as a completed file read.
-The same header spec samples the unsupported first read in Chromium and WebKit,
-including its pending frames. It checks that line navigation is never offered
-without text and that the admitted header, controls, Back and Copy path bounds
-remain stable across settlement. Full layout-shift rectangles are retained in the
-existing layout-shift spec; neither check changes query retry or document readiness.
-
-The existing Settings navigation scenario measures actual text ranges for mixed
-icon and iconless categories in English and Chinese, at narrow and wide sizes,
-after filtering and with logical direction mirrored. Short-window checks resize
-through 360, 240 and 360 CSS pixels of height, retaining keyboard Home/End
-activation, the complete selected row within both its list and rail, centre hit
-testing, clipping ancestors, separate pane bounds and usable pane space in both
-browser engines. Its viewport captures and geometry use the same
-Lab runner. Workspace, Skills, file and Diff scenarios target the current
-full-width material opener while preserving their original task-return assertions.
-
-Diff failure checks follow the first rejected scoped read into a pending overview.
-The surviving Refresh control receives focus while its filter is unavailable;
-success continues to the selected row or filter. Later outside focus and deliberate
-blur retire that continuation. The fixed failure scene retains its business error
-and unsent draft through narrow full-width reading and conversation return.
-
-Long Composer checks cover idle and running conversations in Chromium and WebKit,
-English/light and Chinese/dark at 18 px. They retain the same input, literal draft
-and native selection through constrained reading, wheel input, resizing and
-material return. Send or Steer/Stop must remain complete and hittable. Visibility
-requires the complete first or last line's em box inside every clipping ancestor
-and above the footer. A positive text fragment or retained value alone cannot
-admit a capture. Earlier wheel reading remains independent of the retained caret.
-
-Long Skills catalog checks use the existing Workspace scenario in Chromium and
-WebKit, with English/light/14 px and Chinese/dark/18 px profiles. They follow
-wheel reading, search reset to the first match, middle-row document entry, scoped
-instruction selection, complete source values, keyboard return, retained query
-and scroll position, refresh and continued conversation drafts. Row and source
-alignment measurements accompany captures; selection checks read the exact DOM
-Range because WebKit's rendered selection can add a paragraph newline. The
-Chinese task uses a 640 × 400 full-width material view. These frames qualify
-reflow; native page zoom remains a separate Wails check. Catalog captures await
-the accepted 80-document result as well as document readiness.
-
-Middle-row entry uses a real wheel gesture derived from the current reading
-geometry and waits for eight stable animation frames. Keyboard focus cannot
-reveal the target before its visibility assertion. After return, eight further
-frames must retain the saved offset, row focus and the complete row below the
-controls and inside the viewport. Both observations join the same case evidence.
-
-Related cases keep the same catalog through keyboard Dock collapse/reopen and
-the narrow-window full-width opener. An unchanged viewport retains its exact
-offset. After document return, twenty gradual viewport changes take the actual
-1440 × 900 native frame to 720 × 450. The selected `runtime-review-035` must stay
-completely visible below the controls while the Dock fits and after the ordinary
-full-width opener. Reflow and the different density may expose an earlier row.
-The retained search, scrollport and Composer nodes, query, result count, focus
-destination and continued draft are checked together. Geometry and rendered
-frames remain attached on failure. These cases use the existing Workspace spec
-and catalog; native page zoom is qualified separately in Wails.
-
-The existing Workspace sidebar offers `Observe layout`, off by default. It reads
-window, Dock, viewport, Composer and focus geometry without changing the material
-or its draft. Composer observations include control bounds and secondary-label
-visibility. Named screen-reader outputs expose one snapshot in full and a compact
-reading projection for native accessibility tools with bounded text nodes. The
-Composer projection includes its scrollport's offset, viewport and content height.
-The transcript projection exposes its safe reading edges, measured capacity,
-scroll position and focused reader bounds and offsets in a separate bounded output.
-It also reports the focused reader's computed line height, fractional content
-height, so native qualification can check complete lines without rounding away clipped content.
-Computed line-height is not a rendered line-box measurement; inspect the paint
-when the engine's layout precision differs from that computed decimal.
-Editable values never enter these outputs. Disabling the option clears them and
-disconnects its observers and event listeners; clean qualification keeps it off.
-The same ResizeObserver tracks the current Panel body and Composer, so filtering,
-expansion and input reflow update their geometry inside an unchanged viewport.
-The existing Workspace regression compares the reported and actual heights over
-eight rendered frames, checks growth and shrinkage, and changes content after
-disabling observation to verify that the outputs stay empty. Resizing also checks
-the Composer projection while retaining the same material, query and exact draft.
-
-The existing toolbar suite checks actual 320/280 px viewports and restoration to
-1120 px in Chromium and WebKit, with English/light/14 px and Chinese/dark/18 px.
-Idle and running scenarios retain an explicit Auto policy, complete control and
-glyph bounds, pointer hit areas, an aligned end-action group, menu focus return
-and the same draft node. Native page zoom remains a separate Wails inspection of
-these same Lab documents.
-
-Short-window toolbar checks use the same Agent scenario with its drawer closed,
-a standing Goal and an explicit Auto policy. Chromium and WebKit retain the exact
-draft, node and selection through 373 × 243 px reflow. The task follows complete
-keyboard traversal, model and Goal editor cancellation, deliberate wheel reading
-and restoration with continued editing. Each focused control must fit every
-clipping ancestor and admit five pointer hit locations over eight consecutive
-frames, with another check after capture. Wheel reading settles before keyboard
-return. These checks exercise the production Composer scrollport; they add no
-alternate fixture, runner or layout measurement authority.
-
-The existing Workspace chrome suite checks Composer reading continuity through
-three full-width Schedules visits in Chromium/WebKit, English/light/14 px and
-Chinese/dark/18 px. The first starts at a keyboard-revealed footer control; the
-second follows deliberate upward wheel reading, and the third starts at the
-outer scroll end. At an unchanged 373 × 243 px viewport,
-eight return frames must preserve the saved native offset, exact padded draft,
-selection and input/scrollport identities, with focus on the conversation.
-Hidden content retains layout without exposing the conversation to interaction
-or accessibility. Evidence includes the Plan, Goal, editor and footer geometry;
-actual Wails page zoom qualifies the native host separately.
-
-The same chrome suite checks running-header capacity at 320, 373, 480 and
-1120 px with the supported maximum 18 px font, Chromium/WebKit and English/Chinese.
-The title must retain visible space, while More, Diff and the Dock opener retain
-complete, distinct targets. Actual Tab/Enter opens the existing Session menu to
-read the complete status. Hover reveals the same value. Keyboard and pointer Diff
-visits retire the old status tip, return to the conversation when the captured
-opener has been replaced, and preserve the exact padded draft for continued input.
-These cases extend the existing Workspace scene and verification configuration.
-
-The material-header task opens the real Diff inspection in the Dock and then
-full width, retaining its source. At 18 px, both engines and languages check
-320, 373, 480 and 1120 px frames: the name remains visible, fits completely from
-373 px, and every header action retains a distinct 24 px target. Keyboard and
-pointer return tips preserve the full destination. Both returns retain the
-literal padded Composer draft for continued input after enlargement.
-
-The same chrome spec also crosses the Dock's capacity through sidebar Home/End,
-without a window resize. Both engines and languages retain the material and
-Composer nodes, exact draft and separator focus through repeated transitions.
-A read-only ResizeObserver records the actual delivery-time layout at 600 and
-880 px row widths, so a settled screenshot cannot conceal a stale capacity.
-The probe retires in `finally`; the existing console/error guard stays unchanged.
-Unit checks cover the frame publication phase, saved ratio and sampling retirement.
-
-Use `expectLabReady` from `readiness.ts` for document admission, including frames.
-It waits for visible readiness or the observation owner's terminal failure and
-reports the failing document URL and first bounded cause. Existing caller action
-timeouts remain in force. Business alerts do not imply a failed document, and
-internal render-phase measurements keep their separate purpose. Failure-reader
-regressions check actual rendered colors and text contrast as well as language,
-wrapping, pointer and keyboard recovery; a theme class alone cannot prove paint.
-Fault-injection routes retire before catalog recovery so normal caching resumes.
-Recovery checks await the actual preview documents before ending the test, rather
-than accepting a heading while its examples are still loading.
-
-Focus checks capture the containing Search proxy or Composer surface when that
-surface owns the keyboard cue. They compare its focused and blurred paint as well
-as pixels, with carets hidden and screenshot animations disabled. Disclosure
-alignment checks follow each toggle's own labelled region and summary text edge;
-they do not infer the reading axis from an inner node's margin. Both checks cover
-English/light/14 px and Chinese/dark/18 px.
-
-Facts checks follow the shared equal-column contract, including common column
-edges, source reading order and complete values inside each pair. They attach
-geometry and reveal the long attribute path before capturing it. Browser
-intersection rectangles use the same one-pixel tolerance as the other geometry
-checks, so subpixel rounding does not require an exact intersection ratio of one.
-Focus-rule checks inspect declared `outline` properties; a transition mentioning
-`outline-color` does not paint a perimeter.
-
-Lab navigation checks measure the painted outline against the viewport and
-clipping ancestors, including scrollports. They check the visible edges of an
-oversized reading region and the complete first card action after keyboard
-continuation and Escape dismissal. Child clearance must also reserve the inset
-perimeter; an unclipped outline can still be covered by preview content. These
-measurements accompany screenshot review rather than establish pixel acceptance.
-Responsive preview checks read the iframe width and its current sizing attribute
-together, preserving draft and horizontal-containment assertions while the
-ResizeObserver settles.
-
-Transcript tail checks distinguish the retained, accessibility-hidden jump
-control at the bottom from its visible, keyboard-reachable state while reading
-earlier content. Import feedback checks exercise invalid server identity and
-missing transport separately, preserving protocol validation order, drafts,
-accessible errors, repeated attempts and focus return across both themes and
-three viewport sizes.
-
-Appearance interaction checks follow current theme, font and language values
-through keyboard selection and focus return. Work-index and Brand audits use
-their production rows and installed component resources. WCAG failures attach
-the rule results and complete rendered button text/HTML to the same report,
-preserving evidence when the audit's summarized markup is truncated.
-
-Composer choice captures wait for the same short draft to fit after narrowing,
-inside its surface and clear of its footer. The existing TextArea owns width
-measurement; its ResizeObserver can leave one pending frame before sizing runs.
-The same report retains geometry from the width change and the settled draft,
-then rechecks complete text after model selection changes the toolbar.
-
-Empty-input contracts stay in the existing UI ownership scenarios for Chromium
-and WebKit. The input scene changes only the placeholder on the same uncontrolled
-TextArea, then follows width, font, typed-value precedence and form reset. A stable
-style prop keeps a hint-only update independent from other sizing triggers.
-The actual Workspace Composer checks English and Chinese hints at 18 px before
-and after narrowing, using native scroll geometry and the footer boundary rather
-than a copy of the sizing implementation. Captures accompany the assertions.
-
-Math loading checks hold the actual KaTeX stylesheet request in the existing
-Markdown scenario at desktop and 320 px widths. The lazy renderer must keep its
-pending surface until that stylesheet applies, then expose the styled formulas.
-The stylesheet belongs to the renderer module dependency rather than an
-unawaited post-mount effect. Production still loads the renderer and its distinct
-CSS chunk lazily; the static Lab build shares CSS across documents, so native
-Lab review does not independently qualify production cold loading.
-
-Paragraph checks follow the production type ladder's prose size rather than
-assuming it equals UI type. Memory and Schedule checks select the production
-Panel when a full-width host has the same accessible region name. Table checks
-follow actual overflow and preserve keyboard reading at both ends; a natural
-table can need scrolling after a Dock resize. Captures retain geometry alongside
-paint, and valid resize-to-fit coverage remains in the same scenario file.
-
-Recorded-result scroll checks wait for the preceding outer wheel and resize to
-settle before recording the parent position. Its position must stay unchanged
-over eight animation frames; the later inner gesture still requires exact equality
-and scrolling at the result boundary must continue through the transcript.
-
-Form catalog checks follow invalid submit, correction and successful local save
-at component and phone widths. Feedback must stay within the Name field and
-precede Review when stacked; adjacent Review controls must remain beside the
-input. The exact localized accessible name and field description are checked
-alongside the retained literal draft.
-At a **240 px** viewport height, invalid Save focuses Name and reveals its label,
-input and error together, including a later whitespace-only submission. Valid
-Save retains its button focus; an initially invalid example does not take focus
-on admission. Native qualification also checks the field clear of window controls.
-
-The shared UI ownership scenarios also qualify keyboard reading at both edges
-in Chromium and WebKit: wide formulas, inline tables and expanded tables.
-They hold and repeat horizontal arrows, release the key even on failure, and
-wait for elastic scrolling to settle before checking the content edge and DOM
-position. They never assign the reading position. Focus and the enclosing
-vertical position remain with their readers, and Escape returns from the table
-preview to its trigger. Each direction retains a screenshot and geometry,
-including failed attempts. The separate formula layout check uses explicit
-positions to inspect notation and resizing; it does not qualify keyboard access.
-
-The inline-table suite follows the recorded 80-row table in WebKit with English
-light/14 px/full motion and Chinese dark/18 px/reduced motion. It retains the
-Composer, its three-line draft, the table reader and its focused Expand action
-through successive CSS viewport reductions from 1440 × 900 to 720 × 450 and
-560 × 364. Every step checks focus, the reserved transcript frame and center hit
-testing. The same task opens the preview, reads its final row and column, returns
-to the original action and continues the original draft. These effective reading
-budgets exercise reflow; actual page zoom remains a separate Wails qualification.
-
-Goal and Plan reading checks use the existing Agent and Workspace catalog
-variants. The Workspace's unavailable captured Goal author permits reading;
-the registered Agent author permits editing. Checks preserve that distinction,
-cancelled edits, keyboard entry/return and each document's independent Composer
-draft through narrow resizing. Goal identity leads its supporting status in
-both source and visual order; narrow summaries may wrap that status without
-squeezing the objective into a few characters. Checks retain the full objective,
-row containment, editor value and Escape focus return. Captures wait for the whole
-reading surface to be in view and fully opaque.
-
-Installed-report checks also exercise Chinese selection through an empty search
-in both themes at narrow and desktop widths. They capture the actual heading's
-text rectangles and table before asserting that the short selection label stays
-on one line. Clearing restores search focus and the selected row while retaining
-the independent Composer draft. English authored headings keep their existing
-whole-word and wide-table reading checks in the same scenario suite.
-The same report supplies horizontal focus regressions for Chromium and WebKit.
-Keyboard entry and narrowing must reveal the complete final sorting control;
-manual horizontal reading and later Composer focus must retain their positions
-through resizing. These checks use the existing Lab fixture, shared console
-checks and browser configuration, without another visual runner or test app.
-
-Largest-font transcript audits open inline disclosures within the transcript,
-including newly mounted arguments and full output. Each click retains the
-physical trigger while the remaining control list changes, then verifies its
-expanded state and any controlled panel. The same report records every opened
-control and captures both ends of the transcript. Session and Composer menus
-are outside this expansion path.
-
-Computer outcome checks reveal the original operation text, then the recorded
-image figure and caption, asserting complete viewport visibility before capturing
-the actual page viewport. A screenshot of a long panel clipped by its enclosing
-ScrollArea is not evidence that the outcome is visible.
-
-The HTML report is `out/web/lab-report/index.html`; screenshots and a `cases.json`
-attachment record exact inputs and reproducible preview URLs. Fixture readiness
-requires a mounted surface with no unresolved lazy readers and completion of the
-Composer owner's initial draft restoration, then layout and the fonts requested
-by that layout, followed by a rendered frame. An unresolved
-surface fails at the existing arrival deadline instead of becoming ready. The
-layout-shift canary moves the actual fixed application surface and verifies both
-its displacement and the observer result. The verifier never qualifies an errored
-document as ready. There are no pixel goldens to approve automatically: inspect screenshots
-for alignment, hierarchy, clipping and states. A passing automated check establishes
-the listed rendering contracts, not complete visual acceptance or live Runtime
-behavior. Native focus, gestures and zoom still need actual Wails qualification.
-
-The current qualification results, coverage limits and remaining visual findings are
-recorded in [`UI_PROGRESS.md`](../UI_PROGRESS.md#component-lab-and-ui-visual-verification-2026-11-06).
-
-```sh
-npm run typecheck --workspace @flame/web
-npm run test --workspace @flame/web -- lab
-npm run lab:verify --workspace @flame/web -- lab.browser.spec.ts
 npm run lab:build --workspace @flame/web
-npm run check --workspace @flame/web
+npm test --workspace @flame/web -- --project runtime
 ```
 
-Install the browser matching the repository's Playwright version before running
-browser tests. Browser tests use the lab server, real components
-and its console/error guard. The normal Web check does not replace native Wails
-verification on macOS.
+Lab development prebundles the linked `@flame/icons/react` entry. If rebuilding that
+package leaves the previous version cached, restart the lab with:
+
+```sh
+npm run lab --workspace @flame/web -- --force
+```
 
 ## Fixture contracts
 
@@ -850,11 +438,6 @@ through that same captured transport input. English and Chinese paragraphs,
 authored blank lines, an unbroken path and a scrollable list exercise the actual
 Memory reader. Existing short pages remain unchanged. The named variant feeds
 the catalog, state picker and independent captures without another story list.
-Its existing Memory suite checks wrapping, local drafts, filtered-out openers,
-scope identity and conversation return in Chromium and WebKit. At 720 × 450,
-keyboard collapse to each draft endpoint must restore its reading inset without
-changing the draft, selection or focus. Edge scroll allowance is bounded by the
-computed half-leading, independently of the shared caret implementation.
 These are fixed reading inputs; unmodelled mutations still refuse and
 cancellation leaves the recorded content unchanged.
 
@@ -879,8 +462,7 @@ Tool invocations retain Runtime delivery categories, approvals and streamed
 items. Recorded Web pages in `scenarios/web-pages.json` are offline captures;
 offsets, limits and counts are Unicode codepoints. The lab never fetches those
 pages. The `genui-report` state loads the built GenUI ESM and declared Tool selector
-through the real installed captured-result lifecycle. Sandbox tests verify local
-program execution cannot access the parent or make external requests. The
+through the real installed captured-result lifecycle. The
 Computer fixture retains its isolated recorded surfaces and in-memory transport.
 Its existing story exposes control, recorded images, unreadable image/audio,
 embedded resources and resource links as typed named variants. The images variant
@@ -903,148 +485,22 @@ Agent file suggestions select literal, case-insensitive path fragments from the
 same five captured files and honor the requested limit. This keeps attachment
 inspection faithful to its inputs; it does not qualify Runtime's ranked search.
 
-The existing highlight grammar case uses a real Worker and host request
-queue for every supported grammar, alias and both themes. It verifies exact literal
-source, unknown-language text behavior, one Worker across requests, and a fresh
-Worker after disposal. Happy DOM rendering tests substitute only the Worker
-transport while retaining the production engine; they do not establish native
-Worker or CSP compatibility.
-The interaction project's Vite development server uses module Workers; production
-inline Blob delivery and inherited CSP require the built Host's native gate.
-
-The existing Code reading scenario follows the same highlighted source and padded
-six-line draft through short reading frames in Chromium and WebKit, English and
-Chinese. Its nested-evidence task repeats that draft to eighteen lines. After
-keyboard entry, the source is aligned just inside the safe edge while its fitting
-reading unit extends beyond it. A real pointer click must reveal the complete
-unit before the existing resize, wheel and material-return workflow continues.
-The first delivery sample can precede layout delivery; the following
-seven delivery samples and all eight settled samples require the complete focused
-reader, a readable line, pointer access and clearance from Jump. All sixteen samples
-remain in the same geometry attachment; those callbacks alone do not establish
-what the browser painted. Each resize now also
-retains the public Playwright Screencast's original JPEGs and a callback index with
-presentation timestamps, viewport dimensions and the resize request/acknowledgement
-times. Only byte-identical JPEGs share an attachment. Capture starts from a settled
-reading entry, spans all four resizes without resubscribing, stops in `finally`
-and retains evidence on assertion failure. Each resize must yield a frame at the
-requested dimensions after its request; acknowledgement is a separate timestamp.
-Each size also captures its settled PNG before awaiting that frame, rather than
-assuming animation callbacks alone publish compositor output.
-Sampling, including WebKit's 25 fps limit and inherited frames during viewport
-changes, does not establish every native compositor frame. A consumed internal wheel retains
-that context through another resize. The same task opens its captured trajectory
-evidence and resizes that material while its source remains hidden. The first
-Escape closes the hovered Close tooltip while retaining reader focus; the next
-returns to the same literal source at its original scroll position and the
-unchanged draft. Before another focus or scroll action, the same sixteen-sample
-geometry check requires the reader inside its safe frame, a readable line,
-pointer access and no Jump overlap while Conversation itself retains focus.
-The geometry attachments also record the outer scroll position, scroll range and
-computed scroll-anchoring policy to distinguish hidden reflow from reader scrolling.
-The same task samples the source's lower focus perimeter at four offsets within
-one line. Each actual PNG strip is compared with a control capture that hides only
-the source glyphs, preserving the focused scrollport and its layout. Source glyphs
-must not change any perimeter pixel. The original child style and native scroll
-offset are restored; exact source, focus, draft and material-return assertions remain.
-The highlighted first line and its language caption must share the same leading edge.
-The returned-reader task also captures the actual Jump band. Outside the button
-and its shadow, the PNG must contain only the canvas color; side pointer probes
-must exclude history while the button itself stays hittable. The first pointer
-activation of Jump must reach the outer scroll end and return focus inside the
-transcript. The following paragraph
-is then scrolled into the existing readable frame: all its line boxes and pointer
-targets must remain inside that frame across eight samples, with the same internal
-source offset and exact draft. These attachments use the existing task and fixture,
-without a second visual runner or golden-image inventory.
-At maximum outer scroll, the final Copy and Regenerate controls must fit completely
-inside the same safe frame and remain hittable. The table-reading task also follows
-its consumed inner wheel with continued outer reading and checks every line of
-the following paragraph against the actual safe frame.
-That draft then continues at its verified caret endpoint. These CSS
-viewport changes complement separate native page-zoom qualification; the bounded
-reader does not show all 48 source lines at once.
-
 Code wrapping uses the shared `data-wrap` preference. Schedule dialogs and
 alertdialogs remain portaled and named, with background controls outside modal
 interaction. The fixture transport owns controlled Schedule removal and sends
-`plugins.dataChanged`; draft tests retire the opener and check cancellation and
-fallback focus.
+`plugins.dataChanged`.
 
 Direct fixture links are `/lab/fixture.html?fixture=workspace&state=dock-review`
 and the other catalog-projected targets. Additional query parameters support
 existing behavior probes, such as `review-files=200`, `sidebar=collapsed`, custom
 accent colors and recorded long results. Motion defaults to `off`; only `off` and
-`full` are accepted. New UI visual scenarios belong in this catalog and their
-checks belong under `lab/`.
+`full` are accepted. Add visual scenarios to this catalog for manual inspection.
 
 Agent reading scenes also honor `sidebar=collapsed`, leaving their full reading
 frame available while viewport changes preserve local drafts. The query only
 sets the initial workspace layout; the existing workspace sidebar actions may then
 collapse, expand and resize it without replacing the current Composer. Recorded
 state-sidebar rows remain inert rather than simulating a Runtime transition.
-The existing WebKit checks measure short Composer drafts across 1120, 560 and
-390 px frames: complete text must fit, the input must remain inside its Composer,
-and sidebar changes must retain the input, draft and editing position. These
-viewport checks complement native page-zoom acceptance.
-
-The existing cross-browser UI-ownership scenarios also follow German Schedule
-authoring through 560 × 364 and 373 × 243 frames at 18 px in both themes.
-They retain the same task and conversation drafts while checking complete footer
-text, wrapped model choices, first activation, nested Escape, model refresh and
-keyboard cancellation. A focused Cron field must remain inside the body after
-each resize with its exact value and backward selection. After manual wheel
-reading, a scoped probe verifies that the component makes no further
-`scrollIntoView` calls during resize; WebKit can still reveal the focused field
-through its native scrolling. The probe forwards every native call and restores
-the method in `finally`. Geometry is attached on success and failure. A selected
-model can be taller than the smallest body; its first line must remain readable,
-and its complete name remains in the scrollable body and menu. These effective
-frames complement the native 200% and 300% review; they do not simulate page zoom
-or qualify Save, Runtime dispatch or provider execution. Oversized text editors
-also need a native caret-visibility check; fitting-field containment alone does
-not qualify their editing position.
-
-The MCP JSON import task retains the same focused textarea, exact draft and
-backward selection through those frames in English/light and Chinese/dark.
-It checks both the final line and a middle line after a wrapping mixed-language
-prefix, using the known short suffix for independent line geometry. Wheel
-reading remains at the prefix through another resize; later input resumes
-editing. Local invalid-JSON feedback and Escape retain the draft and return to
-the opener. The task loads the real installed component and shared `TextArea`;
-there is no fixture editor or parallel visual entry.
-
-The macOS browser CI job runs the existing `lab:verify` projects after normal
-generation and installs their pinned Chromium and WebKit engines. Interaction,
-accessibility and explicit WebKit scenarios share this gate; their failures fail
-CI. This WebKit revision is not proof of the Safari 26 minimum or the native
-Wails host. The optional measurement project below remains a separate explicit
-command and does not turn variable performance measurements into a functional gate.
-
-## Optional measurements
-
-The same Playwright configuration owns the `performance` project:
-
-```sh
-npm run lab:measure --workspace @flame/web
-```
-
-It runs `scenarios/*.perf.spec.ts` against the built lab in one Chromium worker,
-with normal motion. `FLAME_PERF_SAMPLES` defaults to five. Results report
-p50/p90/max and JSON under `out/web/lab/perf/`; compare runs on the same machine
-and build. Existing review and long-transcript probes retain their measurements
-of wall time, engine task/script/layout/style time, long tasks, Event Timing and
-heap. They measure one Session, not switching between long Sessions.
-
-The installed-composition story migrates the previous standalone benchmark's
-one/eight/thirty-two-frame scenes into `fixture.html`. Those variants share
-`COMPOSITION_SAMPLES` and the same fixture root, appearance, feature contexts and
-teardown as the other product scenarios. Recorded Frame control messages drive
-the real browser Realm, module evaluation, composition and close-proof code.
-Only that document's fixed control endpoint is intercepted; the transport retires
-after the module owner closes. This does not qualify a live Runtime authority.
-The former unconsumed console timing API, separate HTML and Vite configuration
-are removed. Timing is not a visual acceptance criterion.
 
 ## Design references
 

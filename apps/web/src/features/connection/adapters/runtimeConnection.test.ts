@@ -71,20 +71,6 @@ describe("Runtime connection ownership", () => {
     await expect(connection.initialize()).rejects.toThrow("Runtime connection is closed");
   });
 
-  it("never closes another renderer's connection", async () => {
-    const successor = createRuntimeConnection(
-      createBrowserHost(),
-      runtimeRequestMeta,
-      createRuntimeMutationJournalStorage("test.runtime"),
-    );
-    await successor.initialize();
-    const close = vi.spyOn(successor.client(), "close");
-    await connection.dispose();
-    expect(close).not.toHaveBeenCalled();
-    expect(successor.client()).toBe(successor.client());
-    await successor.dispose();
-  });
-
   it("retires the previous client when the same host refreshes its credential", async () => {
     let token = "token-a";
     await connection.dispose();

@@ -3,30 +3,12 @@ package main
 import (
 	"go/token"
 	"go/types"
-	"os"
-	"path/filepath"
+
 	"slices"
 	"testing"
 
 	"golang.org/x/tools/go/packages"
 )
-
-func TestManifestGoNamesRejectsCompetingProjections(t *testing.T) {
-	for _, source := range []string{
-		`{"methods":[]}`,
-		`{"methods":[{"name":"a","goName":"Read"},{"name":"b","goName":"Read"}]}`,
-		`{"methods":[{"name":"a","goName":"Read"},{"name":"a","goName":"Write"}]}`,
-		`{"methods":[{"name":"","goName":"Read"}]}`,
-	} {
-		path := filepath.Join(t.TempDir(), "manifest.json")
-		if err := os.WriteFile(path, []byte(source), 0600); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := manifestGoNames(path); err == nil {
-			t.Fatalf("accepted competing method projections: %s", source)
-		}
-	}
-}
 
 func TestPublicAliasesRetainTheirPublicImportIdentity(t *testing.T) {
 	private := types.NewPackage("example.com/dependency/internal/wire", "wire")

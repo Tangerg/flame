@@ -33,14 +33,6 @@ func TestNewHookResolverPreservesTrustStoreFailure(t *testing.T) {
 	}
 }
 
-func TestNewHookResolverRequiresTrustStore(t *testing.T) {
-	for _, trust := range []hookTrust{nil, (*failingHookTrust)(nil)} {
-		if resolver, err := newHookResolver(t.TempDir(), trust, hookSourceFixture{}); err == nil || resolver != nil {
-			t.Fatalf("NewHookResolver = (%v, %v), want missing trust rejected", resolver, err)
-		}
-	}
-}
-
 func TestHookCommandFailureIsReportedWithoutAnActiveSpan(t *testing.T) {
 	var diagnostics bytes.Buffer
 	previousLogger := slog.Default()

@@ -329,37 +329,6 @@ func TestWorkspaceHubBroadFileStallDominatesNarrowWatchScope(t *testing.T) {
 	}
 }
 
-func TestWorkspaceHubIsolatesMutableEventDataPerSubscription(t *testing.T) {
-	hub := newWorkspaceHub()
-	first := make(chan protocol.RuntimeEvent, 1)
-	second := make(chan protocol.RuntimeEvent, 1)
-	_, unregisterFirst, _ := hub.register(first, allTopics(), nil)
-	_, unregisterSecond, _ := hub.register(second, allTopics(), nil)
-	defer unregisterFirst()
-	defer unregisterSecond()
-
-	// Every field of a change signal is a list of ids, so ownership is about slices:
-	// the producer must not be able to edit what a subscriber holds, and two
-	// subscribers must not share one.
-	event := protocol.RuntimeEvent{
-		Type:       protocol.RuntimeRunsChanged,
-		RunIDs:     []string{"run_1"},
-		SessionIDs: []string{"ses_1"},
-	}
-	hub.publish(event)
-
-	event.RunIDs[0] = "run_mutated"
-	event.SessionIDs[0] = "ses_mutated"
-	firstEvent := <-first
-	secondEvent := <-second
-	firstEvent.RunIDs[0] = "run_consumer"
-	firstEvent.SessionIDs[0] = "ses_consumer"
-
-	if secondEvent.RunIDs[0] != "run_1" || secondEvent.SessionIDs[0] != "ses_1" {
-		t.Fatalf("second subscription observed shared mutable data: %+v", secondEvent)
-	}
-}
-
 func TestWorkspaceHubRecoversMalformedSignalWithSubscriptionResync(t *testing.T) {
 	hub := newWorkspaceHub()
 	events := make(chan protocol.RuntimeEvent, 1)

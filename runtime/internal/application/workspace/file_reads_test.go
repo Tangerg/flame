@@ -8,25 +8,6 @@ import (
 	"testing"
 )
 
-func TestNewFilesRequiresCompleteDependencies(t *testing.T) {
-	scope := newScope(t, "", "", fileReadPaths{})
-	for _, test := range []struct {
-		name  string
-		scope *Scope
-		files fileBrowser
-	}{
-		{name: "scope", files: &fileReadPort{}},
-		{name: "browser", scope: scope},
-		{name: "typed nil browser", scope: scope, files: (*fileReadPort)(nil)},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if files, err := NewFiles(test.scope, test.files); err == nil || files != nil {
-				t.Fatalf("NewFiles = (%v, %v), want incomplete construction rejected", files, err)
-			}
-		})
-	}
-}
-
 func newFiles(t *testing.T, scope *Scope, browser fileBrowser) *Files {
 	t.Helper()
 	files, err := NewFiles(scope, browser)

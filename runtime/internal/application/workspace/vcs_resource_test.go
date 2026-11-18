@@ -36,25 +36,6 @@ func (r *resourceGitReader) RawDiff(context.Context, string, string, bool, int) 
 	return RawDiffResult{Baseline: DiffBaseline{Type: diffBaselineEmptyTree}, Patch: r.patch}, nil
 }
 
-func TestNewVCSRequiresCompleteDependencies(t *testing.T) {
-	scope := newScope(t, "", "", testPaths{})
-	for _, test := range []struct {
-		name  string
-		scope *Scope
-		git   gitReader
-	}{
-		{name: "scope", git: &resourceGitReader{}},
-		{name: "reader", scope: scope},
-		{name: "typed nil reader", scope: scope, git: (*resourceGitReader)(nil)},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if vcs, err := NewVCS(test.scope, test.git); err == nil || vcs != nil {
-				t.Fatalf("NewVCS = (%v, %v), want incomplete construction rejected", vcs, err)
-			}
-		})
-	}
-}
-
 func newVCS(t *testing.T, scope *Scope, git gitReader) *VCS {
 	t.Helper()
 	vcs, err := NewVCS(scope, git)

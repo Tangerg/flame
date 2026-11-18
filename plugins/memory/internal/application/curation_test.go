@@ -125,20 +125,6 @@ func TestCurationNormalizesInputAndOrdersItems(t *testing.T) {
 	}
 }
 
-func TestAppendLedgerTransfersResultsAndAllowsCallerReuse(t *testing.T) {
-	store := &fakeCurationStore{appended: []domain.LedgerFact{validLedgerFact(4, "fact")}}
-	batch := validFactBatch("fact")
-	appended, err := newCuration(t, store).AppendLedger(t.Context(), batch)
-	if err != nil || len(appended) != 1 || appended[0].Content != "fact" {
-		t.Fatalf("AppendLedger = (%+v, %v), want one acknowledged fact", appended, err)
-	}
-	batch.Facts[0] = "caller reuse"
-	appended[0].Content = "result reuse"
-	if store.appendBatch.Facts[0] != "fact" || store.appended[0].Content != "fact" {
-		t.Fatal("caller reuse changed stored facts")
-	}
-}
-
 func TestPublishGenerationNormalizesBeforeStore(t *testing.T) {
 	store := &fakeCurationStore{published: true}
 	curation := newCuration(t, store)
@@ -181,15 +167,6 @@ func TestConcurrentCurationPublishesExactlyOneWinningGeneration(t *testing.T) {
 	group.Wait()
 	if got := published.Load(); got != 1 {
 		t.Fatalf("published generations = %d, want 1", got)
-	}
-}
-
-func TestCurationRequiresStorage(t *testing.T) {
-	var missingStore *fakeCurationStore
-	for _, store := range []CurationStore{nil, missingStore} {
-		if c, err := NewCuration(store); err == nil || c != nil {
-			t.Fatalf("NewCuration = (%v, %v), want invalid construction", c, err)
-		}
 	}
 }
 

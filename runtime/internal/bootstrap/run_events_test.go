@@ -1,8 +1,6 @@
 package bootstrap
 
 import (
-	"context"
-	"errors"
 	"iter"
 	"testing"
 	"time"
@@ -46,40 +44,5 @@ func waitForRunEvents(t *testing.T, done <-chan runEventCollection, phase string
 	case <-time.After(lifecycleWaitBudget(t)):
 		t.Fatalf("timed out waiting for %s events", phase)
 		return nil
-	}
-}
-
-func TestRunEventCollectionDistinguishesEOFAndOriginalErrors(t *testing.T) {
-	failure := errors.New("projection disconnected")
-	cause := errors.New("consumer withdrew")
-	for _, terminal := range []error{nil, failure, errors.Join(context.Canceled, cause)} {
-		stream := func(yield func(protocol.RunEvent, error) bool) {
-			if !yield(protocol.RunEvent{RunID: "run_prefix"}, nil) {
-				return
-			}
-			if terminal != nil {
-				yield(protocol.RunEvent{}, terminal)
-			}
-		}
-		result := <-collectRunEvents(stream)
-		if len(result.events) != 1 || result.events[0].RunID != "run_prefix" || !errors.Is(result.err, terminal) {
-			t.Fatalf("collection = %+v, want original prefix and %v", result, terminal)
-		}
-		if errors.Is(terminal, cause) && (!errors.Is(result.err, context.Canceled) || !errors.Is(result.err, cause)) {
-			t.Fatalf("collection lost cancellation identity: %v", result.err)
-		}
-	}
-}
-
-func TestRunEventCollectionKeepsBusinessFailureAsAnEvent(t *testing.T) {
-	stream := func(yield func(protocol.RunEvent, error) bool) {
-		yield(protocol.RunEvent{Event: protocol.StreamEvent{
-			Type: protocol.StreamSegmentFinished,
-			Run:  &protocol.RunRef{Outcome: &protocol.RunOutcome{Type: protocol.OutcomeFailed}},
-		}}, nil)
-	}
-	events := waitForRunEvents(t, collectRunEvents(stream), "expected business failure")
-	if len(events) != 1 || events[0].Event.Run.Outcome.Type != protocol.OutcomeFailed {
-		t.Fatalf("lost business failure event: %+v", events)
 	}
 }

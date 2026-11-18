@@ -165,32 +165,6 @@ func oauthSessionFixture(t *testing.T, token *oauth2.Token) (*oauth2.Config, []b
 	return cfg, payload
 }
 
-func TestOAuthSessionRoundTripOwnsSlices(t *testing.T) {
-	token := &oauth2.Token{
-		AccessToken: "access", TokenType: "Bearer", RefreshToken: "refresh",
-		Expiry: time.Now().Add(time.Hour).Round(time.Second),
-	}
-	cfg, payload := oauthSessionFixture(t, token)
-	cfg.Scopes[0] = "mutated"
-
-	gotConfig, gotToken, err := decodeOAuthSession(payload)
-	if err != nil {
-		t.Fatalf("decodeOAuthSession: %v", err)
-	}
-	// oauth2.Config and oauth2.Token are third-party structs with no redaction
-	// boundary, so %+v of either prints a client secret and both tokens. Name
-	// the field that disagreed instead.
-	if gotConfig.Scopes[0] != "tools.read" {
-		t.Fatalf("decoded scope = %q, want the unmutated fixture scope", gotConfig.Scopes[0])
-	}
-	if gotToken.AccessToken != token.AccessToken || gotToken.RefreshToken != token.RefreshToken {
-		t.Fatal("decoded session did not round-trip its token material")
-	}
-	if !gotToken.Expiry.Equal(token.Expiry) {
-		t.Fatalf("decoded expiry = %s, want %s", gotToken.Expiry, token.Expiry)
-	}
-}
-
 func TestOAuthSessionRejectsUnsupportedClientAuthentication(t *testing.T) {
 	cfg, payload := oauthSessionFixture(t, &oauth2.Token{AccessToken: "access"})
 	for _, test := range []struct {

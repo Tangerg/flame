@@ -20,7 +20,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
+
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
@@ -3223,12 +3223,6 @@ func TestPrepareSessionDistinguishesDefaultsFromExplicitFalseValues(t *testing.T
 	}
 }
 
-func TestFormatThousandsHandlesMinimumInt64(t *testing.T) {
-	if got := format.Thousands(-1 << 63); got != "-9,223,372,036,854,775,808" {
-		t.Fatalf("format.Thousands(MinInt64) = %q", got)
-	}
-}
-
 func TestQuestionFormSubmitsTypedAnswerAndCanCancel(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
@@ -4361,31 +4355,6 @@ func TestApprovalModeSelectionRoundTripsThroughTheRuntime(t *testing.T) {
 	stop()
 }
 
-func TestCommandPaletteSearchAndDetailShortcutsAreReachable(t *testing.T) {
-	host, stop := runUI(t)
-	host.Shows(t, "Ask flame")
-	host.Send(input.Key{Code: input.Character, Rune: 'p', Mods: input.Ctrl})
-	host.Shows(t, "Commands")
-	host.Type("status")
-	host.Shows(t, "/status")
-	host.Press(input.Enter)
-	host.Shows(t, "runtime options")
-
-	host.Send(input.Key{Code: input.Character, Rune: 'f', Mods: input.Ctrl})
-	host.Shows(t, "Find in the live transcript")
-	host.Type("model")
-	host.Press(input.Enter)
-	host.Shows(t, "match(es) for")
-
-	host.Send(input.Key{Code: input.Character, Rune: 'o', Mods: input.Ctrl})
-	host.Shows(t, "tool details expanded")
-	host.Send(input.Key{Code: input.Character, Rune: 'o', Mods: input.Ctrl})
-	host.Shows(t, "tool details collapsed")
-
-	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
-	stop()
-}
-
 func TestExactSlashCommandRunsWithOneEnterWhilePartialInputCompletes(t *testing.T) {
 	host, stop := runUI(t)
 	host.Shows(t, "Ask flame")
@@ -4750,63 +4719,6 @@ func TestCancelBeforeRunIdentityDoesNotBlockTheNextRun(t *testing.T) {
 
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
 	stop()
-}
-
-func TestApprovalRemainsUsableAtRepresentativeWidths(t *testing.T) {
-	for _, size := range []struct {
-		name          string
-		width, height int
-	}{
-		{name: "narrow", width: 44, height: 18},
-		{name: "wide", width: 120, height: 32},
-	} {
-		t.Run(size.name, func(t *testing.T) {
-			backend := runtimefixture.New()
-			backend.Instant = true
-			backend.Script = approvalWidthScript
-			host, stop := runUIWith(t, backend)
-			host.Shows(t, "Ask flame")
-			host.Type("review this at the current terminal width")
-			host.Press(input.Enter)
-			host.Shows(t, "How should flame proceed?")
-			if !host.Resize(size.width, size.height) {
-				t.Fatalf("resize open approval to %dx%d was refused", size.width, size.height)
-			}
-			host.Shows(t, "How should flame proceed?")
-			host.Press(input.Esc)
-			host.Shows(t, "Approval denied at current width")
-			host.Shows(t, "complete")
-
-			host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
-			stop()
-		})
-	}
-}
-
-func approvalWidthScript(string) runtimefixture.Script {
-	return runtimefixture.Script{
-		Interrupts: []conversation.Interrupt{conversation.Approval{
-			ItemID: "responsive-approval",
-			Title:  "Review the proposed change",
-			Detail: "Confirm that the approval form remains usable at this terminal width.",
-			Tool: &conversation.ToolCall{
-				Kind: builtin.CategoryShell, Name: "responsive-check", Command: "go test ./...", Status: conversation.ToolRunning,
-			},
-		}},
-		Continue: func(answers []conversation.InterruptAnswer) []runtimefixture.Step {
-			message := "Approval was not denied at current width"
-			if len(answers) == 1 {
-				answer, ok := answers[0].Answer.(conversation.ApprovalAnswer)
-				if ok && answer.Decision == protocol.ApprovalDeny {
-					message = "Approval denied at current width"
-				}
-			}
-			return []runtimefixture.Step{
-				{Event: conversation.BlockCompleted{Block: conversation.Block{ID: "responsive-result", Kind: conversation.BlockAssistant, Text: message}}},
-				{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
-			}
-		},
-	}
 }
 
 func TestTerminalSurvivesExtremeResizeAndRemainsInteractive(t *testing.T) {

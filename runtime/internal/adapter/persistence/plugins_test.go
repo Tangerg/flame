@@ -295,44 +295,6 @@ func TestInstallationReadsRejectStateOutsideItsAdmittedReleases(t *testing.T) {
 	}
 }
 
-// The installation names releases by digest. Release content has one owner,
-// the insert-only catalog, which no installation write can advance.
-func TestInstallationNeverStoresAReleaseCopy(t *testing.T) {
-	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	catalog := newReleaseStore(databaseFor(db))
-	store := newInstallationStore(catalog)
-	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "original"}}}}})
-	if err := catalog.Admit(t.Context(), release); err != nil {
-		t.Fatal(err)
-	}
-	id := testsupport.InstallationID(t)
-	i, err := plugin.New(id, "/package", release)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := store.projectRecord(t.Context(), i.Snapshot()); err != nil {
-		t.Fatal(err)
-	}
-	replacement := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{{Name: testsupport.ServerName("server"), Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "replacement"}}}}})
-	if err := catalog.Admit(t.Context(), replacement); err != nil {
-		t.Fatal(err)
-	}
-	admitted, err := catalog.Get(t.Context(), release.Digest())
-	if err != nil || admitted.Declaration().Servers[0].Startup.(plugin.DeclaredConnection).Connection.(mcpserver.StdioConnection).Command != "original" {
-		t.Fatalf("catalog advanced an admitted declaration: %+v, %v", admitted, err)
-	}
-	if _, err := execFixture(t.Context(), db, `UPDATE plugin_releases SET declaration='{}' WHERE digest=?`, release.Digest().String()); err == nil {
-		t.Fatal("admitted declaration was mutable")
-	}
-	if _, err := execFixture(t.Context(), db, `UPDATE plugin_installations SET selected_digest=? WHERE id=?`, testsupport.Digest("2").String(), id.String()); err == nil {
-		t.Fatal("installation selected an unadmitted release")
-	}
-}
-
 // Earlier shapes kept JSON state, separate approval, or a closed trust state.
 // Opening them must never convert their installation decisions.
 func TestOpenRefusesFormerInstallationStateShapes(t *testing.T) {

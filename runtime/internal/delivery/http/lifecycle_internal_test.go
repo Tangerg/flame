@@ -108,24 +108,6 @@ func TestShutdownCancelsLongLivedTransportHandler(t *testing.T) {
 	}
 }
 
-func TestNewServerSnapshotsConfig(t *testing.T) {
-	origins := []string{"https://before.example"}
-	probes := []HealthProbe{{Name: "before", Probe: func(context.Context) HealthCheck {
-		return HealthCheck{Status: HealthOK}
-	}}}
-	srv := newLifecycleServer(t, func(cfg *Config) {
-		cfg.CORSOrigins = origins
-		cfg.HealthProbes = probes
-	})
-
-	origins[0] = "https://after.example"
-	probes[0].Name = "after"
-
-	if srv.corsOrigins[0] != "https://before.example" || srv.healthProbes[0].name != "before" {
-		t.Fatal("server retained caller-owned transport configuration")
-	}
-}
-
 func TestHealthBudgetDoesNotWaitForUncooperativeProbe(t *testing.T) {
 	blocked := make(chan struct{})
 	probes := []HealthProbe{

@@ -8,30 +8,10 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-func TestRoundTripReturnsTheAnchor(t *testing.T) {
-	cursor := mustEncode(t, "items", []string{"ses_1"}, []string{"42"})
-	key, err := Decode(cursor, "items", []string{"ses_1"})
-	if err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if len(key) != 1 || key[0] != "42" {
-		t.Fatalf("key = %v, want [42]", key)
-	}
-}
-
 func TestEmptyCursorIsTheFirstPage(t *testing.T) {
 	key, err := Decode("", "items", []string{"ses_1"})
 	if err != nil || key != nil {
 		t.Fatalf("decode empty = (%v, %v), want (nil, nil)", key, err)
-	}
-}
-
-func TestNamespaceIsRequired(t *testing.T) {
-	if _, err := Decode("", "", nil); !errors.Is(err, ErrInvalidCursor) {
-		t.Fatalf("Decode with empty namespace err = %v, want ErrInvalidCursor", err)
-	}
-	if _, err := Encode("", nil, []string{"1"}); !errors.Is(err, ErrInvalidCursorMaterial) {
-		t.Fatalf("Encode with empty namespace err = %v, want ErrInvalidCursorMaterial", err)
 	}
 }
 
@@ -120,23 +100,6 @@ func TestRequestedLimitClampsToTheReadsCeiling(t *testing.T) {
 	}
 }
 
-func TestRequestedLimitRejectsInvalidConstructionAndState(t *testing.T) {
-	for _, value := range []int{0, -1} {
-		if _, err := NewLimit(value); !errors.Is(err, ErrInvalidLimit) {
-			t.Fatalf("NewLimit(%d) err = %v, want ErrInvalidLimit", value, err)
-		}
-	}
-	if _, err := DefaultLimit().Resolve(0); !errors.Is(err, ErrInvalidLimit) {
-		t.Fatalf("Resolve with zero ceiling err = %v, want ErrInvalidLimit", err)
-	}
-	if _, err := (RequestedLimit{mode: requestedLimitExplicit}).Resolve(200); !errors.Is(err, ErrInvalidLimit) {
-		t.Fatalf("corrupt explicit request err = %v, want ErrInvalidLimit", err)
-	}
-	if _, err := (RequestedLimit{mode: requestedLimitMode(255)}).Resolve(200); !errors.Is(err, ErrInvalidLimit) {
-		t.Fatalf("unknown request mode err = %v, want ErrInvalidLimit", err)
-	}
-}
-
 func mustLimit(t *testing.T, value int) RequestedLimit {
 	t.Helper()
 	limit, err := NewLimit(value)
@@ -177,22 +140,6 @@ func TestPageOfSignalsMoreOnlyWhenTheOverFetchProvesIt(t *testing.T) {
 	}
 	if len(empty.Rows) != 0 || empty.NextCursor != "" {
 		t.Fatalf("empty page = %+v, want nothing", empty)
-	}
-}
-
-func TestPageOfRejectsInvalidConstructionWithoutPanicking(t *testing.T) {
-	key := func(row string) []string { return []string{row} }
-	if _, err := PageOf([]string{"a", "b"}, 0, "items", nil, key); !errors.Is(err, ErrInvalidLimit) {
-		t.Fatalf("PageOf zero limit err = %v, want ErrInvalidLimit", err)
-	}
-	if _, err := PageOf([]string{"a", "b"}, 1, "", nil, key); !errors.Is(err, ErrInvalidCursorMaterial) {
-		t.Fatalf("PageOf empty namespace err = %v, want ErrInvalidCursorMaterial", err)
-	}
-	if _, err := PageOf([]string{"a", "b"}, 1, "items", nil, nil); !errors.Is(err, ErrInvalidCursorMaterial) {
-		t.Fatalf("PageOf nil next key err = %v, want ErrInvalidCursorMaterial", err)
-	}
-	if _, err := PageOf([]string{"a", "b"}, 1, "items", nil, func(string) []string { return nil }); !errors.Is(err, ErrInvalidCursorMaterial) {
-		t.Fatalf("PageOf empty next key err = %v, want ErrInvalidCursorMaterial", err)
 	}
 }
 

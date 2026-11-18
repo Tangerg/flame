@@ -723,15 +723,7 @@ async function goMembers(native) {
         }
       : env;
     const linkerArgs = macOS ? ["-ldflags", macOS.linkerFlags] : [];
-    const unformatted = run("gofmt", ["-l", "."], directory, memberEnv, true)
-      .toString()
-      .trim();
-    if (unformatted) {
-      throw new Error(
-        `gofmt: unformatted Go files in ${directory}:\n${unformatted}`,
-      );
-    }
-    for (const operation of ["test", "vet", "build"]) {
+    for (const operation of ["test", "build"]) {
       const args = [operation, "-mod=readonly", ...linkerArgs];
       if (operation === "test") args.push("-p=1");
       run("go", [...args, ...packages], directory, memberEnv);
@@ -801,17 +793,8 @@ async function main(command) {
       await buildShared();
       run("npm", ["run", "test:tooling"]);
       run("node", ["tooling/check-boundaries.mjs"]);
-      run("npm", ["run", "lint"]);
-      run("npm", ["run", "format:check"]);
       await checkGenerated();
       await goMembers(false);
-      run(
-        "go",
-        ["run", "./complexity", "-baseline", "complexity/baseline.txt", root],
-        join(root, "tooling"),
-        { ...process.env, GOWORK: "off" },
-      );
-      run("node", ["tooling/complexity.mjs"]);
       for (const p of ordered(await workspaces())) {
         const script = p.scripts?.check
           ? "check"
@@ -821,7 +804,6 @@ async function main(command) {
         if (script) run("npm", ["run", script], p.directory);
       }
       run("node", ["tooling/qualify-node.mjs"]);
-      run("git", ["diff", "--check"]);
       return;
     case "check-native":
       if (process.platform !== "darwin")

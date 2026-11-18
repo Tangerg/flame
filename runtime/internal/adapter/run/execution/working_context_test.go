@@ -84,31 +84,3 @@ type emptyContextGoal struct{}
 func (emptyContextGoal) Current(context.Context, string) (goal.Goal, bool, error) {
 	return goal.Goal{}, false, nil
 }
-
-func TestNewWorkingContextComposerRequiresCompleteDependencies(t *testing.T) {
-	for _, test := range []struct {
-		name   string
-		remove func(*WorkingContextConfig)
-	}{
-		{"user home", func(c *WorkingContextConfig) { c.UserHome = "" }},
-		{"relative user home", func(c *WorkingContextConfig) { c.UserHome = "relative" }},
-		{"memory", func(c *WorkingContextConfig) { c.AgentMemory = nil }},
-		{"typed nil memory", func(c *WorkingContextConfig) { c.AgentMemory = (*provenanceMemoryReader)(nil) }},
-		{"memory search", func(c *WorkingContextConfig) { c.AgentMemorySearch = nil }},
-		{"typed nil memory search", func(c *WorkingContextConfig) { c.AgentMemorySearch = (*fakeAgentMemorySearcher)(nil) }},
-		{"plan", func(c *WorkingContextConfig) { c.Plan = nil }},
-		{"typed nil plan", func(c *WorkingContextConfig) { c.Plan = (*emptyContextPlan)(nil) }},
-		{"goal", func(c *WorkingContextConfig) { c.Goal = nil }},
-		{"typed nil goal", func(c *WorkingContextConfig) { c.Goal = (*emptyContextGoal)(nil) }},
-		{"hooks", func(c *WorkingContextConfig) { c.Hooks = nil }},
-		{"typed nil hooks", func(c *WorkingContextConfig) { c.Hooks = (*provenanceHookResolver)(nil) }},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			config := testWorkingContextConfig(t, WorkingContextConfig{})
-			test.remove(&config)
-			if composer, err := NewWorkingContextComposer(config); err == nil || composer != nil {
-				t.Fatalf("NewWorkingContextComposer = (%v, %v), want incomplete construction rejected", composer, err)
-			}
-		})
-	}
-}

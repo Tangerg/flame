@@ -601,8 +601,7 @@ Application builds use the repository workspace. First-party backend sources
 live beside their declarations and UI in `plugins/<name>/backend`, inside the
 `plugins` workspace module. Feature implementation packages stay under each
 `plugins/<name>/internal` directory; external consumers use published contracts
-and the installed executable. The plugin architecture gate rejects any
-`runtime/internal` import, and Runtime tests use generated consumer codecs rather
+and the installed executable. Runtime tests use generated consumer codecs rather
 than private plugin implementations. The author
 exporter repackages each plugin as one independent, separately versioned module with
 content-addressed SDK source archives and vendored dependencies. Its build runs with

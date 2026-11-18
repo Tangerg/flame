@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/ui/core/program"
-	"github.com/Tangerg/oolong/ui/core/text"
+
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
@@ -40,23 +40,6 @@ func TestBrandBannerProjectsBuildModelAndWorkspaceResponsively(t *testing.T) {
 	minimal := drawStatic(t, banner, 1, 1)
 	if strings.TrimSpace(minimal) == "" {
 		t.Fatal("minimal brand banner rendered nothing")
-	}
-}
-
-func TestLargeBrandMarksFitTheirResponsiveBreakpoint(t *testing.T) {
-	for name, mark := range map[string][]string{"unicode": unicodeBrandMark, "ASCII": asciiBrandMark} {
-		t.Run(name, func(t *testing.T) {
-			markWidth := text.Width(mark[0])
-			for row, line := range mark {
-				width := text.Width(line)
-				if width != markWidth {
-					t.Fatalf("mark row %d width = %d, want aligned width %d", row, width, markWidth)
-				}
-				if width > brandMarkMinWidth {
-					t.Fatalf("mark row %d width = %d, exceeds breakpoint %d", row, width, brandMarkMinWidth)
-				}
-			}
-		})
 	}
 }
 

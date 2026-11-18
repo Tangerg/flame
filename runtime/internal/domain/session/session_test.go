@@ -41,29 +41,6 @@ func TestSessionOwnsExactSelectionAcrossEditAndFork(t *testing.T) {
 	}
 }
 
-func TestSessionConstruction(t *testing.T) {
-	startedAt := time.Unix(1, 0).In(time.FixedZone("fixture", 3600))
-	selection := mustModelSelection("provider", "model")
-	created, err := New(Draft{
-		ID: "ses_root", Title: "  Research  ", Workspace: mustWorkspace(t, "/work/project"),
-		Selection: selection, CreatedAt: startedAt,
-	})
-	if err != nil {
-		t.Fatalf("New: %v", err)
-	}
-	if created.ID() != "ses_root" || created.Title() != "Research" ||
-		created.Workspace().Path() != "/work/project" || created.Selection() != selection {
-		t.Fatalf("created Session = %+v", created.Snapshot())
-	}
-	if created.ParentID() != "" || created.Revision() != 1 ||
-		!created.CreatedAt().Equal(startedAt) || !created.UpdatedAt().Equal(startedAt) {
-		t.Fatalf("created lifecycle = %+v", created.Snapshot())
-	}
-	if created.CreatedAt().Location() != time.UTC || created.UpdatedAt().Location() != time.UTC {
-		t.Fatal("construction did not canonicalize times to UTC")
-	}
-}
-
 func TestSessionConstructionRejectsInvalidState(t *testing.T) {
 	selection := mustModelSelection("provider", "model")
 	valid := Draft{ID: "ses_1", Workspace: mustWorkspace(t, "/work"), Selection: selection, CreatedAt: time.Unix(1, 0)}

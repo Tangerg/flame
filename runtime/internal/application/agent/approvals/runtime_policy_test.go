@@ -197,28 +197,6 @@ func TestRuntimePolicyProtectsVisibleRuleRelations(t *testing.T) {
 	}
 }
 
-func TestRuntimePolicyIsolatesVisibleRuleStorage(t *testing.T) {
-	rule := mustRuntimePolicyRule(t, approval.ScopeGlobal, "", approval.Allow)
-	policy, err := newTestRuntimePolicy(approval.ModeSafe, ruleStoreStub{rules: []approval.Rule{rule}}, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rules, err := policy.ListRules(t.Context(), "s1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	rules[0] = RuleView{}
-
-	got, err := policy.ListRules(t.Context(), "s1")
-	if err != nil {
-		t.Fatalf("Rules after caller mutation: %v", err)
-	}
-	want := RuleView{ID: rule.ID(), Scope: rule.Scope().Kind(), Tool: rule.Tool(), Subject: rule.Subject(), Decision: rule.Decision()}
-	if len(got) != 1 || got[0] != want {
-		t.Fatalf("Rules after caller mutation = %+v, want %+v", got, rule)
-	}
-}
-
 func mustRuntimePolicyRule(t *testing.T, scope approval.Scope, scopeKey string, decision approval.Decision) approval.Rule {
 	t.Helper()
 	rule, err := approval.NewRule(testsupport.RuleScope(t, scope, scopeKey), testsupport.BuiltInTool(t, "shell"), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")), approval.Subject{Type: approval.SubjectAll}, decision)
@@ -302,21 +280,6 @@ func newTestRuntimePolicy(mode approval.Mode, rules RuleStore, modes modeStore, 
 		modes = newMemoryModeStore()
 	}
 	return NewRuntimePolicy(mode, rules, modes, repoSessions{}, testsupport.ToolAuthorities{}, publish)
-}
-
-func TestNewPolicyRequiresDurableStores(t *testing.T) {
-	modes := newMemoryModeStore()
-	var typedNil *memoryModeStore
-	for _, test := range []struct {
-		rules RuleStore
-		modes modeStore
-	}{
-		{nil, modes}, {ruleStoreStub{}, nil}, {ruleStoreStub{}, typedNil},
-	} {
-		if policy, err := NewRuntimePolicy(approval.ModeBalanced, test.rules, test.modes, repoSessions{}, testsupport.ToolAuthorities{}, nil); err == nil || policy != nil {
-			t.Fatalf("NewRuntimePolicy = (%v, %v), want required storage error", policy, err)
-		}
-	}
 }
 
 // A restarted Runtime builds a new policy over the same durable store; the

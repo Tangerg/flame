@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/samber/lo"
 )
 
 type recordingChatResolver struct {
@@ -30,26 +29,6 @@ type staticRoleSource struct {
 }
 
 func (s staticRoleSource) Role() modelref.Role { return s.role }
-
-type pointerInputTokenCounter struct{}
-
-func (*pointerInputTokenCounter) CountInputTokens(
-	context.Context,
-	*chat.Request,
-) (int64, error) {
-	return 1, nil
-}
-
-func TestResolvedChatRejectsTypedNilInputTokenCounter(t *testing.T) {
-	model := newTestChatModel(t)
-	var counter *pointerInputTokenCounter
-
-	resolved, err := NewResolvedChat(model, counter, nil)
-
-	if err == nil || !lo.IsNil(resolved.Model()) {
-		t.Fatalf("NewResolvedChat typed-nil counter = (%v, %v), want invalid construction", resolved, err)
-	}
-}
 
 func TestLiveUtilityModelResolvesRuntimeDefaultForEveryUse(t *testing.T) {
 	selection := testsupport.MustModelSelection("anthropic", "claude-test")

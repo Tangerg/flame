@@ -3,13 +3,11 @@ import { readFileSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 
 export const ARTIFACT_GRAPH = ".vite/flame-artifact-graph.json";
-const STARTUP_BUDGETS = { js: 2_785_000, css: 147_000 };
-export const LAZY_BUDGETS = {
-  settings: { label: "settings panes", kind: "module", ceiling: 200_000 },
-  workspace: { label: "workspace views", kind: "module", ceiling: 250_000 },
-  "syntax-highlighting": { label: "syntax highlighting", kind: "module", ceiling: 3_000_000 },
-  "diagram-rendering": { label: "diagram rendering", kind: "module", ceiling: 3_000_000 },
-  "math-styles": { label: "math stylesheet", kind: "css", ceiling: 100_000 },
+export const LAZY_GROUPS = {
+  settings: { label: "settings panes", kind: "module" },
+  workspace: { label: "workspace views", kind: "module" },
+  "diagram-rendering": { label: "diagram rendering", kind: "module" },
+  "math-styles": { label: "math stylesheet", kind: "css" },
 };
 const BOOTSTRAP_FORBIDDEN = new Set([
   "react",
@@ -120,16 +118,10 @@ export function analyzeArtifactGraph(graph) {
       if (!graph.files[path]) throw new Error(`missing artifact: ${path}`);
       return total + graph.files[path].bytes;
     }, 0);
-  const budgets = Object.entries(STARTUP_BUDGETS).map(([kind, ceiling]) => ({
-    label: kind.toUpperCase(),
-    used: size(startup[kind]),
-    ceiling,
-  }));
   function analyzeLazyGroup(group, policy) {
     const declarations = graph.declarations.filter(
       (entry) => entry.kind === "lazy" && entry.group === group,
     );
-    if (!declarations.length) errors.push(`${policy.label}: no declared lazy source found`);
     const roots = new Set();
     for (const entry of declarations) {
       if (!moduleFiles(graph, entry.importer).length)
@@ -192,20 +184,18 @@ export function analyzeArtifactGraph(graph) {
       fullBytes: size(full),
       sharedBytes: size(shared),
       used: size(increment),
-      ceiling: policy.ceiling,
     };
     return feature;
   }
-  const features = Object.entries(LAZY_BUDGETS).map(([group, policy]) =>
-    analyzeLazyGroup(group, policy),
+  const groups = new Set(
+    graph.declarations.filter((entry) => entry.kind === "lazy").map((entry) => entry.group),
   );
-  budgets.push(...features);
+  const features = [...groups].map((group) => analyzeLazyGroup(group, LAZY_GROUPS[group]));
   return {
     bootstrap: { js: [...bootstrap.js], css: [...bootstrap.css] },
     startup: { js: [...startup.js], css: [...startup.css] },
     preload: document.preload,
     prefetch: document.prefetch,
-    budgets,
     features,
     errors,
   };

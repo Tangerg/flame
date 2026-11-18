@@ -1135,7 +1135,6 @@ translation live in `internal/adapter/run`, model translation in
 `internal/application/integration/hooks`. Feedback decisions come from the selected provider. The annotation ledger records
 the accepted bytes with their original installation, release, contribution and
 command identity. These observations may outlive their referenced Session.
-The architecture gate rejects unclassified production packages and imports.
 
 Lifecycle Hook configuration requires an explicit `hooks` array in every non-empty
 JSON document. Use `{"hooks":[]}` for an empty set. Hook configuration and command

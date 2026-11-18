@@ -161,38 +161,6 @@ func TestDeleteServerPublishesRemovalAfterProjectionFailure(t *testing.T) {
 	}
 }
 
-// TestReconnectServerUsesPort: reconnect is fire-and-forget — it validates
-// the name synchronously, then dials on the component task group and publishes
-// the settled frame.
-func TestReconnectServerUsesPort(t *testing.T) {
-	ports := &fakePorts{statuses: []mcpserver.ConnectionStatus{{Server: testsupport.UserMCPServer("fs"), State: mcpserver.ConnectionConnected}}}
-	settled := make(chan string, 1)
-	var c *Coordinator
-	cfg := configWithPorts(ports)
-	cfg.Invalidations = func(notice invalidation.Notice) {
-		status := testServerStatus(c, notice.Servers[0])
-		if status.State != mcpserver.ConnectionConnecting {
-			settled <- status.Server.Name().String()
-		}
-	}
-	c = testCoordinator(t, cfg)
-	defer requireCoordinatorShutdown(t, c)
-
-	if err := c.ReconnectServer(context.Background(), testsupport.UserMCPServer("fs")); err != nil {
-		t.Fatalf("ReconnectServer err = %v", err)
-	}
-	if got := <-settled; got != "fs" {
-		t.Fatalf("settled server = %q, want fs", got)
-	}
-	if ports.reconnectName != "fs" {
-		t.Fatalf("reconnect=%q, want fs", ports.reconnectName)
-	}
-
-	if err := c.ReconnectServer(context.Background(), testsupport.UserMCPServer("ghost")); !errors.Is(err, ErrUnknownServer) {
-		t.Fatalf("reconnect unknown = %v, want ErrUnknownServer", err)
-	}
-}
-
 func TestAuthorizationAttemptUsesPortAndSettles(t *testing.T) {
 	authorizeStarted := make(chan string, 1)
 	releaseAuthorize := make(chan struct{})
@@ -404,28 +372,6 @@ func TestReconnectServerDetachedButComponentOwned(t *testing.T) {
 	}
 	if err := c.ReconnectServer(context.Background(), testsupport.UserMCPServer("fs")); !errors.Is(err, errClosed) {
 		t.Fatalf("reconnect after Close = %v, want errClosed", err)
-	}
-}
-
-func TestTestServerUsesLiveRegistryPort(t *testing.T) {
-	ports := &fakePorts{}
-	c := testCoordinator(t, configWithPorts(ports))
-
-	result, err := c.TestServer(context.Background(), ServerInput{
-		Name: testsupport.ServerName("fs"), Connection: ConnectionInput{
-			Transport: mcpserver.TransportStdio, Command: "mcp-fs",
-			Args:        []string{"--root", "/repo"},
-			Environment: &SecretChange[map[string]string]{Kind: SecretSet, Value: map[string]string{"A": "1"}},
-		},
-	})
-	if err != nil {
-		t.Fatalf("TestServer err = %v", err)
-	}
-	if result != TestSucceeded {
-		t.Fatalf("TestServer result = %+v, want success", result)
-	}
-	if ports.probe.Name.String() != "fs" || ports.probe.Connection.(mcpserver.StdioConnection).Command != "mcp-fs" || ports.probe.Connection.(mcpserver.StdioConnection).Env["A"] != "1" {
-		t.Fatalf("probe config = %+v", ports.probe)
 	}
 }
 

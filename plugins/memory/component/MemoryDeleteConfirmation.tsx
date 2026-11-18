@@ -57,7 +57,6 @@ export function MemoryDeleteConfirmation({
           variant="ghost"
           disabled={locked}
           focusableWhenDisabled
-          // oxlint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
           onClick={cancel}
         >

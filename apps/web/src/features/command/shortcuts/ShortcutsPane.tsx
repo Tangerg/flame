@@ -149,7 +149,6 @@ function ShortcutRow({
           {mine && (
             <TextField
               readOnly
-              // oxlint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               aria-label={t("shortcuts.editAria", { action: row.label })}
               aria-describedby={statusId}

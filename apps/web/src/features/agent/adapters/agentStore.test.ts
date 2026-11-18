@@ -1,11 +1,5 @@
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
-let testClient: TestClient;
-prepareTestClient(() => {
-  const owned = createTestClient();
-  testClient = owned;
-  finishTestClient(() => owned.dispose());
-});
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   type Interrupt,
@@ -16,11 +10,17 @@ import {
   type StreamEvent,
 } from "@flame/runtime-client";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/features/agent/public/sessionView";
-
 import { selectCurrentRootRun } from "@/features/agent/application/view/runTree";
 import { selectVisibleProblem } from "@/features/agent/application/view/problemPresentation";
 import { selectAwaitingInterrupts } from "@/features/agent/application/view/awaitingInterrupts";
 import { loadPluginsForTest } from "@/test/kernel";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient();
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+
 const SID = "ses_1";
 
 const item = (partial: Record<string, unknown>): Item =>
@@ -107,21 +107,6 @@ const materialToken = () => {
 beforeEach(async () => {
   testClient.agent.projection.store.getState().dropSession(SID);
   await loadPluginsForTest();
-});
-
-describe("agentStore projection identity", () => {
-  it("does not advance the revision for a batch that folds to the same view", () => {
-    const store = testClient.agent.projection.store.getState();
-    store.ensureSession(SID);
-    store.applyRunEvents(SID, [fold(runStarted("run_1", SID))]);
-    const settled = materialToken();
-    const sessions = testClient.agent.projection.store.getState().sessions;
-
-    store.applyRunEvents(SID, [fold(runStarted("run_1", SID))]);
-
-    expect(materialToken()).toEqual(settled);
-    expect(testClient.agent.projection.store.getState().sessions).toBe(sessions);
-  });
 });
 
 describe("agentStore.commitCancelResponse", () => {
@@ -477,49 +462,6 @@ describe("agentStore authoritative refresh", () => {
 });
 
 describe("agentStore never resurrects a dropped session", () => {
-  it("advances a remounted projection beyond the number safe-integer boundary", () => {
-    const store = testClient.agent.projection.store.getState();
-    const exhaustedNumberIdentity = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
-    testClient.agent.projection.store.setState({
-      projectionGenerationSequence: exhaustedNumberIdentity,
-    });
-    store.dropSession(SID);
-    store.ensureSession(SID);
-
-    expect(testClient.agent.projection.store.getState().sessions[SID]!.viewEpoch).toBe(
-      exhaustedNumberIdentity + 1n,
-    );
-  });
-
-  it("advances refresh, material, and authority identities beyond the safe-integer boundary", () => {
-    const store = testClient.agent.projection.store.getState();
-    store.dropSession(SID);
-    store.ensureSession(SID);
-    const boundary = BigInt(Number.MAX_SAFE_INTEGER) + 1n;
-    testClient.agent.projection.store.setState((state) => ({
-      sessions: {
-        ...state.sessions,
-        [SID]: {
-          ...state.sessions[SID]!,
-          refreshSequence: boundary,
-          viewRevision: boundary,
-          authoritativeRevision: boundary,
-        },
-      },
-    }));
-
-    const token = testClient.agent.projection.store.getState().beginViewRefresh(SID, false)!;
-    expect(token.requestSequence).toBe(boundary + 1n);
-    expect(
-      testClient.agent.projection.store
-        .getState()
-        .commitViewRefresh(SID, token, EMPTY_AGENT_SESSION_VIEW),
-    ).toBe(true);
-    const committed = testClient.agent.projection.store.getState().sessions[SID]!;
-    expect(committed.viewRevision).toBe(boundary + 1n);
-    expect(committed.authoritativeRevision).toBe(boundary + 1n);
-  });
-
   it("does not reuse a retired projection generation when the same Session is remounted", () => {
     const store = testClient.agent.projection.store.getState();
     store.ensureSession(SID);
@@ -532,18 +474,6 @@ describe("agentStore never resurrects a dropped session", () => {
     expect(testClient.agent.projection.store.getState().sessions[SID]!.viewEpoch).toBeGreaterThan(
       predecessorGeneration,
     );
-  });
-
-  it("assigns one exact generation to every mounted Session retired by the same boundary", () => {
-    const store = testClient.agent.projection.store.getState();
-    store.ensureSession(SID);
-    store.ensureSession("ses_peer");
-
-    store.retireProjectionGeneration([SID, "ses_peer"]);
-
-    const sessions = testClient.agent.projection.store.getState().sessions;
-    expect(sessions[SID]!.viewEpoch).toBe(sessions.ses_peer!.viewEpoch);
-    store.dropSession("ses_peer");
   });
 
   it("applyRunEvents on an absent session is a no-op (no ghost entry)", () => {

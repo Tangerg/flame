@@ -6,7 +6,6 @@ import { BROWSER_TARGETS } from "@flame/component-sdk/build";
 import react from "@vitejs/plugin-react";
 import { STYLEX_CONDITIONS, stylexPlugin } from "./stylex.vite.mjs";
 import path from "node:path";
-import { LAB_DEVELOPMENT_SERVER, LAB_PREVIEW_SERVER } from "./labServers.ts";
 
 export default defineConfig({
   plugins: [react(), stylexPlugin(), pluginModules(), webArtifacts()],
@@ -24,8 +23,8 @@ export default defineConfig({
     include: ["@flame/icons/react"],
   },
   server: {
-    host: LAB_DEVELOPMENT_SERVER.host,
-    port: LAB_DEVELOPMENT_SERVER.port,
+    host: "127.0.0.1",
+    port: 4174,
     strictPort: true,
   },
   build: {
@@ -45,8 +44,8 @@ export default defineConfig({
     },
   },
   preview: {
-    host: LAB_PREVIEW_SERVER.host,
-    port: LAB_PREVIEW_SERVER.port,
+    host: "127.0.0.1",
+    port: 4175,
     strictPort: true,
   },
 });

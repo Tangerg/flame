@@ -46,10 +46,8 @@ export default defineConfig({
     },
   },
   build: {
-    // Desktop app loads from disk, so total size matters far less than what is
-    // on the STARTUP path. Splitting vendor deps also means Wails updates ship
-    // only changed chunks. The startup budget and the assertion that the heavy
-    // lazy features stay off that path both live in check-bundle-size.mjs.
+    // Browser and native hosts share this distribution. Keep native-only code
+    // behind its platform boundary and retain independent lazy feature entries.
     // Keep Vite's raw warning just above the known monoliths so it catches a
     // new unclassified mega-chunk without reporting the same reviewed features
     // on every clean build.

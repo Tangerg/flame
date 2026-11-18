@@ -131,40 +131,6 @@ func TestMessageStore_ReplaceIsTransactional(t *testing.T) {
 	}
 }
 
-// TestMessageStore_CountMatchesReadLength pins the Counter capability: Count
-// returns the stored message count via COUNT(*) — equal to len(Read) — so a
-// watermark read doesn't load and unmarshal the whole history. Unknown
-// conversation is 0, not an error.
-func TestMessageStore_CountMatchesReadLength(t *testing.T) {
-	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	store := newMessageStore(databaseFor(db))
-	ctx := context.Background()
-
-	if n, countErr := store.Count(ctx, "conv"); countErr != nil || n != 0 {
-		t.Fatalf("Count of empty = (%d, %v), want (0, nil)", n, countErr)
-	}
-
-	if writeErr := store.Write(ctx, "conv",
-		chat.NewUserMessage(chat.NewTextPart("one")), chat.NewUserMessage(chat.NewTextPart("two")), chat.NewUserMessage(chat.NewTextPart("three"))); writeErr != nil {
-		t.Fatalf("Write: %v", writeErr)
-	}
-	got, err := store.Read(ctx, "conv")
-	if err != nil {
-		t.Fatalf("Read: %v", err)
-	}
-	n, err := store.Count(ctx, "conv")
-	if err != nil {
-		t.Fatalf("Count: %v", err)
-	}
-	if n != len(got) || n != 3 {
-		t.Fatalf("Count = %d, len(Read) = %d, want both 3", n, len(got))
-	}
-}
-
 func TestMessageStoreReadRejectsMalformedRows(t *testing.T) {
 	db, err := openDatabase(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {

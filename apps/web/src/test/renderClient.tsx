@@ -1,9 +1,6 @@
 import { NotificationFeed } from "@/features/notifications/public/notifications";
-import { createImageExport } from "@/foundation/imageExport";
 import { createGoals } from "@/features/goal/application/goals";
 import { GoalProvider } from "@/features/goal/public/goals";
-import { ApplicationCalloutLabels } from "@/app/calloutLabels";
-import { IMAGE_FILENAME_STEM } from "@/app/product";
 import { type createRuntimeConnection } from "@/features/connection/adapters/runtimeConnection";
 import { type ClientHost } from "@/platform/host";
 import { createTheme } from "@/features/theme/adapters/theme";
@@ -13,12 +10,7 @@ import { NotificationProvider } from "@/features/notifications/public/notifier";
 import { createInstalledPlugins } from "@/features/plugins/adapters/installedPlugins";
 import { InstalledPluginsProvider } from "@/features/plugins/context";
 import { type ComponentType, type ReactNode } from "react";
-import {
-  render as renderReact,
-  renderHook as renderReactHook,
-  type RenderHookOptions,
-  type RenderOptions,
-} from "@testing-library/react";
+import { renderHook as renderReactHook, type RenderHookOptions } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { type FlameClient } from "@flame/runtime-client";
 import { createMemoryNavigator } from "@/lib/navigation.testkit";
@@ -34,8 +26,6 @@ import { createWorkspace } from "@/features/workspace/adapters/workspace";
 import { WorkspaceProvider } from "@/features/workspace/public/workspace";
 import { createWorkingDirectoryPicker } from "@/features/navigation/adapters/workingDirectorySelection";
 import { WorkingDirectoryProvider } from "@/features/navigation/public/workingDirectory";
-import { ImageSaveProvider } from "@/features/chat/public/imageSave";
-import type { ImageExport } from "@/foundation/imageExport";
 import { createBrowserHost } from "@/platform/browserHost";
 
 export function createTestClient(
@@ -45,7 +35,6 @@ export function createTestClient(
     host?: ClientHost;
     start?: boolean;
     endpoint?: string;
-    saveImage?: ImageExport;
     messages?: NotificationFeed;
   } = {},
 ) {
@@ -150,32 +139,23 @@ export function createTestClient(
     return (
       <QueryClientProvider client={queryClient}>
         <GoalProvider value={goals.access}>
-          <ApplicationCalloutLabels>
-            <ThemeProvider value={theme.access}>
-              <RuntimeProvider value={runtime}>
-                <agent.Provider>
-                  <ComposerProvider value={composer.access}>
-                    <WorkspaceProvider value={workspace.access}>
-                      <WorkingDirectoryProvider value={directory.access}>
-                        <ImageSaveProvider
-                          saveImage={
-                            options.saveImage ??
-                            createImageExport(IMAGE_FILENAME_STEM, host.saveFile)
-                          }
-                        >
-                          <NotificationProvider value={notifications.access}>
-                            <InstalledPluginsProvider value={installedPlugins.access}>
-                              {children}
-                            </InstalledPluginsProvider>
-                          </NotificationProvider>
-                        </ImageSaveProvider>
-                      </WorkingDirectoryProvider>
-                    </WorkspaceProvider>
-                  </ComposerProvider>
-                </agent.Provider>
-              </RuntimeProvider>
-            </ThemeProvider>
-          </ApplicationCalloutLabels>
+          <ThemeProvider value={theme.access}>
+            <RuntimeProvider value={runtime}>
+              <agent.Provider>
+                <ComposerProvider value={composer.access}>
+                  <WorkspaceProvider value={workspace.access}>
+                    <WorkingDirectoryProvider value={directory.access}>
+                      <NotificationProvider value={notifications.access}>
+                        <InstalledPluginsProvider value={installedPlugins.access}>
+                          {children}
+                        </InstalledPluginsProvider>
+                      </NotificationProvider>
+                    </WorkingDirectoryProvider>
+                  </WorkspaceProvider>
+                </ComposerProvider>
+              </agent.Provider>
+            </RuntimeProvider>
+          </ThemeProvider>
         </GoalProvider>
       </QueryClientProvider>
     );
@@ -205,7 +185,6 @@ export function createTestClient(
     notifications,
     messages,
     installedPlugins,
-    Wrapper,
     get sessionDependencies() {
       return {
         agentAccess: agent.dependencies,
@@ -213,9 +192,6 @@ export function createTestClient(
         sessions: agent.sessions,
         retries: agent.retries,
       };
-    },
-    render(ui: ReactNode, renderOptions?: RenderOptions) {
-      return renderReact(ui, { ...renderOptions, wrapper: withWrapper(renderOptions?.wrapper) });
     },
     renderHook<Result, Props>(
       callback: (props: Props) => Result,

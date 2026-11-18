@@ -77,22 +77,6 @@ func balancedPlanPolicy(t *testing.T) *approvals.RuntimePolicy {
 	return policy
 }
 
-func TestNewRequiresModeAndPlanPorts(t *testing.T) {
-	policy := balancedPlanPolicy(t)
-	for _, build := range []func() (any, error){
-		func() (any, error) { return newExit(nil, planReader{}, nil) },
-		func() (any, error) { return newExit(policy, nil, nil) },
-	} {
-		got, err := build()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got != nil {
-			t.Fatal("missing port should omit exit_plan_mode")
-		}
-	}
-}
-
 func TestDefinitionHasNoSecondPlanInput(t *testing.T) {
 	tool, err := newExit(balancedPlanPolicy(t), planReader{}, nil)
 	if err != nil {

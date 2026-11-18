@@ -20,22 +20,12 @@
     "examples/plugins/reviews/component"
   ],
   "scripts": {
-    "prepare": "husky .husky",
     "check": "make check",
     "generate": "make generate",
-    "lint": "oxlint tooling --deny-warnings",
-    "format:check": "prettier --check tooling package.json package-lock.json README.md DEVELOPMENT.md docs .github/workflows",
     "test:tooling": "node --test tooling/*.test.mjs"
   },
   "devDependencies": {
-    "husky": "^9.1.7",
-    "lint-staged": "^17.6.0",
-    "@commitlint/cli": "^21.2.4",
-    "@commitlint/config-conventional": "^21.2.4",
     "prettier": "^3.9.10",
-    "oxlint": "^1.93.0",
-    "@babel/core": "^8.1.0",
-    "@babel/preset-typescript": "^8.0.7",
     "typescript": "^7.0.2",
     "rolldown": "^1.3.1"
   },

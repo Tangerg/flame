@@ -9,19 +9,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func TestTopicsReturnsAnOwnedCompleteInventory(t *testing.T) {
-	t.Parallel()
-	want := []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSkillsChanged, protocol.TopicMCPChanged, protocol.TopicPluginsChanged, protocol.TopicPluginDataChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicGoalsChanged, protocol.TopicInterruptsChanged, protocol.TopicHooksChanged, protocol.TopicModelsChanged, protocol.TopicApprovalsChanged}
-	got := Topics()
-	if !slices.Equal(got, want) {
-		t.Fatalf("Topics = %v, want %v", got, want)
-	}
-	got[0] = "mutated"
-	if Topics()[0] != protocol.TopicFilesChanged {
-		t.Fatal("mutating a Topics result rewrote the package inventory")
-	}
-}
-
 func TestSubscriptionMakesWatchScopeExplicit(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

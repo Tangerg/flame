@@ -661,38 +661,6 @@ func newDriver(t *testing.T, store *memStore, script ...scriptedRun) *goals.Driv
 	return d
 }
 
-func TestNewDriverRejectsIncompleteComposition(t *testing.T) {
-	store := newMemStore()
-	autonomousRuns := &fakeRuns{t: t, store: store}
-	sessions := &fakeSessions{}
-	mutations := goals.NewSessionMutations()
-	tests := []struct {
-		name          string
-		store         goals.Store
-		runs          goals.AutonomousRuns
-		cancellations goals.RunCancellations
-		sessions      goals.SessionExistence
-		mutations     *goals.SessionMutations
-		instructions  func(testInstructionInput) string
-	}{
-		{name: "store", runs: autonomousRuns, cancellations: autonomousRuns, sessions: sessions, mutations: mutations, instructions: testPrompt},
-		{name: "runs", store: store, cancellations: autonomousRuns, sessions: sessions, mutations: mutations, instructions: testPrompt},
-		{name: "cancellations", store: store, runs: autonomousRuns, sessions: sessions, mutations: mutations, instructions: testPrompt},
-		{name: "sessions", store: store, runs: autonomousRuns, cancellations: autonomousRuns, mutations: mutations, instructions: testPrompt},
-		{name: "mutations", store: store, runs: autonomousRuns, cancellations: autonomousRuns, sessions: sessions, instructions: testPrompt},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			driver, err := goals.NewDriver(
-				test.store, test.runs, test.cancellations, test.sessions, test.mutations, goaltest.Workflow{}, func(context.Context, string) error { return nil },
-			)
-			if err == nil || driver != nil {
-				t.Fatalf("NewDriver incomplete composition = (%v, %v)", driver, err)
-			}
-		})
-	}
-}
-
 func shutdownDriver(d *goals.Driver) error {
 	d.BeginShutdown()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)

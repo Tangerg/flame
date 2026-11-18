@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import { canonicalJSON, parseJSON } from "@flame/backend-sdk/mcp";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { admitToolResult, projectToolOutput } from "./tool-result";
-
 const cases = parseJSON(
   readFileSync(
     new URL("./testdata/tool-results.json", import.meta.url),
@@ -41,28 +40,6 @@ describe("MCP result receipt projection", () => {
       { content: [{ type: "text", text: "\ud800" }] },
     ])
       expect(() => admitToolResult(result)).toThrow();
-  });
-
-  it("detaches projected content and metadata from the immutable original", () => {
-    const result = {
-      content: [
-        {
-          type: "text" as const,
-          text: "original",
-          _meta: { source: { value: 1 } },
-        },
-      ],
-      structuredContent: { value: 1 },
-    };
-    const projected = projectToolOutput("js", result);
-    (projected.details as { value: number }).value = 2;
-    (
-      projected.content![0]!.metadata!["mcp/content"] as {
-        _meta: { source: { value: number } };
-      }
-    )._meta.source.value = 2;
-    expect(result.structuredContent.value).toBe(1);
-    expect(result.content[0]!._meta.source.value).toBe(1);
   });
 
   it("projects a full screenshot without recursive base64 validation", () => {

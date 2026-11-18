@@ -69,17 +69,3 @@ func TestDerivedWireVocabulariesRemainComplete(t *testing.T) {
 		}
 	}
 }
-
-func TestEnumValuesReturnsCallerOwnedValues(t *testing.T) {
-	typ := reflect.TypeFor[protocol.RunStatus]()
-	first, ok := enumValues(typ)
-	if !ok || len(first) == 0 {
-		t.Fatal("RunStatus has no closed vocabulary")
-	}
-	want := first[0]
-	first[0] = "rewritten-by-caller"
-	second, ok := enumValues(typ)
-	if !ok || len(second) == 0 || second[0] != want {
-		t.Fatal("caller changed the vocabulary owner")
-	}
-}

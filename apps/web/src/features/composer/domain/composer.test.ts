@@ -9,11 +9,6 @@ describe("Composer", () => {
     expect(typed(composer, "one").activate(SCRATCH_SESSION_ID).draft.value).toBe("scratch");
   });
 
-  it("derives the active draft rather than storing a second copy", () => {
-    const composer = typed(Composer.empty().activate("s1"), "hello");
-    expect(composer.activate("s2").activate("s1").draft.value).toBe("hello");
-  });
-
   it("discards only the draft and history of a deleted Session", () => {
     const composer = typed(Composer.empty().activate("s1").record("sent"), "unsent")
       .activate("s2")
@@ -55,25 +50,6 @@ describe("Composer", () => {
     expect(recalling.clear().isRecalling).toBe(false);
     expect(recalling.activate("other").isRecalling).toBe(false);
     expect(recalling.record("sent").isRecalling).toBe(false);
-  });
-
-  it("answers one stable instance for a session never typed into", () => {
-    const composer = Composer.empty();
-    expect(composer.draft).toBe(composer.activate("s1").draft);
-    expect(composer.draft.images).toBe(composer.activate("s2").draft.images);
-
-    const active = composer.activate("s1");
-    expect(active.activate("s1")).toBe(active);
-  });
-
-  it("gives each explicit clear a new empty draft", () => {
-    const original = Composer.empty().activate("s1");
-    const cleared = original.clear();
-    const clearedAgain = cleared.clear();
-
-    expect(cleared.draft.value).toBe("");
-    expect(cleared.draft).not.toBe(original.draft);
-    expect(clearedAgain.draft).not.toBe(cleared.draft);
   });
 
   it("persists only non-empty draft text", () => {

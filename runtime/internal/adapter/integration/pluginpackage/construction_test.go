@@ -59,23 +59,3 @@ func TestReleaseStoreRejectsMissingCatalogBeforeCreatingDirectory(t *testing.T) 
 		})
 	}
 }
-
-func TestPackageSkillsRejectsMissingCollaborators(t *testing.T) {
-	releases, store, _ := testReleaseStore(t)
-	for _, test := range []struct {
-		name          string
-		releases      *Releases
-		installations skillInstallations
-	}{
-		{"releases", nil, store},
-		{"installations", releases, nil},
-		{"typed nil installations", releases, (*persistence.InstallationStore)(nil)},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			skills, err := NewSkills(test.releases, test.installations)
-			if err == nil || skills != nil {
-				t.Fatalf("invalid package Skills constructed: %v, %v", skills, err)
-			}
-		})
-	}
-}

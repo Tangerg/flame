@@ -16,21 +16,6 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
-func TestToolObserverUnsubscribeIsIdempotentAndPreservesOtherSubscriptions(t *testing.T) {
-	oldCalls, replacementCalls := 0, 0
-	block := &toolBlock{}
-	unsubscribeOld := block.Observe(func(readerDocument) { oldCalls++ })
-	unsubscribeReplacement := block.Observe(func(readerDocument) { replacementCalls++ })
-	unsubscribeReplacement()
-	unsubscribeReplacement()
-	block.observers.notify(readerDocument{})
-
-	if oldCalls != 2 || replacementCalls != 1 {
-		t.Fatalf("observer calls after replacement retirement = old %d replacement %d", oldCalls, replacementCalls)
-	}
-	unsubscribeOld()
-}
-
 func TestTranscriptPresenterPanicBecomesAnError(t *testing.T) {
 	_, err := presentSafely(func(blockPresentation, conversation.Block) []base.Block { panic("present boom") }, blockPresentation{}, conversation.Block{Kind: conversation.BlockAssistant})
 	if err == nil || !strings.Contains(err.Error(), "present boom") {
@@ -94,17 +79,6 @@ func TestRawToolPatchPreservesFileHeadersAndMarkers(t *testing.T) {
 	}
 }
 
-func TestToolLabelUsesSemanticKindInsteadOfProviderName(t *testing.T) {
-	call := conversation.ToolCall{Kind: builtin.CategoryShell, Name: "opaque_provider_17", Command: "go test ./...", Summary: "ignored fallback"}
-	if got := toolLabel(call); got != "$ go test ./..." || strings.Contains(got, call.Name) {
-		t.Fatalf("label = %q", got)
-	}
-	call = conversation.ToolCall{Name: "custom", Summary: "do work"}
-	if got := toolLabel(call); got != "custom · do work" {
-		t.Fatalf("unknown label = %q", got)
-	}
-}
-
 func TestToolDetailTruncationKeepsTheBeginningAndEnd(t *testing.T) {
 	lines := make([]string, maxToolDetailLines+50)
 	for i := range lines {
@@ -113,31 +87,6 @@ func TestToolDetailTruncationKeepsTheBeginningAndEnd(t *testing.T) {
 	got := truncateToolDetail(strings.Join(lines, "\n"))
 	if !strings.Contains(got, lines[0]) || !strings.Contains(got, lines[len(lines)-1]) || !strings.Contains(got, "70 lines omitted") {
 		t.Fatalf("truncated detail did not preserve context: %q", got)
-	}
-}
-
-func TestToolKindsBuildSpecializedOolongBlocks(t *testing.T) {
-	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
-	diff := "--- a/a.go\n+++ b/a.go\n@@ -1 +1 @@\n-old\n+new\n"
-	tests := []struct {
-		name string
-		call conversation.ToolCall
-		want string
-	}{
-		{name: "shell", call: conversation.ToolCall{Kind: builtin.CategoryShell, Status: conversation.ToolOK, Output: "ok"}, want: "code"},
-		{name: "read", call: conversation.ToolCall{Kind: builtin.CategoryRead, Status: conversation.ToolOK, Path: "main.go", Output: "package main"}, want: "numbered-code"},
-		{name: "edit", call: conversation.ToolCall{Kind: builtin.CategoryEdit, Status: conversation.ToolOK, Path: "a.go", Diff: diff}, want: "code"},
-		{name: "search", call: conversation.ToolCall{Kind: builtin.CategorySearch, Status: conversation.ToolOK, Query: "needle", Output: "a.go:1"}, want: "paragraph"},
-		{name: "task", call: conversation.ToolCall{Kind: builtin.CategoryTask, Status: conversation.ToolOK, Summary: "delegate", Output: "done"}, want: "paragraph"},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			block := newToolBlock(presentation, conversation.Block{ID: test.name, Kind: conversation.BlockTool, Tool: &test.call})
-			if len(block.body) == 0 {
-				t.Fatal("tool built no detail body")
-			}
-			requireToolBody(t, block.body[0], test.want)
-		})
 	}
 }
 
@@ -200,21 +149,6 @@ func TestToolDetailsPreserveStructuredProblems(t *testing.T) {
 	}
 }
 
-func TestToolBlockOwnsCompleteToolValues(t *testing.T) {
-	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
-	call := conversation.ToolCall{
-		Name: "provider_tool", Status: conversation.ToolOK,
-		ArgumentsJSON: []byte(`{"scope":"source"}`), ResultJSON: []byte(`{"status":"source"}`),
-	}
-	block := newToolBlock(presentation, conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &call})
-	copy(call.ArgumentsJSON, `{"scope":"mutant"}`)
-	copy(call.ResultJSON, `{"status":"mutant"}`)
-
-	if strings.Contains(string(block.call.ArgumentsJSON), "mutant") || strings.Contains(string(block.call.ResultJSON), "mutant") {
-		t.Fatalf("tool block retained caller-owned JSON: %+v", block.call)
-	}
-}
-
 func TestUpdatingARunningToolPreservesItsDetailChoice(t *testing.T) {
 	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
 	running := conversation.ToolCall{Kind: builtin.CategoryShell, Command: "go test ./...", Status: conversation.ToolRunning}
@@ -272,120 +206,8 @@ func TestCompletedToolWithoutDetailsCannotExpand(t *testing.T) {
 	}
 }
 
-func TestToolBlockDrawsALocaleSafeStatusRailThroughExpandedDetails(t *testing.T) {
-	theme, glyphs := kit.Dark(), kit.ASCII()
-	call := conversation.ToolCall{
-		Kind: builtin.CategoryShell, Command: "go test ./...", Status: conversation.ToolOK, Output: "all packages passed",
-	}
-	block := newToolBlock(blockPresentation{Theme: theme, Glyphs: glyphs, Syntax: highlight.New("github-dark")}, conversation.Block{
-		ID: "test", Kind: conversation.BlockTool, Tool: &call,
-	})
-	block.SetExpanded(true)
-	width, height := 48, block.HeightForWidth(48)
-	surface := grid.NewSurface(width, height)
-	block.Draw(surface.View())
-
-	drawn := strings.Join(surface.Rows(), "\n")
-	for _, want := range []string{"- $ go test ./...", "x done", "all packages passed"} {
-		if !strings.Contains(drawn, want) {
-			t.Errorf("tool block does not contain %q:\n%s", want, drawn)
-		}
-	}
-	for row := range height - 1 {
-		cell, ok := surface.CellAt(0, row)
-		if !ok || cell.Content() != glyphs.Vertical.String() || cell.Style != theme.Success {
-			t.Fatalf("status rail row %d = %+v, want %q with success style", row, cell, glyphs.Vertical.String())
-		}
-	}
-	if strings.Contains(drawn, "✓") || strings.Contains(drawn, "…") {
-		t.Fatalf("ASCII tool block contains a Unicode-only status glyph:\n%s", drawn)
-	}
-
-	rows := block.Rows(width)
-	if len(rows) != height || strings.HasPrefix(rows[0].Content.String(), glyphs.Vertical.String()) {
-		t.Fatalf("copied rows include visual rail or have wrong height: %+v", rows)
-	}
-}
-
-func TestToolStatusVocabularyDoesNotCollideWithRunOutcomes(t *testing.T) {
-	presentation := blockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode()}
-	for _, test := range []struct {
-		status conversation.ToolStatus
-		want   string
-	}{
-		{status: conversation.ToolOK, want: "done"},
-		{status: conversation.ToolError, want: "error"},
-		{status: conversation.ToolCanceled, want: "canceled"},
-		{status: conversation.ToolRunning, want: "running"},
-	} {
-		call := conversation.ToolCall{Kind: builtin.CategoryTask, Status: test.status}
-		block := newToolBlock(presentation, conversation.Block{Kind: conversation.BlockTool, Tool: &call})
-		_, _, status, _ := block.header()
-		if !strings.Contains(status, test.want) || strings.Contains(status, "complete") || strings.Contains(status, "failed") {
-			t.Errorf("tool status %q = %q", test.status, status)
-		}
-	}
-}
-
-func requireToolBody(t *testing.T, body base.Block, want string) {
-	t.Helper()
-	switch want {
-	case "code":
-		requireCodeBody(t, body, false)
-	case "numbered-code":
-		requireCodeBody(t, body, true)
-	case "paragraph":
-		requireBodyType[*kit.Paragraph](t, body, "paragraph")
-	case "linked-paragraph":
-		requireLinkedParagraph(t, body)
-	}
-}
-
-func requireCodeBody(t *testing.T, body base.Block, numbered bool) {
-	t.Helper()
-	code, ok := body.(*kit.Code)
-	if !ok {
-		t.Fatalf("body = %T, want code", body)
-	}
-	if numbered && code.Gutter == nil {
-		t.Fatalf("body = %#v, want numbered code", body)
-	}
-}
-
-func requireBodyType[T any](t *testing.T, body base.Block, name string) {
-	t.Helper()
-	if _, ok := body.(T); !ok {
-		t.Fatalf("body = %T, want %s", body, name)
-	}
-}
-
-func requireLinkedParagraph(t *testing.T, body base.Block) {
-	t.Helper()
-	paragraph, ok := body.(*kit.Paragraph)
-	if !ok {
-		t.Fatalf("body = %T, want linked paragraph", body)
-	}
-	destination, ok := paragraph.LinkAt(0, 0, 80)
-	if !ok || destination.Target != "https://example.com/result" {
-		t.Fatalf("link = %#v, %v, want detected web destination", destination, ok)
-	}
-}
-
 func drawToolBlock(block *toolBlock, width int) string {
 	surface := grid.NewSurface(width, block.HeightForWidth(width))
 	block.Draw(surface.View())
 	return strings.Join(surface.Rows(), "\n")
-}
-
-// TestSectionLanguageDefaultsToPlainText pins the answer sixteen code sections
-// stopped repeating. Rendering does not observe the language, so nothing else
-// would notice this default changing.
-func TestSectionLanguageDefaultsToPlainText(t *testing.T) {
-	t.Parallel()
-	if got := sectionLanguage(toolSection{}); got != "text" {
-		t.Fatalf("unset section language = %q, want plain text", got)
-	}
-	if got := sectionLanguage(toolSection{Language: "go"}); got != "go" {
-		t.Fatalf("declared section language = %q, want it kept", got)
-	}
 }

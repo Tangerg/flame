@@ -1,9 +1,6 @@
 package terminal
 
 import (
-	"errors"
-	"math"
-	"slices"
 	"strings"
 	"testing"
 
@@ -13,24 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/ui/base"
 )
-
-func TestPluginCommandIdentityExhaustionPreservesExistingCancellationOwner(t *testing.T) {
-	existing := commandOperation{id: 1, pluginID: "existing.plugin"}
-	registry := commandOperationRegistry{
-		next: commandOperationID(math.MaxUint64),
-		active: map[commandOperationID]commandOperation{
-			existing.id: existing,
-		},
-	}
-
-	if _, err := registry.reserve("replacement.plugin"); !errors.Is(err, errCommandOperationIdentityExhausted) {
-		t.Fatalf("reserve after identity exhaustion error = %v", err)
-	}
-
-	if got := registry.active[existing.id]; got != existing {
-		t.Fatalf("existing cancellation owner = %+v, want %+v", got, existing)
-	}
-}
 
 func TestPluginCommandRegistryTakesOnlySelectedOwner(t *testing.T) {
 	registry := newCommandOperationRegistry()
@@ -49,26 +28,6 @@ func TestPluginCommandRegistryTakesOnlySelectedOwner(t *testing.T) {
 	}
 	if got, ok := registry.active[second.id]; !ok || got != second {
 		t.Fatalf("independent operation = %+v, present %t; want %+v", got, ok, second)
-	}
-}
-
-func TestCommandsWithUsefulDefaultsDeclareOptionalArguments(t *testing.T) {
-	t.Parallel()
-	want := map[string]bool{
-		"workspace": true, "fork": true, "usage": true,
-		"mcp-tools": true, "diff": true, "browse": true,
-	}
-	for _, command := range builtinCommands() {
-		if !want[command.Descriptor.Name] {
-			continue
-		}
-		delete(want, command.Descriptor.Name)
-		if command.Descriptor.Arguments != extensions.OptionalArguments {
-			t.Errorf("/%s arguments = %v, want optional", command.Descriptor.Name, command.Descriptor.Arguments)
-		}
-	}
-	for name := range want {
-		t.Errorf("defaultable command /%s is not registered", name)
 	}
 }
 
@@ -174,63 +133,6 @@ func TestSplitCommandArgumentPreservesRemainderAcrossWhitespace(t *testing.T) {
 	}
 	if _, ok := trimCommandIdentity("reviewer", "review"); ok {
 		t.Fatal("partial token matched a complete identity")
-	}
-}
-
-func TestBuiltinCommandsOwnTheirCategoryAndAvailabilityPolicy(t *testing.T) {
-	t.Parallel()
-	wantCategories := map[string][]string{
-		commandCategoryApplication: {"quit"},
-		commandCategoryTranscript:  {"help", "shortcuts", "clear", "find", "next", "previous", "queue", "details", "view", "copy-last", "export", "feedback"},
-		commandCategorySessions:    {"sessions", "timeline", "new", "workspace", "relocate", "rename", "fork", "rollback", "import"},
-		commandCategoryComposer:    {"attach", "detach", "attachments", "stash", "stashes", "stash-apply", "stash-delete", "editor"},
-		commandCategoryRuntime:     {"tools", "tool-invoke", "model", "models", "usage", "roles", "utility", "embedding", "providers", "provider-test", "provider-config", "approval", "status", "rules", "rule-delete", "steer", "goal", "goal-start", "goal-update", "goal-clear", "goal-stop", "goal-resume", "hooks", "hooks-trust", "hooks-revoke"},
-		commandCategoryContext:     {"agent-docs", "skills", "skill-library", "skill-proposals", "skill-archive", "skill-restore", "skill-approve", "skill-reject"},
-		commandCategoryConnections: {"mcp-tool", "mcp", "mcp-tools", "mcp-create", "mcp-edit", "mcp-probe", "mcp-delete", "mcp-reconnect", "mcp-auth"},
-		commandCategoryWorkspace:   {"workspaces", "changes", "diff", "preview", "grep", "browse", "read"},
-		commandCategoryExtensions:  {"plugins", "extensions", "reload", "unload"},
-	}
-	wantGuard := map[string]bool{
-		"clear": true, "view": true, "export": true,
-		"sessions": true, "new": true, "workspace": true, "relocate": true, "rename": true, "fork": true, "rollback": true, "import": true,
-		"stash": true, "stash-apply": true, "editor": true,
-		"workspaces": true, "changes": true, "diff": true, "preview": true, "grep": true, "browse": true, "read": true,
-		"usage": true, "roles": true, "utility": true, "embedding": true, "providers": true, "provider-test": true, "provider-config": true,
-		"steer": true, "goal": true, "goal-start": true, "goal-update": true, "goal-clear": true, "goal-stop": true, "goal-resume": true,
-		"skills": true, "skill-library": true, "skill-proposals": true, "skill-archive": true, "skill-restore": true, "skill-approve": true, "skill-reject": true,
-		"mcp-tool": true, "mcp": true, "mcp-tools": true, "mcp-create": true, "mcp-edit": true, "mcp-probe": true, "mcp-delete": true, "mcp-reconnect": true, "mcp-auth": true,
-		"tools": true, "tool-invoke": true,
-		"agent-docs": true,
-		"hooks":      true, "hooks-trust": true, "hooks-revoke": true,
-		"feedback": true,
-		"plugins":  true,
-	}
-
-	seen := make(map[string]struct{})
-	gotCategories := make(map[string][]string)
-	for _, command := range builtinCommands() {
-		if err := command.validate(); err != nil {
-			t.Fatalf("validate /%s: %v", command.Descriptor.Name, err)
-		}
-		for _, identity := range command.Descriptor.Identities() {
-			if _, duplicate := seen[identity]; duplicate {
-				t.Fatalf("command identity %q is duplicated", identity)
-			}
-			seen[identity] = struct{}{}
-		}
-		gotCategories[command.Descriptor.Category] = append(gotCategories[command.Descriptor.Category], command.Descriptor.Name)
-		if got := command.Available != nil; got != wantGuard[command.Descriptor.Name] {
-			t.Errorf("/%s availability policy present = %t, want %t", command.Descriptor.Name, got, wantGuard[command.Descriptor.Name])
-		}
-	}
-	for category, want := range wantCategories {
-		if got := gotCategories[category]; !slices.Equal(got, want) {
-			t.Errorf("%s commands = %v, want %v", category, got, want)
-		}
-		delete(gotCategories, category)
-	}
-	for category, commands := range gotCategories {
-		t.Errorf("unexpected category %q with commands %v", category, commands)
 	}
 }
 

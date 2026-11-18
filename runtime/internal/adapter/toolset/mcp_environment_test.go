@@ -437,13 +437,4 @@ func connectPool(pool *mcp.Pool, ctx context.Context, name mcpserver.ID) error {
 	return attempt.Run()
 }
 
-func authorizePool(pool *mcp.Pool, ctx context.Context, name mcpserver.ID) error {
-	attempt, err := pool.BeginAuthorize(ctx, name)
-	if err != nil {
-		return err
-	}
-	defer attempt.Close()
-	return attempt.Run()
-}
-
 var errUnknownTestServer = errors.New("test source is unknown")

@@ -87,27 +87,3 @@ func TestPublishedModelContractsCannotBeReplacedByConsumers(t *testing.T) {
 		}()
 	}
 }
-
-func BenchmarkPublishedModelContracts(b *testing.B) {
-	for _, test := range []struct {
-		name string
-		load func() (*plugincontract.Capability, error)
-	}{
-		{"observer", ModelObserverContract},
-		{"input", ModelInputContract},
-		{"context", ModelContextContract},
-	} {
-		b.Run(test.name, func(b *testing.B) {
-			if _, err := test.load(); err != nil {
-				b.Fatal(err)
-			}
-			b.ReportAllocs()
-			b.ResetTimer()
-			for b.Loop() {
-				if _, err := test.load(); err != nil {
-					b.Fatal(err)
-				}
-			}
-		})
-	}
-}

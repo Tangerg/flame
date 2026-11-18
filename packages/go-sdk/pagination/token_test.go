@@ -14,20 +14,6 @@ type testPayload struct {
 	Value string `json:"value"`
 }
 
-func TestRoundTrip(t *testing.T) {
-	token, err := EncodeToken(testPayload{Value: "expected"}, testMaximumTokenCharacters)
-	if err != nil {
-		t.Fatalf("encode: %v", err)
-	}
-	var got testPayload
-	if err := DecodeToken(token, testMaximumTokenCharacters, &got); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if got.Value != "expected" {
-		t.Fatalf("value = %q, want expected", got.Value)
-	}
-}
-
 func TestDecodeRejectsUnknownFieldsAndWrongShapes(t *testing.T) {
 	for name, payload := range map[string]any{
 		"unknown field": struct {

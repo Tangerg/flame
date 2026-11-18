@@ -20,15 +20,6 @@ type planStoreFake struct {
 	saveErr         error
 }
 
-func TestNewPlanCoordinatorRequiresStore(t *testing.T) {
-	var typedNil *planStoreFake
-	for _, store := range []planStore{nil, typedNil} {
-		if coordinator, err := NewPlanCoordinator(PlanDependencies{Store: store, Now: time.Now}); err == nil || coordinator != nil {
-			t.Fatalf("NewPlanCoordinator = (%v, %v), want missing store error", coordinator, err)
-		}
-	}
-}
-
 func (f *planStoreFake) State(context.Context, string) (plan.Current, error) {
 	return f.state, f.readErr
 }

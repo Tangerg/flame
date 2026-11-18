@@ -3,30 +3,9 @@ package conversation
 import (
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
-
-func TestRunProjectionOwnsItsNegotiatedContract(t *testing.T) {
-	running := runningRun("seg_1")
-	running.CreatedAt = time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
-	running.Capabilities = &protocol.RunCapabilities{
-		RequiredFeatures: []protocol.RunCapabilityFeature{protocol.RunCapabilityFeatureChildRuns},
-		InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
-	}
-	if err := running.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	if err := (Run{}).Validate(); err == nil {
-		t.Fatal("an unconstructed run projection was accepted")
-	}
-	cloned := running.Clone()
-	cloned.Capabilities.InterruptTypes[0] = protocol.InterruptQuestion
-	if running.Capabilities.InterruptTypes[0] != protocol.InterruptApproval || running.Equal(cloned) {
-		t.Fatal("run clone shares its negotiated contract")
-	}
-}
 
 func TestRunLineageRequiresExplicitRootOrValidChild(t *testing.T) {
 	t.Parallel()
@@ -74,17 +53,6 @@ func testChildRunLineage(t *testing.T, runID, spawn, parent, root string) RunLin
 		t.Fatal(err)
 	}
 	return lineage
-}
-
-func TestOutcomeProblemIsValueOwned(t *testing.T) {
-	original := Outcome{Status: protocol.OutcomeTimedOut, Problem: &protocol.ProblemData{
-		Type: "rate_limited", Detail: "deadline exceeded", RetryAfterSeconds: 2,
-	}}
-	cloned := original.Clone()
-	cloned.Problem.Detail = "mutated"
-	if original.Equal(cloned) || !original.Equal(original.Clone()) {
-		t.Fatal("outcome problem is not value-owned")
-	}
 }
 
 func TestOutcomeExplanationIncludesRecoveryMetadata(t *testing.T) {

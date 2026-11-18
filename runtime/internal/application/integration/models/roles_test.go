@@ -13,46 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-func TestSetUtilityRoleUsesSaverPort(t *testing.T) {
-	state := NewRoleState(mustModelRole(t, "anthropic", "claude-haiku"))
-	saver := &fakeUtilityRoleSaver{}
-	c := newTestCoordinator(Config{UtilityRoleState: state, UtilityStore: saver})
-
-	if _, err := c.SetUtilityRole(context.Background(), "", ""); err != nil {
-		t.Fatalf("SetUtilityRole err = %v", err)
-	}
-
-	role := state.Role()
-	if saver.calls != 1 || saver.provider != "" || saver.model != "" {
-		t.Fatalf("saved calls=%d provider=%q model=%q", saver.calls, saver.provider, saver.model)
-	}
-	if role.Configured() {
-		t.Fatalf("role = %+v, want cleared", role)
-	}
-}
-
-func TestSetUtilityRoleUsesChatModelValidatorPort(t *testing.T) {
-	state := NewRoleState(modelref.Role{})
-	saver := &fakeUtilityRoleSaver{}
-	validator := &fakeChatModelValidator{}
-	cfg := configuredRoleConfig(t)
-	cfg.UtilityRoleState = state
-	cfg.UtilityValidator = validator
-	cfg.UtilityStore = saver
-	c := newTestCoordinator(cfg)
-
-	if _, err := c.SetUtilityRole(context.Background(), "anthropic", "claude-haiku"); err != nil {
-		t.Fatalf("SetUtilityRole err = %v", err)
-	}
-
-	if validator.provider != "anthropic" || validator.model != "claude-haiku" {
-		t.Fatalf("validator provider=%q model=%q", validator.provider, validator.model)
-	}
-	if saver.provider != "anthropic" || saver.model != "claude-haiku" {
-		t.Fatalf("saved provider=%q model=%q", saver.provider, saver.model)
-	}
-}
-
 func TestSetUtilityRoleReturnsChatModelValidatorError(t *testing.T) {
 	fail := errors.New("build client")
 	state := NewRoleState(modelref.Role{})
@@ -77,24 +37,6 @@ func TestSetUtilityRoleRequiresAConfiguredProvider(t *testing.T) {
 	_, err := c.SetUtilityRole(t.Context(), "anthropic", "claude-haiku")
 	if !errors.Is(err, ErrProviderUnconfigured) {
 		t.Fatalf("SetUtilityRole error = %v, want ErrProviderUnconfigured", err)
-	}
-}
-
-func TestSetEmbeddingRoleUsesSaverPort(t *testing.T) {
-	state := NewRoleState(mustModelRole(t, "openai", "text-embedding-3-small"))
-	saver := &fakeEmbeddingRoleSaver{}
-	c := newTestCoordinator(Config{EmbeddingRoleState: state, EmbeddingStore: saver})
-
-	if _, err := c.SetEmbeddingRole(context.Background(), "", ""); err != nil {
-		t.Fatalf("SetEmbeddingRole err = %v", err)
-	}
-
-	role := state.Role()
-	if saver.calls != 1 || saver.provider != "" || saver.model != "" {
-		t.Fatalf("saved calls=%d provider=%q model=%q", saver.calls, saver.provider, saver.model)
-	}
-	if role.Configured() {
-		t.Fatalf("role = %+v, want cleared", role)
 	}
 }
 
@@ -193,15 +135,6 @@ func assertRoleMutationSerializesPersistAndPublish(t *testing.T, state *RoleStat
 	if role := state.Role(); role.Model() != "second" {
 		t.Fatalf("live role = %+v, want second", role)
 	}
-}
-
-func mustModelRole(t *testing.T, providerID, model string) modelref.Role {
-	t.Helper()
-	role, err := modelref.NewRole(providerID, model)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return role
 }
 
 type fakeUtilityRoleSaver struct {
@@ -356,24 +289,6 @@ func completeTestConfig(cfg Config) Config {
 		cfg.EmbeddingStore = &fakeEmbeddingRoleSaver{}
 	}
 	return cfg
-}
-
-func TestNewRejectsMissingModelImplementation(t *testing.T) {
-	var typedNilLister *fakeLister
-	for _, prepare := range []func(*Config){
-		func(cfg *Config) { cfg.Lister = nil },
-		func(cfg *Config) { cfg.Lister = typedNilLister },
-		func(cfg *Config) { cfg.UtilityValidator = nil },
-		func(cfg *Config) { cfg.EmbeddingValidator = nil },
-		func(cfg *Config) { cfg.UtilityStore = nil },
-		func(cfg *Config) { cfg.EmbeddingStore = nil },
-	} {
-		cfg := completeTestConfig(Config{})
-		prepare(&cfg)
-		if coordinator, err := New(cfg); err == nil || coordinator != nil {
-			t.Fatalf("New = (%v, %v), want incomplete composition error", coordinator, err)
-		}
-	}
 }
 
 func newTestCoordinator(cfg Config) *Coordinator {

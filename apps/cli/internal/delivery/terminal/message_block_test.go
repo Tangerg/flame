@@ -7,51 +7,8 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 
-	"github.com/Tangerg/oolong/ui/core/grid"
 	"github.com/Tangerg/oolong/ui/kit"
 )
-
-func TestUserMessageBlockUsesAQuietSurfaceWithoutChangingCopiedText(t *testing.T) {
-	theme := kit.Dark()
-	block := newUserMessageBlock(theme, selfSpeaker, "first line\nsecond line")
-	width, height := 28, block.HeightForWidth(28)
-	surface := grid.NewSurface(width, height)
-	block.Draw(surface.View())
-
-	drawn := strings.Join(surface.Rows(), "\n")
-	for _, want := range []string{"you", "first line", "second line"} {
-		if !strings.Contains(drawn, want) {
-			t.Errorf("user message does not contain %q:\n%s", want, drawn)
-		}
-	}
-	padding, ok := surface.CellAt(0, 1)
-	if !ok || padding.Style != theme.Surface {
-		t.Fatalf("user message padding style = %+v, want surface %+v", padding.Style, theme.Surface)
-	}
-
-	rows := block.Rows(width)
-	if len(rows) != height {
-		t.Fatalf("copied rows = %d, measured height = %d", len(rows), height)
-	}
-	if rows[0].Content.String() != "you" || rows[0].Offset != userMessageInset {
-		t.Fatalf("copied speaker row = %+v", rows[0])
-	}
-	if rows[1].Content.String() != "first line" || rows[1].Offset != userMessageInset+2 {
-		t.Fatalf("copied body row = %+v", rows[1])
-	}
-}
-
-func TestUserMessageBlockDegradesWithoutLosingTextAtMinimalWidth(t *testing.T) {
-	block := newUserMessageBlock(kit.Dark(), selfSpeaker, "x")
-	for _, width := range []int{1, 2} {
-		height := block.HeightForWidth(width)
-		surface := grid.NewSurface(width, height)
-		block.Draw(surface.View())
-		if rows := block.Rows(width); len(rows) != height {
-			t.Fatalf("width %d copied rows = %d, measured height = %d", width, len(rows), height)
-		}
-	}
-}
 
 func TestUserPresenterKeepsAttachmentsInsideTheMessageSurface(t *testing.T) {
 	rendered := presentUser(blockPresentation{Theme: kit.Dark()}, conversation.Block{

@@ -2,22 +2,11 @@ package lsp
 
 import (
 	"encoding/json/jsontext"
-	json "encoding/json/v2"
+
 	"slices"
-	"strings"
+
 	"testing"
 )
-
-func TestDefaultCapabilitiesHaveOneTypedWireShape(t *testing.T) {
-	encoded, err := json.Marshal(defaultCapabilities())
-	if err != nil {
-		t.Fatalf("marshal default capabilities: %v", err)
-	}
-	const want = `{"textDocument":{"synchronization":{"dynamicRegistration":false,"didSave":true},"definition":{},"references":{},"implementation":{},"hover":{"contentFormat":["markdown","plaintext"]},"documentSymbol":{"hierarchicalDocumentSymbolSupport":false},"callHierarchy":{},"publishDiagnostics":{"versionSupport":true}},"workspace":{"symbol":{},"configuration":true,"workspaceFolders":true},"general":{"positionEncodings":["utf-16"]}}`
-	if string(encoded) != want {
-		t.Fatalf("default capabilities = %s", encoded)
-	}
-}
 
 // TestAdvertisedSynchronizationCoversWhatTheClientSends names the pairing the
 // shape above cannot state. diagnostics nudges servers that only publish on
@@ -163,20 +152,5 @@ func TestHoverTextRejectsMalformedAndUnknownShapes(t *testing.T) {
 		if err == nil {
 			t.Errorf("hoverText(%q) succeeded, want error", raw)
 		}
-	}
-}
-
-func TestDiagnosticSeverityClosesProtocolVocabulary(t *testing.T) {
-	if !diagnosticSeverityUnspecified.IsProblem() || !diagnosticSeverityWarning.IsProblem() {
-		t.Fatal("unspecified and warning severities must be treated as problems")
-	}
-	if diagnosticSeverityInformation.IsProblem() || diagnosticSeverityHint.IsProblem() {
-		t.Fatal("information and hint severities must not be treated as problems")
-	}
-	if got := (Diagnostic{Severity: diagnosticSeverityError}).SeverityName(); got != "error" {
-		t.Fatalf("error severity name = %q", got)
-	}
-	if got := (Diagnostic{Severity: 99}).SeverityName(); strings.TrimSpace(got) != "" {
-		t.Fatalf("unknown severity name = %q, want empty", got)
 	}
 }

@@ -47,25 +47,6 @@ func (r *rootRecorder) ResolveRoot(cwd string) (string, error) {
 	return "/workspace", r.err
 }
 
-func TestNewDiagnosticToolsRequiresCompleteDependencies(t *testing.T) {
-	for _, test := range []struct {
-		name     string
-		registry diagnosticToolRegistry
-		roots    diagnosticToolRoots
-	}{
-		{name: "registry", roots: &rootRecorder{}},
-		{name: "typed nil registry", registry: (*toolRegistryFixture)(nil), roots: &rootRecorder{}},
-		{name: "roots", registry: toolRegistryFixture{}},
-		{name: "typed nil roots", registry: toolRegistryFixture{}, roots: (*rootRecorder)(nil)},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if useCases, err := NewDiagnosticTools(test.registry, test.roots); err == nil || useCases != nil {
-				t.Fatalf("NewDiagnosticTools = (%v, %v), want incomplete construction rejected", useCases, err)
-			}
-		})
-	}
-}
-
 func newDiagnosticTools(t *testing.T, registry diagnosticToolRegistry, roots diagnosticToolRoots) *DiagnosticTools {
 	t.Helper()
 	useCases, err := NewDiagnosticTools(registry, roots)

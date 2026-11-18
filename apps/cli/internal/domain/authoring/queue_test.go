@@ -3,7 +3,7 @@ package authoring
 import (
 	"encoding/binary"
 	"errors"
-	"math"
+
 	"reflect"
 	"testing"
 )
@@ -14,24 +14,6 @@ func enqueue(q *Queue, sessionID string, message Message) (QueueEntry, error) {
 	return q.EnqueueCommand(
 		nextCommandID(q), sessionID, message, RunOptions{},
 	)
-}
-
-func TestEntryIdentityRejectsZeroAndAllocationOverflow(t *testing.T) {
-	t.Parallel()
-	if err := (QueueEntryID{}).Validate(); err == nil {
-		t.Fatal("zero queue entry identity was constructed")
-	}
-	if err := (QueueEntryID{}).Validate(); err == nil {
-		t.Fatal("zero queue entry identity was validated")
-	}
-	prompts := NewQueue()
-	prompts.nextID = math.MaxUint64
-	if _, err := enqueue(prompts, "session", Message{Text: "must not wrap"}); err == nil {
-		t.Fatal("exhausted queue identity sequence wrapped")
-	}
-	if snapshot := prompts.Snapshot("session"); len(snapshot.Entries) != 0 {
-		t.Fatalf("identity exhaustion mutated queue: %+v", snapshot)
-	}
 }
 
 func sameDispatchReservation(left, right QueueState) bool {

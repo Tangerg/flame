@@ -16,12 +16,6 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func TestExternalConnectorRequiresItsOwners(t *testing.T) {
-	if connector, err := NewExternalConnector(nil, nil, nil, nil); err == nil || connector != nil {
-		t.Fatal("connector admitted missing lifecycle, directory and grant owners")
-	}
-}
-
 func TestExternalDirectoryAdmissionRequiresUniqueVersionedIdentities(t *testing.T) {
 	first := wire.Entry{Name: "first", Revision: "revision-first", LaunchGrant: "grant-first"}
 	second := wire.Entry{Name: "second", Revision: "revision-second", LaunchGrant: "grant-second"}

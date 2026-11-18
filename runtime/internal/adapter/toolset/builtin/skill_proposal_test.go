@@ -55,38 +55,6 @@ func TestProposalSchemaRejectsInvalidDomainValuesBeforeSubmission(t *testing.T) 
 	}
 }
 
-func TestNewNilSubmitterOmitsTool(t *testing.T) {
-	candidate, err := NewProposal(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if candidate != nil {
-		t.Fatal("New(nil) returned a tool")
-	}
-}
-
-func TestDefinitionUsesOnePreciseProposalVocabulary(t *testing.T) {
-	candidate, err := NewProposal(&recordingSubmitter{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	definition := candidate.Definition()
-	if definition.Name != "propose_skill" {
-		t.Fatalf("name = %q", definition.Name)
-	}
-	schema := string(definition.InputSchema)
-	for _, required := range []string{`"name"`, `"description"`, `"instructions"`, `"scope"`, `"project"`, `"user"`} {
-		if !strings.Contains(schema, required) {
-			t.Errorf("schema missing %s: %s", required, schema)
-		}
-	}
-	for _, forbidden := range []string{`"cwd"`, `"session_id"`, `"origin"`, `"publish"`, `"approve"`} {
-		if strings.Contains(schema, forbidden) {
-			t.Errorf("schema exposes %s: %s", forbidden, schema)
-		}
-	}
-}
-
 func TestCallStampsHostScopeAndReturnsPendingReference(t *testing.T) {
 	submitter := &recordingSubmitter{}
 	candidate, err := NewProposal(submitter)

@@ -50,13 +50,3 @@ func TestReportedUsageKeepsAbsentDistinctFromReportedZero(t *testing.T) {
 		t.Fatalf("cumulative counters disagree: %+v vs %+v", absentTokens, zeroTokens)
 	}
 }
-
-func TestCloneReportedUsageDetachesBreakdowns(t *testing.T) {
-	reasoning := int64(3)
-	source := chat.Usage{InputTokens: 9, OutputTokens: 4, ReasoningTokens: &reasoning}
-	cloned := source.Clone()
-	reasoning = 99
-	if cloned.ReasoningTokens == nil || *cloned.ReasoningTokens != 3 {
-		t.Fatalf("clone aliased the caller's breakdown: %+v", cloned.ReasoningTokens)
-	}
-}

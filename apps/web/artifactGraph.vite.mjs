@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import {
   ARTIFACT_GRAPH,
-  LAZY_BUDGETS,
+  LAZY_GROUPS,
   artifactDigest,
   checkArtifactPath,
   isStylesheetRequest,
@@ -68,7 +68,7 @@ export function artifactDocument(html, base = "/") {
 
 function artifactDeclaration(note, importKind, specifier) {
   const group = note.startsWith("@flame-lazy:") ? note.slice("@flame-lazy:".length) : undefined;
-  if (note !== "@flame-startup" && !Object.hasOwn(LAZY_BUDGETS, group))
+  if (note !== "@flame-startup" && !Object.hasOwn(LAZY_GROUPS, group))
     throw new Error(`unknown artifact annotation: ${note}`);
   if (!group && importKind !== "ImportExpression")
     throw new Error("startup annotations require an immediate dynamic import");
@@ -181,7 +181,7 @@ export function artifactGraph() {
           if (!target || target.external)
             throw new Error(`artifact source did not resolve: ${entry.specifier}`);
           const css = isStylesheetRequest(target.id);
-          if (entry.group && (LAZY_BUDGETS[entry.group].kind === "css") !== css)
+          if (entry.group && (LAZY_GROUPS[entry.group].kind === "css") !== css)
             throw new Error(`artifact group and source type disagree: ${entry.specifier}`);
           if (css) cssSources.set(sourceId(target.id), target.id);
           resolved.push({

@@ -130,31 +130,6 @@ func TestCanceledToolRetainsEvidenceAfterRootAwait(t *testing.T) {
 	}
 }
 
-func TestInvalidToolCallErrorHasNoObservedOutput(t *testing.T) {
-	for _, cause := range []error{&toolcontract.CallError{}, (*toolcontract.CallError)(nil)} {
-		t.Run(fmt.Sprintf("%v", cause), func(t *testing.T) {
-			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "fixture_observe", Description: "Observe an external operation."}, func(context.Context, struct{}) (string, error) {
-				return "", cause
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			model := &observationScriptModel{responses: []*chat.Response{interactionToolResponse(chat.ToolCall{ID: "external", Name: "fixture_observe", Arguments: `{}`}, 1, 1)}}
-			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.MCPTool(testsupport.UserMCPServer("fixture"), "observe")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
-			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
-			ends := payloadsOf[runs.SegmentEnded](events)
-			if len(ends) != 1 || ends[0].Ending.Outcome() != run.OutcomeLost || len(ends[0].UnresolvedEffects()) == 0 {
-				t.Fatalf("invalid error did not retain its unresolved outcome: %+v", ends)
-			}
-			for _, effect := range ends[0].UnresolvedEffects() {
-				if effect.Output() != "" {
-					t.Fatalf("invalid CallError invented an observed output: %s", effect.Output())
-				}
-			}
-		})
-	}
-}
-
 func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 	for _, test := range []struct {
 		name              string

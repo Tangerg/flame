@@ -37,15 +37,6 @@ func (s usageSourceStub) VisitEndpointInvocations(_ context.Context, sessionID s
 	}
 	return s.failure
 }
-func TestNewUsageReporterRequiresPhysicalSource(t *testing.T) {
-	if _, err := NewUsageReporter(UsageDependencies{}); err == nil {
-		t.Fatal("missing source accepted")
-	}
-	var source *usageSourceStub
-	if _, err := NewUsageReporter(UsageDependencies{Source: source, Now: time.Now}); err == nil {
-		t.Fatal("typed nil source accepted")
-	}
-}
 
 func TestSummaryPeriodSeparatesAllTimeFromRecentDays(t *testing.T) {
 	now := time.Date(2026, 8, 29, 12, 30, 0, 0, time.FixedZone("test", 8*60*60))

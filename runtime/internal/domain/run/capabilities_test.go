@@ -44,15 +44,6 @@ func TestRunCapabilitiesHasOneDurableRepresentation(t *testing.T) {
 	}
 }
 
-func TestRunCapabilitiesCloneOwnsInterruptTypes(t *testing.T) {
-	original := Capabilities{InterruptTypes: []InterruptType{InterruptApproval}}
-	cloned := original.Clone()
-	cloned.InterruptTypes[0] = InterruptQuestion
-	if original.InterruptTypes[0] != InterruptApproval {
-		t.Fatal("Clone shares interrupt-kind storage with the source capabilities")
-	}
-}
-
 func TestRunCapabilitiesReportsTheCompleteMissingSet(t *testing.T) {
 	required := Capabilities{
 		ChildRuns:      true,

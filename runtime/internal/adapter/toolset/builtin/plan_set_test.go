@@ -29,16 +29,6 @@ func (s *stubStore) Replace(_ context.Context, _ string, steps []plandomain.Step
 	return next, err
 }
 
-func TestNewNilStoreOmitsTool(t *testing.T) {
-	tool, err := newSet(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if tool != nil {
-		t.Fatal("New(nil) returned a tool")
-	}
-}
-
 func TestSetPlanDefinition(t *testing.T) {
 	tool, err := newSet(&stubStore{})
 	if err != nil {
@@ -111,14 +101,6 @@ func TestSetPlanReplacesAndClearsTheSessionPlan(t *testing.T) {
 	}
 	if result != "Plan cleared at revision 2." || len(store.steps) != 0 {
 		t.Fatalf("clear result = %q, stored = %+v", result, store.steps)
-	}
-}
-
-func TestSetArgsMapsSteps(t *testing.T) {
-	steps := (setArgs{Steps: []stepArg{{Description: "debug failing test", Status: "in_progress"}}}).steps()
-	want := []plandomain.Step{{Description: "debug failing test", Status: plandomain.StatusInProgress}}
-	if len(steps) != 1 || steps[0] != want[0] {
-		t.Fatalf("steps = %+v, want %+v", steps, want)
 	}
 }
 

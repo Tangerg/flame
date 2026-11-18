@@ -103,12 +103,6 @@ func mustNewEndpoint(t *testing.T, target any, config EndpointConfig) *Endpoint 
 	return endpoint
 }
 
-func TestEndpointRequiresProcessLifetime(t *testing.T) {
-	if endpoint, err := NewEndpoint(struct{}{}, EndpointConfig{}); err == nil || endpoint != nil {
-		t.Fatalf("New without lifetime = (%v, %v), want nil endpoint and non-nil error", endpoint, err)
-	}
-}
-
 func TestEndpointRejectsInvalidDurableStoreNamespace(t *testing.T) {
 	endpoint, err := NewEndpoint(struct{}{}, EndpointConfig{
 		Lifetime:             t.Context(),

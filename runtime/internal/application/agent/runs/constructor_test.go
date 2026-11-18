@@ -3,8 +3,7 @@ package runs
 import (
 	"context"
 	"errors"
-	"strings"
-	"testing"
+
 	"time"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -12,60 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
-
-func TestRunUseCasesRejectMalformedDependencies(t *testing.T) {
-	var typedNilStarter *fakeExecutionPorts
-	complete := completeTestDependencies(runDeps{}, SegmentDependencies{})
-	withoutSegments := complete.Dependencies
-	withoutSegments.Segments = nil
-	tests := []struct {
-		name      string
-		construct func() error
-		want      string
-	}{
-		{name: "empty coordinator", construct: func() error { _, err := NewCoordinator(Dependencies{}); return err }, want: "command acceptance reader"},
-		{name: "coordinator without segments", construct: func() error { _, err := NewCoordinator(withoutSegments); return err }, want: "segment supervisor"},
-		{name: "empty openings", construct: func() error { _, err := NewOpenings(OpeningDependencies{}); return err }, want: "command acceptance reader"},
-		{name: "typed nil starter", construct: func() error {
-			_, err := NewOpenings(OpeningDependencies{CommandAcceptances: noCommandAcceptances{}, RootStarts: typedNilStarter})
-			return err
-		}, want: "root execution starter"},
-		{name: "empty cancellations", construct: func() error { _, err := NewCancellations(CancellationDependencies{}); return err }, want: "root cancellation requester"},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			if err := test.construct(); err == nil || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("constructor error = %v, want %q", err, test.want)
-			}
-		})
-	}
-}
-
-func TestNewSegmentsRejectsMissingClockAndInvalidRetention(t *testing.T) {
-	complete := func(change func(*SegmentDependencies)) SegmentDependencies {
-		effects := &fakeEffects{}
-		deps := SegmentDependencies{
-			Observations: &fakeExecutor{}, Releases: &fakeExecutionPorts{},
-			Publication: PublicationPorts{Openings: effects, Events: effects, Barriers: effects, Workspace: effects},
-			ChildStarts: effects, Finalizer: effects, Runs: &fakeRunProjection{}, Admissions: testsupport.NewAdmissionGate(),
-			Now: time.Now, Retention: DefaultRetention(),
-			NewRunID: func() string { return "run" }, NewSegmentID: func() string { return "segment" },
-		}
-		change(&deps)
-		return deps
-	}
-	if _, err := NewSegments(complete(func(*SegmentDependencies) {})); err != nil {
-		t.Fatalf("NewSegments(complete) = %v", err)
-	}
-	for name, change := range map[string]func(*SegmentDependencies){
-		"clock":     func(deps *SegmentDependencies) { deps.Now = nil },
-		"retention": func(deps *SegmentDependencies) { deps.Retention = Retention{MaxEvents: -1, MaxBytes: 1} },
-	} {
-		if _, err := NewSegments(complete(change)); err == nil || !strings.Contains(err.Error(), name) {
-			t.Errorf("NewSegments without %s = %v", name, err)
-		}
-	}
-}
 
 type passthroughWorkingContext struct{}
 

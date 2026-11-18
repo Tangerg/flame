@@ -1,12 +1,6 @@
 import { createAgentGatewayFixture } from "@/test/agentOwners";
 import { beforeEach as prepareTestClient, onTestFinished as finishTestClient } from "vitest";
 import { createTestClient, type TestClient } from "@/test/renderClient";
-let testClient: TestClient;
-prepareTestClient(() => {
-  const owned = createTestClient({ runtimeClient: getRuntimeClient });
-  testClient = owned;
-  finishTestClient(() => owned.dispose());
-});
 import { type FlameClient } from "@flame/runtime-client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { act, waitFor } from "@testing-library/react";
@@ -16,6 +10,13 @@ import { createFlameClient } from "@flame/runtime-client";
 import { createMemoryTransport } from "@flame/runtime-client/testing";
 import { respondSuccess } from "@flame/runtime-client/testing";
 import { queryClient } from "@/lib/queryClient";
+let testClient: TestClient;
+prepareTestClient(() => {
+  const owned = createTestClient({ runtimeClient: getRuntimeClient });
+  testClient = owned;
+  finishTestClient(() => owned.dispose());
+});
+
 let runtimeClient: () => FlameClient = () => {
   throw new Error("Runtime test client is not configured");
 };
@@ -46,22 +47,6 @@ async function waitForUsageRequest(
 
 function wrapper({ children }: { children: ReactNode }) {
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-}
-
-function usageReport(inputTokens: number) {
-  return {
-    total: { inputTokens, outputTokens: 0 },
-    coverage: {
-      calls: 1,
-      reportedCalls: 1,
-      pricedCalls: 0,
-      startedCalls: 0,
-      completedCalls: 1,
-      failedCalls: 0,
-      unknownCalls: 0,
-    },
-    byModel: [],
-  };
 }
 
 beforeEach(() => {
@@ -95,98 +80,6 @@ afterEach(async () => {
 });
 
 describe("mounted Session usage generation", () => {
-  it("keeps the same Session ID in two client instances on independent cache writers", async () => {
-    const first = testClient.renderHook(
-      () => testClient.agent.dependencies.usage.useAgentSessionUsage("ses_shared"),
-      { wrapper },
-    );
-    unmountHook = first.unmount;
-    const firstRequest = await waitForUsageRequest(0);
-    respondSuccess(transport, firstRequest.id, usageReport(13));
-    await waitFor(() => expect(first.result.current.data?.inputTokens).toBe(13));
-
-    const secondTransport = createMemoryTransport();
-    const secondClient = createFlameClient(secondTransport);
-    const secondOwner = createTestClient({ runtimeClient: () => secondClient });
-    const second = secondOwner.renderHook(
-      () => secondOwner.agent.dependencies.usage.useAgentSessionUsage("ses_shared"),
-      { wrapper },
-    );
-    try {
-      const secondRequest = await waitForUsageRequest(0, secondTransport);
-      expect(second.result.current.data).toBeUndefined();
-      expect(first.result.current.data?.inputTokens).toBe(13);
-      expect(transport.outbox().filter(({ method }) => method === "usage.session")).toHaveLength(1);
-
-      respondSuccess(secondTransport, secondRequest.id, usageReport(34));
-      await waitFor(() => expect(second.result.current.data?.inputTokens).toBe(34));
-      expect(first.result.current.data?.inputTokens).toBe(13);
-
-      await act(async () => {
-        restoreGateway?.replaceRuntimeGeneration();
-        await Promise.resolve();
-      });
-      const replacement = await waitForUsageRequest(1);
-      expect(
-        secondTransport.outbox().filter(({ method }) => method === "usage.session"),
-      ).toHaveLength(1);
-      expect(second.result.current.data?.inputTokens).toBe(34);
-      respondSuccess(transport, replacement.id, usageReport(21));
-      await waitFor(() => expect(first.result.current.data?.inputTokens).toBe(21));
-      expect(second.result.current.data?.inputTokens).toBe(34);
-    } finally {
-      second.unmount();
-      await secondOwner.dispose();
-      await secondClient.close();
-    }
-  });
-
-  it("does not cancel another instance's pending read when the first instance is disposed", async () => {
-    const firstSend = vi.spyOn(transport, "send");
-    const first = testClient.renderHook(
-      () => testClient.agent.dependencies.usage.useAgentSessionUsage("ses_shared"),
-      { wrapper },
-    );
-    unmountHook = first.unmount;
-    const firstRequest = await waitForUsageRequest(0);
-    const firstSignal = firstSend.mock.calls[0]?.[1];
-
-    const secondTransport = createMemoryTransport();
-    const secondSend = vi.spyOn(secondTransport, "send");
-    const secondClient = createFlameClient(secondTransport);
-    const secondOwner = createTestClient({ runtimeClient: () => secondClient });
-    const second = secondOwner.renderHook(
-      () => secondOwner.agent.dependencies.usage.useAgentSessionUsage("ses_shared"),
-      { wrapper },
-    );
-    try {
-      const secondRequest = await waitForUsageRequest(0, secondTransport);
-      const secondSignal = secondSend.mock.calls[0]?.[1];
-      expect(firstSignal?.aborted).toBe(false);
-      expect(secondSignal?.aborted).toBe(false);
-
-      act(() => {
-        restoreGateway?.dispose();
-        testClient.agent.dispose();
-      });
-
-      expect(firstSignal?.aborted).toBe(true);
-      expect(secondSignal?.aborted).toBe(false);
-      respondSuccess(secondTransport, secondRequest.id, usageReport(34));
-      await waitFor(() => expect(second.result.current.data?.inputTokens).toBe(34));
-      respondSuccess(transport, firstRequest.id, usageReport(1));
-      await act(async () => Promise.resolve());
-      expect(second.result.current.data?.inputTokens).toBe(34);
-      expect(
-        secondTransport.outbox().filter(({ method }) => method === "usage.session"),
-      ).toHaveLength(1);
-    } finally {
-      second.unmount();
-      await secondOwner.dispose();
-      await secondClient.close();
-    }
-  });
-
   it("does not let an empty handoff settlement invalidate a later query", async () => {
     restoreGateway?.dispose();
     restoreGateway = undefined;

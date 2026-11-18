@@ -9,21 +9,6 @@ import (
 	"github.com/Tangerg/oolong/ui/core/grid"
 )
 
-func TestToolGroupObserverUnsubscribeIsIdempotentAndPreservesOtherSubscriptions(t *testing.T) {
-	oldCalls, replacementCalls := 0, 0
-	group := &toolGroupBlock{}
-	unsubscribeOld := group.Observe(func(readerDocument) { oldCalls++ })
-	unsubscribeReplacement := group.Observe(func(readerDocument) { replacementCalls++ })
-	unsubscribeReplacement()
-	unsubscribeReplacement()
-	group.observers.notify(readerDocument{})
-
-	if oldCalls != 2 || replacementCalls != 1 {
-		t.Fatalf("group observer calls after replacement retirement = old %d replacement %d", oldCalls, replacementCalls)
-	}
-	unsubscribeOld()
-}
-
 func TestAdjacentResourceToolsShareOneDisclosureWithoutLosingChildDetails(t *testing.T) {
 	view := testTranscriptView(t)
 	read := resourceTool(view, builtin.CategoryRead, "read · main.go", "package main")

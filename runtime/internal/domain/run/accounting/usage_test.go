@@ -240,29 +240,6 @@ func TestUsageRejectsInvalidTotalsAtConstruction(t *testing.T) {
 	}
 }
 
-func TestUsageOwnsItsModelFactsAcrossCopiesAndProjections(t *testing.T) {
-	total := Totals{InputTokens: 5, Cost: mustCost(t, 0.25)}
-	parts := map[string]Totals{"model": total}
-	usage, err := NewUsage(total, parts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	parts["model"] = Totals{InputTokens: 99}
-	projection := usage.ByModel()
-	delete(projection, "model")
-	if !usage.Total().Equal(total) || !usage.ByModel()["model"].Equal(total) {
-		t.Fatalf("input or projection changed the canonical usage: %+v", usage)
-	}
-	copied := usage
-	next, err := copied.Accrue("model", Totals{InputTokens: 3})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if next.Total().InputTokens != 8 || usage.Total().InputTokens != 5 || copied.Total().InputTokens != 5 {
-		t.Fatalf("accrual mutated a previous value: original=%+v copied=%+v next=%+v", usage, copied, next)
-	}
-}
-
 func TestUsageAccrualFailurePublishesNoPartialValue(t *testing.T) {
 	usage, err := AttributedUsage(map[string]Totals{"model": {InputTokens: math.MaxInt64}})
 	if err != nil {

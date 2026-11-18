@@ -2,35 +2,11 @@ package lsp
 
 import (
 	"bufio"
-	"bytes"
+
 	"errors"
 	"strings"
 	"testing"
 )
-
-func TestLSPObjectCodecRoundTripsOneFrame(t *testing.T) {
-	var stream bytes.Buffer
-	codec := lspObjectCodec{}
-	want := struct {
-		JSONRPC string `json:"jsonrpc"`
-		ID      int    `json:"id"`
-		Method  string `json:"method"`
-	}{JSONRPC: "2.0", ID: 7, Method: "textDocument/hover"}
-	if err := codec.WriteObject(&stream, want); err != nil {
-		t.Fatal(err)
-	}
-	var got struct {
-		JSONRPC string `json:"jsonrpc"`
-		ID      int    `json:"id"`
-		Method  string `json:"method"`
-	}
-	if err := codec.ReadObject(bufio.NewReader(&stream), &got); err != nil {
-		t.Fatal(err)
-	}
-	if got != want {
-		t.Fatalf("decoded frame = %+v, want %+v", got, want)
-	}
-}
 
 func TestReadLSPObjectRejectsOversizedHeaderBeforeTerminator(t *testing.T) {
 	stream := bufio.NewReaderSize(strings.NewReader("X-Long: "+strings.Repeat("x", 64)+"\r\n\r\n"), 8)

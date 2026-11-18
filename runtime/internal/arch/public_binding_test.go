@@ -10,8 +10,7 @@ import (
 )
 
 // TestPublicBindingsCompileForAnExternalModule proves the public Go bindings
-// are usable without the Runtime module's internal-package privilege. Exact
-// operation coverage is enforced by the root binding's own surface test.
+// are usable without the Runtime module's internal-package privilege.
 func TestPublicBindingsCompileForAnExternalModule(t *testing.T) {
 	directory, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
@@ -222,4 +221,28 @@ func dependencyModuleRoot(t *testing.T, module string) string {
 		t.Fatalf("dependency module %s has no resolved source directory", module)
 	}
 	return directory
+}
+
+const runtimeModulePath = "github.com/Tangerg/flame/runtime"
+const sdkModulePath = "github.com/Tangerg/flame/packages/go-sdk"
+
+// moduleRoot walks up from the test's working directory to the directory
+// holding the Runtime go.mod, independently of the surrounding checkout.
+func moduleRoot(t *testing.T) string {
+	t.Helper()
+	directory, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for {
+		data, err := os.ReadFile(filepath.Join(directory, "go.mod"))
+		if err == nil && strings.Contains(string(data), "module "+runtimeModulePath+"\n") {
+			return directory
+		}
+		parent := filepath.Dir(directory)
+		if parent == directory {
+			t.Fatal("Runtime module root not found")
+		}
+		directory = parent
+	}
 }

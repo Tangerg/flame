@@ -286,7 +286,6 @@ export function Memory({ context }: { context: ComponentContext }) {
             <FormField label={t("content.label")}>
               <TextArea
                 aria-label={t("content.label")}
-                // oxlint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
                 rows={2}
                 autosize

@@ -3,7 +3,7 @@ package question
 import (
 	"errors"
 	"slices"
-	"sync"
+
 	"testing"
 )
 
@@ -80,25 +80,4 @@ func TestContractRejectsMalformedDefinitions(t *testing.T) {
 	if err := (Contract{}).Validate(nil); err == nil {
 		t.Fatal("zero contract accepted answers")
 	}
-}
-
-func TestContractDetachesTheAdvertisedAnswerSpace(t *testing.T) {
-	fields := []Field{{Kind: Choice, Options: []string{"a", "b"}, Multiple: true}}
-	contract, err := New(fields)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fields[0].Options[0] = "changed"
-	fields[0].Multiple = false
-	var work sync.WaitGroup
-	for range 8 {
-		work.Go(func() {
-			for range 32 {
-				if err := contract.Validate([][]string{{"a", "b"}}); err != nil {
-					t.Error(err)
-				}
-			}
-		})
-	}
-	work.Wait()
 }

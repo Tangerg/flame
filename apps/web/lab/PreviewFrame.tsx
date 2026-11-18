@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { previewStyles as styles } from "./previewStyles";
 import { useEffect, useRef, useState } from "react";
 import { messages } from "./messages";
-import { ObservationLog, parseObservationMessage } from "./observations";
+import { ObservationLog, OBSERVATION_NAMES, parseObservationMessage } from "./observations";
 import { previewURL, type LabSelection } from "./selection";
 import { localize, type LabStory } from "./story";
 
@@ -46,7 +46,7 @@ function PreviewInstance({
       if (message.kind === "ready") {
         window.clearTimeout(timeout);
         setStatus("ready");
-      } else if (message.kind === "error") {
+      } else if (message.kind === "error" && message.name === OBSERVATION_NAMES.reactError) {
         window.clearTimeout(timeout);
         setStatus("failed");
       }

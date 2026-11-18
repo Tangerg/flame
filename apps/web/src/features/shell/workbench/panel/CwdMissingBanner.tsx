@@ -83,7 +83,6 @@ export function CwdMissingBanner() {
                   aria-label={t("cwdMissing.placeholder")}
                   pending={busy}
                   spellCheck={false}
-                  // oxlint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
                   className={stylex.props(cw.field).className}
                 />

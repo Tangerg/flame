@@ -61,8 +61,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const DELIBERATE_OVERRIDES = new Map<string, string>();
-
 afterEach(async () => {
   await resetKernelForTest();
   await connection.dispose();
@@ -83,10 +81,8 @@ describe("built-in shortcuts", () => {
       bindings.set(key, [...(bindings.get(key) ?? []), `shortcut ${shortcut.key}`]);
     }
 
-    expect(bindings.size).toBeGreaterThan(3);
-
     const collisions = [...bindings]
-      .filter(([key, owners]) => owners.length > 1 && !DELIBERATE_OVERRIDES.has(key))
+      .filter(([, owners]) => owners.length > 1)
       .map(([key, owners]) => `${key} <- ${owners.join(", ")}`);
     expect(collisions).toEqual([]);
   });

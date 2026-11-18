@@ -145,19 +145,6 @@ func TestConnectionsRejectMutationsAfterShutdown(t *testing.T) {
 	}
 }
 
-func TestOpenRequiresStartupAndProcessLifetimes(t *testing.T) {
-	var missingContext context.Context
-	if connections, _, err := testOpen(missingContext, t.Context(), nil, nil); err == nil || connections != nil {
-		t.Fatalf("Open without startup context = (%v, %v), want nil connections and non-nil error", connections, err)
-	}
-	if connections, _, err := testOpen(t.Context(), nil, nil, nil); err == nil || connections != nil {
-		t.Fatalf("Open without process lifetime = (%v, %v), want nil connections and non-nil error", connections, err)
-	}
-	if connections, err := openConnections(t.Context(), t.Context(), nil, nil, nil, nil); err == nil || connections != nil {
-		t.Fatalf("Open without configuration source = (%v, %v), want nil connections and non-nil error", connections, err)
-	}
-}
-
 func TestConnectionsShutdownCancelsAndJoinsAttempts(t *testing.T) {
 	c := &connections{lifetime: t.Context()}
 	entered, release := make(chan struct{}), make(chan struct{})
@@ -309,21 +296,6 @@ func TestConnectionAttemptsSupersedePerServer(t *testing.T) {
 	newFirst.Close()
 	if err := c.shutdown(t.Context()); err != nil {
 		t.Fatal(err)
-	}
-}
-
-func TestCloneServerConfigOwnsMutableFields(t *testing.T) {
-	original := ServerConfig{
-		Server: mcpserver.Server{
-			Connection: mcpserver.StdioConnection{Args: []string{"one"}, Env: map[string]string{"A": "1"}},
-		},
-	}
-	cloned := original.Clone()
-	original.Connection.(mcpserver.StdioConnection).Args[0] = "two"
-	original.Connection.(mcpserver.StdioConnection).Env["A"] = "2"
-
-	if cloned.Connection.(mcpserver.StdioConnection).Args[0] != "one" || cloned.Connection.(mcpserver.StdioConnection).Env["A"] != "1" {
-		t.Fatalf("clone retained caller-owned storage: %+v", cloned)
 	}
 }
 

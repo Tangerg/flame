@@ -2,7 +2,7 @@ package terminal
 
 import (
 	"errors"
-	"math"
+
 	"sync"
 	"testing"
 	"time"
@@ -126,30 +126,5 @@ func TestDraftPersistenceCloseFlushesPendingAutosave(t *testing.T) {
 	}
 	if err := persistence.Flush("session", authoring.Message{Text: "too late"}); !errors.Is(err, errDraftPersistenceClosed) {
 		t.Fatalf("flush after close error = %v", err)
-	}
-}
-
-func TestDraftPersistenceRevisionExhaustionPreservesPendingSnapshot(t *testing.T) {
-	pending := draftSnapshot{
-		revision:  math.MaxUint64,
-		sessionID: "session",
-		message:   authoring.Message{Text: "last addressable draft"},
-	}
-	persistence := &draftPersistence{
-		pending:  &pending,
-		revision: math.MaxUint64,
-	}
-
-	if err := persistence.Schedule("session", authoring.Message{Text: "wrapped draft"}); !errors.Is(err, errDraftPersistenceRevisionExhausted) {
-		t.Fatalf("schedule after revision exhaustion error = %v", err)
-	}
-	if persistence.revision != math.MaxUint64 {
-		t.Fatalf("revision = %d, want exhausted revision to remain unchanged", persistence.revision)
-	}
-	if persistence.pending != &pending || persistence.pending.message.Text != "last addressable draft" {
-		t.Fatalf("pending snapshot = %+v, want the last addressable draft to remain authoritative", persistence.pending)
-	}
-	if err := persistence.Flush("session", authoring.Message{Text: "wrapped barrier"}); !errors.Is(err, errDraftPersistenceRevisionExhausted) {
-		t.Fatalf("flush after revision exhaustion error = %v", err)
 	}
 }

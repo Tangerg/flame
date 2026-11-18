@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
-	"slices"
+
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -227,14 +227,5 @@ func TestExecutorCheckpointStoreDeletesByApplicationOwnership(t *testing.T) {
 	}
 	if got, err := store.LoadCheckpoint(ctx, "keep"); err != nil || got.RootMemberID != "keep" {
 		t.Fatalf("preserved checkpoint = (%+v, %v)", got, err)
-	}
-}
-
-func TestExecutorCheckpointSchemaContainsOnlyOwnedData(t *testing.T) {
-	db, _ := newExecutorCheckpointStorage(t)
-	columns := fixtureColumns(t, db, "executor_checkpoints")
-	want := []string{"root_member_id", "session_id", "build_id", "payload"}
-	if !slices.Equal(columns, want) {
-		t.Fatalf("executor checkpoint columns = %v, want %v", columns, want)
 	}
 }

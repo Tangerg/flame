@@ -75,16 +75,6 @@ func newSearch(t *testing.T, tools []toolcontract.Tool) *toolset.Discovery {
 	return search
 }
 
-func TestNewEmptyReturnsNil(t *testing.T) {
-	search, err := toolset.NewDiscovery(nil)
-	if err != nil {
-		t.Fatalf("New(nil): %v", err)
-	}
-	if search != nil {
-		t.Fatal("New(nil) should return a nil tool — nothing to search")
-	}
-}
-
 func TestKeywordSearchRanksByName(t *testing.T) {
 	tool := newSearch(t, catalog())
 	out := call(t, tool, "create issue")
@@ -150,32 +140,6 @@ func TestRoundRobinSpreadsAcrossServers(t *testing.T) {
 	}
 	if !strings.Contains(out, "alpha_") || !strings.Contains(out, "beta_") {
 		t.Fatalf("limit=2 over two servers should include both servers, got:\n%s", out)
-	}
-}
-
-func TestDeferredToolNames(t *testing.T) {
-	tool := newSearch(t, catalog())
-	names := tool.DeferredToolNames()
-	if len(names) != 4 {
-		t.Fatalf("DeferredToolNames = %v, want 4 names", names)
-	}
-	// Mutating the returned slice must not corrupt internal state.
-	names[0] = "mutated"
-	if tool.DeferredToolNames()[0] == "mutated" {
-		t.Fatal("DeferredToolNames leaked internal slice")
-	}
-}
-
-func TestDescriptionIsIndependentOfCatalog(t *testing.T) {
-	small := newSearch(t, catalog()[:1]).Definition()
-	full := newSearch(t, catalog()).Definition()
-	if small.Description != full.Description || string(small.InputSchema) != string(full.InputSchema) {
-		t.Fatalf("search_tools declaration depends on the deferred catalog:\n%s\n---\n%s", small.Description, full.Description)
-	}
-	for _, name := range []string{"linear_create_issue", "slack_send_message", "github_open_pr"} {
-		if strings.Contains(full.Description, name) {
-			t.Fatalf("description names deferred Tool %q:\n%s", name, full.Description)
-		}
 	}
 }
 

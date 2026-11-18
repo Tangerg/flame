@@ -161,19 +161,6 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	}
 }
 
-type waitingExecutionResumabilityFunc func(context.Context, runs.ExecutionContinuation) (bool, error)
-
-func (w waitingExecutionResumabilityFunc) CanResumeWaitingExecution(
-	ctx context.Context,
-	continuation runs.ExecutionContinuation,
-) (runs.WaitingResumption, error) {
-	resumable, err := w(ctx, continuation)
-	if err != nil || resumable {
-		return runs.ResumableWaiting(), err
-	}
-	return runs.UnresumableWaiting(run.LossWaitingStateUnavailable), nil
-}
-
 // TestRecoveryRepairsWholeDurableLifecycle proves
 // terminal_run_explains_how_it_ended at the runs.recovery boundary.
 func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {

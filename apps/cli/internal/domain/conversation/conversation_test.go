@@ -559,11 +559,3 @@ func apply(t *testing.T, projection *Conversation, event RunEvent) {
 		t.Fatal("event was not applied")
 	}
 }
-
-func TestBlockKeyPreservesFieldBoundaries(t *testing.T) {
-	left := BlockKey("a", "bc")
-	right := BlockKey("ab", "c")
-	if left == right {
-		t.Fatal("different block identity fields produced the same terminal key")
-	}
-}

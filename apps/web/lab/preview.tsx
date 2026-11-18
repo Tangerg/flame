@@ -11,7 +11,7 @@ import "@/styles/overlays.css";
 import "./preview.css";
 import { catalog } from "./catalog";
 import { createLabEnvironment } from "./environment";
-import { installPreviewObservations, OBSERVATION_NAMES } from "./observations";
+import { installPreviewObservations } from "./observations";
 import { LAB_INSTANCE_QUERY, readSelection, recoveryURL } from "./selection";
 import { localize } from "./story";
 import { messages } from "./messages";
@@ -44,10 +44,7 @@ try {
     <environment.Wrapper>
       <ErrorBoundary
         onError={(error) =>
-          observations.observe(
-            OBSERVATION_NAMES.reactError,
-            error instanceof Error ? error.message : String(error),
-          )
+          observations.fail(error instanceof Error ? error.message : String(error))
         }
         fallbackRender={({ error }) => (
           <main
@@ -94,7 +91,7 @@ try {
   });
 } catch (error) {
   const reason = error instanceof Error ? error.message : String(error);
-  observations.observe(OBSERVATION_NAMES.reactError, reason);
+  observations.fail(reason);
   const failure = failurePresentation(query);
   root.render(
     <main

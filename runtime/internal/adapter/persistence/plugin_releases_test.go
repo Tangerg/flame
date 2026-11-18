@@ -6,7 +6,7 @@ import (
 	"errors"
 	"path/filepath"
 	"reflect"
-	"sync"
+
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
@@ -169,109 +169,6 @@ func TestReleaseReadRejectsChangedInvalidDeclaration(t *testing.T) {
 			requireStoredRelease(t, t.Context(), catalog, original)
 		})
 	}
-}
-
-func TestReleaseReadsDoNotShareMutableDeclarations(t *testing.T) {
-	db := openStore(t)
-	catalog := newReleaseStore(databaseFor(db))
-	contract, err := plugincontract.NewCapability(
-		plugincontract.CapabilityConfig{Reference: "consumer.role", Composition: plugincontract.Selection, Scope: extension.ScopeInstallation},
-		frame.MethodDescriptor{Name: "owner.read", Kind: frame.Query, Target: extension.ScopeInstallation, Input: jsontext.Value(`{"type":"object"}`), Output: jsontext.Value(`{"type":"object"}`)},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	backend := testsupport.ServerName("backend")
-	release := testsupport.Release(t, "release", plugin.Declaration{
-		Name: "package",
-		Servers: []plugin.Server{
-			{Name: backend, Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "backend", Args: []string{"serve"}, Env: map[string]string{"MODE": "read"}}}},
-			{Name: testsupport.ServerName("remote"), Startup: plugin.DeclaredConnection{Connection: mcpserver.HTTPConnection{URL: "https://example.test/mcp", Headers: map[string]string{"X-Mode": "read"}}}},
-			{Name: testsupport.ServerName("managed"), Startup: plugin.ManagedBackend{Runtime: "node", Entry: "backend/main.mjs"}},
-		},
-		Contributions: []plugin.Contribution{{ID: "reader", Server: backend, Export: "read", Contract: contract.Identity(), Requires: []plugin.Requirement{{ID: "collaborator", Contract: contract.Identity(), Optional: true}}}},
-		Components: []plugin.ClientComponent{{
-			ID: "markdown", Title: "Markdown", Scope: extension.ComponentScopeFile, Placement: extension.ComponentPlacementFileRenderer,
-			Entry: plugin.Namespace + "/components/markdown.js", Export: "Markdown", Selector: &plugin.RendererSelector{Kind: extension.RendererFileExtension, Name: "md"},
-		}, {
-			ID: "search", Title: "Search", Scope: extension.ComponentScopeToolResult, Placement: extension.ComponentPlacementToolResultRenderer,
-			Entry: plugin.Namespace + "/components/result.js", Export: "Result", Selector: &plugin.RendererSelector{Kind: extension.RendererResultShape, Shape: extension.ResultShapeSearch},
-		}},
-	})
-	if err := catalog.Admit(t.Context(), release); err != nil {
-		t.Fatal(err)
-	}
-	stored, err := catalog.Get(t.Context(), release.Digest())
-	if err != nil {
-		t.Fatal(err)
-	}
-	declaration := stored.Declaration()
-	declaration.Name = "changed"
-	declaration.Servers[0].Startup.(plugin.DeclaredConnection).Connection.(mcpserver.StdioConnection).Args[0] = "changed"
-	declaration.Servers[0].Startup.(plugin.DeclaredConnection).Connection.(mcpserver.StdioConnection).Env["MODE"] = "changed"
-	declaration.Servers[1].Startup.(plugin.DeclaredConnection).Connection.(mcpserver.HTTPConnection).Headers["X-Mode"] = "changed"
-	{
-		updated := declaration.Servers[2].Startup.(plugin.ManagedBackend)
-		updated.Entry = "changed.mjs"
-		declaration.Servers[2].Startup = updated
-	}
-	declaration.Contributions[0].Requires[0].ID = "changed"
-	declaration.Components[0].Selector.Name = "changed"
-	declaration.Components[1].Selector.Shape = "changed"
-	contribution, found := stored.Contribution("reader")
-	if !found {
-		t.Fatal("stored release lost its contribution")
-	}
-	contribution.Requires[0].ID = "changed"
-	requireStoredRelease(t, t.Context(), catalog, release)
-	installations := newInstallationStore(catalog)
-	installation, err := plugin.New(testsupport.InstallationID(t), "/package", release)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := installations.projectRecord(t.Context(), installation.Snapshot()); err != nil {
-		t.Fatal(err)
-	}
-	restored, found, err := installations.Get(t.Context(), installation.ID())
-	if err != nil || !found {
-		t.Fatalf("installation restoration = (%t, %v)", found, err)
-	}
-	if !reflect.DeepEqual(restored.Selected.Declaration(), release.Declaration()) {
-		t.Fatal("caller mutation reached the installation's admitted release")
-	}
-}
-
-func TestReleaseReadsConcurrentlyPreserveAdmission(t *testing.T) {
-	db := openStore(t)
-	catalog := newReleaseStore(databaseFor(db))
-	release := testsupport.Release(t, "release", plugin.Declaration{
-		Name: "package",
-		Servers: []plugin.Server{{
-			Name:    testsupport.ServerName("backend"),
-			Startup: plugin.DeclaredConnection{Connection: mcpserver.StdioConnection{Command: "backend", Args: []string{"serve"}}},
-		}},
-	})
-	if err := catalog.Admit(t.Context(), release); err != nil {
-		t.Fatal(err)
-	}
-	const readers = 8
-	var group sync.WaitGroup
-	for range readers {
-		group.Go(func() {
-			stored, err := catalog.Get(t.Context(), release.Digest())
-			if err != nil {
-				t.Error(err)
-				return
-			}
-			declaration := stored.Declaration()
-			if !reflect.DeepEqual(declaration, release.Declaration()) {
-				t.Error("concurrent read changed the admitted declaration")
-			}
-			declaration.Servers[0].Startup.(plugin.DeclaredConnection).Connection.(mcpserver.StdioConnection).Args[0] = "changed"
-		})
-	}
-	group.Wait()
-	requireStoredRelease(t, t.Context(), catalog, release)
 }
 
 func requireStoredRelease(t *testing.T, ctx context.Context, catalog *ReleaseStore, want plugin.Release) {

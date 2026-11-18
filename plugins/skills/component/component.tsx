@@ -357,7 +357,6 @@ export function Skills({ context }: { context: ComponentContext }) {
             <Button
               variant="ghost"
               disabled={Boolean(command)}
-              // oxlint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               onClick={closeReview}
             >

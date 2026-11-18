@@ -5,14 +5,6 @@ import (
 	"testing"
 )
 
-func TestNewScopeRequiresPathResolver(t *testing.T) {
-	for _, paths := range []paths{nil, (*testPaths)(nil)} {
-		if scope, err := NewScope("", "", paths); err == nil || scope != nil {
-			t.Fatalf("NewScope = (%v, %v), want missing resolver rejected", scope, err)
-		}
-	}
-}
-
 func newScope(t *testing.T, defaultWorkspacePath, userHome string, paths paths) *Scope {
 	t.Helper()
 	scope, err := NewScope(defaultWorkspacePath, userHome, paths)

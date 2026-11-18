@@ -9,8 +9,7 @@ const runtimeLifecycleTest = "tests/integration/runtime-http.e2e.test.ts";
 // The application config starts Wails/browser lifetimes that neither test host owns.
 export default defineConfig({
   // Same transform the app and the fixtures get: without it `stylex.defineVars` reaches the
-  // test runtime uncompiled and throws at import, taking every file that touches a migrated
-  // component with it.
+  // test runtime uncompiled and throws when logic tests import those modules.
   plugins: [stylexTransform()],
   resolve: {
     conditions: STYLEX_CONDITIONS,
@@ -29,8 +28,6 @@ export default defineConfig({
           environment: "happy-dom",
           setupFiles: ["./src/test/setup.ts"],
           fileParallelism: false,
-          // Fixture validity and portable component contracts do not require a browser;
-          // Playwright owns rendered geometry and appearance.
           include: [
             "src/**/*.test.{ts,tsx}",
             "lab/**/*.test.{ts,tsx}",

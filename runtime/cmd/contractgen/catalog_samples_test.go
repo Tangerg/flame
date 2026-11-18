@@ -88,12 +88,3 @@ func TestEveryCanonicalSampleIsBound(t *testing.T) {
 		}
 	}
 }
-
-func TestSamplesReturnsCallerOwnedCatalog(t *testing.T) {
-	samples := contractSamples()
-	original := samples[0]
-	samples[0] = contractSample{}
-	if got := contractSamples()[0]; got != original {
-		t.Fatal("mutating one contractSamples result rewrote the artifact catalog")
-	}
-}

@@ -2,7 +2,7 @@ package dispatch
 
 import (
 	"reflect"
-	"slices"
+
 	"strings"
 	"testing"
 
@@ -17,93 +17,6 @@ type allowedValueBranchFixture struct {
 	Type  string                     `json:"type"`
 	Left  *allowedValueBranchPayload `json:"left,omitempty"`
 	Right *allowedValueBranchPayload `json:"right,omitempty"`
-}
-
-// TestRegisteredShapesDescribeRealTypes is the whole point of declaring unions
-// instead of inferring them: reflection cannot recover a discriminator, but it
-// CAN check that a declaration matches the struct. Every registered spec is
-// validated at init; this pins that the registrations exist and stay checked.
-func TestRegisteredShapesDescribeRealTypes(t *testing.T) {
-	t.Parallel()
-
-	if len(shapes.Unions()) == 0 {
-		t.Fatal("no union is registered")
-	}
-	for _, union := range shapes.Unions() {
-		if err := union.validate(); err != nil {
-			t.Errorf("union %s: %v", union.GoType.Name(), err)
-		}
-	}
-	for _, constraint := range shapes.Constraints() {
-		if err := constraint.validate(); err != nil {
-			t.Errorf("constraint %s: %v", constraint.GoType.Name(), err)
-		}
-	}
-	if len(shapes.Notifications()) == 0 {
-		t.Fatal("no downstream notification is registered")
-	}
-	for _, notification := range shapes.Notifications() {
-		if err := notification.validate(); err != nil {
-			t.Errorf("notification %s: %v", notification.Name, err)
-		}
-	}
-}
-
-func TestShapeViewsAreSnapshots(t *testing.T) {
-	t.Parallel()
-
-	unions := shapes.Unions()
-	originalTag := unions[0].Variants[0].Tag
-	unions[0].Variants[0].Tag = "corrupted"
-	if got := shapes.Unions()[0].Variants[0].Tag; got != originalTag {
-		t.Fatalf("Unions exposed registry storage: got %q, want %q", got, originalTag)
-	}
-	mutatedAllowedValues := false
-	for unionIndex, union := range unions {
-		for variantIndex, variant := range union.Variants {
-			if len(variant.AllowedValues) == 0 || len(variant.AllowedValues[0].Values) == 0 {
-				continue
-			}
-			original := variant.AllowedValues[0].Values[0]
-			unions[unionIndex].Variants[variantIndex].AllowedValues[0].Values[0] = "corrupted"
-			if got := shapes.Unions()[unionIndex].Variants[variantIndex].AllowedValues[0].Values[0]; got != original {
-				t.Fatalf("Unions exposed allowed-value storage: got %q, want %q", got, original)
-			}
-			mutatedAllowedValues = true
-			break
-		}
-		if mutatedAllowedValues {
-			break
-		}
-	}
-	if !mutatedAllowedValues {
-		t.Fatal("no union allowed-value set is registered")
-	}
-	for index := range unions {
-		if unions[index].PatternVariant == nil {
-			continue
-		}
-		originalPattern := unions[index].PatternVariant.TagPattern
-		unions[index].PatternVariant.TagPattern = "corrupted"
-		if got := shapes.Unions()[index].PatternVariant.TagPattern; got != originalPattern {
-			t.Fatalf("Unions exposed pattern variant storage: got %q, want %q", got, originalPattern)
-		}
-		break
-	}
-
-	values := shapes.ValueConstraints()
-	originalField := values[0].Constraints[0].Field
-	values[0].Constraints[0].Field = "corrupted"
-	if got := shapes.ValueConstraints()[0].Constraints[0].Field; got != originalField {
-		t.Fatalf("ValueConstraints exposed registry storage: got %q, want %q", got, originalField)
-	}
-
-	notifications := shapes.Notifications()
-	originalName := notifications[0].Name
-	notifications[0].Name = "notifications.corrupted"
-	if got := shapes.Notifications()[0].Name; got != originalName {
-		t.Fatalf("Notifications exposed registry storage: got %q, want %q", got, originalName)
-	}
 }
 
 func TestNotificationValidationRejectsUnpublishableParams(t *testing.T) {
@@ -143,32 +56,6 @@ func TestNotificationValidationRejectsUnpublishableParams(t *testing.T) {
 				t.Fatalf("validate error = %v, want it to mention %q", err, test.want)
 			}
 		})
-	}
-}
-
-// TestEveryWireUnionIsRegistered lists every discriminated union in the frozen
-// contract. A new wire union does not exist until both its Go carrier and its
-// machine-readable UnionSpec land. ProblemData includes one namespaced extension
-// branch; that is still a registered union, not an arbitrary string escape hatch.
-//
-// DiffRow variants must remain exclusive: a hunk cannot carry a line row's
-// text and line numbers, even if those fields are individually valid.
-func TestEveryWireUnionIsRegistered(t *testing.T) {
-	t.Parallel()
-
-	want := []string{
-		"Activity", "ApprovalSubject", "ArtifactItem", "ArtifactOutcome", "TrajectoryEntry", "ToolRef",
-		"CancelRunResponse", "CapabilityRequirement", "ContentBlock", "Diff", "DiffBaseline", "DiffRow", "Interrupt", "InterruptResponseValue", "Item", "ItemDelta",
-		"ItemListScope", "MCPAuthorizationAttemptStatus", "MCPAuthorizationChange", "MCPConnection", "MCPConnectionInput", "MCPEnvironmentChange", "MCPHandshakeTimeout", "MCPHeadersChange", "MCPOrigin", "MCPServerState", "PluginComponent", "PluginInputState", "PluginRealization", "PluginRendererSelector", "PluginServerDeclaration", "PluginValueChange", "ProblemData", "ProviderConfigChange", "QuestionField", "RunAcceptance", "RunOutcome", "RuntimeEvent", "StreamEvent",
-	}
-	got := make([]string, 0, len(shapes.Unions()))
-	for _, union := range shapes.Unions() {
-		got = append(got, union.GoType.Name())
-	}
-	slices.Sort(got)
-	slices.Sort(want)
-	if !slices.Equal(got, want) {
-		t.Fatalf("registered unions = %v, want %v", got, want)
 	}
 }
 

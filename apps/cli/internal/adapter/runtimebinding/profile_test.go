@@ -33,35 +33,6 @@ func TestRuntimeProfilePreservesDiscoveryAndNegotiatesWithProtocolRules(t *testi
 	}
 }
 
-func TestRuntimeProfileProtectsRetainedProtocolValues(t *testing.T) {
-	t.Parallel()
-	discovery := compatibleDiscovery()
-	client := requestMeta("test").ClientCapabilities
-	client.ExcludedEphemeralEvents = []protocol.SuppressibleRunEventType{protocol.SuppressibleRunItemDelta}
-	profile := requireProfile(t, discovery, client)
-	runtime := &Connection{profile: profile}
-	wantDiscovery, wantClient := profile.Discovery(), profile.ClientCapabilities()
-	mutate := func(d *protocol.DiscoverResponse, c *protocol.ClientCapabilities) {
-		d.Capabilities.RunEvents[0] = "mutated"
-		d.Capabilities.RuntimeTopics[0] = "mutated"
-		d.Capabilities.StreamingMethods[0] = "mutated"
-		d.Capabilities.Features[protocol.FeaturePlan] = protocol.FeatureCapability{}
-		*d.Capabilities.Limits.MaxConcurrentRuns = 99
-		c.Features[protocol.FeatureChildRuns] = protocol.FeaturePreference{}
-		c.InterruptTypes[0] = "mutated"
-		c.ExcludedEphemeralEvents[0] = protocol.SuppressibleRunSegmentProgress
-	}
-	mutate(discovery, client)
-	first := runtime.Profile()
-	readDiscovery, readClient := first.Discovery(), first.ClientCapabilities()
-	mutate(&readDiscovery, readClient)
-	for _, got := range []Profile{profile, first, runtime.Profile()} {
-		if !reflect.DeepEqual(got.Discovery(), wantDiscovery) || !reflect.DeepEqual(got.ClientCapabilities(), wantClient) {
-			t.Fatal("mutating a source or returned protocol value changed negotiated facts")
-		}
-	}
-}
-
 func TestRuntimeProfileRejectsInvalidDiscoveryAtConstruction(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {

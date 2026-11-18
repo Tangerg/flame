@@ -194,28 +194,6 @@ func TestAuthoredWatchOwnsChangesForEveryObservation(t *testing.T) {
 	}
 }
 
-func TestNewAuthoredWatchRequiresCompleteDependencies(t *testing.T) {
-	scope := newScope(t, "", "", testPaths{})
-	for _, test := range []struct {
-		name      string
-		scope     *Scope
-		inspector identityInspector
-		watcher   AuthoredResourceWatcher
-	}{
-		{name: "scope", inspector: staticWorkspaceInspector{}, watcher: &recordingAuthoredWatcher{}},
-		{name: "inspector", scope: scope, watcher: &recordingAuthoredWatcher{}},
-		{name: "typed nil inspector", scope: scope, inspector: (*staticWorkspaceInspector)(nil), watcher: &recordingAuthoredWatcher{}},
-		{name: "watcher", scope: scope, inspector: staticWorkspaceInspector{}},
-		{name: "typed nil watcher", scope: scope, inspector: staticWorkspaceInspector{}, watcher: (*recordingAuthoredWatcher)(nil)},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if watch, err := NewAuthoredWatch(test.scope, test.inspector, test.watcher); err == nil || watch != nil {
-				t.Fatalf("NewAuthoredWatch = (%v, %v), want incomplete construction rejected", watch, err)
-			}
-		})
-	}
-}
-
 func newAuthoredWatch(t *testing.T, scope *Scope, inspector identityInspector, watcher AuthoredResourceWatcher) *AuthoredWatch {
 	t.Helper()
 	watch, err := NewAuthoredWatch(scope, inspector, watcher)

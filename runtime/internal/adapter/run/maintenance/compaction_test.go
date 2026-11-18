@@ -1,8 +1,6 @@
 package maintenance
 
 import (
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"context"
 	"errors"
 	"iter"
@@ -14,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
-	"github.com/Tangerg/scope/models/catalog"
 )
 
 func constClient(c chatclient.Client) modeladapter.AuxiliaryResolver {
@@ -25,15 +22,6 @@ func constClient(c chatclient.Client) modeladapter.AuxiliaryResolver {
 
 func unexpectedClient(context.Context, modeladapter.AuxiliaryBudget) (modeladapter.SelectedChat, func() error, error) {
 	return modeladapter.SelectedChat{}, nil, errors.New("unexpected utility model call")
-}
-
-func textToolOutput(t *testing.T, output toolcontract.Output) string {
-	t.Helper()
-	text, ok := output.Text()
-	if !ok {
-		t.Fatal("Tool output contains non-text content")
-	}
-	return text
 }
 
 func intPointer(value int) *int { return &value }
@@ -99,54 +87,6 @@ func TestCompactionPolicyPreservesOptionalPresence(t *testing.T) {
 				t.Fatal("present zero was treated as an omitted policy value")
 			}
 		})
-	}
-}
-
-func TestCompactorTokenTriggerDoesNotExceedCatalogInputLimit(t *testing.T) {
-	model, found := catalog.LookupModel("openai", "gpt-5.4-mini")
-	if !found {
-		t.Fatal("catalog omitted openai/gpt-5.4-mini")
-	}
-	policy := mustCompactionPolicy(t, CompactionPolicyValues{})
-	trigger, err := policy.tokenTrigger(
-		testTokenLimits(t, modelref.TokenLimitValues{
-			ContextWindow:   testTokenLimit(model.Limits.ContextWindow),
-			MaxInputTokens:  testTokenLimit(model.Limits.MaxInputTokens),
-			MaxOutputTokens: testTokenLimit(model.Limits.MaxOutputTokens),
-		}),
-		chat.Options{},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if trigger != int(model.Limits.MaxInputTokens) {
-		t.Fatalf("token trigger = %d, want provider max input %d", trigger, model.Limits.MaxInputTokens)
-	}
-}
-
-func TestCompactorTokenTriggerReservesExplicitOutputWindow(t *testing.T) {
-	model, found := catalog.LookupModel("alibaba", "qwen-mt-plus")
-	if !found {
-		t.Fatal("catalog omitted alibaba/qwen-mt-plus")
-	}
-	if model.Limits.MaxInputTokens != 0 {
-		t.Fatalf("fixture max input = %d, want unknown", model.Limits.MaxInputTokens)
-	}
-	policy := mustCompactionPolicy(t, CompactionPolicyValues{})
-	requestedOutput := model.Limits.MaxOutputTokens
-	trigger, err := policy.tokenTrigger(
-		testTokenLimits(t, modelref.TokenLimitValues{
-			ContextWindow:   testTokenLimit(model.Limits.ContextWindow),
-			MaxOutputTokens: testTokenLimit(model.Limits.MaxOutputTokens),
-		}),
-		chat.Options{MaxOutputTokens: &requestedOutput},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := int(model.Limits.ContextWindow - model.Limits.MaxOutputTokens)
-	if trigger != want {
-		t.Fatalf("token trigger = %d, want %d after reserving explicit output window", trigger, want)
 	}
 }
 

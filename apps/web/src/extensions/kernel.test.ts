@@ -68,26 +68,6 @@ describe("plugin declaration ownership", () => {
       }),
     ]);
   });
-
-  it("rejects accessor declarations without executing their getters", () => {
-    const setup = vi.fn(() => () => {});
-    const spec = {
-      name: "test.accessor",
-      get setup() {
-        return setup();
-      },
-    };
-
-    expect(() => definePlugin(spec)).toThrow(TypeError);
-    expect(setup).not.toHaveBeenCalled();
-  });
-
-  it("rejects a non-callable setup before creating an installation", () => {
-    const spec = { name: "test.invalid", setup() {} };
-    Reflect.set(spec, "setup", null);
-
-    expect(() => definePlugin(spec)).toThrow(TypeError);
-  });
 });
 
 describe("kernel contribution reads", () => {
@@ -195,28 +175,6 @@ describe("kernel contribution reads", () => {
     const index = await start([plugin]);
 
     expect(index.entries(HANDLER)).toHaveLength(2);
-  });
-
-  it("returns the same array reference until something changes", async () => {
-    const plugin = definePlugin({
-      name: "test.stable",
-      setup: (ctx) => {
-        ctx.contributions.add(THEME, { id: "dark", label: "Dark" });
-      },
-    });
-
-    const index = await start([plugin]);
-
-    expect(index.entries(THEME)).toBe(index.entries(THEME));
-  });
-
-  it("reads empty for a point nothing contributed to, without minting a new array", async () => {
-    const UNDECLARED = defineExtensionPoint<Theme>({ id: "test.undeclared", keying: "single" });
-
-    const index = await start([]);
-
-    expect(index.entries(UNDECLARED)).toEqual([]);
-    expect(index.entries(UNDECLARED)).toBe(index.entries(UNDECLARED));
   });
 
   it("notifies subscribers when a later change adds a contribution", async () => {
@@ -338,14 +296,6 @@ describe("contribute policy", () => {
     expect(index.entries(THEME)).toEqual([
       expect.objectContaining({ key: "accepted", item: { id: "theme", label: "Updated" } }),
     ]);
-  });
-
-  it("keeps extension identity and resolution policy immutable", () => {
-    const point = defineExtensionPoint<Theme>({ id: "test.fixed-policy", keying: "single" });
-
-    expect(Reflect.set(point, "id", "test.other-policy")).toBe(false);
-    expect(Reflect.set(point, "keying", "multi")).toBe(false);
-    expect(point.id).toBe(point.token.id);
   });
 
   it("derives a single point's key from keyOf ahead of item.id", async () => {

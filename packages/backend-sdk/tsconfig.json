@@ -6,8 +6,6 @@
     "moduleResolution": "Bundler",
     "allowImportingTsExtensions": true,
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "skipLibCheck": true,

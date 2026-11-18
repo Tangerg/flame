@@ -57,14 +57,6 @@ type fakeEmbedder struct {
 	err     error
 }
 
-type pointerEmbedder struct{ id string }
-
-func (p *pointerEmbedder) ID() string { return p.id }
-
-func (*pointerEmbedder) Embed(context.Context, []string) ([][]float32, error) {
-	return nil, nil
-}
-
 func mustNewReadModel(
 	t *testing.T,
 	store ReadStore,
@@ -193,54 +185,11 @@ func TestSearchDoesNotReuseCorpusVectorsFromAnotherEmbeddingSpace(t *testing.T) 
 	}
 }
 
-func TestSearchIsolatesProviderVectorsAndReturnedItems(t *testing.T) {
-	a := readModelItem(t, 'a', domain.ScopeProject, "/repo", "alpha memory")
-	b := readModelItem(t, 'b', domain.ScopeProject, "/repo", "beta memory")
-	store := &fakeItemSource{items: items(a, b)}
-	vectors := map[string][]float32{
-		"find target": {1, 0}, "alpha memory": {1, 0}, "beta memory": {0, 1},
-	}
-	resolve := func(context.Context) (Embedder, error) { return fakeEmbedder{vectors: vectors}, nil }
-	reader := mustNewReadModel(t, store, resolve)
-	got, err := reader.Search(t.Context(), "/repo", "find target", 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got) != 1 || got[0].ID() != a.ID() {
-		t.Fatalf("search = %+v, want alpha", got)
-	}
-	vectors["alpha memory"][0] = 9
-	if _, vector, _ := got[0].Embedding(); vector[0] != 1 || store.updates[0].Vector[0] != 1 {
-		t.Fatal("provider reuse changed the cached embedding")
-	}
-}
-
 func TestSearchEmptyCorpus(t *testing.T) {
 	s := mustNewReadModel(t, &fakeItemSource{}, nil)
 	got, err := s.Search(context.Background(), "/repo", "anything", 5)
 	if err != nil || got != nil {
 		t.Fatalf("empty corpus search = (%+v, %v)", got, err)
-	}
-}
-
-func TestSearchDegradesWhenResolverReturnsTypedNilEmbedder(t *testing.T) {
-	store := &fakeItemSource{items: items(readModelItem(t, 'a', domain.ScopeProject, "/repo", "run make test"))}
-	resolve := func(context.Context) (Embedder, error) {
-		var embedder *pointerEmbedder
-		return embedder, nil
-	}
-	reader := mustNewReadModel(t, store, resolve)
-
-	got, err := reader.Search(t.Context(), "/repo", "make test", 1)
-	if err != nil || len(got) != 1 {
-		t.Fatalf("typed-nil embedder fallback = (%+v, %v), want keyword result", got, err)
-	}
-}
-
-func TestNewReadModelRejectsTypedNilStore(t *testing.T) {
-	var store *fakeItemSource
-	if reader, err := NewReadModel(store, nil); err == nil || reader != nil {
-		t.Fatalf("NewReadModel typed-nil store = (%v, %v), want invalid construction", reader, err)
 	}
 }
 

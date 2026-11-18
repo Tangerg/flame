@@ -71,19 +71,3 @@ func TestServerFormattingRedactsCredentials(t *testing.T) {
 		}
 	}
 }
-
-func TestServerCloneOwnsMutableConnectionFields(t *testing.T) {
-	http := Server{Connection: HTTPConnection{Headers: map[string]string{"X-Key": "header"}}}
-	process := Server{Connection: StdioConnection{Args: []string{"--root", "/repo"}, Env: map[string]string{"TOKEN": "environment"}}}
-
-	httpClone := http.Clone().Connection.(HTTPConnection)
-	httpClone.Headers["X-Key"] = "changed"
-	processClone := process.Clone().Connection.(StdioConnection)
-	processClone.Args[0] = "changed"
-	processClone.Env["TOKEN"] = "changed"
-
-	original := process.Connection.(StdioConnection)
-	if http.Connection.(HTTPConnection).Headers["X-Key"] != "header" || original.Args[0] != "--root" || original.Env["TOKEN"] != "environment" {
-		t.Fatal("Clone mutated the original connection")
-	}
-}

@@ -1,6 +1,9 @@
 package main
 
 import (
+	json "encoding/json/v2"
+	"fmt"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -113,4 +116,39 @@ func publicGoTypeByName(t *testing.T, pkg publicGoPackage, name string) publicGo
 	}
 	t.Fatalf("public Go package %s has no type %s", pkg.Path, name)
 	return publicGoType{}
+}
+
+func manifestGoNames(path string) (map[string]string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var manifest struct {
+		Methods []struct {
+			Name   string `json:"name"`
+			GoName string `json:"goName"`
+		} `json:"methods"`
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return nil, err
+	}
+	methods := map[string]string{}
+	names := map[string]bool{}
+	for _, method := range manifest.Methods {
+		if method.Name == "" || names[method.Name] {
+			return nil, fmt.Errorf("manifest has empty or duplicate method %q", method.Name)
+		}
+		names[method.Name] = true
+		if method.GoName == "" {
+			continue
+		}
+		if _, exists := methods[method.GoName]; exists {
+			return nil, fmt.Errorf("manifest has duplicate Go method %q", method.GoName)
+		}
+		methods[method.GoName] = method.Name
+	}
+	if len(methods) == 0 {
+		return nil, fmt.Errorf("manifest has no Go method projections")
+	}
+	return methods, nil
 }

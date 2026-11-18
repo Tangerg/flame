@@ -23,23 +23,6 @@ func TestDiffRequestRequiresStructuredFormatForRowLimit(t *testing.T) {
 	}
 }
 
-func TestDiffRowLimitSeparatesDefaultFromExplicitRows(t *testing.T) {
-	t.Parallel()
-
-	if rows := DefaultDiffRowLimit().Rows(); rows != 0 {
-		t.Fatalf("default Rows = %d, want absent", rows)
-	}
-	for _, rows := range []int{0, -1} {
-		if _, err := NewDiffRowLimit(rows); err == nil {
-			t.Fatalf("NewDiffRowLimit(%d) returned no error", rows)
-		}
-	}
-	limit, err := NewDiffRowLimit(42)
-	if err != nil || limit.Rows() != 42 {
-		t.Fatalf("explicit row limit = %d, %v", limit.Rows(), err)
-	}
-}
-
 func TestDiffRequestRejectsTheVisualProjection(t *testing.T) {
 	request := DiffRequest{Workspace: "/workspace", Format: protocol.DiffFormatVisual}
 	if err := request.Validate(); err == nil {

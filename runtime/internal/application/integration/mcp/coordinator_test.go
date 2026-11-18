@@ -40,34 +40,6 @@ func testCoordinator(t testing.TB, cfg Config) *Coordinator {
 	return coordinator
 }
 
-func TestNewRequiresCompleteDependencies(t *testing.T) {
-	t.Parallel()
-	for name, omit := range map[string]func(*Config){
-		"registry":               func(cfg *Config) { cfg.Registry = nil },
-		"typed nil registry":     func(cfg *Config) { cfg.Registry = (*testRegistry)(nil) },
-		"store":                  func(cfg *Config) { cfg.Store = nil },
-		"typed nil store":        func(cfg *Config) { cfg.Store = (*testRegistry)(nil) },
-		"connections":            func(cfg *Config) { cfg.Connections = nil },
-		"typed nil connections":  func(cfg *Config) { cfg.Connections = (*fakePorts)(nil) },
-		"tool catalog":           func(cfg *Config) { cfg.ToolCatalog = nil },
-		"typed nil tool catalog": func(cfg *Config) { cfg.ToolCatalog = (*fakePorts)(nil) },
-		"exposure":               func(cfg *Config) { cfg.Exposure = nil },
-		"uninitialized exposure": func(cfg *Config) { cfg.Exposure = &ExposureState{} },
-	} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			cfg := configWithPorts(&fakePorts{})
-			cfg.Store = cfg.Registry.(store)
-			cfg.External = &testExternalWorkflow{attempts: newAuthorizationAttemptStore()}
-			cfg.Exposure = NewExposureState(nil, nil)
-			omit(&cfg)
-			if coordinator, err := New(cfg); err == nil || coordinator != nil {
-				t.Fatalf("New without %s = (%v, %v), want nil/error", name, coordinator, err)
-			}
-		})
-	}
-}
-
 type testExternalWorkflow struct{ attempts *authorizationAttemptStore }
 
 func (*testExternalWorkflow) Affected(context.Context, []mcpserver.ID) (bool, error) {

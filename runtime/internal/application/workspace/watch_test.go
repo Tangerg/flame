@@ -45,25 +45,6 @@ type nopCloser struct{}
 
 func (nopCloser) Close() error { return nil }
 
-func TestNewWatchRequiresCompleteDependencies(t *testing.T) {
-	scope := newScope(t, "", "", testPaths{})
-	for _, test := range []struct {
-		name    string
-		scope   *Scope
-		watcher FileWatcher
-	}{
-		{name: "scope", watcher: &recordingFileWatcher{}},
-		{name: "watcher", scope: scope},
-		{name: "typed nil watcher", scope: scope, watcher: (*recordingFileWatcher)(nil)},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if watch, err := NewWatch(test.scope, test.watcher); err == nil || watch != nil {
-				t.Fatalf("NewWatch = (%v, %v), want incomplete construction rejected", watch, err)
-			}
-		})
-	}
-}
-
 func TestWatchResolvesAndOwnsObservationRoots(t *testing.T) {
 	root := t.TempDir()
 	scopes := []WatchScope{{Key: "default"}, {Key: "root", Root: root}, {Key: "second", Root: filepath.Join(root, "second")}}

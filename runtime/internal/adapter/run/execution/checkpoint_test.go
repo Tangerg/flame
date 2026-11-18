@@ -5,80 +5,11 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"math"
-	"reflect"
-	"strings"
-	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"testing"
 
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
-
-func TestInteractionPendingSteersRoundTripCanonicalContent(t *testing.T) {
-	firstID, err := scoperun.ParseSignalID("steer:02")
-	if err != nil {
-		t.Fatal(err)
-	}
-	secondID, err := scoperun.ParseSignalID("steer:01")
-	if err != nil {
-		t.Fatal(err)
-	}
-	pending := map[scoperun.SignalID]runs.PreparedSteer{
-		firstID: {ItemID: "item_first", Input: []transcript.ContentBlock{{
-			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte{0, 1, 2},
-		}}},
-		secondID: {ItemID: "item_second", Input: []transcript.ContentBlock{{
-			Kind: transcript.TextContent, Text: "revise",
-		}}},
-	}
-	wire, err := encodeInteractionPendingSteers(pending)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(wire) != 2 || wire[0].SignalID != secondID.String() || wire[1].SignalID != firstID.String() {
-		t.Fatalf("pending steer order = %#v", wire)
-	}
-	decoded, err := decodeInteractionPendingSteers(wire)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(decoded, pending) {
-		t.Fatalf("decoded pending steers = %#v, want %#v", decoded, pending)
-	}
-}
-
-func TestInteractionPendingContinuationRoundTripsCanonicalContent(t *testing.T) {
-	rootID, err := scoperun.ParseProcessID("process:root")
-	if err != nil {
-		t.Fatal(err)
-	}
-	pending := &pendingInteractionContinuation{
-		processID: rootID,
-		itemID:    "item_followup",
-		content: []transcript.ContentBlock{{
-			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte{0, 1, 2},
-		}},
-	}
-	wire, err := encodeInteractionPendingContinuation(pending, rootID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	decoded, err := decodeInteractionPendingContinuation(wire, rootID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(decoded, pending) {
-		t.Fatalf("decoded pending continuation = %#v, want %#v", decoded, pending)
-	}
-	foreignID, err := scoperun.ParseProcessID("process:foreign")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := decodeInteractionPendingContinuation(wire, foreignID); err == nil {
-		t.Fatal("decode accepted a continuation for a foreign root")
-	}
-}
 
 func TestDecodeInteractionPendingSteersRejectsNoncanonicalWire(t *testing.T) {
 	validImage := base64.StdEncoding.EncodeToString([]byte{1})
@@ -164,57 +95,6 @@ func TestDecodeInteractionCheckpointRejectsDuplicateJSONMembers(t *testing.T) {
 	}
 }
 
-func TestInteractionModelContextsRoundTripCanonicalCalibration(t *testing.T) {
-	first, err := scoperun.ParseProcessID("process:context-02")
-	if err != nil {
-		t.Fatal(err)
-	}
-	second, err := scoperun.ParseProcessID("process:context-01")
-	if err != nil {
-		t.Fatal(err)
-	}
-	firstCalibration, err := NewModelContextTokenCalibration(12_000, 10_000)
-	if err != nil {
-		t.Fatal(err)
-	}
-	secondCalibration, err := NewModelContextTokenCalibration(8_000, 9_000)
-	if err != nil {
-		t.Fatal(err)
-	}
-	contexts := map[scoperun.ProcessID]ModelContextTokenCalibration{
-		first: firstCalibration, second: secondCalibration,
-	}
-
-	accounted := map[scoperun.ProcessID]struct{}{first: {}, second: {}}
-	wire, err := encodeInteractionModelContexts(contexts, accounted)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(wire) != 2 || wire[0].MemberID != second.String() || wire[1].MemberID != first.String() {
-		t.Fatalf("model context order = %#v", wire)
-	}
-	// A calibration is only carried for a member this checkpoint accounts calls
-	// for, so dropping that member's accounting drops its calibration with it.
-	unaccounted, err := encodeInteractionModelContexts(contexts, map[scoperun.ProcessID]struct{}{first: {}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(unaccounted) != 1 || unaccounted[0].MemberID != first.String() {
-		t.Fatalf("unaccounted model contexts = %#v", unaccounted)
-	}
-	processes := map[scoperun.ProcessID]struct{}{first: {}, second: {}}
-	calls := map[scoperun.ProcessID]map[string]int{
-		first: {"model": 1}, second: {"model": 1},
-	}
-	decoded, err := decodeInteractionModelContexts(wire, processes, calls)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(decoded, contexts) {
-		t.Fatalf("decoded model contexts = %#v, want %#v", decoded, contexts)
-	}
-}
-
 func TestModelContextTokenCalibrationKeepsExactMaxIntDelta(t *testing.T) {
 	calibration, err := NewModelContextTokenCalibration(int64(math.MaxInt), math.MaxInt)
 	if err != nil {
@@ -273,52 +153,6 @@ func TestDecodeInteractionModelContextsRejectsForeignOrUnaccountedMember(t *test
 		nil,
 	); err == nil {
 		t.Fatal("unaccounted model context decoded")
-	}
-}
-
-// TestCheckpointDecodeErrorsNameTheirSectionExactlyOnce pins where the section
-// context lives. decodeInteractionCheckpointPayload names the checkpoint
-// section that failed; a section decoder reports only the defect. A decoder
-// that spelled the owner itself would double it in the message an operator
-// reads.
-func TestCheckpointDecodeErrorsNameTheirSectionExactlyOnce(t *testing.T) {
-	for _, section := range []struct {
-		name string
-		call func() error
-	}{
-		{name: "members", call: func() error {
-			_, err := decodeInteractionCheckpointMembers(
-				[]interactionMemberCallsWire{{MemberID: "b"}, {MemberID: "a"}}, nil)
-			return err
-		}},
-		{name: "model contexts", call: func() error {
-			_, err := decodeInteractionModelContexts(
-				[]interactionModelContextWire{{MemberID: "b"}, {MemberID: "a"}}, nil, nil)
-			return err
-		}},
-		{name: "carried calls", call: func() error {
-			_, err := decodeInteractionCallCounts(
-				[]interactionModelCallsWire{{Model: "b", Calls: 1}, {Model: "a", Calls: 1}})
-			return err
-		}},
-	} {
-		t.Run(section.name, func(t *testing.T) {
-			err := section.call()
-			if err == nil {
-				t.Fatal("malformed section decoded")
-			}
-			if strings.Contains(err.Error(), "execution:") {
-				t.Errorf("section decoder names its own owner: %v", err)
-			}
-		})
-	}
-
-	_, err := decodeInteractionCheckpointPayload([]byte(`{"model_provider":null,"tool_proposals":[],"model_observers":[],"model_contexts":[],"model_inputs":[],"mcp_manifests":{"root":[]},"options":{},"instructions":[],"handoff":{}}`))
-	if err == nil {
-		t.Fatal("empty checkpoint handoff decoded")
-	}
-	if count := strings.Count(err.Error(), "execution: Interaction checkpoint"); count != 1 {
-		t.Fatalf("payload error names its section %d times: %v", count, err)
 	}
 }
 

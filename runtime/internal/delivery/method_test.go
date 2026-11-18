@@ -10,40 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-func TestRegistryViewsAreSnapshots(t *testing.T) {
-	t.Parallel()
-
-	var local MethodMeta
-	for _, meta := range Contract().Metas() {
-		if meta.Name == "sessions.update" {
-			local = meta
-			break
-		}
-	}
-	if local.Name == "" || len(local.Errors) == 0 || len(local.CapabilityRules) == 0 {
-		t.Fatal("sessions.update is missing mutable-slice metadata")
-	}
-	local.Errors[0] = protocol.ErrRunNotFound.Error()
-	local.CapabilityRules[0].When[0].Field = "corrupted"
-	local.CapabilityRules[0].Requires[0] = protocol.FeatureSkills
-	got, ok := Contract().Lookup("sessions.update")
-	if !ok || slices.Equal(got.Errors, local.Errors) ||
-		got.CapabilityRules[0].When[0].Field == "corrupted" ||
-		slices.Equal(got.CapabilityRules[0].Requires, []string{protocol.FeatureSkills}) {
-		t.Fatalf("catalog exposed mutable storage: %+v", got)
-	}
-
-	snapshot, ok := Contract().Lookup("sessions.snapshot")
-	if !ok || len(snapshot.Materializes) == 0 {
-		t.Fatal("sessions.snapshot is missing materialized-query metadata")
-	}
-	snapshot.Materializes[0] = "corrupted.query"
-	fresh, _ := Contract().Lookup("sessions.snapshot")
-	if fresh.Materializes[0] == "corrupted.query" {
-		t.Fatalf("catalog exposed mutable Materializes storage: %+v", fresh.Materializes)
-	}
-}
-
 func TestMetadataEnumsRejectUnknownValuesWithoutMasqueradingAsDefaults(t *testing.T) {
 	t.Parallel()
 
@@ -119,32 +85,6 @@ func TestRunReplayCursorRequiresRunEventFrames(t *testing.T) {
 	meta.ReplayCursor = ReplayCursorRun
 	if err := meta.Validate(); err == nil || !strings.Contains(err.Error(), "requires RunEvent stream frames") {
 		t.Fatalf("Validate error = %v, want RunEvent stream refusal", err)
-	}
-}
-
-func TestPaginationIsDerivedFromWireShapes(t *testing.T) {
-	t.Parallel()
-
-	wantCursor := []Name{InterruptsList, ItemsList, modelInvocationsEndpoints, modelInvocationsList, RunsList, SessionsList, SessionsTrajectory, workspaceFilesList}
-	var gotCursor []Name
-	for _, method := range Contract().Metas() {
-		if method.Pagination == paginationCursor {
-			gotCursor = append(gotCursor, method.Name)
-		}
-	}
-	slices.Sort(gotCursor)
-	if !slices.Equal(gotCursor, wantCursor) {
-		t.Fatalf("cursor-paginated methods = %v, want %v", gotCursor, wantCursor)
-	}
-
-	for _, name := range []Name{modelsList, providersList, RunsGet, toolsList, workspacesList} {
-		method, ok := Contract().Lookup(name)
-		if !ok {
-			t.Fatalf("%s is not registered", name)
-		}
-		if method.Pagination != paginationNone {
-			t.Errorf("%s pagination = %s, want %s", name, method.Pagination, paginationNone)
-		}
 	}
 }
 

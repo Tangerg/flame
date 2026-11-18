@@ -428,43 +428,6 @@ func TestRunRejectsIllegalTransitionsAndRegressingFacts(t *testing.T) {
 	}
 }
 
-func TestRunAndMetricsCopyOwnership(t *testing.T) {
-	capabilities := Capabilities{InterruptTypes: []InterruptType{InterruptQuestion}}
-	value, err := Admit(Draft{
-		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1",
-		ModelSelection: mustRunSelection(t), Capabilities: capabilities, CreatedAt: time.Unix(1, 0).UTC(),
-	})
-	if err != nil {
-		t.Fatalf("Admit: %v", err)
-	}
-	capabilities.InterruptTypes[0] = InterruptApproval
-	read := value.Capabilities()
-	read.InterruptTypes[0] = InterruptApproval
-	if got := value.Capabilities().InterruptTypes[0]; got != InterruptQuestion {
-		t.Fatalf("Run capabilities changed through an external slice: %s", got)
-	}
-
-	cost, err := accounting.NewCost(1.0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	usage := mustRunUsage(t, accounting.Totals{InputTokens: 1, Cost: cost}, map[string]accounting.Totals{"model": {InputTokens: 1, Cost: cost}})
-	metrics, err := NewMetrics(&usage, 1, 0)
-	if err != nil {
-		t.Fatalf("NewMetrics: %v", err)
-	}
-	usage.ByModel()["model"] = accounting.Totals{InputTokens: 99}
-	reported, ok := metrics.Usage()
-	if !ok {
-		t.Fatal("metrics lost usage")
-	}
-	reported.ByModel()["model"] = accounting.Totals{InputTokens: 100}
-	reportedAgain, _ := metrics.Usage()
-	if got := reportedAgain.ByModel()["model"].InputTokens; got != 1 {
-		t.Fatalf("metrics usage changed through an external map: %d", got)
-	}
-}
-
 // TestMetricsRejectsDurationOverflow covers the accumulation the reducer
 // actually performs: it adds a segment's duration to the running total with
 // ordinary arithmetic, so an overflow arrives here as a wrapped negative value

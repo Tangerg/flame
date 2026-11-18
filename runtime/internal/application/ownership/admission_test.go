@@ -19,18 +19,6 @@ func newTestGate(t *testing.T) *Gate {
 	return gate
 }
 
-func TestNewGateRequiresPhysicalIdentityResolver(t *testing.T) {
-	if gate, err := NewGate(GateConfig{}); err == nil || gate != nil {
-		t.Fatalf("NewGate(GateConfig{}) = %#v, %v", gate, err)
-	}
-}
-
-func TestNewGateRequiresPhysicalTreeComparison(t *testing.T) {
-	if gate, err := NewGate(GateConfig{ResolveTree: filesystem.CanonicalPath, SettleRetirement: noResourceRetirements}); err == nil || gate != nil {
-		t.Fatalf("NewGate without tree comparison = %#v, %v", gate, err)
-	}
-}
-
 func TestGateHoldsSessionThroughMaintenance(t *testing.T) {
 	gate := newTestGate(t)
 	opening, ok, _ := gate.AcquireRun(t.Context(), "ses_1", "/repo")

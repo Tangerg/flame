@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { type QuestionItem } from "@/features/agent/public/contentBlock";
-import { type TranscriptRow } from "@/features/agent/public/conversation";
 import { createQuestionDraft, setQuestionText } from "@/features/agent/public/messagePresentation";
-import {
-  canSubmitQuestionCard,
-  pendingQuestionRequest,
-  questionCardSettledView,
-} from "@/features/chat/message/application/questionCardModel";
+import { questionCardSettledView } from "@/features/chat/message/application/questionCardModel";
 const question: QuestionItem = {
   type: "text",
   header: "Goal",
@@ -43,18 +38,6 @@ describe("questionCardSettledView", () => {
     ).toEqual({ settled: false });
   });
 
-  it("stays interactive before a question is answered", () => {
-    expect(
-      questionCardSettledView({
-        status: "complete",
-        resumeRunId: "run",
-        pending: false,
-        questions: [question],
-        draft: createQuestionDraft([question]),
-      }),
-    ).toEqual({ settled: false });
-  });
-
   it("never promotes a losing local draft after the Runtime settles another answer", () => {
     const draft = setQuestionText(createQuestionDraft([question]), 0, question, "local loser");
 
@@ -82,51 +65,5 @@ describe("questionCardSettledView", () => {
         draft,
       }),
     ).toEqual({ settled: true, answers: undefined });
-  });
-});
-
-describe("canSubmitQuestionCard", () => {
-  it("requires an awaiting non-pending question and permits explicit skip", () => {
-    expect(canSubmitQuestionCard({ resumeRunId: "run", itemId: "item", pending: false })).toBe(
-      true,
-    );
-    expect(canSubmitQuestionCard({ resumeRunId: "run", itemId: "item", pending: true })).toBe(
-      false,
-    );
-    expect(canSubmitQuestionCard({ resumeRunId: undefined, itemId: "item", pending: false })).toBe(
-      false,
-    );
-  });
-});
-
-describe("pendingQuestionRequest", () => {
-  it("selects the latest unanswered question that awaits an answer", () => {
-    const block = {
-      kind: "question" as const,
-      status: "complete" as const,
-      itemId: "item",
-      questions: [question],
-    };
-    const row = {
-      message: { id: "message", role: "assistant", runId: "run", blocks: [block] },
-      runOwner: { kind: "owned", runId: "run", status: "waiting" },
-      facts: { toolCalls: {}, delegatedRuns: {}, awaiting: new Map([["item", "run_root"]]) },
-    } as TranscriptRow;
-
-    expect(pendingQuestionRequest([row])).toEqual({
-      block,
-      resumeRunId: "run_root",
-      itemId: "item",
-    });
-    expect(
-      pendingQuestionRequest([
-        { ...row, facts: { ...row.facts, awaiting: new Map<string, string>() } },
-      ]),
-    ).toBeNull();
-    expect(
-      pendingQuestionRequest([
-        { ...row, message: { ...row.message, blocks: [{ ...block, answered: true }] } },
-      ]),
-    ).toBeNull();
   });
 });

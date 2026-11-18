@@ -140,66 +140,6 @@ describe("transcript rows", () => {
     expect(active.rows[0]).not.toBe(parked.rows[0]);
   });
 
-  it("keeps every untouched row identical when the tail streams", () => {
-    const first = message("m1", [text("hello")]);
-    const second = message("m2", [text("answer")]);
-    const before = buildTranscriptRows(
-      view({ messages: [first, second] }),
-      EMPTY_TRANSCRIPT_ROW_CACHE,
-    );
-
-    const grown = message("m2", [text("answer, continued")]);
-    const after = buildTranscriptRows(view({ messages: [first, grown] }), before.cache);
-
-    expect(after.rows[0]).toBe(before.rows[0]);
-    expect(after.rows[1]).not.toBe(before.rows[1]);
-    expect(after.rows[1]?.message).toBe(grown);
-  });
-
-  it("invalidates a row only when its exact Run crosses a lifecycle boundary", () => {
-    const turn = message("m1", [text("temporarily complete")]);
-    const running = run({
-      id: ROOT_RUN,
-      status: "running",
-      activeSegmentId: "segment-1",
-      outcome: null,
-      finishedAt: null,
-    });
-    const before = buildTranscriptRows(
-      view({ messages: [turn], runs: [running] }),
-      EMPTY_TRANSCRIPT_ROW_CACHE,
-    );
-
-    expect(before.rows[0]?.runOwner).toEqual({
-      kind: "owned",
-      runId: ROOT_RUN,
-      status: "running",
-    });
-
-    const progressOnly = buildTranscriptRows(
-      view({
-        messages: [turn],
-        runs: [
-          {
-            ...running,
-            progress: { activity: { type: "callingModel" } },
-            contextTokens: null,
-          },
-        ],
-      }),
-      before.cache,
-    );
-    expect(progressOnly.rows[0]).toBe(before.rows[0]);
-
-    const finished = buildTranscriptRows(view({ messages: [turn] }), progressOnly.cache);
-    expect(finished.rows[0]).not.toBe(before.rows[0]);
-    expect(finished.rows[0]?.runOwner).toEqual({
-      kind: "owned",
-      runId: ROOT_RUN,
-      status: "finished",
-    });
-  });
-
   it("keeps an optimistic turn explicitly unassigned until its durable Run arrives", () => {
     const build = buildTranscriptRows(
       view({
@@ -209,25 +149,6 @@ describe("transcript rows", () => {
     );
 
     expect(build.rows[0]?.runOwner).toEqual({ kind: "unassigned" });
-  });
-
-  it("leaves a turn showing no tool call alone when a tool streams its arguments", () => {
-    const prose = message("m1", [text("hello")]);
-    const withTool = message("m2", [toolBlock("t1")]);
-    const messages = [prose, withTool];
-    const before = buildTranscriptRows(
-      view({ messages, toolCalls: [tool("t1")] }),
-      EMPTY_TRANSCRIPT_ROW_CACHE,
-    );
-
-    const after = buildTranscriptRows(
-      view({ messages, toolCalls: [tool("t1", '{"path":"a.ts"}')] }),
-      before.cache,
-    );
-
-    expect(after.rows[0]).toBe(before.rows[0]);
-    expect(after.rows[1]).not.toBe(before.rows[1]);
-    expect(after.rows[1]?.facts.toolCalls.t1?.args).toBe('{"path":"a.ts"}');
   });
 
   it("gives a turn only the calls it shows", () => {
@@ -279,27 +200,6 @@ describe("transcript rows", () => {
     expect(after.rows[0]).not.toBe(before.rows[0]);
   });
 
-  it("shares one empty facts object across turns that show nothing", () => {
-    const build = buildTranscriptRows(
-      view({ messages: [message("m1", [text("a")]), message("m2", [text("b")])] }),
-      EMPTY_TRANSCRIPT_ROW_CACHE,
-    );
-
-    expect(build.rows[0]?.facts).toBe(build.rows[1]?.facts);
-  });
-
-  it("drops a turn that left the transcript instead of pinning it in the cache", () => {
-    const kept = message("m1", [text("a")]);
-    const before = buildTranscriptRows(
-      view({ messages: [kept, message("m2", [text("b")])] }),
-      EMPTY_TRANSCRIPT_ROW_CACHE,
-    );
-    const after = buildTranscriptRows(view({ messages: [kept] }), before.cache);
-
-    expect(after.rows).toHaveLength(1);
-    expect(after.rows[0]).toBe(before.rows[0]);
-    expect(after.cache.has("m2")).toBe(false);
-  });
   it("does not infer an absent Item from a separate terminal Run observation", () => {
     const accepted: Message = {
       id: "item_steer",

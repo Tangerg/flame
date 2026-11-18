@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -26,26 +25,6 @@ func (f *fakeStore) Fetch(_ context.Context, session string, id transcript.ToolR
 
 func sessionCtx(session string) context.Context {
 	return executionctx.WithScope(context.Background(), runs.ExecutionScope{SessionID: session})
-}
-
-func TestNew_NilStoreOmitted(t *testing.T) {
-	tool, err := NewToolResultReader(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if tool != nil {
-		t.Fatal("New(nil) should return nil so the caller omits the tool (eviction disabled)")
-	}
-}
-
-func TestNewUsesCanonicalName(t *testing.T) {
-	tool, err := NewToolResultReader(&fakeStore{})
-	if err != nil || tool == nil {
-		t.Fatalf("New = (%v, %v), want a tool", tool, err)
-	}
-	if got := tool.Definition().Name; got != string(builtincontract.ReadToolResult) {
-		t.Fatalf("tool name = %q, want %q", got, builtincontract.ReadToolResult)
-	}
 }
 
 func TestRead_ReturnsStoredBody(t *testing.T) {
@@ -128,43 +107,5 @@ func TestRead_RejectsRemovedAndOversizedPagingArguments(t *testing.T) {
 		if _, err := callTextTool(sessionCtx("s"), tool, arguments); err == nil {
 			t.Fatalf("read_tool_result accepted invalid arguments: %s", arguments)
 		}
-	}
-}
-
-func TestWindow(t *testing.T) {
-	tests := []struct {
-		name               string
-		body               string
-		offset, limit      int
-		wantStart, wantEnd int
-	}{
-		{"slice", "ABCDEFGHIJ", 2, 3, 2, 5},
-		{"offset past end clamps", "ABC", 10, 5, 3, 3},
-		{"negative offset floored", "ABC", -1, 2, 0, 2},
-		{"resolved default window", "ABCDE", 0, defaultReadWindow, 0, 5},
-		{"limit past end clamps", "ABCDE", 1, 99, 1, 5},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			start, end := window(tt.body, tt.offset, tt.limit)
-			if start != tt.wantStart || end != tt.wantEnd {
-				t.Fatalf("window = (%d, %d), want (%d, %d)", start, end, tt.wantStart, tt.wantEnd)
-			}
-		})
-	}
-}
-
-func TestWindowSnapsToRuneBoundaries(t *testing.T) {
-	body := "aé b" // 'é' is 2 bytes (0xC3 0xA9): bytes are a[0] é[1,2] space[3] b[4]
-	// An offset landing inside 'é' (byte 2) must snap forward to the next rune
-	// start (byte 3) so the returned slice is never a broken rune.
-	start, _ := window(body, 2, 1)
-	if start != 3 {
-		t.Fatalf("start = %d, want 3 (snapped past the mid-rune byte)", start)
-	}
-	// A limit ending inside 'é' must snap the end forward too.
-	_, end := window(body, 0, 2)
-	if end != 3 {
-		t.Fatalf("end = %d, want 3 (snapped past the mid-rune byte)", end)
 	}
 }

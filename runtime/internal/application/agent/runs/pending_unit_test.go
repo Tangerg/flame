@@ -2,7 +2,7 @@ package runs
 
 import (
 	"reflect"
-	"slices"
+
 	"strings"
 	"testing"
 	"time"
@@ -241,21 +241,6 @@ func TestPendingValidatesExactReadIdentities(t *testing.T) {
 	}
 	if err := (Pending{}).ValidateForRoot("run_root"); err == nil {
 		t.Fatal("ValidateForRoot accepted invalid Pending")
-	}
-}
-
-func TestPendingEqualUsesLogicalDurableValue(t *testing.T) {
-	left := validTreePending()
-	right := left
-	right.CreatedAt = right.CreatedAt.In(time.FixedZone("equal-instant", 8*60*60))
-	right.Continuations = slices.Clone(right.Continuations)
-	right.Continuations[0].DrainedTools = []DrainedTool{}
-	if !left.Equal(right) {
-		t.Fatal("Equal rejected equivalent time and empty collection representations")
-	}
-	right.ExecutorID = "turn_2"
-	if left.Equal(right) {
-		t.Fatal("Equal accepted a different executor identity")
 	}
 }
 

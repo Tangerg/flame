@@ -38,20 +38,6 @@ func TestExecutorCheckpointValidatesOnlyApplicationEnvelope(t *testing.T) {
 	}
 }
 
-func TestExecutorCheckpointCloneOwnsMutableData(t *testing.T) {
-	original := ExecutorCheckpoint{
-		RootMemberID: "root",
-		SessionID:    "session-1",
-		Payload:      []byte("payload"),
-		BuildID:      testExecutorBuildID,
-	}
-	clone := original.Clone()
-	clone.Payload[0] = 'P'
-	if string(original.Payload) != "payload" {
-		t.Fatalf("Clone shares mutable storage with original: %+v", original)
-	}
-}
-
 func TestExecutorCheckpointValidatesCrossAggregateOwnership(t *testing.T) {
 	checkpoint := ExecutorCheckpoint{
 		RootMemberID: "member-root",

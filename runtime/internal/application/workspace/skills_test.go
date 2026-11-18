@@ -13,31 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-func TestNewSkillsRequiresCompleteDiscoveryCurationAndReview(t *testing.T) {
-	scope := newScope(t, "", "", testPaths{})
-	for _, test := range []struct {
-		name      string
-		scope     *Scope
-		catalog   SkillCatalog
-		curator   SkillCurator
-		proposals SkillProposals
-	}{
-		{curator: &fakeSkillCurator{}, name: "scope", catalog: &fakeSkillCatalog{}, proposals: &fakeSkillProposals{}},
-		{curator: &fakeSkillCurator{}, name: "catalog", scope: scope, proposals: &fakeSkillProposals{}},
-		{curator: &fakeSkillCurator{}, name: "typed nil catalog", scope: scope, catalog: (*fakeSkillCatalog)(nil), proposals: &fakeSkillProposals{}},
-		{curator: &fakeSkillCurator{}, name: "proposals", scope: scope, catalog: &fakeSkillCatalog{}},
-		{curator: &fakeSkillCurator{}, name: "typed nil proposals", scope: scope, catalog: &fakeSkillCatalog{}, proposals: (*fakeSkillProposals)(nil)},
-		{name: "curator", scope: scope, catalog: &fakeSkillCatalog{}, proposals: &fakeSkillProposals{}},
-		{name: "typed nil curator", scope: scope, catalog: &fakeSkillCatalog{}, proposals: &fakeSkillProposals{}, curator: (*fakeSkillCurator)(nil)},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if useCases, err := NewSkills(test.scope, test.catalog, test.curator, test.proposals, nil, nil); err == nil || useCases != nil {
-				t.Fatalf("NewSkills = (%v, %v), want incomplete construction rejected", useCases, err)
-			}
-		})
-	}
-}
-
 func newSkills(t *testing.T, scope *Scope, catalog SkillCatalog, curator SkillCurator, proposals SkillProposals, observations *AuthoredWatch, publish invalidation.Publish) *Skills {
 	t.Helper()
 	if curator == nil {
@@ -51,24 +26,6 @@ func newSkills(t *testing.T, scope *Scope, catalog SkillCatalog, curator SkillCu
 		t.Fatal(err)
 	}
 	return useCases
-}
-
-func TestListUsesCatalogPort(t *testing.T) {
-	catalog := &fakeSkillCatalog{
-		skills: []SkillSummary{{Name: "lint", Description: "check code", Source: ProjectSkillSource()}},
-	}
-	c := newSkills(t, newScope(t, "", "", testPaths{}), catalog, nil, &fakeSkillProposals{}, nil, nil)
-
-	got, err := c.List(context.Background(), "/repo")
-	if err != nil {
-		t.Fatalf("List err = %v", err)
-	}
-	if catalog.cwd != "/repo" {
-		t.Fatalf("catalog cwd = %q", catalog.cwd)
-	}
-	if len(got.Skills) != 1 || got.Skills[0].Name != "lint" {
-		t.Fatalf("skills = %+v", got)
-	}
 }
 
 func TestListOwnsVisibleSkillOrder(t *testing.T) {

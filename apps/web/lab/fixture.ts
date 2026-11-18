@@ -1,4 +1,4 @@
-import { installPreviewObservations, OBSERVATION_NAMES } from "./observations";
+import { installPreviewObservations } from "./observations";
 import { LAB_INSTANCE_QUERY } from "./selection";
 import { messages } from "./messages";
 import * as stylex from "@stylexjs/stylex";
@@ -26,7 +26,7 @@ try {
   ready();
 } catch (error) {
   const reason = error instanceof Error ? error.message : String(error);
-  observations.observe(OBSERVATION_NAMES.reactError, reason);
+  observations.fail(reason);
   const root = document.getElementById("root");
   if (root) {
     // Preserve normal fixture CSS ordering; only failed admission needs this fallback load.

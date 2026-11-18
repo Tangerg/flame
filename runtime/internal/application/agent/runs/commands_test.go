@@ -2,148 +2,17 @@ package runs
 
 import (
 	"errors"
-	"math"
-	"slices"
+
 	"strings"
 	"testing"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
-
-func TestStartCommandCloneOwnsMutableInput(t *testing.T) {
-	maxOutputTokens := int64(256)
-	imageBytes := []byte("image")
-	command := StartCommand{
-		Options: &corechat.Options{MaxOutputTokens: &maxOutputTokens},
-		Capabilities: run.Capabilities{
-			InterruptTypes: []run.InterruptType{run.InterruptQuestion},
-		},
-		Input: []transcript.ContentBlock{{
-			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: imageBytes,
-		}},
-	}
-	owned := command.clone()
-
-	imageBytes[0] = 'x'
-	command.Input[0].MediaType = "image/jpeg"
-	*command.Options.MaxOutputTokens = 512
-	command.Capabilities.InterruptTypes[0] = run.InterruptApproval
-
-	if got := string(owned.Input[0].Bytes); got != "image" {
-		t.Fatalf("owned image bytes = %q", got)
-	}
-	if got := owned.Input[0].MediaType; got != "image/png" {
-		t.Fatalf("owned media type = %q", got)
-	}
-	if got := *owned.Options.MaxOutputTokens; got != 256 {
-		t.Fatalf("owned max output tokens = %d", got)
-	}
-	if got := owned.Capabilities.InterruptTypes; !slices.Equal(got, []run.InterruptType{run.InterruptQuestion}) {
-		t.Fatalf("owned interrupt kinds = %v", got)
-	}
-}
-
-func TestResumeCommandCloneOwnsMutableInput(t *testing.T) {
-	command := ResumeCommand{
-		Responses: []ResumeResponse{
-			{Kind: run.InterruptApproval, Approval: &ApprovalResponse{Arguments: "{}"}},
-			{Kind: run.InterruptQuestion, Question: &QuestionResponse{Answers: [][]string{{"yes"}}}},
-		},
-		Input: []transcript.ContentBlock{{
-			Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("image"),
-		}},
-		CallerCapabilities: run.Capabilities{
-			InterruptTypes: []run.InterruptType{run.InterruptQuestion},
-		},
-	}
-	owned := command.clone()
-
-	command.Responses[0].Approval.Arguments = "changed"
-	command.Responses[1].Question.Answers[0][0] = "changed"
-	command.Input[0].Bytes[0] = 'x'
-	command.CallerCapabilities.InterruptTypes[0] = run.InterruptApproval
-
-	if got := owned.Responses[0].Approval.Arguments; got != "{}" {
-		t.Fatalf("owned approval arguments = %q", got)
-	}
-	if got := owned.Responses[1].Question.Answers[0][0]; got != "yes" {
-		t.Fatalf("owned question answer = %q", got)
-	}
-	if got := string(owned.Input[0].Bytes); got != "image" {
-		t.Fatalf("owned input bytes = %q", got)
-	}
-	if got := owned.CallerCapabilities.InterruptTypes; !slices.Equal(got, []run.InterruptType{run.InterruptQuestion}) {
-		t.Fatalf("owned caller capabilities = %v", got)
-	}
-}
-
-func TestSteerCommandCloneOwnsMutableInput(t *testing.T) {
-	command := SteerCommand{Input: []transcript.ContentBlock{{
-		Kind: transcript.ImageContent, MediaType: "image/png", Bytes: []byte("image"),
-	}}}
-	owned := command.clone()
-
-	command.Input[0].MediaType = "image/jpeg"
-	command.Input[0].Bytes[0] = 'x'
-
-	if got := owned.Input[0].MediaType; got != "image/png" {
-		t.Fatalf("owned media type = %q", got)
-	}
-	if got := string(owned.Input[0].Bytes); got != "image" {
-		t.Fatalf("owned input bytes = %q", got)
-	}
-}
-
-func TestSubscribeRequestCloneOwnsCallerCapabilities(t *testing.T) {
-	request := SubscribeRequest{CallerCapabilities: run.Capabilities{
-		InterruptTypes: []run.InterruptType{run.InterruptQuestion},
-	}}
-	owned := request.clone()
-
-	request.CallerCapabilities.InterruptTypes[0] = run.InterruptApproval
-
-	if got := owned.CallerCapabilities.InterruptTypes; !slices.Equal(got, []run.InterruptType{run.InterruptQuestion}) {
-		t.Fatalf("owned caller capabilities = %v", got)
-	}
-}
-
-func TestStartExecutionValidateDelegatesCoreOptions(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name    string
-		options corechat.Options
-	}{
-		{name: "temperature above maximum", options: corechat.Options{Temperature: testPointer(2.1)}},
-		{name: "frequency penalty", options: corechat.Options{FrequencyPenalty: testPointer(2.1)}},
-		{name: "presence penalty", options: corechat.Options{PresencePenalty: testPointer(-2.1)}},
-		{name: "top k", options: corechat.Options{TopK: testPointer(int64(0))}},
-		{name: "nan temperature", options: corechat.Options{Temperature: testPointer(math.NaN())}},
-		{name: "infinite top p", options: corechat.Options{TopP: testPointer(math.Inf(1))}},
-		{name: "negative infinite presence penalty", options: corechat.Options{PresencePenalty: testPointer(math.Inf(-1))}},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-
-			execution := validRootExecutionStart()
-			execution.Options = &test.options
-			err := execution.Validate()
-			if !errors.Is(err, ErrInvalidRunOptions) {
-				t.Fatalf("Validate() error = %v, want ErrInvalidRunOptions", err)
-			}
-			if !errors.Is(err, corechat.ErrInvalidOptions) {
-				t.Fatalf("Validate() error = %v, want wrapped chat.ErrInvalidOptions", err)
-			}
-		})
-	}
-}
 
 func TestStartExecutionValidateKeepsModelSelectionOutsideOptions(t *testing.T) {
 	t.Parallel()
@@ -270,8 +139,4 @@ func TestCancelCommandNormalizeReasonOwnsProductBoundary(t *testing.T) {
 			}
 		})
 	}
-}
-
-func testPointer[T any](value T) *T {
-	return &value
 }

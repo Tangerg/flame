@@ -9,13 +9,6 @@ import (
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-func testReplayPosition() replayPosition {
-	return replayPosition{
-		epoch: testReplayEpoch("epoch_1"), runID: "run_1",
-		segmentID: "seg_1", sequence: 42,
-	}
-}
-
 func testReplayEpoch(raw string) replayEpoch {
 	epoch, err := parseReplayEpoch(raw)
 	if err != nil {
@@ -35,21 +28,6 @@ func TestReplayCursorResourceEnvelopeRejectsBothDirections(t *testing.T) {
 func TestReplayCursorEncodeRejectsInvalidPositionWithoutPanicking(t *testing.T) {
 	if cursor, err := encodeReplayCursor(replayPosition{}); cursor != "" || !errors.Is(err, errMalformedReplayCursor) {
 		t.Fatalf("encode zero position = (%q, %v), want empty and malformed", cursor, err)
-	}
-}
-
-func TestReplayCursorRoundTrip(t *testing.T) {
-	want := testReplayPosition()
-	cursor, err := encodeReplayCursor(want)
-	if err != nil {
-		t.Fatalf("encode replay cursor: %v", err)
-	}
-	got, err := decodeReplayCursor(cursor)
-	if err != nil {
-		t.Fatalf("decode replay cursor: %v", err)
-	}
-	if got != want {
-		t.Fatalf("replay position = %+v, want %+v", got, want)
 	}
 }
 

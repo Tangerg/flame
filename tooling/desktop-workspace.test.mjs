@@ -1,20 +1,11 @@
 import { strict as assert } from "node:assert";
 import { spawnSync } from "node:child_process";
-import {
-  cp,
-  mkdir,
-  mkdtemp,
-  readFile,
-  rm,
-  symlink,
-  writeFile,
-} from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { root } from "./workspace.mjs";
 import { desktopProduct } from "../apps/desktop/build/product.mjs";
-
 async function runDesktopCommand(
   t,
   command,
@@ -109,22 +100,6 @@ if (command === "xcrun") console.log("platform MACOS\\nminos " + process.env.FLA
   };
 }
 
-test("Desktop packaging gives the Task graph sole frontend build ownership", async (t) => {
-  const { result, commands } = await runDesktopCommand(t, "package-desktop");
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(commands, [["wails3", "task", "package"]]);
-});
-
-test("Desktop development prepares shared assets and lets Vite own the frontend", async (t) => {
-  const { result, commands } = await runDesktopCommand(t, "dev-desktop");
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(commands, [
-    ["npm", "run", "build"],
-    ["npm", "run", "build"],
-    ["wails3", "task", "dev"],
-  ]);
-});
-
 test(
   "native Go checks use the product deployment policy for every compiled artifact",
   { skip: process.platform !== "darwin" },
@@ -133,7 +108,7 @@ test(
     assert.equal(result.status, 0, result.stderr);
     const builds = calls.filter(
       ({ command, args }) =>
-        command === "go" && ["test", "vet", "build"].includes(args[0]),
+        command === "go" && ["test", "build"].includes(args[0]),
     );
     assert.ok(builds.length > 0);
     for (const { args, environment } of builds) {

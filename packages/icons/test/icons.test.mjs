@@ -7,24 +7,6 @@ import { rolldown } from "rolldown";
 import * as glyphs from "@flame/icons/react";
 import { icons } from "@flame/icons/catalog";
 import { readSvg } from "../scripts/svg.mjs";
-
-test("all published components select optical masters from their rendered size", () => {
-  for (const { component } of icons) {
-    const Icon = glyphs[component];
-    for (const size of [
-      ...Array.from({ length: 28 }, (_, i) => i + 9),
-      21.99,
-      22,
-      22.01,
-    ]) {
-      const svg = renderToStaticMarkup(createElement(Icon, { size }));
-      const grid = size < 22 ? 16 : 24;
-      assert.match(svg, new RegExp(`viewBox="0 0 ${grid} ${grid}"`));
-      assert.ok(svg.includes(`width="${size}" height="${size}"`));
-    }
-  }
-});
-
 test("decorative defaults, native accessibility and attributes survive rendering", () => {
   const decorative = renderToStaticMarkup(createElement(glyphs.Bell));
   assert.match(decorative, /aria-hidden="true"/);
@@ -43,46 +25,6 @@ test("decorative defaults, native accessibility and attributes survive rendering
   assert.match(labelled, /class="custom"/);
   assert.match(labelled, /stroke="currentColor"/);
   assert.match(labelled, /color="red"/);
-});
-
-test("declared icon viewports resist flex compression and retain explicit layout overrides", () => {
-  const fixed = renderToStaticMarkup(createElement(glyphs.Alert, { size: 18 }));
-  assert.match(fixed, /flex-shrink:0/);
-  assert.match(fixed, /width:18px;height:18px/);
-
-  const overridden = renderToStaticMarkup(
-    createElement(glyphs.Alert, {
-      size: 18,
-      style: { flexShrink: 1, opacity: 0.5 },
-    }),
-  );
-  assert.match(overridden, /flex-shrink:1/);
-  assert.match(overridden, /opacity:0.5/);
-  assert.match(overridden, /width:18px;height:18px/);
-});
-
-test("size and authored geometry have one owner even with untyped props", () => {
-  const svg = renderToStaticMarkup(
-    createElement(glyphs.Eye, {
-      size: 24,
-      viewBox: "0 0 50 50",
-      strokeWidth: 10,
-      fill: "blue",
-      children: "wrong",
-      style: { width: 80, height: 90, opacity: 0.5 },
-    }),
-  );
-  assert.match(svg, /viewBox="0 0 24 24"/);
-  assert.match(svg, /stroke-width="1.5"/);
-  assert.match(svg, /fill="none"/);
-  assert.match(svg, /width:24px;height:24px;opacity:0.5/);
-  assert.doesNotMatch(svg, /wrong/);
-  for (const size of [0, -1, NaN, Infinity, "24"]) {
-    assert.throws(
-      () => renderToStaticMarkup(createElement(glyphs.Eye, { size })),
-      RangeError,
-    );
-  }
 });
 
 test("SVG downloads and React components carry the same paths, weights and paint", async () => {

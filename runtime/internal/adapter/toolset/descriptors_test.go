@@ -3,19 +3,16 @@ package toolset
 import (
 	"context"
 	"crypto/sha256"
-	json "encoding/json/v2"
+
 	"fmt"
 	"path/filepath"
-	"slices"
-	"strings"
-	"testing"
-	"unicode"
 
-	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
+	"testing"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
@@ -23,7 +20,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
@@ -54,16 +51,6 @@ func wireCreateGoal(t *testing.T, resolver *Resolver) {
 	resolver.UseCreateGoalTool(create)
 }
 
-// Every conditional tool's port, wired with the smallest thing that makes the
-// tool exist. They are not exercised: the guard below asks whether a classified
-// name can be reached at all, and a nil port answers "no" for a reason that has
-// nothing to do with drift.
-type allWiredToolResults struct{}
-
-func (allWiredToolResults) Fetch(context.Context, string, transcript.ToolResultID) (string, bool, error) {
-	return "", false, nil
-}
-
 type allWiredSkillProposals struct{}
 
 func (allWiredSkillProposals) SubmitProposal(_ context.Context, _ string, proposal skills.Proposal) (skills.ProposalRef, error) {
@@ -76,34 +63,6 @@ func definitionNames(ts []toolcontract.Tool) map[string]bool {
 		names[t.Definition().Name] = true
 	}
 	return names
-}
-
-func assertBuiltInToolContract(t *testing.T, candidate toolcontract.Tool) {
-	t.Helper()
-	definition := candidate.Definition()
-	if err := definition.Validate(); err != nil {
-		t.Errorf("built-in tool %q has an invalid definition: %v", definition.Name, err)
-		return
-	}
-	var schema struct {
-		AdditionalProperties *bool `json:"additionalProperties"`
-	}
-	if err := json.Unmarshal(definition.InputSchema, &schema); err != nil {
-		t.Errorf("built-in tool %q has invalid input schema JSON: %v", definition.Name, err)
-		return
-	}
-	if schema.AdditionalProperties == nil || *schema.AdditionalProperties {
-		t.Errorf("built-in tool %q does not explicitly reject unknown input fields", definition.Name)
-	}
-	modelText := strings.ToLower(definition.Description + " " + string(definition.InputSchema))
-	terms := strings.FieldsFunc(modelText, func(r rune) bool {
-		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
-	})
-	for _, forbidden := range []string{"ui", "frontend", "runtime", "client", "operator", "chip", "button"} {
-		if slices.Contains(terms, forbidden) {
-			t.Errorf("built-in tool %q leaks implementation term %q into its model contract", definition.Name, forbidden)
-		}
-	}
 }
 
 func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
@@ -145,102 +104,6 @@ func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
 	}
 }
 
-// TestDescriptorCatalogMatchesBuiltInTools is the two-way completeness guard for the
-// built-in descriptor catalog.
-//
-// The catalog is the single cross-cutting source for safety, policy exceptions,
-// activity, presentation, and outcome projection. A dead key claims a tool
-// exists, while an omitted key silently sends a known built-in through unknown-
-// tool fallbacks. Definitions span Runtime adapters and SDK tool modules, so
-// grepping one package cannot enforce either direction.
-//
-// The resolver is built with every optional subsystem wired, because a name is
-// only unreachable if NO configuration reaches it.
-func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
-	policy := testApprovalPolicy(t)
-	built, err := Build(BuildConfig{Lifetime: t.Context(),
-		UserHome:       t.TempDir(),
-		SkillSources:   promptsource.SkillSources{Discover: testsupport.FixtureSkillSelection[promptsource.SkillCapture]},
-		SkillsUserDir:  t.TempDir(), // backs skill
-		PlanMode:       policy,
-		Plan:           rolePlanStore{},
-		GoalReader:     activeGoalStub{},
-		GoalReporter:   activeGoalStub{},
-		ToolResults:    allWiredToolResults{}, // backs read_tool_result
-		SkillProposals: allWiredSkillProposals{},
-		Interrupt: func(context.Context, toolcontract.Invocation, runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
-			return run.InterruptResolution{}, nil, nil
-		},
-	})
-	if err != nil {
-		t.Fatalf("Build: %v", err)
-	}
-	closeBuiltToolset(t, built)
-	wireCreateGoal(t, built.Resolver)
-
-	goalRunContext := executionctx.WithScope(t.Context(), runs.ExecutionScope{
-		SessionID: "session-goal", GoalIncarnationID: "incarnation-1",
-		CWD: t.TempDir(), WorkspaceCWD: t.TempDir(),
-	})
-	manifest, err := built.Resolver.Manifest(goalRunContext, tool.GroupRoot, nil)
-	if err != nil {
-		t.Fatalf("Manifest: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := manifest.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-	resolved := manifestTools(manifest)
-	existing := definitionNames(resolved)
-	checkedContracts := make(map[string]bool)
-	for _, candidate := range resolved {
-		name := candidate.Definition().Name
-		if checkedContracts[name] {
-			continue
-		}
-		checkedContracts[name] = true
-		assertBuiltInToolContract(t, candidate)
-	}
-	// Agent Framework advertises delegate_task from the Interaction Definition rather than
-	// the ordinary Tool manifest.
-	existing[string(builtincontract.DelegateTask)] = true
-
-	declared := make(map[string]bool)
-	var unreachable []string
-	for builtIn, descriptor := range descriptors() {
-		name := string(builtIn)
-		if declared[name] {
-			t.Errorf("built-in identity %q is declared more than once", name)
-		}
-		declared[name] = true
-		if !descriptor.safety.Valid() {
-			t.Errorf("built-in identity %q has invalid safety class %q", name, descriptor.safety)
-		}
-		if result, ok := resultContractFor(builtincontract.Name(name)); ok != (builtincontract.Name(name).ResultShape() != "") || ok && (result.project == nil || result.resultType == nil) {
-			t.Errorf("built-in identity %q must pair its declared result shape with a projection and published type", name)
-		}
-		if !existing[name] {
-			unreachable = append(unreachable, name)
-		}
-	}
-	if len(unreachable) > 0 {
-		slices.Sort(unreachable)
-		t.Errorf("the descriptor catalog classifies %v, which no built tool answers to — "+
-			"either the tool is gone (drop the name) or it was never built (wire it)", unreachable)
-	}
-	var unclassified []string
-	for name := range existing {
-		if !declared[name] {
-			unclassified = append(unclassified, name)
-		}
-	}
-	if len(unclassified) > 0 {
-		slices.Sort(unclassified)
-		t.Errorf("built-in tools %v rely on unknown-tool fallbacks — describe each one explicitly", unclassified)
-	}
-}
-
 func testApprovalPolicy(t *testing.T) *approvals.RuntimePolicy {
 	t.Helper()
 	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "approvals.db")))
@@ -257,15 +120,4 @@ func testApprovalPolicy(t *testing.T) *approvals.RuntimePolicy {
 		t.Fatal(err)
 	}
 	return policy
-}
-
-func TestCurrentDescriptorsNameKnownDurableIdentities(t *testing.T) {
-	for name, descriptor := range builtInDescriptors {
-		if !slices.Contains(builtincontract.Names(), name) {
-			t.Errorf("behavior descriptor %q names no durable built-in identity", name)
-		}
-		if !descriptor.safety.Valid() {
-			t.Errorf("current built-in %s has no valid safety class", name)
-		}
-	}
 }

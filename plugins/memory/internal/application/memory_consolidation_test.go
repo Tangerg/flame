@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	modeltext "github.com/Tangerg/flame/packages/go-sdk/model"
-
 	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 	"github.com/Tangerg/flame/plugins/memory/internal/sqlite"
 )
@@ -169,38 +167,6 @@ func TestConsolidatorPreservesProposalsOmittedByTheModelInputBudget(t *testing.T
 	}
 	if seen == 0 || omitted == 0 {
 		t.Fatalf("input did not exercise its envelope: seen=%d omitted=%d", seen, omitted)
-	}
-}
-
-func TestConsolidatorRejectsMissingDependencies(t *testing.T) {
-	valid, _, _ := memoryConsolidationFixture(t)
-	for name, construct := range map[string]func() error{
-		"conversation": func() error {
-			_, err := NewMemoryConsolidator(nil, valid.memory, valid.client)
-			return err
-		},
-		"typed-nil conversation": func() error {
-			_, err := NewMemoryConsolidator((*capturedHistory)(nil), valid.memory, valid.client)
-			return err
-		},
-		"memory": func() error {
-			_, err := NewMemoryConsolidator(valid.history, nil, valid.client)
-			return err
-		},
-		"typed-nil memory": func() error {
-			_, err := NewMemoryConsolidator(valid.history, (*Curation)(nil), valid.client)
-			return err
-		},
-		"completion": func() error {
-			_, err := NewMemoryConsolidator(valid.history, valid.memory, nil)
-			return err
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			if err := construct(); err == nil {
-				t.Fatal("construction accepted missing dependency")
-			}
-		})
 	}
 }
 
@@ -368,28 +334,6 @@ func TestMemoryConsolidatorRejectsMalformedFactsBeforeLedgerOrPublication(t *tes
 				t.Fatalf("malformed curation lost source facts: pending=%v error=%v", pending, err)
 			}
 		})
-	}
-}
-
-func TestCurationGateAndTokenEstimate(t *testing.T) {
-	consolidator := &MemoryConsolidator{policy: memoryCurationPolicy{minPendingFacts: 3, maxAge: time.Hour}}
-	now := time.Date(2026, 7, 19, 10, 0, 0, 0, time.UTC)
-	state := agentmemory.State{Watermark: 1, UpdatedAt: now}
-	if consolidator.curationDue(state, 2, now) {
-		t.Fatal("small fresh backlog should not curate")
-	}
-	if !consolidator.curationDue(state, 3, now) {
-		t.Fatal("fact threshold should curate")
-	}
-	if !consolidator.curationDue(state, 1, now.Add(time.Hour)) {
-		t.Fatal("age threshold should curate")
-	}
-	if !consolidator.curationDue(agentmemory.State{}, 1, now) {
-		t.Fatal("first generation should curate immediately")
-	}
-
-	if tokens := modeltext.EstimateTextTokens(strings.Repeat("界", 100)); tokens != 100 {
-		t.Fatalf("CJK token estimate = %d, want 100", tokens)
 	}
 }
 

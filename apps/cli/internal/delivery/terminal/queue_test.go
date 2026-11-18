@@ -255,49 +255,6 @@ func queueDrawerHit(t *testing.T, drawer *queueDrawer, target queueTarget) queue
 	return queueHit{}
 }
 
-func TestQueueViewKeepsTheNextPromptAndOverflowVisible(t *testing.T) {
-	view := newQueueView(kit.Dark(), kit.Unicode())
-	view.Set(authoring.QueueSnapshot{Entries: []authoring.QueueEntry{
-		{ID: testQueueEntryID(t, 1), Message: authoring.Message{Text: "first follow-up\nwith more detail"}},
-		{ID: testQueueEntryID(t, 2), Message: authoring.Message{Text: "second follow-up"}},
-		{ID: testQueueEntryID(t, 3), Message: authoring.Message{Text: "third follow-up"}},
-		{ID: testQueueEntryID(t, 4), Message: authoring.Message{Text: "fourth follow-up"}},
-	}})
-	if got := view.HeightForWidth(queueMinWidth - 1); got != 0 {
-		t.Fatalf("narrow queue height = %d", got)
-	}
-	if got := view.HeightForWidth(80); got != queueMaxRows {
-		t.Fatalf("queue height = %d", got)
-	}
-	rendered := drawStatic(t, view, 48, queueMaxRows)
-	for _, want := range []string{"Queue", "4 queued", "first follow-up", "3 more"} {
-		if !strings.Contains(rendered, want) {
-			t.Errorf("queue does not contain %q:\n%s", want, rendered)
-		}
-	}
-	if strings.Contains(rendered, "with more detail") {
-		t.Fatalf("queue preview leaked later lines:\n%s", rendered)
-	}
-}
-
-func TestQueueDrawerRendersPreviewActionsAndResponsiveFallback(t *testing.T) {
-	drawer, _ := testQueueDrawer(t, authoring.Message{Text: "first line\nsecond line", Attachments: []authoring.Attachment{{ID: "a", Kind: protocol.ContentBlockText, Name: "context.txt", Path: "/tmp/context.txt"}}}, authoring.Message{Text: "second prompt"})
-	root, _, rendered := drawQueueDrawer(t, drawer, 96, 9)
-	root.Close()
-	for _, want := range []string{
-		"Queue · 2 prompts", "Preview · full queued prompt", "second line",
-		"[send now]", "[edit]", "[remove]", "J/K reorder",
-	} {
-		if !strings.Contains(rendered, want) {
-			t.Errorf("queue drawer does not contain %q:\n%s", want, rendered)
-		}
-	}
-	_, _, narrow := drawQueueDrawer(t, drawer, 22, 5)
-	if !strings.Contains(narrow, "first line") || strings.Contains(narrow, "[send now]") {
-		t.Fatalf("narrow queue drawer did not preserve content priority:\n%s", narrow)
-	}
-}
-
 func TestQueueDrawerRejectsRetiredPointerTargetsAndDetachedKeyboardLeases(t *testing.T) {
 	bindings, err := configuredKeyBindings(settings.Default())
 	if err != nil {

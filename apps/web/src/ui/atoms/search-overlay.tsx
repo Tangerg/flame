@@ -190,7 +190,6 @@ function SearchOverlayContent({
           <Icon name="search" size="md" />
           <Autocomplete.Input
             render={<TextField variant="bare" />}
-            // oxlint-disable-next-line jsx-a11y/no-autofocus
             autoFocus={open}
             onKeyDown={(event) => {
               if (isImeKey(event.nativeEvent)) event.preventBaseUIHandler();

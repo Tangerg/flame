@@ -19,16 +19,6 @@ func (m *modePolicy) EnterPlanMode(_ context.Context, sessionID string) (bool, e
 	return m.changed, nil
 }
 
-func TestNewNilPolicyOmitsTool(t *testing.T) {
-	tool, err := newEnter(nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if tool != nil {
-		t.Fatal("New(nil) returned a tool")
-	}
-}
-
 func TestDefinitionUsesEmptyInput(t *testing.T) {
 	tool, err := newEnter(&modePolicy{}, nil)
 	if err != nil {

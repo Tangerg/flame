@@ -71,10 +71,10 @@ The production build emits `.vite/flame-artifact-graph.json` from its actual
 chunks, source declarations and final HTML. The bundle guard verifies emitted
 bytes before counting the bootstrap static closure and the explicitly immediate
 main import together. Import-map targets alone are not startup requests. Lazy
-groups use their declared source identities and dependency closures, with shared
+groups come from those declarations and use their source identities and dependency closures, with shared
 startup files counted once and each group's additional bytes reported separately.
 HTML prefetch hints remain separate from startup parsing. These are build-graph
-byte budgets, not first-paint, runtime-fetch or latency measurements.
+observations, not first-paint, runtime-fetch or latency acceptance thresholds.
 
 `webPolicy.mjs` owns the built document and program-frame security policies.
 `webArtifacts.vite.mjs` publishes their current schema with final artifact digests.
@@ -1182,10 +1182,8 @@ a committed prefix.
 
 Tests stay beside their owners. Cross-language Runtime/schema/SDK tests live in
 `tests/integration`; repository Go cross-product checks live in
-`../../tooling/integration`. All UI visual fixtures, capture cases and browser checks live in [`lab`](lab/README.md).
-Frontend test files run serially so competing module transforms cannot consume
-another file's DOM assertion deadline.
-Only the frontend project uses Happy DOM and UI setup. Runtime HTTP integration
+`../../tooling/integration`. Use the [UI lab](lab/README.md) to inspect rendered components and interactions.
+Frontend logic tests run serially and use Happy DOM for browser APIs. Runtime HTTP integration
 uses Node's native Fetch and streams, so a DOM emulator cannot replace the
 client's transport lifetime or cancellation behavior. Startup probes retry only
 connection refusal and the declared not-ready status within the original deadline.
@@ -1195,10 +1193,9 @@ removal; the suite joins every process before project teardown reclaims the file
 Compaction cases use bounded long results and join their Run streams before the next
 case can claim a provider cutpoint. Their gates require a main-model Tool so auxiliary
 summary reduction cannot impersonate the post-commit model call.
-Use `npm run lab` for inspection and `npm run lab:verify` for verification; new
-visual coverage extends this catalog and configuration. The full check includes
-compiler-resolved dependency/contract guards, lifecycle tests, resource drift,
-styles, localization and the production bundle.
+Use `npm run lab` for interactive inspection. The full check includes product
+lifecycle tests, generated-contract consistency, resource drift, localization,
+and both the production and lab bundles.
 
 The shell and Dock use react-resizable-panels. Group owns continuous geometry;
 persistence stores only requestedLayout completion snapshots. Image, Mermaid and

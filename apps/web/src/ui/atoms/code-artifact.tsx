@@ -72,7 +72,6 @@ export function CodeArtifact({
           {...stylex.props(styles.previewBody)}
           role="region"
           aria-label={previewLabel}
-          // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
           tabIndex={0}
         >
           {preview}

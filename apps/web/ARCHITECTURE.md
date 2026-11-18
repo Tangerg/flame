@@ -550,37 +550,19 @@ Run the complete frontend gate from this directory:
 npm run check
 ```
 
-The gate includes typechecking, lint, formatting, tests, dead-code checks,
-architecture, content and visual rules, and a production bundle. The HTTP e2e
-suite builds an isolated Runtime and uses local fake providers; it requires the
-repository's Go toolchain and no live provider credentials.
-It runs in a separate Vitest project after the frontend checks so native process
-and local server deadlines do not compete with the DOM worker pool.
+The gate includes typechecking, product behavior tests, translation resources,
+generated artifacts, installed component resources and a production bundle. The
+HTTP e2e suite builds an isolated Runtime and uses local fake providers; it
+requires the repository's Go toolchain and no live provider credentials. It runs
+in a separate Vitest project after frontend checks so native process and local
+server deadlines do not compete with the DOM worker pool.
 
-Layer, context, and cycle checks share the compiler-resolved dependency graph in
-`tooling/source-graph.mjs`. Generic graph tests belong to tooling; Web policy tests
-belong to `scripts/check-layers.test.mjs`.
-Every TypeScript source must be loaded, every local import must resolve, and
-runtime cycles use the frontend's TypeScript erasure rather than matching
-filenames or guessing from import text. Flat features receive the same boundary
-as layered ones. Port usage is attributed through TypeScript symbols, so an
-unrelated method with the same name cannot satisfy an unused interface clause.
-Publication slots must be created within a feature instance or its factory.
-The port guard resolves factory aliases and re-exports and rejects module-level
-and global static publication, while allowing per-instance publication.
-Source coverage is checked against actual files, not minimum file or edge counts.
-
-Guard regression tests cover unresolved imports, omitted source files, module
-extensions, type-only erasure, real cycles, private feature dependencies, and
-port consumers. Product tests cover failure ordering, installation replacement,
+Product tests cover failure ordering, installation replacement,
 connection retirement, command identity, and surviving feature behavior.
 
 `test/renderClient.tsx` constructs independent feature instances for each test.
 Visual fixtures use `lab/scenarios/client.tsx` and pass the fixture explicitly to their
-setup functions; browser checks read that fixture rather than private production
-singletons. Visual fixtures compose their own plugins and memory-transport clients. Their
-resources belong to fixture cleanup; they do not discover a default production
-connection. Native package verification follows the supported Wails target in
+setup functions. Each fixture owns its plugins, memory-transport clients and cleanup. Native package verification follows the supported Wails target in
 [`../Taskfile.yml`](../desktop/Taskfile.yml); a successful Web bundle does not establish a
 macOS packaging result.
 
@@ -603,13 +585,9 @@ of that generation retains the SDK retry handle; `retryOpening(key)` resolves th
 original handle without creating a second settlement path. Generated closed string
 enums such as `ChangeStatus` are shared vocabulary and may appear in public views;
 Runtime-client records, command handles and anything mixing them stay inside adapters.
-Compiler checks trace exported types through aliases, containers and inferred
-method results.
 
 Settings pages compose theme, i18n, notification and chat controls through their
-real public modules. Features independently contribute panes to Settings. Guards
-check resolved module cycles and private imports, rather than treating an entire
-feature directory as one coarse initialization node. Installed plugin component
+real public modules. Features independently contribute panes to Settings. Installed plugin component
 lifetimes belong to `features/plugins` and survive Settings page unmounts.
 
 ## Owned consumer capabilities
@@ -629,8 +607,7 @@ private title, badge and activity state.
 
 UI atoms own both control semantics and presentation. They import Base UI at
 the actual control owner, or implement native semantics when needed. The file tree's
-keyboard and ARIA are owned by React Aria Tree and Virtualizer at the file browser. The design-system
-gate keeps native interaction and Base UI inside the design system.
+keyboard and ARIA are owned by React Aria Tree and Virtualizer at the file browser.
 
 ## Client persistence encoding
 

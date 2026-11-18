@@ -45,9 +45,3 @@ func TestBoundNativeMethodsMatchTheirGeneratedContract(t *testing.T) {
 		t.Fatalf("bound methods %v differ from generated contract %v", actual, generated)
 	}
 }
-
-func TestWindowChromeIsUnmeasuredWithoutAWindow(t *testing.T) {
-	if chrome := mustDesktopHost(t, t.TempDir()).WindowChrome(); chrome.Measured {
-		t.Fatalf("WindowChrome without a window = %#v, want unmeasured", chrome)
-	}
-}

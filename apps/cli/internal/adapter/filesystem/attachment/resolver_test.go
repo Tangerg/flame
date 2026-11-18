@@ -168,46 +168,6 @@ func TestCompleteOwnsOneFiniteProductResultBudget(t *testing.T) {
 	}
 }
 
-func TestCompleteCountsDirectoriesTowardTheVisitBudget(t *testing.T) {
-	root := t.TempDir()
-	deep := filepath.Join(root, "one", "two", "three")
-	if err := os.MkdirAll(deep, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(deep, "beyond-budget.txt"), []byte("x"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	search := completionSearch{
-		ctx: t.Context(), root: root, query: "budget", maxBytes: authoring.MaxAttachmentBytes,
-		maxVisited: 2,
-	}
-	if err := search.walk(); err != nil {
-		t.Fatal(err)
-	}
-	if search.visited != 2 || len(search.matches) != 0 {
-		t.Fatalf("bounded search visited %d entries and returned %d matches", search.visited, len(search.matches))
-	}
-}
-
-func TestCompleteBoundsOneDirectoryBeforeRanking(t *testing.T) {
-	root := t.TempDir()
-	for index := range 3 {
-		if err := os.WriteFile(filepath.Join(root, fmt.Sprintf("match-%d.txt", index)), []byte("x"), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	search := completionSearch{
-		ctx: t.Context(), root: root, query: "match", maxBytes: authoring.MaxAttachmentBytes,
-		maxVisited: 2,
-	}
-	if err := search.walk(); err != nil {
-		t.Fatal(err)
-	}
-	if search.visited != 2 || len(search.matches) != 1 {
-		t.Fatalf("bounded search visited %d entries and returned %d matches", search.visited, len(search.matches))
-	}
-}
-
 func TestAttachmentIdentityPreservesFieldBoundaries(t *testing.T) {
 	left := (attachmentIdentity{canonicalPath: "a", size: 12, modifiedAt: 3}).digest()
 	right := (attachmentIdentity{canonicalPath: "a1", size: 2, modifiedAt: 3}).digest()

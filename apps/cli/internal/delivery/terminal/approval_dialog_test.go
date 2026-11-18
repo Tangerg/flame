@@ -79,65 +79,6 @@ func TestReplacedApprovalFormCannotMutateTheCurrentDraft(t *testing.T) {
 	}
 }
 
-func TestApprovalChoiceMapsEveryDecisionAndRememberScope(t *testing.T) {
-	tests := []struct {
-		name     string
-		action   approvalAction
-		decision protocol.ApprovalDecision
-		remember protocol.RememberScopeKind
-	}{
-		{name: "allow once", action: approvalAllowOnce, decision: protocol.ApprovalApprove},
-		{name: "allow session", action: approvalAllowSession, decision: protocol.ApprovalApprove, remember: protocol.RememberSession},
-		{name: "allow project", action: approvalAllowProject, decision: protocol.ApprovalApprove, remember: protocol.RememberProject},
-		{name: "allow global", action: approvalAllowGlobal, decision: protocol.ApprovalApprove, remember: protocol.RememberGlobal},
-		{name: "deny once", action: approvalDenyOnce, decision: protocol.ApprovalDeny},
-		{name: "deny session", action: approvalDenySession, decision: protocol.ApprovalDeny, remember: protocol.RememberSession},
-		{name: "deny project", action: approvalDenyProject, decision: protocol.ApprovalDeny, remember: protocol.RememberProject},
-		{name: "deny global", action: approvalDenyGlobal, decision: protocol.ApprovalDeny, remember: protocol.RememberGlobal},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			answer, ok := test.action.Answer()
-			if !ok {
-				t.Fatalf("approval action %q was not recognized", test.action)
-			}
-			if got := approvalActionFromAnswer(answer); got != test.action {
-				t.Fatalf("answer round trip = %q, want %q", got, test.action)
-			}
-			if answer.Decision != test.decision || answer.Remember != test.remember {
-				t.Fatalf("approval action %q = %+v", test.action, answer)
-			}
-		})
-	}
-	if answer, ok := approvalEditArgs.Answer(); ok || answer != (conversation.ApprovalAnswer{}) {
-		t.Fatalf("editor choice projected a runtime answer: %+v, %v", answer, ok)
-	}
-}
-
-func TestApprovalOptionsKeepOneShotActionsStableAndExposeRememberedDenials(t *testing.T) {
-	t.Parallel()
-	values := func(options []base.Option[approvalAction]) []approvalAction {
-		return slices.Collect(func(yield func(approvalAction) bool) {
-			for _, option := range options {
-				if !yield(option.Value) {
-					return
-				}
-			}
-		})
-	}
-	if got, want := values(approvalOptions(false)), []approvalAction{
-		approvalAllowOnce, approvalDenyOnce, approvalEditArgs,
-	}; !slices.Equal(got, want) {
-		t.Fatalf("one-shot approval options = %v, want %v", got, want)
-	}
-	if got, want := values(approvalOptions(true)), []approvalAction{
-		approvalAllowOnce, approvalAllowSession, approvalAllowProject, approvalAllowGlobal,
-		approvalDenyOnce, approvalDenySession, approvalDenyProject, approvalDenyGlobal, approvalEditArgs,
-	}; !slices.Equal(got, want) {
-		t.Fatalf("rememberable approval options = %v, want %v", got, want)
-	}
-}
-
 func TestApprovalDefaultSelectsEveryConfiguredRememberScope(t *testing.T) {
 	tests := []struct {
 		preference settings.RememberPreference
