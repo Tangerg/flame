@@ -792,6 +792,7 @@
   "message.user.unfold": "メッセージ全体を表示",
   "message.user.fold": "折りたたむ",
   "message.mermaid.fit": "全体表示",
+  "message.mermaid.centerActualSize": "原寸で中央に表示",
   "message.mermaid.zoomIn": "図を拡大",
   "message.mermaid.zoomOut": "図を縮小",
   "file.range": "{{total}} 行中 {{start}}–{{end}} 行",

@@ -828,6 +828,7 @@
   "message.user.unfold": "Afficher le message complet",
   "message.user.fold": "Afficher moins",
   "message.mermaid.fit": "Ajuster",
+  "message.mermaid.centerActualSize": "Centrer à la taille réelle",
   "message.mermaid.zoomIn": "Agrandir le diagramme",
   "message.mermaid.zoomOut": "Réduire le diagramme",
   "file.range": "Lignes {{start}}–{{end}} sur {{total}}",

@@ -155,6 +155,9 @@ Expanded images, figures and captured documents use shared `LightboxDialog`.
 The transcript gallery retains collection, active-image and save-command ownership
 and uses shared `ImageViewport` for fitting, zoom and panning. Portable evidence
 images use the same reading boundary, with their captured source and local labels.
+The Mermaid lightbox shows its current zoom on the actual-size button. The
+diagram viewport shows keyboard focus inside its edges and supports arrow-key
+panning through the existing transform controls.
 
 The composition root creates each feature instance and its backing state once.
 React consumers use that owner's Provider; commands and plugin factories capture

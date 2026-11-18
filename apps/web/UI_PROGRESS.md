@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) [Draft attachments and past messages](#draft-attachments-when-editing-past-messages-2026-11-19) [Draft attachments and history rollback](#draft-attachments-before-history-rollback-2026-11-19) [Deliverables archive return](#return-from-a-retained-document-to-its-archive-row-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) [Draft attachments and past messages](#draft-attachments-when-editing-past-messages-2026-11-19) [Draft attachments and history rollback](#draft-attachments-before-history-rollback-2026-11-19) [Deliverables archive return](#return-from-a-retained-document-to-its-archive-row-2026-11-19) [Mermaid reading](#diagram-zoom-feedback-and-keyboard-focus-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -15715,6 +15715,52 @@ preserved. The independently round-trip-verified in-memory evidence archive reta
 SHA-256 `4a9adf83f024502b2391fec5bd672dee7da8bc83fa6258b7aa3fb9244396499c`. This documentation-only
 receipt changes no tested product source. Preserve the delivered SVG/gallery and
 source-return owners; continue from new actual reading/Dock evidence.
+
+### Diagram zoom feedback and keyboard focus (2026-11-19)
+
+On `5448ad389`, the actual Wails diagram lightbox fits all eight nodes of a
+wide captured chart in a left-tiled window at default page zoom. The toolbar
+shows `100%` both when the entire chart fits and after the actual-size control
+enlarges the chart to its middle nodes. Tab moves from Close to the Diagram
+viewport, but its outset ring is clipped by the reader. The direction keys
+already move the chart, and Escape returns to its original trigger.
+
+The existing Mermaid viewport uses Flame's inset focus treatment and exposes its
+arrow-key shortcuts. The actual-size button projects the camera's rounded
+percentage from initialization and transform changes. It still centers the
+diagram at 100% when activated. Its name includes the on-screen percentage and
+the action in all eight locales, and the local action is available as the
+button's pointer title.
+
+Better-accessibility guides visible focus on the existing keyboard-operated
+viewport. The inspected ZCode diagram dialog and Flame's ImageViewport inform
+showing the transform's measured scale on the existing controls. The existing
+React Zoom Pan Pinch instance owns the diagram transform and keyboard commands.
+[W3C Focus Visible guidance](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html)
+
+The baseline and final signed Wails apps use the normal Agent Lab conversation
+with a private eight-node bilingual variant of its Mermaid fence. At default
+page zoom, English light, 14 px and Flame Orange show 48% on opening and all
+eight nodes. Enter on the percentage centers at 100%. Tab reaches the visible
+diagram focus ring, Right pans and the zoom key updates the reading to 125%.
+Pointer Fit returns to 48%. One Escape from the focused scale button returns
+to Enlarge diagram. The initial English setup placed the draft caret before
+window tiling and Find, and inserted at the start. A fresh run sets the caret
+after locating the chart and verifies `diagramdraftqxtail` after returning.
+
+Chinese dark, 18 px, custom `#3B82F6` and full motion open at 61% in the wide
+window. Tiling the native window while the reader is open retains the local
+scale, and Fit at the new width reads 48%. At 100%, Left pans with the blue
+focus ring visible. The wheel updates the scale and a pointer click on the
+percentage centers again at 100%. Pointer Close returns to the original source
+and the Composer continues at `图表核对草稿继续尾段`.
+
+Web typecheck, Prettier, 934 keys across eight locales, bootstrap, 89 Web
+contracts, 26 bundle checks, exact component resources, production ESM linking,
+native staging, Lab builds and signature checks pass. Four app launches and
+two preview servers exit. Two private registrations, four Library paths, ten
+checkout output roots and the scratch tree are removed. Full V5, VoiceOver, live
+Runtime and other platforms remain open.
 
 ### Image gallery selection and source geometry
 

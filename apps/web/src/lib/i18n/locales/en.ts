@@ -877,6 +877,7 @@ export const en: Record<string, string> = {
   "chat.conversation": "Conversation",
   "message.mermaid.pan": "Pan diagram",
   "message.mermaid.fit": "Fit",
+  "message.mermaid.centerActualSize": "Center at actual size",
   "message.mermaid.zoomIn": "Zoom in diagram",
   "message.mermaid.zoomOut": "Zoom out diagram",
   "file.range": "Lines {{start}}–{{end}} of {{total}}",

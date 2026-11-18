@@ -792,6 +792,7 @@
   "message.user.unfold": "顯示完整訊息",
   "message.user.fold": "收合",
   "message.mermaid.fit": "符合視窗",
+  "message.mermaid.centerActualSize": "以實際大小置中",
   "message.mermaid.zoomIn": "放大圖表",
   "message.mermaid.zoomOut": "縮小圖表",
   "file.range": "第 {{start}}–{{end}} 行，共 {{total}} 行",

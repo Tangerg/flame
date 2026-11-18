@@ -30,6 +30,16 @@ export function MermaidViewer({ svg, onClose }: { svg: string; onClose(): void }
   const id = useId().replace(/[^A-Za-z0-9_-]/g, "_");
   const displayed = useMemo(() => copyMermaidSvg(svg, `viewer-${id}`), [svg, id]);
   const [hand, setHand] = useState(false);
+  const [percentage, setPercentage] = useState(100);
+  const updatePercentage = (scale: number) => setPercentage(Math.round(scale * 100));
+  const scaleLabel = `${percentage}%`;
+  const centerLabel = t("message.mermaid.centerActualSize");
+  const viewportProps = {
+    role: "region",
+    "aria-label": t("markdown.diagram"),
+    "aria-keyshortcuts": "ArrowUp ArrowDown ArrowLeft ArrowRight",
+    "data-focus-inset": "",
+  } as const;
   return (
     <div {...stylex.props(styles.root)}>
       <TransformWrapper
@@ -39,8 +49,10 @@ export function MermaidViewer({ svg, onClose }: { svg: string; onClose(): void }
         panning={{ activationKeys: hand ? [] : [" "] }}
         doubleClick={{ disabled: true }}
         keyboard={{ disabled: false, excluded: ["text", "a", "button", "input", "textarea"] }}
+        onTransform={(_, { scale }) => updatePercentage(scale)}
         onInit={(controls) => {
           void controls.fitToView({ maxScale: 1, animationTime: 0 });
+          updatePercentage(controls.state.scale);
         }}
       >
         {(controls) => (
@@ -49,7 +61,13 @@ export function MermaidViewer({ svg, onClose }: { svg: string; onClose(): void }
               <Button onClick={() => void controls.fitToView({ maxScale: 1 })}>
                 {t("message.mermaid.fit")}
               </Button>
-              <Button onClick={() => void controls.centerView(1)}>100%</Button>
+              <Button
+                aria-label={`${scaleLabel}, ${centerLabel}`}
+                title={centerLabel}
+                onClick={() => void controls.centerView(1)}
+              >
+                {scaleLabel}
+              </Button>
               <IconButton
                 icon={iconGlyph("zoom-out")}
                 aria-label={t("message.mermaid.zoomOut")}
@@ -67,7 +85,7 @@ export function MermaidViewer({ svg, onClose }: { svg: string; onClose(): void }
             </div>
             <div {...stylex.props(styles.port)} data-slot="mermaid-full">
               <TransformComponent
-                wrapperProps={{ role: "region", "aria-label": t("markdown.diagram") }}
+                wrapperProps={viewportProps}
                 wrapperStyle={{ width: "100%", height: "100%" }}
                 contentStyle={{
                   width: "max-content",
