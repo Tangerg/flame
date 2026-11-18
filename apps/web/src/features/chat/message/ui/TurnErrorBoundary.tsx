@@ -34,7 +34,7 @@ function TurnErrorFallback({ resetErrorBoundary }: FallbackProps) {
     resetErrorBoundary();
   };
   return (
-    <div ref={root} {...stylex.props(rc.gutter, teb.frame)}>
+    <div ref={root} {...stylex.props(rc.box, rc.gutter, teb.frame)}>
       <div role="alert" {...stylex.props(teb.card, typeStep.uiMd)}>
         <span {...stylex.props(teb.label)}>{t("chat.error.title")}</span>
         <Button type="button" variant="soft" size="sm" onClick={retry}>

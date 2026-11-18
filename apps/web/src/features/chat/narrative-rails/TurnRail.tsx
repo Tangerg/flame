@@ -104,7 +104,7 @@ export function TurnRail() {
             trigger={
               <ButtonPrimitive
                 type="button"
-                data-chrome-focus=""
+                data-focus-inset=""
                 aria-current={active ? "true" : undefined}
                 aria-label={turnLabel(t, turn, index, turns.length)}
                 onPointerEnter={() => setReached(index)}

@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) [Draft attachments and past messages](#draft-attachments-when-editing-past-messages-2026-11-19) [Draft attachments and history rollback](#draft-attachments-before-history-rollback-2026-11-19) [Deliverables archive return](#return-from-a-retained-document-to-its-archive-row-2026-11-19) [Mermaid reading](#diagram-zoom-feedback-and-keyboard-focus-2026-11-19) [Composer selection after Find](#composer-selection-after-closing-find-2026-11-19) [Goal conflict review](#goal-conflict-review-inside-the-editor-2026-11-19) [Final question submission](#final-question-skip-names-submission-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) [Draft attachments and past messages](#draft-attachments-when-editing-past-messages-2026-11-19) [Draft attachments and history rollback](#draft-attachments-before-history-rollback-2026-11-19) [Deliverables archive return](#return-from-a-retained-document-to-its-archive-row-2026-11-19) [Mermaid reading](#diagram-zoom-feedback-and-keyboard-focus-2026-11-19) [Composer selection after Find](#composer-selection-after-closing-find-2026-11-19) [Goal conflict review](#goal-conflict-review-inside-the-editor-2026-11-19) [Final question submission](#final-question-skip-names-submission-2026-11-19) [Transcript reading and turn navigation](#centered-transcript-and-turn-navigation-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -38491,6 +38491,82 @@ Continue with observed complete-task defects, especially retained resource
 catalog reading and return paths across their actual read/empty/error boundaries.
 Do not restart this resolved scroll-clamping investigation or add a generic
 body-resize focus policy. Preserve deliberate scrolling and later outside focus.
+
+## Centered transcript and turn navigation (2026-11-19)
+
+In signed Wails on `c15d26d9b`, the 40-turn Lab conversation at a 1440 CSS px
+window shows assistant prose from the left edge and user bubbles against the
+right edge while the Composer stays centered. The visible turn ticks cross the
+prose. Tab exposes the selected question preview and Return scrolls to it.
+The focused tick enlarges visually. Its perimeter is absent. The initial
+coordinate attempt landed outside its target. A replay with passive native
+event readout records a real mouse click on turn 20 and successfully jumps to
+its prompt and checkpoint on the baseline.
+
+The Legend migration dropped the former transcript content column. The shared
+`MessageTranscript` applies the existing reading box and gutter to message
+rows and day separators, and the existing error card and delegated transcript
+preface use that same width. The conversation container remains the input to
+outer Markdown breakout. The rail uses the shared inset focus ring to mark its
+focused tick. Legend List supplies the visible turn and executes the existing
+pointer and keyboard jump.
+
+At the restored column, native geometry exposed a second layout boundary. The
+1118 px delegated reader applied its outer breakout calculation, yet the shared
+code frame's generated max-width still capped its direct Go block at 768 px.
+`markdown.css` gives the existing outer artifact width and cap precedence
+inside the 640–1151.98 px conversation band. The selectors still require a
+direct assistant Markdown artifact. Nested content and user messages use their
+own existing caps.
+
+Read-only ZCode `ConversationTimeline.tsx` aligns the virtual history and live
+messages on its content column. The actual ChatGPT WebView navigation-rail app
+uses individual buttons with turn previews. Better-layout, Better-typography
+and Better-accessibility inform the shared axis, bounded measure and keyboard
+indicator. Ace's static Alpaca and Marketer work illustrates the separation of
+navigation from the main task and the centered editing surface. [Alpaca
+workspace](https://acedesign.io/work/alpaca/08.webp) [Marketer chat
+workspace](https://acedesign.io/work/marketer/02.webp)
+
+The final signed Wails runs use the default page zoom. In English/light/Orange
+at 1440 px, the transcript and Composer share the same centered reading axis.
+A trusted coordinate click at WebView position 181, 333.5 lands on turn 5 and
+reveals its prompt and checkpoint. Tab to turn 6 shows its preview and visible
+focus ring, and Return reveals its transcript row. Composer resumes at the
+middle caret as `raildraftqxtail`.
+
+In Chinese/dark/custom blue at 18 px with full motion, native tiling and the
+splitter narrow Conversation to 440 px beside the Files Dock. Text wraps inside
+the pane. Returning from `reading-guide.md` puts focus back on its file row.
+Closing the Dock and enlarging the window to 1513 px exposes the turn rail.
+Keyboard preview and Return reach turn 4, and the next tick shows the blue
+focus perimeter. The original Composer resumes as `长对话原草稿继续尾段`.
+
+The same completed Sub-agent 3 of 4 retains its identity through Dock, main-area
+reading and source return. Its prose stays 768 px in the 1436 px and 1117 px
+readers. The direct Go block and Mermaid both grow from 768 to 896 px in the
+smaller reader. The intrinsic table stays approximately 330 px and the user
+bubble stays approximately 538 px. Code wrap remains usable. Back to task
+returns focus to the same `runtime/internal/session/store.go:4` reference, and
+Back to conversation returns to the same Sub-agent 3 button.
+
+Web formatting, typecheck, 89 Web contracts, 937 locale keys across eight
+locales, bootstrap, installed plugin resources, 26 bundle checks, production
+module linking, `make check-native` and the five-entry Lab check pass on
+`5a347e431` with the final UI patch. The three private bundles verify with
+codesign. The private native observer reads geometry and actual pointer events.
+An initial post-build edit of the observer was refused by the asset digest
+check. Regeneration with the normal policy produces the final measured run.
+Live Runtime, VoiceOver, nested artifact cases beyond the exercised material,
+browser visual suites and benchmarks are unqualified.
+
+All ten private app launches exited and the six loopback previews closed.
+Cleanup removed three exact native registrations, six private Library
+directories, ten temporary checkout outputs and the scratch tree.
+
+The long-conversation replay also confirms that all forty turn buttons are
+separate Tab stops between the conversation heading and the scrollable reader.
+Use that measured keyboard path for the next navigation review.
 
 ## Wide-content breakout in the reading band
 

@@ -137,8 +137,9 @@
     > .md
     > p
     > .katex-display {
-    width: var(--md-wide-width);
-    max-width: var(--md-wide-width);
+    /* The reading band takes precedence over shared artifact frame bounds. */
+    width: var(--md-wide-width) !important;
+    max-width: var(--md-wide-width) !important;
     margin-inline: 0;
   }
   .msg-content:not([data-user-message-bubble])

@@ -441,7 +441,7 @@ function SubagentTranscript({
         header={
           <>
             {hasRunDetails && (
-              <div {...stylex.props(rc.gutter, styles.evidence)}>
+              <div {...stylex.props(rc.box, rc.gutter, styles.evidence)}>
                 {summary.detail && (
                   <div {...stylex.props(typeStep.uiSm, toneInk[summary.ink])}>
                     <RecordBody>{summary.detail}</RecordBody>
@@ -451,7 +451,7 @@ function SubagentTranscript({
               </div>
             )}
             {rows.length === 0 && !hasRunDetails && (
-              <p {...stylex.props(rc.gutter, vocab.muted, typeStep.uiSm)}>
+              <p {...stylex.props(rc.box, rc.gutter, vocab.muted, typeStep.uiSm)}>
                 {t("agent.runTree.material.empty")}
               </p>
             )}

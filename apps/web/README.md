@@ -524,9 +524,12 @@ available height, focused controls remain reachable and the existing preview
 provides a separate reading space. The normal table reader, preview, selection
 and scroll owners remain separate from the budget projection.
 
-Transcript turns render normally so history stays readable across native page
-zoom and material return. Message turns do not use off-screen paint skipping such
-as `content-visibility: auto`.
+Legend List owns the transcript viewport and row layout. Main and delegated
+turns use the shared centered reading column for the message, day separator,
+fallback and delegated preface. The conversation container still supplies
+the width available to outer Markdown code, media and tables in the existing
+breakout range. At wide conversation widths the turn rail sits in the margin,
+where the shared inset focus ring marks the keyboard's current turn button.
 
 Each non-commentary message keeps its body and existing actions in one context
 menu trigger. Shift+F10 from an action opens that message's named menu without

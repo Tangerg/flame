@@ -33,7 +33,7 @@ function DaySeparator({ createdAt }: { createdAt?: string }) {
   const label = formatDay(createdAt);
   if (!label) return null;
   return (
-    <div {...stylex.props(rc.gutter, styles.dayPad)}>
+    <div {...stylex.props(rc.box, rc.gutter, styles.dayPad)}>
       <Divider align="start">{label}</Divider>
     </div>
   );
@@ -66,7 +66,7 @@ const TranscriptTurn = memo(function TranscriptTurn({
   return (
     <>
       {opensDay && <DaySeparator createdAt={props.row.message.createdAt} />}
-      <MessageTurn {...props} className={stylex.props(rc.gutter).className} />
+      <MessageTurn {...props} className={stylex.props(rc.box, rc.gutter).className} />
     </>
   );
 });
