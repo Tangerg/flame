@@ -35,18 +35,11 @@ func decide(request goalworkflow.Request) goalworkflow.Decision {
 		next.Status = goalworkflow.GoalActive
 	case goalworkflow.Stop:
 		next.Status, next.Reason = goalworkflow.GoalPaused, goalworkflow.GoalReasonStoppedByUser
-	case goalworkflow.Revise, goalworkflow.ReviseAndResume:
+	case goalworkflow.Revise:
 		if current.Status == goalworkflow.GoalCompleting || objective == "" {
 			return invalid
 		}
-		if request.Signal == goalworkflow.ReviseAndResume {
-			if current.Status != goalworkflow.GoalPaused {
-				return invalid
-			}
-			next.Status = goalworkflow.GoalActive
-		} else {
-			next = current
-		}
+		next = current
 		next.Objective = objective
 	default:
 		return activeDecision(current, request)

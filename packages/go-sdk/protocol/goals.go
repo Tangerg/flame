@@ -83,9 +83,8 @@ type StartGoalRequest struct {
 	ReasoningEffort string `json:"reasoningEffort,omitempty"`
 }
 
-// UpdateGoalRequest — goals.update body. Updating the objective preserves the
-// Goal's lifecycle, accounting and model selection while opening a new
-// objective incarnation so work admitted for the prior text cannot mutate it.
+// UpdateGoalRequest is the goals.update body. Editing preserves the lifecycle
+// and model selection and opens a new incarnation with its own Run accounting.
 type UpdateGoalRequest struct {
 	SessionID string `json:"sessionId"`
 	Objective string `json:"objective"`

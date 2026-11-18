@@ -17,7 +17,7 @@ const (
 
 func registerGoals(registry *Registry) {
 	registry.command(MethodMeta{
-		Name: goalsStart, GoName: "StartGoal", Errors: pluginProviderErrors(protocol.ErrSessionNotFound.Error()),
+		Name: goalsStart, GoName: "StartGoal", Errors: pluginProviderErrors(protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error()),
 		CapabilityRules: requires(protocol.FeatureGoals),
 	}, func(service interface {
 		StartGoal(context.Context, protocol.StartGoalRequest) (*protocol.Goal, error)
@@ -26,7 +26,7 @@ func registerGoals(registry *Registry) {
 	})
 
 	registry.command(MethodMeta{
-		Name: goalsUpdate, GoName: "UpdateGoal", Errors: pluginProviderErrors(protocol.ErrSessionNotFound.Error()),
+		Name: goalsUpdate, GoName: "UpdateGoal", Errors: pluginProviderErrors(protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error()),
 		CapabilityRules: requires(protocol.FeatureGoals),
 	}, func(service interface {
 		UpdateGoal(context.Context, protocol.UpdateGoalRequest) (*protocol.Goal, error)
@@ -35,7 +35,7 @@ func registerGoals(registry *Registry) {
 	})
 
 	registry.commandAck(MethodMeta{
-		Name: goalsClear, GoName: "ClearGoal", Errors: []string{protocol.ErrSessionNotFound.Error()},
+		Name: goalsClear, GoName: "ClearGoal", Errors: []string{protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error()},
 		CapabilityRules: requires(protocol.FeatureGoals),
 	}, func(service interface {
 		ClearGoal(context.Context, protocol.GoalRequest) error
@@ -54,7 +54,7 @@ func registerGoals(registry *Registry) {
 	})
 
 	registry.command(MethodMeta{
-		Name: goalsStop, GoName: "StopGoal", Errors: pluginProviderErrors(protocol.ErrSessionNotFound.Error()),
+		Name: goalsStop, GoName: "StopGoal", Errors: pluginProviderErrors(protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error()),
 		CapabilityRules: requires(protocol.FeatureGoals),
 	}, func(service interface {
 		StopGoal(context.Context, protocol.GoalRequest) (*protocol.Goal, error)
@@ -63,7 +63,7 @@ func registerGoals(registry *Registry) {
 	})
 
 	registry.command(MethodMeta{
-		Name: goalsResume, GoName: "ResumeGoal", Errors: pluginProviderErrors(protocol.ErrSessionNotFound.Error()),
+		Name: goalsResume, GoName: "ResumeGoal", Errors: pluginProviderErrors(protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error()),
 		CapabilityRules: requires(protocol.FeatureGoals),
 	}, func(service interface {
 		ResumeGoal(context.Context, protocol.GoalRequest) (*protocol.Goal, error)

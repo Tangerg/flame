@@ -95,6 +95,13 @@ unresolved Effect evidence. After clean terminal settlement, cancellation report
 pauses its own drive and preserves that Run's unknown consumption for an explicit
 resume.
 
+Goal commands commit the workflow author's decision against its captured Goal
+version before retiring the previous drive. A rejected or superseded decision
+leaves the drive running. A replacement waits for the previous drive to finish
+before admitting its first Run. The stop receipt includes usage from the original
+Run's terminal write. The `Revise` workflow signal edits the captured objective in
+one decision, including while the Goal is active.
+
 MCP catalog restoration rechecks each original binding through its current
 business owner under Frame admission. If that owner has already settled, its
 earlier catalog snapshot requires no restoration and cannot authorize original

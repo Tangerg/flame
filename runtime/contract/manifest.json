@@ -1468,6 +1468,7 @@
         "plugin_unavailable",
         "plugin_stale",
         "session_not_found",
+        "revision_conflict",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1486,6 +1487,7 @@
         "plugin_unavailable",
         "plugin_stale",
         "session_not_found",
+        "revision_conflict",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1502,6 +1504,7 @@
       "pagination": "none",
       "errors": [
         "session_not_found",
+        "revision_conflict",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1536,6 +1539,7 @@
         "plugin_unavailable",
         "plugin_stale",
         "session_not_found",
+        "revision_conflict",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1554,6 +1558,7 @@
         "plugin_unavailable",
         "plugin_stale",
         "session_not_found",
+        "revision_conflict",
         "capability_not_negotiated"
       ],
       "features": [
@@ -2289,6 +2294,11 @@
         "code": -32019,
         "recoveryAction": "refetch",
         "methods": [
+          "goals.clear",
+          "goals.resume",
+          "goals.start",
+          "goals.stop",
+          "goals.update",
           "sessions.update",
           "skills.proposals.approve",
           "skills.proposals.reject"

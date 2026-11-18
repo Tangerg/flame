@@ -103,10 +103,7 @@ func (s *SessionMutations) WithSessionMutation(
 	}
 	var errs []error
 	for _, owned := range drives {
-		errs = append(errs, owned.drive.await(ctx))
-		if owned.drive.completed() {
-			s.forget(owned.sessionID, owned.drive)
-		}
+		errs = append(errs, s.joinDrive(ctx, owned.sessionID, owned.drive))
 	}
 	errs = append(errs, afterCommit(ctx))
 	if settlement := errors.Join(errs...); settlement != nil {
@@ -117,17 +114,12 @@ func (s *SessionMutations) WithSessionMutation(
 	return nil
 }
 
-func (s *SessionMutations) launch(sessionID string, drive *goalDrive) {
+func (s *SessionMutations) installDrive(sessionID string, drive *goalDrive) *goalDrive {
 	s.mu.Lock()
-	if s.drives == nil {
-		s.drives = map[string]*goalDrive{}
-	}
-	if s.drives[sessionID] != nil {
-		s.mu.Unlock()
-		panic("goals: launch attempted before the prior Goal drive was joined")
-	}
+	defer s.mu.Unlock()
+	previous := s.drives[sessionID]
 	s.drives[sessionID] = drive
-	s.mu.Unlock()
+	return previous
 }
 
 func (s *SessionMutations) forget(sessionID string, drive *goalDrive) {
@@ -139,13 +131,22 @@ func (s *SessionMutations) forget(sessionID string, drive *goalDrive) {
 }
 
 func (s *SessionMutations) quiesce(sessionID string) *goalDrive {
-	s.mu.Lock()
-	drive := s.drives[sessionID]
-	s.mu.Unlock()
+	drive := s.activeDrive(sessionID)
 	if drive != nil {
 		drive.quiesce()
 	}
 	return drive
+}
+
+func (s *SessionMutations) joinDrive(ctx context.Context, sessionID string, drive *goalDrive) error {
+	if drive == nil {
+		return nil
+	}
+	err := drive.await(ctx)
+	if drive.completed() {
+		s.forget(sessionID, drive)
+	}
+	return err
 }
 
 func (s *SessionMutations) activeDrive(sessionID string) *goalDrive {

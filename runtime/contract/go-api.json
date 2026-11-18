@@ -1914,11 +1914,6 @@
           "value": "\"revise\""
         },
         {
-          "name": "ReviseAndResume",
-          "type": "Signal",
-          "value": "\"reviseAndResume\""
-        },
-        {
           "name": "Start",
           "type": "Signal",
           "value": "\"start\""

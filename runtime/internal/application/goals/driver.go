@@ -165,25 +165,6 @@ func (d *Driver) Start(
 		return goal.Goal{}, err
 	}
 	if ok && existing.Status() == goal.StatusActive {
-		if ensureDriveLockedErr := d.ensureDriveLocked(ctx, sessionID, existing.IncarnationID()); ensureDriveLockedErr != nil {
-			return goal.Goal{}, ensureDriveLockedErr
-		}
-		return goal.Goal{}, ErrGoalActive
-	}
-	if _, quiesceDriveErr := d.quiesceDrive(ctx, sessionID); quiesceDriveErr != nil {
-		return goal.Goal{}, quiesceDriveErr
-	}
-	// A terminating drive may have committed its final accounting after the
-	// first read. Re-read after the ownership boundary so the replacement CAS
-	// is based on the complete prior incarnation, never a pre-quiesce snapshot.
-	existing, ok, err = loadGoal(ctx, d.goals, sessionID)
-	if err != nil {
-		return goal.Goal{}, err
-	}
-	if ok && existing.Status() == goal.StatusActive {
-		if ensureDriveLockedErr := d.ensureDriveLocked(ctx, sessionID, existing.IncarnationID()); ensureDriveLockedErr != nil {
-			return goal.Goal{}, ensureDriveLockedErr
-		}
 		return goal.Goal{}, ErrGoalActive
 	}
 	unwritten, err := goal.Unwritten(sessionID)
@@ -198,27 +179,9 @@ func (d *Driver) Start(
 	if err != nil {
 		return goal.Goal{}, err
 	}
-	change, err := goal.NewReplacement(expected, g)
-	if err != nil {
-		return goal.Goal{}, err
-	}
-	applied, err := d.goals.Save(ctx, change)
-	if err != nil {
-		return goal.Goal{}, err
-	}
-	if !applied {
-		return goal.Goal{}, ErrGoalConflict
-	}
-	if err := d.launchLocked(ctx, sessionID, g.IncarnationID()); err != nil {
-		panic("goals: command crossed the shutdown admission boundary")
-	}
-	return g, nil
+	return d.commitCommand(ctx, expected, g)
 }
 
-// Resume returns a paused or blocked goal to active and drives it again. It is
-// idempotent on an already-active goal. Resume preserves the objective
-// incarnation: a Run parked for HITL remains part of this Goal when it resumes,
-// while quiesceDrive is the process-local boundary between old and new drives.
 func (d *Driver) beginGoal(ctx context.Context, sessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goal.Goal, error) {
 	now := d.now()
 	state := goal.Snapshot{SessionID: sessionID, ModelSelection: selection, Capabilities: capabilities.Normalized(), CreatedAt: now}
@@ -229,6 +192,8 @@ func (d *Driver) beginGoal(ctx context.Context, sessionID, objective string, sel
 	return g, err
 }
 
+// Resume preserves the objective incarnation so a parked Run can still settle
+// its original Goal. An already-active Goal can reattach its missing drive.
 func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabilities) (goal.Goal, error) {
 	release, err := d.mutations.acquire(ctx, sessionID)
 	if err != nil {
@@ -257,50 +222,13 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 		}
 		return g, nil
 	}
-	if _, quiesceDriveErr := d.quiesceDrive(ctx, sessionID); quiesceDriveErr != nil {
-		return goal.Goal{}, quiesceDriveErr
-	}
-	g, ok, err = loadGoal(ctx, d.goals, sessionID)
+	replacement, err := transition(ctx, d.workflow, g, goalworkflow.Request{Signal: goalworkflow.Resume}, g.IncarnationID(), d.now())
 	if err != nil {
 		return goal.Goal{}, err
 	}
-	if !ok {
-		return goal.Goal{}, ErrNoGoal
-	}
-	if missing := g.Capabilities().MissingFrom(caller); !missing.IsEmpty() {
-		return goal.Goal{}, fmt.Errorf("goals: session %q: %w", sessionID, &run.InsufficientCapabilitiesError{Missing: missing})
-	}
-	if g.Status() == goal.StatusActive {
-		if ensureDriveLockedErr := d.ensureDriveLocked(ctx, sessionID, g.IncarnationID()); ensureDriveLockedErr != nil {
-			return goal.Goal{}, ensureDriveLockedErr
-		}
-		return g, nil
-	}
-	expected := g.Version()
-	replacement, resumeErr := transition(ctx, d.workflow, g, goalworkflow.Request{Signal: goalworkflow.Resume}, g.IncarnationID(), d.now())
-	if resumeErr != nil {
-		return goal.Goal{}, resumeErr
-	}
-	change, err := goal.NewReplacement(expected, replacement)
-	if err != nil {
-		return goal.Goal{}, err
-	}
-	applied, err := d.goals.Save(ctx, change)
-	if err != nil {
-		return goal.Goal{}, err
-	}
-	if !applied {
-		return goal.Goal{}, ErrGoalConflict
-	}
-	if err := d.launchLocked(ctx, sessionID, replacement.IncarnationID()); err != nil {
-		panic("goals: command crossed the shutdown admission boundary")
-	}
-	return replacement, nil
+	return d.commitCommand(ctx, g.Version(), replacement)
 }
 
-// Stop first quiesces the Goal's owned Run, then pauses the authoritative
-// post-terminal snapshot. This ordering preserves terminal accounting and makes
-// the user stop the final lifecycle transition rather than racing it.
 func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) {
 	release, err := d.mutations.acquire(ctx, sessionID)
 	if err != nil {
@@ -310,49 +238,44 @@ func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) 
 	if d.tasks.Closed() {
 		return goal.Goal{}, ErrClosed
 	}
-	initial, initiallyPresent, err := loadGoal(ctx, d.goals, sessionID)
+	current, present, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
 		return goal.Goal{}, err
 	}
-	wasActive := initiallyPresent && initial.Status() == goal.StatusActive
-	completed, quiesceErr := d.quiesceDrive(ctx, sessionID)
-	if !completed {
-		return goal.Goal{}, quiesceErr
+	if !present {
+		return goal.Goal{}, ErrNoGoal
 	}
-	current, ok, err := loadGoal(ctx, d.goals, sessionID)
+	if current.Status() == goal.StatusActive {
+		paused, err := transition(ctx, d.workflow, current, goalworkflow.Request{Signal: goalworkflow.Stop}, current.IncarnationID(), d.now())
+		if err != nil {
+			return goal.Goal{}, err
+		}
+		if paused.Status() != goal.StatusPaused {
+			return goal.Goal{}, fmt.Errorf("%w: workflow stop must pause the Goal", goal.ErrInvalid)
+		}
+		if err := d.saveCommand(ctx, current.Version(), paused); err != nil {
+			return goal.Goal{}, err
+		}
+	}
+	// The stop receipt includes usage from the original Run's terminal write.
+	// A disconnected caller cannot interrupt that observation after the pause.
+	settlement, cancel := context.WithTimeout(context.WithoutCancel(ctx), goalRunCleanupTimeout)
+	defer cancel()
+	if err := d.mutations.joinDrive(settlement, sessionID, d.mutations.quiesce(sessionID)); err != nil {
+		return goal.Goal{}, fmt.Errorf("goals: observe stopped Goal drive settlement: %w", err)
+	}
+	settled, present, err := loadGoal(settlement, d.goals, sessionID)
 	if err != nil {
-		return goal.Goal{}, errors.Join(err, quiesceErr)
+		return goal.Goal{}, fmt.Errorf("goals: read stopped Goal: %w", err)
 	}
-	if !ok {
-		return goal.Goal{}, errors.Join(ErrNoGoal, quiesceErr)
+	if !present {
+		return goal.Goal{}, ErrNoGoal
 	}
-	if !wasActive && current.Status() != goal.StatusActive {
-		return current, quiesceErr
-	}
-	expected := current.Version()
-	replacement, transitionErr := transition(ctx, d.workflow, current, goalworkflow.Request{Signal: goalworkflow.Stop}, current.IncarnationID(), d.now())
-	if transitionErr != nil {
-		return goal.Goal{}, errors.Join(transitionErr, quiesceErr)
-	}
-	change, replacementErr := goal.NewReplacement(expected, replacement)
-	if replacementErr != nil {
-		return goal.Goal{}, errors.Join(replacementErr, quiesceErr)
-	}
-	applied, err := d.goals.Save(ctx, change)
-	if err != nil {
-		return goal.Goal{}, errors.Join(err, quiesceErr)
-	}
-	if !applied {
-		return goal.Goal{}, errors.Join(ErrGoalConflict, quiesceErr)
-	}
-	return replacement, quiesceErr
+	return settled, nil
 }
 
-// UpdateObjective quiesces any locally owned drive before replacing the text.
-// The replacement keeps its lifecycle but receives a fresh incarnation, so a
-// Run admitted for the previous objective cannot charge or transition it, and
-// its usage starts from the new objective's Runs. An objective that was active before quiescence continues when
-// its canceled Run did not independently block or complete the Goal.
+// UpdateObjective opens a fresh incarnation so work admitted for the previous
+// objective cannot decide or charge the replacement.
 func (d *Driver) UpdateObjective(
 	ctx context.Context,
 	sessionID, objective string,
@@ -366,58 +289,6 @@ func (d *Driver) UpdateObjective(
 	if d.tasks.Closed() {
 		return goal.Goal{}, ErrClosed
 	}
-	initial, err := d.editableGoal(ctx, sessionID)
-	if err != nil {
-		return goal.Goal{}, err
-	}
-	wasActive := initial.Status() == goal.StatusActive
-	if wasActive {
-		if missing := initial.Capabilities().MissingFrom(caller); !missing.IsEmpty() {
-			return goal.Goal{}, fmt.Errorf("goals: session %q: %w", sessionID, &run.InsufficientCapabilitiesError{Missing: missing})
-		}
-	}
-
-	completed, quiesceErr := d.quiesceDrive(ctx, sessionID)
-	if !completed {
-		return goal.Goal{}, quiesceErr
-	}
-
-	current, err := d.editableGoal(ctx, sessionID)
-	if err != nil {
-		return goal.Goal{}, errors.Join(err, quiesceErr)
-	}
-	expected := current.Version()
-	incarnationID, updatedAt := d.newIncarnation(), d.now()
-	var replacement goal.Goal
-	if wasActive && current.Status() == goal.StatusPaused {
-		replacement, err = transition(ctx, d.workflow, current, goalworkflow.Request{Signal: goalworkflow.ReviseAndResume, Objective: objective}, incarnationID, updatedAt)
-	} else {
-		replacement, err = transition(ctx, d.workflow, current, goalworkflow.Request{Signal: goalworkflow.Revise, Objective: objective}, incarnationID, updatedAt)
-	}
-	if err != nil {
-		return goal.Goal{}, errors.Join(err, quiesceErr)
-	}
-
-	change, replacementErr := goal.NewReplacement(expected, replacement)
-	if replacementErr != nil {
-		return goal.Goal{}, errors.Join(replacementErr, quiesceErr)
-	}
-	applied, err := d.goals.Save(ctx, change)
-	if err != nil {
-		return goal.Goal{}, errors.Join(err, quiesceErr)
-	}
-	if !applied {
-		return goal.Goal{}, errors.Join(ErrGoalConflict, quiesceErr)
-	}
-	if replacement.Status() == goal.StatusActive {
-		if err := d.launchLocked(ctx, sessionID, replacement.IncarnationID()); err != nil {
-			panic("goals: command crossed the shutdown admission boundary")
-		}
-	}
-	return replacement, quiesceErr
-}
-
-func (d *Driver) editableGoal(ctx context.Context, sessionID string) (goal.Goal, error) {
 	current, present, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
 		return goal.Goal{}, err
@@ -428,12 +299,52 @@ func (d *Driver) editableGoal(ctx context.Context, sessionID string) (goal.Goal,
 	if current.Status() == goal.StatusComplete {
 		return goal.Goal{}, goal.ErrNotEditable
 	}
-	return current, nil
+	if current.Status() == goal.StatusActive {
+		if missing := current.Capabilities().MissingFrom(caller); !missing.IsEmpty() {
+			return goal.Goal{}, fmt.Errorf("goals: session %q: %w", sessionID, &run.InsufficientCapabilitiesError{Missing: missing})
+		}
+	}
+	replacement, err := transition(ctx, d.workflow, current, goalworkflow.Request{Signal: goalworkflow.Revise, Objective: objective}, d.newIncarnation(), d.now())
+	if err != nil {
+		return goal.Goal{}, err
+	}
+	return d.commitCommand(ctx, current.Version(), replacement)
 }
 
-// Clear quiesces the owned drive and conditionally removes the authoritative
-// Goal aggregate. An already-absent Goal is a successful idempotent clear, which
-// lets a stale UI intent converge with automatic completion.
+// A superseded decision has no authority to cancel a drive. Only a committed
+// Goal authorizes replacing or retiring the process-local execution owner.
+func (d *Driver) commitCommand(ctx context.Context, expected goal.Version, replacement goal.Goal) (goal.Goal, error) {
+	if err := d.saveCommand(ctx, expected, replacement); err != nil {
+		return goal.Goal{}, err
+	}
+	sessionID := replacement.SessionID()
+	if replacement.Status() == goal.StatusActive {
+		if err := d.launchLocked(ctx, sessionID, replacement.IncarnationID()); err != nil {
+			panic("goals: command crossed the shutdown admission boundary")
+		}
+	} else {
+		d.retireDrive(ctx, sessionID)
+	}
+	return replacement, nil
+}
+
+func (d *Driver) saveCommand(ctx context.Context, expected goal.Version, replacement goal.Goal) error {
+	change, err := goal.NewReplacement(expected, replacement)
+	if err != nil {
+		return err
+	}
+	applied, err := d.goals.Save(ctx, change)
+	if err != nil {
+		return err
+	}
+	if !applied {
+		return ErrGoalConflict
+	}
+	return nil
+}
+
+// Clear commits the Goal's removal before retiring its drive. An already-absent
+// Goal lets a clear converge with automatic completion.
 func (d *Driver) Clear(ctx context.Context, sessionID string) error {
 	release, err := d.mutations.acquire(ctx, sessionID)
 	if err != nil {
@@ -443,55 +354,27 @@ func (d *Driver) Clear(ctx context.Context, sessionID string) error {
 	if d.tasks.Closed() {
 		return ErrClosed
 	}
-	_, present, err := loadGoal(ctx, d.goals, sessionID)
+	current, present, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
 		return err
 	}
 	if !present {
 		return nil
 	}
-	completed, quiesceErr := d.quiesceDrive(ctx, sessionID)
-	if !completed {
-		return quiesceErr
-	}
-	current, present, err := loadGoal(ctx, d.goals, sessionID)
-	if err != nil {
-		return errors.Join(err, quiesceErr)
-	}
-	if !present {
-		return quiesceErr
-	}
 	applied, err := d.goals.ClearIf(ctx, sessionID, current.Version())
 	if err != nil {
-		return errors.Join(err, quiesceErr)
+		return err
 	}
 	if !applied {
-		return errors.Join(ErrGoalConflict, quiesceErr)
+		return ErrGoalConflict
 	}
-	return quiesceErr
+	d.retireDrive(ctx, sessionID)
+	return nil
 }
 
 // Current returns the session's Goal, or (zero, false, nil) when it has none.
 func (d *Driver) Current(ctx context.Context, sessionID string) (goal.Goal, bool, error) {
 	return loadGoal(ctx, d.goals, sessionID)
-}
-
-// quiesceDrive stops and joins the session's lingering drive before a new Goal
-// incarnation is written. When ctx ends first, completed is false and the drive
-// stays registered, so a timed-out caller cannot lose the only join point and a
-// later command cannot overlap the old Run's admission with a replacement.
-// Otherwise err is the completed drive's own outcome.
-func (d *Driver) quiesceDrive(ctx context.Context, sessionID string) (completed bool, err error) {
-	drive := d.mutations.quiesce(sessionID)
-	if drive == nil {
-		return true, nil
-	}
-	err = drive.await(ctx)
-	if !drive.completed() {
-		return false, err
-	}
-	d.mutations.forget(sessionID, drive)
-	return true, err
 }
 
 // Reconcile clears orphaned and completed Goals and pauses active Goals whose

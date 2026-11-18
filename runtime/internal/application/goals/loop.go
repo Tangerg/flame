@@ -54,17 +54,8 @@ func (g *goalDrive) completed() bool {
 	}
 }
 
-func (g *goalDrive) resultIfCompleted() (bool, error) {
-	if !g.completed() {
-		return false, nil
-	}
-	return true, g.err
-}
-
 func (g *goalDrive) quiesce() {
-	if g.cancel != nil {
-		g.cancel()
-	}
+	g.cancel()
 }
 
 // launchLocked attaches exactly one drive to an already-accepted active Goal.
@@ -86,7 +77,10 @@ func (d *Driver) launchLocked(
 		done:          make(chan struct{}),
 	}
 
-	d.mutations.launch(sessionID, drive)
+	previous := d.mutations.installDrive(sessionID, drive)
+	if previous != nil {
+		previous.quiesce()
+	}
 
 	go func() {
 		defer release()
@@ -107,13 +101,30 @@ func (d *Driver) launchLocked(
 				drive.err = fmt.Errorf("goals: Goal drive for Session %q panicked: %v", sessionID, recovered)
 			}
 		}()
+		// The next owner inherits the join so cancellation of the command or
+		// a second replacement cannot let it overtake the original Run.
+		if previous != nil {
+			<-previous.done
+		}
 		drive.err = d.drive(ctx, sessionID, incarnationID)
 		if drive.err != nil {
 			slog.ErrorContext(ctx, "goal: drive failed",
 				"session.id", sessionID, "goal.incarnation.id", incarnationID, "error", drive.err)
 		}
 	}()
+	d.joinRetiredDrive(parent, sessionID, previous)
 	return nil
+}
+
+func (d *Driver) retireDrive(ctx context.Context, sessionID string) {
+	d.joinRetiredDrive(ctx, sessionID, d.mutations.quiesce(sessionID))
+}
+
+func (d *Driver) joinRetiredDrive(ctx context.Context, sessionID string, drive *goalDrive) {
+	if err := d.mutations.joinDrive(ctx, sessionID, drive); err != nil {
+		trace.SpanFromContext(ctx).RecordError(err)
+		slog.ErrorContext(ctx, "goals: committed Goal drive retirement did not settle", "session.id", sessionID, "error", err)
+	}
 }
 
 // ensureDriveLocked restores the in-process side of an authoritative active
@@ -128,22 +139,19 @@ func (d *Driver) ensureDriveLocked(ctx context.Context, sessionID, incarnationID
 		if drive.incarnationID != incarnationID {
 			return ErrGoalConflict
 		}
-		if completed, err := drive.resultIfCompleted(); completed {
-			if err != nil && !errors.Is(err, plugin.ErrUnavailable) {
-				return err
-			}
-			d.mutations.forget(sessionID, drive)
-		} else {
+		if !drive.completed() {
 			return nil
 		}
+		if drive.err != nil && !errors.Is(drive.err, plugin.ErrUnavailable) {
+			return drive.err
+		}
+		d.mutations.forget(sessionID, drive)
 	}
 	return d.launchLocked(ctx, sessionID, incarnationID)
 }
 
-// drive runs autonomous Runs until the goal leaves active. Cancellation quiesces
-// execution; Stop owns the final durable pause after joining the drive. Startup
-// reconciliation pauses any Goal left active by shutdown rather than silently
-// resuming it and consuming resources.
+// Startup reconciles Goals left active at shutdown so this loop consumes
+// resources only after an explicit resume.
 func (d *Driver) drive(ctx context.Context, sessionID, incarnationID string) error {
 	for {
 		if ctx.Err() != nil {

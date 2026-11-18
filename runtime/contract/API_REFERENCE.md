@@ -97,12 +97,12 @@ Protocol `2026-10-30.2` · 105 methods
 | `approval.setMode` | command | unary | replayResponse | none | none | — | — | — |
 | `approval.listRules` | query | unary | none | none | none | — | — | `session_not_found` |
 | `approval.forgetRule` | command | unary | replayResponse | none | none | — | — | — |
-| `goals.start` | command | unary | replayResponse | none | none | — | `goals` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `capability_not_negotiated` |
-| `goals.update` | command | unary | replayResponse | none | none | — | `goals` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `capability_not_negotiated` |
-| `goals.clear` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
+| `goals.start` | command | unary | replayResponse | none | none | — | `goals` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `revision_conflict`, `capability_not_negotiated` |
+| `goals.update` | command | unary | replayResponse | none | none | — | `goals` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `revision_conflict`, `capability_not_negotiated` |
+| `goals.clear` | command | unary | replayResponse | none | none | — | `goals` | `session_not_found`, `revision_conflict`, `capability_not_negotiated` |
 | `goals.get` | query | unary | none | none | none | — | `goals` | `session_not_found`, `capability_not_negotiated` |
-| `goals.stop` | command | unary | replayResponse | none | none | — | `goals` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `capability_not_negotiated` |
-| `goals.resume` | command | unary | replayResponse | none | none | — | `goals` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `capability_not_negotiated` |
+| `goals.stop` | command | unary | replayResponse | none | none | — | `goals` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `revision_conflict`, `capability_not_negotiated` |
+| `goals.resume` | command | unary | replayResponse | none | none | — | `goals` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `revision_conflict`, `capability_not_negotiated` |
 | `providers.list` | query | unary | none | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
 | `providers.update` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale` |
 | `providers.test` | query | unary | none | none | none | — | — | `plugin_unavailable`, `plugin_stale` |

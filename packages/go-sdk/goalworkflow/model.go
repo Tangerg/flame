@@ -10,16 +10,15 @@ const Reference = "flame.goal-workflow.v1"
 type Signal string
 
 const (
-	NextRun         Signal = "nextRun"
-	Start           Signal = "start"
-	Resume          Signal = "resume"
-	Stop            Signal = "stop"
-	Revise          Signal = "revise"
-	ReviseAndResume Signal = "reviseAndResume"
-	Pause           Signal = "pause"
-	Complete        Signal = "complete"
-	Block           Signal = "block"
-	TerminalRun     Signal = "terminalRun"
+	NextRun     Signal = "nextRun"
+	Start       Signal = "start"
+	Resume      Signal = "resume"
+	Stop        Signal = "stop"
+	Revise      Signal = "revise"
+	Pause       Signal = "pause"
+	Complete    Signal = "complete"
+	Block       Signal = "block"
+	TerminalRun Signal = "terminalRun"
 )
 
 type Value struct {

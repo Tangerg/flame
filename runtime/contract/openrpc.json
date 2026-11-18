@@ -7355,6 +7355,10 @@
           "message": "session_not_found"
         },
         {
+          "code": -32019,
+          "message": "revision_conflict"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -7442,6 +7446,10 @@
           "message": "session_not_found"
         },
         {
+          "code": -32019,
+          "message": "revision_conflict"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -7508,6 +7516,10 @@
         {
           "code": -32002,
           "message": "session_not_found"
+        },
+        {
+          "code": -32019,
+          "message": "revision_conflict"
         },
         {
           "code": -32006,
@@ -7659,6 +7671,10 @@
           "message": "session_not_found"
         },
         {
+          "code": -32019,
+          "message": "revision_conflict"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -7732,6 +7748,10 @@
         {
           "code": -32002,
           "message": "session_not_found"
+        },
+        {
+          "code": -32019,
+          "message": "revision_conflict"
         },
         {
           "code": -32006,

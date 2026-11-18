@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.24.3 // indirect
 	cloud.google.com/go/compute/metadata v0.10.0 // indirect
+	github.com/Tangerg/scope/mcp v0.62.0 // indirect
 	github.com/Tangerg/scope/models/protocol/openai v0.62.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/anthropics/anthropic-sdk-go/v2 v2.8.0 // indirect
@@ -63,14 +64,14 @@ require (
 	modernc.org/libc v1.80.2 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
+	modernc.org/sqlite v1.62.0 // indirect
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.24-dev.20261118.t7f3ce97e7c23
+	github.com/Tangerg/flame/packages/go-sdk v0.1.25-dev.20261119.tdcdb3d1902a8
 	github.com/Tangerg/frame v0.4.0
 	github.com/Tangerg/go-sdk v1.9.0-scope.1
 	github.com/Tangerg/scope/core v0.62.0
-	github.com/Tangerg/scope/mcp v0.62.0
 	github.com/Tangerg/scope/models/alibaba v0.62.0
 	github.com/Tangerg/scope/models/anthropic v0.62.0
 	github.com/Tangerg/scope/models/azureopenai v0.62.0
@@ -101,5 +102,4 @@ require (
 	github.com/sourcegraph/jsonrpc2 v0.2.3
 	go.opentelemetry.io/otel v1.47.0
 	go.opentelemetry.io/otel/metric v1.47.0
-	modernc.org/sqlite v1.62.0
 )

@@ -111,6 +111,8 @@ func mapGoalErr(err error) error {
 		return wirePluginError(err)
 	case errors.Is(err, goals.ErrGoalActive):
 		return protocol.NewFailure(protocol.ErrSessionBusy, err.Error(), err)
+	case errors.Is(err, goals.ErrGoalConflict):
+		return protocol.NewFailure(protocol.ErrRevisionConflict, "the goal changed while the command was being prepared", err)
 	case errors.Is(err, goals.ErrNoGoal),
 		errors.Is(err, goal.ErrNotResumable),
 		errors.Is(err, goal.ErrNotEditable),
