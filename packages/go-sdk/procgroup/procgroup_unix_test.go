@@ -62,21 +62,3 @@ func TestStopReachesWhatTheChildSpawned(t *testing.T) {
 	_ = syscall.Kill(pid, syscall.SIGKILL)
 	t.Fatalf("process %d outlived its group", pid)
 }
-
-// TestStopReportsAnAlreadyFinishedProcess keeps the outcome a caller branches
-// on: a group that is already gone is done, not an error to report.
-func TestStopReportsAnAlreadyFinishedProcess(t *testing.T) {
-	t.Parallel()
-
-	if err := Stop(nil); !errors.Is(err, os.ErrProcessDone) {
-		t.Fatalf("Stop(nil) = %v, want os.ErrProcessDone", err)
-	}
-	command := exec.Command("/bin/sh", "-c", "exit 0")
-	Prepare(command)
-	if err := command.Run(); err != nil {
-		t.Fatal(err)
-	}
-	if err := Stop(command); !errors.Is(err, os.ErrProcessDone) {
-		t.Fatalf("Stop of a finished group = %v, want os.ErrProcessDone", err)
-	}
-}

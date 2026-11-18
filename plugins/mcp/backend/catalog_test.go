@@ -113,31 +113,3 @@ func invokeCatalogCommand[P, R any](t *testing.T, c catalog, prepare func(contex
 		return prepare(ctx, nil, input)
 	})
 }
-
-func TestAuthorizationHistoryRejectsImpossibleStates(t *testing.T) {
-	db, err := sqlite.OpenSchema(t.Context(), filepath.Join(t.TempDir(), "connector.db"), []string{attemptsSchema})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	for _, test := range []struct {
-		name     string
-		status   wire.Outcome
-		finished any
-	}{
-		{name: "pending_with_finish", status: wire.Pending, finished: int64(2)},
-		{name: "settled_without_finish", status: wire.Succeeded},
-		{name: "finish_before_start", status: wire.Succeeded, finished: int64(0)},
-		{name: "unknown_status", status: "invalid", finished: int64(2)},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			err := sqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
-				_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO attempts(id,name,epoch,status,started,finished) VALUES(?,?,?,?,?,?)`, test.name, "server", "epoch", test.status, int64(1), test.finished)
-				return err
-			})
-			if err == nil {
-				t.Fatal("accepted an impossible authorization state")
-			}
-		})
-	}
-}

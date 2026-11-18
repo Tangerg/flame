@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 )
@@ -18,13 +17,4 @@ func readBootstrapGoal(ctx context.Context, store bootstrapGoalReader, sessionID
 	}
 	value, exists := current.Goal()
 	return value, exists, nil
-}
-
-func bootstrapUnwrittenGoalVersion(t *testing.T, sessionID string) goal.Version {
-	t.Helper()
-	current, err := goal.Unwritten(sessionID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return current.Version()
 }

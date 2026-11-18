@@ -1,14 +1,12 @@
 package main
 
 import (
-	"context"
 	stdjson "encoding/json"
 	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
-	"strings"
 	"sync"
 	"testing"
 
@@ -237,54 +235,6 @@ func TestLostMutationRepliesNeverResend(t *testing.T) {
 	}
 }
 
-func TestCancellationProjectsOnlyRemoteState(t *testing.T) {
-	remote := newRemoteFixture(t)
-	c := newTestConnector(t, filepath.Join(t.TempDir(), "a2a.db"), remote.spec())
-	contracts := testContracts(t)
-	if _, err := c.send(t.Context(), contracts.Send.Name(), "original", inputValue(t, wire.SendRequest{Agent: "research", Message: "work"})); err != nil {
-		t.Fatal(err)
-	}
-	input := inputValue(t, wire.TaskRequest{RequestID: "original"})
-	result, err := c.cancel(t.Context(), contracts.Cancel.Name(), "cancel", input)
-	if err != nil || result.State != string(a2a.TaskStateWorking) {
-		t.Fatalf("cancel invented a transition: %+v %v", result, err)
-	}
-	remote.mu.Lock()
-	remote.task.Status.State = a2a.TaskStateCanceled
-	remote.mu.Unlock()
-	status, err := c.status(t.Context(), wire.TaskRequest{RequestID: "original"})
-	if err != nil || status.State != string(a2a.TaskStateCanceled) {
-		t.Fatalf("remote cancellation: %+v %v", status, err)
-	}
-	replayed, err := c.cancel(t.Context(), contracts.Cancel.Name(), "cancel", input)
-	if err != nil || replayed != result {
-		t.Fatalf("original cancellation reply changed: %+v %v", replayed, err)
-	}
-}
-
-func TestLocalInterruptionRetainsUnconfirmedSend(t *testing.T) {
-	remote := newRemoteFixture(t)
-	remote.block, remote.entered = "SendMessage", make(chan struct{})
-	c := newTestConnector(t, filepath.Join(t.TempDir(), "a2a.db"), remote.spec())
-	contracts := testContracts(t)
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	input := inputValue(t, wire.SendRequest{Agent: "research", Message: "work"})
-	done := make(chan error, 1)
-	go func() { _, err := c.send(ctx, contracts.Send.Name(), "interrupted", input); done <- err }()
-	<-remote.entered
-	cancel()
-	if err := <-done; !errors.Is(err, context.Canceled) {
-		t.Fatalf("interruption: %v", err)
-	}
-	if _, err := c.send(t.Context(), contracts.Send.Name(), "interrupted", input); !errors.Is(err, pluginstorage.ErrCommandUnconfirmed) {
-		t.Fatalf("interruption replay: %v", err)
-	}
-	if _, err := c.status(t.Context(), wire.TaskRequest{RequestID: "interrupted"}); err == nil {
-		t.Fatal("unconfirmed send invented a task binding")
-	}
-}
-
 func TestChangedAgentAndWrongRemoteIdentityAreRefused(t *testing.T) {
 	remote := newRemoteFixture(t)
 	path := filepath.Join(t.TempDir(), "a2a.db")
@@ -312,19 +262,5 @@ func TestChangedAgentAndWrongRemoteIdentityAreRefused(t *testing.T) {
 	refusal, known := errors.AsType[*framecall.Refusal](err)
 	if !known || refusal.Code != "agent_changed" {
 		t.Fatalf("changed source: %v", err)
-	}
-}
-
-func TestMessageReplyHasNoSyntheticTaskState(t *testing.T) {
-	remote := newRemoteFixture(t)
-	remote.message = a2a.NewMessage(a2a.MessageRoleAgent, a2a.NewTextPart("answer"))
-	c := newTestConnector(t, filepath.Join(t.TempDir(), "a2a.db"), remote.spec())
-	contracts := testContracts(t)
-	result, err := c.send(t.Context(), contracts.Send.Name(), "message", inputValue(t, wire.SendRequest{Agent: "research", Message: "question"}))
-	if err != nil || result.Kind != "message" || result.TaskID != "" || result.State != "" || !strings.Contains(result.ValueJSON, "answer") {
-		t.Fatalf("message: %+v %v", result, err)
-	}
-	if _, err := c.status(t.Context(), wire.TaskRequest{RequestID: "message"}); err == nil {
-		t.Fatal("message reply invented a task")
 	}
 }

@@ -29,7 +29,3 @@ export function replaceComposerDraft(
 export function beginComposerDraftReplacement(composerAccess: ComposerAccess) {
   return composerAccess.beginDraftReplacement();
 }
-
-export function appendToComposerDraft(composerAccess: ComposerAccess, text: string): void {
-  composerAccess.appendText(text);
-}

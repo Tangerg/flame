@@ -54,9 +54,6 @@ func MustRunMetrics(input RunMetricsInput) run.Metrics {
 	return metrics
 }
 
-// pointer returns an owned pointer for explicit optional fixture values.
-func pointer[T any](value T) *T { return &value }
-
 // MustRestoreRun constructs a valid Run or panics. Tests exercising invalid
 // snapshots must call run.Restore themselves and assert the returned error.
 func MustRestoreRun(snapshot run.Snapshot) run.Run {
@@ -110,63 +107,6 @@ func MustRestoreRun(snapshot run.Snapshot) run.Run {
 	return restored
 }
 
-// MustRunReplacement returns one Run replacement or panics.
-func MustRunReplacement(replacement run.Replacement, err error) run.Replacement {
-	if err != nil {
-		panic(err)
-	}
-	return replacement
-}
-
-// MustResumeRuns derives one tree resume from parked Runs given in postorder
-// (root last), reopening each into its paired Segment at resumedAt.
-func MustResumeRuns(resumedAt time.Time, parked []run.Run, segmentIDs []string) run.TreeResumeDraft {
-	if len(parked) != len(segmentIDs) {
-		panic("testsupport: every parked Run needs one Segment")
-	}
-	resume := run.TreeResumeDraft{Runs: make([]run.Replacement, len(parked))}
-	for index, waiting := range parked {
-		segmentID := segmentIDs[index]
-		resume.Runs[index] = MustRunReplacement(waiting.Replace().Resume(segmentID, resumedAt))
-	}
-	return resume
-}
-
-// MustParkedRun restores a waiting Run of sessionID created at createdAt.
-func MustParkedRun(runID, sessionID string, createdAt time.Time) run.Run {
-	return MustRestoreRun(run.Snapshot{ID: runID, SessionID: sessionID, State: run.Waiting, CreatedAt: createdAt})
-}
-
-// MustProgressedRun admits draft and advances it to one model-response
-// boundary, as the reducer does before committing progress, or panics.
-func MustProgressedRun(draft run.Draft, metrics run.Metrics, contextTokens int64, at time.Time) run.Run {
-	admitted, err := run.Admit(RunDraft(draft))
-	if err != nil {
-		panic(err)
-	}
-	progressed, err := admitted.AdvanceProgress(metrics, contextTokens, at)
-	if err != nil {
-		panic(err)
-	}
-	return progressed
-}
-
-// RunOutcome is the terminal reason of a finished fixture Run, or "" while open.
-func RunOutcome(value run.Run) run.Outcome {
-	outcome, _ := value.Outcome()
-	return outcome
-}
-
-// RunFailed reports the outcomes that end a Run without completing or being canceled.
-func RunFailed(value run.Run) bool {
-	switch RunOutcome(value) {
-	case run.OutcomeFailed, run.OutcomeTimedOut, run.OutcomeLost:
-		return true
-	default:
-		return false
-	}
-}
-
 // EndingFor returns a representative ending for outcome, for fixtures that
 // only care which way a Run ended.
 func EndingFor(outcome run.Outcome) run.Ending {
@@ -184,30 +124,12 @@ func EndingFor(outcome run.Outcome) run.Ending {
 	}
 }
 
-// Cost returns an exact priced amount for test usage literals.
-func Cost(usd float64) accounting.Cost {
-	cost, err := accounting.NewCost(usd)
-	if err != nil {
-		panic(err)
-	}
-	return cost
-}
-
 func Usage(total accounting.Totals, byModel map[string]accounting.Totals) *accounting.Usage {
 	usage, err := accounting.NewUsage(total, byModel)
 	if err != nil {
 		panic(err)
 	}
 	return &usage
-}
-
-// OptionalCost converts a test fixture's optional dollar amount; nil is unpriced.
-func OptionalCost(usd *float64) accounting.Cost {
-	cost, err := accounting.CostFromOptional(usd)
-	if err != nil {
-		panic(err)
-	}
-	return cost
 }
 
 // ChildLineage builds a child Run's lineage; an invalid edge set is a broken

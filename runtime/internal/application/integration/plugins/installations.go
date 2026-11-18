@@ -404,11 +404,3 @@ func (c *Coordinator) realizationContext(request context.Context) (context.Conte
 		cancel(nil)
 	}
 }
-
-func installationStates(snapshots []plugin.Snapshot) []plugin.Installation {
-	result := make([]plugin.Installation, 0, len(snapshots))
-	for _, snapshot := range snapshots {
-		result = append(result, snapshot.Installation)
-	}
-	return result
-}

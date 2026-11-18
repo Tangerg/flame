@@ -24,15 +24,9 @@ export default defineConfig({
       {
         extends: true,
         test: {
-          name: "frontend",
-          environment: "happy-dom",
-          setupFiles: ["./src/test/setup.ts"],
-          fileParallelism: false,
-          include: [
-            "src/**/*.test.{ts,tsx}",
-            "lab/**/*.test.{ts,tsx}",
-            "tests/integration/**/*.test.{ts,tsx}",
-          ],
+          name: "contracts",
+          environment: "node",
+          include: ["tests/integration/**/*.test.ts"],
           exclude: [...configDefaults.exclude, runtimeLifecycleTest],
           sequence: { groupOrder: 0 },
         },

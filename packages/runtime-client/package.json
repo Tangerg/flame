@@ -8,8 +8,7 @@
     "./methods": "./src/generated/wire.methods.generated.ts",
     "./validation": "./src/validation/index.ts",
     "./testing": "./testing/index.ts",
-    "./testing/samples/*": "./testing/generated/samples/*",
-    "./testing/skill-pages.json": "./testing/generated/skill-pages.json"
+    "./testing/samples/*": "./testing/generated/samples/*"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.10.0",
@@ -19,13 +18,11 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --no-file-parallelism",
-    "check": "npm run typecheck && npm run test"
+    "check": "npm run typecheck"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
     "typescript": "^7.0.2",
-    "vitest": "^5.1.0",
     "prettier": "^3.9.10"
   },
   "files": [

@@ -39,15 +39,6 @@ func callRejectedTool(t *testing.T, ctx context.Context, executable toolcontract
 	return text
 }
 
-func mustTestInvocation(t *testing.T, executable toolcontract.Tool, arguments string) toolcontract.Invocation {
-	t.Helper()
-	_, invocation, err := prepareTestInvocation(executable, arguments)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return invocation
-}
-
 func prepareTestInvocation(
 	executable toolcontract.Tool,
 	arguments string,

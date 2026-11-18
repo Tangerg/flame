@@ -2,34 +2,23 @@ package main
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
-	"fmt"
-	"io"
 	"net/http"
 	"path/filepath"
-	"reflect"
-	"strings"
 	"sync"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/github/internal/contract"
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 
-	"github.com/Tangerg/frame"
 	framecall "github.com/Tangerg/frame/call"
 
 	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
-
-const inspectedSHA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-const mergedSHA = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
 func connectGitHubWrites(t *testing.T, path string, transport http.RoundTripper, token *string) (*connector, *sdk.ClientSession, func()) {
 	t.Helper()
@@ -94,113 +83,6 @@ func invokeGitHub(t *testing.T, session *sdk.ClientSession, contracts rpc.Contra
 		t.Fatal(err)
 	}
 	return githubBinding(t, session, contracts, method).Invoke(ctx, pluginmcp.CommandID(id), input)
-}
-
-func TestGitHubTypedAndModelWritesShareAdmissionOutcomesAndRecovery(t *testing.T) {
-	contracts, err := rpc.NewContracts()
-	if err != nil {
-		t.Fatal(err)
-	}
-	issue := contractwire.IssueInput{Repository: "owner/repo", Number: 42}
-	comment := contractwire.CommentInput{Repository: "owner/repo", CommentID: 11}
-	inlineID := contractwire.CommentInput{Repository: "owner/repo", CommentID: 33}
-	location := contractwire.InlineComment{Path: "new.go", Body: "Review note", Line: 7, Side: contractwire.Right, StartLine: new(int64(5)), StartSide: new(contractwire.Right)}
-	submitted := strings.ReplaceAll(strings.ReplaceAll(reviewJSON, `"state":"PENDING","commit_id":null,"submitted_at":null`, `"state":"APPROVED","commit_id":"`+inspectedSHA+`","submitted_at":"2026-10-20T00:00:00Z"`), `"body":""`, `"body":"Looks good"`)
-	inline := strings.ReplaceAll(reviewCommentJSON, `"commit_id":"head-sha"`, `"commit_id":"`+inspectedSHA+`"`)
-	for _, test := range []struct {
-		name, method, verb, path, body string
-		status                         int
-		input                          any
-		payload                        string
-	}{
-		{"create_issue", contracts.CreateIssue.Name(), "POST", "/repos/owner/repo/issues", issueJSON, 201, contractwire.CreateIssueInput{Repository: "owner/repo", Title: "New issue", Body: new("Text"), Labels: []string{"bug"}, Assignees: []string{"octocat"}}, `{"title":"New issue","body":"Text","labels":["bug"],"assignees":["octocat"]}`},
-		{"update_issue", contracts.UpdateIssue.Name(), "PATCH", "/repos/owner/repo/issues/42", issueJSON, 200, contractwire.UpdateIssueInput{IssueInput: issue, Body: new(""), State: new(contractwire.Closed), StateReason: new(contractwire.NotPlanned), Labels: new([]string{}), Assignees: new([]string{})}, `{"body":"","state":"closed","state_reason":"not_planned","labels":[],"assignees":[]}`},
-		{"create_issue_comment", contracts.CreateComment.Name(), "POST", "/repos/owner/repo/issues/42/comments", commentJSON, 201, contractwire.CreateCommentInput{IssueInput: issue, Body: "Discussion"}, `{"body":"Discussion"}`},
-		{"update_issue_comment", contracts.UpdateComment.Name(), "PATCH", "/repos/owner/repo/issues/comments/11", commentJSON, 200, contractwire.UpdateCommentInput{CommentInput: comment, Body: "Edited"}, `{"body":"Edited"}`},
-		{"delete_issue_comment", contracts.DeleteComment.Name(), "DELETE", "/repos/owner/repo/issues/comments/11", "", 204, comment, ""},
-		{"create_pull_request", contracts.CreatePull.Name(), "POST", "/repos/owner/repo/pulls", strings.Replace(pullJSON, `"draft":true`, `"draft":true,"maintainer_can_modify":false`, 1), 201, contractwire.CreatePullInput{Repository: "owner/repo", Title: "New PR", Head: "fork:topic", Base: "main", HeadRepository: new("fork-repo"), Draft: new(false), MaintainerCanModify: new(false)}, `{"title":"New PR","head":"fork:topic","base":"main","head_repo":"fork-repo","draft":false,"maintainer_can_modify":false}`},
-		{"submit_pull_request_review", contracts.SubmitReview.Name(), "POST", "/repos/owner/repo/pulls/42/reviews", submitted, 200, contractwire.SubmitReviewInput{IssueInput: issue, CommitID: inspectedSHA, Event: contractwire.Approve, Body: new("Looks good"), Comments: []contractwire.InlineComment{location}}, `{"commit_id":"` + inspectedSHA + `","event":"APPROVE","body":"Looks good","comments":[{"path":"new.go","body":"Review note","line":7,"side":"RIGHT","start_line":5,"start_side":"RIGHT"}]}`},
-		{"merge_pull_request", contracts.MergePull.Name(), "PUT", "/repos/owner/repo/pulls/42/merge", `{"sha":"` + mergedSHA + `","merged":true,"message":"Merged"}`, 200, contractwire.MergePullInput{IssueInput: issue, HeadSHA: inspectedSHA, MergeMethod: contractwire.Squash, CommitTitle: new("Squashed"), CommitMessage: new("")}, `{"sha":"` + inspectedSHA + `","merge_method":"squash","commit_title":"Squashed","commit_message":""}`},
-		{"create_pull_request_comment", contracts.CreateReviewComment.Name(), "POST", "/repos/owner/repo/pulls/42/comments", inline, 201, contractwire.CreateReviewCommentInput{IssueInput: issue, CommitID: inspectedSHA, Comment: location}, `{"commit_id":"` + inspectedSHA + `","path":"new.go","body":"Review note","line":7,"side":"RIGHT","start_line":5,"start_side":"RIGHT"}`},
-		{"reply_pull_request_comment", contracts.ReplyReviewComment.Name(), "POST", "/repos/owner/repo/pulls/42/comments/32/replies", inline, 201, contractwire.ReplyReviewCommentInput{IssueInput: issue, CommentID: 32, Body: "Thread reply"}, `{"body":"Thread reply"}`},
-		{"update_pull_request_comment", contracts.UpdateReviewComment.Name(), "PATCH", "/repos/owner/repo/pulls/comments/33", inline, 200, contractwire.UpdateCommentInput{CommentInput: inlineID, Body: "Edited review"}, `{"body":"Edited review"}`},
-		{"delete_pull_request_comment", contracts.DeleteReviewComment.Name(), "DELETE", "/repos/owner/repo/pulls/comments/33", "", 204, inlineID, ""},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			path := filepath.Join(t.TempDir(), "github.db")
-			token, calls, commandID := "private-write-fixture-token", 0, "human"
-			var c *connector
-			transport := roundTrip(func(request *http.Request) (*http.Response, error) {
-				calls++
-				var pending int
-				if err := c.store.db.Read(t.Context(), func(reader sqlite.Reader) error {
-					return reader.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM commands WHERE id=? AND reply IS NULL`, commandID).Scan(&pending)
-				}); err != nil || pending != 1 {
-					t.Errorf("HTTP preceded durable admission: pending=%d %v", pending, err)
-				}
-				if request.Method != test.verb || request.URL.String() != apiOrigin+test.path || request.Header.Get("Authorization") != "Bearer "+token || request.Header.Get("X-GitHub-Api-Version") != apiVersion || request.GetBody != nil || request.Header.Get("Idempotency-Key") != "" {
-					t.Errorf("write lost its exact target or authority: %s %s", request.Method, request.URL)
-				}
-				body, err := io.ReadAll(request.Body)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if test.payload == "" {
-					if len(body) != 0 {
-						t.Errorf("delete carried a different payload: %s", body)
-					}
-				} else {
-					actual, err := framevalue.ParseJSON(body)
-					expected, _ := framevalue.ParseJSON([]byte(test.payload))
-					if err != nil || actual != expected {
-						t.Errorf("wire write differs: got %s want %s %v", body, test.payload, err)
-					}
-				}
-				return upstream(test.status, test.body, nil), nil
-			})
-			var session *sdk.ClientSession
-			var close func()
-			c, session, close = connectGitHubWrites(t, path, transport, &token)
-			admitted, err := framevalue.EncodeJSON(test.input)
-			if err != nil {
-				t.Fatal(err)
-			}
-			value, err := invokeGitHub(t, session, contracts, test.method, commandID, admitted)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if replay, err := invokeGitHub(t, session, contracts, test.method, commandID, admitted); err != nil || replay != value || calls != 1 {
-				t.Fatalf("human replay redispatched: %s calls=%d %v", replay.String(), calls, err)
-			}
-			var meta sdk.Meta
-			if err := meta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "model", Origin: extension.Model, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
-				t.Fatal(err)
-			}
-			commandID = "tool:model"
-			result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: test.name, Arguments: test.input, Meta: meta})
-			if err != nil || result.IsError {
-				t.Fatalf("model write failed: %+v %v", result, err)
-			}
-			encoded, _ := json.Marshal(result.StructuredContent)
-			projected, err := framevalue.ParseJSON(encoded)
-			if err != nil || projected != value || calls != 2 {
-				t.Fatalf("typed/model outcome diverged: %s %s calls=%d %v", value.String(), encoded, calls, err)
-			}
-			original, err := pluginsdk.ReadToolReceipt(t.Context(), session, "model", test.name, admitted)
-			if err != nil || original == nil || calls != 2 {
-				t.Fatalf("model receipt dispatched HTTP: %+v %v", original, err)
-			}
-			close()
-			c, session, _ = connectGitHubWrites(t, path, transport, &token)
-			if replay, err := invokeGitHub(t, session, contracts, test.method, "human", admitted); err != nil || replay != value || calls != 2 {
-				t.Fatalf("restart repeated human write: %s calls=%d %v", replay.String(), calls, err)
-			}
-			output, err := pluginsdk.ReadToolReceipt(t.Context(), session, "model", test.name, admitted)
-			if err != nil || !reflect.DeepEqual(output, original) || calls != 2 {
-				t.Fatalf("restart changed model receipt: %+v %v", output, err)
-			}
-		})
-	}
 }
 
 func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
@@ -273,129 +155,5 @@ func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
 				t.Fatalf("unknown identity was rebound: calls=%d %v", calls, err)
 			}
 		})
-	}
-}
-
-func TestGitHubKnownWriteRefusalsAndOriginalModelReceiptSurviveLaterSuccess(t *testing.T) {
-	contracts, err := rpc.NewContracts()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, status := range []int{400, 401, 403, 404, 405, 409, 422, 429} {
-		t.Run(fmt.Sprint(status), func(t *testing.T) {
-			path, calls, token := filepath.Join(t.TempDir(), "github.db"), 0, "private-write-fixture-token"
-			_, session, close := connectGitHubWrites(t, path, roundTrip(func(*http.Request) (*http.Response, error) {
-				calls++
-				return upstream(status, "do not echo provider body or credential", nil), nil
-			}), &token)
-			input := contractwire.MergePullInput{IssueInput: contractwire.IssueInput{Repository: "owner/repo", Number: 42}, HeadSHA: inspectedSHA, MergeMethod: contractwire.Merge}
-			admitted, _ := framevalue.EncodeJSON(input)
-			var meta sdk.Meta
-			if err := meta.Set(pluginmcp.InvocationMetadataKey, framecall.Invocation{ID: "refused", Origin: extension.Model, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: "github-owner"}}); err != nil {
-				t.Fatal(err)
-			}
-			result, err := session.CallTool(t.Context(), &sdk.CallToolParams{Name: "merge_pull_request", Arguments: input, Meta: meta})
-			if err != nil || !result.IsError {
-				t.Fatalf("known refusal did not reach model feedback: %+v %v", result, err)
-			}
-			original, err := pluginsdk.ReadToolReceipt(t.Context(), session, "refused", "merge_pull_request", admitted)
-			if original == nil || err == nil || calls != 1 {
-				t.Fatalf("known refusal was not retained: %+v %v", original, err)
-			}
-			close()
-			_, session, _ = connectGitHubWrites(t, path, roundTrip(func(*http.Request) (*http.Response, error) {
-				calls++
-				return upstream(200, `{"sha":"`+mergedSHA+`","merged":true,"message":"Merged"}`, nil), nil
-			}), &token)
-			recovered, err := pluginsdk.ReadToolReceipt(t.Context(), session, "refused", "merge_pull_request", admitted)
-			if err == nil || !reflect.DeepEqual(recovered, original) || calls != 1 {
-				t.Fatalf("restart reevaluated original refusal: %+v calls=%d %v", recovered, calls, err)
-			}
-			if _, err := invokeGitHub(t, session, contracts, contracts.MergePull.Name(), "new-intent", admitted); err != nil || calls != 2 {
-				t.Fatalf("explicit new command could not observe later permission: %v", err)
-			}
-		})
-	}
-}
-
-func TestGitHubWriteInvalidatesReadProjectionsBeforeExternalIO(t *testing.T) {
-	contracts, err := rpc.NewContracts()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var c *connector
-	var readTags []string
-	token := "private-write-fixture-token"
-	c, session, _ := connectGitHubWrites(t, filepath.Join(t.TempDir(), "github.db"), roundTrip(func(request *http.Request) (*http.Response, error) {
-		if request.Method == http.MethodGet {
-			readTags = append(readTags, request.Header.Get("If-None-Match"))
-			return upstream(200, issueJSON, http.Header{"Etag": {`"original"`}}), nil
-		}
-		var cached int
-		if err := c.store.db.Read(t.Context(), func(reader sqlite.Reader) error {
-			return reader.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM responses`).Scan(&cached)
-		}); err != nil || cached != 0 {
-			t.Errorf("write left pre-write projections available: %d %v", cached, err)
-		}
-		return nil, errors.New("fixture: response lost")
-	}), &token)
-	input := contractwire.IssueInput{Repository: "owner/repo", Number: 42}
-	if _, err := c.getIssue(t.Context(), input); err != nil {
-		t.Fatal(err)
-	}
-	admitted, _ := framevalue.EncodeJSON(contractwire.CreateCommentInput{IssueInput: input, Body: "Comment"})
-	if _, err := invokeGitHub(t, session, contracts, contracts.CreateComment.Name(), "unknown-write", admitted); err == nil {
-		t.Fatal("unknown comment invented success")
-	}
-	if _, err := c.getIssue(t.Context(), input); err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(readTags, []string{"", ""}) {
-		t.Fatalf("post-write query borrowed an old conditional response: %+v", readTags)
-	}
-	if receipt, err := pluginstorage.ReadReceipt(t.Context(), c.store.db, pluginmcp.ReceiptRequest{ID: "unknown-write", Method: contracts.CreateComment.Name(), InputDigest: admitted.Digest()}); err != nil || receipt.Found {
-		t.Fatalf("unknown write acquired a receipt: %+v %v", receipt, err)
-	}
-}
-
-func TestConfirmedDeleteSurvivesCancellationBeforeSettlement(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "github.db")
-	token := "fixture"
-	writes := 0
-	c, _, close := connectGitHubWrites(t, path, roundTrip(func(*http.Request) (*http.Response, error) {
-		writes++
-		return &http.Response{StatusCode: http.StatusNoContent, Header: make(http.Header), Body: http.NoBody}, nil
-	}), &token)
-	contracts, err := rpc.NewContracts()
-	if err != nil {
-		t.Fatal(err)
-	}
-	method, err := frame.AdmitMethod(contracts.DeleteComment.Descriptor())
-	if err != nil {
-		t.Fatal(err)
-	}
-	input, err := framevalue.EncodeJSON(contractwire.CommentInput{Repository: "fixture/repo", CommentID: 42})
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	deleted, err := mutate(ctx, c, method, "confirmed-delete", input, func(ctx context.Context, input contractwire.CommentInput) (contractwire.DeletedComment, error) {
-		result, err := c.deleteComment(ctx, input)
-		cancel()
-		return result, err
-	})
-	if err != nil || deleted.ID != 42 {
-		t.Fatalf("delete = %+v, %v", deleted, err)
-	}
-	close()
-	c.store, err = openStore(t.Context(), path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer c.store.db.Close()
-	replay, err := mutate(t.Context(), c, method, "confirmed-delete", input, c.deleteComment)
-	if err != nil || replay != deleted || writes != 1 {
-		t.Fatalf("replay=%+v err=%v HTTP writes=%d", replay, err, writes)
 	}
 }

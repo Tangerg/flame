@@ -2,11 +2,7 @@ import type { LabText } from "../story";
 
 export const VISUAL_DOCK_WIDTH_RATIO = 0.5;
 
-export const VISUAL_WORKSPACE_VIEWPORT = { width: 1472, height: 900 } as const;
-
 export const VISUAL_REVIEW_DOCK_WIDTH_RATIO = 0.36;
-
-export const VISUAL_REVIEW_VIEWPORT = { width: 1800, height: 1000 } as const;
 
 export const VISUAL_SETTINGS_PANES = [
   "appearance",

@@ -127,7 +127,6 @@ export function reviewDiff({ firstPath = ACTIVE_DIFF_FILE, path }: ReadSelection
   );
 }
 
-export const REVIEW_DIFF = reviewDiff();
 const RENAME_PATH = "docs/layout/导航说明.md";
 const PREVIOUS_PATH = "docs/layout/旧导航.md";
 const BINARY_PATH = "assets/flame-logo.png";

@@ -94,32 +94,6 @@ func readRequirementCatalog(ctx context.Context, store Store, selections Selecti
 	return catalog, nil
 }
 
-func resolveEntryRequirements(ctx context.Context, host framehost.Host, store Store, selections SelectionStore, compositions CompositionStore, root plugin.Snapshot, server mcpserver.ServerName) (*plugin.RequiredBindings, error) {
-	if !host.Valid() {
-		return nil, plugin.ErrInvalid
-	}
-	catalog, err := readRequirementCatalog(ctx, store, selections, compositions)
-	if err != nil {
-		return nil, err
-	}
-	current, found := catalog.installations[root.Installation.ID()]
-	if !found || current.Selected.Digest() != root.Selected.Digest() {
-		return nil, plugin.ErrStale
-	}
-	if !current.Installation.ServerEnabled(server) {
-		return nil, plugin.ErrDisabled
-	}
-	plan, err := catalog.plan(ctx, host, current, server)
-	if err != nil {
-		return nil, err
-	}
-	binding, err := plan.Snapshot()
-	if err != nil {
-		return nil, err
-	}
-	return catalog.projectRequirements(current, server, binding)
-}
-
 // ProjectRequiredBindings projects already captured providers for the profile's
 // setup wire. It never consults a role selection or substitutes a provider.
 func ProjectRequiredBindings(ctx context.Context, store Store, root plugin.Snapshot, server mcpserver.ServerName, binding framehost.BindingSnapshot) (*plugin.RequiredBindings, error) {

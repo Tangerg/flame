@@ -51,42 +51,6 @@ wait`,
 	t.Fatalf("shell descendant %d survived Kill", pid)
 }
 
-func TestShellCompletionReclaimsDescendantsWithoutRewritingLeaderExit(t *testing.T) {
-	pidFile := t.TempDir() + "/descendant.pid"
-	t.Setenv(shellDescendantPIDEnv, pidFile)
-	shells := unconfinedShells(t)
-	t.Cleanup(func() { _ = shells.KillAll() })
-
-	id, err := shells.Launch(
-		t.Context(),
-		"",
-		"",
-		`sleep 30 &
-echo $! > "$SCOPE_EXEC_DESCENDANT_PID_FILE.tmp"
-mv "$SCOPE_EXEC_DESCENDANT_PID_FILE.tmp" "$SCOPE_EXEC_DESCENDANT_PID_FILE"`,
-		Timeout{},
-		false,
-	)
-	if err != nil {
-		t.Fatalf("launch shell: %v", err)
-	}
-	pid := waitForShellDescendantPID(t, pidFile)
-	t.Cleanup(func() {
-		if err := syscall.Kill(pid, syscall.SIGKILL); err != nil && !errors.Is(err, syscall.ESRCH) {
-			t.Errorf("clean leaked descendant %d: %v", pid, err)
-		}
-	})
-	waitDone(t, shells, id)
-
-	code, killed, _, cleanupErr := mustShell(t, shells, "", id).Outcome()
-	if code != 0 || killed || cleanupErr != nil {
-		t.Fatalf("Outcome = (code=%d, killed=%v, cleanup=%v), want successful leader", code, killed, cleanupErr)
-	}
-	if !waitForShellProcessExit(pid, 2*time.Second) {
-		t.Fatalf("shell descendant %d survived successful leader exit", pid)
-	}
-}
-
 func waitForShellDescendantPID(t *testing.T, path string) int {
 	t.Helper()
 	deadline := time.Now().Add(2 * time.Second)

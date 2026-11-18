@@ -8,13 +8,6 @@ export function captureComposerFocus(composerAccess: ComposerAccess): () => void
   return composerAccess.captureFocus();
 }
 
-export function registerComposerFocusTarget(
-  composerAccess: ComposerAccess,
-  element: HTMLElement | null,
-): () => void {
-  return composerAccess.registerFocusTarget(element);
-}
-
 export function registerComposerFocusPresentation(
   composerAccess: ComposerAccess,
   present: (focus: () => void) => void,

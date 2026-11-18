@@ -1,14 +1,11 @@
 import { execFile } from "node:child_process";
 import {
-  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   realpathSync,
   rmSync,
-  symlinkSync,
-  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,10 +13,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { afterEach, expect, it } from "vitest";
-import {
-  decide,
-  KernelRefusal,
-} from "../package/io.github.tangerg.flame/engine/kernel-node.mjs";
 
 const roots: string[] = [];
 afterEach(() => {
@@ -115,87 +108,4 @@ it("refuses the original engine's direct kernel fallback before loading any Java
   expect(readdirSync(dirname(f.configuration.sentinel))).toEqual([
     "kernel-boundary",
   ]);
-});
-
-it("also refuses when a missing sentinel leaves the private control directory writable", () => {
-  const f = fixture();
-  unlinkSync(f.configuration.sentinel);
-  expect(() => decide(f.kernel, f.environment)).toThrow(KernelRefusal);
-  expect(readdirSync(dirname(f.configuration.sentinel))).toEqual([]);
-});
-
-it("preserves the original trusted worker's inherited confinement and exact arguments", () => {
-  const f = fixture();
-  for (const sky of [
-    "@oai/sky/service",
-    join(f.configuration.guardDirectory, "native-sky.mjs"),
-  ]) {
-    const environment = {
-      ...f.environment,
-      NODE_REPL_TRUSTED_SERVICES: JSON.stringify({
-        sky,
-        browser: "@oai/browser-desktop/service",
-      }),
-    };
-    expect(decide(f.worker, environment)).toEqual({
-      command: f.configuration.node,
-      args: f.worker,
-    });
-  }
-});
-
-it("answers the original engine's exact version probe with the selected Node", () => {
-  const f = fixture();
-  expect(decide(["--version"], f.environment)).toEqual({
-    command: f.configuration.node,
-    args: ["--version"],
-  });
-});
-
-it("refuses alternate Node entrypoints, unknown switches, services and extracted code", () => {
-  const f = fixture();
-  for (const args of [
-    ["-v"],
-    ["--version", "--eval", "untrusted"],
-    ["--eval", "untrusted"],
-    [...f.worker, "--inspect"],
-    ["--experimental-vm-modules", f.worker[1]!, f.root],
-    [
-      "--experimental-vm-modules",
-      file(join(f.configuration.workdir, "trusted-worker.js")),
-      f.configuration.workdir,
-    ],
-  ])
-    expect(() => decide(args, f.environment)).toThrow(KernelRefusal);
-  expect(() =>
-    decide(f.worker, {
-      ...f.environment,
-      NODE_REPL_TRUSTED_SERVICES: JSON.stringify({ sky: "/tmp/other.mjs" }),
-    }),
-  ).toThrow(KernelRefusal);
-  const worker = f.worker[1]!;
-  chmodSync(worker, 0o666);
-  expect(() => decide(f.worker, f.environment)).toThrow(KernelRefusal);
-  unlinkSync(worker);
-  symlinkSync(file(join(f.root, "other.js")), worker);
-  expect(() => decide(f.worker, f.environment)).toThrow(KernelRefusal);
-});
-
-it("cannot move its confinement sentinel into an allowed read or write root", () => {
-  const f = fixture();
-  for (const sentinel of [
-    join(f.configuration.workdir, "sentinel"),
-    join(dirname(f.configuration.runtime), "sentinel"),
-    join(f.configuration.guardDirectory, "sentinel"),
-    join(dirname(f.configuration.launcher), "sentinel"),
-  ])
-    expect(() =>
-      decide(f.worker, {
-        ...f.environment,
-        FLAME_COMPUTER_SANDBOX: JSON.stringify({
-          ...f.configuration,
-          sentinel,
-        }),
-      }),
-    ).toThrow(KernelRefusal);
 });

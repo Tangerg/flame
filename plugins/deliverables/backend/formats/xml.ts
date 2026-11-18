@@ -155,16 +155,6 @@ export function tagName(node: XmlNode, local: string): string {
   return separator < 0 ? local : `${node.name.slice(0, separator)}:${local}`;
 }
 
-export function childrenNamed(
-  node: XmlNode,
-  uri: string,
-  local: string,
-): XmlNode[] {
-  return node.children.filter(
-    (child) => child.uri === uri && child.local === local,
-  );
-}
-
 export function openTag(node: XmlNode, attributes = node.attributes): string {
   return `<${node.name}${Object.entries(attributes)
     .map(([name, value]) => ` ${name}="${escapeXML(value)}"`)

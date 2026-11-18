@@ -65,18 +65,6 @@ func (c *CommandCalls) original(ctx context.Context, record plugin.CommandBindin
 	return plugins.ContributionBinding{InstallationID: record.Provider.InstallationID, ContributionID: record.Contribution, Digest: record.Provider.Digest, ServerName: record.Server, ServerID: id, Export: record.Export, Contract: record.Contract}, nil
 }
 
-func invokeCommand[P, R any](ctx context.Context, c *CommandCalls, required *plugincontract.Capability, method string, input P, validate func(R) error) (commandReply[R], error) {
-	return invokeResolvedCommand(ctx, c, method, input, validate, func(ctx context.Context) (plugins.ContributionBinding, error) {
-		binding, found, err := plugins.SelectedContribution(ctx, c.framework, c.installations, c.selections, required)
-		if err != nil {
-			return binding, err
-		}
-		if !found {
-			return binding, plugin.ErrUnavailable
-		}
-		return binding, nil
-	}, nil)
-}
 func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, method string, input P, validate func(R) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func() error, error)) (commandReply[R], error) {
 	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {

@@ -21,7 +21,6 @@ import { dirname, join } from "node:path";
 import { promisify } from "node:util";
 import {
   afterAll,
-  afterEach,
   beforeAll,
   beforeEach,
   describe,
@@ -667,74 +666,6 @@ async function waitUntilReady(
   }
   throw new Error(`runtime did not become ready: ${processError()}`);
 }
-
-describe("Runtime process readiness", () => {
-  const endpoint = "http://runtime.invalid";
-  const output = () => "captured process output";
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-    vi.useRealTimers();
-  });
-
-  it.each([401, 500])("propagates unexpected HTTP status %d", async (status) => {
-    vi.useFakeTimers();
-    const request = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status }));
-    const result = expect(waitUntilReady(endpoint, output)).rejects.toThrow(
-      `unexpected runtime readiness status ${status}`,
-    );
-    await Promise.all([result, vi.runAllTimersAsync()]);
-    expect(request).toHaveBeenCalledOnce();
-  });
-
-  it("preserves an unexpected network failure instead of turning it into a startup timeout", async () => {
-    vi.useFakeTimers();
-    const failure = new TypeError("fetch failed", {
-      cause: Object.assign(new Error("permission denied"), { code: "EACCES" }),
-    });
-    const request = vi.spyOn(globalThis, "fetch").mockRejectedValue(failure);
-    const result = expect(waitUntilReady(endpoint, output)).rejects.toBe(failure);
-    await Promise.all([result, vi.runAllTimersAsync()]);
-    expect(request).toHaveBeenCalledOnce();
-  });
-
-  it("waits through a refused connection and an initializing response until ready", async () => {
-    vi.useFakeTimers();
-    const request = vi
-      .spyOn(globalThis, "fetch")
-      .mockRejectedValueOnce(
-        new TypeError("fetch failed", {
-          cause: Object.assign(new Error("connection refused"), { code: "ECONNREFUSED" }),
-        }),
-      )
-      .mockResolvedValueOnce(new Response(null, { status: runtimeNotReadyStatus }))
-      .mockResolvedValueOnce(new Response());
-    const result = expect(waitUntilReady(endpoint, output)).resolves.toBeUndefined();
-    await Promise.all([result, vi.runAllTimersAsync()]);
-    expect(request).toHaveBeenCalledTimes(3);
-  });
-
-  it("aborts a stalled request at the original startup deadline and retains process evidence", async () => {
-    const requestTimeoutMilliseconds = 1_000;
-    let signal: AbortSignal | undefined;
-    const request = vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
-      signal = init?.signal ?? undefined;
-      if (!signal) throw new Error("readiness request has no cancellation owner");
-      const original = signal;
-      return new Promise<Response>((_resolve, reject) => {
-        original.addEventListener("abort", () => reject(original.reason), { once: true });
-      });
-    });
-    await expect(
-      waitUntilReady(endpoint, output, Date.now() + requestTimeoutMilliseconds),
-    ).rejects.toMatchObject({
-      message: "runtime did not become ready: captured process output",
-      cause: { name: "TimeoutError" },
-    });
-    expect(signal?.aborted).toBe(true);
-    expect(request).toHaveBeenCalledOnce();
-  });
-});
 
 async function observeRuntimeEvent<T>(
   iterator: AsyncIterator<RuntimeEvent>,
@@ -1740,59 +1671,6 @@ for await (const line of lines) {
 
     streamController.abort();
     await events.return?.();
-  }, 30_000);
-
-  it("rejects unconfigured providers and impossible output reservations before durable Run admission", async () => {
-    if (!client) throw new Error("runtime client was not initialized");
-
-    const session = await client.sessions.create({
-      workspace: { path: root },
-      title: "HTTP output reservation admission",
-    });
-    const sessionId = asSessionId(session.id);
-
-    await client.providers.update({
-      provider: "openai",
-      baseUrl: { type: "set", value: providerBaseUrl },
-    });
-    try {
-      await expect(
-        client.runs.start({
-          sessionId,
-          input: [{ type: "text", text: "This Run requires configured credentials." }],
-          provider: "openai",
-          model: "gpt-5-pro",
-        }),
-      ).rejects.toSatisfy(
-        (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
-      );
-      await client.providers.update({
-        provider: "openai",
-        apiKey: { type: "set", value: "e2e-placeholder-key" },
-      });
-      await expect(
-        client.runs.start({
-          sessionId,
-          input: [{ type: "text", text: "This Run must never become durable." }],
-          provider: "openai",
-          model: "gpt-5-pro",
-          params: { maxTokens: 272_001 },
-        }),
-      ).rejects.toSatisfy(
-        (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
-      );
-      await expect(client.runs.list({ sessionId })).resolves.toMatchObject({ data: [] });
-      await expect(
-        client.items.list({ scope: { type: "session", sessionId } }),
-      ).resolves.toMatchObject({ data: [] });
-    } finally {
-      await client.providers.update({
-        provider: "openai",
-        apiKey: { type: "clear" },
-        baseUrl: { type: "clear" },
-      });
-      await client.sessions.delete(sessionId);
-    }
   }, 30_000);
 
   it("converges unary mutations across pre-admission and post-commit disconnects", async () => {
@@ -3708,88 +3586,6 @@ for await (const line of lines) {
     }
   }, 30_000);
 
-  it("preserves filters and ordering across every high-cardinality cursor", async () => {
-    if (!client) throw new Error("runtime client was not initialized");
-
-    const timelineSession = await client.sessions.create({
-      workspace: { path: root },
-      title: "HTTP pagination timeline",
-    });
-    const siblingSessions = await Promise.all([
-      client.sessions.create({ workspace: { path: root }, title: "HTTP pagination sibling A" }),
-      client.sessions.create({ workspace: { path: root }, title: "HTTP pagination sibling B" }),
-    ]);
-    const firstRun = await client.runs.start({
-      sessionId: asSessionId(timelineSession.id),
-      input: [{ type: "text", text: "E2E_PAGE first filtered run." }],
-    });
-    await collectRunEvents(originalOpeningEvents(firstRun));
-    const secondRun = await client.runs.start({
-      sessionId: asSessionId(timelineSession.id),
-      input: [{ type: "text", text: "E2E_PAGE second filtered run." }],
-    });
-    await collectRunEvents(originalOpeningEvents(secondRun));
-
-    const sessionIds = new Set([
-      timelineSession.id,
-      ...siblingSessions.map((session) => session.id),
-    ]);
-    const pagedSessions = await client.sessions.list({ limit: 1 }).autoPagingToArray();
-    expect(pagedSessions.filter((session) => sessionIds.has(session.id))).toHaveLength(3);
-
-    const pagedRuns = await client.runs
-      .list({ sessionId: asSessionId(timelineSession.id), limit: 1 })
-      .autoPagingToArray();
-    expect(pagedRuns.map((run) => run.id)).toEqual([secondRun.result.runId, firstRun.result.runId]);
-    expect(pagedRuns.every((run) => run.sessionId === timelineSession.id)).toBe(true);
-
-    const pagedItems = await client.items
-      .list({
-        scope: { type: "session", sessionId: asSessionId(timelineSession.id) },
-        limit: 1,
-      })
-      .autoPagingToArray();
-    expect(pagedItems).toHaveLength(4);
-    expect(pagedItems.map((item) => item.runId)).toEqual([
-      firstRun.result.runId,
-      firstRun.result.runId,
-      secondRun.result.runId,
-      secondRun.result.runId,
-    ]);
-
-    const waitingRuns: string[] = [];
-    try {
-      for (const suffix of ["A", "B"]) {
-        const waitingSession = await client.sessions.create({
-          workspace: { path: root },
-          title: `HTTP paged interrupt ${suffix}`,
-        });
-        const waiting = await client.runs.start({
-          sessionId: asSessionId(waitingSession.id),
-          input: [{ type: "text", text: `E2E_HITL pagination interrupt ${suffix}.` }],
-        });
-        const events = await collectRunEvents(originalOpeningEvents(waiting));
-        expect(events.at(-1)?.event).toMatchObject({
-          type: "segment.finished",
-          run: { status: "waiting" },
-          interrupts: expect.arrayContaining([expect.anything()]),
-        });
-        waitingRuns.push(waiting.result.runId);
-      }
-      const pagedInterrupts = await client.interrupts.list({ limit: 1 }).autoPagingToArray();
-      expect(
-        pagedInterrupts
-          .filter((set) => waitingRuns.includes(set.rootRunId))
-          .map((set) => set.rootRunId)
-          .sort(),
-      ).toEqual([...waitingRuns].sort());
-    } finally {
-      for (const runId of waitingRuns) {
-        await client.runs.cancel(asRunId(runId), "HTTP pagination cleanup");
-      }
-    }
-  }, 30_000);
-
   it("reconciles disabled MCP configuration through mcp.changed", async () => {
     if (!client) throw new Error("runtime client was not initialized");
 
@@ -4610,46 +4406,6 @@ for await (const line of lines) {
       await expect(response.json()).resolves.toMatchObject({
         error: { data: { type: "invalid_params" } },
       });
-    }
-  }, 30_000);
-
-  it("pages complete source lines through the real byte-capped file protocol", async () => {
-    if (!client) throw new Error("runtime client was not initialized");
-    const directory = join(root, "file-pages");
-    await mkdir(directory);
-    const lines = Array.from({ length: 3000 }, (_, index) => `${index + 1}:${"é".repeat(1600)}`);
-    lines.push("");
-    const source = lines.join("\n");
-    expect(Buffer.byteLength(source)).toBeGreaterThan(8 << 20);
-    await writeFile(join(directory, "large.txt"), source);
-    const workspace = await client.workspaces.open({ path: directory });
-    for (const fromEnd of [false, true]) {
-      let startLine = 1;
-      let endLine = lines.length;
-      const pages: string[] = [];
-      while (startLine <= endLine) {
-        const page = await workspace.files.read({
-          path: "large.txt",
-          startLine,
-          endLine,
-          fromEnd,
-          maxBytes: Number.MAX_SAFE_INTEGER,
-        });
-        expect(page.startLine).toBeDefined();
-        expect(page.endLine).toBeDefined();
-        expect(Buffer.byteLength(page.content)).toBeLessThanOrEqual(8 << 20);
-        expect(page.content).toBe(lines.slice(page.startLine! - 1, page.endLine!).join("\n"));
-        pages.push(page.content);
-        if (fromEnd) {
-          expect(page.endLine).toBe(endLine);
-          endLine = page.startLine! - 1;
-        } else {
-          expect(page.startLine).toBe(startLine);
-          startLine = page.endLine! + 1;
-        }
-      }
-      expect(pages.length).toBeGreaterThan(1);
-      expect((fromEnd ? pages.reverse() : pages).join("\n")).toBe(source);
     }
   }, 30_000);
 

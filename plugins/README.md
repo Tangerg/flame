@@ -176,10 +176,9 @@ callback adapters live with the process that composes them. A plugin only keeps
 the boundaries its behavior requires.
 
 The first-party backends belong to the independent `plugins/go.mod` member of
-`go.work`. They import the public SDK, never Runtime implementation. The
-`architecture_test.go` guard checks these dependency directions and excludes
-production imports of test fixtures. Host integration tests exercise published
-contracts and installed executables. Author export carries a selected plugin's
+`go.work`. They import the public SDK, never Runtime implementation; Go's
+`internal` visibility rejects any import of Runtime implementation packages. Host
+integration tests exercise published contracts and installed executables. Author export carries a selected plugin's
 backend, required internal sources, component and release resources as one
 independent module; it does not grant Memory's canonical publisher authority.
 Frame owns methods, schemas, invocations, exact JSON, instances and lifetimes.

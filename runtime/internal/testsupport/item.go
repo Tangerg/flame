@@ -121,67 +121,8 @@ func (input ItemInput) payload() transcript.Body {
 	panic("testsupport: unknown Item kind " + string(input.Kind))
 }
 
-// MustItemReplacement applies one named Item transition or panics.
-func MustItemReplacement(replacement transcript.Replacement, err error) transcript.Replacement {
-	if err != nil {
-		panic(err)
-	}
-	return replacement
-}
-
-// Facts flattens an Item into the fixture shape so assertions can read any
-// variant's fields without a type switch per check.
-func Facts(item transcript.Item) ItemInput {
-	facts := ItemInput{
-		SessionID: item.SessionID(), RunID: item.RunID(), ID: item.ID(),
-		Status: item.Status(), Kind: item.Kind(), OccurredAt: item.OccurredAt(),
-	}
-	switch payload := item.Body().(type) {
-	case transcript.UserMessageBody:
-		facts.Content = payload.Content
-	case transcript.AgentMessageBody:
-		facts.MessagePhase, facts.Content = payload.Phase, payload.Content
-	case transcript.ReasoningBody:
-		facts.Text, facts.Redacted = payload.Text, payload.Redacted
-	case transcript.QuestionBody:
-		facts.Question = &payload.Question
-	case transcript.CompactionBody:
-		facts.Summary, facts.DroppedMessages = payload.Summary, payload.DroppedMessages
-	case transcript.ToolCallBody:
-		facts.Tool, facts.SafetyClass, facts.Approval = &payload.Invocation, payload.SafetyClass, payload.Approval
-		facts.FinishedAt, facts.ExecutionDuration, facts.Failure = payload.FinishedAt, payload.ExecutionDuration, payload.Failure
-	}
-	return facts
-}
-
-// ApprovalDecision returns the accepted verdict, empty while unresolved.
-func (input ItemInput) ApprovalDecision() approval.Decision {
-	if input.Approval == nil {
-		return ""
-	}
-	return input.Approval.Decision
-}
-
 // ToolInvocationOf returns the ToolCall invocation when item is a ToolCall.
 func ToolInvocationOf(item transcript.Item) (transcript.ToolInvocation, bool) {
 	call, ok := item.ToolCall()
 	return call.Invocation, ok
-}
-
-// FailureOf returns the classified ToolCall failure when one was recorded.
-func FailureOf(item transcript.Item) (tool.Failure, bool) {
-	call, _ := item.ToolCall()
-	if call.Failure == nil {
-		return tool.Failure{}, false
-	}
-	return *call.Failure, true
-}
-
-// ExecutionDurationOf returns the ToolCall execution interval when known.
-func ExecutionDurationOf(item transcript.Item) (time.Duration, bool) {
-	call, _ := item.ToolCall()
-	if call.ExecutionDuration == nil {
-		return 0, false
-	}
-	return *call.ExecutionDuration, true
 }

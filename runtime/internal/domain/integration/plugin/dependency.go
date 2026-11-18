@@ -51,22 +51,3 @@ func ValidateDependencies(dependencies []Dependency) error {
 	}
 	return nil
 }
-
-// RetainedReleases is every release that must stay admitted: the selected and
-// staged release of each installation and each release an execution holds.
-// Every other admitted release is unreferenced, and nothing can name it again
-// without admitting its bytes anew, so its owner may reclaim it.
-func RetainedReleases(installations []Installation, held []Dependency) []framevalue.Digest {
-	var retained []framevalue.Digest
-	for _, installation := range installations {
-		retained = append(retained, installation.record.Selected)
-		if installation.record.Staged != nil {
-			retained = append(retained, *installation.record.Staged)
-		}
-	}
-	for _, dependency := range held {
-		retained = append(retained, dependency.Digest)
-	}
-	slices.SortFunc(retained, func(left, right framevalue.Digest) int { return cmp.Compare(left.String(), right.String()) })
-	return slices.Compact(retained)
-}

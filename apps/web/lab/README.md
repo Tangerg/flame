@@ -379,8 +379,9 @@ locale and viewport. The preview reports readiness and displays the first error
 from a failed import or render. The observation log retains document errors
 and unhandled rejections.
 
-The normal Web check builds the production bundle and the lab. The Runtime HTTP
-suite verifies service behavior with local binaries and installed packages.
+The normal Web check builds the production bundle; build the lab on demand. The
+Runtime HTTP suite verifies service behavior with local binaries and installed
+packages.
 
 ```sh
 npm run lab:build --workspace @flame/web

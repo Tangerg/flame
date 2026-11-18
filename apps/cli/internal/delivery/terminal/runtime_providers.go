@@ -244,7 +244,6 @@ type providerEndpointDraft struct {
 	field  *base.Text
 }
 
-func (d *providerEndpointDraft) Value() string { return d.field.Text() }
 func (d *providerEndpointDraft) Set(value string) {
 	d.field.SetText(value)
 	label := "Endpoint URL"

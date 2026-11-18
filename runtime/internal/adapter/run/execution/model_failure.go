@@ -81,10 +81,3 @@ func (i *interactionModelFailures) forget(processID scoperun.ProcessID) {
 	delete(i.byProcess, processID)
 	i.mu.Unlock()
 }
-
-func (i *interactionModelFailures) has(processID scoperun.ProcessID) bool {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	_, found := i.byProcess[processID]
-	return found
-}

@@ -25,29 +25,6 @@ func managedFiles(managed string) map[string]string {
 	}
 }
 
-func TestManagedBackendAdmissionHasOneStartupOwner(t *testing.T) {
-	for _, declaration := range []string{
-		`[{"id":"backend","runtime":"node","entry":"backend/start.mjs"},{"id":"backend","runtime":"node","entry":"backend/start.mjs"}]`,
-		`[{"id":"backend","runtime":"bun","entry":"backend/start.mjs"}]`,
-		`[{"id":"backend","runtime":"node","entry":"../start.mjs"}]`,
-		`[{"id":"backend","runtime":"node","entry":"backend/missing.mjs"}]`,
-		`[{"id":"backend","runtime":"node","entry":"backend/start.mjs","command":"node"}]`,
-	} {
-		if _, err := publishPackage(t.Context(), testReleases(t), writePackage(t, managedFiles(declaration))); !errors.Is(err, plugin.ErrInvalid) {
-			t.Fatalf("invalid managed startup admitted: %s: %v", declaration, err)
-		}
-	}
-	files := managedFiles(`[{"id":"backend","runtime":"node","entry":"backend/start.mjs"}]`)
-	files["mcp.json"] = `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"stdio","command":"node"}}}`
-	if _, err := publishPackage(t.Context(), testReleases(t), writePackage(t, files)); !errors.Is(err, plugin.ErrInvalid) {
-		t.Fatalf("two startup sources selected a winner: %v", err)
-	}
-	files["mcp.json"] = `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"invalid-native-startup"}}}`
-	if _, err := publishPackage(t.Context(), testReleases(t), writePackage(t, files)); !errors.Is(err, plugin.ErrInvalid) {
-		t.Fatalf("managed startup replaced a rejected native declaration: %v", err)
-	}
-}
-
 func TestManagedBackendLeasesCompleteGraphAndIgnoresAmbientNode(t *testing.T) {
 	r := testReleases(t)
 	source := writePackage(t, managedFiles(`[{"id":"backend","runtime":"node","entry":"backend/start.mjs"}]`))

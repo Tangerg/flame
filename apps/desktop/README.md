@@ -72,13 +72,11 @@ From `apps/desktop`, regenerate the bridge with:
 go run ./cmd/bridgegen --source . --receiver DesktopHost \
   --out ../web/src/platform/desktop.generated.ts \
   --foundation ../../packages/component-sdk/src/notificationAuthorization.generated.ts
-go test ./cmd/bridgegen ./internal/bridge
 ```
 
-These pure generator checks are self-contained within the Desktop module and run
-on Linux as well as macOS. The repository's `make check-generated` and
-`tooling/integration` compare the actual generator output with both checked-in
-Web projections byte for byte. Full service binding and native I/O still require
+The generator is pure and runs on Linux as well as macOS. The repository's
+`make check-generated` and `tooling/integration` compare the actual generator
+output with both checked-in Web projections byte for byte. Full service binding and native I/O still require
 `make check-native` on macOS. The Web adapter owns
 in-flight bootstrap sharing, endpoint normalization, cancellation translation and unmeasured
 window geometry; the generator does not replace those behaviors. Browser uses its

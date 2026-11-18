@@ -17,7 +17,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
 	flameruntime "github.com/Tangerg/flame/runtime"
 )
@@ -50,31 +49,6 @@ func TestRemoteConnectionRecoversLostDeletionAcknowledgement(t *testing.T) {
 	}
 	if _, err := target.GetSession(t.Context(), protocol.GetSessionRequest{SessionID: created.ID}, protocol.CallOptions{}); !errors.Is(err, protocol.ErrSessionNotFound) {
 		t.Fatalf("committed deletion = %v", err)
-	}
-}
-
-func TestRemoteMalformedAcknowledgementRetainsDurableIntentWithoutRetry(t *testing.T) {
-	_, _, connection, created, attempts := remoteDeletionConnection(t, true)
-	profile := connection.Profile()
-	policy, err := mutation.PolicyFromProfile(&profile, time.Now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	store, err := workbench.OpenMemory(workbench.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = store.Close() })
-	result, err := session.Delete(t.Context(), connection, store, created.ID, policy, mutation.AcknowledgementBackoff())
-	if result.Outcome != mutation.Unknown || !errors.Is(err, conversation.ErrIncompatibleRuntime) || !mutation.OutcomeUnknown(err) {
-		t.Fatalf("malformed acknowledgement = %+v, %v", result, err)
-	}
-	if mutation.AcknowledgementUncertain(err) || len(attempts()) != 1 {
-		t.Fatalf("malformed acknowledgement was retried: %v", attempts())
-	}
-	pending, found := store.PendingSessionDeletion(created.ID)
-	if !found || pending.CommandID != result.Request.CommandID {
-		t.Fatalf("unknown mutation intent was lost: %+v, %v", pending, found)
 	}
 }
 

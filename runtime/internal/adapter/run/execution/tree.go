@@ -230,10 +230,6 @@ func inputRequestID(process scoperun.ProcessID, wait scoperun.WaitKey) string {
 	return "input:" + scoperun.ComputeDigest([]byte(process.String()+"\x00"+wait.String())).String()
 }
 
-func pendingAddress(input interaction.PendingToolInput) inputAddress {
-	return inputAddress{process: input.ProcessID(), wait: input.WaitKey()}
-}
-
 func (i *interactionSession) pendingInterruptions(
 	tree scoperun.Log,
 ) ([]runs.MemberInterruption, error) {
@@ -329,25 +325,6 @@ func (i *interactionSession) stagedTree() (scoperun.Log, error) {
 		return scoperun.Log{}, err
 	}
 	return i.committedTree(i.lifetime.execution, state.handoff.rootID)
-}
-
-// stagedPendingInputs indexes the Tool waits of the staged cut by their WaitID.
-// A member may hold several concurrent waits, so the wait — not the member that
-// owns it — is what an answer addresses.
-func (i *interactionSession) stagedPendingInputs() (map[inputAddress]interaction.PendingToolInput, error) {
-	tree, err := i.stagedTree()
-	if err != nil {
-		return nil, err
-	}
-	pendingInputs, err := i.pendingInputs(tree)
-	if err != nil {
-		return nil, fmt.Errorf("inspect staged Interaction inputs: %w", err)
-	}
-	byWait := make(map[inputAddress]interaction.PendingToolInput, len(pendingInputs))
-	for _, pending := range pendingInputs {
-		byWait[pendingAddress(pending)] = pending
-	}
-	return byWait, nil
 }
 
 func (i *interactionSession) pausedProcessIDs() ([]scoperun.ProcessID, error) {

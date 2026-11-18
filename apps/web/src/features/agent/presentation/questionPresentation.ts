@@ -82,23 +82,6 @@ export function clearQuestionAnswer(draft: QuestionDraft, index: number): Questi
   return replaceQuestionDraftEntry(draft, index, { selected: [], text: "" });
 }
 
-export function toggleQuestionOption(
-  draft: QuestionDraft,
-  index: number,
-  question: ChoiceQuestionItem,
-  label: string,
-): QuestionDraft {
-  const current = draft[index] ?? EMPTY_ENTRY;
-  if (question.multiple) {
-    const selected = current.selected.includes(label)
-      ? current.selected.filter((item) => item !== label)
-      : [...current.selected, label];
-    return setQuestionOptions(draft, index, question, selected);
-  }
-
-  return setQuestionOptions(draft, index, question, [label]);
-}
-
 export function setQuestionOptions(
   draft: QuestionDraft,
   index: number,

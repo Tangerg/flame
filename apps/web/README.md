@@ -95,7 +95,7 @@ Immutable caching requires a build-owned content fingerprint and verification of
 the served bytes against the final distribution digest. JS uses the bundler's
 actual hash-placeholder provenance; emitted assets use SHA-256 names. StyleX emits
 one complete stylesheet before asset hashing instead of rewriting named CSS or JS.
-Web, Lab and unit tests select the shared UI's `stylex` export condition, so the same
+Web, Lab and the Vitest suites select the shared UI's `stylex` export condition, so the same
 transform compiles shared and application atomic styles once. The shared CSS import
 then supplies document rules; standalone consumers retain the complete precompiled
 stylesheet through the ordinary package exports.
@@ -1195,7 +1195,7 @@ case can claim a provider cutpoint. Their gates require a main-model Tool so aux
 summary reduction cannot impersonate the post-commit model call.
 Use `npm run lab` for interactive inspection. The full check includes product
 lifecycle tests, generated-contract consistency, resource drift, localization,
-and both the production and lab bundles.
+and the production bundle.
 
 The shell and Dock use react-resizable-panels. Group owns continuous geometry;
 persistence stores only requestedLayout completion snapshots. Image, Mermaid and

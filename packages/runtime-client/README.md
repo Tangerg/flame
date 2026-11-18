@@ -35,7 +35,7 @@ Unrepresentable values are refused before opening Fetch.
 
 Consumers use explicit public entries: the main API, `wire`, `methods`,
 `validation`, `testing`, and `testing/samples/*`. Internal implementation paths
-and unit tests are not exports. `testing` supplies the deliberate memory-transport
+are not exports. `testing` supplies the deliberate memory-transport
 fixture and sample index. Its raw sample JSON is an exact generated copy of
 `runtime/contract/samples`; edit canonical samples at that Runtime owner.
 
@@ -119,17 +119,9 @@ or preserve that client and its journal separately for recovery and start with a
 fresh client journal.
 
 Run `npm run check --workspace @flame/runtime-client` from the root after
-`make setup`. Test files run serially so sibling fixtures do not compete for the
-CPU and event-loop time required by transport deadlines. Independent author
-checks consume a real packed package, rather
+`make setup`. Independent author checks consume a real packed package, rather
 than workspace-private paths. No former package name or wildcard client export
 is provided.
-
-The `./testing/skill-pages.json` export contains current Skill list pages captured
-by the contract generator from the released Scope tool, separately from the
-canonical wire sample catalog. Empty, complete and continued
-pages exercise the producer's encoding and cursor without a parallel fixture
-format or a legacy decoder.
 
 Workspace `listFiles` returns `FileListPage`, including `complete`, `coverage` and
 `nextCursor`. A non-recursive unfiltered request enumerates only that directory.

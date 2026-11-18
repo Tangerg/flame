@@ -200,11 +200,3 @@ func checkpointDependencies(bindings []plugin.Activation, resources []plugin.Dep
 	}
 	return plugin.CompactDependencies(result), nil
 }
-
-func cloneActivations(values []plugin.Activation) []plugin.Activation {
-	result := slices.Clone(values)
-	for index := range result {
-		result[index] = result[index].Clone()
-	}
-	return result
-}

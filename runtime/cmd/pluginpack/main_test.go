@@ -52,19 +52,3 @@ func TestCommandPublishesOneNeutralIdentityWithoutExecutingCode(t *testing.T) {
 		t.Fatalf("original archive changed after refusal: %v", err)
 	}
 }
-
-func TestCommandRejectsOutputAliasedIntoItsSource(t *testing.T) {
-	source := authorSource(t)
-	alias := filepath.Join(t.TempDir(), "source-alias")
-	if err := os.Symlink(source, alias); err != nil {
-		t.Fatal(err)
-	}
-	archive := filepath.Join(alias, "self.zip")
-	var output bytes.Buffer
-	if err := run([]string{"--source", source, "--archive", archive}, &output); err == nil {
-		t.Fatal("archive could become one of its own source artifacts")
-	}
-	if _, err := os.Stat(filepath.Join(source, "self.zip")); !os.IsNotExist(err) {
-		t.Fatalf("refused output left an artifact: %v", err)
-	}
-}

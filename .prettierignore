@@ -7,4 +7,3 @@ out/
 apps/desktop/assets/web/
 runtime/contract/
 **/package/**/contracts/
-runtime/testdata/plugin-values.json

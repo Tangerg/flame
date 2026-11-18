@@ -4,9 +4,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"slices"
-	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -65,17 +63,4 @@ func copyProfileValue[T any](value T) T {
 		panic(err)
 	}
 	return result
-}
-
-// ReplayProfile projects the exact replay promise supplied by a workflow test.
-type ReplayProfile struct{ Capability authoring.ReplayCapability }
-
-func (p ReplayProfile) Validate() error { return p.Capability.Validate() }
-func (p ReplayProfile) IdempotencyLimits() protocol.IdempotencyLimits {
-	staged := time.Unix(0, 0)
-	deadline, err := p.Capability.Deadline(staged)
-	if err != nil {
-		panic(err)
-	}
-	return protocol.IdempotencyLimits{Namespace: p.Capability.Namespace(), RetentionSeconds: int(deadline.Sub(staged) / time.Second)}
 }

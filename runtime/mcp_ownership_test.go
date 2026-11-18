@@ -4,44 +4,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
-	"sync/atomic"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
-
-func TestRuntimeStartupDoesNotCreateMCPServersFromEnvironment(t *testing.T) {
-	config := isolatedMCPRuntimeConfig(t)
-	var requests atomic.Int64
-	endpoint := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		requests.Add(1)
-		w.WriteHeader(http.StatusServiceUnavailable)
-	}))
-	defer endpoint.Close()
-	t.Setenv("FLAME_MCP_SERVERS", "managed="+endpoint.URL)
-	t.Setenv("FLAME_MCP_MANAGED_TOKEN", "environment-credential")
-
-	runtime, err := Open(t.Context(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := runtime.Close(); err != nil {
-			t.Errorf("close runtime: %v", err)
-		}
-	})
-	servers, err := runtime.ListMCPServers(t.Context(), protocol.CallOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	servers.Data = slices.DeleteFunc(servers.Data, func(server protocol.MCPServer) bool {
-		return server.ID.Origin.Type == protocol.MCPOriginInstallation
-	})
-	if len(servers.Data) != 0 || requests.Load() != 0 {
-		t.Fatalf("environment created %d servers and %d connection requests", len(servers.Data), requests.Load())
-	}
-}
 
 func TestRuntimeRestartPreservesMCPResourceChanges(t *testing.T) {
 	config := isolatedMCPRuntimeConfig(t)

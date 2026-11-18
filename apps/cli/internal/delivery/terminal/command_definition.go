@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"unicode"
-	"unicode/utf8"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 )
@@ -29,20 +28,6 @@ func splitCommandArgument(value string) (identity, remainder string, ok bool) {
 		return value, "", true
 	}
 	return value[:boundary], strings.TrimSpace(value[boundary:]), true
-}
-
-func trimCommandIdentity(value, identity string) (string, bool) {
-	if !strings.HasPrefix(value, identity) {
-		return "", false
-	}
-	remainder := value[len(identity):]
-	if remainder == "" {
-		return "", true
-	}
-	if boundary, _ := utf8.DecodeRuneInString(remainder); !unicode.IsSpace(boundary) {
-		return "", false
-	}
-	return strings.TrimSpace(remainder), true
 }
 
 type localCommand struct {

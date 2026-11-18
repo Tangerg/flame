@@ -304,25 +304,6 @@ export async function generate(repository = root) {
     for (const p of ordered(await workspaces(repository)))
       if (p.scripts?.generate)
         run("npm", ["run", "generate"], p.directory, env);
-    const frameDirectory = run(
-      "go",
-      ["list", "-m", "-f", "{{.Dir}}", "github.com/Tangerg/frame"],
-      join(repository, "packages/go-sdk"),
-      env,
-      true,
-    )
-      .toString()
-      .trim();
-    for (const destination of [
-      "runtime/testdata/plugin-values.json",
-      "packages/runtime-client/testing/generated/plugin-values.json",
-    ]) {
-      await mkdir(dirname(join(repository, destination)), { recursive: true });
-      await cp(
-        join(frameDirectory, "value/testdata/values.json"),
-        join(repository, destination),
-      );
-    }
     await stampDeclarations(repository);
   } finally {
     await rm(temporary, { recursive: true, force: true });

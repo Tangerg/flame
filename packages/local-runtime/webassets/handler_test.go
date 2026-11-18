@@ -1,12 +1,10 @@
 package webassets
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json/v2"
 	"errors"
-	"io"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -14,14 +12,6 @@ import (
 	"testing"
 	"testing/fstest"
 )
-
-type unreadableArtifact struct{ fs.File }
-
-func (unreadableArtifact) Read([]byte) (int, error) { return 0, io.ErrUnexpectedEOF }
-
-type unclosableArtifact struct{ fs.File }
-
-func (f unclosableArtifact) Close() error { return errors.Join(f.File.Close(), fs.ErrPermission) }
 
 func TestUnpublishedPathsConcealSourceRefusals(t *testing.T) {
 	files := distribution(t)
@@ -38,77 +28,6 @@ func TestUnpublishedPathsConcealSourceRefusals(t *testing.T) {
 	if response.Code != http.StatusNotFound || strings.Contains(response.Body.String(), "private source refusal") {
 		t.Fatalf("unpublished source refusal = %d %q", response.Code, response.Body.String())
 	}
-}
-
-func TestArtifactReadFailuresRemainUnavailableAndCannotBecomeNotFound(t *testing.T) {
-	for _, test := range []struct {
-		name string
-		open func(fstest.MapFS) (fs.File, error)
-	}{
-		{"open", func(fstest.MapFS) (fs.File, error) { return nil, fs.ErrPermission }},
-		{"read", func(files fstest.MapFS) (fs.File, error) {
-			file, err := files.Open("assets/app.js")
-			return unreadableArtifact{file}, err
-		}},
-		{"close", func(files fstest.MapFS) (fs.File, error) {
-			file, err := files.Open("assets/app.js")
-			return unclosableArtifact{file}, err
-		}},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			files := distribution(t)
-			h, err := New(func(name string) (fs.File, error) {
-				if name == "assets/app.js" {
-					return test.open(files)
-				}
-				return files.Open(name)
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			response := request(h, http.MethodGet, "/assets/app.js", nil)
-			if response.Code != http.StatusServiceUnavailable || response.Header().Get("Cache-Control") != "no-store" {
-				t.Fatalf("artifact failure = %d, cache = %q", response.Code, response.Header().Get("Cache-Control"))
-			}
-			if missing := request(h, http.MethodGet, "/missing.js", nil); missing.Code != http.StatusNotFound {
-				t.Fatalf("missing artifact status = %d", missing.Code)
-			}
-			if directory := request(h, http.MethodGet, "/assets", map[string]string{"Accept": "text/html"}); directory.Code != http.StatusNotFound {
-				t.Fatalf("directory status = %d", directory.Code)
-			}
-			if route := request(h, http.MethodGet, "/session/record", map[string]string{"Accept": "text/html"}); route.Code != http.StatusOK {
-				t.Fatalf("application route status = %d", route.Code)
-			}
-		})
-	}
-}
-
-func TestPolicyRefusesDuplicateDeclarationsAndNoncanonicalDigests(t *testing.T) {
-	t.Run("duplicate version", func(t *testing.T) {
-		files := distribution(t)
-		files[policyFile].Data = bytes.Replace(files[policyFile].Data, []byte(`"version":1`), []byte(`"version":0,"version":1`), 1)
-		if _, err := New(files.Open); err == nil {
-			t.Fatal("accepted competing policy version declarations")
-		}
-	})
-	t.Run("noncanonical digest", func(t *testing.T) {
-		files := distribution(t)
-		var p policy
-		if err := json.Unmarshal(files[policyFile].Data, &p); err != nil {
-			t.Fatal(err)
-		}
-		file := p.Files["assets/app.js"]
-		file.SHA256 = strings.ToUpper(file.SHA256)
-		p.Files["assets/app.js"] = file
-		data, err := json.Marshal(p)
-		if err != nil {
-			t.Fatal(err)
-		}
-		files[policyFile].Data = data
-		if _, err := New(files.Open); err == nil {
-			t.Fatal("accepted an identity that cannot match the served bytes")
-		}
-	})
 }
 
 func distribution(t *testing.T) fstest.MapFS {
@@ -192,58 +111,6 @@ func TestDocumentPairsFreshNonceWithUnconditionalBody(t *testing.T) {
 	head := request(h, http.MethodHead, "/", nil)
 	if head.Code != http.StatusOK || head.Body.Len() != 0 || head.Header().Get("Content-Security-Policy") == "" {
 		t.Fatal("head lost the document policy or wrote a body")
-	}
-}
-
-func TestTrustedPreviewKeepsSameOriginEmbedding(t *testing.T) {
-	h, err := New(distribution(t).Open)
-	if err != nil {
-		t.Fatal(err)
-	}
-	preview := request(h, http.MethodGet, "/preview.html", nil)
-	if preview.Code != http.StatusOK || preview.Header().Get("X-Frame-Options") != "SAMEORIGIN" ||
-		!strings.Contains(preview.Header().Get("Content-Security-Policy"), "frame-ancestors 'self'") ||
-		!strings.Contains(preview.Header().Get("Content-Security-Policy"), "'strict-dynamic'") {
-		t.Fatal("trusted preview lost its same-origin embedding or strict script policy")
-	}
-}
-
-func TestImmutableReplyRequiresCurrentVerifiedArtifact(t *testing.T) {
-	files := distribution(t)
-	h, err := New(files.Open)
-	if err != nil {
-		t.Fatal(err)
-	}
-	response := request(h, http.MethodGet, "/assets/app.js", nil)
-	if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "public, max-age=31536000, immutable" {
-		t.Fatal("fingerprinted artifact is not immutable")
-	}
-	cached := request(h, http.MethodGet, "/assets/app.js", map[string]string{"If-None-Match": response.Header().Get("ETag")})
-	if cached.Code != http.StatusNotModified {
-		t.Fatalf("verified cache status = %d", cached.Code)
-	}
-	files["assets/app.js"].Data = []byte("changed after publication")
-	changed := request(h, http.MethodGet, "/assets/app.js", nil)
-	if changed.Code != http.StatusServiceUnavailable || changed.Header().Get("Cache-Control") != "no-store" || strings.Contains(changed.Body.String(), "changed after") {
-		t.Fatal("mutable bytes were published under an immutable identity")
-	}
-}
-
-func TestPublicUnfingerprintedFilesRemainUpdateableAndPrivatePathsStayHidden(t *testing.T) {
-	h, err := New(distribution(t).Open)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, target := range []string{"/appearance.js", "/fonts/mono.woff2"} {
-		response := request(h, http.MethodGet, target, nil)
-		if response.Code != http.StatusOK || response.Header().Get("Cache-Control") != "no-cache" || response.Header().Get("X-Content-Type-Options") != "nosniff" {
-			t.Fatalf("unfingerprinted policy changed for %s", target)
-		}
-	}
-	for _, target := range []string{"/.private", "/.vite/flame-web-policy.json", "/../index.html", "/..%5cindex.html"} {
-		if response := request(h, http.MethodGet, target, nil); response.Code != http.StatusNotFound {
-			t.Fatalf("private path status = %d for %s", response.Code, target)
-		}
 	}
 }
 

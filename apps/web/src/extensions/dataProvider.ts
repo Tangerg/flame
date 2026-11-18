@@ -10,10 +10,3 @@ export const DATA_PROVIDER = defineExtensionPoint<DataProviderSpec>({
   keying: "single",
   keyOf: (s) => s.key,
 });
-
-export function lookupDataProvider<T = unknown, P = unknown>(
-  key: string,
-): ((params?: P, signal?: AbortSignal) => Promise<T>) | undefined {
-  const spec = lookupExtensionByKey(DATA_PROVIDER, key);
-  return spec ? (spec.fetcher as (params?: P, signal?: AbortSignal) => Promise<T>) : undefined;
-}

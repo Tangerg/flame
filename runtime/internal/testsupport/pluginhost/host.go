@@ -11,7 +11,6 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	framehost "github.com/Tangerg/frame/host"
 )
@@ -67,43 +66,6 @@ func New(t testing.TB, store *persistence.Bundle) *Fixture {
 		t.Fatal(err)
 	}
 	return &Fixture{Host: host, store: store}
-}
-
-// Apply proposes the fixture's product configuration through the real Host.
-// The SQLite installation index advances only inside that Host transaction.
-func (f *Fixture) Apply(ctx context.Context, installation plugin.Installation) error {
-	record := installation.Snapshot()
-	release, err := f.store.PluginReleases.Get(ctx, record.Selected)
-	if err != nil {
-		return err
-	}
-	projection, err := plugins.ProjectFrameworkRelease(release, pluginmcp.ProcessProfile)
-	if err != nil {
-		return err
-	}
-	if err := plugins.RegisterFrameworkRelease(f.Host, projection); err != nil {
-		return err
-	}
-	configuration, err := plugins.EncodeFrameworkConfiguration(record)
-	if err != nil {
-		return err
-	}
-	config := framehost.InstallationConfig{ID: record.ID.Host(), Plugin: projection.Plugin, Configuration: configuration, Enabled: record.Enabled}
-	previous, exists := f.Host.Installation(config.ID)
-	if exists {
-		err = f.Host.Update(ctx, previous, config)
-	} else {
-		_, err = f.Host.Install(ctx, config)
-	}
-	if err != nil {
-		return err
-	}
-	if record.Staged != nil {
-		return f.store.Admission.Admit(ctx, func(admitted context.Context) error {
-			return f.store.Installations.Stage(admitted, record.ID, *record.Staged)
-		})
-	}
-	return nil
 }
 
 type refusalDriver struct{ profile framehost.Profile }

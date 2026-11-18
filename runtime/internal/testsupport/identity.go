@@ -1,27 +1,15 @@
 package testsupport
 
 import (
-	"context"
 	"testing"
 
-	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/google/uuid"
 )
-
-func BuiltInTool(t testing.TB, name builtincontract.Name) tool.Ref {
-	t.Helper()
-	ref, err := tool.BuiltIn(name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return ref
-}
 
 func ToolFingerprint(ref tool.Ref) framevalue.Digest {
 	if ref.Kind() == tool.BuiltInKind {
@@ -32,16 +20,6 @@ func ToolFingerprint(ref tool.Ref) framevalue.Digest {
 
 // Digest derives a distinct valid digest from seed.
 func Digest(seed string) framevalue.Digest { return identity.DigestStrings(seed) }
-
-// Release admits declaration as the release whose digest derives from seed.
-func Release(t testing.TB, seed string, declaration plugin.Declaration) plugin.Release {
-	t.Helper()
-	release, err := plugin.NewRelease(Digest(seed), declaration)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return release
-}
 
 func InstallationID(t testing.TB) identity.InstallationID {
 	t.Helper()
@@ -57,10 +35,6 @@ func InstallationID(t testing.TB) identity.InstallationID {
 
 func UserMCPServer(name string) mcpserver.ID {
 	return must(mcpserver.NewID(mcpserver.UserOrigin(), ServerName(name)))
-}
-
-func InstallationMCPServer(installation identity.InstallationID, name string) mcpserver.ID {
-	return must(mcpserver.NewID(must(mcpserver.InstallationOrigin(installation)), ServerName(name)))
 }
 
 func MCPTool(server mcpserver.ID, remote string) tool.Ref {
@@ -80,29 +54,6 @@ func must[T any](value T, err error) T {
 		panic(err)
 	}
 	return value
-}
-
-type ToolAuthorities struct{}
-
-func (ToolAuthorities) Fingerprint(_ context.Context, ref tool.Ref) (framevalue.Digest, bool, error) {
-	if err := ref.Validate(); err != nil {
-		return framevalue.Digest{}, false, err
-	}
-	return ToolFingerprint(ref), true, nil
-}
-
-func (a ToolAuthorities) Fingerprints(ctx context.Context, refs []tool.Ref) (map[tool.Ref]framevalue.Digest, error) {
-	result := make(map[tool.Ref]framevalue.Digest, len(refs))
-	for _, ref := range refs {
-		fingerprint, found, err := a.Fingerprint(ctx, ref)
-		if err != nil {
-			return nil, err
-		}
-		if found {
-			result[ref] = fingerprint
-		}
-	}
-	return result, nil
 }
 
 const (

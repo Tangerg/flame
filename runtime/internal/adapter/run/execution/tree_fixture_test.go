@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"iter"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -14,12 +13,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
-
-	"github.com/Tangerg/scope/core/chat"
 )
 
 var testTreeStores sync.Map
@@ -54,38 +50,6 @@ func testTrees(t *testing.T) *testExecutionTrees {
 		})
 	}
 	return actual.(*testExecutionTrees)
-}
-func newProductInteractionExecutor(t *testing.T, model chat.Model, pricing accounting.Pricing, config InteractionExecutorConfig) *InteractionExecutor {
-	t.Helper()
-	config.Lifetime = t.Context()
-	config.BuildID = interactionTestBuildID
-	var counter modeladapter.InputTokenCounter
-	if value, ok := model.(modeladapter.InputTokenCounter); ok {
-		counter = value
-	}
-	config.ChatResolver = interactionChatResolver(model, counter)
-	executor, err := newProductPricedConfiguredInteractionExecutor(t, config, pricing)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return executor
-}
-
-func newProductConfiguredInteractionExecutor(t *testing.T, config InteractionExecutorConfig) (*InteractionExecutor, error) {
-	return newProductPricedConfiguredInteractionExecutor(t, config, nil)
-}
-
-func newProductPricedConfiguredInteractionExecutor(t *testing.T, config InteractionExecutorConfig, pricing accounting.Pricing) (*InteractionExecutor, error) {
-	t.Helper()
-	stores := testTrees(t).stores
-	resolver, err := modeladapter.NewObservedResolver(config.ChatResolver, stores.ModelInvocations, pricing)
-	if err != nil {
-		t.Fatal(err)
-	}
-	config.ChatResolver = resolver
-	config.ModelEvidence = stores.ModelInvocations
-	config.ExecutionTrees = stores.ExecutorCheckpoints
-	return newTestConfiguredInteractionExecutor(t, config)
 }
 
 func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecutorConfig) (*InteractionExecutor, error) {
@@ -224,31 +188,4 @@ func (j sessionEndpointJournal) StartEndpointInvocation(ctx context.Context, inv
 		}
 	}
 	return j.ModelInvocationStore.StartEndpointInvocation(ctx, invocation, "")
-}
-
-func newPricedObservedTestInteractionExecutor(t *testing.T, model chat.Model, pricing accounting.Pricing, config InteractionExecutorConfig) *InteractionExecutor {
-	t.Helper()
-	db, err := persistencefixture.Open(t, t.Context(), filepath.Dir(filepath.Join(t.TempDir(), "priced-model-evidence.db")))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	journal := db.ModelInvocations
-	var counter modeladapter.InputTokenCounter
-	if value, ok := model.(modeladapter.InputTokenCounter); ok {
-		counter = value
-	}
-	resolver, err := modeladapter.NewObservedResolver(interactionChatResolver(model, counter), newSessionEndpointJournal(db), pricing)
-	if err != nil {
-		t.Fatal(err)
-	}
-	config.ModelEvidence = journal
-	config.ChatResolver = resolver
-	config.Lifetime = t.Context()
-	config.BuildID = interactionTestBuildID
-	executor, err := newTestConfiguredInteractionExecutor(t, config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return executor
 }

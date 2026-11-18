@@ -367,8 +367,6 @@ func (o openTools) get(callID string) (*openTool, bool) {
 	return tool, ok
 }
 
-func (o openTools) count() int { return len(o.byCallID) }
-
 func (o *openTools) remove(callID string) {
 	tool, present := o.byCallID[callID]
 	if !present {

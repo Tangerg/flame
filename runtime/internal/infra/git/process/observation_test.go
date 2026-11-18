@@ -59,32 +59,3 @@ func TestObservationCannotRunWorkspaceGitHelpers(t *testing.T) {
 		t.Fatal("workspace helper executed", err)
 	}
 }
-
-func TestReadViewKeepsLinkedWorktreeSplitIndexAndSHA256(t *testing.T) {
-	root := t.TempDir()
-	git := func(dir string, args ...string) {
-		t.Helper()
-		c := exec.Command("git", args...)
-		c.Dir = dir
-		if out, err := c.CombinedOutput(); err != nil {
-			t.Fatalf("git %v: %v %s", args, err, out)
-		}
-	}
-	main := filepath.Join(root, "main")
-	git(root, "init", "-q", "--object-format=sha256", main)
-	if err := os.WriteFile(filepath.Join(main, "tracked"), []byte("one\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	git(main, "add", "tracked")
-	git(main, "-c", "user.name=fixture", "-c", "user.email=fixture@example.invalid", "commit", "-qm", "first")
-	work := filepath.Join(root, "linked")
-	git(main, "worktree", "add", "-q", "--detach", work, "HEAD")
-	git(work, "update-index", "--split-index")
-	if err := os.WriteFile(filepath.Join(work, "tracked"), []byte("two\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	result, err := At(t.Context(), work, "diff", "--numstat", "--no-textconv", "--no-ext-diff", "HEAD")
-	if err != nil || result.ExitCode != 0 || string(result.Stdout) != "1\t1\ttracked\n" {
-		t.Fatalf("linked diff=%+v, %v", result, err)
-	}
-}

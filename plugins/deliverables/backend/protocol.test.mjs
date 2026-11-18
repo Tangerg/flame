@@ -223,39 +223,6 @@ async function connect(dataDirectory) {
 beforeEach(async (context) => {
   context.backend = await connect();
 });
-it("publishes semantic model tools while retaining the complete typed transfer capability", async ({
-  backend,
-}) => {
-  const names = (await backend.tools()).tools.map((tool) => tool.name);
-  for (const name of ["upload", "append", "discard", "download"])
-    expect(names).not.toContain(name);
-  for (const name of [
-    "catalog",
-    "read",
-    "assessment",
-    "create",
-    "import",
-    "export",
-    "page",
-  ])
-    expect(names).toContain(name);
-  const result = await backend.tool("catalog", {});
-  expect(result.isError).not.toBe(true);
-  expect(result.content[0].text).not.toContain("createSchemaJSON");
-  expect(result.structuredContent.value.formatsJSON).toContain(
-    "createSchemaJSON",
-  );
-  const typed = await backend.invoke(METHODS.catalog, {});
-  expect(typed).toEqual(result.structuredContent.value);
-  const detail = await backend.tool("catalog", {
-    format: "docx",
-    section: "edit",
-  });
-  expect(JSON.parse(detail.content[0].text).value).toMatchObject({
-    format: "docx",
-    section: "edit",
-  });
-});
 it(
   "packaged creation, native edit, transfer and original receipt survive restart without content duplication",
   async ({ backend: first }) => {

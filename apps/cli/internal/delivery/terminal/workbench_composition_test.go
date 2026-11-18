@@ -40,7 +40,3 @@ func persistentTestWorkbench(t testing.TB, directory string) func() (*workbench.
 	t.Helper()
 	return func() (*workbench.Store, error) { return openTestWorkbench(t, directory) }
 }
-
-func memoryTestWorkbench() (*workbench.Store, error) {
-	return workbench.OpenMemory(workbench.Config{})
-}

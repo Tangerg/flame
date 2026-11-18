@@ -23,20 +23,6 @@ export async function addPluginsForTest(
   await host.apply(await host.plan(change));
 }
 
-export async function contributeForTest(
-  setup: (ctx: PluginContext) => void,
-  name = "test.contributor",
-): Promise<Host> {
-  return loadPluginsForTest(
-    definePlugin({
-      name,
-      setup(ctx) {
-        setup(ctx);
-      },
-    }),
-  );
-}
-
 export async function resetKernelForTest(): Promise<void> {
   if (!running) return;
   const host = running;

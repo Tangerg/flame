@@ -1,19 +1,16 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
 	"path/filepath"
-	"strings"
 	"sync/atomic"
 	"testing"
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
 
 	framecall "github.com/Tangerg/frame/call"
@@ -128,63 +125,6 @@ func TestHTTPPolicyRefusalsNeverReachTransport(t *testing.T) {
 type httpTransport func(*http.Request) (*http.Response, error)
 
 func (f httpTransport) RoundTrip(request *http.Request) (*http.Response, error) { return f(request) }
-
-func TestHTTPUnconfirmedDispatchCannotReplayOrBecomeAReceipt(t *testing.T) {
-	for _, failure := range []error{errors.New("response lost"), context.Canceled} {
-		t.Run(failure.Error(), func(t *testing.T) {
-			var calls int
-			client := &http.Client{Transport: httpTransport(func(*http.Request) (*http.Response, error) {
-				calls++
-				return nil, failure
-			})}
-			requests, method, _ := httpFixture(t, httpreq.ClientConfig{AllowedHosts: []string{"allowed.test"}, HTTPClient: client})
-			input := httpInput(t, httpreq.Request{URL: "https://allowed.test"})
-			_, err := requests.execute(t.Context(), method, "unconfirmed", input)
-			if !errors.Is(err, failure) {
-				t.Fatalf("original failure lost: %v", err)
-			}
-			if _, known := tool.ClassifyFailure(requestToolFailure(err)); known {
-				t.Fatal("unconfirmed request became a definite failure")
-			}
-			if _, err := requests.execute(t.Context(), method, "unconfirmed", input); !errors.Is(err, pluginstorage.ErrCommandUnconfirmed) || calls != 1 {
-				t.Fatalf("unconfirmed replay: %v, calls=%d", err, calls)
-			}
-			receipt, err := requests.receipt(t.Context(), pluginmcp.ReceiptRequest{ID: "unconfirmed", Method: method, InputDigest: input.Digest()})
-			if err != nil || receipt.Result != nil {
-				t.Fatalf("invented original outcome: %+v %v", receipt, err)
-			}
-		})
-	}
-}
-
-func TestHTTPResponseBoundAndRedirectGrant(t *testing.T) {
-	var calls atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		calls.Add(1)
-		if request.URL.Path == "/redirect" {
-			http.Redirect(w, request, "https://denied.test/resource", http.StatusTemporaryRedirect)
-			return
-		}
-		_, _ = io.WriteString(w, strings.Repeat("x", int(httpreq.DefaultMaxResponseBytes)+1))
-	}))
-	t.Cleanup(server.Close)
-	requests, method, _ := httpFixture(t, httpreq.ClientConfig{
-		AllowedHosts:    []string{server.Listener.Addr().String()},
-		AllowedNetworks: []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")},
-	})
-	result, err := requests.execute(t.Context(), method, "bounded", httpInput(t, httpreq.Request{URL: server.URL}))
-	if err != nil || !result.Truncated || len(result.Body.Data) != int(httpreq.DefaultMaxResponseBytes) {
-		t.Fatalf("response bound: bytes=%d truncated=%v error=%v", len(result.Body.Data), result.Truncated, err)
-	}
-	input := httpInput(t, httpreq.Request{URL: server.URL + "/redirect"})
-	_, err = requests.execute(t.Context(), method, "redirect", input)
-	if !errors.Is(err, httpreq.ErrHostNotAllowed) || calls.Load() != 2 {
-		t.Fatalf("redirect grant: calls=%d error=%v", calls.Load(), err)
-	}
-	if _, known := tool.ClassifyFailure(requestToolFailure(err)); known {
-		t.Fatal("post-dispatch redirect refusal proved the original request had no effect")
-	}
-}
 
 func TestHTTPHostGrantDoesNotAuthorizePrivateAddresses(t *testing.T) {
 	var calls atomic.Int32

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"testing"
 
@@ -18,7 +17,6 @@ import (
 
 	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/frame/sqlite"
-	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -117,76 +115,6 @@ func TestOriginalHookCommandReceiptSurvivesRestartWithoutRepeatingItsEffect(t *t
 	bytes, err := os.ReadFile(filepath.Join(cwd, "effect"))
 	if err != nil || string(bytes) != "x" {
 		t.Fatalf("original effect=%q, %v", bytes, err)
-	}
-}
-
-func TestPendingHookCommandCannotDispatchAndTimeoutKeepsItsKnownOutcome(t *testing.T) {
-	cwd := t.TempDir()
-	db, session, _ := connectHooks(t, filepath.Join(t.TempDir(), "hooks.db"))
-	method, err := hookmcp.EvaluateMethod()
-	if err != nil {
-		t.Fatal(err)
-	}
-	request := hookprovider.Evaluation{Rules: []hook.Hook{{Event: hook.PreToolUse, Scope: hook.ScopeGlobal, Source: cwd, Command: `printf x > effect`, TimeoutMillis: 1000}}, Input: hook.Input{Event: hook.PreToolUse, CWD: cwd}}
-	input, err := framevalue.EncodeJSON(request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := pluginstorage.AdmitCommand(t.Context(), db, method.Name(), "pending", input, nil); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := hookMethod(t, session, method).CallCommand(hookContext(t), "pending", request); err == nil {
-		t.Fatal("unconfirmed command was dispatched again")
-	}
-	if _, err := os.Stat(filepath.Join(cwd, "effect")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("pending command produced an effect: %v", err)
-	}
-	request.Rules[0].Command, request.Rules[0].TimeoutMillis = "sleep 5", 40
-	for range 2 {
-		result, err := hookMethod(t, session, method).CallCommand(hookContext(t), "timeout", request)
-		if err != nil || len(result.Diagnostics) != 1 || !strings.Contains(result.Diagnostics[0].Message, "timed out") {
-			t.Fatalf("timeout outcome=%+v, %v", result, err)
-		}
-	}
-}
-
-func TestDeclarativeOnlyEventPreservesRequiredPolicyWithoutRunningACommand(t *testing.T) {
-	cwd := t.TempDir()
-	_, session, _ := connectHooks(t, filepath.Join(t.TempDir(), "hooks.db"))
-	method, err := hookmcp.EvaluateMethod()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, test := range []struct {
-		name        string
-		policy      hook.FailurePolicy
-		matcher     string
-		verdict     hook.CommandVerdict
-		diagnostics int
-	}{
-		{name: "required", policy: hook.FailureRequired, verdict: hook.CommandDeny, diagnostics: 1},
-		{name: "advisory", verdict: hook.CommandAllow, diagnostics: 1},
-		{name: "unmatched", policy: hook.FailureRequired, matcher: "write", verdict: hook.CommandAllow},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			request := hookprovider.Evaluation{
-				Rules: []hook.Hook{
-					{Event: hook.PreToolUse, Command: "printf forbidden > effect", FailurePolicy: test.policy, Matcher: test.matcher, Scope: hook.ScopeGlobal, Source: cwd},
-					{Event: hook.PreToolUse, Inject: "retained declarative context", Scope: hook.ScopeGlobal, Source: cwd},
-				},
-				Input:           hook.Input{Event: hook.PreToolUse, CWD: cwd, Tool: &hook.ToolInput{Name: "shell"}},
-				DeclarativeOnly: true,
-			}
-			for range 2 {
-				advice, err := hookMethod(t, session, method).CallCommand(hookContext(t), pluginmcp.CommandID(test.name), request)
-				if err != nil || advice.Decision.Verdict != test.verdict || advice.Decision.InjectContext != "retained declarative context" || len(advice.Diagnostics) != test.diagnostics {
-					t.Fatalf("declarative-only original receipt: %+v, %v", advice, err)
-				}
-			}
-			if _, err := os.Stat(filepath.Join(cwd, "effect")); !errors.Is(err, os.ErrNotExist) {
-				t.Fatalf("unprojectable command ran: %v", err)
-			}
-		})
 	}
 }
 

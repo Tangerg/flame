@@ -520,10 +520,9 @@ The Go module under `apps/desktop` remains a small Wails host. Its actual
 wire DTOs and their existing refinements. `cmd/bridgegen` reads the actual method AST,
 uses Frame’s public schema/TypeScript renderer, and generates
 `platform/desktop.generated.ts` plus the portable component SDK notification enum.
-The host adapter validates those generated wire contracts. Native
-`bridge_contract_test.go` compares the actual binding surface; pure generator drift
-checks run on Linux without compiling Wails. Runtime execution and persistence
-remain with Runtime.
+The host adapter validates those generated wire contracts. `make check-generated`
+and `tooling/integration` detect generator drift without compiling Wails. Runtime
+execution and persistence remain with Runtime.
 
 ## Design system and observability
 
@@ -550,17 +549,13 @@ Run the complete frontend gate from this directory:
 npm run check
 ```
 
-The gate includes typechecking, product behavior tests, translation resources,
-generated artifacts, installed component resources and a production bundle. The
-HTTP e2e suite builds an isolated Runtime and uses local fake providers; it
-requires the repository's Go toolchain and no live provider credentials. It runs
-in a separate Vitest project after frontend checks so native process and local
-server deadlines do not compete with the DOM worker pool.
+The gate includes typechecking, the published contract schemas, the Runtime HTTP
+e2e suite, translation resources, generated artifacts, installed component
+resources and a production bundle. The e2e suite builds an isolated Runtime and
+uses local fake providers; it requires the repository's Go toolchain and no live
+provider credentials. Product behavior is verified against that real Runtime, not
+against in-memory feature fixtures.
 
-Product tests cover failure ordering, installation replacement,
-connection retirement, command identity, and surviving feature behavior.
-
-`test/renderClient.tsx` constructs independent feature instances for each test.
 Visual fixtures use `lab/scenarios/client.tsx` and pass the fixture explicitly to their
 setup functions. Each fixture owns its plugins, memory-transport clients and cleanup. Native package verification follows the supported Wails target in
 [`../Taskfile.yml`](../desktop/Taskfile.yml); a successful Web bundle does not establish a

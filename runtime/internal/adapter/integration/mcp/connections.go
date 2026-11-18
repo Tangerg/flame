@@ -193,21 +193,6 @@ func retireSession(session *sdkmcp.ClientSession, cleanup sessionCleanup) (err e
 
 var ErrUnavailable = errors.New("mcp: exact backend connection is unavailable")
 
-func (c *connections) requirements(session *sdkmcp.ClientSession) (*plugin.RequiredBindings, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	owned := c.sessions[session]
-	if c.closed || owned == nil || owned.close != nil {
-		return nil, ErrUnavailable
-	}
-	for _, server := range c.servers {
-		if server.session == session {
-			return owned.bindings, nil
-		}
-	}
-	return nil, ErrUnavailable
-}
-
 // activation projects the exact live activation graph, including optional
 // collaborators that were bound. Re-reading current selections would retarget a
 // waiting execution after a collaborator changed its own selection.

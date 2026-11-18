@@ -206,25 +206,7 @@ func writeConsumerFile(t *testing.T, path, content string) {
 	}
 }
 
-// dependencyModuleRoot follows the selected module graph for source-based contract
-// checks. It works in both a workspace and an independently downloaded module.
-func dependencyModuleRoot(t *testing.T, module string) string {
-	t.Helper()
-	command := exec.CommandContext(t.Context(), "go", "list", "-m", "-f", "{{.Dir}}", module)
-	command.Dir = moduleRoot(t)
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("resolve dependency module %s: %v\n%s", module, err, output)
-	}
-	directory := strings.TrimSpace(string(output))
-	if directory == "" {
-		t.Fatalf("dependency module %s has no resolved source directory", module)
-	}
-	return directory
-}
-
 const runtimeModulePath = "github.com/Tangerg/flame/runtime"
-const sdkModulePath = "github.com/Tangerg/flame/packages/go-sdk"
 
 // moduleRoot walks up from the test's working directory to the directory
 // holding the Runtime go.mod, independently of the surrounding checkout.

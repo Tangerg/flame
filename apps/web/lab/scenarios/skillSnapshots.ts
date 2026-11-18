@@ -65,8 +65,6 @@ export function visualSkillDiscovery(documents: readonly SkillDetail[]): SkillDi
   };
 }
 
-export const VISUAL_SKILL_DISCOVERY: SkillDiscovery = visualSkillDiscovery(VISUAL_SKILL_DOCUMENTS);
-
 export const VISUAL_SKILL_LIBRARY: Page<ManagedSkill> = {
   data: [
     {

@@ -326,18 +326,6 @@ func questionFieldLabel(specification conversation.QuestionField) string {
 	return specification.Header + " — " + specification.Prompt
 }
 
-func (q *questionResponse) choosesCustom() bool {
-	if q.field.Kind == conversation.QuestionSingle {
-		return q.single.kind == customChoice
-	}
-	for _, choice := range q.multiple {
-		if choice.kind == customChoice {
-			return true
-		}
-	}
-	return false
-}
-
 func (p *interruptPrompts) showQuestionDialog(review *questionnaire, fields []base.Field) {
 	form := kit.FormConfig{Fields: fields, Theme: p.theme, Glyphs: p.glyphs,
 		Title: strings.Join(nonEmptyStrings([]string{

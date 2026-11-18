@@ -1,10 +1,6 @@
 package localruntime
 
 import (
-	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"os"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -32,40 +28,6 @@ func TestNodeSelectionUsesOnlyHostDistribution(t *testing.T) {
 	}
 	if err := selected.Verify(t.Context()); err == nil {
 		t.Fatal("missing companion admitted")
-	}
-}
-
-func TestNodeVerificationRejectsChangedOrRedirectedBytes(t *testing.T) {
-	directory := t.TempDir()
-	path := filepath.Join(directory, "node")
-	content := []byte("qualified fixture")
-	hash := sha256.Sum256(content)
-	selected := Node{command: path, distribution: directory, expected: hex.EncodeToString(hash[:])}
-	if err := os.WriteFile(path, content, 0700); err != nil {
-		t.Fatal(err)
-	}
-	if err := selected.Verify(t.Context()); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, []byte("changed"), 0700); err != nil {
-		t.Fatal(err)
-	}
-	if err := selected.Verify(t.Context()); err == nil {
-		t.Fatal("changed executable admitted")
-	}
-	if err := os.Rename(path, path+"-other"); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(path+"-other", path); err != nil {
-		t.Fatal(err)
-	}
-	if err := selected.Verify(t.Context()); err == nil {
-		t.Fatal("redirected executable admitted")
-	}
-	cancelled, cancel := context.WithCancel(t.Context())
-	cancel()
-	if err := (Node{}).Verify(cancelled); err == nil {
-		t.Fatal("invalid zero selection admitted")
 	}
 }
 

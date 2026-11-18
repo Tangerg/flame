@@ -29,14 +29,6 @@ func workspaceRefFromPath(path string) *protocol.WorkspaceRef {
 	return &protocol.WorkspaceRef{Path: path}
 }
 
-func workspacePathPatch(ref *protocol.WorkspaceRef) *string {
-	if ref == nil {
-		return nil
-	}
-	path := ref.Path
-	return &path
-}
-
 // wireWorkspaceError is the sole translation from workspace use-case failures
 // to the JSON-RPC error vocabulary. The application never imports protocol.
 func wireWorkspaceError(err error) error {

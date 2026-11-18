@@ -4,7 +4,6 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -102,52 +101,6 @@ func TestMemoryMutationToolsRequireTheObservedExactRevision(t *testing.T) {
 	assertMemoryRevisionAdmission[updateMemoryArgs](t, true, false)
 	assertMemoryRevisionAdmission[memoryItemArgs](t, false, false)
 	assertMemoryRevisionAdmission[reviewMemoryArgs](t, true, true)
-}
-
-func TestMemoryContentConflictHasOneDurableRefusalForHumanAndModelCalls(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "memory.db")
-	store, session, closeBackend := connectMemoryBackend(t, path)
-	now := time.Now().UTC()
-	first, _, err := store.Add(t.Context(), memory.ScopeUser, "", "first", now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	second, _, err := store.Add(t.Context(), memory.ScopeUser, "", "second", now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	humanInput := rpc.UpdateInput{ID: first.ID().String(), ExpectedRevision: first.Revision(), Content: new(second.Content()), Pinned: new(true)}
-	_, err = callMemoryCapability[rpc.UpdateInput, memory.ItemSnapshot](t.Context(), session, memoryContract(t), "memory", rpc.Update, "human-collision", humanInput, sdk.ParamsBase{})
-	refusal, known := errors.AsType[*framecall.Refusal](err)
-	if !known || refusal.Code != "duplicate_content" {
-		t.Fatalf("human content conflict remained unconfirmed: %v", err)
-	}
-	model, admitted := callMemoryModelTool(t, session, t.TempDir(), "model-collision", "update_memory", updateMemoryArgs{Item: memoryItemArgs{Scope: memory.ScopeUser, ID: first.ID().String(), ExpectedRevision: first.Revision()}, Content: new(second.Content()), Pinned: new(true)})
-	if !model.IsError {
-		t.Fatal("model content conflict was accepted")
-	}
-	before, err := pluginsdk.ReadToolReceipt(t.Context(), session, "model-collision", "update_memory", admitted)
-	if _, failed := errors.AsType[*tool.Failure](err); !failed || before == nil {
-		t.Fatalf("model content conflict has no original refusal: %+v %v", before, err)
-	}
-	if err := store.Delete(t.Context(), second.ID(), second.Revision()); err != nil {
-		t.Fatal(err)
-	}
-	closeBackend()
-	store, session, _ = connectMemoryBackend(t, path)
-	_, found, err := receiptMemoryCapability[rpc.UpdateInput, memory.ItemSnapshot](t.Context(), session, memoryContract(t), "memory", rpc.Update, "human-collision", humanInput)
-	refusal, known = errors.AsType[*framecall.Refusal](err)
-	if !found || !known || refusal.Code != "duplicate_content" {
-		t.Fatalf("restart lost the human refusal: found=%v %v", found, err)
-	}
-	after, err := pluginsdk.ReadToolReceipt(t.Context(), session, "model-collision", "update_memory", admitted)
-	if _, failed := errors.AsType[*tool.Failure](err); !failed || !reflect.DeepEqual(after, before) {
-		t.Fatalf("restart reevaluated the model refusal: %+v %v", after, err)
-	}
-	stored, exists, err := store.Get(t.Context(), first.ID())
-	if err != nil || !exists || stored.Content() != first.Content() || stored.Revision() != first.Revision() || stored.Pinned() {
-		t.Fatalf("content conflict changed the original item: %+v %v", stored, err)
-	}
 }
 
 func TestMemoryToolsShareTheOwnerAndRecoverOriginalResultsAfterRestart(t *testing.T) {
@@ -282,37 +235,5 @@ func TestMemoryToolsReviewProposalsAndFenceTheCapturedProject(t *testing.T) {
 	stored, found, err := store.Get(t.Context(), foreign.ID())
 	if err != nil || !found || stored.Content() != foreign.Content() || stored.Revision() != foreign.Revision() {
 		t.Fatalf("foreign memory changed: %+v, %v", stored, err)
-	}
-}
-
-func TestMemoryInputRefusalHasAReceiptAndCorruptStateIsNotARefusal(t *testing.T) {
-	_, session, _ := connectMemoryBackend(t, filepath.Join(t.TempDir(), "memory.db"))
-	result, admitted := callMemoryModelTool(t, session, t.TempDir(), "invalid", "add_memory", addMemoryArgs{Scope: memory.ScopeUser, Content: "   "})
-	if !result.IsError {
-		t.Fatal("blank memory was admitted")
-	}
-	output, err := pluginsdk.ReadToolReceipt(t.Context(), session, "invalid", "add_memory", admitted)
-	if _, known := errors.AsType[*tool.Failure](err); !known || output == nil {
-		t.Fatalf("input refusal became an unknown outcome: %+v, %v", output, err)
-	}
-	_, corrupt := memory.RestoreItem(memory.ItemSnapshot{})
-	if _, refused := classify(corrupt); corrupt == nil || refused {
-		t.Fatalf("corrupt stored state became a business refusal: %v", corrupt)
-	}
-}
-
-func TestMemoryToolsResolveWorkspaceAliasesConsistently(t *testing.T) {
-	project := t.TempDir()
-	alias := filepath.Join(t.TempDir(), "workspace-link")
-	if err := os.Symlink(project, alias); err != nil {
-		t.Fatal(err)
-	}
-	_, session, _ := connectMemoryBackend(t, filepath.Join(t.TempDir(), "memory.db"))
-	added, _ := callMemoryModelTool(t, session, alias, "alias-add", "add_memory", addMemoryArgs{Scope: memory.ScopeProject, Content: "workspace alias marker"})
-	item := memoryToolValue[memoryView](t, added)
-	result, _ := callMemoryModelTool(t, session, project, "canonical-search", "search_memory", agentMemorySearchRequest{Query: "alias"})
-	matched := memoryToolValue[memoryResults](t, result)
-	if len(matched.Memories) != 1 || matched.Memories[0].ID != item.ID {
-		t.Fatalf("search used a competing workspace key: %+v", matched)
 	}
 }

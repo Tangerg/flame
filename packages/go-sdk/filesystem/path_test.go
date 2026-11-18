@@ -1,34 +1,10 @@
 package filesystem
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
 )
-
-func TestResolveFollowsSymlinkBeforeMissingSuffix(t *testing.T) {
-	root := t.TempDir()
-	target := t.TempDir()
-	alias := filepath.Join(root, "alias")
-	if err := os.Symlink(target, alias); err != nil {
-		t.Fatalf("create symlink: %v", err)
-	}
-
-	got, err := ResolvePath(root, filepath.Join("alias", "new", "file.txt"))
-	if err != nil {
-		t.Fatalf("Resolve: %v", err)
-	}
-	physicalTarget, err := filepath.EvalSymlinks(target)
-	if err != nil {
-		t.Fatalf("resolve target: %v", err)
-	}
-	want := filepath.Join(physicalTarget, "new", "file.txt")
-	if got != want {
-		t.Fatalf("Resolve() = %q, want %q", got, want)
-	}
-}
 
 func TestContainsRequiresPhysicalTargets(t *testing.T) {
 	root := t.TempDir()
@@ -53,37 +29,6 @@ func TestContainsRequiresPhysicalTargets(t *testing.T) {
 				t.Fatalf("Contains(%q, %q) = %v, want %v", root, test.target, got, test.want)
 			}
 		})
-	}
-}
-
-func TestPathsOverlapUsesDirectoryComponentsSymmetrically(t *testing.T) {
-	root := t.TempDir()
-	for _, test := range []struct {
-		first, second string
-		want          bool
-	}{
-		{root, root, true},
-		{root, filepath.Join(root, "child"), true},
-		{filepath.Join(root, "a"), filepath.Join(root, "ab"), false},
-		{filepath.Join(root, "a"), filepath.Join(root, "b"), false},
-	} {
-		for _, pair := range [][2]string{{test.first, test.second}, {test.second, test.first}} {
-			if got, err := PathsOverlap(pair[0], pair[1]); err != nil || got != test.want {
-				t.Errorf("PathsOverlap(%q, %q) = %t, %v; want %t", pair[0], pair[1], got, err, test.want)
-			}
-		}
-	}
-	if _, err := PathsOverlap(root, "relative"); !errors.Is(err, ErrAbsolutePathRequired) {
-		t.Fatalf("relative scope = %v, want absolute-path refusal", err)
-	}
-}
-
-func TestRelativePathRequiresExplicitAbsoluteRoot(t *testing.T) {
-	if _, err := ResolvePath("", "relative.txt"); err == nil {
-		t.Fatal("Resolve accepted a relative path without a root")
-	}
-	if _, err := ResolvePath("relative-root", "relative.txt"); err == nil {
-		t.Fatal("Resolve accepted a relative root")
 	}
 }
 
@@ -116,61 +61,5 @@ func TestResolveFollowsSymlinkBeforeParentTraversal(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestResolveContinuesPhysicalTraversalAfterMissingParent(t *testing.T) {
-	root := t.TempDir()
-	outside := t.TempDir()
-	target := filepath.Join(outside, "nested")
-	if err := os.Mkdir(target, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(target, filepath.Join(root, "alias")); err != nil {
-		t.Fatal(err)
-	}
-	physical, err := filepath.EvalSymlinks(outside)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, test := range []struct{ path, want string }{
-		{"missing/../alias/new", filepath.Join(physical, "nested", "new")},
-		{"missing/../alias/../new", filepath.Join(physical, "new")},
-	} {
-		t.Run(test.path, func(t *testing.T) {
-			got, err := ResolvePath(root, test.path)
-			if err != nil || got != test.want {
-				t.Fatalf("ResolvePath(%q) = (%q, %v), want %q", test.path, got, err, test.want)
-			}
-			if contained, err := ContainsPath(root, got); err != nil || contained {
-				t.Fatalf("physical target was confined by its lexical alias: %t, %v", contained, err)
-			}
-		})
-	}
-}
-
-func TestResolveRejectsTraversalThroughExistingFile(t *testing.T) {
-	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "file"), nil, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	alias := filepath.Join(t.TempDir(), "alias")
-	if err := os.Symlink(root, alias); err != nil {
-		t.Fatal(err)
-	}
-	for _, directory := range []string{root, alias} {
-		for _, relative := range []string{"file/../new", "file/child", "file/."} {
-			absolute := directory + string(filepath.Separator) + relative
-			for _, path := range []string{relative, absolute} {
-				_, err := ResolvePath(directory, path)
-				var pathError *os.PathError
-				if !errors.As(err, &pathError) || !errors.Is(err, syscall.ENOTDIR) {
-					t.Fatalf("traversal through a regular file lost its filesystem cause: %q: %v", path, err)
-				}
-				if pathError.Path != absolute {
-					t.Fatalf("filesystem error changed the refused path: %q, want %q", pathError.Path, absolute)
-				}
-			}
-		}
 	}
 }

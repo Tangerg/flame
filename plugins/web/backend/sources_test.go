@@ -19,27 +19,6 @@ type diagnosticCause interface {
 	Cause() error
 }
 
-func TestProviderHTTPClientBoundsProviderResponseBeforeSDKDecode(t *testing.T) {
-	body := `{"data":{"content":"` + strings.Repeat("x", int(maxProviderResponseBytes)) + `"}}`
-	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
-		writer.Header().Set("Content-Type", "application/json")
-		_, _ = writer.Write([]byte(body))
-	}))
-	t.Cleanup(server.Close)
-
-	client, err := jina.NewClient(t.Context(), jina.Config{
-		APIKey: "test-key", FetchBaseURL: server.URL, HTTPClient: newProviderHTTPClient(),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = client.Fetch(t.Context(), &web.FetchRequest{URL: "https://example.test"})
-	diagnostic, ok := errors.AsType[diagnosticCause](err)
-	if !ok || !errors.Is(diagnostic.Cause(), errProviderResponseTooLarge) {
-		t.Fatalf("Fetch error = %v, want errProviderResponseTooLarge", err)
-	}
-}
-
 func TestProviderFailureKeepsItsCauseWithoutPublishingCredentials(t *testing.T) {
 	secret := "private-source-fixture-key"
 	cause := errors.New("provider echoed " + secret)

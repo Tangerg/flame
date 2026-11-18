@@ -3,8 +3,9 @@ package terminal
 import (
 	"context"
 	"fmt"
-	"github.com/Tangerg/oolong/ui/core/text"
 	"strings"
+
+	"github.com/Tangerg/oolong/ui/core/text"
 
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/keymap"
@@ -37,10 +38,6 @@ func (s *transcriptSearch) Close() {
 	if s.worker != nil {
 		s.worker.Close()
 	}
-}
-
-func (s *transcriptSearch) presentation() ([]base.Match, int) {
-	return s.matches, s.current
 }
 
 func (s *transcriptSearch) Find(view *transcriptView, query string) {

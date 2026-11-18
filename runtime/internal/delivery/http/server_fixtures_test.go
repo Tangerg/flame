@@ -3,16 +3,13 @@ package http_test
 import (
 	"bytes"
 	"context"
-	json "encoding/json/v2"
 	netHTTP "net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -20,8 +17,7 @@ const testRuntimeInstanceID = testsupport.RuntimeInstanceID
 
 // fakeRuntime implements only the operations exercised by transport tests.
 type fakeRuntime struct {
-	canceledRuns   []string
-	gotLastEventID string
+	canceledRuns []string
 }
 
 func (f *fakeRuntime) Discover(context.Context) (*protocol.DiscoverResponse, error) {
@@ -66,12 +62,6 @@ func validTestCapabilities() protocol.ServerCapabilities {
 	}
 }
 
-func newTestServer(t *testing.T) (*httptest.Server, *fakeRuntime) {
-	t.Helper()
-	api := &fakeRuntime{}
-	return newTestServerFor(t, api), api
-}
-
 func newTestEndpoint(t *testing.T, target any, config delivery.EndpointConfig) *delivery.Endpoint {
 	t.Helper()
 	config.Lifetime = t.Context()
@@ -92,39 +82,6 @@ func newTestEndpoint(t *testing.T, target any, config delivery.EndpointConfig) *
 		t.Fatal(err)
 	}
 	return endpoint
-}
-
-// newTestServerFor serves a caller-supplied Runtime through the same config, so a
-// test that needs a different fake still exercises one server setup.
-func newTestServerFor(t *testing.T, api any) *httptest.Server {
-	t.Helper()
-	srv, err := flamehttp.NewServer(flamehttp.Config{
-		Endpoint:       newTestEndpoint(t, api, delivery.EndpointConfig{IdempotencyNamespace: testsupport.IdempotencyNamespace}),
-		Addr:           "127.0.0.1:0",
-		ServerInfo:     protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
-		Authentication: flamehttp.LoopbackOnlyAuthentication(),
-	})
-	if err != nil {
-		t.Fatalf("NewServer: %v", err)
-	}
-	return httptest.NewServer(srv.Handler())
-}
-
-// decodeErrorCode reads a JSON-RPC error envelope and returns its code.
-func decodeErrorCode(t *testing.T, resp *netHTTP.Response) int {
-	t.Helper()
-	var env struct {
-		Error *struct {
-			Code int `json:"code"`
-		} `json:"error"`
-	}
-	if err := json.UnmarshalRead(resp.Body, &env); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if env.Error == nil {
-		t.Fatalf("expected an error envelope, got none")
-	}
-	return env.Error.Code
 }
 
 // readBody reads the response body into a string for diagnostic t.Fatalf

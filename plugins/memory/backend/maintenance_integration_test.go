@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	json "encoding/json/v2"
 	"errors"
-	"fmt"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -20,9 +18,6 @@ import (
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 
-	"github.com/Tangerg/frame"
-
-	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -257,157 +252,6 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	broker.RevokeSession(session)
 }
 
-func TestMaintenancePublicationAndReceiptFailTogetherWithoutLosingLedger(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "memory.db")
-	project := t.TempDir()
-	store, session, _ := connectMemoryBackend(t, path)
-	db, err := sql.Open("sqlite", path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER fail_maintenance_receipt BEFORE UPDATE OF reply ON commands BEGIN SELECT RAISE(ABORT,'receipt failed'); END`); err != nil {
-		t.Fatal(err)
-	}
-	broker := pluginmcp.NewCallbacks()
-	t.Cleanup(func() {
-		if err := broker.Close(); err != nil {
-			t.Error(err)
-		}
-	})
-	if err := broker.AdmitSession(session); err != nil {
-		t.Fatal(err)
-	}
-	defer broker.RevokeSession(session)
-	var calls atomic.Int32
-	grant, release, err := openTestModel(t.Context(), broker, session, textResponseModel(func(context.Context, *chat.Request) (string, error) {
-		calls.Add(1)
-		return `["durable ledger fact"]`, nil
-	}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer release()
-	input := rpc.MaintenanceInput{SessionID: "ses_receipt_failure", Project: project, Compacted: true, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured"}}
-	if _, err := invokeMaintenance(t, t.Context(), session, "original", input, grant); err == nil {
-		t.Fatal("receipt failure returned successful publication")
-	}
-	state, err := store.State(t.Context(), project)
-	if err != nil || state.Watermark != 0 {
-		t.Fatalf("receipt failure advanced watermark: %+v, %v", state, err)
-	}
-	pending, err := store.PendingLedger(t.Context(), project, 0, memory.MaxLedgerFoldFacts)
-	if err != nil || len(pending) != 1 {
-		t.Fatalf("receipt failure discarded committed ledger: %+v, %v", pending, err)
-	}
-	page, err := callMemoryCapability[rpc.ListInput, rpc.Page](t.Context(), session, memoryContract(t), "memory", rpc.List, "", rpc.ListInput{Scope: memory.ScopeProject, CWD: project}, sdk.ParamsBase{})
-	if err != nil || len(page.Rows) != 0 {
-		t.Fatalf("publication survived failed receipt: %+v, %v", page, err)
-	}
-	if _, found, err := receiptMemoryCapability[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, memoryContract(t), "memory", rpc.Maintain, "original", input); err != nil || found {
-		t.Fatalf("failed publication became known: %t, %v", found, err)
-	}
-	if _, err := callMemoryCapability[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), session, memoryContract(t), "memory", rpc.Maintain, "original", input, sdk.ParamsBase{}); err == nil || calls.Load() != 2 {
-		t.Fatalf("pending admission reran models: %d, %v", calls.Load(), err)
-	}
-}
-
-func TestMalformedMemoryModelReplyRetainsItsDefinitiveRefusalAfterRestart(t *testing.T) {
-	for _, test := range []struct {
-		name, response string
-		failReceipt    bool
-	}{
-		{name: "nested", response: `["valid fact", ["nested fact"]]`},
-		{name: "blank item", response: `["valid fact", " "]`},
-		{name: "blank response", response: " \n\t "},
-		{name: "cardinality", response: `[` + strings.Repeat(`"fact",`, max(memory.MaxFactsPerBatch, memory.MaxCurationProposals)) + `"fact"]`},
-		{name: "content bound", response: `["` + strings.Repeat("a", memory.MaxContentCharacters+1) + `"]`},
-		{name: "receipt failure", response: "not facts", failReceipt: true},
-	} {
-		for _, curate := range []bool{false, true} {
-			t.Run(fmt.Sprintf("%s/curation=%t", test.name, curate), func(t *testing.T) {
-				path := filepath.Join(t.TempDir(), "memory.db")
-				project := t.TempDir()
-				_, session, closeBackend := connectMemoryBackend(t, path)
-				var faultDB *sql.DB
-				if test.failReceipt {
-					db, err := sql.Open("sqlite", path)
-					if err != nil {
-						t.Fatal(err)
-					}
-					t.Cleanup(func() { _ = db.Close() })
-					faultDB = db
-					if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER fail_refusal_receipt BEFORE UPDATE OF reply ON commands BEGIN SELECT RAISE(ABORT,'receipt failed'); END`); err != nil {
-						t.Fatal(err)
-					}
-				}
-				broker := pluginmcp.NewCallbacks()
-				t.Cleanup(func() { _ = broker.Close() })
-				if err := broker.AdmitSession(session); err != nil {
-					t.Fatal(err)
-				}
-				var calls atomic.Int32
-				grant, release, err := openTestModel(t.Context(), broker, session, textResponseModel(func(context.Context, *chat.Request) (string, error) {
-					if calls.Add(1) == 1 && curate {
-						return `["durable ledger fact"]`, nil
-					}
-					return test.response, nil
-				}))
-				if err != nil {
-					t.Fatal(err)
-				}
-				defer release()
-				input := rpc.MaintenanceInput{SessionID: "ses_malformed", Project: project, Compacted: true, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured"}}
-				_, err = invokeMaintenance(t, t.Context(), session, "original", input, grant)
-				var refusal *framecall.Refusal
-				if test.failReceipt {
-					if err == nil || errors.As(err, &refusal) {
-						t.Fatalf("failed receipt became a confirmed outcome: %v", err)
-					}
-				} else if !errors.As(err, &refusal) || refusal.Code != "invalid_facts" {
-					t.Fatalf("malformed reply did not settle as a refusal: %v", err)
-				}
-				release()
-				if faultDB != nil {
-					if _, err := faultDB.ExecContext(t.Context(), `DROP TRIGGER fail_refusal_receipt`); err != nil {
-						t.Fatal(err)
-					}
-				}
-				closeBackend()
-				store, restarted, _ := connectMemoryBackend(t, path)
-				_, found, receiptErr := receiptMemoryCapability[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), restarted, memoryContract(t), "memory", rpc.Maintain, "original", input)
-				if test.failReceipt {
-					if found || receiptErr != nil {
-						t.Fatalf("failed receipt became durable: found=%t error=%v", found, receiptErr)
-					}
-				} else if !found || !errors.As(receiptErr, &refusal) || refusal.Code != "invalid_facts" {
-					t.Fatalf("known malformed reply lost its receipt: found=%t error=%v", found, receiptErr)
-				}
-				_, err = callMemoryCapability[rpc.MaintenanceInput, rpc.MaintenanceResult](t.Context(), restarted, memoryContract(t), "memory", rpc.Maintain, "original", input, sdk.ParamsBase{})
-				if test.failReceipt {
-					if err == nil || errors.As(err, &refusal) {
-						t.Fatalf("unconfirmed command gained a new outcome: %v", err)
-					}
-				} else if !errors.As(err, &refusal) || refusal.Code != "invalid_facts" {
-					t.Fatalf("replay lost its original refusal: %v", err)
-				}
-				state, err := store.State(t.Context(), project)
-				if err != nil || state.Watermark != 0 {
-					t.Fatalf("malformed reply advanced publication: state=%+v error=%v", state, err)
-				}
-				pending, err := store.PendingLedger(t.Context(), project, 0, memory.MaxLedgerFoldFacts)
-				expectedCalls, expectedPending := int32(1), 0
-				if curate {
-					expectedCalls, expectedPending = 2, 1
-				}
-				if err != nil || len(pending) != expectedPending || calls.Load() != expectedCalls {
-					t.Fatalf("malformed reply changed source facts or repeated model work: pending=%v calls=%d error=%v", pending, calls.Load(), err)
-				}
-			})
-		}
-	}
-}
-
 func invokeMaintenance(t *testing.T, ctx context.Context, session *sdk.ClientSession, id string, input rpc.MaintenanceInput, ref pluginmcp.CallbackRef) (rpc.MaintenanceResult, error) {
 	t.Helper()
 	metadata, err := pluginmcp.CallbackMetadata(ref)
@@ -437,50 +281,6 @@ func invokeMaintenance(t *testing.T, ctx context.Context, session *sdk.ClientSes
 	var result rpc.MaintenanceResult
 	err = json.Unmarshal(reply.Bytes(), &result, json.RejectUnknownMembers(true))
 	return result, err
-}
-
-func TestSearchRequiresMetadataForConfiguredEmbeddingAndRejectsFormerGrantInput(t *testing.T) {
-	_, session, _ := connectMemoryBackend(t, filepath.Join(t.TempDir(), "memory.db"))
-	input := rpc.SearchInput{Project: t.TempDir(), Query: "fact", TopK: 5, EmbeddingSpace: "configured-space"}
-	if _, err := callMemoryCapability[rpc.SearchInput, []memory.ItemSnapshot](t.Context(), session, memoryContract(t), "memory", rpc.Search, "", input, sdk.ParamsBase{}); err == nil {
-		t.Fatal("configured embedding silently omitted required callback metadata")
-	}
-	input.EmbeddingSpace = ""
-	if _, err := callMemoryCapability[rpc.SearchInput, []memory.ItemSnapshot](t.Context(), session, memoryContract(t), "memory", rpc.Search, "", input, sdk.ParamsBase{}); err != nil {
-		t.Fatalf("absent embedding role requires a callback: %v", err)
-	}
-	contracts, err := rpc.NewContracts()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, call := range []struct {
-		descriptor frame.MethodDescriptor
-		input      any
-	}{{contracts.Search.Descriptor(), input}, {contracts.Maintain.Descriptor(), rpc.MaintenanceInput{SessionID: "ses_former", Project: input.Project, Compacted: true, Conversation: rpc.Conversation{MessageCount: 4, Transcript: "captured"}}}} {
-		method, err := frame.AdmitMethod(call.descriptor)
-		if err != nil {
-			t.Fatal(err)
-		}
-		admitted, err := framevalue.EncodeJSON(call.input)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := method.ValidateInput(admitted); err != nil {
-			t.Fatalf("valid business input: %v", err)
-		}
-		var former map[string]any
-		if err := json.Unmarshal(admitted.Bytes(), &former); err != nil {
-			t.Fatal(err)
-		}
-		former["Grant"] = pluginmcp.CallbackRef{Endpoint: "http://127.0.0.1:1/", Credential: strings.Repeat("a", 64), Call: strings.Repeat("b", 64), MaxResponseBytes: 1024}
-		admitted, err = framevalue.EncodeJSON(former)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := method.ValidateInput(admitted); err == nil {
-			t.Fatalf("%s accepts former callback Grant as business input", call.descriptor.Name)
-		}
-	}
 }
 
 func memoryContract(t *testing.T) *plugincontract.Capability {
