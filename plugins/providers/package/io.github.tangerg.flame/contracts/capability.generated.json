@@ -2127,7 +2127,7 @@
       "name": "flame.model-provider/stream.v1",
       "kind": "command",
       "target": "installation",
-      "description": "Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange.",
+      "description": "Stream the original provider deltas and bind their complete response to the final receipt.",
       "input": {
         "$defs": {
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q2hhdFJlcXVlc3Q": {
@@ -2572,12 +2572,6 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
-            "type": "string"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Q2hhdFJlc3VsdA": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFJlc3VsdFByb2plY3Rpb24"
-          },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RmFpbHVyZQ": {
             "additionalProperties": false,
             "properties": {
@@ -2617,352 +2611,25 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.Y2hhdFJlc3VsdFByb2plY3Rpb24": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.U3RyZWFtUmVjZWlwdA": {
             "additionalProperties": false,
             "properties": {
               "failure": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RmFpbHVyZQ"
               },
-              "response": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVzcG9uc2U"
+              "responseDigest": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.RGlnZXN0"
               }
             },
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVzcG9uc2U": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VQcm9qZWN0aW9u"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.YmxvY2tQcm9qZWN0aW9u": {
-            "additionalProperties": false,
-            "properties": {
-              "citations": {
-                "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24"
-                },
-                "type": "array"
-              },
-              "kind": {
-                "type": "string"
-              },
-              "media": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u"
-              },
-              "metadata": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw"
-              },
-              "text": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.b3V0cHV0UHJvamVjdGlvbg": {
-            "additionalProperties": false,
-            "properties": {
-              "finish_reason": {
-                "type": "string"
-              },
-              "message": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVzc2FnZVByb2plY3Rpb24"
-              }
-            },
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u": {
-            "additionalProperties": false,
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "metadata": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw"
-              },
-              "mime": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              },
-              "source": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFTb3VyY2VQcm9qZWN0aW9u"
-              }
-            },
-            "required": [
-              "source"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFTb3VyY2VQcm9qZWN0aW9u": {
-            "additionalProperties": false,
-            "properties": {
-              "bytes": {
-                "type": "string"
-              },
-              "kind": {
-                "type": "string"
-              },
-              "ref": {
-                "type": "string"
-              },
-              "uri": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVzc2FnZVByb2plY3Rpb24": {
-            "additionalProperties": false,
-            "properties": {
-              "metadata": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw"
-              },
-              "parts": {
-                "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cGFydFByb2plY3Rpb24"
-                },
-                "type": "array"
-              },
-              "role": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "role",
-              "parts"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cGFydFByb2plY3Rpb24": {
-            "additionalProperties": false,
-            "properties": {
-              "citations": {
-                "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24"
-                },
-                "type": "array"
-              },
-              "kind": {
-                "type": "string"
-              },
-              "media": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.bWVkaWFQcm9qZWN0aW9u"
-              },
-              "metadata": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw"
-              },
-              "reasoning_state": {
-                "type": "string"
-              },
-              "text": {
-                "type": "string"
-              },
-              "tool_call": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENhbGw"
-              },
-              "tool_result": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbFJlc3VsdFByb2plY3Rpb24"
-              }
-            },
-            "required": [
-              "kind"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VNZXRhZGF0YVByb2plY3Rpb24": {
-            "additionalProperties": false,
-            "properties": {
-              "created_at": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
-              },
-              "extra": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw"
-              },
-              "id": {
-                "type": "string"
-              },
-              "model": {
-                "type": "string"
-              },
-              "usage": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VXNhZ2U"
-              }
-            },
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VQcm9qZWN0aW9u": {
-            "additionalProperties": false,
-            "properties": {
-              "metadata": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.cmVzcG9uc2VNZXRhZGF0YVByb2plY3Rpb24"
-              },
-              "output": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.b3V0cHV0UHJvamVjdGlvbg"
-              }
-            },
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbE91dHB1dFByb2plY3Rpb24": {
-            "additionalProperties": false,
-            "properties": {
-              "content": {
-                "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.YmxvY2tQcm9qZWN0aW9u"
-                },
-                "type": "array"
-              },
-              "details": true
-            },
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbFJlc3VsdFByb2plY3Rpb24": {
-            "additionalProperties": false,
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "is_error": {
-                "type": "boolean"
-              },
-              "name": {
-                "type": "string"
-              },
-              "output": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.dG9vbE91dHB1dFByb2plY3Rpb24"
-              }
-            },
-            "required": [
-              "id",
-              "name",
-              "output"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb24": {
-            "additionalProperties": false,
-            "properties": {
-              "quote": {
-                "type": "string"
-              },
-              "source": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb25Tb3VyY2U"
-              },
-              "title": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "source"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY29udGVudA.Q2l0YXRpb25Tb3VyY2U": {
-            "additionalProperties": false,
-            "properties": {
-              "kind": {
-                "type": "string"
-              },
-              "value": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "kind",
-              "value"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VG9vbENhbGw": {
-            "additionalProperties": false,
-            "properties": {
-              "arguments": {
-                "type": "string"
-              },
-              "id": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "name"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VXNhZ2U": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZVVzYWdl"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.d2lyZVVzYWdl": {
-            "additionalProperties": false,
-            "properties": {
-              "cache_read_input_tokens": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              },
-              "cache_write_input_tokens": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              },
-              "input_tokens": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              },
-              "output_tokens": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              },
-              "reasoning_tokens": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              }
-            },
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.TWFw": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.d2lyZU1hcA"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvbWV0YWRhdGE.d2lyZU1hcA": {
-            "oneOf": [
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.RGlnZXN0": {
+            "allOf": [
               {
-                "type": "null"
-              },
-              {
-                "additionalProperties": true,
-                "type": "object"
+                "pattern": "^[0-9a-f]{64}$"
               }
-            ]
+            ],
+            "type": "string"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2971,8 +2638,8 @@
           "failure": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9wbHVnaW4vbW9kZWxwcm92aWRlcg.RmFpbHVyZQ"
           },
-          "response": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9zY29wZXdpcmU.UmVzcG9uc2U"
+          "responseDigest": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.RGlnZXN0"
           }
         },
         "type": "object"

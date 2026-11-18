@@ -6,12 +6,16 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -245,5 +249,101 @@ func TestModelEndpointAccountingFollowsDispatchEvidence(t *testing.T) {
 				t.Fatalf("upstream received a generation request = %t, want %t", dispatched, wantDispatch)
 			}
 		})
+	}
+}
+
+func TestInstalledModelStreamRequiresMatchingReceipt(t *testing.T) {
+	const providerID = "openai-compatible"
+	stream, err := modelprovider.StreamMethod()
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(t.TempDir(), "providers")
+	if err := os.CopyFS(source, os.DirFS(filepath.Join(firstPartyPackages, "providers"))); err != nil {
+		t.Fatal(err)
+	}
+	const probe = "./bin/response-probe"
+	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-o", filepath.Join(source, probe), "./testdata/managed-message-loss")
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build provider response probe: %v: %s", err, output)
+	}
+	receipt, err := modelprovider.NewStreamReceipt(completedTextResponse("different response"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replacement, err := pluginmcp.EncodeReply(receipt, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replyFile := filepath.Join(t.TempDir(), "replacement.json")
+	if err := os.WriteFile(replyFile, replacement.Bytes(), 0600); err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := json.Marshal(map[string]any{
+		"$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+		"mcpServers": map[string]any{"providers": map[string]any{
+			"type": "stdio", "command": probe, "args": []string{replyFile, "./bin/providers", stream.Descriptor().Name, "", "replace-response"},
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(source, "mcp.json"), manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+	authorPluginPackage(t, source)
+	var dispatched atomic.Int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		dispatched.Add(1)
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = fmt.Fprint(w, "data: {\"id\":\"stream\",\"model\":\"model-test\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"delivered response\"},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":5,\"completion_tokens\":2,\"total_tokens\":7}}\n\ndata: [DONE]\n\n")
+	}))
+	t.Cleanup(upstream.Close)
+	cfg := poMCPConfig(t)
+	cfg.modelProviders = nil
+	cfg.defaultSelection = testsupport.MustModelSelection(providerID, "model-test")
+	cfg.maintenance = noMaintenance{}
+	runtime := poMCPOpen(t, cfg)
+	installed := runtime.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-provider").(*protocol.PluginInstallation)
+	runtime.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-provider")
+	runtime.must(delivery.PluginsSelectProvider, protocol.SelectPluginProviderRequest{
+		Role: extension.ModelProviderRole(providerID), InstallationID: installed.ID, Contribution: "model-provider",
+	}, "select-provider")
+	runtime.must(delivery.ProvidersUpdate, protocol.UpdateProviderRequest{
+		Provider: providerID,
+		APIKey:   &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: new("test-key")},
+		BaseURL:  &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: &upstream.URL},
+	}, "configure-provider")
+	ctx := protocolLifecycleContext(t.Context())
+	session, err := runtime.api.CreateSession(ctx, protocol.CreateSessionRequest{Title: "Mismatched stream receipt"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	started, events, err := runtime.api.StartRun(ctx, protocol.StartRunRequest{
+		SessionID: session.ID,
+		Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Answer the question."}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForRunEvents(t, collectRunEvents(events), "inconsistent provider stream to settle")
+	settled, err := runtime.api.GetRun(ctx, protocol.GetRunRequest{RunID: started.RunID})
+	if err != nil || settled.Status != protocol.RunStatusFinished || settled.Outcome == nil || settled.Outcome.Type != protocol.OutcomeFailed {
+		t.Fatalf("Run accepted an inconsistent receipt: %+v, %v", settled, err)
+	}
+	if dispatched.Load() != 1 || settled.Metrics.Steps != 1 || len(settled.Outcome.UnresolvedEffects) != 1 {
+		t.Fatalf("dispatches = %d, metrics = %+v, outcome = %+v", dispatched.Load(), settled.Metrics, settled.Outcome)
+	}
+	calls, err := runtime.api.ListModelInvocations(ctx, protocol.ListModelInvocationsRequest{RunID: started.RunID})
+	if err != nil || len(calls.Data) != 1 || calls.Data[0].State != protocol.ModelInvocationFailed || calls.Data[0].KnownResponse != "" {
+		t.Fatalf("logical Model calls = %+v, %v", calls, err)
+	}
+	endpoints, err := runtime.api.ListModelEndpoints(ctx, protocol.ListModelEndpointsRequest{ParentCallID: calls.Data[0].CallID})
+	if err != nil || len(endpoints.Data) != 1 {
+		t.Fatalf("physical endpoints = %+v, %v", endpoints, err)
+	}
+	endpoint := endpoints.Data[0]
+	if endpoint.State != protocol.ModelInvocationUnknown || endpoint.Response != "" || !strings.Contains(endpoint.Failure, "stream receipt disagrees with delivered response") {
+		t.Fatalf("physical endpoint accepted unconfirmed output: %+v", endpoint)
 	}
 }

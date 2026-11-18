@@ -22,6 +22,8 @@ import (
 	"syscall"
 )
 
+const replaceResponse = "replace-response"
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -30,8 +32,8 @@ func main() {
 }
 
 func run() (err error) {
-	if len(os.Args) != 6 || (os.Args[5] != "request" && os.Args[5] != "response" && os.Args[5] != "durable") {
-		return fmt.Errorf("message loss probe requires evidence, backend, method, tool and request or response stage")
+	if len(os.Args) != 6 || (os.Args[5] != "request" && os.Args[5] != "response" && os.Args[5] != "durable" && os.Args[5] != replaceResponse) {
+		return fmt.Errorf("message probe requires a file, backend, method, tool and fault mode")
 	}
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
@@ -165,12 +167,23 @@ func run() (err error) {
 				<-ctx.Done()
 				return context.Cause(ctx)
 			}
-			withheld, err := withhold(request.(jsontext.Value), line)
-			if err != nil {
-				return err
-			}
-			if withheld {
-				return errors.New("message loss probe withheld committed response")
+			if os.Args[5] == replaceResponse {
+				replacement, err := os.ReadFile(os.Args[1])
+				if err != nil {
+					return err
+				}
+				line, err = replaceReply(line, replacement)
+				if err != nil {
+					return err
+				}
+			} else {
+				withheld, err := withhold(request.(jsontext.Value), line)
+				if err != nil {
+					return err
+				}
+				if withheld {
+					return errors.New("message loss probe withheld committed response")
+				}
 			}
 		}
 		if _, err := fmt.Fprintln(os.Stdout, string(line)); err != nil {
@@ -230,6 +243,10 @@ func receiptFault(stage string, response []byte) ([]byte, error) {
 	default:
 		return response, nil
 	}
+	return replaceReply(response, result)
+}
+
+func replaceReply(response []byte, result jsontext.Value) ([]byte, error) {
 	var envelope map[string]jsontext.Value
 	if err := json.Unmarshal(response, &envelope); err != nil {
 		return nil, err

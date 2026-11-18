@@ -173,32 +173,49 @@ func (p *streamingProviderChat) Stream(ctx context.Context, request *chat.Reques
 		}
 		input := modelprovider.ChatRequest{Handle: p.use.handle, Request: *request}
 		limits := pluginmcp.CallbackLimits{MaxRequestBytes: sdk.DefaultMaxLineLength, MaxResponseBytes: sdk.DefaultMaxLineLength}
-		chunks, complete := 0, false
+		var received chat.ResponseAccumulator
+		var terminal *chat.ResponseDelta
 		for value, err := range method.StreamWithMetadata(borrowed.Context(), binding, p.use.owner.config.Callbacks, limits, pluginmcp.CommandID(caller.ID), input, sdk.ParamsBase{}) {
 			if err != nil {
 				sender.fail(unconfirmedProvider(err))
 				return
 			}
 			if value.Chunk != nil {
-				chunks++
-				if !sender.send((*chat.ResponseDelta)(value.Chunk).Clone(), nil) {
+				delta := (*chat.ResponseDelta)(value.Chunk)
+				if err := received.Add(delta); err != nil {
+					sender.fail(unconfirmedProvider(err))
+					return
+				}
+				if delta.FinishReason != "" {
+					// A consumer can promote the generation as soon as it sees
+					// this delta. First confirm the exact durable outcome.
+					terminal = delta
+					continue
+				}
+				if !sender.send(delta.Clone(), nil) {
 					return
 				}
 				continue
 			}
-			if value.Result == nil {
-				sender.fail(unconfirmedProvider(errors.New("model provider: missing stream outcome")))
+			var response *chat.Response
+			if terminal != nil {
+				response, err = received.Response()
+				if err != nil {
+					sender.fail(unconfirmedProvider(err))
+					return
+				}
+			}
+			if err := value.Result.VerifyResponse(response); err != nil {
+				sender.fail(unconfirmedProvider(err))
 				return
 			}
-			complete = true
-			if err := errors.Join(value.Result.Validate(), providerFailure(value.Result.Failure)); err != nil {
-				sender.fail(err)
+			if terminal != nil && !sender.send(terminal, nil) {
 				return
 			}
+			sender.fail(providerFailure(value.Result.Failure))
+			return
 		}
-		if !complete || chunks == 0 {
-			sender.fail(unconfirmedProvider(errors.New("model provider: original stream delivery is unconfirmed")))
-		}
+		sender.fail(unconfirmedProvider(errors.New("model provider: missing stream outcome")))
 	}
 }
 

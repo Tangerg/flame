@@ -407,9 +407,9 @@ var callMethod = declaredMethod(pluginmcp.NewMethod[ChatRequest, ChatResult], fr
 
 func CallMethod() (*pluginmcp.Method[ChatRequest, ChatResult], error) { return callMethod() }
 
-var streamMethod = declaredMethod(pluginmcp.NewStreamingMethod[ChatRequest, scopewire.ResponseDelta, ChatResult], frame.MethodConfig{Name: "flame.model-provider/stream.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange."})
+var streamMethod = declaredMethod(pluginmcp.NewStreamingMethod[ChatRequest, scopewire.ResponseDelta, StreamReceipt], frame.MethodConfig{Name: "flame.model-provider/stream.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Stream the original provider deltas and bind their complete response to the final receipt."})
 
-func StreamMethod() (*pluginmcp.StreamingMethod[ChatRequest, scopewire.ResponseDelta, ChatResult], error) {
+func StreamMethod() (*pluginmcp.StreamingMethod[ChatRequest, scopewire.ResponseDelta, StreamReceipt], error) {
 	return streamMethod()
 }
 

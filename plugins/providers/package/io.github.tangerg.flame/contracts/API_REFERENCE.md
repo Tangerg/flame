@@ -13,7 +13,7 @@ Generated from the feature's Go-owned method contracts.
 | `flame.model-provider/profiles.v1` | query | installation | Read this installed adapter's provider policies and published model facts. |
 | `flame.model-provider/remote-models.v1` | query | installation | Read model identities from the exact configured provider endpoint. |
 | `flame.model-provider/reopen-chat.v1` | command | installation | Reconstruct a fresh client from the original confirmed open receipt, without reading current credentials or authorizing generation. |
-| `flame.model-provider/stream.v1` | command | installation | Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange. Stream chunks: schema.json#/$defs/StreamV1Chunk; final result: schema.json#/$defs/StreamV1Output. |
+| `flame.model-provider/stream.v1` | command | installation | Stream the original provider deltas and bind their complete response to the final receipt. Stream chunks: schema.json#/$defs/StreamV1Chunk; final result: schema.json#/$defs/StreamV1Output. |
 | `flame.model-provider/verify.v1` | query | installation | Prove the exact configured connection authenticates with its provider. |
 
 Capability `flame.model-provider.v1` exposes the declared methods. Required backend protocol: `io.github.tangerg.frame/portable/1`.

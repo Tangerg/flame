@@ -93,7 +93,10 @@ original confirmed open receipt; it never reads current credentials or grants
 permission to repeat generation. Unknown receipts never authorize redispatch.
 Runtime retains exact selection, credentials, admission, endpoint evidence,
 accounting and recovery. Connection snapshots are private backend inputs, with
-credential-safe formatting. Chat uses complete native Scope values. Embedding
+credential-safe formatting. Chat uses complete native Scope values. The final
+`StreamReceipt` binds completion to the digest of the response assembled from
+the original deltas and retains any observed failure. Rebuild installed model
+adapters and their consumers together for this output contract. Embedding
 retains Scope's complete encoded envelopes and its strict native codec, which
 does not publish a derivable JSON schema; it is never reduced to vectors or
 reconstructed from usage projections.

@@ -413,7 +413,7 @@
       "type": "number"
     },
     "CallV1Output": {
-      "$ref": "#/$defs/CallV1OutputModelproviderChatResult"
+      "$ref": "#/$defs/ChatResult"
     },
     "CallV1OutputChatToolCall": {
       "additionalProperties": false,
@@ -532,18 +532,6 @@
           "type": "object"
         }
       ]
-    },
-    "CallV1OutputModelproviderChatResult": {
-      "additionalProperties": false,
-      "properties": {
-        "failure": {
-          "$ref": "#/$defs/CallV1OutputModelproviderFailure"
-        },
-        "response": {
-          "$ref": "#/$defs/CallV1OutputScopewireResponse"
-        }
-      },
-      "type": "object"
     },
     "CallV1OutputModelproviderFailure": {
       "additionalProperties": false,
@@ -678,18 +666,6 @@
       ],
       "type": "object"
     },
-    "CallV1OutputScopewireOutputProjection": {
-      "additionalProperties": false,
-      "properties": {
-        "finish_reason": {
-          "type": "string"
-        },
-        "message": {
-          "$ref": "#/$defs/CallV1OutputScopewireMessageProjection"
-        }
-      },
-      "type": "object"
-    },
     "CallV1OutputScopewirePartProjection": {
       "additionalProperties": false,
       "properties": {
@@ -724,18 +700,6 @@
       "required": [
         "kind"
       ],
-      "type": "object"
-    },
-    "CallV1OutputScopewireResponse": {
-      "additionalProperties": false,
-      "properties": {
-        "metadata": {
-          "$ref": "#/$defs/CallV1OutputScopewireResponseMetadataProjection"
-        },
-        "output": {
-          "$ref": "#/$defs/CallV1OutputScopewireOutputProjection"
-        }
-      },
       "type": "object"
     },
     "CallV1OutputScopewireResponseMetadataProjection": {
@@ -793,6 +757,18 @@
         "name",
         "output"
       ],
+      "type": "object"
+    },
+    "ChatResult": {
+      "additionalProperties": false,
+      "properties": {
+        "failure": {
+          "$ref": "#/$defs/CallV1OutputModelproviderFailure"
+        },
+        "response": {
+          "$ref": "#/$defs/Response"
+        }
+      },
       "type": "object"
     },
     "CloseV1Input": {
@@ -1273,6 +1249,14 @@
       ],
       "type": "object"
     },
+    "Digest": {
+      "allOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      ],
+      "type": "string"
+    },
     "EmbedV1Input": {
       "$ref": "#/$defs/EmbeddingRequest"
     },
@@ -1540,6 +1524,18 @@
     "OpenEmbeddingV1Output": {
       "$ref": "#/$defs/Embedder"
     },
+    "OutputProjection": {
+      "additionalProperties": false,
+      "properties": {
+        "finish_reason": {
+          "type": "string"
+        },
+        "message": {
+          "$ref": "#/$defs/CallV1OutputScopewireMessageProjection"
+        }
+      },
+      "type": "object"
+    },
     "PartDeltaProjection": {
       "additionalProperties": false,
       "properties": {
@@ -1739,6 +1735,18 @@
       ],
       "type": "object"
     },
+    "Response": {
+      "additionalProperties": false,
+      "properties": {
+        "metadata": {
+          "$ref": "#/$defs/CallV1OutputScopewireResponseMetadataProjection"
+        },
+        "output": {
+          "$ref": "#/$defs/OutputProjection"
+        }
+      },
+      "type": "object"
+    },
     "ResponseDelta": {
       "additionalProperties": false,
       "properties": {
@@ -1756,6 +1764,18 @@
             "$ref": "#/$defs/PartDeltaProjection"
           },
           "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "StreamReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "failure": {
+          "$ref": "#/$defs/StreamV1OutputModelproviderFailure"
+        },
+        "responseDigest": {
+          "$ref": "#/$defs/Digest"
         }
       },
       "type": "object"
@@ -2340,137 +2360,7 @@
       "type": "number"
     },
     "StreamV1Output": {
-      "$ref": "#/$defs/StreamV1OutputModelproviderChatResult"
-    },
-    "StreamV1OutputChatToolCall": {
-      "additionalProperties": false,
-      "properties": {
-        "arguments": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "name"
-      ],
-      "type": "object"
-    },
-    "StreamV1OutputChatUsage": {
-      "additionalProperties": false,
-      "properties": {
-        "cache_read_input_tokens": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "cache_write_input_tokens": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "input_tokens": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "output_tokens": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        },
-        "reasoning_tokens": {
-          "allOf": [
-            {
-              "maximum": 9223372036854775807,
-              "minimum": -9223372036854775808
-            }
-          ],
-          "type": "integer"
-        }
-      },
-      "type": "object"
-    },
-    "StreamV1OutputContentCitation": {
-      "additionalProperties": false,
-      "properties": {
-        "quote": {
-          "type": "string"
-        },
-        "source": {
-          "$ref": "#/$defs/StreamV1OutputContentCitationSource"
-        },
-        "title": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "source"
-      ],
-      "type": "object"
-    },
-    "StreamV1OutputContentCitationSource": {
-      "additionalProperties": false,
-      "properties": {
-        "kind": {
-          "type": "string"
-        },
-        "value": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "value"
-      ],
-      "type": "object"
-    },
-    "StreamV1OutputInstantTimestamp": {
-      "type": "string"
-    },
-    "StreamV1OutputMetadataMap": {
-      "oneOf": [
-        {
-          "type": "null"
-        },
-        {
-          "additionalProperties": true,
-          "type": "object"
-        }
-      ]
-    },
-    "StreamV1OutputModelproviderChatResult": {
-      "additionalProperties": false,
-      "properties": {
-        "failure": {
-          "$ref": "#/$defs/StreamV1OutputModelproviderFailure"
-        },
-        "response": {
-          "$ref": "#/$defs/StreamV1OutputScopewireResponse"
-        }
-      },
-      "type": "object"
+      "$ref": "#/$defs/StreamReceipt"
     },
     "StreamV1OutputModelproviderFailure": {
       "additionalProperties": false,
@@ -2508,217 +2398,6 @@
       "required": [
         "kind",
         "execution"
-      ],
-      "type": "object"
-    },
-    "StreamV1OutputScopewireBlockProjection": {
-      "additionalProperties": false,
-      "properties": {
-        "citations": {
-          "items": {
-            "$ref": "#/$defs/StreamV1OutputContentCitation"
-          },
-          "type": "array"
-        },
-        "kind": {
-          "type": "string"
-        },
-        "media": {
-          "$ref": "#/$defs/StreamV1OutputScopewireMediaProjection"
-        },
-        "metadata": {
-          "$ref": "#/$defs/StreamV1OutputMetadataMap"
-        },
-        "text": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "type": "object"
-    },
-    "StreamV1OutputScopewireMediaProjection": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "metadata": {
-          "$ref": "#/$defs/StreamV1OutputMetadataMap"
-        },
-        "mime": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "source": {
-          "$ref": "#/$defs/StreamV1OutputScopewireMediaSourceProjection"
-        }
-      },
-      "required": [
-        "source"
-      ],
-      "type": "object"
-    },
-    "StreamV1OutputScopewireMediaSourceProjection": {
-      "additionalProperties": false,
-      "properties": {
-        "bytes": {
-          "type": "string"
-        },
-        "kind": {
-          "type": "string"
-        },
-        "ref": {
-          "type": "string"
-        },
-        "uri": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "type": "object"
-    },
-    "StreamV1OutputScopewireMessageProjection": {
-      "additionalProperties": false,
-      "properties": {
-        "metadata": {
-          "$ref": "#/$defs/StreamV1OutputMetadataMap"
-        },
-        "parts": {
-          "items": {
-            "$ref": "#/$defs/StreamV1OutputScopewirePartProjection"
-          },
-          "type": "array"
-        },
-        "role": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "role",
-        "parts"
-      ],
-      "type": "object"
-    },
-    "StreamV1OutputScopewireOutputProjection": {
-      "additionalProperties": false,
-      "properties": {
-        "finish_reason": {
-          "type": "string"
-        },
-        "message": {
-          "$ref": "#/$defs/StreamV1OutputScopewireMessageProjection"
-        }
-      },
-      "type": "object"
-    },
-    "StreamV1OutputScopewirePartProjection": {
-      "additionalProperties": false,
-      "properties": {
-        "citations": {
-          "items": {
-            "$ref": "#/$defs/StreamV1OutputContentCitation"
-          },
-          "type": "array"
-        },
-        "kind": {
-          "type": "string"
-        },
-        "media": {
-          "$ref": "#/$defs/StreamV1OutputScopewireMediaProjection"
-        },
-        "metadata": {
-          "$ref": "#/$defs/StreamV1OutputMetadataMap"
-        },
-        "reasoning_state": {
-          "type": "string"
-        },
-        "text": {
-          "type": "string"
-        },
-        "tool_call": {
-          "$ref": "#/$defs/StreamV1OutputChatToolCall"
-        },
-        "tool_result": {
-          "$ref": "#/$defs/StreamV1OutputScopewireToolResultProjection"
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "type": "object"
-    },
-    "StreamV1OutputScopewireResponse": {
-      "additionalProperties": false,
-      "properties": {
-        "metadata": {
-          "$ref": "#/$defs/StreamV1OutputScopewireResponseMetadataProjection"
-        },
-        "output": {
-          "$ref": "#/$defs/StreamV1OutputScopewireOutputProjection"
-        }
-      },
-      "type": "object"
-    },
-    "StreamV1OutputScopewireResponseMetadataProjection": {
-      "additionalProperties": false,
-      "properties": {
-        "created_at": {
-          "$ref": "#/$defs/StreamV1OutputInstantTimestamp"
-        },
-        "extra": {
-          "$ref": "#/$defs/StreamV1OutputMetadataMap"
-        },
-        "id": {
-          "type": "string"
-        },
-        "model": {
-          "type": "string"
-        },
-        "usage": {
-          "$ref": "#/$defs/StreamV1OutputChatUsage"
-        }
-      },
-      "type": "object"
-    },
-    "StreamV1OutputScopewireToolOutputProjection": {
-      "additionalProperties": false,
-      "properties": {
-        "content": {
-          "items": {
-            "$ref": "#/$defs/StreamV1OutputScopewireBlockProjection"
-          },
-          "type": "array"
-        },
-        "details": true
-      },
-      "type": "object"
-    },
-    "StreamV1OutputScopewireToolResultProjection": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "is_error": {
-          "type": "boolean"
-        },
-        "name": {
-          "type": "string"
-        },
-        "output": {
-          "$ref": "#/$defs/StreamV1OutputScopewireToolOutputProjection"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "output"
       ],
       "type": "object"
     },

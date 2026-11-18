@@ -75,7 +75,7 @@
     "name": "flame.model-provider/stream.v1",
     "kind": "command",
     "target": "installation",
-    "description": "Stream the original provider deltas and retain the final outcome without replaying an unconfirmed exchange.",
+    "description": "Stream the original provider deltas and bind their complete response to the final receipt.",
     "input": "schema.json#/$defs/StreamV1Input",
     "output": "schema.json#/$defs/StreamV1Output",
     "stream": "schema.json#/$defs/StreamV1Chunk"

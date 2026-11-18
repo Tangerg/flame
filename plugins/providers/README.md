@@ -63,11 +63,12 @@ namespace under Scope's normal option resolution. The generic
 
 The backend retains original command input and results in its private database.
 An interrupted exchange remains unconfirmed and cannot be sent again under the
-same command identity. Streaming stores its final complete response or failure
-separately from acknowledged original deltas. Scope collects the stream and
-preserves the provider binding's refusal when request preparation fails. Closing
-a handle fences new work and joins accepted exchanges. Private connections and
-receipts contain secrets and stay in backend storage.
+same command identity. Scope collects the acknowledged deltas and preserves the
+provider binding's refusal when request preparation fails. The stream receipt
+stores the digest of the complete Scope response and any observed failure.
+Runtime verifies the digest before delivering the ending delta. Closing a handle
+fences new work and joins accepted exchanges. Private connections and receipts
+contain secrets and stay in backend storage.
 
 The durable handle snapshot alone admits client use, including cached clients.
 Closing writes its tombstone before joining accepted exchanges; the cache retains

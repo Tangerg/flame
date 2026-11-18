@@ -121,24 +121,24 @@ func (s *store) embed(ctx context.Context, request modelprovider.EmbeddingReques
 	return result, leave, nil
 }
 
-func (s *store) stream(ctx context.Context, method string, command pluginmcp.Command[modelprovider.ChatRequest]) iter.Seq2[pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.ChatResult], error] {
-	return func(yield func(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.ChatResult], error) bool) {
+func (s *store) stream(ctx context.Context, method string, command pluginmcp.Command[modelprovider.ChatRequest]) iter.Seq2[pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.StreamReceipt], error] {
+	return func(yield func(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.StreamReceipt], error) bool) {
 		continuing := true
 		emit := func(delta chat.ResponseDelta) bool {
-			continuing = yield(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.ChatResult]{Chunk: (*scopewire.ResponseDelta)(&delta)}, nil)
+			continuing = yield(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.StreamReceipt]{Chunk: (*scopewire.ResponseDelta)(&delta)}, nil)
 			return continuing
 		}
-		result, err := execute(ctx, s, method, command, modelprovider.ChatRequest.Validate, func(ctx context.Context, request modelprovider.ChatRequest) (modelprovider.ChatResult, func(), error) {
+		receipt, err := execute(ctx, s, method, command, modelprovider.ChatRequest.Validate, func(ctx context.Context, request modelprovider.ChatRequest) (modelprovider.StreamReceipt, func(), error) {
 			entry, leave, err := s.acquire(ctx, request.Handle, chatClient)
 			if err != nil {
-				return modelprovider.ChatResult{Failure: notExecuted(err)}, nil, nil
+				return modelprovider.StreamReceipt{Failure: notExecuted(err)}, nil, nil
 			}
 			if entry.stream == nil || (request.Request.Options.Model != "" && request.Request.Options.Model != entry.modelID) {
-				return modelprovider.ChatResult{Failure: notExecuted(errors.New("model provider: captured stream is unavailable"))}, leave, nil
+				return modelprovider.StreamReceipt{Failure: notExecuted(errors.New("model provider: captured stream is unavailable"))}, leave, nil
 			}
 			sequence := entry.stream.Stream(httpresponse.WithEventStream(ctx), request.Request.Clone())
 			if sequence == nil {
-				return modelprovider.ChatResult{Failure: failure(chat.ErrNilStream)}, leave, nil
+				return modelprovider.StreamReceipt{Failure: failure(chat.ErrNilStream)}, leave, nil
 			}
 			response, err := chat.Collect(func(accept func(*chat.ResponseDelta, error) bool) {
 				for delta, cause := range sequence {
@@ -151,16 +151,17 @@ func (s *store) stream(ctx context.Context, method string, command pluginmcp.Com
 					}
 				}
 			})
-			return modelprovider.ChatResult{Response: response, Failure: failure(err)}, leave, nil
+			receipt, err := modelprovider.NewStreamReceipt(response, failure(err))
+			return receipt, leave, err
 		})
 		if !continuing {
 			return
 		}
 		if err != nil {
-			yield(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.ChatResult]{}, err)
+			yield(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.StreamReceipt]{}, err)
 			return
 		}
-		yield(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.ChatResult]{Result: &result}, nil)
+		yield(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.StreamReceipt]{Result: &receipt}, nil)
 	}
 }
 

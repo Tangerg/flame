@@ -7550,6 +7550,10 @@
           "signature": "func() (HandleID, error)"
         },
         {
+          "name": "NewStreamReceipt",
+          "signature": "func(response *chat.Response, failure *Failure) (StreamReceipt, error)"
+        },
+        {
           "name": "OpenChatMethod",
           "signature": "func() (*mcp.Method[Open, Chat], error)"
         },
@@ -7571,7 +7575,7 @@
         },
         {
           "name": "StreamMethod",
-          "signature": "func() (*mcp.StreamingMethod[ChatRequest, scopewire.ResponseDelta, ChatResult], error)"
+          "signature": "func() (*mcp.StreamingMethod[ChatRequest, scopewire.ResponseDelta, StreamReceipt], error)"
         },
         {
           "name": "VerifyMethod",
@@ -8018,6 +8022,28 @@
             {
               "name": "Validate",
               "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "StreamReceipt",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ResponseDigest",
+              "type": "value.Digest",
+              "tag": "json:\"responseDigest,omitzero\""
+            },
+            {
+              "name": "Failure",
+              "type": "*Failure",
+              "tag": "json:\"failure,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "VerifyResponse",
+              "signature": "func(response *chat.Response) error"
             }
           ]
         },

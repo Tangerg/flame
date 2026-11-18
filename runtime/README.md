@@ -1209,6 +1209,11 @@ The invocation journal owns call identity, Segment identity, observed state, and
 
 `started` has no settlement timestamp. `completed` means Runtime accepted the complete model response. `failed` records an observed failure at the model boundary, including an invalid response or interrupted stream; it does not imply that the provider performed no work. `unknown` means execution or recovery could not establish the outcome: its `settledAt` is when that uncertainty was recorded, not a provider completion time. Consumers must not infer a measured model duration or throughput from an unknown outcome.
 
+Runtime accepts an installed model stream's ending delta when its assembled Scope
+response matches the provider's durable receipt digest. A missing or conflicting
+receipt after dispatch leaves the physical endpoint unknown and blocks Run
+continuation from those deltas.
+
 The timestamps come from Runtime's call lifecycle. `startedAt` is captured while reducing the start fact, before its durable commit and provider dispatch. Completion is captured after response validation and the stream projection barrier, before the completion commit. For completed and failed calls, their difference measures this Runtime lifecycle interval, including local work and waiting; it is not isolated provider latency. Neither lifecycle timestamp records the first output. Decode throughput cannot be reconstructed from this interval, token totals, or transcript timestamps.
 
 The optional `firstOutputLatencyMillis` is measured with the monotonic clock at the streaming model boundary: from entering the provider stream to arrival of the first valid text, visible reasoning, refusal, media, or tool-call delta. It includes provider-client and network work, but excludes Run admission and the start commit. Metadata, usage, finish markers, citation attachments, and opaque reasoning state do not count. The measurement is committed with a completed or failed attempt; a stream that fails after producing output retains it. Nonstreaming calls, failures before output, unknown recovery outcomes, and historical attempts leave it absent. A measured zero is valid. It is not a token-generation rate or isolated model compute time.

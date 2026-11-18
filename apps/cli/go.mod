@@ -3,9 +3,9 @@ module github.com/Tangerg/flame/apps/cli
 go 1.27.4
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.25-dev.20261119.tdcdb3d1902a8
+	github.com/Tangerg/flame/packages/go-sdk v0.1.26-dev.20261119.t4fd61ad938e3
 	github.com/Tangerg/flame/packages/local-runtime v0.1.6-dev.20261117.t12800f1dcd3b
-	github.com/Tangerg/flame/runtime v0.1.58-dev.20261119.t318f75488e12
+	github.com/Tangerg/flame/runtime v0.1.59-dev.20261119.t909f37e89a58
 	github.com/Tangerg/frame v0.4.0
 	github.com/Tangerg/oolong/extensions/highlight v0.27.1
 	github.com/Tangerg/oolong/extensions/latex v0.29.0
