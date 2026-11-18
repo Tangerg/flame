@@ -182,10 +182,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 	i.accounting.mu.Lock()
 	i.state.mu.Lock()
 	usageByProcess, contexts := i.accounting.checkpointLocked()
-	pendingSteers := make(map[scoperun.SignalID]runs.PreparedSteer, len(i.state.pendingSteers))
-	for signalID, pending := range i.state.pendingSteers {
-		pendingSteers[signalID] = pending.Clone()
-	}
+	pendingSteers := maps.Clone(i.state.pendingSteers)
 	pendingResumeInputs := slices.Clone(i.state.pendingResumeInputs)
 	metadata := make([]toolCallCapture, 0, len(i.state.toolMetadata))
 	for _, value := range i.state.toolMetadata {

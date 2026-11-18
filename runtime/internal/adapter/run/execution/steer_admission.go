@@ -2,6 +2,7 @@ package execution
 
 import (
 	"errors"
+	"maps"
 	"slices"
 	"strings"
 
@@ -14,10 +15,7 @@ import (
 // Activated record cannot publish an already acknowledged command again.
 func (i *interactionSession) admittedSteers(root scoperun.ProcessID, records []scoperun.Record) ([]runs.CommandAcceptance, error) {
 	i.state.mu.Lock()
-	pending := make(map[scoperun.SignalID]runs.PreparedSteer, len(i.state.pendingSteers))
-	for id, value := range i.state.pendingSteers {
-		pending[id] = value.Clone()
-	}
+	pending := maps.Clone(i.state.pendingSteers)
 	i.state.mu.Unlock()
 	var accepted []runs.CommandAcceptance
 	for _, record := range records {
@@ -26,10 +24,14 @@ func (i *interactionSession) admittedSteers(root scoperun.ProcessID, records []s
 			continue
 		}
 		steer, found := pending[admission.Signal.ID]
-		if !found || steer.Acceptance == nil {
+		if !found {
 			continue
 		}
-		message, err := runs.MaterializeUserMessage(steer.Input)
+		acceptance, bound := steer.Acceptance()
+		if !bound {
+			continue
+		}
+		message, err := runs.MaterializeUserMessage(acceptance.SteerInput)
 		if err != nil {
 			return nil, err
 		}
@@ -40,7 +42,7 @@ func (i *interactionSession) admittedSteers(root scoperun.ProcessID, records []s
 		if !sameSignal(admission.Signal, signal) {
 			return nil, errors.New("execution: steer differs from its admission")
 		}
-		accepted = append(accepted, steer.Acceptance.Clone())
+		accepted = append(accepted, acceptance)
 	}
 	slices.SortFunc(accepted, func(a, b runs.CommandAcceptance) int { return strings.Compare(a.Key, b.Key) })
 	return accepted, nil

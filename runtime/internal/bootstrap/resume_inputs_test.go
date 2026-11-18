@@ -7,26 +7,31 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-func TestResumeInputsReachTheNextRootModelAfterConsecutiveQuestions(t *testing.T) {
+func TestQueuedUserInputsReachTheRootModelAfterRestart(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	const task = "ask three questions in sequence"
 	const questions = 3
+	const steer = "root guidance while the child was working"
 	inputs := []string{"extra context from first answer", "extra context from second answer"}
-	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
+	expectedInputs := append([]string{steer}, inputs...)
+	childEntered := make(chan struct{}, 1)
+	releaseChild := make(chan struct{})
+	model := delegateRestartModel{chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 		var child, delegateFinished bool
 		var answered int
 		var received []string
 		for _, message := range request.Messages {
 			if message.Role == chat.RoleUser {
 				child = child || strings.Contains(message.Text(), task)
-				if slices.Contains(inputs, message.Text()) {
+				if slices.Contains(expectedInputs, message.Text()) {
 					received = append(received, message.Text())
 				}
 			}
@@ -44,16 +49,30 @@ func TestResumeInputsReachTheNextRootModelAfterConsecutiveQuestions(t *testing.T
 		}
 		var call chat.ToolCall
 		switch {
+		case child && len(received) != 0:
+			return nil, fmt.Errorf("child model received root inputs %v", received)
 		case child && answered == questions:
 			return completedTextResponse("All questions were answered."), nil
 		case child:
+			if answered == 0 {
+				select {
+				case childEntered <- struct{}{}:
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+				select {
+				case <-releaseChild:
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+			}
 			call = chat.ToolCall{ID: fmt.Sprintf("question_%d", answered), Name: "ask_user",
 				Arguments: fmt.Sprintf(`{"questions":[{"question":"Answer question %d"}]}`, answered+1)}
 		case delegateFinished:
-			if !slices.Equal(received, inputs) {
-				return nil, fmt.Errorf("root model received Resume inputs %v", received)
+			if !slices.Equal(received, expectedInputs) {
+				return nil, fmt.Errorf("root model received queued inputs %v", received)
 			}
-			return completedTextResponse("Both inputs arrived in order."), nil
+			return completedTextResponse("The inputs arrived in order."), nil
 		default:
 			call = chat.ToolCall{ID: "delegate_questions", Name: "delegate_task",
 				Arguments: fmt.Sprintf(`{"summary":"Three questions","instructions":%q}`, task)}
@@ -88,10 +107,36 @@ func TestResumeInputsReachTheNextRootModelAfterConsecutiveQuestions(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	waitForRunEvents(t, collectRunEvents(events), "first question")
+	opening := collectRunEvents(events)
+	select {
+	case <-childEntered:
+	case finished := <-opening:
+		t.Fatalf("opening ended before the child model: %v", finished.err)
+	case <-time.After(lifecycleWaitBudget(t)):
+		t.Fatal("timed out waiting for the child model")
+	}
+	options := acceptedCommandOptions()
+	options.IdempotencyKey = "pending-root-steer"
+	steered := host.Endpoint().Invoke(ctx, delivery.RunsSteer, protocol.SteerRunRequest{
+		RunID: started.RunID, ExpectedSegmentID: started.SegmentID,
+		Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: steer}},
+	}, options)
+	if steered.Failure != nil {
+		t.Fatal(steered.Failure)
+	}
+	steerItemID := steered.Value.(*protocol.SteerRunResponse).UserItemID
+	close(releaseChild)
+	waitForRunEvents(t, opening, "first question")
 
 	for index := range questions {
 		if index == questions-1 {
+			pendingSnapshot, err := api.GetSessionSnapshot(ctx, protocol.GetSessionSnapshotRequest{SessionID: session.ID})
+			if err != nil || len(pendingSnapshot.SteerInputs) != 1 || pendingSnapshot.SteerInputs[0].UserItemID != steerItemID {
+				t.Fatalf("pending steer: %+v, %v", pendingSnapshot, err)
+			}
+			if slices.ContainsFunc(pendingSnapshot.Items, func(item protocol.Item) bool { return item.ID == steerItemID }) {
+				t.Fatal("root input was applied before the child completed")
+			}
 			if err := host.Close(); err != nil {
 				t.Fatal(err)
 			}
@@ -124,7 +169,13 @@ func TestResumeInputsReachTheNextRootModelAfterConsecutiveQuestions(t *testing.T
 		if finished != nil {
 			outcome, _ = json.Marshal(finished.Outcome)
 		}
-		t.Fatalf("Run did not deliver both inputs: outcome=%s, %v", outcome, err)
+		t.Fatalf("Run did not deliver queued inputs: outcome=%s, %v", outcome, err)
+	}
+	receipt, err := host.Endpoint().Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](ctx, delivery.RunsGetAcceptance, protocol.GetRunAcceptanceRequest{
+		Namespace: options.IdempotencyNamespace, Key: options.IdempotencyKey, Operation: protocol.RunCommandSteer,
+	}, protocol.CallMetadata{})
+	if err != nil || receipt.UserItemID != steerItemID || receipt.AppliedItem == nil || receipt.AppliedItem.ID != steerItemID {
+		t.Fatalf("applied steer receipt=%+v, %v, want Item %q", receipt, err, steerItemID)
 	}
 
 	exported, err := api.ExportSession(ctx, protocol.ExportSessionRequest{SessionID: session.ID})
@@ -137,11 +188,11 @@ func TestResumeInputsReachTheNextRootModelAfterConsecutiveQuestions(t *testing.T
 		if err := json.Unmarshal(encoded, &message); err != nil {
 			t.Fatal(err)
 		}
-		if message.Role == chat.RoleUser && slices.Contains(inputs, message.Text()) {
+		if message.Role == chat.RoleUser && slices.Contains(expectedInputs, message.Text()) {
 			applied = append(applied, message.Text())
 		}
 	}
-	if !slices.Equal(applied, inputs) {
-		t.Fatalf("durable conversation retained Resume inputs %v", applied)
+	if !slices.Equal(applied, expectedInputs) {
+		t.Fatalf("durable conversation retained queued inputs %v", applied)
 	}
 }

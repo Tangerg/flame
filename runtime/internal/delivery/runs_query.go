@@ -42,7 +42,8 @@ func (s *Handler) GetRunAcceptance(ctx context.Context, in protocol.GetRunAccept
 	if in.Namespace != s.idempotency.Namespace {
 		return nil, protocol.ErrIdempotencyStoreMismatch
 	}
-	record, err := s.runs.LookupCommandAcceptance(ctx, operation.ScopedKey(ctx, in.Key))
+	commandKey := operation.ScopedKey(ctx, in.Key)
+	record, err := s.runs.LookupCommandAcceptance(ctx, commandKey)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +67,7 @@ func (s *Handler) GetRunAcceptance(ctx context.Context, in protocol.GetRunAccept
 	}
 	response := presentRunAcceptance(record)
 	if record.Use != runs.CommandKeyAccepted && in.Operation == protocol.RunCommandSteer {
-		response.CandidateUserItemID = runs.SteerItemID(in.Key)
+		response.CandidateUserItemID = runs.SteerItemID(commandKey)
 	}
 	return response, nil
 }

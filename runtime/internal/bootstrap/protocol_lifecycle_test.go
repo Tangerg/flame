@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -34,7 +35,12 @@ import (
 func TestProtocolLifecycleSurvivesColdRestart(t *testing.T) {
 	fixture := newProtocolLifecycleFixture(t)
 	defer fixture.closeFirstRuntime()
-	question := fixture.startAndPark()
+	digest := strings.Repeat("1", 64)
+	actor, err := operation.NewActor("00000000-0000-0000-0000-000000000001", digest, digest, "steer")
+	if err != nil {
+		t.Fatal(err)
+	}
+	question := fixture.startAndPark(operation.WithActor(fixture.ctx, actor))
 	fixture.resumeAndCancel(question)
 	fixture.assertColdState()
 }
@@ -101,7 +107,7 @@ func TestParkedProtocolCrashProcess(t *testing.T) {
 		host: host, api: api, stores: stores,
 	}
 	t.Cleanup(fixture.closeFirstRuntime)
-	fixture.startAndPark()
+	fixture.startAndPark(fixture.ctx)
 	marker, err := json.Marshal(parkedProtocolMarker{SessionID: fixture.sessionID, Started: fixture.started})
 	if err != nil {
 		t.Fatal(err)
@@ -222,7 +228,7 @@ func protocolLifecycleContext(ctx context.Context) context.Context {
 	})
 }
 
-func (p *protocolLifecycleFixture) startAndPark() protocol.Interrupt {
+func (p *protocolLifecycleFixture) startAndPark(steerContext context.Context) protocol.Interrupt {
 	p.t.Helper()
 	session, err := p.api.CreateSession(p.ctx, protocol.CreateSessionRequest{
 		Workspace: &protocol.WorkspaceRef{Path: p.home}, Title: "protocol lifecycle",
@@ -265,16 +271,21 @@ func (p *protocolLifecycleFixture) startAndPark() protocol.Interrupt {
 	options := acceptedCommandOptions()
 	options.IdempotencyKey = "protocol-lifecycle-steer"
 	options.RequestMeta.ClientCapabilities.InterruptTypes = []protocol.InterruptType{protocol.InterruptQuestion}
-	nomination, err := commandEndpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](p.ctx, delivery.RunsGetAcceptance, protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: options.IdempotencyKey, Operation: protocol.RunCommandSteer}, protocol.CallMetadata{RequestMeta: options.RequestMeta})
+	query := protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: options.IdempotencyKey, Operation: protocol.RunCommandSteer}
+	nomination, err := commandEndpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](steerContext, delivery.RunsGetAcceptance, query, protocol.CallMetadata{RequestMeta: options.RequestMeta})
 	if err != nil || nomination.Type != protocol.RunAcceptanceNotRecorded || nomination.CandidateUserItemID == "" {
 		p.t.Fatalf("steer nomination=%+v,%v", nomination, err)
 	}
-	steered := commandEndpoint.Invoke(p.ctx, delivery.RunsSteer, protocol.SteerRunRequest{
+	steered := commandEndpoint.Invoke(steerContext, delivery.RunsSteer, protocol.SteerRunRequest{
 		RunID: started.RunID, ExpectedSegmentID: started.SegmentID,
 		Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: protocolLifecycleSteeringText}},
 	}, options)
 	if steered.Failure != nil || steered.Value.(*protocol.SteerRunResponse).UserItemID != nomination.CandidateUserItemID {
-		p.t.Fatalf("steer acknowledgement=%+v,%v", steered.Value, steered.Failure)
+		p.t.Fatalf("steer acknowledgement=%+v,%v, nomination=%s", steered.Value, steered.Failure, nomination.CandidateUserItemID)
+	}
+	receipt, err := commandEndpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](steerContext, delivery.RunsGetAcceptance, query, protocol.CallMetadata{RequestMeta: options.RequestMeta})
+	if err != nil || receipt.Type != protocol.RunAcceptanceAccepted || receipt.UserItemID != nomination.CandidateUserItemID {
+		p.t.Fatalf("steer receipt=%+v,%v, nomination=%s", receipt, err, nomination.CandidateUserItemID)
 	}
 	close(p.model.releaseFirstCall)
 	waitForRunEvents(p.t, startEventsDone, "waiting segment")

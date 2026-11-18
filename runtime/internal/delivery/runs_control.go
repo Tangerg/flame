@@ -61,7 +61,7 @@ func (s *Handler) SteerRun(ctx context.Context, in protocol.SteerRunRequest) (*p
 		return nil, err
 	}
 	itemID, err := s.runs.Steer(ctx, runs.SteerCommand{
-		RunID: in.RunID, ExpectedSegmentID: in.ExpectedSegmentID, Input: input, Acceptance: runCommandIdentity(ctx),
+		RunID: in.RunID, ExpectedSegmentID: in.ExpectedSegmentID, Input: input, Identity: runCommandIdentity(ctx),
 	})
 	if err != nil {
 		return nil, wireSteerError(err)

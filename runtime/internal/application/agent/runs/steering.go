@@ -6,34 +6,76 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/google/uuid"
 )
 
-// A retained command is still only intent until its exact Scope receipt commits
-// with the product acceptance. Checkpoints must preserve that original intent.
+// PreparedSteer retains the authored input while Scope owns Signal admission.
+// The eventual command receipt derives its identity and content from this input.
 type PreparedSteer struct {
-	ItemID     string
-	Input      []transcript.ContentBlock
-	Acceptance *CommandAcceptance
+	itemID  string
+	input   []transcript.ContentBlock
+	command *SteerCommandBinding
 }
 
-func (p PreparedSteer) Clone() PreparedSteer {
-	p.Input = transcript.CloneContent(p.Input)
-	if p.Acceptance != nil {
-		p.Acceptance = new(p.Acceptance.Clone())
+type SteerCommandBinding struct {
+	CommandIdentity
+	SessionID string
+	RunID     string
+	SegmentID string
+}
+
+func PrepareLocalSteer(itemID string, input []transcript.ContentBlock) (PreparedSteer, error) {
+	if err := identity.ValidateItem(itemID); err != nil {
+		return PreparedSteer{}, err
 	}
-	return p
+	if _, err := MaterializeUserMessage(input); err != nil {
+		return PreparedSteer{}, err
+	}
+	return PreparedSteer{itemID: itemID, input: transcript.CloneContent(input)}, nil
+}
+
+func (b SteerCommandBinding) Prepare(input []transcript.ContentBlock) (PreparedSteer, error) {
+	itemID := SteerItemID(b.Key)
+	if err := b.acceptance(itemID, input).Validate(); err != nil {
+		return PreparedSteer{}, err
+	}
+	return PreparedSteer{itemID: itemID, input: transcript.CloneContent(input), command: &b}, nil
+}
+
+func (p PreparedSteer) ItemID() string { return p.itemID }
+
+func (p PreparedSteer) Input() []transcript.ContentBlock { return transcript.CloneContent(p.input) }
+
+func (p PreparedSteer) Command() (SteerCommandBinding, bool) {
+	if p.command == nil {
+		return SteerCommandBinding{}, false
+	}
+	return *p.command, true
+}
+
+func (p PreparedSteer) Acceptance() (CommandAcceptance, bool) {
+	if p.command == nil {
+		return CommandAcceptance{}, false
+	}
+	return p.command.acceptance(p.itemID, p.Input()), true
+}
+
+func (b SteerCommandBinding) acceptance(itemID string, input []transcript.ContentBlock) CommandAcceptance {
+	return CommandAcceptance{
+		Key: b.Key, Fingerprint: b.Fingerprint, Operation: CommandSteerInput,
+		SessionID: b.SessionID, RunID: b.RunID, SegmentID: b.SegmentID, UserItemID: itemID, SteerInput: input,
+	}
 }
 
 func (p PreparedSteer) Equal(other PreparedSteer) bool {
-	if p.ItemID != other.ItemID || !slices.EqualFunc(p.Input, other.Input, transcript.ContentBlock.Equal) {
+	if p.itemID != other.itemID || !slices.EqualFunc(p.input, other.input, transcript.ContentBlock.Equal) {
 		return false
 	}
-	if (p.Acceptance == nil) != (other.Acceptance == nil) {
-		return false
-	}
-	return p.Acceptance == nil || p.Acceptance.Equal(*other.Acceptance)
+	left, leftBound := p.Command()
+	right, rightBound := other.Command()
+	return leftBound == rightBound && left == right
 }
 
 // Steer addresses the Segment the command names through execution control.
@@ -44,15 +86,15 @@ func (p PreparedSteer) Equal(other PreparedSteer) bool {
 // points each guessing from the live registry.
 func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (string, error) {
 	cmd = cmd.clone()
-	if cmd.Acceptance != nil {
-		if err := cmd.Acceptance.Validate(); err != nil {
+	if cmd.Identity != nil {
+		if err := cmd.Identity.Validate(); err != nil {
 			return "", err
 		}
-		record, err := c.commandAcceptances.Lookup(ctx, cmd.Acceptance.Key)
+		record, err := c.commandAcceptances.Lookup(ctx, cmd.Identity.Key)
 		if err != nil {
 			return "", err
 		}
-		if record.Conflicts(CommandSteerInput, cmd.Acceptance.Fingerprint) {
+		if record.Conflicts(CommandSteerInput, cmd.Identity.Fingerprint) {
 			return "", ErrCommandKeyConflict
 		}
 		if record.Use == CommandKeyAccepted {
@@ -75,14 +117,18 @@ func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (string, erro
 		return "", err
 	}
 	rec := live.record
-	_, err = MaterializeUserMessage(cmd.Input)
+	var prepared PreparedSteer
+	if cmd.Identity == nil {
+		prepared, err = PrepareLocalSteer(NewItemID(uuid.NewString()), cmd.Input)
+	} else {
+		binding := SteerCommandBinding{
+			CommandIdentity: *cmd.Identity,
+			SessionID:       durable.SessionID(), RunID: durable.ID(), SegmentID: cmd.ExpectedSegmentID,
+		}
+		prepared, err = binding.Prepare(cmd.Input)
+	}
 	if err != nil {
 		return "", err
-	}
-	prepared := PreparedSteer{ItemID: NewItemID(uuid.NewString()), Input: cmd.Input}
-	if cmd.Acceptance != nil {
-		prepared.ItemID = SteerItemID(cmd.Acceptance.Key)
-		prepared.Acceptance = &CommandAcceptance{Key: cmd.Acceptance.Key, Fingerprint: cmd.Acceptance.Fingerprint, Operation: CommandSteerInput, SessionID: durable.SessionID(), RunID: durable.ID(), SegmentID: cmd.ExpectedSegmentID, UserItemID: prepared.ItemID, SteerInput: transcript.CloneContent(cmd.Input)}
 	}
 	itemID, err := c.steering.SubmitSteer(ctx, ExecutorRef{SessionID: durable.SessionID(), ExecutorID: rec.ExecutorID}, prepared)
 	if err != nil {

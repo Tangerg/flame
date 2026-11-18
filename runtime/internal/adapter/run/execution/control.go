@@ -68,7 +68,6 @@ func (i *interactionSession) stopModelProcess(ctx context.Context, processID sco
 
 func (i *interactionSession) submitSteer(
 	ctx context.Context,
-	message corechat.Message,
 	prepared runs.PreparedSteer,
 ) (string, error) {
 	if ctx == nil {
@@ -81,23 +80,17 @@ func (i *interactionSession) submitSteer(
 	if process == nil {
 		return "", runs.ErrExecutorNotLive
 	}
-	itemID := prepared.ItemID
-	if err := identity.ValidateItem(itemID); err != nil {
-		return "", err
-	}
-	if acceptance := prepared.Acceptance; acceptance != nil {
-		if err := acceptance.Validate(); err != nil {
-			return "", err
-		}
-		expected := acceptance.Clone()
-		expected.Operation, expected.SessionID, expected.UserItemID, expected.SteerInput = runs.CommandSteerInput, i.start.SessionID, itemID, prepared.Input
-		if !acceptance.Equal(expected) {
-			return "", errors.New("execution: steer acceptance does not name its input owner")
-		}
+	itemID := prepared.ItemID()
+	if command, bound := prepared.Command(); bound && (command.SessionID != i.start.SessionID || command.RunID != i.start.RunID) {
+		return "", errors.New("execution: steer command addresses another Run")
 	}
 	signalID, err := steerSignalID(itemID)
 	if err != nil {
 		return "", fmt.Errorf("execution: construct Interaction steer identity: %w", err)
+	}
+	message, err := runs.MaterializeUserMessage(prepared.Input())
+	if err != nil {
+		return "", err
 	}
 	signal, err := materializeSteerSignal(signalID, message)
 	if err != nil {
@@ -129,7 +122,7 @@ func (i *interactionSession) submitSteer(
 	}
 	if !present {
 		i.state.mu.Lock()
-		i.state.pendingSteers[signalID] = prepared.Clone()
+		i.state.pendingSteers[signalID] = prepared
 		i.state.mu.Unlock()
 	}
 	accepted, deliverErr := process.DeliverSignals(
@@ -192,8 +185,8 @@ func (i *interactionSession) commitAppliedInputs(
 			return fmt.Errorf("execution: model attribution names unknown steer Signal %s", signalID)
 		}
 		messages = append(messages, runs.AppliedSteerMessage{
-			Content: transcript.CloneContent(pending.Input),
-			ItemID:  pending.ItemID,
+			Content: pending.Input(),
+			ItemID:  pending.ItemID(),
 		})
 	}
 	for _, input := range resumeInputs {

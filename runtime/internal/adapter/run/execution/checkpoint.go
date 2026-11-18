@@ -67,10 +67,9 @@ type interactionModelContextWire struct {
 }
 
 type interactionPendingSteerWire struct {
-	Command  *interactionSteerCommandWire  `json:"command,omitzero"`
-	ItemID   string                        `json:"item_id"`
-	SignalID string                        `json:"signal_id"`
-	Content  []interactionContentBlockWire `json:"content"`
+	Command *interactionSteerCommandWire  `json:"command,omitzero"`
+	ItemID  string                        `json:"item_id"`
+	Content []interactionContentBlockWire `json:"content"`
 }
 
 type interactionSteerCommandWire struct {
@@ -281,52 +280,24 @@ func encodeInteractionPendingSteers(
 	pending map[scoperun.SignalID]runs.PreparedSteer,
 ) ([]interactionPendingSteerWire, error) {
 	values := make([]interactionPendingSteerWire, 0, len(pending))
-	for signalID, steer := range pending {
-		value, err := encodeInteractionPendingSteer(signalID, steer)
+	for _, steer := range pending {
+		content, err := encodeInteractionInputContent(steer.Input())
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("pending steer %q: %w", steer.ItemID(), err)
+		}
+		value := interactionPendingSteerWire{ItemID: steer.ItemID(), Content: content}
+		if command, bound := steer.Command(); bound {
+			value.Command = &interactionSteerCommandWire{
+				Key: command.Key, Fingerprint: command.Fingerprint,
+				SessionID: command.SessionID, RunID: command.RunID, SegmentID: command.SegmentID,
+			}
 		}
 		values = append(values, value)
 	}
 	slices.SortFunc(values, func(left, right interactionPendingSteerWire) int {
-		return strings.Compare(left.SignalID, right.SignalID)
+		return strings.Compare(left.ItemID, right.ItemID)
 	})
 	return values, nil
-}
-
-func encodeInteractionPendingSteer(
-	signalID scoperun.SignalID,
-	steer runs.PreparedSteer,
-) (interactionPendingSteerWire, error) {
-	if err := identity.ValidateItem(steer.ItemID); err != nil {
-		return interactionPendingSteerWire{}, err
-	}
-	if !signalID.Valid() {
-		return interactionPendingSteerWire{}, errors.New("pending steer has an invalid Signal identity")
-	}
-	if len(steer.Input) == 0 {
-		return interactionPendingSteerWire{}, fmt.Errorf("pending steer %s has no product content", signalID)
-	}
-	content, err := encodeInteractionInputContent(steer.Input)
-	if err != nil {
-		return interactionPendingSteerWire{}, fmt.Errorf("pending steer %s: %w", signalID, err)
-	}
-	wire := interactionPendingSteerWire{
-		SignalID: signalID.String(), ItemID: steer.ItemID, Content: content,
-	}
-	if steer.Acceptance != nil {
-		if err := steer.Acceptance.Validate(); err != nil {
-			return interactionPendingSteerWire{}, err
-		}
-		expected := steer.Acceptance.Clone()
-		expected.Operation, expected.UserItemID, expected.SteerInput = runs.CommandSteerInput, steer.ItemID, steer.Input
-		expectedSignal, err := steerSignalID(steer.ItemID)
-		if err != nil || !expected.Equal(*steer.Acceptance) || signalID != expectedSignal {
-			return interactionPendingSteerWire{}, errors.New("pending steer command does not name its attributed input")
-		}
-		wire.Command = &interactionSteerCommandWire{Key: steer.Acceptance.Key, Fingerprint: steer.Acceptance.Fingerprint, SessionID: steer.Acceptance.SessionID, RunID: steer.Acceptance.RunID, SegmentID: steer.Acceptance.SegmentID}
-	}
-	return wire, nil
 }
 
 func encodeInteractionResumeInputs(inputs []runs.CommittedUserInput) ([]interactionResumeInputWire, error) {
@@ -605,46 +576,43 @@ func decodeInteractionPendingSteers(
 	pending := make(map[scoperun.SignalID]runs.PreparedSteer, len(values))
 	previous := ""
 	for _, value := range values {
-		signalID, steer, err := value.decode(previous)
+		if value.ItemID <= previous {
+			return nil, errors.New("pending steer Items are not in canonical order")
+		}
+		steer, err := value.decode()
+		if err != nil {
+			return nil, fmt.Errorf("pending steer %q: %w", value.ItemID, err)
+		}
+		signalID, err := steerSignalID(steer.ItemID())
 		if err != nil {
 			return nil, err
 		}
 		pending[signalID] = steer
-		previous = value.SignalID
+		previous = value.ItemID
 	}
 	return pending, nil
 }
 
-func (w interactionPendingSteerWire) decode(
-	previousSignalID string,
-) (scoperun.SignalID, runs.PreparedSteer, error) {
-	var zeroSignalID scoperun.SignalID
-	if err := identity.ValidateItem(w.ItemID); err != nil {
-		return zeroSignalID, runs.PreparedSteer{}, err
-	}
-	if previousSignalID != "" && w.SignalID <= previousSignalID || len(w.Content) == 0 {
-		return zeroSignalID, runs.PreparedSteer{}, errors.New("not in canonical order")
-	}
-	signalID, err := scoperun.ParseSignalID(w.SignalID)
-	if err != nil {
-		return zeroSignalID, runs.PreparedSteer{}, fmt.Errorf("pending steer identity: %w", err)
-	}
+func (w interactionPendingSteerWire) decode() (runs.PreparedSteer, error) {
 	content, err := decodeInteractionInputContent(w.Content)
 	if err != nil {
-		return zeroSignalID, runs.PreparedSteer{}, fmt.Errorf("pending steer %s: %w", signalID, err)
+		return runs.PreparedSteer{}, err
 	}
-	pending := runs.PreparedSteer{ItemID: w.ItemID, Input: content}
-	if w.Command != nil {
-		expectedSignal, err := steerSignalID(w.ItemID)
-		if err != nil || signalID != expectedSignal {
-			return zeroSignalID, runs.PreparedSteer{}, errors.New("pending steer command does not name its Signal")
-		}
-		pending.Acceptance = &runs.CommandAcceptance{Key: w.Command.Key, Fingerprint: w.Command.Fingerprint, Operation: runs.CommandSteerInput, SessionID: w.Command.SessionID, RunID: w.Command.RunID, SegmentID: w.Command.SegmentID, UserItemID: w.ItemID, SteerInput: transcript.CloneContent(content)}
-		if err := pending.Acceptance.Validate(); err != nil {
-			return zeroSignalID, runs.PreparedSteer{}, err
-		}
+	if w.Command == nil {
+		return runs.PrepareLocalSteer(w.ItemID, content)
 	}
-	return signalID, pending, nil
+	binding := runs.SteerCommandBinding{
+		CommandIdentity: runs.CommandIdentity{Key: w.Command.Key, Fingerprint: w.Command.Fingerprint},
+		SessionID:       w.Command.SessionID, RunID: w.Command.RunID, SegmentID: w.Command.SegmentID,
+	}
+	steer, err := binding.Prepare(content)
+	if err != nil {
+		return runs.PreparedSteer{}, err
+	}
+	if steer.ItemID() != w.ItemID {
+		return runs.PreparedSteer{}, errors.New("pending steer command nominates another Item")
+	}
+	return steer, nil
 }
 
 func decodeInteractionResumeInputs(values []interactionResumeInputWire) ([]runs.CommittedUserInput, error) {

@@ -280,12 +280,7 @@ func (i *InteractionExecutor) SubmitSteer(
 	if err != nil {
 		return "", err
 	}
-	prepared = prepared.Clone()
-	message, err := runs.MaterializeUserMessage(prepared.Input)
-	if err != nil {
-		return "", err
-	}
-	return session.submitSteer(ctx, message, prepared)
+	return session.submitSteer(ctx, prepared)
 }
 
 func interactionAnswerSignalID(

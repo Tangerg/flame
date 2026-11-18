@@ -320,8 +320,8 @@ type CancelResult struct {
 
 // SteerCommand injects structured user content into an actively executing run.
 type SteerCommand struct {
-	Acceptance *CommandIdentity
-	RunID      string
+	Identity *CommandIdentity
+	RunID    string
 	// ExpectedSegmentID is the segment the caller believes is executing. It is
 	// required: without it "inject into whatever is running now" would deliver the
 	// user's instruction to a continuation they never saw — the run they meant
@@ -332,8 +332,8 @@ type SteerCommand struct {
 
 func (s SteerCommand) clone() SteerCommand {
 	s.Input = transcript.CloneContent(s.Input)
-	if s.Acceptance != nil {
-		s.Acceptance = new(*s.Acceptance)
+	if s.Identity != nil {
+		s.Identity = new(*s.Identity)
 	}
 	return s
 }
