@@ -166,3 +166,84 @@ func TestSelectedModelAdaptersCoexistPerProvider(t *testing.T) {
 		t.Fatalf("available providers after withdrawal = %+v", result.Data)
 	}
 }
+
+func TestModelEndpointAccountingFollowsDispatchEvidence(t *testing.T) {
+	var exchanges atomic.Int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		switch {
+		case strings.HasSuffix(request.URL.Path, "/responses/input_tokens"):
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprint(w, `{"object":"response.input_tokens","input_tokens":16}`)
+		case strings.HasSuffix(request.URL.Path, "/responses"):
+			exchanges.Add(1)
+			w.Header().Set("Content-Type", "text/event-stream")
+			w.WriteHeader(http.StatusOK)
+		default:
+			http.NotFound(w, request)
+		}
+	}))
+	t.Cleanup(upstream.Close)
+	cfg := poMCPConfig(t)
+	cfg.modelProviders = nil
+	cfg.defaultSelection = testsupport.MustModelSelection("openai", "gpt-5.6-sol")
+	cfg.maintenance = noMaintenance{}
+	runtime := poMCPOpen(t, cfg)
+	activateModelProviders(runtime)
+	runtime.must(delivery.ProvidersUpdate, protocol.UpdateProviderRequest{
+		Provider: "openai",
+		APIKey:   &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: new("test-key")},
+		BaseURL:  &protocol.ProviderConfigChange{Type: protocol.ProviderConfigSet, Value: &upstream.URL},
+	}, "configure-provider")
+
+	for _, test := range []struct {
+		name      string
+		params    *protocol.GenerationParams
+		wantSteps int
+	}{
+		{name: "preparation refused", params: &protocol.GenerationParams{Stop: []string{"end"}}},
+		{name: "dispatched without a response", wantSteps: 1},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := t.Context()
+			wantDispatch := test.wantSteps != 0
+			priorExchanges := exchanges.Load()
+			session, err := runtime.api.CreateSession(ctx, protocol.CreateSessionRequest{Title: test.name})
+			if err != nil {
+				t.Fatal(err)
+			}
+			started, events, err := runtime.api.StartRun(protocolLifecycleContext(ctx), protocol.StartRunRequest{
+				SessionID: session.ID,
+				Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Answer the question."}},
+				Params:    test.params,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			waitForRunEvents(t, collectRunEvents(events), "model exchange to settle")
+			settled, err := runtime.api.GetRun(ctx, protocol.GetRunRequest{RunID: started.RunID})
+			if err != nil || settled.Status != protocol.RunStatusFinished || settled.Outcome == nil {
+				t.Fatalf("Run did not settle: %+v, %v", settled, err)
+			}
+			if !wantDispatch && settled.Outcome.Type != protocol.OutcomeFailed {
+				t.Fatalf("preparation refusal outcome = %+v, want failed", settled.Outcome)
+			}
+			if settled.Metrics.Steps != test.wantSteps || (len(settled.Outcome.UnresolvedEffects) != 0) != wantDispatch {
+				t.Fatalf("Run metrics = %+v, outcome = %+v", settled.Metrics, settled.Outcome)
+			}
+			calls, err := runtime.api.ListModelInvocations(ctx, protocol.ListModelInvocationsRequest{RunID: started.RunID})
+			if err != nil || len(calls.Data) != 1 || calls.Data[0].State != protocol.ModelInvocationFailed {
+				t.Fatalf("logical Model calls = %+v, %v, want one failed call", calls, err)
+			}
+			endpoints, err := runtime.api.ListModelEndpoints(ctx, protocol.ListModelEndpointsRequest{ParentCallID: calls.Data[0].CallID})
+			if err != nil || len(endpoints.Data) != test.wantSteps {
+				t.Fatalf("physical endpoints = %+v, %v, want %d", endpoints, err, test.wantSteps)
+			}
+			if wantDispatch && endpoints.Data[0].State != protocol.ModelInvocationUnknown {
+				t.Fatalf("unconfirmed physical endpoint = %+v", endpoints.Data[0])
+			}
+			if dispatched := exchanges.Load() > priorExchanges; dispatched != wantDispatch {
+				t.Fatalf("upstream received a generation request = %t, want %t", dispatched, wantDispatch)
+			}
+		})
+	}
+}

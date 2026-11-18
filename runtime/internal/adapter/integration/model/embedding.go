@@ -200,15 +200,11 @@ func (e *embedder) finish(ctx context.Context, invocation modelref.EndpointInvoc
 		}
 		cost, pricingErr = e.pricing(invocation.Provider, served, &chat.Usage{InputTokens: response.Metadata.Usage.InputTokens})
 	}
-	failure := ""
-	if err := errors.Join(cause, pricingErr); err != nil {
-		failure = err.Error()
-	}
-	outcome := modelref.EndpointOutcome{Cost: cost, FinishedAt: time.Now().UTC(), Failure: failure}
+	outcome := modelref.EndpointOutcome{Cost: cost}
 	if response != nil {
 		outcome.Response = modelref.EmbeddingEndpointResponse{Embedding: response}
 	}
-	return errors.Join(pricingErr, e.journal.SettleEndpointInvocation(context.WithoutCancel(ctx), invocation, outcome))
+	return recordEndpointOutcome(ctx, e.journal, invocation, outcome, cause, pricingErr)
 }
 
 func cloneEmbeddingRequest(r *embedding.Request) *embedding.Request {

@@ -165,25 +165,42 @@ func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, inv
 		if err != nil {
 			return err
 		}
-		encoded, err := encodeEndpointInvocation(invocation)
-		if err != nil {
-			return err
-		}
-		result, err := m.db.connection(ctx).ExecContext(ctx, `UPDATE model_invocations SET state=?,finished_at=?,known_response=?,usage=?,endpoint_failure=?,endpoint_cost_nano_usd=?
-		WHERE call_id=? AND state=? AND started_at=? AND endpoint_json=?`, state, outcome.FinishedAt.UTC().UnixNano(), response, encodedUsage, outcome.Failure, outcome.Cost.OptionalNanoUSD(), invocation.ID, modelref.InvocationStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded))
-		if err != nil {
-			return err
-		}
-		changed, err := result.RowsAffected()
-		if err != nil {
-			return err
-		}
-		if changed != 1 {
-			return errors.New("sqlite: endpoint observation is no longer open")
-		}
-		return nil
+		return m.finishOpenEndpoint(ctx, invocation, `UPDATE model_invocations
+		SET state=?,finished_at=?,known_response=?,usage=?,endpoint_failure=?,endpoint_cost_nano_usd=?`,
+			state, outcome.FinishedAt.UTC().UnixNano(), response, encodedUsage, outcome.Failure, outcome.Cost.OptionalNanoUSD())
 	})
 }
+
+func (m *ModelInvocationStore) DiscardUnexecutedEndpoint(ctx context.Context, invocation modelref.EndpointInvocation) error {
+	if err := invocation.Validate(); err != nil {
+		return err
+	}
+	return m.db.write(ctx, func(ctx context.Context) error {
+		return m.finishOpenEndpoint(ctx, invocation, `DELETE FROM model_invocations`)
+	})
+}
+
+func (m *ModelInvocationStore) finishOpenEndpoint(ctx context.Context, invocation modelref.EndpointInvocation, statement string, args ...any) error {
+	encoded, err := encodeEndpointInvocation(invocation)
+	if err != nil {
+		return err
+	}
+	args = append(args, invocation.ID, modelref.InvocationStarted, invocation.StartedAt.UTC().UnixNano(), string(encoded))
+	result, err := m.db.connection(ctx).ExecContext(ctx, statement+`
+	WHERE call_id=? AND state=? AND started_at=? AND endpoint_json=?`, args...)
+	if err != nil {
+		return err
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if changed != 1 {
+		return errors.New("sqlite: endpoint observation is no longer open")
+	}
+	return nil
+}
+
 func (m *ModelInvocationStore) PageEndpointInvocations(ctx context.Context, parent string, before *modelref.InvocationPageAnchor, limit int) ([]modelref.EndpointObservation, error) {
 	return scopedValue(ctx, m.db.read, func(ctx context.Context) ([]modelref.EndpointObservation, error) {
 		query := `SELECT ` + endpointObservationColumns + ` FROM model_invocations WHERE endpoint_json IS NOT NULL AND (json_extract(endpoint_json,'$.caller.id')=? OR json_extract(endpoint_json,'$.caller.parent')=?)`

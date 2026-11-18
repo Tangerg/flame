@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"errors"
+	"fmt"
 	"iter"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 type endpointJournal interface {
 	StartEndpointInvocation(context.Context, modelref.EndpointInvocation, string) error
 	SettleEndpointInvocation(context.Context, modelref.EndpointInvocation, modelref.EndpointOutcome) error
+	DiscardUnexecutedEndpoint(context.Context, modelref.EndpointInvocation) error
 }
 
 type ObservedResolver struct {
@@ -126,15 +128,25 @@ func (m *observedEndpoint) finish(ctx context.Context, invocation modelref.Endpo
 		}
 		cost, pricingErr = m.pricing(invocation.Provider, served, response.Metadata.Usage)
 	}
-	failure := ""
-	if err := errors.Join(cause, pricingErr); err != nil {
-		failure = err.Error()
-	}
-	outcome := modelref.EndpointOutcome{Cost: cost, FinishedAt: time.Now().UTC(), Failure: failure}
+	outcome := modelref.EndpointOutcome{Cost: cost}
 	if response != nil {
 		outcome.Response = modelref.ChatEndpointResponse{Chat: response.Clone()}
 	}
-	return errors.Join(pricingErr, m.journal.SettleEndpointInvocation(context.WithoutCancel(ctx), invocation, outcome))
+	return recordEndpointOutcome(ctx, m.journal, invocation, outcome, cause, pricingErr)
+}
+
+// The start record fences a call before I/O. Only definite non-execution
+// can withdraw that record from physical accounting.
+func recordEndpointOutcome(ctx context.Context, journal endpointJournal, invocation modelref.EndpointInvocation, outcome modelref.EndpointOutcome, cause, pricingErr error) error {
+	commitCtx := context.WithoutCancel(ctx)
+	if outcome.Response == nil && coreinvocation.ClassifyFailure(cause) == coreinvocation.FailureNotExecuted {
+		return journal.DiscardUnexecutedEndpoint(commitCtx, invocation)
+	}
+	outcome.FinishedAt = time.Now().UTC()
+	if err := errors.Join(cause, pricingErr); err != nil {
+		outcome.Failure = err.Error()
+	}
+	return errors.Join(pricingErr, journal.SettleEndpointInvocation(commitCtx, invocation, outcome))
 }
 
 func (m *observedEndpoint) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
@@ -190,8 +202,10 @@ func (m *streamedEndpoint) Stream(ctx context.Context, request *chat.Request) it
 		}()
 		calling, err := endpointContext(ctx, invocation)
 		if err != nil {
-			yield(nil, errors.Join(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}, m.finish(ctx, invocation, nil, err)))
+			refusal := &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
+			publicationErr := m.finish(ctx, invocation, nil, refusal)
 			settled = true
+			yield(nil, errors.Join(refusal, publicationErr))
 			return
 		}
 		sequence := m.stream.Stream(calling, frozen.Clone())
@@ -210,6 +224,11 @@ func (m *streamedEndpoint) Stream(ctx context.Context, request *chat.Request) it
 				if !yield(delta.Clone(), nil) {
 					return
 				}
+			}
+		}
+		if accumulated.HasDeltas() && coreinvocation.ClassifyFailure(err) == coreinvocation.FailureNotExecuted {
+			err = &coreinvocation.Failure{
+				Kind: coreinvocation.FailureUnknown, Cause: fmt.Errorf("model: provider reported non-execution after emitting deltas: %w", err),
 			}
 		}
 		response, responseErr := accumulated.Response()

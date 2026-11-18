@@ -136,31 +136,21 @@ func (s *store) stream(ctx context.Context, method string, command pluginmcp.Com
 			if entry.stream == nil || (request.Request.Options.Model != "" && request.Request.Options.Model != entry.modelID) {
 				return modelprovider.ChatResult{Failure: notExecuted(errors.New("model provider: captured stream is unavailable"))}, leave, nil
 			}
-			var accumulated chat.ResponseAccumulator
 			sequence := entry.stream.Stream(httpresponse.WithEventStream(ctx), request.Request.Clone())
 			if sequence == nil {
-				err = errors.New("model provider: missing stream")
-			} else {
+				return modelprovider.ChatResult{Failure: failure(chat.ErrNilStream)}, leave, nil
+			}
+			response, err := chat.Collect(func(accept func(*chat.ResponseDelta, error) bool) {
 				for delta, cause := range sequence {
-					if cause != nil {
-						err = cause
-						break
-					}
-					if cause := accumulated.Add(delta); cause != nil {
-						err = cause
-						break
+					if !accept(delta, cause) || cause != nil {
+						return
 					}
 					if !emit(*delta.Clone()) {
-						err = context.Canceled
-						break
+						accept(nil, context.Canceled)
+						return
 					}
 				}
-			}
-			response, responseErr := accumulated.Response()
-			if responseErr != nil {
-				response = nil
-				err = errors.Join(err, responseErr)
-			}
+			})
 			return modelprovider.ChatResult{Response: response, Failure: failure(err)}, leave, nil
 		})
 		if !continuing {

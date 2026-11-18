@@ -187,6 +187,8 @@ requires fresh installation data; retain the former installation/data separately
 Run accounting facts report every physically dispatched model call, including
 unknown outcomes, original reported usage and captured per-call price. `Steps`
 counts these calls; preparation failures without dispatch evidence do not count.
+An adapter that proves the original request never executed withdraws the pending
+endpoint observation and preserves the logical Model failure in the Run's history.
 The Run reducer owns accumulation across calls and resumed
 segments; terminal segment facts contain outcome, unresolved effects and duration.
 `SegmentUsage` and cumulative completion fields are removed. Scope process snapshots
