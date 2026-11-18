@@ -23,6 +23,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	"github.com/Tangerg/flame/runtime/internal/keylock"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
 )
@@ -374,6 +375,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		mutations:             deps.Mutations,
 		retirer:               deps.Retirer,
 		admissions:            deps.Admissions,
+		titles:                titleClaims{writes: keylock.NewSet()},
 		invalidations:         deps.Invalidations,
 		now:                   deps.Now,
 		newID:                 deps.NewID,

@@ -39,8 +39,9 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 			if err := c.transientState.QuiesceSession(sessionID); err != nil {
 				return fmt.Errorf("sessions: quiesce process-local Session state before delete: %w", err)
 			}
-			c.retireGeneratedTitle(sessionID)
-			return c.writes.ApplyDelete(commitCtx, deletion)
+			return c.titles.commitHistoryChange(commitCtx, sessionID, func(string) bool { return true }, func() error {
+				return c.writes.ApplyDelete(commitCtx, deletion)
+			})
 		},
 		func(ctx context.Context) error {
 			// The durable cascade is gone as of here, so the signal cannot outrun it.
@@ -85,28 +86,29 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 	if err != nil {
 		return View{}, err
 	}
-	c.retireGeneratedTitle(sessionID)
-	sessionReplacement, err := c.prepareSessionRestore(ctx, snapshot.Session)
-	if err != nil {
-		return View{}, err
-	}
 	planReplacement, err := c.prepareRestoredPlanReplacement(ctx, sessionID, plan.Document{Steps: snapshot.Plan, Source: snapshot.PlanSource})
 	if err != nil {
 		return View{}, err
 	}
-	restore, err := NewRestorePlan(snapshot, sessionReplacement, planReplacement)
-	if err != nil {
-		return View{}, err
-	}
-	committedSession := sessionReplacement.State()
+	var restore RestorePlan
 	err = c.goals.WithSessionMutation(
 		ctx,
 		[]string{sessionID},
 		func(ctx context.Context) error {
-			if err := c.transientState.QuiesceSession(sessionID); err != nil {
-				return fmt.Errorf("sessions: quiesce process-local Session state before restore: %w", err)
-			}
-			return c.writes.ApplyRestore(ctx, restore)
+			return c.titles.commitHistoryChange(ctx, sessionID, func(string) bool { return true }, func() error {
+				replacement, err := c.prepareSessionRestore(ctx, snapshot.Session)
+				if err != nil {
+					return err
+				}
+				restore, err = NewRestorePlan(snapshot, replacement, planReplacement)
+				if err != nil {
+					return err
+				}
+				if err := c.transientState.QuiesceSession(sessionID); err != nil {
+					return fmt.Errorf("sessions: quiesce process-local Session state before restore: %w", err)
+				}
+				return c.writes.ApplyRestore(ctx, restore)
+			})
 		},
 		func(ctx context.Context) error {
 			// Restore replaced the whole history, so process-local read evidence
@@ -125,7 +127,7 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 	// The view is the command's result, not settlement: it projects the value
 	// this command committed while the mutation admission is still held, so no
 	// other writer can move the Session between the write and the answer.
-	return c.view(committedSession, activityIdle)
+	return c.view(restore.SessionReplacement().State(), activityIdle)
 }
 
 func (c *Coordinator) prepareSessionRestore(

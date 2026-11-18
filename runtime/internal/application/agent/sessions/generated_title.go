@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/keylock"
 )
 
 type titleClaims struct {
+	writes  *keylock.Set
 	mu      sync.Mutex
 	pending map[string]*GeneratedTitle
 }
@@ -61,22 +62,32 @@ func (g *GeneratedTitle) Release() {
 	}
 }
 
-func (c *Coordinator) retireGeneratedTitle(sessionID string) {
-	c.titles.mu.Lock()
-	defer c.titles.mu.Unlock()
-	delete(c.titles.pending, sessionID)
-}
-
-func (c *Coordinator) retireRolledBackTitle(sessionID string, droppedRunIDs []string) {
-	c.titles.mu.Lock()
-	defer c.titles.mu.Unlock()
-	if claim := c.titles.pending[sessionID]; claim != nil && slices.Contains(droppedRunIDs, claim.runID) {
-		delete(c.titles.pending, sessionID)
+// Title publication shares the commit boundary because an archive can reuse
+// a Session and Run identity after replacing the history that issued the claim.
+func (c *titleClaims) commitHistoryChange(ctx context.Context, sessionID string, removes func(runID string) bool, commit func() error) error {
+	release, err := c.writes.Acquire(ctx, sessionID)
+	if err != nil {
+		return err
 	}
+	defer release()
+	if err := commit(); err != nil {
+		return err
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if claim := c.pending[sessionID]; claim != nil && removes(claim.runID) {
+		delete(c.pending, sessionID)
+	}
+	return nil
 }
 
 func (g *GeneratedTitle) persist(ctx context.Context, title string) (bool, error) {
 	c := g.owner
+	release, err := c.titles.writes.Acquire(ctx, g.sessionID)
+	if err != nil {
+		return false, err
+	}
+	defer release()
 	c.titles.mu.Lock()
 	defer c.titles.mu.Unlock()
 	if c.titles.pending[g.sessionID] != g {
