@@ -49,7 +49,11 @@ export async function submitCapturedAgentInput(
   const recovered = pending.recoveredInputs?.find(
     (command) => JSON.stringify(command.input) === inputIdentity,
   );
-  if (recovered) return acceptedAgentInput(recovered.acceptance);
+  if (recovered) {
+    const settlement = acceptedAgentInput(recovered.acceptance);
+    recovered.acknowledge();
+    return settlement;
+  }
   const opening = pending.unresolvedOpenings?.find(
     (command) => command.operation === "start" && JSON.stringify(command.input) === inputIdentity,
   );

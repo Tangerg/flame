@@ -1764,7 +1764,13 @@ receipt settles the command without another mutation; failed lookup retains the
 original identity, and `notRecorded` only permits dispatch while the original
 replay admission still holds. Receipt reads remain possible after expiry or
 store replacement. Neither reopening nor cold retry renews that age. Persisted
-journal entries use the current shape described under Steer admission. The SDK exposes `runs.recoverCommands()` for reading unresolved original Start, Resume and Steer commands after application restart. It queries their original receipts without dispatch, returns each known or unknown observation, and exposes explicit `retry()` using the frozen original request. Query failure, expiry or store replacement cannot mint a new key, retarget a Segment, or renew the original deadline. Accepted receipts settle the client journal; Runtime snapshots retain any still-unapplied input.
+journal entries use the current shape described under Steer admission. The SDK
+exposes `runs.recoverCommands()` to read the original receipts of pending Start,
+Resume and Steer commands. Consumers acknowledge a recorded receipt after using
+it. A receipt read leaves the journal available to other consumers of the
+original command. Explicit `retry()` uses the frozen request. Query failure,
+expiry or store replacement cannot mint a new key, retarget a Segment, or renew
+the original deadline. Runtime snapshots retain any still-unapplied input.
 
 Disabling or deleting a schedule stops future occurrence claims. An already claimed occurrence retains its accepted input and may still start after that change; its Run must be canceled separately when required. Editing a schedule does not rewrite an occurrence already claimed from an earlier revision.
 

@@ -31,12 +31,14 @@ export interface AgentSessionSnapshot {
 export interface AgentSessionMaterialRead {
   snapshot: AgentSessionSnapshot;
   projectAssociatedSharedMaterial(shared: Record<string, unknown>): Record<string, unknown>;
+  acknowledgeRecoveredCommands?: () => void;
   unresolvedSteers?: AgentUnresolvedSteer[];
   unresolvedOpenings?: AgentOpeningCommand[];
   recoveredInputs?: Array<{
     idempotencyKey: string;
     input: AgentInput;
     acceptance: AgentOpeningAcceptance;
+    acknowledge(): void;
   }>;
 }
 

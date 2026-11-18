@@ -1866,6 +1866,17 @@ for await (const line of lines) {
         capabilities: () => negotiated,
         mutationStorage,
       });
+      await expect(cold.runs.recoverCommands()).resolves.toMatchObject([
+        {
+          idempotencyKey: pending.idempotencyKey,
+          operation: "start",
+          observation: {
+            type: "recorded",
+            acceptance: { type: "accepted", sessionId: session.id },
+          },
+        },
+      ]);
+      expect([...entries]).toEqual(evidence);
       const recovered = cold.runs.start(params);
       expect(recovered.idempotencyKey).toBe(pending.idempotencyKey);
       expect([...entries]).toEqual(evidence);

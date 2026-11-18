@@ -8,28 +8,43 @@ import {
   RpcProtocolError,
 } from "@flame/runtime-client";
 import discovery from "@flame/runtime-client/testing/samples/method.discover.resp.json";
+import session from "@flame/runtime-client/testing/samples/session.json";
+import { isWireStreamingMethodName, type WireMethodName } from "@flame/runtime-client/methods";
 import {
   RPC_HTTP,
   type ResumeRunRequest,
-  type ResumeRunResponse,
   type RunAcceptance,
   type ServerCapabilities,
 } from "@flame/runtime-client/wire";
+import { createAgentRuntimeGateway } from "@/features/agent/adapters/agentRuntimeGateway";
+import { createAgentCommands } from "@/features/agent/application/agentCommandOwner";
+import { createAgentSessionUsage } from "@/features/agent/application/session/sessionUsage";
+import { createAgentSharedMaterial } from "@/features/agent/application/session/sharedMaterial";
 import { expect, it, onTestFinished } from "vitest";
 
-async function endpoint(reply: (method: string) => RunAcceptance | ResumeRunResponse) {
-  const calls: string[] = [];
+async function endpoint(
+  reply: (method: WireMethodName, params: Record<string, unknown>) => unknown,
+) {
+  const calls: WireMethodName[] = [];
   const server = createServer(async (request, response) => {
     try {
-      const { id, method } = JSON.parse(await text(request)) as { id: string; method: string };
+      const { id, method, params } = JSON.parse(await text(request)) as {
+        id: string;
+        method: WireMethodName;
+        params: Record<string, unknown>;
+      };
       calls.push(method);
-      const result = JSON.stringify({ jsonrpc: JSONRPC_VERSION, id, result: reply(method) });
-      if (method === "runs.getAcceptance") {
-        response.writeHead(RPC_HTTP.callStatus, { "Content-Type": RPC_HTTP.documentMediaType });
-        response.end(result);
-      } else {
+      const result = JSON.stringify({
+        jsonrpc: JSONRPC_VERSION,
+        id,
+        result: reply(method, params),
+      });
+      if (isWireStreamingMethodName(method)) {
         response.writeHead(RPC_HTTP.callStatus, { "Content-Type": RPC_HTTP.streamMediaType });
         response.end(`event: message\ndata: ${result}\n\n`);
+      } else {
+        response.writeHead(RPC_HTTP.callStatus, { "Content-Type": RPC_HTTP.documentMediaType });
+        response.end(result);
       }
     } catch {
       response.writeHead(500).end();
@@ -125,3 +140,64 @@ it.each([
     client.runs.subscribe({ runId, segmentId, snapshot: received.snapshot }),
   ).rejects.toBeInstanceOf(RpcProtocolError);
 });
+
+it.each(["ses_other", "ses_source"])(
+  "retains a recovered input through passive Session reads of %s",
+  async (firstRead) => {
+    const sessionId = "ses_source";
+    let accepted = false;
+    const { client, calls } = await endpoint((method, params) => {
+      switch (method) {
+        case "sessions.snapshot":
+          return {
+            session: { ...session, id: params.sessionId },
+            items: [],
+            runs: [],
+            interrupts: [],
+          };
+        case "runs.getAcceptance":
+          return accepted
+            ? { type: "retired", sessionId, runId, segmentId, userItemId }
+            : { type: "notRecorded" };
+        case "runs.start":
+          accepted = true;
+          return { runId, segmentId };
+        default:
+          throw new Error(`unexpected fixture method ${method}`);
+      }
+    });
+    const { gateway, dispose } = createAgentRuntimeGateway(
+      () => client,
+      { hasCapability: () => false },
+      createAgentSharedMaterial(),
+      createAgentCommands(),
+      createAgentSessionUsage(),
+    );
+    try {
+      const opening = client.runs.start({
+        sessionId,
+        input: [{ type: "text", text: "captured input" }],
+      });
+      await expect(opening).rejects.toBeInstanceOf(RpcProtocolError);
+      const passive = await gateway.loadSessionSnapshot(firstRead);
+      expect(passive).not.toBeNull();
+      if (firstRead !== sessionId) {
+        expect(passive?.recoveredInputs).toBeUndefined();
+        expect(passive?.acknowledgeRecoveredCommands).toBeUndefined();
+      }
+      const material = await gateway.loadSessionSnapshot(sessionId);
+      expect(material?.recoveredInputs).toEqual([
+        expect.objectContaining({
+          idempotencyKey: opening.idempotencyKey,
+          acceptance: { status: "retired", sessionId, runId, userItemId },
+        }),
+      ]);
+      if (firstRead === sessionId) material?.recoveredInputs?.[0]?.acknowledge();
+      else material?.acknowledgeRecoveredCommands?.();
+      await expect(client.runs.recoverCommands()).resolves.toEqual([]);
+      expect(calls.filter((method) => method === "runs.start")).toHaveLength(1);
+    } finally {
+      dispose();
+    }
+  },
+);

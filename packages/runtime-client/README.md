@@ -118,6 +118,12 @@ or deletion. Settle outstanding commands with the previous client before upgradi
 or preserve that client and its journal separately for recovery and start with a
 fresh client journal.
 
+`runs.recoverCommands()` observes the original receipts of pending Start, Resume,
+and Steer commands. Each observation is `recorded`, `notRecorded`, or `unknown`.
+Call `observation.acknowledge()` for a `recorded` observation after incorporating
+its acceptance. Until then, later observations can still recover the same
+command. Explicit retry continues to use its original admission and request.
+
 Run `npm run check --workspace @flame/runtime-client` from the root after
 `make setup`. Independent author checks consume a real packed package, rather
 than workspace-private paths. No former package name or wildcard client export

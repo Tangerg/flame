@@ -171,7 +171,13 @@ export interface SteerMutationPromise extends MutationPromise<SteerCommandResult
 interface CommandObservation {
   readonly idempotencyKey: string;
   readonly observation:
-    { type: "known"; acceptance: RunAcceptance } | { type: "unknown"; cause: unknown };
+    | { type: "unknown"; cause: unknown }
+    | Extract<RunAcceptance, { type: "notRecorded" }>
+    | {
+        type: "recorded";
+        acceptance: Exclude<RunAcceptance, { type: "notRecorded" }>;
+        acknowledge(): void;
+      };
 }
 
 export type RunCommandRecovery = CommandObservation &
@@ -784,8 +790,10 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
                 command.idempotencyKey,
                 signal,
               );
-              if (acceptance.type !== "notRecorded") command.settle();
-              observation = { type: "known", acceptance };
+              observation =
+                acceptance.type === "notRecorded"
+                  ? acceptance
+                  : { type: "recorded", acceptance, acknowledge: command.acknowledge };
             } catch (cause) {
               observation = { type: "unknown", cause };
             }

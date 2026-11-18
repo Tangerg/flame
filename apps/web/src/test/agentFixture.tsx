@@ -35,7 +35,13 @@ export function createAgentFixture(
   const commands = createAgentCommands();
   const usage = createAgentSessionUsage();
   const sharedMaterial = createAgentSharedMaterial();
-  const gateway = createAgentRuntimeGateway(client, runtime, sharedMaterial, commands, usage);
+  const gateway = createAgentRuntimeGateway(
+    client,
+    runtime.capabilities,
+    sharedMaterial,
+    commands,
+    usage,
+  );
   const interrupts = new InterruptResponseCoordinator(state.view);
   const defaultSession = createAgentDefaultSession(
     navigation,

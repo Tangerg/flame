@@ -26,10 +26,13 @@ import { runtimeItem } from "@/features/agent/adapters/runtimeAgentFacts";
 import { toAgentSessionSummary } from "@/features/agent/adapters/runtimeSessionSummary";
 import { type AgentCommands } from "@/features/agent/application/agentCommandOwner";
 import { type createAgentSessionUsage } from "@/features/agent/application/session/sessionUsage";
+
+type RuntimeCapabilities = Pick<RuntimeAccess["capabilities"], "hasCapability">;
+
 class RuntimeAgentGateway implements AgentRuntimeGateway {
   constructor(
     private readonly runtimeClient: () => FlameClient,
-    private readonly runtime: RuntimeAccess,
+    private readonly capabilities: RuntimeCapabilities,
     private readonly sharedMaterial: AgentSharedMaterial,
   ) {}
 
@@ -103,16 +106,16 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     const client = this.runtimeClient();
     const generation = this.#generation;
     const sid = asSessionId(sessionId);
-    const includeDescendants = this.runtime.capabilities.hasCapability("childRuns");
+    const includeDescendants = this.capabilities.hasCapability("childRuns");
     try {
       let snapshot = await client.sessions.snapshot(sid, includeDescendants, signal);
       const commands = await client.runs.recoverCommands(signal);
+      signal?.throwIfAborted();
       if (
         commands.some(
           (command) =>
             command.operation !== "steer" &&
-            command.observation.type === "known" &&
-            command.observation.acceptance.type !== "notRecorded" &&
+            command.observation.type === "recorded" &&
             command.observation.acceptance.sessionId === sessionId,
         )
       )
@@ -120,35 +123,19 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
       const material = runtimeSessionMaterial(this.sharedMaterial, sessionId, snapshot);
       const unresolvedOpenings: AgentOpeningCommand[] = [];
       const unresolvedSteers: AgentUnresolvedSteer[] = [];
+      const acknowledge: Array<() => void> = [];
+      const runIDs = new Set(snapshot.runs.map((run) => run.id));
       for (const command of commands) {
-        const receipt =
-          command.observation.type === "known" ? command.observation.acceptance : null;
-        if (
-          command.operation !== "resume" &&
-          receipt &&
-          receipt.type !== "notRecorded" &&
-          receipt.sessionId === sessionId
-        ) {
-          material.recoveredInputs ??= [];
-          material.recoveredInputs.push({
-            idempotencyKey: command.idempotencyKey,
-            input: contentBlocksToAgentInput(command.params.input),
-            acceptance: {
-              status: receipt.type,
-              sessionId: receipt.sessionId,
-              runId: receipt.runId,
-              ...(receipt.userItemId ? { userItemId: receipt.userItemId } : {}),
-            },
-          });
-        }
+        const { observation } = command;
+        const belongs =
+          observation.type === "recorded"
+            ? observation.acceptance.sessionId === sessionId
+            : command.operation === "start"
+              ? (command.params.sessionId ?? command.params.newSession?.sessionId) === sessionId
+              : runIDs.has(command.params.runId);
+        if (!belongs) continue;
+
         if (command.operation !== "steer") {
-          const belongs =
-            receipt && receipt.type !== "notRecorded"
-              ? receipt.sessionId === sessionId
-              : command.operation === "start"
-                ? command.params.sessionId === sessionId
-                : snapshot.runs.some((run) => run.id === command.params.runId);
-          if (!belongs) continue;
           generation.retries.set(command.idempotencyKey, {
             sessionId,
             retry: async (retrySignal: AbortSignal) => {
@@ -165,43 +152,25 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
               };
             },
           });
-          if (
-            command.observation.type === "known" &&
-            command.observation.acceptance.type !== "notRecorded"
-          )
-            continue;
-          const request =
-            command.operation === "start"
-              ? {
-                  operation: "start" as const,
-                  input: contentBlocksToAgentInput(command.params.input),
-                  options: {
-                    provider: command.params.provider,
-                    model: command.params.model,
-                    reasoningEffort: command.params.reasoningEffort,
-                  },
-                  ...(command.params.params ? { generation: { ...command.params.params } } : {}),
-                }
-              : {
-                  operation: "resume" as const,
-                  runId: command.params.runId,
-                  ...(command.params.input
-                    ? { input: contentBlocksToAgentInput(command.params.input) }
-                    : {}),
-                  responses: command.params.responses,
-                };
-          unresolvedOpenings.push({
-            ...request,
-            idempotencyKey: command.idempotencyKey,
-            receipt: command.observation.type === "unknown" ? "unknown" : "notRecorded",
-          });
-          continue;
         }
-        try {
-          if (command.observation.type === "unknown") throw command.observation.cause;
-          const receipt = command.observation.acceptance;
-          if (receipt.type !== "notRecorded") {
-            if (receipt.sessionId !== sessionId) continue;
+        if (observation.type === "recorded") {
+          const receipt = observation.acceptance;
+          acknowledge.push(observation.acknowledge);
+          if (command.operation !== "resume") {
+            material.recoveredInputs ??= [];
+            material.recoveredInputs.push({
+              idempotencyKey: command.idempotencyKey,
+              input: contentBlocksToAgentInput(command.params.input),
+              acceptance: {
+                status: receipt.type,
+                sessionId: receipt.sessionId,
+                runId: receipt.runId,
+                ...(receipt.userItemId ? { userItemId: receipt.userItemId } : {}),
+              },
+              acknowledge: observation.acknowledge,
+            });
+          }
+          if (command.operation === "steer") {
             if (receipt.type === "accepted" && receipt.appliedItem) {
               const applied = receipt.appliedItem;
               if (!material.snapshot.items.some((item) => item.id === applied.id))
@@ -218,26 +187,56 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
                   runId: receipt.runId,
                   userItemId: receipt.userItemId,
                   input: contentBlocksToAgentInput(receipt.input),
-                  receipt: receipt.type === "retired" ? "retired" : "accepted",
+                  receipt: receipt.type,
                 });
             }
-            continue;
           }
-        } catch (error) {
-          signal?.throwIfAborted();
-          console.warn("[session] original steer query failed:", error);
+          continue;
         }
-        if (!snapshot.runs.some((run) => run.id === command.params.runId)) continue;
-        unresolvedSteers.push({
+        if (command.operation === "steer") {
+          if (observation.type === "unknown")
+            console.warn("[session] original steer query failed:", observation.cause);
+          unresolvedSteers.push({
+            idempotencyKey: command.idempotencyKey,
+            userItemId: command.userItemId,
+            runId: command.params.runId,
+            input: contentBlocksToAgentInput(command.params.input),
+            retry: () => command.retry(),
+          });
+          continue;
+        }
+        const request =
+          command.operation === "start"
+            ? {
+                operation: "start" as const,
+                input: contentBlocksToAgentInput(command.params.input),
+                options: {
+                  provider: command.params.provider,
+                  model: command.params.model,
+                  reasoningEffort: command.params.reasoningEffort,
+                },
+                ...(command.params.params ? { generation: { ...command.params.params } } : {}),
+              }
+            : {
+                operation: "resume" as const,
+                runId: command.params.runId,
+                ...(command.params.input
+                  ? { input: contentBlocksToAgentInput(command.params.input) }
+                  : {}),
+                responses: command.params.responses,
+              };
+        unresolvedOpenings.push({
+          ...request,
           idempotencyKey: command.idempotencyKey,
-          userItemId: command.userItemId,
-          runId: command.params.runId,
-          input: contentBlocksToAgentInput(command.params.input),
-          retry: () => command.retry(),
+          receipt: observation.type,
         });
       }
       material.unresolvedSteers = unresolvedSteers;
       material.unresolvedOpenings = unresolvedOpenings;
+      if (acknowledge.length)
+        material.acknowledgeRecoveredCommands = () => {
+          for (const command of acknowledge) command();
+        };
       return material;
     } catch (error) {
       if (isErrorType(error, "session_not_found")) return null;
@@ -318,13 +317,13 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
 
 export function createAgentRuntimeGateway(
   runtimeClient: () => FlameClient,
-  runtime: RuntimeAccess,
+  capabilities: RuntimeCapabilities,
   sharedMaterial: AgentSharedMaterial,
   commands: AgentCommands,
   usage: ReturnType<typeof createAgentSessionUsage>,
 ) {
   let commandOwner = commands.replace();
-  const gateway = new RuntimeAgentGateway(runtimeClient, runtime, sharedMaterial);
+  const gateway = new RuntimeAgentGateway(runtimeClient, capabilities, sharedMaterial);
   let usageOwner = usage.replace(gateway);
   let disposed = false;
   return {

@@ -71,7 +71,7 @@ export type PendingRunCommand = RunCommand & {
   readonly idempotencyKey: string;
   readonly namespace: string;
   readonly steerItemId: string | null;
-  settle(): void;
+  acknowledge(): void;
   reserve(): MutationReservation;
 };
 
@@ -224,10 +224,7 @@ class MutationAuthority implements MutationJournal {
         idempotencyKey: identity.entry.idempotencyKey,
         namespace: this.#journal.lookupNamespace(identity),
         steerItemId: identity.entry.steerItemId,
-        settle: () => {
-          this.#assertCurrent();
-          this.#journal.settle(identity);
-        },
+        acknowledge: () => this.#journal.settle(identity),
         reserve: () => {
           this.#assertCurrent();
           if (this.#claims.has(identity.entry.idempotencyKey))

@@ -65,8 +65,11 @@ export async function revalidateAgentSessionMaterial(
     reconciled,
     material.unresolvedOpenings,
   );
-  if (committed && material.unresolvedSteers?.length)
-    restoreUnresolvedSteers(agentAccess, sessionId, material.unresolvedSteers);
+  if (committed) {
+    if (material.unresolvedSteers?.length)
+      restoreUnresolvedSteers(agentAccess, sessionId, material.unresolvedSteers);
+    material.acknowledgeRecoveredCommands?.();
+  }
   return {
     authoritativeView: view,
     committed,
