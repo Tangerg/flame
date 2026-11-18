@@ -59,23 +59,6 @@ func newInteractionModelContextReducer(
 	}
 }
 
-// appendPendingContinuation applies Runtime-owned input that already has a
-// durable Item and so cannot arrive through the framework's input Signal.
-func appendPendingContinuation(
-	messages []corechat.Message,
-	pending pendingInteractionContinuation,
-	present bool,
-) ([]corechat.Message, error) {
-	if !present {
-		return messages, nil
-	}
-	message, err := runs.MaterializeUserMessage(pending.content)
-	if err != nil {
-		return nil, fmt.Errorf("execution: materialize pending continuation input: %w", err)
-	}
-	return append(messages, message), nil
-}
-
 // PrepareContext returns only the authored context Scope may retain. The full
 // provider request is captured separately and commits with this preparation.
 func (i *interactionModelContextReducer) PrepareContext(
@@ -117,7 +100,7 @@ func (i *interactionModelContextReducer) PrepareContext(
 	if err := i.validateContextSources(ctx, request); err != nil {
 		return nil, err
 	}
-	calling, contextView, candidate, hasPendingContinuation, err := i.prepareContextView(ctx, invocation, request)
+	calling, contextView, candidate, hasResumeInputs, err := i.prepareContextView(ctx, invocation, request)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +114,7 @@ func (i *interactionModelContextReducer) PrepareContext(
 		}
 		return contextView.canonical(candidate), nil
 	}
-	return i.compactContext(calling, invocation, contextView, candidate, hasPendingContinuation)
+	return i.compactContext(calling, invocation, contextView, candidate, hasResumeInputs)
 }
 
 func (i *interactionModelContextReducer) validateContextSources(ctx context.Context, request *corechat.Request) error {
@@ -164,9 +147,7 @@ func (i *interactionModelContextReducer) validateContextSources(ctx context.Cont
 }
 
 func (i *interactionModelContextReducer) prepareContextView(ctx context.Context, invocation modelCallSource, request *corechat.Request) (context.Context, modelRequestContext, []corechat.Message, bool, error) {
-	pendingContinuation, hasPendingContinuation, err := i.session.pendingContinuationFor(
-		invocation.process,
-	)
+	resumeMessages, err := i.session.pendingResumeMessages(invocation.process)
 	if err != nil {
 		return nil, modelRequestContext{}, nil, false, err
 	}
@@ -190,10 +171,7 @@ func (i *interactionModelContextReducer) prepareContextView(ctx context.Context,
 	var material []corechat.Message
 	if len(i.session.modelContexts) > 0 {
 		candidate := request.Clone()
-		candidate.Messages, err = appendPendingContinuation(candidate.Messages, pendingContinuation, hasPendingContinuation)
-		if err != nil {
-			return nil, modelRequestContext{}, nil, false, err
-		}
+		candidate.Messages = append(candidate.Messages, cloneChatMessages(resumeMessages)...)
 		userMessage, err := originalUserMessage(candidate.Messages)
 		if err != nil {
 			return nil, modelRequestContext{}, nil, false, err
@@ -203,15 +181,12 @@ func (i *interactionModelContextReducer) prepareContextView(ctx context.Context,
 			return nil, modelRequestContext{}, nil, false, err
 		}
 	}
-	candidate, err := appendPendingContinuation(request.Messages[len(i.instructions):], pendingContinuation, hasPendingContinuation)
-	if err != nil {
-		return nil, modelRequestContext{}, nil, false, err
-	}
+	candidate := append(slices.Clip(request.Messages[len(i.instructions):]), resumeMessages...)
 	contextView := modelRequestContext{request: request, instructions: i.instructions, fixed: cloneChatMessages(i.instructions), tail: append(cloneChatMessages(tail), cloneChatMessages(material)...)}
-	return calling, contextView, candidate, hasPendingContinuation, nil
+	return calling, contextView, candidate, len(resumeMessages) != 0, nil
 }
 
-func (i *interactionModelContextReducer) compactContext(calling context.Context, invocation modelCallSource, contextView modelRequestContext, candidate []corechat.Message, hasPendingContinuation bool) ([]corechat.Message, error) {
+func (i *interactionModelContextReducer) compactContext(calling context.Context, invocation modelCallSource, contextView modelRequestContext, candidate []corechat.Message, hasResumeInputs bool) ([]corechat.Message, error) {
 	preCompact := func(ctx context.Context) (bool, error) {
 		if i.session.lifecycleHooks == nil {
 			return true, nil
@@ -252,7 +227,7 @@ func (i *interactionModelContextReducer) compactContext(calling context.Context,
 			input.Counter = nil
 		}
 	}
-	compaction, err := invocationCompaction(invocation, input, hasPendingContinuation)
+	compaction, err := invocationCompaction(invocation, input, hasResumeInputs)
 	if err != nil {
 		return nil, err
 	}

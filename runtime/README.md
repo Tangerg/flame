@@ -335,6 +335,11 @@ continuation storage retains the routing. The former mixed `approved`/`answers`
 payload is refused. Finish old waiting work with its original executable and retain that
 original directory; the existing exact BuildID boundary governs checkpoint reuse.
 
+Additional Resume input has a committed transcript Item before activation.
+Several accepted inputs can accumulate while delegated Runs wait for more
+answers. The checkpoint preserves their order until the root model can use
+them, and the model boundary appends the batch to Conversation.
+
 ## Data directory ownership
 
 One Runtime exclusively owns a physical data directory from before initialization

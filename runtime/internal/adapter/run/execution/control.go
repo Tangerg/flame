@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -173,7 +174,11 @@ func (i *interactionSession) commitAppliedInputs(
 	signalIDs []scoperun.SignalID,
 ) error {
 	i.state.mu.Lock()
-	messages := make([]runs.AppliedSteerMessage, 0, len(signalIDs)+1)
+	var resumeInputs []runs.CommittedUserInput
+	if processID == i.rootID {
+		resumeInputs = i.state.pendingResumeInputs
+	}
+	messages := make([]runs.AppliedSteerMessage, 0, len(signalIDs)+len(resumeInputs))
 	seen := make(map[scoperun.SignalID]struct{}, len(signalIDs))
 	for _, signalID := range signalIDs {
 		if _, duplicate := seen[signalID]; duplicate {
@@ -191,16 +196,10 @@ func (i *interactionSession) commitAppliedInputs(
 			ItemID:  pending.ItemID,
 		})
 	}
-	var continuation pendingInteractionContinuation
-	if pending := i.state.pendingContinuation; pending != nil && pending.processID == processID {
-		continuation = pendingInteractionContinuation{
-			processID: pending.processID,
-			itemID:    pending.itemID,
-			content:   transcript.CloneContent(pending.content),
-		}
+	for _, input := range resumeInputs {
 		messages = append(messages, runs.AppliedSteerMessage{
-			Content:          transcript.CloneContent(pending.content),
-			ItemID:           pending.itemID,
+			Content:          transcript.CloneContent(input.Content),
+			ItemID:           input.ItemID,
 			AlreadyProjected: true,
 		})
 	}
@@ -215,31 +214,29 @@ func (i *interactionSession) commitAppliedInputs(
 	for _, signalID := range signalIDs {
 		delete(i.state.pendingSteers, signalID)
 	}
-	if current := i.state.pendingContinuation; current != nil &&
-		current.processID == continuation.processID && current.itemID == continuation.itemID {
-		i.state.pendingContinuation = nil
+	if len(resumeInputs) != 0 {
+		i.state.pendingResumeInputs = slices.Delete(i.state.pendingResumeInputs, 0, len(resumeInputs))
 	}
 	i.state.mu.Unlock()
 	return nil
 }
 
-func (i *interactionSession) pendingContinuationFor(
-	processID scoperun.ProcessID,
-) (pendingInteractionContinuation, bool, error) {
+func (i *interactionSession) pendingResumeMessages(processID scoperun.ProcessID) ([]corechat.Message, error) {
+	if processID != i.rootID {
+		return nil, nil
+	}
 	i.state.mu.Lock()
-	defer i.state.mu.Unlock()
-	pending := i.state.pendingContinuation
-	if pending == nil || pending.processID != processID {
-		return pendingInteractionContinuation{}, false, nil
+	inputs := slices.Clone(i.state.pendingResumeInputs)
+	i.state.mu.Unlock()
+	messages := make([]corechat.Message, 0, len(inputs))
+	for _, input := range inputs {
+		message, err := runs.MaterializeUserMessage(input.Content)
+		if err != nil {
+			return nil, fmt.Errorf("execution: materialize accepted Resume input %q: %w", input.ItemID, err)
+		}
+		messages = append(messages, message)
 	}
-	if !processID.Valid() || pending.itemID == "" || len(pending.content) == 0 {
-		return pendingInteractionContinuation{}, false, errors.New("execution: invalid pending continuation input")
-	}
-	return pendingInteractionContinuation{
-		processID: pending.processID,
-		itemID:    pending.itemID,
-		content:   transcript.CloneContent(pending.content),
-	}, true, nil
+	return messages, nil
 }
 
 func materializeSteerSignal(id scoperun.SignalID, message corechat.Message) (scoperun.Signal, error) {

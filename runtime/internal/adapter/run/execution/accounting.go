@@ -12,7 +12,6 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
@@ -187,14 +186,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 	for signalID, pending := range i.state.pendingSteers {
 		pendingSteers[signalID] = pending.Clone()
 	}
-	var pendingContinuation *pendingInteractionContinuation
-	if pending := i.state.pendingContinuation; pending != nil {
-		pendingContinuation = &pendingInteractionContinuation{
-			processID: pending.processID,
-			itemID:    pending.itemID,
-			content:   transcript.CloneContent(pending.content),
-		}
-	}
+	pendingResumeInputs := slices.Clone(i.state.pendingResumeInputs)
 	metadata := make([]toolCallCapture, 0, len(i.state.toolMetadata))
 	for _, value := range i.state.toolMetadata {
 		if value.Receipt != nil || value.presentation == nil {
@@ -229,7 +221,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 		contexts,
 		instructions,
 		pendingSteers,
-		pendingContinuation,
+		pendingResumeInputs,
 		metadata,
 		executionOptions(i.start.ModelSelection, i.start.Options),
 		manifests,

@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 
 	"github.com/Tangerg/scope/agent/interaction"
@@ -73,11 +72,13 @@ type interactionSession struct {
 // and Delegate topology. Accounting and Segment timing have independent
 // invariants and do not belong under this lock.
 type interactionState struct {
-	restoreTree                scoperun.Log
-	toolMetadata               map[string]toolCallMetadata
-	mu                         sync.Mutex
-	pendingSteers              map[scoperun.SignalID]runs.PreparedSteer
-	pendingContinuation        *pendingInteractionContinuation
+	restoreTree   scoperun.Log
+	toolMetadata  map[string]toolCallMetadata
+	mu            sync.Mutex
+	pendingSteers map[scoperun.SignalID]runs.PreparedSteer
+	// Resume Items are already committed, but the root model can still be
+	// waiting for delegated work across several successive input barriers.
+	pendingResumeInputs        []runs.CommittedUserInput
 	process                    *scoperun.Handle[scoperun.Payload]
 	observer                   context.Context
 	phase                      interactionPhase
@@ -92,16 +93,6 @@ type interactionState struct {
 	delegateCalls              map[delegateCallIdentity]*managedDelegateCall
 	delegateChildren           map[scoperun.ProcessID]*managedDelegateCall
 	durableContextWasCompacted bool
-}
-
-// pendingInteractionContinuation is Runtime-owned input that already has a
-// durable transcript Item but cannot share Scope Interaction's input-response
-// Signal. The model-context boundary applies it exactly once to the root
-// conversation after the answered Tool result.
-type pendingInteractionContinuation struct {
-	processID scoperun.ProcessID
-	itemID    string
-	content   []transcript.ContentBlock
 }
 
 // interactionPhase orders one session's claim: a Process is begun at most once,
@@ -646,8 +637,11 @@ func isInteractionWaitingBoundary(status scoperun.Status) bool {
 	return status == scoperun.StatusWaiting || status == scoperun.StatusPaused
 }
 
-func (i *interactionSession) releaseContinuation() {
+func (i *interactionSession) releaseContinuation(input *runs.CommittedUserInput) {
 	i.state.mu.Lock()
+	if input != nil {
+		i.state.pendingResumeInputs = append(i.state.pendingResumeInputs, *input)
+	}
 	i.state.continueExecution()
 	i.state.mu.Unlock()
 }

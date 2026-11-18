@@ -33,21 +33,21 @@ type installationDependencyWire struct {
 }
 
 type interactionCheckpointPayloadWire struct {
-	SkillDiscoveries    map[domaintool.Group]string         `json:"skill_discoveries,omitzero"`
-	ModelProvider       jsontext.Value                      `json:"model_provider"`
-	ToolProposals       *[]contributionBindingWire          `json:"tool_proposals"`
-	ModelInputs         *[]contributionBindingWire          `json:"model_inputs"`
-	ModelContexts       *[]contributionBindingWire          `json:"model_contexts"`
-	ModelObservers      *[]contributionBindingWire          `json:"model_observers"`
-	MCPManifests        *map[domaintool.Group][]string      `json:"mcp_manifests"`
-	Options             *corechat.Options                   `json:"options"`
-	ToolCalls           []toolCallCapture                   `json:"tool_calls,omitempty"`
-	Handoff             *interactionHandoffWire             `json:"handoff"`
-	Instructions        *[]corechat.Message                 `json:"instructions"`
-	Members             []interactionMemberCallsWire        `json:"members,omitempty"`
-	Contexts            []interactionModelContextWire       `json:"contexts,omitempty"`
-	PendingSteers       []interactionPendingSteerWire       `json:"pending_steers,omitempty"`
-	PendingContinuation *interactionPendingContinuationWire `json:"pending_continuation,omitzero"`
+	SkillDiscoveries    map[domaintool.Group]string    `json:"skill_discoveries,omitzero"`
+	ModelProvider       jsontext.Value                 `json:"model_provider"`
+	ToolProposals       *[]contributionBindingWire     `json:"tool_proposals"`
+	ModelInputs         *[]contributionBindingWire     `json:"model_inputs"`
+	ModelContexts       *[]contributionBindingWire     `json:"model_contexts"`
+	ModelObservers      *[]contributionBindingWire     `json:"model_observers"`
+	MCPManifests        *map[domaintool.Group][]string `json:"mcp_manifests"`
+	Options             *corechat.Options              `json:"options"`
+	ToolCalls           []toolCallCapture              `json:"tool_calls,omitempty"`
+	Handoff             *interactionHandoffWire        `json:"handoff"`
+	Instructions        *[]corechat.Message            `json:"instructions"`
+	Members             []interactionMemberCallsWire   `json:"members,omitempty"`
+	Contexts            []interactionModelContextWire  `json:"contexts,omitempty"`
+	PendingSteers       []interactionPendingSteerWire  `json:"pending_steers,omitempty"`
+	PendingResumeInputs []interactionResumeInputWire   `json:"pending_resume_inputs,omitempty"`
 }
 
 type interactionMemberCallsWire struct {
@@ -81,10 +81,9 @@ type interactionSteerCommandWire struct {
 	SegmentID   string `json:"segment_id"`
 }
 
-type interactionPendingContinuationWire struct {
-	MemberID string                        `json:"member_id"`
-	ItemID   string                        `json:"item_id"`
-	Content  []interactionContentBlockWire `json:"content"`
+type interactionResumeInputWire struct {
+	ItemID  string                        `json:"item_id"`
+	Content []interactionContentBlockWire `json:"content"`
 }
 
 type interactionContentBlockWire struct {
@@ -112,7 +111,7 @@ type interactionCheckpointState struct {
 	contextByProcess    map[scoperun.ProcessID]ModelContextTokenCalibration
 	instructions        []corechat.Message
 	pendingSteers       map[scoperun.SignalID]runs.PreparedSteer
-	pendingContinuation *pendingInteractionContinuation
+	pendingResumeInputs []runs.CommittedUserInput
 }
 
 func (i interactionCheckpointState) restoredStart(continuation runs.ExecutionContinuation) runs.RootExecutionStart {
@@ -160,7 +159,7 @@ func encodeInteractionCheckpointPayload(
 	contextByProcess map[scoperun.ProcessID]ModelContextTokenCalibration,
 	instructions []corechat.Message,
 	pendingSteers map[scoperun.SignalID]runs.PreparedSteer,
-	pendingContinuation *pendingInteractionContinuation,
+	pendingResumeInputs []runs.CommittedUserInput,
 	toolCalls []toolCallCapture,
 	options corechat.Options,
 	mcpManifests map[domaintool.Group][]string,
@@ -232,11 +231,9 @@ func encodeInteractionCheckpointPayload(
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode pending Interaction steers: %w", err)
 	}
-	wire.PendingContinuation, err = encodeInteractionPendingContinuation(
-		pendingContinuation, tree.Root,
-	)
+	wire.PendingResumeInputs, err = encodeInteractionResumeInputs(pendingResumeInputs)
 	if err != nil {
-		return nil, fmt.Errorf("execution: encode pending Interaction continuation: %w", err)
+		return nil, fmt.Errorf("execution: encode pending Resume inputs: %w", err)
 	}
 	// Map iteration must not change the identity of the same captured checkpoint.
 	payload, err := json.Marshal(wire, json.Deterministic(true))
@@ -310,13 +307,9 @@ func encodeInteractionPendingSteer(
 	if len(steer.Input) == 0 {
 		return interactionPendingSteerWire{}, fmt.Errorf("pending steer %s has no product content", signalID)
 	}
-	content := make([]interactionContentBlockWire, len(steer.Input))
-	for index, block := range steer.Input {
-		value, err := encodeInteractionContentBlock(block)
-		if err != nil {
-			return interactionPendingSteerWire{}, fmt.Errorf("pending steer %s content %d: %w", signalID, index, err)
-		}
-		content[index] = value
+	content, err := encodeInteractionInputContent(steer.Input)
+	if err != nil {
+		return interactionPendingSteerWire{}, fmt.Errorf("pending steer %s: %w", signalID, err)
 	}
 	wire := interactionPendingSteerWire{
 		SignalID: signalID.String(), ItemID: steer.ItemID, Content: content,
@@ -336,33 +329,28 @@ func encodeInteractionPendingSteer(
 	return wire, nil
 }
 
-func encodeInteractionPendingContinuation(
-	pending *pendingInteractionContinuation,
-	rootID scoperun.ProcessID,
-) (*interactionPendingContinuationWire, error) {
-	if pending == nil {
-		return nil, nil
+func encodeInteractionResumeInputs(inputs []runs.CommittedUserInput) ([]interactionResumeInputWire, error) {
+	values := make([]interactionResumeInputWire, len(inputs))
+	for index, input := range inputs {
+		content, err := encodeInteractionInputContent(input.Content)
+		if err != nil {
+			return nil, fmt.Errorf("Resume input %q: %w", input.ItemID, err)
+		}
+		values[index] = interactionResumeInputWire{ItemID: input.ItemID, Content: content}
 	}
-	if !pending.processID.Valid() || pending.processID != rootID {
-		return nil, errors.New("pending continuation does not name the root member")
-	}
-	if err := identity.ValidateItem(pending.itemID); err != nil {
-		return nil, fmt.Errorf("pending continuation Item: %w", err)
-	}
-	if len(pending.content) == 0 {
-		return nil, errors.New("pending continuation has no product content")
-	}
-	content := make([]interactionContentBlockWire, len(pending.content))
-	for index, block := range pending.content {
+	return values, nil
+}
+
+func encodeInteractionInputContent(content []transcript.ContentBlock) ([]interactionContentBlockWire, error) {
+	values := make([]interactionContentBlockWire, len(content))
+	for index, block := range content {
 		value, err := encodeInteractionContentBlock(block)
 		if err != nil {
-			return nil, fmt.Errorf("pending continuation content %d: %w", index, err)
+			return nil, fmt.Errorf("content %d: %w", index, err)
 		}
-		content[index] = value
+		values[index] = value
 	}
-	return &interactionPendingContinuationWire{
-		MemberID: pending.processID.String(), ItemID: pending.itemID, Content: content,
-	}, nil
+	return values, nil
 }
 
 func encodeInteractionContentBlock(
@@ -495,11 +483,9 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint pending steers: %w", err)
 	}
-	pendingContinuation, err := decodeInteractionPendingContinuation(
-		wire.PendingContinuation, handoff.rootID,
-	)
+	pendingResumeInputs, err := decodeInteractionResumeInputs(wire.PendingResumeInputs)
 	if err != nil {
-		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint pending continuation: %w", err)
+		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint pending Resume inputs: %w", err)
 	}
 	metadata, err := decodeToolCalls(wire.ToolCalls, processes)
 	if err != nil {
@@ -515,7 +501,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 		skillDiscoveries: wire.SkillDiscoveries,
 		handoff:          handoff, callsByProcess: callsByProcess,
 		contextByProcess: contextByProcess, instructions: instructions, options: wire.Options.Clone(), pendingSteers: pendingSteers,
-		pendingContinuation: pendingContinuation, toolMetadata: metadata,
+		pendingResumeInputs: pendingResumeInputs, toolMetadata: metadata,
 	}, nil
 }
 
@@ -643,14 +629,9 @@ func (w interactionPendingSteerWire) decode(
 	if err != nil {
 		return zeroSignalID, runs.PreparedSteer{}, fmt.Errorf("pending steer identity: %w", err)
 	}
-	content := make([]transcript.ContentBlock, len(w.Content))
-	for index, block := range w.Content {
-		content[index], err = block.decode()
-		if err != nil {
-			return zeroSignalID, runs.PreparedSteer{}, fmt.Errorf(
-				"pending steer %s content %d: %w", signalID, index, err,
-			)
-		}
+	content, err := decodeInteractionInputContent(w.Content)
+	if err != nil {
+		return zeroSignalID, runs.PreparedSteer{}, fmt.Errorf("pending steer %s: %w", signalID, err)
 	}
 	pending := runs.PreparedSteer{ItemID: w.ItemID, Input: content}
 	if w.Command != nil {
@@ -666,36 +647,39 @@ func (w interactionPendingSteerWire) decode(
 	return signalID, pending, nil
 }
 
-func decodeInteractionPendingContinuation(
-	wire *interactionPendingContinuationWire,
-	rootID scoperun.ProcessID,
-) (*pendingInteractionContinuation, error) {
-	if wire == nil {
-		return nil, nil
+func decodeInteractionResumeInputs(values []interactionResumeInputWire) ([]runs.CommittedUserInput, error) {
+	inputs := make([]runs.CommittedUserInput, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for index, value := range values {
+		if err := identity.ValidateItem(value.ItemID); err != nil {
+			return nil, fmt.Errorf("Resume input %d: %w", index, err)
+		}
+		if _, duplicate := seen[value.ItemID]; duplicate {
+			return nil, fmt.Errorf("repeated Resume input %q", value.ItemID)
+		}
+		seen[value.ItemID] = struct{}{}
+		content, err := decodeInteractionInputContent(value.Content)
+		if err != nil {
+			return nil, fmt.Errorf("Resume input %q: %w", value.ItemID, err)
+		}
+		if _, err := runs.MaterializeUserMessage(content); err != nil {
+			return nil, fmt.Errorf("Resume input %q: %w", value.ItemID, err)
+		}
+		inputs[index] = runs.CommittedUserInput{ItemID: value.ItemID, Content: content}
 	}
-	processID, err := scoperun.ParseProcessID(wire.MemberID)
-	if err != nil || processID != rootID {
-		return nil, errors.New("does not name the root member")
-	}
-	if err := identity.ValidateItem(wire.ItemID); err != nil {
-		return nil, fmt.Errorf("item: %w", err)
-	}
-	if len(wire.Content) == 0 {
-		return nil, errors.New("has no product content")
-	}
-	content := make([]transcript.ContentBlock, len(wire.Content))
-	for index, block := range wire.Content {
-		content[index], err = block.decode()
+	return inputs, nil
+}
+
+func decodeInteractionInputContent(values []interactionContentBlockWire) ([]transcript.ContentBlock, error) {
+	content := make([]transcript.ContentBlock, len(values))
+	for index, block := range values {
+		value, err := block.decode()
 		if err != nil {
 			return nil, fmt.Errorf("content %d: %w", index, err)
 		}
+		content[index] = value
 	}
-	if _, err := runs.MaterializeUserMessage(content); err != nil {
-		return nil, fmt.Errorf("message: %w", err)
-	}
-	return &pendingInteractionContinuation{
-		processID: processID, itemID: wire.ItemID, content: content,
-	}, nil
+	return content, nil
 }
 
 func (w interactionContentBlockWire) decode() (transcript.ContentBlock, error) {

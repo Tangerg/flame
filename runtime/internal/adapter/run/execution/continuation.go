@@ -41,7 +41,7 @@ func (i *InteractionExecutor) BeginContinuation(
 	if err != nil {
 		return err
 	}
-	committedInput, err := session.prepareCommittedContinuationInput(input)
+	committedInput, err := captureCommittedResumeInput(input)
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (i *InteractionExecutor) BeginContinuation(
 	}
 	// Scope's Signal receipts must cover the whole handoff before dispatch.
 	// The release plan already excludes acknowledged Resume controls.
-	if err := session.deliverContinuationAnswers(ctx, release.answers, committedInput); err != nil {
+	if err := session.deliverContinuationAnswers(ctx, release.answers); err != nil {
 		return err
 	}
 	if err := session.proveContinuationDelivery(ctx, release.answers); err != nil {
@@ -65,7 +65,7 @@ func (i *InteractionExecutor) BeginContinuation(
 			return err
 		}
 	}
-	session.releaseContinuation()
+	session.releaseContinuation(committedInput)
 	if restore {
 		session.startWorkers()
 	}
@@ -197,32 +197,8 @@ func continuationAnswerPlans(cut interactionHandoff, head scoperun.Log, inspecti
 func (i *interactionSession) deliverContinuationAnswers(
 	ctx context.Context,
 	answers []interactionAnswerPlan,
-	input *pendingInteractionContinuation,
 ) error {
 	deliveryContext := runExecutionContext(ctx, i.scope, i.start)
-	inputRetained := false
-	if input != nil {
-		i.state.mu.Lock()
-		if i.state.pendingContinuation != nil {
-			i.state.mu.Unlock()
-			return errors.New("execution: committed continuation input is already pending")
-		}
-		// The prepared value already detached its content from the caller, and
-		// nothing outside this call retains it, so the pending slot takes it
-		// rather than copying the copy.
-		i.state.pendingContinuation = input
-		i.state.mu.Unlock()
-		defer func() {
-			if !inputRetained {
-				i.state.mu.Lock()
-				if pending := i.state.pendingContinuation; pending != nil &&
-					pending.processID == input.processID && pending.itemID == input.itemID {
-					i.state.pendingContinuation = nil
-				}
-				i.state.mu.Unlock()
-			}
-		}()
-	}
 	for _, answer := range answers {
 		if answer.admitted {
 			continue
@@ -239,7 +215,6 @@ func (i *interactionSession) deliverContinuationAnswers(
 			return fmt.Errorf("execution: deliver Interaction answer Signal: %w", err)
 		}
 	}
-	inputRetained = input != nil
 	return nil
 }
 
@@ -278,9 +253,7 @@ func (i *interactionSession) proveContinuationDelivery(ctx context.Context, answ
 	return nil
 }
 
-func (i *interactionSession) prepareCommittedContinuationInput(
-	input *runs.CommittedUserInput,
-) (*pendingInteractionContinuation, error) {
+func captureCommittedResumeInput(input *runs.CommittedUserInput) (*runs.CommittedUserInput, error) {
 	if input == nil {
 		return nil, nil
 	}
@@ -290,9 +263,8 @@ func (i *interactionSession) prepareCommittedContinuationInput(
 	if _, err := runs.MaterializeUserMessage(input.Content); err != nil {
 		return nil, fmt.Errorf("execution: materialize committed continuation input: %w", err)
 	}
-	return &pendingInteractionContinuation{
-		processID: i.rootID, itemID: input.ItemID,
-		content: transcript.CloneContent(input.Content),
+	return &runs.CommittedUserInput{
+		ItemID: input.ItemID, Content: transcript.CloneContent(input.Content),
 	}, nil
 }
 

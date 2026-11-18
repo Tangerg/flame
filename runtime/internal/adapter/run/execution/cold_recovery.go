@@ -138,7 +138,7 @@ func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, activ
 	session.accounting.restore(usage, checkpoint.contextByProcess)
 	session.state.toolMetadata = checkpoint.toolMetadata
 	session.state.pendingSteers = checkpoint.pendingSteers
-	session.state.pendingContinuation = checkpoint.pendingContinuation
+	session.state.pendingResumeInputs = checkpoint.pendingResumeInputs
 	session.state.restoreTree = checkpoint.tree
 	session.state.boundary = interactionBoundaryRecovery
 	session.state.dispatchReady = make(chan struct{})

@@ -100,7 +100,7 @@ func (i *interactionSession) restoreContinuationProjection(
 	i.state.delegateCalls = delegateCalls
 	i.state.delegateChildren = delegateChildren
 	i.state.pendingSteers = checkpoint.pendingSteers
-	i.state.pendingContinuation = checkpoint.pendingContinuation
+	i.state.pendingResumeInputs = checkpoint.pendingResumeInputs
 	i.state.toolMetadata = checkpoint.toolMetadata
 	return nil
 }

@@ -141,7 +141,7 @@ func TestAnswerDeliveryCrashHelper(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = session.deliverContinuationAnswers(t.Context(), release.answers, nil)
+	err = session.deliverContinuationAnswers(t.Context(), release.answers)
 	t.Fatalf("answer crash was not reached: %v", err)
 }
 
