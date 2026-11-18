@@ -89,9 +89,6 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		return nil, fmt.Errorf("persistence: data directory: %w", directoryErr)
 	}
 	config.DataDirectory = dataDirectory.Path()
-	if err := checkLegacyLayout(config.DataDirectory); err != nil {
-		return nil, err
-	}
 	if mkdirErr := os.MkdirAll(config.DataDirectory, 0o700); mkdirErr != nil {
 		return nil, fmt.Errorf("persistence: create data directory %q: %w", config.DataDirectory, mkdirErr)
 	}

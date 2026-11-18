@@ -83,3 +83,11 @@ Private schemas include `CommandsSchema` and use Frame's `OpenSchema` for admiss
 The package does not own a raw SQL pool, transaction or savepoint. Incompatible
 private formats are refused without conversion; development builds use a fresh
 data directory.
+
+## Single-value state
+
+A plugin whose private state is one revisioned value, such as a policy, declares
+`SnapshotSchema(table)` and opens it with `OpenSnapshot(ctx, db, table, initial)`.
+The initial value is written as a parameter only when the row is absent. `Read`
+decodes strictly and reports `ErrStoredSnapshot`; `Replace` plans the update as a
+command's durable effect. The domain value keeps its revision and validation.

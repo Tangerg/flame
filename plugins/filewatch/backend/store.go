@@ -20,17 +20,17 @@ const (
 
 var errStored = errors.New("filewatch: invalid private data")
 
-type store struct{ db sqlite.Database }
+const configurationTable = "configuration"
+
+type store struct {
+	db       sqlite.Database
+	settings *pluginstorage.Snapshot[filewatch.Snapshot]
+}
 
 func openStore(ctx context.Context, path string) (*store, error) {
-	initial, err := json.Marshal(filewatch.Initial().Snapshot())
-	if err != nil {
-		return nil, err
-	}
 	db, err := sqlite.OpenSchema(ctx, path, []string{
 		pluginstorage.CommandsSchema,
-		`CREATE TABLE IF NOT EXISTS configuration (id INTEGER PRIMARY KEY CHECK(id=1), snapshot TEXT NOT NULL CHECK(json_valid(snapshot)))`,
-		`INSERT INTO configuration(id,snapshot) VALUES(1,'` + string(initial) + `')`,
+		pluginstorage.SnapshotSchema(configurationTable),
 		pluginstorage.RuntimeTargetSchema,
 		`CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, generation TEXT NOT NULL, sequence INTEGER NOT NULL CHECK(sequence>0), capture TEXT NOT NULL CHECK(json_valid(capture)), accepted INTEGER NOT NULL CHECK(accepted IN (0,1)), UNIQUE(generation,sequence))`,
 		`CREATE TRIGGER IF NOT EXISTS immutable_capture BEFORE UPDATE OF id,generation,sequence,capture ON events BEGIN SELECT RAISE(ABORT,'observation capture is immutable'); END`,
@@ -39,7 +39,11 @@ func openStore(ctx context.Context, path string) (*store, error) {
 	if err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
-	s := &store{db: db}
+	settings, err := pluginstorage.OpenSnapshot(ctx, db, configurationTable, filewatch.Initial().Snapshot())
+	if err != nil {
+		return nil, errors.Join(err, db.Close())
+	}
+	s := &store{db: db, settings: settings}
 	if _, err := s.configuration(ctx); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
@@ -47,14 +51,8 @@ func openStore(ctx context.Context, path string) (*store, error) {
 }
 
 func (s *store) configuration(ctx context.Context) (filewatch.Configuration, error) {
-	var raw string
-	if err := s.db.Read(ctx, func(reader sqlite.Reader) error {
-		return reader.QueryRowContext(ctx, `SELECT snapshot FROM configuration WHERE id=1`).Scan(&raw)
-	}); err != nil {
-		return filewatch.Configuration{}, err
-	}
-	var snapshot filewatch.Snapshot
-	if err := json.Unmarshal([]byte(raw), &snapshot, json.RejectUnknownMembers(true)); err != nil {
+	snapshot, err := s.settings.Read(ctx)
+	if err != nil {
 		return filewatch.Configuration{}, errors.Join(errStored, err)
 	}
 	value, err := filewatch.Restore(snapshot)
@@ -73,14 +71,7 @@ func (s *store) prepareConfiguration(ctx context.Context, expected int64, draft 
 	if err != nil {
 		return pluginstorage.CommandPlan[filewatch.Snapshot]{}, err
 	}
-	encoded, err := json.Marshal(next.Snapshot())
-	if err != nil {
-		return pluginstorage.CommandPlan[filewatch.Snapshot]{}, err
-	}
-	return pluginstorage.NewCommandPlan(next.Snapshot(), func(ctx context.Context) error {
-		_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE configuration SET snapshot=? WHERE id=1`, string(encoded))
-		return err
-	})
+	return pluginstorage.Replace(s.settings, next.Snapshot(), next.Snapshot())
 }
 
 func (s *store) capture(ctx context.Context, observation filewatch.Observation) error {

@@ -3,6 +3,29 @@ import { isImeKey } from "./keyboard";
 
 const EDITABLE =
   "input, textarea, select, [contenteditable]:not([contenteditable='false'])";
+const SOURCE = "data-reader-source";
+const LINE = "data-reader-line";
+const MARKED = `[${SOURCE}], [${LINE}]`;
+
+// A reader marks its source root and every presented line, so a copied range
+// maps back to the exact source text instead of the rendered DOM text.
+export const readerSourceProps = { [SOURCE]: "" } as const;
+
+export function markReaderSource(element: Element): void {
+  element.setAttribute(SOURCE, "");
+}
+
+export function readerLineProps(index: number) {
+  return { [LINE]: index };
+}
+
+export function markReaderLine(element: Element, index: number): void {
+  element.setAttribute(LINE, String(index));
+}
+
+function lineIndex(line: Element): number {
+  return Number(line.getAttribute(LINE));
+}
 
 function isEditableTarget(reader: HTMLElement, target: EventTarget): boolean {
   const editable = (target as Element).closest(EDITABLE);
@@ -48,7 +71,7 @@ function lineAt(content: Element, node: Node): HTMLElement | null {
     node.nodeType === Node.ELEMENT_NODE
       ? (node as Element)
       : node.parentElement;
-  const line = element?.closest<HTMLElement>("[data-reader-line]") ?? null;
+  const line = element?.closest<HTMLElement>(`[${LINE}]`) ?? null;
   return line && content.contains(line) ? line : null;
 }
 
@@ -59,7 +82,7 @@ export function readerSelectionLines(content: Element | null): number[] {
   if (!range) return [];
   return [range.startContainer, range.endContainer].flatMap((node) => {
     const line = lineAt(content, node);
-    return line ? [Number(line.dataset.readerLine)] : [];
+    return line ? [lineIndex(line)] : [];
   });
 }
 
@@ -75,7 +98,7 @@ function sourceOffset(
       node !== content &&
       !(
         node.nodeType === Node.ELEMENT_NODE &&
-        (node as Element).hasAttribute("data-reader-source")
+        (node as Element).hasAttribute(SOURCE)
       )
     )
       return null;
@@ -84,12 +107,12 @@ function sourceOffset(
     const next = node.childNodes[offset];
     if (!next || next.nodeType !== Node.ELEMENT_NODE) return null;
     const element = next as Element;
-    const nextLine = element.matches("[data-reader-line]")
+    const nextLine = element.matches(`[${LINE}]`)
       ? element
-      : element.querySelector("[data-reader-line]");
+      : element.querySelector(`[${LINE}]`);
     return nextLine ? sourceOffset(content, text, nextLine, 0) : null;
   }
-  const index = Number(line.dataset.readerLine);
+  const index = lineIndex(line);
   const lines = text.split("\n");
   if (
     !Number.isInteger(index) ||
@@ -129,11 +152,7 @@ export function copyReaderSelection(
     range.startOffset === 0 &&
     range.endContainer === content &&
     range.endOffset === content.childNodes.length;
-  if (
-    !whole &&
-    !content.matches("[data-reader-source], [data-reader-line]") &&
-    !content.querySelector("[data-reader-source], [data-reader-line]")
-  )
+  if (!whole && !content.matches(MARKED) && !content.querySelector(MARKED))
     return;
   event.preventDefault();
   const start = whole

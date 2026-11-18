@@ -13,7 +13,7 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
 import { Refusal } from "@flame/backend-sdk/mcp";
 import { LIMITS } from "../contracts/limits";
-import type { Format } from "../contracts/capability";
+import { FORMATS, type Format } from "../contracts/content";
 import type {
   Check,
   EngineCatalog,
@@ -294,7 +294,7 @@ export class Engine {
       bytes,
       signal,
       async (input, directory, tools, owned) => {
-        if (!["docx", "xlsx", "pptx", "pdf"].includes(format))
+        if (!FORMATS.includes(format))
           throw new Refusal(
             "engine_format",
             "The requested rendering format is unsupported.",

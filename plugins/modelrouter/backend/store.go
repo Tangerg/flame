@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
@@ -11,24 +10,26 @@ import (
 	"github.com/Tangerg/frame/sqlite"
 )
 
-type store struct{ db sqlite.Database }
+const policyTable = "policy"
 
-var errStoredPolicy = errors.New("model router: invalid stored policy")
+type store struct {
+	db     sqlite.Database
+	policy *pluginstorage.Snapshot[routing.Snapshot]
+}
 
 func openStore(ctx context.Context, path string) (*store, error) {
-	initial, err := json.Marshal(routing.NewPolicy().Snapshot())
-	if err != nil {
-		return nil, err
-	}
 	db, err := sqlite.OpenSchema(ctx, path, []string{
 		pluginstorage.CommandsSchema,
-		`CREATE TABLE IF NOT EXISTS policy (id INTEGER PRIMARY KEY CHECK(id=1), snapshot TEXT NOT NULL CHECK(json_valid(snapshot)))`,
-		`INSERT INTO policy(id,snapshot) VALUES(1,'` + string(initial) + `')`,
+		pluginstorage.SnapshotSchema(policyTable),
 	})
 	if err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
-	s := &store{db: db}
+	policy, err := pluginstorage.OpenSnapshot(ctx, db, policyTable, routing.NewPolicy().Snapshot())
+	if err != nil {
+		return nil, errors.Join(err, db.Close())
+	}
+	s := &store{db: db, policy: policy}
 	if _, err := s.read(ctx); err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
@@ -36,19 +37,13 @@ func openStore(ctx context.Context, path string) (*store, error) {
 }
 
 func (s *store) read(ctx context.Context) (routing.Policy, error) {
-	var encoded string
-	if err := s.db.Read(ctx, func(reader sqlite.Reader) error {
-		return reader.QueryRowContext(ctx, `SELECT snapshot FROM policy WHERE id=1`).Scan(&encoded)
-	}); err != nil {
-		return routing.Policy{}, errors.Join(errStoredPolicy, err)
-	}
-	var snapshot routing.Snapshot
-	if err := json.Unmarshal([]byte(encoded), &snapshot, json.RejectUnknownMembers(true)); err != nil {
-		return routing.Policy{}, errors.Join(errStoredPolicy, err)
+	snapshot, err := s.policy.Read(ctx)
+	if err != nil {
+		return routing.Policy{}, err
 	}
 	policy, err := routing.Restore(snapshot)
 	if err != nil {
-		return routing.Policy{}, errors.Join(errStoredPolicy, err)
+		return routing.Policy{}, errors.Join(pluginstorage.ErrStoredSnapshot, err)
 	}
 	return policy, nil
 }
@@ -62,12 +57,5 @@ func (s *store) prepareReplacement(ctx context.Context, expected int64, rules []
 	if err != nil {
 		return pluginstorage.CommandPlan[routing.Snapshot]{}, err
 	}
-	encoded, err := json.Marshal(next.Snapshot())
-	if err != nil {
-		return pluginstorage.CommandPlan[routing.Snapshot]{}, err
-	}
-	return pluginstorage.NewCommandPlan(next.Snapshot(), func(ctx context.Context) error {
-		_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE policy SET snapshot=? WHERE id=1`, string(encoded))
-		return err
-	})
+	return pluginstorage.Replace(s.policy, next.Snapshot(), next.Snapshot())
 }

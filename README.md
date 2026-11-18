@@ -43,12 +43,9 @@ The repository root owns `go.work` and has no `go.mod`. Go SDK, local-runtime, R
 Frame is consumed from the independently versioned `github.com/Tangerg/frame`
 and `@frame/sdk` packages. There is no embedded framework module.
 
-This integration is a breaking storage cutover. Runtime refuses a product root
-containing an earlier `flame-qimu.db` or `flame.db` before creating new state.
-Start the distribution with an explicitly selected fresh `FLAME_HOME`; `localruntime.DataDirectory` selects `flame-frame.db`
-for Frame framework records and Flame business references in one SQLite database.
-Retain the previous binary and data together for unresolved work. No historical
-plugin-state reader or automatic conversion is supplied.
+`localruntime.DataDirectory` selects `flame-frame.db` for Frame framework records
+and Flame business references in one SQLite database. No historical storage reader
+or automatic conversion is supplied.
 
 ## Connect to a Runtime
 

@@ -18,6 +18,10 @@ import {
   CodeFrame,
   IconButton,
   copyReaderSelection,
+  markReaderSource,
+  quoteSourceProps,
+  readerLineProps,
+  readerSourceProps,
   selectAllInReader,
   isImeKey,
   SearchField,
@@ -25,6 +29,8 @@ import {
 } from "@flame/ui";
 import { ansiLineStyles, ansiText, renderAnsi } from "./ansi";
 import type { Translate } from "@flame/component-sdk";
+
+const TOOL_OUTPUT_QUOTE_SOURCE = quoteSourceProps({ kind: "tool-output" });
 
 const PREVIEW_LINES = 9;
 export const frameInset = "calc(var(--spacing) * 3)";
@@ -220,7 +226,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
     (index: number) => (
       <div
         data-slot="search-line"
-        data-reader-line={expanded ? index : index - previewStart}
+        {...readerLineProps(expanded ? index : index - previewStart)}
         data-current-match={selected === index ? "" : undefined}
         style={{
           minHeight: "1lh",
@@ -336,8 +342,8 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
         role="region"
         aria-label={t(expanded ? "output.region" : "output.preview")}
         tabIndex={expanded ? -1 : 0}
-        data-reader-source={expanded ? undefined : ""}
-        data-quote-source="tool-output"
+        {...(expanded ? undefined : readerSourceProps)}
+        {...TOOL_OUTPUT_QUOTE_SOURCE}
         onKeyDown={(event) => {
           if (viewport.current) selectAllInReader(event, viewport.current);
           if (expanded && isFindShortcut(event)) {
@@ -377,7 +383,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
               const node = list.getScrollableNode();
               if (node) {
                 node.tabIndex = 0;
-                node.setAttribute("data-reader-source", "");
+                markReaderSource(node);
               }
             }}
             renderItem={row}

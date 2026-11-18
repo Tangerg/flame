@@ -65,8 +65,10 @@ func (s *Shell) Write(p []byte) (int, error) {
 func (s *Shell) read() (Output, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	output := Output{
-		Dropped: s.outputErr != nil, Finished: s.finished(), Offset: s.readPos,
+	output := Output{Dropped: s.outputErr != nil, Offset: s.readPos}
+	if s.finished() {
+		exit := s.exit
+		output.Exit = &exit
 	}
 	data := make([]byte, min(maxOutputPageBytes, s.logBytes-s.readPos))
 	var readErr error
@@ -84,15 +86,14 @@ func (s *Shell) read() (Output, bool, error) {
 	output.NextOffset = s.readPos + int64(len(data))
 	output.HasMore = output.NextOffset < s.logBytes
 	var cleanupErr error
-	if output.Finished {
-		output.Info, output.ExitCode, output.Killed, output.Duration = s.exitInfo, s.exitCode, s.killed, s.duration
+	if output.Exit != nil {
 		cleanupErr = s.cleanup
 	}
 	if readErr != nil {
 		return output, false, errors.Join(cleanupErr, s.outputErr, readErr)
 	}
 	s.readPos = output.NextOffset
-	return output, output.Finished && !output.HasMore && cleanupErr == nil, errors.Join(cleanupErr, s.outputErr)
+	return output, output.Exit != nil && !output.HasMore && cleanupErr == nil, errors.Join(cleanupErr, s.outputErr)
 }
 
 // releaseLog joins the existing process owner's final-read and teardown paths.

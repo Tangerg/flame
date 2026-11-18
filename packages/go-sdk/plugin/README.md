@@ -130,7 +130,9 @@ identities include the defining Go namespace, so publisher and consumer
 projections must be regenerated together when ownership changes.
 `plugincontract.NewCapability` groups the exact required method descriptors
 under the consumer's semantic reference, composition rule and scope meaning.
-Pipe its capability descriptor JSON into
+A publisher's `main` is `plugincontract.Publish(define)`; it writes the descriptor
+in Frame's canonical encoding, the form `plugincontract.ParseCapability` admits.
+Pipe that capability descriptor JSON into
 `go run github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk feature`
 with `--feature - --out <contracts-directory> --ts <typescript-directory>`.
 It emits canonical `capability.generated.json`, standard self-contained Schema,

@@ -1,11 +1,6 @@
 package main
 
 import (
-	"encoding/json/jsontext"
-	json "encoding/json/v2"
-	"log"
-	"os"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -17,19 +12,7 @@ import (
 	"github.com/Tangerg/scope/tools/web"
 )
 
-func main() {
-	contract, err := define()
-	if err != nil {
-		log.Fatal(err)
-	}
-	data, err := json.Marshal(contract.Descriptor(), json.Deterministic(true), jsontext.WithIndent("  "))
-	if err != nil {
-		log.Fatal(err)
-	}
-	if _, err := os.Stdout.Write(append(data, '\n')); err != nil {
-		log.Fatal(err)
-	}
-}
+func main() { plugincontract.Publish(define) }
 
 func define() (*plugincontract.Capability, error) {
 	search, err := pluginmcp.NewMethod[web.SearchRequest, wire.SearchResponse](frame.MethodConfig{Name: "flame.web/search.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Search through configured Tavily credentials with a query up to 8192 bytes, honoring explicit domain and supported recency filters. Each call queries the provider; results are bounded to 128 KiB."})

@@ -1,20 +1,13 @@
 package main
 
 import (
-	json "encoding/json/v2"
-	"fmt"
-	"os"
-
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
 )
 
 func main() {
-	contracts, err := rpc.NewContracts()
-	if err == nil {
-		err = json.MarshalWrite(os.Stdout, contracts.Capability.Descriptor())
-	}
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	plugincontract.Publish(func() (*plugincontract.Capability, error) {
+		contracts, err := rpc.NewContracts()
+		return contracts.Capability, err
+	})
 }

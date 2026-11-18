@@ -1,13 +1,12 @@
 import { z } from "zod";
 import { PROTOCOL, type CapabilityDescriptor } from "@flame/backend-sdk/mcp";
 import { FIELD_LIMITS, LIMITS } from "./limits";
-import { formatSchema } from "./content";
+import { formatSchema, officeFormatSchema } from "./content";
 
 import { METHODS } from "./methods";
 export { METHODS } from "./methods";
 
 const id = z.string().regex(/^[a-f0-9]{64}$/);
-const format = formatSchema;
 const title = z.string().min(1).max(FIELD_LIMITS.title);
 const timestamp = z.string().min(1).max(40);
 const empty = z.strictObject({});
@@ -39,7 +38,7 @@ const revision = z.strictObject({
   parent: id.optional(),
   createdAt: timestamp,
   operation: z.enum(["create", "import", "edit", "recalculate"]),
-  format,
+  format: formatSchema,
   sha256: id,
   size: z.number().int().min(1).max(LIMITS.fileBytes),
   provenance,
@@ -48,7 +47,7 @@ const revision = z.strictObject({
 const header = z.strictObject({
   id,
   title,
-  format,
+  format: formatSchema,
   head: id,
   createdAt: timestamp,
 });
@@ -76,7 +75,7 @@ const uploaded = z.strictObject({
 
 export const schemas = Object.freeze({
   empty,
-  format,
+  format: formatSchema,
   provenance,
   asset,
   revision,
@@ -113,7 +112,7 @@ export const schemas = Object.freeze({
   }),
   create: z.strictObject({
     title,
-    format: format.exclude(["pdf"]),
+    format: officeFormatSchema,
     contentJSON: json,
     provenance,
   }),
@@ -131,7 +130,12 @@ export const schemas = Object.freeze({
       .max(Math.ceil(LIMITS.chunkBytes / 3) * 4),
   }),
   uploadId: z.strictObject({ uploadId: id }),
-  import: z.strictObject({ title, format, uploadId: id, provenance }),
+  import: z.strictObject({
+    title,
+    format: formatSchema,
+    uploadId: id,
+    provenance,
+  }),
   review: selected.extend({
     renderId: id,
     pages: z
@@ -159,7 +163,6 @@ export const schemas = Object.freeze({
   }),
 });
 
-export type Format = z.infer<typeof format>;
 export type Provenance = z.infer<typeof provenance>;
 export type Asset = z.infer<typeof asset>;
 export type Revision = z.infer<typeof revision>;

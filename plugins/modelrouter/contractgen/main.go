@@ -1,11 +1,6 @@
 package main
 
 import (
-	"encoding/json/jsontext"
-	json "encoding/json/v2"
-	"log"
-	"os"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -15,19 +10,7 @@ import (
 	"github.com/Tangerg/frame"
 )
 
-func main() {
-	contract, err := define()
-	if err != nil {
-		log.Fatal(err)
-	}
-	data, err := json.Marshal(contract.Descriptor(), json.Deterministic(true), jsontext.WithIndent("  "))
-	if err != nil {
-		log.Fatal(err)
-	}
-	if _, err := os.Stdout.Write(append(data, '\n')); err != nil {
-		log.Fatal(err)
-	}
-}
+func main() { plugincontract.Publish(define) }
 
 func define() (*plugincontract.Capability, error) {
 	get, err := pluginmcp.NewMethod[struct{}, routing.Snapshot](frame.MethodConfig{Name: "flame.model-router/get-policy.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Inspect the private routing policy and revision before editing."})

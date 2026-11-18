@@ -3,11 +3,12 @@ package main
 import (
 	"errors"
 
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
 )
 
 func classify(err error) (string, bool) {
-	if errors.Is(err, errStoredPolicy) {
+	if errors.Is(err, pluginstorage.ErrStoredSnapshot) {
 		return "", false
 	}
 	switch {

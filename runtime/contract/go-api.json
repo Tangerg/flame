@@ -4668,7 +4668,8 @@
         "encoding/json/jsontext",
         "github.com/Tangerg/frame",
         "github.com/Tangerg/frame/call",
-        "github.com/Tangerg/frame/value"
+        "github.com/Tangerg/frame/value",
+        "io"
       ],
       "constants": [
         {
@@ -4728,6 +4729,10 @@
           "signature": "func(data []byte) (*Point, error)"
         },
         {
+          "name": "Publish",
+          "signature": "func(define func() (*Capability, error))"
+        },
+        {
           "name": "ValidExportName",
           "signature": "func(name string) bool"
         }
@@ -4752,6 +4757,10 @@
             {
               "name": "Service",
               "signature": "func() *frame.Capability"
+            },
+            {
+              "name": "WriteDescriptor",
+              "signature": "func(w io.Writer) error"
             }
           ]
         },
@@ -8567,6 +8576,10 @@
         {
           "name": "ErrRuntimeTargetConflict",
           "type": "error"
+        },
+        {
+          "name": "ErrStoredSnapshot",
+          "type": "error"
         }
       ],
       "functions": [
@@ -8599,6 +8612,10 @@
           "signature": "func[R any](result R, apply func(context.Context) error) (CommandPlan[R], error)"
         },
         {
+          "name": "OpenSnapshot",
+          "signature": "func[S any](ctx context.Context, db sqlite.Database, table string, initial S) (*Snapshot[S], error)"
+        },
+        {
           "name": "ReadReceipt",
           "signature": "func(ctx context.Context, db sqlite.Database, input mcp.ReceiptRequest) (mcp.Receipt, error)"
         },
@@ -8611,8 +8628,16 @@
           "signature": "func(server *mcp.Backend, db sqlite.Database) error"
         },
         {
+          "name": "Replace",
+          "signature": "func[S, R any](s *Snapshot[S], result R, next S) (CommandPlan[R], error)"
+        },
+        {
           "name": "ResumeCommand",
           "signature": "func(ctx context.Context, db sqlite.Database, method string, id string) (*PreparedCommand, value.JSON, []byte, error)"
+        },
+        {
+          "name": "SnapshotSchema",
+          "signature": "func(table string) string"
         }
       ],
       "types": [
@@ -8635,6 +8660,16 @@
             {
               "name": "SettleExternal",
               "signature": "func(ctx context.Context, reply []byte, record func(context.Context) error) error"
+            }
+          ]
+        },
+        {
+          "name": "Snapshot",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Read",
+              "signature": "func(ctx context.Context) (S, error)"
             }
           ]
         }

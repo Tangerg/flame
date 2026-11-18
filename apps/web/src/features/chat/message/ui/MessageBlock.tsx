@@ -21,7 +21,7 @@ import {
   useVisibleActionMaterialization,
 } from "@/features/chat/message/ui/messageVisibleMaterial";
 import { reveal } from "@/ui/index";
-import { Badge } from "@flame/ui";
+import { Badge, quoteSourceProps } from "@flame/ui";
 import { corner, type as typeStep } from "@flame/ui/tokens.stylex";
 import { messageStyles } from "@/features/chat/message/ui/messageStyles";
 import { UserMessageFold } from "@/features/chat/message/ui/UserMessageFold";
@@ -103,7 +103,7 @@ function MessageBlockInner({
   const messageContent = (
     <div
       data-user-message-bubble={isUser ? "" : undefined}
-      data-quote-source="message"
+      {...MESSAGE_QUOTE_SOURCE}
       className={cn(
         MESSAGE_CONTENT_CLASS,
         stylex.props(
@@ -181,6 +181,8 @@ function MessageBlockInner({
 }
 
 export const MessageBlock = memo(MessageBlockInner);
+
+const MESSAGE_QUOTE_SOURCE = quoteSourceProps({ kind: "message" });
 
 const ACTIONS_VISIBILITY = {
   hidden: messageStyles.actionsHidden,

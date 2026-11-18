@@ -12,7 +12,7 @@ import {
   exportCSV,
   type Inspection,
 } from "./formats";
-import type { Format } from "../contracts/capability";
+import type { Format } from "../contracts/content";
 import { confinedPlan, type PrivateDirectory } from "./confinement";
 import { runProcess, UnconfirmedProcessExit } from "./process";
 

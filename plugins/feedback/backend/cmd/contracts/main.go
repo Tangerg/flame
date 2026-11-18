@@ -1,19 +1,8 @@
 package main
 
 import (
-	json "encoding/json/v2"
-	"log"
-	"os"
-
 	"github.com/Tangerg/flame/packages/go-sdk/plugin"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 )
 
-func main() {
-	contract, err := plugin.FeedbackContract()
-	if err == nil {
-		err = json.MarshalWrite(os.Stdout, contract.Descriptor())
-	}
-	if err != nil {
-		log.Fatal(err)
-	}
-}
+func main() { plugincontract.Publish(plugin.FeedbackContract) }

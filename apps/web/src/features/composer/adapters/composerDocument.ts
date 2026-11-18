@@ -7,7 +7,6 @@ import {
   $isLineBreakNode,
   $isTextNode,
   TextNode,
-  type EditorConfig,
   type EditorState,
   type LexicalNode,
   type NodeKey,
@@ -44,11 +43,6 @@ export class FileReferenceNode extends TextNode {
   }
   override exportJSON(): SerializedFileReference {
     return { ...super.exportJSON(), type: "file-reference", version: 1, filePath: this.__filePath };
-  }
-  override createDOM(config: EditorConfig) {
-    const element = super.createDOM(config);
-    element.dataset.fileReference = this.__filePath;
-    return element;
   }
   override isTextEntity() {
     return true;

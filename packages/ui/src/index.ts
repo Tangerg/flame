@@ -119,9 +119,22 @@ export {
 export { isImeKey } from "./keyboard";
 export {
   copyReaderSelection,
+  markReaderLine,
+  markReaderSource,
+  readerLineProps,
   readerSelectionLines,
+  readerSourceProps,
   selectAllInReader,
 } from "./reader-selection";
+export {
+  markQuoteLine,
+  quotedLineOf,
+  quotedReaderOf,
+  quoteSourceProps,
+  type QuoteKind,
+  type QuotedReader,
+  type QuoteSource,
+} from "./quote-source";
 export { TaskListItem } from "./task-list-item";
 export {
   Callout,

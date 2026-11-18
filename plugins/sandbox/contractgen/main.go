@@ -1,11 +1,6 @@
 package main
 
 import (
-	"encoding/json/jsontext"
-	json "encoding/json/v2"
-	"log"
-	"os"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -15,19 +10,7 @@ import (
 	"github.com/Tangerg/frame"
 )
 
-func main() {
-	contract, err := define()
-	if err != nil {
-		log.Fatal(err)
-	}
-	data, err := json.Marshal(contract.Descriptor(), json.Deterministic(true), jsontext.WithIndent("  "))
-	if err != nil {
-		log.Fatal(err)
-	}
-	if _, err := os.Stdout.Write(append(data, '\n')); err != nil {
-		log.Fatal(err)
-	}
-}
+func main() { plugincontract.Publish(define) }
 
 func define() (*plugincontract.Capability, error) {
 	execute, err := pluginmcp.NewMethod[wire.ExecuteInput, sandbox.Result](frame.MethodConfig{Name: "flame.sandbox/execute.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Execute a bounded /bin/sh script in a new private native sandbox workspace. Writes stay in that workspace, the configured home is hidden, network is denied and child environment is scrubbed. No CPU or memory quota is promised. Replaying the original command returns its saved outcome; unknown work is never re-executed."})

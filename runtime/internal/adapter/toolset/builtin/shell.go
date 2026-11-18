@@ -181,10 +181,10 @@ func (c *commandTools) run(ctx context.Context, a builtincontract.ShellArguments
 
 func (c *commandTools) completed(sessionID, id string, cause error) (string, error) {
 	output, readErr := c.shells.Read(sessionID, id)
-	if !output.Finished {
+	if output.Exit == nil {
 		return "", errors.Join(cause, readErr, errors.New("shell: completion has no finished output"))
 	}
-	result, resultErr := completedJSON(output)
+	result, resultErr := completedJSON(output, *output.Exit)
 	return shellResult(result, errors.Join(cause, readErr, resultErr))
 }
 
@@ -235,8 +235,8 @@ func (c *commandTools) output(ctx context.Context, a shellOutputArgs) (string, e
 
 func shellOutputJSON(output exec.Output, id string) (string, error) {
 	state := "still running"
-	if output.Finished {
-		state = "finished (" + output.Info + ")"
+	if output.Exit != nil {
+		state = "finished (" + output.Exit.Info + ")"
 	}
 	encoded, err := json.Marshal(struct {
 		ShellID    string          `json:"shell_id"`
@@ -289,7 +289,7 @@ func (c *commandTools) kill(ctx context.Context, a shellIDArgs) (string, error) 
 // completedJSON shapes a finished foreground command's result. The combined
 // stdout+stderr goes in "stdout" because the execution spool preserves their
 // combined arrival order. exit_code is always present for a finished command.
-func completedJSON(output exec.Output) (string, error) {
+func completedJSON(output exec.Output, exit exec.Exit) (string, error) {
 	out := output.Text
 	b, err := json.Marshal(struct {
 		Stdout     content.Content `json:"stdout"`
@@ -302,7 +302,7 @@ func completedJSON(output exec.Output) (string, error) {
 		Offset     int64           `json:"offset"`
 		NextOffset int64           `json:"next_offset"`
 		HasMore    bool            `json:"has_more_output"`
-	}{Stdout: content.New([]byte(out)), ExitCode: output.ExitCode, Killed: output.Killed, Duration: output.Duration.String(), Status: "finished (" + output.Info + ")",
+	}{Stdout: content.New([]byte(out)), ExitCode: exit.Code, Killed: exit.Killed, Duration: exit.Duration.String(), Status: "finished (" + exit.Info + ")",
 		ShellID: output.ShellID, Dropped: output.Dropped, Offset: output.Offset, NextOffset: output.NextOffset, HasMore: output.HasMore})
 	if err != nil {
 		return "", fmt.Errorf("shell: encode completed command result: %w", err)

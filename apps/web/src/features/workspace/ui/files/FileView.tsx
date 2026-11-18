@@ -1,4 +1,5 @@
 import { type Ref } from "react";
+import { quoteSourceProps } from "@flame/ui";
 import { PierreFile } from "@/lib/highlight/PierreFile";
 export function FileView({
   path,
@@ -16,7 +17,7 @@ export function FileView({
   ref?: Ref<HTMLDivElement>;
 }) {
   return (
-    <div ref={ref} data-quote-source="file" data-quote-path={path}>
+    <div ref={ref} {...quoteSourceProps({ kind: "file", path })}>
       <PierreFile
         path={path}
         source={content}

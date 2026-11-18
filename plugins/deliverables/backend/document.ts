@@ -4,9 +4,9 @@ import {
   schemas,
   type Header,
   type Revision,
-  type Format,
   type Provenance,
 } from "../contracts/capability";
+import type { Format } from "../contracts/content";
 
 export function digest(bytes: Uint8Array | string): string {
   return createHash("sha256").update(bytes).digest("hex");

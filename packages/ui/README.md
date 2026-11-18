@@ -343,12 +343,16 @@ composition, modified commands, handled events and editable descendants with
 their existing owner. `copyReaderSelection` writes its caller's text for the
 complete native range produced by that command. Unmarked partial ranges and
 editable descendants retain native copy. Virtual source readers mark each real
-line with its zero-based `data-reader-line` and put exactly that line's presented
-text inside it. Styling may split the text into spans; DOM UTF-16 offsets still
+line with its zero-based index through `readerLineProps` or `markReaderLine` and
+put exactly that line's presented text inside it. Styling may split the text into spans; DOM UTF-16 offsets still
 address the same presented source. `copyReaderSelection` serializes those partial
 ranges through the complete source, preserving unmounted middle lines, Unicode,
-blank lines and newline boundaries. A `data-reader-source` root gives stable
-source boundaries without adding hidden full text. `readerSelectionLines` reads
+blank lines and newline boundaries. A root marked with `readerSourceProps` or
+`markReaderSource` gives stable source boundaries without adding hidden full text.
+Quotable readers, host or installed, declare their origin with `quoteSourceProps`
+and number quoted lines with `markQuoteLine`; `quotedReaderOf` and `quotedLineOf`
+read that declaration back from a selection. These functions are the only owners
+of the attribute names. `readerSelectionLines` reads
 the current browser Range's endpoints for a virtualizer's finite retention policy,
 including a collapsed anchor. Neither helper stores or advances selection.
 Both helpers accept an optional content element inside the event owner. A named

@@ -9,8 +9,6 @@ export type Assessment = MethodOutputs[typeof METHODS.assessment];
 export type Asset = Revision["native"];
 export type Upload = MethodOutputs[typeof METHODS.upload];
 export type Provenance = MethodInputs[typeof METHODS.create]["provenance"];
-export type Format = Header["format"];
-export type OfficeFormat = Exclude<Format, "pdf">;
 
 export const emptyProvenance = (): Provenance => ({
   sources: [],

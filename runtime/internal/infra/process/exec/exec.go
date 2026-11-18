@@ -182,16 +182,22 @@ type Shell struct {
 	spoolBytes  *atomic.Int64 // the original Shells owner's aggregate charge
 	logReleased bool
 	outputErr   error
-	exitInfo    string        // "exit 0" / "exit 2" / "signal: killed" — set on completion
-	exitCode    int           // process exit code; -1 when it never ran / wasn't an exit
-	killed      bool          // terminated by ctx/timeout/kill rather than exiting on its own
-	duration    time.Duration // wall time from launch to completion
-	cleanup     error         // terminal process-tree cleanup diagnostic
+	exit        Exit  // written once by finish, before done closes
+	cleanup     error // terminal process-tree cleanup diagnostic
+}
+
+// Exit is a finished shell's terminal account. Only a finished shell has one,
+// so a running shell cannot present an exit code or duration.
+type Exit struct {
+	Info     string        // "exit 0", "exit 2", "signal: killed" or the start/wait failure
+	Code     int           // NoExitStatus when the process never reported one
+	Killed   bool          // ended by timeout or kill rather than exiting on its own
+	Duration time.Duration // wall time from launch to completion
 }
 
 // NoExitStatus is the exit code of a command that never reported one: it failed
-// to start, or its wait failed. Its [Shell.Status] info is then the only account
-// of what happened.
+// to start, or its wait failed. Its [Exit.Info] is then the only account of
+// what happened.
 const NoExitStatus = -1
 
 // Launch starts command under cwd in the background and returns its shell id.
@@ -384,7 +390,6 @@ func (s *Shells) Kill(sessionID, id string) (running bool, err error) {
 }
 
 // Output is one observation of the incremental bytes and completion boundary.
-// Terminal fields are meaningful only when Finished is true.
 type Output struct {
 	ShellID    string // retained handle; empty after the final page releases it
 	Text       string
@@ -392,11 +397,7 @@ type Output struct {
 	Offset     int64
 	NextOffset int64
 	HasMore    bool
-	Finished   bool
-	Info       string
-	ExitCode   int
-	Killed     bool
-	Duration   time.Duration
+	Exit       *Exit // nil while the shell still runs
 }
 
 // Read consumes available output and retires a successfully cleaned, finished
@@ -581,10 +582,7 @@ func (s *shellProcessOwner) stop() error {
 // finish is called exactly once: by the start failure or by the waiter.
 func (s *Shell) finish(info string, code int, killed bool, cleanup error) {
 	s.mu.Lock()
-	s.exitInfo = info
-	s.exitCode = code
-	s.killed = killed
-	s.duration = time.Since(s.started)
+	s.exit = Exit{Info: info, Code: code, Killed: killed, Duration: time.Since(s.started)}
 	s.cleanup = cleanup
 	s.mu.Unlock()
 	close(s.done)
@@ -603,28 +601,8 @@ func (s *Shell) finished() bool {
 	}
 }
 
-// Outcome reports a finished shell's exit code, whether it was killed
-// (timeout / explicit kill) rather than exiting on its own, its wall-clock
-// duration, and any terminal process-tree cleanup failure. Meaningful only
-// after [Shell.Done] is closed.
-func (s *Shell) Outcome() (exitCode int, killed bool, duration time.Duration, cleanup error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.exitCode, s.killed, s.duration, s.cleanup
-}
-
 func (s *Shell) cleanupFailure() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.cleanup
-}
-
-// Status reports whether the shell finished and its exit info.
-func (s *Shell) Status() (done bool, info string) {
-	if !s.finished() {
-		return false, ""
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return true, s.exitInfo
 }

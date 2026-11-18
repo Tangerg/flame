@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"reflect"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
 )
 
@@ -28,17 +29,10 @@ func main() {
 	if *policyGo != "" && *policyJSON == "" {
 		return
 	}
-	contracts, err := rpc.NewContracts()
-	if err != nil {
-		log.Fatal(err)
-	}
-	data, err := json.Marshal(contracts.Capability.Descriptor())
-	if err != nil {
-		log.Fatal(err)
-	}
-	if _, err := os.Stdout.Write(data); err != nil {
-		log.Fatal(err)
-	}
+	plugincontract.Publish(func() (*plugincontract.Capability, error) {
+		contracts, err := rpc.NewContracts()
+		return contracts.Capability, err
+	})
 }
 
 func writeCallerPolicy(jsonPath, goPath string) error {

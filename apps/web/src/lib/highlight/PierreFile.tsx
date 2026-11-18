@@ -2,7 +2,7 @@ import { useMemo, useRef, type ClipboardEvent } from "react";
 import { File, useWorkerPool, type FileOptions } from "@pierre/diffs/react";
 import { registerCustomCSSVariableTheme, type FileContents } from "@pierre/diffs";
 import { useScheme } from "@/lib/appearance";
-import { codeSyntaxColors, selectAllInReader } from "@flame/ui";
+import { codeSyntaxColors, markQuoteLine, markReaderLine, selectAllInReader } from "@flame/ui";
 
 registerCustomCSSVariableTheme("flame-code", codeSyntaxColors);
 export const CODE_RENDERING = { preferredHighlighter: "shiki-js" as const, theme: "flame-code" };
@@ -56,8 +56,8 @@ export function PierreFile({
         root.current = shadow;
         for (const line of shadow.querySelectorAll<HTMLElement>("[data-code] [data-line]")) {
           const number = Number(line.dataset.line) + startLine - 1;
-          line.dataset.quoteLine = String(number);
-          line.dataset.readerLine = String(number - startLine);
+          markQuoteLine(line, number);
+          markReaderLine(line, number - startLine);
           if (
             number === targetLine &&
             intent &&

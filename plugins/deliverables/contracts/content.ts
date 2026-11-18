@@ -20,8 +20,11 @@ export const contentLimits = {
 } as const;
 
 export const formatSchema = z.enum(["docx", "xlsx", "pptx", "pdf"]);
+export const FORMATS = formatSchema.options;
 export type Format = z.infer<typeof formatSchema>;
-export type OfficeFormat = Exclude<Format, "pdf">;
+export const officeFormatSchema = formatSchema.exclude(["pdf"]);
+export const OFFICE_FORMATS = officeFormatSchema.options;
+export type OfficeFormat = z.infer<typeof officeFormatSchema>;
 export const inspectionSchema = z.strictObject({
   format: formatSchema,
   title: z.string().max(256).optional(),
@@ -399,6 +402,8 @@ export const presentationEditSchema = z.strictObject({
     .min(1)
     .max(1000),
 });
+export const PAGE_ROTATIONS = [0, 90, 180, 270] as const;
+
 export const pdfEditSchema = z.strictObject({
   operations: z
     .array(
@@ -407,12 +412,7 @@ export const pdfEditSchema = z.strictObject({
           type: z.literal("rotatePage"),
           id: z.string().regex(/^page:[1-9][0-9]*$/u),
           expect: shortText,
-          degrees: z.union([
-            z.literal(0),
-            z.literal(90),
-            z.literal(180),
-            z.literal(270),
-          ]),
+          degrees: z.literal(PAGE_ROTATIONS),
         }),
         z.strictObject({
           type: z.literal("reorderPages"),

@@ -16,12 +16,27 @@ import {
   TextField,
   Toolbar,
 } from "@flame/ui";
+import { FORMATS, formatSchema, type Format } from "../contracts/content";
 import { FIELD_LIMITS, LIMITS } from "../contracts/limits";
 import { METHODS } from "../contracts/methods";
 import { cleanProvenance, ProvenanceEditor } from "./authoring";
 import { boundedInteger, encodeChunk, sha256 } from "./transfer";
-import { emptyProvenance, type Format, type Upload } from "./types";
+import { emptyProvenance, type Upload } from "./types";
 import type { DeliverablesState } from "./useDeliverables";
+
+const ACCEPTED_FILES = FORMATS.map((format) => `.${format}`).join(",");
+
+type FileSelection =
+  | { kind: "empty" }
+  | { kind: "hashing" }
+  | { kind: "chosen"; file: File; sha256: string }
+  | { kind: "rejected"; error: string };
+
+type Submission =
+  | { kind: "idle" }
+  | { kind: "transferring"; progress?: { received: number; total: number } }
+  | { kind: "finished" }
+  | { kind: "failed"; error: string };
 
 export function ImportForm({
   state,
@@ -33,60 +48,65 @@ export function ImportForm({
   const [title, setTitle] = useState("");
   const [format, setFormat] = useState<Format>("docx");
   const [provenance, setProvenance] = useState(emptyProvenance);
-  const [local, setLocal] = useState<{ file: File; sha256: string }>();
-  const [hashing, setHashing] = useState(false);
-  const [working, setWorking] = useState(false);
+  const [selection, setSelection] = useState<FileSelection>({
+    kind: "empty",
+  });
+  const [submission, setSubmission] = useState<Submission>({ kind: "idle" });
   const [uploadId, setUploadId] = useState<string>();
-  const [progress, setProgress] = useState<{
-    received: number;
-    total: number;
-  }>();
-  const [error, setError] = useState<string>();
-  const [finished, setFinished] = useState(false);
   const hashingRequest = useRef<AbortController>(undefined);
-  const active = useRef(false);
   useEffect(() => () => hashingRequest.current?.abort(), []);
   const uploads = state.uploads?.value ?? [];
-  const blocked = state.blocked || working || hashing;
+  const transferring = submission.kind === "transferring";
+  const blocked = state.blocked || transferring || selection.kind === "hashing";
   const selected = uploads.find((upload) => upload.id === uploadId);
+  const error =
+    selection.kind === "rejected"
+      ? selection.error
+      : submission.kind === "failed"
+        ? submission.error
+        : undefined;
 
   async function choose(file?: File) {
     hashingRequest.current?.abort();
     const request = new AbortController();
     hashingRequest.current = request;
-    setLocal(undefined);
-    setError(undefined);
-    setFinished(false);
-    setHashing(false);
-    if (!file) return;
+    setSubmission({ kind: "idle" });
+    if (!file) {
+      setSelection({ kind: "empty" });
+      return;
+    }
+    if (!file.size || file.size > LIMITS.fileBytes) {
+      setSelection({
+        kind: "rejected",
+        error: t("import.limit", { maximum: LIMITS.fileBytes / 1024 / 1024 }),
+      });
+      return;
+    }
     const signal = AbortSignal.any([state.signal, request.signal]);
+    setSelection({ kind: "hashing" });
     try {
-      if (!file.size || file.size > LIMITS.fileBytes)
-        throw new Error(
-          t("import.limit", { maximum: LIMITS.fileBytes / 1024 / 1024 }),
-        );
-      setHashing(true);
       const digest = await sha256(new Uint8Array(await file.arrayBuffer()));
       if (signal.aborted) return;
-      setLocal({ file, sha256: digest });
-      const extension = file.name.split(".").at(-1)?.toLowerCase();
-      if (["docx", "xlsx", "pptx", "pdf"].includes(extension ?? ""))
-        setFormat(extension as Format);
+      setSelection({ kind: "chosen", file, sha256: digest });
+      const extension = formatSchema.safeParse(
+        file.name.split(".").at(-1)?.toLowerCase(),
+      );
+      if (extension.success) setFormat(extension.data);
       setTitle(
         (previous) =>
-          previous || file.name.replace(/\.[^.]+$/u, "").slice(0, 180),
+          previous ||
+          file.name.replace(/\.[^.]+$/u, "").slice(0, FIELD_LIMITS.title),
       );
     } catch (cause) {
-      if (!signal.aborted) setError(failureText(cause));
-    } finally {
-      if (!signal.aborted) setHashing(false);
+      if (!signal.aborted)
+        setSelection({ kind: "rejected", error: failureText(cause) });
     }
   }
 
   async function submit() {
-    if (blocked || active.current || !local) return;
+    if (blocked || selection.kind !== "chosen") return;
     const captured = {
-      local,
+      local: selection,
       title: title.trim(),
       format,
       provenance: cleanProvenance(provenance),
@@ -94,13 +114,10 @@ export function ImportForm({
       selection: state.selection,
     };
     if (!captured.title) {
-      setError(t("author.titleRequired"));
+      setSubmission({ kind: "failed", error: t("author.titleRequired") });
       return;
     }
-    active.current = true;
-    setWorking(true);
-    setFinished(false);
-    setError(undefined);
+    setSubmission({ kind: "transferring" });
     try {
       const current = await state.refreshUploads();
       state.signal.throwIfAborted();
@@ -124,7 +141,10 @@ export function ImportForm({
       )
         throw new Error(t("import.mismatch"));
       let offset = boundedInteger(upload.received, captured.local.file.size);
-      setProgress({ received: offset, total: captured.local.file.size });
+      setSubmission({
+        kind: "transferring",
+        progress: { received: offset, total: captured.local.file.size },
+      });
       while (offset < captured.local.file.size) {
         state.signal.throwIfAborted();
         const bytes = new Uint8Array(
@@ -137,12 +157,15 @@ export function ImportForm({
           METHODS.append,
           { uploadId: upload.id, offset, base64: encodeChunk(bytes) },
           (value) => {
-            setProgress({
-              received: boundedInteger(
-                value.received,
-                captured.local.file.size,
-              ),
-              total: captured.local.file.size,
+            setSubmission({
+              kind: "transferring",
+              progress: {
+                received: boundedInteger(
+                  value.received,
+                  captured.local.file.size,
+                ),
+                total: captured.local.file.size,
+              },
             });
           },
         );
@@ -168,17 +191,18 @@ export function ImportForm({
         },
         (revision) => {
           setUploadId(undefined);
-          setProgress(undefined);
-          setFinished(true);
+          setSubmission({ kind: "finished" });
           state.selectRevision(revision, captured.selection);
         },
       );
     } catch (cause) {
-      if (!state.signal.aborted) setError(failureText(cause));
+      if (!state.signal.aborted)
+        setSubmission({ kind: "failed", error: failureText(cause) });
     } finally {
-      active.current = false;
       if (!state.signal.aborted) {
-        setWorking(false);
+        setSubmission((current) =>
+          current.kind === "transferring" ? { kind: "idle" } : current,
+        );
         void state.refreshUploads();
       }
     }
@@ -196,7 +220,7 @@ export function ImportForm({
         <FormField label={t("import.file")}>
           <input
             type="file"
-            accept=".docx,.xlsx,.pptx,.pdf"
+            accept={ACCEPTED_FILES}
             disabled={blocked}
             onChange={(event) => {
               void choose(event.target.files?.[0]);
@@ -218,21 +242,23 @@ export function ImportForm({
               label={t("author.format")}
               value={format}
               disabled={blocked}
-              options={["docx", "xlsx", "pptx", "pdf"].map((value) => ({
+              options={FORMATS.map((value) => ({
                 value,
                 label: t(`format.${value}`),
               }))}
-              onValueChange={(value) => setFormat(value as Format)}
+              onValueChange={(value) => setFormat(formatSchema.parse(value))}
             />
           </FormGroup>
         </FormRow>
-        {hashing && <Metadata role="status">{t("import.hashing")}</Metadata>}
-        {local && (
+        {selection.kind === "hashing" && (
+          <Metadata role="status">{t("import.hashing")}</Metadata>
+        )}
+        {selection.kind === "chosen" && (
           <Facts
             values={[
-              [t("import.filename"), local.file.name],
-              [t("file.size"), String(local.file.size)],
-              [t("file.hash"), local.sha256],
+              [t("import.filename"), selection.file.name],
+              [t("file.size"), String(selection.file.size)],
+              [t("file.hash"), selection.sha256],
             ]}
           />
         )}
@@ -259,32 +285,30 @@ export function ImportForm({
                   <RecordBody>{error}</RecordBody>
                 </Callout>
               )}
-              {progress && (
+              {submission.kind === "transferring" && submission.progress && (
                 <Metadata role="status">
                   {t("transfer.progress", {
-                    received: progress.received,
-                    total: progress.total,
+                    received: submission.progress.received,
+                    total: submission.progress.total,
                   })}
                 </Metadata>
               )}
-              {finished && (
+              {submission.kind === "finished" && (
                 <Metadata role="status">{t("import.finished")}</Metadata>
               )}
             </>
           }
         >
           {uploadId && (
-            <Button
-              disabled={blocked}
-              onClick={() => {
-                setUploadId(undefined);
-                setProgress(undefined);
-              }}
-            >
+            <Button disabled={blocked} onClick={() => setUploadId(undefined)}>
               {t("import.new")}
             </Button>
           )}
-          <Button type="submit" variant="primary" disabled={blocked || !local}>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={blocked || selection.kind !== "chosen"}
+          >
             {t(uploadId ? "import.resume" : "import.submit")}
           </Button>
         </FormActions>
@@ -313,15 +337,14 @@ export function ImportForm({
                   aria-pressed={uploadId === upload.id}
                   onClick={() => {
                     setUploadId(upload.id);
-                    setError(undefined);
-                    setProgress(undefined);
+                    setSubmission({ kind: "idle" });
                   }}
                 >
                   {t("import.select")}
                 </Button>
                 <Button
                   disabled={
-                    working ||
+                    transferring ||
                     state.commands.some(
                       (command) => command.method === METHODS.discard,
                     )
@@ -331,12 +354,10 @@ export function ImportForm({
                     void state.run(
                       METHODS.discard,
                       { uploadId: captured },
-                      () => {
+                      () =>
                         setUploadId((current) =>
                           current === captured ? undefined : current,
-                        );
-                        setProgress(undefined);
-                      },
+                        ),
                     );
                   }}
                 >

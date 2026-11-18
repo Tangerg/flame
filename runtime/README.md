@@ -772,11 +772,9 @@ identity without importing MCP or Runtime internals. `packages/go-sdk/plugin/mcp
 contracts and `frame/contractgen` consume those admitted values. Installation domain
 code can validate a contract without activating a backend. Flame's `extension`
 package retains only its product origin and scope vocabulary.
-The Frame integration requires rebuilt contracts and a fresh host database.
-Startup explicitly refuses earlier `flame-qimu.db` or `flame.db` roots before
-creating the new authority. It provides no compatibility wire reader or state conversion. Private backend owners
-continue to admit their own exact schema and receipt contract. Preserve earlier
-deployments and their data together to finish unresolved work.
+The Frame integration requires rebuilt contracts and a fresh host database. It
+provides no compatibility wire reader or state conversion. Private backend owners
+continue to admit their own exact schema and receipt contract.
 
 An assembly overtaken by such a change to one of its dependencies is refused as `plugin_changed` on
 `runs.start` and `runs.resume`: nothing was started and no interrupt was consumed, so the

@@ -25,7 +25,7 @@ func TestLaunchSandboxConfinesWrites(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = shells.KillAll() })
 
-	run := func(command string) *Shell {
+	run := func(command string) Output {
 		id, launchErr := shells.Launch(t.Context(), "s1", workspace, command, testTimeout(t, 10*time.Second), false)
 		if launchErr != nil {
 			t.Fatalf("launch: %v", launchErr)
@@ -35,21 +35,22 @@ func TestLaunchSandboxConfinesWrites(t *testing.T) {
 			t.Fatal("launched shell vanished")
 		}
 		<-sh.Done()
-		return sh
+		output, readErr := shells.Read("s1", id)
+		if readErr != nil || output.Exit == nil {
+			t.Fatalf("read finished shell: %+v (%v)", output, readErr)
+		}
+		return output
 	}
 
-	sh := run("printf inside > inside.txt")
-	if code, _, _, _ := sh.Outcome(); code != 0 {
-		out, _, readErr := sh.read()
-		t.Fatalf("inside write exited %d: %q (%v)", code, out.Text, readErr)
+	if output := run("printf inside > inside.txt"); output.Exit.Code != 0 {
+		t.Fatalf("inside write exited %d: %q", output.Exit.Code, output.Text)
 	}
 	content, err := os.ReadFile(filepath.Join(workspace, "inside.txt"))
 	if err != nil || string(content) != "inside" {
 		t.Fatalf("inside write = (%q, %v)", content, err)
 	}
 
-	sh = run("printf outside > " + strconv.Quote(outside))
-	if code, _, _, _ := sh.Outcome(); code == 0 {
+	if output := run("printf outside > " + strconv.Quote(outside)); output.Exit.Code == 0 {
 		t.Fatal("write outside the workspace unexpectedly succeeded")
 	}
 	if _, err := os.Stat(outside); !os.IsNotExist(err) {

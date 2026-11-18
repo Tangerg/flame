@@ -3,6 +3,9 @@ package contract
 import (
 	"errors"
 	"fmt"
+	"io"
+	"log"
+	"os"
 	"regexp"
 
 	"github.com/Tangerg/frame"
@@ -100,6 +103,29 @@ func AdmitCapability(descriptor CapabilityDescriptor) (*Capability, error) {
 func (c *Capability) Descriptor() CapabilityDescriptor {
 	service := c.service.Descriptor()
 	return CapabilityDescriptor{Protocol: Protocol, Reference: service.Reference, Composition: c.composition, Scope: c.scope, Methods: service.Methods}
+}
+
+// WriteDescriptor writes the published descriptor in Frame's canonical
+// encoding, the form ParseCapability admits.
+func (c *Capability) WriteDescriptor(w io.Writer) error {
+	encoded, err := value.EncodeJSON(c.Descriptor())
+	if err != nil {
+		return fmt.Errorf("plugin contract: encode descriptor: %w", err)
+	}
+	_, err = w.Write(encoded.Bytes())
+	return err
+}
+
+// Publish is the main of a descriptor publisher; generators read the
+// capability from its standard output.
+func Publish(define func() (*Capability, error)) {
+	capability, err := define()
+	if err == nil {
+		err = capability.WriteDescriptor(os.Stdout)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func (c *Capability) Identity() value.JSON { return c.identity }

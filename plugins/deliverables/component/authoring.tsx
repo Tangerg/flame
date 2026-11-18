@@ -27,7 +27,11 @@ import {
   presentationEditSchema,
   pdfEditSchema,
   cellValueSchema,
+  OFFICE_FORMATS,
+  officeFormatSchema,
+  PAGE_ROTATIONS,
   type FormatCatalog,
+  type OfficeFormat,
   type Inspection,
   type CellValue,
   type PresentationContent,
@@ -36,12 +40,7 @@ import { FIELD_LIMITS, LIMITS } from "../contracts/limits";
 import { METHODS } from "../contracts/methods";
 import { projectNumbers } from "../contracts/json";
 import type { DeliverablesState } from "./useDeliverables";
-import {
-  emptyProvenance,
-  type DocumentRead,
-  type OfficeFormat,
-  type Provenance,
-} from "./types";
+import { emptyProvenance, type DocumentRead, type Provenance } from "./types";
 
 const creationSchemas = {
   docx: documentContentSchema,
@@ -364,12 +363,12 @@ export function CreateForm({
             label={t("author.format")}
             value={format}
             disabled={busy}
-            options={(["docx", "xlsx", "pptx"] as const).map((value) => ({
+            options={OFFICE_FORMATS.map((value) => ({
               value,
               label: t(`format.${value}`),
             }))}
             onValueChange={(value) => {
-              setFormat(value as OfficeFormat);
+              setFormat(officeFormatSchema.parse(value));
               setError(undefined);
             }}
           />
@@ -714,8 +713,8 @@ export function RevisionEditor({
                 value={degrees}
                 disabled={disabled}
                 onValueChange={setDegrees}
-                options={["0", "90", "180", "270"].map((value) => ({
-                  value,
+                options={PAGE_ROTATIONS.map((value) => ({
+                  value: String(value),
                   label: `${value}°`,
                 }))}
               />

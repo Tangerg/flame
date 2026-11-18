@@ -1,10 +1,6 @@
 package main
 
 import (
-	json "encoding/json/v2"
-	"log"
-	"os"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -13,15 +9,7 @@ import (
 	"github.com/Tangerg/frame"
 )
 
-func main() {
-	contract, err := define()
-	if err == nil {
-		err = json.MarshalWrite(os.Stdout, contract.Descriptor())
-	}
-	if err != nil {
-		log.Fatal(err)
-	}
-}
+func main() { plugincontract.Publish(define) }
 
 func define() (*plugincontract.Capability, error) {
 	agents, err := pluginmcp.NewMethod[struct{}, wire.Agents](frame.MethodConfig{Name: "flame.a2a/agents.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "List configured remote agents without contacting them."})
