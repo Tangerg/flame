@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -47610,6 +47610,68 @@ The interrupted-draft backup retains 123 bytes and its original SHA-256.
 After guarded main fast-forward, push and direct remote equality verification,
 the owned app/home/assets/diagnostic archives/overlays/CLI material/logs/npm-cache
 root is removed. Keep the worktree and goal active for continued polish.
+
+### Subagent reading through the task list (2026-11-19)
+
+The canonical Workspace `dock-subagents` / `delegated` fixture reproduced both
+losses in the actual Wails app on `3ba4050e4`. In completed task 3 of 4,
+`Show full message` expands the original request. `All subagents` restores
+focus to that exact overview row, but activating it again folds the request.
+After reading `Where the boundary is enforced` mid-transcript and comparing
+failed task 2 of 4, reopening task 3 also returns to the bottom.
+
+`SubagentsPanel.tsx` admits each valid run on its first visible visit. Keyed
+readers stay in stable run-ID order within the same bounded body while that
+Subagents view is mounted. Hidden readers retain their WebKit layout and use
+`inert`, accessibility hiding and the existing `ContentVisibility` scope. The
+original transcript owns scroll and disclosure state. The overview and
+transcript row searches restore focus only to active controls. Source and
+nested return continue to use the existing workspace inspection, and removing
+a run or tearing down the view or Session releases the corresponding reader.
+
+Read-only ZCode `v4/ConversationAgentToolCallRow.tsx` carries root, parent and
+child identity with the visible task title. The actual ChatGPT
+`local-conversation-subagents-panel-tab-62d7e5741aab.js` pairs task
+`conversationId` selection with a dedicated Back callback. Flame reuses its
+retained Dock pane pattern, and the better-layout and better-accessibility
+guidance informs the separation of persistent layout, interaction and focus.
+React describes keyed state lifetime, and WCAG documents logical focus order.
+[React state lifetime](https://react.dev/learn/preserving-and-resetting-state)
+[WCAG focus order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html)
+
+- EN/light/14 px/Flame Orange at default zoom. Keyboard disclosure and Page Up
+  established the reading position. Pointer return focused task 3 in the list.
+  Both immediate reentry and the task 3 → failed task 2 → task 3 comparison kept
+  `Show less`, the same subsection and the Jump control. The overview and
+  failed reader excluded task 3's disclosure from their accessibility trees.
+  Tab reached `runtime/internal/session/store.go:4`; the Files panel's
+  `Back to task` returned to that link. Cmd+L and insertion produced
+  `subagentdraftqxtail`. Closing the Subagents tab and reopening it through
+  Browse panels presented a fresh reader for the same selected task.
+- ZH/dark/18 px/`#3B82F6` at default zoom in a natively left-tiled window.
+  Keyboard End on the divider set the Dock to 320 px (AX 71.454% on the
+  Conversation side). After native wheel reading, task 3 retained both its
+  disclosure and the same figure/code position across the overview and the
+  waiting parent task. Escape from the running nested task returned to the
+  exact nested opener in that parent. The draft became
+  `子任务阅读草稿继续尾段` at its original caret.
+
+The Web typecheck, scoped source formatting, `make check-native`, five-document
+Lab build, strict signatures, 89 Web contracts, eight locale catalogs,
+bootstrap, installed resources and module linkage pass. The bundle gate passes
+all 26 metadata tests and its production checks. After concurrent
+`b952f97c7` changed Session projection and Runtime recovery, the native build
+and both signed Lab variants were rebuilt. The English task comparison and
+Chinese 320 px nested return pass again with the updated adapter. Verification
+uses captured data. Live Runtime recovery, physical IME, VoiceOver, stored
+Find queries across tasks and whole-workspace visual acceptance remain
+unqualified. Browser visual suites and performance benchmarks were outside
+this batch.
+
+All five owned app launches exited. The three preview sessions stopped, both
+app registrations and four private WebKit/cache paths were retired, and the
+isolated QA directory and ten checkout output paths were removed. Continue
+with a fresh conversation-to-evidence task in the actual Wails host.
 
 ### Subagent result reading and source return (2026-11-11)
 

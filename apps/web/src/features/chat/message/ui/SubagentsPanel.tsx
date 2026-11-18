@@ -28,7 +28,7 @@ import {
 import { ScrollArea } from "@/ui/index";
 import { SectionLabel } from "@/ui/index";
 import { StatusDot } from "@/ui/index";
-import { useContentVisible } from "@/ui/index";
+import { ContentVisibility, useContentVisible } from "@/ui/index";
 import { EmptyState, IconButton, RecordBody, toneInk, vocab } from "@flame/ui";
 import { AgentJumpToBottom } from "@/ui/agent/index";
 import { AgentWorkspaceView } from "@/ui/agent/index";
@@ -66,16 +66,25 @@ const styles = stylex.create({
   overview: { paddingInline: "var(--layout-compact-gutter)" },
   group: { marginBottom: space.s4 },
   title: { marginBottom: space.s2 },
-  reader: {
+  readerSlot: {
     position: "relative",
     display: "flex",
     flexDirection: "column",
     minHeight: 0,
     flex: 1,
+  },
+  reader: {
+    position: "absolute",
+    inset: 0,
+    display: "flex",
+    flexDirection: "column",
+    minHeight: 0,
     containerType: "inline-size",
     containerName: "conversation",
     "--transcript-jump-gap": space.s4,
   },
+  // Keeping the layout box preserves WebKit's retained scroll position.
+  inactiveReader: { visibility: "hidden" },
   transcript: {
     minWidth: 0,
     paddingBottom: space.s12,
@@ -107,7 +116,7 @@ const styles = stylex.create({
 
 function subagentOpener(container: HTMLElement, runId: string) {
   const row = [...container.querySelectorAll<HTMLElement>('[data-slot="delegated-run-link"]')].find(
-    (node) => node.dataset.runId === runId,
+    (node) => node.dataset.runId === runId && !node.closest("[hidden], [inert]"),
   );
   return row?.querySelector<HTMLButtonElement>("button") ?? null;
 }
@@ -146,7 +155,13 @@ class SubagentPanelLayout extends Component<
       return null;
     const panel = this.props.panel.current;
     const source = panel?.ownerDocument.activeElement;
-    if (!panel || !(source instanceof HTMLElement) || !panel.contains(source)) return null;
+    if (
+      !panel ||
+      !(source instanceof HTMLElement) ||
+      !panel.contains(source) ||
+      source.closest("[hidden], [inert]")
+    )
+      return null;
     const row = source.closest<HTMLElement>('[data-slot="delegated-run-link"]');
     if (row?.dataset.runId)
       return {
@@ -168,6 +183,7 @@ class SubagentPanelLayout extends Component<
     if (
       !retired ||
       !panel ||
+      panel.closest("[hidden], [inert]") ||
       retired.source.isConnected ||
       panel.ownerDocument.activeElement !== panel.ownerDocument.body
     )
@@ -198,14 +214,10 @@ export function SubagentsPanel() {
   const entries = useMemo(() => subagentEntries(rows), [rows]);
   const selectedId = useWorkspaceSubagentRunId();
   const inspection = useWorkspaceInspection();
-  const retainedRunIds = new Set<string>();
-  for (let source = inspection; source; source = source.previous) {
-    if (
-      source.returnSubagentRunId &&
-      (source.returnDockId === "subagents" || source.returnViewId === "subagents")
-    ) {
-      retainedRunIds.add(source.returnSubagentRunId);
-    }
+  const selected = entries.find(({ narrative }) => narrative.run.id === selectedId);
+  const [visitedRunIds, setVisitedRunIds] = useState<ReadonlySet<string>>(() => new Set());
+  if (visible && selected && !visitedRunIds.has(selected.narrative.run.id)) {
+    setVisitedRunIds(new Set(visitedRunIds).add(selected.narrative.run.id));
   }
   const panelRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLButtonElement>(null);
@@ -217,6 +229,7 @@ export function SubagentsPanel() {
     previousRun.current = selectedId;
     previousInspection.current = inspection;
     if (
+      !visible ||
       fromRun === selectedId ||
       (fromInspection &&
         fromInspection.previous === inspection &&
@@ -242,8 +255,7 @@ export function SubagentsPanel() {
     } else if (fromRun) {
       (subagentOpener(panel, fromRun) ?? panel).focus();
     }
-  }, [selectedId, inspection]);
-  const selected = entries.find(({ narrative }) => narrative.run.id === selectedId);
+  }, [selectedId, inspection, visible]);
   const summary = selected
     ? delegatedRunSummary(
         t,
@@ -313,46 +325,58 @@ export function SubagentsPanel() {
           <SubagentStopButton run={selected.narrative.run} summaryId={summaryId} />
         )}
       </header>
-      <Activity key={entries[0]?.narrative.run.sessionId} mode={selectedId ? "hidden" : "visible"}>
-        <ScrollArea className={stylex.props(styles.scroller, styles.overview).className}>
-          {entries.length === 0 ? (
-            <EmptyState icon={iconGlyph("bot")} title={t("subagents.empty")} />
-          ) : (
-            <div role="group" aria-label={t("subagents.title")}>
-              <SubagentGroup
-                title={t("subagents.active")}
-                entries={entries.filter(({ narrative }) => !agentRunIsFinished(narrative.run))}
-              />
-              <SubagentGroup
-                title={t("subagents.finished")}
-                entries={entries.filter(({ narrative }) => agentRunIsFinished(narrative.run))}
-              />
-            </div>
-          )}
-        </ScrollArea>
-      </Activity>
-      {entries
-        .filter(
-          ({ narrative }) =>
-            narrative.run.id === selectedId || retainedRunIds.has(narrative.run.id),
-        )
-        .map((entry) => (
-          <SubagentTranscript
-            key={entry.narrative.run.id}
-            hidden={entry.narrative.run.id !== selectedId}
-            entry={entry}
-            summary={delegatedRunSummary(
-              t,
-              entry.narrative.run,
-              entry.ordinal,
-              entry.siblingCount,
-              entry.taskLabel,
+      <div {...stylex.props(styles.readerSlot)}>
+        <Activity
+          key={entries[0]?.narrative.run.sessionId}
+          mode={selectedId ? "hidden" : "visible"}
+        >
+          <ScrollArea className={stylex.props(styles.scroller, styles.overview).className}>
+            {entries.length === 0 ? (
+              <EmptyState icon={iconGlyph("bot")} title={t("subagents.empty")} />
+            ) : (
+              <div role="group" aria-label={t("subagents.title")} inert={Boolean(selectedId)}>
+                <SubagentGroup
+                  title={t("subagents.active")}
+                  entries={entries.filter(({ narrative }) => !agentRunIsFinished(narrative.run))}
+                />
+                <SubagentGroup
+                  title={t("subagents.finished")}
+                  entries={entries.filter(({ narrative }) => agentRunIsFinished(narrative.run))}
+                />
+              </div>
             )}
+          </ScrollArea>
+        </Activity>
+        {entries
+          .filter(({ narrative }) => visitedRunIds.has(narrative.run.id))
+          .sort((left, right) => left.narrative.run.id.localeCompare(right.narrative.run.id))
+          .map((entry) => {
+            const run = entry.narrative.run;
+            const active = run.id === selectedId;
+            return (
+              <ContentVisibility visible={active} key={run.id}>
+                <SubagentTranscript
+                  active={active}
+                  entry={entry}
+                  summary={delegatedRunSummary(
+                    t,
+                    run,
+                    entry.ordinal,
+                    entry.siblingCount,
+                    entry.taskLabel,
+                  )}
+                />
+              </ContentVisibility>
+            );
+          })}
+        {!selected && selectedId ? (
+          <EmptyState
+            icon={iconGlyph("alert")}
+            tone="negative"
+            title={t("subagents.unavailable")}
           />
-        ))}
-      {!selected && selectedId ? (
-        <EmptyState icon={iconGlyph("alert")} tone="negative" title={t("subagents.unavailable")} />
-      ) : null}
+        ) : null}
+      </div>
     </SubagentPanelLayout>
   );
 }
@@ -383,11 +407,11 @@ function SubagentGroup({ title, entries }: { title: string; entries: SubagentEnt
 function SubagentTranscript({
   entry,
   summary,
-  hidden,
+  active,
 }: {
   entry: SubagentEntry;
   summary: DelegatedRunSummary;
-  hidden: boolean;
+  active: boolean;
 }) {
   const t = useT();
   const reader = useRef<ReadingListHandle>(null);
@@ -407,8 +431,9 @@ function SubagentTranscript({
       aria-label={summary.label}
       tabIndex={-1}
       data-slot="subagent-transcript"
-      hidden={hidden}
-      {...stylex.props(styles.reader)}
+      inert={!active}
+      aria-hidden={!active || undefined}
+      {...stylex.props(styles.reader, !active && styles.inactiveReader)}
     >
       <MessageTranscript
         listRef={reader}

@@ -925,8 +925,11 @@ hidden material and replacement Tool identities retain their own focus. The grou
 adds no Tab stop, deferred restoration or result lifecycle state.
 
 Selected subagent readers keep the complete task purpose and sibling identity
-visible in their header. Overview rows retain their compact summaries; retained
-reading state, source navigation and return focus stay with the inspection owner.
+visible in their header. Overview rows retain their compact summaries. Each
+visited run keeps its reader while the Subagents view is mounted for the
+current session, so returning through the overview preserves its reading
+position and local disclosures. The selected reader alone receives interaction
+and focus. Source navigation and return focus stay with the inspection owner.
 Row and selected-header cancellation actions reference their existing visible
 identity as their accessible description. Target changes and keyed reordering
 retain that relationship without copying task text; cancellation admission and
