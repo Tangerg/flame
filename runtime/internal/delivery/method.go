@@ -232,6 +232,7 @@ type MethodMeta struct {
 	Errors []string
 
 	CapabilityRules []CapabilityRule
+	Acknowledgement []AcknowledgementMatch
 
 	// Materializes names independently callable query fact families this query
 	// returns together. It does not alias their request filters or pagination:
@@ -303,6 +304,9 @@ func (m MethodMeta) Validate() error {
 		return err
 	}
 	if err := m.validateShapes(); err != nil {
+		return err
+	}
+	if err := m.validateAcknowledgement(); err != nil {
 		return err
 	}
 	return m.validateCapabilityRules()

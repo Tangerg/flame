@@ -105,22 +105,6 @@ func decodeRemoteEvent(frame sse.Message, eventType reflect.Type) (any, error) {
 	}
 }
 
-func validateStreamIdentity(request, acknowledgement any) error {
-	runID, segmentID := streamIdentity(acknowledgement)
-	switch request := request.(type) {
-	case protocol.SubscribeRunRequest:
-		ack := acknowledgement.(*protocol.SubscribeRunResponse)
-		if runID != request.RunID || segmentID != request.SegmentID || request.Snapshot != (ack.Snapshot != nil) {
-			return invalidRemote("subscription acknowledgement does not match its request")
-		}
-	case protocol.ResumeRunRequest:
-		if runID != request.RunID {
-			return invalidRemote("resume acknowledgement names another run")
-		}
-	}
-	return nil
-}
-
 func streamIdentity(acknowledgement any) (string, string) {
 	switch ack := acknowledgement.(type) {
 	case *protocol.StartRunResponse:

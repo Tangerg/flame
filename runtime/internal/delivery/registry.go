@@ -77,6 +77,7 @@ func (r *Registry) Metas() []MethodMeta {
 func cloneMethodMeta(meta MethodMeta) MethodMeta {
 	meta.Errors = slices.Clone(meta.Errors)
 	meta.CapabilityRules = cloneCapabilityRules(meta.CapabilityRules)
+	meta.Acknowledgement = slices.Clone(meta.Acknowledgement)
 	meta.Materializes = slices.Clone(meta.Materializes)
 	return meta
 }

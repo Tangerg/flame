@@ -164,8 +164,10 @@ func (r *Client) readStreamAcknowledgement(call *remoteCall, body io.Reader, id 
 		if err != nil || result.Failure != nil {
 			return result, err
 		}
-		if err := validateStreamIdentity(parameters, result.Value); err != nil {
-			return protocol.OperationResult{}, err
+		if check := meta.AcknowledgementMismatch; check != nil {
+			if field := check(parameters, result.Value); field != "" {
+				return protocol.OperationResult{}, invalidRemote(fmt.Sprintf("%s acknowledgement field %q does not match its request", meta.Name, field))
+			}
 		}
 		result.Events = remoteEvents(call, reader, meta.Event, operation, result.Value)
 		return result, nil

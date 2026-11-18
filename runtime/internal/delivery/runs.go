@@ -57,6 +57,10 @@ func registerRuns(registry *Registry) {
 
 	registry.runStreamOwnerCommand(MethodMeta{
 		Name: RunsResume, GoName: "ResumeRun",
+		Acknowledgement: []AcknowledgementMatch{
+			{Request: "runId", Result: "runId", Compare: AcknowledgementEcho},
+			{Request: "input", Result: "userItemId", Compare: AcknowledgementPresence},
+		},
 		Errors: []string{protocol.ErrRunNotFound.
 			Error(), protocol.ErrInterruptNotOpen.
 			Error(), protocol.ErrCapabilityNotNeg.
@@ -79,6 +83,11 @@ func registerRuns(registry *Registry) {
 	// reattach — and one collapsed run_not_found would send it nowhere.
 	registry.runSubscription(MethodMeta{
 		Name: runsSubscribe, GoName: "SubscribeRun",
+		Acknowledgement: []AcknowledgementMatch{
+			{Request: "runId", Result: "runId", Compare: AcknowledgementEcho},
+			{Request: "segmentId", Result: "segmentId", Compare: AcknowledgementEcho},
+			{Request: "snapshot", Result: "snapshot", Compare: AcknowledgementPresence},
+		},
 		Errors: []string{protocol.ErrRunNotFound.
 			Error(), protocol.ErrRunNotRoot.
 			Error(), protocol.ErrRunWaiting.

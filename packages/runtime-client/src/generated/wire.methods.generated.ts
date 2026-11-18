@@ -1198,6 +1198,45 @@ export function wireMethodIsPaginated(
   return WIRE_METHOD_POLICY[method].pagination === "cursor";
 }
 
+/** Capture only the request evidence needed when its result arrives. */
+export function wireAcknowledgementCheck(
+  method: WireMethodName,
+  params: unknown,
+): ((result: unknown) => string | undefined) | undefined {
+  switch (method) {
+    case "runs.resume": {
+      const request = params as WireParams<"runs.resume">;
+      const expected = {
+        "runId": request["runId"],
+        "userItemId": (request["input"]?.length ?? 0) !== 0,
+      };
+      return (value) => {
+        const result = value as WireResult<"runs.resume">;
+        if (result["runId"] !== expected["runId"]) return "runId";
+        if ((result["userItemId"] !== undefined) !== expected["userItemId"]) return "userItemId";
+        return undefined;
+      };
+    }
+    case "runs.subscribe": {
+      const request = params as WireParams<"runs.subscribe">;
+      const expected = {
+        "runId": request["runId"],
+        "segmentId": request["segmentId"],
+        "snapshot": request["snapshot"] === true,
+      };
+      return (value) => {
+        const result = value as WireResult<"runs.subscribe">;
+        if (result["runId"] !== expected["runId"]) return "runId";
+        if (result["segmentId"] !== expected["segmentId"]) return "segmentId";
+        if ((result["snapshot"] !== undefined) !== expected["snapshot"]) return "snapshot";
+        return undefined;
+      };
+    }
+    default:
+      return undefined;
+  }
+}
+
 /** One condition on the request that decides whether a rule applies. */
 export interface WireCapabilityCondition {
   field: string;

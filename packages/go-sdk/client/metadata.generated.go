@@ -23,8 +23,8 @@ var methodMetadata = map[string]methodMeta{
 	"modelInvocations.endpoints":       {Name: "modelInvocations.endpoints", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Page[protocol.ModelEndpointInvocation]](), Event: nil, ResultNullable: false},
 	"modelInvocations.list":            {Name: "modelInvocations.list", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.Page[protocol.ModelInvocation]](), Event: nil, ResultNullable: false},
 	"runs.start":                       {Name: "runs.start", Kind: streamMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.StartRunResponse](), Event: reflect.TypeFor[protocol.RunEvent](), ResultNullable: false},
-	"runs.resume":                      {Name: "runs.resume", Kind: streamMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.ResumeRunResponse](), Event: reflect.TypeFor[protocol.RunEvent](), ResultNullable: false},
-	"runs.subscribe":                   {Name: "runs.subscribe", Kind: streamMethod, Operation: subscriptionOperation, Result: reflect.TypeFor[*protocol.SubscribeRunResponse](), Event: reflect.TypeFor[protocol.RunEvent](), ResultNullable: false},
+	"runs.resume":                      {Name: "runs.resume", Kind: streamMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.ResumeRunResponse](), Event: reflect.TypeFor[protocol.RunEvent](), ResultNullable: false, AcknowledgementMismatch: acknowledgementMismatchResumeRun},
+	"runs.subscribe":                   {Name: "runs.subscribe", Kind: streamMethod, Operation: subscriptionOperation, Result: reflect.TypeFor[*protocol.SubscribeRunResponse](), Event: reflect.TypeFor[protocol.RunEvent](), ResultNullable: false, AcknowledgementMismatch: acknowledgementMismatchSubscribeRun},
 	"runs.cancel":                      {Name: "runs.cancel", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.CancelRunResponse](), Event: nil, ResultNullable: false},
 	"runs.steer":                       {Name: "runs.steer", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[*protocol.SteerRunResponse](), Event: nil, ResultNullable: false},
 	"runs.get":                         {Name: "runs.get", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.RunRef](), Event: nil, ResultNullable: false},
@@ -113,6 +113,35 @@ var methodMetadata = map[string]methodMeta{
 	"usage.summary":                    {Name: "usage.summary", Kind: unaryMethod, Operation: queryOperation, Result: reflect.TypeFor[*protocol.UsageSummary](), Event: nil, ResultNullable: false},
 	"feedback.create":                  {Name: "feedback.create", Kind: unaryMethod, Operation: commandOperation, Result: reflect.TypeFor[struct{}](), Event: nil, ResultNullable: false},
 }
+
+func acknowledgementMismatchResumeRun(parameters, value any) string {
+	request := parameters.(protocol.ResumeRunRequest)
+	result := value.(*protocol.ResumeRunResponse)
+	switch {
+	case request.RunID != result.RunID:
+		return "runId"
+	case (len(request.Input) != 0) != (result.UserItemID != nil):
+		return "userItemId"
+	default:
+		return ""
+	}
+}
+
+func acknowledgementMismatchSubscribeRun(parameters, value any) string {
+	request := parameters.(protocol.SubscribeRunRequest)
+	result := value.(*protocol.SubscribeRunResponse)
+	switch {
+	case request.RunID != result.RunID:
+		return "runId"
+	case request.SegmentID != result.SegmentID:
+		return "segmentId"
+	case request.Snapshot != (result.Snapshot != nil):
+		return "snapshot"
+	default:
+		return ""
+	}
+}
+
 var problemCodes = map[string]int{
 	"capability_not_negotiated":           -32006,
 	"checkpoint_conflict":                 -32037,

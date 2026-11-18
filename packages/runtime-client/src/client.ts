@@ -24,6 +24,7 @@ import type {
   TransportResponseMetadata,
 } from "./transport";
 import {
+  wireAcknowledgementCheck,
   wireMethodAcceptsReplayCursor,
   wireMethodReturnsValue,
   isWireStreamingMethodName,
@@ -97,6 +98,7 @@ export interface RpcClient {
 interface Pending {
   method: WireMethodName;
   exactJSON: boolean;
+  acknowledgement: ReturnType<typeof wireAcknowledgementCheck>;
   resolve: (value: unknown) => void;
   reject: (err: unknown) => void;
 }
@@ -260,6 +262,17 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
         entry.reject(new RpcProtocolError(`${entry.method} result`, violations, requestId));
         return;
       }
+      const mismatch = entry.acknowledgement?.(result);
+      if (mismatch !== undefined) {
+        entry.reject(
+          new RpcProtocolError(
+            `${entry.method} result`,
+            [{ path: `${entry.method}.result.${mismatch}`, detail: "must match the request" }],
+            requestId,
+          ),
+        );
+        return;
+      }
       try {
         entry.resolve(
           entry.exactJSON
@@ -419,6 +432,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
       pending.set(id, {
         method,
         exactJSON,
+        acknowledgement: wireAcknowledgementCheck(method, req.params),
         resolve: (value) => {
           detach();
           resolve(value as WireResult<M> | string);

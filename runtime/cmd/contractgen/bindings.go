@@ -89,9 +89,19 @@ func writeGoBindings(local, remote string) error {
 		if meta.Event != nil {
 			event = "reflect.TypeFor[" + goType(meta.Event) + "]()"
 		}
-		fmt.Fprintf(&body, "%q: {Name:%q, Kind:%sMethod, Operation:%sOperation, Result:reflect.TypeFor[%s](), Event:%s, ResultNullable:%t},\n", meta.Name, meta.Name, meta.Kind, meta.Operation, goType(meta.Result), event, meta.ResultNullable)
+		fmt.Fprintf(&body, "%q: {Name:%q, Kind:%sMethod, Operation:%sOperation, Result:reflect.TypeFor[%s](), Event:%s, ResultNullable:%t", meta.Name, meta.Name, meta.Kind, meta.Operation, goType(meta.Result), event, meta.ResultNullable)
+		if len(meta.Acknowledgement) > 0 {
+			fmt.Fprintf(&body, ", AcknowledgementMismatch: acknowledgementMismatch%s", meta.GoName)
+		}
+		body.WriteString("},\n")
 	}
-	body.WriteString("}\nvar problemCodes = map[string]int{\n")
+	body.WriteString("}\n")
+	for _, meta := range metas {
+		if len(meta.Acknowledgement) > 0 {
+			writeGoAcknowledgementCheck(&body, meta)
+		}
+	}
+	body.WriteString("var problemCodes = map[string]int{\n")
 	codes := dispatch.ProblemCodes()
 	for _, name := range slices.Sorted(maps.Keys(codes)) {
 		fmt.Fprintf(&body, "%q:%d,\n", name, codes[name])

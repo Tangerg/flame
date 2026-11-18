@@ -13,12 +13,13 @@ import (
 )
 
 type methodMeta struct {
-	Name           string
-	Kind           methodKind
-	Operation      operation
-	Result         reflect.Type
-	Event          reflect.Type
-	ResultNullable bool
+	Name                    string
+	Kind                    methodKind
+	Operation               operation
+	Result                  reflect.Type
+	Event                   reflect.Type
+	ResultNullable          bool
+	AcknowledgementMismatch func(parameters, result any) string
 }
 
 func lookupMethod(name string) (methodMeta, bool) { meta, ok := methodMetadata[name]; return meta, ok }

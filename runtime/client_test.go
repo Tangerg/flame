@@ -1,7 +1,9 @@
 package runtime
 
 import (
+	json "encoding/json/v2"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,6 +16,55 @@ import (
 	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
+
+func TestClientRejectsResumeAcknowledgementsThatChangeInputPresence(t *testing.T) {
+	for _, withInput := range []bool{false, true} {
+		t.Run(fmt.Sprintf("input_%t", withInput), func(t *testing.T) {
+			const runID = "run_fixture"
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var request struct {
+					ID string `json:"id"`
+				}
+				if err := json.UnmarshalRead(r.Body, &request); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				result := protocol.ResumeRunResponse{RunID: runID, SegmentID: "seg_fixture"}
+				if !withInput {
+					result.UserItemID = new("item_unrequested")
+				}
+				body, err := json.Marshal(struct {
+					Version string                     `json:"jsonrpc"`
+					ID      string                     `json:"id"`
+					Result  protocol.ResumeRunResponse `json:"result"`
+				}{"2.0", request.ID, result})
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				w.Header().Set("Content-Type", protocol.RPCStreamMediaType)
+				if _, err := fmt.Fprintf(w, "event: message\ndata: %s\n\n", body); err != nil {
+					t.Error(err)
+				}
+			}))
+			t.Cleanup(server.Close)
+			client := remoteTestClient(t, server.URL)
+			request := protocol.ResumeRunRequest{RunID: runID, Responses: []protocol.InterruptResponse{{
+				ItemID:   "item_question",
+				Response: protocol.InterruptResponseValue{Type: protocol.InterruptResponseAnswer, Answers: [][]string{{"yes"}}},
+			}}}
+			if withInput {
+				request.Input = []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "additional input"}}
+			}
+			result, _, err := client.ResumeRun(t.Context(), request, protocol.RunCommandOptions{
+				IdempotencyKey: "resume-response", IdempotencyNamespace: testsupport.IdempotencyNamespace,
+			})
+			if result != nil || !errors.Is(err, protocol.ErrInvalidResponse) || !errors.Is(err, runtimeclient.ErrAcknowledgementUnknown) {
+				t.Fatalf("Resume acknowledgement = (%+v, %v)", result, err)
+			}
+		})
+	}
+}
 
 func TestClientsShareRuntimeWithoutSharingOwnership(t *testing.T) {
 	rt, server, discovery := remoteRuntime(t)

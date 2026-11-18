@@ -1,4 +1,5 @@
 import { cloneJSON } from "@frame/sdk/json";
+import { wireAcknowledgementCheck, type WireParams } from "@flame/runtime-client/methods";
 import { checkRequest } from "./request";
 import {
   callPluginCommand,
@@ -538,16 +539,23 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
     return { result, events: stream.events };
   };
 
-  const queryAcceptance = (
-    operation: "start" | "resume" | "steer",
+  const queryAcceptance = <Operation extends GetRunAcceptanceRequest["operation"]>(
+    operation: Operation,
+    params: WireParams<`runs.${Operation}`>,
     namespace: string,
     key: string,
     signal?: AbortSignal,
-  ) =>
-    perform("runs.getAcceptance", { namespace, key, operation }, { signal })
+  ) => {
+    const acknowledgement = wireAcknowledgementCheck(`runs.${operation}`, params);
+    return perform("runs.getAcceptance", { namespace, key, operation }, { signal })
       .then((receipt) => {
+        if (receipt.type === "notRecorded") return receipt;
+        const mismatch = acknowledgement?.(receipt);
+        if (mismatch !== undefined)
+          throw new RpcProtocolError("runs.getAcceptance result", [
+            { path: `$.${mismatch}`, detail: "must match the original command" },
+          ]);
         if (
-          receipt.type !== "notRecorded" &&
           operation !== "resume" &&
           (!receipt.userItemId || (operation === "steer" && !receipt.input?.length))
         )
@@ -565,6 +573,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
         if (cause instanceof RpcCancellationError) throw cause;
         throw new MutationLookupError(cause);
       });
+  };
 
   function openRun(
     method: "runs.start",
@@ -595,6 +604,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
           );
         const acceptance = await queryAcceptance(
           method === "runs.start" ? "start" : "resume",
+          preparedParams,
           namespace,
           idempotencyKey,
           attempt.signal,
@@ -683,7 +693,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
           throw new MutationJournalScopeUnavailableError(
             "steer requires the Runtime store identity",
           );
-        const acceptance = await queryAcceptance("steer", namespace, key, attempt.signal);
+        const acceptance = await queryAcceptance("steer", prepared, namespace, key, attempt.signal);
         const userItemId =
           acceptance.type === "notRecorded"
             ? acceptance.candidateUserItemId
@@ -769,6 +779,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
             try {
               const acceptance = await queryAcceptance(
                 command.operation,
+                command.params,
                 command.namespace,
                 command.idempotencyKey,
                 signal,

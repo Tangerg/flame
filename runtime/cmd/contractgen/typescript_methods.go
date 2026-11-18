@@ -49,6 +49,7 @@ func newWireMethods(registry *delivery.Registry, set *schemaSet) string {
 	emitter.streamingNames(metas)
 	emitter.valueMethodNames(metas)
 	emitter.methodPolicy(metas)
+	emitter.acknowledgementChecks(metas)
 	emitter.policy(metas)
 	emitter.out.WriteString(shapes)
 	emitter.helpers()
