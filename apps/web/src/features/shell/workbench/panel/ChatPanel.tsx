@@ -260,7 +260,7 @@ function ConversationContent({
         />
         <Slot name="chat.header.meta" />
       </AgentSurfaceHeader>
-      <TranscriptReaderProvider>
+      <TranscriptReaderProvider sessionId={sessionId}>
         <Slot name="chat.search" />
         <ChatStream onSend={onSend} />
       </TranscriptReaderProvider>

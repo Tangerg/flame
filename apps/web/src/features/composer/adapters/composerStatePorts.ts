@@ -134,6 +134,7 @@ export function createComposer(
       presentDraft();
       return useComposerStore.getState().composer.draft.value;
     },
+    useDraftLoading: () => useComposerStore((state) => state.persistenceState.status === "loading"),
     usePersistenceState: () => useComposerStore((state) => state.persistenceState),
     retryPersistence: owner.retryPersistence,
     getRecoveryDrafts: owner.getRecoveryDrafts,

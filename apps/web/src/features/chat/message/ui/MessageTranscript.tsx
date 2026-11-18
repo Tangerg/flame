@@ -24,6 +24,7 @@ interface Props {
   header?: ReactNode;
   footer?: ReactNode;
   renderAll?: boolean;
+  initialEndLayoutReady?: boolean;
   onFollowChange?(list: ReadingListHandle, atEnd: boolean): void;
   terminalFooter?: { messageId: string; content: ReactNode };
 }
@@ -82,6 +83,7 @@ export function MessageTranscript({
   header,
   footer,
   renderAll,
+  initialEndLayoutReady,
   onFollowChange,
 }: Props) {
   const t = useT();
@@ -97,6 +99,7 @@ export function MessageTranscript({
       header={header}
       footer={footer}
       renderAll={renderAll}
+      initialEndLayoutReady={initialEndLayoutReady}
       onFollowChange={onFollowChange}
       renderItem={(row, index) => (
         <TurnErrorBoundary key={row.message.id} resetKey={row.message.id}>

@@ -38601,6 +38601,80 @@ registrations, four private Library directories, ten checkout outputs and the
 scratch tree. VoiceOver, live Run execution, browser visual suites and
 benchmarks are outside this qualification.
 
+### First opening at the newest reply (2026-11-19)
+
+Signed Wails on `5ae993acf` opens the 40-turn Lab conversation 349 CSS px
+from the bottom at default zoom. The viewport ends at y792.8 and the start of
+checkpoint 40 sits at y995.6. Native reloading repeats those measurements.
+Jump to bottom reaches within 1 px of the physical end and exposes the
+checkpoint. There was no user scroll before the first capture.
+
+The Legend List 3.7.2 startup trace follows the Composer from draft loading
+to its editor. The Composer overlay shrinks from 189 to 107 px and the
+transcript viewport grows from 665 to 747 px. In the guarded candidate,
+`onReady` reaches the end at the old height. At the next measured height,
+the list has lost end following and the remaining distance is 349 px. A
+private comparison with Legend 3.7.3 and a separate trailing-clearance variant
+each leave the same gap. Disabling visible-content anchoring increases it to
+525 px. An unconditional `onReady` prototype reached the end when that
+callback happened after native growth. Issuing the command before growth
+left 349 px. Reusing `scrollToEnd` from the accepted layout callback after
+Composer loading reached the physical end.
+[Legend List React chat guidance](https://www.legendapp.com/open-source/list/v3/react/examples/ai-chat/)
+
+The main conversation uses the Composer store's draft-loading projection to
+finish first placement in the shared `ReadingList`. The list waits for Legend's
+initial placement and for Legend to accept the committed viewport height.
+If end following has been lost, it reuses Legend's end command once before
+publishing navigation. Focus, pointer input, wheel, selection, opening Find or
+hiding the transcript releases navigation and retires the startup intent.
+Existing direct refs are available at mount. The active Session scopes both
+the published reader and Find's request to render the complete transcript.
+Closing Find with an older reading anchor restores that position.
+
+Signed Wails v3.1.0 acceptance on `90e1cbb33` used Actual Size.
+
+- EN/light with Flame Orange starts at a 0 px gap before interaction, and
+  native View → Reload repeats it. Checkpoint 40 begins at y647 in a viewport
+  ending at y792.8. The standard Lab build also shows the complete reply above
+  the Composer. A native pointer jump to turn 5 and Find both reach the older
+  checkpoint. Escape retains the reading position, and the Composer continues
+  as `newestreplydraftqxtail`. Jump to bottom focuses the transcript and
+  restores the physical end.
+- ZH/dark/18 px with custom blue begins at a 0 px gap. Native left tiling and
+  the Files splitter leave 440 CSS px for the conversation, still at the end.
+  Wheel reading, opening `reading-guide.md`, and keyboard Return leave the
+  same transcript offset at 11531 px. Return focuses the original file row
+  and the Composer continues as `最新回复草稿继续尾段`.
+- A private held-read variant initially exhausted the Lab readiness deadline.
+  With its harness permitting a held draft, Find sees one match in turn 5
+  before the editor appears. After Escape and release, checkpoint 5 and the
+  983 px transcript offset persist. Switching A → cached B → A with Find
+  open in the outgoing Session closes that request, shows the incoming
+  transcript's own rail, and settles at the end. A new search in B finds its
+  alternate checkpoint 40.
+- Expanding the recorded 50,000-line tool result focuses its actual
+  `Tool output` scroll region immediately. Find reaches line 31415. Escape
+  returns to that region, and the first Page Up moves the rendered range from
+  31387–31431 to 31384–31429.
+
+Scoped formatting, the packed UI and Icons consumer, Web typecheck, 89 Web
+contracts, 937 locale keys across eight locales, bootstrap, installed plugin
+resources, 26 bundle checks, module linking, `make check-native` and the
+five-entry Lab gate pass. The private bundles pass signature verification.
+Main advanced to `99b1f276d` before publication through an independent
+Providers backend change. The Web and Desktop acceptance inputs match the
+verified revision.
+Owned desktop processes and loopback previews exited. Cleanup removed three
+registrations, six private Library directories, ten checkout outputs and the
+scratch tree. This pass covers isolated and recorded workflows. VoiceOver and
+live Run execution remain open.
+
+The next observed issue is in the turn rail. In the same native conversation,
+keyboard focus on turn 5 previews its question and answer while the transcript
+stays at the end. The visible emphasis moves away from turn 39 even though
+the rail still exposes turn 39 as the current reading position.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

@@ -70,6 +70,7 @@ export function ReadingList<T>({
   ref,
   style,
   renderAll = false,
+  initialEndLayoutReady,
   onFollowChange,
 }: {
   role?: "region" | "group";
@@ -83,6 +84,7 @@ export function ReadingList<T>({
   ref?: Ref<ReadingListHandle>;
   style?: CSSProperties;
   renderAll?: boolean;
+  initialEndLayoutReady?: boolean;
   onFollowChange?(list: ReadingListHandle, atEnd: boolean): void;
 }) {
   const ownerId = useId();
@@ -94,6 +96,19 @@ export function ReadingList<T>({
     generation: number;
     anchor: { index: number; viewOffset: number } | null;
   }>({ generation: 0, anchor: null });
+  const waitForHostLayout = initialEndLayoutReady !== undefined && !ref;
+  const [initialEndPending, setInitialEndPending] = useState(waitForHostLayout);
+  const initialEnd = useRef(
+    waitForHostLayout ? { listReady: false, layoutReady: false } : null,
+  );
+  const visible = useContentVisible();
+  const waitingForInitialEnd =
+    initialEndPending &&
+    waitForHostLayout &&
+    visible &&
+    !renderAll &&
+    windowed.generation === 0 &&
+    windowed.anchor === null;
   const renderedAll = useRef(renderAll);
   const [selected, setSelected] = useState<string[]>([]);
   const [focused, setFocused] = useState<string | null>(null);
@@ -102,7 +117,6 @@ export function ReadingList<T>({
     null,
   );
   const retainFocusVisibility = useRef(true);
-  const visible = useContentVisible();
   const publish = useEffectEvent((value: ReadingListHandle, atEnd: boolean) =>
     onFollowChange?.(value, atEnd),
   );
@@ -115,21 +129,61 @@ export function ReadingList<T>({
     },
     [ref],
   );
+  const releaseInitialEnd = useCallback(() => {
+    if (!initialEnd.current) return;
+    initialEnd.current = null;
+    setInitialEndPending(false);
+  }, []);
+  const settleInitialEnd = useCallback(() => {
+    const readiness = initialEnd.current;
+    if (!readiness?.listReady || !readiness.layoutReady) return;
+    const value = currentList.current;
+    const viewport = value?.getScrollableNode();
+    if (!value || !viewport?.isConnected) return;
+    const height = viewport.clientHeight;
+    const { isFollowingEnd, scrollLength } = value.getState();
+    // Legend's accepted viewport can lag the host's committed layout.
+    if (height === 0 || Math.abs(height - scrollLength) > 1) return;
+    releaseInitialEnd();
+    if (!isFollowingEnd) void value.scrollToEnd({ animated: false });
+  }, [releaseInitialEnd]);
+  const onInitialEndReady = () => {
+    if (!initialEnd.current) return;
+    initialEnd.current.listReady = true;
+    if (initialEndLayoutReady) settleInitialEnd();
+  };
+  useLayoutEffect(() => {
+    if (!waitingForInitialEnd) {
+      releaseInitialEnd();
+      return;
+    }
+    if (!initialEnd.current) return;
+    initialEnd.current.layoutReady = initialEndLayoutReady === true;
+    settleInitialEnd();
+  }, [
+    initialEndLayoutReady,
+    list,
+    releaseInitialEnd,
+    settleInitialEnd,
+    waitingForInitialEnd,
+  ]);
   useEffect(() => {
-    if (!list) return;
+    // Keep explicit navigation from competing with the initial placement.
+    if (!list || waitingForInitialEnd) return;
     const state = list.getState();
     publish(list, state.isAtEnd);
     return state.listen("isAtEnd", (value) => publish(list, value));
-  }, [list]);
+  }, [list, waitingForInitialEnd]);
   useLayoutEffect(() => {
     if (!list || !visible) return;
     return () => {
       // A replaced windowed list is already unmounted; only the live list settles.
       if (currentList.current !== list) return;
+      releaseInitialEnd();
       list.cancelScroll();
       list.anchorVisibleContent();
     };
-  }, [list, visible]);
+  }, [list, releaseInitialEnd, visible]);
   useLayoutEffect(() => {
     const wasComplete = renderedAll.current;
     renderedAll.current = renderAll;
@@ -168,6 +222,7 @@ export function ReadingList<T>({
       keys.every((key, index) => key === selected[index])
     )
       return;
+    releaseInitialEnd();
     list.cancelScroll();
     list.anchorVisibleContent({ key: rows[0]!.dataset.readingKey });
     setSelected(keys);
@@ -248,13 +303,16 @@ export function ReadingList<T>({
     <div
       ref={root}
       style={{ display: "flex", flex: 1, minHeight: 0, minWidth: 0, ...style }}
+      onFocusCapture={waitingForInitialEnd ? releaseInitialEnd : undefined}
       onWheelCapture={() => {
+        releaseInitialEnd();
         retainFocusVisibility.current = false;
       }}
       onInputCapture={() => {
         retainFocusVisibility.current = true;
       }}
       onPointerDownCapture={(event) => {
+        releaseInitialEnd();
         if (event.target === list?.getScrollableNode())
           retainFocusVisibility.current = false;
       }}
@@ -273,6 +331,12 @@ export function ReadingList<T>({
         recycleItems={false}
         maintainVisibleContentPosition
         maintainScrollAtEnd={{ animated: false }}
+        onReady={waitingForInitialEnd ? onInitialEndReady : undefined}
+        onLayout={
+          waitingForInitialEnd && initialEndLayoutReady
+            ? settleInitialEnd
+            : undefined
+        }
         initialScrollAtEnd={windowed.anchor === null}
         initialScrollIndex={windowed.anchor ?? undefined}
         alwaysRender={renderAll ? { top: data.length } : { keys: pinned }}

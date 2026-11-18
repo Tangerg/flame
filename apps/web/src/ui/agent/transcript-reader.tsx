@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useLayoutEffect,
   useMemo,
@@ -11,6 +12,7 @@ import {
 import type { ReadingListHandle } from "@flame/ui";
 
 export interface TranscriptReader {
+  readonly sessionId: string;
   readonly list: ReadingListHandle;
   readonly atEnd: boolean;
 }
@@ -19,13 +21,30 @@ const TranscriptReaderContext = createContext<{
   reader: TranscriptReader | null;
   publish: Dispatch<SetStateAction<TranscriptReader | null>>;
   complete: boolean;
-  requireComplete: Dispatch<SetStateAction<boolean>>;
+  requireComplete(required: boolean): void;
 } | null>(null);
 
-export function TranscriptReaderProvider({ children }: PropsWithChildren) {
-  const [reader, publish] = useState<TranscriptReader | null>(null);
-  const [complete, requireComplete] = useState(false);
-  const value = useMemo(() => ({ reader, publish, complete, requireComplete }), [reader, complete]);
+export function TranscriptReaderProvider({
+  sessionId,
+  children,
+}: PropsWithChildren<{ sessionId: string }>) {
+  const [published, publish] = useState<TranscriptReader | null>(null);
+  const [completeSession, setCompleteSession] = useState<string | null>(null);
+  const reader = published?.sessionId === sessionId ? published : null;
+  const complete = completeSession === sessionId;
+  const requireComplete = useCallback(
+    (required: boolean) => {
+      setCompleteSession((current) => {
+        if (required) return sessionId;
+        return current === sessionId ? null : current;
+      });
+    },
+    [sessionId],
+  );
+  const value = useMemo(
+    () => ({ reader, publish, complete, requireComplete }),
+    [reader, complete, requireComplete],
+  );
   return <TranscriptReaderContext value={value}>{children}</TranscriptReaderContext>;
 }
 

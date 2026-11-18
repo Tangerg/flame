@@ -55,6 +55,7 @@ export interface ComposerStatePort {
   useText(): string;
   startFileReference(): string;
   startSlashCommand(): string;
+  useDraftLoading(): boolean;
   usePersistenceState(): ComposerPersistenceState;
   retryPersistence(): void;
   getRecoveryDrafts(): string;

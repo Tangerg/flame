@@ -45,7 +45,7 @@ export function Composer({
   const surfaceRef = useRef<HTMLDivElement>(null);
   const composer = useComposer();
   const draftKey = composer.useDraftKey();
-  const persistence = composer.usePersistenceState();
+  const draftLoading = composer.useDraftLoading();
   const inputRef = useRef<HTMLDivElement>(null);
   const { messages } = useNotifications();
   const handleDrop = (
@@ -85,7 +85,7 @@ export function Composer({
           onRestorePaste={onRestorePaste}
           composerInput={inputRef}
         />
-        {persistence.status === "loading" ? (
+        {draftLoading ? (
           <SkeletonText label={t("common.loading")} />
         ) : (
           <ComposerEditor

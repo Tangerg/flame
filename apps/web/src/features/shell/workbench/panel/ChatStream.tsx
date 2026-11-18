@@ -247,7 +247,12 @@ export function ChatStream({ onSend }: Props) {
               </div>
               <div {...stylex.props(sh.paneAnchored)}>
                 <ChatErrorBoundary resetKey={sessionId} label={`session:${sessionId}`}>
-                  <MessageStream rows={rows} ctx={ctx} sessionId={sessionId} />
+                  <MessageStream
+                    key={sessionId}
+                    rows={rows}
+                    ctx={ctx}
+                    sessionId={sessionId}
+                  />
                 </ChatErrorBoundary>
               </div>
             </>

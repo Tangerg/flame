@@ -6,6 +6,7 @@ import {
 } from "@/ui/agent/transcript-reader";
 import { type BlockCtx } from "@/features/chat/public/message/rendering";
 import { type TranscriptRow } from "@/features/agent/public/conversation";
+import { useComposer } from "@/features/composer/public/composer";
 import { useState } from "react";
 import { useCurrentRootMaterial } from "@/features/agent/public/run";
 import { MessageTranscript } from "@/features/chat/public/message/rendering";
@@ -28,16 +29,17 @@ export function MessageStream({ rows, ctx, sessionId }: Props) {
   const [reader, setReader] = useState<TranscriptReader | null>(null);
   usePublishTranscriptReader(reader);
   const renderAll = useCompleteTranscriptRequired();
+  const draftLoading = useComposer().useDraftLoading();
 
   return (
     <MessageTranscript
       className="msg-scroll-viewport"
-      key={sessionId}
       rows={rows}
       renderAll={renderAll}
+      initialEndLayoutReady={!draftLoading || ctx.questionInComposer !== undefined}
       onFollowChange={(list, atEnd) =>
         setReader((current) =>
-          current?.list === list && current.atEnd === atEnd ? current : { list, atEnd },
+          current?.list === list && current.atEnd === atEnd ? current : { sessionId, list, atEnd },
         )
       }
       ctx={ctx}

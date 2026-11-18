@@ -533,6 +533,13 @@ in the margin. Up and Down move the visible focus ring and preview, wrapping
 between the first and last turns. Enter or Space brings the focused turn into
 the transcript, and Tab continues to the transcript reader.
 
+On first opening the main conversation, the transcript waits for Legend List's
+initial placement and for the list to measure the viewport after Composer draft
+loading. If Legend lost end following, the reader uses its end command once
+before publishing navigation. Local reading input or opening Find releases
+navigation and retires that startup placement. The active Session owns the
+published reader and the request to render all rows for Find.
+
 Each non-commentary message keeps its body and existing actions in one context
 menu trigger. Shift+F10 from an action opens that message's named menu without
 adding a Tab stop; cancellation returns to the original action. The shared
