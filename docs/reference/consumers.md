@@ -58,7 +58,10 @@ maintained module namespace and is rejected. Only that author's backend imports/
 are rewritten. Public consumer contracts retain their publisher's namespace and
 exact schemas. Its Go manifest declares actual generator tools and includes their
 vendor dependencies. The standard SDK module retains its identity and manifest.
-The author uses the same `backend/component/package` layout and explicit builder.
+Go author exports start from `plugins/go.mod` and `plugins/go.sum` in the same
+frozen commit as their source. `go mod tidy` keeps the dependencies used by the
+exported plugin and its declared tools. The author uses the same
+`backend/component/package` layout and explicit builder.
 Contract-definition tools stay with the publisher. Memory author exports bind the
 public `packages/go-sdk/plugin/memory` contract, including after regeneration, and
 can be selected by the unchanged host consumer. Source relocation is not a new
@@ -69,17 +72,20 @@ author directories may contain spaces, Unicode and URL-reserved characters.
 cache with `GONOPROXY=none`, local toolchain and candidate-only `GONOSUMDB`. Missing
 materials fail. `make check-author` additionally denies external network and checkout
 reads, empties build/module caches and runs test/generate/build using vendor.
+The Providers author check compares exported Go dependency versions with the
+frozen plugins module and exercises the backend over loopback.
 Go tests may use loopback HTTP for SDK callback fixtures. A sandbox probe verifies
 that local callbacks work while external connections and checkout reads stay denied;
 generation, builds and managed JavaScript checks retain the complete network denial.
 Only that isolated verified-vendor phase disables checksum database requests.
 The Go toolchain must already be installed; it is not vendored.
 TypeScript-only exports have no Go module or DTO source prerequisite. They include
-the host-specific prebuilt `flame-sdk` contract generator, Runtime's
-`pluginpack` release builder and the selected
-Node test companion; their generated JavaScript ZIP remains portable. The
-independent check denies Go execution through the author PATH as well as network
-and checkout reads while regenerating, checking, testing and packaging that project.
+the host-specific prebuilt `flame-sdk` contract generator and Runtime's
+`pluginpack` release builder. Exported test files determine whether the project
+includes a test script and its Node companion. The generated JavaScript ZIP
+remains portable. The independent check denies Go execution through the author
+PATH as well as network and checkout reads while regenerating, checking, testing
+and packaging that project.
 The check includes a Memory author directory with spaces and Unicode, then installs
 the independent release ZIP, selects its exact Memory role, invokes it and verifies
 its original private command outcome after Runtime/backend restart.

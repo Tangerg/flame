@@ -6,9 +6,9 @@ import { pathToFileURL } from "node:url";
 
 const sdkPath = "github.com/Tangerg/flame/packages/go-sdk";
 const runtimePath = "github.com/Tangerg/flame/runtime";
+const pluginsPath = "github.com/Tangerg/flame/plugins";
 export function authorSDK(artifacts) {
-  const version =
-    artifacts.members["github.com/Tangerg/flame/plugins"]?.requires[sdkPath];
+  const version = artifacts.members[pluginsPath]?.requires[sdkPath];
   const artifact = artifacts.modules[`${sdkPath}@${version}`];
   if (!artifact)
     throw new Error(
@@ -34,14 +34,11 @@ function environment(repository, artifacts, offline) {
     ].join(","),
   };
 }
-async function writeModule(repository, directory, sdk, modulePath, tools = []) {
+async function writeDevelopmentModule(repository, directory, sdk) {
   const checksum = sdk.directory ? `${sdk.directory}/go.sum` : "go.sum";
   await writeFile(
     join(directory, "go.mod"),
-    `module ${modulePath}\n\ngo ${sdk.go}\n\nrequire ${sdk.path} ${sdk.version}\n` +
-      (tools.length
-        ? `\ntool (\n${tools.map((name) => "\t" + name).join("\n")}\n)\n`
-        : ""),
+    `module flame.invalid/author-tools\n\ngo ${sdk.go}\n\nrequire ${sdk.path} ${sdk.version}\n`,
   );
   await writeFile(
     join(directory, "go.sum"),
@@ -58,12 +55,7 @@ export async function prepareDevelopmentTools({
 }) {
   const source = await mkdtemp(join(tmpdir(), "flame-author-tools-"));
   try {
-    await writeModule(
-      repository,
-      source,
-      authorSDK(artifacts),
-      "flame.invalid/author-tools",
-    );
+    await writeDevelopmentModule(repository, source, authorSDK(artifacts));
     const runtimeVersion =
       artifacts.members["github.com/Tangerg/flame/apps/cli"]?.requires[
         runtimePath
@@ -123,16 +115,26 @@ export async function prepareGoKit({
   for (const tool of tools)
     if (!allowed.has(tool))
       throw new Error(`author tool is not public: ${tool}`);
-  await writeModule(
-    repository,
-    output,
-    authorSDK(artifacts),
-    modulePath,
-    tools,
-  );
+  const member = artifacts.members[pluginsPath];
+  if (!member) throw new Error("the frozen plugins module is required");
+  for (const filename of ["go.mod", "go.sum"])
+    await writeFile(
+      join(output, filename),
+      execFileSync(
+        "git",
+        ["show", `${artifacts.revision}:${member.directory}/${filename}`],
+        { cwd: repository },
+      ),
+    );
   const env = environment(repository, artifacts, offline);
   const run = (args, selected = env) =>
     execFileSync("go", args, { cwd: output, env: selected, stdio: "inherit" });
+  run([
+    "mod",
+    "edit",
+    `-module=${modulePath}`,
+    ...tools.map((tool) => `-tool=${tool}`),
+  ]);
   run(["mod", "tidy"]);
   run(["mod", "vendor"]);
   const vendorEnv = {

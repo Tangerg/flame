@@ -102,7 +102,29 @@ async function snapshot(directory) {
 }
 try {
   await buildShared();
-  for (const name of ["memory", "guardrails", "usagereports", "deliverables"]) {
+  const requirements = (directory) =>
+    JSON.parse(
+      run(
+        "go",
+        ["mod", "edit", "-json"],
+        directory,
+        { ...process.env, GOWORK: "off" },
+        true,
+      ),
+    ).Require ?? [];
+  const pluginVersions = new Map(
+    requirements(join(root, "plugins")).map(({ Path, Version }) => [
+      Path,
+      Version,
+    ]),
+  );
+  for (const name of [
+    "memory",
+    "guardrails",
+    "providers",
+    "usagereports",
+    "deliverables",
+  ]) {
     const managed = ["usagereports", "deliverables"].includes(name);
     const project = join(
       scratch,
@@ -146,6 +168,13 @@ try {
       (allow network-inbound (local ip "localhost:*"))
       (allow network-outbound (remote ip "localhost:*"))`;
     if (!managed) {
+      for (const { Path, Version } of requirements(project)) {
+        const pinned = pluginVersions.get(Path);
+        if (pinned && Version !== pinned)
+          throw new Error(
+            `${name} author dependency ${Path} resolves to ${Version}, expected ${pinned} from the frozen plugins module`,
+          );
+      }
       isolated(
         callbackPolicy,
         [
@@ -181,29 +210,26 @@ try {
       env.PATH = noGo + ":" + process.env.PATH;
       await verifyTypecheckEnvironments(policy, project, env);
     }
-    const npmCommands = managed
-      ? [
-          ["ci", "--ignore-scripts", "--offline"],
-          ["run", "generate"],
-          ["run", "typecheck"],
-          ["test"],
-          ["run", "build"],
-          [
-            "run",
-            "package",
-            "--",
-            "--output",
-            join(scratch, name + "-release"),
-            "--archives",
-            join(scratch, name + "-archives"),
-          ],
-        ]
-      : [
-          ["ci", "--ignore-scripts", "--offline"],
-          ["run", "typecheck"],
-          ["run", "build"],
-        ];
-    if (existsSync(join(project, "package.json")))
+    const packagePath = join(project, "package.json");
+    if (existsSync(packagePath)) {
+      const { scripts } = JSON.parse(await readFile(packagePath, "utf8"));
+      const npmCommands = [
+        ["ci", "--ignore-scripts", "--offline"],
+        ...(managed ? [["run", "generate"]] : []),
+        ["run", "typecheck"],
+        ...(scripts.test ? [["test"]] : []),
+        ["run", "build"],
+      ];
+      if (managed)
+        npmCommands.push([
+          "run",
+          "package",
+          "--",
+          "--output",
+          join(scratch, name + "-release"),
+          "--archives",
+          join(scratch, name + "-archives"),
+        ]);
       for (const command of npmCommands) {
         // macOS refuses a different nested Seatbelt profile. This suite proves
         // its own per-invocation isolation and inherited-profile refusal.
@@ -221,6 +247,7 @@ try {
             env,
           );
       }
+    }
     const after = new Map(await snapshot(project));
     if (
       before.size !== after.size ||
