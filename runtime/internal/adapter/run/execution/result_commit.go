@@ -34,23 +34,18 @@ type toolResultMetadata struct {
 }
 
 type toolReceiptEvidence struct {
-	ProcessID string            `json:"process_id"`
-	EffectID  string            `json:"effect_id"`
-	Tool      tool.Ref          `json:"tool"`
+	EffectID  scoperun.EffectID `json:"effect_id"`
 	Release   framevalue.Digest `json:"release"`
 	Authority framevalue.Digest `json:"authority"`
 }
 
-func (r toolReceiptEvidence) validateStart(start runs.ToolCallStarted) error {
-	if _, err := scoperun.ParseProcessID(r.ProcessID); err != nil {
-		return err
+func (r toolReceiptEvidence) validate(processID scoperun.ProcessID, source tool.Ref) error {
+	if !r.EffectID.Valid() || r.EffectID.Process != processID {
+		return errors.New("execution: Tool receipt Effect differs from its call")
 	}
-	if _, err := scoperun.ParseEffectID(r.EffectID); err != nil {
-		return err
-	}
-	server, _, found := r.Tool.MCP()
+	server, _, found := source.MCP()
 	_, installed := server.Origin().Installation()
-	if !found || !installed || !start.MatchesCapturedRef(r.Tool) {
+	if !found || !installed {
 		return errors.New("execution: invalid Tool receipt evidence")
 	}
 	if err := r.Release.Validate(); err != nil {
@@ -77,11 +72,6 @@ func (t toolResultMetadata) clone() toolResultMetadata {
 }
 
 func (t toolResultMetadata) validate() error {
-	if t.Receipt != nil {
-		if err := t.Receipt.validateStart(t.Start); err != nil {
-			return err
-		}
-	}
 	if err := runs.ValidateMember(t.MemberID); err != nil {
 		return err
 	}
@@ -95,6 +85,11 @@ func (t toolResultMetadata) validate() error {
 	identity, err := logicalToolCallID(processID, t.Start.ModelCallSequence, t.Start.ToolCallIndex, t.Start.SourceCallID, t.Start.ToolName)
 	if err != nil || identity.String() != t.Start.CallID {
 		return errors.New("execution: Tool metadata logical identity changed")
+	}
+	if t.Receipt != nil {
+		if err := t.Receipt.validate(processID, t.Start.Source); err != nil {
+			return err
+		}
 	}
 	if _, err := tool.ParseArguments(t.Start.Arguments); err != nil {
 		return err

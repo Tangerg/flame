@@ -118,6 +118,7 @@ type interactionCheckpointState struct {
 func (i interactionCheckpointState) restoredStart(continuation runs.ExecutionContinuation) runs.RootExecutionStart {
 	return runs.RootExecutionStart{
 		SessionID:                continuation.SessionID,
+		RunID:                    continuation.RootRunID,
 		CWD:                      continuation.Workspace,
 		WorkspaceCWD:             continuation.Workspace,
 		Isolated:                 continuation.Isolated,

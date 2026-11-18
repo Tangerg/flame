@@ -23,9 +23,11 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
+const interactionTestRunID = "run_root"
+
 func interactionTestStart() runs.RootExecutionStart {
 	return runs.RootExecutionStart{
-		SessionID: "session_1", ModelSelection: testDefaultSelection(),
+		SessionID: "session_1", RunID: interactionTestRunID, ModelSelection: testDefaultSelection(),
 		WorkingContext: []chat.Message{chat.NewUserMessage(chat.NewTextPart("current question"))},
 	}
 }
@@ -308,13 +310,11 @@ func rootInteractionExecutionContinuation(
 	executorID string,
 	capabilities run.Capabilities,
 ) runs.ExecutionContinuation {
-	const rootRunID = "run_root"
-
 	metrics := rootRunMetricsForCheckpoint(checkpoint)
 	return runs.ExecutionContinuation{
-		SessionID: checkpoint.SessionID, ExecutorID: executorID, RootRunID: rootRunID,
+		SessionID: checkpoint.SessionID, ExecutorID: executorID, RootRunID: interactionTestRunID,
 		Members: []runs.ExecutionMember{{
-			RunID: rootRunID, MemberID: checkpoint.RootMemberID,
+			RunID: interactionTestRunID, MemberID: checkpoint.RootMemberID,
 			ModelSelection: interactionTestStart().ModelSelection, Metrics: metrics,
 		}},
 		Checkpoint: checkpoint, Capabilities: capabilities, Workspace: workspace,

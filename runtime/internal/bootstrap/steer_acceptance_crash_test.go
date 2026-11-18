@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -49,9 +50,10 @@ func TestSteerAcceptanceCrashHelper(t *testing.T) {
 				return err
 			}
 			if record.Use == runapp.CommandKeyAccepted {
-				checkpoint, found, err := stores.ExecutorCheckpoints.LoadSessionCheckpoint(ctx, record.Acceptance.SessionID)
-				if err != nil || !found || len(checkpoint.Payload) == 0 {
-					t.Fatalf("accepted steer lost context: %t,%v", found, err)
+				root := (scoperun.StartID{Scope: record.Acceptance.SessionID, Key: record.Acceptance.RunID}).Root()
+				checkpoint, err := stores.ExecutorCheckpoints.LoadCheckpoint(ctx, root.String())
+				if err != nil || len(checkpoint.Payload) == 0 {
+					t.Fatalf("accepted steer lost context: %v", err)
 				}
 				if _, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(ctx, record.Acceptance.SessionID, checkpoint.RootMemberID); err != nil || !found {
 					t.Fatalf("accepted steer lost head: %t,%v", found, err)

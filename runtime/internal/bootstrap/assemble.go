@@ -562,7 +562,7 @@ func startupRunRecovery(stores *persistence.Bundle, pluginCoordinator *plugins.C
 			}
 			prepared = true
 		}
-		err := uncertain.Reconcile(ctx, runCoordinator, recoveryPersistence, stores.ExecutorCheckpoints, executor)
+		err := uncertain.Reconcile(ctx, runCoordinator, recoveryPersistence, executor)
 		if err != nil && !errors.Is(err, runs.ErrOriginalSourcePending) {
 			return fmt.Errorf("runtime: revive uncertain executions: %w", err)
 		}

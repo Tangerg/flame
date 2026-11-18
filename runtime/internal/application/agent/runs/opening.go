@@ -199,8 +199,14 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 	}
 	defer runAdmission.Release()
 
+	cmd = preparation.command
 	draft := preparation.draft
 	draft.SessionID = preparation.session.ID()
+	if cmd.NewSession != nil {
+		draft.RunID = cmd.NewSession.RunID
+	} else {
+		draft.RunID = c.segments.newRunID()
+	}
 	workingContext, err := c.conversation.Read(ctx, preparation.session.ID())
 	if err != nil {
 		return StartResult{}, fmt.Errorf(
@@ -241,9 +247,6 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 		return StartResult{}, err
 	}
 	draft.ModelSelection = selected
-	if err := c.rootStarts.ValidateRootStart(draft); err != nil {
-		return StartResult{}, err
-	}
 	ref, err := c.rootStarts.StageRoot(ctx, draft)
 	if err != nil {
 		return StartResult{}, err
@@ -256,13 +259,7 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 		}
 	}()
 
-	cmd = preparation.command
-	var runID string
-	if cmd.NewSession != nil {
-		runID = cmd.NewSession.RunID
-	} else {
-		runID = c.segments.newRunID()
-	}
+	runID := draft.RunID
 	segmentID := c.segments.newSegmentID()
 	createdAt := c.segments.publications.nowUTC()
 	modelOnlyInput := cmd.GoalIncarnationID != ""
@@ -271,9 +268,6 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 	if err != nil {
 		return StartResult{}, err
 	}
-	// A fresh Segment owns rejection as soon as openSegment is entered. Until
-	// this exact hand-off, every preparation failure remains Start's responsibility.
-	ref = staged.transfer()
 	events, err := c.segments.openSegment(ctx, segmentSpec{
 		RunID:              runID,
 		SegmentID:          segmentID,
@@ -294,6 +288,7 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 		ModelOnlyInput:     modelOnlyInput,
 		Capabilities:       cmd.Capabilities,
 		admission:          &runAdmission,
+		staged:             staged,
 		DetachActivation:   true,
 		BeginExecution: func(beginCtx context.Context) error {
 			return c.rootStarts.BeginRoot(beginCtx, ref)

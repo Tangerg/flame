@@ -20,53 +20,49 @@ type uncertainRevivalSource interface {
 	ListOpenToolInvocations(context.Context) ([]OpenToolInvocation, error)
 }
 
-type sessionExecutionContexts interface {
-	LoadSessionCheckpoint(context.Context, string) (ExecutorCheckpoint, bool, error)
-}
-
 type ActiveExecution struct {
 	Run     run.Run
 	Session session.Session
-	Context ExecutorCheckpoint
 	Tools   []OpenToolInvocation
-	Items   []transcript.Item
+	Items   map[string]transcript.Item
 }
 
 type uncertainExecutionRecovery interface {
-	PrepareUncertainExecution(context.Context, ActiveExecution) (UncertainExecutionPlan, RecoveryVerdict, error)
-	StageUncertainExecution(context.Context, ExecutionContinuation) (ExecutorRef, error)
+	StageUncertainExecution(context.Context, ActiveExecution) (UncertainRecovery, error)
 	BeginUncertainExecution(context.Context, ExecutorRef) error
 }
 
-type RecoveryVerdict uint8
+type UncertainRecovery interface{ uncertainRecovery() }
 
-const (
-	RecoveryUnavailable RecoveryVerdict = iota
-	RecoveryDeferred
-	RecoveryReady
-)
+type RecoveryUnavailable struct{}
+type RecoveryDeferred struct{}
 
-var ErrOriginalSourcePending = errors.New("runs: original source is still connecting")
-
-// Deferred roots retain their existing admission while the original source
-// connects. A sweep can recover other Sessions without closing this one as lost.
-type UncertainRevival struct {
-	deferred map[string]ownership.RunAdmission
+type StagedRecovery struct {
+	Ref      ExecutorRef
+	MemberID string
+	Tools    []RecoveredTool
 }
+
+func (RecoveryUnavailable) uncertainRecovery() {}
+func (RecoveryDeferred) uncertainRecovery()    {}
+func (StagedRecovery) uncertainRecovery()      {}
 
 type RecoveredTool struct {
 	Start      ToolCallStarted
 	Invocation OpenToolInvocation
 }
 
-type UncertainExecutionPlan struct {
-	Continuation ExecutionContinuation
-	Tools        []RecoveredTool
+var ErrOriginalSourcePending = errors.New("runs: original source is still connecting")
+
+// A deferred root retains its admission so the sweep can recover other Sessions
+// without closing this Run as lost while its original source connects.
+type UncertainRevival struct {
+	deferred map[string]ownership.RunAdmission
 }
 
 // The coordinator reinstalls the original writer lease and Segment pump before
 // the executor restores Scope or publishes a verified external result.
-func (r *UncertainRevival) Reconcile(ctx context.Context, c *Coordinator, source uncertainRevivalSource, contexts sessionExecutionContexts, executor uncertainExecutionRecovery) error {
+func (r *UncertainRevival) Reconcile(ctx context.Context, c *Coordinator, source uncertainRevivalSource, executor uncertainExecutionRecovery) error {
 	values, err := source.ListNonTerminalRuns(ctx)
 	if err != nil {
 		return err
@@ -90,7 +86,7 @@ func (r *UncertainRevival) Reconcile(ctx context.Context, c *Coordinator, source
 				continue
 			}
 		}
-		err = r.reviveRoot(ctx, c, source, contexts, executor, candidate, sess, admission)
+		err = r.reviveRoot(ctx, c, source, executor, candidate, sess, admission)
 		if err != nil {
 			return fmt.Errorf("runs: revive uncertain execution %q: %w", candidate.ID(), err)
 		}
@@ -101,7 +97,8 @@ func (r *UncertainRevival) Reconcile(ctx context.Context, c *Coordinator, source
 	return nil
 }
 
-func (r *UncertainRevival) reviveRoot(ctx context.Context, c *Coordinator, source uncertainRevivalSource, contexts sessionExecutionContexts, executor uncertainExecutionRecovery, candidate run.Run, sess session.Session, admission ownership.RunAdmission) error {
+func (r *UncertainRevival) reviveRoot(ctx context.Context, c *Coordinator, source uncertainRevivalSource, executor uncertainExecutionRecovery, candidate run.Run, sess session.Session, admission ownership.RunAdmission) error {
+	delete(r.deferred, candidate.ID())
 	defer func() {
 		if _, pending := r.deferred[candidate.ID()]; !pending {
 			admission.Release()
@@ -111,21 +108,12 @@ func (r *UncertainRevival) reviveRoot(ctx context.Context, c *Coordinator, sourc
 	if err != nil {
 		return err
 	}
-	// Batch C admits one product root and its ordinary Tool children.
-	// Delegated active trees need their own proven recovery class.
+	// Receipt recovery only proves the original root and its Tool effects.
+	// Delegated Runs require a separate proof of their product handoff.
 	if len(values) != 1 || values[0].State() != run.Running {
-		delete(r.deferred, candidate.ID())
 		return nil
 	}
 	root := values[0]
-	checkpoint, found, err := contexts.LoadSessionCheckpoint(ctx, root.SessionID())
-	if err != nil {
-		return err
-	}
-	if !found {
-		delete(r.deferred, candidate.ID())
-		return nil
-	}
 	items, err := source.ListTranscript(ctx, root.SessionID())
 	if err != nil {
 		return err
@@ -134,34 +122,51 @@ func (r *UncertainRevival) reviveRoot(ctx context.Context, c *Coordinator, sourc
 	if err != nil {
 		return err
 	}
-	plan, verdict, err := executor.PrepareUncertainExecution(ctx, ActiveExecution{Run: root, Session: sess, Context: checkpoint, Tools: tools, Items: items})
+	byID := make(map[string]transcript.Item, len(items))
+	for _, item := range items {
+		byID[item.ID()] = item
+	}
+	active := ActiveExecution{Run: root, Session: sess, Tools: tools, Items: byID}
+	decision, err := executor.StageUncertainExecution(ctx, active)
 	if err != nil {
 		return err
 	}
-	if verdict == RecoveryDeferred {
+	switch result := decision.(type) {
+	case RecoveryUnavailable:
+		return nil
+	case RecoveryDeferred:
 		if r.deferred == nil {
 			r.deferred = make(map[string]ownership.RunAdmission)
 		}
 		r.deferred[candidate.ID()] = admission
 		return nil
+	case StagedRecovery:
+		return c.openRevivedSegment(ctx, active, admission, result, executor)
+	default:
+		return errors.New("runs: missing uncertain recovery outcome")
 	}
-	delete(r.deferred, candidate.ID())
-	if verdict != RecoveryReady {
-		return nil
+}
+
+func (c *Coordinator) openRevivedSegment(ctx context.Context, active ActiveExecution, admission ownership.RunAdmission, recovered StagedRecovery, executor uncertainExecutionRecovery) (err error) {
+	staged := ownStagedExecution(c.segments.releases, recovered.Ref)
+	defer func() { err = staged.abandon(ctx, err, "staged recovery") }()
+
+	root := active.Run
+	member := Continuation{RunID: root.ID(), MemberID: recovered.MemberID}
+	for _, call := range recovered.Tools {
+		member.DrainedTools = append(member.DrainedTools, DrainedTool{
+			ItemID: call.Invocation.ItemID, CallID: call.Invocation.CallID, SourceCallID: call.Start.SourceCallID,
+		})
 	}
-	continuation := plan.Continuation
-	byID := make(map[string]transcript.Item, len(items))
-	for _, item := range items {
-		byID[item.ID()] = item
+	handoff := &treeContinuation{
+		rootRunID: root.ID(), runs: map[string]run.Run{root.ID(): root}, items: active.Items,
+		continuations: []Continuation{member}, recoveredTools: recovered.Tools,
 	}
-	handoff := &treeContinuation{recoveredTools: plan.Tools, rootRunID: root.ID(), runs: map[string]run.Run{root.ID(): root}, items: byID, continuations: []Continuation{{RunID: root.ID(), MemberID: checkpoint.RootMemberID, DrainedTools: continuation.Members[0].DrainedTools}}}
-	ref := ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}
-	_, err = c.segments.openSegment(ctx, segmentSpec{RunID: root.ID(), SegmentID: root.ActiveSegmentID(), SessionID: root.SessionID(), WorkspaceCWD: sess.Workspace().Path(), Isolated: sess.Isolated(), ExecutorID: ref.ExecutorID, Continuation: handoff, admission: &admission,
-		StageExecution: func(ctx context.Context) error {
-			_, err := executor.StageUncertainExecution(ctx, continuation)
-			return err
-		},
-		BeginExecution: func(ctx context.Context) error { return executor.BeginUncertainExecution(ctx, ref) },
+	_, err = c.segments.openSegment(ctx, segmentSpec{
+		RunID: root.ID(), SegmentID: root.ActiveSegmentID(), SessionID: root.SessionID(),
+		ExecutorID: recovered.Ref.ExecutorID, WorkspaceCWD: active.Session.Workspace().Path(), Isolated: active.Session.Isolated(),
+		Continuation: handoff, admission: &admission, staged: staged,
+		BeginExecution: func(ctx context.Context) error { return executor.BeginUncertainExecution(ctx, recovered.Ref) },
 	})
 	return err
 }

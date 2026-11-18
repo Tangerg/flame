@@ -53,6 +53,11 @@ type interactionModelEvidence interface {
 	EndpointForCaller(context.Context, string) (modelref.EndpointObservation, bool, error)
 }
 
+type executionJournal interface {
+	runs.ExecutionTreeStore
+	LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error)
+}
+
 type originalToolResults interface {
 	OwnsToolSource(context.Context, domaintool.Ref, framevalue.Digest, plugin.Activation) (bool, error)
 	AwaitOriginalToolSource(context.Context, domaintool.Ref, framevalue.Digest, framevalue.Digest, plugin.Activation) (bool, error)
@@ -72,7 +77,7 @@ type InteractionExecutorConfig struct {
 	// executor. Request contexts may bound staging and commands, but accepted
 	// execution must outlive the request that created it.
 	Lifetime                  context.Context
-	ExecutionTrees            runs.ExecutionTreeStore
+	ExecutionTrees            executionJournal
 	OriginalToolResults       originalToolResults
 	BuildID                   string
 	ChatResolver              InteractionChatResolver
@@ -178,12 +183,12 @@ func (i *InteractionExecutor) acceptsBuild(raw string) bool {
 	return err == nil && identity == i.buildID
 }
 
-// ValidateRootStart rejects inputs the Interaction cannot represent.
-func (i *InteractionExecutor) ValidateRootStart(start runs.RootExecutionStart) error {
-	if err := start.Validate(); err != nil {
-		return err
-	}
-	return nil
+func interactionStartID(sessionID, runID string) scoperun.StartID {
+	return scoperun.StartID{Scope: sessionID, Key: runID}
+}
+
+func newExecutorRef(sessionID string) runs.ExecutorRef {
+	return runs.ExecutorRef{SessionID: sessionID, ExecutorID: "exec_" + uuid.NewString()}
 }
 
 func validateModelOutputReservation(
@@ -218,10 +223,16 @@ func (i *InteractionExecutor) StageRoot(
 	if err := flameidentity.ValidateSession(start.SessionID); err != nil {
 		return runs.ExecutorRef{}, fmt.Errorf("execution: Interaction: %w", err)
 	}
-	if err := i.ValidateRootStart(start); err != nil {
+	if err := flameidentity.ValidateRun(start.RunID); err != nil {
+		return runs.ExecutorRef{}, fmt.Errorf("execution: Interaction: %w", err)
+	}
+	if !interactionStartID(start.SessionID, start.RunID).Valid() {
+		return runs.ExecutorRef{}, fmt.Errorf("%w: invalid Scope start identity", runs.ErrInvalidStart)
+	}
+	if err := start.Validate(); err != nil {
 		return runs.ExecutorRef{}, err
 	}
-	ref := runs.ExecutorRef{SessionID: start.SessionID, ExecutorID: "exec_" + uuid.NewString()}
+	ref := newExecutorRef(start.SessionID)
 	session, err := i.assembleInteraction(ctx, ref, start, nil)
 	if err != nil {
 		return runs.ExecutorRef{}, err
@@ -586,17 +597,13 @@ func (i *InteractionExecutor) BeginRoot(_ context.Context, ref runs.ExecutorRef)
 	if err != nil {
 		return err
 	}
-	if !session.state.begin() {
-		return errors.New("execution: Interaction execution was already begun")
-	}
-	if !session.state.observerAttached() {
-		session.failStart()
-		return errors.New("execution: Interaction execution must be observed before begin")
+	if err := session.state.begin(interactionBoundaryInactive); err != nil {
+		return err
 	}
 	process, err := session.engine.Start(
 		runExecutionContext(session.lifetime.execution, session.scope, session.start),
 		session.deployment,
-		scoperun.StartRequest[scoperun.Payload]{ID: scoperun.StartID{Scope: session.start.SessionID, Key: session.ref.ExecutorID}, Input: session.input},
+		scoperun.StartRequest[scoperun.Payload]{ID: interactionStartID(session.start.SessionID, session.start.RunID), Input: session.input},
 	)
 	if err != nil {
 		session.failStart()
@@ -657,14 +664,11 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	if err := validateRestoreWorkspace(continuation); err != nil {
 		return err
 	}
-	checkpoint, err := decodeExecutorCheckpoint(continuation.Checkpoint)
+	checkpoint, err := decodeRunCheckpoint(continuation.Checkpoint, continuation.SessionID, continuation.RootRunID)
 	if err != nil {
 		return fmt.Errorf("%w: parse Interaction checkpoint: %w", runs.ErrExecutorStateLost, err)
 	}
-	rootID, err := scoperun.ParseProcessID(continuation.Checkpoint.RootMemberID)
-	if err != nil || checkpoint.handoff.rootID != rootID {
-		return fmt.Errorf("%w: checkpoint root differs from its tree", runs.ErrExecutorStateLost)
-	}
+	rootID := checkpoint.handoff.rootID
 	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, continuation.SessionID, rootID.String())
 	if err != nil {
 		return err

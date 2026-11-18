@@ -78,7 +78,7 @@ func (i *interactionDeploymentSet) hasToolReceipts() bool {
 	}
 	for _, tools := range i.observedTools {
 		for _, tool := range tools {
-			if tool.receiptEvidence != nil {
+			if tool.receiptRelease != nil {
 				return true
 			}
 		}

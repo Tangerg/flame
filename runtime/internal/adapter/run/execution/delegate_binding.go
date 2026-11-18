@@ -223,7 +223,6 @@ func (i *interactionSession) executorMemberByProcessID(processID scoperun.Proces
 	for current := processID; current.Valid(); {
 		i.state.mu.Lock()
 		managed := i.state.delegateChildren[current]
-		root := i.state.admittedProcessID
 		i.state.mu.Unlock()
 		if managed != nil {
 			managed.mu.Lock()
@@ -235,8 +234,8 @@ func (i *interactionSession) executorMemberByProcessID(processID scoperun.Proces
 			}
 			return runs.ExecutorMember{MemberID: current.String(), ParentID: parentMember.MemberID, SpawnCallID: spawn}, true
 		}
-		if current == root {
-			return runs.ExecutorMember{MemberID: root.String()}, true
+		if current == i.rootID {
+			return runs.ExecutorMember{MemberID: i.rootID.String()}, true
 		}
 		parent, child := current.Parent()
 		if !child {

@@ -227,7 +227,7 @@ func hasWaitingBarrier(inspection scoperun.TreeInspection, root scoperun.Process
 }
 
 func (i *interactionSession) inspectInputWait(ctx context.Context) (scoperun.TreeInspection, bool) {
-	history, err := i.committedTree(ctx, i.processRootID())
+	history, err := i.committedTree(ctx, i.rootID)
 	if err != nil || !hasWaitDeclaration(history) {
 		return scoperun.TreeInspection{}, false
 	}

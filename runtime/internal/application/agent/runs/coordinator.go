@@ -105,12 +105,9 @@ func (c *Segments) ReplayRetention() Retention { return c.retention }
 // openSegment attaches an already-staged executor stream, atomically commits
 // admission/resume plus opening projections, registers the live owner, then
 // activates and pumps according to the command's explicit settlement boundary.
-// A fresh caller transfers executor ownership on entry, so startup rejection
-// releases it. A continuation caller retains failure ownership until the durable
-// opening succeeds because its claim/change transaction defines cleanup order.
-// The Run lifetime is detached
-// from the request without losing its trace; request cancellation drops only
-// that subscriber.
+// A staged executor carries its release right until registration succeeds.
+// The Run lifetime is detached from the request without losing its trace;
+// request cancellation drops only that subscriber.
 func (c *Segments) openSegment(reqCtx context.Context, spec segmentSpec) (iter.Seq[Event], error) {
 	startup, err := c.prepareSegmentStartup(reqCtx, spec)
 	if err != nil {
@@ -120,10 +117,8 @@ func (c *Segments) openSegment(reqCtx context.Context, spec segmentSpec) (iter.S
 }
 
 // segmentStartup owns the reversible process-local resources between executor
-// staging and durable Run opening. It also owns fresh-executor rejection; a
-// continuation remains borrowed until its opening commits. Once activate
-// registers the tree owner and launches the lifecycle task, that task owns
-// activation, pumping, executor cleanup and task release instead.
+// staging and durable Run opening. After registration, the lifecycle task owns
+// activation, pumping, executor cleanup and task release.
 type segmentStartup struct {
 	segments         *Segments
 	spec             segmentSpec
@@ -144,10 +139,7 @@ func (c *Segments) prepareSegmentStartup(
 ) (*segmentStartup, error) {
 	taskContext, releaseTask, attached := c.tasks.Attach(requestContext)
 	if !attached {
-		if spec.Continuation == nil {
-			return nil, c.rejectUnadmittedExecution(requestContext, spec.executorRef(), errClosed)
-		}
-		return nil, errClosed
+		return nil, spec.staged.abandon(requestContext, errClosed, "unadmitted executor")
 	}
 	runContext, cancelRun := context.WithCancel(taskContext)
 	startup := &segmentStartup{
@@ -203,13 +195,7 @@ func (s *segmentStartup) bindExecutorMembers() error {
 
 func (s *segmentStartup) abort(cause error) error {
 	s.cancelRun()
-	if s.spec.Continuation == nil {
-		cause = s.segments.rejectUnadmittedExecution(
-			s.taskContext,
-			s.spec.executorRef(),
-			cause,
-		)
-	}
+	cause = s.spec.staged.abandon(s.taskContext, cause, "unadmitted executor")
 	s.releaseTask()
 	return cause
 }
@@ -236,6 +222,9 @@ func (s *segmentStartup) activate(requestContext context.Context) (iter.Seq[Even
 	if err != nil {
 		s.treeOwner.observation.Unlock()
 		return nil, s.abort(err)
+	}
+	if spec.staged != nil {
+		spec.staged.transfer()
 	}
 	s.markSegmentsStarted()
 	// Attach before publishing so this opening stream has no gap; a fresh journal
@@ -437,20 +426,6 @@ func (c *Segments) commitOpening(ctx context.Context, spec segmentSpec, routes *
 		return nil, err
 	}
 	return openings, nil
-}
-
-// rejectUnadmittedExecution tears down a fresh execution that failed before its opening
-// write-set committed. The rejection cause and teardown failure are both
-// preserved: hiding the latter would report a clean rejection while leaking an
-// executor the application never admitted.
-func (c *Segments) rejectUnadmittedExecution(ctx context.Context, ref ExecutorRef, cause error) error {
-	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), runCleanupTimeout)
-	defer cancel()
-	if err := c.releases.Release(cleanupCtx, ref); err != nil {
-		cleanupErr := fmt.Errorf("runs: release unadmitted executor %q: %w", ref.ExecutorID, err)
-		return errors.Join(cause, cleanupErr)
-	}
-	return cause
 }
 
 // Subscribe attaches to the Segment the request names. The record and journal

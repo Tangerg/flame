@@ -405,7 +405,7 @@ func (r RootExecutionStart) Validate() error {
 			return fmt.Errorf("runs: working context message[%d]: %w", index, err)
 		}
 	}
-	if len(r.WorkingContext) > 0 && r.WorkingContext[len(r.WorkingContext)-1].Role != corechat.RoleUser {
+	if r.WorkingContext[len(r.WorkingContext)-1].Role != corechat.RoleUser {
 		return errors.New("runs: fresh working context must end with the current user message")
 	}
 	if err := r.ModelSelection.ValidateExact(); err != nil {

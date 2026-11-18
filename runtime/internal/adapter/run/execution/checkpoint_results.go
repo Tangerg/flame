@@ -25,6 +25,9 @@ func decodeExecutorCheckpoint(checkpoint runs.ExecutorCheckpoint) (interactionCh
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
+	if state.handoff.rootID.String() != checkpoint.RootMemberID {
+		return interactionCheckpointState{}, errors.New("execution: checkpoint payload names a different root")
+	}
 	if !slices.Equal(checkpoint.ToolResultIDs, checkpointToolResultIDs(state)) {
 		return interactionCheckpointState{}, errors.New("execution: checkpoint result ownership differs from its continuation")
 	}
@@ -46,4 +49,12 @@ func decodeExecutorCheckpoint(checkpoint runs.ExecutorCheckpoint) (interactionCh
 		}
 	}
 	return state, nil
+}
+
+func decodeRunCheckpoint(checkpoint runs.ExecutorCheckpoint, sessionID, runID string) (interactionCheckpointState, error) {
+	start := interactionStartID(sessionID, runID)
+	if !start.Valid() || checkpoint.SessionID != sessionID || checkpoint.RootMemberID != start.Root().String() {
+		return interactionCheckpointState{}, errors.New("execution: checkpoint belongs to a different Run")
+	}
+	return decodeExecutorCheckpoint(checkpoint)
 }

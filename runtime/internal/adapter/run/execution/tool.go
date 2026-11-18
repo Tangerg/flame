@@ -32,7 +32,7 @@ import (
 
 type observedInteractionTool struct {
 	ref               tool.Ref
-	receiptEvidence   *toolReceiptEvidence
+	receiptRelease    *framevalue.Digest
 	sourceFingerprint framevalue.Digest
 	inner             toolcontract.Tool
 	binding           toolcontract.Binding
@@ -128,7 +128,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		Arguments: rawArguments, SafetyClass: o.interpreter.SafetyClass(o.ref),
 	}
 	var prepared runs.ExecutionFact = start
-	if o.receiptEvidence != nil && !denied && prepareErr == nil {
+	if o.receiptRelease != nil && !denied && prepareErr == nil {
 		prepared, err = o.capturePreparedTool(ctx, invocation, member, start)
 		if err != nil {
 			return toolcontract.Result{}, err
@@ -200,13 +200,13 @@ func restoreToolInput(bound toolcontract.Invocation) (*runinput.Continuation, *t
 }
 
 func (o *observedInteractionTool) capturePreparedTool(ctx context.Context, invocation interaction.ToolInvocation, member runs.ExecutorMember, start runs.ToolCallStarted) (runs.ToolCallPrepared, error) {
-	proof := *o.receiptEvidence
-	proof.ProcessID, proof.EffectID = invocation.ProcessID().String(), invocation.EffectID().String()
+	proof := toolReceiptEvidence{
+		EffectID: invocation.EffectID(), Release: *o.receiptRelease, Authority: o.sourceFingerprint,
+	}
 	if err := o.session.rememberToolMetadata(toolResultMetadata{MemberID: member.MemberID, ProcessID: invocation.ProcessID().String(), Start: start, Receipt: &proof}); err != nil {
 		return runs.ToolCallPrepared{}, o.projectionFailure(err)
 	}
-	root := o.session.state.processHandle()
-	tree, err := o.session.committedTree(ctx, root.ID().Root())
+	tree, err := o.session.committedTree(ctx, o.session.rootID)
 	if err != nil {
 		return runs.ToolCallPrepared{}, o.projectionFailure(err)
 	}
@@ -214,7 +214,7 @@ func (o *observedInteractionTool) capturePreparedTool(ctx context.Context, invoc
 	if err != nil {
 		return runs.ToolCallPrepared{}, o.projectionFailure(err)
 	}
-	server, _, _ := proof.Tool.MCP()
+	server, _, _ := start.Source.MCP()
 	installation, _ := server.Origin().Installation()
 	calling, err := operation.Capture(ctx, framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.String()})
 	if err != nil {
@@ -775,7 +775,7 @@ func (o *observedInteractionTool) captureReceiptSource(ctx context.Context, resu
 		return err
 	}
 	if owned {
-		o.receiptEvidence = &toolReceiptEvidence{Tool: o.ref, Release: dependency.Digest, Authority: o.sourceFingerprint}
+		o.receiptRelease = new(dependency.Digest)
 	}
 	return nil
 }

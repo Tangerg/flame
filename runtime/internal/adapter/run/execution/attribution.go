@@ -180,7 +180,7 @@ type toolCallSource struct {
 // Scope admits an explicit idempotency key to each Tool. The canonical pending
 // request owns its coordinates; the committed model response owns its ordinal.
 func (i *interactionSession) toolSource(ctx context.Context, bound toolcontract.Invocation) (interaction.ToolInvocation, toolCallSource, error) {
-	history, err := i.committedTree(ctx, i.processRootID())
+	history, err := i.committedTree(ctx, i.rootID)
 	if err != nil {
 		return interaction.ToolInvocation{}, toolCallSource{}, err
 	}

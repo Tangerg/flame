@@ -62,6 +62,9 @@ type segmentSpec struct {
 	// admission transfers the pre-commit reservation to the live Run only after
 	// its opening write-set commits.
 	admission *ownership.RunAdmission
+	// Fresh and crash-recovered executors stay with the staging caller until the
+	// Segment takes ownership. A waiting continuation already has an owner.
+	staged *stagedExecutionHandoff
 	// StageExecution acquires the accepted continuation's executor resources. It
 	// runs inside the same activation gate as observation and BeginExecution.
 	StageExecution func(context.Context) error

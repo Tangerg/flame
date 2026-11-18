@@ -90,6 +90,10 @@ func (s *testExecutionTrees) LoadExecutionTree(ctx context.Context, sessionID, r
 	return s.stores.ExecutorCheckpoints.LoadExecutionTree(ctx, sessionID, rootID)
 }
 
+func (s *testExecutionTrees) LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error) {
+	return s.stores.ExecutorCheckpoints.LoadCheckpoint(ctx, rootMemberID)
+}
+
 func (s *testExecutionTrees) SaveExecutionTree(ctx context.Context, update runs.ExecutionTreeUpdate) error {
 	return s.stores.ExecutorCheckpoints.SaveExecutionTree(ctx, update)
 }

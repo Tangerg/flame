@@ -19,12 +19,11 @@ func ownStagedExecution(releases ExecutionReleaser, ref ExecutorRef) *stagedExec
 	return &stagedExecutionHandoff{releases: releases, ref: ref, owned: true}
 }
 
-func (s *stagedExecutionHandoff) transfer() ExecutorRef {
+func (s *stagedExecutionHandoff) transfer() {
 	if !s.owned {
 		panic("runs: staged execution ownership transferred more than once")
 	}
 	s.owned = false
-	return s.ref
 }
 
 func (s *stagedExecutionHandoff) abandon(
@@ -37,19 +36,8 @@ func (s *stagedExecutionHandoff) abandon(
 	}
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), runCleanupTimeout)
 	defer cancel()
-	return s.abandonWithin(cleanupCtx, cause, description)
-}
-
-func (s *stagedExecutionHandoff) abandonWithin(
-	ctx context.Context,
-	cause error,
-	description string,
-) error {
-	if s == nil || !s.owned {
-		return cause
-	}
 	s.owned = false
-	if err := s.releases.Release(ctx, s.ref); err != nil {
+	if err := s.releases.Release(cleanupCtx, s.ref); err != nil {
 		return errors.Join(
 			cause,
 			fmt.Errorf("runs: release %s %q: %w", description, s.ref.ExecutorID, err),

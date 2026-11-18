@@ -24,6 +24,7 @@ import (
 
 	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/process/runner"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -232,9 +233,10 @@ func disableOriginalScheduleBinding(t *testing.T, cfg assemblyConfig) {
 	if err != nil || receipt.Use != runs.CommandKeyAccepted {
 		t.Fatalf("original accepted command: %t, %v", receipt.Use == runs.CommandKeyAccepted, err)
 	}
-	checkpoint, found, err := cfg.stores.ExecutorCheckpoints.LoadSessionCheckpoint(t.Context(), receipt.Acceptance.SessionID)
-	if err != nil || !found {
-		t.Fatalf("original retained execution: %t, %v", found, err)
+	root := (scoperun.StartID{Scope: receipt.Acceptance.SessionID, Key: receipt.Acceptance.RunID}).Root()
+	checkpoint, err := cfg.stores.ExecutorCheckpoints.LoadCheckpoint(t.Context(), root.String())
+	if err != nil {
+		t.Fatalf("original retained execution: %v", err)
 	}
 	dependencies := checkpoint.Dependencies()
 	if len(dependencies) == 0 {

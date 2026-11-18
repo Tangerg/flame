@@ -11,8 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-
-	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
 // A refused probe recovers the whole waiting tree as lost for loss, which the
@@ -68,14 +66,11 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		}
 		return runs.WaitingResumption{}, err
 	}
-	state, err := decodeExecutorCheckpoint(checkpoint)
+	state, err := decodeRunCheckpoint(checkpoint, continuation.SessionID, continuation.RootRunID)
 	if err != nil {
 		return unresumable(ctx, continuation, run.LossWaitingStateUnavailable, "checkpoint payload cannot be decoded", err)
 	}
-	rootID, err := scoperun.ParseProcessID(checkpoint.RootMemberID)
-	if err != nil || state.handoff.rootID != rootID {
-		return unresumable(ctx, continuation, run.LossWaitingStateUnavailable, "checkpoint root member does not own its tree", err)
-	}
+	rootID := state.handoff.rootID
 	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, continuation.SessionID, rootID.String())
 	if err != nil {
 		return runs.WaitingResumption{}, err

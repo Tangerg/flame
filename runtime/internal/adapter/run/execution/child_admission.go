@@ -29,12 +29,9 @@ func (i *interactionSession) admitProcess(
 		if admission.ProgramRef() != deployments.root.ProgramRef() {
 			return errors.New("execution: Interaction root admission changed Deployment")
 		}
-		i.state.mu.Lock()
-		defer i.state.mu.Unlock()
-		if i.state.admittedProcessID.Valid() && i.state.admittedProcessID != relation {
-			return errors.New("execution: Interaction root admission identity changed")
+		if relation != i.rootID {
+			return errors.New("execution: Interaction root differs from the Run's start identity")
 		}
-		i.state.admittedProcessID = relation
 		return nil
 	}
 	if !deployments.managedChild(admission.ProgramRef()) {

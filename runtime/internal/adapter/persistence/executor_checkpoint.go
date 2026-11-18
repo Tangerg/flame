@@ -78,61 +78,13 @@ func (s *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 		return s.replaceReferences(ctx, checkpoint)
 	})
 }
-func (s *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error) {
-	var checkpoint runs.ExecutorCheckpoint
-	err := s.db.read(ctx, func(ctx context.Context) error {
-		var err error
-		checkpoint, err = s.loadCheckpoint(ctx, rootMemberID)
-		return err
-	})
-	if err != nil {
-		return runs.ExecutorCheckpoint{}, err
-	}
-	return checkpoint, nil
-}
-func (s *ExecutorCheckpointStore) LoadSessionCheckpoint(ctx context.Context, sessionID string) (runs.ExecutorCheckpoint, bool, error) {
-	if err := validateSessionResource("load execution context", sessionID); err != nil {
-		return runs.ExecutorCheckpoint{}, false, err
-	}
-	var checkpoint runs.ExecutorCheckpoint
-	found := false
-	err := s.db.read(ctx, func(ctx context.Context) error {
-		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT root_member_id FROM executor_checkpoints WHERE session_id=? LIMIT 2`, sessionID)
-		if err != nil {
-			return err
-		}
-		var roots []string
-		for rows.Next() {
-			var root string
-			if err := rows.Scan(&root); err != nil {
-				_ = rows.Close()
-				return err
-			}
-			roots = append(roots, root)
-		}
-		err = errors.Join(rows.Err(), rows.Close())
-		if err != nil {
-			return err
-		}
-		if len(roots) == 0 {
-			return nil
-		}
-		if len(roots) != 1 {
-			return fmt.Errorf("%w: Session has multiple execution contexts", runs.ErrInvalidExecutorCheckpoint)
-		}
-		checkpoint, err = s.loadCheckpoint(ctx, roots[0])
-		found = err == nil
-		return err
-	})
-	return checkpoint, found, err
-}
 
 // The payload and its body references must be read from the same snapshot.
-func (s *ExecutorCheckpointStore) loadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error) {
+func (s *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error) {
+	if err := runs.ValidateMember(rootMemberID); err != nil {
+		return runs.ExecutorCheckpoint{}, fmt.Errorf("sqlite: load executor checkpoint: %w", err)
+	}
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) (runs.ExecutorCheckpoint, error) {
-		if err := runs.ValidateMember(rootMemberID); err != nil {
-			return runs.ExecutorCheckpoint{}, fmt.Errorf("sqlite: load executor checkpoint: %w", err)
-		}
 		var sessionID, buildID string
 		var payload []byte
 		err := s.db.connection(ctx).QueryRowContext(ctx, `SELECT session_id, build_id, payload

@@ -19,13 +19,9 @@ import (
 // an executor implementation: each one names the single application use case
 // that consumes it.
 
-// RootExecutionStarter validates execution-specific input, stages a new root,
-// then begins it after the opening write-set is durable. ValidateRootStart runs
-// after Session selection resolution but before any execution staging, and may
-// inspect only immutable input and frozen policy fields. StageRoot receives the resolved Session/workspace fields and must not cross
-// the model/tool side-effect boundary. BeginRoot runs only after admission commits.
+// RootExecutionStarter stages the execution owned by the allocated Run. Model
+// and Tool dispatch must wait for BeginRoot after the opening commits.
 type RootExecutionStarter interface {
-	ValidateRootStart(start RootExecutionStart) error
 	StageRoot(ctx context.Context, start RootExecutionStart) (ExecutorRef, error)
 	BeginRoot(ctx context.Context, ref ExecutorRef) error
 }
@@ -288,6 +284,7 @@ type ItemProjection interface {
 // the Application fills them before passing the value to StageRoot.
 type RootExecutionStart struct {
 	SessionID string
+	RunID     string
 	// CWD is the execution directory — the sandbox copy for an isolated
 	// run, else the session's project directory. The durable run record keeps the
 	// project directory; only the executor sees the copy.

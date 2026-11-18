@@ -47,7 +47,7 @@ func (i *interactionSession) maintainCompletedRoot() {
 	}
 	toolCalls := i.accounting.toolCallCount()
 	result := i.maintenance.Maintain(i.lifetime.execution, RunMaintenanceInput{
-		RootMemberID:            i.processRootID().String(),
+		RootMemberID:            i.rootID.String(),
 		SessionID:               i.start.SessionID,
 		WorkspaceCWD:            i.start.WorkspaceCWD,
 		ToolCalls:               toolCalls,

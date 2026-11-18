@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
-	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -16,189 +14,164 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-func (i *InteractionExecutor) PrepareUncertainExecution(ctx context.Context, active runs.ActiveExecution) (_ runs.UncertainExecutionPlan, _ runs.RecoveryVerdict, resultErr error) {
-	var zero runs.UncertainExecutionPlan
-	if !i.mayRecover(active) {
-		return zero, runs.RecoveryUnavailable, nil
+func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, active runs.ActiveExecution) (_ runs.UncertainRecovery, resultErr error) {
+	root := active.Run
+	if root.SessionID() != active.Session.ID() {
+		return nil, errors.New("execution: recovery Run belongs to a different Session")
 	}
-	if err := active.Context.ValidateOwnership(active.Context.RootMemberID, active.Run.SessionID()); err != nil {
-		return zero, runs.RecoveryUnavailable, err
+	if root.State() != run.Running || !root.Lineage().IsRoot() {
+		return runs.RecoveryUnavailable{}, nil
 	}
-	checkpoint, err := decodeExecutorCheckpoint(active.Context)
+	start := interactionStartID(root.SessionID(), root.ID())
+	if !start.Valid() {
+		return nil, scoperun.ErrInvalidStart
+	}
+	rootID := start.Root()
+	retained, err := i.config.ExecutionTrees.LoadCheckpoint(ctx, rootID.String())
+	if errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
+		return runs.RecoveryUnavailable{}, nil
+	}
 	if err != nil {
-		return zero, runs.RecoveryUnavailable, err
+		return nil, err
 	}
-	rootID, err := scoperun.ParseProcessID(active.Context.RootMemberID)
+	if !i.acceptsBuild(retained.BuildID) {
+		return runs.RecoveryUnavailable{}, nil
+	}
+	checkpoint, err := decodeRunCheckpoint(retained, root.SessionID(), root.ID())
 	if err != nil {
-		return zero, runs.RecoveryUnavailable, err
+		return nil, err
 	}
-	if checkpoint.handoff.rootID != rootID {
-		return zero, runs.RecoveryUnavailable, errors.New("execution: context root differs from its owner")
+	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, root.SessionID(), rootID.String())
+	if err != nil {
+		return nil, err
 	}
-	if err := i.attachRecoveryTree(ctx, &checkpoint, active.Run.SessionID(), rootID); err != nil {
-		return zero, runs.RecoveryUnavailable, err
+	if !found {
+		return nil, errors.New("execution: retained context has no acknowledged tree")
+	}
+	checkpoint.tree, err = decodeExecutionTree(head, rootID)
+	if err != nil {
+		return nil, err
+	}
+	inspection, err := checkpoint.tree.Inspect()
+	if err != nil {
+		return nil, err
+	}
+	proofs, err := checkpoint.recoverableReceipts(inspection)
+	if err != nil {
+		return nil, err
+	}
+	if len(proofs) == 0 {
+		return runs.RecoveryUnavailable{}, nil
 	}
 	if i.config.OriginalToolResults == nil {
-		return zero, runs.RecoveryUnavailable, nil
+		return nil, errors.New("execution: captured Tool receipts require the original source service")
 	}
-	proofs, err := checkpoint.recoverableReceipts(rootID)
-	if err != nil || len(proofs) == 0 {
-		return zero, runs.RecoveryUnavailable, err
-	}
-	segment, receipted, err := drainSegmentTools(active, checkpoint)
-	if err != nil || !receipted {
-		return zero, runs.RecoveryUnavailable, err
-	}
-	continuation, err := runs.NewExecutionContinuation(runs.ExecutionContinuation{SessionID: active.Run.SessionID(), ExecutorID: "exec_recovery_" + active.Run.ID(), RootRunID: active.Run.ID(), Checkpoint: active.Context.Clone(), Capabilities: active.Run.Capabilities(), GoalIncarnationID: active.Run.GoalIncarnationID(), Workspace: active.Session.Workspace().Path(), Isolated: active.Session.Isolated(), Members: []runs.ExecutionMember{{RunID: active.Run.ID(), MemberID: rootID.String(), ModelSelection: active.Run.ModelSelection(), Metrics: active.Run.Metrics(), DrainedTools: segment.drained}}})
+	tools, receipted, err := recoverSegmentTools(active, checkpoint)
 	if err != nil {
-		return zero, runs.RecoveryUnavailable, err
+		return nil, err
+	}
+	if !receipted {
+		return runs.RecoveryUnavailable{}, nil
+	}
+	ref := newExecutorRef(root.SessionID())
+	member := runs.ExecutionMember{
+		RunID: root.ID(), MemberID: rootID.String(), ModelSelection: root.ModelSelection(), Metrics: root.Metrics(),
+	}
+	continuation, err := runs.NewExecutionContinuation(runs.ExecutionContinuation{
+		SessionID: root.SessionID(), ExecutorID: ref.ExecutorID, RootRunID: root.ID(),
+		Checkpoint: retained, Capabilities: root.Capabilities(), GoalIncarnationID: root.GoalIncarnationID(),
+		Workspace: active.Session.Workspace().Path(), Isolated: active.Session.Isolated(),
+		Members: []runs.ExecutionMember{member},
+	})
+	if err != nil {
+		return nil, err
 	}
 	if err := validateRestoreWorkspace(continuation); err != nil {
 		if errors.Is(err, runs.ErrExecutorStateLost) {
-			return zero, runs.RecoveryUnavailable, nil
+			return runs.RecoveryUnavailable{}, nil
 		}
-		return zero, runs.RecoveryUnavailable, err
+		return nil, err
 	}
-	available, err := i.originalSourcesAvailable(ctx, checkpoint, rootID, proofs)
-	if err != nil || !available {
-		return zero, runs.RecoveryUnavailable, err
-	}
-	session, err := i.assembleInteraction(ctx, runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}, checkpoint.restoredStart(continuation), &checkpoint)
+	available, err := i.originalSourcesAvailable(ctx, checkpoint, inspection, proofs)
 	if err != nil {
-		return zero, runs.RecoveryUnavailable, err
+		return nil, err
 	}
-	defer func() { resultErr = errors.Join(resultErr, i.discardInteraction(session)) }()
+	if !available {
+		return runs.RecoveryUnavailable{}, nil
+	}
+	finish, err := i.sessions.beginAssembly()
+	if err != nil {
+		return nil, err
+	}
+	defer finish()
+	session, err := i.assembleInteraction(ctx, ref, checkpoint.restoredStart(continuation), &checkpoint)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if session != nil {
+			resultErr = errors.Join(resultErr, i.discardInteraction(session))
+		}
+	}()
 	if pendingCheckpointSources(session, checkpoint) {
-		return zero, runs.RecoveryDeferred, nil
+		return runs.RecoveryDeferred{}, nil
 	}
-	if err := i.verifySettledTools(ctx, session, active.Run.SessionID(), checkpoint, proofs, segment.pending); err != nil {
-		return zero, runs.RecoveryUnavailable, err
+	if err := session.verifySettledTools(ctx, checkpoint.tree, proofs, tools); err != nil {
+		return nil, err
 	}
-	if err := session.validateCapturedToolArguments(proofs); err != nil {
-		return zero, runs.RecoveryUnavailable, err
+	if err := session.validateCapturedToolArguments(inspection, proofs); err != nil {
+		return nil, err
 	}
 	if err := validateRecovery(ctx, session.deployment, checkpoint.tree); err != nil {
-		if errors.Is(err, scoperun.ErrInvalidLog) {
-			return zero, runs.RecoveryUnavailable, nil
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return nil, err
 		}
-		return zero, runs.RecoveryUnavailable, err
+		if errors.Is(err, scoperun.ErrInvalidLog) {
+			return runs.RecoveryUnavailable{}, nil
+		}
+		return nil, err
 	}
-	if _, err := restoreInteractionAccounting(checkpoint, map[scoperun.ProcessID]runs.ExecutionMember{rootID: continuation.Members[0]}); err != nil {
-		return zero, runs.RecoveryUnavailable, err
-	}
-	return runs.UncertainExecutionPlan{Continuation: continuation, Tools: segment.tools}, runs.RecoveryReady, nil
-}
-
-// mayRecover reports whether a running root's retained context was written by
-// this build and captured the dependencies its recovery needs.
-func (i *InteractionExecutor) mayRecover(active runs.ActiveExecution) bool {
-	return active.Run.State() == run.Running && active.Run.Lineage().IsRoot() && active.Run.SessionID() == active.Session.ID() && i.acceptsBuild(active.Context.BuildID) && len(active.Context.Dependencies()) > 0
-}
-
-var errRecoveryTreeUnavailable = errors.New("execution: retained context has no acknowledged tree")
-
-// attachRecoveryTree loads the acknowledged tree head a retained checkpoint
-// resumes from.
-func (i *InteractionExecutor) attachRecoveryTree(ctx context.Context, checkpoint *interactionCheckpointState, sessionID string, rootID scoperun.ProcessID) error {
-	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, sessionID, rootID.String())
+	usage, err := restoreInteractionAccounting(checkpoint, map[scoperun.ProcessID]runs.ExecutionMember{rootID: member})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if !found {
-		return errRecoveryTreeUnavailable
+	session.accounting.restore(usage, checkpoint.contextByProcess)
+	session.state.toolMetadata = checkpoint.toolMetadata
+	session.state.pendingSteers = checkpoint.pendingSteers
+	session.state.pendingContinuation = checkpoint.pendingContinuation
+	session.state.restoreTree = checkpoint.tree
+	session.state.boundary = interactionBoundaryRecovery
+	session.state.dispatchReady = make(chan struct{})
+	if err := i.publishInteraction(ctx, session); err != nil {
+		return nil, err
 	}
-	checkpoint.tree, err = decodeExecutionTree(head, rootID)
-	return err
+	session = nil
+	return runs.StagedRecovery{Ref: ref, MemberID: rootID.String(), Tools: tools}, nil
 }
 
-// drainedSegment is the active Segment's Tool calls that recovery settles
-// from their original receipts.
-type drainedSegment struct {
-	drained []runs.DrainedTool
-	tools   []runs.RecoveredTool
-	pending map[string]bool
-}
-
-// drainSegmentTools reports receipted false when any active call lacks an
+// recoverSegmentTools reports receipted false when any active call lacks an
 // original receipt; a mismatched Item is a contradiction, not unavailability.
-func drainSegmentTools(active runs.ActiveExecution, checkpoint interactionCheckpointState) (drainedSegment, bool, error) {
-	items := make(map[string]transcript.Item, len(active.Items))
-	for _, item := range active.Items {
-		items[item.ID()] = item
-	}
-	segment := drainedSegment{pending: make(map[string]bool)}
+func recoverSegmentTools(active runs.ActiveExecution, checkpoint interactionCheckpointState) ([]runs.RecoveredTool, bool, error) {
+	var tools []runs.RecoveredTool
 	for _, invocation := range active.Tools {
 		if invocation.RunID != active.Run.ID() || invocation.SegmentID != active.Run.ActiveSegmentID() {
 			continue
 		}
 		metadata, found := checkpoint.toolMetadata[invocation.CallID]
 		if !found || metadata.Receipt == nil {
-			return drainedSegment{}, false, nil
+			return nil, false, nil
 		}
-		item, found := items[invocation.ItemID]
+		item, found := active.Items[invocation.ItemID]
 		if !found || item.RunID() != active.Run.ID() || item.SessionID() != active.Run.SessionID() || item.Status() != transcript.ItemRunning {
-			return drainedSegment{}, false, errors.New("execution: captured Tool Item is unavailable")
+			return nil, false, errors.New("execution: captured Tool Item is unavailable")
 		}
 		original, found := item.ToolCall()
-		if !found || !original.Invocation.MatchesSource(metadata.Start.ToolName, metadata.Receipt.Tool) {
-			return drainedSegment{}, false, errors.New("execution: captured Tool attribution differs from the original Item")
+		if !found || !original.Invocation.MatchesSource(metadata.Start.ToolName, metadata.Start.Source) {
+			return nil, false, errors.New("execution: captured Tool attribution differs from the original Item")
 		}
-		segment.drained = append(segment.drained, runs.DrainedTool{ItemID: item.ID(), CallID: invocation.CallID, SourceCallID: metadata.Start.SourceCallID})
-		metadata.Start.Source = metadata.Receipt.Tool
-		segment.tools = append(segment.tools, runs.RecoveredTool{Start: metadata.Start, Invocation: invocation})
-		segment.pending[invocation.CallID] = true
+		tools = append(tools, runs.RecoveredTool{Start: metadata.Start, Invocation: invocation})
 	}
-	slices.SortFunc(segment.drained, func(a, b runs.DrainedTool) int { return strings.Compare(a.CallID, b.CallID) })
-	return segment, true, nil
-}
-
-func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, continuation runs.ExecutionContinuation) (_ runs.ExecutorRef, err error) {
-	if err := continuation.Validate(); err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	if !i.acceptsBuild(continuation.Checkpoint.BuildID) {
-		return runs.ExecutorRef{}, runs.ErrExecutorStateLost
-	}
-	finish, err := i.sessions.beginAssembly()
-	if err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	defer finish()
-	checkpoint, err := decodeExecutorCheckpoint(continuation.Checkpoint)
-	if err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	rootID, _ := scoperun.ParseProcessID(continuation.Checkpoint.RootMemberID)
-	if err := i.attachRecoveryTree(ctx, &checkpoint, continuation.SessionID, rootID); err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	ref := runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}
-	session, err := i.assembleInteraction(ctx, ref, checkpoint.restoredStart(continuation), &checkpoint)
-	if err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	defer func() {
-		if err != nil {
-			err = errors.Join(err, i.discardInteraction(session))
-		}
-	}()
-	if err := validateRecovery(ctx, session.deployment, checkpoint.tree); err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	usage, err := restoreInteractionAccounting(checkpoint, map[scoperun.ProcessID]runs.ExecutionMember{rootID: continuation.Members[0]})
-	if err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	session.accounting.restore(usage, checkpoint.contextByProcess)
-	session.state.admittedProcessID = rootID
-	session.state.toolMetadata, session.state.pendingSteers, session.state.pendingContinuation = checkpoint.toolMetadata, checkpoint.pendingSteers, checkpoint.pendingContinuation
-	session.state.restoreTree = checkpoint.tree
-	session.state.boundary = interactionBoundaryRecovery
-	session.state.dispatchReady = make(chan struct{})
-	if err := i.publishInteraction(ctx, session); err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	return ref, nil
+	return tools, true, nil
 }
 
 func (i *InteractionExecutor) BeginUncertainExecution(ctx context.Context, ref runs.ExecutorRef) error {
@@ -206,8 +179,8 @@ func (i *InteractionExecutor) BeginUncertainExecution(ctx context.Context, ref r
 	if err != nil {
 		return err
 	}
-	if !session.state.observerAttached() || !session.state.begin() {
-		return errors.New("execution: recovery must be staged and observed")
+	if err := session.state.begin(interactionBoundaryRecovery); err != nil {
+		return err
 	}
 	process, err := session.engine.Recover(runExecutionContext(session.lifetime.execution, session.scope, session.start), session.deployment, session.state.restoreTree.Root)
 	if err != nil {
@@ -225,7 +198,8 @@ func (i *InteractionExecutor) BeginUncertainExecution(ctx context.Context, ref r
 	return nil
 }
 
-func (i interactionCheckpointState) recoverableReceipts(rootID scoperun.ProcessID) (map[scoperun.EffectID]toolResultMetadata, error) {
+func (i interactionCheckpointState) recoverableReceipts(inspection scoperun.TreeInspection) (map[scoperun.EffectID]toolResultMetadata, error) {
+	rootID := i.tree.Root
 	proofs := make(map[scoperun.EffectID]toolResultMetadata)
 	for _, metadata := range i.toolMetadata {
 		if metadata.Receipt == nil {
@@ -234,10 +208,7 @@ func (i interactionCheckpointState) recoverableReceipts(rootID scoperun.ProcessI
 		if metadata.MemberID != rootID.String() {
 			return nil, nil
 		}
-		id, err := scoperun.ParseEffectID(metadata.Receipt.EffectID)
-		if err != nil {
-			return nil, fmt.Errorf("execution: retained tool receipt: %w", err)
-		}
+		id := metadata.Receipt.EffectID
 		if _, duplicate := proofs[id]; duplicate {
 			return nil, errors.New("execution: duplicate retained Tool effect identity")
 		}
@@ -245,10 +216,6 @@ func (i interactionCheckpointState) recoverableReceipts(rootID scoperun.ProcessI
 	}
 	if len(proofs) == 0 {
 		return nil, nil
-	}
-	inspection, err := i.tree.Inspect()
-	if err != nil {
-		return nil, err
 	}
 	root, found := inspection.Process(rootID)
 	// A committed Tool settlement can leave the program running before its
@@ -270,67 +237,59 @@ func (i interactionCheckpointState) recoverableReceipts(rootID scoperun.ProcessI
 	return proofs, nil
 }
 
-func (i *InteractionExecutor) verifySettledTools(ctx context.Context, session *interactionSession, sessionID string, checkpoint interactionCheckpointState, proofs map[scoperun.EffectID]toolResultMetadata, pendingCalls map[string]bool) error {
-	var rounds []interaction.RoundResults
+func (i *interactionSession) verifySettledTools(ctx context.Context, tree scoperun.Log, proofs map[scoperun.EffectID]toolResultMetadata, open []runs.RecoveredTool) error {
+	unverified := make(map[string]struct{}, len(proofs))
 	for _, metadata := range proofs {
-		if pendingCalls[metadata.Start.CallID] {
-			continue
-		}
-		if rounds == nil {
-			var err error
-			rounds, err = session.settledToolResults(checkpoint.tree)
+		unverified[metadata.Start.CallID] = struct{}{}
+	}
+	for _, call := range open {
+		delete(unverified, call.Invocation.CallID)
+	}
+	if len(unverified) == 0 {
+		return nil
+	}
+	rounds, err := i.settledToolResults(tree)
+	if err != nil {
+		return err
+	}
+	for _, round := range rounds {
+		for _, entry := range round.Entries() {
+			identity, err := logicalToolCallID(round.ProcessID(), round.ModelCallSequence(), entry.ToolCallIndex, entry.Call.ID, entry.Call.Name)
 			if err != nil {
 				return err
 			}
-		}
-		committed := false
-		for _, round := range rounds {
-			for _, entry := range round.Entries() {
-				identity, err := logicalToolCallID(round.ProcessID(), round.ModelCallSequence(), entry.ToolCallIndex, entry.Call.ID, entry.Call.Name)
-				if err != nil {
-					return err
-				}
-				if identity.String() != metadata.Start.CallID {
-					continue
-				}
-				publication, err := resultPublication(identity, entry)
-				if err != nil {
-					return err
-				}
-				committed, err = i.config.ExecutionTrees.ExecutionResultCommitted(ctx, sessionID, publication)
-				if err != nil {
-					return err
-				}
+			if _, required := unverified[identity.String()]; !required {
+				continue
 			}
+			publication, err := resultPublication(identity, entry)
+			if err != nil {
+				return err
+			}
+			committed, err := i.executionTrees.ExecutionResultCommitted(ctx, i.scope.SessionID, publication)
+			if err != nil {
+				return err
+			}
+			if !committed {
+				return errors.New("execution: settled Tool has no publication receipt")
+			}
+			delete(unverified, identity.String())
 		}
-		if !committed {
-			return errors.New("execution: captured Tool has neither its original attempt nor a publication receipt")
-		}
+	}
+	if len(unverified) != 0 {
+		return errors.New("execution: captured Tool has neither its original attempt nor a settlement")
 	}
 	return nil
 }
 
-func (i *InteractionExecutor) originalSourcesAvailable(ctx context.Context, checkpoint interactionCheckpointState, rootID scoperun.ProcessID, proofs map[scoperun.EffectID]toolResultMetadata) (bool, error) {
-	inspection, err := checkpoint.tree.Inspect()
-	if err != nil {
-		return false, err
-	}
-	for _, metadata := range proofs {
+func (i *InteractionExecutor) originalSourcesAvailable(ctx context.Context, checkpoint interactionCheckpointState, inspection scoperun.TreeInspection, proofs map[scoperun.EffectID]toolResultMetadata) (bool, error) {
+	for id, metadata := range proofs {
 		proof := metadata.Receipt
-		processID, err := scoperun.ParseProcessID(proof.ProcessID)
-		if err != nil {
-			return false, fmt.Errorf("execution: retained tool receipt: %w", err)
-		}
-		effectID, err := scoperun.ParseEffectID(proof.EffectID)
-		if err != nil {
-			return false, fmt.Errorf("execution: retained tool receipt: %w", err)
-		}
-		process, found := inspection.Process(processID)
+		process, found := inspection.Process(id.Process)
 		if !found {
 			return false, errors.New("execution: retained Tool process is missing")
 		}
 		for _, pending := range process.PendingEffects {
-			if pending.Request.ID() != effectID {
+			if pending.Request.ID() != id {
 				continue
 			}
 			invocation, err := interaction.ToolInvocationFromRequest(pending.Request)
@@ -342,15 +301,15 @@ func (i *InteractionExecutor) originalSourcesAvailable(ctx context.Context, chec
 				return false, err
 			}
 			call := invocation.ToolCall()
-			if reference.process != rootID || reference.sequence != metadata.Start.ModelCallSequence || reference.index != metadata.Start.ToolCallIndex || call.ID != metadata.Start.SourceCallID || call.Name != metadata.Start.ToolName {
+			if reference.process != checkpoint.tree.Root || reference.sequence != metadata.Start.ModelCallSequence || reference.index != metadata.Start.ToolCallIndex || call.ID != metadata.Start.SourceCallID || call.Name != metadata.Start.ToolName {
 				return false, errors.New("execution: retained request differs from its captured attribution")
 			}
 		}
-		activation, err := originalToolActivation(*proof, checkpoint.bindings)
+		activation, err := originalToolActivation(metadata.Start.Source, proof.Release, checkpoint.bindings)
 		if err != nil {
 			return false, err
 		}
-		available, err := i.config.OriginalToolResults.AwaitOriginalToolSource(ctx, proof.Tool, proof.Release, proof.Authority, activation)
+		available, err := i.config.OriginalToolResults.AwaitOriginalToolSource(ctx, metadata.Start.Source, proof.Release, proof.Authority, activation)
 		if err != nil {
 			return false, err
 		}
@@ -363,16 +322,14 @@ func (i *InteractionExecutor) originalSourcesAvailable(ctx context.Context, chec
 	return true, nil
 }
 
-func (i *interactionSession) validateCapturedToolArguments(proofs map[scoperun.EffectID]toolResultMetadata) error {
-	for _, metadata := range proofs {
-		var owner *observedInteractionTool
-		for _, tools := range i.state.deployments.observedTools {
-			if candidate := tools[metadata.Receipt.Tool]; candidate != nil {
-				owner = candidate
-				break
-			}
+func (i *interactionSession) validateCapturedToolArguments(inspection scoperun.TreeInspection, proofs map[scoperun.EffectID]toolResultMetadata) error {
+	for id, metadata := range proofs {
+		process, found := inspection.Process(id.Process)
+		if !found {
+			return errors.New("execution: retained Tool process is missing")
 		}
-		if owner == nil {
+		owner := i.state.deployments.observedTools[process.Program][metadata.Start.Source]
+		if !owner.matchesReceipt(*metadata.Receipt) {
 			return errors.New("execution: captured Tool owner is unavailable")
 		}
 		if _, err := owner.binding.Contract().Prepare(toolcontract.Request{Name: metadata.Start.ToolName, Arguments: metadata.Start.Arguments}, toolcontract.Admission{}); err != nil {

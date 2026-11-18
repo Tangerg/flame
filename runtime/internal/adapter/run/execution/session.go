@@ -31,6 +31,7 @@ type interactionSession struct {
 	executionTrees runs.ExecutionTreeStore
 	toolResults    originalToolResults
 	ref            runs.ExecutorRef
+	rootID         scoperun.ProcessID
 	scope          runs.ExecutionScope
 	deployment     scoperun.Program[scoperun.Payload, scoperun.Payload]
 	input          scoperun.Payload
@@ -79,7 +80,6 @@ type interactionState struct {
 	pendingSteers              map[scoperun.SignalID]runs.PreparedSteer
 	pendingContinuation        *pendingInteractionContinuation
 	process                    *scoperun.Handle[scoperun.Payload]
-	admittedProcessID          scoperun.ProcessID
 	observer                   context.Context
 	phase                      interactionPhase
 	workersStarted             bool
@@ -152,6 +152,7 @@ func newInteractionSession(
 		executionTrees:  config.ExecutionTrees,
 		toolResults:     config.OriginalToolResults,
 		ref:             ref, scope: rootExecutionScope(start), lifetime: newInteractionLifetime(lifetime),
+		rootID: interactionStartID(start.SessionID, start.RunID).Root(),
 		state: interactionState{
 			pendingSteers:    make(map[scoperun.SignalID]runs.PreparedSteer),
 			delegateCalls:    make(map[delegateCallIdentity]*managedDelegateCall),
@@ -228,14 +229,17 @@ func (i *interactionState) durableContextCompacted() bool {
 	return i.durableContextWasCompacted
 }
 
-func (i *interactionState) begin() bool {
+func (i *interactionState) begin(boundary interactionBoundary) error {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	if i.phase != interactionPending {
-		return false
+		return errors.New("execution: Interaction execution was already begun")
+	}
+	if i.boundary != boundary || i.observer == nil {
+		return errors.New("execution: Interaction must be staged for this boundary and observed before begin")
 	}
 	i.phase = interactionBegun
-	return true
+	return nil
 }
 
 func (i *interactionState) setProcess(process *scoperun.Handle[scoperun.Payload]) {
@@ -444,15 +448,6 @@ func (i *interactionSession) consumeTelemetry() {
 	if _, err := i.telemetry.Consume(i.lifetime.releasing, process, 0); err != nil && i.lifetime.releasing.Err() == nil {
 		slog.ErrorContext(i.lifetime.releasing, "execution: observe Interaction log", "error", err)
 	}
-}
-
-func (i *interactionSession) processRootID() scoperun.ProcessID {
-	i.state.mu.Lock()
-	defer i.state.mu.Unlock()
-	if i.state.process == nil {
-		return i.state.admittedProcessID
-	}
-	return i.state.process.ID().Root()
 }
 
 func (i *interactionSession) commitFact(
@@ -809,12 +804,6 @@ func (i *interactionSession) publishProjectionFailure(cause error) {
 			cause = errors.Join(cause, err)
 		}
 	}
-	member := runs.ExecutorMember{}
-	i.state.mu.Lock()
-	if i.state.admittedProcessID.Valid() {
-		member.MemberID = i.state.admittedProcessID.String()
-	}
-	i.state.mu.Unlock()
 	failure := run.Failure{
 		Kind:   run.FailureInternal,
 		Detail: run.Diagnostic(cause),
@@ -823,7 +812,7 @@ func (i *interactionSession) publishProjectionFailure(cause error) {
 		failure.Detail = "executor result could not be projected"
 	}
 	i.lifetime.send(runs.ExecutorEvent{
-		Member:  member,
+		Member:  runs.ExecutorMember{MemberID: i.rootID.String()},
 		Payload: runs.NewSegmentEnded(run.Failed{Failure: failure}, 0),
 	})
 }

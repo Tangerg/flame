@@ -27,7 +27,7 @@ import (
 const answerCrashExit = 74
 
 type answerFixtureTrees struct {
-	runs.ExecutionTreeStore
+	executionJournal
 	results *testExecutionTrees
 }
 
@@ -36,12 +36,12 @@ func (s answerFixtureTrees) ExecutionResultCommitted(ctx context.Context, sessio
 }
 
 type answerCrashTrees struct {
-	runs.ExecutionTreeStore
+	executionJournal
 	count int
 }
 
 func (s answerCrashTrees) SaveExecutionTree(ctx context.Context, update runs.ExecutionTreeUpdate) error {
-	if err := s.ExecutionTreeStore.SaveExecutionTree(ctx, update); err != nil {
+	if err := s.executionJournal.SaveExecutionTree(ctx, update); err != nil {
 		return err
 	}
 	root, err := scoperun.ParseProcessID(update.Head.RootID)
@@ -64,7 +64,7 @@ func (s answerCrashTrees) SaveExecutionTree(ctx context.Context, update runs.Exe
 	return nil
 }
 
-func answerCrashExecutor(t *testing.T, trees runs.ExecutionTreeStore, workspace string) *InteractionExecutor {
+func answerCrashExecutor(t *testing.T, trees executionJournal, workspace string) *InteractionExecutor {
 	t.Helper()
 	question := newQuestionTool(t, "fixture_ask", "Ask for a value.",
 		[]runs.QuestionFieldSpec{{Prompt: "Which value?"}},
@@ -117,7 +117,7 @@ func TestAnswerDeliveryCrashHelper(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := db.ExecutorCheckpoints
-	executor := answerCrashExecutor(t, answerCrashTrees{ExecutionTreeStore: store, count: count}, workspace)
+	executor := answerCrashExecutor(t, answerCrashTrees{executionJournal: store, count: count}, workspace)
 	start := interactionTestStart()
 	start.CWD, start.WorkspaceCWD = workspace, workspace
 	start.InterruptTypes = []run.InterruptType{run.InterruptQuestion}
@@ -166,16 +166,14 @@ func TestAnswerReceiptsSurviveAbruptRestart(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
-			var rootID string
-			if err := db.QueryRowContext(t.Context(), `SELECT root_member_id FROM executor_checkpoints`).Scan(&rootID); err != nil {
-				t.Fatal(err)
-			}
+			start := interactionTestStart()
+			rootID := interactionStartID(start.SessionID, start.RunID).Root()
 			store := db.ExecutorCheckpoints
-			checkpoint, err := store.LoadCheckpoint(t.Context(), rootID)
+			checkpoint, err := store.LoadCheckpoint(t.Context(), rootID.String())
 			if err != nil {
 				t.Fatal(err)
 			}
-			executor := answerCrashExecutor(t, answerFixtureTrees{ExecutionTreeStore: store, results: testTrees(t)}, workspace)
+			executor := answerCrashExecutor(t, answerFixtureTrees{executionJournal: store, results: testTrees(t)}, workspace)
 			answers := checkpointAnswers(t, checkpoint)
 			ref, err := executor.StageAcceptedContinuation(t.Context(), rootInteractionExecutionContinuation(checkpoint, workspace, "exec_restored", run.Capabilities{InterruptTypes: []run.InterruptType{run.InterruptQuestion}}))
 			if err != nil {

@@ -97,7 +97,6 @@ func (i *interactionSession) restoreContinuationProjection(
 	if i.state.phase != interactionPending || i.state.process != nil {
 		return runs.ErrExecutionClaimed
 	}
-	i.state.admittedProcessID = checkpoint.tree.Root
 	i.state.restoreTree = checkpoint.tree
 	i.state.phase = interactionBegun
 	i.state.boundary = boundary

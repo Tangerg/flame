@@ -185,9 +185,10 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			if originalTool == "" {
 				t.Fatal("original Tool Item was not committed")
 			}
-			checkpoint, found, err := stores.ExecutorCheckpoints.LoadSessionCheckpoint(t.Context(), receipt.Acceptance.SessionID)
-			if err != nil || !found {
-				t.Fatalf("original context: %t,%v", found, err)
+			scopeRoot := (scoperun.StartID{Scope: receipt.Acceptance.SessionID, Key: receipt.Acceptance.RunID}).Root()
+			checkpoint, err := stores.ExecutorCheckpoints.LoadCheckpoint(t.Context(), scopeRoot.String())
+			if err != nil {
+				t.Fatalf("original Run's checkpoint: %v", err)
 			}
 			originalHead, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(t.Context(), checkpoint.SessionID, checkpoint.RootMemberID)
 			if err != nil || !found {
@@ -258,9 +259,9 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				t.Fatalf("final head: %t,%v", found, err)
 			}
 			if cut == "disabled" {
-				_, contextFound, contextErr := stores.ExecutorCheckpoints.LoadSessionCheckpoint(t.Context(), originalHead.SessionID)
-				if found || contextFound || contextErr != nil {
-					t.Fatalf("unrecoverable execution retained a continuation: head=%t context=%t error=%v", found, contextFound, contextErr)
+				_, contextErr := stores.ExecutorCheckpoints.LoadCheckpoint(t.Context(), scopeRoot.String())
+				if found || !errors.Is(contextErr, runs.ErrExecutorCheckpointNotFound) {
+					t.Fatalf("unrecoverable execution retained a continuation: head=%t error=%v", found, contextErr)
 				}
 			} else {
 				if !found {

@@ -73,7 +73,7 @@ func cloneLogEntry(entry scoperun.Entry) (scoperun.Entry, error) {
 }
 
 func (i *interactionSession) inspectCommittedTree(ctx context.Context) (scoperun.TreeInspection, error) {
-	history, err := i.committedTree(ctx, i.processRootID())
+	history, err := i.committedTree(ctx, i.rootID)
 	if err != nil {
 		return scoperun.TreeInspection{}, err
 	}

@@ -33,14 +33,11 @@ func (i *InteractionExecutor) PrepareContinuation(ctx context.Context, continuat
 	} else if err != nil {
 		return nil, err
 	}
-	checkpoint, err := decodeExecutorCheckpoint(continuation.Checkpoint)
+	checkpoint, err := decodeRunCheckpoint(continuation.Checkpoint, continuation.SessionID, continuation.RootRunID)
 	if err != nil {
 		return nil, fmt.Errorf("%w: decode continuation handoff: %w", runs.ErrExecutorStateLost, err)
 	}
-	root, err := scoperun.ParseProcessID(continuation.Checkpoint.RootMemberID)
-	if err != nil || root != checkpoint.handoff.rootID {
-		return nil, fmt.Errorf("%w: continuation root differs from its handoff", runs.ErrExecutorStateLost)
-	}
+	root := checkpoint.handoff.rootID
 	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, continuation.SessionID, root.String())
 	if err != nil {
 		return nil, err

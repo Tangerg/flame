@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 
+	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/agent/interaction"
 	scoperun "github.com/Tangerg/scope/agent/run"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -83,11 +84,15 @@ func (i *interactionSession) retainedToolReceipt(tree scoperun.Log, request scop
 		return toolResultMetadata{}, nil, nil
 	}
 	proof := *metadata.Receipt
-	owner := deployments.observedTools[request.ProgramRef()][proof.Tool]
-	if owner == nil || owner.receiptEvidence == nil || owner.receiptEvidence.Tool != proof.Tool || owner.receiptEvidence.Release != proof.Release || owner.receiptEvidence.Authority != proof.Authority || request.ID().Process.String() != proof.ProcessID || request.ID().String() != proof.EffectID {
+	owner := deployments.observedTools[request.ProgramRef()][metadata.Start.Source]
+	if request.ID() != proof.EffectID || !owner.matchesReceipt(proof) {
 		return toolResultMetadata{}, nil, errors.New("execution: Tool receipt source differs from the captured Tool")
 	}
 	return metadata, owner, nil
+}
+
+func (o *observedInteractionTool) matchesReceipt(proof toolReceiptEvidence) bool {
+	return o != nil && o.receiptRelease != nil && *o.receiptRelease == proof.Release && o.sourceFingerprint == proof.Authority
 }
 
 func (i *interactionSession) investigateToolReceipt(ctx context.Context, tree scoperun.Log, request scoperun.EffectRequest) (bool, error) {
@@ -100,12 +105,12 @@ func (i *interactionSession) investigateToolReceipt(ctx context.Context, tree sc
 	if err != nil {
 		return false, err
 	}
-	original, err := originalToolActivation(proof, []plugin.Activation{activation})
+	original, err := originalToolActivation(metadata.Start.Source, proof.Release, []plugin.Activation{activation})
 	if err != nil {
 		return false, err
 	}
 	queryCtx, stop := context.WithTimeout(ctx, auxiliaryOperationTimeout)
-	output, queryErr := i.toolResults.OriginalToolResult(queryCtx, proof.Tool, proof.Release, proof.Authority, original, metadata.Start.CallID, metadata.Start.Arguments)
+	output, queryErr := i.toolResults.OriginalToolResult(queryCtx, metadata.Start.Source, proof.Release, proof.Authority, original, metadata.Start.CallID, metadata.Start.Arguments)
 	stop()
 	if err := ctx.Err(); err != nil {
 		return false, err
@@ -171,11 +176,11 @@ func (i *interactionSession) publishToolReceipt(ctx context.Context, request sco
 	return true, nil
 }
 
-func originalToolActivation(proof toolReceiptEvidence, bindings []plugin.Activation) (plugin.Activation, error) {
-	server, _, found := proof.Tool.MCP()
+func originalToolActivation(ref tool.Ref, release framevalue.Digest, bindings []plugin.Activation) (plugin.Activation, error) {
+	server, _, found := ref.MCP()
 	installation, installed := server.Origin().Installation()
 	if !found || !installed {
 		return plugin.Activation{}, plugin.ErrInvalid
 	}
-	return plugins.OriginalActivation(bindings, installation, proof.Release, server.Name())
+	return plugins.OriginalActivation(bindings, installation, release, server.Name())
 }

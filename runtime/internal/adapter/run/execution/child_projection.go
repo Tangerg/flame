@@ -109,7 +109,7 @@ func (i *interactionSession) inspectCompletedDelegates(
 	if len(targets) == 0 {
 		return scoperun.TreeInspection{}, false, nil
 	}
-	history, err := i.committedTree(ctx, i.processRootID())
+	history, err := i.committedTree(ctx, i.rootID)
 	if err != nil || !hasDelegateExit(history, targets) {
 		return scoperun.TreeInspection{}, false, err
 	}
