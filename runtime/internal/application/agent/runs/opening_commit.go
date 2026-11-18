@@ -203,15 +203,15 @@ func (o OpeningCommit) validateResumeAcceptance() error {
 	if o.resumeAcceptance == nil {
 		return nil
 	}
-	if err := o.resumeAcceptance.Validate(); err != nil {
-		return fmt.Errorf("runs: opening resume acceptance: %w", err)
+	if len(o.resumeAcceptance.itemChanges) == 0 {
+		return errors.New("runs: resume acceptance has no settled Items")
 	}
 	if len(o.resume.Runs) == 0 {
 		return errors.New("runs: resumed opening has no Runs")
 	}
 	root := o.resume.Runs[len(o.resume.Runs)-1].State()
 	if o.resumeAcceptance.SessionID() != o.resume.SessionID() ||
-		o.resumeAcceptance.Pending().RootRunID != root.ID() {
+		o.resumeAcceptance.expected.RootRunID != root.ID() {
 		return errors.New("runs: opening resume acceptance differs from the resumed tree")
 	}
 	return nil

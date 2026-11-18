@@ -3,7 +3,6 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"maps"
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -19,8 +18,7 @@ import (
 type treeContinuation struct {
 	recoveredTools []RecoveredTool
 	rootRunID      string
-	interrupts     []transcript.Interrupt
-	approvalCalls  map[string]string
+	answered       []InterruptBinding
 	continuations  []Continuation
 	// runs are the parked Runs the continuations hand off, by ID. A resumed
 	// route reads its admission, accounting and creation from them; the
@@ -33,10 +31,9 @@ type treeContinuation struct {
 
 func (t *treeContinuation) answeredQuestionsFor(runID string) []transcript.Item {
 	var answered []transcript.Item
-	for _, open := range t.interrupts {
-		item := t.items[open.ItemID]
-		question, present := item.Question()
-		if item.RunID() == runID && present && question.Answered() {
+	for _, binding := range t.answered {
+		item := t.items[binding.InterruptItemID]
+		if binding.ToolCallID == "" && item.RunID() == runID {
 			answered = append(answered, item)
 		}
 	}
@@ -70,21 +67,17 @@ func (t *treeContinuation) run(runID string) (run.Run, bool) {
 	return value, found
 }
 
-func treeContinuationFromPending(
+func treeContinuationForAnswers(
 	pending Pending,
 	parked []run.Run,
 	itemsByID map[string]transcript.Item,
 ) (*treeContinuation, error) {
-	interrupts, err := pending.ProjectInterrupts(itemsByID)
-	if err != nil {
-		return nil, err
-	}
 	continuation := &treeContinuation{
 		rootRunID:     pending.RootRunID,
-		interrupts:    interrupts,
+		answered:      slices.Clone(pending.Bindings),
 		continuations: slices.Clone(pending.Continuations),
 		runs:          parkedRunsByID(parked),
-		items:         maps.Clone(itemsByID),
+		items:         itemsByID,
 	}
 	if err := continuation.validate(); err != nil {
 		return nil, err
@@ -92,18 +85,15 @@ func treeContinuationFromPending(
 	return continuation, nil
 }
 
-// validate proves one constructed continuation. Whether a Segment has one at
-// all is the caller's question, asked where a fresh Run and a resumed tree
-// diverge; every path here holds a value newTreeContinuation returned.
 func (t *treeContinuation) validate() error {
 	if err := identity.ValidateRun(t.rootRunID); err != nil {
 		return fmt.Errorf("runs: tree continuation root: %w", err)
 	}
-	if _, parked := t.runs[t.rootRunID]; !parked {
+	root, found := t.runs[t.rootRunID]
+	if !found {
 		return errors.New("runs: tree continuation root Run is not parked")
 	}
-	switch {
-	case len(t.continuations) == 0:
+	if len(t.continuations) == 0 {
 		return errors.New("runs: tree continuation has no Runs")
 	}
 
@@ -151,16 +141,11 @@ func (t *treeContinuation) validate() error {
 			)
 		}
 	}
-	for index, interrupt := range t.interrupts {
-		if interrupt.ItemID == "" || interrupt.RunID == "" {
-			return fmt.Errorf("runs: tree continuation interrupt[%d] has incomplete identity", index)
-		}
-		if _, exists := runIDs[interrupt.RunID]; !exists {
-			return fmt.Errorf(
-				"runs: tree continuation interrupt[%d] names removed Run %q",
-				index,
-				interrupt.RunID,
-			)
+	for _, binding := range t.answered {
+		runID, member := memberOwners[binding.MemberID]
+		item, found := t.items[binding.InterruptItemID]
+		if !member || !found || item.ID() != binding.InterruptItemID || item.RunID() != runID || item.SessionID() != root.SessionID() {
+			return fmt.Errorf("runs: continuation answer %q does not belong to member %q", binding.InterruptItemID, binding.MemberID)
 		}
 	}
 	return nil

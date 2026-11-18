@@ -499,11 +499,7 @@ func (e *Effects) acceptResumeAnswers(ctx context.Context, opening runs.OpeningC
 	if !reflect.DeepEqual(consumed, expected) {
 		return errors.New("segment: waiting hand-off changed before answer acceptance")
 	}
-	replacements, err := acceptance.ItemReplacements()
-	if err != nil {
-		return fmt.Errorf("segment: prepare answered interrupts: %w", err)
-	}
-	for _, replacement := range replacements {
+	for _, replacement := range acceptance.ItemReplacements() {
 		if err := e.itemReplacer.ReplaceItem(ctx, replacement); err != nil {
 			return fmt.Errorf("segment: record answered interrupt %q: %w", replacement.Expected().ID(), err)
 		}

@@ -21,7 +21,7 @@ func (p Pending) ProjectInterrupts(itemsByID map[string]transcript.Item) ([]tran
 		binding := p.Bindings[index]
 		continuation, _ := continuationForMember(p.Continuations, binding.MemberID)
 		item, found := itemsByID[open.ItemID]
-		if !found || item.RunID() != continuation.RunID {
+		if !found || item.ID() != open.ItemID || item.RunID() != continuation.RunID {
 			return nil, fmt.Errorf(
 				"interrupts: interrupt Item %q is not an Item of Run %q",
 				open.ItemID, continuation.RunID,

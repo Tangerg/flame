@@ -2,172 +2,48 @@ package runs
 
 import (
 	"fmt"
-	"maps"
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// ResumeAcceptance is the answer write-set an opening transaction accepts
-// together with its continuation. It binds one validated answer set to the exact
-// waiting hand-off it consumes and derives the transcript compare-and-swap the
-// acceptance settles. It carries no transaction identity or receipt: the opening
-// it travels with owns both, so the answers, consumed open set, and Segment
-// opening commit as one fact.
+// ResumeAcceptance carries the decided answer transitions. The same Item
+// values supply executor input and the opening's transcript compare-and-swap.
 type ResumeAcceptance struct {
-	// sessionID is the Session of the parked root Run read before acceptance.
-	sessionID string
-	expected  Pending
-	// items are the Items the hand-off names, read before acceptance. They own
-	// what each answered interrupt asked.
-	items   map[string]transcript.Item
-	answers []InterruptAnswer
-	// rememberedRules are the standing rules derived from the answered approvals
-	// and already validated against their frozen source authority. The acceptance
-	// transaction persists them atomically with the answers it settles.
+	sessionID       string
+	expected        Pending
+	itemChanges     []transcript.Replacement
 	rememberedRules []approval.Rule
 }
 
-// NewResumeAcceptance binds one validated answer set to the exact waiting
-// hand-off that consumes it.
-func NewResumeAcceptance(
+func prepareResumeAcceptance(
 	sessionID string,
 	expected Pending,
 	items map[string]transcript.Item,
-	answers []InterruptAnswer,
+	responses []ResumeResponse,
 ) (ResumeAcceptance, error) {
-	acceptance := ResumeAcceptance{
-		sessionID: sessionID, expected: expected.Clone(), items: maps.Clone(items),
-		answers: slices.Clone(answers),
+	if err := identity.ValidateSession(sessionID); err != nil {
+		return ResumeAcceptance{}, fmt.Errorf("runs: resume acceptance: %w", err)
 	}
-	if err := acceptance.Validate(); err != nil {
-		return ResumeAcceptance{}, err
+	interrupts, err := expected.ProjectInterrupts(items)
+	if err != nil {
+		return ResumeAcceptance{}, fmt.Errorf("runs: project open interrupts: %w", err)
 	}
-	replacements, err := acceptance.ItemReplacements()
+	changes, err := settleResumeAnswers(interrupts, items, responses)
 	if err != nil {
 		return ResumeAcceptance{}, err
 	}
-	for index, answer := range acceptance.answers {
-		for _, replacement := range replacements {
-			item := replacement.State()
-			if item.ID() != answer.InterruptItemID {
-				continue
-			}
-			resolution, err := acceptedItemResolution(item)
-			if err != nil {
-				return ResumeAcceptance{}, err
-			}
-			acceptance.answers[index].Resolution = resolution
-		}
-	}
-	return acceptance, nil
+	return ResumeAcceptance{sessionID: sessionID, expected: expected.Clone(), itemChanges: changes}, nil
 }
 
-func (r ResumeAcceptance) Validate() error {
-	if err := r.expected.Validate(); err != nil {
-		return fmt.Errorf("runs: resume acceptance Pending: %w", err)
-	}
-	if err := identity.ValidateSession(r.sessionID); err != nil {
-		return fmt.Errorf("runs: resume acceptance: %w", err)
-	}
-	interrupts, err := r.expected.ProjectInterrupts(r.items)
-	if err != nil {
-		return fmt.Errorf("runs: resume acceptance: %w", err)
-	}
-	if len(r.answers) != len(r.expected.Bindings) {
-		return fmt.Errorf(
-			"runs: resume acceptance has %d answers for %d boundaries",
-			len(r.answers), len(r.expected.Bindings),
-		)
-	}
-	for index, answer := range r.answers {
-		binding := r.expected.Bindings[index]
-		if answer.InterruptItemID != binding.InterruptItemID || answer.MemberID != binding.MemberID ||
-			answer.RequestID != binding.RequestID {
-			return fmt.Errorf("runs: resume acceptance answer[%d] differs from its pending boundary", index)
-		}
-		if err := answer.validateResolution(interrupts[index]); err != nil {
-			return fmt.Errorf("runs: resume acceptance answer[%d]: %w", index, err)
-		}
-	}
-	if _, err := r.ItemReplacements(); err != nil {
-		return fmt.Errorf("runs: resume acceptance Item projections: %w", err)
-	}
-	return nil
-}
-
-// SessionID returns the Session of the accepted tree's root Run.
 func (r ResumeAcceptance) SessionID() string { return r.sessionID }
 
-// Pending returns an isolated snapshot of the exact waiting hand-off the acceptance consumes.
 func (r ResumeAcceptance) Pending() Pending { return r.expected.Clone() }
 
-// Answers returns the isolated executor-bound answer set in canonical Pending order.
-func (r ResumeAcceptance) Answers() []InterruptAnswer { return slices.Clone(r.answers) }
-
-// WithRememberedRules binds the standing rules the acceptance persists together
-// with its answers. Each rule was constructed from a confirmed invocation and
-// checked against its frozen source authority, so this only records them on an
-// isolated copy of the acceptance.
-func (r ResumeAcceptance) WithRememberedRules(rules []approval.Rule) ResumeAcceptance {
-	r.rememberedRules = slices.Clone(rules)
-	return r
-}
-
-// RememberedRules returns an isolated copy of the standing rules the acceptance
-// persists in its transaction.
 func (r ResumeAcceptance) RememberedRules() []approval.Rule { return slices.Clone(r.rememberedRules) }
 
-// ItemReplacements derives the transcript compare-and-swap write-set the
-// acceptance settles: each Question Item read before acceptance carries its
-// accepted answers, and each reviewed ToolCall carries its full resolution. The
-// persistence port executes these replacements in the same transaction that
-// consumes the open set and opens the continuation.
-func (r ResumeAcceptance) ItemReplacements() ([]transcript.Replacement, error) {
-	answersByItem := make(map[string]InterruptAnswer, len(r.answers))
-	for _, answer := range r.answers {
-		answersByItem[answer.InterruptItemID] = answer
-	}
-	replacements := make([]transcript.Replacement, 0, len(r.expected.Interrupts))
-	for _, open := range r.expected.Interrupts {
-		answer, ok := answersByItem[open.ItemID]
-		if !ok {
-			return nil, fmt.Errorf("interrupt item %q has no answer", open.ItemID)
-		}
-		expected, found := r.items[open.ItemID]
-		if !found {
-			return nil, fmt.Errorf("interrupt item %q was not read", open.ItemID)
-		}
-		var itemReplacement transcript.Replacement
-		var err error
-		switch open.Type() {
-		case run.InterruptQuestion:
-			itemReplacement, err = expected.AnswerQuestion(answer.Resolution.Question().Answers())
-		case run.InterruptApproval:
-			itemReplacement, err = expected.ResolveToolApproval(*answer.Resolution.Approval())
-		default:
-			err = fmt.Errorf("unknown interrupt kind %q", open.Type())
-		}
-		if err != nil {
-			return nil, fmt.Errorf("settle interrupt item %q: %w", open.ItemID, err)
-		}
-		replacements = append(replacements, itemReplacement)
-	}
-	return replacements, nil
-}
-
-// approvalCalls relates each reviewed Item to its executor call. The accepted
-// verdict belongs to the committed Item, not to this routing projection.
-func (r ResumeAcceptance) approvalCalls() map[string]string {
-	calls := make(map[string]string)
-	for index, open := range r.expected.Interrupts {
-		if open.Type() != run.InterruptApproval {
-			continue
-		}
-		calls[open.ItemID] = r.expected.Bindings[index].ToolCallID
-	}
-	return calls
+func (r ResumeAcceptance) ItemReplacements() []transcript.Replacement {
+	return slices.Clone(r.itemChanges)
 }

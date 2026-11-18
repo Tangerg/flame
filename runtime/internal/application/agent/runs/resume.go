@@ -49,11 +49,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 	if err != nil {
 		return StartResult{}, err
 	}
-	interrupts, err := pending.ProjectInterrupts(itemsByID)
-	if err != nil {
-		return StartResult{}, fmt.Errorf("runs: project open interrupts: %w", err)
-	}
-	answers, err := resolveResumeResponses(interrupts, pending.Bindings, cmd.Responses)
+	acceptance, err := prepareResumeAcceptance(sessionID, pending, itemsByID, cmd.Responses)
 	if err != nil {
 		return StartResult{}, err
 	}
@@ -69,11 +65,14 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 		return StartResult{}, err
 	}
 
-	acceptance, err := NewResumeAcceptance(sessionID, pending, itemsByID, answers)
+	for _, change := range acceptance.itemChanges {
+		item := change.State()
+		itemsByID[item.ID()] = item
+	}
+	answers, err := pending.settledAnswers(sessionID, itemsByID)
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare resume acceptance: %w", err)
 	}
-	answers = acceptance.Answers()
 	ruleCandidates, err := rememberedRuleCandidates(sessionID, sess.Workspace().Path(), pending, itemsByID, answers)
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare remembered rule candidates: %w", err)
@@ -95,15 +94,14 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 		return StartResult{}, err
 	}
 	if len(requests) > 0 {
-		rememberedRules := make([]approval.Rule, 0, len(requests))
+		acceptance.rememberedRules = make([]approval.Rule, 0, len(requests))
 		for _, request := range requests {
 			rule, prepareErr := c.approvalRules.PrepareRule(ctx, request)
 			if prepareErr != nil {
 				return StartResult{}, fmt.Errorf("runs: prepare remembered approval rule: %w", prepareErr)
 			}
-			rememberedRules = append(rememberedRules, rule)
+			acceptance.rememberedRules = append(acceptance.rememberedRules, rule)
 		}
-		acceptance = acceptance.WithRememberedRules(rememberedRules)
 	}
 	segmentID := c.segments.newSegmentID()
 	var committedInput *CommittedUserInput
@@ -113,7 +111,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 			Content: transcript.CloneContent(cmd.Input),
 		}
 	}
-	continuation, err := acceptance.treeContinuation(pending, parkedRuns, itemsByID)
+	continuation, err := treeContinuationForAnswers(pending, parkedRuns, itemsByID)
 	if err != nil {
 		return StartResult{}, err
 	}
@@ -148,7 +146,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 	}
 	// The standing rules committed inside the acceptance; their read model is
 	// invalidated only now that the transaction is durable.
-	if len(acceptance.RememberedRules()) > 0 {
+	if len(acceptance.rememberedRules) > 0 {
 		c.segments.publications.publishApprovalsChanged()
 	}
 	// The continuation is durably accepted, which consumed the whole open set: the
@@ -174,8 +172,8 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 // standing rule and assembles the authority skeleton the acceptance owner derives
 // a rule from. The frozen tool authority comes from the interrupt binding, the
 // scope and decision from the accepted answer, and the effective arguments from
-// the confirmed edit or the original invocation. Interrupts, bindings, and
-// answers share one order, which ResumeAcceptance already validates.
+// the confirmed edit or the original invocation. The answers follow the
+// binding order because both are projected from the settled Items.
 func rememberedRuleCandidates(
 	sessionID, projectDir string,
 	pending Pending,
@@ -184,18 +182,14 @@ func rememberedRuleCandidates(
 ) ([]RememberedRuleCandidate, error) {
 	candidates := make([]RememberedRuleCandidate, 0, len(answers))
 	for index, answer := range answers {
-		open := pending.Interrupts[index]
-		if open.Type() != run.InterruptApproval || open.Approval == nil || !open.Approval.Rememberable {
-			continue
-		}
 		resolution := answer.Resolution.Approval()
-		if resolution.RememberScope == "" {
+		if resolution == nil || resolution.RememberScope == "" {
 			continue
 		}
 		binding := pending.Bindings[index]
-		effective, err := effectiveApprovalArguments(items[open.ItemID], *resolution)
+		effective, err := effectiveApprovalArguments(items[answer.InterruptItemID], *resolution)
 		if err != nil {
-			return nil, fmt.Errorf("item %q: %w", open.ItemID, err)
+			return nil, fmt.Errorf("item %q: %w", answer.InterruptItemID, err)
 		}
 		candidates = append(candidates, RememberedRuleCandidate{
 			Request: approval.RememberRequest{
@@ -268,21 +262,4 @@ func validateResumeInput(pending Pending, parkedRuns []run.Run, cmd ResumeComman
 		}
 	}
 	return nil
-}
-
-func (r ResumeAcceptance) treeContinuation(pending Pending, parkedRuns []run.Run, itemsByID map[string]transcript.Item) (*treeContinuation, error) {
-	continuation, err := treeContinuationFromPending(pending, parkedRuns, itemsByID)
-	if err != nil {
-		return nil, fmt.Errorf("runs: prepare tree continuation: %w", err)
-	}
-	continuation.approvalCalls = r.approvalCalls()
-	replacements, err := r.ItemReplacements()
-	if err != nil {
-		return nil, fmt.Errorf("runs: prepare tree continuation: %w", err)
-	}
-	for _, replacement := range replacements {
-		item := replacement.State()
-		continuation.items[item.ID()] = item
-	}
-	return continuation, nil
 }

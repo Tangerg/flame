@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
-	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -59,7 +57,7 @@ func (c *Coordinator) reviveAcceptedContinuation(ctx context.Context, accepted A
 	if err != nil {
 		return err
 	}
-	answers, err := accepted.answers(items)
+	answers, err := accepted.Pending.settledAnswers(accepted.SessionID, items)
 	if err != nil {
 		return c.retireUnrestorableAccepted(ctx, accepted, err)
 	}
@@ -90,7 +88,7 @@ func (c *Coordinator) reviveAcceptedContinuation(ctx context.Context, accepted A
 	if err != nil {
 		return c.retireUnrestorableAccepted(ctx, accepted, err)
 	}
-	continuation, err := accepted.treeContinuation(values, items)
+	continuation, err := treeContinuationForAnswers(accepted.Pending, values, items)
 	if err != nil {
 		return c.retireUnrestorableAccepted(ctx, accepted, err)
 	}
@@ -142,25 +140,4 @@ func (a AcceptedContinuation) validateRuns(values []run.Run) error {
 		}
 	}
 	return nil
-}
-
-func (a AcceptedContinuation) treeContinuation(values []run.Run, items map[string]transcript.Item) (*treeContinuation, error) {
-	continuation := &treeContinuation{rootRunID: a.RootRunID(), continuations: slices.Clone(a.Pending.Continuations), runs: parkedRunsByID(values), items: maps.Clone(items), approvalCalls: make(map[string]string)}
-	for index, binding := range a.Pending.Bindings {
-		item := items[binding.InterruptItemID]
-		open := a.Pending.Interrupts[index]
-		value := transcript.Interrupt{ItemID: item.ID(), RunID: item.RunID(), ItemOccurredAt: item.OccurredAt()}
-		if question, ok := item.Question(); ok {
-			value.Prompt = question
-		} else {
-			call, ok := item.ToolCall()
-			if !ok || open.Approval == nil {
-				return nil, errors.New("runs: accepted approval has no Tool invocation")
-			}
-			value.Prompt = transcript.Approval{Tool: call.Invocation, Risk: open.Approval.Risk, Reason: open.Approval.Reason, Rememberable: open.Approval.Rememberable}
-			continuation.approvalCalls[item.ID()] = binding.ToolCallID
-		}
-		continuation.interrupts = append(continuation.interrupts, value)
-	}
-	return continuation, continuation.validate()
 }

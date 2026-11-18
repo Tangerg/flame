@@ -7,7 +7,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 // AcceptedContinuation is the Run-owned binding that lets boot recovery revive an
@@ -85,51 +84,4 @@ func (a AcceptedContinuation) Clone() AcceptedContinuation {
 	a.Pending = a.Pending.Clone()
 	a.Segments = slices.Clone(a.Segments)
 	return a
-}
-
-// answers rebuilds the exact executor-bound answer set from the retained routing
-// and the settled Items the acceptance committed. The resolution of each answer is
-// read back from its Item, which owns it; this binding owns only the routing, so a
-// re-delivered Signal reproduces the same identity and bytes.
-func (a AcceptedContinuation) answers(items map[string]transcript.Item) ([]InterruptAnswer, error) {
-	answers := make([]InterruptAnswer, 0, len(a.Pending.Bindings))
-	for _, binding := range a.Pending.Bindings {
-		item, ok := items[binding.InterruptItemID]
-		if !ok {
-			return nil, fmt.Errorf("runs: accepted continuation item %q is missing", binding.InterruptItemID)
-		}
-		member, _ := continuationForMember(a.Pending.Continuations, binding.MemberID)
-		if item.SessionID() != a.SessionID || item.RunID() != member.RunID {
-			return nil, errors.New("runs: accepted continuation answer belongs to another owner")
-		}
-		resolution, err := acceptedItemResolution(item)
-		if err != nil {
-			return nil, fmt.Errorf("runs: accepted continuation item %q: %w", binding.InterruptItemID, err)
-		}
-		answers = append(answers, InterruptAnswer{
-			InterruptItemID: binding.InterruptItemID,
-			MemberID:        binding.MemberID,
-			RequestID:       binding.RequestID,
-			Resolution:      resolution,
-		})
-	}
-	return answers, nil
-}
-
-// acceptedItemResolution reads the committed resolution a settled interrupt Item
-// owns. A Question Item carries its answers; a reviewed ToolCall carries its full
-// approval resolution. The derivation is the exact inverse of the acceptance
-// write, so a re-delivered Signal reproduces the same identity and bytes.
-func acceptedItemResolution(item transcript.Item) (run.InterruptResolution, error) {
-	if question, ok := item.Question(); ok {
-		if !question.Answered() {
-			return run.InterruptResolution{}, errors.New("question item is not answered")
-		}
-		return run.NewQuestionAnswer(question.Answers)
-	}
-	call, ok := item.ToolCall()
-	if !ok || call.Approval == nil {
-		return run.InterruptResolution{}, errors.New("approval item has no accepted resolution")
-	}
-	return run.NewApprovalAnswer(*call.Approval)
 }

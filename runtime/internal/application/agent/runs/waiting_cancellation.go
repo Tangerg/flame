@@ -181,18 +181,20 @@ func (w waitingCancellationBuilder) build() (waitingCancellationTransformation, 
 	if err != nil {
 		return waitingCancellationTransformation{}, err
 	}
-	interrupts := make([]transcript.Interrupt, len(kept))
 	open := make([]OpenInterrupt, len(kept))
 	for position, index := range kept {
-		interrupts[position], open[position] = w.plan.interrupts[index], w.plan.pending.Interrupts[index]
-	}
-	continuation, err := w.treeContinuation(interrupts, continuations)
-	if err != nil {
-		return waitingCancellationTransformation{}, err
+		open[position] = w.plan.pending.Interrupts[index]
 	}
 	remaining, err := w.remainingPending(open, bindings, continuations)
 	if err != nil {
 		return waitingCancellationTransformation{}, err
+	}
+	var continuation *treeContinuation
+	if remaining == nil {
+		continuation, err = w.treeContinuation(continuations)
+		if err != nil {
+			return waitingCancellationTransformation{}, err
+		}
 	}
 	return waitingCancellationTransformation{
 		terminalRuns:   terminalRuns,
@@ -420,12 +422,10 @@ func (w waitingCancellationBuilder) remainingInterruptions(
 }
 
 func (w waitingCancellationBuilder) treeContinuation(
-	interrupts []transcript.Interrupt,
 	continuations []Continuation,
 ) (*treeContinuation, error) {
 	continuation := &treeContinuation{
 		rootRunID:     w.plan.pending.RootRunID,
-		interrupts:    slices.Clone(interrupts),
 		continuations: slices.Clone(continuations),
 		runs:          parkedRunsByID(w.plan.survivingRuns()),
 		items:         maps.Clone(w.plan.items),

@@ -328,10 +328,11 @@ retain their content and require one nonblank value unless explicitly skipped.
 
 Question and Approval executor answers use disjoint, strict payloads. A Question
 contains only its ordered answers; an Approval contains its Domain verdict,
-edited arguments, reason and remember scope. Both first delivery and restart
-project the settled transcript Item through the same rule. Accepted continuation
-storage retains only routing. The former mixed `approved`/`answers` payload is
-refused. Finish old waiting work with its original executable and retain that
+edited arguments, reason and remember scope. Resume decides each Item replacement
+once and commits those replacements with the Segment opening. First delivery
+and restart project answers from the same settled Item values. Accepted
+continuation storage retains the routing. The former mixed `approved`/`answers`
+payload is refused. Finish old waiting work with its original executable and retain that
 original directory; the existing exact BuildID boundary governs checkpoint reuse.
 
 ## Data directory ownership

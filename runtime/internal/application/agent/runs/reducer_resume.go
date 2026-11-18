@@ -15,7 +15,7 @@ type resumeBinding struct {
 
 func resumeBindingFrom(continuation treeContinuation, runID string) *resumeBinding {
 	builder := newResumeBindingBuilder()
-	if err := builder.addInterrupts(continuation, runID); err != nil {
+	if err := builder.addAnsweredApprovals(continuation, runID); err != nil {
 		return &resumeBinding{err: err}
 	}
 	if member, found := continuation.forRun(runID); found {
@@ -36,32 +36,19 @@ func newResumeBindingBuilder() *resumeBindingBuilder {
 	}}
 }
 
-func (r *resumeBindingBuilder) addInterrupts(continuation treeContinuation, runID string) error {
-	for _, pending := range continuation.interrupts {
-		if pending.RunID != runID || pending.ItemID == "" {
+func (r *resumeBindingBuilder) addAnsweredApprovals(continuation treeContinuation, runID string) error {
+	for _, answer := range continuation.answered {
+		item := continuation.items[answer.InterruptItemID]
+		if answer.ToolCallID == "" || item.RunID() != runID {
 			continue
 		}
-		switch prompt := pending.Prompt.(type) {
-		case transcript.Approval:
-			if prompt.Tool.Name != "" {
-				callID, found := continuation.approvalCalls[pending.ItemID]
-				item := continuation.items[pending.ItemID]
-				call, _ := item.ToolCall()
-				if !found || callID == "" || call.Approval == nil {
-					return fmt.Errorf("resume Tool approval %q has no accepted resolution", pending.ItemID)
-				}
-				// Accepting the answer settles the verdict, while the Tool Item
-				// stays open until execution finishes or activation is abandoned.
-				r.binding.drained = append(r.binding.drained, DrainedTool{
-					ItemID: pending.ItemID, CallID: callID,
-				})
-				r.binding.callItems[callID] = item
-			}
-		case transcript.Question:
-			// Question Items are complete prompt facts when the tree parks. Pending
-			// owns whether an answer is still outstanding, so resume has no Item
-			// lifecycle to settle.
+		call, ok := item.ToolCall()
+		if !ok || call.Approval == nil {
+			return fmt.Errorf("resume Tool approval %q has no accepted resolution", item.ID())
 		}
+		// Accepting the verdict leaves its Tool Item open until execution settles.
+		r.binding.drained = append(r.binding.drained, DrainedTool{ItemID: item.ID(), CallID: answer.ToolCallID})
+		r.binding.callItems[answer.ToolCallID] = item
 	}
 	return nil
 }
