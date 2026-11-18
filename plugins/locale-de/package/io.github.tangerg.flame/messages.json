@@ -137,6 +137,7 @@
   "dock.tabs.closeOthers": "Andere Bereiche schließen",
   "dock.tabs.moveLeft": "Bereich nach links verschieben",
   "dock.tabs.moveRight": "Bereich nach rechts verschieben",
+  "dock.tabs.reorder": "{{title}} neu anordnen",
   "dock.tabs.moved": "{{title}} an Position {{position}} von {{total}} verschoben",
   "workspace.view.openBeside": "Im Kontext-Dock öffnen",
   "workspace.view.unavailable.title": "Ansicht nicht verfügbar",

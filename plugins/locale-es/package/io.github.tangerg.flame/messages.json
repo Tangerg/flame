@@ -137,6 +137,7 @@
   "dock.tabs.closeOthers": "Cerrar los demás paneles",
   "dock.tabs.moveLeft": "Mover panel a la izquierda",
   "dock.tabs.moveRight": "Mover panel a la derecha",
+  "dock.tabs.reorder": "Reordenar {{title}}",
   "dock.tabs.moved": "{{title}} se ha movido a la posición {{position}} de {{total}}",
   "workspace.view.openBeside": "Abrir en el panel de contexto",
   "workspace.view.unavailable.title": "Vista no disponible",

@@ -137,6 +137,7 @@
   "dock.tabs.closeOthers": "Fermer les autres panneaux",
   "dock.tabs.moveLeft": "Déplacer le panneau à gauche",
   "dock.tabs.moveRight": "Déplacer le panneau à droite",
+  "dock.tabs.reorder": "Réorganiser {{title}}",
   "dock.tabs.moved": "{{title}} déplacé à la position {{position}} sur {{total}}",
   "workspace.view.openBeside": "Ouvrir dans le dock de contexte",
   "workspace.view.unavailable.title": "Vue indisponible",

@@ -137,6 +137,7 @@
   "dock.tabs.closeOthers": "他のパネルを閉じる",
   "dock.tabs.moveLeft": "パネルを左に移動",
   "dock.tabs.moveRight": "パネルを右に移動",
+  "dock.tabs.reorder": "「{{title}}」を並べ替え",
   "dock.tabs.moved": "{{title}}を{{total}}件中{{position}}番目に移動しました",
   "workspace.view.openBeside": "コンテキストドックで開く",
   "workspace.view.unavailable.title": "ビューを利用できません",

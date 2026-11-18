@@ -210,6 +210,7 @@ function DockHeader({
             const tab = tabs.find((tab) => tab.id === id);
             return result && tab ? t("dock.tabs.moved", { title: tab.title, ...result }) : null;
           },
+          handleLabel: (title) => t("dock.tabs.reorder", { title }),
           moveLeftLabel: t("dock.tabs.moveLeft"),
           moveRightLabel: t("dock.tabs.moveRight"),
         }}
@@ -551,7 +552,8 @@ export function ChatPanel({ onSend, ref }: Props) {
                         />
                       </div>
                     </Activity>
-                    {[...mountedViewIds].map((viewId) => {
+                    {/* Moving retained readers with the tab strip can reset their WebKit scroll positions. */}
+                    {[...mountedViewIds].sort().map((viewId) => {
                       const visible = viewId === presentedViewId && (presentedMain || dockVisible);
                       return (
                         <div

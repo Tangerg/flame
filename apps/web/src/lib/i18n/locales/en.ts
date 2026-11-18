@@ -161,6 +161,7 @@ export const en: Record<string, string> = {
   "dock.tabs.closeOthers": "Close other panels",
   "dock.tabs.moveLeft": "Move panel left",
   "dock.tabs.moveRight": "Move panel right",
+  "dock.tabs.reorder": "Reorder {{title}}",
   "dock.tabs.moved": "{{title}} moved to position {{position}} of {{total}}",
   "workspace.view.openBeside": "Open in the context dock",
   "workspace.view.unavailable.title": "View unavailable",

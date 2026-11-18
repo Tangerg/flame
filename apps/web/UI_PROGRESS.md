@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure and file-reading return. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -31832,8 +31832,64 @@ bundle registrations, four isolated profile/cache paths and the owned
 build and installation outputs were removed.
 
 The next Tab after background closure reached the surviving Session
-trajectory AX group while the pointer remained over that row. Inspect the
-actual focus target and composite keyboard order before changing the strip.
+trajectory AX group. The follow-up below identifies the actual focus target
+and repairs the composite keyboard order.
+
+### Tab navigation, sorting and retained reading (2026-11-19)
+
+At `fe500d9d4`, Wails at 320 px reproduces an unnamed keyboard stop before
+Files. After a background tab closes, the following Tab also lands on an
+unnamed draggable row. The dnd-kit accessibility plugin gives the row a
+tab stop when the sortable has no handle. Space starts keyboard dragging
+there, and accepting a move can select the row that was previously inactive.
+
+`AgentDockTabs` now exposes a localized reorder handle on the selected tab
+when it has peers. Base UI tabs handle selection and arrow navigation. The
+separate handle gives Space, arrows and Escape to the existing dnd-kit
+keyboard sensor. The pointer sensor still reads the row and respects native
+interactive descendants. The hover close button is pointer-reachable, and
+Delete and the context menu remain keyboard close actions. The workspace
+navigator commits one tab order for all these commands.
+
+Moving Files forward exposed a second failure in the candidate. WebKit
+returned the still-open file to its opening heading because React moved
+its retained reader with the tab order. `ChatPanel` now renders the same
+mounted readers in a stable view-ID order. Selection and visibility still
+come from the workspace navigator. The change preserves the scroll node
+through either keyboard or menu reordering without storing its scroll offset.
+
+The target report's Dock section, the installed dnd-kit 0.5.3 sensors and
+the Base UI composite key handler establish the operation boundaries.
+The strip keeps its quiet selected surface and existing overflow reveal.
+[dnd-kit sensors](https://dndkit.com/react/guides/sensors/)
+[WAI-ARIA Tabs](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/)
+
+Wails v3.1.0 at Actual Size qualifies the recorded loopback task.
+
+- ZH/dark/18 px/`#3B82F6`/motion off at 320 px: Space and arrows move
+  Files from first to last, with focus on its localized handle. The visible
+  HTML, Mermaid and SVG blocks and “Where the boundary is enforced” retain
+  their position in `reading-guide.md`. Escape cancels a second drag.
+  The keyboard context menu moves Files left, and arrows on the tab visit
+  Trajectory and return to the same file.
+- EN/light/14 px/Flame Orange/full motion at 320 px: Tab from the resize
+  seam reaches Files, Reorder Files and Browse panels in order. Tiling the
+  native window to about 1122×950 CSS px leaves the reader usable. Back to
+  files focuses its source row. Cmd+L resumes the unsent draft at the
+  original caret, producing `draftxtail` after inserting `x`.
+- The EN pointer gesture picks up Files and previews it at the last
+  position. The automated gesture leaves the drag active. A subsequent
+  native click finishes it and commits the projected order. A single
+  mouse-held drag and release remains unqualified.
+
+`make check-native`, the canonical Lab build, scoped Prettier, Web
+typecheck, 81 schema contract tests, locale coverage for 925 keys across
+eight locales and the bootstrap, plugin resource, bundle and plugin
+module checks pass. Both isolated native bundles pass signature
+verification. VoiceOver, live Runtime execution, browser visual suites
+and benchmarks were outside this scope. The owned Wails instances and
+previews are stopped. Both bundle registrations, the private profiles,
+build outputs and temporary logs are removed.
 
 ### Current tab visibility after reordering
 

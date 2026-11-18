@@ -137,6 +137,7 @@
   "dock.tabs.closeOthers": "다른 패널 닫기",
   "dock.tabs.moveLeft": "패널을 왼쪽으로 이동",
   "dock.tabs.moveRight": "패널을 오른쪽으로 이동",
+  "dock.tabs.reorder": "{{title}} 순서 변경",
   "dock.tabs.moved": "{{title}} 패널을 {{total}}개 중 {{position}}번째로 이동했습니다",
   "workspace.view.openBeside": "컨텍스트 독에서 열기",
   "workspace.view.unavailable.title": "뷰를 사용할 수 없음",

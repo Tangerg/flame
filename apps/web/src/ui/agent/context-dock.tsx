@@ -1,4 +1,4 @@
-import { DragDropProvider } from "@dnd-kit/react";
+import { DragDropProvider, KeyboardSensor, PointerSensor } from "@dnd-kit/react";
 import { Separator } from "react-resizable-panels";
 import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 import { iconGlyph } from "@/ui/icons/index";
@@ -21,17 +21,68 @@ import { handoffFocus, isImeKey, vocab, useContentVisible } from "@flame/ui";
 import { reveal } from "@/ui/atoms/reveal";
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 import { Tooltip } from "@flame/ui/tooltip";
+
+const dockSortSensors = [
+  PointerSensor.configure({ activatorElements: ({ element }) => [element] }),
+  KeyboardSensor,
+];
+
 function SortableTabRow({
-  id,
+  tab,
   index,
   disabled,
-  children,
-  ...props
-}: React.ComponentProps<"div"> & { id: string; index: number; disabled: boolean }) {
-  const { ref, isDragging } = useSortable({ id, index, disabled });
+  dragging,
+  reorderLabel,
+  onClose,
+}: {
+  tab: AgentDockTab;
+  index: number;
+  disabled: boolean;
+  dragging: boolean;
+  reorderLabel: string;
+  onClose(source: HTMLElement): void;
+}) {
+  const { ref, handleRef, isDragging } = useSortable({ id: tab.id, index, disabled });
+  const showHandle = tab.active && !disabled;
   return (
-    <div {...props} ref={ref} data-dragging={isDragging ? "" : undefined}>
-      {children}
+    <div
+      ref={ref}
+      role="presentation"
+      data-active={tab.active ? "" : undefined}
+      data-dock-tab-row={tab.id}
+      data-dragging={isDragging ? "" : undefined}
+      onMouseDownCapture={(event) => {
+        if (event.button === 1) event.preventDefault();
+      }}
+      onAuxClick={(event) => {
+        if (event.button === 1) {
+          event.preventDefault();
+          onClose(event.currentTarget);
+        }
+      }}
+      {...stylex.props(reveal.host, styles.tab)}
+    >
+      <DockTab tab={tab} dragging={dragging} onClose={onClose} />
+      <IconButton
+        ref={handleRef}
+        data-dock-sort-handle=""
+        icon={iconGlyph("grip-horizontal")}
+        size="xs"
+        quiet
+        aria-label={reorderLabel}
+        tabIndex={showHandle ? 0 : -1}
+        styles={showHandle ? styles.sortHandle : styles.hiddenSortHandle}
+      />
+      <IconButton
+        data-reveal="hover"
+        icon={iconGlyph("x")}
+        size="xs"
+        quiet
+        aria-label={tab.closeLabel}
+        tabIndex={-1}
+        onClick={(event) => onClose(event.currentTarget)}
+        className={stylex.props(styles.tabClose, reveal.pointerAffordance).className}
+      />
     </div>
   );
 }
@@ -56,6 +107,7 @@ export interface AgentDockTabsProps {
   fallbackFocus?: RefObject<HTMLElement | null>;
   reorder?: {
     onMove: (id: string, toIndex: number) => string | null;
+    handleLabel: (title: string) => string;
     moveLeftLabel: string;
     moveRightLabel: string;
   };
@@ -107,6 +159,8 @@ const styles = stylex.create({
   },
   labelClosable: { paddingLeft: "var(--dock-tab-inset)", paddingRight: space.s1 },
   glyph: { flexShrink: 0, opacity: "var(--glyph-step)" },
+  sortHandle: { flexShrink: 0, cursor: "grab" },
+  hiddenSortHandle: { display: "none" },
   tabClose: { marginRight: space.s0_5 },
   badge: { flexShrink: 0, fontFamily: "var(--font-mono)", lineHeight: 1, color: color.fgFaint },
   contents: { display: "contents" },
@@ -345,6 +399,7 @@ export function AgentDockTabs({ tabs, ariaLabel, fallbackFocus, reorder }: Agent
       </span>
       <DragDropProvider
         key={visible ? "active" : "hidden"}
+        sensors={dockSortSensors}
         onDragStart={({ operation }) =>
           setDraggingId(operation.source ? String(operation.source.id) : null)
         }
@@ -360,41 +415,24 @@ export function AgentDockTabs({ tabs, ariaLabel, fallbackFocus, reorder }: Agent
           aria-label={ariaLabel}
           {...stylex.props(styles.contents)}
           activateOnFocus
+          onKeyDown={(event) => {
+            if (
+              event.target instanceof Element &&
+              event.target.hasAttribute("data-dock-sort-handle")
+            )
+              event.preventBaseUIHandler();
+          }}
         >
           {tabs.map((tab, index) => (
             <ContextMenu.Root key={tab.id}>
               <SortableTabRow
-                id={tab.id}
+                tab={tab}
                 index={index}
                 disabled={!visible || !reorder || tabs.length < 2}
-                data-active={tab.active ? "" : undefined}
-                data-dock-tab-row={tab.id}
-                onMouseDownCapture={(event) => {
-                  if (event.button === 1) event.preventDefault();
-                }}
-                onAuxClick={(event) => {
-                  if (event.button === 1) {
-                    event.preventDefault();
-                    close(tab, event.currentTarget);
-                  }
-                }}
-                {...stylex.props(reveal.host, styles.tab)}
-              >
-                <DockTab
-                  tab={tab}
-                  dragging={draggingId !== null}
-                  onClose={(source) => close(tab, source)}
-                />
-                <IconButton
-                  data-reveal="hover"
-                  icon={iconGlyph("x")}
-                  size="xs"
-                  quiet
-                  aria-label={tab.closeLabel}
-                  onClick={(event) => close(tab, event.currentTarget)}
-                  className={stylex.props(styles.tabClose, reveal.pointerAffordance).className}
-                />
-              </SortableTabRow>
+                dragging={draggingId !== null}
+                reorderLabel={reorder?.handleLabel(tab.title) ?? tab.title}
+                onClose={(source) => close(tab, source)}
+              />
               <ContextMenu.Content aria-label={tab.title} data-dock-tab-menu={tab.id}>
                 {reorder && (
                   <>

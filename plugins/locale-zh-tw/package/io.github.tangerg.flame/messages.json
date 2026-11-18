@@ -141,6 +141,7 @@
   "dock.tabs.closeOthers": "關閉其他面板",
   "dock.tabs.moveLeft": "向左移動面板",
   "dock.tabs.moveRight": "向右移動面板",
+  "dock.tabs.reorder": "調整「{{title}}」的順序",
   "dock.tabs.moved": "{{title}}已移至第 {{position}} 項，共 {{total}} 項",
   "workspace.view.openBeside": "在內容面板中開啟",
   "workspace.view.unavailable.title": "檢視不可用",
