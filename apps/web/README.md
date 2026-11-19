@@ -1218,6 +1218,9 @@ or toggling wrap for the same accepted patch keeps its first visible source row
 at the same vertical offset where the viewport allows. If unwrapping would
 hide the preserved row, the reader aligns its start. Returning from the same
 paired split row keeps the side the reader was viewing.
+When the diff region has focus and no diff text is selected, Up and Down scroll
+its enclosing reader one step at a time. The region reserves transparent inline
+edges so the focus outline remains visible beside the gutters and change fills.
 
 File previews keep their filename to two visible lines beside persistent navigation,
 range and commands. Header groups share a row when their natural widths fit and

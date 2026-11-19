@@ -535,6 +535,8 @@ Pointer-caused focus does not move a pressed control before activation finishes.
 to continue through the enclosing reading viewport. Bounded image and diagram
 viewers explicitly contain both axes in their own viewport styles.
 Read-only code regions follow the same horizontal-only containment policy.
+For an empty or collapsed selection, `scrollReaderWithLocalArrow` can route
+vertical arrow keys from the focused reader to its nearest vertical scrollport.
 
 `LightboxDialog` owns expanded figure, document and media reading over Base UI.
 It retires when its inherited content becomes hidden, releases only its own

@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { Component, useCallback, useMemo, useRef, type RefObject } from "react";
 import {
   processFile,
@@ -8,14 +9,24 @@ import {
 import { FileDiff, useWorkerPool, type FileDiffOptions } from "@pierre/diffs/react";
 import {
   ScrollRegion,
+  scrollReaderWithLocalArrow,
   scrollWithHorizontalArrow,
   selectAllInReader,
   useContentVisible,
   type DiffSourceProps,
 } from "@flame/ui";
 import { useScheme } from "@/lib/appearance";
-import { copyDiffSelection } from "./diffSelection";
+import { copyDiffSelection, selectedDiffRange } from "./diffSelection";
 import { CODE_RENDERING } from "./PierreFile";
+
+const styles = stylex.create({
+  reader: {
+    // Clip Pierre's gutter and change fills before they reach the inset outline.
+    borderInlineWidth: "var(--focus-inset-edge)",
+    borderInlineStyle: "solid",
+    borderInlineColor: "transparent",
+  },
+});
 
 const appearance = `:host {
   color-scheme: inherit;
@@ -188,14 +199,22 @@ export function PierreDiff({ patch, layout, label, wrapped = false }: DiffSource
   return (
     <ScrollRegion
       label={label}
+      data-focus-inset=""
+      styles={styles.reader}
       onKeyDown={(event) => {
         if (!visible) return;
-        selectAllInReader(event, root.current?.node ?? event.currentTarget);
-        const renderer = root.current?.renderer;
+        const presented = root.current;
+        selectAllInReader(event, presented?.node ?? event.currentTarget);
+        const renderer = presented?.renderer;
         if (!wrapped && renderer)
           scrollWithHorizontalArrow(event, (delta) => {
             renderer.setCodeScrollLeft(renderer.getCodeScrollLeft() + delta);
           });
+        if (
+          (event.key === "ArrowUp" || event.key === "ArrowDown") &&
+          (!presented || !selectedDiffRange(presented.node))
+        )
+          scrollReaderWithLocalArrow(event, "nearest");
       }}
       onCopy={(event) => {
         if (visible && root.current) copyDiffSelection(event, root.current.node, root.current.file);

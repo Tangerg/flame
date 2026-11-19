@@ -32674,6 +32674,60 @@ removes four registrations, eight private Library directories, ten
 checkout outputs and the scratch tree. Continue from a newly observed
 reading or return issue.
 
+### Keep keyboard reading visible in the diff (2026-11-20)
+
+In signed Wails on `e1bc09d40`, Tab focuses the named diff region.
+Two Down keys advance its enclosing body from 164 to 244 px while the
+Composer retains its caret. Clicking the code moves the collapsed
+selection into the diff. The next three Down keys leave the body at
+244 px. Page Down reaches 855 px, with the focus outline hidden under
+the change fills along both visible sides.
+
+The named Pierre reader uses the existing relative arrow step and the
+nearest eligible vertical scrollport. For a selected source range it
+uses the same composed selection as the existing copy action. The first
+candidate showed why that matters. WebKit described the document range
+as collapsed while an actual dragged range remained inside the shadow
+root, and Down wrongly scrolled another 40 px. The final reader leaves
+that event to native selection handling.
+
+The reader reserves 2 px on each inline edge for the existing inset
+focus outline. StyleX omitted the original shorthand from the first
+candidate's stylesheet. The separate logical width, style and color
+declarations emit the edge and leave the block geometry as before.
+[WCAG keyboard](https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html)
+[WCAG focus visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html)
+
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950, scale 1 and a 320 px Dock.
+  The 284 × 651 px Panel body keeps its dimensions. The Composer caret
+  remains at offset 3 through Down from 164 to 244 px. A click in the
+  diff and three Down keys reach 364 px. With text then dragged inside
+  the diff, Down leaves y364 as WebKit collapses that selection. Up
+  reaches y324, Right reaches x27, and Page Down reaches y935 with
+  both blue focus rails visible beside the red and green change strips.
+- Page Up and Left return to y324 and x0. The native wheel reaches y704
+  with the reader still focused. Shift+Tab to Copy included patch
+  clears its outline. The draft continues as `844516`.
+- EN/light/14 px/Flame Orange at Actual Size uses the canonical Lab.
+  The named Side by side reader keeps focus through Up and Down and
+  exposes both EOF markers. Reverse Tab reaches Copy included patch.
+  Files restores the original file row and the draft continues as
+  `843672`.
+
+Scoped formatting, shared UI typecheck and its packed consumer test,
+the full Web gate with 137 tests and 940 keys across eight locales,
+bootstrap, plugin resources, 26 bundle contracts, module linkage, the
+macOS build and native tests, and five canonical Lab documents pass.
+The private changed-file capture supplies passive selection and geometry
+readings. Live Git, clipboard bytes, VoiceOver, physical IME, forced
+colors, other platforms, browser suites and benchmarks were outside
+this qualification.
+
+Four native launches and five loopback preview launches exit. Cleanup
+removes four registrations, eight private Library directories, ten
+checkout outputs and the scratch tree. Continue from the next observed
+reading or navigation issue.
+
 ### Diff filename and reader-action alignment (2026-11-03)
 
 The task remains comparison → find a file → read/layout → current file list →
