@@ -419,6 +419,9 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 	if err := e.applyState(ctx, commit); err != nil {
 		return err
 	}
+	if err := commit.RecordChildCancellation(ctx); err != nil {
+		return fmt.Errorf("segment: record confirmed active child cancellation: %w", err)
+	}
 	if commit.ChargesGoal() {
 		if err := e.goalRuns.CaptureGoalRun(ctx, *commit.Run); err != nil {
 			return fmt.Errorf("segment: record Goal Run: %w", err)

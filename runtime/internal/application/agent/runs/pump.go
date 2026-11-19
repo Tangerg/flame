@@ -225,7 +225,7 @@ func (s *segmentPump) handleAuthoritativeFact(member ExecutorMember, fact Execut
 	if route.reducer == nil {
 		return fmt.Errorf("runs: admitted child run %q has no segment reducer", route.runID)
 	}
-	fact = s.classifyChildCancellationFact(route, fact)
+	fact = s.classifyChildCancellationFact(route, fact, nil)
 	if engineEventEndsSegment(fact) {
 		if route == s.routes.root && s.routes.unfinishedCount() > 1 {
 			return errors.New("runs: authoritative root terminal precedes children")
@@ -296,7 +296,7 @@ func (s *segmentPump) handleExecutionFact(member ExecutorMember, executionFact E
 	if route.reducer == nil {
 		return false, fmt.Errorf("runs: admitted child run %q has no segment reducer", route.runID)
 	}
-	executionFact = s.classifyChildCancellationFact(route, executionFact)
+	executionFact = s.classifyChildCancellationFact(route, executionFact, nil)
 	if route == s.routes.root {
 		if s.deferredRootTerminal != nil {
 			return false, fmt.Errorf(
@@ -371,6 +371,7 @@ func (s *segmentPump) resumeDeferredRootTerminal() (bool, error) {
 func (s *segmentPump) classifyChildCancellationFact(
 	route *executorRoute,
 	fact ExecutionFact,
+	prior []EventCommit,
 ) ExecutionFact {
 	if route == nil || route.reducer == nil {
 		return fact
@@ -379,7 +380,7 @@ func (s *segmentPump) classifyChildCancellationFact(
 		batch = batch.clone()
 		for index, result := range batch.Results {
 			if itemID, open := route.reducer.openToolItemID(result.CallID); open {
-				batch.Results[index] = s.owner.classifyChildCancellationTool(route.runID, itemID, result)
+				batch.Results[index] = s.owner.classifyChildCancellationTool(route.runID, itemID, result, prior)
 			}
 		}
 		return batch

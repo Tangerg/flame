@@ -119,7 +119,9 @@ func (t treePublisher) commitIncrementalReduction(
 	if commit.State == StateTerminalize && route.member.ParentID == "" {
 		commit.ObsoleteCheckpointRootID = route.member.MemberID
 	}
-	if err := t.publications.events.CommitEvent(ctx, commit); err != nil {
+	t.owner.bindChildCancellationReceipt(&commit, nil)
+	write := func() error { return t.publications.events.CommitEvent(ctx, commit) }
+	if err := commitRunBoundary(ctx, commit.SessionID, commit.RunID, write, commit.childCancellation != nil); err != nil {
 		return false, fmt.Errorf("runs: commit %T: %w", reduced.Event, err)
 	}
 	if commit.State == StateTerminalize {
@@ -160,11 +162,13 @@ func (t treePublisher) publishAuthoritativeAtomically(
 	if err != nil {
 		return reductionPublication{}, err
 	}
+	t.owner.bindChildCancellationReceipt(&combined, nil)
 	if !combined.isEmpty() {
 		if err := combined.Validate(); err != nil {
 			return reductionPublication{}, fmt.Errorf("runs: validate authoritative fact: %w", err)
 		}
-		if err := t.publications.events.CommitEvent(ctx, combined); err != nil {
+		write := func() error { return t.publications.events.CommitEvent(ctx, combined) }
+		if err := commitRunBoundary(ctx, combined.SessionID, combined.RunID, write, combined.childCancellation != nil); err != nil {
 			return reductionPublication{}, fmt.Errorf("runs: commit authoritative fact: %w", err)
 		}
 		for _, write := range combined.Items {
@@ -206,11 +210,12 @@ func (t treePublisher) publishTerminalAtomically(
 		combined.ObsoleteCheckpointRootID = route.member.MemberID
 	}
 	t.bindRootCancellationReceipt(&combined)
+	t.owner.bindChildCancellationReceipt(&combined, nil)
 	if err := combined.Validate(); err != nil {
 		return reductionPublication{}, fmt.Errorf("runs: validate atomic terminal: %w", err)
 	}
 	write := func() error { return t.publications.events.CommitEvent(ctx, combined) }
-	if err := commitTerminal(ctx, combined.SessionID, combined.RunID, write, retryUnresolved || combined.RecordRootCancellation != nil); err != nil {
+	if err := commitRunBoundary(ctx, combined.SessionID, combined.RunID, write, retryUnresolved || combined.RecordRootCancellation != nil || combined.childCancellation != nil); err != nil {
 		return reductionPublication{}, fmt.Errorf("runs: commit atomic terminal: %w", err)
 	}
 	// The database owns one indivisible write-set, while the live tree still

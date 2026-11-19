@@ -1814,6 +1814,11 @@ temporary failures and joins the Scope writer before acknowledging teardown.
 The same key can finish cleanup and publish the original response after process
 loss or a cleanup failure.
 
+A live child cancellation joins the original canceled child and the settlement
+of its spawning Tool Item. The parent Item's transaction retains the child
+response and the root snapshot from cancellation admission. Replaying the key
+returns those original snapshots after the tree has advanced or been retired.
+
 The TypeScript SDK's Start and Resume now return `RunOpeningResult`: the original
 acknowledgement is `result`, and `observation` is a closed `stream`, `snapshot`,
 or `retired` resource outcome. Consumers must migrate from the former mandatory

@@ -131,13 +131,13 @@ func TestActiveRootCancellationRecoversItsOriginalReceipt(t *testing.T) {
 	}
 }
 
-type activeRootCancelRefusalStore struct {
+type cancellationReceiptRefusalStore struct {
 	operation.ReplayStore
 	refused chan struct{}
 	once    sync.Once
 }
 
-func (s *activeRootCancelRefusalStore) StageSettlement(ctx context.Context, record operation.ReplayRecord) error {
+func (s *cancellationReceiptRefusalStore) StageSettlement(ctx context.Context, record operation.ReplayRecord) error {
 	err := s.ReplayStore.StageSettlement(ctx, record)
 	if err != nil {
 		s.once.Do(func() { close(s.refused) })
@@ -166,7 +166,7 @@ func testActiveRootCancellationReceiptRefusal(t *testing.T, waitForTimeout bool)
 	questionCrashDatabase(t, home, `CREATE TRIGGER refuse_live_cancel_receipt BEFORE UPDATE OF payload ON idempotency_records
 		WHEN NEW.kind = OLD.kind AND length(NEW.payload) > 0
 		BEGIN SELECT RAISE(ABORT, 'active cancellation receipt refused'); END`)
-	refusal := &activeRootCancelRefusalStore{ReplayStore: stores.Idempotency, refused: make(chan struct{})}
+	refusal := &cancellationReceiptRefusalStore{ReplayStore: stores.Idempotency, refused: make(chan struct{})}
 	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{
 		Lifetime: t.Context(), IdempotencyNamespace: stores.IdempotencyNamespace.String(),
 		IdempotencyStore: refusal, ValidateStorage: stores.ValidateDirectory,

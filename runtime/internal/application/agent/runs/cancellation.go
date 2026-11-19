@@ -219,7 +219,7 @@ func (c *Cancellations) cancelLiveChild(
 	if err := owner.awaitActivation(cleanupCtx); err != nil {
 		return CancelResult{}, err
 	}
-	attempt, err := owner.beginChildCancellation(plan, cmd.Reason)
+	attempt, err := owner.beginChildCancellation(plan, cmd.Reason, cmd.Completion.RecordActiveChild)
 	if err != nil {
 		return CancelResult{}, err
 	}
@@ -237,12 +237,11 @@ func (c *Cancellations) cancelLiveChild(
 			cancelRunningSubtreeErr,
 		)
 	}
-	target, err := owner.waitChildCancellation(cleanupCtx, attempt)
-	if err != nil {
-		return CancelResult{}, err
+	result, err := owner.waitChildCancellation(cleanupCtx, attempt)
+	if err != nil && !errors.Is(err, ErrRunFinished) {
+		return CancelResult{}, &CancellationSettlementError{Cause: err}
 	}
-	root := plan.root.run
-	return CancelResult{Run: target, RootRun: &root}, nil
+	return result, err
 }
 
 // cancelWaitingChild removes one complete child subtree from an executor tree

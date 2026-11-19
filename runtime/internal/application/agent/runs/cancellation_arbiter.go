@@ -36,6 +36,9 @@ type childCancellation struct {
 	parentRunID    string
 	spawningItemID string
 	reason         string
+	root           rundomain.Run
+	executor       ExecutorRef
+	record         ChildCancellationReceipt
 	targetRunIDs   map[string]struct{}
 	targetTerminal *rundomain.Run
 	done           chan struct{}
@@ -54,6 +57,7 @@ func (c *childCancellation) finished() bool {
 func (r *runTreeOwner) beginChildCancellation(
 	plan cancellationPlan,
 	reason string,
+	record ChildCancellationReceipt,
 ) (*childCancellation, error) {
 	if !plan.target.run.Lineage().IsChild() {
 		return nil, fmt.Errorf("runs: cancellation target %q is not a child Run", plan.target.run.ID())
@@ -81,6 +85,9 @@ func (r *runTreeOwner) beginChildCancellation(
 		parentRunID:    plan.target.run.Lineage().ParentRunID(),
 		spawningItemID: plan.target.run.Lineage().SpawnedByItemID(),
 		reason:         reason,
+		root:           plan.root.run,
+		executor:       plan.executor,
+		record:         record,
 		targetRunIDs:   targetRunIDs,
 		done:           make(chan struct{}),
 	}
@@ -141,14 +148,15 @@ func (r *runTreeOwner) classifyChildCancellationTool(
 	parentRunID string,
 	itemID string,
 	event ToolCallFinished,
+	prior []EventCommit,
 ) ToolCallFinished {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	attempt := r.childCancel
 	if attempt == nil ||
-		attempt.targetTerminal == nil ||
 		attempt.parentRunID != parentRunID ||
-		attempt.spawningItemID != itemID {
+		attempt.spawningItemID != itemID ||
+		attempt.terminalBefore(prior) == nil {
 		return event
 	}
 	classified := event
@@ -157,6 +165,23 @@ func (r *runTreeOwner) classifyChildCancellationTool(
 		Detail: attempt.reason,
 	}
 	return classified
+}
+
+func (c *childCancellation) terminalBefore(prior []EventCommit) *rundomain.Run {
+	if c.targetTerminal != nil {
+		return c.targetTerminal
+	}
+	for _, staged := range prior {
+		if staged.RunID == c.targetRunID && staged.State == StateTerminalize && staged.Run.Canceled() {
+			return staged.Run
+		}
+	}
+	return nil
+}
+
+func (c *childCancellation) result(terminal rundomain.Run) CancelResult {
+	root := c.root
+	return CancelResult{Run: terminal, RootRun: &root}
 }
 
 func (r *runTreeOwner) recordChildCancellationItem(parentRunID string, item transcript.Item) {
@@ -178,14 +203,14 @@ func (r *runTreeOwner) recordChildCancellationItem(parentRunID string, item tran
 	r.finishChildCancellationLocked(attempt)
 }
 
-// waitChildCancellation returns the target's canceled terminal snapshot.
+// waitChildCancellation returns the canceled target and its original root snapshot.
 // recordTerminalRun admits only the target's Canceled terminal, and every other
 // path that closes the attempt records why, so a joined attempt without an
 // error always carries that snapshot.
 func (r *runTreeOwner) waitChildCancellation(
 	ctx context.Context,
 	attempt *childCancellation,
-) (rundomain.Run, error) {
+) (CancelResult, error) {
 	select {
 	case <-attempt.done:
 	case <-r.done:
@@ -193,20 +218,20 @@ func (r *runTreeOwner) waitChildCancellation(
 		case <-attempt.done:
 		default:
 			if r.completionErr != nil {
-				return rundomain.Run{}, r.completionErr
+				return CancelResult{}, r.completionErr
 			}
-			return rundomain.Run{}, fmt.Errorf(
+			return CancelResult{}, fmt.Errorf(
 				"runs: root segment ended before child Run %q cancellation committed its parent result",
 				attempt.targetRunID,
 			)
 		}
 	case <-ctx.Done():
-		return rundomain.Run{}, context.Cause(ctx)
+		return CancelResult{}, context.Cause(ctx)
 	}
 	if attempt.err != nil {
-		return rundomain.Run{}, attempt.err
+		return CancelResult{}, attempt.err
 	}
-	return *attempt.targetTerminal, nil
+	return attempt.result(*attempt.targetTerminal), nil
 }
 
 // recordTerminalRun retains the exact Run snapshot whose terminal transaction

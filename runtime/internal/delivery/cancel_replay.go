@@ -67,6 +67,9 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 					return encodeSettlement(ref, runs.CancelResult{Run: terminal})
 				})
 			},
+			RecordActiveChild: func(tx context.Context, ref runs.ExecutorRef, result runs.CancelResult) error {
+				return complete.Stage(tx, func(context.Context) ([]byte, error) { return encodeSettlement(ref, result) })
+			},
 		})
 		_, settlementFailed := errors.AsType[*runs.CancellationSettlementError](err)
 		switch {

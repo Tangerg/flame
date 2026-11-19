@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
@@ -34,8 +35,10 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 		return err
 	}
 	write := func() error { return s.segments.publications.events.CommitExecutionTree(s.ownerCtx, commit) }
-	endsRoot := len(commit.Events) > 0 && commit.Events[len(commit.Events)-1].ObsoleteCheckpointRootID != ""
-	if err := commitTerminal(s.ownerCtx, s.spec.SessionID, s.spec.RunID, write, endsRoot); err != nil {
+	retryOnFailure := slices.ContainsFunc(commit.Events, func(event EventCommit) bool {
+		return event.ObsoleteCheckpointRootID != "" || event.childCancellation != nil
+	})
+	if err := commitRunBoundary(s.ownerCtx, s.spec.SessionID, s.spec.RunID, write, retryOnFailure); err != nil {
 		return err
 	}
 	if err := s.settleChildStarts(children, startedRoutes); err != nil {
@@ -132,7 +135,7 @@ func (s *segmentPump) stageTreeFacts(facts []ExecutorEvent, startedRoutes map[st
 		if candidate == nil {
 			candidate = route.reducer.clone()
 		}
-		batch, err := candidate.reduce(s.classifyChildCancellationFact(route, fact))
+		batch, err := candidate.reduce(s.classifyChildCancellationFact(route, fact, commit.Events))
 		if err != nil {
 			return nil, err
 		}
@@ -156,6 +159,7 @@ func (s *segmentPump) stageTreeFacts(facts []ExecutorEvent, startedRoutes map[st
 				unfinishedChildren--
 			}
 		}
+		s.owner.bindChildCancellationReceipt(&eventCommit, commit.Events)
 		commit.Events = append(commit.Events, eventCommit)
 		staged[route] = candidate
 		projections = append(projections, routedTreeProjection{route, candidate, batch})
