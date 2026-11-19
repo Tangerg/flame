@@ -41,12 +41,11 @@ type ExecutionReleaser interface {
 }
 
 // RunningRootCancellationRequester submits an accepted product cancellation
-// intent to the live executor before the Application stops observation. A nil
-// result only confirms command admission; it neither commits the product outcome
-// nor releases resources, and in-flight effects may settle before the next safe
-// boundary.
+// intent to the live executor. The caller's identifier ties a later exit to its
+// request. The executor acknowledges admission while in-flight effects can
+// still be settling.
 type RunningRootCancellationRequester interface {
-	RequestRootCancellation(ctx context.Context, ref ExecutorRef, reason string) error
+	RequestRootCancellation(ctx context.Context, ref ExecutorRef, cancellation RootCancellationID) error
 }
 
 // ConversationReader supplies the validated Host conversation used only to

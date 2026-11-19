@@ -126,8 +126,7 @@ func (s *segmentPump) processEvent(event ExecutorEvent) bool {
 		return true
 	}
 	if barrier, interrupted := event.Payload.(TreeInterrupted); interrupted {
-		s.handleTreeBarrier(event, barrier)
-		return false
+		return s.handleTreeBarrier(event, barrier)
 	}
 	executionFact, ok := event.Payload.(ExecutionFact)
 	if !ok {
@@ -276,24 +275,27 @@ func (s *segmentPump) handleAuthoritativeFact(member ExecutorMember, fact Execut
 	return nil
 }
 
-func (s *segmentPump) handleTreeBarrier(event ExecutorEvent, barrier TreeInterrupted) {
+func (s *segmentPump) handleTreeBarrier(event ExecutorEvent, barrier TreeInterrupted) bool {
 	root, err := s.routes.resolve(event.Member)
 	if err != nil {
 		s.fail(err)
-		return
+		return false
 	}
 	if root != s.routes.root {
 		s.fail(errors.New("runs: tree interrupt must be emitted by the root executor member"))
-		return
+		return false
 	}
-	if _, err := s.publisher.publishTreeBarrier(
+	published, err := s.publisher.publishTreeBarrier(
 		s.ownerCtx,
 		s.routes,
 		barrier,
 		s.segments.publications.nowUTC(),
-	); err != nil {
+	)
+	if err != nil {
 		s.fail(err)
+		return false
 	}
+	return !published.parked()
 }
 
 func (s *segmentPump) handleExecutionFact(member ExecutorMember, executionFact ExecutionFact) (bool, error) {
@@ -345,7 +347,7 @@ func (s *segmentPump) projectFact(route *executorRoute, executionFact ExecutionF
 	if terminalFact {
 		end, ended := executionFact.(SegmentEnded)
 		retryUnresolved := ended && (len(end.unresolvedEffects) > 0 || end.Ending.Outcome() == run.OutcomeLost)
-		publication, err = s.publisher.publishTerminalAtomically(s.ownerCtx, route, reductions, retryUnresolved)
+		publication, err = s.publisher.publishTerminalAtomically(s.ownerCtx, route, reductions, retryUnresolved, nil)
 	} else {
 		publication, err = s.publisher.publish(s.ownerCtx, route, reductions)
 	}
@@ -498,17 +500,25 @@ func (s *segmentPump) synthesizeUnfinished() {
 
 func (s *segmentPump) synthesizeRoute(ctx context.Context, route *executorRoute) bool {
 	var reductions reductionBatch
+	var cancellation *rootCancellation
 	var err error
 	if route == s.routes.root && s.deferredRootTerminal != nil {
 		reductions, err = route.reducer.reduce(s.deferredRootTerminal)
 	} else {
-		reductions, err = route.reducer.synthesizeTerminal()
+		var reason string
+		if route == s.routes.root {
+			cancellation = s.owner.suppressedActivationCancellation()
+			if cancellation != nil {
+				reason = cancellation.reason
+			}
+		}
+		reductions, err = route.reducer.synthesizeTerminal(reason)
 	}
 	if err != nil {
 		s.fail(err)
 		return false
 	}
-	publication, err := s.publisher.publishTerminalAtomically(ctx, route, reductions, false)
+	publication, err := s.publisher.publishTerminalAtomically(ctx, route, reductions, false, cancellation)
 	if err != nil {
 		s.fail(err)
 		return false

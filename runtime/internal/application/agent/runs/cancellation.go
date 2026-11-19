@@ -153,58 +153,7 @@ func (c *Cancellations) Cancel(ctx context.Context, cmd CancelCommand) (CancelRe
 	if !live {
 		return c.cancelWithoutLiveSegment(ctx, cmd, plan.root.run)
 	}
-	cleanupCtx, cancel := entry.owner.cleanupContext()
-	defer cancel()
-	interruptCommitted, requestErr := entry.owner.requestCancel(
-		cleanupCtx,
-		rootCancellation{reason: cmd.Reason, record: cmd.Completion.RecordActiveRoot},
-		func(requestCtx context.Context) error {
-			return c.rootCancellation.RequestRootCancellation(
-				requestCtx, plan.executor, cmd.Reason,
-			)
-		},
-	)
-	if requestErr != nil {
-		if errors.Is(requestErr, rundomain.ErrSessionBusy) {
-			return CancelResult{}, requestErr
-		}
-		if settlementErr := entry.owner.wait(cleanupCtx); settlementErr != nil {
-			return CancelResult{}, &CancellationSettlementError{Cause: errors.Join(requestErr, settlementErr)}
-		}
-		return CancelResult{}, requestErr
-	}
-	if interruptCommitted {
-		// The interrupt transaction won before cancellation. Its pump owns the
-		// live admission until it has published and closed the parked segment;
-		// join that boundary, then apply the durable parked cancel transaction.
-		if err := entry.owner.wait(cleanupCtx); err != nil {
-			return CancelResult{}, &CancellationSettlementError{Cause: err}
-		}
-		return c.cancelKnownParkedRun(cleanupCtx, cmd, plan.root.run, plan.executor)
-	}
-	// The pump owns every non-parked live teardown. requestCancel has stopped its
-	// stream context; joining the Run-tree owner returns that single owner's complete
-	// cleanup boundary without racing a second executor Release from this goroutine.
-	if err := entry.owner.wait(cleanupCtx); err != nil {
-		return CancelResult{}, &CancellationSettlementError{Cause: err}
-	}
-	terminal, committed := entry.owner.committedTerminalRun()
-	if !committed {
-		return CancelResult{}, fmt.Errorf(
-			"runs: canceled live root Run %q completed without a terminal snapshot",
-			plan.root.run.ID(),
-		)
-	}
-	ending, _ := terminal.Ending()
-	if canceled, ok := ending.(rundomain.Canceled); !ok || canceled.Detail != cmd.Reason {
-		return CancelResult{}, fmt.Errorf(
-			"%w: %q settled as %s",
-			ErrRunFinished,
-			plan.root.run.ID(),
-			ending.Outcome(),
-		)
-	}
-	return rootCancelResult(terminal)
+	return c.cancelLiveRoot(cmd, plan, entry.owner)
 }
 
 // cancelLiveChild takes no context on purpose: a cancellation that has begun

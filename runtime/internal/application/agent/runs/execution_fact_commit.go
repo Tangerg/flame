@@ -111,7 +111,7 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 		if run.ValidateEnding(value.Ending) != nil {
 			return nil, false
 		}
-		return NewSegmentEnded(value.Ending, value.Duration).WithUnresolvedEffects(value.unresolvedEffects), true
+		return value.WithUnresolvedEffects(value.unresolvedEffects), true
 	case SteerMessagesApplied:
 		value.Messages = slices.Clone(value.Messages)
 		for index := range value.Messages {

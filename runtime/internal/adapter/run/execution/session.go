@@ -88,7 +88,6 @@ type interactionState struct {
 	subtreeChange       *interactionWaitingSubtreeChange
 	subtreePrepared     chan struct{}
 	unknownReported     bool
-	rootCancelReason    string
 	deployments         *interactionDeploymentSet
 	delegateCalls       map[delegateCallIdentity]*managedDelegateCall
 	delegateChildren    map[scoperun.ProcessID]*managedDelegateCall
@@ -841,14 +840,6 @@ func (i *interactionSession) endingForProcess(owner scoperun.ProcessID, terminat
 		termination.Cause() == scoperun.TerminationCauseHostCancellation && termination.Reason() == modelProcessStopReason {
 		if classified, found := i.modelFailures.lookup(owner); found {
 			return run.Failed{Failure: classified}
-		}
-	}
-	if owner == i.rootID && termination.Cause() == scoperun.TerminationCauseHostCancellation {
-		i.state.mu.Lock()
-		requested := i.state.rootCancelReason
-		i.state.mu.Unlock()
-		if requested != "" && scopeCancellationReason(requested) == termination.Reason() {
-			return run.Canceled{Detail: requested}
 		}
 	}
 	return terminationEnding(termination)

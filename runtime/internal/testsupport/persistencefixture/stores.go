@@ -26,20 +26,24 @@ func Open(tb testing.TB, ctx context.Context, dataDirectory string) (*Stores, er
 	if err != nil {
 		return nil, err
 	}
-	layout, err := localruntime.DataDirectoryAt(bundle.DataDirectory)
+	inspection, err := OpenRawSQL(bundle.DataDirectory)
 	if err != nil {
 		return nil, errors.Join(err, bundle.Close())
+	}
+	return &Stores{Bundle: bundle, DB: inspection}, nil
+}
+
+func OpenRawSQL(dataDirectory string) (*sql.DB, error) {
+	layout, err := localruntime.DataDirectoryAt(dataDirectory)
+	if err != nil {
+		return nil, err
 	}
 	address := &url.URL{Scheme: "file", Path: layout.DatabasePath()}
 	query := address.Query()
 	query.Add("_pragma", "foreign_keys(1)")
 	query.Add("_pragma", "busy_timeout(5000)")
 	address.RawQuery = query.Encode()
-	inspection, err := sql.Open("sqlite", address.String())
-	if err != nil {
-		return nil, errors.Join(err, bundle.Close())
-	}
-	return &Stores{Bundle: bundle, DB: inspection}, nil
+	return sql.Open("sqlite", address.String())
 }
 
 func (s *Stores) Close() error { return errors.Join(s.Bundle.Close(), s.DB.Close()) }

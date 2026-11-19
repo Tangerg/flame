@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -17,6 +18,7 @@ import (
 )
 
 const modelProcessStopReason = "model call cannot continue"
+const rootCancellationControlPrefix = "run cancel command "
 
 func steerSignalID(itemID string) (scoperun.SignalID, error) {
 	if err := identity.ValidateItem(itemID); err != nil {
@@ -29,6 +31,17 @@ func steerSignalID(itemID string) (scoperun.SignalID, error) {
 // in a separate namespace so that user text cannot impersonate an executor stop.
 func scopeCancellationReason(reason string) string {
 	return run.Diagnostic(errors.New("run cancellation: " + reason))
+}
+
+func rootCancellationFromTermination(termination scoperun.Termination) (runs.RootCancellationID, bool) {
+	if termination.Cause() != scoperun.TerminationCauseHostCancellation {
+		return runs.RootCancellationID{}, false
+	}
+	token, ok := strings.CutPrefix(termination.Reason(), rootCancellationControlPrefix)
+	if !ok {
+		return runs.RootCancellationID{}, false
+	}
+	return runs.ParseRootCancellationID(token)
 }
 
 // awaitDispatchSegment keeps Scope-owned work behind the product transaction

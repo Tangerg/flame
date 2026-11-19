@@ -36,8 +36,14 @@ func (i *interactionSession) terminalFacts(tree scoperun.Log) ([]runs.ExecutorEv
 		}
 		duration := i.segmentClock.duration(snapshot.StartedAt, snapshot.FinishedAt)
 		ending := i.endingForProcess(snapshot.ID, snapshot.Termination)
+		end := runs.NewSegmentEnded(ending, duration)
+		if snapshot.ID == tree.Root {
+			if cancellation, ok := rootCancellationFromTermination(snapshot.Termination); ok {
+				end = runs.NewRootCancellationEnded(cancellation, duration)
+			}
+		}
 		facts = append(facts, runs.ExecutorEvent{
-			Member: i.executorMember(snapshot.ID), Payload: runs.NewSegmentEnded(ending, duration),
+			Member: i.executorMember(snapshot.ID), Payload: end,
 		})
 	}
 	return facts, children, nil

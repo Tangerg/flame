@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 // commitExecutionTree stages a settled tree against cloned reducers, commits
@@ -133,7 +135,16 @@ func (s *segmentPump) stageTreeFacts(facts []ExecutorEvent, startedRoutes map[st
 		if candidate == nil {
 			candidate = route.reducer.clone()
 		}
-		batch, err := candidate.reduce(s.classifyChildCancellationFact(route, fact, commit.Events))
+		fact = s.classifyChildCancellationFact(route, fact, commit.Events)
+		var cancellation *rootCancellation
+		if end, ok := fact.(SegmentEnded); ok && !end.rootCancellation.IsZero() {
+			cancellation = s.owner.matchingRootCancellation(end.rootCancellation)
+			if cancellation != nil {
+				end.Ending = run.Canceled{Detail: cancellation.reason}
+				fact = end
+			}
+		}
+		batch, err := candidate.reduce(fact)
 		if err != nil {
 			return nil, err
 		}
@@ -152,7 +163,7 @@ func (s *segmentPump) stageTreeFacts(facts []ExecutorEvent, startedRoutes map[st
 					return nil, errors.New("runs: root terminal precedes child terminals")
 				}
 				eventCommit.ObsoleteCheckpointRootID = commit.Update.Head.RootID
-				s.publisher.bindRootCancellationReceipt(&eventCommit)
+				s.publisher.bindRootCancellationReceipt(&eventCommit, cancellation)
 			} else {
 				unfinishedChildren--
 			}
@@ -160,7 +171,7 @@ func (s *segmentPump) stageTreeFacts(facts []ExecutorEvent, startedRoutes map[st
 		s.owner.bindChildCancellationReceipt(&eventCommit, commit.Events)
 		commit.Events = append(commit.Events, eventCommit)
 		staged[route] = candidate
-		projections = append(projections, routedTreeProjection{route, candidate, batch})
+		projections = append(projections, routedTreeProjection{route, candidate, batch, cancellation})
 	}
 	return projections, nil
 }
@@ -182,6 +193,12 @@ func (s *segmentPump) treeFactRoute(event ExecutorEvent, startedRoutes map[strin
 	case SegmentEnded:
 		if len(fact.unresolvedEffects) > 0 {
 			return nil, errors.New("runs: settled execution tree terminal carries unresolved effects")
+		}
+		if !fact.rootCancellation.IsZero() {
+			canceled, ok := fact.Ending.(run.Canceled)
+			if route != s.routes.root || !ok || canceled.Detail != "" {
+				return nil, errors.New("runs: invalid root cancellation evidence")
+			}
 		}
 	default:
 		return nil, fmt.Errorf("runs: unsupported tree settlement fact %T", event.Payload)
@@ -209,9 +226,10 @@ func (s *segmentPump) settleChildStarts(children []*managedChildStart, startedRo
 }
 
 type routedTreeProjection struct {
-	route   *executorRoute
-	reducer *reducer
-	batch   reductionBatch
+	route        *executorRoute
+	reducer      *reducer
+	batch        reductionBatch
+	cancellation *rootCancellation
 }
 
 func (s *segmentPump) publishTreeProjection(projected routedTreeProjection) error {
@@ -219,7 +237,7 @@ func (s *segmentPump) publishTreeProjection(projected routedTreeProjection) erro
 	for _, reduced := range projected.batch.events {
 		if reduced.Commit != nil && reduced.Commit.State == StateTerminalize {
 			projected.route.boundary = boundaryFinished
-			s.owner.recordTerminalRun(*reduced.Commit.Run)
+			s.owner.recordTerminalRun(*reduced.Commit.Run, projected.cancellation)
 			s.segments.publications.publishRunMoved(s.spec.SessionID, projected.route.runID)
 			if reduced.Commit.ChargesGoal() {
 				s.segments.publications.publishGoalMoved(s.spec.SessionID)

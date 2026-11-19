@@ -20,27 +20,25 @@ const runCleanupTimeout = 5 * time.Second
 // cancellation arbiter; specialized behavior lives beside those concerns.
 type runTreeOwner struct {
 	// observation excludes a snapshot/tail handoff from commit-to-publication windows.
-	observation     sync.Mutex
-	mu              sync.Mutex
-	cancel          context.CancelFunc
-	taskContext     context.Context
-	hub             *journal
-	done            chan struct{}
-	completionErr   error
-	terminalRun     *run.Run
-	terminalRuns    map[string]run.Run
-	executorMembers map[string]string
-	childCancel     *childCancellation
-	rootCancel      *rootCancellation
-	activation      segmentActivation
-	interrupt       interruptBoundary
+	observation      sync.Mutex
+	mu               sync.Mutex
+	cancel           context.CancelFunc
+	taskContext      context.Context
+	hub              *journal
+	done             chan struct{}
+	completionErr    error
+	rootTerminal     *rootTerminal
+	terminalChildren map[string]run.Run
+	executorMembers  map[string]string
+	childCancel      *childCancellation
+	rootCancel       *rootCancellation
+	activation       segmentActivation
+	interrupt        interruptBoundary
 }
 
-// rootCancellation is the whole-tree cancellation that owns a Run tree once
-// requested; the owner holds none until then.
-type rootCancellation struct {
-	reason string
-	record RootCancellationReceipt
+type rootTerminal struct {
+	run          run.Run
+	cancellation RootCancellationID
 }
 
 // segmentActivation serializes the post-commit executor activation with root
@@ -56,6 +54,7 @@ const (
 	activationPending activationPhase = iota
 	activationStarted
 	activationResolved
+	activationSuppressed
 )
 
 type segmentActivation struct {
@@ -92,7 +91,7 @@ func (r *runTreeOwner) beginExecution(
 		return false, errors.New("runs: segment activation already resolved")
 	}
 	if r.rootCancel != nil {
-		r.activation.phase = activationResolved
+		r.activation.phase = activationSuppressed
 		close(r.activation.done)
 		r.mu.Unlock()
 		return true, nil
@@ -150,14 +149,14 @@ func (r *runTreeOwner) rejectActivation(cause error) error {
 	return nil
 }
 
-func (r *runTreeOwner) committedTerminalRun() (run.Run, bool) {
+func (r *runTreeOwner) committedRootTerminal() (rootTerminal, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.terminalRun == nil {
-		return run.Run{}, false
+	if r.rootTerminal == nil {
+		return rootTerminal{}, false
 	}
 
-	return *r.terminalRun, true
+	return *r.rootTerminal, true
 }
 
 // stop cancels the run context. Called on a true terminal (never on a parked

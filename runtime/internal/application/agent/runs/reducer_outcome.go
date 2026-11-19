@@ -11,11 +11,7 @@ import (
 
 func (r *reducer) segmentEnd(e SegmentEnded) ([]ProjectionEvent, error) {
 	r.segmentDuration = e.Duration
-	ending := e.Ending
-	if !r.cfg.Opened.Lineage().IsRoot() {
-		ending = r.cancelDetail(ending)
-	}
-	terminal, err := r.finishedRun(ending, e.unresolvedEffects)
+	terminal, err := r.finishedRun(r.childCancelDetail(e.Ending), e.unresolvedEffects)
 	if err != nil {
 		return nil, err
 	}
@@ -67,9 +63,8 @@ func (r *reducer) metrics() (run.Metrics, error) {
 	return r.accrued.WithActiveDuration(activeDuration + r.segmentDuration)
 }
 
-// cancelDetail gives a Canceled ending the reason its cancel request stated.
-func (r *reducer) cancelDetail(ending run.Ending) run.Ending {
-	if _, canceled := ending.(run.Canceled); canceled && r.cfg.CancelReason != nil {
+func (r *reducer) childCancelDetail(ending run.Ending) run.Ending {
+	if _, canceled := ending.(run.Canceled); canceled && r.cfg.Opened.Lineage().IsChild() && r.cfg.CancelReason != nil {
 		return run.Canceled{Detail: r.cfg.CancelReason()}
 	}
 	return ending

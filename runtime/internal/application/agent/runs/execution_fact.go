@@ -311,10 +311,9 @@ func (t TreeInterrupted) validateFor(rootMemberID, sessionID string) error {
 
 type SegmentEnded struct {
 	executionFactBase
-	// The executor attaches a root cancel request's detail only when it
-	// observed that request end the Segment.
 	Ending            run.Ending
 	unresolvedEffects []run.UnresolvedEffect
+	rootCancellation  RootCancellationID
 	Duration          time.Duration
 }
 
@@ -323,6 +322,10 @@ type SegmentEnded struct {
 // which owns the active Segment state needed to decide them.
 func NewSegmentEnded(ending run.Ending, duration time.Duration) SegmentEnded {
 	return SegmentEnded{Ending: ending, Duration: duration}
+}
+
+func NewRootCancellationEnded(cancellation RootCancellationID, duration time.Duration) SegmentEnded {
+	return SegmentEnded{Ending: run.Canceled{}, Duration: duration, rootCancellation: cancellation}
 }
 
 // PlanUpdated reports the committed Plan after a replacement — read back

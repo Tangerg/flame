@@ -2,7 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"fmt"
@@ -14,9 +13,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 	modernsqlite "modernc.org/sqlite"
 )
@@ -134,11 +133,7 @@ func TestAcceptedQuestionReceiptCrashHelper(t *testing.T) {
 
 func questionCrashDatabase(t *testing.T, home, statement string) {
 	t.Helper()
-	directory, err := localruntime.DataDirectoryAt(home)
-	if err != nil {
-		t.Fatal(err)
-	}
-	db, err := sql.Open("sqlite", directory.DatabasePath())
+	db, err := persistencefixture.OpenRawSQL(home)
 	if err != nil {
 		t.Fatal(err)
 	}

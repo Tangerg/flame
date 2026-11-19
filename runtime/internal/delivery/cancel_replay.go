@@ -29,8 +29,7 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 		return data, err
 	}
 	payload, err := e.idempotency.InvokeDeferred(ctx, key, fingerprint, func(complete *operation.DeferredCompletion) ([]byte, error) {
-		var storeErr error
-		var stagedSynchronously bool
+		var reserveErr error
 		encodeSettlement := func(ref runs.ExecutorRef, result runs.CancelResult) ([]byte, error) {
 			outcome, err := encodeAtomicResult(method, presentCancelResult(result))
 			if err != nil {
@@ -39,14 +38,15 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 			return json.Marshal(cancellationSettlement{ExecutorID: ref.ExecutorID, Outcome: outcome})
 		}
 		stage := func(tx context.Context, outcome func(context.Context) ([]byte, error)) error {
-			storeErr = complete.Stage(tx, outcome)
-			stagedSynchronously = storeErr == nil
-			return storeErr
+			if err := complete.Stage(tx, outcome); err != nil {
+				return &runs.CancellationSettlementError{Cause: err}
+			}
+			return nil
 		}
 		result, err := s.cancelRun(ctx, in, runs.CancellationCompletion{
 			Reserve: func(ctx context.Context) error {
-				storeErr = complete.Reserve(ctx)
-				return storeErr
+				reserveErr = complete.Reserve(ctx)
+				return reserveErr
 			},
 			CommitParked: func(ctx context.Context, ref runs.ExecutorRef, write func(context.Context) (run.Run, error)) error {
 				return stage(ctx, func(tx context.Context) ([]byte, error) {
@@ -73,9 +73,9 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 		})
 		_, settlementFailed := errors.AsType[*runs.CancellationSettlementError](err)
 		switch {
-		case storeErr != nil:
-			return nil, storeErr
-		case err != nil && (stagedSynchronously || settlementFailed || errors.Is(err, protocol.ErrCapabilityNotNeg)):
+		case reserveErr != nil:
+			return nil, reserveErr
+		case err != nil && (settlementFailed || errors.Is(err, protocol.ErrCapabilityNotNeg)):
 			return nil, err
 		case err != nil:
 			return encodeFailure(err)

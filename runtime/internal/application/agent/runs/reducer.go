@@ -573,7 +573,7 @@ func closedToolInvocationCommits(segmentID string, tools []*openTool) []ToolInvo
 	return commits
 }
 
-func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
+func (r *reducer) synthesizeTerminal(rootCancellationReason string) (reductionBatch, error) {
 	out, err := r.retainIncompleteModelOutput(ModelObservation{})
 	if err != nil {
 		return reductionBatch{}, fmt.Errorf("%w: retain unsettled model output: %w", errReducerInvariant, err)
@@ -586,7 +586,7 @@ func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
 	out = append(out, drained...)
 	// No SegmentEnded arrived, so nothing fresh was reported: the Segment's accrual
 	// stands as last reported and is committed as-is.
-	var ending run.Ending = run.Canceled{}
+	var ending run.Ending = run.Canceled{Detail: rootCancellationReason}
 	if len(r.modelCalls) > 0 {
 		ending = run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedModelCall}}
 	} else if r.errFailure != nil {
@@ -596,7 +596,7 @@ func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
 	if err != nil {
 		return reductionBatch{}, fmt.Errorf("%w: %w", errReducerInvariant, err)
 	}
-	terminal, err := r.finishedRun(r.cancelDetail(ending), nil)
+	terminal, err := r.finishedRun(r.childCancelDetail(ending), nil)
 	if err != nil {
 		return reductionBatch{}, fmt.Errorf("%w: synthesize terminal: %w", errReducerInvariant, err)
 	}

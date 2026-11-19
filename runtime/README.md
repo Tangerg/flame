@@ -1820,9 +1820,13 @@ A successful start commits the Run, first Segment, and opening user Item. Resume
 Keyed root cancellation commits the exact terminal response and original executor
 reference with the canceled Run. Canceling a parked root also consumes its open
 interrupt in that transaction. A running root's confirmed Scope Exit commits
-with the Run and, for cancellation, its receipt. The Segment owner retains
-that same write-set across temporary failures and joins the Scope writer before
-acknowledging teardown.
+with the Run and, for cancellation, its receipt. The Run holds the original
+request identity while Scope admits the control and while the terminal
+transaction settles. A request timeout ends the caller's wait. The Run's
+cancellation continues under its original key. If an interrupt transaction has
+already begun, cancellation joins it before choosing the live or parked Run.
+The Segment owner retains the terminal write-set across temporary failures and
+joins the Scope writer before acknowledging teardown.
 The same key can finish cleanup and publish the original response after process
 loss or a cleanup failure.
 
