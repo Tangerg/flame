@@ -39436,6 +39436,69 @@ empty selected text once Pierre presents the source in its shadow
 root. The next batch will verify the native selection and copy
 contract through that code viewport.
 
+### Keyboard selection in highlighted code (2026-11-19)
+
+Signed Wails at `2d594d81e` displays the focused code viewport with
+Cmd+A applied to its outer element. The range runs from child offset
+0 to 1, produces an empty selection string and leaves the code glyphs
+unhighlighted. Cmd+C still writes all 48 lines of the code through
+the Markdown copy handler. Pointer selection inside the same source
+already highlights and copies its exact text.
+
+`CodeBody` gives its host renderer a ref for the live source boundary.
+`PierreFile` sets it to the presented code element after render and
+clears it on unmount. The viewport keeps keyboard focus and selects
+the native range inside that owned shadow root. Pierre serializes the
+complete range from the original source and shares the preformatted
+HTML builder with Markdown. Local pointer ranges retain the existing
+line-based copy. Better Accessibility's keyboard guidance informs the
+interaction. [Selection API](https://w3c.github.io/selection-api/#dom-selection-getcomposedranges)
+[Pierre renderer documentation](https://diffs.com/docs)
+
+- EN/light/Flame Orange with motion off at 1440 × 900. Cmd+A visibly
+  highlights code lines within the existing focus ring. Cmd+C delivers
+  the exact 2,879-character literal and 2,913-character HTML projection
+  from the full range. Drag-copy returns only ` observation01` as plain
+  text. Selecting the source with its surrounding paragraphs retains
+  rich Markdown copy. With a held Composer caret, the reader moves
+  546 → 506 → 416 px via End, Up and a wheel. Cmd+L continues the
+  draft as `592674138`.
+- ZH/dark/18 px/custom blue with full motion in a 1121 × 950 native
+  tile. The native separator narrows the conversation column to
+  440 px. Right pans the 410 px reader by 41 px before wrapping.
+  Cmd+A and Cmd+C select and copy the same literal and HTML before
+  and after wrapping. The narrower wrapped reader paints the native
+  selection over both visual parts of each line. Cmd+L restores the
+  backward draft selection at offsets 6 to 4 and typing produces
+  `2468935`. The Files Source reader still copies the 3,206-character
+  captured file, Back restores its row, and the split Diff reader
+  copies its 873-character text projection.
+- The standard Lab shows the same native text selection. Cmd+L
+  resumes the held caret and native typing produces `4809126`.
+
+The private copy probe observes trusted copy events and their
+product-generated transfer values in the isolated Lab. It cancels
+the operating-system pasteboard write. Native acceptance uses
+captured resources. Pasteboard handoff, VoiceOver and platform
+composition remain open.
+
+Scoped Prettier, the packed UI consumer, four Icons checks, plugin
+types and 20 plugin catalogs pass. The full Web check passes 137
+tests, including the isolated Runtime suite, along with 937 Web
+locale keys in eight catalogs, bootstrap, installed resource
+reproduction, 26 bundle contracts and module linking. The native
+build gate and the five-entry standard Lab build pass.
+
+Four private bundles pass strict signature verification. Four
+launches and three previews exit. Cleanup removes four app
+registrations, eight Library directories, ten checkout outputs
+and the scratch tree.
+
+The Files Source regression check still records a full selection
+around its outer wrapper with an empty selected string. Its copy
+path delivers the captured file. The next batch will check the
+visible file selection boundary and preserve its exact source copy.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

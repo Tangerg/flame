@@ -4,6 +4,15 @@ export interface RichClipboardText {
   htmlText?: string;
 }
 
+export function clipboardCodeElement(document: Document, text: string): HTMLPreElement {
+  const pre = document.createElement("pre");
+  pre.dir = "ltr";
+  const code = document.createElement("code");
+  code.textContent = text;
+  pre.append(code);
+  return pre;
+}
+
 export async function copyRichText({ plainText, htmlText }: RichClipboardText): Promise<boolean> {
   if (!plainText || typeof navigator === "undefined" || !navigator.clipboard) return false;
   const clipboard = navigator.clipboard;

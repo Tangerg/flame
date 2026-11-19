@@ -1,3 +1,5 @@
+import { clipboardCodeElement } from "@/lib/clipboard";
+
 const COPY_ATTR = "data-markdown-copy";
 
 const COPY_TEXT_ATTR = "data-markdown-copy-text";
@@ -30,15 +32,6 @@ function closestCopyElement(node: Node): Element | null {
   return element?.closest(COPY_SELECTOR) ?? null;
 }
 
-function codePayload(ownerDocument: Document, text: string): MarkdownClipboardPayload {
-  const pre = ownerDocument.createElement("pre");
-  pre.dir = "ltr";
-  const code = ownerDocument.createElement("code");
-  code.textContent = text;
-  pre.append(code);
-  return { plainText: text, htmlText: pre.outerHTML };
-}
-
 function textFromNode(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
   if (!(node instanceof Element)) return "";
@@ -65,12 +58,7 @@ function sanitizeFragment(fragment: DocumentFragment): DocumentFragment {
   }
   for (const block of Array.from(fragment.querySelectorAll(`[${COPY_ATTR}="code-block"]`))) {
     const text = block.getAttribute(COPY_TEXT_ATTR) ?? block.textContent ?? "";
-    const pre = fragment.ownerDocument.createElement("pre");
-    pre.dir = "ltr";
-    const code = fragment.ownerDocument.createElement("code");
-    code.textContent = text;
-    pre.append(code);
-    block.replaceWith(pre);
+    block.replaceWith(clipboardCodeElement(fragment.ownerDocument, text));
   }
   return fragment;
 }
@@ -89,10 +77,9 @@ export function markdownSelectionPayload(
     const kind = startBlock.getAttribute(COPY_ATTR);
     if (kind === "exclude") return null;
     if (kind === "code-block") {
-      return codePayload(
-        root.ownerDocument,
-        startBlock.getAttribute(COPY_TEXT_ATTR) ?? range.toString(),
-      );
+      const plainText = startBlock.getAttribute(COPY_TEXT_ATTR) ?? range.toString();
+      const htmlText = clipboardCodeElement(root.ownerDocument, plainText).outerHTML;
+      return { plainText, htmlText };
     }
   }
 

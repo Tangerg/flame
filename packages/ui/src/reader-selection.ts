@@ -49,8 +49,11 @@ export function selectAllInReader(
   )
     return;
   const reader = event.currentTarget;
-  const host = content instanceof ShadowRoot ? content.host : content;
-  if (!reader.contains(host) || isEditableTarget(reader, event.target)) return;
+  const root = content.getRootNode();
+  const ownsContent =
+    reader.contains(content) ||
+    (root instanceof ShadowRoot && reader.contains(root.host));
+  if (!ownsContent || isEditableTarget(reader, event.target)) return;
   const selection = reader.ownerDocument.getSelection();
   if (!selection) return;
   event.preventDefault();

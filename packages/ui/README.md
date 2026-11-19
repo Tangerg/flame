@@ -343,7 +343,10 @@ A consumer's `styles` override merges on that same viewport.
 Compact Tool inspectors retain their smaller existing bound. Highlighting changes
 only the child `code`, preserving the reading region, scroll position and focus.
 The literal remains natively selectable even inside an otherwise non-selectable
-host. With the region focused, Ctrl/Cmd+A confines selection to the code region.
+host. With the region focused, Ctrl/Cmd+A selects the presented code.
+Host renderers can expose their mounted source boundary through
+`CodeSourceProps.selectionContentRef` and clear it on unmount. Shadow DOM
+renderers supply the actual code element so native selection highlights the text.
 Left and Right pan its horizontal overflow. When WebKit retains a live
 selection in an outside editor, a plain arrow keeps focus in the code viewport
 and preserves the editor's selection, including at a scroll boundary.
@@ -366,7 +369,8 @@ read that declaration back from a selection. These functions are the only owners
 of the attribute names. `readerSelectionLines` reads
 the current browser Range's endpoints for a virtualizer's finite retention policy,
 including a collapsed anchor. Neither helper stores or advances selection.
-Both helpers accept an optional content element inside the event owner. A named
+Both helpers accept an optional content element inside the event owner.
+`selectAllInReader` also accepts a boundary in an owned shadow root. A named
 scroll viewport can therefore keep focus and editable-field ownership while
 selecting only its presented source, excluding paths and other reader framing.
 The default boundary remains the event owner for existing readers.

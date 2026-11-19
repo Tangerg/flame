@@ -5,6 +5,7 @@ import {
   useMemo,
   type ComponentType,
   type ReactNode,
+  type RefObject,
 } from "react";
 import { ScrollRegion } from "./scroll-region";
 
@@ -12,6 +13,8 @@ export interface CodeSourceProps {
   source: string;
   language: string;
   wrapped?: boolean;
+  // The renderer publishes its live selection boundary, including inside a shadow root.
+  selectionContentRef?: RefObject<Element | null>;
 }
 
 export interface DiffSourceProps {

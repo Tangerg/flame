@@ -1,7 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
 import { clsx as cn } from "clsx";
 import { Copy, UnfoldHorizontal, WrapText } from "@flame/icons/react";
-import { useSyncExternalStore, type ComponentPropsWithoutRef } from "react";
+import {
+  useRef,
+  useSyncExternalStore,
+  type ComponentPropsWithoutRef,
+} from "react";
 import { ARTIFACT_SURFACE } from "./artifact-surface";
 import { useCopy } from "./clipboard";
 import { IconButton } from "./icon-button";
@@ -215,6 +219,7 @@ export function CodeBody({
 }) {
   const wrapped = useCodeWrap();
   const Source = useCodeSource();
+  const selectionContentRef = useRef<Element | null>(null);
   return (
     <div
       dir="ltr"
@@ -225,7 +230,10 @@ export function CodeBody({
       data-focus-inset=""
       data-wrap={wrapped}
       onKeyDown={(event) => {
-        selectAllInReader(event);
+        selectAllInReader(
+          event,
+          selectionContentRef.current ?? event.currentTarget,
+        );
         if (event.cancelable && !isImeKey(event.nativeEvent))
           scrollWithHorizontalArrow(event);
         scrollReaderWithForeignSelection(event, "both");
@@ -237,7 +245,12 @@ export function CodeBody({
         extra,
       )}
     >
-      <Source source={children} language={language} wrapped={wrapped} />
+      <Source
+        source={children}
+        language={language}
+        wrapped={wrapped}
+        selectionContentRef={selectionContentRef}
+      />
     </div>
   );
 }

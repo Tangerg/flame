@@ -3,7 +3,14 @@ import { useMemo, useRef, type ClipboardEvent } from "react";
 import { File, useWorkerPool, type FileOptions } from "@pierre/diffs/react";
 import { registerCustomCSSVariableTheme, type FileContents } from "@pierre/diffs";
 import { useScheme } from "@/lib/appearance";
-import { codeSyntaxColors, markQuoteLine, markReaderLine, selectAllInReader } from "@flame/ui";
+import { clipboardCodeElement } from "@/lib/clipboard";
+import {
+  codeSyntaxColors,
+  markQuoteLine,
+  markReaderLine,
+  selectAllInReader,
+  type CodeSourceProps,
+} from "@flame/ui";
 
 registerCustomCSSVariableTheme("flame-code", codeSyntaxColors);
 export const CODE_RENDERING = { preferredHighlighter: "shiki-js" as const, theme: "flame-code" };
@@ -24,8 +31,8 @@ export function PierreFile({
   startLine = 1,
   targetLine,
   intent,
-  onPresented,
   wrapped = false,
+  selectionContentRef,
   scrollInReader = false,
 }: {
   source: string;
@@ -34,8 +41,8 @@ export function PierreFile({
   startLine?: number;
   targetLine?: number;
   intent?: object | null;
-  onPresented?(root: HTMLElement): void;
   wrapped?: boolean;
+  selectionContentRef?: CodeSourceProps["selectionContentRef"];
   scrollInReader?: boolean;
 }) {
   const scheme = useScheme();
@@ -62,6 +69,7 @@ export function PierreFile({
       onPostRender: (node, _instance, phase) => {
         if (phase === "unmount") {
           root.current = null;
+          if (selectionContentRef) selectionContentRef.current = null;
           return;
         }
         const shadow = node.shadowRoot;
@@ -80,10 +88,11 @@ export function PierreFile({
             presentedIntent.current = { file, intent };
           }
         }
-        onPresented?.(node);
+        if (selectionContentRef)
+          selectionContentRef.current = shadow.querySelector("[data-file] > [data-code]");
       },
     }),
-    [scheme, wrapped, startLine, targetLine, intent, file, onPresented],
+    [scheme, wrapped, startLine, targetLine, intent, file, selectionContentRef],
   );
   const copy = (event: ClipboardEvent<HTMLElement>) => {
     const shadow = root.current;
@@ -101,6 +110,22 @@ export function PierreFile({
     range.setStart(selected.startContainer, selected.startOffset);
     range.setEnd(selected.endContainer, selected.endOffset);
     if (range.collapsed) return;
+    const content = selectionContentRef?.current;
+    if (
+      content &&
+      range.startContainer === content &&
+      range.startOffset === 0 &&
+      range.endContainer === content &&
+      range.endOffset === content.childNodes.length
+    ) {
+      event.preventDefault();
+      event.clipboardData.setData(
+        "text/html",
+        clipboardCodeElement(shadow.ownerDocument, source).outerHTML,
+      );
+      event.clipboardData.setData("text/plain", source);
+      return;
+    }
     const sourceLines = source.match(/[^\n]*\n|[^\n]+$/g) ?? [];
     const parts: string[] = [];
     for (const line of shadow.querySelectorAll<HTMLElement>("[data-code] [data-line]")) {
@@ -131,7 +156,8 @@ export function PierreFile({
       {...stylex.props(scrollInReader && !wrapped && styles.readerScroll)}
       onCopy={copy}
       onKeyDown={(event) => {
-        if (root.current) selectAllInReader(event, root.current);
+        const content = selectionContentRef?.current ?? root.current;
+        if (content) selectAllInReader(event, content);
       }}
     >
       <File file={file} options={options} />
