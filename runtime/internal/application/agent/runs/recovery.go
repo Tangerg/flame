@@ -127,9 +127,8 @@ func (a InvocationAttempt) compare(other InvocationAttempt) int {
 	)
 }
 
-// OpenModelInvocation is an operational provider attempt that crossed the
-// external boundary but has no durable outer settlement. A physical result
-// may already be known. Boot recovery precedes new executor admission.
+// OpenModelInvocation retains a committed logical start. Its physical endpoint
+// is optional because endpoint admission has its own durable boundary.
 type OpenModelInvocation struct {
 	InvocationAttempt
 	Purpose  rundomain.ModelCallPurpose
@@ -486,11 +485,11 @@ func newRecoveryPlanner(
 	}
 	for _, invocation := range modelInvocations {
 		planner.observeTime(invocation.StartedAt)
-		if invocation.Endpoint != nil {
-			record := invocation.Endpoint.Snapshot()
-			planner.observeTime(record.FinishedAt)
-			planner.observeTime(record.Invocation.StartedAt)
+		observedAt, err := invocation.endpointObservedAt()
+		if err != nil {
+			return nil, fmt.Errorf("runs: read endpoint observation for abandoned call %q: %w", invocation.CallID, err)
 		}
+		planner.observeTime(observedAt)
 	}
 	for _, invocation := range toolInvocations {
 		planner.observeTime(invocation.StartedAt)

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
@@ -20,7 +19,27 @@ func (o OpenModelInvocation) Validate() error {
 	if err := o.InvocationAttempt.Validate(); err != nil {
 		return err
 	}
-	return validateRecoveryEndpoint(o.Endpoint, o.InvocationAttempt, maxRecoveryEndpointTime(o.Endpoint))
+	_, err := o.endpointObservedAt()
+	return err
+}
+
+func (o OpenModelInvocation) endpointObservedAt() (time.Time, error) {
+	source := o.Endpoint
+	if source == nil {
+		return time.Time{}, nil
+	}
+	if err := source.Validate(); err != nil {
+		return time.Time{}, err
+	}
+	record := source.Snapshot()
+	if record.Invocation.SessionID != o.SessionID || record.RunID != o.RunID || record.SegmentID != o.SegmentID ||
+		record.Invocation.Caller.ID != o.CallID || record.Invocation.StartedAt.Before(o.StartedAt) {
+		return time.Time{}, errors.New("runs: recovery endpoint differs from its original call")
+	}
+	if source.Open() {
+		return record.Invocation.StartedAt, nil
+	}
+	return record.FinishedAt, nil
 }
 
 // Validate checks one incomplete Tool attempt and its Transcript Item identity
@@ -81,12 +100,4 @@ func validateOpenInvocationSegment(kind string, index int, attempt InvocationAtt
 		)
 	}
 	return nil
-}
-
-func maxRecoveryEndpointTime(source *modelref.EndpointObservation) time.Time {
-	record := source.Snapshot()
-	if source.Open() {
-		return record.Invocation.StartedAt
-	}
-	return record.FinishedAt
 }

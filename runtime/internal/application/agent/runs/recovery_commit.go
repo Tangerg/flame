@@ -267,8 +267,12 @@ func validateRecoveryModelInvocations(
 		if err := validateRecoveryInvocation(invocation.InvocationAttempt, invocation.FinishedAt, lostByID, recoveredSessions); err != nil {
 			return fmt.Errorf("runs: recovery commit model invocation[%d]: %w", index, err)
 		}
-		if err := validateRecoveryEndpoint(invocation.Endpoint, invocation.InvocationAttempt, invocation.FinishedAt); err != nil {
-			return err
+		observedAt, err := invocation.endpointObservedAt()
+		if err != nil {
+			return fmt.Errorf("runs: recovery commit model invocation[%d]: %w", index, err)
+		}
+		if invocation.FinishedAt.Before(observedAt) {
+			return fmt.Errorf("runs: recovery commit model invocation[%d] closes before its endpoint observation", index)
 		}
 		if _, duplicate := seen[invocation.CallID]; duplicate {
 			return fmt.Errorf("runs: recovery commit repeats model invocation %q", invocation.CallID)
@@ -557,18 +561,4 @@ func cloneRecoveryModels(values []ModelInvocationRecovery) []ModelInvocationReco
 		}
 	}
 	return cloned
-}
-
-func validateRecoveryEndpoint(source *modelref.EndpointObservation, attempt InvocationAttempt, finishedAt time.Time) error {
-	if source == nil {
-		return nil
-	}
-	if err := source.Validate(); err != nil {
-		return err
-	}
-	record := source.Snapshot()
-	if record.Invocation.SessionID != attempt.SessionID || record.RunID != attempt.RunID || record.Invocation.Caller.ID != attempt.CallID || record.Invocation.StartedAt.Before(attempt.StartedAt) || (!source.Open() && record.FinishedAt.After(finishedAt)) {
-		return errors.New("runs: recovery endpoint differs from its original call")
-	}
-	return nil
 }
