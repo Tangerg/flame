@@ -351,7 +351,8 @@ function FilePreview({
   const firstShown = data?.startLine ?? 1;
   const lastShown = data?.endLine ?? 0;
   const moreBefore = firstShown > 1;
-  const moreAfter = data !== undefined && lastShown < data.totalLines;
+  const laterCount = Math.min(WINDOW_RADIUS, Math.max(0, (data?.totalLines ?? 0) - lastShown));
+  const moreAfter = laterCount > 0;
 
   const renderers = useExtensionPoint(WORKSPACE_FILE_RENDERER);
   const extension = fileExtension(viewer.path);
@@ -401,7 +402,7 @@ function FilePreview({
   };
   const loadLater = (event: MouseEvent<HTMLElement>) => {
     focusReaderFrom(event.currentTarget);
-    setLineWindow({ start: lastShown + 1, end: lastShown + WINDOW_RADIUS });
+    setLineWindow({ start: lastShown + 1, end: lastShown + laterCount });
   };
 
   // Set only while FileView presents the source, including as a renderer's fallback;
@@ -626,7 +627,7 @@ function FilePreview({
               {moreAfter && !showRendered && (
                 <div {...stylex.props(fp.edge)}>
                   <TextButton tone="accent" size="sm" onClick={loadLater}>
-                    {t("file.loadLater", { count: WINDOW_RADIUS })}
+                    {t("file.loadLater", { count: laterCount })}
                   </TextButton>
                 </div>
               )}

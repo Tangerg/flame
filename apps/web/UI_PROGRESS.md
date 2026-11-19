@@ -40724,6 +40724,56 @@ ten checkout outputs and the scratch tree. The native 1–59 window
 labels the next action with 200 lines. The accepted file has 34 lines
 remaining. The next task is to name the actual planned page.
 
+### File continuation names its planned window (2026-11-19)
+
+The previous native acceptance reads `reading-guide.md` lines 1–59 of 93
+in a 320 px Dock. The footer says `再显示 200 行`. The accepted next window
+is lines 60–93, a 34-line continuation. Files computed its visible end
+condition from the read's metadata. The caption and request used the
+200-line maximum directly.
+
+`FileWorkspace` derives one next-window count from the read's total and
+inclusive end, clamped to the 200-line page size. That count determines
+whether the control appears, the localized label and the inclusive request
+end. Earlier paging continues through its existing window. The published
+locale catalogs already provide the singular and plural forms. Better
+Writing informs the precise action label. Read-only ZCode code-viewer
+supplies the reference for expressing a window in absolute source positions.
+
+- EN/light/14 px/Flame Orange at Actual Size and full motion. Go to line
+  93 enters the final line. The Earlier action requests 1–92.
+  Show 1 more line requests exactly 93–93. The accepted final line
+  focuses the named reader, and Back to files focuses the original
+  `reading-guide.md` row.
+- ZH/dark/18 px/`#3B82F6` at Actual Size and full motion. Native Window
+  Left and End on the Dock separator produce a 320 px Dock. One native
+  wheel page reveals `再显示 34 行` at the end of 1–59. Mouse activation
+  requests and displays 60–93 and focuses the reader. Its final window
+  has no later action. Full width shows the same 60–93 range. Closing
+  to the conversation retains the unsent `59421873`.
+- EN/light/14 px with a captured 465-line file. At 1–200, the button
+  requests 201–400 and reports that interval. At 201–400, the button
+  says Show 65 more lines and requests 401–465. The named reader
+  receives focus after each action. The file end closes forward paging.
+- EN/light/14 px uses standard Lab assets. Go to line 8 in
+  `DockResizer.tsx` returns to the trigger and shows the complete
+  eight-line file. Back to files returns to the tree. The draft
+  continues as `59170642`.
+
+Scoped Prettier, 137 Web tests, 939 locale keys, 26 bundle contracts,
+bootstrap, portable resource and module checks, native build and the
+five canonical Lab documents pass. The private Lab records the request
+and served window in its native accessibility readout. Standard assets
+use the ordinary fixture. Live user filesystem reads, physical IME,
+VoiceOver speech and other operating systems were outside the exercise.
+
+Four signed private bundles, four launches and two previews complete.
+Cleanup removes four registrations, eight private Library directories,
+ten checkout outputs and the scratch tree. The window header appends
+the truncated label after a complete response to an intentionally
+bounded request. Continue by checking what information the range alone
+provides and what feedback a shorter-than-requested read needs.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad
