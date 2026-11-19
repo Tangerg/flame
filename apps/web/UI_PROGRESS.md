@@ -24307,6 +24307,55 @@ while the dialog stays open. Escape then leaves focus on
 the document. Ordinary dialog Escape returns to Enlarge
 diagram. Inspect the modal's keyboard scope next.
 
+### Keep conversation Find behind a modal's focus boundary (2026-11-20)
+
+Signed English Wails on `45f3e00be` opens the enlarged
+Diagram and moves focus into its popup. Cmd+F opens the
+background conversation Find field and focuses it while
+the dialog stays visible. Escape dismisses the two
+surfaces and leaves document focus. Before delivery, the
+native key trace already sees `aria-hidden="true"` on
+a transcript ancestor.
+
+`ChatSearchOverlay` checks the mounted transcript or the
+existing Find bar for inherited ARIA or inert isolation
+before it captures a return target or opens or focuses
+Find. The existing Command Menu delivery runs the selected
+command after its own modal isolation clears.
+[WAI modal dialog keyboard pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/).
+[Radix Dialog keyboard interactions](https://www.radix-ui.com/primitives/docs/components/dialog#keyboard-interactions).
+
+- EN/light/14 px/Flame Orange at 1121 × 950. Cmd+F leaves
+  focus inside the enlarged Diagram. Tab reaches Fit and
+  Escape returns to Enlarge diagram at the same transcript
+  scroll. Outside the dialog, Cmd+F opens Find normally.
+  The actual Command Menu selects Find in chat and opens
+  `handoff` at `1 / 1` after dismissal. Reopening Diagram
+  over this query and pressing Cmd+F preserves the query
+  and local dialog focus. Dialog Escape restores its trigger.
+  Closing the existing Find field restores Composer, where
+  `10136` continues as `10136518`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. Cmd+F keeps
+  focus on 适应窗口. Pointer 关闭 returns to 放大图表.
+  Normal Find from the Composer finds the caption. The
+  transcript scrolls from 0 to 409 px before Find Escape.
+  The draft continues from `10142` to `10142638`.
+
+Scoped formatting, 137 Web tests, 940 keys across eight
+locales, bootstrap, plugin resources, 26 bundle contracts,
+module linkage, the macOS native gate and five canonical
+Lab documents pass. The private Lab mounts the product
+Command Menu with the existing shortcuts provider and a
+captured reply. VoiceOver speech, live Send, browser suites
+and benchmarks were outside the run.
+
+Three native launches and two loopback previews exit.
+Cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+Separate native Find from the inline Enlarge diagram button
+matches the caption and leaves document focus on Escape.
+Check the opener's lifetime when Find exits next.
+
 ### Find follows rendered reply updates
 
 Find now refreshes its matches when the presented reply changes. An open query

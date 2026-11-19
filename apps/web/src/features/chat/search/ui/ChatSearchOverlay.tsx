@@ -73,6 +73,9 @@ function SessionChatSearchOverlay() {
   const readingWitness = useRef({ visible: false, frame: [] as number[] });
 
   const requestOpen = useEffectEvent(() => {
+    const surface = list?.getScrollableNode() ?? barRef.current;
+    if (surface?.closest('[aria-hidden="true"], [inert]')) return;
+
     // Repeated Find from inside the bar keeps the original opener.
     if (!open || !barRef.current?.contains(document.activeElement)) {
       focusReturn.current = captureFocusReturn(composer);

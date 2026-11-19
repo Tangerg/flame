@@ -227,6 +227,7 @@ Each line of a diagram label is searched independently.
 In prose, a run of collapsible spaces or tabs matches one space across inline
 formatting. Code and preserved whitespace match literally. Explicit breaks and
 block boundaries still split phrases.
+Find leaves keyboard focus inside a modal while it hides the transcript.
 Closing Find restores the original Composer's last editing selection when its
 mounted document is still current. The Composer owns that return through
 Lexical, and the search bar retains its ordinary return for other controls.
