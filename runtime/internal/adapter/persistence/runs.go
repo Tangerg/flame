@@ -460,9 +460,8 @@ func (r *RunStore) requireAdvance(ctx context.Context, operation string, state r
 // the only place a Run can reach terminal — so the boundary is stamped here
 // rather than by each caller that ends a Run, which is how "no terminal root
 // without a recorded boundary" holds by construction. A child ends inside its
-// root's tree, which is never cut before the root ends. Restore is deliberately
-// NOT a boundary: an imported Run finished in another runtime, and stamping the
-// importing session's live list would invent a value that Run never had.
+// root's tree, which is never cut before the root ends. Restored Runs already
+// finished, so they cannot capture a new boundary from their destination Plan.
 func (r *RunStore) finish(ctx context.Context, op string, value rundomain.Run, marker *runCommitMarker, fence string, fenceArgs ...any) error {
 	metrics, err := runMetricsRow(value.Metrics())
 	if err != nil {

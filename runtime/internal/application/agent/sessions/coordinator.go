@@ -64,11 +64,8 @@ type TranscriptStore interface {
 	List(ctx context.Context, sessionID string) ([]transcript.Item, error)
 }
 
-// planBoundaries is the lifecycle coordinator's read view of the Plan a Run
-// boundary recorded. Rollback and fork both need "the value as of that run", which
-// the live projection cannot answer: it keeps the latest value and no history. A
-// false ok is "never recorded", not "empty" — see [PlanBoundary].
-// Boundary transfers the recorded steps to the caller.
+// A rollback can rewind only to the Plan captured by the kept Run. A missing
+// capture carries no authority to replace the current Plan.
 type planBoundaries interface {
 	Boundary(ctx context.Context, runID string) (plan.Document, bool, error)
 }
@@ -122,6 +119,12 @@ type SnapshotReader interface {
 	ReadSnapshot(ctx context.Context, sessionID string) (Snapshot, error)
 }
 
+type sessionSnapshots interface {
+	SnapshotReader
+	// Fork needs history and its original Plan boundaries from the same read.
+	ReadForkMaterial(ctx context.Context, sessionID string) (ForkMaterial, error)
+}
+
 // MaterialSnapshotReader returns the live Session read model from one storage
 // transaction. Unlike the portable archive snapshot, it includes active Runs,
 // open interrupts, and the Plan's ordering metadata.
@@ -142,9 +145,7 @@ type transientState interface {
 	ForgetWorkspace(root string)
 }
 
-// Snapshot is one coherent, canonical Session aggregate read used by use cases
-// that must reason across multiple persisted projections.
-type Snapshot struct {
+type HistorySnapshot struct {
 	Session  session.Session
 	Messages []chat.Message
 	// Items are stored Items: an offloaded Tool result carries the preview that
@@ -152,6 +153,10 @@ type Snapshot struct {
 	Items       []transcript.Item
 	Runs        []run.Run
 	ToolResults []transcript.ToolResultBlob
+}
+
+type Snapshot struct {
+	HistorySnapshot
 	// Plan is the session-scoped Plan as a semantic VALUE — items only, no
 	// revision and no update time. Those are this runtime's ordering tokens: a
 	// snapshot that carried them could hand a restored value a position in the
@@ -232,7 +237,7 @@ type Coordinator struct {
 	transcript            TranscriptStore
 	runs                  RunStore
 	plan                  PlanServices
-	snapshots             SnapshotReader
+	snapshots             sessionSnapshots
 	materialSnapshots     MaterialSnapshotReader
 	writes                WriteSets
 	transientState        transientState
@@ -278,7 +283,7 @@ type Dependencies struct {
 	Transcript            TranscriptStore
 	Runs                  RunStore
 	Plan                  PlanServices
-	Snapshots             SnapshotReader
+	Snapshots             sessionSnapshots
 	MaterialSnapshots     MaterialSnapshotReader
 	Writes                WriteSets
 	TransientState        transientState

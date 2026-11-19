@@ -87,6 +87,12 @@ Session and working tree until the receipt commits, and recovery completes the
 same rollback before admitting later changes. This schema requires a fresh
 Runtime data directory. Retain earlier data separately.
 
+Session forks capture conversation history and the recorded Run Plan boundaries
+in one read snapshot. Each copied root Run retains its original Plan content and
+author under its new identity. Later forks and rollbacks in the branch can use
+those boundaries after the source Session is deleted. A recorded empty Plan
+clears the branch's current Plan when rolling back to that Run.
+
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
 Scope v0.62.0 owns complete Tool failure classification. Runtime uses

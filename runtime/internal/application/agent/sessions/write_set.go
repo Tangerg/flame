@@ -12,11 +12,10 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// runsInParentFirstOrder gives persistence a creation-safe tree order while
+// sortRunsParentFirst gives persistence a creation-safe tree order while
 // preserving the archive's order among peers. Snapshot validation has already
 // proved that every parent exists and the graph is acyclic.
-func runsInParentFirstOrder(runs []rundomain.Run) []rundomain.Run {
-	ordered := append([]rundomain.Run(nil), runs...)
+func sortRunsParentFirst(runs []rundomain.Run) {
 	byID := make(map[string]rundomain.Run, len(runs))
 	for _, run := range runs {
 		byID[run.ID()] = run
@@ -35,10 +34,9 @@ func runsInParentFirstOrder(runs []rundomain.Run) []rundomain.Run {
 		depths[run.ID()] = value
 		return value
 	}
-	slices.SortStableFunc(ordered, func(left, right rundomain.Run) int {
+	slices.SortStableFunc(runs, func(left, right rundomain.Run) int {
 		return cmp.Compare(depth(left), depth(right))
 	})
-	return ordered
 }
 
 // TerminalPlan is the complete durable projection for ending a parked Run tree

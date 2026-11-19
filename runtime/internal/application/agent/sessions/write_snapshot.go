@@ -1,29 +1,28 @@
 package sessions
 
 import (
-	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// ownWriteSnapshot isolates one complete terminal projection before a Session
+// ownHistory isolates one complete terminal projection before a Session
 // write-set owns it.
-func ownWriteSnapshot(snapshot Snapshot) (Snapshot, error) {
-	history, err := conversation.New(snapshot.Messages)
-	if err != nil {
-		return Snapshot{}, fmt.Errorf("conversation: %w", err)
+func ownHistory(snapshot HistorySnapshot) (HistorySnapshot, error) {
+	if err := snapshot.validate(); err != nil {
+		return HistorySnapshot{}, err
 	}
-	owned := Snapshot{
-		Session: snapshot.Session, Messages: history.Messages(),
-		Runs: runsInParentFirstOrder(snapshot.Runs), Items: slices.Clone(snapshot.Items),
-		ToolResults: slices.Clone(snapshot.ToolResults), Plan: slices.Clone(snapshot.Plan), PlanSource: snapshot.PlanSource,
-	}
-	if err := owned.Validate(); err != nil {
-		return Snapshot{}, err
-	}
+	owned := snapshot.clone()
+	sortRunsParentFirst(owned.Runs)
 	return owned, nil
+}
+
+func (s HistorySnapshot) clone() HistorySnapshot {
+	return HistorySnapshot{
+		Session: s.Session, Messages: cloneSnapshotMessages(s.Messages),
+		Runs: slices.Clone(s.Runs), Items: slices.Clone(s.Items),
+		ToolResults: slices.Clone(s.ToolResults),
+	}
 }
 
 func cloneSnapshotMessages(messages []chat.Message) []chat.Message {

@@ -8,58 +8,61 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
-	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
-// copyForkSnapshot projects the selected terminal boundary into the child under
+// copyForkMaterial projects the selected terminal boundary into the child under
 // fresh global identities. A Session fork is one new aggregate, not a second
 // owner for the parent's Run/Item/blob primary keys. The remap happens here in
 // the use case so persistence only commits an already-coherent write set and no
 // client has to synthesize the history that the model received.
-func (c *Coordinator) copyForkSnapshot(
-	source Snapshot,
+func (c *Coordinator) copyForkMaterial(
+	source ForkMaterial,
 	child session.Session,
 	boundary ForkBoundary,
-	steps []plan.Step,
-) (Snapshot, error) {
+) (ForkMaterial, error) {
 	if len(boundary.RunIDs) == 0 {
-		return Snapshot{Session: child, Messages: boundary.Messages, Plan: steps}, nil
+		return ForkMaterial{HistorySnapshot: HistorySnapshot{Session: child, Messages: boundary.Messages}}, nil
 	}
-	projection, err := newForkSnapshotProjection(c, source, child, boundary, steps)
+	projection, err := newForkSnapshotProjection(c, source, child, boundary)
 	if err != nil {
-		return Snapshot{}, err
+		return ForkMaterial{}, err
 	}
 	if err := projection.selectRuns(); err != nil {
-		return Snapshot{}, err
+		return ForkMaterial{}, err
 	}
 	projection.selectItems()
 	if err := projection.copyRuns(); err != nil {
-		return Snapshot{}, err
+		return ForkMaterial{}, err
 	}
 	if err := projection.copyItems(); err != nil {
-		return Snapshot{}, err
+		return ForkMaterial{}, err
 	}
 	projection.copyToolResults()
-	return projection.finish()
+	for _, capture := range source.PlanBoundaries {
+		if id, copied := projection.runIDs[capture.RunID]; copied {
+			capture.RunID = id.String()
+			projection.forked.PlanBoundaries = append(projection.forked.PlanBoundaries, capture)
+		}
+	}
+	return projection.forked, nil
 }
 
 type forkSnapshotProjection struct {
 	coordinator *Coordinator
-	source      Snapshot
+	source      ForkMaterial
 	childID     identity.SessionID
 	boundary    ForkBoundary
 	runByID     map[string]run.Run
 	runIDs      map[string]identity.RunID
 	itemIDs     map[string]string
-	forked      Snapshot
+	forked      ForkMaterial
 }
 
 func newForkSnapshotProjection(
 	coordinator *Coordinator,
-	source Snapshot,
+	source ForkMaterial,
 	child session.Session,
 	boundary ForkBoundary,
-	steps []plan.Step,
 ) (*forkSnapshotProjection, error) {
 	childID, err := identity.ParseSession(child.ID())
 	if err != nil {
@@ -77,10 +80,8 @@ func newForkSnapshotProjection(
 		runByID:     runByID,
 		runIDs:      make(map[string]identity.RunID, len(boundary.RunIDs)),
 		itemIDs:     make(map[string]string),
-		forked: Snapshot{
-			Session:  child,
-			Messages: boundary.Messages,
-			Plan:     steps,
+		forked: ForkMaterial{
+			HistorySnapshot: HistorySnapshot{Session: child, Messages: boundary.Messages},
 		},
 	}, nil
 }
@@ -182,11 +183,4 @@ func (projection *forkSnapshotProjection) copyToolResults() {
 		blob.SessionID = projection.childID.String()
 		projection.forked.ToolResults = append(projection.forked.ToolResults, blob)
 	}
-}
-
-func (projection *forkSnapshotProjection) finish() (Snapshot, error) {
-	if err := projection.forked.Validate(); err != nil {
-		return Snapshot{}, fmt.Errorf("sessions: validate fork snapshot: %w", err)
-	}
-	return projection.forked, nil
 }

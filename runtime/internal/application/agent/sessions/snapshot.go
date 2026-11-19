@@ -12,19 +12,21 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
-// Validate checks the complete Session and the snapshot's referential integrity
-// before the coordinator hands it out.
 func (s Snapshot) Validate() error {
+	if err := plan.ValidateSteps(s.Plan); err != nil {
+		return fmt.Errorf("sessions: snapshot Plan: %w", err)
+	}
+	return s.HistorySnapshot.validate()
+}
+
+func (s HistorySnapshot) validate() error {
 	// The Session anchors every ownership comparison below, so an unbuilt one
 	// would make an all-zero snapshot self-consistent.
 	if s.Session.ID() == "" {
 		return errors.New("sessions: snapshot carries no Session")
 	}
-	if _, err := conversation.New(s.Messages); err != nil {
+	if err := conversation.ValidateMessages(s.Messages); err != nil {
 		return fmt.Errorf("sessions: snapshot conversation: %w", err)
-	}
-	if err := plan.ValidateSteps(s.Plan); err != nil {
-		return fmt.Errorf("sessions: snapshot Plan: %w", err)
 	}
 	runs, err := s.validateRuns()
 	if err != nil {
@@ -40,7 +42,7 @@ func (s Snapshot) Validate() error {
 	return s.ValidateToolResults()
 }
 
-func (s Snapshot) validateRuns() (map[string]struct{}, error) {
+func (s HistorySnapshot) validateRuns() (map[string]struct{}, error) {
 	runs := make(map[string]struct{}, len(s.Runs))
 	for _, run := range s.Runs {
 		if run.ID() == "" || run.SessionID() != s.Session.ID() {
@@ -62,7 +64,7 @@ func (s Snapshot) validateRuns() (map[string]struct{}, error) {
 	return runs, nil
 }
 
-func (s Snapshot) validateItems(runs map[string]struct{}) (map[string]transcript.Item, error) {
+func (s HistorySnapshot) validateItems(runs map[string]struct{}) (map[string]transcript.Item, error) {
 	items := make(map[string]transcript.Item, len(s.Items))
 	for _, item := range s.Items {
 		if item.ID() == "" || item.SessionID() != s.Session.ID() {

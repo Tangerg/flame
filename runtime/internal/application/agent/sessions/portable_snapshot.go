@@ -127,12 +127,14 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 		return Snapshot{}, fmt.Errorf("%w: Session: %w", ErrInvalidPortableSnapshot, err)
 	}
 	snapshot := Snapshot{
-		Session:     restoredSession,
-		Messages:    cloneSnapshotMessages(p.Messages),
-		Items:       append([]transcript.Item(nil), p.Items...),
-		ToolResults: make([]transcript.ToolResultBlob, 0, len(p.ToolResults)),
-		Runs:        make([]run.Run, 0, len(p.Runs)),
-		Plan:        slices.Clone(p.Plan), PlanSource: p.PlanSource,
+		HistorySnapshot: HistorySnapshot{
+			Session:     restoredSession,
+			Messages:    cloneSnapshotMessages(p.Messages),
+			Items:       append([]transcript.Item(nil), p.Items...),
+			ToolResults: make([]transcript.ToolResultBlob, 0, len(p.ToolResults)),
+			Runs:        make([]run.Run, 0, len(p.Runs)),
+		},
+		Plan: slices.Clone(p.Plan), PlanSource: p.PlanSource,
 	}
 	// A child reads its root's capabilities, so root values are collected before
 	// any Run is rebuilt. The archive states each value exactly once.

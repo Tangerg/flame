@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	framevalue "github.com/Tangerg/frame/value"
 )
@@ -90,19 +91,25 @@ func (p *PlanStore) Save(ctx context.Context, sessionID string, change plan.Repl
 	if err := validateSessionResource("save Session Plan", sessionID); err != nil {
 		return err
 	}
-	replacement := change.State()
-	steps := replacement.Steps()
-	data, err := encodeStoredJSON(plan.ProposalOf(steps).Steps)
-	if err != nil {
-		return fmt.Errorf("sqlite: encode Plan: %w", err)
-	}
-	digest := framevalue.Hash(data)
 	return p.db.write(ctx, func(ctx context.Context) error {
-		if _, err := p.db.connection(ctx).ExecContext(ctx, `INSERT INTO plan_documents(digest, steps) VALUES (?, ?) ON CONFLICT(digest) DO NOTHING`, digest.String(), string(data)); err != nil {
-			return fmt.Errorf("sqlite: store immutable Plan: %w", err)
+		digest, err := p.storeDocument(ctx, change.State().Steps())
+		if err != nil {
+			return err
 		}
 		return p.advance(ctx, sessionID, digest, change)
 	})
+}
+
+func (p *PlanStore) storeDocument(ctx context.Context, steps []plan.Step) (framevalue.Digest, error) {
+	data, err := encodeStoredJSON(plan.ProposalOf(steps).Steps)
+	if err != nil {
+		return framevalue.Digest{}, fmt.Errorf("sqlite: encode Plan: %w", err)
+	}
+	digest := framevalue.Hash(data)
+	if _, err := p.db.connection(ctx).ExecContext(ctx, `INSERT INTO plan_documents(digest, steps) VALUES (?, ?) ON CONFLICT(digest) DO NOTHING`, digest.String(), string(data)); err != nil {
+		return framevalue.Digest{}, fmt.Errorf("sqlite: store immutable Plan: %w", err)
+	}
+	return digest, nil
 }
 func (p *PlanStore) advance(ctx context.Context, sessionID string, digest framevalue.Digest, change plan.Replacement) error {
 	return p.db.write(ctx, func(ctx context.Context) error {
@@ -165,25 +172,93 @@ func (p *PlanStore) Boundary(ctx context.Context, runID string) (plan.Document, 
 		}
 		var sourceJSON string
 		var stepsJSON, digest sql.NullString
-		err := p.db.connection(ctx).QueryRowContext(ctx, `SELECT doc.steps, doc.digest,b.source FROM plan_boundaries b LEFT JOIN plan_documents doc ON doc.digest = b.document WHERE run_id = ?`, runID).Scan(&stepsJSON, &digest, &sourceJSON)
+		err := p.db.connection(ctx).QueryRowContext(ctx, `SELECT doc.steps, b.document, b.source
+			FROM plan_boundaries b LEFT JOIN plan_documents doc ON doc.digest = b.document WHERE b.run_id = ?`,
+			runID).Scan(&stepsJSON, &digest, &sourceJSON)
 		if errors.Is(err, sql.ErrNoRows) {
 			return plan.Document{}, false, nil
 		}
 		if err != nil {
 			return plan.Document{}, false, fmt.Errorf("sqlite: read Plan boundary for Run %q: %w", runID, err)
 		}
-		if !digest.Valid {
-			return plan.Document{Steps: []plan.Step{}}, true, nil
+		document, err := decodePlanBoundary(stepsJSON, digest, sourceJSON)
+		return document, err == nil, err
+	})
+}
+
+func (p *PlanStore) ListBoundaries(ctx context.Context, sessionID string) ([]sessions.RunPlanBoundary, error) {
+	return scopedValue(ctx, p.db.read, func(ctx context.Context) ([]sessions.RunPlanBoundary, error) {
+		if err := validateSessionResource("read Plan boundaries", sessionID); err != nil {
+			return nil, err
 		}
-		steps, err := decodePlanSteps(stepsJSON.String, digest.String)
+		rows, err := p.db.connection(ctx).QueryContext(ctx, `SELECT b.run_id, doc.steps, b.document, b.source
+			FROM plan_boundaries b JOIN runs r ON r.run_id = b.run_id
+			LEFT JOIN plan_documents doc ON doc.digest = b.document
+			WHERE r.session_id = ? ORDER BY b.run_id`, sessionID)
 		if err != nil {
-			return plan.Document{}, false, err
+			return nil, fmt.Errorf("sqlite: read Plan boundaries: %w", err)
 		}
-		var source extension.ContributionSource
-		if err := decodeStoredJSON([]byte(sourceJSON), &source); err != nil {
-			return plan.Document{}, false, err
+		defer func() { _ = rows.Close() }()
+		var boundaries []sessions.RunPlanBoundary
+		for rows.Next() {
+			var id, source string
+			var steps, digest sql.NullString
+			if err := rows.Scan(&id, &steps, &digest, &source); err != nil {
+				return nil, fmt.Errorf("sqlite: scan Plan boundary: %w", err)
+			}
+			document, err := decodePlanBoundary(steps, digest, source)
+			if err != nil {
+				return nil, fmt.Errorf("sqlite: read Plan boundary for Run %q: %w", id, err)
+			}
+			boundaries = append(boundaries, sessions.RunPlanBoundary{RunID: id, Document: document})
 		}
-		return plan.Document{Steps: steps, Source: source}, true, nil
+		return boundaries, rows.Err()
+	})
+}
+
+func decodePlanBoundary(stepsJSON, digest sql.NullString, sourceJSON string) (plan.Document, error) {
+	if !digest.Valid {
+		return plan.Document{Steps: []plan.Step{}}, nil
+	}
+	if !stepsJSON.Valid {
+		return plan.Document{}, errors.New("sqlite: Plan boundary lost its immutable document")
+	}
+	steps, err := decodePlanSteps(stepsJSON.String, digest.String)
+	if err != nil {
+		return plan.Document{}, err
+	}
+	var source extension.ContributionSource
+	if err := decodeStoredJSON([]byte(sourceJSON), &source); err != nil {
+		return plan.Document{}, err
+	}
+	if source != (extension.ContributionSource{}) {
+		if err := source.Validate(); err != nil {
+			return plan.Document{}, err
+		}
+	}
+	return plan.Document{Steps: steps, Source: source}, nil
+}
+
+func (p *PlanStore) RestoreBoundaries(ctx context.Context, boundaries []sessions.RunPlanBoundary) error {
+	if len(boundaries) == 0 {
+		return nil
+	}
+	return p.db.write(ctx, func(ctx context.Context) error {
+		for _, boundary := range boundaries {
+			digest, err := p.storeDocument(ctx, boundary.Document.Steps)
+			if err != nil {
+				return err
+			}
+			source, err := encodeStoredJSON(boundary.Document.Source)
+			if err != nil {
+				return fmt.Errorf("sqlite: encode Plan boundary source: %w", err)
+			}
+			if _, err := p.db.connection(ctx).ExecContext(ctx, `INSERT INTO plan_boundaries(run_id, document, source) VALUES (?, ?, ?)`,
+				boundary.RunID, digest.String(), string(source)); err != nil {
+				return fmt.Errorf("sqlite: store Plan boundary for Run %q: %w", boundary.RunID, err)
+			}
+		}
+		return nil
 	})
 }
 func (p *PlanStore) DeleteSession(ctx context.Context, sessionID string) error {

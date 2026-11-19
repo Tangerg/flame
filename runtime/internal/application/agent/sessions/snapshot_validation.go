@@ -9,7 +9,7 @@ import (
 
 // ValidateToolResults verifies that every typed transcript offload names
 // exactly one blob of this Session and that every blob is named by one Item.
-func (s Snapshot) ValidateToolResults() error {
+func (s HistorySnapshot) ValidateToolResults() error {
 	owners := make(map[transcript.ToolResultID]string, len(s.ToolResults))
 	for index, blob := range s.ToolResults {
 		if err := blob.Validate(); err != nil {
@@ -52,7 +52,7 @@ func (s Snapshot) ValidateToolResults() error {
 
 // HydratedItems returns the Items with each offloaded result replaced by its
 // body, the form transcript reads present. The snapshot is not mutated.
-func (s Snapshot) HydratedItems() ([]transcript.Item, error) {
+func (s HistorySnapshot) HydratedItems() ([]transcript.Item, error) {
 	bodies := make(map[transcript.ToolResultID]string, len(s.ToolResults))
 	for _, blob := range s.ToolResults {
 		bodies[blob.ID] = blob.Body

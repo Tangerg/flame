@@ -66,8 +66,9 @@ type Transactor func(context.Context, func(context.Context) error) error
 // a delete. Save applies an application-decided aggregate transition with CAS;
 // this adapter assigns neither revision nor update time.
 type planProjection interface {
-	List(ctx context.Context, sessionID string) ([]plan.Step, error)
 	State(ctx context.Context, sessionID string) (plan.Current, error)
+	ListBoundaries(ctx context.Context, sessionID string) ([]sessions.RunPlanBoundary, error)
+	RestoreBoundaries(ctx context.Context, boundaries []sessions.RunPlanBoundary) error
 	Save(ctx context.Context, sessionID string, replacement plan.Replacement) error
 	DeleteSession(ctx context.Context, sessionID string) error
 }
@@ -199,23 +200,7 @@ func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID stri
 func (s *SessionStores) ReadSnapshot(ctx context.Context, sessionID string) (sessions.Snapshot, error) {
 	var snapshot sessions.Snapshot
 	err := s.readSnapshot(ctx, func(ctx context.Context) error {
-		ses, err := s.sessions.Get(ctx, sessionID)
-		if err != nil {
-			return err
-		}
-		messages, err := s.history.Read(ctx, sessionID)
-		if err != nil {
-			return err
-		}
-		items, err := s.transcript.ListStored(ctx, sessionID)
-		if err != nil {
-			return err
-		}
-		runs, err := s.runs.ListRuns(ctx, sessionID)
-		if err != nil {
-			return err
-		}
-		toolResults, err := s.toolResults.List(ctx, sessionID)
+		history, err := s.readHistory(ctx, sessionID)
 		if err != nil {
 			return err
 		}
@@ -223,24 +208,64 @@ func (s *SessionStores) ReadSnapshot(ctx context.Context, sessionID string) (ses
 		if err != nil {
 			return err
 		}
-		var doc plan.Document
+		snapshot.HistorySnapshot = history
 		if p, ok := planHead.State(); ok {
-			doc = p.Document()
-		}
-		snapshot = sessions.Snapshot{
-			Session: ses, Messages: messages, Items: items, Runs: runs,
-			ToolResults: toolResults, Plan: doc.Steps, PlanSource: doc.Source,
+			doc := p.Document()
+			snapshot.Plan, snapshot.PlanSource = doc.Steps, doc.Source
 		}
 		return nil
 	})
 	return snapshot, err
 }
 
+func (s *SessionStores) ReadForkMaterial(ctx context.Context, sessionID string) (sessions.ForkMaterial, error) {
+	var material sessions.ForkMaterial
+	err := s.readSnapshot(ctx, func(ctx context.Context) error {
+		history, err := s.readHistory(ctx, sessionID)
+		if err != nil {
+			return err
+		}
+		boundaries, err := s.plan.ListBoundaries(ctx, sessionID)
+		if err != nil {
+			return err
+		}
+		material = sessions.ForkMaterial{HistorySnapshot: history, PlanBoundaries: boundaries}
+		return nil
+	})
+	return material, err
+}
+
+func (s *SessionStores) readHistory(ctx context.Context, sessionID string) (sessions.HistorySnapshot, error) {
+	ses, err := s.sessions.Get(ctx, sessionID)
+	if err != nil {
+		return sessions.HistorySnapshot{}, err
+	}
+	messages, err := s.history.Read(ctx, sessionID)
+	if err != nil {
+		return sessions.HistorySnapshot{}, err
+	}
+	items, err := s.transcript.ListStored(ctx, sessionID)
+	if err != nil {
+		return sessions.HistorySnapshot{}, err
+	}
+	runs, err := s.runs.ListRuns(ctx, sessionID)
+	if err != nil {
+		return sessions.HistorySnapshot{}, err
+	}
+	toolResults, err := s.toolResults.List(ctx, sessionID)
+	if err != nil {
+		return sessions.HistorySnapshot{}, err
+	}
+	return sessions.HistorySnapshot{
+		Session: ses, Messages: messages, Items: items, Runs: runs, ToolResults: toolResults,
+	}, nil
+}
+
 // ApplyFork persists the Domain-derived child Session and the complete visible
 // history/Plan boundary in one transaction.
 func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) (session.Session, error) {
-	snapshot := fork.Snapshot()
-	child := fork.Child()
+	snapshot := fork.History()
+	child := snapshot.Session
 	parentID := fork.ParentID()
 	planReplacement := fork.PlanReplacement()
 	err := s.tx(ctx, func(ctx context.Context) error {
@@ -253,13 +278,13 @@ func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) (
 		if err := s.history.Seed(ctx, child.ID(), snapshot.Messages); err != nil {
 			return err
 		}
-		// A branch that copies the conversation copies the plan it was following. Only
-		// a non-empty list is written: a fresh child with no row already reads as a
-		// session with no list, and writing one would publish an empty list as news.
 		if err := s.savePlanReplacement(ctx, child.ID(), planReplacement); err != nil {
 			return err
 		}
 		if err := s.restoreRuns(ctx, snapshot.Runs); err != nil {
+			return err
+		}
+		if err := s.plan.RestoreBoundaries(ctx, fork.PlanBoundaries()); err != nil {
 			return err
 		}
 		return s.restoreTranscript(ctx, snapshot.Items, snapshot.ToolResults)
@@ -331,7 +356,7 @@ func (s *SessionStores) deleteRolledBackRuns(ctx context.Context, sessionID stri
 // transaction.
 func (s *SessionStores) ApplyRestore(ctx context.Context, restore sessions.RestorePlan) error {
 	sessionReplacement := restore.SessionReplacement()
-	snapshot := restore.Snapshot()
+	snapshot := restore.History()
 	planReplacement := restore.PlanReplacement()
 	return s.tx(ctx, func(ctx context.Context) error {
 		restoredSession := sessionReplacement.State()

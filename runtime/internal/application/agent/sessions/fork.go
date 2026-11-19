@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -16,6 +17,28 @@ type ForkSpec struct {
 	ParentID  string
 	FromRunID string
 	Title     string
+}
+
+type RunPlanBoundary struct {
+	RunID    string
+	Document plan.Document
+}
+
+type ForkMaterial struct {
+	HistorySnapshot
+	PlanBoundaries []RunPlanBoundary
+}
+
+func (m ForkMaterial) planAt(runID string) plan.Document {
+	if runID == "" {
+		return plan.Document{Steps: []plan.Step{}}
+	}
+	for _, boundary := range m.PlanBoundaries {
+		if boundary.RunID == runID {
+			return boundary.Document
+		}
+	}
+	return plan.Document{}
 }
 
 // ForkBoundary is where a fork branches: the parent history prefix the child is
@@ -84,32 +107,27 @@ func (c *Coordinator) PrepareFork(ctx context.Context, spec ForkSpec) (Creation,
 	if err := identity.ValidateSession(spec.ParentID); err != nil {
 		return Creation{}, fmt.Errorf("sessions: fork: %w", err)
 	}
-	snapshot, err := c.snapshots.ReadSnapshot(ctx, spec.ParentID)
+	source, err := c.snapshots.ReadForkMaterial(ctx, spec.ParentID)
 	if err != nil {
 		return Creation{}, err
 	}
-	boundary, err := ResolveForkBoundary(snapshot.Messages, snapshot.Runs, spec.FromRunID)
+	boundary, err := ResolveForkBoundary(source.Messages, source.Runs, spec.FromRunID)
 	if err != nil {
 		return Creation{}, err
 	}
-	plan, err := c.planBoundary(ctx, boundary.RunID)
+	planReplacement, err := c.prepareInitialPlanReplacement(source.planAt(boundary.RunID))
 	if err != nil {
 		return Creation{}, err
 	}
-	planReplacement, err := c.prepareInitialPlanReplacement(plan.Document)
+	child, err := source.Session.Fork(c.newID(), spec.Title, c.now())
 	if err != nil {
 		return Creation{}, err
 	}
-	child, err := snapshot.Session.Fork(c.newID(), spec.Title, c.now())
+	forked, err := c.copyForkMaterial(source, child, boundary)
 	if err != nil {
 		return Creation{}, err
 	}
-	forked, err := c.copyForkSnapshot(snapshot, child, boundary, plan.Steps)
-	if err != nil {
-		return Creation{}, err
-	}
-	forked.PlanSource = plan.Source
-	fork, err := NewForkPlan(spec.ParentID, forked, planReplacement)
+	fork, err := newForkPlan(spec.ParentID, forked, planReplacement)
 	if err != nil {
 		return Creation{}, err
 	}

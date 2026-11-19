@@ -13,7 +13,7 @@ import (
 // of its Session-owned durable projections.
 type RestorePlan struct {
 	sessionReplacement session.Replacement
-	snapshot           Snapshot
+	history            HistorySnapshot
 	planReplacement    *plan.Replacement
 	retirement         *ResourceRetirement
 }
@@ -28,7 +28,7 @@ func NewRestorePlan(
 	if err := sessionReplacement.Validate(); err != nil {
 		return RestorePlan{}, fmt.Errorf("sessions: restore plan Session replacement: %w", err)
 	}
-	owned, err := ownWriteSnapshot(snapshot)
+	owned, err := ownHistory(snapshot.HistorySnapshot)
 	if err != nil {
 		return RestorePlan{}, fmt.Errorf("sessions: restore plan snapshot: %w", err)
 	}
@@ -36,13 +36,11 @@ func NewRestorePlan(
 	if owned.Session.ID() != restoredSession.ID() {
 		return RestorePlan{}, errors.New("sessions: restore plan Session replacement has a different identity")
 	}
-	replacement, err := ownRestorePlanReplacement(owned.Plan, planReplacement)
+	replacement, err := ownRestorePlanReplacement(snapshot.Plan, planReplacement)
 	if err != nil {
 		return RestorePlan{}, err
 	}
 	owned.Session = restoredSession
-	// The replacement is the sole stored representation of restored Plan steps.
-	owned.Plan = nil
 	var retirement *ResourceRetirement
 	if _, replacing := sessionReplacement.Expected(); replacing {
 		value, err := newResourceRetirement(restoredSession.ID())
@@ -53,7 +51,7 @@ func NewRestorePlan(
 	}
 	return RestorePlan{
 		sessionReplacement: sessionReplacement,
-		snapshot:           owned,
+		history:            owned,
 		planReplacement:    replacement,
 		retirement:         retirement,
 	}, nil
@@ -96,10 +94,7 @@ func validateRestorePlanReplacement(steps []plan.Step, replacement *plan.Replace
 // SessionReplacement returns the exact initial insert or monotonic replacement.
 func (r RestorePlan) SessionReplacement() session.Replacement { return r.sessionReplacement }
 
-// Snapshot returns an ownership-isolated complete restored projection.
-func (r RestorePlan) Snapshot() Snapshot {
-	return capturedSnapshot(r.snapshot, r.planReplacement)
-}
+func (r RestorePlan) History() HistorySnapshot { return r.history.clone() }
 
 // PlanReplacement returns an isolated copy of the restored Plan transition.
 func (r RestorePlan) PlanReplacement() *plan.Replacement {

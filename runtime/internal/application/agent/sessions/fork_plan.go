@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
@@ -14,21 +14,20 @@ import (
 // the complete visible history and Plan held by its resolved parent boundary.
 type ForkPlan struct {
 	parentID        string
-	snapshot        Snapshot
+	history         HistorySnapshot
+	planBoundaries  []RunPlanBoundary
 	planReplacement *plan.Replacement
 }
 
-// NewForkPlan binds one already-remapped child snapshot and its initial Plan
-// transition to the exact parent while every projection is still in Application.
-func NewForkPlan(
+func newForkPlan(
 	parentID string,
-	snapshot Snapshot,
+	material ForkMaterial,
 	planReplacement *plan.Replacement,
 ) (ForkPlan, error) {
 	if err := identity.ValidateSession(parentID); err != nil {
 		return ForkPlan{}, fmt.Errorf("sessions: fork plan parent: %w", err)
 	}
-	owned, err := ownWriteSnapshot(snapshot)
+	owned, err := ownHistory(material.HistorySnapshot)
 	if err != nil {
 		return ForkPlan{}, fmt.Errorf("sessions: fork plan snapshot: %w", err)
 	}
@@ -38,84 +37,61 @@ func NewForkPlan(
 	if owned.Session.Revision() != 1 {
 		return ForkPlan{}, errors.New("sessions: fork plan child is not at its initial revision")
 	}
-	replacement, err := ownForkPlanReplacement(owned.Plan, planReplacement)
+	boundaries, err := ownForkPlanBoundaries(owned.Runs, material.PlanBoundaries)
 	if err != nil {
 		return ForkPlan{}, err
 	}
-	// The replacement is the sole stored representation of inherited Plan steps.
-	// Snapshot reconstructs the read projection from that owner when requested.
-	owned.Plan = nil
-	return ForkPlan{parentID: parentID, snapshot: owned, planReplacement: replacement}, nil
-}
-
-func ownForkPlanReplacement(steps []plan.Step, replacement *plan.Replacement) (*plan.Replacement, error) {
-	if err := validateForkPlanReplacement(steps, replacement); err != nil {
-		return nil, err
-	}
-	clonedReplacement := replacement
-	if clonedReplacement != nil {
-		clonedReplacement = new(*clonedReplacement)
-	}
-	return clonedReplacement, nil
-}
-
-func validateForkPlanReplacement(steps []plan.Step, replacement *plan.Replacement) error {
-	if steps == nil {
-		if replacement != nil {
-			return errors.New("sessions: fork plan has a Plan replacement without inherited steps")
+	if planReplacement != nil {
+		if err := planReplacement.Validate(); err != nil {
+			return ForkPlan{}, fmt.Errorf("sessions: fork plan replacement: %w", err)
 		}
-		return nil
+		if !planReplacement.ExpectedVersion().IsUnwritten() {
+			return ForkPlan{}, errors.New("sessions: fork plan replacement does not start from an unwritten Plan")
+		}
+		planReplacement = new(*planReplacement)
 	}
-	if replacement == nil {
-		return errors.New("sessions: fork plan inherited steps have no initial replacement")
+	return ForkPlan{
+		parentID: parentID, history: owned, planBoundaries: boundaries, planReplacement: planReplacement,
+	}, nil
+}
+
+func ownForkPlanBoundaries(runs []run.Run, captures []RunPlanBoundary) ([]RunPlanBoundary, error) {
+	roots := make(map[string]struct{}, len(runs))
+	for _, value := range runs {
+		if value.Lineage().IsRoot() {
+			roots[value.ID()] = struct{}{}
+		}
 	}
-	if err := replacement.Validate(); err != nil {
-		return fmt.Errorf("sessions: fork plan replacement: %w", err)
+	for _, capture := range captures {
+		if _, matched := roots[capture.RunID]; !matched {
+			return nil, fmt.Errorf("sessions: fork Plan capture refers to a missing or repeated root Run %q", capture.RunID)
+		}
+		if capture.Document.Steps == nil {
+			return nil, fmt.Errorf("sessions: fork Plan capture for Run %q is missing its document", capture.RunID)
+		}
+		delete(roots, capture.RunID)
 	}
-	if !replacement.ExpectedVersion().IsUnwritten() {
-		return errors.New("sessions: fork plan replacement does not start from an unwritten Plan")
-	}
-	if !slices.Equal(replacement.State().Steps(), steps) {
-		return errors.New("sessions: fork plan replacement differs from the inherited Plan")
-	}
-	return nil
+	return clonePlanBoundaries(captures), nil
 }
 
 // ParentID returns the canonical parent Session identity.
 func (f ForkPlan) ParentID() string { return f.parentID }
 
-// Child returns the complete Domain-derived child Session.
-func (f ForkPlan) Child() session.Session { return f.snapshot.Session }
+func (f ForkPlan) History() HistorySnapshot { return f.history.clone() }
 
-// Snapshot returns an ownership-isolated complete child projection.
-func (f ForkPlan) Snapshot() Snapshot {
-	return capturedSnapshot(f.snapshot, f.planReplacement)
-}
+func (f ForkPlan) PlanBoundaries() []RunPlanBoundary { return clonePlanBoundaries(f.planBoundaries) }
 
-// PlanReplacement returns an isolated initial Plan transition when the fork
-// boundary held a non-empty Plan.
 func (f ForkPlan) PlanReplacement() *plan.Replacement {
-	clonedPlanReplacement := f.planReplacement
-	if clonedPlanReplacement !=
-
-		nil {
-		clonedPlanReplacement = new(*clonedPlanReplacement)
+	if f.planReplacement == nil {
+		return nil
 	}
-	return clonedPlanReplacement
+	return new(*f.planReplacement)
 }
 
-// capturedSnapshot projects a decided plan's captured state into the isolated
-// Snapshot its caller may keep. Fork and restore capture different things and
-// decide different transitions, but what a caller receives afterwards is one
-// projection, so it is written once rather than beside each decision.
-func capturedSnapshot(captured Snapshot, replacement *plan.Replacement) Snapshot {
-	var doc plan.Document
-	if replacement != nil {
-		doc = replacement.State().Document()
+func clonePlanBoundaries(captures []RunPlanBoundary) []RunPlanBoundary {
+	owned := slices.Clone(captures)
+	for index := range owned {
+		owned[index].Document.Steps = slices.Clone(owned[index].Document.Steps)
 	}
-	return Snapshot{
-		Session: captured.Session, Messages: cloneSnapshotMessages(captured.Messages),
-		Runs: slices.Clone(captured.Runs), Items: slices.Clone(captured.Items),
-		ToolResults: slices.Clone(captured.ToolResults), Plan: doc.Steps, PlanSource: doc.Source,
-	}
+	return owned
 }
