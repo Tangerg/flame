@@ -9,24 +9,24 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// RollbackSession discards the runs after the kept boundary, truncating the
-// session in place at a run granularity. Destructive: it
-// truncates the conversation message log to the kept watermark, deletes the
-// dropped Runs' durable items and records, clears dangling interrupts, and
-// stops detached processes whose handles belonged to the discarded Session
-// context. ToRunID is inclusive-keep (omit = clear to empty). Rejected with
-// session_busy while a Run is in flight, and — for a file restore — while the
-// boundary keeps a Run that would resume into the rewritten tree.
-//
-// The whole guarded operation — single-writer + working-tree admission, working
-// tree restore, and durable truncation — belongs to the session use case. This
-// method only decodes the wire intent and projects the result.
 func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessionRequest) (*protocol.RollbackSessionResponse, error) {
+	restoreType, err := rollbackTypeFromWire(in)
+	if err != nil {
+		return nil, err
+	}
+	if restoreType != protocol.RestoreHistory {
+		result, err := s.rollbackWorkspace(ctx, in, restoreType, sessions.WorkspaceRollbackReceipt{}, nil)
+		if err != nil {
+			return nil, err
+		}
+		return presentRollbackResult(result), nil
+	}
 	var response *protocol.RollbackSessionResponse
-	err := s.rollbackSession(ctx, in, func(ctx context.Context, write func(context.Context) (sessions.RollbackResult, error)) error {
+	err = s.rollbackHistory(ctx, in, func(ctx context.Context, write func(context.Context) (sessions.RollbackResult, error)) error {
 		result, err := write(ctx)
 		if err != nil {
 			return err
@@ -37,20 +37,74 @@ func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessi
 	return response, err
 }
 
-func (s *Handler) rollbackSession(ctx context.Context, in protocol.RollbackSessionRequest, complete sessions.RollbackCompletion) error {
-	scope, err := rollbackScopeFromWire(in)
-	if err != nil {
-		return err
-	}
-	err = s.sessions.Rollback(ctx, sessions.RollbackSpec{
-		SessionID: in.SessionID,
-		ToRunID:   in.ToRunID,
-		Scope:     scope,
-	}, complete)
-	if err != nil {
+func (s *Handler) rollbackHistory(ctx context.Context, in protocol.RollbackSessionRequest, complete sessions.RollbackCompletion) error {
+	if err := s.sessions.RollbackHistory(ctx, in.SessionID, in.ToRunID, complete); err != nil {
 		return wireRollbackErr(err, in.SessionID)
 	}
 	return nil
+}
+
+func (s *Handler) rollbackWorkspace(ctx context.Context, in protocol.RollbackSessionRequest, restoreType protocol.RestoreType, receipt sessions.WorkspaceRollbackReceipt, encode sessions.RollbackReceiptEncoder) (sessions.RollbackResult, error) {
+	result, err := s.sessions.RollbackWorkspace(ctx, sessions.WorkspaceRollbackSpec{
+		SessionID: in.SessionID, ToRunID: in.ToRunID,
+		RestoreHistory: restoreType == protocol.RestoreBoth, Receipt: receipt,
+	}, encode)
+	if err != nil {
+		return sessions.RollbackResult{}, wireRollbackErr(err, in.SessionID)
+	}
+	return result, nil
+}
+
+func (e *Endpoint) replayRollback(ctx context.Context, s *Handler, method *Method, in protocol.RollbackSessionRequest, key, fingerprint string) ([]byte, error) {
+	restoreType, err := rollbackTypeFromWire(in)
+	if err != nil || restoreType == protocol.RestoreHistory {
+		return e.idempotency.InvokeAtomic(ctx, key, fingerprint, func(complete *operation.AtomicCompletion) error {
+			if err != nil {
+				return commitAtomicFailure(ctx, complete, err)
+			}
+			return s.commitRollbackOutcome(ctx, method, in, complete)
+		})
+	}
+	return e.idempotency.InvokeRecoverable(ctx, key, fingerprint, func() ([]byte, error) {
+		receipt := sessions.WorkspaceRollbackReceipt{Key: key, Fingerprint: fingerprint}
+		var payload []byte
+		_, err := s.rollbackWorkspace(ctx, in, restoreType, receipt, func(sessionID string, result sessions.RollbackResult, cause error) ([]byte, error) {
+			encoded, err := EncodeWorkspaceRollbackReceipt(sessionID, result, cause)
+			payload = encoded
+			return encoded, err
+		})
+		if errors.Is(err, sessions.ErrRollbackRecoveryPending) {
+			return nil, errors.Join(operation.ErrOutcomePending, err)
+		}
+		if len(payload) != 0 {
+			return payload, nil
+		}
+		return nil, err
+	}, func(err error) ([]byte, error) {
+		return encodeStoredOutcome(failed(projectError(err)))
+	})
+}
+
+func EncodeWorkspaceRollbackReceipt(sessionID string, result sessions.RollbackResult, cause error) ([]byte, error) {
+	if cause != nil {
+		return encodeStoredOutcome(failed(projectError(wireRollbackErr(cause, sessionID))))
+	}
+	method, _ := contract.lookup(sessionsRollback)
+	return encodeAtomicResult(method, presentRollbackResult(result))
+}
+
+func rollbackTypeFromWire(in protocol.RollbackSessionRequest) (protocol.RestoreType, error) {
+	switch in.RestoreType {
+	case "", protocol.RestoreHistory:
+		return protocol.RestoreHistory, nil
+	case protocol.RestoreFiles, protocol.RestoreBoth:
+		if in.ToRunID == "" {
+			return "", protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("restoreType %q requires toRunId", in.RestoreType))
+		}
+		return in.RestoreType, nil
+	default:
+		return "", protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown restoreType %q", in.RestoreType))
+	}
 }
 
 func presentRollbackResult(result sessions.RollbackResult) *protocol.RollbackSessionResponse {

@@ -50,7 +50,7 @@ func (h *runtimeApplication) recoverStartup(ctx context.Context) error {
 	if err := h.retirer.RecoverPending(ctx, h.admissions); err != nil {
 		return err
 	}
-	return h.sessions.RecoverWorkspaceMutations(ctx)
+	return h.sessions.RecoverWorkspaceMutations(ctx, delivery.EncodeWorkspaceRollbackReceipt)
 }
 
 func (h *runtimeApplication) newDeliveryHandler(

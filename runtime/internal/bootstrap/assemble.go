@@ -89,7 +89,10 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: session resource retirement: %w", err)
 	}
-	admissionGate, err := ownership.NewGate(ownership.GateConfig{TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath, SettleRetirement: retirer.Settle})
+	admissionGate, err := ownership.NewGate(ownership.GateConfig{
+		TreesOverlap: filesystem.PathsOverlap, ResolveTree: filesystem.CanonicalPath,
+		SettleRetirement: retirer.Settle, WorkspaceRollbackPending: cfg.stores.WorkspaceMutations.SessionPending,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: session admission: %w", err)
 	}

@@ -119,11 +119,11 @@ func (r *RunStore) requireWorkspaceAdmission(ctx context.Context, sessionID stri
 			_ = rows.Close()
 		}()
 		for rows.Next() {
-			var pending workspaceMutationRecord
-			if err := rows.Scan(&pending.SessionID, &pending.CWD); err != nil {
+			var pendingSessionID, pendingCWD string
+			if err := rows.Scan(&pendingSessionID, &pendingCWD); err != nil {
 				return fmt.Errorf("sqlite: read pending workspace mutation: %w", err)
 			}
-			conflicts, err := pending.conflictsWith(sessionID, cwd)
+			conflicts, err := workspaceMutationsOverlap(pendingSessionID, pendingCWD, sessionID, cwd)
 			if err != nil {
 				return fmt.Errorf("sqlite: compare pending workspace mutation: %w", err)
 			}

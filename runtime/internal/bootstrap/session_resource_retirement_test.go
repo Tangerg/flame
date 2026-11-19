@@ -149,6 +149,7 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 	gate, err := ownership.NewGate(ownership.GateConfig{
 		TreesOverlap: filesystem.PathsOverlap,
 		ResolveTree:  filesystem.CanonicalPath, SettleRetirement: retirer.Settle,
+		WorkspaceRollbackPending: db.WorkspaceMutations.SessionPending,
 	})
 	if err != nil {
 		t.Fatal(err)

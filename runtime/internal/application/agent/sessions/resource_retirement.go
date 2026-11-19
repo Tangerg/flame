@@ -120,7 +120,7 @@ func (r *ResourceRetirer) RecoverPending(ctx context.Context, admissions recover
 		return err
 	}
 	for _, retirement := range pending {
-		release, ok, err := admissions.AcquireRecoverySession(retirement.SessionID())
+		release, ok, err := admissions.AcquireRecoverySession(ctx, retirement.SessionID())
 		if err != nil {
 			return err
 		}
@@ -138,5 +138,5 @@ func (r *ResourceRetirer) RecoverPending(ctx context.Context, admissions recover
 }
 
 type recoveryClaims interface {
-	AcquireRecoverySession(sessionID string) (release func(), ok bool, err error)
+	AcquireRecoverySession(ctx context.Context, sessionID string) (release func(), ok bool, err error)
 }

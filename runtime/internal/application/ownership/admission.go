@@ -24,6 +24,7 @@ type Gate struct {
 	resolveTree      func(string) (string, error)
 	treesOverlap     func(string, string) (bool, error)
 	settleRetirement func(context.Context, string) (bool, error)
+	rollbackPending  func(context.Context, string) (bool, error)
 }
 
 // GateConfig binds resolution and comparison to the same physical path semantics.
@@ -32,7 +33,8 @@ type GateConfig struct {
 	TreesOverlap func(string, string) (bool, error)
 	// SettleRetirement completes the Session's committed resource retirement
 	// under the caller's exclusive claim and reports whether none remains.
-	SettleRetirement func(context.Context, string) (bool, error)
+	SettleRetirement         func(context.Context, string) (bool, error)
+	WorkspaceRollbackPending func(context.Context, string) (bool, error)
 }
 
 // NewGate shares physical tree identity and committed resource retirement with
@@ -47,10 +49,14 @@ func NewGate(cfg GateConfig) (*Gate, error) {
 	if cfg.SettleRetirement == nil {
 		return nil, errors.New("session admission: resource retirement settlement is required")
 	}
+	if cfg.WorkspaceRollbackPending == nil {
+		return nil, errors.New("session admission: workspace rollback fence is required")
+	}
 	return &Gate{
 		resolveTree:      cfg.ResolveTree,
 		treesOverlap:     cfg.TreesOverlap,
 		settleRetirement: cfg.SettleRetirement,
+		rollbackPending:  cfg.WorkspaceRollbackPending,
 		runs:             make(map[string]reservedRun),
 		pending:          make(map[*runAdmissionLease]reservedRun),
 		maintenance:      make(map[*maintenanceReservation]struct{}),
@@ -134,6 +140,20 @@ func (r RunAdmission) Release() {
 // AcquireSession reserves one session's single-writer slot. Release is safe to
 // call more than once and affects only this acquisition.
 func (g *Gate) AcquireSession(ctx context.Context, sessionID string) (release func(), ok bool, err error) {
+	release, ok, err = g.acquireForegroundSession(ctx, sessionID)
+	if err != nil || !ok {
+		return nil, false, err
+	}
+	return g.checkRollbackFence(ctx, sessionID, release)
+}
+
+// A file rollback can reach its intent even when it owns a durable fence.
+// The operation log still has to admit its exact request before checkout.
+func (g *Gate) AcquireWorkspaceRollback(ctx context.Context, sessionID string) (release func(), ok bool, err error) {
+	return g.acquireForegroundSession(ctx, sessionID)
+}
+
+func (g *Gate) acquireForegroundSession(ctx context.Context, sessionID string) (release func(), ok bool, err error) {
 	if err := g.lockForegroundSession(ctx, sessionID); err != nil {
 		return nil, false, err
 	}
@@ -153,10 +173,23 @@ func (g *Gate) AcquireSession(ctx context.Context, sessionID string) (release fu
 
 // AcquireRecoverySession probes abandoned ownership without delaying other recovery sweeps.
 // Foreground commands wait for this internal check instead of reporting a live Run conflict.
-func (g *Gate) AcquireRecoverySession(sessionID string) (release func(), ok bool, err error) {
+func (g *Gate) AcquireRecoverySession(ctx context.Context, sessionID string) (release func(), ok bool, err error) {
 	g.mu.Lock()
-	defer g.mu.Unlock()
-	return g.acquireSessionLocked(sessionID, sessionRecovery)
+	release, ok, err = g.acquireSessionLocked(sessionID, sessionRecovery)
+	g.mu.Unlock()
+	if err != nil || !ok {
+		return nil, false, err
+	}
+	return g.checkRollbackFence(ctx, sessionID, release)
+}
+
+func (g *Gate) checkRollbackFence(ctx context.Context, sessionID string, release func()) (func(), bool, error) {
+	pending, err := g.rollbackPending(ctx, sessionID)
+	if err != nil || pending {
+		release()
+		return nil, false, err
+	}
+	return release, true, nil
 }
 
 func (g *Gate) acquireSessionLocked(sessionID string, kind sessionClaimKind) (release func(), ok bool, err error) {

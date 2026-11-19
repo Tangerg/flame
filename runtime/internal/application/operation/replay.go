@@ -66,6 +66,32 @@ func (r *Replay) Serialize(ctx context.Context, key string) (func(), error) {
 	return r.inFlight.Acquire(ctx, key)
 }
 
+// A recoverable command owns admission and settlement of its durable intent.
+// Only that intent can authorize adoption of a pending key. An admission
+// refusal can settle directly if no intent was ever accepted.
+func (r *Replay) InvokeRecoverable(ctx context.Context, key, fingerprint string, execute func() ([]byte, error), refuse func(error) ([]byte, error)) ([]byte, error) {
+	release, err := r.inFlight.Acquire(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	record, found, err := r.store.Lookup(ctx, key, fingerprint)
+	if err != nil {
+		return nil, err
+	}
+	if found && len(record.Payload) != 0 {
+		return settledPayload(record)
+	}
+	payload, err := execute()
+	if err == nil || errors.Is(err, ErrOutcomePending) || errors.Is(err, ErrInProgress) || errors.Is(err, framecall.ErrConflict) {
+		return payload, err
+	}
+	payload, _, commitErr := r.commitOutcome(ctx, key, fingerprint, func(context.Context) ([]byte, error) {
+		return refuse(err)
+	})
+	return payload, commitErr
+}
+
 func (r *Replay) Invoke(ctx context.Context, key, fingerprint string, execute func() ([]byte, error)) ([]byte, error) {
 	release, err := r.inFlight.Acquire(ctx, key)
 	if err != nil {
@@ -140,28 +166,7 @@ func (r *Replay) InvokeAtomic(ctx context.Context, key, fingerprint string, exec
 	}
 	var payload []byte
 	completion := &AtomicCompletion{commit: func(ctx context.Context, write func(context.Context) ([]byte, error)) error {
-		var outcome []byte
-		replayed := false
-		err := r.store.Transact(ctx, func(tx context.Context) error {
-			record, claimed, err := r.store.Claim(tx, key, fingerprint)
-			if err != nil {
-				return err
-			}
-			if !claimed {
-				replayed = true
-				outcome, err = settledPayload(record)
-				return err
-			}
-			record.Payload, err = write(tx)
-			if err != nil {
-				return err
-			}
-			if err := r.store.Complete(tx, record); err != nil {
-				return err
-			}
-			outcome = record.Payload
-			return nil
-		})
+		outcome, replayed, err := r.commitOutcome(ctx, key, fingerprint, write)
 		if err != nil {
 			return err
 		}
@@ -179,6 +184,33 @@ func (r *Replay) InvokeAtomic(ctx context.Context, key, fingerprint string, exec
 		return nil, errors.New("idempotency: atomic command omitted completion")
 	}
 	return payload, nil
+}
+
+func (r *Replay) commitOutcome(ctx context.Context, key, fingerprint string, write func(context.Context) ([]byte, error)) (payload []byte, replayed bool, err error) {
+	err = r.store.Transact(ctx, func(tx context.Context) error {
+		record, claimed, err := r.store.Claim(tx, key, fingerprint)
+		if err != nil {
+			return err
+		}
+		if !claimed {
+			replayed = true
+			payload, err = settledPayload(record)
+			return err
+		}
+		record.Payload, err = write(tx)
+		if err != nil {
+			return err
+		}
+		if err := r.store.Complete(tx, record); err != nil {
+			return err
+		}
+		payload = record.Payload
+		return nil
+	})
+	if err != nil {
+		return nil, false, err
+	}
+	return payload, replayed, nil
 }
 
 func settledPayload(record ReplayRecord) ([]byte, error) {

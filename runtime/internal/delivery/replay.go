@@ -34,11 +34,15 @@ func (e *Endpoint) replayOperation(ctx context.Context, method *Method, paramete
 	var result protocol.OperationResult
 	executed := false
 	var payload []byte
-	if handler, ok := e.target.(*Handler); ok && hasAtomicOutcome(method.Meta.Name, parameters) {
+	handler, ownsOutcome := e.target.(*Handler)
+	switch {
+	case ownsOutcome && method.Meta.Name == sessionsRollback:
+		payload, err = e.replayRollback(ctx, handler, method, parameters.(protocol.RollbackSessionRequest), key, fingerprint)
+	case ownsOutcome && hasAtomicOutcome(method.Meta.Name):
 		payload, err = e.idempotency.InvokeAtomic(ctx, key, fingerprint, func(complete *operation.AtomicCompletion) error {
 			return handler.commitAtomicOutcome(ctx, method, parameters, complete)
 		})
-	} else {
+	default:
 		payload, err = e.idempotency.Invoke(ctx, key, fingerprint, func() ([]byte, error) {
 			result = execute()
 			executed = true
@@ -67,13 +71,10 @@ func (e *Endpoint) replayOperation(ctx context.Context, method *Method, paramete
 	return replayOutcome(method, payload)
 }
 
-func hasAtomicOutcome(name Name, request any) bool {
+func hasAtomicOutcome(name Name) bool {
 	switch name {
 	case SessionsCreate, sessionsFork, feedbackCreate:
 		return true
-	case sessionsRollback:
-		scope, err := rollbackScopeFromWire(request.(protocol.RollbackSessionRequest))
-		return err == nil && !scope.RestoresFiles()
 	default:
 		return false
 	}
@@ -99,8 +100,6 @@ func (s *Handler) commitAtomicOutcome(ctx context.Context, method *Method, reque
 		creation, err = s.prepareCreate(ctx, in)
 	case protocol.ForkSessionRequest:
 		creation, err = s.prepareFork(ctx, in)
-	case protocol.RollbackSessionRequest:
-		return s.commitRollbackOutcome(ctx, method, in, complete)
 	default:
 		return fmt.Errorf("idempotency: unsupported atomic command input %T", request)
 	}
@@ -122,7 +121,7 @@ func (s *Handler) commitAtomicOutcome(ctx context.Context, method *Method, reque
 }
 
 func (s *Handler) commitRollbackOutcome(ctx context.Context, method *Method, in protocol.RollbackSessionRequest, complete *operation.AtomicCompletion) error {
-	err := s.rollbackSession(ctx, in, func(ctx context.Context, write func(context.Context) (sessions.RollbackResult, error)) error {
+	err := s.rollbackHistory(ctx, in, func(ctx context.Context, write func(context.Context) (sessions.RollbackResult, error)) error {
 		return complete.Commit(ctx, func(tx context.Context) ([]byte, error) {
 			result, err := write(tx)
 			if err != nil {

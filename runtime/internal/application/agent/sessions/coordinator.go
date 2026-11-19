@@ -199,22 +199,11 @@ type goalMutationGuard interface {
 	) error
 }
 
-// workspaceMutations is the recoverable operation log for file rollbacks:
-// a Git checkout is not atomic across paths, and the optional durable-history cut
-// cannot share its transaction. Record logs the intent before the tree is
-// touched, Complete clears it once all requested effects commit, and ListPending
-// returns interrupted operations for boot recovery. Its store commits writes
-// independently (not joined to any rollback
-// transaction) — the log is precisely the marker that the two resources change
-// out of transaction.
-//
-// A logged intent owns recovery for its working tree until it completes, so
-// Record reports [ErrWorkspaceMutationPending] for any other operation on that
-// Session or tree and Complete clears only the operation it is given.
 type workspaceMutations interface {
-	// Record returns true only when this call created the durable intent.
+	// Record commits ownership before checkout. A retry may adopt the same intent.
 	Record(ctx context.Context, m WorkspaceMutation) (bool, error)
-	Complete(ctx context.Context, m WorkspaceMutation) error
+	// Complete commits the history, receipt and release of the exact intent together.
+	Complete(ctx context.Context, m WorkspaceMutation, write func(context.Context) ([]byte, error)) error
 	ListPending(ctx context.Context) ([]WorkspaceMutation, error)
 }
 

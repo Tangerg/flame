@@ -339,21 +339,15 @@ func currentSchema() []string {
 			input_item_id TEXT NOT NULL,
 			FOREIGN KEY (root_run_id, session_id) REFERENCES runs(run_id, session_id) ON DELETE CASCADE
 		)`,
-		// pending_workspace_mutations is the recoverable operation log for file
-		// rollbacks. Git reset is non-atomic across paths; files+history also
-		// spans Git and SQLite. The intent is logged before the tree is touched and
-		// cleared after every requested effect commits. A surviving row is re-driven
-		// at boot. session_id keys it — the mutation slot admits at most one
-		// in-flight rollback per session — and a row owns recovery for its cwd
-		// until it completes, so a later rollback on that tree is refused rather
-		// than allowed to displace it. Its restrictive owners preserve boot
-		// recovery inputs, while Run admission treats its Session and cwd as busy.
-		// created_at is operational metadata only.
+		// The intent holds the Session, tree and original reply reservation across
+		// a Git checkout. History, receipt and intent release commit together.
 		`CREATE TABLE IF NOT EXISTS pending_workspace_mutations (
 			session_id     TEXT    PRIMARY KEY REFERENCES sessions(id) ON DELETE RESTRICT,
 			cwd            TEXT    NOT NULL,
-			to_run_id      TEXT    NOT NULL REFERENCES runs(run_id) ON DELETE RESTRICT,
-			restore_history INTEGER NOT NULL
+			to_run_id      TEXT    NOT NULL,
+			restore_history INTEGER NOT NULL CHECK (restore_history IN (0,1)),
+			receipt_key    TEXT    UNIQUE REFERENCES idempotency_records(key) ON DELETE RESTRICT,
+			FOREIGN KEY (to_run_id, session_id) REFERENCES runs(run_id, session_id) ON DELETE RESTRICT
 		)`,
 		// Cleanup responsibility survives the Session and authorizes destruction
 		// only after the history transaction that inserted it has committed.

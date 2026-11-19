@@ -79,9 +79,13 @@ even if a later import reuses its ID. A committed history rollback revokes it
 when the originating Run is removed. An explicit title takes precedence over a
 generated title.
 
-A history-only rollback with an idempotency key commits the reply and the
-history cut in one transaction. Its receipt retains the original dropped Runs
-and opening inputs so a retry can restore the same draft after a Runtime restart.
+A keyed rollback commits its reply and any history cut in one transaction. Its
+receipt retains the original dropped Runs and opening inputs so a retry can
+restore the same draft after a Runtime restart. A file restore reserves its
+original key with the workspace intent before checkout. That intent holds the
+Session and working tree until the receipt commits, and recovery completes the
+same rollback before admitting later changes. This schema requires a fresh
+Runtime data directory. Retain earlier data separately.
 
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 

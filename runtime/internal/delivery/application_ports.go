@@ -40,7 +40,8 @@ type sessionUseCases interface {
 	ExportSession(ctx context.Context, sessionID string, results sessions.ToolResultExport) (sessions.PortableSnapshot, error)
 	MaterialView(ctx context.Context, sessionID string) (sessions.MaterialSnapshot, sessions.View, error)
 	RestorePortableSession(ctx context.Context, snapshot sessions.PortableSnapshot) (sessions.View, error)
-	Rollback(ctx context.Context, spec sessions.RollbackSpec, complete sessions.RollbackCompletion) error
+	RollbackHistory(ctx context.Context, sessionID, toRunID string, complete sessions.RollbackCompletion) error
+	RollbackWorkspace(ctx context.Context, spec sessions.WorkspaceRollbackSpec, encode sessions.RollbackReceiptEncoder) (sessions.RollbackResult, error)
 	UpdateView(ctx context.Context, id string, patch sessions.Patch) (sessions.View, error)
 	View(ctx context.Context, id string) (sessions.View, error)
 }

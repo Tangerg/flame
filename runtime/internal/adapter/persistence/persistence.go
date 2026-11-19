@@ -108,6 +108,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 	if err != nil {
 		return nil, errors.Join(err, store.Close())
 	}
+	receipts := newIdempotencyStore(db)
 	bundle := &Bundle{
 		Frame: store, Admission: admission, PluginUses: uses,
 		validateDirectory:    config.ValidateDirectory,
@@ -128,7 +129,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		Sessions:              newSessionStore(db),
 		Runs:                  newRunStore(db),
 		CommandAcceptances:    newCommandAcceptanceStore(db),
-		WorkspaceMutations:    newWorkspaceMutationStore(db),
+		WorkspaceMutations:    &WorkspaceMutationStore{db: db, receipts: receipts},
 		ResourceRetirements:   newResourceRetirementStore(db),
 		ExecutorCheckpoints:   newExecutorCheckpointStore(db),
 		Interrupts:            newInterruptStore(db),
@@ -154,7 +155,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		Trust:                 newTrustStore(db),
 		EmbeddingRole:         newRoleStore(db, "embedding_role", "embedding role"),
 		ToolResults:           newToolResultStore(db),
-		Idempotency:           newIdempotencyStore(db),
+		Idempotency:           receipts,
 		AcceptedContinuations: newAcceptedContinuationStore(db),
 	}
 	bundle.PluginCommands.commit = bundle.commitPluginWrite

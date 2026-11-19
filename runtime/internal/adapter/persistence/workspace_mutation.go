@@ -6,79 +6,79 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	"github.com/Tangerg/frame/sqlite"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 )
 
-var errWorkspaceMutationPending = errors.New("sqlite: workspace mutation is pending")
-
-// workspaceMutationRecord is the whole identity of one recoverable file
-// rollback: recovery re-drives exactly this operation, so every field
-// participates in the identity Complete matches.
-type workspaceMutationRecord struct {
-	SessionID      string
-	CWD            string
-	ToRunID        string
-	RestoreHistory bool
+type WorkspaceMutationStore struct {
+	db       *database
+	receipts *idempotencyStore
 }
 
-func (m workspaceMutationRecord) conflictsWith(sessionID, cwd string) (bool, error) {
-	if m.SessionID == sessionID {
-		return true, nil
-	}
-	if m.CWD == "" || cwd == "" {
-		return false, nil
-	}
-	return filesystem.PathsOverlap(m.CWD, cwd)
-}
-
-// WorkspaceMutationStore is the recoverable operation log for file rollbacks,
-// backed by the pending_workspace_mutations table. Unlike the write-set
-// stores, its writes deliberately do NOT join an ambient transaction (they use
-// the *sql.DB directly, never sqlitebase.Connection(ctx)): the intent must commit on its own
-// before the working tree is touched, and the completion on its own after the
-// requested effects commit. The row protects a non-atomic multi-path Git checkout
-// and, when requested, the separate SQLite history transaction.
-//
-// A logged intent is the ONLY record that a checkout may have changed part of a
-// tree, so it owns recovery for that tree until it completes: Record refuses to
-// displace a different pending operation and Complete clears only the operation
-// it is given.
-//
-// Safe for concurrent use; the *sql.DB serializes writes (MaxOpenConns 1, see
-// [Open]).
-type WorkspaceMutationStore struct{ db *database }
-
-// newWorkspaceMutationStore wires a database opened via [openDatabase] to the
-// operation-log surface.
-func newWorkspaceMutationStore(db *database) *WorkspaceMutationStore {
-	return &WorkspaceMutationStore{db: db}
-}
-
-// Record logs a rollback's intent before the working tree is touched.
-// Re-logging the same operation is a no-op so an interrupted rollback can
-// re-drive its own intent; any other pending operation on this Session or overlapping tree
-// is [errWorkspaceMutationPending] rather than replaced. The boolean reports
-// whether this call created the intent; an adopted intent may already have
-// changed files and cannot be retired as a pre-checkout refusal.
-func (s *WorkspaceMutationStore) recordMutation(ctx context.Context, m workspaceMutationRecord) (bool, error) {
-	if err := validateSessionResource("record workspace mutation", m.SessionID); err != nil {
-		return false, err
-	}
-	if err := validateRunResource("record workspace mutation", m.ToRunID); err != nil {
-		return false, err
-	}
-	created := false
-	err := s.db.independent(ctx, func(ctx context.Context) error {
-		tx := s.db.connection(ctx)
-		recorded, err := ownsPendingWorkspaceMutation(ctx, tx, m)
-		if err != nil || recorded {
-			return err
+func (s *WorkspaceMutationStore) Record(ctx context.Context, m sessions.WorkspaceMutation) (bool, error) {
+	created, err := scopedValue(ctx, s.db.independent, func(tx context.Context) (bool, error) {
+		if err := validateWorkspaceMutation(m); err != nil {
+			return false, err
 		}
-		result, err := tx.ExecContext(ctx, `INSERT INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history)
-		 SELECT sessions.id, sessions.workspace_path, runs.run_id, ?
-		   FROM sessions
-		   JOIN runs ON runs.run_id = ? AND runs.session_id = sessions.id
-		  WHERE sessions.id = ? AND sessions.workspace_path = ?`, m.RestoreHistory, m.ToRunID, m.SessionID, m.CWD)
+		pending, err := s.ListPending(tx)
+		if err != nil {
+			return false, err
+		}
+		for _, existing := range pending {
+			conflicts, err := workspaceMutationsOverlap(existing.SessionID, existing.CWD, m.SessionID, m.CWD)
+			if err != nil {
+				return false, err
+			}
+			if !conflicts {
+				continue
+			}
+			if existing == m {
+				return false, nil
+			}
+			return false, sessions.ErrWorkspaceMutationPending
+		}
+		if m.Receipt.Key != "" {
+			_, claimed, err := s.receipts.Claim(tx, m.Receipt.Key, m.Receipt.Fingerprint)
+			if err != nil {
+				return false, err
+			}
+			if !claimed {
+				return false, operation.ErrInProgress
+			}
+		}
+		result, err := s.db.connection(tx).ExecContext(tx, `INSERT INTO pending_workspace_mutations(session_id, cwd, to_run_id, restore_history, receipt_key)
+			 SELECT sessions.id, sessions.workspace_path, runs.run_id, ?, NULLIF(?, '')
+			   FROM sessions JOIN runs ON runs.run_id = ? AND runs.session_id = sessions.id
+			  WHERE sessions.id = ? AND sessions.workspace_path = ?`, m.RestoreHistory, m.Receipt.Key, m.ToRunID, m.SessionID, m.CWD)
+		if err != nil {
+			return false, err
+		}
+		changed, err := result.RowsAffected()
+		if err != nil {
+			return false, err
+		}
+		if changed != 1 {
+			return false, errors.New("workspace mutation has no matching Run boundary")
+		}
+		return true, nil
+	})
+	if err != nil {
+		return false, fmt.Errorf("sqlite: record workspace mutation: %w", err)
+	}
+	return created, nil
+}
+
+func (s *WorkspaceMutationStore) Complete(ctx context.Context, m sessions.WorkspaceMutation, write func(context.Context) ([]byte, error)) error {
+	if err := validateWorkspaceMutation(m); err != nil {
+		return err
+	}
+	err := s.db.independent(ctx, func(tx context.Context) error {
+		result, err := s.db.connection(tx).ExecContext(tx, `DELETE FROM pending_workspace_mutations
+		  WHERE session_id = ? AND cwd = ? AND to_run_id = ? AND restore_history = ?
+		    AND receipt_key IS NULLIF(?, '')
+		    AND (receipt_key IS NULL OR EXISTS (
+		        SELECT 1 FROM idempotency_records WHERE key = receipt_key AND kind = ? AND fingerprint = ?
+		    ))`, m.SessionID, m.CWD, m.ToRunID, m.RestoreHistory, m.Receipt.Key, idempotencyPendingResponse, m.Receipt.Fingerprint)
 		if err != nil {
 			return err
 		}
@@ -87,108 +87,97 @@ func (s *WorkspaceMutationStore) recordMutation(ctx context.Context, m workspace
 			return err
 		}
 		if changed != 1 {
-			return errors.New("sqlite: workspace mutation has no matching Run boundary")
+			return errors.New("workspace mutation lost its original intent")
 		}
-		created = true
-		return nil
+		payload, err := write(tx)
+		if err != nil || m.Receipt.Key == "" {
+			return err
+		}
+		if len(payload) == 0 {
+			return errors.New("keyed workspace mutation omitted its outcome")
+		}
+		return s.receipts.Complete(tx, operation.ReplayRecord{
+			Key: m.Receipt.Key, Fingerprint: m.Receipt.Fingerprint, Payload: payload,
+		})
 	})
 	if err != nil {
-		return false, fmt.Errorf("sqlite: record workspace mutation: %w", err)
+		return fmt.Errorf("sqlite: complete workspace mutation: %w", err)
 	}
-	return created, nil
-}
-func ownsPendingWorkspaceMutation(ctx context.Context, tx sqlite.Executor, m workspaceMutationRecord) (bool, error) {
-	rows, err := tx.QueryContext(ctx, `SELECT session_id, cwd, to_run_id, restore_history
-		   FROM pending_workspace_mutations`)
-	if err != nil {
-		return false, fmt.Errorf("sqlite: inspect pending workspace mutations: %w", err)
-	}
-	defer func() {
-		_ = rows.Close()
-	}()
-	recorded := false
-	for rows.Next() {
-		var existing workspaceMutationRecord
-		if err := rows.Scan(&existing.SessionID, &existing.CWD, &existing.ToRunID, &existing.RestoreHistory); err != nil {
-			return false, fmt.Errorf("sqlite: scan pending workspace mutation: %w", err)
-		}
-		conflicts, err := existing.conflictsWith(m.SessionID, m.CWD)
-		if err != nil {
-			return false, fmt.Errorf("sqlite: compare pending workspace mutation: %w", err)
-		}
-		if !conflicts {
-			continue
-		}
-		if existing != m {
-			return false, errWorkspaceMutationPending
-		}
-		recorded = true
-	}
-	if err := rows.Err(); err != nil {
-		return false, fmt.Errorf("sqlite: iterate pending workspace mutations: %w", err)
-	}
-	return recorded, nil
+	return nil
 }
 
-// Complete clears the logged intent of exactly the operation m names, once its
-// file restore and, when requested, durable truncation have committed. Matching
-// the whole identity keeps a later rollback from clearing a predecessor's
-// unfinished record. Idempotent: deleting an absent row is not an error.
-func (s *WorkspaceMutationStore) completeMutation(ctx context.Context, m workspaceMutationRecord) error {
-	return s.db.independent(ctx, func(ctx context.Context) error {
-		if err := validateSessionResource("complete workspace mutation", m.SessionID); err != nil {
-			return err
-		}
-		if err := validateRunResource("complete workspace mutation", m.ToRunID); err != nil {
-			return err
-		}
-		_, err := s.db.connection(ctx).ExecContext(ctx, `DELETE FROM pending_workspace_mutations
-		  WHERE session_id = ? AND cwd = ? AND to_run_id = ? AND restore_history = ?`, m.SessionID, m.CWD, m.ToRunID, m.RestoreHistory)
+func (s *WorkspaceMutationStore) SessionPending(ctx context.Context, sessionID string) (bool, error) {
+	return scopedValue(ctx, s.db.read, func(ctx context.Context) (bool, error) {
+		var pending bool
+		err := s.db.connection(ctx).QueryRowContext(ctx,
+			`SELECT EXISTS(SELECT 1 FROM pending_workspace_mutations WHERE session_id = ?)`, sessionID).Scan(&pending)
 		if err != nil {
-			return fmt.Errorf("sqlite: complete workspace mutation: %w", err)
+			return false, fmt.Errorf("sqlite: read pending workspace mutation: %w", err)
 		}
-		return nil
+		return pending, nil
 	})
 }
 
-// ListPending returns every rollback a crash left unfinished for boot recovery
-// to re-drive. Retained intents must have disjoint physical ranges before any
-// checkout starts; recovery cannot order conflicting ownership into correctness.
-func (s *WorkspaceMutationStore) pendingMutations(ctx context.Context) ([]workspaceMutationRecord, error) {
-	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]workspaceMutationRecord, error) {
-		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT session_id, cwd, to_run_id, restore_history FROM pending_workspace_mutations ORDER BY session_id`)
+func (s *WorkspaceMutationStore) ListPending(ctx context.Context) ([]sessions.WorkspaceMutation, error) {
+	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]sessions.WorkspaceMutation, error) {
+		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT m.session_id, m.cwd, m.to_run_id, m.restore_history,
+			   COALESCE(m.receipt_key, ''), COALESCE(r.fingerprint, '')
+			  FROM pending_workspace_mutations m
+			  LEFT JOIN idempotency_records r ON r.key = m.receipt_key AND r.kind = ?
+			  ORDER BY m.session_id`, idempotencyPendingResponse)
 		if err != nil {
-			return nil, fmt.Errorf("sqlite: list workspace mutations: %w", err)
+			return nil, fmt.Errorf("sqlite: list pending workspace mutations: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
-		var out []workspaceMutationRecord
+		defer func() { _ = rows.Close() }()
+		var pending []sessions.WorkspaceMutation
 		for rows.Next() {
-			var m workspaceMutationRecord
-			if err := rows.Scan(&m.SessionID, &m.CWD, &m.ToRunID, &m.RestoreHistory); err != nil {
-				return nil, fmt.Errorf("sqlite: scan workspace mutation: %w", err)
+			var m sessions.WorkspaceMutation
+			if err := rows.Scan(&m.SessionID, &m.CWD, &m.ToRunID, &m.RestoreHistory, &m.Receipt.Key, &m.Receipt.Fingerprint); err != nil {
+				return nil, fmt.Errorf("sqlite: scan pending workspace mutation: %w", err)
 			}
-			if err := validateSessionResource("restore workspace mutation", m.SessionID); err != nil {
+			if err := validateWorkspaceMutation(m); err != nil {
 				return nil, err
 			}
-			if err := validateRunResource("restore workspace mutation", m.ToRunID); err != nil {
-				return nil, err
-			}
-			for _, previous := range out {
-				conflicts, err := previous.conflictsWith(m.SessionID, m.CWD)
+			for _, existing := range pending {
+				conflicts, err := workspaceMutationsOverlap(existing.SessionID, existing.CWD, m.SessionID, m.CWD)
 				if err != nil {
-					return nil, fmt.Errorf("sqlite: compare retained workspace mutations: %w", err)
+					return nil, err
 				}
 				if conflicts {
 					return nil, errors.New("sqlite: retained workspace mutations have overlapping ownership")
 				}
 			}
-			out = append(out, m)
+			pending = append(pending, m)
 		}
 		if err := rows.Err(); err != nil {
-			return nil, fmt.Errorf("sqlite: iterate workspace mutations: %w", err)
+			return nil, fmt.Errorf("sqlite: iterate pending workspace mutations: %w", err)
 		}
-		return out, nil
+		return pending, nil
 	})
+}
+
+func validateWorkspaceMutation(m sessions.WorkspaceMutation) error {
+	if err := validateSessionResource("workspace mutation", m.SessionID); err != nil {
+		return err
+	}
+	if err := validateRunResource("workspace mutation", m.ToRunID); err != nil {
+		return err
+	}
+	if m.CWD == "" {
+		return errors.New("sqlite: workspace mutation has no working tree")
+	}
+	if (m.Receipt.Key == "") != (m.Receipt.Fingerprint == "") {
+		return errors.New("sqlite: workspace mutation has an incomplete receipt reservation")
+	}
+	return nil
+}
+
+func workspaceMutationsOverlap(leftSessionID, leftPath, rightSessionID, rightPath string) (bool, error) {
+	if leftSessionID == rightSessionID {
+		return true, nil
+	}
+	if leftPath == "" || rightPath == "" {
+		return false, nil
+	}
+	return filesystem.PathsOverlap(leftPath, rightPath)
 }

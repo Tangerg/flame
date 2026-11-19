@@ -6,8 +6,125 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
+
+type DroppedRun struct {
+	Run       run.Run
+	UserInput []transcript.ContentBlock
+}
+
+type RollbackResult struct {
+	Session View
+	Dropped []DroppedRun
+}
+
+// RollbackCompletion spans the history change and its receipt while the
+// Session, Goal drive and generated-title claims are still held.
+type RollbackCompletion func(context.Context, func(context.Context) (RollbackResult, error)) error
+
+func (c *Coordinator) RollbackHistory(ctx context.Context, sessionID, toRunID string, complete RollbackCompletion) error {
+	admission, err := c.ClaimSessionMutation(ctx, sessionID)
+	if err != nil {
+		return err
+	}
+	defer admission.Release()
+	if _, err := c.Get(ctx, sessionID); err != nil {
+		return err
+	}
+	boundary, err := c.resolveRollbackBoundary(ctx, sessionID, toRunID)
+	if err != nil {
+		return err
+	}
+	return c.completeRollback(ctx, sessionID, boundary, true, complete)
+}
+
+type resolvedRollbackBoundary struct {
+	timeline transcript.Boundary
+	runs     []run.Run
+}
+
+func (c *Coordinator) resolveRollbackBoundary(ctx context.Context, sessionID, toRunID string) (resolvedRollbackBoundary, error) {
+	runs, err := c.runs.ListRuns(ctx, sessionID)
+	if err != nil {
+		return resolvedRollbackBoundary{}, err
+	}
+	boundary, err := transcript.TimelineFromRuns(runs).BoundaryAt(toRunID)
+	if err != nil {
+		return resolvedRollbackBoundary{}, err
+	}
+	return resolvedRollbackBoundary{timeline: boundary, runs: runs}, nil
+}
+
+// A kept continuation would resume into a tree different from the one its
+// executor owns. Only the continuations this rollback removes can be disposed.
+func (r resolvedRollbackBoundary) survivingContinuation(restoreHistory bool) (run.Run, bool) {
+	dropped := make(map[string]struct{})
+	if restoreHistory {
+		for _, node := range r.timeline.Dropped {
+			dropped[node.ID] = struct{}{}
+		}
+	}
+	for _, value := range r.runs {
+		if value.State().IsTerminal() {
+			continue
+		}
+		if _, cut := dropped[value.ID()]; !cut {
+			return value, true
+		}
+	}
+	return run.Run{}, false
+}
+
+func (c *Coordinator) completeRollback(ctx context.Context, sessionID string, boundary resolvedRollbackBoundary, restoreHistory bool, complete RollbackCompletion) error {
+	if !restoreHistory || len(boundary.timeline.Dropped) == 0 {
+		return complete(ctx, func(tx context.Context) (RollbackResult, error) {
+			return c.rollbackResult(tx, sessionID, nil)
+		})
+	}
+	return c.applyRollback(ctx, sessionID, boundary.timeline, func(ctx context.Context, plan RollbackPlan) error {
+		return complete(ctx, func(tx context.Context) (RollbackResult, error) {
+			items, err := c.transcript.List(tx, sessionID)
+			if err != nil {
+				return RollbackResult{}, err
+			}
+			dropped := boundary.projectDroppedRuns(transcript.OpeningUserMessagesByRun(items))
+			if err := c.writes.ApplyRollback(tx, plan); err != nil {
+				return RollbackResult{}, err
+			}
+			return c.rollbackResult(tx, sessionID, dropped)
+		})
+	})
+}
+
+func (c *Coordinator) rollbackResult(ctx context.Context, sessionID string, dropped []DroppedRun) (RollbackResult, error) {
+	current, err := c.Get(ctx, sessionID)
+	if err != nil {
+		return RollbackResult{}, err
+	}
+	activities, err := c.Activities(ctx, []string{sessionID})
+	if err != nil {
+		return RollbackResult{}, err
+	}
+	view, err := c.view(current, activities[sessionID])
+	if err != nil {
+		return RollbackResult{}, err
+	}
+	return RollbackResult{Session: view, Dropped: dropped}, nil
+}
+
+func (r resolvedRollbackBoundary) projectDroppedRuns(inputs map[string][]transcript.ContentBlock) []DroppedRun {
+	byID := make(map[string]run.Run, len(r.runs))
+	for _, value := range r.runs {
+		byID[value.ID()] = value
+	}
+	dropped := make([]DroppedRun, 0, len(r.timeline.Dropped))
+	for _, node := range r.timeline.Dropped {
+		dropped = append(dropped, DroppedRun{Run: byID[node.ID], UserInput: inputs[node.ID]})
+	}
+	return dropped
+}
 
 // applyRollback truncates the chat history log to the boundary watermark and drops each run's
 // durable record + dangling interrupt as ONE atomic write-set, then cancels
