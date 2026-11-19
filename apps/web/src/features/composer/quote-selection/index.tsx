@@ -8,14 +8,14 @@ export default (composer: ComposerAccess) =>
   definePlugin({
     name: "flame.builtin.quote-selection",
     setup(ctx) {
+      const prepareQuote = (): (() => void) | null => captureComposerSelectionQuote(composer);
       ctx.contributions.add(COMMAND, {
         id: "composer.quoteSelection",
         label: "quote.selection",
         // macOS reserves Shift-Command-Q for system logout.
         combo: "Ctrl+Shift+Q",
-        run: () => {
-          captureComposerSelectionQuote(composer)?.();
-        },
+        run: () => prepareQuote()?.(),
+        prepareForMenu: prepareQuote,
       });
       contributeLayout(ctx.contributions, "app.overlay", {
         id: "selection-quote",

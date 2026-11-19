@@ -632,6 +632,9 @@ distinguishable before invocation. The shared search overlay retains query,
 selection, scrolling, dismissal and action handoff ownership.
 Its handoff supplies the captured opener to view navigation, so the Workspace
 host can present a narrow destination full width and return to that source.
+Context-specific actions such as Quote in message capture their source as the
+menu opens, before the search field takes focus. They appear for that opening
+when their context is available and run after dismissal.
 
 Shared text, search and selection fields use the same quiet sunken fill,
 transparent resting edge and independent keyboard focus perimeter. The theme

@@ -229,5 +229,5 @@ export async function installVisualShellFixture(
   );
 
   useSessionSearchStore.setState({ open: overlay === "finder" });
-  useCommandMenuStore.setState({ open: overlay === "commands" });
+  useCommandMenuStore.getState().setOpen(overlay === "commands");
 }

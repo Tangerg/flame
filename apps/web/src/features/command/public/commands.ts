@@ -1,11 +1,16 @@
 import { service } from "dougong";
 import { COMMAND } from "@/features/command/public/extensionPoints";
 import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
+
+export type CommandMenuAction = () => void | Promise<void>;
+
 export interface CommandSpec {
   id: string;
   label: string;
   combo?: string;
   run: (...args: unknown[]) => void | Promise<void>;
+  /** Captures an action before menu focus moves. Null omits it for this opening. */
+  prepareForMenu?: () => CommandMenuAction | null;
 }
 
 type ShortcutHandler = (event: KeyboardEvent) => void;

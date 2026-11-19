@@ -23034,6 +23034,56 @@ removes three registrations, six private Library directories,
 ten checkout outputs and the scratch tree. Next verify whether
 multiline source quotes preserve the served indentation.
 
+### Preserve the source selection through the command menu (2026-11-20)
+
+In signed English Wails on `043d00ca3`, Cmd+Shift+P opens the
+command menu with `boundary` selected in an assistant response.
+Focusing the search field collapses that selection. Clicking
+Quote in message then closes the menu and leaves draft `9124`
+untouched. The private Lab wiring initially loaded shortcuts
+twice, so a single native key event toggled the menu twice.
+Using the fixture's existing shortcuts provider restored the
+production dispatch path for the baseline and both candidates.
+
+`commandMenuState.ts` captures contextual command actions
+before taking focus, one time per opening. `CommandMenu.tsx`
+offers the actions available for that opening and checks the
+original registration again when delivering one after the
+overlay closes. Closing discards the captured actions.
+Quote in message prepares the same scoped Composer append
+used by its direct shortcut. Ordinary commands still run
+through their existing action. The Lab shell calls the same
+state transition as the production menu.
+[Selection API](https://www.w3.org/TR/selection-api/#dom-selection-getcomposedranges)
+
+- EN/light/14 px/Flame Orange at 1121 × 950 and a 560.5 px
+  Dock. Search for Quote in message and press Return. The
+  source selection has already collapsed by that point.
+  Draft `9137` gets exactly one quote for `boundary` and
+  resumes with `428` outside it. Open without a selection
+  and Quote in message is absent. Keyboard shortcuts still
+  opens by Return, lists the customizable `⌃ ⇧ Q`, and
+  closes back to the same file and draft.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. Open on the
+  assistant selection and cancel with Escape. Draft `9142`
+  remains intact. Reopen from `row` in the source reader.
+  Search for 引用 and press Return to quote only `row` with
+  its workspace path and absolute line 4. Focus returns to
+  the same Composer and `563` continues after the code
+  fence, with the file still open.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and
+five canonical Lab documents pass. Native checks use captured
+content and no live Send or filesystem operation. VoiceOver,
+browser suites and benchmarks were outside the run.
+
+Six native launches and five loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Continue by tracing
+keyboard return from another reader or workspace action.
+
 ### Native short-paste continuation qualification
 
 No actionable focus/caret finding in the inspected trace. Approve the observed
