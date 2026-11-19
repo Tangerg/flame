@@ -4,6 +4,7 @@ import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import {
   Fragment,
+  useCallback,
   useId,
   useLayoutEffect,
   useRef,
@@ -37,6 +38,7 @@ import {
   scrollWithHorizontalArrow,
   selectAllInReader,
   TextField,
+  useContentVisible,
   useCopy,
   vocab,
 } from "@flame/ui";
@@ -279,13 +281,16 @@ function coversWholeFile(file: { truncated?: boolean }, moreBefore: boolean, mor
 function FilePreviewMode({
   mode,
   onChange,
+  ref,
 }: {
   mode: "source" | "rendered";
   onChange: (mode: "source" | "rendered") => void;
+  ref: Ref<HTMLDivElement>;
 }) {
   const t = useT();
   return (
     <Segmented
+      ref={ref}
       value={mode}
       onChange={onChange}
       ariaLabel={t("file.mode")}
@@ -311,6 +316,7 @@ function FilePreview({
   onOpenFromStart: () => void;
 }) {
   const workspaceAccess = useWorkspace();
+  const visible = useContentVisible();
 
   const t = useT();
   const copy = useCopy(viewer.path, t("file.copyPath"));
@@ -450,6 +456,33 @@ function FilePreview({
 
   const unsupported = workspaceAccess.errors.isUnsupportedFile(error);
   const canRender = wholeFile && !unsupported;
+  const canSwitchMode = canRender && renderer !== undefined;
+  const retiredMode = useRef<HTMLDivElement>(null);
+  const modeRef = useCallback((group: HTMLDivElement | null) => {
+    if (!group) return;
+    retiredMode.current = null;
+    return () => {
+      // The group still contains the focus owner before React removes it.
+      if (group.contains(group.ownerDocument.activeElement)) retiredMode.current = group;
+    };
+  }, []);
+  useLayoutEffect(() => {
+    const group = retiredMode.current;
+    retiredMode.current = null;
+    const reader = scrollPort.current;
+    if (
+      visible &&
+      !canSwitchMode &&
+      acceptedData !== undefined &&
+      !unsupported &&
+      group?.isConnected === false &&
+      reader?.isConnected &&
+      reader.ownerDocument.activeElement === reader.ownerDocument.body
+    ) {
+      reader.focus({ preventScroll: true });
+    }
+  }, [acceptedData, canSwitchMode, unsupported, visible]);
+
   const kind = fileKind(viewer.path);
   const icon = fileIconName(viewer.path);
   const { name } = splitFilePath(viewer.path);
@@ -567,7 +600,7 @@ function FilePreview({
       }
       sub={sub}
       controls={
-        canRender && renderer ? <FilePreviewMode mode={mode} onChange={setMode} /> : undefined
+        canSwitchMode ? <FilePreviewMode ref={modeRef} mode={mode} onChange={setMode} /> : undefined
       }
       actions={
         <>

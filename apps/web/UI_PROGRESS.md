@@ -41165,6 +41165,73 @@ of the marked 50–93 source removes the two mode options and
 focus falls to the document body. The next check is to hand
 off that removed control's focus within the reader.
 
+### Focus follows a retired file mode option (2026-11-19)
+
+Wails on the previous reader held a request for lines 50–250
+while Preview remained selected and focused. The partial result
+50–93 removed the mode options. The source correctly marked line
+50, but WebKit focused the document body. The WAI keyboard
+guidance describes preserving focus when an active control
+leaves the interface.
+[WAI keyboard focus guidance](https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/#discernible-and-predictable-keyboard-focus)
+
+`Segmented` forwards its existing native radio-group element
+through an optional ref. `FilePreview` observes focus ownership
+when that group detaches. The surviving, visible reader consumes
+the handoff during the same commit, once the group is disconnected,
+an accepted result is present and the document body has focus.
+The handoff uses the named reading region and prevents its focus
+call from scrolling. Pierre places the target line through its
+existing accepted-content path.
+
+- EN/light/14 px/Flame Orange at Actual Size. Reverse Tab from
+  Go to line focuses Preview while 50–250 is held. Acceptance
+  marks line 50 and focuses the named reader. End moves its
+  offset from 0 to 171 px with focus still in the reader.
+- A complete result from 1–201 keeps the mode group. Its Source
+  choice is selected and focused, and the source marks line 1.
+  On a later read of 60–260, the user moves to Copy path.
+  Acceptance of 60–93 keeps that control focused. The file row
+  and the draft `661547` are reachable on return. A separate
+  keyboard Back during a pending 45–245 returns to the original
+  file row and cancels the request.
+- ZH/dark/18 px/`#3B82F6` at Actual Size. Window Left and
+  separator End set the Dock to 320 px. While 70–270 waits,
+  reverse Tab and Right select and focus Source. Acceptance
+  marks line 70, removes the mode options and visibly focuses
+  the named reader. Reopening and moving to the Composer while
+  60–260 is held keeps that later input focus on acceptance.
+  The draft continues as `6624863` and Back returns to the file
+  row.
+- The standard English Lab opens the complete 93-line Preview.
+  Pointer Source and Left arrow preserve ordinary selection and
+  focus within the group. Back restores the file row and the
+  draft continues as `663392`.
+
+The native passes use `d5c1efd67`. Its full Web run records
+134 passes and the three earlier Runtime cancellation and Goal
+recovery failures. The independent Runtime and audit change
+`7267b86e0` advances main. On that base all 137 Web tests pass,
+including the three previously affected tests and the bound
+workspace file and hook API test. Scoped formatting, Web and UI
+typechecking, the packed UI consumer, 940 keys across eight
+locales, 26 bundle contracts, bootstrap, portable resources,
+module linkage, native build and five canonical Lab documents
+pass. The canonical build excludes the private fixture. Native
+checks exercise controlled reads in the signed Wails host and
+standard assets in the canonical Lab. Live user file changes,
+VoiceOver speech, physical IME and other platforms were outside
+the exercise.
+
+Three private bundles, four launches and three loopback previews
+complete. Cleanup removes three registrations, six private
+Library directories, ten checkout outputs and the scratch tree.
+An additional native probe moves focus to Copy code inside the
+retained Preview while 50–250 waits. Acceptance marks line 50
+and removes that renderer control. Focus falls to the document
+body. This provides the next scoped focus continuity check
+inside the displayed document.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

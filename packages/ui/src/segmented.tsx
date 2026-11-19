@@ -1,4 +1,4 @@
-import { useId, type AriaAttributes } from "react";
+import { useId, type AriaAttributes, type Ref } from "react";
 import { motion as anim } from "motion/react";
 import { ItemHighlight } from "./item-highlight";
 import * as stylex from "@stylexjs/stylex";
@@ -69,6 +69,7 @@ export function Segmented<T extends string | number>({
   ariaLabel,
   className,
   disabled,
+  ref,
   ...aria
 }: Pick<
   AriaAttributes,
@@ -80,12 +81,14 @@ export function Segmented<T extends string | number>({
   ariaLabel: string;
   className?: string;
   disabled?: boolean;
+  ref?: Ref<HTMLDivElement>;
 }) {
   const chipId = useId();
   const root = stylex.props(styles.root);
   return (
     <RadioGroup
       {...aria}
+      ref={ref}
       data-slot="segmented"
       aria-label={ariaLabel}
       value={value}
