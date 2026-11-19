@@ -54,7 +54,7 @@ func (c *DeferredCompletion) Complete(ctx context.Context, payload []byte) error
 	}
 	record := c.record
 	record.Payload = payload
-	_, err := c.replay.finishRecord(ctx, record)
+	_, err := c.replay.persistOutcome(ctx, record)
 	return err
 }
 
@@ -68,7 +68,7 @@ func (c *DeferredCompletion) claim(ctx context.Context, runID string) error {
 	if claimed {
 		return nil
 	}
-	if len(record.Payload) != 0 {
+	if record.Settled() {
 		return errAtomicResultExists
 	}
 	return ErrInProgress
@@ -135,7 +135,7 @@ func (r *Replay) InvokeDeferred(
 		outcome, _, err := r.commitOutcome(ctx, key, fingerprint, func(context.Context) ([]byte, error) { return payload, nil })
 		return outcome, err
 	}
-	if len(committed.Payload) != 0 {
+	if committed.Settled() {
 		return settledPayload(committed)
 	}
 	if len(committed.Settlement) == 0 {

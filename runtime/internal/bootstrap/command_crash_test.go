@@ -43,12 +43,12 @@ func (s commandCrashStore) Claim(ctx context.Context, claim operation.ReplayClai
 	return record, claimed, err
 }
 
-func (s commandCrashStore) Complete(ctx context.Context, record operation.ReplayRecord) error {
-	err := s.ReplayStore.Complete(ctx, record)
+func (s commandCrashStore) Complete(ctx context.Context, record operation.ReplayRecord) (operation.ReplayRecord, error) {
+	settled, err := s.ReplayStore.Complete(ctx, record)
 	if err == nil && s.phase == commandCrashReceipt {
 		os.Exit(commandCrashExit)
 	}
-	return err
+	return settled, err
 }
 
 // commandCrashExecutor records business effects in a database of its own, so

@@ -102,8 +102,7 @@ func (r *runTreeOwner) beginChildCancellation(
 		)
 	}
 	if terminal, finished := r.terminalRuns[attempt.targetRunID]; finished {
-		ending, _ := terminal.run.Ending()
-		return nil, fmt.Errorf("%w: %q settled as %s", ErrRunFinished, attempt.targetRunID, ending.Outcome())
+		return nil, terminal.refuseCancellation()
 	}
 	r.childCancel = attempt
 	return attempt, nil
@@ -234,14 +233,14 @@ func (r *runTreeOwner) recordTerminalRun(run rundomain.Run, cancellation Cancell
 	if _, duplicate := r.terminalRuns[run.ID()]; duplicate {
 		panic(fmt.Sprintf("runs: Run %q committed more than one terminal snapshot", run.ID()))
 	}
-	r.terminalRuns[run.ID()] = terminalRun{run: run, cancellation: cancellation}
+	terminal := terminalRun{run: run, cancellation: cancellation}
+	r.terminalRuns[run.ID()] = terminal
 	attempt := r.childCancel
 	if attempt == nil || run.ID() != attempt.targetRunID {
 		return
 	}
 	if cancellation != attempt.id {
-		ending, _ := run.Ending()
-		attempt.err = fmt.Errorf("%w: %q settled as %s", ErrRunFinished, run.ID(), ending.Outcome())
+		attempt.err = terminal.refuseCancellation()
 		r.finishChildCancellationLocked(attempt)
 	}
 }

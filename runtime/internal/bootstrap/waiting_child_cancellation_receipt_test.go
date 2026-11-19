@@ -27,19 +27,19 @@ type waitingChildReceiptCrashStore struct {
 	path string
 }
 
-func (s waitingChildReceiptCrashStore) Complete(ctx context.Context, record operation.ReplayRecord) error {
+func (s waitingChildReceiptCrashStore) Complete(ctx context.Context, record operation.ReplayRecord) (operation.ReplayRecord, error) {
 	original, found, err := s.ReplayStore.Lookup(ctx, record.Key, record.Fingerprint)
 	if err != nil {
-		return err
+		return operation.ReplayRecord{}, err
 	}
 	if !found || len(original.Settlement) == 0 || !bytes.Equal(original.Settlement, record.Settlement) {
-		return errors.New("original waiting child cancellation settlement was not durably staged")
+		return operation.ReplayRecord{}, errors.New("original waiting child cancellation settlement was not durably staged")
 	}
 	if err := os.WriteFile(s.path, record.Payload, 0o600); err != nil {
-		return err
+		return operation.ReplayRecord{}, err
 	}
 	os.Exit(commandCrashExit)
-	return nil
+	return operation.ReplayRecord{}, nil
 }
 
 func TestWaitingChildCancellationReceiptCrashHelper(t *testing.T) {

@@ -79,8 +79,7 @@ func (c *Cancellations) settleLiveRootCancellation(
 			return rootCancelResult(terminal.run)
 		}
 		if requestErr == nil || errors.Is(requestErr, ErrExecutorNotLive) {
-			ending, _ := terminal.run.Ending()
-			return CancelResult{}, fmt.Errorf("%w: %q settled as %s", ErrRunFinished, cmd.RunID, ending.Outcome())
+			return CancelResult{}, terminal.refuseCancellation()
 		}
 	}
 	if requestErr != nil {

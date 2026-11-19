@@ -189,6 +189,9 @@ func (c CancellationCompletion) finishLiveCancellation(ctx context.Context, err 
 	if err == nil {
 		return nil
 	}
+	if _, committed := errors.AsType[terminalCancellationRefusal](err); committed {
+		return err
+	}
 	if _, unsettled := errors.AsType[*CancellationSettlementError](err); unsettled {
 		return err
 	}
@@ -203,6 +206,32 @@ func (c CancellationCompletion) finishLiveCancellation(ctx context.Context, err 
 	default:
 		return &CancellationSettlementError{Cause: err}
 	}
+}
+
+// A terminal refusal already belongs to the Run's commit. The cleanup waiter
+// may observe it after the requester or its process has stopped.
+type terminalCancellationRefusal struct{ error }
+
+func (e terminalCancellationRefusal) Unwrap() error { return e.error }
+
+// TerminalCancellationRefusal applies to linked cancellations that have not
+// already staged a receipt. A canceled Run can still owe a successful receipt.
+func TerminalCancellationRefusal(value rundomain.Run) error {
+	outcome, finished := value.Outcome()
+	if !finished || outcome == rundomain.OutcomeCanceled {
+		return nil
+	}
+	if outcome == rundomain.OutcomeLost {
+		return &CancellationSettlementError{Cause: fmt.Errorf("runs: Run %q was lost", value.ID())}
+	}
+	return fmt.Errorf("%w: %q settled as %s", ErrRunFinished, value.ID(), outcome)
+}
+
+func (t terminalRun) refuseCancellation() error {
+	if refusal := TerminalCancellationRefusal(t.run); refusal != nil {
+		return terminalCancellationRefusal{refusal}
+	}
+	return fmt.Errorf("%w: %q settled as %s", ErrRunFinished, t.run.ID(), rundomain.OutcomeCanceled)
 }
 
 func (c *Cancellations) cancelLiveChild(

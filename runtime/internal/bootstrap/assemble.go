@@ -342,10 +342,6 @@ func buildAssemblyCore(
 	}
 	execution.tools.tools.Resolver.UseCreateGoalTool(createGoalTool)
 
-	abandonedCancellationReceipt, err := delivery.EncodeAbandonedCancellationReceipt()
-	if err != nil {
-		return nil, fmt.Errorf("runtime: encode abandoned cancellation receipt: %w", err)
-	}
 	recoveryPersistence, err := recovery.New(recovery.Config{
 		Sessions:            cfg.stores.Sessions,
 		Runs:                cfg.stores.Runs,
@@ -358,10 +354,6 @@ func buildAssemblyCore(
 		ToolInvocations:     cfg.stores.ToolInvocations,
 		ChildRunStarts:      cfg.stores.ChildRunStarts,
 		Tx:                  recovery.Transactor(cfg.stores.Transactor),
-
-		AbandonCancellations: func(ctx context.Context, runID string) error {
-			return cfg.stores.Idempotency.AbandonRunCancellations(ctx, runID, abandonedCancellationReceipt)
-		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: boot recovery persistence: %w", err)

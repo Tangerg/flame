@@ -28,19 +28,19 @@ type activeRootCancelCrashStore struct {
 	path string
 }
 
-func (s activeRootCancelCrashStore) Complete(ctx context.Context, record operation.ReplayRecord) error {
+func (s activeRootCancelCrashStore) Complete(ctx context.Context, record operation.ReplayRecord) (operation.ReplayRecord, error) {
 	prior, found, err := s.ReplayStore.Lookup(ctx, record.Key, record.Fingerprint)
 	if err != nil {
-		return err
+		return operation.ReplayRecord{}, err
 	}
 	if !found || len(prior.Settlement) == 0 || !bytes.Equal(prior.Settlement, record.Settlement) {
-		return errors.New("the canceled Run was missing its original staged receipt")
+		return operation.ReplayRecord{}, errors.New("the canceled Run was missing its original staged receipt")
 	}
 	if err := os.WriteFile(s.path, record.Payload, 0o600); err != nil {
-		return err
+		return operation.ReplayRecord{}, err
 	}
 	os.Exit(commandCrashExit)
-	return nil
+	return operation.ReplayRecord{}, nil
 }
 
 func TestActiveRootCancelReceiptCrashHelper(t *testing.T) {

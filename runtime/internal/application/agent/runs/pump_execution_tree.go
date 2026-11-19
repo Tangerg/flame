@@ -36,7 +36,7 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 	}
 	write := func() error { return s.segments.publications.events.CommitExecutionTree(s.ownerCtx, commit) }
 	retryOnFailure := slices.ContainsFunc(commit.Events, func(event EventCommit) bool {
-		return event.ObsoleteCheckpointRootID != "" || event.childCancellation != nil
+		return event.State == StateTerminalize || event.childCancellation != nil
 	})
 	if err := commitRunBoundary(s.ownerCtx, s.spec.SessionID, s.spec.RunID, write, retryOnFailure); err != nil {
 		return err

@@ -572,17 +572,13 @@ func currentSchema() []string {
 		)`,
 		fmt.Sprintf(`INSERT OR IGNORE INTO runtime_identity(id, idempotency_namespace)
 			VALUES (1, '%s' || lower(hex(randomblob(%d))))`, operation.ReplayNamespacePrefix, operation.ReplayNamespaceEntropyBytes),
-		// One shared command-record store under a single global key. Three closed
-		// variants record different facts with different owners: a delivery-owned
-		// generic response reservation (pending_response) and its completed outcome
-		// (response), and a Run-owned immutable acceptance (run_acceptance) written in
-		// the Run opening or input-admission transaction. A live cancellation
-		// reservation references the original Run until its response commits so
-		// loss of that Run's writer can settle the same reservation. A material
-		// reference dropped on deletion can never bind to an imported Run.
+		// A live cancellation reservation references the original Run until its
+		// response commits. The Run's terminal transaction can settle it with a
+		// refusal even when its original requester has exited. A material reference
+		// dropped on deletion can never bind to an imported Run.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS idempotency_records (
 			key          TEXT PRIMARY KEY,
-			kind         TEXT NOT NULL CHECK (kind IN ('%[1]s','%[2]s','%[3]s')),
+			kind         TEXT NOT NULL CHECK (kind IN ('%[1]s','%[2]s','%[3]s','%[8]s')),
 			fingerprint  TEXT NOT NULL,
 			payload      BLOB,
 			expires_at   INTEGER,
@@ -595,11 +591,12 @@ func currentSchema() []string {
 			material_run_id TEXT REFERENCES runs(run_id) ON DELETE SET NULL,
 			CHECK (kind <> '%[3]s' OR material_run_id IS NULL OR material_run_id = run_id),
 			CHECK (
-				(kind IN ('%[1]s','%[2]s')
+				(kind IN ('%[1]s','%[2]s','%[8]s')
 					AND payload IS NOT NULL AND expires_at IS NOT NULL
 					AND operation IS NULL AND session_id IS NULL AND run_id IS NULL
 					AND segment_id IS NULL AND user_item_id IS NULL AND steer_input IS NULL
-					AND (kind = '%[1]s' OR material_run_id IS NULL))
+					AND (kind = '%[1]s' OR material_run_id IS NULL)
+					AND (kind <> '%[8]s' OR CAST(payload AS TEXT) IN ('%[9]s','%[10]s','%[11]s')))
 				OR
 				(kind = '%[3]s'
 					AND payload IS NULL AND expires_at IS NULL
@@ -608,7 +605,9 @@ func currentSchema() []string {
 					AND ((operation IN ('%[4]s','%[5]s','%[7]s') AND steer_input IS NULL)
 						OR (operation = '%[6]s' AND steer_input IS NOT NULL)))
 			)
-		)`, idempotencyPendingResponse, idempotencyResponse, idempotencyRunAcceptance, runs.CommandStartOpening, runs.CommandResumeOpening, runs.CommandSteerInput, runs.CommandGoalRoundOpening),
+		)`, idempotencyPendingResponse, idempotencyResponse, idempotencyRunAcceptance,
+			runs.CommandStartOpening, runs.CommandResumeOpening, runs.CommandSteerInput, runs.CommandGoalRoundOpening,
+			idempotencyCancellationRefusal, cancellationTargetFinished, cancellationTargetMissing, cancellationUnconfirmed),
 		`CREATE INDEX IF NOT EXISTS idx_idempotency_records_expires_at
 			ON idempotency_records(expires_at) WHERE expires_at IS NOT NULL`,
 		`CREATE INDEX IF NOT EXISTS idx_idempotency_records_material_run

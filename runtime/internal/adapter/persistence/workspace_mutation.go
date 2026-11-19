@@ -98,9 +98,10 @@ func (s *WorkspaceMutationStore) Complete(ctx context.Context, m sessions.Worksp
 		if len(payload) == 0 {
 			return errors.New("keyed workspace mutation omitted its outcome")
 		}
-		return s.receipts.Complete(tx, operation.ReplayRecord{
+		_, err = s.receipts.Complete(tx, operation.ReplayRecord{
 			Key: m.Receipt.Key, Fingerprint: m.Receipt.Fingerprint, Payload: payload,
 		})
+		return err
 	})
 	if err != nil {
 		return fmt.Errorf("sqlite: complete workspace mutation: %w", err)

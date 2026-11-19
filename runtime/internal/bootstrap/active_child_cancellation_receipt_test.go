@@ -31,19 +31,19 @@ type activeChildCancelCrashStore struct {
 	path string
 }
 
-func (s activeChildCancelCrashStore) Complete(ctx context.Context, record operation.ReplayRecord) error {
+func (s activeChildCancelCrashStore) Complete(ctx context.Context, record operation.ReplayRecord) (operation.ReplayRecord, error) {
 	committed, found, err := s.ReplayStore.Lookup(ctx, record.Key, record.Fingerprint)
 	if err != nil {
-		return err
+		return operation.ReplayRecord{}, err
 	}
 	if !found || len(committed.Settlement) == 0 || !bytes.Equal(committed.Settlement, record.Settlement) {
-		return errors.New("the canceled child was missing its original staged receipt")
+		return operation.ReplayRecord{}, errors.New("the canceled child was missing its original staged receipt")
 	}
 	if err := os.WriteFile(s.path, record.Payload, 0o600); err != nil {
-		return err
+		return operation.ReplayRecord{}, err
 	}
 	os.Exit(commandCrashExit)
-	return nil
+	return operation.ReplayRecord{}, nil
 }
 
 func cancelableActiveChildModel(entered chan<- struct{}) chat.Model {

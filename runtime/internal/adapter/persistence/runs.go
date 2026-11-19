@@ -496,6 +496,9 @@ func (r *RunStore) finish(ctx context.Context, op string, value rundomain.Run, m
 		if n == 0 {
 			return fmt.Errorf("sqlite: %s run %q: Run changed after the application prepared its terminal state", op, value.ID())
 		}
+		if err := newIdempotencyStore(r.db).settleRunCancellationRefusals(ctx, value); err != nil {
+			return err
+		}
 		if value.Lineage().IsChild() {
 			return nil
 		}

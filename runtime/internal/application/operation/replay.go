@@ -33,7 +33,10 @@ type ReplayRecord struct {
 	Fingerprint string
 	Payload     []byte
 	Settlement  []byte
+	Refusal     error
 }
+
+func (r ReplayRecord) Settled() bool { return len(r.Payload) != 0 || r.Refusal != nil }
 
 type ReplayClaim struct {
 	Key         string
@@ -51,8 +54,9 @@ type ReplayStore interface {
 	// StageSettlement retains the work that can be settled after the original
 	// business transaction commits.
 	StageSettlement(context.Context, ReplayRecord) error
-	// Exact completion is idempotent. A lost claim cannot be recreated here.
-	Complete(context.Context, ReplayRecord) error
+	// Complete advances a pending record or returns its already committed
+	// owner refusal. A lost claim cannot be recreated here.
+	Complete(context.Context, ReplayRecord) (ReplayRecord, error)
 }
 
 // Replay owns admission and receipt settlement for opaque operation results.
@@ -91,7 +95,7 @@ func (r *Replay) InvokeRecoverable(ctx context.Context, key, fingerprint string,
 	if err != nil {
 		return nil, err
 	}
-	if found && len(record.Payload) != 0 {
+	if found && record.Settled() {
 		return settledPayload(record)
 	}
 	payload, err := execute()
@@ -136,25 +140,36 @@ func (r *Replay) finishPending(ctx context.Context, key, fingerprint string) ([]
 	if record.Fingerprint != fingerprint {
 		return nil, true, framecall.ErrConflict
 	}
-	if err := r.completeWithin(context.WithoutCancel(ctx), record); err != nil {
+	settled, err := r.completeWithin(context.WithoutCancel(ctx), record)
+	if err != nil {
 		return nil, true, settlementError(err)
 	}
 	r.forgetPendingCompletion(key, fingerprint)
-	return record.Payload, true, nil
+	payload, err := settledPayload(settled)
+	return payload, true, err
 }
 
 func (r *Replay) finishRecord(ctx context.Context, record ReplayRecord) ([]byte, error) {
-	if err := r.completeWithin(context.WithoutCancel(ctx), record); err != nil {
+	settled, err := r.persistOutcome(ctx, record)
+	if err != nil {
+		return nil, err
+	}
+	return settledPayload(settled)
+}
+
+func (r *Replay) persistOutcome(ctx context.Context, record ReplayRecord) (ReplayRecord, error) {
+	settled, err := r.completeWithin(context.WithoutCancel(ctx), record)
+	if err != nil {
 		if errors.Is(err, framecall.ErrConflict) {
-			return nil, err
+			return ReplayRecord{}, err
 		}
 		failure := settlementError(err)
 		if errors.Is(failure, ErrOutcomePending) {
 			r.rememberPendingCompletion(record)
 		}
-		return nil, failure
+		return ReplayRecord{}, failure
 	}
-	return record.Payload, nil
+	return settled, nil
 }
 
 // AtomicCompletion is borrowed by one synchronous command. A failed write
@@ -228,11 +243,12 @@ func (r *Replay) commitOutcome(ctx context.Context, key, fingerprint string, wri
 		if err != nil {
 			return err
 		}
-		if err := r.store.Complete(tx, record); err != nil {
+		settled, err := r.store.Complete(tx, record)
+		if err != nil {
 			return err
 		}
-		payload = record.Payload
-		return nil
+		payload, err = settledPayload(settled)
+		return err
 	})
 	if err != nil {
 		return nil, false, err
@@ -241,6 +257,9 @@ func (r *Replay) commitOutcome(ctx context.Context, key, fingerprint string, wri
 }
 
 func settledPayload(record ReplayRecord) ([]byte, error) {
+	if record.Refusal != nil {
+		return nil, record.Refusal
+	}
 	if len(record.Payload) == 0 {
 		return nil, ErrInProgress
 	}
@@ -254,7 +273,7 @@ func settlementError(err error) error {
 	return errors.Join(ErrOutcomePending, err)
 }
 
-func (r *Replay) completeWithin(ctx context.Context, record ReplayRecord) error {
+func (r *Replay) completeWithin(ctx context.Context, record ReplayRecord) (ReplayRecord, error) {
 	writeContext, cancel := context.WithTimeout(ctx, replayWriteTimeout)
 	defer cancel()
 	return r.store.Complete(writeContext, record)
@@ -274,7 +293,7 @@ func (r *Replay) FlushPending(ctx context.Context) error {
 			continue
 		}
 		if pending, ok := r.pendingCompletion(key); ok {
-			if err := r.completeWithin(ctx, pending); err != nil {
+			if _, err := r.completeWithin(ctx, pending); err != nil {
 				errs = append(errs, fmt.Errorf("idempotency: flush pending outcome: %w", err))
 			} else {
 				r.forgetPendingCompletion(key, pending.Fingerprint)

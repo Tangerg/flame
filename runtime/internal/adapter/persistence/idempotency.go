@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	idempotencyPendingResponse = "pending_response"
-	idempotencyResponse        = "response"
-	idempotencyRunAcceptance   = "run_acceptance"
+	idempotencyPendingResponse     = "pending_response"
+	idempotencyResponse            = "response"
+	idempotencyRunAcceptance       = "run_acceptance"
+	idempotencyCancellationRefusal = "cancellation_refusal"
 )
 
 // idempotencyStore persists replay records across runtime restarts.
@@ -51,7 +52,9 @@ func (i *idempotencyStore) Transact(ctx context.Context, write func(context.Cont
 
 func (i *idempotencyStore) Lookup(ctx context.Context, key, fingerprint string) (operation.ReplayRecord, bool, error) {
 	return scopedPair(ctx, i.db.read, func(ctx context.Context) (operation.ReplayRecord, bool, error) {
-		row := i.db.connection(ctx).QueryRowContext(ctx, `SELECT kind,fingerprint,payload FROM idempotency_records WHERE key=? AND (kind<>? OR expires_at>?)`, key, idempotencyResponse, time.Now().Unix())
+		row := i.db.connection(ctx).QueryRowContext(ctx, `SELECT kind,fingerprint,payload FROM idempotency_records
+			WHERE key = ? AND (kind IN (?, ?) OR expires_at > ?)`,
+			key, idempotencyPendingResponse, idempotencyRunAcceptance, time.Now().Unix())
 		return readReplayRecord(row, key, fingerprint)
 	})
 }
@@ -75,6 +78,12 @@ func readReplayRecord(row *framesqlite.Row, key, fingerprint string) (operation.
 		record.Payload = payload
 	case idempotencyPendingResponse:
 		record.Settlement = payload
+	case idempotencyCancellationRefusal:
+		refusal, err := cancellationRefusal(string(payload)).failure()
+		if err != nil {
+			return operation.ReplayRecord{}, false, err
+		}
+		record.Refusal = refusal
 	case idempotencyRunAcceptance:
 		// The Run command store alone can read an opening or input receipt.
 	default:
@@ -96,14 +105,23 @@ func (i *idempotencyStore) Claim(ctx context.Context, claim operation.ReplayClai
 	now := time.Now().Unix()
 	err = i.db.write(ctx, func(ctx context.Context) error {
 		db := i.db.connection(ctx)
-		if _, execContextErr := db.ExecContext(ctx, `DELETE FROM idempotency_records WHERE kind = ? AND expires_at <= ?`, idempotencyResponse, now); execContextErr != nil {
+		if _, execContextErr := db.ExecContext(ctx, `DELETE FROM idempotency_records WHERE kind IN (?, ?) AND expires_at <= ?`,
+			idempotencyResponse, idempotencyCancellationRefusal, now); execContextErr != nil {
 			return fmt.Errorf("sqlite: prune idempotency records: %w", execContextErr)
+		}
+		kind, payload, owner := idempotencyPendingResponse, []byte{}, claim.RunID
+		refusal, err := i.refuseLateCancellation(ctx, claim.RunID)
+		if err != nil {
+			return err
+		}
+		if refusal != "" {
+			kind, payload, owner = idempotencyCancellationRefusal, []byte(refusal), ""
 		}
 		res, execContextErr := db.ExecContext(ctx, `INSERT INTO idempotency_records(
 				key, kind, fingerprint, payload, expires_at, material_run_id
 			) VALUES (?, ?, ?, ?, ?, NULLIF(?, ''))
-			ON CONFLICT(key) DO NOTHING`, claim.Key, idempotencyPendingResponse, claim.Fingerprint, []byte{},
-			now+int64(operation.ReplayRetention/time.Second), claim.RunID)
+			ON CONFLICT(key) DO NOTHING`, claim.Key, kind, claim.Fingerprint, payload,
+			now+int64(operation.ReplayRetention/time.Second), owner)
 		if execContextErr != nil {
 			return fmt.Errorf("sqlite: insert idempotency claim: %w", execContextErr)
 		}
@@ -111,7 +129,7 @@ func (i *idempotencyStore) Claim(ctx context.Context, claim operation.ReplayClai
 		if execContextErr != nil {
 			return fmt.Errorf("sqlite: inspect idempotency claim: %w", execContextErr)
 		}
-		if changed != 0 {
+		if changed != 0 && kind == idempotencyPendingResponse {
 			record, claimed = operation.ReplayRecord{Key: claim.Key, Fingerprint: claim.Fingerprint}, true
 			return nil
 		}
@@ -157,9 +175,14 @@ func (i *idempotencyStore) StageSettlement(ctx context.Context, record operation
 // The pending reservation is gone. An exact already-committed response is an
 // idempotent success; a different owner or outcome is a conflict; anything
 // else means the claim was lost. A run_acceptance never answers here: it is not a
-// generic response and cannot share this owner's fingerprint.
-func (i *idempotencyStore) Complete(ctx context.Context, record operation.ReplayRecord) error {
-	return i.db.write(ctx, func(ctx context.Context) error {
+// generic response and cannot share this owner's fingerprint. A refusal filed
+// by the Run's terminal transaction is returned as the authoritative receipt.
+func (i *idempotencyStore) Complete(ctx context.Context, record operation.ReplayRecord) (operation.ReplayRecord, error) {
+	if len(record.Payload) == 0 || record.Refusal != nil {
+		return operation.ReplayRecord{}, errors.New("sqlite: an idempotency completion requires its encoded outcome")
+	}
+	var settled operation.ReplayRecord
+	err := i.db.write(ctx, func(ctx context.Context) error {
 		now := time.Now().Unix()
 		expected := record.Settlement
 		if expected == nil {
@@ -178,38 +201,28 @@ func (i *idempotencyStore) Complete(ctx context.Context, record operation.Replay
 			return fmt.Errorf("sqlite: inspect idempotency completion: %w", err)
 		}
 		if changed != 0 {
+			settled = operation.ReplayRecord{Key: record.Key, Fingerprint: record.Fingerprint, Payload: record.Payload}
 			return nil
 		}
-		var fingerprint string
-		var payload []byte
-		err = i.db.connection(ctx).QueryRowContext(ctx, `SELECT fingerprint, payload FROM idempotency_records WHERE key = ? AND kind = ? AND expires_at > ?`, record.Key, idempotencyResponse, now).Scan(&fingerprint, &payload)
-		if errors.Is(err, sql.ErrNoRows) {
-			return operation.ErrClaimLost
-		}
+		row := i.db.connection(ctx).QueryRowContext(ctx, `SELECT kind, fingerprint, payload FROM idempotency_records
+			WHERE key = ? AND kind IN (?, ?) AND expires_at > ?`,
+			record.Key, idempotencyResponse, idempotencyCancellationRefusal, now)
+		prior, found, err := readReplayRecord(row, record.Key, record.Fingerprint)
 		if err != nil {
 			return fmt.Errorf("sqlite: inspect completed idempotency claim: %w", err)
 		}
-		if fingerprint != record.Fingerprint {
-			return framecall.ErrConflict
+		if !found {
+			return operation.ErrClaimLost
 		}
-		if !bytes.Equal(payload, record.Payload) {
+		if prior.Refusal != nil && len(record.Settlement) != 0 ||
+			prior.Refusal == nil && !bytes.Equal(prior.Payload, record.Payload) {
 			return operation.ErrOutcomeConflict
 		}
+		settled = prior
 		return nil
 	})
-}
-
-// AbandonRunCancellations settles reservations whose original Run lost its
-// writer. A staged receipt already has a terminal owner and stays replayable.
-func (i *idempotencyStore) AbandonRunCancellations(ctx context.Context, runID string, payload []byte) error {
-	if len(payload) == 0 {
-		return errors.New("sqlite: abandoning cancellation requires an outcome")
+	if err != nil {
+		return operation.ReplayRecord{}, err
 	}
-	return i.db.write(ctx, func(ctx context.Context) error {
-		_, err := i.db.connection(ctx).ExecContext(ctx, `UPDATE idempotency_records
-		 SET kind = ?, payload = ?, expires_at = ?, material_run_id = NULL
-		 WHERE kind = ? AND material_run_id = ? AND length(payload) = 0`,
-			idempotencyResponse, payload, time.Now().Add(operation.ReplayRetention).Unix(), idempotencyPendingResponse, runID)
-		return err
-	})
+	return settled, nil
 }

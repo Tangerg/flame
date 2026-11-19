@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -76,8 +77,7 @@ func TestActiveChildCancellationRetainsItsOriginalControlOwner(t *testing.T) {
 	case <-time.After(lifecycleWaitBudget(t)):
 		t.Fatal("the competing request did not reach the child cancellation boundary")
 	}
-	releaseModel()
-	waitForProtocolRunTerminal(t, ctx, api, child.RootRunID)
+	waitForChildCancellationParent(t, ctx, api, child.RootRunID, releaseModel)
 	if controls := childHostCancelControls(readWaitingChildScopeLog(t, home)); controls != 1 {
 		t.Errorf("the child has %d durable cancellation controls, want one", controls)
 	}
@@ -173,12 +173,7 @@ func TestLiveChildCancellationJoinsAnInFlightPark(t *testing.T) {
 		t.Fatal("the original request did not stop waiting for the park transaction")
 	}
 
-	releasePark()
-	waitForProtocolRunTerminal(t, ctx, api, child.RootRunID)
-	root, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: child.RootRunID})
-	if err != nil || root.Outcome == nil || root.Outcome.Type != protocol.OutcomeCompleted {
-		t.Fatalf("the parent did not continue from the canceled child: %+v, %v", root, err)
-	}
+	waitForChildCancellationParent(t, ctx, api, child.RootRunID, releasePark)
 	reply, err := endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](ctx, delivery.RunsCancel, request, key)
 	if err != nil {
 		t.Fatalf("the original live request lost its parked child receipt: %v", err)
@@ -190,6 +185,40 @@ func TestLiveChildCancellationJoinsAnInFlightPark(t *testing.T) {
 	if controls := childHostCancelControls(readWaitingChildScopeLog(t, home)); controls != 1 {
 		t.Fatalf("live-to-parked cancellation wrote %d child controls, want one", controls)
 	}
+}
+
+func waitForChildCancellationParent(t *testing.T, ctx context.Context, api *delivery.Handler, runID string, release func()) {
+	t.Helper()
+	watching, cancel := context.WithTimeout(ctx, lifecycleWaitBudget(t))
+	defer cancel()
+	_, changes, err := api.SubscribeRuntime(watching, protocol.RuntimeSubscribeRequest{
+		Topics: []protocol.RuntimeTopic{protocol.TopicRunsChanged},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	release()
+	for event, err := range changes {
+		if err != nil {
+			t.Fatal(err)
+		}
+		if event.Type != protocol.RuntimeResync &&
+			(event.Type != protocol.RuntimeRunsChanged || !slices.Contains(event.RunIDs, runID)) {
+			continue
+		}
+		root, err := api.GetRun(watching, protocol.GetRunRequest{RunID: runID})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if root.Status == protocol.RunStatusFinished {
+			if root.Outcome == nil || root.Outcome.Type != protocol.OutcomeCompleted {
+				t.Fatalf("the parent did not continue from the canceled child: %+v", root)
+			}
+			return
+		}
+	}
+	root, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: runID})
+	t.Fatalf("the parent's terminal notification was not observed: %v, Run = %+v, read = %v", watching.Err(), root, err)
 }
 
 func childHostCancelControls(history scoperun.Log) int {

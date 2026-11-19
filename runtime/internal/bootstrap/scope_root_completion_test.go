@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -16,6 +17,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	scoperun "github.com/Tangerg/scope/agent/run"
@@ -28,6 +31,8 @@ const (
 	rootCompletionCrashCut  = "FLAME_TEST_ROOT_COMPLETION_CRASH_CUT"
 	rootCompletionTx        = "transaction"
 	rootCompletionMaintain  = "maintenance"
+	rootCompletionCancel    = "cancellation-reserved"
+	rootCompletionLateClaim = "cancellation-late-reservation"
 	rootCompletionReply     = "Original completed reply."
 )
 
@@ -36,6 +41,22 @@ type crashAtRootMaintenance struct{}
 func (crashAtRootMaintenance) Maintain(context.Context, executionadapter.RunMaintenanceInput) executionadapter.RunMaintenanceResult {
 	os.Exit(commandCrashExit)
 	return executionadapter.RunMaintenanceResult{}
+}
+
+type crashAfterLateCancellationClaim struct {
+	operation.ReplayStore
+	entered chan<- struct{}
+	proceed <-chan struct{}
+}
+
+func (g crashAfterLateCancellationClaim) Claim(ctx context.Context, claim operation.ReplayClaim) (operation.ReplayRecord, bool, error) {
+	close(g.entered)
+	<-g.proceed
+	record, claimed, err := g.ReplayStore.Claim(ctx, claim)
+	if err == nil {
+		os.Exit(commandCrashExit)
+	}
+	return record, claimed, err
 }
 
 func TestScopeRootCompletionCrashHelper(t *testing.T) {
@@ -79,11 +100,28 @@ func TestScopeRootCompletionCrashHelper(t *testing.T) {
 		}
 	})}
 	cfg := protocolRuntimeConfig(t, stores, model)
-	if cut == rootCompletionMaintain {
+	if cut == rootCompletionMaintain || cut == rootCompletionCancel {
 		cfg.maintenance = crashAtRootMaintenance{}
 	}
-	host, api := buildProtocolRuntime(t, cfg, stores.DataDirectory)
+	host := assembleTestRuntime(t, cfg)
 	defer host.Close()
+	api, err := protocolHandler(host, home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var replayStore operation.ReplayStore = stores.Idempotency
+	reserved, submit := make(chan struct{}), make(chan struct{})
+	releaseSubmit := sync.OnceFunc(func() { close(submit) })
+	defer releaseSubmit()
+	switch cut {
+	case rootCompletionCancel:
+		replayStore = cancellationReservationGate{stores.Idempotency, reserved, submit}
+	case rootCompletionLateClaim:
+		replayStore = crashAfterLateCancellationClaim{stores.Idempotency, reserved, submit}
+	}
+	if err := startTestRuntimeWithReplayStore(t, host, api, stores, replayStore); err != nil {
+		t.Fatal(err)
+	}
 	if cut == rootCompletionTx {
 		questionCrashDatabase(t, home, `CREATE TRIGGER crash_root_completion BEFORE UPDATE OF outcome ON runs
 			WHEN NEW.outcome = 'completed'
@@ -111,17 +149,34 @@ func TestScopeRootCompletionCrashHelper(t *testing.T) {
 	if err := os.WriteFile(path, encoded, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	cancelReply := make(chan protocol.OperationResult, 1)
+	if cut == rootCompletionCancel || cut == rootCompletionLateClaim {
+		request := protocol.CancelRunRequest{RunID: opened.RunID, Reason: activeRootCancelReason}
+		go func() {
+			cancelReply <- host.Endpoint().Invoke(ctx, delivery.RunsCancel, request, protocol.CallMetadata{IdempotencyKey: activeRootCancelKey})
+		}()
+		waitForSignal(t, reserved, "the original cancellation reservation cut")
+	}
 	close(release)
 	for _, err := range events {
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
+	if cut == rootCompletionLateClaim {
+		releaseSubmit()
+		select {
+		case reply := <-cancelReply:
+			t.Fatalf("the late cancellation did not reach its commit cut: %+v", reply)
+		case <-ctx.Done():
+			t.Fatal(ctx.Err())
+		}
+	}
 	t.Fatal("the Run never reached the completion crash cut")
 }
 
 func TestScopeRootCompletionIsAtomicAfterProcessExit(t *testing.T) {
-	for _, cut := range []string{rootCompletionTx, rootCompletionMaintain} {
+	for _, cut := range []string{rootCompletionTx, rootCompletionMaintain, rootCompletionCancel, rootCompletionLateClaim} {
 		t.Run(cut, func(t *testing.T) {
 			home := t.TempDir()
 			t.Setenv("FLAME_HOME", home)
@@ -188,13 +243,27 @@ func TestScopeRootCompletionIsAtomicAfterProcessExit(t *testing.T) {
 			if answers != 1 || dispatched.Load() != 0 {
 				t.Fatalf("recovery left %d assistant answers and dispatched %d model calls", answers, dispatched.Load())
 			}
+			if cut == rootCompletionCancel || cut == rootCompletionLateClaim {
+				history := readWaitingChildScopeLog(t, home)
+				if controls := waitingChildHostControls(history, history.Root.String()); controls != 0 {
+					t.Fatalf("the natural completion received %d cancellation controls", controls)
+				}
+				if err := api.DeleteSession(ctx, run.SessionID); err != nil {
+					t.Fatal(err)
+				}
+				request := protocol.CancelRunRequest{RunID: original.RunID, Reason: activeRootCancelReason}
+				result := host.Endpoint().Invoke(ctx, delivery.RunsCancel, request, protocol.CallMetadata{IdempotencyKey: activeRootCancelKey})
+				if !errors.Is(result.Failure, protocol.ErrRunFinished) {
+					t.Fatalf("the root completion lost the original cancellation refusal: %+v", result)
+				}
+			}
 		})
 	}
 }
 
 func assertRootCompletionAtCrash(t *testing.T, home string, original protocol.StartRunResponse, cut string) runs.ModelInvocationCommit {
 	t.Helper()
-	committed := cut == rootCompletionMaintain
+	committed := cut != rootCompletionTx
 	if got := scopeRootCompleted(readWaitingChildScopeLog(t, home)); got != committed {
 		t.Errorf("original Scope completion committed = %t at %s, want %t", got, cut, committed)
 	}
