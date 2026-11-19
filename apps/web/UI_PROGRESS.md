@@ -39745,6 +39745,74 @@ outer file at 614 px and returns to the Composer at offset 7
 from offset 2. The next batch will trace the vertical scroll
 owner from nested readers.
 
+### Vertical reading from nested preview tables and code (2026-11-19)
+
+Signed Wails at `de3a3dbc4` reproduces two faults in
+`reading-guide.md`. With a held Composer caret at offset 4,
+Right on the fitting table returns to the Composer at offset 5.
+Down from the same starting caret returns at offset 8 and leaves
+the outer file at 0 px. Down on the 90 px Go block preserves the
+caret and focus, but both the block and the file stay at their
+current offsets.
+
+`ScrollRegion` applies the existing foreign-selection guard
+after its caller and horizontal scrolling. `ScrollRegion` and
+`CodeBody` use the closest vertical scrollport with real range.
+An overflowing block keeps its vertical keys at either edge.
+A fitting block may pass the vertical scroll to its containing
+reader until a containment boundary. The named file viewport
+and virtual reading lists use their own vertical scrollports.
+[CSS Overscroll Behavior](https://drafts.csswg.org/css-overscroll-1/#scroll-chaining)
+[WebKit selection and focus](https://bugs.webkit.org/show_bug.cgi?id=112854#c5)
+
+- EN/light/Flame Orange with motion off at 1440 × 900. A focused
+  fitting table keeps caret 4 through Left and Right at x0.
+  Down and Up move the file from 0 to 40 px and back. The short
+  Go reader moves the file from 73 to 113 px and back, with its
+  own y0 and the same caret. Clearing the editing range gives
+  Down to WebKit. Back restores `reading-guide.md` and Cmd+L
+  resumes the draft as `862071954`.
+- In that window the 444 px conversation code frame scrolls
+  locally to 40 px and its 546 px endpoint. Extra Down stays at
+  the endpoint and Up returns to 506 px. The containing
+  conversation remains at 93 px even when Up is pressed at the
+  code's top. The open `DockResizer.tsx` diff retains focus and
+  moves its containing panel between 48 and 8 px with the draft
+  caret at offset 5.
+- ZH/dark/18 px/custom blue with full motion uses a 320 px Dock.
+  At 1440 × 900 the table pans to 51 px. Down moves the file
+  from 639 to 679 px while the table remains at x51 and y0.
+  The Go block pans to 27 px while the file moves from 1184 to
+  1224 px. Reversing the arrows restores both axes. A wheel
+  continues reading to 1052 px with the backward draft selection
+  at 6 to 4. Cmd+L resumes as `4175983`. In a 1121 × 1051 native
+  tile on the external display, the table pans to 28 px while
+  the file moves from 250 to 290 px. The Go block moves its
+  file from 1109 to 1149 px. Back restores the exact row and a
+  second backward selection resumes as `417683`.
+- Standard Lab retains native table and code focus through arrows
+  and wheel reading. Back restores `reading-guide.md` and the
+  exact continued draft is `418239075`.
+
+Scoped Prettier, the packed UI contract, full Web check with 137
+tests including isolated Runtime, 937 locale keys in eight
+catalogs, 26 bundle contracts, native build and the five-entry
+Lab all pass. The isolated Runtime project also passes on the
+new parent after an independent Runtime fast-forward. Native
+acceptance uses captured data. VoiceOver, platform composition
+and clipboard handoff remain open.
+
+Four signed private bundles, six launches and four previews
+are accounted for. A locked Mac interrupted the initial
+candidate launch and its retry. Acceptance resumed in freshly
+verified signed bundles after unlock. Cleanup removes four app
+registrations, eight Library directories, ten checkout outputs
+and the scratch tree.
+
+The conversation Markdown table has its own overflow-gated
+keyboard stop. The next check will exercise that stop with a
+retained Composer selection in the captured table reply.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

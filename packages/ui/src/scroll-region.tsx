@@ -11,6 +11,7 @@ import {
   type Ref,
 } from "react";
 import { useContentVisible } from "./content-visibility";
+import { scrollReaderWithForeignSelection } from "./reader-selection";
 import { space } from "./tokens.stylex";
 
 const styles = stylex.create({
@@ -236,6 +237,7 @@ export function ScrollRegion({
       onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
         callerKeyDown?.(event);
         scrollWithHorizontalArrow(event);
+        scrollReaderWithForeignSelection(event, "both", "nearest");
       },
     },
     children,

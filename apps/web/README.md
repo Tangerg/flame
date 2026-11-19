@@ -231,8 +231,10 @@ fallbacks copy the literal captured page as plain text. Nested code readers and
 editable fields keep their own selection behavior.
 In Source, Left and Right pan the rendered code column. The named file
 viewport owns vertical reading and keeps arrow keys from returning focus
-to a retained Composer selection in both Preview and Source. Nested readers
-own their horizontal panning.
+to a retained Composer selection in both Preview and Source. Tables and code
+blocks own their horizontal panning. With a retained Composer selection, a
+focused nested reader uses its own vertical scroll range or the nearest
+enclosing vertical viewport within the reading scope.
 
 The workbench keeps its layout and existing Runtime recovery notice available
 before the first Session snapshot. Conversation content starts from a defined

@@ -73,9 +73,36 @@ function editingHost(node: Node): HTMLElement | null {
   return host;
 }
 
+function nearestVerticalScrollport(viewport: HTMLElement): HTMLElement | null {
+  for (
+    let region: HTMLElement | null = viewport;
+    region;
+    region = region.parentElement
+  ) {
+    const { display, overflowY, overscrollBehaviorY } =
+      getComputedStyle(region);
+    if (display === "contents" || display === "inline") continue;
+    const userScrollable = overflowY === "auto" || overflowY === "scroll";
+    // An overflowing scrollport still owns the key at either edge.
+    if (
+      userScrollable &&
+      region.clientHeight > 0 &&
+      region.scrollHeight > region.clientHeight
+    )
+      return region;
+    if (
+      (userScrollable || overflowY === "hidden") &&
+      (overscrollBehaviorY === "contain" || overscrollBehaviorY === "none")
+    )
+      return null;
+  }
+  return null;
+}
+
 export function scrollReaderWithForeignSelection(
   event: KeyboardEvent<HTMLElement>,
   axes: "vertical" | "both",
+  verticalScroll: "local" | "nearest" = "local",
 ): void {
   const { currentTarget: viewport, key } = event;
   const vertical = key === "ArrowUp" || key === "ArrowDown";
@@ -112,8 +139,12 @@ export function scrollReaderWithForeignSelection(
     key === "ArrowUp" || key === "ArrowLeft"
       ? -WEBKIT_LINE_SCROLL
       : WEBKIT_LINE_SCROLL;
+  const scroller =
+    vertical && verticalScroll === "nearest"
+      ? nearestVerticalScrollport(viewport)
+      : viewport;
   // A relative scroll preserves the step while the reader measures content.
-  viewport.scrollBy({
+  scroller?.scrollBy({
     [vertical ? "top" : "left"]: delta,
     behavior: "instant",
   });

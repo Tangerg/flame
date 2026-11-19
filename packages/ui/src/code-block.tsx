@@ -236,7 +236,7 @@ export function CodeBody({
         );
         if (event.cancelable && !isImeKey(event.nativeEvent))
           scrollWithHorizontalArrow(event);
-        scrollReaderWithForeignSelection(event, "both");
+        scrollReaderWithForeignSelection(event, "both", "nearest");
       }}
       {...stylex.props(
         styles.code,
