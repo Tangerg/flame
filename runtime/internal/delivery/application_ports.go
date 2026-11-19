@@ -97,6 +97,7 @@ type runOpeningUseCases interface {
 
 type runCancellationUseCases interface {
 	Cancel(ctx context.Context, cmd runs.CancelCommand) (runs.CancelResult, error)
+	SettleParkedCancellation(ctx context.Context, ref runs.ExecutorRef) error
 }
 
 type runStreamUseCases interface {

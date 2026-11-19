@@ -256,7 +256,7 @@ type pendingInterruptReader interface {
 // terminationCommitter owns the atomic application write-sets for canceling
 // a parked Run or declaring its executor state unrecoverable.
 type terminationCommitter interface {
-	ApplyRunCancel(ctx context.Context, sessionID, runID, reason string, finishedAt time.Time) (run.Run, error)
+	ApplyRunCancel(ctx context.Context, ref ExecutorRef, runID, reason string, finishedAt time.Time, complete ParkedCancellationCompletion) (run.Run, error)
 	ApplyRunLost(ctx context.Context, sessionID, runID string, finishedAt time.Time) error
 }
 

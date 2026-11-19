@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 
 	framecall "github.com/Tangerg/frame/call"
+	framesqlite "github.com/Tangerg/frame/sqlite"
 )
 
 const (
@@ -47,21 +48,39 @@ func idempotencyNamespace(ctx context.Context, db *database) (operation.ReplayNa
 func (i *idempotencyStore) Transact(ctx context.Context, write func(context.Context) error) error {
 	return i.db.write(ctx, write)
 }
+
 func (i *idempotencyStore) Lookup(ctx context.Context, key, fingerprint string) (operation.ReplayRecord, bool, error) {
 	return scopedPair(ctx, i.db.read, func(ctx context.Context) (operation.ReplayRecord, bool, error) {
-		record := operation.ReplayRecord{Key: key}
-		err := i.db.connection(ctx).QueryRowContext(ctx, `SELECT fingerprint,payload FROM idempotency_records WHERE key=? AND (kind<>? OR expires_at>?)`, key, idempotencyResponse, time.Now().Unix()).Scan(&record.Fingerprint, &record.Payload)
-		if errors.Is(err, sql.ErrNoRows) {
-			return operation.ReplayRecord{}, false, nil
-		}
-		if err != nil {
-			return operation.ReplayRecord{}, false, err
-		}
-		if record.Fingerprint != fingerprint {
-			return operation.ReplayRecord{}, false, framecall.ErrConflict
-		}
-		return record, true, nil
+		row := i.db.connection(ctx).QueryRowContext(ctx, `SELECT kind,fingerprint,payload FROM idempotency_records WHERE key=? AND (kind<>? OR expires_at>?)`, key, idempotencyResponse, time.Now().Unix())
+		return readReplayRecord(row, key, fingerprint)
 	})
+}
+
+func readReplayRecord(row *framesqlite.Row, key, fingerprint string) (operation.ReplayRecord, bool, error) {
+	record := operation.ReplayRecord{Key: key}
+	var kind string
+	var payload []byte
+	err := row.Scan(&kind, &record.Fingerprint, &payload)
+	if errors.Is(err, sql.ErrNoRows) {
+		return operation.ReplayRecord{}, false, nil
+	}
+	if err != nil {
+		return operation.ReplayRecord{}, false, err
+	}
+	if record.Fingerprint != fingerprint {
+		return operation.ReplayRecord{}, false, framecall.ErrConflict
+	}
+	switch kind {
+	case idempotencyResponse:
+		record.Payload = payload
+	case idempotencyPendingResponse:
+		record.Settlement = payload
+	case idempotencyRunAcceptance:
+		// The Run command store alone can read an opening or input receipt.
+	default:
+		return operation.ReplayRecord{}, false, fmt.Errorf("sqlite: unknown idempotency record kind %q", kind)
+	}
+	return record, true, nil
 }
 
 // Route the claim's prune+insert+lookup through the shared tx seam rather than a
@@ -95,15 +114,13 @@ func (i *idempotencyStore) Claim(ctx context.Context, key, fingerprint string) (
 			record, claimed = operation.ReplayRecord{Key: key, Fingerprint: fingerprint}, true
 			return nil
 		}
-		stored := operation.ReplayRecord{Key: key}
-		if scanErr := db.QueryRowContext(ctx, `SELECT fingerprint, payload FROM idempotency_records WHERE key = ?`, key).Scan(&stored.Fingerprint, &stored.Payload); scanErr != nil {
-			if errors.Is(scanErr, sql.ErrNoRows) {
-				return operation.ErrClaimLost
-			}
-			return fmt.Errorf("sqlite: read idempotency claim: %w", scanErr)
+		row := db.QueryRowContext(ctx, `SELECT kind,fingerprint,payload FROM idempotency_records WHERE key = ?`, key)
+		stored, found, err := readReplayRecord(row, key, fingerprint)
+		if err != nil {
+			return fmt.Errorf("sqlite: read idempotency claim: %w", err)
 		}
-		if stored.Fingerprint != fingerprint {
-			return framecall.ErrConflict
+		if !found {
+			return operation.ErrClaimLost
 		}
 		record, claimed = stored, false
 		return nil
@@ -114,6 +131,28 @@ func (i *idempotencyStore) Claim(ctx context.Context, key, fingerprint string) (
 	return record, claimed, nil
 }
 
+func (i *idempotencyStore) StageSettlement(ctx context.Context, record operation.ReplayRecord) error {
+	if len(record.Settlement) == 0 || len(record.Payload) != 0 {
+		return errors.New("sqlite: a staged settlement requires its unfinished work")
+	}
+	return i.db.write(ctx, func(ctx context.Context) error {
+		result, err := i.db.connection(ctx).ExecContext(ctx, `UPDATE idempotency_records
+		  SET payload = ? WHERE key = ? AND fingerprint = ? AND kind = ? AND length(payload) = 0`,
+			record.Settlement, record.Key, record.Fingerprint, idempotencyPendingResponse)
+		if err != nil {
+			return fmt.Errorf("sqlite: stage idempotency settlement: %w", err)
+		}
+		changed, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("sqlite: inspect idempotency settlement: %w", err)
+		}
+		if changed != 1 {
+			return operation.ErrClaimLost
+		}
+		return nil
+	})
+}
+
 // The pending reservation is gone. An exact already-committed response is an
 // idempotent success; a different owner or outcome is a conflict; anything
 // else means the claim was lost. A run_acceptance never answers here: it is not a
@@ -121,8 +160,14 @@ func (i *idempotencyStore) Claim(ctx context.Context, key, fingerprint string) (
 func (i *idempotencyStore) Complete(ctx context.Context, record operation.ReplayRecord) error {
 	return i.db.write(ctx, func(ctx context.Context) error {
 		now := time.Now().Unix()
+		expected := record.Settlement
+		if expected == nil {
+			expected = []byte{}
+		}
 		res, err := i.db.connection(ctx).ExecContext(ctx, `UPDATE idempotency_records SET kind = ?, payload = ?, expires_at = ?
-		 WHERE key = ? AND fingerprint = ? AND kind = ?`, idempotencyResponse, record.Payload, now+int64(operation.ReplayRetention/time.Second), record.Key, record.Fingerprint, idempotencyPendingResponse)
+		 WHERE key = ? AND fingerprint = ? AND kind = ? AND payload = ?`,
+			idempotencyResponse, record.Payload, now+int64(operation.ReplayRetention/time.Second),
+			record.Key, record.Fingerprint, idempotencyPendingResponse, expected)
 		if err != nil {
 			return fmt.Errorf("sqlite: complete idempotency claim: %w", err)
 		}

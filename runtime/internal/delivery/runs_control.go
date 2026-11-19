@@ -15,6 +15,14 @@ import (
 // A parked Run is also abandoned — its live parked execution is torn down
 // and its open interrupt dropped so it stops surfacing as resumable.
 func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (*protocol.CancelRunResponse, error) {
+	result, err := s.cancelRun(ctx, in, runs.CancellationCompletion{})
+	if err != nil {
+		return nil, err
+	}
+	return presentCancelResult(result), nil
+}
+
+func (s *Handler) cancelRun(ctx context.Context, in protocol.CancelRunRequest, complete runs.CancellationCompletion) (runs.CancelResult, error) {
 	// Root cancel is the emergency stop and is always allowed. Whether the target
 	// is a child is durable state resolved by the application, so do not reject
 	// unsupported client preferences before that identity is known.
@@ -22,28 +30,31 @@ func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (
 		RunID:         in.RunID,
 		Reason:        in.Reason,
 		AllowChildRun: s.requestCanUseFeature(ctx, protocol.FeatureChildRuns),
+		Completion:    complete,
 	})
+	return result, wireCancellationError(err)
+}
+
+func wireCancellationError(err error) error {
 	_, settlementFailed := errors.AsType[*runs.CancellationSettlementError](err)
 	switch {
 	case settlementFailed:
-		return nil, protocol.NewFailure(protocol.ErrInternalError, "cancellation settlement could not be confirmed", err)
+		return protocol.NewFailure(protocol.ErrInternalError, "cancellation settlement could not be confirmed", err)
 	case errors.Is(err, runs.ErrRunNotFound):
-		return nil, protocol.ErrRunNotFound
+		return protocol.ErrRunNotFound
 	case errors.Is(err, runs.ErrRunFinished):
-		return nil, protocol.ErrRunFinished
+		return protocol.ErrRunFinished
 	case errors.Is(err, rundomain.ErrSessionBusy):
-		return nil, protocol.ErrSessionBusy
+		return protocol.ErrSessionBusy
 	case errors.Is(err, runs.ErrInvalidCancellationReason):
-		return nil, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	case errors.Is(err, runs.ErrChildRunNotAllowed):
-		return nil, NewCapabilityGapError(protocol.CapabilityRequirement{
+		return NewCapabilityGapError(protocol.CapabilityRequirement{
 			Type: protocol.RequirementFeature,
 			Name: protocol.FeatureChildRuns,
 		})
-	case err != nil:
-		return nil, err
 	default:
-		return presentCancelResult(result), nil
+		return err
 	}
 }
 

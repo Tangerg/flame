@@ -32,13 +32,17 @@ type ReplayRecord struct {
 	Key         string
 	Fingerprint string
 	Payload     []byte
+	Settlement  []byte
 }
 
 type ReplayStore interface {
 	Lookup(context.Context, string, string) (ReplayRecord, bool, error)
 	Transact(context.Context, func(context.Context) error) error
-	// An existing empty payload is unresolved; it never authorizes execution.
+	// An existing claim never authorizes the business write to run again.
 	Claim(context.Context, string, string) (ReplayRecord, bool, error)
+	// StageSettlement retains the work that can be settled after the original
+	// business transaction commits.
+	StageSettlement(context.Context, ReplayRecord) error
 	// Exact completion is idempotent. A lost claim cannot be recreated here.
 	Complete(context.Context, ReplayRecord) error
 }
@@ -98,15 +102,8 @@ func (r *Replay) Invoke(ctx context.Context, key, fingerprint string, execute fu
 		return nil, err
 	}
 	defer release()
-	if pending, ok := r.pendingCompletion(key); ok {
-		if pending.Fingerprint != fingerprint {
-			return nil, framecall.ErrConflict
-		}
-		if err := r.completeWithin(context.WithoutCancel(ctx), pending); err != nil {
-			return nil, settlementError(err)
-		}
-		r.forgetPendingCompletion(key, fingerprint)
-		return pending.Payload, nil
+	if payload, pending, err := r.finishPending(ctx, key, fingerprint); pending {
+		return payload, err
 	}
 	record, claimed, err := r.store.Claim(ctx, key, fingerprint)
 	if err != nil {
@@ -119,7 +116,26 @@ func (r *Replay) Invoke(ctx context.Context, key, fingerprint string, execute fu
 	if err != nil {
 		return nil, err
 	}
-	record = ReplayRecord{Key: key, Fingerprint: fingerprint, Payload: payload}
+	record.Payload = payload
+	return r.finishRecord(ctx, record)
+}
+
+func (r *Replay) finishPending(ctx context.Context, key, fingerprint string) ([]byte, bool, error) {
+	record, pending := r.pendingCompletion(key)
+	if !pending {
+		return nil, false, nil
+	}
+	if record.Fingerprint != fingerprint {
+		return nil, true, framecall.ErrConflict
+	}
+	if err := r.completeWithin(context.WithoutCancel(ctx), record); err != nil {
+		return nil, true, settlementError(err)
+	}
+	r.forgetPendingCompletion(key, fingerprint)
+	return record.Payload, true, nil
+}
+
+func (r *Replay) finishRecord(ctx context.Context, record ReplayRecord) ([]byte, error) {
 	if err := r.completeWithin(context.WithoutCancel(ctx), record); err != nil {
 		if errors.Is(err, framecall.ErrConflict) {
 			return nil, err
@@ -127,7 +143,7 @@ func (r *Replay) Invoke(ctx context.Context, key, fingerprint string, execute fu
 		r.rememberPendingCompletion(record)
 		return nil, settlementError(err)
 	}
-	return payload, nil
+	return record.Payload, nil
 }
 
 // AtomicCompletion is borrowed by one synchronous command. A failed write
@@ -263,11 +279,13 @@ func (r *Replay) pendingCompletion(key string) (ReplayRecord, bool) {
 	defer r.pendingMu.Unlock()
 	record, ok := r.pending[key]
 	record.Payload = bytes.Clone(record.Payload)
+	record.Settlement = bytes.Clone(record.Settlement)
 	return record, ok
 }
 
 func (r *Replay) rememberPendingCompletion(record ReplayRecord) {
 	record.Payload = bytes.Clone(record.Payload)
+	record.Settlement = bytes.Clone(record.Settlement)
 	r.pendingMu.Lock()
 	r.pending[record.Key] = record
 	r.pendingMu.Unlock()

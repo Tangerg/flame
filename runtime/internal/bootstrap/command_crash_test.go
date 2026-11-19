@@ -17,6 +17,7 @@ import (
 )
 
 const commandCrashExit = 73
+const commandCrashReceipt = "receipt"
 
 type atomicReceiptCommitCrashStore struct{ operation.ReplayStore }
 
@@ -44,7 +45,7 @@ func (s commandCrashStore) Claim(ctx context.Context, key, fingerprint string) (
 
 func (s commandCrashStore) Complete(ctx context.Context, record operation.ReplayRecord) error {
 	err := s.ReplayStore.Complete(ctx, record)
-	if err == nil && s.phase == "receipt" {
+	if err == nil && s.phase == commandCrashReceipt {
 		os.Exit(commandCrashExit)
 	}
 	return err
@@ -103,7 +104,7 @@ func TestCommandCrashHelper(t *testing.T) {
 }
 
 func TestCommandReceiptSurvivesAbruptProcessExit(t *testing.T) {
-	for _, phase := range []string{"claim", "business", "receipt"} {
+	for _, phase := range []string{"claim", "business", commandCrashReceipt} {
 		t.Run(phase, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "flame.db")
 			effectsPath := filepath.Join(t.TempDir(), "effects.db")
@@ -124,7 +125,7 @@ func TestCommandReceiptSurvivesAbruptProcessExit(t *testing.T) {
 			effects := openCommandEffects(t, effectsPath)
 			for range 2 {
 				response, err := crashCommand(t, db, effects, "")
-				if phase == "receipt" {
+				if phase == commandCrashReceipt {
 					if err != nil || response == nil || response.Run.ID != "run_crash" {
 						t.Fatalf("durable receipt lost its identity: %+v, %v", response, err)
 					}

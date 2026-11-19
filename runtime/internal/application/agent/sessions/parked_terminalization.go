@@ -16,7 +16,6 @@ import (
 // Pending hand-off, but owns neither persistence nor executor cleanup.
 type parkedRunTerminalization struct {
 	sessionID            string
-	rootRunID            string
 	finishedAt           time.Time
 	outcome              rundomain.Outcome
 	detail               string
@@ -25,54 +24,54 @@ type parkedRunTerminalization struct {
 	conversationMessages []corechat.Message
 }
 
-func (p parkedRunTerminalization) build() (TerminalPlan, rundomain.Run, error) {
+func (p parkedRunTerminalization) build() (TerminalPlan, error) {
 	if err := p.pending.Validate(); err != nil {
-		return TerminalPlan{}, rundomain.Run{}, fmt.Errorf(
+		return TerminalPlan{}, fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: invalid Pending: %w",
-			p.rootRunID,
+			p.pending.RootRunID,
 			err,
 		)
 	}
 	if p.outcome != rundomain.OutcomeCanceled &&
 		p.outcome != rundomain.OutcomeLost {
-		return TerminalPlan{}, rundomain.Run{}, fmt.Errorf(
+		return TerminalPlan{}, fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: unsupported outcome %s",
-			p.rootRunID,
+			p.pending.RootRunID,
 			p.outcome,
 		)
 	}
 	runsByID, err := p.indexRuns()
 	if err != nil {
-		return TerminalPlan{}, rundomain.Run{}, err
+		return TerminalPlan{}, err
 	}
 	conversationMessages := p.conversationMessages
 	terminalRuns, err := p.terminalRuns(runsByID, len(p.snapshot.Messages)+len(conversationMessages))
 	if err != nil {
-		return TerminalPlan{}, rundomain.Run{}, err
-	}
-	rootRun := terminalRuns[len(terminalRuns)-1].State()
-	if rootRun.ID() != p.rootRunID {
-		return TerminalPlan{}, rundomain.Run{}, fmt.Errorf(
-			"sessions: terminalize parked Run tree %q: root admission differs from Pending",
-			p.rootRunID,
-		)
+		return TerminalPlan{}, err
 	}
 	items, err := p.terminalItems()
 	if err != nil {
-		return TerminalPlan{}, rundomain.Run{}, err
+		return TerminalPlan{}, err
 	}
 	root, ok := p.pending.RootContinuation()
 	if !ok {
-		return TerminalPlan{}, rundomain.Run{}, fmt.Errorf(
+		return TerminalPlan{}, fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: root continuation is missing",
-			p.rootRunID,
+			p.pending.RootRunID,
 		)
 	}
 	plan, err := NewTerminalPlan(terminalRuns, items, conversationMessages, root.MemberID)
 	if err != nil {
-		return TerminalPlan{}, rundomain.Run{}, err
+		return TerminalPlan{}, err
 	}
-	return plan, rootRun, nil
+	rootRun, _ := plan.RootRun()
+	if rootRun.ID() != p.pending.RootRunID {
+		return TerminalPlan{}, fmt.Errorf(
+			"sessions: terminalize parked Run tree %q: root admission differs from Pending",
+			p.pending.RootRunID,
+		)
+	}
+	return plan, nil
 }
 
 func (p parkedRunTerminalization) indexRuns() (map[string]rundomain.Run, error) {
@@ -81,17 +80,17 @@ func (p parkedRunTerminalization) indexRuns() (map[string]rundomain.Run, error) 
 		if _, duplicate := runsByID[run.ID()]; duplicate {
 			return nil, fmt.Errorf(
 				"sessions: terminalize parked Run tree %q: duplicate Run %q",
-				p.rootRunID,
+				p.pending.RootRunID,
 				run.ID(),
 			)
 		}
 		runsByID[run.ID()] = run
 	}
-	root, found := runsByID[p.rootRunID]
+	root, found := runsByID[p.pending.RootRunID]
 	if !found || !root.Lineage().IsRoot() {
 		return nil, fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: root Run is missing",
-			p.rootRunID,
+			p.pending.RootRunID,
 		)
 	}
 	pendingRunIDs := make(map[string]struct{}, len(p.pending.Continuations))
@@ -99,13 +98,13 @@ func (p parkedRunTerminalization) indexRuns() (map[string]rundomain.Run, error) 
 		pendingRunIDs[continuation.RunID] = struct{}{}
 	}
 	for _, run := range p.snapshot.Runs {
-		if run.Lineage().TreeRootID(run.ID()) != p.rootRunID || run.State().IsTerminal() {
+		if run.Lineage().TreeRootID(run.ID()) != p.pending.RootRunID || run.State().IsTerminal() {
 			continue
 		}
 		if _, covered := pendingRunIDs[run.ID()]; !covered {
 			return nil, fmt.Errorf(
 				"sessions: terminalize parked Run tree %q: non-terminal Run %q has no Pending continuation",
-				p.rootRunID,
+				p.pending.RootRunID,
 				run.ID(),
 			)
 		}
@@ -123,14 +122,14 @@ func (p parkedRunTerminalization) terminalRuns(
 		if !found {
 			return nil, fmt.Errorf(
 				"sessions: terminalize parked Run tree %q: Run %q is missing",
-				p.rootRunID,
+				p.pending.RootRunID,
 				continuation.RunID,
 			)
 		}
 		if run.SessionID() != p.sessionID || run.State() != rundomain.Waiting {
 			return nil, fmt.Errorf(
 				"sessions: terminalize parked Run tree %q: Run %q differs from its continuation",
-				p.rootRunID,
+				p.pending.RootRunID,
 				run.ID(),
 			)
 		}
@@ -215,7 +214,7 @@ func (projection *parkedTerminalItemProjection) project(item transcript.Item) er
 	if _, pending := projection.pendingRunIDs[item.RunID()]; pending && item.Status() == transcript.ItemRunning {
 		return fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: Running Item %q has no matching interrupt",
-			projection.owner.rootRunID,
+			projection.owner.pending.RootRunID,
 			item.ID(),
 		)
 	}
@@ -240,7 +239,7 @@ func (projection *parkedTerminalItemProjection) projectInterrupt(
 	if item.SessionID() != owner.sessionID || item.RunID() != request.runID {
 		return fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: interrupt Item %q is not owned by Run %q",
-			owner.rootRunID,
+			owner.pending.RootRunID,
 			item.ID(),
 			request.runID,
 		)
@@ -271,13 +270,13 @@ func (projection *parkedTerminalItemProjection) validateComplete() error {
 	if len(projection.interrupts) != 0 {
 		return fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: transcript is missing an interrupt Item",
-			projection.owner.rootRunID,
+			projection.owner.pending.RootRunID,
 		)
 	}
 	if len(projection.drained) != 0 {
 		return fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: transcript is missing %d drained Tool Items",
-			projection.owner.rootRunID,
+			projection.owner.pending.RootRunID,
 			len(projection.drained),
 		)
 	}
@@ -288,7 +287,7 @@ func (p parkedRunTerminalization) terminalDrainedItem(item transcript.Item) (tra
 	if _, present := item.ToolCall(); item.SessionID() != p.sessionID || !present {
 		return transcript.Replacement{}, fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: drained Tool Item %q is not a ToolCall of this Session",
-			p.rootRunID,
+			p.pending.RootRunID,
 			item.ID(),
 		)
 	}
@@ -306,7 +305,7 @@ func (p parkedRunTerminalization) terminalDrainedItem(item transcript.Item) (tra
 	default:
 		return transcript.Replacement{}, fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: drained Tool Item %q is %s",
-			p.rootRunID,
+			p.pending.RootRunID,
 			item.ID(),
 			item.Status(),
 		)

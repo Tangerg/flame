@@ -42,6 +42,12 @@ func (e *Endpoint) replayOperation(ctx context.Context, method *Method, paramete
 	switch {
 	case ownsOutcome && method.Meta.Name == sessionsRollback:
 		payload, err = e.replayRollback(ctx, handler, method, parameters.(protocol.RollbackSessionRequest), key, fingerprint)
+	case ownsOutcome && method.Meta.Name == RunsCancel:
+		var observed *protocol.Failure
+		payload, observed, err = e.replayCancellation(ctx, handler, method, parameters.(protocol.CancelRunRequest), key, fingerprint)
+		if observed != nil {
+			return failed(observed)
+		}
 	case atomic != nil:
 		payload, err = e.idempotency.InvokeAtomic(ctx, key, fingerprint, atomic)
 	default:

@@ -53,30 +53,38 @@ func (c *Coordinator) LookupOpenInterrupt(ctx context.Context, runID string) (ru
 // ApplyRunCancel commits the atomic durable abandon write-set. Executor
 // teardown is owned by application/agent/runs for run commands; session rollback and
 // deletion continue to use the coordinator's narrow cleanup collaborator.
-func (c *Coordinator) ApplyRunCancel(ctx context.Context, sessionID, runID, reason string, finishedAt time.Time) (rundomain.Run, error) {
-	return c.terminalizeParkedRun(ctx, sessionID, runID, finishedAt, rundomain.OutcomeCanceled, reason)
+func (c *Coordinator) ApplyRunCancel(ctx context.Context, ref runs.ExecutorRef, runID, reason string, finishedAt time.Time, complete runs.ParkedCancellationCompletion) (rundomain.Run, error) {
+	pending, err := c.parkedRun(ctx, ref.SessionID, runID)
+	if err != nil {
+		return rundomain.Run{}, err
+	}
+	if pending.ExecutorID != ref.ExecutorID {
+		return rundomain.Run{}, fmt.Errorf("sessions: parked Run %q changed executor: %w", runID, rundomain.ErrSessionBusy)
+	}
+	return c.terminalizePendingRun(ctx, ref.SessionID, pending, finishedAt, rundomain.OutcomeCanceled, reason, complete)
 }
 
 // ApplyRunLost atomically ends a parked run whose executor checkpoint cannot be
 // restored. It uses the recovery transition because the waiting Run never
 // resumed into a normal executor terminal path.
 func (c *Coordinator) ApplyRunLost(ctx context.Context, sessionID, runID string, finishedAt time.Time) error {
-	_, err := c.terminalizeParkedRun(ctx, sessionID, runID, finishedAt, rundomain.OutcomeLost, "")
+	pending, err := c.parkedRun(ctx, sessionID, runID)
+	if err != nil {
+		return err
+	}
+	_, err = c.terminalizePendingRun(ctx, sessionID, pending, finishedAt, rundomain.OutcomeLost, "", nil)
 	return err
 }
 
-func (c *Coordinator) terminalizeParkedRun(ctx context.Context, sessionID, runID string, finishedAt time.Time, outcome rundomain.Outcome, detail string) (rundomain.Run, error) {
-	if finishedAt.IsZero() {
-		return rundomain.Run{}, fmt.Errorf("sessions: terminalize parked run %q: finished time is required", runID)
-	}
+func (c *Coordinator) parkedRun(ctx context.Context, sessionID, runID string) (runs.Pending, error) {
 	pending, found, err := c.interrupts.Get(ctx, runID)
 	if err != nil {
-		return rundomain.Run{}, err
+		return runs.Pending{}, err
 	}
 	if !found {
-		return rundomain.Run{}, fmt.Errorf("sessions: terminalize parked run %q: open interrupt not found for session %q", runID, sessionID)
+		return runs.Pending{}, fmt.Errorf("sessions: terminalize parked run %q: open interrupt not found for session %q", runID, sessionID)
 	}
-	return c.terminalizePendingRun(ctx, sessionID, pending, finishedAt, outcome, detail)
+	return pending, nil
 }
 
 func (c *Coordinator) terminalizePendingRun(
@@ -86,7 +94,11 @@ func (c *Coordinator) terminalizePendingRun(
 	finishedAt time.Time,
 	outcome rundomain.Outcome,
 	detail string,
+	complete runs.ParkedCancellationCompletion,
 ) (rundomain.Run, error) {
+	if finishedAt.IsZero() {
+		return rundomain.Run{}, fmt.Errorf("sessions: terminalize parked run %q: finished time is required", pending.RootRunID)
+	}
 	snapshot, err := c.snapshots.ReadSnapshot(ctx, sessionID)
 	if err != nil {
 		return rundomain.Run{}, err
@@ -95,15 +107,27 @@ func (c *Coordinator) terminalizePendingRun(
 	if err != nil {
 		return rundomain.Run{}, err
 	}
-	plan, rootRun, err := (parkedRunTerminalization{
-		sessionID: sessionID, rootRunID: pending.RootRunID, finishedAt: finishedAt,
+	plan, err := (parkedRunTerminalization{
+		sessionID: sessionID, finishedAt: finishedAt,
 		outcome: outcome, detail: detail, pending: pending, snapshot: snapshot,
 		conversationMessages: messages,
 	}).build()
 	if err != nil {
 		return rundomain.Run{}, err
 	}
-	if err := c.writes.ApplyTerminal(ctx, plan); err != nil {
+	rootRun, _ := plan.RootRun()
+	write := func(ctx context.Context) (rundomain.Run, error) {
+		if err := c.writes.ApplyTerminal(ctx, plan); err != nil {
+			return rundomain.Run{}, err
+		}
+		return rootRun, nil
+	}
+	if complete == nil {
+		_, err = write(ctx)
+	} else {
+		err = complete(ctx, runs.ExecutorRef{SessionID: sessionID, ExecutorID: pending.ExecutorID}, write)
+	}
+	if err != nil {
 		return rundomain.Run{}, err
 	}
 	// One write-set ended the run and dropped the set it was parked on, so one place
@@ -120,7 +144,7 @@ func (c *Coordinator) terminalizePendingRun(
 		invalidation.InSession(invalidation.Interrupts, sessionID, pending.RootRunID),
 		invalidation.InSession(invalidation.Sessions, sessionID),
 	}
-	if root, _ := plan.RootRun(); root.GoalIncarnationID() != "" {
+	if rootRun.GoalIncarnationID() != "" {
 		notices = append(notices, invalidation.InSession(invalidation.Goals, sessionID))
 	}
 	c.invalidations.Notify(notices...)

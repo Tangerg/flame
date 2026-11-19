@@ -1,6 +1,7 @@
 package runs
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"iter"
@@ -280,7 +281,17 @@ type CancelCommand struct {
 	// child directly. It is false for the minimal capability set and while the
 	// runtime has no child-run producer.
 	AllowChildRun bool
+	Completion    CancellationCompletion
 }
+
+type CancellationCompletion struct {
+	Reserve      func(context.Context) error
+	CommitParked ParkedCancellationCompletion
+}
+
+// ParkedCancellationCompletion joins the terminal Run write to the receipt's
+// retained executor reference before either can be observed as committed.
+type ParkedCancellationCompletion func(context.Context, ExecutorRef, func(context.Context) (run.Run, error)) error
 
 const (
 	defaultCancelReason = "user canceled the run"
