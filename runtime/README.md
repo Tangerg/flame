@@ -1448,6 +1448,10 @@ model failure acknowledged by Scope.
 
 A validated complete model response and its reported usage publish under the release-owned lifetime, including the Delta barrier. Execution cancellation cannot discard that observed response or rewrite Scope's terminal outcome. Failed streams cross the same barrier and commit their validated text and visible reasoning as `incomplete` transcript Items tied to the failed model invocation. Preview loss cannot truncate this retained prefix. Partial Tool calls, opaque reasoning state, and incomplete responses never enter canonical model continuation. Both completion and failure close the preview boundary before terminal publication.
 
+Completed model Items come from the committed response. Segment closure retains
+any remaining visible previews as `incomplete`, including when a failed model
+settlement could not be saved. Retained previews keep their original Item IDs.
+
 Model-call completion is the sole live source of Run accounting progress. The same
 acknowledged fact atomically commits the model invocation, response Items, Run metrics
 and conversation; its progress event projects that write-set. There is no independent

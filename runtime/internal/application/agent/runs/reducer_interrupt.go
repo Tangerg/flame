@@ -27,7 +27,7 @@ func (r *reducer) interrupt(requests []Interrupt, duration time.Duration) (factR
 			return factReduction{}, err
 		}
 	}
-	out, err := r.closeStreaming(transcript.MessageCommentary)
+	out, err := r.retainIncompleteModelOutput(ModelObservation{})
 	if err != nil {
 		return factReduction{}, err
 	}
@@ -157,7 +157,7 @@ func (p *interruptProjection) appendToolItem(item transcript.Item, publishStart 
 // a suspended sibling from the Run that owns the barrier. Logical Tool Items stay
 // running across the barrier while their segment-scoped attempts end incomplete.
 func (r *reducer) suspend(duration time.Duration) (factReduction, error) {
-	out, err := r.closeStreaming(transcript.MessageCommentary)
+	out, err := r.retainIncompleteModelOutput(ModelObservation{})
 	if err != nil {
 		return factReduction{}, err
 	}

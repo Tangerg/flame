@@ -3,7 +3,6 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"time"
 
@@ -115,51 +114,7 @@ func (r *reducer) appendReasoning(text string) ([]ProjectionEvent, error) {
 	}), nil
 }
 
-func (r *reducer) closeText(phase transcript.MessagePhase) ([]ProjectionEvent, error) {
-	if r.text == nil {
-		return nil, nil
-	}
-	item, err := transcript.NewAgentMessage(
-		r.text.itemIdentity(),
-		phase,
-		[]transcript.ContentBlock{{Kind: transcript.TextContent, Text: r.text.text()}},
-	)
-	if err != nil {
-		return nil, err
-	}
-	r.text = nil
-	return []ProjectionEvent{ItemCompleted{Item: item}}, nil
-}
-
-func (r *reducer) closeReasoning() ([]ProjectionEvent, error) {
-	if r.reasoning == nil {
-		return nil, nil
-	}
-	item, err := transcript.NewReasoning(
-		r.reasoning.itemIdentity(),
-		r.reasoning.text(),
-		false,
-	)
-	if err != nil {
-		return nil, err
-	}
-	r.reasoning = nil
-	return []ProjectionEvent{ItemCompleted{Item: item}}, nil
-}
-
-func (r *reducer) closeStreaming(phase transcript.MessagePhase) ([]ProjectionEvent, error) {
-	reasoning, err := r.closeReasoning()
-	if err != nil {
-		return nil, err
-	}
-	message, err := r.closeText(phase)
-	if err != nil {
-		return nil, err
-	}
-	return append(reasoning, message...), nil
-}
-
-func (r *reducer) failModelObservation(observation ModelObservation) ([]ProjectionEvent, error) {
+func (r *reducer) retainIncompleteModelOutput(observation ModelObservation) ([]ProjectionEvent, error) {
 	var events []ProjectionEvent
 	for _, visible := range []struct {
 		text      string
@@ -170,6 +125,10 @@ func (r *reducer) failModelObservation(observation ModelObservation) ([]Projecti
 		{observation.Reasoning, r.reasoning, transcript.Reasoning, transcript.NewIncompleteReasoning},
 		{observation.Text, r.text, transcript.AgentMessage, transcript.NewIncompleteAgentMessage},
 	} {
+		// An observed prefix may be longer than the deltas the preview kept.
+		if visible.text == "" && visible.stream != nil {
+			visible.text = visible.stream.text()
+		}
 		if visible.text == "" {
 			continue
 		}
@@ -188,10 +147,7 @@ func (r *reducer) failModelObservation(observation ModelObservation) ([]Projecti
 	return events, nil
 }
 
-func (r *reducer) completeAssistantMessage(
-	message corechat.Message,
-	phase transcript.MessagePhase,
-) ([]ProjectionEvent, error) {
+func (r *reducer) completeModelMessage(message corechat.Message) ([]ProjectionEvent, error) {
 	if message.Role != corechat.RoleAssistant {
 		return nil, fmt.Errorf("completed message role is %q, want %q", message.Role, corechat.RoleAssistant)
 	}
@@ -200,6 +156,7 @@ func (r *reducer) completeAssistantMessage(
 	}
 
 	var reasoning strings.Builder
+	phase := transcript.MessageFinalAnswer
 	content := make([]transcript.ContentBlock, 0, len(message.Parts))
 	for index, part := range message.Parts {
 		switch part.Kind {
@@ -214,7 +171,7 @@ func (r *reducer) completeAssistantMessage(
 			}
 			content = append(content, block)
 		case corechat.PartToolCall:
-			return nil, fmt.Errorf("part[%d]: completed assistant message still contains a tool call", index)
+			phase = transcript.MessageCommentary
 		default:
 			return nil, fmt.Errorf("part[%d]: unsupported assistant part kind %q", index, part.Kind)
 		}
@@ -230,34 +187,6 @@ func (r *reducer) completeAssistantMessage(
 	}
 	out = append(out, messageEvents...)
 	return out, nil
-}
-
-func (r *reducer) completeModelMessage(
-	message corechat.Message,
-	phase transcript.MessagePhase,
-) ([]ProjectionEvent, error) {
-	if message.Role != corechat.RoleAssistant {
-		return nil, fmt.Errorf("completed model message role is %q, want %q", message.Role, corechat.RoleAssistant)
-	}
-	if err := message.Validate(); err != nil {
-		return nil, err
-	}
-	semantic := corechat.Message{Role: message.Role}
-	for _, part := range message.Parts {
-		if part.Kind != corechat.PartToolCall {
-			semantic.Parts = append(semantic.Parts, part.Clone())
-		}
-	}
-	if len(semantic.Parts) == 0 {
-		return r.closeStreaming(phase)
-	}
-	return r.completeAssistantMessage(semantic, phase)
-}
-
-func messageRequestsToolCalls(message corechat.Message) bool {
-	return slices.ContainsFunc(message.Parts, func(part corechat.Part) bool {
-		return part.Kind == corechat.PartToolCall
-	})
 }
 
 func assistantMediaBlock(value *media.Media) (transcript.ContentBlock, error) {
@@ -276,34 +205,18 @@ func assistantMediaBlock(value *media.Media) (transcript.ContentBlock, error) {
 
 func (r *reducer) completeReasoning(text string) ([]ProjectionEvent, error) {
 	if text == "" {
-		return r.closeReasoning()
+		return nil, nil
 	}
-	var identity transcript.ItemIdentity
-	started := r.reasoning == nil
-	if r.reasoning != nil {
-		identity = r.reasoning.itemIdentity()
-	} else {
-		id, err := r.nextItemID()
-		if err != nil {
-			return nil, err
-		}
-		identity = r.itemIdentity(id, r.now())
-	}
-	r.reasoning = nil
-	out := make([]ProjectionEvent, 0, 2)
-	if started {
-		start, err := newTransientItemStart(identity, transcript.Reasoning)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, ItemStarted{Item: start})
-	}
-	item, err := transcript.NewReasoning(identity, text, false)
+	stream, events, err := r.openTextStream(r.reasoning, transcript.Reasoning)
 	if err != nil {
 		return nil, err
 	}
-	out = append(out, ItemCompleted{Item: item})
-	return out, nil
+	item, err := transcript.NewReasoning(stream.itemIdentity(), text, false)
+	if err != nil {
+		return nil, err
+	}
+	r.reasoning = nil
+	return append(events, ItemCompleted{Item: item}), nil
 }
 
 func (r *reducer) completeMessageContent(
@@ -311,34 +224,18 @@ func (r *reducer) completeMessageContent(
 	phase transcript.MessagePhase,
 ) ([]ProjectionEvent, error) {
 	if len(content) == 0 {
-		return r.closeText(phase)
+		return nil, nil
 	}
-	var identity transcript.ItemIdentity
-	started := r.text == nil
-	if r.text != nil {
-		identity = r.text.itemIdentity()
-	} else {
-		id, err := r.nextItemID()
-		if err != nil {
-			return nil, err
-		}
-		identity = r.itemIdentity(id, r.now())
-	}
-	r.text = nil
-	out := make([]ProjectionEvent, 0, 2)
-	if started {
-		start, err := newTransientItemStart(identity, transcript.AgentMessage)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, ItemStarted{Item: start})
-	}
-	item, err := transcript.NewAgentMessage(identity, phase, content)
+	stream, events, err := r.openTextStream(r.text, transcript.AgentMessage)
 	if err != nil {
 		return nil, err
 	}
-	out = append(out, ItemCompleted{Item: item})
-	return out, nil
+	item, err := transcript.NewAgentMessage(stream.itemIdentity(), phase, content)
+	if err != nil {
+		return nil, err
+	}
+	r.text = nil
+	return append(events, ItemCompleted{Item: item}), nil
 }
 
 func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
@@ -379,10 +276,6 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 	if err != nil {
 		return nil, fmt.Errorf("tool %q arguments: %w", e.ToolName, err)
 	}
-	out, err := r.closeStreaming(transcript.MessageCommentary)
-	if err != nil {
-		return nil, err
-	}
 	// The step number previews the Run's accounting, so it counts the same thing
 	// the committed metrics do. Reporting the segment's own count would make a
 	// resumed Run appear to start over at step 1.
@@ -400,9 +293,9 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 		return nil, err
 	}
 	step := metrics.Steps()
-	out = append(out, SegmentProgressed{Progress: Progress{
+	out := []ProjectionEvent{SegmentProgressed{Progress: Progress{
 		Step: &step, Activity: ToolCallActivity{ItemID: item.ID(), Tool: e.ToolName},
-	}})
+	}}}
 	ref := &openTool{
 		callID: e.CallID, sourceCallID: e.SourceCallID,
 		modelCallSequence: e.ModelCallSequence, toolCallIndex: e.ToolCallIndex,
@@ -602,10 +495,7 @@ func (r *reducer) steerMessagesApplied(e SteerMessagesApplied) ([]ProjectionEven
 	if len(e.Messages) == 0 {
 		return nil, errors.New("applied steer batch is empty")
 	}
-	out, err := r.closeStreaming(transcript.MessageCommentary)
-	if err != nil {
-		return nil, err
-	}
+	var out []ProjectionEvent
 	for messageIndex, applied := range e.Messages {
 		message := applied.Content
 		if len(message) == 0 {

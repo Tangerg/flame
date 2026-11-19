@@ -355,23 +355,24 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 		return factReduction{}, fmt.Errorf("%w: independent model completion carries conversation state", errExecutorContract)
 	}
 	delete(r.modelCalls, completed.CallID)
-	if call.purpose == run.ModelConversation {
-		r.modelBoundaryClosed = true
-	}
 	var events []ProjectionEvent
 	var conversationMessages []corechat.Message
 	if completed.Message != nil {
 		message := *completed.Message
-		phase := transcript.MessageFinalAnswer
-		if messageRequestsToolCalls(message) {
-			phase = transcript.MessageCommentary
-		}
 		var err error
-		events, err = r.completeModelMessage(message, phase)
+		events, err = r.completeModelMessage(message)
 		if err != nil {
 			return factReduction{}, fmt.Errorf("%w: model call completion: %w", errExecutorContract, err)
 		}
 		conversationMessages = r.rootConversationMessages(message)
+	}
+	if call.purpose == run.ModelConversation {
+		r.modelBoundaryClosed = true
+		previews, err := r.retainIncompleteModelOutput(ModelObservation{})
+		if err != nil {
+			return factReduction{}, fmt.Errorf("%w: retain unsettled model output: %w", errReducerInvariant, err)
+		}
+		events = append(events, previews...)
 	}
 	progressEvents, err := r.modelUsageProgress(completed)
 	if err != nil {
@@ -416,7 +417,7 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 	var events []ProjectionEvent
 	var err error
 	if call.purpose == run.ModelConversation {
-		events, err = r.failModelObservation(failed.Observation)
+		events, err = r.retainIncompleteModelOutput(failed.Observation)
 	}
 	if err != nil {
 		return factReduction{}, err
@@ -573,9 +574,9 @@ func closedToolInvocationCommits(segmentID string, tools []*openTool) []ToolInvo
 }
 
 func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
-	out, err := r.closeStreaming(transcript.MessageCommentary)
+	out, err := r.retainIncompleteModelOutput(ModelObservation{})
 	if err != nil {
-		return reductionBatch{}, fmt.Errorf("%w: close streaming: %w", errReducerInvariant, err)
+		return reductionBatch{}, fmt.Errorf("%w: retain unsettled model output: %w", errReducerInvariant, err)
 	}
 	openTools := r.tools.ordered()
 	drained, err := r.drainTools()

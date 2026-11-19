@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 func (r *reducer) segmentEnd(e SegmentEnded) ([]ProjectionEvent, error) {
@@ -17,7 +15,7 @@ func (r *reducer) segmentEnd(e SegmentEnded) ([]ProjectionEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	out, err := r.closeStreaming(transcript.MessageCommentary)
+	out, err := r.retainIncompleteModelOutput(ModelObservation{})
 	if err != nil {
 		return nil, err
 	}
