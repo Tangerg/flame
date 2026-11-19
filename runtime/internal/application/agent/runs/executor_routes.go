@@ -41,15 +41,12 @@ type executorRoutes struct {
 	admissionOrder []*executorRoute
 }
 
-func (c *Segments) openingRoutes(
-	spec segmentSpec,
-	cancelReason func(string) string,
-) (*executorRoutes, error) {
+func (c *Segments) openingRoutes(spec segmentSpec) (*executorRoutes, error) {
 	if spec.ModelOnlyInput && (spec.GoalIncarnationID == "" || spec.Continuation != nil) {
 		return nil, errors.New("runs: model-only opening input requires a fresh Goal root")
 	}
 	if spec.Continuation != nil {
-		return c.resumedExecutorRoutes(spec, cancelReason)
+		return c.resumedExecutorRoutes(spec)
 	}
 	if len(spec.Input) > 0 && (spec.ConversationInput == nil ||
 		spec.ConversationInput.Role != corechat.RoleUser || spec.ConversationInput.Validate() != nil) {
@@ -75,7 +72,7 @@ func (c *Segments) openingRoutes(
 		reducer: newReducer(reducerConfig{
 			Opened: opened, WorkspaceCWD: spec.WorkspaceCWD, Isolated: spec.Isolated,
 			UserInput: spec.Input, ConversationInput: spec.ConversationInput, ModelOnlyInput: spec.ModelOnlyInput,
-			Now: c.publications.nowUTC, CancelReason: cancellationReason(cancelReason, spec.RunID),
+			Now: c.publications.nowUTC,
 		}),
 	}
 	return &executorRoutes{
@@ -87,10 +84,7 @@ func (c *Segments) openingRoutes(
 	}, nil
 }
 
-func (c *Segments) resumedExecutorRoutes(
-	spec segmentSpec,
-	cancelReason func(string) string,
-) (*executorRoutes, error) {
+func (c *Segments) resumedExecutorRoutes(spec segmentSpec) (*executorRoutes, error) {
 	continuation := spec.Continuation
 	if err := validateResumedRouteRequest(spec, continuation); err != nil {
 		return nil, err
@@ -98,7 +92,6 @@ func (c *Segments) resumedExecutorRoutes(
 	builder := resumedRouteBuilder{
 		spec:         spec,
 		continuation: continuation,
-		cancelReason: cancelReason,
 		newSegmentID: c.newSegmentID,
 		now:          c.publications.nowUTC,
 		resumedAt:    c.publications.nowUTC(),
@@ -140,7 +133,6 @@ func validateResumedRouteRequest(spec segmentSpec, continuation *treeContinuatio
 type resumedRouteBuilder struct {
 	spec         segmentSpec
 	continuation *treeContinuation
-	cancelReason func(string) string
 	newSegmentID func() string
 	now          func() time.Time
 	// resumedAt is the one opening time every Run in the tree resumes at.
@@ -199,7 +191,6 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 	reducer := newReducer(reducerConfig{
 		Opened: opened, WorkspaceCWD: r.spec.WorkspaceCWD, Isolated: r.spec.Isolated,
 		UserInput: userInput, Continuation: r.continuation, Now: r.now,
-		CancelReason: cancellationReason(r.cancelReason, continuationState.RunID),
 	})
 	if r.spec.restoresSegments() {
 		var ids []string
@@ -715,7 +706,6 @@ func (c *Segments) prepareChildStart(
 // invisible until its opening and the executor tree commit together.
 func (c *Segments) finalizeChildOpening(
 	spec segmentSpec,
-	owner *runTreeOwner,
 	prepared *preparedChildStart,
 	startedAt time.Time,
 ) error {
@@ -739,7 +729,6 @@ func (c *Segments) finalizeChildOpening(
 		WorkspaceCWD: spec.WorkspaceCWD,
 		Isolated:     spec.Isolated,
 		Now:          c.publications.nowUTC,
-		CancelReason: cancellationReason(owner.CancelReasonFor, child.runID),
 	})
 	projected, err := child.reducer.open()
 	if err != nil {
@@ -782,11 +771,4 @@ func (c *Segments) activatePreparedChild(
 	prepared.route.segmentStartedAt = c.publications.nowUTC()
 	routes.installChild(prepared.member, prepared.route)
 	c.publications.publishRunMoved(spec.SessionID, prepared.route.runID)
-}
-
-func cancellationReason(resolve func(string) string, runID string) func() string {
-	if resolve == nil {
-		return nil
-	}
-	return func() string { return resolve(runID) }
 }

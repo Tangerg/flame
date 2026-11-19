@@ -216,6 +216,7 @@ type EventCommit struct {
 	Run                    *run.Run
 	RecordRootCancellation func(context.Context, run.Run) error
 	childCancellation      *childCancellationCommit
+	cancellation           CancellationID
 	// ObsoleteCheckpointRootID identifies the executor checkpoint aggregate the
 	// root Run terminal makes obsolete. Child terminal commits leave it empty.
 	ObsoleteCheckpointRootID string
@@ -307,6 +308,9 @@ func (e EventCommit) Validate() error {
 	}
 	if err := e.validateEnvelope(); err != nil {
 		return err
+	}
+	if !e.cancellation.IsZero() && (e.State != StateTerminalize || e.Run == nil || !e.Run.Canceled()) {
+		return errors.New("runs: cancellation evidence requires a canceled terminal")
 	}
 	if err := e.validateItems(); err != nil {
 		return err
@@ -529,6 +533,7 @@ func (e EventCommit) isEmpty() bool {
 		e.Run == nil &&
 		e.RecordRootCancellation == nil &&
 		e.childCancellation == nil &&
+		e.cancellation.IsZero() &&
 		e.ObsoleteCheckpointRootID == "" &&
 		e.State == StateUnchanged
 }

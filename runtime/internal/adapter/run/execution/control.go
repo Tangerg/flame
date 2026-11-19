@@ -18,7 +18,7 @@ import (
 )
 
 const modelProcessStopReason = "model call cannot continue"
-const rootCancellationControlPrefix = "run cancel command "
+const cancellationControlPrefix = "run cancel command "
 
 func steerSignalID(itemID string) (scoperun.SignalID, error) {
 	if err := identity.ValidateItem(itemID); err != nil {
@@ -33,15 +33,17 @@ func scopeCancellationReason(reason string) string {
 	return run.Diagnostic(errors.New("run cancellation: " + reason))
 }
 
-func rootCancellationFromTermination(termination scoperun.Termination) (runs.RootCancellationID, bool) {
-	if termination.Cause() != scoperun.TerminationCauseHostCancellation {
-		return runs.RootCancellationID{}, false
+func cancellationFromTermination(termination scoperun.Termination) (runs.CancellationID, bool) {
+	switch termination.Cause() {
+	case scoperun.TerminationCauseHostCancellation, scoperun.TerminationCauseParentCancellation:
+	default:
+		return runs.CancellationID{}, false
 	}
-	token, ok := strings.CutPrefix(termination.Reason(), rootCancellationControlPrefix)
+	token, ok := strings.CutPrefix(termination.Reason(), cancellationControlPrefix)
 	if !ok {
-		return runs.RootCancellationID{}, false
+		return runs.CancellationID{}, false
 	}
-	return runs.ParseRootCancellationID(token)
+	return runs.ParseCancellationID(token)
 }
 
 // awaitDispatchSegment keeps Scope-owned work behind the product transaction

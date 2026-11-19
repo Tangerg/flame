@@ -41,9 +41,9 @@ func (r *runTreeOwner) bindChildCancellationReceipt(commit *EventCommit, prior [
 		!settlesChildCancellationItem(commit.Items, attempt.spawningItemID) {
 		return
 	}
-	if terminal := attempt.terminalBefore(prior); terminal != nil {
+	if terminal, confirmed := r.childCancellationTerminalLocked(attempt, prior); confirmed {
 		commit.childCancellation = &childCancellationCommit{
-			executor: attempt.executor, result: attempt.result(*terminal), record: attempt.record,
+			executor: attempt.executor, result: attempt.result(terminal), record: attempt.record,
 		}
 	}
 }

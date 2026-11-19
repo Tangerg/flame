@@ -21,40 +21,11 @@ import (
 )
 
 func TestActiveRootCancellationRetainsItsOriginalControlOwner(t *testing.T) {
-	if !runRootCancellationFixture(t) {
+	if !runCancellationFixture(t) {
 		return
 	}
 
-	controlWriting, controlWrite, secondControl := make(chan struct{}), make(chan struct{}), make(chan struct{})
-	releaseControl := sync.OnceFunc(func() { close(controlWrite) })
-	err := modernsqlite.RegisterScalarFunction("test_gate_original_root_cancel_control", 1,
-		func(_ *modernsqlite.FunctionContext, args []driver.Value) (driver.Value, error) {
-			payload, ok := args[0].([]byte)
-			if !ok {
-				return nil, errors.New("the control write was missing the Scope log")
-			}
-			history, err := waitingChildScopeLog(payload)
-			if err != nil {
-				return nil, err
-			}
-			control, ok := history.Entries[len(history.Entries)-1].Record.(scoperun.ControlRequested)
-			if !ok || control.Process != history.Root || control.Kind != scoperun.ControlCancel ||
-				control.Origin != scoperun.ControlOriginHost {
-				return nil, nil
-			}
-			switch waitingChildHostControls(history, history.Root.String()) {
-			case 1:
-				close(controlWriting)
-				<-controlWrite
-			case 2:
-				close(secondControl)
-			}
-			return nil, nil
-		})
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	gate := registerCancelControlGate(t, true)
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	modelStarted, modelCanceled, modelReturn := make(chan struct{}), make(chan struct{}), make(chan struct{})
@@ -68,14 +39,13 @@ func TestActiveRootCancellationRetainsItsOriginalControlOwner(t *testing.T) {
 	})}
 	host, api := openProtocolRuntime(t, model)
 	defer func() {
-		releaseControl()
+		gate.release()
 		releaseModel()
 		if err := host.Close(); err != nil {
 			t.Error(err)
 		}
 	}()
-	questionCrashDatabase(t, home, `CREATE TRIGGER gate_original_root_cancel_control BEFORE UPDATE ON execution_trees
-		BEGIN SELECT test_gate_original_root_cancel_control(NEW.payload); END`)
+	gate.install(t, home)
 	ctx := protocolLifecycleContext(t.Context())
 	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{
 		Workspace: &protocol.WorkspaceRef{Path: home}, Title: "cancel a live root after delayed control acknowledgement",
@@ -98,7 +68,7 @@ func TestActiveRootCancellationRetainsItsOriginalControlOwner(t *testing.T) {
 	go func() {
 		original <- host.Endpoint().Invoke(ctx, delivery.RunsCancel, request, originalKey)
 	}()
-	waitForSignal(t, controlWriting, "the original Scope control in its SQLite transaction")
+	waitForSignal(t, gate.writing, "the original Scope control in its SQLite transaction")
 	select {
 	case reply := <-original:
 		if reply.Failure == nil || !errors.Is(reply.Failure, protocol.ErrInternalError) {
@@ -108,7 +78,7 @@ func TestActiveRootCancellationRetainsItsOriginalControlOwner(t *testing.T) {
 		t.Fatal("the first request did not stop waiting for its Scope control")
 	}
 
-	releaseControl()
+	gate.release()
 	waitForSignal(t, modelCanceled, "the original committed control reaching the model")
 	competing := make(chan protocol.OperationResult, 1)
 	go func() {
@@ -120,7 +90,7 @@ func TestActiveRootCancellationRetainsItsOriginalControlOwner(t *testing.T) {
 		if reply.Failure == nil || !errors.Is(reply.Failure, protocol.ErrSessionBusy) {
 			t.Errorf("a different command took the original cancellation's place: %+v", reply)
 		}
-	case <-secondControl:
+	case <-gate.repeated:
 		t.Error("the competing request submitted a second Scope cancellation")
 	case <-time.After(lifecycleWaitBudget(t)):
 		t.Fatal("the competing request did not reach cancellation arbitration")
@@ -134,7 +104,7 @@ func TestActiveRootCancellationRetainsItsOriginalControlOwner(t *testing.T) {
 	if err := host.Close(); err != nil {
 		t.Fatal(err)
 	}
-	questionCrashDatabase(t, home, "DROP TRIGGER gate_original_root_cancel_control")
+	gate.drop(t, home)
 	restarted, _ := openProtocolRuntime(t, newReplyStub("the canceled Run must remain settled"))
 	defer restarted.Close()
 	reply, err := restarted.Endpoint().Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](ctx, delivery.RunsCancel, request, originalKey)
@@ -148,19 +118,10 @@ func TestActiveRootCancellationRetainsItsOriginalControlOwner(t *testing.T) {
 }
 
 func TestLiveRootCancellationJoinsAnInFlightPark(t *testing.T) {
-	if !runRootCancellationFixture(t) {
+	if !runCancellationFixture(t) {
 		return
 	}
-	writing, finish := make(chan struct{}), make(chan struct{})
-	releasePark := sync.OnceFunc(func() { close(finish) })
-	if err := modernsqlite.RegisterScalarFunction("test_gate_park_before_root_cancellation", 0,
-		func(*modernsqlite.FunctionContext, []driver.Value) (driver.Value, error) {
-			close(writing)
-			<-finish
-			return nil, nil
-		}); err != nil {
-		t.Fatal(err)
-	}
+	writing, releasePark := registerParkCommitGate(t)
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	model := newLifecycleModel()
@@ -176,9 +137,7 @@ func TestLiveRootCancellationJoinsAnInFlightPark(t *testing.T) {
 	}()
 	ctx := protocolLifecycleContext(t.Context())
 	request := startCancelableActiveRoot(t, ctx, api, model, home)
-	questionCrashDatabase(t, home, `CREATE TRIGGER gate_park_before_root_cancellation BEFORE UPDATE OF state ON runs
-		WHEN NEW.state = 'waiting'
-		BEGIN SELECT test_gate_park_before_root_cancellation(); END`)
+	installParkCommitGate(t, home)
 	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{
 		Lifetime: t.Context(), IdempotencyNamespace: stores.IdempotencyNamespace.String(),
 		IdempotencyStore: parkedCancellationReservationGate{stores.Idempotency, reserved, continueCancellation},
@@ -236,9 +195,83 @@ func (g parkedCancellationReservationGate) Claim(ctx context.Context, key, finge
 	return record, claimed, err
 }
 
-func runRootCancellationFixture(t *testing.T) bool {
+func registerParkCommitGate(t *testing.T) (<-chan struct{}, func()) {
 	t.Helper()
-	const fixture = "FLAME_TEST_ACTIVE_ROOT_CONTROL_ACK"
+	writing, release := make(chan struct{}), make(chan struct{})
+	wait := sync.OnceFunc(func() {
+		close(writing)
+		<-release
+	})
+	if err := modernsqlite.RegisterScalarFunction("test_gate_park_before_cancellation", 0,
+		func(*modernsqlite.FunctionContext, []driver.Value) (driver.Value, error) {
+			wait()
+			return nil, nil
+		}); err != nil {
+		t.Fatal(err)
+	}
+	return writing, sync.OnceFunc(func() { close(release) })
+}
+
+func installParkCommitGate(t *testing.T, home string) {
+	t.Helper()
+	questionCrashDatabase(t, home, `CREATE TRIGGER gate_park_before_cancellation BEFORE UPDATE OF state ON runs
+		WHEN NEW.state = 'waiting'
+		BEGIN SELECT test_gate_park_before_cancellation(); END`)
+}
+
+type cancelControlGate struct {
+	writing  <-chan struct{}
+	repeated <-chan struct{}
+	release  func()
+}
+
+func registerCancelControlGate(t *testing.T, root bool) cancelControlGate {
+	t.Helper()
+	writing, commit, repeated := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	err := modernsqlite.RegisterScalarFunction("test_gate_cancel_control", 1,
+		func(_ *modernsqlite.FunctionContext, args []driver.Value) (driver.Value, error) {
+			payload, ok := args[0].([]byte)
+			if !ok {
+				return nil, errors.New("the control write was missing the Scope log")
+			}
+			history, err := waitingChildScopeLog(payload)
+			if err != nil {
+				return nil, err
+			}
+			control, ok := history.Entries[len(history.Entries)-1].Record.(scoperun.ControlRequested)
+			if !ok || (control.Process == history.Root) != root || control.Kind != scoperun.ControlCancel ||
+				control.Origin != scoperun.ControlOriginHost {
+				return nil, nil
+			}
+			switch waitingChildHostControls(history, control.Process.String()) {
+			case 1:
+				close(writing)
+				<-commit
+			case 2:
+				close(repeated)
+			}
+			return nil, nil
+		})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cancelControlGate{writing, repeated, sync.OnceFunc(func() { close(commit) })}
+}
+
+func (cancelControlGate) install(t *testing.T, home string) {
+	t.Helper()
+	questionCrashDatabase(t, home, `CREATE TRIGGER gate_original_cancel_control BEFORE UPDATE ON execution_trees
+		BEGIN SELECT test_gate_cancel_control(NEW.payload); END`)
+}
+
+func (cancelControlGate) drop(t *testing.T, home string) {
+	t.Helper()
+	questionCrashDatabase(t, home, "DROP TRIGGER gate_original_cancel_control")
+}
+
+func runCancellationFixture(t *testing.T) bool {
+	t.Helper()
+	const fixture = "FLAME_TEST_CANCEL_CONTROL_ACK"
 	if os.Getenv(fixture) == t.Name() {
 		return true
 	}

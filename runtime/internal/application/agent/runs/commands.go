@@ -60,6 +60,9 @@ var (
 	// used by Resume to distinguish a concurrent claim from rehydration.
 	ErrExecutionClaimed = errors.New("runs: parked execution already claimed")
 	ErrExecutorNotLive  = errors.New("runs: executor not live")
+	// A live child control can defer to the parked cancellation path once the
+	// owning Segment proves that its input boundary committed.
+	ErrExecutorParking = errors.New("runs: executor is publishing a waiting boundary")
 	// ErrExecutorStateLost reports that a parked execution has no compatible
 	// durable executor checkpoint and the application Run must be recovered lost.
 	ErrExecutorStateLost = errors.New("runs: executor state lost")

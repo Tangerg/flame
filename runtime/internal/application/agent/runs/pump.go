@@ -331,6 +331,7 @@ func (s *segmentPump) handleExecutionFact(member ExecutorMember, executionFact E
 // projectFact commits one route's reduction and reports whether this pump may
 // keep consuming.
 func (s *segmentPump) projectFact(route *executorRoute, executionFact ExecutionFact) (bool, error) {
+	executionFact, cancellation := s.owner.projectCancellation(executionFact, route.lineage.IsChild())
 	projecting := route.reducer
 	terminalFact := engineEventEndsSegment(executionFact)
 	if terminalFact {
@@ -347,7 +348,7 @@ func (s *segmentPump) projectFact(route *executorRoute, executionFact ExecutionF
 	if terminalFact {
 		end, ended := executionFact.(SegmentEnded)
 		retryUnresolved := ended && (len(end.unresolvedEffects) > 0 || end.Ending.Outcome() == run.OutcomeLost)
-		publication, err = s.publisher.publishTerminalAtomically(s.ownerCtx, route, reductions, retryUnresolved, nil)
+		publication, err = s.publisher.publishTerminalAtomically(s.ownerCtx, route, reductions, retryUnresolved, cancellation)
 	} else {
 		publication, err = s.publisher.publish(s.ownerCtx, route, reductions)
 	}
@@ -500,16 +501,17 @@ func (s *segmentPump) synthesizeUnfinished() {
 
 func (s *segmentPump) synthesizeRoute(ctx context.Context, route *executorRoute) bool {
 	var reductions reductionBatch
-	var cancellation *rootCancellation
+	var cancellation CancellationID
 	var err error
 	if route == s.routes.root && s.deferredRootTerminal != nil {
-		reductions, err = route.reducer.reduce(s.deferredRootTerminal)
+		fact, id := s.owner.projectCancellation(s.deferredRootTerminal, false)
+		cancellation = id
+		reductions, err = route.reducer.reduce(fact)
 	} else {
 		var reason string
 		if route == s.routes.root {
-			cancellation = s.owner.suppressedActivationCancellation()
-			if cancellation != nil {
-				reason = cancellation.reason
+			if intent := s.owner.suppressedActivationCancellation(); intent != nil {
+				cancellation, reason = intent.id, intent.reason
 			}
 		}
 		reductions, err = route.reducer.synthesizeTerminal(reason)

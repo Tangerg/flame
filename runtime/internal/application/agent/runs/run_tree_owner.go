@@ -20,25 +20,24 @@ const runCleanupTimeout = 5 * time.Second
 // cancellation arbiter; specialized behavior lives beside those concerns.
 type runTreeOwner struct {
 	// observation excludes a snapshot/tail handoff from commit-to-publication windows.
-	observation      sync.Mutex
-	mu               sync.Mutex
-	cancel           context.CancelFunc
-	taskContext      context.Context
-	hub              *journal
-	done             chan struct{}
-	completionErr    error
-	rootTerminal     *rootTerminal
-	terminalChildren map[string]run.Run
-	executorMembers  map[string]string
-	childCancel      *childCancellation
-	rootCancel       *rootCancellation
-	activation       segmentActivation
-	interrupt        interruptBoundary
+	observation     sync.Mutex
+	mu              sync.Mutex
+	cancel          context.CancelFunc
+	taskContext     context.Context
+	hub             *journal
+	done            chan struct{}
+	completionErr   error
+	terminalRuns    map[string]terminalRun
+	executorMembers map[string]string
+	childCancel     *childCancellation
+	rootCancel      *rootCancellation
+	activation      segmentActivation
+	interrupt       interruptBoundary
 }
 
-type rootTerminal struct {
+type terminalRun struct {
 	run          run.Run
-	cancellation RootCancellationID
+	cancellation CancellationID
 }
 
 // segmentActivation serializes the post-commit executor activation with root
@@ -149,14 +148,11 @@ func (r *runTreeOwner) rejectActivation(cause error) error {
 	return nil
 }
 
-func (r *runTreeOwner) committedRootTerminal() (rootTerminal, bool) {
+func (r *runTreeOwner) committedRunTerminal(runID string) (terminalRun, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.rootTerminal == nil {
-		return rootTerminal{}, false
-	}
-
-	return *r.rootTerminal, true
+	terminal, found := r.terminalRuns[runID]
+	return terminal, found
 }
 
 // stop cancels the run context. Called on a true terminal (never on a parked

@@ -45,7 +45,7 @@ type ExecutionReleaser interface {
 // request. The executor acknowledges admission while in-flight effects can
 // still be settling.
 type RunningRootCancellationRequester interface {
-	RequestRootCancellation(ctx context.Context, ref ExecutorRef, cancellation RootCancellationID) error
+	RequestRootCancellation(ctx context.Context, ref ExecutorRef, cancellation CancellationID) error
 }
 
 // ConversationReader supplies the validated Host conversation used only to
@@ -158,12 +158,13 @@ type RunningExecutionSteerer interface {
 // RunningSubtreeCanceler submits the Application's already-validated product
 // cancellation intent to one live child executor subtree. It does not decide or
 // persist the Run outcome; the ordered executor facts remain authoritative.
+// ErrExecutorParking reports a waiting boundary before the control was submitted.
 type RunningSubtreeCanceler interface {
 	CancelRunningSubtree(
 		ctx context.Context,
 		ref ExecutorRef,
 		memberID string,
-		reason string,
+		cancellation CancellationID,
 	) error
 }
 

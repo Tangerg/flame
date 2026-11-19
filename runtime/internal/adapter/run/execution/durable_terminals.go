@@ -1,6 +1,8 @@
 package execution
 
 import (
+	"time"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 
 	scoperun "github.com/Tangerg/scope/agent/run"
@@ -35,16 +37,16 @@ func (i *interactionSession) terminalFacts(tree scoperun.Log) ([]runs.ExecutorEv
 			children = append(children, managed)
 		}
 		duration := i.segmentClock.duration(snapshot.StartedAt, snapshot.FinishedAt)
-		ending := i.endingForProcess(snapshot.ID, snapshot.Termination)
-		end := runs.NewSegmentEnded(ending, duration)
-		if snapshot.ID == tree.Root {
-			if cancellation, ok := rootCancellationFromTermination(snapshot.Termination); ok {
-				end = runs.NewRootCancellationEnded(cancellation, duration)
-			}
-		}
 		facts = append(facts, runs.ExecutorEvent{
-			Member: i.executorMember(snapshot.ID), Payload: end,
+			Member: i.executorMember(snapshot.ID), Payload: i.terminalFact(snapshot.ID, snapshot.Termination, duration),
 		})
 	}
 	return facts, children, nil
+}
+
+func (i *interactionSession) terminalFact(processID scoperun.ProcessID, termination scoperun.Termination, duration time.Duration) runs.SegmentEnded {
+	if cancellation, ok := cancellationFromTermination(termination); ok {
+		return runs.NewCancellationEnded(cancellation, duration)
+	}
+	return runs.NewSegmentEnded(i.endingForProcess(processID, termination), duration)
 }

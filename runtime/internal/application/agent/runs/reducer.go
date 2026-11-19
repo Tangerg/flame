@@ -35,7 +35,6 @@ type reducerConfig struct {
 	ModelOnlyInput bool
 	Continuation   *treeContinuation
 	Now            func() time.Time
-	CancelReason   func() string
 }
 
 // reducer is the per-segment state machine that turns executor events into the
@@ -596,7 +595,7 @@ func (r *reducer) synthesizeTerminal(rootCancellationReason string) (reductionBa
 	if err != nil {
 		return reductionBatch{}, fmt.Errorf("%w: %w", errReducerInvariant, err)
 	}
-	terminal, err := r.finishedRun(r.childCancelDetail(ending), nil)
+	terminal, err := r.finishedRun(ending, nil)
 	if err != nil {
 		return reductionBatch{}, fmt.Errorf("%w: synthesize terminal: %w", errReducerInvariant, err)
 	}

@@ -156,40 +156,77 @@ func (c *Cancellations) Cancel(ctx context.Context, cmd CancelCommand) (CancelRe
 	return c.cancelLiveRoot(cmd, plan, entry.owner)
 }
 
-// cancelLiveChild takes no context on purpose: a cancellation that has begun
-// runs to a committed outcome on the tree owner's cleanup context, so the
-// requester's own deadline cannot abandon it half-applied.
+type liveCancellationResult struct {
+	result CancelResult
+	err    error
+}
+
+// The Run task retains the request through control admission and settlement.
+// A timeout can end the caller's wait while Scope still owns the control.
+func (c *Cancellations) awaitLiveCancellation(
+	owner *runTreeOwner,
+	settle func(context.Context) (CancelResult, error),
+) (CancelResult, error) {
+	response := make(chan liveCancellationResult, 1)
+	if !c.segments.tasks.Start(owner.taskContext, func(ctx context.Context) {
+		result, err := settle(ctx)
+		response <- liveCancellationResult{result, err}
+	}) {
+		return CancelResult{}, errClosed
+	}
+	waitCtx, cancel := owner.cleanupContext()
+	defer cancel()
+	select {
+	case result := <-response:
+		return result.result, result.err
+	case <-waitCtx.Done():
+		return CancelResult{}, &CancellationSettlementError{Cause: context.Cause(waitCtx)}
+	}
+}
+
 func (c *Cancellations) cancelLiveChild(
 	cmd CancelCommand,
 	plan cancellationPlan,
 	owner *runTreeOwner,
 ) (CancelResult, error) {
-	cleanupCtx, cancel := owner.cleanupContext()
-	defer cancel()
-	if err := owner.awaitActivation(cleanupCtx); err != nil {
+	return c.awaitLiveCancellation(owner, func(ctx context.Context) (CancelResult, error) {
+		return c.settleLiveChildCancellation(ctx, cmd, plan, owner)
+	})
+}
+
+func (c *Cancellations) settleLiveChildCancellation(
+	ctx context.Context,
+	cmd CancelCommand,
+	plan cancellationPlan,
+	owner *runTreeOwner,
+) (CancelResult, error) {
+	if err := owner.awaitActivation(ctx); err != nil {
 		return CancelResult{}, err
 	}
 	attempt, err := owner.beginChildCancellation(plan, cmd.Reason, cmd.Completion.RecordActiveChild)
 	if err != nil {
 		return CancelResult{}, err
 	}
-	if cancelRunningSubtreeErr := c.runningSubtreeCanceler.CancelRunningSubtree(
-		cleanupCtx,
+	requestErr := c.runningSubtreeCanceler.CancelRunningSubtree(
+		ctx,
 		plan.executor,
 		plan.target.memberID,
-		cmd.Reason,
-	); cancelRunningSubtreeErr != nil {
-		owner.abortChildCancellation(attempt, cancelRunningSubtreeErr)
-		return CancelResult{}, fmt.Errorf(
-			"runs: cancel child Run %q executor subtree %q: %w",
-			plan.target.run.ID(),
-			plan.target.memberID,
-			cancelRunningSubtreeErr,
-		)
+		attempt.id,
+	)
+	if errors.Is(requestErr, ErrExecutorParking) {
+		if err := owner.wait(ctx); err != nil {
+			return CancelResult{}, &CancellationSettlementError{Cause: err}
+		}
+		if owner.interruptCommitted() {
+			return c.cancelWaitingChild(ctx, cmd, plan)
+		}
 	}
-	result, err := owner.waitChildCancellation(cleanupCtx, attempt)
+	if requestErr != nil && ctx.Err() == nil && owner.rejectChildCancellation(attempt, requestErr) {
+		return CancelResult{}, requestErr
+	}
+	result, err := owner.waitChildCancellation(ctx, attempt)
 	if err != nil && !errors.Is(err, ErrRunFinished) {
-		return CancelResult{}, &CancellationSettlementError{Cause: err}
+		return CancelResult{}, &CancellationSettlementError{Cause: errors.Join(requestErr, err)}
 	}
 	return result, err
 }

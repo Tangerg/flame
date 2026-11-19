@@ -178,7 +178,7 @@ func (c *Segments) prepareSegmentStartup(
 		return nil, startup.abort(err)
 	}
 	startup.treeOwner = newRunTreeOwner(cancelRun, taskContext, startup.journal)
-	startup.routes, err = c.openingRoutes(spec, startup.treeOwner.CancelReasonFor)
+	startup.routes, err = c.openingRoutes(spec)
 	if err != nil {
 		return nil, startup.abort(err)
 	}

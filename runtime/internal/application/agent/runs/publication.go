@@ -128,7 +128,7 @@ func (t treePublisher) commitIncrementalReduction(
 		if commit.Run == nil {
 			return false, errors.New("runs: terminal commit has no run snapshot")
 		}
-		t.owner.recordTerminalRun(*commit.Run, nil)
+		t.owner.recordTerminalRun(*commit.Run, commit.cancellation)
 	}
 	for _, write := range commit.Items {
 		t.owner.recordChildCancellationItem(route.runID, write.Item())
@@ -192,7 +192,7 @@ func (t treePublisher) publishTerminalAtomically(
 	route *executorRoute,
 	batch reductionBatch,
 	retryUnresolved bool,
-	cancellation *rootCancellation,
+	cancellation CancellationID,
 ) (reductionPublication, error) {
 	if route == nil {
 		return reductionPublication{}, errors.New("runs: publish atomic terminal without an executor route")
@@ -210,7 +210,10 @@ func (t treePublisher) publishTerminalAtomically(
 	if route.member.ParentID == "" {
 		combined.ObsoleteCheckpointRootID = route.member.MemberID
 	}
-	t.bindRootCancellationReceipt(&combined, cancellation)
+	if combined.Run.Canceled() {
+		combined.cancellation = cancellation
+	}
+	t.bindRootCancellationReceipt(&combined)
 	t.owner.bindChildCancellationReceipt(&combined, nil)
 	if err := combined.Validate(); err != nil {
 		return reductionPublication{}, fmt.Errorf("runs: validate atomic terminal: %w", err)
@@ -225,7 +228,7 @@ func (t treePublisher) publishTerminalAtomically(
 	for _, write := range combined.Items {
 		t.owner.recordChildCancellationItem(route.runID, write.Item())
 	}
-	t.owner.recordTerminalRun(*combined.Run, cancellation)
+	t.owner.recordTerminalRun(*combined.Run, combined.cancellation)
 	for _, reduced := range batch.events {
 		if err := t.append(route, reduced); err != nil {
 			return reductionPublication{}, err
@@ -238,8 +241,12 @@ func (t treePublisher) publishTerminalAtomically(
 	return reductionPublication{published: true, boundary: boundaryFinished}, nil
 }
 
-func (t treePublisher) bindRootCancellationReceipt(commit *EventCommit, cancellation *rootCancellation) {
-	if cancellation == nil || cancellation.record == nil || !commit.Run.Canceled() {
+func (t treePublisher) bindRootCancellationReceipt(commit *EventCommit) {
+	if commit.cancellation.IsZero() || !commit.Run.Lineage().IsRoot() {
+		return
+	}
+	cancellation := t.owner.matchingRootCancellation(commit.cancellation)
+	if cancellation == nil || cancellation.record == nil {
 		return
 	}
 	ref := t.rootSpec.executorRef()

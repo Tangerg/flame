@@ -313,7 +313,7 @@ type SegmentEnded struct {
 	executionFactBase
 	Ending            run.Ending
 	unresolvedEffects []run.UnresolvedEffect
-	rootCancellation  RootCancellationID
+	cancellation      CancellationID
 	Duration          time.Duration
 }
 
@@ -324,8 +324,8 @@ func NewSegmentEnded(ending run.Ending, duration time.Duration) SegmentEnded {
 	return SegmentEnded{Ending: ending, Duration: duration}
 }
 
-func NewRootCancellationEnded(cancellation RootCancellationID, duration time.Duration) SegmentEnded {
-	return SegmentEnded{Ending: run.Canceled{}, Duration: duration, rootCancellation: cancellation}
+func NewCancellationEnded(cancellation CancellationID, duration time.Duration) SegmentEnded {
+	return SegmentEnded{Ending: run.Canceled{}, Duration: duration, cancellation: cancellation}
 }
 
 // PlanUpdated reports the committed Plan after a replacement — read back

@@ -24,8 +24,11 @@ func (i *InteractionExecutor) CancelRunningSubtree(
 	ctx context.Context,
 	ref runs.ExecutorRef,
 	memberID string,
-	reason string,
+	cancellation runs.CancellationID,
 ) error {
+	if cancellation.IsZero() {
+		return errors.New("execution: child cancellation identity is required")
+	}
 	session, err := i.session(ref)
 	if err != nil {
 		return err
@@ -37,22 +40,26 @@ func (i *InteractionExecutor) CancelRunningSubtree(
 	session.state.mu.Lock()
 	root := session.state.process
 	managed := session.state.delegateChildren[processID]
-	available := session.state.phase != interactionFinished && session.state.boundary == interactionBoundaryInactive
+	phase, boundary := session.state.phase, session.state.boundary
 	session.state.mu.Unlock()
-	if !available || root == nil {
+	if phase == interactionFinished || root == nil {
 		return runs.ErrExecutorNotLive
 	}
 	if managed == nil || processID == root.ID() {
 		return errors.New("execution: running subtree target is not a managed Delegate")
 	}
+	if boundary == interactionBoundaryWaiting {
+		return runs.ErrExecutorParking
+	}
+	if boundary != interactionBoundaryInactive {
+		return runs.ErrExecutorNotLive
+	}
 	process, found := session.engine.Process(processID)
 	if !found || process.ID().Root() != root.ID() {
 		return runs.ErrExecutorNotLive
 	}
-	controlCtx, cancel := session.lifetime.bind(ctx)
-	defer cancel()
 	if err := process.Cancel(
-		runExecutionContext(controlCtx, session.scope, session.start), scopeCancellationReason(reason),
+		runExecutionContext(ctx, session.scope, session.start), cancellationControlPrefix+cancellation.String(),
 	); err != nil {
 		return fmt.Errorf("execution: cancel running Interaction member %s: %w", processID, err)
 	}

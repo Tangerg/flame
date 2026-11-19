@@ -47,13 +47,19 @@ func (s activeChildCancelCrashStore) Complete(ctx context.Context, record operat
 }
 
 func cancelableActiveChildModel(entered chan<- struct{}) chat.Model {
+	return activeChildCancellationModel(func(ctx context.Context) (*chat.Response, error) {
+		close(entered)
+		<-ctx.Done()
+		return nil, &invocation.Failure{Kind: invocation.FailureNotExecuted, Cause: ctx.Err()}
+	})
+}
+
+func activeChildCancellationModel(child func(context.Context) (*chat.Response, error)) chat.Model {
 	return delegateRestartModel{chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 		var gotResult bool
 		for _, message := range request.Messages {
 			if message.Role == chat.RoleUser && strings.Contains(message.Text(), activeChildInstruction) {
-				close(entered)
-				<-ctx.Done()
-				return nil, &invocation.Failure{Kind: invocation.FailureNotExecuted, Cause: ctx.Err()}
+				return child(ctx)
 			}
 			gotResult = gotResult || message.Role == chat.RoleTool
 		}

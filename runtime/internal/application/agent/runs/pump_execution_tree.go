@@ -105,7 +105,7 @@ func (s *segmentPump) stageChildPublications(publications []ChildRunPublication,
 			continue
 		}
 		if prepared.route.reducer == nil {
-			if err := s.segments.finalizeChildOpening(s.spec, s.owner, prepared, s.segments.publications.nowUTC()); err != nil {
+			if err := s.segments.finalizeChildOpening(s.spec, prepared, s.segments.publications.nowUTC()); err != nil {
 				return nil, nil, err
 			}
 		}
@@ -135,15 +135,7 @@ func (s *segmentPump) stageTreeFacts(facts []ExecutorEvent, startedRoutes map[st
 		if candidate == nil {
 			candidate = route.reducer.clone()
 		}
-		fact = s.classifyChildCancellationFact(route, fact, commit.Events)
-		var cancellation *rootCancellation
-		if end, ok := fact.(SegmentEnded); ok && !end.rootCancellation.IsZero() {
-			cancellation = s.owner.matchingRootCancellation(end.rootCancellation)
-			if cancellation != nil {
-				end.Ending = run.Canceled{Detail: cancellation.reason}
-				fact = end
-			}
-		}
+		fact, cancellation := s.owner.projectCancellation(s.classifyChildCancellationFact(route, fact, commit.Events), route.lineage.IsChild())
 		batch, err := candidate.reduce(fact)
 		if err != nil {
 			return nil, err
@@ -158,12 +150,13 @@ func (s *segmentPump) stageTreeFacts(facts []ExecutorEvent, startedRoutes map[st
 			return nil, err
 		}
 		if eventCommit.State == StateTerminalize {
+			eventCommit.cancellation = cancellation
 			if route == s.routes.root {
 				if unfinishedChildren != 0 {
 					return nil, errors.New("runs: root terminal precedes child terminals")
 				}
 				eventCommit.ObsoleteCheckpointRootID = commit.Update.Head.RootID
-				s.publisher.bindRootCancellationReceipt(&eventCommit, cancellation)
+				s.publisher.bindRootCancellationReceipt(&eventCommit)
 			} else {
 				unfinishedChildren--
 			}
@@ -194,10 +187,10 @@ func (s *segmentPump) treeFactRoute(event ExecutorEvent, startedRoutes map[strin
 		if len(fact.unresolvedEffects) > 0 {
 			return nil, errors.New("runs: settled execution tree terminal carries unresolved effects")
 		}
-		if !fact.rootCancellation.IsZero() {
+		if !fact.cancellation.IsZero() {
 			canceled, ok := fact.Ending.(run.Canceled)
-			if route != s.routes.root || !ok || canceled.Detail != "" {
-				return nil, errors.New("runs: invalid root cancellation evidence")
+			if !ok || canceled.Detail != "" {
+				return nil, errors.New("runs: invalid cancellation evidence")
 			}
 		}
 	default:
@@ -229,7 +222,7 @@ type routedTreeProjection struct {
 	route        *executorRoute
 	reducer      *reducer
 	batch        reductionBatch
-	cancellation *rootCancellation
+	cancellation CancellationID
 }
 
 func (s *segmentPump) publishTreeProjection(projected routedTreeProjection) error {

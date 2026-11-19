@@ -823,7 +823,7 @@ func (i *InteractionExecutor) Release(ctx context.Context, ref runs.ExecutorRef)
 func (i *InteractionExecutor) RequestRootCancellation(
 	ctx context.Context,
 	ref runs.ExecutorRef,
-	cancellation runs.RootCancellationID,
+	cancellation runs.CancellationID,
 ) error {
 	if cancellation.IsZero() {
 		return errors.New("execution: root cancellation identity is required")
@@ -836,7 +836,7 @@ func (i *InteractionExecutor) RequestRootCancellation(
 	if process == nil {
 		return runs.ErrExecutorNotLive
 	}
-	if err := process.Cancel(ctx, rootCancellationControlPrefix+cancellation.String()); err != nil &&
+	if err := process.Cancel(ctx, cancellationControlPrefix+cancellation.String()); err != nil &&
 		!errors.Is(err, scoperun.ErrProcessFinished) {
 		// A completed Runtime may already have closed its local writer. Only a
 		// committed Exit, never the writer's closed state, proves this is late.

@@ -11,7 +11,7 @@ import (
 
 func (r *reducer) segmentEnd(e SegmentEnded) ([]ProjectionEvent, error) {
 	r.segmentDuration = e.Duration
-	terminal, err := r.finishedRun(r.childCancelDetail(e.Ending), e.unresolvedEffects)
+	terminal, err := r.finishedRun(e.Ending, e.unresolvedEffects)
 	if err != nil {
 		return nil, err
 	}
@@ -61,13 +61,6 @@ func (r *reducer) metrics() (run.Metrics, error) {
 		return run.Metrics{}, errors.New("segment active duration is invalid or overflows")
 	}
 	return r.accrued.WithActiveDuration(activeDuration + r.segmentDuration)
-}
-
-func (r *reducer) childCancelDetail(ending run.Ending) run.Ending {
-	if _, canceled := ending.(run.Canceled); canceled && r.cfg.Opened.Lineage().IsChild() && r.cfg.CancelReason != nil {
-		return run.Canceled{Detail: r.cfg.CancelReason()}
-	}
-	return ending
 }
 
 func (r *reducer) finishedRun(ending run.Ending, effects []run.UnresolvedEffect) (SegmentFinished, error) {

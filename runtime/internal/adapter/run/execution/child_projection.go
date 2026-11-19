@@ -151,9 +151,8 @@ func (i *interactionSession) projectDelegateTerminal(
 		MemberID: result.ProcessID().String(), ParentID: i.executorMember(parent).MemberID,
 		SpawnCallID: callID,
 	}
-	ending := i.endingForProcess(result.ProcessID(), result.Termination())
 	duration := i.segmentClock.duration(result.StartedAt(), result.FinishedAt())
-	end := runs.NewSegmentEnded(ending, duration)
+	end := i.terminalFact(result.ProcessID(), result.Termination(), duration)
 	if err := i.commitFact(context.WithoutCancel(ctx), member, end); err != nil {
 		return false, fmt.Errorf("execution: publish delegated child terminal: %w", err)
 	}

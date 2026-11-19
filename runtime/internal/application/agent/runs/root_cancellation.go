@@ -7,31 +7,15 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/google/uuid"
 )
 
-// RootCancellationID correlates an executor control with one accepted request.
-// The caller's reason is user data and can be shared by different requests.
-type RootCancellationID uuid.UUID
-
-func (i RootCancellationID) String() string { return uuid.UUID(i).String() }
-func (i RootCancellationID) IsZero() bool   { return i == RootCancellationID{} }
-
-func ParseRootCancellationID(value string) (RootCancellationID, bool) {
-	id, err := uuid.Parse(value)
-	if err != nil || id == uuid.Nil || id.String() != value {
-		return RootCancellationID{}, false
-	}
-	return RootCancellationID(id), true
-}
-
 type rootCancellation struct {
-	id     RootCancellationID
+	id     CancellationID
 	reason string
 	record RootCancellationReceipt
 }
 
-func (r *runTreeOwner) matchingRootCancellation(id RootCancellationID) *rootCancellation {
+func (r *runTreeOwner) matchingRootCancellation(id CancellationID) *rootCancellation {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.rootCancel == nil || r.rootCancel.id != id {
@@ -54,32 +38,13 @@ type rootCancellationClaim struct {
 	dispatch      bool
 }
 
-type rootCancellationResult struct {
-	result CancelResult
-	err    error
-}
-
-// The owned task retains its original receipt through control admission and
-// terminal settlement, even after the waiting request reaches its deadline.
 func (c *Cancellations) cancelLiveRoot(cmd CancelCommand, plan cancellationPlan, owner *runTreeOwner) (CancelResult, error) {
 	intent := &rootCancellation{
-		id: RootCancellationID(uuid.New()), reason: cmd.Reason, record: cmd.Completion.RecordActiveRoot,
+		id: newCancellationID(), reason: cmd.Reason, record: cmd.Completion.RecordActiveRoot,
 	}
-	response := make(chan rootCancellationResult, 1)
-	if !c.segments.tasks.Start(owner.taskContext, func(ctx context.Context) {
-		result, err := c.settleLiveRootCancellation(ctx, cmd, plan, owner, intent)
-		response <- rootCancellationResult{result, err}
-	}) {
-		return CancelResult{}, errClosed
-	}
-	waitCtx, cancel := owner.cleanupContext()
-	defer cancel()
-	select {
-	case result := <-response:
-		return result.result, result.err
-	case <-waitCtx.Done():
-		return CancelResult{}, &CancellationSettlementError{Cause: context.Cause(waitCtx)}
-	}
+	return c.awaitLiveCancellation(owner, func(ctx context.Context) (CancelResult, error) {
+		return c.settleLiveRootCancellation(ctx, cmd, plan, owner, intent)
+	})
 }
 
 func (c *Cancellations) settleLiveRootCancellation(
@@ -109,7 +74,7 @@ func (c *Cancellations) settleLiveRootCancellation(
 	if err := owner.wait(ctx); err != nil {
 		return CancelResult{}, &CancellationSettlementError{Cause: errors.Join(requestErr, err)}
 	}
-	if terminal, committed := owner.committedRootTerminal(); committed {
+	if terminal, committed := owner.committedRunTerminal(cmd.RunID); committed {
 		if terminal.cancellation == intent.id {
 			return rootCancelResult(terminal.run)
 		}
