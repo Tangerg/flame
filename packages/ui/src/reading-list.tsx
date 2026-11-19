@@ -386,6 +386,7 @@ export function ReadingList<T>({
   return (
     <div
       ref={root}
+      data-slot="reading-list"
       style={{ display: "flex", flex: 1, minHeight: 0, minWidth: 0, ...style }}
       onFocusCapture={waitingForInitialEnd ? releaseInitialEnd : undefined}
       onWheelCapture={() => {

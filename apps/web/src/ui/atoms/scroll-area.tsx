@@ -9,7 +9,11 @@ import { cn } from "@/lib/classNames";
 const styles = stylex.create({
   port: { minHeight: 0, flex: 1, overflowY: "auto", overscrollBehavior: "contain" },
   // Content clips at the padding edge, before the inset focus perimeter.
-  focusable: { borderWidth: "2px", borderStyle: "solid", borderColor: "transparent" },
+  focusable: {
+    borderWidth: "var(--focus-inset-edge)",
+    borderStyle: "solid",
+    borderColor: "transparent",
+  },
 });
 
 interface Props {

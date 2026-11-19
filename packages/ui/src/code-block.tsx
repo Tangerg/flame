@@ -47,7 +47,7 @@ const ENGLISH_CODE_ACTIONS: CodeActionLabels = {
 };
 
 // The border keeps scrolling glyphs outside the inset focus perimeter.
-const SOURCE_EDGE = "2px";
+const SOURCE_EDGE = "var(--focus-inset-edge)";
 
 const styles = stylex.create({
   frame: {

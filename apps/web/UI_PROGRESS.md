@@ -39094,6 +39094,78 @@ private Library directories, ten checkout outputs and the scratch tree.
 The native task paths use captured data. VoiceOver and Tool execution
 through the GUI remain open.
 
+### Focus perimeter in recorded output (2026-11-19)
+
+Signed Wails on `a6ebc78cc` has the same outline overlap in the
+50,000-line captured output. At the tail the first visible text box
+starts 14.02 px above the native clip. A short native wheel leaves a
+13 px gap from the tail and puts the same line 1.02 px above the clip.
+The focused 718 × 384 px viewport has zero border and its 1.5 px outline
+is inset 2 px. The caption and line both start at x397.
+
+The first candidate puts the transparent border on the Legend
+viewport. Legend measures its 384 px border box, while the native
+scrollport has 380 px of client height. The signed build stops 4 px
+short on explicit Jump, 44 px from the end on first Up and 17 px
+from the end after a 13 px wheel.
+
+The shared stylesheet supplies one `--focus-inset-edge` dimension.
+Expanded output and reasoning opt in through the existing viewport
+class slot. The existing `ReadingList` frame reserves the edge and
+shows the inset outline while its direct viewport has visible focus.
+Legend measures the browser's inner scroll viewport. The output row
+deducts the edge from its own inline padding, so preview and expanded
+text retain the caption's leading alignment. CodeBody,
+WorkspaceViewBody and the focusable ScrollArea consume the same
+dimension for their existing borders. [CSS scrollport clipping](https://drafts.csswg.org/css-overflow-3/#scrolling) [CSS outline offset](https://drafts.csswg.org/css-ui-4/#outline-offset)
+
+- EN/light/Flame Orange with motion off at 1440 × 900. The frame stays
+  384 px tall and both Legend and the browser use the 380 px inner
+  viewport. The first Up ends 40 px from the tail, pointer Jump
+  reaches the physical edge, and the same 13 px wheel keeps a 13 px
+  gap. The cut line sits inside the outline. Tab to Arguments clears
+  the outline and reverse Tab restores it at the same scroll offset.
+  The caption and text start at x397 before and after Collapse. The
+  Composer continues as `outputfocusdraftqxtail`.
+- ZH/dark/18 px/custom blue with full motion in the 1121 × 950 left
+  tile. The caption and output both start at x237.5. A 20 px wheel
+  keeps that distance from the tail. Find reaches its unique line
+  31415, Escape returns to output, and keyboard Jump reaches a
+  0 px gap. Native Page Up leaves it with output focus. Collapse
+  returns to the expansion control and the Composer continues as
+  `输出焦点边界草稿继续尾段`.
+- The Workspace fixture reaches line 4 of `DockResizer.tsx` through
+  Go to line and restores focus to that control. Tab reaches the named
+  File reader. Its border and the surrounding File workspace border
+  both measure 2 px. The split Thinking reader uses the same outer
+  edge, takes native focus and restores its 90 px offset on reopen.
+  The Composer continues as `workspaceedgeqxtail`. The literal code
+  scene retains its 2 px edge, wrap control and keyboard End through
+  the final line.
+- The standard Lab build repeats first Up, Down, a wheel away from
+  the tail, pointer Jump, Collapse and the exact
+  `cleanoutputedgeqxtail` continuation.
+
+Scoped formatting, the packed UI and Icons consumer, plugin typecheck
+and locales, Web typecheck, 89 Web contracts, 937 locale keys in eight
+catalogs, bootstrap, installed resource reproduction, the 26 bundle
+checks and module linking pass. The native run of the correction
+briefly reports four standard Go packages as missing. A scoped
+`go list` resolves those packages in the pinned Go 1.27.4 toolchain.
+The repeated `make check-native` and the five-entry Lab gate pass.
+
+Five private bundles pass strict signature verification. Seven launches
+and four loopback previews exit. Cleanup removes five registrations,
+ten private Library directories, ten checkout outputs and the scratch
+tree. Native paths use captured data. VoiceOver and Tool execution
+through the GUI remain open.
+
+The separate literal CodeBody reader exposes a keyboard issue with a
+held Composer caret. Up moves focus to the Composer at a fixed 546 px
+code offset. After re-entering the same reader, Page Up moves to
+142 px and keeps its focus. The next batch will qualify the direct
+reader's arrow handling against the existing shared reading behavior.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

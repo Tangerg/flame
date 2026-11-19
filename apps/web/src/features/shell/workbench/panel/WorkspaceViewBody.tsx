@@ -22,7 +22,7 @@ const styles = stylex.create({
     minWidth: 0,
     minHeight: 0,
     // Clip scrolling content before the reserved inset focus perimeter.
-    borderWidth: "2px",
+    borderWidth: "var(--focus-inset-edge)",
     borderStyle: "solid",
     borderColor: "transparent",
     overflowY: "auto",

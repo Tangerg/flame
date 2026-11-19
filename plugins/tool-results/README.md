@@ -66,7 +66,8 @@ Paged or filtered rows and collapsed output previews select the presented materi
 Expanded output represents the whole captured log: copying its whole-reader range
 writes all ANSI-stripped source text, including virtualized lines and trailing
 newlines. Expanded output uses the shared Legend reading list for measurement,
-the rendered range and explicit line jumps. The list keeps the native selection's
+the rendered range and explicit line jumps. Its text aligns with the caption
+and clips inside the focus perimeter. The list keeps the native selection's
 endpoint rows mounted beside the visible range. Partial copy maps that same
 Range through styled UTF-16 line offsets into the complete ANSI-stripped source;
 unmounted middle lines remain exact without hidden full text or stored selection.

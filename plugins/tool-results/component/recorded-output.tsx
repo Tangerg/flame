@@ -114,7 +114,9 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
           whiteSpace: "pre",
           minWidth: "100%",
           width: "max-content",
-          paddingInline: frameInset,
+          paddingInline: expanded
+            ? `calc(${frameInset} - var(--focus-inset-edge))`
+            : frameInset,
           backgroundColor:
             selected === index ? "var(--color-highlight)" : undefined,
         }}
@@ -257,6 +259,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
         {expanded ? (
           <ReadingList
             ref={reader}
+            className="reading-focus-edge"
             data={lineIndices}
             keyExtractor={String}
             label={t("output.region")}

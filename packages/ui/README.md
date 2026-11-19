@@ -45,6 +45,9 @@ perimeter on the surrounding surface. Their `data-focus-outset` marker takes
 precedence over an ancestor's `data-focus-inset`, so the focus color cannot
 disappear inside the control's own fill. Unfilled controls and readers retain
 the enclosing inset rule.
+The `reading-focus-edge` class reserves the same inset on `ReadingList`'s
+frame and shows its outline when the viewport has visible keyboard focus.
+The viewport and its measured scroll area share the frame's inner edge.
 
 Focus-ring visibility follows the browser's native `:focus-visible` heuristic.
 Pointer-focused text fields may retain a ring. Shared CSS preserves validation
