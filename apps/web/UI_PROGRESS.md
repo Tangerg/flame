@@ -39562,6 +39562,49 @@ along the left edge and crosses the clipped line at the top of a
 scrolled view. The next batch will check that spacing in the named
 reader.
 
+### Focus perimeter around reasoning text (2026-11-19)
+
+Signed Wails on `74fa10436` reproduces the overlap in the long Thinking
+reader. The viewport reports a 1.5 px keyboard outline at an offset of
+−2 px, zero border and a clipping edge at the viewport's outer edge.
+The text starts at the same inline edge. After a native wheel reaches
+99 px, its first visible line starts 4.87 px above the clip and paints
+up to the outline.
+
+`ReasoningBlock` applies the 2 px transparent border used by Flame's
+`CodeBody`, `WorkspaceViewBody` and `ScrollArea` to its own `ReadingList`
+viewport. The native padding edge clips the text inside the border.
+The border reserves the shared keyboard outline on all four sides.
+Its space is present before focus, so focus keeps the measured geometry.
+The existing border-box cap also contains that space. [CSS scrollport clipping](https://drafts.csswg.org/css-overflow-3/#scrolling) [CSS outline offset](https://drafts.csswg.org/css-ui-4/#outline-offset)
+
+- EN/light/14 px/Flame Orange with motion off at 1440 × 900. The
+  border box stays 240 px tall and its scrollport is 716 × 236 px.
+  The text and native clip start 2 px inside the viewport edges.
+  The orange focus outline keeps its original thickness and offset.
+  Home and the same 99 px wheel movement show the partial line
+  clipped inside the outline. Closing and reopening retain 99 px.
+  Page Down reaches 196 px, Up reaches 156 px and the Composer
+  continues as `reasoningedgeqxtail`.
+- ZH/dark/18 px/custom blue with full motion in the 1121 × 950 native
+  left tile. The same geometry puts the partial line inside the blue
+  keyboard outline at 99 px. Closing and reopening retain 99 px,
+  End reaches 320 px and Tab reaches Read from `思考内容`.
+  The Composer continues as `思考描边阅读草稿继续尾段`.
+- One-line Thought has a 23 px content viewport and a 27 px border
+  box. The standard Lab build displays its prose, moves directly
+  from Thought to Read on Tab, keeps focus on Thought when collapsed
+  and continues the draft as `cleanfocusedqxtail`.
+
+Scoped formatting, Web typecheck, 89 Web contracts, 937 locale keys
+in eight catalogs, bootstrap, installed resources, 26 bundle checks,
+module linking, `make check-native` and the five-entry Lab gate pass.
+Four private bundles pass strict signature verification. Five launches
+and three loopback previews exit. Cleanup removes four registrations,
+eight private Library directories, ten checkout outputs and the scratch
+tree. The native paths use captured data. VoiceOver and live reasoning
+updates remain open.
+
 ## Tool group reading continuity
 
 Actual Wails reproduced a running sibling's completion collapsing an automatically

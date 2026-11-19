@@ -41,6 +41,12 @@ const rb = stylex.create({
     paddingTop: space.s3,
     paddingBottom: space.s1_5,
   },
+  viewport: {
+    // Clip scrolling content before the reserved inset focus perimeter.
+    borderWidth: "2px",
+    borderStyle: "solid",
+    borderColor: "transparent",
+  },
 });
 
 interface Props {
@@ -117,6 +123,7 @@ export function ReasoningBlock({ text, status }: Props) {
       <ReadingList
         role="group"
         fitContent
+        className={stylex.props(rb.viewport).className}
         data={[text]}
         keyExtractor={() => "reasoning"}
         label={t("reasoning.text")}
