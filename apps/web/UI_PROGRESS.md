@@ -40015,6 +40015,74 @@ The preview opens at the table beginning even when the inline
 reader has moved. The next reading check will start near the end
 of a long table and follow the transition into the preview.
 
+### Keeping the current row when expanding a table (2026-11-19)
+
+Signed Wails at `2ea5c35c8` places the narrow seven-column
+inline table at x80 and y5837 after a native wheel run. Rows
+62 through 66 are visible below the header. Opening the table
+preview focuses Table content at y0 with rows 1 through 14.
+Closing restores the inline reader. The 96 px inline rows and
+61 px preview rows give different reading positions to the
+same pixel offset.
+
+On explicit open, `MarkdownTable` reads the index of the first
+body row intersecting the visible area below its sticky header.
+The document Lightbox supplies its viewport in the existing
+initial-focus resolver. The table consumes the pending index
+once and aligns that row using the preview's layout offsets.
+These offsets avoid the entry animation's temporary scale. The
+viewport clamps at the last page, and each table keeps its own
+scroll position. A file reference ends the preview through the
+existing inspection flow.
+[HTML table row index](https://html.spec.whatwg.org/multipage/tables.html#dom-tr-rowindex)
+[WAI modal dialog keyboard behavior](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/#keyboard_interaction)
+
+- ZH/dark/18 px/custom blue with full motion at 1121 × 1051.
+  The 416 px inline viewport is at x80 and y5837 with row 62
+  partly under the header. The 897 px preview opens at x0
+  and y3743, with Observation 62 as the first fully visible
+  row beneath the headings. An app-change interruption
+  affected the first scrolling follow-up. A fresh opening
+  then stays at y3743, Down reaches y3783, and Right reaches
+  x89. A rapid Escape and Return reopens at the source row.
+  Escape restores the independent inline offsets. Scrolling
+  to y7245 makes row 76 the first visible inline row. The
+  preview reaches its y4104 limit with rows 67 through 80
+  visible. Down clamps there. Scrolling the inline reader to
+  y0 makes a new preview start at row 1. Cmd+L resumes the
+  original draft as `62473508`.
+- EN/light/16 px/Flame Orange with motion off at 1440 × 900.
+  The private long-text sample reaches row 62 at inline y3038.
+  The preview opens on that row at y2997. Tab reaches its
+  `reading-blocks.md:64` reference. Enter opens the
+  captured file's Source in Files, with focus in that pane.
+  Pointer Back to conversation restores Expand table and
+  inline y3038. Return reopens at y2997 and row 62. Escape
+  restores the table trigger, and the exact draft continues
+  as `507943`.
+- The standard Strategy comparison opens on its four original
+  rows with Table content focused. A rapid Escape and Return
+  opens at the beginning again. Closing restores Expand table,
+  and Tab advances to Copy table.
+
+Scoped Prettier, shared UI types and the packed consumer, full
+Web check with 137 tests including isolated Runtime, 937 locale
+keys in eight catalogs, 26 bundle contracts, native build and
+five-entry Lab pass. The independent Runtime commit `a017a1123`
+advanced main before final verification. The standard Lab
+assets exclude the private fixture and observation markers.
+Native acceptance uses captured data. Active streaming,
+VoiceOver, physical IME and live provider execution remain open.
+
+Four private bundles pass strict signature verification. Four
+launches and three previews terminate. Cleanup removes four app
+registrations, eight Library directories, ten checkout outputs
+and the scratch tree.
+
+The existing wide-table sample also provides a follow-up
+reading check at the far edge, where the numeric columns occupy
+the viewport and the first column leaves it.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

@@ -17,6 +17,26 @@ interface Props {
   children?: ReactNode;
 }
 
+function firstVisibleBodyRow(table: HTMLTableElement | null): number | null {
+  const viewport = table?.parentElement;
+  if (!table || !viewport || viewport.scrollTop <= 0) return null;
+
+  const top = viewport.getBoundingClientRect().top + viewport.clientTop;
+  const bottom = top + viewport.clientHeight;
+  const belowHeader = Math.max(top, table.tHead?.getBoundingClientRect().bottom ?? top);
+  if (belowHeader >= bottom) return null;
+
+  for (const body of table.tBodies) {
+    for (const row of body.rows) {
+      const bounds = row.getBoundingClientRect();
+      if (bounds.height > 0 && bounds.bottom > belowHeader && bounds.top < bottom) {
+        return row.rowIndex;
+      }
+    }
+  }
+  return null;
+}
+
 export function MarkdownTable({ markdownSource, children }: Props) {
   const t = useT();
   const scroll = useScrollReach();
@@ -25,6 +45,8 @@ export function MarkdownTable({ markdownSource, children }: Props) {
   const previewOpen = preview === "open";
   const expandRef = useRef<HTMLButtonElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
+  const previewTableRef = useRef<HTMLTableElement>(null);
+  const pendingPreview = useRef<{ rowIndex: number | null } | null>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
   const visible = useContentVisible();
@@ -70,6 +92,26 @@ export function MarkdownTable({ markdownSource, children }: Props) {
   );
   const copy = useCopy(markdownSource, t("message.code.copy"), writeTable);
 
+  function handlePreviewOpenChange(open: boolean) {
+    pendingPreview.current = open ? { rowIndex: firstVisibleBodyRow(tableRef.current) } : null;
+    setPreview(open ? "open" : "closed");
+  }
+
+  function preparePreview(viewport: HTMLDivElement | null) {
+    const opening = pendingPreview.current;
+    pendingPreview.current = null;
+    if (!opening || !viewport) return;
+
+    const table = previewTableRef.current;
+    const firstRow = table?.tBodies.item(0)?.rows.item(0);
+    const row = opening.rowIndex === null ? null : table?.rows.item(opening.rowIndex);
+    // Table layout offsets are unaffected by the dialog's opening scale.
+    viewport.scrollTo({
+      top: row && firstRow ? row.offsetTop - firstRow.offsetTop : 0,
+      behavior: "instant",
+    });
+  }
+
   return (
     <div
       ref={frameRef}
@@ -86,7 +128,8 @@ export function MarkdownTable({ markdownSource, children }: Props) {
       >
         <LightboxDialog
           open={previewOpen}
-          onOpenChange={(open) => setPreview(open ? "open" : "closed")}
+          onOpenChange={handlePreviewOpenChange}
+          prepareDocument={preparePreview}
           finalFocus={preview !== "navigated"}
           title={t("message.table.preview")}
           kind="document"
@@ -105,10 +148,16 @@ export function MarkdownTable({ markdownSource, children }: Props) {
           }
         >
           <FileReferencePresentationContext
-            value={{ origin: expandRef, onOpen: () => setPreview("navigated") }}
+            value={{
+              origin: expandRef,
+              onOpen: () => {
+                pendingPreview.current = null;
+                setPreview("navigated");
+              },
+            }}
           >
             <div className="md md-table-preview" data-prose="">
-              <table dir="auto" data-slot="prose-table">
+              <table ref={previewTableRef} dir="auto" data-slot="prose-table">
                 {children}
               </table>
             </div>

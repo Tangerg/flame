@@ -537,6 +537,8 @@ their intrinsic width. The prose line length also follows the conversation
 width, while numeric cells keep their single-line values. The preview bounds
 cell text against its available width. When its table reader has focus,
 Up and Down scroll rows and the horizontal arrows pan overflowing columns.
+Opening the preview brings the first visible inline body row into view.
+Closing it returns to the original inline reading position.
 
 Legend List owns the transcript viewport and row layout. Main and delegated
 turns use the shared centered reading column for the message, day separator,

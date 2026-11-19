@@ -101,7 +101,12 @@ interface LightboxBaseProps {
 export type LightboxDialogProps = LightboxBaseProps &
   (
     | { kind?: "figure" | "media" }
-    | { kind: "document"; closeLabel: string; contentLabel: string }
+    | {
+        kind: "document";
+        closeLabel: string;
+        contentLabel: string;
+        prepareDocument?: (viewport: HTMLDivElement | null) => void;
+      }
   );
 
 export function LightboxDialog(props: LightboxDialogProps) {
@@ -132,6 +137,15 @@ export function LightboxDialog(props: LightboxDialogProps) {
   useLayoutEffect(() => {
     if (retired) retire();
   }, [retired]);
+
+  function initialDocumentFocus() {
+    const viewport = documentRef.current;
+    if (open && visible && props.kind === "document") {
+      props.prepareDocument?.(viewport);
+    }
+    return viewport;
+  }
+
   return (
     <DialogPrimitive.Root open={open && visible} onOpenChange={onOpenChange}>
       <DialogPrimitive.Trigger render={trigger} />
@@ -141,7 +155,7 @@ export function LightboxDialog(props: LightboxDialogProps) {
         />
         <DialogPrimitive.Popup
           ref={popupRef}
-          initialFocus={kind === "document" ? documentRef : popupRef}
+          initialFocus={kind === "document" ? initialDocumentFocus : popupRef}
           finalFocus={visible ? finalFocus : false}
           tabIndex={-1}
           aria-describedby={undefined}
