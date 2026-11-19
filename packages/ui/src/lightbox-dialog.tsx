@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import {
   useEffectEvent,
+  useId,
   useLayoutEffect,
   useRef,
   type ComponentProps,
@@ -91,7 +92,8 @@ interface LightboxBaseProps {
   onOpenChange: (open: boolean) => void;
   onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
   finalFocus?: ComponentProps<typeof DialogPrimitive.Popup>["finalFocus"];
-  trigger: ReactElement;
+  trigger?: ReactElement;
+  renderEntry?: (trigger: ReactElement | undefined) => ReactNode;
   title: ReactNode;
   children: ReactNode;
   className?: string;
@@ -116,6 +118,7 @@ export function LightboxDialog(props: LightboxDialogProps) {
     onKeyDown,
     finalFocus,
     trigger,
+    renderEntry,
     title,
     children,
     className,
@@ -123,6 +126,7 @@ export function LightboxDialog(props: LightboxDialogProps) {
   } = props;
   const kind = props.kind ?? "figure";
   const panel = stylex.props(modalPanel(), styles[kind], extra);
+  const entryId = useId();
   const popupRef = useRef<HTMLDivElement>(null);
   const documentRef = useRef<HTMLDivElement>(null);
   const visible = useContentVisible();
@@ -146,9 +150,16 @@ export function LightboxDialog(props: LightboxDialogProps) {
     return viewport;
   }
 
+  // A decorated entry can restore its trigger while the same popup is open.
+  const entry = trigger ? (
+    <DialogPrimitive.Trigger
+      id={renderEntry ? entryId : undefined}
+      render={trigger}
+    />
+  ) : undefined;
   return (
     <DialogPrimitive.Root open={open && visible} onOpenChange={onOpenChange}>
-      <DialogPrimitive.Trigger render={trigger} />
+      {renderEntry ? renderEntry(entry) : entry}
       <DialogPrimitive.Portal>
         <DialogPrimitive.Backdrop
           {...stylex.props(MODAL_SCRIM, styles.dismiss)}

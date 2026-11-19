@@ -538,7 +538,10 @@ Read-only code regions follow the same horizontal-only containment policy.
 It retires when its inherited content becomes hidden, releases only its own
 portal focus and keeps that capture closed when the owner returns. Ordinary
 dismissal retains Base UI's trigger return; an explicit final-focus policy stays
-with the caller. These are the same semantics used by transcript previews.
+with the caller. The optional `renderEntry` places the native trigger inside
+the caller's inline content. A controlled popup can stay open while that entry
+renders without a trigger, and the trigger keeps its identity when it returns.
+These are the same semantics used by transcript previews.
 
 `ImageViewport` delegates transform, fit, zoom and pan to react-zoom-pan-pinch.
 The library owns x/y/scale and gesture state. Fit allows scales below one, actual

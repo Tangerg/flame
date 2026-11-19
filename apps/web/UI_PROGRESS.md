@@ -41849,6 +41849,57 @@ registrations, ten private Library directories, ten checkout outputs and the
 scratch tree. Continue with another supporting-detail entry and return from
 a captured reply.
 
+### Keep undecodable SVG available as source (2026-11-20)
+
+On `23fba35e9`, the native reply gives a truncated SVG a full image preview.
+Return opens that broken image as item 3 / 3. The pending delta repairs the
+inline drawing behind the gallery, while the open capture keeps displaying
+the broken item until the reader closes and reopens it.
+
+The detached browser image decoder admits the latest settled SVG to the inline
+preview. The literal code reader is available before the first success and
+after an accepted failure. The previous presentation stays in place while
+new source decodes. The SVG stays an image data URL. The active inline entry
+hands focus to its replacement if the browser would otherwise drop it.
+[HTML image processing](https://html.spec.whatwg.org/multipage/images.html)
+[SVG processing modes](https://www.w3.org/TR/SVG2/conform.html#processing-modes)
+
+The shared Lightbox keeps its captured gallery and places its native trigger
+inside the code frame. An absent trigger drops the undecodable SVG from new
+captures. An already open gallery keeps its captured order and source. When
+that gallery closes with the trigger retired, the code reader receives focus.
+
+- EN/light/14 px/Flame Orange at 1440 × 900 and scale 1. The literal truncated
+  start tag is readable. Inline detail opens as 2 / 2 and returns to its
+  trigger. With the SVG source reader focused, a captured delta completes the
+  drawing and hands focus to the image button without opening the gallery.
+  Return opens the readable SVG as 3 / 3. Escape returns to the image button.
+  The draft continues as `781628`.
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 and scale 1 with a 320 px Dock.
+  Completing the drawing leaves focus on draft `782`. Pointer entry opens
+  the now-decodable image. An authoritative `item.completed` then replaces
+  the inline drawing with the truncated source. The same valid SVG remains
+  visible at 3 / 3 in the open gallery. Pointer Close returns to the localized
+  code reader and the draft continues as `782396`.
+- Canonical EN/light/14 px/Flame Orange. The original SVG opens at 3 / 3.
+  Left selects Inline detail at 2 / 3 and Escape returns to the original SVG.
+  Mermaid at 100%, the expanded table and the eight-line `store.go` each open
+  and return to their own entry. The draft continues as `783541`.
+
+Scoped formatting, shared UI types and the independent packed consumer,
+all 137 Web tests, 940 keys across eight locales, bootstrap, generated plugin
+resources, 26 bundle contracts, production module linkage, native build and
+tests, and five canonical Lab documents pass on `23fba35e9`. The private
+Lab changes captured reply input through the existing event fold, and the
+canonical output excludes the private event endpoint and text. Native
+clipboard writes, saves, VoiceOver, live provider execution and other platforms
+were outside this qualification.
+
+Four native launches and three loopback previews exit. Cleanup removes four
+registrations, eight private Library directories, ten checkout outputs and
+the scratch tree. Continue with another reading and return path across the
+conversation and its supporting workspace.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

@@ -1127,12 +1127,15 @@ available and single-dollar currency stays literal. Proprietary bracket/marker
 math syntax is removed. Code copying retains the parser's original literal value.
 The complete source is available through a stable context for table operations.
 
-Generated SVG fences stay inert images inside their code preview. The image
-button is the keyboard stop for scrolling the preview and opening the shared
-gallery. The inset focus ring stays around the visible preview as it scrolls.
-The gallery keeps source order within the reply, owns zoom/pan and source
-return, and captures the image set for each opening. Code copying retains the
-complete original SVG text.
+Generated SVG fences show readable source until the browser decodes an inert
+image. The last accepted preview or source stays visible while new SVG text
+decodes. The image button opens the shared gallery, and its inset focus ring
+stays around the visible preview as it scrolls. The gallery captures the
+available images in reply order at each opening and retains that capture
+through later source changes. If a decode replaces a focused reader or image
+button, focus follows the replacement. Closing a gallery with a retired button
+returns to the source reader. Code copying retains the complete original SVG
+text.
 
 Activity disclosures compose Base UI Collapsible directly. Consumers request an
 explicit open value; the workspace command owns each tool's expanded state.
