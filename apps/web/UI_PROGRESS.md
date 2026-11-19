@@ -41402,6 +41402,68 @@ directories, ten checkout outputs and the scratch tree.
 Continue from content into Dock detail, using native evidence
 to select the next interruption or return problem.
 
+### Returning within Diff keeps the workspace read (2026-11-19)
+
+In the native baseline, the retained single-file row remains
+readable while the workspace comparison loads. Opening that
+row disables Back to changed files. Escape returns to the
+list, cancels the first worktree request, starts a replacement,
+and focuses pending Refresh. After rejection, opening the row
+and clicking Back issues a third request and removes the
+failure message.
+
+The Diff reader uses its existing return destination to
+identify a list-owned Back. That action and Escape restore
+the current row, filter and scroll immediately. The worktree
+request and its feedback retain their owner. The direct file
+entry and overview Files command still open or retry the
+workspace scope through the existing query and focus path.
+Better Accessibility's guidance keeps available actions
+operable and reserves pending treatment for the actual read.
+
+- EN/light/14 px/Flame Orange at Actual Size. Starting the
+  scope read focuses pending Refresh. The retained file
+  reader shows enabled Back and pending Refresh. Escape and
+  pointer Back both restore the original DockResizer row.
+  The gate records one worktree request through both
+  round trips. Releasing it shows four workspace rows and
+  keeps the same focused row. The draft continues as `701629`.
+- ZH/dark/18 px/`#3B82F6` at scale 1 with a 1121 px window
+  and 320 px Dock. Rejecting the workspace read while the
+  old file is open preserves its heading focus and error.
+  Pointer Back focuses the same file row and retains the
+  error. The gate still records only the rejected read.
+  Keyboard activation of the overview Files command starts
+  the second request. Acceptance clears the error while
+  the Composer retains focus and the draft becomes `702184`.
+- The canonical English Lab opens the conversation's 24-file
+  review. Filter `01` gives 11 matches. Native wheel input
+  reveals `module-018.ts`, the tenth match. Escape restores
+  the filter, visible scroll position and original row.
+  A first pointer return removes the source-return control
+  without an AX focus reading. The keyboard return and a
+  repeated scrolled pointer return with the existing Lab
+  observation enabled both focus the original review action.
+  The existing draft continues as `703516`.
+
+Scoped formatting, plugin typechecking, all 20 plugin
+catalogs across eight locales, generated component ESM,
+all 137 Web tests, 940 Web keys across eight locales,
+bootstrap, 26 bundle contracts, production module linkage,
+native build and five canonical Lab documents pass on
+`e00dc9f0c`. The signed Wails runs use the packaged Diff
+component and controlled Lab transport. The canonical build
+excludes the private gate. Live Git, VoiceOver speech, other
+platforms and unrelated plugin backend suites remain outside
+this qualification. Existing installations use the normal
+plugin digest rollout to adopt the rebuilt component.
+
+Four private launches and three loopback previews exit.
+Cleanup removes four registrations, eight private Library
+directories, ten checkout outputs and the scratch tree.
+Continue with another complete task from conversation
+content into a supporting detail and back.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

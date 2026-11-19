@@ -204,6 +204,8 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const rendered = file ? accepted?.rendered.get(file.path) : undefined;
   const readable = rendered !== undefined && rendered.file.hunks.length > 0;
   const showingReader = file !== undefined;
+  const returnsToFiles =
+    selection.view === "file" && selection.returnTo === "files";
   const readingOverview =
     read.loading &&
     query.path === undefined &&
@@ -242,17 +244,18 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     });
   }
   function showFiles() {
-    const next: Query =
-      query.path !== undefined || accepted?.query.path !== undefined
+    const workspaceQuery =
+      !returnsToFiles &&
+      (query.path !== undefined || accepted?.query.path !== undefined)
         ? { mode: query.mode }
-        : query;
+        : undefined;
     pendingFocus.current = {
       target: "list",
       active: document.activeElement,
-      query: next !== query ? next : undefined,
+      query: workspaceQuery,
     };
     setSelection((current) => ({ path: current.path, view: "files" }));
-    setQuery(next);
+    if (workspaceQuery) setQuery(workspaceQuery);
   }
   useLayoutEffect(() => {
     if (filePath !== undefined && bodyViewport.current) {
@@ -324,8 +327,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
           event.defaultPrevented ||
           isImeKey(event.nativeEvent) ||
           !showingReader ||
-          selection.view !== "file" ||
-          selection.returnTo !== "files"
+          !returnsToFiles
         )
           return;
         event.preventDefault();
@@ -450,22 +452,11 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                   variant="ghost"
                   size="sm"
                   aria-label={
-                    selection.view === "file" && selection.returnTo === "files"
-                      ? t("files.back")
-                      : t("files.show")
+                    returnsToFiles ? t("files.back") : t("files.show")
                   }
                   onClick={showFiles}
-                  pending={readingOverview}
                 >
-                  <Icon
-                    glyph={
-                      selection.view === "file" &&
-                      selection.returnTo === "files"
-                        ? ArrowLeft
-                        : List
-                    }
-                    size="sm"
-                  />
+                  <Icon glyph={returnsToFiles ? ArrowLeft : List} size="sm" />
                   {t("files.button")}
                 </Button>
               </Toolbar>

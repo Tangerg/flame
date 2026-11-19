@@ -84,10 +84,9 @@ end of the sequence, focus moves to the current file heading. Each new file
 starts at the top of the reader. The navigation status gives assistive
 technology the file's relative path and current position.
 
-Returning from a list-owned reader retains its filter and scroll and focuses the
-current row, including after a failed comparison. Only a return that actually
-starts a workspace read waits for that response. A failed workspace read keeps
-the scoped result and its Files command available for an explicit retry.
+Back and Escape from a list-owned reader restore its filter, scroll position
+and current row. A pending workspace read continues, and a failed read keeps
+its error and the Files command for an explicit retry.
 A focused scoped Files action that retires hands off to Refresh while the
 workspace read is pending, including when the scoped result remains visible.
 Success continues to the selected row or filter. Later outside focus or
