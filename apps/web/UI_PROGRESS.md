@@ -24089,6 +24089,50 @@ removes three registrations, six private Library directories,
 ten checkout outputs and the scratch tree. Inspect Find with
 a diagram that keeps supplementary source for accessibility.
 
+### Count the visible diagram text in conversation Find (2026-11-20)
+
+In signed English Wails on `6b116111`, a fully rendered
+Mermaid diagram shows one Visible checkpoint label. Its
+supplementary source is a 1 × 1 px `sr-only` element with
+`clip-path: inset(50%)`. A query for its source-only comment
+gives `1 / 1`. Searching the visible label gives `1 / 2`,
+and Return moves to the clipped source copy at `2 / 2`.
+
+The same visibility check in `messageRanges.ts` now
+recognizes the shared `sr-only` class when it visits a
+message or a text subtree. Find uses the rendered diagram
+label and surrounding prose. The diagram exposes its
+supplementary source through the accessibility tree and
+its existing copy payload.
+[W3C visually hidden text technique](https://www.w3.org/WAI/WCAG21/Techniques/css/C7).
+[Mermaid flowchart comments](https://mermaid.js.org/syntax/flowchart.html#comments).
+
+- EN/light/14 px/Flame Orange at 1121 × 950 with a 560.5 px
+  Dock. The source-only query gives `0 / 0`. Visible
+  checkpoint gives `1 / 1` with one active DOM range in the
+  SVG. Return stays on that range. The prose after the
+  diagram still matches, and Escape lets draft `9736`
+  continue as `9736518`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. 下一个匹配
+  also stays on the unique label. The source-only query
+  gives `0 / 0` and disables the navigation actions.
+  Mermaid 源代码 and 复制 Mermaid remain in the native
+  accessibility tree, and the captured copy payload keeps
+  its source. Draft `9742` continues as `9742638`.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and
+five canonical Lab documents pass. Native cases use a
+captured diagram. VoiceOver speech, clipboard transfer,
+live Send, browser suites and benchmarks were outside the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. The selected label
+keeps its neutral background in the native screenshot while its
+exact range is active. Inspect how to paint that match next.
+
 ### Find follows rendered reply updates
 
 Find now refreshes its matches when the presented reply changes. An open query

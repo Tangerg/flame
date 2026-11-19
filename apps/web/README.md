@@ -218,9 +218,10 @@ available again.
 Conversation search covers message text, including text reached by
 scrolling and the full text of folded user messages. Activating a match opens a
 user message if its fold clips or fades the match. Matches in the clear preview
-leave the message folded. Hidden and inert disclosure content is excluded
-regardless of its mounting history. Closing a disclosure updates the count and
-retires its ranges. Search preserves the keyboard focus and disclosure owners.
+leave the message folded. Find omits visually hidden accessibility text and
+hidden or inert disclosure content regardless of its mounting history. Closing a
+disclosure updates the count and retires its ranges. Search preserves the
+keyboard focus and disclosure owners.
 In prose, a run of collapsible spaces or tabs matches one space across inline
 formatting. Code and preserved whitespace match literally. Explicit breaks and
 block boundaries still split phrases.

@@ -11,7 +11,7 @@ function escapeRegExp(value: string): string {
 }
 
 function isHidden(element: Element, style = getComputedStyle(element)): boolean {
-  if (element.hasAttribute("hidden") || element.hasAttribute("inert")) return true;
+  if (element.matches("[hidden], [inert], .sr-only")) return true;
   return (
     style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse"
   );
