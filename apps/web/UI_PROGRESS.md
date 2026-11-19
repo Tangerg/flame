@@ -24198,6 +24198,64 @@ the two visible lines in the captured label. Reproduce the
 line boundary and preserve legitimate inline formatting in
 the next Find pass.
 
+### Keep Mermaid Find matches within a label line (2026-11-20)
+
+Signed English Wails on `9404e6a90` returns `1 / 1` for
+`checkpointAuthored`. The screenshot highlights the bold
+word on the first line and the start of the next line in
+the same label. The actual ranges start at y328 and end
+at y349. `Second checkpoint` gives one legitimate match
+across two formatted runs at y328.
+
+`messageRanges.ts` follows the last explicit y within each
+rendered Mermaid SVG text label. A positioned `tspan` for
+a different y starts a new search flow. Same-y runs and
+unpositioned formatting runs continue their line. The pinned
+Pele artifact places the first rich-text run of each line
+at x/y and keeps later styled runs inline. Its optional
+icon path can also position several runs at the same y.
+Range matching and paint use the same visible text.
+[SVG text and positioning](https://www.w3.org/TR/SVG2/text.html).
+
+- EN/light/14 px/Flame Orange at 1121 × 950. Both joined
+  and space-separated cross-line queries give `0 / 0`.
+  `Second checkpoint` returns `1 / 1` across the actual
+  normal and bold runs at y328. The wheel moves the
+  transcript from 0 to 239 px. `Authored caption` is a
+  separate match 21 px below the first line. Return and
+  Shift-Return move between the two real `checkpoint`
+  hits. Escape restores draft `9936` and it continues
+  as `9936518`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. The joined
+  query clears the cue and disables Next. Mouse activation
+  of 下一个匹配 moves the visible cue from y377 to y366.
+  The caption has its own cue at y387. Ordinary prose
+  still matches. The source-only comment gives `0 / 0`,
+  while the accessible source and exact captured copy
+  payload remain available. Draft `9942` continues
+  as `9942638`.
+
+Scoped formatting, 137 Web tests, 940 keys across eight
+locales, bootstrap, plugin resources, 26 bundle contracts,
+module linkage, the macOS native gate and five canonical
+Lab documents pass. The initial stage lacked the locked
+Rolldown Darwin ARM64 binding. Warming that exact package
+URL in the private npm cache and rerunning standard setup
+restored the locked dependency and stage.
+
+Native cases use a captured rich Mermaid label. A longer
+private reply supplies the wheel case. The installed renderer
+was inspected for the optional icon case. Wails uses Flame's
+existing renderer options. VoiceOver speech, system clipboard
+transfer, live Send, browser suites and benchmarks were
+outside the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. A single same-line
+hit still shows an interior stroke at the formatting boundary.
+Inspect contiguous highlight shapes in the next pass.
+
 ### Find follows rendered reply updates
 
 Find now refreshes its matches when the presented reply changes. An open query

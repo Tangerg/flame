@@ -46,7 +46,7 @@ function collectTextFlows(messageRoot: HTMLElement): FlowText[][] {
     flow = [];
   };
 
-  const visit = (node: Node, collapseSpace = false) => {
+  const visit = (node: Node, collapseSpace = false, diagramLine?: { y: string | null }) => {
     if (node.nodeType === Node.TEXT_NODE) {
       flow.push({ node: node as Text, collapseSpace });
       return;
@@ -61,13 +61,24 @@ function collectTextFlows(messageRoot: HTMLElement): FlowText[][] {
       return;
     }
 
+    const line =
+      element instanceof SVGTextElement && element.closest('[data-slot="mermaid-stage"]')
+        ? { y: element.getAttribute("y") }
+        : diagramLine;
+    if (line && element.matches("tspan[x][y]")) {
+      const y = element.getAttribute("y");
+      // Pele can position several runs separately at the same y.
+      if (line.y !== y) endFlow();
+      line.y = y;
+    }
+
     // Formatting splits text nodes without splitting a phrase.
     const inline =
       element !== messageRoot &&
       (style.display === "contents" || style.display.startsWith("inline"));
     const collapseChildren = collapsesHorizontalSpace(style) && !element.closest("code, pre");
     if (!inline) endFlow();
-    for (const child of element.childNodes) visit(child, collapseChildren);
+    for (const child of element.childNodes) visit(child, collapseChildren, line);
     if (!inline) endFlow();
   };
 
