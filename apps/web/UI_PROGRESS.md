@@ -41522,6 +41522,70 @@ directories, ten checkout outputs and the scratch tree.
 Continue with a supporting detail in the same long-reply
 reading path and verify its return to the original content.
 
+### Keep the reading position when a streamed diagram changes (2026-11-19)
+
+In the Wails baseline, a streamed Mermaid fence ends with
+an incomplete arrow while the reader has Zoom in focused.
+The parser switches to literal source and keyboard focus
+falls to the page. After the reader returns to the Composer
+and types `720417`, the next chunk repairs the diagram.
+The earlier lightbox opens over the draft and takes focus.
+
+MermaidBlock keeps its last settled presentation while the
+current code is being parsed. A settled failure retires
+the open lightbox and leaves the latest source readable.
+The retiring presentation can give its focus to the
+existing code reader or recovered inline diagram. This
+handoff requires the previous focused subtree to be gone
+and focus to have fallen to the document body. The recovered
+diagram requires an explicit action to open its lightbox.
+CodeFrame and CodeBody expose their existing elements via
+React refs. Read-only ZCode's Mermaid block keeps incomplete
+diagrams available as literal source during streaming.
+Better Accessibility and the ARIA dialog pattern guide
+the return when the trigger goes away.
+[ARIA dialog pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/#keyboard_interaction)
+
+- EN/light/14 px/Flame Orange at scale 1 with a 1440 px
+  window. A keyboard-opened lightbox switches from
+  focused Zoom in to Code content and displays the
+  incomplete arrow. Repair moves focus to the inline
+  diagram. The next Tab reaches Enlarge. Explicit opening
+  shows the new fourth node, and Escape returns to Enlarge.
+  Continuing in the Composer yields `721637`.
+- ZH/dark/18 px/`#3B82F6` at scale 1 with a 1121 px
+  window and 320 px Dock. Pointer opening gives focus to
+  the popup itself. The failure moves that focus to the
+  source reader. Returning to the Composer continues
+  `722` as `722468`. The accepted fourth node stays
+  inline and preserves focus and the draft. Explicit
+  pointer opening and Close return to Enlarge with the
+  same draft.
+- The canonical English Lab uses its original three-node
+  figure. Zoom in changes 100% to 150%, and Center at
+  actual size restores 100% with the control focused.
+  Escape returns to Enlarge. The reply's
+  `runtime/internal/session/store.go:4` opens the captured
+  eight-line reader. Escape returns to the file link and
+  the existing Composer draft continues as `723516`.
+
+Scoped formatting, all 137 Web tests, 940 keys in eight
+locales, bootstrap, generated plugin resources, 26 bundle
+contracts, production module linkage, UI typechecking, the
+independently packed UI and icons consumer, native build
+and tests, and five canonical Lab documents pass on
+`6ce441c28`. The private Lab delivers two captured item
+deltas through the production projection and Mermaid
+parser. The canonical Lab excludes this gate. Live providers
+and files, clipboard commands, VoiceOver speech and other
+platforms were outside this qualification.
+
+Four private launches and three loopback previews exit.
+Cleanup removes four registrations, eight private Library
+directories, ten checkout outputs and the scratch tree.
+Continue with the reading position when an already open
+diagram receives another valid streamed revision.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

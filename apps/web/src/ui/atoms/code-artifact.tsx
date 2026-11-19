@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { type ReactNode } from "react";
+import { type ReactNode, type Ref } from "react";
 import { CodeBody, CodeCaption, CodeFrame } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
 import { cn } from "@/lib/classNames";
@@ -14,6 +14,8 @@ interface Props {
   previewLabel?: string;
   scrollLabel?: string;
   copyable?: boolean;
+  ref?: Ref<HTMLDivElement>;
+  sourceBodyRef?: Ref<HTMLDivElement>;
 }
 
 const styles = stylex.create({
@@ -36,12 +38,15 @@ export function CodeArtifact({
   previewLabel,
   scrollLabel,
   copyable = true,
+  ref,
+  sourceBodyRef,
 }: Props) {
   const labels = useCodeActionLabels();
   const t = useT();
   const isPreview = preview !== undefined;
   return (
     <CodeFrame
+      ref={ref}
       bounded
       dir="ltr"
       data-slot="code-block"
@@ -78,6 +83,7 @@ export function CodeArtifact({
         </div>
       ) : (
         <CodeBody
+          ref={sourceBodyRef}
           label={scrollLabel ?? t("message.code.content")}
           language={lang}
           styles={scrollLabel !== undefined && styles.compact}

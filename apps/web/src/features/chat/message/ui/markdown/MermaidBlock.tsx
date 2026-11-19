@@ -1,6 +1,15 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
-import { useEffect, useId, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { LightboxDialog } from "@flame/ui";
 import { CodeArtifact } from "@/ui/index";
@@ -8,7 +17,7 @@ import { reveal } from "@/ui/index";
 import { IconButton } from "@flame/ui";
 import { measureMermaidRender } from "@/lib/metrics";
 import { useT } from "@/lib/i18n/index";
-import { useCopy } from "@flame/ui";
+import { useContentVisible, useCopy } from "@flame/ui";
 import { cn } from "@/lib/classNames";
 import { motion, radius, space, surface } from "@flame/ui/tokens.stylex";
 import { artifactFrame } from "@/ui/atoms/artifact-frame";
@@ -64,22 +73,24 @@ interface Props {
   code: string;
 }
 
-type MermaidRenderResult = { status: "loading" | "error" } | { status: "rendered"; svg: string };
-
-interface SettledMermaidRender {
-  code: string;
-  result: MermaidRenderResult;
-}
+type MermaidRenderResult = { status: "error" } | { status: "rendered"; svg: string };
 
 export function MermaidBlock({ code }: Props) {
   const t = useT();
+  const visible = useContentVisible();
   const fencedCode = useMemo(() => `\`\`\`mermaid\n${code}\n\`\`\``, [code]);
   const copy = useCopy(fencedCode, t("message.code.copy"));
   const idPrefix = `mermaid-${useId().replace(/[^A-Za-z0-9_-]/g, "_")}`;
   const [debouncedCode] = useDebouncedValue(code, { wait: 300 });
   const isSettling = code !== debouncedCode;
 
-  const [settledRender, setSettledRender] = useState<SettledMermaidRender | null>(null);
+  const [rendered, setRendered] = useState<MermaidRenderResult | null>(null);
+  const [zoomed, setZoomed] = useState(false);
+  const acceptRender = useEffectEvent((requested: string, result: MermaidRenderResult) => {
+    if (requested !== code || requested !== debouncedCode) return;
+    setRendered(result);
+    if (result.status === "error") setZoomed(false);
+  });
   useEffect(() => {
     if (isSettling) return;
     let cancelled = false;
@@ -93,36 +104,58 @@ export function MermaidBlock({ code }: Props) {
       } catch {
         result = { status: "error" };
       }
-      if (!cancelled) setSettledRender({ code: debouncedCode, result });
+      if (!cancelled) acceptRender(debouncedCode, result);
     });
     return () => {
       cancelled = true;
     };
   }, [debouncedCode, isSettling, idPrefix]);
-  const current: MermaidRenderResult =
-    settledRender?.code === debouncedCode && !isSettling
-      ? settledRender.result
-      : { status: "loading" };
-  const [lastSvg, setLastSvg] = useState<string | null>(null);
-  const currentSvg = current.status === "rendered" ? current.svg : null;
-  if (currentSvg !== null && currentSvg !== lastSvg) setLastSvg(currentSvg);
-  const rendered: MermaidRenderResult =
-    current.status === "loading" && lastSvg !== null
-      ? { status: "rendered", svg: lastSvg }
-      : current;
+  const stage = useRef<HTMLDivElement>(null);
+  const sourceBody = useRef<HTMLDivElement>(null);
+  const portalFocus = useRef<Element>(null);
+  const retiredRoot = useRef<HTMLDivElement>(null);
+  const presentationRef = useCallback((root: HTMLDivElement | null) => {
+    if (!root) return;
+    if (retiredRoot.current === root) retiredRoot.current = null;
+    return () => {
+      const active = root.ownerDocument.activeElement;
+      if (active && (root.contains(active) || active === portalFocus.current)) {
+        retiredRoot.current = root;
+      }
+      portalFocus.current = null;
+    };
+  }, []);
+  useLayoutEffect(() => {
+    const root = retiredRoot.current;
+    if (!root) return;
+    retiredRoot.current = null;
+    const target = rendered?.status === "rendered" ? stage.current : sourceBody.current;
+    if (
+      visible &&
+      !root.isConnected &&
+      target?.isConnected &&
+      target.ownerDocument.activeElement === target.ownerDocument.body
+    ) {
+      target.focus({ preventScroll: true });
+    }
+  }, [rendered, visible]);
 
-  const [zoomed, setZoomed] = useState(false);
-
-  if (rendered.status === "rendered") {
+  if (rendered?.status === "rendered") {
     const svg = rendered.svg;
     return (
       <div
+        ref={presentationRef}
+        onFocusCapture={({ currentTarget, target }) => {
+          // Portal events bubble through the diagram frame even though the dialog lives elsewhere.
+          portalFocus.current = currentTarget.contains(target) ? null : target;
+        }}
         {...stylex.props(reveal.host, artifactFrame.frame, mb.frame)}
         data-markdown-copy="code-block"
         data-markdown-copy-text={fencedCode}
         data-wide-markdown-block="true"
       >
         <div
+          ref={stage}
           role="img"
           aria-label={t("markdown.diagram")}
           tabIndex={-1}
@@ -168,7 +201,7 @@ export function MermaidBlock({ code }: Props) {
     );
   }
 
-  if (rendered.status === "loading") {
+  if (!rendered) {
     return (
       <div
         role="status"
@@ -180,5 +213,7 @@ export function MermaidBlock({ code }: Props) {
     );
   }
 
-  return <CodeArtifact lang="mermaid" code={code} />;
+  return (
+    <CodeArtifact ref={presentationRef} sourceBodyRef={sourceBody} lang="mermaid" code={code} />
+  );
 }

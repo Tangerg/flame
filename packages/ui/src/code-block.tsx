@@ -4,7 +4,9 @@ import { Copy, UnfoldHorizontal, WrapText } from "@flame/icons/react";
 import {
   useRef,
   useSyncExternalStore,
+  type ComponentPropsWithRef,
   type ComponentPropsWithoutRef,
+  type Ref,
 } from "react";
 import { ARTIFACT_SURFACE } from "./artifact-surface";
 import { useCopy } from "./clipboard";
@@ -131,7 +133,7 @@ export function CodeFrame({
   className,
   styles: extra,
   ...props
-}: Omit<ComponentPropsWithoutRef<"div">, "style"> & {
+}: Omit<ComponentPropsWithRef<"div">, "style"> & {
   "data-slot"?: string;
   bounded?: boolean;
   styles?: stylex.StyleXArray<stylex.StyleXStyles | null | false>;
@@ -211,17 +213,20 @@ export function CodeBody({
   label,
   language = "text",
   styles: extra,
+  ref,
 }: {
   children: string;
   label: string;
   language?: string;
   styles?: stylex.StyleXArray<stylex.StyleXStyles | null | false>;
+  ref?: Ref<HTMLDivElement>;
 }) {
   const wrapped = useCodeWrap();
   const Source = useCodeSource();
   const selectionContentRef = useRef<Element | null>(null);
   return (
     <div
+      ref={ref}
       dir="ltr"
       role="region"
       aria-label={label}
