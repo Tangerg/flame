@@ -24133,6 +24133,71 @@ ten checkout outputs and the scratch tree. The selected label
 keeps its neutral background in the native screenshot while its
 exact range is active. Inspect how to paint that match next.
 
+### Show the current Mermaid match in conversation Find (2026-11-20)
+
+In signed English Wails on `2de460e7`, `checkpoint` gives
+`1 / 2` and Return moves the active SVG text range to the
+second label at `2 / 2`. Both labels keep their neutral
+backgrounds. `Reading continues` in the same reply paints
+its ordinary text range in Flame Orange.
+
+`searchHighlights.ts` draws one decorative SVG path before
+the current text label. The active DOM range supplies the
+substring width and each rendered text run supplies the
+vertical bounds. The parent coordinate transform keeps the
+path aligned as the transcript scrolls or its width changes.
+The accent wash preserves authors' label and node colors.
+The path is pointer-transparent and hidden from assistive technology.
+`messageRanges.ts` skips marker nodes during collection and
+ignores mutation records composed entirely of those nodes.
+Existing Find actions and teardown retire the same marker.
+Read-only ZCode conversation Find informed the distinction
+between active and inactive ranges.
+[CSS Highlight API](https://www.w3.org/TR/css-highlight-api-1/).
+[SVG graphics coordinates](https://www.w3.org/TR/SVG2/types.html#InterfaceSVGGraphicsElement).
+
+The first candidate's `SVGMatrix` lacked the fields expected
+of a `DOMMatrix`. Normalizing at the SVG boundary enabled
+painting. The next candidate drew across the word because
+both WebKit range tops read 348 px. The rendered `<text>`
+starts at 338.1 px and the first `<tspan>` at 327.6 px.
+The `<tspan>` client bounds cover its own 18.8 px run.
+[WebKit SVG graphics binding](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/svg/SVGGraphicsElement.idl).
+[Geometry Interfaces matrix conversion](https://drafts.csswg.org/geometry/#dom-dommatrix-frommatrix).
+
+- EN/light/14 px/Flame Orange at 1121 × 950. Return moves
+  the outline from the 77 px substring in the first label
+  to the 78 px substring in the authored two-line label.
+  The screenshot shows the white text and both lines clearly.
+  Wheel scrolling moves the transcript from 0 to 239 px.
+  Reducing the Dock from 560.5 to 320 px moves the current
+  cue from x377.5 to x497.7 with its word. The prose result
+  has no diagram path. Escape removes the current path and
+  draft `9836571` continues as `98365718`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. Pointer
+  activation of 下一个匹配 moves the blue outline to the first
+  run of the styled second label. `Authored caption` places
+  it 21 px lower on the second run. The source-only query
+  gives `0 / 0` and clears the path. The accessible source
+  and exact captured copy payload remain available. Draft
+  `9842` continues as `9842638`.
+
+Scoped formatting, 137 Web tests, 940 keys across eight
+locales, bootstrap, plugin resources, 26 bundle contracts,
+module linkage, the macOS native gate and five canonical
+Lab documents pass. Native coverage uses a captured reply,
+with a private authored multiline label and enough body
+text to scroll. VoiceOver speech, clipboard transfer, live
+Send, browser suites and benchmarks were outside the run.
+
+Six native launches and five loopback previews exit.
+Cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+Searching `checkpointAuthored` still gives one match across
+the two visible lines in the captured label. Reproduce the
+line boundary and preserve legitimate inline formatting in
+the next Find pass.
+
 ### Find follows rendered reply updates
 
 Find now refreshes its matches when the presented reply changes. An open query

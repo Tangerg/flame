@@ -222,6 +222,7 @@ leave the message folded. Find omits visually hidden accessibility text and
 hidden or inert disclosure content regardless of its mounting history. Closing a
 disclosure updates the count and retires its ranges. Search preserves the
 keyboard focus and disclosure owners.
+Find highlights the current match inside a rendered Mermaid diagram.
 In prose, a run of collapsible spaces or tabs matches one space across inline
 formatting. Code and preserved whitespace match literally. Explicit breaks and
 block boundaries still split phrases.

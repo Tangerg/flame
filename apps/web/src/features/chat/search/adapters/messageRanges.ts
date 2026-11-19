@@ -1,5 +1,6 @@
 import { readingRow, type ReadingListHandle } from "@flame/ui";
 import { MESSAGE_CONTENT_SELECTOR } from "@/features/chat/public/message/rendering";
+import { isChatSearchHighlightMarker } from "./searchHighlights";
 
 export interface MessageMatch {
   readonly range: Range;
@@ -50,7 +51,7 @@ function collectTextFlows(messageRoot: HTMLElement): FlowText[][] {
       flow.push({ node: node as Text, collapseSpace });
       return;
     }
-    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    if (node.nodeType !== Node.ELEMENT_NODE || isChatSearchHighlightMarker(node)) return;
 
     const element = node as Element;
     const style = getComputedStyle(element);
@@ -167,10 +168,12 @@ export function observeMessageChanges(root: HTMLElement, changed: () => void): (
 }
 
 function changesMessage(record: MutationRecord): boolean {
+  const changedNodes = [...record.addedNodes, ...record.removedNodes];
+  if (changedNodes.length > 0 && changedNodes.every(isChatSearchHighlightMarker)) return false;
   const target = record.target instanceof Element ? record.target : record.target.parentElement;
   if (target?.closest(MESSAGE_CONTENT_SELECTOR)) return true;
   if (record.type === "attributes" && target?.querySelector(MESSAGE_CONTENT_SELECTOR)) return true;
-  return [...record.addedNodes, ...record.removedNodes].some(
+  return changedNodes.some(
     (node) =>
       node instanceof Element &&
       (node.matches(MESSAGE_CONTENT_SELECTOR) || node.querySelector(MESSAGE_CONTENT_SELECTOR)),
