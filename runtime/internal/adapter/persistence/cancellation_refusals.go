@@ -57,7 +57,7 @@ func (i *idempotencyStore) refuseLateCancellation(ctx context.Context, runID str
 	return "", nil
 }
 
-func (i *idempotencyStore) settleRunCancellationRefusals(ctx context.Context, value rundomain.Run) error {
+func (i *idempotencyStore) settleRunCancellationRefusals(ctx context.Context, value rundomain.Run, winningCancellationKey string) error {
 	denial := runs.TerminalCancellationRefusal(value)
 	if denial == nil {
 		return nil
@@ -68,9 +68,9 @@ func (i *idempotencyStore) settleRunCancellationRefusals(ctx context.Context, va
 	}
 	_, err := i.db.connection(ctx).ExecContext(ctx, `UPDATE idempotency_records
 		SET kind = ?, payload = ?, expires_at = ?, material_run_id = NULL
-		WHERE kind = ? AND material_run_id = ? AND length(payload) = 0`,
+		WHERE kind = ? AND material_run_id = ? AND length(payload) = 0 AND key <> ?`,
 		idempotencyCancellationRefusal, []byte(refusal), time.Now().Add(operation.ReplayRetention).Unix(),
-		idempotencyPendingResponse, value.ID())
+		idempotencyPendingResponse, value.ID(), winningCancellationKey)
 	if err != nil {
 		return fmt.Errorf("sqlite: settle cancellation refusals for Run %q: %w", value.ID(), err)
 	}

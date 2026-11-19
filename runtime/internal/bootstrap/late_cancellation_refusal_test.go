@@ -95,7 +95,7 @@ func testLateCancellationRefusal(t *testing.T, refuseWrite bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	replayStore := cancellationReservationGate{stores.Idempotency, reserved, submit}
+	replayStore := cancellationReservationGate{stores.Idempotency, activeRootCancelKey, reserved, submit}
 	if err := startTestRuntimeWithReplayStore(t, host, api, stores, replayStore); err != nil {
 		t.Fatal(err)
 	}

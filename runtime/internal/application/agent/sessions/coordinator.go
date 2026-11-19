@@ -109,7 +109,7 @@ type WriteSets interface {
 	ApplyDelete(ctx context.Context, plan DeletePlan) error
 	// ApplyTerminal ends a parked run: it persists the terminal transcript
 	// projection, drops the open interrupt, and closes admission — atomically.
-	ApplyTerminal(ctx context.Context, plan TerminalPlan) error
+	ApplyTerminal(ctx context.Context, plan TerminalPlan, winningCancellationKey string) error
 }
 
 // SnapshotReader returns the canonical session aggregate from one storage

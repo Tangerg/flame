@@ -72,7 +72,7 @@ func (c *Coordinator) ApplyRunLost(ctx context.Context, sessionID, runID string,
 	if err != nil {
 		return err
 	}
-	_, err = c.terminalizePendingRun(ctx, sessionID, pending, finishedAt, rundomain.OutcomeLost, "", nil)
+	_, err = c.terminalizePendingRun(ctx, sessionID, pending, finishedAt, rundomain.OutcomeLost, "", runs.ParkedCancellationCompletion{})
 	return err
 }
 
@@ -117,15 +117,15 @@ func (c *Coordinator) terminalizePendingRun(
 	}
 	rootRun, _ := plan.RootRun()
 	write := func(ctx context.Context) (rundomain.Run, error) {
-		if err := c.writes.ApplyTerminal(ctx, plan); err != nil {
+		if err := c.writes.ApplyTerminal(ctx, plan, complete.Key); err != nil {
 			return rundomain.Run{}, err
 		}
 		return rootRun, nil
 	}
-	if complete == nil {
+	if complete.Commit == nil {
 		_, err = write(ctx)
 	} else {
-		err = complete(ctx, runs.ExecutorRef{SessionID: sessionID, ExecutorID: pending.ExecutorID}, write)
+		err = complete.Commit(ctx, runs.ExecutorRef{SessionID: sessionID, ExecutorID: pending.ExecutorID}, write)
 	}
 	if err != nil {
 		return rundomain.Run{}, err

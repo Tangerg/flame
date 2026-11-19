@@ -39,6 +39,7 @@ type childCancellation struct {
 	reason         string
 	root           rundomain.Run
 	executor       ExecutorRef
+	key            string
 	record         ChildCancellationReceipt
 	done           chan struct{}
 	err            error
@@ -55,8 +56,7 @@ func (c *childCancellation) finished() bool {
 
 func (r *runTreeOwner) beginChildCancellation(
 	plan cancellationPlan,
-	reason string,
-	record ChildCancellationReceipt,
+	cmd CancelCommand,
 ) (*childCancellation, error) {
 	if !plan.target.run.Lineage().IsChild() {
 		return nil, fmt.Errorf("runs: cancellation target %q is not a child Run", plan.target.run.ID())
@@ -78,10 +78,11 @@ func (r *runTreeOwner) beginChildCancellation(
 		targetRunID:    plan.target.run.ID(),
 		parentRunID:    plan.target.run.Lineage().ParentRunID(),
 		spawningItemID: plan.target.run.Lineage().SpawnedByItemID(),
-		reason:         reason,
+		reason:         cmd.Reason,
 		root:           plan.root.run,
 		executor:       plan.executor,
-		record:         record,
+		key:            cmd.Completion.Key,
+		record:         cmd.Completion.RecordActiveChild,
 		done:           make(chan struct{}),
 	}
 
@@ -106,6 +107,16 @@ func (r *runTreeOwner) beginChildCancellation(
 	}
 	r.childCancel = attempt
 	return attempt, nil
+}
+
+func (r *runTreeOwner) matchingChildCancellationKey(id CancellationID, runID string) string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	attempt := r.childCancel
+	if attempt == nil || attempt.record == nil || attempt.id != id || attempt.targetRunID != runID {
+		return ""
+	}
+	return attempt.key
 }
 
 func (r *runTreeOwner) rejectChildCancellation(attempt *childCancellation, err error) bool {

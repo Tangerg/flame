@@ -105,7 +105,8 @@ func (c *Cancellations) cancelKnownParkedRun(
 }
 
 func (c *Cancellations) cancelClaimedParkedRun(ctx context.Context, cmd CancelCommand, ref ExecutorRef) (CancelResult, error) {
-	terminal, err := c.terminations.ApplyRunCancel(ctx, ref, cmd.RunID, cmd.Reason, c.segments.publications.nowUTC(), cmd.Completion.CommitParked)
+	receipt := ParkedCancellationCompletion{Key: cmd.Completion.Key, Commit: cmd.Completion.CommitParked}
+	terminal, err := c.terminations.ApplyRunCancel(ctx, ref, cmd.RunID, cmd.Reason, c.segments.publications.nowUTC(), receipt)
 	if err != nil {
 		return CancelResult{}, err
 	}

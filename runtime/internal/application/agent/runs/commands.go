@@ -288,10 +288,11 @@ type CancelCommand struct {
 }
 
 type CancellationCompletion struct {
+	Key                string
 	Reserve            func(ctx context.Context, runID string) error
 	RecordRefusal      func(context.Context, error) error
-	CommitParked       ParkedCancellationCompletion
-	RecordWaitingChild WaitingSubtreeCancellationReceipt
+	CommitParked       func(context.Context, ExecutorRef, func(context.Context) (run.Run, error)) error
+	RecordWaitingChild func(context.Context, ExecutorRef, WaitingSubtreeCancellationResult) error
 	RecordActiveRoot   RootCancellationReceipt
 	RecordActiveChild  ChildCancellationReceipt
 }
@@ -302,7 +303,10 @@ type ChildCancellationReceipt func(context.Context, ExecutorRef, CancelResult) e
 
 // ParkedCancellationCompletion joins the terminal Run write to the receipt's
 // retained executor reference before either can be observed as committed.
-type ParkedCancellationCompletion func(context.Context, ExecutorRef, func(context.Context) (run.Run, error)) error
+type ParkedCancellationCompletion struct {
+	Key    string
+	Commit func(context.Context, ExecutorRef, func(context.Context) (run.Run, error)) error
+}
 
 const (
 	defaultCancelReason = "user canceled the run"

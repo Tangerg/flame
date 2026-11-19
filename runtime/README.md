@@ -1831,13 +1831,12 @@ joins the Scope writer before acknowledging teardown.
 The same key can finish cleanup and publish the original response after process
 loss or a cleanup failure.
 
-When a Run ends with a known outcome other than cancellation, its terminal
-transaction also settles linked cancellation reservations as `run_finished`.
-A Run marked lost settles those reservations as unconfirmed. The same
-transaction preserves any staged result. A reservation that reaches storage
-after the Run finished records `run_finished` before a control can be issued.
-A committed Scope Control records admission, and a committed Exit proves
-termination.
+A Run's terminal transaction settles linked cancellation reservations as
+`run_finished` and preserves the exact winning cancellation key and any staged
+result. A Run marked lost settles its linked reservations as unconfirmed.
+A reservation that reaches storage after the Run finished records
+`run_finished` before a control can be issued. A committed Scope Control records
+admission, and a committed Exit proves termination.
 
 A live child cancellation retains the request through the Scope control
 acknowledgement and the settlement of the original spawning Tool Item. The

@@ -41,7 +41,10 @@ type WaitingSubtreeCancellationCommitter interface {
 	) (WaitingSubtreeCancellationResult, error)
 }
 
-type WaitingSubtreeCancellationReceipt func(context.Context, ExecutorRef, WaitingSubtreeCancellationResult) error
+type WaitingSubtreeCancellationReceipt struct {
+	Key    string
+	Record func(context.Context, ExecutorRef, WaitingSubtreeCancellationResult) error
+}
 
 // WorkspaceChangeNotifier emits a best-effort live workspace invalidation after
 // the durable transcript projection has committed.

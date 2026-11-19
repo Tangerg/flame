@@ -217,10 +217,13 @@ type EventCommit struct {
 	RecordRootCancellation func(context.Context, run.Run) error
 	childCancellation      *childCancellationCommit
 	cancellation           CancellationID
+	winningCancellationKey string
 	// ObsoleteCheckpointRootID identifies the executor checkpoint aggregate the
 	// root Run terminal makes obsolete. Child terminal commits leave it empty.
 	ObsoleteCheckpointRootID string
 }
+
+func (e EventCommit) WinningCancellationKey() string { return e.winningCancellationKey }
 
 // clone returns an ownership-isolated copy of one complete event write-set.
 func (e EventCommit) clone() EventCommit {
@@ -478,6 +481,10 @@ func validateToolInvocationItem(invocation ToolInvocationCommit, item transcript
 }
 
 func (e EventCommit) validateLifecycle() error {
+	if e.winningCancellationKey != "" && (e.State != StateTerminalize || e.Run == nil ||
+		!e.Run.Canceled() || e.cancellation.IsZero()) {
+		return errors.New("runs: a winning cancellation key requires its confirmed terminal")
+	}
 	if e.RecordRootCancellation != nil && (e.State != StateTerminalize || e.Run == nil ||
 		!e.Run.Lineage().IsRoot() || !e.Run.Canceled()) {
 		return errors.New("runs: a root cancellation receipt requires its canceled terminal Run")

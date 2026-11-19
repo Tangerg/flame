@@ -214,11 +214,11 @@ type terminalCancellationRefusal struct{ error }
 
 func (e terminalCancellationRefusal) Unwrap() error { return e.error }
 
-// TerminalCancellationRefusal applies to linked cancellations that have not
-// already staged a receipt. A canceled Run can still owe a successful receipt.
+// TerminalCancellationRefusal applies to linked cancellations that have no
+// staged result and did not win the terminal transition.
 func TerminalCancellationRefusal(value rundomain.Run) error {
 	outcome, finished := value.Outcome()
-	if !finished || outcome == rundomain.OutcomeCanceled {
+	if !finished {
 		return nil
 	}
 	if outcome == rundomain.OutcomeLost {
@@ -228,10 +228,7 @@ func TerminalCancellationRefusal(value rundomain.Run) error {
 }
 
 func (t terminalRun) refuseCancellation() error {
-	if refusal := TerminalCancellationRefusal(t.run); refusal != nil {
-		return terminalCancellationRefusal{refusal}
-	}
-	return fmt.Errorf("%w: %q settled as %s", ErrRunFinished, t.run.ID(), rundomain.OutcomeCanceled)
+	return terminalCancellationRefusal{TerminalCancellationRefusal(t.run)}
 }
 
 func (c *Cancellations) cancelLiveChild(
@@ -253,7 +250,7 @@ func (c *Cancellations) settleLiveChildCancellation(
 	if err := owner.awaitActivation(ctx); err != nil {
 		return CancelResult{}, err
 	}
-	attempt, err := owner.beginChildCancellation(plan, cmd.Reason, cmd.Completion.RecordActiveChild)
+	attempt, err := owner.beginChildCancellation(plan, cmd)
 	if err != nil {
 		return CancelResult{}, err
 	}
@@ -364,8 +361,9 @@ func (c *Cancellations) cancelWaitingChild(
 	if err != nil {
 		return CancelResult{}, err
 	}
+	receipt := WaitingSubtreeCancellationReceipt{Key: cmd.Completion.Key, Record: cmd.Completion.RecordWaitingChild}
 	if transformation.remaining != nil {
-		return c.commitWaitingChildCancellation(cleanupCtx, plan, transformation, prepared, cmd.Completion.RecordWaitingChild)
+		return c.commitWaitingChildCancellation(cleanupCtx, plan, transformation, prepared, receipt)
 	}
 	return c.resumeAfterWaitingChildCancellation(
 		cleanupCtx,
@@ -374,7 +372,7 @@ func (c *Cancellations) cancelWaitingChild(
 		transformation,
 		prepared,
 		&runAdmission,
-		cmd.Completion.RecordWaitingChild,
+		receipt,
 	)
 }
 

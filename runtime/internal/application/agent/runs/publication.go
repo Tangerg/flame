@@ -213,7 +213,7 @@ func (t treePublisher) publishTerminalAtomically(
 	if combined.Run.Canceled() {
 		combined.cancellation = cancellation
 	}
-	t.bindRootCancellationReceipt(&combined)
+	t.bindTerminalCancellation(&combined)
 	t.owner.bindChildCancellationReceipt(&combined, nil)
 	if err := combined.Validate(); err != nil {
 		return reductionPublication{}, fmt.Errorf("runs: validate atomic terminal: %w", err)
@@ -241,14 +241,19 @@ func (t treePublisher) publishTerminalAtomically(
 	return reductionPublication{published: true, boundary: boundaryFinished}, nil
 }
 
-func (t treePublisher) bindRootCancellationReceipt(commit *EventCommit) {
-	if commit.cancellation.IsZero() || !commit.Run.Lineage().IsRoot() {
+func (t treePublisher) bindTerminalCancellation(commit *EventCommit) {
+	if commit.cancellation.IsZero() {
+		return
+	}
+	if commit.Run.Lineage().IsChild() {
+		commit.winningCancellationKey = t.owner.matchingChildCancellationKey(commit.cancellation, commit.RunID)
 		return
 	}
 	cancellation := t.owner.matchingRootCancellation(commit.cancellation)
 	if cancellation == nil || cancellation.record == nil {
 		return
 	}
+	commit.winningCancellationKey = cancellation.key
 	ref := t.rootSpec.executorRef()
 	commit.RecordRootCancellation = func(ctx context.Context, terminal run.Run) error {
 		return cancellation.record(ctx, ref, terminal)

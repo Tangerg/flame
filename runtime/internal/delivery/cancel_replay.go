@@ -44,6 +44,7 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 			return nil
 		}
 		result, err := s.cancelRun(ctx, in, runs.CancellationCompletion{
+			Key: key,
 			Reserve: func(ctx context.Context, runID string) error {
 				reserveErr = complete.ReserveForRun(ctx, runID)
 				return reserveErr

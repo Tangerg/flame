@@ -17,7 +17,7 @@ import (
 func (e *Effects) CommitWaitingSubtreeCancellation(
 	ctx context.Context,
 	commit runs.WaitingSubtreeCancellationCommit,
-	record runs.WaitingSubtreeCancellationReceipt,
+	receipt runs.WaitingSubtreeCancellationReceipt,
 ) (runs.WaitingSubtreeCancellationResult, error) {
 	var result runs.WaitingSubtreeCancellationResult
 	var projected bool
@@ -29,7 +29,7 @@ func (e *Effects) CommitWaitingSubtreeCancellation(
 		if err := e.persistWaitingCancellationProjection(ctx, commit); err != nil {
 			return err
 		}
-		terminalByID, err := e.terminalizeWaitingCancellationRuns(ctx, commit.TerminalRuns())
+		terminalByID, err := e.terminalizeWaitingCancellationRuns(ctx, commit.TerminalRuns(), commit.TargetRunID(), receipt.Key)
 		if err != nil {
 			return err
 		}
@@ -47,9 +47,9 @@ func (e *Effects) CommitWaitingSubtreeCancellation(
 			return err
 		}
 		result = runs.WaitingSubtreeCancellationResult{TargetRun: target, RootRun: root}
-		if record != nil {
+		if receipt.Record != nil {
 			ref := runs.ExecutorRef{SessionID: accepted.SessionID, ExecutorID: accepted.Pending.ExecutorID}
-			if err := record(ctx, ref, result); err != nil {
+			if err := receipt.Record(ctx, ref, result); err != nil {
 				return err
 			}
 		}
@@ -134,6 +134,7 @@ func (e *Effects) persistWaitingCancellationProjection(
 func (e *Effects) terminalizeWaitingCancellationRuns(
 	ctx context.Context,
 	planned []run.Replacement,
+	targetRunID, winningCancellationKey string,
 ) (map[string]run.Run, error) {
 	terminalByID := make(map[string]run.Run, len(planned))
 	for _, replacement := range planned {
@@ -146,7 +147,11 @@ func (e *Effects) terminalizeWaitingCancellationRuns(
 		if err != nil {
 			return nil, fmt.Errorf("segment: finalize canceled Run %q: %w", runID, err)
 		}
-		if err := e.runState.Terminalize(ctx, finalReplacement); err != nil {
+		key := ""
+		if runID == targetRunID {
+			key = winningCancellationKey
+		}
+		if err := e.runState.Terminalize(ctx, finalReplacement, key); err != nil {
 			return nil, fmt.Errorf("segment: terminalize canceled Run %q: %w", runID, err)
 		}
 		terminalByID[runID] = finalReplacement.State()

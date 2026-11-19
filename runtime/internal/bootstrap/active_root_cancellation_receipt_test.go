@@ -21,11 +21,42 @@ const (
 	activeRootCancelCutEnv = "FLAME_TEST_ACTIVE_ROOT_CANCEL_RECEIPT"
 	activeRootCancelKey    = "original-active-root-cancellation"
 	activeRootCancelReason = "Cancel the active root at its prior Scope control"
+	competingCancelKey     = "competing-cancellation-before-arbitration"
 )
 
 type activeRootCancelCrashStore struct {
 	operation.ReplayStore
 	path string
+}
+
+func reserveCompetingCancellation(t *testing.T, ctx context.Context, endpoint *delivery.Endpoint, request protocol.CancelRunRequest, options protocol.CallMetadata, reserved <-chan struct{}) <-chan protocol.OperationResult {
+	t.Helper()
+	options.IdempotencyKey = competingCancelKey
+	done := make(chan protocol.OperationResult, 1)
+	go func() { done <- endpoint.Invoke(ctx, delivery.RunsCancel, request, options) }()
+	waitForSignal(t, reserved, "the competing cancellation's durable key reservation")
+	return done
+}
+
+func waitForCompetingCancellationRefusal(t *testing.T, done <-chan protocol.OperationResult) {
+	t.Helper()
+	select {
+	case reply := <-done:
+		if !errors.Is(reply.Failure, protocol.ErrRunFinished) {
+			t.Fatalf("the competing cancellation returned a different refusal: %+v", reply)
+		}
+	case <-time.After(lifecycleWaitBudget(t)):
+		t.Fatal("the competing cancellation did not return its committed refusal")
+	}
+}
+
+func assertCompetingCancellationRefused(t *testing.T, ctx context.Context, endpoint *delivery.Endpoint, request protocol.CancelRunRequest, options protocol.CallMetadata) {
+	t.Helper()
+	options.IdempotencyKey = competingCancelKey
+	reply := endpoint.Invoke(ctx, delivery.RunsCancel, request, options)
+	if !errors.Is(reply.Failure, protocol.ErrRunFinished) {
+		t.Fatalf("the competing cancellation's refusal was lost: %+v", reply)
+	}
 }
 
 func (s activeRootCancelCrashStore) Complete(ctx context.Context, record operation.ReplayRecord) (operation.ReplayRecord, error) {
@@ -54,15 +85,20 @@ func TestActiveRootCancelReceiptCrashHelper(t *testing.T) {
 	defer host.Close()
 	ctx := protocolLifecycleContext(t.Context())
 	request := startCancelableActiveRoot(t, ctx, api, model, home)
+	reserved, proceed := make(chan struct{}), make(chan struct{})
+	defer close(proceed)
+	gate := cancellationReservationGate{stores.Idempotency, competingCancelKey, reserved, proceed}
 	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{
 		Lifetime: t.Context(), IdempotencyNamespace: stores.IdempotencyNamespace.String(),
-		IdempotencyStore: activeRootCancelCrashStore{ReplayStore: stores.Idempotency, path: path},
+		IdempotencyStore: activeRootCancelCrashStore{ReplayStore: gate, path: path},
 		ValidateStorage:  stores.ValidateDirectory,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := endpoint.Invoke(ctx, delivery.RunsCancel, request, protocol.CallMetadata{IdempotencyKey: activeRootCancelKey})
+	options := protocol.CallMetadata{IdempotencyKey: activeRootCancelKey}
+	reserveCompetingCancellation(t, ctx, endpoint, request, options, reserved)
+	result := endpoint.Invoke(ctx, delivery.RunsCancel, request, options)
 	t.Fatalf("the active root did not reach the receipt cut: %+v", result.Failure)
 }
 
@@ -93,8 +129,12 @@ func TestActiveRootCancellationRecoversItsOriginalReceipt(t *testing.T) {
 		original.Run.Outcome.Type != protocol.OutcomeCanceled || original.Run.Outcome.Detail != activeRootCancelReason {
 		t.Fatalf("the original live Run was not confirmed canceled: %s", data)
 	}
-	if !hasConfirmedScopeRootCancellation(readWaitingChildScopeLog(t, home)) {
+	history := readWaitingChildScopeLog(t, home)
+	if !hasConfirmedScopeRootCancellation(history) {
 		t.Fatal("the original canceled Run was published without its confirmed Scope Exit")
+	}
+	if controls := waitingChildHostControls(history, history.Root.String()); controls != 1 {
+		t.Fatalf("the canceled root has %d host controls, want one", controls)
 	}
 
 	host, api := openProtocolRuntime(t, newReplyStub("the original Run already finished"))
@@ -115,6 +155,7 @@ func TestActiveRootCancellationRecoversItsOriginalReceipt(t *testing.T) {
 
 	request := protocol.CancelRunRequest{RunID: original.Run.ID, Reason: activeRootCancelReason}
 	options := protocol.CallMetadata{IdempotencyKey: activeRootCancelKey}
+	assertCompetingCancellationRefused(t, ctx, host.Endpoint(), request, options)
 	for range 2 {
 		replayed, err := host.Endpoint().Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](ctx, delivery.RunsCancel, request, options)
 		if err != nil {

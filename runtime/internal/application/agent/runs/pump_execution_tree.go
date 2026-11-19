@@ -156,10 +156,10 @@ func (s *segmentPump) stageTreeFacts(facts []ExecutorEvent, startedRoutes map[st
 					return nil, errors.New("runs: root terminal precedes child terminals")
 				}
 				eventCommit.ObsoleteCheckpointRootID = commit.Update.Head.RootID
-				s.publisher.bindRootCancellationReceipt(&eventCommit)
 			} else {
 				unfinishedChildren--
 			}
+			s.publisher.bindTerminalCancellation(&eventCommit)
 		}
 		s.owner.bindChildCancellationReceipt(&eventCommit, commit.Events)
 		commit.Events = append(commit.Events, eventCommit)

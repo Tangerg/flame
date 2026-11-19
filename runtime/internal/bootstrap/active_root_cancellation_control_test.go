@@ -127,9 +127,12 @@ func TestLiveRootCancellationJoinsAnInFlightPark(t *testing.T) {
 	model := newLifecycleModel()
 	host, api, stores := openProtocolRuntimeWithStores(t, model)
 	reserved, continueCancellation := make(chan struct{}), make(chan struct{})
+	competingReserved, continueCompeting := make(chan struct{}), make(chan struct{})
+	releaseCompeting := sync.OnceFunc(func() { close(continueCompeting) })
 	releaseCancellation := sync.OnceFunc(func() { close(continueCancellation) })
 	defer func() {
 		releaseCancellation()
+		releaseCompeting()
 		releasePark()
 		if err := host.Close(); err != nil {
 			t.Error(err)
@@ -138,15 +141,17 @@ func TestLiveRootCancellationJoinsAnInFlightPark(t *testing.T) {
 	ctx := protocolLifecycleContext(t.Context())
 	request := startCancelableActiveRoot(t, ctx, api, model, home)
 	installParkCommitGate(t, home)
+	competing := cancellationReservationGate{stores.Idempotency, competingCancelKey, competingReserved, continueCompeting}
 	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{
 		Lifetime: t.Context(), IdempotencyNamespace: stores.IdempotencyNamespace.String(),
-		IdempotencyStore: cancellationReservationGate{stores.Idempotency, reserved, continueCancellation},
+		IdempotencyStore: cancellationReservationGate{competing, activeRootCancelKey, reserved, continueCancellation},
 		ValidateStorage:  stores.ValidateDirectory,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	key := protocol.CallMetadata{IdempotencyKey: activeRootCancelKey}
+	competitor := reserveCompetingCancellation(t, ctx, endpoint, request, key, competingReserved)
 	result := make(chan protocol.OperationResult, 1)
 	go func() {
 		result <- endpoint.Invoke(ctx, delivery.RunsCancel, request, key)
@@ -164,8 +169,10 @@ func TestLiveRootCancellationJoinsAnInFlightPark(t *testing.T) {
 		t.Fatal("the cancellation did not stop waiting for the original interrupt")
 	}
 
-	releasePark()
-	waitForProtocolRunTerminal(t, ctx, api, request.RunID)
+	waitForRunOutcomeAfter(t, ctx, api, request.RunID, protocol.OutcomeCanceled, releasePark)
+	assertCompetingCancellationRefused(t, ctx, host.Endpoint(), request, key)
+	releaseCompeting()
+	waitForCompetingCancellationRefusal(t, competitor)
 	reply, err := endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](ctx, delivery.RunsCancel, request, key)
 	if err != nil {
 		t.Fatalf("the live request lost its parked cancellation receipt: %v", err)
@@ -182,13 +189,14 @@ func TestLiveRootCancellationJoinsAnInFlightPark(t *testing.T) {
 
 type cancellationReservationGate struct {
 	operation.ReplayStore
+	key      string
 	reserved chan<- struct{}
 	proceed  <-chan struct{}
 }
 
 func (g cancellationReservationGate) Claim(ctx context.Context, claim operation.ReplayClaim) (operation.ReplayRecord, bool, error) {
 	record, claimed, err := g.ReplayStore.Claim(ctx, claim)
-	if err == nil && claimed {
+	if err == nil && claimed && claim.Key == g.key {
 		close(g.reserved)
 		<-g.proceed
 	}

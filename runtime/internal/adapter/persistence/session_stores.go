@@ -497,7 +497,7 @@ func (s *SessionStores) clearSessionOwnedStateExceptPlan(ctx context.Context, se
 
 // ApplyTerminal persists the terminal record for an abandoned parked run and
 // clears its executor checkpoint atomically.
-func (s *SessionStores) ApplyTerminal(ctx context.Context, terminal sessions.TerminalPlan) error {
+func (s *SessionStores) ApplyTerminal(ctx context.Context, terminal sessions.TerminalPlan, winningCancellationKey string) error {
 	root, _ := terminal.RootRun()
 	items := terminal.Items()
 	messages := terminal.Messages()
@@ -520,7 +520,7 @@ func (s *SessionStores) ApplyTerminal(ctx context.Context, terminal sessions.Ter
 		); err != nil {
 			return err
 		}
-		if err := s.terminalizeParkedRuns(ctx, runs); err != nil {
+		if err := s.terminalizeParkedRuns(ctx, runs, root.ID(), winningCancellationKey); err != nil {
 			return err
 		}
 		return s.recordGoalTerminalRun(ctx, root)
@@ -570,7 +570,7 @@ func (s *SessionStores) deleteChildRunStarts(ctx context.Context, sessionID stri
 	return nil
 }
 
-func (s *SessionStores) terminalizeParkedRuns(ctx context.Context, runs []rundomain.Replacement) error {
+func (s *SessionStores) terminalizeParkedRuns(ctx context.Context, runs []rundomain.Replacement, rootRunID, winningCancellationKey string) error {
 	for _, replacement := range runs {
 		run := replacement.State()
 		outcome, terminal := run.Outcome()
@@ -579,7 +579,11 @@ func (s *SessionStores) terminalizeParkedRuns(ctx context.Context, runs []rundom
 		}
 		switch outcome {
 		case rundomain.OutcomeCanceled:
-			if err := s.runs.Terminalize(ctx, replacement); err != nil {
+			key := ""
+			if run.ID() == rootRunID {
+				key = winningCancellationKey
+			}
+			if err := s.runs.Terminalize(ctx, replacement, key); err != nil {
 				return err
 			}
 		case rundomain.OutcomeLost:

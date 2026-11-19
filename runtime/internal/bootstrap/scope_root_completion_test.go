@@ -115,7 +115,7 @@ func TestScopeRootCompletionCrashHelper(t *testing.T) {
 	defer releaseSubmit()
 	switch cut {
 	case rootCompletionCancel:
-		replayStore = cancellationReservationGate{stores.Idempotency, reserved, submit}
+		replayStore = cancellationReservationGate{stores.Idempotency, activeRootCancelKey, reserved, submit}
 	case rootCompletionLateClaim:
 		replayStore = crashAfterLateCancellationClaim{stores.Idempotency, reserved, submit}
 	}

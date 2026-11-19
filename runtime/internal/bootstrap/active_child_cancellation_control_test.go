@@ -77,7 +77,7 @@ func TestActiveChildCancellationRetainsItsOriginalControlOwner(t *testing.T) {
 	case <-time.After(lifecycleWaitBudget(t)):
 		t.Fatal("the competing request did not reach the child cancellation boundary")
 	}
-	waitForChildCancellationParent(t, ctx, api, child.RootRunID, releaseModel)
+	waitForRunOutcomeAfter(t, ctx, api, child.RootRunID, protocol.OutcomeCompleted, releaseModel)
 	if controls := childHostCancelControls(readWaitingChildScopeLog(t, home)); controls != 1 {
 		t.Errorf("the child has %d durable cancellation controls, want one", controls)
 	}
@@ -136,8 +136,11 @@ func TestLiveChildCancellationJoinsAnInFlightPark(t *testing.T) {
 		}
 	})
 	host, api, stores := openProtocolRuntimeWithStores(t, model)
+	competingReserved, continueCompeting := make(chan struct{}), make(chan struct{})
+	releaseCompeting := sync.OnceFunc(func() { close(continueCompeting) })
 	defer func() {
 		releaseCancellation()
+		releaseCompeting()
 		releasePark()
 		releaseQuestion()
 		if err := host.Close(); err != nil {
@@ -148,9 +151,10 @@ func TestLiveChildCancellationJoinsAnInFlightPark(t *testing.T) {
 	ctx := delivery.WithRequestMeta(t.Context(), meta)
 	child := startCancelableActiveChild(t, ctx, api, modelStarted, home)
 	installParkCommitGate(t, home)
+	competing := cancellationReservationGate{stores.Idempotency, competingCancelKey, competingReserved, continueCompeting}
 	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{
 		Lifetime: t.Context(), IdempotencyNamespace: stores.IdempotencyNamespace.String(),
-		IdempotencyStore: cancellationReservationGate{stores.Idempotency, reserved, proceed},
+		IdempotencyStore: cancellationReservationGate{competing, activeChildCancelKey, reserved, proceed},
 		ValidateStorage:  stores.ValidateDirectory,
 	})
 	if err != nil {
@@ -158,6 +162,7 @@ func TestLiveChildCancellationJoinsAnInFlightPark(t *testing.T) {
 	}
 	request := protocol.CancelRunRequest{RunID: child.ID, Reason: activeChildCancelReason}
 	key := protocol.CallMetadata{RequestMeta: meta, IdempotencyKey: activeChildCancelKey}
+	competitor := reserveCompetingCancellation(t, ctx, endpoint, request, key, competingReserved)
 	result := make(chan protocol.OperationResult, 1)
 	go func() { result <- endpoint.Invoke(ctx, delivery.RunsCancel, request, key) }()
 	waitForSignal(t, reserved, "the original child cancellation reservation")
@@ -173,7 +178,10 @@ func TestLiveChildCancellationJoinsAnInFlightPark(t *testing.T) {
 		t.Fatal("the original request did not stop waiting for the park transaction")
 	}
 
-	waitForChildCancellationParent(t, ctx, api, child.RootRunID, releasePark)
+	waitForRunOutcomeAfter(t, ctx, api, child.RootRunID, protocol.OutcomeCompleted, releasePark)
+	assertCompetingCancellationRefused(t, ctx, host.Endpoint(), request, key)
+	releaseCompeting()
+	waitForCompetingCancellationRefusal(t, competitor)
 	reply, err := endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](ctx, delivery.RunsCancel, request, key)
 	if err != nil {
 		t.Fatalf("the original live request lost its parked child receipt: %v", err)
@@ -187,7 +195,7 @@ func TestLiveChildCancellationJoinsAnInFlightPark(t *testing.T) {
 	}
 }
 
-func waitForChildCancellationParent(t *testing.T, ctx context.Context, api *delivery.Handler, runID string, release func()) {
+func waitForRunOutcomeAfter(t *testing.T, ctx context.Context, api *delivery.Handler, runID string, outcome protocol.RunOutcomeType, release func()) {
 	t.Helper()
 	watching, cancel := context.WithTimeout(ctx, lifecycleWaitBudget(t))
 	defer cancel()
@@ -211,14 +219,14 @@ func waitForChildCancellationParent(t *testing.T, ctx context.Context, api *deli
 			t.Fatal(err)
 		}
 		if root.Status == protocol.RunStatusFinished {
-			if root.Outcome == nil || root.Outcome.Type != protocol.OutcomeCompleted {
-				t.Fatalf("the parent did not continue from the canceled child: %+v", root)
+			if root.Outcome == nil || root.Outcome.Type != outcome {
+				t.Fatalf("Run did not finish as %s: %+v", outcome, root)
 			}
 			return
 		}
 	}
 	root, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: runID})
-	t.Fatalf("the parent's terminal notification was not observed: %v, Run = %+v, read = %v", watching.Err(), root, err)
+	t.Fatalf("the Run's terminal notification was not observed: %v, Run = %+v, read = %v", watching.Err(), root, err)
 }
 
 func childHostCancelControls(history scoperun.Log) int {

@@ -12,6 +12,7 @@ import (
 type rootCancellation struct {
 	id     CancellationID
 	reason string
+	key    string
 	record RootCancellationReceipt
 }
 
@@ -40,7 +41,7 @@ type rootCancellationClaim struct {
 
 func (c *Cancellations) cancelLiveRoot(cmd CancelCommand, plan cancellationPlan, owner *runTreeOwner) (CancelResult, error) {
 	intent := &rootCancellation{
-		id: newCancellationID(), reason: cmd.Reason, record: cmd.Completion.RecordActiveRoot,
+		id: newCancellationID(), reason: cmd.Reason, key: cmd.Completion.Key, record: cmd.Completion.RecordActiveRoot,
 	}
 	return c.awaitLiveCancellation(owner, cmd.Completion, func(ctx context.Context) (CancelResult, error) {
 		return c.settleLiveRootCancellation(ctx, cmd, plan, owner, intent)

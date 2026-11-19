@@ -95,17 +95,21 @@ func TestActiveChildCancelReceiptCrashHelper(t *testing.T) {
 	meta := waitingChildCancellationMeta()
 	ctx := delivery.WithRequestMeta(t.Context(), meta)
 	child := startCancelableActiveChild(t, ctx, api, entered, home)
+	reserved, proceed := make(chan struct{}), make(chan struct{})
+	defer close(proceed)
+	gate := cancellationReservationGate{stores.Idempotency, competingCancelKey, reserved, proceed}
 	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{
 		Lifetime: t.Context(), IdempotencyNamespace: stores.IdempotencyNamespace.String(),
-		IdempotencyStore: activeChildCancelCrashStore{ReplayStore: stores.Idempotency, path: path},
+		IdempotencyStore: activeChildCancelCrashStore{ReplayStore: gate, path: path},
 		ValidateStorage:  stores.ValidateDirectory,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	request := protocol.CancelRunRequest{RunID: child.ID, Reason: activeChildCancelReason}
-	reply := endpoint.Invoke(ctx, delivery.RunsCancel, request,
-		protocol.CallMetadata{RequestMeta: meta, IdempotencyKey: activeChildCancelKey})
+	options := protocol.CallMetadata{RequestMeta: meta, IdempotencyKey: activeChildCancelKey}
+	reserveCompetingCancellation(t, ctx, endpoint, request, options, reserved)
+	reply := endpoint.Invoke(ctx, delivery.RunsCancel, request, options)
 	t.Fatalf("the active child did not reach the receipt cut: %+v", reply.Failure)
 }
 
@@ -139,7 +143,8 @@ func startCancelableActiveChild(t *testing.T, ctx context.Context, api *delivery
 }
 
 func TestActiveChildCancellationRecoversItsOriginalReceipt(t *testing.T) {
-	t.Setenv("FLAME_HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("FLAME_HOME", home)
 	path := filepath.Join(t.TempDir(), "original-active-child-cancel.json")
 	crashCtx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
@@ -165,6 +170,9 @@ func TestActiveChildCancellationRecoversItsOriginalReceipt(t *testing.T) {
 		want.Run.Outcome.Detail != activeChildCancelReason {
 		t.Fatalf("the original result was not a confirmed child cancellation: %s", data)
 	}
+	if controls := childHostCancelControls(readWaitingChildScopeLog(t, home)); controls != 1 {
+		t.Fatalf("the canceled child has %d host controls, want one", controls)
+	}
 	host, api := openProtocolRuntime(t, newReplyStub("never re-run the old child"))
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {
@@ -187,6 +195,7 @@ func TestActiveChildCancellationRecoversItsOriginalReceipt(t *testing.T) {
 	request := protocol.CancelRunRequest{RunID: want.Run.ID, Reason: activeChildCancelReason}
 	options := protocol.CallMetadata{RequestMeta: meta, IdempotencyKey: activeChildCancelKey}
 	endpoint := host.Endpoint()
+	assertCompetingCancellationRefused(t, ctx, endpoint, request, options)
 	limited := protocol.CallMetadata{IdempotencyKey: activeChildCancelKey}
 	if reply := endpoint.Invoke(ctx, delivery.RunsCancel, request, limited); reply.Failure == nil || !errors.Is(reply.Failure, protocol.ErrCapabilityNotNeg) {
 		t.Fatalf("pending child receipt replay bypassed capability negotiation: %+v", reply)

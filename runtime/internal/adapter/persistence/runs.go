@@ -337,14 +337,14 @@ func (r *RunStore) UpdateProgress(ctx context.Context, progressed rundomain.Run)
 
 // Terminalize ends the exact non-terminal Run snapshot that replacement names,
 // recording the outcome the application reached and the result that explains it.
-func (r *RunStore) Terminalize(ctx context.Context, replacement rundomain.Replacement) error {
-	return r.replace(ctx, "terminalize", replacement)
+func (r *RunStore) Terminalize(ctx context.Context, replacement rundomain.Replacement, winningCancellationKey string) error {
+	return r.replace(ctx, "terminalize", replacement, winningCancellationKey)
 }
 
 // TerminalizeEvent ends one exact active Segment and stamps the immutable
 // Application EventCommit write-set identity into the Run row. The stamp shares
 // the caller's transaction with every projection in that EventCommit.
-func (r *RunStore) TerminalizeEvent(ctx context.Context, value rundomain.Run, segmentID string, commitID runs.CommitID) error {
+func (r *RunStore) TerminalizeEvent(ctx context.Context, value rundomain.Run, segmentID string, commitID runs.CommitID, winningCancellationKey string) error {
 	marker, err := newRunCommitMarker(value.SessionID(), value.ID(), segmentID, commitID)
 	if err != nil {
 		return err
@@ -353,7 +353,7 @@ func (r *RunStore) TerminalizeEvent(ctx context.Context, value rundomain.Run, se
 		if err := r.requireAdvance(ctx, "terminalize", value); err != nil {
 			return err
 		}
-		return r.finish(ctx, "terminalize", value, marker, `state = ? AND active_segment_id = ?`, string(rundomain.Running), segmentID)
+		return r.finish(ctx, "terminalize", value, marker, winningCancellationKey, `state = ? AND active_segment_id = ?`, string(rundomain.Running), segmentID)
 	})
 }
 
@@ -395,13 +395,13 @@ func (r *RunStore) RebaseMessageMark(ctx context.Context, change rundomain.Repla
 // from either Running or Waiting, because it describes a Run nobody is driving
 // rather than one the executor finished.
 func (r *RunStore) RecoverLost(ctx context.Context, replacement rundomain.Replacement) error {
-	return r.replace(ctx, "recover lost", replacement)
+	return r.replace(ctx, "recover lost", replacement, "")
 }
 
 // replace writes a Replacement's decided terminal state. Its legality was
 // settled when the Replacement was derived; the write fences the exact
 // aggregate it was derived from.
-func (r *RunStore) replace(ctx context.Context, op string, replacement rundomain.Replacement) error {
+func (r *RunStore) replace(ctx context.Context, op string, replacement rundomain.Replacement, winningCancellationKey string) error {
 	if err := replacement.Validate(); err != nil {
 		return fmt.Errorf("sqlite: %s run: %w", op, err)
 	}
@@ -410,7 +410,7 @@ func (r *RunStore) replace(ctx context.Context, op string, replacement rundomain
 		if err := r.requireExpected(ctx, op, expected); err != nil {
 			return err
 		}
-		return r.finish(ctx, op, replacement.State(), nil, `state = ? AND active_segment_id = ? AND updated_at = ?`, string(expected.State()), expected.ActiveSegmentID(), expected.UpdatedAt().UTC().UnixNano())
+		return r.finish(ctx, op, replacement.State(), nil, winningCancellationKey, `state = ? AND active_segment_id = ? AND updated_at = ?`, string(expected.State()), expected.ActiveSegmentID(), expected.UpdatedAt().UTC().UnixNano())
 	})
 }
 
@@ -462,7 +462,10 @@ func (r *RunStore) requireAdvance(ctx context.Context, operation string, state r
 // without a recorded boundary" holds by construction. A child ends inside its
 // root's tree, which is never cut before the root ends. Restored Runs already
 // finished, so they cannot capture a new boundary from their destination Plan.
-func (r *RunStore) finish(ctx context.Context, op string, value rundomain.Run, marker *runCommitMarker, fence string, fenceArgs ...any) error {
+func (r *RunStore) finish(ctx context.Context, op string, value rundomain.Run, marker *runCommitMarker, winningCancellationKey string, fence string, fenceArgs ...any) error {
+	if winningCancellationKey != "" && !value.Canceled() {
+		return errors.New("sqlite: a winning cancellation key requires a canceled Run")
+	}
 	metrics, err := runMetricsRow(value.Metrics())
 	if err != nil {
 		return fmt.Errorf("sqlite: %s run %q: %w", op, value.ID(), err)
@@ -496,7 +499,7 @@ func (r *RunStore) finish(ctx context.Context, op string, value rundomain.Run, m
 		if n == 0 {
 			return fmt.Errorf("sqlite: %s run %q: Run changed after the application prepared its terminal state", op, value.ID())
 		}
-		if err := newIdempotencyStore(r.db).settleRunCancellationRefusals(ctx, value); err != nil {
+		if err := newIdempotencyStore(r.db).settleRunCancellationRefusals(ctx, value, winningCancellationKey); err != nil {
 			return err
 		}
 		if value.Lineage().IsChild() {

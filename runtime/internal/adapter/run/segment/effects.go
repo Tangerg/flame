@@ -119,10 +119,10 @@ type runWriter interface {
 	Resume(ctx context.Context, replacement run.Replacement) error
 	RequireActiveSegment(ctx context.Context, sessionID, runID, segmentID string) error
 	Suspend(ctx context.Context, run run.Run, segmentID string, commitID runs.CommitID) error
-	Terminalize(ctx context.Context, replacement run.Replacement) error
+	Terminalize(ctx context.Context, replacement run.Replacement, winningCancellationKey string) error
 	RecordRunCommit(ctx context.Context, sessionID, runID, segmentID string, commitID runs.CommitID) error
 	RecordWaitingRunCommit(ctx context.Context, sessionID, runID string, commitID runs.CommitID) error
-	TerminalizeEvent(ctx context.Context, run run.Run, segmentID string, commitID runs.CommitID) error
+	TerminalizeEvent(ctx context.Context, run run.Run, segmentID string, commitID runs.CommitID, winningCancellationKey string) error
 }
 
 // RunStore combines lifecycle writes with the exact durable reads required to
