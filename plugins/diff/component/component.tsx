@@ -287,10 +287,9 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       pending.query &&
       accepted?.query !== pending.query
     ) {
-      // The unavailable overview cannot focus its filter. Keep Refresh as
-      // the pending origin so successful reads can still continue to the list.
+      // Refresh keeps focus while the requested overview is pending, even
+      // when an earlier scoped result still provides visible rows.
       if (
-        !accepted &&
         active === document.body &&
         pending.active?.isConnected === false &&
         refreshButton.current

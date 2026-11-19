@@ -41347,6 +41347,61 @@ Library directories, ten checkout outputs and the scratch tree.
 Continue in another complete content-to-Dock journey, using
 native evidence to choose the next reading or return defect.
 
+### Keeping focus while Diff expands to the workspace (2026-11-19)
+
+In the native baseline, pressing Enter on Show changed files
+from the single-file DockResizer reader retired the focused
+toolbar button. The overview retained the accepted single-file
+scope and row while the workspace request waited. WebKit focused
+the HTML document, and the next Tab went to Comparison.
+
+Workspace Diff hands focus to its existing Refresh control when
+a focused scope action disconnects during the pending workspace
+read. The previous scoped result can remain visible. Refresh
+becomes the pending focus origin in the existing return path.
+An accepted result for that exact query restores the original
+row or filter if the return still owns focus. The change follows
+the focus persistence guidance in better-accessibility and the
+[WAI-ARIA Authoring Practices Guide](https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/#discernible-and-predictable-keyboard-focus).
+
+- EN/light/14 px/Flame Orange. A held worktree overview shows
+  the old Single file scope and one row. Its pending Refresh
+  has a visible focus ring. Enter and Space leave the original
+  request held. Releasing it shows four Workspace rows and
+  focuses DockResizer. Enter opens the original file and
+  Escape returns to its row. The Composer accepts `691274`.
+- ZH/dark/18 px/`#3B82F6`. Native Window Left and separator End
+  give a 1121 px window and 320 px Dock at scale 1. A failed
+  workspace read keeps the scoped list and focused Refresh.
+  Shift+Tab and Enter activate the existing Files retry.
+  The user returns to the Composer during the hold. Acceptance
+  keeps its focus and the draft continues as `692481`. The
+  renamed row still exposes the previous path, and Escape
+  returns keyboard focus to that row.
+- The canonical English Lab opens 24 files from the
+  conversation's review action. Native wheel scrolling leaves
+  the scope and filter visible. Query `013`, the single-file
+  reader, Escape and Back to conversation restore the filtered
+  row and the originating conversation action. The prior draft
+  continues as `693158`.
+
+Scoped formatting, plugin typechecking, 20 plugin catalogs across
+eight locales, generated component ESM, all 137 Web tests, 940
+Web keys across eight locales, bootstrap, 26 bundle contracts,
+module linkage, the native build and five canonical Lab
+documents pass on `2f8b5b08a`. The signed builds use actual Wails
+and the packaged Diff component over the Lab transport. The
+private gate held or rejected the existing workspace projection
+only. The canonical Lab excludes the gate. No live Git worktree,
+other platform, or VoiceOver speech was exercised. Unrelated
+plugin backend suites were outside the scoped check.
+
+Six private launches and three loopback previews were closed.
+Cleanup removed six registrations, twelve private Library
+directories, ten checkout outputs and the scratch tree.
+Continue from content into Dock detail, using native evidence
+to select the next interruption or return problem.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad
