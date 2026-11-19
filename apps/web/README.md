@@ -221,6 +221,9 @@ user message if its fold clips or fades the match. Matches in the clear preview
 leave the message folded. Hidden and inert disclosure content is excluded
 regardless of its mounting history. Closing a disclosure updates the count and
 retires its ranges. Search preserves the keyboard focus and disclosure owners.
+In prose, a run of collapsible spaces or tabs matches one space across inline
+formatting. Code and preserved whitespace match literally. Explicit breaks and
+block boundaries still split phrases.
 Closing Find restores the original Composer's last editing selection when its
 mounted document is still current. The Composer owns that return through
 Lexical, and the search bar retains its ordinary return for other controls.

@@ -24038,6 +24038,57 @@ placeholder describes expanded messages. Review that wording
 and whether Find matches text across visible Markdown soft
 breaks next.
 
+### Match the spaces readers see in conversation Find (2026-11-20)
+
+In signed English Wails on `3eb586c9`, four source spaces
+before the bold `handoff` display as one. `review handoff`
+returns `0 / 0`, while `handoff` returns `1 / 1`. The
+source newline in the neighboring Markdown example is a
+rendered break, created by the existing remark-breaks
+plugin. Across that line and an explicit hard break,
+two-word searches each return zero.
+
+`messageRanges.ts` projects runs of spaces and tabs to
+one space inside collapsible prose flows. The projection
+extends across inline formatting and retains adjustments
+to recover the complete original DOM range. Code and
+preserved-whitespace displays use literal text. Rendered
+line and block boundaries separate phrases. All eight
+catalogs describe the search as message text, including
+the folded user text Find can now reveal.
+[CSS white-space processing](https://www.w3.org/TR/css-text-3/#white-space-processing).
+
+- EN/light/14 px/Flame Orange at 1121 × 950 with a 560.5 px
+  Dock. Search message text is the placeholder.
+  `review handoff` gives `1 / 1`, with the entire phrase
+  highlighted across the bold boundary. Its native range
+  retains all 17 source characters, including the four
+  spaces. The two rendered breaks and the separate
+  paragraphs each give `0 / 0`. Escape returns to the
+  original Composer and `9636` continues as `9636518`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. The Find
+  placeholder is 搜索消息内容. The disclosed captured
+  compaction summary keeps its literal spacing. Searching
+  `Literal bridge` gives `0 / 0`, and the four-space query
+  gives `1 / 1` with the original 17-character range in the
+  viewport. Closing the disclosure retires that highlight.
+  Escape from Find returns to the same Composer, and
+  `9642` continues as `9642638`.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, the complete plugin check,
+macOS build and native tests, and five canonical Lab
+documents pass. Native cases use captured messages and
+compaction. Live compaction, VoiceOver, other locale
+windows, Send, browser suites and benchmarks were outside
+the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Inspect Find with
+a diagram that keeps supplementary source for accessibility.
+
 ### Find follows rendered reply updates
 
 Find now refreshes its matches when the presented reply changes. An open query
