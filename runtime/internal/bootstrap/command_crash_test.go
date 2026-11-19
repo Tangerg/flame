@@ -35,8 +35,8 @@ type commandCrashStore struct {
 	phase string
 }
 
-func (s commandCrashStore) Claim(ctx context.Context, key, fingerprint string) (operation.ReplayRecord, bool, error) {
-	record, claimed, err := s.ReplayStore.Claim(ctx, key, fingerprint)
+func (s commandCrashStore) Claim(ctx context.Context, claim operation.ReplayClaim) (operation.ReplayRecord, bool, error) {
+	record, claimed, err := s.ReplayStore.Claim(ctx, claim)
 	if err == nil && claimed && s.phase == "claim" {
 		os.Exit(commandCrashExit)
 	}

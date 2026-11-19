@@ -8,15 +8,18 @@ import (
 )
 
 // DeferredCompletion binds a committed write and its unfinished settlement to
-// one request. Only Reserve authorizes effects outside that write transaction.
+// one request. Only ReserveForRun authorizes effects outside that write transaction.
 type DeferredCompletion struct {
 	replay   *Replay
 	record   ReplayRecord
 	reserved atomic.Bool
 }
 
-func (c *DeferredCompletion) Reserve(ctx context.Context) error {
-	if err := c.claim(ctx); err != nil {
+func (c *DeferredCompletion) ReserveForRun(ctx context.Context, runID string) error {
+	if runID == "" {
+		return errors.New("idempotency: deferred live work requires its original Run")
+	}
+	if err := c.claim(ctx, runID); err != nil {
 		return err
 	}
 	c.reserved.Store(true)
@@ -26,7 +29,7 @@ func (c *DeferredCompletion) Reserve(ctx context.Context) error {
 func (c *DeferredCompletion) Stage(ctx context.Context, write func(context.Context) ([]byte, error)) error {
 	return c.replay.store.Transact(ctx, func(tx context.Context) error {
 		if !c.reserved.Load() {
-			if err := c.claim(tx); err != nil {
+			if err := c.claim(tx, ""); err != nil {
 				return err
 			}
 		}
@@ -55,8 +58,10 @@ func (c *DeferredCompletion) Complete(ctx context.Context, payload []byte) error
 	return err
 }
 
-func (c *DeferredCompletion) claim(ctx context.Context) error {
-	record, claimed, err := c.replay.store.Claim(ctx, c.record.Key, c.record.Fingerprint)
+func (c *DeferredCompletion) claim(ctx context.Context, runID string) error {
+	record, claimed, err := c.replay.store.Claim(ctx, ReplayClaim{
+		Key: c.record.Key, Fingerprint: c.record.Fingerprint, RunID: runID,
+	})
 	if err != nil {
 		return fmt.Errorf("idempotency: reserve settlement: %w", err)
 	}

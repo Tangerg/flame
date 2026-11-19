@@ -186,8 +186,8 @@ type cancellationReservationGate struct {
 	proceed  <-chan struct{}
 }
 
-func (g cancellationReservationGate) Claim(ctx context.Context, key, fingerprint string) (operation.ReplayRecord, bool, error) {
-	record, claimed, err := g.ReplayStore.Claim(ctx, key, fingerprint)
+func (g cancellationReservationGate) Claim(ctx context.Context, claim operation.ReplayClaim) (operation.ReplayRecord, bool, error) {
+	record, claimed, err := g.ReplayStore.Claim(ctx, claim)
 	if err == nil && claimed {
 		close(g.reserved)
 		<-g.proceed

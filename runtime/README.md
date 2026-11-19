@@ -1831,6 +1831,11 @@ joins the Scope writer before acknowledging teardown.
 The same key can finish cleanup and publish the original response after process
 loss or a cleanup failure.
 
+When recovery closes a Run as lost, that transaction also settles any linked
+live cancellation reservation that still lacks a staged result. The original
+key replays that cancellation settlement could not be confirmed. A committed
+Scope Control records admission, and a committed Exit proves termination.
+
 A live child cancellation retains the request through the Scope control
 acknowledgement and the settlement of the original spawning Tool Item. The
 confirmed child Exit identifies the request whose response commits with that

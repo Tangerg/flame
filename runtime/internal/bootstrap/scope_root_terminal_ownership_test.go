@@ -10,13 +10,17 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
+	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	scoperun "github.com/Tangerg/scope/agent/run"
+	"github.com/Tangerg/scope/core/chat"
 	modernsqlite "modernc.org/sqlite"
 )
 
@@ -65,7 +69,7 @@ func TestScopeRootCancellationTransactionCrashHelper(t *testing.T) {
 	t.Fatalf("the cancellation never reached the transaction cut: %+v", call.Failure)
 }
 
-func TestScopeRootCancellationRollsBackItsExitWithTheRun(t *testing.T) {
+func TestScopeRootCancellationSettlesItsOriginalKeyAfterProcessExit(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	path := filepath.Join(t.TempDir(), "original-cancel-request.json")
@@ -106,6 +110,76 @@ func TestScopeRootCancellationRollsBackItsExitWithTheRun(t *testing.T) {
 	}
 	if state != protocol.RunStatusRunning || outcome != "" {
 		t.Fatalf("Run escaped its rolled-back Scope transaction: state=%s, outcome=%q", state, outcome)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	questionCrashDatabase(t, home, "DROP TRIGGER crash_scope_cancel_projection")
+
+	var calls atomic.Int32
+	reply := newReplyStub("only a new Run can dispatch after recovery")
+	model := delegateRestartModel{chat.ModelFunc(func(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+		calls.Add(1)
+		return reply.Call(ctx, request)
+	})}
+	assertAbandonedCancellationRollsBackOnReceiptRefusal(t, home, request, model)
+	host, api := openProtocolRuntime(t, model)
+	defer host.Close()
+	ctx := protocolLifecycleContext(t.Context())
+	value, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: request.RunID})
+	if err != nil || value.Outcome == nil || value.Outcome.Type != protocol.OutcomeLost {
+		t.Fatalf("the Run had no confirmed terminal result after its writer died: %+v, %v", value, err)
+	}
+	key := protocol.CallMetadata{IdempotencyKey: activeRootCancelKey}
+	result := host.Endpoint().Invoke(ctx, delivery.RunsCancel, request, key)
+	if !errors.Is(result.Failure, protocol.ErrInternalError) {
+		t.Fatalf("recovery did not settle the original cancellation as unconfirmed: %+v", result)
+	}
+	if err := api.DeleteSession(ctx, value.SessionID); err != nil {
+		t.Fatal(err)
+	}
+	if replayed := host.Endpoint().Invoke(ctx, delivery.RunsCancel, request, key); !errors.Is(replayed.Failure, protocol.ErrInternalError) {
+		t.Fatalf("replay lost the original cancellation result after Session deletion: %+v", replayed)
+	}
+	if got := calls.Load(); got != 0 {
+		t.Fatalf("recovery dispatched %d model calls", got)
+	}
+}
+
+func assertAbandonedCancellationRollsBackOnReceiptRefusal(t *testing.T, home string, request protocol.CancelRunRequest, model chat.Model) {
+	t.Helper()
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	if err != nil {
+		t.Fatal(err)
+	}
+	host := assembleTestRuntime(t, protocolRuntimeConfig(t, stores, model))
+	defer func() {
+		if err := host.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	const refuseReceipt = "original cancellation receipt write refused"
+	questionCrashDatabase(t, home, fmt.Sprintf(`CREATE TRIGGER refuse_abandoned_cancellation BEFORE UPDATE OF kind ON idempotency_records
+		WHEN OLD.key = '%s' AND NEW.kind <> OLD.kind
+		BEGIN SELECT RAISE(ABORT, '%s'); END`, activeRootCancelKey, refuseReceipt))
+	defer questionCrashDatabase(t, home, "DROP TRIGGER refuse_abandoned_cancellation")
+
+	api, err := protocolHandler(host, home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = startTestRuntimeWithReplayStore(t, host, api, stores, stores.Idempotency)
+	if err == nil || !strings.Contains(err.Error(), refuseReceipt) {
+		t.Fatalf("startup did not observe the refusal of the original receipt: %v", err)
+	}
+	ctx := protocolLifecycleContext(t.Context())
+	value, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: request.RunID})
+	if err != nil || value.Status != protocol.RunStatusRunning || value.Outcome != nil {
+		t.Fatalf("Run loss escaped its rolled-back receipt transaction: %+v, %v", value, err)
+	}
+	history := readWaitingChildScopeLog(t, home)
+	if controls := waitingChildHostControls(history, history.Root.String()); controls != 1 || hasConfirmedScopeRootCancellation(history) {
+		t.Fatalf("refused recovery changed the original Scope evidence, with %d controls", controls)
 	}
 }
 

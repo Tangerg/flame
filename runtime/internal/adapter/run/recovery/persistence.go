@@ -85,6 +85,8 @@ type Config struct {
 	ToolInvocations     toolInvocationStore
 	ChildRunStarts      childRunStartReservations
 	Tx                  Transactor
+
+	AbandonCancellations func(ctx context.Context, runID string) error
 }
 
 // Persistence implements the recovery use case's durable fact and atomic
@@ -101,6 +103,8 @@ type Persistence struct {
 	toolInvocations     toolInvocationStore
 	childRunStarts      childRunStartReservations
 	tx                  Transactor
+
+	abandonCancellations func(context.Context, string) error
 }
 
 func New(config Config) (*Persistence, error) {
@@ -113,7 +117,8 @@ func New(config Config) (*Persistence, error) {
 		{"conversation store", config.Messages}, {"goal run recorder", config.GoalRuns},
 		{"executor checkpoint store", config.ExecutorCheckpoints},
 		{"model invocation store", config.ModelInvocations}, {"tool invocation store", config.ToolInvocations},
-		{"child run start reservation store", config.ChildRunStarts}, {"transactor", config.Tx},
+		{"child run start reservation store", config.ChildRunStarts},
+		{"abandon cancellations", config.AbandonCancellations}, {"transactor", config.Tx},
 	} {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("recovery: %s is required", required.name)
@@ -131,6 +136,8 @@ func New(config Config) (*Persistence, error) {
 		toolInvocations:     config.ToolInvocations,
 		childRunStarts:      config.ChildRunStarts,
 		tx:                  config.Tx,
+
+		abandonCancellations: config.AbandonCancellations,
 	}, nil
 }
 
@@ -275,8 +282,12 @@ func (p *Persistence) replaceTranscriptItems(ctx context.Context, commit runs.Re
 
 func (p *Persistence) recoverLostRuns(ctx context.Context, commit runs.RecoveryCommit) error {
 	for _, replacement := range commit.LostRuns() {
+		runID := replacement.State().ID()
 		if err := p.runs.RecoverLost(ctx, replacement); err != nil {
-			return fmt.Errorf("recovery: recover lost Run %q: %w", replacement.State().ID(), err)
+			return fmt.Errorf("recovery: recover lost Run %q: %w", runID, err)
+		}
+		if err := p.abandonCancellations(ctx, runID); err != nil {
+			return fmt.Errorf("recovery: settle abandoned cancellations for Run %q: %w", runID, err)
 		}
 	}
 	return nil

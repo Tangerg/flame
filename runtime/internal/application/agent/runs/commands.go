@@ -288,7 +288,7 @@ type CancelCommand struct {
 }
 
 type CancellationCompletion struct {
-	Reserve            func(context.Context) error
+	Reserve            func(ctx context.Context, runID string) error
 	RecordRefusal      func(context.Context, error) error
 	CommitParked       ParkedCancellationCompletion
 	RecordWaitingChild WaitingSubtreeCancellationReceipt

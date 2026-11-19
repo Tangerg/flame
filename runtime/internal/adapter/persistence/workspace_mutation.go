@@ -38,7 +38,9 @@ func (s *WorkspaceMutationStore) Record(ctx context.Context, m sessions.Workspac
 			return false, sessions.ErrWorkspaceMutationPending
 		}
 		if m.Receipt.Key != "" {
-			_, claimed, err := s.receipts.Claim(tx, m.Receipt.Key, m.Receipt.Fingerprint)
+			_, claimed, err := s.receipts.Claim(tx, operation.ReplayClaim{
+				Key: m.Receipt.Key, Fingerprint: m.Receipt.Fingerprint,
+			})
 			if err != nil {
 				return false, err
 			}

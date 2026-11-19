@@ -19,6 +19,11 @@ type cancellationSettlement struct {
 	Outcome    jsontext.Value `json:"outcome"`
 }
 
+func EncodeAbandonedCancellationReceipt() ([]byte, error) {
+	err := wireCancellationError(&runs.CancellationSettlementError{})
+	return encodeStoredOutcome(failed(projectError(err)))
+}
+
 func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *Method, in protocol.CancelRunRequest, key, fingerprint string) ([]byte, *protocol.Failure, error) {
 	var observedFailure *protocol.Failure
 	var encodedFailure []byte
@@ -44,8 +49,8 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 			return nil
 		}
 		result, err := s.cancelRun(ctx, in, runs.CancellationCompletion{
-			Reserve: func(ctx context.Context) error {
-				reserveErr = complete.Reserve(ctx)
+			Reserve: func(ctx context.Context, runID string) error {
+				reserveErr = complete.ReserveForRun(ctx, runID)
 				return reserveErr
 			},
 			RecordRefusal: func(ctx context.Context, reason error) error {

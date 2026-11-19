@@ -35,11 +35,19 @@ type ReplayRecord struct {
 	Settlement  []byte
 }
 
+type ReplayClaim struct {
+	Key         string
+	Fingerprint string
+	// RunID binds a deferred response to the original Run material so its
+	// recovery can settle the reservation if the writer is lost.
+	RunID string
+}
+
 type ReplayStore interface {
 	Lookup(context.Context, string, string) (ReplayRecord, bool, error)
 	Transact(context.Context, func(context.Context) error) error
 	// An existing claim never authorizes the business write to run again.
-	Claim(context.Context, string, string) (ReplayRecord, bool, error)
+	Claim(context.Context, ReplayClaim) (ReplayRecord, bool, error)
 	// StageSettlement retains the work that can be settled after the original
 	// business transaction commits.
 	StageSettlement(context.Context, ReplayRecord) error
@@ -105,7 +113,7 @@ func (r *Replay) Invoke(ctx context.Context, key, fingerprint string, execute fu
 	if payload, pending, err := r.finishPending(ctx, key, fingerprint); pending {
 		return payload, err
 	}
-	record, claimed, err := r.store.Claim(ctx, key, fingerprint)
+	record, claimed, err := r.store.Claim(ctx, ReplayClaim{Key: key, Fingerprint: fingerprint})
 	if err != nil {
 		return nil, fmt.Errorf("idempotency: claim replay key: %w", err)
 	}
@@ -207,7 +215,7 @@ func (r *Replay) InvokeAtomic(ctx context.Context, key, fingerprint string, exec
 
 func (r *Replay) commitOutcome(ctx context.Context, key, fingerprint string, write func(context.Context) ([]byte, error)) (payload []byte, replayed bool, err error) {
 	err = r.store.Transact(ctx, func(tx context.Context) error {
-		record, claimed, err := r.store.Claim(tx, key, fingerprint)
+		record, claimed, err := r.store.Claim(tx, ReplayClaim{Key: key, Fingerprint: fingerprint})
 		if err != nil {
 			return err
 		}

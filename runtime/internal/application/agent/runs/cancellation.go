@@ -126,7 +126,7 @@ func (c *Cancellations) Cancel(ctx context.Context, cmd CancelCommand) (CancelRe
 	child := plan.target.run.Lineage().IsChild()
 	usesLiveOwner := live && (!child || plan.treeState() == rundomain.Running)
 	if usesLiveOwner && cmd.Completion.Reserve != nil {
-		if err := cmd.Completion.Reserve(ctx); err != nil {
+		if err := cmd.Completion.Reserve(ctx, plan.target.run.ID()); err != nil {
 			return CancelResult{}, err
 		}
 	}

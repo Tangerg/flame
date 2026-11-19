@@ -96,7 +96,9 @@ func testLateCancellationRefusal(t *testing.T, refuseWrite bool) {
 			host.lifetime.runSegments, sync.OnceFunc(func() { close(joining) }),
 		}
 	}
-	startTestRuntimeWithReplayStore(t, host, api, stores, replayStore)
+	if err := startTestRuntimeWithReplayStore(t, host, api, stores, replayStore); err != nil {
+		t.Fatal(err)
+	}
 	endpoint := host.Endpoint()
 	ctx := protocolLifecycleContext(t.Context())
 	session, err := api.CreateSession(ctx, protocol.CreateSessionRequest{

@@ -526,6 +526,10 @@
     "v0.1.79-dev.20261119.t76bb7700f2a1": {
       "tree": "76bb7700f2a1ad5409c89e82247dc148f667a444",
       "time": "2026-11-19T10:20:20Z"
+    },
+    "v0.1.80-dev.20261119.t5885a0b42afb": {
+      "tree": "5885a0b42afbf80dd4890292529e15e632793bd3",
+      "time": "2026-11-19T10:36:06Z"
     }
   },
   "github.com/Tangerg/flame/apps/cli": {

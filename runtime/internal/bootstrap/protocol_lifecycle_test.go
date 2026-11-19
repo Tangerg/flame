@@ -585,10 +585,12 @@ func buildProtocolRuntime(t *testing.T, cfg assemblyConfig, cwd string) (*Instan
 
 func startTestRuntime(t *testing.T, host *Instance, api *delivery.Handler, stores *persistence.Bundle) {
 	t.Helper()
-	startTestRuntimeWithReplayStore(t, host, api, stores, stores.Idempotency)
+	if err := startTestRuntimeWithReplayStore(t, host, api, stores, stores.Idempotency); err != nil {
+		t.Fatalf("recover uncertain executions: %v; close: %v", err, host.Close())
+	}
 }
 
-func startTestRuntimeWithReplayStore(t *testing.T, host *Instance, api *delivery.Handler, stores *persistence.Bundle, replayStore operation.ReplayStore) {
+func startTestRuntimeWithReplayStore(t *testing.T, host *Instance, api *delivery.Handler, stores *persistence.Bundle, replayStore operation.ReplayStore) error {
 	t.Helper()
 	info, err := api.Discover(t.Context())
 	if err != nil {
@@ -608,9 +610,7 @@ func startTestRuntimeWithReplayStore(t *testing.T, host *Instance, api *delivery
 		t.Fatalf("publish Runtime callbacks: %v; close: %v", err, host.Close())
 	}
 	// Accepted work can resume only after its original callback RPC is available.
-	if err := host.application.recoverUncertainExecutions(t.Context()); err != nil {
-		t.Fatalf("recover uncertain executions: %v; close: %v", err, host.Close())
-	}
+	return host.application.recoverUncertainExecutions(t.Context())
 }
 
 func assembleTestRuntime(t *testing.T, cfg assemblyConfig) *Instance {
