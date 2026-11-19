@@ -225,9 +225,10 @@ while a refresh retains that page's reading position. Source selection and copy
 refer only to the presented page, and a partial file stays in source mode with
 its range and truncation visible.
 The file reader scopes Select All to its displayed content in both Preview and
-Source, excluding its path and host controls. Preview retains native formatted
-copy; source and renderer fallbacks retain literal captured copy. Nested code
-readers and editable fields keep their own selection behavior.
+Source, excluding its path and host controls. Source highlights the mounted code
+for the current page. Preview retains native formatted copy. Source and renderer
+fallbacks copy the literal captured page as plain text. Nested code readers and
+editable fields keep their own selection behavior.
 
 The workbench keeps its layout and existing Runtime recovery notice available
 before the first Session snapshot. Conversation content starts from a defined

@@ -1,4 +1,4 @@
-import { type Ref } from "react";
+import { type Ref, type RefObject } from "react";
 import { quoteSourceProps } from "@flame/ui";
 import { PierreFile } from "@/lib/highlight/PierreFile";
 export function FileView({
@@ -8,6 +8,7 @@ export function FileView({
   targetLine,
   intent,
   ref,
+  selectionContentRef,
 }: {
   path: string;
   content: string;
@@ -15,6 +16,7 @@ export function FileView({
   targetLine: number;
   intent: object | null;
   ref?: Ref<HTMLDivElement>;
+  selectionContentRef: RefObject<Element | null>;
 }) {
   return (
     <div ref={ref} {...quoteSourceProps({ kind: "file", path })}>
@@ -24,6 +26,7 @@ export function FileView({
         startLine={startLine}
         targetLine={targetLine}
         intent={intent}
+        selectionContentRef={selectionContentRef}
       />
     </div>
   );

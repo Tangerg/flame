@@ -25,6 +25,7 @@ const styles = stylex.create({
 });
 
 export function PierreFile({
+  presentation = "standalone",
   source,
   language,
   path = "source",
@@ -33,8 +34,8 @@ export function PierreFile({
   intent,
   wrapped = false,
   selectionContentRef,
-  scrollInReader = false,
 }: {
+  presentation?: "code-block" | "standalone";
   source: string;
   language?: string;
   path?: string;
@@ -43,8 +44,8 @@ export function PierreFile({
   intent?: object | null;
   wrapped?: boolean;
   selectionContentRef?: CodeSourceProps["selectionContentRef"];
-  scrollInReader?: boolean;
 }) {
+  const isCodeBlock = presentation === "code-block";
   const scheme = useScheme();
   const pool = useWorkerPool();
   if (!pool) throw new Error("code rendering requires its shared worker pool");
@@ -119,10 +120,11 @@ export function PierreFile({
       range.endOffset === content.childNodes.length
     ) {
       event.preventDefault();
-      event.clipboardData.setData(
-        "text/html",
-        clipboardCodeElement(shadow.ownerDocument, source).outerHTML,
-      );
+      if (isCodeBlock)
+        event.clipboardData.setData(
+          "text/html",
+          clipboardCodeElement(shadow.ownerDocument, source).outerHTML,
+        );
       event.clipboardData.setData("text/plain", source);
       return;
     }
@@ -153,7 +155,7 @@ export function PierreFile({
     // Shadow-root selection needs a select-all boundary inside the host reader's tab stop.
     <div
       role="group"
-      {...stylex.props(scrollInReader && !wrapped && styles.readerScroll)}
+      {...stylex.props(isCodeBlock && !wrapped && styles.readerScroll)}
       onCopy={copy}
       onKeyDown={(event) => {
         const content = selectionContentRef?.current ?? root.current;

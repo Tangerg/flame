@@ -39499,6 +39499,75 @@ around its outer wrapper with an empty selected string. Its copy
 path delivers the captured file. The next batch will check the
 visible file selection boundary and preserve its exact source copy.
 
+### Keyboard selection in Files Source (2026-11-19)
+
+Signed Wails at `c97abbc91` selects the outer source wrapper for
+the 93-line `reading-guide.md`. Cmd+A leaves the code glyphs
+unhighlighted, and the native selection string is empty. Cmd+C
+still writes the 3,206-character captured file as plain text.
+In Preview the same shortcut selects the formatted document
+with 1,943 selected characters and leaves Copy to WebKit.
+
+`FilePreview` uses the live code element published by `PierreFile`
+when `FileView` presents source, including an installed renderer's
+fallback. The named scrollport keeps keyboard focus, and its existing
+displayed-content fallback covers Preview and source arrival. The
+source renderer maps the complete native range to the captured page
+and writes plain text. Transcript code blocks retain both output
+formats through their own presentation. Better Accessibility's
+native keyboard guidance informs the interaction.
+[Selection API](https://w3c.github.io/selection-api/#dom-selection-getcomposedranges)
+[Pierre renderer documentation](https://diffs.com/docs)
+
+- EN/light/Flame Orange with motion off at 1440 × 900. Source
+  highlights the actual 93 lines while the path stays outside the
+  selection. A complete copy produces exactly 3,206 plain-text
+  characters. Dragging over `Architecture` copies exactly those
+  12 characters. Preview retains its 1,943-character formatted
+  selection and native Copy path. Go to line 60 restores the trigger
+  and places the source at 833 px. The current captured file still
+  copies exactly. Back restores the file row, and the Composer
+  continues as `604287153`. The transcript code block still supplies
+  both plain text and preformatted HTML.
+- ZH/dark/18 px/custom blue with full motion in a 1121 × 950 native
+  tile and 320 px Dock. The private Lab extends the captured file
+  into 470 lines and honors the real view's line requests. Go to line
+  220 selects only lines 220–420. Earlier shows 20–219, and later
+  shows 220–419. Their exact plain copies contain 6,779, 6,627 and
+  6,722 characters respectively. The earlier page retains its trailing
+  newline. Full width keeps the same 220–419 page and exact copy at
+  a 1,113 px viewport. Close restores that page to the 312 px reader.
+  Cmd+L restores the backward draft selection at offsets 6 to 4
+  and native typing produces `1357624`.
+- The standard Lab shows the file glyphs selected. One accessibility
+  activation followed by Back lands on `apps`, and the draft resumes
+  as `870345216`. A fresh keyboard entry verifies the focused
+  `reading-guide.md` row before Return. Back restores that row after
+  source selection, and the draft resumes as `146537082`. A direct
+  baseline replay also restores the verified file row.
+
+The private probe reads transfer values from trusted Copy events and
+keeps the operating-system pasteboard untouched. The bounded file uses
+a private Lab response. Installed renderer failure, live Runtime reads,
+pasteboard handoff, VoiceOver and platform composition remain open.
+
+The first candidate made the presentation argument mandatory and
+failed A2UI Lab typechecking. The final renderer preserves its default
+standalone call. Scoped Prettier, Web typecheck, 89 Web contracts,
+937 locale keys in eight catalogs, bootstrap, installed resource
+reproduction, 26 bundle contracts and module linking pass. The native
+build and five-entry standard Lab build pass.
+
+Four private bundles pass strict signature verification. Seven
+launches and six previews exit. Cleanup removes four app registrations,
+eight Library directories, ten checkout outputs and the scratch tree.
+
+The Chinese Dock → Full width → Dock → Back path focuses `apps`
+instead of the file just read. The same route on an independent signed
+`c97abbc91` baseline reproduces that landing after Go to line 60.
+The next batch will trace restoration through the remembered file and
+the virtualized tree after a presentation change.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

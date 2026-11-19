@@ -27,11 +27,11 @@ function HighlightedCodeSource({
 }: CodeSourceProps) {
   return (
     <PierreFile
+      presentation="code-block"
       source={source}
       language={language}
       wrapped={wrapped}
       selectionContentRef={selectionContentRef}
-      scrollInReader
     />
   );
 }

@@ -407,9 +407,12 @@ function FilePreview({
   // Set only while FileView presents the source, including as a renderer's fallback;
   // rendered content keeps the browser's formatted copy and editable fields stay native.
   const source = useRef<HTMLDivElement>(null);
+  const selectionContentRef = useRef<Element | null>(null);
   const displayed = useRef<HTMLDivElement>(null);
   const onFileKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
-    const content = source.current ?? displayed.current;
+    const content = source.current
+      ? (selectionContentRef.current ?? source.current)
+      : displayed.current;
     if (content) selectAllInReader(event, content);
     scrollReaderWithForeignSelection(event, "vertical");
   };
@@ -562,6 +565,7 @@ function FilePreview({
                   const recorded = (
                     <FileView
                       ref={source}
+                      selectionContentRef={selectionContentRef}
                       path={viewer.path}
                       content={items[0]!.content}
                       startLine={items[0]!.startLine}
@@ -583,6 +587,7 @@ function FilePreview({
               ) : (
                 <FileView
                   ref={source}
+                  selectionContentRef={selectionContentRef}
                   path={viewer.path}
                   content={items[0]!.content}
                   startLine={items[0]!.startLine}
