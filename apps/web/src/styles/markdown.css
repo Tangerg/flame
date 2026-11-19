@@ -57,7 +57,17 @@
   overscroll-behavior: contain auto;
 }
 .md-table-scroller > table {
+  /* Wide tables can pan instead of squeezing prose against numeric columns. */
+  inline-size: max-content;
   margin: 0;
+}
+.md-table-scroller
+  > table
+  > :is(thead, tbody, tfoot)
+  > tr
+  > :is(th, td):not(.md-table-cell-numeric) {
+  max-inline-size: min(40ch, 65cqi);
+  overflow-wrap: anywhere;
 }
 .md-table-actions {
   display: flex;

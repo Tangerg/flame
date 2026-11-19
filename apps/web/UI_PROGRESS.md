@@ -39884,6 +39884,70 @@ two rows. The next batch will check how the inline table
 allocates space to prose columns once horizontal panning is
 already needed.
 
+### Prose measures in wide conversation tables (2026-11-19)
+
+Signed Wails at `4b58ef744` reproduces the five-line Owner cell
+in the private seven-column version of the captured 80-row
+table. At 1121 × 1051 the inline viewport is 416 px wide with
+1,094 px of content. The shared `fit-content` table distributes
+the remaining width to ordinary cells after the single-line
+numeric values. The Owner cell receives 139 px and the first
+row is 198 px high.
+
+The inline table takes its max-content width inside the
+existing scrollport. Direct prose cells cap their inline
+size at the smaller of 40 character widths and 65% of the
+conversation width. Long tokens can wrap at that bound.
+An initial 36-character cap kept prose wider than the narrow
+viewport. Adding the conversation cap fixed that boundary,
+and extending the character cap to 40 restored the single-line
+English control. The table still uses its semantic header and
+the existing width and height constraints at the reader.
+[CSS Tables sizing](https://drafts.csswg.org/css-tables-3/#computing-the-table-width)
+[WAI Reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html)
+[USWDS scrollable table](https://designsystem.digital.gov/components/table/#scrollable-table)
+
+- ZH/dark/18 px/custom blue with full motion at 1121 × 1051.
+  At the narrow dock split, the 416 px viewport pans across
+  1,265 px of table. Owner gains a 286 px measure and wraps
+  to two lines. Row height falls from 198 to 96 px, and the
+  448 px reader contains 7,693 px of rows versus 15,883 px.
+  The numeric cells each remain on one line. Resize from the
+  focused divider widens the reader to 761 px with a one-line
+  Owner cell. Returning to the narrow split restores the
+  two-line measure and keeps x80 and y40 through both changes.
+  The native arrows and wheel reach x120 and y170 with a
+  retained backward Composer selection at 6 to 4. Right
+  clamps at x849 and Cmd+L resumes the draft as `5931762`.
+- EN/light/16 px/Flame Orange with motion off at 1440 × 900.
+  The ordinary explanation fits at 362 px on one line. The
+  table fits its 554 px viewport with 47 px rows and the same
+  3,800 px of content as the prior arrow fix. Right, Down and
+  Left reach x0 and y40. The wheel reaches y264, and Escape
+  from the table Lightbox restores that position and Expand
+  table. Cmd+L resumes the draft as `267190584`.
+- The extended English sample wraps its contiguous 90-character
+  token within the 391 px prose measure. The 583 px table fits
+  horizontally, and Down advances y9888 to y9928. Dismissing
+  the Lightbox restores y9928 and Expand table.
+- The standard captured Strategy comparison fits all four
+  columns and four body rows. Enter opens its preview. Escape
+  returns focus to Expand table. Tab then reaches Copy table
+  and continues to Copy message.
+
+Scoped Prettier, Web type checking, 89 Web contract tests,
+937 locale keys in eight catalogs, desktop bootstrap,
+installed plugin resources, 26 bundle contracts, module
+linking, the native build and five-entry Lab pass. The
+standard Lab assets exclude the private fixture and observation
+markers. The native acceptance uses captured data. Live
+Runtime, VoiceOver and clipboard checks remain open.
+
+Five private bundles pass strict signature verification. Eight
+launches and five previews terminate. Cleanup removes five app
+registrations, ten Library directories, ten checkout outputs
+and the scratch tree.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad
