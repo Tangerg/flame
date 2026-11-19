@@ -23135,6 +23135,57 @@ removes three registrations, six private Library directories,
 ten checkout outputs and the scratch tree. Verify the same
 reading path with a real repository filename in Chinese next.
 
+### Keep Unicode spelling in an inline source address (2026-11-20)
+
+In signed Chinese Wails on `c671d9dc5`, inline references to
+the tracked `docs/audit/全仓审计.md:4` and
+`docs/audit/附录A-gocyclo-over20.txt:3-5` render as code.
+Clicking either leaves the Files list and draft `9314` in place.
+The ASCII control in the same directory opens
+`docs/audit/upstream-issues.md` at line 6. 返回对话 restores
+that address's focus.
+
+`fileRefs.ts` now matches the complete inline span against a
+Unicode filename and an ASCII line, column or range suffix.
+The shared file plausibility check and safe numeric bounds
+still apply. The matched path goes through the existing file
+action in its original spelling. The prose scanner keeps
+its existing token grammar. The visible label includes the
+original suffix and a range opens at its first line.
+[ECMAScript character class escapes](https://tc39.es/ecma262/2022/multipage/text-processing.html#prod-CharacterClassEscape).
+[Apple filename normalization FAQ](https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/APFS_Guide/FAQ/FAQ.html).
+
+- EN/light/14 px/Flame Orange at 1121 × 950 and a 560.5 px
+  Dock. The ASCII control opens line 6 and returns to its
+  address. Tab reaches the Chinese address and then the
+  synthetic decomposed `résumé.md:2:3` address. Return
+  opens line 2 with both original U+0301 characters in the
+  viewer's path. The exact label keeps its column suffix.
+  Tab and Return on Back to conversation restore that
+  button and scroll position. Draft `9336` continues with `571`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. Physical clicks
+  on the path and Chinese filename open the exact
+  `全仓审计.md` path and line 4. The original range label
+  opens the appendix at line 3, retaining its `:3-5`
+  suffix. Each 返回对话 restores the corresponding address
+  at scroll position 0. Draft `9347` continues with `638`.
+  The first short click reached the correct button without
+  opening it. Two deliberate pointer clicks, including one
+  at the same Chinese glyph, qualified the single-line route.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and
+five canonical Lab documents pass. Signed Wails uses captured
+file contents under the tracked names and a synthetic accent
+case. Live filesystem reads, VoiceOver, Send, browser suites
+and benchmarks were outside the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Inspect explicit
+Markdown file links with line fragments next.
+
 ### Native short-paste continuation qualification
 
 No actionable focus/caret finding in the inspected trace. Approve the observed

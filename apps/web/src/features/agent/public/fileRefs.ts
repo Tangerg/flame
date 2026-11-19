@@ -77,7 +77,9 @@ const FILE_EXT = new Set([
 
 const TOKEN = /(?<![\w/.@-])([A-Za-z0-9._\-/]+)(?::(\d+))?(?::(\d+))?/g;
 
-const HAS_LETTER = /[A-Za-z]/;
+const INLINE_ADDRESS = /^([\p{L}\p{M}\p{N}._/-]+):([0-9]+)(?::([0-9]+)|-([0-9]+))?$/u;
+
+const HAS_LETTER = /\p{L}/u;
 
 const ROOTED = /^\.{0,2}\//;
 
@@ -116,20 +118,23 @@ function isPositiveFilePosition(value: number): boolean {
 }
 
 export function parseInlineFileRef(value: string): FileRef | null {
-  const range = /-(\d+)$/.exec(value);
-  if (range && range.index + range[0].length !== value.length) return null;
-  const address = range ? value.slice(0, range.index) : value;
-  const [ref, ...remainder] = parseFileRefs(address);
-  if (!ref || typeof ref === "string" || remainder.length || !isPositiveFilePosition(ref.line))
-    return null;
+  const match = INLINE_ADDRESS.exec(value);
+  if (!match || match[0] !== value) return null;
+  const [, path, lineText, columnText, endText] = match;
+  if (!path || !isFileRef(path)) return null;
 
-  const hasColumn = address.indexOf(":") !== address.lastIndexOf(":");
-  if (hasColumn && (range || !isPositiveFilePosition(ref.column))) return null;
-  if (range) {
-    const endLine = Number(range[1]);
-    if (!isPositiveFilePosition(endLine) || endLine < ref.line) return null;
+  const line = Number(lineText);
+  const column = columnText === undefined ? 0 : Number(columnText);
+  if (
+    !isPositiveFilePosition(line) ||
+    (columnText !== undefined && !isPositiveFilePosition(column))
+  )
+    return null;
+  if (endText !== undefined) {
+    const endLine = Number(endText);
+    if (!isPositiveFilePosition(endLine) || endLine < line) return null;
   }
-  return ref;
+  return { path, line, column };
 }
 
 // Prose references omit unspecified positions. A quoted range has explicit endpoints.

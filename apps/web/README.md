@@ -1132,8 +1132,9 @@ available and single-dollar currency stays literal. Proprietary bracket/marker
 math syntax is removed. Code copying retains the parser's original literal value.
 The complete source is available through a stable context for table operations.
 An inline code span consisting of one file address opens through the same
-workspace reference action as prose. Line, line-and-column and quoted range
-addresses keep their complete label. A range opens at its first line.
+workspace reference action as prose. The filename keeps its original Unicode
+spelling. Line, line-and-column and quoted range addresses keep their complete
+label. A range opens at its first line.
 
 Generated SVG fences show readable source until the browser decodes an inert
 image. The last accepted preview or source stays visible while new SVG text
