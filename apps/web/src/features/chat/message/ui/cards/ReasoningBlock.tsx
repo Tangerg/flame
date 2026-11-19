@@ -41,15 +41,6 @@ const rb = stylex.create({
     paddingTop: space.s3,
     paddingBottom: space.s1_5,
   },
-  // Kept while shut: Collapsible retains this node, so dropping the window loses the scroll position.
-  scroller: {
-    position: "relative",
-    minHeight: 0,
-    maxHeight: "calc(var(--spacing) * 60)",
-    overflowX: "hidden",
-    overflowY: "auto",
-    paddingRight: space.s2,
-  },
 });
 
 interface Props {
@@ -125,10 +116,11 @@ export function ReasoningBlock({ text, status }: Props) {
     >
       <ReadingList
         role="group"
+        fitContent
         data={[text]}
         keyExtractor={() => "reasoning"}
         label={t("reasoning.text")}
-        style={{ height: "min(15rem, 40vh)", flex: "0 1 auto" }}
+        style={{ maxHeight: "min(15rem, 40vh)", flex: "0 1 auto" }}
         renderItem={() => (
           <div className={stylex.props(ms.quote, typeStep.uiMd).className}>
             <MarkdownMessage text={text} streaming={streaming} />

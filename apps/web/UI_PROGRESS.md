@@ -39499,6 +39499,69 @@ parallel main history remains outside this batch. The temporary delivery checkou
 is removed after remote confirmation. No protocol, persisted-data or
 external-consumer migration is needed.
 
+### Reasoning disclosure height and keyboard entry (2026-11-19)
+
+Signed Wails on `b01b653e5` opens a one-line completed Thought in a 240 px
+reading viewport. Its empty height pushes the related Read and Search rows
+down. Tab enters a named `Reasoning text` group whose contents already fit
+before the next Tab reaches Read. The move to Legend in `c03ffcd92` gave
+the one-item list a fixed height and an unconditional viewport Tab stop.
+
+`ReasoningBlock` lets the same retained `ReadingList` fit its content
+under the existing `min(15rem, 40vh)` cap and inherited reading budget.
+The fit option allows CSS to size the viewport from Legend's normal-flow
+content. One observer on the visible viewport and its public content node
+projects vertical overflow into the viewport's name, group role and Tab
+stop. The enclosing disclosure names fitting text. Legend retains
+the same reading position and following ownership. The unused former
+scroller style is removed.
+
+Better Layout and Better Accessibility guide the content height and
+sequential focus. HeroUI's actual Disclosure supplies a named body for
+supporting content. Arc's ScrollArea offers a maximum height for a
+vertical reader that grows with its content. [WAI scrollable content rule](https://www.w3.org/WAI/standards-guidelines/act/rules/0ssw9k/) [Legend Web layout](https://legendapp.com/open-source/list/v3/guides/#web-layout-and-window-scroll)
+
+- EN/light/14 px/Flame Orange with motion off at 1440 × 900. The same
+  one-line Thought gives the viewport a 23 px height for 22.75 px of
+  prose. Tab goes directly to Read. The standalone Agent fixture
+  reports `View unavailable` for its unregistered File panel. Back
+  returns to the exact source action and the draft continues as
+  `reasoningfitdraftqxtail`.
+- ZH/dark/18 px/custom blue with full motion at native 1121 × 950. Both
+  completed Thought and the captured short Thinking state occupy
+  29 px. Tab goes to the next local tool control in each case. Closing
+  and reopening Thought keeps its text available and the Composer
+  continues as `短思考阅读草稿继续尾段`.
+- The long English Thinking scene has 432.25 px of content inside the
+  existing 240 px viewport. Tab reaches the named reader. Home reaches
+  0 px and a native wheel reaches 99 px. Closing and reopening retain
+  99 px. Page Down reaches 192 px and Up reaches 152 px with reader
+  focus. The draft continues as `longreasoningqxtail`.
+- The standard Workspace Lab repeats the short keyboard path with the
+  installed File surface. Opening `runtime/internal/session/store.go`
+  shows the named file and its eight fixture lines. Back returns to
+  `Open the current file`, the Thought stays expanded, and the Composer
+  continues as `workspacereasoningqxtail`.
+
+The first candidate compile fails on the HTMLElement alternative in
+Legend's native scroll reference. The final code narrows the union before
+reading its public content node. Scoped formatting, the packed UI and
+Icons consumer, Web typecheck, 89 Web contracts, 937 locale keys in eight
+catalogs, bootstrap, installed resources, the 26 bundle checks, module
+linking, `make check-native` and the five-entry Lab gate pass. Final checks
+run after the independent Session title commit `854a2b103`.
+
+Six private bundles pass strict signature verification. Six launches
+and three loopback previews exit. Cleanup removes six registrations,
+twelve private Library directories, ten checkout outputs and the scratch
+tree. VoiceOver and live reasoning updates remain open. The native
+workspace scene exercises captured file identity and return focus.
+
+In the long reader, the inset focus outline meets the first letters
+along the left edge and crosses the clipped line at the top of a
+scrolled view. The next batch will check that spacing in the named
+reader.
+
 ## Tool group reading continuity
 
 Actual Wails reproduced a running sibling's completion collapsing an automatically

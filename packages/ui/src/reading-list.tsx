@@ -89,6 +89,7 @@ export function ReadingList<T>({
   ref,
   style,
   renderAll = false,
+  fitContent = false,
   maintainScrollAtEndThreshold,
   initialEndLayoutReady,
   onFollowChange,
@@ -104,6 +105,7 @@ export function ReadingList<T>({
   ref?: Ref<ReadingListHandle>;
   style?: CSSProperties;
   renderAll?: boolean;
+  fitContent?: boolean;
   maintainScrollAtEndThreshold?: number;
   initialEndLayoutReady?: boolean;
   onFollowChange?(list: ReadingListHandle, atEnd: boolean): void;
@@ -123,6 +125,8 @@ export function ReadingList<T>({
     waitForHostLayout ? { listReady: false, layoutReady: false } : null,
   );
   const visible = useContentVisible();
+  const [overflowing, setOverflowing] = useState(false);
+  const hasScrollStop = !fitContent || overflowing;
   const waitingForInitialEnd =
     initialEndPending &&
     waitForHostLayout &&
@@ -150,6 +154,22 @@ export function ReadingList<T>({
     },
     [ref],
   );
+  useLayoutEffect(() => {
+    if (!fitContent || !visible || !list) return;
+    const viewport = list.getScrollableNode();
+    if (!viewport) return;
+    const native = list.getNativeScrollRef();
+    const content =
+      "getContentNode" in native ? native.getContentNode?.() : null;
+    const measure = () => {
+      setOverflowing(viewport.scrollHeight > viewport.clientHeight);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(viewport);
+    if (content) observer.observe(content);
+    measure();
+    return () => observer.disconnect();
+  }, [fitContent, visible, list]);
   const releaseInitialEnd = useCallback(() => {
     if (!initialEnd.current) return;
     initialEnd.current = null;
@@ -384,9 +404,9 @@ export function ReadingList<T>({
       <LegendList
         key={windowed.generation}
         ref={bind}
-        role={role}
-        aria-label={label}
-        tabIndex={0}
+        role={hasScrollStop ? role : undefined}
+        aria-label={hasScrollStop ? label : undefined}
+        tabIndex={hasScrollStop ? 0 : undefined}
         onKeyDown={onViewportKeyDown}
         className={className}
         data={data}
@@ -406,7 +426,12 @@ export function ReadingList<T>({
         initialScrollAtEnd={windowed.anchor === null}
         initialScrollIndex={windowed.anchor ?? undefined}
         alwaysRender={renderAll ? { top: data.length } : { keys: pinned }}
-        style={{ width: "100%", height: "100%", minHeight: 0, flex: 1 }}
+        style={{
+          width: "100%",
+          height: fitContent ? undefined : "100%",
+          minHeight: 0,
+          flex: 1,
+        }}
         ListHeaderComponent={header ? <>{header}</> : undefined}
         ListFooterComponent={footer ? <>{footer}</> : undefined}
         renderItem={({ item, index }) => {

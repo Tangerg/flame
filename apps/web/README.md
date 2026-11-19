@@ -466,8 +466,9 @@ height feeding back into observed content. The existing resize observer reveals
 the retained focused reader during delivery and after sticky-header clearance
 publication. Ancestor clipping cannot replace the viewport's own visibility
 constraint. Reasoning readers consume the same height budget as code and tables.
-Their container accounts for its insets through Flex layout instead of repeating
-those insets in reader-height arithmetic.
+Flex layout accounts for the container's insets. The expanded body grows with its
+content up to the limit. Fitting text uses the disclosure's name and lets Tab
+continue to the next control. Overflowing text has its own named scroll target.
 Native scroll notifications in that
 rendering update retain the witness; a later focus or deliberate wheel still
 retires it.

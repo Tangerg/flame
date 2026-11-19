@@ -647,6 +647,10 @@ navigation. Clipboard receipts are projected by each host's existing Toast feed.
 The optional `maintainScrollAtEndThreshold` uses Legend's viewport fraction.
 Zero uses the physical edge tolerance for automatic end following.
 
+The `fitContent` option lets a bounded viewport take the height of its content
+up to the host's limit. Its name and Tab stop appear when the visible viewport
+has vertical overflow. A containing disclosure can name the fitting content.
+
 When the viewport holds focus and both selection endpoints remain in a separate
 editing host, plain Up and Down scroll the same viewport by the native WebKit
 line step. Legend accepts the browser's relative movement and anchors it
