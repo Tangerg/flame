@@ -4,12 +4,15 @@ import { quoteText } from "./quoteText";
 
 export function captureQuote(): string | null {
   const selection = document.getSelection();
-  if (!selection || selection.isCollapsed) return null;
+  if (!selection) return null;
+  // WebKit can report a collapsed document selection for selected shadow text.
+  const text = selection.toString();
+  if (!text.trim()) return null;
   const shadows = [...document.querySelectorAll(DIFFS_TAG_NAME)].flatMap((element) =>
     element.shadowRoot ? [element.shadowRoot] : [],
   );
   const range = selection.getComposedRanges({ shadowRoots: shadows })[0];
-  if (!range) return null;
+  if (!range || range.collapsed) return null;
   const reader = quotedReaderOf(range.startContainer);
   if (
     !reader?.host.isConnected ||
@@ -17,8 +20,6 @@ export function captureQuote(): string | null {
     reader.host.closest("[hidden],[inert],[aria-hidden='true']")
   )
     return null;
-  const text = selection.toString();
-  if (!text.trim()) return null;
   if (reader.source.kind !== "file") return quoteText(reader.source, text);
   const first = quotedLineOf(range.startContainer);
   const last = quotedLineOf(range.endContainer);

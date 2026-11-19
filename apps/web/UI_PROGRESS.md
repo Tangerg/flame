@@ -22891,6 +22891,57 @@ Verification and limits:
 Continue with evidence from complete reading and return paths. Revisit any
 selection concern only after reproducing a valid source-local interaction.
 
+### Quote selected file source in the native window (2026-11-20)
+
+In signed Wails on `218f03629`, selecting `row`
+in `DockResizer.tsx` line 4 gives a noncollapsed composed range
+and the native text `row`, although the document selection reports
+collapsed. The standard workspace fixture omits the quote and
+native-shell plugins. With those production plugins wired into its
+normal overlay in production order and only the capture fix applied,
+right-click still opens neither menu. The shell's early document
+listener cancels the event before the quote listener receives it.
+
+`captureQuote` uses the native text and a noncollapsed composed
+range in one connected visible reader. The window's bubble listener
+suppresses the system menu after element and document menus have
+handled the event. Editable targets keep their system menu. The
+quote action captures the text and append intent before moving focus,
+then the existing Composer owner inserts the text and restores
+writing focus. ZCode's read-only `ConversationSelectionTooltip`
+also requires a single selectable region. The composed selection and
+ordered propagation contracts come from the
+[Selection API](https://www.w3.org/TR/selection-api/#dom-selection-getcomposedranges)
+and [DOM dispatch](https://dom.spec.whatwg.org/#concept-event-dispatch).
+
+- ZH/dark/18 px/`#3B82F6` in a 1121 × 950 window at Actual Size
+  with a 320 px Dock. Right-click on `row` shows the localized action.
+  Escape leaves draft `8647` intact. Reopening, Down and Return
+  add the literal word in a fenced block labeled with the workspace
+  path and absolute line number `:4`. Immediate typing appends `512` in its own
+  paragraph and the same file stays open. A right-click on blank
+  reader space opens no menu. Selected draft text still opens
+  WebKit's Copy and Paste menu.
+- EN/light/14 px/Flame Orange in a 560.5 px Dock. Shift-click
+  extends the selection from line 4 into 5. Choosing `Quote in message`
+  appends exactly WebKit's selected text and the file address `:4-5`
+  after `8639`. The assistant's own context menu retains its
+  copy and regenerate actions and dismisses with Escape. The
+  same draft then continues with `728`, with the file still open.
+
+Scoped formatting, the full Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and five
+canonical Lab documents pass. Native acceptance used signed Wails
+with the production plugins and a captured workspace. The default
+shortcut, clipboard transfer, VoiceOver, live filesystem reads,
+Send, browser suites and benchmarks were outside this run.
+
+Four native launches and three loopback previews exit. Cleanup
+removes four registrations, eight private Library directories,
+one private preference file, ten checkout outputs and the scratch tree.
+Next inspect quoting selected text inside the assistant's own menu.
+
 ### Native short-paste continuation qualification
 
 No actionable focus/caret finding in the inspected trace. Approve the observed
