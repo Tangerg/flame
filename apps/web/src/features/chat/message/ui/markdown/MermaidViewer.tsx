@@ -43,7 +43,6 @@ export function MermaidViewer({ svg, onClose }: { svg: string; onClose(): void }
   return (
     <div {...stylex.props(styles.root)}>
       <TransformWrapper
-        key={svg}
         minScale={0.01}
         maxScale={16}
         panning={{ activationKeys: hand ? [] : [" "] }}

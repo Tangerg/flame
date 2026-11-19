@@ -41586,6 +41586,64 @@ directories, ten checkout outputs and the scratch tree.
 Continue with the reading position when an already open
 diagram receives another valid streamed revision.
 
+### Preserve the open Mermaid canvas across valid updates (2026-11-19)
+
+In the native baseline, the reader opens a four-node
+diagram and zooms to 150%. A valid fifth node arrives.
+The lightbox shows the new diagram at 100% and focus
+falls from Zoom in to the page while the dialog stays open.
+
+MermaidViewer keeps its existing transform for the life of
+the open lightbox. Each accepted SVG updates the canvas
+content. The existing size observer applies the new bounds
+to the current viewport. The toolbar and keyboard reading
+region keep their identity. Fit measures the newest diagram,
+and a new opening starts with a fresh fit. Read-only ZCode's
+diagram dialog keeps the toolbar with the dialog. Better
+Accessibility guides focus continuity during content changes.
+
+- EN/light/14 px/Flame Orange at scale 1 with a 1440 px
+  window. The first valid revision keeps Zoom in focused
+  at 150%. Tab reaches the diagram viewport and arrow
+  keys pan it. A second valid revision keeps that viewport
+  focused at 150%. Fit shows all six nodes at 95% with
+  the control focused. Escape returns to Enlarge and the
+  existing draft continues as `731462`.
+- ZH/dark/18 px/`#3B82F6` at scale 1 with a 1121 px
+  window and 320 px Dock. A pointer drag at 150% places
+  the two middle nodes in view. They stay in the same
+  visible position after the next node arrives. The pan
+  toggle stays pressed and the canvas remains focused.
+  Arrow input and the next revision continue in that
+  viewport. Pointer Fit shows 74% and Close returns
+  to Enlarge. The draft continues as `732685`.
+- The canonical Lab opens its original three-node figure,
+  zooms to 150% and returns on Escape. Reopening fits at
+  100%. The reply link opens the captured eight-line
+  `runtime/internal/session/store.go` reader and Escape
+  returns to the link. The draft continues as `733915`.
+  A fresh Wails build after the independent Runtime
+  fast-forward repeats the diagram and file round trips
+  with draft `734126`.
+
+Scoped formatting, all 137 Web tests, 940 keys in eight
+locales, bootstrap, generated plugin resources, 26 bundle
+contracts, production module linkage, native build and tests,
+and all five canonical Lab documents pass on `1817ede97`.
+The private and canonical Lab builds each have 927 assets
+with matching hashes across the fast-forward. The private
+Lab releases two captured Run item deltas through the real
+projection and Mermaid parser. The canonical Lab excludes
+the private gate. Live providers, real workspace files,
+clipboard actions, VoiceOver speech and other platforms
+were outside this qualification.
+
+Five private launches and four loopback previews exit.
+Cleanup removes five registrations, ten private Library
+directories, ten checkout outputs and the scratch tree.
+Continue with the visible indication of the canvas input
+mode during the same reading task.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad
