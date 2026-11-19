@@ -39948,6 +39948,73 @@ launches and five previews terminate. Cleanup removes five app
 registrations, ten Library directories, ten checkout outputs
 and the scratch tree.
 
+### Reading expanded conversation tables (2026-11-19)
+
+Signed Wails at `798c6ec76` opens a private version of the captured
+80-row table in the document Lightbox. Its first description contains
+a long sentence and a contiguous 90-character token. The preview
+assigns that cell 1,714 px on one line, with 1,946 px of content in
+a 1,152 px reader. Focusing Table content and pressing Down eight
+times leaves y0 with the observation overlay removed. A native wheel
+reaches y746 and Page Down reaches y690 from the top.
+
+The preview and inline table now share the direct-cell prose measure.
+The portal resolves the viewport-relative bound for its own reading
+space. The document Lightbox routes Up and Down through the existing
+direct-focus reader helper. Horizontal panning and foreign-selection
+handling continue through ScrollRegion. The dialog keeps its initial
+and return focus paths.
+[WAI table reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html#tabular-data-and-grid-based-ui)
+[WAI modal dialog pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/#keyboard_interaction)
+
+- EN/light/16 px/Flame Orange with motion off at 1440 × 900.
+  The 623 px preview shows the complete six-line, 391 px description,
+  its suffix and the adjacent Checks column at x0. An ordinary row
+  below reads on one line. Three Down presses and one Up reach y80,
+  and the native horizontal keys leave that offset in place. A
+  pointer caret extended by Shift+Right gives a live table range
+  from 20 to 24. Up follows WebKit's text-selection path and the
+  scroll offset stays at y80. Wheel Up reaches y0. Escape returns
+  to Expand table and the separate inline offset of y80. Cmd+L
+  replaces the selected draft range as `86495713`. A repeat
+  keyboard opening focuses Table content, and Down and Up pass
+  with the live Composer caret at 4. An early opening under the
+  observation toggle required a pointer to focus the preview.
+- ZH/dark/18 px/custom blue with full motion at 1121 × 1051.
+  The 897 px preview pans across 1,475 px of table. Right twice
+  and Down reach x178 and y40. Left and Up reach x88 and y0.
+  Right clamps at x578 where the full last numeric value is
+  visible. Wheel Down reaches y880 at x578 with the sticky
+  headings, and Page Up returns toward the first row. The native
+  200% view is 560 × 525 CSS px with a 449 px table viewport.
+  The 364 px description wraps to two lines, readable together
+  after panning to x174. Vertical arrows still move by 40 px.
+  Actual Size returns to 1121 × 1051. Pointer Close restores
+  展开表格 and the inline x80 and y40. Cmd+L resumes the draft
+  as `5862974`.
+- The standard four-row Strategy comparison fits in its preview.
+  Enter focuses Table content. Tab wraps to Close table preview
+  and Shift+Tab returns to Table content. Escape restores Expand
+  table, the next Tab reaches Copy table, and Cmd+L continues the
+  retained draft as `507943`.
+
+Scoped Prettier, shared UI types and the packed consumer, full Web
+check with 137 tests including isolated Runtime, 937 locale keys in
+eight catalogs, 26 bundle contracts, native build and five-entry Lab
+pass. The standard assets exclude the private fixture parameters
+and observation marker. Native acceptance uses captured data.
+VoiceOver, physical IME, clipboard and live provider execution
+remain open.
+
+Four private bundles pass strict signature verification. Four
+launches and three previews terminate. Cleanup removes four app
+registrations, eight Library directories, ten checkout outputs
+and the scratch tree.
+
+The preview opens at the table beginning even when the inline
+reader has moved. The next reading check will start near the end
+of a long table and follow the transition into the preview.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

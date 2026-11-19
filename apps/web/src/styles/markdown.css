@@ -61,7 +61,7 @@
   inline-size: max-content;
   margin: 0;
 }
-.md-table-scroller
+:is(.md-table-scroller, .md-table-preview)
   > table
   > :is(thead, tbody, tfoot)
   > tr

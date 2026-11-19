@@ -14,6 +14,7 @@ import { layout, space, surface, type, weight } from "./tokens.stylex";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { IconButton } from "./icon-button";
 import { ScrollRegion } from "./scroll-region";
+import { scrollReaderWithLocalArrow } from "./reader-selection";
 import { useContentVisible } from "./content-visibility";
 import { MODAL_SCRIM, modalPanel } from "./floating-surface";
 const styles = stylex.create({
@@ -172,6 +173,11 @@ export function LightboxDialog(props: LightboxDialogProps) {
                 label={props.contentLabel}
                 data-focus-inset=""
                 styles={styles.documentBody}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+                    scrollReaderWithLocalArrow(event);
+                  }
+                }}
               >
                 {children}
               </ScrollRegion>

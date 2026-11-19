@@ -534,7 +534,9 @@ inline reader, Up and Down advance the rows and Left and Right stay on its
 horizontal axis. The arrows preserve a retained Composer selection. A selection
 of table text keeps its native keyboard behavior. Inline table columns take
 their intrinsic width. The prose line length also follows the conversation
-width, while numeric cells keep their single-line values.
+width, while numeric cells keep their single-line values. The preview bounds
+cell text against its available width. When its table reader has focus,
+Up and Down scroll rows and the horizontal arrows pan overflowing columns.
 
 Legend List owns the transcript viewport and row layout. Main and delegated
 turns use the shared centered reading column for the message, day separator,
