@@ -631,7 +631,6 @@
   "runError.action.retryIn": "Erneut versuchen in {{seconds}} s",
   "file.lines_one": "{{count}} Zeile",
   "file.lines_other": "{{count}} Zeilen",
-  "file.truncated": "gekürzt",
   "file.backToFiles": "Zurück zu den Dateien",
   "file.empty.title": "Keine Dateien",
   "file.refreshError.title": "Dateien konnten nicht aktualisiert werden",

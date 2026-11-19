@@ -617,7 +617,6 @@
   "settings.theme.system": "システム",
   "runError.action.retryIn": "{{seconds}} 秒後に再試行",
   "file.lines_other": "{{count}} 行",
-  "file.truncated": "切り詰め",
   "file.backToFiles": "ファイル一覧に戻る",
   "file.empty.title": "ファイルはありません",
   "file.refreshError.title": "ファイルを更新できませんでした",

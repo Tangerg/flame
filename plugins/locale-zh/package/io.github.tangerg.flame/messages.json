@@ -558,7 +558,6 @@
   "role.system": "系统",
   "composer.removeImage": "移除图片",
   "file.lines_other": "{{count}} 行",
-  "file.truncated": "已截断",
   "file.backToFiles": "返回文件列表",
   "file.empty.title": "没有文件",
   "file.refreshError.title": "文件刷新失败",

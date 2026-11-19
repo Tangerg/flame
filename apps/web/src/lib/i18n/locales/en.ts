@@ -612,7 +612,6 @@ export const en: Record<string, string> = {
   "composer.removeImage": "Remove image",
   "file.lines_one": "{{count}} line",
   "file.lines_other": "{{count}} lines",
-  "file.truncated": "truncated",
   "file.backToFiles": "Back to files",
   "file.empty.title": "No files",
 

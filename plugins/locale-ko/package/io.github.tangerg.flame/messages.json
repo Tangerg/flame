@@ -617,7 +617,6 @@
   "settings.theme.system": "시스템",
   "runError.action.retryIn": "{{seconds}}초 후 재시도",
   "file.lines_other": "{{count}}줄",
-  "file.truncated": "잘림",
   "file.backToFiles": "파일 목록으로 돌아가기",
   "file.empty.title": "파일 없음",
   "file.refreshError.title": "파일을 새로 고칠 수 없습니다",

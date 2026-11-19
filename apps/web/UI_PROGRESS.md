@@ -40774,6 +40774,61 @@ the truncated label after a complete response to an intentionally
 bounded request. Continue by checking what information the range alone
 provides and what feedback a shorter-than-requested read needs.
 
+### File headers show the served line range (2026-11-19)
+
+The previous native Files Dock shows `已截断` next to an accepted
+60–93 window of a 93-line file. Runtime's truncation flag covers any
+source outside a returned window. The header already has the inclusive
+coordinates of the content on screen.
+
+`FilePreview` passes the localized served range for a partial window
+and the line count for a whole file directly to `ViewHeader`. The
+whole-file renderer gate still uses Runtime's completeness flag.
+Paging uses the same served coordinates shown in the header. Better
+Writing informs the removal of redundant status text. Read-only ZCode
+code-viewer uses absolute source coordinates to identify a range.
+
+- A real isolated Runtime admits the full 8 MiB first line of a
+  three-line file. Read 1–3 returns 1–1 with `truncated: true`, and
+  read 2–3 returns 2–3. A second capture with a 2,772-byte response
+  budget records 1–59 against a request for 1–201 in a 93-line file.
+  The following response contains 60–93. The capture also includes
+  an intentionally bounded read of 60–93 with the maximum budget.
+- ZH/dark/18 px/`#3B82F6` at Actual Size and full motion. Native Window
+  Left and End on the separator produce a 320 px Dock. Jump to line
+  60 displays `第 60–93 行，共 93 行`. Keyboard Earlier displays 1–59.
+  One mouse wheel page exposes `再显示 34 行`. Mouse activation
+  requests 60–93 and focuses the named reader. The header remains a
+  single metadata line, the final page has no later action, and Open
+  full width presents the same range. The draft continues as `60421873`.
+- EN/light/14 px/Flame Orange at Actual Size and full motion. The
+  reduced-budget capture shows `Lines 1–59 of 93` after Go to line 1.
+  Show 34 more lines requests 60–93 and focuses the reader after
+  acceptance. Keyboard Earlier presents 1–59 again. Back to files
+  focuses the original `reading-guide.md` row.
+- The standard EN Lab opens the whole 93-line Markdown file in
+  Preview. Pointer mode changes and arrow keys both switch between
+  Preview and Source with the same `93 lines` caption. Tab from
+  Back to files reaches the selected mode. Keyboard Back returns to
+  the file row. The draft continues as `60140762`.
+
+Scoped Prettier, 137 Web tests, 938 locale keys, 26 bundle contracts,
+bootstrap, portable resources, module linkage, native build and five
+canonical Lab documents pass on `86bc4ee32`. The private Lab replays
+file windows captured from the isolated Runtime and exposes request
+and response coordinates through the native accessibility tree.
+Standard assets use the ordinary fixture. The Runtime probe covers
+isolated filesystem reads. Native interaction uses Lab data.
+Physical IME, VoiceOver speech and other operating systems were outside
+the exercise.
+
+Three signed private bundles, three launches and two previews complete.
+Cleanup removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. The next file-reading pass
+can exercise a delayed continuation. The query retains the old window
+during the request, so the native task is to see how the reader
+communicates that transition.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

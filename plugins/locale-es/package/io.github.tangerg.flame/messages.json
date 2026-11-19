@@ -645,7 +645,6 @@
   "file.lines_one": "{{count}} línea",
   "file.lines_many": "{{count}} líneas",
   "file.lines_other": "{{count}} líneas",
-  "file.truncated": "truncado",
   "file.backToFiles": "Volver a los archivos",
   "file.empty.title": "No hay archivos",
   "file.refreshError.title": "No se pudieron actualizar los archivos",
