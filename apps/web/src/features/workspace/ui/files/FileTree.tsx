@@ -1,5 +1,13 @@
 import { useWorkingTreeFiles } from "@/features/workspace/application/workingTreeChanges";
-import { useId, useMemo, useRef, useState, type RefObject, type ReactNode } from "react";
+import {
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type RefObject,
+  type ReactNode,
+} from "react";
 import * as stylex from "@stylexjs/stylex";
 import {
   Tree,
@@ -13,7 +21,7 @@ import {
   Button as TreeButton,
   type Key,
 } from "react-aria-components";
-import { Button, handoffFocus, useContentVisible, useCopy } from "@flame/ui";
+import { Button, handoffFocus, isImeKey, useContentVisible, useCopy } from "@flame/ui";
 import { ContextMenu, DataError, Icon, fileIconName, SkeletonList } from "@/ui/index";
 import { useT, useLocale, localeToBcp47 } from "@/lib/i18n/index";
 import { useWorkspace } from "@/features/workspace/public/workspace";
@@ -243,10 +251,34 @@ export function FileTree({
   ) : (
     <span>{t("common.loading")}</span>
   );
+  const onFileEnterCapture = (event: KeyboardEvent<HTMLDivElement>) => {
+    const row = event.target;
+    if (
+      event.defaultPrevented ||
+      !event.cancelable ||
+      event.key !== "Enter" ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey ||
+      isImeKey(event.nativeEvent) ||
+      !(row instanceof HTMLElement) ||
+      row.ownerDocument.activeElement !== row ||
+      !treeRef.current?.contains(row) ||
+      !row.matches('[role="row"][data-file-path]:not([data-has-child-items])')
+    )
+      return;
+
+    // WebKit can move focus to the Composer's retained selection before React Aria handles keyup.
+    event.preventDefault();
+  };
   return (
     <I18nProvider locale={locale}>
       <ContextMenu.Root>
-        <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+        <div
+          onKeyDownCapture={onFileEnterCapture}
+          style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}
+        >
           <Virtualizer layout={ListLayout} shouldObserveItemSize>
             <ContextMenu.Trigger
               onContextMenu={(event) => {

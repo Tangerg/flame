@@ -835,8 +835,13 @@ loading while their query is pending, including a paused request. Accepted empty
 lists and readable content keep their meaning during later pauses. Query data,
 network admission, retry and navigation retain their existing owners.
 File trees use React Aria Tree, Virtualizer and TreeLoadMoreItem for keyboard
-navigation, ARIA, expansion and branch continuation. Query owns directory pages
-and their cache. Runtime enumerates only the requested level and publishes its
+navigation, ARIA, expansion and branch continuation. Plain Return on a focused
+file row opens it through the tree's action on key release. The file tree
+cancels the browser's editing default at keydown to preserve a held Composer
+selection.
+
+Query owns directory pages and their cache. Runtime enumerates only the
+requested level and publishes its
 cursor, complete flag and scanned/excluded/budget coverage. The frontend merges
 accepted pages, sorts their presentation and distinguishes unknown, loading,
 failed and confirmed-empty branches. Budget exhaustion requires explicit Load

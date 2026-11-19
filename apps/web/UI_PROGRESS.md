@@ -39309,6 +39309,72 @@ the Composer and inserts a line break. The Chinese run with a clear
 document range reopens the same file. The next batch will trace
 activation ownership after the list restores focus.
 
+### Return opens the focused File row (2026-11-19)
+
+Signed Wails at `a8dc957cf` opens `reading-guide.md` with Return
+after the document range has cleared. When the Composer retains a
+live caret at offset 8, Back restores the same file row and trusted
+Enter keydown targets it. The event remains uncanceled. WebKit
+then sends `beforeinput insertParagraph` to the Composer and
+`reopenqxtail` gains a line break before `tail`. The file tree
+stays open while focus returns to the editor.
+
+The pinned React Aria 3.53.1 press handler allows the macOS Enter
+default to support native context menu shortcuts. Its File row
+action runs at keyup when release belongs to the pressed row.
+`FileTree` cancels the default of a plain, cancelable Enter on
+its directly focused file row in the existing DOM capture phase.
+The event continues to React Aria, which invokes the same
+`onAction` on release. The capture check respects modifiers,
+composition and focus on descendant controls. Better Accessibility's
+keyboard focus guidance informs the scope.
+[React Aria selection and actions](https://react-aria.adobe.com/Tree#selection-and-actions)
+[WAI Tree keyboard interaction](https://www.w3.org/WAI/ARIA/apg/patterns/treeview/#keyboardinteraction)
+[WebKit selection and focus](https://bugs.webkit.org/show_bug.cgi?id=112854#c5)
+
+- EN/light/Flame Orange with motion off at 1440 × 900. Fresh
+  60 ms and 120 ms native Return presses both cancel the default
+  at keydown and release on the focused `reading-guide.md` row.
+  Each opens the 93-line file and focuses Back to files. The
+  draft stays `reopenqxtail` at offset 8, and Cmd+L and paste
+  insert `k` as `reopenqxktail`. Pointer entry opens the same
+  file. Space stays on the file row with its held caret.
+  Control+Return opens the file's context menu and Escape restores
+  the row. With a clear editor range, Left and Right collapse
+  and expand `apps` with directory focus retained.
+- ZH/dark/18 px/custom blue with full motion in a 1121 × 950
+  native tile and 320 px Dock. A single Return opens the restored
+  file and keeps the backward `草稿` selection at offsets 6 to 4.
+  Cmd+L and paste produce `重开文件续写尾段`. Full-width Files
+  restores the same row after Back, and Return reopens the same
+  file. Close restores the Dock and the draft at offset 6.
+- The standard Lab repeats one Return from the restored row
+  and resumes the draft as `cleanopenqxktail`.
+
+In one no-delay harness injection, the recorded key release arrived
+before keydown. The row stayed focused and the draft stayed intact.
+Subsequent qualification used separate native press and release
+with an explicit hold. Native OS composition and VoiceOver remain
+unqualified.
+
+Scoped Prettier, Web typecheck, 89 Web contracts, 937 locale keys
+in eight catalogs, bootstrap, installed resource reproduction,
+26 bundle contracts and module linking pass. The native build
+gate and the standard five-entry Lab build pass. Native acceptance
+uses captured workspaces.
+
+Three private bundles pass strict signature verification. Four
+launches and three previews exit. Cleanup removes three app
+registrations, six Library directories, ten checkout outputs and
+the scratch tree.
+
+The related directory path has its own focus fault. With a live
+Composer caret at offset 8, Home reaches the `apps` directory.
+Right expands it, then WebKit focuses the Composer and advances
+the caret to 9. The same Right action with a clear editor range
+keeps directory focus. The next batch will qualify both directions
+and the tree's existing expansion behavior.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad
