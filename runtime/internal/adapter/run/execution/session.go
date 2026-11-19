@@ -120,13 +120,6 @@ const (
 	interactionBoundarySubtreeRecovery
 )
 
-// Scope's Interaction reports these external failures only by code
-// string; Scope does not export them, so this is Flame's single copy.
-const (
-	failureInvalidModelResponse  = "interaction.model.invalid_response"
-	failureToolCallsNotCompleted = "interaction.model.tool_calls_not_completed"
-)
-
 func newInteractionSession(
 	lifetime context.Context,
 	ref runs.ExecutorRef,
@@ -917,6 +910,9 @@ func segmentEndFromTermination(termination scoperun.Termination, duration time.D
 	return segmentEndDraft{ending: terminationEnding(termination), duration: duration}
 }
 
+// Scope v0.62 records this classification without exposing a public match.
+const scopeToolCallsNotCompletedCode = "interaction.model.tool_calls_not_completed"
+
 func terminationEnding(termination scoperun.Termination) run.Ending {
 	failed := func(kind run.FailureKind, detail string) run.Ending {
 		return run.Failed{Failure: run.Failure{Kind: kind, Detail: detail}}
@@ -937,8 +933,9 @@ func terminationEnding(termination scoperun.Termination) run.Ending {
 	case scoperun.TerminationCauseExternalFailure:
 		failure, _ := termination.Failure()
 		detail := run.Diagnostic(errors.New(failure.Message()))
+		invalidResponse, _ := scoperun.StepFailure(interaction.ErrInvalidModelResponse)
 		switch failure.Code() {
-		case failureInvalidModelResponse, failureToolCallsNotCompleted:
+		case invalidResponse.Code(), scopeToolCallsNotCompletedCode:
 			return failed(run.FailureProviderRejected, detail)
 		}
 		return failed(run.FailureInternal, detail)
