@@ -116,7 +116,7 @@ func (t *transcriptView) moveSelection(delta int) bool {
 	default:
 		return true
 	}
-	t.selectEntry(next, true)
+	t.selectEntry(next)
 	return true
 }
 
@@ -128,33 +128,42 @@ func (t *transcriptView) selectEdge(last bool) bool {
 	if last {
 		id += blockOffset(t.content.Len() - 1)
 	}
-	t.selectEntry(id, true)
+	t.selectEntry(id)
 	return true
 }
 
-func (t *transcriptView) selectEntry(id transcriptEntryID, reveal bool) {
-	t.setSelectedEntry(id, reveal, true)
+// selectionSource separates keyboard navigation, which reveals the entry and
+// drops any text selection, from a pointer press that keeps both in place.
+type selectionSource uint8
+
+const (
+	keyboardSelection selectionSource = iota + 1
+	pointerSelection
+)
+
+func (t *transcriptView) selectEntry(id transcriptEntryID) {
+	t.setSelectedEntry(id, keyboardSelection)
 }
 
 func (t *transcriptView) selectPointerEntry(id transcriptEntryID) bool {
 	if _, ok := t.entries[id]; !ok {
 		return false
 	}
-	t.setSelectedEntry(id, false, false)
+	t.setSelectedEntry(id, pointerSelection)
 	return true
 }
 
-func (t *transcriptView) setSelectedEntry(id transcriptEntryID, reveal, clearTextSelection bool) {
+func (t *transcriptView) setSelectedEntry(id transcriptEntryID, source selectionSource) {
 	if _, ok := t.entries[id]; !ok {
 		return
 	}
 	t.selected = &id
-	if clearTextSelection {
+	if source == keyboardSelection {
 		t.selectionIntent = nil
 		t.selection.Clear()
 	}
 	t.syncSelectedEntry()
-	if reveal {
+	if source == keyboardSelection {
 		t.revealSelected()
 	}
 	t.announceSelection()

@@ -200,7 +200,7 @@ func (c *Conversation) applyBlockStarted(runID string, event BlockStarted) error
 	if err := c.requireRunRunning(runID, "start a block"); err != nil {
 		return err
 	}
-	return c.put(event.Block, false)
+	return c.startBlock(event.Block)
 }
 
 func (c *Conversation) applyBlockDelta(runID string, event BlockDelta) error {
@@ -280,7 +280,7 @@ func (c *Conversation) applyBlockCompleted(runID string, event BlockCompleted) e
 		c.blocks[at] = event.Block.Clone()
 		return nil
 	}
-	return c.put(event.Block, true)
+	return c.completeBlock(event.Block)
 }
 
 // answersQuestion reports whether completed is the answered form of a Question

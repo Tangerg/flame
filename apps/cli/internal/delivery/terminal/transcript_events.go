@@ -77,7 +77,7 @@ func (t *transcriptView) begin(block conversation.Block) error {
 	if err := t.prepareLiveText(live); err != nil {
 		return err
 	}
-	live.id = t.place(live.block, false)
+	live.id = t.place(live.block, liveEntry)
 	t.entries[live.id].document = document
 	t.resetWindow(true)
 	t.history.Append(block.RunID, live.id)

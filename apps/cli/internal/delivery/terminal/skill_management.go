@@ -186,7 +186,43 @@ type skillProposalDecision struct {
 	reference workspace.SkillProposalReference
 }
 
-func (s *skillScreens) PrepareSkillProposalDecision(identity string, approve bool) error {
+// skillProposalVerdict is the reviewer's decision on one exact proposal revision.
+type skillProposalVerdict uint8
+
+const (
+	approveSkillProposal skillProposalVerdict = iota + 1
+	rejectSkillProposal
+)
+
+func (v skillProposalVerdict) title() string {
+	if v == approveSkillProposal {
+		return "Approve"
+	}
+	return "Reject"
+}
+
+func (v skillProposalVerdict) confirmation() string {
+	if v == approveSkillProposal {
+		return "Approve and publish"
+	}
+	return "Reject permanently"
+}
+
+func (v skillProposalVerdict) progress() string {
+	if v == approveSkillProposal {
+		return "approving"
+	}
+	return "rejecting"
+}
+
+func (v skillProposalVerdict) apply(ctx context.Context, service Skills, reference workspace.SkillProposalReference) error {
+	if v == approveSkillProposal {
+		return service.Approve(ctx, reference)
+	}
+	return service.Reject(ctx, reference)
+}
+
+func (s *skillScreens) PrepareSkillProposalDecision(identity string, verdict skillProposalVerdict) error {
 	identity = strings.TrimSpace(identity)
 	if identity == "" {
 		return errors.New("a proposal name, scope/name or scope/name@revision is required")
@@ -211,7 +247,7 @@ func (s *skillScreens) PrepareSkillProposalDecision(identity string, approve boo
 				s.message("load skill proposal failed: " + err.Error())
 				return
 			}
-			s.confirmSkillProposalDecision(decision, approve)
+			s.confirmSkillProposalDecision(decision, verdict)
 		},
 	)
 	if !started {
@@ -237,33 +273,24 @@ func resolveSkillProposal(proposals []workspace.SkillProposal, identity string) 
 	}
 }
 
-func (s *skillScreens) confirmSkillProposalDecision(decision skillProposalDecision, approve bool) {
-	verb, action := "Reject", "Reject permanently"
-	if approve {
-		verb, action = "Approve", "Approve and publish"
-	}
+func (s *skillScreens) confirmSkillProposalDecision(decision skillProposalDecision, verdict skillProposalVerdict) {
 	var content strings.Builder
 	content.WriteString("Revision: " + decision.reference.Revision + "\n\n")
 	for _, section := range skillProposalsDocument([]workspace.SkillProposal{decision.proposal}).Sections {
 		content.WriteString(section.Title + "\n" + section.Text + "\n\n")
 	}
 	question := "Decide this exact revision · PgUp/PgDn scroll"
-	s.confirm(verb+" Skill proposal", question, action, content.String(), func() {
-		s.decideSkillProposal(decision.reference, approve)
+	s.confirm(verdict.title()+" Skill proposal", question, verdict.confirmation(), content.String(), func() {
+		s.decideSkillProposal(decision.reference, verdict)
 	})
 }
 
-func (s *skillScreens) decideSkillProposal(reference workspace.SkillProposalReference, approve bool) {
-	verb := "rejecting"
-	decide := s.service.Reject
-	if approve {
-		verb = "approving"
-		decide = s.service.Approve
-	}
+func (s *skillScreens) decideSkillProposal(reference workspace.SkillProposalReference, verdict skillProposalVerdict) {
+	verb := verdict.progress()
 	s.status.note(verb + " skill proposal " + reference.Name)
 	started := s.tasks.admissionMutation(skillOperation, false,
 		func(ctx context.Context) (workspace.SkillProposalReference, error) {
-			return reference, decide(ctx, reference)
+			return reference, verdict.apply(ctx, s.service, reference)
 		},
 		func(reviewed workspace.SkillProposalReference, err error) {
 			if err != nil {

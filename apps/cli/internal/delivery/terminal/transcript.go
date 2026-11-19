@@ -422,7 +422,11 @@ func (t *transcriptView) appendCompleted(block conversation.Block) error {
 				return fmt.Errorf("terminal transcript: question block %s completed twice", block.ID)
 			}
 		}
-		id := t.place(item, !isPendingQuestion)
+		state := settledEntry
+		if isPendingQuestion {
+			state = liveEntry
+		}
+		id := t.place(item, state)
 		t.history.Append(block.RunID, id)
 		if isPendingQuestion {
 			t.pendingQuestions[key] = trackedQuestion{runID: block.RunID, id: id, block: question}
@@ -461,7 +465,7 @@ func (t *transcriptView) beginTool(block conversation.Block) error {
 		if isMutable {
 			mutable.SetExpanded(t.details)
 		}
-		id := t.place(item, false)
+		id := t.place(item, liveEntry)
 		t.history.Append(block.RunID, id)
 		live.ids = append(live.ids, id)
 		if isMutable {
@@ -490,7 +494,7 @@ func (t *transcriptView) addGroupedTool(runID string, tool *toolBlock) *trackedT
 		block := newToolGroupBlock(t.theme, t.glyphs, t.details)
 		block.Add(tool)
 		group = &trackedToolGroup{runID: runID, block: block}
-		group.id = t.place(block, false)
+		group.id = t.place(block, liveEntry)
 		t.history.Append(runID, group.id)
 		t.toolViews = append(t.toolViews, trackedToolView{id: group.id, block: block})
 		t.activeToolGroup = group
@@ -570,12 +574,20 @@ func (t *transcriptView) Append(block base.Block) {
 }
 
 func (t *transcriptView) append(block base.Block) transcriptEntryID {
-	id := t.place(block, true)
+	id := t.place(block, settledEntry)
 	t.refreshSearch()
 	return id
 }
 
-func (t *transcriptView) place(block base.Block, finished bool) transcriptEntryID {
+// transcriptEntryState says whether a placed entry still receives live updates.
+type transcriptEntryState uint8
+
+const (
+	liveEntry transcriptEntryState = iota + 1
+	settledEntry
+)
+
+func (t *transcriptView) place(block base.Block, state transcriptEntryState) transcriptEntryID {
 	t.entrance = nil
 	if t.nextEntry == ^transcriptEntryID(0) {
 		panic("terminal: transcript entry identity exhausted")
@@ -585,13 +597,13 @@ func (t *transcriptView) place(block base.Block, finished bool) transcriptEntryI
 	entry := newTranscriptEntry(t.theme, t.glyphs, block)
 	t.entries[id] = entry
 	t.order = append(t.order, id)
-	entry.settled = finished
+	entry.settled = state == settledEntry
 	entry.projection = snapshotTranscriptEntry(entry)
 	t.resetWindow(true)
 	if image, ok := block.(*terminalImageBlock); ok {
 		t.prepareImage(id, image)
 	}
-	if finished {
+	if state == settledEntry {
 		if message, ok := block.(*markdownBlock); ok {
 			t.finishMarkdown(id, message)
 		}
@@ -694,7 +706,7 @@ func (t *transcriptView) JumpToRun(runID string) bool {
 	if !ok {
 		return false
 	}
-	t.selectEntry(id, true)
+	t.selectEntry(id)
 	return true
 }
 

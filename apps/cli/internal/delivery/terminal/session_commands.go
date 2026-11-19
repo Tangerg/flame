@@ -93,7 +93,7 @@ func (b *sessionBrowser) ShowSessions() {
 		return
 	}
 	b.pane.Reset()
-	b.loadSessionPage("", false)
+	b.loadSessionPage(firstSessionPage)
 }
 
 func (b *sessionBrowser) loadMoreSessions() {
@@ -101,28 +101,29 @@ func (b *sessionBrowser) loadMoreSessions() {
 		b.notify("all sessions are already loaded")
 		return
 	}
-	b.loadSessionPage(b.pane.Cursor(), true)
+	b.loadSessionPage(nextSessionPage)
 }
 
-func (b *sessionBrowser) loadSessionPage(cursor string, appendPage bool) {
+func (b *sessionBrowser) loadSessionPage(position sessionPagePosition) {
+	cursor := b.pane.requestCursor(position)
 	b.notify("loading sessions")
 	b.tasks.session(pickerCatalogOperation, true,
 		func(ctx context.Context) (conversation.SessionPage, error) {
 			return b.runtime.ListSessions(ctx, conversation.SessionQuery{PageSize: conversation.DefaultPageSize(), Cursor: cursor})
 		},
 		func(page conversation.SessionPage, err error) {
-			if appendPage && !b.dialog.Open() {
+			if position == nextSessionPage && !b.dialog.Open() {
 				return
 			}
 			if err != nil {
 				b.notify("could not load sessions: " + err.Error())
 				return
 			}
-			if err := b.pane.SetPage(page, appendPage); err != nil {
+			if err := b.pane.SetPage(page, position); err != nil {
 				b.notify("could not load sessions: " + err.Error())
 				return
 			}
-			if !appendPage && !b.dialog.Open() {
+			if position == firstSessionPage && !b.dialog.Open() {
 				b.dialog.Show()
 			}
 			b.status.note("choose a session")

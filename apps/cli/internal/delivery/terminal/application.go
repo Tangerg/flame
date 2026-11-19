@@ -414,7 +414,7 @@ func (a *app) buildSessionPicker(theme kit.Theme, glyphs kit.Glyphs, replayPolic
 		runtime: a.runtime, workbench: a.workbench, queue: a.queue, replayPolicy: replayPolicy,
 		session: &a.lifecycle.state, tasks: a.tasks, status: a.status, stack: &a.stack, theme: theme, glyphs: glyphs,
 		clipboard: a.loop.Clipboard(), notify: a.message, observing: a.runs.observing, adoptCurrent: func(session conversation.Session) { a.lifecycle.setActiveSession(session) },
-		catalogChanged: func() { a.lifecycle.applySessionInvalidation(true, false) },
+		catalogChanged: func() { a.lifecycle.reloadSessionCatalog() },
 	}, switchTo: func(id string) { a.lifecycle.switchSession(id) }})
 }
 

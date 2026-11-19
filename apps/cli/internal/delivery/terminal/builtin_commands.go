@@ -100,10 +100,10 @@ func builtinCommands() []localCommand {
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-archive", Title: "archive one managed Skill", Arguments: extensions.RequiredArguments}, Available: availableWithSkills, Run: func(a *app, name string) error { return a.screens.skills.ArchiveSkill(name) }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-restore", Title: "restore one archived managed Skill", Arguments: extensions.RequiredArguments}, Available: availableWithSkills, Run: func(a *app, name string) error { return a.screens.skills.RestoreSkill(name) }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-approve", Title: "approve an exact pending Skill proposal", Arguments: extensions.RequiredArguments}, Available: availableWithSkills, Run: func(a *app, identity string) error {
-				return a.screens.skills.PrepareSkillProposalDecision(identity, true)
+				return a.screens.skills.PrepareSkillProposalDecision(identity, approveSkillProposal)
 			}},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-reject", Title: "reject an exact pending Skill proposal", Arguments: extensions.RequiredArguments}, Available: availableWithSkills, Run: func(a *app, identity string) error {
-				return a.screens.skills.PrepareSkillProposalDecision(identity, false)
+				return a.screens.skills.PrepareSkillProposalDecision(identity, rejectSkillProposal)
 			}},
 		),
 		commandGroup(commandCategoryConnections,

@@ -28,20 +28,24 @@ func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 	a.reader.follow(event)
 	a.loadPluginViews(event.Type == protocol.RuntimePluginsChanged)
 	a.followModelChanges(event.Type == protocol.RuntimeModelsChanged)
-	a.lifecycle.applySessionInvalidation(
-		invalidatesSessionCatalog(event),
-		invalidationAffectsSession(event, a.lifecycle.state.current.ID, a.runs.conversation().RunID()),
-	)
+	if invalidatesSessionCatalog(event) {
+		a.lifecycle.reloadSessionCatalog()
+	}
+	if invalidationAffectsSession(event, a.lifecycle.state.current.ID, a.runs.conversation().RunID()) {
+		a.lifecycle.invalidateCurrentSession()
+	}
 }
 
 func (a *app) applyRuntimeResync(topics []protocol.RuntimeTopic) {
 	a.reader.follow(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics})
 	a.loadPluginViews(slices.Contains(topics, protocol.TopicPluginsChanged))
 	a.followModelChanges(slices.Contains(topics, protocol.TopicModelsChanged))
-	a.lifecycle.applySessionInvalidation(
-		invalidatesSessionCatalog(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics}),
-		resyncAffectsSession(topics),
-	)
+	if invalidatesSessionCatalog(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics}) {
+		a.lifecycle.reloadSessionCatalog()
+	}
+	if resyncAffectsSession(topics) {
+		a.lifecycle.invalidateCurrentSession()
+	}
 }
 
 func (a *app) followModelChanges(affected bool) {
@@ -58,14 +62,14 @@ func goalInvalidationAffectsSession(event changefeed.Event, sessionID string) bo
 		(len(event.SessionIDs) == 0 || slices.Contains(event.SessionIDs, sessionID))
 }
 
-func (l *sessionLifecycle) applySessionInvalidation(catalogChanged, currentSessionChanged bool) {
-	if catalogChanged && l.sessions.dialog.Open() {
+func (l *sessionLifecycle) reloadSessionCatalog() {
+	if l.sessions.dialog.Open() {
 		l.sessions.pane.Reset()
-		l.sessions.loadSessionPage("", false)
+		l.sessions.loadSessionPage(firstSessionPage)
 	}
-	if !currentSessionChanged {
-		return
-	}
+}
+
+func (l *sessionLifecycle) invalidateCurrentSession() {
 	l.state.invalidated = true
 	if l.runs.conversation().Phase() == conversation.Running || l.runs.following() || l.runs.cancelPending() ||
 		l.tasks.operations.Active(sessionChangeOperation) {

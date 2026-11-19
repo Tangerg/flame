@@ -217,29 +217,42 @@ func (c *Conversation) ClearPresentation() {
 	c.textStreams = make(map[string]StreamedText)
 }
 
-func (c *Conversation) put(block Block, completed bool) error {
+func (c *Conversation) startBlock(block Block) error {
 	c.ensureStorage()
 	key := BlockKey(block.RunID, block.ID)
-	if at, ok := c.index[key]; ok {
-		if !completed {
-			return fmt.Errorf("%w: block %s started twice", ErrInvalidTransition, block.ID)
-		}
-		if c.blocks[at].Status != BlockStatusRunning {
-			return fmt.Errorf("%w: block %s completed twice", ErrInvalidTransition, block.ID)
-		}
-		if err := validateBlockIdentity(c.blocks[at], block); err != nil {
-			return err
-		}
-		c.blocks[at] = block.Clone()
-		delete(c.textStreams, key)
-		return nil
+	if _, started := c.index[key]; started {
+		return fmt.Errorf("%w: block %s started twice", ErrInvalidTransition, block.ID)
 	}
-	c.index[key] = len(c.blocks)
-	c.blocks = append(c.blocks, block.Clone())
-	if !completed && (block.Kind == BlockAssistant || block.Kind == BlockReasoning) {
+	c.appendBlock(key, block)
+	if block.Kind == BlockAssistant || block.Kind == BlockReasoning {
 		c.textStreams[key] = NewStreamedText(block.Text)
 	}
 	return nil
+}
+
+// completeBlock also accepts a block whose start was never observed.
+func (c *Conversation) completeBlock(block Block) error {
+	c.ensureStorage()
+	key := BlockKey(block.RunID, block.ID)
+	at, started := c.index[key]
+	if !started {
+		c.appendBlock(key, block)
+		return nil
+	}
+	if c.blocks[at].Status != BlockStatusRunning {
+		return fmt.Errorf("%w: block %s completed twice", ErrInvalidTransition, block.ID)
+	}
+	if err := validateBlockIdentity(c.blocks[at], block); err != nil {
+		return err
+	}
+	c.blocks[at] = block.Clone()
+	delete(c.textStreams, key)
+	return nil
+}
+
+func (c *Conversation) appendBlock(key string, block Block) {
+	c.index[key] = len(c.blocks)
+	c.blocks = append(c.blocks, block.Clone())
 }
 
 func validateBlockIdentity(started, completed Block) error {

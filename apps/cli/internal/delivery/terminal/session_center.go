@@ -52,7 +52,25 @@ func (s *sessionCenterPane) Reset() {
 	s.picker.SetItems(nil)
 }
 
-func (s *sessionCenterPane) SetPage(page conversation.SessionPage, appendPage bool) error {
+// sessionPagePosition is where a catalog page goes: it replaces the loaded
+// catalog, or continues it from the pane's own cursor.
+type sessionPagePosition uint8
+
+const (
+	firstSessionPage sessionPagePosition = iota + 1
+	nextSessionPage
+)
+
+// requestCursor is the continuation a page at position must be requested from.
+func (s *sessionCenterPane) requestCursor(position sessionPagePosition) string {
+	if position == nextSessionPage {
+		return s.cursor
+	}
+	return ""
+}
+
+func (s *sessionCenterPane) SetPage(page conversation.SessionPage, position sessionPagePosition) error {
+	appendPage := position == nextSessionPage
 	if !appendPage {
 		s.seenCursors = map[string]struct{}{"": {}}
 	}
@@ -103,8 +121,6 @@ func (s *sessionCenterPane) Remove(id string) {
 }
 
 func (s *sessionCenterPane) HasMore() bool { return s.cursor != "" }
-
-func (s *sessionCenterPane) Cursor() string { return s.cursor }
 
 func (s *sessionCenterPane) Element() scene.Element {
 	if s.group == nil {
