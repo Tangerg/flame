@@ -40083,6 +40083,65 @@ The existing wide-table sample also provides a follow-up
 reading check at the far edge, where the numeric columns occupy
 the viewport and the first column leaves it.
 
+### Keeping visible columns when expanding a wide table (2026-11-19)
+
+Signed Wails at `96ba0aae7` keeps the vertical transition to
+Observation 62. Opening at inline x849 and y5837 places the
+897 px preview at x0 and y3743. Scanned lines and Matched
+files are fully visible in the inline reader and outside the
+preview's visible columns. Seven Right presses reach x578 in
+the preview and show both columns. Escape restores the inline
+offsets.
+
+The existing opening record now carries the trailing visible
+header's cell index when the inline viewport has panned. The
+preview uses the matching cell's own geometry to work out the
+smallest offset that reveals it. It measures in layout pixels
+through the entry animation and lets WebKit clamp the offset.
+The row and column are placed in the same scroll operation.
+Each viewport then owns its position.
+[WAI data table reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html#tabular-data-and-grid-based-ui)
+[CSSOM scrolling coordinates](https://drafts.csswg.org/cssom-view/#scrolling)
+
+- ZH/dark/18 px/custom blue with full motion at 1121 × 1051.
+  Opening from inline x80 keeps the preview at x0 because
+  Checks fits there. From inline x320, the preview uses x39
+  and shows Read bytes in full. From inline x849 it uses
+  x559, with Scanned lines and Matched files immediately
+  visible in full. Observation 62 stays the first readable
+  row at y3743. Down, Right and Left move the two axes
+  independently. A rapid Escape and Return restores x559 and
+  y3743. At native 125%, the 718 px preview starts at x743
+  and y3731 from inline x861 and y5838. The final columns
+  remain fully visible, and Down moves only y to 3771.
+  Escape restores the inline x861 and y5838 at that zoom.
+  Cmd+L replaces the draft selection as `482795`.
+- EN/light/16 px/Flame Orange with motion off at 1440 × 900.
+  From inline x439 and y1344, all seven columns appear in
+  the 1,152 px preview at x0 and row 29 at y1316. Down
+  twice reaches y1396. Pointer Close returns to Expand table
+  and the inline offsets. Cmd+L resumes as `7630824`.
+- The standard four-column Strategy comparison opens on its
+  original rows with Table content focused. Escape followed
+  by Tab reaches Copy table.
+
+Scoped Prettier, full Web check with 137 tests including
+isolated Runtime, 937 locale keys in eight catalogs, 26
+bundle contracts, native build and five-entry Lab pass.
+The standard build excludes the private fixture and observer
+markers. Native acceptance uses captured data. RTL rendering,
+VoiceOver and live provider execution remain open.
+
+Four private bundles pass strict signature verification. Five
+launches and four previews terminate. Cleanup removes four app
+registrations, eight Library directories, ten checkout outputs
+and the scratch tree.
+
+Returning from native 125% to Actual Size moves the inline
+reader from x861 to x168 at a stable y5838. A second native
+launch of the baseline reproduces the shift with the preview
+closed throughout. This is the next reading-position check.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

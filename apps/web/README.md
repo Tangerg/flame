@@ -538,6 +538,8 @@ width, while numeric cells keep their single-line values. The preview bounds
 cell text against its available width. When its table reader has focus,
 Up and Down scroll rows and the horizontal arrows pan overflowing columns.
 Opening the preview brings the first visible inline body row into view.
+If the inline reader is panned, the preview reveals its trailing visible
+column within the available width.
 Closing it returns to the original inline reading position.
 
 Legend List owns the transcript viewport and row layout. Main and delegated

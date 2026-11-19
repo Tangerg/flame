@@ -17,6 +17,8 @@ interface Props {
   children?: ReactNode;
 }
 
+const SCROLL_EDGE_TOLERANCE = 0.5;
+
 function firstVisibleBodyRow(table: HTMLTableElement | null): number | null {
   const viewport = table?.parentElement;
   if (!table || !viewport || viewport.scrollTop <= 0) return null;
@@ -37,6 +39,61 @@ function firstVisibleBodyRow(table: HTMLTableElement | null): number | null {
   return null;
 }
 
+function trailingVisibleHeaderIndex(table: HTMLTableElement | null): number | null {
+  const viewport = table?.parentElement;
+  const header = table?.tHead?.rows.item(0);
+  if (!viewport || !header || viewport.clientWidth <= 0) return null;
+
+  const rtl = getComputedStyle(viewport).direction === "rtl";
+  if ((rtl ? -viewport.scrollLeft : viewport.scrollLeft) <= SCROLL_EDGE_TOLERANCE) {
+    return null;
+  }
+
+  const left = viewport.getBoundingClientRect().left + viewport.clientLeft;
+  const right = left + viewport.clientWidth;
+  let trailingEdge = -Infinity;
+  let index: number | null = null;
+  for (const cell of header.cells) {
+    const bounds = cell.getBoundingClientRect();
+    const visibleWidth = Math.min(right, bounds.right) - Math.max(left, bounds.left);
+    const edge = rtl ? -bounds.left : bounds.right;
+    if (visibleWidth > SCROLL_EDGE_TOLERANCE && edge > trailingEdge) {
+      trailingEdge = edge;
+      index = cell.cellIndex;
+    }
+  }
+  return index;
+}
+
+function previewColumnOffset(
+  viewport: HTMLDivElement,
+  table: HTMLTableElement | null,
+  index: number | null,
+): number {
+  if (!table || index === null) return 0;
+  const cell = table.tHead?.rows.item(0)?.cells.item(index);
+  const viewportWidth = viewport.clientWidth;
+  if (!cell || viewportWidth <= 0) return 0;
+
+  const renderedWidth = table.getBoundingClientRect().width;
+  const layoutWidth = table.offsetWidth;
+  if (renderedWidth <= 0 || layoutWidth <= 0) return 0;
+  // Use the table to remove the dialog's entry scale without relying on offset parents.
+  const layoutPixels = layoutWidth / renderedWidth;
+  const bounds = cell.getBoundingClientRect();
+  const left =
+    (bounds.left - viewport.getBoundingClientRect().left) * layoutPixels +
+    viewport.scrollLeft -
+    viewport.clientLeft;
+  const width = bounds.width * layoutPixels;
+  const rtl = getComputedStyle(viewport).direction === "rtl";
+  const start = rtl ? viewportWidth - (left + width) : left;
+  // An oversized column can only align its leading edge.
+  const distance = Math.min(start, start + width - viewportWidth);
+  if (distance <= SCROLL_EDGE_TOLERANCE) return 0;
+  return (rtl ? -1 : 1) * Math.ceil(distance);
+}
+
 export function MarkdownTable({ markdownSource, children }: Props) {
   const t = useT();
   const scroll = useScrollReach();
@@ -46,7 +103,10 @@ export function MarkdownTable({ markdownSource, children }: Props) {
   const expandRef = useRef<HTMLButtonElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const previewTableRef = useRef<HTMLTableElement>(null);
-  const pendingPreview = useRef<{ rowIndex: number | null } | null>(null);
+  const pendingPreview = useRef<{
+    rowIndex: number | null;
+    headerIndex: number | null;
+  } | null>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
   const visible = useContentVisible();
@@ -93,7 +153,13 @@ export function MarkdownTable({ markdownSource, children }: Props) {
   const copy = useCopy(markdownSource, t("message.code.copy"), writeTable);
 
   function handlePreviewOpenChange(open: boolean) {
-    pendingPreview.current = open ? { rowIndex: firstVisibleBodyRow(tableRef.current) } : null;
+    const table = tableRef.current;
+    pendingPreview.current = open
+      ? {
+          rowIndex: firstVisibleBodyRow(table),
+          headerIndex: trailingVisibleHeaderIndex(table),
+        }
+      : null;
     setPreview(open ? "open" : "closed");
   }
 
@@ -105,11 +171,10 @@ export function MarkdownTable({ markdownSource, children }: Props) {
     const table = previewTableRef.current;
     const firstRow = table?.tBodies.item(0)?.rows.item(0);
     const row = opening.rowIndex === null ? null : table?.rows.item(opening.rowIndex);
-    // Table layout offsets are unaffected by the dialog's opening scale.
-    viewport.scrollTo({
-      top: row && firstRow ? row.offsetTop - firstRow.offsetTop : 0,
-      behavior: "instant",
-    });
+    // Row layout offsets are unaffected by the dialog's opening scale.
+    const top = row && firstRow ? row.offsetTop - firstRow.offsetTop : 0;
+    const left = previewColumnOffset(viewport, table, opening.headerIndex);
+    viewport.scrollTo({ top, left, behavior: "instant" });
   }
 
   return (
