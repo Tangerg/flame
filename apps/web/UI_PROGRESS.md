@@ -33399,6 +33399,51 @@ Three signed native launches exit normally. Both loopback previews
 stop and cleanup removes three registrations, six private Library
 directories, ten checkout outputs and the scratch tree.
 
+### Keep Diff comparison facts together on wrap (2026-11-20)
+
+Signed Wails at `5aa394b77` splits the Chinese merge-base name
+across lines in a 320 px Dock. The worktree single-file view can
+also place a standalone separator before the read time. The file
+and its source still fit in that view.
+
+The accepted comparison, scope, baseline and time now flow as four
+items within the existing `Metadata` paragraph. The portable component
+uses the shared control gap for horizontal spacing and natural flex
+line wrapping. The baseline retains its localized separator, short
+commit and full-commit title. `time` retains its accepted `dateTime`.
+The detail disclosure shows the full baseline.
+[CSS flex line wrapping](https://www.w3.org/TR/css-flexbox-1/#flex-wrap-property).
+
+- EN/light/14 px/Flame Orange at 1121 × 950. All four items fit on
+  one visible line for the file-scoped Worktree read. The Workspace
+  overview and its `dock` filter open the original `DockResizer.tsx`
+  with its exact source and HEAD. Comparison details reveals the full
+  commit. Escape restores the same filtered row and the draft
+  continues as `10636518`.
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 in a 320 px Dock. The
+  Branch reader uses three lines, with `合并基础 · abcdef12` together
+  and the complete code patch still visible. Refresh updates the read
+  time and changes `branch-after` to `refreshed-after` for the same
+  baseline. Full width and its Dock return retain the file and its
+  accepted metadata. The full commit, Escape to the original row and
+  draft continuation `10642638` are observed.
+
+Plugin verification passes 44 Node checks, 17 source tests, twenty
+catalogs across eight locales and published resource checks. Six
+existing conditional source cases skip. Web passes 151 tests, 940
+keys across eight locales, bootstrap, 26 bundle contracts and module
+linkage. Scoped formatting, `make check-native` and the canonical
+five-document Lab build pass.
+
+Both signed candidate apps display the rebuilt Diff ESM in the canonical
+Lab. Live Runtime Git reads, VoiceOver speech and other native
+platforms remain outside this run. Existing installations receive
+the rebuilt digest through normal package selection.
+
+Three signed native launches exit normally. Both loopback previews
+stop and cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+
 ### Persistent Diff navigation at default zoom (2026-11-19)
 
 The Wails baseline at `a589bc610` reproduces an interrupted review in a

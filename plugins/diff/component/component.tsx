@@ -507,11 +507,17 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
             />
           ) : null}
           {accepted && (
-            <Metadata>
-              {comparisonName(t, accepted.query.mode)}
-              {" · "}
-              {t(accepted.query.path ? "scope.file" : "scope.workspace")}
-              {" · "}
+            <Metadata
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                columnGap: "var(--layout-control-gap)",
+              }}
+            >
+              <span>{comparisonName(t, accepted.query.mode)}</span>{" "}
+              <span>
+                {t(accepted.query.path ? "scope.file" : "scope.workspace")}
+              </span>{" "}
               <span
                 title={
                   accepted.diff.baseline.type === "emptyTree"
@@ -529,8 +535,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                       ),
                       commit: accepted.diff.baseline.commit.slice(0, 8),
                     })}
-              </span>
-              {" · "}
+              </span>{" "}
               <time dateTime={accepted.at}>
                 {t("read.at", {
                   time: timeFormat.format(new Date(accepted.at)),
