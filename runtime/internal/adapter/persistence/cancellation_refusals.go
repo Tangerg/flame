@@ -20,16 +20,16 @@ const (
 	cancellationUnconfirmed    cancellationRefusal = "unconfirmed"
 )
 
-func (r cancellationRefusal) failure() (error, error) {
+// cause is the Run outcome a stored refusal reports. The schema admits no
+// value outside these constants, and an unconfirmed outcome is the safe reading.
+func (r cancellationRefusal) cause() error {
 	switch r {
 	case cancellationTargetFinished:
-		return runs.ErrRunFinished, nil
+		return runs.ErrRunFinished
 	case cancellationTargetMissing:
-		return runs.ErrRunNotFound, nil
-	case cancellationUnconfirmed:
-		return &runs.CancellationSettlementError{}, nil
+		return runs.ErrRunNotFound
 	default:
-		return nil, fmt.Errorf("sqlite: invalid cancellation refusal %q", r)
+		return &runs.CancellationSettlementError{}
 	}
 }
 

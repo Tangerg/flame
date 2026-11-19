@@ -32,6 +32,9 @@ func NewSkillMaintenance(sweeper idleSkillSweeper, observations *AuthoredWatch, 
 	if lo.IsNil(observations) {
 		return nil, errors.New("workspace: idle skill authored observation is required")
 	}
+	if invalidations == nil {
+		return nil, errors.New("workspace: idle skill invalidations are required")
+	}
 	return &SkillMaintenance{sweeper: sweeper, observations: observations, invalidations: invalidations}, nil
 }
 

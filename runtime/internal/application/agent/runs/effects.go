@@ -37,13 +37,8 @@ type WaitingSubtreeCancellationCommitter interface {
 	CommitWaitingSubtreeCancellation(
 		ctx context.Context,
 		commit WaitingSubtreeCancellationCommit,
-		record WaitingSubtreeCancellationReceipt,
+		receipt CancellationReceipt,
 	) (WaitingSubtreeCancellationResult, error)
-}
-
-type WaitingSubtreeCancellationReceipt struct {
-	Key    string
-	Record func(context.Context, ExecutorRef, WaitingSubtreeCancellationResult) error
 }
 
 // WorkspaceChangeNotifier emits a best-effort live workspace invalidation after

@@ -10,6 +10,7 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
@@ -156,22 +157,21 @@ func (s *Handler) CreateSession(ctx context.Context, in protocol.CreateSessionRe
 }
 
 func (s *Handler) DeleteSession(ctx context.Context, id string) error {
-	return s.deleteSession(ctx, id, func(ctx context.Context, write func(context.Context) error) error {
-		return write(ctx)
-	})
+	var deleted struct{}
+	return s.deleteSession(ctx, id, directReply(&deleted))
 }
 
-func (s *Handler) deleteSession(ctx context.Context, id string, complete func(context.Context, func(context.Context) error) error) error {
+func (s *Handler) deleteSession(ctx context.Context, id string, complete operation.Reply[struct{}]) error {
 	return wireSessionMutationErr(s.sessions.DeleteSession(ctx, id, complete), id)
 }
 
 func (s *Handler) UpdateSession(ctx context.Context, in protocol.UpdateSessionRequest) (*protocol.Session, error) {
-	return completeSessionView(func(complete sessions.ViewCompletion) error {
+	return completeSessionView(func(complete operation.Reply[sessions.View]) error {
 		return s.updateSession(ctx, in, complete)
 	})
 }
 
-func (s *Handler) updateSession(ctx context.Context, in protocol.UpdateSessionRequest, complete sessions.ViewCompletion) error {
+func (s *Handler) updateSession(ctx context.Context, in protocol.UpdateSessionRequest, complete operation.Reply[sessions.View]) error {
 	var cwd *string
 	if in.Workspace != nil {
 		path := in.Workspace.Path
@@ -190,21 +190,13 @@ func (s *Handler) updateSession(ctx context.Context, in protocol.UpdateSessionRe
 	return wireSessionMutationErr(err, in.SessionID)
 }
 
-func completeSessionView(command func(sessions.ViewCompletion) error) (*protocol.Session, error) {
-	var response *protocol.Session
-	err := command(func(ctx context.Context, write func(context.Context) (sessions.View, error)) error {
-		view, err := write(ctx)
-		if err != nil {
-			return err
-		}
-		presented := presentSession(view)
-		response = &presented
-		return nil
-	})
-	if err != nil {
+func completeSessionView(command func(operation.Reply[sessions.View]) error) (*protocol.Session, error) {
+	var view sessions.View
+	if err := command(directReply(&view)); err != nil {
 		return nil, err
 	}
-	return response, nil
+	presented := presentSession(view)
+	return &presented, nil
 }
 
 func wireSessionMutationErr(err error, sessionID string) error {

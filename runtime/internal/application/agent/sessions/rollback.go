@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -20,11 +21,9 @@ type RollbackResult struct {
 	Dropped []DroppedRun
 }
 
-// RollbackCompletion spans the history change and its receipt while the
-// Session, Goal drive and generated-title claims are still held.
-type RollbackCompletion func(context.Context, func(context.Context) (RollbackResult, error)) error
-
-func (c *Coordinator) RollbackHistory(ctx context.Context, sessionID, toRunID string, complete RollbackCompletion) error {
+// RollbackHistory records its reply while the Session, Goal drive and
+// generated-title claims are still held.
+func (c *Coordinator) RollbackHistory(ctx context.Context, sessionID, toRunID string, complete operation.Reply[RollbackResult]) error {
 	admission, err := c.ClaimSessionMutation(ctx, sessionID)
 	if err != nil {
 		return err
@@ -77,7 +76,7 @@ func (r resolvedRollbackBoundary) survivingContinuation(restoreHistory bool) (ru
 	return run.Run{}, false
 }
 
-func (c *Coordinator) completeRollback(ctx context.Context, sessionID string, boundary resolvedRollbackBoundary, restoreHistory bool, complete RollbackCompletion) error {
+func (c *Coordinator) completeRollback(ctx context.Context, sessionID string, boundary resolvedRollbackBoundary, restoreHistory bool, complete operation.Reply[RollbackResult]) error {
 	if !restoreHistory || len(boundary.timeline.Dropped) == 0 {
 		return complete(ctx, func(tx context.Context) (RollbackResult, error) {
 			return c.rollbackResult(tx, sessionID, nil)

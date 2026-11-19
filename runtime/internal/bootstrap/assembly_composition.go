@@ -66,7 +66,10 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *r
 	if err != nil {
 		return policyComposition{}, err
 	}
-	goalStore := goals.WithInvalidations(cfg.stores.Goals, invalidations.publish)
+	goalStore, err := goals.WithInvalidations(cfg.stores.Goals, invalidations.publish)
+	if err != nil {
+		return policyComposition{}, err
+	}
 	goalReader, err := goals.NewReader(goalStore)
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: build goal reader: %w", err)

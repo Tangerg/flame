@@ -298,7 +298,7 @@ type Dependencies struct {
 	Retirer               *ResourceRetirer
 	Admissions            Admissions
 	// Invalidations publishes post-commit invalidations for the session projections a
-	// mutation moved. nil disables them (no runtime change stream wired).
+	// mutation moved.
 	Invalidations invalidation.Publish
 	// Now supplies Session construction and replacement time.
 	Now func() time.Time
@@ -340,6 +340,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		{"session id generator", deps.NewID},
 		{"run id generator", deps.NewRunID},
 		{"item id generator", deps.NewItemID},
+		{"invalidations", deps.Invalidations},
 	}
 	for _, required := range required {
 		if lo.IsNil(required.value) {

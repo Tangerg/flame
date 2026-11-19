@@ -35,7 +35,7 @@ type CommandCalls struct {
 }
 
 func NewCommandCalls(host framehost.Host, store plugins.Store, selections plugins.SelectionStore, compositions plugins.CompositionStore, pool *mcp.Pool, routing *plugins.Commands, publish invalidation.Publish) (*CommandCalls, error) {
-	if !host.Valid() || lo.IsNil(store) || lo.IsNil(selections) || lo.IsNil(compositions) || pool == nil || routing == nil {
+	if !host.Valid() || lo.IsNil(store) || lo.IsNil(selections) || lo.IsNil(compositions) || pool == nil || routing == nil || publish == nil {
 		return nil, errors.New("managed plugin: command routing, installation store and connections are required")
 	}
 	return &CommandCalls{framework: host, publish: publish, installations: store, selections: selections, compositions: compositions, pool: pool, routing: routing}, nil

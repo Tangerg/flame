@@ -183,16 +183,11 @@ type RecoveryConversationTransition struct {
 // atomically and Run transitions remain CAS guarded by storage.
 type Recovery struct {
 	store                RecoveryStore
-	subtreeCancellations AcceptedSubtreeRecovery
+	subtreeCancellations *Cancellations
 	resumability         WaitingExecutionResumability
 	admissions           recoveryAdmissions
 	invalidations        invalidation.Publish
 	now                  func() time.Time
-}
-
-type AcceptedSubtreeRecovery struct {
-	Revive  func(context.Context) error
-	Pending func(context.Context, string) ([]AcceptedSubtreeCancellation, error)
 }
 
 // recoveryPlanner owns one ownership-scoped reconciliation snapshot and the caches needed
@@ -218,7 +213,7 @@ type recoveryPlanner struct {
 // NewRecovery constructs the Run ownership recovery use case.
 func NewRecovery(
 	store RecoveryStore,
-	subtreeCancellations AcceptedSubtreeRecovery,
+	subtreeCancellations *Cancellations,
 	resumability WaitingExecutionResumability,
 	admissions recoveryAdmissions,
 	invalidations invalidation.Publish,
@@ -226,14 +221,17 @@ func NewRecovery(
 	if lo.IsNil(store) {
 		return nil, errors.New("runs: recovery store is required")
 	}
-	if subtreeCancellations.Revive == nil || subtreeCancellations.Pending == nil {
-		return nil, errors.New("runs: accepted subtree cancellation recovery is required")
+	if subtreeCancellations == nil {
+		return nil, errors.New("runs: accepted subtree cancellations are required")
 	}
 	if lo.IsNil(resumability) {
 		return nil, errors.New("runs: waiting execution resumability is required")
 	}
 	if lo.IsNil(admissions) {
 		return nil, errors.New("runs: recovery admissions are required")
+	}
+	if invalidations == nil {
+		return nil, errors.New("runs: recovery invalidations are required")
 	}
 	return &Recovery{
 		store:                store,
@@ -249,7 +247,7 @@ func NewRecovery(
 // and opaque executor checkpoint remain coherent. Every other non-terminal tree
 // is recovered as run_lost in one application transaction.
 func (r *Recovery) Reconcile(ctx context.Context) (int, error) {
-	if err := r.subtreeCancellations.Revive(ctx); err != nil {
+	if err := r.subtreeCancellations.ReviveAcceptedSubtreeCancellations(ctx); err != nil {
 		return 0, err
 	}
 	claims, err := r.claimAbandonedSessions(ctx)
@@ -385,7 +383,7 @@ func (r *Recovery) claimAbandonedSessions(
 			claims.releases = append(claims.releases, release)
 		}
 	}
-	protected, err := r.subtreeCancellations.Pending(ctx, "")
+	protected, err := r.subtreeCancellations.unrevivedSubtreeCancellations(ctx)
 	if err != nil {
 		claims.release()
 		return nil, fmt.Errorf("runs: read accepted subtree cancellations under recovery admission: %w", err)

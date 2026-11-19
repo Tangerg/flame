@@ -28,7 +28,7 @@ type Compositions struct {
 }
 
 func NewCompositions(store CompositionStore, installations Store, transact func(context.Context, func(context.Context) error) error, publish invalidation.Publish) (*Compositions, error) {
-	if lo.IsNil(store) || lo.IsNil(installations) || transact == nil {
+	if lo.IsNil(store) || lo.IsNil(installations) || transact == nil || publish == nil {
 		return nil, errors.New("plugins: compositions, installations and admission are required")
 	}
 	return &Compositions{store: store, installations: installations, transact: transact, publish: publish}, nil

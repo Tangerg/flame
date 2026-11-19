@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
@@ -170,7 +171,7 @@ func (c *Coordinator) prepareInitial(
 // execution-policy change must not inherit processes, context evidence, or an
 // isolated copy from the preceding policy, so those resources are retired
 // before persistence exposes the replacement.
-func (c *Coordinator) Update(ctx context.Context, id string, patch Patch, complete ViewCompletion) error {
+func (c *Coordinator) Update(ctx context.Context, id string, patch Patch, complete operation.Reply[View]) error {
 	patch = patch.clone()
 	var workspace *session.Workspace
 	if patch.WorkspacePath != nil {

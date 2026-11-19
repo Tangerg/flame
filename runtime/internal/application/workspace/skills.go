@@ -67,6 +67,7 @@ func NewSkills(scope *Scope, catalog SkillCatalog, curator SkillCurator, proposa
 		{name: "curator", value: curator},
 		{name: "proposal store", value: proposals},
 		{name: "authored observation", value: observations},
+		{name: "invalidations", value: invalidations},
 	} {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("workspace: skills %s is required", required.name)

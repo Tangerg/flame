@@ -284,28 +284,53 @@ type CancelCommand struct {
 	// child directly. It is false for the minimal capability set and while the
 	// runtime has no child-run producer.
 	AllowChildRun bool
-	Completion    CancellationCompletion
+	// Receipt is nil when the command carries no idempotency key.
+	Receipt CancellationReceipt
 }
 
-type CancellationCompletion struct {
-	Key                string
-	Reserve            func(ctx context.Context, runID string) error
-	RecordRefusal      func(context.Context, error) error
-	CommitParked       func(context.Context, ExecutorRef, func(context.Context) (run.Run, error)) error
-	RecordWaitingChild func(context.Context, ExecutorRef, WaitingSubtreeCancellationResult) error
-	RecordActiveRoot   RootCancellationReceipt
-	RecordActiveChild  ChildCancellationReceipt
+// CancellationReceipt is the idempotent acknowledgement of one keyed
+// CancelRun. Its result commits in the Run's own transaction, so the key can
+// never acknowledge an outcome the Run did not commit.
+type CancellationReceipt interface {
+	// Key is the reservation the Run's terminal transaction keeps while it
+	// refuses every other cancellation linked to that Run.
+	Key() string
+	// ReserveForRun links the key to a live Run before its owner can settle it.
+	ReserveForRun(ctx context.Context, runID string) error
+	// Refuse completes the key with a refusal that changed no Run.
+	Refuse(ctx context.Context, reason error) error
+	// Stage runs commit in the transaction ctx carries, opening one when it
+	// carries none, and stores the result as the key's settlement there.
+	Stage(ctx context.Context, ref ExecutorRef, commit func(context.Context) (CancelResult, error)) error
 }
 
-type RootCancellationReceipt func(context.Context, ExecutorRef, run.Run) error
+// StageCancellation commits a cancellation and, for a keyed command, its
+// receipt in the same transaction.
+func StageCancellation(
+	ctx context.Context,
+	receipt CancellationReceipt,
+	ref ExecutorRef,
+	commit func(context.Context) (CancelResult, error),
+) (CancelResult, error) {
+	if receipt == nil {
+		return commit(ctx)
+	}
+	var result CancelResult
+	err := receipt.Stage(ctx, ref, func(tx context.Context) (CancelResult, error) {
+		var err error
+		result, err = commit(tx)
+		return result, err
+	})
+	return result, err
+}
 
-type ChildCancellationReceipt func(context.Context, ExecutorRef, CancelResult) error
-
-// ParkedCancellationCompletion joins the terminal Run write to the receipt's
-// retained executor reference before either can be observed as committed.
-type ParkedCancellationCompletion struct {
-	Key    string
-	Commit func(context.Context, ExecutorRef, func(context.Context) (run.Run, error)) error
+// CancellationKey is the reservation a committed cancellation keeps; an
+// unkeyed command keeps none.
+func CancellationKey(receipt CancellationReceipt) string {
+	if receipt == nil {
+		return ""
+	}
+	return receipt.Key()
 }
 
 const (

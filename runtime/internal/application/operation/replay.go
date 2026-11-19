@@ -172,6 +172,10 @@ func (r *Replay) persistOutcome(ctx context.Context, record ReplayRecord) (Repla
 	return settled, nil
 }
 
+// Reply runs a use case's durable write and records the command's reply with
+// it, so the reply exists exactly when the write committed.
+type Reply[T any] func(ctx context.Context, write func(context.Context) (T, error)) error
+
 // AtomicCompletion is borrowed by one synchronous command. A failed write
 // remains retryable by its caller after the database rolls back both effects.
 type AtomicCompletion struct {

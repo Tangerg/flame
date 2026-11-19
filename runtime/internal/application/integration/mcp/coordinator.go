@@ -114,6 +114,7 @@ func New(cfg Config) (*Coordinator, error) {
 	}{
 		{"registry", cfg.Registry}, {"store", cfg.Store}, {"external workflow", cfg.External},
 		{"live connections", cfg.Connections}, {"tool catalog", cfg.ToolCatalog},
+		{"invalidations", cfg.Invalidations},
 	} {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("mcp: %s is required", required.name)

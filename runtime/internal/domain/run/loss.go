@@ -44,6 +44,19 @@ func (l LossReason) Valid() bool {
 	}
 }
 
+// DeclaredAfterStop reports a loss that recovery declared after the executing
+// Runtime stopped. An unresolved Effect or model call is instead settled by the
+// live owner, which proves the Run finished even though a remote outcome is
+// unknown.
+func (l LossReason) DeclaredAfterStop() bool {
+	switch l {
+	case LossUnresolvedEffects, LossUnresolvedModelCall:
+		return false
+	default:
+		return true
+	}
+}
+
 // Loss explains a lost Run.
 type Loss struct {
 	Reason LossReason

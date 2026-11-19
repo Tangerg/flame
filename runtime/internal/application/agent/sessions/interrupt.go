@@ -53,7 +53,7 @@ func (c *Coordinator) LookupOpenInterrupt(ctx context.Context, runID string) (ru
 // ApplyRunCancel commits the atomic durable abandon write-set. Executor
 // teardown is owned by application/agent/runs for run commands; session rollback and
 // deletion continue to use the coordinator's narrow cleanup collaborator.
-func (c *Coordinator) ApplyRunCancel(ctx context.Context, ref runs.ExecutorRef, runID, reason string, finishedAt time.Time, complete runs.ParkedCancellationCompletion) (rundomain.Run, error) {
+func (c *Coordinator) ApplyRunCancel(ctx context.Context, ref runs.ExecutorRef, runID, reason string, finishedAt time.Time, receipt runs.CancellationReceipt) (rundomain.Run, error) {
 	pending, err := c.parkedRun(ctx, ref.SessionID, runID)
 	if err != nil {
 		return rundomain.Run{}, err
@@ -61,7 +61,7 @@ func (c *Coordinator) ApplyRunCancel(ctx context.Context, ref runs.ExecutorRef, 
 	if pending.ExecutorID != ref.ExecutorID {
 		return rundomain.Run{}, fmt.Errorf("sessions: parked Run %q changed executor: %w", runID, rundomain.ErrSessionBusy)
 	}
-	return c.terminalizePendingRun(ctx, ref.SessionID, pending, finishedAt, rundomain.OutcomeCanceled, reason, complete)
+	return c.terminalizePendingRun(ctx, ref.SessionID, pending, finishedAt, rundomain.OutcomeCanceled, reason, receipt)
 }
 
 // ApplyRunLost atomically ends a parked run whose executor checkpoint cannot be
@@ -72,7 +72,7 @@ func (c *Coordinator) ApplyRunLost(ctx context.Context, sessionID, runID string,
 	if err != nil {
 		return err
 	}
-	_, err = c.terminalizePendingRun(ctx, sessionID, pending, finishedAt, rundomain.OutcomeLost, "", runs.ParkedCancellationCompletion{})
+	_, err = c.terminalizePendingRun(ctx, sessionID, pending, finishedAt, rundomain.OutcomeLost, "", nil)
 	return err
 }
 
@@ -94,7 +94,7 @@ func (c *Coordinator) terminalizePendingRun(
 	finishedAt time.Time,
 	outcome rundomain.Outcome,
 	detail string,
-	complete runs.ParkedCancellationCompletion,
+	receipt runs.CancellationReceipt,
 ) (rundomain.Run, error) {
 	if finishedAt.IsZero() {
 		return rundomain.Run{}, fmt.Errorf("sessions: terminalize parked run %q: finished time is required", pending.RootRunID)
@@ -116,17 +116,10 @@ func (c *Coordinator) terminalizePendingRun(
 		return rundomain.Run{}, err
 	}
 	rootRun, _ := plan.RootRun()
-	write := func(ctx context.Context) (rundomain.Run, error) {
-		if err := c.writes.ApplyTerminal(ctx, plan, complete.Key); err != nil {
-			return rundomain.Run{}, err
-		}
-		return rootRun, nil
-	}
-	if complete.Commit == nil {
-		_, err = write(ctx)
-	} else {
-		err = complete.Commit(ctx, runs.ExecutorRef{SessionID: sessionID, ExecutorID: pending.ExecutorID}, write)
-	}
+	ref := runs.ExecutorRef{SessionID: sessionID, ExecutorID: pending.ExecutorID}
+	_, err = runs.StageCancellation(ctx, receipt, ref, func(ctx context.Context) (runs.CancelResult, error) {
+		return runs.CancelResult{Run: rootRun}, c.writes.ApplyTerminal(ctx, plan, runs.CancellationKey(receipt))
+	})
 	if err != nil {
 		return rundomain.Run{}, err
 	}

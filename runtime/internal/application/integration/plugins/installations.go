@@ -78,7 +78,7 @@ func New(lifetime context.Context, host framehost.Host, store Store, catalog cat
 		value any
 	}{
 		{"installation store", store}, {"release catalog", catalog}, {"packages", packages},
-		{"connections", connections}, {"transaction", transact},
+		{"connections", connections}, {"transaction", transact}, {"invalidations", publish},
 	} {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("plugins: %s is required", required.name)

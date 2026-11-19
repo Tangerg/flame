@@ -7,7 +7,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -219,7 +218,7 @@ func (t treePublisher) publishTerminalAtomically(
 		return reductionPublication{}, fmt.Errorf("runs: validate atomic terminal: %w", err)
 	}
 	write := func() error { return t.publications.events.CommitEvent(ctx, combined) }
-	if err := commitRunBoundary(ctx, combined.SessionID, combined.RunID, write, retryUnresolved || combined.RecordRootCancellation != nil || combined.childCancellation != nil); err != nil {
+	if err := commitRunBoundary(ctx, combined.SessionID, combined.RunID, write, retryUnresolved || combined.rootCancellation != nil || combined.childCancellation != nil); err != nil {
 		return reductionPublication{}, fmt.Errorf("runs: commit atomic terminal: %w", err)
 	}
 	// The database owns one indivisible write-set, while the live tree still
@@ -250,14 +249,11 @@ func (t treePublisher) bindTerminalCancellation(commit *EventCommit) {
 		return
 	}
 	cancellation := t.owner.matchingRootCancellation(commit.cancellation)
-	if cancellation == nil || cancellation.record == nil {
+	if cancellation == nil || cancellation.receipt == nil {
 		return
 	}
-	commit.winningCancellationKey = cancellation.key
-	ref := t.rootSpec.executorRef()
-	commit.RecordRootCancellation = func(ctx context.Context, terminal run.Run) error {
-		return cancellation.record(ctx, ref, terminal)
-	}
+	commit.winningCancellationKey = cancellation.receipt.Key()
+	commit.rootCancellation = &rootCancellationCommit{executor: t.rootSpec.executorRef(), receipt: cancellation.receipt}
 }
 
 // combineTerminalEventCommit materializes the one write-set that the reducer

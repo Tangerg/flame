@@ -26,6 +26,12 @@ func (c *Cancellations) ReviveAcceptedSubtreeCancellations(ctx context.Context) 
 	return nil
 }
 
+// unrevivedSubtreeCancellations are accepted cancellations whose busy Session
+// kept them from reviving; Run-loss recovery leaves their trees to them.
+func (c *Cancellations) unrevivedSubtreeCancellations(ctx context.Context) ([]AcceptedSubtreeCancellation, error) {
+	return c.acceptedSubtreeCancellations.SubtreeCancellations(ctx, "")
+}
+
 func (c *Cancellations) SettleAcceptedSubtreeCancellation(ctx context.Context, ref ExecutorRef, rootRunID, targetRunID string) error {
 	cleanupCtx, cancel := runCleanupContext(ctx)
 	defer cancel()

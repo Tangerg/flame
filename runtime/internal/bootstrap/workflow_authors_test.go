@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -115,7 +116,7 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 		if ok, err := store.Save(ctx, opening); err != nil || !ok {
 			t.Fatalf("original goal commit: %t %v", ok, err)
 		}
-		settler, err := goals.NewRunSettler(store)
+		settler, err := goals.NewRunSettler(store, func(invalidation.Notice) {})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -129,7 +130,7 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 		}); err != nil {
 			t.Fatal(err)
 		}
-		if err := settler.Drain(ctx, store, calls, session.ID, nil); !errors.Is(err, plugin.ErrUnavailable) {
+		if err := settler.Drain(ctx, store, calls, session.ID); !errors.Is(err, plugin.ErrUnavailable) {
 			t.Fatalf("substitute consumed a pending receipt: %v", err)
 		}
 		if p, found, err := store.PendingGoalRun(ctx, session.ID); err != nil || !found || !p.Owns(original) {
@@ -140,7 +141,7 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 			t.Fatalf("new goal attributed to %v, %v", created.Source, err)
 		}
 		r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: first.ID, Enabled: true}, "restore-original-goal")
-		if err := settler.Drain(ctx, store, calls, session.ID, nil); err != nil {
+		if err := settler.Drain(ctx, store, calls, session.ID); err != nil {
 			t.Fatal(err)
 		}
 		head, err := store.Get(ctx, session.ID)

@@ -17,7 +17,7 @@ import (
 func (e *Effects) CommitWaitingSubtreeCancellation(
 	ctx context.Context,
 	commit runs.WaitingSubtreeCancellationCommit,
-	receipt runs.WaitingSubtreeCancellationReceipt,
+	receipt runs.CancellationReceipt,
 ) (runs.WaitingSubtreeCancellationResult, error) {
 	var result runs.WaitingSubtreeCancellationResult
 	var projected bool
@@ -29,7 +29,7 @@ func (e *Effects) CommitWaitingSubtreeCancellation(
 		if err := e.persistWaitingCancellationProjection(ctx, commit); err != nil {
 			return err
 		}
-		terminalByID, err := e.terminalizeWaitingCancellationRuns(ctx, commit.TerminalRuns(), commit.TargetRunID(), receipt.Key)
+		terminalByID, err := e.terminalizeWaitingCancellationRuns(ctx, commit.TerminalRuns(), commit.TargetRunID(), runs.CancellationKey(receipt))
 		if err != nil {
 			return err
 		}
@@ -47,11 +47,11 @@ func (e *Effects) CommitWaitingSubtreeCancellation(
 			return err
 		}
 		result = runs.WaitingSubtreeCancellationResult{TargetRun: target, RootRun: root}
-		if receipt.Record != nil {
-			ref := runs.ExecutorRef{SessionID: accepted.SessionID, ExecutorID: accepted.Pending.ExecutorID}
-			if err := receipt.Record(ctx, ref, result); err != nil {
-				return err
-			}
+		ref := runs.ExecutorRef{SessionID: accepted.SessionID, ExecutorID: accepted.Pending.ExecutorID}
+		if _, err := runs.StageCancellation(ctx, receipt, ref, func(context.Context) (runs.CancelResult, error) {
+			return runs.CancelResult{Run: target, RootRun: &root}, nil
+		}); err != nil {
+			return err
 		}
 		projected = true
 		return nil

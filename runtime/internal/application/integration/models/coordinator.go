@@ -143,6 +143,7 @@ func New(cfg Config) (*Coordinator, error) {
 		{"embedding role state", cfg.EmbeddingRoleState},
 		{"embedding validator", cfg.EmbeddingValidator},
 		{"embedding store", cfg.EmbeddingStore},
+		{"invalidations", cfg.Invalidations},
 	} {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("models: %s is required", required.name)

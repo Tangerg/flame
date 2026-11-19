@@ -88,11 +88,19 @@ func (m SelectedChat) InputTokenCounter() (InputTokenCounter, bool) {
 	return m.resolved.InputTokenCounter()
 }
 
+// AuxiliaryOperation is the product purpose an auxiliary span records.
+type AuxiliaryOperation string
+
+const (
+	AuxiliaryTitle      AuxiliaryOperation = "title"
+	AuxiliaryCompaction AuxiliaryOperation = "compaction"
+)
+
 // AuxiliaryPrompt is the complete resource envelope for one auxiliary model request.
 // Input bytes and output tokens are deliberately mandatory: background
 // maintenance must never inherit a provider's context/output defaults.
 type AuxiliaryPrompt struct {
-	Operation    string
+	Operation    AuxiliaryOperation
 	SystemPrompt string
 	UserPrompt   string
 	Budget       AuxiliaryBudget
@@ -101,8 +109,10 @@ type AuxiliaryPrompt struct {
 func (p AuxiliaryPrompt) inputBytes() int { return len(p.SystemPrompt) + len(p.UserPrompt) }
 
 func (p AuxiliaryPrompt) validate() error {
-	if strings.TrimSpace(p.Operation) == "" {
-		return errors.New("auxiliary model: operation is required")
+	switch p.Operation {
+	case AuxiliaryTitle, AuxiliaryCompaction:
+	default:
+		return fmt.Errorf("auxiliary model: unknown operation %q", p.Operation)
 	}
 	if err := p.Budget.Validate(); err != nil {
 		return err
@@ -153,8 +163,8 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 	ctx, span := otel.Tracer("scope/flame/adapter/integration/model").Start(ctx, "auxiliary model",
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
-			attribute.String("auxiliary.operation", prompt.Operation),
-			attribute.Int("auxiliary.input_bytes", len(prompt.SystemPrompt)+len(prompt.UserPrompt)),
+			attribute.String("auxiliary.operation", string(prompt.Operation)),
+			attribute.Int("auxiliary.input_bytes", prompt.inputBytes()),
 		),
 	)
 	stage := failedResolving

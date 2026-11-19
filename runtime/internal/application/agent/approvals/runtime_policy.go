@@ -31,7 +31,7 @@ func NewRuntimePolicy(
 		name  string
 		value any
 	}{
-		{"source authorities", authorities}, {"rule store", store}, {"session mode store", modeStore}, {"session lookup", sessions},
+		{"source authorities", authorities}, {"rule store", store}, {"session mode store", modeStore}, {"session lookup", sessions}, {"invalidations", invalidations},
 	} {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("approvals: %s is required", required.name)

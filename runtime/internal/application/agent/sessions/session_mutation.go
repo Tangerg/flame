@@ -6,18 +6,15 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
-// ViewCompletion keeps the mutation and its exact reply in the same durable
-// decision before a caller can observe the publication.
-type ViewCompletion func(context.Context, func(context.Context) (View, error)) error
-
 // DeleteSession commits history deletion and its resource retirement together.
 // Only the committed responsibility authorizes destruction; failed cleanup
 // retains a durable admission fence for recovery rather than undoing deletion.
-func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string, complete func(context.Context, func(context.Context) error) error) error {
+func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string, complete operation.Reply[struct{}]) error {
 	deletion, err := NewDeletePlan(sessionID)
 	if err != nil {
 		return err
@@ -43,8 +40,8 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string, compl
 				return fmt.Errorf("sessions: quiesce process-local Session state before delete: %w", err)
 			}
 			return c.titles.commitHistoryChange(commitCtx, sessionID, func(string) bool { return true }, func() error {
-				return complete(commitCtx, func(tx context.Context) error {
-					return c.writes.ApplyDelete(tx, deletion)
+				return complete(commitCtx, func(tx context.Context) (struct{}, error) {
+					return struct{}{}, c.writes.ApplyDelete(tx, deletion)
 				})
 			})
 		},
@@ -69,7 +66,7 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string, compl
 	)
 }
 
-func (c *Coordinator) RestorePortableSession(ctx context.Context, portable PortableSnapshot, complete ViewCompletion) error {
+func (c *Coordinator) RestorePortableSession(ctx context.Context, portable PortableSnapshot, complete operation.Reply[View]) error {
 	snapshot, err := portable.CanonicalSnapshot()
 	if err != nil {
 		return err

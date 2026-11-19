@@ -32,7 +32,7 @@ type Selections struct {
 }
 
 func NewSelections(store SelectionStore, installations Store, transact func(context.Context, func(context.Context) error) error, publish invalidation.Publish, connector connectorSelection) (*Selections, error) {
-	if lo.IsNil(store) || lo.IsNil(installations) || transact == nil || lo.IsNil(connector) {
+	if lo.IsNil(store) || lo.IsNil(installations) || transact == nil || lo.IsNil(connector) || publish == nil {
 		return nil, errors.New("plugins: provider selections, installations and admission are required")
 	}
 	return &Selections{connector: connector, store: store, installations: installations, transact: transact, publish: publish}, nil

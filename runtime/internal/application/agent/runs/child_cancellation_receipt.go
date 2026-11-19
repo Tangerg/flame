@@ -11,13 +11,13 @@ import (
 type childCancellationCommit struct {
 	executor ExecutorRef
 	result   CancelResult
-	record   ChildCancellationReceipt
+	receipt  CancellationReceipt
 }
 
 func (c childCancellationCommit) validate(commit EventCommit) error {
 	child, root := c.result.Run, c.result.RootRun
 	lineage := child.Lineage()
-	if c.record == nil || c.executor.ExecutorID == "" || c.executor.SessionID != commit.SessionID || child.SessionID() != commit.SessionID ||
+	if c.receipt == nil || c.executor.ExecutorID == "" || c.executor.SessionID != commit.SessionID || child.SessionID() != commit.SessionID ||
 		root == nil || !root.Lineage().IsRoot() || root.ID() != lineage.RootRunID() || root.SessionID() != commit.SessionID ||
 		!child.Canceled() || lineage.ParentRunID() != commit.RunID ||
 		!settlesChildCancellationItem(commit.Items, lineage.SpawnedByItemID()) {
@@ -37,13 +37,13 @@ func (r *runTreeOwner) bindChildCancellationReceipt(commit *EventCommit, prior [
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	attempt := r.childCancel
-	if attempt == nil || attempt.record == nil || attempt.parentRunID != commit.RunID ||
+	if attempt == nil || attempt.receipt == nil || attempt.parentRunID != commit.RunID ||
 		!settlesChildCancellationItem(commit.Items, attempt.spawningItemID) {
 		return
 	}
 	if terminal, confirmed := r.childCancellationTerminalLocked(attempt, prior); confirmed {
 		commit.childCancellation = &childCancellationCommit{
-			executor: attempt.executor, result: attempt.result(terminal), record: attempt.record,
+			executor: attempt.executor, result: attempt.result(terminal), receipt: attempt.receipt,
 		}
 	}
 }
@@ -52,6 +52,7 @@ func (e EventCommit) RecordChildCancellation(ctx context.Context) error {
 	if e.childCancellation == nil {
 		return nil
 	}
-	receipt := e.childCancellation
-	return receipt.record(ctx, receipt.executor, receipt.result)
+	return e.childCancellation.receipt.Stage(ctx, e.childCancellation.executor, func(context.Context) (CancelResult, error) {
+		return e.childCancellation.result, nil
+	})
 }

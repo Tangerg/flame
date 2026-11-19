@@ -11,12 +11,54 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 type cancellationSettlement struct {
 	ExecutorID string         `json:"executorId"`
 	Outcome    jsontext.Value `json:"outcome"`
+}
+
+// cancellationReceipt stores a keyed CancelRun outcome through its deferred
+// replay record. A failed reservation is the replay's own outcome, never a
+// cancellation refusal to persist.
+type cancellationReceipt struct {
+	key        string
+	method     *Method
+	completion *operation.DeferredCompletion
+	reserveErr error
+}
+
+func (r *cancellationReceipt) Key() string { return r.key }
+
+func (r *cancellationReceipt) ReserveForRun(ctx context.Context, runID string) error {
+	r.reserveErr = r.completion.ReserveForRun(ctx, runID)
+	return r.reserveErr
+}
+
+func (r *cancellationReceipt) Refuse(ctx context.Context, reason error) error {
+	payload, err := encodeStoredOutcome(failed(projectError(wireCancellationError(reason))))
+	if err != nil {
+		return err
+	}
+	return r.completion.Complete(ctx, payload)
+}
+
+func (r *cancellationReceipt) Stage(ctx context.Context, ref runs.ExecutorRef, commit func(context.Context) (runs.CancelResult, error)) error {
+	err := r.completion.Stage(ctx, func(tx context.Context) ([]byte, error) {
+		result, err := commit(tx)
+		if err != nil {
+			return nil, err
+		}
+		outcome, err := encodeAtomicResult(r.method, presentCancelResult(result))
+		if err != nil {
+			return nil, err
+		}
+		return json.Marshal(cancellationSettlement{ExecutorID: ref.ExecutorID, Outcome: outcome})
+	})
+	if err != nil {
+		return &runs.CancellationSettlementError{Cause: err}
+	}
+	return nil
 }
 
 func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *Method, in protocol.CancelRunRequest, key, fingerprint string) ([]byte, *protocol.Failure, error) {
@@ -29,60 +71,12 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 		return data, err
 	}
 	payload, err := e.idempotency.InvokeDeferred(ctx, key, fingerprint, func(complete *operation.DeferredCompletion) ([]byte, error) {
-		var reserveErr error
-		encodeSettlement := func(ref runs.ExecutorRef, result runs.CancelResult) ([]byte, error) {
-			outcome, err := encodeAtomicResult(method, presentCancelResult(result))
-			if err != nil {
-				return nil, err
-			}
-			return json.Marshal(cancellationSettlement{ExecutorID: ref.ExecutorID, Outcome: outcome})
-		}
-		stage := func(tx context.Context, outcome func(context.Context) ([]byte, error)) error {
-			if err := complete.Stage(tx, outcome); err != nil {
-				return &runs.CancellationSettlementError{Cause: err}
-			}
-			return nil
-		}
-		result, err := s.cancelRun(ctx, in, runs.CancellationCompletion{
-			Key: key,
-			Reserve: func(ctx context.Context, runID string) error {
-				reserveErr = complete.ReserveForRun(ctx, runID)
-				return reserveErr
-			},
-			RecordRefusal: func(ctx context.Context, reason error) error {
-				payload, err := encodeStoredOutcome(failed(projectError(wireCancellationError(reason))))
-				if err != nil {
-					return err
-				}
-				return complete.Complete(ctx, payload)
-			},
-			CommitParked: func(ctx context.Context, ref runs.ExecutorRef, write func(context.Context) (run.Run, error)) error {
-				return stage(ctx, func(tx context.Context) ([]byte, error) {
-					terminal, err := write(tx)
-					if err != nil {
-						return nil, err
-					}
-					return encodeSettlement(ref, runs.CancelResult{Run: terminal})
-				})
-			},
-			RecordWaitingChild: func(tx context.Context, ref runs.ExecutorRef, result runs.WaitingSubtreeCancellationResult) error {
-				return stage(tx, func(context.Context) ([]byte, error) {
-					return encodeSettlement(ref, runs.CancelResult{Run: result.TargetRun, RootRun: &result.RootRun})
-				})
-			},
-			RecordActiveRoot: func(tx context.Context, ref runs.ExecutorRef, terminal run.Run) error {
-				return complete.Stage(tx, func(context.Context) ([]byte, error) {
-					return encodeSettlement(ref, runs.CancelResult{Run: terminal})
-				})
-			},
-			RecordActiveChild: func(tx context.Context, ref runs.ExecutorRef, result runs.CancelResult) error {
-				return complete.Stage(tx, func(context.Context) ([]byte, error) { return encodeSettlement(ref, result) })
-			},
-		})
+		receipt := &cancellationReceipt{key: key, method: method, completion: complete}
+		result, err := s.cancelRun(ctx, in, receipt)
 		_, settlementFailed := errors.AsType[*runs.CancellationSettlementError](err)
 		switch {
-		case reserveErr != nil:
-			return nil, reserveErr
+		case receipt.reserveErr != nil:
+			return nil, receipt.reserveErr
 		case err != nil && (settlementFailed || errors.Is(err, protocol.ErrCapabilityNotNeg)):
 			return nil, err
 		case err != nil:

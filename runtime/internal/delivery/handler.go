@@ -174,6 +174,8 @@ func (c HandlerConfig) validate() error {
 		{name: "Hooks", value: c.Hooks},
 		{name: "WorkspaceWatch", value: c.WorkspaceWatch},
 		{name: "WorkspaceAuthoredWatch", value: c.WorkspaceAuthoredWatch},
+		{name: "FileChanges", value: c.FileChanges},
+		{name: "Invalidations", value: c.Invalidations},
 	} {
 		if !capabilityAvailable(required.value) {
 			return fmt.Errorf("delivery: %s is required", required.name)
@@ -270,12 +272,8 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 }
 
 func (s *Handler) observeNotificationSources(cfg HandlerConfig) {
-	if cfg.FileChanges != nil {
-		s.observeFileChanges(cfg.FileChanges)
-	}
-	if cfg.Invalidations != nil {
-		s.observeInvalidations(cfg.Invalidations)
-	}
+	s.observeFileChanges(cfg.FileChanges)
+	s.observeInvalidations(cfg.Invalidations)
 }
 
 // capabilities returns this Handler's capability snapshot. Its

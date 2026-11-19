@@ -21,17 +21,10 @@ const (
 // truncated rather than rejected (a usable title beats none).
 const titleMaxRunes = 80
 
-// modelTitleGenerator produces a short, human-readable Session title from the
-// opening user message. It uses one captured public utility-model call. A nil Resolver uses only the deterministic
-// opening-message fallback.
-type modelTitleGenerator struct {
-	client modeladapter.AuxiliaryResolver
-}
-
-// NewTitleGenerator builds the Run-boundary title generator over a per-call
-// utility-model resolver.
-func NewTitleGenerator(client modeladapter.AuxiliaryResolver) titleGenerator {
-	return &modelTitleGenerator{client: client}
+// titleGenerator produces a short, human-readable Session title from the
+// opening user message through one captured utility-model call.
+type titleGenerator struct {
+	model modeladapter.AuxiliaryResolver
 }
 
 const titlePrompt = `Write a concise title for a conversation that opens with the user message below.
@@ -46,20 +39,17 @@ Rules:
 // produces no title. A provider failure returns that usable fallback together
 // with the error so the caller can persist stable Session identity while still
 // recording the degraded maintenance attempt.
-func (g *modelTitleGenerator) Generate(ctx context.Context, firstMessage string) (string, error) {
+func (g titleGenerator) Generate(ctx context.Context, firstMessage string) (string, error) {
 	msg := strings.TrimSpace(firstMessage)
 	if msg == "" {
 		return "", nil
 	}
 	fallback := sanitizeTitle(msg)
-	if g.client == nil {
-		return fallback, nil
-	}
 	if runes := []rune(msg); len(runes) > titleMaxInputRunes {
 		msg = string(runes[:titleMaxInputRunes])
 	}
-	text, err := g.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
-		Operation:    "title",
+	text, err := g.model.Complete(ctx, modeladapter.AuxiliaryPrompt{
+		Operation:    modeladapter.AuxiliaryTitle,
 		SystemPrompt: titlePrompt, UserPrompt: msg,
 		Budget: modeladapter.AuxiliaryBudget{MaxInputBytes: titleModelInputBytes, MaxOutputTokens: titleModelOutputTokens},
 	})

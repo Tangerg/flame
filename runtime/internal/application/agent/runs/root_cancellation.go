@@ -6,14 +6,14 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 type rootCancellation struct {
-	id     CancellationID
-	reason string
-	key    string
-	record RootCancellationReceipt
+	id      CancellationID
+	reason  string
+	receipt CancellationReceipt
 }
 
 func (r *runTreeOwner) matchingRootCancellation(id CancellationID) *rootCancellation {
@@ -40,10 +40,8 @@ type rootCancellationClaim struct {
 }
 
 func (c *Cancellations) cancelLiveRoot(cmd CancelCommand, plan cancellationPlan, owner *runTreeOwner) (CancelResult, error) {
-	intent := &rootCancellation{
-		id: newCancellationID(), reason: cmd.Reason, key: cmd.Completion.Key, record: cmd.Completion.RecordActiveRoot,
-	}
-	return c.awaitLiveCancellation(owner, cmd.Completion, func(ctx context.Context) (CancelResult, error) {
+	intent := &rootCancellation{id: newCancellationID(), reason: cmd.Reason, receipt: cmd.Receipt}
+	return c.awaitLiveCancellation(owner, cmd.Receipt, func(ctx context.Context) (CancelResult, error) {
 		return c.settleLiveRootCancellation(ctx, cmd, plan, owner, intent)
 	})
 }
@@ -133,4 +131,20 @@ func (r *runTreeOwner) interruptCommitted() bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.interrupt.committed
+}
+
+// rootCancellationCommit stages a keyed root cancellation with the terminal
+// Run whose conversation mark only the terminal transaction resolves.
+type rootCancellationCommit struct {
+	executor ExecutorRef
+	receipt  CancellationReceipt
+}
+
+func (e EventCommit) RecordRootCancellation(ctx context.Context, terminal run.Run) error {
+	if e.rootCancellation == nil {
+		return nil
+	}
+	return e.rootCancellation.receipt.Stage(ctx, e.rootCancellation.executor, func(context.Context) (CancelResult, error) {
+		return CancelResult{Run: terminal}, nil
+	})
 }

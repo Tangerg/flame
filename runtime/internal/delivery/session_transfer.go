@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -73,7 +74,7 @@ func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSess
 }
 
 func (s *Handler) ImportSession(ctx context.Context, request protocol.ImportSessionRequest) (*protocol.ImportSessionResponse, error) {
-	presented, err := completeSessionView(func(complete sessions.ViewCompletion) error {
+	presented, err := completeSessionView(func(complete operation.Reply[sessions.View]) error {
 		return s.importSession(ctx, request, complete)
 	})
 	if err != nil {
@@ -82,7 +83,7 @@ func (s *Handler) ImportSession(ctx context.Context, request protocol.ImportSess
 	return &protocol.ImportSessionResponse{Session: presented}, nil
 }
 
-func (s *Handler) importSession(ctx context.Context, request protocol.ImportSessionRequest, complete sessions.ViewCompletion) error {
+func (s *Handler) importSession(ctx context.Context, request protocol.ImportSessionRequest, complete operation.Reply[sessions.View]) error {
 	artifact := request.Artifact
 	if artifact.Version != protocol.SessionArtifactVersion {
 		return protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unsupported artifact version %d (want %d)", artifact.Version, protocol.SessionArtifactVersion))

@@ -57,6 +57,9 @@ func NewPlanCoordinator(deps PlanDependencies) (*PlanCoordinator, error) {
 	if lo.IsNil(deps.Author) {
 		return nil, errors.New("sessions: Plan author is required")
 	}
+	if deps.Invalidations == nil {
+		return nil, errors.New("sessions: Plan invalidations are required")
+	}
 	return &PlanCoordinator{store: deps.Store, author: deps.Author, now: deps.Now, invalidations: deps.Invalidations}, nil
 }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -76,6 +77,9 @@ const bootstrapCheckpointBuildID = testsupport.BuildID
 func mustPlanCoordinator(deps sessions.PlanDependencies) *sessions.PlanCoordinator {
 	if deps.Author == nil {
 		deps.Author = testsupport.PlanAuthor{}
+	}
+	if deps.Invalidations == nil {
+		deps.Invalidations = func(invalidation.Notice) {}
 	}
 	coordinator, err := sessions.NewPlanCoordinator(deps)
 	if err != nil {

@@ -53,7 +53,7 @@ func Open(
 	publish invalidation.Publish,
 	commands invocationRestorer, installed *Installed,
 ) (*Pool, error) {
-	if lo.IsNil(registry) || lo.IsNil(commands) || installed == nil {
+	if lo.IsNil(registry) || lo.IsNil(commands) || installed == nil || publish == nil {
 		return nil, errors.New("mcp connection: source registry, invocation restorer and installed backends are required")
 	}
 	configs := make([]ServerConfig, len(servers))

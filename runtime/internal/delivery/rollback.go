@@ -25,19 +25,14 @@ func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessi
 		}
 		return presentRollbackResult(result), nil
 	}
-	var response *protocol.RollbackSessionResponse
-	err = s.rollbackHistory(ctx, in, func(ctx context.Context, write func(context.Context) (sessions.RollbackResult, error)) error {
-		result, err := write(ctx)
-		if err != nil {
-			return err
-		}
-		response = presentRollbackResult(result)
-		return nil
-	})
-	return response, err
+	var result sessions.RollbackResult
+	if err := s.rollbackHistory(ctx, in, directReply(&result)); err != nil {
+		return nil, err
+	}
+	return presentRollbackResult(result), nil
 }
 
-func (s *Handler) rollbackHistory(ctx context.Context, in protocol.RollbackSessionRequest, complete sessions.RollbackCompletion) error {
+func (s *Handler) rollbackHistory(ctx context.Context, in protocol.RollbackSessionRequest, complete operation.Reply[sessions.RollbackResult]) error {
 	if err := s.sessions.RollbackHistory(ctx, in.SessionID, in.ToRunID, complete); err != nil {
 		return wireRollbackErr(err, in.SessionID)
 	}

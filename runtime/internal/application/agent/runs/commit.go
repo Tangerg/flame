@@ -1,7 +1,6 @@
 package runs
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -214,7 +213,7 @@ type EventCommit struct {
 	// re-derive the advance.
 	Progress               *run.Run
 	Run                    *run.Run
-	RecordRootCancellation func(context.Context, run.Run) error
+	rootCancellation       *rootCancellationCommit
 	childCancellation      *childCancellationCommit
 	cancellation           CancellationID
 	winningCancellationKey string
@@ -485,7 +484,7 @@ func (e EventCommit) validateLifecycle() error {
 		!e.Run.Canceled() || e.cancellation.IsZero()) {
 		return errors.New("runs: a winning cancellation key requires its confirmed terminal")
 	}
-	if e.RecordRootCancellation != nil && (e.State != StateTerminalize || e.Run == nil ||
+	if e.rootCancellation != nil && (e.State != StateTerminalize || e.Run == nil ||
 		!e.Run.Lineage().IsRoot() || !e.Run.Canceled()) {
 		return errors.New("runs: a root cancellation receipt requires its canceled terminal Run")
 	}
@@ -538,7 +537,7 @@ func (e EventCommit) isEmpty() bool {
 		len(e.ToolInvocations) == 0 && e.ResultPublication == nil &&
 		e.Progress == nil &&
 		e.Run == nil &&
-		e.RecordRootCancellation == nil &&
+		e.rootCancellation == nil &&
 		e.childCancellation == nil &&
 		e.cancellation.IsZero() &&
 		e.ObsoleteCheckpointRootID == "" &&

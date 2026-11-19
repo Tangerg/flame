@@ -59,7 +59,7 @@ type SegmentDependencies struct {
 	NewRunID     func() string
 	NewSegmentID func() string
 	// Invalidations publishes run/session/interrupt/state invalidations for clients that
-	// are not following the run. nil disables them (no runtime change stream wired).
+	// are not following the run.
 	Invalidations invalidation.Publish
 }
 
@@ -86,6 +86,7 @@ func NewSegments(deps SegmentDependencies) (*Segments, error) {
 		{"clock", deps.Now},
 		{"run id generator", deps.NewRunID},
 		{"segment id generator", deps.NewSegmentID},
+		{"invalidations", deps.Invalidations},
 	} {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("runs: %s is required", required.name)

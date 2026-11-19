@@ -79,11 +79,7 @@ func readReplayRecord(row *framesqlite.Row, key, fingerprint string) (operation.
 	case idempotencyPendingResponse:
 		record.Settlement = payload
 	case idempotencyCancellationRefusal:
-		refusal, err := cancellationRefusal(string(payload)).failure()
-		if err != nil {
-			return operation.ReplayRecord{}, false, err
-		}
-		record.Refusal = refusal
+		record.Refusal = cancellationRefusal(payload).cause()
 	case idempotencyRunAcceptance:
 		// The Run command store alone can read an opening or input receipt.
 	default:

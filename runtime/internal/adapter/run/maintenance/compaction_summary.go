@@ -71,7 +71,7 @@ func (c *Compactor) summarize(ctx context.Context, msgs []chat.Message) (string,
 				input = fmt.Sprintf("[Consecutive transcript portion %d of %d; a message may continue across portions. Preserve exact facts from this portion for the combined summary.]\n", index+1, len(chunks)) + chunk
 			}
 			text, err := c.client.Complete(ctx, modeladapter.AuxiliaryPrompt{
-				Operation:    "compaction",
+				Operation:    modeladapter.AuxiliaryCompaction,
 				SystemPrompt: compactionPrompt, UserPrompt: input,
 				Budget: modeladapter.AuxiliaryBudget{MaxInputBytes: maxModelInputBytes, MaxOutputTokens: compactionSummaryOutputTokens},
 			})

@@ -96,7 +96,9 @@ func (s *Handler) bindAtomicOutcome(ctx context.Context, method *Method, request
 			if err != nil {
 				return err
 			}
-			return commitAtomicAcknowledgement(ctx, method, complete, write)
+			return acknowledgementReply(method, complete)(ctx, func(tx context.Context) (struct{}, error) {
+				return struct{}{}, write(tx)
+			})
 		}
 	case SessionsCreate:
 		in := request.(protocol.CreateSessionRequest)
@@ -113,38 +115,50 @@ func (s *Handler) bindAtomicOutcome(ctx context.Context, method *Method, request
 	case SessionsUpdate:
 		in := request.(protocol.UpdateSessionRequest)
 		return func(complete *operation.AtomicCompletion) error {
-			return commitSessionViewOutcome(ctx, method, complete, func(finish sessions.ViewCompletion) error {
-				return s.updateSession(ctx, in, finish)
-			}, func(session *protocol.Session) any { return session })
+			reply := sessionViewReply(method, complete, func(session *protocol.Session) any { return session })
+			return settleAtomicRefusal(ctx, complete, s.updateSession(ctx, in, reply))
 		}
 	case SessionsImport:
 		in := request.(protocol.ImportSessionRequest)
 		return func(complete *operation.AtomicCompletion) error {
-			return commitSessionViewOutcome(ctx, method, complete, func(finish sessions.ViewCompletion) error {
-				return s.importSession(ctx, in, finish)
-			}, func(session *protocol.Session) any { return &protocol.ImportSessionResponse{Session: session} })
+			reply := sessionViewReply(method, complete, func(session *protocol.Session) any {
+				return &protocol.ImportSessionResponse{Session: session}
+			})
+			return settleAtomicRefusal(ctx, complete, s.importSession(ctx, in, reply))
 		}
 	case SessionsDelete:
 		in := request.(protocol.DeleteSessionRequest)
 		return func(complete *operation.AtomicCompletion) error {
-			err := s.deleteSession(ctx, in.SessionID, func(ctx context.Context, write func(context.Context) error) error {
-				return commitAtomicAcknowledgement(ctx, method, complete, write)
-			})
-			return settleAtomicRefusal(ctx, complete, err)
+			return settleAtomicRefusal(ctx, complete, s.deleteSession(ctx, in.SessionID, acknowledgementReply(method, complete)))
 		}
 	default:
 		return nil
 	}
 }
 
-func commitAtomicAcknowledgement(ctx context.Context, method *Method, complete *operation.AtomicCompletion, write func(context.Context) error) error {
-	payload, err := encodeAtomicResult(method, struct{}{})
-	if err != nil {
-		return err
+// directReply keeps an unkeyed command's committed result as its reply.
+func directReply[T any](reply *T) operation.Reply[T] {
+	return func(ctx context.Context, write func(context.Context) (T, error)) error {
+		value, err := write(ctx)
+		if err != nil {
+			return err
+		}
+		*reply = value
+		return nil
 	}
-	return complete.Commit(ctx, func(tx context.Context) ([]byte, error) {
-		return payload, write(tx)
-	})
+}
+
+// atomicReply stores a keyed command's encoded reply in its write's transaction.
+func atomicReply[T any](complete *operation.AtomicCompletion, encode func(T) ([]byte, error)) operation.Reply[T] {
+	return func(ctx context.Context, write func(context.Context) (T, error)) error {
+		return complete.Commit(ctx, func(tx context.Context) ([]byte, error) {
+			value, err := write(tx)
+			if err != nil {
+				return nil, err
+			}
+			return encode(value)
+		})
+	}
 }
 
 func commitCreationOutcome(ctx context.Context, method *Method, complete *operation.AtomicCompletion, creation sessions.Creation, err error) error {
@@ -165,37 +179,23 @@ func commitCreationOutcome(ctx context.Context, method *Method, complete *operat
 	return err
 }
 
-func commitSessionViewOutcome(
-	ctx context.Context,
-	method *Method,
-	complete *operation.AtomicCompletion,
-	mutate func(sessions.ViewCompletion) error,
-	response func(*protocol.Session) any,
-) error {
-	err := mutate(func(ctx context.Context, write func(context.Context) (sessions.View, error)) error {
-		return complete.Commit(ctx, func(tx context.Context) ([]byte, error) {
-			result, err := write(tx)
-			if err != nil {
-				return nil, err
-			}
-			view := presentSession(result)
-			return encodeAtomicResult(method, response(&view))
-		})
+// acknowledgementReply stores the empty reply of a command that returns nothing.
+func acknowledgementReply(method *Method, complete *operation.AtomicCompletion) operation.Reply[struct{}] {
+	return atomicReply(complete, func(struct{}) ([]byte, error) { return encodeAtomicResult(method, struct{}{}) })
+}
+
+func sessionViewReply(method *Method, complete *operation.AtomicCompletion, response func(*protocol.Session) any) operation.Reply[sessions.View] {
+	return atomicReply(complete, func(result sessions.View) ([]byte, error) {
+		view := presentSession(result)
+		return encodeAtomicResult(method, response(&view))
 	})
-	return settleAtomicRefusal(ctx, complete, err)
 }
 
 func (s *Handler) commitRollbackOutcome(ctx context.Context, method *Method, in protocol.RollbackSessionRequest, complete *operation.AtomicCompletion) error {
-	err := s.rollbackHistory(ctx, in, func(ctx context.Context, write func(context.Context) (sessions.RollbackResult, error)) error {
-		return complete.Commit(ctx, func(tx context.Context) ([]byte, error) {
-			result, err := write(tx)
-			if err != nil {
-				return nil, err
-			}
-			return encodeAtomicResult(method, presentRollbackResult(result))
-		})
+	reply := atomicReply(complete, func(result sessions.RollbackResult) ([]byte, error) {
+		return encodeAtomicResult(method, presentRollbackResult(result))
 	})
-	return settleAtomicRefusal(ctx, complete, err)
+	return settleAtomicRefusal(ctx, complete, s.rollbackHistory(ctx, in, reply))
 }
 
 func settleAtomicRefusal(ctx context.Context, complete *operation.AtomicCompletion, err error) error {

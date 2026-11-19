@@ -18,18 +18,21 @@ type RunEvidence interface {
 }
 
 // RunSettler turns captured terminal Goal Runs into Goal decisions.
-type RunSettler struct{ evidence RunEvidence }
+type RunSettler struct {
+	evidence RunEvidence
+	publish  invalidation.Publish
+}
 
-func NewRunSettler(evidence RunEvidence) (*RunSettler, error) {
-	if lo.IsNil(evidence) {
-		return nil, errors.New("goals: terminal Run evidence is required")
+func NewRunSettler(evidence RunEvidence, publish invalidation.Publish) (*RunSettler, error) {
+	if lo.IsNil(evidence) || publish == nil {
+		return nil, errors.New("goals: terminal Run evidence and invalidations are required")
 	}
-	return &RunSettler{evidence: evidence}, nil
+	return &RunSettler{evidence: evidence, publish: publish}, nil
 }
 
 // Drain never holds the Run's terminal transaction across a plugin call. A
 // restart repeats an unacknowledged decision against the same immutable Run.
-func (r *RunSettler) Drain(ctx context.Context, store Store, workflow Workflow, sessionID string, publish invalidation.Publish) error {
+func (r *RunSettler) Drain(ctx context.Context, store Store, workflow Workflow, sessionID string) error {
 	for {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -60,7 +63,7 @@ func (r *RunSettler) Drain(ctx context.Context, store Store, workflow Workflow, 
 			return err
 		}
 		if change != nil {
-			publish.Notify(invalidation.InSession(invalidation.Goals, sessionID))
+			r.publish.Notify(invalidation.InSession(invalidation.Goals, sessionID))
 		}
 	}
 }

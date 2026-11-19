@@ -107,17 +107,12 @@ func sessionIDs(id string) []string {
 	return []string{id}
 }
 
-// Publish is how a use case hands its notices out. It is a func rather than an
-// interface because there is one method and nil is a meaningful value: a build with
-// no runtime stream wired publishes nothing, and no producer has to know that.
+// Publish hands a use case's notices to the Runtime change stream. Every
+// composition installs one, so constructors require it.
 type Publish func(Notice)
 
-// Notify publishes each notice in order, and does nothing when no publisher is
-// installed. Producers call this instead of guarding every site with a nil check.
+// Notify publishes each notice in order.
 func (p Publish) Notify(notices ...Notice) {
-	if p == nil {
-		return
-	}
 	for _, notice := range notices {
 		p(notice.Clone())
 	}

@@ -34,8 +34,8 @@ func NewToolPreparation(config ToolPreparationConfig) (mcp.ToolPreparation, erro
 	if err != nil {
 		return nil, err
 	}
-	if lo.IsNil(config.Installations) || config.Callbacks == nil || config.Embeddings == nil {
-		return nil, errors.New("plugin tools: installations, callbacks and embedding resolver are required")
+	if lo.IsNil(config.Installations) || config.Callbacks == nil || config.Embeddings == nil || config.Invalidations == nil {
+		return nil, errors.New("plugin tools: installations, callbacks, embedding resolver and invalidations are required")
 	}
 	return func(ctx context.Context, executable mcp.Executable, host mcp.ToolHost) (mcp.ToolCall, func() error, error) {
 		source := executable.SourceConfig().Server

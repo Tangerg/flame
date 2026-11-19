@@ -53,6 +53,7 @@ func NewCatalog(roots roots, inspector Inspector, trust TrustStore, invalidation
 		{name: "root resolver", value: roots},
 		{name: "inspector", value: inspector},
 		{name: "trust store", value: trust},
+		{name: "invalidations", value: invalidations},
 	} {
 		if lo.IsNil(required.value) {
 			return nil, fmt.Errorf("hooks: %s is required", required.name)

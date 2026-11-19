@@ -2,9 +2,11 @@ package goals
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/samber/lo"
 )
 
 // WithInvalidations returns store wrapped so that every goal write that actually
@@ -21,13 +23,11 @@ import (
 // session delete/rollback cascade clears goals inside a session write-set instead,
 // and that transaction publishes its own notices — one commit, one author, no
 // double signal.
-//
-// A nil publisher returns store unchanged: nothing to notify, nothing to wrap.
-func WithInvalidations(store Store, invalidations invalidation.Publish) Store {
-	if store == nil || invalidations == nil {
-		return store
+func WithInvalidations(store Store, invalidations invalidation.Publish) (Store, error) {
+	if lo.IsNil(store) || invalidations == nil {
+		return nil, errors.New("goals: store and invalidations are required")
 	}
-	return notifyingStore{Store: store, invalidations: invalidations}
+	return notifyingStore{Store: store, invalidations: invalidations}, nil
 }
 
 type notifyingStore struct {

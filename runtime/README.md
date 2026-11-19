@@ -1833,7 +1833,9 @@ loss or a cleanup failure.
 
 A Run's terminal transaction settles linked cancellation reservations as
 `run_finished` and preserves the exact winning cancellation key and any staged
-result. A Run marked lost settles its linked reservations as unconfirmed.
+result. A Run that recovery marks lost after its Runtime stopped settles them
+as unconfirmed; a live Run lost to an unresolved Effect or model call still
+finished and settles them as `run_finished`.
 A reservation that reaches storage after the Run finished records
 `run_finished` before a control can be issued. A committed Scope Control records
 admission, and a committed Exit proves termination.

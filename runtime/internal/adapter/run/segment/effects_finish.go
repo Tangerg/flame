@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/samber/lo"
@@ -19,13 +20,6 @@ import (
 
 type sessionTitles interface {
 	PrepareGeneratedTitle(ctx context.Context, sessionID, runID string) (*sessions.GeneratedTitle, error)
-}
-
-// titleGenerator derives an initial session title from its opening request. It
-// may return a usable deterministic fallback with a non-nil error so maintenance
-// can persist stable identity and still report provider degradation.
-type titleGenerator interface {
-	Generate(ctx context.Context, firstMessage string) (string, error)
 }
 
 // checkpoints anchors the working tree at a terminal run boundary.
@@ -40,9 +34,9 @@ type taskLauncher interface {
 
 // TitleMaintenance is the generated-title capability.
 type TitleMaintenance struct {
-	Sessions  sessionTitles
-	Generator titleGenerator
-	Tasks     taskLauncher
+	Sessions sessionTitles
+	Model    modeladapter.AuxiliaryResolver
+	Tasks    taskLauncher
 }
 
 // FinalizerConfig declares the two post-segment maintenance features. A
@@ -71,7 +65,7 @@ func NewFinalizer(cfg FinalizerConfig) (*Finalizer, error) {
 	}{
 		{"checkpoints", cfg.Checkpoints},
 		{"session titles", cfg.Titles.Sessions},
-		{"title generator", cfg.Titles.Generator},
+		{"title model", cfg.Titles.Model},
 		{"task launcher", cfg.Titles.Tasks},
 	} {
 		if lo.IsNil(required.value) {
@@ -81,7 +75,7 @@ func NewFinalizer(cfg FinalizerConfig) (*Finalizer, error) {
 	return &Finalizer{
 		checkpoints:   cfg.Checkpoints,
 		sessionTitles: cfg.Titles.Sessions,
-		titles:        cfg.Titles.Generator,
+		titles:        titleGenerator{model: cfg.Titles.Model},
 		tasks:         cfg.Titles.Tasks,
 	}, nil
 }

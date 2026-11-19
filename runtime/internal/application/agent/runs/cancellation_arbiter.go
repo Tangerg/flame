@@ -39,8 +39,7 @@ type childCancellation struct {
 	reason         string
 	root           rundomain.Run
 	executor       ExecutorRef
-	key            string
-	record         ChildCancellationReceipt
+	receipt        CancellationReceipt
 	done           chan struct{}
 	err            error
 }
@@ -81,8 +80,7 @@ func (r *runTreeOwner) beginChildCancellation(
 		reason:         cmd.Reason,
 		root:           plan.root.run,
 		executor:       plan.executor,
-		key:            cmd.Completion.Key,
-		record:         cmd.Completion.RecordActiveChild,
+		receipt:        cmd.Receipt,
 		done:           make(chan struct{}),
 	}
 
@@ -113,10 +111,10 @@ func (r *runTreeOwner) matchingChildCancellationKey(id CancellationID, runID str
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	attempt := r.childCancel
-	if attempt == nil || attempt.record == nil || attempt.id != id || attempt.targetRunID != runID {
+	if attempt == nil || attempt.id != id || attempt.targetRunID != runID {
 		return ""
 	}
-	return attempt.key
+	return CancellationKey(attempt.receipt)
 }
 
 func (r *runTreeOwner) rejectChildCancellation(attempt *childCancellation, err error) bool {

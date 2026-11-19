@@ -125,8 +125,8 @@ func (c *Cancellations) Cancel(ctx context.Context, cmd CancelCommand) (CancelRe
 	}
 	child := plan.target.run.Lineage().IsChild()
 	usesLiveOwner := live && (!child || plan.treeState() == rundomain.Running)
-	if usesLiveOwner && cmd.Completion.Reserve != nil {
-		if err := cmd.Completion.Reserve(ctx, plan.target.run.ID()); err != nil {
+	if usesLiveOwner && cmd.Receipt != nil {
+		if err := cmd.Receipt.ReserveForRun(ctx, plan.target.run.ID()); err != nil {
 			return CancelResult{}, err
 		}
 	}
@@ -165,15 +165,15 @@ type liveCancellationResult struct {
 // A timeout can end the caller's wait while Scope still owns the control.
 func (c *Cancellations) awaitLiveCancellation(
 	owner *runTreeOwner,
-	complete CancellationCompletion,
+	receipt CancellationReceipt,
 	settle func(context.Context) (CancelResult, error),
 ) (CancelResult, error) {
 	response := make(chan liveCancellationResult, 1)
 	if !c.segments.tasks.Start(owner.taskContext, func(ctx context.Context) {
 		result, err := settle(ctx)
-		response <- liveCancellationResult{result, complete.finishLiveCancellation(ctx, err)}
+		response <- liveCancellationResult{result, finishLiveCancellation(ctx, receipt, err)}
 	}) {
-		return CancelResult{}, complete.finishLiveCancellation(owner.taskContext, errClosed)
+		return CancelResult{}, finishLiveCancellation(owner.taskContext, receipt, errClosed)
 	}
 	waitCtx, cancel := owner.cleanupContext()
 	defer cancel()
@@ -185,7 +185,7 @@ func (c *Cancellations) awaitLiveCancellation(
 	}
 }
 
-func (c CancellationCompletion) finishLiveCancellation(ctx context.Context, err error) error {
+func finishLiveCancellation(ctx context.Context, receipt CancellationReceipt, err error) error {
 	if err == nil {
 		return nil
 	}
@@ -197,8 +197,8 @@ func (c CancellationCompletion) finishLiveCancellation(ctx context.Context, err 
 	}
 	switch {
 	case errors.Is(err, ErrRunFinished), errors.Is(err, ErrRunNotFound), errors.Is(err, rundomain.ErrSessionBusy), errors.Is(err, errClosed):
-		if c.RecordRefusal != nil {
-			if recordErr := c.RecordRefusal(ctx, err); recordErr != nil {
+		if receipt != nil {
+			if recordErr := receipt.Refuse(ctx, err); recordErr != nil {
 				return &CancellationSettlementError{Cause: recordErr}
 			}
 		}
@@ -221,7 +221,7 @@ func TerminalCancellationRefusal(value rundomain.Run) error {
 	if !finished {
 		return nil
 	}
-	if outcome == rundomain.OutcomeLost {
+	if loss, lost := value.Loss(); lost && loss.Reason.DeclaredAfterStop() {
 		return &CancellationSettlementError{Cause: fmt.Errorf("runs: Run %q was lost", value.ID())}
 	}
 	return fmt.Errorf("%w: %q settled as %s", ErrRunFinished, value.ID(), outcome)
@@ -236,7 +236,7 @@ func (c *Cancellations) cancelLiveChild(
 	plan cancellationPlan,
 	owner *runTreeOwner,
 ) (CancelResult, error) {
-	return c.awaitLiveCancellation(owner, cmd.Completion, func(ctx context.Context) (CancelResult, error) {
+	return c.awaitLiveCancellation(owner, cmd.Receipt, func(ctx context.Context) (CancelResult, error) {
 		return c.settleLiveChildCancellation(ctx, cmd, plan, owner)
 	})
 }
@@ -361,9 +361,8 @@ func (c *Cancellations) cancelWaitingChild(
 	if err != nil {
 		return CancelResult{}, err
 	}
-	receipt := WaitingSubtreeCancellationReceipt{Key: cmd.Completion.Key, Record: cmd.Completion.RecordWaitingChild}
 	if transformation.remaining != nil {
-		return c.commitWaitingChildCancellation(cleanupCtx, plan, transformation, prepared, receipt)
+		return c.commitWaitingChildCancellation(cleanupCtx, plan, transformation, prepared, cmd.Receipt)
 	}
 	return c.resumeAfterWaitingChildCancellation(
 		cleanupCtx,
@@ -372,7 +371,7 @@ func (c *Cancellations) cancelWaitingChild(
 		transformation,
 		prepared,
 		&runAdmission,
-		receipt,
+		cmd.Receipt,
 	)
 }
 
@@ -457,7 +456,7 @@ func (c *Cancellations) commitWaitingChildCancellation(
 	plan cancellationPlan,
 	transformation waitingCancellationTransformation,
 	change waitingSubtreeChange,
-	record WaitingSubtreeCancellationReceipt,
+	receipt CancellationReceipt,
 ) (CancelResult, error) {
 	durable, err := transformation.durableCommit(*plan.pending, newRunCommitID())
 	if err != nil {
@@ -466,7 +465,7 @@ func (c *Cancellations) commitWaitingChildCancellation(
 	result, err := c.waitingSubtreeCancellations.CommitWaitingSubtreeCancellation(
 		ctx,
 		durable,
-		record,
+		receipt,
 	)
 	if err != nil {
 		return CancelResult{}, err
@@ -488,7 +487,7 @@ func (c *Cancellations) resumeAfterWaitingChildCancellation(
 	transformation waitingCancellationTransformation,
 	change waitingSubtreeChange,
 	runAdmission *ownership.RunAdmission,
-	record WaitingSubtreeCancellationReceipt,
+	receipt CancellationReceipt,
 ) (CancelResult, error) {
 	segmentID := c.segments.newSegmentID()
 	var committed WaitingSubtreeCancellationResult
@@ -513,7 +512,7 @@ func (c *Cancellations) resumeAfterWaitingChildCancellation(
 			if durableErr != nil {
 				return durableErr
 			}
-			result, commitErr := c.waitingSubtreeCancellations.CommitWaitingSubtreeCancellation(commitCtx, durable, record)
+			result, commitErr := c.waitingSubtreeCancellations.CommitWaitingSubtreeCancellation(commitCtx, durable, receipt)
 			if commitErr == nil {
 				committed = result
 			}

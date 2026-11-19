@@ -81,7 +81,7 @@ func buildAssemblyCore(
 	execution executionComposition,
 ) (*Instance, error) {
 	fileChanges := newNotificationRelay[workspace.FileChangeNotice]()
-	goalRuns, err := goals.NewRunSettler(cfg.stores.Goals)
+	goalRuns, err := goals.NewRunSettler(cfg.stores.Goals, policy.invalidations.publish)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: Goal Run settler: %w", err)
 	}
@@ -210,15 +210,18 @@ func buildAssemblyCore(
 	runFinalizer, err := segment.NewFinalizer(segment.FinalizerConfig{
 		Checkpoints: workspaceServices.checkpoints,
 		Titles: segment.TitleMaintenance{
-			Sessions:  sessionCoordinator,
-			Generator: segment.NewTitleGenerator(execution.models.utilityModel),
-			Tasks:     runEffectTasks,
+			Sessions: sessionCoordinator,
+			Model:    execution.models.utilityModel,
+			Tasks:    runEffectTasks,
 		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct Run finalizer: %w", err)
 	}
-	workspaceNotifier := segment.NewWorkspaceNotifier(fileChanges.publish)
+	workspaceNotifier, err := segment.NewWorkspaceNotifier(fileChanges.publish)
+	if err != nil {
+		return nil, fmt.Errorf("runtime: construct workspace notifier: %w", err)
+	}
 	runSegmentDependencies := runs.SegmentDependencies{
 		Observations: execution.executor,
 		Releases:     execution.executor,
@@ -325,7 +328,7 @@ func buildAssemblyCore(
 		cfg.stores.Sessions,
 		goalMutations,
 		execution.tools.pluginCalls, func(ctx context.Context, sessionID string) error {
-			return goalRuns.Drain(ctx, policy.goals, execution.tools.pluginCalls, sessionID, policy.invalidations.publish)
+			return goalRuns.Drain(ctx, policy.goals, execution.tools.pluginCalls, sessionID)
 		},
 	)
 	if err != nil {
@@ -360,10 +363,7 @@ func buildAssemblyCore(
 	}
 	bootRecovery, err := runs.NewRecovery(
 		recoveryPersistence,
-		runs.AcceptedSubtreeRecovery{
-			Revive:  runUseCases.cancellations.ReviveAcceptedSubtreeCancellations,
-			Pending: cfg.stores.AcceptedContinuations.SubtreeCancellations,
-		},
+		runUseCases.cancellations,
 		execution.executor,
 		admissionGate,
 		policy.invalidations.publish,

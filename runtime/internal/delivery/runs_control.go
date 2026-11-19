@@ -15,14 +15,14 @@ import (
 // A parked Run is also abandoned — its live parked execution is torn down
 // and its open interrupt dropped so it stops surfacing as resumable.
 func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (*protocol.CancelRunResponse, error) {
-	result, err := s.cancelRun(ctx, in, runs.CancellationCompletion{})
+	result, err := s.cancelRun(ctx, in, nil)
 	if err != nil {
 		return nil, err
 	}
 	return presentCancelResult(result), nil
 }
 
-func (s *Handler) cancelRun(ctx context.Context, in protocol.CancelRunRequest, complete runs.CancellationCompletion) (runs.CancelResult, error) {
+func (s *Handler) cancelRun(ctx context.Context, in protocol.CancelRunRequest, receipt runs.CancellationReceipt) (runs.CancelResult, error) {
 	// Root cancel is the emergency stop and is always allowed. Whether the target
 	// is a child is durable state resolved by the application, so do not reject
 	// unsupported client preferences before that identity is known.
@@ -30,7 +30,7 @@ func (s *Handler) cancelRun(ctx context.Context, in protocol.CancelRunRequest, c
 		RunID:         in.RunID,
 		Reason:        in.Reason,
 		AllowChildRun: s.requestCanUseFeature(ctx, protocol.FeatureChildRuns),
-		Completion:    complete,
+		Receipt:       receipt,
 	})
 	return result, wireCancellationError(err)
 }

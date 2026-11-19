@@ -17,6 +17,7 @@ import (
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
+	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -37,8 +38,9 @@ type retirementFixture struct {
 }
 
 func (f *retirementFixture) deleteSession(ctx context.Context, id string) error {
-	return f.coordinator.DeleteSession(ctx, id, func(ctx context.Context, write func(context.Context) error) error {
-		return write(ctx)
+	return f.coordinator.DeleteSession(ctx, id, func(ctx context.Context, write func(context.Context) (struct{}, error)) error {
+		_, err := write(ctx)
+		return err
 	})
 }
 
@@ -179,6 +181,7 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 		Checkpoints: resources, Sandbox: resources, Goals: goals.NewSessionMutations(),
 		Mutations: db.WorkspaceMutations, Retirer: retirer, Admissions: gate,
 		NewID: newSessionID, NewRunID: newRunID, NewItemID: newItemID,
+		Invalidations: func(invalidation.Notice) {},
 	})
 	if err != nil {
 		t.Fatal(err)
