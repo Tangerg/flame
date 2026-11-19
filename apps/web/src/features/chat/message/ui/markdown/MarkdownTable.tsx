@@ -19,24 +19,190 @@ interface Props {
 
 const SCROLL_EDGE_TOLERANCE = 0.5;
 
-function firstVisibleBodyRow(table: HTMLTableElement | null): number | null {
+interface BodyRowAnchor {
+  row: HTMLTableRowElement;
+  inset: number;
+}
+
+function bodyViewport(table: HTMLTableElement, viewport: HTMLElement) {
+  const frame = viewport.getBoundingClientRect();
+  const top = frame.top + viewport.clientTop;
+  const left = frame.left + viewport.clientLeft;
+  return {
+    top: Math.max(top, table.tHead?.getBoundingClientRect().bottom ?? top),
+    bottom: top + viewport.clientHeight,
+    left,
+    right: left + viewport.clientWidth,
+  };
+}
+
+function firstVisibleBodyRow(table: HTMLTableElement | null): BodyRowAnchor | null {
   const viewport = table?.parentElement;
   if (!table || !viewport || viewport.scrollTop <= 0) return null;
 
-  const top = viewport.getBoundingClientRect().top + viewport.clientTop;
-  const bottom = top + viewport.clientHeight;
-  const belowHeader = Math.max(top, table.tHead?.getBoundingClientRect().bottom ?? top);
-  if (belowHeader >= bottom) return null;
+  const { top, bottom } = bodyViewport(table, viewport);
+  if (top >= bottom) return null;
 
   for (const body of table.tBodies) {
     for (const row of body.rows) {
       const bounds = row.getBoundingClientRect();
-      if (bounds.height > 0 && bounds.bottom > belowHeader && bounds.top < bottom) {
-        return row.rowIndex;
+      if (bounds.height > 0 && bounds.bottom > top && bounds.top < bottom) {
+        return { row, inset: Math.max(0, top - bounds.top) };
       }
     }
   }
   return null;
+}
+
+function anchoredScrollTop(
+  viewport: HTMLElement,
+  table: HTMLTableElement,
+  anchor: BodyRowAnchor,
+): number | undefined {
+  const { top, bottom } = bodyViewport(table, viewport);
+  const bounds = anchor.row.getBoundingClientRect();
+  if (top >= bottom || bounds.height <= 0) return;
+  const inset = Math.min(anchor.inset, Math.max(0, bounds.height - 1));
+  const delta = bounds.top + inset - top;
+  return viewport.scrollTop + delta;
+}
+
+function inlineTable(viewport: HTMLElement): HTMLTableElement | null {
+  const table = viewport.firstElementChild;
+  return table instanceof HTMLTableElement ? table : null;
+}
+
+function visibleCellFocus(viewport: HTMLElement, table: HTMLTableElement | null): Element | null {
+  const focused = viewport.ownerDocument.activeElement;
+  if (!table || !focused || !table.contains(focused) || table.tHead?.contains(focused)) {
+    return null;
+  }
+  const area = bodyViewport(table, viewport);
+  const bounds = focused.getBoundingClientRect();
+  return bounds.width > 0 &&
+    bounds.height > 0 &&
+    bounds.top >= area.top - SCROLL_EDGE_TOLERANCE &&
+    bounds.bottom <= area.bottom + SCROLL_EDGE_TOLERANCE &&
+    bounds.left >= area.left - SCROLL_EDGE_TOLERANCE &&
+    bounds.right <= area.right + SCROLL_EDGE_TOLERANCE
+    ? focused
+    : null;
+}
+
+function revealedFocusTop(
+  viewport: HTMLElement,
+  table: HTMLTableElement,
+  focused: Element,
+  plannedTop: number,
+): number {
+  const { top, bottom } = bodyViewport(table, viewport);
+  const bounds = focused.getBoundingClientRect();
+  if (bounds.height <= 0) return plannedTop;
+
+  // Constrain the row target just enough to reveal the control under the sticky header.
+  const min = Math.ceil(viewport.scrollTop + bounds.bottom - bottom);
+  const max = Math.floor(viewport.scrollTop + bounds.top - top);
+  return min <= max ? Math.max(min, Math.min(max, plannedTop)) : plannedTop;
+}
+
+function trackTableScroll(viewport: HTMLElement) {
+  const direction = getComputedStyle(viewport).direction === "rtl" ? -1 : 1;
+  let clientWidth = viewport.clientWidth;
+  let scrollWidth = viewport.scrollWidth;
+  let clientHeight = viewport.clientHeight;
+  let scrollHeight = viewport.scrollHeight;
+  let observedLeft = viewport.scrollLeft;
+  let observedTop = viewport.scrollTop;
+  let atEnd = false;
+  let anchor = firstVisibleBodyRow(inlineTable(viewport));
+  let focused = visibleCellFocus(viewport, inlineTable(viewport));
+  const currentWidth = () =>
+    viewport.clientWidth === clientWidth && viewport.scrollWidth === scrollWidth;
+  const currentHeight = () =>
+    viewport.clientHeight === clientHeight && viewport.scrollHeight === scrollHeight;
+
+  const onScroll = () => {
+    // Native clamping can dispatch scroll before the new layout is observed.
+    if (clientWidth <= 0 || !currentWidth()) return;
+    if (scrollWidth > clientWidth + 1) {
+      atEnd = direction * viewport.scrollLeft >= scrollWidth - clientWidth - 1;
+    }
+    if (!currentHeight()) return;
+    const left = viewport.scrollLeft;
+    const top = viewport.scrollTop;
+    if (left === observedLeft && top === observedTop) return;
+
+    const table = inlineTable(viewport);
+    if (top !== observedTop) anchor = firstVisibleBodyRow(table);
+    focused = visibleCellFocus(viewport, table);
+    observedLeft = left;
+    observedTop = top;
+  };
+  const onFocusIn = () => {
+    if (currentWidth() && currentHeight()) {
+      focused = visibleCellFocus(viewport, inlineTable(viewport));
+    }
+  };
+  const onFocusOut = (event: FocusEvent) => {
+    if (event.target === focused && focused !== viewport.ownerDocument.activeElement) {
+      focused = null;
+    }
+  };
+  onScroll();
+  viewport.addEventListener("scroll", onScroll, { passive: true });
+  viewport.addEventListener("focusin", onFocusIn);
+  viewport.addEventListener("focusout", onFocusOut);
+
+  return {
+    measure() {
+      const nextClientWidth = viewport.clientWidth;
+      const nextScrollWidth = viewport.scrollWidth;
+      const nextClientHeight = viewport.clientHeight;
+      const nextScrollHeight = viewport.scrollHeight;
+      const widthChanged = nextClientWidth !== clientWidth || nextScrollWidth !== scrollWidth;
+      const heightChanged = nextClientHeight !== clientHeight || nextScrollHeight !== scrollHeight;
+      if (nextClientWidth <= 0 || nextClientHeight <= 0 || (!widthChanged && !heightChanged)) {
+        return;
+      }
+      clientWidth = nextClientWidth;
+      scrollWidth = nextScrollWidth;
+      clientHeight = nextClientHeight;
+      scrollHeight = nextScrollHeight;
+
+      const edge = direction * Math.max(0, scrollWidth - clientWidth);
+      const left = widthChanged && atEnd && viewport.scrollLeft !== edge ? edge : undefined;
+      const table = inlineTable(viewport);
+      const currentTop = viewport.scrollTop;
+      let plannedTop = currentTop;
+      if (widthChanged) {
+        if (table && anchor && table.contains(anchor.row)) {
+          plannedTop = anchoredScrollTop(viewport, table, anchor) ?? currentTop;
+        } else {
+          anchor = firstVisibleBodyRow(table);
+        }
+      }
+      if (focused) {
+        if (table && table.contains(focused) && focused === viewport.ownerDocument.activeElement) {
+          plannedTop = revealedFocusTop(viewport, table, focused, plannedTop);
+        } else {
+          focused = null;
+        }
+      }
+      const top =
+        Math.abs(plannedTop - currentTop) > SCROLL_EDGE_TOLERANCE ? plannedTop : undefined;
+      if (left !== undefined || top !== undefined) {
+        viewport.scrollTo({ left, top, behavior: "instant" });
+      }
+      // Keep the row and focused control through our own scroll and native clamp.
+      observedLeft = viewport.scrollLeft;
+      observedTop = viewport.scrollTop;
+    },
+    disconnect() {
+      viewport.removeEventListener("scroll", onScroll);
+      viewport.removeEventListener("focusin", onFocusIn);
+      viewport.removeEventListener("focusout", onFocusOut);
+    },
+  };
 }
 
 function trailingVisibleHeaderIndex(table: HTMLTableElement | null): number | null {
@@ -97,7 +263,7 @@ function previewColumnOffset(
 export function MarkdownTable({ markdownSource, children }: Props) {
   const t = useT();
   const visible = useContentVisible();
-  const scroll = useScrollReach({ retainHorizontalEnd: visible });
+  const scroll = useScrollReach(visible ? trackTableScroll : undefined);
   const reachable = scroll.tabIndex === 0;
   const [preview, setPreview] = useState<"closed" | "open" | "navigated">("closed");
   const previewOpen = preview === "open";
@@ -156,7 +322,7 @@ export function MarkdownTable({ markdownSource, children }: Props) {
     const table = tableRef.current;
     pendingPreview.current = open
       ? {
-          rowIndex: firstVisibleBodyRow(table),
+          rowIndex: firstVisibleBodyRow(table)?.row.rowIndex ?? null,
           headerIndex: trailingVisibleHeaderIndex(table),
         }
       : null;

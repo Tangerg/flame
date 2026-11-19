@@ -40207,6 +40207,76 @@ The next reflow check will follow the row through a Dock
 resize that changes its line count. At y896 the first
 visible row changes from 20 to 13 when the description wraps.
 
+### Keeping table rows and focused cells through reflow (2026-11-19)
+
+Signed Wails at `c728e0802` starts on Observation 20 at y905
+in a 680 px table reader. Divider Home narrows it to 416 px.
+The Owner text wraps from one line to two and rows grow from
+47 to 73 px. Native y905 now shows Observation 13 first. End
+widens the reader and brings back Observation 20 at the same
+offset. WebKit reports `overflow-anchor: auto` throughout.
+
+The visible Markdown table attaches its own reading-position
+tracker to the existing reachability observer. When widths
+change it maps the visible body row and consumed inset to the
+new position alongside the horizontal end. The observer uses
+one native scroll operation for both axes. A real scroll at
+settled dimensions updates the witness. A live focused cell
+control that was fully visible limits the vertical adjustment
+to the range that will reveal it under the sticky header.
+[CSS scroll anchoring suppression](https://drafts.csswg.org/css-scroll-anchoring/#suppression-triggers)
+[WebKit scroll anchoring support](https://webkit.org/blog/18325/webkit-features-for-safari-27-0/#scroll-anchoring)
+
+- EN/light/16 px/Flame Orange with motion off at 1440 × 900.
+  The initial candidate preserves Observation 20 at y903,
+  y1397 and y903 through the Dock round trip. Its focused
+  file control at the bottom of the reader drops out of view
+  at native 140%. The refined candidate retains that control.
+  At 140% the reader height falls from 448 to 386 px. The
+  reader moves from y859 to y902, keeping row 27's
+  `reading-blocks.md:64` fully visible with focus. Enter opens
+  the captured Source, and pointer Back to conversation
+  restores the same control and y902. Wheel Up deliberately
+  moves away to row 3. Actual Size keeps row 3 and leaves the
+  file control out of view. Cmd+L continues the actual draft
+  as `1472095`.
+- On the refined EN build, a separate Dock cycle keeps row 17
+  at x351 and y775 when wide and x627 and y1191 when narrow.
+  The wheel reaches row 23 at y1639 in the narrow reader, and
+  End widens it with row 23 still at the header at y1067.
+- ZH/dark/18 px/custom blue with full motion at 1121 × 1051.
+  The wheel reaches rows 76 through 80 at x849 and y7245.
+  Widening puts the reader at its x674 and y4515 limits with
+  rows 74 through 80. Narrowing restores x849, y7245 and rows
+  76 through 80. Native 125% retains those last rows, and
+  Actual Size restores the same offsets. The preview opens
+  at x559 and y4104 with the last rows and columns visible.
+  Escape restores the inline reading position and the trigger.
+  The retained draft continues as `6258014`.
+- The standard Strategy comparison gains a reachable reader
+  at native 125%. All four original rows appear in the preview.
+  Escape restores Expand table. At Actual Size, Tab reaches
+  Copy table and then Copy message.
+
+Scoped Prettier, full Web check with 137 tests including isolated
+Runtime, 937 locale keys in eight catalogs, 26 bundle contracts,
+native build and five-entry Lab pass on the refined source.
+The independent Runtime commit `edce8913c` advanced main before
+the refined check. Two Node archive downloads timed out. The
+existing local archive matched the pinned SHA-256, and the
+repository's offline staging verified and used that archive.
+The standard build excludes the private fixture and observation
+markers. Native acceptance uses captured data. Active streaming,
+VoiceOver, physical IME and live provider execution remain open.
+
+Four private bundles pass strict signature verification. Five
+launches and four previews terminate. Cleanup removes four app
+registrations, eight Library directories, ten checkout outputs
+and the scratch tree.
+
+The next native review follows a multi-file change from the
+Dock list into detail and back to the conversation.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

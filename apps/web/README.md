@@ -542,7 +542,9 @@ If the inline reader is panned, the preview reveals its trailing visible
 column within the available width.
 Closing it returns to the original inline reading position.
 An inline reader at its horizontal end keeps the last columns visible
-when the conversation width changes.
+when the conversation width changes. The current body row stays in view when
+its text rewraps. A focused cell control that was visible stays reachable as the
+reader narrows or shortens.
 
 Legend List owns the transcript viewport and row layout. Main and delegated
 turns use the shared centered reading column for the message, day separator,

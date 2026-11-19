@@ -4,52 +4,9 @@ function allowsScrolling(overflow: string): boolean {
   return overflow === "auto" || overflow === "scroll";
 }
 
-function trackHorizontalEnd(node: HTMLElement) {
-  const direction = getComputedStyle(node).direction === "rtl" ? -1 : 1;
-  let clientWidth = node.clientWidth;
-  let scrollWidth = node.scrollWidth;
-  let atEnd = false;
-
-  const onScroll = () => {
-    // Native clamping can dispatch scroll before the new layout is observed.
-    if (
-      clientWidth > 0 &&
-      scrollWidth > clientWidth + 1 &&
-      node.clientWidth === clientWidth &&
-      node.scrollWidth === scrollWidth
-    ) {
-      atEnd = direction * node.scrollLeft >= scrollWidth - clientWidth - 1;
-    }
-  };
-  onScroll();
-  node.addEventListener("scroll", onScroll, { passive: true });
-
-  return {
-    measure() {
-      const nextClientWidth = node.clientWidth;
-      const nextScrollWidth = node.scrollWidth;
-      if (
-        nextClientWidth <= 0 ||
-        (nextClientWidth === clientWidth && nextScrollWidth === scrollWidth)
-      ) {
-        return;
-      }
-      clientWidth = nextClientWidth;
-      scrollWidth = nextScrollWidth;
-      if (atEnd) {
-        const left = direction * Math.max(0, scrollWidth - clientWidth);
-        if (node.scrollLeft !== left) node.scrollTo({ left, behavior: "instant" });
-      }
-    },
-    disconnect() {
-      node.removeEventListener("scroll", onScroll);
-    },
-  };
-}
-
-export function useScrollReach({
-  retainHorizontalEnd = false,
-}: { retainHorizontalEnd?: boolean } = {}): {
+export function useScrollReach(
+  trackViewport?: (node: HTMLElement) => { measure(): void; disconnect(): void },
+): {
   ref: RefCallback<HTMLElement>;
   tabIndex: 0 | undefined;
 } {
@@ -72,9 +29,9 @@ export function useScrollReach({
     (node: HTMLElement | null) => {
       nodeRef.current = node;
       if (!node) return;
-      const horizontalEnd = retainHorizontalEnd ? trackHorizontalEnd(node) : null;
+      const tracking = trackViewport?.(node);
       const update = () => {
-        horizontalEnd?.measure();
+        tracking?.measure();
         measure();
       };
       const observer = new ResizeObserver(update);
@@ -90,11 +47,11 @@ export function useScrollReach({
       return () => {
         observer.disconnect();
         content.disconnect();
-        horizontalEnd?.disconnect();
+        tracking?.disconnect();
         if (nodeRef.current === node) nodeRef.current = null;
       };
     },
-    [measure, retainHorizontalEnd],
+    [measure, trackViewport],
   );
 
   return { ref, tabIndex: reachable ? 0 : undefined };
