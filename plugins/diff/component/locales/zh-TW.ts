@@ -50,7 +50,7 @@ export const zhTW: Record<string, string> = {
   "file.changes": "{{path}} 中的變更",
   "file.renamed": "重新命名自",
   "file.binary": "不顯示二進位內容。行數無法使用。",
-  "file.metadataOnly": "沒有行變更。僅檔案中繼資料發生變更。",
+  "file.noLineChanges": "沒有行變更。",
   "file.status.added": "新增",
   "file.status.modified": "已修改",
   "file.status.deleted": "已刪除",

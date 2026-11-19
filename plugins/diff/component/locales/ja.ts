@@ -50,8 +50,7 @@ export const ja: Record<string, string> = {
   "file.changes": "{{path}} の変更",
   "file.renamed": "名前の変更元:",
   "file.binary": "バイナリコンテンツは表示されません。行数は利用できません。",
-  "file.metadataOnly":
-    "行の変更はありません。ファイルのメタデータのみが変更されました。",
+  "file.noLineChanges": "行の変更はありません。",
   "file.status.added": "追加",
   "file.status.modified": "変更",
   "file.status.deleted": "削除",

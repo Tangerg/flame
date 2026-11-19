@@ -33353,6 +33353,52 @@ Three signed native launches exit normally. Three loopback previews
 stop and cleanup removes three registrations, six private Library
 directories, ten checkout outputs and the scratch tree.
 
+### Diff line evidence for empty files (2026-11-20)
+
+The standard signed Wails fixture on `0f522202a` shows `empty.txt` as
+Untracked at file 4 of 4 with `+0 −0`. Its body also says only file
+metadata changed. A private `git diff --no-index` comparison of a new
+empty file produces `new file mode 100644`, zero hunks and `0 / 0`
+numstat. [Git patch format](https://git-scm.com/docs/diff-format).
+
+The nonbinary reader displays `file.noLineChanges` when the accepted
+file has no text hunks. All eight catalogs use their existing first
+sentence. Status comes from the accepted manifest. The rename also
+shows the previous path, and binary files retain the explicit
+unavailable-count notice. Read-only ZCode `GitPaneChangeCard.tsx`
+keeps path and counts with the file identity, above the source body.
+
+- EN/light/14 px/Flame Orange at 1121 × 950. `empty.txt` shows the
+  untracked status and the exact “No line changes.” sentence. Previous
+  moves through `image.bin` and `新名字.md` with distinct binary evidence
+  and the complete old path. Escape returns to the exact renamed row.
+  The `empty` filter, keyboard entry and Escape retain the selected
+  `empty.txt` row and query. The draft continues as `10536518`.
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 in a 320 px Dock. Filtering
+  by `旧名字` reaches `新名字.md`, both paths and the line note. Escape
+  keeps the original query and row. Clearing it gives access to the
+  untracked empty file and the binary notice. Return from the
+  conversation inspection focuses its exact review button. The
+  draft continues as `10542638`.
+
+The new component case fails with the original label and passes
+with the repaired sentence. All three focused Diff cases pass.
+Plugin verification passes 44 Node checks, 17 source tests, twenty
+catalogs across eight locales and published resource reproduction.
+Six existing conditional source cases skip. Web passes 151 tests,
+940 keys across eight locales, bootstrap, 26 bundle contracts and
+module linkage. Scoped formatting, `make check-native` and the
+canonical five-document Lab build pass.
+
+Both accepted Wails scenes load the rebuilt Diff ESM from the
+canonical Lab. Existing installations receive the new digest through
+normal package selection. Live Runtime Git reads, VoiceOver speech
+and other native platforms remain outside this run.
+
+Three signed native launches exit normally. Both loopback previews
+stop and cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+
 ### Persistent Diff navigation at default zoom (2026-11-19)
 
 The Wails baseline at `a589bc610` reproduces an interrupted review in a

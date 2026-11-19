@@ -55,8 +55,7 @@ export const de: Record<string, string> = {
   "file.renamed": "Umbenannt von",
   "file.binary":
     "Binärinhalt wird nicht angezeigt. Zeilenanzahl ist nicht verfügbar.",
-  "file.metadataOnly":
-    "Keine Zeilenänderungen. Nur die Dateimetadaten haben sich geändert.",
+  "file.noLineChanges": "Keine Zeilenänderungen.",
   "file.status.added": "Hinzugefügt",
   "file.status.modified": "Geändert",
   "file.status.deleted": "Gelöscht",

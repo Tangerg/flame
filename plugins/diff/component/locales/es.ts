@@ -56,8 +56,7 @@ export const es: Record<string, string> = {
   "file.renamed": "Renombrado desde",
   "file.binary":
     "El contenido binario no se muestra. Los recuentos de líneas no están disponibles.",
-  "file.metadataOnly":
-    "Sin cambios de línea. Solo cambiaron los metadatos del archivo.",
+  "file.noLineChanges": "Sin cambios de línea.",
   "file.status.added": "Añadido",
   "file.status.modified": "Modificado",
   "file.status.deleted": "Eliminado",

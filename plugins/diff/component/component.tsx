@@ -663,7 +663,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                   t={t}
                 />
               ) : (
-                <Metadata>{t("file.metadataOnly")}</Metadata>
+                <Metadata>{t("file.noLineChanges")}</Metadata>
               )}
             </section>
           )}
