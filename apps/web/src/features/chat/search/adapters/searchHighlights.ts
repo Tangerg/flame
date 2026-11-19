@@ -3,10 +3,12 @@ const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const diagramMarkers = new WeakSet<Node>();
 let activeDiagramMarker: SVGPathElement | null = null;
 
+type MatchRect = { left: number; top: number; right: number; bottom: number };
+
 function diagramMatchOutlines(range: Range, label: SVGTextElement, toDiagram: DOMMatrix): string[] {
   const piece = range.cloneRange();
   const texts = label.ownerDocument.createTreeWalker(label, NodeFilter.SHOW_TEXT);
-  const outlines: string[] = [];
+  const fragments: MatchRect[] = [];
   for (let node = texts.nextNode(); node; node = texts.nextNode()) {
     if (!range.intersectsNode(node)) continue;
     const run = node.parentElement;
@@ -18,16 +20,37 @@ function diagramMatchOutlines(range: Range, label: SVGTextElement, toDiagram: DO
     piece.setStart(node, node === range.startContainer ? range.startOffset : 0);
     piece.setEnd(node, node === range.endContainer ? range.endOffset : (node as Text).length);
     for (const { left, right, width } of piece.getClientRects()) {
-      if (!(width > 0)) continue;
-      const corners = [
-        { x: left, y: top },
-        { x: right, y: top },
-        { x: right, y: bottom },
-        { x: left, y: bottom },
-      ].map((point) => toDiagram.transformPoint(point));
-      if (corners.every(({ x, y }) => Number.isFinite(x) && Number.isFinite(y))) {
-        outlines.push(`M ${corners.map(({ x, y }) => `${x} ${y}`).join(" L ")} Z`);
-      }
+      if (width > 0) fragments.push({ left, right, top, bottom });
+    }
+  }
+
+  // Stroke joined runs as one outline so styling boundaries inside a match stay invisible.
+  fragments.sort((a, b) => a.top - b.top || a.bottom - b.bottom || a.left - b.left);
+  const joined: MatchRect[] = [];
+  for (const fragment of fragments) {
+    const last = joined.at(-1);
+    if (
+      last &&
+      last.top === fragment.top &&
+      last.bottom === fragment.bottom &&
+      fragment.left <= last.right
+    ) {
+      last.right = Math.max(last.right, fragment.right);
+    } else {
+      joined.push(fragment);
+    }
+  }
+
+  const outlines: string[] = [];
+  for (const { left, right, top, bottom } of joined) {
+    const corners = [
+      { x: left, y: top },
+      { x: right, y: top },
+      { x: right, y: bottom },
+      { x: left, y: bottom },
+    ].map((point) => toDiagram.transformPoint(point));
+    if (corners.every(({ x, y }) => Number.isFinite(x) && Number.isFinite(y))) {
+      outlines.push(`M ${corners.map(({ x, y }) => `${x} ${y}`).join(" L ")} Z`);
     }
   }
   return outlines;

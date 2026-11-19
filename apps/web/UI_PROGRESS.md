@@ -24256,6 +24256,57 @@ ten checkout outputs and the scratch tree. A single same-line
 hit still shows an interior stroke at the formatting boundary.
 Inspect contiguous highlight shapes in the next pass.
 
+### Draw one outline for a contiguous diagram match (2026-11-20)
+
+In signed English Wails on `bb44350e9`, `handoff` is one
+result in `File hand**off**`. The screenshot shows a
+vertical stroke in the middle of the word. The two text
+runs overlap by 0.45 CSS px and have identical y bounds.
+`Second checkpoint` has two touching pieces at x351.86.
+Both examples draw two closed SVG subpaths before the fix.
+
+`searchHighlights.ts` joins overlapping or touching pieces
+with the same vertical bounds in viewport space. It draws
+the group's outer boundary in the label parent's SVG space.
+Separate bands and positive gaps keep their own outlines.
+The search count, exact DOM range and theme come from the
+existing owners.
+[SVG stroke shape](https://www.w3.org/TR/SVG2/painting.html#StrokeShape).
+
+- EN/light/14 px/Flame Orange at 1121 × 950. The matched
+  word has one outline from x150 to x206.71 and retains
+  the two rendered text fragments. `hand` and `off` separately
+  outline x150–186 and x185.55–206.71. The longer phrase
+  also has one outline. The wheel moves the transcript
+  239 px. Changing the Dock from 560.5 to 320 px moves
+  the outline with the phrase. Enter stays on the only
+  result and Escape lets `10036` continue as `10036518`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. The two
+  styled runs of `Second checkpoint` have one blue outline
+  from x415.93 to x555.81. Pointer Next moves from the
+  diagram's File at `1 / 2` to prose file at `2 / 2`
+  and retires the SVG path. Previous restores one outline.
+  The cross-line query and the source-only comment each
+  give `0 / 0`. The accessible source and copy payload
+  are present. Draft `10042` continues as `10042638`.
+
+Scoped formatting, 137 Web tests, 940 keys across eight
+locales, bootstrap, plugin resources, 26 bundle contracts,
+module linkage, the macOS native gate and five canonical
+Lab documents pass. The private captured reply exercises
+normal and bold runs, a second line, and actual scroll.
+VoiceOver speech, system clipboard transfer, live Send,
+browser suites and benchmarks were outside the run.
+
+Three native launches and two loopback previews exit.
+Cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+A separate native pass opens the enlarged Diagram and
+presses Cmd+F. Focus moves to the underlying Find field
+while the dialog stays open. Escape then leaves focus on
+the document. Ordinary dialog Escape returns to Enlarge
+diagram. Inspect the modal's keyboard scope next.
+
 ### Find follows rendered reply updates
 
 Find now refreshes its matches when the presented reply changes. An open query
