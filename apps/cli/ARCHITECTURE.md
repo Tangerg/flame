@@ -30,6 +30,8 @@ Terminal interrupt reviews retain each pending Item's member Run identity while 
 
 Cold recovery reads the root's authoritative status first. A running root is recovered with `runs.subscribe(snapshot: true)`, whose material and successor tail share one Runtime observation boundary. CLI installs that material and the opaque head cursor before consuming the tail; it never replaces the material with an independent read after attachment. Waiting and finished roots install the authoritative snapshot without subscribing. Independently owned Session metadata keeps its existing stability check around the snapshot subscription, and an unstable attempt releases its tail before retrying.
 
+Conversation owns the accepted replay cursor and retains the Run and Segment identities active at the snapshot cut. It can then accept the completed Item for a transient preview that began before the cut, even when a new child starts while the original preview is still streaming.
+
 ## Dependency direction
 
 The CLI uses four responsibility rings:

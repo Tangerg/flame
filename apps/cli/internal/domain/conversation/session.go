@@ -420,16 +420,18 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 	next.blocks = cloneBlocks(snapshot.Transcript)
 	next.plan = ClonePlan(snapshot.Plan)
 	next.rebuildBlockIndex()
+	next.snapshotSegmentsByRun = make(map[string]string)
 	for _, run := range snapshot.Runs {
 		next.rememberRun(run)
+		if run.Status == protocol.RunStatusRunning {
+			next.snapshotSegmentsByRun[run.ID] = run.ActiveSegmentID
+		}
 	}
 	if active, ok := snapshot.ActiveRun(); ok {
 		next.runID = active.ID
 		next.segmentID = active.ActiveSegmentID
 		if active.Status == protocol.RunStatusWaiting {
 			next.interrupts = CloneInterrupts(snapshot.Interrupts)
-		} else {
-			next.coldTail = true
 		}
 	} else if latest, ok := snapshot.LatestRun(); ok {
 		next.runID = latest.ID

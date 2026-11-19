@@ -40,6 +40,7 @@ func (c *Conversation) ApplyRunEvent(envelope RunEvent) (EventAcceptance, error)
 	if newStreamSegment {
 		c.seen = make(map[string]RunEvent)
 		c.checkpoint = ""
+		c.snapshotSegmentsByRun = nil
 	}
 	c.segmentID = streamSegmentID
 	c.seen[envelope.EventID] = envelope.Clone()
@@ -74,7 +75,7 @@ func (c *Conversation) alreadyProjected(envelope RunEvent) (bool, error) {
 			return true, nil
 		}
 	}
-	if delta, ok := event.(BlockDelta); ok && c.coldTail {
+	if delta, ok := event.(BlockDelta); ok && c.snapshotSegmentsByRun[envelope.RunID] == envelope.SegmentID {
 		if _, exists := c.index[BlockKey(envelope.RunID, delta.BlockID)]; !exists {
 			// The completed Item is authoritative and restores the block.
 			return true, nil
@@ -135,7 +136,6 @@ func (c *Conversation) apply(envelope RunEvent) error {
 }
 
 func (c *Conversation) applySegmentStarted(event SegmentStarted) error {
-	c.coldTail = false
 	run := event.Run
 	previous, exists := c.runs[run.ID]
 	if run.Lineage.IsRoot() {
@@ -344,11 +344,8 @@ func (c *Conversation) applySegmentFinished(runID string, event SegmentFinished)
 		return err
 	}
 	c.rememberRun(event.Run)
-	if runID == c.runID {
-		c.coldTail = false
-		if event.Run.Status == protocol.RunStatusFinished {
-			c.interrupts = nil
-		}
+	if runID == c.runID && event.Run.Status == protocol.RunStatusFinished {
+		c.interrupts = nil
 	}
 	return nil
 }
@@ -377,7 +374,6 @@ func (c *Conversation) parkRun(runID string, interrupts []Interrupt) error {
 		return fmt.Errorf("%w: tree interrupt set: %w", ErrInvalidTransition, err)
 	}
 	c.interrupts = pending
-	c.coldTail = false
 	return nil
 }
 

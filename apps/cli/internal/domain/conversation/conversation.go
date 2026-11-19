@@ -47,10 +47,9 @@ type Conversation struct {
 	runOrder    []string
 	index       map[string]int
 	textStreams map[string]StreamedText
-	// coldTail marks a projection restored in the middle of a running Segment.
-	// Previews are not durable, so deltas of one that started before the read
-	// arrive without a start to fold onto.
-	coldTail bool
+	// The snapshot's running Segments may have previews that started before
+	// the cut and therefore have no opening event in the successor tail.
+	snapshotSegmentsByRun map[string]string
 }
 
 func New() *Conversation {
@@ -195,7 +194,7 @@ func (c *Conversation) Starting() error {
 	c.checkpoint = ""
 	c.seen = make(map[string]RunEvent)
 	c.interrupts = nil
-	c.coldTail = false
+	c.snapshotSegmentsByRun = nil
 	return nil
 }
 
@@ -204,7 +203,6 @@ func (c *Conversation) StopStarting() error {
 		return fmt.Errorf("%w: conversation is not starting", ErrInvalidTransition)
 	}
 	c.starting = false
-	c.coldTail = false
 	return nil
 }
 

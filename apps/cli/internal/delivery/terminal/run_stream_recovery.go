@@ -48,7 +48,6 @@ func (s *streamFollower) followAttachedSession() {
 	if !active || recovered.Run.Status != protocol.RunStatusRunning {
 		return
 	}
-	s.checkpoint = recovered.Stream.HeadEventID
 	s.runStream(recovered.Stream)
 }
 
@@ -60,9 +59,8 @@ type streamFollower struct {
 	open       func(context.Context) (conversation.SegmentStream, error)
 	applyEvent func(conversation.RunEvent) error
 
-	opening    streamOpeningObserver
-	failures   int
-	checkpoint string
+	opening  streamOpeningObserver
+	failures int
 }
 
 func (s *streamFollower) current() bool {
@@ -170,29 +168,25 @@ func (s *streamFollower) runStream(current conversation.SegmentStream) {
 		if err != nil || !snapshot.active {
 			return
 		}
-		if runworkflow.RecoveryRequired(streamErr) {
-			rebound, ok := s.reconnect(current.RunID, current.SegmentID, streamErr)
-			if !ok {
+		if !runworkflow.RecoveryRequired(streamErr) {
+			if snapshot.phase != conversation.Running {
+				s.finish()
 				return
 			}
-			current = rebound
-			continue
+			if streamErr == nil {
+				streamErr = fmt.Errorf("%w: segment stream ended without a terminal event", conversation.ErrDisconnected)
+			}
+			if context.Cause(s.ctx) != nil {
+				return
+			}
+			if applied > 0 {
+				s.failures = 0
+			}
 		}
-		s.checkpoint = snapshot.checkpoint
-		if snapshot.phase != conversation.Running {
-			s.finish()
-			return
+		request := conversation.SubscribeRun{
+			RunID: current.RunID, SegmentID: current.SegmentID, AfterEventID: snapshot.checkpoint,
 		}
-		if streamErr == nil {
-			streamErr = fmt.Errorf("%w: segment stream ended without a terminal event", conversation.ErrDisconnected)
-		}
-		if context.Cause(s.ctx) != nil {
-			return
-		}
-		if applied > 0 {
-			s.failures = 0
-		}
-		rebound, ok := s.reconnect(current.RunID, current.SegmentID, streamErr)
+		rebound, ok := s.reconnect(request, streamErr)
 		if !ok {
 			return
 		}
@@ -224,7 +218,6 @@ func (s *streamFollower) apply(event conversation.RunEvent) (bool, error) {
 			return
 		}
 		applyErr = s.applyEvent(event)
-		s.checkpoint = s.runs.execution.conversation.Checkpoint()
 	})
 	if applyErr != nil {
 		applyErr = &eventApplicationError{err: applyErr}
@@ -265,10 +258,10 @@ func (s *streamFollower) snapshot() (followSnapshot, error) {
 	return snapshot, err
 }
 
-func (s *streamFollower) reconnect(runID, segmentID string, cause error) (conversation.SegmentStream, bool) {
+func (s *streamFollower) reconnect(request conversation.SubscribeRun, cause error) (conversation.SegmentStream, bool) {
 	for {
 		if runworkflow.RecoveryRequired(cause) {
-			recovery := s.recover(runID, cause)
+			recovery := s.recover(request.RunID, cause)
 			switch recovery.disposition {
 			case recoveryAttached:
 				return recovery.stream, true
@@ -289,11 +282,9 @@ func (s *streamFollower) reconnect(runID, segmentID string, cause error) (conver
 		if !s.waitBeforeRetry(cause) {
 			return conversation.SegmentStream{}, false
 		}
-		rebound, err := s.runs.runtime.SubscribeRun(s.ctx, conversation.SubscribeRun{
-			RunID: runID, SegmentID: segmentID, AfterEventID: s.checkpoint,
-		})
+		rebound, err := s.runs.runtime.SubscribeRun(s.ctx, request)
 		if err == nil {
-			return s.acceptRebound(runID, segmentID, rebound)
+			return s.acceptRebound(request.RunID, request.SegmentID, rebound)
 		}
 		cause = err
 	}
@@ -363,7 +354,6 @@ func (s *streamFollower) recover(runID string, cause error) recoveryAttempt {
 	if !active || recovered.Run.Status != protocol.RunStatusRunning {
 		return recoveryAttempt{disposition: recoveryStopped}
 	}
-	s.checkpoint = recovered.Stream.HeadEventID
 	return recoveryAttempt{disposition: recoveryAttached, stream: recovered.Stream}
 }
 
