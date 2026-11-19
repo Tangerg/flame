@@ -1093,11 +1093,11 @@ Settings, unavailable views and the catalog retain their separate task headers.
 
 Image galleries keep the complete captured description in a named, keyboard
 scroll region. The header takes its natural height, and long descriptions stay
-bounded while the existing image viewport fits the remaining space. Selection
-keeps that description reader and its focus; source return and image zoom retain
-their existing owners. Save failures lead with the command reason, followed by
-the captured image description, so changing the current image cannot misidentify
-the failed save.
+bounded while the existing image viewport fits the remaining space. Selecting
+a different gallery item starts its description at the top of the same reader
+and preserves focus. Source return and image zoom retain their existing owners.
+Save failures lead with the command reason, followed by the captured image
+description, so changing the current image cannot misidentify the failed save.
 
 Transcript code blocks, file readers and package diffs render through Pierre File
 and FileDiff with one shared worker pool from Pierre's `WorkerPoolContextProvider`,

@@ -41464,6 +41464,64 @@ directories, ten checkout outputs and the scratch tree.
 Continue with another complete task from conversation
 content into a supporting detail and back.
 
+### Start each gallery description at its beginning (2026-11-19)
+
+In the native baseline, End reveals lines 08–16 of a
+captured image description. Right selects the second image
+and keeps the reader focused, while the second description
+also starts at line 08. Home reaches the top and exposes a
+mix of old and current text. The first candidate restores the
+scroll position and exposes the correct accessible first
+line, yet the earlier words remain painted in the header.
+Both are visible failures in WebKit at default page zoom.
+
+The selected gallery item resets the existing description
+scrollport before paint. Only the description text is keyed
+to the selected index, which replaces offscreen text and
+preserves the reader and its focus. Distinct entries can
+share the same image source. The existing selected-item
+identity owns the reset and leaves the current reading
+position alone during ordinary rerenders. Better Layout
+guides the reading order. The read-only ChatGPT image
+lightbox passes the selected image's caption and identity
+to its reader.
+
+- EN/light/18 px/Flame Orange at Actual Size. End reads the
+  last lines. Right and Left display the correct first line
+  of each description, with the same named reader focused
+  and no stale text in the native images. Left at the first
+  item keeps the visible last lines. Escape returns to the
+  original image trigger. The draft continues as `711837`.
+- ZH/dark/18 px/`#3B82F6` at scale 1 uses a 1121 px window
+  and 320 px Dock. Native wheel input reaches the original
+  description's last line. Clicking Next shows the second
+  description from its first line and leaves the Next
+  button focused. Pointer Close restores the original image
+  trigger. The draft continues as `712468`.
+- The canonical English Lab uses the original short
+  descriptions. The image zoom moves from 100% to 150% and
+  returns to 100% on Next with Zoom in still focused.
+  Escape restores Inline architecture. The reply's
+  `runtime/internal/session/store.go:4` link opens the
+  captured file and Escape restores the link. The original
+  draft continues as `713625`.
+
+Scoped formatting, all 137 Web tests, 940 keys across eight
+locales, bootstrap, generated plugin resources, 26 bundle
+contracts, production module linkage, native build and five
+canonical Lab documents pass on `922befb8a`. The final source
+comment produces identical private artifacts and all 927
+canonical asset hashes. The private Lab extends only two
+captured descriptions. Live providers and file contents,
+image export, VoiceOver speech and other platforms were
+outside this qualification.
+
+Six private launches and four loopback previews exit.
+Cleanup removes six registrations, twelve private Library
+directories, ten checkout outputs and the scratch tree.
+Continue with a supporting detail in the same long-reply
+reading path and verify its return to the original content.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

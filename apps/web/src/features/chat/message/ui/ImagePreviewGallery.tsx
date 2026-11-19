@@ -1,7 +1,10 @@
 import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import {
+  Fragment,
   useId,
+  useLayoutEffect,
+  useRef,
   useState,
   type KeyboardEventHandler,
   type MouseEventHandler,
@@ -155,11 +158,18 @@ export function ImagePreviewGallery({ item, trigger }: Props) {
   const saveInlineImage = useImageSave();
   const t = useT();
   const [gallery, setGallery] = useState<GalleryState | null>(null);
+  const description = useRef<HTMLSpanElement>(null);
   const failureId = useId();
+  const open = gallery !== null;
   const active = gallery?.items[gallery.index] ?? item;
   const activeLabel = active.alt || t("message.image.previewTitle");
   const hasGallery = (gallery?.items.length ?? 0) > 1;
   const failure = gallery?.downloadFailure;
+  useLayoutEffect(() => {
+    const viewport = description.current;
+    if (open && viewport) viewport.scrollTop = 0;
+  }, [active, open]);
+
   const save = useCommandAction({
     fallback: t("message.image.downloadFailed"),
     // `run` keeps the sink from the render that started it, so a late failure names that
@@ -204,7 +214,7 @@ export function ImagePreviewGallery({ item, trigger }: Props) {
   };
   return (
     <LightboxDialog
-      open={gallery !== null}
+      open={open}
       onKeyDown={onKeyDown}
       onOpenChange={(open) => {
         if (!open) setGallery(null);
@@ -220,8 +230,14 @@ export function ImagePreviewGallery({ item, trigger }: Props) {
         <div {...stylex.props(ig.header)}>
           <div {...stylex.props(ig.toolbar)}>
             <div {...stylex.props(ig.identity, typeStep.uiSm)}>
-              <ScrollRegion as="span" label={t("message.image.description")} styles={ig.name}>
-                {activeLabel}
+              <ScrollRegion
+                ref={description}
+                as="span"
+                label={t("message.image.description")}
+                styles={ig.name}
+              >
+                {/* Replace hidden text so WebKit repaints it on selection. */}
+                <Fragment key={gallery?.index}>{activeLabel}</Fragment>
               </ScrollRegion>
               {hasGallery && (
                 <span role="status" {...stylex.props(ig.position)}>
