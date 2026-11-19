@@ -269,14 +269,13 @@ export const markdownComponents: Components = {
     const r = rest as {
       "data-file-ref"?: string;
       "data-file-line"?: string;
-      "data-file-column"?: string;
     };
     if (r["data-file-ref"]) {
       return (
         <FileRefLink
           path={r["data-file-ref"]}
           line={Number(r["data-file-line"]) || 0}
-          column={Number(r["data-file-column"]) || 0}
+          label={visibleText(children)}
         />
       );
     }

@@ -23084,6 +23084,57 @@ removes three registrations, six private Library directories,
 ten checkout outputs and the scratch tree. Continue by tracing
 keyboard return from another reader or workspace action.
 
+### Open addressed source from the transcript (2026-11-20)
+
+In signed English Wails on `0ed57281d`, clicking the assistant's
+inline `DockResizer.tsx:4` and a captured user quote headed
+`DockResizer.tsx:4-5` leaves the Files list in place. Both
+addresses have the existing code presentation. A prose reference
+to `apps/web/package.json:6` opens line 6 and Back to conversation
+focuses that exact reference. The draft is `9214` throughout.
+
+`rehypeFileRefs.ts` now recognizes a complete file address in an
+ordinary code span. `fileRefs.ts` uses the existing file grammar
+and validates the line, any column, and the range end. The
+inline code wrapper keeps its reading direction and exact label.
+`FileRefLink` receives the visible address and the file's first
+line as separate facts and uses the same workspace inspection
+and return path as a prose reference. Composer uses the same
+address formatter. ZCode's message renderer also hands resolved
+addresses to its workspace file action. Flame qualifies its own
+inline code after CommonMark parsing.
+[CommonMark code spans](https://spec.commonmark.org/0.31.2/#code-spans)
+
+- EN/light/14 px/Flame Orange at 1121 × 950 and a 560.5 px Dock.
+  The prose button still opens line 6. From its restored focus,
+  Tab lands on the exact reply address and Return opens line 4
+  of `DockResizer.tsx`. Tab and Return on Back to conversation
+  restore the address's visible focus outline at the same scroll
+  position. The Dock retains its current file. Dragging through
+  the inline address selects text with no inspection handoff.
+  The function call and fenced path render as literal code.
+  Draft `9236` continues as `9236572`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. A native scroll
+  moves the transcript from 94 px to 0. The file address wraps
+  at a directory boundary and retains its `:4-5` suffix. A
+  click on its second visual line opens the file at line 4.
+  返回对话 returns focus to the same range address at scroll
+  position 0. Draft `9247` continues as `9247638`.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and
+five canonical Lab documents pass. The native fixture supplies
+captured messages and file windows. Column rendering and guard
+cases are reviewed in source. VoiceOver, RTL, live Send and
+filesystem reads, browser suites and benchmarks were outside
+the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Verify the same
+reading path with a real repository filename in Chinese next.
+
 ### Native short-paste continuation qualification
 
 No actionable focus/caret finding in the inspected trace. Approve the observed

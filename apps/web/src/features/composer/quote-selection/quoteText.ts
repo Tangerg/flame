@@ -1,4 +1,5 @@
 import type { QuoteSource } from "@flame/ui";
+import { formatFileRef } from "@/features/agent/public/fileRefs";
 
 export function quoteText(
   source: QuoteSource,
@@ -19,10 +20,8 @@ export function quoteText(
   }
   const block = [fence, body, fence].join("\n");
   if (source.kind === "tool-output") return `${block}\n\n`;
-  const where = !lines
-    ? source.path
-    : lines[0] === lines[1]
-      ? `${source.path}:${lines[0]}`
-      : `${source.path}:${lines[0]}-${lines[1]}`;
+  const where = lines
+    ? formatFileRef({ path: source.path, line: lines[0], column: 0 }, lines[1])
+    : source.path;
   return `\`${where}\`\n${block}\n\n`;
 }

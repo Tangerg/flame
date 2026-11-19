@@ -2,7 +2,7 @@ import { type Element, type ElementContent, type Root, type RootContent, type Te
 export function rewriteTextNodes(
   tree: Root,
   skip: (node: Element) => boolean,
-  replace: (value: string) => Array<Element | Text> | null,
+  replace: (value: string, parent: Root | Element) => Array<Element | Text> | null,
 ): void {
   const walk = (node: Root | Element): void => {
     let rewritten: Array<RootContent | ElementContent> | undefined;
@@ -16,7 +16,7 @@ export function rewriteTextNodes(
         continue;
       }
 
-      const parts = child.type === "text" ? replace(child.value) : null;
+      const parts = child.type === "text" ? replace(child.value, node) : null;
       if (parts === null) {
         rewritten?.push(child);
         continue;

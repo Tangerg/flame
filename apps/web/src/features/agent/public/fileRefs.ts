@@ -111,11 +111,35 @@ export function parseFileRefs(text: string): RefSegment[] {
   return out.length > 0 ? out : [text];
 }
 
-// formatFileRef renders a file reference back to its "path:line:col" source form,
-// inverse to parseFileRefs. A line or column of 0 means "unspecified" and
-// collapses out, so a bare path round-trips unchanged.
-export function formatFileRef(ref: FileRef): string {
-  if (ref.line <= 0) return ref.path;
-  const column = ref.column > 0 ? `:${ref.column}` : "";
-  return `${ref.path}:${ref.line}${column}`;
+function isPositiveFilePosition(value: number): boolean {
+  return Number.isSafeInteger(value) && value > 0;
+}
+
+export function parseInlineFileRef(value: string): FileRef | null {
+  const range = /-(\d+)$/.exec(value);
+  if (range && range.index + range[0].length !== value.length) return null;
+  const address = range ? value.slice(0, range.index) : value;
+  const [ref, ...remainder] = parseFileRefs(address);
+  if (!ref || typeof ref === "string" || remainder.length || !isPositiveFilePosition(ref.line))
+    return null;
+
+  const hasColumn = address.indexOf(":") !== address.lastIndexOf(":");
+  if (hasColumn && (range || !isPositiveFilePosition(ref.column))) return null;
+  if (range) {
+    const endLine = Number(range[1]);
+    if (!isPositiveFilePosition(endLine) || endLine < ref.line) return null;
+  }
+  return ref;
+}
+
+// Prose references omit unspecified positions. A quoted range has explicit endpoints.
+export function formatFileRef(ref: FileRef, endLine?: number): string {
+  if (ref.line <= 0 && endLine === undefined) return ref.path;
+  const suffix =
+    endLine !== undefined && endLine !== ref.line
+      ? `-${endLine}`
+      : ref.column > 0
+        ? `:${ref.column}`
+        : "";
+  return `${ref.path}:${ref.line}${suffix}`;
 }

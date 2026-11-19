@@ -1,7 +1,6 @@
 import { ButtonPrimitive } from "@flame/ui";
 import { useWorkspace } from "@/features/workspace/public/workspace";
 import { createContext, Fragment, use, type RefObject } from "react";
-import { formatFileRef } from "@/features/agent/public/fileRefs";
 import { openWorkspaceFile } from "@/features/workspace/public/navigation";
 
 export interface FileReferencePresentation {
@@ -13,19 +12,10 @@ export const FileReferencePresentationContext = createContext<FileReferencePrese
   null,
 );
 
-export function FileRefLink({
-  path,
-  line,
-  column = 0,
-}: {
-  path: string;
-  line: number;
-  column?: number;
-}) {
+export function FileRefLink({ path, line, label }: { path: string; line: number; label: string }) {
   const workspaceAccess = useWorkspace();
 
   const presentation = use(FileReferencePresentationContext);
-  const label = formatFileRef({ path, line, column });
   return (
     <ButtonPrimitive
       render={<span />}
