@@ -635,6 +635,7 @@ body:has([data-slot="notification-toast"])
   display: flex;
   min-width: 0;
   flex: 1;
+  container-type: inline-size;
   align-items: center;
   gap: calc(var(--spacing) * 0.5);
   overflow-x: auto;

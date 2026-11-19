@@ -839,9 +839,11 @@ and cue before registering the replacement. The replacement requires a fresh dra
 Returning to a still-connected former target creates a new registration and
 cannot reacquire a drag from either retired binding.
 
-The Dock strip reveals its current tab when selection or that tab's ordered
-position changes. Reordering retains the material and focus; ordinary rerenders
-preserve the user's horizontal browsing position.
+The Dock strip reveals its current tab when selection, that tab's ordered
+position, or its available width changes. Tab rows fit between the strip's
+overflow fades so the revealed tab keeps its leading icon and adjacent actions
+visible. Reordering retains the material and focus. Ordinary rerenders preserve
+the user's horizontal browsing position.
 The same controlled Tabs root includes the strip and actual material viewports.
 Each material tab labels and controls its retained panel; the catalog leaves
 material tabs unselected. Expanding and restoring material changes presentation

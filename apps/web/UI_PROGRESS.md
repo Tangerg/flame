@@ -40397,6 +40397,66 @@ and four previews terminate. Cleanup removes the registrations, eight
 private Library directories, ten checkout outputs and the scratch tree.
 The next pass inspects the active Dock tab's leading edge after narrowing.
 
+### Keeping the active Dock tab inside the edge fades (2026-11-19)
+
+Signed Wails at `e619ec614` reproduces a clipped active tab. Open the
+two-file review, then use the divider to narrow the Dock to 320 px.
+The source return control leaves a 178 px strip with two 16 px fades.
+Its 209.9 px Workspace diff row lands at x−47.3 through 162.6. The
+title begins at x−15.3, so the icon, initial letter and leading focus
+ring disappear. The native accessibility name still has the full title.
+
+The Dock strip now exposes its available inline size as a CSS query
+container. Each sortable row can use up to that width less the same two
+edge insets that the reveal calculation uses. The existing resizable
+label uses its trailing ellipsis and full-title tooltip when needed.
+The reorder handle and close action each retain their 24 px widths.
+Selection, user scrolling, measurement and reveal stay with the
+existing strip and workspace navigation owners.
+
+Better Layout guides where flexible title space yields to controls.
+ZCode's actual `SidePaneTabTrigger` constrains its leading file identity
+within a tab. HeroUI's Tabs overflow example keeps the collection in a
+bounded scrollport. W3C's focus guidance explains the visible focus
+perimeter. [W3C focus visibility](https://www.w3.org/WAI/WCAG22/Understanding/focus-not-obscured-minimum.html)
+
+- EN/light/18 px/Flame Orange with motion off at Actual Size. At 320 px
+  the same 178 px strip reveals a 146 px row at x16.7 through 162.7, with
+  its icon and leading border visible. A keyboard focus shows the whole
+  Workspace diff title. Escape dismisses that hint and keeps the tab
+  focused. Arrows visit the first, middle and last tabs with their
+  focus visible. The focused reorder handle moves Diff to position three.
+  At rest its row ends at x177.7 and the same `session.go` remains open.
+  A tab round trip, native wheel input and splitter Home return to the
+  209.9 px row and the full title. Files restores `session`
+  and focus on `session.go`. The draft continues as `11648927`.
+- ZH/dark/18 px/`#3B82F6` with full motion in the native left window,
+  approximately 1121 × 1050 px. The same 146 px row and blue focus ring
+  stay inside the strip. Keyboard focus shows the full localized title.
+  `DockResizer.tsx` survives full-width expansion and Dock restoration.
+  Pointer Back returns to Conversation and the original caret accepts
+  the next character, yielding `62517984`.
+- The standard EN/light/14 px/full-motion assets contain no observer.
+  At 320 px Delete closes Diff and focuses Session trajectory. Left
+  returns to Files with the retained 93-line `reading-guide.md`. The
+  draft continues as `4178620`. A fresh launch checks the right-click
+  Close Workspace diff command and the same surviving tab focus.
+
+Scoped Prettier, 137 Web tests including isolated Runtime, 937 locale
+keys, 26 bundle contracts, bootstrap, portable resources and modules,
+the native build and all five canonical Lab documents pass. The
+private observer reads geometry and focus while native input drives
+the product. The horizontal-wheel attempt left its offset unchanged.
+The hover-button coordinate attempt did not close Diff. The right-click
+menu and the keyboard shortcut are the verified closure paths. Exact
+hidden scroll pixels, physical IME, VoiceOver and live provider activity
+are outside this qualification.
+
+Four signed private bundles, five launches and three previews complete.
+Cleanup removes four registrations, eight private Library directories,
+ten checkout outputs and the scratch tree. The next pass checks the
+native keyboard route from a typed Diff filter to its matching row.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

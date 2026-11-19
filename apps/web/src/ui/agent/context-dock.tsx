@@ -123,6 +123,8 @@ const styles = stylex.create({
     display: "flex",
     height: "var(--dock-tab-height)",
     minWidth: 0,
+    // The full row must fit between the strip's two overflow fades.
+    maxInlineSize: "calc(100cqi - 2 * var(--dock-tab-edge))",
     flexShrink: 0,
     alignItems: "center",
     borderRadius: "var(--dock-tab-radius)",
