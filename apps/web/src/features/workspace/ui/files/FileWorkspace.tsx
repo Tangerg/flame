@@ -4,7 +4,6 @@ import { iconGlyph } from "@/ui/icons/index";
 import * as stylex from "@stylexjs/stylex";
 import {
   Fragment,
-  useCallback,
   useId,
   useLayoutEffect,
   useMemo,
@@ -166,7 +165,7 @@ export function FileWorkspace() {
   const panelRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLButtonElement>(null);
   const previousViewer = useRef(viewer);
-  const returnFocus = useRef(false);
+  const focusFileOnReturn = useRef<((path: string) => void) | null>(null);
   const fileActions: LocalFileActions = {
     open(cwd, path) {
       void run(
@@ -183,36 +182,26 @@ export function FileWorkspace() {
     failure: feedback.state === "error" ? feedback.reason : undefined,
     dismissFeedback: reset,
   };
-  const restoreFocus = useCallback((item: HTMLElement) => {
-    if (!returnFocus.current) return;
-    returnFocus.current = false;
-    if (item.ownerDocument.activeElement === item.ownerDocument.body) item.focus();
-  }, []);
   useLayoutEffect(() => {
     const previous = previousViewer.current;
     previousViewer.current = viewer;
     const panel = panelRef.current;
     if (!panel) return;
-    returnFocus.current = false;
     const active = panel.ownerDocument.activeElement;
     if (active !== panel.ownerDocument.body && !panel.contains(active)) return;
     if (viewer) {
       backRef.current?.focus({ preventScroll: true });
-    } else if (previous) {
-      returnFocus.current = true;
-      const item =
-        panel.querySelector<HTMLElement>('[role="row"][tabindex="0"]') ??
-        panel.querySelector<HTMLElement>('[role="treegrid"]');
-      if (item) restoreFocus(item);
+    } else if (previous && active === panel.ownerDocument.body) {
+      focusFileOnReturn.current?.(previous.path);
     }
-  }, [viewer, restoreFocus]);
+  }, [viewer]);
   return (
     <div ref={panelRef} {...stylex.props(fp.workspace)}>
       <ContentVisibility visible={!viewer}>
         <div hidden={Boolean(viewer)} {...stylex.props(fp.workspace, viewer && fp.hidden)}>
           <FileBrowser
             workspace={workspace}
-            restoreFocus={restoreFocus}
+            focusFileOnReturn={focusFileOnReturn}
             fileActions={fileActions}
           />
         </div>
@@ -235,11 +224,11 @@ export function FileWorkspace() {
 
 function FileBrowser({
   workspace,
-  restoreFocus,
+  focusFileOnReturn,
   fileActions,
 }: {
   workspace: ActiveSessionWorkspaceSelection;
-  restoreFocus: (item: HTMLElement) => void;
+  focusFileOnReturn: Ref<(path: string) => void>;
   fileActions: LocalFileActions;
 }) {
   const workspaceAccess = useWorkspace();
@@ -248,9 +237,6 @@ function FileBrowser({
   const cwd = resolvedWorkspaceCwd(workspace);
   const scrollPort = useRef<HTMLDivElement>(null);
   const treeRef = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    if (treeRef.current) restoreFocus(treeRef.current);
-  }, [restoreFocus]);
   return (
     <WorkspaceViewLayout
       scrollRef={scrollPort}
@@ -264,6 +250,7 @@ function FileBrowser({
           key={cwd}
           ref={treeRef}
           cwd={cwd}
+          focusFileOnReturn={focusFileOnReturn}
           onSelectFile={openWorkspaceFile.bind(null, workspaceAccess)}
           onReveal={(path) => {
             if (cwd) fileActions.reveal(cwd, path);

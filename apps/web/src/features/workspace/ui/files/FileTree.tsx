@@ -1,10 +1,14 @@
 import { useWorkingTreeFiles } from "@/features/workspace/application/workingTreeChanges";
 import {
   useId,
+  useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type ComponentPropsWithRef,
   type KeyboardEvent,
+  type Ref,
   type RefObject,
   type ReactNode,
 } from "react";
@@ -20,6 +24,7 @@ import {
   I18nProvider,
   Button as TreeButton,
   type Key,
+  type TreeRenderProps,
 } from "react-aria-components";
 import { Button, handoffFocus, isImeKey, useContentVisible, useCopy } from "@flame/ui";
 import { ContextMenu, DataError, Icon, fileIconName, SkeletonList } from "@/ui/index";
@@ -214,14 +219,83 @@ function Item({
     </TreeItem>
   );
 }
+function FileTreeViewport({
+  state,
+  treeRef,
+  focusFileOnReturn,
+  ...props
+}: ComponentPropsWithRef<"div"> & {
+  state: TreeRenderProps["state"];
+  treeRef: RefObject<HTMLDivElement | null>;
+  focusFileOnReturn: Ref<(path: string) => void>;
+}) {
+  const visible = useContentVisible();
+  const revealKey = useRef<Key | null>(null);
+  useImperativeHandle(
+    focusFileOnReturn,
+    () => (path) => {
+      const viewport = treeRef.current;
+      if (!visible || !viewport) return;
+      const document = viewport.ownerDocument;
+      if (document.activeElement !== document.body) return;
+      const { collection, selectionManager } = state;
+      // The flattened collection excludes collapsed descendants but still includes offscreen rows.
+      if (
+        !selectionManager.isDisabled(path) &&
+        [...collection].some((item) => item.type === "item" && item.key === path)
+      )
+        selectionManager.setFocusedKey(path);
+      revealKey.current = selectionManager.focusedKey;
+      viewport.focus({ preventScroll: true });
+      if (!viewport.contains(document.activeElement)) revealKey.current = null;
+    },
+    [state, treeRef, visible],
+  );
+  useLayoutEffect(() => {
+    if (!visible) revealKey.current = null;
+  }, [visible]);
+
+  return (
+    <div
+      {...props}
+      onFocusCapture={(event) => {
+        props.onFocusCapture?.(event);
+        const { currentTarget: viewport, target: row } = event;
+        const key = revealKey.current;
+        if (key === null || row === viewport) return;
+        revealKey.current = null;
+        if (
+          !(row instanceof HTMLElement) ||
+          !viewport.contains(row) ||
+          row.dataset.filePath !== key
+        )
+          return;
+
+        // React Aria persists and focuses the key. Reveal its actual row after it mounts.
+        const bounds = row.getBoundingClientRect();
+        const top = viewport.getBoundingClientRect().top + viewport.clientTop;
+        const bottom = top + viewport.clientHeight;
+        if (bounds.top < top) viewport.scrollTop += bounds.top - top;
+        else if (bounds.bottom > bottom) viewport.scrollTop += bounds.bottom - bottom;
+      }}
+      onBlurCapture={(event) => {
+        props.onBlurCapture?.(event);
+        if (!event.currentTarget.contains(event.relatedTarget)) revealKey.current = null;
+      }}
+    />
+  );
+}
+
 export function FileTree({
   cwd,
   ref,
+  focusFileOnReturn,
   onSelectFile,
   onReveal,
 }: {
   cwd?: string;
   ref?: RefObject<HTMLDivElement | null>;
+  focusFileOnReturn: Ref<(path: string) => void>;
   onSelectFile(path: string): void;
   onReveal(path: string): void;
 }) {
@@ -296,6 +370,14 @@ export function FileTree({
               render={
                 <Tree
                   ref={treeRef}
+                  render={(props, { state }) => (
+                    <FileTreeViewport
+                      {...props}
+                      state={state}
+                      treeRef={treeRef}
+                      focusFileOnReturn={focusFileOnReturn}
+                    />
+                  )}
                   aria-label={t("workspace.view.title.file")}
                   expandedKeys={expanded}
                   onExpandedChange={(keys) =>

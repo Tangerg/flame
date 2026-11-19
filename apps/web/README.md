@@ -840,6 +840,10 @@ navigation, ARIA, expansion and branch continuation. Left and Right on a
 focused row stay within that tree navigation. Plain Return on a file row opens
 the file through the tree's action on key release. The file tree cancels the
 browser's editing default for these keys to preserve a held Composer selection.
+Back to files restores the file just read when its key is in the current tree.
+The virtualizer presents that row and the file tree reveals it inside its own
+scrollport. When the key is unavailable, the tree uses its existing tab stop.
+Later directory arrivals preserve the user's current focus.
 
 Query owns directory pages and their cache. Runtime enumerates only the
 requested level and publishes its

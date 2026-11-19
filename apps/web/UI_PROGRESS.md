@@ -39568,6 +39568,72 @@ instead of the file just read. The same route on an independent signed
 The next batch will trace restoration through the remembered file and
 the virtualized tree after a presentation change.
 
+### Focus return to the file just read (2026-11-19)
+
+Signed Wails at `4f0571376` keeps the same tree instance while
+reading a file in Dock and full width. A keyboard opening from
+the focused `DockResizer.tsx` row returns to that row. A reply's
+`reading-guide.md:60` reference opens the file while the tree's
+Tab stop remains on `apps`. After full width, returning to Dock
+and Back to files, `reading-guide.md` is marked current and
+focus lands on `apps`.
+
+The narrow paged fixture expands `apps`, loads its second page at
+End and shows `page-115.txt`. Home restores the top with that
+row outside the rendered slice. The reply reference to
+`apps/page-115.txt:4` opens the file. Back keeps the same tree
+focused on `apps` at 0 px.
+
+`FileWorkspace` passes the closing viewer's path in its existing
+focus handoff. `FileTree` checks the flattened collection and gives
+the matching key to React Aria. The virtualizer persists this key,
+including when its row starts outside the rendered slice. The
+tree reveals the focused row within its own scrollport. It retires
+the reveal when focus moves away. A key absent from the collection
+uses the tree's current stop or named viewport. Directory arrivals
+leave that completed handoff alone.
+[React Aria Tree](https://react-aria.adobe.com/Tree)
+[React Aria Virtualizer](https://react-aria.adobe.com/Virtualizer)
+[WAI Treegrid keyboard interaction](https://www.w3.org/WAI/ARIA/apg/patterns/treegrid/#keyboardinteraction)
+
+- EN/light/Flame Orange with motion off at 1440 × 900. The reply
+  reference opens `reading-guide.md:60` while the tree rests on
+  `apps`. Full width, Open in the context dock and Back return to
+  the same tree with the file current and focused. Return reopens
+  the file. Directory expand, child entry and parent collapse retain
+  their keyboard paths. Cmd+L continues the held caret as
+  `610298473`. The separate Back to conversation action restores
+  the original file reference.
+- ZH/dark/18 px/custom blue with full motion in a 1121 × 950
+  native tile and 320 px Dock. The file read while its second page
+  is unavailable returns to `apps`. A wheel loads the second page
+  while the Composer retains focus and its backward selection.
+  The wheel returns to 0 px with `page-115.txt` unmounted. Opening
+  that reference again and returning focuses and reveals the row
+  at 4,252 px. Up reaches `page-114.txt` and Down restores
+  `page-115.txt`. Return opens it, and the draft resumes as
+  `1470683`.
+- The standard Lab opens `reading-guide.md` with Return, visits
+  full width and closes it. Back restores that row. Cmd+L and
+  native typing produce `703195682`.
+
+Scoped Prettier, Web typecheck, 89 Web contracts, 937 locale keys
+in eight catalogs, bootstrap, installed resource reproduction, 26
+bundle contracts and module linking pass. The native build gate and
+five-entry standard Lab gate pass. Native acceptance uses captured
+workspaces and the real conversation file reference. Live Runtime
+file reads, VoiceOver and platform composition remain open.
+
+Five private bundles pass strict signature verification. Six launches
+and four previews exit. Cleanup removes five app registrations, ten
+Library directories, ten checkout outputs and the scratch tree.
+
+The next check is horizontal reading for long raw file lines. The
+narrow Source confirms that some lines extend past the right edge,
+and `FilePreview` currently handles the retained-editor fallback
+for vertical arrows. The next batch will trace the actual source
+scroll owner and the native Left and Right actions.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad
