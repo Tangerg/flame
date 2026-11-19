@@ -41900,6 +41900,47 @@ registrations, eight private Library directories, ten checkout outputs and
 the scratch tree. Continue with another reading and return path across the
 conversation and its supporting workspace.
 
+### Restore expanded trajectory records after filtering (2026-11-20)
+
+On `0952e4b38`, the standard Wails trajectory shows 11 records on page 1.
+After the reader expands `run_root`, an unmatched text filter hides it.
+Clear filters restores the same page and search focus with the Run collapsed.
+The filtered render had removed the disclosure that owned expansion.
+
+The report now owns the expanded top-level records by their existing type and
+record identity. The filter still renders only results. A record opens when it
+becomes visible again if the reader left it expanded. Explicit collapse clears
+that choice. Accepted-page changes discard keys for records no longer present.
+Nested details keep their existing lifetimes. ZCode's trajectory distinguishes
+saved expansion from search reveal, and the existing Flame disclosure supplies
+the keyboard and expanded-state semantics.
+[ARIA disclosure pattern](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/)
+
+- EN/light/14 px/Flame Orange at Actual Size. Run and Read both remain expanded
+  after a zero-match filter and keyboard Clear filters. Focus returns to the
+  search field and all 11 records return on page 1. Explicitly collapsing Run
+  persists through another filter cycle. Refresh accepts the same page with
+  Read open, Run closed and focus on Refresh. The draft continues as `791426`.
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 and scale 1 with a 320 px Dock.
+  Pointer expansion and Clear all filters restore the Run and filter focus.
+  Native wheel input moves the Dock from scroll offset 0 to 79 while reading
+  the record. Keyboard selection of Workspace diff and return to Session
+  trajectory retain page 1 and the expanded Run. The draft continues as
+  `792615`.
+
+Scoped formatting, 44 plugin script checks, 14 plugin source tests, 20 plugin
+catalogs across eight locales, 137 Web tests, 940 Web keys across eight locales,
+bootstrap, 26 bundle contracts, production module linkage, native build and
+tests, and five canonical Lab documents pass. The plugin source suite reports
+six existing skips. Standard publication regenerates the Trajectory ESM, which
+matches the checked bytes after the native build. The two locales use the
+canonical captured session. Different-page navigation, live providers,
+VoiceOver and other platforms were outside this qualification.
+
+Three native launches and two loopback previews exit. Cleanup removes three
+registrations, six private Library directories, ten checkout outputs and the
+scratch tree. Continue with another evidenced reading task in the workspace.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

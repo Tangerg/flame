@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode, Ref } from "react";
 import type { Translate } from "@flame/component-sdk";
 import { Activity, Cpu, Terminal, FileText, Server } from "@flame/icons/react";
@@ -166,6 +166,9 @@ function identity(row: TrajectoryEntry): string {
       : row.type === "endpoint"
         ? row.endpoint.id
         : row.item.id;
+}
+function recordKey(row: TrajectoryEntry): string {
+  return `${row.type}:${identity(row)}`;
 }
 function title(row: TrajectoryEntry, t: Translate, clock: Intl.DateTimeFormat) {
   const title =
@@ -412,6 +415,28 @@ export function TrajectoryReport({
   locale: string;
 }) {
   const rows = page.data;
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  useEffect(() => {
+    setExpanded((current) => {
+      if (!current.size) return current;
+      const keys = new Set(rows.map(recordKey));
+      const retained = new Set([...current].filter((key) => keys.has(key)));
+      return retained.size === current.size ? current : retained;
+    });
+  }, [rows]);
+
+  function setRecordOpen(key: string, open: boolean) {
+    setExpanded((current) => {
+      if (current.has(key) === open) return current;
+      const next = new Set(current);
+      if (open) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }
+
   const query = search.toLocaleLowerCase();
   const matching = rows.filter((row) => {
     const category = row.type === "item" ? row.item.type : row.type;
@@ -467,24 +492,29 @@ export function TrajectoryReport({
         </RecordMeta>
       </Metadata>
       <RecordGroup variant="list" id="records" aria-label={t("records.label")}>
-        {matching.map((row) => (
-          <Disclosure
-            variant="row"
-            key={`${row.type}:${identity(row)}`}
-            data-trajectory-record={`${row.type}:${identity(row)}`}
-            data-trajectory-kind={
-              row.type === "item" ? row.item.type : row.type
-            }
-            title={title(row, t, clock)}
-          >
-            <Metadata>
-              <time dateTime={row.occurredAt}>
-                {occurred.format(new Date(row.occurredAt))}
-              </time>
-            </Metadata>
-            <Observation row={row} t={t} />
-          </Disclosure>
-        ))}
+        {matching.map((row) => {
+          const key = recordKey(row);
+          return (
+            <Disclosure
+              variant="row"
+              key={key}
+              data-trajectory-record={key}
+              data-trajectory-kind={
+                row.type === "item" ? row.item.type : row.type
+              }
+              title={title(row, t, clock)}
+              open={expanded.has(key)}
+              onOpenChange={(open) => setRecordOpen(key, open)}
+            >
+              <Metadata>
+                <time dateTime={row.occurredAt}>
+                  {occurred.format(new Date(row.occurredAt))}
+                </time>
+              </Metadata>
+              <Observation row={row} t={t} />
+            </Disclosure>
+          );
+        })}
         {!matching.length && (
           <EmptyState
             icon={Activity}
