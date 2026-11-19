@@ -140,7 +140,7 @@ func TestLiveRootCancellationJoinsAnInFlightPark(t *testing.T) {
 	installParkCommitGate(t, home)
 	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{
 		Lifetime: t.Context(), IdempotencyNamespace: stores.IdempotencyNamespace.String(),
-		IdempotencyStore: parkedCancellationReservationGate{stores.Idempotency, reserved, continueCancellation},
+		IdempotencyStore: cancellationReservationGate{stores.Idempotency, reserved, continueCancellation},
 		ValidateStorage:  stores.ValidateDirectory,
 	})
 	if err != nil {
@@ -180,13 +180,13 @@ func TestLiveRootCancellationJoinsAnInFlightPark(t *testing.T) {
 	}
 }
 
-type parkedCancellationReservationGate struct {
+type cancellationReservationGate struct {
 	operation.ReplayStore
 	reserved chan<- struct{}
 	proceed  <-chan struct{}
 }
 
-func (g parkedCancellationReservationGate) Claim(ctx context.Context, key, fingerprint string) (operation.ReplayRecord, bool, error) {
+func (g cancellationReservationGate) Claim(ctx context.Context, key, fingerprint string) (operation.ReplayRecord, bool, error) {
 	record, claimed, err := g.ReplayStore.Claim(ctx, key, fingerprint)
 	if err == nil && claimed {
 		close(g.reserved)

@@ -150,7 +150,7 @@ func TestLiveChildCancellationJoinsAnInFlightPark(t *testing.T) {
 	installParkCommitGate(t, home)
 	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{
 		Lifetime: t.Context(), IdempotencyNamespace: stores.IdempotencyNamespace.String(),
-		IdempotencyStore: parkedCancellationReservationGate{stores.Idempotency, reserved, proceed},
+		IdempotencyStore: cancellationReservationGate{stores.Idempotency, reserved, proceed},
 		ValidateStorage:  stores.ValidateDirectory,
 	})
 	if err != nil {

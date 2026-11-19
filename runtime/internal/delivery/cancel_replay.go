@@ -48,6 +48,13 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 				reserveErr = complete.Reserve(ctx)
 				return reserveErr
 			},
+			RecordRefusal: func(ctx context.Context, reason error) error {
+				payload, err := encodeStoredOutcome(failed(projectError(wireCancellationError(reason))))
+				if err != nil {
+					return err
+				}
+				return complete.Complete(ctx, payload)
+			},
 			CommitParked: func(ctx context.Context, ref runs.ExecutorRef, write func(context.Context) (run.Run, error)) error {
 				return stage(ctx, func(tx context.Context) ([]byte, error) {
 					terminal, err := write(tx)

@@ -42,7 +42,7 @@ func (c *Cancellations) cancelLiveRoot(cmd CancelCommand, plan cancellationPlan,
 	intent := &rootCancellation{
 		id: newCancellationID(), reason: cmd.Reason, record: cmd.Completion.RecordActiveRoot,
 	}
-	return c.awaitLiveCancellation(owner, func(ctx context.Context) (CancelResult, error) {
+	return c.awaitLiveCancellation(owner, cmd.Completion, func(ctx context.Context) (CancelResult, error) {
 		return c.settleLiveRootCancellation(ctx, cmd, plan, owner, intent)
 	})
 }

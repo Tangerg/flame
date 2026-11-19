@@ -1823,7 +1823,8 @@ interrupt in that transaction. A running root's confirmed Scope Exit commits
 with the Run and, for cancellation, its receipt. The Run holds the original
 request identity while Scope admits the control and while the terminal
 transaction settles. A request timeout ends the caller's wait. The Run's
-cancellation continues under its original key. If an interrupt transaction has
+cancellation continues under its original key. The Run owner records a definitive
+refusal even after the caller stops waiting. If an interrupt transaction has
 already begun, cancellation joins it before choosing the live or parked Run.
 The Segment owner retains the terminal write-set across temporary failures and
 joins the Scope writer before acknowledging teardown.

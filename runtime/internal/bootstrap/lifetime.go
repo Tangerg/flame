@@ -171,12 +171,6 @@ func runShutdown(
 			}
 		}
 	}
-	if lifetime.delivery != nil {
-		if err := lifetime.delivery.AwaitShutdown(ownerCtx); err != nil {
-			finishShutdown(lifetime, attempt, false, err)
-			return
-		}
-	}
 	if err := completion.Wait(ownerCtx, lifetime.recoveryDone); err != nil {
 		finishShutdown(lifetime, attempt, false, err)
 		return
@@ -201,6 +195,14 @@ func runShutdown(
 	if componentErr := errors.Join(errs...); componentErr != nil {
 		finishShutdown(lifetime, attempt, false, componentErr)
 		return
+	}
+	// Run tasks can finish a keyed cancellation after its invocation returns.
+	// Join those producers before flushing delivery's known outcomes.
+	if lifetime.delivery != nil {
+		if err := lifetime.delivery.AwaitShutdown(ownerCtx); err != nil {
+			finishShutdown(lifetime, attempt, false, err)
+			return
+		}
 	}
 
 	if lifetime.executor != nil {

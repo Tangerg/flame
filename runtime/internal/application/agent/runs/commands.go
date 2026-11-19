@@ -289,6 +289,7 @@ type CancelCommand struct {
 
 type CancellationCompletion struct {
 	Reserve            func(context.Context) error
+	RecordRefusal      func(context.Context, error) error
 	CommitParked       ParkedCancellationCompletion
 	RecordWaitingChild WaitingSubtreeCancellationReceipt
 	RecordActiveRoot   RootCancellationReceipt

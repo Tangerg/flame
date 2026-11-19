@@ -140,8 +140,11 @@ func (r *Replay) finishRecord(ctx context.Context, record ReplayRecord) ([]byte,
 		if errors.Is(err, framecall.ErrConflict) {
 			return nil, err
 		}
-		r.rememberPendingCompletion(record)
-		return nil, settlementError(err)
+		failure := settlementError(err)
+		if errors.Is(failure, ErrOutcomePending) {
+			r.rememberPendingCompletion(record)
+		}
+		return nil, failure
 	}
 	return record.Payload, nil
 }
@@ -249,8 +252,8 @@ func (r *Replay) completeWithin(ctx context.Context, record ReplayRecord) error 
 	return r.store.Complete(writeContext, record)
 }
 
-// FlushPending is called after operation admission closes and every accepted
-// operation has returned. Failed settlements remain available to a later close.
+// FlushPending runs after operation admission closes and its outcome producers
+// have joined. Failed settlements remain available to a later close.
 func (r *Replay) FlushPending(ctx context.Context) error {
 	if ctx == nil {
 		return errors.New("idempotency: flush context is required")

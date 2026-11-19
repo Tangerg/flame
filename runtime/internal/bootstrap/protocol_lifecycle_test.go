@@ -585,12 +585,17 @@ func buildProtocolRuntime(t *testing.T, cfg assemblyConfig, cwd string) (*Instan
 
 func startTestRuntime(t *testing.T, host *Instance, api *delivery.Handler, stores *persistence.Bundle) {
 	t.Helper()
+	startTestRuntimeWithReplayStore(t, host, api, stores, stores.Idempotency)
+}
+
+func startTestRuntimeWithReplayStore(t *testing.T, host *Instance, api *delivery.Handler, stores *persistence.Bundle, replayStore operation.ReplayStore) {
+	t.Helper()
 	info, err := api.Discover(t.Context())
 	if err != nil {
 		t.Fatalf("discover Runtime: %v; close: %v", err, host.Close())
 	}
 	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{
-		IdempotencyStore:     stores.Idempotency,
+		IdempotencyStore:     replayStore,
 		IdempotencyNamespace: info.Capabilities.Limits.Idempotency.Namespace,
 		Lifetime:             t.Context(),
 		ValidateStorage:      stores.ValidateDirectory,

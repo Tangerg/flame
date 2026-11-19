@@ -10,7 +10,7 @@ import (
 // DeferredCompletion binds a committed write and its unfinished settlement to
 // one request. Only Reserve authorizes effects outside that write transaction.
 type DeferredCompletion struct {
-	store    ReplayStore
+	replay   *Replay
 	record   ReplayRecord
 	reserved atomic.Bool
 }
@@ -24,7 +24,7 @@ func (c *DeferredCompletion) Reserve(ctx context.Context) error {
 }
 
 func (c *DeferredCompletion) Stage(ctx context.Context, write func(context.Context) ([]byte, error)) error {
-	return c.store.Transact(ctx, func(tx context.Context) error {
+	return c.replay.store.Transact(ctx, func(tx context.Context) error {
 		if !c.reserved.Load() {
 			if err := c.claim(tx); err != nil {
 				return err
@@ -36,12 +36,27 @@ func (c *DeferredCompletion) Stage(ctx context.Context, write func(context.Conte
 		if err != nil {
 			return err
 		}
-		return c.store.StageSettlement(tx, staged)
+		return c.replay.store.StageSettlement(tx, staged)
 	})
 }
 
+// Complete records a reserved outcome that requires no further settlement.
+// This owner can outlive the invocation that reserved the key.
+func (c *DeferredCompletion) Complete(ctx context.Context, payload []byte) error {
+	if !c.reserved.Load() {
+		return ErrClaimLost
+	}
+	if len(payload) == 0 {
+		return errors.New("idempotency: reserved completion requires an outcome")
+	}
+	record := c.record
+	record.Payload = payload
+	_, err := c.replay.finishRecord(ctx, record)
+	return err
+}
+
 func (c *DeferredCompletion) claim(ctx context.Context) error {
-	record, claimed, err := c.store.Claim(ctx, c.record.Key, c.record.Fingerprint)
+	record, claimed, err := c.replay.store.Claim(ctx, c.record.Key, c.record.Fingerprint)
 	if err != nil {
 		return fmt.Errorf("idempotency: reserve settlement: %w", err)
 	}
@@ -84,7 +99,7 @@ func (r *Replay) InvokeDeferred(
 	}
 
 	completion := &DeferredCompletion{
-		store: r.store, record: ReplayRecord{Key: key, Fingerprint: fingerprint},
+		replay: r, record: ReplayRecord{Key: key, Fingerprint: fingerprint},
 	}
 	payload, err := execute(completion)
 	if errors.Is(err, errAtomicResultExists) {
@@ -108,18 +123,22 @@ func (r *Replay) InvokeDeferred(
 	if err != nil {
 		return nil, settlementError(err)
 	}
-	if !found || (len(committed.Settlement) == 0 && !completion.reserved.Load()) {
+	if !found {
+		if completion.reserved.Load() {
+			return nil, ErrClaimLost
+		}
 		outcome, _, err := r.commitOutcome(ctx, key, fingerprint, func(context.Context) ([]byte, error) { return payload, nil })
 		return outcome, err
 	}
 	if len(committed.Payload) != 0 {
 		return settledPayload(committed)
 	}
-	if len(committed.Settlement) != 0 {
-		payload, err = settle(committed.Settlement, false)
-		if err != nil {
-			return nil, err
-		}
+	if len(committed.Settlement) == 0 {
+		return nil, ErrInProgress
+	}
+	payload, err = settle(committed.Settlement, false)
+	if err != nil {
+		return nil, err
 	}
 	committed.Payload = payload
 	return r.finishRecord(ctx, committed)

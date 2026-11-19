@@ -165,14 +165,15 @@ type liveCancellationResult struct {
 // A timeout can end the caller's wait while Scope still owns the control.
 func (c *Cancellations) awaitLiveCancellation(
 	owner *runTreeOwner,
+	complete CancellationCompletion,
 	settle func(context.Context) (CancelResult, error),
 ) (CancelResult, error) {
 	response := make(chan liveCancellationResult, 1)
 	if !c.segments.tasks.Start(owner.taskContext, func(ctx context.Context) {
 		result, err := settle(ctx)
-		response <- liveCancellationResult{result, err}
+		response <- liveCancellationResult{result, complete.finishLiveCancellation(ctx, err)}
 	}) {
-		return CancelResult{}, errClosed
+		return CancelResult{}, complete.finishLiveCancellation(owner.taskContext, errClosed)
 	}
 	waitCtx, cancel := owner.cleanupContext()
 	defer cancel()
@@ -184,12 +185,32 @@ func (c *Cancellations) awaitLiveCancellation(
 	}
 }
 
+func (c CancellationCompletion) finishLiveCancellation(ctx context.Context, err error) error {
+	if err == nil {
+		return nil
+	}
+	if _, unsettled := errors.AsType[*CancellationSettlementError](err); unsettled {
+		return err
+	}
+	switch {
+	case errors.Is(err, ErrRunFinished), errors.Is(err, ErrRunNotFound), errors.Is(err, rundomain.ErrSessionBusy), errors.Is(err, errClosed):
+		if c.RecordRefusal != nil {
+			if recordErr := c.RecordRefusal(ctx, err); recordErr != nil {
+				return &CancellationSettlementError{Cause: recordErr}
+			}
+		}
+		return err
+	default:
+		return &CancellationSettlementError{Cause: err}
+	}
+}
+
 func (c *Cancellations) cancelLiveChild(
 	cmd CancelCommand,
 	plan cancellationPlan,
 	owner *runTreeOwner,
 ) (CancelResult, error) {
-	return c.awaitLiveCancellation(owner, func(ctx context.Context) (CancelResult, error) {
+	return c.awaitLiveCancellation(owner, cmd.Completion, func(ctx context.Context) (CancelResult, error) {
 		return c.settleLiveChildCancellation(ctx, cmd, plan, owner)
 	})
 }
