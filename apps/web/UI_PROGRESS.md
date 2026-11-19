@@ -39252,6 +39252,63 @@ With its direct viewport focused and a Composer caret held at offset 6,
 Up returns focus to the Composer and sets the caret to 0.
 The next batch will qualify that path with a scrollable captured file.
 
+### Keyboard reading in the File viewer (2026-11-19)
+
+Signed Wails on `4da4ae78c` opens the 93-line `reading-guide.md`
+from Files. In Preview, End reaches 1889 px in a 785 px viewport.
+With the Composer caret held at offset 10, Up leaves the file at
+1889 px, focuses the Composer and moves its caret to 0. In Source,
+native Page Down reads to 745 px with the backward `qx` selection
+at offsets 10 to 8. Down leaves the file at 745 px, returns focus
+to the Composer and collapses that range to offset 14.
+
+The named File viewport uses the shared live outside-editor range
+guard for Up and Down. `FileWorkspace` calls it alongside the
+existing select-all handler on its own scroll port. The viewer stays
+the focused scroll owner in both modes, and the Composer retains
+its document range for continuation. Better Accessibility's
+keyboard reachability guidance and the WebKit report inform the
+scope. [WAI keyboard reachability](https://www.w3.org/WAI/standards-guidelines/act/rules/0ssw9k/)
+[WebKit selection and focus](https://bugs.webkit.org/show_bug.cgi?id=112854#c5)
+
+- EN/light/Flame Orange with motion off at 1440 × 900. Preview End
+  reaches 1889 px. Up/Down read at 1849 and 1889 px with the held
+  caret at 10. Native Page Up goes to 1144 px and a 90 px wheel
+  goes to 1054 px with the file focused. Cmd+L continues at the
+  original caret as `filereadqxktail`. Back to files focuses the
+  same `reading-guide.md` row. A pointer opens that row again.
+- ZH/dark/18 px/custom blue with full motion in the 1121 × 950
+  native tile and 320 px Dock. Go to line 60 switches to Source,
+  exposes lines 41–79 and restores the trigger. The same named
+  312 × 777 px viewport moves from 841 to 881 and back to 841 px,
+  retaining the backward selection of `草稿`. Cmd+L and paste
+  produce `文件阅读续写尾段`. Opening full width keeps Source and
+  the 841 px position. Native Page Up reads to 57 px with the file
+  focused. Close restores the Dock with that same file, mode and
+  offset. Cmd+L returns to the draft at offset 6. Escape from Go to
+  line restores its trigger. With the document range clear, Back
+  to files and Return reopen the focused row.
+- The standard Lab confirms End, Up and Down keep the named file
+  focused. The Composer continues as `cleanfileqxktail`.
+
+Scoped Prettier, the packed UI and Icons consumer, plugin typecheck
+and all 20 catalogs, Web typecheck, 89 Web contracts, 937 locale keys
+in eight catalogs, bootstrap, installed resource reproduction, the
+26 bundle contracts and module linking pass. `make check-native`
+and the five-entry Lab gate pass. Native acceptance reads captured
+data. Clipboard output, VoiceOver and GUI execution remain open.
+
+Three private apps pass strict signature verification. Four launches
+and three previews exit. Cleanup removes three app registrations,
+six Library directories, ten checkout outputs and the scratch tree.
+
+The next fault is the File tree's Return action with a live Composer
+caret. In the English check, Back restores the exact `reading-guide.md`
+row. The trusted Enter event targets that row, then WebKit enters
+the Composer and inserts a line break. The Chinese run with a clear
+document range reopens the same file. The next batch will trace
+activation ownership after the list restores focus.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

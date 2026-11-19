@@ -34,6 +34,7 @@ import {
   EmptyState,
   IconButton,
   isImeKey,
+  scrollReaderWithForeignSelection,
   selectAllInReader,
   TextField,
   useCopy,
@@ -407,9 +408,10 @@ function FilePreview({
   // rendered content keeps the browser's formatted copy and editable fields stay native.
   const source = useRef<HTMLDivElement>(null);
   const displayed = useRef<HTMLDivElement>(null);
-  const selectFileContent: KeyboardEventHandler<HTMLDivElement> = (event) => {
+  const onFileKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
     const content = source.current ?? displayed.current;
     if (content) selectAllInReader(event, content);
+    scrollReaderWithForeignSelection(event, "vertical");
   };
   const copySource: ClipboardEventHandler<HTMLDivElement> = (event) => {
     if (source.current && data) copyReaderSelection(event, data.content, source.current);
@@ -451,7 +453,7 @@ function FilePreview({
       scrollRef={scrollPort}
       scrollInset="flush"
       scrollLabel={viewer.path}
-      onScrollKeyDown={selectFileContent}
+      onScrollKeyDown={onFileKeyDown}
       onScrollCopy={copySource}
       notice={
         <>

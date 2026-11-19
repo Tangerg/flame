@@ -1166,6 +1166,10 @@ owners.
 The target source line uses the palette's bounded selection fill so its line
 number and syntax retain their reading contrast after a line jump.
 
+When WebKit retains the Composer's range, the focused File viewport uses the
+shared relative line scroll for Up and Down in both Preview and Source.
+The Composer range stays available when the user returns to the draft.
+
 The focused file-source reader scopes Ctrl/Cmd+A to its presented source and
 copies that complete range from the current accepted content. Source cells carry
 literal line separators so native partial selection retains blank lines and

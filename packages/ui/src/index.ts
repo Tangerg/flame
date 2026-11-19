@@ -129,6 +129,7 @@ export {
   readerLineProps,
   readerSelectionLines,
   readerSourceProps,
+  scrollReaderWithForeignSelection,
   selectAllInReader,
 } from "./reader-selection";
 export {
