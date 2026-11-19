@@ -75,6 +75,12 @@ The persistent filename takes at most two lines. The complete current path and
 rename provenance remain selectable in the scrolling content for text, binary
 and metadata-only files; complete paths also remain in the overview rows.
 
+Opening a changed-file row focuses its heading. A focused Previous or Next
+control keeps focus while the action remains available. At the corresponding
+end of the sequence, focus moves to the current file heading. Each new file
+starts at the top of the reader. The navigation status gives assistive
+technology the file's relative path and current position.
+
 Returning from a list-owned reader retains its filter and scroll and focuses the
 current row, including after a failed comparison. Only a return that actually
 starts a workspace read waits for that response. A failed workspace read keeps

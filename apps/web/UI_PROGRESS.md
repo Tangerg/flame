@@ -40277,6 +40277,65 @@ and the scratch tree.
 The next native review follows a multi-file change from the
 Dock list into detail and back to the conversation.
 
+### Consecutive keyboard review in Diff (2026-11-19)
+
+The signed Wails baseline at `49f73b1fa` opens the 24-file workspace
+comparison in a 320 px Dock. Filter `02` and open `module-020.ts`.
+Next reaches `module-021.ts` and moves focus to its heading. A second
+Enter leaves the same file selected. The shared file-entry handoff was
+moving focus to the heading on every adjacent-file activation.
+
+Diff now keeps focus on the activated Previous or Next button while
+that control remains available. List entry and the corresponding
+sequence endpoint focus the current file heading. An independent
+file-path-driven layout effect returns the existing Panel body to the
+top when the selected file changes. The visual position counter keeps
+its compact size. One live status exposes the project-relative path
+and localized position, including the filtered match count. The Diff
+component continues to own the file sequence and return to the list.
+
+Better Accessibility and WCAG focus order guide the retained
+navigation action. ZCode's `packages/ui/src/GitPane.tsx:338–382`
+connects an explicit navigation action to revealing the requested
+file evidence. GitHub's review guide describes the file-by-file task.
+[WCAG focus order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html)
+[WAI-ARIA status](https://www.w3.org/TR/wai-aria-1.2/#status)
+[GitHub review](https://docs.github.com/en/pull-requests/how-tos/review-pull-requests/reviewing-proposed-changes-in-a-pull-request)
+
+- ZH/dark/18 px/`#3B82F6` with full motion at Actual Size. Consecutive
+  Enter and Space advance from `module-020.ts` through `021` and `022`
+  while Next retains its visible focus ring. A wheel reaches the last
+  change and Comparison details. `023`, the fifth match, starts at
+  line 1 with Next disabled and its heading focused. Previous retains
+  focus through `022`, `021`, and `020`. At `002`, the first match,
+  Previous is disabled and the heading takes focus. Escape returns
+  to the `02` query, five matches and the `002` row. A separate middle
+  switch starts at line 1 while Next still owns focus. The native
+  accessibility tree exposes the path and position for each file.
+  Pointer Back returns to Conversation. The draft continues at its
+  original caret, producing `62489073`.
+- EN/light/14 px/Flame Orange with full motion. Native Window Left and
+  the full-width command carry `DockResizer.tsx` into the wider reader.
+  Native Next reaches `session.go`, file two of two, and focuses its
+  heading. Escape dismisses the layout menu locally. Side by side
+  survives the Dock return and splitter Home. Files focuses the same
+  `session.go` row. Escape returns to Conversation, Tab reaches the
+  original review entry, and the draft continues as `73048516`.
+
+The canonical publisher rebuilds the admitted Diff ESM. Authored
+Prettier, plugin typecheck, 20 plugin catalogs, the full Web gate with
+137 tests including isolated Runtime, 937 Web locale keys, 26 bundle
+contracts, native build and all five Lab documents pass. Three signed
+bundles and two previews serve the recorded-data comparisons. Spoken
+VoiceOver and live Git reads are outside this verification. Existing
+installations select the rebuilt package through the normal resource
+rollout.
+
+Three launches and two previews terminate. Cleanup removes the private
+app registrations, Library directories, checkout build outputs and
+scratch state. Next review the evidence shown when a Diff filter
+matches the previous path of a renamed file.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

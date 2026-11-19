@@ -82,6 +82,10 @@ type Read = {
 type Selection =
   | { view: "files"; path: string | null }
   | { view: "file"; path: string; returnTo: "files" | "source" };
+type PendingFocus =
+  | { target: "list"; active: Element | null; query?: Query }
+  | { target: "file"; active: Element | null }
+  | { target: "navigation"; active: HTMLButtonElement };
 
 function restoreFileOverview(
   list: HTMLElement | null,
@@ -147,11 +151,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const refreshButton = useRef<HTMLButtonElement>(null);
   const overviewScroll = useRef(0);
   const lastFocus = useRef<HTMLElement>(null);
-  const pendingFocus = useRef<{
-    target: "file" | "list";
-    active: Element | null;
-    query?: Query;
-  } | null>(null);
+  const pendingFocus = useRef<PendingFocus | null>(null);
 
   const refresh = useCallback(async () => {
     reading.current?.abort();
@@ -198,6 +198,8 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const files = accepted?.diff.visual.manifest ?? [];
   const selected = files.find((file) => file.path === selection.path);
   const file = selection.view === "file" ? selected : undefined;
+  const filePath = file?.path;
+  const fileChanges = file ? t("file.changes", { path: file.path }) : undefined;
   const rendered = file ? accepted?.rendered.get(file.path) : undefined;
   const readable = rendered !== undefined && rendered.file.hunks.length > 0;
   const showingReader = file !== undefined;
@@ -225,9 +227,13 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     setFilter(next);
     if (bodyViewport.current) bodyViewport.current.scrollTop = 0;
   }
-  function openFile(path: string) {
+  function openFile(path: string, navigation?: HTMLButtonElement) {
     if (!file) overviewScroll.current = bodyViewport.current?.scrollTop ?? 0;
-    pendingFocus.current = { target: "file", active: document.activeElement };
+    const active = document.activeElement;
+    pendingFocus.current =
+      navigation && navigation === active && !navigation.disabled
+        ? { target: "navigation", active: navigation }
+        : { target: "file", active };
     setSelection({
       path,
       view: "file",
@@ -248,6 +254,11 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     setQuery(next);
   }
   useLayoutEffect(() => {
+    if (filePath !== undefined && bodyViewport.current) {
+      bodyViewport.current.scrollTop = 0;
+    }
+  }, [filePath]);
+  useLayoutEffect(() => {
     const pending = pendingFocus.current;
     const active = document.activeElement;
     if (!pending) {
@@ -259,11 +270,22 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         search.current?.focus();
       return;
     }
-    if (focusMovedFromOrigin(active, pending.active, document.body)) {
+    const navigation = pending.target === "navigation" ? pending.active : null;
+    // Disabling the activated navigation button can blur it to the body.
+    const lostNavigationFocus =
+      showingReader && navigation?.disabled && active === document.body;
+    if (
+      !lostNavigationFocus &&
+      focusMovedFromOrigin(active, pending.active, document.body)
+    ) {
       pendingFocus.current = null;
       return;
     }
-    if (pending.query && accepted?.query !== pending.query) {
+    if (
+      pending.target === "list" &&
+      pending.query &&
+      accepted?.query !== pending.query
+    ) {
       // The unavailable overview cannot focus its filter. Keep Refresh as
       // the pending origin so successful reads can still continue to the list.
       if (
@@ -278,9 +300,10 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
       return;
     }
     pendingFocus.current = null;
-    if (pending.target === "file" && showingReader) {
-      if (bodyViewport.current) bodyViewport.current.scrollTop = 0;
-      heading.current?.focus();
+    if (pending.target !== "list" && showingReader) {
+      if (!navigation?.isConnected || navigation.disabled) {
+        heading.current?.focus();
+      }
     } else {
       if (bodyViewport.current)
         bodyViewport.current.scrollTop = overviewScroll.current;
@@ -366,29 +389,34 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                   <>
                     {file && (
                       <>
-                        <Metadata
-                          aria-live="polite"
-                          aria-label={
-                            filter && navigationFiles === matching
-                              ? t("navigation.positionMatching", {
-                                  position: index + 1,
-                                  total: navigationFiles.length,
-                                })
-                              : t("navigation.position", {
-                                  position: index + 1,
-                                  total: navigationFiles.length,
-                                })
-                          }
-                        >
-                          {index + 1} / {navigationFiles.length}
+                        <Metadata role="status">
+                          <span aria-hidden="true">
+                            {index + 1} / {navigationFiles.length}
+                          </span>
+                          <span className="sr-only">
+                            {fileChanges}
+                            {" · "}
+                            {t(
+                              filter && navigationFiles === matching
+                                ? "navigation.positionMatching"
+                                : "navigation.position",
+                              {
+                                position: index + 1,
+                                total: navigationFiles.length,
+                              },
+                            )}
+                          </span>
                         </Metadata>
                         <IconButton
                           icon={ChevronLeft}
                           aria-label={t("nav.previous")}
                           size="sm"
                           disabled={index <= 0}
-                          onClick={() =>
-                            openFile(navigationFiles[index - 1]!.path)
+                          onClick={(event) =>
+                            openFile(
+                              navigationFiles[index - 1]!.path,
+                              event.currentTarget,
+                            )
                           }
                         />
                         <IconButton
@@ -398,8 +426,11 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                           disabled={
                             index < 0 || index >= navigationFiles.length - 1
                           }
-                          onClick={() =>
-                            openFile(navigationFiles[index + 1]!.path)
+                          onClick={(event) =>
+                            openFile(
+                              navigationFiles[index + 1]!.path,
+                              event.currentTarget,
+                            )
                           }
                         />
                       </>
@@ -607,12 +638,12 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                 files={matching.map((item) => fileSummary(t, item))}
                 label={t("files.region")}
                 currentPath={selection.path}
-                onSelect={openFile}
+                onSelect={(path) => openFile(path)}
               />
             </PanelSection>
           </div>
           {file && (
-            <section aria-label={t("file.changes", { path: file.path })}>
+            <section aria-label={fileChanges}>
               <Metadata>
                 <DiffFilePath path={file.path} />
               </Metadata>
