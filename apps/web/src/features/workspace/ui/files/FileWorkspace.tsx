@@ -46,6 +46,7 @@ import { color, face, space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { openLocalFile, revealLocalFile } from "@/features/workspace/application/localFileActions";
 
 import { useT } from "@/lib/i18n/index";
+import { parseFileLineNumber } from "@/features/workspace/ui/files/fileLineNumber";
 import { FileView } from "@/features/workspace/ui/files/FileView";
 import { WorkspaceViewLayout } from "@/features/workspace/ui/WorkspaceViewLayout";
 import {
@@ -760,13 +761,6 @@ function FilePreview({
   );
 }
 
-function lineNumber(value: string): number | null {
-  const text = value.trim();
-  if (!/^[0-9]+$/.test(text)) return null;
-  const line = Number(text);
-  return Number.isSafeInteger(line) && line > 0 ? line : null;
-}
-
 function GoToLine({ onGo }: { onGo: (line: number) => void }) {
   const t = useT();
   const errorId = useId();
@@ -774,7 +768,7 @@ function GoToLine({ onGo }: { onGo: (line: number) => void }) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
   const [attempted, setAttempted] = useState(false);
-  const line = lineNumber(value);
+  const line = parseFileLineNumber(value);
   const invalid = attempted && line === null;
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

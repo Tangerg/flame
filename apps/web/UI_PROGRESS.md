@@ -24402,6 +24402,59 @@ Four native launches and three loopback previews exit.
 Cleanup removes three registrations, six private Library
 directories, ten checkout outputs and the scratch tree.
 
+### Fullwidth digits in file line navigation (2026-11-20)
+
+Signed Wails at `ba8865289` opens the 64-line `reading-blocks.md` in
+Preview. In the Chinese Dock, Go to line keeps `６４` in the field
+with the positive-integer error. Replacing it with `64` opens Source,
+marks line 64 and returns focus to Go to line.
+
+`FileWorkspace.tsx` uses the local `fileLineNumber.ts` parser for this
+field. It accepts ASCII and fullwidth decimal digits, including mixed
+input, after trimming surrounding whitespace. The allowed characters
+are checked before width normalization. The result must be a positive
+safe integer. The form displays the raw input and submits the parsed
+number through its composition guard to the existing file route.
+[Unicode width variants](https://www.unicode.org/charts/PDF/UFF00.pdf).
+[HTML input-mode guidance](https://html.spec.whatwg.org/multipage/interaction.html#attr-inputmode).
+
+Read-only ZCode `previewPaneMarkdownContent.tsx` and
+`components/ui/code-viewer.tsx` keep rendered preview and source line
+presentation with their respective readers. Flame's field handles
+digit width before it hands a number to the existing file route.
+
+- EN/light/14 px/Flame Orange at native 1121 × 950. `1e1` gives the
+  validation error and preserves Preview. Correcting to `６0` and
+  pressing Enter marks source line 60 in `reading-guide.md` and
+  restores the trigger. Reopening presents an empty field. Escape
+  returns to Go to line, keyboard Back returns to the original file
+  row, and the draft continues as `10336518`.
+- ZH/dark/18 px/`#3B82F6` at native 1121 × 950 with a 320 px Dock.
+  `６．４` remains invalid. Correcting it to `６４` and clicking the
+  local submit button marks the same last line 64 as the ASCII
+  baseline. Wheel reading reaches line 1 with the trigger still
+  focused. Pointer Back returns to the original file row. The same
+  isolated draft survives the build change and continues as `1034217538`.
+
+An independent pointer-navigation limit still reproduces on macOS
+27.2 and WebKit `22625.2.8.11.9`. A click on nested Preview text leaves
+four Shift+Tabs at the named reader. Forward Tab reaches Dock Collapse.
+Keyboard reentry and a second reverse step reach Copy path. In the
+Source comparison a reverse step after pointer entry reaches Copy path
+directly. The earlier minimal Wails control documents the same pattern.
+[WHATWG focus-navigation issue](https://github.com/whatwg/html/issues/12514).
+
+The 14 focused parser cases, 151 full Web tests, 940 keys across eight
+locales, bootstrap and plugin gates, 26 bundle contracts,
+`make check-native` and the five-document Lab build pass. Scoped formatting
+and checked source hashes pass. Native input uses paste for the
+fullwidth literals. OS IME composition, VoiceOver speech, other
+platforms and live file or provider activity remain outside this run.
+
+Four signed native launches exit normally. Both loopback previews
+stop and cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+
 ### Find follows rendered reply updates
 
 Find now refreshes its matches when the presented reply changes. An open query
