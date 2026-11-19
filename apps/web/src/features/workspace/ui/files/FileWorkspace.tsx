@@ -94,6 +94,7 @@ const fp = stylex.create({
     paddingBlockStart: space.s2,
     overflowWrap: "anywhere",
   },
+  preview: { display: "contents" },
   edge: { display: "flex", justifyContent: "center", paddingBlock: space.s1_5 },
   jumpStatus: { display: "inline-block", maxWidth: "100%" },
   goto: {
@@ -457,31 +458,30 @@ function FilePreview({
   const unsupported = workspaceAccess.errors.isUnsupportedFile(error);
   const canRender = wholeFile && !unsupported;
   const canSwitchMode = canRender && renderer !== undefined;
-  const retiredMode = useRef<HTMLDivElement>(null);
-  const modeRef = useCallback((group: HTMLDivElement | null) => {
-    if (!group) return;
-    retiredMode.current = null;
+  const retiredFocusRoot = useRef<HTMLDivElement>(null);
+  const readingControlRef = useCallback((root: HTMLDivElement | null) => {
+    if (!root) return;
+    if (retiredFocusRoot.current === root) retiredFocusRoot.current = null;
     return () => {
-      // The group still contains the focus owner before React removes it.
-      if (group.contains(group.ownerDocument.activeElement)) retiredMode.current = group;
+      // The retiring subtree still contains the focus owner before React removes it.
+      if (root.contains(root.ownerDocument.activeElement)) retiredFocusRoot.current = root;
     };
   }, []);
   useLayoutEffect(() => {
-    const group = retiredMode.current;
-    retiredMode.current = null;
+    const root = retiredFocusRoot.current;
+    retiredFocusRoot.current = null;
     const reader = scrollPort.current;
     if (
       visible &&
-      !canSwitchMode &&
       acceptedData !== undefined &&
       !unsupported &&
-      group?.isConnected === false &&
+      root?.isConnected === false &&
       reader?.isConnected &&
       reader.ownerDocument.activeElement === reader.ownerDocument.body
     ) {
       reader.focus({ preventScroll: true });
     }
-  }, [acceptedData, canSwitchMode, unsupported, visible]);
+  }, [acceptedData, canSwitchMode, showRendered, unsupported, visible]);
 
   const kind = fileKind(viewer.path);
   const icon = fileIconName(viewer.path);
@@ -600,7 +600,9 @@ function FilePreview({
       }
       sub={sub}
       controls={
-        canSwitchMode ? <FilePreviewMode ref={modeRef} mode={mode} onChange={setMode} /> : undefined
+        canSwitchMode ? (
+          <FilePreviewMode ref={readingControlRef} mode={mode} onChange={setMode} />
+        ) : undefined
       }
       actions={
         <>
@@ -708,14 +710,16 @@ function FilePreview({
                     />
                   );
                   return (
-                    <PluginBoundary
-                      key={renderer.id}
-                      plugin={renderer.id}
-                      label={renderer.title}
-                      fallback={recorded}
-                    >
-                      <Renderer cwd={cwd} path={viewer.path} {...items[0]!} fallback={recorded} />
-                    </PluginBoundary>
+                    <div ref={readingControlRef} {...stylex.props(fp.preview)}>
+                      <PluginBoundary
+                        key={renderer.id}
+                        plugin={renderer.id}
+                        label={renderer.title}
+                        fallback={recorded}
+                      >
+                        <Renderer cwd={cwd} path={viewer.path} {...items[0]!} fallback={recorded} />
+                      </PluginBoundary>
+                    </div>
                   );
                 })()
               ) : (

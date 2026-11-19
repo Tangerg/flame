@@ -41232,6 +41232,66 @@ and removes that renderer control. Focus falls to the document
 body. This provides the next scoped focus continuity check
 inside the displayed document.
 
+### Focus follows a retired control in file Preview (2026-11-19)
+
+Actual Wails retains all 93 Preview lines while a jump to 50
+reads 50–250. Tab enters Copy code in the retained document.
+When 50–93 arrives, the renderer and its focused button leave.
+Pierre marks line 50 while WebKit focuses the document body.
+The previous handoff covered the retiring header mode group.
+The same WAI focus persistence principle applies inside the
+retained document.
+[WAI keyboard focus guidance](https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/#discernible-and-predictable-keyboard-focus)
+
+`FilePreview` uses the same ref cleanup for the mode group and the
+mounted renderer's layout-transparent root. It records containment
+before removal and resolves either detached root during the
+surviving reader's layout commit. The shared handoff inside the
+reader still requires an accepted result, a visible reading region
+and document-body focus. Pierre places the marked line. The
+renderer remains inside its existing plugin boundary.
+
+- EN/light/14 px/Flame Orange at Actual Size. Preview retains
+  the 785 px viewport and 2,674 px content height. With 50–250
+  waiting, Tab reaches Copy code. Acceptance of 50–93 moves
+  focus to the named reader, with line 50 marked. End scrolls
+  from 0 to 171 px while focus stays there.
+- Another English jump holds 1–201 with the same Copy code
+  focus. The accepted whole file still offers both mode options,
+  selects Source and marks line 1. Focus lands in the reader.
+  A fresh 60–260 request with the Source option focused
+  exercises the earlier header handoff. Acceptance of 60–93
+  marks line 60, and Back focuses the original row. The draft
+  continues as `671594`.
+- ZH/dark/18 px/`#3B82F6` at Actual Size. Native Window Left
+  and separator End set the Dock to 320 px. Tab enters the
+  independently scrollable Markdown table while 70–270 is
+  held. Acceptance marks line 70 and visibly focuses the
+  named reader. On a second read the user returns from the
+  table to the Composer. Acceptance of 60–93 leaves the
+  input focused. The draft continues as `6724657` and Back
+  returns to the same file row.
+- The standard English Lab opens all 93 lines with Copy code
+  available in Preview. Pointer Source and Left return through
+  the mode group, and Back restores the file row. The draft
+  continues as `673286`.
+
+Scoped formatting, Web typechecking, all 137 Web tests, 940
+keys across eight locales, 26 bundle contracts, bootstrap,
+portable resources, module linkage, native build and the five
+canonical Lab documents pass on `cf797d2d2`. The canonical
+build excludes the private fixture. The signed Wails host
+handles focus, scrolling and rendering in the isolated
+read scenarios. Live user file changes, clipboard writes,
+VoiceOver speech, physical IME and other platforms were
+outside the exercise.
+
+Three private bundles, three launches and two loopback previews
+complete. Cleanup removes three registrations, six private
+Library directories, ten checkout outputs and the scratch tree.
+Continue checking the relationship between asynchronous
+reader states and their surviving actions.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad
