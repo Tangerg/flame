@@ -94,6 +94,7 @@ const fp = stylex.create({
     overflowWrap: "anywhere",
   },
   edge: { display: "flex", justifyContent: "center", paddingBlock: space.s1_5 },
+  jumpStatus: { display: "inline-block", maxWidth: "100%" },
   goto: {
     display: "flex",
     width: "220px",
@@ -342,6 +343,10 @@ function FilePreview({
   const displayedRequest = previousData !== undefined ? previousRequest : acceptedData && request;
 
   const pagePending = previousData !== undefined && isFetching;
+  const jumpLabel =
+    !page && targetLine > 0 && isPlaceholderData && isFetching
+      ? t("file.goToLine.pending", { line: targetLine })
+      : undefined;
   const pagingUnavailable = isPlaceholderData || pagePending;
   const pageLoadingLabel = t("common.loading");
   const pageLoadingStatus = (
@@ -490,12 +495,21 @@ function FilePreview({
       )
     ) : undefined;
 
-  const sub =
+  const lineSummary =
     data && !unsupported
       ? moreBefore || moreAfter
         ? t("file.range", { start: data.startLine, end: data.endLine, total: data.totalLines })
         : t("file.lines", { count: data.totalLines })
       : undefined;
+  const sub = lineSummary && (
+    <>
+      {lineSummary}
+      {jumpLabel && " "}
+      <span role="status" {...stylex.props(fp.jumpStatus, vocab.accent)}>
+        {jumpLabel}
+      </span>
+    </>
+  );
 
   return (
     <WorkspaceViewLayout

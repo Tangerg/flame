@@ -825,6 +825,7 @@
   "file.revealFailed": "{{path}} konnte nicht im Finder gezeigt werden. Versuchen Sie es erneut.",
   "file.localUnavailable": "Für die verbundene Runtime sind lokale Dateien nicht verfügbar.",
   "file.goToLine": "Gehe zu Zeile",
+  "file.goToLine.pending": "Zeile {{line}} wird geöffnet",
   "file.goToLine.submit": "Los",
   "file.goToLine.invalid": "Geben Sie eine positive ganze Zeilennummer ein.",
   "file.goToLine.placeholder": "Zeilennummer",

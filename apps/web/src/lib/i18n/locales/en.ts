@@ -891,6 +891,7 @@ export const en: Record<string, string> = {
 
   "file.reveal": "Show in Finder",
   "file.goToLine": "Go to line",
+  "file.goToLine.pending": "Going to line {{line}}",
   "file.goToLine.submit": "Go",
   "file.goToLine.invalid": "Enter a positive whole line number.",
   "file.goToLine.placeholder": "Line number",

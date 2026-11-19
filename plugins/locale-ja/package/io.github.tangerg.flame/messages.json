@@ -804,6 +804,7 @@
   "file.copyPath": "パスをコピー",
   "file.reveal": "Finder で表示",
   "file.goToLine": "行へ移動",
+  "file.goToLine.pending": "{{line}} 行目に移動中",
   "file.goToLine.submit": "移動",
   "file.goToLine.invalid": "1 以上の整数で行番号を入力してください。",
   "file.goToLine.placeholder": "行番号",

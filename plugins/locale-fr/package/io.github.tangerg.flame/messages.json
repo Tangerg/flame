@@ -843,6 +843,7 @@
   "file.revealFailed": "Impossible d’afficher {{path}} dans le Finder. Réessayez.",
   "file.localUnavailable": "Les fichiers locaux ne sont pas disponibles pour le Runtime connecté.",
   "file.goToLine": "Aller à la ligne",
+  "file.goToLine.pending": "Accès à la ligne {{line}} en cours",
   "file.goToLine.submit": "Aller",
   "file.goToLine.invalid": "Saisissez un numéro de ligne entier positif.",
   "file.goToLine.placeholder": "Numéro de ligne",

@@ -40962,6 +40962,72 @@ request leaves the old header visible after its form closes. The
 next task can make the pending destination visible without moving
 the reader or blocking a newer jump.
 
+### Pending line jumps name the requested destination (2026-11-19)
+
+In Wails the Go to line form closed while a same-file query was held.
+The header still named lines 1–59 and paging was unavailable.
+The reader gave no indication that it was trying to reach line 60. HeroUI's pending feedback shows the value of
+keeping a request legible beside the action. A file jump can be
+superseded, so its trigger stays available while the query is pending.
+
+`FilePreview` derives the destination from the active viewer intent
+while the query exposes the previous file result as placeholder
+data. The accepted lines stay in the header. One persistent inline
+status element shows the latest destination in the theme's accent
+text color, with natural wrapping between it and the accepted
+range. Completion retires the cue. Adjacent reads keep their
+feedback at the activated edge.
+
+- EN/light/14 px/Flame Orange at Actual Size. The first candidate
+  added an 18 px metadata row on the wide Dock. The next candidate
+  fit on one line and moved the initial bottom offset from 471 to
+  454 px. The native baseline preserved 471 px with the same page
+  and submit. The final candidate keeps the range text in place
+  and uses a single visible status element. The 785 px viewport
+  and its 471 px offset hold during both requests. The header
+  presents one destination at a time and focus returns to Go to
+  line.
+- The fixture cancels 60–260 when the next submission requests
+  70–270. Entering the Composer during the wait keeps focus there
+  when 70–270 arrives. The header adopts those accepted lines,
+  and Back focuses the original tree row. The draft continues as
+  `631907`.
+- ZH/dark/18 px/`#3B82F6` at Actual Size. Native Window Left and
+  separator End produce a 320 px Dock in a 1,121 px window. The
+  pending destination wraps below the accepted range and the
+  header actions wrap underneath. The source offset remains 80 px
+  as its viewport height changes from 824 to 765 px. The query
+  accepts 60–93 and retires the cue. A further jump to 140 keeps
+  the accepted lines visible during both read attempts. The
+  rejected result clears the cue and shows the existing requested
+  line error. Keyboard activation of Open from start restores
+  1–59. Back focuses the original row and the draft continues as
+  `632714`.
+- The standard English Lab opens all 93 lines in Preview. Pointer
+  Source and the Left arrow switch modes. Back focuses
+  `reading-guide.md` and the draft continues as `633518`.
+
+Scoped formatting, Web typechecking, 940 keys across eight locales,
+26 bundle contracts, bootstrap, portable resources, module linkage,
+native build and the five canonical Lab documents pass on
+`99278c36b`. The private fixture markers are absent from the
+canonical build. The full Web run records 134 passes and the three
+known cancellation and Goal recovery failures with `internal_error`.
+The Runtime pin matches the clean `fa2afe8be` reproduction above.
+The focused bound workspace file and hook API test passes. The
+native runs use the isolated Lab for controlled reads and the
+canonical Lab for standard Preview and Source. Live user file
+errors, VoiceOver speech, physical IME and other platforms were
+outside the exercise.
+
+Four private bundles, seven launches and seven loopback previews
+complete. Cleanup removes four registrations, eight private Library
+directories, ten checkout outputs and the scratch tree. An
+out-of-range jump from the open reader currently removes the
+accepted page and its Go to line control. Focus falls to the
+document. The offered recovery returns to the beginning before a
+new attempt.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

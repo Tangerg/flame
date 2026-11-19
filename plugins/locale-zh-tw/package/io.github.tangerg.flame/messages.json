@@ -807,6 +807,7 @@
   "file.revealFailed": "無法在 Finder 中顯示 {{path}}。請再試一次。",
   "file.localUnavailable": "目前連線的 Runtime 無法存取本機檔案。",
   "file.goToLine": "跳至行",
+  "file.goToLine.pending": "正在跳至第 {{line}} 行",
   "file.goToLine.submit": "跳轉",
   "file.goToLine.invalid": "請輸入大於 0 的整數行號。",
   "file.goToLine.placeholder": "行號",

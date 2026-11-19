@@ -220,15 +220,16 @@ File reading navigates adjacent bounded line windows using Runtime's served
 start and end coordinates. Earlier pages retain their requested end at the byte
 cap; later pages begin after the served end. The reader requests Runtime's
 maximum admitted response budget so every permitted source line fits whole.
-Line references begin at the requested line. While an adjacent page loads, the
-reader keeps the current page visible and shows a loading status at the activated
-edge. The other paging action is unavailable during that read. If the read
-fails, the reader offers to retry the requested line range and keeps the
-previous page while it is cached. An accepted page starts at its top, while a
-refresh retains that page's reading position. Source selection and copy refer
-only to the presented page. Partial pages stay in source mode, and the header
-shows their actual served line range. For a whole file the header shows its line
-count.
+Line references begin at the requested line. A same-file jump shows its
+destination beside the line summary while the current page remains visible.
+While an adjacent page loads, the reader keeps the current page visible and
+shows a loading status at the activated edge. The other paging action is
+unavailable during that read. If the read fails, the reader offers to retry the
+requested line range and keeps the previous page while it is cached. An accepted
+page starts at its top, while a refresh retains that page's reading position.
+Source selection and copy refer only to the presented page. Partial pages stay
+in source mode, and the header shows their actual served line range. For a whole
+file the header shows its line count.
 The file reader scopes Select All to its displayed content in both Preview and
 Source, excluding its path and host controls. Source highlights the mounted code
 for the current page. Preview retains native formatted copy. Source and renderer
