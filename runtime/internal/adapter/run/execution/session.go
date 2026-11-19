@@ -88,7 +88,7 @@ type interactionState struct {
 	subtreeChange       *interactionWaitingSubtreeChange
 	subtreePrepared     chan struct{}
 	unknownReported     bool
-	rootCancellation    *interactionRootCancellation
+	rootCancelReason    string
 	deployments         *interactionDeploymentSet
 	delegateCalls       map[delegateCallIdentity]*managedDelegateCall
 	delegateChildren    map[scoperun.ProcessID]*managedDelegateCall
@@ -725,52 +725,26 @@ func (i *interactionSession) await() {
 	joinCtx, cancelJoin := i.lifetime.publicationContext(i.lifetime.execution)
 	defer cancelJoin()
 	result, err := i.state.process.Await(joinCtx)
-	// Await owns the committed Exit. Close joins all local dispatch work when
-	// the writer instead stopped with unresolved effects or a durability error.
+	// A successful Await follows the joint Exit and Run commit. Close joins
+	// local dispatch work when no Exit could be acknowledged.
 	if err != nil {
 		err = errors.Join(err, i.engine.Close(joinCtx))
 	}
 	i.stopReconciliation()
-	cancellationPublished := i.rootCancellationPublished()
 	if err == nil {
-		if cancellationPublished {
-			i.notifyStopped(run.OutcomeCanceled)
-		} else {
-			_, err = i.reconcileCompletedDelegateChildren(joinCtx)
-			if err == nil {
-				err = i.publishResult(result)
-			}
+		ending := i.endingForProcess(result.ProcessID(), result.Termination())
+		i.modelFailures.forget(result.ProcessID())
+		if ending.Outcome() == run.OutcomeCompleted {
+			i.maintainCompletedRoot()
 		}
-	}
-	if err == nil {
-		err = i.closeExecution(joinCtx)
-	}
-	if err != nil {
-		if cancellationPublished {
-			slog.ErrorContext(joinCtx, "execution: close canceled Interaction", "error", err)
-		} else {
-			i.publishProjectionFailure(err)
+		i.notifyStopped(ending.Outcome())
+		if err := i.closeExecution(joinCtx); err != nil {
+			slog.ErrorContext(joinCtx, "execution: close settled Interaction", "error", err)
 		}
+	} else {
+		i.publishProjectionFailure(err)
 	}
 	i.finish()
-}
-
-func (i *interactionSession) publishResult(result scoperun.Result[scoperun.Payload]) error {
-	member := runs.ExecutorMember{MemberID: result.ProcessID().String()}
-	if result.Termination().Status() == scoperun.StatusCompleted {
-		i.maintainCompletedRoot()
-	}
-	end, err := i.segmentEnd(result)
-	if err != nil {
-		return err
-	}
-	ctx := context.WithoutCancel(i.lifetime.execution)
-	if err := i.commitFact(ctx, member, end); err != nil {
-		return err
-	}
-	i.modelFailures.forget(result.ProcessID())
-	i.notifyStopped(end.Ending.Outcome())
-	return nil
 }
 
 func (i *interactionSession) notifyStopped(outcome run.Outcome) {
@@ -862,37 +836,22 @@ func (i *interactionSession) closeTelemetry(ctx context.Context) error {
 	return nil
 }
 
-func (i *interactionSession) segmentEnd(result scoperun.Result[scoperun.Payload]) (runs.SegmentEnded, error) {
-	termination := result.Termination()
-	duration := i.segmentClock.duration(result.StartedAt(), result.FinishedAt())
-	end := i.segmentEndForOwner(result.ProcessID(), termination, duration)
-	ctx, cancel := i.lifetime.publicationContext(i.lifetime.execution)
-	defer cancel()
-	effects, err := i.terminalEffects(ctx, result.ProcessID())
-	if err != nil {
-		return runs.SegmentEnded{}, err
-	}
-	return runs.NewSegmentEnded(end.ending, end.duration).WithUnresolvedEffects(effects), nil
-}
-
-func (i *interactionSession) segmentEndForOwner(owner scoperun.ProcessID, termination scoperun.Termination, duration time.Duration) segmentEndDraft {
-	end := segmentEndFromTermination(termination, duration)
+func (i *interactionSession) endingForProcess(owner scoperun.ProcessID, termination scoperun.Termination) run.Ending {
 	if termination.Status() == scoperun.StatusFailed ||
 		termination.Cause() == scoperun.TerminationCauseHostCancellation && termination.Reason() == modelProcessStopReason {
 		if classified, found := i.modelFailures.lookup(owner); found {
-			end.ending = run.Failed{Failure: classified}
+			return run.Failed{Failure: classified}
 		}
 	}
-	return end
-}
-
-type segmentEndDraft struct {
-	ending   run.Ending
-	duration time.Duration
-}
-
-func segmentEndFromTermination(termination scoperun.Termination, duration time.Duration) segmentEndDraft {
-	return segmentEndDraft{ending: terminationEnding(termination), duration: duration}
+	if owner == i.rootID && termination.Cause() == scoperun.TerminationCauseHostCancellation {
+		i.state.mu.Lock()
+		requested := i.state.rootCancelReason
+		i.state.mu.Unlock()
+		if requested != "" && scopeCancellationReason(requested) == termination.Reason() {
+			return run.Canceled{Detail: requested}
+		}
+	}
+	return terminationEnding(termination)
 }
 
 // Scope v0.62 records this classification without exposing a public match.

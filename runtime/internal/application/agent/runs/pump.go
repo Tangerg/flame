@@ -84,6 +84,19 @@ func (s *segmentPump) run(initialErr error) {
 func (s *segmentPump) processEvent(event ExecutorEvent) bool {
 	s.owner.observation.Lock()
 	defer s.owner.observation.Unlock()
+	if s.routes.root.boundary.finished() {
+		// A terminal tree commit leaves the stream open for executor teardown.
+		// Anything already queued must leave the committed outcome intact.
+		switch pending := event.Payload.(type) {
+		case ExecutionFactCommit:
+			pending.Complete(ErrRunFinished)
+		case ChildRunReservationRequest:
+			if pending.claim() {
+				_ = pending.complete(ChildRunBinding{}, ErrRunFinished)
+			}
+		}
+		return true
+	}
 	if request, reserving := event.Payload.(ChildRunReservationRequest); reserving {
 		return s.handleChildRunReservation(event, request)
 	}

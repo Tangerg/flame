@@ -114,8 +114,8 @@ func (r *RunStore) Run(ctx context.Context, runID string) (rundomain.Run, bool, 
 	return r.readRun(ctx, "read Run", runID, scanRun)
 }
 
-// CompletedRunWork reads from one snapshot while the completed executor still
-// owns its root Run. Attempts can span Segments, so each settled call counts once.
+// CompletedRunWork reads from one snapshot of a successfully completed root
+// Run. Attempts can span Segments, so each settled call counts once.
 func (r *RunStore) CompletedRunWork(ctx context.Context, sessionID, rootRunID string) (completedToolCalls int64, compacted bool, err error) {
 	const operation = "read completed Run work"
 	if err := validateSessionResource(operation, sessionID); err != nil {
@@ -143,8 +143,8 @@ func (r *RunStore) CompletedRunWork(ctx context.Context, sessionID, rootRunID st
 		       AND json_extract(item.payload, '$.kind') = ?
 		)
 		FROM runs AS root
-		WHERE root.session_id = ? AND root.run_id = ? AND root.root_run_id = '' AND root.state = ?`,
-			string(runs.ToolInvocationCompleted), string(transcript.Compaction), sessionID, rootRunID, string(rundomain.Running),
+		WHERE root.session_id = ? AND root.run_id = ? AND root.root_run_id = '' AND root.state = ? AND root.outcome = ?`,
+			string(runs.ToolInvocationCompleted), string(transcript.Compaction), sessionID, rootRunID, string(rundomain.Finished), string(rundomain.OutcomeCompleted),
 		).Scan(&calls, &compacted)
 		if err != nil {
 			return 0, false, fmt.Errorf("sqlite: %s %q: %w", operation, rootRunID, err)

@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 // commitExecutionTree stages a settled tree against cloned reducers, commits
@@ -151,7 +149,7 @@ func (s *segmentPump) stageTreeFacts(facts []ExecutorEvent, startedRoutes map[st
 		if eventCommit.State == StateTerminalize {
 			if route == s.routes.root {
 				if unfinishedChildren != 0 {
-					return nil, errors.New("runs: confirmed root cancellation precedes child terminals")
+					return nil, errors.New("runs: root terminal precedes child terminals")
 				}
 				eventCommit.ObsoleteCheckpointRootID = commit.Update.Head.RootID
 				s.publisher.bindRootCancellationReceipt(&eventCommit)
@@ -167,8 +165,6 @@ func (s *segmentPump) stageTreeFacts(facts []ExecutorEvent, startedRoutes map[st
 	return projections, nil
 }
 
-// treeFactRoute resolves a settlement fact's route. Known root cancellation
-// closes with its Scope Exit so that a crash cannot leave the Run still open.
 func (s *segmentPump) treeFactRoute(event ExecutorEvent, startedRoutes map[string]*executorRoute) (*executorRoute, error) {
 	route := startedRoutes[event.Member.MemberID]
 	if route != nil && route.member != event.Member {
@@ -184,8 +180,8 @@ func (s *segmentPump) treeFactRoute(event ExecutorEvent, startedRoutes map[strin
 	switch fact := event.Payload.(type) {
 	case ToolResultsCommitted:
 	case SegmentEnded:
-		if route == s.routes.root && (fact.Ending.Outcome() != run.OutcomeCanceled || len(fact.unresolvedEffects) > 0) {
-			return nil, errors.New("runs: tree settlement requires confirmed root cancellation")
+		if len(fact.unresolvedEffects) > 0 {
+			return nil, errors.New("runs: settled execution tree terminal carries unresolved effects")
 		}
 	default:
 		return nil, fmt.Errorf("runs: unsupported tree settlement fact %T", event.Payload)

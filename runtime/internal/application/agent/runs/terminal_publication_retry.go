@@ -13,7 +13,8 @@ const (
 )
 
 // The same terminal write must survive temporary failure when only it can
-// preserve external uncertainty or the original cancellation acknowledgement.
+// preserve the original settled outcome, external uncertainty, or the exact
+// cancellation acknowledgement.
 type terminalCommitRetry struct {
 	next time.Duration
 }

@@ -195,12 +195,13 @@ func (c *Cancellations) Cancel(ctx context.Context, cmd CancelCommand) (CancelRe
 			plan.root.run.ID(),
 		)
 	}
-	if !terminal.Canceled() {
+	ending, _ := terminal.Ending()
+	if canceled, ok := ending.(rundomain.Canceled); !ok || canceled.Detail != cmd.Reason {
 		return CancelResult{}, fmt.Errorf(
-			"%w: %q completed as %s",
+			"%w: %q settled as %s",
 			ErrRunFinished,
 			plan.root.run.ID(),
-			terminal.State(),
+			ending.Outcome(),
 		)
 	}
 	return rootCancelResult(terminal)

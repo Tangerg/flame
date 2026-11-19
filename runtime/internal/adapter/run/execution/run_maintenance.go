@@ -5,8 +5,8 @@ import (
 	"log/slog"
 )
 
-// RunMaintenance owns best-effort housekeeping after a clean Interaction but
-// before its terminal fact closes the live Segment stream.
+// RunMaintenance owns best-effort housekeeping after a successful Run commits
+// and before the live Segment stream closes.
 type RunMaintenance interface {
 	Maintain(ctx context.Context, input RunMaintenanceInput) RunMaintenanceResult
 }

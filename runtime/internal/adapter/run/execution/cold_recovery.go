@@ -212,15 +212,18 @@ func (i interactionCheckpointState) recoverableReceipts(inspection scoperun.Tree
 	// A committed Tool settlement can leave the program running before its
 	// next step commits. Original receipts and every unresolved Effect below
 	// still bound recovery; an explicitly paused process remains excluded.
-	if !found || (root.Status != scoperun.StatusRunning && root.Status != scoperun.StatusWaiting && root.Status != scoperun.StatusDraining && !root.Status.Terminal()) {
+	if !found || (root.Status != scoperun.StatusRunning && root.Status != scoperun.StatusWaiting && root.Status != scoperun.StatusDraining) {
 		return nil, nil
 	}
 	for _, process := range inspection.Processes {
 		if len(process.Waits) > 0 {
 			return nil, nil
 		}
-		for _, id := range unresolvedProcessEffects(process) {
-			if _, supported := proofs[id]; !supported || process.Status.Terminal() {
+		for _, pending := range process.PendingEffects {
+			if pending.Outcome.Valid() && pending.Outcome.Status() != scoperun.SettlementStatusUnknown {
+				continue
+			}
+			if _, supported := proofs[pending.Request.ID()]; !supported {
 				return nil, nil
 			}
 		}

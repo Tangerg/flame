@@ -74,7 +74,7 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 			continue
 		}
 		member, inspected := inspection.Process(processID)
-		if !inspected || !member.Status.Terminal() || !subtreeDrained(inspection, processID) {
+		if !inspected || !member.Status.Terminal() {
 			continue
 		}
 		process, found := i.engine.Process(processID)
@@ -151,10 +151,9 @@ func (i *interactionSession) projectDelegateTerminal(
 		MemberID: result.ProcessID().String(), ParentID: i.executorMember(parent).MemberID,
 		SpawnCallID: callID,
 	}
-	end, err := i.segmentEnd(result)
-	if err != nil {
-		return false, err
-	}
+	ending := i.endingForProcess(result.ProcessID(), result.Termination())
+	duration := i.segmentClock.duration(result.StartedAt(), result.FinishedAt())
+	end := runs.NewSegmentEnded(ending, duration)
 	if err := i.commitFact(context.WithoutCancel(ctx), member, end); err != nil {
 		return false, fmt.Errorf("execution: publish delegated child terminal: %w", err)
 	}

@@ -66,7 +66,8 @@ type ChildRunPublication struct {
 	Outcome ChildRunStartOutcome
 }
 
-// Child admission and the executor cut that proves it must share one transaction.
+// Child admission, settled results and Run terminals commit with the executor
+// cut that proves them.
 type ExecutionTreeCommit struct {
 	Context          *ExecutorCheckpoint
 	InputAcceptances []CommandAcceptance
@@ -119,8 +120,8 @@ func (t ExecutionTreeCommit) validatePublications() error {
 			return err
 		}
 		if commit.State == StateTerminalize && commit.Run.Lineage().IsRoot() &&
-			(!commit.Run.Canceled() || commit.ObsoleteCheckpointRootID != t.Update.Head.RootID || index != len(t.Events)-1) {
-			return errors.New("runs: execution tree requires its confirmed root cancellation after child facts")
+			(commit.ObsoleteCheckpointRootID != t.Update.Head.RootID || index != len(t.Events)-1) {
+			return errors.New("runs: execution tree requires its root terminal after child facts")
 		}
 	}
 	return nil

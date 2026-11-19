@@ -547,8 +547,8 @@ func (i *InteractionExecutor) AwaitShutdown(ctx context.Context) error {
 }
 
 // Observe attaches the single Application Run pump before Process start.
-// Streaming facts are best-effort; authoritative completion and termination
-// are always emitted from Process.Await.
+// Scope's committed results cross this pump with a durability receipt. Stream
+// previews can be dropped without changing those results.
 func (i *InteractionExecutor) Observe(
 	ctx context.Context,
 	ref runs.ExecutorRef,
@@ -591,7 +591,7 @@ func (i *InteractionExecutor) Observe(
 // BeginRoot starts the staged Process exactly once. The accepted Run uses the
 // staged session lifecycle rather than the caller's request context, so a client
 // disconnect cannot cancel durable execution. Agent Framework owns every step;
-// this adapter only awaits and translates the immutable terminal result.
+// this adapter commits the immutable terminal result with the Run.
 func (i *InteractionExecutor) BeginRoot(_ context.Context, ref runs.ExecutorRef) error {
 	session, err := i.session(ref)
 	if err != nil {
@@ -829,17 +829,14 @@ func (i *InteractionExecutor) RequestRootCancellation(
 	if err != nil {
 		return err
 	}
-	controlReason := scopeCancellationReason(reason)
 	session.state.mu.Lock()
 	process := session.state.process
-	if process != nil {
-		session.state.rootCancellation = &interactionRootCancellation{reason: controlReason}
-	}
+	session.state.rootCancelReason = reason
 	session.state.mu.Unlock()
 	if process == nil {
 		return runs.ErrExecutorNotLive
 	}
-	if err := process.Cancel(ctx, controlReason); err != nil &&
+	if err := process.Cancel(ctx, scopeCancellationReason(reason)); err != nil &&
 		!errors.Is(err, scoperun.ErrProcessFinished) {
 		// A completed Runtime may already have closed its local writer. Only a
 		// committed Exit, never the writer's closed state, proves this is late.

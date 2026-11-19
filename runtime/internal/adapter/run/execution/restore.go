@@ -11,6 +11,15 @@ import (
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
+func hasUnknownEffects(process scoperun.ProcessInspection) bool {
+	for _, pending := range process.PendingEffects {
+		if pending.Outcome.Status() == scoperun.SettlementStatusUnknown {
+			return true
+		}
+	}
+	return false
+}
+
 func (i *interactionSession) validateContinuationTree(ctx context.Context, continuation runs.ExecutionContinuation, checkpoint interactionCheckpointState, accepted bool) error {
 	// A retained Unknown settlement is a restorable fact to the Engine; refusing
 	// to resume on top of one is this Runtime's policy, so it stays here.

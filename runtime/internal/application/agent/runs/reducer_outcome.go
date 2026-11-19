@@ -11,7 +11,11 @@ import (
 
 func (r *reducer) segmentEnd(e SegmentEnded) ([]ProjectionEvent, error) {
 	r.segmentDuration = e.Duration
-	terminal, err := r.finishedRun(r.cancelDetail(e.Ending), e.unresolvedEffects)
+	ending := e.Ending
+	if !r.cfg.Opened.Lineage().IsRoot() {
+		ending = r.cancelDetail(ending)
+	}
+	terminal, err := r.finishedRun(ending, e.unresolvedEffects)
 	if err != nil {
 		return nil, err
 	}

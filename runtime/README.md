@@ -1820,8 +1820,9 @@ A successful start commits the Run, first Segment, and opening user Item. Resume
 Keyed root cancellation commits the exact terminal response and original executor
 reference with the canceled Run. Canceling a parked root also consumes its open
 interrupt in that transaction. A running root's confirmed Scope Exit commits
-with the Run and receipt. The Segment owner retains that same write-set across
-temporary failures and joins the Scope writer before acknowledging teardown.
+with the Run and, for cancellation, its receipt. The Segment owner retains
+that same write-set across temporary failures and joins the Scope writer before
+acknowledging teardown.
 The same key can finish cleanup and publish the original response after process
 loss or a cleanup failure.
 
@@ -1882,10 +1883,13 @@ An unset utility role uses the Runtime composition's default model selection. It
 
 ## Automatic Skill learning
 
-After Scope records successful root completion, Runtime reads maintenance input
-from the original Run's committed work. Each settled Tool call in the Run tree
-counts once across Segments. The root's Compaction Item records its committed
+Scope's root Exit and the original Run's terminal outcome commit together.
+After a successful commit, Runtime reads maintenance input from the original
+Run's committed work. Each settled Tool call in the Run tree counts once across
+Segments. The root's Compaction Item records its committed
 conversation rewrite for Memory. Both inputs survive a waiting Run's restart.
+Best-effort maintenance runs before the Segment stream closes. Restart preserves
+the committed outcome and does not rerun that maintenance pass.
 
 The selected `flame.skill-learning.v2` provider owns learning cadence, mining prompts, source precedence, proposal slots and human review decisions. Runtime grants access to one committed conversation, an admitted current Skill and the configured utility model. A revision binds the exact bytes supplied by that read.
 

@@ -311,8 +311,8 @@ func (t TreeInterrupted) validateFor(rootMemberID, sessionID string) error {
 
 type SegmentEnded struct {
 	executionFactBase
-	// Ending is how the executor saw the Segment end. A Canceled ending's
-	// detail belongs to the cancel request, so the reducer supplies it.
+	// The executor attaches a root cancel request's detail only when it
+	// observed that request end the Segment.
 	Ending            run.Ending
 	unresolvedEffects []run.UnresolvedEffect
 	Duration          time.Duration

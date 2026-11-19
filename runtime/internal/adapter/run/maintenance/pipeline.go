@@ -8,9 +8,8 @@ import (
 	"github.com/samber/lo"
 )
 
-// MemoryMaintenance runs after successful Scope Interaction completion, before
-// committing the Flame Segment terminal fact. The selected Memory backend owns
-// its extraction and curation decisions.
+// MemoryMaintenance runs after the successful Run commits. The selected Memory
+// backend owns its extraction and curation decisions.
 type MemoryMaintenance interface {
 	MaintainMemory(ctx context.Context, input executionadapter.RunMaintenanceInput, compacted bool) error
 }
