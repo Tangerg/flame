@@ -1071,9 +1071,10 @@ placeholder appears when both captured messages and run details are absent.
 
 Conversation Find matches rendered text, so while Find is open the transcript
 reader renders every row and the first query already sees all of them. Legend
-keeps every container it has filled, so closing Find starts a fresh windowed list
-at the same reading position, or at the end when it was following. Matches follow the reader's row order rather than virtual container
-order. Refreshes retain the selected occurrence in its message, rebuild current
+keeps every container it has filled. After Find closes, the transcript starts a
+fresh windowed list as soon as focus is outside the reader. It retains the reading
+position or the end when following. Matches follow the reader's row order.
+Refreshes retain the selected occurrence in its message, rebuild current
 highlight ranges and preserve focus and reading position. Earlier details keep a
 still-rendered word current; replaced text uses its message occurrence as the
 existing fallback. Query changes and explicit navigation reveal a match: nested

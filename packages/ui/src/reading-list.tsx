@@ -211,12 +211,27 @@ export function ReadingList<T>({
       list.anchorVisibleContent();
     };
   }, [list, releaseInitialEnd, visible]);
-  useLayoutEffect(() => {
-    const wasComplete = renderedAll.current;
-    renderedAll.current = renderAll;
-    if (!wasComplete || renderAll || !list) return;
+  const compact = useEffectEvent(() => {
+    const node = root.current;
+    if (
+      !renderedAll.current ||
+      renderAll ||
+      !node ||
+      !list ||
+      currentList.current !== list
+    )
+      return;
+    const active = node.ownerDocument.activeElement;
+    if (
+      visible &&
+      active &&
+      (node.contains(active) || focusOwner.current?.target === active)
+    )
+      return;
+
+    renderedAll.current = false;
     // Legend keeps every container it has filled, so ending a complete render
-    // starts a fresh windowed list at the same reading position.
+    // starts a fresh windowed list once the reader can release its focus owner.
     const state = list.getState();
     const anchor = state.isAtEnd
       ? undefined
@@ -229,7 +244,11 @@ export function ReadingList<T>({
           ? { index, viewOffset: -anchor.offset }
           : null,
     }));
-  }, [renderAll, list]);
+  });
+  useLayoutEffect(() => {
+    if (renderAll) renderedAll.current = true;
+    else compact();
+  }, [renderAll, list, visible]);
   const selectionChanged = useEffectEvent(() => {
     const node = root.current;
     if (!list || !node) return;
@@ -257,8 +276,17 @@ export function ReadingList<T>({
   useEffect(() => {
     const owner = root.current?.ownerDocument;
     if (!owner) return;
+    const view = owner.defaultView;
+    let frame: number | undefined;
     const focusChanged = (event?: FocusEvent) => {
       selectionChanged();
+      // Focus can move before a new request to render the full list has committed.
+      if (event && view && renderedAll.current && frame === undefined) {
+        frame = view.requestAnimationFrame(() => {
+          frame = undefined;
+          compact();
+        });
+      }
       if (focusOwner.current?.target === (event?.target ?? owner.activeElement))
         return;
       focusOwner.current = null;
@@ -272,6 +300,7 @@ export function ReadingList<T>({
     return () => {
       owner.removeEventListener("selectionchange", selectionChanged);
       owner.removeEventListener("focusin", focusChanged);
+      if (frame !== undefined) view?.cancelAnimationFrame(frame);
     };
   }, [list, rowSelector]);
   useLayoutEffect(() => {

@@ -24356,6 +24356,52 @@ Separate native Find from the inline Enlarge diagram button
 matches the caption and leaves document focus on Escape.
 Check the opener's lifetime when Find exits next.
 
+### Preserve the inline opener when conversation Find closes (2026-11-20)
+
+Signed English Wails on `9884f69ab` starts Find from
+Enlarge diagram and finds the caption. Escape focuses the
+original button once. The viewport and button then disconnect
+as Legend returns to a windowed list. Focus ends on the document
+and the next Tab lands on Conversation.
+
+`ReadingList` retains its current generation while a visible
+reader owns focus, including focus in a portal belonging to
+its row. When focus leaves, the existing windowed reset
+carries forward the current scroll anchor or end-follow state.
+The first candidate compacted during focusin when reopening
+Find, before the new full-render request had committed. The
+same listener now schedules one frame to check the latest
+request and focus. Its cleanup cancels outstanding work.
+[WAI keyboard focus persistence](https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/).
+[React layout effects and commits](https://react.dev/reference/react/useLayoutEffect#caveats).
+
+- EN/light/14 px/Flame Orange at 1121 × 950. Two Find
+  round trips each return to the exact original Enlarge
+  diagram button and scrollport. Tab reaches Copy Mermaid.
+  The enlarged Diagram opens from the retained row and
+  Escape returns. Wheel scrolling reaches 199 px. Focusing
+  the Composer retires the original list and keeps 199 px.
+  Ordinary Find from the Composer restores draft editing.
+  The draft continues from `10236` to `102365186`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. Pointer
+  close returns to the original 放大图表 button, and Tab
+  reaches 复制 Mermaid. Moving focus outside the reader
+  retires the list. Home on the focused splitter widens
+  the Dock to 681 px and the original draft continues
+  from `10242` to `10242638`.
+
+Scoped formatting, shared UI type checking and its package
+consumer test, 137 Web tests, 940 keys across eight locales,
+bootstrap, plugin resources, 26 bundle contracts, module
+linkage, the macOS native gate and five canonical Lab
+documents pass. Native cases use a captured reply and
+passive DOM identity observations. VoiceOver speech, live
+Send, browser suites and benchmarks were outside the run.
+
+Four native launches and three loopback previews exit.
+Cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+
 ### Find follows rendered reply updates
 
 Find now refreshes its matches when the presented reply changes. An open query
