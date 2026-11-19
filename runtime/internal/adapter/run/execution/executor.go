@@ -439,7 +439,7 @@ func (i *InteractionExecutor) interactionConfiguration(
 		ModelInputs            []contributionBindingWire `json:"modelInputs"`
 		ToolProposals          []contributionBindingWire `json:"toolProposals"`
 	}{
-		Provider: session.accounting.providerName(), Model: session.accounting.modelName(),
+		Provider: session.start.ModelSelection.Provider(), Model: session.start.ModelSelection.Model(),
 		Streaming:              i.config.StreamModelResponses,
 		MaxConcurrentToolCalls: i.policy.maxConcurrentToolCalls,
 		ContextCompaction:      i.config.ModelContextCompactor != nil,

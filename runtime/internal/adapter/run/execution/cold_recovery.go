@@ -75,7 +75,7 @@ func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, activ
 	}
 	ref := newExecutorRef(root.SessionID())
 	member := runs.ExecutionMember{
-		RunID: root.ID(), MemberID: rootID.String(), ModelSelection: root.ModelSelection(), Metrics: root.Metrics(),
+		RunID: root.ID(), MemberID: rootID.String(), ModelSelection: root.ModelSelection(),
 	}
 	continuation, err := runs.NewExecutionContinuation(runs.ExecutionContinuation{
 		SessionID: root.SessionID(), ExecutorID: ref.ExecutorID, RootRunID: root.ID(),
@@ -131,11 +131,7 @@ func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, activ
 		}
 		return nil, err
 	}
-	usage, err := restoreInteractionAccounting(checkpoint, map[scoperun.ProcessID]runs.ExecutionMember{rootID: member})
-	if err != nil {
-		return nil, err
-	}
-	session.accounting.restore(usage, checkpoint.contextByProcess)
+	session.material.restoreCalibrations(checkpoint.contextByProcess)
 	session.state.toolMetadata = checkpoint.toolMetadata
 	session.state.pendingSteers = checkpoint.pendingSteers
 	session.state.pendingResumeInputs = checkpoint.pendingResumeInputs

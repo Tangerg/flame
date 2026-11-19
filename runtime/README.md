@@ -216,9 +216,11 @@ ran for that call.
 An observer failure after provider completion preserves that response and its usage.
 The Run reducer owns accumulation across calls and resumed
 segments; terminal segment facts contain outcome, unresolved effects and duration.
-`SegmentUsage` and cumulative completion fields are removed. Scope process snapshots
-retain their checkpoint/calibration purpose. Unknown consumption cannot become an
-exact priced total because a later response is known. Captured selected and
+Scope's committed model Effects supply call order. Waiting checkpoints restore
+each surviving process's request calibration from its prepared input estimate and
+the provider's reported prompt footprint. The Run retains its accumulated
+consumption through compaction, waiting and resume. Unknown consumption cannot
+become an exact priced total because a later response is known. Captured selected and
 auxiliary calls now publish through the original execution member, with a persisted conversation/independent purpose. Independent outcomes
 cannot write primary output or context. Both purposes retain unknown consumption
 through live settlement and recovery, so known token counts survive while exact

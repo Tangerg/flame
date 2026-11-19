@@ -11,13 +11,11 @@ import (
 	"encoding/json/jsontext"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 
@@ -44,24 +42,13 @@ type interactionCheckpointPayloadWire struct {
 	ToolCalls           []toolCallCapture              `json:"tool_calls,omitempty"`
 	Handoff             *interactionHandoffWire        `json:"handoff"`
 	Instructions        *[]corechat.Message            `json:"instructions"`
-	Members             []interactionMemberCallsWire   `json:"members,omitempty"`
 	Contexts            []interactionModelContextWire  `json:"contexts,omitempty"`
 	PendingSteers       []interactionPendingSteerWire  `json:"pending_steers,omitempty"`
 	PendingResumeInputs []interactionResumeInputWire   `json:"pending_resume_inputs,omitempty"`
 }
 
-type interactionMemberCallsWire struct {
-	MemberID string                      `json:"member_id"`
-	Models   []interactionModelCallsWire `json:"models"`
-}
-
-type interactionModelCallsWire struct {
-	Model string `json:"model"`
-	Calls int    `json:"calls"`
-}
-
 type interactionModelContextWire struct {
-	MemberID        string `json:"member_id"`
+	ProcessID       string `json:"process_id"`
 	ReportedTokens  int64  `json:"reported_tokens"`
 	EstimatedTokens int    `json:"estimated_tokens"`
 }
@@ -106,7 +93,6 @@ type interactionCheckpointState struct {
 	toolMetadata        map[string]toolCallMetadata
 	tree                scoperun.Log
 	handoff             interactionHandoff
-	callsByProcess      map[scoperun.ProcessID]map[string]int
 	contextByProcess    map[scoperun.ProcessID]ModelContextTokenCalibration
 	instructions        []corechat.Message
 	pendingSteers       map[scoperun.SignalID]runs.PreparedSteer
@@ -154,7 +140,6 @@ func (i *interactionSession) executorCheckpoint(
 
 func encodeInteractionCheckpointPayload(
 	tree scoperun.Log,
-	usageByProcess map[scoperun.ProcessID]map[string]accounting.ModelUsage,
 	contextByProcess map[scoperun.ProcessID]ModelContextTokenCalibration,
 	instructions []corechat.Message,
 	pendingSteers map[scoperun.SignalID]runs.PreparedSteer,
@@ -196,33 +181,7 @@ func encodeInteractionCheckpointPayload(
 	if _, err := interactionInstructionContext(*wire.Instructions); err != nil {
 		return nil, err
 	}
-	accounted := make(map[scoperun.ProcessID]struct{}, len(usageByProcess))
-	retained := make(map[string]bool, len(handoff.Processes))
-	for _, process := range handoff.Processes {
-		retained[process.ProcessID] = true
-	}
-	for processID, byModel := range usageByProcess {
-		// Reaped siblings already own durable product metrics. Their counters
-		// cannot become state of a surviving member on continuation.
-		if !retained[processID.String()] {
-			continue
-		}
-		models, err := interactionCallCounts(byModel)
-		if err != nil {
-			return nil, fmt.Errorf("execution: encode Interaction member %s accounting: %w", processID, err)
-		}
-		if len(models) == 0 {
-			continue
-		}
-		accounted[processID] = struct{}{}
-		wire.Members = append(wire.Members, interactionMemberCallsWire{
-			MemberID: processID.String(), Models: models,
-		})
-	}
-	slices.SortFunc(wire.Members, func(left, right interactionMemberCallsWire) int {
-		return strings.Compare(left.MemberID, right.MemberID)
-	})
-	wire.Contexts, err = encodeInteractionModelContexts(contextByProcess, accounted)
+	wire.Contexts, err = encodeInteractionModelContexts(contextByProcess, handoff.Processes)
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode Interaction model contexts: %w", err)
 	}
@@ -242,17 +201,17 @@ func encodeInteractionCheckpointPayload(
 	return payload, nil
 }
 
-// encodeInteractionModelContexts carries a calibration only for a member this
-// checkpoint also accounts model calls for. The calibration is a projection of
-// those calls, so a member that made none has nothing to carry and a restore
-// would rightly refuse a calibration it cannot attribute.
 func encodeInteractionModelContexts(
 	contexts map[scoperun.ProcessID]ModelContextTokenCalibration,
-	accounted map[scoperun.ProcessID]struct{},
+	processes []interactionProgressWire,
 ) ([]interactionModelContextWire, error) {
+	retained := make(map[string]struct{}, len(processes))
+	for _, process := range processes {
+		retained[process.ProcessID] = struct{}{}
+	}
 	values := make([]interactionModelContextWire, 0, len(contexts))
 	for processID, calibration := range contexts {
-		if _, counted := accounted[processID]; !counted {
+		if _, found := retained[processID.String()]; !found {
 			continue
 		}
 		if !processID.Valid() {
@@ -265,13 +224,13 @@ func encodeInteractionModelContexts(
 			continue
 		}
 		values = append(values, interactionModelContextWire{
-			MemberID:        processID.String(),
+			ProcessID:       processID.String(),
 			ReportedTokens:  calibration.ReportedTokens(),
 			EstimatedTokens: calibration.EstimatedTokens(),
 		})
 	}
 	slices.SortFunc(values, func(left, right interactionModelContextWire) int {
-		return strings.Compare(left.MemberID, right.MemberID)
+		return strings.Compare(left.ProcessID, right.ProcessID)
 	})
 	return values, nil
 }
@@ -341,31 +300,6 @@ func encodeInteractionContentBlock(
 	default:
 		return interactionContentBlockWire{}, fmt.Errorf("has unknown kind %q", block.Kind)
 	}
-}
-
-func interactionCallCounts(
-	byModel map[string]accounting.ModelUsage,
-) ([]interactionModelCallsWire, error) {
-	models := make([]interactionModelCallsWire, 0, len(byModel))
-	for model, usage := range byModel {
-		if _, err := modelchoice.NewModelIdentity(model); err != nil {
-			return nil, err
-		}
-		if err := usage.Validate(); err != nil || usage.Model != model {
-			if err == nil {
-				err = errors.New("model key differs from usage identity")
-			}
-			return nil, err
-		}
-		if usage.Calls == 0 {
-			continue
-		}
-		models = append(models, interactionModelCallsWire{Model: model, Calls: usage.Calls})
-	}
-	slices.SortFunc(models, func(left, right interactionModelCallsWire) int {
-		return strings.Compare(left.Model, right.Model)
-	})
-	return models, nil
 }
 
 func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointState, error) {
@@ -442,11 +376,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint instructions: %w", err)
 	}
-	callsByProcess, err := decodeInteractionCheckpointMembers(wire.Members, processes)
-	if err != nil {
-		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint members: %w", err)
-	}
-	contextByProcess, err := decodeInteractionModelContexts(wire.Contexts, processes, callsByProcess)
+	contextByProcess, err := decodeInteractionModelContexts(wire.Contexts, processes)
 	if err != nil {
 		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint model contexts: %w", err)
 	}
@@ -470,7 +400,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 		modelInputs:      inputs,
 		mcpManifests:     manifests,
 		skillDiscoveries: wire.SkillDiscoveries,
-		handoff:          handoff, callsByProcess: callsByProcess,
+		handoff:          handoff,
 		contextByProcess: contextByProcess, instructions: instructions, options: wire.Options.Clone(), pendingSteers: pendingSteers,
 		pendingResumeInputs: pendingResumeInputs, toolMetadata: metadata,
 	}, nil
@@ -496,66 +426,22 @@ func decodeInteractionCheckpointInstructions(messages []corechat.Message) ([]cor
 	return instructions, nil
 }
 
-// admitCheckpointMember admits one row of a member-keyed checkpoint list: an
-// identity strictly after the previous row's, parseable, and belonging to this
-// checkpoint's Processes. Two lists are keyed by member and are read back in the
-// order they were written, so a row out of order has to mean the same in both.
-func admitCheckpointMember(
-	memberID, previousMemberID string,
-	index int,
-	processes map[scoperun.ProcessID]struct{},
-) (scoperun.ProcessID, error) {
-	if index > 0 && memberID <= previousMemberID {
-		return scoperun.ProcessID{}, errors.New("not in canonical order")
-	}
-	processID, err := scoperun.ParseProcessID(memberID)
-	if err != nil {
-		return scoperun.ProcessID{}, fmt.Errorf("member identity: %w", err)
-	}
-	if _, found := processes[processID]; !found {
-		return scoperun.ProcessID{}, errors.New("names a foreign member")
-	}
-	return processID, nil
-}
-
-func decodeInteractionCheckpointMembers(
-	values []interactionMemberCallsWire,
-	processes map[scoperun.ProcessID]struct{},
-) (map[scoperun.ProcessID]map[string]int, error) {
-	members := make(map[scoperun.ProcessID]map[string]int, len(values))
-	previousMember := ""
-	for index, member := range values {
-		processID, err := admitCheckpointMember(member.MemberID, previousMember, index, processes)
-		if err != nil {
-			return nil, err
-		}
-		models, err := decodeInteractionCallCounts(member.Models)
-		if err != nil || len(models) == 0 {
-			if err == nil {
-				err = errors.New("member call counts are empty")
-			}
-			return nil, fmt.Errorf("member %s: %w", processID, err)
-		}
-		members[processID] = models
-		previousMember = member.MemberID
-	}
-	return members, nil
-}
-
 func decodeInteractionModelContexts(
 	values []interactionModelContextWire,
 	processes map[scoperun.ProcessID]struct{},
-	callsByProcess map[scoperun.ProcessID]map[string]int,
 ) (map[scoperun.ProcessID]ModelContextTokenCalibration, error) {
 	contexts := make(map[scoperun.ProcessID]ModelContextTokenCalibration, len(values))
 	previous := ""
 	for index, value := range values {
-		processID, err := admitCheckpointMember(value.MemberID, previous, index, processes)
-		if err != nil {
-			return nil, err
+		if index > 0 && value.ProcessID <= previous {
+			return nil, errors.New("model context calibrations are not in canonical order")
 		}
-		if len(callsByProcess[processID]) == 0 {
-			return nil, errors.New("has no matching member accounting")
+		processID, err := scoperun.ParseProcessID(value.ProcessID)
+		if err != nil {
+			return nil, fmt.Errorf("model context Process identity: %w", err)
+		}
+		if _, found := processes[processID]; !found {
+			return nil, errors.New("model context names a foreign Process")
 		}
 		calibration, err := NewModelContextTokenCalibration(
 			value.ReportedTokens,
@@ -565,7 +451,7 @@ func decodeInteractionModelContexts(
 			return nil, err
 		}
 		contexts[processID] = calibration
-		previous = value.MemberID
+		previous = value.ProcessID
 	}
 	return contexts, nil
 }
@@ -690,20 +576,4 @@ func (w interactionContentBlockWire) decodeImage() (transcript.ContentBlock, err
 		return transcript.ContentBlock{}, err
 	}
 	return content, nil
-}
-
-func decodeInteractionCallCounts(values []interactionModelCallsWire) (map[string]int, error) {
-	result := make(map[string]int, len(values))
-	previous := ""
-	for index, value := range values {
-		if _, err := modelchoice.NewModelIdentity(value.Model); err != nil {
-			return nil, fmt.Errorf("models[%d]: %w", index, err)
-		}
-		if value.Calls <= 0 || index > 0 && value.Model <= previous {
-			return nil, errors.New("not in canonical order")
-		}
-		result[value.Model] = value.Calls
-		previous = value.Model
-	}
-	return result, nil
 }

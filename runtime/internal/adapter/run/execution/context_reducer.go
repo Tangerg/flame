@@ -105,11 +105,18 @@ func (i *interactionModelContextReducer) PrepareContext(
 		return nil, err
 	}
 	if i.compactor == nil {
-		validation, err := i.admitContext(calling, invocation, contextView, candidate)
+		validation, err := i.admitContext(calling, contextView, candidate)
 		if err != nil {
 			return nil, err
 		}
-		if err := i.session.material.prepare(invocation, validation); err != nil {
+		var estimate int
+		if len(i.session.modelInputs) > 0 {
+			estimate, err = model.EstimateRequestTokens(validation)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if err := i.session.material.prepare(invocation, validation, estimate); err != nil {
 			return nil, err
 		}
 		return contextView.canonical(candidate), nil
@@ -197,7 +204,7 @@ func (i *interactionModelContextReducer) compactContext(calling context.Context,
 			i.start.WorkspaceCWD,
 		)
 	}
-	calibration := i.session.accounting.modelContextCalibration(invocation)
+	calibration := i.session.material.calibration(invocation.process)
 
 	input := ModelContextCompactionInput{
 		SessionID:    i.start.SessionID,
@@ -239,7 +246,7 @@ func (i *interactionModelContextReducer) compactContext(calling context.Context,
 		return nil, err
 	}
 	effective := contextView.canonical(result.Messages())
-	validation, err := i.admitContext(calling, invocation, contextView, result.Messages())
+	validation, err := i.admitContext(calling, contextView, result.Messages())
 	if err != nil {
 		return nil, err
 	}
@@ -250,11 +257,7 @@ func (i *interactionModelContextReducer) compactContext(calling context.Context,
 			return nil, err
 		}
 	}
-	if err := i.session.accounting.prepareModelContext(invocation, estimate); err != nil {
-		return nil, err
-	}
-	if err := i.session.material.prepare(invocation, validation); err != nil {
-		i.session.accounting.discardPreparedModelContext(invocation)
+	if err := i.session.material.prepare(invocation, validation, estimate); err != nil {
 		return nil, err
 	}
 	if err := i.commitCompaction(calling, invocation.process, compaction, result); err != nil {
@@ -304,12 +307,12 @@ func (c modelRequestContext) compose(history []corechat.Message) *corechat.Reque
 	return request
 }
 
-func (i *interactionModelContextReducer) admitContext(ctx context.Context, invocation modelCallSource, view modelRequestContext, history []corechat.Message) (*corechat.Request, error) {
+func (i *interactionModelContextReducer) admitContext(ctx context.Context, view modelRequestContext, history []corechat.Message) (*corechat.Request, error) {
 	request := view.compose(history)
 	if err := request.Validate(); err != nil {
 		return nil, &interaction.ContextFailure{Cause: fmt.Errorf("execution: reduced model context: %w", err)}
 	}
-	return i.prepareInput(ctx, invocation, request)
+	return i.prepareInput(ctx, request)
 }
 
 func invocationCompaction(invocation modelCallSource, input ModelContextCompactionInput, pending bool) (ModelContextCompaction, error) {
@@ -379,7 +382,7 @@ func sameInteractionMessages(left, right []corechat.Message) (bool, error) {
 
 var _ interaction.ContextProcessor = (*interactionModelContextReducer)(nil)
 
-func (i *interactionModelContextReducer) prepareInput(calling context.Context, invocation modelCallSource, request *corechat.Request) (*corechat.Request, error) {
+func (i *interactionModelContextReducer) prepareInput(calling context.Context, request *corechat.Request) (*corechat.Request, error) {
 	if len(i.session.modelInputs) == 0 {
 		if err := i.session.selectedChat.AdmitInput(request); err != nil {
 			return nil, &interaction.ContextFailure{Cause: err}
@@ -403,15 +406,6 @@ func (i *interactionModelContextReducer) prepareInput(calling context.Context, i
 	}
 	if err := i.session.selectedChat.AdmitRequest(calling, transformed); err != nil {
 		return nil, err
-	}
-	if i.compactor == nil {
-		estimate, err := model.EstimateRequestTokens(transformed)
-		if err != nil {
-			return nil, err
-		}
-		if err := i.session.accounting.prepareModelContext(invocation, estimate); err != nil {
-			return nil, err
-		}
 	}
 	return transformed, nil
 }

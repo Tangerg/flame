@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"runtime/debug"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -42,7 +43,7 @@ type interactionSession struct {
 	state                  interactionState
 	steerAdmissions        *keylock.Set
 	childProjection        interactionChildProjection
-	accounting             interactionAccounting
+	toolCalls              atomic.Int64
 	material               requestMaterial
 	unknownPollInterval    time.Duration
 	statePollInterval      time.Duration
@@ -69,7 +70,7 @@ type interactionSession struct {
 
 // interactionState owns the one lock domain whose facts must move atomically:
 // the live Process, its observation/waiting boundary, exact pending steers,
-// and Delegate topology. Accounting and Segment timing have independent
+// and Delegate topology. Request material and Segment timing have independent
 // invariants and do not belong under this lock.
 type interactionState struct {
 	restoreTree   scoperun.Log
@@ -145,7 +146,6 @@ func newInteractionSession(
 		modelFailures:       newInteractionModelFailures(),
 		modelEvidence:       config.ModelEvidence,
 		callComposition:     config.CallComposition,
-		accounting:          newInteractionAccounting(start.ModelSelection),
 		material:            newRequestMaterial(),
 		unknownPollInterval: policy.unknownEffectPollInterval,
 		statePollInterval:   policy.statePollInterval,

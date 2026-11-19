@@ -15,7 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
@@ -310,12 +309,11 @@ func rootInteractionExecutionContinuation(
 	executorID string,
 	capabilities run.Capabilities,
 ) runs.ExecutionContinuation {
-	metrics := rootRunMetricsForCheckpoint(checkpoint)
 	return runs.ExecutionContinuation{
 		SessionID: checkpoint.SessionID, ExecutorID: executorID, RootRunID: interactionTestRunID,
 		Members: []runs.ExecutionMember{{
 			RunID: interactionTestRunID, MemberID: checkpoint.RootMemberID,
-			ModelSelection: interactionTestStart().ModelSelection, Metrics: metrics,
+			ModelSelection: interactionTestStart().ModelSelection,
 		}},
 		Checkpoint: checkpoint, Capabilities: capabilities, Workspace: workspace,
 	}
@@ -397,33 +395,4 @@ func identifyTestManifest(manifest toolset.Manifest, identities ...domaintool.Re
 		}
 	}
 	return manifest, nil
-}
-
-// rootRunMetricsForCheckpoint stands in for the parked root Run, which owns
-// the member's usage. Only the per-model call counts must agree with the
-// checkpoint; the token values are the Run's own.
-func rootRunMetricsForCheckpoint(checkpoint runs.ExecutorCheckpoint) run.Metrics {
-	state, err := decodeExecutorCheckpoint(checkpoint)
-	if err != nil {
-		panic(err)
-	}
-	calls := state.callsByProcess[state.handoff.rootID]
-	if len(calls) == 0 {
-		return run.Metrics{}
-	}
-	byModel := make(map[string]accounting.Totals, len(calls))
-	steps := 0
-	for model, count := range calls {
-		byModel[model] = accounting.Totals{}
-		steps += count
-	}
-	usage, err := accounting.AttributedUsage(byModel)
-	if err != nil {
-		panic(err)
-	}
-	metrics, err := run.NewMetrics(&usage, steps, 0)
-	if err != nil {
-		panic(err)
-	}
-	return metrics
 }

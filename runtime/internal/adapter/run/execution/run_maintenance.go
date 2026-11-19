@@ -45,12 +45,11 @@ func (i *interactionSession) maintainCompletedRoot() {
 	if i.maintenance == nil || i.start.SessionID == "" {
 		return
 	}
-	toolCalls := i.accounting.toolCallCount()
 	result := i.maintenance.Maintain(i.lifetime.execution, RunMaintenanceInput{
 		RootMemberID:            i.rootID.String(),
 		SessionID:               i.start.SessionID,
 		WorkspaceCWD:            i.start.WorkspaceCWD,
-		ToolCalls:               toolCalls,
+		ToolCalls:               int(i.toolCalls.Load()),
 		DurableContextCompacted: i.state.durableContextCompacted(),
 	})
 	for _, err := range result.Errors {

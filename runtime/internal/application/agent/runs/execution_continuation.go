@@ -125,8 +125,8 @@ func waitingContinuationFromPending(
 	})
 }
 
-// waitingMembersFromPending joins each hand-off with the parked Run it names;
-// the Run, not the hand-off, owns the member's admission and accounting.
+// waitingMembersFromPending reads the admission and lineage from each parked Run
+// so the hand-off cannot retarget a surviving member.
 func waitingMembersFromPending(pending Pending, parked []run.Run) ([]ExecutionMember, error) {
 	runs := parkedRunsByID(parked)
 	members := make([]ExecutionMember, len(pending.Continuations))
@@ -139,8 +139,8 @@ func waitingMembersFromPending(pending Pending, parked []run.Run) ([]ExecutionMe
 			RunID: continuation.RunID, MemberID: continuation.MemberID,
 			ParentRunID:     value.Lineage().ParentRunID(),
 			SpawnedByItemID: value.Lineage().SpawnedByItemID(),
-			ModelSelection:  value.ModelSelection(), Metrics: value.Metrics(),
-			DrainedTools: continuation.DrainedTools,
+			ModelSelection:  value.ModelSelection(),
+			DrainedTools:    continuation.DrainedTools,
 		}
 	}
 	return members, nil
@@ -171,9 +171,6 @@ func (w ExecutionMember) Validate() error {
 	}
 	if err := w.ModelSelection.ValidateExact(); err != nil {
 		return fmt.Errorf("runs: waiting member: %w", err)
-	}
-	if err := w.Metrics.Validate(); err != nil {
-		return fmt.Errorf("runs: waiting member metrics: %w", err)
 	}
 	if err := validateDrainedTools(w.DrainedTools); err != nil {
 		return fmt.Errorf("runs: waiting member tools: %w", err)

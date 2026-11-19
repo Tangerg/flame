@@ -322,7 +322,6 @@ type ExecutionMember struct {
 	ParentRunID     string
 	SpawnedByItemID string
 	ModelSelection  modelchoice.Selection
-	Metrics         run.Metrics
 	// DrainedTools distinguishes an unfinished parent Tool from a result already
 	// committed while the executor still retains the child in an active batch.
 	DrainedTools []DrainedTool
@@ -330,7 +329,7 @@ type ExecutionMember struct {
 
 // ExecutionContinuation is the complete Application-owned input for staging one
 // retained tree. Checkpoint payload interpretation remains executor-private;
-// Members carries surviving product identities, accounting, and unfinished Tools.
+// Members carries surviving product identities and unfinished Tools.
 // Capabilities and GoalIncarnationID are the root Run's, and Workspace and
 // Isolated the owning Session's: a restored executor reads its policy from
 // them, never from a copy inside the checkpoint.

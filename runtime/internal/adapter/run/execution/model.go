@@ -32,14 +32,10 @@ type observedInteractionModel struct {
 // request attaches exactly the ephemeral material measured by the reducer after
 // Scope has adopted the authored conversation it will retain.
 func (o *observedInteractionModel) request(invocation modelCallSource, request *corechat.Request) (*corechat.Request, error) {
-	material, err := o.session.material.take(invocation)
+	sent, err := o.session.material.providerRequest(invocation)
 	if err != nil {
 		return nil, err
 	}
-	if request == nil || material.request == nil {
-		return nil, errors.New("execution: prepared model request is unavailable")
-	}
-	sent := material.request.Clone()
 	// Scope may accept steering while preparation is in flight. Those authored
 	// messages follow the preparation marker and must reach this physical call.
 	_, index, err := modelPreparationReference(request.Messages)
@@ -61,7 +57,6 @@ func (o *observedInteractionModel) Call(
 	if err != nil {
 		return nil, err
 	}
-	defer o.session.accounting.discardPreparedModelContext(invocation)
 	sent, err := o.request(invocation, request)
 	if err != nil {
 		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
@@ -97,7 +92,6 @@ func (o *observedInteractionModel) Stream(
 			yield(nil, err)
 			return
 		}
-		defer o.session.accounting.discardPreparedModelContext(invocation)
 		sent, err := o.request(invocation, request)
 		if err != nil {
 			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}))
@@ -210,10 +204,11 @@ func (o *observedInteractionModel) endpoint(ctx context.Context, callID string) 
 
 func (o *observedInteractionModel) accountEndpoint(invocation modelCallSource, callID string, source modelref.EndpointObservation) (runs.ModelCallCompleted, error) {
 	consumption, err := accountModelEndpoint(callID, source)
-	if err != nil {
-		return runs.ModelCallCompleted{}, err
+	if err != nil || consumption.ReportedUsage == nil {
+		return consumption, err
 	}
-	return o.session.accounting.accountModelCall(invocation, consumption)
+	consumption.ContextTokens = consumption.ReportedUsage.InputTokens
+	return consumption, o.session.material.observeInput(invocation, consumption.ContextTokens)
 }
 
 func (o *observedInteractionModel) stopFailedCall(ctx context.Context, invocation modelCallSource, cause, projectionErr error) error {
@@ -287,11 +282,10 @@ func (o *observedInteractionModel) begin(
 	if err != nil {
 		return modelCallSource{}, "", err
 	}
-	preparedInvocation := invocation
+	process := invocation.process
 	defer func() {
 		if err != nil {
-			o.session.accounting.discardPreparedModelContext(preparedInvocation)
-			err = errors.Join(err, o.session.rememberModelFailure(preparedInvocation.process, &run.FailureError{Kind: run.FailureInternal, Err: err}))
+			err = errors.Join(err, o.session.rememberModelFailure(process, &run.FailureError{Kind: run.FailureInternal, Err: err}))
 			err = &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
 		}
 	}()

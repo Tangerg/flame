@@ -53,14 +53,6 @@ func (i *InteractionExecutor) PrepareContinuation(ctx context.Context, continuat
 	if err != nil {
 		return nil, err
 	}
-	members := make(map[scoperun.ProcessID]runs.ExecutionMember)
-	for _, member := range continuation.Members {
-		id, _ := scoperun.ParseProcessID(member.MemberID)
-		members[id] = member
-	}
-	if _, err := restoreInteractionAccounting(checkpoint, members); err != nil {
-		return nil, fmt.Errorf("%w: continuation accounting: %w", runs.ErrExecutorStateLost, err)
-	}
 	if _, err := planContinuationRelease(checkpoint.handoff, tree, retired, answers); err != nil {
 		return nil, err
 	}

@@ -6,8 +6,6 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 
 	"github.com/Tangerg/scope/agent/interaction"
 	scoperun "github.com/Tangerg/scope/agent/run"
@@ -42,9 +40,6 @@ func (i *interactionSession) validateContinuationTree(ctx context.Context, conti
 	if err != nil {
 		return fmt.Errorf("%w: waiting members: %w", runs.ErrExecutorStateLost, err)
 	}
-	if _, err := restoreInteractionAccounting(checkpoint, members); err != nil {
-		return fmt.Errorf("%w: waiting accounting: %w", runs.ErrExecutorStateLost, err)
-	}
 	_, children, err := i.restoreDelegateCalls(checkpoint.tree, snapshots, members)
 	if err != nil {
 		return fmt.Errorf("%w: waiting Delegate bindings: %w", runs.ErrExecutorStateLost, err)
@@ -76,15 +71,11 @@ func (i *interactionSession) restoreContinuationProjection(
 	if err != nil {
 		return err
 	}
-	usageByProcess, err := restoreInteractionAccounting(checkpoint, members)
-	if err != nil {
-		return fmt.Errorf("%w: restore Interaction accounting: %w", runs.ErrExecutorStateLost, err)
-	}
 	delegateCalls, delegateChildren, err := i.restoreDelegateCalls(checkpoint.tree, snapshots, members)
 	if err != nil {
 		return fmt.Errorf("%w: restore Delegate bindings: %w", runs.ErrExecutorStateLost, err)
 	}
-	i.accounting.restore(usageByProcess, checkpoint.contextByProcess)
+	i.material.restoreCalibrations(checkpoint.contextByProcess)
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
 	if i.state.phase != interactionPending || i.state.process != nil {
@@ -330,108 +321,4 @@ func restoreManagedDelegateCall(
 		// retains their result until the waiting parent can commit its Tool batch.
 		segmentProjected: !survives,
 	}, nil
-}
-
-// restoreInteractionAccounting rebuilds per-Process usage for the surviving
-// members only: each member's Run owns its usage, and the checkpoint adds the
-// per-model call counts the Run does not record.
-func restoreInteractionAccounting(
-	checkpoint interactionCheckpointState,
-	members map[scoperun.ProcessID]runs.ExecutionMember,
-) (map[scoperun.ProcessID]map[string]accounting.ModelUsage, error) {
-	usageByProcess := make(map[scoperun.ProcessID]map[string]accounting.ModelUsage, len(members))
-	for owner, member := range members {
-		process := owner
-		for id, progress := range checkpoint.handoff.progress {
-			if progress.OwnerID == owner.String() && len(checkpoint.callsByProcess[id]) > 0 {
-				if process != owner && process != id {
-					return nil, errors.New("execution: product member has multiple model accounting owners")
-				}
-				process = id
-			}
-		}
-		usage, err := accountingFromRunMetrics(member.Metrics, checkpoint.callsByProcess[process])
-		if err != nil {
-			return nil, fmt.Errorf("member %s: %w", owner, err)
-		}
-		usageByProcess[process] = usage
-	}
-	return usageByProcess, nil
-}
-
-func accountingFromRunMetrics(
-	metrics run.Metrics,
-	callsByModel map[string]int,
-) (map[string]accounting.ModelUsage, error) {
-	if err := metrics.Validate(); err != nil {
-		return nil, err
-	}
-	usage, reported := metrics.Usage()
-	if metrics.Steps() == 0 {
-		return emptyRunMetricsAccounting(reported, callsByModel)
-	}
-	result, err := modelUsageFromRunMetrics(usage.ByModel(), callsByModel)
-	if err != nil {
-		return nil, err
-	}
-	total, err := interactionUsageSnapshot(result).Total()
-	if err != nil {
-		return nil, err
-	}
-	if total.Calls != metrics.Steps() || (reported && !sameTranscriptUsage(total, usage.Total())) {
-		return nil, errors.New("product metrics differ from reconstructed executor accounting")
-	}
-	return result, nil
-}
-
-func emptyRunMetricsAccounting(
-	reported bool,
-	callsByModel map[string]int,
-) (map[string]accounting.ModelUsage, error) {
-	if reported || len(callsByModel) != 0 {
-		return nil, errors.New("zero-step member has accounting state")
-	}
-	return map[string]accounting.ModelUsage{}, nil
-}
-
-func modelUsageFromRunMetrics(
-	byModel map[string]accounting.Totals,
-	callsByModel map[string]int,
-) (map[string]accounting.ModelUsage, error) {
-	for model := range byModel {
-		if callsByModel[model] <= 0 {
-			return nil, fmt.Errorf("model %q has no durable call count", model)
-		}
-	}
-	result := make(map[string]accounting.ModelUsage, len(callsByModel))
-	for model, calls := range callsByModel {
-		if calls <= 0 {
-			return nil, fmt.Errorf("model %q has no durable call count", model)
-		}
-		// Providers may omit usage. The checkpoint still owns the call count;
-		// zero executor calibration counters do not publish reported-zero usage.
-		value := byModel[model]
-		usage := accounting.ModelUsage{
-			Model: model,
-			Tokens: accounting.Tokens{
-				InputTokens: value.InputTokens, OutputTokens: value.OutputTokens,
-				ReasoningTokens: value.ReasoningTokens, CacheReadTokens: value.CacheReadTokens,
-				CacheWriteTokens: value.CacheWriteTokens,
-			},
-			Cost:  value.Cost,
-			Calls: calls,
-		}
-		if err := usage.Validate(); err != nil {
-			return nil, fmt.Errorf("model %q: %w", model, err)
-		}
-		result[model] = usage
-	}
-	return result, nil
-}
-
-func sameTranscriptUsage(total accounting.ModelUsage, value accounting.Totals) bool {
-	cost := value.Cost
-	return total.InputTokens == value.InputTokens && total.OutputTokens == value.OutputTokens &&
-		total.ReasoningTokens == value.ReasoningTokens && total.CacheReadTokens == value.CacheReadTokens &&
-		total.CacheWriteTokens == value.CacheWriteTokens && total.Cost.Equal(cost)
 }

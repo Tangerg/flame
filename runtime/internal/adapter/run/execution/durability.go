@@ -61,7 +61,7 @@ func (i *interactionSession) Append(ctx context.Context, batch scoperun.Batch) e
 	history.Entries = append(slices.Clip(history.Entries), entries...)
 	// Batch.Admit owns the Store's append decision. The runtime validates the
 	// transition; replaying the entire computation here duplicates that owner.
-	material, err := i.material.snapshot(history, &i.accounting)
+	material, err := i.material.snapshot(history)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func (i *interactionSession) Load(ctx context.Context, root scoperun.ProcessID) 
 		if err := json.Unmarshal(head.Payload, &stored, json.RejectUnknownMembers(true)); err != nil {
 			return scoperun.Log{}, false, err
 		}
-		if err := i.material.restore(stored.PreparedRequests, &i.accounting); err != nil {
+		if err := i.material.restore(stored.PreparedRequests); err != nil {
 			return scoperun.Log{}, false, err
 		}
 	}

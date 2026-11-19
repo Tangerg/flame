@@ -5,6 +5,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -14,18 +15,20 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// Prepared provider input is a Flame fact: contributed instructions and the
-// Session tail are deliberately absent from Scope's retained conversation. It
-// is persisted beside the log before the preparation Effect is acknowledged.
+// Flame persists the exact provider input and its estimate beside Scope's log.
+// Context calibration uses that estimate so unrelated calls cannot change the
+// token budget of this process's next request.
 type requestMaterial struct {
-	mu        sync.Mutex
-	byProcess map[scoperun.ProcessID]preparedRequestMaterial
+	mu           sync.Mutex
+	byProcess    map[scoperun.ProcessID]preparedRequestMaterial
+	calibrations map[scoperun.ProcessID]ModelContextTokenCalibration
 }
 
 type preparedRequestMaterial struct {
-	effectID scoperun.EffectID
-	sequence uint64
-	request  *corechat.Request
+	effectID        scoperun.EffectID
+	sequence        uint64
+	request         *corechat.Request
+	estimatedTokens int
 }
 
 type preparedRequestWire struct {
@@ -35,12 +38,18 @@ type preparedRequestWire struct {
 }
 
 func newRequestMaterial() requestMaterial {
-	return requestMaterial{byProcess: make(map[scoperun.ProcessID]preparedRequestMaterial)}
+	return requestMaterial{
+		byProcess:    make(map[scoperun.ProcessID]preparedRequestMaterial),
+		calibrations: make(map[scoperun.ProcessID]ModelContextTokenCalibration),
+	}
 }
 
-func (t *requestMaterial) prepare(source modelCallSource, request *corechat.Request) error {
+func (t *requestMaterial) prepare(source modelCallSource, request *corechat.Request, estimatedTokens int) error {
 	if !source.valid() || request == nil {
 		return errors.New("execution: prepare request material requires valid attribution")
+	}
+	if estimatedTokens < 0 {
+		return errors.New("execution: prepared request token estimate is negative")
 	}
 	request = request.Clone()
 	request.Messages = providerMessages(request.Messages)
@@ -49,32 +58,73 @@ func (t *requestMaterial) prepare(source modelCallSource, request *corechat.Requ
 	if prior, exists := t.byProcess[source.process]; exists {
 		left, leftErr := json.Marshal(prior.request, json.Deterministic(true))
 		right, rightErr := json.Marshal(request, json.Deterministic(true))
-		if prior.effectID != source.effect || prior.sequence != source.sequence || leftErr != nil || rightErr != nil || !bytes.Equal(left, right) {
+		if prior.effectID != source.effect || prior.sequence != source.sequence || prior.estimatedTokens != estimatedTokens || leftErr != nil || rightErr != nil || !bytes.Equal(left, right) {
 			return fmt.Errorf("execution: Process %s already has different prepared request material", source.process)
 		}
 		return nil
 	}
-	t.byProcess[source.process] = preparedRequestMaterial{effectID: source.effect, sequence: source.sequence, request: request}
+	t.byProcess[source.process] = preparedRequestMaterial{
+		effectID: source.effect, sequence: source.sequence, request: request, estimatedTokens: estimatedTokens,
+	}
 	return nil
 }
 
 // Reading never retires a request. A crash after dispatch can leave the model
 // effect Unknown, and explicit replay still needs the original prepared input.
-func (t *requestMaterial) take(source modelCallSource) (preparedRequestMaterial, error) {
+func (t *requestMaterial) providerRequest(source modelCallSource) (*corechat.Request, error) {
 	if !source.valid() {
-		return preparedRequestMaterial{}, errors.New("execution: model request requires valid attribution")
+		return nil, errors.New("execution: model request requires valid attribution")
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	prepared, found := t.byProcess[source.process]
 	if !found || prepared.sequence != source.sequence {
-		return preparedRequestMaterial{}, fmt.Errorf("execution: model call %d of Process %s has no prepared input", source.sequence, source.process)
+		return nil, fmt.Errorf("execution: model call %d of Process %s has no prepared input", source.sequence, source.process)
 	}
-	prepared.request = prepared.request.Clone()
-	return prepared, nil
+	return prepared.request.Clone(), nil
 }
 
-func (t *requestMaterial) snapshot(history scoperun.Log, accounting *interactionAccounting) ([]preparedRequestWire, error) {
+func (t *requestMaterial) observeInput(source modelCallSource, reportedTokens int64) error {
+	if reportedTokens <= 0 {
+		return nil
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	prepared, found := t.byProcess[source.process]
+	if !found || prepared.sequence != source.sequence {
+		return errors.New("execution: reported model input has no matching prepared request")
+	}
+	if prepared.estimatedTokens == 0 {
+		return nil
+	}
+	calibration, err := NewModelContextTokenCalibration(reportedTokens, prepared.estimatedTokens)
+	if err != nil {
+		return err
+	}
+	t.calibrations[source.process] = calibration
+	return nil
+}
+
+func (t *requestMaterial) calibration(process scoperun.ProcessID) ModelContextTokenCalibration {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.calibrations[process]
+}
+
+func (t *requestMaterial) checkpointCalibrations() map[scoperun.ProcessID]ModelContextTokenCalibration {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return maps.Clone(t.calibrations)
+}
+
+func (t *requestMaterial) restoreCalibrations(values map[scoperun.ProcessID]ModelContextTokenCalibration) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	clear(t.calibrations)
+	maps.Copy(t.calibrations, values)
+}
+
+func (t *requestMaterial) snapshot(history scoperun.Log) ([]preparedRequestWire, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	retired, err := settledPreparations(history, t.byProcess)
@@ -86,12 +136,9 @@ func (t *requestMaterial) snapshot(history scoperun.Log, accounting *interaction
 		if _, complete := retired[prepared.effectID]; complete {
 			continue
 		}
-		accounting.mu.Lock()
-		calibration := accounting.preparedContextByProcess[process]
-		accounting.mu.Unlock()
 		result = append(result, preparedRequestWire{
 			Reference: preparedModelReference{Process: process, Effect: prepared.effectID, Sequence: prepared.sequence},
-			Request:   prepared.request.Clone(), EstimatedTokens: calibration.estimated,
+			Request:   prepared.request.Clone(), EstimatedTokens: prepared.estimatedTokens,
 		})
 	}
 	slices.SortFunc(result, func(left, right preparedRequestWire) int {
@@ -115,9 +162,8 @@ func (t *requestMaterial) acknowledge(history scoperun.Log) error {
 	return nil
 }
 
-func (t *requestMaterial) restore(records []preparedRequestWire, accounting *interactionAccounting) error {
+func (t *requestMaterial) restore(records []preparedRequestWire) error {
 	prepared := make(map[scoperun.ProcessID]preparedRequestMaterial, len(records))
-	calibration := make(map[scoperun.ProcessID]preparedModelContext, len(records))
 	for _, record := range records {
 		ref := record.Reference
 		if !ref.valid() || record.Request == nil || record.Request.Validate() != nil || record.EstimatedTokens < 0 {
@@ -126,17 +172,13 @@ func (t *requestMaterial) restore(records []preparedRequestWire, accounting *int
 		if _, exists := prepared[ref.Process]; exists {
 			return errors.New("execution: persisted provider request repeats one Process")
 		}
-		prepared[ref.Process] = preparedRequestMaterial{effectID: ref.Effect, sequence: ref.Sequence, request: record.Request.Clone()}
-		if record.EstimatedTokens > 0 {
-			calibration[ref.Process] = preparedModelContext{effectID: ref.Effect, sequence: ref.Sequence, estimated: record.EstimatedTokens}
+		prepared[ref.Process] = preparedRequestMaterial{
+			effectID: ref.Effect, sequence: ref.Sequence, request: record.Request.Clone(), estimatedTokens: record.EstimatedTokens,
 		}
 	}
 	t.mu.Lock()
 	t.byProcess = prepared
 	t.mu.Unlock()
-	accounting.mu.Lock()
-	accounting.preparedContextByProcess = calibration
-	accounting.mu.Unlock()
 	return nil
 }
 
