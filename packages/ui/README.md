@@ -321,6 +321,7 @@ These components own presentation only and do not query or advance product facts
 as the transcript's code and diagram artifacts. Its named code viewport is the
 bounded keyboard scroll region. An optional `caption` keeps a captured source's
 identity visible in its header without changing the `language` used for highlighting.
+An optional `sourceBodyRef` exposes that same scroll region for local reading continuity.
 `CodeBody` owns that stable literal source region,
 its code typography, shared wrap preference and host-supplied highlighting. It
 reserves a transparent 2 px edge outside the content clip, so scrolled glyphs

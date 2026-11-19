@@ -272,12 +272,14 @@ export function CodeBlock({
   caption,
   language,
   labels,
+  sourceBodyRef,
 }: {
   children: string;
   label: string;
   caption?: string;
   language?: string;
   labels?: CodeActionLabels;
+  sourceBodyRef?: Ref<HTMLDivElement>;
 }) {
   return (
     <CodeFrame bounded data-slot="code-block" data-focus-unit="">
@@ -286,7 +288,7 @@ export function CodeBlock({
         code={children}
         labels={labels}
       />
-      <CodeBody label={label} language={language || "text"}>
+      <CodeBody ref={sourceBodyRef} label={label} language={language || "text"}>
         {children}
       </CodeBody>
     </CodeFrame>

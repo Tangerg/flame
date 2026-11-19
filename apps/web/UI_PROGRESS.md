@@ -41986,6 +41986,53 @@ Three native launches and two loopback previews exit. Cleanup removes three
 registrations, six private Library directories, ten checkout outputs and the
 scratch tree. Continue from a newly observed task in the conversation or Dock.
 
+### Restore the reading position of filtered trajectory evidence (2026-11-20)
+
+On `3dfdd8d7d`, clearing a zero-match filter restores the open User message
+and Recorded evidence disclosures. The same JSON reader moved from its first
+column to 138 px and returned at 0 px in a 236 px viewport. Finding the
+same text again required another horizontal scan.
+
+Each expanded record retains its source reader's offsets when it leaves
+the result list. The shared `CodeBlock` exposes its existing scroll region
+to Trajectory, which applies the saved offsets when the same accepted
+record returns. An intentional evidence close discards its position, and
+an outer close removes its entry. Restoring the code region does not move
+keyboard focus. The browser clamps both offsets to the current scrollable
+range. [CSSOM View](https://www.w3.org/TR/cssom-view-1/#scroll-an-element)
+[WCAG focus order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html)
+
+- ZH/dark/18 px/`#3B82F6` in Wails at 1121 × 950, scale 1 and a
+  320 px Dock. On the candidate, Tab returns to the same `item_prompt`
+  literal JSON at 138 px in a 236 px viewport with 894 px of content.
+  Clear all filters leaves focus in the search field. Explicitly closing
+  and reopening Recorded evidence returns to the first column.
+- In the same window, the primary JSON for `run_root` keeps 46 px
+  inline and 146 px vertically after keyboard panning, native wheel
+  scrolling and a filter round trip. The reader measures 236 × 444 px
+  against 387 × 590 px of content. Its literal JSON remains the same,
+  and the composer draft continues as `811624`.
+- EN/light/14 px/Flame Orange at Actual Size uses the canonical Lab.
+  Keyboard filtering and clear keep the search field focused and reopen
+  the same User message and its Recorded evidence. The explicit evidence
+  close remains available. The draft continues as `812563`.
+
+Scoped formatting, shared UI typecheck and packed consumer test, 44
+plugin script checks, 14 plugin source tests, 20 plugin catalogs across
+eight locales, 137 Web tests, 940 Web keys across eight locales, bootstrap,
+26 bundle contracts, production module linkage, native build and tests,
+and five canonical Lab documents pass. Six existing plugin source tests
+remain skipped. The exact regenerated Trajectory ESM survives the native
+build. The private Chinese fixture exposes passive scroll measurements
+for the canonical capture. Clipboard, live Runtime, different-page
+navigation, mixed-direction layouts, VoiceOver and other platforms are
+outside this qualification.
+
+Three native launches and three loopback preview launches exit. Cleanup
+removes three registrations, six private Library directories, ten checkout
+outputs and the scratch tree. Continue from the next observed reading
+or navigation issue in the workspace.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

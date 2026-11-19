@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import type { ReactNode, Ref } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode, Ref, RefObject } from "react";
 import type { Translate } from "@flame/component-sdk";
 import { Activity, Cpu, Terminal, FileText, Server } from "@flame/icons/react";
 import type { Page, TrajectoryEntry } from "@flame/runtime-client/wire";
@@ -250,17 +250,50 @@ function RecordedImage({
   );
 }
 
+interface EvidenceScrollPosition {
+  row: TrajectoryEntry;
+  left: number;
+  top: number;
+}
+
+interface ExpandedRecord {
+  evidenceOpen: boolean;
+  sourcePosition: RefObject<EvidenceScrollPosition | null>;
+}
+
 function Observation({
   row: recorded,
   t,
-  evidenceOpen,
+  expansion,
   onEvidenceOpenChange,
 }: {
   row: TrajectoryEntry;
   t: Translate;
-  evidenceOpen: boolean;
+  expansion?: ExpandedRecord;
   onEvidenceOpenChange: (open: boolean) => void;
 }) {
+  const sourcePosition = expansion?.sourcePosition;
+  const sourceBodyRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (!node || !sourcePosition) return;
+      const saved = sourcePosition.current;
+      if (saved?.row === recorded)
+        node.scrollTo({
+          left: saved.left,
+          top: saved.top,
+          behavior: "instant",
+        });
+      return () => {
+        if (node.isConnected && node.clientWidth && node.clientHeight)
+          sourcePosition.current = {
+            row: recorded,
+            left: node.scrollLeft,
+            top: node.scrollTop,
+          };
+      };
+    },
+    [recorded, sourcePosition],
+  );
   const row = evidence(recorded);
   const body: ReactNode[] = [];
   if (row.type === "item") {
@@ -371,6 +404,11 @@ function Observation({
     <CodeBlock
       label={t("evidence.recorded")}
       language="json"
+      sourceBodyRef={
+        sourcePosition && (!body.length || expansion?.evidenceOpen)
+          ? sourceBodyRef
+          : undefined
+      }
       labels={{
         copy: t("code.copy"),
         wrap: t("code.wrap"),
@@ -389,7 +427,7 @@ function Observation({
       {body.length ? (
         <Disclosure
           title={t("evidence.recorded")}
-          open={evidenceOpen}
+          open={expansion?.evidenceOpen ?? false}
           onOpenChange={onEvidenceOpenChange}
         >
           {raw}
@@ -425,8 +463,7 @@ export function TrajectoryReport({
   locale: string;
 }) {
   const rows = page.data;
-  // Closing an outer record ends its own evidence disclosure.
-  const [expanded, setExpanded] = useState<ReadonlyMap<string, boolean>>(
+  const [expanded, setExpanded] = useState<ReadonlyMap<string, ExpandedRecord>>(
     () => new Map(),
   );
   useEffect(() => {
@@ -442,16 +479,24 @@ export function TrajectoryReport({
     setExpanded((current) => {
       if (current.has(key) === open) return current;
       const next = new Map(current);
-      if (open) next.set(key, false);
+      if (open)
+        next.set(key, {
+          evidenceOpen: false,
+          sourcePosition: { current: null },
+        });
       else next.delete(key);
       return next;
     });
   }
   function setEvidenceOpen(key: string, open: boolean) {
     setExpanded((current) => {
-      const evidence = current.get(key);
-      if (evidence === undefined || evidence === open) return current;
-      return new Map(current).set(key, open);
+      const expansion = current.get(key);
+      if (!expansion || expansion.evidenceOpen === open) return current;
+      // A closing panel can detach after the next evidence reader has opened.
+      return new Map(current).set(key, {
+        evidenceOpen: open,
+        sourcePosition: { current: null },
+      });
     });
   }
 
@@ -512,7 +557,7 @@ export function TrajectoryReport({
       <RecordGroup variant="list" id="records" aria-label={t("records.label")}>
         {matching.map((row) => {
           const key = recordKey(row);
-          const evidenceOpen = expanded.get(key);
+          const expansion = expanded.get(key);
           return (
             <Disclosure
               variant="row"
@@ -522,7 +567,7 @@ export function TrajectoryReport({
                 row.type === "item" ? row.item.type : row.type
               }
               title={title(row, t, clock)}
-              open={evidenceOpen !== undefined}
+              open={expansion !== undefined}
               onOpenChange={(open) => setRecordOpen(key, open)}
             >
               <Metadata>
@@ -533,7 +578,7 @@ export function TrajectoryReport({
               <Observation
                 row={row}
                 t={t}
-                evidenceOpen={evidenceOpen ?? false}
+                expansion={expansion}
                 onEvidenceOpenChange={(open) => setEvidenceOpen(key, open)}
               />
             </Disclosure>

@@ -100,7 +100,9 @@ the initiating action still owns it. Failed reads retain the accepted page and
 leave their action available for retry; later focus choices remain authoritative.
 Filters and counts apply to that page, without implying a total page count.
 A filtered record restores its expansion and its Recorded evidence state when
-shown again. Closing the record resets its evidence disclosure. Page acceptance
+shown again. Its raw JSON reader also restores both scroll offsets for the same
+accepted record. Closing the evidence or its enclosing record resets the reader
+position. Closing the record also resets its evidence disclosure. Page acceptance
 keeps expansion only for records still present.
 Display-language changes preserve accepted and pending reads, their captured
 scope, filters and expanded records. Actual Runtime, tracking function,
