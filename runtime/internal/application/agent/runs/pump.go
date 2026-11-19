@@ -327,11 +327,9 @@ func (s *segmentPump) projectFact(route *executorRoute, executionFact ExecutionF
 	}
 	var publication reductionPublication
 	if terminalFact {
-		if end, ok := executionFact.(SegmentEnded); ok && (len(end.unresolvedEffects) > 0 || end.Ending.Outcome() == run.OutcomeLost) {
-			publication, err = s.publishTerminal(route, reductions)
-		} else {
-			publication, err = s.publisher.publishTerminalAtomically(s.ownerCtx, route, reductions)
-		}
+		end, ended := executionFact.(SegmentEnded)
+		retryUnresolved := ended && (len(end.unresolvedEffects) > 0 || end.Ending.Outcome() == run.OutcomeLost)
+		publication, err = s.publisher.publishTerminalAtomically(s.ownerCtx, route, reductions, retryUnresolved)
 	} else {
 		publication, err = s.publisher.publish(s.ownerCtx, route, reductions)
 	}
@@ -493,7 +491,7 @@ func (s *segmentPump) synthesizeRoute(ctx context.Context, route *executorRoute)
 		s.fail(err)
 		return false
 	}
-	publication, err := s.publisher.publishTerminalAtomically(ctx, route, reductions)
+	publication, err := s.publisher.publishTerminalAtomically(ctx, route, reductions, false)
 	if err != nil {
 		s.fail(err)
 		return false

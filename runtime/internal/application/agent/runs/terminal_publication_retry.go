@@ -12,10 +12,8 @@ const (
 	terminalCommitRetryMaximum = 5 * time.Second
 )
 
-// terminalCommitRetry owns the retry cadence for the one terminal write
-// that may not be abandoned: an external Effect whose durable outcome is
-// unknown. The Run remains blocked until commit or owner cancellation, while a
-// persistent store outage cannot cause a fixed-rate write storm.
+// The same terminal write must survive temporary failure when only it can
+// preserve external uncertainty or the original cancellation acknowledgement.
 type terminalCommitRetry struct {
 	next time.Duration
 }
@@ -45,20 +43,20 @@ func (r *terminalCommitRetry) advance() time.Duration {
 	return r.next
 }
 
-func (s *segmentPump) publishTerminal(route *executorRoute, batch reductionBatch) (reductionPublication, error) {
+func (t treePublisher) commitTerminal(ctx context.Context, commit EventCommit, retryOnFailure bool) error {
 	retry := terminalCommitRetry{}
 	reported := false
 	for {
-		publication, err := s.publisher.publishTerminalAtomically(s.ownerCtx, route, batch)
-		if err == nil {
-			return publication, nil
+		err := t.publications.events.CommitEvent(ctx, commit)
+		if err == nil || !retryOnFailure {
+			return err
 		}
 		if !reported {
-			slog.ErrorContext(s.ownerCtx, "runs: terminal commit failed, retrying until it commits", "session.id", s.spec.SessionID, "run.id", route.runID, "error", err)
+			slog.ErrorContext(ctx, "runs: terminal commit failed, retrying until it commits", "session.id", commit.SessionID, "run.id", commit.RunID, "error", err)
 			reported = true
 		}
-		if waitErr := retry.wait(s.ownerCtx); waitErr != nil {
-			return reductionPublication{}, errors.Join(err, waitErr)
+		if waitErr := retry.wait(ctx); waitErr != nil {
+			return errors.Join(err, waitErr)
 		}
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -186,6 +187,7 @@ func (t treePublisher) publishTerminalAtomically(
 	ctx context.Context,
 	route *executorRoute,
 	batch reductionBatch,
+	retryUnresolved bool,
 ) (reductionPublication, error) {
 	if route == nil {
 		return reductionPublication{}, errors.New("runs: publish atomic terminal without an executor route")
@@ -203,10 +205,16 @@ func (t treePublisher) publishTerminalAtomically(
 	if route.member.ParentID == "" {
 		combined.ObsoleteCheckpointRootID = route.member.MemberID
 	}
+	if record := t.owner.rootCancellationReceipt(*combined.Run); record != nil {
+		ref := t.rootSpec.executorRef()
+		combined.RecordRootCancellation = func(ctx context.Context, terminal run.Run) error {
+			return record(ctx, ref, terminal)
+		}
+	}
 	if err := combined.Validate(); err != nil {
 		return reductionPublication{}, fmt.Errorf("runs: validate atomic terminal: %w", err)
 	}
-	if err := t.publications.events.CommitEvent(ctx, combined); err != nil {
+	if err := t.commitTerminal(ctx, combined, retryUnresolved || combined.RecordRootCancellation != nil); err != nil {
 		return reductionPublication{}, fmt.Errorf("runs: commit atomic terminal: %w", err)
 	}
 	// The database owns one indivisible write-set, while the live tree still

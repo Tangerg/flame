@@ -109,20 +109,28 @@ func (c *Cancellations) cancelClaimedParkedRun(ctx context.Context, cmd CancelCo
 	if err != nil {
 		return CancelResult{}, err
 	}
-	if err := c.SettleParkedCancellation(ctx, ref); err != nil {
+	if err := c.SettleRootCancellation(ctx, ref, cmd.RunID); err != nil {
 		return CancelResult{}, err
 	}
 	return rootCancelResult(terminal)
 }
 
-func (c *Cancellations) SettleParkedCancellation(ctx context.Context, ref ExecutorRef) error {
-	if ref.SessionID == "" || ref.ExecutorID == "" {
+func (c *Cancellations) SettleRootCancellation(ctx context.Context, ref ExecutorRef, runID string) error {
+	if ref.SessionID == "" || ref.ExecutorID == "" || runID == "" {
 		return ErrInvalidExecutorRef
 	}
 	cleanupCtx, cancel := runCleanupContext(ctx)
 	defer cancel()
+	if live, found := c.segments.registry.Get(runID); found {
+		if live.record.ExecutorID != ref.ExecutorID {
+			return ErrInvalidExecutorRef
+		}
+		if err := live.owner.wait(cleanupCtx); err != nil {
+			return &CancellationSettlementError{Cause: err}
+		}
+	}
 	if err := c.releases.Release(cleanupCtx, ref); err != nil && !errors.Is(err, ErrExecutorNotLive) {
-		return &CancellationSettlementError{Cause: fmt.Errorf("release parked executor %q: %w", ref.ExecutorID, err)}
+		return &CancellationSettlementError{Cause: fmt.Errorf("release canceled executor %q: %w", ref.ExecutorID, err)}
 	}
 	return nil
 }

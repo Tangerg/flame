@@ -157,7 +157,7 @@ func (c *Cancellations) Cancel(ctx context.Context, cmd CancelCommand) (CancelRe
 	defer cancel()
 	interruptCommitted, requestErr := entry.owner.requestCancel(
 		cleanupCtx,
-		cmd.Reason,
+		rootCancellation{reason: cmd.Reason, record: cmd.Completion.RecordActiveRoot},
 		func(requestCtx context.Context) error {
 			return c.rootCancellation.RequestRootCancellation(
 				requestCtx, plan.executor, cmd.Reason,

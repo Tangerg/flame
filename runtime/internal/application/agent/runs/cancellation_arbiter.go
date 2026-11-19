@@ -267,7 +267,7 @@ type interruptCommit struct {
 // interrupt can own this tree.
 func (r *runTreeOwner) requestCancel(
 	ctx context.Context,
-	reason string,
+	intent rootCancellation,
 	requestExecutor func(context.Context) error,
 ) (interruptCommitted bool, err error) {
 	for {
@@ -306,7 +306,7 @@ func (r *runTreeOwner) requestCancel(
 				activation.err,
 			)
 		}
-		r.rootCancel = &rootCancellation{reason: reason}
+		r.rootCancel = &intent
 		inflight := r.interrupt.active
 		r.mu.Unlock()
 		// Before activation, the Run owner can suppress every executor side effect.
@@ -336,6 +336,20 @@ func (r *runTreeOwner) requestCancel(
 		r.mu.Unlock()
 		return committed, nil
 	}
+}
+
+func (r *runTreeOwner) rootCancellationReceipt(value rundomain.Run) RootCancellationReceipt {
+	ending, _ := value.Ending()
+	canceled, ok := ending.(rundomain.Canceled)
+	if !ok || !value.Lineage().IsRoot() {
+		return nil
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.rootCancel == nil || r.rootCancel.reason != canceled.Detail {
+		return nil
+	}
+	return r.rootCancel.record
 }
 
 // abortRootCancellation withdraws the root cancellation its requester claimed.

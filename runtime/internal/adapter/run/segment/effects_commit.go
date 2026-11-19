@@ -585,6 +585,11 @@ func (e *Effects) applyState(ctx context.Context, commit runs.EventCommit) error
 		if err := e.runState.TerminalizeEvent(ctx, run, commit.SegmentID, commit.CommitID); err != nil {
 			return err
 		}
+		if commit.RecordRootCancellation != nil {
+			if err := commit.RecordRootCancellation(ctx, run); err != nil {
+				return fmt.Errorf("segment: record confirmed root cancellation: %w", err)
+			}
+		}
 		if run.Lineage().IsRoot() {
 			return e.acceptedContinuations.Delete(ctx, run.ID())
 		}

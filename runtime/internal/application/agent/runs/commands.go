@@ -288,7 +288,10 @@ type CancellationCompletion struct {
 	Reserve            func(context.Context) error
 	CommitParked       ParkedCancellationCompletion
 	RecordWaitingChild WaitingSubtreeCancellationReceipt
+	RecordActiveRoot   RootCancellationReceipt
 }
+
+type RootCancellationReceipt func(context.Context, ExecutorRef, run.Run) error
 
 // ParkedCancellationCompletion joins the terminal Run write to the receipt's
 // retained executor reference before either can be observed as committed.

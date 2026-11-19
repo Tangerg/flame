@@ -1806,10 +1806,12 @@ Installed Schedule operations return the business owner's refusal through plugin
 
 A successful start commits the Run, first Segment, and opening user Item. Resume commits the accepted interrupt responses and the new Segment opening. Neither promises a provider call has completed. Cancel is a settlement barrier: success proves a canceled Run; a natural completion that wins the race returns `run_finished`. Failed cancellation settlement remains an internal failure even when the Run is already terminal; native callers retain the cleanup cause, and clients read the actual Run outcome without treating the failed command as successful cancellation. Steer admission is described above. A missing receipt is an unknown command outcome, not permission to repeat it with a new identity.
 
-Keyed cancellation of a parked root commits the exact terminal response and original
-executor reference with the Run and interrupt transition. The same key can finish
-teardown and publish that response after process loss. A cleanup failure preserves
-the committed settlement for another attempt by the original command.
+Keyed root cancellation commits the exact terminal response and original executor
+reference with the canceled Run. Canceling a parked root also consumes its open
+interrupt in that transaction. For a running root, a temporary receipt write
+failure leaves the same terminal transaction with the Segment owner. The same key
+can finish teardown and publish the original response after process loss or a
+cleanup failure.
 
 The TypeScript SDK's Start and Resume now return `RunOpeningResult`: the original
 acknowledgement is `result`, and `observation` is a closed `stream`, `snapshot`,

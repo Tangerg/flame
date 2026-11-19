@@ -29,15 +29,19 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 		return data, err
 	}
 	payload, err := e.idempotency.InvokeDeferred(ctx, key, fingerprint, func(complete *operation.DeferredCompletion) ([]byte, error) {
-		var stagedOutcome []byte
 		var storeErr error
+		var stagedSynchronously bool
 		encodeSettlement := func(ref runs.ExecutorRef, result runs.CancelResult) ([]byte, error) {
-			var err error
-			stagedOutcome, err = encodeAtomicResult(method, presentCancelResult(result))
+			outcome, err := encodeAtomicResult(method, presentCancelResult(result))
 			if err != nil {
 				return nil, err
 			}
-			return json.Marshal(cancellationSettlement{ExecutorID: ref.ExecutorID, Outcome: stagedOutcome})
+			return json.Marshal(cancellationSettlement{ExecutorID: ref.ExecutorID, Outcome: outcome})
+		}
+		stage := func(tx context.Context, outcome func(context.Context) ([]byte, error)) error {
+			storeErr = complete.Stage(tx, outcome)
+			stagedSynchronously = storeErr == nil
+			return storeErr
 		}
 		result, err := s.cancelRun(ctx, in, runs.CancellationCompletion{
 			Reserve: func(ctx context.Context) error {
@@ -45,48 +49,51 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 				return storeErr
 			},
 			CommitParked: func(ctx context.Context, ref runs.ExecutorRef, write func(context.Context) (run.Run, error)) error {
-				storeErr = complete.Stage(ctx, func(tx context.Context) ([]byte, error) {
+				return stage(ctx, func(tx context.Context) ([]byte, error) {
 					terminal, err := write(tx)
 					if err != nil {
 						return nil, err
 					}
 					return encodeSettlement(ref, runs.CancelResult{Run: terminal})
 				})
-				return storeErr
 			},
 			RecordWaitingChild: func(tx context.Context, ref runs.ExecutorRef, result runs.WaitingSubtreeCancellationResult) error {
-				storeErr = complete.Stage(tx, func(context.Context) ([]byte, error) {
+				return stage(tx, func(context.Context) ([]byte, error) {
 					return encodeSettlement(ref, runs.CancelResult{Run: result.TargetRun, RootRun: &result.RootRun})
 				})
-				return storeErr
+			},
+			RecordActiveRoot: func(tx context.Context, ref runs.ExecutorRef, terminal run.Run) error {
+				return complete.Stage(tx, func(context.Context) ([]byte, error) {
+					return encodeSettlement(ref, runs.CancelResult{Run: terminal})
+				})
 			},
 		})
+		_, settlementFailed := errors.AsType[*runs.CancellationSettlementError](err)
 		switch {
 		case storeErr != nil:
 			return nil, storeErr
-		case err != nil && len(stagedOutcome) != 0:
-			return nil, err
-		case errors.Is(err, protocol.ErrCapabilityNotNeg):
+		case err != nil && (stagedSynchronously || settlementFailed || errors.Is(err, protocol.ErrCapabilityNotNeg)):
 			return nil, err
 		case err != nil:
 			return encodeFailure(err)
-		case len(stagedOutcome) != 0:
-			return stagedOutcome, nil
 		default:
 			return encodeAtomicResult(method, presentCancelResult(result))
 		}
-	}, func(data []byte) ([]byte, error) {
+	}, func(data []byte, recoverPending bool) ([]byte, error) {
 		pending, response, err := decodeCancellationSettlement(method, in.RunID, data)
 		if err != nil {
 			return nil, err
 		}
+		if response.RootRun != nil && !s.requestCanUseFeature(ctx, protocol.FeatureChildRuns) {
+			return nil, wireCancellationError(runs.ErrChildRunNotAllowed)
+		}
+		if !recoverPending {
+			return pending.Outcome, nil
+		}
 		ref := runs.ExecutorRef{SessionID: response.Run.SessionID, ExecutorID: pending.ExecutorID}
 		if response.RootRun == nil {
-			err = s.runCancellations.SettleParkedCancellation(ctx, ref)
+			err = s.runCancellations.SettleRootCancellation(ctx, ref, response.Run.ID)
 		} else {
-			if !s.requestCanUseFeature(ctx, protocol.FeatureChildRuns) {
-				return nil, wireCancellationError(runs.ErrChildRunNotAllowed)
-			}
 			err = s.runCancellations.SettleAcceptedSubtreeCancellation(ctx, ref, response.RootRun.ID, response.Run.ID)
 		}
 		if err != nil {

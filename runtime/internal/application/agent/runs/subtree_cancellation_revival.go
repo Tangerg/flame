@@ -90,7 +90,7 @@ func (c *Cancellations) reviveAcceptedSubtreeCancellation(ctx context.Context, a
 	}
 	if root.State().IsTerminal() {
 		ref := ExecutorRef{SessionID: accepted.SessionID, ExecutorID: accepted.Pending.ExecutorID}
-		if err := c.SettleParkedCancellation(ctx, ref); err != nil {
+		if err := c.SettleRootCancellation(ctx, ref, root.ID()); err != nil {
 			return err
 		}
 		return c.acceptedSubtreeCancellations.DeleteSubtreeCancellation(ctx, accepted.RootRunID(), accepted.TargetRunID)

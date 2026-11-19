@@ -40,6 +40,7 @@ type runTreeOwner struct {
 // requested; the owner holds none until then.
 type rootCancellation struct {
 	reason string
+	record RootCancellationReceipt
 }
 
 // segmentActivation serializes the post-commit executor activation with root

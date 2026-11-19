@@ -1,6 +1,7 @@
 package runs
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -211,8 +212,9 @@ type EventCommit struct {
 	// Progress is the running Run as the domain advanced it at a model-response
 	// boundary. Persistence writes it fenced to its active Segment and does not
 	// re-derive the advance.
-	Progress *run.Run
-	Run      *run.Run
+	Progress               *run.Run
+	Run                    *run.Run
+	RecordRootCancellation func(context.Context, run.Run) error
 	// ObsoleteCheckpointRootID identifies the executor checkpoint aggregate the
 	// root Run terminal makes obsolete. Child terminal commits leave it empty.
 	ObsoleteCheckpointRootID string
@@ -466,6 +468,10 @@ func validateToolInvocationItem(invocation ToolInvocationCommit, item transcript
 }
 
 func (e EventCommit) validateLifecycle() error {
+	if e.RecordRootCancellation != nil && (e.State != StateTerminalize || e.Run == nil ||
+		!e.Run.Lineage().IsRoot() || !e.Run.Canceled()) {
+		return errors.New("runs: a root cancellation receipt requires its canceled terminal Run")
+	}
 	switch e.State {
 	case StateUnchanged:
 		if e.Run != nil || e.ObsoleteCheckpointRootID != "" {
@@ -512,6 +518,7 @@ func (e EventCommit) isEmpty() bool {
 		len(e.ToolInvocations) == 0 && e.ResultPublication == nil &&
 		e.Progress == nil &&
 		e.Run == nil &&
+		e.RecordRootCancellation == nil &&
 		e.ObsoleteCheckpointRootID == "" &&
 		e.State == StateUnchanged
 }

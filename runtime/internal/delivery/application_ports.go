@@ -97,7 +97,7 @@ type runOpeningUseCases interface {
 
 type runCancellationUseCases interface {
 	Cancel(ctx context.Context, cmd runs.CancelCommand) (runs.CancelResult, error)
-	SettleParkedCancellation(ctx context.Context, ref runs.ExecutorRef) error
+	SettleRootCancellation(ctx context.Context, ref runs.ExecutorRef, runID string) error
 	SettleAcceptedSubtreeCancellation(ctx context.Context, ref runs.ExecutorRef, rootRunID, targetRunID string) error
 }
 

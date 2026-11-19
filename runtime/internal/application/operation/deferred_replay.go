@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 )
 
 // DeferredCompletion binds a committed write and its unfinished settlement to
@@ -11,31 +12,25 @@ import (
 type DeferredCompletion struct {
 	store    ReplayStore
 	record   ReplayRecord
-	reserved bool
+	reserved atomic.Bool
 }
 
 func (c *DeferredCompletion) Reserve(ctx context.Context) error {
-	if c.reserved {
-		return errors.New("idempotency: settlement already reserved")
-	}
 	if err := c.claim(ctx); err != nil {
 		return err
 	}
-	c.reserved = true
+	c.reserved.Store(true)
 	return nil
 }
 
 func (c *DeferredCompletion) Stage(ctx context.Context, write func(context.Context) ([]byte, error)) error {
-	if len(c.record.Settlement) != 0 {
-		return errors.New("idempotency: settlement already staged")
-	}
-	staged := c.record
-	err := c.store.Transact(ctx, func(tx context.Context) error {
-		if !c.reserved {
+	return c.store.Transact(ctx, func(tx context.Context) error {
+		if !c.reserved.Load() {
 			if err := c.claim(tx); err != nil {
 				return err
 			}
 		}
+		staged := c.record
 		var err error
 		staged.Settlement, err = write(tx)
 		if err != nil {
@@ -43,12 +38,6 @@ func (c *DeferredCompletion) Stage(ctx context.Context, write func(context.Conte
 		}
 		return c.store.StageSettlement(tx, staged)
 	})
-	if err != nil {
-		return err
-	}
-	c.record = staged
-	c.reserved = true
-	return nil
 }
 
 func (c *DeferredCompletion) claim(ctx context.Context) error {
@@ -69,7 +58,7 @@ func (r *Replay) InvokeDeferred(
 	ctx context.Context,
 	key, fingerprint string,
 	execute func(*DeferredCompletion) ([]byte, error),
-	settle func([]byte) ([]byte, error),
+	settle func(data []byte, recoverPending bool) ([]byte, error),
 ) ([]byte, error) {
 	release, err := r.inFlight.Acquire(ctx, key)
 	if err != nil {
@@ -87,7 +76,7 @@ func (r *Replay) InvokeDeferred(
 		if len(previous.Settlement) == 0 {
 			return settledPayload(previous)
 		}
-		previous.Payload, err = settle(previous.Settlement)
+		previous.Payload, err = settle(previous.Settlement, true)
 		if err != nil {
 			return nil, err
 		}
@@ -111,10 +100,27 @@ func (r *Replay) InvokeDeferred(
 	if err != nil {
 		return nil, err
 	}
-	if !completion.reserved {
+	// The business transaction can run on the Run owner and can roll back
+	// after staging. Only the committed record may advance acknowledgement.
+	readCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), replayWriteTimeout)
+	defer cancel()
+	committed, found, err := r.store.Lookup(readCtx, key, fingerprint)
+	if err != nil {
+		return nil, settlementError(err)
+	}
+	if !found || (len(committed.Settlement) == 0 && !completion.reserved.Load()) {
 		outcome, _, err := r.commitOutcome(ctx, key, fingerprint, func(context.Context) ([]byte, error) { return payload, nil })
 		return outcome, err
 	}
-	completion.record.Payload = payload
-	return r.finishRecord(ctx, completion.record)
+	if len(committed.Payload) != 0 {
+		return settledPayload(committed)
+	}
+	if len(committed.Settlement) != 0 {
+		payload, err = settle(committed.Settlement, false)
+		if err != nil {
+			return nil, err
+		}
+	}
+	committed.Payload = payload
+	return r.finishRecord(ctx, committed)
 }
