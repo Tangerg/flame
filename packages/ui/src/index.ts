@@ -130,6 +130,7 @@ export {
   readerSelectionLines,
   readerSourceProps,
   scrollReaderWithForeignSelection,
+  scrollReaderWithLocalArrow,
   selectAllInReader,
 } from "./reader-selection";
 export {

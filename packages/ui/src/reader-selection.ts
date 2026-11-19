@@ -99,16 +99,13 @@ function nearestVerticalScrollport(viewport: HTMLElement): HTMLElement | null {
   return null;
 }
 
-export function scrollReaderWithForeignSelection(
+function readerArrowAxis(
   event: KeyboardEvent<HTMLElement>,
-  axes: "vertical" | "both",
-  verticalScroll: "local" | "nearest" = "local",
-): void {
+): "top" | "left" | null {
   const { currentTarget: viewport, key } = event;
   const vertical = key === "ArrowUp" || key === "ArrowDown";
-  const horizontal =
-    axes === "both" && (key === "ArrowLeft" || key === "ArrowRight");
   if (
+    (!vertical && key !== "ArrowLeft" && key !== "ArrowRight") ||
     event.defaultPrevented ||
     !event.cancelable ||
     event.target !== viewport ||
@@ -117,10 +114,51 @@ export function scrollReaderWithForeignSelection(
     event.metaKey ||
     event.shiftKey ||
     isImeKey(event.nativeEvent) ||
-    (!vertical && !horizontal) ||
     viewport.ownerDocument.activeElement !== viewport
   )
-    return;
+    return null;
+  return vertical ? "top" : "left";
+}
+
+function scrollReaderByArrow(
+  event: KeyboardEvent<HTMLElement>,
+  scroller: HTMLElement | null,
+  axis: "top" | "left",
+): void {
+  event.preventDefault();
+  const delta =
+    event.key === "ArrowUp" || event.key === "ArrowLeft"
+      ? -WEBKIT_LINE_SCROLL
+      : WEBKIT_LINE_SCROLL;
+  // A relative scroll preserves the step while the reader measures content.
+  scroller?.scrollBy({ [axis]: delta, behavior: "instant" });
+}
+
+export function scrollReaderWithLocalArrow(
+  event: KeyboardEvent<HTMLElement>,
+): void {
+  const axis = readerArrowAxis(event);
+  if (!axis) return;
+  const viewport = event.currentTarget;
+  if (viewport.ownerDocument.getSelection()?.isCollapsed === false) return;
+
+  const { clientHeight, clientWidth, scrollHeight, scrollWidth } = viewport;
+  const verticalOverflow = clientHeight > 0 && scrollHeight > clientHeight;
+  const horizontalOverflow = clientWidth > 0 && scrollWidth > clientWidth;
+  // A horizontal key can otherwise jump to a distant WebKit caret in a tall reader.
+  if (verticalOverflow || (axis === "left" && horizontalOverflow)) {
+    scrollReaderByArrow(event, viewport, axis);
+  }
+}
+
+export function scrollReaderWithForeignSelection(
+  event: KeyboardEvent<HTMLElement>,
+  axes: "vertical" | "both",
+  verticalScroll: "local" | "nearest" = "local",
+): void {
+  const axis = readerArrowAxis(event);
+  if (!axis || (axis === "left" && axes === "vertical")) return;
+  const viewport = event.currentTarget;
   const selection = viewport.ownerDocument.getSelection();
   if (selection?.rangeCount !== 1) return;
   const { startContainer, endContainer } = selection.getRangeAt(0);
@@ -134,20 +172,11 @@ export function scrollReaderWithForeignSelection(
     return;
 
   // WebKit can send the default arrow action to the editor retaining the selection.
-  event.preventDefault();
-  const delta =
-    key === "ArrowUp" || key === "ArrowLeft"
-      ? -WEBKIT_LINE_SCROLL
-      : WEBKIT_LINE_SCROLL;
   const scroller =
-    vertical && verticalScroll === "nearest"
+    axis === "top" && verticalScroll === "nearest"
       ? nearestVerticalScrollport(viewport)
       : viewport;
-  // A relative scroll preserves the step while the reader measures content.
-  scroller?.scrollBy({
-    [vertical ? "top" : "left"]: delta,
-    behavior: "instant",
-  });
+  scrollReaderByArrow(event, scroller, axis);
 }
 
 function selectedRange(content: Element): Range | null {

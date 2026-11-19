@@ -3,9 +3,14 @@ import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "
 import { FileReferencePresentationContext } from "@/features/workspace/public/FileRefLink";
 import { copyRichText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n/index";
-import { useContentVisible, useCopy } from "@flame/ui";
-import { LightboxDialog } from "@flame/ui";
-import { IconButton } from "@flame/ui";
+import {
+  IconButton,
+  LightboxDialog,
+  scrollReaderWithForeignSelection,
+  scrollReaderWithLocalArrow,
+  useContentVisible,
+  useCopy,
+} from "@flame/ui";
 import { useScrollReach } from "@/ui/atoms/use-scroll-reach";
 interface Props {
   markdownSource: string;
@@ -123,6 +128,11 @@ export function MarkdownTable({ markdownSource, children }: Props) {
         role={reachable ? "region" : undefined}
         aria-label={reachable ? t("message.table.content") : undefined}
         data-focus-inset={reachable ? "" : undefined}
+        onKeyDown={(event) => {
+          scrollReaderWithForeignSelection(event, "both", "nearest");
+          // WebKit can move the document caret and jump to a different table row.
+          scrollReaderWithLocalArrow(event);
+        }}
       >
         <table ref={tableRef} dir="auto" data-slot="prose-table">
           {children}

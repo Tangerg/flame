@@ -39813,6 +39813,77 @@ The conversation Markdown table has its own overflow-gated
 keyboard stop. The next check will exercise that stop with a
 retained Composer selection in the captured table reply.
 
+### Arrow reading in inline conversation tables (2026-11-19)
+
+Signed Wails at `edcb2deff` keeps the inline 80-row table at y0
+through 22 Down presses with a clear editing range. WebKit
+moves the document caret. With a retained backward Composer
+selection at 4 to 2, Right returns focus to the Composer and
+collapses the selection at 4. Down from the same range returns
+at 8 and advances the draft to `306285749` on resumed typing.
+
+`MarkdownTable` applies the shared foreign-selection guard to
+its existing overflow-gated reader. The shared arrow helper also
+scrolls the directly focused table by 40 px when the live
+selection is empty or collapsed. Up and Down require vertical
+overflow. Left and Right use the horizontal axis of a reachable
+reader. The first candidate handled vertical keys alone. In that
+build, Right, Down and Left on the fitting-width table still
+jumped from y40 to its 3352 px endpoint. The final horizontal
+handler clamps at x0 and keeps that row position. Native
+noncollapsed table selections and modified keys retain their
+normal behavior.
+[WAI keyboard guidance](https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html)
+[WebKit selection and focus](https://bugs.webkit.org/show_bug.cgi?id=112854#c5)
+
+- EN/light/Flame Orange with motion off at 1440 × 900. The
+  554 px table fits horizontally and its 448 px viewport
+  contains 3,800 px of rows. Right, Down and Left leave it at
+  x0 and y40 with table focus. Up restores y0. A wheel reaches
+  row 80 with the headings visible, and Down clamps at 3352 px.
+  A pointer range across a cell at offsets 0 to 11 gives Up to
+  WebKit. A native focus round trip from the table text through
+  the Composer and Add to message restores the live backward
+  range at 4 to 2 before the guarded arrows. Both horizontal
+  keys and Down keep the range at the bottom, and Up returns
+  to 3312 px. Cmd+L replaces the selection as `3098574`. Return
+  opens the table Lightbox and Escape restores Expand table and
+  the inline offset of 3312 px.
+- ZH/dark/18 px/custom blue with full motion at 1121 × 1051
+  uses the narrow conversation and a private version of the captured
+  table with four additional numeric columns. The 416 px reader
+  pans across 1,094 px of content. Right and Down reach x40 and
+  y40, a second Right advances to x80 with y40, and the reverse
+  keys return to x40 and y0. Repeated Right clamps at x678 and
+  reveals the final numeric column. With the Composer range
+  retained at 6 to 4, the axes remain independent and a wheel
+  moves y to 135 at x638. Cmd+L resumes as `7128350`.
+- Standard Lab shows row 6 after six Down presses and a Left
+  with the sticky header and table focus visible. Opening and
+  dismissing the Lightbox returns to Expand table. Cmd+L
+  resumes the draft as `418239075`.
+
+Scoped Prettier, the packed UI contract, full Web check with 137
+tests including isolated Runtime, 937 locale keys in eight
+catalogs, 26 bundle contracts, native build and five-entry Lab
+pass. The initial broad artifact search matched a substring of
+an embedded asset. Exact observation and private fixture
+markers are absent from the standard build. Native acceptance
+uses captured data. VoiceOver, platform composition and
+clipboard handoff remain open.
+
+Four private bundles pass strict signature verification. Five
+launches and four previews terminate. Cleanup removes four app
+registrations, eight Library directories, ten checkout outputs
+and the scratch tree.
+
+The narrow wide-table run also exposes a separate layout cost.
+At x0 the ordinary five-word Owner cell wraps to five lines
+beside the numeric columns. The 448 px reading viewport shows
+two rows. The next batch will check how the inline table
+allocates space to prose columns once horizontal panning is
+already needed.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

@@ -529,7 +529,10 @@ reader forming one fitting reading unit. Each table measures only its intrinsic
 minimum: actions, header and one padded body line. When that minimum exceeds the
 available height, focused controls remain reachable and the existing preview
 provides a separate reading space. The normal table reader, preview, selection
-and scroll owners remain separate from the budget projection.
+and scroll owners remain separate from the budget projection. On the focused
+inline reader, Up and Down advance the rows and Left and Right stay on its
+horizontal axis. The arrows preserve a retained Composer selection. A selection
+of table text keeps its native keyboard behavior.
 
 Legend List owns the transcript viewport and row layout. Main and delegated
 turns use the shared centered reading column for the message, day separator,
