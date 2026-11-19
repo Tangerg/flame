@@ -41765,6 +41765,46 @@ directories, ten checkout outputs and the scratch tree.
 Continue with another supporting detail in the long-reply
 reading path.
 
+### Use one keyboard stop for generated SVG previews (2026-11-20)
+
+The standard Wails reply exposed a named preview region immediately before an
+identically named image button. Its 286 px body fit without scrolling and Return
+at the first stop did not open the gallery. The tall captured SVG reached the
+bottom with End on the image button itself and returned to that button on close.
+
+The preview body keeps its scroll and layout geometry. The image button is the
+single keyboard stop for that body and opens the existing gallery. The separate
+code caption still exposes its original copy action. Better Accessibility and
+WCAG inform the sequential order from source action to image.
+[WCAG Focus Order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html)
+
+- The canonical EN/light/14 px/Flame Orange reply at 1440 × 900 and scale 1
+  moves between Copy code and the image button in one step in both directions.
+  Return opens image 3 / 3 and Escape restores the trigger. The linked eight-line
+  `store.go` reader opens and returns to the same link. The draft continues as
+  `761692`.
+- The private 480 × 1600 SVG in the same English geometry scrolls 87 CSS px
+  between Home and End with the image button focused. The outer transcript and
+  code frame positions stay fixed. The final node is visible. Return opens
+  image 3 / 3, Escape restores the exact trigger position, and the draft
+  continues as `762517`.
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 and scale 1 with a 320 px Dock
+  follows the same tab order. Home and End move the image 13 CSS px locally.
+  Pointer open and Close return focus to the original image with a 1 CSS px
+  difference in its local offset and the same outer transcript position.
+  The draft continues as `763714`.
+
+Scoped formatting, all 137 Web tests, 940 keys across eight locales, bootstrap,
+generated plugin resources, 26 bundle contracts, production module linkage,
+native build and tests, and five canonical Lab documents pass on `3387f608a`.
+The canonical output excludes the private SVG. Live provider input, file writes,
+native clipboard, VoiceOver and other platforms were outside this qualification.
+
+Five private launches and four loopback previews exit. Cleanup removes five
+registrations, ten private Library directories, ten checkout outputs and the
+scratch tree. The English tall preview clips the top edge of the button's
+outline at End. Inspect the outline through local scrolling next.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

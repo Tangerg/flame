@@ -11,7 +11,6 @@ interface Props {
   lang: string;
   code: string;
   preview?: ReactNode;
-  previewLabel?: string;
   scrollLabel?: string;
   copyable?: boolean;
   ref?: Ref<HTMLDivElement>;
@@ -35,7 +34,6 @@ export function CodeArtifact({
   lang,
   code,
   preview,
-  previewLabel,
   scrollLabel,
   copyable = true,
   ref,
@@ -75,9 +73,6 @@ export function CodeArtifact({
           data-slot="code-preview-body"
           data-focus-inset=""
           {...stylex.props(styles.previewBody)}
-          role="region"
-          aria-label={previewLabel}
-          tabIndex={0}
         >
           {preview}
         </div>

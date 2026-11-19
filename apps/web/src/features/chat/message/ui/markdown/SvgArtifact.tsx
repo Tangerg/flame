@@ -30,7 +30,6 @@ export function SvgArtifact({ code, lang }: { code: string; lang: string }) {
     <CodeArtifact
       lang={lang}
       code={code}
-      previewLabel={label}
       preview={
         <ImagePreviewGallery
           item={{ src, alt: label }}
