@@ -90,13 +90,13 @@ type PendingFocus =
 
 function restoreFileOverview(
   list: HTMLElement | null,
-  search: HTMLInputElement | null,
+  fallback: HTMLElement | null,
   selectedPath: string | null,
 ) {
   const row = Array.from(
     list?.querySelectorAll<HTMLButtonElement>("[data-diff-file]") ?? [],
   ).find((item) => item.dataset.diffFile === selectedPath);
-  (row ?? search)?.focus();
+  (row ?? fallback)?.focus();
 }
 
 // A connected origin distinguishes deliberate blur from its removal.
@@ -197,6 +197,8 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
 
   const accepted = read.accepted;
   const files = accepted?.diff.visual.manifest ?? [];
+  const hasFiles = files.length > 0;
+  const truncated = accepted?.diff.visual.truncated === true;
   const selected = files.find((file) => file.path === selection.path);
   const file = selection.view === "file" ? selected : undefined;
   const filePath = file?.path;
@@ -271,13 +273,13 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   useLayoutEffect(() => {
     const pending = pendingFocus.current;
     const active = document.activeElement;
+    const fallback =
+      accepted && !hasFiles ? refreshButton.current : search.current;
+    const lostFocus = lastFocus.current?.isConnected === false;
+    if (lostFocus) lastFocus.current = null;
     if (!pending) {
-      if (
-        !showingReader &&
-        active === document.body &&
-        lastFocus.current?.isConnected === false
-      )
-        search.current?.focus();
+      if (!showingReader && active === document.body && lostFocus)
+        fallback?.focus();
       return;
     }
     const navigation = pending.target === "navigation" ? pending.active : null;
@@ -316,9 +318,9 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
     } else {
       if (bodyViewport.current)
         bodyViewport.current.scrollTop = overviewScroll.current;
-      restoreFileOverview(list.current, search.current, selection.path);
+      restoreFileOverview(list.current, fallback, selection.path);
     }
-  }, [file, showingReader, accepted, selection, read.error]);
+  }, [file, showingReader, accepted, hasFiles, selection, read.error]);
 
   return (
     <Panel
@@ -488,7 +490,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                 </DiffFileHeader>
               )}
             </>
-          ) : (
+          ) : hasFiles ? (
             <FilterBar
               label={t("controls.label")}
               search={
@@ -500,11 +502,10 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                   onChange={(event) => filterFiles(event.target.value)}
                   onClear={() => filterFiles("")}
                   clearLabel={t("filter.clear")}
-                  disabled={!accepted}
                 />
               }
             />
-          )}
+          ) : null}
           {accepted && (
             <Metadata>
               {comparisonName(t, accepted.query.mode)}
@@ -577,14 +578,15 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               })}
             </Metadata>
           )}
-          {accepted.diff.visual.truncated && (
+          {truncated && hasFiles && (
             <Metadata role="note">{t("partial")}</Metadata>
           )}
-          {accepted.diff.visual.truncated && files.length === 0 && (
+          {!hasFiles && (
             <EmptyState
               icon={FileDiffIcon}
               size="compact"
-              title={t("budget.empty")}
+              title={t(truncated ? "budget.empty" : "empty.title")}
+              sub={truncated ? undefined : t("empty.sub")}
             />
           )}
           {selection.path && !selected && (
@@ -592,61 +594,52 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               {t("missing")} <DiffFilePath path={selection.path} />
             </Metadata>
           )}
-          <div hidden={showingReader}>
-            <PanelSection
-              title={t(
-                accepted.diff.visual.truncated
-                  ? "files.included"
-                  : "files.changed",
-                { count: files.length },
-              )}
-              description={
-                filter
-                  ? t("files.match", {
-                      matching: matching.length,
-                      total: files.length,
-                    })
-                  : undefined
-              }
-              actions={
-                textFiles.length > 0 ? (
-                  <DiffStat
-                    title={t("stat.title")}
-                    added={total("added")}
-                    removed={total("removed")}
+          {hasFiles && (
+            <div hidden={showingReader}>
+              <PanelSection
+                title={t(truncated ? "files.included" : "files.changed", {
+                  count: files.length,
+                })}
+                description={
+                  filter
+                    ? t("files.match", {
+                        matching: matching.length,
+                        total: files.length,
+                      })
+                    : undefined
+                }
+                actions={
+                  textFiles.length > 0 ? (
+                    <DiffStat
+                      title={t("stat.title")}
+                      added={total("added")}
+                      removed={total("removed")}
+                    />
+                  ) : undefined
+                }
+              >
+                {!matching.length && (
+                  <EmptyState
+                    size="compact"
+                    title={t("nomatch.title")}
+                    sub={t("nomatch.sub")}
                   />
-                ) : undefined
-              }
-            >
-              {!files.length && !accepted.diff.visual.truncated && (
-                <EmptyState
-                  icon={FileDiffIcon}
-                  size="compact"
-                  title={t("empty.title")}
-                  sub={t("empty.sub")}
+                )}
+                <DiffFileList
+                  ref={list}
+                  files={matching.map((item) => ({
+                    ...fileSummary(t, item),
+                    previous: item.previousPath
+                      ? { path: item.previousPath, label: renamedFrom }
+                      : undefined,
+                  }))}
+                  label={t("files.region")}
+                  currentPath={selection.path}
+                  onSelect={(path) => openFile(path)}
                 />
-              )}
-              {files.length > 0 && !matching.length && (
-                <EmptyState
-                  size="compact"
-                  title={t("nomatch.title")}
-                  sub={t("nomatch.sub")}
-                />
-              )}
-              <DiffFileList
-                ref={list}
-                files={matching.map((item) => ({
-                  ...fileSummary(t, item),
-                  previous: item.previousPath
-                    ? { path: item.previousPath, label: renamedFrom }
-                    : undefined,
-                }))}
-                label={t("files.region")}
-                currentPath={selection.path}
-                onSelect={(path) => openFile(path)}
-              />
-            </PanelSection>
-          </div>
+              </PanelSection>
+            </div>
+          )}
           {file && (
             <section aria-label={fileChanges}>
               <Metadata>

@@ -46,9 +46,11 @@ selection follows the selected physical columns; the independent included-patch
 action always copies the same accepted patch. Native composed-range support is
 part of the shared Chrome 137 / Safari 26 browser floor.
 
-File rows navigate to one reader;
-they do not expand every file's code into a single report. The comparison and
-refresh controls precede the list filter. In the reader, the current file, position,
+File rows navigate to one reader. The comparison and refresh controls precede
+the filter when the accepted read includes files. A filter miss retains the
+query and Clear action. An empty accepted read presents either the comparison's
+empty state or the read-limit message according to its truncation flag.
+In the reader, the current file, position,
 previous/next commands, layout and wrap stay in the shared persistent control zone.
 That zone sits above the Diff body viewport in both Dock and full-width
 presentations. The full workspace path stays in the scrolling body. The same
@@ -89,8 +91,10 @@ and current row. A pending workspace read continues, and a failed read keeps
 its error and the Files command for an explicit retry.
 A focused scoped Files action that retires hands off to Refresh while the
 workspace read is pending, including when the scoped result remains visible.
-Success continues to the selected row or filter. Later outside focus or
-deliberate blur retires that pending continuation.
+Success continues to the selected row or filter when the accepted overview has
+files, or to Refresh when it is empty. Refresh also receives focus if an
+accepted empty overview removes the focused filter or file control. Later
+outside focus or deliberate blur retires that pending continuation.
 Changing or clearing the local filter reveals the beginning of its
 results while retaining search focus. Unchanged filters and refreshed reads
 preserve the current reading position. A direct file entry leaves Escape to the

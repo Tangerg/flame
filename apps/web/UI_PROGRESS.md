@@ -33293,6 +33293,66 @@ checkout modification.
 The latest unchanged-source File/Diff task qualification is recorded under
 **File and Diff native reading review after main (2026-11-05)** above.
 
+### Diff filtering follows the accepted file list (2026-11-20)
+
+Signed Wails at `ab6337ad4` shows an enabled filter in a 320 px Dock
+after a targeted Diff exhausts its read budget and includes zero files.
+Typing `dock` adds “0 of 0 files match” below the empty section. Show
+changed files accepts the workspace scope and focuses that empty filter.
+
+The accepted manifest now determines whether the filter and file
+collection are available. A zero-file read presents one existing state
+for its actual outcome. A truncated read reports the read limit, and
+a complete comparison reports no changes. The requested path, accepted
+scope, baseline, time, Refresh and Comparison details stay available.
+The existing overview focus handoff uses Refresh when the file list
+is empty. It consumes the retired focus target and preserves focus that
+the user has moved elsewhere.
+[WAI keyboard focus persistence](https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/).
+
+Read-only HeroUI `autocomplete/default.tsx` keeps its search and clear
+flow in a filtered collection even when the query matches no options.
+Flame retains its own SearchField and EmptyState. The accepted manifest
+remains the source of collection coverage.
+
+- EN/light/14 px/Flame Orange at 1121 × 950. An isolated 4-file partial
+  read reports `0 of 4` for an unmatched query and keeps Clear. Filter
+  `dock` opens `DockResizer.tsx` with its original before/after lines.
+  Escape returns to the exact row with `dock` preserved. During a
+  delayed Branch changes read, the accepted partial list and filter
+  remain available. The complete empty result retires the focused
+  field and focuses Refresh. Returning to the partial result restores
+  the query. A second empty read keeps later Composer focus and the
+  continued `10436518` draft.
+- ZH/dark/18 px/`#3B82F6` in the standard Lab at a native 320 px Dock.
+  One budget message and the complete requested path remain visible.
+  Keyboard Show changed files accepts Workspace scope and focuses
+  Refresh, which issues a fresh read. Comparison details reveals the
+  full baseline. Opening from the conversation and returning restores
+  the exact review button. The draft continues as `10442638`.
+
+Two component regressions fail on the original code and pass on the
+candidate. The first plugin typecheck rejects the test context cast.
+The final test fixture supplies the focus revision and generic track
+shape before the isolated mock cast. Plugin verification passes 44
+Node checks and 16 source tests, with six pre-existing conditional
+skips. Twenty plugin catalogs across eight locales and all published
+resources verify. Web passes 151 tests, 940 locale keys across eight
+locales, bootstrap, 26 bundle contracts and module linkage.
+`make check-native`, the canonical five-document Lab build, source
+formatting and accepted hashes pass.
+
+The normal publisher rebuilds the tracked Diff ESM. The signed Lab
+loads those bytes. The English acceptance varies only captured input
+and read timing. The Chinese run uses the canonical build. Live Git
+reads, other operating systems, VoiceOver speech and browser suites
+are outside this run. Existing installations use normal package
+selection to receive the new digest.
+
+Three signed native launches exit normally. Three loopback previews
+stop and cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+
 ### Persistent Diff navigation at default zoom (2026-11-19)
 
 The Wails baseline at `a589bc610` reproduces an interrupted review in a
