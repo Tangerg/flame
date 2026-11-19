@@ -41704,6 +41704,67 @@ directories, ten checkout outputs and the scratch tree.
 Continue with the native Escape sequence after reversing
 focus from the focused diagram canvas.
 
+### Keep diagram keyboard focus above clipped nodes (2026-11-20)
+
+The native baseline focuses the named diagram viewport at
+137%. Its orange left edge disappears behind the cropped
+source-files node. The earlier 118% narrow dark scene also
+shows gaps where nodes touch the canvas edges.
+
+The existing transform viewport draws its keyboard outline
+on an absolute pseudo-element above the transformed drawing.
+The outline uses the existing inset measure and focus color,
+with system Highlight for forced colors. The overlay accepts
+no pointer input and uses the viewport's own focus-visible
+state. Better Accessibility and WCAG guide the visible
+keyboard perimeter.
+[WCAG Focus Visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html)
+
+The prior Escape sequence was inspected in a separate
+Wails trace. Both Escape keydown events are trusted and
+arrive on Close. The first dismisses the visible tooltip.
+The second returns to Enlarge and preserves draft `750`.
+A direct Escape while the canvas is focused closes the
+dialog in one step.
+[ARIA tooltip keyboard interaction](https://www.w3.org/WAI/ARIA/apg/patterns/tooltip/#keyboard_interaction)
+
+- EN/light/14 px/Flame Orange at scale 1 with a 1440 px
+  window. At the same 137%, one continuous outline crosses
+  the clipped left node. Arrow input moves the diagram
+  while retaining focus and the outline. Double-clicking
+  selects text in the receipts node. Escape returns to
+  Enlarge and the draft continues as `751638`.
+- ZH/dark/18 px/`#3B82F6` at scale 1 with a 1121 px
+  window and 320 px Dock. At 118% with Pan enabled,
+  the blue outline stays visible over both clipped
+  sides. Arrow panning keeps the viewport focused.
+  Tab moves to Fit and the outline follows focus to the
+  toolbar. Pointer Close restores Enlarge and the draft
+  continues as `752407`.
+- The original three-node canonical Lab at 100% supports
+  Tab into the canvas and Shift+Tab to Close. The first
+  Escape dismisses its tooltip with Pan off. The second
+  returns to Enlarge. The reply's file link opens the
+  captured eight-line reader, Escape returns to the link,
+  and the draft continues as `753826`.
+
+Scoped formatting, all 137 Web tests, 940 keys across eight
+locales, bootstrap, generated plugin resources, 26 bundle
+contracts, production module linkage, native build and tests,
+and five canonical Lab documents pass on `ddcdfeb1b`.
+The compiled CSS includes the forced-colors outline. The
+private Lab uses a captured six-node reply and a separate
+loopback trace for the dismissal sequence. The canonical
+build excludes both private inputs. Live providers and files,
+VoiceOver, forced-colors rendering and other platforms were
+outside this qualification.
+
+Five private launches and four loopback previews exit.
+Cleanup removes five registrations, ten private Library
+directories, ten checkout outputs and the scratch tree.
+Continue with another supporting detail in the long-reply
+reading path.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

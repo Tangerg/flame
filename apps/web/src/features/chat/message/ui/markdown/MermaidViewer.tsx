@@ -24,6 +24,25 @@ const styles = stylex.create({
     padding: space.s2,
   },
   port: { flex: 1, minHeight: 0, overflow: "hidden" },
+  viewportFocus: {
+    ":focus-visible:not([data-chrome-focus]):not([contenteditable])": {
+      outline: "none",
+      "::after": {
+        content: "",
+        position: "absolute",
+        inset: 0,
+        zIndex: 1,
+        pointerEvents: "none",
+        outlineStyle: "solid",
+        outlineWidth: "1.5px",
+        outlineColor: {
+          default: "var(--color-focus-ring)",
+          "@media (forced-colors: active)": "Highlight",
+        },
+        outlineOffset: "calc(-1 * var(--focus-inset-edge))",
+      },
+    },
+  },
   handCursor: { cursor: { default: "grab", ":active": "grabbing" } },
 });
 export function MermaidViewer({ svg, onClose }: { svg: string; onClose(): void }) {
@@ -86,7 +105,9 @@ export function MermaidViewer({ svg, onClose }: { svg: string; onClose(): void }
             <div {...stylex.props(styles.port)} data-slot="mermaid-full">
               <TransformComponent
                 wrapperProps={viewportProps}
-                wrapperClass={stylex.props(hand && styles.handCursor).className}
+                wrapperClass={
+                  stylex.props(styles.viewportFocus, hand && styles.handCursor).className
+                }
                 wrapperStyle={{ width: "100%", height: "100%" }}
                 contentStyle={{
                   width: "max-content",
