@@ -205,16 +205,12 @@ func (t treePublisher) publishTerminalAtomically(
 	if route.member.ParentID == "" {
 		combined.ObsoleteCheckpointRootID = route.member.MemberID
 	}
-	if record := t.owner.rootCancellationReceipt(*combined.Run); record != nil {
-		ref := t.rootSpec.executorRef()
-		combined.RecordRootCancellation = func(ctx context.Context, terminal run.Run) error {
-			return record(ctx, ref, terminal)
-		}
-	}
+	t.bindRootCancellationReceipt(&combined)
 	if err := combined.Validate(); err != nil {
 		return reductionPublication{}, fmt.Errorf("runs: validate atomic terminal: %w", err)
 	}
-	if err := t.commitTerminal(ctx, combined, retryUnresolved || combined.RecordRootCancellation != nil); err != nil {
+	write := func() error { return t.publications.events.CommitEvent(ctx, combined) }
+	if err := commitTerminal(ctx, combined.SessionID, combined.RunID, write, retryUnresolved || combined.RecordRootCancellation != nil); err != nil {
 		return reductionPublication{}, fmt.Errorf("runs: commit atomic terminal: %w", err)
 	}
 	// The database owns one indivisible write-set, while the live tree still
@@ -234,6 +230,15 @@ func (t treePublisher) publishTerminalAtomically(
 		t.publications.publishGoalMoved(t.rootSpec.SessionID)
 	}
 	return reductionPublication{published: true, boundary: boundaryFinished}, nil
+}
+
+func (t treePublisher) bindRootCancellationReceipt(commit *EventCommit) {
+	if record := t.owner.rootCancellationReceipt(*commit.Run); record != nil {
+		ref := t.rootSpec.executorRef()
+		commit.RecordRootCancellation = func(ctx context.Context, terminal run.Run) error {
+			return record(ctx, ref, terminal)
+		}
+	}
 }
 
 // combineTerminalEventCommit materializes the one write-set that the reducer

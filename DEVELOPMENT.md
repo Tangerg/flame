@@ -30,6 +30,8 @@ Reference repositories provide evidence, not layouts to copy:
 
 Reference code is read-only evidence. Do not copy its directory tree, private protocol, compatibility burden, or framework abstractions into Flame without a Flame-owned requirement.
 
+Record verified issues in Scope, Dougong, Oolong, and Frame in the [upstream framework issue log](docs/audit/upstream-issues.md). Describe the reusable contract and keep Flame's product semantics in the application.
+
 ## Dependency discipline
 
 Use released Scope modules and provider libraries. Do not copy their implementations into Flame, add a local `replace`, or preserve a removed Scope API behind a compatibility wrapper. Upgrade the direct module graph first, migrate every breaking contract in the owning batch, run `go mod tidy`, and inspect the selected transitive graph instead of pinning indirect versions without evidence.

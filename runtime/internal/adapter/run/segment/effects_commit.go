@@ -219,9 +219,6 @@ func (e *Effects) CommitEvent(ctx context.Context, commit runs.EventCommit) erro
 	if commit.State == runs.StateSuspend {
 		return errors.New("segment: per-Run suspend commit is not allowed")
 	}
-	if commit.ObsoleteCheckpointRootID != "" && commit.State != runs.StateTerminalize {
-		return errors.New("segment: executor checkpoint deletion requires a terminal Run commit")
-	}
 	err := e.runCheckpointTx(ctx, commit.CommitID.String(), commit.ExecutionContext, func(ctx context.Context) error {
 		if err := e.applyCommit(ctx, commit); err != nil {
 			return err
@@ -233,18 +230,6 @@ func (e *Effects) CommitEvent(ctx context.Context, commit runs.EventCommit) erro
 			if err := e.executorCheckpoints.SaveCheckpoint(ctx, *commit.ExecutionContext); err != nil {
 				return err
 			}
-		}
-		if commit.ObsoleteCheckpointRootID == "" {
-			return nil
-		}
-		if err := e.executorCheckpoints.DeleteCheckpoints(ctx, commit.SessionID, []string{commit.ObsoleteCheckpointRootID}); err != nil {
-			return fmt.Errorf("segment: delete terminal executor checkpoint %q: %w", commit.ObsoleteCheckpointRootID, err)
-		}
-		if err := e.interrupts.Delete(ctx, commit.RunID); err != nil {
-			return fmt.Errorf("segment: delete terminal interrupt for root Run %q: %w", commit.RunID, err)
-		}
-		if err := e.childRunStarts.DeleteSession(ctx, commit.SessionID); err != nil {
-			return fmt.Errorf("segment: delete terminal child Run start reservations: %w", err)
 		}
 		return nil
 	})
@@ -590,8 +575,23 @@ func (e *Effects) applyState(ctx context.Context, commit runs.EventCommit) error
 				return fmt.Errorf("segment: record confirmed root cancellation: %w", err)
 			}
 		}
-		if run.Lineage().IsRoot() {
-			return e.acceptedContinuations.Delete(ctx, run.ID())
+		if run.Lineage().IsChild() {
+			return nil
+		}
+		if err := e.acceptedContinuations.Delete(ctx, run.ID()); err != nil {
+			return err
+		}
+		if commit.ObsoleteCheckpointRootID == "" {
+			return nil
+		}
+		if err := e.executorCheckpoints.DeleteCheckpoints(ctx, commit.SessionID, []string{commit.ObsoleteCheckpointRootID}); err != nil {
+			return fmt.Errorf("segment: delete terminal executor checkpoint %q: %w", commit.ObsoleteCheckpointRootID, err)
+		}
+		if err := e.interrupts.Delete(ctx, commit.RunID); err != nil {
+			return fmt.Errorf("segment: delete terminal interrupt for root Run %q: %w", commit.RunID, err)
+		}
+		if err := e.childRunStarts.DeleteSession(ctx, commit.SessionID); err != nil {
+			return fmt.Errorf("segment: delete terminal child Run start reservations: %w", err)
 		}
 		return nil
 	default:

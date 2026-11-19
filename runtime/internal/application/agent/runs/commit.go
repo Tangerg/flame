@@ -492,6 +492,9 @@ func (e EventCommit) validateLifecycle() error {
 		if e.Run == nil || !e.Run.State().IsTerminal() {
 			return errors.New("runs: terminal event commit has no matching terminal Run")
 		}
+		if e.ObsoleteCheckpointRootID != "" && !e.Run.Lineage().IsRoot() {
+			return errors.New("runs: only a root terminal retires execution checkpoints")
+		}
 	default:
 		return fmt.Errorf("runs: event commit has unknown state change %q", e.State)
 	}

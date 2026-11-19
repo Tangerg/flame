@@ -67,7 +67,8 @@ func TestActiveRootCancelReceiptCrashHelper(t *testing.T) {
 }
 
 func TestActiveRootCancellationRecoversItsOriginalReceipt(t *testing.T) {
-	t.Setenv("FLAME_HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("FLAME_HOME", home)
 	path := filepath.Join(t.TempDir(), "active-root-cancel-receipt.json")
 	crashCtx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
@@ -91,6 +92,9 @@ func TestActiveRootCancellationRecoversItsOriginalReceipt(t *testing.T) {
 	if original == nil || original.Type != protocol.CancelRunRoot || original.Run.Outcome == nil ||
 		original.Run.Outcome.Type != protocol.OutcomeCanceled || original.Run.Outcome.Detail != activeRootCancelReason {
 		t.Fatalf("the original live Run was not confirmed canceled: %s", data)
+	}
+	if !hasConfirmedScopeRootCancellation(readWaitingChildScopeLog(t, home)) {
+		t.Fatal("the original canceled Run was published without its confirmed Scope Exit")
 	}
 
 	host, api := openProtocolRuntime(t, newReplyStub("the original Run already finished"))
@@ -179,6 +183,9 @@ func testActiveRootCancellationReceiptRefusal(t *testing.T, waitForTimeout bool)
 	current, err := api.GetRun(ctx, protocol.GetRunRequest{RunID: request.RunID})
 	if err != nil || current.Status != protocol.RunStatusRunning || current.Outcome != nil {
 		t.Fatalf("terminal Run escaped its rolled-back receipt transaction: %+v, %v", current, err)
+	}
+	if hasConfirmedScopeRootCancellation(readWaitingChildScopeLog(t, home)) {
+		t.Fatal("the Scope Exit escaped the refused receipt transaction")
 	}
 	if waitForTimeout {
 		select {

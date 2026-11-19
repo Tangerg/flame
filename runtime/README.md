@@ -1808,10 +1808,11 @@ A successful start commits the Run, first Segment, and opening user Item. Resume
 
 Keyed root cancellation commits the exact terminal response and original executor
 reference with the canceled Run. Canceling a parked root also consumes its open
-interrupt in that transaction. For a running root, a temporary receipt write
-failure leaves the same terminal transaction with the Segment owner. The same key
-can finish teardown and publish the original response after process loss or a
-cleanup failure.
+interrupt in that transaction. A running root's confirmed Scope Exit commits
+with the Run and receipt. The Segment owner retains that same write-set across
+temporary failures and joins the Scope writer before acknowledging teardown.
+The same key can finish cleanup and publish the original response after process
+loss or a cleanup failure.
 
 The TypeScript SDK's Start and Resume now return `RunOpeningResult`: the original
 acknowledgement is `result`, and `observation` is a closed `stream`, `snapshot`,

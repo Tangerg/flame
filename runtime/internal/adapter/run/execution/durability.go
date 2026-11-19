@@ -213,6 +213,7 @@ func (i *interactionSession) commitTree(ctx context.Context, tree scoperun.Log, 
 		defer i.childProjection.unlock()
 	}
 	var terminalChildren []*managedDelegateCall
+	var rootCancellation *interactionRootCancellation
 	var retired []runs.InvocationID
 	if i.state.observerAttached() {
 		if contextAdvances {
@@ -232,6 +233,14 @@ func (i *interactionSession) commitTree(ctx context.Context, tree scoperun.Log, 
 		retired, err = i.projectSettledToolResults(ctx, tree, rounds, &fact)
 		if err != nil {
 			return err
+		}
+		end, cancellation, err := i.confirmedRootCancellation(tree, records)
+		if err != nil {
+			return err
+		}
+		if cancellation != nil {
+			rootCancellation = cancellation
+			fact.Facts = append(fact.Facts, runs.ExecutorEvent{Member: runs.ExecutorMember{MemberID: tree.Root.String()}, Payload: end})
 		}
 	}
 	orderExecutionFacts(tree, fact.Facts)
@@ -254,6 +263,11 @@ func (i *interactionSession) commitTree(ctx context.Context, tree scoperun.Log, 
 		return fmt.Errorf("execution: commit execution tree: %w", err)
 	}
 	i.publishChildBindings(fact.Children)
+	if rootCancellation != nil {
+		i.state.mu.Lock()
+		rootCancellation.published = true
+		i.state.mu.Unlock()
+	}
 	for _, child := range terminalChildren {
 		child.mu.Lock()
 		child.segmentProjected = true

@@ -111,12 +111,16 @@ func (t ExecutionTreeCommit) validatePublications() error {
 			return errors.New("runs: foreign child Run withdrawal")
 		}
 	}
-	for _, commit := range t.Events {
-		if commit.SessionID != t.Update.Head.SessionID || commit.CommitID.IsZero() || commit.State == StateSuspend || commit.ObsoleteCheckpointRootID != "" {
+	for index, commit := range t.Events {
+		if commit.SessionID != t.Update.Head.SessionID || commit.CommitID.IsZero() || commit.State == StateSuspend {
 			return errors.New("runs: invalid execution tree product commit")
 		}
 		if err := commit.Validate(); err != nil {
 			return err
+		}
+		if commit.State == StateTerminalize && commit.Run.Lineage().IsRoot() &&
+			(!commit.Run.Canceled() || commit.ObsoleteCheckpointRootID != t.Update.Head.RootID || index != len(t.Events)-1) {
+			return errors.New("runs: execution tree requires its confirmed root cancellation after child facts")
 		}
 	}
 	return nil

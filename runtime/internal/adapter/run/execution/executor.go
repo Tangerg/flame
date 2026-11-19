@@ -829,11 +829,17 @@ func (i *InteractionExecutor) RequestRootCancellation(
 	if err != nil {
 		return err
 	}
-	process := session.state.processHandle()
+	controlReason := scopeCancellationReason(reason)
+	session.state.mu.Lock()
+	process := session.state.process
+	if process != nil {
+		session.state.rootCancellation = &interactionRootCancellation{reason: controlReason}
+	}
+	session.state.mu.Unlock()
 	if process == nil {
 		return runs.ErrExecutorNotLive
 	}
-	if err := process.Cancel(ctx, scopeCancellationReason(reason)); err != nil &&
+	if err := process.Cancel(ctx, controlReason); err != nil &&
 		!errors.Is(err, scoperun.ErrProcessFinished) {
 		// A completed Runtime may already have closed its local writer. Only a
 		// committed Exit, never the writer's closed state, proves this is late.

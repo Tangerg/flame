@@ -89,6 +89,7 @@ type interactionState struct {
 	subtreeChange              *interactionWaitingSubtreeChange
 	subtreePrepared            chan struct{}
 	unknownReported            bool
+	rootCancellation           *interactionRootCancellation
 	deployments                *interactionDeploymentSet
 	delegateCalls              map[delegateCallIdentity]*managedDelegateCall
 	delegateChildren           map[scoperun.ProcessID]*managedDelegateCall
@@ -752,17 +753,26 @@ func (i *interactionSession) await() {
 		err = errors.Join(err, i.engine.Close(joinCtx))
 	}
 	i.stopReconciliation()
+	cancellationPublished := i.rootCancellationPublished()
 	if err == nil {
-		_, err = i.reconcileCompletedDelegateChildren(joinCtx)
-	}
-	if err == nil {
-		err = i.publishResult(result)
+		if cancellationPublished {
+			i.notifyStopped(run.OutcomeCanceled)
+		} else {
+			_, err = i.reconcileCompletedDelegateChildren(joinCtx)
+			if err == nil {
+				err = i.publishResult(result)
+			}
+		}
 	}
 	if err == nil {
 		err = i.closeExecution(joinCtx)
 	}
 	if err != nil {
-		i.publishProjectionFailure(err)
+		if cancellationPublished {
+			slog.ErrorContext(joinCtx, "execution: close canceled Interaction", "error", err)
+		} else {
+			i.publishProjectionFailure(err)
+		}
 	}
 	i.finish()
 }
@@ -781,18 +791,22 @@ func (i *interactionSession) publishResult(result scoperun.Result[scoperun.Paylo
 		return err
 	}
 	i.modelFailures.forget(result.ProcessID())
+	i.notifyStopped(end.Ending.Outcome())
+	return nil
+}
+
+func (i *interactionSession) notifyStopped(outcome run.Outcome) {
 	if i.lifecycleHooks != nil {
-		ctx, cancel := context.WithTimeout(ctx, auxiliaryOperationTimeout)
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(i.lifetime.execution), auxiliaryOperationTimeout)
 		defer cancel()
 		if err := i.lifecycleHooks.NotifyStopped(
-			ctx, i.start.SessionID, i.start.WorkspaceCWD, string(end.Ending.Outcome()),
+			ctx, i.start.SessionID, i.start.WorkspaceCWD, string(outcome),
 		); err != nil {
 			slog.ErrorContext(i.lifetime.execution, "execution: notify stopped",
 				"session.id", i.start.SessionID, "error", err,
 			)
 		}
 	}
-	return nil
 }
 
 func (i *interactionSession) publishProjectionFailure(cause error) {

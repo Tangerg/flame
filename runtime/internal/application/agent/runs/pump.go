@@ -101,7 +101,10 @@ func (s *segmentPump) processEvent(event ExecutorEvent) bool {
 		err := s.handleAuthoritativeFact(event.Member, fact)
 		commit.Complete(err)
 		if err == nil && s.routes.root.boundary.finished() {
-			return false
+			// Scope still has to acknowledge its Exit append and close the
+			// stream before the Run owner can release that writer.
+			_, settlingTree := fact.(ExecutionTreeSettled)
+			return settlingTree
 		}
 		// A rejected authoritative write is reported synchronously to the
 		// executor. It then produces either a definite failed result or

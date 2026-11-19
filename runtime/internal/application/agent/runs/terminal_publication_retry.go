@@ -43,16 +43,16 @@ func (r *terminalCommitRetry) advance() time.Duration {
 	return r.next
 }
 
-func (t treePublisher) commitTerminal(ctx context.Context, commit EventCommit, retryOnFailure bool) error {
+func commitTerminal(ctx context.Context, sessionID, runID string, write func() error, retryOnFailure bool) error {
 	retry := terminalCommitRetry{}
 	reported := false
 	for {
-		err := t.publications.events.CommitEvent(ctx, commit)
+		err := write()
 		if err == nil || !retryOnFailure {
 			return err
 		}
 		if !reported {
-			slog.ErrorContext(ctx, "runs: terminal commit failed, retrying until it commits", "session.id", commit.SessionID, "run.id", commit.RunID, "error", err)
+			slog.ErrorContext(ctx, "runs: terminal commit failed, retrying until it commits", "session.id", sessionID, "run.id", runID, "error", err)
 			reported = true
 		}
 		if waitErr := retry.wait(ctx); waitErr != nil {

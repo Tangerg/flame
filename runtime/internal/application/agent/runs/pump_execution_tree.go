@@ -3,6 +3,8 @@ package runs
 import (
 	"errors"
 	"fmt"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 // commitExecutionTree stages a settled tree against cloned reducers, commits
@@ -31,7 +33,9 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 	if err != nil {
 		return err
 	}
-	if err := s.segments.publications.events.CommitExecutionTree(s.ownerCtx, commit); err != nil {
+	write := func() error { return s.segments.publications.events.CommitExecutionTree(s.ownerCtx, commit) }
+	endsRoot := len(commit.Events) > 0 && commit.Events[len(commit.Events)-1].ObsoleteCheckpointRootID != ""
+	if err := commitTerminal(s.ownerCtx, s.spec.SessionID, s.spec.RunID, write, endsRoot); err != nil {
 		return err
 	}
 	if err := s.settleChildStarts(children, startedRoutes); err != nil {
@@ -114,6 +118,7 @@ func (s *segmentPump) stageChildPublications(publications []ChildRunPublication,
 func (s *segmentPump) stageTreeFacts(facts []ExecutorEvent, startedRoutes map[string]*executorRoute, commit *ExecutionTreeCommit) ([]routedTreeProjection, error) {
 	var projections []routedTreeProjection
 	staged := make(map[*executorRoute]*reducer)
+	unfinishedChildren := s.routes.unfinishedCount() - 1 + len(startedRoutes)
 	for _, event := range facts {
 		route, err := s.treeFactRoute(event, startedRoutes)
 		if err != nil {
@@ -140,6 +145,17 @@ func (s *segmentPump) stageTreeFacts(facts []ExecutorEvent, startedRoutes map[st
 		if err != nil {
 			return nil, err
 		}
+		if eventCommit.State == StateTerminalize {
+			if route == s.routes.root {
+				if unfinishedChildren != 0 {
+					return nil, errors.New("runs: confirmed root cancellation precedes child terminals")
+				}
+				eventCommit.ObsoleteCheckpointRootID = commit.Update.Head.RootID
+				s.publisher.bindRootCancellationReceipt(&eventCommit)
+			} else {
+				unfinishedChildren--
+			}
+		}
 		commit.Events = append(commit.Events, eventCommit)
 		staged[route] = candidate
 		projections = append(projections, routedTreeProjection{route, candidate, batch})
@@ -147,8 +163,8 @@ func (s *segmentPump) stageTreeFacts(facts []ExecutorEvent, startedRoutes map[st
 	return projections, nil
 }
 
-// treeFactRoute resolves a settlement fact's route. A tree settles Tool
-// results and child Segments only; the root projection closes elsewhere.
+// treeFactRoute resolves a settlement fact's route. Known root cancellation
+// closes with its Scope Exit so that a crash cannot leave the Run still open.
 func (s *segmentPump) treeFactRoute(event ExecutorEvent, startedRoutes map[string]*executorRoute) (*executorRoute, error) {
 	route := startedRoutes[event.Member.MemberID]
 	if route != nil && route.member != event.Member {
@@ -161,11 +177,11 @@ func (s *segmentPump) treeFactRoute(event ExecutorEvent, startedRoutes map[strin
 			return nil, err
 		}
 	}
-	switch event.Payload.(type) {
+	switch fact := event.Payload.(type) {
 	case ToolResultsCommitted:
 	case SegmentEnded:
-		if route == s.routes.root {
-			return nil, fmt.Errorf("runs: tree settlement cannot close the root projection")
+		if route == s.routes.root && (fact.Ending.Outcome() != run.OutcomeCanceled || len(fact.unresolvedEffects) > 0) {
+			return nil, errors.New("runs: tree settlement requires confirmed root cancellation")
 		}
 	default:
 		return nil, fmt.Errorf("runs: unsupported tree settlement fact %T", event.Payload)

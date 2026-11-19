@@ -10,9 +10,19 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/invocation"
 )
 
 func TestCancelingTheRootMidDelegationSettlesEveryUnconfirmedChild(t *testing.T) {
+	testCancelDelegatedTree(t, false)
+}
+
+func TestConfirmedRootCancellationSettlesEveryDelegateFirst(t *testing.T) {
+	testCancelDelegatedTree(t, true)
+}
+
+func testCancelDelegatedTree(t *testing.T, confirmed bool) {
+	t.Helper()
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	childEntered := make(chan string, 2)
@@ -36,6 +46,9 @@ func TestCancelingTheRootMidDelegationSettlesEveryUnconfirmedChild(t *testing.T)
 			// on a live Effect rather than between steps.
 			childEntered <- delegatedChild
 			<-ctx.Done()
+			if confirmed {
+				return nil, &invocation.Failure{Kind: invocation.FailureNotExecuted, Cause: ctx.Err()}
+			}
 			return nil, ctx.Err()
 		case hasResult:
 			stop := chat.NewAssistantMessage(chat.NewTextPart("parent done"))
@@ -93,10 +106,13 @@ func TestCancelingTheRootMidDelegationSettlesEveryUnconfirmedChild(t *testing.T)
 		}
 	}
 
-	canceled, err := api.CancelRun(ctx, protocol.CancelRunRequest{
-		RunID: started.RunID, Reason: "stop the whole tree",
-	})
-	if canceled != nil || !errors.Is(err, protocol.ErrRunFinished) {
+	request := protocol.CancelRunRequest{RunID: started.RunID, Reason: "stop the whole tree"}
+	canceled, err := api.CancelRun(ctx, request)
+	if confirmed {
+		if err != nil || canceled == nil || canceled.Run.Outcome == nil || canceled.Run.Outcome.Detail != request.Reason {
+			t.Fatalf("the canceled delegation did not settle: %+v, %v", canceled, err)
+		}
+	} else if canceled != nil || !errors.Is(err, protocol.ErrRunFinished) {
 		t.Fatalf("unconfirmed delegation became a confirmed cancellation: %+v, %v", canceled, err)
 	}
 	observed := waitForRunEvents(t, collected, "canceled delegation tree")
@@ -105,7 +121,11 @@ func TestCancelingTheRootMidDelegationSettlesEveryUnconfirmedChild(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if root.Outcome == nil || root.Outcome.Type != protocol.OutcomeLost || root.Outcome.Loss == nil || root.Outcome.Loss.Reason != protocol.LossUnresolvedEffects {
+	if confirmed {
+		if root.Outcome == nil || root.Outcome.Type != protocol.OutcomeCanceled || root.Outcome.Detail != request.Reason {
+			t.Fatalf("the root did not retain its confirmed cancellation: %+v", root.Outcome)
+		}
+	} else if root.Outcome == nil || root.Outcome.Type != protocol.OutcomeLost || root.Outcome.Loss == nil || root.Outcome.Loss.Reason != protocol.LossUnresolvedEffects {
 		t.Fatalf("root cancellation lost its original uncertainty: %+v", root.Outcome)
 	}
 
@@ -123,7 +143,12 @@ func TestCancelingTheRootMidDelegationSettlesEveryUnconfirmedChild(t *testing.T)
 		if childErr != nil {
 			t.Fatal(childErr)
 		}
-		if child.Outcome == nil || child.Outcome.Type != protocol.OutcomeLost || len(child.Outcome.UnresolvedEffects) != 1 {
+		if confirmed {
+			if child.Outcome == nil || child.Outcome.Type != protocol.OutcomeCanceled || child.Outcome.Detail != request.Reason ||
+				child.FinishedAt.After(root.FinishedAt) {
+				t.Fatalf("child %s did not finish its cancellation before the root: %+v", childRunID, child.Outcome)
+			}
+		} else if child.Outcome == nil || child.Outcome.Type != protocol.OutcomeLost || len(child.Outcome.UnresolvedEffects) != 1 {
 			t.Fatalf("child %s cancellation lost its original uncertainty: %+v", childRunID, child.Outcome)
 		}
 	}
