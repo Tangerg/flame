@@ -900,6 +900,9 @@ Go to line is offered after a file read supplies text, including retained text
 during a refresh. A pending or failed first read does not establish line navigation;
 unsupported classification still removes it. Back and Copy path remain available
 through that first result.
+When Runtime rejects an initial line request as invalid, Files names the line
+and offers Open from start. The action reads the same current path and keeps
+the return to the original inspection source.
 
 Project choices retain complete wrapping names. When projects share a display
 name, both the new-conversation tray and active-project menu show their full

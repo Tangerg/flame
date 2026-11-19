@@ -626,6 +626,8 @@
   "file.readRefreshError.sub": "前回読み込んだ内容を表示しています。",
   "file.error.title": "ファイルを開けませんでした",
   "file.error.sub": "移動されたか、ワークスペース外にある可能性があります。",
+  "file.error.requestedLine": "{{line}} 行目から開けませんでした",
+  "file.openFromStart": "ファイルの先頭から開く",
   "composer.key.historyPrevDesc": "前のメッセージを呼び出す",
   "composer.key.historyNextDesc": "次のメッセージを呼び出す",
   "rpcError.session_has_active_run": "このセッションには実行中のランがあります — 介入・応答・キャンセルのいずれかを先に行ってください。",

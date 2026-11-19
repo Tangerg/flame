@@ -40589,6 +40589,72 @@ checkout outputs and the scratch tree. Continue with the handoff between
 captured evidence and the current workspace when the original object has
 moved.
 
+### Open a current file after a historical line read fails (2026-11-19)
+
+The isolated Runtime's existing workspace integration path reads a four-line
+current file in full. A request starting at historical line 63 returns
+`invalid_params` with an invalid-range detail. A genuinely absent path returns
+`internal_error`. A separate empty file reads as the single empty editor line.
+These are actual client results through the Runtime's public file read.
+
+At `30f26e372`, a private Lab build replays the captured file responses and
+presents the historical Read at lines 63–64. In actual Wails, Open the current
+file opens `README.md` with the generic missing-or-outside-workspace message.
+Retry rereads the same rejected range. Back to conversation focuses the exact
+Tool action. Back to files → README reads the four current lines. The Chinese
+counterpart opens an absent `old-reader.md` and retains its real path, Retry
+and source return.
+
+Better Writing and Better Accessibility inform the specific location and
+adjacent recovery action. Read-only ZCode ChatErrorBanner maps stable error
+codes to localized guidance. Flame reads the structured request category and
+its own line intent for this presentation.
+[WAI error suggestions](https://www.w3.org/WAI/WCAG22/Understanding/error-suggestion.html)
+
+An invalid initial line request with no accepted content now identifies the
+requested line and offers Open from start. The action reads the original
+path through the existing file navigation owner without a line argument. It
+keeps the initial inspection source. The shared read-error button hands
+focus to the file reader before it retires. The parent recognizes that one
+same-file restart and leaves the handoff or later focus in place. The two
+strings are available in all eight locales.
+
+- EN/light/18 px/Flame Orange at Actual Size and full motion. The rejected
+  line 63 exposes Open from start. Tab and Return open the four accepted
+  `README.md` lines and focus the named reader. Escape restores Open the
+  current file, with the recorded lines 63–64 still present. The unsent
+  draft continues as `573108652`.
+- ZH/dark/18 px/`#3B82F6` at Actual Size and full motion uses a native Left
+  window and a 320 px Dock. The complete error, path and action are visible.
+  The same error follows Files into the main pane. Pointer activation opens
+  the four current lines and focuses the named reader. Return to conversation
+  focuses the original tool action with its historical source still expanded.
+  The draft continues as `57384596`.
+- In the Chinese missing-file counterpart, `old-reader.md` keeps its
+  generic read error and Retry. Keyboard Retry still reports the missing
+  path and focuses its named region. Return to conversation restores the
+  precise tool action.
+- EN/light/14 px with standard Lab assets. A valid Go to line submission in
+  `DockResizer.tsx` returns focus to Go to line, and Tab advances to Copy path.
+  Native wheel input moves through the 93-line `reading-guide.md`.
+  Submitting 60 switches from Preview to Source and returns to Go to line.
+  The unsent `302` is still present. Exact target-line marking and the
+  attempted draft append were unverified in this control.
+
+Scoped Prettier, 137 Web tests, 939 locale keys, 26 bundle contracts,
+bootstrap, portable resources and module linkage, native build and the
+five standard Lab documents pass. The independent `a5e705edc` Runtime
+maintenance commit advances `main` after the first checks. The reviewed
+UI diff is checked on that base. Native acceptance uses recorded Runtime
+outcomes and the existing workspace UI. Standard assets exclude the
+private capture option. Live user filesystem reads, physical IME,
+VoiceOver speech and other platforms were outside the exercised path.
+
+Six signed private bundles, six launches and three previews complete.
+Cleanup removes six registrations, twelve private Library directories,
+ten checkout outputs and the scratch tree. Continue by checking how a valid
+line action shows its reading destination in the file itself.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

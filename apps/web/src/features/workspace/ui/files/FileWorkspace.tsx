@@ -166,6 +166,7 @@ export function FileWorkspace() {
   const panelRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLButtonElement>(null);
   const previousViewer = useRef(viewer);
+  const restartFrom = useRef<WorkspaceFileViewer>(null);
   const focusFileOnReturn = useRef<((path: string) => void) | null>(null);
   const fileActions: LocalFileActions = {
     open(cwd, path) {
@@ -186,6 +187,11 @@ export function FileWorkspace() {
   useLayoutEffect(() => {
     const previous = previousViewer.current;
     previousViewer.current = viewer;
+    const restarted = restartFrom.current;
+    restartFrom.current = null;
+    // The error action has already handed off focus inside the same reader.
+    if (restarted && restarted === previous && viewer?.line === 0 && viewer.path === restarted.path)
+      return;
     const panel = panelRef.current;
     if (!panel) return;
     const active = panel.ownerDocument.activeElement;
@@ -217,6 +223,10 @@ export function FileWorkspace() {
           viewer={viewer}
           backRef={backRef}
           fileActions={fileActions}
+          onOpenFromStart={() => {
+            restartFrom.current = viewer;
+            openWorkspaceFile(workspaceAccess, viewer.path);
+          }}
         />
       )}
     </div>
@@ -304,11 +314,13 @@ function FilePreview({
   viewer,
   backRef,
   fileActions,
+  onOpenFromStart,
 }: {
   workspace: ActiveSessionWorkspaceSelection;
   viewer: WorkspaceFileViewer;
   backRef: Ref<HTMLButtonElement>;
   fileActions: LocalFileActions;
+  onOpenFromStart: () => void;
 }) {
   const workspaceAccess = useWorkspace();
 
@@ -427,6 +439,13 @@ function FilePreview({
   const { name } = splitFilePath(viewer.path);
   // A failed refresh of this query's own accepted content keeps its reader, and position, in place.
   const retained = data !== undefined && !isPlaceholderData && !unsupported;
+  const rejectedInitialLine =
+    !retained &&
+    targetLine > 0 &&
+    lineWindow.start === targetLine &&
+    lineWindow.end === initialLineWindow.end &&
+    !lineWindow.fromEnd &&
+    workspaceAccess.errors.isInvalidReadRequest(error);
   const refreshFeedback =
     retained && error != null ? (
       isFetching ? (
@@ -546,9 +565,18 @@ function FilePreview({
           items={data ? [data] : []}
           isLoading={isPending || isWorkspaceResolving(workspace)}
           failure={retained ? undefined : error}
-          onRetry={refetch}
+          onRetry={rejectedInitialLine ? onOpenFromStart : refetch}
+          focusTarget={rejectedInitialLine ? scrollPort : undefined}
           skeletonCount={12}
-          error={{ title: t("file.error.title"), sub: t("file.error.sub") }}
+          error={
+            rejectedInitialLine
+              ? {
+                  title: t("file.error.requestedLine", { line: targetLine }),
+                  sub: "",
+                  retryLabel: t("file.openFromStart"),
+                }
+              : { title: t("file.error.title"), sub: t("file.error.sub") }
+          }
         >
           {(items) => (
             <div ref={displayed}>

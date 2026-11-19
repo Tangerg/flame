@@ -654,6 +654,8 @@
   "file.readRefreshError.sub": "Se muestra el último contenido cargado.",
   "file.error.title": "No se pudo abrir el archivo",
   "file.error.sub": "Puede haberse movido o estar fuera del espacio de trabajo.",
+  "file.error.requestedLine": "No se pudo abrir desde la línea {{line}}",
+  "file.openFromStart": "Abrir desde el principio",
   "composer.key.historyPrevDesc": "Recuperar el mensaje anterior",
   "composer.key.historyNextDesc": "Recuperar el mensaje siguiente",
   "rpcError.session_has_active_run": "Esta sesión ya tiene una ejecución en curso: dirígela, respóndela o cancélala primero.",

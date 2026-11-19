@@ -654,6 +654,8 @@
   "file.readRefreshError.sub": "Le dernier contenu chargé est affiché.",
   "file.error.title": "Impossible d'ouvrir le fichier",
   "file.error.sub": "Il a peut-être été déplacé ou se trouve hors de l'espace de travail.",
+  "file.error.requestedLine": "Impossible d'ouvrir à partir de la ligne {{line}}",
+  "file.openFromStart": "Ouvrir depuis le début",
   "composer.key.historyPrevDesc": "Rappeler le message précédent",
   "composer.key.historyNextDesc": "Rappeler le message suivant",
   "rpcError.session_has_active_run": "Cette session a déjà une exécution en cours — orientez-la, répondez-y ou annulez-la d’abord.",

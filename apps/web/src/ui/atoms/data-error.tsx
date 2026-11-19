@@ -17,12 +17,22 @@ interface Props {
   unsupported?: UnsupportedConfig;
   focusTarget?: RefObject<HTMLElement | null>;
   onRetry?: () => void;
+  retryLabel?: string;
   title?: string;
   sub?: string;
   size?: EmptyStateSize;
 }
 
-export function DataError({ failure, unsupported, focusTarget, onRetry, title, sub, size }: Props) {
+export function DataError({
+  failure,
+  unsupported,
+  focusTarget,
+  onRetry,
+  retryLabel,
+  title,
+  sub,
+  size,
+}: Props) {
   const t = useT();
   if (failure != null && isUnsupportedMethod(failure)) {
     return (
@@ -56,7 +66,7 @@ export function DataError({ failure, unsupported, focusTarget, onRetry, title, s
               onRetry();
             }}
           >
-            {t("common.retry")}
+            {retryLabel ?? t("common.retry")}
           </Button>
         )
       }

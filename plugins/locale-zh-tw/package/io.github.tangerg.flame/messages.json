@@ -541,6 +541,8 @@
   "file.readRefreshError.sub": "目前顯示上次載入的內容。",
   "file.error.title": "無法開啟檔案",
   "file.error.sub": "它可能已移動，或位於工作區之外。",
+  "file.error.requestedLine": "無法從第 {{line}} 行開啟",
+  "file.openFromStart": "從檔案開頭開啟",
   "compaction.compacted": "已自動壓縮上下文",
   "projects.showMore": "顯示另外 {{count}} 條",
   "projects.showLess": "收合",
