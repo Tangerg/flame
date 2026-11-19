@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useMemo, useRef, type ClipboardEvent } from "react";
+import { useMemo, useRef, type ClipboardEvent, type RefObject } from "react";
 import { File, useWorkerPool, type FileOptions } from "@pierre/diffs/react";
 import { registerCustomCSSVariableTheme, type FileContents } from "@pierre/diffs";
 import { useScheme } from "@/lib/appearance";
@@ -31,23 +31,27 @@ export function PierreFile({
   source,
   language,
   path = "source",
-  startLine = 1,
+  lineRange,
   targetLine,
   intent,
   wrapped = false,
   selectionContentRef,
+  sourceScrollRef,
 }: {
   presentation?: "code-block" | "standalone";
   source: string;
   language?: string;
   path?: string;
-  startLine?: number;
+  lineRange?: { start: number; end: number };
   targetLine?: number;
   intent?: object | null;
   wrapped?: boolean;
   selectionContentRef?: CodeSourceProps["selectionContentRef"];
+  sourceScrollRef?: RefObject<HTMLElement | null>;
 }) {
   const isCodeBlock = presentation === "code-block";
+  const startLine = lineRange?.start ?? 1;
+  const endLine = lineRange?.end;
   const scheme = useScheme();
   const pool = useWorkerPool();
   if (!pool) throw new Error("code rendering requires its shared worker pool");
@@ -68,21 +72,42 @@ export function PierreFile({
       themeType: scheme,
       overflow: wrapped ? "wrap" : "scroll",
       disableFileHeader: true,
-      disableLineNumbers: true,
+      disableLineNumbers: endLine === undefined,
       onPostRender: (node, _instance, phase) => {
         if (phase === "unmount") {
           root.current = null;
           if (selectionContentRef) selectionContentRef.current = null;
+          if (sourceScrollRef) sourceScrollRef.current = null;
           return;
         }
         const shadow = node.shadowRoot;
         if (!shadow) throw new Error("code renderer omitted its source root");
         root.current = shadow;
+        const code = shadow.querySelector<HTMLElement>("[data-file] > [data-code]");
+        if (code && endLine !== undefined) {
+          code.style.setProperty("--diffs-min-number-column-width", `${String(endLine).length}ch`);
+          // Only the displayed text is absolute. Pierre's attributes still address local rows.
+          for (const label of code.querySelectorAll(
+            "[data-gutter] [data-column-number] > [data-line-number-content]",
+          )) {
+            const number =
+              Number(label.parentElement?.getAttribute("data-column-number")) + startLine - 1;
+            const text = number <= endLine ? String(number) : "";
+            if (label.textContent !== text) label.textContent = text;
+          }
+        }
         for (const line of shadow.querySelectorAll<HTMLElement>("[data-code] [data-line]")) {
-          const number = Number(line.dataset.line) + startLine - 1;
-          markQuoteLine(line, number);
-          markReaderLine(line, number - startLine);
-          if (number === targetLine && intent) {
+          const index = Number(line.dataset.line) - 1;
+          const number = startLine + index;
+          const served = endLine === undefined || number <= endLine;
+          if (served) {
+            markQuoteLine(line, number);
+            markReaderLine(line, index);
+          } else {
+            line.removeAttribute("data-quote-line");
+            line.removeAttribute("data-reader-line");
+          }
+          if (served && number === targetLine && intent) {
             // Style only this row so Pierre keeps its ordinary source layout.
             line.setAttribute(FILE_TARGET_LINE, "");
             line.style.backgroundColor = "var(--wash-selected)";
@@ -91,7 +116,10 @@ export function PierreFile({
               presentedIntent.current?.file !== file ||
               presentedIntent.current.intent !== intent
             ) {
+              // Vertical placement must not pan source behind the sticky gutter.
+              const left = code?.scrollLeft ?? 0;
               line.scrollIntoView({ block: "center" });
+              if (code) code.scrollLeft = left;
               presentedIntent.current = { file, intent };
             }
           } else if (line.hasAttribute(FILE_TARGET_LINE)) {
@@ -100,11 +128,24 @@ export function PierreFile({
             line.style.removeProperty("box-shadow");
           }
         }
-        if (selectionContentRef)
-          selectionContentRef.current = shadow.querySelector("[data-file] > [data-code]");
+        if (selectionContentRef) {
+          selectionContentRef.current =
+            code && endLine !== undefined ? code.querySelector(":scope > [data-content]") : code;
+        }
+        if (sourceScrollRef) sourceScrollRef.current = code;
       },
     }),
-    [scheme, wrapped, startLine, targetLine, intent, file, selectionContentRef],
+    [
+      scheme,
+      wrapped,
+      startLine,
+      endLine,
+      targetLine,
+      intent,
+      file,
+      selectionContentRef,
+      sourceScrollRef,
+    ],
   );
   const copy = (event: ClipboardEvent<HTMLElement>) => {
     const shadow = root.current;
@@ -139,10 +180,14 @@ export function PierreFile({
       event.clipboardData.setData("text/plain", source);
       return;
     }
-    const sourceLines = source.match(/[^\n]*\n|[^\n]+$/g) ?? [];
+    const sourceLines: string[] = source.match(/[^\n]*\n|[^\n]+$/g) ?? [];
+    // A served range can end on an empty authored line.
+    if (endLine !== undefined && (source === "" || source.endsWith("\n"))) sourceLines.push("");
     const parts: string[] = [];
     for (const line of shadow.querySelectorAll<HTMLElement>("[data-code] [data-line]")) {
-      if (!range.intersectsNode(line)) continue;
+      const index = Number(line.dataset.line) - 1;
+      if ((endLine !== undefined && startLine + index > endLine) || !range.intersectsNode(line))
+        continue;
       const slice = shadow.ownerDocument.createRange();
       slice.selectNodeContents(line);
       const beyond = range.compareBoundaryPoints(Range.END_TO_END, slice) > 0;
@@ -153,7 +198,7 @@ export function PierreFile({
       const prefix = shadow.ownerDocument.createRange();
       prefix.selectNodeContents(line);
       prefix.setEnd(slice.startContainer, slice.startOffset);
-      const text = sourceLines[Number(line.dataset.line) - 1];
+      const text = sourceLines[index];
       if (text === undefined) throw new Error("code selection has no captured source line");
       const offset = prefix.toString().length;
       parts.push(text.slice(offset, beyond ? text.length : offset + slice.toString().length));

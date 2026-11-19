@@ -40886,6 +40886,68 @@ ten checkout outputs and the scratch tree. The native 1–59 window
 labels the next action with 200 lines. The accepted file has 34 lines
 remaining. The next task is to name the actual planned page.
 
+### Display the accepted file source line numbers (2026-11-20)
+
+Signed Wails on `8b762c6c0` opens the accepted range 237–437
+after Go to line 237. The target has a mark and the trigger regains
+focus. The code has no visible line numbers. Showing the preceding
+200 lines accepts 37–236 and the literal source ends at 236. The
+renderer also exposes trailing empty rows, one of which takes the
+old target mark for 237 even though the accepted source ends earlier.
+
+Files passes the displayed read's served bounds into the existing
+Pierre source view. The gutter projects absolute numbers into the
+renderer's number cells. Its local indices continue to serve selection
+and text projection. Addressable source lines, visible numbers and
+the target mark stop at the accepted end. An accepted authored blank
+retains its own address. Transcript blocks and formatted Preview keep
+their existing presentations. ZCode's code viewer likewise maps its
+local indices to source positions for selection and comments.
+[Pierre file rendering](https://diffs.com/docs)
+
+The first candidate revealed two interactions with the new gutter.
+Vertical target placement panned 49 px and clipped the start of the
+source, and whole-source selection included the gutter values.
+The adapter now preserves the horizontal position of the active code
+scrollport during target placement. Its two DOM references expose the
+actual source text for selection and the existing code scrollport
+for panning. Whole-source copy projects the same accepted bytes.
+
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950, scale 1 and a 320 px
+  Dock. The private final capture extends the same file to 1,470
+  lines. The initial 6–206 range and Go to line 237 both begin
+  at horizontal offset 0. Go to line returns focus to its trigger.
+  Earlier shows exactly 37–236. The previous mark and visible
+  number for 237 are absent. Cmd+A selects 13,376 characters
+  beginning with the actual code. The first candidate selected
+  14,113 characters beginning with the gutter.
+- Right pans the actual 312 px code region to x31. Jumping to a
+  new accepted range starts at x0. The four-digit gutter is 57 px
+  wide and shows 1450–1470. Earlier shows 1250–1449, then the
+  last 21 lines restore the real 1450 target. Back from this direct
+  file entry focuses the table and a pointer opens the same file.
+  Return on the table alone keeps the list visible. The draft continues
+  as `854612`.
+- EN/light/14 px/Flame Orange at Actual Size uses the canonical
+  Lab. The eight-line source displays 1–8, and Go to line 4
+  retains the trigger. The 93-line reading guide displays its
+  numbers in Source and its document in Preview. Back from the
+  list-owned guide restores its exact row. Return opens the same
+  guide and the draft continues as `853758`.
+
+Scoped formatting, the full Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and five
+canonical Lab documents pass. The private acceptance uses captured
+line windows and passive geometry and selection readings. Clipboard
+transfer, VoiceOver, live filesystem reads, physical IME, other
+platforms, browser suites and benchmarks were outside this qualification.
+
+Four native launches and five loopback preview launches exit.
+Cleanup removes four registrations, eight private Library directories,
+ten checkout outputs and the scratch tree. Continue with a verified
+reading or return case.
+
 ### File continuation names its planned window (2026-11-19)
 
 The previous native acceptance reads `reading-guide.md` lines 1–59 of 93

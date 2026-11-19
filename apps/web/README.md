@@ -246,9 +246,10 @@ reader. An accepted page starts at its top, while a refresh retains that page's
 reading position.
 Source selection and copy refer only to the presented page. Partial pages stay
 in source mode, and the header shows their actual served line range. For a whole
-file the header shows its line count.
+file the header shows its line count. The Source gutter numbers the served lines
+using their absolute file positions.
 The file reader scopes Select All to its displayed content in both Preview and
-Source, excluding its path and host controls. Source highlights the mounted code
+Source, excluding its path, host controls and line gutter. Source highlights the mounted code
 for the current page. Preview retains native formatted copy. Source and renderer
 fallbacks copy the literal captured page as plain text. Nested code readers and
 editable fields keep their own selection behavior.
@@ -1235,8 +1236,10 @@ line placement, renderer mode and source-return history retain their existing
 owners.
 
 An accepted file source jump marks its target with the palette's bounded
-selection fill and an inset leading rule. The mark identifies the destination
-when the whole file already fits in the reader.
+selection fill and an inset leading rule, including when the whole file fits in
+the reader. The jump centers the row vertically and keeps the current horizontal
+offset. Line numbers, quote addresses and target marks stop at the last served
+line.
 
 When WebKit retains the Composer's range, the focused File viewport uses the
 shared relative line scroll for Up and Down in both Preview and Source.

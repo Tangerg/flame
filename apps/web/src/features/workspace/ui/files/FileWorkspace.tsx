@@ -429,22 +429,24 @@ function FilePreview({
   // rendered content keeps the browser's formatted copy and editable fields stay native.
   const source = useRef<HTMLDivElement>(null);
   const selectionContentRef = useRef<Element | null>(null);
+  const sourceScrollRef = useRef<HTMLElement | null>(null);
   const displayed = useRef<HTMLDivElement>(null);
   const onFileKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
     const sourceView = source.current;
     const sourceContent = sourceView ? selectionContentRef.current : null;
     const content = sourceContent ?? sourceView ?? displayed.current;
     if (content) selectAllInReader(event, content);
+    const sourceScroll = sourceView ? sourceScrollRef.current : null;
     if (
       (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
       event.cancelable &&
       !isImeKey(event.nativeEvent) &&
-      sourceContent instanceof HTMLElement &&
-      sourceContent.scrollWidth > sourceContent.clientWidth
+      sourceScroll &&
+      sourceScroll.scrollWidth > sourceScroll.clientWidth
     ) {
       // The named viewport holds focus while Pierre's raw column pans.
       scrollWithHorizontalArrow(event, (delta) => {
-        sourceContent.scrollBy({ left: delta, behavior: "instant" });
+        sourceScroll.scrollBy({ left: delta, behavior: "instant" });
       });
     }
     scrollReaderWithForeignSelection(event, "both");
@@ -697,9 +699,11 @@ function FilePreview({
                     <FileView
                       ref={source}
                       selectionContentRef={selectionContentRef}
+                      sourceScrollRef={sourceScrollRef}
                       path={viewer.path}
                       content={items[0]!.content}
                       startLine={items[0]!.startLine}
+                      endLine={items[0]!.endLine}
                       targetLine={displayedViewer.line}
                       intent={displayedRead?.viewer ?? null}
                     />
@@ -721,9 +725,11 @@ function FilePreview({
                 <FileView
                   ref={source}
                   selectionContentRef={selectionContentRef}
+                  sourceScrollRef={sourceScrollRef}
                   path={viewer.path}
                   content={items[0]!.content}
                   startLine={items[0]!.startLine}
+                  endLine={items[0]!.endLine}
                   targetLine={displayedViewer.line}
                   intent={displayedRead?.viewer ?? null}
                 />
