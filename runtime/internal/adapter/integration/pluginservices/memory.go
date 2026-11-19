@@ -157,7 +157,7 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) (_ 
 	}
 	return items, nil
 }
-func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintenanceInput) error {
+func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintenanceInput, compacted bool) error {
 	binding, borrowed, err := contributionSession(ctx, m.commands.framework, m.installations, m.commands.selections, m.pool, m.contract)
 	if errors.Is(err, errInactive) {
 		return nil
@@ -176,7 +176,7 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 		return err
 	}
 	request := memorycontract.MaintenanceInput{
-		SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: input.DurableContextCompacted,
+		SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: compacted,
 		Conversation: &memorycontract.Conversation{MessageCount: count, Transcript: models.RenderTranscript(messages)},
 	}
 	_, err = invokeResolvedCommand[memorycontract.MaintenanceInput, memorycontract.MaintenanceResult](operation.Start(ctx, extension.Automatic, "plugins.automatic", uuid.NewString()), m.commands, memorycontract.MaintainV1Method, request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {

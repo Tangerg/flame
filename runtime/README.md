@@ -1882,6 +1882,11 @@ An unset utility role uses the Runtime composition's default model selection. It
 
 ## Automatic Skill learning
 
+After Scope records successful root completion, Runtime reads maintenance input
+from the original Run's committed work. Each settled Tool call in the Run tree
+counts once across Segments. The root's Compaction Item records its committed
+conversation rewrite for Memory. Both inputs survive a waiting Run's restart.
+
 The selected `flame.skill-learning.v2` provider owns learning cadence, mining prompts, source precedence, proposal slots and human review decisions. Runtime grants access to one committed conversation, an admitted current Skill and the configured utility model. A revision binds the exact bytes supplied by that read.
 
 A proposal revision identifies its original provider command. Explicit review resolves that retained command and its original release. The host checks the authorized target and file preimage, records the physical effect in the private runtime data directory, and acknowledges the original decision. Forks and restarts preserve the source Session and review identity. Revoking the original release prevents further publication from its queue. Existing active and archived documents remain in their authored libraries. The provider independently advises on archival using the host's usage observations. See [the Skills package](../plugins/skills/README.md).

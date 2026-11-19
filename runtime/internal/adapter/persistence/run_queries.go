@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 const runColumns = `r.run_id, r.session_id, r.spawned_by_item_id, r.parent_run_id, r.root_run_id,
@@ -110,6 +112,45 @@ func (r *RunStore) readRun(ctx context.Context, operation, runID string, scan fu
 }
 func (r *RunStore) Run(ctx context.Context, runID string) (rundomain.Run, bool, error) {
 	return r.readRun(ctx, "read Run", runID, scanRun)
+}
+
+// CompletedRunWork reads from one snapshot while the completed executor still
+// owns its root Run. Attempts can span Segments, so each settled call counts once.
+func (r *RunStore) CompletedRunWork(ctx context.Context, sessionID, rootRunID string) (completedToolCalls int64, compacted bool, err error) {
+	const operation = "read completed Run work"
+	if err := validateSessionResource(operation, sessionID); err != nil {
+		return 0, false, err
+	}
+	if err := validateRunResource(operation, rootRunID); err != nil {
+		return 0, false, err
+	}
+	return scopedPair(ctx, r.db.read, func(ctx context.Context) (int64, bool, error) {
+		var calls int64
+		var compacted bool
+		err := r.db.connection(ctx).QueryRowContext(ctx, `
+		SELECT (
+		    SELECT COUNT(DISTINCT attempt.call_id)
+		      FROM tool_invocations AS attempt
+		     WHERE attempt.session_id = root.session_id AND attempt.state = ?
+		       AND attempt.run_id IN (
+		           SELECT member.run_id FROM runs AS member
+		            WHERE member.session_id = root.session_id
+		              AND (member.run_id = root.run_id OR member.root_run_id = root.run_id)
+		       )
+		), EXISTS (
+		    SELECT 1 FROM history_items AS item
+		     WHERE item.session_id = root.session_id AND item.run_id = root.run_id
+		       AND json_extract(item.payload, '$.kind') = ?
+		)
+		FROM runs AS root
+		WHERE root.session_id = ? AND root.run_id = ? AND root.root_run_id = '' AND root.state = ?`,
+			string(runs.ToolInvocationCompleted), string(transcript.Compaction), sessionID, rootRunID, string(rundomain.Running),
+		).Scan(&calls, &compacted)
+		if err != nil {
+			return 0, false, fmt.Errorf("sqlite: %s %q: %w", operation, rootRunID, err)
+		}
+		return calls, compacted, nil
+	})
 }
 
 // Tree resolves runID to its tree root and returns that root plus every

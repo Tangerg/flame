@@ -284,9 +284,6 @@ func (i *interactionModelContextReducer) commitCompaction(ctx context.Context, p
 		if err := i.session.commitFact(ctx, i.session.executorMember(process), fact); err != nil {
 			return err
 		}
-		if compaction.Durable() {
-			i.session.state.markDurableContextCompacted()
-		}
 	}
 	return nil
 }

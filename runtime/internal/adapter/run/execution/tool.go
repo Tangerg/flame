@@ -135,7 +135,6 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	if err := o.session.commitFact(ctx, member, prepared); err != nil {
 		return toolcontract.Result{}, o.projectionFailure(fmt.Errorf("execution: commit Tool call start: %w", err))
 	}
-	o.session.toolCalls.Add(1)
 	var output toolcontract.Output
 	var callErr error
 	var mutatedPaths []string

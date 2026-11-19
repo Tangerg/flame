@@ -461,6 +461,10 @@ func (r *reducer) modelUsageProgress(e ModelCallCompleted) ([]ProjectionEvent, e
 }
 
 func (r *reducer) compaction(e CompactionBoundary) ([]ProjectionEvent, error) {
+	// A root Compaction Item is the evidence that the Session rewrite committed.
+	if durable := e.Rewrite != nil; durable != r.cfg.Opened.Lineage().IsRoot() {
+		return nil, fmt.Errorf("%w: compaction rewrite does not match the Run's lineage", errExecutorContract)
+	}
 	dropped := max(e.MessagesBefore-e.MessagesAfter, 0)
 	id, err := r.nextItemID()
 	if err != nil {

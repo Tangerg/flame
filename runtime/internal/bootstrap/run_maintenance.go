@@ -29,7 +29,7 @@ func buildRunMaintenance(
 	if cfg.maintenance != nil {
 		return cfg.maintenance, compactor, nil
 	}
-	pipeline, err := maintenance.NewPipeline(memory, skills)
+	pipeline, err := maintenance.NewPipeline(cfg.stores.Runs, memory, skills)
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtime: build maintenance pipeline: %w", err)
 	}

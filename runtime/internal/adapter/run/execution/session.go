@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"runtime/debug"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -43,7 +42,6 @@ type interactionSession struct {
 	state                  interactionState
 	steerAdmissions        *keylock.Set
 	childProjection        interactionChildProjection
-	toolCalls              atomic.Int64
 	material               requestMaterial
 	unknownPollInterval    time.Duration
 	statePollInterval      time.Duration
@@ -79,22 +77,21 @@ type interactionState struct {
 	pendingSteers map[scoperun.SignalID]runs.PreparedSteer
 	// Resume Items are already committed, but the root model can still be
 	// waiting for delegated work across several successive input barriers.
-	pendingResumeInputs        []runs.CommittedUserInput
-	process                    *scoperun.Handle[scoperun.Payload]
-	observer                   context.Context
-	phase                      interactionPhase
-	workersStarted             bool
-	boundary                   interactionBoundary
-	dispatchReady              chan struct{}
-	waitingCheckpoint          runs.ExecutorCheckpoint
-	subtreeChange              *interactionWaitingSubtreeChange
-	subtreePrepared            chan struct{}
-	unknownReported            bool
-	rootCancellation           *interactionRootCancellation
-	deployments                *interactionDeploymentSet
-	delegateCalls              map[delegateCallIdentity]*managedDelegateCall
-	delegateChildren           map[scoperun.ProcessID]*managedDelegateCall
-	durableContextWasCompacted bool
+	pendingResumeInputs []runs.CommittedUserInput
+	process             *scoperun.Handle[scoperun.Payload]
+	observer            context.Context
+	phase               interactionPhase
+	workersStarted      bool
+	boundary            interactionBoundary
+	dispatchReady       chan struct{}
+	waitingCheckpoint   runs.ExecutorCheckpoint
+	subtreeChange       *interactionWaitingSubtreeChange
+	subtreePrepared     chan struct{}
+	unknownReported     bool
+	rootCancellation    *interactionRootCancellation
+	deployments         *interactionDeploymentSet
+	delegateCalls       map[delegateCallIdentity]*managedDelegateCall
+	delegateChildren    map[scoperun.ProcessID]*managedDelegateCall
 }
 
 // interactionPhase orders one session's claim: a Process is begun at most once,
@@ -199,18 +196,6 @@ func (i *interactionState) observationContext() context.Context {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	return i.observer
-}
-
-func (i *interactionState) markDurableContextCompacted() {
-	i.mu.Lock()
-	i.durableContextWasCompacted = true
-	i.mu.Unlock()
-}
-
-func (i *interactionState) durableContextCompacted() bool {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	return i.durableContextWasCompacted
 }
 
 func (i *interactionState) begin(boundary interactionBoundary) error {

@@ -71,7 +71,7 @@ func NewSkillLearning(config SkillLearningConfig) (*SkillLearning, error) {
 	return &SkillLearning{contract: contract, commands: config.Commands, callbacks: config.Callbacks, utility: config.Utility, history: config.Conversation, source: config.Source, proposals: config.Proposals, archives: config.Archives}, nil
 }
 
-func (s *SkillLearning) MaintainSkills(ctx context.Context, input execution.RunMaintenanceInput) error {
+func (s *SkillLearning) MaintainSkills(ctx context.Context, input execution.RunMaintenanceInput, completedToolCalls int64) error {
 	c := s.commands
 	binding, borrowed, err := contributionSession(ctx, c.framework, c.installations, c.selections, c.pool, s.contract)
 	if errors.Is(err, errInactive) {
@@ -82,12 +82,12 @@ func (s *SkillLearning) MaintainSkills(ctx context.Context, input execution.RunM
 	}
 	defer borrowed.Close()
 	ctx = borrowed.Context()
-	mineErr := s.mine(ctx, binding, input)
+	mineErr := s.mine(ctx, binding, input, completedToolCalls)
 	archiveErr := s.archive(ctx, binding, time.Now())
 	return errors.Join(mineErr, archiveErr)
 }
 
-func (s *SkillLearning) mine(ctx context.Context, binding plugins.ContributionBinding, input execution.RunMaintenanceInput) error {
+func (s *SkillLearning) mine(ctx context.Context, binding plugins.ContributionBinding, input execution.RunMaintenanceInput, completedToolCalls int64) error {
 	if input.SessionID == "" || input.WorkspaceCWD == "" || input.RootMemberID == "" {
 		return nil
 	}
@@ -109,7 +109,7 @@ func (s *SkillLearning) mine(ctx context.Context, binding plugins.ContributionBi
 	if err != nil {
 		return err
 	}
-	request := skilllearning.Run{SessionID: input.SessionID, ToolCalls: int64(input.ToolCalls), Library: library}
+	request := skilllearning.Run{SessionID: input.SessionID, ToolCalls: completedToolCalls, Library: library}
 	if err := request.Validate(); err != nil {
 		return err
 	}

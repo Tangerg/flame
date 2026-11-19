@@ -13,7 +13,8 @@ import (
 )
 
 type staticTestChatResolver struct {
-	client *chatclient.Client
+	client   *chatclient.Client
+	metadata *catalog.Model
 }
 
 func testChatResolver(client chatclient.Client) modelProviderAdapters {
@@ -25,7 +26,11 @@ func (r staticTestChatResolver) OpenChat(
 	selection modelchoice.Selection,
 	_ modelprovider.Connection,
 ) (modeladapter.ResolvedChat, error) {
-	return modeladapter.NewResolvedChat(r.client, nil, testsupport.ModelFacts(selection))
+	metadata := testsupport.ModelFacts(selection)
+	if r.metadata != nil && r.metadata.ID == selection.Model() {
+		metadata = r.metadata
+	}
+	return modeladapter.NewResolvedChat(r.client, nil, metadata)
 }
 
 func (r staticTestChatResolver) RestoreChat(ctx context.Context, selection modelchoice.Selection, _ *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error) {
