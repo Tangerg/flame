@@ -39691,6 +39691,60 @@ focused, Right returns focus to the Composer at offset 4.
 The next batch will trace this boundary in formatted Preview and
 the keyboard behavior of its nested readers.
 
+### Arrow focus in formatted file previews (2026-11-19)
+
+Signed Wails at `e15b5d725` reproduces the focus loss with
+`reading-guide.md` open in Preview at 1440 × 900. The named file
+viewport fits at 712 px. With the Composer caret at offset 4,
+trusted Right and Left on the viewport send focus back to the
+Composer at offsets 5 and 3, respectively. Typing after Left
+continues the draft as `740316285`.
+
+`FilePreview` uses the existing foreign-selection guard on both
+axes in Preview and Source. It runs only for an unmodified arrow
+from the focused file viewport with a document range still owned
+by another editor. Raw code panning runs first. Nested readers
+receive their own horizontal keys through their existing handlers.
+[WebKit selection and focus](https://bugs.webkit.org/show_bug.cgi?id=112854#c5)
+[WAI keyboard scroll reachability](https://www.w3.org/WAI/standards-guidelines/act/rules/0ssw9k/)
+
+- EN/light/Flame Orange with motion off at 1440 × 900. Left and
+  Right keep the file viewport focused at horizontal offset 0
+  and preserve Composer offset 4. Down and Up move the preview
+  between 0 and 40 px. A clear selection leaves Right to WebKit,
+  and Cmd+A stays in Preview. Back restores `reading-guide.md`
+  and Cmd+L continues the draft as `740136285`.
+- ZH/dark/18 px/custom blue with full motion at 1121 × 950 and
+  a 320 px Dock. Left and Right protect the backward Composer
+  selection at offsets 6 to 4. Down and Up move the outer
+  viewport between 0 and 40 px. The 280 px table pans to 28
+  and 51 px, then back to 23 px. The Go block pans to 27 px
+  and back to 0. Their horizontal movement preserves the
+  outer position and the selection. Source still pans its
+  live code column to 31 px. Back restores the file row and
+  Cmd+L replaces the preserved selection to produce `6295718`.
+- Standard Lab retains the visible file focus ring through both
+  horizontal arrows. Down, Up and a mouse wheel continue reading
+  in Preview. Back restores the exact row and Cmd+L resumes the
+  draft as `436890517`.
+
+Scoped Prettier, Web typecheck, 89 Web contracts, 937 locale keys
+in eight catalogs, bootstrap, installed resource reproduction,
+26 bundle contracts and module linking pass. The native and
+five-entry Lab gates pass. Native acceptance uses captured data.
+VoiceOver, platform composition and clipboard handoff remain open.
+
+Four private bundles pass strict signature verification. Four
+launches and three previews exit. Cleanup removes four app
+registrations, eight Library directories, ten checkout outputs
+and the scratch tree.
+
+The adjacent table still leaks vertical keyboard scope. In the
+Chinese Dock, a trusted Down on the focused table leaves the
+outer file at 614 px and returns to the Composer at offset 7
+from offset 2. The next batch will trace the vertical scroll
+owner from nested readers.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

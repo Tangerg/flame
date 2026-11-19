@@ -230,7 +230,9 @@ for the current page. Preview retains native formatted copy. Source and renderer
 fallbacks copy the literal captured page as plain text. Nested code readers and
 editable fields keep their own selection behavior.
 In Source, Left and Right pan the rendered code column. The named file
-viewport retains keyboard focus and owns vertical reading.
+viewport owns vertical reading and keeps arrow keys from returning focus
+to a retained Composer selection in both Preview and Source. Nested readers
+own their horizontal panning.
 
 The workbench keeps its layout and existing Runtime recovery notice available
 before the first Session snapshot. Conversation content starts from a defined

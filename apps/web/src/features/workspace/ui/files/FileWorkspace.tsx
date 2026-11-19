@@ -414,7 +414,7 @@ function FilePreview({
         sourceContent.scrollBy({ left: delta, behavior: "instant" });
       });
     }
-    scrollReaderWithForeignSelection(event, sourceView ? "both" : "vertical");
+    scrollReaderWithForeignSelection(event, "both");
   };
   const copySource: ClipboardEventHandler<HTMLDivElement> = (event) => {
     if (source.current && data) copyReaderSelection(event, data.content, source.current);
