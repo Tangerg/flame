@@ -21,7 +21,7 @@ import (
 type installedStream struct{ installedCall }
 
 func (c *CommandCalls) PrepareStream(_ context.Context, request plugins.CallRequest) (plugins.StreamCall, error) {
-	method, err := admitCallRequest(request, true)
+	method, err := admitCallRequest(request, streamedCall)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 			return
 		}
 		fail := func(err error) { yield(plugins.StreamEvent{}, errors.Join(plugin.ErrCommandUnconfirmed, err)) }
-		record, err := c.calls.admitCommandRoute(ctx, c.request.Method, c.request.Input, c.accepts, c.resolve, func(plugins.ContributionBinding) framecall.Target { return c.request.Target }, true)
+		record, err := c.calls.admitCommandRoute(ctx, c.request.Method, c.request.Input, c.accepts, c.resolve, func(plugins.ContributionBinding) framecall.Target { return c.request.Target }, streamedCall)
 		if err != nil {
 			yield(plugins.StreamEvent{}, err)
 			return

@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
 // ReviveAcceptedSubtreeCancellations runs before ordinary Run-loss recovery.
@@ -85,81 +87,110 @@ func (c *Cancellations) reviveAcceptedSubtreeCancellation(ctx context.Context, a
 	if len(retained) == 0 || retained[0].TargetRunID != accepted.TargetRunID {
 		return nil
 	}
-	accepted = retained[0]
-	values, err := c.runs.Tree(ctx, accepted.RootRunID())
+	revival, err := c.acceptedSubtreeRevival(ctx, retained[0], sess)
 	if err != nil {
 		return err
 	}
-	root, found := parkedRoot(accepted.RootRunID(), values)
-	if !found {
-		return errors.New("runs: accepted cancellation root is missing")
-	}
-	if root.State().IsTerminal() {
-		ref := ExecutorRef{SessionID: accepted.SessionID, ExecutorID: accepted.Pending.ExecutorID}
-		if err := c.SettleRootCancellation(ctx, ref, root.ID()); err != nil {
+	if revival.root.State().IsTerminal() {
+		ref := ExecutorRef{SessionID: revival.accepted.SessionID, ExecutorID: revival.accepted.Pending.ExecutorID}
+		if err := c.SettleRootCancellation(ctx, ref, revival.root.ID()); err != nil {
 			return err
 		}
-		return c.acceptedSubtreeCancellations.DeleteSubtreeCancellation(ctx, accepted.RootRunID(), accepted.TargetRunID)
+		return revival.retire(ctx, c.acceptedSubtreeCancellations)
 	}
-	target, found := runByID(values, accepted.TargetRunID)
-	if !found || !target.Canceled() || target.Lineage().RootRunID() != root.ID() {
+	if err := c.prepareAcceptedSubtreeRevival(ctx, &revival); err != nil {
+		return err
+	}
+	if revival.accepted.Disposition() == WaitingSubtreeStaysWaiting {
+		return c.reviveWaitingSubtreeCancellation(ctx, revival)
+	}
+	return c.reviveRunningSubtreeCancellation(ctx, revival, &admission)
+}
+
+// acceptedSubtreeRevival is one retained cancellation re-read under the
+// Session's run admission, together with the tree facts its revival replays.
+type acceptedSubtreeRevival struct {
+	accepted AcceptedSubtreeCancellation
+	session  session.Session
+	tree     []rundomain.Run
+	root     rundomain.Run
+	request  WaitingSubtreeCancellationRequest
+}
+
+func (r acceptedSubtreeRevival) retire(ctx context.Context, store acceptedSubtreeCancellationStore) error {
+	return store.DeleteSubtreeCancellation(ctx, r.accepted.RootRunID(), r.accepted.TargetRunID)
+}
+
+func (c *Cancellations) acceptedSubtreeRevival(ctx context.Context, accepted AcceptedSubtreeCancellation, sess session.Session) (acceptedSubtreeRevival, error) {
+	tree, err := c.runs.Tree(ctx, accepted.RootRunID())
+	if err != nil {
+		return acceptedSubtreeRevival{}, err
+	}
+	root, found := parkedRoot(accepted.RootRunID(), tree)
+	if !found {
+		return acceptedSubtreeRevival{}, errors.New("runs: accepted cancellation root is missing")
+	}
+	return acceptedSubtreeRevival{accepted: accepted, session: sess, tree: tree, root: root}, nil
+}
+
+// prepareAcceptedSubtreeRevival rebuilds the original cancellation request and
+// retires the executor that accepted it before any replacement can stage.
+func (c *Cancellations) prepareAcceptedSubtreeRevival(ctx context.Context, revival *acceptedSubtreeRevival) error {
+	accepted := revival.accepted
+	target, found := runByID(revival.tree, accepted.TargetRunID)
+	if !found || !target.Canceled() || target.Lineage().RootRunID() != revival.root.ID() {
 		return errors.New("runs: accepted cancellation target is missing its terminal decision")
-	}
-	ending, _ := target.Ending()
-	canceled := ending.(rundomain.Canceled)
-	var targetMemberID string
-	for _, member := range accepted.Pending.Continuations {
-		if member.RunID == target.ID() {
-			targetMemberID = member.MemberID
-			break
-		}
 	}
 	rootMember, _ := accepted.Pending.RootContinuation()
 	checkpoint, err := c.checkpoints.ReadWaitingCheckpoint(ctx, rootMember.MemberID)
 	if err != nil {
 		return err
 	}
-	continuation, err := waitingContinuationFromPending(accepted.Pending, checkpoint, values, sess)
+	continuation, err := waitingContinuationFromPending(accepted.Pending, checkpoint, revival.tree, revival.session)
 	if err != nil {
 		return err
 	}
-	request, err := NewWaitingSubtreeCancellationRequest(continuation, targetMemberID, canceled.Detail)
+	revival.request, err = NewWaitingSubtreeCancellationRequest(continuation, accepted.targetMemberID(), target.Detail())
 	if err != nil {
 		return err
 	}
-	ref := ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}
-	if err := c.releases.Release(ctx, ref); err != nil && !errors.Is(err, ErrExecutorNotLive) {
+	if err := c.releases.Release(ctx, revival.request.executorRef()); err != nil && !errors.Is(err, ErrExecutorNotLive) {
 		return fmt.Errorf("runs: retire original executor before accepted cancellation revival: %w", err)
 	}
+	return nil
+}
 
-	if len(accepted.Segments) == 0 {
-		pending, found, err := c.interrupts.LookupOpenInterrupt(ctx, root.ID())
-		if err != nil {
-			return err
-		}
-		if !found {
-			return errors.New("runs: accepted waiting cancellation lost its surviving boundary")
-		}
-		if err := validatePendingRunTree(pending, values); err != nil {
-			return err
-		}
-		recovered, err := c.subtreeCancellationRestorer.StageAcceptedSubtreeCancellation(ctx, request, WaitingSubtreeStaysWaiting)
-		if err != nil {
-			return err
-		}
-		if err := recovered.Settle(ctx); err != nil {
-			return err
-		}
-		return c.acceptedSubtreeCancellations.DeleteSubtreeCancellation(ctx, root.ID(), target.ID())
+func (c *Cancellations) reviveWaitingSubtreeCancellation(ctx context.Context, revival acceptedSubtreeRevival) error {
+	pending, found, err := c.interrupts.LookupOpenInterrupt(ctx, revival.root.ID())
+	if err != nil {
+		return err
 	}
-	if err := validateAcceptedSegments(sess.ID(), accepted.Segments, values); err != nil {
+	if !found {
+		return errors.New("runs: accepted waiting cancellation lost its surviving boundary")
+	}
+	if err := validatePendingRunTree(pending, revival.tree); err != nil {
+		return err
+	}
+	recovered, err := c.subtreeCancellationRestorer.StageAcceptedSubtreeCancellation(ctx, revival.request, WaitingSubtreeStaysWaiting)
+	if err != nil {
+		return err
+	}
+	if err := recovered.Settle(ctx); err != nil {
+		return err
+	}
+	return revival.retire(ctx, c.acceptedSubtreeCancellations)
+}
+
+func (c *Cancellations) reviveRunningSubtreeCancellation(ctx context.Context, revival acceptedSubtreeRevival, admission *ownership.RunAdmission) (err error) {
+	accepted, sess, root := revival.accepted, revival.session, revival.root
+	if err := validateAcceptedSegments(sess.ID(), accepted.Segments, revival.tree); err != nil {
 		return err
 	}
 	items, err := pendingItems(ctx, c.items, accepted.Pending)
 	if err != nil {
 		return err
 	}
-	handoff := &treeContinuation{rootRunID: root.ID(), runs: parkedRunsByID(values), items: items}
+	handoff := &treeContinuation{rootRunID: root.ID(), runs: parkedRunsByID(revival.tree), items: items}
 	for _, member := range accepted.Pending.Continuations {
 		if value, found := handoff.run(member.RunID); found && value.State() == rundomain.Running {
 			handoff.continuations = append(handoff.continuations, member)
@@ -168,23 +199,24 @@ func (c *Cancellations) reviveAcceptedSubtreeCancellation(ctx context.Context, a
 	if err := handoff.validate(); err != nil {
 		return err
 	}
-	recovered, err := c.subtreeCancellationRestorer.StageAcceptedSubtreeCancellation(ctx, request, WaitingSubtreeResumesRunning)
+	recovered, err := c.subtreeCancellationRestorer.StageAcceptedSubtreeCancellation(ctx, revival.request, WaitingSubtreeResumesRunning)
 	if errors.Is(err, ErrSubtreeCancellationReleased) {
-		return c.acceptedSubtreeCancellations.DeleteSubtreeCancellation(ctx, root.ID(), target.ID())
+		return revival.retire(ctx, c.acceptedSubtreeCancellations)
 	}
 	if err != nil {
 		return err
 	}
+	ref := revival.request.executorRef()
 	staged := ownStagedExecution(c.releases, ref)
 	defer func() { err = staged.abandon(ctx, err, "staged subtree cancellation") }()
 	_, err = c.segments.openSegment(ctx, segmentSpec{
 		RunID: root.ID(), SegmentID: root.ActiveSegmentID(), SessionID: sess.ID(),
-		WorkspaceCWD: sess.Workspace().Path(), Isolated: sess.Isolated(), ExecutorID: continuation.ExecutorID,
-		Continuation: handoff, admission: &admission, staged: staged,
+		WorkspaceCWD: sess.Workspace().Path(), Isolated: sess.Isolated(), ExecutorID: ref.ExecutorID,
+		Opening: treeResumption{Continuation: handoff}, admission: admission, staged: staged,
 		BeginExecution: recovered.Settle,
 	})
 	if err != nil {
 		return err
 	}
-	return c.acceptedSubtreeCancellations.DeleteSubtreeCancellation(ctx, root.ID(), target.ID())
+	return revival.retire(ctx, c.acceptedSubtreeCancellations)
 }

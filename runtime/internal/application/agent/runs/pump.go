@@ -590,7 +590,7 @@ func (s *segmentPump) settleMaintenanceFence() {
 		Parked: s.routes.root.boundary.parked(),
 	}
 	if maintenanceHeld {
-		finish.OpeningUserText = s.spec.OpeningUserText
+		finish.OpeningUserText = s.spec.openingUserText()
 	}
 	if err := s.segments.finalizer.Finish(ctx, finish); err != nil {
 		recordRunCleanupError(ctx, err)

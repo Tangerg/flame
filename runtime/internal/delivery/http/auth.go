@@ -61,11 +61,11 @@ func (s *Server) protectRPC(next http.Handler) http.Handler {
 		if s.authentication.gated() {
 			if !validBearer(r.Header.Get(headerAuthorization), s.authentication.token) {
 				w.Header().Set("WWW-Authenticate", "Bearer")
-				writeProblem(w, problemUnauthorized, "a valid local bearer token is required", true)
+				writeProblem(w, problemUnauthorized, "a valid local bearer token is required")
 				return
 			}
 		} else if !s.trustedLoopbackRequest(r) {
-			writeProblem(w, problemForbiddenOrigin, "request authority is not trusted by this local server", true)
+			writeProblem(w, problemForbiddenOrigin, "request authority is not trusted by this local server")
 			return
 		}
 		next.ServeHTTP(w, r)

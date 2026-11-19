@@ -87,7 +87,7 @@ type observedModel struct {
 
 type streamedObservedModel struct{ *observedModel }
 
-func (o *observedModel) prepare(ctx context.Context, request *chat.Request, streaming bool) (*mcp.BorrowedSession, *pluginmcp.Binding, error) {
+func (o *observedModel) prepare(ctx context.Context, request *chat.Request, delivery callDelivery) (*mcp.BorrowedSession, *pluginmcp.Binding, error) {
 	if err := request.Validate(); err != nil {
 		return nil, nil, err
 	}
@@ -104,7 +104,7 @@ func (o *observedModel) prepare(ctx context.Context, request *chat.Request, stre
 		return nil, nil, err
 	}
 	name := method.Descriptor().Name
-	if streaming {
+	if delivery == streamedCall {
 		stream, err := pluginsdk.ModelObserverStreamMethod()
 		if err != nil {
 			return nil, nil, err
@@ -147,7 +147,7 @@ func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.
 	if err != nil {
 		return nil, continuationNotExecuted(err)
 	}
-	borrowed, binding, err := o.prepare(ctx, request, false)
+	borrowed, binding, err := o.prepare(ctx, request, unaryCall)
 	if err != nil {
 		return nil, continuationNotExecuted(err)
 	}
@@ -197,7 +197,7 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 			yield(nil, continuationNotExecuted(err))
 			return
 		}
-		borrowed, binding, err := o.prepare(calling, frozen, true)
+		borrowed, binding, err := o.prepare(calling, frozen, streamedCall)
 		if err != nil {
 			yield(nil, continuationNotExecuted(err))
 			return

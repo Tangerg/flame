@@ -38,7 +38,7 @@ func (c *CommandCalls) RetireCommand(ctx context.Context, id string) error {
 }
 
 func (c *CommandCalls) Prepare(_ context.Context, request plugins.CallRequest) (plugins.Call, error) {
-	method, err := admitCallRequest(request, false)
+	method, err := admitCallRequest(request, unaryCall)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +157,20 @@ func validateInput(ctx context.Context, binding *pluginmcp.Binding, input framev
 	return err
 }
 
-func admitCallRequest(request plugins.CallRequest, streaming bool) (*frame.Method, error) {
+// callDelivery is how the caller consumes a call's outcome; it must match
+// whether the declared method streams events.
+type callDelivery uint8
+
+const (
+	unaryCall callDelivery = iota + 1
+	streamedCall
+)
+
+func (d callDelivery) admits(method frame.MethodDescriptor) bool {
+	return (len(method.Stream) != 0) == (d == streamedCall)
+}
+
+func admitCallRequest(request plugins.CallRequest, delivery callDelivery) (*frame.Method, error) {
 	if request.Contract == nil {
 		return nil, plugin.ErrInvalid
 	}
@@ -197,7 +210,7 @@ func admitCallRequest(request plugins.CallRequest, streaming bool) (*frame.Metho
 			return nil, errors.Join(plugin.ErrInvalid, err)
 		}
 	}
-	if (len(method.Descriptor().Stream) != 0) != streaming {
+	if !delivery.admits(method.Descriptor()) {
 		return nil, plugin.ErrInvalid
 	}
 	return method, nil

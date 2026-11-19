@@ -22,6 +22,24 @@ type AcceptedSubtreeCancellation struct {
 
 func (a AcceptedSubtreeCancellation) RootRunID() string { return a.Pending.RootRunID }
 
+// Disposition is the tree's state after the cancellation: removing the last
+// external boundary opened continuation Segments, otherwise the tree waits.
+func (a AcceptedSubtreeCancellation) Disposition() WaitingSubtreeDisposition {
+	if len(a.Segments) == 0 {
+		return WaitingSubtreeStaysWaiting
+	}
+	return WaitingSubtreeResumesRunning
+}
+
+func (a AcceptedSubtreeCancellation) targetMemberID() string {
+	for _, member := range a.Pending.Continuations {
+		if member.RunID == a.TargetRunID {
+			return member.MemberID
+		}
+	}
+	return ""
+}
+
 func (a AcceptedSubtreeCancellation) Validate() error {
 	if err := identity.ValidateSession(a.SessionID); err != nil {
 		return fmt.Errorf("runs: accepted subtree cancellation Session: %w", err)

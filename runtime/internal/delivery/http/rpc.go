@@ -37,7 +37,7 @@ const maxRPCBodyBytes = 4 << 20
 func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for _, name := range requestHeaders() {
 		if len(r.Header.Values(name)) > 1 {
-			writeProblem(w, problemInvalidRequest, name+" header must occur at most once", false)
+			writeProblem(w, problemInvalidRequest, name+" header must occur at most once")
 			return
 		}
 	}
@@ -49,7 +49,7 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// effort decoding. Content-Type is only enforced when present (a
 	// minimal client may omit it); when set it must be application/json.
 	if ct := strings.TrimSpace(r.Header.Get(headerContentType)); ct != "" && !isJSONMediaType(ct) {
-		writeProblem(w, problemUnsupportedMediaType, "content-type must be application/json", false)
+		writeProblem(w, problemUnsupportedMediaType, "content-type must be application/json")
 		return
 	}
 	bodyLimit := int64(maxRPCBodyBytes)
@@ -59,7 +59,7 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		bodyLimit += protocol.MaximumSessionArtifactBytes
 	}
 	if r.ContentLength > bodyLimit {
-		writeProblem(w, problemRequestTooLarge, "request body exceeds limit", false)
+		writeProblem(w, problemRequestTooLarge, "request body exceeds limit")
 		return
 	}
 
@@ -68,31 +68,31 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(io.LimitReader(r.Body, bodyLimit+1))
 	if err != nil {
 		if _, tooLarge := errors.AsType[*http.MaxBytesError](err); tooLarge {
-			writeProblem(w, problemRequestTooLarge, "request body exceeds limit", false)
+			writeProblem(w, problemRequestTooLarge, "request body exceeds limit")
 			return
 		}
 		recordError(r.Context(), "rpc.read-request", err)
-		writeProblem(w, problemInvalidRequest, "request body could not be read", false)
+		writeProblem(w, problemInvalidRequest, "request body could not be read")
 		return
 	}
 	if int64(len(body)) > bodyLimit {
-		writeProblem(w, problemRequestTooLarge, "request body exceeds limit", false)
+		writeProblem(w, problemRequestTooLarge, "request body exceeds limit")
 		return
 	}
 
 	message, err := protocol.DecodeRPCMessage(body)
 	if err != nil {
-		writeProblem(w, problemInvalidRequest, "invalid JSON-RPC message: "+err.Error(), false)
+		writeProblem(w, problemInvalidRequest, "invalid JSON-RPC message: "+err.Error())
 		return
 	}
 	request, ok := message.(*jsonrpc.Request)
 	if !ok {
-		writeProblem(w, problemInvalidRequest, "POST /v2/rpc accepts only JSON-RPC requests and notifications", false)
+		writeProblem(w, problemInvalidRequest, "POST /v2/rpc accepts only JSON-RPC requests and notifications")
 		return
 	}
 
 	if hint != "" && hint != request.Method {
-		writeProblem(w, problemInvalidRequest, "method header does not match the RPC envelope", false)
+		writeProblem(w, problemInvalidRequest, "method header does not match the RPC envelope")
 		return
 	}
 	options := protocol.CallMetadata{
@@ -131,7 +131,7 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		recordError(r.Context(), "rpc.encode-response", err,
 			attribute.String("rpc.method", methodLabel),
 		)
-		writeProblem(w, problemResponseEncodingFailed, "the transport could not encode the RPC response", false)
+		writeProblem(w, problemResponseEncodingFailed, "the transport could not encode the RPC response")
 		return
 	}
 	w.Header().Set(headerContentType, protocol.RPCDocumentMediaType+"; charset=utf-8")
@@ -170,6 +170,8 @@ type problemKind struct {
 	// refusal marks a problem answered before its request reached an
 	// operation, so a command it answers was certainly not accepted.
 	refusal bool
+	// noStore keeps credential and origin refusals out of shared caches.
+	noStore bool
 }
 
 // The closed set of problems the transport answers with itself. invalid_request
@@ -180,8 +182,8 @@ var (
 	problemUnsupportedMediaType   = problemKind{name: "unsupported_media_type", status: http.StatusUnsupportedMediaType, refusal: true}
 	problemRequestTooLarge        = problemKind{name: "request_too_large", status: http.StatusRequestEntityTooLarge, refusal: true}
 	problemInvalidRequest         = problemKind{name: protocol.ProblemInvalidRequest, status: http.StatusBadRequest, refusal: true}
-	problemForbiddenOrigin        = problemKind{name: "forbidden_origin", status: http.StatusForbidden, refusal: true}
-	problemUnauthorized           = problemKind{name: "unauthorized", status: http.StatusUnauthorized, refusal: true}
+	problemForbiddenOrigin        = problemKind{name: "forbidden_origin", status: http.StatusForbidden, refusal: true, noStore: true}
+	problemUnauthorized           = problemKind{name: "unauthorized", status: http.StatusUnauthorized, refusal: true, noStore: true}
 	problemResponseEncodingFailed = problemKind{name: "response_encoding_failed", status: http.StatusInternalServerError}
 	problemInternalError          = problemKind{name: protocol.ProblemInternalError, status: http.StatusInternalServerError}
 
@@ -198,10 +200,10 @@ var (
 
 func (k problemKind) problemType() string { return transportProblemNamespace + k.name }
 
-func writeProblem(w http.ResponseWriter, kind problemKind, detail string, noCache bool) {
+func writeProblem(w http.ResponseWriter, kind problemKind, detail string) {
 	w.Header().Set(headerContentType, protocol.HTTPProblemMediaType+"; charset=utf-8")
-	if noCache {
-		w.Header().Set("Cache-Control", "no-store")
+	if kind.noStore {
+		w.Header().Set(headerCacheControl, cacheNoStore)
 	}
 	w.WriteHeader(kind.status)
 	// The status line is already on the wire, so a failed body write has no

@@ -42,24 +42,32 @@ type executorRoutes struct {
 }
 
 func (c *Segments) openingRoutes(spec segmentSpec) (*executorRoutes, error) {
-	if spec.ModelOnlyInput && (spec.GoalIncarnationID == "" || spec.Continuation != nil) {
-		return nil, errors.New("runs: model-only opening input requires a fresh Goal root")
+	switch opening := spec.Opening.(type) {
+	case rootOpening:
+		return c.rootExecutorRoutes(spec, opening)
+	case treeResumption:
+		return c.resumedExecutorRoutes(spec, opening)
+	default:
+		return nil, fmt.Errorf("runs: unknown Segment opening %T", spec.Opening)
 	}
-	if spec.Continuation != nil {
-		return c.resumedExecutorRoutes(spec)
+}
+
+func (c *Segments) rootExecutorRoutes(spec segmentSpec, opening rootOpening) (*executorRoutes, error) {
+	if opening.ModelOnlyInput && opening.GoalIncarnationID == "" {
+		return nil, errors.New("runs: model-only opening input requires a Goal root")
 	}
-	if len(spec.Input) > 0 && (spec.ConversationInput == nil ||
-		spec.ConversationInput.Role != corechat.RoleUser || spec.ConversationInput.Validate() != nil) {
+	if len(opening.Input) > 0 && (opening.ConversationInput == nil ||
+		opening.ConversationInput.Role != corechat.RoleUser || opening.ConversationInput.Validate() != nil) {
 		return nil, errors.New("runs: fresh root requires its exact composed conversation input")
 	}
 	admission := rundomain.Draft{
 		RunID:             spec.RunID,
 		SessionID:         spec.SessionID,
 		SegmentID:         spec.SegmentID,
-		ModelSelection:    spec.ModelSelection,
-		GoalIncarnationID: spec.GoalIncarnationID,
-		Capabilities:      spec.Capabilities,
-		CreatedAt:         spec.CreatedAt,
+		ModelSelection:    opening.ModelSelection,
+		GoalIncarnationID: opening.GoalIncarnationID,
+		Capabilities:      opening.Capabilities,
+		CreatedAt:         opening.CreatedAt,
 	}
 	opened, err := rundomain.Admit(admission)
 	if err != nil {
@@ -71,7 +79,7 @@ func (c *Segments) openingRoutes(spec segmentSpec) (*executorRoutes, error) {
 		rootRunID: spec.RunID,
 		reducer: newReducer(reducerConfig{
 			Opened: opened, WorkspaceCWD: spec.WorkspaceCWD, Isolated: spec.Isolated,
-			UserInput: spec.Input, ConversationInput: spec.ConversationInput, ModelOnlyInput: spec.ModelOnlyInput,
+			UserInput: opening.Input, ConversationInput: opening.ConversationInput, ModelOnlyInput: opening.ModelOnlyInput,
 			Now: c.publications.nowUTC,
 		}),
 	}
@@ -84,14 +92,14 @@ func (c *Segments) openingRoutes(spec segmentSpec) (*executorRoutes, error) {
 	}, nil
 }
 
-func (c *Segments) resumedExecutorRoutes(spec segmentSpec) (*executorRoutes, error) {
-	continuation := spec.Continuation
+func (c *Segments) resumedExecutorRoutes(spec segmentSpec, resumption treeResumption) (*executorRoutes, error) {
+	continuation := resumption.Continuation
 	if err := validateResumedRouteRequest(spec, continuation); err != nil {
 		return nil, err
 	}
 	builder := resumedRouteBuilder{
 		spec:         spec,
-		continuation: continuation,
+		resumption:   resumption,
 		newSegmentID: c.newSegmentID,
 		now:          c.publications.nowUTC,
 		resumedAt:    c.publications.nowUTC(),
@@ -132,7 +140,7 @@ func validateResumedRouteRequest(spec segmentSpec, continuation *treeContinuatio
 // structural rather than a convention shared by unrelated helpers.
 type resumedRouteBuilder struct {
 	spec         segmentSpec
-	continuation *treeContinuation
+	resumption   treeResumption
 	newSegmentID func() string
 	now          func() time.Time
 	// resumedAt is the one opening time every Run in the tree resumes at.
@@ -142,14 +150,14 @@ type resumedRouteBuilder struct {
 }
 
 func (r *resumedRouteBuilder) build() (*executorRoutes, error) {
-	for _, continuationState := range r.continuation.continuations {
+	for _, continuationState := range r.resumption.Continuation.continuations {
 		route, err := r.newRoute(continuationState)
 		if err != nil {
 			return nil, err
 		}
 		r.routes.byMember[route.member.MemberID] = route
 		r.routes.byRunID[route.runID] = route
-		if route.runID == r.continuation.rootRunID {
+		if route.runID == r.resumption.Continuation.rootRunID {
 			r.routes.root = route
 		}
 	}
@@ -171,7 +179,7 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 	if err := member.Validate(); err != nil {
 		return nil, fmt.Errorf("runs: resumed Run %q member: %w", continuationState.RunID, err)
 	}
-	parked, found := r.continuation.run(continuationState.RunID)
+	parked, found := r.resumption.Continuation.run(continuationState.RunID)
 	if !found {
 		return nil, fmt.Errorf("runs: resumed Run %q is not parked", continuationState.RunID)
 	}
@@ -185,16 +193,16 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 		resumed, opened = &replacement, replacement.State()
 	}
 	userInput := []transcript.ContentBlock(nil)
-	if continuationState.RunID == r.continuation.rootRunID {
-		userInput = r.spec.Input
+	if continuationState.RunID == r.resumption.Continuation.rootRunID {
+		userInput = r.resumption.Input
 	}
 	reducer := newReducer(reducerConfig{
 		Opened: opened, WorkspaceCWD: r.spec.WorkspaceCWD, Isolated: r.spec.Isolated,
-		UserInput: userInput, Continuation: r.continuation, Now: r.now,
+		UserInput: userInput, Continuation: r.resumption.Continuation, Now: r.now,
 	})
 	if r.spec.restoresSegments() {
 		var ids []string
-		for _, item := range r.continuation.items {
+		for _, item := range r.resumption.Continuation.items {
 			if item.RunID() == opened.ID() {
 				ids = append(ids, item.ID())
 			}
@@ -203,13 +211,13 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 			return nil, err
 		}
 		reducer.restoredToolAttempts = make(map[string]OpenToolInvocation)
-		for _, attempt := range r.spec.toolAttempts {
+		for _, attempt := range r.resumption.toolAttempts {
 			if attempt.RunID == opened.ID() && attempt.SegmentID == segmentID {
 				reducer.restoredToolAttempts[attempt.CallID] = attempt
 			}
 		}
 	}
-	for _, recovered := range r.continuation.recoveredTools {
+	for _, recovered := range r.resumption.Continuation.recoveredTools {
 		if recovered.Invocation.RunID != opened.ID() {
 			continue
 		}
@@ -231,7 +239,7 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 		memberBound: parked.Lineage().IsRoot(),
 		runID:       continuationState.RunID,
 		segmentID:   segmentID,
-		rootRunID:   r.continuation.rootRunID,
+		rootRunID:   r.resumption.Continuation.rootRunID,
 		lineage:     parked.Lineage(),
 		resumed:     resumed,
 		reducer:     reducer,
@@ -240,13 +248,13 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 
 func (r *resumedRouteBuilder) segmentIDFor(runID string) (string, error) {
 	if r.spec.restoresSegments() {
-		value, found := r.continuation.run(runID)
+		value, found := r.resumption.Continuation.run(runID)
 		if !found || value.State() != rundomain.Running {
 			return "", errors.New("runs: accepted member is not running")
 		}
 		return value.ActiveSegmentID(), nil
 	}
-	if runID == r.continuation.rootRunID {
+	if runID == r.resumption.Continuation.rootRunID {
 		return r.spec.SegmentID, nil
 	}
 	segmentID := r.newSegmentID()
@@ -280,7 +288,7 @@ func (r *resumedRouteBuilder) orderRoutesPreorder() error {
 		}
 	}
 	appendPreorder(r.routes.root)
-	if len(r.routes.admissionOrder) != len(r.continuation.continuations) {
+	if len(r.routes.admissionOrder) != len(r.resumption.Continuation.continuations) {
 		return errors.New("runs: resumed route tree is disconnected")
 	}
 	return nil

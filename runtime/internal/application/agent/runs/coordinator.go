@@ -137,12 +137,13 @@ func (c *Segments) prepareSegmentStartup(
 	requestContext context.Context,
 	spec segmentSpec,
 ) (*segmentStartup, error) {
-	if spec.restoresSegments() {
+	if resumption, ok := spec.Opening.(treeResumption); ok && resumption.restoresSegments(spec.RunID) {
 		attempts, err := c.toolAttempts.ListOpenToolInvocations(requestContext)
 		if err != nil {
 			return nil, spec.staged.abandon(requestContext, err, "read restored Segment Tool attempts")
 		}
-		spec.toolAttempts = attempts
+		resumption.toolAttempts = attempts
+		spec.Opening = resumption
 	}
 	taskContext, releaseTask, attached := c.tasks.Attach(requestContext)
 	if !attached {
@@ -158,7 +159,7 @@ func (c *Segments) prepareSegmentStartup(
 		releaseTask: releaseTask,
 	}
 	var err error
-	if spec.StageExecution == nil {
+	if _, deferred := spec.stageExecution(); !deferred {
 		startup.executorEvents, err = c.observations.Observe(runContext, spec.executorRef())
 		if err != nil {
 			return nil, startup.abort(err)
@@ -325,8 +326,8 @@ func (s *segmentStartup) beginExecution() {
 }
 
 func (s *segmentStartup) activateExecutor(ctx context.Context) error {
-	if s.spec.StageExecution != nil {
-		if err := s.spec.StageExecution(ctx); err != nil {
+	if stage, deferred := s.spec.stageExecution(); deferred {
+		if err := stage(ctx); err != nil {
 			return err
 		}
 		events, err := s.segments.observations.Observe(s.runContext, s.spec.executorRef())
@@ -398,26 +399,26 @@ func (c *Segments) commitOpening(ctx context.Context, spec segmentSpec, routes *
 	// delivers an approval has nothing to append. Its durable projection is the
 	// admission or resume above, which is what makes the Run exist.
 	commitOpening := c.publications.openings.CommitOpening
-	if spec.CommitOpening != nil {
-		commitOpening = spec.CommitOpening
-	}
 	var opening OpeningCommit
-	if routes.admission != nil {
+	switch value := spec.Opening.(type) {
+	case rootOpening:
 		opening, err = NewAdmissionOpeningCommit(
-			commitID, *routes.admission, spec.InitialSession, spec.SessionReplacement,
-			spec.Actor, events,
+			commitID, *routes.admission, value.InitialSession, value.SessionReplacement,
+			value.Actor, events,
 		)
-	} else {
+	case treeResumption:
+		if value.CommitOpening != nil {
+			commitOpening = value.CommitOpening
+		}
 		opening, err = NewResumeOpeningCommit(commitID, *resume, events)
+		if err == nil && value.ResumeAcceptance != nil {
+			opening, err = opening.WithResumeAcceptance(*value.ResumeAcceptance)
+		}
+	default:
+		err = fmt.Errorf("runs: unknown Segment opening %T", spec.Opening)
 	}
 	if err != nil {
 		return nil, err
-	}
-	if spec.ResumeAcceptance != nil {
-		opening, err = opening.WithResumeAcceptance(*spec.ResumeAcceptance)
-		if err != nil {
-			return nil, err
-		}
 	}
 	if spec.CommandAcceptance != nil {
 		acceptance, acceptErr := AcceptCommand(

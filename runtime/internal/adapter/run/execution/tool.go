@@ -498,7 +498,6 @@ func (o *observedInteractionTool) authorizationRequest(
 	callID string,
 	name string,
 	arguments tool.Arguments,
-	requireApproval bool,
 ) (ToolAuthorizationRequest, error) {
 	if err := o.validateApprovalSubject(name, arguments); err != nil {
 		return ToolAuthorizationRequest{}, err
@@ -506,10 +505,9 @@ func (o *observedInteractionTool) authorizationRequest(
 	return ToolAuthorizationRequest{
 		SessionID: o.start.SessionID, WorkspaceCWD: o.start.WorkspaceCWD,
 		CallID: callID, Tool: o.ref, QualifiedName: name != o.ref.ModelName(), SourceFingerprint: o.sourceFingerprint, Arguments: arguments,
-		SafetyClass:     o.interpreter.SafetyClass(o.ref),
-		FileMutation:    fileMutationScope(o.inner, arguments, o.start.CWD),
-		ShellCommand:    o.interpreter.ShellCommand(o.ref, arguments.Canonical()),
-		RequireApproval: requireApproval,
+		SafetyClass:  o.interpreter.SafetyClass(o.ref),
+		FileMutation: fileMutationScope(o.inner, arguments, o.start.CWD),
+		ShellCommand: o.interpreter.ShellCommand(o.ref, arguments.Canonical()),
 	}, nil
 }
 
@@ -562,7 +560,7 @@ func (o *observedInteractionTool) resumePreparedTool(
 	if prompt.CallID != callID {
 		return tool.Arguments{}, false, "", errors.New("execution: continued Tool approval call identity changed")
 	}
-	request, err := o.authorizationRequest(callID, name, arguments, false)
+	request, err := o.authorizationRequest(callID, name, arguments)
 	if err != nil {
 		return arguments, false, "", err
 	}

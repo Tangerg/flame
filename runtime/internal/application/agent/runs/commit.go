@@ -280,6 +280,27 @@ func cloneCommitMessages(messages []corechat.Message) []corechat.Message {
 // Validate proves that one event projection is owner-bound and that any Goal
 // charge is exactly the accounting fact implied by its terminal Run.
 func (e EventCommit) Validate() error {
+	for _, validate := range []func() error{
+		e.validateToolResults,
+		e.validateCompaction,
+		e.validateResultPublication,
+		e.validateEnvelope,
+		e.validateCancellationEvidence,
+		e.validateItems,
+		e.validateChildCancellation,
+		e.validateConversationMessages,
+		e.validateInvocations,
+		e.validateProgress,
+		e.validateLifecycle,
+	} {
+		if err := validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (e EventCommit) validateToolResults() error {
 	if len(e.ToolResults) > 0 && e.ResultPublication == nil {
 		return errors.New("runs: exact Tool results require a publication receipt")
 	}
@@ -288,58 +309,72 @@ func (e EventCommit) Validate() error {
 			return fmt.Errorf("runs: exact Tool result[%d]: %w", index, err)
 		}
 	}
+	return nil
+}
 
-	if e.Compaction != nil {
-		if e.Compaction.SessionID() != e.SessionID {
-			return errors.New("runs: compaction belongs to another Session")
-		}
-		if err := e.Compaction.validateOwner(e.RunID, e.SegmentID); err != nil {
-			return err
-		}
-		if e.State != StateUnchanged || len(e.Items) != 1 || e.Items[0].Item().Kind() != transcript.Compaction || len(e.ConversationMessages) != 0 {
-			return errors.New("runs: compaction requires one Compaction Item in its history transaction")
-		}
+func (e EventCommit) validateCompaction() error {
+	if e.Compaction == nil {
+		return nil
 	}
-	if e.ResultPublication != nil {
-		if err := e.ResultPublication.Validate(); err != nil {
-			return err
-		}
-		if e.State != StateUnchanged || len(e.ToolInvocations) == 0 || len(e.ToolResults) != len(e.ToolInvocations) {
-			return errors.New("runs: result publication requires a Tool result transaction")
-		}
+	if e.Compaction.SessionID() != e.SessionID {
+		return errors.New("runs: compaction belongs to another Session")
 	}
-	if err := e.validateEnvelope(); err != nil {
+	if err := e.Compaction.validateOwner(e.RunID, e.SegmentID); err != nil {
 		return err
 	}
-	if !e.cancellation.IsZero() && (e.State != StateTerminalize || e.Run == nil || !e.Run.Canceled()) {
+	if e.State != StateUnchanged || len(e.Items) != 1 || e.Items[0].Item().Kind() != transcript.Compaction || len(e.ConversationMessages) != 0 {
+		return errors.New("runs: compaction requires one Compaction Item in its history transaction")
+	}
+	return nil
+}
+
+func (e EventCommit) validateResultPublication() error {
+	if e.ResultPublication == nil {
+		return nil
+	}
+	if err := e.ResultPublication.Validate(); err != nil {
+		return err
+	}
+	if e.State != StateUnchanged || len(e.ToolInvocations) == 0 || len(e.ToolResults) != len(e.ToolInvocations) {
+		return errors.New("runs: result publication requires a Tool result transaction")
+	}
+	return nil
+}
+
+func (e EventCommit) validateCancellationEvidence() error {
+	canceledTerminal := e.State == StateTerminalize && e.Run != nil && e.Run.Canceled()
+	switch {
+	case !e.cancellation.IsZero() && !canceledTerminal:
 		return errors.New("runs: cancellation evidence requires a canceled terminal")
+	case e.winningCancellationKey != "" && e.cancellation.IsZero():
+		return errors.New("runs: a winning cancellation key requires its confirmed terminal")
+	case e.rootCancellation != nil && (!canceledTerminal || !e.Run.Lineage().IsRoot()):
+		return errors.New("runs: a root cancellation receipt requires its canceled terminal Run")
 	}
-	if err := e.validateItems(); err != nil {
-		return err
+	return nil
+}
+
+func (e EventCommit) validateChildCancellation() error {
+	if e.childCancellation == nil {
+		return nil
 	}
-	if e.childCancellation != nil {
-		if err := e.childCancellation.validate(e); err != nil {
-			return err
-		}
+	return e.childCancellation.validate(e)
+}
+
+func (e EventCommit) validateProgress() error {
+	if e.Progress == nil {
+		return nil
 	}
-	if err := e.validateConversationMessages(); err != nil {
-		return err
+	if e.Progress.ID() != e.RunID || e.Progress.SessionID() != e.SessionID {
+		return fmt.Errorf("runs: event commit progress belongs to Run %q in Session %q", e.Progress.ID(), e.Progress.SessionID())
 	}
-	if err := e.validateInvocations(); err != nil {
-		return err
+	if e.Progress.State() != run.Running || e.Progress.ActiveSegmentID() != e.SegmentID {
+		return fmt.Errorf(
+			"runs: event commit progress is %s in Segment %q, want running Segment %q",
+			e.Progress.State(), e.Progress.ActiveSegmentID(), e.SegmentID,
+		)
 	}
-	if e.Progress != nil {
-		if e.Progress.ID() != e.RunID || e.Progress.SessionID() != e.SessionID {
-			return fmt.Errorf("runs: event commit progress belongs to Run %q in Session %q", e.Progress.ID(), e.Progress.SessionID())
-		}
-		if e.Progress.State() != run.Running || e.Progress.ActiveSegmentID() != e.SegmentID {
-			return fmt.Errorf(
-				"runs: event commit progress is %s in Segment %q, want running Segment %q",
-				e.Progress.State(), e.Progress.ActiveSegmentID(), e.SegmentID,
-			)
-		}
-	}
-	return e.validateLifecycle()
+	return nil
 }
 
 func (e EventCommit) validateConversationMessages() error {
@@ -480,14 +515,6 @@ func validateToolInvocationItem(invocation ToolInvocationCommit, item transcript
 }
 
 func (e EventCommit) validateLifecycle() error {
-	if e.winningCancellationKey != "" && (e.State != StateTerminalize || e.Run == nil ||
-		!e.Run.Canceled() || e.cancellation.IsZero()) {
-		return errors.New("runs: a winning cancellation key requires its confirmed terminal")
-	}
-	if e.rootCancellation != nil && (e.State != StateTerminalize || e.Run == nil ||
-		!e.Run.Lineage().IsRoot() || !e.Run.Canceled()) {
-		return errors.New("runs: a root cancellation receipt requires its canceled terminal Run")
-	}
 	switch e.State {
 	case StateUnchanged:
 		if e.Run != nil || e.ObsoleteCheckpointRootID != "" {

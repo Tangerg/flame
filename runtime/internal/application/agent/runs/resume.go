@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -32,112 +33,149 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 	if err != nil {
 		return StartResult{}, err
 	}
-	sessionID := sess.ID()
 	defer runAdmission.Release()
-	// Run identity locates admission; the answerable hand-off and its Items are
-	// read only while this command excludes competing resume and cancellation.
+	parked, err := c.readParkedTree(ctx, sess.ID(), cmd)
+	if err != nil {
+		return StartResult{}, err
+	}
+	prepared, err := c.prepareResume(ctx, sess, parked, cmd.Responses)
+	if err != nil {
+		return StartResult{}, err
+	}
+	return c.openResumedSegment(ctx, sess, &runAdmission, parked, prepared, cmd)
+}
+
+// parkedTree is the answerable hand-off and the Items and Runs it names, read
+// while this command excludes competing resume and cancellation.
+type parkedTree struct {
+	pending Pending
+	items   map[string]transcript.Item
+	runs    []rundomain.Run
+}
+
+func (c *Coordinator) readParkedTree(ctx context.Context, sessionID string, cmd ResumeCommand) (parkedTree, error) {
 	pending, found, err := c.interrupts.LookupOpenInterrupt(ctx, cmd.RunID)
 	if err != nil {
-		return StartResult{}, err
+		return parkedTree{}, err
 	}
 	if !found {
-		return StartResult{}, ErrInterruptNotOpen
+		return parkedTree{}, ErrInterruptNotOpen
 	}
 	// The Items an open interrupt names cannot change while it is open: only
-	// the opening transaction below answers them.
-	itemsByID, err := pendingItems(ctx, c.items, pending)
+	// the opening transaction answers them.
+	items, err := pendingItems(ctx, c.items, pending)
 	if err != nil {
-		return StartResult{}, err
+		return parkedTree{}, err
 	}
-	acceptance, err := prepareResumeAcceptance(sessionID, pending, itemsByID, cmd.Responses)
+	runs, err := c.runs.Tree(ctx, pending.RootRunID)
 	if err != nil {
-		return StartResult{}, err
+		return parkedTree{}, err
 	}
-	parkedRuns, err := c.runs.Tree(ctx, pending.RootRunID)
-	if err != nil {
-		return StartResult{}, err
+	if err := validatePendingRunTree(pending, runs); err != nil {
+		return parkedTree{}, err
 	}
-	if validatePendingRunTreeErr := validatePendingRunTree(pending, parkedRuns); validatePendingRunTreeErr != nil {
-		return StartResult{}, validatePendingRunTreeErr
+	if err := validateResumeInput(pending, runs, cmd); err != nil {
+		return parkedTree{}, err
 	}
+	return parkedTree{pending: pending, items: items, runs: runs}, nil
+}
 
-	if err := validateResumeInput(pending, parkedRuns, cmd); err != nil {
-		return StartResult{}, err
-	}
+// preparedResume is the acceptance write-set and the executor continuation it
+// authorizes, prepared without acquiring an executor.
+type preparedResume struct {
+	acceptance   ResumeAcceptance
+	answers      []InterruptAnswer
+	waiting      ExecutionContinuation
+	continuation *treeContinuation
+}
 
+func (c *Coordinator) prepareResume(ctx context.Context, sess session.Session, parked parkedTree, responses []ResumeResponse) (preparedResume, error) {
+	sessionID, pending := sess.ID(), parked.pending
+	acceptance, err := prepareResumeAcceptance(sessionID, pending, parked.items, responses)
+	if err != nil {
+		return preparedResume{}, err
+	}
 	for _, change := range acceptance.itemChanges {
 		item := change.State()
-		itemsByID[item.ID()] = item
+		parked.items[item.ID()] = item
 	}
-	answers, err := pending.settledAnswers(sessionID, itemsByID)
+	answers, err := pending.settledAnswers(sessionID, parked.items)
 	if err != nil {
-		return StartResult{}, fmt.Errorf("runs: prepare resume acceptance: %w", err)
+		return preparedResume{}, fmt.Errorf("runs: prepare resume acceptance: %w", err)
 	}
-	ruleCandidates, err := rememberedRuleCandidates(sessionID, sess.Workspace().Path(), pending, itemsByID, answers)
+	ruleCandidates, err := rememberedRuleCandidates(sessionID, sess.Workspace().Path(), pending, parked.items, answers)
 	if err != nil {
-		return StartResult{}, fmt.Errorf("runs: prepare remembered rule candidates: %w", err)
+		return preparedResume{}, fmt.Errorf("runs: prepare remembered rule candidates: %w", err)
 	}
 	rootContinuation, ok := pending.RootContinuation()
 	if !ok {
-		return StartResult{}, errors.New("runs: pending interrupt set has no root continuation")
+		return preparedResume{}, errors.New("runs: pending interrupt set has no root continuation")
 	}
 	checkpoint, err := c.checkpoints.ReadWaitingCheckpoint(ctx, rootContinuation.MemberID)
 	if err != nil {
-		return StartResult{}, err
+		return preparedResume{}, err
 	}
-	waiting, err := waitingContinuationFromPending(pending, checkpoint, parkedRuns, sess)
+	waiting, err := waitingContinuationFromPending(pending, checkpoint, parked.runs, sess)
 	if err != nil {
-		return StartResult{}, fmt.Errorf("runs: prepare waiting continuation: %w", err)
+		return preparedResume{}, fmt.Errorf("runs: prepare waiting continuation: %w", err)
 	}
 	requests, err := c.continuation.PrepareContinuation(ctx, waiting, answers, ruleCandidates)
 	if err != nil {
-		return StartResult{}, err
+		return preparedResume{}, err
 	}
-	if len(requests) > 0 {
-		acceptance.rememberedRules = make([]approval.Rule, 0, len(requests))
-		for _, request := range requests {
-			rule, prepareErr := c.approvalRules.PrepareRule(ctx, request)
-			if prepareErr != nil {
-				return StartResult{}, fmt.Errorf("runs: prepare remembered approval rule: %w", prepareErr)
-			}
-			acceptance.rememberedRules = append(acceptance.rememberedRules, rule)
+	for _, request := range requests {
+		rule, err := c.approvalRules.PrepareRule(ctx, request)
+		if err != nil {
+			return preparedResume{}, fmt.Errorf("runs: prepare remembered approval rule: %w", err)
 		}
+		acceptance.rememberedRules = append(acceptance.rememberedRules, rule)
 	}
+	continuation, err := treeContinuationForAnswers(pending, parked.runs, parked.items)
+	if err != nil {
+		return preparedResume{}, err
+	}
+	return preparedResume{acceptance: acceptance, answers: answers, waiting: waiting, continuation: continuation}, nil
+}
+
+// openResumedSegment commits one acceptance transaction that consumes the open
+// set, settles its answered Items, resumes the tree and opens the continuation
+// Segment. Executor activation is detached and owned by the accepted Run.
+func (c *Coordinator) openResumedSegment(
+	ctx context.Context,
+	sess session.Session,
+	runAdmission *ownership.RunAdmission,
+	parked parkedTree,
+	prepared preparedResume,
+	cmd ResumeCommand,
+) (StartResult, error) {
+	sessionID, waiting := sess.ID(), prepared.waiting
 	segmentID := c.segments.newSegmentID()
 	var committedInput *CommittedUserInput
 	if len(cmd.Input) > 0 {
-		committedInput = &CommittedUserInput{
-			ItemID:  userMessageItemID(segmentID),
-			Content: transcript.CloneContent(cmd.Input),
-		}
+		committedInput = &CommittedUserInput{ItemID: userMessageItemID(segmentID), Content: transcript.CloneContent(cmd.Input)}
 	}
-	continuation, err := treeContinuationForAnswers(pending, parkedRuns, itemsByID)
-	if err != nil {
-		return StartResult{}, err
-	}
-	// One acceptance transaction consumes the open set, settles its answered Items,
-	// resumes the tree, and opens the continuation Segment. Executor activation is
-	// detached and owned by the accepted Run lifecycle.
 	events, err := c.segments.openSegment(ctx, segmentSpec{
-		RunID:             cmd.RunID,
-		SegmentID:         segmentID,
-		SessionID:         sessionID,
-		WorkspaceCWD:      sess.Workspace().Path(),
-		Isolated:          sess.Isolated(),
-		ExecutorID:        waiting.ExecutorID,
-		Input:             cmd.Input,
-		Continuation:      continuation,
-		ResumeAcceptance:  &acceptance,
-		CommandAcceptance: cmd.Acceptance,
-		admission:         &runAdmission,
-		DetachActivation:  true,
-		StageExecution: func(stageCtx context.Context) error {
-			_, err := c.continuation.StageAcceptedContinuation(stageCtx, waiting)
-			return err
+		RunID:        cmd.RunID,
+		SegmentID:    segmentID,
+		SessionID:    sessionID,
+		WorkspaceCWD: sess.Workspace().Path(),
+		Isolated:     sess.Isolated(),
+		ExecutorID:   waiting.ExecutorID,
+		Opening: treeResumption{
+			Continuation:     prepared.continuation,
+			Input:            cmd.Input,
+			ResumeAcceptance: &prepared.acceptance,
+			StageExecution: func(stageCtx context.Context) error {
+				_, err := c.continuation.StageAcceptedContinuation(stageCtx, waiting)
+				return err
+			},
 		},
+		CommandAcceptance: cmd.Acceptance,
+		admission:         runAdmission,
+		DetachActivation:  true,
 		BeginExecution: func(beginCtx context.Context) error {
 			return c.continuation.BeginContinuation(
-				beginCtx, ExecutorRef{SessionID: sessionID, ExecutorID: waiting.ExecutorID}, answers, committedInput,
+				beginCtx, ExecutorRef{SessionID: sessionID, ExecutorID: waiting.ExecutorID}, prepared.answers, committedInput,
 			)
 		},
 	})
@@ -146,23 +184,19 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 	}
 	// The standing rules committed inside the acceptance; their read model is
 	// invalidated only now that the transaction is durable.
-	if len(acceptance.rememberedRules) > 0 {
+	if len(prepared.acceptance.rememberedRules) > 0 {
 		c.segments.publications.publishApprovalsChanged()
 	}
-	// The continuation is durably accepted, which consumed the whole open set: the
-	// run is running again and nothing in this session is waiting on a person.
-	for _, continuation := range pending.Continuations {
-		if continuation.RunID == pending.RootRunID {
-			continue
+	for _, continuation := range parked.pending.Continuations {
+		if continuation.RunID != parked.pending.RootRunID {
+			c.segments.publications.publishRunMoved(sessionID, continuation.RunID)
 		}
-		c.segments.publications.publishRunMoved(sessionID, continuation.RunID)
 	}
-	c.segments.publications.publishWaitingMoved(sessionID, pending.RootRunID)
+	c.segments.publications.publishWaitingMoved(sessionID, parked.pending.RootRunID)
 	result := StartResult{RunID: cmd.RunID, SegmentID: segmentID, SessionID: sessionID, Events: events}
 	if committedInput != nil {
-		// Named only when there is an item to name: the id is derived from the segment
-		// the same way a fresh run derives it, so the client reconciles its optimistic
-		// bubble by id rather than by content.
+		// The id derives from the Segment as a fresh Run's does, so the client
+		// reconciles its optimistic bubble by id rather than by content.
 		result.UserItemID = committedInput.ItemID
 	}
 	return result, nil

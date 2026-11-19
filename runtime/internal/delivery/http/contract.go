@@ -26,6 +26,12 @@ const (
 	headerMethod               = "X-Method"
 )
 
+const (
+	headerCacheControl = "Cache-Control"
+	cacheNoStore       = "no-store"
+	cacheEventStream   = "no-cache, no-store, must-revalidate"
+)
+
 // Browser preflight and scalar admission share this catalog. Selecting the
 // first repeated value would let transport order choose command authority.
 func requestHeaders() []string {

@@ -14,7 +14,7 @@ import (
 // ordinary module/asset URL. No persistent bearer credential appears in it.
 func NewPluginResourceHandler(endpoint *delivery.Endpoint) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set(headerCacheControl, cacheNoStore)
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		remaining, ok := strings.CutPrefix(r.URL.Path, pluginResourcePrefix)
 		token, resource, found := strings.Cut(remaining, "/")

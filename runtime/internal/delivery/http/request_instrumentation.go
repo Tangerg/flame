@@ -75,7 +75,7 @@ func (s *Server) instrumentRequests(next http.Handler) http.Handler {
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
 				if !response.wroteHeader {
-					writeProblem(response, problemInternalError, "the transport failed to process the request", false)
+					writeProblem(response, problemInternalError, "the transport failed to process the request")
 				}
 			}
 		}()

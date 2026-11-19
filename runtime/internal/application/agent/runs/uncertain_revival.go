@@ -165,7 +165,7 @@ func (c *Coordinator) openRevivedSegment(ctx context.Context, active ActiveExecu
 	_, err = c.segments.openSegment(ctx, segmentSpec{
 		RunID: root.ID(), SegmentID: root.ActiveSegmentID(), SessionID: root.SessionID(),
 		ExecutorID: recovered.Ref.ExecutorID, WorkspaceCWD: active.Session.Workspace().Path(), Isolated: active.Session.Isolated(),
-		Continuation: handoff, admission: &admission, staged: staged,
+		Opening: treeResumption{Continuation: handoff}, admission: &admission, staged: staged,
 		BeginExecution: func(ctx context.Context) error { return executor.BeginUncertainExecution(ctx, recovered.Ref) },
 	})
 	return err

@@ -91,7 +91,7 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 
 func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted framevalue.JSON, validate func(framevalue.JSON) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func() error, error), target func(plugins.ContributionBinding) framecall.Target) (_ commandReply[framevalue.JSON], returned error) {
 	var zero commandReply[framevalue.JSON]
-	record, err := c.admitCommandRoute(ctx, method, admitted, accepts, resolve, target, false)
+	record, err := c.admitCommandRoute(ctx, method, admitted, accepts, resolve, target, unaryCall)
 	if err != nil {
 		return zero, err
 	}
@@ -202,7 +202,7 @@ func (c *CommandCalls) NotifyChange(ctx context.Context, contribution plugin.Con
 	return nil
 }
 
-func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, admitted framevalue.JSON, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), target func(plugins.ContributionBinding) framecall.Target, streaming bool) (plugin.CommandBinding, error) {
+func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, admitted framevalue.JSON, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), target func(plugins.ContributionBinding) framecall.Target, delivery callDelivery) (plugin.CommandBinding, error) {
 	id := operation.Identity(ctx)
 	capture := func(binding plugins.ContributionBinding) (framecall.Invocation, error) {
 		return operation.Capture(ctx, target(binding))
@@ -234,7 +234,7 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 		if err != nil {
 			return plugin.CommandBinding{}, err
 		}
-		if (len(binding.Descriptor().Stream) != 0) != streaming {
+		if !delivery.admits(binding.Descriptor()) {
 			return plugin.CommandBinding{}, plugin.ErrInvalid
 		}
 		if binding.Descriptor().Kind != frame.Command {

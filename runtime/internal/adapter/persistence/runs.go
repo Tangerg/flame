@@ -70,7 +70,7 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 			return err
 		}
 		if lineage.IsChild() {
-			if err := r.validateChildPlacement(ctx, "admit", draft.RunID, draft.SessionID, draft.ParentRunID, draft.RootRunID, true); err != nil {
+			if err := r.validateChildPlacement(ctx, admitChild, draft.RunID, draft.SessionID, draft.ParentRunID, draft.RootRunID); err != nil {
 				return err
 			}
 		}
@@ -138,10 +138,21 @@ func (r *RunStore) requireWorkspaceAdmission(ctx context.Context, sessionID stri
 	})
 }
 
+// childPlacement is how a child row enters storage. Only admission adds a live
+// child, so only admission requires its parent and root to be open.
+type childPlacement string
+
+const (
+	admitChild   childPlacement = "admit"
+	restoreChild childPlacement = "restore"
+)
+
+func (p childPlacement) requiresOpenTree() bool { return p == admitChild }
+
 // validateChildPlacement proves immutable Run-to-Run topology before inserting
 // a child. The spawning Item is validated by the application write-set that
 // owns Item creation and child admission/restore together.
-func (r *RunStore) validateChildPlacement(ctx context.Context, operation string, runID string, sessionID string, parentRunID string, rootRunID string, requireOpen bool) error {
+func (r *RunStore) validateChildPlacement(ctx context.Context, operation childPlacement, runID string, sessionID string, parentRunID string, rootRunID string) error {
 	return r.db.read(ctx, func(ctx context.Context) error {
 		var (
 			parentSession string
@@ -183,9 +194,9 @@ func (r *RunStore) validateChildPlacement(ctx context.Context, operation string,
 			return fmt.Errorf("sqlite: %s child run %q: root %q is itself a child", operation, runID, rootRunID)
 		case parentTreeRoot != rootRunID:
 			return fmt.Errorf("sqlite: %s child run %q: parent %q belongs to root %q, want %q", operation, runID, parentRunID, parentTreeRoot, rootRunID)
-		case requireOpen && parentRunState == rundomain.Finished:
+		case operation.requiresOpenTree() && parentRunState == rundomain.Finished:
 			return fmt.Errorf("sqlite: %s child run %q: parent %q is terminal", operation, runID, parentRunID)
-		case requireOpen && rootRunState == rundomain.Finished:
+		case operation.requiresOpenTree() && rootRunState == rundomain.Finished:
 			return fmt.Errorf("sqlite: %s child run %q: root %q is terminal", operation, runID, rootRunID)
 		}
 		return nil
@@ -524,7 +535,7 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 		}
 		lineage := value.Lineage()
 		if lineage.IsChild() {
-			if err := r.validateChildPlacement(ctx, "restore", value.ID(), value.SessionID(), lineage.ParentRunID(), lineage.RootRunID(), false); err != nil {
+			if err := r.validateChildPlacement(ctx, restoreChild, value.ID(), value.SessionID(), lineage.ParentRunID(), lineage.RootRunID()); err != nil {
 				return err
 			}
 		}

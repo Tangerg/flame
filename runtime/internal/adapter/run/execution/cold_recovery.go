@@ -14,97 +14,124 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, active runs.ActiveExecution) (_ runs.UncertainRecovery, resultErr error) {
-	root := active.Run
-	if root.SessionID() != active.Session.ID() {
+func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, active runs.ActiveExecution) (runs.UncertainRecovery, error) {
+	if active.Run.SessionID() != active.Session.ID() {
 		return nil, errors.New("execution: recovery Run belongs to a different Session")
 	}
-	if root.State() != run.Running || !root.Lineage().IsRoot() {
+	if active.Run.State() != run.Running || !active.Run.Lineage().IsRoot() {
 		return runs.RecoveryUnavailable{}, nil
 	}
-	start := interactionStartID(root.SessionID(), root.ID())
-	if !start.Valid() {
-		return nil, scoperun.ErrInvalidStart
-	}
-	rootID := start.Root()
-	retained, err := i.config.ExecutionTrees.LoadCheckpoint(ctx, rootID.String())
-	if errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
-		return runs.RecoveryUnavailable{}, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	if !i.acceptsBuild(retained.BuildID) {
-		return runs.RecoveryUnavailable{}, nil
-	}
-	checkpoint, err := decodeRunCheckpoint(retained, root.SessionID(), root.ID())
-	if err != nil {
-		return nil, err
-	}
-	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, root.SessionID(), rootID.String())
-	if err != nil {
-		return nil, err
-	}
-	if !found {
-		return nil, errors.New("execution: retained context has no acknowledged tree")
-	}
-	checkpoint.tree, err = decodeExecutionTree(head, rootID)
-	if err != nil {
-		return nil, err
-	}
-	inspection, err := checkpoint.tree.Inspect()
-	if err != nil {
-		return nil, err
-	}
-	proofs, err := checkpoint.recoverableReceipts(inspection)
-	if err != nil {
-		return nil, err
-	}
-	if len(proofs) == 0 {
-		return runs.RecoveryUnavailable{}, nil
-	}
-	if i.config.OriginalToolResults == nil {
-		return nil, errors.New("execution: captured Tool receipts require the original source service")
-	}
-	tools, receipted, err := recoverSegmentTools(active, checkpoint)
-	if err != nil {
-		return nil, err
-	}
-	if !receipted {
-		return runs.RecoveryUnavailable{}, nil
-	}
-	ref := newExecutorRef(root.SessionID())
-	member := runs.ExecutionMember{
-		RunID: root.ID(), MemberID: rootID.String(), ModelSelection: root.ModelSelection(),
-	}
-	continuation, err := runs.NewExecutionContinuation(runs.ExecutionContinuation{
-		SessionID: root.SessionID(), ExecutorID: ref.ExecutorID, RootRunID: root.ID(),
-		Checkpoint: retained, Capabilities: root.Capabilities(), GoalIncarnationID: root.GoalIncarnationID(),
-		Workspace: active.Session.Workspace().Path(), Isolated: active.Session.Isolated(),
-		Members: []runs.ExecutionMember{member},
-	})
-	if err != nil {
-		return nil, err
-	}
-	if err := validateRestoreWorkspace(continuation); err != nil {
-		if errors.Is(err, runs.ErrExecutorStateLost) {
-			return runs.RecoveryUnavailable{}, nil
-		}
-		return nil, err
-	}
-	available, err := i.originalSourcesAvailable(ctx, checkpoint, inspection, proofs)
+	plan, available, err := i.planUncertainRecovery(ctx, active)
 	if err != nil {
 		return nil, err
 	}
 	if !available {
 		return runs.RecoveryUnavailable{}, nil
 	}
+	return i.stageUncertainRecovery(ctx, plan)
+}
+
+// uncertainRecoveryPlan is a retained root checkpoint whose receipted Tool
+// calls can still be verified against their original sources.
+type uncertainRecoveryPlan struct {
+	rootID       scoperun.ProcessID
+	checkpoint   interactionCheckpointState
+	inspection   scoperun.TreeInspection
+	proofs       map[scoperun.EffectID]toolCallCapture
+	tools        []runs.RecoveredTool
+	ref          runs.ExecutorRef
+	continuation runs.ExecutionContinuation
+}
+
+// planUncertainRecovery reports unavailable, not an error, for every missing
+// proof that ordinary Run-loss recovery already settles.
+func (i *InteractionExecutor) planUncertainRecovery(ctx context.Context, active runs.ActiveExecution) (uncertainRecoveryPlan, bool, error) {
+	root := active.Run
+	retained, checkpoint, rootID, available, err := i.loadRetainedRootCheckpoint(ctx, root)
+	if err != nil || !available {
+		return uncertainRecoveryPlan{}, false, err
+	}
+	inspection, err := checkpoint.tree.Inspect()
+	if err != nil {
+		return uncertainRecoveryPlan{}, false, err
+	}
+	proofs, err := checkpoint.recoverableReceipts(inspection)
+	if err != nil || len(proofs) == 0 {
+		return uncertainRecoveryPlan{}, false, err
+	}
+	tools, receipted, err := recoverSegmentTools(active, checkpoint)
+	if err != nil || !receipted {
+		return uncertainRecoveryPlan{}, false, err
+	}
+	ref := newExecutorRef(root.SessionID())
+	continuation, err := runs.NewExecutionContinuation(runs.ExecutionContinuation{
+		SessionID: root.SessionID(), ExecutorID: ref.ExecutorID, RootRunID: root.ID(),
+		Checkpoint: retained, Capabilities: root.Capabilities(), GoalIncarnationID: root.GoalIncarnationID(),
+		Workspace: active.Session.Workspace().Path(), Isolated: active.Session.Isolated(),
+		Members: []runs.ExecutionMember{{RunID: root.ID(), MemberID: rootID.String(), ModelSelection: root.ModelSelection()}},
+	})
+	if err != nil {
+		return uncertainRecoveryPlan{}, false, err
+	}
+	if err := validateRestoreWorkspace(continuation); err != nil {
+		if errors.Is(err, runs.ErrExecutorStateLost) {
+			return uncertainRecoveryPlan{}, false, nil
+		}
+		return uncertainRecoveryPlan{}, false, err
+	}
+	available, err = i.originalSourcesAvailable(ctx, checkpoint, inspection, proofs)
+	if err != nil || !available {
+		return uncertainRecoveryPlan{}, false, err
+	}
+	return uncertainRecoveryPlan{
+		rootID: rootID, checkpoint: checkpoint, inspection: inspection, proofs: proofs,
+		tools: tools, ref: ref, continuation: continuation,
+	}, true, nil
+}
+
+// loadRetainedRootCheckpoint reads the root checkpoint and the acknowledged
+// tree it extends; a missing or foreign-build checkpoint is unavailable.
+func (i *InteractionExecutor) loadRetainedRootCheckpoint(ctx context.Context, root run.Run) (runs.ExecutorCheckpoint, interactionCheckpointState, scoperun.ProcessID, bool, error) {
+	start := interactionStartID(root.SessionID(), root.ID())
+	if !start.Valid() {
+		return runs.ExecutorCheckpoint{}, interactionCheckpointState{}, scoperun.ProcessID{}, false, scoperun.ErrInvalidStart
+	}
+	rootID := start.Root()
+	retained, err := i.config.ExecutionTrees.LoadCheckpoint(ctx, rootID.String())
+	if errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
+		return runs.ExecutorCheckpoint{}, interactionCheckpointState{}, rootID, false, nil
+	}
+	if err != nil || !i.acceptsBuild(retained.BuildID) {
+		return runs.ExecutorCheckpoint{}, interactionCheckpointState{}, rootID, false, err
+	}
+	checkpoint, err := decodeRunCheckpoint(retained, root.SessionID(), root.ID())
+	if err != nil {
+		return runs.ExecutorCheckpoint{}, interactionCheckpointState{}, rootID, false, err
+	}
+	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, root.SessionID(), rootID.String())
+	if err != nil {
+		return runs.ExecutorCheckpoint{}, interactionCheckpointState{}, rootID, false, err
+	}
+	if !found {
+		return runs.ExecutorCheckpoint{}, interactionCheckpointState{}, rootID, false, errors.New("execution: retained context has no acknowledged tree")
+	}
+	checkpoint.tree, err = decodeExecutionTree(head, rootID)
+	if err != nil {
+		return runs.ExecutorCheckpoint{}, interactionCheckpointState{}, rootID, false, err
+	}
+	return retained, checkpoint, rootID, true, nil
+}
+
+// stageUncertainRecovery assembles the recovered Interaction and verifies its
+// captured Tool settlements before the executor can be published.
+func (i *InteractionExecutor) stageUncertainRecovery(ctx context.Context, plan uncertainRecoveryPlan) (_ runs.UncertainRecovery, resultErr error) {
 	finish, err := i.sessions.beginAssembly()
 	if err != nil {
 		return nil, err
 	}
 	defer finish()
-	session, err := i.assembleInteraction(ctx, ref, checkpoint.restoredStart(continuation), &checkpoint)
+	checkpoint := plan.checkpoint
+	session, err := i.assembleInteraction(ctx, plan.ref, checkpoint.restoredStart(plan.continuation), &checkpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -116,17 +143,14 @@ func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, activ
 	if pendingCheckpointSources(session, checkpoint) {
 		return runs.RecoveryDeferred{}, nil
 	}
-	if err := session.verifySettledTools(ctx, checkpoint.tree, proofs, tools); err != nil {
+	if err := session.verifySettledTools(ctx, checkpoint.tree, plan.proofs, plan.tools); err != nil {
 		return nil, err
 	}
-	if err := session.validateCapturedToolArguments(inspection, proofs); err != nil {
+	if err := session.validateCapturedToolArguments(plan.inspection, plan.proofs); err != nil {
 		return nil, err
 	}
 	if err := validateRecovery(ctx, session.deployment, checkpoint.tree); err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return nil, err
-		}
-		if errors.Is(err, scoperun.ErrInvalidLog) {
+		if errors.Is(err, scoperun.ErrInvalidLog) && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 			return runs.RecoveryUnavailable{}, nil
 		}
 		return nil, err
@@ -142,7 +166,7 @@ func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, activ
 		return nil, err
 	}
 	session = nil
-	return runs.StagedRecovery{Ref: ref, MemberID: rootID.String(), Tools: tools}, nil
+	return runs.StagedRecovery{Ref: plan.ref, MemberID: plan.rootID.String(), Tools: plan.tools}, nil
 }
 
 // recoverSegmentTools reports receipted false when any active call lacks an

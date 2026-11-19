@@ -51,7 +51,7 @@ func newInfoResponse(server protocol.ServerInfo) RuntimeInfo {
 
 func (s *Server) handleInfo(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set(headerCacheControl, cacheNoStore)
 	w.WriteHeader(http.StatusOK)
 
 	if err := json.MarshalWrite(w, s.info); err != nil {
@@ -70,7 +70,7 @@ type LivenessStatus struct {
 
 func (s *Server) handleLiveness(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set(headerCacheControl, cacheNoStore)
 	w.WriteHeader(http.StatusOK)
 	if err := json.MarshalWrite(w, LivenessStatus{
 		InstanceID: s.info.Server.InstanceID,
@@ -95,7 +95,7 @@ func (s *Server) handleReadiness(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set(headerCacheControl, cacheNoStore)
 	w.WriteHeader(status)
 
 	if err := json.MarshalWrite(w, ReadinessStatus{

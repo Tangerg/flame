@@ -23,6 +23,10 @@ type WaitingSubtreeCancellationRequest struct {
 	reason         string
 }
 
+func (r WaitingSubtreeCancellationRequest) executorRef() ExecutorRef {
+	return ExecutorRef{SessionID: r.continuation.SessionID, ExecutorID: r.continuation.ExecutorID}
+}
+
 // NewWaitingSubtreeCancellationRequest captures one validated cancellation
 // request without retaining the caller's continuation slices.
 func NewWaitingSubtreeCancellationRequest(

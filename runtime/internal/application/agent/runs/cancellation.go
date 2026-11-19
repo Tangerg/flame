@@ -498,9 +498,8 @@ func (c *Cancellations) resumeAfterWaitingChildCancellation(
 		WorkspaceCWD: sess.Workspace().Path(),
 		Isolated:     sess.Isolated(),
 		ExecutorID:   plan.executor.ExecutorID,
-		Continuation: transformation.continuation,
 		admission:    runAdmission,
-		CommitOpening: func(commitCtx context.Context, opening OpeningCommit) error {
+		Opening: treeResumption{Continuation: transformation.continuation, CommitOpening: func(commitCtx context.Context, opening OpeningCommit) error {
 			_, admitting := opening.Admission()
 			resume, resuming := opening.Resume()
 			if admitting || !resuming {
@@ -517,7 +516,7 @@ func (c *Cancellations) resumeAfterWaitingChildCancellation(
 				committed = result
 			}
 			return commitErr
-		},
+		}},
 		BeginExecution: func(beginCtx context.Context) error {
 			if err := change.Apply(WaitingSubtreeResumesRunning); err != nil {
 				return fmt.Errorf(

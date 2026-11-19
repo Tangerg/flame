@@ -39,7 +39,7 @@ func serveStream(w http.ResponseWriter, r *http.Request, resp *jsonrpc.Response,
 	// Proxy hints + observability headers before NewHTTPWriter — the
 	// library adds Content-Type: text/event-stream itself and leaves our
 	// stricter Cache-Control intact (it only fills no-cache when unset).
-	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set(headerCacheControl, cacheEventStream)
 	w.Header().Set("X-Accel-Buffering", "no")
 	if methodLabel != "" {
 		w.Header().Set(headerMethod, methodLabel)

@@ -103,10 +103,13 @@ func (c *Coordinator) reviveAcceptedContinuation(ctx context.Context, accepted A
 	_, err = c.segments.openSegment(ctx, segmentSpec{
 		RunID: root.ID(), SegmentID: root.ActiveSegmentID(), SessionID: accepted.SessionID,
 		WorkspaceCWD: sess.Workspace().Path(), Isolated: sess.Isolated(), ExecutorID: ref.ExecutorID,
-		Continuation: continuation, admission: &admission,
-		StageExecution: func(stageCtx context.Context) error {
-			_, err := c.continuation.StageAcceptedContinuation(stageCtx, waiting)
-			return err
+		admission: &admission,
+		Opening: treeResumption{
+			Continuation: continuation,
+			StageExecution: func(stageCtx context.Context) error {
+				_, err := c.continuation.StageAcceptedContinuation(stageCtx, waiting)
+				return err
+			},
 		},
 		BeginExecution: func(beginCtx context.Context) error {
 			return c.continuation.BeginContinuation(beginCtx, ref, answers, input)
