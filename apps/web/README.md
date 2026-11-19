@@ -1129,9 +1129,10 @@ The complete source is available through a stable context for table operations.
 
 Generated SVG fences stay inert images inside their code preview. The image
 button is the keyboard stop for scrolling the preview and opening the shared
-gallery. The gallery keeps source order within the reply, owns zoom/pan and
-source return, and captures the image set for each opening. Code copying retains
-the complete original SVG text.
+gallery. The inset focus ring stays around the visible preview as it scrolls.
+The gallery keeps source order within the reply, owns zoom/pan and source
+return, and captures the image set for each opening. Code copying retains the
+complete original SVG text.
 
 Activity disclosures compose Base UI Collapsible directly. Consumers request an
 explicit open value; the workspace command owns each tool's expanded state.

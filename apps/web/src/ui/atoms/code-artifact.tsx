@@ -17,6 +17,9 @@ interface Props {
   sourceBodyRef?: Ref<HTMLDivElement>;
 }
 
+const previewButtonFocus = 'button[data-message-image-preview-trigger="true"]:focus-visible';
+const previewFocus = `:has(> ${previewButtonFocus})`;
+
 const styles = stylex.create({
   embedded: { marginBlock: 0 },
   previewBody: {
@@ -25,7 +28,21 @@ const styles = stylex.create({
     maxHeight: "calc(15lh + 24px)",
     placeItems: "center",
     overflow: "auto",
-    padding: space.s3,
+    // Clip the scrolling image before it reaches the inset focus ring.
+    borderWidth: "var(--focus-inset-edge)",
+    borderStyle: "solid",
+    borderColor: "transparent",
+    padding: `calc(${space.s3} - var(--focus-inset-edge))`,
+    [previewFocus]: {
+      outlineStyle: "solid",
+      outlineWidth: "1.5px",
+      outlineColor: {
+        default: "var(--color-focus-ring)",
+        "@media (forced-colors: active)": "Highlight",
+      },
+      outlineOffset: "calc(-1 * var(--focus-inset-edge))",
+    },
+    [`${previewFocus} > ${previewButtonFocus}`]: { outline: "none" },
   },
   compact: { maxHeight: "calc(var(--spacing) * 60)" },
 });

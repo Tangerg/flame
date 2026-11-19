@@ -41805,6 +41805,50 @@ registrations, ten private Library directories, ten checkout outputs and the
 scratch tree. The English tall preview clips the top edge of the button's
 outline at End. Inspect the outline through local scrolling next.
 
+### Keep SVG keyboard focus visible while scrolling (2026-11-20)
+
+On `ae2e098b4`, native wheel input moved the tall SVG 58 CSS px within its
+preview. The button kept keyboard focus while the scrollport clipped both
+horizontal edges of its outline. The first scroller-outline candidate recovered
+the edges, but WebKit painted the SVG over them through the center.
+
+The existing preview body now draws its outline when the direct gallery
+button matches `:focus-visible`. The same match replaces the button outline.
+A transparent focus inset clips the image before the perimeter, and the same
+measure comes out of the existing padding. This follows the source reader's
+reserved focus edge and keeps the caption's own indicator. The focus color
+comes from the active theme and uses system Highlight in forced colors.
+[WCAG keyboard focus technique](https://www.w3.org/WAI/WCAG22/Techniques/css/C45)
+
+- EN/light/14 px/Flame Orange, 1440 × 900 at scale 1. The tall capture shows all
+  four edges across the image with the wheel at a 56 CSS px local offset and at
+  End. Home to End still spans 87 CSS px. The surrounding transcript and code
+  frame stay at the same position during local scrolling. Return opens image
+  3 / 3, Escape restores the focused button and exact offset, and Shift+Tab
+  reaches Copy code in one step. The draft continues as `775183`.
+- ZH/dark/18 px/`#3B82F6`, 1121 × 950 at scale 1 with a 320 px Dock. The blue
+  outline spans the visible preview at End and Home to End still moves the image
+  13 CSS px. Pointer open and Close restore the same trigger and outer position.
+  The local image offset differs by 3 CSS px after return. The draft continues
+  as `776428`.
+- The canonical short SVG opens as image 3 / 3 and returns to its one button.
+  Shift+Tab moves the visible ring to Copy code and clears it from the preview.
+  The eight-line `store.go` reader opens and returns to its original link.
+  The draft continues as `777639`.
+
+The final candidate was built on `1b9ff40fa` after fast-forwarding independent
+CLI and audit documentation changes. Scoped formatting, 137 Web tests, 940
+keys across eight locales, bootstrap, generated plugin resources, 26 bundle
+contracts, production module linkage, native build and tests, and five canonical
+Lab documents pass. The forced-colors selector is present in emitted CSS. The
+canonical output excludes the private SVG. Native forced colors, VoiceOver,
+clipboard, live providers and other platforms were outside this qualification.
+
+Five native launches and five loopback previews exit. Cleanup removes five
+registrations, ten private Library directories, ten checkout outputs and the
+scratch tree. Continue with another supporting-detail entry and return from
+a captured reply.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad
