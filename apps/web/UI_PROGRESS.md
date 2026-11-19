@@ -40829,6 +40829,66 @@ can exercise a delayed continuation. The query retains the old window
 during the request, so the native task is to see how the reader
 communicates that transition.
 
+### File paging keeps the current source while loading (2026-11-19)
+
+Native Wails continued to offer Show 34 more lines after the Files Dock
+requested lines 60–93. The isolated response was still held and lines
+1–59 remained visible. The query already kept the previous window
+available as placeholder data while fetching the next one.
+
+`FilePreview` derives the pending state from the active local paging
+intent and that query state. The activated edge shows Loading in the
+existing muted text color and action size. A stable polite status
+provides the accessible text. The other paging control stays visible
+with its ordinary label and is disabled while the request runs.
+The displayed range and source retain their existing reader and scroll
+position. The first native candidate applied disabled-button opacity to
+the loading text. The final text uses the normal muted color at the
+same edge. The default light and dark token endpoints measure
+7.88:1 and 7.60:1 against their canvas colors using Culori. HeroUI's
+pending-button examples and Better Accessibility inform the status
+placement and announcement.
+
+- EN/light/14 px/Flame Orange at Actual Size and full motion. Keyboard
+  Show 200 more lines requests 60–259 of a 293-line file. The named
+  reader receives focus, and Tab reaches Collapse right workspace
+  while 1–59 stays visible. The native tree exposes one Loading
+  status. The response arrives after focus moves to the Composer.
+  The draft continues there as `6142081`.
+- In the English middle window, mouse Earlier requests 1–59.
+  Loading occupies that edge. Show 34 more lines is disabled and
+  skipped by Tab. The two controlled rejections clear the pending
+  status and expose Retry. Retry requests the same range, brings
+  back the prior page during the wait, and then displays 1–59 with
+  its restored next action.
+- ZH/dark/18 px/`#3B82F6` at Actual Size and full motion. Native
+  Window Left and End produce a 320 px Dock. A mouse wheel page and
+  pointer activation show `加载中` beneath the still-visible 1–59
+  content. Back to files focuses `reading-guide.md` and cancels the
+  held 60–93 request. Reopening and using the keyboard issues the
+  same request. The accepted 60–93 window clears the status and the
+  later action. The draft continues as `6139045`.
+- The standard English Lab shows a complete 93-line Markdown file.
+  Mouse Source and the Left arrow return through Source and Preview
+  with the same line count. Back focuses the file row. The draft
+  continues as `6173894`.
+
+Scoped formatting, 137 Web tests, 938 keys across eight locales,
+26 bundle contracts, bootstrap, portable resources, module linkage,
+native build and five canonical Lab documents pass. The module
+checks run on `10a9b4568`, `eacd48ae9` and `61c5bf034` as independent
+Runtime commits advance. The isolated Wails capture uses
+`10a9b4568` and controlled loopback reads. The standard Wails replay
+uses `61c5bf034` and canonical Lab data. Physical IME, spoken
+VoiceOver and other operating systems were outside this exercise.
+
+Four private bundles, seven launches and seven previews complete.
+Cleanup removes four registrations, eight private Library
+directories, ten checkout outputs and the scratch tree. The forced
+adjacent-read failure replaces accepted lines 60–259 with an error
+that suggests the file may have moved. The next task is to keep the
+accepted page visible and make Retry identify the requested window.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

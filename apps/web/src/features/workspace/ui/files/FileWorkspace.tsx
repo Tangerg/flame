@@ -333,6 +333,13 @@ function FilePreview({
       : undefined,
   );
 
+  const pagePending = windowFor.intent === viewer && isPlaceholderData && isFetching;
+  const pageLoadingLabel = t("common.loading");
+  const pageLoadingStatus = (
+    <span aria-hidden="true" {...stylex.props(typeStep.uiMd, vocab.muted)}>
+      {pageLoadingLabel}
+    </span>
+  );
   const firstShown = data?.startLine ?? 1;
   const lastShown = data?.endLine ?? 0;
   const moreBefore = firstShown > 1;
@@ -467,6 +474,9 @@ function FilePreview({
       onScrollCopy={copySource}
       notice={
         <>
+          <span role="status" className="sr-only">
+            {pagePending ? pageLoadingLabel : undefined}
+          </span>
           {refreshFeedback}
           {<LocalFileFeedback actions={fileActions} focusTarget={scrollPort} />}
         </>
@@ -570,9 +580,18 @@ function FilePreview({
             <div ref={displayed}>
               {moreBefore && !showRendered && (
                 <div {...stylex.props(fp.edge)}>
-                  <TextButton tone="accent" size="sm" onClick={loadEarlier}>
-                    {t("file.loadEarlier", { count: Math.min(WINDOW_RADIUS, firstShown - 1) })}
-                  </TextButton>
+                  {pagePending && lineWindow.fromEnd ? (
+                    pageLoadingStatus
+                  ) : (
+                    <TextButton
+                      tone="accent"
+                      size="sm"
+                      disabled={pagePending}
+                      onClick={loadEarlier}
+                    >
+                      {t("file.loadEarlier", { count: Math.min(WINDOW_RADIUS, firstShown - 1) })}
+                    </TextButton>
+                  )}
                 </div>
               )}
               {showRendered && renderer ? (
@@ -613,9 +632,13 @@ function FilePreview({
               )}
               {moreAfter && !showRendered && (
                 <div {...stylex.props(fp.edge)}>
-                  <TextButton tone="accent" size="sm" onClick={loadLater}>
-                    {t("file.loadLater", { count: laterCount })}
-                  </TextButton>
+                  {pagePending && !lineWindow.fromEnd ? (
+                    pageLoadingStatus
+                  ) : (
+                    <TextButton tone="accent" size="sm" disabled={pagePending} onClick={loadLater}>
+                      {t("file.loadLater", { count: laterCount })}
+                    </TextButton>
+                  )}
                 </div>
               )}
             </div>
