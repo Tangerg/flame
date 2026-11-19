@@ -15,6 +15,10 @@ export interface DiffFileSummary {
   binary?: boolean;
 }
 
+interface DiffFileRow extends DiffFileSummary {
+  previous?: { path: string; label: string };
+}
+
 const styles = stylex.create({
   copy: { display: "grid", gap: space.s1, flex: 1, minWidth: 0 },
   identity: {
@@ -80,10 +84,24 @@ export function DiffFilePath({ path }: { path: string }) {
   );
 }
 
-function FileState({ file }: { file: DiffFileSummary }) {
+function FileState({
+  file,
+  previous,
+}: {
+  file: DiffFileSummary;
+  previous?: DiffFileRow["previous"];
+}) {
   return (
     <span {...stylex.props(styles.identity, styles.state, type.uiSm)}>
-      <span>{file.status}</span>
+      <span {...stylex.props(previous && styles.identity)}>
+        {previous ? (
+          <>
+            <span>{previous.label}</span> <DiffFilePath path={previous.path} />
+          </>
+        ) : (
+          file.status
+        )}
+      </span>
       {!file.binary && <DiffStat added={file.added} removed={file.removed} />}
     </span>
   );
@@ -96,7 +114,7 @@ export function DiffFileList({
   onSelect,
   ref,
 }: {
-  files: readonly DiffFileSummary[];
+  files: readonly DiffFileRow[];
   label: string;
   currentPath?: string | null;
   onSelect: (path: string, origin: HTMLButtonElement) => void;
@@ -125,7 +143,7 @@ export function DiffFileList({
                 {file.path.slice(cut)}
               </span>
               {cut > 0 && <DiffFilePath path={file.path.slice(0, cut - 1)} />}
-              <FileState file={file} />
+              <FileState file={file} previous={file.previous} />
             </span>
           </RecordButton>
         );

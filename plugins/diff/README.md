@@ -73,7 +73,10 @@ compact failure cue and Refresh; verbose feedback cannot consume the reading
 viewport beside a long filename at large font sizes or zoom.
 The persistent filename takes at most two lines. The complete current path and
 rename provenance remain selectable in the scrolling content for text, binary
-and metadata-only files; complete paths also remain in the overview rows.
+and metadata-only files. The changed-file filter searches current and previous
+paths. In the overview, a rename row identifies the current file as its
+destination and shows the complete previous path with the shared wrapping path
+presentation in its status line.
 
 Opening a changed-file row focuses its heading. A focused Previous or Next
 control keeps focus while the action remains available. At the corresponding

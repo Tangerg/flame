@@ -40336,6 +40336,67 @@ app registrations, Library directories, checkout build outputs and
 scratch state. Next review the evidence shown when a Diff filter
 matches the previous path of a renamed file.
 
+### Showing the previous path in renamed Diff rows (2026-11-19)
+
+The signed Wails baseline at `834450371` returns one match from four
+changed files for `旧名字`. The list identifies `新名字.md`, `docs` and
+the generic rename status. The original path `docs/旧名字.md` appears
+only after opening the file. The filter already searches both accepted
+paths, so the result lacks one of the identities used to match it.
+
+The shared `DiffFileList` row now uses the accepted previous path and
+the existing localized rename label in its status area. The current
+basename and directory still identify the reader destination. The row
+uses the existing `DiffFilePath` wrapping, focus and counts. `WorkspaceDiff`
+projects the same manifest path and label into the reader body. The
+first candidate split `旧名字.md` at the end of the label's line. The
+refined row lets the label and path wrap as separate items. A short
+path fits as a unit, and a long path can wrap within the row.
+
+Better Layout informs the order of primary and supporting identity.
+The local HeroUI ListBox example pairs its Label with a supporting
+Description. ZCode's `GitPaneChangeCard` presents current file identity
+with its change counts. Git's rename headers establish the names on
+both sides of the comparison. [Git diff format](https://git-scm.com/docs/diff-format#_generating_patch_text_with_p)
+
+- ZH/dark/18 px/`#3B82F6` with full motion at Actual Size. In the
+  320 px Dock, `docs/旧名字.md` fits on one line and `+0 −0` remains
+  visible. The accessibility tree includes both identities and counts.
+  Enter opens the current heading and both paths with the metadata-only
+  explanation. Escape returns to the same focused row and old query.
+  Searching `新名字` reaches the same row and native activation opens
+  the same file. Pointer Back returns to Conversation, and the draft
+  continues at its original caret as `7425609183`.
+- EN/light/14 px/Flame Orange with reduced motion. The original
+  uncommitted overview retains its two ordinary files. In the native
+  left window, Branch changes shows the rename beside the changed
+  source and binary file. The full old path `docs/layout/旧导航.md`
+  finds one of three files. Enter, full-width expansion and Files
+  return preserve that row, the query and the accepted merge base
+  `abcdef12`. Clear restores all three files and search focus. The
+  conversation draft continues as `53810426`.
+- EN/light/18 px/Flame Orange uses an isolated Lab data variant with
+  a 142-character old path. The actual `ledger` keystrokes find the
+  renamed file at 320 px. Both the wrapping row and native accessibility
+  tree carry the entire path, including its final `.md`. Widening the
+  Dock keeps the result and filter. Enter and Escape return through the
+  same file. After clearing and narrowing, native wheel reading reaches
+  the following binary row and Comparison details.
+
+The canonical publisher rebuilds the Diff ESM. Scoped Prettier,
+shared UI types and packed consumer, plugin types and 20 catalogs,
+137 Web tests, 937 Web locale keys, 26 bundle contracts, native build
+and five Lab documents pass. The standard assets exclude the private
+long-path marker. The independent CLI commit `e36c0a76e` advances main
+before the refined checks. Native Unicode filtering uses accessibility
+input. Physical IME, spoken VoiceOver and live Git reads are outside
+this qualification.
+
+Four private bundles pass strict signature verification. Five launches
+and four previews terminate. Cleanup removes the registrations, eight
+private Library directories, ten checkout outputs and the scratch tree.
+The next pass inspects the active Dock tab's leading edge after narrowing.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

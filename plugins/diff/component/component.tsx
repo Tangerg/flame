@@ -200,6 +200,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const file = selection.view === "file" ? selected : undefined;
   const filePath = file?.path;
   const fileChanges = file ? t("file.changes", { path: file.path }) : undefined;
+  const renamedFrom = t("file.renamed");
   const rendered = file ? accepted?.rendered.get(file.path) : undefined;
   const readable = rendered !== undefined && rendered.file.hunks.length > 0;
   const showingReader = file !== undefined;
@@ -635,7 +636,12 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               )}
               <DiffFileList
                 ref={list}
-                files={matching.map((item) => fileSummary(t, item))}
+                files={matching.map((item) => ({
+                  ...fileSummary(t, item),
+                  previous: item.previousPath
+                    ? { path: item.previousPath, label: renamedFrom }
+                    : undefined,
+                }))}
                 label={t("files.region")}
                 currentPath={selection.path}
                 onSelect={(path) => openFile(path)}
@@ -649,7 +655,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               </Metadata>
               {file.previousPath && (
                 <Metadata>
-                  {t("file.renamed")} <DiffFilePath path={file.previousPath} />
+                  {renamedFrom} <DiffFilePath path={file.previousPath} />
                 </Metadata>
               )}
               {file.binary ? (
