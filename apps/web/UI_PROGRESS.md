@@ -38,7 +38,7 @@ runtime fallback is an accepted migration state.
 | D8       | New dnd-kit internal sorting; PDD external file adapter                           | Integrated                                                                            |
 | D9       | Pierre File/FileDiff/CodeView with the shiki-js baseline                          | Integrated; one shared worker pool for application code readers                       |
 | D10      | Public Pierre Highlights ANSI tokens                                              | Deferred: production CSP grants no Wasm; ANSI parser retained; V3 blocked             |
-| D11      | Native focus-visible, Base UI focus, immutable copy/quote commands                | Integrated; quote uses context menu and Mod+Shift+Q                                   |
+| D11      | Native focus-visible, Base UI focus, immutable copy/quote commands                | Integrated. Quote uses the context menu and Ctrl+Shift+Q                              |
 | D12      | Standard react-markdown/unified/gfm/math/katex pipeline                           | Integrated as one current document; V4 not run                                        |
 | D13      | Native fields with CSS field-sizing and explicit capability floor                 | field-sizing with rows fallback; V6 and the WKWebView floor not run                   |
 | D14      | Browser selection, reader-owned Find, existing Query/Pacer boundaries             | Not separately audited                                                                |
@@ -22991,6 +22991,48 @@ Three native launches and two loopback previews exit. Cleanup
 removes three registrations, six private Library directories,
 ten checkout outputs and the scratch tree. Check the default
 native shortcut for the same quote action next.
+
+### Use Control Shift Q for native quoting (2026-11-20)
+
+Signed Wails on `6ef64cdb4` displays `⇧ ⌘ Q` for
+Quote in message in Keyboard shortcuts. Apple uses that chord for
+system logout. Applying Control Shift Q while `boundary` is selected
+on the baseline leaves draft `8812` and the selection untouched.
+[Apple keyboard shortcuts](https://support.apple.com/en-us/102650)
+
+The existing command now defaults to `Ctrl+Shift+Q`. Its identity
+and captured Composer action stay the same. The settings row and
+dispatcher read the same command and any saved override. The
+pinned TanStack normalizer resolves the previous and new defaults
+to the same chord on Windows and Linux.
+
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 and a 320 px Dock.
+  The hardware chord quotes only `boundary` from the assistant
+  response, restores writing focus and extends `8841` with
+  `625` outside the quote. Invoking it on a collapsed selection
+  leaves the draft intact. Keyboard shortcuts shows `⌃ ⇧ Q`,
+  and Close returns to the same draft and file.
+- EN/light/14 px/Flame Orange in a 560.5 px Dock. The new chord
+  quotes only `row` with the workspace path and absolute line 4.
+  The same draft begins `8837` and continues with `594`. The
+  command leaves a full selection inside the Composer and its
+  draft intact. English Keyboard shortcuts shows `⌃ ⇧ Q` and
+  returns to the same file. Its right-click action still opens
+  and dismisses without modifying the draft.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and five
+canonical Lab documents pass. The signed fixture mounts the
+production shortcut and quote plugins with a captured workspace.
+The system logout chord, changed shortcut preferences, Windows
+and Linux native UI, Send, VoiceOver, browser suites and benchmarks
+were outside this run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Next verify whether
+multiline source quotes preserve the served indentation.
 
 ### Native short-paste continuation qualification
 

@@ -11,7 +11,8 @@ export default (composer: ComposerAccess) =>
       ctx.contributions.add(COMMAND, {
         id: "composer.quoteSelection",
         label: "quote.selection",
-        combo: "Mod+Shift+Q",
+        // macOS reserves Shift-Command-Q for system logout.
+        combo: "Ctrl+Shift+Q",
         run: () => {
           captureComposerSelectionQuote(composer)?.();
         },

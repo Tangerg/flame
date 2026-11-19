@@ -1344,10 +1344,10 @@ Lab cameras use react-zoom-pan-pinch with fit and actual-size intents. Internal
 Dock reordering uses dnd-kit; pragmatic-drag-and-drop handles only external files
 and retains their original intake source. Copying publishes immutable operation
 receipts to Toast, including completions after the source unmounts. Selection
-quoting captures an immutable snapshot only from a context menu or explicit
-shortcut. A message menu offers Quote in message when its target and the
-selection endpoints share one visible source. It appends to the captured
-Composer after the menu closes.
+quoting captures an immutable snapshot from a context menu or its configurable
+shortcut, `Ctrl+Shift+Q` by default. A message menu offers Quote in message
+when its target and the selection endpoints share one visible source. It appends
+to the captured Composer after the menu closes.
 
 GenUI renders official A2UI 1.0 through a trusted Flame catalog; its
 processor lifetime is outside virtual rows. Highlights remains deferred under the
