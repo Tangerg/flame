@@ -40521,6 +40521,74 @@ Cleanup removes the exact registrations, private Library directories,
 ten checkout outputs and the scratch tree. The next pass follows a
 tool entry into its supporting evidence and back to the reply.
 
+### Preserve recorded result reading through Find (2026-11-19)
+
+At `184c141b3`, actual Wails opened the grouped Read of
+`runtime/internal/session/store.go` in the existing `waves` workspace. The
+Lab's `long-result` option supplied 82 recorded lines. Tab and Return revealed
+80 rows, with line 41 at the top. One native wheel page reached line 55 at
+scroll top 1340 px. Opening empty Find jumped to line 1 at 0 px. Escape then
+reduced the reader to 40 of 82 rows. Filtering to `observation 63` and clicking
+Close find also reduced the restored result to its first 40 rows.
+
+The recorded-row reader keeps the revealed unfiltered rows independently of
+filtered pages. Empty Find uses the current reading state. A nonempty query
+captures the current vertical position once and starts its own result list at
+the top. Clearing restores the revealed rows and vertical position and keeps
+the field focused. Closing restores the result reader as the keyboard target.
+While empty Find is open, the reader can keep scrolling and revealing more
+rows. These are local presentation changes over captured evidence. The same
+renderer supplies Source, Matches and other recorded row views.
+
+Better Layout and Better Accessibility inform the bounded reader and the
+visible keyboard return. Read-only ZCode ToolLayout supplies the reference for
+keeping a Tool's summary and detail distinct. The HTML focus API supports
+returning to the result without asking the browser to scroll it again.
+[HTML focus management](https://html.spec.whatwg.org/multipage/interaction.html#focus-management-apis)
+
+- EN/light/18 px/Flame Orange at Actual Size and full motion. With 80
+  rows revealed, Cmd+F and Escape keep line 55 at 1340 px. Filtering all
+  observations starts with 40 of 82 matches. Showing the next 40 matches
+  starts at row 41. Refining to `observation 63` shows one row at the top.
+  Pointer Clear restores line 55 and keeps the filter focused. A subsequent
+  wheel page moves the unfiltered reading position to line 42 at 1024 px.
+  Escape keeps that position and focuses Result. Paging with empty Find
+  shows all 82 rows. Closing at the bottom keeps row 82 visible as the
+  viewport grows. The unsent draft continues as `56431872`.
+- ZH/dark/18 px/`#3B82F6` at Actual Size and full motion. macOS Window Left
+  measures 1121 px, and Home on the Dock separator gives the conversation
+  440 px. Mixed-language rows wrap. Native wheel input reads line 48 at
+  2330 px. Pointer Close find from match 63 and Escape from a CJK query
+  with zero matches both return to that position with 80 of 82 rows and
+  the blue focus ring. The draft continues as `563218409`.
+- EN/light/14 px/Flame Orange uses the standard Lab build. Keyboard Open
+  the current file opens the eight-line `runtime/internal/session/store.go`.
+  Back to conversation restores the exact action and the open query
+  `observation 63`. Close find restores 80 of 82 rows and focuses Result.
+  The adjacent RunInTx Search expands beside the retained Read and the
+  reply remains available. The draft continues as `5653036`. A pointer
+  attempt at the file action missed its target; the file-entry witness
+  uses the focused keyboard action.
+
+Scoped Prettier, plugin types and 20 plugin catalogs, 137 Web tests
+including the isolated Runtime, 937 Web locale keys, 26 bundle contracts,
+bootstrap, portable resources and module linkage, native build and five
+canonical Lab documents pass. The portable publisher refreshes the
+recorded-results ESM. The independent Runtime commit `338f5d037` advanced
+`main` during checks. The private native candidates use its prepared module
+proxy. A temporary Lab build reads scroll, row and focus state in Wails.
+The standard build contains no observation marker. The initial narrative
+scene uses older fixture shapes and was used only to inspect generic JSON.
+The accepted interaction uses captured Read evidence and a read-only
+current-file fixture. Live providers, physical IME and VoiceOver speech
+were untested.
+
+Seven signed bundles, seven launches and four previews complete. Cleanup
+removes seven registrations, fourteen private Library directories, ten
+checkout outputs and the scratch tree. Continue with the handoff between
+captured evidence and the current workspace when the original object has
+moved.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

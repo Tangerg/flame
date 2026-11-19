@@ -44,11 +44,13 @@ Rows and command output use the shared `CodeFrame` and `CodeCaption`, so recogni
 results read like the generic inspector's captured code: the caption names the
 content and holds Find, expansion, Jump to latest, Collapse and Copy. Copy writes the
 recorded text, without ANSI styling for command output. Result filters open on
-demand beneath the caption, above one bounded scrolling body. Changing or clearing
-the row filter reveals the first matching row without moving input focus; unchanged
-queries and ordinary rerenders preserve manual reading position. The command-output
-caption follows the current locale; a web fetch names its literal format in the
-caption. Paged results retain the shown and matching row counts in
+demand beneath the caption, above one bounded scrolling body. A changed nonempty
+filter starts at the first matching row and keeps input focus. Clearing the
+filter restores the revealed unfiltered rows and reading position while Find
+stays open. Closing Find returns focus to the result reader at that position.
+An empty Find shares the result's current paging and scroll position. The
+command-output caption follows the current locale. A web fetch names its literal
+format in the caption. Paged results retain the shown and matching row counts in
 that caption. Continuing a page reveals its first new row and returns focus to the
 named result viewport, including the last page, instead of carrying keyboard focus
 past the new evidence or dropping it when the continuation button disappears.

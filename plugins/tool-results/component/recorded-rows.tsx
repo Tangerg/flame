@@ -43,15 +43,15 @@ export function RecordedRows({
   emptyMessage?: string;
   t: Translate;
 }) {
-  // A null filter is closed Find. Paging restarts with every filter, so both
-  // advance together.
-  const [view, setView] = useState<{ filter: string | null; visible: number }>({
-    filter: null,
-    visible: RESULT_PAGE_ROWS,
-  });
-  const { filter, visible } = view;
-  const finding = filter !== null;
+  const [unfilteredVisible, setUnfilteredVisible] = useState(RESULT_PAGE_ROWS);
+  const [find, setFind] = useState<{ query: string; visible: number } | null>(
+    null,
+  );
+  const finding = find !== null;
+  const filter = find?.query ?? "";
+  const visible = find?.query ? find.visible : unfilteredVisible;
   const viewport = useRef<HTMLDivElement>(null);
+  const unfilteredScrollTop = useRef<number | null>(null);
   const search = useRef<HTMLInputElement>(null);
   const firstRevealed = useRef<HTMLDivElement>(null);
   const continuation = useRef<{
@@ -86,16 +86,45 @@ export function RecordedRows({
     if (finding) enterFind(search.current);
   }, [finding]);
   useLayoutEffect(() => {
-    if (viewport.current) viewport.current.scrollTop = 0;
+    const node = viewport.current;
+    if (!node) return;
+    if (filter) {
+      node.scrollTop = 0;
+    } else if (unfilteredScrollTop.current !== null) {
+      node.scrollTop = unfilteredScrollTop.current;
+      unfilteredScrollTop.current = null;
+    }
   }, [filter]);
   function openFind() {
-    setView((current) =>
-      current.filter === null ? { ...current, filter: "" } : current,
-    );
+    setFind((current) => current ?? { query: "", visible: RESULT_PAGE_ROWS });
+  }
+  function changeFilter(query: string) {
+    if (query === filter) return;
+    // Empty Find still uses the normal reader and its current position.
+    if (!filter)
+      unfilteredScrollTop.current = viewport.current?.scrollTop ?? null;
+    continuation.current = null;
+    setFind({ query, visible: RESULT_PAGE_ROWS });
   }
   function closeFind() {
-    setView({ filter: null, visible: RESULT_PAGE_ROWS });
-    viewport.current?.focus();
+    if (filter) continuation.current = null;
+    setFind(null);
+    viewport.current?.focus({ preventScroll: true });
+  }
+  function showMore(origin: HTMLButtonElement) {
+    continuation.current = {
+      origin,
+      activeElement: origin.ownerDocument.activeElement,
+    };
+    if (filter) {
+      setFind((current) =>
+        current?.query === filter
+          ? { ...current, visible: current.visible + RESULT_PAGE_ROWS }
+          : current,
+      );
+    } else {
+      setUnfilteredVisible((current) => current + RESULT_PAGE_ROWS);
+    }
   }
   const matching = useMemo(
     () =>
@@ -156,9 +185,7 @@ export function RecordedRows({
               fieldLabel={t("result.filter")}
               value={filter}
               fieldRef={search}
-              onChange={(value) =>
-                setView({ filter: value, visible: RESULT_PAGE_ROWS })
-              }
+              onChange={changeFilter}
               onClose={closeFind}
             />
           </div>
@@ -305,17 +332,7 @@ export function RecordedRows({
             )}
             {matching.length > visible && (
               <Button
-                onClick={(event) => {
-                  continuation.current = {
-                    origin: event.currentTarget,
-                    activeElement:
-                      event.currentTarget.ownerDocument.activeElement,
-                  };
-                  setView((current) => ({
-                    ...current,
-                    visible: current.visible + RESULT_PAGE_ROWS,
-                  }));
-                }}
+                onClick={(event) => showMore(event.currentTarget)}
                 style={{ marginBlockStart: "var(--layout-control-gap)" }}
               >
                 {t("result.showMore", {
