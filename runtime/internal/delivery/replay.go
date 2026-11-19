@@ -34,9 +34,9 @@ func (e *Endpoint) replayOperation(ctx context.Context, method *Method, paramete
 	var result protocol.OperationResult
 	executed := false
 	var payload []byte
-	if handler, ok := e.target.(*Handler); ok && (method.Meta.Name == SessionsCreate || method.Meta.Name == sessionsFork || method.Meta.Name == feedbackCreate) {
-		payload, err = e.idempotency.InvokeAtomic(ctx, key, fingerprint, func() (operation.PreparedOutcome, error) {
-			return handler.prepareAtomicOutcome(ctx, method, parameters)
+	if handler, ok := e.target.(*Handler); ok && hasAtomicOutcome(method.Meta.Name, parameters) {
+		payload, err = e.idempotency.InvokeAtomic(ctx, key, fingerprint, func(complete *operation.AtomicCompletion) error {
+			return handler.commitAtomicOutcome(ctx, method, parameters, complete)
 		})
 	} else {
 		payload, err = e.idempotency.Invoke(ctx, key, fingerprint, func() ([]byte, error) {
@@ -67,35 +67,87 @@ func (e *Endpoint) replayOperation(ctx context.Context, method *Method, paramete
 	return replayOutcome(method, payload)
 }
 
-func (s *Handler) prepareAtomicOutcome(ctx context.Context, method *Method, request any) (operation.PreparedOutcome, error) {
+func hasAtomicOutcome(name Name, request any) bool {
+	switch name {
+	case SessionsCreate, sessionsFork, feedbackCreate:
+		return true
+	case sessionsRollback:
+		scope, err := rollbackScopeFromWire(request.(protocol.RollbackSessionRequest))
+		return err == nil && !scope.RestoresFiles()
+	default:
+		return false
+	}
+}
+
+func (s *Handler) commitAtomicOutcome(ctx context.Context, method *Method, request any, complete *operation.AtomicCompletion) error {
 	var creation sessions.Creation
 	var err error
 	switch in := request.(type) {
 	case protocol.FeedbackRequest:
 		write, err := s.feedback.Prepare(ctx, feedbackCommand(in))
 		if err != nil {
-			return operation.PreparedOutcome{}, err
+			return err
 		}
 		payload, err := encodeStoredOutcome(protocol.OperationResult{Value: struct{}{}})
-		return operation.PreparedOutcome{Payload: payload, Commit: write}, err
+		if err != nil {
+			return err
+		}
+		return complete.Commit(ctx, func(tx context.Context) ([]byte, error) {
+			return payload, write(tx)
+		})
 	case protocol.CreateSessionRequest:
 		creation, err = s.prepareCreate(ctx, in)
 	case protocol.ForkSessionRequest:
 		creation, err = s.prepareFork(ctx, in)
-
+	case protocol.RollbackSessionRequest:
+		return s.commitRollbackOutcome(ctx, method, in, complete)
 	default:
-		return operation.PreparedOutcome{}, fmt.Errorf("idempotency: invalid Session creation request %T", request)
+		return fmt.Errorf("idempotency: unsupported atomic command input %T", request)
 	}
 	if err != nil {
-		payload, encodeErr := encodeStoredOutcome(failed(projectError(err)))
-		return operation.PreparedOutcome{Payload: payload}, encodeErr
+		return commitAtomicFailure(ctx, complete, err)
 	}
 	view := presentSession(creation.View)
-	if err := method.Meta.ValidateResult(&view); err != nil {
-		return operation.PreparedOutcome{}, err
+	payload, err := encodeAtomicResult(method, &view)
+	if err != nil {
+		return err
 	}
-	payload, err := encodeStoredOutcome(protocol.OperationResult{Value: &view})
-	return operation.PreparedOutcome{Payload: payload, Commit: creation.Commit, Publish: creation.Publish}, err
+	err = complete.Commit(ctx, func(tx context.Context) ([]byte, error) {
+		return payload, creation.Commit(tx)
+	})
+	if err == nil {
+		creation.Publish()
+	}
+	return err
+}
+
+func (s *Handler) commitRollbackOutcome(ctx context.Context, method *Method, in protocol.RollbackSessionRequest, complete *operation.AtomicCompletion) error {
+	err := s.rollbackSession(ctx, in, func(ctx context.Context, write func(context.Context) (sessions.RollbackResult, error)) error {
+		return complete.Commit(ctx, func(tx context.Context) ([]byte, error) {
+			result, err := write(tx)
+			if err != nil {
+				return nil, err
+			}
+			return encodeAtomicResult(method, presentRollbackResult(result))
+		})
+	})
+	if err == nil || complete.Attempted() {
+		return err
+	}
+	return commitAtomicFailure(ctx, complete, err)
+}
+
+func commitAtomicFailure(ctx context.Context, complete *operation.AtomicCompletion, cause error) error {
+	return complete.Commit(ctx, func(context.Context) ([]byte, error) {
+		return encodeStoredOutcome(failed(projectError(cause)))
+	})
+}
+
+func encodeAtomicResult(method *Method, value any) ([]byte, error) {
+	if err := method.Meta.ValidateResult(value); err != nil {
+		return nil, err
+	}
+	return encodeStoredOutcome(protocol.OperationResult{Value: value})
 }
 
 func replayOutcome(method *Method, payload []byte) protocol.OperationResult {

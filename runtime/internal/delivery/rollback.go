@@ -25,34 +25,45 @@ import (
 // tree restore, and durable truncation — belongs to the session use case. This
 // method only decodes the wire intent and projects the result.
 func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessionRequest) (*protocol.RollbackSessionResponse, error) {
+	var response *protocol.RollbackSessionResponse
+	err := s.rollbackSession(ctx, in, func(ctx context.Context, write func(context.Context) (sessions.RollbackResult, error)) error {
+		result, err := write(ctx)
+		if err != nil {
+			return err
+		}
+		response = presentRollbackResult(result)
+		return nil
+	})
+	return response, err
+}
+
+func (s *Handler) rollbackSession(ctx context.Context, in protocol.RollbackSessionRequest, complete sessions.RollbackCompletion) error {
 	scope, err := rollbackScopeFromWire(in)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	result, err := s.sessions.Rollback(ctx, sessions.RollbackSpec{
+	err = s.sessions.Rollback(ctx, sessions.RollbackSpec{
 		SessionID: in.SessionID,
 		ToRunID:   in.ToRunID,
 		Scope:     scope,
-	})
+	}, complete)
 	if err != nil {
-		return nil, wireRollbackErr(err, in.SessionID)
+		return wireRollbackErr(err, in.SessionID)
 	}
+	return nil
+}
 
-	// Each dropped run reports its opening user input so the client can
-	// re-populate the composer. Files-only rollback drops nothing from history.
-	out := []protocol.DroppedRun{}
-	if scope.RestoresHistory() {
-		for _, dropped := range result.Dropped {
-			input := make([]protocol.ContentBlock, len(dropped.UserInput))
-			for i, block := range dropped.UserInput {
-				input[i] = presentContent(block)
-			}
-			out = append(out, protocol.DroppedRun{Run: presentRunSummary(dropped.Run), UserInput: input})
+func presentRollbackResult(result sessions.RollbackResult) *protocol.RollbackSessionResponse {
+	droppedRuns := make([]protocol.DroppedRun, 0, len(result.Dropped))
+	for _, dropped := range result.Dropped {
+		input := make([]protocol.ContentBlock, len(dropped.UserInput))
+		for i, block := range dropped.UserInput {
+			input[i] = presentContent(block)
 		}
+		droppedRuns = append(droppedRuns, protocol.DroppedRun{Run: presentRunSummary(dropped.Run), UserInput: input})
 	}
 	sess := presentSession(result.Session)
-	return &protocol.RollbackSessionResponse{Session: &sess, DroppedRuns: out}, nil
+	return &protocol.RollbackSessionResponse{Session: &sess, DroppedRuns: droppedRuns}
 }
 
 // wireRollbackErr maps session rollback errors onto their wire

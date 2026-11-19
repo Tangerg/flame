@@ -80,6 +80,10 @@ type RollbackResult struct {
 	Dropped []DroppedRun
 }
 
+// RollbackCompletion owns result publication while the Session claim is held.
+// For a history-only rollback it can commit the write and reply together.
+type RollbackCompletion func(context.Context, func(context.Context) (RollbackResult, error)) error
+
 // Rollback executes a session rollback as one guarded operation: it claims
 // the single-writer mutation slot (rejecting a rollback under an in-flight run
 // as [run.ErrSessionBusy]) and, for a file restore, the working-tree mutation slot
@@ -101,17 +105,16 @@ type RollbackResult struct {
 // The mutation slot admits open interrupts because its caller owns their
 // disposition; this one disposes of exactly what its boundary drops, so a
 // continuation it would leave behind has to be settled by its own owner first.
-func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (RollbackResult, error) {
+func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec, complete RollbackCompletion) error {
 	if err := spec.validate(); err != nil {
-		return RollbackResult{}, err
+		return err
 	}
 	restoreFiles := spec.Scope.RestoresFiles()
 	restoreHistory := spec.Scope.RestoresHistory()
-	result := RollbackResult{}
 
 	sessionMutation, err := c.ClaimSessionMutation(ctx, spec.SessionID)
 	if err != nil {
-		return result, err
+		return err
 	}
 	defer sessionMutation.Release()
 
@@ -120,7 +123,7 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 	// Session no longer has — and the view it returns a workspace that moved.
 	currentSession, err := c.Get(ctx, spec.SessionID)
 	if err != nil {
-		return result, err
+		return err
 	}
 
 	var cwd string
@@ -128,31 +131,56 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 		cwd = currentSession.Workspace().Path()
 		workingTreeMutation, claimed, leaseErr := c.ClaimWorkingTreeMutation(cwd)
 		if leaseErr != nil {
-			return result, leaseErr
+			return leaseErr
 		}
 		if !claimed {
-			return result, fmt.Errorf("%w: working tree %q has a run admission in flight", run.ErrSessionBusy, cwd)
+			return fmt.Errorf("%w: working tree %q has a run admission in flight", run.ErrSessionBusy, cwd)
 		}
 		defer workingTreeMutation.Release()
 	}
 
 	resolvedBoundary, err := c.resolveRollbackBoundary(ctx, spec.SessionID, spec.ToRunID)
 	if err != nil {
-		return result, err
+		return err
 	}
+	var dropped []DroppedRun
 	if restoreHistory {
-		result.Dropped = resolvedBoundary.droppedRuns
+		dropped = resolvedBoundary.droppedRuns
 	}
-	if restoreFiles {
-		if surviving, found := resolvedBoundary.survivingContinuation(restoreHistory); found {
-			return result, fmt.Errorf(
-				"%w: Run %q is %s and this boundary keeps it; settle it before restoring files under it",
-				run.ErrSessionBusy, surviving.ID(), surviving.State(),
-			)
+	project := func(ctx context.Context) (RollbackResult, error) {
+		activities, err := c.Activities(ctx, []string{spec.SessionID})
+		if err != nil {
+			return RollbackResult{}, err
 		}
-		if err := c.quiesceRollbackWorkspace(spec.SessionID, cwd); err != nil {
-			return result, err
+		view, err := c.view(currentSession, activities[spec.SessionID])
+		if err != nil {
+			return RollbackResult{}, err
 		}
+		return RollbackResult{Session: view, Dropped: dropped}, nil
+	}
+	dropsHistory := restoreHistory && len(resolvedBoundary.timeline.Dropped) > 0
+	if !restoreFiles {
+		if !dropsHistory {
+			return complete(ctx, project)
+		}
+		return c.applyRollback(ctx, spec.SessionID, resolvedBoundary.timeline, func(ctx context.Context, plan RollbackPlan) error {
+			return complete(ctx, func(tx context.Context) (RollbackResult, error) {
+				if err := c.writes.ApplyRollback(tx, plan); err != nil {
+					return RollbackResult{}, err
+				}
+				return project(tx)
+			})
+		})
+	}
+
+	if surviving, found := resolvedBoundary.survivingContinuation(restoreHistory); found {
+		return fmt.Errorf(
+			"%w: Run %q is %s and this boundary keeps it; settle it before restoring files under it",
+			run.ErrSessionBusy, surviving.ID(), surviving.State(),
+		)
+	}
+	if err := c.quiesceRollbackWorkspace(spec.SessionID, cwd); err != nil {
+		return err
 	}
 	// Every file restore is logged before Git touches the working tree. A checkout
 	// updates multiple paths and can fail after changing only some of them, so
@@ -160,49 +188,34 @@ func (c *Coordinator) Rollback(ctx context.Context, spec RollbackSpec) (Rollback
 	// that operation from the cross-resource files+history variant.
 	mutation, freshMutation, err := c.recordRollbackMutation(ctx, spec, cwd)
 	if err != nil {
-		return result, err
+		return err
 	}
 
 	// A fresh intent may be cleared if checkout never began. An adopted intent
 	// or incomplete checkout may already have changed files and must survive.
-	if restoreRollbackFilesErr := c.restoreRollbackFiles(ctx, spec, cwd, mutation, freshMutation); restoreRollbackFilesErr != nil {
-		if restoreFiles && errors.Is(restoreRollbackFilesErr, ErrCheckpointRestoreIncomplete) {
+	if err := c.restoreRollbackFiles(ctx, mutation, freshMutation); err != nil {
+		if errors.Is(err, ErrCheckpointRestoreIncomplete) {
 			c.transientState.ForgetWorkspace(cwd)
 		}
-		return result, restoreRollbackFilesErr
+		return err
 	}
-	if restoreFiles {
-		if err := c.retireRestoredWorkspace(spec.SessionID, cwd); err != nil {
-			return result, err
-		}
+	if err := c.retireRestoredWorkspace(spec.SessionID, cwd); err != nil {
+		return err
 	}
 
 	// The tree is restored now; a durable failure here leaves the intent logged so
 	// boot recovery completes the truncation (the tree + history would otherwise
 	// disagree).
-	if restoreHistory && len(resolvedBoundary.timeline.Dropped) > 0 {
-		if applyRollbackErr := c.applyRollback(ctx, spec.SessionID, resolvedBoundary.timeline); applyRollbackErr != nil {
-			return result, applyRollbackErr
+	if dropsHistory {
+		if err := c.applyRollback(ctx, spec.SessionID, resolvedBoundary.timeline, c.writes.ApplyRollback); err != nil {
+			return err
 		}
 	}
 
-	if restoreFiles {
-		if completeMutationDetachedErr := c.completeMutationDetached(ctx, mutation); completeMutationDetachedErr != nil {
-			return result, completeMutationDetachedErr
-		}
+	if err := c.completeMutationDetached(ctx, mutation); err != nil {
+		return err
 	}
-	// A files-only restore drops no Run and a history cut can keep a waiting
-	// boundary Run, so activity stays derived from the durable Run projection
-	// rather than asserted by the rollback.
-	activities, err := c.Activities(ctx, []string{spec.SessionID})
-	if err != nil {
-		return result, err
-	}
-	result.Session, err = c.view(currentSession, activities[spec.SessionID])
-	if err != nil {
-		return result, err
-	}
-	return result, nil
+	return complete(ctx, project)
 }
 
 type resolvedRollbackBoundary struct {
@@ -278,9 +291,6 @@ func (c *Coordinator) recordRollbackMutation(
 	spec RollbackSpec,
 	cwd string,
 ) (WorkspaceMutation, bool, error) {
-	if !spec.Scope.RestoresFiles() {
-		return WorkspaceMutation{}, false, nil
-	}
 	mutation := WorkspaceMutation{
 		SessionID: spec.SessionID, CWD: cwd, ToRunID: spec.ToRunID,
 		RestoreHistory: spec.Scope.RestoresHistory(),
@@ -304,15 +314,10 @@ func (c *Coordinator) retireRestoredWorkspace(sessionID, cwd string) error {
 
 func (c *Coordinator) restoreRollbackFiles(
 	ctx context.Context,
-	spec RollbackSpec,
-	cwd string,
 	mutation WorkspaceMutation,
 	freshMutation bool,
 ) error {
-	if !spec.Scope.RestoresFiles() {
-		return nil
-	}
-	err := c.checkpoints.Restore(ctx, spec.SessionID, cwd, spec.ToRunID)
+	err := c.checkpoints.Restore(ctx, mutation.SessionID, mutation.CWD, mutation.ToRunID)
 	if err == nil || errors.Is(err, ErrCheckpointRestoreIncomplete) {
 		return err
 	}
@@ -387,7 +392,7 @@ func (c *Coordinator) recoverRollback(ctx context.Context, m WorkspaceMutation) 
 		return err
 	}
 	if m.RestoreHistory && len(boundary.Dropped) > 0 {
-		if err := c.applyRollback(ctx, m.SessionID, boundary); err != nil {
+		if err := c.applyRollback(ctx, m.SessionID, boundary, c.writes.ApplyRollback); err != nil {
 			return err
 		}
 	}

@@ -16,10 +16,7 @@ import (
 // Session tree to infer or purge. An unknown boundary watermark leaves the log
 // untouched rather than guessing at a boundary that was never recorded. An
 // empty boundary (nothing dropped) is a no-op.
-func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, boundary transcript.Boundary) error {
-	if len(boundary.Dropped) == 0 {
-		return nil
-	}
+func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, boundary transcript.Boundary, commit func(context.Context, RollbackPlan) error) error {
 	dropRunIDs := boundary.DroppedRunIDs()
 	// Read the parked executions BEFORE the write-set consumes their interrupts — the
 	// in-process executions still need canceling once the durable records are gone.
@@ -67,7 +64,7 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, bound
 				return fmt.Errorf("sessions: discard sandbox copy before history rollback: %w", err)
 			}
 			return c.titles.commitHistoryChange(ctx, sessionID, func(runID string) bool { return slices.Contains(dropRunIDs, runID) }, func() error {
-				return c.writes.ApplyRollback(ctx, rollback)
+				return commit(ctx, rollback)
 			})
 		},
 		func(ctx context.Context) error {

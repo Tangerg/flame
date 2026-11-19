@@ -104,15 +104,28 @@ func (r *Replay) Invoke(ctx context.Context, key, fingerprint string, execute fu
 	return payload, nil
 }
 
-type PreparedOutcome struct {
-	Payload []byte
-	Commit  func(context.Context) error
-	Publish func()
+// AtomicCompletion is borrowed by one synchronous command. A failed write
+// remains retryable by its caller after the database rolls back both effects.
+type AtomicCompletion struct {
+	commit    func(context.Context, func(context.Context) ([]byte, error)) error
+	attempted bool
 }
 
-// Local database commands can couple their outcome to their only effect.
-// Preparation can call external providers, so it runs outside the transaction.
-func (r *Replay) InvokeAtomic(ctx context.Context, key, fingerprint string, prepare func() (PreparedOutcome, error)) ([]byte, error) {
+func (c *AtomicCompletion) Commit(ctx context.Context, write func(context.Context) ([]byte, error)) error {
+	if c.attempted {
+		return errors.New("idempotency: atomic completion was already attempted")
+	}
+	c.attempted = true
+	return c.commit(ctx, write)
+}
+
+func (c *AtomicCompletion) Attempted() bool { return c.attempted }
+
+var errAtomicResultExists = errors.New("idempotency: another writer committed the outcome")
+
+// The command keeps its own admission through completion. Only its database
+// write and result encoding run in the receipt transaction.
+func (r *Replay) InvokeAtomic(ctx context.Context, key, fingerprint string, execute func(*AtomicCompletion) error) ([]byte, error) {
 	release, err := r.inFlight.Acquire(ctx, key)
 	if err != nil {
 		return nil, err
@@ -125,39 +138,45 @@ func (r *Replay) InvokeAtomic(ctx context.Context, key, fingerprint string, prep
 	if found {
 		return settledPayload(previous)
 	}
-	prepared, err := prepare()
-	if err != nil {
-		return nil, err
-	}
 	var payload []byte
-	var committed bool
-	err = r.store.Transact(ctx, func(tx context.Context) error {
-		record, claimed, err := r.store.Claim(tx, key, fingerprint)
+	completion := &AtomicCompletion{commit: func(ctx context.Context, write func(context.Context) ([]byte, error)) error {
+		var outcome []byte
+		replayed := false
+		err := r.store.Transact(ctx, func(tx context.Context) error {
+			record, claimed, err := r.store.Claim(tx, key, fingerprint)
+			if err != nil {
+				return err
+			}
+			if !claimed {
+				replayed = true
+				outcome, err = settledPayload(record)
+				return err
+			}
+			record.Payload, err = write(tx)
+			if err != nil {
+				return err
+			}
+			if err := r.store.Complete(tx, record); err != nil {
+				return err
+			}
+			outcome = record.Payload
+			return nil
+		})
 		if err != nil {
 			return err
 		}
-		if !claimed {
-			payload, err = settledPayload(record)
-			return err
+		payload = outcome
+		if replayed {
+			return errAtomicResultExists
 		}
-		if prepared.Commit != nil {
-			if err := prepared.Commit(tx); err != nil {
-				return err
-			}
-		}
-		record.Payload = prepared.Payload
-		if err := r.store.Complete(tx, record); err != nil {
-			return err
-		}
-		payload = record.Payload
-		committed = true
 		return nil
-	})
-	if err != nil {
+	}}
+	err = execute(completion)
+	if err != nil && !errors.Is(err, errAtomicResultExists) {
 		return nil, err
 	}
-	if committed && prepared.Publish != nil {
-		prepared.Publish()
+	if len(payload) == 0 {
+		return nil, errors.New("idempotency: atomic command omitted completion")
 	}
 	return payload, nil
 }
