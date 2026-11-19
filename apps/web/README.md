@@ -232,8 +232,10 @@ in the file reader.
 While an adjacent page loads, the reader keeps the current page visible and
 shows a loading status at the activated edge. The other paging action is
 unavailable during that read. If the read fails, the reader offers to retry the
-requested line range and keeps the previous page while it is cached. An accepted
-page starts at its top, while a refresh retains that page's reading position.
+requested line range and keeps the previous page while it is cached. If a retry
+removes the focused action while that page stays visible, focus returns to the
+reader. An accepted page starts at its top, while a refresh retains that page's
+reading position.
 Source selection and copy refer only to the presented page. Partial pages stay
 in source mode, and the header shows their actual served line range. For a whole
 file the header shows its line count.

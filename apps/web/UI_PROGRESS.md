@@ -41292,6 +41292,61 @@ Library directories, ten checkout outputs and the scratch tree.
 Continue checking the relationship between asynchronous
 reader states and their surviving actions.
 
+### Focus follows a retiring file Retry action (2026-11-19)
+
+In the native baseline, two rejected reads of 1–59 preserve
+60–259 and present Retry. The user wheels to 747 px and moves
+focus to Retry. A file-change signal revalidates the exact failed
+query. Loading replaces the Retry notice and the old source
+remains at 747 px, yet WebKit focuses the document body. The
+later accepted result still leaves focus there.
+
+The inline paging notice participates in the reader's existing
+focus retirement handoff. The guard uses the same accepted
+displayed data as the rest of the retained reader, including
+the exact cached origin while the active query retries. A
+commit consumes the witness when the focused notice actually
+disconnects and the visible reader survives. The direct Retry
+action starts its existing refetch and uses the same handoff
+as revalidation. The reader continues to own the scroll offset.
+
+- EN/light/14 px/Flame Orange at Actual Size. Two rejections
+  of 1–59 retain 60–259 of a 293-line file. Shift+Tab reaches
+  Retry. Revalidation requests exactly 1–59 while the reader
+  gains focus. The viewport returns from 741 to 785 px tall
+  and keeps the 747 px offset. Down scrolls to 787 px during
+  the hold. Acceptance starts 1–59 at its top with reader
+  focus. Back focuses the original row and the draft continues
+  as `681649`.
+- ZH/dark/18 px/`#3B82F6` at Actual Size. Native Window Left
+  and separator End set a 320 px Dock. The user leaves Retry
+  for the Composer. Revalidation and its two controlled
+  rejections keep input focus and the accepted 60–93.
+  Keyboard Retry then requests 1–59 and hands focus to the
+  reader during the wait. Acceptance keeps the reader focused.
+  Back returns to the same file row and the draft continues as
+  `6829461`.
+- The standard English Lab opens the full 93-line Preview.
+  Pointer Source, the Left arrow and Back preserve the normal
+  mode and return path. The draft continues as `683168`.
+
+Scoped formatting, Web typechecking, all 137 Web tests, 940
+keys across eight locales, 26 bundle contracts, bootstrap,
+portable resources, module linkage, native build and five
+canonical Lab documents pass on `9601a75c0`. The canonical
+build excludes the private fixture. The signed native host
+exercises controlled reads through the real file query and
+cache. The private file-change signal invokes production
+query invalidation for the exact affected read. A live
+watcher, user filesystem changes, VoiceOver speech, physical
+IME and other platforms were outside the exercise.
+
+Four private bundles, four launches and three loopback previews
+complete. Cleanup removes four registrations, eight private
+Library directories, ten checkout outputs and the scratch tree.
+Continue in another complete content-to-Dock journey, using
+native evidence to choose the next reading or return defect.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

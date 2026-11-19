@@ -31,7 +31,6 @@ import {
   ContentVisibility,
   copyReaderSelection,
   EmptyState,
-  handoffFocus,
   IconButton,
   isImeKey,
   scrollReaderWithForeignSelection,
@@ -386,7 +385,6 @@ function FilePreview({
   const showRendered = renderer !== undefined && wholeFile && mode === "rendered";
 
   const scrollPort = useRef<HTMLDivElement>(null);
-  const pageFailureNotice = useRef<HTMLDivElement>(null);
   // A default arrival starts at the top like its initial window; FileView places line targets.
   useLayoutEffect(() => {
     const host = scrollPort.current;
@@ -456,6 +454,7 @@ function FilePreview({
   };
 
   const unsupported = workspaceAccess.errors.isUnsupportedFile(error);
+  const retained = (acceptedData !== undefined || previousData !== undefined) && !unsupported;
   const canRender = wholeFile && !unsupported;
   const canSwitchMode = canRender && renderer !== undefined;
   const retiredFocusRoot = useRef<HTMLDivElement>(null);
@@ -467,26 +466,26 @@ function FilePreview({
       if (root.contains(root.ownerDocument.activeElement)) retiredFocusRoot.current = root;
     };
   }, []);
+  // Each committing render can retire a control while the same page stays visible.
   useLayoutEffect(() => {
     const root = retiredFocusRoot.current;
+    if (!root) return;
     retiredFocusRoot.current = null;
     const reader = scrollPort.current;
     if (
       visible &&
-      acceptedData !== undefined &&
-      !unsupported &&
-      root?.isConnected === false &&
+      retained &&
+      !root.isConnected &&
       reader?.isConnected &&
       reader.ownerDocument.activeElement === reader.ownerDocument.body
     ) {
       reader.focus({ preventScroll: true });
     }
-  }, [acceptedData, canSwitchMode, showRendered, unsupported, visible]);
+  });
 
   const kind = fileKind(viewer.path);
   const icon = fileIconName(viewer.path);
   const { name } = splitFilePath(viewer.path);
-  const retained = (acceptedData !== undefined || previousData !== undefined) && !unsupported;
   const invalidLine = !page && targetLine > 0 && workspaceAccess.errors.isInvalidReadRequest(error);
   const rejectedJump = invalidLine && previousData !== undefined;
   const rejectedInitialLine = invalidLine && !retained;
@@ -518,18 +517,14 @@ function FilePreview({
         <SkeletonList count={1} variant="compact" label={t("common.loading")} />
       ) : pageError && !isUnsupportedMethod(error) ? (
         <SystemMessage
-          ref={pageFailureNotice}
+          ref={readingControlRef}
           role="group"
           variant="error"
           hideIcon
           action={{
             label: t("common.retry"),
             variant: "outline",
-            onClick: () => {
-              if (pageFailureNotice.current)
-                handoffFocus(pageFailureNotice.current, scrollPort.current);
-              void refetch();
-            },
+            onClick: () => void refetch(),
           }}
         >
           {pageError.title}
