@@ -251,12 +251,12 @@ export function FileTree({
   ) : (
     <span>{t("common.loading")}</span>
   );
-  const onFileEnterCapture = (event: KeyboardEvent<HTMLDivElement>) => {
-    const row = event.target;
+  const onTreeRowKeyDownCapture = (event: KeyboardEvent<HTMLDivElement>) => {
+    const { key, target: row } = event;
     if (
       event.defaultPrevented ||
       !event.cancelable ||
-      event.key !== "Enter" ||
+      (key !== "Enter" && key !== "ArrowLeft" && key !== "ArrowRight") ||
       event.altKey ||
       event.ctrlKey ||
       event.metaKey ||
@@ -265,18 +265,19 @@ export function FileTree({
       !(row instanceof HTMLElement) ||
       row.ownerDocument.activeElement !== row ||
       !treeRef.current?.contains(row) ||
-      !row.matches('[role="row"][data-file-path]:not([data-has-child-items])')
+      !row.matches('[role="row"][data-file-path]') ||
+      (key === "Enter" && row.hasAttribute("data-has-child-items"))
     )
       return;
 
-    // WebKit can move focus to the Composer's retained selection before React Aria handles keyup.
+    // Keep WebKit's retained Composer selection from receiving keys that React Aria owns.
     event.preventDefault();
   };
   return (
     <I18nProvider locale={locale}>
       <ContextMenu.Root>
         <div
-          onKeyDownCapture={onFileEnterCapture}
+          onKeyDownCapture={onTreeRowKeyDownCapture}
           style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}
         >
           <Virtualizer layout={ListLayout} shouldObserveItemSize>

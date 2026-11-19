@@ -39375,6 +39375,67 @@ the caret to 9. The same Right action with a clear editor range
 keeps directory focus. The next batch will qualify both directions
 and the tree's existing expansion behavior.
 
+### Horizontal navigation in the File tree (2026-11-19)
+
+On signed Wails at `9ed215343`, Back restores the file row and Home
+focuses `apps` while the Composer keeps its caret at offset 11.
+Right expands the directory and shows its child, then WebKit returns
+focus to the Composer and advances its caret to 12. A fresh held
+caret at offset 11 moves to 10 when Left collapses the directory.
+Down reaches `DockResizer.tsx` and retains the caret. Left from that
+child returns focus to the Composer at offset 10 before the user
+can continue at the parent.
+
+React Aria 3.53.1 stops propagation when it toggles a branch or moves
+focus to its enclosing row. WebKit then applies the native arrow to
+the retained editor range. The existing `FileTree` capture handler
+cancels plain Left and Right on the exact focused file or directory
+row. React Aria continues to own expansion and row focus, including
+branch and leaf boundaries. Plain Return uses the same capture guard
+on file rows. [WAI Treegrid keyboard interaction](https://www.w3.org/WAI/ARIA/apg/patterns/treegrid/#keyboardinteraction)
+[React Aria keyboard navigation](https://react-aria.adobe.com/Tree#keyboard-navigation)
+[WebKit selection and focus](https://bugs.webkit.org/show_bug.cgi?id=112854#c5)
+
+- EN/light/Flame Orange with motion off at 1440 × 900. Right expands
+  `apps` with focus on the directory. Down reaches `DockResizer.tsx`.
+  Right at that leaf keeps it focused, Left returns to `apps`, and
+  a second Left collapses it. Left at the collapsed root stays on
+  `apps`. The caret stays at offset 4 throughout. End and Up reach
+  `reading-guide.md`, Return opens it, and the Composer continues
+  from `31415926` as `314195926`.
+- ZH/dark/18 px/custom blue with full motion in a 1121 × 861 native
+  window and 320 px Dock. Right expands `apps`, Down focuses its
+  child, and Return opens the eight-line `DockResizer.tsx`.
+  Back restores the child. Left moves to the parent and then
+  collapses it while the backward selection of `01` stays at
+  offsets 6 to 4. Cmd+L and native typing replace that selection
+  to produce `2468935`. A pointer click on the directory chevron
+  expands it and a second click collapses it.
+- The standard Lab repeats the directory-to-child and child-to-parent
+  sequence, closes the branch and continues the draft as `4809126`.
+
+The isolated input was cleared after a clipboard contention report.
+The final native checks use direct numeric keys for draft setup and
+continuation. Native OS composition and VoiceOver remain open.
+
+Scoped Prettier, Web typecheck, 89 Web contracts, 937 locale keys
+in eight catalogs, bootstrap, installed resource reproduction,
+26 bundle contracts and module linking pass. The native build
+gate and five-entry Lab build pass. Native acceptance uses captured
+workspaces. The parallel Runtime commit `d8f8c255e` fast-forwards the
+worktree during native acceptance and changes Runtime, CLI and tooling
+inputs.
+
+Three private bundles pass strict signature verification. Four
+launches and three previews exit. Cleanup removes three app
+registrations, six Library directories, ten checkout outputs and
+the scratch tree.
+
+The literal-code keyboard check recorded an outer Cmd+A range with
+empty selected text once Pierre presents the source in its shadow
+root. The next batch will verify the native selection and copy
+contract through that code viewport.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad
