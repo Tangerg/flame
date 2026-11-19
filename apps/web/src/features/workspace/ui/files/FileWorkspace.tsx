@@ -34,6 +34,7 @@ import {
   IconButton,
   isImeKey,
   scrollReaderWithForeignSelection,
+  scrollWithHorizontalArrow,
   selectAllInReader,
   TextField,
   useCopy,
@@ -397,11 +398,23 @@ function FilePreview({
   const selectionContentRef = useRef<Element | null>(null);
   const displayed = useRef<HTMLDivElement>(null);
   const onFileKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
-    const content = source.current
-      ? (selectionContentRef.current ?? source.current)
-      : displayed.current;
+    const sourceView = source.current;
+    const sourceContent = sourceView ? selectionContentRef.current : null;
+    const content = sourceContent ?? sourceView ?? displayed.current;
     if (content) selectAllInReader(event, content);
-    scrollReaderWithForeignSelection(event, "vertical");
+    if (
+      (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+      event.cancelable &&
+      !isImeKey(event.nativeEvent) &&
+      sourceContent instanceof HTMLElement &&
+      sourceContent.scrollWidth > sourceContent.clientWidth
+    ) {
+      // The named viewport holds focus while Pierre's raw column pans.
+      scrollWithHorizontalArrow(event, (delta) => {
+        sourceContent.scrollBy({ left: delta, behavior: "instant" });
+      });
+    }
+    scrollReaderWithForeignSelection(event, sourceView ? "both" : "vertical");
   };
   const copySource: ClipboardEventHandler<HTMLDivElement> = (event) => {
     if (source.current && data) copyReaderSelection(event, data.content, source.current);

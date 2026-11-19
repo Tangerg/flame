@@ -39634,6 +39634,63 @@ and `FilePreview` currently handles the retained-editor fallback
 for vertical arrows. The next batch will trace the actual source
 scroll owner and the native Left and Right actions.
 
+### Horizontal reading in Files Source (2026-11-19)
+
+Signed Wails at `7e208962d` measures the focused file viewport
+and its inner preformatted frame at 712 px with zero horizontal
+overflow. Pierre's code column has a viewport width of 712 px
+and a scroll width of 4,813 px. A trusted Right from the focused
+reader leaves its horizontal offset at 0 and moves the Composer caret
+from 4 to 5. The draft continues as `926478013`. With the
+document range clear, Left and Right still leave the code at 0.
+
+`FilePreview` delegates the shared horizontal keyboard step to
+the live code element already published by `PierreFile`. The
+raw source column applies the relative scroll. The named reader
+retains focus and vertical navigation. Its existing outside-editor
+guard also protects raw Source at the horizontal boundary.
+[CSSOM View element scrolling](https://drafts.csswg.org/cssom-view/#dom-element-scrollby)
+[WAI keyboard scroll reachability](https://www.w3.org/WAI/standards-guidelines/act/rules/0ssw9k/)
+
+- EN/light/Flame Orange with motion off at 1440 × 900. Two Right
+  presses pan the code to 71 and 142 px. Down and Up move only
+  the viewport between 0 and 40 px. Left returns to 0 px and
+  stays there at the boundary. The file keeps focus and the draft
+  caret remains at offset 4. With a clear selection, Right pans
+  again and Cmd+A selects the actual code. The fitting `go.mod`
+  code remains at 0 px while Left and Right preserve the held
+  caret. Cmd+L continues the draft as `926487013`.
+- ZH/dark/18 px/custom blue with full motion in a 1121 × 950 native
+  tile and 320 px Dock. The 312 px `go.mod` column reveals the
+  ends of its lines at 320 px. Another Right stays there and
+  Left moves to 288 px. In `reading-guide.md`, Right and Down
+  move the separate axes to 31 and 40 px with the backward
+  Composer selection at offsets 6 to 4. Go to line 60 restores the
+  trigger and centers at 841 px in Source. Right pans to 31 px
+  and a wheel moves to 746 px without changing that horizontal
+  position. Back restores the exact file row and Cmd+L resumes
+  the selection as `1234708`.
+- The standard Lab visibly pans Source with Right and returns with
+  Left. Back restores the file row and the draft continues as
+  `579863012`.
+
+Scoped Prettier, Web typecheck, 89 Web contracts, 937 locale keys
+in eight catalogs, bootstrap, installed resource reproduction, 26
+bundle contracts and module linking pass. The native and five-entry
+Lab gates pass. Native acceptance uses captured source. VoiceOver,
+platform composition and clipboard handoff remain open.
+
+Four private bundles pass strict signature verification. Four
+launches and three previews exit. Cleanup removes four app
+registrations, eight Library directories, ten checkout outputs
+and the scratch tree.
+
+The adjacent Preview path still has its own direction-key fault.
+With a held Composer caret at 3 and the named Preview viewport
+focused, Right returns focus to the Composer at offset 4.
+The next batch will trace this boundary in formatted Preview and
+the keyboard behavior of its nested readers.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad
