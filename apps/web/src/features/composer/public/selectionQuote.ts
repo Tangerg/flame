@@ -1,8 +1,19 @@
 import { DIFFS_TAG_NAME } from "@pierre/diffs";
 import { quotedLineOf, quotedReaderOf } from "@flame/ui";
-import { quoteText } from "./quoteText";
+import type { ComposerAccess } from "./composer";
+import { quoteText } from "../quote-selection/quoteText";
 
-export function captureQuote(): string | null {
+export function captureComposerSelectionQuote(
+  composer: ComposerAccess,
+  trigger?: Node,
+): (() => boolean) | null {
+  const text = captureQuote(trigger);
+  if (!text) return null;
+  const append = composer.captureAppendText();
+  return () => append(text);
+}
+
+function captureQuote(trigger?: Node): string | null {
   const selection = document.getSelection();
   if (!selection) return null;
   // WebKit can report a collapsed document selection for selected shadow text.
@@ -17,6 +28,7 @@ export function captureQuote(): string | null {
   if (
     !reader?.host.isConnected ||
     reader.host !== quotedReaderOf(range.endContainer)?.host ||
+    (trigger && reader.host !== quotedReaderOf(trigger)?.host) ||
     reader.host.closest("[hidden],[inert],[aria-hidden='true']")
   )
     return null;

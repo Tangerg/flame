@@ -1,10 +1,11 @@
 import { useNotifications } from "@/features/notifications/public/notifier";
 import { useAgent } from "@/features/agent/public/agent";
 import { useComposer } from "@/features/composer/public/composer";
+import { captureComposerSelectionQuote } from "@/features/composer/public/selectionQuote";
 import { useRuntime } from "@/features/connection/public/runtime";
 import * as stylex from "@stylexjs/stylex";
 import { type Message } from "@/features/agent/public/sessionView";
-import { type ReactElement, type ReactNode, useRef } from "react";
+import { type ReactElement, type ReactNode, useRef, useState } from "react";
 import { ContextMenu } from "@/ui/index";
 import { Icon } from "@/ui/index";
 import { vocab } from "@flame/ui";
@@ -38,7 +39,8 @@ export function MessageContextMenu({ msg, label, children }: Props) {
   const { editInComposer, confirmHistoryEdit } = useMessageContext();
 
   const t = useT();
-  const selection = useRef<{ edit: (() => void) | undefined } | null>(null);
+  const afterClose = useRef<{ run: (() => void) | undefined } | null>(null);
+  const [appendQuote, setAppendQuote] = useState<(() => boolean) | null>(null);
   const copy = messageCopyPayloads(msg);
   const canRestoreFilesBeforeRun =
     useHasPrecedingRootRun(msg.runId) && runtimeCapability(runtimeAccess, "checkpoints");
@@ -47,19 +49,35 @@ export function MessageContextMenu({ msg, label, children }: Props) {
 
   return (
     <ContextMenu.Root
-      onOpenChange={(open) => {
-        if (open) selection.current = null;
+      onOpenChange={(open, { event }) => {
+        if (!open) return;
+        afterClose.current = null;
+        const target = event.target;
+        const quote =
+          target instanceof Node ? captureComposerSelectionQuote(composerAccess, target) : null;
+        setAppendQuote(() => quote);
       }}
       onOpenChangeComplete={(open) => {
         if (open) return;
-        // Keep the selection marker until the menu has settled final focus.
-        const edit = selection.current?.edit;
-        if (selection.current) selection.current.edit = undefined;
-        edit?.();
+        setAppendQuote(null);
+        // Keep the action marker until the menu has settled final focus.
+        const run = afterClose.current?.run;
+        if (afterClose.current) afterClose.current.run = undefined;
+        run?.();
       }}
     >
       <ContextMenu.Trigger render={children as ReactElement} />
-      <ContextMenu.Content aria-label={label} finalFocus={() => selection.current === null}>
+      <ContextMenu.Content aria-label={label} finalFocus={() => afterClose.current === null}>
+        {appendQuote && (
+          <ContextMenu.IconItem
+            icon="quote"
+            onSelect={() => {
+              afterClose.current = { run: appendQuote };
+            }}
+          >
+            {t("quote.selection")}
+          </ContextMenu.IconItem>
+        )}
         {menu.copyMarkdown && (
           <ContextMenu.IconItem
             icon="copy"
@@ -91,7 +109,7 @@ export function MessageContextMenu({ msg, label, children }: Props) {
               <ContextMenu.IconItem
                 icon="edit"
                 onSelect={() => {
-                  selection.current = { edit: editInComposer };
+                  afterClose.current = { run: editInComposer };
                 }}
               >
                 {t("msgActions.editInComposer")}
@@ -101,8 +119,8 @@ export function MessageContextMenu({ msg, label, children }: Props) {
               <ContextMenu.IconItem
                 icon="loop"
                 onSelect={() => {
-                  selection.current = {
-                    edit: () =>
+                  afterClose.current = {
+                    run: () =>
                       editAndRerunMessage(
                         messages,
                         agentAccess,
@@ -121,8 +139,8 @@ export function MessageContextMenu({ msg, label, children }: Props) {
               <ContextMenu.IconItem
                 icon="history"
                 onSelect={() => {
-                  selection.current = {
-                    edit: () =>
+                  afterClose.current = {
+                    run: () =>
                       editAndRerunMessage(
                         messages,
                         agentAccess,

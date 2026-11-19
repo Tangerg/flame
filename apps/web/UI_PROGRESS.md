@@ -22942,6 +22942,56 @@ removes four registrations, eight private Library directories,
 one private preference file, ten checkout outputs and the scratch tree.
 Next inspect quoting selected text inside the assistant's own menu.
 
+### Quote selected text from its message menu (2026-11-20)
+
+On signed Wails at `e8ca43819`, both endpoints of the
+`boundary` selection belong to the assistant's reply. The reply's
+menu shows Copy markdown, Copy plain text and Regenerate response.
+Base UI gives that menu the event before the selection-quote
+overlay can handle it.
+
+The message menu captures the selection at its existing open
+callback before menu focus moves. The two composed endpoints and
+the right-click target must resolve to the same connected visible
+source. The scope-bound append action uses the same Composer
+capability as the explicit command and the Files reader. Quote
+in message is the first item when available and runs through
+the menu's existing after-close action. ZCode's read-only
+`ConversationSelectionTooltip` likewise limits eligible text
+to one selectable region. The existing menu owns open, close,
+item navigation and focus. [Base UI Context Menu](https://base-ui.com/react/components/context-menu)
+
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 and a 320 px Dock.
+  Right-click offers the quote action alongside the three existing
+  reply actions. Escape preserves `8746` and returns to the same
+  Copy message control as on the baseline. Down and Return quote
+  only `boundary` and restore Composer focus. The draft continues
+  with `381` after a blank paragraph. Blank reply space opens the
+  original three actions. The Files reader stays open.
+- EN/light/14 px/Flame Orange in a 560.5 px Dock. A drag initially
+  selects text across the user and assistant messages. WebKit's
+  ensuing right-click on the assistant word resolves the action
+  to `boundary` alone. Selecting `atomicity` in the user message
+  offers the quote alongside copy, edit, Restore to here and Fork
+  up to here. The existing Files overlay also adds only `row`
+  with the workspace path and absolute line 4. After all three
+  choices, draft `8735` continues with `724` in the focused Composer.
+  The menu fits beside its pointer with distinct quote and copy
+  actions, and Escape leaves the resulting draft intact.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and five
+canonical Lab documents pass. Signed Wails uses a captured
+workspace with the production menu plugins. The explicit
+shortcut, actions that change history or send, clipboard transfer,
+VoiceOver, browser suites and benchmarks were outside this run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Check the default
+native shortcut for the same quote action next.
+
 ### Native short-paste continuation qualification
 
 No actionable focus/caret finding in the inspected trace. Approve the observed

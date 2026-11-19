@@ -2,12 +2,11 @@ import { useEffect, useState } from "react";
 import { useComposer } from "@/features/composer/public/composer";
 import { DropdownMenu } from "@/ui/atoms/menu";
 import { useT } from "@/lib/i18n/index";
-import { captureQuote } from "./captureQuote";
+import { captureComposerSelectionQuote } from "@/features/composer/public/selectionQuote";
 interface QuoteIntent {
   readonly x: number;
   readonly y: number;
-  readonly text: string;
-  readonly append: (text: string) => boolean;
+  readonly append: () => boolean;
 }
 export function SelectionQuote() {
   const composer = useComposer();
@@ -21,15 +20,14 @@ export function SelectionQuote() {
           event.target.closest("input,textarea,[contenteditable]"))
       )
         return;
-      const text = captureQuote();
-      if (!text) return;
+      const append = captureComposerSelectionQuote(composer);
+      if (!append) return;
       event.preventDefault();
       setIntent(
         Object.freeze({
           x: event.clientX,
           y: event.clientY,
-          text,
-          append: composer.captureAppendText(),
+          append,
         }),
       );
     };
@@ -50,7 +48,7 @@ export function SelectionQuote() {
       >
         <DropdownMenu.Item
           onClick={() => {
-            intent.append(intent.text);
+            intent.append();
             setIntent(null);
           }}
         >

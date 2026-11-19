@@ -1345,6 +1345,10 @@ Dock reordering uses dnd-kit; pragmatic-drag-and-drop handles only external file
 and retains their original intake source. Copying publishes immutable operation
 receipts to Toast, including completions after the source unmounts. Selection
 quoting captures an immutable snapshot only from a context menu or explicit
-shortcut. GenUI renders official A2UI 1.0 through a trusted Flame catalog; its
+shortcut. A message menu offers Quote in message when its target and the
+selection endpoints share one visible source. It appends to the captured
+Composer after the menu closes.
+
+GenUI renders official A2UI 1.0 through a trusted Flame catalog; its
 processor lifetime is outside virtual rows. Highlights remains deferred under the
 production CSP, which grants neither unsafe-eval nor wasm-unsafe-eval.
