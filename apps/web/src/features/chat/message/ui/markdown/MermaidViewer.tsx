@@ -24,6 +24,7 @@ const styles = stylex.create({
     padding: space.s2,
   },
   port: { flex: 1, minHeight: 0, overflow: "hidden" },
+  handCursor: { cursor: { default: "grab", ":active": "grabbing" } },
 });
 export function MermaidViewer({ svg, onClose }: { svg: string; onClose(): void }) {
   const t = useT();
@@ -77,7 +78,7 @@ export function MermaidViewer({ svg, onClose }: { svg: string; onClose(): void }
                 aria-label={t("message.mermaid.zoomIn")}
                 onClick={() => void controls.zoomIn()}
               />
-              <Button aria-pressed={hand} onClick={() => setHand((value) => !value)}>
+              <Button active={hand} aria-pressed={hand} onClick={() => setHand((value) => !value)}>
                 {t("message.mermaid.pan")}
               </Button>
               <IconButton icon={iconGlyph("x")} aria-label={t("common.close")} onClick={onClose} />
@@ -85,6 +86,7 @@ export function MermaidViewer({ svg, onClose }: { svg: string; onClose(): void }
             <div {...stylex.props(styles.port)} data-slot="mermaid-full">
               <TransformComponent
                 wrapperProps={viewportProps}
+                wrapperClass={stylex.props(hand && styles.handCursor).className}
                 wrapperStyle={{ width: "100%", height: "100%" }}
                 contentStyle={{
                   width: "max-content",

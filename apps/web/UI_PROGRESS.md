@@ -41644,6 +41644,66 @@ directories, ten checkout outputs and the scratch tree.
 Continue with the visible indication of the canvas input
 mode during the same reading task.
 
+### Show the active diagram panning mode (2026-11-20)
+
+In the native baseline, Pan diagram switches its accessible
+value from off to on. The button has the same visible
+treatment after the pointer moves into the canvas. Turning
+the mode off again allows the reader to select a diagram label.
+
+MermaidViewer uses the existing hand-mode state for the
+shared button's selected surface, its pressed semantics and
+the viewport cursor. The viewport uses grab while enabled
+and grabbing while pressed. The selected surface stays
+visible after pointer and keyboard focus leave the toggle.
+Better UI guides the persistent state cue. The read-only
+ZCode diagram viewport informs the grab cursor.
+
+- EN/light/14 px/Flame Orange at scale 1 with a 1440 px
+  window. Enabling Pan gives the button a persistent tint.
+  The six-node figure goes from 87% to 137% when zoomed
+  to read details. Two attempted drags did not show a
+  visible offset in this window. Disabling Pan removes
+  the tint. Double-clicking selects text in the acceptance
+  receipts node at the same scale. Escape returns to
+  Enlarge and the draft continues as `741682`.
+- ZH/dark/18 px/`#3B82F6` at scale 1 with a 1121 px
+  window and 320 px Dock. Space enables the toggle. The
+  blue selected surface stays distinct from the canvas
+  focus ring. A pointer drag shifts the nodes left by
+  about 100 screenshot pixels at 118%. Reverse Tab after
+  this gesture stayed on the canvas in this run. Forward
+  Tab reaches Fit and the toolbar, and Space turns the
+  mode off. Pointer Close returns to Enlarge and the
+  draft continues as `742516`.
+- The canonical English Lab starts the three-node diagram
+  at 100% with Pan off. After enabling it and reaching
+  the canvas, Shift+Tab reaches Close. One Escape leaves
+  the popup open and a second returns to Enlarge. The
+  same sequence produces the same result in a repeated
+  native baseline. Reopening starts at 100% with Pan
+  off. The reply's file link opens the captured eight-line
+  reader and Escape returns to the link. The draft
+  continues as `743825`.
+
+Scoped formatting, all 137 Web tests, 940 keys across eight
+locales, bootstrap, generated plugin resources, 26 bundle
+contracts, production module linkage, native build and
+tests, and five canonical Lab documents pass on `6474a41d8`.
+The compiled stylesheet contains both cursor rules. The
+tool's pointer overlay covers the system cursor in the
+recorded images. The private Lab substitutes one captured
+six-node model reply and the canonical Lab excludes it.
+Live providers, real workspace files, clipboard actions,
+VoiceOver speech and other platforms were outside this
+qualification.
+
+Five private launches and four loopback previews exit.
+Cleanup removes four registrations, eight private Library
+directories, ten checkout outputs and the scratch tree.
+Continue with the native Escape sequence after reversing
+focus from the focused diagram canvas.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

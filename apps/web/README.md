@@ -157,13 +157,15 @@ and uses shared `ImageViewport` for fitting, zoom and panning. Portable evidence
 images use the same reading boundary, with their captured source and local labels.
 The Mermaid lightbox shows its current zoom on the actual-size button. The
 diagram viewport shows keyboard focus inside its edges and supports arrow-key
-panning through the existing transform controls. While new diagram text
-settles, the last accepted diagram or source fallback stays available. A
-valid update in the open lightbox keeps the current zoom and keyboard focus.
-The transform adjusts panning to the new content bounds. A render failure
-closes the lightbox and transfers focus to the source reader
-when the retiring diagram owned it. Recovery restores the inline diagram and
-moves focus there if the source still owns it. The lightbox opens on request.
+panning through the existing transform controls. The pan toggle shows the
+selected mode, with a grab cursor on the viewport while enabled. Turn it off
+to select diagram text. While new diagram text settles, the last accepted
+diagram or source fallback stays available. A valid update in the open
+lightbox keeps the current zoom and keyboard focus. The transform adjusts
+panning to the new content bounds. A render failure closes the lightbox and
+transfers focus to the source reader when the retiring diagram owned it.
+Recovery restores the inline diagram and moves focus there if the source
+still owns it. The lightbox opens on request.
 
 The composition root creates each feature instance and its backing state once.
 React consumers use that owner's Provider; commands and plugin factories capture
