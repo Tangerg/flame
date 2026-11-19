@@ -41941,6 +41941,51 @@ Three native launches and two loopback previews exit. Cleanup removes three
 registrations, six private Library directories, ten checkout outputs and the
 scratch tree. Continue with another evidenced reading task in the workspace.
 
+### Restore recorded JSON after a temporary trajectory filter (2026-11-20)
+
+On `eb707e07e`, the first page restores its expanded User message after
+Clear filters. The nested Recorded evidence control returns collapsed,
+hiding the literal `item_prompt` JSON that was open before the filter.
+Explicitly closing and reopening the User message also resets its evidence
+in the baseline.
+
+One page-local record map now holds the two disclosure choices. An entry
+exists for an open observation and carries its Recorded evidence flag.
+Filtering still mounts only matches. When a hidden record matches again
+the original nested control projects its saved state. Explicit record
+closure removes the entry. Accepted-page changes retain only matching
+record identities. Structured records continue to show their primary JSON.
+The existing disclosure controls expose each layer with its own state.
+[ARIA disclosure pattern](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/)
+
+- EN/light/14 px/Flame Orange at Actual Size. From Page 1 with 11 records,
+  the keyboard opens User message and Recorded evidence. The zero-match
+  filter hides the record. Clear filters returns focus to the search field
+  and reveals both open controls with the same serialized `item_prompt`
+  JSON. Refresh keeps the JSON open and keeps focus on Refresh. An explicit
+  nested close survives re-filtering. Closing and reopening the parent
+  starts with evidence collapsed. The draft continues as `801364`.
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 and scale 1 with a 320 px Dock.
+  Pointer evidence entry and Clear all filters restore the same JSON and
+  search focus. Tab enters the localized evidence reader. Native wheel
+  moves the Dock offset from 673 to 879 with its code region focused.
+  Opening the next Read record shows its primary Tool JSON directly.
+  The draft continues as `802539`.
+
+Scoped formatting, 44 plugin script checks, 14 plugin source tests, 20 plugin
+catalogs across eight locales, 137 Web tests, 940 Web keys across eight locales,
+bootstrap, 26 bundle contracts, production module linkage, native build and
+tests, and five canonical Lab documents pass. The plugin source suite retains
+six existing skips. The regenerated Trajectory ESM matches the accepted bytes
+after the native build. The two locales use the canonical captured session.
+Exact inner scroll restoration across filters, different-page navigation,
+clipboard, live providers, VoiceOver and other platforms were outside this
+qualification.
+
+Three native launches and two loopback previews exit. Cleanup removes three
+registrations, six private Library directories, ten checkout outputs and the
+scratch tree. Continue from a newly observed task in the conversation or Dock.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

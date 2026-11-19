@@ -253,9 +253,13 @@ function RecordedImage({
 function Observation({
   row: recorded,
   t,
+  evidenceOpen,
+  onEvidenceOpenChange,
 }: {
   row: TrajectoryEntry;
   t: Translate;
+  evidenceOpen: boolean;
+  onEvidenceOpenChange: (open: boolean) => void;
 }) {
   const row = evidence(recorded);
   const body: ReactNode[] = [];
@@ -383,7 +387,13 @@ function Observation({
         <Metadata key={index}>{note}</Metadata>
       ))}
       {body.length ? (
-        <Disclosure title={t("evidence.recorded")}>{raw}</Disclosure>
+        <Disclosure
+          title={t("evidence.recorded")}
+          open={evidenceOpen}
+          onOpenChange={onEvidenceOpenChange}
+        >
+          {raw}
+        </Disclosure>
       ) : (
         raw
       )}
@@ -415,14 +425,15 @@ export function TrajectoryReport({
   locale: string;
 }) {
   const rows = page.data;
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(
-    () => new Set(),
+  // Closing an outer record ends its own evidence disclosure.
+  const [expanded, setExpanded] = useState<ReadonlyMap<string, boolean>>(
+    () => new Map(),
   );
   useEffect(() => {
     setExpanded((current) => {
       if (!current.size) return current;
       const keys = new Set(rows.map(recordKey));
-      const retained = new Set([...current].filter((key) => keys.has(key)));
+      const retained = new Map([...current].filter(([key]) => keys.has(key)));
       return retained.size === current.size ? current : retained;
     });
   }, [rows]);
@@ -430,10 +441,17 @@ export function TrajectoryReport({
   function setRecordOpen(key: string, open: boolean) {
     setExpanded((current) => {
       if (current.has(key) === open) return current;
-      const next = new Set(current);
-      if (open) next.add(key);
+      const next = new Map(current);
+      if (open) next.set(key, false);
       else next.delete(key);
       return next;
+    });
+  }
+  function setEvidenceOpen(key: string, open: boolean) {
+    setExpanded((current) => {
+      const evidence = current.get(key);
+      if (evidence === undefined || evidence === open) return current;
+      return new Map(current).set(key, open);
     });
   }
 
@@ -494,6 +512,7 @@ export function TrajectoryReport({
       <RecordGroup variant="list" id="records" aria-label={t("records.label")}>
         {matching.map((row) => {
           const key = recordKey(row);
+          const evidenceOpen = expanded.get(key);
           return (
             <Disclosure
               variant="row"
@@ -503,7 +522,7 @@ export function TrajectoryReport({
                 row.type === "item" ? row.item.type : row.type
               }
               title={title(row, t, clock)}
-              open={expanded.has(key)}
+              open={evidenceOpen !== undefined}
               onOpenChange={(open) => setRecordOpen(key, open)}
             >
               <Metadata>
@@ -511,7 +530,12 @@ export function TrajectoryReport({
                   {occurred.format(new Date(row.occurredAt))}
                 </time>
               </Metadata>
-              <Observation row={row} t={t} />
+              <Observation
+                row={row}
+                t={t}
+                evidenceOpen={evidenceOpen ?? false}
+                onEvidenceOpenChange={(open) => setEvidenceOpen(key, open)}
+              />
             </Disclosure>
           );
         })}
