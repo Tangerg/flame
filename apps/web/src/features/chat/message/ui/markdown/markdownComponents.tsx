@@ -14,6 +14,7 @@ import { TextLink } from "@/ui/index";
 import { CodeArtifact } from "@/ui/index";
 import { cn } from "@/lib/classNames";
 import { FileRefLink } from "@/features/workspace/public/FileRefLink";
+import { parseWorkspaceFileHref } from "@/features/agent/public/fileRefs";
 import { MarkdownImage } from "@/features/chat/message/ui/markdown/MarkdownImage";
 import { MarkdownMath } from "@/features/chat/message/ui/markdown/MarkdownMath";
 import { MermaidBlock } from "@/features/chat/message/ui/markdown/MermaidBlock";
@@ -279,6 +280,15 @@ export const markdownComponents: Components = {
         />
       );
     }
+    const ref = href && parseWorkspaceFileHref(href);
+    const label = imagesDeferToTheLink(children);
+    if (ref) {
+      return (
+        <FileRefLink path={ref.path} line={ref.line} title={title}>
+          {label}
+        </FileRefLink>
+      );
+    }
     return (
       <TextLink
         {...rest}
@@ -286,7 +296,7 @@ export const markdownComponents: Components = {
         title={title}
         data-markdown-copy={Object.hasOwn(rest, "data-footnote-backref") ? "exclude" : undefined}
       >
-        {imagesDeferToTheLink(children)}
+        {label}
       </TextLink>
     );
   },

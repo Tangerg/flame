@@ -435,10 +435,10 @@ The link appearance marks content that navigates: anchors with a destination
 and actionable workspace file references, which mark themselves as the
 `file-reference` slot. Both read as accent text with a tinted underline that
 strengthens on hover; an anchor without a destination remains ordinary text.
-Emphasis and inline code inside a link anchor inherit the link color. A file
-reference also uses inline code's mono family and code size, without the code
-tint, so a path never reads larger than the code beside it. Its text remains
-selectable within the surrounding prose while retaining button activation.
+Emphasis and inline code inside link labels inherit the link color. A literal
+file path label uses inline code's mono family and code size. An authored
+Markdown link label retains the surrounding prose typography and its markup.
+Both file reference labels remain selectable and retain button activation.
 Captured documents
 do not navigate: their link labels remain ordinary text, and a destination shown
 beside a label uses the muted `link-destination` slot.

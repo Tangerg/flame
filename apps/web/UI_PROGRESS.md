@@ -23186,6 +23186,63 @@ removes three registrations, six private Library directories,
 ten checkout outputs and the scratch tree. Inspect explicit
 Markdown file links with line fragments next.
 
+### Route Markdown line links to the workspace file (2026-11-20)
+
+In signed English Wails on `1c5f7f90`, Inspect the guard
+and 附录第 3 至 5 行 are ordinary new-window links. Native
+clicks target the relative `#L4` URL and the UTF-8 encoded
+`#L3-L5` URL. An observer prevents the default on those two
+private fixture anchors. Neither click opens a workspace
+file. Draft `9412` stays intact.
+
+`fileRefs.ts` recognizes a workspace-relative pathname with
+an exact line fragment. It decodes the URI path once and
+checks pathname and numeric bounds through the existing file
+reference rules. The same `FileRefLink` receives the authored
+label, title, decoded path and first line. It uses the current
+inspection and focus return. Shared prose styles retain the
+label's inherited typography, nested markup and link treatment.
+Literal path labels use code typography. ZCode's message link
+resolver also directs line-fragment targets to its file action.
+[CommonMark links](https://spec.commonmark.org/0.31.2/#links).
+[GitHub code permalinks](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-a-permanent-link-to-a-code-snippet).
+
+- EN/light/14 px/Flame Orange at 1121 × 950 and a 560.5 px
+  Dock. A pointer click and Return on Inspect the guard
+  open `DockResizer.tsx` at line 4. Its label uses 16 px
+  prose and retains Guard at line 4 as native help.
+  Tab and Return on Back to conversation restore the
+  exact link action at scroll position 0. The adjacent
+  inline address still opens and returns from line 5.
+  Draft `9436` continues as `9436668`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. A native
+  click on 附录第 3 至 5 行 opens the exact Unicode
+  appendix path at line 3. 返回对话 restores the same
+  label at the original scroll position. Draft `9442`
+  continues as `9442528`. The measured authored link
+  label uses the same 21 px family and size as its
+  surrounding prose.
+
+Native accessibility and fixture observation confirm that
+the same-document fragment, ordinary relative URL,
+external URL and parent-relative URL keep their ordinary
+link behaviors. The external controls are inspected in
+place. Candidate inspection bypasses the private default
+observer because its actions belong to the workspace.
+
+Scoped formatting, shared UI typecheck and package
+consumer, the Web gate with 137 tests and 940 keys across
+eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and
+five canonical Lab documents pass. Native cases use captured
+content. Live external navigation, filesystem reads, Send,
+VoiceOver, browser suites and benchmarks were outside the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Next inspect a
+keyboard continuation in a different reading or search surface.
+
 ### Native short-paste continuation qualification
 
 No actionable focus/caret finding in the inspected trace. Approve the observed

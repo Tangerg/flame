@@ -1,6 +1,6 @@
 import { ButtonPrimitive } from "@flame/ui";
 import { useWorkspace } from "@/features/workspace/public/workspace";
-import { createContext, Fragment, use, type RefObject } from "react";
+import { createContext, Fragment, use, type ReactNode, type RefObject } from "react";
 import { openWorkspaceFile } from "@/features/workspace/public/navigation";
 
 export interface FileReferencePresentation {
@@ -12,7 +12,17 @@ export const FileReferencePresentationContext = createContext<FileReferencePrese
   null,
 );
 
-export function FileRefLink({ path, line, label }: { path: string; line: number; label: string }) {
+export function FileRefLink({
+  path,
+  line,
+  label,
+  children,
+  title,
+}: {
+  path: string;
+  line: number;
+  title?: string;
+} & ({ label: string; children?: never } | { label?: never; children: ReactNode })) {
   const workspaceAccess = useWorkspace();
 
   const presentation = use(FileReferencePresentationContext);
@@ -21,6 +31,8 @@ export function FileRefLink({ path, line, label }: { path: string; line: number;
       render={<span />}
       nativeButton={false}
       data-slot="file-reference"
+      data-file-reference-authored-label={label === undefined ? "" : undefined}
+      title={title}
       aria-label={label}
       onClick={(event) => {
         const selection = event.currentTarget.ownerDocument.getSelection();
@@ -40,13 +52,15 @@ export function FileRefLink({ path, line, label }: { path: string; line: number;
         presentation?.onOpen();
       }}
     >
-      {label.split("/").map((segment, index) => (
-        <Fragment key={index}>
-          {index > 0 && "/"}
-          {index > 0 && (index > 1 || !label.startsWith("/")) && <wbr />}
-          {segment}
-        </Fragment>
-      ))}
+      {label === undefined
+        ? children
+        : label.split("/").map((segment, index) => (
+            <Fragment key={index}>
+              {index > 0 && "/"}
+              {index > 0 && (index > 1 || !label.startsWith("/")) && <wbr />}
+              {segment}
+            </Fragment>
+          ))}
     </ButtonPrimitive>
   );
 }

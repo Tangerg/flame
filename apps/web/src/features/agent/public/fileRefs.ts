@@ -79,6 +79,8 @@ const TOKEN = /(?<![\w/.@-])([A-Za-z0-9._\-/]+)(?::(\d+))?(?::(\d+))?/g;
 
 const INLINE_ADDRESS = /^([\p{L}\p{M}\p{N}._/-]+):([0-9]+)(?::([0-9]+)|-([0-9]+))?$/u;
 
+const WORKSPACE_FILE_HREF = /^([^?#]+)#L([0-9]+)(?:-L([0-9]+))?$/;
+
 const HAS_LETTER = /\p{L}/u;
 
 const ROOTED = /^\.{0,2}\//;
@@ -135,6 +137,26 @@ export function parseInlineFileRef(value: string): FileRef | null {
     if (!isPositiveFilePosition(endLine) || endLine < line) return null;
   }
   return { path, line, column };
+}
+
+export function parseWorkspaceFileHref(href: string): FileRef | null {
+  const match = WORKSPACE_FILE_HREF.exec(href);
+  if (!match || match[0] !== href) return null;
+  const [, encodedPath, first, last] = match;
+  if (!encodedPath) return null;
+
+  let pathname: string;
+  try {
+    pathname = decodeURI(encodedPath);
+  } catch (error) {
+    if (error instanceof URIError) return null;
+    throw error;
+  }
+  const path = pathname.startsWith("./") ? pathname.slice(2) : pathname;
+  if (!path || path.startsWith("/") || path.split("/").includes("..")) return null;
+
+  const ref = parseInlineFileRef(`${pathname}:${first}${last === undefined ? "" : `-${last}`}`);
+  return ref?.path === pathname ? { ...ref, path } : null;
 }
 
 // Prose references omit unspecified positions. A quoted range has explicit endpoints.
