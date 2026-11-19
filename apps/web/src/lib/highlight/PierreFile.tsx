@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { useMemo, useRef, type ClipboardEvent } from "react";
 import { File, useWorkerPool, type FileOptions } from "@pierre/diffs/react";
 import { registerCustomCSSVariableTheme, type FileContents } from "@pierre/diffs";
@@ -6,6 +7,16 @@ import { codeSyntaxColors, markQuoteLine, markReaderLine, selectAllInReader } fr
 
 registerCustomCSSVariableTheme("flame-code", codeSyntaxColors);
 export const CODE_RENDERING = { preferredHighlighter: "shiki-js" as const, theme: "flame-code" };
+
+const styles = stylex.create({
+  // Let CodeBody scroll the full width of unwrapped source.
+  readerScroll: {
+    inlineSize: "max-content",
+    minInlineSize: "100%",
+    "--diffs-overflow-override": "visible",
+  },
+});
+
 export function PierreFile({
   source,
   language,
@@ -15,6 +26,7 @@ export function PierreFile({
   intent,
   onPresented,
   wrapped = false,
+  scrollInReader = false,
 }: {
   source: string;
   language?: string;
@@ -24,6 +36,7 @@ export function PierreFile({
   intent?: object | null;
   onPresented?(root: HTMLElement): void;
   wrapped?: boolean;
+  scrollInReader?: boolean;
 }) {
   const scheme = useScheme();
   const pool = useWorkerPool();
@@ -115,6 +128,7 @@ export function PierreFile({
     // Shadow-root selection needs a select-all boundary inside the host reader's tab stop.
     <div
       role="group"
+      {...stylex.props(scrollInReader && !wrapped && styles.readerScroll)}
       onCopy={copy}
       onKeyDown={(event) => {
         if (root.current) selectAllInReader(event, root.current);

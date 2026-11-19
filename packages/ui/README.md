@@ -318,7 +318,7 @@ separate Tabs owners and panel lifetimes.
 native labels; `DocumentBody` styles already-parsed semantic document content.
 These components own presentation only and do not query or advance product facts.
 `CodeBlock` frames its single literal string child with the same `ARTIFACT_SURFACE` skin
-as the transcript's code and diagram artifacts. Its named `pre` remains the
+as the transcript's code and diagram artifacts. Its named code viewport is the
 bounded keyboard scroll region. An optional `caption` keeps a captured source's
 identity visible in its header without changing the `language` used for highlighting.
 `CodeBody` owns that stable literal source region,
@@ -339,12 +339,16 @@ than their minimum. The measurement retires with content visibility and unmount.
 Oversized blocks retain the Panel's existing focused-control fallback. `CodeFrame`
 accepts host StyleX composition and semantic classes; transcript Shiki blocks
 share this frame without adding another wrapper or reading policy.
-A consumer's `styles` override merges on that same `pre`;
-compact Tool inspectors retain their smaller existing bound. Highlighting changes
+A consumer's `styles` override merges on that same viewport.
+Compact Tool inspectors retain their smaller existing bound. Highlighting changes
 only the child `code`, preserving the reading region, scroll position and focus.
 The literal remains natively selectable even inside an otherwise non-selectable
-host. With the region focused, Ctrl/Cmd+A selects only its complete source; the
-browser owns the range and ordinary copy behavior.
+host. With the region focused, Ctrl/Cmd+A confines selection to the code region.
+Left and Right pan its horizontal overflow. When WebKit retains a live
+selection in an outside editor, a plain arrow keeps focus in the code viewport
+and preserves the editor's selection, including at a scroll boundary.
+`ReadingList` uses the same guard for its vertical arrows on the active Legend
+viewport.
 `selectAllInReader` gives custom read-only viewports that same boundary, leaving
 composition, modified commands, handled events and editable descendants with
 their existing owner. `copyReaderSelection` writes its caller's text for the

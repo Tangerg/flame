@@ -39166,6 +39166,92 @@ code offset. After re-entering the same reader, Page Up moves to
 142 px and keeps its focus. The next batch will qualify the direct
 reader's arrow handling against the existing shared reading behavior.
 
+### Keyboard reading in literal code (2026-11-19)
+
+Signed Wails at `6b6dfa578` reproduces a focus transfer from the named
+CodeBody viewport to the Composer. After opening code through Wrap and
+Tab, Up keeps the code at 546 px and moves the draft caret from 1 to 0.
+Down at the start moves the draft caret from 1 to 15. Right and Left
+also return focus to the editor and move its caret. Native Page Up
+retains code focus and reads from 546 to 142 px. The live document
+range remains in the editor even when focus has moved to code.
+[WAI keyboard reachability](https://www.w3.org/WAI/standards-guidelines/act/rules/0ssw9k/)
+[WebKit selection and focus](https://bugs.webkit.org/show_bug.cgi?id=112854#c5)
+
+The initial keyboard repair preserves the editor's range and restores
+vertical reading. In the narrow Dock layout it exposes a second
+boundary. The named CodeBody measures 410 px for both client and
+scroll width while the visible line ends are clipped. The Pierre
+shadow viewport owns that horizontal overflow.
+`HighlightedCodeSource` opts into sizing the existing `PierreFile`
+group to the longest unwrapped line, with a minimum of the full
+reader width. The inherited Pierre overflow property allows CodeBody
+to own both scroll axes. Wrapped code uses Pierre's wrapping mode and
+standalone files use their own viewport. [Pierre styling](https://diffs.com/docs#styling)
+
+The internal reader selection module shares the existing live
+outside-editor range guard. It applies only to plain arrows on the
+directly focused reader and keeps the 40 px native-relative step.
+`ReadingList` uses it vertically on the active Legend viewport.
+CodeBody also uses it for horizontal arrows when the complete line
+fits. For horizontal overflow, it uses the existing `scrollWithHorizontalArrow`
+operation in both empty and retained-draft cases. Native Right with
+an empty draft had advanced a document caret while code stayed at
+0 px even after the viewport owned overflow.
+[WebKit line step](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/platform/Scrollbar.h#L48)
+[CSSOM relative scrolling](https://drafts.csswg.org/cssom-view/#dom-element-scrollby)
+
+- EN/light/Flame Orange with motion off at 1440 × 900. End reaches
+  546 px, Up moves to 506 px and Down returns to the end with the
+  original caret at 10. A horizontal key on wrapped code keeps the
+  same focus and caret. Page Up advances natively to 142 px. The
+  Composer continues as `codekeepqxktail`.
+- ZH/dark/18 px/custom blue with full motion in a 1121 × 950 native
+  tile. The Dock separator narrows the conversation to 440 px.
+  Unwrapped code has a 410 px client and 496 px scroll width. The
+  476 px inner source has equal client and scroll widths. Right moves
+  41 px and reaches the physical edge at 86 px with both an empty
+  draft and a backward Composer selection. A vertical wheel moves
+  95 px while retaining the horizontal position. In the held range
+  case, Down moves by 40 px and Left moves from 86 to 45 px. The
+  suffix is visible at the edge. Wrap brings the scroll width back to
+  410 px. Cmd+L and paste replace exactly the selected `草稿` to
+  produce `窄列代码续写尾段`. Go to line 4 in `DockResizer.tsx`
+  restores its trigger, and Tab reaches the named File reader.
+- The 50,000-line recorded output reader keeps its 380 px viewport
+  and the held caret at 13. Up leaves a 40 px tail gap and Down
+  returns to 0 px. Collapse focuses the original expansion control
+  and the Composer continues as `outputarrowqxktail`.
+- The standard Lab repeats the Chinese narrow-window path. Right
+  shows the complete line suffix with the named code viewport focused.
+  Pointer Wrap, Down and Right preserve the draft and Cmd+L continues
+  it as `标准代码续写尾段`.
+
+Final checks use the shared `f1ec0f204` Runtime baseline. Scoped
+Prettier, the packed UI and Icons consumer, plugin typecheck and
+20 plugin catalogs, and the full Web check pass. Web covers 137
+tests, including the isolated Runtime HTTP integration, 937 keys in
+eight locale catalogs, bootstrap, installed resource reproduction,
+26 bundle contracts and module linking. `make check-native` and
+the standard five-entry Lab build pass.
+
+Four private bundles pass strict signature verification. Eight native
+launches and five loopback previews exit. Cleanup removes four
+registrations, eight Library directories, ten checkout outputs and
+the scratch tree. Native acceptance uses captured data.
+
+Cmd+A establishes a range on the outer CodeBody frame. The diagnostic
+reports an empty selection string for its Pierre shadow source.
+Clipboard content remains unqualified. The native input harness
+delivered vertical wheel events and reported zero events for its
+horizontal commands. Keyboard panning and vertical wheel input are
+verified. VoiceOver and native Tool execution remain open.
+
+The related File reader provides the next reproducible focus case.
+With its direct viewport focused and a Composer caret held at offset 6,
+Up returns focus to the Composer and sets the caret to 0.
+The next batch will qualify that path with a scrollable captured file.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

@@ -20,7 +20,7 @@ const poolOptions = {
 };
 
 function HighlightedCodeSource({ source, language, wrapped }: CodeSourceProps) {
-  return <PierreFile source={source} language={language} wrapped={wrapped} />;
+  return <PierreFile source={source} language={language} wrapped={wrapped} scrollInReader />;
 }
 
 export function CodeHighlighting({ children }: { children: ReactNode }) {

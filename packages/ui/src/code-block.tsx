@@ -5,7 +5,12 @@ import { useSyncExternalStore, type ComponentPropsWithoutRef } from "react";
 import { ARTIFACT_SURFACE } from "./artifact-surface";
 import { useCopy } from "./clipboard";
 import { IconButton } from "./icon-button";
-import { selectAllInReader } from "./reader-selection";
+import { isImeKey } from "./keyboard";
+import {
+  scrollReaderWithForeignSelection,
+  selectAllInReader,
+} from "./reader-selection";
+import { scrollWithHorizontalArrow } from "./scroll-region";
 import {
   literalSourceStyles,
   useCodeSource,
@@ -219,7 +224,12 @@ export function CodeBody({
       data-slot="code-body"
       data-focus-inset=""
       data-wrap={wrapped}
-      onKeyDown={selectAllInReader}
+      onKeyDown={(event) => {
+        selectAllInReader(event);
+        if (event.cancelable && !isImeKey(event.nativeEvent))
+          scrollWithHorizontalArrow(event);
+        scrollReaderWithForeignSelection(event, "both");
+      }}
       {...stylex.props(
         styles.code,
         type.code,

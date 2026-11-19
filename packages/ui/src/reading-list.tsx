@@ -7,15 +7,12 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type KeyboardEvent,
   type ReactNode,
   type Ref,
 } from "react";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { useContentVisible } from "./content-visibility";
-import { isImeKey } from "./keyboard";
-
-const WEBKIT_LINE_SCROLL = 40;
+import { scrollReaderWithForeignSelection } from "./reader-selection";
 
 export type ReadingListHandle = LegendListRef;
 // Nested readers reuse the row attribute, so a row counts only inside the list's own item.
@@ -62,19 +59,6 @@ function selectedRows(root: HTMLElement, selector: string): HTMLElement[] {
   return [...root.querySelectorAll<HTMLElement>(selector)].filter((row) =>
     range.intersectsNode(row),
   );
-}
-
-function editingHost(node: Node): HTMLElement | null {
-  const element = node instanceof Element ? node : node.parentElement;
-  if (
-    !(element instanceof HTMLElement) ||
-    !element.isConnected ||
-    !element.isContentEditable
-  )
-    return null;
-  let host = element;
-  while (host.parentElement?.isContentEditable) host = host.parentElement;
-  return host;
 }
 
 export function ReadingList<T>({
@@ -334,47 +318,6 @@ export function ReadingList<T>({
       if (frame !== undefined) cancelAnimationFrame(frame);
     };
   }, [focused, list, visible, rowSelector]);
-  const onViewportKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (
-      event.defaultPrevented ||
-      !event.cancelable ||
-      event.target !== event.currentTarget ||
-      event.altKey ||
-      event.ctrlKey ||
-      event.metaKey ||
-      event.shiftKey ||
-      isImeKey(event.nativeEvent) ||
-      (event.key !== "ArrowUp" && event.key !== "ArrowDown")
-    )
-      return;
-    const reader = currentList.current;
-    const viewport = reader?.getScrollableNode();
-    if (
-      !reader ||
-      viewport !== event.currentTarget ||
-      viewport.ownerDocument.activeElement !== viewport
-    )
-      return;
-    const selection = viewport.ownerDocument.getSelection();
-    if (selection?.rangeCount !== 1) return;
-    const { startContainer, endContainer } = selection.getRangeAt(0);
-    const host = editingHost(startContainer);
-    if (
-      !host ||
-      viewport.contains(host) ||
-      host.contains(viewport) ||
-      editingHost(endContainer) !== host
-    )
-      return;
-
-    // WebKit can send the default arrow action to the editor that retains the selection.
-    event.preventDefault();
-    // A relative scroll preserves the step as Legend measures rows.
-    viewport.scrollBy({
-      top: event.key === "ArrowUp" ? -WEBKIT_LINE_SCROLL : WEBKIT_LINE_SCROLL,
-      behavior: "instant",
-    });
-  };
   const keys = new Set(data.map(keyExtractor));
   const pinned = [
     ...new Set(
@@ -408,7 +351,10 @@ export function ReadingList<T>({
         role={hasScrollStop ? role : undefined}
         aria-label={hasScrollStop ? label : undefined}
         tabIndex={hasScrollStop ? 0 : undefined}
-        onKeyDown={onViewportKeyDown}
+        onKeyDown={(event) => {
+          if (currentList.current?.getScrollableNode() === event.currentTarget)
+            scrollReaderWithForeignSelection(event, "vertical");
+        }}
         className={className}
         data={data}
         extraData={renderItem}

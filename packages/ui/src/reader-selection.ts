@@ -6,6 +6,7 @@ const EDITABLE =
 const SOURCE = "data-reader-source";
 const LINE = "data-reader-line";
 const MARKED = `[${SOURCE}], [${LINE}]`;
+const WEBKIT_LINE_SCROLL = 40;
 
 // A reader marks its source root and every presented line, so a copied range
 // maps back to the exact source text instead of the rendered DOM text.
@@ -54,6 +55,65 @@ export function selectAllInReader(
   if (!selection) return;
   event.preventDefault();
   selection.selectAllChildren(content);
+}
+
+function editingHost(node: Node): HTMLElement | null {
+  const element = node instanceof Element ? node : node.parentElement;
+  if (
+    !(element instanceof HTMLElement) ||
+    !element.isConnected ||
+    !element.isContentEditable
+  )
+    return null;
+  let host = element;
+  while (host.parentElement?.isContentEditable) host = host.parentElement;
+  return host;
+}
+
+export function scrollReaderWithForeignSelection(
+  event: KeyboardEvent<HTMLElement>,
+  axes: "vertical" | "both",
+): void {
+  const { currentTarget: viewport, key } = event;
+  const vertical = key === "ArrowUp" || key === "ArrowDown";
+  const horizontal =
+    axes === "both" && (key === "ArrowLeft" || key === "ArrowRight");
+  if (
+    event.defaultPrevented ||
+    !event.cancelable ||
+    event.target !== viewport ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.shiftKey ||
+    isImeKey(event.nativeEvent) ||
+    (!vertical && !horizontal) ||
+    viewport.ownerDocument.activeElement !== viewport
+  )
+    return;
+  const selection = viewport.ownerDocument.getSelection();
+  if (selection?.rangeCount !== 1) return;
+  const { startContainer, endContainer } = selection.getRangeAt(0);
+  const host = editingHost(startContainer);
+  if (
+    !host ||
+    viewport.contains(host) ||
+    host.contains(viewport) ||
+    editingHost(endContainer) !== host
+  )
+    return;
+
+  // WebKit can send the default arrow action to the editor retaining the selection.
+  event.preventDefault();
+  const delta =
+    key === "ArrowUp" || key === "ArrowLeft"
+      ? -WEBKIT_LINE_SCROLL
+      : WEBKIT_LINE_SCROLL;
+  // A relative scroll preserves the step while the reader measures content.
+  viewport.scrollBy({
+    [vertical ? "top" : "left"]: delta,
+    behavior: "instant",
+  });
 }
 
 function selectedRange(content: Element): Range | null {
