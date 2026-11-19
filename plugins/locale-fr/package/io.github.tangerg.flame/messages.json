@@ -654,6 +654,7 @@
   "file.error.title": "Impossible d'ouvrir le fichier",
   "file.error.sub": "Il a peut-être été déplacé ou se trouve hors de l'espace de travail.",
   "file.error.requestedLine": "Impossible d'ouvrir à partir de la ligne {{line}}",
+  "file.error.requestedRange": "Impossible de charger les lignes {{start}}–{{end}}",
   "file.openFromStart": "Ouvrir depuis le début",
   "composer.key.historyPrevDesc": "Rappeler le message précédent",
   "composer.key.historyNextDesc": "Rappeler le message suivant",

@@ -640,6 +640,7 @@
   "file.error.title": "Datei konnte nicht geöffnet werden",
   "file.error.sub": "Sie wurde möglicherweise verschoben oder liegt außerhalb des Arbeitsbereichs.",
   "file.error.requestedLine": "Datei konnte ab Zeile {{line}} nicht geöffnet werden",
+  "file.error.requestedRange": "Zeilen {{start}}–{{end}} konnten nicht geladen werden",
   "file.openFromStart": "Am Dateianfang öffnen",
   "composer.key.historyPrevDesc": "Vorherige Nachricht abrufen",
   "composer.key.historyNextDesc": "Nächste Nachricht abrufen",

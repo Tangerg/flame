@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { useMemo, useSyncExternalStore } from "react";
-import { type Query, type UseQueryResult } from "@tanstack/react-query";
+import { type Query, type QueryCache, type UseQueryResult } from "@tanstack/react-query";
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type Host } from "dougong";
 import { queryClient } from "@/lib/queryClient";
@@ -147,6 +147,34 @@ export function parameterizedQuery<P, T>(key: string, params: P | undefined) {
   });
 }
 
+function useQueryCacheState<T>(cache: QueryCache, queryHash: string | undefined) {
+  const readState = useMemo(
+    () => ({
+      subscribe: (onChange: () => void) => {
+        if (queryHash === undefined) return () => undefined;
+        return cache.subscribe((event) => {
+          if (event.query.queryHash === queryHash) onChange();
+        });
+      },
+      getSnapshot: () => (queryHash === undefined ? undefined : cache.get<T>(queryHash)?.state),
+    }),
+    [cache, queryHash],
+  );
+  return useSyncExternalStore(readState.subscribe, readState.getSnapshot);
+}
+
+export function useCachedParameterizedData<P, T>(
+  key: string,
+  params: P | undefined,
+): T | undefined {
+  const client = useQueryClient();
+  const queryHash =
+    params === undefined
+      ? undefined
+      : client.defaultQueryOptions(parameterizedQuery<P, T>(key, params)).queryHash;
+  return useQueryCacheState<T>(client.getQueryCache(), queryHash)?.data;
+}
+
 export function createParameterizedDataQuery<P, T>(
   key: string,
   options?: ParameterizedQueryOptions<P, T>,
@@ -167,19 +195,9 @@ export function createParameterizedDataQuery<P, T>(
     const query = parameterizedQuery<P, T>(key, params);
     const queryHash = client.defaultQueryOptions(query).queryHash;
     const cache = client.getQueryCache();
-    const readState = useMemo(
-      () => ({
-        subscribe: (onChange: () => void) =>
-          cache.subscribe((event) => {
-            if (event.query.queryHash === queryHash) onChange();
-          }),
-        getSnapshot: () => cache.get(queryHash)?.state,
-      }),
-      [cache, queryHash],
-    );
     // Observer placeholders can outlive a reset while effects are disconnected.
     // Native cache state makes reconnection recompute continuity after reset or eviction.
-    useSyncExternalStore(readState.subscribe, readState.getSnapshot);
+    useQueryCacheState<T>(cache, queryHash);
     return useData(
       queryOptions({
         ...query,

@@ -626,6 +626,7 @@
   "file.error.title": "ファイルを開けませんでした",
   "file.error.sub": "移動されたか、ワークスペース外にある可能性があります。",
   "file.error.requestedLine": "{{line}} 行目から開けませんでした",
+  "file.error.requestedRange": "{{start}}–{{end}} 行目を読み込めませんでした",
   "file.openFromStart": "ファイルの先頭から開く",
   "composer.key.historyPrevDesc": "前のメッセージを呼び出す",
   "composer.key.historyNextDesc": "次のメッセージを呼び出す",

@@ -31,6 +31,7 @@ import {
   ContentVisibility,
   copyReaderSelection,
   EmptyState,
+  handoffFocus,
   IconButton,
   isImeKey,
   scrollReaderWithForeignSelection,
@@ -53,7 +54,11 @@ import {
   useActiveSessionWorkspace,
   type ActiveSessionWorkspaceSelection,
 } from "@/features/agent/public/session";
-import { useWorkspaceReadFile } from "@/features/workspace/application/workspaceQueries";
+import {
+  useCachedWorkspaceReadFile,
+  useWorkspaceReadFile,
+  type WorkspaceReadFileQuery,
+} from "@/features/workspace/application/workspaceQueries";
 import {
   closeWorkspaceFile,
   openWorkspaceFile,
@@ -65,6 +70,7 @@ import { useRendererChoice } from "@/features/plugins/public/renderers";
 import { fileRendererCandidates } from "@/features/workspace/application/fileRenderer";
 import { SystemMessage } from "@/ui/index";
 import { useAsyncFeedback } from "@/lib/useAsyncFeedback";
+import { isUnsupportedMethod } from "@/lib/rpcErrors";
 const WINDOW_RADIUS = 200;
 
 const fp = stylex.create({
@@ -142,14 +148,11 @@ function LocalFileFeedback({
   );
 }
 
-interface LineWindow {
-  start?: number;
-  end?: number;
-  fromEnd?: boolean;
-}
+type LineWindow = Pick<WorkspaceReadFileQuery, "startLine" | "endLine" | "fromEnd">;
+type AdjacentLineWindow = LineWindow & { startLine: number; endLine: number };
 
 function initialWindow(line: number): LineWindow {
-  return line > 0 ? { start: line, end: line + WINDOW_RADIUS } : {};
+  return line > 0 ? { startLine: line, endLine: line + WINDOW_RADIUS } : {};
 }
 
 export function FileWorkspace() {
@@ -314,26 +317,32 @@ function FilePreview({
   const cwd = resolvedWorkspaceCwd(workspace);
   const targetLine = viewer.line;
   const initialLineWindow = useMemo(() => initialWindow(targetLine), [targetLine]);
-  const [windowFor, setWindowFor] = useState<{ intent: object; window: LineWindow }>(() => ({
-    intent: viewer,
-    window: initialWindow(targetLine),
-  }));
-  const lineWindow = windowFor.intent === viewer ? windowFor.window : initialLineWindow;
-  const setLineWindow = (next: LineWindow) => setWindowFor({ intent: viewer, window: next });
+  const [pageFor, setPageFor] = useState<{
+    viewer: WorkspaceFileViewer;
+    window: AdjacentLineWindow;
+    previous?: WorkspaceReadFileQuery;
+  }>();
+  const page = pageFor?.viewer === viewer ? pageFor : undefined;
+  const lineWindow = page?.window ?? initialLineWindow;
+  const resolving = isWorkspaceResolving(workspace);
+  const request = resolving ? undefined : { cwd, path: viewer.path, ...lineWindow };
+  const {
+    data: response,
+    isPlaceholderData,
+    isPending,
+    isFetching,
+    error,
+    refetch,
+  } = useWorkspaceReadFile(request);
+  const acceptedData = isPlaceholderData ? undefined : response;
+  const previousRequest = acceptedData === undefined ? page?.previous : undefined;
+  // The exact origin is authoritative even if the query observer still has a placeholder.
+  const previousData = useCachedWorkspaceReadFile(previousRequest);
+  const data = previousRequest ? previousData : response;
+  const displayedRequest = previousData !== undefined ? previousRequest : acceptedData && request;
 
-  const { data, isPlaceholderData, isPending, isFetching, error, refetch } = useWorkspaceReadFile(
-    !isWorkspaceResolving(workspace)
-      ? {
-          cwd,
-          path: viewer.path,
-          ...(lineWindow.start !== undefined ? { startLine: lineWindow.start } : {}),
-          ...(lineWindow.end !== undefined ? { endLine: lineWindow.end } : {}),
-          ...(lineWindow.fromEnd ? { fromEnd: true } : {}),
-        }
-      : undefined,
-  );
-
-  const pagePending = windowFor.intent === viewer && isPlaceholderData && isFetching;
+  const pagePending = previousData !== undefined && isFetching;
+  const pagingUnavailable = isPlaceholderData || pagePending;
   const pageLoadingLabel = t("common.loading");
   const pageLoadingStatus = (
     <span aria-hidden="true" {...stylex.props(typeStep.uiMd, vocab.muted)}>
@@ -363,6 +372,7 @@ function FilePreview({
   const showRendered = renderer !== undefined && wholeFile && mode === "rendered";
 
   const scrollPort = useRef<HTMLDivElement>(null);
+  const pageFailureNotice = useRef<HTMLDivElement>(null);
   // A default arrival starts at the top like its initial window; FileView places line targets.
   useLayoutEffect(() => {
     const host = scrollPort.current;
@@ -372,30 +382,31 @@ function FilePreview({
   const arrival = useRef<{ viewer: object; window: LineWindow } | null>(null);
   useLayoutEffect(() => {
     const host = scrollPort.current;
-    if (!host || !data || isPlaceholderData) return;
+    if (!host || acceptedData === undefined) return;
     if (arrival.current?.viewer === viewer && arrival.current.window !== lineWindow) {
       host.scrollTop = 0;
     }
     arrival.current = { viewer, window: lineWindow };
-  }, [data, isPlaceholderData, lineWindow, viewer]);
+    if (page?.previous) {
+      setPageFor((current) => (current === page ? { viewer, window: page.window } : current));
+    }
+  }, [acceptedData, lineWindow, page, viewer]);
 
-  const focusReaderFrom = (control: HTMLElement) => {
+  const loadPage = (control: HTMLElement, window: AdjacentLineWindow) => {
+    if (!displayedRequest) return;
     if (control.ownerDocument.activeElement === control) {
       scrollPort.current?.focus({ preventScroll: true });
     }
+    setPageFor({ viewer, window, previous: displayedRequest });
   };
-  const loadEarlier = (event: MouseEvent<HTMLElement>) => {
-    focusReaderFrom(event.currentTarget);
-    setLineWindow({
-      start: Math.max(1, firstShown - WINDOW_RADIUS),
-      end: firstShown - 1,
+  const loadEarlier = (event: MouseEvent<HTMLElement>) =>
+    loadPage(event.currentTarget, {
+      startLine: Math.max(1, firstShown - WINDOW_RADIUS),
+      endLine: firstShown - 1,
       fromEnd: true,
     });
-  };
-  const loadLater = (event: MouseEvent<HTMLElement>) => {
-    focusReaderFrom(event.currentTarget);
-    setLineWindow({ start: lastShown + 1, end: lastShown + laterCount });
-  };
+  const loadLater = (event: MouseEvent<HTMLElement>) =>
+    loadPage(event.currentTarget, { startLine: lastShown + 1, endLine: lastShown + laterCount });
 
   // Set only while FileView presents the source, including as a renderer's fallback;
   // rendered content keeps the browser's formatted copy and editable fields stay native.
@@ -430,31 +441,52 @@ function FilePreview({
   const kind = fileKind(viewer.path);
   const icon = fileIconName(viewer.path);
   const { name } = splitFilePath(viewer.path);
-  // A failed refresh of this query's own accepted content keeps its reader, and position, in place.
-  const retained = data !== undefined && !isPlaceholderData && !unsupported;
+  const retained = (acceptedData !== undefined || previousData !== undefined) && !unsupported;
   const rejectedInitialLine =
-    !retained &&
-    targetLine > 0 &&
-    lineWindow.start === targetLine &&
-    lineWindow.end === initialLineWindow.end &&
-    !lineWindow.fromEnd &&
-    workspaceAccess.errors.isInvalidReadRequest(error);
-  const refreshFeedback =
-    retained && error != null ? (
+    !page && !retained && targetLine > 0 && workspaceAccess.errors.isInvalidReadRequest(error);
+  const pageError =
+    page && previousRequest && error != null
+      ? {
+          title: t("file.error.requestedRange", {
+            start: page.window.startLine,
+            end: page.window.endLine,
+          }),
+          sub: "",
+          size: "compact" as const,
+        }
+      : undefined;
+  const readFeedback =
+    retained && error != null && !pagePending ? (
       isFetching ? (
         <SkeletonList count={1} variant="compact" label={t("common.loading")} />
+      ) : pageError && !isUnsupportedMethod(error) ? (
+        <SystemMessage
+          ref={pageFailureNotice}
+          role="group"
+          variant="error"
+          hideIcon
+          action={{
+            label: t("common.retry"),
+            variant: "outline",
+            onClick: () => {
+              if (pageFailureNotice.current)
+                handoffFocus(pageFailureNotice.current, scrollPort.current);
+              void refetch();
+            },
+          }}
+        >
+          {pageError.title}
+        </SystemMessage>
       ) : (
-        <div role="status">
-          <DataError
-            failure={error}
-            focusTarget={scrollPort}
-            unsupported={{ icon, sub: t("file.readRefreshError.sub"), size: "compact" }}
-            onRetry={refetch}
-            title={t("file.readRefreshError.title")}
-            sub={t("file.readRefreshError.sub")}
-            size="compact"
-          />
-        </div>
+        <DataError
+          failure={error}
+          focusTarget={scrollPort}
+          unsupported={{ icon, sub: t("file.readRefreshError.sub"), size: "compact" }}
+          onRetry={refetch}
+          title={t("file.readRefreshError.title")}
+          sub={t("file.readRefreshError.sub")}
+          size="compact"
+        />
       )
     ) : undefined;
 
@@ -477,7 +509,7 @@ function FilePreview({
           <span role="status" className="sr-only">
             {pagePending ? pageLoadingLabel : undefined}
           </span>
-          {refreshFeedback}
+          <div role="status">{readFeedback}</div>
           {<LocalFileFeedback actions={fileActions} focusTarget={scrollPort} />}
         </>
       }
@@ -561,19 +593,20 @@ function FilePreview({
       ) : (
         <DataView
           items={data ? [data] : []}
-          isLoading={isPending || isWorkspaceResolving(workspace)}
+          isLoading={resolving || (data === undefined && (isPending || isPlaceholderData))}
           failure={retained ? undefined : error}
           onRetry={rejectedInitialLine ? onOpenFromStart : refetch}
-          focusTarget={rejectedInitialLine ? scrollPort : undefined}
+          focusTarget={pageError || rejectedInitialLine ? scrollPort : undefined}
           skeletonCount={12}
           error={
-            rejectedInitialLine
+            pageError ??
+            (rejectedInitialLine
               ? {
                   title: t("file.error.requestedLine", { line: targetLine }),
                   sub: "",
                   retryLabel: t("file.openFromStart"),
                 }
-              : { title: t("file.error.title"), sub: t("file.error.sub") }
+              : { title: t("file.error.title"), sub: t("file.error.sub") })
           }
         >
           {(items) => (
@@ -586,7 +619,9 @@ function FilePreview({
                     <TextButton
                       tone="accent"
                       size="sm"
-                      disabled={pagePending}
+                      disabled={
+                        pagingUnavailable || (pageError !== undefined && !!lineWindow.fromEnd)
+                      }
                       onClick={loadEarlier}
                     >
                       {t("file.loadEarlier", { count: Math.min(WINDOW_RADIUS, firstShown - 1) })}
@@ -605,7 +640,7 @@ function FilePreview({
                       content={items[0]!.content}
                       startLine={items[0]!.startLine}
                       targetLine={targetLine}
-                      intent={isPlaceholderData ? null : viewer}
+                      intent={acceptedData === undefined ? null : viewer}
                     />
                   );
                   return (
@@ -627,7 +662,7 @@ function FilePreview({
                   content={items[0]!.content}
                   startLine={items[0]!.startLine}
                   targetLine={targetLine}
-                  intent={isPlaceholderData ? null : viewer}
+                  intent={acceptedData === undefined ? null : viewer}
                 />
               )}
               {moreAfter && !showRendered && (
@@ -635,7 +670,14 @@ function FilePreview({
                   {pagePending && !lineWindow.fromEnd ? (
                     pageLoadingStatus
                   ) : (
-                    <TextButton tone="accent" size="sm" disabled={pagePending} onClick={loadLater}>
+                    <TextButton
+                      tone="accent"
+                      size="sm"
+                      disabled={
+                        pagingUnavailable || (pageError !== undefined && !lineWindow.fromEnd)
+                      }
+                      onClick={loadLater}
+                    >
                       {t("file.loadLater", { count: laterCount })}
                     </TextButton>
                   )}

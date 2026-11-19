@@ -3,6 +3,7 @@ import {
   createDataQuery,
   createPagedDataQuery,
   createParameterizedDataQuery,
+  useCachedParameterizedData,
 } from "@/extensions/dataQuery";
 export interface WorkspaceProjectSummary {
   id: string;
@@ -90,6 +91,13 @@ export const useWorkspaceReadFile = createParameterizedDataQuery<
 >(WORKSPACE_READ_FILE_KEY, {
   keepWhenContinuous: (previous, next) => previous.cwd === next.cwd && previous.path === next.path,
 });
+
+export function useCachedWorkspaceReadFile(params: WorkspaceReadFileQuery | undefined) {
+  return useCachedParameterizedData<WorkspaceReadFileQuery, WorkspaceFileContent>(
+    WORKSPACE_READ_FILE_KEY,
+    params,
+  );
+}
 
 export const useWorkspaceDirectory = createPagedDataQuery<
   WorkspaceListFilesQuery,

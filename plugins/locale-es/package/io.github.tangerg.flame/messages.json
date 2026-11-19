@@ -654,6 +654,7 @@
   "file.error.title": "No se pudo abrir el archivo",
   "file.error.sub": "Puede haberse movido o estar fuera del espacio de trabajo.",
   "file.error.requestedLine": "No se pudo abrir desde la línea {{line}}",
+  "file.error.requestedRange": "No se pudieron cargar las líneas {{start}}–{{end}}",
   "file.openFromStart": "Abrir desde el principio",
   "composer.key.historyPrevDesc": "Recuperar el mensaje anterior",
   "composer.key.historyNextDesc": "Recuperar el mensaje siguiente",

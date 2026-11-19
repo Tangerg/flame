@@ -40889,6 +40889,79 @@ adjacent-read failure replaces accepted lines 60–259 with an error
 that suggests the file may have moved. The next task is to keep the
 accepted page visible and make Retry identify the requested window.
 
+### Failed file paging keeps the accepted source (2026-11-19)
+
+Native Wails previously removed the 60–259 window after an Earlier
+request for 1–59 failed. It displayed the initial-open error and
+suggested the file could have moved. The same request succeeded on
+Retry. The query observer supplied the previous page during the wait
+and retired that placeholder when the request failed.
+
+`FilePreview` captures the exact displayed query address when a pager
+is activated. The workspace query layer observes that cache entry
+passively. Reset or eviction removes those bytes from the presented
+page. The active query still owns acceptance and Retry. Acceptance
+retires the saved address and starts the new page at the top. The
+range, reader and source-copy path consume the same presented result.
+When a failed adjacent read has cached source, a shared inline
+`SystemMessage` identifies the requested lines and hands Retry focus
+back to the reader. A failed request with an absent origin uses the
+same range caption and Retry in the existing data view.
+
+- EN/light/14 px/Flame Orange at Actual Size. In a 293-line file,
+  two rejections of 1–59 leave 60–259 at the same 791 px scroll
+  offset. The notice says Couldn't load lines 1–59. Earlier is
+  disabled and keyboard activation of Show 34 more lines requests
+  260–293. Two rejections of that read still show 60–259 at
+  3,325 px.
+- In the same English reading session, the fixture evicts the
+  cached origin while 260–293 is retried. The source and its
+  caption exit and the normal loading state appears. The final
+  rejection names 260–293. Retry requests exactly 260–293 and
+  accepts that window. Back focuses the original file row, and
+  opening README carries no prior error. The draft continues as
+  `6270519`.
+- ZH/dark/18 px/`#3B82F6` at Actual Size. Native Window Left and End
+  produce a 320 px Dock. A wheel page and the pointer request
+  60–93. The first stacked error used 146 px and moved the
+  reader's bottom offset from 342 to 314 px. The final inline
+  notice uses 46 px. Failure and keyboard Retry both preserve
+  342 px, and Retry restores focus to the named reader.
+  Acceptance shows 60–93 from the top. The draft continues as
+  `6251864`.
+- The first English pass also holds a Go to line request for
+  60–260. The provisional 1–59 window presents disabled paging
+  controls. Back returns to the original file row and cancels
+  the pending request. An Earlier Retry reissues and accepts
+  1–59 from the affected middle window.
+- The final standard English Lab opens all 93 lines in Preview.
+  Pointer Source and the Left arrow switch modes. Back focuses
+  `reading-guide.md` and the draft continues as `6291531`.
+
+Scoped formatting, Web typechecking, 939 keys across eight locales,
+26 bundle contracts, bootstrap, portable resources, module linkage,
+native build and five canonical Lab documents pass on `fa2afe8be`.
+The full Web run records 134 passes and three Runtime failures.
+Lost Goal stop response recovery, cancellation of an unconfirmed model
+outcome and active Goal stop with durable usage each return
+`internal_error`. The same three failures reproduce from a clean
+archive of `fa2afe8be`. The focused bound workspace file and hook API
+test passes on that commit. The final Wails passes use `5867b3192`.
+The independent Runtime update touches the module pin and
+run-cancellation code.
+The isolated Lab serves controlled reads and exercises actual query
+eviction and native scrolling. Standard assets use the canonical
+fixture. Live user filesystem failure, clipboard writes, physical
+IME, VoiceOver speech and other operating systems were outside the
+exercise.
+
+Three private bundles, five launches and four previews complete.
+Cleanup removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. The held Go to line
+request leaves the old header visible after its form closes. The
+next task can make the pending destination visible without moving
+the reader or blocking a newer jump.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

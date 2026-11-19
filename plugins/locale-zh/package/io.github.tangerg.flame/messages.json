@@ -567,6 +567,7 @@
   "file.error.title": "无法打开文件",
   "file.error.sub": "它可能已移动，或位于工作区之外。",
   "file.error.requestedLine": "无法从第 {{line}} 行打开",
+  "file.error.requestedRange": "无法加载第 {{start}}–{{end}} 行",
   "file.openFromStart": "从文件开头打开",
   "compaction.compacted": "已自动压缩上下文",
   "projects.showMore": "显示另外 {{count}} 条",

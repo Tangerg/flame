@@ -623,6 +623,7 @@ export const en: Record<string, string> = {
   "file.error.title": "Couldn't open file",
   "file.error.sub": "It may have moved or live outside the workspace.",
   "file.error.requestedLine": "Couldn't open from line {{line}}",
+  "file.error.requestedRange": "Couldn't load lines {{start}}–{{end}}",
   "file.openFromStart": "Open from start",
   "compaction.compacted": "Context automatically compacted",
   "projects.showMore": "Show {{count}} more",
