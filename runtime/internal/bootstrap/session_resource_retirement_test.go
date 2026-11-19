@@ -36,6 +36,22 @@ type retirementFixture struct {
 	root        string
 }
 
+func (f *retirementFixture) deleteSession(ctx context.Context, id string) error {
+	return f.coordinator.DeleteSession(ctx, id, func(ctx context.Context, write func(context.Context) error) error {
+		return write(ctx)
+	})
+}
+
+func (f *retirementFixture) restoreSession(ctx context.Context, snapshot sessions.PortableSnapshot) (sessions.View, error) {
+	var restored sessions.View
+	err := f.coordinator.RestorePortableSession(ctx, snapshot, func(ctx context.Context, write func(context.Context) (sessions.View, error)) error {
+		var err error
+		restored, err = write(ctx)
+		return err
+	})
+	return restored, err
+}
+
 type retirementResources struct {
 	*workspaceadapter.Checkpoints
 	isolator                *workspaceadapter.Isolator
@@ -241,26 +257,26 @@ func TestSessionWriteRefusalPreservesRealFileCheckpoints(t *testing.T) {
 			}
 			switch operation {
 			case "delete retirement insert":
-				err = f.coordinator.DeleteSession(t.Context(), "ses_retirement")
+				err = f.deleteSession(t.Context(), "ses_retirement")
 			case "restore retirement insert":
-				_, err = f.coordinator.RestorePortableSession(t.Context(), portable)
+				_, err = f.restoreSession(t.Context(), portable)
 			case "delete":
 				if _, err := f.db.ExecContext(t.Context(), `CREATE TRIGGER refuse_delete BEFORE DELETE ON sessions BEGIN SELECT RAISE(ABORT, 'delete refused'); END`); err != nil {
 					t.Fatal(err)
 				}
-				err = f.coordinator.DeleteSession(t.Context(), "ses_retirement")
+				err = f.deleteSession(t.Context(), "ses_retirement")
 			case "restore":
 				if _, err := f.db.ExecContext(t.Context(), `CREATE TRIGGER refuse_restore BEFORE UPDATE ON sessions BEGIN SELECT RAISE(ABORT, 'restore refused'); END`); err != nil {
 					t.Fatal(err)
 				}
-				_, err = f.coordinator.RestorePortableSession(t.Context(), portable)
+				_, err = f.restoreSession(t.Context(), portable)
 			case "conflicting run":
 				insertBootstrapSession(t, f.stores.sessions, bootstrapSession("ses_other", "other", f.workspace))
 				if err := f.stores.runs.Restore(t.Context(), restoredRun("ses_other", "run_conflict", time.Now().UTC())); err != nil {
 					t.Fatal(err)
 				}
 				portable.Runs[0].ID = "run_conflict"
-				_, err = f.coordinator.RestorePortableSession(t.Context(), portable)
+				_, err = f.restoreSession(t.Context(), portable)
 				if !errors.Is(err, run.ErrIdentityConflict) {
 					t.Fatalf("restore conflict = %v", err)
 				}
@@ -286,14 +302,14 @@ func TestCommittedResourceCleanupFailureFencesReplacement(t *testing.T) {
 					f.resources.discardErr = refusal
 				}
 				if operation == "delete" {
-					if err := f.coordinator.DeleteSession(t.Context(), "ses_retirement"); err != nil {
+					if err := f.deleteSession(t.Context(), "ses_retirement"); err != nil {
 						t.Fatalf("committed delete reported unexecuted: %v", err)
 					}
 					if _, err := f.stores.sessions.Get(t.Context(), "ses_retirement"); !errors.Is(err, session.ErrNotFound) {
 						t.Fatalf("deleted Session = %v", err)
 					}
 				} else {
-					view, err := f.coordinator.RestorePortableSession(t.Context(), portable)
+					view, err := f.restoreSession(t.Context(), portable)
 					if err != nil {
 						t.Fatalf("committed restore reported unexecuted: %v", err)
 					}
@@ -328,7 +344,7 @@ func TestCommittedResourceCleanupFailureFencesReplacement(t *testing.T) {
 				if err := f.stores.runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{SessionID: "ses_retirement", RunID: "run_new", SegmentID: "seg_new", CreatedAt: time.Now().UTC()})); !errors.Is(err, run.ErrSessionBusy) {
 					t.Fatalf("durable admission crossed pending cleanup: %v", err)
 				}
-				if _, err := f.coordinator.RestorePortableSession(t.Context(), portable); !errors.Is(err, run.ErrSessionBusy) {
+				if _, err := f.restoreSession(t.Context(), portable); !errors.Is(err, run.ErrSessionBusy) {
 					t.Fatalf("replacement crossed pending cleanup: %v", err)
 				}
 				if err := f.retirer.RecoverPending(t.Context(), f.gate); err != nil {
@@ -370,7 +386,7 @@ func TestCommittedResourceRetirementCrashRecovery(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(f.root, "scratch-path"), []byte(scratch), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if err := f.coordinator.DeleteSession(t.Context(), "ses_retirement"); err != nil {
+		if err := f.deleteSession(t.Context(), "ses_retirement"); err != nil {
 			t.Fatal(err)
 		}
 		t.Fatal("crash cut was not reached")

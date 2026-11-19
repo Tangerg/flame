@@ -18,6 +18,16 @@ import (
 
 const commandCrashExit = 73
 
+type atomicReceiptCommitCrashStore struct{ operation.ReplayStore }
+
+func (s atomicReceiptCommitCrashStore) Transact(ctx context.Context, write func(context.Context) error) error {
+	if err := s.ReplayStore.Transact(ctx, write); err != nil {
+		return err
+	}
+	os.Exit(commandCrashExit)
+	return nil
+}
+
 type commandCrashStore struct {
 	operation.ReplayStore
 

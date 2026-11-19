@@ -35,13 +35,15 @@ func (e *Endpoint) replayOperation(ctx context.Context, method *Method, paramete
 	executed := false
 	var payload []byte
 	handler, ownsOutcome := e.target.(*Handler)
+	var atomic func(*operation.AtomicCompletion) error
+	if ownsOutcome {
+		atomic = handler.bindAtomicOutcome(ctx, method, parameters)
+	}
 	switch {
 	case ownsOutcome && method.Meta.Name == sessionsRollback:
 		payload, err = e.replayRollback(ctx, handler, method, parameters.(protocol.RollbackSessionRequest), key, fingerprint)
-	case ownsOutcome && hasAtomicOutcome(method.Meta.Name):
-		payload, err = e.idempotency.InvokeAtomic(ctx, key, fingerprint, func(complete *operation.AtomicCompletion) error {
-			return handler.commitAtomicOutcome(ctx, method, parameters, complete)
-		})
+	case atomic != nil:
+		payload, err = e.idempotency.InvokeAtomic(ctx, key, fingerprint, atomic)
 	default:
 		payload, err = e.idempotency.Invoke(ctx, key, fingerprint, func() ([]byte, error) {
 			result = execute()
@@ -71,38 +73,67 @@ func (e *Endpoint) replayOperation(ctx context.Context, method *Method, paramete
 	return replayOutcome(method, payload)
 }
 
-func hasAtomicOutcome(name Name) bool {
-	switch name {
-	case SessionsCreate, sessionsFork, feedbackCreate:
-		return true
+func (s *Handler) bindAtomicOutcome(ctx context.Context, method *Method, request any) func(*operation.AtomicCompletion) error {
+	switch method.Meta.Name {
+	case feedbackCreate:
+		in := request.(protocol.FeedbackRequest)
+		return func(complete *operation.AtomicCompletion) error {
+			write, err := s.feedback.Prepare(ctx, feedbackCommand(in))
+			if err != nil {
+				return err
+			}
+			return commitAtomicAcknowledgement(ctx, method, complete, write)
+		}
+	case SessionsCreate:
+		in := request.(protocol.CreateSessionRequest)
+		return func(complete *operation.AtomicCompletion) error {
+			creation, err := s.prepareCreate(ctx, in)
+			return commitCreationOutcome(ctx, method, complete, creation, err)
+		}
+	case sessionsFork:
+		in := request.(protocol.ForkSessionRequest)
+		return func(complete *operation.AtomicCompletion) error {
+			creation, err := s.prepareFork(ctx, in)
+			return commitCreationOutcome(ctx, method, complete, creation, err)
+		}
+	case SessionsUpdate:
+		in := request.(protocol.UpdateSessionRequest)
+		return func(complete *operation.AtomicCompletion) error {
+			return commitSessionViewOutcome(ctx, method, complete, func(finish sessions.ViewCompletion) error {
+				return s.updateSession(ctx, in, finish)
+			}, func(session *protocol.Session) any { return session })
+		}
+	case SessionsImport:
+		in := request.(protocol.ImportSessionRequest)
+		return func(complete *operation.AtomicCompletion) error {
+			return commitSessionViewOutcome(ctx, method, complete, func(finish sessions.ViewCompletion) error {
+				return s.importSession(ctx, in, finish)
+			}, func(session *protocol.Session) any { return &protocol.ImportSessionResponse{Session: session} })
+		}
+	case SessionsDelete:
+		in := request.(protocol.DeleteSessionRequest)
+		return func(complete *operation.AtomicCompletion) error {
+			err := s.deleteSession(ctx, in.SessionID, func(ctx context.Context, write func(context.Context) error) error {
+				return commitAtomicAcknowledgement(ctx, method, complete, write)
+			})
+			return settleAtomicRefusal(ctx, complete, err)
+		}
 	default:
-		return false
+		return nil
 	}
 }
 
-func (s *Handler) commitAtomicOutcome(ctx context.Context, method *Method, request any, complete *operation.AtomicCompletion) error {
-	var creation sessions.Creation
-	var err error
-	switch in := request.(type) {
-	case protocol.FeedbackRequest:
-		write, err := s.feedback.Prepare(ctx, feedbackCommand(in))
-		if err != nil {
-			return err
-		}
-		payload, err := encodeStoredOutcome(protocol.OperationResult{Value: struct{}{}})
-		if err != nil {
-			return err
-		}
-		return complete.Commit(ctx, func(tx context.Context) ([]byte, error) {
-			return payload, write(tx)
-		})
-	case protocol.CreateSessionRequest:
-		creation, err = s.prepareCreate(ctx, in)
-	case protocol.ForkSessionRequest:
-		creation, err = s.prepareFork(ctx, in)
-	default:
-		return fmt.Errorf("idempotency: unsupported atomic command input %T", request)
+func commitAtomicAcknowledgement(ctx context.Context, method *Method, complete *operation.AtomicCompletion, write func(context.Context) error) error {
+	payload, err := encodeAtomicResult(method, struct{}{})
+	if err != nil {
+		return err
 	}
+	return complete.Commit(ctx, func(tx context.Context) ([]byte, error) {
+		return payload, write(tx)
+	})
+}
+
+func commitCreationOutcome(ctx context.Context, method *Method, complete *operation.AtomicCompletion, creation sessions.Creation, err error) error {
 	if err != nil {
 		return commitAtomicFailure(ctx, complete, err)
 	}
@@ -120,6 +151,26 @@ func (s *Handler) commitAtomicOutcome(ctx context.Context, method *Method, reque
 	return err
 }
 
+func commitSessionViewOutcome(
+	ctx context.Context,
+	method *Method,
+	complete *operation.AtomicCompletion,
+	mutate func(sessions.ViewCompletion) error,
+	response func(*protocol.Session) any,
+) error {
+	err := mutate(func(ctx context.Context, write func(context.Context) (sessions.View, error)) error {
+		return complete.Commit(ctx, func(tx context.Context) ([]byte, error) {
+			result, err := write(tx)
+			if err != nil {
+				return nil, err
+			}
+			view := presentSession(result)
+			return encodeAtomicResult(method, response(&view))
+		})
+	})
+	return settleAtomicRefusal(ctx, complete, err)
+}
+
 func (s *Handler) commitRollbackOutcome(ctx context.Context, method *Method, in protocol.RollbackSessionRequest, complete *operation.AtomicCompletion) error {
 	err := s.rollbackHistory(ctx, in, func(ctx context.Context, write func(context.Context) (sessions.RollbackResult, error)) error {
 		return complete.Commit(ctx, func(tx context.Context) ([]byte, error) {
@@ -130,6 +181,10 @@ func (s *Handler) commitRollbackOutcome(ctx context.Context, method *Method, in 
 			return encodeAtomicResult(method, presentRollbackResult(result))
 		})
 	})
+	return settleAtomicRefusal(ctx, complete, err)
+}
+
+func settleAtomicRefusal(ctx context.Context, complete *operation.AtomicCompletion, err error) error {
 	if err == nil || complete.Attempted() {
 		return err
 	}

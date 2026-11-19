@@ -156,29 +156,28 @@ func (s *Handler) CreateSession(ctx context.Context, in protocol.CreateSessionRe
 }
 
 func (s *Handler) DeleteSession(ctx context.Context, id string) error {
-	// The session use case claims the addressed session and every owned
-	// internal-subtask descendant before deleting their durable state atomically.
-	// User-created forks remain independent conversations.
-	if err := s.sessions.DeleteSession(ctx, id); err != nil {
-		if errors.Is(err, rundomain.ErrSessionBusy) {
-			return protocol.NewFailure(protocol.ErrSessionBusy, fmt.Sprintf("session %q or its subtask tree has a run in flight", id), err)
-		}
-		return wireSessionErr(err)
-	}
-	return nil
+	return s.deleteSession(ctx, id, func(ctx context.Context, write func(context.Context) error) error {
+		return write(ctx)
+	})
 }
 
-// UpdateSession applies a sessions.update edit: title (rename), model, cwd
-// (relocate, gated by features.relocate), and favorite are all live. Nil
-// fields are left alone; the updated session is returned. The
-// dispatch layer already rejects an empty SessionID.
+func (s *Handler) deleteSession(ctx context.Context, id string, complete func(context.Context, func(context.Context) error) error) error {
+	return wireSessionMutationErr(s.sessions.DeleteSession(ctx, id, complete), id)
+}
+
 func (s *Handler) UpdateSession(ctx context.Context, in protocol.UpdateSessionRequest) (*protocol.Session, error) {
+	return completeSessionView(func(complete sessions.ViewCompletion) error {
+		return s.updateSession(ctx, in, complete)
+	})
+}
+
+func (s *Handler) updateSession(ctx context.Context, in protocol.UpdateSessionRequest, complete sessions.ViewCompletion) error {
 	var cwd *string
 	if in.Workspace != nil {
 		path := in.Workspace.Path
 		cwd = &path
 	}
-	view, err := s.sessions.UpdateView(ctx, in.SessionID, sessions.Patch{
+	err := s.sessions.Update(ctx, in.SessionID, sessions.Patch{
 		Title: in.Title,
 		ModelSelection: modelchoice.Patch{
 			Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort,
@@ -187,15 +186,35 @@ func (s *Handler) UpdateSession(ctx context.Context, in protocol.UpdateSessionRe
 		Favorite:         in.Favorite,
 		Isolated:         in.Isolated,
 		ExpectedRevision: in.ExpectedRevision,
+	}, complete)
+	return wireSessionMutationErr(err, in.SessionID)
+}
+
+func completeSessionView(command func(sessions.ViewCompletion) error) (*protocol.Session, error) {
+	var response *protocol.Session
+	err := command(func(ctx context.Context, write func(context.Context) (sessions.View, error)) error {
+		view, err := write(ctx)
+		if err != nil {
+			return err
+		}
+		presented := presentSession(view)
+		response = &presented
+		return nil
 	})
 	if err != nil {
-		if errors.Is(err, rundomain.ErrSessionBusy) {
-			return nil, protocol.NewFailure(protocol.ErrSessionBusy, fmt.Sprintf("session %q has a run in flight", in.SessionID), err)
-		}
-		return nil, wireSessionErr(err)
+		return nil, err
 	}
-	out := presentSession(view)
-	return &out, nil
+	return response, nil
+}
+
+func wireSessionMutationErr(err error, sessionID string) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, rundomain.ErrSessionBusy) {
+		return protocol.NewFailure(protocol.ErrSessionBusy, fmt.Sprintf("session %q is busy", sessionID), err)
+	}
+	return wireSessionErr(err)
 }
 
 // ForkSession branches a session into a fresh child that continues from the

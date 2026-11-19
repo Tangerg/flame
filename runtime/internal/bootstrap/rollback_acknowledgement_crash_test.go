@@ -16,7 +16,6 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
@@ -31,16 +30,6 @@ const (
 	rollbackReceiptWrite  = "receipt write"
 	rollbackReceiptCommit = "receipt commit"
 )
-
-type rollbackCommitCrashStore struct{ operation.ReplayStore }
-
-func (s rollbackCommitCrashStore) Transact(ctx context.Context, write func(context.Context) error) error {
-	if err := s.ReplayStore.Transact(ctx, write); err != nil {
-		return err
-	}
-	os.Exit(commandCrashExit)
-	return nil
-}
 
 func TestRollbackAcknowledgementCrashHelper(t *testing.T) {
 	cut := os.Getenv("FLAME_TEST_ROLLBACK_CRASH_CUT")
@@ -75,7 +64,7 @@ func TestRollbackAcknowledgementCrashHelper(t *testing.T) {
 		if restoreType == protocol.RestoreHistory {
 			endpoint, err = delivery.NewEndpoint(api, delivery.EndpointConfig{
 				Lifetime: t.Context(), IdempotencyNamespace: stores.IdempotencyNamespace.String(),
-				IdempotencyStore: rollbackCommitCrashStore{ReplayStore: stores.Idempotency},
+				IdempotencyStore: atomicReceiptCommitCrashStore{ReplayStore: stores.Idempotency},
 				ValidateStorage:  stores.ValidateDirectory,
 			})
 			if err != nil {

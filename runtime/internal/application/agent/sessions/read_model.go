@@ -180,11 +180,7 @@ func (c *Coordinator) View(ctx context.Context, id string) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	views, err := c.views(ctx, []session.Session{value})
-	if err != nil {
-		return View{}, err
-	}
-	return views[0], nil
+	return c.viewForSession(ctx, value)
 }
 
 // CreateView admits a fresh session and returns its fully resolved read model.
@@ -197,12 +193,7 @@ func (c *Coordinator) CreateView(ctx context.Context, title, cwd string) (View, 
 	return creation.View, err
 }
 
-// UpdateView applies an edit and returns its fully resolved read model.
-func (c *Coordinator) UpdateView(ctx context.Context, id string, patch Patch) (View, error) {
-	value, err := c.Update(ctx, id, patch)
-	if err != nil {
-		return View{}, err
-	}
+func (c *Coordinator) viewForSession(ctx context.Context, value session.Session) (View, error) {
 	activities, err := c.Activities(ctx, []string{value.ID()})
 	if err != nil {
 		return View{}, err

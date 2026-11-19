@@ -103,11 +103,7 @@ func (c *Coordinator) rollbackResult(ctx context.Context, sessionID string, drop
 	if err != nil {
 		return RollbackResult{}, err
 	}
-	activities, err := c.Activities(ctx, []string{sessionID})
-	if err != nil {
-		return RollbackResult{}, err
-	}
-	view, err := c.view(current, activities[sessionID])
+	view, err := c.viewForSession(ctx, current)
 	if err != nil {
 		return RollbackResult{}, err
 	}

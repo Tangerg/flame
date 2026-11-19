@@ -72,47 +72,33 @@ func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSess
 	}, nil
 }
 
-// ImportSession recreates a Session from a SessionArtifact under its original
-// identity. Re-importing the same artifact is idempotent; importing over an
-// existing Session restores it atomically.
 func (s *Handler) ImportSession(ctx context.Context, request protocol.ImportSessionRequest) (*protocol.ImportSessionResponse, error) {
+	presented, err := completeSessionView(func(complete sessions.ViewCompletion) error {
+		return s.importSession(ctx, request, complete)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &protocol.ImportSessionResponse{Session: presented}, nil
+}
+
+func (s *Handler) importSession(ctx context.Context, request protocol.ImportSessionRequest, complete sessions.ViewCompletion) error {
 	artifact := request.Artifact
 	if artifact.Version != protocol.SessionArtifactVersion {
-		return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unsupported artifact version %d (want %d)", artifact.Version, protocol.SessionArtifactVersion))
+		return protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unsupported artifact version %d (want %d)", artifact.Version, protocol.SessionArtifactVersion))
 	}
 	if err := validatePortableSize(artifact); err != nil {
-		return nil, err
+		return err
 	}
 	portable, err := portableArtifactFromWire(artifact)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	sessionID := artifact.Session.ID
-
-	// Hand the strictly decoded portable archive to the session use case.
-	// It commits the whole thing as ONE transaction — upsert the
-	// session row, replace existing history (drop old items/runs/tool bodies + clear the
-	// chat log + stale open interrupts), re-seed the messages, re-persist
-	// runs+items+tool bodies — so a mid-sequence failure after the destructive
-	// delete/truncate can't leave the session row live but its history
-	// half-destroyed (an import-over losing the prior history with nothing to
-	// replace it).
-	view, err := s.sessions.RestorePortableSession(ctx, portable)
-	if err != nil {
-		if errors.Is(err, rundomain.ErrSessionBusy) {
-			return nil, protocol.NewFailure(protocol.ErrSessionBusy, fmt.Sprintf("session %q has a run in flight or open interrupt", sessionID), err)
-		}
-		if errors.Is(err, sessions.ErrInvalidPortableSnapshot) {
-			return nil, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
-		}
-		if errors.Is(err, transcript.ErrIdentityConflict) || errors.Is(err, transcript.ErrToolResultIdentityConflict) {
-			return nil, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
-		}
-		return nil, wireSessionErr(err)
+	err = s.sessions.RestorePortableSession(ctx, portable, complete)
+	if errors.Is(err, sessions.ErrInvalidPortableSnapshot) || errors.Is(err, transcript.ErrIdentityConflict) || errors.Is(err, transcript.ErrToolResultIdentityConflict) {
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	}
-
-	presented := presentSession(view)
-	return &protocol.ImportSessionResponse{Session: &presented}, nil
+	return wireSessionMutationErr(err, artifact.Session.ID)
 }
 
 func validatePortableSize(artifact protocol.SessionArtifact) error {

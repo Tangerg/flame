@@ -5,16 +5,19 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
+
+// ViewCompletion keeps the mutation and its exact reply in the same durable
+// decision before a caller can observe the publication.
+type ViewCompletion func(context.Context, func(context.Context) (View, error)) error
 
 // DeleteSession commits history deletion and its resource retirement together.
 // Only the committed responsibility authorizes destruction; failed cleanup
 // retains a durable admission fence for recovery rather than undoing deletion.
-func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error {
+func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string, complete func(context.Context, func(context.Context) error) error) error {
 	deletion, err := NewDeletePlan(sessionID)
 	if err != nil {
 		return err
@@ -35,12 +38,14 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 			if err != nil {
 				return err
 			}
-			pending = append(pending, open...)
+			pending = open
 			if err := c.transientState.QuiesceSession(sessionID); err != nil {
 				return fmt.Errorf("sessions: quiesce process-local Session state before delete: %w", err)
 			}
 			return c.titles.commitHistoryChange(commitCtx, sessionID, func(string) bool { return true }, func() error {
-				return c.writes.ApplyDelete(commitCtx, deletion)
+				return complete(commitCtx, func(tx context.Context) error {
+					return c.writes.ApplyDelete(tx, deletion)
+				})
 			})
 		},
 		func(ctx context.Context) error {
@@ -64,34 +69,31 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 	)
 }
 
-// restoreSession applies a canonical archive and, when requested, derives its
-// session view before releasing the mutation admission. The view projects the
-// value this command committed rather than a fresh read, so another mutation
-// cannot interleave between the durable write and the returned result.
-func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, present bool) (View, error) {
-	if err := snapshot.ValidateToolResults(); err != nil {
-		return View{}, err
+func (c *Coordinator) RestorePortableSession(ctx context.Context, portable PortableSnapshot, complete ViewCompletion) error {
+	snapshot, err := portable.CanonicalSnapshot()
+	if err != nil {
+		return err
 	}
 	sessionID := snapshot.Session.ID()
 	admission, err := c.ClaimIdleSession(ctx, sessionID)
 	if err != nil {
-		return View{}, err
+		return err
 	}
 	defer admission.Release()
 	workspace, err := c.resolveSessionWorkspace(snapshot.Session.Workspace().Path())
 	if err != nil {
-		return View{}, err
+		return err
 	}
 	snapshot.Session, err = snapshot.Session.InstallRestoredWorkspace(workspace)
 	if err != nil {
-		return View{}, err
+		return err
 	}
 	planReplacement, err := c.prepareRestoredPlanReplacement(ctx, sessionID, plan.Document{Steps: snapshot.Plan, Source: snapshot.PlanSource})
 	if err != nil {
-		return View{}, err
+		return err
 	}
 	var restore RestorePlan
-	err = c.goals.WithSessionMutation(
+	return c.goals.WithSessionMutation(
 		ctx,
 		[]string{sessionID},
 		func(ctx context.Context) error {
@@ -104,10 +106,16 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 				if err != nil {
 					return err
 				}
+				view, err := c.view(replacement.State(), activityIdle)
+				if err != nil {
+					return err
+				}
 				if err := c.transientState.QuiesceSession(sessionID); err != nil {
 					return fmt.Errorf("sessions: quiesce process-local Session state before restore: %w", err)
 				}
-				return c.writes.ApplyRestore(ctx, restore)
+				return complete(ctx, func(tx context.Context) (View, error) {
+					return view, c.writes.ApplyRestore(tx, restore)
+				})
 			})
 		},
 		func(ctx context.Context) error {
@@ -121,13 +129,6 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 			return nil
 		},
 	)
-	if err != nil || !present {
-		return View{}, err
-	}
-	// The view is the command's result, not settlement: it projects the value
-	// this command committed while the mutation admission is still held, so no
-	// other writer can move the Session between the write and the answer.
-	return c.view(restore.SessionReplacement().State(), activityIdle)
 }
 
 func (c *Coordinator) prepareSessionRestore(
@@ -146,15 +147,4 @@ func (c *Coordinator) prepareSessionRestore(
 		return session.Replacement{}, err
 	}
 	return session.NextReplacement(current, next)
-}
-
-// RestorePortableSession rebuilds and restores one transport-neutral archive.
-// Boundary codecs decode the archive; aggregate reconstruction and invariant
-// enforcement belong here with the restore use case.
-func (c *Coordinator) RestorePortableSession(ctx context.Context, portable PortableSnapshot) (View, error) {
-	snapshot, err := portable.CanonicalSnapshot()
-	if err != nil {
-		return View{}, err
-	}
-	return c.restoreSession(ctx, snapshot, true)
 }

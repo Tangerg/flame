@@ -93,6 +93,11 @@ author under its new identity. Later forks and rollbacks in the branch can use
 those boundaries after the source Session is deleted. A recorded empty Plan
 clears the branch's current Plan when rolling back to that Run.
 
+A keyed Session edit, deletion or archive import commits its original reply
+with the Session transaction. A retry can recover the same acknowledgement
+after restart or a later edit. Resource retirement becomes enforceable only
+after the history change and acknowledgement commit.
+
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
 Scope v0.62.0 owns complete Tool failure classification. Runtime uses

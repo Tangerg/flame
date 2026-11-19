@@ -34,15 +34,15 @@ type sessionUseCases interface {
 	PrepareFork(context.Context, sessions.ForkSpec) (sessions.Creation, error)
 	CreateView(ctx context.Context, title, cwd string) (sessions.View, error)
 	DefaultModelSelection() modelchoice.Selection
-	DeleteSession(ctx context.Context, sessionID string) error
+	DeleteSession(ctx context.Context, sessionID string, complete func(context.Context, func(context.Context) error) error) error
 	ForkView(ctx context.Context, spec sessions.ForkSpec) (sessions.View, error)
 	ListViewPage(ctx context.Context, filter session.CatalogFilter, cursor string, limit pagination.RequestedLimit) (pagination.Page[sessions.View], error)
 	ExportSession(ctx context.Context, sessionID string, results sessions.ToolResultExport) (sessions.PortableSnapshot, error)
 	MaterialView(ctx context.Context, sessionID string) (sessions.MaterialSnapshot, sessions.View, error)
-	RestorePortableSession(ctx context.Context, snapshot sessions.PortableSnapshot) (sessions.View, error)
+	RestorePortableSession(ctx context.Context, snapshot sessions.PortableSnapshot, complete sessions.ViewCompletion) error
 	RollbackHistory(ctx context.Context, sessionID, toRunID string, complete sessions.RollbackCompletion) error
 	RollbackWorkspace(ctx context.Context, spec sessions.WorkspaceRollbackSpec, encode sessions.RollbackReceiptEncoder) (sessions.RollbackResult, error)
-	UpdateView(ctx context.Context, id string, patch sessions.Patch) (sessions.View, error)
+	Update(ctx context.Context, id string, patch sessions.Patch, complete sessions.ViewCompletion) error
 	View(ctx context.Context, id string) (sessions.View, error)
 }
 
