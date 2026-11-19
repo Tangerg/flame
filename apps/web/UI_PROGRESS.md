@@ -41100,6 +41100,71 @@ directories, ten checkout outputs and the scratch tree. Check the
 reader's continuity when the user changes workbench presentation
 during a file inspection.
 
+### Retained file pages keep their reading mode (2026-11-19)
+
+Wails on `2d6a99ba3` opens all 93 lines of `reading-guide.md` in
+Preview. A wheel page reaches 791 px of a 2,674 px document.
+Submitting line 140 changes the display to Source at 0 px during
+the request. The terminal invalid-line result keeps the accepted
+93 lines in Source at 0 px. The selected mode was tied to the new
+viewer intent while the actual content still came from its cached
+origin. ZCode's `packages/ui/src/previewPaneContent.tsx` renders the
+available file's Markdown using the chosen preview mode.
+
+`FilePreview` associates the current query address with the same
+accepted viewer object that presents it. While a local request
+shows that cached page, renderer selection, explicit mode changes
+and Pierre's line marker use that viewer. The active query and
+destination status follow the requested viewer. Acceptance of a
+new positive-line viewer selects Source and lets Pierre place its
+marker. The retained reader needs no position restore or extra
+focus action.
+
+- EN/light/14 px/Flame Orange at Actual Size. The candidate keeps
+  Preview and the 791 px offset in the 785 px viewport while
+  140–340 waits and after both attempts are rejected. Go to line
+  retains focus. Correcting to 60 holds 60–260. Pointer Source
+  and the Left arrow switch the retained full reader while the
+  request waits. The Composer retains its later focus when the
+  new 60–93 source marks line 60. A further jump to 150 retains
+  that mark through the wait and rejection. Back focuses the
+  original file row and the draft continues as `651432`.
+- ZH/dark/18 px/`#3B82F6` at Actual Size. Native Window Left and
+  separator End set the Dock to 320 px. Preview holds 781 px
+  during the wait and terminal rejection of 140–340. The
+  localized error stays beside the accepted 93-line count and
+  the Composer keeps later focus. Full width and the Dock return
+  both preserve Preview and the error. Reflow measures 474 px
+  in full width and 765 px back at 320 px. Correction accepts
+  70–93 and marks line 70. Back focuses the original row. The
+  draft continues as `6528946`.
+- The standard English Lab opens all 93 lines in Preview,
+  switches to Source with the pointer and back with the Left
+  arrow. Back focuses the file row and the draft continues as
+  `653205`.
+
+Scoped formatting, Web typechecking, 940 keys across eight
+locales, 26 bundle contracts, bootstrap, portable resources,
+module linkage, native build and five canonical Lab documents
+pass on `2d6a99ba3`. The canonical build excludes the private
+fixture. The full Web run records 134 passes and the three
+known Runtime cancellation and Goal recovery failures with
+`internal_error`. The Runtime pin matches the clean
+`fa2afe8be` reproduction above. The focused workspace file and
+hook API test passes. Controlled reads and measurements use
+the isolated fixture in the signed Wails host. Live user file
+changes, VoiceOver speech, physical IME and other platforms
+were outside the exercise.
+
+Four private bundles, four launches and three loopback previews
+complete. Cleanup removes four registrations, eight private
+Library directories, ten checkout outputs and the scratch tree.
+An additional English probe moves keyboard focus from Go to
+line to the retained Preview option during 50–250. Acceptance
+of the marked 50–93 source removes the two mode options and
+focus falls to the document body. The next check is to hand
+off that removed control's focus within the reader.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

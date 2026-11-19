@@ -319,7 +319,7 @@ function FilePreview({
   const [transitionFor, setTransitionFor] = useState<{
     viewer: WorkspaceFileViewer;
     window?: AdjacentLineWindow;
-    previous?: WorkspaceReadFileQuery;
+    previous?: { request: WorkspaceReadFileQuery; viewer: WorkspaceFileViewer };
   }>();
   const transition = transitionFor?.viewer === viewer ? transitionFor : undefined;
   const page = transition?.window;
@@ -335,11 +335,13 @@ function FilePreview({
     refetch,
   } = useWorkspaceReadFile(request);
   const acceptedData = isPlaceholderData ? undefined : response;
-  const previousRequest = acceptedData === undefined ? transition?.previous : undefined;
+  const previousRead = acceptedData === undefined ? transition?.previous : undefined;
   // The exact origin is authoritative even if the query observer still has a placeholder.
-  const previousData = useCachedWorkspaceReadFile(previousRequest);
-  const data = previousRequest ? previousData : response;
-  const displayedRequest = previousData !== undefined ? previousRequest : acceptedData && request;
+  const previousData = useCachedWorkspaceReadFile(previousRead?.request);
+  const data = previousRead ? previousData : response;
+  const displayedRead =
+    previousData !== undefined ? previousRead : acceptedData && request && { request, viewer };
+  const displayedViewer = displayedRead?.viewer ?? viewer;
 
   const retainedPending = previousData !== undefined && isFetching;
   const pagePending = page !== undefined && retainedPending;
@@ -364,12 +366,16 @@ function FilePreview({
     fileRendererCandidates(renderers, extension),
   );
   const wholeFile = !!data && coversWholeFile(data, moreBefore, moreAfter);
-  const [modeFor, setModeFor] = useState<{ intent: object; mode: "rendered" | "source" }>(() => ({
-    intent: viewer,
-    mode: targetLine > 0 ? "source" : "rendered",
+  const defaultMode = displayedViewer.line > 0 ? "source" : "rendered";
+  const [modeFor, setModeFor] = useState<{
+    intent: WorkspaceFileViewer;
+    mode: "rendered" | "source";
+  }>(() => ({
+    intent: displayedViewer,
+    mode: defaultMode,
   }));
-  const mode = modeFor.intent === viewer ? modeFor.mode : targetLine > 0 ? "source" : "rendered";
-  const setMode = (mode: "rendered" | "source") => setModeFor({ intent: viewer, mode });
+  const mode = modeFor.intent === displayedViewer ? modeFor.mode : defaultMode;
+  const setMode = (mode: "rendered" | "source") => setModeFor({ intent: displayedViewer, mode });
   const showRendered = renderer !== undefined && wholeFile && mode === "rendered";
 
   const scrollPort = useRef<HTMLDivElement>(null);
@@ -395,11 +401,11 @@ function FilePreview({
   }, [acceptedData, page, transition, viewer]);
 
   const loadPage = (control: HTMLElement, window: AdjacentLineWindow) => {
-    if (!displayedRequest) return;
+    if (!displayedRead) return;
     if (control.ownerDocument.activeElement === control) {
       scrollPort.current?.focus({ preventScroll: true });
     }
-    setTransitionFor({ viewer, window, previous: displayedRequest });
+    setTransitionFor({ viewer, window, previous: displayedRead });
   };
   const loadEarlier = (event: MouseEvent<HTMLElement>) =>
     loadPage(event.currentTarget, {
@@ -411,9 +417,7 @@ function FilePreview({
     loadPage(event.currentTarget, { startLine: lastShown + 1, endLine: lastShown + laterCount });
   const goToLine = (line: number) => {
     const nextViewer = openWorkspaceFile(workspaceAccess, viewer.path, line);
-    setTransitionFor(
-      displayedRequest ? { viewer: nextViewer, previous: displayedRequest } : undefined,
-    );
+    setTransitionFor(displayedRead ? { viewer: nextViewer, previous: displayedRead } : undefined);
   };
 
   // Set only while FileView presents the source, including as a renderer's fallback;
@@ -458,16 +462,14 @@ function FilePreview({
       ? t("file.error.requestedLine", { line: targetLine })
       : undefined;
   const jumpPending =
-    !page &&
-    targetLine > 0 &&
-    (previousRequest ? retainedPending : isPlaceholderData && isFetching);
+    !page && targetLine > 0 && (previousRead ? retainedPending : isPlaceholderData && isFetching);
   const jumpLabel = rejectedJump
     ? jumpFailureTitle
     : jumpPending
       ? t("file.goToLine.pending", { line: targetLine })
       : undefined;
   const pageError =
-    page && previousRequest && error != null
+    page && previousRead && error != null
       ? {
           title: t("file.error.requestedRange", {
             start: page.startLine,
@@ -668,8 +670,8 @@ function FilePreview({
                       path={viewer.path}
                       content={items[0]!.content}
                       startLine={items[0]!.startLine}
-                      targetLine={targetLine}
-                      intent={acceptedData === undefined ? null : viewer}
+                      targetLine={displayedViewer.line}
+                      intent={displayedRead?.viewer ?? null}
                     />
                   );
                   return (
@@ -690,8 +692,8 @@ function FilePreview({
                   path={viewer.path}
                   content={items[0]!.content}
                   startLine={items[0]!.startLine}
-                  targetLine={targetLine}
-                  intent={acceptedData === undefined ? null : viewer}
+                  targetLine={displayedViewer.line}
+                  intent={displayedRead?.viewer ?? null}
                 />
               )}
               {moreAfter && !showRendered && (
