@@ -172,8 +172,10 @@ export function createWorkspaceNavigation(
     focusFile: (path) => useContextDockStore.getState().focusFile(path),
     openFile: (path, line, origin) => {
       inspectFrom("file", origin);
-      useContextDockStore.getState().setFileViewer({ path, line: line ?? 0 });
+      const viewer = { path, line: line ?? 0 };
+      useContextDockStore.getState().setFileViewer(viewer);
       if (origin || navigation.get().view !== "file") showDockView("file", "alone");
+      return viewer;
     },
     closeFile: () => useContextDockStore.getState().setFileViewer(null),
     adoptSessionScope: (sessionId) => {

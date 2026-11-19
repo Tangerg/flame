@@ -201,8 +201,8 @@ export function openWorkspaceFile(
   path: string,
   line?: number,
   origin?: HTMLElement,
-): void {
-  workspaceAccess.navigation.openFile(path, line, origin);
+): WorkspaceFileViewer {
+  return workspaceAccess.navigation.openFile(path, line, origin);
 }
 
 export function closeWorkspaceFile(workspaceAccess: WorkspaceAccess): void {

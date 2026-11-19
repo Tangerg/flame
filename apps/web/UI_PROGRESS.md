@@ -41028,6 +41028,78 @@ accepted page and its Go to line control. Focus falls to the
 document. The offered recovery returns to the beginning before a
 new attempt.
 
+### Rejected line jumps keep the current file page (2026-11-19)
+
+In Wails, a rejected jump from 60–93 to line 140 removed the
+accepted source and the Go to line trigger. Focus fell to the
+document. The recovery reopened the file at its beginning before
+the user could enter a different number. HeroUI presents the
+validation message beside its input. Flame applies that placement
+to the still available action after its popover closes.
+[HeroUI TextField](https://heroui.com/en/docs/react/components/text-field#validation)
+
+The navigation adapter returns the exact viewer intent it stores.
+`FilePreview` binds the previous query address of a local jump to
+that intent and reuses the cache observer used by adjacent paging.
+The active read owns acceptance. When a local jump is rejected and
+the origin remains cached, the header status names the rejected
+line in the error color. The reader, its range and Go to line
+remain available. A corrected line replaces the error with its
+pending destination. A temporary read error offers Retry. The
+first-open recovery is available when the origin is absent.
+
+- EN/light/14 px/Flame Orange at Actual Size. A wheel page and
+  pointer Next request 60–259 of a 293-line file. Two attempts
+  at 380–580 return the expected invalid-line error. Lines
+  67–105 remain in the same visible reading position and Go to
+  line retains keyboard focus. Return reopens the form. Entering
+  260 requests 260–460 and accepts 260–293. The earlier and later
+  controls are available again after the failed jump.
+- A transport rejection at 100–300 retains 260–293 and offers
+  Retry for line 100. Keyboard Retry hands focus to the reader
+  and reissues 100–300. Acceptance shows 100–293. Back focuses
+  the original row and the draft continues as `641176`.
+- ZH/dark/18 px/`#3B82F6` at Actual Size. Native Window Left
+  and separator End set the Dock to 320 px. A rejected jump to
+  140 keeps lines 60–93 visible and wraps the error below the
+  range. The Composer retains focus after the user moves there
+  during the request. Keyboard paging from the retained result
+  requests and accepts 1–59, with focus in the reader. Back
+  focuses the original row and the draft continues as `6423825`.
+- Removing the exact origin cache entry during an English jump to
+  380 clears its served range and source. The retry wait shows
+  the loading state. Terminal rejection offers Open from start
+  and keyboard activation accepts 1–59. A separate first-open
+  fixture starts at the same line without a prior read. It
+  reaches the same recovery and the pointer opens 1–59.
+- The standard Lab opens all 93 lines in Preview, switches to
+  Source via pointer and back with the Left arrow, then returns
+  to the file row. The draft continues as `643673`.
+
+An identical rejected number shares the current query key.
+Workspace file invalidation can issue a new read when the file
+changes. The native runs exercise a different corrected number and
+the explicit Retry for a transport failure. The isolated fixture
+controls read results and cache eviction in the actual Wails
+host. The first-open fixture seeds a viewer intent. Live user
+filesystem errors, transcript link activation, VoiceOver speech,
+physical IME and other platforms were outside the exercise.
+
+Scoped formatting, Web typechecking, 940 keys across eight locales,
+26 bundle contracts, bootstrap, portable resources, module linkage,
+native build and five canonical Lab documents pass on `c77b70d01`.
+The canonical build excludes the private fixture. The full Web
+run records 134 passes and the three known Runtime cancellation
+and Goal recovery failures with `internal_error`. The Runtime pin
+matches the clean `fa2afe8be` reproduction above. The focused
+bound workspace file and hook API test passes.
+
+Five private bundles, five launches and two loopback previews
+complete. Cleanup removes five registrations, ten private Library
+directories, ten checkout outputs and the scratch tree. Check the
+reader's continuity when the user changes workbench presentation
+during a file inspection.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

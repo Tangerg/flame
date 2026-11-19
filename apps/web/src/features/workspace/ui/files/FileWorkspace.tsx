@@ -6,7 +6,6 @@ import {
   Fragment,
   useId,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
   type ClipboardEventHandler,
@@ -317,14 +316,14 @@ function FilePreview({
   const copy = useCopy(viewer.path, t("file.copyPath"));
   const cwd = resolvedWorkspaceCwd(workspace);
   const targetLine = viewer.line;
-  const initialLineWindow = useMemo(() => initialWindow(targetLine), [targetLine]);
-  const [pageFor, setPageFor] = useState<{
+  const [transitionFor, setTransitionFor] = useState<{
     viewer: WorkspaceFileViewer;
-    window: AdjacentLineWindow;
+    window?: AdjacentLineWindow;
     previous?: WorkspaceReadFileQuery;
   }>();
-  const page = pageFor?.viewer === viewer ? pageFor : undefined;
-  const lineWindow = page?.window ?? initialLineWindow;
+  const transition = transitionFor?.viewer === viewer ? transitionFor : undefined;
+  const page = transition?.window;
+  const lineWindow = page ?? initialWindow(targetLine);
   const resolving = isWorkspaceResolving(workspace);
   const request = resolving ? undefined : { cwd, path: viewer.path, ...lineWindow };
   const {
@@ -336,18 +335,15 @@ function FilePreview({
     refetch,
   } = useWorkspaceReadFile(request);
   const acceptedData = isPlaceholderData ? undefined : response;
-  const previousRequest = acceptedData === undefined ? page?.previous : undefined;
+  const previousRequest = acceptedData === undefined ? transition?.previous : undefined;
   // The exact origin is authoritative even if the query observer still has a placeholder.
   const previousData = useCachedWorkspaceReadFile(previousRequest);
   const data = previousRequest ? previousData : response;
   const displayedRequest = previousData !== undefined ? previousRequest : acceptedData && request;
 
-  const pagePending = previousData !== undefined && isFetching;
-  const jumpLabel =
-    !page && targetLine > 0 && isPlaceholderData && isFetching
-      ? t("file.goToLine.pending", { line: targetLine })
-      : undefined;
-  const pagingUnavailable = isPlaceholderData || pagePending;
+  const retainedPending = previousData !== undefined && isFetching;
+  const pagePending = page !== undefined && retainedPending;
+  const pagingUnavailable = isPlaceholderData || retainedPending;
   const pageLoadingLabel = t("common.loading");
   const pageLoadingStatus = (
     <span aria-hidden="true" {...stylex.props(typeStep.uiMd, vocab.muted)}>
@@ -384,25 +380,26 @@ function FilePreview({
     if (host && viewer.line <= 0) host.scrollTop = 0;
   }, [viewer]);
 
-  const arrival = useRef<{ viewer: object; window: LineWindow } | null>(null);
+  const arrivedPage = useRef<AdjacentLineWindow>(null);
   useLayoutEffect(() => {
     const host = scrollPort.current;
     if (!host || acceptedData === undefined) return;
-    if (arrival.current?.viewer === viewer && arrival.current.window !== lineWindow) {
+    if (page && arrivedPage.current !== page) {
       host.scrollTop = 0;
+      arrivedPage.current = page;
     }
-    arrival.current = { viewer, window: lineWindow };
-    if (page?.previous) {
-      setPageFor((current) => (current === page ? { viewer, window: page.window } : current));
+    if (transition?.previous) {
+      const settled = page ? { viewer, window: page } : undefined;
+      setTransitionFor((current) => (current === transition ? settled : current));
     }
-  }, [acceptedData, lineWindow, page, viewer]);
+  }, [acceptedData, page, transition, viewer]);
 
   const loadPage = (control: HTMLElement, window: AdjacentLineWindow) => {
     if (!displayedRequest) return;
     if (control.ownerDocument.activeElement === control) {
       scrollPort.current?.focus({ preventScroll: true });
     }
-    setPageFor({ viewer, window, previous: displayedRequest });
+    setTransitionFor({ viewer, window, previous: displayedRequest });
   };
   const loadEarlier = (event: MouseEvent<HTMLElement>) =>
     loadPage(event.currentTarget, {
@@ -412,6 +409,12 @@ function FilePreview({
     });
   const loadLater = (event: MouseEvent<HTMLElement>) =>
     loadPage(event.currentTarget, { startLine: lastShown + 1, endLine: lastShown + laterCount });
+  const goToLine = (line: number) => {
+    const nextViewer = openWorkspaceFile(workspaceAccess, viewer.path, line);
+    setTransitionFor(
+      displayedRequest ? { viewer: nextViewer, previous: displayedRequest } : undefined,
+    );
+  };
 
   // Set only while FileView presents the source, including as a renderer's fallback;
   // rendered content keeps the browser's formatted copy and editable fields stay native.
@@ -447,21 +450,35 @@ function FilePreview({
   const icon = fileIconName(viewer.path);
   const { name } = splitFilePath(viewer.path);
   const retained = (acceptedData !== undefined || previousData !== undefined) && !unsupported;
-  const rejectedInitialLine =
-    !page && !retained && targetLine > 0 && workspaceAccess.errors.isInvalidReadRequest(error);
+  const invalidLine = !page && targetLine > 0 && workspaceAccess.errors.isInvalidReadRequest(error);
+  const rejectedJump = invalidLine && previousData !== undefined;
+  const rejectedInitialLine = invalidLine && !retained;
+  const jumpFailureTitle =
+    !page && previousData !== undefined && error != null
+      ? t("file.error.requestedLine", { line: targetLine })
+      : undefined;
+  const jumpPending =
+    !page &&
+    targetLine > 0 &&
+    (previousRequest ? retainedPending : isPlaceholderData && isFetching);
+  const jumpLabel = rejectedJump
+    ? jumpFailureTitle
+    : jumpPending
+      ? t("file.goToLine.pending", { line: targetLine })
+      : undefined;
   const pageError =
     page && previousRequest && error != null
       ? {
           title: t("file.error.requestedRange", {
-            start: page.window.startLine,
-            end: page.window.endLine,
+            start: page.startLine,
+            end: page.endLine,
           }),
           sub: "",
           size: "compact" as const,
         }
       : undefined;
   const readFeedback =
-    retained && error != null && !pagePending ? (
+    retained && error != null && !retainedPending && !rejectedJump ? (
       isFetching ? (
         <SkeletonList count={1} variant="compact" label={t("common.loading")} />
       ) : pageError && !isUnsupportedMethod(error) ? (
@@ -488,7 +505,7 @@ function FilePreview({
           focusTarget={scrollPort}
           unsupported={{ icon, sub: t("file.readRefreshError.sub"), size: "compact" }}
           onRetry={refetch}
-          title={t("file.readRefreshError.title")}
+          title={jumpFailureTitle ?? t("file.readRefreshError.title")}
           sub={t("file.readRefreshError.sub")}
           size="compact"
         />
@@ -505,7 +522,10 @@ function FilePreview({
     <>
       {lineSummary}
       {jumpLabel && " "}
-      <span role="status" {...stylex.props(fp.jumpStatus, vocab.accent)}>
+      <span
+        role="status"
+        {...stylex.props(fp.jumpStatus, rejectedJump ? vocab.negative : vocab.accent)}
+      >
         {jumpLabel}
       </span>
     </>
@@ -550,12 +570,7 @@ function FilePreview({
       actions={
         <>
           {canRender && control}
-          {data && !unsupported && (
-            <GoToLine
-              key={viewer.path}
-              onGo={(line) => openWorkspaceFile(workspaceAccess, viewer.path, line)}
-            />
-          )}
+          {data && !unsupported && <GoToLine key={viewer.path} onGo={goToLine} />}
           <IconButton
             icon={iconGlyph("copy")}
             size="sm"

@@ -220,8 +220,11 @@ File reading navigates adjacent bounded line windows using Runtime's served
 start and end coordinates. Earlier pages retain their requested end at the byte
 cap; later pages begin after the served end. The reader requests Runtime's
 maximum admitted response budget so every permitted source line fits whole.
-Line references begin at the requested line. A same-file jump shows its
+Line references begin at the requested line. An in-reader line jump shows its
 destination beside the line summary while the current page remains visible.
+If Runtime rejects the line request, the reader keeps the current page while it
+is cached and shows the rejected destination. Go to line remains available for
+a corrected line number.
 While an adjacent page loads, the reader keeps the current page visible and
 shows a loading status at the activated edge. The other paging action is
 unavailable during that read. If the read fails, the reader offers to retry the

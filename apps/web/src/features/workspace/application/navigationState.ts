@@ -89,7 +89,7 @@ export interface WorkspaceNavigationPort {
   dock(): WorkspaceDockSnapshot;
   setSettingsPane(pane: string): void;
   focusFile(path: string): void;
-  openFile(path: string, line?: number, origin?: HTMLElement): void;
+  openFile(path: string, line?: number, origin?: HTMLElement): WorkspaceFileViewer;
   closeFile(): void;
   // Adoption and activation are different moves that only look alike. At start-up
   // the location is the authority — a deep link or a surviving renderer already
