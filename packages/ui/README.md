@@ -189,8 +189,8 @@ Navigation history, origin focus and the destination belong to the consumer.
 directory and compact state/count metadata. `DiffFileHeader` keeps the filename
 to two visible lines beside state and reader actions, preserving its full heading
 text and ref. Its row aligns the filename and same-row reader actions on their
-first text baseline; an action that does not fit wraps beneath at its intrinsic
-width. The consumer supplies the complete path in scrolling reader content;
+first text baseline. Its grouped reader actions can wrap below the heading,
+and controls within the group can wrap on their own line. The consumer supplies the complete path in scrolling reader content;
 path-only patch results may omit state/count evidence rather than invent it.
 `DiffFilePath` allows complete directory segments to wrap. Selection and source-return history belong to the consumer;
 these components do not query files or own a second navigation model.
@@ -383,7 +383,8 @@ header for every renderer, including the transcript's highlighted blocks: the re
 label (or `text`), any consumer actions passed as children, a wrap action bound to
 the single page-wide `useCodeWrap` preference, and a copy action that writes the exact
 literal and reports success only after the clipboard accepts it. Callers supply
-localized `CodeActionLabels`; the defaults are English. The wrap label names
+localized `CodeActionLabels`; the defaults are English. `CodeWrapButton` can
+place the same action in persistent reader controls. The wrap label names
 the next action. It is an ordinary button rather
 than a pressed toggle whose label reverses meaning; its active visual indicator
 and the shared wrap preference remain unchanged. Syntax color is a host capability:

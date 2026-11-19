@@ -52,7 +52,7 @@ function firstVisibleLine(
     for (const line of column.querySelectorAll("[data-line][data-line-index]")) {
       const bounds = line.getBoundingClientRect();
       if (bounds.top >= bottom) break;
-      if (bounds.height <= 0 || bounds.bottom <= top) continue;
+      if (Math.min(bounds.bottom, bottom) - Math.max(bounds.top, top) < 1) continue;
 
       // Pierre stamps the same unified,split index pair in both layouts. Paired
       // cells share the second index but have distinct unified indices.
@@ -81,18 +81,25 @@ interface DiffPresentationProps {
   presented: RefObject<PresentedDiff | null>;
 }
 
+function lineLayoutChanged(previous: DiffPresentationProps, current: DiffPresentationProps) {
+  return (
+    previous.options.diffStyle !== current.options.diffStyle ||
+    previous.options.overflow !== current.options.overflow
+  );
+}
+
 class DiffPresentation extends Component<DiffPresentationProps, unknown, DiffLineAnchor | null> {
   private preferredIndex?: string;
 
-  // React captures before FileDiff's child layout effect changes its columns.
+  // React captures before FileDiff's child layout effect reflows its lines.
   override getSnapshotBeforeUpdate(previous: DiffPresentationProps): DiffLineAnchor | null {
-    const { file, options, presented, visible } = this.props;
+    const { file, presented, visible } = this.props;
     const current = presented.current;
     if (
       !visible ||
       !previous.visible ||
       file !== previous.file ||
-      options.diffStyle === previous.options.diffStyle ||
+      !lineLayoutChanged(previous, this.props) ||
       current?.file !== file
     )
       return null;
@@ -108,8 +115,8 @@ class DiffPresentation extends Component<DiffPresentationProps, unknown, DiffLin
     anchor: DiffLineAnchor | null,
   ) {
     const { file, options, presented, visible } = this.props;
-    const layoutChanged = options.diffStyle !== previous.options.diffStyle;
-    if (layoutChanged || file !== previous.file || !visible) this.preferredIndex = undefined;
+    if (!visible || file !== previous.file || lineLayoutChanged(previous, this.props))
+      this.preferredIndex = undefined;
     const current = presented.current;
     if (!anchor || current?.file !== file || !anchor.viewport.contains(current.node.host)) return;
 
@@ -120,9 +127,15 @@ class DiffPresentation extends Component<DiffPresentationProps, unknown, DiffLin
     const bounds = line?.getBoundingClientRect();
     if (!bounds?.height) return;
     const top = viewport.getBoundingClientRect().top + viewport.clientTop;
-    const visibleOffset = Math.max(1 - bounds.height, Math.min(offset, viewport.clientHeight - 1));
+    const unwrapping = previous.options.overflow === "wrap" && options.overflow === "scroll";
+    const visibleOffset =
+      unwrapping && offset + bounds.height <= 0
+        ? 0
+        : Math.max(1 - bounds.height, Math.min(offset, viewport.clientHeight - 1));
+    const lineTop = viewport.scrollTop + bounds.top - top;
+    // A fractional tail of the preceding row would take over the next capture.
     viewport.scrollTo({
-      top: viewport.scrollTop + bounds.top - top - visibleOffset,
+      top: Math.abs(visibleOffset) < 1 ? Math.ceil(lineTop) : Math.round(lineTop - visibleOffset),
       behavior: "instant",
     });
     if (options.diffStyle === "split") this.preferredIndex = index;

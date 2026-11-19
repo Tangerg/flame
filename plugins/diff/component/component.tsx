@@ -28,6 +28,7 @@ import {
 import type { DiffMode, WorkspaceFileChange } from "@flame/runtime-client/wire";
 import {
   Button,
+  CodeWrapButton,
   DiffFileHeader,
   DiffFileList,
   DiffFilePath,
@@ -203,6 +204,11 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const renamedFrom = t("file.renamed");
   const rendered = file ? accepted?.rendered.get(file.path) : undefined;
   const readable = rendered !== undefined && rendered.file.hunks.length > 0;
+  const patchActions = {
+    copy: t("patch.copy"),
+    wrap: t("patch.wrap"),
+    unwrap: t("patch.unwrap"),
+  };
   const showingReader = file !== undefined;
   const returnsToFiles =
     selection.view === "file" && selection.returnTo === "files";
@@ -463,18 +469,21 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               {file && (
                 <DiffFileHeader ref={heading} file={fileSummary(t, file)}>
                   {!file.binary && readable && (
-                    <Select
-                      size="sm"
-                      label={t("layout.label")}
-                      value={layout}
-                      onValueChange={(value) =>
-                        setLayout(value as "unified" | "split")
-                      }
-                      options={[
-                        { value: "unified", label: t("layout.unified") },
-                        { value: "split", label: t("layout.split") },
-                      ]}
-                    />
+                    <>
+                      <Select
+                        size="sm"
+                        label={t("layout.label")}
+                        value={layout}
+                        onValueChange={(value) =>
+                          setLayout(value as "unified" | "split")
+                        }
+                        options={[
+                          { value: "unified", label: t("layout.unified") },
+                          { value: "split", label: t("layout.split") },
+                        ]}
+                      />
+                      <CodeWrapButton labels={patchActions} size="sm" />
+                    </>
                   )}
                 </DiffFileHeader>
               )}
@@ -657,6 +666,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                   source={rendered.source}
                   patch={accepted.diff.visual.patch}
                   layout={layout}
+                  labels={patchActions}
                   t={t}
                 />
               ) : (

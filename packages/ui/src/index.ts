@@ -105,6 +105,7 @@ export {
   CodeBody,
   CodeCaption,
   CodeFrame,
+  CodeWrapButton,
   DiffBody,
   type CodeActionLabels,
 } from "./code-block";

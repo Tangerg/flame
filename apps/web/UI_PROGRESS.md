@@ -32617,6 +32617,63 @@ removes three registrations, six private Library directories, ten checkout
 outputs and the scratch tree. Continue from the next observed reading or
 return issue.
 
+### Keep wrap within reach while reviewing a file (2026-11-20)
+
+In signed Wails on `bdf33587f`, a reader at scroll offset 1281 px
+sees added line 13. The wrap action inside the patch caption is above
+the viewport. Tab from Diff layout reaches the action and pulls the
+reader back to offset 0 and line 1 before activation.
+
+The Diff file header places the existing wrap action beside the layout
+selector above the Panel body. The header lets that group wrap when the
+available width calls for it. The patch caption keeps included-patch
+Copy. The shared `CodeWrapButton` projects the page-wide preference
+that also serves literal code. The existing locale strings name the
+next action. [HeroUI toolbar examples](https://heroui.com/en/docs/react/components/toolbar)
+[ARIA button pattern](https://www.w3.org/WAI/ARIA/apg/patterns/button/)
+
+Pierre restores the same accepted source row across wrap changes. When
+the previous inset would hide a newly unwrapped row, it reveals that
+row from the start. The first candidate exposed a 0.58 px tail of
+line 12 after unwrapping line 13. A second wrap grew that tail into
+the first row and moved line 13 to 223.33 px. The final capture ignores
+subpixel intersections. Restoration rounds an aligned row start into
+that row and rounds other offsets to the nearest pixel.
+
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950, scale 1 and a 320 px Dock.
+  The 284 × 651 px reading viewport keeps its size. Tab reaches the
+  visible wrap button at offset 1281 px. Space keeps added line 13 at
+  −16.67 px from −16.42 px. Pointer unwrap returns it to −16.42 px
+  with focus on the same action.
+- In Side by side, native wheel input places the pair at line 13 at
+  −92.67 px while wrapped. Four consecutive keyboard activations
+  keep both sides at line 13. The unwrapped/wrapped offsets are
+  −0.42/−0.67 px on each cycle. In the 848 px main-view reader,
+  pointer unwrap keeps that pair within 0.25 px. Returning to the
+  Dock retains the chosen wrap state, one wrap action and one Copy
+  action. The draft continues as `834628`.
+- EN/light/14 px/Flame Orange at Actual Size uses the canonical Lab.
+  Enabling wrap in Diff presents Disable word wrap on the literal
+  Trajectory JSON. Disabling it there updates the original Diff
+  control. Binary and metadata-only files offer their evidence;
+  Escape restores the file rows. The draft continues as `833762`.
+
+Scoped formatting, shared UI typecheck and packed consumer test, 44
+plugin script checks, 14 plugin source tests, 20 plugin catalogs across
+eight locales, 137 Web tests, 940 Web keys across eight locales,
+bootstrap, 26 bundle contracts, module linkage, native build and tests,
+and five canonical Lab documents pass. Six existing plugin source tests
+remain skipped. The rebuilt Diff ESM matches the accepted bytes after
+the native gate. The private Wails qualification uses a long captured
+patch and passive reading measurements. Live Git, clipboard bytes,
+VoiceOver, other platforms, browser suites and benchmarks were outside
+this qualification.
+
+Four native launches and five loopback preview launches exit. Cleanup
+removes four registrations, eight private Library directories, ten
+checkout outputs and the scratch tree. Continue from a newly observed
+reading or return issue.
+
 ### Diff filename and reader-action alignment (2026-11-03)
 
 The task remains comparison → find a file → read/layout → current file list →

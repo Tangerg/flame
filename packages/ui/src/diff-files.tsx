@@ -60,9 +60,16 @@ const styles = stylex.create({
   },
   headingCopy: {
     display: "grid",
-    flex: "1 1 12rem",
+    flex: "1 1 min(12rem, 50%)",
     gap: space.s1,
     minWidth: 0,
+  },
+  headingActions: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: layout.controlGap,
+    maxWidth: "100%",
   },
 });
 
@@ -174,7 +181,9 @@ export function DiffFileHeader({
         </Tag>
         {"status" in file && <FileState file={file} />}
       </div>
-      {children}
+      {children && (
+        <div {...stylex.props(styles.headingActions)}>{children}</div>
+      )}
     </div>
   );
 }

@@ -1214,9 +1214,10 @@ CSS-variable theme responds to the selected palette. The former application
 Shiki worker, language registry, queue and HTML cache have been removed. Search,
 line targets and captured copying remain host policies, using public renderer
 roots and original source bytes. Switching between unified and split layouts
-for the same accepted patch keeps its first visible source row at the same
-vertical offset where the viewport allows. Returning from the same paired split
-row keeps the side the reader was viewing.
+or toggling wrap for the same accepted patch keeps its first visible source row
+at the same vertical offset where the viewport allows. If unwrapping would
+hide the preserved row, the reader aligns its start. Returning from the same
+paired split row keeps the side the reader was viewing.
 
 File previews keep their filename to two visible lines beside persistent navigation,
 range and commands. Header groups share a row when their natural widths fit and
