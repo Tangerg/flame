@@ -33444,6 +33444,45 @@ Three signed native launches exit normally. Both loopback previews
 stop and cleanup removes three registrations, six private Library
 directories, ten checkout outputs and the scratch tree.
 
+### Keep Lab branch comparison within tracked files (2026-11-20)
+
+Signed Wails at `0a97e33cc` shows four files in the Lab's Branch
+comparison, including untracked `empty.txt`. The same accepted
+comparison describes its scope as excluding untracked files. Filtering
+to `empty` and opening the result reaches an untracked file reader
+under the merge base.
+
+Runtime adds untracked paths only for Worktree comparisons in
+`runtime/internal/infra/git/diff_source.go`. The Lab's evidence fixture
+now appends `empty.txt` only to Worktree. The existing fixture reader
+derives the manifest and patch from the same scoped file collection.
+Four fixture tests cover Branch and Worktree at workspace and file
+scope. The two Branch cases fail on the original fixture.
+
+- EN/light/14 px/Flame Orange at 1121 × 950. The Worktree filter
+  `empty` has one of four matches. Branch retains the query and shows
+  zero of three matches alongside the correct comparison details.
+  Worktree restores the untracked match. Escape returns to that row,
+  and the conversation draft continues as `10736518`.
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 in a 320 px Dock. Branch
+  contains three tracked entries and shows its complete merge-base
+  commit. Opening `DockResizer.tsx` shows `1 / 3`; Refresh changes
+  `branch-after` to `refreshed-after` at that same baseline. Escape
+  restores the row. Worktree shows four files under HEAD. Returning
+  to the conversation restores the Worktree opener and the draft
+  continues as `10742638`.
+
+Scoped formatting and Web checks pass, including 155 tests, 940 keys
+across eight locales, 26 bundle contracts and plugin resource
+reproduction. `make check-native` and the canonical five-document Lab
+build pass. The native runs use the Lab fixture and the existing Diff
+plugin. Live Runtime reads and other native platforms remain outside
+this run.
+
+Three signed native launches exit normally. Both loopback previews
+stop and cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+
 ### Persistent Diff navigation at default zoom (2026-11-19)
 
 The Wails baseline at `a589bc610` reproduces an interrupted review in a
