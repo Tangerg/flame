@@ -541,6 +541,8 @@ Opening the preview brings the first visible inline body row into view.
 If the inline reader is panned, the preview reveals its trailing visible
 column within the available width.
 Closing it returns to the original inline reading position.
+An inline reader at its horizontal end keeps the last columns visible
+when the conversation width changes.
 
 Legend List owns the transcript viewport and row layout. Main and delegated
 turns use the shared centered reading column for the message, day separator,

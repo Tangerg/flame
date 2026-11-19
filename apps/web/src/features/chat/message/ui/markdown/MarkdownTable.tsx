@@ -96,7 +96,8 @@ function previewColumnOffset(
 
 export function MarkdownTable({ markdownSource, children }: Props) {
   const t = useT();
-  const scroll = useScrollReach();
+  const visible = useContentVisible();
+  const scroll = useScrollReach({ retainHorizontalEnd: visible });
   const reachable = scroll.tabIndex === 0;
   const [preview, setPreview] = useState<"closed" | "open" | "navigated">("closed");
   const previewOpen = preview === "open";
@@ -109,7 +110,6 @@ export function MarkdownTable({ markdownSource, children }: Props) {
   } | null>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
-  const visible = useContentVisible();
   useLayoutEffect(() => {
     const root = frameRef.current;
     const actions = actionsRef.current;

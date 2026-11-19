@@ -40142,6 +40142,71 @@ reader from x861 to x168 at a stable y5838. A second native
 launch of the baseline reproduces the shift with the preview
 closed throughout. This is the next reading-position check.
 
+### Keeping the last table column through reflow (2026-11-19)
+
+Signed Wails at `eadcb35bb` shows the same visible inline
+table at native 125% and Actual Size. Its reader first goes
+from 416/1,277 px at x861 to 526/1,337 px at x811, the valid
+temporary endpoint while the conversation widens. As the
+Dock split settles, it returns to 416/1,265 px at x168 and
+loses the last columns. Both Expand table and Table content
+focus reproduce the sequence. A middle x400 stays at x400.
+Keyboard End on the Dock divider widens the table reader from
+416 to 761 px and settles at x674. Home narrows it to 416 px
+at x674, leaving the last columns out of view.
+
+The visible inline table opts into end retention in the
+existing reachability observer. A scroll event updates the
+end position only while its observed widths still match.
+When either width changes, the observer keeps a held end at
+the new native limit. Mid-table offsets follow WebKit. The
+observer reads the actual viewport and table sizes, and a
+horizontal adjustment preserves the native vertical offset.
+[Resize Observer](https://www.w3.org/TR/resize-observer/)
+[WebKit scroll-area layout and clamping](https://raw.githubusercontent.com/WebKit/WebKit/main/Source/WebCore/rendering/RenderLayerScrollableArea.cpp)
+
+- ZH/dark/18 px/custom blue with full motion at 1121 × 1051.
+  Actual Size from native 125% moves x861 to x811 during
+  layout and then to x849 at the settled size. Both final
+  numeric columns remain visible. Dock End and Home settle
+  at x674 and x849 with y40 and the focused divider retained.
+  Eleven Left presses reach x409. Zoom and Actual Size keep
+  the same middle columns at x407 after native rounding.
+  The wheel reaches y489 at x407, with the backward Composer
+  range at 5 to 3 still live. Right reaches x849. Enter on
+  Expand table shows the last columns and first readable row
+  6 at preview x559 and y306. Pointer Close restores Expand
+  table and the inline x849 and y489. The draft continues
+  as `847965`.
+- EN/light/16 px/Flame Orange with motion off at 1440 × 900.
+  Wheel reading reaches y896 at inline x439. Divider End
+  and Home settle at the respective endpoints x351 and x627.
+  Pointer Collapse and Open return to the same endpoints
+  with the Dock toggle focused. At the settled narrow width,
+  the wrap changes which row is visible at y896.
+- The standard Strategy comparison keeps the fitting inline
+  table after the native window is tiled left. Enter opens its
+  four rows and focuses Table content. Escape followed by Tab
+  reaches Copy table.
+
+Scoped Prettier, full Web check with 137 tests including
+isolated Runtime, 937 locale keys in eight catalogs, 26 bundle
+contracts, native build and five-entry Lab pass. The standard
+assets exclude the private fixture and resize observation
+markers. The independent Runtime commit `18447c04f` advanced
+main before the final Web check. Native acceptance uses captured
+data. RTL appearance, VoiceOver and live provider execution
+remain open.
+
+Four private bundles pass strict signature verification. Four
+launches and three previews terminate. Cleanup removes four app
+registrations, eight Library directories, ten checkout outputs
+and the scratch tree.
+
+The next reflow check will follow the row through a Dock
+resize that changes its line count. At y896 the first
+visible row changes from 20 to 13 when the description wraps.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

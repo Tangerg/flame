@@ -4,7 +4,52 @@ function allowsScrolling(overflow: string): boolean {
   return overflow === "auto" || overflow === "scroll";
 }
 
-export function useScrollReach(): {
+function trackHorizontalEnd(node: HTMLElement) {
+  const direction = getComputedStyle(node).direction === "rtl" ? -1 : 1;
+  let clientWidth = node.clientWidth;
+  let scrollWidth = node.scrollWidth;
+  let atEnd = false;
+
+  const onScroll = () => {
+    // Native clamping can dispatch scroll before the new layout is observed.
+    if (
+      clientWidth > 0 &&
+      scrollWidth > clientWidth + 1 &&
+      node.clientWidth === clientWidth &&
+      node.scrollWidth === scrollWidth
+    ) {
+      atEnd = direction * node.scrollLeft >= scrollWidth - clientWidth - 1;
+    }
+  };
+  onScroll();
+  node.addEventListener("scroll", onScroll, { passive: true });
+
+  return {
+    measure() {
+      const nextClientWidth = node.clientWidth;
+      const nextScrollWidth = node.scrollWidth;
+      if (
+        nextClientWidth <= 0 ||
+        (nextClientWidth === clientWidth && nextScrollWidth === scrollWidth)
+      ) {
+        return;
+      }
+      clientWidth = nextClientWidth;
+      scrollWidth = nextScrollWidth;
+      if (atEnd) {
+        const left = direction * Math.max(0, scrollWidth - clientWidth);
+        if (node.scrollLeft !== left) node.scrollTo({ left, behavior: "instant" });
+      }
+    },
+    disconnect() {
+      node.removeEventListener("scroll", onScroll);
+    },
+  };
+}
+
+export function useScrollReach({
+  retainHorizontalEnd = false,
+}: { retainHorizontalEnd?: boolean } = {}): {
   ref: RefCallback<HTMLElement>;
   tabIndex: 0 | undefined;
 } {
@@ -27,12 +72,17 @@ export function useScrollReach(): {
     (node: HTMLElement | null) => {
       nodeRef.current = node;
       if (!node) return;
-      const observer = new ResizeObserver(measure);
+      const horizontalEnd = retainHorizontalEnd ? trackHorizontalEnd(node) : null;
+      const update = () => {
+        horizontalEnd?.measure();
+        measure();
+      };
+      const observer = new ResizeObserver(update);
       const observe = () => {
         observer.disconnect();
         observer.observe(node);
         for (const child of node.children) observer.observe(child);
-        measure();
+        update();
       };
       const content = new MutationObserver(observe);
       content.observe(node, { childList: true, characterData: true, subtree: true });
@@ -40,10 +90,11 @@ export function useScrollReach(): {
       return () => {
         observer.disconnect();
         content.disconnect();
+        horizontalEnd?.disconnect();
         if (nodeRef.current === node) nodeRef.current = null;
       };
     },
-    [measure],
+    [measure, retainHorizontalEnd],
   );
 
   return { ref, tabIndex: reachable ? 0 : undefined };
