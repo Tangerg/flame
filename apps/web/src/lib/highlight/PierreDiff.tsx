@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { Component, useCallback, useMemo, useRef, type RefObject } from "react";
 import {
   processFile,
   type FileDiff as DiffRenderer,
@@ -28,6 +28,111 @@ const appearance = `:host {
   --diffs-modified-base: var(--color-info);
 }`;
 
+interface PresentedDiff {
+  node: ShadowRoot;
+  file: FileDiffMetadata;
+  renderer: DiffRenderer;
+}
+
+interface DiffLineAnchor {
+  viewport: HTMLElement;
+  index: string;
+  offset: number;
+}
+
+function firstVisibleLine(
+  root: ShadowRoot,
+  viewport: HTMLElement,
+  preferredIndex: string | undefined,
+): DiffLineAnchor | null {
+  const top = viewport.getBoundingClientRect().top + viewport.clientTop;
+  const bottom = top + viewport.clientHeight;
+  let first: DiffLineAnchor | null = null;
+  for (const column of root.querySelectorAll("[data-code]")) {
+    for (const line of column.querySelectorAll("[data-line][data-line-index]")) {
+      const bounds = line.getBoundingClientRect();
+      if (bounds.top >= bottom) break;
+      if (bounds.height <= 0 || bounds.bottom <= top) continue;
+
+      // Pierre stamps the same unified,split index pair in both layouts. Paired
+      // cells share the second index but have distinct unified indices.
+      const index = line.getAttribute("data-line-index")!;
+      const offset = bounds.top - top;
+      const paired = first && index.split(",")[1] === first.index.split(",")[1];
+      if (
+        !first ||
+        (paired
+          ? index === preferredIndex ||
+            (first.index !== preferredIndex && column.hasAttribute("data-additions"))
+          : offset < first.offset)
+      ) {
+        first = { viewport, index, offset };
+      }
+      break;
+    }
+  }
+  return first;
+}
+
+interface DiffPresentationProps {
+  file: FileDiffMetadata;
+  options: FileDiffOptions<undefined, undefined>;
+  visible: boolean;
+  presented: RefObject<PresentedDiff | null>;
+}
+
+class DiffPresentation extends Component<DiffPresentationProps, unknown, DiffLineAnchor | null> {
+  private preferredIndex?: string;
+
+  // React captures before FileDiff's child layout effect changes its columns.
+  override getSnapshotBeforeUpdate(previous: DiffPresentationProps): DiffLineAnchor | null {
+    const { file, options, presented, visible } = this.props;
+    const current = presented.current;
+    if (
+      !visible ||
+      !previous.visible ||
+      file !== previous.file ||
+      options.diffStyle === previous.options.diffStyle ||
+      current?.file !== file
+    )
+      return null;
+    const viewport = current.node.host.closest<HTMLElement>('[data-slot="panel-body"]');
+    return viewport?.isConnected && viewport.clientHeight > 0 && viewport.scrollTop > 0
+      ? firstVisibleLine(current.node, viewport, this.preferredIndex)
+      : null;
+  }
+
+  override componentDidUpdate(
+    previous: DiffPresentationProps,
+    _state: unknown,
+    anchor: DiffLineAnchor | null,
+  ) {
+    const { file, options, presented, visible } = this.props;
+    const layoutChanged = options.diffStyle !== previous.options.diffStyle;
+    if (layoutChanged || file !== previous.file || !visible) this.preferredIndex = undefined;
+    const current = presented.current;
+    if (!anchor || current?.file !== file || !anchor.viewport.contains(current.node.host)) return;
+
+    const { viewport, index, offset } = anchor;
+    const line = current.node.querySelector(
+      `[data-code] [data-line][data-line-index="${CSS.escape(index)}"]`,
+    );
+    const bounds = line?.getBoundingClientRect();
+    if (!bounds?.height) return;
+    const top = viewport.getBoundingClientRect().top + viewport.clientTop;
+    const visibleOffset = Math.max(1 - bounds.height, Math.min(offset, viewport.clientHeight - 1));
+    viewport.scrollTo({
+      top: viewport.scrollTop + bounds.top - top - visibleOffset,
+      behavior: "instant",
+    });
+    if (options.diffStyle === "split") this.preferredIndex = index;
+  }
+
+  override render() {
+    return <FileDiff fileDiff={this.props.file} options={this.props.options} />;
+  }
+}
+
 export function PierreDiff({ patch, layout, label, wrapped = false }: DiffSourceProps) {
   const pool = useWorkerPool();
   if (!pool) throw new Error("diff rendering requires its shared worker pool");
@@ -44,11 +149,7 @@ export function PierreDiff({ patch, layout, label, wrapped = false }: DiffSource
     return parsed;
   }, [patch]);
   // The public post-render handle binds selection to this renderer's root and retires with it.
-  const root = useRef<{
-    node: ShadowRoot;
-    file: FileDiffMetadata;
-    renderer: DiffRenderer;
-  } | null>(null);
+  const root = useRef<PresentedDiff | null>(null);
   const rendered = useCallback(
     (node: HTMLElement, renderer: DiffRenderer, phase: PostRenderPhase) => {
       if (phase !== "unmount" && node.shadowRoot)
@@ -87,7 +188,7 @@ export function PierreDiff({ patch, layout, label, wrapped = false }: DiffSource
         if (visible && root.current) copyDiffSelection(event, root.current.node, root.current.file);
       }}
     >
-      <FileDiff fileDiff={file} options={options} />
+      <DiffPresentation file={file} options={options} visible={visible} presented={root} />
     </ScrollRegion>
   );
 }

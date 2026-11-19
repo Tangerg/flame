@@ -32566,6 +32566,57 @@ clipboard bytes, VoiceOver, live Runtime, browser visual suites and
 benchmarks were outside this scope. The owned apps, preview, registrations,
 profiles, build outputs and temporary logs are removed.
 
+### Keep the source line when switching Diff layouts (2026-11-20)
+
+In signed Wails on `ad4bddc04`, a narrow Dock shows added line 13 at
+−16.42 px from the reading viewport's top. Changing Unified to Side by
+side leaves the body at 1281 px and moves the first visible source to
+the pair at line 45. The layout selector retains focus. The same numeric
+scroll offset now points to a different part of the patch.
+
+The Web Pierre adapter captures the first visible source line and its
+vertical inset before FileDiff replaces its columns. The pinned
+renderer gives each source row the same index pair across the two
+layouts. The adapter uses that identity to restore the line in the
+existing Panel body after the render, subject to the new scroll range.
+If the reader returns from the same paired row, the previous source side
+guides the handoff. A different paired row starts from its newer side.
+The change applies to layout switches within one accepted patch.
+[React pre-update snapshots](https://react.dev/reference/react/Component#getsnapshotbeforeupdate)
+[Pierre renderer lifecycle](https://diffs.com/docs)
+[CSS Scroll Anchoring](https://www.w3.org/TR/css-scroll-anchoring/)
+
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 and scale 1 with a 320 px Dock.
+  The 284 × 651 px body returns added line 13 at −16.42 px in both
+  directions, with scroll offsets 1281 → 489 → 1281. Deleted line 20
+  returns to its deletion side at −18.17 px. After native wheel input
+  reaches a different pair, Unified opens on added line 48 at −18.17 px.
+  The layout selector retains keyboard focus after the choices.
+- In the main view, whose reader is 848 px wide, added line 48 remains at
+  −18.47 px while switching to Side by side. Returning to the Dock keeps
+  the layout. Files focuses the accepted DockResizer row. From that file
+  at scroll offset 465 px, Next opens `session.go` at 0 px. Escape restores
+  its row and the composer draft continues as `822614`.
+- EN/light/14 px/Flame Orange at Actual Size uses the canonical Lab.
+  Escape closes the layout menu and returns focus to its existing choice.
+  The changed files list retains its current file. The binary
+  `image.bin` shows its evidence message, Escape restores its row and
+  the composer draft continues as `823759`.
+
+Scoped formatting, the full Web gate with 137 tests and 940 keys across
+eight locales, bootstrap, plugin resources, 26 bundle contracts, module
+linkage, the macOS build and native tests, and five canonical Lab
+documents pass. The private fixture supplies a two-file workspace patch
+with long replacements and a passive visible-line readout. The canonical
+build excludes that fixture variation. Live Git, VoiceOver, other
+platforms, browser suites and performance benchmarks were outside this
+qualification.
+
+Three native launches and three loopback preview launches exit. Cleanup
+removes three registrations, six private Library directories, ten checkout
+outputs and the scratch tree. Continue from the next observed reading or
+return issue.
+
 ### Diff filename and reader-action alignment (2026-11-03)
 
 The task remains comparison → find a file → read/layout → current file list →
