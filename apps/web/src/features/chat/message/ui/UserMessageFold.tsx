@@ -1,10 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
 import { type ReactNode, useLayoutEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useT } from "@/lib/i18n/index";
 import { Icon } from "@/ui/index";
 import { TextButton } from "@/ui/index";
 import { space } from "@flame/ui/tokens.stylex";
 const FOLDED_LINES = 7;
+const FADE_LINES = 2;
+const FADE_MASK = `linear-gradient(to bottom, #000 calc(100% - ${FADE_LINES}lh), transparent)`;
 
 const styles = stylex.create({
   frame: { position: "relative" },
@@ -13,15 +16,25 @@ const styles = stylex.create({
     overflow: "hidden",
   },
   fade: {
-    maskImage: "linear-gradient(to bottom, #000 calc(100% - 2lh), transparent)",
-    WebkitMaskImage: "linear-gradient(to bottom, #000 calc(100% - 2lh), transparent)",
+    maskImage: FADE_MASK,
+    WebkitMaskImage: FADE_MASK,
   },
   toggle: { marginTop: space.s1 },
 });
 
+const revealFold = Symbol();
+type FoldFrame = HTMLDivElement & { [revealFold]?: (range: Range) => void };
+
+export function revealUserMessageFold(element: HTMLElement, range?: Range): boolean {
+  const reveal = (element as FoldFrame)[revealFold];
+  if (!reveal) return false;
+  if (range) reveal(range);
+  return true;
+}
+
 export function UserMessageFold({ children }: { children: ReactNode }) {
   const t = useT();
-  const frame = useRef<HTMLDivElement>(null);
+  const frame = useRef<FoldFrame>(null);
   const toggle = useRef<HTMLButtonElement>(null);
   const [overflows, setOverflows] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -55,6 +68,37 @@ export function UserMessageFold({ children }: { children: ReactNode }) {
     const focused = element.ownerDocument.activeElement;
     if (focused && element.contains(focused)) focused.scrollIntoView({ block: "nearest" });
   }, [expanded]);
+
+  useLayoutEffect(() => {
+    const element = frame.current;
+    if (!element) return;
+    element[revealFold] = (range) => {
+      if (
+        expanded ||
+        !overflows ||
+        !element.contains(range.startContainer) ||
+        !element.contains(range.endContainer)
+      ) {
+        return;
+      }
+      const clip = element.getBoundingClientRect();
+      const clearBottom = clip.bottom - (FADE_LINES * clip.height) / FOLDED_LINES;
+      const obscured = [...range.getClientRects()].some(
+        (box) =>
+          box.width > 0 &&
+          box.height > 0 &&
+          (box.left < clip.left - 0.5 ||
+            box.right > clip.right + 0.5 ||
+            box.top < clip.top - 0.5 ||
+            box.bottom > clearBottom + 0.5),
+      );
+      // Find measures the transcript row immediately after this explicit reveal.
+      if (obscured) flushSync(() => setExpanded(true));
+    };
+    return () => {
+      delete element[revealFold];
+    };
+  }, [expanded, overflows]);
 
   const folded = !expanded;
   return (

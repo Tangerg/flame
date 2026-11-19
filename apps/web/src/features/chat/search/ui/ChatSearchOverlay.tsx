@@ -15,6 +15,7 @@ import { useAppearanceProjection } from "@/lib/appearance";
 import { useRequireCompleteTranscript, useTranscriptReader } from "@/ui/agent/transcript-reader";
 import { useActiveSessionId } from "@/features/agent/public/session";
 import { type ComposerAccess, useComposer } from "@/features/composer/public/composer";
+import { revealUserMessageFold } from "@/features/chat/message/ui/UserMessageFold";
 import { readingColumn as rc } from "@/features/chat/public/message/rendering";
 import {
   clearChatSearchHighlights,
@@ -162,7 +163,7 @@ function SessionChatSearchOverlay() {
       if (!bar.contains(document.activeElement)) readingWitness.current.visible = false;
       if (readingWitness.current.visible) holdMatch(list, currentRange);
       if (sameFrame(readingWitness.current.frame, frame)) return;
-      if (readingWitness.current.visible) revealMatch(list, currentRange, "nearest", false);
+      if (readingWitness.current.visible) revealMatch(list, currentRange, "reflow", false);
       readingWitness.current.frame = readingFrame(currentRange, scroller);
     };
     const onScroll = (event: Event) => {
@@ -217,7 +218,7 @@ function SessionChatSearchOverlay() {
   const present = (range: Range | undefined) => {
     const scroller = list?.getScrollableNode();
     if (list && range)
-      revealMatch(list, range, "center", animatesReveal(appearance.read().motionScale));
+      revealMatch(list, range, "explicit", animatesReveal(appearance.read().motionScale));
     readingWitness.current = {
       visible: !!range && !!scroller && isReadable(range, scroller),
       frame: range && scroller ? readingFrame(range, scroller) : [],
@@ -431,7 +432,7 @@ function holdMatch(list: ReadingListHandle, range: Range): void {
 function revealMatch(
   list: ReadingListHandle,
   range: Range,
-  placement: "center" | "nearest",
+  reason: "explicit" | "reflow",
   animated: boolean,
 ): void {
   const scroller = list.getScrollableNode();
@@ -440,6 +441,7 @@ function revealMatch(
   if (!scroller || !row || !item) return;
   for (const element of clippingAncestors(range, scroller)) {
     if (element === scroller) break;
+    if (revealUserMessageFold(element, reason === "explicit" ? range : undefined)) continue;
     const word = rangeEdges(range);
     if (!word) return;
     const clip = clipEdges(element);
@@ -459,7 +461,7 @@ function revealMatch(
   const start = parseFloat(style.scrollPaddingTop) || 0;
   const end = parseFloat(style.scrollPaddingBottom) || 0;
   const spare =
-    placement === "center" ? Math.max(0, (scroller.clientHeight - start - end - length) / 2) : 0;
+    reason === "explicit" ? Math.max(0, (scroller.clientHeight - start - end - length) / 2) : 0;
   void list.scrollIndexIntoView({
     index: row.index,
     itemOffset: word.top - item.getBoundingClientRect().top,

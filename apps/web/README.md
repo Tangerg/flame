@@ -215,11 +215,12 @@ choices and fields read-only, and refuses late pointer, paste or IME changes,
 until canonical history replaces the admitted answer or submission becomes
 available again.
 
-Conversation search covers revealed message text, including text reached by
-scrolling. Collapsed, hidden and inert content is excluded regardless of its
-mounting history. Expand a disclosure to include its content; closing it updates
-the count and retires its ranges. Search reads that visibility projection and
-preserves the disclosure and keyboard focus owners.
+Conversation search covers message text, including text reached by
+scrolling and the full text of folded user messages. Activating a match opens a
+user message if its fold clips or fades the match. Matches in the clear preview
+leave the message folded. Hidden and inert disclosure content is excluded
+regardless of its mounting history. Closing a disclosure updates the count and
+retires its ranges. Search preserves the keyboard focus and disclosure owners.
 Closing Find restores the original Composer's last editing selection when its
 mounted document is still current. The Composer owns that return through
 Lexical, and the search bar retains its ordinary return for other controls.

@@ -23983,6 +23983,61 @@ preview servers exit. Two registrations, four Library paths, ten checkout
 output roots and the scratch tree are removed. Live Runtime, physical IME and
 VoiceOver remain outside this capture.
 
+### Reveal the active Find match in a folded message (2026-11-20)
+
+On signed English Wails at `db05a6263`, Find reports
+`1 / 1` for `Folded horizon marker` in a 1,088 px user
+message. Its 182 px preview scrolls internally by 903 px.
+The highlighted match ends at y=277.4, 0.6 px from the
+fold's bottom edge. The existing two-line fade leaves the
+word barely legible. An earlier, clear match stays in the
+same folded preview at local scroll zero.
+
+`UserMessageFold.tsx` exposes a reveal request on its
+exact frame. Its own clipping and fade dimensions decide
+when the current match needs the existing expanded state.
+Query changes and Previous or Next request this reveal.
+`ChatSearchOverlay.tsx` uses the resulting layout to
+position the same range through the transcript reader.
+Passive reflow skips the disclosure frame. Other nested
+scrollers use their existing reveal path. ZCode's Find
+navigator provides a reference for explicit next and
+previous selection. The HTML reveal-before-scroll pattern
+and CSS clipping behavior inform the local handoff.
+[HTML ancestor revealing](https://html.spec.whatwg.org/multipage/interaction.html#ancestor-revealing-algorithm).
+[CSS overflow](https://www.w3.org/TR/css-overflow-3/#valdef-overflow-hidden).
+
+- EN/light/14 px/Flame Orange at 1121 × 950 and a 560.5 px
+  Dock. Opening fold witness is visible and stays folded.
+  Changing the query reveals the full tail, with the
+  highlight at y=574.6–593.4 inside the transcript's
+  y=86–798.8 viewport. The fold's local scroll remains zero,
+  its mask is gone, and the Find field keeps focus and
+  `1 / 1`. Escape restores Composer and clears the
+  highlight. Draft `9537` continues as `9537426`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. The query
+  `fold` starts at `1 / 2` in the closed preview. Return
+  reaches `2 / 2`, expands the message and reveals the
+  tail within the outer viewport. Manual 收起 restores
+  the preview at local scroll zero. 上一个匹配 keeps
+  the prefix folded and 下一个匹配 opens the tail again.
+  Escape from that button returns to the existing Composer.
+  Draft `9542` continues as `9542638`.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and
+five canonical Lab documents pass. Native cases use captured
+messages. VoiceOver, physical IME composition, live Send,
+browser suites and benchmarks were outside the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. The Chinese Find
+placeholder describes expanded messages. Review that wording
+and whether Find matches text across visible Markdown soft
+breaks next.
+
 ### Find follows rendered reply updates
 
 Find now refreshes its matches when the presented reply changes. An open query
