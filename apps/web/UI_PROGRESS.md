@@ -41142,6 +41142,48 @@ loopback previews exit. Cleanup removes four registrations,
 eight private Library directories, ten checkout outputs and the
 scratch tree. Continue with a verified reading and return path.
 
+### Include the absolute range for a whole source selection (2026-11-20)
+
+Signed Wails on `96f548c3e` accepts lines 6–206 of a
+470-line file. Cmd+A starts and ends on the same Pierre source
+column, at offsets 0 and 202. The composed selection contains
+13,465 characters. Ctrl+Shift+Q inserts the 201 served lines,
+from record 006 to 206, with only the workspace path in the label.
+
+The same declared reader and composed range still determine the
+quote. When both endpoints address marked rows, the existing
+line calculation applies. A complete selection of the precise
+Pierre File source column takes the first and last marked row.
+The unmarked synthetic trailing row stays outside the resulting
+address. The existing formatter and captured Composer action
+use that range with the selected text. [Selection API](https://www.w3.org/TR/selection-api/#dom-selection-getcomposedranges)
+
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 and a 320 px Dock.
+  Cmd+A and Ctrl+Shift+Q give `:6-206` and the same 201 body
+  lines in draft `9042`. Typing `817` continues outside the
+  code fence. Go to line 450 restores its trigger and presents
+  450–470. The next quote uses `:450-470` and exactly 21 body
+  lines, ending with record 470. Draft `9063` continues with
+  `428` and the same file remains open.
+- EN/light/14 px/Flame Orange in a 560.5 px Dock. All eight
+  lines of the short file quote as `:1-8` in draft `9037`.
+  Double-click and the existing right-click action then quote
+  only `row` as `:4`. Draft `9054` continues with `781`
+  in the same Composer, with the file still open.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and
+five canonical Lab documents pass. Signed Wails uses captured
+file windows and the production quote and shortcut plugins.
+Clipboard transfer, VoiceOver, live filesystem reads, Send,
+browser suites and benchmarks were outside the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Inspect a verified
+path from quoted material back to writing next.
+
 ### File continuation names its planned window (2026-11-19)
 
 The previous native acceptance reads `reading-guide.md` lines 1–59 of 93

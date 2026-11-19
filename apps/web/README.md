@@ -1240,8 +1240,9 @@ An accepted file source jump marks its target with the palette's bounded
 selection fill and an inset leading rule, including when the whole file fits in
 the reader. The jump centers the row vertically and keeps the current horizontal
 offset. Line numbers, quote addresses and target marks stop at the last served
-line. Quote selection uses the composed selection within one visible reader
-and includes the file's absolute line range when both endpoints address served
+line. Quote selection uses the composed selection within one visible reader.
+A whole Source selection includes the page's absolute served range. A partial
+selection includes its absolute line range when both endpoints address served
 lines.
 
 When WebKit retains the Composer's range, the focused File viewport uses the
