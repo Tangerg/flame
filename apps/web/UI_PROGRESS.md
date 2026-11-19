@@ -40655,6 +40655,75 @@ Cleanup removes six registrations, twelve private Library directories,
 ten checkout outputs and the scratch tree. Continue by checking how a valid
 line action shows its reading destination in the file itself.
 
+### Visible file line destinations (2026-11-19)
+
+At `0076e2c19`, actual Wails opens the eight-line `DockResizer.tsx`
+at its captured line 6. Go to line 4 closes the form and restores
+the trigger focus. All eight rows are visible. Each reads
+`rgb(234, 234, 234)` as its background, and neither target has a
+mark. The fourth row is at the same 159 px viewport offset before
+and after the jump. With the whole file in view, scrolling supplies
+no indication of the destination.
+
+The Pierre migration moved source placement into the File renderer
+and omitted the previous target mark. The existing post-render pass now marks
+the source row whose absolute line matches the accepted intent. It uses
+the established selected fill and a 2 px inset accent rule. The same pass
+clears the mark when the target or accepted window moves. Placement keeps
+its existing file-and-intent guard. A direct row style keeps the library's
+ordinary source layout. The pinned renderer's custom stylesheet option
+would switch that layout to its custom grid.
+
+Better Colors informs the semantic fill and measured ink. Read-only
+ZCode code-viewer supplies the reference for mapping a source range to
+its presented offset while keeping placement a separate operation.
+Pierre's public File rendering supplies the source rows.
+[Pierre source rendering](https://diffs.com/)
+
+- EN/light/14 px/Flame Orange at Actual Size and full motion. The loaded
+  line 6 has the only mark. Go to line 4 moves it to line 4 and returns
+  focus to the trigger. The fourth row stays at 159 px with a 20 px
+  height. Cmd+A from the named source reader creates a native selection
+  with both endpoints inside Pierre's source. The mark remains present.
+  Continued editing retains the unsent `58420751`.
+- ZH/dark/18 px/`#3B82F6` at Actual Size and full motion. Native Window
+  Left is 1121 px, and End on the separator produces a 320 px Dock.
+  Go to line 4 marks the correct short-file row. For `reading-guide.md`,
+  the private data fixture supplies the accepted window 60–93. Its
+  first row is marked as absolute line 60. Loading 1–59 clears the
+  mark and focuses the source. A native wheel page changes the first
+  row's relative top from 151 to -328 px. Loading 60–93 and Open full
+  width both show the same line 60 mark. Closing to the conversation
+  retains the unsent `58391682`.
+- EN/light/14 px uses the standard Lab. The line 2 destination is
+  visible in the screenshot as a tinted row with the leading rule.
+  Tab from Go to line reaches Copy path. Back to files reaches the
+  file tree. The draft continues as `58205438`.
+
+The measured target fill is `#f5ece8` in the English sample and
+`#121924` in the Chinese sample. The lowest measured syntax contrast
+on line 4 is **5.14:1** and **8.59:1**, respectively. The stroke
+uses the same accent ink and has those ratios against the target fill.
+The plain text on Chinese line 60 measures **15.22:1** against its fill.
+The measurements use computed sRGB from the native host and the
+existing Culori contrast function.
+[WCAG contrast guidance](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)
+
+Scoped Prettier, the 137 Web tests, 939 locale keys, 26 bundle contracts,
+bootstrap, portable resource and module linkage checks, native build
+and five canonical Lab documents pass. The independent Runtime commit
+`170278fd6` advances `main` after the first checks. The reviewed UI
+diff is checked on that base. The private Lab uses a read-only shadow
+row probe and captured file windows. The standard build uses the ordinary
+Lab assets. Physical IME, spoken VoiceOver and other platforms were
+outside the exercised path.
+
+Four signed private bundles, five launches and four previews complete.
+Cleanup removes four registrations, eight private Library directories,
+ten checkout outputs and the scratch tree. The native 1–59 window
+labels the next action with 200 lines. The accepted file has 34 lines
+remaining. The next task is to name the actual planned page.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

@@ -1199,8 +1199,9 @@ path. File requests,
 line placement, renderer mode and source-return history retain their existing
 owners.
 
-The target source line uses the palette's bounded selection fill so its line
-number and syntax retain their reading contrast after a line jump.
+An accepted file source jump marks its target with the palette's bounded
+selection fill and an inset leading rule. The mark identifies the destination
+when the whole file already fits in the reader.
 
 When WebKit retains the Composer's range, the focused File viewport uses the
 shared relative line scroll for Up and Down in both Preview and Source.

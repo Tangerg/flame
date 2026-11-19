@@ -15,6 +15,8 @@ import {
 registerCustomCSSVariableTheme("flame-code", codeSyntaxColors);
 export const CODE_RENDERING = { preferredHighlighter: "shiki-js" as const, theme: "flame-code" };
 
+const FILE_TARGET_LINE = "data-file-target-line";
+
 const styles = stylex.create({
   // Let CodeBody scroll the full width of unwrapped source.
   readerScroll: {
@@ -80,13 +82,22 @@ export function PierreFile({
           const number = Number(line.dataset.line) + startLine - 1;
           markQuoteLine(line, number);
           markReaderLine(line, number - startLine);
-          if (
-            number === targetLine &&
-            intent &&
-            (presentedIntent.current?.file !== file || presentedIntent.current.intent !== intent)
-          ) {
-            line.scrollIntoView({ block: "center" });
-            presentedIntent.current = { file, intent };
+          if (number === targetLine && intent) {
+            // Style only this row so Pierre keeps its ordinary source layout.
+            line.setAttribute(FILE_TARGET_LINE, "");
+            line.style.backgroundColor = "var(--wash-selected)";
+            line.style.boxShadow = "inset 2px 0 0 var(--color-accent-text)";
+            if (
+              presentedIntent.current?.file !== file ||
+              presentedIntent.current.intent !== intent
+            ) {
+              line.scrollIntoView({ block: "center" });
+              presentedIntent.current = { file, intent };
+            }
+          } else if (line.hasAttribute(FILE_TARGET_LINE)) {
+            line.removeAttribute(FILE_TARGET_LINE);
+            line.style.removeProperty("background-color");
+            line.style.removeProperty("box-shadow");
           }
         }
         if (selectionContentRef)
