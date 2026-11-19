@@ -11,6 +11,7 @@ import (
 	"log/slog"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	framecall "github.com/Tangerg/frame/call"
@@ -76,7 +77,14 @@ func (e *Endpoint) replayOperation(ctx context.Context, method *Method, paramete
 	if executed {
 		return result
 	}
-	return replayOutcome(method, payload)
+	replayed := replayOutcome(method, payload)
+	if ownsOutcome && method.Meta.Name == RunsCancel && replayed.Failure == nil {
+		response := replayed.Value.(*protocol.CancelRunResponse)
+		if response.RootRun != nil && !handler.requestCanUseFeature(ctx, protocol.FeatureChildRuns) {
+			return failed(projectError(wireCancellationError(runs.ErrChildRunNotAllowed)))
+		}
+	}
+	return replayed
 }
 
 func (s *Handler) bindAtomicOutcome(ctx context.Context, method *Method, request any) func(*operation.AtomicCompletion) error {

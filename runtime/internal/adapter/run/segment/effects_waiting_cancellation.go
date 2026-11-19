@@ -17,8 +17,10 @@ import (
 func (e *Effects) CommitWaitingSubtreeCancellation(
 	ctx context.Context,
 	commit runs.WaitingSubtreeCancellationCommit,
+	record runs.WaitingSubtreeCancellationReceipt,
 ) (runs.WaitingSubtreeCancellationResult, error) {
-	var target, root run.Run
+	var result runs.WaitingSubtreeCancellationResult
+	var projected bool
 	checkpoint := commit.Checkpoint()
 	err := e.runCheckpointTx(ctx, commit.CommitID().String(), &checkpoint, func(ctx context.Context) error {
 		if err := e.claimWaitingCancellation(ctx, commit); err != nil {
@@ -31,24 +33,38 @@ func (e *Effects) CommitWaitingSubtreeCancellation(
 		if err != nil {
 			return err
 		}
-		var targetFound bool
-		target, targetFound = terminalByID[commit.TargetRunID()]
+		target, targetFound := terminalByID[commit.TargetRunID()]
 		if !targetFound {
 			return fmt.Errorf("segment: target Run %q was not terminalized", commit.TargetRunID())
 		}
 
-		root = commit.RootRun()
-		return e.persistWaitingCancellationDisposition(ctx, commit, &root)
+		root := commit.RootRun()
+		if err := e.persistWaitingCancellationDisposition(ctx, commit, &root); err != nil {
+			return err
+		}
+		accepted := commit.AcceptedCancellation()
+		if err := e.acceptedContinuations.PutSubtreeCancellation(ctx, accepted); err != nil {
+			return err
+		}
+		result = runs.WaitingSubtreeCancellationResult{TargetRun: target, RootRun: root}
+		if record != nil {
+			ref := runs.ExecutorRef{SessionID: accepted.SessionID, ExecutorID: accepted.Pending.ExecutorID}
+			if err := record(ctx, ref, result); err != nil {
+				return err
+			}
+		}
+		projected = true
+		return nil
 	})
 	if errors.Is(err, framehost.ErrRecoveryRequired) {
 		return runs.WaitingSubtreeCancellationResult{}, err
 	}
 	if err != nil {
-		settled, committed, settleErr := e.reconcileWaitingCancellation(ctx, commit)
-		if settled {
-			return committed, nil
-		}
-		if settleErr != nil {
+		if projected {
+			settled, settleErr := e.reconcileWaitingCancellation(ctx, commit)
+			if settled {
+				return result, nil
+			}
 			err = errors.Join(err, settleErr)
 		}
 		return runs.WaitingSubtreeCancellationResult{}, fmt.Errorf(
@@ -58,7 +74,7 @@ func (e *Effects) CommitWaitingSubtreeCancellation(
 			err,
 		)
 	}
-	return runs.WaitingSubtreeCancellationResult{TargetRun: target, RootRun: root}, nil
+	return result, nil
 }
 
 func (e *Effects) claimWaitingCancellation(
@@ -209,13 +225,10 @@ func waitingCancellationRootSegmentID(commit runs.WaitingSubtreeCancellationComm
 	return resume.Runs[len(resume.Runs)-1].State().ActiveSegmentID(), nil
 }
 
-func (e *Effects) reconcileWaitingCancellation(
-	ctx context.Context,
-	commit runs.WaitingSubtreeCancellationCommit,
-) (bool, runs.WaitingSubtreeCancellationResult, error) {
+func (e *Effects) reconcileWaitingCancellation(ctx context.Context, commit runs.WaitingSubtreeCancellationCommit) (bool, error) {
 	segmentID, err := waitingCancellationRootSegmentID(commit)
 	if err != nil {
-		return false, runs.WaitingSubtreeCancellationResult{}, err
+		return false, err
 	}
 	reconcileCtx, cancel := context.WithTimeout(
 		context.WithoutCancel(ctx),
@@ -226,35 +239,10 @@ func (e *Effects) reconcileWaitingCancellation(
 		reconcileCtx, commit.SessionID(), commit.RootRunID(), segmentID, commit.CommitID(),
 	)
 	if err != nil {
-		return false, runs.WaitingSubtreeCancellationResult{}, fmt.Errorf(
+		return false, fmt.Errorf(
 			"segment: reconcile waiting cancellation commit: %w",
 			err,
 		)
 	}
-	if !settled {
-		return false, runs.WaitingSubtreeCancellationResult{}, nil
-	}
-	target, err := e.reconciledRun(reconcileCtx, "target", commit.TargetRunID(), commit.SessionID())
-	if err != nil {
-		return false, runs.WaitingSubtreeCancellationResult{}, err
-	}
-	root, err := e.reconciledRun(reconcileCtx, "root", commit.RootRunID(), commit.SessionID())
-	if err != nil {
-		return false, runs.WaitingSubtreeCancellationResult{}, err
-	}
-	return true, runs.WaitingSubtreeCancellationResult{TargetRun: target, RootRun: root}, nil
-}
-
-// reconciledRun reads back one Run a settled cancellation commit named. A Run
-// that is gone and a Run that belongs to another Session are the same answer
-// here: the commit this reconciles did not produce it.
-func (e *Effects) reconciledRun(ctx context.Context, kind, runID, sessionID string) (run.Run, error) {
-	value, found, err := e.runState.Run(ctx, runID)
-	if err != nil {
-		return run.Run{}, fmt.Errorf("segment: read reconciled %s Run %q: %w", kind, runID, err)
-	}
-	if !found || value.SessionID() != sessionID {
-		return run.Run{}, fmt.Errorf("segment: reconciled %s Run %q is unavailable", kind, runID)
-	}
-	return value, nil
+	return settled, nil
 }

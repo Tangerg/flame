@@ -328,16 +328,17 @@ func currentSchema() []string {
 			ON interrupts(state, created_at, root_run_id)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_interrupts_root_member
 			ON interrupts(root_member_id)`,
-		// The accepted routing survives a crash between individual Scope controls.
-		// Scope's log decides whether the Run can still finish the release, and
-		// the Items own the accepted answers. A new wait or terminal Run retires it.
+		// The original routing joins each accepted boundary to Scope's controls.
+		// A root can own one unsettled handoff across answers or child cancellation.
 		`CREATE TABLE IF NOT EXISTS accepted_continuations (
 			root_run_id TEXT PRIMARY KEY,
 			session_id  TEXT NOT NULL,
 			interrupt   TEXT NOT NULL,
 			segments    TEXT NOT NULL,
 			input_item_id TEXT NOT NULL,
-			FOREIGN KEY (root_run_id, session_id) REFERENCES runs(run_id, session_id) ON DELETE CASCADE
+			canceled_run_id TEXT CHECK (canceled_run_id IS NULL OR input_item_id = ''),
+			FOREIGN KEY (root_run_id, session_id) REFERENCES runs(run_id, session_id) ON DELETE CASCADE,
+			FOREIGN KEY (canceled_run_id, session_id) REFERENCES runs(run_id, session_id) ON DELETE CASCADE
 		)`,
 		// The intent holds the Session, tree and original reply reservation across
 		// a Git checkout. History, receipt and intent release commit together.

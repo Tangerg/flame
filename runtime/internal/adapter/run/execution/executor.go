@@ -644,6 +644,7 @@ func (i *InteractionExecutor) RestoreWaitingExecution(
 		ref,
 		continuation,
 		interactionBoundaryWaiting,
+		nil,
 	); err != nil {
 		return runs.ExecutorRef{}, err
 	}
@@ -655,6 +656,7 @@ func (i *InteractionExecutor) restoreContinuationTree(
 	ref runs.ExecutorRef,
 	continuation runs.ExecutionContinuation,
 	boundary interactionBoundary,
+	subtree *subtreeCancellationRestore,
 ) (err error) {
 	finishAssembly, err := i.sessions.beginAssembly()
 	if err != nil {
@@ -689,6 +691,12 @@ func (i *InteractionExecutor) restoreContinuationTree(
 			return fmt.Errorf("%w: Interaction restore requires a product waiting boundary", runs.ErrExecutorStateLost)
 		}
 	}
+	if subtree != nil {
+		continuation, err = subtree.bindMembers(continuation, checkpoint)
+		if err != nil {
+			return err
+		}
+	}
 	start := checkpoint.restoredStart(continuation)
 	session, err := i.assembleInteraction(ctx, ref, start, &checkpoint)
 	if err != nil {
@@ -702,13 +710,17 @@ func (i *InteractionExecutor) restoreContinuationTree(
 	if pendingCheckpointSources(session, checkpoint) {
 		return errors.New("execution: required MCP source is still connecting")
 	}
-	if err := session.validateContinuationTree(ctx, continuation, checkpoint, boundary == interactionBoundaryAccepted); err != nil {
+	if err := session.validateContinuationTree(ctx, continuation, checkpoint, subtree == nil && boundary == interactionBoundaryAccepted); err != nil {
 		return fmt.Errorf("execution: validate continuation tree: %w", err)
 	}
 	// Recover commits activation without replaying process admission. Its first
 	// Store callback must already see the original product ownership projection.
 	if err := session.restoreContinuationProjection(continuation, checkpoint, boundary); err != nil {
 		return err
+	}
+	if subtree != nil {
+		subtree.retireProjection(session, checkpoint)
+		return i.publishInteraction(ctx, session)
 	}
 	if boundary == interactionBoundaryAccepted {
 		// A partially released tree can drive Scope immediately on Recover.

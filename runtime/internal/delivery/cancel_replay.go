@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-type parkedCancellationSettlement struct {
+type cancellationSettlement struct {
 	ExecutorID string         `json:"executorId"`
 	Outcome    jsontext.Value `json:"outcome"`
 }
@@ -29,8 +29,16 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 		return data, err
 	}
 	payload, err := e.idempotency.InvokeDeferred(ctx, key, fingerprint, func(complete *operation.DeferredCompletion) ([]byte, error) {
-		var parkedOutcome []byte
+		var stagedOutcome []byte
 		var storeErr error
+		encodeSettlement := func(ref runs.ExecutorRef, result runs.CancelResult) ([]byte, error) {
+			var err error
+			stagedOutcome, err = encodeAtomicResult(method, presentCancelResult(result))
+			if err != nil {
+				return nil, err
+			}
+			return json.Marshal(cancellationSettlement{ExecutorID: ref.ExecutorID, Outcome: stagedOutcome})
+		}
 		result, err := s.cancelRun(ctx, in, runs.CancellationCompletion{
 			Reserve: func(ctx context.Context) error {
 				storeErr = complete.Reserve(ctx)
@@ -42,11 +50,13 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 					if err != nil {
 						return nil, err
 					}
-					parkedOutcome, err = encodeAtomicResult(method, presentCancelResult(runs.CancelResult{Run: terminal}))
-					if err != nil {
-						return nil, err
-					}
-					return json.Marshal(parkedCancellationSettlement{ExecutorID: ref.ExecutorID, Outcome: parkedOutcome})
+					return encodeSettlement(ref, runs.CancelResult{Run: terminal})
+				})
+				return storeErr
+			},
+			RecordWaitingChild: func(tx context.Context, ref runs.ExecutorRef, result runs.WaitingSubtreeCancellationResult) error {
+				storeErr = complete.Stage(tx, func(context.Context) ([]byte, error) {
+					return encodeSettlement(ref, runs.CancelResult{Run: result.TargetRun, RootRun: &result.RootRun})
 				})
 				return storeErr
 			},
@@ -54,21 +64,32 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 		switch {
 		case storeErr != nil:
 			return nil, storeErr
-		case err != nil && len(parkedOutcome) != 0:
+		case err != nil && len(stagedOutcome) != 0:
+			return nil, err
+		case errors.Is(err, protocol.ErrCapabilityNotNeg):
 			return nil, err
 		case err != nil:
 			return encodeFailure(err)
-		case len(parkedOutcome) != 0:
-			return parkedOutcome, nil
+		case len(stagedOutcome) != 0:
+			return stagedOutcome, nil
 		default:
 			return encodeAtomicResult(method, presentCancelResult(result))
 		}
 	}, func(data []byte) ([]byte, error) {
-		pending, ref, err := decodeParkedCancellation(method, in.RunID, data)
+		pending, response, err := decodeCancellationSettlement(method, in.RunID, data)
 		if err != nil {
 			return nil, err
 		}
-		if err := s.runCancellations.SettleParkedCancellation(ctx, ref); err != nil {
+		ref := runs.ExecutorRef{SessionID: response.Run.SessionID, ExecutorID: pending.ExecutorID}
+		if response.RootRun == nil {
+			err = s.runCancellations.SettleParkedCancellation(ctx, ref)
+		} else {
+			if !s.requestCanUseFeature(ctx, protocol.FeatureChildRuns) {
+				return nil, wireCancellationError(runs.ErrChildRunNotAllowed)
+			}
+			err = s.runCancellations.SettleAcceptedSubtreeCancellation(ctx, ref, response.RootRun.ID, response.Run.ID)
+		}
+		if err != nil {
 			return nil, wireCancellationError(err)
 		}
 		return pending.Outcome, nil
@@ -79,19 +100,19 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 	return payload, observedFailure, err
 }
 
-func decodeParkedCancellation(method *Method, runID string, data []byte) (parkedCancellationSettlement, runs.ExecutorRef, error) {
-	var pending parkedCancellationSettlement
+func decodeCancellationSettlement(method *Method, runID string, data []byte) (cancellationSettlement, *protocol.CancelRunResponse, error) {
+	var pending cancellationSettlement
 	if err := decodeStoredJSON(data, &pending); err != nil {
-		return pending, runs.ExecutorRef{}, fmt.Errorf("idempotency: decode parked cancellation: %w", err)
+		return pending, nil, fmt.Errorf("idempotency: decode cancellation settlement: %w", err)
 	}
 	reply := replayOutcome(method, pending.Outcome)
 	if reply.Failure != nil {
-		return pending, runs.ExecutorRef{}, fmt.Errorf("idempotency: invalid parked cancellation outcome: %w", reply.Failure)
+		return pending, nil, fmt.Errorf("idempotency: invalid cancellation outcome: %w", reply.Failure)
 	}
 	result := reply.Value.(*protocol.CancelRunResponse)
-	if pending.ExecutorID == "" || result.Type != protocol.CancelRunRoot || result.Run.ID != runID ||
+	if pending.ExecutorID == "" || result.Run.ID != runID ||
 		result.Run.Outcome == nil || result.Run.Outcome.Type != protocol.OutcomeCanceled {
-		return pending, runs.ExecutorRef{}, errors.New("idempotency: invalid parked cancellation settlement")
+		return pending, nil, errors.New("idempotency: invalid cancellation settlement")
 	}
-	return pending, runs.ExecutorRef{SessionID: result.Run.SessionID, ExecutorID: pending.ExecutorID}, nil
+	return pending, result, nil
 }

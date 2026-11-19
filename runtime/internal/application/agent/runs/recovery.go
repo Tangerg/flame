@@ -183,11 +183,17 @@ type RecoveryConversationTransition struct {
 // re-reading candidates; CommitRecovery applies the resulting write-set
 // atomically and Run transitions remain CAS guarded by storage.
 type Recovery struct {
-	store         RecoveryStore
-	resumability  WaitingExecutionResumability
-	admissions    recoveryAdmissions
-	invalidations invalidation.Publish
-	now           func() time.Time
+	store                RecoveryStore
+	subtreeCancellations AcceptedSubtreeRecovery
+	resumability         WaitingExecutionResumability
+	admissions           recoveryAdmissions
+	invalidations        invalidation.Publish
+	now                  func() time.Time
+}
+
+type AcceptedSubtreeRecovery struct {
+	Revive  func(context.Context) error
+	Pending func(context.Context, string) ([]AcceptedSubtreeCancellation, error)
 }
 
 // recoveryPlanner owns one ownership-scoped reconciliation snapshot and the caches needed
@@ -213,12 +219,16 @@ type recoveryPlanner struct {
 // NewRecovery constructs the Run ownership recovery use case.
 func NewRecovery(
 	store RecoveryStore,
+	subtreeCancellations AcceptedSubtreeRecovery,
 	resumability WaitingExecutionResumability,
 	admissions recoveryAdmissions,
 	invalidations invalidation.Publish,
 ) (*Recovery, error) {
 	if lo.IsNil(store) {
 		return nil, errors.New("runs: recovery store is required")
+	}
+	if subtreeCancellations.Revive == nil || subtreeCancellations.Pending == nil {
+		return nil, errors.New("runs: accepted subtree cancellation recovery is required")
 	}
 	if lo.IsNil(resumability) {
 		return nil, errors.New("runs: waiting execution resumability is required")
@@ -227,11 +237,12 @@ func NewRecovery(
 		return nil, errors.New("runs: recovery admissions are required")
 	}
 	return &Recovery{
-		store:         store,
-		resumability:  resumability,
-		admissions:    admissions,
-		invalidations: invalidations,
-		now:           time.Now,
+		store:                store,
+		subtreeCancellations: subtreeCancellations,
+		resumability:         resumability,
+		admissions:           admissions,
+		invalidations:        invalidations,
+		now:                  time.Now,
 	}, nil
 }
 
@@ -239,6 +250,9 @@ func NewRecovery(
 // and opaque executor checkpoint remain coherent. Every other non-terminal tree
 // is recovered as run_lost in one application transaction.
 func (r *Recovery) Reconcile(ctx context.Context) (int, error) {
+	if err := r.subtreeCancellations.Revive(ctx); err != nil {
+		return 0, err
+	}
 	claims, err := r.claimAbandonedSessions(ctx)
 	if err != nil {
 		return 0, err
@@ -371,6 +385,14 @@ func (r *Recovery) claimAbandonedSessions(
 			claims.sessionIDs[sessionID] = struct{}{}
 			claims.releases = append(claims.releases, release)
 		}
+	}
+	protected, err := r.subtreeCancellations.Pending(ctx, "")
+	if err != nil {
+		claims.release()
+		return nil, fmt.Errorf("runs: read accepted subtree cancellations under recovery admission: %w", err)
+	}
+	for _, value := range protected {
+		delete(claims.sessionIDs, value.SessionID)
 	}
 	current, err := r.store.ListNonTerminalRuns(ctx)
 	if err != nil {

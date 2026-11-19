@@ -1,6 +1,7 @@
 package runs
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -26,6 +27,7 @@ type Segments struct {
 	finalizer    SegmentFinalizer
 	childStarts  ChildRunStartCommitter
 	runs         Projection
+	toolAttempts openToolInvocationReader
 	admission    *ownership.Gate
 	publications runPublications
 	newRunID     func() string
@@ -49,6 +51,7 @@ type SegmentDependencies struct {
 	ChildStarts  ChildRunStartCommitter
 	Finalizer    SegmentFinalizer
 	Runs         Projection
+	ToolAttempts openToolInvocationReader
 	Admissions   *ownership.Gate
 	Now          func() time.Time
 	// Retention bounds every segment's replay window; discovery advertises it.
@@ -58,6 +61,10 @@ type SegmentDependencies struct {
 	// Invalidations publishes run/session/interrupt/state invalidations for clients that
 	// are not following the run. nil disables them (no runtime change stream wired).
 	Invalidations invalidation.Publish
+}
+
+type openToolInvocationReader interface {
+	ListOpenToolInvocations(context.Context) ([]OpenToolInvocation, error)
 }
 
 func NewSegments(deps SegmentDependencies) (*Segments, error) {
@@ -74,6 +81,7 @@ func NewSegments(deps SegmentDependencies) (*Segments, error) {
 		{"child run start committer", deps.ChildStarts},
 		{"segment finalizer", deps.Finalizer},
 		{"run projection", deps.Runs},
+		{"open Tool invocation reader", deps.ToolAttempts},
 		{"admission gate", deps.Admissions},
 		{"clock", deps.Now},
 		{"run id generator", deps.NewRunID},
@@ -94,6 +102,7 @@ func NewSegments(deps SegmentDependencies) (*Segments, error) {
 		retention:    deps.Retention,
 		epoch:        newReplayEpoch(),
 		runs:         deps.Runs,
+		toolAttempts: deps.ToolAttempts,
 		admission:    deps.Admissions,
 		publications: newRunPublications(deps.Publication, deps.Invalidations, deps.Now),
 		newRunID:     deps.NewRunID,

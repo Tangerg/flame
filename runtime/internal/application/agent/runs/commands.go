@@ -285,8 +285,9 @@ type CancelCommand struct {
 }
 
 type CancellationCompletion struct {
-	Reserve      func(context.Context) error
-	CommitParked ParkedCancellationCompletion
+	Reserve            func(context.Context) error
+	CommitParked       ParkedCancellationCompletion
+	RecordWaitingChild WaitingSubtreeCancellationReceipt
 }
 
 // ParkedCancellationCompletion joins the terminal Run write to the receipt's

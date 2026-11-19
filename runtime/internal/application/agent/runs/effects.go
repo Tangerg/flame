@@ -37,8 +37,11 @@ type WaitingSubtreeCancellationCommitter interface {
 	CommitWaitingSubtreeCancellation(
 		ctx context.Context,
 		commit WaitingSubtreeCancellationCommit,
+		record WaitingSubtreeCancellationReceipt,
 	) (WaitingSubtreeCancellationResult, error)
 }
+
+type WaitingSubtreeCancellationReceipt func(context.Context, ExecutorRef, WaitingSubtreeCancellationResult) error
 
 // WorkspaceChangeNotifier emits a best-effort live workspace invalidation after
 // the durable transcript projection has committed.

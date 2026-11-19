@@ -27,7 +27,7 @@ func (i *InteractionExecutor) StageAcceptedContinuation(ctx context.Context, con
 	} else if !errors.Is(err, runs.ErrExecutorNotLive) {
 		return runs.ExecutorRef{}, err
 	}
-	if err := i.restoreContinuationTree(ctx, ref, continuation, interactionBoundaryAccepted); err != nil {
+	if err := i.restoreContinuationTree(ctx, ref, continuation, interactionBoundaryAccepted, nil); err != nil {
 		return runs.ExecutorRef{}, err
 	}
 	return ref, nil

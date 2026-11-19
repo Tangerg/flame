@@ -136,15 +136,17 @@ type acceptedContinuationStore interface {
 	Delete(ctx context.Context, rootRunID string) error
 }
 
-// waitingExecutionRestorer reconstructs one exact committed waiting tree
-// without claiming or advancing it. It is used after the previous live owner is
-// known obsolete; the supplied Application value and opaque checkpoint are the
-// only recovery source.
-type waitingExecutionRestorer interface {
-	RestoreWaitingExecution(
-		ctx context.Context,
-		continuation ExecutionContinuation,
-	) (ExecutorRef, error)
+type acceptedSubtreeCancellationStore interface {
+	SubtreeCancellations(ctx context.Context, rootRunID string) ([]AcceptedSubtreeCancellation, error)
+	DeleteSubtreeCancellation(ctx context.Context, rootRunID, targetRunID string) error
+}
+
+type AcceptedSubtreeCancellationRestorer interface {
+	StageAcceptedSubtreeCancellation(context.Context, WaitingSubtreeCancellationRequest, WaitingSubtreeDisposition) (RecoveredSubtreeCancellation, error)
+}
+
+type RecoveredSubtreeCancellation interface {
+	Settle(context.Context) error
 }
 
 // RunningExecutionSteerer submits user content to the addressed live execution.

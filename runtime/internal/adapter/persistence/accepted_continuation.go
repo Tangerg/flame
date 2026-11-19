@@ -21,10 +21,11 @@ func newAcceptedContinuationStore(db *database) *acceptedContinuationStore {
 // acceptedContinuationRecord is SQLite's technical representation: the Session of
 // the accepted tree and the exact consumed interrupt hand-off it revives from.
 type acceptedContinuationRecord struct {
-	SessionID   string
-	Interrupt   pendingRecord
-	Segments    []acceptedSegmentRecord
-	InputItemID string
+	SessionID     string
+	Interrupt     pendingRecord
+	Segments      []acceptedSegmentRecord
+	InputItemID   string
+	CanceledRunID string
 }
 type acceptedSegmentRecord struct {
 	RunID     string `json:"run_id"`
@@ -41,11 +42,10 @@ func (s *acceptedContinuationStore) saveContinuation(ctx context.Context, record
 		if err != nil {
 			return err
 		}
-		_, err = s.db.connection(ctx).ExecContext(ctx, `INSERT INTO accepted_continuations(root_run_id, session_id, interrupt, segments, input_item_id)
-		 VALUES (?, ?, ?, ?, ?)
-		 ON CONFLICT(root_run_id) DO UPDATE SET
-		   session_id = excluded.session_id,
-		   interrupt = excluded.interrupt, segments = excluded.segments, input_item_id = excluded.input_item_id`, record.Interrupt.RootRunID, record.SessionID, string(payload), string(segments), record.InputItemID)
+		_, err = s.db.connection(ctx).ExecContext(ctx, `INSERT INTO accepted_continuations
+		  (root_run_id, session_id, interrupt, segments, input_item_id, canceled_run_id)
+		  VALUES (?, ?, ?, ?, ?, NULLIF(?, ''))`,
+			record.Interrupt.RootRunID, record.SessionID, string(payload), string(segments), record.InputItemID, record.CanceledRunID)
 		if err != nil {
 			return fmt.Errorf("sqlite: put accepted continuation: %w", err)
 		}
@@ -61,9 +61,23 @@ func (s *acceptedContinuationStore) Delete(ctx context.Context, rootRunID string
 		return nil
 	})
 }
-func (s *acceptedContinuationStore) continuationRecords(ctx context.Context) ([]acceptedContinuationRecord, error) {
+
+func (s *acceptedContinuationStore) DeleteSubtreeCancellation(ctx context.Context, rootRunID, targetRunID string) error {
+	return s.db.write(ctx, func(ctx context.Context) error {
+		_, err := s.db.connection(ctx).ExecContext(ctx, `DELETE FROM accepted_continuations WHERE root_run_id = ? AND canceled_run_id = ?`, rootRunID, targetRunID)
+		if err != nil {
+			return fmt.Errorf("sqlite: retire accepted cancellation: %w", err)
+		}
+		return nil
+	})
+}
+
+func (s *acceptedContinuationStore) continuationRecords(ctx context.Context, subtreeCancellation bool, rootRunID string) ([]acceptedContinuationRecord, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]acceptedContinuationRecord, error) {
-		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT root_run_id, session_id, interrupt, segments, input_item_id FROM accepted_continuations ORDER BY root_run_id`)
+		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT root_run_id, session_id, interrupt, segments, input_item_id,
+		  COALESCE(canceled_run_id, '') FROM accepted_continuations
+		  WHERE (canceled_run_id IS NOT NULL) = ? AND (? = '' OR root_run_id = ?) ORDER BY root_run_id`,
+			subtreeCancellation, rootRunID, rootRunID)
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list accepted continuations: %w", err)
 		}
@@ -72,7 +86,7 @@ func (s *acceptedContinuationStore) continuationRecords(ctx context.Context) ([]
 		for rows.Next() {
 			var record acceptedContinuationRecord
 			var rootID, payload, segments string
-			if err := rows.Scan(&rootID, &record.SessionID, &payload, &segments, &record.InputItemID); err != nil {
+			if err := rows.Scan(&rootID, &record.SessionID, &payload, &segments, &record.InputItemID, &record.CanceledRunID); err != nil {
 				return nil, fmt.Errorf("sqlite: scan accepted continuation: %w", err)
 			}
 			if err := json.Unmarshal([]byte(payload), &record.Interrupt, json.RejectUnknownMembers(true)); err != nil {

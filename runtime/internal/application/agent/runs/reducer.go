@@ -62,12 +62,13 @@ type reducer struct {
 	// modelBoundaryClosed fences lossy stream observations that arrive after the
 	// authoritative model completion or failure commit. A later ModelCallStarted reopens
 	// the observation window for the next provider turn.
-	modelBoundaryClosed bool
-	toolCallIDs         map[string]struct{}
-	toolPositions       map[toolPosition]string
-	tools               openTools
-	drained             []DrainedTool
-	errFailure          *run.Failure
+	modelBoundaryClosed  bool
+	toolCallIDs          map[string]struct{}
+	toolPositions        map[toolPosition]string
+	restoredToolAttempts map[string]OpenToolInvocation
+	tools                openTools
+	drained              []DrainedTool
+	errFailure           *run.Failure
 	// plan is the last Plan this segment published, kept so the segment
 	// can fence its final value before finishing. Nil means this segment never
 	// changed the projection, and a segment that changed nothing has nothing to
@@ -138,6 +139,7 @@ func (r *reducer) clone() *reducer {
 	cloned.modelCalls = maps.Clone(r.modelCalls)
 	cloned.toolCallIDs = maps.Clone(r.toolCallIDs)
 	cloned.toolPositions = maps.Clone(r.toolPositions)
+	cloned.restoredToolAttempts = maps.Clone(r.restoredToolAttempts)
 	cloned.drained = slices.Clone(r.drained)
 	cloned.tools = r.tools.clone()
 	cloned.text = r.text.clone()
@@ -237,6 +239,9 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 	case ModelCallFailed:
 		return r.failModelCall(e)
 	case ToolCallStarted:
+		if attempt, restored := r.restoredToolAttempts[e.CallID]; restored {
+			return factReduction{}, r.adoptToolAttempt(e, attempt)
+		}
 		return r.startToolCall(e)
 	case ToolCallPrepared:
 		if err := e.Caller.Validate(); err != nil {
@@ -289,6 +294,20 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 	default:
 		return factReduction{}, fmt.Errorf("%w: unhandled event %T", errExecutorContract, ev)
 	}
+}
+
+func (r *reducer) adoptToolAttempt(started ToolCallStarted, attempt OpenToolInvocation) error {
+	if r.resume == nil || r.resume.callItems[started.CallID].ID() != attempt.ItemID ||
+		attempt.SessionID != r.cfg.Opened.SessionID() || started.ModelCallSequence == 0 {
+		return fmt.Errorf("%w: restored Tool attempt %q differs from its durable Item", errExecutorContract, started.CallID)
+	}
+	if _, err := r.toolStart(started); err != nil {
+		return err
+	}
+	ref, _ := r.tools.get(started.CallID)
+	ref.attemptStartedAt = attempt.StartedAt
+	delete(r.restoredToolAttempts, started.CallID)
+	return nil
 }
 
 func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error) {

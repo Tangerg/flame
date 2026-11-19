@@ -83,7 +83,7 @@ func (i *interactionWaitingSubtreeChange) Apply(
 	// to the executor happens here rather than during preparation: a requested
 	// cancellation is accepted immediately and cannot be revoked, and preparation
 	// must stay abandonable.
-	err = i.session.cancelPreparedSubtree(i)
+	err = i.session.settleWaitingSubtree(i.session.lifetime.execution, i.targetID, i.reason)
 	switch {
 	case err != nil:
 		i.state = interactionWaitingSubtreeChangeApplyFailed
@@ -192,23 +192,65 @@ func (i *interactionSession) beginSubtreeApplication(
 	return nil
 }
 
-// cancelPreparedSubtree submits the cancellation the Application has committed.
-// The staged cut is deliberately left alone: it is the one the Application
-// recorded with that decision, and an executor that quietly moved to a different
-// cut would refuse the very continuation its own barrier is still waiting for.
-func (i *interactionSession) cancelPreparedSubtree(
-	change *interactionWaitingSubtreeChange,
-) error {
-	ctx, cancel := i.lifetime.publicationContext(i.lifetime.execution)
+// Scope may already have accepted the original control when a restored owner
+// reaches it. The original log decides whether to submit it or join its Exit.
+func (i *interactionSession) settleWaitingSubtree(ctx context.Context, targetID scoperun.ProcessID, reason string) error {
+	ctx, cancel := i.lifetime.publicationContext(ctx)
 	defer cancel()
-	target, found := i.engine.Process(change.targetID)
-	if !found {
-		return fmt.Errorf("execution: waiting subtree target %s is unavailable", change.targetID)
+	ctx, cancelDeadline := context.WithTimeout(ctx, executionCleanupTimeout)
+	defer cancelDeadline()
+	reason = scopeCancellationReason(reason)
+	target, found := i.engine.Process(targetID)
+	tree, err := i.committedTree(ctx, i.rootID)
+	if err != nil {
+		return err
 	}
-	if err := target.Cancel(
-		runExecutionContext(ctx, i.scope, i.start), scopeCancellationReason(change.reason),
-	); err != nil {
-		return fmt.Errorf("execution: cancel waiting Interaction subtree: %w", err)
+	admitted, afterExit, err := recordedWaitingSubtreeCancellation(tree, targetID, reason)
+	if err != nil || afterExit != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("execution: waiting subtree target %s is unavailable", targetID)
+	}
+	if !admitted {
+		if err := target.Cancel(runExecutionContext(ctx, i.scope, i.start), reason); err != nil {
+			return fmt.Errorf("execution: cancel waiting Interaction subtree: %w", err)
+		}
+	}
+	result, err := target.Await(ctx)
+	if err != nil {
+		return fmt.Errorf("execution: join canceled Interaction subtree: %w", err)
+	}
+	return confirmWaitingSubtreeCancellation(targetID, reason, result.Termination())
+}
+
+// A non-nil suffix proves the exact Exit, including at the end of the log.
+func recordedWaitingSubtreeCancellation(tree scoperun.Log, targetID scoperun.ProcessID, reason string) (admitted bool, afterExit []scoperun.Entry, err error) {
+	for index, entry := range tree.Entries {
+		switch record := entry.Record.(type) {
+		case scoperun.ControlRequested:
+			if record.Process != targetID || record.Kind != scoperun.ControlCancel {
+				continue
+			}
+			if record.Origin != scoperun.ControlOriginHost || record.Reason != reason {
+				return false, nil, fmt.Errorf("execution: waiting subtree %s has another cancellation owner", targetID)
+			}
+			admitted = true
+		case scoperun.Exited:
+			if record.Process == targetID {
+				if err := confirmWaitingSubtreeCancellation(targetID, reason, record.Termination); err != nil {
+					return admitted, nil, err
+				}
+				return admitted, tree.Entries[index+1:], nil
+			}
+		}
+	}
+	return admitted, nil, nil
+}
+
+func confirmWaitingSubtreeCancellation(targetID scoperun.ProcessID, reason string, termination scoperun.Termination) error {
+	if termination.Cause() != scoperun.TerminationCauseHostCancellation || termination.Reason() != reason {
+		return fmt.Errorf("execution: waiting Interaction subtree %s finished with cause %s", targetID, termination.Cause())
 	}
 	return nil
 }

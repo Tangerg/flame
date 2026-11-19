@@ -137,6 +137,13 @@ func (c *Segments) prepareSegmentStartup(
 	requestContext context.Context,
 	spec segmentSpec,
 ) (*segmentStartup, error) {
+	if spec.restoresSegments() {
+		attempts, err := c.toolAttempts.ListOpenToolInvocations(requestContext)
+		if err != nil {
+			return nil, spec.staged.abandon(requestContext, err, "read restored Segment Tool attempts")
+		}
+		spec.toolAttempts = attempts
+	}
 	taskContext, releaseTask, attached := c.tasks.Attach(requestContext)
 	if !attached {
 		return nil, spec.staged.abandon(requestContext, errClosed, "unadmitted executor")
@@ -257,7 +264,10 @@ func (s *segmentStartup) activate(requestContext context.Context) (iter.Seq[Even
 		return nil, publicationErr
 	}
 	if !s.spec.DetachActivation {
-		<-s.treeOwner.activation.done
+		if err := s.treeOwner.awaitActivation(context.WithoutCancel(requestContext)); err != nil {
+			subscription.Cancel()
+			return nil, err
+		}
 	}
 	if s.spec.restoresSegments() {
 		subscription.Cancel()

@@ -261,15 +261,7 @@ func (m delegateRestartModel) Stream(ctx context.Context, request *chat.Request)
 	return testsupport.StreamResponse(m.Call(ctx, request))
 }
 
-// TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther holds two children that
-// both need human input. The barrier publishes the wait that has already formed
-// and freezes the other branch at its next safe boundary, so cancelling the
-// published one must release its frozen sibling to raise its own question, and
-// answering that one must complete a tree whose durable conversation still
-// matches the model context it is reduced from.
-func TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("FLAME_HOME", home)
+func waitingSiblingModel() chat.Model {
 	first := chat.ToolCall{ID: "delegate_a", Name: "delegate_task", Arguments: `{"summary":"A","instructions":"waiting sibling A"}`}
 	second := chat.ToolCall{ID: "delegate_b", Name: "delegate_task", Arguments: `{"summary":"B","instructions":"waiting sibling B"}`}
 	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
@@ -305,6 +297,19 @@ func TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther(t *testing.T) {
 			Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1},
 		})
 	})}
+	return model
+}
+
+// TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther holds two children that
+// both need human input. The barrier publishes the wait that has already formed
+// and freezes the other branch at its next safe boundary, so cancelling the
+// published one must release its frozen sibling to raise its own question, and
+// answering that one must complete a tree whose durable conversation still
+// matches the model context it is reduced from.
+func TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("FLAME_HOME", home)
+	model := waitingSiblingModel()
 	ctx := delivery.WithRequestMeta(t.Context(), protocol.RequestMeta{
 		ProtocolVersion: protocol.Version,
 		ClientCapabilities: &protocol.ClientCapabilities{

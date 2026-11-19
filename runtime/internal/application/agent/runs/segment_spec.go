@@ -15,7 +15,6 @@ import (
 
 // segmentSpec is the prepared input to the package's segment supervisor.
 type segmentSpec struct {
-	AcceptedContinuation *AcceptedContinuation
 	// RunID is stable across every resumed Segment of the same logical Run.
 	RunID string
 	// SegmentID changes for every start or resume and scopes replay.
@@ -59,6 +58,7 @@ type segmentSpec struct {
 	ModelOnlyInput bool
 	Capabilities   run.Capabilities
 	Continuation   *treeContinuation
+	toolAttempts   []OpenToolInvocation
 	// admission transfers the pre-commit reservation to the live Run only after
 	// its opening write-set commits.
 	admission *ownership.RunAdmission

@@ -83,6 +83,7 @@ type rememberedRuleStore interface {
 // only routing; the answer resolutions stay owned by the settled Items.
 type acceptedContinuationStore interface {
 	Put(ctx context.Context, accepted runs.AcceptedContinuation) error
+	PutSubtreeCancellation(ctx context.Context, accepted runs.AcceptedSubtreeCancellation) error
 	Delete(ctx context.Context, rootRunID string) error
 }
 

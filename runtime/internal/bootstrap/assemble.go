@@ -228,6 +228,7 @@ func buildAssemblyCore(
 		ChildStarts:   runSegmentEffects,
 		Finalizer:     runFinalizer,
 		Runs:          cfg.stores.Runs,
+		ToolAttempts:  cfg.stores.ToolInvocations,
 		Admissions:    admissionGate,
 		Now:           time.Now,
 		Retention:     runs.DefaultRetention(),
@@ -263,10 +264,11 @@ func buildAssemblyCore(
 	}
 	cancellationDependencies := runs.CancellationDependencies{
 		RootCancellation:                   execution.executor,
-		WaitingRestorer:                    execution.executor,
 		RunningSubtreeCanceler:             execution.executor,
 		WaitingSubtreeCancellationPreparer: execution.executor,
 		WaitingSubtreeCancellations:        runSegmentEffects,
+		AcceptedSubtreeCancellations:       cfg.stores.AcceptedContinuations,
+		SubtreeCancellationRestorer:        execution.executor,
 		Terminations:                       sessionCoordinator,
 		Sessions:                           sessionCoordinator,
 		Interrupts:                         sessionCoordinator,
@@ -358,6 +360,10 @@ func buildAssemblyCore(
 	}
 	bootRecovery, err := runs.NewRecovery(
 		recoveryPersistence,
+		runs.AcceptedSubtreeRecovery{
+			Revive:  runUseCases.cancellations.ReviveAcceptedSubtreeCancellations,
+			Pending: cfg.stores.AcceptedContinuations.SubtreeCancellations,
+		},
 		execution.executor,
 		admissionGate,
 		policy.invalidations.publish,

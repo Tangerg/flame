@@ -211,6 +211,12 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 		if err := reducer.itemIDs.Restore(ids); err != nil {
 			return nil, err
 		}
+		reducer.restoredToolAttempts = make(map[string]OpenToolInvocation)
+		for _, attempt := range r.spec.toolAttempts {
+			if attempt.RunID == opened.ID() && attempt.SegmentID == segmentID {
+				reducer.restoredToolAttempts[attempt.CallID] = attempt
+			}
+		}
 	}
 	for _, recovered := range r.continuation.recoveredTools {
 		if recovered.Invocation.RunID != opened.ID() {
@@ -227,6 +233,7 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 			return nil, errors.New("runs: recovered Tool changed its Item")
 		}
 		ref.attemptStartedAt = recovered.Invocation.StartedAt
+		delete(reducer.restoredToolAttempts, recovered.Start.CallID)
 	}
 	return &executorRoute{
 		member:      member,

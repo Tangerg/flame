@@ -1539,6 +1539,16 @@ Waiting continuations restore their acknowledged barrier. Accepted continuations
 finish delivering answers and releasing paused Processes from the recorded
 Scope head. The first new Effect prepared by a surviving Process ends that
 recovery path, because the Effect might already have reached its external owner.
+
+Canceling a waiting child commits the original consumed tree binding, the child
+outcome, any surviving continuation Segments, and the keyed command receipt
+together. Recovery joins the original Scope cancellation and releases the
+surviving members on the committed Segments. Scope's log confirms the original
+Exit and any Resume controls. If a survivor has already begun new work, ordinary
+Run recovery owns that work even if retiring the cancellation binding was
+interrupted. This schema requires a fresh Runtime data directory. Retain earlier
+data separately.
+
 Running executions qualify for receipt recovery only when every unresolved Tool
 has its original captured source and invocation evidence; recovery queries the
 original receipt without repeating the uncertain call. Other unfinished work

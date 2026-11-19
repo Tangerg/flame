@@ -50,7 +50,7 @@ func (c *Coordinator) reviveAcceptedContinuation(ctx context.Context, accepted A
 	if root.State().IsTerminal() {
 		return c.acceptedContinuations.Delete(ctx, accepted.RootRunID())
 	}
-	if err := accepted.validateRuns(values); err != nil {
+	if err := validateAcceptedSegments(accepted.SessionID, accepted.Segments, values); err != nil {
 		return c.retireUnrestorableAccepted(ctx, accepted, err)
 	}
 	items, err := pendingItems(ctx, c.items, accepted.Pending)
@@ -103,7 +103,7 @@ func (c *Coordinator) reviveAcceptedContinuation(ctx context.Context, accepted A
 	_, err = c.segments.openSegment(ctx, segmentSpec{
 		RunID: root.ID(), SegmentID: root.ActiveSegmentID(), SessionID: accepted.SessionID,
 		WorkspaceCWD: sess.Workspace().Path(), Isolated: sess.Isolated(), ExecutorID: ref.ExecutorID,
-		Continuation: continuation, AcceptedContinuation: &accepted, admission: &admission,
+		Continuation: continuation, admission: &admission,
 		StageExecution: func(stageCtx context.Context) error {
 			_, err := c.continuation.StageAcceptedContinuation(stageCtx, waiting)
 			return err
@@ -123,19 +123,19 @@ func (c *Coordinator) retireUnrestorableAccepted(ctx context.Context, accepted A
 	return c.acceptedContinuations.Delete(ctx, accepted.RootRunID())
 }
 
-func (a AcceptedContinuation) validateRuns(values []run.Run) error {
+func validateAcceptedSegments(sessionID string, segments []AcceptedSegment, values []run.Run) error {
 	active := make(map[string]run.Run)
 	for _, value := range values {
 		if !value.State().IsTerminal() {
 			active[value.ID()] = value
 		}
 	}
-	if len(active) != len(a.Segments) {
+	if len(active) != len(segments) {
 		return errors.New("runs: accepted continuation member set changed")
 	}
-	for _, segment := range a.Segments {
+	for _, segment := range segments {
 		value, found := active[segment.RunID]
-		if !found || value.SessionID() != a.SessionID || value.State() != run.Running || value.ActiveSegmentID() != segment.SegmentID {
+		if !found || value.SessionID() != sessionID || value.State() != run.Running || value.ActiveSegmentID() != segment.SegmentID {
 			return errors.New("runs: accepted continuation segment changed")
 		}
 	}
