@@ -162,10 +162,15 @@ parallel download implementation.
 Workspace-scoped components receive `context.workspace`: a frozen public
 `WorkspaceRef` plus file-focus path and revision from the Host's existing owners.
 They use `context.runtime.workspace(ref)` for canonical workspace operations. The
-context has no private store or navigation object. Target/focus replacement retires
-the render instance; calls honor its signal and track boundary. A component may
-publish an optional generic material key for a navigation consumer; the loader
-projects it without a business-specific branch.
+context has no private store or navigation object. Target or focus replacement
+retires the captured context. Calls honor its signal and track boundary. A
+component may publish an optional generic material key for a navigation consumer;
+the loader projects it without a business-specific branch.
+
+Within one workspace, a `workspaceChangesAction` keeps its mounted source
+control across file-focus revisions so the Host can restore focus when the user
+returns from inspection. The action receives a new captured context for each
+revision. Workspace views remount for the newly captured file focus.
 
 Client-scoped components receive optional frozen Session/workspace targets and can
 render when either is absent. They do not receive file-focus changes; workspace-scoped

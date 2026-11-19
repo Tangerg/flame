@@ -414,7 +414,6 @@ function workspaceDataPlugin(
         component: () =>
           createElement(WorkspaceChangesAction, {
             ...worktreeSources,
-            scope: "workspace",
             targetView: "package:visual:diff",
             entry: WorktreeChanges,
           }),

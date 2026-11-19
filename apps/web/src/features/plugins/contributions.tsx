@@ -358,7 +358,6 @@ function createPackageReconciler(
               default: () => (
                 <WorkspaceChangesAction
                   {...rendering}
-                  scope={contextScope}
                   targetView={packageScopedId(installation.id, entry.targetView!)}
                 />
               ),

@@ -462,13 +462,12 @@ function WorkspaceComponent(props: ComponentProps) {
           : t("packages.module.selectWorkspace")}
       </p>
     );
-  return (
-    <RenderingComponent
-      key={tupleKey(workspace.ref.path, workspace.focus.revision.toString(), workspace.focus.path)}
-      {...props}
-      workspace={workspace}
-    />
-  );
+  // A workspace action must remain a return target when opening a new file focus.
+  const key =
+    props.placement === "workspaceChangesAction"
+      ? workspace.ref.path
+      : tupleKey(workspace.ref.path, workspace.focus.revision.toString(), workspace.focus.path);
+  return <RenderingComponent key={key} {...props} workspace={workspace} />;
 }
 
 function ClientComponent(props: ComponentProps) {

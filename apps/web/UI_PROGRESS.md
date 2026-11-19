@@ -40457,6 +40457,70 @@ Cleanup removes four registrations, eight private Library directories,
 ten checkout outputs and the scratch tree. The next pass checks the
 native keyboard route from a typed Diff filter to its matching row.
 
+### Returning from Diff to its original review button (2026-11-19)
+
+The signed Wails baseline at `c2bc9325a` confirms Filter files → Clear
+filter → `session.go` with committed input. The repeatable failure is
+one level higher. Open Review working tree changes and press Escape
+from the Diff region. Focus lands on Conversation. A passive native
+observation shows the activated source button disconnect as a new
+button with the same title takes its place.
+
+The installed action opens the workspace view and advances the file
+focus revision. The host had keyed the action and its file reader by
+that revision. `InstalledComponent` now keeps a workspace changes
+action mounted under its workspace path. The captured context still
+includes the current file focus. Each change replaces the tracked
+context and retires the old subscription through its signal. The
+workspace reader still remounts for its new file focus. The inspection
+owner can therefore focus the exact connected source on return.
+
+The first candidate still replaced the Lab button. The fixture did
+not supply the optional placement property passed by the production
+loader. `WorkspaceChangesAction` now sets its declared workspace scope
+and placement for both callers. The captured input and target checks
+stay with the same action boundary. Better Accessibility informs
+returning to the control that started inspection.
+[WCAG focus order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html)
+
+- EN/light/18 px/Flame Orange with motion off. At Actual Size the same
+  native button remains connected while Diff has focus. Escape restores
+  that button and its visible focus ring. Enter reopens the overview.
+  In a 320 px Dock the filter observation records Tab with native
+  composition active and `defaultPrevented=false`. After Return commits
+  the input, successive Tabs reach Clear filter and `session.go`.
+  Escape from the file restores its row and `session`. Escape on Clear
+  restores the now-empty filter. Escape there focuses the same review
+  button. The draft continues as `457709186`.
+- ZH/dark/18 px/`#3B82F6` with full motion uses native Window Left.
+  The initial `DockResizer.tsx` read has single-file scope. The review
+  action opens a fresh workspace comparison with four files. The
+  `新名字.md` reader and old path survive full-width presentation.
+  The native full-width and Dock return controls both restore the same
+  connected review button. The draft continues as `58176904`.
+- EN/light/14 px/Flame Orange with full motion uses the standard assets.
+  Escape returns directly to Review working tree changes, and Enter
+  reopens it. After native wheel input on `DockResizer.tsx`, Back to
+  conversation restores the exact button. The draft continues as
+  `6304297`. Standard assets contain no private observation marker.
+
+The first private native build could not resolve a freshly synchronized
+Runtime candidate. The repository's pinned local module proxy prepared
+the required Git tree before rebuilding. The refined build and checks
+use `f3d27e54a`, with the independent Runtime changes kept in their own
+commits. Scoped Prettier, 11 SDK tests, 137 Web tests, 937 locale keys,
+26 bundle contracts, portable resource and module checks, native build
+and five Lab documents pass. Native acceptance uses recorded data.
+The coordinate attempts in the Chinese scene missed the named return
+control. The successful paths use the observed native control. Live
+plugin replacement, spoken VoiceOver and other platforms are outside
+this qualification.
+
+Four signed private bundles, six launches and six previews complete.
+Cleanup removes the exact registrations, private Library directories,
+ten checkout outputs and the scratch tree. The next pass follows a
+tool entry into its supporting evidence and back to the reply.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad

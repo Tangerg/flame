@@ -10,7 +10,9 @@ import type { ComponentProps } from "react";
 export function WorkspaceChangesAction({
   targetView,
   ...props
-}: ComponentProps<typeof InstalledComponent> & { targetView: string }) {
+}: Omit<ComponentProps<typeof InstalledComponent>, "scope" | "placement"> & {
+  targetView: string;
+}) {
   const workspace = useWorkspace();
   const cwd = resolvedWorkspaceCwd(useActiveSessionWorkspace());
   const changes = useChangedFiles();
@@ -35,5 +37,12 @@ export function WorkspaceChangesAction({
     [changes, target, props.lifetime, props.resources, targetView, workspace],
   );
   if (!cwd || !changes?.length) return null;
-  return <InstalledComponent {...props} input={input} />;
+  return (
+    <InstalledComponent
+      {...props}
+      scope="workspace"
+      placement="workspaceChangesAction"
+      input={input}
+    />
+  );
 }
