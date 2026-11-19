@@ -219,6 +219,14 @@ function Item({
     </TreeItem>
   );
 }
+function hasFocusableFile(state: TreeRenderProps["state"], path: string): boolean {
+  // The flattened collection excludes collapsed descendants but includes offscreen rows.
+  return (
+    !state.selectionManager.isDisabled(path) &&
+    [...state.collection].some((item) => item.type === "item" && item.key === path)
+  );
+}
+
 function FileTreeViewport({
   state,
   treeRef,
@@ -231,29 +239,48 @@ function FileTreeViewport({
 }) {
   const visible = useContentVisible();
   const revealKey = useRef<Key | null>(null);
+  const pendingPath = useRef<string | null>(null);
   useImperativeHandle(
     focusFileOnReturn,
     () => (path) => {
+      pendingPath.current = null;
       const viewport = treeRef.current;
       if (!visible || !viewport) return;
       const document = viewport.ownerDocument;
       if (document.activeElement !== document.body) return;
-      const { collection, selectionManager } = state;
-      // The flattened collection excludes collapsed descendants but still includes offscreen rows.
-      if (
-        !selectionManager.isDisabled(path) &&
-        [...collection].some((item) => item.type === "item" && item.key === path)
-      )
-        selectionManager.setFocusedKey(path);
+      const { selectionManager } = state;
+      const available = hasFocusableFile(state, path);
+      if (available) selectionManager.setFocusedKey(path);
       revealKey.current = selectionManager.focusedKey;
       viewport.focus({ preventScroll: true });
+      if (!available && document.activeElement === viewport) pendingPath.current = path;
       if (!viewport.contains(document.activeElement)) revealKey.current = null;
     },
     [state, treeRef, visible],
   );
   useLayoutEffect(() => {
-    if (!visible) revealKey.current = null;
-  }, [visible]);
+    if (!visible) {
+      pendingPath.current = null;
+      revealKey.current = null;
+      return;
+    }
+    const path = pendingPath.current;
+    if (path === null) return;
+    const viewport = treeRef.current;
+    if (!viewport || viewport.ownerDocument.activeElement !== viewport) {
+      pendingPath.current = null;
+      return;
+    }
+    if (state.collection.size === 0) return;
+    const { selectionManager } = state;
+    // The empty tree can receive DOM focus before React Aria installs its focus handler.
+    if (!selectionManager.isFocused) selectionManager.setFocused(true);
+    if (!hasFocusableFile(state, path)) return;
+
+    pendingPath.current = null;
+    revealKey.current = path;
+    selectionManager.setFocusedKey(path);
+  }, [state, treeRef, visible]);
 
   return (
     <div
@@ -261,6 +288,7 @@ function FileTreeViewport({
       onFocusCapture={(event) => {
         props.onFocusCapture?.(event);
         const { currentTarget: viewport, target: row } = event;
+        if (row !== viewport && viewport.contains(row)) pendingPath.current = null;
         const key = revealKey.current;
         if (key === null || row === viewport) return;
         revealKey.current = null;
@@ -280,7 +308,10 @@ function FileTreeViewport({
       }}
       onBlurCapture={(event) => {
         props.onBlurCapture?.(event);
-        if (!event.currentTarget.contains(event.relatedTarget)) revealKey.current = null;
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          pendingPath.current = null;
+          revealKey.current = null;
+        }
       }}
     />
   );

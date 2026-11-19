@@ -41091,6 +41091,57 @@ Cleanup removes four registrations, eight private Library directories,
 ten checkout outputs and the scratch tree. Continue with a verified
 reading or return case.
 
+### Restore a directly opened file when its list arrives (2026-11-20)
+
+The real Composer value for a source selection from line 4,
+offset 2, to line 5, offset 9, retains both leading spaces on
+line 5. The abbreviated observation label had combined the
+spaces. The file return path exposed a separate issue.
+
+In signed Wails on `9a9700023`, Back from a direct
+`DockResizer.tsx` read requests that exact path while the visible
+tree has zero rows and document focus is at body. The directory
+read starts when the list becomes visible. The row later appears
+and the tree itself still has focus. Return stays on the list.
+
+The first candidate keeps the pending path and selects its key
+when the row arrives. Native trace shows React Aria still reports
+the tree as unfocused after progressing from zero to six and then
+seven rows. Its empty grid exposes a tab stop before it installs
+the populated grid's focus handler. The file tree now synchronizes
+that manager when the collection becomes nonempty and the exact
+fallback viewport still holds DOM focus. The same virtualizer and
+row reveal path finish the one pending return. A different row,
+focus outside, a hidden tree or a new return retires the request.
+[React Aria Tree](https://react-aria.adobe.com/Tree)
+[ARIA tree keyboard interaction](https://www.w3.org/WAI/ARIA/apg/patterns/treeview/#keyboardinteraction)
+
+- EN/light/14 px/Flame Orange in the 560.5 px Dock. Before the
+  child directory arrives, the Files table holds focus. When it
+  arrives, focus moves to the precise `DockResizer.tsx` row.
+  Return reopens its source and focuses Back to files. Return
+  there immediately restores the same row using the loaded list.
+  The draft continues as `8938614`.
+- ZH/dark/18 px/`#3B82F6` in a 320 px Dock at 1121 × 950.
+  In the controlled delay, the Composer receives focus before
+  the row appears. The row arrives and the Composer keeps its
+  focus and exact continued draft `8941726`.
+- With the child directory confirmed empty in EN/light/14 px,
+  the requested file has no row. Focus stays on the table until
+  Down reaches the existing `apps` row. The draft remains `8964`.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and five
+canonical Lab documents pass. Signed Wails uses captured
+directory responses. Live filesystem operations, native IME,
+VoiceOver, Send, browser suites and benchmarks were outside the run.
+
+Ten native launches across four signed bundles and seven
+loopback previews exit. Cleanup removes four registrations,
+eight private Library directories, ten checkout outputs and the
+scratch tree. Continue with a verified reading and return path.
+
 ### File continuation names its planned window (2026-11-19)
 
 The previous native acceptance reads `reading-guide.md` lines 1–59 of 93

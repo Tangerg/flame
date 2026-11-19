@@ -890,7 +890,8 @@ browser's editing default for these keys to preserve a held Composer selection.
 Back to files restores the file just read when its key is in the current tree.
 The virtualizer presents that row and the file tree reveals it inside its own
 scrollport. When the key is unavailable, the tree uses its existing tab stop.
-Later directory arrivals preserve the user's current focus.
+If the row arrives while the tree itself still holds focus, the tree finishes
+restoring it. Moving focus to a row or leaving the tree retires that return.
 
 Query owns directory pages and their cache. Runtime enumerates only the
 requested level and publishes its
