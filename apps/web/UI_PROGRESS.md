@@ -44618,6 +44618,68 @@ registrations, six private Library directories, ten checkout
 outputs and the scratch tree. Continue with the collapsed
 activity summary and the decision to inspect its Shell result.
 
+### Wrap localized tool activity summaries (2026-11-20)
+
+In signed Wails at `9b17647fc`, the German collapsed tool group
+shows `1 ausgef…` at 440 px conversation width and 18 px text.
+The one-line category label needs 307 CSS px and has 292 px.
+The accessibility tree still exposes `1 ausgeführt`, along with
+the existing issue, denied and step counts.
+
+`ToolActivitySummary.tsx` now uses the shared wrapping vocabulary
+for the existing label in both tool groups and narrative waves.
+The auto-height disclosure takes the extra line when needed.
+The group label, severity and counts still come from their
+existing presentation owners. ZCode's read-only
+`ToolSummaryRow.tsx` gives the primary summary separate space
+alongside status. Better Layout and Better Typography guide the
+reflow of the existing text.
+[WCAG reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html)
+[CSS text wrapping](https://www.w3.org/TR/css-text-4/).
+
+- DE/dark/18 px/`#3B82F6` at **1121 × 950**. The candidate
+  uses 292 px of available width with no horizontal overflow
+  and shows the whole `1 ausgeführt` on the second line.
+  The wider divider position returns the category text to one
+  line. Returning to 440 px restores the full wrapped label.
+  Keyboard disclosure reaches the captured Shell failure
+  `TestRollbackOnFlushFailure`. Collapsing the group restores
+  that summary's focus, and the draft continues as `11461528`.
+- EN/light/14 px/Flame Orange in the standard left-tiled
+  Waves Lab at 440 px conversation width. The first wave
+  shows one read, one search and three steps. The second
+  shows one write and two steps. Enter reaches the first
+  wave's two recorded RunInTx matches in `store.go:88`
+  and `segment.go:143`. Collapsing the search and wave
+  returns to the source summary. The draft continues as
+  `11436518`.
+- ZH/dark/18 px/`#3B82F6` in the standard Workspace Lab at
+  **1121 × 1051**. The narrow summary presents all three
+  categories, issue and denied counts, and six steps.
+  Pointer expansion reaches the Shell failure and the
+  recorded `8.412s`; native wheel input leaves focus on
+  the preview. With a 320 px Files Dock, the Read opener
+  reaches the eight-line `store.go` fixture. Return restores
+  the exact opener. Keyboard collapse returns to the group
+  and the draft continues as `11442638`.
+
+Scoped Prettier, five-document Lab, strict signatures and the
+Web and native gates pass. Web passes 157 tests, 940 keys across
+eight locales and 26 bundle contracts. The standard Lab build
+excludes the private measurement readout. The interruption
+retired the original shell handles. The final build and test
+logs, completed native binary and matching source hash verify
+the gates on resumption.
+
+Native checks cover captured history and an inert file sample.
+Live tool execution, spoken VoiceOver, physical IME and other
+native platforms remain outside this scope. Four witnessed app
+launches and the three preview sessions are retired. Cleanup
+removes three private registrations, six Library directories,
+ten checkout outputs and the scratch tree. For a separate task,
+review the point where a conversation link opens a changed file
+and returns to the original turn.
+
 ### Canonical tool-evidence qualification
 
 Actual Wails inspection of the existing tool-agentic scene showed its unknown

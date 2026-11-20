@@ -22,7 +22,7 @@ export function ToolActivitySummary({
   const status = toolActivityStatus(tools);
   return (
     <span {...stylex.props(styles.summary)}>
-      <span {...stylex.props(vocab.truncate)}>{label}</span>
+      <span {...stylex.props(vocab.wrapText)}>{label}</span>
       {(status.running > 0 || status.issues > 0 || status.denied > 0) && (
         <span {...stylex.props(styles.statuses, type.uiXs)}>
           {status.running > 0 && (
