@@ -36,7 +36,7 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
     ) : (
       <table
         aria-label={t("changes.applied")}
-        style={{ width: "100%", tableLayout: "fixed" }}
+        style={{ width: "100%", tableLayout: "auto" }}
       >
         <tbody>
           {content.changes.map((change, index) => {
@@ -47,7 +47,10 @@ export function RecordedResult({ context }: { context: ComponentContext }) {
               <tr key={`${path}:${index}`}>
                 <td
                   style={{
-                    width: "5em",
+                    width: verb ? "1%" : "5em",
+                    whiteSpace: verb ? "nowrap" : undefined,
+                    overflowWrap: "anywhere",
+                    paddingInlineEnd: "var(--layout-content-gap)",
                     verticalAlign: "baseline",
                     color: "var(--color-text-muted)",
                     fontSize: "var(--fs-ui-sm)",

@@ -44556,6 +44556,68 @@ Four signed launches exit normally and two preview sessions stop.
 Cleanup removes four private registrations, eight Library
 directories, ten checkout outputs and the scratch tree.
 
+### Size patch receipt columns to the localized status (2026-11-20)
+
+The actual signed DE/dark/18 px/`#3B82F6` capture at `d4fceac8b`
+places the first path glyph **5.86 CSS px inside** the text range
+of `Verschoben`. At **1121 × 950**, the same overlap persists
+when the conversation changes from **440 px to 801 px**. The
+existing fixed table sizes the status track at 85 px in both
+positions. The rendered text and the path are both present in AX.
+
+The recorded-result change table uses native automatic column
+sizing. The localized status prefers a compact track and stays
+on one line. The existing logical content gap separates it
+from the wrapping path. Literal unknown status text retains
+its width hint and can wrap. The path and move-from metadata
+keep the existing receipt presentation. Better Layout's
+localization guidance and Better Typography's short-label
+guidance inform the choice. Read-only ZCode
+`GitPaneChangeCard.tsx` similarly gives its status/other
+metadata intrinsic space alongside the shrinkable file identity.
+[CSS Table Module](https://www.w3.org/TR/css-tables-3/).
+
+- The signed DE comparison measures **12.01 px of clearance**
+  in both positions and after a round trip. At 440 px, the
+  368 px table has 103 px for status and 265 px for path. At
+  801 px, the same status track leaves 610 px for the path.
+  All three status labels fit one line. The three captured
+  destinations and the move source remain readable. Pointer
+  collapse, keyboard reentry and the original Arguments
+  disclosure work, and the draft continues as `11361528`.
+- EN/light/14 px/Flame Orange in the standard 1121 × 950 Lab.
+  At 440 px conversation width, Edited, Moved and Deleted
+  have separate paths and the move includes its original path.
+  The wheel leaves focus on Arguments. Closing it and the
+  patch returns to their original controls, with draft
+  `11336518`.
+- ZH/dark/18 px/`#3B82F6` in the standard Workspace Lab at
+  the same native window size. The absolute path fits three
+  lines at 440 px, compared with four in the preceding sample.
+  At the 320 px Files Dock width, the Read opener reaches
+  the eight-line `store.go` sample. Back to conversation
+  restores that opener and the existing patch list. The
+  separate Created row shows `atomicity.md` and the draft
+  continues as `11342638`.
+
+Scoped Prettier, canonical five-document Lab, strict signatures
+and `make check-native` pass. Only the Tool results ESM changes
+during Web staging. Plugin checks pass 44 Node cases, 20 source
+tests and 20 catalogs across eight locales. Six existing
+conditional source tests skip. Web passes 157 tests, 940 keys
+across eight locales and 26 bundle contracts, with bootstrap
+and production module linkage. The passive range measurements
+are confined to two private Lab builds. The standard builds
+use the same released renderer without the readout.
+
+The native tasks use captured outputs and an inert file sample.
+Live patch execution, spoken VoiceOver, physical IME and other
+native platforms remain outside the checks. Four app launches
+exit normally and three previews stop. Cleanup removes three
+registrations, six private Library directories, ten checkout
+outputs and the scratch tree. Continue with the collapsed
+activity summary and the decision to inspect its Shell result.
+
 ### Canonical tool-evidence qualification
 
 Actual Wails inspection of the existing tool-agentic scene showed its unknown
