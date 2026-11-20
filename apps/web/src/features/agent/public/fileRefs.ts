@@ -75,9 +75,17 @@ const FILE_EXT = new Set([
   "conf",
 ]);
 
-const TOKEN = /(?<![\w/.@-])([A-Za-z0-9._\-/]+)(?::(\d+))?(?::(\d+))?/g;
+const FILE_PATH_CHARACTERS = String.raw`\p{L}\p{M}\p{N}._/-`;
 
-const INLINE_ADDRESS = /^([\p{L}\p{M}\p{N}._/-]+):([0-9]+)(?::([0-9]+)|-([0-9]+))?$/u;
+const TOKEN = new RegExp(
+  String.raw`(?<![@${FILE_PATH_CHARACTERS}])([${FILE_PATH_CHARACTERS}]+)(?::(\d+))?(?::(\d+))?`,
+  "gu",
+);
+
+const INLINE_ADDRESS = new RegExp(
+  String.raw`^([${FILE_PATH_CHARACTERS}]+):([0-9]+)(?::([0-9]+)|-([0-9]+))?$`,
+  "u",
+);
 
 const WORKSPACE_FILE_HREF = /^([^?#]+)#L([0-9]+)(?:-L([0-9]+))?$/;
 

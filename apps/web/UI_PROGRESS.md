@@ -1,6 +1,8 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) [Draft attachments and past messages](#draft-attachments-when-editing-past-messages-2026-11-19) [Draft attachments and history rollback](#draft-attachments-before-history-rollback-2026-11-19) [Deliverables archive return](#return-from-a-retained-document-to-its-archive-row-2026-11-19) [Mermaid reading](#diagram-zoom-feedback-and-keyboard-focus-2026-11-19) [Composer selection after Find](#composer-selection-after-closing-find-2026-11-19) [Goal conflict review](#goal-conflict-review-inside-the-editor-2026-11-19) [Final question submission](#final-question-skip-names-submission-2026-11-19) [Transcript reading and turn navigation](#centered-transcript-and-turn-navigation-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **paused at the user's request (2026-11-20)** after the [prose file-reference repair](#keep-unicode-spelling-in-prose-file-references-2026-11-20). The preceding tool summary change is `13c7ea284`.
+
+The preceding work resumed at the user's request on 2026-11-19. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) [Draft attachments and past messages](#draft-attachments-when-editing-past-messages-2026-11-19) [Draft attachments and history rollback](#draft-attachments-before-history-rollback-2026-11-19) [Deliverables archive return](#return-from-a-retained-document-to-its-archive-row-2026-11-19) [Mermaid reading](#diagram-zoom-feedback-and-keyboard-focus-2026-11-19) [Composer selection after Find](#composer-selection-after-closing-find-2026-11-19) [Goal conflict review](#goal-conflict-review-inside-the-editor-2026-11-19) [Final question submission](#final-question-skip-names-submission-2026-11-19) [Transcript reading and turn navigation](#centered-transcript-and-turn-navigation-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -23242,6 +23244,51 @@ Three native launches and two loopback previews exit. Cleanup
 removes three registrations, six private Library directories,
 ten checkout outputs and the scratch tree. Next inspect a
 keyboard continuation in a different reading or search surface.
+
+### Keep Unicode spelling in prose file references (2026-11-20)
+
+The baseline at `13c7ea284` turns `runtime/internal/会话/store.go:8` into a
+button for `/store.go:8` and leaves `docs/旧名字.md:4` as plain text. The
+prose scanner used an ASCII path boundary.
+
+`apps/web/src/features/agent/public/fileRefs.ts` gives the prose scanner
+and inline addresses the same Unicode path character class. Letters,
+numbers and combining marks stay in the original path sent to
+`FileRefLink` with the parsed line and column. ZCode's read-only
+`packages/ui/src/lib/assistantFileReferences.ts` uses a Unicode-aware path
+matcher. Better Writing informed keeping the exact filename in the visible
+action and accessible name.
+
+Three Vitest regressions cover a mixed-script path, decomposed spelling
+with a column and punctuation, and mention and URL boundaries. The Web
+gate passes 160 tests, 940 locale keys across eight locales and 26 bundle
+contracts. Scoped formatting, the macOS build and tests, five canonical
+Lab documents and the isolated app signatures pass.
+
+- ZH/dark/18 px/`#3B82F6` at 1120 × 850 in signed Wails. An AppKit click
+  opens `runtime/internal/会话/store.go` at line 8. 返回对话 restores
+  focus to the exact source reference. Tab and Enter open
+  `docs/旧名字.md` at line 4, and keyboard return restores that
+  reference. The draft `q` survives both round trips. PageDown moves the
+  transcript from 0 to 445 CSS px. PageUp returns to 0 with the draft and
+  reference focus intact. The Wails view shows the complete path labels and
+  the selected line in the file reader.
+- EN/light/14 px after resizing the same native window to 1440 × 900.
+  The three path labels remain complete. Pointer inspection opens the
+  ASCII control `apps/web/package.json` at line 6. Back to conversation
+  restores its focus and the original transcript offset of 56 CSS px.
+  Both sizes use default zoom.
+
+The acceptance app loads an isolated Workspace Lab with captured file
+content and an inert Runtime endpoint. AppKit events enter the window
+and its own WKWebView and produce trusted WebKit input events. Scrolling
+uses native PageDown and PageUp, and resizing uses the AppKit window API.
+Visual inspection uses snapshots of that same Wails WebView.
+
+Both AppKit acceptance sessions and the preview exited. Cleanup removed
+the private application registration, two private Library directories,
+generated checkout outputs and the scratch directory. The isolated
+Runtime regression also removed its fixture directory.
 
 ### Native short-paste continuation qualification
 
