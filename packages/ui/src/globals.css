@@ -204,6 +204,14 @@
   outline: none;
 }
 
+.reading-unwrapped-rows {
+  overscroll-behavior-x: contain;
+}
+/* A paint-contained Legend item must fit its row before the viewport can scroll it. */
+.reading-unwrapped-rows :has(> [data-reading-key]) {
+  min-inline-size: max-content;
+}
+
 .t-icon-swap {
   position: relative;
   display: inline-grid;

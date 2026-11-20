@@ -266,7 +266,7 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
         {expanded ? (
           <ReadingList
             ref={reader}
-            className="reading-focus-edge"
+            className="reading-focus-edge reading-unwrapped-rows"
             data={lineIndices}
             keyExtractor={String}
             label={t("output.region")}

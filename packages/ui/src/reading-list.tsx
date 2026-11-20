@@ -12,7 +12,9 @@ import {
 } from "react";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { useContentVisible } from "./content-visibility";
+import { isImeKey } from "./keyboard";
 import { scrollReaderWithForeignSelection } from "./reader-selection";
+import { scrollWithHorizontalArrow } from "./scroll-region";
 
 export type ReadingListHandle = LegendListRef;
 // Nested readers reuse the row attribute, so a row counts only inside the list's own item.
@@ -381,8 +383,11 @@ export function ReadingList<T>({
         aria-label={hasScrollStop ? label : undefined}
         tabIndex={hasScrollStop ? 0 : undefined}
         onKeyDown={(event) => {
-          if (currentList.current?.getScrollableNode() === event.currentTarget)
-            scrollReaderWithForeignSelection(event, "vertical");
+          if (currentList.current?.getScrollableNode() !== event.currentTarget)
+            return;
+          if (event.cancelable && !isImeKey(event.nativeEvent))
+            scrollWithHorizontalArrow(event);
+          scrollReaderWithForeignSelection(event, "vertical");
         }}
         className={className}
         data={data}

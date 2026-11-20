@@ -35663,6 +35663,63 @@ Four signed native launches exit normally. Three loopback previews
 stop and cleanup removes three registrations, six private Library
 directories, ten checkout outputs and the scratch tree.
 
+### Scroll wide lines in expanded recorded output (2026-11-20)
+
+Signed Wails at `6ee185490` returns from Find to the focused full
+`Tool output` reader. At 440 px of conversation width, Right still
+leaves `8.412s` outside the visible line. The first candidate passes
+the focused keyboard regression with provided scroll dimensions.
+Native Wails still clips the line. Its private passive readout shows a
+495.2 px line, a 362 px paint-contained Legend item and equal 362 px
+client and scroll widths on the actual focused viewport. Right reaches
+that viewport and its horizontal overflow test correctly finds no room.
+
+The expanded output opts into `reading-unwrapped-rows`. The shared
+stylesheet allows the positioned item containing each authored reading
+row to fit its unwrapped content while keeping Legend's paint containment.
+The same Legend viewport owns horizontal overflow and contains only that
+axis. `ReadingList` routes plain cancelable horizontal arrows through the
+existing shared handler on the real scroll node. Its existing vertical
+reading and selection path still handles the same events as before.
+The fixture regression opens the real reader and covers focus, left and
+right movement, and the fitting-width case. It fails on the original.
+[CSS paint containment](https://www.w3.org/TR/css-contain-2/#containment-paint)
+[Legend's scroll node](https://www.legendapp.com/open-source/list/v3/api/#getscrollablenode).
+
+- EN/light/14 px/Flame Orange at 1121 × 950 with a 440 px conversation.
+  Local Find advances `Rollback` from the first to the second result.
+  Escape focuses the full reader. Right exposes `8.412s` and Left
+  exposes the line starts with the same output outline. Collapse
+  returns to the original disclosure. At 320 px Dock width, opening
+  `store.go` and selecting Back to conversation restores the exact
+  Open the current file action. The draft continues as `10936518`.
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 in the 50,000-line capture.
+  Find locates `31415`. The Close find button restores the actual
+  scroll node. Once the observed range is 31425–31461, a further Right
+  keeps that range. The first Page Down then reaches 31439–31475 and
+  the wheel returns to earlier lines. Jump to latest reaches `49999`.
+  Collapse restores the nine-line preview and the original disclosure,
+  and the conversation draft continues as `10942638`.
+
+The first Right observation after pointer Close find shifts the
+50,000-line range from 31402–31438 to 31425–31461. The signed original
+reproduces those exact bounds and the steady second press. The cause
+of this existing vertical movement remains open. Final native builds
+use the canonical Lab without the diagnostic observer. Live Tool
+execution, VoiceOver and physical trackpad use remain unverified.
+
+The packed UI and icons consumer passes. Plugin checks pass 44 Node
+cases, 19 source tests, 20 catalogs across eight locales and generated
+resource reproduction. Six existing conditional source tests skip.
+Web passes 155 tests, 940 keys across eight locales, 26 bundle contracts
+and production module linkage. Scoped formatting, `make check-native`
+and the canonical five-document Lab build pass. The Tool results ESM
+includes the expanded output's layout opt-in.
+
+Six signed native launches exit normally and all five previews stop.
+Cleanup removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree.
+
 ### Captured shell page reading after main (2026-11-06)
 
 Scope is reply → recorded command → captured page provenance → output preview →
