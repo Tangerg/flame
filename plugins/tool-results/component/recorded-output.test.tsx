@@ -34,6 +34,19 @@ function press(target: HTMLElement, key: string, options?: KeyboardEventInit) {
   return event;
 }
 
+function expandOutput(host: HTMLElement): HTMLElement {
+  const expand = host.querySelector<HTMLButtonElement>(
+    'button[aria-expanded="false"]',
+  )!;
+  act(() => {
+    expand.focus();
+    expand.click();
+  });
+  return host.querySelector<HTMLElement>(
+    '[role="region"][aria-label="Tool output"][tabindex="0"]',
+  )!;
+}
+
 it("pans the focused output preview with plain horizontal arrows", () => {
   const host = renderOutput(
     `report finished\n${"output/path/".repeat(12)}run 2.104s`,
@@ -67,16 +80,7 @@ it("pans overflowing expanded output from its focused reader", () => {
   const host = renderOutput(
     `${"suite passed\n".repeat(9)}${"output/path/".repeat(12)}Rollback 8.412s`,
   );
-  const expand = host.querySelector<HTMLButtonElement>(
-    'button[aria-expanded="false"]',
-  )!;
-  act(() => {
-    expand.focus();
-    expand.click();
-  });
-  const viewport = host.querySelector<HTMLElement>(
-    '[role="region"][aria-label="Tool output"][tabindex="0"]',
-  )!;
+  const viewport = expandOutput(host);
   let width = 480;
   Object.defineProperties(viewport, {
     clientWidth: { value: 240 },
@@ -94,4 +98,36 @@ it("pans overflowing expanded output from its focused reader", () => {
   width = 240;
   expect(press(viewport, "ArrowRight").defaultPrevented).toBe(false);
   expect(viewport.scrollLeft).toBe(0);
+});
+
+it("keeps the reading position on horizontal arrows in a tall, width-fitting output", () => {
+  const host = renderOutput(`${"suite passed\n".repeat(9)}Rollback 8.412s`);
+  const viewport = expandOutput(host);
+  Object.defineProperties(viewport, {
+    clientWidth: { value: 240 },
+    scrollWidth: { value: 240 },
+    clientHeight: { value: 180 },
+    scrollHeight: { value: 360 },
+  });
+  viewport.scrollTop = 120;
+  expect(document.activeElement).toBe(viewport);
+  expect(press(viewport, "ArrowRight").defaultPrevented).toBe(true);
+  expect(press(viewport, "ArrowLeft").defaultPrevented).toBe(true);
+  expect(press(viewport, "ArrowDown").defaultPrevented).toBe(false);
+  expect(viewport.scrollTop).toBe(120);
+  expect(document.activeElement).toBe(viewport);
+
+  const caption = host.querySelector('[data-slot="code-caption"] > span')!;
+  const selection = document.getSelection()!;
+  const range = document.createRange();
+  range.selectNodeContents(caption);
+  act(() => selection.addRange(range));
+  try {
+    expect(document.activeElement).toBe(viewport);
+    expect(selection.isCollapsed).toBe(false);
+    expect(press(viewport, "ArrowRight").defaultPrevented).toBe(false);
+    expect(selection.toString()).toBe(caption.textContent);
+  } finally {
+    act(() => selection.removeAllRanges());
+  }
 });

@@ -35720,6 +35720,70 @@ Six signed native launches exit normally and all five previews stop.
 Cleanup removes three registrations, six private Library directories,
 ten checkout outputs and the scratch tree.
 
+### Keep fitted output at the current reading position (2026-11-20)
+
+In the signed Chinese 50,000-line capture at `7d178cde1`, clicking
+Close find for `31415` returns focus to the actual Legend viewport.
+The passive trace records the matching center line, 714 / 714 CSS px
+of scroll and client width, a 380 px client height and a stable
+`scrollTop` of 5023124. The first Right reaches that viewport and
+its native default establishes a collapsed text caret on row 31438.
+The viewport moves 568 px to 5023692 with focus still on the reader.
+The trace records that transition after more than eight seconds of
+stable reading following Find closure.
+
+`ReadingList` first applies the shared horizontal pan when the
+attached viewport has horizontal overflow. For Left and Right, it
+then uses the existing local-arrow guard used by the inline table
+reader. In a vertically scrollable viewport whose lines fit, the
+guard prevents the native caret jump. Real selected ranges and
+active modifiers continue through the existing helper's conditions.
+The vertical foreign-selection path and occupied scroll node remain
+the existing ones. The reader adds no second scroll position.
+[Selection API](https://www.w3.org/TR/selection-api/#dom-selection-iscollapsed)
+[CSSOM relative scrolling](https://drafts.csswg.org/cssom-view/#dom-element-scrollby).
+
+- The signed ZH diagnostic candidate at the same **1121 × 950**,
+  dark/18 px/`#3B82F6` geometry keeps y5023124, center row 31415,
+  reader focus and the empty selection through the first Right.
+  The trace reports a canceled default. A native double-click
+  selects text in row 31415, and Right collapses that range in
+  place. AX supplies the final selection observation after the trace
+  text reaches its length limit. The first Page Down moves the
+  rendered range from 31402–31438 to 31415–31451.
+- EN/light/14 px/Flame Orange in the clean 1121 × 950 Lab build.
+  Escape from Find returns focus to Tool output with the match
+  visible. Right, Left and Right retain the 31387–31431 rendered
+  range. Page Down reaches 31416–31460 and the wheel returns to
+  31384–31428. Jump to latest reaches line 49999. Collapse returns
+  to the nine-line preview disclosure and the draft continues as
+  `11036518`.
+- ZH/dark/18 px/`#3B82F6` in the clean 1121 × 950 Workspace Lab.
+  At 440 px conversation width, Find records three Rollback
+  matches and Escape returns to the full reader. Right still
+  pans to the complete `8.412s` line end. After collapse and the
+  320 px Files Dock adjustment, the existing source entry opens
+  `store.go`. Return to conversation restores its exact opener
+  and leaves the preview available. The draft continues as
+  `11042638`.
+
+The new focused regression fails against the original and passes
+with the existing preview and full-output tests. The packed UI and
+icons consumer passes. Plugin checks pass 44 Node cases, 20 source
+tests, 20 catalogs across eight locales and published resource
+reproduction. Six existing conditional source tests skip. Web
+passes 155 tests, 940 keys across eight locales and 26 bundle
+contracts, with bootstrap and module linkage. Scoped formatting,
+`make check-native` and the canonical five-document Lab build pass.
+The existing Tool results resource reproduces byte for byte.
+
+The graphical tasks use captured output and file samples. Live Tool
+execution, VoiceOver, physical IME and other native platforms
+remain outside this check. Four signed native launches exit normally.
+Three previews stop. Cleanup removes three registrations, six
+private Library directories, ten checkout outputs and the scratch
+tree.
+
 ### Captured shell page reading after main (2026-11-06)
 
 Scope is reply → recorded command → captured page provenance → output preview →

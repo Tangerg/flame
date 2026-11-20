@@ -13,7 +13,10 @@ import {
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { useContentVisible } from "./content-visibility";
 import { isImeKey } from "./keyboard";
-import { scrollReaderWithForeignSelection } from "./reader-selection";
+import {
+  scrollReaderWithForeignSelection,
+  scrollReaderWithLocalArrow,
+} from "./reader-selection";
 import { scrollWithHorizontalArrow } from "./scroll-region";
 
 export type ReadingListHandle = LegendListRef;
@@ -385,9 +388,13 @@ export function ReadingList<T>({
         onKeyDown={(event) => {
           if (currentList.current?.getScrollableNode() !== event.currentTarget)
             return;
-          if (event.cancelable && !isImeKey(event.nativeEvent))
-            scrollWithHorizontalArrow(event);
-          scrollReaderWithForeignSelection(event, "vertical");
+          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+            if (event.cancelable && !isImeKey(event.nativeEvent))
+              scrollWithHorizontalArrow(event);
+            scrollReaderWithLocalArrow(event);
+          } else {
+            scrollReaderWithForeignSelection(event, "vertical");
+          }
         }}
         className={className}
         data={data}
