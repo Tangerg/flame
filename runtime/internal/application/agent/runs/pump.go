@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"runtime/debug"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -371,9 +370,7 @@ func (s *segmentPump) projectFact(route *executorRoute, executionFact ExecutionF
 	}
 	var publication reductionPublication
 	if terminalFact {
-		end, ended := executionFact.(SegmentEnded)
-		retryUnresolved := ended && (len(end.unresolvedEffects) > 0 || end.Ending.Outcome() == run.OutcomeLost)
-		publication, err = s.publisher.publishTerminalAtomically(s.ownerCtx, route, reductions, retryUnresolved, cancellation)
+		publication, err = s.publisher.publishTerminalAtomically(s.ownerCtx, route, reductions, endingDurability(executionFact), cancellation)
 	} else {
 		publication, err = s.publisher.publish(s.ownerCtx, route, reductions)
 	}
@@ -545,7 +542,7 @@ func (s *segmentPump) synthesizeRoute(ctx context.Context, route *executorRoute)
 		s.fail(err)
 		return false
 	}
-	publication, err := s.publisher.publishTerminalAtomically(ctx, route, reductions, false, cancellation)
+	publication, err := s.publisher.publishTerminalAtomically(ctx, route, reductions, abortOnFailure, cancellation)
 	if err != nil {
 		s.fail(err)
 		return false

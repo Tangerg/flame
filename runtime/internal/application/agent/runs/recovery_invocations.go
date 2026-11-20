@@ -1,12 +1,15 @@
 package runs
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"maps"
+	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
@@ -100,4 +103,82 @@ func validateOpenInvocationSegment(kind string, index int, attempt InvocationAtt
 		)
 	}
 	return nil
+}
+
+// InvocationAttempt locates one journaled attempt inside the Run Segment that
+// started it. The journal row's Session is its Run's Session by schema.
+type InvocationAttempt struct {
+	SessionID identity.SessionID
+	RunID     identity.RunID
+	SegmentID identity.SegmentID
+	CallID    string
+	StartedAt time.Time
+}
+
+// Validate checks the attempt identity before it can influence recovery.
+func (a InvocationAttempt) Validate() error {
+	if err := a.SessionID.Validate(); err != nil {
+		return err
+	}
+	if err := a.RunID.Validate(); err != nil {
+		return err
+	}
+	if err := a.SegmentID.Validate(); err != nil {
+		return err
+	}
+	if err := ValidateInvocation(a.CallID); err != nil {
+		return err
+	}
+	if a.StartedAt.IsZero() || a.StartedAt.Location() != time.UTC {
+		return errors.New("open invocation start time is required in UTC")
+	}
+	return nil
+}
+
+func (a InvocationAttempt) compare(other InvocationAttempt) int {
+	return cmp.Or(
+		a.SessionID.Compare(other.SessionID),
+		a.RunID.Compare(other.RunID),
+		strings.Compare(a.SegmentID.String(), other.SegmentID.String()),
+		strings.Compare(a.CallID, other.CallID),
+	)
+}
+
+// OpenModelInvocation retains a committed logical start. Its physical endpoint
+// is optional because endpoint admission has its own durable boundary.
+type OpenModelInvocation struct {
+	InvocationAttempt
+	Purpose  rundomain.ModelCallPurpose
+	Endpoint *modelref.EndpointObservation
+}
+
+// OpenToolInvocation is an operational Tool attempt without a durable
+// terminal observation. ItemID binds the attempt back to its canonical
+// Transcript lifecycle without copying arguments or results into the journal.
+type OpenToolInvocation struct {
+	InvocationAttempt
+	ItemID identity.ItemID
+}
+
+// ModelInvocationRecovery closes a boot-abandoned outer operation. A known
+// physical response remains evidence under failure; absence remains unknown.
+// The state is implied by the recovery operation rather than stored as an
+// application enum in the persistence port.
+type ModelInvocationRecovery struct {
+	OpenModelInvocation
+	FinishedAt time.Time
+}
+
+// ToolInvocationRecovery marks one boot-abandoned Tool attempt incomplete.
+type ToolInvocationRecovery struct {
+	OpenToolInvocation
+	FinishedAt time.Time
+}
+
+// Transition is the journal transition that closes this attempt.
+func (t ToolInvocationRecovery) Transition() ToolInvocationCommit {
+	return ToolInvocationCommit{
+		CallID: t.CallID, ItemID: t.ItemID, SegmentID: t.SegmentID,
+		State: ToolInvocationIncomplete, StartedAt: t.StartedAt, FinishedAt: t.FinishedAt,
+	}
 }

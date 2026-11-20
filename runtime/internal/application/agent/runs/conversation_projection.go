@@ -3,7 +3,6 @@ package runs
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
@@ -57,7 +56,8 @@ func terminalToolResult(outcome run.Outcome, detail string) string {
 	default:
 		result = "tool call ended without a result before the run finished"
 	}
-	if detail = strings.TrimSpace(detail); detail != "" && outcome == run.OutcomeCanceled {
+	// An ending detail is trimmed by its domain invariant.
+	if detail != "" && outcome == run.OutcomeCanceled {
 		result += ": " + detail
 	}
 	return result

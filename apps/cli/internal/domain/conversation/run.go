@@ -122,9 +122,7 @@ type Approval struct {
 	Title        string
 	Detail       string
 	Tool         *ToolCall
-	Diff         string
 	Risk         protocol.ApprovalRisk
-	RuleHint     string
 	Rememberable bool
 }
 
@@ -132,7 +130,6 @@ type Question struct {
 	RunID  string
 	ItemID string
 	Title  string
-	Detail string
 	Fields []QuestionField
 	// Answers is nil while the question is pending. Once the runtime accepts a
 	// response, it preserves one values slice per field as a transcript fact.

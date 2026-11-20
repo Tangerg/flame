@@ -1,7 +1,6 @@
 package execution
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -79,14 +78,19 @@ type interactionState struct {
 	phase               interactionPhase
 	workersStarted      bool
 	boundary            interactionBoundary
-	dispatchReady       chan struct{}
-	waitingCheckpoint   runs.ExecutorCheckpoint
-	subtreeChange       *interactionWaitingSubtreeChange
-	subtreePrepared     chan struct{}
-	unknownReported     bool
-	deployments         *interactionDeploymentSet
-	delegateCalls       map[delegateCallIdentity]*managedDelegateCall
-	delegateChildren    map[scoperun.ProcessID]*managedDelegateCall
+	// Each gate holds model dispatch for one owner and is released only by it:
+	// a crossed boundary until its replacement Segment owns projection, and a
+	// receipt investigation until its result projection completes. The two run
+	// on different goroutines, so one gate cannot stand in for the other.
+	boundaryGate      chan struct{}
+	investigationGate chan struct{}
+	waitingCheckpoint runs.ExecutorCheckpoint
+	subtreeChange     *interactionWaitingSubtreeChange
+	subtreePrepared   chan struct{}
+	unknownReported   bool
+	deployments       *interactionDeploymentSet
+	delegateCalls     map[delegateCallIdentity]*managedDelegateCall
+	delegateChildren  map[scoperun.ProcessID]*managedDelegateCall
 }
 
 // interactionPhase orders one session's claim: a Process is begun at most once,
@@ -255,16 +259,6 @@ func (i *interactionSession) awaitGuarded() {
 	i.await()
 }
 
-func (i *interactionSession) reconcileUnknownEffectsGuarded() {
-	defer i.reportExecutionDefect()
-	i.reconcileUnknownEffects()
-}
-
-func (i *interactionSession) reconcileExecutionStateGuarded() {
-	defer i.reportExecutionDefect()
-	i.reconcileExecutionState()
-}
-
 // finishOnExecutionDefect and reportExecutionDefect must be deferred directly so
 // recover() sees the panic.
 func (i *interactionSession) finishOnExecutionDefect() {
@@ -292,11 +286,6 @@ func (i *interactionSession) recordExecutionDefect(recovered any) bool {
 
 func (i *interactionSession) failStart() {
 	i.finish()
-}
-
-func (i *interactionSession) stopReconciliation() {
-	i.lifetime.stopReconciling()
-	i.lifetime.reconcilers.Wait()
 }
 
 func (i *interactionSession) finish() {
@@ -357,251 +346,6 @@ func (i *interactionSession) commitFact(
 		return err
 	}
 	return receipt.Await(ctx)
-}
-
-func (i *interactionSession) reconcileUnknownEffects() {
-	ticker := time.NewTicker(i.unknownPollInterval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-i.lifetime.unknownWake:
-		case <-ticker.C:
-		case <-i.lifetime.reconciling.Done():
-			return
-		}
-		if i.reportUnknownEffects() {
-			return
-		}
-	}
-}
-
-func (i *interactionSession) reconcileExecutionState() {
-	ticker := time.NewTicker(i.statePollInterval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-i.lifetime.stateWake:
-		case <-ticker.C:
-		case <-i.lifetime.reconciling.Done():
-			return
-		}
-		progressed, err := i.reconcileCompletedDelegateChildren(i.lifetime.reconciling)
-		if err != nil {
-			i.reportProjectionFailure(err)
-			return
-		}
-		if progressed {
-			continue
-		}
-		if i.publishWaitingBoundary() {
-			continue
-		}
-	}
-}
-
-func (i *interactionSession) publishWaitingBoundary() bool {
-	i.state.mu.Lock()
-	process := i.state.process
-	if process == nil || i.state.phase == interactionFinished || i.state.boundary != interactionBoundaryInactive {
-		i.state.mu.Unlock()
-		return false
-	}
-	i.state.mu.Unlock()
-	ctx := i.lifetime.reconciling
-	snapshot, interruptions, found, err := i.captureHumanInputBarrier(ctx)
-	if err != nil {
-		i.reportProjectionFailure(err)
-		return false
-	}
-	if !found {
-		return false
-	}
-	// Capture can settle a sibling that was still running at the preflight.
-	// Its product terminal must precede the waiting members from this cut.
-	if _, err := i.reconcileCompletedDelegateChildren(ctx); err != nil {
-		i.reportProjectionFailure(err)
-		return false
-	}
-	checkpoint, err := i.executorCheckpoint(snapshot)
-	if err != nil {
-		i.publishProjectionFailure(err)
-		return false
-	}
-	barrier, err := runs.NewTreeInterrupted(checkpoint, interruptions)
-	if err != nil {
-		i.publishProjectionFailure(err)
-		return false
-	}
-	i.state.mu.Lock()
-	// The captured cut is the authority on what was waiting; re-reading a live
-	// status here would describe a different moment than the checkpoint does.
-	if i.state.phase == interactionFinished || i.state.boundary != interactionBoundaryInactive ||
-		i.state.process != process {
-		i.state.mu.Unlock()
-		return false
-	}
-	i.state.boundary = interactionBoundaryWaiting
-	i.state.dispatchReady = make(chan struct{})
-	i.state.waitingCheckpoint = checkpoint.Clone()
-	i.state.mu.Unlock()
-	published := i.lifetime.send(runs.ExecutorEvent{
-		Member:  i.executorMember(process.ID()),
-		Payload: barrier,
-	})
-	if published && i.lifecycleHooks != nil {
-		if err := i.lifecycleHooks.NotifyWaiting(
-			i.lifetime.execution, i.start.SessionID, i.start.WorkspaceCWD,
-		); err != nil {
-			slog.ErrorContext(i.lifetime.execution, "execution: notify waiting",
-				"session.id", i.start.SessionID, "error", err,
-			)
-		}
-	}
-	return published
-}
-
-func (i *interactionSession) stageAcceptedContinuation(checkpoint runs.ExecutorCheckpoint) error {
-	if err := checkpoint.Validate(); err != nil {
-		return err
-	}
-	i.state.mu.Lock()
-	defer i.state.mu.Unlock()
-	if i.state.phase == interactionFinished || i.state.process == nil {
-		return runs.ErrExecutorNotLive
-	}
-	if i.state.boundary != interactionBoundaryWaiting || i.state.observer != nil {
-		return runs.ErrExecutionClaimed
-	}
-	if !executorCheckpointsEqual(i.state.waitingCheckpoint, checkpoint) {
-		return fmt.Errorf("%w: live Interaction checkpoint differs from the claimed waiting boundary", runs.ErrInvalidExecutorCheckpoint)
-	}
-	i.state.boundary = interactionBoundaryAccepted
-	return nil
-}
-
-func (i *interactionSession) beginContinuation() (bool, error) {
-	i.state.mu.Lock()
-	defer i.state.mu.Unlock()
-	if i.state.phase == interactionFinished {
-		return false, runs.ErrExecutorNotLive
-	}
-	if i.state.boundary != interactionBoundaryAccepted || i.state.observer == nil {
-		return false, errors.New("execution: Interaction continuation was not staged and observed")
-	}
-	if i.state.phase == interactionPending {
-		i.state.phase = interactionBegun
-		return true, nil
-	}
-	if i.state.process == nil {
-		return false, runs.ErrExecutorNotLive
-	}
-	return false, nil
-}
-
-func isInteractionWaitingBoundary(status scoperun.Status) bool {
-	return status == scoperun.StatusWaiting || status == scoperun.StatusPaused
-}
-
-func (i *interactionSession) releaseContinuation(input *runs.CommittedUserInput) {
-	i.state.mu.Lock()
-	if input != nil {
-		i.state.pendingResumeInputs = append(i.state.pendingResumeInputs, *input)
-	}
-	i.state.continueExecution()
-	i.state.mu.Unlock()
-}
-
-// continueExecution releases Effects woken by child cancellation only after the
-// replacement product Segment owns their projections. The caller holds mu.
-func (i *interactionState) continueExecution() {
-	i.boundary = interactionBoundaryInactive
-	i.waitingCheckpoint = runs.ExecutorCheckpoint{}
-	close(i.dispatchReady)
-	i.dispatchReady = nil
-}
-
-func executorCheckpointsEqual(left, right runs.ExecutorCheckpoint) bool {
-	return left.RootMemberID == right.RootMemberID && left.BuildID == right.BuildID &&
-		left.SessionID == right.SessionID &&
-		bytes.Equal(left.Payload, right.Payload)
-}
-
-func (i *interactionSession) reportUnknownEffects() bool {
-	ctx := i.lifetime.reconciling
-	if ctx.Err() != nil {
-		return true
-	}
-	ids, err := i.unknownEffectIDs(ctx)
-	if err != nil || len(ids) == 0 {
-		return false
-	}
-	resumeDispatch := i.state.holdReceiptInvestigation()
-	if resumeDispatch == nil {
-		return true
-	}
-	defer resumeDispatch()
-	if _, err := i.investigateToolReceipts(ctx); err != nil {
-		if ctx.Err() == nil {
-			i.reportProjectionFailure(err)
-		}
-		return true
-	}
-	ids, err = i.unknownEffectIDs(ctx)
-	if err != nil {
-		if ctx.Err() == nil {
-			i.reportProjectionFailure(err)
-		}
-		return true
-	}
-	if len(ids) == 0 {
-		return false
-	}
-	i.state.mu.Lock()
-	if i.state.unknownReported {
-		i.state.mu.Unlock()
-		return true
-	}
-	i.state.unknownReported = true
-	process := i.state.process
-	i.state.mu.Unlock()
-	// Unknown effects need execution to stop, but cannot override cancellation
-	// already accepted by Scope. Both causes enter its ordered control queue;
-	// the immutable result decides which cause became authoritative.
-	if err := process.Cancel(ctx, unresolvedEffectsStopReason); err != nil && !errors.Is(err, scoperun.ErrProcessFinished) {
-		i.reportProjectionFailure(err)
-	}
-	// A control request cannot resolve uncertainty. Stop the writer and let
-	// Await report its retained effects; the product owner decides loss.
-	if err := i.engine.Close(ctx); err != nil {
-		i.reportProjectionFailure(err)
-	}
-	return true
-}
-
-// A receipt may resolve an Effect before its result projection is complete.
-// Only the investigation that installed this gate can release model dispatch.
-func (i *interactionState) holdReceiptInvestigation() func() {
-	i.mu.Lock()
-	if i.unknownReported {
-		i.mu.Unlock()
-		return nil
-	}
-	var gate chan struct{}
-	if i.dispatchReady == nil {
-		gate = make(chan struct{})
-		i.dispatchReady = gate
-	}
-	i.mu.Unlock()
-	return func() {
-		if gate != nil {
-			i.mu.Lock()
-			if i.dispatchReady == gate {
-				close(gate)
-				i.dispatchReady = nil
-			}
-			i.mu.Unlock()
-		}
-	}
 }
 
 func (i *interactionSession) await() {

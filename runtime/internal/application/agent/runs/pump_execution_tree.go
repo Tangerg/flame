@@ -3,7 +3,6 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
@@ -35,10 +34,7 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 		return err
 	}
 	write := func() error { return s.segments.publications.events.CommitExecutionTree(s.ownerCtx, commit) }
-	retryOnFailure := slices.ContainsFunc(commit.Events, func(event EventCommit) bool {
-		return event.State == StateTerminalize || event.childCancellation != nil
-	})
-	if err := commitRunBoundary(s.ownerCtx, s.spec.SessionID, s.spec.RunID, write, retryOnFailure); err != nil {
+	if err := commitRunBoundary(s.ownerCtx, s.spec.SessionID, s.spec.RunID, write, commit.durability()); err != nil {
 		return err
 	}
 	if err := s.settleChildStarts(children, startedRoutes); err != nil {

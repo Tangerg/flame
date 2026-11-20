@@ -94,7 +94,7 @@ func (r *Connection) CreateSession(ctx context.Context, input conversation.Creat
 		}
 		validated.Workspace = resolved.Path
 	}
-	request := protocol.CreateSessionRequest{Title: input.Title}
+	request := protocol.CreateSessionRequest{}
 	if validated.Workspace != "" {
 		request.Workspace = &protocol.WorkspaceRef{Path: validated.Workspace}
 	}

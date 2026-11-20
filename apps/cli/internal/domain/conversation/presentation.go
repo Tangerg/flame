@@ -220,8 +220,6 @@ type ToolCall struct {
 	// Problem retains the structured tool-level failure, including documentation,
 	// retry guidance, and capability or field-level details.
 	Problem *protocol.ProblemData
-	// Diff is a unified diff when the call changed files.
-	Diff string
 	// ExitCode is set for completed process-like tools. Nil distinguishes an
 	// absent code from a successful zero.
 	ExitCode *int
@@ -251,7 +249,7 @@ func (t ToolCall) Equal(other ToolCall) bool {
 		!t.StartedAt.Equal(other.StartedAt) || !t.FinishedAt.Equal(other.FinishedAt) ||
 		t.Output != other.Output || !bytes.Equal(t.ResultJSON, other.ResultJSON) ||
 		!failure.Equal(t.Problem, other.Problem) ||
-		t.Diff != other.Diff || t.Duration != other.Duration {
+		t.Duration != other.Duration {
 		return false
 	}
 	return equalOptional(t.ExitCode, other.ExitCode) && equalOptional(t.OutputPage, other.OutputPage)

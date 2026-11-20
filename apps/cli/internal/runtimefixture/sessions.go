@@ -194,10 +194,7 @@ func (r *Runtime) CreateSession(ctx context.Context, in conversation.CreateSessi
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	id := r.identities.next(sessionIdentity)
-	title := strings.TrimSpace(in.Title)
-	if title == "" {
-		title = "Untitled session"
-	}
+	title := "Untitled session"
 	now := r.now()
 	session := conversation.Session{
 		ID: id, Title: title, Status: protocol.SessionStatusIdle,

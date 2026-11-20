@@ -47,15 +47,19 @@ func cancellationFromTermination(termination scoperun.Termination) (runs.Cancell
 }
 
 // awaitDispatchSegment keeps Scope-owned work behind the product transaction
-// that opens its next Segment. Scope owns cancellation of the supplied context;
-// session release can also unblock the gate without creating another tree owner.
+// that opens its next Segment and behind any receipt investigation. Scope owns
+// cancellation of the supplied context; session release can also unblock the
+// gates without creating another tree owner.
 func (i *interactionSession) awaitDispatchSegment(ctx context.Context) error {
 	i.state.mu.Lock()
-	ready := i.state.dispatchReady
+	gates := [...]chan struct{}{i.state.boundaryGate, i.state.investigationGate}
 	i.state.mu.Unlock()
-	if ready != nil {
+	for _, gate := range gates {
+		if gate == nil {
+			continue
+		}
 		select {
-		case <-ready:
+		case <-gate:
 		case <-ctx.Done():
 			return context.Cause(ctx)
 		case <-i.lifetime.releasing.Done():

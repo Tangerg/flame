@@ -118,8 +118,6 @@ func (c *Conversation) apply(envelope RunEvent) error {
 		err = c.applyToolArgumentsDelta(envelope.RunID, item)
 	case RunProgress:
 		err = c.applyRunProgress(envelope.RunID, item)
-	case CustomEvent:
-		err = c.requireRunRunning(envelope.RunID, "publish a custom event")
 	case BlockCompleted:
 		err = c.applyBlockCompleted(envelope.RunID, item)
 	case PlanChanged:

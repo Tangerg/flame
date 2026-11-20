@@ -325,7 +325,7 @@ func questionFieldLabel(specification conversation.QuestionField) string {
 func (p *interruptPrompts) showQuestionDialog(review *questionnaire, fields []base.Field) {
 	form := kit.FormConfig{Fields: fields, Theme: p.theme, Glyphs: p.glyphs,
 		Title: strings.Join(nonEmptyStrings([]string{
-			p.review.SubmissionFailure(), review.question.Detail,
+			p.review.SubmissionFailure(),
 		}), " · "),
 		Hints: []keymap.Action{base.Submit, base.Cancel}}
 	response := review.response(review.current)

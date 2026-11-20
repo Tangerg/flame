@@ -64,7 +64,6 @@ const (
 	recordBlockDelta         recordType = "block.delta"
 	recordToolArgumentsDelta recordType = "tool.arguments.delta"
 	recordRunProgress        recordType = "run.progress"
-	recordCustom             recordType = "custom"
 	recordBlockCompleted     recordType = "block.completed"
 	recordPlanChanged        recordType = "plan.changed"
 	recordSegmentFinished    recordType = "segment.finished"
@@ -89,8 +88,6 @@ type eventRecord struct {
 	Step             *int               `json:"step,omitzero"`
 	ContextTokens    *int64             `json:"contextTokens,omitzero"`
 	Activity         *protocol.Activity `json:"activity,omitzero"`
-	Name             string             `json:"name,omitzero"`
-	Payload          jsontext.Value     `json:"payload,omitzero"`
 	Block            *blockFrame        `json:"block,omitzero"`
 	Transcript       []blockFrame       `json:"transcript,omitzero"`
 	Run              *runJSONFrame      `json:"run,omitzero"`
@@ -163,7 +160,6 @@ type toolFrame struct {
 	Arguments     jsontext.Value        `json:"arguments,omitzero"`
 	Result        jsontext.Value        `json:"result,omitzero"`
 	Problem       *protocol.ProblemData `json:"problem,omitzero"`
-	Diff          string                `json:"diff,omitzero"`
 	ExitCode      *int                  `json:"exitCode,omitzero"`
 	DurationMS    float64               `json:"durationMs,omitzero"`
 }
@@ -180,9 +176,7 @@ type interruptJSON struct {
 	Title        string              `json:"title"`
 	Detail       string              `json:"detail,omitzero"`
 	Tool         *toolFrame          `json:"tool,omitzero"`
-	Diff         string              `json:"diff,omitzero"`
 	Risk         string              `json:"risk,omitzero"`
-	RuleHint     string              `json:"ruleHint,omitzero"`
 	Rememberable bool                `json:"rememberable,omitzero"`
 	Fields       []questionFieldJSON `json:"fields,omitzero"`
 	Answers      [][]string          `json:"answers,omitempty"`
@@ -332,8 +326,6 @@ func encodeEventFrame(envelope conversation.RunEvent) (eventRecord, error) {
 			frame.Usage = encodeUsage(*event.Usage)
 		}
 		return frame, nil
-	case conversation.CustomEvent:
-		return eventRecord{Type: recordCustom, Name: event.Name, Payload: jsontext.Value(event.PayloadJSON)}, nil
 	case conversation.BlockCompleted:
 		return eventRecord{Type: recordBlockCompleted, Block: encodeBlock(event.Block)}, nil
 	case conversation.PlanChanged:
@@ -425,13 +417,13 @@ func encodeInterrupt(interrupt conversation.Interrupt) *interruptJSON {
 	case conversation.Approval:
 		return &interruptJSON{
 			Kind: "approval", RunID: item.RunID, ItemID: item.ItemID, Title: item.Title,
-			Detail: item.Detail, Tool: encodeTool(item.Tool), Diff: item.Diff, Risk: string(item.Risk),
-			RuleHint: item.RuleHint, Rememberable: item.Rememberable,
+			Detail: item.Detail, Tool: encodeTool(item.Tool), Risk: string(item.Risk),
+			Rememberable: item.Rememberable,
 		}
 	case conversation.Question:
 		out := &interruptJSON{
 			Kind: "question", RunID: item.RunID, ItemID: item.ItemID,
-			Title: item.Title, Detail: item.Detail, Answers: conversation.CloneAnswers(item.Answers),
+			Title: item.Title, Answers: conversation.CloneAnswers(item.Answers),
 		}
 		for _, field := range item.Fields {
 			encoded := questionFieldJSON{
@@ -501,7 +493,6 @@ func encodeTool(tool *conversation.ToolCall) *toolFrame {
 		ArgumentsText: tool.ArgumentsText,
 		Result:        jsontext.Value(tool.ResultJSON),
 		Problem:       failure.Clone(tool.Problem),
-		Diff:          tool.Diff,
 		ExitCode:      tool.ExitCode,
 		DurationMS:    float64(tool.Duration.Milliseconds()),
 	}

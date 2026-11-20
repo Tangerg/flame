@@ -109,7 +109,7 @@ func (a Approval) Clone() Approval {
 // projected tool invocation.
 func (a Approval) Equal(other Approval) bool {
 	if a.RunID != other.RunID || a.ItemID != other.ItemID || a.Title != other.Title || a.Detail != other.Detail ||
-		a.Diff != other.Diff || a.Risk != other.Risk || a.RuleHint != other.RuleHint ||
+		a.Risk != other.Risk ||
 		a.Rememberable != other.Rememberable || (a.Tool == nil) != (other.Tool == nil) {
 		return false
 	}
@@ -163,7 +163,7 @@ func (q Question) Clone() Question { return cloneQuestion(q) }
 // Equal reports whether two questions present the same ordered fields. Field
 // order is semantic because QuestionAnswer uses the same order on the wire.
 func (q Question) Equal(other Question) bool {
-	return q.RunID == other.RunID && q.ItemID == other.ItemID && q.Title == other.Title && q.Detail == other.Detail &&
+	return q.RunID == other.RunID && q.ItemID == other.ItemID && q.Title == other.Title &&
 		q.Answered() == other.Answered() &&
 		slices.EqualFunc(q.Fields, other.Fields, func(left, right QuestionField) bool {
 			return left.Equal(right)

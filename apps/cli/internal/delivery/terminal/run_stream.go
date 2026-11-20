@@ -298,7 +298,7 @@ func (r *runs) applyPresentationEvent(envelope conversation.RunEvent) {
 		r.noteProgress(envelope.RunID, event)
 	case conversation.SegmentFinished:
 		r.noteSegmentFinished(envelope.RunID, event)
-	case conversation.BlockDelta, conversation.ToolArgumentsDelta, conversation.CustomEvent:
+	case conversation.BlockDelta, conversation.ToolArgumentsDelta:
 	default:
 	}
 }

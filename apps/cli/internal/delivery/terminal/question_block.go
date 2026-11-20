@@ -75,9 +75,5 @@ func presentQuestionBody(glyphs kit.Glyphs, question conversation.Question) stri
 			}
 		}
 	}
-	body := strings.Join(lines, "\n")
-	if question.Detail != "" {
-		body = question.Detail + "\n" + body
-	}
-	return body
+	return strings.Join(lines, "\n")
 }

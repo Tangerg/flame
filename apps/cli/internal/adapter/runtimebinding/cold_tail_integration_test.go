@@ -49,7 +49,7 @@ func TestRecoveredChildPreviewSurvivesAnUnrelatedChildStart(t *testing.T) {
 	t.Setenv("FLAME_BASEURL", provider.URL)
 	workspace := runtimefixture.TempDirectory(t)
 	connection := openIntegrationRuntime(t, runtimefixture.TempDirectory(t))
-	session, err := connection.CreateSession(fixtureCtx, conversation.CreateSession{Workspace: workspace, Title: "delegate stream attach"})
+	session, err := connection.CreateSession(fixtureCtx, conversation.CreateSession{Workspace: workspace})
 	if err != nil {
 		t.Fatal(err)
 	}

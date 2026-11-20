@@ -42,8 +42,6 @@ func (t *transcriptView) apply(runID string, event conversation.Event) error {
 	case conversation.ToolArgumentsDelta, conversation.RunProgress:
 		// Tool arguments are provisional JSON and progress belongs in the status
 		// chrome. Neither creates an authoritative transcript block.
-	case conversation.CustomEvent:
-		// Custom payloads remain available in NDJSON; they do not create transcript blocks.
 	case conversation.BlockCompleted:
 		return t.complete(e.Block)
 	case conversation.SegmentFinished:

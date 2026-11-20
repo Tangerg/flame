@@ -1,7 +1,6 @@
 package conversation
 
 import (
-	"bytes"
 	"fmt"
 	"time"
 
@@ -91,14 +90,6 @@ type RunProgress struct {
 	Activity      *protocol.Activity
 }
 
-// CustomEvent preserves an extension event without coupling the CLI domain to
-// a vendor-specific payload type. PayloadJSON always contains one valid JSON
-// value, including "null" when the runtime supplied no payload.
-type CustomEvent struct {
-	Name        string
-	PayloadJSON []byte
-}
-
 type BlockCompleted struct{ Block Block }
 
 type PlanChanged struct {
@@ -130,8 +121,6 @@ func (ToolArgumentsDelta) isEvent() {}
 
 func (RunProgress) isEvent() {}
 
-func (CustomEvent) isEvent() {}
-
 func (BlockCompleted) isEvent() {}
 
 func (PlanChanged) isEvent() {}
@@ -162,11 +151,6 @@ func (item RunProgress) equal(event Event) bool {
 	other, ok := event.(RunProgress)
 	return ok && equalOptional(item.Step, other.Step) && equalOptionalValue(item.Usage, other.Usage) &&
 		equalOptional(item.ContextTokens, other.ContextTokens) && equalOptional(item.Activity, other.Activity)
-}
-
-func (item CustomEvent) equal(event Event) bool {
-	other, ok := event.(CustomEvent)
-	return ok && item.Name == other.Name && bytes.Equal(item.PayloadJSON, other.PayloadJSON)
 }
 
 func (item BlockCompleted) equal(event Event) bool {
@@ -221,9 +205,6 @@ func CloneEvent(event Event) Event {
 		if item.Activity != nil {
 			item.Activity = new(*item.Activity)
 		}
-		return item
-	case CustomEvent:
-		item.PayloadJSON = bytes.Clone(item.PayloadJSON)
 		return item
 	case BlockCompleted:
 		item.Block = item.Block.Clone()

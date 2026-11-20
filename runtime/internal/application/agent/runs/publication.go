@@ -55,19 +55,13 @@ func (t treePublisher) publish(
 	if err := t.validateIncrementalPublication(route, batch); err != nil {
 		return reductionPublication{}, err
 	}
-	goalCharged := false
 	for _, reduced := range batch.events {
-		charged, err := t.commitIncrementalReduction(ctx, route, reduced)
-		if err != nil {
+		if err := t.commitIncrementalReduction(ctx, route, reduced); err != nil {
 			return reductionPublication{}, err
 		}
-		goalCharged = goalCharged || charged
 		if err := t.append(route, reduced); err != nil {
 			return reductionPublication{}, err
 		}
-	}
-	if goalCharged {
-		t.publications.publishGoalMoved(t.rootSpec.SessionID)
 	}
 	return reductionPublication{published: true}, nil
 }
@@ -106,35 +100,28 @@ func (t treePublisher) commitIncrementalReduction(
 	ctx context.Context,
 	route *executorRoute,
 	reduced reduction,
-) (bool, error) {
+) error {
 	if reduced.Commit == nil {
-		return false, nil
+		return nil
 	}
 	// Every durable projection lands before its event is delivered or retained
 	// for replay. A failed commit aborts execution instead of publishing an
 	// event the stores do not yet support.
+	// validateIncrementalPublication routes every segment-finishing reduction to
+	// atomic publication, so an incremental commit never changes Run state.
 	commit := *reduced.Commit
 	if commit.CommitID.IsZero() {
 		commit.CommitID = newRunCommitID()
 	}
-	if commit.State == StateTerminalize && route.member.ParentID == "" {
-		commit.ObsoleteCheckpointRootID = route.member.MemberID
-	}
 	t.owner.bindChildCancellationReceipt(&commit, nil)
 	write := func() error { return t.publications.events.CommitEvent(ctx, commit) }
-	if err := commitRunBoundary(ctx, commit.SessionID, commit.RunID, write, commit.childCancellation != nil); err != nil {
-		return false, fmt.Errorf("runs: commit %T: %w", reduced.Event, err)
-	}
-	if commit.State == StateTerminalize {
-		if commit.Run == nil {
-			return false, errors.New("runs: terminal commit has no run snapshot")
-		}
-		t.owner.recordTerminalRun(*commit.Run, commit.cancellation)
+	if err := commitRunBoundary(ctx, commit.SessionID, commit.RunID, write, commit.durability()); err != nil {
+		return fmt.Errorf("runs: commit %T: %w", reduced.Event, err)
 	}
 	for _, write := range commit.Items {
 		t.owner.recordChildCancellationItem(route.runID, write.Item())
 	}
-	return commit.ChargesGoal(), nil
+	return nil
 }
 
 // publishAuthoritativeAtomically commits every durable projection derived from
@@ -169,7 +156,7 @@ func (t treePublisher) publishAuthoritativeAtomically(
 			return reductionPublication{}, fmt.Errorf("runs: validate authoritative fact: %w", err)
 		}
 		write := func() error { return t.publications.events.CommitEvent(ctx, combined) }
-		if err := commitRunBoundary(ctx, combined.SessionID, combined.RunID, write, combined.childCancellation != nil); err != nil {
+		if err := commitRunBoundary(ctx, combined.SessionID, combined.RunID, write, combined.durability()); err != nil {
 			return reductionPublication{}, fmt.Errorf("runs: commit authoritative fact: %w", err)
 		}
 		for _, write := range combined.Items {
@@ -192,7 +179,7 @@ func (t treePublisher) publishTerminalAtomically(
 	ctx context.Context,
 	route *executorRoute,
 	batch reductionBatch,
-	retryUnresolved bool,
+	ending boundaryDurability,
 	cancellation CancellationID,
 ) (reductionPublication, error) {
 	if route == nil {
@@ -219,8 +206,12 @@ func (t treePublisher) publishTerminalAtomically(
 	if err := combined.Validate(); err != nil {
 		return reductionPublication{}, fmt.Errorf("runs: validate atomic terminal: %w", err)
 	}
+	durability := combined.durability()
+	if ending == retryUntilCommitted {
+		durability = retryUntilCommitted
+	}
 	write := func() error { return t.publications.events.CommitEvent(ctx, combined) }
-	if err := commitRunBoundary(ctx, combined.SessionID, combined.RunID, write, retryUnresolved || combined.rootCancellation != nil || combined.childCancellation != nil); err != nil {
+	if err := commitRunBoundary(ctx, combined.SessionID, combined.RunID, write, durability); err != nil {
 		return reductionPublication{}, fmt.Errorf("runs: commit atomic terminal: %w", err)
 	}
 	// The database owns one indivisible write-set, while the live tree still

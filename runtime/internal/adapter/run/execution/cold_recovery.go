@@ -160,8 +160,7 @@ func (i *InteractionExecutor) stageUncertainRecovery(ctx context.Context, plan u
 	session.state.pendingSteers = checkpoint.pendingSteers
 	session.state.pendingResumeInputs = checkpoint.pendingResumeInputs
 	session.state.restoreTree = checkpoint.tree
-	session.state.boundary = interactionBoundaryRecovery
-	session.state.dispatchReady = make(chan struct{})
+	session.state.holdBoundary(interactionBoundaryRecovery)
 	if err := i.publishInteraction(ctx, session); err != nil {
 		return nil, err
 	}

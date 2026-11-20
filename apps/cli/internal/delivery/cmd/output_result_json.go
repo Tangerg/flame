@@ -237,7 +237,7 @@ func (r *resultJSONRenderer) fold(envelope conversation.RunEvent) {
 		}
 	case conversation.SegmentFinished:
 		r.finishSegment(envelope.RunID, event)
-	case conversation.PlanChanged, conversation.ToolArgumentsDelta, conversation.CustomEvent:
+	case conversation.PlanChanged, conversation.ToolArgumentsDelta:
 		// A final result intentionally omits incremental plan state.
 	}
 }

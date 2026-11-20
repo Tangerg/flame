@@ -7,6 +7,7 @@
 package runtimefixture
 
 import (
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"slices"
@@ -286,7 +287,7 @@ type defaultScenario struct {
 	explanation string
 	summary     string
 	declined    string
-	diff        string
+	patch       string
 	testOutput  string
 }
 
@@ -300,7 +301,7 @@ func newDefaultScenario() defaultScenario {
 		summary: "Replaced the sleep with a wait on the janitor's eviction signal. Ran the test 50 times: no failures.\n",
 		declined: "Left the file alone. If you would rather fix it differently, the janitor already exposes a channel that\n" +
 			"closes after each sweep — waiting on that is the smallest change that removes the timing assumption.\n",
-		diff: strings.Join([]string{
+		patch: strings.Join([]string{
 			"--- a/internal/store/cache_test.go",
 			"+++ b/internal/store/cache_test.go",
 			"@@ -18,8 +18,8 @@ func TestCacheExpiry(t *testing.T) {",
@@ -341,7 +342,7 @@ func (d defaultScenario) prelude() []Step {
 	prelude = append(prelude, stream("rsn_1", conversation.BlockReasoning, d.reasoning)...)
 	prelude = append(prelude, tool("tool_1", builtin.CategoryShell, "shell",
 		"go test ./internal/store -run TestCacheExpiry -count=5",
-		conversation.ToolOK, d.testOutput, "", 3*time.Second+412*time.Millisecond)...)
+		conversation.ToolOK, d.testOutput, 3*time.Second+412*time.Millisecond)...)
 	prelude = append(prelude, ReplacePlan(beat, []protocol.PlanStep{
 		{ID: "1", Description: "Reproduce the flake", Status: protocol.PlanStatusCompleted},
 		{ID: "2", Description: "Find what the test is really waiting for", Status: protocol.PlanStatusCompleted},
@@ -350,10 +351,22 @@ func (d defaultScenario) prelude() []Step {
 	return append(prelude, stream("msg_1", conversation.BlockAssistant, d.explanation)...)
 }
 
+// patchArguments carries the proposed change the way the apply_patch tool
+// receives it, so the approval shows what production would show.
+func (d defaultScenario) patchArguments() []byte {
+	encoded, err := json.Marshal(struct {
+		Patch string `json:"patch"`
+	}{d.patch})
+	if err != nil {
+		panic(err)
+	}
+	return encoded
+}
+
 func (d defaultScenario) approved() []Step {
 	approved := tool("tool_3", builtin.CategoryShell, "shell",
 		"go test ./internal/store -run TestCacheExpiry -count=50",
-		conversation.ToolOK, "ok  \tgithub.com/example/store\t2.104s", "", 2*time.Second+104*time.Millisecond)
+		conversation.ToolOK, "ok  \tgithub.com/example/store\t2.104s", 2*time.Second+104*time.Millisecond)
 	approved = append(approved, stream("msg_2", conversation.BlockAssistant, d.summary)...)
 	approved = append(approved, finishStep(beat, Finish{
 		Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
@@ -391,12 +404,10 @@ func (d defaultScenario) script() Script {
 			Title:  "edit internal/store/cache_test.go",
 			Detail: "Replace the fixed 50ms sleep with a wait on the janitor's sweep signal.",
 			Tool: &conversation.ToolCall{
-				Kind: builtin.CategoryEdit, Name: "edit", Summary: "internal/store/cache_test.go",
-				Status: conversation.ToolRunning, Path: "internal/store/cache_test.go", Diff: d.diff,
+				Kind: builtin.CategoryEdit, Name: string(builtin.ApplyPatch), Summary: "internal/store/cache_test.go",
+				Status: conversation.ToolRunning, Path: "internal/store/cache_test.go", ArgumentsJSON: d.patchArguments(),
 			},
-			Diff:         d.diff,
 			Risk:         protocol.ApprovalRiskMedium,
-			RuleHint:     "edit:internal/store/cache_test.go",
 			Rememberable: true,
 		}},
 		Continue: func(answers []conversation.InterruptAnswer) []Step {
@@ -420,12 +431,12 @@ func stream(id string, kind conversation.BlockKind, text string) []Step {
 }
 
 // tool renders one call as running, then finished with its result.
-func tool(id string, kind builtin.ToolCategory, name, summary string, status conversation.ToolStatus, output, patch string, d time.Duration) []Step {
+func tool(id string, kind builtin.ToolCategory, name, summary string, status conversation.ToolStatus, output string, d time.Duration) []Step {
 	running := conversation.Block{ID: id, Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
 		Kind: kind, Name: name, Summary: summary, Status: conversation.ToolRunning,
 	}}
 	done := conversation.Block{ID: id, Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
-		Kind: kind, Name: name, Summary: summary, Status: status, Output: output, Diff: patch, Duration: d,
+		Kind: kind, Name: name, Summary: summary, Status: status, Output: output, Duration: d,
 	}}
 	switch kind {
 	case builtin.CategoryShell:

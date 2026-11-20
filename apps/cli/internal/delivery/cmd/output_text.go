@@ -105,7 +105,7 @@ func (t *textRenderer) renderEvent(envelope conversation.RunEvent) {
 		t.begin(event.Block)
 	case conversation.BlockDelta:
 		t.delta(envelope.RunID, event)
-	case conversation.ToolArgumentsDelta, conversation.RunProgress, conversation.CustomEvent:
+	case conversation.ToolArgumentsDelta, conversation.RunProgress:
 		// These previews are available in NDJSON and the interactive terminal.
 		// Plain text stays focused on human-readable transcript content.
 	case conversation.BlockCompleted:
@@ -353,9 +353,6 @@ func (t *textRenderer) toolBody(call *conversation.ToolCall) {
 			t.line("  │ … " + strconv.Itoa(rest) + " more lines")
 		}
 	}
-	if call.Diff != "" {
-		t.diff(call.Diff)
-	}
 }
 
 func (t *textRenderer) toolVerdict(call *conversation.ToolCall) {
@@ -411,12 +408,6 @@ func textToolPrimary(call *conversation.ToolCall) string {
 	return call.Summary
 }
 
-func (t *textRenderer) diff(d string) {
-	for l := range strings.SplitSeq(strings.TrimRight(d, "\n"), "\n") {
-		t.line("  " + l)
-	}
-}
-
 func (t *textRenderer) plan(items []protocol.PlanStep) {
 	if len(items) == 0 {
 		return
@@ -445,9 +436,6 @@ func (t *textRenderer) interrupted(interrupt conversation.Interrupt) {
 		t.line("? " + item.Title)
 		if item.Detail != "" {
 			t.block("  ", item.Detail)
-		}
-		if item.Diff != "" {
-			t.diff(item.Diff)
 		}
 	case conversation.Question:
 		t.line("? " + item.Title)
@@ -493,20 +481,9 @@ func (t *textRenderer) finished(run conversation.Run) {
 }
 
 func (t *textRenderer) showUsage(u conversation.Usage) {
-	parts := []string{"↑ " + format.Thousands(u.InputTokens), "↓ " + format.Thousands(u.OutputTokens)}
-	if u.CacheReadTokens > 0 {
-		parts = append(parts, "cached "+format.Thousands(u.CacheReadTokens))
+	if summary := format.Usage(u); summary != "" {
+		t.line(summary)
 	}
-	if u.CostUSD != nil {
-		parts = append(parts, format.USD(*u.CostUSD))
-	}
-	if u.Steps > 0 {
-		parts = append(parts, "steps "+strconv.Itoa(u.Steps))
-	}
-	if u.Duration > 0 {
-		parts = append(parts, format.Duration(u.Duration))
-	}
-	t.line(strings.Join(parts, "  "))
 }
 
 // block writes a body with prefix on the first line and matching indentation on

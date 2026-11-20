@@ -94,8 +94,7 @@ func (i *interactionSession) restoreContinuationProjection(
 	if boundary == interactionBoundaryWaiting {
 		i.state.phase = interactionBegun
 	}
-	i.state.boundary = boundary
-	i.state.dispatchReady = make(chan struct{})
+	i.state.holdBoundary(boundary)
 	i.state.waitingCheckpoint = continuation.Checkpoint.Clone()
 	i.state.delegateCalls = delegateCalls
 	i.state.delegateChildren = delegateChildren

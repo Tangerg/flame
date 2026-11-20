@@ -175,12 +175,6 @@ func rememberScope(scope protocol.ApprovalRuleScope) protocol.RememberScopeKind 
 }
 
 func approvalRuleParts(approval conversation.Approval) (tool, subject string) {
-	hint := strings.TrimSpace(approval.RuleHint)
-	if hint != "" {
-		if hintTool, hintSubject, ok := strings.Cut(hint, ":"); ok && strings.TrimSpace(hintTool) != "" {
-			return strings.TrimSpace(hintTool), strings.TrimSpace(hintSubject)
-		}
-	}
 	if approval.Tool == nil {
 		return "unknown", strings.TrimSpace(approval.Title)
 	}

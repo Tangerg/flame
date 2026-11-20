@@ -466,14 +466,10 @@ func (c *Conversation) RestoreAttachedSnapshot(snapshot SessionSnapshot, stream 
 }
 
 type CreateSession struct {
-	Title     string
 	Workspace string
 }
 
 func (c CreateSession) Validate() error {
-	if c.Title != "" && strings.TrimSpace(c.Title) == "" {
-		return errors.New("session create: title is empty")
-	}
 	if err := (workspace.ResolveRequest{Path: strings.TrimSpace(c.Workspace)}).Validate(); err != nil {
 		return fmt.Errorf("session create: %w", err)
 	}

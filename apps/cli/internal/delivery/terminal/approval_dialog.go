@@ -3,10 +3,11 @@ package terminal
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/oolong/ui/core/scene"
 	"image"
 	"slices"
 	"strings"
+
+	"github.com/Tangerg/oolong/ui/core/scene"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -186,9 +187,6 @@ func (p *interruptPrompts) openApproval(approval conversation.Approval) {
 	p.setApprovalForm(initial)
 	p.approvalPane.title = approval.Title
 	call := approval.Tool.Clone()
-	if strings.TrimSpace(call.Diff) == "" {
-		call.Diff = approval.Diff
-	}
 	presentation, err := selectToolPresentation(defaultToolPresenters(), call)
 	if err != nil {
 		presentation = toolPresentation{
@@ -200,9 +198,6 @@ func (p *interruptPrompts) openApproval(approval conversation.Approval) {
 	details := []string{p.review.SubmissionFailure(), approval.Detail, presentation.Label}
 	if approval.Risk != "" {
 		details = append(details, "risk: "+string(approval.Risk))
-	}
-	if approval.RuleHint != "" {
-		details = append(details, "rule: "+approval.RuleHint)
 	}
 	p.approvalPane.detail.SetText([]text.Line{text.Of(strings.Join(nonEmptyStrings(details), "\n"), p.approvalPane.theme.Text)})
 	p.setApprovalPreview(p.approvalPreviewSections())

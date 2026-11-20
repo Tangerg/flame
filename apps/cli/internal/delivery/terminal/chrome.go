@@ -345,7 +345,7 @@ func (s *statusView) Draw(view grid.View) {
 		view.Text(width-rightWidth, 0, right, s.theme.Subtle)
 		return
 	}
-	right := joinStatusLabels(contextLabel(s.contextTokens), usageLabel(s.usage))
+	right := joinStatusLabels(contextLabel(s.contextTokens), format.Usage(s.usage))
 	style := s.theme.Muted
 	switch {
 	case s.phase == statusFailed:
@@ -522,24 +522,4 @@ func (s *statusView) fail(detail string, busy bool) {
 	if busy {
 		s.phase = statusActive
 	}
-}
-
-func usageLabel(usage conversation.Usage) string {
-	if usage.Empty() {
-		return ""
-	}
-	parts := []string{"↑" + format.Thousands(usage.InputTokens), "↓" + format.Thousands(usage.OutputTokens)}
-	if usage.CacheReadTokens > 0 {
-		parts = append(parts, "cached "+format.Thousands(usage.CacheReadTokens))
-	}
-	if usage.CostUSD != nil {
-		parts = append(parts, format.USD(*usage.CostUSD))
-	}
-	if usage.Steps > 0 {
-		parts = append(parts, "steps "+strconv.Itoa(usage.Steps))
-	}
-	if usage.Duration > 0 {
-		parts = append(parts, format.Duration(usage.Duration))
-	}
-	return strings.Join(parts, "  ")
 }

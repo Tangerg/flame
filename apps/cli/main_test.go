@@ -445,7 +445,6 @@ func mixedInterruptPTYInterrupts() []conversation.Interrupt {
 	return []conversation.Interrupt{
 		conversation.Approval{
 			ItemID: "approval", Title: "Run contract checks", Rememberable: true,
-			RuleHint: "shell:go test ./...",
 			Tool: &conversation.ToolCall{
 				Kind: builtin.CategoryShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
 				ArgumentsJSON: []byte(`{"command":"go test ./...","count":1}`),

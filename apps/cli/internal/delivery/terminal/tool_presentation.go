@@ -190,9 +190,6 @@ func toolSections(call conversation.ToolCall, output toolSection) []toolSection 
 			Title: "Arguments", Style: toolSectionCode, Language: "json", Text: prettyJSON(call.ArgumentsJSON),
 		})
 	}
-	if strings.TrimSpace(call.Diff) != "" {
-		sections = append(sections, toolSection{Title: "Changes", Style: toolSectionCode, Language: "diff", Text: call.Diff})
-	}
 	if strings.TrimSpace(output.Text) != "" {
 		sections = append(sections, output)
 	}

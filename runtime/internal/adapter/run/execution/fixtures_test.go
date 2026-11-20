@@ -100,9 +100,8 @@ func captureAcceptedTestBarrier(t *testing.T, executor *InteractionExecutor, ref
 		t.Fatal(err)
 	}
 	session.state.mu.Lock()
-	session.state.boundary = interactionBoundaryWaiting
+	session.state.holdBoundary(interactionBoundaryWaiting)
 	session.state.waitingCheckpoint = checkpoint.Clone()
-	session.state.dispatchReady = make(chan struct{})
 	session.state.mu.Unlock()
 	session.lifetime.send(runs.ExecutorEvent{Member: session.executorMember(session.state.processHandle().ID()), Payload: barrier})
 	select {

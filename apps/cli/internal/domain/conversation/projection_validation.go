@@ -1,7 +1,6 @@
 package conversation
 
 import (
-	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"slices"
@@ -74,14 +73,6 @@ func ValidateEvent(event Event) error {
 		}
 		return nil
 	case ToolArgumentsDelta, RunProgress:
-		return nil
-	case CustomEvent:
-		if strings.TrimSpace(item.Name) == "" {
-			return errors.New("custom event without a name")
-		}
-		if !jsontext.Value(item.PayloadJSON).IsValid() {
-			return errors.New("custom event payload is not valid JSON")
-		}
 		return nil
 	case BlockCompleted:
 		return item.Block.validateLifecycle(true)
