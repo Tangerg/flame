@@ -35608,6 +35608,61 @@ native clipboard bytes, browser visual suites and benchmarks were outside
 the scope. Both private bundle registrations, processes, previews, caches,
 build outputs and temporary logs are removed.
 
+### Scroll wide recorded output in its preview (2026-11-20)
+
+Signed Wails at `07807fa5b` clips the `2.104s` duration at the end of a
+two-line `Read output` record when the conversation narrows to 440 px.
+The named preview has keyboard focus and the captured text is present.
+Repeated Right and the attempted native horizontal gesture leave the line
+end clipped. Its preformatted rows exceed the width of the existing
+clipping CodeFrame, and the preview has no scroll viewport of its own.
+
+`RecordedOutput` puts horizontal scrolling on the same named preview
+element and contains only horizontal overscroll. It uses the shared
+code reader's horizontal-arrow handler and respects composing and
+modified keystrokes. The first signed candidate reaches the line end.
+Its overlay scrollbar crosses the last line, so the final preview uses
+the existing code-frame inset beneath the text. Read-only ZCode
+`ToolCallBlocks/renderers/ExecuteOutput.tsx` and Better Accessibility
+inform this bounded reading surface. [CSS overflow](https://www.w3.org/TR/css-overflow-3/#overflow-properties)
+[CSS overscroll](https://www.w3.org/TR/css-overscroll-1/#overscroll-behavior-x).
+
+- EN/light/14 px/Flame Orange at 1121 × 950 and 440 px of conversation.
+  In the focused `sh_01` preview, Right reveals `2.104s` and Left
+  returns to the full line starts. The visible scrollbar stays below
+  the text. Clicking its right-hand track after returning to the start
+  also reveals `2.104s` with the same preview focused. The row closes
+  through its original keyboard trigger and the draft continues as
+  `10836518`.
+- ZH/dark/18 px/`#3B82F6` at the same window and conversation widths.
+  Right in `工具输出预览` reveals `8.412s` and retains ANSI colors.
+  A downward wheel over the preview moves the transcript and leaves
+  focus in the preview. The ten-line view opens from the preview,
+  local Find reaches `1 / 3` then `2 / 3`, and Escape returns focus
+  to the expanded reader. Collapse returns to the same preview
+  disclosure. The 320 px Files Dock opens the captured `store.go`
+  source target. Return to conversation restores the exact original
+  opener and the draft continues as `10842638`.
+
+The focused preview regression fails on the original and passes on the
+candidate. Plugin checks pass 44 Node cases, 18 source tests, 20 catalogs
+in eight locales and generated resource reproduction. Six existing
+conditional source tests skip. Web passes 155 tests, 940 keys across
+eight locales, 26 bundle contracts and production module linkage. Scoped
+formatting, `make check-native` and the canonical five-document Lab build
+pass. The Tool results ESM is rebuilt through normal packaging.
+
+The native runs use captured output and the existing file sample. The
+track click qualifies pointer panning. The automated horizontal wheel
+and thumb drag trials did not pan, and a physical trackpad, VoiceOver,
+clipboard writes and live Tool execution remain unverified. In the
+expanded list, keyboard Right still leaves the long line clipped after
+Find returns focus. That existing viewport is the next reading task.
+
+Four signed native launches exit normally. Three loopback previews
+stop and cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+
 ### Captured shell page reading after main (2026-11-06)
 
 Scope is reply → recorded command → captured page provenance → output preview →
