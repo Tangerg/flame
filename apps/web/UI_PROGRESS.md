@@ -44499,6 +44499,63 @@ evidence files and 19 screenshot digests, gzip SHA-256
 Primary work, user data and references remain untouched. This documentation-only
 receipt changes no tested source.
 
+### Use Runtime tool presentation in captured evidence (2026-11-20)
+
+The signed ZH Workspace Lab at `879d96ed7` opened the three-file
+Apply Patch receipt as one generic JSON line wrapping through the
+result reader. The 440 px conversation showed the exact data,
+including a move and its previous path. The Lab's wire fixture
+omitted the `patch` result shape that Runtime adds through
+`presentTool`. The installed exact-name renderer still receives the
+result and uses its shape to decide whether to show the change list.
+
+The existing client-fixture generator now projects both the category
+and any shared result shape from the built-in Go presentation table.
+Standard Lab snapshots consume that generated projection in one
+lookup. The captured status, arguments, paths, previous path and
+zero counts are unchanged. The real snapshot-to-session-fold
+regression fails on the original missing shape and passes after
+generation. A Read receipt still has no shared result shape.
+ZCode's read-only `GitPaneChangeCard.tsx` also keeps the change
+identity beside its outcome. The actual Flame verification uses
+the installed Tool results declaration and shared reader.
+
+- EN/light/14 px/Flame Orange in a native **1121 × 950** window
+  at default zoom with a **440 px** conversation. The receipt
+  presents Edited, Moved and Deleted as separate entries. The
+  moved row includes `From runtime/internal/session/store_atomicity.go`,
+  and the absolute first path remains complete. Keyboard Arguments
+  reveals the captured patch source, and closing it and then
+  collapsing the receipt retains the respective trigger focus.
+  The draft continues as `11236518`.
+- ZH/dark/18 px/`#3B82F6` at the same window and conversation
+  width. The three localized statuses and previous path remain
+  readable. The splitter then sets Files to **320 px**. Enter
+  on Open current file opens the eight-line `store.go` sample.
+  Back to conversation restores the exact opener and the expanded
+  three-file receipt. The separate single-file receipt shows
+  Created with `atomicity.md`. The draft continues as `11242638`.
+- DE/dark/18 px/`#3B82F6` at 440 px conversation width renders the
+  localized three-file receipt and the exact previous path.
+  `Verschoben` and the first path glyph touch visually in the
+  existing fixed-width renderer column. Keyboard collapse and the
+  continued draft `11261528` pass. The next batch addresses the
+  renderer's spacing with this captured reproduction.
+
+Scoped Prettier and gofmt, disposable `make check-generated`, the
+canonical five-document Lab and strict native signatures pass. The
+contract generator package compiles via Go test and has no test files. Web passes 157 tests, 940 locale keys across
+eight languages and 26 bundle contracts, with bootstrap, installed
+resource reproduction and production module linkage.
+`make check-native` passes. This is a Lab data and generator repair.
+Native acceptance uses captured histories and an inert file sample.
+Live patch execution, spoken VoiceOver, physical IME and other native
+platforms remain outside this check.
+
+Four signed launches exit normally and two preview sessions stop.
+Cleanup removes four private registrations, eight Library
+directories, ten checkout outputs and the scratch tree.
+
 ### Canonical tool-evidence qualification
 
 Actual Wails inspection of the existing tool-agentic scene showed its unknown

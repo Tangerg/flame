@@ -4,7 +4,6 @@ import {
   type RunCapabilities,
   type RunRef,
   type StreamEvent,
-  type ToolInvocation,
 } from "@flame/runtime-client";
 import { type AgentEventEnvelope } from "@/features/agent/public/events";
 import {
@@ -14,7 +13,7 @@ import {
   runtimeRunFact,
 } from "@/features/agent/adapters/runtimeAgentFacts";
 import { type AgentSessionSnapshot } from "@/features/agent/application/runtimeGateway";
-import { toolCategoryForName } from "@/test/toolCategory.generated";
+import { toolPresentationForName } from "@/test/toolCategory.generated";
 import { type GoalReadModel } from "@/features/goal/application/goalReadModel";
 import { VISUAL_CONTEXT_TOKENS } from "./agentFixtureFacts";
 import { GENUI_REPORT } from "./genuiReport";
@@ -193,7 +192,7 @@ const RUNNING_SET_PLAN: Item = {
   finishedAt: "2026-07-31T08:00:00.012Z",
   tool: {
     name: "set_plan",
-    category: toolCategoryForName("set_plan"),
+    ...toolPresentationForName("set_plan"),
     arguments: {
       steps: ["Verify boundary ownership", "Review visual evidence", "Run quality gates"],
     },
@@ -225,7 +224,7 @@ const RUNNING_READ: Item = {
   finishedAt: "2026-07-31T08:00:00.036Z",
   tool: {
     name: "read",
-    category: toolCategoryForName("read"),
+    ...toolPresentationForName("read"),
     arguments: {
       path: "/Users/visual/scope/runtime/internal/session/atomicity_and_idempotency.go",
     },
@@ -242,7 +241,7 @@ const RUNNING_TOOL: Item = {
   startedAt: CREATED_AT,
   tool: {
     name: "grep",
-    category: toolCategoryForName("grep"),
+    ...toolPresentationForName("grep"),
     arguments: {
       pattern: "idempotency|atomicity",
       path: "runtime",
@@ -259,7 +258,7 @@ const PENDING_APPROVAL_TOOL: Item = {
   startedAt: CREATED_AT,
   tool: {
     name: "shell",
-    category: toolCategoryForName("shell"),
+    ...toolPresentationForName("shell"),
     arguments: {
       description: "Run the race detector",
       command: "go test -race ./...",
@@ -272,7 +271,6 @@ function settledTool(
   name: string,
   args: Record<string, unknown>,
   result: unknown,
-  resultShape?: ToolInvocation["resultShape"],
 ): Item {
   return {
     type: "toolCall",
@@ -283,7 +281,7 @@ function settledTool(
     startedAt: CREATED_AT,
     durationMillis: 120,
     finishedAt: "2026-07-31T08:00:00.120Z",
-    tool: { name, category: toolCategoryForName(name), resultShape, arguments: args, result },
+    tool: { name, ...toolPresentationForName(name), arguments: args, result },
   };
 }
 
@@ -298,7 +296,6 @@ const GLOB_CALL = settledTool(
       { path: "runtime/internal/run/segment_test.go" },
     ],
   }),
-  "search",
 );
 
 const MEMORY_CALL = settledTool(
@@ -649,7 +646,7 @@ const SHELL_READ: Item = {
   finishedAt: "2026-07-31T08:00:00.042Z",
   tool: {
     name: "read",
-    category: toolCategoryForName("read"),
+    ...toolPresentationForName("read"),
     arguments: { path: "runtime/internal/session/store.go" },
     result: READ_STORE_RESULT,
   },
@@ -666,7 +663,7 @@ const SHELL_COMMAND: Item = {
   finishedAt: "2026-07-31T08:00:08.400Z",
   tool: {
     name: "shell",
-    category: toolCategoryForName("shell"),
+    ...toolPresentationForName("shell"),
     arguments: {
       description: "Run the session suite",
       command: "go test ./internal/session/...",
@@ -702,7 +699,7 @@ const PATCH_NEW_FILE: Item = {
   finishedAt: "2026-07-31T08:00:00.040Z",
   tool: {
     name: "apply_patch",
-    category: toolCategoryForName("apply_patch"),
+    ...toolPresentationForName("apply_patch"),
     arguments: { patch: "*** Begin Patch\n*** Add File: atomicity.md\n…\n*** End Patch" },
     result: {
       changes: [
@@ -723,7 +720,7 @@ const SHELL_FAILED: Item = {
   finishedAt: "2026-07-31T08:00:00.120Z",
   tool: {
     name: "apply_patch",
-    category: toolCategoryForName("apply_patch"),
+    ...toolPresentationForName("apply_patch"),
     arguments: { patch: "*** Begin Patch\n…\n*** End Patch" },
   },
   error: { type: "tool_failed", detail: "store.go changed on disk after it was read." },
@@ -740,7 +737,7 @@ const SHELL_PATCH: Item = {
   finishedAt: "2026-07-31T08:00:00.064Z",
   tool: {
     name: "apply_patch",
-    category: toolCategoryForName("apply_patch"),
+    ...toolPresentationForName("apply_patch"),
     arguments: { patch: "*** Begin Patch\n…\n*** End Patch" },
     result: {
       changes: [
@@ -779,7 +776,7 @@ const SHELL_DENIED: Item = {
   finishedAt: "2026-07-31T08:00:00.015Z",
   tool: {
     name: "apply_patch",
-    category: toolCategoryForName("apply_patch"),
+    ...toolPresentationForName("apply_patch"),
     arguments: { patch: "*** Begin Patch\n…\n*** End Patch" },
   },
   error: { type: "denied_by_user", detail: "You declined this write." },
@@ -805,7 +802,7 @@ const WAVE_READ: Item = {
   finishedAt: "2026-07-31T08:00:00.031Z",
   tool: {
     name: "read",
-    category: toolCategoryForName("read"),
+    ...toolPresentationForName("read"),
     arguments: { path: "runtime/internal/session/store.go" },
     result: READ_STORE_RESULT,
   },
@@ -822,7 +819,7 @@ const WAVE_GREP: Item = {
   finishedAt: "2026-07-31T08:00:00.088Z",
   tool: {
     name: "grep",
-    category: toolCategoryForName("grep"),
+    ...toolPresentationForName("grep"),
     arguments: { pattern: "RunInTx", path: "runtime" },
     result: {
       hits: [
@@ -869,7 +866,7 @@ const WAVE_PATCH: Item = {
   finishedAt: "2026-07-31T08:00:00.057Z",
   tool: {
     name: "apply_patch",
-    category: toolCategoryForName("apply_patch"),
+    ...toolPresentationForName("apply_patch"),
     arguments: { patch: "*** Begin Patch\n…\n*** End Patch" },
     result: {
       changes: [
@@ -905,7 +902,7 @@ const WAVE_LIVE_TOOL: Item = {
   startedAt: CREATED_AT,
   tool: {
     name: "shell",
-    category: toolCategoryForName("shell"),
+    ...toolPresentationForName("shell"),
     arguments: {
       description: "Run the session suite",
       command: "go test ./internal/session/...",
@@ -1260,7 +1257,7 @@ function narrativeTool(
     safetyClass: safetyClassOf(name),
     tool: {
       name,
-      category: toolCategoryForName(name),
+      ...toolPresentationForName(name),
       arguments: args,
       ...(result === undefined ? {} : { result }),
     },
@@ -1424,7 +1421,7 @@ const FANOUT_DELEGATE: Item = {
   safetyClass: "safe",
   tool: {
     name: "delegate_task",
-    category: "task",
+    ...toolPresentationForName("delegate_task"),
     arguments: {
       summary: "Audit persistence boundaries across Runtime, Framework and delegated agents",
       instructions: "…",
@@ -1502,7 +1499,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
             payload: {
               tool: {
                 name: "shell",
-                category: toolCategoryForName("shell"),
+                ...toolPresentationForName("shell"),
                 arguments: {
                   description: "Run the race detector",
                   command: "go test -race ./...",
@@ -1734,7 +1731,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         safetyClass: "safe",
         tool: {
           name: "delegate_task",
-          category: "task",
+          ...toolPresentationForName("delegate_task"),
           arguments: { summary: "Audit Agent Framework ownership", instructions: "…" },
         },
       },
@@ -1756,7 +1753,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         safetyClass: "safe",
         tool: {
           name: "delegate_task",
-          category: "task",
+          ...toolPresentationForName("delegate_task"),
           arguments: { summary: "Verify package dependencies", instructions: "…" },
         },
       },
@@ -1784,7 +1781,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
         safetyClass: "safe",
         tool: {
           name: "grep",
-          category: toolCategoryForName("grep"),
+          ...toolPresentationForName("grep"),
           arguments: { pattern: "grid-cols-subgrid", path: "runtime" },
         },
       },
@@ -1802,7 +1799,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
             payload: {
               tool: {
                 name: "shell",
-                category: toolCategoryForName("shell"),
+                ...toolPresentationForName("shell"),
                 arguments: { command: "go list -deps ./..." },
               },
               reason: "Inspect the complete dependency graph.",
@@ -2023,7 +2020,7 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
             payload: {
               tool: {
                 name: "shell",
-                category: toolCategoryForName("shell"),
+                ...toolPresentationForName("shell"),
                 arguments: { command: "rm -rf node_modules .next && pnpm install" },
               },
               reason: "rm -rf deletes uncommitted build output and cannot be undone.",
