@@ -2,6 +2,7 @@ package toolset
 
 import (
 	json "encoding/json/v2"
+	"fmt"
 	"slices"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -29,14 +30,14 @@ func mutationPaths(tool toolcontract.Tool, invocation toolcontract.Invocation) (
 	}
 	if len(paths) == 0 {
 		// Only ApplyPatchTool declares its endpoints; every other file Tool names
-		// one path in its schema, which the Contract validated before this call.
-		// Arguments that are not such an object simply name no path — there is
-		// nothing for a guard to resolve, and the Tool's own schema already
-		// refused anything its executor could not read.
+		// one path in its schema. Guards depend on this answer, so arguments
+		// that cannot be read refuse the call rather than naming no path.
 		var a struct {
 			Path string `json:"path"`
 		}
-		_ = json.Unmarshal(invocation.Arguments(), &a)
+		if err := json.Unmarshal(invocation.Arguments(), &a); err != nil {
+			return nil, fmt.Errorf("read mutation path: %w", err)
+		}
 		if a.Path != "" {
 			paths = append(paths, a.Path)
 		}

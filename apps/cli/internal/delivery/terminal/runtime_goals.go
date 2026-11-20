@@ -101,7 +101,7 @@ func (g *goalScreens) ClearGoal() error {
 	sessionID := g.session.current.ID
 	label := "clearing session goal"
 	g.status.note(label)
-	started := g.tasks.admissionMutation(goalOperation, false,
+	started := g.tasks.admissionMutation(goalOperation,
 		func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, g.service.ClearGoal(ctx, sessionID)
 		},
@@ -140,7 +140,7 @@ func (g *goalScreens) ResumeGoal() error {
 func (g *goalScreens) changeGoal(label string, change func(context.Context) (protocol.Goal, error)) error {
 	presentation := g.session.context
 	g.status.note(label)
-	started := g.tasks.admissionMutation(goalOperation, false, change, func(current protocol.Goal, err error) {
+	started := g.tasks.admissionMutation(goalOperation, change, func(current protocol.Goal, err error) {
 		if err != nil {
 			g.message(label + " failed: " + err.Error())
 			return

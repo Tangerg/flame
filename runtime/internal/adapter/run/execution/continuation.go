@@ -125,6 +125,13 @@ func continuationAnswerPlans(cut interactionHandoff, head scoperun.Log, inspecti
 			targets[request] = target
 		}
 	}
+	if len(answers) != len(targets) {
+		return nil, fmt.Errorf("%w: answer set does not cover the accepted inputs", runs.ErrExecutorStateLost)
+	}
+	waits, err := acceptedWaits(inspection, retired, targets)
+	if err != nil {
+		return nil, err
+	}
 	ordered := slices.Clone(answers)
 	slices.SortFunc(ordered, func(a, b runs.InterruptAnswer) int {
 		if order := strings.Compare(a.MemberID, b.MemberID); order != 0 {
@@ -132,23 +139,6 @@ func continuationAnswerPlans(cut interactionHandoff, head scoperun.Log, inspecti
 		}
 		return strings.Compare(a.RequestID, b.RequestID)
 	})
-	if len(ordered) != len(targets) {
-		return nil, fmt.Errorf("%w: answer set does not cover the accepted inputs", runs.ErrExecutorStateLost)
-	}
-	waits := make(map[inputAddress]scoperun.Wait)
-	for _, process := range inspection.Processes {
-		if retired[process.ID] {
-			continue
-		}
-		for _, wait := range process.Waits {
-			address := inputAddress{process: process.ID, wait: wait.Key}
-			target, found := targets[inputRequestID(process.ID, wait.Key)]
-			if !found || target.processID != process.ID || target.waitKey != wait.Key {
-				return nil, fmt.Errorf("%w: current input differs from its accepted target", runs.ErrExecutorStateLost)
-			}
-			waits[address] = wait
-		}
-	}
 	plans := make([]interactionAnswerPlan, 0, len(ordered))
 	seen := make(map[string]bool)
 	for _, answer := range ordered {
@@ -160,38 +150,67 @@ func continuationAnswerPlans(cut interactionHandoff, head scoperun.Log, inspecti
 		if cut.progress[target.processID].OwnerID != target.memberID.String() {
 			return nil, fmt.Errorf("%w: input recipient changed its product owner", runs.ErrExecutorStateLost)
 		}
-		response, err := runinput.EncodeResolution(answer.Resolution)
+		plan, err := planAnswer(head, waits, target, answer, releaseStarted)
 		if err != nil {
 			return nil, err
 		}
-		id, err := interactionAnswerSignalID(answer, response)
-		if err != nil {
-			return nil, err
-		}
-		payload, err := scoperun.ParsePayload(response)
-		if err != nil {
-			return nil, err
-		}
-		signal := scoperun.Signal{ID: id, Wait: target.waitKey, Payload: payload}
-		admitted, err := exactSignalAdmission(head, target.processID, signal)
-		if err != nil {
-			return nil, err
-		}
-		if !admitted {
-			if releaseStarted {
-				return nil, fmt.Errorf("%w: release started before every answer was acknowledged", runs.ErrExecutorStateLost)
-			}
-			wait, found := waits[inputAddress{process: target.processID, wait: target.waitKey}]
-			if !found {
-				return nil, fmt.Errorf("%w: accepted answer has neither its receipt nor its wait", runs.ErrExecutorStateLost)
-			}
-			if err := wait.AnswerSchema.Validate(payload.JSON()); err != nil {
-				return nil, err
-			}
-		}
-		plans = append(plans, interactionAnswerPlan{processID: target.processID, signal: signal, admitted: admitted})
+		plans = append(plans, plan)
 	}
 	return plans, nil
+}
+
+// acceptedWaits proves every wait still open in the tree is one the accepted
+// handoff targets, and indexes them by address.
+func acceptedWaits(inspection scoperun.TreeInspection, retired map[scoperun.ProcessID]bool, targets map[string]interactionInputTarget) (map[inputAddress]scoperun.Wait, error) {
+	waits := make(map[inputAddress]scoperun.Wait)
+	for _, process := range inspection.Processes {
+		if retired[process.ID] {
+			continue
+		}
+		for _, wait := range process.Waits {
+			target, found := targets[inputRequestID(process.ID, wait.Key)]
+			if !found || target.processID != process.ID || target.waitKey != wait.Key {
+				return nil, fmt.Errorf("%w: current input differs from its accepted target", runs.ErrExecutorStateLost)
+			}
+			waits[inputAddress{process: process.ID, wait: wait.Key}] = wait
+		}
+	}
+	return waits, nil
+}
+
+// planAnswer derives the answer Signal. One Scope already admitted needs no
+// delivery; any other must still match its open wait, before release starts.
+func planAnswer(head scoperun.Log, waits map[inputAddress]scoperun.Wait, target interactionInputTarget, answer runs.InterruptAnswer, releaseStarted bool) (interactionAnswerPlan, error) {
+	response, err := runinput.EncodeResolution(answer.Resolution)
+	if err != nil {
+		return interactionAnswerPlan{}, err
+	}
+	id, err := interactionAnswerSignalID(answer, response)
+	if err != nil {
+		return interactionAnswerPlan{}, err
+	}
+	payload, err := scoperun.ParsePayload(response)
+	if err != nil {
+		return interactionAnswerPlan{}, err
+	}
+	signal := scoperun.Signal{ID: id, Wait: target.waitKey, Payload: payload}
+	admitted, err := exactSignalAdmission(head, target.processID, signal)
+	if err != nil {
+		return interactionAnswerPlan{}, err
+	}
+	if !admitted {
+		if releaseStarted {
+			return interactionAnswerPlan{}, fmt.Errorf("%w: release started before every answer was acknowledged", runs.ErrExecutorStateLost)
+		}
+		wait, found := waits[inputAddress{process: target.processID, wait: target.waitKey}]
+		if !found {
+			return interactionAnswerPlan{}, fmt.Errorf("%w: accepted answer has neither its receipt nor its wait", runs.ErrExecutorStateLost)
+		}
+		if err := wait.AnswerSchema.Validate(payload.JSON()); err != nil {
+			return interactionAnswerPlan{}, err
+		}
+	}
+	return interactionAnswerPlan{processID: target.processID, signal: signal, admitted: admitted}, nil
 }
 
 func (i *interactionSession) deliverContinuationAnswers(
@@ -257,7 +276,7 @@ func captureCommittedResumeInput(input *runs.CommittedUserInput) (*runs.Committe
 	if input == nil {
 		return nil, nil
 	}
-	if err := identity.ValidateItem(input.ItemID); err != nil {
+	if err := input.ItemID.Validate(); err != nil {
 		return nil, fmt.Errorf("execution: committed continuation input: %w", err)
 	}
 	if _, err := runs.MaterializeUserMessage(input.Content); err != nil {
@@ -275,10 +294,10 @@ func (i *InteractionExecutor) SubmitSteer(
 	ctx context.Context,
 	ref runs.ExecutorRef,
 	prepared runs.PreparedSteer,
-) (string, error) {
+) (identity.ItemID, error) {
 	session, err := i.session(ref)
 	if err != nil {
-		return "", err
+		return identity.ItemID{}, err
 	}
 	return session.submitSteer(ctx, prepared)
 }
@@ -288,7 +307,7 @@ func interactionAnswerSignalID(
 	response jsontext.Value,
 ) (scoperun.SignalID, error) {
 	digest := sha256.New()
-	_, _ = digest.Write([]byte(answer.InterruptItemID))
+	_, _ = digest.Write([]byte(answer.InterruptItemID.String()))
 	_, _ = digest.Write([]byte{0})
 	_, _ = digest.Write([]byte(answer.MemberID))
 	_, _ = digest.Write([]byte{0})

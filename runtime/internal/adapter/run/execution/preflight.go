@@ -33,22 +33,11 @@ func (i *InteractionExecutor) PrepareContinuation(ctx context.Context, continuat
 	} else if err != nil {
 		return nil, err
 	}
-	checkpoint, err := decodeRunCheckpoint(continuation.Checkpoint, continuation.SessionID, continuation.RootRunID)
-	if err != nil {
-		return nil, fmt.Errorf("%w: decode continuation handoff: %w", runs.ErrExecutorStateLost, err)
-	}
-	root := checkpoint.handoff.rootID
-	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, continuation.SessionID, root.String())
+	checkpoint, err := i.loadCheckpointTree(ctx, continuation)
 	if err != nil {
 		return nil, err
 	}
-	if !found {
-		return nil, fmt.Errorf("%w: execution tree head is missing", runs.ErrExecutorStateLost)
-	}
-	tree, err := decodeExecutionTree(head, root)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %w", runs.ErrExecutorStateLost, err)
-	}
+	tree := checkpoint.tree
 	retired, err := continuationRetiredProcesses(checkpoint.handoff, tree, continuation.Members)
 	if err != nil {
 		return nil, err
@@ -135,6 +124,23 @@ func (i *InteractionExecutor) rememberedApprovalRequest(target interactionInputT
 }
 
 func continuationRetiredProcesses(cut interactionHandoff, head scoperun.Log, members []runs.ExecutionMember) (map[scoperun.ProcessID]bool, error) {
+	survivors, err := continuationSurvivors(cut, members)
+	if err != nil {
+		return nil, err
+	}
+	retiredRoots := make(map[scoperun.ProcessID]bool)
+	for id, progress := range cut.progress {
+		if progress.OwnerID == id.String() && id != cut.rootID {
+			_, survives := survivors[id]
+			retiredRoots[id] = !survives
+		}
+	}
+	return retiredHandoffProcesses(cut, head, retiredRoots), nil
+}
+
+// continuationSurvivors maps each continuation member to its captured paused
+// process, refusing a member whose lineage no longer matches the cut.
+func continuationSurvivors(cut interactionHandoff, members []runs.ExecutionMember) (map[scoperun.ProcessID]runs.ExecutionMember, error) {
 	survivors := make(map[scoperun.ProcessID]runs.ExecutionMember)
 	for _, member := range members {
 		id, err := scoperun.ParseProcessID(member.MemberID)
@@ -150,7 +156,7 @@ func continuationRetiredProcesses(cut interactionHandoff, head scoperun.Log, mem
 	for id, member := range survivors {
 		parent, child := id.Parent()
 		if id == cut.rootID {
-			if child || member.ParentRunID != "" {
+			if child || !member.ParentRunID.IsZero() {
 				return nil, fmt.Errorf("%w: root lineage changed", runs.ErrExecutorStateLost)
 			}
 			continue
@@ -162,12 +168,5 @@ func continuationRetiredProcesses(cut interactionHandoff, head scoperun.Log, mem
 			return nil, fmt.Errorf("%w: child lineage changed", runs.ErrExecutorStateLost)
 		}
 	}
-	retiredRoots := make(map[scoperun.ProcessID]bool)
-	for id, progress := range cut.progress {
-		if progress.OwnerID == id.String() && id != cut.rootID {
-			_, survives := survivors[id]
-			retiredRoots[id] = !survives
-		}
-	}
-	return retiredHandoffProcesses(cut, head, retiredRoots), nil
+	return survivors, nil
 }

@@ -12,19 +12,19 @@ import (
 // ResumeAcceptance carries the decided answer transitions. The same Item
 // values supply executor input and the opening's transcript compare-and-swap.
 type ResumeAcceptance struct {
-	sessionID       string
+	sessionID       identity.SessionID
 	expected        Pending
 	itemChanges     []transcript.Replacement
 	rememberedRules []approval.Rule
 }
 
 func prepareResumeAcceptance(
-	sessionID string,
+	sessionID identity.SessionID,
 	expected Pending,
-	items map[string]transcript.Item,
+	items map[identity.ItemID]transcript.Item,
 	responses []ResumeResponse,
 ) (ResumeAcceptance, error) {
-	if err := identity.ValidateSession(sessionID); err != nil {
+	if err := sessionID.Validate(); err != nil {
 		return ResumeAcceptance{}, fmt.Errorf("runs: resume acceptance: %w", err)
 	}
 	interrupts, err := expected.ProjectInterrupts(items)
@@ -38,7 +38,7 @@ func prepareResumeAcceptance(
 	return ResumeAcceptance{sessionID: sessionID, expected: expected.Clone(), itemChanges: changes}, nil
 }
 
-func (r ResumeAcceptance) SessionID() string { return r.sessionID }
+func (r ResumeAcceptance) SessionID() identity.SessionID { return r.sessionID }
 
 func (r ResumeAcceptance) Pending() Pending { return r.expected.Clone() }
 

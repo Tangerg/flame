@@ -55,9 +55,9 @@ func NewRuntimePolicy(
 type modeStore interface {
 	DefaultMode(ctx context.Context) (mode approval.Mode, found bool, err error)
 	SetDefaultMode(ctx context.Context, mode approval.Mode) error
-	PlanModeActive(ctx context.Context, sessionID string) (bool, error)
-	StartPlanMode(ctx context.Context, sessionID string) (changed bool, err error)
-	EndPlanMode(ctx context.Context, sessionID string, revision uint64) (changed bool, err error)
+	PlanModeActive(ctx context.Context, sessionID identity.SessionID) (bool, error)
+	StartPlanMode(ctx context.Context, sessionID identity.SessionID) (changed bool, err error)
+	EndPlanMode(ctx context.Context, sessionID identity.SessionID, revision uint64) (changed bool, err error)
 }
 
 // RuntimePolicy combines two policy facts consumed together at the tool-call
@@ -101,9 +101,9 @@ func (r *RuntimePolicy) SetDefaultMode(ctx context.Context, mode approval.Mode) 
 
 // Mode returns the effective mode for sessionID. An empty id reads the runtime
 // default; a Session outside Plan mode follows that default.
-func (r *RuntimePolicy) Mode(ctx context.Context, sessionID string) (approval.Mode, error) {
-	if sessionID != "" {
-		if err := identity.ValidateSession(sessionID); err != nil {
+func (r *RuntimePolicy) Mode(ctx context.Context, sessionID identity.SessionID) (approval.Mode, error) {
+	if !sessionID.IsZero() {
+		if err := sessionID.Validate(); err != nil {
 			return "", fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, err)
 		}
 		planning, err := r.modeStore.PlanModeActive(ctx, sessionID)
@@ -119,8 +119,8 @@ func (r *RuntimePolicy) Mode(ctx context.Context, sessionID string) (approval.Mo
 
 // EnterPlanMode narrows one session to read-only. It returns changed=false
 // when already active.
-func (r *RuntimePolicy) EnterPlanMode(ctx context.Context, sessionID string) (changed bool, err error) {
-	if parseErr := identity.ValidateSession(sessionID); parseErr != nil {
+func (r *RuntimePolicy) EnterPlanMode(ctx context.Context, sessionID identity.SessionID) (changed bool, err error) {
+	if parseErr := sessionID.Validate(); parseErr != nil {
 		return false, fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, parseErr)
 	}
 	return r.modeStore.StartPlanMode(ctx, sessionID)
@@ -129,8 +129,8 @@ func (r *RuntimePolicy) EnterPlanMode(ctx context.Context, sessionID string) (ch
 // ExitPlanMode returns the session to the Runtime default, reporting the mode
 // it now follows. It returns changed=false when the session is not in Plan
 // mode.
-func (r *RuntimePolicy) ExitPlanMode(ctx context.Context, sessionID string, revision uint64) (restored approval.Mode, changed bool, err error) {
-	if parseErr := identity.ValidateSession(sessionID); parseErr != nil {
+func (r *RuntimePolicy) ExitPlanMode(ctx context.Context, sessionID identity.SessionID, revision uint64) (restored approval.Mode, changed bool, err error) {
+	if parseErr := sessionID.Validate(); parseErr != nil {
 		return "", false, fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, parseErr)
 	}
 	changed, err = r.modeStore.EndPlanMode(ctx, sessionID, revision)
@@ -209,9 +209,9 @@ type RuleView struct {
 
 // ListRules returns the global rules, plus the session and project rules visible
 // from sessionID when one is named.
-func (r *RuntimePolicy) ListRules(ctx context.Context, sessionID string) ([]RuleView, error) {
+func (r *RuntimePolicy) ListRules(ctx context.Context, sessionID identity.SessionID) ([]RuleView, error) {
 	projectDir := ""
-	if sessionID != "" {
+	if !sessionID.IsZero() {
 		sess, err := r.sessions.Get(ctx, sessionID)
 		if err != nil {
 			return nil, err
@@ -270,7 +270,7 @@ func (r *RuntimePolicy) SetRule(ctx context.Context, change RuleChange) error {
 	return r.put(ctx, rule)
 }
 
-func (r *RuntimePolicy) visibleRules(ctx context.Context, sessionID, projectDir string) ([]approval.Rule, error) {
+func (r *RuntimePolicy) visibleRules(ctx context.Context, sessionID identity.SessionID, projectDir string) ([]approval.Rule, error) {
 	rules, err := r.store.Visible(ctx, sessionID, projectDir, approval.MaximumVisibleRules+1)
 	if err != nil {
 		return nil, err

@@ -119,52 +119,75 @@ func (d *pathHints) run() {
 			continue
 		}
 		if err != nil {
-			select {
-			case d.errors <- err:
-			case <-d.done:
-			}
+			d.report(err)
 			return
 		}
 		for _, event := range events[:count] {
-			select {
-			case <-d.done:
-				return
-			default:
-			}
-			if event.Flags&unix.EV_ERROR != 0 && event.Data != 0 {
-				select {
-				case d.errors <- unix.Errno(event.Data):
-				case <-d.done:
-				}
+			if !d.handle(event) {
 				return
 			}
-			if event.Filter == unix.EVFILT_USER {
-				continue
-			}
-			if event.Fflags&(unix.NOTE_DELETE|unix.NOTE_RENAME|unix.NOTE_REVOKE) != 0 {
-				d.mu.Lock()
-				var closeErr error
-				for path, binding := range d.paths {
-					if binding.identity == event.Udata {
-						delete(d.paths, path)
-						closeErr = binding.close()
-						break
-					}
-				}
-				d.mu.Unlock()
-				if closeErr != nil {
-					select {
-					case d.errors <- closeErr:
-					case <-d.done:
-						return
-					}
-				}
-			}
-			select {
-			case d.events <- fsnotify.Event{Op: fsnotify.Write}:
-			case <-d.done:
-				return
-			}
+		}
+	}
+}
+
+// handle forwards one kernel event as a change hint, retiring the watch of a
+// path that was deleted, renamed or revoked. It reports whether to continue.
+func (d *pathHints) handle(event unix.Kevent_t) bool {
+	select {
+	case <-d.done:
+		return false
+	default:
+	}
+	if event.Flags&unix.EV_ERROR != 0 && event.Data != 0 {
+		d.report(unix.Errno(event.Data))
+		return false
+	}
+	if event.Filter == unix.EVFILT_USER {
+		return true
+	}
+	if event.Fflags&(unix.NOTE_DELETE|unix.NOTE_RENAME|unix.NOTE_REVOKE) != 0 {
+		if err := d.forget(event.Udata); err != nil && !d.report(err) {
+			return false
+		}
+	}
+	select {
+	case d.events <- fsnotify.Event{Op: fsnotify.Write}:
+		return true
+	case <-d.done:
+		return false
+	}
+}
+
+// forget closes the watch whose kernel identity the event names.
+func (d *pathHints) forget(identity *byte) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for path, binding := range d.paths {
+		if binding.identity == identity {
+			delete(d.paths, path)
+			return binding.close()
+		}
+	}
+	return nil
+}
+
+// report delivers an error unless the watcher is closing; it reports whether
+// the error was delivered.
+func (d *pathHints) report(err error) bool {
+	select {
+	case d.errors <- err:
+		return true
+	case <-d.done:
+		return false
+	}
+}
+
+// wake interrupts a blocked Kevent so run observes shutdown.
+func (d *pathHints) wake() error {
+	for {
+		_, err := unix.Kevent(d.queue, []unix.Kevent_t{{Ident: shutdownHint, Filter: unix.EVFILT_USER, Fflags: unix.NOTE_TRIGGER}}, nil, nil)
+		if !errors.Is(err, unix.EINTR) {
+			return err
 		}
 	}
 }
@@ -173,10 +196,7 @@ func (d *pathHints) Close() error {
 	d.closeOnce.Do(func() {
 		d.mu.Lock()
 		close(d.done)
-		_, wakeErr := unix.Kevent(d.queue, []unix.Kevent_t{{Ident: shutdownHint, Filter: unix.EVFILT_USER, Fflags: unix.NOTE_TRIGGER}}, nil, nil)
-		for errors.Is(wakeErr, unix.EINTR) {
-			_, wakeErr = unix.Kevent(d.queue, []unix.Kevent_t{{Ident: shutdownHint, Filter: unix.EVFILT_USER, Fflags: unix.NOTE_TRIGGER}}, nil, nil)
-		}
+		wakeErr := d.wake()
 		d.mu.Unlock()
 		<-d.exited
 		d.mu.Lock()

@@ -41,16 +41,8 @@ type planReplacementAction struct {
 	err   error
 }
 
-func eventStep(delay time.Duration, event conversation.Event) Step {
-	return Emit(delay, event)
-}
-
 func finishStep(delay time.Duration, finish Finish) Step {
 	return Step{Delay: delay, Finish: &finish}
-}
-
-func replacePlanStep(delay time.Duration, steps []protocol.PlanStep) Step {
-	return ReplacePlan(delay, steps)
 }
 
 // Emit creates a scripted event action. PlanChanged is intentionally rejected:
@@ -131,51 +123,48 @@ func continueSafely(script Script, answers []conversation.InterruptAnswer) (step
 func validateSteps(steps []Step, requireFinish bool) error {
 	finished := false
 	for i, step := range steps {
-		if step.Delay < 0 {
-			return fmt.Errorf("step %d has a negative delay", i+1)
+		finishes, err := step.validate(i == len(steps)-1)
+		if err != nil {
+			return fmt.Errorf("step %d: %w", i+1, err)
 		}
-		actions := 0
-		for _, present := range []bool{step.Event != nil, step.Finish != nil, step.plan != nil} {
-			if present {
-				actions++
-			}
-		}
-		if actions != 1 {
-			return fmt.Errorf("step %d must have exactly one action", i+1)
-		}
-		switch {
-		case step.Event != nil:
-			switch step.Event.(type) {
-			case conversation.SegmentStarted, conversation.SegmentFinished, conversation.PlanChanged:
-				return fmt.Errorf("step %d contains a runtime-owned event", i+1)
-			}
-			event := step.Event
-			switch item := event.(type) {
-			case conversation.BlockStarted:
-				item.Block.RunID = "fixture"
-				item.Block.Status = conversation.BlockStatusRunning
-				event = item
-			case conversation.BlockCompleted:
-				item.Block.RunID = "fixture"
-				item.Block.Status = completedBlockStatus(item.Block)
-				event = item
-			}
-			if err := conversation.ValidateEvent(event); err != nil {
-				return fmt.Errorf("step %d: %w", i+1, err)
-			}
-		case step.Finish != nil:
-			if i != len(steps)-1 {
-				return fmt.Errorf("step %d finishes before the script ends", i+1)
-			}
-			finished = true
-		case step.plan.err != nil:
-			return fmt.Errorf("step %d: %w", i+1, step.plan.err)
-		}
+		finished = finished || finishes
 	}
 	if requireFinish && !finished {
 		return errors.New("script path does not finish the run")
 	}
 	return nil
+}
+
+// validate checks one step carries exactly one action; a finish must be the
+// last step, and an event is checked as the Runtime would publish it.
+func (s Step) validate(last bool) (bool, error) {
+	if s.Delay < 0 {
+		return false, errors.New("negative delay")
+	}
+	actions := 0
+	for _, present := range []bool{s.Event != nil, s.Finish != nil, s.plan != nil} {
+		if present {
+			actions++
+		}
+	}
+	if actions != 1 {
+		return false, errors.New("must have exactly one action")
+	}
+	switch {
+	case s.Event != nil:
+		switch s.Event.(type) {
+		case conversation.SegmentStarted, conversation.SegmentFinished, conversation.PlanChanged:
+			return false, errors.New("contains a runtime-owned event")
+		}
+		return false, conversation.ValidateEvent(ownedBlockEvent("fixture", s.Event))
+	case s.Finish != nil:
+		if !last {
+			return false, errors.New("finishes before the script ends")
+		}
+		return true, nil
+	default:
+		return false, s.plan.err
+	}
 }
 
 func cloneScript(script Script) Script {
@@ -186,7 +175,7 @@ func cloneScript(script Script) Script {
 }
 
 func completedBlockStatus(block conversation.Block) conversation.BlockStatus {
-	if block.Kind == conversation.BlockError || block.Tool != nil && (block.Tool.Status == conversation.ToolError || block.Tool.Status == conversation.ToolCanceled) {
+	if block.Kind == conversation.BlockError || block.Tool != nil && block.Tool.Status.Failed() {
 		return conversation.BlockStatusIncomplete
 	}
 	return conversation.BlockStatusCompleted
@@ -344,7 +333,7 @@ func newDefaultScenario() defaultScenario {
 
 func (d defaultScenario) prelude() []Step {
 	prelude := make([]Step, 0, 32)
-	prelude = append(prelude, replacePlanStep(beat, []protocol.PlanStep{
+	prelude = append(prelude, ReplacePlan(beat, []protocol.PlanStep{
 		{ID: "1", Description: "Reproduce the flake", Status: protocol.PlanStatusInProgress},
 		{ID: "2", Description: "Find what the test is really waiting for", Status: protocol.PlanStatusPending},
 		{ID: "3", Description: "Replace the sleep and re-run", Status: protocol.PlanStatusPending},
@@ -353,7 +342,7 @@ func (d defaultScenario) prelude() []Step {
 	prelude = append(prelude, tool("tool_1", builtin.CategoryShell, "shell",
 		"go test ./internal/store -run TestCacheExpiry -count=5",
 		conversation.ToolOK, d.testOutput, "", 3*time.Second+412*time.Millisecond)...)
-	prelude = append(prelude, replacePlanStep(beat, []protocol.PlanStep{
+	prelude = append(prelude, ReplacePlan(beat, []protocol.PlanStep{
 		{ID: "1", Description: "Reproduce the flake", Status: protocol.PlanStatusCompleted},
 		{ID: "2", Description: "Find what the test is really waiting for", Status: protocol.PlanStatusCompleted},
 		{ID: "3", Description: "Replace the sleep and re-run", Status: protocol.PlanStatusInProgress},
@@ -378,7 +367,7 @@ func (d defaultScenario) approved() []Step {
 
 func (d defaultScenario) denied() []Step {
 	denied := make([]Step, 0, 16)
-	denied = append(denied, eventStep(beat, conversation.BlockCompleted{Block: conversation.Block{
+	denied = append(denied, Emit(beat, conversation.BlockCompleted{Block: conversation.Block{
 		ID: "note_1", Kind: conversation.BlockNotice, Text: "Edit declined — internal/store/cache_test.go left unchanged.",
 	}}))
 	denied = append(denied, stream("msg_3", conversation.BlockAssistant, d.declined)...)
@@ -423,11 +412,11 @@ func (d defaultScenario) script() Script {
 // stream renders one body as a started block, a delta per word, and a completed
 // block — the shape a real streaming item takes.
 func stream(id string, kind conversation.BlockKind, text string) []Step {
-	steps := []Step{eventStep(beat, conversation.BlockStarted{Block: conversation.Block{ID: id, Kind: kind}})}
+	steps := []Step{Emit(beat, conversation.BlockStarted{Block: conversation.Block{ID: id, Kind: kind}})}
 	for _, w := range words(text) {
-		steps = append(steps, eventStep(tick, conversation.BlockDelta{BlockID: id, Text: w}))
+		steps = append(steps, Emit(tick, conversation.BlockDelta{BlockID: id, Text: w}))
 	}
-	return append(steps, eventStep(0, conversation.BlockCompleted{Block: conversation.Block{ID: id, Kind: kind, Text: text}}))
+	return append(steps, Emit(0, conversation.BlockCompleted{Block: conversation.Block{ID: id, Kind: kind, Text: text}}))
 }
 
 // tool renders one call as running, then finished with its result.
@@ -454,17 +443,17 @@ func tool(id string, kind builtin.ToolCategory, name, summary string, status con
 		// These kinds do not project a specialized primary field.
 	default:
 	}
-	steps := []Step{eventStep(beat, conversation.BlockStarted{Block: running})}
+	steps := []Step{Emit(beat, conversation.BlockStarted{Block: running})}
 	for _, chunk := range strings.SplitAfter(output, "\n") {
 		if chunk != "" {
-			steps = append(steps, eventStep(3*tick, conversation.BlockDelta{BlockID: id, Text: chunk}))
+			steps = append(steps, Emit(3*tick, conversation.BlockDelta{BlockID: id, Text: chunk}))
 		}
 	}
 	completionDelay := 3 * beat
 	if output != "" {
 		completionDelay = beat
 	}
-	return append(steps, eventStep(completionDelay, conversation.BlockCompleted{Block: done}))
+	return append(steps, Emit(completionDelay, conversation.BlockCompleted{Block: done}))
 }
 
 // words splits text so that concatenating the pieces reproduces it exactly.

@@ -45,8 +45,7 @@ func buildShapes() *Shapes {
 
 func registerProviderUnions(s *Shapes) {
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.ProviderConfigChange](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.ProviderConfigChange](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.ProviderConfigSet), Required: []string{"value"}},
 			{Tag: string(protocol.ProviderConfigClear)},
@@ -55,61 +54,54 @@ func registerProviderUnions(s *Shapes) {
 }
 
 func registerMCPUnions(s *Shapes) {
-	s.union(UnionSpec{GoType: typeOf[protocol.MCPOrigin](), Discriminator: "type", Variants: []VariantSpec{
+	s.union(UnionSpec{GoType: typeOf[protocol.MCPOrigin](), Variants: []VariantSpec{
 		{Tag: string(protocol.MCPOriginUser)},
 		{Tag: string(protocol.MCPOriginInstallation), Required: []string{"installationId"}},
 	}})
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.MCPHandshakeTimeout](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.MCPHandshakeTimeout](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.MCPHandshakeUnbounded)},
 			{Tag: string(protocol.MCPHandshakeBounded), Required: []string{"seconds"}},
 		},
 	})
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.MCPConnection](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.MCPConnection](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.MCPTransportStreamableHTTP), Required: []string{"url"}, Optional: []string{"authorizationMasked", "headersMasked"}},
 			{Tag: string(protocol.MCPTransportStdio), Required: []string{"command"}, Optional: []string{"args", "envMasked", "dir"}},
 		},
 	})
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.MCPConnectionInput](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.MCPConnectionInput](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.MCPTransportStreamableHTTP), Required: []string{"url"}, Optional: []string{"authorization", "headers"}},
 			{Tag: string(protocol.MCPTransportStdio), Required: []string{"command"}, Optional: []string{"args", "env", "dir"}},
 		},
 	})
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.MCPAuthorizationChange](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.MCPAuthorizationChange](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.MCPSecretSet), Required: []string{"value"}},
 			{Tag: string(protocol.MCPSecretClear)},
 		},
 	})
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.MCPHeadersChange](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.MCPHeadersChange](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.MCPSecretSet), Required: []string{"value"}},
 			{Tag: string(protocol.MCPSecretClear)},
 		},
 	})
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.MCPEnvironmentChange](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.MCPEnvironmentChange](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.MCPSecretSet), Required: []string{"value"}},
 			{Tag: string(protocol.MCPSecretClear)},
 		},
 	})
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.MCPServerState](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.MCPServerState](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.MCPServerDisabled)},
 			{Tag: string(protocol.MCPServerDisconnected)},
@@ -120,8 +112,7 @@ func registerMCPUnions(s *Shapes) {
 		},
 	})
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.MCPAuthorizationAttemptStatus](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.MCPAuthorizationAttemptStatus](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.MCPAuthorizationAttemptPending)},
 			{Tag: string(protocol.MCPAuthorizationAttemptSucceeded)},
@@ -143,7 +134,7 @@ func registerProblemUnion(s *Shapes) {
 		})
 	}
 	s.union(UnionSpec{
-		GoType: typeOf[protocol.ProblemData](), Discriminator: "type", Variants: variants,
+		GoType: typeOf[protocol.ProblemData](), Variants: variants,
 		PatternVariant: &PatternVariantSpec{
 			TagPattern:     `^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$`,
 			TypeScriptType: "`plugin:${string}/${string}`",
@@ -217,8 +208,7 @@ func allowedGoalReasonCodes(codes ...protocol.GoalReasonCode) []AllowedValueSet 
 
 func registerRunUnions(s *Shapes) {
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.CancelRunResponse](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.CancelRunResponse](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.CancelRunRoot), Required: []string{"run"}},
 			{Tag: string(protocol.CancelRunChild), Required: []string{"run", "rootRun"}},
@@ -228,8 +218,7 @@ func registerRunUnions(s *Shapes) {
 	// Historical opening references survive retirement. Current Run state belongs
 	// to its material owner and is projected only while that association survives.
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.RunAcceptance](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.RunAcceptance](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.RunAcceptanceNotRecorded), Optional: []string{"candidateUserItemId"}},
 			{Tag: string(protocol.RunAcceptanceAccepted), Required: []string{"runId", "segmentId", "sessionId", "run"}, Optional: []string{"userItemId", "input", "appliedItem"}},
@@ -240,9 +229,8 @@ func registerRunUnions(s *Shapes) {
 	// A terminal says only why the run stopped; what it consumed is published
 	// beside it as metrics. Each terminal carries only its own explanation.
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.RunOutcome](),
-		Discriminator: "type",
-		Variants:      runOutcomeVariants(),
+		GoType:   typeOf[protocol.RunOutcome](),
+		Variants: runOutcomeVariants(),
 	})
 }
 
@@ -268,8 +256,7 @@ func registerItemUnions(s *Shapes) {
 	createdItemFields := slices.Concat(itemIdentityFields, []string{"createdAt"})
 	toolItemFields := slices.Concat(itemIdentityFields, []string{"startedAt"})
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.Item](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.Item](),
 		Variants: []VariantSpec{
 			{
 				Tag: string(protocol.ItemTypeUserMessage), Required: slices.Concat(createdItemFields, []string{"content"}),
@@ -297,8 +284,7 @@ func registerItemUnions(s *Shapes) {
 	// in the contract. toolArguments is partial JSON TEXT, not an object — the
 	// parsed value only exists on the completed item.
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.ItemDelta](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.ItemDelta](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.DeltaContent), Required: []string{"text"}},
 			{Tag: string(protocol.DeltaReasoning), Required: []string{"text"}},
@@ -311,8 +297,7 @@ func registerItemUnions(s *Shapes) {
 	// variants carry the same field set on purpose: what differs is what `name` MEANS,
 	// and each registry publishes its own values rather than restating them here.
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.CapabilityRequirement](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.CapabilityRequirement](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.RequirementFeature), Required: []string{"name"}},
 			{Tag: string(protocol.RequirementInterruptType), Required: []string{"name"}},
@@ -326,8 +311,7 @@ func registerItemUnions(s *Shapes) {
 	// Only run scope may ask for descendants — the session timeline already holds
 	// every descendant, so the flag would narrow nothing there.
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.ItemListScope](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.ItemListScope](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.ItemScopeSession), Required: []string{"sessionId"}},
 			{Tag: string(protocol.ItemScopeRun), Required: []string{"runId"}, Optional: []string{"includeDescendants"}},
@@ -335,8 +319,7 @@ func registerItemUnions(s *Shapes) {
 	})
 
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.ContentBlock](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.ContentBlock](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.ContentBlockText), Required: []string{"text"}},
 			// Images are inline: mime + raw base64, no data: prefix, no upload channel.
@@ -345,8 +328,7 @@ func registerItemUnions(s *Shapes) {
 	})
 
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.QuestionField](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.QuestionField](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.QuestionFieldText), Required: []string{"prompt"}, Optional: []string{"header"}},
 			{Tag: string(protocol.QuestionFieldChoice), Required: []string{"prompt", "options"}, Optional: []string{"header", "multiple", "allowCustom"}},
@@ -360,8 +342,7 @@ func registerInterruptUnions(s *Shapes) {
 	// carries the identity pair: which item is waiting, and which run asked.
 	identity := []string{"itemId", "runId"}
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.Interrupt](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.Interrupt](),
 		Variants: []VariantSpec{
 			{
 				Tag:      string(protocol.InterruptApproval),
@@ -375,8 +356,7 @@ func registerInterruptUnions(s *Shapes) {
 	// editedArgs is one-shot by design: a remembered rule matches by the call's
 	// subject, never by a one-off argument rewrite.
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.InterruptResponseValue](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.InterruptResponseValue](),
 		Variants: []VariantSpec{
 			{
 				Tag:      string(protocol.InterruptResponseApproval),
@@ -390,9 +370,8 @@ func registerInterruptUnions(s *Shapes) {
 
 func registerEventUnions(s *Shapes) {
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.StreamEvent](),
-		Discriminator: "type",
-		Forbidden:     []string{"durable"},
+		GoType:    typeOf[protocol.StreamEvent](),
+		Forbidden: []string{"durable"},
 		Variants: []VariantSpec{
 			{Tag: string(protocol.StreamSegmentStarted), Required: []string{"run"}},
 			{Tag: string(protocol.StreamSegmentProgress), Required: []string{"progress"}},
@@ -408,8 +387,7 @@ func registerEventUnions(s *Shapes) {
 	// may NOT carry the resource's new value or become a second source of truth for
 	// the authoritative query after a dropped frame.
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.RuntimeEvent](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.RuntimeEvent](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.RuntimeFilesChanged), Required: []string{"sequence", "paths"}, Optional: []string{"watchId", "workspace"}},
 			{Tag: string(protocol.RuntimeSkillsChanged), Required: []string{"sequence"}, Optional: []string{"names"}},
@@ -438,8 +416,7 @@ func registerArtifactUnions(s *Shapes) {
 	// union: it cannot carry the live-only interrupt outcome, because a parked
 	// waiting executor state is Runtime-instance-local and does not travel.
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.ArtifactOutcome](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.ArtifactOutcome](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.ArtifactOutcomeCompleted), Optional: []string{"unresolvedEffects"}},
 			{
@@ -460,8 +437,7 @@ func registerArtifactUnions(s *Shapes) {
 	createdItemFields := slices.Concat(itemIdentityFields, []string{"createdAt"})
 	toolItemFields := slices.Concat(itemIdentityFields, []string{"startedAt"})
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.ArtifactItem](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.ArtifactItem](),
 		Variants: []VariantSpec{
 			{
 				Tag: string(protocol.ItemTypeUserMessage), Required: slices.Concat(createdItemFields, []string{"content"}),
@@ -492,12 +468,12 @@ func registerArtifactUnions(s *Shapes) {
 }
 
 func registerDiffUnions(s *Shapes) {
-	s.union(UnionSpec{GoType: typeOf[protocol.Diff](), Discriminator: "type", Variants: []VariantSpec{
+	s.union(UnionSpec{GoType: typeOf[protocol.Diff](), Variants: []VariantSpec{
 		{Tag: string(protocol.DiffFormatRows), Required: []string{"baseline", "rows"}},
 		{Tag: string(protocol.DiffFormatRaw), Required: []string{"baseline", "patch"}},
 		{Tag: string(protocol.DiffFormatVisual), Required: []string{"baseline", "visual"}},
 	}})
-	s.union(UnionSpec{GoType: typeOf[protocol.DiffBaseline](), Discriminator: "type", Variants: []VariantSpec{
+	s.union(UnionSpec{GoType: typeOf[protocol.DiffBaseline](), Variants: []VariantSpec{
 		{Tag: "head", Required: []string{"commit"}},
 		{Tag: "mergeBase", Required: []string{"commit"}},
 		{Tag: "emptyTree"},
@@ -507,8 +483,7 @@ func registerDiffUnions(s *Shapes) {
 	// modeled it as one. Nothing said so on the wire, so the generated shape permitted
 	// a row carrying a hunk's text AND both line numbers at once.
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.DiffRow](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.DiffRow](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.DiffRowHunk), Required: []string{"text"}},
 			// The line numbers are `omitempty` because one flat struct serves four
@@ -537,8 +512,7 @@ func registerObjectConstraints(s *Shapes) {
 	}
 
 	s.union(UnionSpec{
-		GoType:        typeOf[protocol.Activity](),
-		Discriminator: "type",
+		GoType: typeOf[protocol.Activity](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.ActivityCallingModel)},
 			{Tag: string(protocol.ActivityModelCallFailed)},
@@ -1047,7 +1021,7 @@ func registerCarriedShapes(s *Shapes) {
 
 func registerTrajectoryUnion(s *Shapes) {
 	s.union(UnionSpec{
-		GoType: typeOf[protocol.TrajectoryEntry](), Discriminator: "type",
+		GoType: typeOf[protocol.TrajectoryEntry](),
 		Variants: []VariantSpec{
 			{Tag: string(protocol.TrajectoryEntryRun), Required: []string{"occurredAt", "run"}},
 			{Tag: string(protocol.TrajectoryEntryModel), Required: []string{"occurredAt", "model"}},
@@ -1110,7 +1084,7 @@ func builtInNames() []string {
 }
 
 func registerToolRefUnion(s *Shapes) {
-	s.union(UnionSpec{GoType: typeOf[protocol.ToolRef](), Discriminator: "type", Variants: []VariantSpec{
+	s.union(UnionSpec{GoType: typeOf[protocol.ToolRef](), Variants: []VariantSpec{
 		{Tag: string(protocol.ToolRefBuiltIn), Required: []string{"name"}, AllowedValues: []AllowedValueSet{{Field: "name", Values: builtInNames()}}},
 		{Tag: string(protocol.ToolRefMCP), Required: []string{"server", "name"}},
 	}})
@@ -1122,7 +1096,7 @@ func registerToolRefUnion(s *Shapes) {
 }
 
 func registerApprovalSubjectUnion(s *Shapes) {
-	s.union(UnionSpec{GoType: typeOf[protocol.ApprovalSubject](), Discriminator: "type", Variants: []VariantSpec{
+	s.union(UnionSpec{GoType: typeOf[protocol.ApprovalSubject](), Variants: []VariantSpec{
 		{Tag: string(protocol.ApprovalSubjectAll)},
 		{Tag: string(protocol.ApprovalSubjectExact), Required: []string{"value"}},
 		{Tag: string(protocol.ApprovalSubjectGlob), Required: []string{"value"}},
@@ -1130,17 +1104,17 @@ func registerApprovalSubjectUnion(s *Shapes) {
 }
 
 func registerPluginUnions(s *Shapes) {
-	s.union(UnionSpec{GoType: typeOf[protocol.PluginRendererSelector](), Discriminator: "type", Variants: []VariantSpec{
+	s.union(UnionSpec{GoType: typeOf[protocol.PluginRendererSelector](), Variants: []VariantSpec{
 		{Tag: string(extension.RendererToolName), Required: []string{"name"}},
 		{Tag: string(extension.RendererResultShape), Required: []string{"shape"}},
 		{Tag: string(extension.RendererFileExtension), Required: []string{"name"}},
 	}})
-	s.union(UnionSpec{GoType: typeOf[protocol.PluginValueChange](), Discriminator: "type", Variants: []VariantSpec{{Tag: string(protocol.PluginValueSet), Required: []string{"value"}}, {Tag: string(protocol.PluginValueClear)}}})
-	s.union(UnionSpec{GoType: typeOf[protocol.PluginRealization](), Discriminator: "type", Variants: []VariantSpec{
+	s.union(UnionSpec{GoType: typeOf[protocol.PluginValueChange](), Variants: []VariantSpec{{Tag: string(protocol.PluginValueSet), Required: []string{"value"}}, {Tag: string(protocol.PluginValueClear)}}})
+	s.union(UnionSpec{GoType: typeOf[protocol.PluginRealization](), Variants: []VariantSpec{
 		{Tag: string(protocol.PluginRealizationAvailable), Optional: []string{"unavailableBackends"}},
 		{Tag: string(protocol.PluginRealizationReleaseUnavailable)},
 	}})
-	s.union(UnionSpec{GoType: typeOf[protocol.PluginServerDeclaration](), Discriminator: "type", Variants: []VariantSpec{
+	s.union(UnionSpec{GoType: typeOf[protocol.PluginServerDeclaration](), Variants: []VariantSpec{
 		{Tag: string(protocol.PluginServerStdio), Required: []string{"name", "command"}, Optional: []string{"args", "env", "dir"}},
 		{Tag: string(protocol.PluginServerHTTP), Required: []string{"name", "url"}, Optional: []string{"headers"}},
 		{Tag: string(protocol.PluginServerNode), Required: []string{"name", "entry"}},
@@ -1150,12 +1124,12 @@ func registerPluginUnions(s *Shapes) {
 		{When: []delivery.FieldCondition{{Field: "target", Operator: delivery.OperatorEquals, Value: string(protocol.PluginInputHeader)}}, Required: []string{"key"}},
 		{When: []delivery.FieldCondition{{Field: "target", Operator: delivery.OperatorEquals, Value: string(protocol.PluginInputAuthorization)}}, Forbidden: []string{"key"}},
 	}})
-	s.union(UnionSpec{GoType: typeOf[protocol.PluginInputState](), Discriminator: "type", Variants: []VariantSpec{
+	s.union(UnionSpec{GoType: typeOf[protocol.PluginInputState](), Variants: []VariantSpec{
 		{Tag: string(protocol.PluginInputUnset)},
 		{Tag: string(protocol.PluginInputConfigured)},
 		{Tag: string(protocol.PluginInputValue), Required: []string{"value"}},
 	}})
-	s.union(UnionSpec{GoType: typeOf[protocol.PluginComponent](), Discriminator: "type", Variants: []VariantSpec{
+	s.union(UnionSpec{GoType: typeOf[protocol.PluginComponent](), Variants: []VariantSpec{
 		{Tag: string(protocol.PluginComponentManifestField), Required: []string{"name"}},
 		{Tag: string(protocol.PluginComponentFlameExtension)},
 		{Tag: string(protocol.PluginComponentExtensionField), Required: []string{"name"}},

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -13,14 +15,14 @@ import (
 
 func settleResumeAnswers(
 	interrupts []transcript.Interrupt,
-	items map[string]transcript.Item,
+	items map[identity.ItemID]transcript.Item,
 	responses []ResumeResponse,
 ) ([]transcript.Replacement, error) {
-	open := make(map[string]transcript.Interrupt, len(interrupts))
+	open := make(map[identity.ItemID]transcript.Interrupt, len(interrupts))
 	for _, interrupt := range interrupts {
 		open[interrupt.ItemID] = interrupt
 	}
-	settled := make(map[string]transcript.Replacement, len(responses))
+	settled := make(map[identity.ItemID]transcript.Replacement, len(responses))
 	for _, response := range responses {
 		request, found := open[response.ItemID]
 		if !found {
@@ -82,7 +84,7 @@ func settleResumeAnswer(item transcript.Item, prompt transcript.Prompt, response
 
 // Live acceptance and restart route the settled Items through the same handoff
 // so a redelivered Signal repeats the exact accepted identity and bytes.
-func (p Pending) settledAnswers(sessionID string, items map[string]transcript.Item) ([]InterruptAnswer, error) {
+func (p Pending) settledAnswers(sessionID identity.SessionID, items map[identity.ItemID]transcript.Item) ([]InterruptAnswer, error) {
 	answers := make([]InterruptAnswer, 0, len(p.Bindings))
 	for index, binding := range p.Bindings {
 		item, found := items[binding.InterruptItemID]

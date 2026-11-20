@@ -6,6 +6,8 @@ package mcpserver
 
 import (
 	"fmt"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/secret"
 )
 
 // Transport names an MCP server connection mode using the standard
@@ -75,22 +77,12 @@ func (s Server) Format(state fmt.State, _ rune) {
 	var connection string
 	switch c := s.Connection.(type) {
 	case StdioConnection:
-		connection = fmt.Sprintf("Command:%q, Args:%q, Env:%s, Dir:%q", c.Command, c.Args, SecretPresence(len(c.Env) > 0), c.Dir)
+		connection = fmt.Sprintf("Command:%q, Args:%q, Env:%s, Dir:%q", c.Command, c.Args, secret.Presence(len(c.Env) > 0), c.Dir)
 	case HTTPConnection:
-		connection = fmt.Sprintf("URL:%s, Authorization:%s, Headers:%s", SecretPresence(c.URL != ""), SecretPresence(c.Authorization != ""), SecretPresence(len(c.Headers) > 0))
+		connection = fmt.Sprintf("URL:%s, Authorization:%s, Headers:%s", secret.Presence(c.URL != ""), secret.Presence(c.Authorization != ""), secret.Presence(len(c.Headers) > 0))
 	}
 	_, _ = fmt.Fprintf(state, "Server{ID:%q, Transport:%q, Enabled:%t, Description:%q, %s, HandshakeTimeout:%s}",
 		s.ID(), s.Transport(), s.Enabled, s.Description, connection, timeout)
-}
-
-// SecretPresence spells how a credential-bearing field appears in diagnostics.
-// The connection adapter carries the same fields and reports them the same way,
-// so a reader compares two renderings of one server rather than two vocabularies.
-func SecretPresence(present bool) string {
-	if present {
-		return "[REDACTED]"
-	}
-	return "<absent>"
 }
 
 // Validate reports whether the server is well-formed for its transport.

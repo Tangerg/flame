@@ -70,7 +70,7 @@ func (s *ProcessSource) snapshot(ctx context.Context, binding framehost.UnitBind
 	if err != nil {
 		return plugin.Snapshot{}, server, err
 	}
-	if !found || !snapshot.Installation.ServerEnabled(server) || snapshot.Selected.Digest().String() != binding.Source.Release.String() {
+	if !found || !snapshot.Installation.ServerEnabled(server) || snapshot.Selected.Digest() != binding.Source.Release {
 		return plugin.Snapshot{}, server, framehost.ErrStaleBinding
 	}
 	configuration, err := plugins.EncodeFrameworkConfiguration(snapshot.Installation.Snapshot())
@@ -158,6 +158,23 @@ func (s *ProcessSource) Configure(ctx context.Context, setup framehost.Setup, se
 		return nil, sdk.ParamsBase{}, err
 	}
 	actor = actor.WithBindings(bindings)
+	if err := s.admitProcess(setup, session, actor, server, bindings); err != nil {
+		return nil, sdk.ParamsBase{}, err
+	}
+	if !background && len(bindings.Snapshot()) == 0 {
+		return contributions, sdk.ParamsBase{}, nil
+	}
+	reference, err := s.grantCallbacks(ctx, setup, session, actor, background)
+	if err != nil {
+		return nil, sdk.ParamsBase{}, err
+	}
+	metadata, err := pluginmcp.CallbackMetadata(reference)
+	return contributions, metadata, err
+}
+
+// admitProcess records the process's authority for this setup instance and
+// admits its callback session, both released by the setup's cleanup.
+func (s *ProcessSource) admitProcess(setup framehost.Setup, session *sdk.ClientSession, actor operation.Actor, server mcpserver.Server, bindings *plugin.RequiredBindings) error {
 	s.mu.Lock()
 	s.projections[setup.InstanceID()] = processProjection{source: setup.Binding().Source, session: session, actor: actor, fingerprint: server.AuthorityFingerprint(), bindings: bindings}
 	s.mu.Unlock()
@@ -168,24 +185,28 @@ func (s *ProcessSource) Configure(ctx context.Context, setup framehost.Setup, se
 		return nil
 	}
 	if _, err := setup.Cleanup("Flame process authority", releaseAuthority); err != nil {
-		return nil, sdk.ParamsBase{}, errors.Join(err, releaseAuthority())
+		return errors.Join(err, releaseAuthority())
 	}
 	if err := s.callbacks.AdmitSession(session); err != nil {
-		return nil, sdk.ParamsBase{}, err
+		return err
 	}
 	if _, err := setup.Cleanup("Flame callback session", func() error { s.callbacks.RevokeSession(session); return nil }); err != nil {
 		s.callbacks.RevokeSession(session)
-		return nil, sdk.ParamsBase{}, err
+		return err
 	}
-	if !background && len(bindings.Snapshot()) == 0 {
-		return contributions, sdk.ParamsBase{}, nil
-	}
+	return nil
+}
+
+// grantCallbacks opens the process's callback RPC once Runtime serves it. A
+// background contribution's callbacks restore the invocation they belong to.
+func (s *ProcessSource) grantCallbacks(ctx context.Context, setup framehost.Setup, session *sdk.ClientSession, actor operation.Actor, background bool) (pluginmcp.CallbackRef, error) {
 	if err := s.callbacks.WaitRPC(ctx); err != nil {
-		return nil, sdk.ParamsBase{}, err
+		return pluginmcp.CallbackRef{}, err
 	}
 	calling := operation.WithActor(setup.Lifetime().Context(), actor)
 	var reference pluginmcp.CallbackRef
 	var closeRPC func()
+	var err error
 	if background {
 		reference, closeRPC, err = s.callbacks.OpenRPCWithInvocation(calling, session, callbackPayloadLimits, func(ctx context.Context, invocation framecall.Invocation) (context.Context, error) {
 			ctx, err := s.commands.RestoreInvocation(ctx, invocation)
@@ -198,12 +219,11 @@ func (s *ProcessSource) Configure(ctx context.Context, setup framehost.Setup, se
 		reference, closeRPC, err = s.callbacks.OpenRPC(calling, session, callbackPayloadLimits)
 	}
 	if err != nil {
-		return nil, sdk.ParamsBase{}, err
+		return pluginmcp.CallbackRef{}, err
 	}
 	if _, err := setup.Cleanup("Flame process callback grant", func() error { closeRPC(); return nil }); err != nil {
 		closeRPC()
-		return nil, sdk.ParamsBase{}, err
+		return pluginmcp.CallbackRef{}, err
 	}
-	metadata, err := pluginmcp.CallbackMetadata(reference)
-	return contributions, metadata, err
+	return reference, nil
 }

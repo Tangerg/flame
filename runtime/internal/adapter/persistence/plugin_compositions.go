@@ -60,7 +60,7 @@ func (s *compositionStore) List(ctx context.Context) ([]plugin.OrderedCompositio
 		return values, rows.Err()
 	})
 }
-func restoreComposition(reference, encoded string) (plugin.OrderedComposition, error) {
+func restoreComposition(reference string, encoded string) (plugin.OrderedComposition, error) {
 	var stored storedComposition
 	if err := decodeStoredJSON([]byte(encoded), &stored); err != nil {
 		return plugin.OrderedComposition{}, err

@@ -27,35 +27,9 @@ func (i *interactionSession) commitRejectedToolFeedback(ctx context.Context, pre
 	if err != nil || len(calls) == 0 {
 		return err
 	}
-	results := latestToolFeedback(request.Messages)
-	sequence := preparation.sequence - 1
-	var pending []runs.ExecutorEvent
-	var modelResults []chat.ToolResult
-	for index, call := range calls {
-		result, found := results[call.ID]
-		if !found || result.Name != call.Name {
-			return errors.New("execution: canonical context lost a proposed Tool's feedback")
-		}
-		modelResults = append(modelResults, result.Clone())
-		if settled[uint32(index)] {
-			continue
-		}
-		if !result.IsError {
-			return errors.New("execution: unexecuted Tool proposal has successful feedback")
-		}
-		entry := interaction.ResultEntry{ToolCallIndex: uint32(index), Call: call, Result: result, Disposition: interaction.ResultRejected}
-		event, err := i.toolResultProjection(preparation.process, sequence, entry)
-		if err != nil {
-			return err
-		}
-		fact := event.Payload.(runs.ToolResultsCommitted)
-		committed, err := i.executionTrees.ExecutionResultCommitted(ctx, i.start.SessionID, fact.Publication)
-		if err != nil {
-			return err
-		}
-		if !committed {
-			pending = append(pending, event)
-		}
+	pending, modelResults, err := i.rejectedFeedback(ctx, preparation.process, preparation.sequence-1, calls, settled, latestToolFeedback(request.Messages))
+	if err != nil {
+		return err
 	}
 	for index, event := range pending {
 		fact := event.Payload.(runs.ToolResultsCommitted)
@@ -98,6 +72,46 @@ func committedModelResponse(history scoperun.Log, process scoperun.ProcessID, se
 	return nil, nil
 }
 
+// rejectedFeedback pairs every proposal with its canonical feedback and
+// returns the rejection projections not yet committed, in call order.
+func (i *interactionSession) rejectedFeedback(
+	ctx context.Context,
+	process scoperun.ProcessID,
+	sequence uint64,
+	calls []chat.ToolCall,
+	settled map[uint32]bool,
+	results map[string]chat.ToolResult,
+) ([]runs.ExecutorEvent, []chat.ToolResult, error) {
+	var pending []runs.ExecutorEvent
+	var modelResults []chat.ToolResult
+	for index, call := range calls {
+		result, found := results[call.ID]
+		if !found || result.Name != call.Name {
+			return nil, nil, errors.New("execution: canonical context lost a proposed Tool's feedback")
+		}
+		modelResults = append(modelResults, result.Clone())
+		if settled[uint32(index)] {
+			continue
+		}
+		if !result.IsError {
+			return nil, nil, errors.New("execution: unexecuted Tool proposal has successful feedback")
+		}
+		entry := interaction.ResultEntry{ToolCallIndex: uint32(index), Call: call, Result: result, Disposition: interaction.ResultRejected}
+		event, err := i.toolResultProjection(process, sequence, entry)
+		if err != nil {
+			return nil, nil, err
+		}
+		committed, err := i.executionTrees.ExecutionResultCommitted(ctx, i.start.SessionID, event.Payload.(runs.ToolResultsCommitted).Publication)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !committed {
+			pending = append(pending, event)
+		}
+	}
+	return pending, modelResults, nil
+}
+
 func (i *interactionSession) unexecutedProposals(history scoperun.Log, process scoperun.ProcessID, sequence uint64) ([]chat.ToolCall, map[uint32]bool, error) {
 	response, err := committedModelResponse(history, process, sequence)
 	if err != nil {
@@ -106,12 +120,7 @@ func (i *interactionSession) unexecutedProposals(history scoperun.Log, process s
 	if response == nil || response.Output == nil || response.Output.Message == nil {
 		return nil, nil, errors.New("execution: context preparation lost its preceding model response")
 	}
-	var calls []chat.ToolCall
-	for _, part := range response.Output.Message.Parts {
-		if part.ToolCall != nil {
-			calls = append(calls, *part.ToolCall)
-		}
-	}
+	calls := response.Output.Message.ToolCalls()
 	if len(calls) == 0 {
 		return nil, nil, nil
 	}

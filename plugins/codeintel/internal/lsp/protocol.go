@@ -590,24 +590,7 @@ func parseSymbols(raw jsontext.Value, docURI string) ([]Symbol, error) {
 		return nil, fmt.Errorf("decode first symbol shape: %w", err)
 	}
 	if len(first.Location) != 0 {
-		var infos []symbolInformation
-		if err := json.Unmarshal(value, &infos); err != nil {
-			return nil, fmt.Errorf("decode SymbolInformation list: %w", err)
-		}
-		out := make([]Symbol, 0, len(infos))
-		for index, symbol := range infos {
-			if strings.TrimSpace(symbol.Name) == "" {
-				return nil, fmt.Errorf("decode SymbolInformation item %d: name is empty", index)
-			}
-			if symbol.Location == nil {
-				return nil, fmt.Errorf("decode SymbolInformation item %d: location is missing or null", index)
-			}
-			if err := validateLocation(*symbol.Location); err != nil {
-				return nil, fmt.Errorf("decode SymbolInformation item %d: %w", index, err)
-			}
-			out = append(out, Symbol{Name: symbol.Name, Kind: symbol.Kind, Location: *symbol.Location, Container: symbol.ContainerName})
-		}
-		return out, nil
+		return parseSymbolInformation(value)
 	}
 	if strings.TrimSpace(docURI) == "" {
 		return nil, errors.New("decode DocumentSymbol list: document uri is empty")
@@ -619,6 +602,29 @@ func parseSymbols(raw jsontext.Value, docURI string) ([]Symbol, error) {
 	var out []Symbol
 	if err := appendDocumentSymbols(&out, "", docURI, tree); err != nil {
 		return nil, err
+	}
+	return out, nil
+}
+
+// parseSymbolInformation reads the flat, located symbol form; a server sends it
+// instead of the DocumentSymbol tree when the first item carries a location.
+func parseSymbolInformation(value jsontext.Value) ([]Symbol, error) {
+	var infos []symbolInformation
+	if err := json.Unmarshal(value, &infos); err != nil {
+		return nil, fmt.Errorf("decode SymbolInformation list: %w", err)
+	}
+	out := make([]Symbol, 0, len(infos))
+	for index, symbol := range infos {
+		if strings.TrimSpace(symbol.Name) == "" {
+			return nil, fmt.Errorf("decode SymbolInformation item %d: name is empty", index)
+		}
+		if symbol.Location == nil {
+			return nil, fmt.Errorf("decode SymbolInformation item %d: location is missing or null", index)
+		}
+		if err := validateLocation(*symbol.Location); err != nil {
+			return nil, fmt.Errorf("decode SymbolInformation item %d: %w", index, err)
+		}
+		out = append(out, Symbol{Name: symbol.Name, Kind: symbol.Kind, Location: *symbol.Location, Container: symbol.ContainerName})
 	}
 	return out, nil
 }

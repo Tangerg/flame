@@ -171,9 +171,6 @@ func (c ClientComponent) clone() ClientComponent {
 }
 
 func (c ClientComponent) validatePresentation() error {
-	if c.SettingsIntent != "" && (c.Placement != extension.ComponentPlacementSettingsPane || !identity.ValidDeclarationID(c.SettingsIntent)) {
-		return refuse(DiagnosticInvalidDeclaration, "invalid settings intent for component %q", c.ID)
-	}
 	if !validComponentTitle(c.Title) || !c.Scope.Valid() || len(c.LocalizedTitles) > maxLocales {
 		return refuse(DiagnosticInvalidDeclaration, "invalid component %q", c.ID)
 	}
@@ -181,6 +178,15 @@ func (c ClientComponent) validatePresentation() error {
 		if !validTranslationTag(tag) || !validComponentTitle(title) {
 			return refuse(DiagnosticInvalidDeclaration, "invalid localized title for component %q", c.ID)
 		}
+	}
+	return c.validatePlacementFields()
+}
+
+// validatePlacementFields admits each placement-specific field only on the
+// placement that reads it.
+func (c ClientComponent) validatePlacementFields() error {
+	if c.SettingsIntent != "" && (c.Placement != extension.ComponentPlacementSettingsPane || !identity.ValidDeclarationID(c.SettingsIntent)) {
+		return refuse(DiagnosticInvalidDeclaration, "invalid settings intent for component %q", c.ID)
 	}
 	if c.ToolCategory != "" && (c.Placement != extension.ComponentPlacementWorkspaceView || !slices.Contains(c.ToolCategory.Values(), string(c.ToolCategory))) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid tool category for component %q", c.ID)

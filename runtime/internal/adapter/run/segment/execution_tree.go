@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 
 	framehost "github.com/Tangerg/frame/host"
@@ -100,7 +101,7 @@ func (e *Effects) reconcileExecutionTree(readCtx context.Context, tree runs.Exec
 }
 
 func (e *Effects) reconcileExecutionTreeEvents(readCtx context.Context, commits []runs.EventCommit, err error) error {
-	last := make(map[string]runs.EventCommit)
+	last := make(map[identity.RunID]runs.EventCommit)
 	for _, commit := range commits {
 		last[commit.RunID] = commit
 	}

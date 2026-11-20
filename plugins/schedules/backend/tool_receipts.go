@@ -5,6 +5,7 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -20,77 +21,92 @@ import (
 
 func toolReceipt(ctx context.Context, db framesqlite.Database, input pluginmcp.ReceiptRequest) (pluginsdk.ToolReceipt, error) {
 	remote := input.Method
-	switch remote {
-	case createScheduleTool:
-		input.Method = wire.Create
-	case updateScheduleTool:
-		input.Method = wire.Update
-	case deleteScheduleTool:
-		input.Method = wire.Delete
-	case runScheduleTool:
-		input.Method = wire.RunNow
-	default:
+	method, owned := toolCommandMethod(remote)
+	if !owned {
 		return pluginsdk.ToolReceipt{}, nil
 	}
+	input.Method = method
 	receipt, err := pluginstorage.ReadReceipt(ctx, db, input)
 	if err != nil || !receipt.Found {
 		return pluginsdk.ToolReceipt{}, err
 	}
-	_, err = pluginmcp.DecodeReply[jsontext.Value](receipt.Reply)
-	if err != nil {
+	if _, err := pluginmcp.DecodeReply[jsontext.Value](receipt.Reply); err != nil {
 		failure, known := toolcontract.ClassifyFailure(commandFailure(remote, decodeError(err)))
 		if !known {
 			return pluginsdk.ToolReceipt{}, err
 		}
-		return pluginsdk.NewToolReceipt(failure.Output(), true)
+		return pluginsdk.NewFailedToolReceipt(failure)
 	}
-	var projection any
-	switch remote {
+	projection, err := toolReceiptProjection(ctx, db, remote, input.ID, receipt.Reply)
+	if err != nil {
+		return pluginsdk.ToolReceipt{}, err
+	}
+	return pluginsdk.NewJSONToolReceipt(projection)
+}
+
+// toolCommandMethod names the private command each Tool records its receipt
+// under; other Tools keep no receipt here.
+func toolCommandMethod(tool string) (string, bool) {
+	switch tool {
+	case createScheduleTool:
+		return wire.Create, true
+	case updateScheduleTool:
+		return wire.Update, true
+	case deleteScheduleTool:
+		return wire.Delete, true
+	case runScheduleTool:
+		return wire.RunNow, true
+	default:
+		return "", false
+	}
+}
+
+func toolReceiptProjection(ctx context.Context, db framesqlite.Database, tool string, commandID pluginmcp.CommandID, reply jsontext.Value) (any, error) {
+	switch tool {
 	case createScheduleTool, updateScheduleTool:
-		snapshot, err := pluginmcp.DecodeReply[schedule.Snapshot](receipt.Reply)
+		snapshot, err := pluginmcp.DecodeReply[schedule.Snapshot](reply)
 		if err != nil {
-			return pluginsdk.ToolReceipt{}, err
+			return nil, err
 		}
 		state, err := schedule.Restore(snapshot)
 		if err != nil {
-			return pluginsdk.ToolReceipt{}, err
+			return nil, err
 		}
-		projection = scheduleResponse{Schedule: viewSchedule(state)}
+		return scheduleResponse{Schedule: viewSchedule(state)}, nil
 	case deleteScheduleTool:
-		if _, err := pluginmcp.DecodeReply[wire.Ack](receipt.Reply); err != nil {
-			return pluginsdk.ToolReceipt{}, err
+		if _, err := pluginmcp.DecodeReply[wire.Ack](reply); err != nil {
+			return nil, err
 		}
-		var original string
-		if err := db.Read(ctx, func(reader framesqlite.Reader) error {
-			return reader.QueryRowContext(ctx, `SELECT business_input_json FROM commands WHERE id=?`, input.ID).Scan(&original)
-		}); err != nil {
-			return pluginsdk.ToolReceipt{}, err
-		}
-		var arguments deleteScheduleArgs
-		if err := json.Unmarshal([]byte(original), &arguments, json.RejectUnknownMembers(true)); err != nil {
-			return pluginsdk.ToolReceipt{}, err
-		}
-		if err := schedule.ValidateID(arguments.ScheduleID); err != nil {
-			return pluginsdk.ToolReceipt{}, err
-		}
-		projection = scheduleDeleteResponse(arguments)
+		return deletedScheduleProjection(ctx, db, commandID)
 	case runScheduleTool:
-		reference, err := pluginmcp.DecodeReply[app.RunReference](receipt.Reply)
+		reference, err := pluginmcp.DecodeReply[app.RunReference](reply)
 		if err != nil {
-			return pluginsdk.ToolReceipt{}, err
+			return nil, err
 		}
 		if err := errors.Join(identity.ValidateSession(reference.SessionID), identity.ValidateRun(reference.RunID)); err != nil {
-			return pluginsdk.ToolReceipt{}, err
+			return nil, err
 		}
-		projection = reference
+		return reference, nil
+	default:
+		return nil, fmt.Errorf("schedules: Tool %q keeps no receipt", tool)
 	}
-	encoded, err := json.Marshal(projection)
-	if err != nil {
-		return pluginsdk.ToolReceipt{}, err
+}
+
+// deletedScheduleProjection answers from the original arguments, since a
+// deleted Schedule has nothing left to read.
+func deletedScheduleProjection(ctx context.Context, db framesqlite.Database, commandID pluginmcp.CommandID) (any, error) {
+	var original string
+	if err := db.Read(ctx, func(reader framesqlite.Reader) error {
+		return reader.QueryRowContext(ctx, `SELECT business_input_json FROM commands WHERE id=?`, commandID).Scan(&original)
+	}); err != nil {
+		return nil, err
 	}
-	output, err := toolcontract.NewJSONOutput(encoded)
-	if err != nil {
-		return pluginsdk.ToolReceipt{}, err
+	var arguments deleteScheduleArgs
+	if err := json.Unmarshal([]byte(original), &arguments, json.RejectUnknownMembers(true)); err != nil {
+		return nil, err
 	}
-	return pluginsdk.NewToolReceipt(output, false)
+	if err := schedule.ValidateID(arguments.ScheduleID); err != nil {
+		return nil, err
+	}
+	return scheduleDeleteResponse(arguments), nil
 }

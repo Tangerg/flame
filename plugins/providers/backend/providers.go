@@ -51,8 +51,18 @@ type providerProfile struct {
 func bundledProvider(id Provider, endpoint flamemodel.EndpointPolicy, defaultModel string, builder buildFunc) providerProfile {
 	return providerProfile{profile: modelprovider.Profile{ID: string(id), Endpoint: endpoint, Authentication: modelprovider.KeyRequired, ModelSource: modelprovider.BundledModels, DefaultModel: defaultModel, Models: catalog.Models(string(id))}, chatBuilder: builder}
 }
-func endpointProvider(id Provider, endpoint flamemodel.EndpointPolicy, endpointRequired bool, builder buildFunc) providerProfile {
-	return providerProfile{profile: modelprovider.Profile{ID: string(id), Endpoint: endpoint, Authentication: modelprovider.KeyRequired, EndpointRequired: endpointRequired, ModelSource: modelprovider.EndpointModels, Models: []catalog.Model{}}, chatBuilder: builder}
+
+// endpointSupply says who provides the endpoint an endpoint-listed provider
+// reads its models from.
+type endpointSupply uint8
+
+const (
+	providerEndpoint endpointSupply = iota
+	userEndpoint
+)
+
+func endpointProvider(id Provider, endpoint flamemodel.EndpointPolicy, supply endpointSupply, builder buildFunc) providerProfile {
+	return providerProfile{profile: modelprovider.Profile{ID: string(id), Endpoint: endpoint, Authentication: modelprovider.KeyRequired, EndpointRequired: supply == userEndpoint, ModelSource: modelprovider.EndpointModels, Models: []catalog.Model{}}, chatBuilder: builder}
 }
 func (p providerProfile) withEmbedding(defaultModel string, builder embeddingBuildFunc) providerProfile {
 	p.profile.Embedding = &modelprovider.EmbeddingProfile{DefaultModel: defaultModel}

@@ -52,6 +52,9 @@ var availableOnce struct {
 	ok bool
 }
 
+// fatalExitCode is how git reports an unusable repository or invocation.
+const fatalExitCode = 128
+
 // Available reports whether the git binary is on PATH. Cached after the first
 // probe (PATH doesn't change mid-process).
 func Available() bool {
@@ -83,7 +86,7 @@ func IsRepo(ctx context.Context, dir string) (bool, error) {
 	}
 	if result.ExitCode != 0 {
 		diagnostic := strings.TrimSpace(result.Stderr)
-		if result.ExitCode == 128 && isNotRepositoryDiagnostic(diagnostic) {
+		if result.ExitCode == fatalExitCode && isNotRepositoryDiagnostic(diagnostic) {
 			return false, nil
 		}
 		return false, gitExitError(args, result.ExitCode, diagnostic)
@@ -190,25 +193,9 @@ func ListChanges(ctx context.Context, dir string, maxChanges int) ([]FileChange,
 
 	out := make([]FileChange, 0, len(order))
 	for _, p := range order {
-		change := *changes[p]
-		path, pathInside := workspaceRelativeGitPath(change.Path, repositoryPrefix)
-		if change.Status == StatusRenamed {
-			previousPath, previousInside := workspaceRelativeGitPath(change.PreviousPath, repositoryPrefix)
-			switch {
-			case pathInside && previousInside:
-				change.Path, change.PreviousPath = path, previousPath
-			case pathInside:
-				change.Path, change.PreviousPath, change.Status = path, "", StatusAdded
-			case previousInside:
-				change.Path, change.PreviousPath, change.Status = previousPath, "", StatusDeleted
-			default:
-				continue
-			}
-		} else {
-			if !pathInside {
-				continue
-			}
-			change.Path = path
+		change, inside := workspaceChange(*changes[p], repositoryPrefix)
+		if !inside {
+			continue
 		}
 		if change.Status == StatusUntracked {
 			added, binary, err := untrackedFileStat(ctx, dir, change.Path)
@@ -220,6 +207,28 @@ func ListChanges(ctx context.Context, dir string, maxChanges int) ([]FileChange,
 		out = append(out, change)
 	}
 	return out, nil
+}
+
+// workspaceChange rebases a repository change onto the workspace root. A rename
+// across the workspace boundary is the half that lands inside it.
+func workspaceChange(change FileChange, repositoryPrefix string) (FileChange, bool) {
+	path, pathInside := workspaceRelativeGitPath(change.Path, repositoryPrefix)
+	if change.Status != StatusRenamed {
+		change.Path = path
+		return change, pathInside
+	}
+	previousPath, previousInside := workspaceRelativeGitPath(change.PreviousPath, repositoryPrefix)
+	switch {
+	case pathInside && previousInside:
+		change.Path, change.PreviousPath = path, previousPath
+	case pathInside:
+		change.Path, change.PreviousPath, change.Status = path, "", StatusAdded
+	case previousInside:
+		change.Path, change.PreviousPath, change.Status = previousPath, "", StatusDeleted
+	default:
+		return change, false
+	}
+	return change, true
 }
 
 // workspaceRelativeGitPath maps Git's repository-root-relative porcelain path

@@ -61,6 +61,26 @@ func newInteractionModelContextReducer(
 
 // PrepareContext returns only the authored context Scope may retain. The full
 // provider request is captured separately and commits with this preparation.
+// admitUncompacted prepares the context as it is when no compactor owns
+// folding it; plugin model inputs need its token estimate.
+func (i *interactionModelContextReducer) admitUncompacted(calling context.Context, invocation modelCallSource, contextView modelRequestContext, candidate []corechat.Message) ([]corechat.Message, error) {
+	validation, err := i.admitContext(calling, contextView, candidate)
+	if err != nil {
+		return nil, err
+	}
+	var estimate int
+	if len(i.session.modelInputs) > 0 {
+		estimate, err = model.EstimateRequestTokens(validation)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err := i.session.material.prepare(invocation, validation, estimate); err != nil {
+		return nil, err
+	}
+	return contextView.canonical(candidate), nil
+}
+
 func (i *interactionModelContextReducer) PrepareContext(
 	ctx context.Context,
 	preparation interaction.ContextInvocation,
@@ -105,21 +125,7 @@ func (i *interactionModelContextReducer) PrepareContext(
 		return nil, err
 	}
 	if i.compactor == nil {
-		validation, err := i.admitContext(calling, contextView, candidate)
-		if err != nil {
-			return nil, err
-		}
-		var estimate int
-		if len(i.session.modelInputs) > 0 {
-			estimate, err = model.EstimateRequestTokens(validation)
-			if err != nil {
-				return nil, err
-			}
-		}
-		if err := i.session.material.prepare(invocation, validation, estimate); err != nil {
-			return nil, err
-		}
-		return contextView.canonical(candidate), nil
+		return i.admitUncompacted(calling, invocation, contextView, candidate)
 	}
 	return i.compactContext(calling, invocation, contextView, candidate, hasResumeInputs)
 }

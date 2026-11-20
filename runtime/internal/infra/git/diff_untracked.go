@@ -67,34 +67,43 @@ func untrackedFileStat(ctx context.Context, dir, rel string) (lines int, binary 
 	if err != nil {
 		return 0, false, err
 	}
-	source := contextReader
-	buffer := make([]byte, readBufferBytes)
-	var last byte
-	nonempty := false
-	for {
-		count, readErr := source.Read(buffer)
-		if readErr != nil && readErr != io.EOF {
-			return 0, false, fmt.Errorf("git: read untracked file %q: %w", rel, readErr)
-		}
-		if count > 0 {
-			nonempty = true
-			chunk := buffer[:count]
-			if bytes.IndexByte(chunk, 0) >= 0 {
-				binary = true
-				break
-			}
-			lines += bytes.Count(chunk, []byte{'\n'})
-			last = chunk[len(chunk)-1]
-		}
-		if readErr == io.EOF {
-			break
-		}
+	lines, binary, err = countTextLines(contextReader)
+	if err != nil {
+		return 0, false, fmt.Errorf("git: read untracked file %q: %w", rel, err)
 	}
 	if err := filesystem.VerifyPathVersion(file, opened, path); err != nil {
 		return 0, false, fmt.Errorf("git: verify untracked file %q after reading: %w", rel, err)
 	}
 	if binary {
 		return 0, true, nil
+	}
+	return lines, false, nil
+}
+
+// countTextLines counts lines as git does, a final unterminated line
+// included; a NUL byte makes the content binary.
+func countTextLines(source io.Reader) (int, bool, error) {
+	buffer := make([]byte, readBufferBytes)
+	lines := 0
+	var last byte
+	nonempty := false
+	for {
+		count, err := source.Read(buffer)
+		if err != nil && err != io.EOF {
+			return 0, false, err
+		}
+		if count > 0 {
+			chunk := buffer[:count]
+			if bytes.IndexByte(chunk, 0) >= 0 {
+				return 0, true, nil
+			}
+			nonempty = true
+			lines += bytes.Count(chunk, []byte{'\n'})
+			last = chunk[len(chunk)-1]
+		}
+		if err == io.EOF {
+			break
+		}
 	}
 	if nonempty && last != '\n' {
 		lines++

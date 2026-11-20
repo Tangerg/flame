@@ -45,7 +45,7 @@ func (u *usageScreens) ShowUsage(argument string) error {
 
 func parseUsagePeriod(argument string) (conversation.UsageSummaryPeriod, error) {
 	argument = strings.TrimSpace(argument)
-	if argument == "" || strings.EqualFold(argument, "all") {
+	if argument == "" || isAllArgument(argument) {
 		return conversation.AllTimeUsage(), nil
 	}
 	days, err := strconv.Atoi(argument)

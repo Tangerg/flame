@@ -75,41 +75,45 @@ var catastrophicRemoveTarget = map[string]bool{
 // `rm` invocation with BOTH recursive and force flags (any spelling / order)
 // aimed at a catastrophic target.
 func recursiveForceRemoveOfRootOrHome(segment string) bool {
-	fields := strings.Fields(segment)
-	rm := false
-	recursive, force := false, false
-	var targets []string
-	for _, f := range fields {
-		switch {
-		case f == "rm" || strings.HasSuffix(f, "/rm"):
-			rm = true
-		case f == "sudo" || f == "command" || f == "env":
-			// prefixes that still front an rm — keep scanning.
-		case strings.HasPrefix(f, "--"):
-			switch f {
-			case "--recursive":
-				recursive = true
-			case "--force":
-				force = true
-			}
-		case strings.HasPrefix(f, "-"):
-			if strings.ContainsAny(f, "rR") {
-				recursive = true
-			}
-			if strings.Contains(f, "f") {
-				force = true
-			}
-		default:
-			targets = append(targets, strings.Trim(f, `"'`))
-		}
-	}
-	if !rm || !recursive || !force {
+	removal := parseRemoval(segment)
+	if !removal.rm || !removal.recursive || !removal.force {
 		return false
 	}
-	for _, t := range targets {
-		if catastrophicRemoveTarget[t] {
-			return true
+	return slices.ContainsFunc(removal.targets, func(target string) bool { return catastrophicRemoveTarget[target] })
+}
+
+// removal is what one command segment asks rm to do.
+type removal struct {
+	rm, recursive, force bool
+	targets              []string
+}
+
+func parseRemoval(segment string) removal {
+	var parsed removal
+	for _, field := range strings.Fields(segment) {
+		switch {
+		case field == "rm" || strings.HasSuffix(field, "/rm"):
+			parsed.rm = true
+		case field == "sudo" || field == "command" || field == "env":
+			// prefixes that still front an rm — keep scanning.
+		case strings.HasPrefix(field, "-"):
+			parsed.applyFlag(field)
+		default:
+			parsed.targets = append(parsed.targets, strings.Trim(field, `"'`))
 		}
 	}
-	return false
+	return parsed
+}
+
+func (r *removal) applyFlag(flag string) {
+	switch {
+	case flag == "--recursive":
+		r.recursive = true
+	case flag == "--force":
+		r.force = true
+	case strings.HasPrefix(flag, "--"):
+	default:
+		r.recursive = r.recursive || strings.ContainsAny(flag, "rR")
+		r.force = r.force || strings.Contains(flag, "f")
+	}
 }

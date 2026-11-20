@@ -11,7 +11,7 @@ import (
 
 func presentItem(item transcript.Item) protocol.Item {
 	out := protocol.Item{
-		ID: item.ID(), RunID: item.RunID(), Status: presentItemStatus(item.Status()),
+		ID: item.ID().String(), RunID: item.RunID().String(), Status: presentItemStatus(item.Status()),
 		Type: presentItemKind(item.Kind()),
 	}
 	payload := item.Body()
@@ -82,19 +82,18 @@ func presentItemApprovalDecision(decision approval.Decision) protocol.ApprovalDe
 }
 
 func presentItemStart(item runs.ItemStart) protocol.Item {
+	identity := item.Identity()
 	out := protocol.Item{
-		ID: item.ItemID, RunID: item.RunID, Status: protocol.ItemStatusRunning,
-		Type: presentItemKind(item.Kind), SafetyClass: presentSafetyClass(item.SafetyClass),
+		ID: identity.ItemID.String(), RunID: identity.RunID.String(), Status: protocol.ItemStatusRunning,
+		Type: presentItemKind(item.Kind()),
 	}
-	if item.Kind == transcript.ToolCall {
-		out.StartedAt = item.OccurredAt
-		if item.ToolInvocation != nil {
-			tool := presentTool(*item.ToolInvocation)
-			out.Tool = &tool
-		}
-	} else {
-		out.CreatedAt = item.OccurredAt
+	call, ok := item.ToolCall()
+	if !ok {
+		out.CreatedAt = identity.OccurredAt
+		return out
 	}
+	tool := presentTool(call.Invocation)
+	out.StartedAt, out.Tool, out.SafetyClass = identity.OccurredAt, &tool, presentSafetyClass(call.SafetyClass)
 	return out
 }
 

@@ -7,6 +7,8 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -27,12 +29,12 @@ type SessionMutations struct {
 	commands *keylock.Set
 
 	mu     sync.Mutex
-	drives map[string]*goalDrive
+	drives map[identity.SessionID]*goalDrive
 }
 
 // NewSessionMutations returns the shared lifecycle coordinator for one runtime.
 func NewSessionMutations() *SessionMutations {
-	return &SessionMutations{commands: keylock.NewSet(), drives: map[string]*goalDrive{}}
+	return &SessionMutations{commands: keylock.NewSet(), drives: map[identity.SessionID]*goalDrive{}}
 }
 
 // acquire serializes lifecycle commands only for the sessions they mutate.
@@ -40,7 +42,7 @@ func NewSessionMutations() *SessionMutations {
 // Goal drive reconciliation does not prevent shutdown from closing task admission.
 // Once the read side is held, shutdown cannot cross the command's launch
 // boundary.
-func (s *SessionMutations) acquire(ctx context.Context, sessionIDs ...string) (func(), error) {
+func (s *SessionMutations) acquire(ctx context.Context, sessionIDs ...identity.SessionID) (func(), error) {
 	releaseSessions, err := s.acquireSessions(ctx, sessionIDs...)
 	if err != nil {
 		return nil, err
@@ -55,13 +57,17 @@ func (s *SessionMutations) acquire(ctx context.Context, sessionIDs ...string) (f
 // acquireSessions is the internal half of acquire. Background reconciliation
 // participates in per-session ordering but not external command admission; its
 // task-group ownership is the shutdown join boundary.
-func (s *SessionMutations) acquireSessions(ctx context.Context, sessionIDs ...string) (func(), error) {
-	return s.commands.AcquireAll(ctx, sessionIDs...)
+func (s *SessionMutations) acquireSessions(ctx context.Context, sessionIDs ...identity.SessionID) (func(), error) {
+	keys := make([]string, len(sessionIDs))
+	for index, sessionID := range sessionIDs {
+		keys[index] = sessionID.String()
+	}
+	return s.commands.AcquireAll(ctx, keys...)
 }
 
-func normalizeSessionIDs(sessionIDs []string) []string {
+func normalizeSessionIDs(sessionIDs []identity.SessionID) []identity.SessionID {
 	ids := slices.Clone(sessionIDs)
-	slices.Sort(ids)
+	slices.SortFunc(ids, identity.SessionID.Compare)
 	return slices.Compact(ids)
 }
 
@@ -78,7 +84,7 @@ func (s *SessionMutations) acquireAll() func() {
 // projected one would report a committed mutation as one that never happened.
 func (s *SessionMutations) WithSessionMutation(
 	ctx context.Context,
-	sessionIDs []string,
+	sessionIDs []identity.SessionID,
 	commit func(context.Context) error,
 	afterCommit func(context.Context) error,
 ) error {
@@ -92,7 +98,7 @@ func (s *SessionMutations) WithSessionMutation(
 		return err
 	}
 	type ownedDrive struct {
-		sessionID string
+		sessionID identity.SessionID
 		drive     *goalDrive
 	}
 	drives := make([]ownedDrive, 0, len(sessionIDs))
@@ -114,7 +120,7 @@ func (s *SessionMutations) WithSessionMutation(
 	return nil
 }
 
-func (s *SessionMutations) installDrive(sessionID string, drive *goalDrive) *goalDrive {
+func (s *SessionMutations) installDrive(sessionID identity.SessionID, drive *goalDrive) *goalDrive {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	previous := s.drives[sessionID]
@@ -122,7 +128,7 @@ func (s *SessionMutations) installDrive(sessionID string, drive *goalDrive) *goa
 	return previous
 }
 
-func (s *SessionMutations) forget(sessionID string, drive *goalDrive) {
+func (s *SessionMutations) forget(sessionID identity.SessionID, drive *goalDrive) {
 	s.mu.Lock()
 	if s.drives[sessionID] == drive {
 		delete(s.drives, sessionID)
@@ -130,7 +136,7 @@ func (s *SessionMutations) forget(sessionID string, drive *goalDrive) {
 	s.mu.Unlock()
 }
 
-func (s *SessionMutations) quiesce(sessionID string) *goalDrive {
+func (s *SessionMutations) quiesce(sessionID identity.SessionID) *goalDrive {
 	drive := s.activeDrive(sessionID)
 	if drive != nil {
 		drive.quiesce()
@@ -138,7 +144,7 @@ func (s *SessionMutations) quiesce(sessionID string) *goalDrive {
 	return drive
 }
 
-func (s *SessionMutations) joinDrive(ctx context.Context, sessionID string, drive *goalDrive) error {
+func (s *SessionMutations) joinDrive(ctx context.Context, sessionID identity.SessionID, drive *goalDrive) error {
 	if drive == nil {
 		return nil
 	}
@@ -149,7 +155,7 @@ func (s *SessionMutations) joinDrive(ctx context.Context, sessionID string, driv
 	return err
 }
 
-func (s *SessionMutations) activeDrive(sessionID string) *goalDrive {
+func (s *SessionMutations) activeDrive(sessionID identity.SessionID) *goalDrive {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.drives[sessionID]

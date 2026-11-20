@@ -62,9 +62,13 @@ const (
 )
 
 const (
-	refusalModelEnvelope   = "model_envelope"
-	refusalModelRedelivery = "model_redelivery"
-	refusalModelBudget     = "model_budget"
+	refusalModelEnvelope         = "model_envelope"
+	refusalEmbeddingEnvelope     = "embedding_envelope"
+	refusalModelRedelivery       = "model_redelivery"
+	refusalModelBudget           = "model_budget"
+	refusalModelRoleUnconfigured = "model_role_unconfigured"
+	refusalObserverContract      = "observer_contract"
+	refusalReadBudget            = "read_budget"
 )
 
 func newExternalCallLedger(owner string, limit int) *externalCallLedger {

@@ -146,34 +146,54 @@ func runShutdown(
 		lifetime.mcpCoordinator,
 		lifetime.runSegments,
 	}
-	lifetime.closeMu.Lock()
-	begin := lifetime.phase == lifetimeRunning
-	if begin {
-		lifetime.phase = lifetimeStopping
+	if lifetime.beginStopping() {
+		lifetime.broadcastShutdown(components)
 	}
-	lifetime.closeMu.Unlock()
-
-	// Delivery is acquired after assembly, so a startup that fails before then
-	// rolls back a graph that never had an endpoint to stop.
-	if begin {
-		if lifetime.delivery != nil {
-			lifetime.delivery.BeginShutdown()
-		}
-		if lifetime.stopRuntime != nil {
-			lifetime.stopRuntime()
-		}
-		// An accepted invocation can await component-owned post-commit work.
-		// Broadcast component cancellation before joining delivery to avoid
-		// making that work wait for the shutdown that is waiting for it.
-		for _, component := range components {
-			if component != nil {
-				component.BeginShutdown()
-			}
-		}
-	}
-	if err := completion.Wait(ownerCtx, lifetime.recoveryDone); err != nil {
+	if err := lifetime.joinWork(ownerCtx, components); err != nil {
 		finishShutdown(lifetime, attempt, false, err)
 		return
+	}
+	settled, resourceErr := lifetime.teardownGraph().shutdown(ownerCtx)
+	finishShutdown(lifetime, attempt, settled, resourceErr)
+}
+
+// beginStopping reports whether this call moved a running lifetime to
+// stopping; only that call broadcasts shutdown.
+func (l *runtimeLifetime) beginStopping() bool {
+	l.closeMu.Lock()
+	defer l.closeMu.Unlock()
+	if l.phase != lifetimeRunning {
+		return false
+	}
+	l.phase = lifetimeStopping
+	return true
+}
+
+// broadcastShutdown stops new work everywhere before anything is joined.
+// Delivery is acquired after assembly, so a startup that fails before then
+// rolls back a graph that never had an endpoint to stop.
+func (l *runtimeLifetime) broadcastShutdown(components []shutdownComponent) {
+	if l.delivery != nil {
+		l.delivery.BeginShutdown()
+	}
+	if l.stopRuntime != nil {
+		l.stopRuntime()
+	}
+	// An accepted invocation can await component-owned post-commit work.
+	// Broadcast component cancellation before joining delivery to avoid
+	// making that work wait for the shutdown that is waiting for it.
+	for _, component := range components {
+		if component != nil {
+			component.BeginShutdown()
+		}
+	}
+}
+
+// joinWork waits for recovery, components, run effects, delivery and the
+// executor, in the order each depends on the previous having stopped.
+func (l *runtimeLifetime) joinWork(ownerCtx context.Context, components []shutdownComponent) error {
+	if err := completion.Wait(ownerCtx, l.recoveryDone); err != nil {
+		return err
 	}
 	var errs []error
 	for _, component := range components {
@@ -181,55 +201,52 @@ func runShutdown(
 			errs = append(errs, component.AwaitShutdown(ownerCtx))
 		}
 	}
-	if lifetime.runEffectTasks != nil {
-		// Run producers are stopped and joined before this point, so no new
-		// terminal maintenance can be admitted. Let already accepted best-effort
-		// work (notably Session title generation) settle naturally for a bounded
-		// window; a stuck provider is then canceled through the normal owner.
-		drainCtx, cancelDrain := context.WithTimeout(ownerCtx, runEffectDrainTimeout)
-		_ = lifetime.runEffectTasks.Drain(drainCtx)
-		cancelDrain()
-		lifetime.runEffectTasks.Cancel()
-		errs = append(errs, lifetime.runEffectTasks.Wait(ownerCtx))
+	if l.runEffectTasks != nil {
+		errs = append(errs, l.drainRunEffects(ownerCtx))
 	}
-	if componentErr := errors.Join(errs...); componentErr != nil {
-		finishShutdown(lifetime, attempt, false, componentErr)
-		return
+	if err := errors.Join(errs...); err != nil {
+		return err
 	}
 	// Run tasks can finish a keyed cancellation after its invocation returns.
 	// Join those producers before flushing delivery's known outcomes.
-	if lifetime.delivery != nil {
-		if err := lifetime.delivery.AwaitShutdown(ownerCtx); err != nil {
-			finishShutdown(lifetime, attempt, false, err)
-			return
+	if l.delivery != nil {
+		if err := l.delivery.AwaitShutdown(ownerCtx); err != nil {
+			return err
 		}
 	}
+	if l.executor != nil {
+		l.executor.BeginShutdown()
+		return l.executor.AwaitShutdown(ownerCtx)
+	}
+	return nil
+}
 
-	if lifetime.executor != nil {
-		lifetime.executor.BeginShutdown()
-		if err := lifetime.executor.AwaitShutdown(ownerCtx); err != nil {
-			finishShutdown(lifetime, attempt, false, err)
-			return
-		}
+// drainRunEffects lets accepted best-effort work (notably Session title
+// generation) settle for a bounded window; run producers are already joined,
+// so nothing new is admitted. A stuck provider is then canceled through the
+// normal owner.
+func (l *runtimeLifetime) drainRunEffects(ownerCtx context.Context) error {
+	drainCtx, cancelDrain := context.WithTimeout(ownerCtx, runEffectDrainTimeout)
+	_ = l.runEffectTasks.Drain(drainCtx)
+	cancelDrain()
+	l.runEffectTasks.Cancel()
+	return l.runEffectTasks.Wait(ownerCtx)
+}
+
+// teardownGraph is the one reverse-dependency teardown of every resource.
+// Host resources are acquired before tool resources, so concatenating them in
+// creation order lets the Sequence own the whole graph in one
+// self-continuing generation.
+func (l *runtimeLifetime) teardownGraph() *shutdownSequence {
+	l.closeMu.Lock()
+	defer l.closeMu.Unlock()
+	if l.resourceGraph == nil {
+		steps := make([]*teardownStep, 0, len(l.hostResources)+len(l.toolResources))
+		steps = append(steps, l.hostResources...)
+		steps = append(steps, l.toolResources...)
+		l.resourceGraph = newShutdownSequence(steps)
 	}
-	lifetime.closeMu.Lock()
-	if lifetime.resourceGraph == nil {
-		// host resources are acquired before tool resources; concatenating them
-		// in creation order lets the Sequence own the whole reverse dependency
-		// graph in one self-continuing generation.
-		steps := make([]*teardownStep, 0, len(lifetime.hostResources)+len(lifetime.toolResources))
-		steps = append(steps, lifetime.hostResources...)
-		steps = append(steps, lifetime.toolResources...)
-		lifetime.resourceGraph = newShutdownSequence(steps)
-	}
-	resourceGraph := lifetime.resourceGraph
-	lifetime.closeMu.Unlock()
-	settled, resourceErr := resourceGraph.shutdown(ownerCtx)
-	if !settled {
-		finishShutdown(lifetime, attempt, false, resourceErr)
-		return
-	}
-	finishShutdown(lifetime, attempt, true, resourceErr)
+	return l.resourceGraph
 }
 
 func finishShutdown(

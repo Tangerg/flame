@@ -12,8 +12,8 @@ import (
 // remains an implementation detail.
 type ChildRunBinding struct {
 	MemberID    string
-	RunID       string
-	ParentRunID string
+	RunID       identity.RunID
+	ParentRunID identity.RunID
 }
 
 // Validate rejects incomplete or ambiguous child identity before it reaches a
@@ -22,10 +22,10 @@ func (c ChildRunBinding) Validate() error {
 	if err := ValidateMember(c.MemberID); err != nil {
 		return fmt.Errorf("runs: child Run binding: %w", err)
 	}
-	if err := identity.ValidateRun(c.RunID); err != nil {
+	if err := c.RunID.Validate(); err != nil {
 		return fmt.Errorf("runs: child Run binding: %w", err)
 	}
-	if err := identity.ValidateRun(c.ParentRunID); err != nil {
+	if err := c.ParentRunID.Validate(); err != nil {
 		return fmt.Errorf("runs: child Run binding parent: %w", err)
 	}
 	if c.RunID == c.ParentRunID {

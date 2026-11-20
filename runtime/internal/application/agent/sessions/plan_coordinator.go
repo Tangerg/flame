@@ -18,8 +18,8 @@ import (
 
 // planStore is the use case's consumer-owned persistence port.
 type planStore interface {
-	State(ctx context.Context, sessionID string) (plan.Current, error)
-	Save(ctx context.Context, sessionID string, replacement plan.Replacement) error
+	State(ctx context.Context, sessionID identity.SessionID) (plan.Current, error)
+	Save(ctx context.Context, sessionID identity.SessionID, replacement plan.Replacement) error
 }
 
 type PlanAuthor interface {
@@ -64,8 +64,8 @@ func NewPlanCoordinator(deps PlanDependencies) (*PlanCoordinator, error) {
 }
 
 // State returns the canonical optional Plan aggregate for one session.
-func (c *PlanCoordinator) State(ctx context.Context, sessionID string) (plan.Current, error) {
-	if err := identity.ValidateSession(sessionID); err != nil {
+func (c *PlanCoordinator) State(ctx context.Context, sessionID identity.SessionID) (plan.Current, error) {
+	if err := sessionID.Validate(); err != nil {
 		return plan.Current{}, fmt.Errorf("sessions: Plan: %w", err)
 	}
 	return c.store.State(ctx, sessionID)
@@ -73,7 +73,7 @@ func (c *PlanCoordinator) State(ctx context.Context, sessionID string) (plan.Cur
 
 // Replace computes and commits one complete replacement using optimistic
 // concurrency. An empty steps slice clears the Plan under a new revision.
-func (c *PlanCoordinator) Replace(ctx context.Context, sessionID string, steps []plan.Step) (plan.State, error) {
+func (c *PlanCoordinator) Replace(ctx context.Context, sessionID identity.SessionID, steps []plan.Step) (plan.State, error) {
 	replacement, err := c.prepareAuthorDecision(ctx, sessionID, plan.Document{Steps: steps})
 	if err != nil {
 		return plan.State{}, err
@@ -85,7 +85,7 @@ func (c *PlanCoordinator) Replace(ctx context.Context, sessionID string, steps [
 	return replacement.State(), nil
 }
 
-func (c *PlanCoordinator) prepareAuthorDecision(ctx context.Context, sessionID string, doc plan.Document) (plan.Replacement, error) {
+func (c *PlanCoordinator) prepareAuthorDecision(ctx context.Context, sessionID identity.SessionID, doc plan.Document) (plan.Replacement, error) {
 	current, err := c.State(ctx, sessionID)
 	if err != nil {
 		return plan.Replacement{}, err
@@ -124,7 +124,7 @@ func (c *PlanCoordinator) Review(ctx context.Context, state plan.State) (string,
 //
 // Persistence receives the decided replacement and may only apply its CAS; it
 // never assigns a revision or update time itself.
-func (c *PlanCoordinator) PrepareReplacement(ctx context.Context, sessionID string, steps []plan.Step) (plan.Replacement, error) {
+func (c *PlanCoordinator) PrepareReplacement(ctx context.Context, sessionID identity.SessionID, steps []plan.Step) (plan.Replacement, error) {
 	current, err := c.State(ctx, sessionID)
 	if err != nil {
 		return plan.Replacement{}, err

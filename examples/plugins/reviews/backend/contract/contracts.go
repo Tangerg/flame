@@ -1,11 +1,11 @@
 package reviews
 
 //go:generate sh -c "go run ../cmd/contracts | go run github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk feature --feature - --out ../../package/io.github.tangerg.flame/contracts --ts ../../component"
-//go:generate sh -c "go run ../cmd/contracts --analyzers > ../../package/io.github.tangerg.flame/contracts/analyzers.generated.json"
-//go:generate sh -c "go run ../cmd/contracts --board-ts > ../../component/board.generated.ts"
-//go:generate sh -c "go run ../cmd/contracts --analyzer-capability | go run github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk feature --feature - --out ../../analyzer/package/io.github.tangerg.flame/contracts --ts ../../analyzer"
-//go:generate sh -c "go run ../cmd/contracts --analyzers > ../../analyzer/package/io.github.tangerg.flame/contracts/analyzers.generated.json"
-//go:generate sh -c "go run ../cmd/contracts --analyzer-capability > ../../package/io.github.tangerg.flame/contracts/analyzer-capability.generated.json"
+//go:generate sh -c "go run ../cmd/contracts --projection analyzers > ../../package/io.github.tangerg.flame/contracts/analyzers.generated.json"
+//go:generate sh -c "go run ../cmd/contracts --projection board-ts > ../../component/board.generated.ts"
+//go:generate sh -c "go run ../cmd/contracts --projection analyzer-capability | go run github.com/Tangerg/flame/packages/go-sdk/cmd/flame-sdk feature --feature - --out ../../analyzer/package/io.github.tangerg.flame/contracts --ts ../../analyzer"
+//go:generate sh -c "go run ../cmd/contracts --projection analyzers > ../../analyzer/package/io.github.tangerg.flame/contracts/analyzers.generated.json"
+//go:generate sh -c "go run ../cmd/contracts --projection analyzer-capability > ../../package/io.github.tangerg.flame/contracts/analyzer-capability.generated.json"
 
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"

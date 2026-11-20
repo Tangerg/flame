@@ -12,76 +12,143 @@ import (
 // ServeDelegatedApproval exercises a root delegation and a child shell approval
 // using the OpenAI-compatible provider surface.
 func ServeDelegatedApproval(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		Stream   bool `json:"stream"`
-		Messages []struct {
-			Role       string         `json:"role"`
-			Content    jsontext.Value `json:"content"`
-			ToolCallID string         `json:"tool_call_id"`
-		} `json:"messages"`
-		Tools []jsontext.Value `json:"tools"`
-	}
+	var request delegatedRequest
 	if err := json.UnmarshalRead(r.Body, &request); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	content, callID, name, arguments := "maintenance complete", "", "", ""
-	if len(request.Tools) > 0 {
-		matched := false
-		for _, message := range slices.Backward(request.Messages) {
-			switch {
-			case message.Role == "tool" && message.ToolCallID == "child_shell":
-				content = "child complete"
-			case message.Role == "tool" && message.ToolCallID == "delegate_child":
-				content = "root complete"
-			case message.Role == "user" && strings.Contains(string(message.Content), "child approval probe"):
-				callID, name, arguments = "child_shell", "shell", `{"command":"printf approved","description":"Return the approved marker"}`
-			case message.Role == "user" && strings.Contains(string(message.Content), "delegate approval probe"):
-				callID, name, arguments = "delegate_child", "delegate_task", `{"summary":"approval probe","instructions":"child approval probe"}`
-			default:
-				continue
-			}
-			matched = true
-			break
-		}
-		if !matched {
-			http.Error(w, "unexpected delegated approval request", http.StatusBadRequest)
-			return
-		}
-	}
-	delta := map[string]any{"role": "assistant", "content": content}
-	finish := "stop"
-	if name != "" {
-		delta = map[string]any{
-			"role": "assistant", "tool_calls": []any{map[string]any{
-				"index": 0, "id": callID, "type": "function",
-				"function": map[string]any{"name": name, "arguments": arguments},
-			}},
-		}
-		finish = "tool_calls"
-	}
-	choice := map[string]any{"index": 0, "finish_reason": finish}
-	object := "chat.completion"
-	if request.Stream {
-		object = "chat.completion.chunk"
-		choice["delta"] = delta
-	} else {
-		choice["message"] = delta
-	}
-	body := map[string]any{
-		"id": "chatcmpl_probe", "object": object, "created": 1, "model": "deepseek-chat",
-		"choices": []any{choice}, "usage": map[string]int{"prompt_tokens": 4, "completion_tokens": 2, "total_tokens": 6},
-	}
-	if request.Stream {
-		w.Header().Set("Content-Type", "text/event-stream")
-		data, err := json.Marshal(body)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		_, _ = fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", data)
+	turn, scripted := request.turn()
+	if !scripted {
+		http.Error(w, "unexpected delegated approval request", http.StatusBadRequest)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.MarshalWrite(w, body)
+	response := turn.response(request.Stream)
+	if !request.Stream {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.MarshalWrite(w, response)
+		return
+	}
+	data, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	_, _ = fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", data)
+}
+
+type delegatedRequest struct {
+	Stream   bool `json:"stream"`
+	Messages []struct {
+		Role       string         `json:"role"`
+		Content    jsontext.Value `json:"content"`
+		ToolCallID string         `json:"tool_call_id"`
+	} `json:"messages"`
+	Tools []jsontext.Value `json:"tools"`
+}
+
+// The script's user-facing probes: a Run started with DelegateApprovalProbe
+// delegates a child whose instructions are ChildApprovalProbe, and that child
+// asks for an approved shell call.
+const (
+	DelegateApprovalProbe = "delegate approval probe"
+	ChildApprovalProbe    = "child approval probe"
+	delegateChildCallID   = "delegate_child"
+	childShellCallID      = "child_shell"
+)
+
+// OpenAI chat-completions wire vocabulary the scripted provider speaks.
+const (
+	wireRoleUser          = "user"
+	wireRoleTool          = "tool"
+	wireRoleAssistant     = "assistant"
+	finishStop            = "stop"
+	finishToolCalls       = "tool_calls"
+	toolTypeFunction      = "function"
+	objectCompletion      = "chat.completion"
+	objectCompletionChunk = "chat.completion.chunk"
+)
+
+// delegatedTurn is one scripted model reply: text, or a single tool call.
+type delegatedTurn struct {
+	content                 string
+	callID, name, arguments string
+}
+
+// turn answers from the latest message the script recognizes: a probe asks
+// for a delegation or a shell call, and each tool result completes its Run.
+func (r delegatedRequest) turn() (delegatedTurn, bool) {
+	if len(r.Tools) == 0 {
+		return delegatedTurn{content: "maintenance complete"}, true
+	}
+	for _, message := range slices.Backward(r.Messages) {
+		switch {
+		case message.Role == wireRoleTool && message.ToolCallID == childShellCallID:
+			return delegatedTurn{content: "child complete"}, true
+		case message.Role == wireRoleTool && message.ToolCallID == delegateChildCallID:
+			return delegatedTurn{content: "root complete"}, true
+		case message.Role == wireRoleUser && strings.Contains(string(message.Content), ChildApprovalProbe):
+			return delegatedTurn{callID: childShellCallID, name: "shell", arguments: `{"command":"printf approved","description":"Return the approved marker"}`}, true
+		case message.Role == wireRoleUser && strings.Contains(string(message.Content), DelegateApprovalProbe):
+			return delegatedTurn{callID: delegateChildCallID, name: "delegate_task", arguments: `{"summary":"approval probe","instructions":"` + ChildApprovalProbe + `"}`}, true
+		}
+	}
+	return delegatedTurn{}, false
+}
+
+type completionResponse struct {
+	ID      string             `json:"id"`
+	Object  string             `json:"object"`
+	Created int                `json:"created"`
+	Model   string             `json:"model"`
+	Choices []completionChoice `json:"choices"`
+	Usage   completionUsage    `json:"usage"`
+}
+
+type completionChoice struct {
+	Index        int                `json:"index"`
+	FinishReason string             `json:"finish_reason"`
+	Delta        *completionMessage `json:"delta,omitempty"`
+	Message      *completionMessage `json:"message,omitempty"`
+}
+
+type completionMessage struct {
+	Role      string               `json:"role"`
+	Content   string               `json:"content,omitempty"`
+	ToolCalls []completionToolCall `json:"tool_calls,omitempty"`
+}
+
+type completionToolCall struct {
+	Index    int    `json:"index"`
+	ID       string `json:"id"`
+	Type     string `json:"type"`
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
+type completionUsage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+}
+
+func (t delegatedTurn) response(stream bool) completionResponse {
+	message := &completionMessage{Role: wireRoleAssistant, Content: t.content}
+	finish := finishStop
+	if t.name != "" {
+		call := completionToolCall{ID: t.callID, Type: toolTypeFunction}
+		call.Function.Name, call.Function.Arguments = t.name, t.arguments
+		message, finish = &completionMessage{Role: wireRoleAssistant, ToolCalls: []completionToolCall{call}}, finishToolCalls
+	}
+	choice := completionChoice{FinishReason: finish, Message: message}
+	object := objectCompletion
+	if stream {
+		choice.Delta, choice.Message, object = message, nil, objectCompletionChunk
+	}
+	return completionResponse{
+		ID: "chatcmpl_probe", Object: object, Created: 1, Model: "deepseek-chat",
+		Choices: []completionChoice{choice}, Usage: completionUsage{PromptTokens: 4, CompletionTokens: 2, TotalTokens: 6},
+	}
 }

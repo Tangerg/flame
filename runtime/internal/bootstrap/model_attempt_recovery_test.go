@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -112,11 +114,11 @@ func TestModelAttemptWithoutEndpointRecoversAfterProcessExit(t *testing.T) {
 		t.Fatalf("recovery changed the original model invocation set: %+v, %v", calls, err)
 	}
 	closed := calls.Data[0]
-	if closed.CallID != attempt.CallID || closed.SegmentID != attempt.SegmentID || !closed.StartedAt.Equal(attempt.StartedAt) ||
+	if closed.CallID != attempt.CallID || closed.SegmentID != attempt.SegmentID.String() || !closed.StartedAt.Equal(attempt.StartedAt) ||
 		closed.State != protocol.ModelInvocationUnknown || closed.SettledAt.Before(closed.StartedAt) || closed.Usage != nil {
 		t.Fatalf("original logical attempt was not closed as unknown: %+v", closed)
 	}
-	endpoints, err := stores.ModelInvocations.ListSessionEndpoints(ctx, sessionID)
+	endpoints, err := stores.ModelInvocations.ListSessionEndpoints(ctx, testsupport.MustSessionID(sessionID))
 	if err != nil || len(endpoints) != 0 {
 		t.Fatalf("recovery invented a physical endpoint: count=%d, %v", len(endpoints), err)
 	}
@@ -150,7 +152,7 @@ func readAbandonedModelAttempt(t *testing.T, ctx context.Context, home, sessionI
 			t.Error(err)
 		}
 	}()
-	tree, err := stores.Runs.ListRuns(ctx, sessionID)
+	tree, err := stores.Runs.ListRuns(ctx, testsupport.MustSessionID(sessionID))
 	if err != nil || len(tree) != 1 || tree[0].State().IsTerminal() {
 		t.Fatalf("pre-recovery Run: %+v, %v", tree, err)
 	}
@@ -162,5 +164,5 @@ func readAbandonedModelAttempt(t *testing.T, ctx context.Context, home, sessionI
 	if _, found, err := stores.ModelInvocations.EndpointForCaller(ctx, attempt.CallID); err != nil || found {
 		t.Fatalf("crash cut already has a physical endpoint: found=%t, %v", found, err)
 	}
-	return tree[0].ID(), attempt
+	return tree[0].ID().String(), attempt
 }

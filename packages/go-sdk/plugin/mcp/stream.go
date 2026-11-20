@@ -6,6 +6,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"io"
 	"iter"
 	"net/http"
 	"reflect"
@@ -170,6 +171,13 @@ func serveCallbackStream(w http.ResponseWriter, r *http.Request, method boundMet
 
 // StreamHost starts one delivery only when consumed. Closing iteration cancels it;
 // transport writes and reads provide bounded backpressure without an event queue.
+// eventStreamMediaType and sseDataPrefix are the SSE framing a streaming
+// callback speaks; the prefix counts against a line but not an event.
+const (
+	eventStreamMediaType = "text/event-stream"
+	sseDataPrefix        = "data: "
+)
+
 func StreamHost[P, C, R any](ctx context.Context, ref CallbackRef, method *StreamingMethod[P, C, R], id CommandID, input P) iter.Seq2[StreamValue[C, R], error] {
 	if method != nil {
 		method = new(*method)
@@ -183,57 +191,27 @@ func StreamHost[P, C, R any](ctx context.Context, ref CallbackRef, method *Strea
 			fail(errors.New("plugin: streaming method is required"))
 			return
 		}
-		if err := validateHostCall(ref, method.contract, id); err != nil {
+		if err := errors.Join(validateStreamRef(ref, method.contract, id), admissionErr); err != nil {
 			fail(err)
-			return
-		}
-		if ref.MaxResponseBytes > int64(int(^uint(0)>>1))-int64(len("data: ")) {
-			fail(errors.New("plugin: callback frame capacity is invalid"))
-			return
-		}
-		if admissionErr != nil {
-			fail(admissionErr)
 			return
 		}
 		call, cancel := context.WithCancel(ctx)
 		defer cancel()
-		request, err := newHostRequest(call, ref, method.contract, id, admitted)
+		reader, body, err := openHostStream(call, ref, method.contract, id, admitted)
 		if err != nil {
 			fail(err)
 			return
 		}
-		request.Header.Set("Accept", "text/event-stream")
-		response, err := callbackClient.Do(request)
-		if err != nil {
-			fail(err)
-			return
-		}
-		defer response.Body.Close()
-		if response.StatusCode == http.StatusTooManyRequests {
-			fail(ErrCallbackCapacity)
-			return
-		}
-		if response.StatusCode != http.StatusOK {
-			fail(fmt.Errorf("plugin: callback stream could not be confirmed (%d)", response.StatusCode))
-			return
-		}
-		reader, err := sse.NewHTTPReader(response)
-		if err != nil {
-			fail(err)
-			return
-		}
-		reader.MaxEventBytes, reader.MaxLineBytes = int(ref.MaxResponseBytes), int(ref.MaxResponseBytes)+len("data: ")
+		defer body.Close()
 		final := false
 		for message, err := range reader.Messages() {
-			if err != nil {
-				fail(err)
-				return
+			if err == nil && final {
+				err = errors.New("plugin: data after stream result")
 			}
-			if final {
-				fail(errors.New("plugin: data after stream result"))
-				return
+			var item StreamValue[C, R]
+			if err == nil {
+				item, err = decodeStreamFrame[C, R](method.contract, message.Data)
 			}
-			item, err := decodeStreamFrame[C, R](method.contract, message.Data)
 			if err != nil {
 				fail(err)
 				return
@@ -247,6 +225,43 @@ func StreamHost[P, C, R any](ctx context.Context, ref CallbackRef, method *Strea
 			fail(ErrStreamUnconfirmed)
 		}
 	}
+}
+
+func validateStreamRef(ref CallbackRef, contract *frame.Method, id CommandID) error {
+	if err := validateHostCall(ref, contract, id); err != nil {
+		return err
+	}
+	if ref.MaxResponseBytes > int64(int(^uint(0)>>1))-int64(len(sseDataPrefix)) {
+		return errors.New("plugin: callback frame capacity is invalid")
+	}
+	return nil
+}
+
+// openHostStream starts the callback request and admits only a confirmed event
+// stream bounded by the callback's response capacity.
+func openHostStream(call context.Context, ref CallbackRef, contract *frame.Method, id CommandID, admitted framevalue.JSON) (*sse.Reader, io.Closer, error) {
+	request, err := newHostRequest(call, ref, contract, id, admitted)
+	if err != nil {
+		return nil, nil, err
+	}
+	request.Header.Set("Accept", eventStreamMediaType)
+	response, err := callbackClient.Do(request)
+	if err != nil {
+		return nil, nil, err
+	}
+	switch response.StatusCode {
+	case http.StatusOK:
+	case http.StatusTooManyRequests:
+		return nil, nil, errors.Join(ErrCallbackCapacity, response.Body.Close())
+	default:
+		return nil, nil, errors.Join(fmt.Errorf("plugin: callback stream could not be confirmed (%d)", response.StatusCode), response.Body.Close())
+	}
+	reader, err := sse.NewHTTPReader(response)
+	if err != nil {
+		return nil, nil, errors.Join(err, response.Body.Close())
+	}
+	reader.MaxEventBytes, reader.MaxLineBytes = int(ref.MaxResponseBytes), int(ref.MaxResponseBytes)+len(sseDataPrefix)
+	return reader, response.Body, nil
 }
 
 func decodeStreamFrame[C, R any](method *frame.Method, data []byte) (StreamValue[C, R], error) {

@@ -491,9 +491,9 @@ func unionChecks(union dispatch.UnionSpec, recv string) []string {
 }
 
 func patternUnionTagCheck(union dispatch.UnionSpec, pattern dispatch.PatternVariantSpec, recv string) string {
-	field, ok := protocol.WireFieldNamed(union.GoType, union.Discriminator)
+	field, ok := protocol.WireFieldNamed(union.GoType, dispatch.UnionDiscriminator)
 	if !ok {
-		panic(fmt.Sprintf("contractgen: %s has no discriminator %q", union.GoType.Name(), union.Discriminator))
+		panic(fmt.Sprintf("contractgen: %s has no discriminator %q", union.GoType.Name(), dispatch.UnionDiscriminator))
 	}
 	tags := make([]string, 0, len(union.Variants))
 	for _, variant := range union.Variants {
@@ -501,7 +501,7 @@ func patternUnionTagCheck(union dispatch.UnionSpec, pattern dispatch.PatternVari
 	}
 	return fmt.Sprintf(
 		"unionTag(%q, string(%s.%s), %s, %q)",
-		union.Discriminator, recv, field.GoName, valueList(tags), pattern.TagPattern,
+		dispatch.UnionDiscriminator, recv, field.GoName, valueList(tags), pattern.TagPattern,
 	)
 }
 
@@ -511,7 +511,7 @@ func literalUnionChecks(
 	paths []string,
 	recv string,
 ) []string {
-	applies := fmt.Sprintf("wireFieldEquals(%s, %q, %q)", recv, union.Discriminator, variant.Tag)
+	applies := fmt.Sprintf("wireFieldEquals(%s, %q, %q)", recv, dispatch.UnionDiscriminator, variant.Tag)
 	checks := unionBranchChecks(applies, variant.Required, variant.Optional, paths, recv)
 	return append(checks, allowedValueChecks(applies, variant.AllowedValues, recv)...)
 }
@@ -522,7 +522,7 @@ func patternUnionChecks(
 	paths []string,
 	recv string,
 ) []string {
-	applies := fmt.Sprintf("wireFieldMatches(%s, %q, %q)", recv, union.Discriminator, pattern.TagPattern)
+	applies := fmt.Sprintf("wireFieldMatches(%s, %q, %q)", recv, dispatch.UnionDiscriminator, pattern.TagPattern)
 	return unionBranchChecks(applies, pattern.Required, pattern.Optional, paths, recv)
 }
 
@@ -545,14 +545,14 @@ func unionPaths(union dispatch.UnionSpec) []string {
 	var paths []string
 	for _, variant := range union.Variants {
 		for _, field := range append(slices.Clone(variant.Required), variant.Optional...) {
-			if field != union.Discriminator && !slices.Contains(paths, field) {
+			if field != dispatch.UnionDiscriminator && !slices.Contains(paths, field) {
 				paths = append(paths, field)
 			}
 		}
 	}
 	if pattern := union.PatternVariant; pattern != nil {
 		for _, field := range append(slices.Clone(pattern.Required), pattern.Optional...) {
-			if field != union.Discriminator && !slices.Contains(paths, field) {
+			if field != dispatch.UnionDiscriminator && !slices.Contains(paths, field) {
 				paths = append(paths, field)
 			}
 		}
@@ -603,12 +603,12 @@ func conditionExpression(conditions []delivery.FieldCondition, recv string) stri
 	}
 	parts := make([]string, 0, len(conditions))
 	for _, condition := range conditions {
-		switch condition.Operator.String() {
-		case "equals":
+		switch condition.Operator {
+		case delivery.OperatorEquals:
 			parts = append(parts, fmt.Sprintf(
 				"wireFieldEquals(%s, %q, %q)", recv, condition.Field, condition.Value,
 			))
-		case "present":
+		case delivery.OperatorPresent:
 			parts = append(parts, fmt.Sprintf("wireFieldPresent(%s, %q)", recv, condition.Field))
 		default:
 			panic(fmt.Sprintf("contractgen: unsupported conditional operator %q", condition.Operator))

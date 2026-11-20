@@ -20,6 +20,22 @@ type ledger interface {
 	Append(context.Context, annotation.Entry) error
 }
 
+// Command is one feedback request whose subject was parsed where it entered.
+type Command struct {
+	Subject annotation.Subject
+	Source  *extension.ContributionSource
+	Rating  string
+	Text    string
+}
+
+func (c Command) draft() extension.FeedbackDraft {
+	return extension.FeedbackDraft{
+		Source:    c.Source,
+		SessionID: c.Subject.SessionID.String(), RunID: c.Subject.RunID.String(), ItemID: c.Subject.ItemID.String(),
+		Rating: c.Rating, Text: c.Text,
+	}
+}
+
 type Recorder struct {
 	source preparer
 	ledger ledger
@@ -32,7 +48,7 @@ func NewRecorder(source preparer, annotations ledger, now func() time.Time) (*Re
 	}
 	return &Recorder{source: source, ledger: annotations, now: now}, nil
 }
-func (r *Recorder) Record(ctx context.Context, in extension.FeedbackDraft) error {
+func (r *Recorder) Record(ctx context.Context, in Command) error {
 	write, err := r.Prepare(ctx, in)
 	if err != nil {
 		return err
@@ -40,14 +56,14 @@ func (r *Recorder) Record(ctx context.Context, in extension.FeedbackDraft) error
 	return write(ctx)
 }
 
-func (r *Recorder) Prepare(ctx context.Context, in extension.FeedbackDraft) (func(context.Context) error, error) {
+func (r *Recorder) Prepare(ctx context.Context, in Command) (func(context.Context) error, error) {
 	if operation.Identity(ctx) == "" {
 		ctx = operation.Bind(ctx, "feedback.create", "")
 	}
-	source, content, err := r.source.PrepareFeedback(ctx, in)
+	source, content, err := r.source.PrepareFeedback(ctx, in.draft())
 	if err != nil {
 		return nil, err
 	}
-	note := annotation.Entry{CommandID: operation.Identity(ctx), Source: source, Subject: annotation.Subject{SessionID: in.SessionID, RunID: in.RunID, ItemID: in.ItemID}, Content: content, CreatedAt: r.now().UTC()}
+	note := annotation.Entry{CommandID: operation.Identity(ctx), Source: source, Subject: in.Subject, Content: content, CreatedAt: r.now().UTC()}
 	return func(tx context.Context) error { return r.ledger.Append(tx, note) }, nil
 }

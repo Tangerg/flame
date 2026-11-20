@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"strings"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
@@ -19,7 +20,7 @@ type Interpreter struct {
 }
 
 type planStateReader interface {
-	State(ctx context.Context, sessionID string) (plan.Current, error)
+	State(ctx context.Context, sessionID identity.SessionID) (plan.Current, error)
 }
 
 // NewInterpreter binds projections that require canonical application state. A
@@ -91,7 +92,7 @@ func (Interpreter) ShellCommand(ref tool.Ref, rawArguments string) string {
 // the published fact cannot drift from the state the tool actually wrote.
 func (i Interpreter) ProjectOutcome(
 	ctx context.Context,
-	sessionID string, ref tool.Ref,
+	sessionID identity.SessionID, ref tool.Ref,
 	succeeded bool,
 ) (runs.ExecutionFact, error) {
 	descriptor, known := descriptorFor(ref)

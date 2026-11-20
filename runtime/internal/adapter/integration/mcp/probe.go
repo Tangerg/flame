@@ -42,7 +42,7 @@ func probe(ctx context.Context, cfg ServerConfig) (err error) {
 		trace.WithAttributes(attribute.String("mcp.server.name", cfg.ID().String())))
 	defer span.End()
 
-	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "runtime-probe", Version: "v0.1.0"}, nil)
+	client := sdkmcp.NewClient(clientImplementation(), nil)
 	session, cleanupSession, err := dial(ctx, ctx, client, &launch{config: cfg})
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())

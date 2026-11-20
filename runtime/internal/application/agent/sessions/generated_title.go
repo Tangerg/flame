@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 )
@@ -13,7 +15,7 @@ import (
 type titleClaims struct {
 	writes  *keylock.Set
 	mu      sync.Mutex
-	pending map[string]*GeneratedTitle
+	pending map[identity.SessionID]*GeneratedTitle
 }
 
 // GeneratedTitle can name the original untitled Session while its source
@@ -21,13 +23,13 @@ type titleClaims struct {
 // authorize a detached model result.
 type GeneratedTitle struct {
 	owner     *Coordinator
-	sessionID string
-	runID     string
+	sessionID identity.SessionID
+	runID     identity.RunID
 }
 
 // PrepareGeneratedTitle is called before the originating Run releases Session
 // admission. Only one detached title request can name an untitled Session.
-func (c *Coordinator) PrepareGeneratedTitle(ctx context.Context, sessionID, runID string) (*GeneratedTitle, error) {
+func (c *Coordinator) PrepareGeneratedTitle(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) (*GeneratedTitle, error) {
 	c.titles.mu.Lock()
 	defer c.titles.mu.Unlock()
 	if c.titles.pending[sessionID] != nil {
@@ -39,7 +41,7 @@ func (c *Coordinator) PrepareGeneratedTitle(ctx context.Context, sessionID, runI
 	}
 	claim := &GeneratedTitle{owner: c, sessionID: sessionID, runID: runID}
 	if c.titles.pending == nil {
-		c.titles.pending = make(map[string]*GeneratedTitle)
+		c.titles.pending = make(map[identity.SessionID]*GeneratedTitle)
 	}
 	c.titles.pending[sessionID] = claim
 	return claim, nil
@@ -64,8 +66,8 @@ func (g *GeneratedTitle) Release() {
 
 // Title publication shares the commit boundary because an archive can reuse
 // a Session and Run identity after replacing the history that issued the claim.
-func (c *titleClaims) commitHistoryChange(ctx context.Context, sessionID string, removes func(runID string) bool, commit func() error) error {
-	release, err := c.writes.Acquire(ctx, sessionID)
+func (c *titleClaims) commitHistoryChange(ctx context.Context, sessionID identity.SessionID, removes func(runID identity.RunID) bool, commit func() error) error {
+	release, err := c.writes.Acquire(ctx, sessionID.String())
 	if err != nil {
 		return err
 	}
@@ -83,7 +85,7 @@ func (c *titleClaims) commitHistoryChange(ctx context.Context, sessionID string,
 
 func (g *GeneratedTitle) persist(ctx context.Context, title string) (bool, error) {
 	c := g.owner
-	release, err := c.titles.writes.Acquire(ctx, g.sessionID)
+	release, err := c.titles.writes.Acquire(ctx, g.sessionID.String())
 	if err != nil {
 		return false, err
 	}

@@ -260,7 +260,7 @@ func (m *mcpScreens) EditMCPServer(argument string) error {
 	}
 	presentation := m.session.context
 	m.status.note("loading MCP server " + mcp.ServerLabel(id))
-	started := m.tasks.application(mcpOperation, false,
+	started := m.tasks.application(mcpOperation,
 		func(ctx context.Context) (protocol.MCPServer, error) {
 			servers, err := m.service.Servers(ctx)
 			if err != nil {
@@ -327,7 +327,7 @@ func (m *mcpScreens) ReconnectMCPServer(argument string) error {
 
 func (m *mcpScreens) runMCPAck(label string, command func(context.Context) error) {
 	m.status.note(label)
-	started := m.tasks.admissionMutation(mcpOperation, false,
+	started := m.tasks.admissionMutation(mcpOperation,
 		func(ctx context.Context) (struct{}, error) { return struct{}{}, command(ctx) },
 		func(_ struct{}, err error) {
 			if err != nil {
@@ -352,7 +352,7 @@ func (m *mcpScreens) AuthorizeMCPServer(argument string) error {
 	}
 	presentation := m.session.context
 	m.status.note("starting MCP authorization " + mcp.ServerLabel(server))
-	started := m.tasks.admissionMutation(mcpAuthorizationOperation, false,
+	started := m.tasks.admissionMutation(mcpAuthorizationOperation,
 		func(ctx context.Context) (protocol.MCPAuthorizationAttempt, error) {
 			return m.service.StartAuthorization(ctx, server)
 		},
@@ -381,7 +381,7 @@ func (m *mcpScreens) pollMCPAuthorization(initial protocol.MCPAuthorizationAttem
 	observer := mcpAuthorizationObserver{
 		service: m.service, pollInterval: mcpAuthorizationPollInterval, recovery: runtimeRecoveryBackoff,
 	}
-	started := m.tasks.application(mcpAuthorizationOperation, false,
+	started := m.tasks.application(mcpAuthorizationOperation,
 		func(ctx context.Context) (protocol.MCPAuthorizationAttempt, error) {
 			return observer.observe(ctx, initial)
 		},

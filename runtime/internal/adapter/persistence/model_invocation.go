@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -72,7 +74,7 @@ func (m *ModelInvocationStore) ListOpenModelInvocations(ctx context.Context) ([]
 }
 
 // RecordModelInvocation applies one journal transition committed with its Run event.
-func (m *ModelInvocationStore) RecordModelInvocation(ctx context.Context, sessionID, runID string, invocation runs.ModelInvocationCommit) error {
+func (m *ModelInvocationStore) RecordModelInvocation(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, invocation runs.ModelInvocationCommit) error {
 	if err := invocation.Validate(); err != nil {
 		return err
 	}
@@ -85,7 +87,7 @@ func (m *ModelInvocationStore) RecordModelInvocation(ctx context.Context, sessio
 	return m.finish(ctx, sessionID, runID, invocation)
 }
 
-func (m *ModelInvocationStore) start(ctx context.Context, sessionID, runID string, invocation runs.ModelInvocationCommit) error {
+func (m *ModelInvocationStore) start(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, invocation runs.ModelInvocationCommit) error {
 	return m.db.write(ctx, func(ctx context.Context) error {
 		if err := instant.Validate(invocation.StartedAt); err != nil {
 			return fmt.Errorf("sqlite: model invocation start time: %w", err)
@@ -109,7 +111,7 @@ func (m *ModelInvocationStore) start(ctx context.Context, sessionID, runID strin
 	})
 }
 
-func (m *ModelInvocationStore) finish(ctx context.Context, sessionID, runID string, invocation runs.ModelInvocationCommit) error {
+func (m *ModelInvocationStore) finish(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, invocation runs.ModelInvocationCommit) error {
 	return m.db.write(ctx, func(ctx context.Context) error {
 		if err := instant.Validate(invocation.StartedAt, invocation.FinishedAt); err != nil {
 			return fmt.Errorf("sqlite: model invocation times: %w", err)
@@ -149,7 +151,7 @@ const modelInvocationColumns = `call_id, segment_id, logical_purpose, state, sta
 
 // PageModelInvocations seeks newest-first within one Run. State updates do not
 // move an attempt between pages because its start identity is immutable.
-func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID string, beforeStartedAt int64, beforeCallID string, limit int) ([]runs.ModelInvocationCommit, error) {
+func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID identity.RunID, beforeStartedAt int64, beforeCallID string, limit int) ([]runs.ModelInvocationCommit, error) {
 	return scopedValue(ctx, m.db.read, func(ctx context.Context) ([]runs.ModelInvocationCommit, error) {
 		query := `SELECT ` + modelInvocationColumns + ` FROM model_invocations WHERE run_id = ? AND endpoint_json IS NULL`
 		args := []any{runID}

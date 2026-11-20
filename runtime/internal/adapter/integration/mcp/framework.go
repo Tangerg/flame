@@ -243,7 +243,7 @@ func (s *Installed) projectUse(ctx context.Context, id mcpserver.ID, use frameho
 	}
 	var root framehost.UnitRef
 	for _, candidate := range use.Binding().UnitRoots {
-		if candidate.InstallationID.String() == installation.String() && candidate.UnitID == plugins.BackendUnit(id.Name()) {
+		if candidate.InstallationID == installation.Host() && candidate.UnitID == plugins.BackendUnit(id.Name()) {
 			root = candidate
 			break
 		}

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -136,8 +138,8 @@ func buildWorkspaceComposition(
 // workspaceIsolation is either a sandbox Isolator or NoIsolation; both the
 // Session and Run use cases take whichever the configuration chose.
 type workspaceIsolation interface {
-	Workspace(ctx context.Context, sessionID, projectRoot string) (string, error)
-	Discard(sessionID string) error
+	Workspace(ctx context.Context, sessionID identity.SessionID, projectRoot string) (string, error)
+	Discard(sessionID identity.SessionID) error
 }
 
 // executionComposition owns the model/tool execution graph. Every acquired
@@ -152,6 +154,23 @@ type executionComposition struct {
 	transientSessions *executionadapter.TransientSessionState
 	executor          *executionadapter.InteractionExecutor
 	toolRegistry      toolset.DiagnosticRegistry
+}
+
+// buildWorkspaceIsolation acquires isolated working copies before the shell set
+// that can run in them, so the Instance's reverse teardown stops every detached
+// shell before it destroys the directories those processes use.
+func buildWorkspaceIsolation(cfg assemblyConfig, lifetime *runtimeLifetime) (workspaceIsolation, error) {
+	if cfg.sandboxDir == "" {
+		return workspaceadapter.NoIsolation{}, nil
+	}
+	isolator, err := workspaceadapter.NewIsolator(cfg.userHome, cfg.sandboxDir, cfg.sandboxReadOnlyPaths)
+	if err != nil {
+		return nil, fmt.Errorf("runtime: build isolated workspace manager: %w", err)
+	}
+	lifetime.toolResources = append(lifetime.toolResources, terminalStep(func(context.Context) error {
+		return isolator.Close()
+	}))
+	return isolator, nil
 }
 
 func buildExecutionComposition(
@@ -179,19 +198,9 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, err
 	}
-	// Isolated working copies are acquired before the shell set that can run in
-	// them. The Instance's reverse teardown therefore stops every detached shell
-	// before it destroys the directories those processes use.
-	var isolation workspaceIsolation = workspaceadapter.NoIsolation{}
-	if cfg.sandboxDir != "" {
-		isolator, err := workspaceadapter.NewIsolator(cfg.userHome, cfg.sandboxDir, cfg.sandboxReadOnlyPaths)
-		if err != nil {
-			return executionComposition{}, fmt.Errorf("runtime: build isolated workspace manager: %w", err)
-		}
-		lifetime.toolResources = append(lifetime.toolResources, terminalStep(func(context.Context) error {
-			return isolator.Close()
-		}))
-		isolation = isolator
+	isolation, err := buildWorkspaceIsolation(cfg, lifetime)
+	if err != nil {
+		return executionComposition{}, err
 	}
 	toolRuntime, err := buildTools(ctx, toolEnvironmentDependencies{
 		framework: policy.framework, registry: policy.registry, packageSkills: policy.packageSkills,
@@ -257,7 +266,6 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: build Run maintenance: %w", err)
 	}
-	maxConcurrentToolCalls := 8
 	interactionConfig := executionadapter.InteractionExecutorConfig{
 		Lifetime:               lifetime.context,
 		ExecutionTrees:         cfg.stores.ExecutorCheckpoints,
@@ -269,7 +277,6 @@ func buildExecutionComposition(
 		ModelEvidence:          cfg.stores.ModelInvocations,
 		CallComposition:        toolRuntime.callComposition,
 		StreamModelResponses:   true,
-		MaxConcurrentToolCalls: &maxConcurrentToolCalls,
 		ToolInterpreter:        toolInterpreter,
 		ToolPresenter:          toolset.Presenter{},
 		ToolAuthorizer:         toolAuthorizer,

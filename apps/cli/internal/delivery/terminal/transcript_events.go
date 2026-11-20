@@ -79,7 +79,7 @@ func (t *transcriptView) begin(block conversation.Block) error {
 	}
 	live.id = t.place(live.block, liveEntry)
 	t.entries[live.id].document = document
-	t.resetWindow(true)
+	t.rebuildWindow()
 	t.history.Append(block.RunID, live.id)
 	t.textStreams[key] = live
 	return nil

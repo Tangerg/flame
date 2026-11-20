@@ -120,15 +120,15 @@ func (t *transcriptView) moveSelection(delta int) bool {
 	return true
 }
 
-func (t *transcriptView) selectEdge(last bool) bool {
+func (t *transcriptView) selectFirst() bool { return t.selectAt(0) }
+
+func (t *transcriptView) selectLast() bool { return t.selectAt(t.content.Len() - 1) }
+
+func (t *transcriptView) selectAt(index int) bool {
 	if t.content.Len() == 0 {
 		return false
 	}
-	id := t.firstEntry()
-	if last {
-		id += blockOffset(t.content.Len() - 1)
-	}
-	t.selectEntry(id)
+	t.selectEntry(t.firstEntry() + blockOffset(index))
 	return true
 }
 

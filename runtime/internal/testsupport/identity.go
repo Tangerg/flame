@@ -15,11 +15,8 @@ func ToolFingerprint(ref tool.Ref) framevalue.Digest {
 	if ref.Kind() == tool.BuiltInKind {
 		return framevalue.Digest{}
 	}
-	return Digest("source authority")
+	return identity.DigestStrings("source authority")
 }
-
-// Digest derives a distinct valid digest from seed.
-func Digest(seed string) framevalue.Digest { return identity.DigestStrings(seed) }
 
 func InstallationID(t testing.TB) identity.InstallationID {
 	t.Helper()

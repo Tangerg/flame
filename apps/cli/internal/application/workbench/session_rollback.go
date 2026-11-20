@@ -59,6 +59,12 @@ func (p PendingSessionRollback) Validate() error {
 	if p.OpeningImages < 0 {
 		return errors.New("session rollback opening image count is negative")
 	}
+	return errors.Join(p.validateProjections(request), p.validateBoundary(request), p.validateReplay(request))
+}
+
+// validateProjections checks the history the rollback leaves behind: a
+// files-only restore keeps it, any other rollback keeps a prefix of it.
+func (p PendingSessionRollback) validateProjections(request conversation.RollbackSession) error {
 	if err := validateRunIDs("session rollback before projection", p.BeforeRunIDs); err != nil {
 		return err
 	}
@@ -69,21 +75,34 @@ func (p PendingSessionRollback) Validate() error {
 		if !slices.Equal(p.BeforeRunIDs, p.AfterRunIDs) {
 			return errors.New("files-only rollback changes the history projection")
 		}
-	} else if len(p.AfterRunIDs) > len(p.BeforeRunIDs) ||
-		!slices.Equal(p.AfterRunIDs, p.BeforeRunIDs[:len(p.AfterRunIDs)]) {
+		return nil
+	}
+	if len(p.AfterRunIDs) > len(p.BeforeRunIDs) || !slices.Equal(p.AfterRunIDs, p.BeforeRunIDs[:len(p.AfterRunIDs)]) {
 		return errors.New("session rollback after projection is not a prefix of its before projection")
 	}
-	if p.ToRunID == "" {
+	return nil
+}
+
+// validateBoundary checks that the boundary Run is one the rollback keeps.
+func (p PendingSessionRollback) validateBoundary(request conversation.RollbackSession) error {
+	switch {
+	case p.ToRunID == "":
 		if !request.FilesOnly() && len(p.AfterRunIDs) != 0 {
 			return errors.New("full history rollback retains a run projection")
 		}
-	} else if request.FilesOnly() {
+	case request.FilesOnly():
 		if !slices.Contains(p.BeforeRunIDs, p.ToRunID) {
 			return errors.New("file rollback boundary is absent from its history projection")
 		}
-	} else if !slices.Contains(p.AfterRunIDs, p.ToRunID) {
+	case !slices.Contains(p.AfterRunIDs, p.ToRunID):
 		return errors.New("session rollback boundary is absent from its after projection")
 	}
+	return nil
+}
+
+// validateReplay checks that only a file restore, which cannot be repeated
+// safely, carries a replay guarantee outliving its staging.
+func (p PendingSessionRollback) validateReplay(request conversation.RollbackSession) error {
 	if err := p.Replay.Validate(); err != nil {
 		return err
 	}
@@ -91,7 +110,9 @@ func (p PendingSessionRollback) Validate() error {
 		if !p.Replay.Protected() || !p.Replay.Until().After(p.StagedAt) {
 			return errors.New("file rollback replay guarantee is incomplete")
 		}
-	} else if p.Replay.Protected() {
+		return nil
+	}
+	if p.Replay.Protected() {
 		return errors.New("history-only rollback carries an unnecessary replay guarantee")
 	}
 	return nil

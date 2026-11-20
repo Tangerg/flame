@@ -7,6 +7,9 @@ import (
 	"iter"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -20,7 +23,11 @@ import (
 // the session would mean knowing where a run lives before being able to ask what
 // it is.
 func (s *Handler) GetRun(ctx context.Context, in protocol.GetRunRequest) (*protocol.RunRef, error) {
-	run, found, err := s.queries.Run(ctx, in.RunID)
+	runID, err := wireIdentity("runId", in.RunID, identity.ParseRun)
+	if err != nil {
+		return nil, err
+	}
+	run, found, err := s.queries.Run(ctx, runID)
 	switch {
 	case err != nil:
 		return nil, err
@@ -67,7 +74,7 @@ func (s *Handler) GetRunAcceptance(ctx context.Context, in protocol.GetRunAccept
 	}
 	response := presentRunAcceptance(record)
 	if record.Use != runs.CommandKeyAccepted && in.Operation == protocol.RunCommandSteer {
-		response.CandidateUserItemID = runs.SteerItemID(commandKey)
+		response.CandidateUserItemID = runs.SteerItemID(commandKey).String()
 	}
 	return response, nil
 }
@@ -77,9 +84,9 @@ func presentRunAcceptance(record runs.CommandAcceptanceRecord) *protocol.RunAcce
 		return &protocol.RunAcceptance{Type: protocol.RunAcceptanceNotRecorded}
 	}
 	response := &protocol.RunAcceptance{
-		Type: protocol.RunAcceptanceRetired, RunID: record.Acceptance.RunID,
-		SegmentID: record.Acceptance.SegmentID, SessionID: record.Acceptance.SessionID,
-		UserItemID: record.Acceptance.UserItemID,
+		Type: protocol.RunAcceptanceRetired, RunID: record.Acceptance.RunID.String(),
+		SegmentID: record.Acceptance.SegmentID.String(), SessionID: record.Acceptance.SessionID.String(),
+		UserItemID: record.Acceptance.UserItemID.String(),
 	}
 	for _, block := range record.Acceptance.SteerInput {
 		response.Input = append(response.Input, presentContent(block))
@@ -102,7 +109,11 @@ func presentRunAcceptance(record runs.CommandAcceptanceRecord) *protocol.RunAcce
 // The registered capability rule decides whether a caller may ask for descendants;
 // this handler preserves the accepted filter all the way to the durable read.
 func (s *Handler) ListRuns(ctx context.Context, in protocol.ListRunsRequest) (*protocol.Page[protocol.RunRef], error) {
-	limit, err := requestedPageLimit(in.Limit)
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return nil, parseErr
+	}
+	limit, err := pagination.ParseLimit(in.Limit)
 	if err != nil {
 		return nil, wirePageError(err)
 	}
@@ -111,7 +122,7 @@ func (s *Handler) ListRuns(ctx context.Context, in protocol.ListRunsRequest) (*p
 		return nil, err
 	}
 	page, err := s.queries.ListRunPage(ctx, sessions.RunPageFilter{
-		SessionID:          in.SessionID,
+		SessionID:          sessionID,
 		Statuses:           statuses,
 		IncludeDescendants: in.IncludeDescendants,
 	}, in.Cursor, limit)
@@ -155,7 +166,11 @@ func runStatusesFromWire(statuses []protocol.RunStatus) ([]run.State, error) {
 // trimmed set would be answered, consumed as if complete, and leave the run waiting
 // on interrupts the client believes it resolved.
 func (s *Handler) ListInterrupts(ctx context.Context, in protocol.ListInterruptsRequest) (*protocol.Page[protocol.PendingInterruptSet], error) {
-	limit, err := requestedPageLimit(in.Limit)
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return nil, parseErr
+	}
+	limit, err := pagination.ParseLimit(in.Limit)
 	if err != nil {
 		return nil, wireInterruptPageError(wirePageError(err))
 	}
@@ -163,15 +178,19 @@ func (s *Handler) ListInterrupts(ctx context.Context, in protocol.ListInterrupts
 	if err != nil {
 		return nil, err
 	}
-	page, err := s.queries.ListPendingInterruptPage(ctx, in.SessionID, in.RootRunID, caller, in.Cursor, limit)
+	rootRunID, err := wireIdentity("rootRunId", in.RootRunID, identity.ParseOptionalRun)
+	if err != nil {
+		return nil, err
+	}
+	page, err := s.queries.ListPendingInterruptPage(ctx, sessionID, rootRunID, caller, in.Cursor, limit)
 	if err != nil {
 		return nil, wireInterruptPageError(wirePageError(err))
 	}
 	out := make([]protocol.PendingInterruptSet, 0, len(page.Rows))
 	for _, set := range page.Rows {
 		presented := protocol.PendingInterruptSet{
-			RootRunID:  set.Pending.RootRunID,
-			SessionID:  set.SessionID,
+			RootRunID:  set.Pending.RootRunID.String(),
+			SessionID:  set.SessionID.String(),
 			Interrupts: presentInterrupts(set.Interrupts),
 			CreatedAt:  set.Pending.CreatedAt,
 		}
@@ -210,9 +229,17 @@ func (s *Handler) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequ
 	if err != nil {
 		return nil, nil, err
 	}
+	segmentID, err := wireIdentity("segmentId", in.SegmentID, identity.ParseOptionalSegment)
+	if err != nil {
+		return nil, nil, err
+	}
+	runID, err := wireIdentity("runId", in.RunID, identity.ParseRun)
+	if err != nil {
+		return nil, nil, err
+	}
 	request := runs.SubscribeRequest{
-		RunID:     in.RunID,
-		SegmentID: in.SegmentID,
+		RunID:     runID,
+		SegmentID: segmentID,
 		// The application's cursor is prefix-free; the evt_ framing is this layer's.
 		// TrimPrefix leaves an absent id untouched, which is the tail-only case.
 		Cursor:             strings.TrimPrefix(AfterEventIDFrom(ctx), protocol.IDPrefixEvent),
@@ -224,9 +251,9 @@ func (s *Handler) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequ
 		if request.Cursor != "" {
 			return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, "snapshot subscription cannot replay a cursor")
 		}
-		attached, err = s.runStreams.SubscribeSnapshot(ctx, request, func(ctx context.Context, sessionID string) error {
+		attached, err = s.runStreams.SubscribeSnapshot(ctx, request, func(ctx context.Context, sessionID identity.SessionID) error {
 			var readErr error
-			snapshot, readErr = s.GetSessionSnapshot(ctx, protocol.GetSessionSnapshotRequest{SessionID: sessionID, IncludeDescendants: true})
+			snapshot, readErr = s.GetSessionSnapshot(ctx, protocol.GetSessionSnapshotRequest{SessionID: sessionID.String(), IncludeDescendants: true})
 			return readErr
 		})
 	} else {
@@ -242,7 +269,7 @@ func (s *Handler) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequ
 		head = &framed
 	}
 	return &protocol.SubscribeRunResponse{
-		RunID: in.RunID, SegmentID: attached.Record.SegmentID, HeadEventID: head, Snapshot: snapshot,
+		RunID: in.RunID, SegmentID: attached.Record.SegmentID.String(), HeadEventID: head, Snapshot: snapshot,
 	}, mapRunEvents(attached.Events), nil
 }
 

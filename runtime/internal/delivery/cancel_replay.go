@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -30,7 +32,7 @@ type cancellationReceipt struct {
 
 func (r *cancellationReceipt) Key() string { return r.key }
 
-func (r *cancellationReceipt) ReserveForRun(ctx context.Context, runID string) error {
+func (r *cancellationReceipt) ReserveForRun(ctx context.Context, runID identity.RunID) error {
 	r.reserveErr = r.completion.ReserveForRun(ctx, runID)
 	return r.reserveErr
 }
@@ -61,7 +63,29 @@ func (r *cancellationReceipt) Stage(ctx context.Context, ref runs.ExecutorRef, c
 	return nil
 }
 
-func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *Method, in protocol.CancelRunRequest, key, fingerprint string) ([]byte, *protocol.Failure, error) {
+// replayCancellation stages a keyed cancellation's reply with the cancellation
+// itself and settles a reply a crashed owner left staged.
+// settleReplayedCancellation returns a staged cancellation's outcome, first
+// finishing its settlement when recovery found it pending. A child-run
+// outcome is refused before any settlement to a caller without the feature.
+func (s *Handler) settleReplayedCancellation(ctx context.Context, method *Method, runID string, data []byte, recoverPending bool) ([]byte, error) {
+	pending, response, err := decodeCancellationSettlement(method, runID, data)
+	if err != nil {
+		return nil, err
+	}
+	if response.RootRun != nil && !s.requestCanUseFeature(ctx, protocol.FeatureChildRuns) {
+		return nil, wireCancellationError(runs.ErrChildRunNotAllowed)
+	}
+	if recoverPending {
+		if err := s.settleStagedCancellation(ctx, pending.ExecutorID, response); err != nil {
+			return nil, wireCancellationError(err)
+		}
+	}
+	return pending.Outcome, nil
+}
+
+func (s *Handler) replayCancellation(ctx context.Context, in protocol.CancelRunRequest, call keyedCall) protocol.OperationResult {
+	method := call.method
 	var observedFailure *protocol.Failure
 	var encodedFailure []byte
 	encodeFailure := func(err error) ([]byte, error) {
@@ -70,8 +94,8 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 		encodedFailure = data
 		return data, err
 	}
-	payload, err := e.idempotency.InvokeDeferred(ctx, key, fingerprint, func(complete *operation.DeferredCompletion) ([]byte, error) {
-		receipt := &cancellationReceipt{key: key, method: method, completion: complete}
+	payload, err := call.replay.InvokeDeferred(ctx, call.key, call.fingerprint, func(complete *operation.DeferredCompletion) ([]byte, error) {
+		receipt := &cancellationReceipt{key: call.key, method: method, completion: complete}
 		result, err := s.cancelRun(ctx, in, receipt)
 		_, settlementFailed := errors.AsType[*runs.CancellationSettlementError](err)
 		switch {
@@ -85,31 +109,20 @@ func (e *Endpoint) replayCancellation(ctx context.Context, s *Handler, method *M
 			return encodeAtomicResult(method, presentCancelResult(result))
 		}
 	}, func(data []byte, recoverPending bool) ([]byte, error) {
-		pending, response, err := decodeCancellationSettlement(method, in.RunID, data)
-		if err != nil {
-			return nil, err
-		}
-		if response.RootRun != nil && !s.requestCanUseFeature(ctx, protocol.FeatureChildRuns) {
-			return nil, wireCancellationError(runs.ErrChildRunNotAllowed)
-		}
-		if !recoverPending {
-			return pending.Outcome, nil
-		}
-		ref := runs.ExecutorRef{SessionID: response.Run.SessionID, ExecutorID: pending.ExecutorID}
-		if response.RootRun == nil {
-			err = s.runCancellations.SettleRootCancellation(ctx, ref, response.Run.ID)
-		} else {
-			err = s.runCancellations.SettleAcceptedSubtreeCancellation(ctx, ref, response.RootRun.ID, response.Run.ID)
-		}
-		if err != nil {
-			return nil, wireCancellationError(err)
-		}
-		return pending.Outcome, nil
+		return s.settleReplayedCancellation(ctx, method, in.RunID, data, recoverPending)
 	})
-	if err != nil || !bytes.Equal(payload, encodedFailure) {
-		observedFailure = nil
+	// The failure this call observed keeps its cause; a replayed one is decoded.
+	if err == nil && observedFailure != nil && bytes.Equal(payload, encodedFailure) {
+		return failed(observedFailure)
 	}
-	return payload, observedFailure, wireCancellationError(err)
+	replayed := call.result(ctx, payload, wireCancellationError(err))
+	if replayed.Failure != nil {
+		return replayed
+	}
+	if replayed.Value.(*protocol.CancelRunResponse).RootRun != nil && !s.requestCanUseFeature(ctx, protocol.FeatureChildRuns) {
+		return failed(projectError(wireCancellationError(runs.ErrChildRunNotAllowed)))
+	}
+	return replayed
 }
 
 func decodeCancellationSettlement(method *Method, runID string, data []byte) (cancellationSettlement, *protocol.CancelRunResponse, error) {
@@ -127,4 +140,26 @@ func decodeCancellationSettlement(method *Method, runID string, data []byte) (ca
 		return pending, nil, errors.New("idempotency: invalid cancellation settlement")
 	}
 	return pending, result, nil
+}
+
+// settleStagedCancellation finishes a cancellation a crashed owner left staged,
+// addressed by the Runs its stored reply names.
+func (s *Handler) settleStagedCancellation(ctx context.Context, executorID string, response *protocol.CancelRunResponse) error {
+	sessionID, err := identity.ParseSession(response.Run.SessionID)
+	if err != nil {
+		return fmt.Errorf("idempotency: cancellation settlement Session: %w", err)
+	}
+	ref := runs.ExecutorRef{SessionID: sessionID, ExecutorID: executorID}
+	runID, err := identity.ParseRun(response.Run.ID)
+	if err != nil {
+		return fmt.Errorf("idempotency: cancellation settlement Run: %w", err)
+	}
+	if response.RootRun == nil {
+		return s.runCancellations.SettleRootCancellation(ctx, ref, runID)
+	}
+	rootRunID, err := identity.ParseRun(response.RootRun.ID)
+	if err != nil {
+		return fmt.Errorf("idempotency: cancellation settlement root Run: %w", err)
+	}
+	return s.runCancellations.SettleAcceptedSubtreeCancellation(ctx, ref, rootRunID, runID)
 }

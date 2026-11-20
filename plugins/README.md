@@ -122,7 +122,7 @@ Memory binds the public SDK contract. Each other native feature keeps its Go
 contract definition in its own `contractgen/` publisher and carries the generated
 `contracts/contract.generated.go` descriptor beside its implementation. Pure
 `internal/wire` DTOs and schema hooks do not import that generated projection.
-Runtime bindings use `ImplementMethod` against the published descriptor; moving
+Runtime bindings use `pluginmcp.Implement` against the published descriptor; moving
 an implementation to another Go module cannot advance the contract identity.
 Run `make generate` from the repository root after changing definitions. It
 publishes consumer contracts before backend, CLI and component projections;

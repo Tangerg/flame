@@ -76,50 +76,66 @@ func generateFeature(capability *contract.Capability, directory, tsDirectory str
 	if err := os.WriteFile(source, neutral.Bytes(), 0o600); err != nil {
 		return err
 	}
-	var artifacts []featureArtifact
-	var generatedDirectory, generatedTS string
+	staged := stageFeatureOutputs(stage, directory, tsDirectory, goOutput)
+	if err := contractgen.Generate(source, staged.directory, staged.typescript, staged.goOutput); err != nil {
+		return err
+	}
+	if err := staged.writeCapabilityProjections(capability, projection); err != nil {
+		return err
+	}
+	return publishFeatureArtifacts(staged.artifacts)
+}
+
+// stagedFeature generates every requested output in a scratch directory first,
+// so a failed generation publishes nothing.
+type stagedFeature struct {
+	directory, typescript string
+	goOutput              contractgen.GoOutput
+	artifacts             []featureArtifact
+}
+
+func stageFeatureOutputs(stage, directory, tsDirectory string, goOutput contractgen.GoOutput) stagedFeature {
+	staged := stagedFeature{goOutput: goOutput}
 	if directory != "" {
-		generatedDirectory = filepath.Join(stage, "contracts")
+		staged.directory = filepath.Join(stage, "contracts")
 		for _, name := range []string{"schema.json", "methods.generated.json", "capability.generated.json", "API_REFERENCE.md"} {
-			artifacts = append(artifacts, featureArtifact{filepath.Join(generatedDirectory, name), filepath.Join(directory, name)})
+			staged.artifacts = append(staged.artifacts, featureArtifact{filepath.Join(staged.directory, name), filepath.Join(directory, name)})
 		}
 	}
 	if tsDirectory != "" {
-		generatedTS = filepath.Join(stage, "typescript")
-		artifacts = append(artifacts, featureArtifact{filepath.Join(generatedTS, "methods.generated.ts"), filepath.Join(tsDirectory, "methods.generated.ts")})
+		staged.typescript = filepath.Join(stage, "typescript")
+		staged.artifacts = append(staged.artifacts, featureArtifact{filepath.Join(staged.typescript, "methods.generated.ts"), filepath.Join(tsDirectory, "methods.generated.ts")})
 	}
-	generatedGo := goOutput
 	if goOutput.Path != "" {
-		generatedGo.Path = filepath.Join(stage, "methods.generated.go")
-		artifacts = append(artifacts, featureArtifact{generatedGo.Path, goOutput.Path})
+		staged.goOutput.Path = filepath.Join(stage, "methods.generated.go")
+		staged.artifacts = append(staged.artifacts, featureArtifact{staged.goOutput.Path, goOutput.Path})
 	}
-	if err := contractgen.Generate(source, generatedDirectory, generatedTS, generatedGo); err != nil {
-		return err
-	}
+	return staged
+}
+
+func (s stagedFeature) writeCapabilityProjections(capability *contract.Capability, projection frame.CapabilityDescriptor) error {
 	descriptor, err := value.EncodeJSON(capability.Descriptor())
 	if err != nil {
 		return err
 	}
-	if generatedDirectory != "" {
+	if s.directory != "" {
 		pretty, err := json.Marshal(capability.Descriptor(), json.Deterministic(true), jsontext.WithIndent("  "))
 		if err != nil {
 			return err
 		}
-		if err := os.WriteFile(filepath.Join(generatedDirectory, "capability.generated.json"), append(pretty, '\n'), 0o600); err != nil {
+		if err := os.WriteFile(filepath.Join(s.directory, "capability.generated.json"), append(pretty, '\n'), 0o600); err != nil {
 			return err
 		}
 	}
-	if generatedTS != "" {
-		if err := writeFeatureTypeScript(capability, filepath.Join(generatedTS, "methods.generated.ts")); err != nil {
+	if s.typescript != "" {
+		if err := writeFeatureTypeScript(capability, filepath.Join(s.typescript, "methods.generated.ts")); err != nil {
 			return err
 		}
 	}
-	if generatedGo.Path != "" {
-		if err := writeFeatureGo(projection, descriptor, generatedGo.Path); err != nil {
-			return err
-		}
+	if s.goOutput.Path != "" {
+		return writeFeatureGo(projection, descriptor, s.goOutput.Path)
 	}
-	return publishFeatureArtifacts(artifacts)
+	return nil
 }
 
 func writeFeatureTypeScript(capability *contract.Capability, file string) error {

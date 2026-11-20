@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
@@ -92,9 +94,9 @@ func escapeSessionLikePattern(value string) string {
 // Exists reports whether a session row exists — the cheap existence check the
 // goal driver uses to refuse a goal for a missing session and to sweep orphaned
 // goals at boot, without decoding the whole aggregate.
-func (s *SessionStore) Exists(ctx context.Context, id string) (bool, error) {
+func (s *SessionStore) Exists(ctx context.Context, id identity.SessionID) (bool, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) (bool, error) {
-		if err := validateSessionResource("check Session existence", id); err != nil {
+		if err := validateResource("check Session existence", id); err != nil {
 			return false, err
 		}
 		var exists bool
@@ -104,9 +106,9 @@ func (s *SessionStore) Exists(ctx context.Context, id string) (bool, error) {
 		return exists, nil
 	})
 }
-func (s *SessionStore) Get(ctx context.Context, id string) (session.Session, error) {
+func (s *SessionStore) Get(ctx context.Context, id identity.SessionID) (session.Session, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) (session.Session, error) {
-		if err := validateSessionResource("read Session", id); err != nil {
+		if err := validateResource("read Session", id); err != nil {
 			return session.Session{}, err
 		}
 		row := s.db.connection(ctx).QueryRowContext(ctx, `SELECT `+sessionColumns+` FROM sessions WHERE id = ?`, id)

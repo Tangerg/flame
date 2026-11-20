@@ -23,7 +23,7 @@ import (
 // their Session, lineage, capabilities, and Goal incarnation, and the Items own
 // what was asked; a Pending names them and never restates those facts.
 type Pending struct {
-	RootRunID     string
+	RootRunID     identity.RunID
 	ExecutorID    string
 	Interrupts    []OpenInterrupt
 	Bindings      []InterruptBinding
@@ -38,7 +38,7 @@ type Pending struct {
 // executor's parent/spawn topology remains inside its opaque checkpoint. The
 // Run's own lineage is the product's tree fact.
 type Continuation struct {
-	RunID        string
+	RunID        identity.RunID
 	MemberID     string
 	DrainedTools []DrainedTool
 }
@@ -46,7 +46,7 @@ type Continuation struct {
 // InterruptBinding is the private correspondence between one published
 // interrupt Item and the executor input request that must receive its answer.
 type InterruptBinding struct {
-	InterruptItemID string
+	InterruptItemID identity.ItemID
 	MemberID        string
 	RequestID       string
 	// ToolCallID is the stable executor call identity of an approval boundary. It is
@@ -75,8 +75,8 @@ type memberToolCallIdentity struct {
 
 type pendingBindingValidator struct {
 	pending          Pending
-	interruptsByItem map[string]OpenInterrupt
-	boundItems       map[string]struct{}
+	interruptsByItem map[identity.ItemID]OpenInterrupt
+	boundItems       map[identity.ItemID]struct{}
 	boundRequests    map[memberRequestIdentity]struct{}
 	boundToolCalls   map[memberToolCallIdentity]struct{}
 }
@@ -86,7 +86,7 @@ type pendingBindingValidator struct {
 // identity attached until the execution-control boundary; MemberID and
 // RequestID prevents execution from guessing which parked branch it answers.
 type InterruptAnswer struct {
-	InterruptItemID string
+	InterruptItemID identity.ItemID
 	MemberID        string
 	RequestID       string
 	Resolution      run.InterruptResolution
@@ -97,7 +97,7 @@ type InterruptAnswer struct {
 // asked; the hand-off owns only that the Item is open and, for an approval,
 // the policy's review.
 type OpenInterrupt struct {
-	ItemID string
+	ItemID identity.ItemID
 	// Approval is the policy's review when the Item is a ToolCall awaiting a
 	// verdict; nil when it is a Question Item awaiting answers.
 	Approval *ApprovalReview
@@ -123,7 +123,7 @@ func (o OpenInterrupt) Type() run.InterruptType {
 // original Item instead of minting a duplicate. The Item owns its occurrence
 // and invocation.
 type DrainedTool struct {
-	ItemID string
+	ItemID identity.ItemID
 	CallID string
 	// SourceCallID is the provider ToolCall identity used by model-context results.
 	SourceCallID string
@@ -177,14 +177,14 @@ func (p Pending) Validate() error {
 // ValidateForRoot verifies the complete hand-off and its exact requested root
 // Run identity. Point reads use it before stored continuation state can
 // influence a use case.
-func (p Pending) ValidateForRoot(expectedRootRunID string) error {
+func (p Pending) ValidateForRoot(expectedRootRunID identity.RunID) error {
 	if err := p.Validate(); err != nil {
 		return err
 	}
 	return p.requireRoot(expectedRootRunID)
 }
 
-func (p Pending) requireRoot(expectedRootRunID string) error {
+func (p Pending) requireRoot(expectedRootRunID identity.RunID) error {
 	if p.RootRunID != expectedRootRunID {
 		return fmt.Errorf(
 			"interrupts: pending root %q does not match requested identity %q",
@@ -199,7 +199,7 @@ func (p Pending) validateEnvelope() error {
 	if err := instant.Validate(p.CreatedAt); err != nil {
 		return fmt.Errorf("interrupts: pending creation time: %w", err)
 	}
-	if err := identity.ValidateRun(p.RootRunID); err != nil {
+	if err := p.RootRunID.Validate(); err != nil {
 		return fmt.Errorf("interrupts: pending root: %w", err)
 	}
 	if err := ValidateExecutor(p.ExecutorID); err != nil {
@@ -223,7 +223,7 @@ func (p Pending) validateEnvelope() error {
 }
 
 func (p Pending) validateContinuations() error {
-	runIDs := make(map[string]struct{}, len(p.Continuations))
+	runIDs := make(map[identity.RunID]struct{}, len(p.Continuations))
 	memberIDs := make(map[string]struct{}, len(p.Continuations))
 	rootCount := 0
 	for index, continuation := range p.Continuations {
@@ -248,8 +248,8 @@ func (p Pending) validateContinuations() error {
 	return nil
 }
 
-func (p Pending) validateInterrupts() (map[string]OpenInterrupt, error) {
-	interruptsByItem := make(map[string]OpenInterrupt, len(p.Interrupts))
+func (p Pending) validateInterrupts() (map[identity.ItemID]OpenInterrupt, error) {
+	interruptsByItem := make(map[identity.ItemID]OpenInterrupt, len(p.Interrupts))
 	for index, open := range p.Interrupts {
 		if err := open.validate(); err != nil {
 			return nil, fmt.Errorf("interrupts: interrupt[%d]: %w", index, err)
@@ -263,7 +263,7 @@ func (p Pending) validateInterrupts() (map[string]OpenInterrupt, error) {
 }
 
 func (o OpenInterrupt) validate() error {
-	if err := identity.ValidateItem(o.ItemID); err != nil {
+	if err := o.ItemID.Validate(); err != nil {
 		return fmt.Errorf("pending interrupt: %w", err)
 	}
 	if o.Approval != nil && !o.Approval.Risk.Valid() {
@@ -272,11 +272,11 @@ func (o OpenInterrupt) validate() error {
 	return nil
 }
 
-func (p Pending) validateBindings(interruptsByItem map[string]OpenInterrupt) error {
+func (p Pending) validateBindings(interruptsByItem map[identity.ItemID]OpenInterrupt) error {
 	validator := pendingBindingValidator{
 		pending:          p,
 		interruptsByItem: interruptsByItem,
-		boundItems:       make(map[string]struct{}, len(p.Bindings)),
+		boundItems:       make(map[identity.ItemID]struct{}, len(p.Bindings)),
 		boundRequests:    make(map[memberRequestIdentity]struct{}, len(p.Bindings)),
 		boundToolCalls:   make(map[memberToolCallIdentity]struct{}, len(p.Bindings)),
 	}
@@ -312,7 +312,7 @@ func (v *pendingBindingValidator) validate(index int, binding InterruptBinding) 
 }
 
 func (b InterruptBinding) validateIdentities() error {
-	if err := identity.ValidateItem(b.InterruptItemID); err != nil {
+	if err := b.InterruptItemID.Validate(); err != nil {
 		return fmt.Errorf("interrupt item: %w", err)
 	}
 	if err := ValidateMember(b.MemberID); err != nil {
@@ -433,14 +433,14 @@ func (c Continuation) Validate() error {
 }
 
 func (c Continuation) validateRun() error {
-	if err := identity.ValidateRun(c.RunID); err != nil {
+	if err := c.RunID.Validate(); err != nil {
 		return err
 	}
 	return ValidateMember(c.MemberID)
 }
 
 func validateDrainedTools(tools []DrainedTool) error {
-	items := make(map[string]struct{}, len(tools))
+	items := make(map[identity.ItemID]struct{}, len(tools))
 	calls := make(map[string]struct{}, len(tools))
 	for index, tool := range tools {
 		if err := tool.validate(); err != nil {
@@ -459,7 +459,7 @@ func validateDrainedTools(tools []DrainedTool) error {
 }
 
 func (d DrainedTool) validate() error {
-	if err := identity.ValidateItem(d.ItemID); err != nil {
+	if err := d.ItemID.Validate(); err != nil {
 		return err
 	}
 	return ValidateInvocation(d.CallID)

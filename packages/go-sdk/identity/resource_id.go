@@ -3,6 +3,7 @@
 package identity
 
 import (
+	"database/sql/driver"
 	"fmt"
 	"regexp"
 	"strings"
@@ -14,14 +15,7 @@ type value struct {
 	text string
 }
 
-func parse(kind, text string, maximumCharacters int) (value, error) {
-	if err := ValidateResource(kind, text, maximumCharacters); err != nil {
-		return value{}, err
-	}
-	return value{text: text}, nil
-}
-
-// requireConstructed reports whether an identity came from [parse]. Exact text,
+// requireConstructed reports whether an identity came from parsing. Exact text,
 // length and character rules are established there, so the only identity that
 // can reach a caller without them is the zero one.
 func requireConstructed(kind, text string) error {
@@ -31,33 +25,109 @@ func requireConstructed(kind, text string) error {
 	return nil
 }
 
-// Forked Runs and their transcript Items retain both identities together.
-// Distinct types prevent interchanging two otherwise opaque wire strings.
-type SessionID struct{ value }
-type RunID struct{ value }
+// kind is the grammar one identity type is parsed against. Its types are
+// unexported, so no other package can mint an identity kind.
+type kind interface{ name() string }
 
-func ParseSession(text string) (SessionID, error) {
-	v, err := parse("session", text, MaximumResourceCharacters)
-	return SessionID{v}, err
+type (
+	sessionKind struct{}
+	runKind     struct{}
+	segmentKind struct{}
+	itemKind    struct{}
+)
+
+func (sessionKind) name() string { return "session" }
+func (runKind) name() string     { return "run" }
+func (segmentKind) name() string { return "segment" }
+func (itemKind) name() string    { return "item" }
+
+// ID is an opaque Runtime identity of one kind. Only parsing constructs a
+// nonzero value, so a held ID satisfies its grammar; the zero value means none.
+// Distinct kinds keep otherwise identical wire strings from being interchanged.
+type ID[K kind] struct{ text string }
+
+type (
+	SessionID = ID[sessionKind]
+	RunID     = ID[runKind]
+	SegmentID = ID[segmentKind]
+	ItemID    = ID[itemKind]
+)
+
+func parseID[K kind](text string) (ID[K], error) {
+	var k K
+	if err := ValidateResource(k.name(), text, MaximumResourceCharacters); err != nil {
+		return ID[K]{}, err
+	}
+	return ID[K]{text: text}, nil
 }
-func ParseRun(text string) (RunID, error) {
-	v, err := parse("run", text, MaximumResourceCharacters)
-	return RunID{v}, err
+
+func parseOptionalID[K kind](text string) (ID[K], error) {
+	if text == "" {
+		return ID[K]{}, nil
+	}
+	return parseID[K](text)
 }
-func (id SessionID) String() string     { return id.text }
-func (id RunID) String() string         { return id.text }
+
+func ParseSession(text string) (SessionID, error) { return parseID[sessionKind](text) }
+func ParseRun(text string) (RunID, error)         { return parseID[runKind](text) }
+func ParseSegment(text string) (SegmentID, error) { return parseID[segmentKind](text) }
+func ParseItem(text string) (ItemID, error)       { return parseID[itemKind](text) }
+
+// The optional parsers read text where empty means no identity.
+func ParseOptionalSession(text string) (SessionID, error) { return parseOptionalID[sessionKind](text) }
+func ParseOptionalRun(text string) (RunID, error)         { return parseOptionalID[runKind](text) }
+func ParseOptionalSegment(text string) (SegmentID, error) { return parseOptionalID[segmentKind](text) }
+func ParseOptionalItem(text string) (ItemID, error)       { return parseOptionalID[itemKind](text) }
+
+func (id ID[K]) String() string { return id.text }
+
+func (id ID[K]) IsZero() bool { return id.text == "" }
+
+// Compare orders identities by their text, the order every listing uses.
+func (id ID[K]) Compare(other ID[K]) int { return strings.Compare(id.text, other.text) }
+
+// Validate reports a missing identity; a present one was parsed.
+func (id ID[K]) Validate() error {
+	var k K
+	return requireConstructed(k.name(), id.text)
+}
+
+func (id ID[K]) MarshalText() ([]byte, error) { return []byte(id.text), nil }
+
+// UnmarshalText parses decoded text; empty text is the zero value.
+func (id *ID[K]) UnmarshalText(text []byte) error {
+	parsed, err := parseOptionalID[K](string(text))
+	if err != nil {
+		return err
+	}
+	*id = parsed
+	return nil
+}
+
+// Value stores the identity as its text; the zero value stores empty text.
+func (id ID[K]) Value() (driver.Value, error) { return id.text, nil }
+
+// Scan parses a stored identity; NULL and empty text are the zero value.
+func (id *ID[K]) Scan(source any) error {
+	switch stored := source.(type) {
+	case nil:
+		*id = ID[K]{}
+		return nil
+	case string:
+		return id.UnmarshalText([]byte(stored))
+	case []byte:
+		return id.UnmarshalText(stored)
+	default:
+		var k K
+		return fmt.Errorf("%s identity cannot be scanned from %T", k.name(), source)
+	}
+}
+
 func ValidateSession(text string) error { _, err := ParseSession(text); return err }
 func ValidateRun(text string) error     { _, err := ParseRun(text); return err }
 
-func ValidateSegment(text string) error {
-	return ValidateResource("segment", text, MaximumResourceCharacters)
-}
-
-// ValidateItem has no Parse counterpart: a transcript or interrupt identity is
-// only ever a field of the Item, Lineage or commit it belongs to.
-func ValidateItem(text string) error {
-	return ValidateResource("item", text, MaximumResourceCharacters)
-}
+func ValidateSegment(text string) error { _, err := ParseSegment(text); return err }
+func ValidateItem(text string) error    { _, err := ParseItem(text); return err }
 
 var installationIDExpression = regexp.MustCompile(nonzeroUUIDPattern())
 

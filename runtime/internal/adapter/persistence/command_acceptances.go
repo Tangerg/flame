@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -35,7 +37,7 @@ func (s *commandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 			if err != nil {
 				return err
 			}
-			record, err := s.lookup(ctx, acceptance.Key)
+			record, err := s.Lookup(ctx, acceptance.Key)
 			if err != nil {
 				return err
 			}
@@ -73,14 +75,7 @@ func (s *commandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 	})
 }
 
-// Lookup resolves a command record by its key. A run_acceptance projects the
-// immutable acceptance and whether its original material is still referenced; a
-// generic response variant reports that the key belongs to another operation; an
-// absent key reports neither. It performs no mutation and starts no Run.
-func (s *commandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error) {
-	return s.lookup(ctx, key)
-}
-func (s *commandAcceptanceStore) SessionSteerInputs(ctx context.Context, sessionID string) ([]runs.CommandAcceptance, error) {
+func (s *commandAcceptanceStore) SessionSteerInputs(ctx context.Context, sessionID identity.SessionID) ([]runs.CommandAcceptance, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]runs.CommandAcceptance, error) {
 		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT key FROM idempotency_records
 		WHERE kind=? AND operation=? AND session_id=? AND material_run_id IS NOT NULL
@@ -102,7 +97,7 @@ func (s *commandAcceptanceStore) SessionSteerInputs(ctx context.Context, session
 		}
 		var inputs []runs.CommandAcceptance
 		for _, key := range keys {
-			record, err := s.lookup(ctx, key)
+			record, err := s.Lookup(ctx, key)
 			if err != nil {
 				return nil, err
 			}
@@ -114,17 +109,22 @@ func (s *commandAcceptanceStore) SessionSteerInputs(ctx context.Context, session
 		return inputs, nil
 	})
 }
-func (s *commandAcceptanceStore) lookup(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error) {
+
+// Lookup resolves a command record by its key. A run_acceptance projects the
+// immutable acceptance and whether its original material is still referenced; a
+// generic response variant reports that the key belongs to another operation; an
+// absent key reports neither. It performs no mutation and starts no Run.
+func (s *commandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) (runs.CommandAcceptanceRecord, error) {
 		var (
 			kind        string
 			digest      string
 			operation   sql.NullString
-			sessionID   sql.NullString
-			runID       sql.NullString
-			segmentID   sql.NullString
-			userItemID  sql.NullString
-			materialRun sql.NullString
+			sessionID   identity.SessionID
+			runID       identity.RunID
+			segmentID   identity.SegmentID
+			userItemID  identity.ItemID
+			materialRun identity.RunID
 			steerInput  []byte
 		)
 		err := s.db.connection(ctx).QueryRowContext(ctx, `SELECT kind, fingerprint, operation, session_id, run_id, segment_id, user_item_id, material_run_id, steer_input
@@ -138,7 +138,7 @@ func (s *commandAcceptanceStore) lookup(ctx context.Context, key string) (runs.C
 		if kind != idempotencyRunAcceptance {
 			return runs.CommandAcceptanceRecord{Use: runs.CommandKeyForeign}, nil
 		}
-		acceptance := runs.CommandAcceptance{Key: key, Fingerprint: digest, Operation: runs.CommandOperation(operation.String), SessionID: sessionID.String, RunID: runID.String, SegmentID: segmentID.String, UserItemID: userItemID.String}
+		acceptance := runs.CommandAcceptance{Key: key, Fingerprint: digest, Operation: runs.CommandOperation(operation.String), SessionID: sessionID, RunID: runID, SegmentID: segmentID, UserItemID: userItemID}
 		if len(steerInput) > 0 {
 			acceptance.SteerInput, err = decodeUserContent(steerInput)
 			if err != nil {
@@ -149,29 +149,38 @@ func (s *commandAcceptanceStore) lookup(ctx context.Context, key string) (runs.C
 			return runs.CommandAcceptanceRecord{}, fmt.Errorf("sqlite: decode command acceptance: %w", err)
 		}
 		record := runs.CommandAcceptanceRecord{Use: runs.CommandKeyAccepted, Acceptance: acceptance}
-		if !materialRun.Valid {
+		if materialRun.IsZero() {
 			return record, nil
 		}
-		current, found, err := newRunStore(s.db).Run(ctx, materialRun.String)
-		if err != nil {
-			return runs.CommandAcceptanceRecord{}, err
-		}
-		if !found || current.SessionID() != acceptance.SessionID {
-			return runs.CommandAcceptanceRecord{}, errors.New("sqlite: accepted Run material is missing or has another Session")
-		}
-		record.CurrentRun = &current
-		if acceptance.Operation == runs.CommandSteerInput {
-			item, found, err := newTranscriptStore(s.db).Item(ctx, acceptance.UserItemID)
-			if err != nil {
-				return runs.CommandAcceptanceRecord{}, err
-			}
-			if found {
-				if item.RunID() != acceptance.RunID || item.SessionID() != acceptance.SessionID || item.Kind() != transcript.UserMessage || item.Status() != transcript.ItemCompleted {
-					return runs.CommandAcceptanceRecord{}, errors.New("sqlite: steer application Item has another owner or kind")
-				}
-				record.AppliedItem = &item
-			}
-		}
-		return record, nil
+		return s.withAcceptedMaterial(ctx, record, materialRun)
 	})
+}
+
+// withAcceptedMaterial attaches the Run the acceptance produced and, for an
+// applied steer, the Item that carried it.
+func (s *commandAcceptanceStore) withAcceptedMaterial(ctx context.Context, record runs.CommandAcceptanceRecord, materialRun identity.RunID) (runs.CommandAcceptanceRecord, error) {
+	acceptance := record.Acceptance
+	current, found, err := newRunStore(s.db).Run(ctx, materialRun)
+	if err != nil {
+		return runs.CommandAcceptanceRecord{}, err
+	}
+	if !found || current.SessionID() != acceptance.SessionID {
+		return runs.CommandAcceptanceRecord{}, errors.New("sqlite: accepted Run material is missing or has another Session")
+	}
+	record.CurrentRun = &current
+	if acceptance.Operation != runs.CommandSteerInput {
+		return record, nil
+	}
+	item, found, err := newTranscriptStore(s.db).Item(ctx, acceptance.UserItemID)
+	if err != nil {
+		return runs.CommandAcceptanceRecord{}, err
+	}
+	if !found {
+		return record, nil
+	}
+	if item.RunID() != acceptance.RunID || item.SessionID() != acceptance.SessionID || item.Kind() != transcript.UserMessage || item.Status() != transcript.ItemCompleted {
+		return runs.CommandAcceptanceRecord{}, errors.New("sqlite: steer application Item has another owner or kind")
+	}
+	record.AppliedItem = &item
+	return record, nil
 }

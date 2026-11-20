@@ -108,60 +108,66 @@ func NewBackend(server *sdk.Server) (*Backend, error) {
 		return nil, errors.New("plugin: MCP server is required")
 	}
 	b := &Backend{server: server, methods: map[string]boundMethod{}, capabilities: map[string]*plugincontract.Capability{}, activations: map[*sdk.ServerSession]*setupActivation{}, closeDone: make(chan struct{})}
-	if err := b.registerSetup(); err != nil {
-		return nil, err
-	}
-	if err := sdk.AddReceivingCustomMethod(server, InvokeMethod, func(ctx context.Context, session *sdk.ServerSession, params *invokeParams) (*methodResult[jsontext.Value], error) {
-		method, err := b.resolveMethod(params)
-		if err != nil {
+	for _, register := range []func() error{
+		b.registerSetup,
+		func() error { return sdk.AddReceivingCustomMethod(server, InvokeMethod, b.invoke) },
+		func() error { return sdk.AddReceivingCustomMethod(server, ValidateMethod, b.validateInput) },
+		func() error { return sdk.AddReceivingCustomMethod(server, DescribeMethod, b.describe) },
+	} {
+		if err := register(); err != nil {
 			return nil, err
 		}
-		if method.stream != nil {
-			return invokeBackendStream(ctx, session, method, params)
-		}
-		return method.invoke(ctx, session, params)
-	}); err != nil {
-		return nil, err
-	}
-	if err := sdk.AddReceivingCustomMethod(server, ValidateMethod, func(_ context.Context, _ *sdk.ServerSession, params *invokeParams) (*methodResult[string], error) {
-		method, err := b.resolveMethod(params)
-		if err != nil {
-			return nil, err
-		}
-		if params.CommandID != "" {
-			return nil, errors.New("plugin: input validation cannot carry a command identity")
-		}
-		if err := method.validate(params.Input); err != nil {
-			return reply(err.Error(), nil, nil)
-		}
-		return reply("", nil, nil)
-	}); err != nil {
-		return nil, err
-	}
-	if err := sdk.AddReceivingCustomMethod(server, DescribeMethod, func(_ context.Context, _ *sdk.ServerSession, params *protocolParams) (*methodResult[Description], error) {
-		if params == nil || params.Protocol != plugincontract.Protocol {
-			return nil, errors.New("plugin: current backend protocol is required")
-		}
-		b.mu.RLock()
-		defer b.mu.RUnlock()
-		if b.phase != backendPublished {
-			return nil, errors.New("plugin: backend is not published")
-		}
-		methods := make([]frame.MethodDescriptor, 0, len(b.methods))
-		for _, method := range b.methods {
-			methods = append(methods, method.contract.Descriptor())
-		}
-		slices.SortFunc(methods, func(a, b frame.MethodDescriptor) int { return strings.Compare(a.Name, b.Name) })
-		capabilities := make([]CapabilityExport, 0, len(b.capabilities))
-		for name, capability := range b.capabilities {
-			capabilities = append(capabilities, CapabilityExport{Name: name, Contract: capability.Descriptor()})
-		}
-		slices.SortFunc(capabilities, func(a, b CapabilityExport) int { return strings.Compare(a.Name, b.Name) })
-		return reply(Description{Protocol: plugincontract.Protocol, Methods: methods, Capabilities: capabilities}, nil, nil)
-	}); err != nil {
-		return nil, err
 	}
 	return b, nil
+}
+
+func (b *Backend) invoke(ctx context.Context, session *sdk.ServerSession, params *invokeParams) (*methodResult[jsontext.Value], error) {
+	method, err := b.resolveMethod(params)
+	if err != nil {
+		return nil, err
+	}
+	if method.stream != nil {
+		return invokeBackendStream(ctx, session, method, params)
+	}
+	return method.invoke(ctx, session, params)
+}
+
+// validateInput answers whether input would be admitted. A refusal is the
+// answer, not a failure of the call.
+func (b *Backend) validateInput(_ context.Context, _ *sdk.ServerSession, params *invokeParams) (*methodResult[string], error) {
+	method, err := b.resolveMethod(params)
+	if err != nil {
+		return nil, err
+	}
+	if params.CommandID != "" {
+		return nil, errors.New("plugin: input validation cannot carry a command identity")
+	}
+	if err := method.validate(params.Input); err != nil {
+		return reply(err.Error(), nil, nil)
+	}
+	return reply("", nil, nil)
+}
+
+func (b *Backend) describe(_ context.Context, _ *sdk.ServerSession, params *protocolParams) (*methodResult[Description], error) {
+	if params == nil || params.Protocol != plugincontract.Protocol {
+		return nil, errors.New("plugin: current backend protocol is required")
+	}
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	if b.phase != backendPublished {
+		return nil, errors.New("plugin: backend is not published")
+	}
+	methods := make([]frame.MethodDescriptor, 0, len(b.methods))
+	for _, method := range b.methods {
+		methods = append(methods, method.contract.Descriptor())
+	}
+	slices.SortFunc(methods, func(a, b frame.MethodDescriptor) int { return strings.Compare(a.Name, b.Name) })
+	capabilities := make([]CapabilityExport, 0, len(b.capabilities))
+	for name, capability := range b.capabilities {
+		capabilities = append(capabilities, CapabilityExport{Name: name, Contract: capability.Descriptor()})
+	}
+	slices.SortFunc(capabilities, func(a, b CapabilityExport) int { return strings.Compare(a.Name, b.Name) })
+	return reply(Description{Protocol: plugincontract.Protocol, Methods: methods, Capabilities: capabilities}, nil, nil)
 }
 
 func (b *Backend) resolveMethod(params *invokeParams) (boundMethod, error) {

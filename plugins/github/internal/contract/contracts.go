@@ -38,106 +38,39 @@ type Contracts struct {
 }
 
 func NewContracts() (Contracts, error) {
-	var c Contracts
-	var err error
-	c.Capability, err = plugincontract.ParseCapability([]byte(published.CapabilityJSON))
+	capability, err := plugincontract.ParseCapability([]byte(published.CapabilityJSON))
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.List, err = pluginmcp.ImplementMethod[wire.ListInput, wire.IssuePage](c.Capability, published.ListIssuesV1Method)
-	if err != nil {
-		return Contracts{}, err
+	methods := pluginmcp.NewMethodSet(capability)
+	c := Contracts{
+		Capability:          capability,
+		List:                pluginmcp.Implement[wire.ListInput, wire.IssuePage](methods, published.ListIssuesV1Method),
+		Issue:               pluginmcp.Implement[wire.IssueInput, wire.Issue](methods, published.GetIssueV1Method),
+		File:                pluginmcp.Implement[wire.FileInput, wire.File](methods, published.ReadFileV1Method),
+		Pulls:               pluginmcp.Implement[wire.PullListInput, wire.PullPage](methods, published.ListPullRequestsV1Method),
+		Pull:                pluginmcp.Implement[wire.IssueInput, wire.PullRequest](methods, published.GetPullRequestV1Method),
+		PullFiles:           pluginmcp.Implement[wire.ThreadInput, wire.FilePage](methods, published.ListPullRequestFilesV1Method),
+		Comments:            pluginmcp.Implement[wire.ThreadInput, wire.CommentPage](methods, published.ListIssueCommentsV1Method),
+		Reviews:             pluginmcp.Implement[wire.ThreadInput, wire.ReviewPage](methods, published.ListPullRequestReviewsV1Method),
+		ReviewComments:      pluginmcp.Implement[wire.ThreadInput, wire.ReviewCommentPage](methods, published.ListPullRequestCommentsV1Method),
+		Checks:              pluginmcp.Implement[wire.CommitInput, wire.CheckPage](methods, published.ListCheckRunsV1Method),
+		Annotations:         pluginmcp.Implement[wire.CheckInput, wire.AnnotationPage](methods, published.ListCheckAnnotationsV1Method),
+		Statuses:            pluginmcp.Implement[wire.CommitInput, wire.StatusPage](methods, published.ListCommitStatusesV1Method),
+		CreateIssue:         pluginmcp.Implement[wire.CreateIssueInput, wire.Issue](methods, published.CreateIssueV1Method),
+		UpdateIssue:         pluginmcp.Implement[wire.UpdateIssueInput, wire.Issue](methods, published.UpdateIssueV1Method),
+		CreateComment:       pluginmcp.Implement[wire.CreateCommentInput, wire.Comment](methods, published.CreateIssueCommentV1Method),
+		UpdateComment:       pluginmcp.Implement[wire.UpdateCommentInput, wire.Comment](methods, published.UpdateIssueCommentV1Method),
+		DeleteComment:       pluginmcp.Implement[wire.CommentInput, wire.DeletedComment](methods, published.DeleteIssueCommentV1Method),
+		CreatePull:          pluginmcp.Implement[wire.CreatePullInput, wire.PullRequest](methods, published.CreatePullRequestV1Method),
+		SubmitReview:        pluginmcp.Implement[wire.SubmitReviewInput, wire.Review](methods, published.SubmitPullRequestReviewV1Method),
+		MergePull:           pluginmcp.Implement[wire.MergePullInput, wire.MergeResult](methods, published.MergePullRequestV1Method),
+		CreateReviewComment: pluginmcp.Implement[wire.CreateReviewCommentInput, wire.ReviewComment](methods, published.CreatePullRequestCommentV1Method),
+		ReplyReviewComment:  pluginmcp.Implement[wire.ReplyReviewCommentInput, wire.ReviewComment](methods, published.ReplyPullRequestCommentV1Method),
+		UpdateReviewComment: pluginmcp.Implement[wire.UpdateCommentInput, wire.ReviewComment](methods, published.UpdatePullRequestCommentV1Method),
+		DeleteReviewComment: pluginmcp.Implement[wire.CommentInput, wire.DeletedComment](methods, published.DeletePullRequestCommentV1Method),
 	}
-	c.Issue, err = pluginmcp.ImplementMethod[wire.IssueInput, wire.Issue](c.Capability, published.GetIssueV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.File, err = pluginmcp.ImplementMethod[wire.FileInput, wire.File](c.Capability, published.ReadFileV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Pulls, err = pluginmcp.ImplementMethod[wire.PullListInput, wire.PullPage](c.Capability, published.ListPullRequestsV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Pull, err = pluginmcp.ImplementMethod[wire.IssueInput, wire.PullRequest](c.Capability, published.GetPullRequestV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.PullFiles, err = pluginmcp.ImplementMethod[wire.ThreadInput, wire.FilePage](c.Capability, published.ListPullRequestFilesV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Comments, err = pluginmcp.ImplementMethod[wire.ThreadInput, wire.CommentPage](c.Capability, published.ListIssueCommentsV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Reviews, err = pluginmcp.ImplementMethod[wire.ThreadInput, wire.ReviewPage](c.Capability, published.ListPullRequestReviewsV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.ReviewComments, err = pluginmcp.ImplementMethod[wire.ThreadInput, wire.ReviewCommentPage](c.Capability, published.ListPullRequestCommentsV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Checks, err = pluginmcp.ImplementMethod[wire.CommitInput, wire.CheckPage](c.Capability, published.ListCheckRunsV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Annotations, err = pluginmcp.ImplementMethod[wire.CheckInput, wire.AnnotationPage](c.Capability, published.ListCheckAnnotationsV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Statuses, err = pluginmcp.ImplementMethod[wire.CommitInput, wire.StatusPage](c.Capability, published.ListCommitStatusesV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.CreateIssue, err = pluginmcp.ImplementMethod[wire.CreateIssueInput, wire.Issue](c.Capability, published.CreateIssueV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.UpdateIssue, err = pluginmcp.ImplementMethod[wire.UpdateIssueInput, wire.Issue](c.Capability, published.UpdateIssueV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.CreateComment, err = pluginmcp.ImplementMethod[wire.CreateCommentInput, wire.Comment](c.Capability, published.CreateIssueCommentV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.UpdateComment, err = pluginmcp.ImplementMethod[wire.UpdateCommentInput, wire.Comment](c.Capability, published.UpdateIssueCommentV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.DeleteComment, err = pluginmcp.ImplementMethod[wire.CommentInput, wire.DeletedComment](c.Capability, published.DeleteIssueCommentV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.CreatePull, err = pluginmcp.ImplementMethod[wire.CreatePullInput, wire.PullRequest](c.Capability, published.CreatePullRequestV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.SubmitReview, err = pluginmcp.ImplementMethod[wire.SubmitReviewInput, wire.Review](c.Capability, published.SubmitPullRequestReviewV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.MergePull, err = pluginmcp.ImplementMethod[wire.MergePullInput, wire.MergeResult](c.Capability, published.MergePullRequestV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.CreateReviewComment, err = pluginmcp.ImplementMethod[wire.CreateReviewCommentInput, wire.ReviewComment](c.Capability, published.CreatePullRequestCommentV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.ReplyReviewComment, err = pluginmcp.ImplementMethod[wire.ReplyReviewCommentInput, wire.ReviewComment](c.Capability, published.ReplyPullRequestCommentV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.UpdateReviewComment, err = pluginmcp.ImplementMethod[wire.UpdateCommentInput, wire.ReviewComment](c.Capability, published.UpdatePullRequestCommentV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.DeleteReviewComment, err = pluginmcp.ImplementMethod[wire.CommentInput, wire.DeletedComment](c.Capability, published.DeletePullRequestCommentV1Method)
-	if err != nil {
+	if err := methods.Err(); err != nil {
 		return Contracts{}, err
 	}
 	return c, nil

@@ -16,7 +16,7 @@ var ErrInvalidTree = errors.New("run: invalid tree")
 // state, persistence records, executor state, and presentation values do not
 // belong here: topology is the one fact shared by all of those representations.
 type TreeMember struct {
-	RunID   string
+	RunID   identity.RunID
 	Lineage Lineage
 }
 
@@ -32,10 +32,10 @@ const (
 )
 
 type runTreeBuilder struct {
-	rootRunID string
-	lineages  map[string]Lineage
-	children  map[string][]string
-	states    map[string]uint8
+	rootRunID identity.RunID
+	lineages  map[identity.RunID]Lineage
+	children  map[identity.RunID][]identity.RunID
+	states    map[identity.RunID]uint8
 	tree      Tree
 }
 
@@ -43,15 +43,15 @@ type runTreeBuilder struct {
 // postorder: descendants before ancestors, siblings ordered lexically by Run
 // ID, and the root last.
 type Tree struct {
-	postorder []string
-	intervals map[string]runTreeInterval
+	postorder []identity.RunID
+	intervals map[identity.RunID]runTreeInterval
 }
 
 // NewTree assembles one complete tree under rootRunID. Every member must be
 // present exactly once, every child must name the same root and an existing
 // parent, and no disconnected component or cycle is accepted.
-func NewTree(rootRunID string, members []TreeMember) (Tree, error) {
-	if err := identity.ValidateRun(rootRunID); err != nil {
+func NewTree(rootRunID identity.RunID, members []TreeMember) (Tree, error) {
+	if err := rootRunID.Validate(); err != nil {
 		return Tree{}, fmt.Errorf("%w: root %v", ErrInvalidTree, err)
 	}
 	if len(members) == 0 {
@@ -73,15 +73,15 @@ func NewTree(rootRunID string, members []TreeMember) (Tree, error) {
 	return builder.build()
 }
 
-func newRunTreeBuilder(rootRunID string, size int) *runTreeBuilder {
+func newRunTreeBuilder(rootRunID identity.RunID, size int) *runTreeBuilder {
 	return &runTreeBuilder{
 		rootRunID: rootRunID,
-		lineages:  make(map[string]Lineage, size),
-		children:  make(map[string][]string, size),
-		states:    make(map[string]uint8, size),
+		lineages:  make(map[identity.RunID]Lineage, size),
+		children:  make(map[identity.RunID][]identity.RunID, size),
+		states:    make(map[identity.RunID]uint8, size),
 		tree: Tree{
-			postorder: make([]string, 0, size),
-			intervals: make(map[string]runTreeInterval, size),
+			postorder: make([]identity.RunID, 0, size),
+			intervals: make(map[identity.RunID]runTreeInterval, size),
 		},
 	}
 }
@@ -150,7 +150,7 @@ func (r *runTreeBuilder) validateParents() error {
 		}
 	}
 	for parentRunID := range r.children {
-		slices.Sort(r.children[parentRunID])
+		slices.SortFunc(r.children[parentRunID], identity.RunID.Compare)
 	}
 	return nil
 }
@@ -163,11 +163,11 @@ func (r *runTreeBuilder) build() (Tree, error) {
 		// With exactly one root-shaped member and every parent present, any
 		// disconnected component necessarily contains a cycle. Traverse it so
 		// callers receive the precise invariant violation.
-		runIDs := make([]string, 0, len(r.lineages))
+		runIDs := make([]identity.RunID, 0, len(r.lineages))
 		for runID := range r.lineages {
 			runIDs = append(runIDs, runID)
 		}
-		slices.Sort(runIDs)
+		slices.SortFunc(runIDs, identity.RunID.Compare)
 		for _, runID := range runIDs {
 			if r.states[runID] == runTreeUnvisited {
 				if err := r.visit(runID); err != nil {
@@ -180,7 +180,7 @@ func (r *runTreeBuilder) build() (Tree, error) {
 	return r.tree, nil
 }
 
-func (r *runTreeBuilder) visit(runID string) error {
+func (r *runTreeBuilder) visit(runID identity.RunID) error {
 	switch r.states[runID] {
 	case runTreeVisiting:
 		return fmt.Errorf("%w: tree contains a cycle at run %q", ErrInvalidTree, runID)
@@ -201,13 +201,13 @@ func (r *runTreeBuilder) visit(runID string) error {
 }
 
 // Postorder returns a defensive copy of the complete canonical Run order.
-func (t Tree) Postorder() []string {
+func (t Tree) Postorder() []identity.RunID {
 	return slices.Clone(t.postorder)
 }
 
 // SubtreePostorder returns a defensive copy of runID and all its descendants in
 // canonical postorder. The boolean is false when runID is not a tree member.
-func (t Tree) SubtreePostorder(runID string) ([]string, bool) {
+func (t Tree) SubtreePostorder(runID identity.RunID) ([]identity.RunID, bool) {
 	interval, exists := t.intervals[runID]
 	if !exists {
 		return nil, false
@@ -217,7 +217,7 @@ func (t Tree) SubtreePostorder(runID string) ([]string, bool) {
 
 // CheckCancellation admits a snapshot only while every open member belongs to
 // the same execution phase as its root. Executor bindings are acquired later.
-func (t Tree) CheckCancellation(targetID string, members map[string]Run) error {
+func (t Tree) CheckCancellation(targetID identity.RunID, members map[identity.RunID]Run) error {
 	if len(t.postorder) == 0 || len(t.postorder) != len(members) {
 		return fmt.Errorf("%w: incomplete cancellation tree", ErrInvalidTree)
 	}

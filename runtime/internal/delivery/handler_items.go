@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -26,17 +28,6 @@ func wirePageError(err error) error {
 	return err
 }
 
-// requestedPageLimit is the only Protocol-to-Application projection for page
-// size intent. Absence is a named default request; a present value must survive
-// the rich-value constructor, including when handlers are invoked directly in
-// tests instead of through Dispatch validation.
-func requestedPageLimit(value *int) (pagination.RequestedLimit, error) {
-	if value == nil {
-		return pagination.DefaultLimit(), nil
-	}
-	return pagination.NewLimit(*value)
-}
-
 // ListItems returns a session's persisted history as durable Items
 // History is the completed Item sequence; there is no
 // separate Message type. The result is a Page[Item] (`data` + `nextCursor`)
@@ -48,7 +39,7 @@ func requestedPageLimit(value *int) (pagination.RequestedLimit, error) {
 // text, createdAt). The page is cut by the query, so a long session's
 // history is not loaded to return a slice of it.
 func (s *Handler) ListItems(ctx context.Context, in protocol.ListItemsRequest) (*protocol.ListItemsResponse, error) {
-	limit, err := requestedPageLimit(in.Limit)
+	limit, err := pagination.ParseLimit(in.Limit)
 	if err != nil {
 		return nil, wirePageError(err)
 	}
@@ -56,8 +47,8 @@ func (s *Handler) ListItems(ctx context.Context, in protocol.ListItemsRequest) (
 	if err != nil {
 		return nil, err
 	}
-	if in.Scope.Type == protocol.ItemScopeRun {
-		run, found, runErr := s.queries.Run(ctx, in.Scope.RunID)
+	if runID, scoped := scope.RunID(); scoped {
+		run, found, runErr := s.queries.Run(ctx, runID)
 		switch {
 		case runErr != nil:
 			return nil, runErr
@@ -99,11 +90,15 @@ func (s *Handler) ListItems(ctx context.Context, in protocol.ListItemsRequest) (
 // rather than a gap: the panel renders empty, while a present empty state means an
 // explicit clear; only a session that does not exist is an error.
 func (s *Handler) GetPlan(ctx context.Context, in protocol.GetPlanRequest) (*protocol.Plan, error) {
-	state, err := s.queries.PlanState(ctx, in.SessionID)
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return nil, parseErr
+	}
+	state, err := s.queries.PlanState(ctx, sessionID)
 	if err != nil {
 		return nil, wireItemScopeError(err)
 	}
-	snapshot := presentStoredPlan(in.SessionID, state)
+	snapshot := presentStoredPlan(sessionID, state)
 	return &snapshot, nil
 }
 
@@ -117,12 +112,20 @@ func (s *Handler) GetPlan(ctx context.Context, in protocol.GetPlanRequest) (*pro
 func itemScopeFromWire(scope protocol.ItemListScope) (sessions.ItemScope, error) {
 	switch scope.Type {
 	case protocol.ItemScopeSession:
-		return sessions.Items(scope.SessionID), nil
-	case protocol.ItemScopeRun:
-		if scope.IncludeDescendants {
-			return sessions.RunTreeItems(scope.RunID), nil
+		sessionID, err := wireIdentity("scope.sessionId", scope.SessionID, identity.ParseSession)
+		if err != nil {
+			return sessions.ItemScope{}, err
 		}
-		return sessions.RunItems(scope.RunID), nil
+		return sessions.Items(sessionID), nil
+	case protocol.ItemScopeRun:
+		runID, err := wireIdentity("scope.runId", scope.RunID, identity.ParseRun)
+		if err != nil {
+			return sessions.ItemScope{}, err
+		}
+		if scope.IncludeDescendants {
+			return sessions.RunTreeItems(runID), nil
+		}
+		return sessions.RunItems(runID), nil
 	default:
 		return sessions.ItemScope{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("scope.type must be %q or %q", protocol.ItemScopeSession, protocol.ItemScopeRun))
 	}

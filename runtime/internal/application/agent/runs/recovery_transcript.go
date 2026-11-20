@@ -3,12 +3,13 @@ package runs
 import (
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 func validateRecoveryTranscript(tree recoveryRunTree, items []transcript.Item) error {
 	sessionID := tree.root.SessionID()
-	seen := make(map[string]int, len(items))
+	seen := make(map[identity.ItemID]int, len(items))
 	for index, item := range items {
 		if item.SessionID() != sessionID {
 			return fmt.Errorf(
@@ -47,7 +48,7 @@ func validateRecoveryToolInvocationItems(
 	items []transcript.Item,
 	invocations []OpenToolInvocation,
 ) error {
-	itemsByID := make(map[string]transcript.Item, len(items))
+	itemsByID := make(map[identity.ItemID]transcript.Item, len(items))
 	for _, item := range items {
 		itemsByID[item.ID()] = item
 	}

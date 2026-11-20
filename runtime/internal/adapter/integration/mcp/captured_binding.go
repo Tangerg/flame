@@ -20,39 +20,8 @@ func (p *Pool) ValidateCapturedBindingUnder(ctx context.Context, activation plug
 	if _, err := plugins.DecodeActivation(activation); err != nil {
 		return err
 	}
-	var captured *installedObservation
-	p.inner.mu.Lock()
-	if !p.inner.closed {
-		for _, candidate := range p.inner.sessions {
-			if candidate.managed == nil || candidate.close != nil {
-				continue
-			}
-			binding, err := candidate.managed.activation()
-			if err == nil && binding.Equal(activation) {
-				captured = candidate.managed
-				break
-			}
-		}
-	}
-	p.inner.mu.Unlock()
-	if captured != nil && captured.plan.Valid() {
-		binding, err := host.ValidatePlanUnder(ctx, captured.plan)
-		if err != nil {
-			return err
-		}
-		original, err := plugins.ProjectActivation(binding)
-		if err != nil {
-			return err
-		}
-		if !original.Equal(activation) {
-			return framehost.ErrStaleBinding
-		}
-		for _, instance := range host.Observations() {
-			if instance.ID == captured.instanceID && instance.State == framehost.Ready {
-				return nil
-			}
-		}
-		return framehost.ErrStaleBinding
+	if captured := p.capturedObservation(activation); captured != nil && captured.plan.Valid() {
+		return validateObservedPlan(ctx, host, captured, activation)
 	}
 	permission := p.installed.permission
 	permission.mu.Lock()
@@ -63,4 +32,45 @@ func (p *Pool) ValidateCapturedBindingUnder(ctx context.Context, activation plug
 		return err
 	}
 	return host.ValidateBindingUnder(ctx, binding)
+}
+
+// capturedObservation is the live installed session still serving activation.
+func (p *Pool) capturedObservation(activation plugin.Activation) *installedObservation {
+	p.inner.mu.Lock()
+	defer p.inner.mu.Unlock()
+	if p.inner.closed {
+		return nil
+	}
+	for _, candidate := range p.inner.sessions {
+		if candidate.managed == nil || candidate.close != nil {
+			continue
+		}
+		binding, err := candidate.managed.activation()
+		if err == nil && binding.Equal(activation) {
+			return candidate.managed
+		}
+	}
+	return nil
+}
+
+// validateObservedPlan proves the captured session still runs the same plan on
+// a ready instance.
+func validateObservedPlan(ctx context.Context, host framehost.Host, captured *installedObservation, activation plugin.Activation) error {
+	binding, err := host.ValidatePlanUnder(ctx, captured.plan)
+	if err != nil {
+		return err
+	}
+	original, err := plugins.ProjectActivation(binding)
+	if err != nil {
+		return err
+	}
+	if !original.Equal(activation) {
+		return framehost.ErrStaleBinding
+	}
+	for _, instance := range host.Observations() {
+		if instance.ID == captured.instanceID && instance.State == framehost.Ready {
+			return nil
+		}
+	}
+	return framehost.ErrStaleBinding
 }

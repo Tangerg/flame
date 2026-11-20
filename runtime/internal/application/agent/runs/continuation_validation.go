@@ -1,8 +1,11 @@
 package runs
 
 import (
+	"errors"
 	"fmt"
 	"slices"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -23,7 +26,7 @@ func (p Pending) ValidateProjection(values []rundomain.Run, items []transcript.I
 		return err
 	}
 
-	active := make(map[string]rundomain.Run, len(p.Continuations))
+	active := make(map[identity.RunID]rundomain.Run, len(p.Continuations))
 	for _, value := range treeRuns {
 		if !value.State().IsTerminal() {
 			active[value.ID()] = value
@@ -33,11 +36,11 @@ func (p Pending) ValidateProjection(values []rundomain.Run, items []transcript.I
 	if _, err := p.ProjectInterrupts(itemsByID); err != nil {
 		return fmt.Errorf("runs: validate parked Run tree %q: %w", p.RootRunID, err)
 	}
-	interruptItems := make(map[string]struct{}, len(p.Interrupts))
+	interruptItems := make(map[identity.ItemID]struct{}, len(p.Interrupts))
 	for _, open := range p.Interrupts {
 		interruptItems[open.ItemID] = struct{}{}
 	}
-	drainedItems := make(map[string]struct{})
+	drainedItems := make(map[identity.ItemID]struct{})
 	for _, continuation := range p.Continuations {
 		for _, drained := range continuation.DrainedTools {
 			drainedItems[drained.ItemID] = struct{}{}
@@ -52,7 +55,7 @@ func (p Pending) ValidateProjection(values []rundomain.Run, items []transcript.I
 	); err != nil {
 		return err
 	}
-	claimedItems := make(map[string]string, len(interruptItems))
+	claimedItems := make(map[identity.ItemID]string, len(interruptItems))
 	for itemID := range interruptItems {
 		claimedItems[itemID] = "interrupt"
 	}
@@ -74,81 +77,88 @@ func (p Pending) ValidateProjection(values []rundomain.Run, items []transcript.I
 // descendants may remain in the historical tree, but every non-terminal Run is
 // Waiting and represented by exactly one canonical continuation.
 func validatePendingRunTree(pending Pending, values []rundomain.Run) error {
-	if err := pending.Validate(); err != nil {
+	if err := checkPendingRunTree(pending, values); err != nil {
 		return fmt.Errorf("runs: validate parked Run tree %q: %w", pending.RootRunID, err)
 	}
-	all := make(map[string]rundomain.Run, len(values))
-	active := make(map[string]rundomain.Run, len(pending.Continuations))
+	return nil
+}
+
+func checkPendingRunTree(pending Pending, values []rundomain.Run) error {
+	if err := pending.Validate(); err != nil {
+		return err
+	}
+	all, active, err := indexParkedRuns(values)
+	if err != nil {
+		return err
+	}
+	root, found := all[pending.RootRunID]
+	if !found || !root.Lineage().IsRoot() {
+		return errors.New("root Run is missing")
+	}
+	if root.State() != rundomain.Waiting {
+		return fmt.Errorf("root Run is %s", root.State())
+	}
+	if len(active) != len(pending.Continuations) {
+		return fmt.Errorf("%d continuations do not cover %d active Runs", len(pending.Continuations), len(active))
+	}
+	if err := admitParkedTree(pending, root); err != nil {
+		return err
+	}
+	return validateContinuationOrder(pending, active, root)
+}
+
+// indexParkedRuns indexes a stored tree, separating the Runs still active.
+func indexParkedRuns(values []rundomain.Run) (map[identity.RunID]rundomain.Run, map[identity.RunID]rundomain.Run, error) {
+	all := make(map[identity.RunID]rundomain.Run, len(values))
+	active := make(map[identity.RunID]rundomain.Run)
 	for index, value := range values {
-		if value.ID() == "" {
-			return fmt.Errorf(
-				"runs: validate parked Run tree %q: Run[%d] was never constructed",
-				pending.RootRunID,
-				index,
-			)
+		if value.ID().IsZero() {
+			return nil, nil, fmt.Errorf("Run[%d] was never constructed", index)
 		}
 		if _, duplicate := all[value.ID()]; duplicate {
-			return fmt.Errorf("runs: validate parked Run tree %q: duplicate Run %q", pending.RootRunID, value.ID())
+			return nil, nil, fmt.Errorf("duplicate Run %q", value.ID())
 		}
 		all[value.ID()] = value
 		if !value.State().IsTerminal() {
 			active[value.ID()] = value
 		}
 	}
-	root, found := all[pending.RootRunID]
-	if !found || !root.Lineage().IsRoot() {
-		return fmt.Errorf("runs: validate parked Run tree %q: root Run is missing", pending.RootRunID)
-	}
-	if root.State() != rundomain.Waiting {
-		return fmt.Errorf("runs: validate parked Run tree %q: root Run is %s", pending.RootRunID, root.State())
-	}
-	if len(active) != len(pending.Continuations) {
-		return fmt.Errorf(
-			"runs: validate parked Run tree %q: %d continuations do not cover %d active Runs",
-			pending.RootRunID,
-			len(pending.Continuations),
-			len(active),
-		)
-	}
+	return all, active, nil
+}
+
+// admitParkedTree proves the root's capabilities cover what the tree parked:
+// every interrupt kind, and child Runs when more than one Run waits.
+func admitParkedTree(pending Pending, root rundomain.Run) error {
+	capabilities := root.Capabilities()
 	for _, open := range pending.Interrupts {
-		if !slices.Contains(root.Capabilities().InterruptTypes, open.Type()) {
-			return fmt.Errorf(
-				"runs: validate parked Run tree %q: interrupt item %q has kind %s outside the root Run's capabilities",
-				pending.RootRunID, open.ItemID, open.Type(),
-			)
+		if !slices.Contains(capabilities.InterruptTypes, open.Type()) {
+			return fmt.Errorf("interrupt item %q has kind %s outside the root Run's capabilities", open.ItemID, open.Type())
 		}
 	}
-	if len(pending.Continuations) > 1 && !root.Capabilities().ChildRuns {
-		return fmt.Errorf("runs: validate parked Run tree %q: child Runs park under a root without child-Run capability", pending.RootRunID)
+	if len(pending.Continuations) > 1 && !capabilities.ChildRuns {
+		return errors.New("child Runs park under a root without child-Run capability")
 	}
+	return nil
+}
+
+// validateContinuationOrder requires one continuation per active waiting Run
+// of the root's Session, listed in the tree's canonical postorder.
+func validateContinuationOrder(pending Pending, active map[identity.RunID]rundomain.Run, root rundomain.Run) error {
 	members := make([]rundomain.TreeMember, 0, len(pending.Continuations))
-	for _, continuation := range pending.Continuations {
-		if value, found := active[continuation.RunID]; found {
-			members = append(members, rundomain.TreeMember{RunID: value.ID(), Lineage: value.Lineage()})
-		}
-	}
-	if len(members) == len(pending.Continuations) {
-		tree, err := rundomain.NewTree(pending.RootRunID, members)
-		if err != nil {
-			return fmt.Errorf("runs: validate parked Run tree %q: %w", pending.RootRunID, err)
-		}
-		for index, runID := range tree.Postorder() {
-			if pending.Continuations[index].RunID != runID {
-				return fmt.Errorf(
-					"runs: validate parked Run tree %q: continuation[%d] is Run %q, canonical postorder requires %q",
-					pending.RootRunID, index, pending.Continuations[index].RunID, runID,
-				)
-			}
-		}
-	}
 	for _, continuation := range pending.Continuations {
 		value, found := active[continuation.RunID]
 		if !found || value.SessionID() != root.SessionID() || value.State() != rundomain.Waiting {
-			return fmt.Errorf(
-				"runs: validate parked Run tree %q: continuation Run %q is not active and waiting",
-				pending.RootRunID,
-				continuation.RunID,
-			)
+			return fmt.Errorf("continuation Run %q is not active and waiting", continuation.RunID)
+		}
+		members = append(members, rundomain.TreeMember{RunID: value.ID(), Lineage: value.Lineage()})
+	}
+	tree, err := rundomain.NewTree(pending.RootRunID, members)
+	if err != nil {
+		return err
+	}
+	for index, runID := range tree.Postorder() {
+		if pending.Continuations[index].RunID != runID {
+			return fmt.Errorf("continuation[%d] is Run %q, canonical postorder requires %q", index, pending.Continuations[index].RunID, runID)
 		}
 	}
 	return nil

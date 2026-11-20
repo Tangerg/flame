@@ -3,6 +3,8 @@ package execution
 import (
 	"context"
 	"log/slog"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // RunMaintenance owns best-effort housekeeping after a successful Run commits
@@ -14,8 +16,8 @@ type RunMaintenance interface {
 // RunMaintenanceInput is the finished root Interaction's maintenance context.
 type RunMaintenanceInput struct {
 	RootMemberID string
-	RootRunID    string
-	SessionID    string
+	RootRunID    identity.RunID
+	SessionID    identity.SessionID
 	// WorkspaceCWD is the Session's project directory. Mined skills and
 	// consolidated memory are durable project knowledge, so they are addressed
 	// by the workspace even when the Run that produced them executed in an
@@ -35,13 +37,13 @@ type RunMaintenanceResult struct {
 // it is what a hook trust grant was given to, and it outlives the isolated copy
 // an individual Run may have executed in.
 type interactionLifecycleHooks interface {
-	BeforeCompaction(ctx context.Context, sessionID, cwd string) (bool, error)
-	NotifyWaiting(ctx context.Context, sessionID, cwd string) error
-	NotifyStopped(ctx context.Context, sessionID, cwd, reason string) error
+	BeforeCompaction(ctx context.Context, sessionID identity.SessionID, cwd string) (bool, error)
+	NotifyWaiting(ctx context.Context, sessionID identity.SessionID, cwd string) error
+	NotifyStopped(ctx context.Context, sessionID identity.SessionID, cwd, reason string) error
 }
 
 func (i *interactionSession) maintainCompletedRoot() {
-	if i.maintenance == nil || i.start.SessionID == "" {
+	if i.maintenance == nil || i.start.SessionID.IsZero() {
 		return
 	}
 	result := i.maintenance.Maintain(i.lifetime.execution, RunMaintenanceInput{

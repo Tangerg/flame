@@ -105,7 +105,7 @@ func buildSchedules(operations scheduleOperations, manual func(context.Context, 
 	t := &scheduleManagementTools{operations: operations, manual: manual}
 	list, err := toolcontract.NewFunc[listScheduleArgs, scheduleListResponse](
 		toolcontract.FuncConfig{
-			Name:        "list_schedules",
+			Name:        listSchedulesTool,
 			Description: "List recurring Agent Run schedules and their ids, revisions, instructions, cron expressions, model choices, and next-run state. Each cron is read in the schedule's time zone. Read the current revision before editing.",
 		},
 		t.list,
@@ -154,7 +154,7 @@ func buildSchedules(operations scheduleOperations, manual func(context.Context, 
 func (s *scheduleManagementTools) list(ctx context.Context, in listScheduleArgs) (scheduleListResponse, error) {
 	page, err := s.operations.ListPage(ctx, in.Cursor, pagination.DefaultLimit())
 	if err != nil {
-		return scheduleListResponse{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("list_schedules: %w", err))
+		return scheduleListResponse{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: %w", listSchedulesTool, err))
 	}
 	views := make([]scheduleView, len(page.Rows))
 	for i, sc := range page.Rows {
@@ -219,6 +219,7 @@ func (s *scheduleManagementTools) delete(ctx context.Context, in deleteScheduleA
 }
 
 const (
+	listSchedulesTool  = "list_schedules"
 	createScheduleTool = "create_schedule"
 	updateScheduleTool = "update_schedule"
 	deleteScheduleTool = "delete_schedule"

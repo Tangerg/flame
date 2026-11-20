@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -148,11 +150,11 @@ func (c *commandTools) run(ctx context.Context, a builtincontract.ShellArguments
 	if !attached {
 		return "", errors.New("shell: no attached Run workspace")
 	}
-	id, err := c.shells.Launch(ctx, executionctx.SessionID(ctx), cwd, a.Command, timeout, executionctx.Isolated(ctx))
+	id, err := c.shells.Launch(ctx, executionctx.SessionID(ctx).String(), cwd, a.Command, timeout, executionctx.Isolated(ctx))
 	if err != nil {
 		return "", err
 	}
-	sh, ok := c.shells.Get(executionctx.SessionID(ctx), id)
+	sh, ok := c.shells.Get(executionctx.SessionID(ctx).String(), id)
 	if !ok { // just launched — unreachable
 		return "", fmt.Errorf("shell: background shell %s vanished", id)
 	}
@@ -179,8 +181,8 @@ func (c *commandTools) run(ctx context.Context, a builtincontract.ShellArguments
 	}
 }
 
-func (c *commandTools) completed(sessionID, id string, cause error) (string, error) {
-	output, readErr := c.shells.Read(sessionID, id)
+func (c *commandTools) completed(sessionID identity.SessionID, id string, cause error) (string, error) {
+	output, readErr := c.shells.Read(sessionID.String(), id)
 	if output.Exit == nil {
 		return "", errors.Join(cause, readErr, errors.New("shell: completion has no finished output"))
 	}
@@ -198,8 +200,8 @@ func (c *commandTools) cancelForeground(ctx context.Context, id string, sh *exec
 	default:
 		// Join cleanup before consuming the final output; a cleanup failure must
 		// leave its resource in the owner ledger for teardown.
-		if _, err := c.shells.Kill(executionctx.SessionID(ctx), id); err != nil && !errors.Is(err, exec.ErrShellNotFound) {
-			output, readErr := c.shells.Read(executionctx.SessionID(ctx), id)
+		if _, err := c.shells.Kill(executionctx.SessionID(ctx).String(), id); err != nil && !errors.Is(err, exec.ErrShellNotFound) {
+			output, readErr := c.shells.Read(executionctx.SessionID(ctx).String(), id)
 			result, resultErr := shellOutputJSON(output, id)
 			return shellResult(result, errors.Join(ctx.Err(), context.Cause(ctx),
 				fmt.Errorf("shell: stop canceled foreground command %q: %w", id, err), readErr, resultErr))
@@ -213,7 +215,7 @@ func (c *commandTools) output(ctx context.Context, a shellOutputArgs) (string, e
 	if err := a.validate(); err != nil {
 		return "", pluginsdk.DefiniteToolFailure(err)
 	}
-	sh, ok := c.shells.Get(executionctx.SessionID(ctx), a.ShellID)
+	sh, ok := c.shells.Get(executionctx.SessionID(ctx).String(), a.ShellID)
 	if !ok {
 		return fmt.Sprintf("No background shell %s.", a.ShellID), nil
 	}
@@ -225,7 +227,7 @@ func (c *commandTools) output(ctx context.Context, a shellOutputArgs) (string, e
 		}
 		waitErr = waitForShell(ctx, sh, timeout)
 	}
-	output, readErr := c.shells.Read(executionctx.SessionID(ctx), a.ShellID)
+	output, readErr := c.shells.Read(executionctx.SessionID(ctx).String(), a.ShellID)
 	if errors.Is(readErr, exec.ErrShellNotFound) {
 		return shellResult(fmt.Sprintf("No background shell %s.", a.ShellID), waitErr)
 	}
@@ -273,7 +275,7 @@ func (c *commandTools) kill(ctx context.Context, a shellIDArgs) (string, error) 
 	if err := a.validate(); err != nil {
 		return "", pluginsdk.DefiniteToolFailure(err)
 	}
-	running, err := c.shells.Kill(executionctx.SessionID(ctx), a.ShellID)
+	running, err := c.shells.Kill(executionctx.SessionID(ctx).String(), a.ShellID)
 	switch {
 	case errors.Is(err, exec.ErrShellNotFound):
 		return fmt.Sprintf("No background shell %s.", a.ShellID), nil

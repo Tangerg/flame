@@ -157,7 +157,7 @@ func (r *Client) readStreamAcknowledgement(call *remoteCall, body io.Reader, id 
 		if err != nil {
 			return protocol.OperationResult{}, call.readError(err)
 		}
-		if frame.ID != "" || frame.Event != "message" {
+		if frame.ID != "" || frame.Event != defaultSSEEvent {
 			return protocol.OperationResult{}, invalidRemote("stream acknowledgement has invalid sse metadata")
 		}
 		result, err := decodeRemoteResponse(frame.Data, id, meta)

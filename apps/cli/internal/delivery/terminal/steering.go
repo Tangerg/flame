@@ -34,37 +34,46 @@ type steerDesk struct {
 	readSession func(context.Context, string) (conversation.SessionSnapshot, error)
 }
 
-func (s *steerDesk) steerRun(instruction string) error {
-	instruction = strings.TrimSpace(instruction)
+// steerRequest addresses the observed running segment with the instruction
+// and the draft's attachments.
+func (s *steerDesk) steerRequest(instruction string) (authoring.SteerRun, authoring.Message, error) {
 	if instruction == "" {
-		return errors.New("/steer needs a non-empty instruction")
+		return authoring.SteerRun{}, authoring.Message{}, errors.New("/steer needs a non-empty instruction")
 	}
-	runID, segmentID := s.runs.conversation().RunID(), s.runs.conversation().SegmentID()
-	if runID == "" || segmentID == "" || s.runs.conversation().Phase() != conversation.Running {
-		return errors.New("no observed run segment is available to steer")
+	observed := s.runs.conversation()
+	runID, segmentID := observed.RunID(), observed.SegmentID()
+	if runID == "" || segmentID == "" || observed.Phase() != conversation.Running {
+		return authoring.SteerRun{}, authoring.Message{}, errors.New("no observed run segment is available to steer")
 	}
 	draft, _, err := s.composer.draft()
 	if err != nil {
-		return err
+		return authoring.SteerRun{}, authoring.Message{}, err
 	}
 	message := authoring.Message{Text: instruction, Attachments: slices.Clone(draft.Attachments)}
-	if validateMessageCapabilitiesErr := s.composer.validate(message); validateMessageCapabilitiesErr != nil {
-		return validateMessageCapabilitiesErr
+	if err := s.composer.validate(message); err != nil {
+		return authoring.SteerRun{}, authoring.Message{}, err
 	}
-	commandID := mutation.NewCommandID()
-	request := authoring.SteerRun{CommandID: commandID, RunID: runID, SegmentID: segmentID, Message: message}
-	if validateErr := request.Validate(); validateErr != nil {
-		return validateErr
+	request := authoring.SteerRun{CommandID: mutation.NewCommandID(), RunID: runID, SegmentID: segmentID, Message: message}
+	if err := request.Validate(); err != nil {
+		return authoring.SteerRun{}, authoring.Message{}, err
 	}
+	return request, draft, nil
+}
 
+func (s *steerDesk) steerRun(instruction string) error {
+	instruction = strings.TrimSpace(instruction)
+	request, draft, err := s.steerRequest(instruction)
+	if err != nil {
+		return err
+	}
 	// Reconstruct the parsed command as a durable ownership precondition. If the
 	// process stops before staging, restart restores the command for retry. The
 	// following aggregate replacement then transfers it and its attachments into
 	// the steer journal atomically.
 	sourceDraft := authoring.Message{Text: workbench.SteerSourcePrefix + instruction, Attachments: slices.Clone(draft.Attachments)}
-	if saveDraftErr := s.composer.saveDraft(sourceDraft); saveDraftErr != nil {
-		s.report(workbenchDraft, saveDraftErr)
-		return fmt.Errorf("steer blocked: save command draft: %w", saveDraftErr)
+	if err := s.composer.saveDraft(sourceDraft); err != nil {
+		s.report(workbenchDraft, err)
+		return fmt.Errorf("steer blocked: save command draft: %w", err)
 	}
 	s.report(workbenchDraft, nil)
 	s.composer.restoreComposer(sourceDraft)
@@ -72,7 +81,7 @@ func (s *steerDesk) steerRun(instruction string) error {
 	if s.tasks.operations.Active(inputPreparationOperation) || s.tasks.operations.Active(steerRunOperation) {
 		return errors.New("another input or steer operation is already running")
 	}
-	started := s.tasks.sessionFence(inputPreparationOperation, false,
+	started := s.tasks.sessionFence(inputPreparationOperation,
 		func(ctx context.Context) (*workbench.PreparedInput, error) {
 			blocks, err := s.runtime.PrepareInput(ctx, request.Message)
 			if err != nil {
@@ -116,7 +125,7 @@ func (s *steerDesk) deliverPreparedSteer(request authoring.SteerRun, sourceDraft
 	s.composer.restoreComposer(authoring.Message{})
 	s.composer.drafts.adopt(s.session.current.ID, authoring.Message{})
 	s.receipts.track(pending)
-	started := s.tasks.sessionSettlement(steerRunOperation, false,
+	started := s.tasks.sessionSettlement(steerRunOperation,
 		func(ctx context.Context) (runworkflow.SteerResult, error) {
 			return runworkflow.DeliverSteer(
 				ctx, s.runtime, s.workbench, pending, s.replayPolicy, runtimeRecoveryBackoff,

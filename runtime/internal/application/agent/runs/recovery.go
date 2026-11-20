@@ -35,10 +35,10 @@ type RecoveryStore interface {
 	ListOpenModelInvocations(ctx context.Context) ([]OpenModelInvocation, error)
 	ListIndependentEndpoints(context.Context) ([]modelref.EndpointObservation, error)
 	ListOpenToolInvocations(ctx context.Context) ([]OpenToolInvocation, error)
-	SessionByID(ctx context.Context, sessionID string) (session.Session, error)
-	ListTranscript(ctx context.Context, sessionID string) ([]transcript.Item, error)
+	SessionByID(ctx context.Context, sessionID identity.SessionID) (session.Session, error)
+	ListTranscript(ctx context.Context, sessionID identity.SessionID) ([]transcript.Item, error)
 	LoadExecutorCheckpoint(ctx context.Context, rootMemberID string) (ExecutorCheckpoint, error)
-	ReadMessages(ctx context.Context, sessionID string) ([]corechat.Message, error)
+	ReadMessages(ctx context.Context, sessionID identity.SessionID) ([]corechat.Message, error)
 	CommitRecovery(ctx context.Context, commit RecoveryCommit) error
 }
 
@@ -55,7 +55,7 @@ type WaitingExecutionResumability interface {
 // live Run and Session mutations. Recovery skips a Session when another
 // Runtime process still owns it; such a Run is live, not abandoned.
 type recoveryAdmissions interface {
-	AcquireRecoverySession(ctx context.Context, sessionID string) (release func(), ok bool, err error)
+	AcquireRecoverySession(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error)
 }
 
 // RecoveryCommit is the complete atomic write-set for one ownership-scoped
@@ -78,35 +78,35 @@ type RecoveryCommitInput struct {
 	ToolInvocations         []ToolInvocationRecovery
 	// DeleteInterrupts names every lost root's interrupt record, including one
 	// hidden in the resuming state after an answer claim; deletion is idempotent.
-	DeleteInterrupts []string
+	DeleteInterrupts []identity.RunID
 	// PreservedSessionIDs names waiting trees whose compatible checkpoint keeps
 	// them live. Together with lost-tree Sessions it owns the exact callback
 	// cleanup scope.
-	PreservedSessionIDs []string
+	PreservedSessionIDs []identity.SessionID
 	// DeleteCheckpointSessionIDs names recovered lost trees. A preserved waiting
 	// tree is intentionally absent so its opaque checkpoint remains available.
-	DeleteCheckpointSessionIDs []string
+	DeleteCheckpointSessionIDs []identity.SessionID
 }
 
 // InvocationAttempt locates one journaled attempt inside the Run Segment that
 // started it. The journal row's Session is its Run's Session by schema.
 type InvocationAttempt struct {
-	SessionID string
-	RunID     string
-	SegmentID string
+	SessionID identity.SessionID
+	RunID     identity.RunID
+	SegmentID identity.SegmentID
 	CallID    string
 	StartedAt time.Time
 }
 
 // Validate checks the attempt identity before it can influence recovery.
 func (a InvocationAttempt) Validate() error {
-	if err := identity.ValidateSession(a.SessionID); err != nil {
+	if err := a.SessionID.Validate(); err != nil {
 		return err
 	}
-	if err := identity.ValidateRun(a.RunID); err != nil {
+	if err := a.RunID.Validate(); err != nil {
 		return err
 	}
-	if err := identity.ValidateSegment(a.SegmentID); err != nil {
+	if err := a.SegmentID.Validate(); err != nil {
 		return err
 	}
 	if err := ValidateInvocation(a.CallID); err != nil {
@@ -120,9 +120,9 @@ func (a InvocationAttempt) Validate() error {
 
 func (a InvocationAttempt) compare(other InvocationAttempt) int {
 	return cmp.Or(
-		strings.Compare(a.SessionID, other.SessionID),
-		strings.Compare(a.RunID, other.RunID),
-		strings.Compare(a.SegmentID, other.SegmentID),
+		a.SessionID.Compare(other.SessionID),
+		a.RunID.Compare(other.RunID),
+		strings.Compare(a.SegmentID.String(), other.SegmentID.String()),
 		strings.Compare(a.CallID, other.CallID),
 	)
 }
@@ -140,7 +140,7 @@ type OpenModelInvocation struct {
 // Transcript lifecycle without copying arguments or results into the journal.
 type OpenToolInvocation struct {
 	InvocationAttempt
-	ItemID string
+	ItemID identity.ItemID
 }
 
 // ModelInvocationRecovery closes a boot-abandoned outer operation. A known
@@ -171,8 +171,8 @@ func (t ToolInvocationRecovery) Transition() ToolInvocationCommit {
 // empty when the context was already closed, or one Tool message containing an
 // error result for every unresolved provider ToolCall.
 type RecoveryConversationTransition struct {
-	RootRunID     string
-	SessionID     string
+	RootRunID     identity.RunID
+	SessionID     identity.SessionID
 	ExpectedCount int
 	Messages      []corechat.Message
 }
@@ -200,12 +200,12 @@ type recoveryPlanner struct {
 	store         RecoveryStore
 	resumability  WaitingExecutionResumability
 	pending       []Pending
-	pendingByRoot map[string]Pending
-	trees         map[string]recoveryRunTree
-	transcripts   map[string][]transcript.Item
-	sessions      map[string]session.Session
-	conversations map[string]conversation.Conversation
-	preserved     map[string]struct{}
+	pendingByRoot map[identity.RunID]Pending
+	trees         map[identity.RunID]recoveryRunTree
+	transcripts   map[identity.SessionID][]transcript.Item
+	sessions      map[identity.SessionID]session.Session
+	conversations map[identity.SessionID]conversation.Conversation
+	preserved     map[identity.RunID]struct{}
 	commit        RecoveryCommitInput
 	finishedAt    time.Time
 }
@@ -275,14 +275,23 @@ func (r *Recovery) Reconcile(ctx context.Context) (int, error) {
 // is exact-once across every planning or commit failure.
 type recoverySessionClaims struct {
 	active     []rundomain.Run
-	sessionIDs map[string]struct{}
+	sessionIDs map[identity.SessionID]struct{}
 	releases   []func()
 	released   bool
 }
 
-func (r *recoverySessionClaims) includes(sessionID string) bool {
+func (r *recoverySessionClaims) includes(sessionID identity.SessionID) bool {
 	_, ok := r.sessionIDs[sessionID]
 	return ok
+}
+
+// activeRoots names the tree root of every claimed active Run with its Session.
+func (r *recoverySessionClaims) activeRoots() map[identity.RunID]identity.SessionID {
+	roots := make(map[identity.RunID]identity.SessionID, len(r.active))
+	for _, value := range r.active {
+		roots[value.Lineage().TreeRootID(value.ID())] = value.SessionID()
+	}
+	return roots
 }
 
 func (r *recoverySessionClaims) release() {
@@ -302,11 +311,11 @@ func (r *recoverySessionClaims) release() {
 // the dead owner's Run/HITL projection even after the database reached RunLost.
 func (r *Recovery) publishRecoveredReadModels(commit RecoveryCommit) {
 	type sessionChanges struct {
-		runIDs  []string
-		rootIDs []string
+		runIDs  []identity.RunID
+		rootIDs []identity.RunID
 		goal    bool
 	}
-	changes := make(map[string]*sessionChanges)
+	changes := make(map[identity.SessionID]*sessionChanges)
 	for _, recovery := range commit.LostRuns() {
 		lost := recovery.State()
 		scope := changes[lost.SessionID()]
@@ -319,7 +328,7 @@ func (r *Recovery) publishRecoveredReadModels(commit RecoveryCommit) {
 	if len(changes) == 0 {
 		return
 	}
-	sessionOfRun := make(map[string]string)
+	sessionOfRun := make(map[identity.RunID]identity.SessionID)
 	for _, recovery := range commit.LostRuns() {
 		sessionOfRun[recovery.State().ID()] = recovery.State().SessionID()
 	}
@@ -333,16 +342,16 @@ func (r *Recovery) publishRecoveredReadModels(commit RecoveryCommit) {
 			scope.goal = true
 		}
 	}
-	sessionIDs := make([]string, 0, len(changes))
+	sessionIDs := make([]identity.SessionID, 0, len(changes))
 	for sessionID := range changes {
 		sessionIDs = append(sessionIDs, sessionID)
 	}
-	slices.Sort(sessionIDs)
+	slices.SortFunc(sessionIDs, identity.SessionID.Compare)
 	for _, sessionID := range sessionIDs {
 		scope := changes[sessionID]
-		slices.Sort(scope.runIDs)
+		slices.SortFunc(scope.runIDs, identity.RunID.Compare)
 		scope.runIDs = slices.Compact(scope.runIDs)
-		slices.Sort(scope.rootIDs)
+		slices.SortFunc(scope.rootIDs, identity.RunID.Compare)
 		scope.rootIDs = slices.Compact(scope.rootIDs)
 		notices := []invalidation.Notice{
 			invalidation.InSession(invalidation.Runs, sessionID, scope.runIDs...),
@@ -369,7 +378,7 @@ func (r *Recovery) claimAbandonedSessions(
 	}
 	ids := recoveryRunCatalogSessionIDs(candidates)
 	claims := &recoverySessionClaims{
-		sessionIDs: make(map[string]struct{}, len(ids)),
+		sessionIDs: make(map[identity.SessionID]struct{}, len(ids)),
 		releases:   make([]func(), 0, len(ids)),
 	}
 	for _, sessionID := range ids {
@@ -405,123 +414,130 @@ func (r *Recovery) claimAbandonedSessions(
 	return claims, nil
 }
 
-func newRecoveryPlanner(
-	ctx context.Context,
-	recovery *Recovery,
-	claims *recoverySessionClaims,
-) (*recoveryPlanner, error) {
-	if recovery == nil {
-		return nil, errors.New("runs: recovery use case is required")
-	}
-	if claims == nil {
-		return nil, errors.New("runs: recovery Session claims are required")
-	}
-	pending, err := recovery.store.ListPendingInterrupts(ctx)
+// recoverySnapshot is the durable state recovery closes, narrowed to the
+// Sessions this boot claimed.
+type recoverySnapshot struct {
+	pending          []Pending
+	modelInvocations []OpenModelInvocation
+	toolInvocations  []OpenToolInvocation
+	independent      []modelref.EndpointObservation
+}
+
+func loadRecoverySnapshot(ctx context.Context, store RecoveryStore, claims *recoverySessionClaims) (recoverySnapshot, error) {
+	pending, err := store.ListPendingInterrupts(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("runs: load pending interrupts for recovery: %w", err)
+		return recoverySnapshot{}, fmt.Errorf("runs: load pending interrupts for recovery: %w", err)
 	}
-	modelInvocations, err := recovery.store.ListOpenModelInvocations(ctx)
+	modelInvocations, err := store.ListOpenModelInvocations(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("runs: load open model invocations for recovery: %w", err)
+		return recoverySnapshot{}, fmt.Errorf("runs: load open model invocations for recovery: %w", err)
 	}
-	independent, err := recovery.store.ListIndependentEndpoints(ctx)
+	independent, err := store.ListIndependentEndpoints(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("runs: load independent model sources: %w", err)
+		return recoverySnapshot{}, fmt.Errorf("runs: load independent model sources: %w", err)
 	}
-	toolInvocations, err := recovery.store.ListOpenToolInvocations(ctx)
+	toolInvocations, err := store.ListOpenToolInvocations(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("runs: load open Tool invocations for recovery: %w", err)
+		return recoverySnapshot{}, fmt.Errorf("runs: load open Tool invocations for recovery: %w", err)
 	}
-	activeRoots := make(map[string]string, len(claims.active))
-	for _, value := range claims.active {
-		activeRoots[value.Lineage().TreeRootID(value.ID())] = value.SessionID()
-	}
-	pending = slices.DeleteFunc(slices.Clone(pending), func(open Pending) bool {
-		_, ok := activeRoots[open.RootRunID]
-		return !ok
-	})
-	modelInvocations = slices.DeleteFunc(slices.Clone(modelInvocations), func(open OpenModelInvocation) bool {
-		return !claims.includes(open.SessionID)
-	})
-	toolInvocations = slices.DeleteFunc(slices.Clone(toolInvocations), func(open OpenToolInvocation) bool {
-		return !claims.includes(open.SessionID)
-	})
-	pendingByRun, err := indexRecoveryPending(pending, activeRoots)
+	activeRoots := claims.activeRoots()
+	return recoverySnapshot{
+		pending: slices.DeleteFunc(slices.Clone(pending), func(open Pending) bool {
+			_, ok := activeRoots[open.RootRunID]
+			return !ok
+		}),
+		modelInvocations: slices.DeleteFunc(slices.Clone(modelInvocations), func(open OpenModelInvocation) bool {
+			return !claims.includes(open.SessionID)
+		}),
+		toolInvocations: slices.DeleteFunc(slices.Clone(toolInvocations), func(open OpenToolInvocation) bool {
+			return !claims.includes(open.SessionID)
+		}),
+		independent: slices.DeleteFunc(slices.Clone(independent), func(source modelref.EndpointObservation) bool {
+			return !claims.includes(source.Snapshot().Invocation.SessionID)
+		}),
+	}, nil
+}
+
+func newRecoveryPlanner(ctx context.Context, recovery *Recovery, claims *recoverySessionClaims) (*recoveryPlanner, error) {
+	snapshot, err := loadRecoverySnapshot(ctx, recovery.store, claims)
 	if err != nil {
 		return nil, err
 	}
-
+	pendingByRun, err := indexRecoveryPending(snapshot.pending, claims.activeRoots())
+	if err != nil {
+		return nil, err
+	}
 	trees, err := groupRecoveryRunTrees(claims.active)
 	if err != nil {
 		return nil, err
 	}
-	if err := validateOpenInvocationOwners(trees, modelInvocations, toolInvocations); err != nil {
+	if err := validateOpenInvocationOwners(trees, snapshot.modelInvocations, snapshot.toolInvocations); err != nil {
 		return nil, err
 	}
 	planner := &recoveryPlanner{
 		ctx:           ctx,
 		store:         recovery.store,
 		resumability:  recovery.resumability,
-		pending:       slices.Clone(pending),
+		independent:   snapshot.independent,
+		pending:       snapshot.pending,
 		pendingByRoot: pendingByRun,
 		trees:         trees,
-		transcripts:   make(map[string][]transcript.Item),
-		sessions:      make(map[string]session.Session),
-		conversations: make(map[string]conversation.Conversation),
-		preserved:     make(map[string]struct{}, len(trees)),
+		transcripts:   make(map[identity.SessionID][]transcript.Item),
+		sessions:      make(map[identity.SessionID]session.Session),
+		conversations: make(map[identity.SessionID]conversation.Conversation),
+		preserved:     make(map[identity.RunID]struct{}, len(trees)),
 		finishedAt:    recovery.now().UTC(),
 	}
-	// Recovery is a new durable observation in the same timelines as every
-	// fact it closes. Wall time can move backward across a reboot, so derive the
-	// observation timestamp from the complete boot snapshot instead of allowing
-	// a regressed clock to make otherwise-recoverable state permanently invalid.
-	for _, active := range claims.active {
-		planner.observeTime(active.UpdatedAt())
-	}
-	for _, open := range pending {
-		planner.observeTime(open.CreatedAt)
-	}
-	for _, invocation := range modelInvocations {
-		planner.observeTime(invocation.StartedAt)
-		observedAt, err := invocation.endpointObservedAt()
-		if err != nil {
-			return nil, fmt.Errorf("runs: read endpoint observation for abandoned call %q: %w", invocation.CallID, err)
-		}
-		planner.observeTime(observedAt)
-	}
-	for _, invocation := range toolInvocations {
-		planner.observeTime(invocation.StartedAt)
-	}
-	for _, source := range independent {
-		if claims.includes(source.Snapshot().Invocation.SessionID) {
-			planner.observeTime(source.Snapshot().FinishedAt)
-		}
+	if err := planner.observeSnapshot(claims.active, snapshot); err != nil {
+		return nil, err
 	}
 	// Every active tree's Transcript is required by planTree anyway. Preload it
 	// before constructing any terminal facts so a later Item in one tree cannot
 	// advance the shared recovery timestamp after another tree was planned.
-	for _, source := range independent {
-		if !claims.includes(source.Snapshot().Invocation.SessionID) {
-			continue
-		}
-		planner.independent = append(planner.independent, source)
-	}
 	for _, tree := range trees {
 		items, err := planner.transcript(tree)
 		if err != nil {
 			return nil, err
 		}
-		if err := validateRecoveryToolInvocationItems(tree, items, toolInvocations); err != nil {
+		if err := validateRecoveryToolInvocationItems(tree, items, snapshot.toolInvocations); err != nil {
 			return nil, err
 		}
 	}
-	for _, invocation := range modelInvocations {
+	for _, invocation := range snapshot.modelInvocations {
 		planner.commit.ModelInvocations = append(planner.commit.ModelInvocations, ModelInvocationRecovery{OpenModelInvocation: invocation, FinishedAt: planner.finishedAt})
 	}
-	for _, invocation := range toolInvocations {
+	for _, invocation := range snapshot.toolInvocations {
 		planner.commit.ToolInvocations = append(planner.commit.ToolInvocations, ToolInvocationRecovery{OpenToolInvocation: invocation, FinishedAt: planner.finishedAt})
 	}
 	return planner, nil
+}
+
+// observeSnapshot advances the recovery timestamp past every fact it closes.
+// Wall time can move backward across a reboot, so the observation derives from
+// the complete boot snapshot instead of letting a regressed clock make
+// otherwise-recoverable state permanently invalid.
+func (r *recoveryPlanner) observeSnapshot(active []rundomain.Run, snapshot recoverySnapshot) error {
+	for _, value := range active {
+		r.observeTime(value.UpdatedAt())
+	}
+	for _, open := range snapshot.pending {
+		r.observeTime(open.CreatedAt)
+	}
+	for _, invocation := range snapshot.modelInvocations {
+		r.observeTime(invocation.StartedAt)
+		observedAt, err := invocation.endpointObservedAt()
+		if err != nil {
+			return fmt.Errorf("runs: read endpoint observation for abandoned call %q: %w", invocation.CallID, err)
+		}
+		r.observeTime(observedAt)
+	}
+	for _, invocation := range snapshot.toolInvocations {
+		r.observeTime(invocation.StartedAt)
+	}
+	for _, source := range snapshot.independent {
+		r.observeTime(source.Snapshot().FinishedAt)
+	}
+	return nil
 }
 
 func (r *recoveryPlanner) observeTime(value time.Time) {
@@ -532,11 +548,11 @@ func (r *recoveryPlanner) observeTime(value time.Time) {
 }
 
 func (r *recoveryPlanner) plan() (RecoveryCommit, int, error) {
-	rootRunIDs := make([]string, 0, len(r.trees))
+	rootRunIDs := make([]identity.RunID, 0, len(r.trees))
 	for rootRunID := range r.trees {
 		rootRunIDs = append(rootRunIDs, rootRunID)
 	}
-	slices.Sort(rootRunIDs)
+	slices.SortFunc(rootRunIDs, identity.RunID.Compare)
 	for _, rootRunID := range rootRunIDs {
 		if err := r.planTree(rootRunID); err != nil {
 			return RecoveryCommit{}, 0, err
@@ -547,11 +563,11 @@ func (r *recoveryPlanner) plan() (RecoveryCommit, int, error) {
 			r.commit.PreservedSessionIDs = append(r.commit.PreservedSessionIDs, r.trees[open.RootRunID].root.SessionID())
 		}
 	}
-	slices.Sort(r.commit.DeleteInterrupts)
+	slices.SortFunc(r.commit.DeleteInterrupts, identity.RunID.Compare)
 	slices.SortFunc(r.commit.ModelInvocations, compareModelInvocationRecoveries)
 	slices.SortFunc(r.commit.ToolInvocations, compareToolInvocationRecoveries)
-	slices.Sort(r.commit.PreservedSessionIDs)
-	slices.Sort(r.commit.DeleteCheckpointSessionIDs)
+	slices.SortFunc(r.commit.PreservedSessionIDs, identity.SessionID.Compare)
+	slices.SortFunc(r.commit.DeleteCheckpointSessionIDs, identity.SessionID.Compare)
 	commit, err := NewRecoveryCommit(r.commit)
 	if err != nil {
 		return RecoveryCommit{}, 0, err
@@ -564,10 +580,10 @@ func compareModelInvocationRecoveries(left, right ModelInvocationRecovery) int {
 }
 
 func compareToolInvocationRecoveries(left, right ToolInvocationRecovery) int {
-	return cmp.Or(left.InvocationAttempt.compare(right.InvocationAttempt), strings.Compare(left.ItemID, right.ItemID))
+	return cmp.Or(left.InvocationAttempt.compare(right.InvocationAttempt), left.ItemID.Compare(right.ItemID))
 }
 
-func (r *recoveryPlanner) planTree(rootRunID string) error {
+func (r *recoveryPlanner) planTree(rootRunID identity.RunID) error {
 	tree := r.trees[rootRunID]
 	items, err := r.transcript(tree)
 	if err != nil {
@@ -661,7 +677,7 @@ func (r *recoveryPlanner) transcript(tree recoveryRunTree) ([]transcript.Item, e
 	return items, nil
 }
 
-func (r *recoveryPlanner) session(sessionID string) (session.Session, error) {
+func (r *recoveryPlanner) session(sessionID identity.SessionID) (session.Session, error) {
 	if sess, ok := r.sessions[sessionID]; ok {
 		return sess, nil
 	}
@@ -673,7 +689,7 @@ func (r *recoveryPlanner) session(sessionID string) (session.Session, error) {
 	return sess, nil
 }
 
-func (r *recoveryPlanner) conversation(sessionID string) (conversation.Conversation, error) {
+func (r *recoveryPlanner) conversation(sessionID identity.SessionID) (conversation.Conversation, error) {
 	if history, ok := r.conversations[sessionID]; ok {
 		return history, nil
 	}

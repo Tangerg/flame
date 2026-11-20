@@ -118,7 +118,7 @@ func (a *app) registerCommands() {
 			a.message(err.Error())
 			continue
 		}
-		if err := a.commands.add("terminal", command.Descriptor,
+		if err := a.commands.add(extensions.HostNamespace, command.Descriptor,
 			func(argument string, accept func()) {
 				accept()
 				if err := runLocalCommandSafely(command, a, argument); err != nil {
@@ -147,7 +147,12 @@ type commandOperation struct {
 	pluginID string
 }
 
-const pluginCommandOperationSlotPrefix operationSlot = "command:"
+const pluginCommandOperationSlotPrefix = "command:"
+
+// allArgument selects every candidate of a command that otherwise takes one.
+const allArgument = "all"
+
+func isAllArgument(argument string) bool { return strings.EqualFold(argument, allArgument) }
 
 var errCommandOperationIdentityExhausted = errors.New("plugin command operation identity space is exhausted")
 
@@ -161,7 +166,7 @@ func (id commandOperationID) successor() (commandOperationID, bool) {
 }
 
 func (o commandOperation) slot() operationSlot {
-	return operationSlot(fmt.Sprintf("%s%d", pluginCommandOperationSlotPrefix, o.id))
+	return exclusiveSlot(fmt.Sprintf("%s%d", pluginCommandOperationSlotPrefix, o.id))
 }
 
 type commandOperationRegistry struct {
@@ -224,7 +229,7 @@ func (e *localExtensions) executeCommand(pluginID string, command extensions.Sla
 		return
 	}
 	slot := operation.slot()
-	started := e.tasks.operations.GoSession(slot, false, func(ctx context.Context, lease operationLease) {
+	started := e.tasks.operations.GoSession(slot, func(ctx context.Context, lease operationLease) {
 		result, err := executeCommandSafely(ctx, command, request)
 		_ = e.tasks.deliver(ctx, func() {
 			if !e.tasks.operations.Current(lease) || e.closed() {

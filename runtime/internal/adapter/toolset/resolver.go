@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -376,7 +377,7 @@ func (r *Resolver) SetMCPTools(tools []toolcontract.Tool, pending []mcpserver.ID
 // model context. A replaced or compacted context must earn fresh read-before-
 // write authority; retaining the old stamps would let discarded context
 // authorize later filesystem mutations.
-func (r *Resolver) ForgetSessionContext(sessionID string) {
+func (r *Resolver) ForgetSessionContext(sessionID identity.SessionID) {
 	r.readTracker.forgetSession(sessionID)
 }
 
@@ -466,38 +467,51 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 	// child approval.
 	r.appendStatic(ctx, &tools, interactionTail, group, planAvailable)
 	if group == domaintool.GroupRoot {
-		// Goal lifecycle entry is late-bound because its application Driver owns
-		// Runs, while the resolver itself was needed to build the Agent executor.
-		// Keep only the generic tool at this seam; no Driver or runtime state enters
-		// the Agent module.
-		if createGoal := r.createGoalTool(); createGoal != nil {
-			available, err := r.goalAvailable(ctx)
-			if err != nil {
-				return manifestBuilder{}, err
-			}
-			if available {
-				tools.direct(createGoal)
-			}
+		if err := r.appendRootTools(ctx, &tools, planAvailable); err != nil {
+			return manifestBuilder{}, err
 		}
-		// The remaining Goal state capabilities are
-		// product-root operations rather than generic child execution tools.
-		r.appendStatic(ctx, &tools, rootTail, group, planAvailable)
 	}
-	// search_tools is the sole model-facing entry to every capability withheld
-	// from the initial manifest. The tools themselves remain in the same Run
-	// registry, so promotion changes visibility rather than execution authority.
-	if err := tools.bindModelNames(retained); err != nil {
+	if err := tools.bindDiscovery(retained); err != nil {
 		return manifestBuilder{}, err
 	}
-	search, err := NewDiscovery(tools.deferred)
+	return tools, nil
+}
+
+// appendRootTools adds the product-root operations a child never gets. Goal
+// lifecycle entry is late-bound because its application Driver owns Runs,
+// while the resolver itself was needed to build the Agent executor; only the
+// generic tool crosses this seam.
+func (r *Resolver) appendRootTools(ctx context.Context, tools *manifestBuilder, planAvailable bool) error {
+	if createGoal := r.createGoalTool(); createGoal != nil {
+		available, err := r.goalAvailable(ctx)
+		if err != nil {
+			return err
+		}
+		if available {
+			tools.direct(createGoal)
+		}
+	}
+	r.appendStatic(ctx, tools, rootTail, domaintool.GroupRoot, planAvailable)
+	return nil
+}
+
+// bindDiscovery makes search_tools the sole model-facing entry to every
+// capability withheld from the initial manifest. The tools remain in the same
+// Run registry, so promotion changes visibility rather than execution
+// authority.
+func (m *manifestBuilder) bindDiscovery(retained *Retained) error {
+	if err := m.bindModelNames(retained); err != nil {
+		return err
+	}
+	search, err := NewDiscovery(m.deferred)
 	if err != nil {
-		return manifestBuilder{}, fmt.Errorf("toolset: resolve search_tools: %w", err)
+		return fmt.Errorf("toolset: resolve search_tools: %w", err)
 	}
 	if search != nil {
-		tools.direct(search)
-		tools.discovery = search
+		m.direct(search)
+		m.discovery = search
 	}
-	return tools, nil
+	return nil
 }
 
 func (r *Resolver) resolveSkillTools(ctx context.Context, cwd string, retained *Retained, tools *manifestBuilder) error {

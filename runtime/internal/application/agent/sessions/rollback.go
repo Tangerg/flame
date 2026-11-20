@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -23,7 +25,7 @@ type RollbackResult struct {
 
 // RollbackHistory records its reply while the Session, Goal drive and
 // generated-title claims are still held.
-func (c *Coordinator) RollbackHistory(ctx context.Context, sessionID, toRunID string, complete operation.Reply[RollbackResult]) error {
+func (c *Coordinator) RollbackHistory(ctx context.Context, sessionID identity.SessionID, toRunID identity.RunID, complete operation.Reply[RollbackResult]) error {
 	admission, err := c.ClaimSessionMutation(ctx, sessionID)
 	if err != nil {
 		return err
@@ -36,15 +38,17 @@ func (c *Coordinator) RollbackHistory(ctx context.Context, sessionID, toRunID st
 	if err != nil {
 		return err
 	}
-	return c.completeRollback(ctx, sessionID, boundary, true, complete)
+	return c.completeRollback(ctx, sessionID, boundary, complete)
 }
 
+// resolvedRollbackBoundary is what one rollback does to history: timeline
+// drops exactly the Runs this rollback removes, none for a files-only restore.
 type resolvedRollbackBoundary struct {
 	timeline transcript.Boundary
 	runs     []run.Run
 }
 
-func (c *Coordinator) resolveRollbackBoundary(ctx context.Context, sessionID, toRunID string) (resolvedRollbackBoundary, error) {
+func (c *Coordinator) resolveRollbackBoundary(ctx context.Context, sessionID identity.SessionID, toRunID identity.RunID) (resolvedRollbackBoundary, error) {
 	runs, err := c.runs.ListRuns(ctx, sessionID)
 	if err != nil {
 		return resolvedRollbackBoundary{}, err
@@ -56,14 +60,21 @@ func (c *Coordinator) resolveRollbackBoundary(ctx context.Context, sessionID, to
 	return resolvedRollbackBoundary{timeline: boundary, runs: runs}, nil
 }
 
+// keepingHistory is this boundary for a files-only restore, which keeps every
+// Run. The boundary Run is still the one BoundaryAt validated.
+func (r resolvedRollbackBoundary) keepingHistory() resolvedRollbackBoundary {
+	r.timeline.Dropped = nil
+	return r
+}
+
+func (r resolvedRollbackBoundary) keepsHistory() bool { return len(r.timeline.Dropped) == 0 }
+
 // A kept continuation would resume into a tree different from the one its
 // executor owns. Only the continuations this rollback removes can be disposed.
-func (r resolvedRollbackBoundary) survivingContinuation(restoreHistory bool) (run.Run, bool) {
-	dropped := make(map[string]struct{})
-	if restoreHistory {
-		for _, node := range r.timeline.Dropped {
-			dropped[node.ID] = struct{}{}
-		}
+func (r resolvedRollbackBoundary) survivingContinuation() (run.Run, bool) {
+	dropped := make(map[identity.RunID]struct{}, len(r.timeline.Dropped))
+	for _, node := range r.timeline.Dropped {
+		dropped[node.ID] = struct{}{}
 	}
 	for _, value := range r.runs {
 		if value.State().IsTerminal() {
@@ -76,8 +87,8 @@ func (r resolvedRollbackBoundary) survivingContinuation(restoreHistory bool) (ru
 	return run.Run{}, false
 }
 
-func (c *Coordinator) completeRollback(ctx context.Context, sessionID string, boundary resolvedRollbackBoundary, restoreHistory bool, complete operation.Reply[RollbackResult]) error {
-	if !restoreHistory || len(boundary.timeline.Dropped) == 0 {
+func (c *Coordinator) completeRollback(ctx context.Context, sessionID identity.SessionID, boundary resolvedRollbackBoundary, complete operation.Reply[RollbackResult]) error {
+	if boundary.keepsHistory() {
 		return complete(ctx, func(tx context.Context) (RollbackResult, error) {
 			return c.rollbackResult(tx, sessionID, nil)
 		})
@@ -97,7 +108,7 @@ func (c *Coordinator) completeRollback(ctx context.Context, sessionID string, bo
 	})
 }
 
-func (c *Coordinator) rollbackResult(ctx context.Context, sessionID string, dropped []DroppedRun) (RollbackResult, error) {
+func (c *Coordinator) rollbackResult(ctx context.Context, sessionID identity.SessionID, dropped []DroppedRun) (RollbackResult, error) {
 	current, err := c.Get(ctx, sessionID)
 	if err != nil {
 		return RollbackResult{}, err
@@ -109,8 +120,8 @@ func (c *Coordinator) rollbackResult(ctx context.Context, sessionID string, drop
 	return RollbackResult{Session: view, Dropped: dropped}, nil
 }
 
-func (r resolvedRollbackBoundary) projectDroppedRuns(inputs map[string][]transcript.ContentBlock) []DroppedRun {
-	byID := make(map[string]run.Run, len(r.runs))
+func (r resolvedRollbackBoundary) projectDroppedRuns(inputs map[identity.RunID][]transcript.ContentBlock) []DroppedRun {
+	byID := make(map[identity.RunID]run.Run, len(r.runs))
 	for _, value := range r.runs {
 		byID[value.ID()] = value
 	}
@@ -128,7 +139,7 @@ func (r resolvedRollbackBoundary) projectDroppedRuns(inputs map[string][]transcr
 // Session tree to infer or purge. An unknown boundary watermark leaves the log
 // untouched rather than guessing at a boundary that was never recorded. An
 // empty boundary (nothing dropped) is a no-op.
-func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, boundary transcript.Boundary, commit func(context.Context, RollbackPlan) error) error {
+func (c *Coordinator) applyRollback(ctx context.Context, sessionID identity.SessionID, boundary transcript.Boundary, commit func(context.Context, RollbackPlan) error) error {
 	dropRunIDs := boundary.DroppedRunIDs()
 	// Read the parked executions BEFORE the write-set consumes their interrupts — the
 	// in-process executions still need canceling once the durable records are gone.
@@ -139,11 +150,7 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, bound
 	// Read the boundary's Plan BEFORE the write-set drops the runs after it: the
 	// kept run survives, but reading inside the write-set would mean persistence deciding
 	// which boundary the state comes from.
-	plan, err := c.planBoundary(ctx, boundary.KeepRunID)
-	if err != nil {
-		return err
-	}
-	planReplacement, err := c.prepareBoundaryPlanReplacement(ctx, sessionID, plan)
+	planReplacement, err := c.boundaryPlanReplacement(ctx, sessionID, boundary.KeepRunID)
 	if err != nil {
 		return err
 	}
@@ -160,7 +167,7 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, bound
 	// record releases the slot, so the session can start a fresh run afterward.
 	return c.goals.WithSessionMutation(
 		ctx,
-		[]string{sessionID},
+		[]identity.SessionID{sessionID},
 		func(ctx context.Context) error {
 			if err := c.transientState.QuiesceSession(sessionID); err != nil {
 				return fmt.Errorf("sessions: quiesce process-local Session state before rollback: %w", err)
@@ -175,7 +182,7 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, bound
 			if err := c.sandbox.Discard(sessionID); err != nil {
 				return fmt.Errorf("sessions: discard sandbox copy before history rollback: %w", err)
 			}
-			return c.titles.commitHistoryChange(ctx, sessionID, func(runID string) bool { return slices.Contains(dropRunIDs, runID) }, func() error {
+			return c.titles.commitHistoryChange(ctx, sessionID, func(runID identity.RunID) bool { return slices.Contains(dropRunIDs, runID) }, func() error {
 				return commit(ctx, rollback)
 			})
 		},
@@ -184,7 +191,7 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, bound
 			// boundary's Plan is published. Delegated work has no parallel
 			// Session identity to clean up.
 			c.transientState.ForgetSessionContext(sessionID)
-			c.publishAggregateMoved([]string{sessionID}, dropRunIDs)
+			c.publishAggregateMoved([]identity.SessionID{sessionID}, dropRunIDs)
 			var cleanupErrs []error
 			for _, r := range parked {
 				if err := c.releaseExecution(ctx, r); err != nil {

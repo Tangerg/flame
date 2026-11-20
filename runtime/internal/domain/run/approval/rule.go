@@ -24,7 +24,7 @@ func Decide(rules []Rule, q Query) (Decision, bool, error) {
 // from the requested session and project. Stores filter this relation for
 // efficiency; Domain rechecks scope membership and identity uniqueness before
 // the relation can affect authorization or escape through a read model.
-func ValidateVisibleRules(rules []Rule, sessionID, projectDir string) error {
+func ValidateVisibleRules(rules []Rule, sessionID identity.SessionID, projectDir string) error {
 	if len(rules) > MaximumVisibleRules {
 		return fmt.Errorf(
 			"%w: got %d rules, maximum %d",
@@ -32,11 +32,6 @@ func ValidateVisibleRules(rules []Rule, sessionID, projectDir string) error {
 			len(rules),
 			MaximumVisibleRules,
 		)
-	}
-	if sessionID != "" {
-		if err := identity.ValidateSession(sessionID); err != nil {
-			return fmt.Errorf("%w: session: %v", ErrInvalidRule, err)
-		}
 	}
 	seen := make(map[string]struct{}, len(rules))
 	for index, rule := range rules {
@@ -69,11 +64,11 @@ type RuleScope struct {
 
 func GlobalScope() RuleScope { return RuleScope{kind: ScopeGlobal} }
 
-func SessionScope(sessionID string) (RuleScope, error) {
-	if err := identity.ValidateSession(sessionID); err != nil {
+func SessionScope(sessionID identity.SessionID) (RuleScope, error) {
+	if err := sessionID.Validate(); err != nil {
 		return RuleScope{}, fmt.Errorf("%w: session scope: %v", ErrInvalidRule, err)
 	}
-	return RuleScope{kind: ScopeSession, key: sessionID}, nil
+	return RuleScope{kind: ScopeSession, key: sessionID.String()}, nil
 }
 
 func ProjectScope(dir string) (RuleScope, error) {
@@ -87,7 +82,11 @@ func ProjectScope(dir string) (RuleScope, error) {
 func RestoreRuleScope(kind Scope, key string) (RuleScope, error) {
 	switch kind {
 	case ScopeSession:
-		return SessionScope(key)
+		sessionID, err := identity.ParseSession(key)
+		if err != nil {
+			return RuleScope{}, fmt.Errorf("%w: session scope: %v", ErrInvalidRule, err)
+		}
+		return SessionScope(sessionID)
 	case ScopeProject:
 		return ProjectScope(key)
 	case ScopeGlobal:
@@ -108,10 +107,10 @@ func (s RuleScope) Key() string { return s.key }
 
 // visibleFrom refuses empty session and project keys so rules cannot leak
 // across scopes.
-func (s RuleScope) visibleFrom(sessionID, projectDir string) bool {
+func (s RuleScope) visibleFrom(sessionID identity.SessionID, projectDir string) bool {
 	switch s.kind {
 	case ScopeSession:
-		return sessionID != "" && s.key == sessionID
+		return !sessionID.IsZero() && s.key == sessionID.String()
 	case ScopeProject:
 		return projectDir != "" && s.key == projectDir
 	default:
@@ -151,11 +150,6 @@ func (r Rule) specificity() [2]int {
 
 // Validate verifies the complete identity of one tool-call policy query.
 func (q Query) Validate() error {
-	if q.SessionID != "" {
-		if err := identity.ValidateSession(q.SessionID); err != nil {
-			return fmt.Errorf("%w: session: %v", ErrInvalidQuery, err)
-		}
-	}
 	if err := q.Tool.ValidateFingerprint(q.SourceFingerprint); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidQuery, err)
 	}

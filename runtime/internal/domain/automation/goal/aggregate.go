@@ -43,7 +43,7 @@ func (s Status) Valid() bool {
 // Snapshot is the technical reconstruction boundary, not a mutation surface.
 type Snapshot struct {
 	Author     extension.ContributionSource
-	SessionID  string
+	SessionID  identity.SessionID
 	Objective  string
 	Status     Status
 	ReasonCode ReasonCode
@@ -64,7 +64,7 @@ type Snapshot struct {
 // committed value pass through a domain transition.
 type Goal struct {
 	author        extension.ContributionSource
-	sessionID     string
+	sessionID     identity.SessionID
 	objective     string
 	status        Status
 	reason        Reason
@@ -80,7 +80,7 @@ type Goal struct {
 // Current is the explicit optional Goal value for one Session. Its zero value
 // is invalid rather than ambiguously meaning "not found"; use [Unwritten].
 type Current struct {
-	sessionID string
+	sessionID identity.SessionID
 	goal      *Goal
 }
 
@@ -88,7 +88,7 @@ type Current struct {
 // revision zero and an empty incarnation are not absence sentinels.
 type Version struct {
 	author        extension.ContributionSource
-	sessionID     string
+	sessionID     identity.SessionID
 	incarnationID goalref.IncarnationID
 	revision      exactint.Counter
 	committed     bool
@@ -107,7 +107,7 @@ var (
 )
 
 // Unwritten constructs the explicit absent Goal value for sessionID.
-func Unwritten(sessionID string) (Current, error) {
+func Unwritten(sessionID identity.SessionID) (Current, error) {
 	if err := validateSessionIdentity(sessionID); err != nil {
 		return Current{}, err
 	}
@@ -174,6 +174,16 @@ func Restore(snapshot Snapshot) (Goal, error) {
 	return value, nil
 }
 
+func validateObjective(objective string) error {
+	if strings.TrimSpace(objective) == "" {
+		return errObjectiveRequired
+	}
+	if objective != strings.TrimSpace(objective) {
+		return fmt.Errorf("%w: objective has surrounding whitespace", ErrInvalid)
+	}
+	return nil
+}
+
 func (g Goal) validate() error {
 	if g.author != (extension.ContributionSource{}) {
 		if err := g.author.Validate(); err != nil {
@@ -184,11 +194,8 @@ func (g Goal) validate() error {
 	if err := validateSessionIdentity(g.sessionID); err != nil {
 		return err
 	}
-	if strings.TrimSpace(g.objective) == "" {
-		return errObjectiveRequired
-	}
-	if g.objective != strings.TrimSpace(g.objective) {
-		return fmt.Errorf("%w: objective has surrounding whitespace", ErrInvalid)
+	if err := validateObjective(g.objective); err != nil {
+		return err
 	}
 	if err := g.incarnationID.Validate(); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalid, err)
@@ -210,6 +217,13 @@ func (g Goal) validate() error {
 	if err := g.used.validate(); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
+	if err := g.validateTimes(); err != nil {
+		return err
+	}
+	return g.reason.validateFor(g.status)
+}
+
+func (g Goal) validateTimes() error {
 	if g.createdAt.IsZero() || g.updatedAt.IsZero() {
 		return fmt.Errorf("%w: creation and update times are required", ErrInvalid)
 	}
@@ -219,7 +233,7 @@ func (g Goal) validate() error {
 	if g.updatedAt.Before(g.createdAt) {
 		return fmt.Errorf("%w: update time precedes creation", ErrInvalid)
 	}
-	return g.reason.validateFor(g.status)
+	return nil
 }
 
 func (g Goal) Snapshot() Snapshot {
@@ -237,10 +251,10 @@ func (g Goal) Clone() Goal {
 	return g
 }
 
-func (g Goal) SessionID() string { return g.sessionID }
-func (g Goal) Objective() string { return g.objective }
-func (g Goal) Status() Status    { return g.status }
-func (g Goal) Reason() Reason    { return g.reason }
+func (g Goal) SessionID() identity.SessionID { return g.sessionID }
+func (g Goal) Objective() string             { return g.objective }
+func (g Goal) Status() Status                { return g.status }
+func (g Goal) Reason() Reason                { return g.reason }
 
 // ModelSelection is the Goal's own model override. Without one, each Goal Run
 // runs on the Session's selection at the time it starts, never a copy taken
@@ -258,7 +272,7 @@ func (g Goal) Version() Version {
 }
 
 func (v Version) IsUnwritten() bool             { return !v.committed }
-func (v Version) SessionID() string             { return v.sessionID }
+func (v Version) SessionID() identity.SessionID { return v.sessionID }
 func (v Version) IncarnationID() (string, bool) { return v.incarnationID.String(), v.committed }
 func (v Version) Revision() (uint64, bool)      { return v.revision.Value(), v.committed }
 
@@ -315,12 +329,9 @@ func (v Version) String() string {
 	return fmt.Sprintf("%s/%s@%d", v.sessionID, v.incarnationID.String(), v.revision.Value())
 }
 
-func validateSessionIdentity(value string) error {
-	if value == "" {
+func validateSessionIdentity(value identity.SessionID) error {
+	if value.IsZero() {
 		return errSessionRequired
-	}
-	if err := identity.ValidateSession(value); err != nil {
-		return fmt.Errorf("%w: session ID: %v", ErrInvalid, err)
 	}
 	return nil
 }

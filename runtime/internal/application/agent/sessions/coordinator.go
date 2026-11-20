@@ -14,6 +14,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -35,7 +37,7 @@ import (
 type Store interface {
 	List(ctx context.Context) ([]session.Session, error)
 	ListPage(ctx context.Context, read session.CatalogRead) ([]session.Session, error)
-	Get(ctx context.Context, id string) (session.Session, error)
+	Get(ctx context.Context, id identity.SessionID) (session.Session, error)
 	Insert(ctx context.Context, value session.Session) error
 	Save(ctx context.Context, replacement session.Replacement) error
 }
@@ -51,8 +53,8 @@ type modelAdmitter interface {
 // segment-opening commit; deleting one is part of an atomic write-set
 // ([WriteSets.ApplyRollback] / ApplyDelete / ApplyTerminal), not a lone call.
 type InterruptStore interface {
-	List(ctx context.Context, sessionID string) ([]runs.Pending, error)
-	Get(ctx context.Context, runID string) (runs.Pending, bool, error)
+	List(ctx context.Context, sessionID identity.SessionID) ([]runs.Pending, error)
+	Get(ctx context.Context, runID identity.RunID) (runs.Pending, bool, error)
 }
 
 // TranscriptStore is the lifecycle coordinator's read view of a session's item
@@ -61,13 +63,13 @@ type InterruptStore interface {
 // needs them to agree.
 // List transfers its result to the caller without retaining mutable aliases.
 type TranscriptStore interface {
-	List(ctx context.Context, sessionID string) ([]transcript.Item, error)
+	List(ctx context.Context, sessionID identity.SessionID) ([]transcript.Item, error)
 }
 
 // A rollback can rewind only to the Plan captured by the kept Run. A missing
 // capture carries no authority to replace the current Plan.
 type planBoundaries interface {
-	Boundary(ctx context.Context, runID string) (plan.Document, bool, error)
+	Boundary(ctx context.Context, runID identity.RunID) (plan.Document, bool, error)
 }
 
 // RunStore is the lifecycle coordinator's read view of a session's Runs. Every
@@ -116,13 +118,13 @@ type WriteSets interface {
 // transaction. The returned snapshot belongs to the caller; the reader must not
 // retain mutable aliases to its collections or nested data.
 type SnapshotReader interface {
-	ReadSnapshot(ctx context.Context, sessionID string) (Snapshot, error)
+	ReadSnapshot(ctx context.Context, sessionID identity.SessionID) (Snapshot, error)
 }
 
 type sessionSnapshots interface {
 	SnapshotReader
 	// Fork needs history and its original Plan boundaries from the same read.
-	ReadForkMaterial(ctx context.Context, sessionID string) (ForkMaterial, error)
+	ReadForkMaterial(ctx context.Context, sessionID identity.SessionID) (ForkMaterial, error)
 }
 
 // MaterialSnapshotReader returns the live Session read model from one storage
@@ -130,7 +132,7 @@ type sessionSnapshots interface {
 // open interrupts, and the Plan's ordering metadata.
 // The returned snapshot and its nested data belong to the caller.
 type MaterialSnapshotReader interface {
-	ReadMaterialSnapshot(ctx context.Context, sessionID string) (MaterialSnapshot, error)
+	ReadMaterialSnapshot(ctx context.Context, sessionID identity.SessionID) (MaterialSnapshot, error)
 }
 
 // transientState releases process-local facts when the durable Session, its
@@ -138,10 +140,10 @@ type MaterialSnapshotReader interface {
 // deletion also retires lifecycle markers; restore and rollback retain those
 // markers while discarding only context-derived authority.
 type transientState interface {
-	QuiesceSession(sessionID string) error
+	QuiesceSession(sessionID identity.SessionID) error
 	QuiesceWorkspace(root string) error
-	ForgetSession(sessionID string)
-	ForgetSessionContext(sessionID string)
+	ForgetSession(sessionID identity.SessionID)
+	ForgetSessionContext(sessionID identity.SessionID)
 	ForgetWorkspace(root string)
 }
 
@@ -177,16 +179,16 @@ type Snapshot struct {
 // changed only part of the tree surfaces as [ErrCheckpointRestoreIncomplete].
 // Implementations translate storage failures into these use-case errors.
 type WorkspaceCheckpoints interface {
-	Restore(ctx context.Context, sessionID, cwd, runID string) error
+	Restore(ctx context.Context, sessionID identity.SessionID, cwd string, runID identity.RunID) error
 	// DropSession executes an already-committed resource retirement. The
 	// mutation owner retains responsibility and admission until cleanup succeeds.
-	DropSession(ctx context.Context, sessionID string) error
+	DropSession(ctx context.Context, sessionID identity.SessionID) error
 }
 
 // sandboxDiscarder destroys the isolated copy owned by the addressed Session.
 // It must also reach that Session's managed scratch namespace after restart.
 type sandboxDiscarder interface {
-	Discard(sessionID string) error
+	Discard(sessionID identity.SessionID) error
 }
 
 // goalMutationGuard serializes a session write-set with Goal lifecycle
@@ -198,7 +200,7 @@ type sandboxDiscarder interface {
 type goalMutationGuard interface {
 	WithSessionMutation(
 		ctx context.Context,
-		sessionIDs []string,
+		sessionIDs []identity.SessionID,
 		commit func(context.Context) error,
 		afterCommit func(context.Context) error,
 	) error
@@ -215,7 +217,7 @@ type workspaceMutations interface {
 // resourceRetirements exposes only committed cleanup responsibilities. Their
 // creation belongs to the same write-set that retires the Session history.
 type resourceRetirements interface {
-	Lookup(context.Context, string) (ResourceRetirement, bool, error)
+	Lookup(context.Context, identity.SessionID) (ResourceRetirement, bool, error)
 	ListPending(context.Context) ([]ResourceRetirement, error)
 	Complete(context.Context, ResourceRetirement) error
 }
@@ -266,12 +268,15 @@ type Coordinator struct {
 	// invalidations tell clients a committed session mutation moved something they hold.
 	// Every notice is published from a post-commit boundary, never from the commit
 	// itself: a signal for a transaction that then rolled back would send every
-	// listener to re-read state that never changed. nil publishes nothing.
+	// listener to re-read state that never changed.
 	invalidations invalidation.Publish
-	now           func() time.Time
-	newID         func() string
-	newRunID      func() string
-	newItemID     func() string
+	// rollbackReceipts renders a keyed file rollback's reply, including one a
+	// restarted Runtime settles during recovery.
+	rollbackReceipts RollbackReceiptEncoder
+	now              func() time.Time
+	newID            func() identity.SessionID
+	newRunID         func() identity.RunID
+	newItemID        func() identity.ItemID
 }
 
 // Dependencies is the collaborator set [New] wires into a Coordinator. Durable
@@ -300,15 +305,17 @@ type Dependencies struct {
 	// Invalidations publishes post-commit invalidations for the session projections a
 	// mutation moved.
 	Invalidations invalidation.Publish
+	// RollbackReceipts is delivery's encoding of a file rollback reply.
+	RollbackReceipts RollbackReceiptEncoder
 	// Now supplies Session construction and replacement time.
 	Now func() time.Time
 	// NewID returns one complete Session identity, including its type prefix.
-	NewID func() string
+	NewID func() identity.SessionID
 	// Forks copy durable transcript facts under fresh global identities. The
 	// Session use case owns the remap; composition only supplies entropy-bearing
 	// identifiers in each resource namespace.
-	NewRunID  func() string
-	NewItemID func() string
+	NewRunID  func() identity.RunID
+	NewItemID func() identity.ItemID
 }
 
 // New returns a Coordinator over deps.
@@ -341,6 +348,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		{"run id generator", deps.NewRunID},
 		{"item id generator", deps.NewItemID},
 		{"invalidations", deps.Invalidations},
+		{"rollback receipt encoder", deps.RollbackReceipts},
 	}
 	for _, required := range required {
 		if lo.IsNil(required.value) {
@@ -372,6 +380,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		admissions:            deps.Admissions,
 		titles:                titleClaims{writes: keylock.NewSet()},
 		invalidations:         deps.Invalidations,
+		rollbackReceipts:      deps.RollbackReceipts,
 		now:                   deps.Now,
 		newID:                 deps.NewID,
 		newRunID:              deps.NewRunID,

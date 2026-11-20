@@ -3,10 +3,8 @@ package client
 import (
 	"context"
 	"errors"
-	"net"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -72,17 +70,9 @@ func Connect(ctx context.Context, cfg RemoteConfig) (*Client, error) {
 		cfg.MaxMessageBytes = defaultMaximumMessageBytes
 	}
 
-	transport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout: 30 * time.Second, KeepAlive: 30 * time.Second,
-		}).DialContext,
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: time.Second,
-	}
+	// A private clone keeps this client's idle connections out of the process
+	// default transport while using the standard dialing and proxy policy.
+	transport := http.DefaultTransport.(*http.Transport).Clone()
 	client := &Client{
 		endpoint: endpoint.CanonicalBase() + rpcPath, token: cfg.Token, calls: make(map[*remoteCall]struct{}),
 		maxMessageBytes: cfg.MaxMessageBytes,

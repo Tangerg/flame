@@ -62,11 +62,6 @@ func run(dir, validatorDir, tsDir, sampleDir, clientValuesFile string) error {
 	if tsDir != "" && sampleDir == "" {
 		return fmt.Errorf("canonical sample directory is required with TypeScript output")
 	}
-	if dir != "" {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return fmt.Errorf("create %s: %w", dir, err)
-		}
-	}
 	// Built once: every artifact must describe the same registry snapshot, and a
 	// second build would let them disagree if anything about it were not pure.
 	registry, shapes := delivery.Contract(), dispatch.WireShapes()
@@ -84,40 +79,66 @@ func run(dir, validatorDir, tsDir, sampleDir, clientValuesFile string) error {
 			return fmt.Errorf("write %s: %w", path, err)
 		}
 	}
-
 	if dir != "" {
-		for _, artifact := range []struct {
-			name    string
-			content any
-		}{
-			{"manifest.json", built},
-			{"schema.json", newBundle(walked)},
-			{"openrpc.json", newOpenRPC(registry, shapes, walked)},
-		} {
-			if err := writeJSON(filepath.Join(dir, artifact.name), artifact.content); err != nil {
-				return err
-			}
-		}
-		path := filepath.Join(dir, "API_REFERENCE.md")
-		if err := os.WriteFile(path, []byte(reference(built)), 0o644); err != nil {
-			return fmt.Errorf("write %s: %w", path, err)
+		if err := writeContractArtifacts(dir, registry, shapes, walked, built); err != nil {
+			return err
 		}
 	}
 	if clientValuesFile != "" {
-		values, err := newClientValues(walked)
-		if err != nil {
+		if err := writeClientValues(clientValuesFile, walked); err != nil {
 			return err
-		}
-		if err := os.MkdirAll(filepath.Dir(clientValuesFile), 0o755); err != nil {
-			return fmt.Errorf("create client scalar directory: %w", err)
-		}
-		if err := os.WriteFile(clientValuesFile, []byte(values), 0o644); err != nil {
-			return fmt.Errorf("write %s: %w", clientValuesFile, err)
 		}
 	}
 	if tsDir == "" {
 		return nil
 	}
+	return writeTypeScriptBinding(tsDir, sampleDir, registry, shapes, walked, built)
+}
+
+// writeContractArtifacts publishes the language-neutral contract: manifest,
+// JSON schema, OpenRPC and the human reference.
+func writeContractArtifacts(dir string, registry *delivery.Registry, shapes *dispatch.Shapes, walked *schemaSet, built manifest) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create %s: %w", dir, err)
+	}
+	for _, artifact := range []struct {
+		name    string
+		content any
+	}{
+		{"manifest.json", built},
+		{"schema.json", newBundle(walked)},
+		{"openrpc.json", newOpenRPC(registry, shapes, walked)},
+	} {
+		if err := writeJSON(filepath.Join(dir, artifact.name), artifact.content); err != nil {
+			return err
+		}
+	}
+	path := filepath.Join(dir, "API_REFERENCE.md")
+	if err := os.WriteFile(path, []byte(reference(built)), 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+	return nil
+}
+
+func writeClientValues(file string, walked *schemaSet) error {
+	values, err := newClientValues(walked)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+		return fmt.Errorf("create client scalar directory: %w", err)
+	}
+	if err := os.WriteFile(file, []byte(values), 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", file, err)
+	}
+	return nil
+}
+
+// writeTypeScriptBinding writes what a TypeScript client needs to hold the
+// protocol: the shapes, the checks that an arriving frame really is one of
+// them, the method surface that carries them, and which hand-written fixture
+// proves which shape.
+func writeTypeScriptBinding(tsDir, sampleDir string, registry *delivery.Registry, shapes *dispatch.Shapes, walked *schemaSet, built manifest) error {
 	generated := filepath.Join(tsDir, "src", "generated")
 	testing := filepath.Join(tsDir, "testing", "generated")
 	for _, directory := range []string{generated, filepath.Join(testing, "samples")} {
@@ -125,9 +146,6 @@ func run(dir, validatorDir, tsDir, sampleDir, clientValuesFile string) error {
 			return err
 		}
 	}
-	// What a TypeScript client needs to hold the protocol: the shapes, the checks that say an
-	// arriving frame really is one of them, the method surface that carries them, and
-	// which hand-written fixture proves which shape.
 	for _, artifact := range []struct{ name, content string }{
 		{tsFileName, newTypeScript(walked, built.Notifications)},
 		{tsValidatorFileName, newWireChecks(registry, shapes, walked)},

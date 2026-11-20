@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -30,7 +32,7 @@ type MaterialSnapshot struct {
 // snapshot. No process-local admission is required: concurrent writes either
 // precede or follow the storage transaction and can never split the returned
 // Session, Run, interrupt, transcript, and Plan facts.
-func (c *Coordinator) MaterialView(ctx context.Context, sessionID string) (MaterialSnapshot, View, error) {
+func (c *Coordinator) MaterialView(ctx context.Context, sessionID identity.SessionID) (MaterialSnapshot, View, error) {
 	snapshot, err := c.materialSnapshots.ReadMaterialSnapshot(ctx, sessionID)
 	if err != nil {
 		return MaterialSnapshot{}, View{}, err
@@ -50,7 +52,7 @@ func (c *Coordinator) MaterialView(ctx context.Context, sessionID string) (Mater
 // the Items they name.
 type InterruptSet struct {
 	// SessionID is the Session of the set's root Run, which owns it.
-	SessionID  string
+	SessionID  identity.SessionID
 	Pending    runs.Pending
 	Interrupts []transcript.Interrupt
 }
@@ -58,7 +60,7 @@ type InterruptSet struct {
 // InterruptSets projects every open hand-off's interrupts from the snapshot's
 // Items.
 func (m MaterialSnapshot) InterruptSets() ([]InterruptSet, error) {
-	itemsByID := make(map[string]transcript.Item, len(m.Items))
+	itemsByID := make(map[identity.ItemID]transcript.Item, len(m.Items))
 	for _, item := range m.Items {
 		itemsByID[item.ID()] = item
 	}
@@ -75,7 +77,7 @@ func (m MaterialSnapshot) InterruptSets() ([]InterruptSet, error) {
 
 // Run returns the snapshot's Run with runID; an open interrupt set's root Run
 // is always present, and owns the set's capabilities.
-func (m MaterialSnapshot) Run(runID string) (run.Run, bool) {
+func (m MaterialSnapshot) Run(runID identity.RunID) (run.Run, bool) {
 	for _, value := range m.Runs {
 		if value.ID() == runID {
 			return value, true

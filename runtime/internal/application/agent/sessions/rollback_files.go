@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
@@ -18,14 +20,24 @@ var (
 
 const mutationCleanupTimeout = 5 * time.Second
 
-type RollbackReceiptEncoder func(sessionID string, result RollbackResult, cause error) ([]byte, error)
+// RollbackReceiptEncoder renders a file rollback's stored reply. Recovery
+// settles a retained intent without its original request, so the encoding
+// depends only on the outcome.
+type RollbackReceiptEncoder func(sessionID identity.SessionID, result RollbackResult, cause error) ([]byte, error)
 
-func (c *Coordinator) RollbackWorkspace(ctx context.Context, spec WorkspaceRollbackSpec, encode RollbackReceiptEncoder) (RollbackResult, error) {
-	if spec.ToRunID == "" {
+// rollbackAttempt says whether this attempt recorded the intent. Only the
+// recording attempt can prove no checkout has started, so only it may settle a
+// refusal and release the intent.
+type rollbackAttempt uint8
+
+const (
+	recordingAttempt rollbackAttempt = iota + 1
+	resumedAttempt
+)
+
+func (c *Coordinator) RollbackWorkspace(ctx context.Context, spec WorkspaceRollbackSpec) (RollbackResult, error) {
+	if spec.ToRunID.IsZero() {
 		return RollbackResult{}, errors.New("sessions: file restore requires target Run")
-	}
-	if spec.Receipt.Key != "" && encode == nil {
-		return RollbackResult{}, errors.New("sessions: file rollback receipt encoder is required")
 	}
 	release, claimed, err := c.admissions.AcquireWorkspaceRollback(ctx, spec.SessionID)
 	if err != nil {
@@ -50,50 +62,64 @@ func (c *Coordinator) RollbackWorkspace(ctx context.Context, spec WorkspaceRollb
 	}
 	defer tree.Release()
 
-	boundary, err := c.resolveRollbackBoundary(ctx, spec.SessionID, spec.ToRunID)
+	boundary, err := c.resolveWorkspaceRollbackBoundary(ctx, spec)
 	if err != nil {
 		return RollbackResult{}, err
 	}
-	if surviving, found := boundary.survivingContinuation(spec.RestoreHistory); found {
+	if surviving, found := boundary.survivingContinuation(); found {
 		return RollbackResult{}, fmt.Errorf(
 			"%w: Run %q is %s and this boundary keeps it; settle it before restoring files under it",
 			run.ErrSessionBusy, surviving.ID(), surviving.State(),
 		)
 	}
 	mutation := WorkspaceMutation{WorkspaceRollbackSpec: spec, CWD: cwd}
-	fresh, err := c.mutations.Record(ctx, mutation)
+	recorded, err := c.mutations.Record(ctx, mutation)
 	if err != nil {
 		return RollbackResult{}, err
 	}
-	return c.restoreWorkspace(ctx, mutation, boundary, fresh, encode)
+	attempt := resumedAttempt
+	if recorded {
+		attempt = recordingAttempt
+	}
+	return c.restoreWorkspace(ctx, mutation, boundary, attempt)
 }
 
-func (c *Coordinator) restoreWorkspace(ctx context.Context, m WorkspaceMutation, boundary resolvedRollbackBoundary, fresh bool, encode RollbackReceiptEncoder) (RollbackResult, error) {
+func (c *Coordinator) resolveWorkspaceRollbackBoundary(ctx context.Context, spec WorkspaceRollbackSpec) (resolvedRollbackBoundary, error) {
+	boundary, err := c.resolveRollbackBoundary(ctx, spec.SessionID, spec.ToRunID)
+	if err != nil || spec.RestoreHistory {
+		return boundary, err
+	}
+	return boundary.keepingHistory(), nil
+}
+
+// restoreWorkspace always renders the reply; the intent's store keeps it only
+// when the request carried an idempotency key.
+func (c *Coordinator) restoreWorkspace(ctx context.Context, m WorkspaceMutation, boundary resolvedRollbackBoundary, attempt rollbackAttempt) (RollbackResult, error) {
 	if err := c.quiesceRollbackWorkspace(m.SessionID, m.CWD); err != nil {
-		return RollbackResult{}, c.refuseWorkspaceRollback(ctx, m, fresh, encode, err)
+		return RollbackResult{}, c.refuseWorkspaceRollback(ctx, m, attempt, err)
 	}
 	if err := c.checkpoints.Restore(ctx, m.SessionID, m.CWD, m.ToRunID); err != nil {
 		if errors.Is(err, ErrCheckpointRestoreIncomplete) {
 			c.transientState.ForgetWorkspace(m.CWD)
 			return RollbackResult{}, errors.Join(ErrRollbackRecoveryPending, err)
 		}
-		return RollbackResult{}, c.refuseWorkspaceRollback(ctx, m, fresh, encode, err)
+		return RollbackResult{}, c.refuseWorkspaceRollback(ctx, m, attempt, err)
 	}
 	c.transientState.ForgetWorkspace(m.CWD)
-	if !m.RestoreHistory || len(boundary.timeline.Dropped) == 0 {
+	if boundary.keepsHistory() {
 		if err := c.sandbox.Discard(m.SessionID); err != nil {
 			return RollbackResult{}, errors.Join(ErrRollbackRecoveryPending, err)
 		}
 	}
 	var result RollbackResult
-	err := c.completeRollback(ctx, m.SessionID, boundary, m.RestoreHistory, func(ctx context.Context, write func(context.Context) (RollbackResult, error)) error {
+	err := c.completeRollback(ctx, m.SessionID, boundary, func(ctx context.Context, write func(context.Context) (RollbackResult, error)) error {
 		return c.mutations.Complete(ctx, m, func(tx context.Context) ([]byte, error) {
 			var err error
 			result, err = write(tx)
-			if err != nil || m.Receipt.Key == "" {
+			if err != nil {
 				return nil, err
 			}
-			return encode(m.SessionID, result, nil)
+			return c.rollbackReceipts(m.SessionID, result, nil)
 		})
 	})
 	if err != nil {
@@ -102,7 +128,7 @@ func (c *Coordinator) restoreWorkspace(ctx context.Context, m WorkspaceMutation,
 	return result, nil
 }
 
-func (c *Coordinator) quiesceRollbackWorkspace(sessionID, cwd string) error {
+func (c *Coordinator) quiesceRollbackWorkspace(sessionID identity.SessionID, cwd string) error {
 	// Session shells can live in an isolated copy. Other Sessions can own
 	// shells in the shared tree, so both scopes must stop before checkout.
 	if err := c.transientState.QuiesceSession(sessionID); err != nil {
@@ -114,18 +140,14 @@ func (c *Coordinator) quiesceRollbackWorkspace(sessionID, cwd string) error {
 	return nil
 }
 
-func (c *Coordinator) refuseWorkspaceRollback(ctx context.Context, m WorkspaceMutation, fresh bool, encode RollbackReceiptEncoder, cause error) error {
-	// Only the first attempt can prove no checkout has started.
-	if !fresh {
+func (c *Coordinator) refuseWorkspaceRollback(ctx context.Context, m WorkspaceMutation, attempt rollbackAttempt, cause error) error {
+	if attempt != recordingAttempt {
 		return errors.Join(ErrRollbackRecoveryPending, cause)
 	}
 	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), mutationCleanupTimeout)
 	defer cancel()
 	err := c.mutations.Complete(cleanup, m, func(context.Context) ([]byte, error) {
-		if m.Receipt.Key == "" {
-			return nil, nil
-		}
-		return encode(m.SessionID, RollbackResult{}, cause)
+		return c.rollbackReceipts(m.SessionID, RollbackResult{}, cause)
 	})
 	if err != nil {
 		return errors.Join(ErrRollbackRecoveryPending, cause, err)
@@ -135,20 +157,20 @@ func (c *Coordinator) refuseWorkspaceRollback(ctx context.Context, m WorkspaceMu
 
 // Recovery runs before any new command can take the Session or tree. The
 // retained intent alone authorizes another checkout of this exact boundary.
-func (c *Coordinator) RecoverWorkspaceMutations(ctx context.Context, encode RollbackReceiptEncoder) error {
+func (c *Coordinator) RecoverWorkspaceMutations(ctx context.Context) error {
 	pending, err := c.mutations.ListPending(ctx)
 	if err != nil {
 		return err
 	}
 	for _, m := range pending {
-		if err := c.recoverWorkspaceRollback(ctx, m, encode); err != nil {
+		if err := c.recoverWorkspaceRollback(ctx, m); err != nil {
 			return fmt.Errorf("sessions: recover rollback for %q: %w", m.SessionID, err)
 		}
 	}
 	return nil
 }
 
-func (c *Coordinator) recoverWorkspaceRollback(ctx context.Context, m WorkspaceMutation, encode RollbackReceiptEncoder) error {
+func (c *Coordinator) recoverWorkspaceRollback(ctx context.Context, m WorkspaceMutation) error {
 	current, err := c.Get(ctx, m.SessionID)
 	if err != nil {
 		return err
@@ -156,10 +178,10 @@ func (c *Coordinator) recoverWorkspaceRollback(ctx context.Context, m WorkspaceM
 	if current.Workspace().Path() != m.CWD {
 		return errors.New("sessions: retained rollback has a different working tree")
 	}
-	boundary, err := c.resolveRollbackBoundary(ctx, m.SessionID, m.ToRunID)
+	boundary, err := c.resolveWorkspaceRollbackBoundary(ctx, m.WorkspaceRollbackSpec)
 	if err != nil {
 		return err
 	}
-	_, err = c.restoreWorkspace(ctx, m, boundary, false, encode)
+	_, err = c.restoreWorkspace(ctx, m, boundary, resumedAttempt)
 	return err
 }

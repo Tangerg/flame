@@ -34,7 +34,7 @@ func (lspObjectCodec) WriteObject(stream io.Writer, value any) error {
 	if len(body) > maxLSPMessageBytes {
 		return fmt.Errorf("%w: encoded body uses %d bytes; limit is %d", errLSPMessageTooLarge, len(body), maxLSPMessageBytes)
 	}
-	if _, err := fmt.Fprintf(stream, "Content-Length: %d\r\n\r\n", len(body)); err != nil {
+	if _, err := fmt.Fprintf(stream, "%s: %d\r\n\r\n", lspContentLengthHeader, len(body)); err != nil {
 		return err
 	}
 	_, err = stream.Write(body)
@@ -45,45 +45,16 @@ func (lspObjectCodec) ReadObject(stream *bufio.Reader, value any) error {
 	return readLSPObject(stream, value, maxLSPHeaderBytes, maxLSPMessageBytes)
 }
 
+// lspContentLengthHeader is the one base-protocol header that frames a message.
+const lspContentLengthHeader = "Content-Length"
+
 func readLSPObject(stream *bufio.Reader, value any, headerLimit, messageLimit int) error {
 	if stream == nil || value == nil || headerLimit <= 0 || messageLimit <= 0 {
 		return errors.New("lsp: valid stream, destination, and framing limits are required")
 	}
-	remainingHeader := headerLimit
-	contentLength := -1
-	for {
-		line, err := readLSPHeaderLine(stream, &remainingHeader, headerLimit)
-		if err != nil {
-			return err
-		}
-		if len(line) < 2 || line[len(line)-2] != '\r' {
-			return errors.New("lsp: message header requires CRLF line endings")
-		}
-		line = line[:len(line)-2]
-		if len(line) == 0 {
-			break
-		}
-		name, rawValue, found := bytes.Cut(line, []byte{':'})
-		if !found {
-			return errors.New("lsp: malformed message header")
-		}
-		if !strings.EqualFold(strings.TrimSpace(string(name)), "Content-Length") {
-			continue
-		}
-		if contentLength >= 0 {
-			return errors.New("lsp: duplicate Content-Length header")
-		}
-		length, err := strconv.ParseUint(strings.TrimSpace(string(rawValue)), 10, 63)
-		if err != nil || length == 0 {
-			return errors.New("lsp: invalid Content-Length header")
-		}
-		if length > uint64(messageLimit) {
-			return fmt.Errorf("%w: declared body uses %d bytes; limit is %d", errLSPMessageTooLarge, length, messageLimit)
-		}
-		contentLength = int(length)
-	}
-	if contentLength < 0 {
-		return errors.New("lsp: missing Content-Length header")
+	contentLength, err := readLSPContentLength(stream, headerLimit, messageLimit)
+	if err != nil {
+		return err
 	}
 	body := make([]byte, contentLength)
 	if _, err := io.ReadFull(stream, body); err != nil {
@@ -93,6 +64,59 @@ func readLSPObject(stream *bufio.Reader, value any, headerLimit, messageLimit in
 		return fmt.Errorf("lsp: decode message body: %w", err)
 	}
 	return nil
+}
+
+// readLSPContentLength reads one header block and returns its single declared
+// body length; other headers are ignored, as the base protocol allows.
+func readLSPContentLength(stream *bufio.Reader, headerLimit, messageLimit int) (int, error) {
+	remainingHeader := headerLimit
+	contentLength := -1
+	for {
+		line, err := readLSPHeaderLine(stream, &remainingHeader, headerLimit)
+		if err != nil {
+			return 0, err
+		}
+		if len(line) < 2 || line[len(line)-2] != '\r' {
+			return 0, errors.New("lsp: message header requires CRLF line endings")
+		}
+		line = line[:len(line)-2]
+		if len(line) == 0 {
+			break
+		}
+		length, declared, err := lspContentLength(line, messageLimit)
+		if err != nil {
+			return 0, err
+		}
+		if !declared {
+			continue
+		}
+		if contentLength >= 0 {
+			return 0, errors.New("lsp: duplicate Content-Length header")
+		}
+		contentLength = length
+	}
+	if contentLength < 0 {
+		return 0, errors.New("lsp: missing Content-Length header")
+	}
+	return contentLength, nil
+}
+
+func lspContentLength(line []byte, messageLimit int) (int, bool, error) {
+	name, rawValue, found := bytes.Cut(line, []byte{':'})
+	if !found {
+		return 0, false, errors.New("lsp: malformed message header")
+	}
+	if !strings.EqualFold(strings.TrimSpace(string(name)), lspContentLengthHeader) {
+		return 0, false, nil
+	}
+	length, err := strconv.ParseUint(strings.TrimSpace(string(rawValue)), 10, 63)
+	if err != nil || length == 0 {
+		return 0, false, errors.New("lsp: invalid Content-Length header")
+	}
+	if length > uint64(messageLimit) {
+		return 0, false, fmt.Errorf("%w: declared body uses %d bytes; limit is %d", errLSPMessageTooLarge, length, messageLimit)
+	}
+	return int(length), true, nil
 }
 
 func readLSPHeaderLine(stream *bufio.Reader, remaining *int, limit int) ([]byte, error) {

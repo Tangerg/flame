@@ -4,6 +4,8 @@ import (
 	"errors"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 )
@@ -36,7 +38,7 @@ func decodeExecutorCheckpoint(checkpoint runs.ExecutorCheckpoint) (interactionCh
 	return state, nil
 }
 
-func decodeRunCheckpoint(checkpoint runs.ExecutorCheckpoint, sessionID, runID string) (interactionCheckpointState, error) {
+func decodeRunCheckpoint(checkpoint runs.ExecutorCheckpoint, sessionID identity.SessionID, runID identity.RunID) (interactionCheckpointState, error) {
 	start := interactionStartID(sessionID, runID)
 	if !start.Valid() || checkpoint.SessionID != sessionID || checkpoint.RootMemberID != start.Root().String() {
 		return interactionCheckpointState{}, errors.New("execution: checkpoint belongs to a different Run")

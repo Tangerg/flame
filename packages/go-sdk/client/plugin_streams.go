@@ -10,9 +10,6 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
-	"github.com/Tangerg/frame"
-
-	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/samber/lo"
 )
@@ -22,110 +19,91 @@ type PluginStreamer interface {
 }
 
 type PluginStreamingMethod[P, C, R any] struct {
-	caller  PluginStreamer
-	binding PluginBinding
-	method  *frame.Method
+	boundMethod
+	caller PluginStreamer
 }
 
 func BindPluginStreamingMethod[P, C, R any](caller PluginStreamer, binding PluginBinding, method *pluginmcp.StreamingMethod[P, C, R]) (*PluginStreamingMethod[P, C, R], error) {
 	if lo.IsNil(caller) || method == nil {
 		return nil, errors.New("runtime: plugin streamer and typed method are required")
 	}
-	captured, required, err := admitPluginBinding(binding, method.Descriptor())
+	bound, err := bindMethod(binding, method.Descriptor())
 	if err != nil {
 		return nil, err
 	}
-	return &PluginStreamingMethod[P, C, R]{caller: caller, binding: captured, method: required}, nil
+	return &PluginStreamingMethod[P, C, R]{boundMethod: bound, caller: caller}, nil
 }
 
 // Stream freezes input and options before lazy delivery. The returned sequence
 // has one consumer and never resubmits or changes its captured binding.
 func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, options protocol.PluginCallOptions) iter.Seq2[pluginmcp.StreamValue[C, R], error] {
-	admitted, inputErr := framevalue.EncodeJSON(input)
-	capturedOptions, optionsErr := captureStreamOptions(options)
+	captured, err := captureStreamOptions(options)
+	var request protocol.CallPluginRequest
+	if err == nil {
+		request, err = m.request(input, captured)
+	}
 	var consumed atomic.Bool
 	return func(yield func(pluginmcp.StreamValue[C, R], error) bool) {
-		fail := func(err error) {
-			if m != nil && m.method != nil && m.method.Kind() == frame.Command {
-				err = errors.Join(ErrAcknowledgementUnknown, err)
-			}
-			yield(pluginmcp.StreamValue[C, R]{}, err)
-		}
 		if !consumed.CompareAndSwap(false, true) {
 			yield(pluginmcp.StreamValue[C, R]{}, ErrClosed)
 			return
 		}
-		if m == nil || m.method == nil || inputErr != nil || optionsErr != nil {
-			yield(pluginmcp.StreamValue[C, R]{}, errors.Join(inputErr, optionsErr, errors.New("runtime: valid bound stream input and options are required")))
-			return
-		}
-		if m.method.Kind() == frame.Query && (capturedOptions.IdempotencyKey != "" || capturedOptions.IdempotencyNamespace != "") {
-			yield(pluginmcp.StreamValue[C, R]{}, errors.New("runtime: plugin query cannot carry a command identity"))
-			return
-		}
-		if err := m.method.ValidateInput(admitted); err != nil {
-			yield(pluginmcp.StreamValue[C, R]{}, err)
-			return
-		}
-		request := protocol.CallPluginRequest{InstallationID: m.binding.InstallationID, Digest: m.binding.Digest, Contribution: m.binding.Contribution, Contract: string(m.binding.Contract.Identity().Bytes()), Method: m.method.Name(), Input: string(admitted.Bytes()), Target: m.binding.Target}
-		_, events, err := m.caller.StreamPlugin(ctx, request, capturedOptions)
 		if err != nil {
 			yield(pluginmcp.StreamValue[C, R]{}, err)
 			return
 		}
-		if events == nil {
-			fail(protocol.ErrInvalidResponse)
-			return
+		_, events, err := m.caller.StreamPlugin(ctx, request, captured)
+		if err == nil {
+			err = m.deliver(events, yield)
 		}
-		var final *R
-		for event, err := range events {
-			if err != nil {
-				yield(pluginmcp.StreamValue[C, R]{}, err)
-				return
-			}
-			if final != nil {
-				fail(protocol.ErrInvalidResponse)
-				return
-			}
-			if err := protocol.ValidateWireTree(event); err != nil {
-				fail(errors.Join(protocol.ErrInvalidResponse, err))
-				return
-			}
-			switch event.Kind {
-			case protocol.PluginStreamFailure:
-				yield(pluginmcp.StreamValue[C, R]{}, &framecall.Refusal{Code: event.Failure.Code, Message: event.Failure.Message})
-				return
-			case protocol.PluginStreamChunk:
-				if err := m.method.ValidateChunk([]byte(event.Value)); err != nil {
-					fail(errors.Join(protocol.ErrInvalidResponse, err))
-					return
-				}
-				var chunk C
-				if err := json.Unmarshal([]byte(event.Value), &chunk, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
-					fail(errors.Join(protocol.ErrInvalidResponse, err))
-					return
-				}
-				if !yield(pluginmcp.StreamValue[C, R]{Chunk: &chunk}, nil) {
-					return
-				}
-			case protocol.PluginStreamResult:
-				if err := m.method.ValidateOutput([]byte(event.Value)); err != nil {
-					fail(errors.Join(protocol.ErrInvalidResponse, err))
-					return
-				}
-				final = new(R)
-				if err := json.Unmarshal([]byte(event.Value), final, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
-					fail(errors.Join(protocol.ErrInvalidResponse, err))
-					return
-				}
-			}
+		if err != nil {
+			yield(pluginmcp.StreamValue[C, R]{}, err)
 		}
-		if final == nil {
-			fail(pluginmcp.ErrStreamUnconfirmed)
-			return
-		}
-		yield(pluginmcp.StreamValue[C, R]{Result: final}, nil)
 	}
+}
+
+// deliver relays a stream's chunks and then its single final result. It
+// returns the failure that ends the stream; a consumer that stops early ends it
+// without one.
+func (m *PluginStreamingMethod[P, C, R]) deliver(events iter.Seq2[protocol.PluginStreamEvent, error], yield func(pluginmcp.StreamValue[C, R], error) bool) error {
+	if events == nil {
+		return m.contractBreach(nil)
+	}
+	var final *R
+	for event, err := range events {
+		if err != nil {
+			return err
+		}
+		if final != nil {
+			return m.contractBreach(errors.New("runtime: plugin stream continued after its result"))
+		}
+		if err := protocol.ValidateWireTree(event); err != nil {
+			return m.contractBreach(err)
+		}
+		switch event.Kind {
+		case protocol.PluginStreamFailure:
+			return pluginRefusal(event.Failure)
+		case protocol.PluginStreamChunk:
+			chunk, err := decodeOutput[C](m.method.ValidateChunk, event.Value)
+			if err != nil {
+				return m.contractBreach(err)
+			}
+			if !yield(pluginmcp.StreamValue[C, R]{Chunk: &chunk}, nil) {
+				return nil
+			}
+		case protocol.PluginStreamResult:
+			result, err := decodeOutput[R](m.method.ValidateOutput, event.Value)
+			if err != nil {
+				return m.contractBreach(err)
+			}
+			final = &result
+		}
+	}
+	if final == nil {
+		return m.contractBreach(pluginmcp.ErrStreamUnconfirmed)
+	}
+	yield(pluginmcp.StreamValue[C, R]{Result: final}, nil)
+	return nil
 }
 
 func captureStreamOptions(options protocol.PluginCallOptions) (protocol.PluginCallOptions, error) {

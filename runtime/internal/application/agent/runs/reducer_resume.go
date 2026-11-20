@@ -3,6 +3,8 @@ package runs
 import (
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -13,7 +15,7 @@ type resumeBinding struct {
 	err       error
 }
 
-func resumeBindingFrom(continuation treeContinuation, runID string) *resumeBinding {
+func resumeBindingFrom(continuation treeContinuation, runID identity.RunID) *resumeBinding {
 	builder := newResumeBindingBuilder()
 	if err := builder.addAnsweredApprovals(continuation, runID); err != nil {
 		return &resumeBinding{err: err}
@@ -36,7 +38,7 @@ func newResumeBindingBuilder() *resumeBindingBuilder {
 	}}
 }
 
-func (r *resumeBindingBuilder) addAnsweredApprovals(continuation treeContinuation, runID string) error {
+func (r *resumeBindingBuilder) addAnsweredApprovals(continuation treeContinuation, runID identity.RunID) error {
 	for _, answer := range continuation.answered {
 		item := continuation.items[answer.InterruptItemID]
 		if answer.ToolCallID == "" || item.RunID() != runID {

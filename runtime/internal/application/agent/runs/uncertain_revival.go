@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -16,7 +18,7 @@ import (
 // their Transcript, and the Tool attempts that never settled.
 type uncertainRevivalSource interface {
 	ListNonTerminalRuns(context.Context) ([]run.Run, error)
-	ListTranscript(ctx context.Context, sessionID string) ([]transcript.Item, error)
+	ListTranscript(ctx context.Context, sessionID identity.SessionID) ([]transcript.Item, error)
 	ListOpenToolInvocations(context.Context) ([]OpenToolInvocation, error)
 }
 
@@ -24,7 +26,7 @@ type ActiveExecution struct {
 	Run     run.Run
 	Session session.Session
 	Tools   []OpenToolInvocation
-	Items   map[string]transcript.Item
+	Items   map[identity.ItemID]transcript.Item
 }
 
 type uncertainExecutionRecovery interface {
@@ -57,7 +59,7 @@ var ErrOriginalSourcePending = errors.New("runs: original source is still connec
 // A deferred root retains its admission so the sweep can recover other Sessions
 // without closing this Run as lost while its original source connects.
 type UncertainRevival struct {
-	deferred map[string]ownership.RunAdmission
+	deferred map[identity.RunID]ownership.RunAdmission
 }
 
 // The coordinator reinstalls the original writer lease and Segment pump before
@@ -122,7 +124,7 @@ func (r *UncertainRevival) reviveRoot(ctx context.Context, c *Coordinator, sourc
 	if err != nil {
 		return err
 	}
-	byID := make(map[string]transcript.Item, len(items))
+	byID := make(map[identity.ItemID]transcript.Item, len(items))
 	for _, item := range items {
 		byID[item.ID()] = item
 	}
@@ -136,7 +138,7 @@ func (r *UncertainRevival) reviveRoot(ctx context.Context, c *Coordinator, sourc
 		return nil
 	case RecoveryDeferred:
 		if r.deferred == nil {
-			r.deferred = make(map[string]ownership.RunAdmission)
+			r.deferred = make(map[identity.RunID]ownership.RunAdmission)
 		}
 		r.deferred[candidate.ID()] = admission
 		return nil
@@ -159,7 +161,7 @@ func (c *Coordinator) openRevivedSegment(ctx context.Context, active ActiveExecu
 		})
 	}
 	handoff := &treeContinuation{
-		rootRunID: root.ID(), runs: map[string]run.Run{root.ID(): root}, items: active.Items,
+		rootRunID: root.ID(), runs: map[identity.RunID]run.Run{root.ID(): root}, items: active.Items,
 		continuations: []Continuation{member}, recoveredTools: recovered.Tools,
 	}
 	_, err = c.segments.openSegment(ctx, segmentSpec{

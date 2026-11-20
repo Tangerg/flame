@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
@@ -11,7 +13,7 @@ import (
 
 // compactionStore supplies the durable prefix used to compute a proposal.
 type compactionStore interface {
-	Read(context.Context, string) ([]chat.Message, error)
+	Read(context.Context, identity.SessionID) ([]chat.Message, error)
 }
 
 // Compactor reduces the exact context of an imminent model request.

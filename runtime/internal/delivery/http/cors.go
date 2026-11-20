@@ -3,9 +3,13 @@ package http
 import (
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/go-chi/cors"
 )
+
+// corsPreflightCacheLifetime lets a browser reuse one preflight answer.
+const corsPreflightCacheLifetime = 10 * time.Minute
 
 // DefaultCORSOrigins returns the allowlist baked in for the runtime HTTP server
 // when the operator hasn't supplied CORS origins. It covers the browser shells
@@ -43,7 +47,7 @@ func corsMiddleware(origins []string) func(http.Handler) http.Handler {
 		AllowedHeaders:   append(requestHeaders(), "Accept", "traceparent", "tracestate", "baggage"),
 		ExposedHeaders:   []string{headerRequestID, headerServer, headerMethod},
 		AllowCredentials: true,
-		MaxAge:           600,
+		MaxAge:           int(corsPreflightCacheLifetime / time.Second),
 	}
 	// "*" means allow every origin. With AllowCredentials the CORS spec
 	// forbids a literal "*" in Access-Control-Allow-Origin (browsers reject

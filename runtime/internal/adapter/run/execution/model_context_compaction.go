@@ -90,7 +90,7 @@ type modelContextInputTokenCounter interface {
 // the caller after the compactor returns.
 type ModelContextCompaction struct {
 	persistence   modelContextPersistence
-	sessionID     string
+	sessionID     identity.SessionID
 	selection     modelchoice.Selection
 	limits        modelref.TokenLimits
 	instructions  []corechat.Message
@@ -109,7 +109,7 @@ type ModelContextCompaction struct {
 // built from. It is a value rather than a parameter list because two of its
 // members are message slices of the same type that must not be transposable.
 type ModelContextCompactionInput struct {
-	SessionID    string
+	SessionID    identity.SessionID
 	Selection    modelchoice.Selection
 	Limits       modelref.TokenLimits
 	Instructions []corechat.Message
@@ -145,6 +145,60 @@ func newTransientModelContextCompaction(input ModelContextCompactionInput) (Mode
 	return newModelContextCompaction(modelContextTransient, input)
 }
 
+// validateMessages requires System-only instructions and well-formed
+// messages in every part of the request.
+func (input ModelContextCompactionInput) validateMessages() error {
+	for index := range input.Instructions {
+		if input.Instructions[index].Role != corechat.RoleSystem {
+			return fmt.Errorf("instruction %d is not a System message", index)
+		}
+	}
+	for _, group := range []struct {
+		label    string
+		messages []corechat.Message
+	}{{"instruction", input.Instructions}, {"candidate message", input.Candidate}, {"trailer message", input.Trailer}} {
+		for index := range group.messages {
+			if err := group.messages[index].Validate(); err != nil {
+				return fmt.Errorf("%s %d: %w", group.label, index, err)
+			}
+		}
+	}
+	return nil
+}
+
+func (input ModelContextCompactionInput) validate() error {
+	if err := input.SessionID.Validate(); err != nil {
+		return fmt.Errorf("owning %w", err)
+	}
+	if err := input.Selection.ValidateExact(); err != nil {
+		return err
+	}
+	if len(input.Candidate) == 0 {
+		return errors.New("candidate conversation is empty")
+	}
+	if input.ProtectedTail < 0 || input.ProtectedTail > len(input.Candidate) {
+		return fmt.Errorf("protected tail %d is outside [0,%d]", input.ProtectedTail, len(input.Candidate))
+	}
+	if err := input.validateMessages(); err != nil {
+		return err
+	}
+	for index := range input.Tools {
+		if err := input.Tools[index].Validate(); err != nil {
+			return fmt.Errorf("Tool definition %d: %w", index, err)
+		}
+	}
+	if err := input.Options.Validate(); err != nil {
+		return fmt.Errorf("model options: %w", err)
+	}
+	if err := validateModelOutputReservation(input.Limits, &input.Options); err != nil {
+		return fmt.Errorf("model output reservation: %w", err)
+	}
+	if input.Counter != nil && lo.IsNil(input.Counter) {
+		return errors.New("input token counter is nil")
+	}
+	return nil
+}
+
 func newModelContextCompaction(
 	persistence modelContextPersistence,
 	input ModelContextCompactionInput,
@@ -152,103 +206,11 @@ func newModelContextCompaction(
 	if persistence != modelContextDurable && persistence != modelContextTransient {
 		return ModelContextCompaction{}, errInvalidModelContextCompaction
 	}
-	if err := identity.ValidateSession(input.SessionID); err != nil {
-		return ModelContextCompaction{}, fmt.Errorf(
-			"%w: owning %w",
-			errInvalidModelContextCompaction,
-			err,
-		)
-	}
-	if err := input.Selection.ValidateExact(); err != nil {
-		return ModelContextCompaction{}, fmt.Errorf(
-			"%w: %w",
-			errInvalidModelContextCompaction,
-			err,
-		)
-	}
-	if len(input.Candidate) == 0 {
-		return ModelContextCompaction{}, fmt.Errorf(
-			"%w: candidate conversation is empty",
-			errInvalidModelContextCompaction,
-		)
-	}
-	if input.ProtectedTail < 0 || input.ProtectedTail > len(input.Candidate) {
-		return ModelContextCompaction{}, fmt.Errorf(
-			"%w: protected tail %d is outside [0,%d]",
-			errInvalidModelContextCompaction,
-			input.ProtectedTail,
-			len(input.Candidate),
-		)
-	}
-	for index := range input.Instructions {
-		if input.Instructions[index].Role != corechat.RoleSystem {
-			return ModelContextCompaction{}, fmt.Errorf(
-				"%w: instruction %d is not a System message",
-				errInvalidModelContextCompaction,
-				index,
-			)
-		}
-		if err := input.Instructions[index].Validate(); err != nil {
-			return ModelContextCompaction{}, fmt.Errorf(
-				"%w: instruction %d: %w",
-				errInvalidModelContextCompaction,
-				index,
-				err,
-			)
-		}
-	}
-	for index := range input.Candidate {
-		if err := input.Candidate[index].Validate(); err != nil {
-			return ModelContextCompaction{}, fmt.Errorf(
-				"%w: candidate message %d: %w",
-				errInvalidModelContextCompaction,
-				index,
-				err,
-			)
-		}
-	}
-	for index := range input.Trailer {
-		if err := input.Trailer[index].Validate(); err != nil {
-			return ModelContextCompaction{}, fmt.Errorf(
-				"%w: trailer message %d: %w",
-				errInvalidModelContextCompaction,
-				index,
-				err,
-			)
-		}
-	}
-	for index := range input.Tools {
-		if err := input.Tools[index].Validate(); err != nil {
-			return ModelContextCompaction{}, fmt.Errorf(
-				"%w: Tool definition %d: %w",
-				errInvalidModelContextCompaction,
-				index,
-				err,
-			)
-		}
-	}
-	if err := input.Options.Validate(); err != nil {
-		return ModelContextCompaction{}, fmt.Errorf(
-			"%w: model options: %w",
-			errInvalidModelContextCompaction,
-			err,
-		)
-	}
-	if err := validateModelOutputReservation(input.Limits, &input.Options); err != nil {
-		return ModelContextCompaction{}, fmt.Errorf(
-			"%w: model output reservation: %w",
-			errInvalidModelContextCompaction,
-			err,
-		)
+	if err := input.validate(); err != nil {
+		return ModelContextCompaction{}, fmt.Errorf("%w: %w", errInvalidModelContextCompaction, err)
 	}
 	if err := input.Calibration.Validate(); err != nil {
 		return ModelContextCompaction{}, err
-	}
-	if input.Counter != nil && lo.IsNil(input.Counter) {
-		return ModelContextCompaction{}, fmt.Errorf(
-			"%w: input token counter is nil",
-			errInvalidModelContextCompaction,
-		)
 	}
 	frozenTools := make([]toolcontract.Definition, len(input.Tools))
 	for index := range input.Tools {
@@ -278,7 +240,7 @@ func (m ModelContextCompaction) Durable() bool {
 }
 
 // SessionID returns the Session that owns this root or delegated Interaction.
-func (m ModelContextCompaction) SessionID() string { return m.sessionID }
+func (m ModelContextCompaction) SessionID() identity.SessionID { return m.sessionID }
 
 // ModelSelection returns the model whose actual context limit governs this call.
 func (m ModelContextCompaction) ModelSelection() modelchoice.Selection { return m.selection }

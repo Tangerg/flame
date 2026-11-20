@@ -6,7 +6,10 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
@@ -158,9 +161,48 @@ type ModelCallFailed struct {
 	CallID                   string
 }
 
+// validateFor checks a failure's evidence against the purpose of the call it
+// ends. An independent call carries no conversation state, and usage, cost,
+// context tokens or a message are known only with the response they describe.
+func (f ModelCallFailed) validateFor(purpose run.ModelCallPurpose) error {
+	if purpose == run.ModelIndependent && f.carriesConversationState() {
+		return fmt.Errorf("%w: independent model failure carries conversation state", errExecutorContract)
+	}
+	if f.KnownResponse != nil {
+		if err := f.KnownResponse.Validate(); err != nil {
+			return err
+		}
+		if f.Accounting == nil || !modelref.UsageMatchesResponse(f.Accounting.ReportedUsage, f.KnownResponse) {
+			return fmt.Errorf("%w: known model failure response lacks its usage", errExecutorContract)
+		}
+	}
+	if f.Accounting == nil {
+		return nil
+	}
+	if f.Accounting.CallID != f.CallID {
+		return fmt.Errorf("%w: model failure accounting names another call", errExecutorContract)
+	}
+	if f.KnownResponse == nil && f.Accounting.describesResponse() {
+		return fmt.Errorf("%w: model failure accounting describes an unknown response", errExecutorContract)
+	}
+	return nil
+}
+
+func (f ModelCallFailed) carriesConversationState() bool {
+	if f.Observation != (ModelObservation{}) || f.FirstOutputLatencyMillis != nil {
+		return true
+	}
+	a := f.Accounting
+	return a != nil && (a.Message != nil || a.ContextTokens != 0 || a.FirstOutputLatencyMillis != nil)
+}
+
+// describesResponse reports whether accounting holds facts only a known
+// response can supply.
+func (c ModelCallCompleted) describesResponse() bool {
+	return c.ReportedUsage != nil || c.Cost.OptionalUSD() != nil || c.ContextTokens != 0 || c.Message != nil
+}
+
 type ToolCallStarted struct {
-	// ArgumentsText preserves rejected input that was never admitted as an argument object.
-	ArgumentsText string
 	executionFactBase
 	CallID            string
 	ModelCallSequence uint64
@@ -169,9 +211,9 @@ type ToolCallStarted struct {
 	// a child member causal edge to this
 	// canonical Item without parsing CallID or relying on event timing.
 	SourceCallID string
-	Source       tool.Ref `json:"source,omitzero"`
+	Source       tool.Ref
 	ToolName     string
-	Arguments    string
+	Input        transcript.ToolInput
 	SafetyClass  tool.SafetyClass
 }
 
@@ -180,8 +222,7 @@ func (t ToolCallStarted) MatchesCapturedRef(ref tool.Ref) bool {
 }
 
 type ToolCallFinished struct {
-	CallID    string
-	Arguments string
+	CallID string
 	// ModelResult is the exact provider-neutral value published by Scope.
 	// Result remains the independently presented client transcript value.
 	ModelResult  *corechat.ToolResult
@@ -299,7 +340,7 @@ func (t TreeInterrupted) validate() error {
 	return nil
 }
 
-func (t TreeInterrupted) validateFor(rootMemberID, sessionID string) error {
+func (t TreeInterrupted) validateFor(rootMemberID string, sessionID identity.SessionID) error {
 	if err := t.validate(); err != nil {
 		return err
 	}
@@ -342,7 +383,7 @@ type PlanUpdated struct {
 // Both paths still append the message to Conversation at this model boundary.
 type AppliedSteerMessage struct {
 	Content          []transcript.ContentBlock
-	ItemID           string
+	ItemID           identity.ItemID
 	AlreadyProjected bool
 }
 

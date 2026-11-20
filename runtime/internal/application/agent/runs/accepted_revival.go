@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
 // ReviveAcceptedContinuations runs before abandoned ownership is classified.
@@ -50,75 +53,107 @@ func (c *Coordinator) reviveAcceptedContinuation(ctx context.Context, accepted A
 	if root.State().IsTerminal() {
 		return c.acceptedContinuations.Delete(ctx, accepted.RootRunID())
 	}
-	if err := validateAcceptedSegments(accepted.SessionID, accepted.Segments, values); err != nil {
-		return c.retireUnrestorableAccepted(ctx, accepted, err)
+	resumption, err := c.restoreAccepted(ctx, accepted, sess, root, values)
+	if lost, ok := errors.AsType[unrestorableError](err); ok {
+		return c.retireUnrestorableAccepted(ctx, accepted, lost.cause)
 	}
-	items, err := pendingItems(ctx, c.items, accepted.Pending)
 	if err != nil {
 		return err
 	}
-	answers, err := accepted.Pending.settledAnswers(accepted.SessionID, items)
-	if err != nil {
-		return c.retireUnrestorableAccepted(ctx, accepted, err)
-	}
-	var input *CommittedUserInput
-	if accepted.InputItemID != "" {
-		item, found, err := c.items.Item(ctx, accepted.InputItemID)
-		if err != nil {
-			return err
-		}
-		if !found {
-			return c.retireUnrestorableAccepted(ctx, accepted, errors.New("runs: accepted input Item is missing"))
-		}
-		message, isUserMessage := item.Body().(transcript.UserMessageBody)
-		if !isUserMessage || item.SessionID() != accepted.SessionID || item.RunID() != root.ID() {
-			return c.retireUnrestorableAccepted(ctx, accepted, errors.New("runs: accepted input Item has another kind or owner"))
-		}
-		input = &CommittedUserInput{ItemID: item.ID(), Content: message.Content}
-	}
-	member, _ := accepted.Pending.RootContinuation()
-	checkpoint, err := c.checkpoints.ReadWaitingCheckpoint(ctx, member.MemberID)
-	if err != nil {
-		if errors.Is(err, ErrExecutorCheckpointNotFound) || errors.Is(err, ErrInvalidExecutorCheckpoint) {
-			return c.retireUnrestorableAccepted(ctx, accepted, err)
-		}
-		return err
-	}
-	waiting, err := waitingContinuationFromPending(accepted.Pending, checkpoint, values, sess)
-	if err != nil {
-		return c.retireUnrestorableAccepted(ctx, accepted, err)
-	}
-	continuation, err := treeContinuationForAnswers(accepted.Pending, values, items)
-	if err != nil {
-		return c.retireUnrestorableAccepted(ctx, accepted, err)
-	}
-	_, err = c.continuation.PrepareContinuation(ctx, waiting, answers, nil)
-	if err != nil {
-		if errors.Is(err, ErrExecutorStateLost) || errors.Is(err, ErrInvalidExecutorCheckpoint) {
-			return c.retireUnrestorableAccepted(ctx, accepted, err)
-		}
-		return err
-	}
-	ref := ExecutorRef{SessionID: waiting.SessionID, ExecutorID: waiting.ExecutorID}
+	ref := ExecutorRef{SessionID: resumption.waiting.SessionID, ExecutorID: resumption.waiting.ExecutorID}
 	_, err = c.segments.openSegment(ctx, segmentSpec{
 		RunID: root.ID(), SegmentID: root.ActiveSegmentID(), SessionID: accepted.SessionID,
 		WorkspaceCWD: sess.Workspace().Path(), Isolated: sess.Isolated(), ExecutorID: ref.ExecutorID,
 		admission: &admission,
 		Opening: treeResumption{
-			Continuation: continuation,
+			Continuation: resumption.continuation,
 			StageExecution: func(stageCtx context.Context) error {
-				_, err := c.continuation.StageAcceptedContinuation(stageCtx, waiting)
+				_, err := c.continuation.StageAcceptedContinuation(stageCtx, resumption.waiting)
 				return err
 			},
 		},
 		BeginExecution: func(beginCtx context.Context) error {
-			return c.continuation.BeginContinuation(beginCtx, ref, answers, input)
+			return c.continuation.BeginContinuation(beginCtx, ref, resumption.answers, resumption.input)
 		},
 	})
-	if err != nil {
-		return err
+	return err
+}
+
+// unrestorableError proves an accepted handoff can never resume against the
+// durable state it names. Every other failure is inconclusive and keeps the
+// handoff for the next startup.
+type unrestorableError struct{ cause error }
+
+func (e unrestorableError) Error() string { return e.cause.Error() }
+func (e unrestorableError) Unwrap() error { return e.cause }
+
+type acceptedResumption struct {
+	answers      []InterruptAnswer
+	input        *CommittedUserInput
+	waiting      ExecutionContinuation
+	continuation *treeContinuation
+}
+
+func (c *Coordinator) restoreAccepted(ctx context.Context, accepted AcceptedContinuation, sess session.Session, root run.Run, values []run.Run) (acceptedResumption, error) {
+	if err := validateAcceptedSegments(accepted.SessionID, accepted.Segments, values); err != nil {
+		return acceptedResumption{}, unrestorableError{err}
 	}
-	return nil
+	items, err := pendingItems(ctx, c.items, accepted.Pending)
+	if err != nil {
+		return acceptedResumption{}, err
+	}
+	answers, err := accepted.Pending.settledAnswers(accepted.SessionID, items)
+	if err != nil {
+		return acceptedResumption{}, unrestorableError{err}
+	}
+	input, err := c.acceptedInput(ctx, accepted, root.ID())
+	if err != nil {
+		return acceptedResumption{}, err
+	}
+	member, _ := accepted.Pending.RootContinuation()
+	checkpoint, err := c.checkpoints.ReadWaitingCheckpoint(ctx, member.MemberID)
+	if errors.Is(err, ErrExecutorCheckpointNotFound) || errors.Is(err, ErrInvalidExecutorCheckpoint) {
+		return acceptedResumption{}, unrestorableError{err}
+	}
+	if err != nil {
+		return acceptedResumption{}, err
+	}
+	waiting, err := waitingContinuationFromPending(accepted.Pending, checkpoint, values, sess)
+	if err != nil {
+		return acceptedResumption{}, unrestorableError{err}
+	}
+	continuation, err := treeContinuationForAnswers(accepted.Pending, values, items)
+	if err != nil {
+		return acceptedResumption{}, unrestorableError{err}
+	}
+	_, err = c.continuation.PrepareContinuation(ctx, waiting, answers, nil)
+	if errors.Is(err, ErrExecutorStateLost) || errors.Is(err, ErrInvalidExecutorCheckpoint) {
+		return acceptedResumption{}, unrestorableError{err}
+	}
+	if err != nil {
+		return acceptedResumption{}, err
+	}
+	return acceptedResumption{answers: answers, input: input, waiting: waiting, continuation: continuation}, nil
+}
+
+// acceptedInput reads the user message the handoff added, which must still be
+// the root Run's own User Item.
+func (c *Coordinator) acceptedInput(ctx context.Context, accepted AcceptedContinuation, rootRunID identity.RunID) (*CommittedUserInput, error) {
+	if accepted.InputItemID.IsZero() {
+		return nil, nil
+	}
+	item, found, err := c.items.Item(ctx, accepted.InputItemID)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, unrestorableError{errors.New("runs: accepted input Item is missing")}
+	}
+	message, isUserMessage := item.Body().(transcript.UserMessageBody)
+	if !isUserMessage || item.SessionID() != accepted.SessionID || item.RunID() != rootRunID {
+		return nil, unrestorableError{errors.New("runs: accepted input Item has another kind or owner")}
+	}
+	return &CommittedUserInput{ItemID: item.ID(), Content: message.Content}, nil
 }
 
 func (c *Coordinator) retireUnrestorableAccepted(ctx context.Context, accepted AcceptedContinuation, cause error) error {
@@ -126,8 +161,8 @@ func (c *Coordinator) retireUnrestorableAccepted(ctx context.Context, accepted A
 	return c.acceptedContinuations.Delete(ctx, accepted.RootRunID())
 }
 
-func validateAcceptedSegments(sessionID string, segments []AcceptedSegment, values []run.Run) error {
-	active := make(map[string]run.Run)
+func validateAcceptedSegments(sessionID identity.SessionID, segments []AcceptedSegment, values []run.Run) error {
+	active := make(map[identity.RunID]run.Run)
 	for _, value := range values {
 		if !value.State().IsTerminal() {
 			active[value.ID()] = value
@@ -138,7 +173,7 @@ func validateAcceptedSegments(sessionID string, segments []AcceptedSegment, valu
 	}
 	for _, segment := range segments {
 		value, found := active[segment.RunID]
-		if !found || value.SessionID() != sessionID || value.State() != run.Running || value.ActiveSegmentID() != segment.SegmentID {
+		if !found || value.SessionID() != sessionID || !value.Executes(segment.SegmentID) {
 			return errors.New("runs: accepted continuation segment changed")
 		}
 	}

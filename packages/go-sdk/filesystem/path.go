@@ -111,20 +111,9 @@ func resolve(abs string, depth int) (string, error) {
 			current = candidate
 			continue
 		}
-		target, err := os.Readlink(candidate)
+		target, err := symlinkTarget(candidate, current, volume)
 		if err != nil {
-			return "", fmt.Errorf("read symbolic link %q: %w", candidate, err)
-		}
-		target = filepath.FromSlash(target)
-		if !filepath.IsAbs(target) {
-			if filepath.VolumeName(target) != "" {
-				return "", fmt.Errorf("symbolic link %q has a volume-relative target", candidate)
-			}
-			if len(target) > 0 && os.IsPathSeparator(target[0]) {
-				target = volume + target
-			} else {
-				target = current + separator + target
-			}
+			return "", err
 		}
 		// A missing component can be cancelled by .. and expose an existing
 		// symlink later. Every remaining component still needs physical resolution.
@@ -134,4 +123,24 @@ func resolve(abs string, depth int) (string, error) {
 		return resolve(target, depth+1)
 	}
 	return current, nil
+}
+
+// symlinkTarget makes a link's target absolute against the directory that
+// holds the link, or against its volume for a rooted target.
+func symlinkTarget(link, directory, volume string) (string, error) {
+	target, err := os.Readlink(link)
+	if err != nil {
+		return "", fmt.Errorf("read symbolic link %q: %w", link, err)
+	}
+	target = filepath.FromSlash(target)
+	switch {
+	case filepath.IsAbs(target):
+		return target, nil
+	case filepath.VolumeName(target) != "":
+		return "", fmt.Errorf("symbolic link %q has a volume-relative target", link)
+	case len(target) > 0 && os.IsPathSeparator(target[0]):
+		return volume + target, nil
+	default:
+		return directory + string(filepath.Separator) + target, nil
+	}
 }

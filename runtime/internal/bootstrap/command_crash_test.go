@@ -58,19 +58,22 @@ type commandCrashExecutor struct {
 	phase   string
 }
 
-func (s commandCrashExecutor) CancelRun(ctx context.Context, _ protocol.CancelRunRequest) (*protocol.CancelRunResponse, error) {
+func (s commandCrashExecutor) SetEmbeddingRole(ctx context.Context, role protocol.EmbeddingRole) (*protocol.EmbeddingRole, error) {
 	// The unconstrained fixture records every execution, so replay cannot hide a
-	// duplicate behind a business uniqueness check. It is not a Run simulator.
+	// duplicate behind a business uniqueness check.
 	if _, err := s.effects.ExecContext(ctx, `INSERT INTO command_crash_effects (item_id) VALUES ('item_crash')`); err != nil {
 		return nil, err
 	}
 	if s.phase == "business" {
 		os.Exit(commandCrashExit)
 	}
-	return &protocol.CancelRunResponse{Type: protocol.CancelRunRoot, Run: protocol.RunRef{ID: "run_crash", SessionID: "ses_crash", Status: protocol.RunStatusFinished, Provider: "test", Model: "test-model", CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(), Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCanceled}}}, nil
+	return &role, nil
 }
 
-func crashCommand(t *testing.T, db *persistencefixture.Stores, effects *sql.DB, phase string) (*protocol.CancelRunResponse, error) {
+// crashRole is the command's input; its echo is the durable receipt.
+var crashRole = protocol.EmbeddingRole{Provider: "test", Model: "crash-embedding"}
+
+func crashCommand(t *testing.T, db *persistencefixture.Stores, effects *sql.DB, phase string) (*protocol.EmbeddingRole, error) {
 	t.Helper()
 	namespace := db.IdempotencyNamespace
 	endpoint, err := delivery.NewEndpoint(commandCrashExecutor{effects: effects, phase: phase}, delivery.EndpointConfig{
@@ -80,10 +83,8 @@ func crashCommand(t *testing.T, db *persistencefixture.Stores, effects *sql.DB, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	return endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](t.Context(), delivery.RunsCancel, protocol.CancelRunRequest{
-		RunID:  "run_crash",
-		Reason: "once",
-	}, protocol.CallMetadata{IdempotencyKey: "crash-command", IdempotencyNamespace: namespace.String()})
+	return endpoint.Call[protocol.EmbeddingRole, *protocol.EmbeddingRole](t.Context(), delivery.ModelsSetEmbeddingRole, crashRole,
+		protocol.CallMetadata{IdempotencyKey: "crash-command", IdempotencyNamespace: namespace.String()})
 }
 
 func TestCommandCrashHelper(t *testing.T) {
@@ -126,7 +127,7 @@ func TestCommandReceiptSurvivesAbruptProcessExit(t *testing.T) {
 			for range 2 {
 				response, err := crashCommand(t, db, effects, "")
 				if phase == commandCrashReceipt {
-					if err != nil || response == nil || response.Run.ID != "run_crash" {
+					if err != nil || response == nil || *response != crashRole {
 						t.Fatalf("durable receipt lost its identity: %+v, %v", response, err)
 					}
 				} else if !errors.Is(err, protocol.ErrIdempotencyInProgress) || response != nil {

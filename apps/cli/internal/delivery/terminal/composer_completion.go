@@ -159,7 +159,7 @@ func (c *promptCompletion) completeFiles(query base.Token) {
 		return
 	}
 	resolver := c.composer.attachments
-	c.tasks.session(completionOperation, true,
+	c.tasks.session(completionOperation,
 		func(ctx context.Context) ([]base.Candidate, error) {
 			matches, err := resolver.Complete(ctx, query.Query)
 			candidates := make([]base.Candidate, 0, len(matches))

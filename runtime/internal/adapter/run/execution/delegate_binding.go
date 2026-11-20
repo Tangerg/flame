@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 
 	"github.com/Tangerg/scope/agent/interaction"
 	scoperun "github.com/Tangerg/scope/agent/run"
@@ -47,7 +48,7 @@ func (m *managedDelegateCall) toolStart() runs.ToolCallStarted {
 	return runs.ToolCallStarted{
 		CallID: m.callID.String(), ModelCallSequence: m.modelCallSequence,
 		ToolCallIndex: m.toolCallIndex, SourceCallID: m.call.ID,
-		ToolName: m.call.Name, Source: m.source, Arguments: m.arguments.Canonical(), SafetyClass: tool.SafetyClassExec,
+		ToolName: m.call.Name, Source: m.source, Input: transcript.AdmittedInput(m.arguments), SafetyClass: tool.SafetyClassExec,
 	}
 }
 

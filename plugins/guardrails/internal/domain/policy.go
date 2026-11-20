@@ -35,6 +35,8 @@ type Policy struct {
 	phrases  []string
 }
 
+const maxPhraseBytes = 512
+
 func NewPolicy() Policy { return Policy{revision: 1, phrases: []string{}} }
 
 func Restore(snapshot Snapshot) (Policy, error) {
@@ -43,7 +45,7 @@ func Restore(snapshot Snapshot) (Policy, error) {
 	}
 	seen := make(map[string]bool, len(snapshot.Phrases))
 	for _, phrase := range snapshot.Phrases {
-		if !utf8.ValidString(phrase) || len(phrase) > 512 || strings.TrimSpace(phrase) == "" || seen[phrase] {
+		if !utf8.ValidString(phrase) || len(phrase) > maxPhraseBytes || strings.TrimSpace(phrase) == "" || seen[phrase] {
 			return Policy{}, ErrInvalidPolicy
 		}
 		seen[phrase] = true

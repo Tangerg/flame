@@ -36,7 +36,7 @@ func parseStoredChildRunStart(raw string) (outcome runs.ChildRunStartOutcome, co
 // exact identity and compare-before-delete behavior.
 type ChildRunStartReservationRecord struct {
 	MemberID  string
-	SessionID string
+	SessionID identity.SessionID
 	Payload   []byte
 	CreatedAt time.Time
 }
@@ -48,7 +48,7 @@ func (c ChildRunStartReservationRecord) validate() error {
 	if err := runs.ValidateMember(c.MemberID); err != nil {
 		return fmt.Errorf("%w: %v", errInvalidChildRunStartReservation, err)
 	}
-	if err := identity.ValidateSession(c.SessionID); err != nil {
+	if err := c.SessionID.Validate(); err != nil {
 		return fmt.Errorf("%w: %v", errInvalidChildRunStartReservation, err)
 	}
 	if len(c.Payload) == 0 {
@@ -176,9 +176,9 @@ func (c *ChildRunStartReservationStore) Conclude(ctx context.Context, record Chi
 // live; root terminalization, rollback/restore, and Session deletion call this
 // inside their existing write-set so no concluded or reserve-before-abort row
 // outlives its owner.
-func (c *ChildRunStartReservationStore) DeleteSession(ctx context.Context, sessionID string) error {
+func (c *ChildRunStartReservationStore) DeleteSession(ctx context.Context, sessionID identity.SessionID) error {
 	return c.db.write(ctx, func(ctx context.Context) error {
-		if err := identity.ValidateSession(sessionID); err != nil {
+		if err := sessionID.Validate(); err != nil {
 			return fmt.Errorf("%w: %v", errInvalidChildRunStartReservation, err)
 		}
 		if _, err := c.db.connection(ctx).ExecContext(ctx, `DELETE FROM child_run_start_reservations WHERE session_id = ?`, sessionID); err != nil {

@@ -35,12 +35,43 @@ type connector struct {
 	credential credential
 }
 
+const requestTimeout = 30 * time.Second
+
 func newConnector(store *store, transport http.RoundTripper, credential credential) (*connector, error) {
 	if store == nil || !store.db.Valid() || transport == nil {
 		return nil, errors.New("github: store and HTTP transport are required")
 	}
-	client := &http.Client{Transport: transport, Timeout: 30 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	client := &http.Client{Transport: transport, Timeout: requestTimeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	return &connector{store: store, http: client, credential: credential}, nil
+}
+
+// GitHub refusal codes name why a request was refused; callers do not retry them.
+const (
+	refusalBinaryFile         = "binary_file"
+	refusalConflict           = "conflict"
+	refusalCredentialRequired = "credential_required"
+	refusalForbidden          = "forbidden"
+	refusalInvalidQuery       = "invalid_query"
+	refusalInvalidRequest     = "invalid_request"
+	refusalMovedResource      = "moved_resource"
+	refusalNotAllowed         = "not_allowed"
+	refusalNotFile            = "not_file"
+	refusalNotFound           = "not_found"
+	refusalRateLimited        = "rate_limited"
+	refusalResponseTooLarge   = "response_too_large"
+	refusalUnauthorized       = "unauthorized"
+	refusalUnsupportedFile    = "unsupported_file"
+)
+
+// identify marks a request with the API version this plugin speaks and, when
+// configured, the credential it acts as.
+func (c *connector) identify(request *http.Request) {
+	request.Header.Set("Accept", "application/vnd.github+json")
+	request.Header.Set("X-GitHub-Api-Version", apiVersion)
+	request.Header.Set("User-Agent", "Flame-GitHub-Plugin/1.0")
+	if c.credential.configured() {
+		request.Header.Set("Authorization", c.credential.authorization())
+	}
 }
 
 func refused(code, message string) error {
@@ -79,12 +110,7 @@ func (c *connector) load(ctx context.Context, address, key string) (result respo
 	if err != nil {
 		return response{}, err
 	}
-	request.Header.Set("Accept", "application/vnd.github+json")
-	request.Header.Set("X-GitHub-Api-Version", apiVersion)
-	request.Header.Set("User-Agent", "Flame-GitHub-Plugin/1.0")
-	if c.credential.configured() {
-		request.Header.Set("authorization", c.credential.authorization())
-	}
+	c.identify(request)
 	if previous.etag != "" {
 		request.Header.Set("If-None-Match", previous.etag)
 	}
@@ -95,38 +121,48 @@ func (c *connector) load(ctx context.Context, address, key string) (result respo
 	defer func() { err = errors.Join(err, upstream.Body.Close()) }()
 	switch upstream.StatusCode {
 	case http.StatusOK:
-		body, err := io.ReadAll(io.LimitReader(upstream.Body, maxResponseBytes+1))
-		if err != nil {
-			return response{}, err
-		}
-		if len(body) > maxResponseBytes {
-			return response{}, refused("response_too_large", "response exceeds four MiB")
-		}
-		return response{body: body, etag: upstream.Header.Get("ETag"), links: upstream.Header.Get("Link")}, nil
+		return freshResponse(upstream)
 	case http.StatusNotModified:
-		if previous.etag == "" {
-			return response{}, errors.New("github: conditional response has no original representation")
-		}
-		if tag := upstream.Header.Get("ETag"); tag != "" {
-			previous.etag = tag
-		}
-		if links := upstream.Header.Get("Link"); links != "" {
-			previous.links = links
-		}
-		return previous, nil
+		return previous.revalidated(upstream.Header)
 	case http.StatusUnauthorized:
-		return response{}, refused("unauthorized", "credential was rejected")
+		return response{}, refused(refusalUnauthorized, "credential was rejected")
 	case http.StatusForbidden, http.StatusTooManyRequests:
 		return response{}, accessRefusal(upstream)
 	case http.StatusNotFound:
-		return response{}, refused("not_found", "resource is absent or not visible to this credential")
+		return response{}, refused(refusalNotFound, "resource is absent or not visible to this credential")
 	case http.StatusUnprocessableEntity, http.StatusBadRequest:
-		return response{}, refused("invalid_query", "request was rejected")
+		return response{}, refused(refusalInvalidQuery, "request was rejected")
 	case http.StatusMovedPermanently, http.StatusFound, http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
-		return response{}, refused("moved_resource", "resource moved; supply its current repository explicitly")
+		return response{}, refused(refusalMovedResource, "resource moved; supply its current repository explicitly")
 	default:
 		return response{}, fmt.Errorf("github: unexpected HTTP status %d", upstream.StatusCode)
 	}
+}
+
+func freshResponse(upstream *http.Response) (response, error) {
+	body, err := io.ReadAll(io.LimitReader(upstream.Body, maxResponseBytes+1))
+	if err != nil {
+		return response{}, err
+	}
+	if len(body) > maxResponseBytes {
+		return response{}, refused(refusalResponseTooLarge, "response exceeds four MiB")
+	}
+	return response{body: body, etag: upstream.Header.Get("ETag"), links: upstream.Header.Get("Link")}, nil
+}
+
+// revalidated is the cached representation a 304 confirmed, carrying any
+// validators the confirmation refreshed.
+func (r response) revalidated(header http.Header) (response, error) {
+	if r.etag == "" {
+		return response{}, errors.New("github: conditional response has no original representation")
+	}
+	if tag := header.Get("ETag"); tag != "" {
+		r.etag = tag
+	}
+	if links := header.Get("Link"); links != "" {
+		r.links = links
+	}
+	return r, nil
 }
 
 // GitHub can signal secondary exhaustion only in the response message, even
@@ -140,14 +176,14 @@ func accessRefusal(response *http.Response) error {
 		}
 		raw, err := io.ReadAll(io.LimitReader(response.Body, maxErrorBytes+1))
 		if err != nil {
-			return errors.Join(refused("forbidden", "repository access was refused"), err)
+			return errors.Join(refused(refusalForbidden, "repository access was refused"), err)
 		}
 		limited = len(raw) <= maxErrorBytes && json.Unmarshal(raw, &problem) == nil && strings.Contains(strings.ToLower(problem.Message), "secondary rate limit")
 	}
 	if limited {
-		return refused("rate_limited", "request is rate limited; no retry was attempted")
+		return refused(refusalRateLimited, "request is rate limited; no retry was attempted")
 	}
-	return refused("forbidden", "repository access was refused")
+	return refused(refusalForbidden, "repository access was refused")
 }
 
 type userWire struct {
@@ -221,7 +257,7 @@ type issueWire struct {
 }
 
 func (wire issueWire) admit(repository repository) (contractwire.Issue, error) {
-	if wire.ID <= 0 || wire.Number <= 0 || wire.Title == "" || wire.URL == "" || wire.UpdatedAt.IsZero() || wire.State != contractwire.Open && wire.State != contractwire.Closed {
+	if wire.ID <= 0 || wire.Number <= 0 || wire.Title == "" || wire.URL == "" || wire.UpdatedAt.IsZero() || !wire.State.Valid() {
 		return contractwire.Issue{}, errors.New("github: invalid issue representation")
 	}
 	if wire.Labels == nil || wire.Assignees == nil {
@@ -321,43 +357,55 @@ func (c *connector) readFile(ctx context.Context, input contractwire.FileInput) 
 		parameters.Set("ref", *input.Ref)
 	}
 	return query(ctx, c, repository.apiPath()+"/contents/"+path.apiPath(), parameters, func(result response) (contractwire.File, error) {
-		var wire struct {
-			Type     string `json:"type"`
-			Path     string `json:"path"`
-			SHA      string `json:"sha"`
-			URL      string `json:"html_url"`
-			Size     *int64 `json:"size"`
-			Encoding string `json:"encoding"`
-			Content  string `json:"content"`
-		}
 		if strings.HasPrefix(strings.TrimSpace(string(result.body)), "[") {
-			return contractwire.File{}, refused("not_file", "resource is a directory")
+			return contractwire.File{}, refused(refusalNotFile, "resource is a directory")
 		}
-		if err := json.Unmarshal(result.body, &wire); err != nil {
+		var content contentResponse
+		if err := json.Unmarshal(result.body, &content); err != nil {
 			return contractwire.File{}, err
 		}
-		if wire.Type == "" {
-			return contractwire.File{}, errors.New("github: incomplete file representation")
-		}
-		if wire.Type != "file" {
-			return contractwire.File{}, refused("not_file", "resource is not a regular file")
-		}
-		if wire.Encoding == "" || wire.Size == nil || *wire.Size < 0 {
-			return contractwire.File{}, errors.New("github: incomplete file representation")
-		}
-		if *wire.Size > maxFileBytes || wire.Encoding != "base64" {
-			return contractwire.File{}, refused("unsupported_file", "file must be base64 content up to one MiB")
-		}
-		content, err := base64.StdEncoding.DecodeString(wire.Content)
+		text, err := content.text(input.Path)
 		if err != nil {
 			return contractwire.File{}, err
 		}
-		if int64(len(content)) != *wire.Size || wire.Path != input.Path || wire.SHA == "" || wire.URL == "" {
-			return contractwire.File{}, errors.New("github: inconsistent file representation")
-		}
-		if !utf8.Valid(content) {
-			return contractwire.File{}, refused("binary_file", "file content is not UTF-8")
-		}
-		return contractwire.File{Repository: repository.String(), Path: wire.Path, SHA: wire.SHA, URL: wire.URL, Text: string(content)}, nil
+		return contractwire.File{Repository: repository.String(), Path: content.Path, SHA: content.SHA, URL: content.URL, Text: text}, nil
 	})
+}
+
+// contentResponse is GitHub's contents representation of one repository path.
+type contentResponse struct {
+	Type     string `json:"type"`
+	Path     string `json:"path"`
+	SHA      string `json:"sha"`
+	URL      string `json:"html_url"`
+	Size     *int64 `json:"size"`
+	Encoding string `json:"encoding"`
+	Content  string `json:"content"`
+}
+
+// text admits only a complete, bounded UTF-8 file at the requested path.
+func (r contentResponse) text(requested string) (string, error) {
+	if r.Type == "" {
+		return "", errors.New("github: incomplete file representation")
+	}
+	if r.Type != "file" {
+		return "", refused(refusalNotFile, "resource is not a regular file")
+	}
+	if r.Encoding == "" || r.Size == nil || *r.Size < 0 {
+		return "", errors.New("github: incomplete file representation")
+	}
+	if *r.Size > maxFileBytes || r.Encoding != "base64" {
+		return "", refused(refusalUnsupportedFile, "file must be base64 content up to one MiB")
+	}
+	content, err := base64.StdEncoding.DecodeString(r.Content)
+	if err != nil {
+		return "", err
+	}
+	if int64(len(content)) != *r.Size || r.Path != requested || r.SHA == "" || r.URL == "" {
+		return "", errors.New("github: inconsistent file representation")
+	}
+	if !utf8.Valid(content) {
+		return "", refused(refusalBinaryFile, "file content is not UTF-8")
+	}
+	return string(content), nil
 }

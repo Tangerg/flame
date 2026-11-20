@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -18,8 +20,20 @@ func (s *InterruptStore) Open(ctx context.Context, pending runs.Pending) error {
 	return s.insertPending(ctx, interruptRecord(pending))
 }
 
-func (s *InterruptStore) List(ctx context.Context, sessionID string) ([]runs.Pending, error) {
-	records, err := s.pendingRecords(ctx, sessionID)
+func (s *InterruptStore) List(ctx context.Context, sessionID identity.SessionID) ([]runs.Pending, error) {
+	if err := validateResource("list interrupts", sessionID); err != nil {
+		return nil, err
+	}
+	records, err := s.list(ctx, sessionID, identity.RunID{}, nil, 0)
+	if err != nil {
+		return nil, err
+	}
+	return pendingValues(records)
+}
+
+// ListOpen returns every open interrupt set across Sessions.
+func (s *InterruptStore) ListOpen(ctx context.Context) ([]runs.Pending, error) {
+	records, err := s.list(ctx, identity.SessionID{}, identity.RunID{}, nil, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +42,7 @@ func (s *InterruptStore) List(ctx context.Context, sessionID string) ([]runs.Pen
 
 func (s *InterruptStore) ListPage(
 	ctx context.Context,
-	sessionID, rootRunID string,
+	sessionID identity.SessionID, rootRunID identity.RunID,
 	after *rundomain.PageAnchor,
 	limit int,
 ) ([]runs.Pending, error) {
@@ -39,7 +53,7 @@ func (s *InterruptStore) ListPage(
 	return pendingValues(records)
 }
 
-func (s *InterruptStore) Get(ctx context.Context, rootRunID string) (runs.Pending, bool, error) {
+func (s *InterruptStore) Get(ctx context.Context, rootRunID identity.RunID) (runs.Pending, bool, error) {
 	record, ok, err := s.loadPending(ctx, rootRunID)
 	if err != nil || !ok {
 		return runs.Pending{}, ok, err
@@ -54,7 +68,7 @@ func (s *InterruptStore) Get(ctx context.Context, rootRunID string) (runs.Pendin
 	return pending, true, nil
 }
 
-func (s *InterruptStore) Consume(ctx context.Context, rootRunID string) (runs.Pending, bool, error) {
+func (s *InterruptStore) Consume(ctx context.Context, rootRunID identity.RunID) (runs.Pending, bool, error) {
 	record, ok, err := s.consumePending(ctx, rootRunID)
 	if err != nil || !ok {
 		return runs.Pending{}, ok, err

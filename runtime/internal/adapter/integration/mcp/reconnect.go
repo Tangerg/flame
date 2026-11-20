@@ -95,8 +95,10 @@ func (c *connections) authorize(attempt *attempt, prepared *launch) (err error) 
 
 // dialAndSwap publishes a session only after tool discovery, while its attempt
 // still owns the server. Authorization retains the handler for later reconnects.
-func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepared *launch, keepHandler bool) error {
-	cfg := prepared.config
+// adoptLaunchSession registers the launch's session: an installed plugin's
+// observed session, or a freshly dialed one this pool owns. It returns the
+// tool-list version at registration, so a later change is not missed.
+func (c *connections) adoptLaunchSession(ctx context.Context, prepared *launch) (*sdk.ClientSession, *ownedSession, uint64, error) {
 	var session *sdk.ClientSession
 	var cleanupSession sessionCleanup
 	var observation *installedObservation
@@ -108,9 +110,8 @@ func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepare
 	} else {
 		session, cleanupSession, err = dial(ctx, c.lifetime, c.client, prepared)
 	}
-	step := mcpserver.FailureConnection
-	var verifiedTools []Executable
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	if prepared.managed == nil {
 		err = errors.Join(err, c.ownSessionLocked(session, cleanupSession, prepared.admission.Bindings))
 	} else if session != nil {
@@ -121,21 +122,16 @@ func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepare
 	if owned != nil {
 		toolVersion = owned.toolVersion
 	}
-	c.mu.Unlock()
-	if err == nil && prepared.admission.Run != nil {
-		step = mcpserver.FailureConfiguration
-		admissionCtx := ctx
-		if duration, bounded := cfg.HandshakeTimeout.Duration(); bounded {
-			var cancel context.CancelFunc
-			admissionCtx, cancel = context.WithTimeout(ctx, duration)
-			defer cancel()
-		}
-		err = admitSession(admissionCtx, session, prepared.admission.Run)
-	}
+	return session, owned, toolVersion, err
+}
+
+func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepared *launch, keepHandler bool) error {
+	cfg := prepared.config
+	session, owned, toolVersion, err := c.adoptLaunchSession(ctx, prepared)
+	step := mcpserver.FailureConnection
+	var verifiedTools []Executable
 	if err == nil {
-		// Prove the session is usable before publishing it as connected.
-		step = mcpserver.FailureToolDiscovery
-		verifiedTools, err = sourceTools(ctx, c, cfg, session)
+		verifiedTools, step, err = c.proveSession(ctx, cfg, session, prepared.admission.Run)
 	}
 	// The catalog contains an observation, not a Use. Release discovery before
 	// it returns or joins retirement; later calls must acquire their own lease.
@@ -168,22 +164,9 @@ func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepare
 		return errors.Join(errConnectionSuperseded, c.cancellationErr(attempt.ctx), err, closeErr)
 	}
 	if err != nil {
-		state, failure := failedStatus(err, step)
-		attempt.target.settle(nil, nil, state, failure, err)
-		if state == mcpserver.ConnectionNeedsAuth {
-			attempt.target.oauth = nil
-		}
+		attempt.target.fail(err, step)
 	} else {
-		for index := range verifiedTools {
-			verifiedTools[index].catalogVersion = toolVersion
-		}
-		attempt.target.settle(session, verifiedTools, mcpserver.ConnectionConnected, "", nil)
-		if owned != nil && owned.toolChanges != nil {
-			c.watchToolChangesLocked(session, owned, cfg, toolVersion)
-		}
-		if keepHandler {
-			attempt.target.oauth = cfg.OAuthHandler // keep the authorized handler for this session's reconnects
-		}
+		c.connectLocked(attempt.target, session, owned, cfg, verifiedTools, toolVersion, keepHandler)
 	}
 	attempt.target.attempt = nil
 	// Publish only the snapshots proved above, in the critical section that
@@ -202,6 +185,39 @@ func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepare
 		err = errors.Join(err, c.closeSession(attempt.ctx, staleSession))
 	}
 	return err
+}
+
+// connectLocked publishes a proved session with the tools discovered on it.
+// An authorized handler is kept for the session's reconnects.
+func (c *connections) connectLocked(target *server, session *sdk.ClientSession, owned *ownedSession, cfg ServerConfig, tools []Executable, toolVersion uint64, keepHandler bool) {
+	for index := range tools {
+		tools[index].catalogVersion = toolVersion
+	}
+	target.settle(session, tools, mcpserver.ConnectionConnected, "", nil)
+	if owned != nil && owned.toolChanges != nil {
+		c.watchToolChangesLocked(session, owned, cfg, toolVersion)
+	}
+	if keepHandler {
+		target.oauth = cfg.OAuthHandler
+	}
+}
+
+// proveSession admits and discovers a dialed session before it is published
+// as connected. It reports the last phase entered, which names a failure.
+func (c *connections) proveSession(ctx context.Context, cfg ServerConfig, session *sdk.ClientSession, admit func(context.Context, *sdk.ClientSession) error) ([]Executable, mcpserver.ConnectionFailure, error) {
+	if admit != nil {
+		admissionCtx := ctx
+		if duration, bounded := cfg.HandshakeTimeout.Duration(); bounded {
+			var cancel context.CancelFunc
+			admissionCtx, cancel = context.WithTimeout(ctx, duration)
+			defer cancel()
+		}
+		if err := admitSession(admissionCtx, session, admit); err != nil {
+			return nil, mcpserver.FailureConfiguration, err
+		}
+	}
+	tools, err := sourceTools(ctx, c, cfg, session)
+	return tools, mcpserver.FailureToolDiscovery, err
 }
 
 func admitSession(ctx context.Context, session *sdk.ClientSession, admit func(context.Context, *sdk.ClientSession) error) (err error) {

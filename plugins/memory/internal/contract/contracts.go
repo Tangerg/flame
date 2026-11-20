@@ -23,43 +23,24 @@ type Contracts struct {
 }
 
 func NewContracts() (Contracts, error) {
-	var contracts Contracts
-	var err error
-	contracts.Capability, err = plugincontract.ParseCapability([]byte(memorycontract.CapabilityJSON))
+	capability, err := plugincontract.ParseCapability([]byte(memorycontract.CapabilityJSON))
 	if err != nil {
 		return Contracts{}, err
 	}
-	contracts.List, err = pluginmcp.ImplementMethod[ListInput, Page](contracts.Capability, List)
-	if err != nil {
+	methods := pluginmcp.NewMethodSet(capability)
+	c := Contracts{
+		Capability: capability,
+		List:       pluginmcp.Implement[ListInput, Page](methods, List),
+		Add:        pluginmcp.Implement[AddInput, AddResult](methods, Add),
+		Update:     pluginmcp.Implement[UpdateInput, memory.ItemSnapshot](methods, Update),
+		Delete:     pluginmcp.Implement[ItemInput, Ack](methods, Delete),
+		Review:     pluginmcp.Implement[ReviewInput, Ack](methods, Review),
+		Items:      pluginmcp.Implement[ItemsInput, []memory.ItemSnapshot](methods, Items),
+		Search:     pluginmcp.Implement[SearchInput, []memory.ItemSnapshot](methods, Search),
+		Maintain:   pluginmcp.Implement[MaintenanceInput, MaintenanceResult](methods, Maintain),
+	}
+	if err := methods.Err(); err != nil {
 		return Contracts{}, err
 	}
-	contracts.Add, err = pluginmcp.ImplementMethod[AddInput, AddResult](contracts.Capability, Add)
-	if err != nil {
-		return Contracts{}, err
-	}
-	contracts.Update, err = pluginmcp.ImplementMethod[UpdateInput, memory.ItemSnapshot](contracts.Capability, Update)
-	if err != nil {
-		return Contracts{}, err
-	}
-	contracts.Delete, err = pluginmcp.ImplementMethod[ItemInput, Ack](contracts.Capability, Delete)
-	if err != nil {
-		return Contracts{}, err
-	}
-	contracts.Review, err = pluginmcp.ImplementMethod[ReviewInput, Ack](contracts.Capability, Review)
-	if err != nil {
-		return Contracts{}, err
-	}
-	contracts.Items, err = pluginmcp.ImplementMethod[ItemsInput, []memory.ItemSnapshot](contracts.Capability, Items)
-	if err != nil {
-		return Contracts{}, err
-	}
-	contracts.Search, err = pluginmcp.ImplementMethod[SearchInput, []memory.ItemSnapshot](contracts.Capability, Search)
-	if err != nil {
-		return Contracts{}, err
-	}
-	contracts.Maintain, err = pluginmcp.ImplementMethod[MaintenanceInput, MaintenanceResult](contracts.Capability, Maintain)
-	if err != nil {
-		return Contracts{}, err
-	}
-	return contracts, nil
+	return c, nil
 }

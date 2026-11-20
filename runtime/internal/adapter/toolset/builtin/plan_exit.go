@@ -52,7 +52,7 @@ func newExit(modes planExitPolicy, plan planStateReader, interrupt runs.Interrup
 
 func (e *exiter) request(ctx context.Context, args exitArgs) (runs.Interrupt, error) {
 	sessionID := executionctx.SessionID(ctx)
-	if sessionID == "" {
+	if sessionID.IsZero() {
 		return nil, errors.New("exit_plan_mode: no active session")
 	}
 	mode, err := e.modes.Mode(ctx, sessionID)
@@ -106,7 +106,7 @@ func (e *exiter) render(ctx context.Context, args exitArgs, resolution run.Inter
 		return "Plan not approved. The session remains in Plan mode; revise the Plan or continue investigating.", nil
 	}
 	sessionID := executionctx.SessionID(ctx)
-	if sessionID == "" {
+	if sessionID.IsZero() {
 		return "", errors.New("exit_plan_mode: no active session")
 	}
 	restored, changed, err := e.modes.ExitPlanMode(ctx, sessionID, args.Revision)

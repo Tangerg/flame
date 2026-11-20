@@ -26,10 +26,7 @@ func newServer(store *store) (*sdk.Server, *pluginmcp.Backend, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	var activation struct {
-		sync.Mutex
-		watcher *watcher
-	}
+	active := &activeWatcher{store: store}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, store.db),
 		pluginstorage.RegisterCommand(backend, store.db, contracts.Configure, classify, func(ctx context.Context, _ *sdk.ServerSession, input wire.ConfigureInput) (pluginstorage.CommandPlan[filewatch.Snapshot], error) {
@@ -46,57 +43,72 @@ func newServer(store *store) (*sdk.Server, *pluginmcp.Backend, error) {
 			return store.event(ctx, command.Input.ID)
 		}),
 		contracts.Status.RegisterServer(backend, classify, func(context.Context, *sdk.ServerSession, pluginmcp.Command[struct{}]) (filewatch.Status, error) {
-			activation.Lock()
-			defer activation.Unlock()
-			if activation.watcher == nil {
-				return filewatch.Status{Phase: filewatch.Inactive}, nil
-			}
-			return activation.watcher.snapshot(), nil
+			return active.status(), nil
 		}),
 		backend.BindCapability(capabilityExport, contracts.Capability),
+		backend.OnSetup(active.setUp),
 	); err != nil {
-		return nil, nil, err
-	}
-	if err := backend.OnSetup(func(ctx context.Context, setup pluginmcp.Setup) (io.Closer, error) {
-		values, err := setup.Contributions()
-		if err != nil {
-			return nil, err
-		}
-		for _, value := range values {
-			if value.Export != capabilityExport || value.Background == nil {
-				continue
-			}
-			ref, err := pluginmcp.CallbackFromContext(ctx)
-			if err != nil {
-				return nil, err
-			}
-			host, err := connectHost(ctx, ref)
-			if err != nil {
-				return nil, err
-			}
-			namespace, err := host.Namespace(ctx)
-			if err == nil {
-				err = pluginstorage.CheckRuntimeTarget(ctx, store.db, namespace)
-			}
-			if err != nil {
-				return nil, errors.Join(err, host.client.Close())
-			}
-			watcher := newWatcher(store, host, namespace, *value.Background, value.ID)
-			background, err := watcher.background(ctx, host.client.Close)
-			if err != nil {
-				return nil, errors.Join(err, host.client.Close())
-			}
-			activation.Lock()
-			activation.watcher = watcher
-			activation.Unlock()
-			return background, nil
-		}
-		return nil, errors.New("filewatch: declared background contribution is required")
-	}); err != nil {
 		return nil, nil, err
 	}
 	if err := backend.Publish(); err != nil {
 		return nil, nil, err
 	}
 	return server, backend, nil
+}
+
+// activeWatcher is the background watcher the declared contribution started;
+// status reads it while setup may still be installing it.
+type activeWatcher struct {
+	store   *store
+	mu      sync.Mutex
+	watcher *watcher
+}
+
+func (a *activeWatcher) status() filewatch.Status {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.watcher == nil {
+		return filewatch.Status{Phase: filewatch.Inactive}
+	}
+	return a.watcher.snapshot()
+}
+
+func (a *activeWatcher) setUp(ctx context.Context, setup pluginmcp.Setup) (io.Closer, error) {
+	values, err := setup.Contributions()
+	if err != nil {
+		return nil, err
+	}
+	for _, value := range values {
+		if value.Export == capabilityExport && value.Background != nil {
+			return a.start(ctx, value)
+		}
+	}
+	return nil, errors.New("filewatch: declared background contribution is required")
+}
+
+func (a *activeWatcher) start(ctx context.Context, value pluginmcp.SetupContribution) (io.Closer, error) {
+	ref, err := pluginmcp.CallbackFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	host, err := connectHost(ctx, ref)
+	if err != nil {
+		return nil, err
+	}
+	namespace, err := host.Namespace(ctx)
+	if err == nil {
+		err = pluginstorage.CheckRuntimeTarget(ctx, a.store.db, namespace)
+	}
+	if err != nil {
+		return nil, errors.Join(err, host.client.Close())
+	}
+	watcher := newWatcher(a.store, host, namespace, *value.Background, value.ID)
+	background, err := watcher.background(ctx, host.client.Close)
+	if err != nil {
+		return nil, errors.Join(err, host.client.Close())
+	}
+	a.mu.Lock()
+	a.watcher = watcher
+	a.mu.Unlock()
+	return background, nil
 }

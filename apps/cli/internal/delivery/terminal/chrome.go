@@ -492,7 +492,7 @@ func (s *statusView) progress(progress conversation.RunProgress) {
 // only which activity it is.
 func activityLabel(activity *protocol.Activity) string {
 	if activity == nil {
-		return "working"
+		return statusWorking
 	}
 	switch activity.Type {
 	case protocol.ActivityCallingModel:
@@ -504,7 +504,7 @@ func activityLabel(activity *protocol.Activity) string {
 	case protocol.ActivityToolCall:
 		return toolLabel(conversation.ToolCall{Name: activity.Tool})
 	default:
-		return "working"
+		return statusWorking
 	}
 }
 

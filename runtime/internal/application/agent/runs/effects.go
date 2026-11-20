@@ -1,6 +1,10 @@
 package runs
 
-import "context"
+import (
+	"context"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+)
 
 // Nudge is a non-durable live workspace change notification.
 type Nudge struct {
@@ -55,8 +59,8 @@ type SegmentFinalizer interface {
 
 // Finish describes maintenance after a segment closes, including a parked Run.
 type Finish struct {
-	SessionID       string
-	RunID           string
+	SessionID       identity.SessionID
+	RunID           identity.RunID
 	WorkspaceCWD    string
 	Parked          bool
 	OpeningUserText string

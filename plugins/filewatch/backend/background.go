@@ -38,6 +38,8 @@ type observationStream struct {
 	done    <-chan struct{}
 }
 
+const triggerAdmissionTimeout = 30 * time.Second
+
 func openStream(ctx context.Context, source host, generation string, trigger filewatch.Trigger) (*observationStream, error) {
 	lifetime, cancel := context.WithCancel(ctx)
 	events, err := source.Watch(lifetime, generation, trigger)
@@ -130,53 +132,10 @@ func (w *watcher) invocation() framecall.Invocation {
 }
 
 func (w *watcher) run(ctx context.Context) {
+	loop := &observationLoop{watcher: w}
 	defer w.observationStatus(0, filewatch.Inactive, nil)
-	var stream *observationStream
-	defer func() { stream.close() }()
-	var notices <-chan observationNotice
-	var current filewatch.Configuration
-	var generation string
-	var cursor filewatch.Cursor
-	stop := func(err error) {
-		stream.close()
-		stream, notices = nil, nil
-		w.observationStatus(current.Revision(), filewatch.Failed, err)
-	}
-	refresh := func() {
-		configuration, err := w.store.configuration(ctx)
-		if err != nil {
-			stop(err)
-			return
-		}
-		if configuration.Revision() == current.Revision() {
-			return
-		}
-		stream.close()
-		stream, notices = nil, nil
-		current = configuration
-		trigger, enabled := current.Trigger()
-		if !enabled {
-			w.observationStatus(current.Revision(), filewatch.Disabled, nil)
-			return
-		}
-		generation = uuid.NewString()
-		cursor, err = filewatch.NewCursor(generation)
-		if err != nil {
-			stop(err)
-			return
-		}
-		invocation, err := pluginmcp.WithInvocation(ctx, w.invocation())
-		if err == nil {
-			stream, err = openStream(invocation, w.host, generation, trigger)
-		}
-		if err != nil {
-			stop(err)
-			return
-		}
-		notices = stream.notices
-		w.observationStatus(current.Revision(), filewatch.Watching, nil)
-	}
-	refresh()
+	defer func() { loop.stream.close() }()
+	loop.refresh(ctx)
 	w.reconcile(ctx)
 	timer := time.NewTicker(time.Second)
 	defer timer.Stop()
@@ -185,42 +144,103 @@ func (w *watcher) run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-timer.C:
-			refresh()
+			loop.refresh(ctx)
 			w.reconcile(ctx)
-		case notice, open := <-notices:
+		case notice, open := <-loop.notices:
 			if !open {
-				stop(io.ErrUnexpectedEOF)
-				continue
+				notice.err = io.ErrUnexpectedEOF
 			}
-			if notice.err != nil {
-				stop(notice.err)
-				continue
-			}
-			gap, err := cursor.Advance(notice.event.Sequence)
-			if err != nil {
-				stop(err)
-				continue
-			}
-			observation, relevant, err := w.captureNotice(current, generation, notice.event, gap)
-			if err != nil {
-				stop(err)
-				continue
-			}
-			if !relevant {
-				continue
-			}
-			if err := w.store.capture(ctx, observation); err != nil {
-				if errors.Is(err, filewatch.ErrRevision) {
-					refresh()
-				} else {
-					stop(err)
-				}
-				continue
-			}
-			w.notify(ctx)
-			w.reconcile(ctx)
+			loop.observe(ctx, notice)
 		}
 	}
+}
+
+// observationLoop is the watcher's single open stream and the configuration
+// revision it serves. A failure closes the stream until the next refresh opens
+// one for the current configuration.
+type observationLoop struct {
+	watcher    *watcher
+	stream     *observationStream
+	notices    <-chan observationNotice
+	current    filewatch.Configuration
+	generation string
+	cursor     filewatch.Cursor
+}
+
+func (l *observationLoop) fail(err error) {
+	l.closeStream()
+	l.watcher.observationStatus(l.current.Revision(), filewatch.Failed, err)
+}
+
+func (l *observationLoop) closeStream() {
+	l.stream.close()
+	l.stream, l.notices = nil, nil
+}
+
+func (l *observationLoop) refresh(ctx context.Context) {
+	configuration, err := l.watcher.store.configuration(ctx)
+	if err != nil {
+		l.fail(err)
+		return
+	}
+	if configuration.Revision() == l.current.Revision() {
+		return
+	}
+	l.closeStream()
+	l.current = configuration
+	trigger, enabled := l.current.Trigger()
+	if !enabled {
+		l.watcher.observationStatus(l.current.Revision(), filewatch.Disabled, nil)
+		return
+	}
+	l.generation = uuid.NewString()
+	l.cursor, err = filewatch.NewCursor(l.generation)
+	if err != nil {
+		l.fail(err)
+		return
+	}
+	invocation, err := pluginmcp.WithInvocation(ctx, l.watcher.invocation())
+	if err == nil {
+		l.stream, err = openStream(invocation, l.watcher.host, l.generation, trigger)
+	}
+	if err != nil {
+		l.fail(err)
+		return
+	}
+	l.notices = l.stream.notices
+	l.watcher.observationStatus(l.current.Revision(), filewatch.Watching, nil)
+}
+
+// observe records one stream notice. A stale configuration revision refreshes
+// instead of failing, since the configuration moved while the event was in
+// flight.
+func (l *observationLoop) observe(ctx context.Context, notice observationNotice) {
+	if notice.err != nil {
+		l.fail(notice.err)
+		return
+	}
+	gap, err := l.cursor.Advance(notice.event.Sequence)
+	if err != nil {
+		l.fail(err)
+		return
+	}
+	observation, relevant, err := l.watcher.captureNotice(l.current, l.generation, notice.event, gap)
+	if err != nil || !relevant {
+		if err != nil {
+			l.fail(err)
+		}
+		return
+	}
+	if err := l.watcher.store.capture(ctx, observation); err != nil {
+		if errors.Is(err, filewatch.ErrRevision) {
+			l.refresh(ctx)
+		} else {
+			l.fail(err)
+		}
+		return
+	}
+	l.watcher.notify(ctx)
+	l.watcher.reconcile(ctx)
 }
 
 func (w *watcher) captureNotice(configuration filewatch.Configuration, generation string, event protocol.RuntimeEvent, gap bool) (filewatch.Observation, bool, error) {
@@ -266,7 +286,7 @@ func (w *watcher) reconcile(ctx context.Context) {
 			err = errors.New("filewatch: capture belongs to another installation")
 		}
 		if err == nil {
-			admission, cancel := context.WithTimeout(ctx, 30*time.Second)
+			admission, cancel := context.WithTimeout(ctx, triggerAdmissionTimeout)
 			admission, err = pluginmcp.WithInvocation(admission, event.Capture.Invocation)
 			if err == nil {
 				err = w.host.Admit(admission, w.namespace, observation)

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
@@ -115,8 +117,8 @@ func (c *Cancellations) cancelClaimedParkedRun(ctx context.Context, cmd CancelCo
 	return rootCancelResult(terminal)
 }
 
-func (c *Cancellations) SettleRootCancellation(ctx context.Context, ref ExecutorRef, runID string) error {
-	if ref.SessionID == "" || ref.ExecutorID == "" || runID == "" {
+func (c *Cancellations) SettleRootCancellation(ctx context.Context, ref ExecutorRef, runID identity.RunID) error {
+	if ref.SessionID.IsZero() || ref.ExecutorID == "" || runID.IsZero() {
 		return ErrInvalidExecutorRef
 	}
 	cleanupCtx, cancel := runCleanupContext(ctx)

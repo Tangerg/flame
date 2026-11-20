@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -17,7 +19,7 @@ import (
 const sessionsExportTrajectory Name = "sessions.exportTrajectory"
 
 type trajectoryExportUseCases interface {
-	Export(context.Context, string) (sessions.TrajectoryExport, error)
+	Export(context.Context, identity.SessionID) (sessions.TrajectoryExport, error)
 }
 
 func registerExportTrajectory(registry *Registry) {
@@ -37,7 +39,11 @@ func registerExportTrajectory(registry *Registry) {
 }
 
 func (s *Handler) ExportTrajectory(ctx context.Context, request protocol.ExportTrajectoryRequest) (*protocol.ExportTrajectoryResponse, error) {
-	result, err := s.trajectoryExports.Export(ctx, request.SessionID)
+	sessionID, err := wireIdentity("sessionId", request.SessionID, identity.ParseSession)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.trajectoryExports.Export(ctx, sessionID)
 	if err != nil {
 		return nil, wireTrajectoryExportError(err)
 	}
@@ -119,7 +125,7 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 		}
 		blob := blobs[invocation.Offload.ID]
 		out.ToolResults = append(out.ToolResults, protocol.ArtifactToolResult{
-			ID: blob.ID.String(), ItemID: item.ID(),
+			ID: blob.ID.String(), ItemID: item.ID().String(),
 			Body: blob.Body, ModelOnly: invocation.Offload.ModelOnly, CreatedAt: blob.CreatedAt,
 		})
 	}
@@ -140,14 +146,14 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 	for _, row := range result.Evidence.ToolAttempts {
 		attempt := row.Invocation
 		out.ToolAttempts = append(out.ToolAttempts, protocol.ToolAttempt{
-			CallID: attempt.CallID, ItemID: attempt.ItemID, RunID: row.RunID, SegmentID: attempt.SegmentID,
+			CallID: attempt.CallID, ItemID: attempt.ItemID.String(), RunID: row.RunID.String(), SegmentID: attempt.SegmentID.String(),
 			State: protocol.ToolAttemptState(attempt.State), StartedAt: attempt.StartedAt, SettledAt: attempt.FinishedAt,
 		})
 	}
 	for _, entry := range result.Evidence.Annotations {
 		out.Annotations = append(out.Annotations, protocol.SessionAnnotation{
 			CommandID: entry.CommandID, Source: entry.Source,
-			SessionID: entry.Subject.SessionID, RunID: entry.Subject.RunID, ItemID: entry.Subject.ItemID,
+			SessionID: entry.Subject.SessionID.String(), RunID: entry.Subject.RunID.String(), ItemID: entry.Subject.ItemID.String(),
 			Content: entry.Content.Bytes(), CreatedAt: entry.CreatedAt,
 		})
 	}

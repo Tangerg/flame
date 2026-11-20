@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
@@ -27,8 +29,8 @@ type runTreeOwner struct {
 	hub             *journal
 	done            chan struct{}
 	completionErr   error
-	terminalRuns    map[string]terminalRun
-	executorMembers map[string]string
+	terminalRuns    map[identity.RunID]terminalRun
+	executorMembers map[identity.RunID]string
 	childCancel     *childCancellation
 	rootCancel      *rootCancellation
 	activation      segmentActivation
@@ -73,7 +75,7 @@ func newRunTreeOwner(cancel context.CancelFunc, taskContext context.Context, hub
 		hub:             hub,
 		done:            make(chan struct{}),
 		activation:      segmentActivation{done: make(chan struct{})},
-		executorMembers: make(map[string]string),
+		executorMembers: make(map[identity.RunID]string),
 	}
 }
 
@@ -148,7 +150,7 @@ func (r *runTreeOwner) rejectActivation(cause error) error {
 	return nil
 }
 
-func (r *runTreeOwner) committedRunTerminal(runID string) (terminalRun, bool) {
+func (r *runTreeOwner) committedRunTerminal(runID identity.RunID) (terminalRun, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	terminal, found := r.terminalRuns[runID]

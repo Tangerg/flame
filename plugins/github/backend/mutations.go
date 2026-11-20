@@ -138,7 +138,7 @@ func writeFailure(err error) error {
 
 func (c *connector) sendWrite(ctx context.Context, method, path string, payload any, status int) (body []byte, err error) {
 	if !c.credential.configured() {
-		return nil, refused("credential_required", "a configured token is required for writes")
+		return nil, refused(refusalCredentialRequired, "a configured token is required for writes")
 	}
 	var encoded []byte
 	if payload != nil {
@@ -157,33 +157,15 @@ func (c *connector) sendWrite(ctx context.Context, method, path string, payload 
 	// No replayable body or synthetic idempotency header: GitHub does not own
 	// our command key. An uncertain delivery can only read its private receipt.
 	request.GetBody = nil
-	request.Header.Set("Accept", "application/vnd.github+json")
+	c.identify(request)
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("X-GitHub-Api-Version", apiVersion)
-	request.Header.Set("User-Agent", "Flame-GitHub-Plugin/1.0")
-	request.Header.Set("Authorization", c.credential.authorization())
 	upstream, err := c.http.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("github: write request: %w", err)
 	}
 	defer func() { err = errors.Join(err, upstream.Body.Close()) }()
 	if upstream.StatusCode != status {
-		switch upstream.StatusCode {
-		case http.StatusUnauthorized:
-			return nil, refused("unauthorized", "credential was rejected")
-		case http.StatusForbidden, http.StatusTooManyRequests:
-			return nil, accessRefusal(upstream)
-		case http.StatusNotFound:
-			return nil, refused("not_found", "resource is absent or not visible to this credential")
-		case http.StatusBadRequest, http.StatusUnprocessableEntity:
-			return nil, refused("invalid_request", "GitHub rejected the write parameters")
-		case http.StatusConflict:
-			return nil, refused("conflict", "GitHub refused the current resource state or head SHA")
-		case http.StatusMethodNotAllowed:
-			return nil, refused("not_allowed", "GitHub does not allow this operation on the current resource")
-		default:
-			return nil, fmt.Errorf("github: unconfirmed write HTTP status %d", upstream.StatusCode)
-		}
+		return nil, writeRefusal(upstream)
 	}
 	body, err = io.ReadAll(io.LimitReader(upstream.Body, maxResponseBytes+1))
 	if err != nil {
@@ -193,6 +175,27 @@ func (c *connector) sendWrite(ctx context.Context, method, path string, payload 
 		return nil, errors.New("github: write acknowledgement exceeds four MiB")
 	}
 	return body, nil
+}
+
+// writeRefusal explains an unexpected write status. Only statuses GitHub
+// documents as refusals are definite; any other leaves the write unconfirmed.
+func writeRefusal(upstream *http.Response) error {
+	switch upstream.StatusCode {
+	case http.StatusUnauthorized:
+		return refused(refusalUnauthorized, "credential was rejected")
+	case http.StatusForbidden, http.StatusTooManyRequests:
+		return accessRefusal(upstream)
+	case http.StatusNotFound:
+		return refused(refusalNotFound, "resource is absent or not visible to this credential")
+	case http.StatusBadRequest, http.StatusUnprocessableEntity:
+		return refused(refusalInvalidRequest, "GitHub rejected the write parameters")
+	case http.StatusConflict:
+		return refused(refusalConflict, "GitHub refused the current resource state or head SHA")
+	case http.StatusMethodNotAllowed:
+		return refused(refusalNotAllowed, "GitHub does not allow this operation on the current resource")
+	default:
+		return fmt.Errorf("github: unconfirmed write HTTP status %d", upstream.StatusCode)
+	}
 }
 
 func writeValue[W, R any](ctx context.Context, c *connector, method, path string, payload any, status int, admit func(W) (R, error)) (R, error) {

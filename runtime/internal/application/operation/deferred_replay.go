@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"sync/atomic"
 )
 
@@ -15,8 +16,8 @@ type DeferredCompletion struct {
 	reserved atomic.Bool
 }
 
-func (c *DeferredCompletion) ReserveForRun(ctx context.Context, runID string) error {
-	if runID == "" {
+func (c *DeferredCompletion) ReserveForRun(ctx context.Context, runID identity.RunID) error {
+	if runID.IsZero() {
 		return errors.New("idempotency: deferred live work requires its original Run")
 	}
 	if err := c.claim(ctx, runID); err != nil {
@@ -29,7 +30,7 @@ func (c *DeferredCompletion) ReserveForRun(ctx context.Context, runID string) er
 func (c *DeferredCompletion) Stage(ctx context.Context, write func(context.Context) ([]byte, error)) error {
 	return c.replay.store.Transact(ctx, func(tx context.Context) error {
 		if !c.reserved.Load() {
-			if err := c.claim(tx, ""); err != nil {
+			if err := c.claim(tx, identity.RunID{}); err != nil {
 				return err
 			}
 		}
@@ -58,7 +59,7 @@ func (c *DeferredCompletion) Complete(ctx context.Context, payload []byte) error
 	return err
 }
 
-func (c *DeferredCompletion) claim(ctx context.Context, runID string) error {
+func (c *DeferredCompletion) claim(ctx context.Context, runID identity.RunID) error {
 	record, claimed, err := c.replay.store.Claim(ctx, ReplayClaim{
 		Key: c.record.Key, Fingerprint: c.record.Fingerprint, RunID: runID,
 	})
@@ -72,6 +73,19 @@ func (c *DeferredCompletion) claim(ctx context.Context, runID string) error {
 		return errAtomicResultExists
 	}
 	return ErrInProgress
+}
+
+// atomicResult answers from the record another invocation committed
+// atomically while this one executed.
+func (r *Replay) atomicResult(ctx context.Context, key, fingerprint string) ([]byte, error) {
+	previous, found, err := r.store.Lookup(ctx, key, fingerprint)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, ErrClaimLost
+	}
+	return settledPayload(previous)
 }
 
 func (r *Replay) InvokeDeferred(
@@ -108,14 +122,7 @@ func (r *Replay) InvokeDeferred(
 	}
 	payload, err := execute(completion)
 	if errors.Is(err, errAtomicResultExists) {
-		previous, found, err := r.store.Lookup(ctx, key, fingerprint)
-		if err != nil {
-			return nil, err
-		}
-		if !found {
-			return nil, ErrClaimLost
-		}
-		return settledPayload(previous)
+		return r.atomicResult(ctx, key, fingerprint)
 	}
 	if err != nil {
 		return nil, err

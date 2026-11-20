@@ -21,11 +21,24 @@ import (
 	"github.com/spf13/viper"
 )
 
-// version is overridden at link time via -ldflags "-X ...cmd.version=...".
-var version = "dev"
+// developmentVersion identifies a build without a release version.
+const developmentVersion = "dev"
 
-// Version returns the client build identity advertised to runtime discovery.
-func Version() string { return version }
+// version is overridden at link time via -ldflags "-X ...cmd.version=...".
+var version = developmentVersion
+
+// Version is the one spelling of the build identity shown to people and
+// advertised to runtime discovery. A link-time value may omit the leading "v".
+func Version() string {
+	switch {
+	case version == "" || version == developmentVersion:
+		return developmentVersion
+	case strings.HasPrefix(version, "v"):
+		return version
+	default:
+		return "v" + version
+	}
+}
 
 const configIndependentAnnotation = "flame/config-independent"
 
@@ -150,7 +163,7 @@ func newRootCommand(
 			"  cat cache_test.go | flame run \"explain what this test is really waiting for\"\n\n" +
 			"  # List sessions\n" +
 			"  flame sessions ls",
-		Version:       version,
+		Version:       Version(),
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          cobra.ArbitraryArgs,

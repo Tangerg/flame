@@ -9,9 +9,13 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// statusWaitingForAnswers is the status every projection shows while a Run waits on
-// the operator's interrupt answers.
-const statusWaitingForAnswers = "waiting for your answers"
+// Status labels every projection shows for the same Run activity, so a state
+// reads the same wherever it surfaces.
+const (
+	statusWorking           = "working"
+	statusCanceling         = "canceling"
+	statusWaitingForAnswers = "waiting for your answers"
+)
 
 func (l *sessionLifecycle) restore(snapshot conversation.SessionSnapshot) {
 	if err := l.runs.restoreSnapshot(snapshot); err != nil {

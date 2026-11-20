@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
 // reference renders the human-readable projection of the Contract Registry.
@@ -159,7 +161,7 @@ func when(conditions []conditionRow) string {
 	}
 	parts := make([]string, 0, len(conditions))
 	for _, condition := range conditions {
-		if condition.Operator == "equals" {
+		if condition.Operator == delivery.OperatorEquals {
 			parts = append(parts, fmt.Sprintf("`%s` == `%s`", condition.Field, condition.Value))
 			continue
 		}

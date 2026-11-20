@@ -52,31 +52,15 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeProblem(w, problemUnsupportedMediaType, "content-type must be application/json")
 		return
 	}
-	bodyLimit := int64(maxRPCBodyBytes)
 	hint := r.Header.Get(headerMethod)
-	if hint == delivery.SessionsImport.String() {
-		// The ordinary envelope budget remains available for metadata around the artifact.
-		bodyLimit += protocol.MaximumSessionArtifactBytes
-	}
-	if r.ContentLength > bodyLimit {
-		writeProblem(w, problemRequestTooLarge, "request body exceeds limit")
+	body, err := readRPCBody(r, hint)
+	if errors.Is(err, errRPCBodyTooLarge) {
+		writeProblem(w, problemRequestTooLarge, err.Error())
 		return
 	}
-
-	// Read one byte past the cap so a chunked / uncounted body that
-	// overflows surfaces as 413 rather than silently truncating.
-	body, err := io.ReadAll(io.LimitReader(r.Body, bodyLimit+1))
 	if err != nil {
-		if _, tooLarge := errors.AsType[*http.MaxBytesError](err); tooLarge {
-			writeProblem(w, problemRequestTooLarge, "request body exceeds limit")
-			return
-		}
 		recordError(r.Context(), "rpc.read-request", err)
 		writeProblem(w, problemInvalidRequest, "request body could not be read")
-		return
-	}
-	if int64(len(body)) > bodyLimit {
-		writeProblem(w, problemRequestTooLarge, "request body exceeds limit")
 		return
 	}
 
@@ -101,8 +85,6 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		AfterEventID:         r.Header.Get(headerLastEventID),
 	}
 	result := s.router.Dispatch(r.Context(), message, options)
-
-	// Surface the request method for the X-Method header.
 	methodLabel := request.Method
 
 	// Client notifications are dispatched synchronously and acknowledged
@@ -124,9 +106,13 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// A decoded JSON-RPC call always returns 200. Its result or error belongs to
-	// the envelope; HTTP status is reserved for failures below this boundary.
-	responseBytes, err := jsonrpc.EncodeMessage(result.Response)
+	writeRPCResponse(w, r, result.Response, methodLabel)
+}
+
+// A decoded JSON-RPC call always returns 200. Its result or error belongs to
+// the envelope; HTTP status is reserved for failures below this boundary.
+func writeRPCResponse(w http.ResponseWriter, r *http.Request, response *jsonrpc.Response, methodLabel string) {
+	responseBytes, err := jsonrpc.EncodeMessage(response)
 	if err != nil {
 		recordError(r.Context(), "rpc.encode-response", err,
 			attribute.String("rpc.method", methodLabel),
@@ -144,6 +130,26 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			attribute.String("rpc.method", methodLabel),
 		)
 	}
+}
+
+var errRPCBodyTooLarge = errors.New("request body exceeds limit")
+
+// readRPCBody reads one byte past the cap so a chunked or uncounted body that
+// overflows is refused rather than silently truncated.
+func readRPCBody(r *http.Request, methodHint string) ([]byte, error) {
+	limit := int64(maxRPCBodyBytes)
+	if methodHint == delivery.SessionsImport.String() {
+		// The ordinary envelope budget remains available for metadata around the artifact.
+		limit += protocol.MaximumSessionArtifactBytes
+	}
+	if r.ContentLength > limit {
+		return nil, errRPCBodyTooLarge
+	}
+	body, err := io.ReadAll(io.LimitReader(r.Body, limit+1))
+	if _, tooLarge := errors.AsType[*http.MaxBytesError](err); tooLarge || int64(len(body)) > limit {
+		return nil, errRPCBodyTooLarge
+	}
+	return body, err
 }
 
 // Problem is the application/problem+json body of a failure the transport

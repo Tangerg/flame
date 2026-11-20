@@ -22,48 +22,19 @@ func newServer(store *store, deployments azureDeployments) (*sdk.Server, error) 
 	if err != nil {
 		return nil, err
 	}
-	profiles, err := modelprovider.ProfilesMethod()
-	if err != nil {
-		return nil, err
-	}
-	remote, err := modelprovider.RemoteModelsMethod()
-	if err != nil {
-		return nil, err
-	}
-	verify, err := modelprovider.VerifyMethod()
-	if err != nil {
-		return nil, err
-	}
-	openChat, err := modelprovider.OpenChatMethod()
-	if err != nil {
-		return nil, err
-	}
-	openEmbedding, err := modelprovider.OpenEmbeddingMethod()
-	if err != nil {
-		return nil, err
-	}
-	reopen, err := modelprovider.ReopenChatMethod()
-	if err != nil {
-		return nil, err
-	}
-	close, err := modelprovider.CloseMethod()
-	if err != nil {
-		return nil, err
-	}
-	call, err := modelprovider.CallMethod()
-	if err != nil {
-		return nil, err
-	}
-	count, err := modelprovider.CountMethod()
-	if err != nil {
-		return nil, err
-	}
-	embed, err := modelprovider.EmbedMethod()
-	if err != nil {
-		return nil, err
-	}
-	stream, err := modelprovider.StreamMethod()
-	if err != nil {
+	var errs []error
+	profiles := lookupMethod(modelprovider.ProfilesMethod, &errs)
+	remote := lookupMethod(modelprovider.RemoteModelsMethod, &errs)
+	verify := lookupMethod(modelprovider.VerifyMethod, &errs)
+	openChat := lookupMethod(modelprovider.OpenChatMethod, &errs)
+	openEmbedding := lookupMethod(modelprovider.OpenEmbeddingMethod, &errs)
+	reopen := lookupMethod(modelprovider.ReopenChatMethod, &errs)
+	close := lookupMethod(modelprovider.CloseMethod, &errs)
+	call := lookupMethod(modelprovider.CallMethod, &errs)
+	count := lookupMethod(modelprovider.CountMethod, &errs)
+	embed := lookupMethod(modelprovider.EmbedMethod, &errs)
+	stream := lookupMethod(modelprovider.StreamMethod, &errs)
+	if err := errors.Join(errs...); err != nil {
 		return nil, err
 	}
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.providers", Version: "1.0.0"}, nil)
@@ -76,27 +47,8 @@ func newServer(store *store, deployments azureDeployments) (*sdk.Server, error) 
 		profiles.RegisterServer(backend, nil, func(context.Context, *sdk.ServerSession, pluginmcp.Command[struct{}]) ([]modelprovider.Profile, error) {
 			return providers.published(), nil
 		}),
-		remote.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[modelprovider.Connection]) ([]string, error) {
-			spec, err := newClientSpec(command.Input)
-			if err != nil {
-				return nil, invalidConnection()
-			}
-			values, err := listModels(ctx, spec, deployments)
-			if err != nil {
-				return nil, &framecall.Refusal{Code: string(failure(err).Kind), Message: "model provider: model discovery failed"}
-			}
-			return values, nil
-		}),
-		verify.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[modelprovider.Connection]) (struct{}, error) {
-			spec, err := newClientSpec(command.Input)
-			if err != nil {
-				return struct{}{}, invalidConnection()
-			}
-			if err := verifyConnection(ctx, spec); err != nil {
-				return struct{}{}, &framecall.Refusal{Code: string(failure(err).Kind), Message: "model provider: connection verification failed"}
-			}
-			return struct{}{}, nil
-		}),
+		remote.RegisterServer(backend, nil, discovery{deployments: deployments}.remoteModels),
+		verify.RegisterServer(backend, nil, discovery{deployments: deployments}.verify),
 		openChat.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[modelprovider.Open]) (modelprovider.Chat, error) {
 			return openClient(ctx, store, openChat.Name(), chatClient, command, func(handle modelprovider.Handle, client *client, input modelprovider.Open) modelprovider.Chat {
 				return chatProjection(handle, client, input, command.ID)
@@ -135,6 +87,42 @@ func newServer(store *store, deployments azureDeployments) (*sdk.Server, error) 
 		return nil, err
 	}
 	return server, nil
+}
+
+// lookupMethod resolves one published method, collecting a failure so every
+// method can be declared before checking once.
+func lookupMethod[M any](resolve func() (M, error), errs *[]error) M {
+	method, err := resolve()
+	if err != nil {
+		*errs = append(*errs, err)
+	}
+	return method
+}
+
+// discovery answers connection checks without opening a client handle.
+type discovery struct{ deployments azureDeployments }
+
+func (d discovery) remoteModels(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[modelprovider.Connection]) ([]string, error) {
+	spec, err := newClientSpec(command.Input)
+	if err != nil {
+		return nil, invalidConnection()
+	}
+	values, err := listModels(ctx, spec, d.deployments)
+	if err != nil {
+		return nil, &framecall.Refusal{Code: string(failure(err).Kind), Message: "model provider: model discovery failed"}
+	}
+	return values, nil
+}
+
+func (d discovery) verify(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[modelprovider.Connection]) (struct{}, error) {
+	spec, err := newClientSpec(command.Input)
+	if err != nil {
+		return struct{}{}, invalidConnection()
+	}
+	if err := verifyConnection(ctx, spec); err != nil {
+		return struct{}{}, &framecall.Refusal{Code: string(failure(err).Kind), Message: "model provider: connection verification failed"}
+	}
+	return struct{}{}, nil
 }
 
 func invalidConnection() error {

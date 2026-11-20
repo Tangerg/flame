@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"slices"
 	"sync"
 	"time"
@@ -43,7 +44,7 @@ type ReplayClaim struct {
 	Fingerprint string
 	// RunID binds a deferred response to the original Run material so its
 	// recovery can settle the reservation if the writer is lost.
-	RunID string
+	RunID identity.RunID
 }
 
 type ReplayStore interface {

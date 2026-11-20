@@ -25,7 +25,7 @@ func newApprovalScreens(host screenHost, service ApprovalPolicy, observing func(
 	p := &approvalScreens{screenHost: host, service: service, observing: observing}
 	p.modes = newPickerDialog(pickerDialogConfig[protocol.ApprovalModePolicy]{
 		stack: host.stack, theme: host.theme, glyphs: host.glyphs, title: "Runtime approval mode", search: "search approval modes",
-		where:  layout.Placement{Width: 88, Height: 9},
+		where:  layout.Placement{Width: standardDialogWidth, Height: 9},
 		label:  func(policy protocol.ApprovalModePolicy) string { return approvalModeTitle(policy.Mode) },
 		detail: approvalPolicyDetail,
 		choose: func(policy protocol.ApprovalModePolicy) { p.setApprovalMode(policy.Mode) },
@@ -38,7 +38,7 @@ func (p *approvalScreens) ChooseApprovalMode() {
 		p.message("approval mode changes apply between runs")
 		return
 	}
-	p.tasks.session(pickerCatalogOperation, true,
+	p.tasks.session(pickerCatalogOperation,
 		func(ctx context.Context) (protocol.ApprovalModeResult, error) { return p.service.GetApprovalMode(ctx) },
 		func(result protocol.ApprovalModeResult, err error) {
 			if err != nil {
@@ -52,7 +52,7 @@ func (p *approvalScreens) ChooseApprovalMode() {
 }
 
 func (p *approvalScreens) setApprovalMode(mode protocol.ApprovalMode) {
-	p.tasks.admissionMutation(approvalModeOperation, true,
+	p.tasks.admissionMutation(approvalModeOperation,
 		func(ctx context.Context) (protocol.ApprovalModeResult, error) {
 			return p.service.SetApprovalMode(ctx, mode)
 		},
@@ -91,7 +91,7 @@ func (p *approvalScreens) PrepareDeleteApprovalRule(identity string) error {
 	}
 	sessionID := p.session.current.ID
 	p.status.note("loading approval rule to forget")
-	if !p.tasks.session(approvalRuleOperation, false,
+	if !p.tasks.session(approvalRuleOperation,
 		func(ctx context.Context) (protocol.ApprovalRule, error) {
 			rules, err := p.service.ListApprovalRules(ctx, sessionID)
 			if err != nil {
@@ -121,7 +121,7 @@ func (p *approvalScreens) PrepareDeleteApprovalRule(identity string) error {
 
 func (p *approvalScreens) deleteApprovalRule(sessionID, id string) {
 	p.status.note("forgetting approval rule " + id)
-	if !p.tasks.admissionMutation(approvalRuleOperation, false,
+	if !p.tasks.admissionMutation(approvalRuleOperation,
 		func(ctx context.Context) (approvalRuleDeletionResult, error) {
 			if err := p.service.DeleteApprovalRule(ctx, id); err != nil {
 				return approvalRuleDeletionResult{}, err
@@ -156,7 +156,7 @@ func (p *approvalScreens) setApprovalRule(request protocol.SetApprovalRuleReques
 	}
 	label := "remembering global " + string(request.Decision) + " for " + source
 	p.status.note(label)
-	if !p.tasks.admissionMutation(approvalRuleOperation, false,
+	if !p.tasks.admissionMutation(approvalRuleOperation,
 		func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, p.service.SetApprovalRule(ctx, request)
 		},

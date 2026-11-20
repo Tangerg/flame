@@ -171,7 +171,7 @@ func (i attachmentIdentity) digest() [sha256.Size]byte {
 
 func attachmentKind(mimeType string) (protocol.ContentBlockType, bool) {
 	switch {
-	case strings.HasPrefix(mimeType, "image/"):
+	case authoring.IsImageMediaType(mimeType):
 		return protocol.ContentBlockImage, true
 	case isTextMIME(mimeType):
 		return protocol.ContentBlockText, true

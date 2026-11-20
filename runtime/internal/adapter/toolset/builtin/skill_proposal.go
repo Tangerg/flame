@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 
@@ -66,10 +65,10 @@ func NewProposal(proposals SkillProposalSubmitter) (toolcontract.Tool, error) {
 
 func (p *proposer) run(ctx context.Context, input proposalArgs) (proposalResult, error) {
 	sessionID := executionctx.SessionID(ctx)
-	if sessionID == "" {
+	if sessionID.IsZero() {
 		return proposalResult{}, errors.New("propose_skill: no active session")
 	}
-	if err := identity.ValidateSession(sessionID); err != nil {
+	if err := sessionID.Validate(); err != nil {
 		return proposalResult{}, fmt.Errorf("propose_skill: active %w", err)
 	}
 	cwd, attached := executionctx.WorkspaceCWD(ctx)
@@ -85,7 +84,7 @@ func (p *proposer) run(ctx context.Context, input proposalArgs) (proposalResult,
 		Description:   strings.TrimSpace(input.Description),
 		Instructions:  strings.TrimSpace(input.Instructions),
 		Origin:        skills.ProposalOriginRequested,
-		SourceSession: sessionID,
+		SourceSession: sessionID.String(),
 	}
 	if validateErr := proposal.Validate(); validateErr != nil {
 		return proposalResult{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("propose_skill: invalid proposal: %w", validateErr))

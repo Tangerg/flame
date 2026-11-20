@@ -171,6 +171,15 @@ func NewLimit(value int) (RequestedLimit, error) {
 	return RequestedLimit{mode: requestedLimitExplicit, value: value}, nil
 }
 
+// ParseLimit projects an optional wire page size: absence asks for the read's
+// default, and a present value must be a valid explicit request.
+func ParseLimit(value *int) (RequestedLimit, error) {
+	if value == nil {
+		return DefaultLimit(), nil
+	}
+	return NewLimit(*value)
+}
+
 // Resolve applies the read's positive ceiling to this request. Explicit values
 // larger than the ceiling are clamped, keeping store reads bounded without
 // silently reinterpreting an invalid non-positive request as a default.

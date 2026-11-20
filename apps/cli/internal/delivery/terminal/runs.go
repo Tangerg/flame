@@ -26,7 +26,7 @@ type runLink interface {
 // runSession is what Run execution asks of the Session lifecycle: re-read the
 // presented Session, or replace its projection after a replay gap.
 type runSession interface {
-	refreshInvalidatedSession(settlementFence bool)
+	refreshInvalidatedSession(sessionRefresh)
 	reconcileRunSnapshot(snapshot conversation.SessionSnapshot, stream conversation.SegmentStream) error
 }
 
@@ -68,7 +68,7 @@ func (r *runs) observing() bool { return r.execution.observing() }
 
 func (r *runs) blocksAdmission() bool { return r.execution.blocksAdmission() }
 
-func (r *runs) following() bool { return r.execution.following }
+func (r *runs) following() bool { return r.execution.following() }
 
 // restoreSnapshot rebuilds the observed projection from a Session read.
 func (r *runs) restoreSnapshot(snapshot conversation.SessionSnapshot) error {
@@ -84,7 +84,7 @@ func (r *runs) cancelPending() bool { return r.execution.pendingCancel != nil }
 // reconciliation does for the same Session.
 func (r *runs) adoptProjection(conversation *conversation.Conversation) {
 	r.execution.conversation = conversation
-	r.execution.projectionFailed = false
+	r.execution.trustProjection()
 }
 
 // switchProjection adopts another Session's projection; no start of the
@@ -185,7 +185,7 @@ func (r *runs) finishShutdown(ctx context.Context, plan runShutdown) error {
 func (r *runs) resumeReconciled(snapshot conversation.SessionSnapshot) (bool, error) {
 	switch r.execution.conversation.Phase() {
 	case conversation.Running:
-		r.execution.following = true
+		r.execution.observation = observationFollowing
 		r.execution.clock.start(r.execution.conversation.Usage().Duration, time.Now())
 		active, ok := snapshot.ActiveRun()
 		if !ok {
@@ -193,14 +193,14 @@ func (r *runs) resumeReconciled(snapshot conversation.SessionSnapshot) (bool, er
 		}
 		r.showRecoveredRunStatus("reconnected", active)
 	case conversation.Waiting:
-		r.execution.following = false
+		r.execution.stopFollowing()
 		if r.prompts.review == nil {
 			r.openInterrupts(r.execution.conversation.Interrupts())
 		}
 		r.observeCurrentRunStatus()
 		r.status.note(statusWaitingForAnswers)
 	case conversation.Idle:
-		r.execution.following = false
+		r.execution.stopFollowing()
 		if r.execution.conversation.Outcome().Status != "" {
 			r.settleCurrentRunStatus()
 		}

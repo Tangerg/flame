@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -49,11 +51,11 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 // while this command excludes competing resume and cancellation.
 type parkedTree struct {
 	pending Pending
-	items   map[string]transcript.Item
+	items   map[identity.ItemID]transcript.Item
 	runs    []rundomain.Run
 }
 
-func (c *Coordinator) readParkedTree(ctx context.Context, sessionID string, cmd ResumeCommand) (parkedTree, error) {
+func (c *Coordinator) readParkedTree(ctx context.Context, sessionID identity.SessionID, cmd ResumeCommand) (parkedTree, error) {
 	pending, found, err := c.interrupts.LookupOpenInterrupt(ctx, cmd.RunID)
 	if err != nil {
 		return parkedTree{}, err
@@ -209,9 +211,9 @@ func (c *Coordinator) openResumedSegment(
 // the confirmed edit or the original invocation. The answers follow the
 // binding order because both are projected from the settled Items.
 func rememberedRuleCandidates(
-	sessionID, projectDir string,
+	sessionID identity.SessionID, projectDir string,
 	pending Pending,
-	items map[string]transcript.Item,
+	items map[identity.ItemID]transcript.Item,
 	answers []InterruptAnswer,
 ) ([]RememberedRuleCandidate, error) {
 	candidates := make([]RememberedRuleCandidate, 0, len(answers))
@@ -259,7 +261,7 @@ func effectiveApprovalArguments(item transcript.Item, resolution approval.Resolu
 	return call.Invocation.Input.Arguments(), nil
 }
 
-func (c *Coordinator) claimResume(ctx context.Context, runID string) (session.Session, ownership.RunAdmission, error) {
+func (c *Coordinator) claimResume(ctx context.Context, runID identity.RunID) (session.Session, ownership.RunAdmission, error) {
 	addressed, found, err := c.runs.Run(ctx, runID)
 	if err != nil {
 		return session.Session{}, ownership.RunAdmission{}, err

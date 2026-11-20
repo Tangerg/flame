@@ -118,7 +118,9 @@ func registerRuns(registry *Registry) {
 	}, ctx context.Context, request protocol.CancelRunRequest,
 	) (*protocol.CancelRunResponse, error) {
 		return service.CancelRun(ctx, request)
-	})
+	}).withOwnedReplay((interface {
+		replayCancellation(context.Context, protocol.CancelRunRequest, keyedCall) protocol.OperationResult
+	}).replayCancellation)
 
 	// A steer addresses the same thing a subscribe does — one live segment — so it
 	// refuses with the same vocabulary. There is no best-effort injection: a run

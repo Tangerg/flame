@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/samber/lo"
@@ -48,7 +50,7 @@ func NewTrajectoryExportReader(cfg TrajectoryExportConfig) (*trajectoryExportRea
 	}, nil
 }
 
-func (r *trajectoryExportReader) ReadTrajectoryExport(ctx context.Context, sessionID string) (sessions.TrajectoryEvidence, error) {
+func (r *trajectoryExportReader) ReadTrajectoryExport(ctx context.Context, sessionID identity.SessionID) (sessions.TrajectoryEvidence, error) {
 	var evidence sessions.TrajectoryEvidence
 	err := r.readSnapshot(ctx, func(ctx context.Context) error {
 		if _, err := r.sessions.Get(ctx, sessionID); err != nil {
@@ -95,7 +97,7 @@ func (r *trajectoryExportReader) ReadTrajectoryExport(ctx context.Context, sessi
 	return evidence, nil
 }
 
-func (r *trajectoryExportReader) readToolAttempts(ctx context.Context, sessionID string, evidence *sessions.TrajectoryEvidence) error {
+func (r *trajectoryExportReader) readToolAttempts(ctx context.Context, sessionID identity.SessionID, evidence *sessions.TrajectoryEvidence) error {
 	rows, err := r.toolInvocations.ListSession(ctx, sessionID)
 	if err != nil {
 		return err
@@ -114,7 +116,7 @@ func (r *trajectoryExportReader) readToolAttempts(ctx context.Context, sessionID
 	return nil
 }
 
-func (r *trajectoryExportReader) readModelInvocations(ctx context.Context, runID string, evidence *sessions.TrajectoryEvidence) error {
+func (r *trajectoryExportReader) readModelInvocations(ctx context.Context, runID identity.RunID, evidence *sessions.TrajectoryEvidence) error {
 	const pageSize = 100
 	var beforeStartedAt int64
 	var beforeCallID string

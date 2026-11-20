@@ -50,6 +50,16 @@ func (s *server) settle(session *sdkmcp.ClientSession, tools []Executable, state
 	s.session, s.tools, s.state, s.failure, s.cause = session, tools, state, failure, cause
 }
 
+// fail settles a failed attempt. A server that now needs authorization drops
+// the handler that could not authorize it.
+func (s *server) fail(cause error, step mcpserver.ConnectionFailure) {
+	state, failure := failedStatus(cause, step)
+	s.settle(nil, nil, state, failure, cause)
+	if state == mcpserver.ConnectionNeedsAuth {
+		s.oauth = nil
+	}
+}
+
 type shutdownAttempt struct {
 	done chan struct{}
 	err  error
@@ -121,9 +131,19 @@ func (c *connections) setToolSink(sink func([]Executable, []mcpserver.ID, []mcps
 	c.publishToolsLocked()
 }
 
+// clientImplementation is how Runtime introduces itself to every MCP server,
+// whether connecting for use or probing a configuration.
+func clientImplementation() *sdkmcp.Implementation {
+	return &sdkmcp.Implementation{Name: identity.ProductName, Version: clientProtocolVersion}
+}
+
+// clientProtocolVersion versions Runtime's MCP client behavior, not the product
+// release a server could otherwise mistake it for.
+const clientProtocolVersion = "v0.1.0"
+
 // One client routes notifications to the owner of each exact session.
 func newClient(changed func(context.Context, *sdkmcp.ToolListChangedRequest)) *sdkmcp.Client {
-	return sdkmcp.NewClient(&sdkmcp.Implementation{Name: identity.ProductName, Version: "v0.1.0"}, &sdkmcp.ClientOptions{ToolListChangedHandler: changed})
+	return sdkmcp.NewClient(clientImplementation(), &sdkmcp.ClientOptions{ToolListChangedHandler: changed})
 }
 
 // find returns the server with the given name, or nil. Caller holds mu.

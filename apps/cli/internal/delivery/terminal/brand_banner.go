@@ -1,8 +1,6 @@
 package terminal
 
 import (
-	"strings"
-
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 
@@ -55,7 +53,7 @@ func newBrandBanner(
 	session conversation.Session,
 	options authoring.RunOptions,
 ) *brandBanner {
-	banner := &brandBanner{theme: theme, glyphs: glyphs, version: brandVersion(version)}
+	banner := &brandBanner{theme: theme, glyphs: glyphs, version: version}
 	banner.SetSession(session)
 	banner.SetOptions(options)
 	return banner
@@ -134,15 +132,4 @@ func (b *brandBanner) detailLines(capacity int) []brandLine {
 		{text: b.workspace, style: b.theme.Subtle},
 	}
 	return candidates[:min(capacity, len(candidates))]
-}
-
-func brandVersion(value string) string {
-	value = strings.TrimSpace(value)
-	if value == "" || value == "dev" || strings.HasPrefix(value, "v") {
-		if value == "" {
-			return "dev"
-		}
-		return value
-	}
-	return "v" + value
 }

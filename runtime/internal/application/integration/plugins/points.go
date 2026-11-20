@@ -55,44 +55,9 @@ func ResolvePoint(ctx context.Context, host framehost.Host, store Store, contrac
 	if err := activatePointProviders(ctx, host, participants.providers); err != nil {
 		return nil, err
 	}
-	point, err := DataPoint(contract)
+	result, plan, err := capturePointComposition(ctx, host, contract, order)
 	if err != nil {
 		return nil, err
-	}
-	snapshot, err := host.Snapshot(ctx, point.Ref())
-	if err != nil {
-		return nil, FrameworkError(err)
-	}
-	candidates, err := framehost.Candidates(snapshot, point)
-	if err != nil {
-		return nil, FrameworkError(err)
-	}
-	bound, err := bindPointCandidates(candidates)
-	if err != nil {
-		return nil, err
-	}
-	keys, err := pointOrderKeys(order)
-	if err != nil {
-		return nil, err
-	}
-	composed, err := contract.Compose(bound.values, keys)
-	if err != nil {
-		return nil, errors.Join(plugin.ErrUnavailable, err)
-	}
-	result := make([]PointBinding, 0, len(composed))
-	selected := make([]framehost.Candidate[framevalue.JSON, framevalue.JSON], 0, len(composed))
-	for _, value := range composed {
-		candidate := bound.byKey[value.Key]
-		result = append(result, candidate.binding)
-		selected = append(selected, candidate.candidate)
-	}
-	selection, err := framehost.Select(snapshot, point, pointSelectionRule, selected...)
-	if err != nil {
-		return nil, FrameworkError(err)
-	}
-	plan, err := framehost.Capture(snapshot, selection.Ref())
-	if err != nil {
-		return nil, FrameworkError(err)
 	}
 	if err := host.Admission().Admit(ctx, func(admitted context.Context) error {
 		if err := validatePointDeclaration(admitted, store, participants.declarations); err != nil {
@@ -104,6 +69,51 @@ func ResolvePoint(ctx context.Context, host framehost.Host, store Store, contrac
 		return nil, FrameworkError(err)
 	}
 	return result, nil
+}
+
+// capturePointComposition composes the point's candidates in the requested
+// order and captures that exact selection as a plan the admission can recheck.
+func capturePointComposition(ctx context.Context, host framehost.Host, contract *plugincontract.Point, order []PointReference) ([]PointBinding, framehost.BindingPlan, error) {
+	point, err := DataPoint(contract)
+	if err != nil {
+		return nil, framehost.BindingPlan{}, err
+	}
+	snapshot, err := host.Snapshot(ctx, point.Ref())
+	if err != nil {
+		return nil, framehost.BindingPlan{}, FrameworkError(err)
+	}
+	candidates, err := framehost.Candidates(snapshot, point)
+	if err != nil {
+		return nil, framehost.BindingPlan{}, FrameworkError(err)
+	}
+	bound, err := bindPointCandidates(candidates)
+	if err != nil {
+		return nil, framehost.BindingPlan{}, err
+	}
+	keys, err := pointOrderKeys(order)
+	if err != nil {
+		return nil, framehost.BindingPlan{}, err
+	}
+	composed, err := contract.Compose(bound.values, keys)
+	if err != nil {
+		return nil, framehost.BindingPlan{}, errors.Join(plugin.ErrUnavailable, err)
+	}
+	result := make([]PointBinding, 0, len(composed))
+	selected := make([]framehost.Candidate[framevalue.JSON, framevalue.JSON], 0, len(composed))
+	for _, value := range composed {
+		candidate := bound.byKey[value.Key]
+		result = append(result, candidate.binding)
+		selected = append(selected, candidate.candidate)
+	}
+	selection, err := framehost.Select(snapshot, point, pointSelectionRule, selected...)
+	if err != nil {
+		return nil, framehost.BindingPlan{}, FrameworkError(err)
+	}
+	plan, err := framehost.Capture(snapshot, selection.Ref())
+	if err != nil {
+		return nil, framehost.BindingPlan{}, FrameworkError(err)
+	}
+	return result, plan, nil
 }
 
 // pointParticipants are the enabled installations that declare the point for

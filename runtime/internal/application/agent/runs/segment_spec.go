@@ -4,22 +4,23 @@ import (
 	"context"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 // segmentSpec is the prepared input to the package's segment supervisor.
 type segmentSpec struct {
 	// RunID is stable across every resumed Segment of the same logical Run.
-	RunID string
+	RunID identity.RunID
 	// SegmentID changes for every start or resume and scopes replay.
-	SegmentID string
-	SessionID string
+	SegmentID identity.SegmentID
+	SessionID identity.SessionID
 	// WorkspaceCWD is the Session's project directory, which is what the durable
 	// Run record and every product capability derived from it address. An
 	// isolated Run executes in a scratch copy instead; only the executor is given
@@ -59,14 +60,13 @@ type segmentOpening interface{ segmentOpening() }
 // rootOpening holds the admission facts of a fresh root. A resumed Segment
 // reads the same facts from the parked Runs it continues.
 type rootOpening struct {
-	ModelSelection     modelchoice.Selection
-	GoalIncarnationID  string
-	InitialSession     *session.Session
-	SessionReplacement *session.Replacement
-	Actor              *operation.Actor
-	CreatedAt          time.Time
-	OpeningUserText    string
-	Input              []transcript.ContentBlock
+	ModelSelection    modelchoice.Selection
+	GoalIncarnationID string
+	SessionWrite      OpeningSessionWrite
+	Actor             *operation.Actor
+	CreatedAt         time.Time
+	OpeningUserText   string
+	Input             []transcript.ContentBlock
 	// ConversationInput is the exact composed User message admitted to the
 	// executor. Input remains the independently projected transcript content.
 	ConversationInput *corechat.Message
@@ -95,11 +95,24 @@ type treeResumption struct {
 	toolAttempts  []OpenToolInvocation
 }
 
+// draft is the fresh root Run this opening admits.
+func (o rootOpening) draft(spec segmentSpec) run.Draft {
+	return run.Draft{
+		RunID:             spec.RunID,
+		SessionID:         spec.SessionID,
+		SegmentID:         spec.SegmentID,
+		ModelSelection:    o.ModelSelection,
+		GoalIncarnationID: o.GoalIncarnationID,
+		Capabilities:      o.Capabilities,
+		CreatedAt:         o.CreatedAt,
+	}
+}
+
 func (rootOpening) segmentOpening()    {}
 func (treeResumption) segmentOpening() {}
 
 // restoresSegments reports a crash-recovered tree whose root was still running.
-func (r treeResumption) restoresSegments(rootRunID string) bool {
+func (r treeResumption) restoresSegments(rootRunID identity.RunID) bool {
 	root, found := r.Continuation.run(rootRunID)
 	return found && root.State() == run.Running
 }

@@ -41,39 +41,86 @@ func openObservationRoots(boundaries []string) (_ *observationRoots, err error) 
 	return roots, nil
 }
 
-func (r *observationRoots) access(boundary, physical string) (*os.Root, string, bool, error) {
+// observedName addresses one path for observation I/O. Under a pinned
+// boundary every operation resolves name inside root, so a later symlink swap
+// cannot redirect it; an unbounded target has no root and an absolute name.
+type observedName struct {
+	root *os.Root
+	name string
+}
+
+func (n observedName) stat() (os.FileInfo, error) {
+	if n.root != nil {
+		return n.root.Stat(n.name)
+	}
+	return os.Stat(n.name)
+}
+
+func (n observedName) lstat() (os.FileInfo, error) {
+	if n.root != nil {
+		return n.root.Lstat(n.name)
+	}
+	return os.Lstat(n.name)
+}
+
+func (n observedName) open() (*os.File, error) {
+	if n.root != nil {
+		return n.root.Open(n.name)
+	}
+	return os.Open(n.name)
+}
+
+func (n observedName) openFile(expected os.FileInfo, maxBytes int64) (*os.File, os.FileInfo, error) {
+	if n.root != nil {
+		return filesystem.OpenFileAtExpected(n.root, n.name, expected, maxBytes)
+	}
+	return filesystem.OpenFileExpected(n.name, expected, maxBytes)
+}
+
+func (n observedName) openDirectory(expected os.FileInfo) (*os.File, os.FileInfo, error) {
+	if n.root != nil {
+		return filesystem.OpenDirectoryAtExpected(n.root, n.name, expected)
+	}
+	return filesystem.OpenDirectoryExpected(n.name, expected)
+}
+
+func (n observedName) child(entry string) observedName {
+	return observedName{root: n.root, name: filepath.Join(n.name, entry)}
+}
+
+func (r *observationRoots) access(boundary, physical string) (observedName, bool, error) {
 	if boundary == "" {
-		return nil, physical, true, nil
+		return observedName{name: physical}, true, nil
 	}
 	inside, err := filesystem.ContainsPath(boundary, physical)
 	if err != nil {
-		return nil, "", false, err
+		return observedName{}, false, err
 	}
 	if !inside {
-		return nil, "", false, nil
+		return observedName{}, false, nil
 	}
 	name, err := filepath.Rel(boundary, physical)
 	if err != nil {
-		return nil, "", false, err
+		return observedName{}, false, err
 	}
 	root := r.byBoundary[boundary]
 	if root != nil {
 		named, err := os.Stat(boundary)
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, "", false, nil
+			return observedName{}, false, nil
 		}
 		if err != nil {
-			return nil, "", false, fmt.Errorf("inspect observation boundary %q: %w", boundary, err)
+			return observedName{}, false, fmt.Errorf("inspect observation boundary %q: %w", boundary, err)
 		}
 		pinned, err := root.Stat(".")
 		if err != nil {
-			return nil, "", false, fmt.Errorf("inspect pinned observation boundary %q: %w", boundary, err)
+			return observedName{}, false, fmt.Errorf("inspect pinned observation boundary %q: %w", boundary, err)
 		}
 		if !os.SameFile(named, pinned) {
 			// Reconciliation must not mix a new pathname with the old directory
 			// handle. Report the lost binding before a retry can pin its successor.
 			r.byBoundary[boundary] = nil
-			return nil, "", false, errors.Join(fmt.Errorf("observation boundary %q was replaced", boundary), root.Close())
+			return observedName{}, false, errors.Join(fmt.Errorf("observation boundary %q was replaced", boundary), root.Close())
 		}
 	}
 	if root == nil {
@@ -81,14 +128,14 @@ func (r *observationRoots) access(boundary, physical string) (*os.Root, string, 
 		// when it appears; until then the observer watches the existing ancestor.
 		root, err = os.OpenRoot(boundary)
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, "", false, nil
+			return observedName{}, false, nil
 		}
 		if err != nil {
-			return nil, "", false, fmt.Errorf("open observation boundary %q: %w", boundary, err)
+			return observedName{}, false, fmt.Errorf("open observation boundary %q: %w", boundary, err)
 		}
 		r.byBoundary[boundary] = root
 	}
-	return root, name, true, nil
+	return observedName{root: root, name: name}, true, nil
 }
 
 func (r *observationRoots) Close() error {

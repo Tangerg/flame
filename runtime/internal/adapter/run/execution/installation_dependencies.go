@@ -26,7 +26,7 @@ func (i *InteractionExecutor) Held(ctx context.Context, id framehost.Installatio
 	}
 	var result []framehost.Dependency
 	for _, dependency := range held {
-		if dependency.InstallationID.String() == id.String() {
+		if dependency.InstallationID.Host() == id {
 			result = append(result, framehost.Dependency{InstallationID: id, Release: dependency.Digest})
 		}
 	}

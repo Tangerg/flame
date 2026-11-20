@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"iter"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -38,6 +40,7 @@ type Coordinator struct {
 	items     ItemProjection
 	admission *ownership.Gate
 	segments  *Segments
+	newItemID func() identity.ItemID
 }
 
 // Dependencies are the collaborators continuing an existing Run requires.
@@ -55,6 +58,7 @@ type Dependencies struct {
 	Runs       Projection
 	Items      ItemProjection
 	Admissions *ownership.Gate
+	NewItemID  func() identity.ItemID
 }
 
 // NewCoordinator builds the run use cases over the segment supervisor that runs them.
@@ -75,6 +79,7 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		{"run projection", deps.Runs},
 		{"item projection", deps.Items},
 		{"admission gate", deps.Admissions},
+		{"item id generator", deps.NewItemID},
 	}
 	for _, required := range required {
 		if lo.IsNil(required.value) {
@@ -94,6 +99,7 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 		items:                 deps.Items,
 		admission:             deps.Admissions,
 		segments:              deps.Segments,
+		newItemID:             deps.NewItemID,
 	}, nil
 }
 
@@ -358,85 +364,93 @@ func (c *Segments) commitOpening(ctx context.Context, spec segmentSpec, routes *
 	if err != nil {
 		return nil, fmt.Errorf("runs: order opening tree: %w", err)
 	}
-	commitID := newRunCommitID()
-	var resume *rundomain.TreeResumeDraft
-	if routes.admission == nil {
-		resume = &rundomain.TreeResumeDraft{Runs: make([]rundomain.Replacement, 0, len(ordered))}
+	openings, events, err := reduceOpenings(spec.SessionID, ordered)
+	if err != nil {
+		return nil, err
 	}
-	openings := make([]routeOpening, 0, len(ordered))
-	events := make([]EventCommit, 0, len(ordered))
-	for _, route := range ordered {
-		projected, err := route.reducer.open()
-		if err != nil {
-			return nil, fmt.Errorf("runs: reduce opening for Run %q: %w", route.runID, err)
-		}
-		if len(projected.events) == 0 {
-			return nil, fmt.Errorf("runs: reducer for Run %q produced no opening events", route.runID)
-		}
-		if projected.parkCommit != nil {
-			return nil, fmt.Errorf("runs: opening for Run %q cannot park", route.runID)
-		}
-		if err := validateRouteReductionBatch(route, spec.SessionID, projected); err != nil {
-			return nil, err
-		}
-		for _, reduced := range projected.events {
-			if reduced.Event.Terminal() || reduced.Nudge != nil {
-				return nil, fmt.Errorf("runs: invalid opening event for Run %q", route.runID)
-			}
-			if reduced.Commit != nil {
-				events = append(events, *reduced.Commit)
-			}
-		}
-		if resume != nil {
-			if route.resumed == nil {
-				return nil, fmt.Errorf("runs: resumed tree route for Run %q has no resume", route.runID)
-			}
-			resume.Runs = append(resume.Runs, *route.resumed)
-		}
-		openings = append(openings, routeOpening{route: route, batch: projected})
-	}
-	// An opening may carry no item commits at all — a resumed segment that only
-	// delivers an approval has nothing to append. Its durable projection is the
-	// admission or resume above, which is what makes the Run exist.
-	commitOpening := c.publications.openings.CommitOpening
-	var opening OpeningCommit
-	switch value := spec.Opening.(type) {
-	case rootOpening:
-		opening, err = NewAdmissionOpeningCommit(
-			commitID, *routes.admission, value.InitialSession, value.SessionReplacement,
-			value.Actor, events,
-		)
-	case treeResumption:
-		if value.CommitOpening != nil {
-			commitOpening = value.CommitOpening
-		}
-		opening, err = NewResumeOpeningCommit(commitID, *resume, events)
-		if err == nil && value.ResumeAcceptance != nil {
-			opening, err = opening.WithResumeAcceptance(*value.ResumeAcceptance)
-		}
-	default:
-		err = fmt.Errorf("runs: unknown Segment opening %T", spec.Opening)
-	}
+	opening, commit, err := c.openingCommit(spec, ordered, events)
 	if err != nil {
 		return nil, err
 	}
 	if spec.CommandAcceptance != nil {
-		acceptance, acceptErr := AcceptCommand(
-			spec.CommandAcceptance.Key, spec.CommandAcceptance.Fingerprint,
-			opening,
-		)
-		if acceptErr != nil {
-			return nil, acceptErr
+		acceptance, err := AcceptCommand(spec.CommandAcceptance.Key, spec.CommandAcceptance.Fingerprint, opening)
+		if err != nil {
+			return nil, err
 		}
 		opening, err = opening.WithCommandAcceptance(acceptance)
 		if err != nil {
 			return nil, err
 		}
 	}
-	if err := commitOpening(ctx, opening); err != nil {
+	if err := commit(ctx, opening); err != nil {
 		return nil, err
 	}
 	return openings, nil
+}
+
+// reduceOpenings opens every unfinished route's reducer. An opening may carry
+// no item commits at all: a resumed segment that only delivers an approval is
+// made durable by its admission or resume alone.
+func reduceOpenings(sessionID identity.SessionID, ordered []*executorRoute) ([]routeOpening, []EventCommit, error) {
+	openings := make([]routeOpening, 0, len(ordered))
+	events := make([]EventCommit, 0, len(ordered))
+	for _, route := range ordered {
+		projected, err := route.reducer.open()
+		if err != nil {
+			return nil, nil, fmt.Errorf("runs: reduce opening for Run %q: %w", route.runID, err)
+		}
+		if len(projected.events) == 0 {
+			return nil, nil, fmt.Errorf("runs: reducer for Run %q produced no opening events", route.runID)
+		}
+		if projected.parkCommit != nil {
+			return nil, nil, fmt.Errorf("runs: opening for Run %q cannot park", route.runID)
+		}
+		if err := validateRouteReductionBatch(route, sessionID, projected); err != nil {
+			return nil, nil, err
+		}
+		for _, reduced := range projected.events {
+			if reduced.Event.Terminal() || reduced.Nudge != nil {
+				return nil, nil, fmt.Errorf("runs: invalid opening event for Run %q", route.runID)
+			}
+			if reduced.Commit != nil {
+				events = append(events, *reduced.Commit)
+			}
+		}
+		openings = append(openings, routeOpening{route: route, batch: projected})
+	}
+	return openings, events, nil
+}
+
+// openingCommit builds the durable write that makes the tree exist, with the
+// transaction that owns it.
+func (c *Segments) openingCommit(spec segmentSpec, ordered []*executorRoute, events []EventCommit) (OpeningCommit, func(context.Context, OpeningCommit) error, error) {
+	commitID := newRunCommitID()
+	switch value := spec.Opening.(type) {
+	case rootOpening:
+		opening, err := NewAdmissionOpeningCommit(
+			commitID, value.draft(spec), value.SessionWrite, value.Actor, events,
+		)
+		return opening, c.publications.openings.CommitOpening, err
+	case treeResumption:
+		resume := rundomain.TreeResumeDraft{Runs: make([]rundomain.Replacement, 0, len(ordered))}
+		for _, route := range ordered {
+			if route.resumed == nil {
+				return OpeningCommit{}, nil, fmt.Errorf("runs: resumed tree route for Run %q has no resume", route.runID)
+			}
+			resume.Runs = append(resume.Runs, *route.resumed)
+		}
+		opening, err := NewResumeOpeningCommit(commitID, resume, events)
+		if err == nil && value.ResumeAcceptance != nil {
+			opening, err = opening.WithResumeAcceptance(*value.ResumeAcceptance)
+		}
+		commit := c.publications.openings.CommitOpening
+		if value.CommitOpening != nil {
+			commit = value.CommitOpening
+		}
+		return opening, commit, err
+	default:
+		return OpeningCommit{}, nil, fmt.Errorf("runs: unknown Segment opening %T", spec.Opening)
+	}
 }
 
 // Subscribe attaches to the Segment the request names. The record and journal
@@ -462,7 +476,7 @@ func (c *Segments) Subscribe(ctx context.Context, req SubscribeRequest) (Subscri
 // SubscribeSnapshot reads durable material and establishes its successor tail
 // while the addressed tree cannot commit or publish. The reader stays with its
 // own use case; this boundary owns continuity with the executing Run.
-func (c *Segments) SubscribeSnapshot(ctx context.Context, req SubscribeRequest, read func(context.Context, string) error) (Subscription, error) {
+func (c *Segments) SubscribeSnapshot(ctx context.Context, req SubscribeRequest, read func(context.Context, identity.SessionID) error) (Subscription, error) {
 	req = req.clone()
 	if req.Cursor != "" {
 		return Subscription{}, errors.New("runs: snapshot subscription cannot replay a cursor")
@@ -526,7 +540,7 @@ func (c *Segments) addressSubscription(ctx context.Context, req SubscribeRequest
 //
 // Both entry points into an executing run (subscribe and steer) resolve here, so
 // they cannot come to different conclusions about the same run.
-func (c *Segments) addressLiveSegment(ctx context.Context, runID, segmentID string) (liveSegment, rundomain.Run, error) {
+func (c *Segments) addressLiveSegment(ctx context.Context, runID identity.RunID, segmentID identity.SegmentID) (liveSegment, rundomain.Run, error) {
 	// Capture the owner before reading its durable state. Retirement may remove
 	// that entry after the read, but cannot invalidate the captured journal.
 	// Exclude openings until both reads finish so a newly committed Segment
@@ -584,7 +598,7 @@ func (c *Segments) AwaitShutdown(ctx context.Context) error {
 	return c.tasks.Wait(ctx)
 }
 
-func (c *Segments) newJournal(runID, segmentID string) (*journal, error) {
+func (c *Segments) newJournal(runID identity.RunID, segmentID identity.SegmentID) (*journal, error) {
 	scope, err := newStreamScope(c.epoch, runID, segmentID)
 	if err != nil {
 		return nil, err

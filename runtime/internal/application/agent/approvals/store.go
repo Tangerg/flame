@@ -3,6 +3,8 @@ package approvals
 import (
 	"context"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 )
 
@@ -19,7 +21,7 @@ type RuleStore interface {
 	// rules (ScopeKey == sessionID), its project's rules (ScopeKey ==
 	// projectDir), and all global rules. Any tool — the domain filters by tool.
 	// The result slice transfers ownership to the caller.
-	Visible(ctx context.Context, sessionID, projectDir string, limit int) ([]approval.Rule, error)
+	Visible(ctx context.Context, sessionID identity.SessionID, projectDir string, limit int) ([]approval.Rule, error)
 
 	// Delete removes one rule by id; removing a missing id is not an error.
 	Delete(ctx context.Context, id string) error

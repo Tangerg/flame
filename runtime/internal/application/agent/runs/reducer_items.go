@@ -7,7 +7,6 @@ import (
 	"time"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -39,11 +38,11 @@ func (o *openText) append(text string) { o.content.WriteString(text) }
 
 func (o *openText) itemIdentity() transcript.ItemIdentity { return o.identity }
 
-func (o *openText) itemID() string { return o.identity.ItemID }
+func (o *openText) itemID() flameidentity.ItemID { return o.identity.ItemID }
 
 func (o *openText) text() string { return o.content.String() }
 
-func (r *reducer) itemIdentity(id string, occurredAt time.Time) transcript.ItemIdentity {
+func (r *reducer) itemIdentity(id flameidentity.ItemID, occurredAt time.Time) transcript.ItemIdentity {
 	return transcript.ItemIdentity{
 		SessionID:  r.cfg.Opened.SessionID(),
 		RunID:      r.cfg.Opened.ID(),
@@ -193,14 +192,15 @@ func assistantMediaBlock(value *media.Media) (transcript.ContentBlock, error) {
 	if value == nil {
 		return transcript.ContentBlock{}, errors.New("assistant media is nil")
 	}
-	if !strings.HasPrefix(value.MIME, "image/") {
-		return transcript.ContentBlock{}, fmt.Errorf("assistant media type %q is not supported by Transcript", value.MIME)
-	}
 	data, err := value.Bytes()
 	if err != nil {
 		return transcript.ContentBlock{}, fmt.Errorf("assistant image must use an inline byte source: %w", err)
 	}
-	return transcript.ContentBlock{Kind: transcript.ImageContent, MediaType: value.MIME, Bytes: data}, nil
+	block := transcript.ContentBlock{Kind: transcript.ImageContent, MediaType: value.MIME, Bytes: data}
+	if err := block.Validate(); err != nil {
+		return transcript.ContentBlock{}, fmt.Errorf("assistant media is not Transcript content: %w", err)
+	}
+	return block, nil
 }
 
 func (r *reducer) completeReasoning(text string) ([]ProjectionEvent, error) {
@@ -238,43 +238,36 @@ func (r *reducer) completeMessageContent(
 	return append(events, ItemCompleted{Item: item}), nil
 }
 
-func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
+// admitToolStart refuses a start the executor contract forbids: an unnamed or
+// unattributed call, or one whose identity or model position is already taken.
+func (r *reducer) admitToolStart(e ToolCallStarted) error {
 	if err := ValidateInvocation(e.CallID); err != nil {
-		return nil, err
+		return err
 	}
-	if strings.TrimSpace(e.ToolName) == "" || e.ToolName != strings.TrimSpace(e.ToolName) {
-		return nil, errors.New("tool name is required")
-	}
-	if e.ModelCallSequence == 0 && e.ToolCallIndex != 0 {
-		return nil, errors.New("tool call index requires a model call sequence")
-	}
-	if e.ModelCallSequence > 0 && e.SourceCallID == "" {
-		return nil, errors.New("model-attributed tool call requires a source call id")
+	switch {
+	case strings.TrimSpace(e.ToolName) == "" || e.ToolName != strings.TrimSpace(e.ToolName):
+		return errors.New("tool name is required")
+	case e.ModelCallSequence == 0 && e.ToolCallIndex != 0:
+		return errors.New("tool call index requires a model call sequence")
+	case e.ModelCallSequence > 0 && e.SourceCallID == "":
+		return errors.New("model-attributed tool call requires a source call id")
 	}
 	if _, duplicate := r.toolCallIDs[e.CallID]; duplicate {
-		return nil, fmt.Errorf("tool call %q started more than once", e.CallID)
+		return fmt.Errorf("tool call %q started more than once", e.CallID)
 	}
-	if e.ModelCallSequence > 0 {
-		position := toolPosition{
-			modelCallSequence: e.ModelCallSequence,
-			toolCallIndex:     e.ToolCallIndex,
-		}
-		if existing, duplicate := r.toolPositions[position]; duplicate {
-			return nil, fmt.Errorf(
-				"tool call %q repeats model call %d ToolCall index %d already owned by %q",
-				e.CallID,
-				e.ModelCallSequence,
-				e.ToolCallIndex,
-				existing,
-			)
-		}
+	if e.ModelCallSequence == 0 {
+		return nil
 	}
-	if e.ArgumentsText != "" && e.Arguments != "" {
-		return nil, errors.New("tool call carries both parsed and rejected arguments")
+	position := toolPosition{modelCallSequence: e.ModelCallSequence, toolCallIndex: e.ToolCallIndex}
+	if existing, duplicate := r.toolPositions[position]; duplicate {
+		return fmt.Errorf("tool call %q repeats model call %d ToolCall index %d already owned by %q", e.CallID, e.ModelCallSequence, e.ToolCallIndex, existing)
 	}
-	arguments, err := tool.ParseArguments(e.Arguments)
-	if err != nil {
-		return nil, fmt.Errorf("tool %q arguments: %w", e.ToolName, err)
+	return nil
+}
+
+func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
+	if err := r.admitToolStart(e); err != nil {
+		return nil, err
 	}
 	// The step number previews the Run's accounting, so it counts the same thing
 	// the committed metrics do. Reporting the segment's own count would make a
@@ -283,11 +276,7 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	input := transcript.AdmittedInput(arguments)
-	if e.ArgumentsText != "" {
-		input = transcript.RejectedInput(e.ArgumentsText)
-	}
-	invocation := transcript.ToolInvocation{Name: e.ToolName, Source: e.Source, Input: input}
+	invocation := transcript.ToolInvocation{Name: e.ToolName, Source: e.Source, Input: e.Input}
 	item, reused, err := r.reuseOrCreateToolItem(e.CallID, invocation, e.SafetyClass)
 	if err != nil {
 		return nil, err
@@ -316,8 +305,8 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 		}
 		out = append(out, ItemStarted{Item: start})
 	}
-	if e.Arguments != "" {
-		delta, err := newToolArgumentsItemDelta(e.Arguments)
+	if _, rejected := e.Input.Rejected(); !rejected {
+		delta, err := newToolArgumentsItemDelta(e.Input.Arguments().Canonical())
 		if err != nil {
 			return nil, err
 		}
@@ -329,10 +318,10 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 	return out, nil
 }
 
-func (r *reducer) openToolItemID(callID string) (string, bool) {
+func (r *reducer) openToolItemID(callID string) (flameidentity.ItemID, bool) {
 	ref, open := r.tools.get(callID)
 	if !open || ref == nil {
-		return "", false
+		return flameidentity.ItemID{}, false
 	}
 	return ref.item.ID(), true
 }
@@ -409,13 +398,6 @@ func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]ProjectionE
 		})
 	}
 	invocation := ref.attemptInvocation
-	if e.Arguments != "" {
-		parsed, err := tool.ParseArguments(e.Arguments)
-		if err != nil {
-			return nil, fmt.Errorf("tool %q effective arguments: %w", invocation.Name, err)
-		}
-		invocation.Input = transcript.AdmittedInput(parsed)
-	}
 	invocation.Result = e.Result
 	var settlement transcript.Replacement
 	var err error
@@ -513,7 +495,7 @@ func (r *reducer) steerMessagesApplied(e SteerMessagesApplied) ([]ProjectionEven
 				)
 			}
 		}
-		if err := flameidentity.ValidateItem(applied.ItemID); err != nil {
+		if err := applied.ItemID.Validate(); err != nil {
 			return nil, fmt.Errorf("applied steer message %d Item: %w", messageIndex, err)
 		}
 		if applied.AlreadyProjected {

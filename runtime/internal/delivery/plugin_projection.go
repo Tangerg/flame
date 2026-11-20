@@ -67,73 +67,76 @@ func presentPluginDiagnostic(v plugin.Diagnostic) (protocol.PluginDiagnostic, er
 }
 func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error) {
 	v := release.Declaration()
-	result := protocol.PluginRelease{Digest: release.Digest().String(), Name: v.Name, Version: v.Version, Description: v.Description}
-	result.Components = make([]protocol.PluginClientComponent, 0, len(v.Components))
-	for _, value := range v.Components {
-		var selector *protocol.PluginRendererSelector
-		if value.Selector != nil {
-			selector = &protocol.PluginRendererSelector{Type: value.Selector.Kind, Name: value.Selector.Name, Shape: value.Selector.Shape}
-		}
-		result.Components = append(result.Components, protocol.PluginClientComponent{Selector: selector, ID: value.ID.String(), Title: value.Title, LocalizedTitles: value.LocalizedTitles, ToolCategory: value.ToolCategory, TargetView: value.TargetView, Scope: value.Scope, Placement: value.Placement, Entry: value.Entry, Export: value.Export, Contribution: value.Contribution.String(), Material: value.Material, SettingsIntent: value.SettingsIntent})
+	servers, err := presentAllOrError(v.Servers, presentPluginServerDeclaration)
+	if err != nil {
+		return protocol.PluginRelease{}, err
 	}
-	result.TerminalViews = make([]protocol.PluginTerminalView, 0, len(v.TerminalViews))
-	for _, value := range v.TerminalViews {
-		result.TerminalViews = append(result.TerminalViews, presentTerminalView(value))
+	inputs, err := presentAllOrError(v.Inputs, presentPluginInput)
+	if err != nil {
+		return protocol.PluginRelease{}, err
 	}
-	result.Points = make([]protocol.PluginPoint, 0, len(v.Points))
-	for _, value := range v.Points {
-		result.Points = append(result.Points, protocol.PluginPoint{ID: value.ID.String(), Contract: string(value.Contract.Bytes())})
+	diagnostics, err := presentAllOrError(v.Diagnostics, presentPluginDiagnostic)
+	if err != nil {
+		return protocol.PluginRelease{}, err
 	}
-	result.PointValues = make([]protocol.PluginPointValue, 0, len(v.PointValues))
-	for _, value := range v.PointValues {
-		result.PointValues = append(result.PointValues, protocol.PluginPointValue{ID: value.ID.String(), Contract: string(value.Contract.Bytes()), Value: string(value.Value.Bytes())})
-	}
-	result.Contributions = make([]protocol.PluginContribution, 0, len(v.Contributions))
-	for _, value := range v.Contributions {
-		presented := protocol.PluginContribution{SelectionRoles: value.SelectionRoles(), Background: value.Background, ID: value.ID.String(), Server: value.Server.String(), Export: value.Export, Contract: string(value.Contract.Bytes()), Requires: []protocol.PluginRequirement{}}
-		for _, requirement := range value.Requires {
-			presented.Requires = append(presented.Requires, protocol.PluginRequirement{ID: requirement.ID.String(), Contract: string(requirement.Contract.Bytes()), Optional: requirement.Optional})
-		}
-		result.Contributions = append(result.Contributions, presented)
-	}
-	result.Servers = make([]protocol.PluginServerDeclaration, 0, len(v.Servers))
-	for _, item := range v.Servers {
-		server, err := presentPluginServerDeclaration(item)
-		if err != nil {
-			return protocol.PluginRelease{}, err
-		}
-		result.Servers = append(result.Servers, server)
-	}
-	result.Inputs = make([]protocol.PluginInput, 0, len(v.Inputs))
-	for _, item := range v.Inputs {
-		input, err := presentPluginInput(item)
-		if err != nil {
-			return protocol.PluginRelease{}, err
-		}
-		result.Inputs = append(result.Inputs, input)
-	}
-	result.Themes = make([]protocol.PluginTheme, 0, len(v.Themes))
-	for _, item := range v.Themes {
-		result.Themes = append(result.Themes, presentPluginTheme(item))
-	}
-	result.Locales = make([]protocol.PluginLocale, 0, len(v.Locales))
-	for _, item := range v.Locales {
-		result.Locales = append(result.Locales, protocol.PluginLocale{Tag: item.Tag, Title: item.Title})
-	}
-	result.Skills = make([]protocol.PluginSkill, 0, len(v.Skills))
+	return protocol.PluginRelease{
+		Digest: release.Digest().String(), Name: v.Name, Version: v.Version, Description: v.Description,
+		Components:    presentAll(v.Components, presentClientComponent),
+		TerminalViews: presentAll(v.TerminalViews, presentTerminalView),
+		Points: presentAll(v.Points, func(value plugin.Point) protocol.PluginPoint {
+			return protocol.PluginPoint{ID: value.ID.String(), Contract: string(value.Contract.Bytes())}
+		}),
+		PointValues: presentAll(v.PointValues, func(value plugin.PointValue) protocol.PluginPointValue {
+			return protocol.PluginPointValue{ID: value.ID.String(), Contract: string(value.Contract.Bytes()), Value: string(value.Value.Bytes())}
+		}),
+		Contributions: presentAll(v.Contributions, presentContribution),
+		Servers:       servers,
+		Inputs:        inputs,
+		Themes:        presentAll(v.Themes, presentPluginTheme),
+		Locales: presentAll(v.Locales, func(item plugin.Locale) protocol.PluginLocale {
+			return protocol.PluginLocale{Tag: item.Tag, Title: item.Title}
+		}),
+		Skills:      presentAll(v.Skills, presentPluginSkill),
+		Diagnostics: diagnostics,
+	}, nil
+}
 
-	for _, item := range v.Skills {
-		result.Skills = append(result.Skills, presentPluginSkill(item))
+// presentAll projects every declared value; an empty declaration presents as
+// an empty list, never null.
+func presentAll[T, R any](values []T, present func(T) R) []R {
+	presented := make([]R, 0, len(values))
+	for _, value := range values {
+		presented = append(presented, present(value))
 	}
-	result.Diagnostics = make([]protocol.PluginDiagnostic, 0, len(v.Diagnostics))
-	for _, item := range v.Diagnostics {
-		diagnostic, err := presentPluginDiagnostic(item)
+	return presented
+}
+
+func presentAllOrError[T, R any](values []T, present func(T) (R, error)) ([]R, error) {
+	presented := make([]R, 0, len(values))
+	for _, value := range values {
+		item, err := present(value)
 		if err != nil {
-			return protocol.PluginRelease{}, err
+			return nil, err
 		}
-		result.Diagnostics = append(result.Diagnostics, diagnostic)
+		presented = append(presented, item)
 	}
-	return result, nil
+	return presented, nil
+}
+
+func presentClientComponent(value plugin.ClientComponent) protocol.PluginClientComponent {
+	var selector *protocol.PluginRendererSelector
+	if value.Selector != nil {
+		selector = &protocol.PluginRendererSelector{Type: value.Selector.Kind, Name: value.Selector.Name, Shape: value.Selector.Shape}
+	}
+	return protocol.PluginClientComponent{Selector: selector, ID: value.ID.String(), Title: value.Title, LocalizedTitles: value.LocalizedTitles, ToolCategory: value.ToolCategory, TargetView: value.TargetView, Scope: value.Scope, Placement: value.Placement, Entry: value.Entry, Export: value.Export, Contribution: value.Contribution.String(), Material: value.Material, SettingsIntent: value.SettingsIntent}
+}
+
+func presentContribution(value plugin.Contribution) protocol.PluginContribution {
+	presented := protocol.PluginContribution{SelectionRoles: value.SelectionRoles(), Background: value.Background, ID: value.ID.String(), Server: value.Server.String(), Export: value.Export, Contract: string(value.Contract.Bytes()), Requires: []protocol.PluginRequirement{}}
+	for _, requirement := range value.Requires {
+		presented.Requires = append(presented.Requires, protocol.PluginRequirement{ID: requirement.ID.String(), Contract: string(requirement.Contract.Bytes()), Optional: requirement.Optional})
+	}
+	return presented
 }
 func presentInstallation(inspection plugins.Inspection) (*protocol.PluginInstallation, error) {
 	view := inspection.View

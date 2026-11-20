@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -282,112 +284,121 @@ func scanRunForRecovery(row scanRow) (rundomain.Run, error) {
 }
 
 func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, error) {
-	var (
-		id                string
-		sessionID         string
-		spawnedByItemID   string
-		parentRunID       string
-		rootRunID         string
-		coarse            string
-		activeSegmentID   string
-		outcome           string
-		provider          string
-		model             string
-		reasoningEffort   string
-		goalIncarnationID string
-		ending            string
-		steps             int
-		usage             string
-		contextTokens     int64
-		unresolvedEffects string
-
-		messageMark         sql.NullInt64
-		capabilities        string
-		durationNs          int64
-		createdAt           int64
-		finishedAt          int64
-		updatedAt           int64
-		interruptsSuspended sql.NullString
-	)
+	var r runRow
 	if err := row.Scan(
-		&id, &sessionID,
-		&spawnedByItemID, &parentRunID, &rootRunID,
-		&coarse, &activeSegmentID, &outcome,
-		&provider, &model, &reasoningEffort, &goalIncarnationID, &ending,
-		&steps, &durationNs, &usage, &contextTokens, &unresolvedEffects,
-		&capabilities,
-		&messageMark, &createdAt, &finishedAt, &updatedAt, &interruptsSuspended,
+		&r.id, &r.sessionID,
+		&r.spawnedByItemID, &r.parentRunID, &r.rootRunID,
+		&r.coarse, &r.activeSegmentID, &r.outcome,
+		&r.provider, &r.model, &r.reasoningEffort, &r.goalIncarnationID, &r.ending,
+		&r.steps, &r.durationNs, &r.usage, &r.contextTokens, &r.unresolvedEffects,
+		&r.capabilities,
+		&r.messageMark, &r.createdAt, &r.finishedAt, &r.updatedAt, &r.interruptsSuspended,
 	); err != nil {
 		return rundomain.Run{}, fmt.Errorf("scan run row: %w", err)
 	}
-	storedState, err := parseRunState(coarse)
+	snapshot, err := r.snapshot()
 	if err != nil {
-		return rundomain.Run{}, fmt.Errorf("run %q: %w", id, err)
+		return rundomain.Run{}, err
 	}
-	lineage, err := rundomain.NewLineage(spawnedByItemID, parentRunID, rootRunID)
-	if err != nil {
-		return rundomain.Run{}, fmt.Errorf("run %q: %w", id, err)
-	}
-	capabilitiesValue, err := decodeRunCapabilities(capabilities)
-	if err != nil {
-		return rundomain.Run{}, fmt.Errorf("run %q: %w", id, err)
-	}
-	selection, err := modelchoice.NewWithReasoningEffort(provider, model, reasoningEffort)
-	if err != nil {
-		return rundomain.Run{}, fmt.Errorf("decode run %q model selection: %w", id, err)
-	}
-	metrics, err := decodeRunMetrics(usage, steps, time.Duration(durationNs))
-	if err != nil {
-		return rundomain.Run{}, fmt.Errorf("decode run %q metrics: %w", id, err)
-	}
-	snapshot := rundomain.Snapshot{
-		SessionID: sessionID, ID: id, Lineage: lineage, ModelSelection: selection,
-		GoalIncarnationID: goalIncarnationID, ActiveSegmentID: activeSegmentID,
-		Metrics: metrics, ContextTokens: contextTokens,
-		Capabilities: capabilitiesValue,
-		CreatedAt:    time.Unix(0, createdAt).UTC(), UpdatedAt: time.Unix(0, updatedAt).UTC(),
-		MessageMark: decodeMessageMark(messageMark),
-	}
-
-	snapshot.UnresolvedEffects, err = decodeUnresolvedEffects(unresolvedEffects)
-	if err != nil {
-		return rundomain.Run{}, fmt.Errorf("decode run effects: %w", err)
-	}
-	if snapshot.Ending, err = decodeRunEnding(outcome, ending); err != nil {
-		return rundomain.Run{}, fmt.Errorf("decode run %q ending: %w", id, err)
-	}
-	// Zero encodes absence on open rows and the Unix epoch on terminal rows.
-	// Retain nonzero finish times on open rows so the Domain rejects them.
-	if finishedAt != 0 || storedState == rundomain.Finished {
-		snapshot.FinishedAt = time.Unix(0, finishedAt).UTC()
-	}
-	switch storedState {
-	case rundomain.Running:
-		snapshot.State = rundomain.Running
-	case rundomain.Waiting:
-		snapshot.State = rundomain.Waiting
-		// Every suspended Run must join its root-owned pending set. A Run carries
-		// no interrupts of its own, so the joined column is read only to prove the
-		// set is intact: a waiting Run whose pending payload cannot be decoded is
-		// unusable, and saying so here names the Run instead of failing later
-		// wherever that set is finally read.
-		if !interruptsSuspended.Valid {
-			if pendingPolicy == requirePendingSet {
-				return rundomain.Run{}, fmt.Errorf("run %q is waiting with no root-owned Pending set", id)
-			}
-			break
+	if snapshot.State == rundomain.Waiting {
+		if err := r.validatePendingSet(pendingPolicy); err != nil {
+			return rundomain.Run{}, err
 		}
-		if _, decodeErr := decodeInterrupts(interruptsSuspended.String); decodeErr != nil {
-			return rundomain.Run{}, fmt.Errorf("decode run %q interrupts: %w", id, decodeErr)
-		}
-	case rundomain.Finished:
-		snapshot.State = rundomain.Finished
 	}
 	value, err := rundomain.Restore(snapshot)
 	if err != nil {
-		return rundomain.Run{}, fmt.Errorf("run %q: %w", id, err)
+		return rundomain.Run{}, fmt.Errorf("run %q: %w", r.id, err)
 	}
 	return value, nil
+}
+
+// runRow is one stored Run as its columns hold it.
+type runRow struct {
+	id                identity.RunID
+	sessionID         identity.SessionID
+	spawnedByItemID   identity.ItemID
+	parentRunID       identity.RunID
+	rootRunID         identity.RunID
+	coarse            string
+	activeSegmentID   identity.SegmentID
+	outcome           string
+	provider          string
+	model             string
+	reasoningEffort   string
+	goalIncarnationID string
+	ending            string
+	steps             int
+	usage             string
+	contextTokens     int64
+	unresolvedEffects string
+
+	messageMark         sql.NullInt64
+	capabilities        string
+	durationNs          int64
+	createdAt           int64
+	finishedAt          int64
+	updatedAt           int64
+	interruptsSuspended sql.NullString
+}
+
+func (r runRow) snapshot() (rundomain.Snapshot, error) {
+	state, err := parseRunState(r.coarse)
+	if err != nil {
+		return rundomain.Snapshot{}, fmt.Errorf("run %q: %w", r.id, err)
+	}
+	lineage, err := rundomain.NewLineage(r.spawnedByItemID, r.parentRunID, r.rootRunID)
+	if err != nil {
+		return rundomain.Snapshot{}, fmt.Errorf("run %q: %w", r.id, err)
+	}
+	capabilities, err := decodeRunCapabilities(r.capabilities)
+	if err != nil {
+		return rundomain.Snapshot{}, fmt.Errorf("run %q: %w", r.id, err)
+	}
+	selection, err := modelchoice.NewWithReasoningEffort(r.provider, r.model, r.reasoningEffort)
+	if err != nil {
+		return rundomain.Snapshot{}, fmt.Errorf("decode run %q model selection: %w", r.id, err)
+	}
+	metrics, err := decodeRunMetrics(r.usage, r.steps, time.Duration(r.durationNs))
+	if err != nil {
+		return rundomain.Snapshot{}, fmt.Errorf("decode run %q metrics: %w", r.id, err)
+	}
+	snapshot := rundomain.Snapshot{
+		SessionID: r.sessionID, ID: r.id, State: state, Lineage: lineage, ModelSelection: selection,
+		GoalIncarnationID: r.goalIncarnationID, ActiveSegmentID: r.activeSegmentID,
+		Metrics: metrics, ContextTokens: r.contextTokens,
+		Capabilities: capabilities,
+		CreatedAt:    time.Unix(0, r.createdAt).UTC(), UpdatedAt: time.Unix(0, r.updatedAt).UTC(),
+		MessageMark: decodeMessageMark(r.messageMark),
+	}
+	if snapshot.UnresolvedEffects, err = decodeUnresolvedEffects(r.unresolvedEffects); err != nil {
+		return rundomain.Snapshot{}, fmt.Errorf("decode run effects: %w", err)
+	}
+	if snapshot.Ending, err = decodeRunEnding(r.outcome, r.ending); err != nil {
+		return rundomain.Snapshot{}, fmt.Errorf("decode run %q ending: %w", r.id, err)
+	}
+	// Zero encodes absence on open rows and the Unix epoch on terminal rows.
+	// Retain nonzero finish times on open rows so the Domain rejects them.
+	if r.finishedAt != 0 || state == rundomain.Finished {
+		snapshot.FinishedAt = time.Unix(0, r.finishedAt).UTC()
+	}
+	return snapshot, nil
+}
+
+// validatePendingSet proves a waiting Run joins an intact root-owned pending
+// set. A Run carries no interrupts of its own, so the joined column is read
+// only to prove the set decodes: saying so here names the Run instead of
+// failing later wherever that set is finally read.
+func (r runRow) validatePendingSet(policy pendingReadPolicy) error {
+	if !r.interruptsSuspended.Valid {
+		if policy == requirePendingSet {
+			return fmt.Errorf("run %q is waiting with no root-owned Pending set", r.id)
+		}
+		return nil
+	}
+	if _, err := decodeInterrupts(r.interruptsSuspended.String); err != nil {
+		return fmt.Errorf("decode run %q interrupts: %w", r.id, err)
+	}
+	return nil
 }
 
 func decodeRunMetrics(encoded string, steps int, duration time.Duration) (rundomain.Metrics, error) {

@@ -37,6 +37,9 @@ type Arguments struct {
 	raw string
 }
 
+// emptyArguments is the canonical spelling of the zero value.
+const emptyArguments = "{}"
+
 // ParseArguments validates and canonicalizes a provider argument document.
 // Empty input is the ergonomic no-arguments form; explicit null and all
 // non-object values are rejected.
@@ -63,7 +66,7 @@ func ArgumentsFromMap(value map[string]any) (Arguments, error) {
 	if err != nil {
 		return Arguments{}, fmt.Errorf("%w: %w", ErrInvalidArguments, err)
 	}
-	if string(encoded) == "{}" {
+	if string(encoded) == emptyArguments {
 		return Arguments{}, nil
 	}
 	return Arguments{raw: string(encoded)}, nil
@@ -72,7 +75,7 @@ func ArgumentsFromMap(value map[string]any) (Arguments, error) {
 // Canonical returns the stable spelling used for resume and cache identity.
 func (a Arguments) Canonical() string {
 	if a.raw == "" {
-		return "{}"
+		return emptyArguments
 	}
 	return a.raw
 }

@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"sync"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
@@ -24,22 +26,23 @@ import (
 type learningSourceRevision struct{ name, revision string }
 
 type learningAdmission struct {
-	models                 *externalCallLedger
-	mu                     sync.Mutex
-	historyRead, skillRead bool
-	source                 learningSourceRevision
-	failure                error
+	models                      *externalCallLedger
+	mu                          sync.Mutex
+	conversationRead, skillRead bool
+	source                      learningSourceRevision
+	failure                     error
 }
 
-func (a *learningAdmission) read(skill bool) error {
+// Each learning source may be read once per admission.
+func (a *learningAdmission) readConversation() error { return a.consumeRead(&a.conversationRead) }
+
+func (a *learningAdmission) readSkill() error { return a.consumeRead(&a.skillRead) }
+
+func (a *learningAdmission) consumeRead(used *bool) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	used := &a.historyRead
-	if skill {
-		used = &a.skillRead
-	}
 	if *used {
-		return &framecall.Refusal{Code: "read_budget", Message: "skill learning: source read budget exhausted"}
+		return &framecall.Refusal{Code: refusalReadBudget, Message: "skill learning: source read budget exhausted"}
 	}
 	*used = true
 	return nil
@@ -60,14 +63,63 @@ func (a *learningAdmission) outcome() (learningSourceRevision, error) {
 	return a.source, a.failure
 }
 
-func (s *SkillLearning) grant(ctx context.Context, session *sdk.ClientSession, sessionID string, state *learningAdmission) (pluginmcp.CallbackRef, func(), error) {
-	conversationMethod, err := skilllearning.ConversationMethod()
+func (s *SkillLearning) grant(ctx context.Context, session *sdk.ClientSession, sessionID identity.SessionID, state *learningAdmission) (pluginmcp.CallbackRef, func(), error) {
+	conversation, err := s.conversationCallback(sessionID, state)
 	if err != nil {
 		return pluginmcp.CallbackRef{}, nil, err
 	}
-	conversation, err := pluginmcp.NewCallback(conversationMethod, nil, func(ctx context.Context, _ pluginmcp.Command[struct{}]) (result skilllearning.Conversation, err error) {
+	read, err := s.readRevisionCallback(state)
+	if err != nil {
+		return pluginmcp.CallbackRef{}, nil, err
+	}
+	model, err := s.modelCallback(state)
+	if err != nil {
+		return pluginmcp.CallbackRef{}, nil, err
+	}
+	admissionMethod, err := skilllearning.AdmitMethod()
+	if err != nil {
+		return pluginmcp.CallbackRef{}, nil, err
+	}
+	admit, err := pluginmcp.NewCallback(admissionMethod, nil, func(_ context.Context, cmd pluginmcp.Command[skilllearning.Proposal]) (skilllearning.Admission, error) {
+		return state.admitDraft(cmd.Input, sessionID)
+	})
+	if err != nil {
+		return pluginmcp.CallbackRef{}, nil, err
+	}
+	return s.callbacks.Open(ctx, session, pluginmcp.CallbackLimits{MaxRequestBytes: skilllearning.MaxCallbackBytes, MaxResponseBytes: skilllearning.MaxCallbackBytes}, conversation, read, model, admit)
+}
+
+var learningModelRequests = auxiliaryTextRequest{maxOutputTokens: skilllearning.MaxModelOutputTokens, maxInputBytes: skilllearning.MaxModelInputBytes}
+
+func (a *learningAdmission) admitDraft(candidate skilllearning.Proposal, sessionID identity.SessionID) (skilllearning.Admission, error) {
+	read, err := a.outcome()
+	if err != nil {
+		return skilllearning.Admission{}, err
+	}
+	if candidate.Revises && (read.name != candidate.Skill.Name || read.revision == "" || read.revision != candidate.Previous) {
+		return skilllearning.Admission{}, errors.New("skill learning: revision does not match the admitted current source")
+	}
+	if !candidate.Revises && candidate.Previous != "" {
+		return skilllearning.Admission{}, errors.New("skill learning: new proposal cannot replace current bytes")
+	}
+	p := skills.Proposal{Scope: skills.ScopeUser, Origin: skills.ProposalOriginMined, SourceSession: sessionID.String(), Name: candidate.Skill.Name, Description: candidate.Skill.Description, Instructions: candidate.Skill.Instructions, Revises: candidate.Revises}
+	if err := p.Validate(); err != nil {
+		if errors.Is(err, skills.ErrUnsafeProposal) {
+			return skilllearning.Admission{}, nil
+		}
+		return skilllearning.Admission{}, err
+	}
+	return skilllearning.Admission{Accepted: true}, nil
+}
+
+func (s *SkillLearning) conversationCallback(sessionID identity.SessionID, state *learningAdmission) (pluginmcp.Callback, error) {
+	method, err := skilllearning.ConversationMethod()
+	if err != nil {
+		return pluginmcp.Callback{}, err
+	}
+	return pluginmcp.NewCallback(method, nil, func(ctx context.Context, _ pluginmcp.Command[struct{}]) (result skilllearning.Conversation, err error) {
 		defer func() { state.remember(learningSourceRevision{}, err) }()
-		if err := state.read(false); err != nil {
+		if err := state.readConversation(); err != nil {
 			return result, err
 		}
 		messages, err := s.history.Read(ctx, sessionID)
@@ -80,14 +132,10 @@ func (s *SkillLearning) grant(ctx context.Context, session *sdk.ClientSession, s
 		}
 		return result, nil
 	})
-	if err != nil {
-		return pluginmcp.CallbackRef{}, nil, err
-	}
-	read, err := s.readRevisionCallback(state)
-	if err != nil {
-		return pluginmcp.CallbackRef{}, nil, err
-	}
-	model, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (response *chat.Response, err error) {
+}
+
+func (s *SkillLearning) modelCallback(state *learningAdmission) (pluginmcp.Callback, error) {
+	return pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (response *chat.Response, err error) {
 		defer func() { state.remember(learningSourceRevision{}, err) }()
 		if !learningModelRequests.admits(chat.Request(command.Input)) {
 			return nil, &framecall.Refusal{Code: refusalModelEnvelope, Message: "skill learning: model envelope refused"}
@@ -112,43 +160,6 @@ func (s *SkillLearning) grant(ctx context.Context, session *sdk.ClientSession, s
 		}
 		return captured.Model().Call(ctx, (*chat.Request)(&command.Input).Clone())
 	})
-	if err != nil {
-		return pluginmcp.CallbackRef{}, nil, err
-	}
-	admissionMethod, err := skilllearning.AdmitMethod()
-	if err != nil {
-		return pluginmcp.CallbackRef{}, nil, err
-	}
-	admit, err := pluginmcp.NewCallback(admissionMethod, nil, func(_ context.Context, cmd pluginmcp.Command[skilllearning.Proposal]) (skilllearning.Admission, error) {
-		return state.admitDraft(cmd.Input, sessionID)
-	})
-	if err != nil {
-		return pluginmcp.CallbackRef{}, nil, err
-	}
-	return s.callbacks.Open(ctx, session, pluginmcp.CallbackLimits{MaxRequestBytes: skilllearning.MaxCallbackBytes, MaxResponseBytes: skilllearning.MaxCallbackBytes}, conversation, read, model, admit)
-}
-
-var learningModelRequests = auxiliaryTextRequest{maxOutputTokens: skilllearning.MaxModelOutputTokens, maxInputBytes: skilllearning.MaxModelInputBytes}
-
-func (a *learningAdmission) admitDraft(candidate skilllearning.Proposal, sessionID string) (skilllearning.Admission, error) {
-	read, err := a.outcome()
-	if err != nil {
-		return skilllearning.Admission{}, err
-	}
-	if candidate.Revises && (read.name != candidate.Skill.Name || read.revision == "" || read.revision != candidate.Previous) {
-		return skilllearning.Admission{}, errors.New("skill learning: revision does not match the admitted current source")
-	}
-	if !candidate.Revises && candidate.Previous != "" {
-		return skilllearning.Admission{}, errors.New("skill learning: new proposal cannot replace current bytes")
-	}
-	p := skills.Proposal{Scope: skills.ScopeUser, Origin: skills.ProposalOriginMined, SourceSession: sessionID, Name: candidate.Skill.Name, Description: candidate.Skill.Description, Instructions: candidate.Skill.Instructions, Revises: candidate.Revises}
-	if err := p.Validate(); err != nil {
-		if errors.Is(err, skills.ErrUnsafeProposal) {
-			return skilllearning.Admission{}, nil
-		}
-		return skilllearning.Admission{}, err
-	}
-	return skilllearning.Admission{Accepted: true}, nil
 }
 
 func (s *SkillLearning) readRevisionCallback(state *learningAdmission) (pluginmcp.Callback, error) {
@@ -158,7 +169,7 @@ func (s *SkillLearning) readRevisionCallback(state *learningAdmission) (pluginmc
 	}
 	read, err := pluginmcp.NewCallback(readMethod, nil, func(ctx context.Context, command pluginmcp.Command[skilllearning.ReadSkill]) (result skilllearning.ReadResult, err error) {
 		defer func() { state.remember(learningSourceRevision{}, err) }()
-		if err := state.read(true); err != nil {
+		if err := state.readSkill(); err != nil {
 			return result, err
 		}
 		current, revision, err := s.source.CurrentDocument(ctx, command.Input.Name)

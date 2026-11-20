@@ -1,6 +1,7 @@
 package sessions
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
@@ -12,25 +13,25 @@ import (
 // publishSessionMoved reports a change to the session row itself: created,
 // renamed, relocated, favorited, or branched into existence. Its projections are
 // untouched, so nothing else is invalidated.
-func (c *Coordinator) publishSessionMoved(sessionID string) {
+func (c *Coordinator) publishSessionMoved(sessionID identity.SessionID) {
 	c.invalidations.Notify(invalidation.InSession(invalidation.Sessions, sessionID))
 }
 
 // publishRunsMoved reports the material transcript projection copied into a new
 // session. Items have no independent invalidation topic: runs.changed is the
 // contract that tells clients to cold-read both Runs and their Items.
-func (c *Coordinator) publishRunsMoved(sessionID string, copied []run.Run) {
-	runIDs := make([]string, len(copied))
+func (c *Coordinator) publishRunsMoved(sessionID identity.SessionID, copied []run.Run) {
+	runIDs := make([]identity.RunID, len(copied))
 	for index, value := range copied {
 		runIDs[index] = value.ID()
 	}
 	c.invalidations.Notify(invalidation.Notice{
-		Resource: invalidation.Runs, SessionIDs: []string{sessionID}, RunIDs: runIDs,
+		Resource: invalidation.Runs, SessionIDs: []identity.SessionID{sessionID}, RunIDs: runIDs,
 	})
 }
 
 // publishPlanMoved reports the Plan a fork seeded or a rollback republished.
-func (c *Coordinator) publishPlanMoved(sessionIDs ...string) {
+func (c *Coordinator) publishPlanMoved(sessionIDs ...identity.SessionID) {
 	c.invalidations.Notify(invalidation.InSessions(invalidation.Plan, sessionIDs...))
 }
 
@@ -43,7 +44,7 @@ func (c *Coordinator) publishPlanMoved(sessionIDs ...string) {
 //
 // runIDs narrows the run signal when the caller knows which runs went (a rollback
 // boundary does); empty means every run of these sessions may have moved.
-func (c *Coordinator) publishAggregateMoved(sessionIDs []string, runIDs []string) {
+func (c *Coordinator) publishAggregateMoved(sessionIDs []identity.SessionID, runIDs []identity.RunID) {
 	c.invalidations.Notify(
 		invalidation.InSessions(invalidation.Sessions, sessionIDs...),
 		invalidation.Notice{Resource: invalidation.Runs, SessionIDs: sessionIDs, RunIDs: runIDs},

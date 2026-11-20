@@ -12,31 +12,31 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func (c *CommandCalls) AcquireCodeIntelligence(ctx context.Context) (toolset.CodeIntelligenceUse, error) {
+func (c *CommandCalls) AcquireCodeIntelligence(ctx context.Context) (toolset.CodeIntelligenceUse, bool, error) {
 	contract, err := codeintel.Contract()
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	_, selected, err := c.selections.Get(ctx, contract.Descriptor().Reference)
 	if err != nil || !selected {
-		return nil, err
+		return nil, false, err
 	}
 	binding, borrowed, err := contributionSession(ctx, c.framework, c.installations, c.selections, c.pool, contract)
 	if errors.Is(err, errInactive) {
-		return nil, plugin.ErrUnavailable
+		return nil, false, plugin.ErrUnavailable
 	}
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	activation, err := borrowed.Activation()
 	if err == nil {
 		activation, err = plugins.OriginalActivation([]plugin.Activation{activation}, binding.InstallationID, binding.Digest, binding.ServerName)
 	}
 	if err != nil {
-		return nil, errors.Join(err, borrowed.Close())
+		return nil, false, errors.Join(err, borrowed.Close())
 	}
 	binding.Activation = &activation
-	return &codeIntelligenceUse{binding: binding, session: borrowed}, nil
+	return &codeIntelligenceUse{binding: binding, session: borrowed}, true, nil
 }
 
 type codeIntelligenceUse struct {

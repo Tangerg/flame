@@ -8,6 +8,8 @@ package executionctx
 import (
 	"context"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
@@ -83,11 +85,11 @@ func GoalIncarnationID(ctx context.Context) (string, bool) {
 
 // SessionID returns the owning product session, or empty for an unattached
 // smoke Run.
-func SessionID(ctx context.Context) string {
+func SessionID(ctx context.Context) identity.SessionID {
 	if scope, ok := Scope(ctx); ok {
 		return scope.SessionID
 	}
-	return ""
+	return identity.SessionID{}
 }
 
 // WithInvocationOwner captures the admitted logical Model/Tool boundary whose

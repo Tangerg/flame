@@ -65,7 +65,7 @@ func newSessionBrowser(cfg sessionBrowserConfig) *sessionBrowser {
 	b.pane.rename = b.openSessionRename
 	b.pane.delete = b.openSessionDelete
 	b.dialog = newPresentationDialog(b.stack, kit.DialogConfig{Theme: b.theme, Glyphs: b.glyphs, Title: "Sessions · Center", Body: b.pane.Element(),
-		Where: layout.Placement{Width: 96, Height: 24},
+		Where: layout.Placement{Width: wideDialogWidth, Height: 24},
 	})
 	b.pane.picker.cancel = func() {
 		b.tasks.operations.Cancel(pickerCatalogOperation)
@@ -107,7 +107,7 @@ func (b *sessionBrowser) loadMoreSessions() {
 func (b *sessionBrowser) loadSessionPage(position sessionPagePosition) {
 	cursor := b.pane.requestCursor(position)
 	b.notify("loading sessions")
-	b.tasks.session(pickerCatalogOperation, true,
+	b.tasks.session(pickerCatalogOperation,
 		func(ctx context.Context) (conversation.SessionPage, error) {
 			return b.runtime.ListSessions(ctx, conversation.SessionQuery{PageSize: conversation.DefaultPageSize(), Cursor: cursor})
 		},
@@ -189,7 +189,7 @@ func (b *sessionBrowser) openSessionRename(session conversation.Session) {
 	dressed = kit.NewForm(form)
 	dialog = newPresentationDialog(b.stack, kit.DialogConfig{Theme: b.theme, Glyphs: b.glyphs,
 		Title: "Rename session", Body: formNavigation(dressed.Element(), leave),
-		Where: layout.Placement{Width: 68, Height: 11},
+		Where: layout.Placement{Width: compactDialogWidth, Height: 11},
 	})
 	b.renameDialog = dialog
 	dialog.Show()
@@ -227,14 +227,14 @@ func (b *sessionBrowser) openSessionDelete(session conversation.Session) {
 	dressed := kit.NewForm(form)
 	dialog = newPresentationDialog(b.stack, kit.DialogConfig{Theme: b.theme, Glyphs: b.glyphs,
 		Title: "Delete session", Body: formNavigation(dressed.Element(), leave),
-		Where: layout.Placement{Width: 68, Height: 8},
+		Where: layout.Placement{Width: compactDialogWidth, Height: 8},
 	})
 	b.deleteDialog = dialog
 	dialog.Show()
 }
 
 func (b *sessionBrowser) updateSessionFromCenter(request conversation.UpdateSession, label string, settled func(error)) bool {
-	started := b.tasks.application(sessionCenterOperation, false,
+	started := b.tasks.application(sessionCenterOperation,
 		func(ctx context.Context) (conversation.Session, error) {
 			return b.runtime.UpdateSession(ctx, request)
 		},
@@ -264,7 +264,7 @@ func (b *sessionBrowser) updateSessionFromCenter(request conversation.UpdateSess
 }
 
 func (b *sessionBrowser) deleteSessionFromCenter(id string) {
-	started := b.tasks.application(sessionCenterOperation, false,
+	started := b.tasks.application(sessionCenterOperation,
 		func(ctx context.Context) (session.DeletionResult, error) {
 			return session.Delete(
 				ctx, b.runtime, b.workbench, id, b.replayPolicy, runtimeRecoveryBackoff,
@@ -426,7 +426,7 @@ func (l *sessionLifecycle) runSessionChangeWithDraftDisposition[T any](
 		disposition:     disposition,
 	}
 	l.root.message(label)
-	if !l.tasks.session(sessionChangeOperation, false, work, func(result T, err error) {
+	if !l.tasks.session(sessionChangeOperation, work, func(result T, err error) {
 		defer l.settleSessionChange()
 		if err != nil {
 			l.root.message(label + " failed: " + err.Error())
@@ -461,7 +461,7 @@ func (l *sessionLifecycle) settleSessionChange() {
 	l.state.draftTransition = nil
 	if l.state.invalidated && l.runs.conversation().Phase() != conversation.Running &&
 		!l.runs.following() && !l.runs.cancelPending() {
-		l.refreshInvalidatedSession(false)
+		l.refreshInvalidatedSession(refreshAfterChange)
 	}
 }
 
@@ -669,7 +669,7 @@ func (l *sessionLifecycle) install(s sessionInstallation) {
 	if l.runs.conversation().Phase() == conversation.Idle {
 		l.root.message("session · " + displayTitle(s.snapshot.Session))
 		if l.state.invalidated {
-			l.refreshInvalidatedSession(false)
+			l.refreshInvalidatedSession(refreshAfterChange)
 		}
 	}
 	l.steering.restoreSteerReceipts(s.snapshot)

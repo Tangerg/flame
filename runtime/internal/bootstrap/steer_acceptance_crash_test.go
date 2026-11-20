@@ -50,7 +50,7 @@ func TestSteerAcceptanceCrashHelper(t *testing.T) {
 				return err
 			}
 			if record.Use == runapp.CommandKeyAccepted {
-				root := (scoperun.StartID{Scope: record.Acceptance.SessionID, Key: record.Acceptance.RunID}).Root()
+				root := (scoperun.StartID{Scope: record.Acceptance.SessionID.String(), Key: record.Acceptance.RunID.String()}).Root()
 				checkpoint, err := stores.ExecutorCheckpoints.LoadCheckpoint(ctx, root.String())
 				if err != nil || len(checkpoint.Payload) == 0 {
 					t.Fatalf("accepted steer lost context: %v", err)

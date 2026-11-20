@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/secret"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -108,7 +109,7 @@ func (l *launch) close() error {
 }
 
 func (s stdioLaunch) Format(state fmt.State, _ rune) {
-	_, _ = fmt.Fprintf(state, "Stdio{Command:%q, Args:%q, Env:%s, Dir:%q}", s.Command, s.Args, mcpserver.SecretPresence(len(s.Env) > 0), s.Dir)
+	_, _ = fmt.Fprintf(state, "Stdio{Command:%q, Args:%q, Env:%s, Dir:%q}", s.Command, s.Args, secret.Presence(len(s.Env) > 0), s.Dir)
 }
 
 func (l *launchPermit) Format(state fmt.State, _ rune) {

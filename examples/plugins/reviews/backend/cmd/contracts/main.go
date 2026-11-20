@@ -9,8 +9,6 @@ import (
 	"os"
 	"strconv"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 )
 
@@ -21,56 +19,67 @@ func main() {
 	}
 }
 
+// projection names the one contract artifact a run emits.
+type projection string
+
+const (
+	capabilityProjection         projection = "capability"
+	analyzersProjection          projection = "analyzers"
+	boardProjection              projection = "board-ts"
+	analyzerCapabilityProjection projection = "analyzer-capability"
+)
+
 func run() error {
-	analyzer := flag.Bool("analyzers", false, "Emit Reviews' consumer-owned analyzer point")
-	board := flag.Bool("board-ts", false, "Emit the Reviews board bindings")
-	analyzerCapability := flag.Bool("analyzer-capability", false, "Emit Reviews' callable analyzer contract")
+	selected := flag.String("projection", string(capabilityProjection), "Contract artifact to emit: capability, analyzers, board-ts or analyzer-capability")
 	flag.Parse()
-	if *analyzerCapability && (*analyzer || *board) || *analyzer && *board {
-		return fmt.Errorf("select one contract projection")
-	}
-	if *analyzer || *board {
-		contract, err := reviews.NewAnalyzerPoint()
-		if err != nil {
-			return err
-		}
-		if *board {
-			methods, err := reviews.NewContracts()
-			if err != nil {
-				return err
-			}
-			statuses, err := json.Marshal(reviews.Status("").JSONSchemaEnum())
-			if err != nil {
-				return err
-			}
-			_, err = fmt.Fprintf(os.Stdout, "// Code generated from the Reviews contract. DO NOT EDIT.\nexport const ANALYZERS_JSON = %s;\nexport const listMethod = %q;\nexport const updateMethod = %q;\nexport const analyzeMethod = %q;\nexport const reviewStatuses = %s as const;\n", strconv.Quote(string(contract.Identity().Bytes())), methods.List.Name(), methods.Update.Name(), methods.Analyzers.Name(), statuses)
-			return err
-		}
-		data, err := json.Marshal(contract.Definition(), json.Deterministic(true))
-		if err != nil {
-			return err
-		}
-		_, err = os.Stdout.Write(append(data, '\n'))
-		return err
-	}
-	var contract *plugincontract.Capability
-	if *analyzerCapability {
-		contracts, err := reviews.NewAnalyzerContracts()
-		if err != nil {
-			return err
-		}
-		contract = contracts.Capability
-	} else {
+	switch projection(*selected) {
+	case capabilityProjection:
 		contracts, err := reviews.NewContracts()
 		if err != nil {
 			return err
 		}
-		contract = contracts.Capability
+		return writeJSON(contracts.Capability.Descriptor())
+	case analyzerCapabilityProjection:
+		contracts, err := reviews.NewAnalyzerContracts()
+		if err != nil {
+			return err
+		}
+		return writeJSON(contracts.Capability.Descriptor())
+	case analyzersProjection:
+		contract, err := reviews.NewAnalyzerPoint()
+		if err != nil {
+			return err
+		}
+		return writeJSON(contract.Definition())
+	case boardProjection:
+		return writeBoard()
+	default:
+		return fmt.Errorf("unknown contract projection %q", *selected)
 	}
-	data, err := json.Marshal(contract.Descriptor(), json.Deterministic(true))
+}
+
+func writeJSON(value any) error {
+	data, err := json.Marshal(value, json.Deterministic(true))
 	if err != nil {
 		return err
 	}
 	_, err = os.Stdout.Write(append(data, '\n'))
+	return err
+}
+
+func writeBoard() error {
+	contract, err := reviews.NewAnalyzerPoint()
+	if err != nil {
+		return err
+	}
+	methods, err := reviews.NewContracts()
+	if err != nil {
+		return err
+	}
+	statuses, err := json.Marshal(reviews.Status("").JSONSchemaEnum())
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(os.Stdout, "// Code generated from the Reviews contract. DO NOT EDIT.\nexport const ANALYZERS_JSON = %s;\nexport const listMethod = %q;\nexport const updateMethod = %q;\nexport const analyzeMethod = %q;\nexport const reviewStatuses = %s as const;\n", strconv.Quote(string(contract.Identity().Bytes())), methods.List.Name(), methods.Update.Name(), methods.Analyzers.Name(), statuses)
 	return err
 }

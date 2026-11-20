@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -27,7 +29,7 @@ func newGoalStore(db *database) *GoalStore {
 }
 
 // Get reads the Goal and its Run-owned usage from one storage snapshot.
-func (g *GoalStore) Get(ctx context.Context, sessionID string) (goal.Current, error) {
+func (g *GoalStore) Get(ctx context.Context, sessionID identity.SessionID) (goal.Current, error) {
 	unwritten, err := goal.Unwritten(sessionID)
 	if err != nil {
 		return goal.Current{}, err
@@ -116,9 +118,9 @@ func rowsAffected(res sql.Result) (bool, error) {
 
 // Clear removes the session's goal unconditionally; a missing goal is not an
 // error.
-func (g *GoalStore) Clear(ctx context.Context, sessionID string) error {
+func (g *GoalStore) Clear(ctx context.Context, sessionID identity.SessionID) error {
 	return g.db.write(ctx, func(ctx context.Context) error {
-		if err := validateSessionResource("clear Goal", sessionID); err != nil {
+		if err := validateResource("clear Goal", sessionID); err != nil {
 			return err
 		}
 		if _, err := g.db.connection(ctx).ExecContext(ctx, `DELETE FROM goals WHERE session_id = ?`, sessionID); err != nil {
@@ -130,9 +132,9 @@ func (g *GoalStore) Clear(ctx context.Context, sessionID string) error {
 
 // ClearIf removes the session's goal only when its version matches expected
 // (the loop's CAS delete), reporting whether it applied.
-func (g *GoalStore) ClearIf(ctx context.Context, sessionID string, expected goal.Version) (bool, error) {
+func (g *GoalStore) ClearIf(ctx context.Context, sessionID identity.SessionID, expected goal.Version) (bool, error) {
 	return scopedValue(ctx, g.db.write, func(ctx context.Context) (bool, error) {
-		if err := validateSessionResource("clear Goal with version", sessionID); err != nil {
+		if err := validateResource("clear Goal with version", sessionID); err != nil {
 			return false, err
 		}
 		incarnationID, committed := expected.IncarnationID()
@@ -190,14 +192,15 @@ func (g *GoalStore) List(ctx context.Context) ([]goal.Goal, error) {
 // usage yet; [GoalStore.restore] folds it from the Runs.
 func scanGoal(row scanRow) (goal.Snapshot, error) {
 	var (
-		sessionID, objective, incarnationID string
-		revision                            uint64
-		status                              string
-		reasonCode                          string
-		reasonDetail                        string
-		provider, model, reasoningEffort    string
-		capabilitiesJSON                    string
-		createdAt, updatedAt                int64
+		sessionID                        identity.SessionID
+		objective, incarnationID         string
+		revision                         uint64
+		status                           string
+		reasonCode                       string
+		reasonDetail                     string
+		provider, model, reasoningEffort string
+		capabilitiesJSON                 string
+		createdAt, updatedAt             int64
 	)
 	var authorJSON string
 	if err := row.Scan(&sessionID, &objective, &status, &reasonCode, &reasonDetail, &provider, &model, &reasoningEffort, &capabilitiesJSON, &authorJSON, &incarnationID, &revision, &createdAt, &updatedAt); err != nil {

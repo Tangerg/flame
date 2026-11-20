@@ -51,36 +51,7 @@ func (o *CallComposition) PrepareToolProposal(ctx context.Context, bindings []pl
 	}
 	current := proposal
 	for _, binding := range bindings {
-		calling, err := enterContributionPhase(ctx, binding)
-		if err != nil {
-			return chat.ToolCall{}, err
-		}
-		borrowed, err := borrowContribution(calling, o.calls.pool, binding)
-		if err != nil {
-			return chat.ToolCall{}, err
-		}
-		defer borrowed.Close()
-		calling = borrowed.Context()
-		session := borrowed.Session()
-		if _, err := o.calls.pool.SessionActor(calling, binding.ServerID, session); err != nil {
-			return chat.ToolCall{}, err
-		}
-		exported, err := pluginmcp.NewCapabilityBinding(session, binding.Export, contract)
-		if err != nil {
-			return chat.ToolCall{}, err
-		}
-		operation, err := method.Bind(exported)
-		if err != nil {
-			return chat.ToolCall{}, err
-		}
-		metadata, release, err := o.calls.pool.OpenRPC(calling, binding.ServerID, session)
-		if err != nil {
-			return chat.ToolCall{}, err
-		}
-		result, err := func() (chat.ToolCall, error) {
-			defer release()
-			return operation.CallWithMetadata(calling, current, metadata)
-		}()
+		result, err := callContribution(ctx, o.calls.pool, binding, contract, method, current)
 		if err != nil {
 			return chat.ToolCall{}, err
 		}

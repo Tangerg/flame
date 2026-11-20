@@ -97,11 +97,18 @@ func (c *remoteCall) readError(err error) error {
 		}
 		return err
 	}
-	_, socketError := errors.AsType[*net.OpError](err)
-	_, dnsError := errors.AsType[*net.DNSError](err)
-	var timeout net.Error
-	if socketError || dnsError || errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, net.ErrClosed) || (errors.As(err, &timeout) && timeout.Timeout()) {
+	if connectionLost(err) {
 		return errors.Join(ErrDisconnected, err)
 	}
 	return err
+}
+
+// connectionLost reports a failure below HTTP: the stream ended early or the
+// network failed, as opposed to an answer the Runtime gave.
+func connectionLost(err error) bool {
+	_, socketError := errors.AsType[*net.OpError](err)
+	_, dnsError := errors.AsType[*net.DNSError](err)
+	timeout, isNetError := errors.AsType[net.Error](err)
+	return socketError || dnsError || errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, net.ErrClosed) || isNetError && timeout.Timeout()
 }

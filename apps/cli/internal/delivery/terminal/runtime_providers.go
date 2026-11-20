@@ -10,7 +10,6 @@ import (
 
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/keymap"
-	"github.com/Tangerg/oolong/ui/core/layout"
 	"github.com/Tangerg/oolong/ui/kit"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/models"
@@ -76,7 +75,7 @@ func (m *modelConfigScreens) TestConfiguredProvider(providerID string) error {
 		return fmt.Errorf("provider test: %w", err)
 	}
 	m.status.note("testing provider " + providerID)
-	started := m.tasks.application(modelConfigOperation, false,
+	started := m.tasks.application(modelConfigOperation,
 		func(ctx context.Context) (protocol.ProviderTestOutcome, error) {
 			return m.service.TestProvider(ctx, providerID)
 		},
@@ -104,7 +103,7 @@ func (m *modelConfigScreens) ConfigureProvider(providerID string) error {
 	}
 	presentation := m.session.context
 	m.status.note("loading provider " + providerID)
-	started := m.tasks.application(modelConfigOperation, false,
+	started := m.tasks.application(modelConfigOperation,
 		func(ctx context.Context) (models.Provider, error) {
 			providers, err := m.service.Providers(ctx)
 			if err != nil {
@@ -136,69 +135,15 @@ func (m *modelConfigScreens) ConfigureProvider(providerID string) error {
 }
 
 func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
-	baseURL, endpointConfigured := provider.BaseURL()
-	baseMode := formChangeKeep
-	if provider.RequiresBaseURL() && !endpointConfigured {
-		baseMode = formChangeSet
-	}
-	keyMode, apiKey := formChangeKeep, ""
-	baseChoice := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "Endpoint change", Initial: baseMode, Rows: 3})
-	baseChoice.SetOptions([]base.Option[formChange]{
-		{Label: "Keep current endpoint", Value: formChangeKeep},
-		{Label: "Set endpoint", Value: formChangeSet},
-		{Label: "Clear endpoint", Value: formChangeClear},
-	})
-	baseChoice.Choose(baseMode)
-	endpointDraft := &providerEndpointDraft{policy: provider.Endpoint()}
-	baseField := base.NewText(base.TextConfig{
-		Placeholder: endpointDraft.policy.Example, Initial: baseURL,
-		Check: func(value string) error {
-			if selected, ok := baseChoice.Chosen(); !ok || !selected.Value.SetsValue() {
-				return nil
-			}
-			if err := requiredText(value); err != nil {
-				return err
-			}
-			return endpointDraft.policy.ValidateOverride(strings.TrimSpace(value))
-		},
-	})
-	endpointDraft.field = baseField
-	endpointDraft.Set(baseURL)
-	keyChoice := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "API key change", Initial: keyMode, Rows: 3})
-	keyOptions := []base.Option[formChange]{
-		{Label: "Keep current key", Value: formChangeKeep},
-		{Label: "Set a stored key", Value: formChangeSet},
-	}
-	credential, hasCredential := provider.Credential()
-	if hasCredential && credential.Stored() {
-		keyOptions = append(keyOptions, base.Option[formChange]{Label: "Clear stored key", Value: formChangeClear})
-	}
-	keyChoice.SetOptions(keyOptions)
-	keyChoice.Choose(keyMode)
-	keyPlaceholder := ""
-	if hasCredential {
-		keyPlaceholder = credential.Masked()
-	}
-	keyField := base.NewText(base.TextConfig{
-		Label: "New API key", Placeholder: keyPlaceholder, Initial: apiKey,
-		Check: func(value string) error {
-			if selected, ok := keyChoice.Chosen(); ok && selected.Value.SetsValue() {
-				return requiredText(value)
-			}
-			return nil
-		},
-	})
-	keyField.SetMask("•")
+	baseChoice, baseField := providerEndpointFields(provider)
+	keyChoice, keyField := providerKeyFields(provider)
 	baseField.SetClipboard(m.clipboard)
 	keyField.SetClipboard(m.clipboard)
 	form := kit.FormConfig{Fields: []base.Field{baseChoice, baseField, keyChoice, keyField}, Theme: m.theme, Glyphs: m.glyphs,
 		Hints: []keymap.Action{base.Submit, base.Cancel}}
 	form.Keys = base.DefaultFormKeys()
 	var dialog *presentationDialog
-	clearKey := func() {
-		apiKey = ""
-		keyField.SetText("")
-	}
+	clearKey := func() { keyField.SetText("") }
 	dismiss := func() {
 		clearKey()
 		if m.providerDialog == dialog {
@@ -233,10 +178,74 @@ func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
 	dressed := kit.NewForm(form)
 	dialog = newPresentationDialog(m.stack, kit.DialogConfig{Theme: m.theme, Glyphs: m.glyphs,
 		Title: "Configure provider · " + provider.ID(), Body: formNavigation(dressed.Element(), dismiss),
-		Where: layout.Placement{Width: 82, Height: 18},
+		Where: formDialogPlacement(standardDialogWidth, len(form.Fields), 18, dressed),
 	})
 	m.providerDialog = dialog
 	dialog.Show()
+}
+
+// providerEndpointFields offers to keep, set or clear the endpoint; a
+// provider that requires an endpoint it lacks starts on set.
+func providerEndpointFields(provider models.Provider) (*base.Select[formChange], *base.Text) {
+	baseURL, endpointConfigured := provider.BaseURL()
+	baseMode := formChangeKeep
+	if provider.RequiresBaseURL() && !endpointConfigured {
+		baseMode = formChangeSet
+	}
+	baseChoice := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "Endpoint change", Initial: baseMode, Rows: 3})
+	baseChoice.SetOptions([]base.Option[formChange]{
+		{Label: "Keep current endpoint", Value: formChangeKeep},
+		{Label: "Set endpoint", Value: formChangeSet},
+		{Label: "Clear endpoint", Value: formChangeClear},
+	})
+	baseChoice.Choose(baseMode)
+	endpointDraft := &providerEndpointDraft{policy: provider.Endpoint()}
+	baseField := base.NewText(base.TextConfig{
+		Placeholder: endpointDraft.policy.Example, Initial: baseURL,
+		Check: func(value string) error {
+			if selected, ok := baseChoice.Chosen(); !ok || !selected.Value.SetsValue() {
+				return nil
+			}
+			if err := requiredText(value); err != nil {
+				return err
+			}
+			return endpointDraft.policy.ValidateOverride(strings.TrimSpace(value))
+		},
+	})
+	endpointDraft.field = baseField
+	endpointDraft.Set(baseURL)
+	return baseChoice, baseField
+}
+
+// providerKeyFields offers to keep or set a key, and to clear one only when a
+// stored key exists; the entered key is masked.
+func providerKeyFields(provider models.Provider) (*base.Select[formChange], *base.Text) {
+	keyChoice := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "API key change", Initial: formChangeKeep, Rows: 3})
+	keyOptions := []base.Option[formChange]{
+		{Label: "Keep current key", Value: formChangeKeep},
+		{Label: "Set a stored key", Value: formChangeSet},
+	}
+	credential, hasCredential := provider.Credential()
+	if hasCredential && credential.Stored() {
+		keyOptions = append(keyOptions, base.Option[formChange]{Label: "Clear stored key", Value: formChangeClear})
+	}
+	keyChoice.SetOptions(keyOptions)
+	keyChoice.Choose(formChangeKeep)
+	keyPlaceholder := ""
+	if hasCredential {
+		keyPlaceholder = credential.Masked()
+	}
+	keyField := base.NewText(base.TextConfig{
+		Label: "New API key", Placeholder: keyPlaceholder,
+		Check: func(value string) error {
+			if selected, ok := keyChoice.Chosen(); ok && selected.Value.SetsValue() {
+				return requiredText(value)
+			}
+			return nil
+		},
+	})
+	keyField.SetMask("•")
+	return keyChoice, keyField
 }
 
 type providerEndpointDraft struct {
@@ -294,7 +303,7 @@ func valueChange(mode formChange, value string) (*models.ValueChange, error) {
 
 func (m *modelConfigScreens) updateProvider(update models.UpdateProvider) {
 	m.status.note("updating provider " + update.Provider)
-	started := m.tasks.admissionMutation(modelConfigOperation, false,
+	started := m.tasks.admissionMutation(modelConfigOperation,
 		func(ctx context.Context) (models.Provider, error) {
 			return m.service.UpdateProvider(ctx, update)
 		},

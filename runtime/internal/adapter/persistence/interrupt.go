@@ -34,7 +34,7 @@ type InterruptStore struct{ db *database }
 // waiting-tree hand-off. Application semantics belong to the persistence
 // adapter; this record only names the values required by the storage codec.
 type pendingRecord struct {
-	RootRunID     string
+	RootRunID     identity.RunID
 	ExecutorID    string
 	Interrupts    []openInterruptRecord
 	Bindings      []interruptBindingRecord
@@ -44,14 +44,14 @@ type pendingRecord struct {
 
 // continuationRecord is the stored continuation row for one Run.
 type continuationRecord struct {
-	RunID        string
+	RunID        identity.RunID
 	MemberID     string
 	DrainedTools []drainedToolRecord
 }
 
 // interruptBindingRecord is the stored item-to-input-request correspondence.
 type interruptBindingRecord struct {
-	InterruptItemID   string
+	InterruptItemID   identity.ItemID
 	MemberID          string
 	RequestID         string
 	ToolCallID        string
@@ -62,7 +62,7 @@ type interruptBindingRecord struct {
 // openInterruptRecord is the stored open interrupt: the Item it names and, for
 // an approval, the policy's review. The Item owns everything else.
 type openInterruptRecord struct {
-	ItemID   string
+	ItemID   identity.ItemID
 	Approval *approvalReviewRecord
 }
 
@@ -75,7 +75,7 @@ type approvalReviewRecord struct {
 
 // drainedToolRecord is the stored identity of an open tool invocation.
 type drainedToolRecord struct {
-	ItemID       string
+	ItemID       identity.ItemID
 	CallID       string
 	SourceCallID string
 }
@@ -92,7 +92,7 @@ func (i pendingRecord) validateStorageShape() error {
 	if err := instant.Validate(i.CreatedAt); err != nil {
 		return fmt.Errorf("creation time: %w", err)
 	}
-	if err := identity.ValidateRun(i.RootRunID); err != nil {
+	if err := i.RootRunID.Validate(); err != nil {
 		return err
 	}
 	if err := runs.ValidateExecutor(i.ExecutorID); err != nil {
@@ -119,12 +119,12 @@ func (i pendingRecord) validateStorageShape() error {
 }
 
 type drainedToolRow struct {
-	ItemID       string `json:"itemId"`
-	CallID       string `json:"callId"`
-	SourceCallID string `json:"sourceCallId,omitempty"`
+	ItemID       identity.ItemID `json:"itemId"`
+	CallID       string          `json:"callId"`
+	SourceCallID string          `json:"sourceCallId,omitempty"`
 }
 type interruptPayload struct {
-	ItemID   string           `json:"itemId"`
+	ItemID   identity.ItemID  `json:"itemId"`
 	Approval *approvalPayload `json:"approval,omitzero"`
 }
 type approvalPayload struct {
@@ -133,17 +133,17 @@ type approvalPayload struct {
 	Rememberable bool   `json:"rememberable,omitzero"`
 }
 type continuationRow struct {
-	RunID        string           `json:"runId"`
+	RunID        identity.RunID   `json:"runId"`
 	MemberID     string           `json:"memberId"`
 	DrainedTools []drainedToolRow `json:"drainedTools,omitempty"`
 }
 type interruptBindingRow struct {
-	InterruptItemID   string `json:"interruptItemId"`
-	MemberID          string `json:"memberId"`
-	RequestID         string `json:"requestId"`
-	ToolCallID        string `json:"toolCallId,omitempty"`
-	ToolRef           string `json:"toolRef,omitempty"`
-	SourceFingerprint string `json:"sourceFingerprint,omitempty"`
+	InterruptItemID   identity.ItemID `json:"interruptItemId"`
+	MemberID          string          `json:"memberId"`
+	RequestID         string          `json:"requestId"`
+	ToolCallID        string          `json:"toolCallId,omitempty"`
+	ToolRef           string          `json:"toolRef,omitempty"`
+	SourceFingerprint string          `json:"sourceFingerprint,omitempty"`
 }
 
 // newInterruptStore binds the SQLite interrupt registry to a database opened via
@@ -216,7 +216,7 @@ func (s *InterruptStore) requireTreeRuns(ctx context.Context, p pendingRecord) e
 		if err != nil {
 			return fmt.Errorf("sqlite: inspect Pending root Run %q: %w", p.RootRunID, err)
 		}
-		var runIDs []string
+		var runIDs []identity.RunID
 		if err := decodeStoredJSON([]byte(members.String), &runIDs); err != nil {
 			return fmt.Errorf("sqlite: decode Pending tree Runs: %w", err)
 		}
@@ -228,28 +228,19 @@ func (s *InterruptStore) requireTreeRuns(ctx context.Context, p pendingRecord) e
 		return nil
 	})
 }
-func (s *InterruptStore) pendingRecords(ctx context.Context, sessionID string) ([]pendingRecord, error) {
-	return s.list(ctx, sessionID, "", nil, 0)
-}
 
 // list returns open interrupts oldest first, after the position a previous
 // page ended at when one is given.
-func (s *InterruptStore) list(ctx context.Context, sessionID, rootRunID string, after *rundomain.PageAnchor, limit int) ([]pendingRecord, error) {
+func (s *InterruptStore) list(ctx context.Context, sessionID identity.SessionID, rootRunID identity.RunID, after *rundomain.PageAnchor, limit int) ([]pendingRecord, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]pendingRecord, error) {
-		if err := validateOptionalSessionResource("list interrupts", sessionID); err != nil {
-			return nil, err
-		}
-		if err := validateOptionalRunResource("list interrupts root", rootRunID); err != nil {
-			return nil, err
-		}
 		query := `SELECT ` + interruptColumns + ` FROM interrupts`
 		args := []any{interruptStateOpen.databaseValue()}
 		conditions := []string{`state = ?`}
-		if sessionID != "" {
+		if !sessionID.IsZero() {
 			conditions = append(conditions, `root_run_id IN (SELECT run_id FROM runs WHERE session_id = ?)`)
 			args = append(args, sessionID)
 		}
-		if rootRunID != "" {
+		if !rootRunID.IsZero() {
 			conditions = append(conditions, `root_run_id = ?`)
 			args = append(args, rootRunID)
 		}
@@ -287,9 +278,9 @@ func (s *InterruptStore) list(ctx context.Context, sessionID, rootRunID string, 
 		return out, nil
 	})
 }
-func (s *InterruptStore) loadPending(ctx context.Context, runID string) (pendingRecord, bool, error) {
+func (s *InterruptStore) loadPending(ctx context.Context, runID identity.RunID) (pendingRecord, bool, error) {
 	return scopedPair(ctx, s.db.read, func(ctx context.Context) (pendingRecord, bool, error) {
-		if err := validateRunResource("read interrupt", runID); err != nil {
+		if err := validateResource("read interrupt", runID); err != nil {
 			return pendingRecord{}, false, err
 		}
 		row := s.db.connection(ctx).QueryRowContext(ctx, `SELECT `+interruptColumns+` FROM interrupts WHERE root_run_id = ? AND state = ?`, runID, interruptStateOpen.databaseValue())
@@ -309,9 +300,9 @@ func (s *InterruptStore) loadPending(ctx context.Context, runID string) (pending
 // claim contract. A single statement means two concurrent resumes can't both
 // observe the same open interrupt: one claims it, the other gets ok=false, so a
 // non-idempotent tool never re-fires.
-func (s *InterruptStore) consumePending(ctx context.Context, runID string) (pendingRecord, bool, error) {
+func (s *InterruptStore) consumePending(ctx context.Context, runID identity.RunID) (pendingRecord, bool, error) {
 	return scopedPair(ctx, s.db.write, func(ctx context.Context) (pendingRecord, bool, error) {
-		if err := identity.ValidateRun(runID); err != nil {
+		if err := runID.Validate(); err != nil {
 			return pendingRecord{}, false, fmt.Errorf("sqlite: consume interrupt: %w", err)
 		}
 		row := s.db.connection(ctx).QueryRowContext(ctx, `DELETE FROM interrupts WHERE root_run_id = ? AND state = ?
@@ -326,9 +317,9 @@ func (s *InterruptStore) consumePending(ctx context.Context, runID string) (pend
 		return p, true, nil
 	})
 }
-func (s *InterruptStore) Delete(ctx context.Context, runID string) error {
+func (s *InterruptStore) Delete(ctx context.Context, runID identity.RunID) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
-		if err := identity.ValidateRun(runID); err != nil {
+		if err := runID.Validate(); err != nil {
 			return fmt.Errorf("sqlite: delete interrupt: %w", err)
 		}
 		if _, err := s.db.connection(ctx).ExecContext(ctx, `DELETE FROM interrupts WHERE root_run_id = ?`, runID); err != nil {

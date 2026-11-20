@@ -28,7 +28,7 @@ func (l *sessionLifecycle) prepareSessionImport(path string) error {
 	}
 	workspace := authoringDirectory(l.localDirectory, l.state.current.Workspace.Path)
 	l.root.message("reading session artifact")
-	started := l.tasks.session(sessionOutputOperation, false,
+	started := l.tasks.session(sessionOutputOperation,
 		func(context.Context) (sessionImport, error) {
 			artifact, err := sessionartifact.Store{}.Load(workspace, path)
 			return sessionImport{path: path, artifact: artifact}, err
@@ -83,7 +83,7 @@ func (l *sessionLifecycle) prepareSessionRollback(argument string) error {
 		}
 	}
 	l.root.message("previewing rollback")
-	started := l.tasks.session(sessionOutputOperation, false,
+	started := l.tasks.session(sessionOutputOperation,
 		func(ctx context.Context) (rollbackPreview, error) {
 			snapshot, err := l.runtime.GetSession(ctx, request.SessionID)
 			if err != nil {
@@ -253,7 +253,7 @@ func parseRollbackArgument(sessionID, argument string) (conversation.RollbackSes
 		return conversation.RollbackSession{}, errors.New("usage: /rollback <run-id|all> [history|files|both]")
 	}
 	boundary := fields[0]
-	if strings.EqualFold(boundary, "all") {
+	if isAllArgument(boundary) {
 		boundary = ""
 	}
 	scope := protocol.RestoreHistory

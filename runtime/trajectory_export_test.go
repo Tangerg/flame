@@ -64,13 +64,13 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 	t.Cleanup(func() { _ = db.Close() })
 	at := time.Now().UTC().Add(-time.Hour).Truncate(time.Millisecond)
 	root := testsupport.MustRestoreRun(run.Snapshot{
-		ID: "run_export_root", SessionID: ses.ID, State: run.Finished,
+		ID: testsupport.MustRunID("run_export_root"), SessionID: testsupport.MustSessionID(ses.ID), State: run.Finished,
 		Capabilities: run.Capabilities{ChildRuns: true}, CreatedAt: at, FinishedAt: at.Add(time.Minute),
 	})
 	child := testsupport.MustRestoreRun(run.Snapshot{
-		ID: "run_export_child", SessionID: ses.ID, State: run.Finished, Ending: testsupport.EndingFor(run.OutcomeCanceled),
+		ID: testsupport.MustRunID("run_export_child"), SessionID: testsupport.MustSessionID(ses.ID), State: run.Finished, Ending: testsupport.EndingFor(run.OutcomeCanceled),
 		CreatedAt: at, FinishedAt: at.Add(time.Minute),
-		Lineage: testsupport.ChildLineage("item_export_spawn", root.ID(), root.ID()),
+		Lineage: testsupport.ChildLineage(testsupport.MustItemID("item_export_spawn"), root.ID(), root.ID()),
 	})
 	for _, value := range []run.Run{root, child} {
 		if err := db.Runs.Restore(t.Context(), value); err != nil {
@@ -79,11 +79,11 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 	}
 	for _, value := range []transcript.Item{
 		testsupport.MustRestoreItem(testsupport.ItemInput{
-			ID: "item_export_spawn", SessionID: ses.ID, RunID: root.ID(), Kind: transcript.ToolCall,
+			ID: testsupport.MustItemID("item_export_spawn"), SessionID: testsupport.MustSessionID(ses.ID), RunID: root.ID(), Kind: transcript.ToolCall,
 			Status: transcript.ItemIncomplete, Tool: &transcript.ToolInvocation{Name: "delegate_task"}, OccurredAt: at,
 		}),
 		testsupport.MustRestoreItem(testsupport.ItemInput{
-			ID: "item_export_child", SessionID: ses.ID, RunID: child.ID(), Kind: transcript.AgentMessage,
+			ID: testsupport.MustItemID("item_export_child"), SessionID: testsupport.MustSessionID(ses.ID), RunID: child.ID(), Kind: transcript.AgentMessage,
 			Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "child evidence"}}, OccurredAt: at,
 		}),
 	} {
@@ -122,7 +122,7 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for i, subject := range []annotation.Subject{{RunID: root.ID()}, {ItemID: "item_export_child"}, {SessionID: ses.ID, RunID: "run_already_removed"}, {}} {
+	for i, subject := range []annotation.Subject{{RunID: root.ID()}, {ItemID: testsupport.MustItemID("item_export_child")}, {SessionID: testsupport.MustSessionID(ses.ID), RunID: testsupport.MustRunID("run_already_removed")}, {}} {
 		content, _ := framevalue.EncodeJSON(map[string]string{"text": "retained observation"})
 		entry := annotation.Entry{CommandID: fmt.Sprintf("note-%d", i), Source: extension.AnnotationSource{ContributionSource: extension.ContributionSource{InstallationID: "f630f241-28b4-4fba-89bb-ddac2710a683", Release: framevalue.Hash([]byte("original release")).String(), Contribution: "notes"}, ContractReference: "test.notes.v1"}, Subject: subject, Content: content, CreatedAt: at}
 		if err := db.Annotations.Append(t.Context(), entry); err != nil {
@@ -152,7 +152,7 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 	}) {
 		t.Fatal("timeline lost the exact persisted model identity")
 	}
-	calls, err := rt.ListModelInvocations(t.Context(), protocol.ListModelInvocationsRequest{RunID: root.ID()}, options)
+	calls, err := rt.ListModelInvocations(t.Context(), protocol.ListModelInvocationsRequest{RunID: root.ID().String()}, options)
 	if err != nil || len(calls.Data) == 0 || calls.Data[0].CallID != "model:export:100" {
 		t.Fatalf("model invocation page = %+v, %v", calls, err)
 	}

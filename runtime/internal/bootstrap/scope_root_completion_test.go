@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
@@ -272,7 +274,7 @@ func assertRootCompletionAtCrash(t *testing.T, home string, original protocol.St
 		t.Fatal(err)
 	}
 	defer stores.Close()
-	run, found, err := stores.Runs.Run(t.Context(), original.RunID)
+	run, found, err := stores.Runs.Run(t.Context(), testsupport.MustRunID(original.RunID))
 	if err != nil || !found {
 		t.Fatalf("read original Run at %s: found = %t, %v", cut, found, err)
 	}
@@ -281,7 +283,7 @@ func assertRootCompletionAtCrash(t *testing.T, home string, original protocol.St
 	if completed != committed || run.State().IsTerminal() != committed {
 		t.Errorf("original Run at %s: state = %s, ending = %+v, Scope completion should be committed = %t", cut, run.State(), ending, committed)
 	}
-	calls, err := stores.ModelInvocations.PageModelInvocations(t.Context(), original.RunID, 0, "", 2)
+	calls, err := stores.ModelInvocations.PageModelInvocations(t.Context(), testsupport.MustRunID(original.RunID), 0, "", 2)
 	if err != nil || len(calls) != 1 || calls[0].State != modelref.InvocationCompleted {
 		t.Fatalf("original completed model call at %s: %+v, %v", cut, calls, err)
 	}

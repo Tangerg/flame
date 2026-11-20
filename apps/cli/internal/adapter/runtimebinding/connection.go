@@ -187,9 +187,6 @@ func openConnection(ctx context.Context, cfg Config, target settings.Runtime) (*
 }
 
 func requestMeta(version string) protocol.RequestMeta {
-	if version == "" {
-		version = "dev"
-	}
 	return protocol.RequestMeta{
 		ProtocolVersion: protocol.Version,
 		ClientInfo:      &protocol.ClientInfo{Name: clientName, Version: version},
@@ -327,9 +324,6 @@ func NewOwner(config Config) *Owner {
 }
 
 func (o *Owner) Connection(ctx context.Context, target settings.Runtime) (*Connection, error) {
-	if o == nil {
-		return nil, errors.New("runtime connection owner is nil")
-	}
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if o.closing {

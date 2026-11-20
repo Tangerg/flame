@@ -25,8 +25,21 @@ var archivedIdleSkillCounter = sync.OnceValue(func() metric.Int64Counter {
 	return counter
 })
 
-func recordMinedSkillProposal(ctx context.Context, kind string) {
-	minedSkillProposalCounter().Add(ctx, 1, metric.WithAttributes(attribute.String("skill.kind", kind)))
+// minedSkillKind is the metric label telling a new Skill from a revision.
+type minedSkillKind string
+
+const (
+	minedNewSkill  minedSkillKind = "new"
+	minedRevision  minedSkillKind = "revise"
+	skillKindLabel                = "skill.kind"
+)
+
+func recordMinedSkillProposal(ctx context.Context, revises bool) {
+	kind := minedNewSkill
+	if revises {
+		kind = minedRevision
+	}
+	minedSkillProposalCounter().Add(ctx, 1, metric.WithAttributes(attribute.String(skillKindLabel, string(kind))))
 }
 
 func recordArchivedIdleSkills(ctx context.Context, count int) {

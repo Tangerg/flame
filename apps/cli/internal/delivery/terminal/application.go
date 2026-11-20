@@ -377,7 +377,7 @@ func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.M
 	a.buildTimeline(theme, glyphs)
 	a.palette = newPickerDialog(pickerDialogConfig[commandPaletteItem]{
 		stack: &a.stack, theme: theme, glyphs: glyphs, title: "Commands", search: "search commands",
-		where: layout.Placement{Width: 82, Height: 18},
+		where: layout.Placement{Width: standardDialogWidth, Height: 18},
 		label: func(item commandPaletteItem) string { return "/" + item.command.Name },
 		detail: func(item commandPaletteItem) string {
 			if !item.availability.Enabled() {

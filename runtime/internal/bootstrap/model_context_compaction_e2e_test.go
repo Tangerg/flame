@@ -42,10 +42,10 @@ func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T)
 	cfg := composeConfig(
 		config.Settings{DefaultSelection: testsupport.MustModelSelection("anthropic", "claude-test")},
 		stores,
-		testChatResolver(client),
 		stores.Providers,
 		"sha256:0000000000000000000000000000000000000000000000000000000000000000",
 	)
+	cfg.modelProviders = testChatResolver(client)
 	cfg.userHome = home
 	cfg.defaultWorkspacePath = home
 	cfg.maintenance = noMaintenance{}

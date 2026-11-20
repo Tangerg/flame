@@ -71,32 +71,47 @@ func newReason(status Status, code ReasonCode, runOutcome run.Outcome, explanati
 	if code != ReasonBlockedByModel && explanation != "" {
 		return Reason{}, fmt.Errorf("%w: reason %q must not carry an explanation", ErrInvalid, code)
 	}
+	var err error
 	switch status {
 	case StatusPaused:
-		switch code {
-		case ReasonStoppedByUser, ReasonRuntimeRestarted, ReasonRunStartFailed,
-			ReasonAwaitingInput, ReasonTerminalOutcomeMissing:
-		case ReasonRunNotCompleted:
-			if _, known := run.ParseOutcome(string(runOutcome)); !known || runOutcome == run.OutcomeCompleted {
-				return Reason{}, fmt.Errorf("%w: reason %q requires an unsuccessful Run outcome", ErrInvalid, code)
-			}
-		default:
-			return Reason{}, fmt.Errorf("%w: reason %q cannot pause a Goal", ErrInvalid, code)
-		}
+		err = validatePauseReason(code, runOutcome)
 	case StatusBlocked:
-		if code != ReasonBlockedByModel {
-			return Reason{}, fmt.Errorf("%w: reason %q cannot block a Goal", ErrInvalid, code)
-		}
-		if explanation == "" {
-			return Reason{}, ErrBlockExplanationRequired
-		}
-		if explanation != strings.TrimSpace(explanation) {
-			return Reason{}, fmt.Errorf("%w: block explanation has surrounding whitespace", ErrInvalid)
-		}
+		err = validateBlockReason(code, explanation)
 	default:
-		return Reason{}, fmt.Errorf("%w: status %q cannot carry a stop reason", ErrInvalid, status)
+		err = fmt.Errorf("%w: status %q cannot carry a stop reason", ErrInvalid, status)
+	}
+	if err != nil {
+		return Reason{}, err
 	}
 	return Reason{code: code, runOutcome: runOutcome, explanation: explanation}, nil
+}
+
+func validatePauseReason(code ReasonCode, runOutcome run.Outcome) error {
+	switch code {
+	case ReasonStoppedByUser, ReasonRuntimeRestarted, ReasonRunStartFailed,
+		ReasonAwaitingInput, ReasonTerminalOutcomeMissing:
+		return nil
+	case ReasonRunNotCompleted:
+		if _, known := run.ParseOutcome(string(runOutcome)); !known || runOutcome == run.OutcomeCompleted {
+			return fmt.Errorf("%w: reason %q requires an unsuccessful Run outcome", ErrInvalid, code)
+		}
+		return nil
+	default:
+		return fmt.Errorf("%w: reason %q cannot pause a Goal", ErrInvalid, code)
+	}
+}
+
+func validateBlockReason(code ReasonCode, explanation string) error {
+	if code != ReasonBlockedByModel {
+		return fmt.Errorf("%w: reason %q cannot block a Goal", ErrInvalid, code)
+	}
+	if explanation == "" {
+		return ErrBlockExplanationRequired
+	}
+	if explanation != strings.TrimSpace(explanation) {
+		return fmt.Errorf("%w: block explanation has surrounding whitespace", ErrInvalid)
+	}
+	return nil
 }
 
 func (r Reason) validateFor(status Status) error {

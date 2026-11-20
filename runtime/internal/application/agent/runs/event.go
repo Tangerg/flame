@@ -1,6 +1,10 @@
 package runs
 
-import "time"
+import (
+	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+)
 
 // Event is the application-owned Run event carried by the [journal].
 //
@@ -8,8 +12,8 @@ import "time"
 // event. They are not the stream's scope — one root stream carries its whole
 // child-Run tree, so a child's event rides it bearing the child's own IDs.
 type Event struct {
-	RunID     string
-	SegmentID string
+	RunID     identity.RunID
+	SegmentID identity.SegmentID
 	// Sequence is this event's position in its stream, assigned by the [journal]
 	// that publishes it. It is the replay comparison key: a subscription resumes
 	// after a sequence, and nothing orders events by comparing [Event.Cursor] as

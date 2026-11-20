@@ -3,6 +3,8 @@ package runs
 import (
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 )
 
@@ -35,7 +37,7 @@ func newRunPublications(
 
 func (r *runPublications) nowUTC() time.Time { return r.now().UTC() }
 
-func (r *runPublications) event(runID, segmentID string, reduced reduction) Event {
+func (r *runPublications) event(runID identity.RunID, segmentID identity.SegmentID, reduced reduction) Event {
 	return Event{
 		RunID: runID, SegmentID: segmentID,
 		Timestamp: r.nowUTC(), Payload: reduced.Event,
@@ -54,7 +56,7 @@ func (r *runPublications) event(runID, segmentID string, reduced reduction) Even
 
 // publishRunMoved reports a run whose lifecycle position changed without touching
 // what it is waiting on: a run that started, or one that ended.
-func (r *runPublications) publishRunMoved(sessionID, runID string) {
+func (r *runPublications) publishRunMoved(sessionID identity.SessionID, runID identity.RunID) {
 	r.invalidations.Notify(
 		invalidation.InSession(invalidation.Runs, sessionID, runID),
 		invalidation.InSession(invalidation.Sessions, sessionID),
@@ -63,7 +65,7 @@ func (r *runPublications) publishRunMoved(sessionID, runID string) {
 
 // publishWaitingMoved reports a transition that also opened, answered or dropped
 // the session's open-interrupt set — a park, a resume, or a canceled park.
-func (r *runPublications) publishWaitingMoved(sessionID, runID string) {
+func (r *runPublications) publishWaitingMoved(sessionID identity.SessionID, runID identity.RunID) {
 	r.invalidations.Notify(
 		invalidation.InSession(invalidation.Runs, sessionID, runID),
 		invalidation.InSession(invalidation.Interrupts, sessionID, runID),
@@ -77,9 +79,9 @@ func (r *runPublications) publishWaitingMoved(sessionID, runID string) {
 // external boundary disappeared. The interrupt notice remains root-addressed
 // because one Pending aggregate owns the whole barrier.
 func (r *runPublications) publishWaitingSubtreeCanceled(
-	sessionID string,
-	rootRunID string,
-	affectedRunIDs []string,
+	sessionID identity.SessionID,
+	rootRunID identity.RunID,
+	affectedRunIDs []identity.RunID,
 ) {
 	r.invalidations.Notify(
 		invalidation.InSession(invalidation.Runs, sessionID, affectedRunIDs...),
@@ -100,6 +102,6 @@ func (r *runPublications) publishApprovalsChanged() {
 // goal. The accounting rides the run's transaction, so nothing in the goal use case
 // sees this write — without a notice here, a client would watch a goal spend its
 // budget in silence.
-func (r *runPublications) publishGoalMoved(sessionID string) {
+func (r *runPublications) publishGoalMoved(sessionID identity.SessionID) {
 	r.invalidations.Notify(invalidation.InSession(invalidation.Goals, sessionID))
 }

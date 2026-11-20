@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -26,8 +28,12 @@ func (s *Handler) cancelRun(ctx context.Context, in protocol.CancelRunRequest, r
 	// Root cancel is the emergency stop and is always allowed. Whether the target
 	// is a child is durable state resolved by the application, so do not reject
 	// unsupported client preferences before that identity is known.
+	runID, err := wireIdentity("runId", in.RunID, identity.ParseRun)
+	if err != nil {
+		return runs.CancelResult{}, err
+	}
 	result, err := s.runCancellations.Cancel(ctx, runs.CancelCommand{
-		RunID:         in.RunID,
+		RunID:         runID,
 		Reason:        in.Reason,
 		AllowChildRun: s.requestCanUseFeature(ctx, protocol.FeatureChildRuns),
 		Receipt:       receipt,
@@ -71,13 +77,21 @@ func (s *Handler) SteerRun(ctx context.Context, in protocol.SteerRunRequest) (*p
 	if err != nil {
 		return nil, err
 	}
+	expected, err := wireIdentity("expectedSegmentId", in.ExpectedSegmentID, identity.ParseOptionalSegment)
+	if err != nil {
+		return nil, err
+	}
+	runID, err := wireIdentity("runId", in.RunID, identity.ParseRun)
+	if err != nil {
+		return nil, err
+	}
 	itemID, err := s.runs.Steer(ctx, runs.SteerCommand{
-		RunID: in.RunID, ExpectedSegmentID: in.ExpectedSegmentID, Input: input, Identity: runCommandIdentity(ctx),
+		RunID: runID, ExpectedSegmentID: expected, Input: input, Identity: runCommandIdentity(ctx),
 	})
 	if err != nil {
 		return nil, wireSteerError(err)
 	}
-	return &protocol.SteerRunResponse{UserItemID: itemID}, nil
+	return &protocol.SteerRunResponse{UserItemID: itemID.String()}, nil
 }
 
 func wireSteerError(err error) error {
@@ -86,7 +100,7 @@ func wireSteerError(err error) error {
 	}
 	if input, ok := errors.AsType[*runs.InputBlockError](err); ok {
 		constraint := &protocol.ConstraintError{Shape: "RunInput", Fields: []protocol.FieldError{{
-			Field:  fmt.Sprintf("input[%d].%s", input.Index, input.Field),
+			Field:  fmt.Sprintf("input[%d].%s", input.Index, wireContentField(input.Field)),
 			Detail: input.Detail,
 		}}}
 		return protocol.NewFailure(protocol.ErrInvalidParams, constraint.Error(), constraint)
@@ -95,4 +109,15 @@ func wireSteerError(err error) error {
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	}
 	return wireLiveSegmentError(err)
+}
+
+// wireIdentity parses an identity a request addressed; a malformed one is an
+// invalid parameter.
+func wireIdentity[ID any](field, text string, parse func(string) (ID, error)) (ID, error) {
+	id, err := parse(text)
+	if err != nil {
+		var zero ID
+		return zero, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("%s: %v", field, err))
+	}
+	return id, nil
 }

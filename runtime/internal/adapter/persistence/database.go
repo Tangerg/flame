@@ -27,7 +27,7 @@ type frameDatabase struct {
 }
 
 func newDatabase(store sqlite.Store, admission framehost.Admission) (*database, error) {
-	owner, err := store.Owner("flame")
+	owner, err := store.Owner(flameOwner)
 	if err != nil {
 		return nil, err
 	}

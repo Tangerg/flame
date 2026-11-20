@@ -9,6 +9,7 @@ import (
 	"runtime/debug"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -81,20 +82,47 @@ func (s *segmentPump) run(initialErr error) {
 	}
 }
 
+// refuseAfterFinish answers anything still queued behind a terminal tree
+// commit, which leaves the stream open only for executor teardown; the
+// committed outcome stays intact.
+func refuseAfterFinish(payload executorPayload) {
+	switch pending := payload.(type) {
+	case ExecutionFactCommit:
+		pending.Complete(ErrRunFinished)
+	case ChildRunReservationRequest:
+		if claimed, ok := pending.claim(); ok {
+			claimed.refuse(ErrRunFinished)
+		}
+	}
+}
+
+// commitAuthoritative reports the write's outcome to the executor and keeps
+// pumping: a rejected write still yields the executor's definite or unknown
+// settlement, and stopping here would tear down the only source able to
+// report it.
+func (s *segmentPump) commitAuthoritative(member ExecutorMember, commit ExecutionFactCommit) bool {
+	if err := commit.validate(); err != nil {
+		commit.Complete(err)
+		s.fail(err)
+		return false
+	}
+	fact := commit.Fact()
+	err := s.handleAuthoritativeFact(member, fact)
+	commit.Complete(err)
+	if err == nil && s.routes.root.boundary.finished() {
+		// Scope still has to acknowledge its Exit append and close the
+		// stream before the Run owner can release that writer.
+		_, settlingTree := fact.(ExecutionTreeSettled)
+		return settlingTree
+	}
+	return true
+}
+
 func (s *segmentPump) processEvent(event ExecutorEvent) bool {
 	s.owner.observation.Lock()
 	defer s.owner.observation.Unlock()
 	if s.routes.root.boundary.finished() {
-		// A terminal tree commit leaves the stream open for executor teardown.
-		// Anything already queued must leave the committed outcome intact.
-		switch pending := event.Payload.(type) {
-		case ExecutionFactCommit:
-			pending.Complete(ErrRunFinished)
-		case ChildRunReservationRequest:
-			if pending.claim() {
-				_ = pending.complete(ChildRunBinding{}, ErrRunFinished)
-			}
-		}
+		refuseAfterFinish(event.Payload)
 		return true
 	}
 	if request, reserving := event.Payload.(ChildRunReservationRequest); reserving {
@@ -105,25 +133,7 @@ func (s *segmentPump) processEvent(event ExecutorEvent) bool {
 		return false
 	}
 	if commit, authoritative := event.Payload.(ExecutionFactCommit); authoritative {
-		if err := commit.validate(); err != nil {
-			commit.Complete(err)
-			s.fail(err)
-			return false
-		}
-		fact := commit.Fact()
-		err := s.handleAuthoritativeFact(event.Member, fact)
-		commit.Complete(err)
-		if err == nil && s.routes.root.boundary.finished() {
-			// Scope still has to acknowledge its Exit append and close the
-			// stream before the Run owner can release that writer.
-			_, settlingTree := fact.(ExecutionTreeSettled)
-			return settlingTree
-		}
-		// A rejected authoritative write is reported synchronously to the
-		// executor. It then produces either a definite failed result or
-		// an unknown settlement; stopping this pump here would race that decision
-		// and tear down the only source able to report it.
-		return true
+		return s.commitAuthoritative(event.Member, commit)
 	}
 	if barrier, interrupted := event.Payload.(TreeInterrupted); interrupted {
 		return s.handleTreeBarrier(event, barrier)
@@ -154,8 +164,8 @@ func (s *segmentPump) handleChildRunReservation(
 	request ChildRunReservationRequest,
 ) bool {
 	if err := event.Validate(); err != nil {
-		if request.claim() {
-			_ = request.complete(ChildRunBinding{}, err)
+		if claimed, ok := request.claim(); ok {
+			claimed.refuse(err)
 		}
 		s.fail(err)
 		return false
@@ -164,20 +174,21 @@ func (s *segmentPump) handleChildRunReservation(
 		s.fail(err)
 		return false
 	}
-	if !request.claim() {
+	claimed, ok := request.claim()
+	if !ok {
 		return true
 	}
 	if existing := s.childStarts[event.Member.MemberID]; existing != nil {
 		if existing.prepared.member != event.Member {
 			err := fmt.Errorf("runs: child member %q repeated a different start reservation", event.Member.MemberID)
-			_ = request.complete(ChildRunBinding{}, err)
+			claimed.refuse(err)
 			return true
 		}
-		_ = request.complete(existing.prepared.reservation.Binding, nil)
+		claimed.grant(existing.prepared.reservation.Binding)
 		return true
 	}
 	if s.activeChildReservations(event.Member.ParentID) >= MaxActiveChildRuns {
-		_ = request.complete(ChildRunBinding{}, errors.New("runs: active child Run limit reached"))
+		claimed.refuse(errors.New("runs: active child Run limit reached"))
 		return true
 	}
 	prepared, err := s.segments.prepareChildStart(
@@ -190,19 +201,14 @@ func (s *segmentPump) handleChildRunReservation(
 		if prepared != nil {
 			prepared.releaseBinding(s.owner)
 		}
-		_ = request.complete(ChildRunBinding{}, err)
+		claimed.refuse(err)
 		return true
 	}
 	if s.childStarts == nil {
 		s.childStarts = make(map[string]*managedChildStart)
 	}
 	s.childStarts[event.Member.MemberID] = &managedChildStart{prepared: prepared}
-	if err := request.complete(prepared.reservation.Binding, nil); err != nil {
-		s.abortPreparedChildStart(prepared)
-		delete(s.childStarts, event.Member.MemberID)
-		s.fail(err)
-		return false
-	}
+	claimed.grant(prepared.reservation.Binding)
 	return true
 }
 
@@ -216,26 +222,36 @@ func (s *segmentPump) abortPreparedChildStart(prepared *preparedChildStart) {
 	prepared.releaseBinding(s.owner)
 }
 
-func (s *segmentPump) handleAuthoritativeFact(member ExecutorMember, fact ExecutionFact) error {
-	if tree, ok := fact.(ExecutionTreeSettled); ok {
-		return s.commitExecutionTree(tree)
-	}
+// authoritativeRoute is the bound route a fact from member reduces on; a
+// prepared Tool call must carry a checkpoint this Session's root owns.
+func (s *segmentPump) authoritativeRoute(member ExecutorMember, fact ExecutionFact) (*executorRoute, error) {
 	route, err := s.routes.resolve(member)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if prepared, ok := fact.(ToolCallPrepared); ok {
 		if err := prepared.Context.ValidateOwnership(s.routes.root.member.MemberID, s.spec.SessionID); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if route.member.MemberID != "" {
 		if err := s.owner.bindExecutorMember(route.runID, route.member.MemberID); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if route.reducer == nil {
-		return fmt.Errorf("runs: admitted child run %q has no segment reducer", route.runID)
+		return nil, fmt.Errorf("runs: admitted child run %q has no segment reducer", route.runID)
+	}
+	return route, nil
+}
+
+func (s *segmentPump) handleAuthoritativeFact(member ExecutorMember, fact ExecutionFact) error {
+	if tree, ok := fact.(ExecutionTreeSettled); ok {
+		return s.commitExecutionTree(tree)
+	}
+	route, err := s.authoritativeRoute(member, fact)
+	if err != nil {
+		return err
 	}
 	fact = s.classifyChildCancellationFact(route, fact, nil)
 	if engineEventEndsSegment(fact) {
@@ -251,18 +267,9 @@ func (s *segmentPump) handleAuthoritativeFact(member ExecutorMember, fact Execut
 		return err
 	}
 	if compacted, ok := fact.(CompactionBoundary); ok && compacted.Rewrite != nil {
-		current, err := s.segments.runs.ListRuns(s.ownerCtx, s.spec.SessionID)
-		if err != nil {
+		if err := s.attachCompactionPlan(*compacted.Rewrite, &batch); err != nil {
 			return err
 		}
-		plan, err := PlanConversationCompaction(s.spec.SessionID, *compacted.Rewrite, current)
-		if err != nil {
-			return err
-		}
-		if len(batch.events) != 1 || batch.events[0].Commit == nil {
-			return errors.New("runs: compaction has no Item commit")
-		}
-		batch.events[0].Commit.Compaction = new(plan)
 	}
 	publication, err := s.publisher.publishAuthoritativeAtomically(s.ownerCtx, route, batch)
 	if err != nil {
@@ -272,6 +279,24 @@ func (s *segmentPump) handleAuthoritativeFact(member ExecutorMember, fact Execut
 		return errors.New("runs: authoritative model/tool fact crossed a segment boundary")
 	}
 	route.reducer = speculative
+	return nil
+}
+
+// attachCompactionPlan binds a rewrite to the Session's Runs as they stand now;
+// the reducer that produced the commit cannot read them.
+func (s *segmentPump) attachCompactionPlan(rewrite conversation.Compaction, batch *reductionBatch) error {
+	current, err := s.segments.runs.ListRuns(s.ownerCtx, s.spec.SessionID)
+	if err != nil {
+		return err
+	}
+	plan, err := PlanConversationCompaction(s.spec.SessionID, rewrite, current)
+	if err != nil {
+		return err
+	}
+	if len(batch.events) != 1 || batch.events[0].Commit == nil {
+		return errors.New("runs: compaction has no Item commit")
+	}
+	batch.events[0].Commit.Compaction = new(plan)
 	return nil
 }
 
@@ -331,7 +356,7 @@ func (s *segmentPump) handleExecutionFact(member ExecutorMember, executionFact E
 // projectFact commits one route's reduction and reports whether this pump may
 // keep consuming.
 func (s *segmentPump) projectFact(route *executorRoute, executionFact ExecutionFact) (bool, error) {
-	executionFact, cancellation := s.owner.projectCancellation(executionFact, route.lineage.IsChild())
+	executionFact, cancellation := s.owner.projectCancellation(executionFact, route.lineage)
 	projecting := route.reducer
 	terminalFact := engineEventEndsSegment(executionFact)
 	if terminalFact {
@@ -504,7 +529,7 @@ func (s *segmentPump) synthesizeRoute(ctx context.Context, route *executorRoute)
 	var cancellation CancellationID
 	var err error
 	if route == s.routes.root && s.deferredRootTerminal != nil {
-		fact, id := s.owner.projectCancellation(s.deferredRootTerminal, false)
+		fact, id := s.owner.projectCancellation(s.deferredRootTerminal, route.lineage)
 		cancellation = id
 		reductions, err = route.reducer.reduce(fact)
 	} else {

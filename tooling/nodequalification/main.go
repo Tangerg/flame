@@ -251,6 +251,8 @@ func (d *distribution) captureWithCLI(ctx context.Context, request protocol.Call
 	return nil
 }
 
+// checkReports proves a plugin's keyed receipts survive a Runtime restart and
+// are replayed, not re-executed, by the original command key.
 func (d *distribution) checkReports(ctx context.Context) error {
 	request, err := d.captureRequest(ctx)
 	if err != nil {
@@ -270,37 +272,27 @@ func (d *distribution) checkReports(ctx context.Context) error {
 	if err := json.Unmarshal([]byte(original.Output), &header); err != nil {
 		return err
 	}
-	encoded, err := json.Marshal(UsageReportsGetV1InputRpcReportInput{Id: header.Id})
+	read, err := reportRequest(request, UsageReportsGetV1Method, UsageReportsGetV1InputRpcReportInput{Id: header.Id})
 	if err != nil {
 		return err
 	}
-	read := request
-	read.Method, read.Input = UsageReportsGetV1Method, string(encoded)
 	saved, err := d.call(ctx, read, "")
 	if err != nil {
 		return err
 	}
-	if err := d.stop(ctx); err != nil {
+	if err := d.restart(ctx, request.InstallationID); err != nil {
 		return err
 	}
-	if err := d.start(ctx); err != nil {
+	if err := errors.Join(
+		d.verifyOriginal(ctx, read, "", saved.Output),
+		d.verifyOriginal(ctx, request, "original-save", original.Output),
+	); err != nil {
 		return err
 	}
-	if err := d.waitBackend(ctx, request.InstallationID); err != nil {
-		return err
-	}
-	if err := d.verifyOriginal(ctx, read, "", saved.Output); err != nil {
-		return err
-	}
-	if err := d.verifyOriginal(ctx, request, "original-save", original.Output); err != nil {
-		return err
-	}
-	remove := read
-	encoded, err = json.Marshal(UsageReportsDeleteV1InputRpcReportInput{Id: header.Id})
+	remove, err := reportRequest(request, UsageReportsDeleteV1Method, UsageReportsDeleteV1InputRpcReportInput{Id: header.Id})
 	if err != nil {
 		return err
 	}
-	remove.Method, remove.Input = UsageReportsDeleteV1Method, string(encoded)
 	if _, err := d.call(ctx, remove, "original-remove"); err != nil {
 		return err
 	}
@@ -309,6 +301,25 @@ func (d *distribution) checkReports(ctx context.Context) error {
 	}
 	_, err = d.client.SetPluginEnablement(ctx, protocol.SetPluginEnablementRequest{InstallationID: request.InstallationID, Enabled: false}, protocol.CommandOptions{})
 	return err
+}
+
+func reportRequest(base protocol.CallPluginRequest, method string, input any) (protocol.CallPluginRequest, error) {
+	encoded, err := json.Marshal(input)
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
+	}
+	base.Method, base.Input = method, string(encoded)
+	return base, nil
+}
+
+func (d *distribution) restart(ctx context.Context, installation string) error {
+	if err := d.stop(ctx); err != nil {
+		return err
+	}
+	if err := d.start(ctx); err != nil {
+		return err
+	}
+	return d.waitBackend(ctx, installation)
 }
 
 func (d *distribution) verifyOriginal(ctx context.Context, request protocol.CallPluginRequest, key, output string) error {

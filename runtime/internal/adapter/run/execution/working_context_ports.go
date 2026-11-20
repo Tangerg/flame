@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -13,21 +15,21 @@ import (
 // planReader is the prompt composer's read-only view of the current Session
 // Plan.
 type planReader interface {
-	List(ctx context.Context, sessionID string) ([]plan.Step, error)
+	List(ctx context.Context, sessionID identity.SessionID) ([]plan.Step, error)
 }
 
 // goalReader is the working-context adapter's read-only view of the current
 // autonomous Goal aggregate. A found Goal is valid and belongs to the requested
 // Session.
 type goalReader interface {
-	Current(ctx context.Context, sessionID string) (goal.Goal, bool, error)
+	Current(ctx context.Context, sessionID identity.SessionID) (goal.Goal, bool, error)
 }
 
 // interactionModelContextState supplies model-facing Session state whose value
 // may change while an Interaction is running. It is deliberately separate from
 // the frozen deployment instruction snapshot.
 type interactionModelContextState interface {
-	CurrentSessionState(ctx context.Context, sessionID string) ([]corechat.Message, error)
+	CurrentSessionState(ctx context.Context, sessionID identity.SessionID) ([]corechat.Message, error)
 }
 
 // MemoryPromptItem contains only published values consumed by prompt composition.

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	flameruns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -16,11 +17,11 @@ import (
 // preserving the archive's order among peers. Snapshot validation has already
 // proved that every parent exists and the graph is acyclic.
 func sortRunsParentFirst(runs []rundomain.Run) {
-	byID := make(map[string]rundomain.Run, len(runs))
+	byID := make(map[identity.RunID]rundomain.Run, len(runs))
 	for _, run := range runs {
 		byID[run.ID()] = run
 	}
-	depths := make(map[string]int, len(runs))
+	depths := make(map[identity.RunID]int, len(runs))
 	var depth func(rundomain.Run) int
 	depth = func(run rundomain.Run) int {
 		if known, ok := depths[run.ID()]; ok {
@@ -109,41 +110,15 @@ func (t TerminalPlan) validate() error {
 	if !ok {
 		return errors.New("sessions: terminal plan must end with one root Run")
 	}
-	members := make([]rundomain.TreeMember, 0, len(t.runs))
-	ownedRuns := make(map[string]struct{}, len(t.runs))
-	actualOrder := make([]string, 0, len(t.runs))
-	for index, replacement := range t.runs {
-		if err := validateTerminalRunReplacement(replacement); err != nil {
-			return fmt.Errorf("sessions: terminal plan Run[%d]: %w", index, err)
-		}
-		run := replacement.State()
-		if run.SessionID() != root.SessionID() {
-			return fmt.Errorf("sessions: terminal plan Run %q belongs to Session %q, want %q", run.ID(), run.SessionID(), root.SessionID())
-		}
-		outcome, terminal := run.Outcome()
-		rootOutcome, rootTerminal := root.Outcome()
-		if !terminal || !rootTerminal || outcome != rootOutcome {
-			return fmt.Errorf("sessions: terminal plan Run %q has a different terminal outcome", run.ID())
-		}
-		if _, duplicate := ownedRuns[run.ID()]; duplicate {
-			return fmt.Errorf("sessions: terminal plan repeats Run %q", run.ID())
-		}
-		ownedRuns[run.ID()] = struct{}{}
-		actualOrder = append(actualOrder, run.ID())
-		members = append(members, rundomain.TreeMember{RunID: run.ID(), Lineage: run.Lineage()})
-	}
-	tree, err := rundomain.NewTree(root.ID(), members)
+	ownedRuns, err := t.validateRuns(root)
 	if err != nil {
-		return fmt.Errorf("sessions: terminal plan Run tree: %w", err)
+		return err
 	}
-	if !slices.Equal(actualOrder, tree.Postorder()) {
-		return errors.New("sessions: terminal plan Runs are not in canonical postorder")
-	}
-	seenItems := make(map[string]struct{}, len(t.items))
+	seenItems := make(map[identity.ItemID]struct{}, len(t.items))
 	for index, replacement := range t.items {
 		item := replacement.State()
 		_, owned := ownedRuns[item.RunID()]
-		if item.ID() == "" || item.SessionID() != root.SessionID() || !owned || item.Status() != transcript.ItemIncomplete {
+		if item.ID().IsZero() || item.SessionID() != root.SessionID() || !owned || item.Status() != transcript.ItemIncomplete {
 			return fmt.Errorf("sessions: terminal plan Item[%d] is not an incomplete Item owned by its Run tree", index)
 		}
 		if _, duplicate := seenItems[item.ID()]; duplicate {
@@ -157,6 +132,41 @@ func (t TerminalPlan) validate() error {
 		}
 	}
 	return nil
+}
+
+// validateRuns proves the plan ends one Run tree in canonical postorder, every
+// Run with the root's terminal outcome, and returns the Runs it owns.
+func (t TerminalPlan) validateRuns(root rundomain.Run) (map[identity.RunID]struct{}, error) {
+	rootOutcome, rootTerminal := root.Outcome()
+	members := make([]rundomain.TreeMember, 0, len(t.runs))
+	ownedRuns := make(map[identity.RunID]struct{}, len(t.runs))
+	actualOrder := make([]identity.RunID, 0, len(t.runs))
+	for index, replacement := range t.runs {
+		if err := validateTerminalRunReplacement(replacement); err != nil {
+			return nil, fmt.Errorf("sessions: terminal plan Run[%d]: %w", index, err)
+		}
+		run := replacement.State()
+		if run.SessionID() != root.SessionID() {
+			return nil, fmt.Errorf("sessions: terminal plan Run %q belongs to Session %q, want %q", run.ID(), run.SessionID(), root.SessionID())
+		}
+		if outcome, terminal := run.Outcome(); !terminal || !rootTerminal || outcome != rootOutcome {
+			return nil, fmt.Errorf("sessions: terminal plan Run %q has a different terminal outcome", run.ID())
+		}
+		if _, duplicate := ownedRuns[run.ID()]; duplicate {
+			return nil, fmt.Errorf("sessions: terminal plan repeats Run %q", run.ID())
+		}
+		ownedRuns[run.ID()] = struct{}{}
+		actualOrder = append(actualOrder, run.ID())
+		members = append(members, rundomain.TreeMember{RunID: run.ID(), Lineage: run.Lineage()})
+	}
+	tree, err := rundomain.NewTree(root.ID(), members)
+	if err != nil {
+		return nil, fmt.Errorf("sessions: terminal plan Run tree: %w", err)
+	}
+	if !slices.Equal(actualOrder, tree.Postorder()) {
+		return nil, errors.New("sessions: terminal plan Runs are not in canonical postorder")
+	}
+	return ownedRuns, nil
 }
 
 func validateTerminalRunReplacement(replacement rundomain.Replacement) error {

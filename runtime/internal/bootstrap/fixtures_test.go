@@ -41,20 +41,20 @@ func bootstrapPending(
 ) runsapp.Pending {
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}}
 	return runsapp.Pending{
-		RootRunID:  runID,
+		RootRunID:  testsupport.MustRunID(runID),
 		ExecutorID: "turn_" + runID,
 		Interrupts: runsapp.OpenInterruptsOf([]transcript.Interrupt{{
-			ItemID: itemID, ItemOccurredAt: itemOccurredAt,
-			RunID:  runID,
+			ItemID: testsupport.MustItemID(itemID), ItemOccurredAt: itemOccurredAt,
+			RunID:  testsupport.MustRunID(runID),
 			Prompt: *question,
 		}}),
 		Bindings: []runsapp.InterruptBinding{{
-			InterruptItemID: itemID,
+			InterruptItemID: testsupport.MustItemID(itemID),
 			MemberID:        memberID,
 			RequestID:       "request-" + memberID,
 		}},
 		Continuations: []runsapp.Continuation{{
-			RunID:    runID,
+			RunID:    testsupport.MustRunID(runID),
 			MemberID: memberID,
 		}},
 		CreatedAt: barrierCreatedAt}
@@ -68,7 +68,7 @@ func bootstrapCheckpoint(rootMemberID, sessionID string) runsapp.ExecutorCheckpo
 		RootMemberID: rootMemberID,
 		Payload:      []byte("opaque executor checkpoint"),
 		BuildID:      bootstrapCheckpointBuildID,
-		SessionID:    sessionID,
+		SessionID:    testsupport.MustSessionID(sessionID),
 	}
 }
 
@@ -139,7 +139,7 @@ func newWriteSetStores(t *testing.T, db *persistence.Bundle) (sessionStores, *pe
 }
 
 func bootstrapSession(id, title, cwd string) session.Session {
-	return testsupport.MustRestoreSession(session.Snapshot{ID: id, Title: title, Workspace: testsupport.MustWorkspace(cwd)})
+	return testsupport.MustRestoreSession(session.Snapshot{ID: testsupport.MustSessionID(id), Title: title, Workspace: testsupport.MustWorkspace(cwd)})
 }
 
 func insertBootstrapSession(t *testing.T, store *persistence.SessionStore, value session.Session) {
@@ -155,7 +155,7 @@ func insertBootstrapSession(t *testing.T, store *persistence.SessionStore, value
 func restoredRun(sessionID, runID string, at time.Time) run.Run {
 	outcome := run.OutcomeCompleted
 	return testsupport.MustRestoreRun(run.Snapshot{
-		SessionID: sessionID, ID: runID, State: run.Finished,
+		SessionID: testsupport.MustSessionID(sessionID), ID: testsupport.MustRunID(runID), State: run.Finished,
 		Ending:    testsupport.EndingFor(outcome),
 		CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: run.MessageMarkAt(0),
 	})

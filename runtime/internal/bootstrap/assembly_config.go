@@ -125,39 +125,8 @@ func validateAssemblyConfig(c assemblyConfig) error {
 	if lo.IsNil(c.processRunner) {
 		return errors.New("runtime: process runner is required")
 	}
-	if c.userHome == "" {
-		return errors.New("runtime: UserHome is required")
-	}
-	if !filepath.IsAbs(c.userHome) {
-		return errors.New("runtime: UserHome must be absolute")
-	}
-	if c.defaultWorkspacePath == "" {
-		return errors.New("runtime: DefaultWorkspacePath is required")
-	}
-	if !filepath.IsAbs(c.defaultWorkspacePath) {
-		return errors.New("runtime: DefaultWorkspacePath must be absolute")
-	}
-	if c.skillsUserDir == "" {
-		return errors.New("runtime: SkillsUserDir is required")
-	}
-	if !filepath.IsAbs(c.skillsUserDir) {
-		return errors.New("runtime: SkillsUserDir must be absolute")
-	}
-	for _, configuredPath := range []struct {
-		name  string
-		value string
-	}{
-		{name: "SandboxDir", value: c.sandboxDir},
-		{name: "CheckpointDir", value: c.checkpointDir},
-	} {
-		if configuredPath.value != "" && !filepath.IsAbs(configuredPath.value) {
-			return fmt.Errorf("runtime: %s must be absolute when set", configuredPath.name)
-		}
-	}
-	for index, configuredPath := range c.sandboxReadOnlyPaths {
-		if configuredPath != "" && !filepath.IsAbs(configuredPath) {
-			return fmt.Errorf("runtime: SandboxReadOnlyPaths[%d] must be absolute when set", index)
-		}
+	if err := c.validatePaths(); err != nil {
+		return err
 	}
 	if c.modelProviders != nil && lo.IsNil(c.modelProviders) {
 		return errors.New("runtime: model providers are typed nil")
@@ -170,6 +139,39 @@ func validateAssemblyConfig(c assemblyConfig) error {
 	}
 	if err := c.defaultSelection.ValidateExact(); err != nil {
 		return fmt.Errorf("runtime: default model selection: %w", err)
+	}
+	return nil
+}
+
+// validatePaths requires the home, workspace and skills directories and lets
+// the sandbox and checkpoint directories default; every given path is
+// absolute.
+func (c assemblyConfig) validatePaths() error {
+	type configuredPath struct{ name, value string }
+	for _, required := range []configuredPath{
+		{name: "UserHome", value: c.userHome},
+		{name: "DefaultWorkspacePath", value: c.defaultWorkspacePath},
+		{name: "SkillsUserDir", value: c.skillsUserDir},
+	} {
+		if required.value == "" {
+			return fmt.Errorf("runtime: %s is required", required.name)
+		}
+		if !filepath.IsAbs(required.value) {
+			return fmt.Errorf("runtime: %s must be absolute", required.name)
+		}
+	}
+	for _, optional := range []configuredPath{
+		{name: "SandboxDir", value: c.sandboxDir},
+		{name: "CheckpointDir", value: c.checkpointDir},
+	} {
+		if optional.value != "" && !filepath.IsAbs(optional.value) {
+			return fmt.Errorf("runtime: %s must be absolute when set", optional.name)
+		}
+	}
+	for index, configuredPath := range c.sandboxReadOnlyPaths {
+		if configuredPath != "" && !filepath.IsAbs(configuredPath) {
+			return fmt.Errorf("runtime: SandboxReadOnlyPaths[%d] must be absolute when set", index)
+		}
 	}
 	return nil
 }

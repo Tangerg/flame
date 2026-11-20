@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -32,7 +34,7 @@ type cancellationPlan struct {
 	spawningItem  *transcript.Item
 	// items are every Item the hand-off names, and interrupts its open
 	// interrupts projected from them.
-	items                map[string]transcript.Item
+	items                map[identity.ItemID]transcript.Item
 	interrupts           []transcript.Interrupt
 	targetInterruptItems []transcript.Item
 	targetDrainedItems   []transcript.Item
@@ -69,7 +71,7 @@ type cancellationPlanSource struct {
 	live             liveSegment
 	hasLive          bool
 	executor         ExecutorRef
-	memberIDsByRunID map[string]string
+	memberIDsByRunID map[identity.RunID]string
 }
 
 // cancellationPlanFor resolves either a root or child address to one complete
@@ -174,12 +176,12 @@ func (c *Cancellations) readCancellationPlanSource(
 
 func (c *Cancellations) resolveCancellationOwner(
 	ctx context.Context,
-	targetRunID string,
+	targetRunID identity.RunID,
 	root rundomain.Run,
 	pending *Pending,
 	live liveSegment,
 	hasLive bool,
-) (ExecutorRef, map[string]string, error) {
+) (ExecutorRef, map[identity.RunID]string, error) {
 	switch root.State() {
 	case rundomain.Running:
 		if pending != nil {
@@ -225,7 +227,7 @@ func (c *Cancellations) resolveCancellationOwner(
 				),
 			)
 		}
-		members := make(map[string]string, len(pending.Continuations))
+		members := make(map[identity.RunID]string, len(pending.Continuations))
 		for _, continuation := range pending.Continuations {
 			members[continuation.RunID] = continuation.MemberID
 		}
@@ -283,7 +285,7 @@ func (c *Cancellations) resolveCancellationOwner(
 // an internal invariant fault.
 func (c *Cancellations) classifyCancellationOwnerDrift(
 	ctx context.Context,
-	targetRunID string,
+	targetRunID identity.RunID,
 	sourceState rundomain.State,
 	cause error,
 ) error {
@@ -318,7 +320,7 @@ func (c *Cancellations) classifyCancellationOwnerDrift(
 	}
 }
 
-func runByID(runs []rundomain.Run, runID string) (rundomain.Run, bool) {
+func runByID(runs []rundomain.Run, runID identity.RunID) (rundomain.Run, bool) {
 	for _, run := range runs {
 		if run.ID() == runID {
 			return run, true

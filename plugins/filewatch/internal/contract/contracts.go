@@ -20,30 +20,20 @@ type Contracts struct {
 }
 
 func NewContracts() (Contracts, error) {
-	var c Contracts
-	var err error
-	c.Capability, err = plugincontract.ParseCapability([]byte(published.CapabilityJSON))
+	capability, err := plugincontract.ParseCapability([]byte(published.CapabilityJSON))
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Get, err = pluginmcp.ImplementMethod[struct{}, filewatch.Snapshot](c.Capability, published.GetV1Method)
-	if err != nil {
-		return Contracts{}, err
+	methods := pluginmcp.NewMethodSet(capability)
+	c := Contracts{
+		Capability: capability,
+		Get:        pluginmcp.Implement[struct{}, filewatch.Snapshot](methods, published.GetV1Method),
+		Configure:  pluginmcp.Implement[wire.ConfigureInput, filewatch.Snapshot](methods, published.ConfigureV1Method),
+		Status:     pluginmcp.Implement[struct{}, filewatch.Status](methods, published.StatusV1Method),
+		Events:     pluginmcp.Implement[struct{}, []filewatch.Header](methods, published.EventsV1Method),
+		Event:      pluginmcp.Implement[wire.EventInput, filewatch.Event](methods, published.EventV1Method),
 	}
-	c.Configure, err = pluginmcp.ImplementMethod[wire.ConfigureInput, filewatch.Snapshot](c.Capability, published.ConfigureV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Status, err = pluginmcp.ImplementMethod[struct{}, filewatch.Status](c.Capability, published.StatusV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Events, err = pluginmcp.ImplementMethod[struct{}, []filewatch.Header](c.Capability, published.EventsV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Event, err = pluginmcp.ImplementMethod[wire.EventInput, filewatch.Event](c.Capability, published.EventV1Method)
-	if err != nil {
+	if err := methods.Err(); err != nil {
 		return Contracts{}, err
 	}
 	return c, nil

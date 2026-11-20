@@ -90,7 +90,7 @@ func (w WaitingSubtreeCancellationRequest) validate() error {
 		if member.MemberID != w.targetMemberID {
 			continue
 		}
-		if member.ParentRunID == "" {
+		if member.ParentRunID.IsZero() {
 			return errors.New("runs: waiting subtree target is the root member")
 		}
 		targetFound = true
@@ -153,20 +153,20 @@ func waitingMembersFromPending(pending Pending, parked []run.Run) ([]ExecutionMe
 // Validate verifies one surviving product member without interpreting executor
 // topology or checkpoint payload.
 func (w ExecutionMember) Validate() error {
-	if err := identity.ValidateRun(w.RunID); err != nil {
+	if err := w.RunID.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting member: %w", err)
 	}
 	if err := ValidateMember(w.MemberID); err != nil {
 		return fmt.Errorf("runs: waiting member: %w", err)
 	}
-	if (w.ParentRunID == "") != (w.SpawnedByItemID == "") {
+	if (w.ParentRunID.IsZero()) != (w.SpawnedByItemID.IsZero()) {
 		return errors.New("runs: waiting member child lineage is incomplete")
 	}
-	if w.ParentRunID != "" {
-		if err := identity.ValidateRun(w.ParentRunID); err != nil {
+	if !w.ParentRunID.IsZero() {
+		if err := w.ParentRunID.Validate(); err != nil {
 			return fmt.Errorf("runs: waiting member parent: %w", err)
 		}
-		if err := identity.ValidateItem(w.SpawnedByItemID); err != nil {
+		if err := w.SpawnedByItemID.Validate(); err != nil {
 			return fmt.Errorf("runs: waiting member spawned-by: %w", err)
 		}
 	}
@@ -202,13 +202,13 @@ func (w ExecutionContinuation) Validate() error {
 }
 
 func validateExecutionContinuationEnvelope(continuation ExecutionContinuation) error {
-	if err := identity.ValidateSession(continuation.SessionID); err != nil {
+	if err := continuation.SessionID.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting continuation: %w", err)
 	}
 	if err := ValidateExecutor(continuation.ExecutorID); err != nil {
 		return fmt.Errorf("runs: waiting continuation: %w", err)
 	}
-	if err := identity.ValidateRun(continuation.RootRunID); err != nil {
+	if err := continuation.RootRunID.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting continuation: %w", err)
 	}
 	if len(continuation.Members) == 0 {
@@ -234,7 +234,7 @@ type waitingContinuationTopology struct {
 func buildExecutionContinuationTopology(
 	continuation ExecutionContinuation,
 ) (waitingContinuationTopology, error) {
-	seenRunIDs := make(map[string]struct{}, len(continuation.Members))
+	seenRunIDs := make(map[identity.RunID]struct{}, len(continuation.Members))
 	seenMemberIDs := make(map[string]struct{}, len(continuation.Members))
 	treeMembers := make([]run.TreeMember, 0, len(continuation.Members))
 	rootMemberID := ""
@@ -252,7 +252,7 @@ func buildExecutionContinuationTopology(
 		seenMemberIDs[member.MemberID] = struct{}{}
 		lineage := run.Lineage{}
 		if member.RunID != continuation.RootRunID {
-			if member.ParentRunID == "" {
+			if member.ParentRunID.IsZero() {
 				return waitingContinuationTopology{}, fmt.Errorf("runs: waiting child Run %q has no parent", member.RunID)
 			}
 			child, err := run.NewLineage(member.SpawnedByItemID, member.ParentRunID, continuation.RootRunID)
@@ -261,7 +261,7 @@ func buildExecutionContinuationTopology(
 			}
 			lineage = child
 		} else {
-			if member.ParentRunID != "" || rootMemberID != "" {
+			if !member.ParentRunID.IsZero() || rootMemberID != "" {
 				return waitingContinuationTopology{}, errors.New("runs: waiting continuation has an invalid root member")
 			}
 			rootMemberID = member.MemberID
@@ -278,7 +278,7 @@ func buildExecutionContinuationTopology(
 	return waitingContinuationTopology{rootMemberID: rootMemberID, tree: tree}, nil
 }
 
-func validateExecutionContinuationOrder(members []ExecutionMember, canonicalRunIDs []string) error {
+func validateExecutionContinuationOrder(members []ExecutionMember, canonicalRunIDs []identity.RunID) error {
 	for index, member := range members {
 		if member.RunID != canonicalRunIDs[index] {
 			return fmt.Errorf(

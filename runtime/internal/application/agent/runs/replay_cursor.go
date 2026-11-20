@@ -26,8 +26,8 @@ var (
 // journal is the only authority that may mint, interpret, or compare one.
 type replayPosition struct {
 	epoch     replayEpoch
-	runID     string
-	segmentID string
+	runID     identity.RunID
+	segmentID identity.SegmentID
 	sequence  uint64
 }
 
@@ -35,10 +35,10 @@ func (r replayPosition) validate() error {
 	if err := r.epoch.Validate(); err != nil {
 		return err
 	}
-	if err := identity.ValidateRun(r.runID); err != nil {
+	if err := r.runID.Validate(); err != nil {
 		return err
 	}
-	if err := identity.ValidateSegment(r.segmentID); err != nil {
+	if err := r.segmentID.Validate(); err != nil {
 		return err
 	}
 	if r.sequence == 0 {
@@ -52,10 +52,10 @@ func (r replayPosition) validate() error {
 // ever honor it. The compact field names reduce the cost of carrying a cursor
 // on every published event; callers still treat the resulting token as opaque.
 type encodedReplayPosition struct {
-	Epoch     string `json:"e"`
-	RunID     string `json:"r"`
-	SegmentID string `json:"g"`
-	Sequence  uint64 `json:"q"`
+	Epoch     string             `json:"e"`
+	RunID     identity.RunID     `json:"r"`
+	SegmentID identity.SegmentID `json:"g"`
+	Sequence  uint64             `json:"q"`
 }
 
 // newReplayEpoch mints the identity shared by every journal owned by one
@@ -106,11 +106,11 @@ func decodeReplayCursor(token string) (replayPosition, error) {
 		return replayPosition{}, fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
 	}
 	runID := encoded.RunID
-	if err := identity.ValidateRun(encoded.RunID); err != nil {
+	if err := encoded.RunID.Validate(); err != nil {
 		return replayPosition{}, fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
 	}
 	segmentID := encoded.SegmentID
-	if err := identity.ValidateSegment(encoded.SegmentID); err != nil {
+	if err := encoded.SegmentID.Validate(); err != nil {
 		return replayPosition{}, fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
 	}
 	position := replayPosition{epoch: epoch, runID: runID, segmentID: segmentID, sequence: encoded.Sequence}

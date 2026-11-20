@@ -27,7 +27,17 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-const browserPendingCapacity = 4096
+// Framework capacities: how many installations the host admits, how long a
+// plugin process may take to stop, and what the browser bridge holds at once.
+const (
+	maxInstallations          = 128
+	pluginProcessCloseTimeout = 10 * time.Second
+	browserRealmCapacity      = 64
+	browserPendingCapacity    = 4096
+	browserProofCapacity      = 4096
+	browserMessageBytes       = 4 << 20
+	browserPollInterval       = 100 * time.Millisecond
+)
 
 type frameworkComposition struct {
 	host      framehost.Host
@@ -74,7 +84,7 @@ func retainedPluginContent(ctx context.Context, stores *persistence.Bundle, dige
 	}
 	for _, snapshot := range installations {
 		record := snapshot.Installation.Snapshot()
-		if record.Selected.String() == digest.String() || record.Staged != nil && record.Staged.String() == digest.String() {
+		if record.Selected == digest || record.Staged != nil && *record.Staged == digest {
 			return true, nil
 		}
 	}
@@ -87,7 +97,7 @@ func retainedPluginContent(ctx context.Context, stores *persistence.Bundle, dige
 		return false, err
 	}
 	for _, dependency := range append(checkpoints, commands...) {
-		if dependency.Digest.String() == digest.String() {
+		if dependency.Digest == digest {
 			return true, nil
 		}
 	}
@@ -103,6 +113,59 @@ func retainedPluginContent(ctx context.Context, stores *persistence.Bundle, dige
 	return false, nil
 }
 
+// buildBrowser registers the browser bridge as a host driver and the plugin
+// browser that issues realms through it.
+func buildBrowser(host framehost.Host, stores *persistence.Bundle, packages *pluginpackage.Releases, registry *plugins.Registry) (*framebrowser.Bridge, *browseradapter.Service, error) {
+	source, err := browseradapter.NewSource(stores.Installations, packages)
+	if err != nil {
+		return nil, nil, err
+	}
+	bridge, err := framebrowser.NewBridge(framebrowser.BridgeConfig{Host: host, Store: stores.Frame, Source: source, PublicConfiguration: source.Configuration, MaxRealms: browserRealmCapacity, MaxPending: browserPendingCapacity, MaxMessageBytes: browserMessageBytes})
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := host.RegisterDriver(bridge); err != nil {
+		return nil, nil, err
+	}
+	browser, err := browseradapter.New(browseradapter.Config{Bridge: bridge, Registry: registry, ControlEndpoint: flamehttp.PluginControlPath, ProofCapacity: browserProofCapacity, PreparationCapacity: browserPendingCapacity, PollInterval: browserPollInterval})
+	if err != nil {
+		return nil, nil, err
+	}
+	return bridge, browser, nil
+}
+
+// startFrameworkHost starts the plugin host under owner and registers its
+// teardown with the tool resources.
+func startFrameworkHost(ctx context.Context, stores *persistence.Bundle, lifetime *runtimeLifetime, owner frame.Lifetime, permission *mcpadapter.CatalogPermission, profile *process.Driver) (framehost.Host, error) {
+	lifetime.frameworkCauses = owner.ObserveCloseCauses()
+	host, err := framehost.New(ctx, framehost.Config{ReadAcceptedBinding: permission.Read, Authority: stores.Frame, Lifetime: owner, Limits: framehost.Limits{MaxInstallations: maxInstallations}, Drivers: []framehost.Driver{profile}})
+	if err != nil {
+		return framehost.Host{}, err
+	}
+	lifetime.toolResources = append(lifetime.toolResources, terminalStep(func(ctx context.Context) error {
+		_, diagnostic := host.Close(ctx)
+		// An unconfirmed resource must keep the SQLite authority and content
+		// protected. Caller deadlines only stop their wait for this generation.
+		_, releaseErr := owner.BeginClose(frame.ErrClosed).WaitReleased(ctx)
+		return errors.Join(diagnostic, releaseErr)
+	}))
+	return host, nil
+}
+
+// buildMCPConnectors builds the installed-plugin connector and the external
+// connector that shares its catalog.
+func buildMCPConnectors(stores *persistence.Bundle, config mcpadapter.InstalledConfig) (*mcpadapter.Installed, *mcpadapter.ExternalConnector, error) {
+	installed, err := mcpadapter.NewInstalled(config)
+	if err != nil {
+		return nil, nil, err
+	}
+	external, err := mcpadapter.NewExternalConnector(installed, stores.Installations, stores.ProviderSelections, stores.MCPServers)
+	if err != nil {
+		return nil, nil, err
+	}
+	return installed, external, nil
+}
+
 func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime, packages *pluginpackage.Releases, callbacks *pluginmcp.Callbacks) (frameworkComposition, error) {
 	commands, err := plugins.NewCommands(cfg.stores.PluginCommands, cfg.stores.Admission)
 	if err != nil {
@@ -116,7 +179,7 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	if err != nil {
 		return frameworkComposition{}, err
 	}
-	profile, err := process.New(process.Config{Runner: newProcessRunner(cfg.processRunner), Store: cfg.stores.Frame, Source: source, CloseTimeout: 10 * time.Second, Protocol: source, MaxFrameBytes: sdk.DefaultMaxLineLength})
+	profile, err := process.New(process.Config{Runner: newProcessRunner(cfg.processRunner), Store: cfg.stores.Frame, Source: source, CloseTimeout: pluginProcessCloseTimeout, Protocol: source, MaxFrameBytes: sdk.DefaultMaxLineLength})
 	if err != nil {
 		return frameworkComposition{}, err
 	}
@@ -125,34 +188,15 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 		return frameworkComposition{}, err
 	}
 	owner := frame.NewLifetime(context.WithoutCancel(lifetime.context))
-	lifetime.frameworkCauses = owner.ObserveCloseCauses()
-	host, err := framehost.New(ctx, framehost.Config{ReadAcceptedBinding: permission.Read, Authority: cfg.stores.Frame, Lifetime: owner, Limits: framehost.Limits{MaxInstallations: 128}, Drivers: []framehost.Driver{profile}})
+	host, err := startFrameworkHost(ctx, cfg.stores, lifetime, owner, permission, profile)
 	if err != nil {
 		return frameworkComposition{}, err
 	}
-	lifetime.toolResources = append(lifetime.toolResources, terminalStep(func(ctx context.Context) error {
-		_, diagnostic := host.Close(ctx)
-		// An unconfirmed resource must keep the SQLite authority and content
-		// protected. Caller deadlines only stop their wait for this generation.
-		_, releaseErr := owner.BeginClose(frame.ErrClosed).WaitReleased(ctx)
-		return errors.Join(diagnostic, releaseErr)
-	}))
 	registry, err := plugins.NewRegistry(host, cfg.stores.Installations, packages, cfg.stores.ProviderSelections, cfg.stores.PluginCompositions)
 	if err != nil {
 		return frameworkComposition{}, err
 	}
-	browserSource, err := browseradapter.NewSource(cfg.stores.Installations, packages)
-	if err != nil {
-		return frameworkComposition{}, err
-	}
-	bridge, err := framebrowser.NewBridge(framebrowser.BridgeConfig{Host: host, Store: cfg.stores.Frame, Source: browserSource, PublicConfiguration: browserSource.Configuration, MaxRealms: 64, MaxPending: browserPendingCapacity, MaxMessageBytes: 4 << 20})
-	if err != nil {
-		return frameworkComposition{}, err
-	}
-	if err := host.RegisterDriver(bridge); err != nil {
-		return frameworkComposition{}, err
-	}
-	browser, err := browseradapter.New(browseradapter.Config{Bridge: bridge, Registry: registry, ControlEndpoint: flamehttp.PluginControlPath, ProofCapacity: 4096, PreparationCapacity: browserPendingCapacity, PollInterval: 100 * time.Millisecond})
+	bridge, browser, err := buildBrowser(host, cfg.stores, packages, registry)
 	if err != nil {
 		return frameworkComposition{}, err
 	}
@@ -168,14 +212,10 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 			return frameworkComposition{}, err
 		}
 	}
-	installed, err := mcpadapter.NewInstalled(mcpadapter.InstalledConfig{
+	installed, external, err := buildMCPConnectors(cfg.stores, mcpadapter.InstalledConfig{
 		Host: host, Source: source, Registry: registry, Lifetime: owner,
 		Permission: permission, Ready: recovery.ready,
 	})
-	if err != nil {
-		return frameworkComposition{}, err
-	}
-	external, err := mcpadapter.NewExternalConnector(installed, cfg.stores.Installations, cfg.stores.ProviderSelections, cfg.stores.MCPServers)
 	if err != nil {
 		return frameworkComposition{}, err
 	}

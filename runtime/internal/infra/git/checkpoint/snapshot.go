@@ -44,20 +44,9 @@ func (s *Store) Snapshot(ctx context.Context, sessionID, cwd, runID string) erro
 	if err != nil {
 		return err
 	}
-	if stageChangesErr := s.stageChanges(ctx, gitDir, cwd); stageChangesErr != nil {
-		return stageChangesErr
-	}
-	// Commit only when the staged tree actually differs from HEAD (or there is
-	// no HEAD yet — the baseline). A no-change run skips the commit and just
-	// re-points its tag at HEAD, so it adds a ref but no empty commit object.
-	shouldCommit, err := s.shouldCommit(ctx, gitDir, cwd)
-	if err != nil {
+	// A no-change run re-points its tag at HEAD, adding a ref but no commit.
+	if err := s.archiveWorkspace(ctx, gitDir, cwd, "run "+runID); err != nil {
 		return err
-	}
-	if shouldCommit {
-		if _, err := s.git(ctx, gitDir, cwd, "commit", "-q", "--allow-empty", "-m", "run "+runID); err != nil {
-			return err
-		}
 	}
 	if err := s.materializeAlternates(ctx, gitDir); err != nil {
 		return err
@@ -66,6 +55,21 @@ func (s *Store) Snapshot(ctx context.Context, sessionID, cwd, runID string) erro
 		return err
 	}
 	return nil
+}
+
+// archiveWorkspace stages the admitted workspace and commits it only when the
+// staged tree differs from HEAD or there is no HEAD yet; the baseline of an
+// empty workspace is an empty commit.
+func (s *Store) archiveWorkspace(ctx context.Context, gitDir, cwd, message string) error {
+	if err := s.stageChanges(ctx, gitDir, cwd); err != nil {
+		return err
+	}
+	shouldCommit, err := s.shouldCommit(ctx, gitDir, cwd)
+	if err != nil || !shouldCommit {
+		return err
+	}
+	_, err = s.git(ctx, gitDir, cwd, "commit", "-q", "--allow-empty", "-m", message)
+	return err
 }
 
 // shouldCommit reports whether the staged index warrants a new commit. The
@@ -184,32 +188,44 @@ func checkpointCandidates(ctx context.Context, cwd string, output []byte) ([]str
 			return nil, fmt.Errorf("checkpoint: git returned non-local path %q", p)
 		}
 		seen[p] = struct{}{}
-		// Missing paths leave the projection; only previously captured entries
-		// need index removal. Other inspection failures cannot imply absence.
-		info, err := os.Lstat(filepath.Join(cwd, p))
+		size, admitted, err := candidateSize(cwd, p)
 		if err != nil {
-			if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
-				continue
-			}
-			return nil, fmt.Errorf("checkpoint: inspect %q: %w", p, err)
+			return nil, err
 		}
-		if !info.Mode().IsRegular() && info.Mode()&os.ModeSymlink == 0 {
+		if !admitted {
 			continue
 		}
-		if info.Size() > maxCheckpointFileSize {
-			// Crossing the cap retires snapshot ownership without changing the file.
-			continue
-		}
-		if info.Size() > maxCheckpointBytes-admittedBytes {
+		if size > maxCheckpointBytes-admittedBytes {
 			return nil, fmt.Errorf(
 				"%w: selected file material exceeds %d bytes",
 				errSnapshotTooLarge, maxCheckpointBytes,
 			)
 		}
-		admittedBytes += info.Size()
+		admittedBytes += size
 		stage = append(stage, p)
 	}
 	return stage, nil
+}
+
+// candidateSize admits a present regular file or symlink within the file cap.
+// Missing paths leave the projection; only previously captured entries need
+// index removal. Other inspection failures cannot imply absence. Crossing the
+// cap retires snapshot ownership without changing the file.
+func candidateSize(cwd, path string) (int64, bool, error) {
+	info, err := os.Lstat(filepath.Join(cwd, path))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+			return 0, false, nil
+		}
+		return 0, false, fmt.Errorf("checkpoint: inspect %q: %w", path, err)
+	}
+	if !info.Mode().IsRegular() && info.Mode()&os.ModeSymlink == 0 {
+		return 0, false, nil
+	}
+	if info.Size() > maxCheckpointFileSize {
+		return 0, false, nil
+	}
+	return info.Size(), true, nil
 }
 
 func (s *Store) updateIndex(ctx context.Context, gitDir, cwd string, prefix, paths []string) error {

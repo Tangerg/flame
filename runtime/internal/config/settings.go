@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/runtime/internal/domain/secret"
 )
 
 type apiKeySource uint8
@@ -42,7 +43,7 @@ func (k APIKeyInput) Present() bool { return k.value != "" }
 // and %#v formatting of Settings. Credential material is only available via
 // the two source-specific accessors below.
 func (k APIKeyInput) Format(state fmt.State, _ rune) {
-	_, _ = state.Write([]byte("[REDACTED]"))
+	_, _ = state.Write([]byte(secret.Redacted))
 }
 
 // FileValue exposes a credential only to the durable configuration boundary.

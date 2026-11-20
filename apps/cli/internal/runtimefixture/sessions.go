@@ -322,14 +322,7 @@ func (r *Runtime) RollbackSession(ctx context.Context, in conversation.RollbackS
 	planAtRun := maps.Clone(state.planAtRun)
 	for _, runID := range droppedIDs {
 		droppedSet[runID] = struct{}{}
-		dropped := conversation.DroppedRun{RunID: runID}
-		for _, item := range state.items {
-			if item.runID == runID && item.block.Kind == conversation.BlockUser && strings.TrimSpace(item.block.Text) != "" {
-				dropped.Input = append(dropped.Input, conversation.InputContent{Kind: protocol.ContentBlockText, Text: item.block.Text})
-				break
-			}
-		}
-		result.Dropped = append(result.Dropped, dropped)
+		result.Dropped = append(result.Dropped, state.droppedRun(runID))
 		delete(planAtRun, runID)
 	}
 	runs := slices.Clone(state.runs[:keep+1])
@@ -366,6 +359,19 @@ func (r *Runtime) RollbackSession(ctx context.Context, in conversation.RollbackS
 	state.plan = plan
 	state.meta = meta
 	return result, nil
+}
+
+// droppedRun returns a rolled-back Run with the first user text it carried,
+// so a client can offer it back for editing.
+func (s *sessionState) droppedRun(runID string) conversation.DroppedRun {
+	dropped := conversation.DroppedRun{RunID: runID}
+	for _, item := range s.items {
+		if item.runID == runID && item.block.Kind == conversation.BlockUser && strings.TrimSpace(item.block.Text) != "" {
+			dropped.Input = append(dropped.Input, conversation.InputContent{Kind: protocol.ContentBlockText, Text: item.block.Text})
+			break
+		}
+	}
+	return dropped
 }
 
 type forkBoundary struct {

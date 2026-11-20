@@ -104,6 +104,54 @@ func (i *interactionSession) encodeInteractionHandoff(tree scoperun.Log) (*inter
 	return wire, nil
 }
 
+// decodeHandoffProgress reads each Process's progress in canonical order; every
+// Process is owned by a product member that contains it.
+func decodeHandoffProgress(values []interactionProgressWire) (map[scoperun.ProcessID]interactionProgressWire, map[scoperun.ProcessID]struct{}, error) {
+	progress := make(map[scoperun.ProcessID]interactionProgressWire, len(values))
+	processes := make(map[scoperun.ProcessID]struct{}, len(values))
+	for index, value := range values {
+		id, err := scoperun.ParseProcessID(value.ProcessID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if index > 0 && value.ProcessID <= values[index-1].ProcessID {
+			return nil, nil, errors.New("handoff progress is not canonical")
+		}
+		if !value.Status.Valid() {
+			return nil, nil, fmt.Errorf("invalid handoff status %q", value.Status)
+		}
+		owner, err := scoperun.ParseProcessID(value.OwnerID)
+		if err != nil || !owner.Contains(id) {
+			return nil, nil, errors.New("handoff Process has an invalid product owner")
+		}
+		progress[id], processes[id] = value, struct{}{}
+	}
+	return progress, processes, nil
+}
+
+// validateHandoffTree proves the Processes form one tree under root.
+func validateHandoffTree(root scoperun.ProcessID, progress map[scoperun.ProcessID]interactionProgressWire, processes map[scoperun.ProcessID]struct{}) error {
+	if _, found := processes[root]; !found {
+		return errors.New("handoff root is absent")
+	}
+	for id, value := range progress {
+		if id == root {
+			if value.ParentID != "" {
+				return errors.New("handoff root has a parent")
+			}
+			continue
+		}
+		parent, err := scoperun.ParseProcessID(value.ParentID)
+		if err != nil {
+			return err
+		}
+		if _, found := processes[parent]; !found {
+			return errors.New("handoff parent is absent")
+		}
+	}
+	return nil
+}
+
 func decodeInteractionHandoff(wire *interactionHandoffWire) (interactionHandoff, map[scoperun.ProcessID]struct{}, error) {
 	if wire == nil || len(wire.Processes) == 0 {
 		return interactionHandoff{}, nil, errors.New("handoff progress is required")
@@ -112,43 +160,14 @@ func decodeInteractionHandoff(wire *interactionHandoffWire) (interactionHandoff,
 	if err != nil {
 		return interactionHandoff{}, nil, err
 	}
-	handoff := interactionHandoff{rootID: root, progress: make(map[scoperun.ProcessID]interactionProgressWire), inputs: make(map[string]interactionInputTarget)}
-	processes := make(map[scoperun.ProcessID]struct{})
-	for index, value := range wire.Processes {
-		id, err := scoperun.ParseProcessID(value.ProcessID)
-		if err != nil {
-			return interactionHandoff{}, nil, err
-		}
-		if index > 0 && value.ProcessID <= wire.Processes[index-1].ProcessID {
-			return interactionHandoff{}, nil, errors.New("handoff progress is not canonical")
-		}
-		if !value.Status.Valid() {
-			return interactionHandoff{}, nil, fmt.Errorf("invalid handoff status %q", value.Status)
-		}
-		owner, err := scoperun.ParseProcessID(value.OwnerID)
-		if err != nil || !owner.Contains(id) {
-			return interactionHandoff{}, nil, errors.New("handoff Process has an invalid product owner")
-		}
-		handoff.progress[id], processes[id] = value, struct{}{}
+	progress, processes, err := decodeHandoffProgress(wire.Processes)
+	if err != nil {
+		return interactionHandoff{}, nil, err
 	}
-	if _, found := processes[root]; !found {
-		return interactionHandoff{}, nil, errors.New("handoff root is absent")
+	if err := validateHandoffTree(root, progress, processes); err != nil {
+		return interactionHandoff{}, nil, err
 	}
-	for id, progress := range handoff.progress {
-		if id == root {
-			if progress.ParentID != "" {
-				return interactionHandoff{}, nil, errors.New("handoff root has a parent")
-			}
-			continue
-		}
-		parent, err := scoperun.ParseProcessID(progress.ParentID)
-		if err != nil {
-			return interactionHandoff{}, nil, err
-		}
-		if _, found := processes[parent]; !found {
-			return interactionHandoff{}, nil, errors.New("handoff parent is absent")
-		}
-	}
+	handoff := interactionHandoff{rootID: root, progress: progress, inputs: make(map[string]interactionInputTarget)}
 	if err := handoff.decodeInputs(wire.Inputs); err != nil {
 		return interactionHandoff{}, nil, err
 	}

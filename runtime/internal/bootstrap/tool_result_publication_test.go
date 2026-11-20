@@ -10,9 +10,11 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/packages/local-runtime"
+	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -43,7 +45,7 @@ func TestOffloadedToolResultCommitsWithItsItem(t *testing.T) {
 				return err
 			}
 			if bodies > 0 {
-				items, err := stores.Transcript.ListStored(ctx, owner)
+				items, err := stores.Transcript.ListStored(ctx, testsupport.MustSessionID(owner))
 				if err != nil {
 					return err
 				}
@@ -114,7 +116,7 @@ func TestOffloadedToolResultCommitsWithItsItem(t *testing.T) {
 	if err != nil || finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted {
 		t.Fatalf("Run did not complete: %+v, %v", finished, err)
 	}
-	published, err := stores.ToolResults.List(ctx, session.ID)
+	published, err := stores.ToolResults.List(ctx, testsupport.MustSessionID(session.ID))
 	if err != nil || len(published) != 1 || !strings.Contains(published[0].Body, body) {
 		t.Fatalf("expected one complete, Item-owned body: count=%d, error=%v", len(published), err)
 	}
@@ -125,7 +127,7 @@ func TestOffloadedToolResultCommitsWithItsItem(t *testing.T) {
 	original := published[0]
 	assertOriginal := func(sessionID string) {
 		t.Helper()
-		results, err := stores.ToolResults.List(ctx, sessionID)
+		results, err := stores.ToolResults.List(ctx, testsupport.MustSessionID(sessionID))
 		if err != nil || len(results) != 1 {
 			t.Fatalf("session %s has %d bodies: %v", sessionID, len(results), err)
 		}
@@ -136,7 +138,7 @@ func TestOffloadedToolResultCommitsWithItsItem(t *testing.T) {
 	}
 	assertRemoved := func(sessionID string) {
 		t.Helper()
-		if _, found, err := stores.ToolResults.Fetch(ctx, sessionID, original.ID); found || err != nil {
+		if _, found, err := stores.ToolResults.Fetch(ctx, testsupport.MustSessionID(sessionID), original.ID); found || err != nil {
 			t.Fatalf("retired Item's body is still readable: found=%v, error=%v", found, err)
 		}
 	}

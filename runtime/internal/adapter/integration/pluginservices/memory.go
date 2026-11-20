@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -36,7 +38,7 @@ type Memory struct {
 }
 
 type conversationReader interface {
-	Read(context.Context, string) ([]chat.Message, error)
+	Read(context.Context, identity.SessionID) ([]chat.Message, error)
 }
 type MemoryConfig struct {
 	Installations plugins.Store
@@ -141,6 +143,12 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) (_ 
 	if len(values) > max(topK, 0) {
 		return nil, errors.New("memory: backend exceeded requested search bound")
 	}
+	return searchPromptItems(values, project)
+}
+
+// searchPromptItems admits only active items visible to this project: user
+// memory, or memory of exactly this project.
+func searchPromptItems(values []*memorycontract.SearchV2OutputDomainItemSnapshot, project string) ([]execution.MemoryPromptItem, error) {
 	items := make([]execution.MemoryPromptItem, len(values))
 	for index, item := range values {
 		if item == nil {
@@ -150,10 +158,11 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) (_ 
 		if item.Status != memorycontract.SearchV2OutputDomainItemSnapshotStatusActive || !visibleTarget {
 			return nil, errors.New("memory: backend returned search outside the active target")
 		}
-		items[index], err = memoryPromptItem(string(item.ID), item.Content, item.Pinned, string(item.UpdatedAt))
+		prompt, err := memoryPromptItem(string(item.ID), item.Content, item.Pinned, string(item.UpdatedAt))
 		if err != nil {
 			return nil, err
 		}
+		items[index] = prompt
 	}
 	return items, nil
 }
@@ -176,7 +185,7 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 		return err
 	}
 	request := memorycontract.MaintenanceInput{
-		SessionID: input.SessionID, Project: input.WorkspaceCWD, Compacted: compacted,
+		SessionID: input.SessionID.String(), Project: input.WorkspaceCWD, Compacted: compacted,
 		Conversation: &memorycontract.Conversation{MessageCount: count, Transcript: models.RenderTranscript(messages)},
 	}
 	_, err = invokeResolvedCommand[memorycontract.MaintenanceInput, memorycontract.MaintenanceResult](operation.Start(ctx, extension.Automatic, "plugins.automatic", uuid.NewString()), m.commands, memorycontract.MaintainV1Method, request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {

@@ -11,7 +11,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/keymap"
-	"github.com/Tangerg/oolong/ui/core/layout"
 	"github.com/Tangerg/oolong/ui/core/scene"
 	"github.com/Tangerg/oolong/ui/kit"
 )
@@ -224,7 +223,7 @@ func (m *mcpScreens) showMCPFormStep(flow *mcpFormFlow) {
 	title += fmt.Sprintf(" · %d/%d", step, total)
 	dialog = newPresentationDialog(m.stack, kit.DialogConfig{Theme: m.theme, Glyphs: m.glyphs,
 		Title: title, Body: formNavigation(body.Element(), leave),
-		Where: layout.Placement{Width: 92, Height: formDialogHeight(body.HeightForWidth(88), len(fields), 24)},
+		Where: formDialogPlacement(wideDialogWidth, len(fields), 24, body),
 	})
 	dialog.Controller().SetDescription(label)
 	flow.dialog = dialog
@@ -287,9 +286,9 @@ func (m *mcpScreens) submitMCPForm(flow *mcpFormFlow) {
 	}
 	var started bool
 	if flow.mode == mcpFormProbe {
-		started = m.tasks.application(mcpOperation, false, submission.work, apply)
+		started = m.tasks.application(mcpOperation, submission.work, apply)
 	} else {
-		started = m.tasks.admissionMutation(mcpOperation, false, submission.work, apply)
+		started = m.tasks.admissionMutation(mcpOperation, submission.work, apply)
 	}
 	if !started {
 		flow.feedback("another MCP operation is running")
@@ -332,7 +331,7 @@ func (m *mcpScreens) showMCPFormSubmission(flow *mcpFormFlow, message string) {
 	}
 	dialog = newPresentationDialog(m.stack, kit.DialogConfig{Theme: m.theme, Glyphs: m.glyphs,
 		Title: "MCP submission", Description: message, Body: formNavigation(body.Element(), leave),
-		Where: layout.Placement{Width: 92, Height: formDialogHeight(body.HeightForWidth(88), 0, 24)},
+		Where: formDialogPlacement(wideDialogWidth, 0, 24, body),
 	})
 	flow.dialog = dialog
 	flow.view = body
@@ -347,126 +346,119 @@ func (m *mcpScreens) closeMCPForm(flow *mcpFormFlow) {
 }
 
 func (m *mcpScreens) mcpFormFields(flow *mcpFormFlow) ([]base.Field, []*base.Text, func()) {
-	draft := &flow.draft
-	var capture []func()
-	fields := make([]base.Field, 0, 5)
-	secretFields := make([]*base.Text, 0, 3)
-	textField := func(label, placeholder string, value *string, check func(string) error) *base.Text {
-		field := base.NewText(base.TextConfig{Label: label, Placeholder: placeholder, Initial: *value, Check: check})
-		field.SetClipboard(m.clipboard)
-		capture = append(capture, func() { *value = field.Text() })
-		fields = append(fields, field)
-		return field
-	}
+	set := &mcpFieldSet{clipboard: m.clipboard}
 	switch flow.step {
 	case mcpFormGeneral:
-		if flow.mode != mcpFormUpdate {
-			textField("Server name", "docs", &draft.name, requiredText)
-		}
-		enabled := base.NewSelect(base.SelectConfig[bool]{Same: base.Equal[bool], Label: "Enabled", Initial: draft.enabled, Rows: 2})
-		enabled.SetOptions([]base.Option[bool]{{Label: "Enabled", Value: true}, {Label: "Disabled", Value: false}})
-		enabled.Choose(draft.enabled)
-		capture = append(capture, func() {
-			if selected, ok := enabled.Chosen(); ok {
-				draft.enabled = selected.Value
-			}
-		})
-		fields = append(fields, enabled)
-		textField("Description", "Optional description", &draft.description, nil)
-		if flow.mode == mcpFormUpdate {
-			connection := base.NewSelect(base.SelectConfig[bool]{Same: base.Equal[bool], Label: "Connection change", Initial: draft.replaceConnection, Rows: 2})
-			connection.SetOptions([]base.Option[bool]{{Label: "Keep current connection", Value: false}, {Label: "Replace connection", Value: true}})
-			connection.Choose(draft.replaceConnection)
-			capture = append(capture, func() {
-				if selected, ok := connection.Chosen(); ok {
-					draft.replaceConnection = selected.Value
-				}
-			})
-			fields = append(fields, connection)
-		}
-		transportLabel := "Transport"
-		if flow.mode == mcpFormUpdate {
-			transportLabel = "Replacement transport"
-		}
-		transport := base.NewSelect(base.SelectConfig[protocol.MCPTransport]{Same: base.Equal[protocol.MCPTransport], Label: transportLabel, Initial: draft.transport, Rows: 2})
-		transport.SetOptions([]base.Option[protocol.MCPTransport]{{Label: "Streamable HTTP", Value: protocol.MCPTransportStreamableHTTP}, {Label: "stdio process", Value: protocol.MCPTransportStdio}})
-		transport.Choose(draft.transport)
-		capture = append(capture, func() {
-			if selected, ok := transport.Chosen(); ok {
-				draft.transport = selected.Value
-			}
-		})
-		fields = append(fields, transport)
+		set.generalFields(flow)
 	case mcpFormHTTP:
-		textField("HTTP URL", "https://mcp.example/tools", &draft.url, requiredText)
-		secretOptions := mcpSecretOptions(flow.mode)
-		authorizationMode := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "Authorization change", Initial: draft.authorizationMode, Rows: len(secretOptions)})
-		authorizationMode.SetOptions(secretOptions)
-		authorizationMode.Choose(draft.authorizationMode)
-		capture = append(capture, func() {
-			if selected, ok := authorizationMode.Chosen(); ok {
-				draft.authorizationMode = selected.Value
-			}
-		})
-		fields = append(fields, authorizationMode)
-		authorization := textField("Authorization value", "Bearer …", &draft.authorization, func(value string) error {
-			if selected, ok := authorizationMode.Chosen(); ok && selected.Value.SetsValue() {
-				return requiredText(value)
-			}
-			return nil
-		})
-		authorization.SetMask("•")
-		headersMode := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "Headers change", Initial: draft.headersMode, Rows: len(secretOptions)})
-		headersMode.SetOptions(secretOptions)
-		headersMode.Choose(draft.headersMode)
-		capture = append(capture, func() {
-			if selected, ok := headersMode.Chosen(); ok {
-				draft.headersMode = selected.Value
-			}
-		})
-		fields = append(fields, headersMode)
-		headers := textField("Headers JSON", `{"X-Key":"secret"}`, &draft.headers, func(value string) error {
-			_, err := mcpHeadersChange(func() formChange { selected, _ := headersMode.Chosen(); return selected.Value }(), value)
-			return err
-		})
-		headers.SetMask("•")
-		secretFields = append(secretFields, authorization, headers)
+		set.httpFields(flow)
 	case mcpFormStdio:
-		textField("stdio command", "mcp-server", &draft.command, func(value string) error {
-			return (mcp.ConnectionInput{Transport: protocol.MCPTransportStdio, Command: value}).Validate()
-		})
-		textField("stdio args JSON", `["--stdio"]`, &draft.arguments, func(value string) error {
-			_, err := parseMCPArguments(value)
-			return err
-		})
-		secretOptions := mcpSecretOptions(flow.mode)
-		environmentMode := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "Environment change", Initial: draft.environmentMode, Rows: len(secretOptions)})
-		environmentMode.SetOptions(secretOptions)
-		environmentMode.Choose(draft.environmentMode)
-		capture = append(capture, func() {
-			if selected, ok := environmentMode.Chosen(); ok {
-				draft.environmentMode = selected.Value
-			}
-		})
-		fields = append(fields, environmentMode)
-		environment := textField("Environment JSON", `{"TOKEN":"secret"}`, &draft.environment, func(value string) error {
-			_, err := mcpEnvironmentChange(func() formChange { selected, _ := environmentMode.Chosen(); return selected.Value }(), value)
-			return err
-		})
-		environment.SetMask("•")
-		secretFields = append(secretFields, environment)
-		textField("Working directory", "Optional absolute path", &draft.directory, nil)
+		set.stdioFields(flow)
 	case mcpFormPolicy:
-		textField("Handshake timeout seconds", "Blank leaves the handshake unbounded", &draft.timeoutSeconds, func(value string) error {
+		set.text("Handshake timeout seconds", "Blank leaves the handshake unbounded", &flow.draft.timeoutSeconds, func(value string) error {
 			_, err := parseMCPTimeout(value)
 			return err
 		})
 	}
-	return fields, secretFields, func() {
-		for _, collect := range capture {
-			collect()
-		}
+	return set.fields, set.secrets, set.collect
+}
+
+// mcpFieldSet builds one step's fields; collect copies every field back into
+// the draft it was built from.
+type mcpFieldSet struct {
+	clipboard base.Clipboard
+	fields    []base.Field
+	secrets   []*base.Text
+	capture   []func()
+}
+
+func (s *mcpFieldSet) collect() {
+	for _, capture := range s.capture {
+		capture()
 	}
+}
+
+func (s *mcpFieldSet) text(label, placeholder string, value *string, check func(string) error) *base.Text {
+	field := base.NewText(base.TextConfig{Label: label, Placeholder: placeholder, Initial: *value, Check: check})
+	field.SetClipboard(s.clipboard)
+	s.capture = append(s.capture, func() { *value = field.Text() })
+	s.fields = append(s.fields, field)
+	return field
+}
+
+func (s *mcpFieldSet) secret(label, placeholder string, value *string, check func(string) error) {
+	field := s.text(label, placeholder, value, check)
+	field.SetMask("•")
+	s.secrets = append(s.secrets, field)
+}
+
+func choiceField[T comparable](s *mcpFieldSet, label string, options []base.Option[T], value *T) *base.Select[T] {
+	choice := base.NewSelect(base.SelectConfig[T]{Same: base.Equal[T], Label: label, Initial: *value, Rows: len(options)})
+	choice.SetOptions(options)
+	choice.Choose(*value)
+	s.capture = append(s.capture, func() {
+		if selected, ok := choice.Chosen(); ok {
+			*value = selected.Value
+		}
+	})
+	s.fields = append(s.fields, choice)
+	return choice
+}
+
+func chosenChange(choice *base.Select[formChange]) formChange {
+	selected, _ := choice.Chosen()
+	return selected.Value
+}
+
+func (s *mcpFieldSet) generalFields(flow *mcpFormFlow) {
+	draft := &flow.draft
+	updating := flow.mode == mcpFormUpdate
+	if !updating {
+		s.text("Server name", "docs", &draft.name, requiredText)
+	}
+	choiceField(s, "Enabled", []base.Option[bool]{{Label: "Enabled", Value: true}, {Label: "Disabled", Value: false}}, &draft.enabled)
+	s.text("Description", "Optional description", &draft.description, nil)
+	transportLabel := "Transport"
+	if updating {
+		choiceField(s, "Connection change", []base.Option[bool]{{Label: "Keep current connection", Value: false}, {Label: "Replace connection", Value: true}}, &draft.replaceConnection)
+		transportLabel = "Replacement transport"
+	}
+	choiceField(s, transportLabel, []base.Option[protocol.MCPTransport]{{Label: "Streamable HTTP", Value: protocol.MCPTransportStreamableHTTP}, {Label: "stdio process", Value: protocol.MCPTransportStdio}}, &draft.transport)
+}
+
+func (s *mcpFieldSet) httpFields(flow *mcpFormFlow) {
+	draft := &flow.draft
+	s.text("HTTP URL", "https://mcp.example/tools", &draft.url, requiredText)
+	secretOptions := mcpSecretOptions(flow.mode)
+	authorizationMode := choiceField(s, "Authorization change", secretOptions, &draft.authorizationMode)
+	s.secret("Authorization value", "Bearer …", &draft.authorization, func(value string) error {
+		if chosenChange(authorizationMode).SetsValue() {
+			return requiredText(value)
+		}
+		return nil
+	})
+	headersMode := choiceField(s, "Headers change", secretOptions, &draft.headersMode)
+	s.secret("Headers JSON", `{"X-Key":"secret"}`, &draft.headers, func(value string) error {
+		_, err := mcpHeadersChange(chosenChange(headersMode), value)
+		return err
+	})
+}
+
+func (s *mcpFieldSet) stdioFields(flow *mcpFormFlow) {
+	draft := &flow.draft
+	s.text("stdio command", "mcp-server", &draft.command, func(value string) error {
+		return (mcp.ConnectionInput{Transport: protocol.MCPTransportStdio, Command: value}).Validate()
+	})
+	s.text("stdio args JSON", `["--stdio"]`, &draft.arguments, func(value string) error {
+		_, err := parseMCPArguments(value)
+		return err
+	})
+	environmentMode := choiceField(s, "Environment change", mcpSecretOptions(flow.mode), &draft.environmentMode)
+	s.secret("Environment JSON", `{"TOKEN":"secret"}`, &draft.environment, func(value string) error {
+		_, err := mcpEnvironmentChange(chosenChange(environmentMode), value)
+		return err
+	})
+	s.text("Working directory", "Optional absolute path", &draft.directory, nil)
 }
 
 func mcpSecretOptions(mode mcpFormMode) []base.Option[formChange] {

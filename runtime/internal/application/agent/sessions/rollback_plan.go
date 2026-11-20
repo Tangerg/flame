@@ -16,9 +16,9 @@ import (
 // one Domain-resolved Run boundary. A parked Run among the dropped identities
 // needs no terminalization: dropping its record also releases the admission slot.
 type RollbackPlan struct {
-	sessionID         string
+	sessionID         identity.SessionID
 	keepMessageMark   rundomain.MessageMark
-	dropRunIDs        []string
+	dropRunIDs        []identity.RunID
 	checkpointRootIDs []runs.MemberID
 	planReplacement   *plan.Replacement
 }
@@ -27,18 +27,18 @@ type RollbackPlan struct {
 // roots, and its already-decided Plan replacement to the exact Session owner.
 // It is the plan's only validation: every field is parsed or proven here once.
 func NewRollbackPlan(
-	sessionID string,
+	sessionID identity.SessionID,
 	boundary transcript.Boundary,
 	checkpointRootIDs []string,
 	planReplacement *plan.Replacement,
 ) (RollbackPlan, error) {
-	if err := identity.ValidateSession(sessionID); err != nil {
+	if err := sessionID.Validate(); err != nil {
 		return RollbackPlan{}, fmt.Errorf("sessions: rollback plan session: %w", err)
 	}
 	if count, known := boundary.KeepMessageMark.Count(); known && count < 0 {
 		return RollbackPlan{}, fmt.Errorf("sessions: rollback plan message mark %s is invalid", boundary.KeepMessageMark)
 	}
-	dropRunIDs, err := parseRollbackRunIDs(boundary.DroppedRunIDs())
+	dropRunIDs, err := validateRollbackRunIDs(boundary.DroppedRunIDs())
 	if err != nil {
 		return RollbackPlan{}, err
 	}
@@ -62,23 +62,23 @@ func NewRollbackPlan(
 	}, nil
 }
 
-func parseRollbackRunIDs(values []string) ([]string, error) {
+// validateRollbackRunIDs checks the boundary drops at least one Run and names
+// each once.
+func validateRollbackRunIDs(values []identity.RunID) ([]identity.RunID, error) {
 	if len(values) == 0 {
 		return nil, errors.New("sessions: rollback plan has no dropped runs")
 	}
-	ids := make([]string, len(values))
-	seen := make(map[string]struct{}, len(values))
+	seen := make(map[identity.RunID]struct{}, len(values))
 	for index, value := range values {
-		if err := identity.ValidateRun(value); err != nil {
+		if err := value.Validate(); err != nil {
 			return nil, fmt.Errorf("sessions: rollback plan dropped run[%d]: %w", index, err)
 		}
 		if _, duplicate := seen[value]; duplicate {
 			return nil, fmt.Errorf("sessions: rollback plan repeats dropped run %q", value)
 		}
 		seen[value] = struct{}{}
-		ids[index] = value
 	}
-	return ids, nil
+	return slices.Clone(values), nil
 }
 
 func parseRollbackCheckpointRoots(values []string) ([]runs.MemberID, error) {
@@ -99,7 +99,7 @@ func parseRollbackCheckpointRoots(values []string) ([]runs.MemberID, error) {
 }
 
 // SessionID returns the exact durable owner.
-func (r RollbackPlan) SessionID() string { return r.sessionID }
+func (r RollbackPlan) SessionID() identity.SessionID { return r.sessionID }
 
 // TruncationMark returns the exact retained message count when the boundary has
 // one. Unknown pre-watermark boundaries return false and leave history intact.
@@ -108,7 +108,7 @@ func (r RollbackPlan) TruncationMark() (int, bool) {
 }
 
 // DropRunIDs returns the isolated canonical Run deletion order.
-func (r RollbackPlan) DropRunIDs() []string { return slices.Clone(r.dropRunIDs) }
+func (r RollbackPlan) DropRunIDs() []identity.RunID { return slices.Clone(r.dropRunIDs) }
 
 // CheckpointRootIDs returns the isolated parked-executor roots to remove.
 func (r RollbackPlan) CheckpointRootIDs() []string {

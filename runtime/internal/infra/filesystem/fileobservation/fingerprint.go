@@ -91,17 +91,12 @@ func (e *fingerprintEncoder) content(reader io.Reader, expectedSize int64) error
 	return nil
 }
 
-func verifyObservedFileVersion(root *os.Root, name string, file *os.File, before os.FileInfo) error {
+func verifyObservedFileVersion(target observedName, file *os.File, before os.FileInfo) error {
 	after, err := file.Stat()
 	if err != nil {
 		return fmt.Errorf("inspect opened file after reading: %w", err)
 	}
-	var current os.FileInfo
-	if root != nil {
-		current, err = root.Stat(name)
-	} else {
-		current, err = os.Stat(name)
-	}
+	current, err := target.stat()
 	if err != nil {
 		return fmt.Errorf("inspect current file after reading: %w", err)
 	}

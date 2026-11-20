@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
@@ -19,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -38,7 +41,7 @@ type retirementFixture struct {
 }
 
 func (f *retirementFixture) deleteSession(ctx context.Context, id string) error {
-	return f.coordinator.DeleteSession(ctx, id, func(ctx context.Context, write func(context.Context) (struct{}, error)) error {
+	return f.coordinator.DeleteSession(ctx, testsupport.MustSessionID(id), func(ctx context.Context, write func(context.Context) (struct{}, error)) error {
 		_, err := write(ctx)
 		return err
 	})
@@ -61,11 +64,11 @@ type retirementResources struct {
 	afterDrop, afterDiscard func()
 }
 
-func (r *retirementResources) DropSession(ctx context.Context, id string) error {
+func (r *retirementResources) DropSession(ctx context.Context, id identity.SessionID) error {
 	if r.dropErr != nil {
 		return r.dropErr
 	}
-	if err := r.Checkpoints.DropSession(ctx, id); err != nil {
+	if err := r.Checkpoints.DropSession(ctx, testsupport.MustSessionID(id.String())); err != nil {
 		return err
 	}
 	if r.afterDrop != nil {
@@ -73,11 +76,11 @@ func (r *retirementResources) DropSession(ctx context.Context, id string) error 
 	}
 	return nil
 }
-func (r *retirementResources) Discard(id string) error {
+func (r *retirementResources) Discard(id identity.SessionID) error {
 	if r.discardErr != nil {
 		return r.discardErr
 	}
-	if err := r.isolator.Discard(id); err != nil {
+	if err := r.isolator.Discard(testsupport.MustSessionID(id.String())); err != nil {
 		return err
 	}
 	if r.afterDiscard != nil {
@@ -115,10 +118,10 @@ func (s retirementWrites) ApplyDelete(ctx context.Context, value sessions.Delete
 
 type retirementTransient struct{}
 
-func (retirementTransient) QuiesceSession(string) error                        { return nil }
+func (retirementTransient) QuiesceSession(identity.SessionID) error            { return nil }
 func (retirementTransient) QuiesceWorkspace(string) error                      { return nil }
-func (retirementTransient) ForgetSession(string)                               {}
-func (retirementTransient) ForgetSessionContext(string)                        {}
+func (retirementTransient) ForgetSession(identity.SessionID)                   {}
+func (retirementTransient) ForgetSessionContext(identity.SessionID)            {}
 func (retirementTransient) ForgetWorkspace(string)                             {}
 func (retirementTransient) Release(context.Context, runsapp.ExecutorRef) error { return nil }
 
@@ -159,7 +162,7 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 	}
 	retirer, err := sessions.NewResourceRetirer(ledger,
 		sessions.Cleanup{Resource: "checkpoints", Retire: resources.DropSession},
-		sessions.Cleanup{Resource: "sandbox", Retire: func(_ context.Context, id string) error { return resources.Discard(id) }},
+		sessions.Cleanup{Resource: "sandbox", Retire: func(_ context.Context, id identity.SessionID) error { return resources.Discard(id) }},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -181,7 +184,7 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 		Checkpoints: resources, Sandbox: resources, Goals: goals.NewSessionMutations(),
 		Mutations: db.WorkspaceMutations, Retirer: retirer, Admissions: gate,
 		NewID: newSessionID, NewRunID: newRunID, NewItemID: newItemID,
-		Invalidations: func(invalidation.Notice) {},
+		Invalidations: func(invalidation.Notice) {}, RollbackReceipts: delivery.EncodeWorkspaceRollbackReceipt,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -199,7 +202,7 @@ func (f *retirementFixture) seed(t *testing.T) sessions.PortableSnapshot {
 	}
 	original := bootstrapSession("ses_retirement", "original", f.workspace)
 	insertBootstrapSession(t, f.stores.sessions, original)
-	if err := f.stores.runs.Restore(t.Context(), restoredRun(original.ID(), "run_boundary", time.Now().UTC())); err != nil {
+	if err := f.stores.runs.Restore(t.Context(), restoredRun(original.ID().String(), "run_boundary", time.Now().UTC())); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.stores.history.Seed(t.Context(), original.ID(), []chat.Message{chat.NewUserMessage(chat.NewTextPart("original history"))}); err != nil {
@@ -208,7 +211,7 @@ func (f *retirementFixture) seed(t *testing.T) sessions.PortableSnapshot {
 	if err := os.WriteFile(filepath.Join(f.workspace, "material.txt"), []byte("boundary\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.resources.Snapshot(t.Context(), original.ID(), f.workspace, "run_boundary"); err != nil {
+	if err := f.resources.Snapshot(t.Context(), original.ID(), f.workspace, testsupport.MustRunID("run_boundary")); err != nil {
 		t.Fatal(err)
 	}
 	snapshot, err := f.stores.ReadSnapshot(t.Context(), original.ID())
@@ -225,7 +228,7 @@ func (f *retirementFixture) seed(t *testing.T) sessions.PortableSnapshot {
 
 func (f *retirementFixture) assertOriginalBoundary(t *testing.T) {
 	t.Helper()
-	current, err := f.stores.sessions.Get(t.Context(), "ses_retirement")
+	current, err := f.stores.sessions.Get(t.Context(), testsupport.MustSessionID("ses_retirement"))
 	if err != nil || current.Title() != "original" {
 		t.Fatalf("original Session = %+v, %v", current.Snapshot(), err)
 	}
@@ -236,7 +239,7 @@ func (f *retirementFixture) assertOriginalBoundary(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(f.workspace, "material.txt"), []byte("changed\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := f.resources.Restore(t.Context(), current.ID(), f.workspace, "run_boundary"); err != nil {
+	if err := f.resources.Restore(t.Context(), current.ID(), f.workspace, testsupport.MustRunID("run_boundary")); err != nil {
 		t.Fatalf("original file boundary lost: %v", err)
 	}
 	if body, err := os.ReadFile(filepath.Join(f.workspace, "material.txt")); err != nil || string(body) != "boundary\n" {
@@ -278,7 +281,7 @@ func TestSessionWriteRefusalPreservesRealFileCheckpoints(t *testing.T) {
 				if err := f.stores.runs.Restore(t.Context(), restoredRun("ses_other", "run_conflict", time.Now().UTC())); err != nil {
 					t.Fatal(err)
 				}
-				portable.Runs[0].ID = "run_conflict"
+				portable.Runs[0].ID = testsupport.MustRunID("run_conflict")
 				_, err = f.restoreSession(t.Context(), portable)
 				if !errors.Is(err, run.ErrIdentityConflict) {
 					t.Fatalf("restore conflict = %v", err)
@@ -308,7 +311,7 @@ func TestCommittedResourceCleanupFailureFencesReplacement(t *testing.T) {
 					if err := f.deleteSession(t.Context(), "ses_retirement"); err != nil {
 						t.Fatalf("committed delete reported unexecuted: %v", err)
 					}
-					if _, err := f.stores.sessions.Get(t.Context(), "ses_retirement"); !errors.Is(err, session.ErrNotFound) {
+					if _, err := f.stores.sessions.Get(t.Context(), testsupport.MustSessionID("ses_retirement")); !errors.Is(err, session.ErrNotFound) {
 						t.Fatalf("deleted Session = %v", err)
 					}
 				} else {
@@ -320,31 +323,31 @@ func TestCommittedResourceCleanupFailureFencesReplacement(t *testing.T) {
 						t.Fatalf("restore result = %+v", view)
 					}
 				}
-				pending, found, err := f.stores.retirements.Lookup(t.Context(), "ses_retirement")
+				pending, found, err := f.stores.retirements.Lookup(t.Context(), testsupport.MustSessionID("ses_retirement"))
 				if err != nil || !found {
 					t.Fatalf("committed responsibility = %v, %v", found, err)
 				}
-				wrong, err := sessions.NewDeletePlan("ses_retirement")
+				wrong, err := sessions.NewDeletePlan(testsupport.MustSessionID("ses_retirement"))
 				if err != nil {
 					t.Fatal(err)
 				}
 				if err := f.stores.retirements.Complete(t.Context(), wrong.Retirement()); err != nil {
 					t.Fatal(err)
 				}
-				if actual, found, err := f.stores.retirements.Lookup(t.Context(), "ses_retirement"); err != nil || !found || actual != pending {
+				if actual, found, err := f.stores.retirements.Lookup(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || !found || actual != pending {
 					t.Fatalf("wrong generation cleared responsibility: %+v, %v, %v", actual, found, err)
 				}
-				if release, ok, err := f.gate.AcquireSession(t.Context(), "ses_retirement"); err != nil || ok {
+				if release, ok, err := f.gate.AcquireSession(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || ok {
 					if release != nil {
 						release()
 					}
 					t.Fatalf("Session crossed pending cleanup: %t, %v", ok, err)
 				}
-				if admission, ok, err := f.gate.AcquireRun(t.Context(), "ses_retirement", f.workspace); err != nil || ok {
+				if admission, ok, err := f.gate.AcquireRun(t.Context(), testsupport.MustSessionID("ses_retirement"), f.workspace); err != nil || ok {
 					admission.Release()
 					t.Fatalf("Run crossed pending cleanup: %t, %v", ok, err)
 				}
-				if err := f.stores.runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{SessionID: "ses_retirement", RunID: "run_new", SegmentID: "seg_new", CreatedAt: time.Now().UTC()})); !errors.Is(err, run.ErrSessionBusy) {
+				if err := f.stores.runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{SessionID: testsupport.MustSessionID("ses_retirement"), RunID: testsupport.MustRunID("run_new"), SegmentID: testsupport.MustSegmentID("seg_new"), CreatedAt: time.Now().UTC()})); !errors.Is(err, run.ErrSessionBusy) {
 					t.Fatalf("durable admission crossed pending cleanup: %v", err)
 				}
 				if _, err := f.restoreSession(t.Context(), portable); !errors.Is(err, run.ErrSessionBusy) {
@@ -353,21 +356,21 @@ func TestCommittedResourceCleanupFailureFencesReplacement(t *testing.T) {
 				if err := f.retirer.RecoverPending(t.Context(), f.gate); err != nil {
 					t.Fatalf("one Session's cleanup failure stopped recovery: %v", err)
 				}
-				if _, found, err := f.stores.retirements.Lookup(t.Context(), "ses_retirement"); err != nil || !found {
+				if _, found, err := f.stores.retirements.Lookup(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || !found {
 					t.Fatalf("failed cleanup released its fence: %v, %v", found, err)
 				}
 				// The fault clears while the process keeps running: the next
 				// exclusive admission settles the fence without a restart.
 				f.resources.dropErr, f.resources.discardErr = nil, nil
-				if release, ok, err := f.gate.AcquireSession(t.Context(), "ses_retirement"); err != nil || !ok {
+				if release, ok, err := f.gate.AcquireSession(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || !ok {
 					t.Fatalf("recovered cleanup still fences the Session: %t, %v", ok, err)
 				} else {
 					release()
 				}
-				if _, found, err := f.stores.retirements.Lookup(t.Context(), "ses_retirement"); err != nil || found {
+				if _, found, err := f.stores.retirements.Lookup(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || found {
 					t.Fatalf("completed responsibility = %v, %v", found, err)
 				}
-				if err := f.resources.Restore(t.Context(), "ses_retirement", f.workspace, "run_boundary"); !errors.Is(err, sessions.ErrCheckpointUnavailable) {
+				if err := f.resources.Restore(t.Context(), testsupport.MustSessionID("ses_retirement"), f.workspace, testsupport.MustRunID("run_boundary")); !errors.Is(err, sessions.ErrCheckpointUnavailable) {
 					t.Fatalf("old checkpoint survived retirement: %v", err)
 				}
 			})
@@ -379,7 +382,7 @@ func TestCommittedResourceRetirementCrashRecovery(t *testing.T) {
 	if cut := os.Getenv("FLAME_RETIREMENT_CRASH_CUT"); cut != "" {
 		f := openRetirementFixture(t, os.Getenv("FLAME_RETIREMENT_CRASH_ROOT"), cut)
 		f.seed(t)
-		scratch, err := f.resources.isolator.Workspace(t.Context(), "ses_retirement", f.workspace)
+		scratch, err := f.resources.isolator.Workspace(t.Context(), testsupport.MustSessionID("ses_retirement"), f.workspace)
 		if errors.Is(err, sandbox.ErrUnavailable) {
 			os.Exit(78)
 		}
@@ -416,10 +419,10 @@ func TestCommittedResourceRetirementCrashRecovery(t *testing.T) {
 					t.Error(err)
 				}
 			})
-			if _, err := stores.Sessions.Get(t.Context(), "ses_retirement"); !errors.Is(err, session.ErrNotFound) {
+			if _, err := stores.Sessions.Get(t.Context(), testsupport.MustSessionID("ses_retirement")); !errors.Is(err, session.ErrNotFound) {
 				t.Fatalf("history was not committed before crash: %v", err)
 			}
-			if _, pending, err := stores.ResourceRetirements.Lookup(t.Context(), "ses_retirement"); err != nil || !pending {
+			if _, pending, err := stores.ResourceRetirements.Lookup(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || !pending {
 				t.Fatalf("crash lost responsibility: %t, %v", pending, err)
 			}
 			host, _ := buildProtocolRuntime(t, protocolRuntimeConfig(t, stores, newReplyStub("recovered")), filepath.Join(root, "project"))
@@ -428,11 +431,11 @@ func TestCommittedResourceRetirementCrashRecovery(t *testing.T) {
 					t.Error(err)
 				}
 			})
-			if _, pending, err := stores.ResourceRetirements.Lookup(t.Context(), "ses_retirement"); err != nil || pending {
+			if _, pending, err := stores.ResourceRetirements.Lookup(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || pending {
 				t.Fatalf("startup retained responsibility: %t, %v", pending, err)
 			}
 			checkpoints := workspaceadapter.NewCheckpoints(filepath.Join(stores.DataDirectory, "checkpoints"))
-			if err := checkpoints.Restore(t.Context(), "ses_retirement", filepath.Join(root, "project"), "run_boundary"); !errors.Is(err, sessions.ErrCheckpointUnavailable) {
+			if err := checkpoints.Restore(t.Context(), testsupport.MustSessionID("ses_retirement"), filepath.Join(root, "project"), testsupport.MustRunID("run_boundary")); !errors.Is(err, sessions.ErrCheckpointUnavailable) {
 				t.Fatalf("old checkpoint survived startup: %v", err)
 			}
 			scratch, err := os.ReadFile(filepath.Join(root, "scratch-path"))

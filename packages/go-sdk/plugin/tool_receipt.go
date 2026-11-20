@@ -31,24 +31,29 @@ func ToolReceiptQuery() (*pluginmcp.Method[pluginmcp.ReceiptRequest, ToolReceipt
 	return pluginmcp.NewMethod[pluginmcp.ReceiptRequest, ToolReceipt](frame.MethodConfig{Name: ToolReceiptMethod, Kind: frame.Query, Target: extension.ScopeInstallation, Description: ToolReceiptMethod})
 }
 
-func NewToolReceipt(output tool.Output, failed bool) (ToolReceipt, error) {
+// NewToolReceipt projects the output the original call returned.
+func NewToolReceipt(output tool.Output) (ToolReceipt, error) {
 	if err := output.Validate(); err != nil {
 		return ToolReceipt{}, err
 	}
-	return ToolReceipt{Result: &ToolResult{Output: output.Clone(), IsError: failed}}, nil
+	return ToolReceipt{Result: &ToolResult{Output: output.Clone()}}, nil
 }
 
-// ToolReceiptFrom projects one decoded stored reply. A reply failure that
-// classify turns into a Tool failure becomes a failed receipt; any other
-// failure stays an error, and a result becomes its JSON output.
-func ToolReceiptFrom[R any](result R, err error, classify func(error) error) (ToolReceipt, error) {
-	if err != nil {
-		failure, known := tool.ClassifyFailure(classify(err))
-		if !known {
-			return ToolReceipt{}, err
-		}
-		return NewToolReceipt(failure.Output(), true)
+// NewFailedToolReceipt projects the Tool failure the original call returned.
+func NewFailedToolReceipt(failure *tool.Failure) (ToolReceipt, error) {
+	if failure == nil {
+		return ToolReceipt{}, errors.New("plugin: Tool failure is required")
 	}
+	receipt, err := NewToolReceipt(failure.Output())
+	if err != nil {
+		return ToolReceipt{}, err
+	}
+	receipt.Result.IsError = true
+	return receipt, nil
+}
+
+// NewJSONToolReceipt projects a result through the Tool's JSON output codec.
+func NewJSONToolReceipt[R any](result R) (ToolReceipt, error) {
 	encoded, err := json.Marshal(result)
 	if err != nil {
 		return ToolReceipt{}, err
@@ -57,7 +62,21 @@ func ToolReceiptFrom[R any](result R, err error, classify func(error) error) (To
 	if err != nil {
 		return ToolReceipt{}, err
 	}
-	return NewToolReceipt(output, false)
+	return NewToolReceipt(output)
+}
+
+// ToolReceiptFrom projects one decoded stored reply. A reply failure that
+// classify turns into a Tool failure becomes a failed receipt; any other
+// failure stays an error, and a result becomes its JSON output.
+func ToolReceiptFrom[R any](result R, err error, classify func(error) error) (ToolReceipt, error) {
+	if err == nil {
+		return NewJSONToolReceipt(result)
+	}
+	failure, known := tool.ClassifyFailure(classify(err))
+	if !known {
+		return ToolReceipt{}, err
+	}
+	return NewFailedToolReceipt(failure)
 }
 
 // ReadToolReceipt binds the original remote Tool, logical call and admitted JSON.

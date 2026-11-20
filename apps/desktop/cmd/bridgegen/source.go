@@ -48,6 +48,12 @@ type schemaGraph struct {
 	enums       map[string][]string
 }
 
+// Source directives mark the declarations the bridge publishes.
+const (
+	enumDirective  = "flame:enum"
+	eventDirective = "flame:event"
+)
+
 func newGraph(pkg *types.Package, files []*ast.File) (*schemaGraph, []event, error) {
 	graph := &schemaGraph{pkg: pkg, definitions: make(wiregen.Definitions), enums: make(map[string][]string)}
 	var events []event
@@ -60,52 +66,76 @@ func newGraph(pkg *types.Package, files []*ast.File) (*schemaGraph, []event, err
 			for _, specification := range decl.Specs {
 				switch spec := specification.(type) {
 				case *ast.TypeSpec:
-					if directive(spec.Doc, decl.Doc, "flame:enum") != "flame:enum" {
+					if directive(spec.Doc, decl.Doc, enumDirective) != enumDirective {
 						continue
 					}
-					object := pkg.Scope().Lookup(spec.Name.Name)
-					if object == nil || object.Type().Underlying() != types.Typ[types.String] {
-						return nil, nil, fmt.Errorf("enum %s is not a named string", spec.Name.Name)
+					values, err := enumValues(pkg, spec.Name.Name)
+					if err != nil {
+						return nil, nil, err
 					}
-					var values []*types.Const
-					for _, name := range pkg.Scope().Names() {
-						value, ok := pkg.Scope().Lookup(name).(*types.Const)
-						if ok && types.Identical(value.Type(), object.Type()) {
-							values = append(values, value)
-						}
-					}
-					slices.SortFunc(values, func(a, b *types.Const) int { return int(a.Pos() - b.Pos()) })
-					for _, value := range values {
-						text := constant.StringVal(value.Val())
-						if slices.Contains(graph.enums[spec.Name.Name], text) {
-							return nil, nil, fmt.Errorf("enum %s repeats %q", spec.Name.Name, text)
-						}
-						graph.enums[spec.Name.Name] = append(graph.enums[spec.Name.Name], text)
-					}
-					if len(values) == 0 {
-						return nil, nil, fmt.Errorf("enum %s has no typed constants", spec.Name.Name)
-					}
+					graph.enums[spec.Name.Name] = values
 				case *ast.ValueSpec:
-					annotation := directive(spec.Doc, decl.Doc, "flame:event")
-					if annotation == "" {
-						continue
+					declared, found, err := eventDeclaration(pkg, decl, spec)
+					if err != nil {
+						return nil, nil, err
 					}
-					parts := strings.Fields(annotation)
-					if decl.Tok != token.CONST || len(spec.Names) != 1 || len(parts) != 2 {
-						return nil, nil, fmt.Errorf("event requires one constant and one payload type")
+					if found {
+						events = append(events, declared)
 					}
-					name := spec.Names[0].Name
-					value, ok := pkg.Scope().Lookup(name).(*types.Const)
-					if !ok || value.Val().Kind() != constant.String || constant.StringVal(value.Val()) == "" {
-						return nil, nil, fmt.Errorf("event %s has no nonempty string name", name)
-					}
-					events = append(events, event{name: name, value: constant.StringVal(value.Val()), payload: parts[1]})
 				}
 			}
 		}
 	}
 	slices.SortFunc(events, func(a, b event) int { return strings.Compare(a.name, b.name) })
 	return graph, events, nil
+}
+
+// enumValues lists a published string enum's typed constants in source order,
+// each exactly once.
+func enumValues(pkg *types.Package, name string) ([]string, error) {
+	object := pkg.Scope().Lookup(name)
+	if object == nil || object.Type().Underlying() != types.Typ[types.String] {
+		return nil, fmt.Errorf("enum %s is not a named string", name)
+	}
+	var constants []*types.Const
+	for _, member := range pkg.Scope().Names() {
+		value, ok := pkg.Scope().Lookup(member).(*types.Const)
+		if ok && types.Identical(value.Type(), object.Type()) {
+			constants = append(constants, value)
+		}
+	}
+	if len(constants) == 0 {
+		return nil, fmt.Errorf("enum %s has no typed constants", name)
+	}
+	slices.SortFunc(constants, func(a, b *types.Const) int { return int(a.Pos() - b.Pos()) })
+	var values []string
+	for _, value := range constants {
+		text := constant.StringVal(value.Val())
+		if slices.Contains(values, text) {
+			return nil, fmt.Errorf("enum %s repeats %q", name, text)
+		}
+		values = append(values, text)
+	}
+	return values, nil
+}
+
+// eventDeclaration reads one published event: a single nonempty string
+// constant annotated with its payload type.
+func eventDeclaration(pkg *types.Package, decl *ast.GenDecl, spec *ast.ValueSpec) (event, bool, error) {
+	annotation := directive(spec.Doc, decl.Doc, eventDirective)
+	if annotation == "" {
+		return event{}, false, nil
+	}
+	parts := strings.Fields(annotation)
+	if decl.Tok != token.CONST || len(spec.Names) != 1 || len(parts) != 2 {
+		return event{}, false, fmt.Errorf("event requires one constant and one payload type")
+	}
+	name := spec.Names[0].Name
+	value, ok := pkg.Scope().Lookup(name).(*types.Const)
+	if !ok || value.Val().Kind() != constant.String || constant.StringVal(value.Val()) == "" {
+		return event{}, false, fmt.Errorf("event %s has no nonempty string name", name)
+	}
+	return event{name: name, value: constant.StringVal(value.Val()), payload: parts[1]}, true, nil
 }
 
 func directive(local, group *ast.CommentGroup, prefix string) string {
@@ -138,36 +168,48 @@ func readMethods(directory, receiver string, graph *schemaGraph) ([]method, erro
 		if err != nil {
 			return nil, err
 		}
-		imports, err := fileImports(file)
+		declared, err := fileMethods(file, receiver, graph, seen)
 		if err != nil {
 			return nil, err
 		}
-		for _, declaration := range file.Decls {
-			decl, ok := declaration.(*ast.FuncDecl)
-			if !ok || !exportedMethodOf(decl, receiver) {
-				continue
-			}
-			if decl.Name.Name == "ServiceStartup" {
-				if !startupHook(decl.Type, imports) {
-					return nil, fmt.Errorf("%s.ServiceStartup does not match the Wails lifecycle hook", receiver)
-				}
-				continue
-			}
-			if seen[decl.Name.Name] {
-				return nil, fmt.Errorf("service repeats method %s", decl.Name.Name)
-			}
-			seen[decl.Name.Name] = true
-			method, err := graph.method(decl, file.Name.Name+"."+receiver+"."+decl.Name.Name, imports)
-			if err != nil {
-				return nil, err
-			}
-			methods = append(methods, method)
-		}
+		methods = append(methods, declared...)
 	}
 	if len(methods) == 0 {
 		return nil, fmt.Errorf("receiver %s exposes no methods", receiver)
 	}
 	slices.SortFunc(methods, func(a, b method) int { return strings.Compare(a.name, b.name) })
+	return methods, nil
+}
+
+// fileMethods reads the receiver's exported methods from one file; the Wails
+// startup hook is lifecycle, not bridge surface.
+func fileMethods(file *ast.File, receiver string, graph *schemaGraph, seen map[string]bool) ([]method, error) {
+	imports, err := fileImports(file)
+	if err != nil {
+		return nil, err
+	}
+	var methods []method
+	for _, declaration := range file.Decls {
+		decl, ok := declaration.(*ast.FuncDecl)
+		if !ok || !exportedMethodOf(decl, receiver) {
+			continue
+		}
+		if decl.Name.Name == "ServiceStartup" {
+			if !startupHook(decl.Type, imports) {
+				return nil, fmt.Errorf("%s.ServiceStartup does not match the Wails lifecycle hook", receiver)
+			}
+			continue
+		}
+		if seen[decl.Name.Name] {
+			return nil, fmt.Errorf("service repeats method %s", decl.Name.Name)
+		}
+		seen[decl.Name.Name] = true
+		method, err := graph.method(decl, file.Name.Name+"."+receiver+"."+decl.Name.Name, imports)
+		if err != nil {
+			return nil, err
+		}
+		methods = append(methods, method)
+	}
 	return methods, nil
 }
 
@@ -300,66 +342,83 @@ func (g *schemaGraph) named(name string) (*wiregen.Schema, error) {
 }
 
 func (g *schemaGraph) walk(value types.Type) (*wiregen.Schema, error) {
-	if named, ok := value.(*types.Named); ok {
-		if named.Obj().Pkg() != g.pkg || !named.Obj().Exported() {
-			return nil, fmt.Errorf("wire type %s is outside the pure bridge", named)
-		}
-		name := named.Obj().Name()
-		if _, found := g.definitions[name]; !found {
-			g.definitions[name] = &wiregen.Schema{}
-			definition, err := g.walk(named.Underlying())
-			if err != nil {
-				return nil, err
-			}
-			definition.Enum = slices.Clone(g.enums[name])
-			g.definitions[name] = definition
-		}
-		return &wiregen.Schema{Ref: wiregen.RefPrefix + name}, nil
-	}
 	switch value := value.(type) {
+	case *types.Named:
+		return g.walkNamed(value)
 	case *types.Basic:
-		switch value.Kind() {
-		case types.String:
-			return &wiregen.Schema{Type: wiregen.SchemaTypeString}, nil
-		case types.Bool:
-			return &wiregen.Schema{Type: wiregen.SchemaTypeBoolean}, nil
-		case types.Int:
-			return &wiregen.Schema{Type: wiregen.SchemaTypeInteger}, nil
-		case types.Float64:
-			return &wiregen.Schema{Type: wiregen.SchemaTypeNumber}, nil
+		if schema, carried := basicSchema(value.Kind()); carried {
+			return &wiregen.Schema{Type: schema}, nil
 		}
 	case *types.Struct:
-		node := &wiregen.Schema{Type: wiregen.SchemaTypeObject, Properties: make(map[string]any)}
-		for index := range value.NumFields() {
-			field := value.Field(index)
-			if !field.Exported() {
-				continue
-			}
-			if field.Embedded() {
-				return nil, fmt.Errorf("embedded wire field %s is unsupported", field.Name())
-			}
-			name, optional, err := jsonField(value.Tag(index))
-			if err != nil {
-				return nil, fmt.Errorf("%s: %w", field.Name(), err)
-			}
-			if name == "-" {
-				continue
-			}
-			if _, duplicate := node.Properties[name]; duplicate {
-				return nil, fmt.Errorf("duplicate JSON field %s", name)
-			}
-			shape, err := g.walk(field.Type())
-			if err != nil {
-				return nil, fmt.Errorf("%s: %w", field.Name(), err)
-			}
-			node.Properties[name] = shape
-			if !optional {
-				node.Required = append(node.Required, name)
-			}
-		}
-		return node, nil
+		return g.walkStruct(value)
 	}
 	return nil, fmt.Errorf("unsupported wire type %s", value)
+}
+
+// basicSchema maps the only Go scalars the bridge carries.
+func basicSchema(kind types.BasicKind) (wiregen.SchemaType, bool) {
+	switch kind {
+	case types.String:
+		return wiregen.SchemaTypeString, true
+	case types.Bool:
+		return wiregen.SchemaTypeBoolean, true
+	case types.Int:
+		return wiregen.SchemaTypeInteger, true
+	case types.Float64:
+		return wiregen.SchemaTypeNumber, true
+	default:
+		return "", false
+	}
+}
+
+// walkNamed defines a named bridge type once and refers to it everywhere.
+func (g *schemaGraph) walkNamed(named *types.Named) (*wiregen.Schema, error) {
+	if named.Obj().Pkg() != g.pkg || !named.Obj().Exported() {
+		return nil, fmt.Errorf("wire type %s is outside the pure bridge", named)
+	}
+	name := named.Obj().Name()
+	if _, found := g.definitions[name]; !found {
+		g.definitions[name] = &wiregen.Schema{}
+		definition, err := g.walk(named.Underlying())
+		if err != nil {
+			return nil, err
+		}
+		definition.Enum = slices.Clone(g.enums[name])
+		g.definitions[name] = definition
+	}
+	return &wiregen.Schema{Ref: wiregen.RefPrefix + name}, nil
+}
+
+func (g *schemaGraph) walkStruct(value *types.Struct) (*wiregen.Schema, error) {
+	node := &wiregen.Schema{Type: wiregen.SchemaTypeObject, Properties: make(map[string]any)}
+	for index := range value.NumFields() {
+		field := value.Field(index)
+		if !field.Exported() {
+			continue
+		}
+		if field.Embedded() {
+			return nil, fmt.Errorf("embedded wire field %s is unsupported", field.Name())
+		}
+		name, optional, err := jsonField(value.Tag(index))
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", field.Name(), err)
+		}
+		if name == "-" {
+			continue
+		}
+		if _, duplicate := node.Properties[name]; duplicate {
+			return nil, fmt.Errorf("duplicate JSON field %s", name)
+		}
+		shape, err := g.walk(field.Type())
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", field.Name(), err)
+		}
+		node.Properties[name] = shape
+		if !optional {
+			node.Required = append(node.Required, name)
+		}
+	}
+	return node, nil
 }
 
 func jsonField(tag string) (string, bool, error) {

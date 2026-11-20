@@ -138,25 +138,34 @@ func (n Node) Verify(ctx context.Context) (err error) {
 	if !info.Mode().IsRegular() || runtime.GOOS != "windows" && info.Mode().Perm()&0111 == 0 {
 		return errors.New("node companion: executable must be a regular executable file")
 	}
+	digest, err := executableDigest(ctx, file)
+	if err != nil {
+		return err
+	}
+	if digest != n.expected {
+		return errors.New("node companion: selected executable checksum mismatch")
+	}
+	return nil
+}
+
+// executableDigest hashes the opened executable, stopping between chunks when
+// the caller gives up on a large distribution.
+func executableDigest(ctx context.Context, file io.Reader) (string, error) {
 	hash := sha256.New()
 	buffer := make([]byte, 64<<10)
 	for {
 		if err := ctx.Err(); err != nil {
-			return err
+			return "", err
 		}
 		count, readErr := file.Read(buffer)
 		_, _ = hash.Write(buffer[:count])
 		if errors.Is(readErr, io.EOF) {
-			break
+			return hex.EncodeToString(hash.Sum(nil)), nil
 		}
 		if readErr != nil {
-			return fmt.Errorf("node companion: read executable: %w", readErr)
+			return "", fmt.Errorf("node companion: read executable: %w", readErr)
 		}
 	}
-	if hex.EncodeToString(hash.Sum(nil)) != n.expected {
-		return errors.New("node companion: selected executable checksum mismatch")
-	}
-	return nil
 }
 
 func inspectExecutable(root *os.Root, relative string) (os.FileInfo, error) {

@@ -232,27 +232,35 @@ func (i interactionCheckpointState) recoverableReceipts(inspection scoperun.Tree
 	if len(proofs) == 0 {
 		return nil, nil
 	}
-	root, found := inspection.Process(rootID)
-	// A committed Tool settlement can leave the program running before its
-	// next step commits. Original receipts and every unresolved Effect below
-	// still bound recovery; an explicitly paused process remains excluded.
-	if !found || (root.Status != scoperun.StatusRunning && root.Status != scoperun.StatusWaiting && root.Status != scoperun.StatusDraining) {
+	if !receiptsBoundRecovery(inspection, rootID, proofs) {
 		return nil, nil
+	}
+	return proofs, nil
+}
+
+// receiptsBoundRecovery reports whether retained receipts cover every
+// unresolved Effect. A committed Tool settlement can leave the program running
+// before its next step commits; an explicitly paused or waiting process is
+// excluded.
+func receiptsBoundRecovery(inspection scoperun.TreeInspection, rootID scoperun.ProcessID, proofs map[scoperun.EffectID]toolCallCapture) bool {
+	root, found := inspection.Process(rootID)
+	if !found || (root.Status != scoperun.StatusRunning && root.Status != scoperun.StatusWaiting && root.Status != scoperun.StatusDraining) {
+		return false
 	}
 	for _, process := range inspection.Processes {
 		if len(process.Waits) > 0 {
-			return nil, nil
+			return false
 		}
 		for _, pending := range process.PendingEffects {
 			if pending.Outcome.Valid() && pending.Outcome.Status() != scoperun.SettlementStatusUnknown {
 				continue
 			}
 			if _, supported := proofs[pending.Request.ID()]; !supported {
-				return nil, nil
+				return false
 			}
 		}
 	}
-	return proofs, nil
+	return true
 }
 
 func (i *interactionSession) verifySettledTools(ctx context.Context, tree scoperun.Log, proofs map[scoperun.EffectID]toolCallCapture, open []runs.RecoveredTool) error {
@@ -350,7 +358,7 @@ func (i *interactionSession) validateCapturedToolArguments(inspection scoperun.T
 		if !owner.matchesReceipt(*metadata.Receipt) {
 			return errors.New("execution: captured Tool owner is unavailable")
 		}
-		if _, err := owner.binding.Contract().Prepare(toolcontract.Request{Name: metadata.Start.ToolName, Arguments: metadata.Start.Arguments}, toolcontract.Admission{}); err != nil {
+		if _, err := owner.binding.Contract().Prepare(toolcontract.Request{Name: metadata.Start.ToolName, Arguments: metadata.Start.Input.Arguments().Canonical()}, toolcontract.Admission{}); err != nil {
 			return fmt.Errorf("execution: validate captured effective arguments: %w", err)
 		}
 	}

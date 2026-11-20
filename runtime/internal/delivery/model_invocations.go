@@ -4,6 +4,9 @@ import (
 	"context"
 	json "encoding/json/v2"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
@@ -12,18 +15,22 @@ func (s *Handler) ListModelInvocations(ctx context.Context, in protocol.ListMode
 	if _, err := s.GetRun(ctx, protocol.GetRunRequest{RunID: in.RunID}); err != nil {
 		return nil, err
 	}
-	limit, err := requestedPageLimit(in.Limit)
+	limit, err := pagination.ParseLimit(in.Limit)
 	if err != nil {
 		return nil, wirePageError(err)
 	}
-	page, err := s.queries.ListModelInvocationPage(ctx, in.RunID, in.Cursor, limit)
+	runID, err := wireIdentity("runId", in.RunID, identity.ParseRun)
+	if err != nil {
+		return nil, err
+	}
+	page, err := s.queries.ListModelInvocationPage(ctx, runID, in.Cursor, limit)
 	if err != nil {
 		return nil, wirePageError(err)
 	}
 	rows := make([]protocol.ModelInvocation, len(page.Rows))
 	for index, row := range page.Rows {
 		var err error
-		rows[index], err = presentModelInvocation(in.RunID, row)
+		rows[index], err = presentModelInvocation(runID, row)
 		if err != nil {
 			return nil, err
 		}
@@ -31,8 +38,8 @@ func (s *Handler) ListModelInvocations(ctx context.Context, in protocol.ListMode
 	return protocol.NewPageWithCursor(rows, page.NextCursor), nil
 }
 
-func presentModelInvocation(runID string, row runs.ModelInvocationCommit) (protocol.ModelInvocation, error) {
-	out := protocol.ModelInvocation{FirstOutputLatencyMillis: row.FirstOutputLatencyMillis, CallID: row.CallID, RunID: runID, SegmentID: row.SegmentID, State: protocol.ModelInvocationState(row.State), StartedAt: row.StartedAt, SettledAt: row.FinishedAt}
+func presentModelInvocation(runID identity.RunID, row runs.ModelInvocationCommit) (protocol.ModelInvocation, error) {
+	out := protocol.ModelInvocation{FirstOutputLatencyMillis: row.FirstOutputLatencyMillis, CallID: row.CallID, RunID: runID.String(), SegmentID: row.SegmentID.String(), State: protocol.ModelInvocationState(row.State), StartedAt: row.StartedAt, SettledAt: row.FinishedAt}
 	if row.KnownResponse != nil {
 		encoded, err := json.Marshal(row.KnownResponse)
 		if err != nil {

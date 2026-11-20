@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/samber/lo"
 )
@@ -19,7 +21,7 @@ type SkillsMaintenance interface {
 }
 
 type runWorkReader interface {
-	CompletedRunWork(ctx context.Context, sessionID, rootRunID string) (completedToolCalls int64, compacted bool, err error)
+	CompletedRunWork(ctx context.Context, sessionID identity.SessionID, rootRunID identity.RunID) (completedToolCalls int64, compacted bool, err error)
 }
 
 type Pipeline struct {

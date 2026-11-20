@@ -7,6 +7,8 @@ import (
 	json "encoding/json/v2"
 	"iter"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -16,7 +18,7 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-func (c *CommandCalls) RenderSessionMarkdown(ctx context.Context, sessionID string, document []byte) (string, error) {
+func (c *CommandCalls) RenderSessionMarkdown(ctx context.Context, sessionID identity.SessionID, document []byte) (string, error) {
 	contract, err := pluginsdk.SessionMarkdownContract()
 	if err != nil {
 		return "", err
@@ -27,7 +29,7 @@ func (c *CommandCalls) RenderSessionMarkdown(ctx context.Context, sessionID stri
 	}
 	defer borrow.Close()
 	ctx = borrow.Context()
-	actor, err := operation.Capture(ctx, framecall.Target{Scope: string(extension.ComponentScopeSession), Reference: sessionID})
+	actor, err := operation.Capture(ctx, framecall.Target{Scope: string(extension.ComponentScopeSession), Reference: sessionID.String()})
 	if err != nil {
 		return "", err
 	}

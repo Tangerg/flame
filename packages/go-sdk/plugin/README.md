@@ -74,7 +74,9 @@ An implementation of an existing consumer contract uses
 `pluginmcp.ImplementStreamingMethod[P, C, R](contract, name)`. These bindings retain the
 published method's exact identity and validators. Local types supply codecs;
 they do not derive another Schema or relax the consumer's constraints. Missing
-methods and mismatched unary/streaming delivery are construction errors. Typed
+methods and mismatched unary/streaming delivery are construction errors.
+`pluginmcp.NewMethodSet(contract)` with `pluginmcp.Implement[P, R](set, name)`
+binds a whole surface and reports every failed binding from `set.Err()`. Typed
 input admission, original command evidence, output validation and receipts use
 the same dispatch path as author-defined methods.
 

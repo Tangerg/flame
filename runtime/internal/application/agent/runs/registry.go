@@ -2,13 +2,15 @@ package runs
 
 import (
 	"sync"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 // Record names the live Segment that owns one executing Run. The durable Run
 // owns everything else about it.
 type Record struct {
-	ID         string
-	SegmentID  string
+	ID         identity.RunID
+	SegmentID  identity.SegmentID
 	ExecutorID string
 }
 
@@ -29,7 +31,7 @@ type liveSegment struct {
 type registry struct {
 	opening sync.RWMutex
 	mu      sync.Mutex
-	runs    map[string]liveSegment
+	runs    map[identity.RunID]liveSegment
 }
 
 // Open publishes the process-local owner together with its durable opening.
@@ -51,7 +53,7 @@ func (r *registry) Open(record Record, owner *runTreeOwner, commit func() error)
 // state. A Run can resume onto a replacement Segment as soon as terminal
 // maintenance releases admission; an older pump must never delete that newer
 // registry entry merely because both Segments share the same Run ID.
-func (r *registry) RemoveSegment(id, segmentID string) (segment liveSegment, ok bool) {
+func (r *registry) RemoveSegment(id identity.RunID, segmentID identity.SegmentID) (segment liveSegment, ok bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	segment, ok = r.runs[id]
@@ -63,7 +65,7 @@ func (r *registry) RemoveSegment(id, segmentID string) (segment liveSegment, ok 
 }
 
 // Get returns an active run segment.
-func (r *registry) Get(id string) (liveSegment, bool) {
+func (r *registry) Get(id identity.RunID) (liveSegment, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	segment, ok := r.runs[id]
@@ -73,7 +75,7 @@ func (r *registry) Get(id string) (liveSegment, bool) {
 // Running follows a durable Running read across the opening handoff. Waiting
 // cancellation uses Get: it must remain free to reject a contending resume before
 // that resume's commit returns.
-func (r *registry) Running(id string) (liveSegment, bool) {
+func (r *registry) Running(id identity.RunID) (liveSegment, bool) {
 	r.opening.RLock()
 	defer r.opening.RUnlock()
 	return r.Get(id)
@@ -81,6 +83,6 @@ func (r *registry) Running(id string) (liveSegment, bool) {
 
 func (r *registry) initLocked() {
 	if r.runs == nil {
-		r.runs = map[string]liveSegment{}
+		r.runs = map[identity.RunID]liveSegment{}
 	}
 }

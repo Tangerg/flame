@@ -3,6 +3,8 @@ package delivery
 import (
 	"context"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -10,7 +12,11 @@ import (
 
 // SessionUsage projects the application-owned session usage report onto the
 // usage.session wire contract.
-func (s *Handler) SessionUsage(ctx context.Context, sessionID string) (*protocol.SessionUsage, error) {
+func (s *Handler) SessionUsage(ctx context.Context, id string) (*protocol.SessionUsage, error) {
+	sessionID, err := wireIdentity("sessionId", id, identity.ParseSession)
+	if err != nil {
+		return nil, err
+	}
 	report, err := s.usage.Session(ctx, sessionID)
 	if err != nil {
 		return nil, wireSessionErr(err)

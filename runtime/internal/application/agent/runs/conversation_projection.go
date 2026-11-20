@@ -5,19 +5,21 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 type ToolResultPublications interface {
-	UnpublishedToolResults(ctx context.Context, sessionID, runID string) ([]corechat.ToolResult, error)
+	UnpublishedToolResults(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) ([]corechat.ToolResult, error)
 }
 
 func TerminalConversation(
 	ctx context.Context,
 	publications ToolResultPublications,
-	sessionID, runID string,
+	sessionID identity.SessionID, runID identity.RunID,
 	messages []corechat.Message,
 	outcome run.Outcome,
 	detail string,

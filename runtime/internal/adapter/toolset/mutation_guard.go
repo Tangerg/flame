@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"io"
 	"os"
 	"path/filepath"
@@ -105,7 +106,7 @@ func beforeCallFailure(ctx context.Context, cause error) error {
 	return pluginsdk.DefiniteToolFailure(cause)
 }
 
-func admitMutationPaths(ctx context.Context, tr *readTracker, root *filesystemRoot, sessionID string, paths []string) ([]string, string, error) {
+func admitMutationPaths(ctx context.Context, tr *readTracker, root *filesystemRoot, sessionID identity.SessionID, paths []string) ([]string, string, error) {
 	targets := make([]string, 0, len(paths))
 	for _, path := range paths {
 		relative, err := resolveRootPath(root, path)
@@ -192,22 +193,9 @@ func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, p
 	defer func() {
 		err = errors.Join(err, file.Close())
 	}()
-	hash := sha256.New()
-	buffer := make([]byte, readBufferBytes)
-	contextReader, err := capture.NewReader(ctx, file)
+	fingerprint, err := fingerprintContent(ctx, file, maxBytes)
 	if err != nil {
 		return fingerprintObservation{}, false, err
-	}
-	var source io.Reader = contextReader
-	if maxBytes > 0 {
-		source = io.LimitReader(source, maxBytes+1)
-	}
-	written, err := io.CopyBuffer(hash, source, buffer)
-	if err != nil {
-		return fingerprintObservation{}, false, err
-	}
-	if maxBytes > 0 && written > maxBytes {
-		return fingerprintObservation{}, false, fmt.Errorf("%w: file grew while fingerprinting", errRuntimeReadFileTooLarge)
 	}
 	after, err := file.Stat()
 	if err != nil {
@@ -220,9 +208,31 @@ func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, p
 	if !filesystem.SameVersion(before, after) || !filesystem.SameVersion(after, current) {
 		return fingerprintObservation{}, false, errors.New("file changed while fingerprinting")
 	}
+	return fingerprintObservation{fingerprint: fingerprint, info: current}, true, nil
+}
+
+// fingerprintContent hashes the opened file, reading one byte past the limit
+// so a file that grew while open is refused rather than truncated.
+func fingerprintContent(ctx context.Context, file io.Reader, maxBytes int64) (contentFingerprint, error) {
+	hash := sha256.New()
+	contextReader, err := capture.NewReader(ctx, file)
+	if err != nil {
+		return contentFingerprint{}, err
+	}
+	var source io.Reader = contextReader
+	if maxBytes > 0 {
+		source = io.LimitReader(source, maxBytes+1)
+	}
+	written, err := io.CopyBuffer(hash, source, make([]byte, readBufferBytes))
+	if err != nil {
+		return contentFingerprint{}, err
+	}
+	if maxBytes > 0 && written > maxBytes {
+		return contentFingerprint{}, fmt.Errorf("%w: file grew while fingerprinting", errRuntimeReadFileTooLarge)
+	}
 	var fingerprint contentFingerprint
 	copy(fingerprint[:], hash.Sum(nil))
-	return fingerprintObservation{fingerprint: fingerprint, info: current}, true, nil
+	return fingerprint, nil
 }
 
 func sameFingerprintObservation(left, right fingerprintObservation) bool {

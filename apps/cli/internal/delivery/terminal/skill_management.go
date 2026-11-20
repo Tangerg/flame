@@ -163,7 +163,7 @@ func (s *skillScreens) changeSkillLifecycle(
 		return errors.New("a skill name is required")
 	}
 	s.status.note(status + " " + name)
-	started := s.tasks.admissionMutation(skillOperation, false,
+	started := s.tasks.admissionMutation(skillOperation,
 		func(ctx context.Context) (string, error) {
 			return name, change(ctx, name)
 		},
@@ -229,7 +229,7 @@ func (s *skillScreens) PrepareSkillProposalDecision(identity string, verdict ski
 	}
 	workspace := s.session.current.Workspace.Path
 	s.status.note("loading skill proposal " + identity)
-	started := s.tasks.session(skillOperation, false,
+	started := s.tasks.session(skillOperation,
 		func(ctx context.Context) (skillProposalDecision, error) {
 			proposals, err := s.service.Proposals(ctx, workspace)
 			if err != nil {
@@ -288,7 +288,7 @@ func (s *skillScreens) confirmSkillProposalDecision(decision skillProposalDecisi
 func (s *skillScreens) decideSkillProposal(reference workspace.SkillProposalReference, verdict skillProposalVerdict) {
 	verb := verdict.progress()
 	s.status.note(verb + " skill proposal " + reference.Name)
-	started := s.tasks.admissionMutation(skillOperation, false,
+	started := s.tasks.admissionMutation(skillOperation,
 		func(ctx context.Context) (workspace.SkillProposalReference, error) {
 			return reference, verdict.apply(ctx, s.service, reference)
 		},

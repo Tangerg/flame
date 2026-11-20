@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/frame/sqlite"
@@ -41,7 +43,7 @@ func (s *ResourceRetirementStore) record(ctx context.Context, retirement session
 		return nil
 	})
 }
-func (s *ResourceRetirementStore) Lookup(ctx context.Context, sessionID string) (sessions.ResourceRetirement, bool, error) {
+func (s *ResourceRetirementStore) Lookup(ctx context.Context, sessionID identity.SessionID) (sessions.ResourceRetirement, bool, error) {
 	return scopedPair(ctx, s.db.read, func(ctx context.Context) (sessions.ResourceRetirement, bool, error) {
 		var id string
 		err := s.db.connection(ctx).QueryRowContext(ctx, `SELECT retirement_id FROM committed_session_resource_retirements WHERE session_id = ?`, sessionID).Scan(&id)
@@ -55,12 +57,12 @@ func (s *ResourceRetirementStore) Lookup(ctx context.Context, sessionID string) 
 		return retirement, err == nil, err
 	})
 }
-func (s *ResourceRetirementStore) pending(ctx context.Context, sessionID string) (bool, error) {
+func (s *ResourceRetirementStore) pending(ctx context.Context, sessionID identity.SessionID) (bool, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) (bool, error) {
 		return sessionResourceRetirementPending(ctx, s.db.connection(ctx), sessionID)
 	})
 }
-func sessionResourceRetirementPending(ctx context.Context, connection sqlite.Executor, sessionID string) (bool, error) {
+func sessionResourceRetirementPending(ctx context.Context, connection sqlite.Executor, sessionID identity.SessionID) (bool, error) {
 	var pending bool
 	err := connection.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM committed_session_resource_retirements WHERE session_id = ?)`, sessionID).Scan(&pending)
 	if err != nil {
@@ -79,7 +81,8 @@ func (s *ResourceRetirementStore) ListPending(ctx context.Context) ([]sessions.R
 		}()
 		var retirements []sessions.ResourceRetirement
 		for rows.Next() {
-			var id, sessionID string
+			var id string
+			var sessionID identity.SessionID
 			if err := rows.Scan(&id, &sessionID); err != nil {
 				return nil, fmt.Errorf("sqlite: scan Session resource retirement: %w", err)
 			}

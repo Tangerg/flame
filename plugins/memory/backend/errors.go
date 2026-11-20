@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 
+	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	framecall "github.com/Tangerg/frame/call"
 
@@ -24,7 +26,7 @@ var errorCodes = []struct {
 	{"not_pending", memory.ErrNotPending},
 	{"target_full", memory.ErrTargetFull},
 	{"duplicate_content", memory.ErrDuplicateContent},
-	{"invalid_input", app.ErrInvalidInput},
+	{pluginmcp.InvalidInputCode, app.ErrInvalidInput},
 	{"invalid_facts", memory.ErrInvalidFacts},
 	{"revision_conflict", memory.ErrRevisionConflict},
 	{"revision_exhausted", exactint.ErrExhausted},

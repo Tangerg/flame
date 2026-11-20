@@ -75,7 +75,7 @@ func (l *sessionLifecycle) invalidateCurrentSession() {
 		l.tasks.operations.Active(sessionChangeOperation) {
 		return
 	}
-	l.refreshInvalidatedSession(false)
+	l.refreshInvalidatedSession(refreshAfterChange)
 }
 
 func invalidatesSessionCatalog(event changefeed.Event) bool {
@@ -114,23 +114,38 @@ func invalidationAffectsSession(event changefeed.Event, sessionID, runID string)
 	}
 }
 
+// sessionRefresh says why an invalidated session is reread: after a Runtime
+// change, or as the fence that settles a Run this client was following.
+type sessionRefresh uint8
+
+const (
+	refreshAfterChange sessionRefresh = iota
+	refreshSettlingRun
+)
+
+func (r sessionRefresh) settles() bool { return r == refreshSettlingRun }
+
 // refreshInvalidatedSession normally defers replacement while a trusted live
 // stream owns the projection. A settlement fence means Runtime has already
 // returned a terminal fact, so the cold read must replace even a locally stale
 // running phase before queued work can be admitted.
-func (l *sessionLifecycle) refreshInvalidatedSession(settlementFence bool) {
+func (l *sessionLifecycle) refreshInvalidatedSession(purpose sessionRefresh) {
 	sessionID := l.state.current.ID
 	l.state.invalidated = false
 	read := func(ctx context.Context) (conversation.SessionSnapshot, error) {
 		return l.readInvalidatedSession(ctx, sessionID)
 	}
 	apply := func(snapshot conversation.SessionSnapshot, err error) {
-		l.applyInvalidatedSessionRefresh(sessionID, settlementFence, snapshot, err)
+		l.applyInvalidatedSessionRefresh(sessionID, purpose, snapshot, err)
 	}
 	// Every authoritative refresh fences queued Run admission. Settlement
 	// refreshes additionally replace an ordinary read already in flight so a
 	// weaker coalesced request cannot discard that obligation.
-	started := l.tasks.sessionFence(sessionInvalidationOperation, settlementFence, read, apply)
+	slot := sessionInvalidationOperation
+	if purpose.settles() {
+		slot = slot.superseding()
+	}
+	started := l.tasks.sessionFence(slot, read, apply)
 	if !started {
 		l.state.invalidated = true
 	}
@@ -141,7 +156,7 @@ func (l *sessionLifecycle) refreshInvalidatedSession(settlementFence bool) {
 // explicitly reopen queued admission; failed reads leave invalidation asserted.
 func (l *sessionLifecycle) applyInvalidatedSessionRefresh(
 	sessionID string,
-	settlementFence bool,
+	purpose sessionRefresh,
 	snapshot conversation.SessionSnapshot,
 	err error,
 ) {
@@ -149,46 +164,62 @@ func (l *sessionLifecycle) applyInvalidatedSessionRefresh(
 		return
 	}
 	if l.state.invalidated {
-		l.refreshInvalidatedSession(settlementFence)
+		l.refreshInvalidatedSession(purpose)
 		return
 	}
 	if err != nil {
-		l.state.invalidated = true
-		if errors.Is(err, conversation.ErrSessionNotFound) && l.runs.conversation().Phase() == conversation.Idle && !l.runs.following() {
-			l.root.message("the active session was deleted; creating a replacement")
-			l.replaceDeletedSessionInWorkspace(l.state.current.Workspace.Path)
-			return
-		}
-		l.root.message("refresh session after runtime change failed: " + err.Error())
+		l.failInvalidatedRefresh(err)
 		return
 	}
-	if !settlementFence && (l.runs.conversation().Phase() == conversation.Running || l.runs.following()) {
+	if !purpose.settles() && (l.runs.conversation().Phase() == conversation.Running || l.runs.following()) {
 		l.state.invalidated = true
 		return
 	}
+	changed, installed := l.installRefreshedSnapshot(snapshot)
+	if !installed {
+		return
+	}
+	if purpose.settles() && l.runs.conversation().Phase() == conversation.Idle {
+		l.runs.finishFollowing()
+		return
+	}
+	if changed {
+		l.root.message("session refreshed after runtime change")
+	}
+	if !purpose.settles() {
+		l.runs.drainQueue()
+	}
+}
+
+// failInvalidatedRefresh keeps the session invalidated. A session deleted
+// while this client sat idle is replaced instead of reported.
+func (l *sessionLifecycle) failInvalidatedRefresh(err error) {
+	l.state.invalidated = true
+	if errors.Is(err, conversation.ErrSessionNotFound) && l.runs.conversation().Phase() == conversation.Idle && !l.runs.following() {
+		l.root.message("the active session was deleted; creating a replacement")
+		l.replaceDeletedSessionInWorkspace(l.state.current.Workspace.Path)
+		return
+	}
+	l.root.message("refresh session after runtime change failed: " + err.Error())
+}
+
+// installRefreshedSnapshot installs only what the read changed: metadata
+// alone when the conversation and workspace still match.
+func (l *sessionLifecycle) installRefreshedSnapshot(snapshot conversation.SessionSnapshot) (changed, installed bool) {
 	conversationMatches := l.runs.conversation().MatchesSnapshot(snapshot)
 	sessionMatches := l.state.current.Equal(snapshot.Session)
 	if conversationMatches && l.state.current.Workspace == snapshot.Session.Workspace {
 		if !sessionMatches {
 			l.installSessionMetadata(snapshot.Session)
 		}
-	} else {
-		if err := l.installSnapshot(snapshot); err != nil {
-			l.state.invalidated = true
-			l.root.message("refresh session after runtime change failed: " + err.Error())
-			return
-		}
+		return !sessionMatches, true
 	}
-	if settlementFence && l.runs.conversation().Phase() == conversation.Idle {
-		l.runs.finishFollowing()
-		return
+	if err := l.installSnapshot(snapshot); err != nil {
+		l.state.invalidated = true
+		l.root.message("refresh session after runtime change failed: " + err.Error())
+		return false, false
 	}
-	if !conversationMatches || !sessionMatches {
-		l.root.message("session refreshed after runtime change")
-	}
-	if !settlementFence {
-		l.runs.drainQueue()
-	}
+	return !conversationMatches || !sessionMatches, true
 }
 
 func (l *sessionLifecycle) readInvalidatedSession(ctx context.Context, sessionID string) (conversation.SessionSnapshot, error) {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"strconv"
@@ -37,7 +38,7 @@ func (FileBrowser) ListDirectory(ctx context.Context, root string, plan workspac
 		return workspaceapp.DirectoryPage{}, fmt.Errorf("open directory page: %w", err)
 	}
 	defer func() { err = errors.Join(err, directory.Close()) }()
-	revision := strconv.FormatInt(info.ModTime().UnixNano(), 10) + ":" + strconv.FormatInt(info.Size(), 10)
+	revision := directoryRevision(info)
 	if plan.Revision != "" && plan.Revision != revision {
 		return workspaceapp.DirectoryPage{}, workspaceapp.ErrPageCursor
 	}
@@ -45,8 +46,36 @@ func (FileBrowser) ListDirectory(ctx context.Context, root string, plan workspac
 	if err := seekDirectory(ctx, directory, plan.Offset); err != nil {
 		return workspaceapp.DirectoryPage{}, err
 	}
+	result, err := scope.readPage(ctx, directory, plan, revision)
+	if err != nil {
+		return workspaceapp.DirectoryPage{}, err
+	}
+	after, err := directory.Stat()
+	if err != nil {
+		return workspaceapp.DirectoryPage{}, fmt.Errorf("inspect directory revision: %w", err)
+	}
+	if !os.SameFile(info, after) || directoryRevision(after) != revision {
+		return workspaceapp.DirectoryPage{}, workspaceapp.ErrPageCursor
+	}
+	return result, nil
+}
+
+// directoryRevision names one directory state; a page cursor is valid only
+// while it holds.
+func directoryRevision(info fs.FileInfo) string {
+	return strconv.FormatInt(info.ModTime().UnixNano(), 10) + ":" + strconv.FormatInt(info.Size(), 10)
+}
+
+// A page scans a bounded number of entries so heavily ignored directories
+// still return promptly, reporting an exhausted budget instead of looping.
+const (
+	minimumDirectoryScan = 256
+	directoryScanPerItem = 4
+)
+
+func (scope fileSelection) readPage(ctx context.Context, directory *os.File, plan workspaceapp.DirectoryListPlan, revision string) (workspaceapp.DirectoryPage, error) {
 	result := workspaceapp.DirectoryPage{Revision: revision, NextOffset: plan.Offset}
-	budget := max(256, plan.Limit*4)
+	budget := max(minimumDirectoryScan, plan.Limit*directoryScanPerItem)
 	for result.ScannedEntries < budget && len(result.Entries) < plan.Limit {
 		if err := context.Cause(ctx); err != nil {
 			return workspaceapp.DirectoryPage{}, err
@@ -64,13 +93,6 @@ func (FileBrowser) ListDirectory(ctx context.Context, root string, plan workspac
 			break
 		}
 	}
-	after, err := directory.Stat()
-	if err != nil {
-		return workspaceapp.DirectoryPage{}, fmt.Errorf("inspect directory revision: %w", err)
-	}
-	if !os.SameFile(info, after) || !info.ModTime().Equal(after.ModTime()) || info.Size() != after.Size() {
-		return workspaceapp.DirectoryPage{}, workspaceapp.ErrPageCursor
-	}
 	result.BudgetExhausted = !result.Complete && result.ScannedEntries >= budget
 	return result, nil
 }
@@ -82,7 +104,7 @@ func seekDirectory(ctx context.Context, directory *os.File, offset int) error {
 		if err := context.Cause(ctx); err != nil {
 			return err
 		}
-		entries, err := directory.ReadDir(min(remaining, 256))
+		entries, err := directory.ReadDir(min(remaining, minimumDirectoryScan))
 		remaining -= len(entries)
 		if errors.Is(err, io.EOF) {
 			return workspaceapp.ErrPageCursor

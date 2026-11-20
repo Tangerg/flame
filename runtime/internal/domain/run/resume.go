@@ -3,7 +3,6 @@ package run
 import (
 	"errors"
 	"fmt"
-
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
@@ -18,17 +17,17 @@ type TreeResumeDraft struct {
 }
 
 // RootRunID names the tree's root, the final resumed Run.
-func (t TreeResumeDraft) RootRunID() string {
+func (t TreeResumeDraft) RootRunID() identity.RunID {
 	if len(t.Runs) == 0 {
-		return ""
+		return identity.RunID{}
 	}
 	return t.Runs[len(t.Runs)-1].State().ID()
 }
 
 // SessionID names the Session that owns the resumed tree.
-func (t TreeResumeDraft) SessionID() string {
+func (t TreeResumeDraft) SessionID() identity.SessionID {
 	if len(t.Runs) == 0 {
-		return ""
+		return identity.SessionID{}
 	}
 	return t.Runs[len(t.Runs)-1].State().SessionID()
 }
@@ -36,7 +35,7 @@ func (t TreeResumeDraft) SessionID() string {
 // ValidateForTree verifies the draft and both identities that scope it. A
 // commit reasoning about one Session's root Run needs both, and asking for them
 // together is what stops one being checked while the other is assumed.
-func (t TreeResumeDraft) ValidateForTree(expectedSessionID, expectedRootRunID string) error {
+func (t TreeResumeDraft) ValidateForTree(expectedSessionID identity.SessionID, expectedRootRunID identity.RunID) error {
 	if err := t.Validate(); err != nil {
 		return err
 	}
@@ -70,7 +69,7 @@ func (t TreeResumeDraft) Validate() error {
 	if !root.Lineage().IsRoot() {
 		return fmt.Errorf("run: tree resume final Run %q is not a root", root.ID())
 	}
-	seen := make(map[string]struct{}, len(t.Runs))
+	seen := make(map[identity.RunID]struct{}, len(t.Runs))
 	for index, replacement := range t.Runs {
 		if err := replacement.Validate(); err != nil {
 			return fmt.Errorf("run: tree resume Run[%d]: %w", index, err)
@@ -78,9 +77,6 @@ func (t TreeResumeDraft) Validate() error {
 		resumed := replacement.State()
 		if replacement.Expected().State() != Waiting || resumed.State() != Running {
 			return fmt.Errorf("run: tree resume Run %q does not move from waiting to running", resumed.ID())
-		}
-		if err := identity.ValidateSegment(resumed.ActiveSegmentID()); err != nil {
-			return fmt.Errorf("run: tree resume Run %q: %w", resumed.ID(), err)
 		}
 		if resumed.SessionID() != root.SessionID() || resumed.Lineage().TreeRootID(resumed.ID()) != root.ID() {
 			return fmt.Errorf("run: tree resume Run %q is outside root %q", resumed.ID(), root.ID())

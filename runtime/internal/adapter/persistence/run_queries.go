@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -27,11 +29,8 @@ const runReadJoins = `LEFT JOIN interrupts AS i
 // PageRuns returns one page of Runs a caller may browse, newest admission first,
 // scoped to sessionID and statuses when provided. Descendants are excluded unless
 // includeDescendants is true.
-func (r *RunStore) PageRuns(ctx context.Context, sessionID string, statuses []rundomain.State, includeDescendants bool, before *rundomain.PageAnchor, limit int) ([]rundomain.Run, error) {
+func (r *RunStore) PageRuns(ctx context.Context, sessionID identity.SessionID, statuses []rundomain.State, includeDescendants bool, before *rundomain.PageAnchor, limit int) ([]rundomain.Run, error) {
 	return scopedValue(ctx, r.db.read, func(ctx context.Context) ([]rundomain.Run, error) {
-		if err := validateOptionalSessionResource("page Runs", sessionID); err != nil {
-			return nil, err
-		}
 		query := `SELECT ` + runColumns + `
 		 FROM runs AS r
 		 ` + runReadJoins
@@ -40,7 +39,7 @@ func (r *RunStore) PageRuns(ctx context.Context, sessionID string, statuses []ru
 		if !includeDescendants {
 			conditions = append(conditions, `r.root_run_id = ''`)
 		}
-		if sessionID != "" {
+		if !sessionID.IsZero() {
 			conditions = append(conditions, `r.session_id = ?`)
 			args = append(args, sessionID)
 		}
@@ -91,9 +90,9 @@ func (r *RunStore) PageRuns(ctx context.Context, sessionID string, statuses []ru
 // readRun answers one Run row through the caller's scanner. Which row, what
 // its absence means and how a failure reads are the same for every reader;
 // only what a stored Run must satisfy to be decodable differs.
-func (r *RunStore) readRun(ctx context.Context, operation, runID string, scan func(scanRow) (rundomain.Run, error)) (rundomain.Run, bool, error) {
+func (r *RunStore) readRun(ctx context.Context, operation string, runID identity.RunID, scan func(scanRow) (rundomain.Run, error)) (rundomain.Run, bool, error) {
 	return scopedPair(ctx, r.db.read, func(ctx context.Context) (rundomain.Run, bool, error) {
-		if err := validateRunResource(operation, runID); err != nil {
+		if err := validateResource(operation, runID); err != nil {
 			return rundomain.Run{}, false, err
 		}
 		row := r.db.connection(ctx).QueryRowContext(ctx, `SELECT `+runColumns+`
@@ -110,18 +109,18 @@ func (r *RunStore) readRun(ctx context.Context, operation, runID string, scan fu
 		return run, true, nil
 	})
 }
-func (r *RunStore) Run(ctx context.Context, runID string) (rundomain.Run, bool, error) {
+func (r *RunStore) Run(ctx context.Context, runID identity.RunID) (rundomain.Run, bool, error) {
 	return r.readRun(ctx, "read Run", runID, scanRun)
 }
 
 // CompletedRunWork reads from one snapshot of a successfully completed root
 // Run. Attempts can span Segments, so each settled call counts once.
-func (r *RunStore) CompletedRunWork(ctx context.Context, sessionID, rootRunID string) (completedToolCalls int64, compacted bool, err error) {
+func (r *RunStore) CompletedRunWork(ctx context.Context, sessionID identity.SessionID, rootRunID identity.RunID) (completedToolCalls int64, compacted bool, err error) {
 	const operation = "read completed Run work"
-	if err := validateSessionResource(operation, sessionID); err != nil {
+	if err := validateResource(operation, sessionID); err != nil {
 		return 0, false, err
 	}
-	if err := validateRunResource(operation, rootRunID); err != nil {
+	if err := validateResource(operation, rootRunID); err != nil {
 		return 0, false, err
 	}
 	return scopedPair(ctx, r.db.read, func(ctx context.Context) (int64, bool, error) {
@@ -155,9 +154,9 @@ func (r *RunStore) CompletedRunWork(ctx context.Context, sessionID, rootRunID st
 
 // Tree resolves runID to its tree root and returns that root plus every
 // descendant in one SQLite read. Application code derives canonical order.
-func (r *RunStore) Tree(ctx context.Context, runID string) ([]rundomain.Run, error) {
+func (r *RunStore) Tree(ctx context.Context, runID identity.RunID) ([]rundomain.Run, error) {
 	return scopedValue(ctx, r.db.read, func(ctx context.Context) ([]rundomain.Run, error) {
-		if err := validateRunResource("read Run tree", runID); err != nil {
+		if err := validateResource("read Run tree", runID); err != nil {
 			return nil, err
 		}
 		rows, err := r.db.connection(ctx).QueryContext(ctx, `WITH target AS (
@@ -193,14 +192,14 @@ func (r *RunStore) Tree(ctx context.Context, runID string) ([]rundomain.Run, err
 
 // RunsWithAncestors returns the named Runs and the ancestors connecting them
 // to their roots without loading unrelated Runs from the Session.
-func (r *RunStore) RunsWithAncestors(ctx context.Context, runIDs []string) ([]rundomain.Run, error) {
+func (r *RunStore) RunsWithAncestors(ctx context.Context, runIDs []identity.RunID) ([]rundomain.Run, error) {
 	return scopedValue(ctx, r.db.read, func(ctx context.Context) ([]rundomain.Run, error) {
 		if len(runIDs) == 0 {
 			return nil, nil
 		}
 		args := make([]any, 0, len(runIDs))
 		for _, id := range runIDs {
-			if err := validateRunResource("read Runs with ancestors", id); err != nil {
+			if err := validateResource("read Runs with ancestors", id); err != nil {
 				return nil, err
 			}
 			args = append(args, id)
@@ -240,9 +239,9 @@ func (r *RunStore) RunsWithAncestors(ctx context.Context, runIDs []string) ([]ru
 }
 
 // ListRuns returns a session's complete Run aggregates in admission order.
-func (r *RunStore) ListRuns(ctx context.Context, sessionID string) ([]rundomain.Run, error) {
+func (r *RunStore) ListRuns(ctx context.Context, sessionID identity.SessionID) ([]rundomain.Run, error) {
 	return scopedValue(ctx, r.db.read, func(ctx context.Context) ([]rundomain.Run, error) {
-		if err := validateSessionResource("list Session Runs", sessionID); err != nil {
+		if err := validateResource("list Session Runs", sessionID); err != nil {
 			return nil, err
 		}
 		rows, err := r.db.connection(ctx).QueryContext(ctx, `SELECT `+runColumns+`

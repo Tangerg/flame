@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -26,7 +28,7 @@ func (e *Effects) ReserveChildRunStart(
 	if err != nil {
 		return err
 	}
-	return e.runInTx(ctx, func(ctx context.Context) error {
+	return e.tx(ctx, func(ctx context.Context) error {
 		if err := e.childRunStarts.Reserve(ctx, record); err != nil {
 			return fmt.Errorf("segment: reserve child Run start: %w", err)
 		}
@@ -63,7 +65,7 @@ func (e *Effects) AbortChildRunStart(
 	if err != nil {
 		return err
 	}
-	return e.runInTx(ctx, func(ctx context.Context) error {
+	return e.tx(ctx, func(ctx context.Context) error {
 		if _, err := e.childRunStarts.Conclude(
 			ctx, record, runs.ChildRunStartAborted,
 		); err != nil {
@@ -103,14 +105,14 @@ func childRunStartReservationRecord(
 // columns; the remaining reservation facts stay adapter-owned instead of making
 // an Application struct's Go layout an implicit storage wire.
 type childRunStartReservationPayload struct {
-	ExecutorID      string `json:"executorId"`
-	ParentMemberID  string `json:"parentMemberId"`
-	SpawnCallID     string `json:"spawnCallId"`
-	RunID           string `json:"runId"`
-	ParentRunID     string `json:"parentRunId"`
-	SegmentID       string `json:"segmentId"`
-	SpawnedByItemID string `json:"spawnedByItemId"`
-	RootRunID       string `json:"rootRunId"`
+	ExecutorID      string             `json:"executorId"`
+	ParentMemberID  string             `json:"parentMemberId"`
+	SpawnCallID     string             `json:"spawnCallId"`
+	RunID           identity.RunID     `json:"runId"`
+	ParentRunID     identity.RunID     `json:"parentRunId"`
+	SegmentID       identity.SegmentID `json:"segmentId"`
+	SpawnedByItemID identity.ItemID    `json:"spawnedByItemId"`
+	RootRunID       identity.RunID     `json:"rootRunId"`
 }
 
 // CommitOpening accepts one segment atomically. A fresh segment admits its Run;
@@ -119,7 +121,7 @@ type childRunStartReservationPayload struct {
 // projections land in that same transaction, so Start cannot acknowledge a
 // segment whose durable opening is missing.
 func (e *Effects) CommitOpening(ctx context.Context, opening runs.OpeningCommit) error {
-	err := e.runInTx(ctx, func(ctx context.Context) error {
+	err := e.tx(ctx, func(ctx context.Context) error {
 		return e.commitOpening(ctx, opening)
 	})
 	if err == nil {
@@ -184,16 +186,18 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 	if !found {
 		return errors.New("segment: opening admission is required")
 	}
-	if initialSession, present := opening.InitialSession(); present {
-		if err := e.sessions.Insert(ctx, initialSession); err != nil {
+	// The Run row references its Session, so a created Session is inserted first.
+	write := opening.SessionWrite()
+	if insert, ok := write.(runs.SessionInsert); ok {
+		if err := e.sessions.Insert(ctx, insert.Session); err != nil {
 			return fmt.Errorf("segment: persist opening initial Session: %w", err)
 		}
 	}
 	if err := e.runState.Admit(ctx, admission); err != nil {
 		return err
 	}
-	if replacement, present := opening.SessionReplacement(); present {
-		if err := e.sessions.Save(ctx, replacement); err != nil {
+	if save, ok := write.(runs.SessionSave); ok {
+		if err := e.sessions.Save(ctx, save.Replacement); err != nil {
 			return fmt.Errorf("segment: persist opening Session replacement: %w", err)
 		}
 	}
@@ -284,9 +288,9 @@ func (e *Effects) reconcileEventCommit(
 
 func (e *Effects) reconcileRunCommit(
 	ctx context.Context,
-	sessionID string,
-	runID string,
-	segmentID string,
+	sessionID identity.SessionID,
+	runID identity.RunID,
+	segmentID identity.SegmentID,
 	commitID runs.CommitID,
 ) (bool, error) {
 	reconcileCtx, cancel := context.WithTimeout(
@@ -340,14 +344,14 @@ func (e *Effects) CommitTreeBarrier(ctx context.Context, barrier runs.TreeBarrie
 	if errors.Is(err, framehost.ErrRecoveryRequired) {
 		return err
 	}
-	rootSegmentID := ""
+	var rootSegmentID identity.SegmentID
 	for _, commit := range commits {
 		if commit.RunID == pending.RootRunID {
 			rootSegmentID = commit.SegmentID
 			break
 		}
 	}
-	if rootSegmentID == "" {
+	if rootSegmentID.IsZero() {
 		return errors.Join(err, errors.New("segment: tree barrier has no root Run commit"))
 	}
 	settled, settleErr := e.reconcileRunCommit(
@@ -363,77 +367,121 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 	if err := e.runState.RequireActiveSegment(ctx, commit.SessionID, commit.RunID, commit.SegmentID); err != nil {
 		return fmt.Errorf("segment: require active event Segment: %w", err)
 	}
-	if publication := commit.ResultPublication; publication != nil {
-		committed, err := e.runState.ResultPublicationCommitted(ctx, commit.SessionID, commit.RunID, commit.SegmentID, publication.ID, publication.Digest)
-		if err != nil {
+	if applied, err := e.resultPublicationApplied(ctx, commit); err != nil || applied {
+		return err
+	}
+	commit, err := e.closeTerminalConversation(ctx, commit)
+	if err != nil {
+		return err
+	}
+	// One transaction writes these in order; later steps read what earlier
+	// ones wrote.
+	for _, apply := range []func(context.Context, runs.EventCommit) error{
+		e.recordResultPublication,
+		e.applyCompaction,
+		e.applyItems,
+		e.applyConversation,
+		e.applyModelInvocations,
+		e.applyToolInvocations,
+		e.applyProgress,
+		e.applyState,
+		recordChildCancellation,
+		e.captureGoalRun,
+		e.recordRunCommit,
+	} {
+		if err := apply(ctx, commit); err != nil {
 			return err
 		}
-		if committed {
-			return nil
-		}
 	}
+	return nil
+}
 
-	if commit.State == runs.StateTerminalize && commit.Run.Lineage().IsRoot() {
-		messages, err := e.conversation.Read(ctx, commit.SessionID)
-		if err != nil {
-			return fmt.Errorf("segment: read terminal conversation: %w", err)
-		}
-		outcome, _ := commit.Run.Outcome()
-		closure, err := runs.TerminalConversation(ctx, e.runState, commit.SessionID, commit.RunID, append(messages, commit.ConversationMessages...), outcome, commit.Run.Detail())
-		if err != nil {
-			return err
-		}
-		commit.ConversationMessages = append(commit.ConversationMessages, closure...)
+func (e *Effects) resultPublicationApplied(ctx context.Context, commit runs.EventCommit) (bool, error) {
+	publication := commit.ResultPublication
+	if publication == nil {
+		return false, nil
 	}
-	if publication := commit.ResultPublication; publication != nil {
-		if err := e.runState.RecordResultPublication(ctx, commit.SessionID, commit.RunID, commit.SegmentID, publication.ID, publication.Digest, commit.ToolResults); err != nil {
-			return err
-		}
-	}
+	return e.runState.ResultPublicationCommitted(ctx, commit.SessionID, commit.RunID, commit.SegmentID, publication.ID, publication.Digest)
+}
 
-	if commit.Compaction != nil {
-		if err := e.compactions.ApplyCompaction(ctx, *commit.Compaction); err != nil {
-			return err
-		}
+// closeTerminalConversation appends the messages that close a terminal root
+// Run's conversation.
+func (e *Effects) closeTerminalConversation(ctx context.Context, commit runs.EventCommit) (runs.EventCommit, error) {
+	if commit.State != runs.StateTerminalize || !commit.Run.Lineage().IsRoot() {
+		return commit, nil
 	}
+	messages, err := e.conversation.Read(ctx, commit.SessionID)
+	if err != nil {
+		return commit, fmt.Errorf("segment: read terminal conversation: %w", err)
+	}
+	outcome, _ := commit.Run.Outcome()
+	closure, err := runs.TerminalConversation(ctx, e.runState, commit.SessionID, commit.RunID, append(messages, commit.ConversationMessages...), outcome, commit.Run.Detail())
+	if err != nil {
+		return commit, err
+	}
+	commit.ConversationMessages = append(commit.ConversationMessages, closure...)
+	return commit, nil
+}
 
+func (e *Effects) recordResultPublication(ctx context.Context, commit runs.EventCommit) error {
+	publication := commit.ResultPublication
+	if publication == nil {
+		return nil
+	}
+	return e.runState.RecordResultPublication(ctx, commit.SessionID, commit.RunID, commit.SegmentID, publication.ID, publication.Digest, commit.ToolResults)
+}
+
+func (e *Effects) applyCompaction(ctx context.Context, commit runs.EventCommit) error {
+	if commit.Compaction == nil {
+		return nil
+	}
+	return e.compactions.ApplyCompaction(ctx, *commit.Compaction)
+}
+
+func (e *Effects) applyItems(ctx context.Context, commit runs.EventCommit) error {
 	for _, write := range commit.Items {
 		if err := e.writeItem(ctx, write); err != nil {
 			return err
 		}
 	}
-	if len(commit.ConversationMessages) != 0 {
-		if err := e.conversation.Write(ctx, commit.SessionID, commit.ConversationMessages...); err != nil {
-			return fmt.Errorf("segment: append conversation messages: %w", err)
-		}
+	return nil
+}
+
+func (e *Effects) applyConversation(ctx context.Context, commit runs.EventCommit) error {
+	if len(commit.ConversationMessages) == 0 {
+		return nil
 	}
-	if err := e.applyModelInvocations(ctx, commit); err != nil {
-		return err
+	if err := e.conversation.Write(ctx, commit.SessionID, commit.ConversationMessages...); err != nil {
+		return fmt.Errorf("segment: append conversation messages: %w", err)
 	}
-	if err := e.applyToolInvocations(ctx, commit); err != nil {
-		return err
-	}
-	if err := e.applyProgress(ctx, commit); err != nil {
-		return err
-	}
-	if err := e.applyState(ctx, commit); err != nil {
-		return err
-	}
+	return nil
+}
+
+func recordChildCancellation(ctx context.Context, commit runs.EventCommit) error {
 	if err := commit.RecordChildCancellation(ctx); err != nil {
 		return fmt.Errorf("segment: record confirmed active child cancellation: %w", err)
 	}
-	if commit.ChargesGoal() {
-		if err := e.goalRuns.CaptureGoalRun(ctx, *commit.Run); err != nil {
-			return fmt.Errorf("segment: record Goal Run: %w", err)
-		}
-	}
+	return nil
+}
 
-	if commit.State == runs.StateUnchanged && !commit.CommitID.IsZero() {
-		if err := e.runState.RecordRunCommit(
-			ctx, commit.SessionID, commit.RunID, commit.SegmentID, commit.CommitID,
-		); err != nil {
-			return fmt.Errorf("segment: record event commit receipt: %w", err)
-		}
+func (e *Effects) captureGoalRun(ctx context.Context, commit runs.EventCommit) error {
+	if !commit.ChargesGoal() {
+		return nil
+	}
+	if err := e.goalRuns.CaptureGoalRun(ctx, *commit.Run); err != nil {
+		return fmt.Errorf("segment: record Goal Run: %w", err)
+	}
+	return nil
+}
+
+// recordRunCommit receipts an event commit that leaves the Run's state as it
+// was; a state change is its own receipt.
+func (e *Effects) recordRunCommit(ctx context.Context, commit runs.EventCommit) error {
+	if commit.State != runs.StateUnchanged || commit.CommitID.IsZero() {
+		return nil
+	}
+	if err := e.runState.RecordRunCommit(ctx, commit.SessionID, commit.RunID, commit.SegmentID, commit.CommitID); err != nil {
+		return fmt.Errorf("segment: record event commit receipt: %w", err)
 	}
 	return nil
 }
@@ -531,13 +579,9 @@ func (e *Effects) resumeTree(ctx context.Context, resume run.TreeResumeDraft) er
 	return nil
 }
 
-func (e *Effects) runInTx(ctx context.Context, fn func(context.Context) error) error {
-	return e.tx(ctx, fn)
-}
-
 func (e *Effects) runCheckpointTx(ctx context.Context, identity string, checkpoint *runs.ExecutorCheckpoint, fn func(context.Context) error) error {
 	if checkpoint == nil || len(checkpoint.Bindings) == 0 && len(checkpoint.Resources) == 0 {
-		return e.runInTx(ctx, fn)
+		return e.tx(ctx, fn)
 	}
 	return e.pluginBindings(ctx, identity, checkpoint.Clone(), fn)
 }

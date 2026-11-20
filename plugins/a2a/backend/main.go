@@ -11,10 +11,12 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
+const maxAgentsConfigBytes = 1 << 20
+
 func run(ctx context.Context, data string) (err error) {
 	var specs []agentSpec
 	if raw, configured := os.LookupEnv("A2A_AGENTS"); configured {
-		if len(raw) > 1<<20 {
+		if len(raw) > maxAgentsConfigBytes {
 			return errors.New("a2a: A2A_AGENTS exceeds the configuration limit")
 		}
 		if err := json.Unmarshal([]byte(raw), &specs, json.RejectUnknownMembers(true)); err != nil || specs == nil {

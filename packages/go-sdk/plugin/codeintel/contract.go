@@ -38,9 +38,11 @@ func NewDocument(workspace, path, content string) (Document, error) {
 	return document, document.Validate()
 }
 
+const maxPathBytes = 4096
+
 func (d Document) Validate() error {
 	if !filepath.IsAbs(d.Workspace) || !filepath.IsLocal(d.Path) || d.Path == "." ||
-		len(d.Workspace) > 4096 || len(d.Path) > 4096 ||
+		len(d.Workspace) > maxPathBytes || len(d.Path) > maxPathBytes ||
 		!validText(d.Workspace) || !validText(d.Path) {
 		return errors.New("code intelligence: an absolute workspace and local file path are required")
 	}

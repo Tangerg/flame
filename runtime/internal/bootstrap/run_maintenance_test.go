@@ -64,7 +64,7 @@ func TestInstalledSkillLearningUsesAdmittedSkillDocuments(t *testing.T) {
 				t.Fatal(err)
 			}
 			const sessionID = "ses_mining"
-			if err := store.Write(t.Context(), sessionID,
+			if err := store.Write(t.Context(), testsupport.MustSessionID(sessionID),
 				chat.NewUserMessage(chat.NewTextPart("the test command changed")),
 				chat.NewAssistantMessage(chat.NewTextPart("use the new command")),
 				chat.NewUserMessage(chat.NewTextPart("keep the correction")),
@@ -98,7 +98,7 @@ func TestInstalledSkillLearningUsesAdmittedSkillDocuments(t *testing.T) {
 			waitCallContributorState(t, r, installed.ID, protocol.MCPServerConnected)
 			var failure error
 			for index := range 3 {
-				failure = learning.MaintainSkills(t.Context(), executionadapter.RunMaintenanceInput{SessionID: sessionID, RootMemberID: "member_mining_" + strconv.Itoa(index), WorkspaceCWD: cfg.defaultWorkspacePath}, 8)
+				failure = learning.MaintainSkills(t.Context(), executionadapter.RunMaintenanceInput{SessionID: testsupport.MustSessionID(sessionID), RootMemberID: "member_mining_" + strconv.Itoa(index), WorkspaceCWD: cfg.defaultWorkspacePath}, 8)
 			}
 			if test.category != nil {
 				if !errors.Is(failure, test.category) || !errors.Is(failure, filesystem.ErrFileTooLarge) {
@@ -136,7 +136,7 @@ func TestInstalledSkillLearningUsesAdmittedSkillDocuments(t *testing.T) {
 			}
 			r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-learning")
 			for index := range 3 {
-				_ = learning.MaintainSkills(t.Context(), executionadapter.RunMaintenanceInput{SessionID: sessionID, RootMemberID: "member_disabled_" + strconv.Itoa(index), WorkspaceCWD: cfg.defaultWorkspacePath}, 8)
+				_ = learning.MaintainSkills(t.Context(), executionadapter.RunMaintenanceInput{SessionID: testsupport.MustSessionID(sessionID), RootMemberID: "member_disabled_" + strconv.Itoa(index), WorkspaceCWD: cfg.defaultWorkspacePath}, 8)
 			}
 			if model.calls != 2 {
 				t.Fatalf("disabled plugin made new model calls: %d", model.calls)

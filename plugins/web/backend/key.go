@@ -10,12 +10,14 @@ import (
 
 type apiKey struct{ value string }
 
+const maxAPIKeyBytes = 4096
+
 func newAPIKey(configured *string) (apiKey, error) {
 	if configured == nil {
 		return apiKey{}, nil
 	}
 	value := *configured
-	if !utf8.ValidString(value) || strings.TrimSpace(value) == "" || len(value) > 4096 || strings.TrimSpace(value) != value || strings.IndexFunc(value, unicode.IsControl) >= 0 {
+	if !utf8.ValidString(value) || strings.TrimSpace(value) == "" || len(value) > maxAPIKeyBytes || strings.TrimSpace(value) != value || strings.IndexFunc(value, unicode.IsControl) >= 0 {
 		return apiKey{}, errors.New("web: configured API key must be bounded, nonblank and contain no surrounding whitespace or control characters")
 	}
 	return apiKey{value: value}, nil

@@ -6,6 +6,7 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -22,7 +23,7 @@ func (s Snapshot) Validate() error {
 func (s HistorySnapshot) validate() error {
 	// The Session anchors every ownership comparison below, so an unbuilt one
 	// would make an all-zero snapshot self-consistent.
-	if s.Session.ID() == "" {
+	if s.Session.ID().IsZero() {
 		return errors.New("sessions: snapshot carries no Session")
 	}
 	if err := conversation.ValidateMessages(s.Messages); err != nil {
@@ -42,10 +43,10 @@ func (s HistorySnapshot) validate() error {
 	return s.ValidateToolResults()
 }
 
-func (s HistorySnapshot) validateRuns() (map[string]struct{}, error) {
-	runs := make(map[string]struct{}, len(s.Runs))
+func (s HistorySnapshot) validateRuns() (map[identity.RunID]struct{}, error) {
+	runs := make(map[identity.RunID]struct{}, len(s.Runs))
 	for _, run := range s.Runs {
-		if run.ID() == "" || run.SessionID() != s.Session.ID() {
+		if run.ID().IsZero() || run.SessionID() != s.Session.ID() {
 			return nil, fmt.Errorf("sessions: snapshot run %q belongs to session %q, want %q", run.ID(), run.SessionID(), s.Session.ID())
 		}
 		if _, exists := runs[run.ID()]; exists {
@@ -64,10 +65,10 @@ func (s HistorySnapshot) validateRuns() (map[string]struct{}, error) {
 	return runs, nil
 }
 
-func (s HistorySnapshot) validateItems(runs map[string]struct{}) (map[string]transcript.Item, error) {
-	items := make(map[string]transcript.Item, len(s.Items))
+func (s HistorySnapshot) validateItems(runs map[identity.RunID]struct{}) (map[identity.ItemID]transcript.Item, error) {
+	items := make(map[identity.ItemID]transcript.Item, len(s.Items))
 	for _, item := range s.Items {
-		if item.ID() == "" || item.SessionID() != s.Session.ID() {
+		if item.ID().IsZero() || item.SessionID() != s.Session.ID() {
 			return nil, fmt.Errorf("sessions: snapshot item %q belongs to session %q, want %q", item.ID(), item.SessionID(), s.Session.ID())
 		}
 		if _, exists := items[item.ID()]; exists {
@@ -95,12 +96,12 @@ func (s HistorySnapshot) validateItems(runs map[string]struct{}) (map[string]tra
 // complete topology. Reachability, cycles, duplicates and the root each child
 // names are run.Tree's rules; a snapshot only adds what its Items say about the
 // call that spawned each child.
-func validateSnapshotRunTree(runs []run.Run, items map[string]transcript.Item) error {
-	index := &snapshotRunTree{runByID: make(map[string]run.Run, len(runs))}
+func validateSnapshotRunTree(runs []run.Run, items map[identity.ItemID]transcript.Item) error {
+	index := &snapshotRunTree{runByID: make(map[identity.RunID]run.Run, len(runs))}
 	for _, value := range runs {
 		index.runByID[value.ID()] = value
 	}
-	membersByRoot := make(map[string][]run.TreeMember, len(runs))
+	membersByRoot := make(map[identity.RunID][]run.TreeMember, len(runs))
 	for _, value := range runs {
 		lineage := value.Lineage()
 		rootRunID := value.ID()
@@ -115,7 +116,7 @@ func validateSnapshotRunTree(runs []run.Run, items map[string]transcript.Item) e
 			run.TreeMember{RunID: value.ID(), Lineage: lineage},
 		)
 	}
-	for _, rootRunID := range slices.Sorted(maps.Keys(membersByRoot)) {
+	for _, rootRunID := range slices.SortedFunc(maps.Keys(membersByRoot), identity.RunID.Compare) {
 		if _, err := run.NewTree(rootRunID, membersByRoot[rootRunID]); err != nil {
 			return fmt.Errorf("sessions: snapshot run tree: %w", err)
 		}
@@ -124,7 +125,7 @@ func validateSnapshotRunTree(runs []run.Run, items map[string]transcript.Item) e
 }
 
 type snapshotRunTree struct {
-	runByID map[string]run.Run
+	runByID map[identity.RunID]run.Run
 }
 
 // validateChildSpawn proves the Item a child names is the Tool call its parent
@@ -132,7 +133,7 @@ type snapshotRunTree struct {
 // whether the call that produced this child exists in it.
 func (s *snapshotRunTree) validateChildSpawn(
 	child run.Run,
-	items map[string]transcript.Item,
+	items map[identity.ItemID]transcript.Item,
 ) error {
 	lineage := child.Lineage()
 	parent, parentFound := s.runByID[lineage.ParentRunID()]

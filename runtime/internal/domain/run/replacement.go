@@ -3,6 +3,9 @@ package run
 import (
 	"errors"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 )
 
 // Replacement binds a decided Run state to the exact aggregate it was derived
@@ -30,7 +33,7 @@ func (r Replacement) AdvanceProgress(metrics Metrics, contextTokens int64, updat
 	return r.advance(r.state.AdvanceProgress(metrics, contextTokens, updatedAt))
 }
 
-func (r Replacement) Resume(segmentID string, resumedAt time.Time) (Replacement, error) {
+func (r Replacement) Resume(segmentID identity.SegmentID, resumedAt time.Time) (Replacement, error) {
 	return r.advance(r.state.Resume(segmentID, resumedAt))
 }
 
@@ -42,13 +45,17 @@ func (r Replacement) RecoverLost(loss Loss, finishedAt time.Time, messageMark Me
 	return r.advance(r.state.RecoverLost(loss, finishedAt, messageMark))
 }
 
+func (r Replacement) RebaseConversation(compaction conversation.Compaction) (Replacement, error) {
+	return r.advance(r.state.RebaseConversation(compaction))
+}
+
 func (r Replacement) WithMessageMark(messageMark int) (Replacement, error) {
 	return r.advance(r.state.WithMessageMark(messageMark))
 }
 
 // Validate rejects a Replacement that was never started from a Run.
 func (r Replacement) Validate() error {
-	if r.expected.ID() == "" {
+	if r.expected.ID().IsZero() {
 		return errors.New("run: replacement carries no Run")
 	}
 	return nil

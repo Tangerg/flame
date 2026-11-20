@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
@@ -41,7 +43,7 @@ func (Outcome) JSONSchemaEnum() []string {
 // Reason explains a blocked outcome and must be empty for a completed one;
 // surrounding whitespace is not part of it.
 type ReportCommand struct {
-	SessionID     string
+	SessionID     identity.SessionID
 	IncarnationID string
 	Outcome       Outcome
 	Reason        string

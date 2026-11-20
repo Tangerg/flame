@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/runtime/internal/domain/secret"
 )
 
 var (
@@ -44,7 +45,7 @@ func (k APIKey) Present() bool { return k.value != "" }
 // and %#v formatting of Credential or Provider. Reveal remains the only API
 // that can expose the secret to an explicit consumer.
 func (k APIKey) Format(state fmt.State, _ rune) {
-	_, _ = state.Write([]byte("[REDACTED]"))
+	_, _ = state.Write([]byte(secret.Redacted))
 }
 
 // Reveal is an explicit sensitive-data boundary. Callers must not log or
@@ -92,11 +93,7 @@ type Credential struct {
 }
 
 func (c Credential) Format(state fmt.State, _ rune) {
-	value := "<absent>"
-	if c.Configured() {
-		value = "[REDACTED]"
-	}
-	_, _ = state.Write([]byte(value))
+	_, _ = state.Write([]byte(secret.Presence(c.Configured())))
 }
 
 func storedCredential(key APIKey) Credential {

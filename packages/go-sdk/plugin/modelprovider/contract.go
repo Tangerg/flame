@@ -79,6 +79,13 @@ func (p Profile) Validate() error {
 	if err := p.Endpoint.Validate(); err != nil {
 		return err
 	}
+	if err := p.validateDefaultModels(); err != nil {
+		return err
+	}
+	return p.validateCatalog()
+}
+
+func (p Profile) validateDefaultModels() error {
 	switch p.ModelSource {
 	case BundledModels:
 		if _, err := modelchoice.NewModelIdentity(p.DefaultModel); err != nil {
@@ -96,6 +103,10 @@ func (p Profile) Validate() error {
 			return err
 		}
 	}
+	return nil
+}
+
+func (p Profile) validateCatalog() error {
 	seen := make(map[string]struct{}, len(p.Models))
 	for _, model := range p.Models {
 		if err := model.Validate(); err != nil {

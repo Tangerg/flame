@@ -28,12 +28,19 @@ type remoteError struct {
 func (e *remoteError) Error() string { return "a2a: " + e.operation + " failed" }
 func (e *remoteError) Unwrap() error { return e.cause }
 
+const (
+	maxAgentCardBytes = 1 << 20
+	maxCardRedirects  = 10
+	discoveryTimeout  = 15 * time.Second
+	rpcTimeout        = 30 * time.Second
+)
+
 func (a agent) discover(ctx context.Context) (*a2aclient.Client, a2a.AgentInterface, error) {
-	httpClient := httpresponse.NewClient(1<<20, errResponseLimit)
-	httpClient.Timeout = 15 * time.Second
+	httpClient := httpresponse.NewClient(maxAgentCardBytes, errResponseLimit)
+	httpClient.Timeout = discoveryTimeout
 	httpClient.CheckRedirect = func(request *http.Request, via []*http.Request) error {
 		origin, err := httporigin.FromURL(request.URL)
-		if err != nil || origin != a.cardOrigin || len(via) >= 10 {
+		if err != nil || origin != a.cardOrigin || len(via) >= maxCardRedirects {
 			return errors.New("a2a: agent card redirect is outside its origin or limit")
 		}
 		return nil
@@ -60,7 +67,7 @@ func (a agent) connect(ctx context.Context, endpoint a2a.AgentInterface) (*a2acl
 
 func (a agent) clientOptions(selected *a2a.AgentInterface) []a2aclient.FactoryOption {
 	client := httpresponse.NewClient(maxResponseBytes, errResponseLimit)
-	client.Timeout = 30 * time.Second
+	client.Timeout = rpcTimeout
 	client.CheckRedirect = func(*http.Request, []*http.Request) error {
 		return errors.New("a2a: RPC redirects cannot replace the selected task endpoint")
 	}

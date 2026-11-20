@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
@@ -55,32 +56,35 @@ func NewRequiredBindings(values []ResolvedRequirement) (*RequiredBindings, error
 		}
 		owned.values[i].Contract = contract.Identity()
 		owned.values[i].Bindings = slices.Clone(value.Bindings)
-		type provider struct {
-			installation identity.InstallationID
-			contribution ContributionID
-		}
-		providers := map[provider]bool{}
-		for _, binding := range value.Bindings {
-			if err := binding.Provider.Validate(); err != nil {
-				return nil, err
-			}
-			if err := binding.Contribution.Validate(); err != nil {
-				return nil, err
-			}
-			if err := binding.Server.Validate(); err != nil {
-				return nil, err
-			}
-			if !plugincontract.ValidExportName(binding.Export) || binding.Contract != contract.Identity() {
-				return nil, fmt.Errorf("%w: requirement %s binding contract", ErrInvalid, key)
-			}
-			providerKey := provider{binding.Provider.InstallationID, binding.Contribution}
-			if providers[providerKey] {
-				return nil, fmt.Errorf("%w: requirement %s has a duplicate provider", ErrInvalid, key)
-			}
-			providers[providerKey] = true
+		if err := validateRequirementProviders(key, contract.Identity(), value.Bindings); err != nil {
+			return nil, err
 		}
 	}
 	return owned, nil
+}
+
+// validateRequirementProviders proves every provider exports exactly the
+// required contract and appears once.
+func validateRequirementProviders(key string, contract framevalue.JSON, bindings []BoundContribution) error {
+	type provider struct {
+		installation identity.InstallationID
+		contribution ContributionID
+	}
+	providers := map[provider]bool{}
+	for _, binding := range bindings {
+		if err := errors.Join(binding.Provider.Validate(), binding.Contribution.Validate(), binding.Server.Validate()); err != nil {
+			return err
+		}
+		if !plugincontract.ValidExportName(binding.Export) || binding.Contract != contract {
+			return fmt.Errorf("%w: requirement %s binding contract", ErrInvalid, key)
+		}
+		providerKey := provider{binding.Provider.InstallationID, binding.Contribution}
+		if providers[providerKey] {
+			return fmt.Errorf("%w: requirement %s has a duplicate provider", ErrInvalid, key)
+		}
+		providers[providerKey] = true
+	}
+	return nil
 }
 
 func (b *RequiredBindings) Snapshot() []ResolvedRequirement {

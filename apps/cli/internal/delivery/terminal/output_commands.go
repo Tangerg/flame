@@ -18,7 +18,7 @@ type sessionOutputResult struct {
 
 func (a *app) copyLastAssistant() error {
 	sessionID := a.lifecycle.state.current.ID
-	started := a.tasks.session(sessionOutputOperation, false,
+	started := a.tasks.session(sessionOutputOperation,
 		func(ctx context.Context) (sessionOutputResult, error) {
 			snapshot, err := a.runtime.GetSession(ctx, sessionID)
 			if err != nil {
@@ -60,7 +60,7 @@ func (l *sessionLifecycle) exportSession(argument string) error {
 	sessionID := l.state.current.ID
 	workspace := authoringDirectory(l.localDirectory, l.state.current.Workspace.Path)
 	title := l.state.current.Title
-	started := l.tasks.application(sessionOutputOperation, false,
+	started := l.tasks.application(sessionOutputOperation,
 		func(ctx context.Context) (sessionartifact.Publication, error) {
 			document, err := l.transfers.ExportSession(ctx, session.ExportRequest{SessionID: sessionID, Format: format})
 			if err != nil {

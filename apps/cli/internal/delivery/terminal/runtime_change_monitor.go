@@ -28,7 +28,16 @@ func (a *app) followRuntimeChanges() {
 	if repository == nil && a.changes == nil {
 		return
 	}
-	a.operations.Go(runtimeChangesOperation, true, func(ctx context.Context, lease operationLease) {
+	a.operations.Go(runtimeChangesOperation, func(ctx context.Context, lease operationLease) {
+		// Every delivery lands only while this monitor still watches the
+		// session's current workspace.
+		deliver := func(apply func()) error {
+			return a.tasks.deliver(ctx, func() {
+				if a.operations.Current(lease) && !a.closed && a.lifecycle.state.current.Workspace.Path == workspacePath {
+					apply()
+				}
+			})
+		}
 		monitor := runtimeChangeMonitor{
 			workspace: workspacePath, repository: repository, source: a.changes,
 			recovery:           runtimeRecoveryBackoff,
@@ -36,37 +45,17 @@ func (a *app) followRuntimeChanges() {
 			watchFiles:         a.runtimeSupports(protocol.FeatureFileWatch),
 			topics:             a.observedRuntimeTopics(),
 			applyFiles: func(changes []workspace.Change) error {
-				return a.tasks.deliver(ctx, func() {
-					if !a.operations.Current(lease) || a.closed || a.lifecycle.state.current.Workspace.Path != workspacePath {
-						return
-					}
-					a.applyWorkspaceChanges(changes)
-				})
+				return deliver(func() { a.applyWorkspaceChanges(changes) })
 			},
 			applyEvent: func(event changefeed.Event) error {
-				return a.tasks.deliver(ctx, func() {
-					if !a.operations.Current(lease) || a.closed || a.lifecycle.state.current.Workspace.Path != workspacePath {
-						return
-					}
-					a.applyRuntimeInvalidation(event)
-				})
+				return deliver(func() { a.applyRuntimeInvalidation(event) })
 			},
 			applyResync: func(topics []protocol.RuntimeTopic) error {
-				return a.tasks.deliver(ctx, func() {
-					if !a.operations.Current(lease) || a.closed || a.lifecycle.state.current.Workspace.Path != workspacePath {
-						return
-					}
-					a.applyRuntimeResync(topics)
-				})
+				return deliver(func() { a.applyRuntimeResync(topics) })
 			},
 		}
 		if err := monitor.run(ctx); err != nil && context.Cause(ctx) == nil {
-			_ = a.tasks.deliver(ctx, func() {
-				if !a.operations.Current(lease) || a.closed || a.lifecycle.state.current.Workspace.Path != workspacePath {
-					return
-				}
-				a.message("runtime change observation stopped: " + err.Error())
-			})
+			_ = deliver(func() { a.message("runtime change observation stopped: " + err.Error()) })
 		}
 	})
 }

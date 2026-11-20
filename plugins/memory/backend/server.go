@@ -43,7 +43,6 @@ func registerServer(server *sdk.Server, db framesqlite.Database, store store, ro
 	if err != nil {
 		return err
 	}
-
 	review, err := app.New(app.Config{Store: store, Roots: roots})
 	if err != nil {
 		return err
@@ -67,100 +66,17 @@ func registerServer(server *sdk.Server, db framesqlite.Database, store store, ro
 	if err != nil {
 		return err
 	}
+	handlers := memoryServer{db: db, store: store, review: review, read: read}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, db),
 		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
 			return memoryToolReceipt(ctx, db, command.Input)
 		}),
-		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[rpc.ListInput]) (rpc.Page, error) {
-			input := command.Input
-			limit := pagination.DefaultLimit()
-			if input.Limit != nil {
-				var err error
-				limit, err = pagination.NewLimit(*input.Limit)
-				if err != nil {
-					return rpc.Page{}, err
-				}
-			}
-			page, err := review.List(ctx, app.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: limit})
-			return rpc.Page{Rows: snapshots(page.Rows), NextCursor: page.NextCursor, Capacity: memory.MaxVisiblePerTarget}, err
-		}),
+		contracts.List.RegisterServer(backend, classify, handlers.list),
 		registerManagementCommands(backend, db, contracts, review),
-		contracts.Items.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[rpc.ItemsInput]) ([]memory.ItemSnapshot, error) {
-			input := command.Input
-			items, err := read.Items(ctx, input.Scope, input.Project)
-			return snapshots(items), err
-		}),
-		contracts.Search.RegisterServer(backend, classify, func(ctx context.Context, session *sdk.ServerSession, command pluginmcp.Command[rpc.SearchInput]) ([]memory.ItemSnapshot, error) {
-			input := command.Input
-			var resolve func(context.Context) (app.Embedder, error)
-			if input.EmbeddingSpace != "" {
-				grant, err := pluginmcp.CallbackFromContext(ctx)
-				if err != nil {
-					return nil, err
-				}
-				resolve = func(context.Context) (app.Embedder, error) {
-					return remoteModels{grant: grant, space: input.EmbeddingSpace}, nil
-				}
-			}
-			read, err := app.NewReadModel(store, resolve)
-			if err != nil {
-				return nil, err
-			}
-			items, err := read.Search(ctx, input.Project, input.Query, input.TopK)
-			return snapshots(items), err
-		}),
-		contracts.Maintain.RegisterServer(backend, classify, func(ctx context.Context, session *sdk.ServerSession, command pluginmcp.Command[rpc.MaintenanceInput]) (rpc.MaintenanceResult, error) {
-			input := command.Input
-			admitted, err := command.RequestInput()
-			if err != nil {
-				return rpc.MaintenanceResult{}, err
-			}
-			var grant pluginmcp.CallbackRef
-			prepared, original, err := pluginstorage.AdmitCommand(ctx, db, rpc.Maintain, string(command.ID), admitted, func(ctx context.Context) error {
-				if !input.Compacted {
-					return nil
-				}
-				var err error
-				grant, err = pluginmcp.CallbackFromContext(ctx)
-				return err
-			})
-			if err != nil {
-				return rpc.MaintenanceResult{}, err
-			}
-			if prepared == nil {
-				return pluginmcp.DecodeReply[rpc.MaintenanceResult](original)
-			}
-			if !prepared.NewlyAdmitted() {
-				return rpc.MaintenanceResult{}, pluginstorage.ErrCommandUnconfirmed
-			}
-			if !input.Compacted {
-				reply, err := maintenanceReply(false)
-				if err != nil {
-					return rpc.MaintenanceResult{}, err
-				}
-				return rpc.MaintenanceResult{}, prepared.Complete(ctx, reply)
-			}
-			curation, err := app.NewCuration(maintenancePublication{CurationStore: store, db: db, command: prepared})
-			if err != nil {
-				return rpc.MaintenanceResult{}, err
-			}
-			consolidator, err := app.NewMemoryConsolidator(capturedHistory{input.Conversation}, curation, remoteModels{grant: grant})
-			if err != nil {
-				return rpc.MaintenanceResult{}, err
-			}
-			published, err := consolidator.Consolidate(ctx, input.SessionID, input.Project)
-			if err != nil {
-				return pluginstorage.CompleteExternalCommand(ctx, prepared, classify, func(context.Context) (pluginstorage.CommandPlan[rpc.MaintenanceResult], error) {
-					return pluginstorage.CommandPlan[rpc.MaintenanceResult]{}, err
-				})
-			}
-			reply, err := maintenanceReply(published)
-			if err != nil {
-				return rpc.MaintenanceResult{}, err
-			}
-			return rpc.MaintenanceResult{Published: published}, prepared.Complete(ctx, reply)
-		}),
+		contracts.Items.RegisterServer(backend, classify, handlers.items),
+		contracts.Search.RegisterServer(backend, classify, handlers.search),
+		contracts.Maintain.RegisterServer(backend, classify, handlers.maintain),
 	); err != nil {
 		return err
 	}
@@ -168,6 +84,105 @@ func registerServer(server *sdk.Server, db framesqlite.Database, store store, ro
 		return err
 	}
 	return backend.Publish()
+}
+
+// memoryServer serves the memory capability's queries and maintenance.
+type memoryServer struct {
+	db     framesqlite.Database
+	store  store
+	review *app.Coordinator
+	read   *app.ReadModel
+}
+
+func (m memoryServer) list(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[rpc.ListInput]) (rpc.Page, error) {
+	input := command.Input
+	limit, err := pagination.ParseLimit(input.Limit)
+	if err != nil {
+		return rpc.Page{}, err
+	}
+	page, err := m.review.List(ctx, app.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: limit})
+	return rpc.Page{Rows: snapshots(page.Rows), NextCursor: page.NextCursor, Capacity: memory.MaxVisiblePerTarget}, err
+}
+
+func (m memoryServer) items(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[rpc.ItemsInput]) ([]memory.ItemSnapshot, error) {
+	items, err := m.read.Items(ctx, command.Input.Scope, command.Input.Project)
+	return snapshots(items), err
+}
+
+// search embeds through the caller's model callback only when the request
+// names an embedding space; otherwise it ranks lexically.
+func (m memoryServer) search(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[rpc.SearchInput]) ([]memory.ItemSnapshot, error) {
+	input := command.Input
+	var resolve func(context.Context) (app.Embedder, error)
+	if input.EmbeddingSpace != "" {
+		grant, err := pluginmcp.CallbackFromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+		resolve = func(context.Context) (app.Embedder, error) {
+			return remoteModels{grant: grant, space: input.EmbeddingSpace}, nil
+		}
+	}
+	read, err := app.NewReadModel(m.store, resolve)
+	if err != nil {
+		return nil, err
+	}
+	items, err := read.Search(ctx, input.Project, input.Query, input.TopK)
+	return snapshots(items), err
+}
+
+// maintain consolidates a compacted conversation into memory exactly once per
+// command, replaying the recorded reply for a retried command.
+func (m memoryServer) maintain(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[rpc.MaintenanceInput]) (rpc.MaintenanceResult, error) {
+	input := command.Input
+	admitted, err := command.RequestInput()
+	if err != nil {
+		return rpc.MaintenanceResult{}, err
+	}
+	var grant pluginmcp.CallbackRef
+	prepared, original, err := pluginstorage.AdmitCommand(ctx, m.db, rpc.Maintain, string(command.ID), admitted, func(ctx context.Context) error {
+		if !input.Compacted {
+			return nil
+		}
+		var err error
+		grant, err = pluginmcp.CallbackFromContext(ctx)
+		return err
+	})
+	if err != nil {
+		return rpc.MaintenanceResult{}, err
+	}
+	if prepared == nil {
+		return pluginmcp.DecodeReply[rpc.MaintenanceResult](original)
+	}
+	if !prepared.NewlyAdmitted() {
+		return rpc.MaintenanceResult{}, pluginstorage.ErrCommandUnconfirmed
+	}
+	if !input.Compacted {
+		reply, err := maintenanceReply(false)
+		if err != nil {
+			return rpc.MaintenanceResult{}, err
+		}
+		return rpc.MaintenanceResult{}, prepared.Complete(ctx, reply)
+	}
+	curation, err := app.NewCuration(maintenancePublication{CurationStore: m.store, db: m.db, command: prepared})
+	if err != nil {
+		return rpc.MaintenanceResult{}, err
+	}
+	consolidator, err := app.NewMemoryConsolidator(capturedHistory{input.Conversation}, curation, remoteModels{grant: grant})
+	if err != nil {
+		return rpc.MaintenanceResult{}, err
+	}
+	published, err := consolidator.Consolidate(ctx, input.SessionID, input.Project)
+	if err != nil {
+		return pluginstorage.CompleteExternalCommand(ctx, prepared, classify, func(context.Context) (pluginstorage.CommandPlan[rpc.MaintenanceResult], error) {
+			return pluginstorage.CommandPlan[rpc.MaintenanceResult]{}, err
+		})
+	}
+	reply, err := maintenanceReply(published)
+	if err != nil {
+		return rpc.MaintenanceResult{}, err
+	}
+	return rpc.MaintenanceResult{Published: published}, prepared.Complete(ctx, reply)
 }
 
 type toolSearch struct {

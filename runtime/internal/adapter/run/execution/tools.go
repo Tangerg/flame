@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -33,7 +35,7 @@ type interactionToolInterpreter interface {
 	UsesStandardPolicy(ref tool.Ref) bool
 	ApprovalSubject(ref tool.Ref, arguments tool.Arguments) (string, error)
 	ShellCommand(ref tool.Ref, arguments string) string
-	ProjectOutcome(ctx context.Context, sessionID string, ref tool.Ref, succeeded bool) (runs.ExecutionFact, error)
+	ProjectOutcome(ctx context.Context, sessionID identity.SessionID, ref tool.Ref, succeeded bool) (runs.ExecutionFact, error)
 }
 
 // interactionToolPresenter owns client-facing result projection.
@@ -46,7 +48,7 @@ type interactionToolPresenter interface {
 // ToolAuthorizationRequest is the complete pre-call policy input. The
 // authorizer may allow, rewrite, deny, or require durable human approval.
 type ToolAuthorizationRequest struct {
-	SessionID string
+	SessionID identity.SessionID
 	// WorkspaceCWD is the Session's project directory, which is the scope key a
 	// remembered approval is stored under. An isolated Run executes elsewhere;
 	// a rule keyed by that scratch copy would never match the project again.
@@ -101,7 +103,7 @@ func allowToolWithArguments(arguments tool.Arguments) ToolAuthorizationDecision 
 // denyTool refuses the call. The reason reaches the model as a recoverable Tool
 // result, so a blank one becomes the generic wording rather than nothing.
 func denyTool(reason string) ToolAuthorizationDecision {
-	return ToolAuthorizationDecision{toolVerdict: toolVerdict{reason: toolDenialReason(reason)}}
+	return ToolAuthorizationDecision{toolVerdict: toolVerdict{reason: refusalReason(reason, policyRefusal)}}
 }
 
 // askToolApproval waits for a durable human answer to prompt.
@@ -134,11 +136,19 @@ func (d ToolAuthorizationDecision) Approval() (runs.ApprovalPrompt, bool) {
 	return *d.approval, true
 }
 
-func toolDenialReason(reason string) string {
+// Generic wording for a denier that gave no reason: the model always learns
+// why its call did not run.
+const (
+	policyRefusal = "denied by Tool policy"
+	userRefusal   = "tool call denied by user"
+	hookRefusal   = "denied by a PreToolUse hook"
+)
+
+func refusalReason(reason, fallback string) string {
 	if trimmed := strings.TrimSpace(reason); trimmed != "" {
 		return trimmed
 	}
-	return "denied by Tool policy"
+	return fallback
 }
 
 // interactionToolAuthorizer evaluates Runtime Tool policy and resolves its
@@ -160,7 +170,7 @@ type interactionToolAuthorizer interface {
 // InteractionToolHookInput identifies one ordinary Tool lifecycle callback.
 // Result and CallError are present only after execution.
 type InteractionToolHookInput struct {
-	SessionID string
+	SessionID identity.SessionID
 	// CWD is where the call ran. WorkspaceCWD is the Session's project
 	// directory, which decides which hooks exist and whether the project has
 	// been trusted to run them; an isolated copy was never granted that trust.
@@ -192,10 +202,7 @@ func allowToolHook(requireApproval bool, arguments *tool.Arguments) InteractionT
 
 // denyToolHook refuses the call, naming the hook when the hook did not.
 func denyToolHook(reason string) InteractionToolHookDecision {
-	if trimmed := strings.TrimSpace(reason); trimmed != "" {
-		return InteractionToolHookDecision{toolVerdict: toolVerdict{reason: trimmed}}
-	}
-	return InteractionToolHookDecision{toolVerdict: toolVerdict{reason: "denied by a PreToolUse hook"}}
+	return InteractionToolHookDecision{toolVerdict: toolVerdict{reason: refusalReason(reason, hookRefusal)}}
 }
 
 // RequiresApproval reports a hook escalating a call the gate would have passed.

@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -86,8 +88,8 @@ func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecut
 	return executor, err
 }
 
-func (s *testExecutionTrees) LoadExecutionTree(ctx context.Context, sessionID, rootID string) (runs.ExecutionTreeHead, bool, error) {
-	return s.stores.ExecutorCheckpoints.LoadExecutionTree(ctx, sessionID, rootID)
+func (s *testExecutionTrees) LoadExecutionTree(ctx context.Context, sessionID identity.SessionID, rootID string) (runs.ExecutionTreeHead, bool, error) {
+	return s.stores.ExecutorCheckpoints.LoadExecutionTree(ctx, testsupport.MustSessionID(sessionID.String()), rootID)
 }
 
 func (s *testExecutionTrees) LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error) {
@@ -98,7 +100,7 @@ func (s *testExecutionTrees) SaveExecutionTree(ctx context.Context, update runs.
 	return s.stores.ExecutorCheckpoints.SaveExecutionTree(ctx, update)
 }
 
-func (s *testExecutionTrees) ExecutionResultCommitted(_ context.Context, _ string, publication runs.ResultPublication) (bool, error) {
+func (s *testExecutionTrees) ExecutionResultCommitted(_ context.Context, _ identity.SessionID, publication runs.ResultPublication) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	stored, found := s.publications[publication.ID]
@@ -181,7 +183,7 @@ func newSessionEndpointJournal(db *persistencefixture.Stores) sessionEndpointJou
 }
 
 func (j sessionEndpointJournal) StartEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation, _ string) error {
-	if invocation.SessionID != "" {
+	if !invocation.SessionID.IsZero() {
 		sessions := j.db.Sessions
 		if _, err := sessions.Get(ctx, invocation.SessionID); errors.Is(err, session.ErrNotFound) {
 			if err := sessions.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{ID: invocation.SessionID})); err != nil {

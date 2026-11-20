@@ -104,11 +104,11 @@ type Handler struct {
 	idempotency              protocol.IdempotencyLimits
 	mcpAuthorizationAttempts protocol.MCPAuthorizationAttemptLimits
 
-	// workspaceHub fans non-run change signals out to
+	// runtimeEvents fans non-run change signals out to
 	// runtime.subscribe streams. It is ephemeral, lossy, and scoped
 	// to this process; run streams have their own durable replay contract.
-	workspaceHub *workspaceHub
-	resources    *resourceLeases
+	runtimeEvents *runtimeEventHub
+	resources     *resourceLeases
 }
 
 // featureAvailability is the small closed set of optional runtime facts that
@@ -121,12 +121,7 @@ type featureAvailability struct {
 
 // beginShutdown rejects new runtime subscriptions. Endpoint is its sole caller.
 func (s *Handler) beginShutdown() {
-	if s == nil {
-		return
-	}
-	if s.workspaceHub != nil {
-		s.workspaceHub.closeAdmissions()
-	}
+	s.runtimeEvents.closeAdmissions()
 }
 
 // NewHandler builds the protocol handler set from its required application use cases.
@@ -254,7 +249,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		feedback:                 cfg.Feedback,
 		trajectoryExports:        cfg.TrajectoryExports,
 		serverInfo:               cfg.ServerInfo,
-		workspaceHub:             newWorkspaceHub(),
+		runtimeEvents:            newRuntimeEventHub(),
 		resources:                newResourceLeases(),
 		goals:                    cfg.Goals,
 		workspaceFiles:           cfg.WorkspaceFiles,

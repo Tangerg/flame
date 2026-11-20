@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/frame/sqlite"
@@ -69,8 +71,8 @@ func (s *SessionStore) Save(ctx context.Context, change session.Replacement) err
 }
 
 // Delete is idempotent. It joins an ambient transaction through sqlitebase.Connection(ctx).
-func (s *SessionStore) Delete(ctx context.Context, id string) error {
-	if err := validateSessionResource("delete Session", id); err != nil {
+func (s *SessionStore) Delete(ctx context.Context, id identity.SessionID) error {
+	if err := validateResource("delete Session", id); err != nil {
 		return err
 	}
 	return s.db.write(ctx, func(ctx context.Context) error {

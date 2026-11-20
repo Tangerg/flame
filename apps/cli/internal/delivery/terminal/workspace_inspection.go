@@ -103,7 +103,7 @@ func (w *workspaceScreens) PreviewWorkspaceFile(argument string) error {
 			if content.Truncated {
 				detail += " · truncated"
 			}
-			return codeDocument("File preview", detail, content.Content, request.Path, true), nil
+			return fileDocument("File preview", detail, content.Content, request.Path), nil
 		})
 	return nil
 }
@@ -192,7 +192,7 @@ func (w *workspaceScreens) BrowseWorkspace(argument string) error {
 			if request.Path != "" {
 				title += " · " + request.Path
 			}
-			return codeDocument(title, strings.Join(details, " · "), strings.Join(lines, "\n"), "text", false), nil
+			return textDocument(title, strings.Join(details, " · "), strings.Join(lines, "\n")), nil
 		})
 	return nil
 }
@@ -216,7 +216,7 @@ func (w *workspaceScreens) ReadWorkspaceFile(argument string) error {
 			if content.Truncated {
 				detail += " · truncated"
 			}
-			return codeDocument("Workspace file", detail, content.Content, request.Path, true), nil
+			return fileDocument("Workspace file", detail, content.Content, request.Path), nil
 		})
 	return nil
 }
@@ -233,12 +233,16 @@ func paragraphDocument(title, detail string, lines []string) readerDocument {
 	return readerDocument{Title: title, Detail: detail, Sections: []toolSection{{Title: "Results", Style: toolSectionParagraph, Text: text}}}
 }
 
-func codeDocument(title, detail, text, pathOrLanguage string, lineNumbers bool) readerDocument {
-	language := pathOrLanguage
-	if strings.ContainsAny(pathOrLanguage, `./\`) {
-		language = languageForPath(pathOrLanguage)
-	}
-	return readerDocument{Title: title, Detail: detail, Sections: []toolSection{{Title: "Content", Style: toolSectionCode, Language: language, Text: text, LineNumbers: lineNumbers}}}
+func fileDocument(title, detail, content, path string) readerDocument {
+	return readerDocument{Title: title, Detail: detail, Sections: []toolSection{{
+		Title: "Content", Style: toolSectionCode, Language: languageForPath(path), Text: content, LineNumbers: true,
+	}}}
+}
+
+func textDocument(title, detail, text string) readerDocument {
+	return readerDocument{Title: title, Detail: detail, Sections: []toolSection{{
+		Title: "Content", Style: toolSectionCode, Language: "text", Text: text,
+	}}}
 }
 
 func workspaceChangesDocument(path string, changes []workspace.Change) readerDocument {

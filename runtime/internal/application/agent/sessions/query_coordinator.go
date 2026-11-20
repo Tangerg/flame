@@ -30,9 +30,11 @@ const (
 
 // Page ceilings, per read. A client asking for more gets this many and a cursor.
 const (
-	itemPageLimit      = 200
-	runPageLimit       = 100
-	interruptPageLimit = 100
+	itemPageLimit            = 200
+	runPageLimit             = 100
+	interruptPageLimit       = 100
+	modelInvocationPageLimit = 100
+	trajectoryPageLimit      = 100
 )
 
 // queryTranscriptReader is the coordinator's view of the durable item history. Items
@@ -43,23 +45,23 @@ const (
 // "exactly one of these is set" is a contract nothing checks, and each of these
 // reads one thing.
 type queryTranscriptReader interface {
-	Item(ctx context.Context, itemID string) (transcript.Item, bool, error)
-	PageSessionItems(ctx context.Context, sessionID string, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error)
-	PageRunItems(ctx context.Context, runID string, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error)
-	PageRunTreeItems(ctx context.Context, runID string, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error)
+	Item(ctx context.Context, itemID identity.ItemID) (transcript.Item, bool, error)
+	PageSessionItems(ctx context.Context, sessionID identity.SessionID, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error)
+	PageRunItems(ctx context.Context, runID identity.RunID, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error)
+	PageRunTreeItems(ctx context.Context, runID identity.RunID, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error)
 }
 
 // queryPlanReader is the coordinator's view of the Plan projection: the whole
 // state, because what identifies one replacement from the next is its revision.
 type queryPlanReader interface {
-	State(ctx context.Context, sessionID string) (plan.Current, error)
+	State(ctx context.Context, sessionID identity.SessionID) (plan.Current, error)
 }
 
 // querySessionReader answers only whether a session exists. The item read needs that
 // much and no more: a scope naming no session is a refusal, and an empty page would
 // tell the client its session is empty instead.
 type querySessionReader interface {
-	Exists(ctx context.Context, sessionID string) (bool, error)
+	Exists(ctx context.Context, sessionID identity.SessionID) (bool, error)
 }
 
 // QueryInterruptReader is the coordinator's view of the open-interrupt registry. Both
@@ -67,7 +69,7 @@ type querySessionReader interface {
 // both apply.
 // Returned Pending values, including nested data, belong to the caller.
 type QueryInterruptReader interface {
-	ListPage(ctx context.Context, sessionID, rootRunID string, after *run.PageAnchor, limit int) ([]runs.Pending, error)
+	ListPage(ctx context.Context, sessionID identity.SessionID, rootRunID identity.RunID, after *run.PageAnchor, limit int) ([]runs.Pending, error)
 }
 
 // queryRunReader is the coordinator's view of the durable Run record: one Run by id,
@@ -77,9 +79,9 @@ type QueryInterruptReader interface {
 // Read methods borrow their inputs without mutation and transfer results to the
 // caller without retaining mutable aliases.
 type queryRunReader interface {
-	Run(ctx context.Context, runID string) (run.Run, bool, error)
-	RunsWithAncestors(ctx context.Context, runIDs []string) ([]run.Run, error)
-	PageRuns(ctx context.Context, sessionID string, statuses []run.State, includeDescendants bool, before *run.PageAnchor, limit int) ([]run.Run, error)
+	Run(ctx context.Context, runID identity.RunID) (run.Run, bool, error)
+	RunsWithAncestors(ctx context.Context, runIDs []identity.RunID) ([]run.Run, error)
+	PageRuns(ctx context.Context, sessionID identity.SessionID, statuses []run.State, includeDescendants bool, before *run.PageAnchor, limit int) ([]run.Run, error)
 }
 
 // QueryCoordinator serves the session read projections. Stateless beyond its store
@@ -164,27 +166,31 @@ var errInvalidItemScope = errors.New("sessions: item query scope is invalid")
 // Session for descendants it already contains.
 type ItemScope struct {
 	kind               itemScopeKind
-	subjectID          string
+	sessionID          identity.SessionID
+	runID              identity.RunID
 	includeDescendants bool
 }
 
+// RunID names the Run a run scope addresses.
+func (i ItemScope) RunID() (identity.RunID, bool) { return i.runID, i.kind == runItemScope }
+
 // Items scopes a page to a session's whole timeline.
-func Items(sessionID string) ItemScope {
-	return ItemScope{kind: sessionItemScope, subjectID: sessionID}
+func Items(sessionID identity.SessionID) ItemScope {
+	return ItemScope{kind: sessionItemScope, sessionID: sessionID}
 }
 
 // RunItems scopes a page to one Run's own items. The Run's session is resolved from
 // the Run, so no caller has to supply both and risk supplying two different ones.
-func RunItems(runID string) ItemScope {
-	return ItemScope{kind: runItemScope, subjectID: runID}
+func RunItems(runID identity.RunID) ItemScope {
+	return ItemScope{kind: runItemScope, runID: runID}
 }
 
 // RunTreeItems scopes a page to one Run and all of its descendants. The subject
 // may itself be a child; ancestors are not part of the item scope.
-func RunTreeItems(runID string) ItemScope {
+func RunTreeItems(runID identity.RunID) ItemScope {
 	return ItemScope{
 		kind:               runItemScope,
-		subjectID:          runID,
+		runID:              runID,
 		includeDescendants: true,
 	}
 }
@@ -262,8 +268,8 @@ func (c *QueryCoordinator) ListItemPage(ctx context.Context, scope ItemScope, or
 // PlanState returns a session's optional Plan projection. An existing Session
 // with no committed replacement returns an explicit unwritten Current; only an
 // unknown Session is [session.ErrNotFound].
-func (c *QueryCoordinator) PlanState(ctx context.Context, sessionID string) (plan.Current, error) {
-	if parseErr := identity.ValidateSession(sessionID); parseErr != nil {
+func (c *QueryCoordinator) PlanState(ctx context.Context, sessionID identity.SessionID) (plan.Current, error) {
+	if parseErr := sessionID.Validate(); parseErr != nil {
 		return plan.Current{}, fmt.Errorf("sessions: query Plan: %w", parseErr)
 	}
 	found, err := c.sessions.Exists(ctx, sessionID)
@@ -283,7 +289,7 @@ func (c *QueryCoordinator) PlanState(ctx context.Context, sessionID string) (pla
 func (c *QueryCoordinator) requireScope(ctx context.Context, scope ItemScope) error {
 	switch scope.kind {
 	case runItemScope:
-		_, found, err := c.runs.Run(ctx, scope.subjectID)
+		_, found, err := c.runs.Run(ctx, scope.runID)
 		if err != nil {
 			return err
 		}
@@ -292,7 +298,7 @@ func (c *QueryCoordinator) requireScope(ctx context.Context, scope ItemScope) er
 		}
 		return nil
 	case sessionItemScope:
-		found, err := c.sessions.Exists(ctx, scope.subjectID)
+		found, err := c.sessions.Exists(ctx, scope.sessionID)
 		if err != nil {
 			return err
 		}
@@ -309,11 +315,11 @@ func (c *QueryCoordinator) readScope(ctx context.Context, scope ItemScope, order
 	switch scope.kind {
 	case runItemScope:
 		if scope.includeDescendants {
-			return c.transcript.PageRunTreeItems(ctx, scope.subjectID, order, fromSequence, limit)
+			return c.transcript.PageRunTreeItems(ctx, scope.runID, order, fromSequence, limit)
 		}
-		return c.transcript.PageRunItems(ctx, scope.subjectID, order, fromSequence, limit)
+		return c.transcript.PageRunItems(ctx, scope.runID, order, fromSequence, limit)
 	case sessionItemScope:
-		return c.transcript.PageSessionItems(ctx, scope.subjectID, order, fromSequence, limit)
+		return c.transcript.PageSessionItems(ctx, scope.sessionID, order, fromSequence, limit)
 	default:
 		return nil, errInvalidItemScope
 	}
@@ -322,15 +328,15 @@ func (c *QueryCoordinator) readScope(ctx context.Context, scope ItemScope, order
 func (i ItemScope) cursorFilters(order transcript.SequenceOrder) ([]string, error) {
 	switch i.kind {
 	case sessionItemScope:
-		if err := identity.ValidateSession(i.subjectID); err != nil {
+		if err := i.sessionID.Validate(); err != nil {
 			return nil, fmt.Errorf("%w: %v", errInvalidItemScope, err)
 		}
-		return []string{i.subjectID, "", strconv.FormatBool(false), order.String()}, nil
+		return []string{i.sessionID.String(), "", strconv.FormatBool(false), order.String()}, nil
 	case runItemScope:
-		if err := identity.ValidateRun(i.subjectID); err != nil {
+		if err := i.runID.Validate(); err != nil {
 			return nil, fmt.Errorf("%w: %v", errInvalidItemScope, err)
 		}
-		return []string{"", i.subjectID, strconv.FormatBool(i.includeDescendants), order.String()}, nil
+		return []string{"", i.runID.String(), strconv.FormatBool(i.includeDescendants), order.String()}, nil
 	default:
 		return nil, errInvalidItemScope
 	}
@@ -339,10 +345,10 @@ func (i ItemScope) cursorFilters(order transcript.SequenceOrder) ([]string, erro
 // referencedRuns is the distinct Runs this page's items belong to, in first-seen
 // order. It is what the page carries instead of the session's Run list: the client
 // merges these across pages, so what it can thread is exactly what it has read.
-func referencedRuns(items []transcript.Item) []string {
-	var out []string
+func referencedRuns(items []transcript.Item) []identity.RunID {
+	var out []identity.RunID
 	for _, item := range items {
-		if item.RunID() != "" && !slices.Contains(out, item.RunID()) {
+		if !item.RunID().IsZero() && !slices.Contains(out, item.RunID()) {
 			out = append(out, item.RunID())
 		}
 	}
@@ -365,11 +371,11 @@ func sequenceAnchor(anchor []string) (int64, error) {
 // Run returns one Run by id, reporting false when no Run has that id. It reads
 // the durable record, so a Run this process never streamed — parked, finished, or
 // admitted before a restart — answers the same as one it is streaming now.
-func (c *QueryCoordinator) Run(ctx context.Context, runID string) (run.Run, bool, error) {
-	if runID == "" {
+func (c *QueryCoordinator) Run(ctx context.Context, runID identity.RunID) (run.Run, bool, error) {
+	if runID.IsZero() {
 		return run.Run{}, false, nil
 	}
-	if err := identity.ValidateRun(runID); err != nil {
+	if err := runID.Validate(); err != nil {
 		return run.Run{}, false, fmt.Errorf("sessions: query Run: %w", err)
 	}
 	return c.runs.Run(ctx, runID)
@@ -380,7 +386,7 @@ func (c *QueryCoordinator) Run(ctx context.Context, runID string) (run.Run, bool
 // easily misplaced positional boolean, and gives the cursor one explicit filter
 // identity to bind.
 type RunPageFilter struct {
-	SessionID          string
+	SessionID          identity.SessionID
 	Statuses           []run.State
 	IncludeDescendants bool
 }
@@ -403,7 +409,7 @@ func (c *QueryCoordinator) ListRunPage(ctx context.Context, filter RunPageFilter
 		return pagination.Page[run.Run]{}, err
 	}
 	filters := []string{
-		filter.SessionID,
+		filter.SessionID.String(),
 		statusFilter(filter.Statuses),
 		strconv.FormatBool(filter.IncludeDescendants),
 	}
@@ -427,16 +433,11 @@ func (c *QueryCoordinator) ListRunPage(ctx context.Context, filter RunPageFilter
 		return pagination.Page[run.Run]{}, err
 	}
 	return pagination.PageOf(rows, size, runPageNamespace, filters, func(run run.Run) []string {
-		return []string{strconv.FormatInt(run.CreatedAt().UnixNano(), 10), run.ID()}
+		return []string{strconv.FormatInt(run.CreatedAt().UnixNano(), 10), run.ID().String()}
 	})
 }
 
 func (f RunPageFilter) validate() error {
-	if f.SessionID != "" {
-		if err := identity.ValidateSession(f.SessionID); err != nil {
-			return fmt.Errorf("sessions: query Runs page: %w", err)
-		}
-	}
 	for _, status := range f.Statuses {
 		if !status.Valid() {
 			return fmt.Errorf("sessions: query Runs page has invalid status %q", status)
@@ -487,22 +488,33 @@ func statusFilter(statuses []run.State) string {
 //
 // rootRunID must name a root. A child id is [transcript.ErrNotRoot], because the
 // set it belongs to exists — under the root — and an empty page would say otherwise.
-func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, sessionID, rootRunID string, caller run.Capabilities, cursor string, limit pagination.RequestedLimit) (pagination.Page[InterruptSet], error) {
+// answerableInterruptSet is a pending set the caller can answer: its root
+// Run demands no capability the caller lacks.
+func (c *QueryCoordinator) answerableInterruptSet(ctx context.Context, pending runs.Pending, caller run.Capabilities) (InterruptSet, error) {
+	root, found, err := c.runs.Run(ctx, pending.RootRunID)
+	if err != nil {
+		return InterruptSet{}, err
+	}
+	if !found {
+		return InterruptSet{}, fmt.Errorf("sessions: pending set %q has no root Run", pending.RootRunID)
+	}
+	if gap := root.Capabilities().MissingFrom(caller); !gap.IsEmpty() {
+		return InterruptSet{}, fmt.Errorf("sessions: run %q: %w", pending.RootRunID, &run.InsufficientCapabilitiesError{Missing: gap})
+	}
+	set, err := c.interruptSet(ctx, pending)
+	if err != nil {
+		return InterruptSet{}, err
+	}
+	set.SessionID = root.SessionID()
+	return set, nil
+}
+
+func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, sessionID identity.SessionID, rootRunID identity.RunID, caller run.Capabilities, cursor string, limit pagination.RequestedLimit) (pagination.Page[InterruptSet], error) {
 	caller = caller.Clone()
 	if err := caller.Validate(); err != nil {
 		return pagination.Page[InterruptSet]{}, fmt.Errorf("sessions: query interrupts page caller capabilities: %w", err)
 	}
-	if sessionID != "" {
-		if err := identity.ValidateSession(sessionID); err != nil {
-			return pagination.Page[InterruptSet]{}, fmt.Errorf("sessions: query interrupts page: %w", err)
-		}
-	}
-	if rootRunID != "" {
-		if err := identity.ValidateRun(rootRunID); err != nil {
-			return pagination.Page[InterruptSet]{}, fmt.Errorf("sessions: query interrupts page: %w", err)
-		}
-	}
-	filters := []string{sessionID, rootRunID}
+	filters := []string{sessionID.String(), rootRunID.String()}
 	after, err := runPageAnchor(cursor, interruptPageNamespace, filters)
 	if err != nil {
 		return pagination.Page[InterruptSet]{}, err
@@ -521,28 +533,17 @@ func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, session
 			return err
 		}
 		page, err := pagination.PageOf(rows, size, interruptPageNamespace, filters, func(pending runs.Pending) []string {
-			return []string{strconv.FormatInt(pending.CreatedAt.UnixNano(), 10), pending.RootRunID}
+			return []string{strconv.FormatInt(pending.CreatedAt.UnixNano(), 10), pending.RootRunID.String()}
 		})
 		if err != nil {
 			return err
 		}
 		sets := make([]InterruptSet, 0, len(page.Rows))
 		for _, pending := range page.Rows {
-			root, found, err := c.runs.Run(ctx, pending.RootRunID)
+			set, err := c.answerableInterruptSet(ctx, pending, caller)
 			if err != nil {
 				return err
 			}
-			if !found {
-				return fmt.Errorf("sessions: pending set %q has no root Run", pending.RootRunID)
-			}
-			if gap := root.Capabilities().MissingFrom(caller); !gap.IsEmpty() {
-				return fmt.Errorf("sessions: run %q: %w", pending.RootRunID, &run.InsufficientCapabilitiesError{Missing: gap})
-			}
-			set, err := c.interruptSet(ctx, pending)
-			if err != nil {
-				return err
-			}
-			set.SessionID = root.SessionID()
 			sets = append(sets, set)
 		}
 		result = pagination.Page[InterruptSet]{Rows: sets, NextCursor: page.NextCursor}
@@ -557,7 +558,7 @@ func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, session
 // interruptSet projects a waiting hand-off's open interrupts from the Items
 // they name.
 func (c *QueryCoordinator) interruptSet(ctx context.Context, pending runs.Pending) (InterruptSet, error) {
-	itemsByID := make(map[string]transcript.Item, len(pending.Interrupts))
+	itemsByID := make(map[identity.ItemID]transcript.Item, len(pending.Interrupts))
 	for _, open := range pending.Interrupts {
 		item, found, err := c.transcript.Item(ctx, open.ItemID)
 		if err != nil {
@@ -578,11 +579,11 @@ func (c *QueryCoordinator) interruptSet(ctx context.Context, pending runs.Pendin
 // and is not checked; a filter naming nothing that exists is left to the page, which
 // returns none — "no such run" and "that run has nothing waiting" are the same
 // answer to the caller, while "you named a child" is not.
-func (c *QueryCoordinator) requireRoot(ctx context.Context, runID string) error {
-	if runID == "" {
+func (c *QueryCoordinator) requireRoot(ctx context.Context, runID identity.RunID) error {
+	if runID.IsZero() {
 		return nil
 	}
-	if err := identity.ValidateRun(runID); err != nil {
+	if err := runID.Validate(); err != nil {
 		return fmt.Errorf("sessions: query root Run: %w", err)
 	}
 	run, found, err := c.runs.Run(ctx, runID)
@@ -617,7 +618,11 @@ func runPageAnchor(cursor, method string, filters []string) (*run.PageAnchor, er
 	if err != nil {
 		return nil, pagination.ErrInvalidCursor
 	}
-	position, err := run.NewPageAnchor(time.Unix(0, stamp), anchor[1])
+	runID, err := identity.ParseRun(anchor[1])
+	if err != nil {
+		return nil, pagination.ErrInvalidCursor
+	}
+	position, err := run.NewPageAnchor(time.Unix(0, stamp), runID)
 	if err != nil {
 		return nil, pagination.ErrInvalidCursor
 	}

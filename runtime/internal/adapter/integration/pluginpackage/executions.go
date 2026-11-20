@@ -62,40 +62,45 @@ func (r *Releases) Connection(ctx context.Context, installation plugin.Installat
 	if err := realizeBackend(ctx, executable, declared, directory, data); err != nil {
 		return mcpapp.Launch{}, false, fmt.Errorf("%w: server %q backend: %w", plugin.ErrUnavailable, name, err)
 	}
-	var expected framevalue.Digest
-	if _, managed := declared.Startup.(plugin.ManagedBackend); managed {
-		node, nodeErr := hostNode()
-		if nodeErr != nil {
-			return mcpapp.Launch{}, false, nodeErr
-		}
-		expected, err = framevalue.ParseDigest(node.ExecutableDigest())
-		if variant.Runtime == nil || expected != variant.Runtime.Digest {
-			return mcpapp.Launch{}, false, fmt.Errorf("%w: installed interpreter differs from its original runtime pin", plugin.ErrUnavailable)
-		}
-	} else {
-		command, packaged := declared.PackagedCommand()
-		if !packaged {
-			return mcpapp.Launch{}, false, fmt.Errorf("%w: installed process entry must be a packaged executable", plugin.ErrInvalid)
-		}
-		for _, artifact := range lease.Snapshot().Manifest.Artifacts {
-			if artifact.Path == command && artifact.Executable {
-				expected = artifact.Digest
-				break
-			}
-		}
-		if err == nil {
-			err = expected.Validate()
-		}
-	}
+	expected, err := expectedExecutable(declared, variant, lease.Snapshot().Manifest)
 	if err != nil {
 		return mcpapp.Launch{}, false, err
 	}
-	transferred = true
 	process, ok := executable.Connection.(mcpserver.StdioConnection)
 	if !ok {
 		return mcpapp.Launch{}, false, fmt.Errorf("%w: server %q realized no process", plugin.ErrInvalid, name)
 	}
+	transferred = true
 	return mcpapp.Launch{Server: server, Stdio: &mcpapp.Stdio{Command: process.Command, ExpectedExecutable: expected, Args: process.Args, Env: process.Env, Dir: process.Dir}, Retire: lease}, true, nil
+}
+
+// expectedExecutable is the digest the launched process must have: the pinned
+// interpreter of a managed backend, or the packaged executable of a native one.
+func expectedExecutable(declared plugin.Server, variant distribution.Variant, manifest distribution.Manifest) (framevalue.Digest, error) {
+	if _, managed := declared.Startup.(plugin.ManagedBackend); managed {
+		node, err := hostNode()
+		if err != nil {
+			return framevalue.Digest{}, err
+		}
+		expected, err := framevalue.ParseDigest(node.ExecutableDigest())
+		if err != nil {
+			return framevalue.Digest{}, err
+		}
+		if variant.Runtime == nil || expected != variant.Runtime.Digest {
+			return framevalue.Digest{}, fmt.Errorf("%w: installed interpreter differs from its original runtime pin", plugin.ErrUnavailable)
+		}
+		return expected, nil
+	}
+	command, packaged := declared.PackagedCommand()
+	if !packaged {
+		return framevalue.Digest{}, fmt.Errorf("%w: installed process entry must be a packaged executable", plugin.ErrInvalid)
+	}
+	for _, artifact := range manifest.Artifacts {
+		if artifact.Path == command && artifact.Executable {
+			return artifact.Digest, artifact.Digest.Validate()
+		}
+	}
+	return framevalue.Digest{}, fmt.Errorf("%w: packaged executable %q is missing from the release", plugin.ErrInvalid, command)
 }
 
 func selectedVariant(manifest distribution.Manifest, server mcpserver.ServerName) (distribution.Variant, error) {

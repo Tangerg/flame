@@ -54,9 +54,32 @@ func (r *Runtime) park(run *runState) {
 	interruptEvents, err := r.interruptItemEventsLocked(run)
 	if err != nil {
 		r.mu.Unlock()
-		r.finish(run, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}})
+		r.finish(run, internalFailure(err))
 		return
 	}
+	pending, err := r.applyRememberedLocked(run, interruptEvents)
+	if err == nil && len(pending) != 0 {
+		err = r.awaitAnswersLocked(run, pending)
+	}
+	if err != nil || len(pending) != 0 {
+		if err != nil {
+			r.failSegmentLocked(run, err)
+		}
+		r.mu.Unlock()
+		return
+	}
+	answers, err := completeScriptAnswers(run, nil)
+	r.mu.Unlock()
+	r.continueWithAnswers(run, answers, err)
+}
+
+func internalFailure(err error) Finish {
+	return Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}}
+}
+
+// applyRememberedLocked publishes the interrupts and answers those a
+// remembered approval rule already decides, returning the ones still pending.
+func (r *Runtime) applyRememberedLocked(run *runState, interruptEvents []conversation.Event) ([]conversation.Interrupt, error) {
 	resolved, pending := r.resolveRememberedLocked(run, run.script.Interrupts)
 	approvalEvents := approvalCompletionEvents(run, resolved)
 	revisionChanges := sessionEventRevisionChanges(len(interruptEvents) + len(approvalEvents))
@@ -68,68 +91,55 @@ func (r *Runtime) park(run *runState) {
 		revisionChanges = revisionChanges.plus(sessionStatusRevisionChanges(r.sessions[run.sessionID], protocol.SessionStatusWaiting))
 	}
 	if err := r.sessions[run.sessionID].requireRevisionCapacity(revisionChanges); err != nil {
-		r.failSegmentLocked(run, err)
-		r.mu.Unlock()
-		return
+		return nil, err
 	}
 	if err := r.emitAllLocked(run, interruptEvents); err != nil {
-		r.failSegmentLocked(run, err)
-		r.mu.Unlock()
-		return
+		return nil, err
 	}
 	for _, answer := range resolved {
 		run.answers[answer.ItemID] = conversation.CloneAnswer(answer.Answer)
 	}
-	if len(resolved) != 0 {
-		if err := r.emitAllLocked(run, approvalEvents); err != nil {
-			r.failSegmentLocked(run, err)
-			r.mu.Unlock()
-			return
-		}
-		if err := r.emitLocked(run, conversation.BlockCompleted{Block: conversation.Block{
-			ID: run.id + "_approval_rule", Kind: conversation.BlockNotice,
-			Text: "Applied remembered approval rules.",
-		}}); err != nil {
-			r.failSegmentLocked(run, err)
-			r.mu.Unlock()
-			return
-		}
+	if len(resolved) == 0 {
+		return pending, nil
 	}
-	if len(pending) == 0 {
-		answers, err := completeScriptAnswers(run, nil)
-		var steps []Step
-		r.mu.Unlock()
-		if err == nil {
-			steps, err = continueSafely(run.script, answers)
-		}
-		if err != nil {
-			r.finish(run, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}})
-			return
-		}
-		r.mu.Lock()
-		if run.status != protocol.RunStatusRunning {
-			r.mu.Unlock()
-			return
-		}
-		r.mu.Unlock()
-		r.play(run, steps, false)
-		return
+	if err := r.emitAllLocked(run, approvalEvents); err != nil {
+		return nil, err
 	}
+	return pending, r.emitLocked(run, conversation.BlockCompleted{Block: conversation.Block{
+		ID: run.id + "_approval_rule", Kind: conversation.BlockNotice,
+		Text: "Applied remembered approval rules.",
+	}})
+}
+
+// awaitAnswersLocked parks the Run on the interrupts no rule decides.
+func (r *Runtime) awaitAnswersLocked(run *runState, pending []conversation.Interrupt) error {
 	run.status = protocol.RunStatusWaiting
 	run.interrupts = conversation.CloneInterrupts(pending)
 	run.usage = run.script.InterruptUsage.Clone()
 	if err := r.emitLocked(run, conversation.SegmentFinished{Run: boundaryRun(run), Interrupts: conversation.CloneInterrupts(run.interrupts)}); err != nil {
-		r.failSegmentLocked(run, err)
-		r.mu.Unlock()
-		return
+		return err
 	}
 	run.active = ""
-	if err := r.setSessionStatusLocked(r.sessions[run.sessionID], protocol.SessionStatusWaiting); err != nil {
-		r.failSegmentLocked(run, err)
-		r.mu.Unlock()
+	return r.setSessionStatusLocked(r.sessions[run.sessionID], protocol.SessionStatusWaiting)
+}
+
+// continueWithAnswers plays the script past interrupts every remembered rule
+// answered, unless the Run stopped meanwhile.
+func (r *Runtime) continueWithAnswers(run *runState, answers []conversation.InterruptAnswer, err error) {
+	var steps []Step
+	if err == nil {
+		steps, err = continueSafely(run.script, answers)
+	}
+	if err != nil {
+		r.finish(run, internalFailure(err))
 		return
 	}
+	r.mu.Lock()
+	running := run.status == protocol.RunStatusRunning
 	r.mu.Unlock()
+	if running {
+		r.play(run, steps, false)
+	}
 }
 
 func (r *Runtime) interruptItemEventsLocked(run *runState) ([]conversation.Event, error) {
@@ -280,24 +290,41 @@ func (r *Runtime) emitLocked(run *runState, event conversation.Event) error {
 	if err != nil {
 		return err
 	}
-	switch item := event.(type) {
-	case conversation.BlockStarted:
-		item.Block.RunID = run.id
-		item.Block.Status = conversation.BlockStatusRunning
-		event = item
-	case conversation.BlockCompleted:
-		item.Block.RunID = run.id
-		if item.Block.Status != conversation.BlockStatusIncomplete {
-			item.Block.Status = completedBlockStatus(item.Block)
-		}
-		event = item
-	}
+	event = ownedBlockEvent(run.id, event)
 	envelope := conversation.RunEvent{
 		EventID: r.identities.next(eventIdentity), RunID: run.id,
 		SegmentID: segment.id, At: meta.UpdatedAt, Event: conversation.CloneEvent(event),
 	}
 	segment.events = append(segment.events, envelope)
 	session.meta = meta
+	r.applyEventLocked(run, session, segment, event)
+	close(segment.changed)
+	segment.changed = make(chan struct{})
+	return nil
+}
+
+// ownedBlockEvent stamps a scripted block with its Run and the status its
+// event implies.
+func ownedBlockEvent(runID string, event conversation.Event) conversation.Event {
+	switch item := event.(type) {
+	case conversation.BlockStarted:
+		item.Block.RunID = runID
+		item.Block.Status = conversation.BlockStatusRunning
+		return item
+	case conversation.BlockCompleted:
+		item.Block.RunID = runID
+		if item.Block.Status != conversation.BlockStatusIncomplete {
+			item.Block.Status = completedBlockStatus(item.Block)
+		}
+		return item
+	default:
+		return event
+	}
+}
+
+// applyEventLocked folds a published event into the durable state a later
+// snapshot reads: streamed text stays open until its block completes.
+func (r *Runtime) applyEventLocked(run *runState, session *sessionState, segment *segmentState, event conversation.Event) {
 	switch item := event.(type) {
 	case conversation.BlockStarted:
 		if item.Block.Kind == conversation.BlockTool {
@@ -326,9 +353,6 @@ func (r *Runtime) emitLocked(run *runState, event conversation.Event) error {
 	case conversation.SegmentFinished:
 		r.closeSegmentLocked(segment)
 	}
-	close(segment.changed)
-	segment.changed = make(chan struct{})
-	return nil
 }
 
 func persistBlock(session *sessionState, runID string, block conversation.Block) {

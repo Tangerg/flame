@@ -549,15 +549,25 @@ func (i Item) validate() error {
 	if content != i.content {
 		return errors.New("agentmemory: item content is not canonical")
 	}
-	if err := i.origin.validate(); err != nil {
-		return err
-	}
-	if err := i.status.validate(); err != nil {
+	if err := errors.Join(i.origin.validate(), i.status.validate()); err != nil {
 		return err
 	}
 	if i.origin == OriginUser && i.status != StatusActive {
 		return errors.New("agentmemory: user-authored item must be active")
 	}
+	if err := i.validateTimestamps(); err != nil {
+		return err
+	}
+	if i.embeddingSpace == "" && len(i.embedding) == 0 {
+		return nil
+	}
+	if err := validateEmbedding(i.embeddingSpace, i.embedding); err != nil {
+		return fmt.Errorf("agentmemory: item embedding: %w", err)
+	}
+	return nil
+}
+
+func (i Item) validateTimestamps() error {
 	if i.createdAt.IsZero() || i.updatedAt.IsZero() {
 		return errors.New("agentmemory: item timestamps are required")
 	}
@@ -566,12 +576,6 @@ func (i Item) validate() error {
 	}
 	if i.updatedAt.Before(i.createdAt) {
 		return errors.New("agentmemory: item update precedes creation")
-	}
-	if i.embeddingSpace == "" && len(i.embedding) == 0 {
-		return nil
-	}
-	if err := validateEmbedding(i.embeddingSpace, i.embedding); err != nil {
-		return fmt.Errorf("agentmemory: item embedding: %w", err)
 	}
 	return nil
 }

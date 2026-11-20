@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	sqlite3 "modernc.org/sqlite"
@@ -95,7 +97,7 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 // through a refused live operation and across restart.
 // The check shares the admission transaction, so completing an intent and
 // admitting the next Run have one serial order across Runtime processes.
-func (r *RunStore) requireWorkspaceAdmission(ctx context.Context, sessionID string) error {
+func (r *RunStore) requireWorkspaceAdmission(ctx context.Context, sessionID identity.SessionID) error {
 	return r.db.read(ctx, func(ctx context.Context) error {
 		connection := r.db.connection(ctx)
 		if pending, err := sessionResourceRetirementPending(ctx, connection, sessionID); err != nil || pending {
@@ -119,7 +121,8 @@ func (r *RunStore) requireWorkspaceAdmission(ctx context.Context, sessionID stri
 			_ = rows.Close()
 		}()
 		for rows.Next() {
-			var pendingSessionID, pendingCWD string
+			var pendingSessionID identity.SessionID
+			var pendingCWD string
 			if err := rows.Scan(&pendingSessionID, &pendingCWD); err != nil {
 				return fmt.Errorf("sqlite: read pending workspace mutation: %w", err)
 			}
@@ -152,13 +155,13 @@ func (p childPlacement) requiresOpenTree() bool { return p == admitChild }
 // validateChildPlacement proves immutable Run-to-Run topology before inserting
 // a child. The spawning Item is validated by the application write-set that
 // owns Item creation and child admission/restore together.
-func (r *RunStore) validateChildPlacement(ctx context.Context, operation childPlacement, runID string, sessionID string, parentRunID string, rootRunID string) error {
+func (r *RunStore) validateChildPlacement(ctx context.Context, operation childPlacement, runID identity.RunID, sessionID identity.SessionID, parentRunID identity.RunID, rootRunID identity.RunID) error {
 	return r.db.read(ctx, func(ctx context.Context) error {
 		var (
-			parentSession string
-			parentRoot    string
+			parentSession identity.SessionID
+			parentRoot    identity.RunID
 			parentState   string
-			rootSession   string
+			rootSession   identity.SessionID
 			rootParent    string
 			rootState     string
 		)
@@ -182,7 +185,7 @@ func (r *RunStore) validateChildPlacement(ctx context.Context, operation childPl
 			return fmt.Errorf("sqlite: %s child run %q: root: %w", operation, runID, err)
 		}
 		parentTreeRoot := parentRoot
-		if parentTreeRoot == "" {
+		if parentTreeRoot.IsZero() {
 			parentTreeRoot = parentRunID
 		}
 		switch {
@@ -209,7 +212,7 @@ func (r *RunStore) validateChildPlacement(ctx context.Context, operation childPl
 // complete barrier can be reconciled after an ambiguous transaction result.
 // The segment identity is cleared in the same statement that parks the Run:
 // a Run waiting on a person has no segment to attach to.
-func (r *RunStore) Suspend(ctx context.Context, value rundomain.Run, segmentID string, commitID runs.CommitID) error {
+func (r *RunStore) Suspend(ctx context.Context, value rundomain.Run, segmentID identity.SegmentID, commitID runs.CommitID) error {
 	if err := validateRunCoordinates("suspend Run", value.SessionID(), value.ID(), segmentID); err != nil {
 		return err
 	}
@@ -288,7 +291,7 @@ func (r *RunStore) Resume(ctx context.Context, replacement rundomain.Replacement
 // exact running Segment that produced it. Callers execute this read through the
 // transaction-bound connection before any projection write; a replacement,
 // park, or terminal transition therefore rejects the complete stale write-set.
-func (r *RunStore) RequireActiveSegment(ctx context.Context, sessionID, runID, segmentID string) error {
+func (r *RunStore) RequireActiveSegment(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID) error {
 	return r.db.read(ctx, func(ctx context.Context) error {
 		if err := validateRunCoordinates("require active Run Segment", sessionID, runID, segmentID); err != nil {
 			return err
@@ -307,7 +310,7 @@ func (r *RunStore) RequireActiveSegment(ctx context.Context, sessionID, runID, s
 		if err != nil {
 			return fmt.Errorf("sqlite: read active Segment for Run %q: %w", runID, err)
 		}
-		if storedState != rundomain.Running || activeSegmentID != segmentID {
+		if storedState != rundomain.Running || activeSegmentID != segmentID.String() {
 			return fmt.Errorf("sqlite: Run %q is %s in Segment %q, want running Segment %q", runID, state, activeSegmentID, segmentID)
 		}
 		return nil
@@ -355,7 +358,7 @@ func (r *RunStore) Terminalize(ctx context.Context, replacement rundomain.Replac
 // TerminalizeEvent ends one exact active Segment and stamps the immutable
 // Application EventCommit write-set identity into the Run row. The stamp shares
 // the caller's transaction with every projection in that EventCommit.
-func (r *RunStore) TerminalizeEvent(ctx context.Context, value rundomain.Run, segmentID string, commitID runs.CommitID, winningCancellationKey string) error {
+func (r *RunStore) TerminalizeEvent(ctx context.Context, value rundomain.Run, segmentID identity.SegmentID, commitID runs.CommitID, winningCancellationKey string) error {
 	marker, err := newRunCommitMarker(value.SessionID(), value.ID(), segmentID, commitID)
 	if err != nil {
 		return err
@@ -576,12 +579,12 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 // Delete drops one Run's row. The rollback boundary uses it: a Run being dropped
 // wholesale frees the session's admission slot by ceasing to exist, so there is
 // nothing left to terminalize.
-func (r *RunStore) Delete(ctx context.Context, sessionID, runID string) error {
+func (r *RunStore) Delete(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) error {
 	return r.db.write(ctx, func(ctx context.Context) error {
-		if err := validateSessionResource("delete Run", sessionID); err != nil {
+		if err := validateResource("delete Run", sessionID); err != nil {
 			return err
 		}
-		if err := validateRunResource("delete Run", runID); err != nil {
+		if err := validateResource("delete Run", runID); err != nil {
 			return err
 		}
 		if _, err := r.db.connection(ctx).ExecContext(ctx, `DELETE FROM runs WHERE run_id = ? AND session_id = ?`, runID, sessionID); err != nil {
@@ -596,9 +599,9 @@ func (r *RunStore) Delete(ctx context.Context, sessionID, runID string) error {
 // replace, and the child-Run subtree purge. Freeing the admission slot by deletion
 // (not terminalization) keeps the runs table from accumulating dead rows for
 // sessions that no longer exist. Joins the caller's transaction via the context.
-func (r *RunStore) DeleteForSession(ctx context.Context, sessionID string) error {
+func (r *RunStore) DeleteForSession(ctx context.Context, sessionID identity.SessionID) error {
 	return r.db.write(ctx, func(ctx context.Context) error {
-		if err := validateSessionResource("delete Session Runs", sessionID); err != nil {
+		if err := validateResource("delete Session Runs", sessionID); err != nil {
 			return err
 		}
 		_, err := r.db.connection(ctx).ExecContext(ctx, `DELETE FROM runs WHERE session_id = ?`, sessionID)

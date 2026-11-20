@@ -57,7 +57,7 @@ func (s *Server) instrumentRequests(next http.Handler) http.Handler {
 				attribute.Int64("duration_ms", time.Since(start).Milliseconds()),
 				attribute.Int("http.response.body.size", response.bytes),
 			)
-			if response.status >= 500 {
+			if response.status >= http.StatusInternalServerError {
 				span.SetStatus(codes.Error, http.StatusText(response.status))
 			}
 			span.End()

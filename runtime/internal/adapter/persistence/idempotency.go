@@ -6,7 +6,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 
@@ -50,11 +53,18 @@ func (i *idempotencyStore) Transact(ctx context.Context, write func(context.Cont
 	return i.db.write(ctx, write)
 }
 
+// Response records expire with their retention window; a pending response and
+// a Run acceptance stay until their owner settles them.
+var (
+	expiringRecordKinds = []any{idempotencyResponse, idempotencyCancellationRefusal}
+	durableRecordKinds  = []any{idempotencyPendingResponse, idempotencyRunAcceptance}
+)
+
 func (i *idempotencyStore) Lookup(ctx context.Context, key, fingerprint string) (operation.ReplayRecord, bool, error) {
 	return scopedPair(ctx, i.db.read, func(ctx context.Context) (operation.ReplayRecord, bool, error) {
 		row := i.db.connection(ctx).QueryRowContext(ctx, `SELECT kind,fingerprint,payload FROM idempotency_records
-			WHERE key = ? AND (kind IN (?, ?) OR expires_at > ?)`,
-			key, idempotencyPendingResponse, idempotencyRunAcceptance, time.Now().Unix())
+			WHERE key = ? AND (kind IN (`+placeholders(len(durableRecordKinds))+`) OR expires_at > ?)`,
+			slices.Concat([]any{key}, durableRecordKinds, []any{time.Now().Unix()})...)
 		return readReplayRecord(row, key, fingerprint)
 	})
 }
@@ -101,8 +111,8 @@ func (i *idempotencyStore) Claim(ctx context.Context, claim operation.ReplayClai
 	now := time.Now().Unix()
 	err = i.db.write(ctx, func(ctx context.Context) error {
 		db := i.db.connection(ctx)
-		if _, execContextErr := db.ExecContext(ctx, `DELETE FROM idempotency_records WHERE kind IN (?, ?) AND expires_at <= ?`,
-			idempotencyResponse, idempotencyCancellationRefusal, now); execContextErr != nil {
+		if _, execContextErr := db.ExecContext(ctx, `DELETE FROM idempotency_records WHERE kind IN (`+placeholders(len(expiringRecordKinds))+`) AND expires_at <= ?`,
+			slices.Concat(expiringRecordKinds, []any{now})...); execContextErr != nil {
 			return fmt.Errorf("sqlite: prune idempotency records: %w", execContextErr)
 		}
 		kind, payload, owner := idempotencyPendingResponse, []byte{}, claim.RunID
@@ -111,7 +121,7 @@ func (i *idempotencyStore) Claim(ctx context.Context, claim operation.ReplayClai
 			return err
 		}
 		if refusal != "" {
-			kind, payload, owner = idempotencyCancellationRefusal, []byte(refusal), ""
+			kind, payload, owner = idempotencyCancellationRefusal, []byte(refusal), identity.RunID{}
 		}
 		res, execContextErr := db.ExecContext(ctx, `INSERT INTO idempotency_records(
 				key, kind, fingerprint, payload, expires_at, material_run_id
@@ -201,8 +211,8 @@ func (i *idempotencyStore) Complete(ctx context.Context, record operation.Replay
 			return nil
 		}
 		row := i.db.connection(ctx).QueryRowContext(ctx, `SELECT kind, fingerprint, payload FROM idempotency_records
-			WHERE key = ? AND kind IN (?, ?) AND expires_at > ?`,
-			record.Key, idempotencyResponse, idempotencyCancellationRefusal, now)
+			WHERE key = ? AND kind IN (`+placeholders(len(expiringRecordKinds))+`) AND expires_at > ?`,
+			slices.Concat([]any{record.Key}, expiringRecordKinds, []any{now})...)
 		prior, found, err := readReplayRecord(row, record.Key, record.Fingerprint)
 		if err != nil {
 			return fmt.Errorf("sqlite: inspect completed idempotency claim: %w", err)

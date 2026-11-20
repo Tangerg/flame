@@ -90,17 +90,17 @@ func (r RecoveryCommit) GoalRuns() []rundomain.Run {
 }
 
 // DeleteInterrupts returns the lost root-owned Pending records to remove.
-func (r RecoveryCommit) DeleteInterrupts() []string {
+func (r RecoveryCommit) DeleteInterrupts() []identity.RunID {
 	return slices.Clone(r.state.DeleteInterrupts)
 }
 
 // PreservedSessionIDs returns waiting Sessions whose checkpoints remain live.
-func (r RecoveryCommit) PreservedSessionIDs() []string {
+func (r RecoveryCommit) PreservedSessionIDs() []identity.SessionID {
 	return slices.Clone(r.state.PreservedSessionIDs)
 }
 
 // DeleteCheckpointSessionIDs returns lost Sessions whose checkpoints are obsolete.
-func (r RecoveryCommit) DeleteCheckpointSessionIDs() []string {
+func (r RecoveryCommit) DeleteCheckpointSessionIDs() []identity.SessionID {
 	return slices.Clone(r.state.DeleteCheckpointSessionIDs)
 }
 
@@ -149,19 +149,19 @@ func (r RecoveryCommit) Validate() error {
 
 // lostRunTrees indexes lost Runs by identity and by the tree each belongs to.
 type lostRunTrees struct {
-	byID    map[string]rundomain.Replacement
-	members map[string][]rundomain.TreeMember
-	rootIDs []string
+	byID    map[identity.RunID]rundomain.Replacement
+	members map[identity.RunID][]rundomain.TreeMember
+	rootIDs []identity.RunID
 }
 
 // indexLostRuns admits each lost Run once and proves the set arrives in
 // canonical tree postorder, so every child settles before its parent.
 func indexLostRuns(lostRuns []rundomain.Replacement) (lostRunTrees, error) {
 	trees := lostRunTrees{
-		byID:    make(map[string]rundomain.Replacement, len(lostRuns)),
-		members: make(map[string][]rundomain.TreeMember),
+		byID:    make(map[identity.RunID]rundomain.Replacement, len(lostRuns)),
+		members: make(map[identity.RunID][]rundomain.TreeMember),
 	}
-	order := make([]string, 0, len(lostRuns))
+	order := make([]identity.RunID, 0, len(lostRuns))
 	for index, recovery := range lostRuns {
 		if err := validateLostRunReplacement(recovery); err != nil {
 			return lostRunTrees{}, fmt.Errorf("runs: recovery commit lost Run[%d]: %w", index, err)
@@ -175,8 +175,8 @@ func indexLostRuns(lostRuns []rundomain.Replacement) (lostRunTrees, error) {
 		trees.members[rootID] = append(trees.members[rootID], rundomain.TreeMember{RunID: run.ID(), Lineage: run.Lineage()})
 		order = append(order, run.ID())
 	}
-	trees.rootIDs = slices.Sorted(maps.Keys(trees.members))
-	expected := make([]string, 0, len(lostRuns))
+	trees.rootIDs = slices.SortedFunc(maps.Keys(trees.members), identity.RunID.Compare)
+	expected := make([]identity.RunID, 0, len(lostRuns))
 	for _, rootID := range trees.rootIDs {
 		tree, err := rundomain.NewTree(rootID, trees.members[rootID])
 		if err != nil {
@@ -190,8 +190,8 @@ func indexLostRuns(lostRuns []rundomain.Replacement) (lostRunTrees, error) {
 	return trees, nil
 }
 
-func recoveredSessionSet(sessionIDs []string) (map[string]struct{}, error) {
-	recovered := make(map[string]struct{}, len(sessionIDs))
+func recoveredSessionSet(sessionIDs []identity.SessionID) (map[identity.SessionID]struct{}, error) {
+	recovered := make(map[identity.SessionID]struct{}, len(sessionIDs))
 	for index, sessionID := range sessionIDs {
 		if index > 0 && sessionIDs[index-1] == sessionID {
 			return nil, fmt.Errorf("runs: recovery commit both loses and preserves Session %q", sessionID)
@@ -203,7 +203,7 @@ func recoveredSessionSet(sessionIDs []string) (map[string]struct{}, error) {
 
 // validateIndependentEndpoints admits physical model evidence that belongs to
 // a lost Run but to no logical attempt being recovered.
-func validateIndependentEndpoints(observations []modelref.EndpointObservation, logical []ModelInvocationRecovery, lostByID map[string]rundomain.Replacement) error {
+func validateIndependentEndpoints(observations []modelref.EndpointObservation, logical []ModelInvocationRecovery, lostByID map[identity.RunID]rundomain.Replacement) error {
 	seen := make(map[string]struct{}, len(observations))
 	for _, observation := range observations {
 		if err := observation.Validate(); err != nil {
@@ -211,7 +211,7 @@ func validateIndependentEndpoints(observations []modelref.EndpointObservation, l
 		}
 		source := observation.Snapshot()
 		owner, found := lostByID[source.RunID]
-		if !found || owner.State().SessionID() != source.Invocation.SessionID || source.SegmentID == "" || source.FinishedAt.After(owner.State().UpdatedAt()) {
+		if !found || owner.State().SessionID() != source.Invocation.SessionID || source.SegmentID.IsZero() || source.FinishedAt.After(owner.State().UpdatedAt()) {
 			return errors.New("runs: independent source has no lost Run owner")
 		}
 		if _, duplicate := seen[source.Invocation.ID]; duplicate {
@@ -225,8 +225,8 @@ func validateIndependentEndpoints(observations []modelref.EndpointObservation, l
 	return nil
 }
 
-func indexItemReplacements(replacements []transcript.Replacement, lostByID map[string]rundomain.Replacement) (map[string]transcript.Replacement, error) {
-	replaced := make(map[string]transcript.Replacement, len(replacements))
+func indexItemReplacements(replacements []transcript.Replacement, lostByID map[identity.RunID]rundomain.Replacement) (map[identity.ItemID]transcript.Replacement, error) {
+	replaced := make(map[identity.ItemID]transcript.Replacement, len(replacements))
 	for index, replacement := range replacements {
 		expected := replacement.Expected()
 		owner, found := lostByID[expected.RunID()]
@@ -256,8 +256,8 @@ func validateLostRunReplacement(recovery rundomain.Replacement) error {
 
 func validateRecoveryModelInvocations(
 	invocations []ModelInvocationRecovery,
-	lostByID map[string]rundomain.Replacement,
-	recoveredSessions map[string]struct{},
+	lostByID map[identity.RunID]rundomain.Replacement,
+	recoveredSessions map[identity.SessionID]struct{},
 ) error {
 	seen := make(map[string]struct{}, len(invocations))
 	for index, invocation := range invocations {
@@ -287,14 +287,14 @@ func validateRecoveryModelInvocations(
 
 type recoverySegmentResourceKey struct {
 	resourceID string
-	segmentID  string
+	segmentID  identity.SegmentID
 }
 
 func validateRecoveryToolInvocations(
 	invocations []ToolInvocationRecovery,
-	lostByID map[string]rundomain.Replacement,
-	recoveredSessions map[string]struct{},
-	replacedItems map[string]transcript.Replacement,
+	lostByID map[identity.RunID]rundomain.Replacement,
+	recoveredSessions map[identity.SessionID]struct{},
+	replacedItems map[identity.ItemID]transcript.Replacement,
 ) error {
 	seen := make(map[recoverySegmentResourceKey]struct{}, len(invocations))
 	seenItems := make(map[recoverySegmentResourceKey]struct{}, len(invocations))
@@ -302,7 +302,7 @@ func validateRecoveryToolInvocations(
 		if err := validateRecoveryInvocation(invocation.InvocationAttempt, invocation.FinishedAt, lostByID, recoveredSessions); err != nil {
 			return fmt.Errorf("runs: recovery commit Tool invocation[%d]: %w", index, err)
 		}
-		if err := identity.ValidateItem(invocation.ItemID); err != nil {
+		if err := invocation.ItemID.Validate(); err != nil {
 			return fmt.Errorf("runs: recovery commit Tool invocation[%d]: %w", index, err)
 		}
 		if _, lost := lostByID[invocation.RunID]; lost {
@@ -324,7 +324,7 @@ func validateRecoveryToolInvocations(
 			)
 		}
 		seen[key] = struct{}{}
-		itemKey := recoverySegmentResourceKey{resourceID: invocation.ItemID, segmentID: invocation.SegmentID}
+		itemKey := recoverySegmentResourceKey{resourceID: invocation.ItemID.String(), segmentID: invocation.SegmentID}
 		if _, duplicate := seenItems[itemKey]; duplicate {
 			return fmt.Errorf(
 				"runs: recovery commit repeats Tool invocation Item %q in Segment %q",
@@ -343,8 +343,8 @@ func validateRecoveryToolInvocations(
 func validateRecoveryInvocation(
 	attempt InvocationAttempt,
 	finishedAt time.Time,
-	lostByID map[string]rundomain.Replacement,
-	recoveredSessions map[string]struct{},
+	lostByID map[identity.RunID]rundomain.Replacement,
+	recoveredSessions map[identity.SessionID]struct{},
 ) error {
 	if err := attempt.Validate(); err != nil {
 		return err
@@ -361,7 +361,7 @@ func validateRecoveryInvocation(
 		if lost.SessionID() != attempt.SessionID || !lost.FinishedAt().Equal(finishedAt) {
 			return fmt.Errorf("invocation differs from its recovered lost Run %q", attempt.RunID)
 		}
-		if expected.State() != rundomain.Running || expected.ActiveSegmentID() != attempt.SegmentID {
+		if !expected.Executes(attempt.SegmentID) {
 			return fmt.Errorf(
 				"invocation belongs to Segment %q, not recovered active Segment %q for Run %q",
 				attempt.SegmentID,
@@ -375,9 +375,9 @@ func validateRecoveryInvocation(
 
 func validateRecoveryConversationTransitions(
 	transitions []RecoveryConversationTransition,
-	rootIDs []string,
-	treeMembers map[string][]rundomain.TreeMember,
-	lostByID map[string]rundomain.Replacement,
+	rootIDs []identity.RunID,
+	treeMembers map[identity.RunID][]rundomain.TreeMember,
+	lostByID map[identity.RunID]rundomain.Replacement,
 ) error {
 	if len(transitions) != len(rootIDs) {
 		return fmt.Errorf(
@@ -398,10 +398,10 @@ func validateRecoveryConversationTransitions(
 
 func validateRecoveryConversationTransition(
 	index int,
-	rootID string,
+	rootID identity.RunID,
 	transition RecoveryConversationTransition,
 	members []rundomain.TreeMember,
-	lostByID map[string]rundomain.Replacement,
+	lostByID map[identity.RunID]rundomain.Replacement,
 ) error {
 	root := lostByID[rootID].State()
 	if transition.RootRunID != rootID ||
@@ -413,7 +413,7 @@ func validateRecoveryConversationTransition(
 			rootID,
 		)
 	}
-	if err := identity.ValidateSession(transition.SessionID); err != nil {
+	if err := transition.SessionID.Validate(); err != nil {
 		return fmt.Errorf("runs: recovery commit conversation transition[%d]: %w", index, err)
 	}
 	if err := validateRecoveryClosureMessages(rootID, transition.Messages); err != nil {
@@ -431,7 +431,7 @@ func validateRecoveryConversationTransition(
 	return nil
 }
 
-func validateRecoveryClosureMessages(rootID string, messages []corechat.Message) error {
+func validateRecoveryClosureMessages(rootID identity.RunID, messages []corechat.Message) error {
 	if len(messages) > 1 {
 		return fmt.Errorf(
 			"runs: recovery commit conversation transition for root Run %q has more than one closure message",
@@ -476,23 +476,23 @@ func validateRecoveryClosureMessages(rootID string, messages []corechat.Message)
 }
 
 func validateRecoveryInterruptDeletions(
-	values []string,
-	lostByID map[string]rundomain.Replacement,
+	values []identity.RunID,
+	lostByID map[identity.RunID]rundomain.Replacement,
 ) error {
-	expected := make(map[string]struct{})
+	expected := make(map[identity.RunID]struct{})
 	for _, recovery := range lostByID {
 		if lost := recovery.State(); lost.Lineage().IsRoot() {
 			expected[lost.ID()] = struct{}{}
 		}
 	}
 	for index, rootRunID := range values {
-		if err := identity.ValidateRun(rootRunID); err != nil {
+		if err := rootRunID.Validate(); err != nil {
 			return fmt.Errorf("runs: recovery commit interrupt deletion[%d]: %w", index, err)
 		}
 		if _, found := expected[rootRunID]; !found {
 			return fmt.Errorf("runs: recovery commit interrupt deletion %q is not owned by a lost root Run", rootRunID)
 		}
-		if index > 0 && values[index-1] >= rootRunID {
+		if index > 0 && values[index-1].Compare(rootRunID) >= 0 {
 			return errors.New("runs: recovery commit interrupt deletions are not in canonical order")
 		}
 	}
@@ -503,8 +503,8 @@ func validateRecoveryInterruptDeletions(
 }
 
 func validateRecoveryCheckpointDeletions(
-	values []string,
-	expected []string,
+	values []identity.SessionID,
+	expected []identity.SessionID,
 ) error {
 	if err := validateCanonicalSessionIdentities("checkpoint deletion Session", values); err != nil {
 		return err
@@ -519,26 +519,26 @@ func validateRecoveryCheckpointDeletions(
 	return nil
 }
 
-func validateCanonicalSessionIdentities(name string, values []string) error {
+func validateCanonicalSessionIdentities(name string, values []identity.SessionID) error {
 	for index, value := range values {
-		if err := identity.ValidateSession(value); err != nil {
+		if err := value.Validate(); err != nil {
 			return fmt.Errorf("runs: recovery commit %s[%d]: %w", name, index, err)
 		}
-		if index > 0 && values[index-1] >= value {
+		if index > 0 && values[index-1].Compare(value) >= 0 {
 			return fmt.Errorf("runs: recovery commit %ss are not unique canonical order", name)
 		}
 	}
 	return nil
 }
 
-func (r RecoveryCommit) lostRootSessionIDs() []string {
-	values := make([]string, 0, len(r.state.LostRuns))
+func (r RecoveryCommit) lostRootSessionIDs() []identity.SessionID {
+	values := make([]identity.SessionID, 0, len(r.state.LostRuns))
 	for _, recovery := range r.state.LostRuns {
 		if lost := recovery.State(); lost.Lineage().IsRoot() {
 			values = append(values, lost.SessionID())
 		}
 	}
-	slices.Sort(values)
+	slices.SortFunc(values, identity.SessionID.Compare)
 	return values
 }
 
@@ -546,9 +546,9 @@ func (r RecoveryCommit) lostRootSessionIDs() []string {
 // owns, and so of which abandoned callback ledgers may be retired: every
 // preserved waiting Session plus the Session of every lost root. Validate
 // proves the result carries no repeat, so no reader has to defend against one.
-func (r RecoveryCommit) RecoveredSessionIDs() []string {
+func (r RecoveryCommit) RecoveredSessionIDs() []identity.SessionID {
 	values := append(r.lostRootSessionIDs(), r.state.PreservedSessionIDs...)
-	slices.Sort(values)
+	slices.SortFunc(values, identity.SessionID.Compare)
 	return values
 }
 

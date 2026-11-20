@@ -193,7 +193,7 @@ func (s *steerDesk) readSteerReceipts() {
 	if len(pending) == 0 || s.tasks.operations.Active(steerReceiptReadOperation) {
 		return
 	}
-	s.tasks.session(steerReceiptReadOperation, false,
+	s.tasks.session(steerReceiptReadOperation,
 		func(ctx context.Context) (conversation.SessionSnapshot, error) {
 			return s.readSession(ctx, sessionID)
 		},
@@ -221,29 +221,9 @@ func (s *steerDesk) readSteerReceipts() {
 }
 
 func (s *steerDesk) presentSteerReceipts() {
-	var selected *steerReceipt
-	for _, entry := range s.receipts.entries {
-		if entry.sessionID != s.session.current.ID {
-			continue
-		}
-		status := entry.status()
-		if status == steerPending || entry.presented == status {
-			continue
-		}
-		entry.presented = status
-		if selected == nil || steerReceiptPriority(status) >= steerReceiptPriority(selected.status()) {
-			selected = entry
-		}
-	}
+	selected := s.receiptToPresent()
 	if selected == nil {
 		return
-	}
-	runID := selected.runID
-	for _, entry := range s.receipts.entries {
-		if entry.sessionID == s.session.current.ID && entry.runID == runID &&
-			steerReceiptPriority(entry.status()) >= steerReceiptPriority(selected.status()) {
-			selected = entry
-		}
 	}
 	identity := selected.receipt.UserItemID
 	if identity == "" {
@@ -259,6 +239,37 @@ func (s *steerDesk) presentSteerReceipts() {
 		label += ": " + selected.readFailure.Error()
 	}
 	s.notify(label)
+}
+
+// receiptToPresent marks every newly settled receipt of this session as
+// presented and returns the most significant one, preferring the strongest
+// receipt of the same Run so one notice speaks for it.
+func (s *steerDesk) receiptToPresent() *steerReceipt {
+	var selected *steerReceipt
+	for _, entry := range s.receipts.entries {
+		if entry.sessionID != s.session.current.ID {
+			continue
+		}
+		status := entry.status()
+		if status == steerPending || entry.presented == status {
+			continue
+		}
+		entry.presented = status
+		if selected == nil || steerReceiptPriority(status) >= steerReceiptPriority(selected.status()) {
+			selected = entry
+		}
+	}
+	if selected == nil {
+		return nil
+	}
+	runID := selected.runID
+	for _, entry := range s.receipts.entries {
+		if entry.sessionID == s.session.current.ID && entry.runID == runID &&
+			steerReceiptPriority(entry.status()) >= steerReceiptPriority(selected.status()) {
+			selected = entry
+		}
+	}
+	return selected
 }
 
 func steerReceiptLabel(status steerReceiptStatus) string {

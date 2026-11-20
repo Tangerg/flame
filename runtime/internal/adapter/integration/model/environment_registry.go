@@ -43,26 +43,33 @@ func WithEnvironmentKeys(inner models.ProviderRegistry, envKeys map[string]strin
 	return &environmentRegistry{inner: inner, envKeys: snapshot}, nil
 }
 
-func (e *environmentRegistry) resolve(entry provider.Provider, found bool, id string) (provider.Provider, bool, error) {
-	if found && entry.ID() != id {
-		return provider.Provider{}, false, fmt.Errorf("%w: got %q for %q", errRegistryIdentityMismatch, entry.ID(), id)
+// overlay adds the process environment credential beneath a stored Provider.
+func (e *environmentRegistry) overlay(entry provider.Provider) provider.Provider {
+	if key, found := e.envKeys[entry.ID()]; found {
+		return entry.WithEnvironmentFallback(key)
 	}
+	return entry
+}
+
+func (e *environmentRegistry) addressed(entry provider.Provider, id string) (provider.Provider, error) {
+	if entry.ID() != id {
+		return provider.Provider{}, fmt.Errorf("%w: got %q for %q", errRegistryIdentityMismatch, entry.ID(), id)
+	}
+	return e.overlay(entry), nil
+}
+
+// environmentOnly is the Provider an environment credential implies when no
+// stored configuration names it.
+func (e *environmentRegistry) environmentOnly(id string) (provider.Provider, bool, error) {
+	key, found := e.envKeys[id]
 	if !found {
-		key, hasEnvironmentCredential := e.envKeys[id]
-		if !hasEnvironmentCredential {
-			return provider.Provider{}, false, nil
-		}
-		var err error
-		entry, err = provider.New(id)
-		if err != nil {
-			return provider.Provider{}, false, err
-		}
-		return entry.WithEnvironmentFallback(key), true, nil
+		return provider.Provider{}, false, nil
 	}
-	if key, hasEnvironmentCredential := e.envKeys[id]; hasEnvironmentCredential {
-		entry = entry.WithEnvironmentFallback(key)
+	entry, err := provider.New(id)
+	if err != nil {
+		return provider.Provider{}, false, err
 	}
-	return entry, true, nil
+	return entry.WithEnvironmentFallback(key), true, nil
 }
 
 func (e *environmentRegistry) Get(ctx context.Context, id string) (provider.Provider, bool, error) {
@@ -70,7 +77,11 @@ func (e *environmentRegistry) Get(ctx context.Context, id string) (provider.Prov
 	if err != nil {
 		return provider.Provider{}, false, err
 	}
-	return e.resolve(entry, found, id)
+	if !found {
+		return e.environmentOnly(id)
+	}
+	resolved, err := e.addressed(entry, id)
+	return resolved, err == nil, err
 }
 
 func (e *environmentRegistry) List(ctx context.Context) ([]provider.Provider, error) {
@@ -81,23 +92,18 @@ func (e *environmentRegistry) List(ctx context.Context) ([]provider.Provider, er
 	out := make([]provider.Provider, 0, len(stored)+len(e.envKeys))
 	seen := make(map[string]struct{}, len(stored))
 	for _, entry := range stored {
-		id := entry.ID()
-		resolved, _, resolveErr := e.resolve(entry, true, id)
-		if resolveErr != nil {
-			return nil, resolveErr
-		}
-		out = append(out, resolved)
-		seen[id] = struct{}{}
+		out = append(out, e.overlay(entry))
+		seen[entry.ID()] = struct{}{}
 	}
-	for id, key := range e.envKeys {
+	for id := range e.envKeys {
 		if _, exists := seen[id]; exists {
 			continue
 		}
-		entry, newErr := provider.New(id)
-		if newErr != nil {
-			return nil, newErr
+		entry, _, err := e.environmentOnly(id)
+		if err != nil {
+			return nil, err
 		}
-		out = append(out, entry.WithEnvironmentFallback(key))
+		out = append(out, entry)
 	}
 	slices.SortFunc(out, func(a, b provider.Provider) int { return cmp.Compare(a.ID(), b.ID()) })
 	return out, nil
@@ -110,6 +116,5 @@ func (e *environmentRegistry) Update(ctx context.Context, id string, patch provi
 	if err != nil {
 		return provider.Provider{}, err
 	}
-	resolved, _, err := e.resolve(entry, true, id)
-	return resolved, err
+	return e.addressed(entry, id)
 }

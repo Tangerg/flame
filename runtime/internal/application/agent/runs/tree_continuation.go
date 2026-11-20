@@ -17,19 +17,19 @@ import (
 // to open fresh Segments without inventing a fake human answer.
 type treeContinuation struct {
 	recoveredTools []RecoveredTool
-	rootRunID      string
+	rootRunID      identity.RunID
 	answered       []InterruptBinding
 	continuations  []Continuation
 	// runs are the parked Runs the continuations hand off, by ID. A resumed
 	// route reads its admission, accounting and creation from them; the
 	// continuation carries none of those facts.
-	runs map[string]run.Run
+	runs map[identity.RunID]run.Run
 	// items are the complete Items the hand-off names, including the claim's
 	// accepted answers and verdicts. Reducers continue these values directly.
-	items map[string]transcript.Item
+	items map[identity.ItemID]transcript.Item
 }
 
-func (t *treeContinuation) answeredQuestionsFor(runID string) []transcript.Item {
+func (t *treeContinuation) answeredQuestionsFor(runID identity.RunID) []transcript.Item {
 	var answered []transcript.Item
 	for _, binding := range t.answered {
 		item := t.items[binding.InterruptItemID]
@@ -41,19 +41,19 @@ func (t *treeContinuation) answeredQuestionsFor(runID string) []transcript.Item 
 }
 
 // sessionID is the parked root Run's Session.
-func (t *treeContinuation) sessionID() string {
+func (t *treeContinuation) sessionID() identity.SessionID {
 	return t.runs[t.rootRunID].SessionID()
 }
 
-func parkedRunsByID(parked []run.Run) map[string]run.Run {
-	byID := make(map[string]run.Run, len(parked))
+func parkedRunsByID(parked []run.Run) map[identity.RunID]run.Run {
+	byID := make(map[identity.RunID]run.Run, len(parked))
 	for _, value := range parked {
 		byID[value.ID()] = value
 	}
 	return byID
 }
 
-func parkedRoot(rootRunID string, parked []run.Run) (run.Run, bool) {
+func parkedRoot(rootRunID identity.RunID, parked []run.Run) (run.Run, bool) {
 	for _, value := range parked {
 		if value.ID() == rootRunID {
 			return value, true
@@ -62,7 +62,7 @@ func parkedRoot(rootRunID string, parked []run.Run) (run.Run, bool) {
 	return run.Run{}, false
 }
 
-func (t *treeContinuation) run(runID string) (run.Run, bool) {
+func (t *treeContinuation) run(runID identity.RunID) (run.Run, bool) {
 	value, found := t.runs[runID]
 	return value, found
 }
@@ -70,7 +70,7 @@ func (t *treeContinuation) run(runID string) (run.Run, bool) {
 func treeContinuationForAnswers(
 	pending Pending,
 	parked []run.Run,
-	itemsByID map[string]transcript.Item,
+	itemsByID map[identity.ItemID]transcript.Item,
 ) (*treeContinuation, error) {
 	continuation := &treeContinuation{
 		rootRunID:     pending.RootRunID,
@@ -85,8 +85,35 @@ func treeContinuationForAnswers(
 	return continuation, nil
 }
 
+// continuationMembers maps each executor member to its parked Run; a Run or
+// member continues at most once.
+func (t *treeContinuation) continuationMembers() (map[string]identity.RunID, []run.TreeMember, error) {
+	runIDs := make(map[identity.RunID]struct{}, len(t.continuations))
+	memberOwners := make(map[string]identity.RunID, len(t.continuations))
+	members := make([]run.TreeMember, 0, len(t.continuations))
+	for index, member := range t.continuations {
+		if err := member.Validate(); err != nil {
+			return nil, nil, fmt.Errorf("runs: tree continuation Run[%d]: %w", index, err)
+		}
+		if _, duplicate := runIDs[member.RunID]; duplicate {
+			return nil, nil, fmt.Errorf("runs: tree continuation repeats Run %q", member.RunID)
+		}
+		if owner, duplicate := memberOwners[member.MemberID]; duplicate {
+			return nil, nil, fmt.Errorf("runs: tree continuation member %q belongs to Runs %q and %q", member.MemberID, owner, member.RunID)
+		}
+		parked, found := t.runs[member.RunID]
+		if !found {
+			return nil, nil, fmt.Errorf("runs: tree continuation Run %q is not a parked Run", member.RunID)
+		}
+		runIDs[member.RunID] = struct{}{}
+		memberOwners[member.MemberID] = member.RunID
+		members = append(members, run.TreeMember{RunID: member.RunID, Lineage: parked.Lineage()})
+	}
+	return memberOwners, members, nil
+}
+
 func (t *treeContinuation) validate() error {
-	if err := identity.ValidateRun(t.rootRunID); err != nil {
+	if err := t.rootRunID.Validate(); err != nil {
 		return fmt.Errorf("runs: tree continuation root: %w", err)
 	}
 	root, found := t.runs[t.rootRunID]
@@ -97,34 +124,9 @@ func (t *treeContinuation) validate() error {
 		return errors.New("runs: tree continuation has no Runs")
 	}
 
-	runIDs := make(map[string]struct{}, len(t.continuations))
-	memberOwners := make(map[string]string, len(t.continuations))
-	members := make([]run.TreeMember, 0, len(t.continuations))
-	for index, member := range t.continuations {
-		if err := member.Validate(); err != nil {
-			return fmt.Errorf("runs: tree continuation Run[%d]: %w", index, err)
-		}
-		if _, duplicate := runIDs[member.RunID]; duplicate {
-			return fmt.Errorf("runs: tree continuation repeats Run %q", member.RunID)
-		}
-		if owner, duplicate := memberOwners[member.MemberID]; duplicate {
-			return fmt.Errorf(
-				"runs: tree continuation member %q belongs to Runs %q and %q",
-				member.MemberID,
-				owner,
-				member.RunID,
-			)
-		}
-		parked, found := t.runs[member.RunID]
-		if !found {
-			return fmt.Errorf("runs: tree continuation Run %q is not a parked Run", member.RunID)
-		}
-		runIDs[member.RunID] = struct{}{}
-		memberOwners[member.MemberID] = member.RunID
-		members = append(members, run.TreeMember{
-			RunID:   member.RunID,
-			Lineage: parked.Lineage(),
-		})
+	memberOwners, members, err := t.continuationMembers()
+	if err != nil {
+		return err
 	}
 	tree, err := run.NewTree(t.rootRunID, members)
 	if err != nil {
@@ -151,7 +153,7 @@ func (t *treeContinuation) validate() error {
 	return nil
 }
 
-func (t *treeContinuation) forRun(runID string) (Continuation, bool) {
+func (t *treeContinuation) forRun(runID identity.RunID) (Continuation, bool) {
 	for _, member := range t.continuations {
 		if member.RunID == runID {
 			return member, true

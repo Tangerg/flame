@@ -42,7 +42,7 @@ func (m modelCalls) Start(ctx context.Context, id string, selection modelchoice.
 			return m.session.commitFact(publication, m.member, runs.ModelCallFailed{CallID: id})
 		}
 		record := source.Snapshot()
-		if record.RunID == "" || record.SegmentID == "" || record.Invocation.Caller.ID != id || record.Invocation.SessionID != m.session.scope.SessionID || record.Invocation.Provider != selection.Provider() || record.Invocation.Model != selection.Model() {
+		if record.RunID.IsZero() || record.SegmentID.IsZero() || record.Invocation.Caller.ID != id || record.Invocation.SessionID != m.session.scope.SessionID || record.Invocation.Provider != selection.Provider() || record.Invocation.Model != selection.Model() {
 			return errors.New("execution: independent model evidence differs from admitted call")
 		}
 		completed, err := accountModelEndpoint(id, source)

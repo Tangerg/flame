@@ -21,6 +21,8 @@ import (
 // Command tools record receipts under their contract method; a receipt query
 // arrives under the model-facing tool name.
 const (
+	agentsTool = "a2a_agents"
+	statusTool = "a2a_status"
 	sendTool   = "a2a_send"
 	cancelTool = "a2a_cancel"
 )
@@ -40,64 +42,86 @@ func newServer(connector *connector) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	agents, err := tool.NewFunc(tool.FuncConfig{Name: "a2a_agents", Description: contracts.Agents.Descriptor().Description}, connector.list)
+	tools, err := connector.tools(contracts)
 	if err != nil {
 		return nil, err
 	}
-	status, err := tool.NewFunc(tool.FuncConfig{Name: "a2a_status", Description: contracts.Status.Descriptor().Description}, func(ctx context.Context, input wire.TaskRequest) (wire.Result, error) {
-		result, err := connector.status(ctx, input)
-		if err == nil {
-			return result, nil
-		}
-		if ctx.Err() != nil {
-			return result, errors.Join(err, ctx.Err(), context.Cause(ctx))
-		}
-		kind := tool.FailureKindFailed
-		if _, refused := errors.AsType[*framecall.Refusal](err); refused {
-			kind = tool.FailureKindRejected
-		}
-		failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: kind, Output: tool.NewTextOutput(err.Error()), Cause: err})
-		return result, errors.Join(failure, failureErr)
-	})
+	if err := pluginsdk.RegisterTools(server, tools...); err != nil {
+		return nil, err
+	}
+	if err := connector.registerMethods(backend, contracts); err != nil {
+		return nil, err
+	}
+	if err := backend.Publish(); err != nil {
+		return nil, err
+	}
+	return server, nil
+}
+
+func (c *connector) tools(contracts rpc.Contracts) ([]tool.Tool, error) {
+	agents, err := tool.NewFunc(tool.FuncConfig{Name: agentsTool, Description: contracts.Agents.Descriptor().Description}, c.list)
 	if err != nil {
 		return nil, err
 	}
-	send, err := commandTool[wire.SendRequest](sendTool, contracts.Send.Descriptor(), connector.send)
+	status, err := tool.NewFunc(tool.FuncConfig{Name: statusTool, Description: contracts.Status.Descriptor().Description}, c.statusTool)
 	if err != nil {
 		return nil, err
 	}
-	cancel, err := commandTool[wire.TaskRequest](cancelTool, contracts.Cancel.Descriptor(), connector.cancel)
+	send, err := commandTool[wire.SendRequest](sendTool, contracts.Send.Descriptor(), c.send)
 	if err != nil {
 		return nil, err
 	}
-	if err := pluginsdk.RegisterTools(server, agents, send, status, cancel); err != nil {
+	cancel, err := commandTool[wire.TaskRequest](cancelTool, contracts.Cancel.Descriptor(), c.cancel)
+	if err != nil {
 		return nil, err
 	}
+	return []tool.Tool{agents, send, status, cancel}, nil
+}
+
+// statusTool reports a refused or failed status read to the model as a Tool
+// failure; only cancellation stays a call error.
+func (c *connector) statusTool(ctx context.Context, input wire.TaskRequest) (wire.Result, error) {
+	result, err := c.status(ctx, input)
+	if err == nil {
+		return result, nil
+	}
+	if ctx.Err() != nil {
+		return result, errors.Join(err, ctx.Err(), context.Cause(ctx))
+	}
+	kind := tool.FailureKindFailed
+	if _, refused := errors.AsType[*framecall.Refusal](err); refused {
+		kind = tool.FailureKindRejected
+	}
+	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: kind, Output: tool.NewTextOutput(err.Error()), Cause: err})
+	return result, errors.Join(failure, failureErr)
+}
+
+func (c *connector) registerMethods(backend *pluginmcp.Backend, contracts rpc.Contracts) error {
 	receipts, err := pluginsdk.ToolReceiptQuery()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if err := errors.Join(
-		pluginstorage.RegisterReceipts(backend, connector.db),
+	return errors.Join(
+		pluginstorage.RegisterReceipts(backend, c.db),
 		contracts.Agents.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[struct{}]) (wire.Agents, error) {
-			return connector.list(ctx, command.Input)
+			return c.list(ctx, command.Input)
 		}),
 		contracts.Send.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.SendRequest]) (wire.Result, error) {
 			input, err := command.RequestInput()
 			if err != nil {
 				return wire.Result{}, err
 			}
-			return connector.send(ctx, contracts.Send.Name(), string(command.ID), input)
+			return c.send(ctx, contracts.Send.Name(), string(command.ID), input)
 		}),
 		contracts.Status.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.TaskRequest]) (wire.Result, error) {
-			return connector.status(ctx, command.Input)
+			return c.status(ctx, command.Input)
 		}),
 		contracts.Cancel.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.TaskRequest]) (wire.Result, error) {
 			input, err := command.RequestInput()
 			if err != nil {
 				return wire.Result{}, err
 			}
-			return connector.cancel(ctx, contracts.Cancel.Name(), string(command.ID), input)
+			return c.cancel(ctx, contracts.Cancel.Name(), string(command.ID), input)
 		}),
 		receipts.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
 			input := command.Input
@@ -109,16 +133,10 @@ func newServer(connector *connector) (*sdk.Server, error) {
 			default:
 				return pluginsdk.ToolReceipt{}, nil
 			}
-			return connector.receipt(ctx, input)
+			return c.receipt(ctx, input)
 		}),
 		backend.BindCapability(capabilityExport, contracts.Capability),
-	); err != nil {
-		return nil, err
-	}
-	if err := backend.Publish(); err != nil {
-		return nil, err
-	}
-	return server, nil
+	)
 }
 
 func commandTool[P any](name string, method frame.MethodDescriptor, execute func(context.Context, string, string, framevalue.JSON) (wire.Result, error)) (tool.Tool, error) {

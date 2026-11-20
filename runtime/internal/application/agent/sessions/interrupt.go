@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -15,8 +17,8 @@ const turnCleanupTimeout = 5 * time.Second
 // RunExecutionBinding identifies a parked executor that a Session mutation
 // must tear down after its durable write-set commits.
 type RunExecutionBinding struct {
-	RunID            string
-	SessionID        string
+	RunID            identity.RunID
+	SessionID        identity.SessionID
 	ExecutorID       string
 	CheckpointRootID string
 }
@@ -31,7 +33,7 @@ func (r RunExecutionBinding) executorRef() runs.ExecutorRef {
 // It reads the durable record rather than a live registry: a Run parked on a person,
 // or admitted before a restart, is just as much "the Run this Session already has",
 // and the registry knows neither.
-func (c *Coordinator) ActiveRun(ctx context.Context, sessionID string) (rundomain.Run, bool, error) {
+func (c *Coordinator) ActiveRun(ctx context.Context, sessionID identity.SessionID) (rundomain.Run, bool, error) {
 	runs, err := c.runs.ListRuns(ctx, sessionID)
 	if err != nil {
 		return rundomain.Run{}, false, err
@@ -46,14 +48,14 @@ func (c *Coordinator) ActiveRun(ctx context.Context, sessionID string) (rundomai
 
 // LookupOpenInterrupt returns the parked run identified by runID without claiming
 // or consuming it. The run use case owns the subsequent admission ordering.
-func (c *Coordinator) LookupOpenInterrupt(ctx context.Context, runID string) (runs.Pending, bool, error) {
+func (c *Coordinator) LookupOpenInterrupt(ctx context.Context, runID identity.RunID) (runs.Pending, bool, error) {
 	return c.interrupts.Get(ctx, runID)
 }
 
 // ApplyRunCancel commits the atomic durable abandon write-set. Executor
 // teardown is owned by application/agent/runs for run commands; session rollback and
 // deletion continue to use the coordinator's narrow cleanup collaborator.
-func (c *Coordinator) ApplyRunCancel(ctx context.Context, ref runs.ExecutorRef, runID, reason string, finishedAt time.Time, receipt runs.CancellationReceipt) (rundomain.Run, error) {
+func (c *Coordinator) ApplyRunCancel(ctx context.Context, ref runs.ExecutorRef, runID identity.RunID, reason string, finishedAt time.Time, receipt runs.CancellationReceipt) (rundomain.Run, error) {
 	pending, err := c.parkedRun(ctx, ref.SessionID, runID)
 	if err != nil {
 		return rundomain.Run{}, err
@@ -67,7 +69,7 @@ func (c *Coordinator) ApplyRunCancel(ctx context.Context, ref runs.ExecutorRef, 
 // ApplyRunLost atomically ends a parked run whose executor checkpoint cannot be
 // restored. It uses the recovery transition because the waiting Run never
 // resumed into a normal executor terminal path.
-func (c *Coordinator) ApplyRunLost(ctx context.Context, sessionID, runID string, finishedAt time.Time) error {
+func (c *Coordinator) ApplyRunLost(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, finishedAt time.Time) error {
 	pending, err := c.parkedRun(ctx, sessionID, runID)
 	if err != nil {
 		return err
@@ -76,7 +78,7 @@ func (c *Coordinator) ApplyRunLost(ctx context.Context, sessionID, runID string,
 	return err
 }
 
-func (c *Coordinator) parkedRun(ctx context.Context, sessionID, runID string) (runs.Pending, error) {
+func (c *Coordinator) parkedRun(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) (runs.Pending, error) {
 	pending, found, err := c.interrupts.Get(ctx, runID)
 	if err != nil {
 		return runs.Pending{}, err
@@ -89,7 +91,7 @@ func (c *Coordinator) parkedRun(ctx context.Context, sessionID, runID string) (r
 
 func (c *Coordinator) terminalizePendingRun(
 	ctx context.Context,
-	sessionID string,
+	sessionID identity.SessionID,
 	pending runs.Pending,
 	finishedAt time.Time,
 	outcome rundomain.Outcome,
@@ -128,7 +130,7 @@ func (c *Coordinator) terminalizePendingRun(
 	// command layer deliberately does not publish this again: it would be a second
 	// author for the same commit, and only one of them would ever be updated.
 	terminalRuns := plan.Runs()
-	runIDs := make([]string, len(terminalRuns))
+	runIDs := make([]identity.RunID, len(terminalRuns))
 	for index, replacement := range terminalRuns {
 		runIDs[index] = replacement.State().ID()
 	}
@@ -144,7 +146,7 @@ func (c *Coordinator) terminalizePendingRun(
 	return rootRun, nil
 }
 
-func (c *Coordinator) parkedExecutions(ctx context.Context, sessionID string, runIDs []string) ([]RunExecutionBinding, error) {
+func (c *Coordinator) parkedExecutions(ctx context.Context, sessionID identity.SessionID, runIDs []identity.RunID) ([]RunExecutionBinding, error) {
 	var out []RunExecutionBinding
 	for _, runID := range runIDs {
 		pending, found, err := c.interrupts.Get(ctx, runID)

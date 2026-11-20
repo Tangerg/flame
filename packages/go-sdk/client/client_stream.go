@@ -58,8 +58,12 @@ func remoteEvents(call *remoteCall, reader *sse.Reader, eventType reflect.Type, 
 	}
 }
 
+// defaultSSEEvent is the type of a frame that names no event; the Runtime sends
+// every protocol frame untyped.
+const defaultSSEEvent = "message"
+
 func decodeRemoteEvent(frame sse.Message, eventType reflect.Type) (any, error) {
-	if frame.Event != "message" {
+	if frame.Event != defaultSSEEvent {
 		return nil, invalidRemote("unexpected sse event type")
 	}
 	message, err := protocol.DecodeRPCMessage(frame.Data)
@@ -77,32 +81,40 @@ func decodeRemoteEvent(frame sse.Message, eventType reflect.Type) (any, error) {
 		}
 		return decodeRemoteValue(notification.Params, eventType)
 	case reflect.TypeFor[protocol.RunEvent]():
-		if notification.Method != notificationRunEvent {
-			return nil, invalidRemote("unexpected run notification")
-		}
-		decoded, err := decodeRemoteValue(notification.Params, eventType)
-		if err != nil {
-			return nil, err
-		}
-		event := decoded.(protocol.RunEvent)
-		// SSE retains the previous id on ephemeral frames. Only a replayable
-		// event publishes a cursor; its two wire projections must agree.
-		if event.Event.Replayable() && frame.ID != event.EventID {
-			return nil, invalidRemote("event cursor does not match its sse id")
-		}
-		return event, nil
+		return decodeRemoteRunEvent(frame, notification)
 	case reflect.TypeFor[protocol.RuntimeEvent]():
-		if notification.Method != notificationRuntimeEvent || frame.ID != "" {
-			return nil, invalidRemote("unexpected runtime notification")
-		}
-		decoded, err := decodeRemoteValue(notification.Params, reflect.TypeFor[protocol.RuntimeEventNotification]())
-		if err != nil {
-			return nil, err
-		}
-		return decoded.(protocol.RuntimeEventNotification).Event, nil
+		return decodeRemoteRuntimeEvent(frame, notification)
 	default:
 		return nil, invalidRemote("unknown operation event type")
 	}
+}
+
+func decodeRemoteRunEvent(frame sse.Message, notification *jsonrpc.Request) (any, error) {
+	if notification.Method != notificationRunEvent {
+		return nil, invalidRemote("unexpected run notification")
+	}
+	decoded, err := decodeRemoteValue(notification.Params, reflect.TypeFor[protocol.RunEvent]())
+	if err != nil {
+		return nil, err
+	}
+	event := decoded.(protocol.RunEvent)
+	// SSE retains the previous id on ephemeral frames. Only a replayable
+	// event publishes a cursor; its two wire projections must agree.
+	if event.Event.Replayable() && frame.ID != event.EventID {
+		return nil, invalidRemote("event cursor does not match its sse id")
+	}
+	return event, nil
+}
+
+func decodeRemoteRuntimeEvent(frame sse.Message, notification *jsonrpc.Request) (any, error) {
+	if notification.Method != notificationRuntimeEvent || frame.ID != "" {
+		return nil, invalidRemote("unexpected runtime notification")
+	}
+	decoded, err := decodeRemoteValue(notification.Params, reflect.TypeFor[protocol.RuntimeEventNotification]())
+	if err != nil {
+		return nil, err
+	}
+	return decoded.(protocol.RuntimeEventNotification).Event, nil
 }
 
 func streamIdentity(acknowledgement any) (string, string) {

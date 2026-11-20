@@ -24,8 +24,10 @@ var themeColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 func ThemeColorPattern() string { return themeColor.String() }
 
+const maxNameBytes = 64
+
 func validName(name string) bool {
-	return len(name) <= 64 && namePattern.MatchString(name) && !strings.Contains(name, "--") && !strings.Contains(name, "..")
+	return len(name) <= maxNameBytes && namePattern.MatchString(name) && !strings.Contains(name, "--") && !strings.Contains(name, "..")
 }
 
 const (
@@ -435,54 +437,77 @@ type inputSlot struct {
 // binding names the configuration slot an input fills on its server, in the
 // canonical case of the target, so two spellings cannot fill one slot.
 func (i Input) binding(server Server) (inputSlot, error) {
-	key := i.Key
+	var key string
+	var err error
 	switch i.Target {
 	case Environment:
-		if server.Transport() != mcpserver.TransportStdio {
-			return inputSlot{}, refuse(DiagnosticInvalidDependencies, "input %q binds an environment variable of a non-stdio server", i.ID)
-		}
-		_, managed := server.Startup.(ManagedBackend)
-		if managed && slices.Contains(managedNodeLaunchVariables, strings.ToUpper(key)) {
-			return inputSlot{}, refuse(DiagnosticInvalidDependencies, "input %q replaces managed node launch policy", i.ID)
-		}
-		if err := validatePackageEnvironment(map[string]string{key: ""}); err != nil {
-			return inputSlot{}, &Refusal{Code: DiagnosticInvalidDeclaration, cause: fmt.Errorf("input %q: %w", i.ID, err)}
-		}
-		key = strings.ToUpper(key)
-		stdio, _ := server.stdio()
-		for static := range stdio.Env {
-			if strings.EqualFold(static, key) {
-				return inputSlot{}, refuse(DiagnosticInvalidDependencies, "input %q duplicates static environment configuration", i.ID)
-			}
-		}
+		key, err = i.environmentKey(server)
 	case Header:
-		if server.Transport() != mcpserver.TransportStreamableHTTP {
-			return inputSlot{}, refuse(DiagnosticInvalidDependencies, "input %q binds a header of a non-HTTP server", i.ID)
-		}
-		if err := mcpserver.ValidateHTTPHeaders("", map[string]string{key: ""}); err != nil {
-			return inputSlot{}, refuse(DiagnosticInvalidDeclaration, "input %q header: %v", i.ID, err)
-		}
-		if !i.Secret {
-			return inputSlot{}, refuse(DiagnosticInvalidDeclaration, "input %q header must be a secret", i.ID)
-		}
-		key = strings.ToLower(key)
-		http, _ := server.http()
-		for static := range http.Headers {
-			if strings.EqualFold(static, key) {
-				return inputSlot{}, refuse(DiagnosticInvalidDependencies, "input %q duplicates static header configuration", i.ID)
-			}
-		}
+		key, err = i.headerKey(server)
 	case Authorization:
-		if server.Transport() != mcpserver.TransportStreamableHTTP {
-			return inputSlot{}, refuse(DiagnosticInvalidDependencies, "input %q binds authorization of a non-HTTP server", i.ID)
-		}
-		if key != "" || !i.Secret {
-			return inputSlot{}, refuse(DiagnosticInvalidDeclaration, "input %q authorization must be an unkeyed secret", i.ID)
-		}
+		err = i.validateAuthorization(server)
 	default:
-		return inputSlot{}, refuse(DiagnosticInvalidDeclaration, "input %q target", i.ID)
+		err = refuse(DiagnosticInvalidDeclaration, "input %q target", i.ID)
+	}
+	if err != nil {
+		return inputSlot{}, err
 	}
 	return inputSlot{server: i.Server, target: i.Target, key: key}, nil
+}
+
+// environmentKey admits a variable of a stdio server that neither replaces
+// managed launch policy nor shadows static configuration.
+func (i Input) environmentKey(server Server) (string, error) {
+	if server.Transport() != mcpserver.TransportStdio {
+		return "", refuse(DiagnosticInvalidDependencies, "input %q binds an environment variable of a non-stdio server", i.ID)
+	}
+	_, managed := server.Startup.(ManagedBackend)
+	if managed && slices.Contains(managedNodeLaunchVariables, strings.ToUpper(i.Key)) {
+		return "", refuse(DiagnosticInvalidDependencies, "input %q replaces managed node launch policy", i.ID)
+	}
+	if err := validatePackageEnvironment(map[string]string{i.Key: ""}); err != nil {
+		return "", &Refusal{Code: DiagnosticInvalidDeclaration, cause: fmt.Errorf("input %q: %w", i.ID, err)}
+	}
+	key := strings.ToUpper(i.Key)
+	stdio, _ := server.stdio()
+	for static := range stdio.Env {
+		if strings.EqualFold(static, key) {
+			return "", refuse(DiagnosticInvalidDependencies, "input %q duplicates static environment configuration", i.ID)
+		}
+	}
+	return key, nil
+}
+
+// headerKey admits a secret header of an HTTP server that does not shadow
+// static configuration.
+func (i Input) headerKey(server Server) (string, error) {
+	if server.Transport() != mcpserver.TransportStreamableHTTP {
+		return "", refuse(DiagnosticInvalidDependencies, "input %q binds a header of a non-HTTP server", i.ID)
+	}
+	if err := mcpserver.ValidateHTTPHeaders("", map[string]string{i.Key: ""}); err != nil {
+		return "", refuse(DiagnosticInvalidDeclaration, "input %q header: %v", i.ID, err)
+	}
+	if !i.Secret {
+		return "", refuse(DiagnosticInvalidDeclaration, "input %q header must be a secret", i.ID)
+	}
+	key := strings.ToLower(i.Key)
+	http, _ := server.http()
+	for static := range http.Headers {
+		if strings.EqualFold(static, key) {
+			return "", refuse(DiagnosticInvalidDependencies, "input %q duplicates static header configuration", i.ID)
+		}
+	}
+	return key, nil
+}
+
+func (i Input) validateAuthorization(server Server) error {
+	if server.Transport() != mcpserver.TransportStreamableHTTP {
+		return refuse(DiagnosticInvalidDependencies, "input %q binds authorization of a non-HTTP server", i.ID)
+	}
+	if i.Key != "" || !i.Secret {
+		return refuse(DiagnosticInvalidDeclaration, "input %q authorization must be an unkeyed secret", i.ID)
+	}
+	return nil
 }
 
 // validate checks the connection rules the MCP registry owns, then the few

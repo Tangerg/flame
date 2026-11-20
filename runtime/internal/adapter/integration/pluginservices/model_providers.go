@@ -72,7 +72,7 @@ func (p *ModelProviders) Held(_ context.Context, installation framehost.Installa
 	var result []framehost.Dependency
 	for use := range p.uses {
 		for _, dependency := range use.binding.Activation.Dependencies {
-			if dependency.InstallationID.String() == installation.String() {
+			if dependency.InstallationID.Host() == installation {
 				value := framehost.Dependency{InstallationID: installation, Release: dependency.Digest}
 				if !slices.Contains(result, value) {
 					result = append(result, value)

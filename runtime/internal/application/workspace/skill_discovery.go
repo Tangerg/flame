@@ -9,6 +9,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
+const maxSkillDiagnosticDetailBytes = 512
+
 // Discovery and execution share these limits after source precedence is resolved.
 // A diagnostic may describe an override of an otherwise available Skill.
 func (d SkillDiscovery) Validate() error {
@@ -38,7 +40,7 @@ func (d SkillDiscovery) Validate() error {
 		if err := skills.ValidateName(diagnostic.Name); err != nil {
 			return fmt.Errorf("workspace: invalid Skill diagnostic: %w", err)
 		}
-		if strings.TrimSpace(diagnostic.Detail) == "" || len(diagnostic.Detail) > 512 || !utf8.ValidString(diagnostic.Detail) || seen[diagnostic.Name] {
+		if strings.TrimSpace(diagnostic.Detail) == "" || len(diagnostic.Detail) > maxSkillDiagnosticDetailBytes || !utf8.ValidString(diagnostic.Detail) || seen[diagnostic.Name] {
 			return fmt.Errorf("workspace: invalid or repeated Skill diagnostic %q", diagnostic.Name)
 		}
 		seen[diagnostic.Name] = true

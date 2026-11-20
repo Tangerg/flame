@@ -100,7 +100,7 @@ func learningCommand[P, R any](ctx context.Context, l *learner, method string, c
 	}
 	value, err := execute(ctx, request)
 	if errors.Is(err, errInvalidSkillDraft) {
-		refusal := &framecall.Refusal{Code: "invalid_skill_draft", Message: errInvalidSkillDraft.Error()}
+		refusal := &framecall.Refusal{Code: refusalInvalidSkillDraft, Message: errInvalidSkillDraft.Error()}
 		return pluginstorage.CompleteExternalCommand(ctx, prepared, nil, func(context.Context) (pluginstorage.CommandPlan[R], error) {
 			return pluginstorage.CommandPlan[R]{}, refusal
 		})

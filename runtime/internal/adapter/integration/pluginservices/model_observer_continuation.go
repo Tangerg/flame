@@ -45,7 +45,7 @@ func (a *observedContinuation) enter(command pluginmcp.Command[scopewire.Request
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	if a.state != awaitingContinuation || command.ID != a.id || err != nil || input != a.request {
-		a.violation = errors.Join(err, &framecall.Refusal{Code: "observer_contract", Message: "transparent observer cannot repeat or change its continuation"})
+		a.violation = errors.Join(err, &framecall.Refusal{Code: refusalObserverContract, Message: "transparent observer cannot repeat or change its continuation"})
 		return a.violation
 	}
 	a.state = runningContinuation
@@ -80,7 +80,7 @@ func (a *observedContinuation) outcome(observerErr error) (*chat.Response, error
 		if observerErr == nil {
 			observerErr = errors.New("model observer omitted its captured continuation")
 		}
-		return nil, continuationNotExecuted(observerErr)
+		return nil, notExecuted(observerErr)
 	case settledContinuation:
 		response := a.response.Clone()
 		if observerErr == nil {
@@ -96,7 +96,9 @@ func (a *observedContinuation) outcome(observerErr error) (*chat.Response, error
 	}
 }
 
-func continuationNotExecuted(cause error) error {
+// notExecuted reports a provider exchange refused before anything was sent, so
+// the call has no effect to reconcile.
+func notExecuted(cause error) error {
 	return &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: cause}
 }
 

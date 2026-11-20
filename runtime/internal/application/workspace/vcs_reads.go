@@ -3,6 +3,8 @@ package workspace
 import (
 	"cmp"
 	"context"
+	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -107,7 +109,7 @@ func (b DiffBaseline) Validate() error {
 			return nil
 		}
 	case diffBaselineHead, diffBaselineMergeBase:
-		if len(b.Commit) == 40 || len(b.Commit) == 64 {
+		if len(b.Commit) == hex.EncodedLen(sha1.Size) || len(b.Commit) == hex.EncodedLen(sha256.Size) {
 			if _, err := hex.DecodeString(b.Commit); err == nil {
 				return nil
 			}
@@ -225,18 +227,9 @@ func (v *VCS) Changes(ctx context.Context, cwd string) ([]FileChange, error) {
 // owns cutting at a whole-file boundary within them, because only it can stop
 // before materializing what does not fit.
 func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
-	format := input.Format
-	if format == "" {
-		format = DiffFormatRows
-	}
-	switch format {
-	case DiffFormatRaw:
-		if input.RowLimit.rows != 0 {
-			return Diff{}, errors.New("workspace: raw diff does not accept a row budget")
-		}
-	case DiffFormatRows, DiffFormatVisual:
-	default:
-		return Diff{}, fmt.Errorf("workspace: unsupported diff format %q", format)
+	format, err := input.format()
+	if err != nil {
+		return Diff{}, err
 	}
 	root, err := v.scope.ResolveRoot(input.CWD)
 	if err != nil {
@@ -250,29 +243,47 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 		}
 	}
 	if format == DiffFormatRaw {
-		result, rawDiffErr := v.git.RawDiff(ctx, root, path, input.Base, maxWorkspaceDiffBytes)
-		if rawDiffErr != nil {
-			return Diff{}, rawDiffErr
-		}
-		if len(result.Patch) > maxWorkspaceDiffBytes {
-			return Diff{}, fmt.Errorf("%w: raw diff exceeds %d bytes", ErrVCSResultTooLarge, maxWorkspaceDiffBytes)
-		}
-		if err := result.Baseline.Validate(); err != nil {
-			return Diff{}, err
-		}
-		return Diff{Format: format, Baseline: result.Baseline, Patch: result.Patch}, nil
+		return v.rawDiff(ctx, root, path, input.Base)
 	}
+	return v.structuredDiff(ctx, root, path, input, format)
+}
+
+// format is the requested diff format, rows by default; a raw patch takes no
+// row budget.
+func (d DiffInput) format() (DiffFormat, error) {
+	format := d.Format
+	if format == "" {
+		format = DiffFormatRows
+	}
+	switch format {
+	case DiffFormatRaw:
+		if d.RowLimit.rows != 0 {
+			return "", errors.New("workspace: raw diff does not accept a row budget")
+		}
+	case DiffFormatRows, DiffFormatVisual:
+	default:
+		return "", fmt.Errorf("workspace: unsupported diff format %q", format)
+	}
+	return format, nil
+}
+
+func (v *VCS) rawDiff(ctx context.Context, root, path string, base bool) (Diff, error) {
+	result, err := v.git.RawDiff(ctx, root, path, base, maxWorkspaceDiffBytes)
+	if err != nil {
+		return Diff{}, err
+	}
+	if len(result.Patch) > maxWorkspaceDiffBytes {
+		return Diff{}, fmt.Errorf("%w: raw diff exceeds %d bytes", ErrVCSResultTooLarge, maxWorkspaceDiffBytes)
+	}
+	if err := result.Baseline.Validate(); err != nil {
+		return Diff{}, err
+	}
+	return Diff{Format: DiffFormatRaw, Baseline: result.Baseline, Patch: result.Patch}, nil
+}
+
+func (v *VCS) structuredDiff(ctx context.Context, root, path string, input DiffInput, format DiffFormat) (Diff, error) {
 	rowLimit := input.RowLimit.Rows()
-	result, err := v.git.StructuredDiff(
-		ctx,
-		root,
-		path,
-		input.Base,
-		format,
-		maxWorkspaceDiffFiles,
-		rowLimit,
-		maxWorkspaceDiffBytes,
-	)
+	result, err := v.git.StructuredDiff(ctx, root, path, input.Base, format, maxWorkspaceDiffFiles, rowLimit, maxWorkspaceDiffBytes)
 	if err != nil {
 		return Diff{}, err
 	}

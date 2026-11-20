@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -28,16 +29,37 @@ var errItemIdentitySequenceExhausted = errors.New("runs: segment Item identity s
 // entropy value supplied by composition. The source may be UUID, a test
 // sequence, or another collision-safe generator; the use case owns the
 // resulting resource shape.
-func NewRunID(entropy string) string     { return runIDPrefix + entropy }
-func NewSegmentID(entropy string) string { return segmentIDPrefix + entropy }
-func NewItemID(entropy string) string    { return itemIDPrefix + entropy }
+// NewRunID names a fresh Run from opaque entropy.
+func NewRunID(entropy string) (identity.RunID, error) {
+	return identity.ParseRun(runIDPrefix + entropy)
+}
+
+// NewSegmentID names a fresh Segment from opaque entropy.
+func NewSegmentID(entropy string) (identity.SegmentID, error) {
+	return identity.ParseSegment(segmentIDPrefix + entropy)
+}
+
+// NewItemID names a fresh Item from opaque entropy.
+func NewItemID(entropy string) (identity.ItemID, error) {
+	return identity.ParseItem(itemIDPrefix + entropy)
+}
+
+// derivedItemID admits an Item identity composed here from a digest, which
+// always satisfies the Item grammar.
+func derivedItemID(text string) identity.ItemID {
+	id, err := identity.ParseItem(text)
+	if err != nil {
+		panic(fmt.Sprintf("runs: derived Item identity %q is invalid: %v", text, err))
+	}
+	return id
+}
 
 // SteerItemID nominates the same opaque Item for every delivery of one command.
 // Nomination is read-only; only admission and a committed User Item establish
 // acceptance and application respectively.
-func SteerItemID(commandKey string) string {
+func SteerItemID(commandKey string) identity.ItemID {
 	digest := sha256.Sum256([]byte("steer:" + commandKey))
-	return NewItemID(hex.EncodeToString(digest[:]))
+	return derivedItemID(itemIDPrefix + hex.EncodeToString(digest[:]))
 }
 
 // segmentItemIdentities owns the deterministic Item namespace of one Segment.
@@ -50,26 +72,26 @@ type segmentItemIdentities struct {
 	sequence      uint64
 }
 
-func newSegmentItemIdentities(segmentID string) segmentItemIdentities {
-	digest := sha256.Sum256([]byte(segmentID))
+func newSegmentItemIdentities(segmentID identity.SegmentID) segmentItemIdentities {
+	digest := sha256.Sum256([]byte(segmentID.String()))
 	return segmentItemIdentities{segmentDigest: hex.EncodeToString(digest[:])}
 }
 
-func (i *segmentItemIdentities) Next() (string, error) {
+func (i *segmentItemIdentities) Next() (identity.ItemID, error) {
 	if i.sequence == math.MaxUint64 {
-		return "", errItemIdentitySequenceExhausted
+		return identity.ItemID{}, errItemIdentitySequenceExhausted
 	}
 	i.sequence++
-	return itemIDPrefix + i.segmentDigest + segmentItemSeparator + strconv.FormatUint(i.sequence, 10), nil
+	return derivedItemID(itemIDPrefix + i.segmentDigest + segmentItemSeparator + strconv.FormatUint(i.sequence, 10)), nil
 }
 
 // The committed Items are the allocation ledger for an existing Segment.
 // Restore observes that ledger; only Next may issue another identity.
-func (i *segmentItemIdentities) Restore(ids []string) error {
+func (i *segmentItemIdentities) Restore(ids []identity.ItemID) error {
 	prefix := itemIDPrefix + i.segmentDigest + segmentItemSeparator
 	var highest uint64
 	for _, id := range ids {
-		ordinal, owned := strings.CutPrefix(id, prefix)
+		ordinal, owned := strings.CutPrefix(id.String(), prefix)
 		if !owned || ordinal == userMessageItemDiscriminator {
 			continue
 		}
@@ -83,7 +105,7 @@ func (i *segmentItemIdentities) Restore(ids []string) error {
 	return nil
 }
 
-func userMessageItemID(segmentID string) string {
+func userMessageItemID(segmentID identity.SegmentID) identity.ItemID {
 	identities := newSegmentItemIdentities(segmentID)
-	return itemIDPrefix + identities.segmentDigest + segmentItemSeparator + userMessageItemDiscriminator
+	return derivedItemID(itemIDPrefix + identities.segmentDigest + segmentItemSeparator + userMessageItemDiscriminator)
 }

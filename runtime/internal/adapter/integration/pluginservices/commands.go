@@ -95,77 +95,131 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 	if err != nil {
 		return zero, err
 	}
-	id := record.ID
-	ctx, err = pluginmcp.WithInvocation(ctx, record.Invocation)
+	ctx, command, err := c.openCommand(ctx, record)
 	if err != nil {
 		return zero, err
 	}
-	if record.Phase != plugin.CommandPrepared {
-		defer c.publish.Notify(invalidation.Notice{Resource: invalidation.PluginData})
-	}
-	binding, err := c.original(ctx, record)
-	if err != nil {
-		if record.Phase != plugin.CommandPrepared {
-			err = errors.Join(plugin.ErrCommandUnconfirmed, err)
-		}
-		return zero, err
-	}
-	borrowed, err := c.pool.BorrowActivation(ctx, binding.ServerID, record.Activation)
-	if err != nil {
-		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
-	}
-	defer borrowed.Close()
-	ctx = borrowed.Context()
-	session := borrowed.Session()
-	contract, err := plugincontract.ParseCapability(record.Contract.Bytes())
-	if err != nil {
-		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
-	}
-	exported, err := pluginmcp.NewCapabilityBinding(session, record.Export, contract)
-	if err != nil {
-		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
-	}
-	bound, err := exported.Method(method)
-	if err != nil || bound.Descriptor().Kind != frame.Command {
-		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err, plugin.ErrInvalid)
-	}
+	defer command.close()
 	var result framevalue.JSON
 	if record.Phase == plugin.CommandPrepared {
 		metadata := sdk.ParamsBase{}
 		if collaborators != nil {
 			var release func() error
-			metadata, release, err = collaborators(ctx, binding, session)
+			metadata, release, err = collaborators(ctx, command.binding, command.session)
 			if err != nil {
 				return zero, err
 			}
 			defer func() { returned = errors.Join(returned, release()) }()
 		}
-		err = c.routing.Dispatch(ctx, id, c.admitDispatch)
-		if err != nil {
+		if err := command.dispatch(ctx); err != nil {
 			return zero, err
 		}
-		defer c.publish.Notify(invalidation.Notice{Resource: invalidation.PluginData})
-		result, err = bound.InvokeWithMetadata(ctx, pluginmcp.CommandID(id), record.Input, metadata)
+		result, err = command.method.InvokeWithMetadata(ctx, pluginmcp.CommandID(record.ID), record.Input, metadata)
 	} else {
-		var found bool
-		result, found, err = bound.ReadReceipt(ctx, pluginmcp.CommandID(id), record.Input)
-		if !found && err == nil {
-			err = plugin.ErrCommandUnconfirmed
+		result, err = command.readReceipt(ctx)
+	}
+	result, err = command.settle(ctx, result, err, validate)
+	if err != nil {
+		return zero, err
+	}
+	return commandReply[framevalue.JSON]{value: result, binding: command.binding}, nil
+}
+
+// openedCommand is an admitted command bound to the activation that owns its
+// original effect. A prepared command takes effect only once dispatched; a
+// recovered one may already have.
+type openedCommand struct {
+	calls      *CommandCalls
+	record     plugin.CommandBinding
+	binding    plugins.ContributionBinding
+	session    *sdk.ClientSession
+	method     *pluginmcp.Binding
+	release    func()
+	dispatched bool
+}
+
+func (c *CommandCalls) openCommand(ctx context.Context, record plugin.CommandBinding) (context.Context, *openedCommand, error) {
+	ctx, err := pluginmcp.WithInvocation(ctx, record.Invocation)
+	if err != nil {
+		return ctx, nil, err
+	}
+	command := &openedCommand{calls: c, record: record, release: func() {}}
+	fail := func(err error) (context.Context, *openedCommand, error) {
+		command.close()
+		return ctx, nil, err
+	}
+	binding, err := c.original(ctx, record)
+	if err != nil {
+		if command.mayHaveTakenEffect() {
+			err = errors.Join(plugin.ErrCommandUnconfirmed, err)
+		}
+		return fail(err)
+	}
+	borrowed, err := c.pool.BorrowActivation(ctx, binding.ServerID, record.Activation)
+	if err != nil {
+		return fail(errors.Join(plugin.ErrCommandUnconfirmed, err))
+	}
+	ctx = borrowed.Context()
+	command.binding, command.session, command.release = binding, borrowed.Session(), func() { _ = borrowed.Close() }
+	contract, err := plugincontract.ParseCapability(record.Contract.Bytes())
+	if err != nil {
+		return fail(errors.Join(plugin.ErrCommandUnconfirmed, err))
+	}
+	exported, err := pluginmcp.NewCapabilityBinding(command.session, record.Export, contract)
+	if err != nil {
+		return fail(errors.Join(plugin.ErrCommandUnconfirmed, err))
+	}
+	method, err := exported.Method(record.Method)
+	if err != nil || method.Descriptor().Kind != frame.Command {
+		return fail(errors.Join(plugin.ErrCommandUnconfirmed, err, plugin.ErrInvalid))
+	}
+	command.method = method
+	return ctx, command, nil
+}
+
+func (o *openedCommand) mayHaveTakenEffect() bool {
+	return o.record.Phase != plugin.CommandPrepared || o.dispatched
+}
+
+func (o *openedCommand) dispatch(ctx context.Context) error {
+	if err := o.calls.routing.Dispatch(ctx, o.record.ID, o.calls.admitDispatch); err != nil {
+		return err
+	}
+	o.dispatched = true
+	return nil
+}
+
+func (o *openedCommand) readReceipt(ctx context.Context) (framevalue.JSON, error) {
+	result, found, err := o.method.ReadReceipt(ctx, pluginmcp.CommandID(o.record.ID), o.record.Input)
+	if err == nil && !found {
+		err = plugin.ErrCommandUnconfirmed
+	}
+	return result, err
+}
+
+// settle records the original outcome. A refusal is a known outcome; any other
+// failure, an invalid result or an unrecorded observation leaves the command
+// unconfirmed.
+func (o *openedCommand) settle(ctx context.Context, result framevalue.JSON, err error, validate func(framevalue.JSON) error) (framevalue.JSON, error) {
+	if _, refused := errors.AsType[*framecall.Refusal](err); err != nil && !refused {
+		return framevalue.JSON{}, errors.Join(plugin.ErrCommandUnconfirmed, err)
+	}
+	if err == nil {
+		if invalid := validate(result); invalid != nil {
+			return framevalue.JSON{}, errors.Join(plugin.ErrCommandUnconfirmed, invalid)
 		}
 	}
-	_, known := errors.AsType[*framecall.Refusal](err)
-	if err != nil && !known {
-		return zero, errors.Join(plugin.ErrCommandUnconfirmed, err)
+	if observeErr := o.calls.routing.Observe(ctx, o.record.ID); observeErr != nil {
+		return framevalue.JSON{}, errors.Join(plugin.ErrCommandUnconfirmed, err, observeErr)
 	}
-	if err == nil && validate != nil {
-		if validationErr := validate(result); validationErr != nil {
-			return zero, errors.Join(plugin.ErrCommandUnconfirmed, validationErr)
-		}
+	return result, err
+}
+
+func (o *openedCommand) close() {
+	o.release()
+	if o.mayHaveTakenEffect() {
+		o.calls.publish.Notify(invalidation.Notice{Resource: invalidation.PluginData})
 	}
-	if observeErr := c.routing.Observe(ctx, id); observeErr != nil {
-		return zero, errors.Join(plugin.ErrCommandUnconfirmed, observeErr)
-	}
-	return commandReply[framevalue.JSON]{value: result, binding: binding}, err
 }
 
 // Dispatch validates the original frozen graph under the owner's admission.
@@ -207,72 +261,15 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 	capture := func(binding plugins.ContributionBinding) (framecall.Invocation, error) {
 		return operation.Capture(ctx, target(binding))
 	}
-	command, found, routeErr := c.routing.Find(ctx, id, method, admitted)
-	if routeErr == nil && !found {
-		// Discovery is network I/O outside installation admission. Under that
-		// boundary, recheck the exact provider before persisting its contract.
-		candidate, resolveErr := resolve(ctx)
-		if resolveErr != nil {
-			return plugin.CommandBinding{}, resolveErr
-		}
-		borrowed, sessionErr := borrowContribution(ctx, c.pool, candidate)
-		if sessionErr != nil {
-			return plugin.CommandBinding{}, sessionErr
-		}
-		defer borrowed.Close()
-		ctx = borrowed.Context()
-		session := borrowed.Session()
-		required, err := plugincontract.ParseCapability(candidate.Contract.Bytes())
-		if err != nil {
-			return plugin.CommandBinding{}, err
-		}
-		exported, err := pluginmcp.ResolveCapability(ctx, session, candidate.Export, required)
-		if err != nil {
-			return plugin.CommandBinding{}, err
-		}
-		binding, err := exported.Method(method)
-		if err != nil {
-			return plugin.CommandBinding{}, err
-		}
-		if !delivery.admits(binding.Descriptor()) {
-			return plugin.CommandBinding{}, plugin.ErrInvalid
-		}
-		if binding.Descriptor().Kind != frame.Command {
-			return plugin.CommandBinding{}, errors.New("managed plugin: command requires a command contract")
-		}
-		if err := validateInput(ctx, binding, admitted); err != nil {
-			return plugin.CommandBinding{}, err
-		}
-		activation, err := borrowed.Activation()
-		if err != nil {
-			return plugin.CommandBinding{}, err
-		}
-		originalBinding, err := plugins.DecodeActivation(activation)
-		if err != nil {
-			return plugin.CommandBinding{}, err
-		}
-		command, routeErr = c.routing.Bind(ctx, id, method, admitted, func(ctx context.Context) (plugins.CommandAdmission, error) {
-			current, err := resolve(ctx)
-			if err != nil {
-				return plugins.CommandAdmission{}, err
-			}
-			if !current.SameContribution(candidate) {
-				return plugins.CommandAdmission{}, plugin.ErrUnavailable
-			}
-			if _, err := c.original(ctx, plugin.CommandBinding{Provider: plugin.Dependency{InstallationID: candidate.InstallationID, Digest: candidate.Digest}, Server: candidate.ServerName, Contribution: candidate.ContributionID, Export: candidate.Export, Contract: candidate.Contract}); err != nil {
-				return plugins.CommandAdmission{}, err
-			}
-			if err := c.framework.ValidateBindingUnder(ctx, originalBinding); err != nil {
-				return plugins.CommandAdmission{}, plugins.FrameworkError(err)
-			}
-			return plugins.CommandAdmission{Binding: current, Activation: activation}, nil
-		}, capture)
+	command, found, err := c.routing.Find(ctx, id, method, admitted)
+	if err == nil && !found {
+		command, err = c.bindCommandRoute(ctx, id, method, admitted, resolve, delivery, capture)
 	}
-	if errors.Is(routeErr, plugin.ErrCommandConflict) {
-		return plugin.CommandBinding{}, fmt.Errorf("managed plugin: %w", errors.Join(framecall.ErrConflict, routeErr))
+	if errors.Is(err, plugin.ErrCommandConflict) {
+		return plugin.CommandBinding{}, fmt.Errorf("managed plugin: %w", errors.Join(framecall.ErrConflict, err))
 	}
-	if routeErr != nil {
-		return plugin.CommandBinding{}, routeErr
+	if err != nil {
+		return plugin.CommandBinding{}, err
 	}
 	record := command.Snapshot()
 	invocation, err := capture(plugins.ContributionBinding{InstallationID: record.Provider.InstallationID})
@@ -291,4 +288,65 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 		return plugin.CommandBinding{}, plugin.ErrCommandRetired
 	}
 	return record, nil
+}
+
+// bindCommandRoute freezes a new command against the contribution resolve
+// selects. Discovery is network I/O outside installation admission, so the
+// admission rechecks the exact provider before persisting its contract.
+func (c *CommandCalls) bindCommandRoute(ctx context.Context, id, method string, admitted framevalue.JSON, resolve func(context.Context) (plugins.ContributionBinding, error), delivery callDelivery, capture func(plugins.ContributionBinding) (framecall.Invocation, error)) (*plugin.Command, error) {
+	candidate, err := resolve(ctx)
+	if err != nil {
+		return nil, err
+	}
+	borrowed, err := borrowContribution(ctx, c.pool, candidate)
+	if err != nil {
+		return nil, err
+	}
+	defer borrowed.Close()
+	ctx = borrowed.Context()
+	required, err := plugincontract.ParseCapability(candidate.Contract.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	exported, err := pluginmcp.ResolveCapability(ctx, borrowed.Session(), candidate.Export, required)
+	if err != nil {
+		return nil, err
+	}
+	binding, err := exported.Method(method)
+	if err != nil {
+		return nil, err
+	}
+	if !delivery.admits(binding.Descriptor()) {
+		return nil, plugin.ErrInvalid
+	}
+	if binding.Descriptor().Kind != frame.Command {
+		return nil, errors.New("managed plugin: command requires a command contract")
+	}
+	if err := validateInput(ctx, binding, admitted); err != nil {
+		return nil, err
+	}
+	activation, err := borrowed.Activation()
+	if err != nil {
+		return nil, err
+	}
+	originalBinding, err := plugins.DecodeActivation(activation)
+	if err != nil {
+		return nil, err
+	}
+	return c.routing.Bind(ctx, id, method, admitted, func(ctx context.Context) (plugins.CommandAdmission, error) {
+		current, err := resolve(ctx)
+		if err != nil {
+			return plugins.CommandAdmission{}, err
+		}
+		if !current.SameContribution(candidate) {
+			return plugins.CommandAdmission{}, plugin.ErrUnavailable
+		}
+		if _, err := c.original(ctx, plugin.CommandBinding{Provider: plugin.Dependency{InstallationID: candidate.InstallationID, Digest: candidate.Digest}, Server: candidate.ServerName, Contribution: candidate.ContributionID, Export: candidate.Export, Contract: candidate.Contract}); err != nil {
+			return plugins.CommandAdmission{}, err
+		}
+		if err := c.framework.ValidateBindingUnder(ctx, originalBinding); err != nil {
+			return plugins.CommandAdmission{}, plugins.FrameworkError(err)
+		}
+		return plugins.CommandAdmission{Binding: current, Activation: activation}, nil
+	}, capture)
 }

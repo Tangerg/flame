@@ -63,6 +63,13 @@ const (
 	oldPathPrefix         = "a/"
 	newPathPrefix         = "b/"
 	nullPatchPath         = "/dev/null"
+	noNewlineMarker       = `\ No newline at end of file`
+)
+
+const (
+	addedRowMarker   = '+'
+	deletedRowMarker = '-'
+	contextRowMarker = ' '
 )
 
 type unifiedDiffParser struct {
@@ -81,17 +88,8 @@ type unifiedDiffParser struct {
 }
 
 func (parser *unifiedDiffParser) consume(encoded []byte, offset int) (bool, error) {
-	if bytes.Equal(encoded, []byte(`\ No newline at end of file`)) {
-		if parser.current == nil || parser.lastRow == nil {
-			return false, fmt.Errorf("git: newline marker without a code row")
-		}
-		row := parser.lastRow
-		if row.Type == RowHunk || row.NoNewline ||
-			row.LeftLine > 0 && parser.left.remaining != 0 || row.RightLine > 0 && parser.right.remaining != 0 {
-			return false, fmt.Errorf("git: newline marker without a terminal code row")
-		}
-		row.NoNewline = true
-		return false, nil
+	if string(encoded) == noNewlineMarker {
+		return false, parser.markNoNewline()
 	}
 	if parser.left.remaining > 0 || parser.right.remaining > 0 {
 		return parser.appendRow(encoded)
@@ -110,6 +108,19 @@ func (parser *unifiedDiffParser) consume(encoded []byte, offset int) (bool, erro
 		return parser.appendHunk(line)
 	}
 	return false, nil
+}
+
+func (parser *unifiedDiffParser) markNoNewline() error {
+	if parser.current == nil || parser.lastRow == nil {
+		return fmt.Errorf("git: newline marker without a code row")
+	}
+	row := parser.lastRow
+	if row.Type == RowHunk || row.NoNewline ||
+		row.LeftLine > 0 && parser.left.remaining != 0 || row.RightLine > 0 && parser.right.remaining != 0 {
+		return fmt.Errorf("git: newline marker without a terminal code row")
+	}
+	row.NoNewline = true
+	return nil
 }
 
 func (parser *unifiedDiffParser) startFile(header string, offset int) (bool, error) {
@@ -196,41 +207,46 @@ func (parser *unifiedDiffParser) appendRow(line []byte) (bool, error) {
 	if len(line) == 0 {
 		return false, fmt.Errorf("git: incomplete diff hunk")
 	}
-	marker := line[0]
-	left := marker == '-' || marker == ' '
-	right := marker == '+' || marker == ' '
+	rowType, left, right := codeRowSides(line[0])
 	if !left && !right || left && parser.left.remaining == 0 || right && parser.right.remaining == 0 {
 		return false, fmt.Errorf("git: row exceeds diff hunk range: %q", line)
 	}
 	if parser.rowBudgetExhausted() {
 		return true, nil
 	}
-	row := Row{}
+	row := Row{Type: rowType}
 	if parser.retainRows {
 		row.Code = string(line[1:])
 	}
-	switch marker {
-	case '+':
-		row.Type = RowAdded
+	switch rowType {
+	case RowAdded:
 		parser.current.Added++
-	case '-':
-		row.Type = RowDeleted
+	case RowDeleted:
 		parser.current.Removed++
-	case ' ':
-		row.Type = RowContext
 	}
 	if left {
-		row.LeftLine = parser.left.line
-		parser.left.line++
-		parser.left.remaining--
+		row.LeftLine = parser.left.advance()
 	}
 	if right {
-		row.RightLine = parser.right.line
-		parser.right.line++
-		parser.right.remaining--
+		row.RightLine = parser.right.advance()
 	}
 	parser.recordRow(row)
 	return false, nil
+}
+
+// codeRowSides reports which hunk sides a code row advances; an unknown marker
+// advances neither.
+func codeRowSides(marker byte) (rowType RowType, left, right bool) {
+	switch marker {
+	case addedRowMarker:
+		return RowAdded, false, true
+	case deletedRowMarker:
+		return RowDeleted, true, false
+	case contextRowMarker:
+		return RowContext, true, true
+	default:
+		return "", false, false
+	}
 }
 
 func (parser *unifiedDiffParser) recordRow(row Row) {
@@ -309,9 +325,17 @@ type hunkRange struct {
 	remaining int
 }
 
+// advance consumes one line of the range and returns its number.
+func (r *hunkRange) advance() int {
+	line := r.line
+	r.line++
+	r.remaining--
+	return line
+}
+
 func parseHunkHeader(h string) (left, right hunkRange, err error) {
 	fields := strings.Fields(h)
-	if len(fields) < 4 || fields[0] != "@@" || fields[3] != "@@" ||
+	if len(fields) < 4 || fields[0] != hunkHeader || fields[3] != hunkHeader ||
 		len(fields[1]) < 2 || fields[1][0] != '-' ||
 		len(fields[2]) < 2 || fields[2][0] != '+' {
 		return left, right, fmt.Errorf("git: malformed hunk header %q", h)

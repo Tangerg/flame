@@ -137,8 +137,6 @@ func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Sched
 	if expectedRevision != s.revision.Value() {
 		return Schedule{}, ErrRevisionConflict
 	}
-	recurrenceChanged := (p.Cron != nil && *p.Cron != s.recurrence.Cron()) ||
-		(p.TimeZone != nil && *p.TimeZone != s.recurrence.TimeZone())
 	if p.Title != nil {
 		s.title = *p.Title
 	}
@@ -151,20 +149,11 @@ func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Sched
 	if p.Selection != nil {
 		s.modelSelection = *p.Selection
 	}
-	if recurrenceChanged {
-		cron, timeZone := s.recurrence.Cron(), s.recurrence.TimeZone()
-		if p.Cron != nil {
-			cron = *p.Cron
-		}
-		if p.TimeZone != nil {
-			timeZone = *p.TimeZone
-		}
-		recurrence, err := NewRecurrence(cron, timeZone)
-		if err != nil {
-			return Schedule{}, err
-		}
-		s.recurrence = recurrence
+	recurrence, recurrenceChanged, err := s.recurrence.patched(p.Cron, p.TimeZone)
+	if err != nil {
+		return Schedule{}, err
 	}
+	s.recurrence = recurrence
 	enabled := s.Enabled()
 	if p.Enabled != nil {
 		enabled = *p.Enabled
@@ -177,6 +166,23 @@ func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Sched
 		return next.scheduledAfter(enabled, after)
 	}
 	return next, next.Validate()
+}
+
+// patched is the recurrence an edit asks for; an edit that names the current
+// cron and zone leaves it, and so the next run, untouched.
+func (r Recurrence) patched(cron, timeZone *string) (Recurrence, bool, error) {
+	nextCron, nextZone := r.Cron(), r.TimeZone()
+	if cron != nil {
+		nextCron = *cron
+	}
+	if timeZone != nil {
+		nextZone = *timeZone
+	}
+	if nextCron == r.Cron() && nextZone == r.TimeZone() {
+		return r, false, nil
+	}
+	recurrence, err := NewRecurrence(nextCron, nextZone)
+	return recurrence, err == nil, err
 }
 
 func (s Schedule) advanceRevision() (Schedule, error) {

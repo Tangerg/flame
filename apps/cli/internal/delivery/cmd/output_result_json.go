@@ -93,7 +93,7 @@ func (a *assistantProse) ensureIndex() {
 }
 
 type resultFrame struct {
-	Type       string          `json:"type"`
+	Type       recordType      `json:"type"`
 	Status     string          `json:"status"`
 	RunID      string          `json:"runId"`
 	SessionID  string          `json:"sessionId"`
@@ -129,7 +129,7 @@ func (r *resultJSONRenderer) Begin(run conversation.Run, options authoring.RunOp
 	}
 	r.phase = resultStarted
 	r.frame = resultFrame{
-		Type: "result", Status: string(protocol.RunStatusRunning), RunID: run.ID,
+		Type: recordResult, Status: string(protocol.RunStatusRunning), RunID: run.ID,
 		SessionID: run.SessionID, Options: encodeRunOptions(options),
 	}
 	return nil
@@ -214,16 +214,9 @@ func (r *resultJSONRenderer) Reconcile(snapshot conversation.SessionSnapshot) er
 func (r *resultJSONRenderer) fold(envelope conversation.RunEvent) {
 	switch event := envelope.Event.(type) {
 	case conversation.SegmentStarted:
-		if !event.Run.Lineage.IsRoot() {
-			return
+		if event.Run.Lineage.IsRoot() {
+			r.startSegment(event.Run)
 		}
-		if r.phase == resultPending {
-			r.phase = resultStarted
-			r.frame = resultFrame{Type: "result", Status: string(protocol.RunStatusRunning)}
-		}
-		r.frame.RunID, r.frame.SessionID = event.Run.ID, event.Run.SessionID
-		r.frame.Status = string(protocol.RunStatusRunning)
-		r.frame.Interrupts = nil
 	case conversation.BlockStarted:
 		if r.scope.isRoot(envelope.RunID) {
 			r.begin(event.Block)
@@ -243,18 +236,34 @@ func (r *resultJSONRenderer) fold(envelope conversation.RunEvent) {
 			r.complete(event.Block)
 		}
 	case conversation.SegmentFinished:
-		r.frame.Interrupts = append(r.frame.Interrupts, encodeInterrupts(event.Interrupts)...)
-		if !r.scope.isRoot(envelope.RunID) {
-			return
-		}
-		r.frame.Status = string(event.Run.Status)
-		r.frame.Usage = encodeUsage(event.Run.Usage)
-		if event.Run.Status == protocol.RunStatusFinished {
-			r.frame.Interrupts = nil
-			r.frame.Outcome = encodeOutcome(event.Run.Outcome)
-		}
+		r.finishSegment(envelope.RunID, event)
 	case conversation.PlanChanged, conversation.ToolArgumentsDelta, conversation.CustomEvent:
 		// A final result intentionally omits incremental plan state.
+	}
+}
+
+func (r *resultJSONRenderer) startSegment(run conversation.Run) {
+	if r.phase == resultPending {
+		r.phase = resultStarted
+		r.frame = resultFrame{Type: recordResult, Status: string(protocol.RunStatusRunning)}
+	}
+	r.frame.RunID, r.frame.SessionID = run.ID, run.SessionID
+	r.frame.Status = string(protocol.RunStatusRunning)
+	r.frame.Interrupts = nil
+}
+
+// finishSegment collects interrupts from the whole tree, but only the root's
+// segment settles the result's status, usage and outcome.
+func (r *resultJSONRenderer) finishSegment(runID string, event conversation.SegmentFinished) {
+	r.frame.Interrupts = append(r.frame.Interrupts, encodeInterrupts(event.Interrupts)...)
+	if !r.scope.isRoot(runID) {
+		return
+	}
+	r.frame.Status = string(event.Run.Status)
+	r.frame.Usage = encodeUsage(event.Run.Usage)
+	if event.Run.Status == protocol.RunStatusFinished {
+		r.frame.Interrupts = nil
+		r.frame.Outcome = encodeOutcome(event.Run.Outcome)
 	}
 }
 

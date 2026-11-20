@@ -1,9 +1,10 @@
 package runs
 
 import (
-	"encoding/hex"
 	"errors"
-	"strings"
+	"fmt"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
 
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -20,12 +21,10 @@ func (r ResultPublication) Validate() error {
 	if err := ValidateInvocation(r.ID); err != nil {
 		return err
 	}
-	value, found := strings.CutPrefix(r.Digest, "sha256:")
-	if !found || len(value) != 64 || strings.ToLower(value) != value {
-		return errors.New("runs: invalid result publication digest")
+	if _, err := scoperun.ParseDigest(r.Digest); err != nil {
+		return fmt.Errorf("runs: result publication digest: %w", err)
 	}
-	_, err := hex.DecodeString(value)
-	return err
+	return nil
 }
 
 // ToolResultsCommitted carries settled calls with their original round indexes.
@@ -38,6 +37,28 @@ type ToolResultsCommitted struct {
 	Results     []ToolCallFinished
 	// ModelResults is present only when the whole round is known, in declared order.
 	ModelResults []chat.ToolResult
+}
+
+// validate checks the batch is one model call's complete result set in its
+// declared call order.
+func (b ToolResultsCommitted) validate() error {
+	if err := b.Publication.Validate(); err != nil {
+		return err
+	}
+	if len(b.Results) == 0 || len(b.Starts) != len(b.Results) {
+		return errors.New("runs: result publication requires its complete call set")
+	}
+	sequence := b.Starts[0].ModelCallSequence
+	if sequence == 0 {
+		return errors.New("runs: result publication requires model attribution")
+	}
+	for index, start := range b.Starts {
+		ordered := index == 0 || start.ToolCallIndex > b.Starts[index-1].ToolCallIndex
+		if start.ModelCallSequence != sequence || !ordered || start.CallID != b.Results[index].CallID {
+			return errors.New("runs: result publication call set is not in declared order")
+		}
+	}
+	return nil
 }
 
 func (t ToolResultsCommitted) clone() ToolResultsCommitted {

@@ -7,10 +7,13 @@ import (
 	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
+// notificationNamespace prefixes every server-to-client notification method.
+const notificationNamespace = "notifications."
+
 const (
-	NotificationRunEvent     = "notifications.run.event"
-	NotificationRuntimeEvent = "notifications.runtime.event"
-	NotificationPluginStream = "notifications.plugin.stream"
+	NotificationRunEvent     = notificationNamespace + "run.event"
+	NotificationRuntimeEvent = notificationNamespace + "runtime.event"
+	NotificationPluginStream = notificationNamespace + "plugin.stream"
 )
 
 // Both encoders receive an event the delivery endpoint has already validated

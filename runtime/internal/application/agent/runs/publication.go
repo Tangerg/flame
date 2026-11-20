@@ -7,6 +7,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -543,7 +545,7 @@ func (t treePublisher) append(route *executorRoute, reduced reduction) error {
 	return nil
 }
 
-func combineAuthoritativeCommit(route *executorRoute, sessionID string, batch reductionBatch) (EventCommit, error) {
+func combineAuthoritativeCommit(route *executorRoute, sessionID identity.SessionID, batch reductionBatch) (EventCommit, error) {
 	combined := EventCommit{
 		RunID: route.runID, SessionID: sessionID, SegmentID: route.segmentID,
 		CommitID: newRunCommitID(),

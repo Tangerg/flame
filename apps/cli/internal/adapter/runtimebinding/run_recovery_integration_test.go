@@ -33,7 +33,7 @@ func TestRunningTreeRecoveryUsesTheRuntimeSnapshotAndSuccessorTail(t *testing.T)
 			return
 		}
 		request.Body = io.NopCloser(bytes.NewReader(body))
-		if bytes.Contains(body, []byte("child approval probe")) {
+		if bytes.Contains(body, []byte(runtimefixture.ChildApprovalProbe)) {
 			entered.Do(func() { close(childEntered) })
 			select {
 			case <-releaseChild:
@@ -58,7 +58,7 @@ func TestRunningTreeRecoveryUsesTheRuntimeSnapshotAndSuccessorTail(t *testing.T)
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	opened, err := connection.StartRun(ctx, authoring.StartRun{
-		SessionID: session.ID, Message: authoring.Message{Text: "delegate approval probe"},
+		SessionID: session.ID, Message: authoring.Message{Text: runtimefixture.DelegateApprovalProbe},
 		Options: authoring.RunOptions{Provider: "deepseek", Model: "deepseek-chat"},
 	})
 	if err != nil {
@@ -125,7 +125,7 @@ func TestOneShotRecoversADelegatedApprovalBeforeResumingTheRoot(t *testing.T) {
 	defer cancel()
 	if err := runapplication.Execute(ctx, runapplication.Invocation{
 		Runtime: runtime, Renderer: renderer, ReplayPolicy: replayGuard, ApproveAll: true, Start: authoring.StartRun{
-			SessionID: session.ID, Message: authoring.Message{Text: "delegate approval probe"},
+			SessionID: session.ID, Message: authoring.Message{Text: runtimefixture.DelegateApprovalProbe},
 			Options: authoring.RunOptions{Provider: "deepseek", Model: "deepseek-chat"},
 		},
 	}); err != nil {

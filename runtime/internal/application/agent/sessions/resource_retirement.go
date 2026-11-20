@@ -18,15 +18,15 @@ import (
 // constructing this value never authorizes filesystem deletion.
 type ResourceRetirement struct {
 	id        uuid.UUID
-	sessionID string
+	sessionID identity.SessionID
 }
 
-func newResourceRetirement(sessionID string) (ResourceRetirement, error) {
+func newResourceRetirement(sessionID identity.SessionID) (ResourceRetirement, error) {
 	return RestoreResourceRetirement(uuid.NewString(), sessionID)
 }
 
-func RestoreResourceRetirement(id, sessionID string) (ResourceRetirement, error) {
-	if err := identity.ValidateSession(sessionID); err != nil {
+func RestoreResourceRetirement(id string, sessionID identity.SessionID) (ResourceRetirement, error) {
+	if err := sessionID.Validate(); err != nil {
 		return ResourceRetirement{}, fmt.Errorf("sessions: resource retirement: %w", err)
 	}
 	parsed, err := uuid.Parse(id)
@@ -39,8 +39,8 @@ func RestoreResourceRetirement(id, sessionID string) (ResourceRetirement, error)
 	return ResourceRetirement{id: parsed, sessionID: sessionID}, nil
 }
 
-func (r ResourceRetirement) ID() string        { return r.id.String() }
-func (r ResourceRetirement) SessionID() string { return r.sessionID }
+func (r ResourceRetirement) ID() string                    { return r.id.String() }
+func (r ResourceRetirement) SessionID() identity.SessionID { return r.sessionID }
 
 func (r ResourceRetirement) Validate() error {
 	_, err := RestoreResourceRetirement(r.ID(), r.SessionID())
@@ -52,7 +52,7 @@ func (r ResourceRetirement) Validate() error {
 // pending and is attempted again.
 type Cleanup struct {
 	Resource string
-	Retire   func(context.Context, string) error
+	Retire   func(context.Context, identity.SessionID) error
 }
 
 // ResourceRetirer alone completes committed resource retirements. Until every
@@ -78,7 +78,7 @@ func NewResourceRetirer(retirements resourceRetirements, cleanups ...Cleanup) (*
 // Settle completes sessionID's committed retirement, if any, under the caller's
 // exclusive admission. It reports false while a cleanup still fails; the cause
 // is logged because the caller can only answer that the Session is busy.
-func (r *ResourceRetirer) Settle(ctx context.Context, sessionID string) (bool, error) {
+func (r *ResourceRetirer) Settle(ctx context.Context, sessionID identity.SessionID) (bool, error) {
 	retirement, found, err := r.retirements.Lookup(ctx, sessionID)
 	if err != nil || !found {
 		return err == nil, err
@@ -138,5 +138,5 @@ func (r *ResourceRetirer) RecoverPending(ctx context.Context, admissions recover
 }
 
 type recoveryClaims interface {
-	AcquireRecoverySession(ctx context.Context, sessionID string) (release func(), ok bool, err error)
+	AcquireRecoverySession(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error)
 }

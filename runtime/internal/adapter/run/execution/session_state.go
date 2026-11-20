@@ -3,6 +3,8 @@ package execution
 import (
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 )
@@ -37,8 +39,8 @@ func NewTransientSessionState(
 
 // QuiesceSession stops every detached process owned by a Session before its
 // durable state is replaced or deleted.
-func (s *TransientSessionState) QuiesceSession(sessionID string) error {
-	return s.shells.StopSession(sessionID)
+func (s *TransientSessionState) QuiesceSession(sessionID identity.SessionID) error {
+	return s.shells.StopSession(sessionID.String())
 }
 
 // QuiesceWorkspace stops every detached process below a working tree before a
@@ -49,14 +51,14 @@ func (s *TransientSessionState) QuiesceWorkspace(root string) error {
 
 // ForgetSession releases non-failing process-local markers after a Session has
 // been quiesced and durably deleted.
-func (s *TransientSessionState) ForgetSession(sessionID string) {
+func (s *TransientSessionState) ForgetSession(sessionID identity.SessionID) {
 	s.workingContexts.ForgetSession(sessionID)
 	s.ForgetSessionContext(sessionID)
 }
 
 // ForgetSessionContext releases only facts derived from one Session's model
 // context. Lifecycle-hook delivery remains once per Session per Runtime process.
-func (s *TransientSessionState) ForgetSessionContext(sessionID string) {
+func (s *TransientSessionState) ForgetSessionContext(sessionID identity.SessionID) {
 	s.tools.ForgetSessionContext(sessionID)
 }
 

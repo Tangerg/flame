@@ -5,6 +5,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -200,94 +201,127 @@ func ProjectFrameworkRelease(release plugin.Release, backendProfile framehost.Pr
 }
 
 func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile framehost.Profile) (FrameworkDefinition, error) {
-	contracts := map[framehost.ContractRef]framehost.Declaration{}
-	addCapability := func(encoded framevalue.JSON) (framehost.ContractRef, error) {
-		contract, err := plugincontract.ParseCapability(encoded.Bytes())
-		if err != nil {
-			return framehost.ContractRef{}, err
-		}
-		value, err := capabilityContract(contract)
-		if err != nil {
-			return framehost.ContractRef{}, err
-		}
-		point, err := CapabilityPoint(contract)
-		if err != nil {
-			return framehost.ContractRef{}, err
-		}
-		contracts[value.Ref()] = value
-		contracts[point.Ref()] = point
-		return point.Ref(), nil
-	}
-	addDataPoint := func(encoded framevalue.JSON) (framehost.Point[framevalue.JSON, framevalue.JSON], error) {
-		point, value, err := dataPointDeclarations(encoded)
-		if err != nil {
-			return point, err
-		}
-		contracts[value.Ref()] = value
-		contracts[point.Ref()] = point
-		return point, nil
-	}
-
+	projection := frameworkProjection{contracts: map[framehost.ContractRef]framehost.Declaration{}}
 	units := make([]framehost.Unit, 0, len(declaration.Servers)+1)
 	for _, server := range declaration.Servers {
-		unit := framehost.UnitDeclaration{ID: BackendUnit(server.Name), Profile: backendProfile, Imports: []framehost.ImportDeclaration{}, Exports: []framehost.ExportDeclaration{}}
-		for _, contribution := range declaration.Contributions {
-			if contribution.Server != server.Name {
-				continue
-			}
-			ref, err := addCapability(contribution.Contract)
-			if err != nil {
-				return FrameworkDefinition{}, err
-			}
-			unit.Exports = append(unit.Exports, framehost.ExportDeclaration{Name: contribution.ID.String(), Contract: ref})
-			for _, requirement := range contribution.Requires {
-				ref, err := addCapability(requirement.Contract)
-				if err != nil {
-					return FrameworkDefinition{}, err
-				}
-				unit.Imports = append(unit.Imports, framehost.ImportDeclaration{Slot: RequirementSlot(contribution.ID, requirement.ID), Contract: ref, Optional: requirement.Optional})
-			}
+		unit, err := projection.backendUnit(declaration, server.Name, backendProfile)
+		if err != nil {
+			return FrameworkDefinition{}, err
 		}
-		units = append(units, framehost.Unit{Declaration: unit})
+		units = append(units, unit)
 	}
 	for _, definition := range declaration.Points {
-		if _, err := addDataPoint(definition.Contract); err != nil {
+		if _, err := projection.dataPoint(definition.Contract); err != nil {
 			return FrameworkDefinition{}, err
 		}
 	}
 	if len(declaration.PointValues) > 0 {
-		unit := framehost.UnitDeclaration{ID: PointValuesUnit, Profile: framehost.NativeGo, Imports: []framehost.ImportDeclaration{}, Exports: []framehost.ExportDeclaration{}}
-		values := make([]framehost.ExportValue, 0, len(declaration.PointValues))
-		for _, contribution := range declaration.PointValues {
-			point, err := addDataPoint(contribution.Contract)
-			if err != nil {
-				return FrameworkDefinition{}, err
-			}
-			unit.Exports = append(unit.Exports, framehost.ExportDeclaration{Name: contribution.ID.String(), Contract: point.Ref()})
-			values = append(values, framehost.Contribute(contribution.ID.String(), point, contribution.Value, contribution.Value))
-		}
-		units = append(units, framehost.Unit{Declaration: unit, Setup: func(context.Context, framehost.Setup) ([]framehost.ExportValue, error) {
-			return slices.Clone(values), nil
-		}})
-	}
-	if len(declaration.Components) > 0 {
-		contract, err := ComponentContract()
+		unit, err := projection.pointValuesUnit(declaration.PointValues)
 		if err != nil {
 			return FrameworkDefinition{}, err
 		}
-		contracts[contract.Ref()] = contract
-		for _, component := range declaration.Components {
-			units = append(units, framehost.Unit{Declaration: framehost.UnitDeclaration{ID: ComponentUnit(component.ID), Profile: framehost.BrowserJS, Imports: []framehost.ImportDeclaration{}, Exports: []framehost.ExportDeclaration{{Name: extension.ComponentExport, Contract: contract.Ref()}}}})
+		units = append(units, unit)
+	}
+	if len(declaration.Components) > 0 {
+		components, err := projection.componentUnits(declaration.Components)
+		if err != nil {
+			return FrameworkDefinition{}, err
+		}
+		units = append(units, components...)
+	}
+	return FrameworkDefinition{Units: units, Contracts: projection.sortedContracts()}, nil
+}
+
+// frameworkProjection collects each contract once, however many units name it.
+type frameworkProjection struct {
+	contracts map[framehost.ContractRef]framehost.Declaration
+}
+
+func (p frameworkProjection) capability(encoded framevalue.JSON) (framehost.ContractRef, error) {
+	contract, err := plugincontract.ParseCapability(encoded.Bytes())
+	if err != nil {
+		return framehost.ContractRef{}, err
+	}
+	value, err := capabilityContract(contract)
+	if err != nil {
+		return framehost.ContractRef{}, err
+	}
+	point, err := CapabilityPoint(contract)
+	if err != nil {
+		return framehost.ContractRef{}, err
+	}
+	p.contracts[value.Ref()] = value
+	p.contracts[point.Ref()] = point
+	return point.Ref(), nil
+}
+
+func (p frameworkProjection) dataPoint(encoded framevalue.JSON) (framehost.Point[framevalue.JSON, framevalue.JSON], error) {
+	point, value, err := dataPointDeclarations(encoded)
+	if err != nil {
+		return point, err
+	}
+	p.contracts[value.Ref()] = value
+	p.contracts[point.Ref()] = point
+	return point, nil
+}
+
+func (p frameworkProjection) backendUnit(declaration plugin.Declaration, server mcpserver.ServerName, profile framehost.Profile) (framehost.Unit, error) {
+	unit := framehost.UnitDeclaration{ID: BackendUnit(server), Profile: profile, Imports: []framehost.ImportDeclaration{}, Exports: []framehost.ExportDeclaration{}}
+	for _, contribution := range declaration.Contributions {
+		if contribution.Server != server {
+			continue
+		}
+		ref, err := p.capability(contribution.Contract)
+		if err != nil {
+			return framehost.Unit{}, err
+		}
+		unit.Exports = append(unit.Exports, framehost.ExportDeclaration{Name: contribution.ID.String(), Contract: ref})
+		for _, requirement := range contribution.Requires {
+			ref, err := p.capability(requirement.Contract)
+			if err != nil {
+				return framehost.Unit{}, err
+			}
+			unit.Imports = append(unit.Imports, framehost.ImportDeclaration{Slot: RequirementSlot(contribution.ID, requirement.ID), Contract: ref, Optional: requirement.Optional})
 		}
 	}
-	result := FrameworkDefinition{Units: units}
-	for _, contract := range contracts {
-		result.Contracts = append(result.Contracts, contract)
+	return framehost.Unit{Declaration: unit}, nil
+}
+
+func (p frameworkProjection) pointValuesUnit(contributions []plugin.PointValue) (framehost.Unit, error) {
+	unit := framehost.UnitDeclaration{ID: PointValuesUnit, Profile: framehost.NativeGo, Imports: []framehost.ImportDeclaration{}, Exports: []framehost.ExportDeclaration{}}
+	values := make([]framehost.ExportValue, 0, len(contributions))
+	for _, contribution := range contributions {
+		point, err := p.dataPoint(contribution.Contract)
+		if err != nil {
+			return framehost.Unit{}, err
+		}
+		unit.Exports = append(unit.Exports, framehost.ExportDeclaration{Name: contribution.ID.String(), Contract: point.Ref()})
+		values = append(values, framehost.Contribute(contribution.ID.String(), point, contribution.Value, contribution.Value))
 	}
-	slices.SortFunc(result.Contracts, func(a, b framehost.Declaration) int {
+	return framehost.Unit{Declaration: unit, Setup: func(context.Context, framehost.Setup) ([]framehost.ExportValue, error) {
+		return slices.Clone(values), nil
+	}}, nil
+}
+
+func (p frameworkProjection) componentUnits(components []plugin.ClientComponent) ([]framehost.Unit, error) {
+	contract, err := ComponentContract()
+	if err != nil {
+		return nil, err
+	}
+	p.contracts[contract.Ref()] = contract
+	units := make([]framehost.Unit, 0, len(components))
+	for _, component := range components {
+		units = append(units, framehost.Unit{Declaration: framehost.UnitDeclaration{ID: ComponentUnit(component.ID), Profile: framehost.BrowserJS, Imports: []framehost.ImportDeclaration{}, Exports: []framehost.ExportDeclaration{{Name: extension.ComponentExport, Contract: contract.Ref()}}}})
+	}
+	return units, nil
+}
+
+func (p frameworkProjection) sortedContracts() []framehost.Declaration {
+	contracts := slices.Collect(maps.Values(p.contracts))
+	slices.SortFunc(contracts, func(a, b framehost.Declaration) int {
 		return strings.Compare(string(a.Ref().Kind)+a.Ref().String(), string(b.Ref().Kind)+b.Ref().String())
 	})
-	return result, nil
+	return contracts
 }
 
 func dataPointDeclarations(encoded framevalue.JSON) (framehost.Point[framevalue.JSON, framevalue.JSON], framehost.Contract[framevalue.JSON], error) {

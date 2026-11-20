@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"iter"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -34,8 +36,12 @@ func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (
 	if err != nil {
 		return nil, nil, err
 	}
+	runID, err := wireIdentity("runId", in.RunID, identity.ParseRun)
+	if err != nil {
+		return nil, nil, err
+	}
 	result, err := s.runs.Resume(ctx, runs.ResumeCommand{
-		RunID:      in.RunID,
+		RunID:      runID,
 		Responses:  responses,
 		Acceptance: runCommandIdentity(ctx),
 		// Added user input goes through the same decoder as a fresh Run: one
@@ -55,10 +61,11 @@ func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (
 		return nil, nil, wireRunResumeErr(err)
 	}
 	response := &protocol.ResumeRunResponse{
-		RunID: result.RunID, SegmentID: result.SegmentID,
+		RunID: result.RunID.String(), SegmentID: result.SegmentID.String(),
 	}
-	if result.UserItemID != "" {
-		response.UserItemID = &result.UserItemID
+	if !result.UserItemID.IsZero() {
+		userItemID := result.UserItemID.String()
+		response.UserItemID = &userItemID
 	}
 	if result.Reopened() {
 		events, err := s.acceptedRunEvents(ctx, result)
@@ -103,10 +110,11 @@ func decodeResumeResponses(responses []protocol.InterruptResponse) ([]runs.Resum
 }
 
 func decodeResumeResponse(wire protocol.InterruptResponse) (runs.ResumeResponse, error) {
-	if wire.ItemID == "" {
-		return runs.ResumeResponse{}, protocol.NewFailure(protocol.ErrInvalidParams, "interrupt response itemId is required")
+	itemID, err := wireIdentity("interrupt response itemId", wire.ItemID, identity.ParseItem)
+	if err != nil {
+		return runs.ResumeResponse{}, err
 	}
-	response := runs.ResumeResponse{ItemID: wire.ItemID}
+	response := runs.ResumeResponse{ItemID: itemID}
 	switch wire.Response.Type {
 	case protocol.InterruptResponseApproval:
 		approval, err := decodeApprovalResponse(wire.Response)
@@ -175,7 +183,7 @@ func questionAnswerParamsError(
 ) error {
 	responseIndex := -1
 	for index, response := range responses {
-		if response.ItemID == answerError.ItemID {
+		if response.ItemID == answerError.ItemID.String() {
 			responseIndex = index
 			break
 		}

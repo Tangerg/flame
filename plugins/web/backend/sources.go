@@ -18,9 +18,11 @@ const maxProviderResponseBytes int64 = 8 << 20
 
 var errProviderResponseTooLarge = errors.New("web: provider response exceeds eight MiB")
 
+const providerTimeout = 30 * time.Second
+
 func newProviderHTTPClient() *http.Client {
 	client := httpresponse.NewClient(maxProviderResponseBytes, errProviderResponseTooLarge)
-	client.Timeout = 30 * time.Second
+	client.Timeout = providerTimeout
 	return client
 }
 
@@ -35,7 +37,7 @@ func (e *sourceFailure) Unwrap() error { return e.cause }
 func jinaSource(ctx context.Context, key apiKey, httpClient *http.Client) (fetchPage, error) {
 	if !key.configured() {
 		return func(context.Context, *web.FetchRequest) (*web.FetchResponse, error) {
-			return nil, &framecall.Refusal{Code: "fetch_not_configured", Message: "web: Jina Reader credentials are not configured"}
+			return nil, &framecall.Refusal{Code: refusalFetchNotConfigured, Message: "web: Jina Reader credentials are not configured"}
 		}, nil
 	}
 	client, err := jina.NewClient(ctx, jina.Config{APIKey: key.value, HTTPClient: httpClient})
@@ -54,7 +56,7 @@ func jinaSource(ctx context.Context, key apiKey, httpClient *http.Client) (fetch
 func tavilySource(ctx context.Context, key apiKey, httpClient *http.Client) (searchWeb, error) {
 	if !key.configured() {
 		return func(context.Context, *web.SearchRequest) (*web.SearchResponse, error) {
-			return nil, &framecall.Refusal{Code: "search_not_configured", Message: "web: Tavily credentials are not configured"}
+			return nil, &framecall.Refusal{Code: refusalSearchNotConfigured, Message: "web: Tavily credentials are not configured"}
 		}, nil
 	}
 	client, err := tavily.NewClient(ctx, tavily.Config{APIKey: key.value, HTTPClient: httpClient})

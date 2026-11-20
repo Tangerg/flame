@@ -56,7 +56,7 @@ func newSet(plans planReplacer) (toolcontract.Tool, error) {
 
 func (s *setter) set(ctx context.Context, args setArgs) (string, error) {
 	sessionID := executionctx.SessionID(ctx)
-	if sessionID == "" {
+	if sessionID.IsZero() {
 		return "", errors.New("set_plan: no active session")
 	}
 	steps := args.steps()

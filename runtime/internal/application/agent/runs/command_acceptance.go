@@ -23,8 +23,8 @@ const goalRoundKeyPrefix = "flame.goal-round/"
 
 func ReservedCommandKey(key string) bool { return strings.HasPrefix(key, goalRoundKeyPrefix) }
 
-func GoalRoundIdentity(sessionID, incarnation string, ordinal uint64, instructions string) *CommandIdentity {
-	scope := sessionID + "\x00" + incarnation + "\x00" + strconv.FormatUint(ordinal, 10)
+func GoalRoundIdentity(sessionID flameidentity.SessionID, incarnation string, ordinal uint64, instructions string) *CommandIdentity {
+	scope := sessionID.String() + "\x00" + incarnation + "\x00" + strconv.FormatUint(ordinal, 10)
 	return &CommandIdentity{Key: goalRoundKeyPrefix + framevalue.Hash([]byte(scope)).String(), Fingerprint: framevalue.Hash([]byte(scope + "\x00" + instructions)).String()}
 }
 
@@ -61,10 +61,10 @@ type CommandAcceptance struct {
 	Key         string
 	Fingerprint string
 	Operation   CommandOperation
-	SessionID   string
-	RunID       string
-	SegmentID   string
-	UserItemID  string
+	SessionID   flameidentity.SessionID
+	RunID       flameidentity.RunID
+	SegmentID   flameidentity.SegmentID
+	UserItemID  flameidentity.ItemID
 	SteerInput  []transcript.ContentBlock
 }
 
@@ -81,23 +81,17 @@ func (a CommandAcceptance) Validate() error {
 	if ReservedCommandKey(a.Key) != (a.Operation == CommandGoalRoundOpening) {
 		return errors.New("runs: command key cannot claim another opening namespace")
 	}
-	if a.Operation == CommandGoalRoundOpening && a.UserItemID != "" {
+	if a.Operation == CommandGoalRoundOpening && !a.UserItemID.IsZero() {
 		return errors.New("runs: autonomous opening cannot claim a user Item")
 	}
 	if !a.Operation.Valid() {
 		return fmt.Errorf("runs: command acceptance has unknown operation %q", a.Operation)
 	}
-	if err := flameidentity.ValidateSession(a.SessionID); err != nil {
+	if err := errors.Join(a.SessionID.Validate(), a.RunID.Validate(), a.SegmentID.Validate()); err != nil {
 		return err
 	}
-	if err := flameidentity.ValidateRun(a.RunID); err != nil {
-		return err
-	}
-	if err := flameidentity.ValidateSegment(a.SegmentID); err != nil {
-		return err
-	}
-	if a.UserItemID != "" || a.Operation == CommandStartOpening || a.Operation == CommandSteerInput {
-		if err := flameidentity.ValidateItem(a.UserItemID); err != nil {
+	if a.Operation == CommandStartOpening || a.Operation == CommandSteerInput {
+		if err := a.UserItemID.Validate(); err != nil {
 			return err
 		}
 	}
@@ -205,7 +199,7 @@ func AcceptCommand(key, requestFingerprint string, opening OpeningCommit) (Comma
 	} else {
 		return CommandAcceptance{}, errors.New("runs: command acceptance has no opening")
 	}
-	sessionID, runID, segmentID, err := opening.ownerIdentity()
+	sessionID, runID, segmentID, err := opening.OwnerIdentity()
 	if err != nil {
 		return CommandAcceptance{}, err
 	}

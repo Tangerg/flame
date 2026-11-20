@@ -41,11 +41,18 @@ func (i *interactionSession) admitProcess(
 	if deployments.interactionChild(admission.ProgramRef()) {
 		return nil
 	}
+	return i.admitDelegateChild(ctx, admission)
+}
+
+// admitDelegateChild binds a child Process to the Delegate call that spawned
+// it. The first admission reserves its child Run; a repeated one must restate
+// the same immutable identity.
+func (i *interactionSession) admitDelegateChild(ctx context.Context, admission scoperun.ProcessAdmission) error {
+	relation := admission.ProcessID()
 	parentID, _ := relation.Parent()
 	childKey, _ := relation.Key()
-	identity := delegateCallIdentity{parentID: parentID, childKey: childKey}
 	i.state.mu.Lock()
-	managed := i.state.delegateCalls[identity]
+	managed := i.state.delegateCalls[delegateCallIdentity{parentID: parentID, childKey: childKey}]
 	i.state.mu.Unlock()
 	if managed == nil {
 		return errors.New("execution: child admission has no durably observed Delegate call")
@@ -62,13 +69,25 @@ func (i *interactionSession) admitProcess(
 		}
 		return nil
 	}
+	binding, err := i.reserveChildRun(ctx, managed, relation)
+	if err != nil {
+		return err
+	}
+	managed.admission = admission
+	managed.binding = binding
+	return nil
+}
+
+// reserveChildRun commits the parent's Delegate call start, then asks the
+// product owner to reserve the child Run that this Process will execute.
+func (i *interactionSession) reserveChildRun(ctx context.Context, managed *managedDelegateCall, relation scoperun.ProcessID) (runs.ChildRunBinding, error) {
 	parent := i.executorMember(managed.parentRelation)
 	if err := i.commitFact(ctx, parent, managed.toolStart()); err != nil {
-		return fmt.Errorf("execution: commit Delegate call start: %w", err)
+		return runs.ChildRunBinding{}, fmt.Errorf("execution: commit Delegate call start: %w", err)
 	}
 	capture := toolCallCapture{MemberID: parent.MemberID, ProcessID: managed.parentRelation, Start: managed.toolStart()}
 	if err := i.rememberToolMetadata(toolCallMetadata{toolCallCapture: capture}); err != nil {
-		return err
+		return runs.ChildRunBinding{}, err
 	}
 	member := runs.ExecutorMember{
 		MemberID: relation.String(), ParentID: parent.MemberID,
@@ -76,18 +95,16 @@ func (i *interactionSession) admitProcess(
 	}
 	request, receipt := runs.NewChildRunReservationRequest()
 	if err := i.sendExecutorRequest(ctx, runs.ExecutorEvent{Member: member, Payload: request}); err != nil {
-		return err
+		return runs.ChildRunBinding{}, err
 	}
 	binding, err := receipt.Await(ctx)
 	if err != nil {
-		return err
+		return runs.ChildRunBinding{}, err
 	}
-	if binding.MemberID != member.MemberID || binding.ParentRunID == "" {
-		return errors.New("child Run reservation returned a different executor member")
+	if binding.MemberID != member.MemberID || binding.ParentRunID.IsZero() {
+		return runs.ChildRunBinding{}, errors.New("child Run reservation returned a different executor member")
 	}
-	managed.admission = admission
-	managed.binding = binding
-	return nil
+	return binding, nil
 }
 
 func sameManagedAdmission(left, right scoperun.ProcessAdmission) bool {

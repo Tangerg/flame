@@ -352,38 +352,7 @@ func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, 
 		return Stash{}, err
 	}
 	if err := s.saveSessionState(sessionID, authoring.Message{}, s.pendingRuns[sessionID]); err != nil {
-		if writeCommitted(err) {
-			return Stash{}, s.blockWrites(fmt.Errorf("clear session draft: %w", err))
-		}
-		rollbackErr := s.save(stashesName, previous, func() { s.stashes = previous })
-		if rollbackErr != nil {
-			return Stash{}, s.blockWrites(errors.Join(
-				fmt.Errorf("clear session draft: %w", err),
-				fmt.Errorf("restore prompt stashes: %w", rollbackErr),
-			))
-		}
-		if cleanupErr := s.remove(stashTransferName, func() {}); cleanupErr != nil {
-			if writeCommitted(cleanupErr) {
-				return Stash{}, errors.Join(err, cleanupErr)
-			}
-			// Re-publish the intended stash so a surviving journal always describes
-			// a forward-recoverable state rather than reviving a rolled-back move.
-			if restoreErr := s.save(stashesName, next, func() { s.stashes = next }); restoreErr != nil {
-				failure := errors.Join(
-					fmt.Errorf("clear session draft: %w", err),
-					fmt.Errorf("remove stash transfer: %w", cleanupErr),
-					fmt.Errorf("restore recoverable stash: %w", restoreErr),
-				)
-				return Stash{}, s.blockWrites(failure)
-			}
-
-			failure := errors.Join(
-				fmt.Errorf("clear session draft: %w", err),
-				fmt.Errorf("remove stash transfer: %w", cleanupErr),
-			)
-			return Stash{}, s.blockWrites(failure)
-		}
-		return Stash{}, fmt.Errorf("clear session draft: %w", err)
+		return Stash{}, s.undoStash(err, previous, next)
 	}
 
 	// Once the source draft is absent, the transfer is committed. A stale
@@ -393,6 +362,38 @@ func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, 
 		return Stash{}, s.blockWrites(fmt.Errorf("retire prompt stash transfer: %w", err))
 	}
 	return cloneStash(stash), nil
+}
+
+// undoStash unwinds a stash whose source draft could not be cleared: restore
+// the previous stashes and drop the transfer journal. Any step that cannot be
+// undone blocks writes so recovery sees a consistent state.
+func (s *Store) undoStash(clearErr error, previous, next []Stash) error {
+	if writeCommitted(clearErr) {
+		return s.blockWrites(fmt.Errorf("clear session draft: %w", clearErr))
+	}
+	if rollbackErr := s.save(stashesName, previous, func() { s.stashes = previous }); rollbackErr != nil {
+		return s.blockWrites(errors.Join(
+			fmt.Errorf("clear session draft: %w", clearErr),
+			fmt.Errorf("restore prompt stashes: %w", rollbackErr),
+		))
+	}
+	cleanupErr := s.remove(stashTransferName, func() {})
+	if cleanupErr == nil {
+		return fmt.Errorf("clear session draft: %w", clearErr)
+	}
+	if writeCommitted(cleanupErr) {
+		return errors.Join(clearErr, cleanupErr)
+	}
+	failure := errors.Join(
+		fmt.Errorf("clear session draft: %w", clearErr),
+		fmt.Errorf("remove stash transfer: %w", cleanupErr),
+	)
+	// Re-publish the intended stash so a surviving journal always describes
+	// a forward-recoverable state rather than reviving a rolled-back move.
+	if restoreErr := s.save(stashesName, next, func() { s.stashes = next }); restoreErr != nil {
+		failure = errors.Join(failure, fmt.Errorf("restore recoverable stash: %w", restoreErr))
+	}
+	return s.blockWrites(failure)
 }
 
 func (s *Store) recoverStashTransfer() error {

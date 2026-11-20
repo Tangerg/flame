@@ -29,7 +29,7 @@ type workspaceChoice struct {
 func (a *app) buildWorkspacePicker(theme kit.Theme, glyphs kit.Glyphs) {
 	a.workspaceChoices = newPickerDialog(pickerDialogConfig[workspaceChoice]{
 		stack: &a.stack, theme: theme, glyphs: glyphs, title: "Workspaces", search: "search recent workspaces",
-		where: layout.Placement{Width: 92, Height: 20},
+		where: layout.Placement{Width: wideDialogWidth, Height: 20},
 		label: func(choice workspaceChoice) string { return choice.workspace.Path },
 		detail: func(choice workspaceChoice) string {
 			if choice.current {
@@ -95,7 +95,7 @@ func (l *sessionLifecycle) loadWorkspaceChoices() {
 	l.status.note("loading runtime workspaces")
 	currentWorkspace := l.state.current.Workspace.Path
 	recentWorkspaces := l.workbench.Workspaces()
-	l.tasks.session(workspaceQueryOperation, true,
+	l.tasks.session(workspaceQueryOperation,
 		func(ctx context.Context) ([]workspaceChoice, error) {
 			known, err := l.workspaces.List(ctx)
 			if err != nil {
@@ -167,7 +167,7 @@ func (l *sessionLifecycle) resolveAndStartWorkspace(requested string) {
 		return
 	}
 	l.status.note("resolving workspace")
-	l.tasks.session(workspaceQueryOperation, true,
+	l.tasks.session(workspaceQueryOperation,
 		func(ctx context.Context) (workspace.Workspace, error) {
 			return l.workspaces.Resolve(ctx, workspace.ResolveRequest{Path: path})
 		},
@@ -207,7 +207,7 @@ func (l *sessionLifecycle) RelocateSession(requested string) error {
 		return nil
 	}
 	l.status.note("resolving workspace")
-	l.tasks.session(workspaceQueryOperation, true,
+	l.tasks.session(workspaceQueryOperation,
 		func(ctx context.Context) (workspace.Workspace, error) {
 			return l.workspaces.Resolve(ctx, workspace.ResolveRequest{Path: path})
 		},

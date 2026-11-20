@@ -3,10 +3,12 @@ package runs
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"errors"
-	"fmt"
 	"slices"
+
+	scoperun "github.com/Tangerg/scope/agent/run"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 var (
@@ -18,7 +20,7 @@ var (
 // and digest fence replacements; sequence and commit identity distinguish
 // repeated content from a retry of the current acknowledged transition.
 type ExecutionTreeHead struct {
-	SessionID    string
+	SessionID    identity.SessionID
 	RootID       string
 	Writer       string
 	Digest       string
@@ -35,18 +37,18 @@ type ExecutionTreeUpdate struct {
 }
 
 func (u ExecutionTreeUpdate) Validate() error {
-	if u.Head.CommitID == "" || u.Head.CommitDigest == "" || u.Head.SessionID == "" || u.Head.RootID == "" || u.Head.Writer == "" || u.Head.Digest == "" || len(u.Head.Payload) == 0 || (u.PreviousWriter == "") != (u.PreviousDigest == "") {
+	if u.Head.CommitID == "" || u.Head.CommitDigest == "" || u.Head.SessionID.IsZero() || u.Head.RootID == "" || u.Head.Writer == "" || u.Head.Digest == "" || len(u.Head.Payload) == 0 || (u.PreviousWriter == "") != (u.PreviousDigest == "") {
 		return errors.New("runs: invalid execution tree update")
 	}
-	if u.Head.Digest != fmt.Sprintf("sha256:%x", sha256.Sum256(u.Head.Payload)) {
+	if u.Head.Digest != scoperun.ComputeDigest(u.Head.Payload).String() {
 		return errors.New("runs: execution tree content differs from its digest")
 	}
 	return nil
 }
 
 type ExecutionTreeStore interface {
-	ExecutionResultCommitted(context.Context, string, ResultPublication) (bool, error)
-	LoadExecutionTree(context.Context, string, string) (ExecutionTreeHead, bool, error)
+	ExecutionResultCommitted(context.Context, identity.SessionID, ResultPublication) (bool, error)
+	LoadExecutionTree(context.Context, identity.SessionID, string) (ExecutionTreeHead, bool, error)
 	SaveExecutionTree(context.Context, ExecutionTreeUpdate) error
 }
 
@@ -59,6 +61,12 @@ type ExecutionTreeSettled struct {
 	Update   ExecutionTreeUpdate
 	Children []ChildRunPublication
 	Facts    []ExecutorEvent
+}
+
+// AdvancesHeadOnly reports a settlement that carries no product fact: the
+// executor tree head moves without a product transaction.
+func (e ExecutionTreeSettled) AdvancesHeadOnly() bool {
+	return len(e.Facts) == 0 && len(e.Children) == 0 && e.Context == nil && len(e.InputAcceptances) == 0
 }
 
 type ChildRunPublication struct {

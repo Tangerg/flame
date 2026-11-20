@@ -52,8 +52,26 @@ func (n *ndjsonRenderer) Begin(run conversation.Run, _ authoring.RunOptions) err
 // shape, where a single discriminated object keeps a decoder's job simple and
 // lets a reader ignore what it does not use. Type is always set and is the only
 // field a consumer must switch on.
+// recordType names each machine-readable output record; scripts select records
+// by it, so it is part of the CLI's output contract.
+type recordType string
+
+const (
+	recordResult             recordType = "result"
+	recordRunSnapshot        recordType = "run.snapshot"
+	recordSegmentStarted     recordType = "segment.started"
+	recordBlockStarted       recordType = "block.started"
+	recordBlockDelta         recordType = "block.delta"
+	recordToolArgumentsDelta recordType = "tool.arguments.delta"
+	recordRunProgress        recordType = "run.progress"
+	recordCustom             recordType = "custom"
+	recordBlockCompleted     recordType = "block.completed"
+	recordPlanChanged        recordType = "plan.changed"
+	recordSegmentFinished    recordType = "segment.finished"
+)
+
 type eventRecord struct {
-	Type             string             `json:"type"`
+	Type             recordType         `json:"type"`
 	EventID          string             `json:"eventId,omitzero"`
 	SegmentID        string             `json:"segmentId,omitzero"`
 	StreamSegmentID  string             `json:"streamSegmentId,omitzero"`
@@ -239,25 +257,29 @@ func (n *ndjsonRenderer) Render(envelope conversation.RunEvent) error {
 // Reconcile emits a replacement snapshot frame. Unlike a runtime event it has
 // no eventId: consumers replace their durable projection with this frame, then
 // continue folding later segment events on top.
+// restoreScope rebinds the renderer to the Run tree the snapshot holds.
+func (n *ndjsonRenderer) restoreScope(snapshot conversation.SessionSnapshot) (conversation.Run, error) {
+	if err := snapshot.Validate(); err != nil {
+		return conversation.Run{}, err
+	}
+	target, err := resolveSnapshotRun(snapshot, n.scope.rootID)
+	if err != nil {
+		return conversation.Run{}, err
+	}
+	return target, n.scope.restore(snapshot, target.ID)
+}
+
 func (n *ndjsonRenderer) Reconcile(snapshot conversation.SessionSnapshot) error {
 	if n.err != nil {
 		return n.err
 	}
-	if err := snapshot.Validate(); err != nil {
-		n.err = fmt.Errorf("render NDJSON snapshot: %w", err)
-		return n.err
-	}
-	target, err := resolveSnapshotRun(snapshot, n.scope.rootID)
+	target, err := n.restoreScope(snapshot)
 	if err != nil {
 		n.err = fmt.Errorf("render NDJSON snapshot: %w", err)
 		return n.err
 	}
-	if err := n.scope.restore(snapshot, target.ID); err != nil {
-		n.err = fmt.Errorf("render NDJSON snapshot: %w", err)
-		return n.err
-	}
 	frame := eventRecord{
-		Type: "run.snapshot", RunID: target.ID, SessionID: snapshot.Session.ID, Status: string(target.Status),
+		Type: recordRunSnapshot, RunID: target.ID, SessionID: snapshot.Session.ID, Status: string(target.Status),
 		Transcript: make([]blockFrame, 0, len(snapshot.Transcript)),
 		Runs:       make([]runJSONFrame, 0, len(snapshot.Runs)),
 	}
@@ -290,35 +312,35 @@ func encodeEventFrame(envelope conversation.RunEvent) (eventRecord, error) {
 	switch event := envelope.Event.(type) {
 	case conversation.SegmentStarted:
 		return eventRecord{
-			Type: "segment.started", SessionID: event.Run.SessionID,
+			Type: recordSegmentStarted, SessionID: event.Run.SessionID,
 			SpawnedByBlockID: event.Run.Lineage.SpawnedByBlockID(),
 			ParentRunID:      event.Run.Lineage.ParentRunID(), RootRunID: event.Run.Lineage.RootRunID(),
 		}, nil
 	case conversation.BlockStarted:
-		return eventRecord{Type: "block.started", Block: encodeBlock(event.Block)}, nil
+		return eventRecord{Type: recordBlockStarted, Block: encodeBlock(event.Block)}, nil
 	case conversation.BlockDelta:
 		return eventRecord{
-			Type: "block.delta", BlockID: event.BlockID, Text: event.Text,
+			Type: recordBlockDelta, BlockID: event.BlockID, Text: event.Text,
 		}, nil
 	case conversation.ToolArgumentsDelta:
-		return eventRecord{Type: "tool.arguments.delta", BlockID: event.BlockID, Text: event.Text}, nil
+		return eventRecord{Type: recordToolArgumentsDelta, BlockID: event.BlockID, Text: event.Text}, nil
 	case conversation.RunProgress:
 		frame := eventRecord{
-			Type: "run.progress", Step: event.Step, ContextTokens: event.ContextTokens, Activity: event.Activity,
+			Type: recordRunProgress, Step: event.Step, ContextTokens: event.ContextTokens, Activity: event.Activity,
 		}
 		if event.Usage != nil {
 			frame.Usage = encodeUsage(*event.Usage)
 		}
 		return frame, nil
 	case conversation.CustomEvent:
-		return eventRecord{Type: "custom", Name: event.Name, Payload: jsontext.Value(event.PayloadJSON)}, nil
+		return eventRecord{Type: recordCustom, Name: event.Name, Payload: jsontext.Value(event.PayloadJSON)}, nil
 	case conversation.BlockCompleted:
-		return eventRecord{Type: "block.completed", Block: encodeBlock(event.Block)}, nil
+		return eventRecord{Type: recordBlockCompleted, Block: encodeBlock(event.Block)}, nil
 	case conversation.PlanChanged:
-		return eventRecord{Type: "plan.changed", Revision: event.Plan.State.Revision, Plan: encodePlan(event.Plan.State.Steps)}, nil
+		return eventRecord{Type: recordPlanChanged, Revision: event.Plan.State.Revision, Plan: encodePlan(event.Plan.State.Steps)}, nil
 	case conversation.SegmentFinished:
 		run := encodeRun(event.Run)
-		frame := eventRecord{Type: "segment.finished", Run: &run}
+		frame := eventRecord{Type: recordSegmentFinished, Run: &run}
 		if len(event.Interrupts) != 0 {
 			frame.Interrupts = encodeInterrupts(event.Interrupts)
 		}

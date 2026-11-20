@@ -17,13 +17,13 @@ import (
 // It is not a Run and must never be returned by Run projections. The exact
 // value is consumed when the child either enters Running or aborts.
 type ChildRunStartReservation struct {
-	SessionID       string
+	SessionID       identity.SessionID
 	ExecutorID      string
 	Member          ExecutorMember
 	Binding         ChildRunBinding
-	SegmentID       string
-	SpawnedByItemID string
-	RootRunID       string
+	SegmentID       identity.SegmentID
+	SpawnedByItemID identity.ItemID
+	RootRunID       identity.RunID
 	ReservedAt      time.Time
 }
 
@@ -56,19 +56,19 @@ func (c ChildRunStartReservation) Validate() error {
 }
 
 func (c ChildRunStartReservation) validateIdentity() error {
-	if err := identity.ValidateSession(c.SessionID); err != nil {
+	if err := c.SessionID.Validate(); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
 	if err := ValidateExecutor(c.ExecutorID); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if err := identity.ValidateSegment(c.SegmentID); err != nil {
+	if err := c.SegmentID.Validate(); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if err := identity.ValidateItem(c.SpawnedByItemID); err != nil {
+	if err := c.SpawnedByItemID.Validate(); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
-	if err := identity.ValidateRun(c.RootRunID); err != nil {
+	if err := c.RootRunID.Validate(); err != nil {
 		return fmt.Errorf("runs: child Run start reservation: %w", err)
 	}
 	return nil
@@ -109,7 +109,7 @@ func NewStartedChildRun(
 		return StartedChildRun{}, err
 	}
 	opening, err := NewAdmissionOpeningCommit(
-		newRunCommitID(), reservation.draft(model, startedAt), nil, nil, nil, events,
+		newRunCommitID(), reservation.draft(model, startedAt), nil, nil, events,
 	)
 	if err != nil {
 		return StartedChildRun{}, err
@@ -161,22 +161,21 @@ func (c ChildRunReservationRequest) validate() error {
 	return nil
 }
 
-func (c ChildRunReservationRequest) claim() bool { return c.exchange.claim() }
-
-// complete hands the reservation's outcome to the waiting child. The receipt is
-// the exchange's own question: claim already refused a request without one, and
-// the exchange asks again for a caller that skipped it.
-func (c ChildRunReservationRequest) complete(binding ChildRunBinding, err error) error {
-	if err == nil {
-		if validationErr := binding.Validate(); validationErr != nil {
-			err = validationErr
-		}
-	} else if binding != (ChildRunBinding{}) {
-		err = errors.Join(err, errors.New("runs: failed child Run reservation returned a binding"))
-		binding = ChildRunBinding{}
-	}
-	return c.exchange.complete(binding, err)
+func (c ChildRunReservationRequest) claim() (claimedReservation, bool) {
+	claimed, ok := c.exchange.claim()
+	return claimedReservation{request: claimed}, ok
 }
+
+// claimedReservation is the pump's exclusive right to answer one reservation:
+// it grants a reserved binding or refuses, never both.
+type claimedReservation struct {
+	request claimedRequest[ChildRunBinding]
+}
+
+// grant answers with a binding taken from a validated reservation.
+func (c claimedReservation) grant(binding ChildRunBinding) { c.request.settle(binding, nil) }
+
+func (c claimedReservation) refuse(err error) { c.request.settle(ChildRunBinding{}, err) }
 
 // Await returns the exact product binding after the Application durably stores
 // the invisible reservation.

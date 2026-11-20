@@ -128,36 +128,51 @@ func readOpenedTokenFile(path string, file *os.File, pathInfo os.FileInfo) (*Tok
 		return nil, validationErr
 	}
 
-	encoded := make([]byte, encodedTokenBytes+1)
-	n, err := io.ReadFull(file, encoded[:])
-	if n != encodedTokenBytes || !errors.Is(err, io.ErrUnexpectedEOF) {
-		if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
-			return nil, fmt.Errorf("local Runtime token: read: %w", err)
-		}
-		return nil, invalidToken(fmt.Sprintf("file must contain exactly %d bytes", encodedTokenBytes))
-	}
-	after, err := file.Stat()
+	encoded, err := readTokenBytes(file)
 	if err != nil {
-		return nil, fmt.Errorf("local Runtime token: inspect file after reading: %w", err)
+		return nil, err
 	}
-	current, err := os.Lstat(path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, invalidToken("path changed while reading")
-		}
-		return nil, fmt.Errorf("local Runtime token: inspect path after reading: %w", err)
+	if err := confirmTokenFileUnchanged(path, file, openedInfo); err != nil {
+		return nil, err
 	}
-	if !sameTokenFileVersion(openedInfo, after) || !sameTokenFileVersion(after, current) {
-		return nil, invalidToken("path changed while reading")
-	}
-
 	var decoded [rawTokenBytes]byte
-	decodedBytes, err := base64.RawURLEncoding.Decode(decoded[:], encoded[:encodedTokenBytes])
-	if err != nil || decodedBytes != rawTokenBytes ||
-		base64.RawURLEncoding.EncodeToString(decoded[:]) != string(encoded[:encodedTokenBytes]) {
+	decodedBytes, err := base64.RawURLEncoding.Decode(decoded[:], encoded)
+	if err != nil || decodedBytes != rawTokenBytes || base64.RawURLEncoding.EncodeToString(decoded[:]) != string(encoded) {
 		return nil, invalidToken("file does not contain one canonical 32-byte token")
 	}
-	return &Token{value: string(encoded[:encodedTokenBytes]), path: path}, nil
+	return &Token{value: string(encoded), path: path}, nil
+}
+
+// readTokenBytes reads one byte past the token so a longer file is refused
+// rather than truncated.
+func readTokenBytes(file io.Reader) ([]byte, error) {
+	encoded := make([]byte, encodedTokenBytes+1)
+	n, err := io.ReadFull(file, encoded)
+	if n == encodedTokenBytes && errors.Is(err, io.ErrUnexpectedEOF) {
+		return encoded[:encodedTokenBytes], nil
+	}
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+		return nil, fmt.Errorf("local Runtime token: read: %w", err)
+	}
+	return nil, invalidToken(fmt.Sprintf("file must contain exactly %d bytes", encodedTokenBytes))
+}
+
+func confirmTokenFileUnchanged(path string, file *os.File, opened os.FileInfo) error {
+	after, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("local Runtime token: inspect file after reading: %w", err)
+	}
+	current, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return invalidToken("path changed while reading")
+	}
+	if err != nil {
+		return fmt.Errorf("local Runtime token: inspect path after reading: %w", err)
+	}
+	if !sameTokenFileVersion(opened, after) || !sameTokenFileVersion(after, current) {
+		return invalidToken("path changed while reading")
+	}
+	return nil
 }
 
 func sameTokenFileVersion(left, right os.FileInfo) bool {

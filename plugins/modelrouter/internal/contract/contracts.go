@@ -18,18 +18,17 @@ type Contracts struct {
 }
 
 func NewContracts() (Contracts, error) {
-	var c Contracts
-	var err error
-	c.Capability, err = plugincontract.ParseCapability([]byte(contracts.CapabilityJSON))
+	capability, err := plugincontract.ParseCapability([]byte(contracts.CapabilityJSON))
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Get, err = pluginmcp.ImplementMethod[struct{}, routing.Snapshot](c.Capability, contracts.GetPolicyV1Method)
-	if err != nil {
-		return Contracts{}, err
+	methods := pluginmcp.NewMethodSet(capability)
+	c := Contracts{
+		Capability: capability,
+		Get:        pluginmcp.Implement[struct{}, routing.Snapshot](methods, contracts.GetPolicyV1Method),
+		Replace:    pluginmcp.Implement[wire.ReplaceInput, routing.Snapshot](methods, contracts.ReplacePolicyV1Method),
 	}
-	c.Replace, err = pluginmcp.ImplementMethod[wire.ReplaceInput, routing.Snapshot](c.Capability, contracts.ReplacePolicyV1Method)
-	if err != nil {
+	if err := methods.Err(); err != nil {
 		return Contracts{}, err
 	}
 	return c, nil

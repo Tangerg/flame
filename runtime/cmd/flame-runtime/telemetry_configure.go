@@ -129,17 +129,12 @@ func (m minLevelHandler) WithGroup(name string) stdslog.Handler {
 	return minLevelHandler{level: m.level, inner: m.inner.WithGroup(name)}
 }
 
-// parseLogLevel maps a FLAME_LOG_LEVEL string onto an slog level, defaulting
-// to Info on empty / unrecognized input.
+// parseLogLevel reads FLAME_LOG_LEVEL in slog's own level syntax; empty or
+// unrecognized input keeps Info.
 func parseLogLevel(s string) stdslog.Level {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "debug":
-		return stdslog.LevelDebug
-	case "warn", "warning":
-		return stdslog.LevelWarn
-	case "error":
-		return stdslog.LevelError
-	default:
+	var level stdslog.Level
+	if err := level.UnmarshalText([]byte(strings.TrimSpace(s))); err != nil {
 		return stdslog.LevelInfo
 	}
+	return level
 }

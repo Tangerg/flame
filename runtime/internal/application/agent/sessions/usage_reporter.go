@@ -19,7 +19,7 @@ import (
 // usageSource reads retained physical evidence from one snapshot. The callback
 // must not perform storage I/O while that snapshot owns the database connection.
 type usageSource interface {
-	VisitEndpointInvocations(context.Context, string, time.Time, func(modelref.EndpointObservation) error) error
+	VisitEndpointInvocations(context.Context, identity.SessionID, time.Time, func(modelref.EndpointObservation) error) error
 }
 
 type UsageCoverage struct {
@@ -80,8 +80,8 @@ func NewUsageReporter(deps UsageDependencies) (*UsageReporter, error) {
 	return &UsageReporter{source: deps.Source, now: deps.Now}, nil
 }
 
-func (r *UsageReporter) Session(ctx context.Context, sessionID string) (UsageReport, error) {
-	if err := identity.ValidateSession(sessionID); err != nil {
+func (r *UsageReporter) Session(ctx context.Context, sessionID identity.SessionID) (UsageReport, error) {
+	if err := sessionID.Validate(); err != nil {
 		return UsageReport{}, err
 	}
 	report, err := r.collect(ctx, sessionID, time.Time{})
@@ -97,7 +97,7 @@ func (r *UsageReporter) Summary(ctx context.Context, period UsageSummaryPeriod) 
 	if err != nil {
 		return UsageSummary{}, err
 	}
-	report, err := r.collect(ctx, "", since)
+	report, err := r.collect(ctx, identity.SessionID{}, since)
 	if err != nil {
 		return UsageSummary{}, err
 	}
@@ -105,11 +105,11 @@ func (r *UsageReporter) Summary(ctx context.Context, period UsageSummaryPeriod) 
 	return report, nil
 }
 
-func (r *UsageReporter) collect(ctx context.Context, sessionID string, since time.Time) (UsageSummary, error) {
+func (r *UsageReporter) collect(ctx context.Context, sessionID identity.SessionID, since time.Time) (UsageSummary, error) {
 	total := usageAccumulator{}
 	groups := []map[string]*usageAccumulator{{}, {}, {}, {}, {}}
-	sessions := map[string]struct{}{}
-	runs := map[string]struct{}{}
+	sessions := map[identity.SessionID]struct{}{}
+	runs := map[identity.RunID]struct{}{}
 	err := r.source.VisitEndpointInvocations(ctx, sessionID, since, func(observation modelref.EndpointObservation) error {
 		source := observation.Snapshot()
 		if err := total.addCall(observation); err != nil {
@@ -120,11 +120,11 @@ func (r *UsageReporter) collect(ctx context.Context, sessionID string, since tim
 			return err
 		}
 		scope := "unattached"
-		if source.Invocation.SessionID != "" {
+		if !source.Invocation.SessionID.IsZero() {
 			sessions[source.Invocation.SessionID] = struct{}{}
 			scope = "session"
 		}
-		if source.RunID != "" {
+		if !source.RunID.IsZero() {
 			runs[source.RunID] = struct{}{}
 			scope = "run"
 		}

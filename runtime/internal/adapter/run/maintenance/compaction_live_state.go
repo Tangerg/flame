@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -29,7 +31,7 @@ func (l LiveStateSnapshot) empty() bool {
 // LiveStateSnapshotter snapshots a session's retained execution state when a
 // compaction rewrites its history. It is deterministic (no model call). A nil
 // LiveStateSnapshotter disables the reminder.
-type LiveStateSnapshotter func(ctx context.Context, sessionID string) LiveStateSnapshot
+type LiveStateSnapshotter func(ctx context.Context, sessionID identity.SessionID) LiveStateSnapshot
 
 // liveStateReminder renders snap as a Runtime context message to append after a
 // compaction summary, or reports false when there is nothing retained to carry

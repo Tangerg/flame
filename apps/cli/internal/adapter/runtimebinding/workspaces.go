@@ -149,6 +149,22 @@ func (r *Connection) Search(ctx context.Context, request workspace.SearchRequest
 	return result, nil
 }
 
+// validateFilePage holds a page to its own coverage accounting and the limit
+// this client asked for.
+func validateFilePage(page *protocol.FileListPage, cursor string) error {
+	if page == nil {
+		return runtimeContractViolation("list workspace files after cursor %q returned a nil page", cursor)
+	}
+	coverage := page.Coverage
+	if page.Complete != (page.NextCursor == "") || coverage.ScannedEntries < len(page.Data) || coverage.ExcludedEntries < 0 || coverage.ExcludedEntries > coverage.ScannedEntries || (page.Complete && coverage.BudgetExhausted) {
+		return runtimeContractViolation("list workspace files returned inconsistent completion or coverage")
+	}
+	if len(page.Data) > workspaceFilePageLimit {
+		return runtimeContractViolation("list workspace files returned %d rows for limit %d", len(page.Data), workspaceFilePageLimit)
+	}
+	return nil
+}
+
 func (r *Connection) Files(ctx context.Context, request workspace.FilesRequest) (workspace.FileListing, error) {
 	if err := request.Validate(); err != nil {
 		return workspace.FileListing{}, err
@@ -171,26 +187,13 @@ func (r *Connection) Files(ctx context.Context, request workspace.FilesRequest) 
 		if err != nil {
 			return workspace.FileListing{}, classifyError(err)
 		}
-		if page == nil {
-			return workspace.FileListing{}, runtimeContractViolation("list workspace files after cursor %q returned a nil page", cursor)
-		}
-		if page.Complete != (page.NextCursor == "") || page.Coverage.ScannedEntries < len(page.Data) || page.Coverage.ExcludedEntries < 0 || page.Coverage.ExcludedEntries > page.Coverage.ScannedEntries || (page.Complete && page.Coverage.BudgetExhausted) {
-			return workspace.FileListing{}, runtimeContractViolation("list workspace files returned inconsistent completion or coverage")
-		}
-		if len(page.Data) > workspaceFilePageLimit {
-			return workspace.FileListing{}, runtimeContractViolation(
-				"list workspace files returned %d rows for limit %d",
-				len(page.Data),
-				workspaceFilePageLimit,
-			)
+		if err := validateFilePage(page, cursor); err != nil {
+			return workspace.FileListing{}, err
 		}
 		for _, entry := range page.Data {
-			projected := workspace.FileEntry{
-				Path: entry.Path, Type: entry.Type, SizeBytes: entry.SizeBytes,
-				ModifiedAt: entry.ModifiedAt,
-			}
-
-			result.Entries = append(result.Entries, projected)
+			result.Entries = append(result.Entries, workspace.FileEntry{
+				Path: entry.Path, Type: entry.Type, SizeBytes: entry.SizeBytes, ModifiedAt: entry.ModifiedAt,
+			})
 		}
 		more, err := cursors.advance(page.NextCursor)
 		if err != nil {

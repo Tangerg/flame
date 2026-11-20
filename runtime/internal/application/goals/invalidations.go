@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/samber/lo"
@@ -43,7 +45,7 @@ func (n notifyingStore) Save(ctx context.Context, replacement goal.Replacement) 
 	return applied, err
 }
 
-func (n notifyingStore) ClearIf(ctx context.Context, sessionID string, expected goal.Version) (bool, error) {
+func (n notifyingStore) ClearIf(ctx context.Context, sessionID identity.SessionID, expected goal.Version) (bool, error) {
 	applied, err := n.Store.ClearIf(ctx, sessionID, expected)
 	if err == nil && applied {
 		n.publish(sessionID)
@@ -51,6 +53,6 @@ func (n notifyingStore) ClearIf(ctx context.Context, sessionID string, expected 
 	return applied, err
 }
 
-func (n notifyingStore) publish(sessionID string) {
+func (n notifyingStore) publish(sessionID identity.SessionID) {
 	n.invalidations.Notify(invalidation.InSession(invalidation.Goals, sessionID))
 }

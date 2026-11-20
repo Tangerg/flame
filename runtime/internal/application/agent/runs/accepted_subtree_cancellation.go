@@ -14,13 +14,13 @@ var ErrSubtreeCancellationReleased = errors.New("runs: accepted cancellation has
 // AcceptedSubtreeCancellation retains the consumed tree binding until Scope
 // has joined the canceled subtree and released any newly opened Segments.
 type AcceptedSubtreeCancellation struct {
-	SessionID   string
+	SessionID   identity.SessionID
 	Pending     Pending
-	TargetRunID string
+	TargetRunID identity.RunID
 	Segments    []AcceptedSegment
 }
 
-func (a AcceptedSubtreeCancellation) RootRunID() string { return a.Pending.RootRunID }
+func (a AcceptedSubtreeCancellation) RootRunID() identity.RunID { return a.Pending.RootRunID }
 
 // Disposition is the tree's state after the cancellation: removing the last
 // external boundary opened continuation Segments, otherwise the tree waits.
@@ -41,26 +41,26 @@ func (a AcceptedSubtreeCancellation) targetMemberID() string {
 }
 
 func (a AcceptedSubtreeCancellation) Validate() error {
-	if err := identity.ValidateSession(a.SessionID); err != nil {
+	if err := a.SessionID.Validate(); err != nil {
 		return fmt.Errorf("runs: accepted subtree cancellation Session: %w", err)
 	}
 	if err := a.Pending.Validate(); err != nil {
 		return fmt.Errorf("runs: accepted subtree cancellation source: %w", err)
 	}
-	members := make(map[string]struct{}, len(a.Pending.Continuations))
+	members := make(map[identity.RunID]struct{}, len(a.Pending.Continuations))
 	for _, continuation := range a.Pending.Continuations {
 		members[continuation.RunID] = struct{}{}
 	}
 	if _, found := members[a.TargetRunID]; !found || a.TargetRunID == a.RootRunID() {
 		return errors.New("runs: accepted subtree cancellation target is not an original child")
 	}
-	segments := make(map[string]struct{}, len(a.Segments))
+	segments := make(map[identity.SegmentID]struct{}, len(a.Segments))
 	delete(members, a.TargetRunID)
 	for _, segment := range a.Segments {
 		if _, found := members[segment.RunID]; !found {
 			return errors.New("runs: accepted subtree cancellation has a duplicate or foreign Segment Run")
 		}
-		if err := identity.ValidateSegment(segment.SegmentID); err != nil {
+		if err := segment.SegmentID.Validate(); err != nil {
 			return fmt.Errorf("runs: accepted subtree cancellation Segment: %w", err)
 		}
 		if _, duplicate := segments[segment.SegmentID]; duplicate {

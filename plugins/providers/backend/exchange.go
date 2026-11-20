@@ -176,41 +176,48 @@ func failure(err error) *modelprovider.Failure {
 		return nil
 	}
 	result := &modelprovider.Failure{Kind: modelprovider.Internal, Execution: coreinvocation.ClassifyFailure(err)}
+	type httpError interface {
+		error
+		HTTPStatus() int
+		HTTPHeader() http.Header
+	}
+	matched, answered := errors.AsType[httpError](err)
+	network, unreachable := errors.AsType[net.Error](err)
 	switch {
 	case errors.Is(err, context.Canceled):
 		result.Kind = modelprovider.Canceled
 	case errors.Is(err, context.DeadlineExceeded):
 		result.Kind = modelprovider.Timeout
-	default:
-		type httpError interface {
-			error
-			HTTPStatus() int
-			HTTPHeader() http.Header
+	case answered:
+		result.Kind = httpFailureKind(matched.HTTPStatus())
+		if result.Kind == modelprovider.RateLimited || result.Kind == modelprovider.ProviderUnavailable {
+			result.RetryAfterMillis = retryAfterMillis(matched.HTTPHeader(), time.Now())
 		}
-		if matched, ok := errors.AsType[httpError](err); ok {
-			switch status := matched.HTTPStatus(); {
-			case status == http.StatusUnauthorized || status == http.StatusForbidden:
-				result.Kind = modelprovider.InvalidCredentials
-			case status == http.StatusRequestTimeout || status == http.StatusGatewayTimeout:
-				result.Kind = modelprovider.Timeout
-			case status == http.StatusTooManyRequests:
-				result.Kind = modelprovider.RateLimited
-			case status >= 500:
-				result.Kind = modelprovider.ProviderUnavailable
-			case status >= 400:
-				result.Kind = modelprovider.ProviderRejected
-			}
-			if result.Kind == modelprovider.RateLimited || result.Kind == modelprovider.ProviderUnavailable {
-				result.RetryAfterMillis = retryAfterMillis(matched.HTTPHeader(), time.Now())
-			}
-		} else if network, ok := errors.AsType[net.Error](err); ok {
-			result.Kind = modelprovider.ProviderUnavailable
-			if network.Timeout() {
-				result.Kind = modelprovider.Timeout
-			}
-		}
+	case unreachable && network.Timeout():
+		result.Kind = modelprovider.Timeout
+	case unreachable:
+		result.Kind = modelprovider.ProviderUnavailable
 	}
 	return result
+}
+
+// httpFailureKind classifies a provider's HTTP refusal; a status outside the
+// error ranges stays an internal failure.
+func httpFailureKind(status int) modelprovider.FailureKind {
+	switch {
+	case status == http.StatusUnauthorized || status == http.StatusForbidden:
+		return modelprovider.InvalidCredentials
+	case status == http.StatusRequestTimeout || status == http.StatusGatewayTimeout:
+		return modelprovider.Timeout
+	case status == http.StatusTooManyRequests:
+		return modelprovider.RateLimited
+	case status >= http.StatusInternalServerError:
+		return modelprovider.ProviderUnavailable
+	case status >= http.StatusBadRequest:
+		return modelprovider.ProviderRejected
+	default:
+		return modelprovider.Internal
+	}
 }
 
 func retryAfterMillis(header http.Header, now time.Time) int64 {

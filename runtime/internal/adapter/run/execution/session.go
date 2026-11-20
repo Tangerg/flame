@@ -17,12 +17,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 
-	"github.com/Tangerg/scope/agent/interaction"
 	scoperun "github.com/Tangerg/scope/agent/run"
-	corechat "github.com/Tangerg/scope/core/chat"
 	otelagent "github.com/Tangerg/scope/otel/agent"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type interactionSession struct {
@@ -315,109 +311,6 @@ func (i *interactionSession) finish() {
 	})
 }
 
-// projectDelta forwards the preview text a client renders before the durable
-// Item exists. Every reason a delta cannot be forwarded leaves the same hole in
-// that preview, so every reason reports it: a payload this Runtime cannot parse
-// is a framework boundary defect, not a quiet no-op.
-func (i *interactionSession) projectDelta(ctx context.Context, delta scoperun.Delta) {
-	parsed, err := interaction.ParseModelResponseDelta(delta.Payload())
-	if err != nil {
-		i.reportDroppedDelta(ctx, delta, err)
-		return
-	}
-	response := parsed.ResponseDelta()
-	for _, part := range response.Parts {
-		var payload runs.ExecutionFact
-		switch part.Kind {
-		case corechat.PartDeltaText, corechat.PartDeltaRefusal:
-			payload = runs.MessageDelta{Text: part.Text}
-		case corechat.PartDeltaReasoning:
-			payload = runs.ReasoningDelta{Text: part.Text}
-		default:
-			continue
-		}
-		member, found := i.executorMemberByProcessID(delta.ProcessID())
-		if found && i.lifetime.offer(runs.ExecutorEvent{Member: member, Payload: payload}) {
-			continue
-		}
-		i.reportDroppedDelta(ctx, delta, errUnroutableDelta)
-	}
-}
-
-// errUnroutableDelta names the drop that is not a defect: the process has no
-// installed executor route, or the run tree stopped accepting events.
-var errUnroutableDelta = errors.New("execution: delta has no accepting executor route")
-
-func (i *interactionSession) reportDroppedDelta(ctx context.Context, delta scoperun.Delta, cause error) {
-	span := trace.SpanFromContext(ctx)
-	span.AddEvent(
-		"execution.delta.dropped",
-		trace.WithAttributes(
-			attribute.String("process.id", delta.ProcessID().String()),
-			attribute.String("drop.cause", cause.Error()),
-		),
-	)
-	if !errors.Is(cause, errUnroutableDelta) {
-		span.RecordError(cause)
-		slog.ErrorContext(ctx, "execution: model response delta dropped",
-			"process.id", delta.ProcessID().String(), "error", cause)
-	}
-}
-
-// Delta delivery is a host-owned preview channel. Flush asks its sole reader to
-// finish every already-emitted preview before the durable result is published.
-func (i *interactionSession) flushDeltas(ctx context.Context) error {
-	done := make(chan struct{})
-	select {
-	case i.deltaFlush <- done:
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-i.lifetime.releasing.Done():
-		return errInteractionReleased
-	}
-	select {
-	case <-done:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-i.lifetime.releasing.Done():
-		return errInteractionReleased
-	}
-}
-
-func (i *interactionSession) consumeDeltas() {
-	ctx := i.lifetime.releasing
-	for {
-		select {
-		case delta := <-i.deltas:
-			i.projectDelta(ctx, delta)
-		case done := <-i.deltaFlush:
-			draining := true
-			for draining {
-				select {
-				case delta := <-i.deltas:
-					i.projectDelta(ctx, delta)
-				default:
-					draining = false
-				}
-			}
-			close(done)
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func (i *interactionSession) consumeTelemetry() {
-	process := i.state.processHandle()
-	if process == nil {
-		return
-	}
-	if _, err := i.telemetry.Consume(i.lifetime.releasing, process, 0); err != nil && i.lifetime.releasing.Err() == nil {
-		slog.ErrorContext(i.lifetime.releasing, "execution: observe Interaction log", "error", err)
-	}
-}
-
 func (i *interactionSession) commitFact(
 	ctx context.Context,
 	member runs.ExecutorMember,
@@ -494,9 +387,7 @@ func (i *interactionSession) reconcileExecutionState() {
 		}
 		progressed, err := i.reconcileCompletedDelegateChildren(i.lifetime.reconciling)
 		if err != nil {
-			if !releasedDuringProjection(err) {
-				i.publishProjectionFailure(err)
-			}
+			i.reportProjectionFailure(err)
 			return
 		}
 		if progressed {
@@ -519,9 +410,7 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	ctx := i.lifetime.reconciling
 	snapshot, interruptions, found, err := i.captureHumanInputBarrier(ctx)
 	if err != nil {
-		if !releasedDuringProjection(err) {
-			i.publishProjectionFailure(err)
-		}
+		i.reportProjectionFailure(err)
 		return false
 	}
 	if !found {
@@ -530,9 +419,7 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	// Capture can settle a sibling that was still running at the preflight.
 	// Its product terminal must precede the waiting members from this cut.
 	if _, err := i.reconcileCompletedDelegateChildren(ctx); err != nil {
-		if !releasedDuringProjection(err) {
-			i.publishProjectionFailure(err)
-		}
+		i.reportProjectionFailure(err)
 		return false
 	}
 	checkpoint, err := i.executorCheckpoint(snapshot)
@@ -654,18 +541,16 @@ func (i *interactionSession) reportUnknownEffects() bool {
 	}
 	defer resumeDispatch()
 	if _, err := i.investigateToolReceipts(ctx); err != nil {
-		if ctx.Err() != nil || releasedDuringProjection(err) {
-			return true
+		if ctx.Err() == nil {
+			i.reportProjectionFailure(err)
 		}
-		i.publishProjectionFailure(err)
 		return true
 	}
 	ids, err = i.unknownEffectIDs(ctx)
 	if err != nil {
-		if ctx.Err() != nil || releasedDuringProjection(err) {
-			return true
+		if ctx.Err() == nil {
+			i.reportProjectionFailure(err)
 		}
-		i.publishProjectionFailure(err)
 		return true
 	}
 	if len(ids) == 0 {
@@ -682,14 +567,13 @@ func (i *interactionSession) reportUnknownEffects() bool {
 	// Unknown effects need execution to stop, but cannot override cancellation
 	// already accepted by Scope. Both causes enter its ordered control queue;
 	// the immutable result decides which cause became authoritative.
-	if err := process.Cancel(ctx, unresolvedEffectsStopReason); err != nil &&
-		!errors.Is(err, scoperun.ErrProcessFinished) && !releasedDuringProjection(err) {
-		i.publishProjectionFailure(err)
+	if err := process.Cancel(ctx, unresolvedEffectsStopReason); err != nil && !errors.Is(err, scoperun.ErrProcessFinished) {
+		i.reportProjectionFailure(err)
 	}
 	// A control request cannot resolve uncertainty. Stop the writer and let
 	// Await report its retained effects; the product owner decides loss.
-	if err := i.engine.Close(ctx); err != nil && !releasedDuringProjection(err) {
-		i.publishProjectionFailure(err)
+	if err := i.engine.Close(ctx); err != nil {
+		i.reportProjectionFailure(err)
 	}
 	return true
 }
@@ -757,6 +641,14 @@ func (i *interactionSession) notifyStopped(outcome run.Outcome) {
 				"session.id", i.start.SessionID, "error", err,
 			)
 		}
+	}
+}
+
+// reportProjectionFailure publishes a failure unless the session was released
+// meanwhile; a release ends reconciliation without a fault.
+func (i *interactionSession) reportProjectionFailure(err error) {
+	if !releasedDuringProjection(err) {
+		i.publishProjectionFailure(err)
 	}
 }
 
@@ -834,54 +726,3 @@ func (i *interactionSession) closeTelemetry(ctx context.Context) error {
 	}
 	return nil
 }
-
-func (i *interactionSession) endingForProcess(owner scoperun.ProcessID, termination scoperun.Termination) run.Ending {
-	if termination.Status() == scoperun.StatusFailed ||
-		termination.Cause() == scoperun.TerminationCauseHostCancellation && termination.Reason() == modelProcessStopReason {
-		if classified, found := i.modelFailures.lookup(owner); found {
-			return run.Failed{Failure: classified}
-		}
-	}
-	return terminationEnding(termination)
-}
-
-// Scope v0.62 records this classification without exposing a public match.
-const scopeToolCallsNotCompletedCode = "interaction.model.tool_calls_not_completed"
-
-func terminationEnding(termination scoperun.Termination) run.Ending {
-	failed := func(kind run.FailureKind, detail string) run.Ending {
-		return run.Failed{Failure: run.Failure{Kind: kind, Detail: detail}}
-	}
-	switch termination.Cause() {
-	case scoperun.TerminationCauseCompletion:
-		return run.Completed{}
-	case scoperun.TerminationCauseParentDeadline, scoperun.TerminationCauseHostDeadline:
-		return run.TimedOut{Detail: "executor deadline reached"}
-	case scoperun.TerminationCauseParentCancellation, scoperun.TerminationCauseHostCancellation:
-		if termination.Cause() == scoperun.TerminationCauseHostCancellation && termination.Reason() == unresolvedEffectsStopReason {
-			return run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects}}
-		}
-		return run.Canceled{}
-	case scoperun.TerminationCauseExecutionFailure:
-		failure, _ := termination.Failure()
-		return failed(run.FailureAgentStuck, run.Diagnostic(errors.New(failure.Message())))
-	case scoperun.TerminationCauseExternalFailure:
-		failure, _ := termination.Failure()
-		detail := run.Diagnostic(errors.New(failure.Message()))
-		invalidResponse, _ := scoperun.StepFailure(interaction.ErrInvalidModelResponse)
-		switch failure.Code() {
-		case invalidResponse.Code(), scopeToolCallsNotCompletedCode:
-			return failed(run.FailureProviderRejected, detail)
-		}
-		return failed(run.FailureInternal, detail)
-	case scoperun.TerminationCauseContractFailure, scoperun.TerminationCausePanic:
-		failure, _ := termination.Failure()
-		return failed(run.FailureInternal, run.Diagnostic(errors.New(failure.Message())))
-	case scoperun.TerminationCauseRuntimeKill:
-		return failed(run.FailureInternal, termination.Reason())
-	default:
-		return failed(run.FailureInternal, "executor returned an unknown terminal cause")
-	}
-}
-
-const unresolvedEffectsStopReason = "runtime unresolved external effects"

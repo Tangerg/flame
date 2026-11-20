@@ -212,14 +212,8 @@ func (h Hook) Validate() error {
 	if hasCommand == hasInject {
 		return fmt.Errorf("%w: exactly one of command or inject is required", ErrInvalidHook)
 	}
-	if !utf8.ValidString(h.Matcher) || !utf8.ValidString(h.Command) || !utf8.ValidString(h.Inject) {
-		return fmt.Errorf("%w: text must be valid UTF-8", ErrInvalidHook)
-	}
-	if len(h.Matcher) > maxMatcherBytes {
-		return fmt.Errorf("%w: matcher exceeds %d bytes", ErrInvalidHook, maxMatcherBytes)
-	}
-	if len(h.Command) > maxActionBytes || len(h.Inject) > maxActionBytes {
-		return fmt.Errorf("%w: action exceeds %d bytes", ErrInvalidHook, maxActionBytes)
+	if err := h.validateText(); err != nil {
+		return err
 	}
 	if h.TimeoutMillis < 0 || h.TimeoutMillis > MaxTimeoutMillis {
 		return fmt.Errorf(
@@ -234,13 +228,31 @@ func (h Hook) Validate() error {
 	if err := h.FailurePolicy.validate(h.Event, hasCommand); err != nil {
 		return err
 	}
-	if h.Matcher != "" {
-		if h.Event != PreToolUse && h.Event != PostToolUse {
-			return fmt.Errorf("%w: matcher is only valid for tool events", ErrInvalidHook)
-		}
-		if _, err := path.Match(h.Matcher, ""); err != nil {
-			return fmt.Errorf("%w: invalid matcher %q: %w", ErrInvalidHook, h.Matcher, err)
-		}
+	return h.validateMatcher()
+}
+
+func (h Hook) validateText() error {
+	if !utf8.ValidString(h.Matcher) || !utf8.ValidString(h.Command) || !utf8.ValidString(h.Inject) {
+		return fmt.Errorf("%w: text must be valid UTF-8", ErrInvalidHook)
+	}
+	if len(h.Matcher) > maxMatcherBytes {
+		return fmt.Errorf("%w: matcher exceeds %d bytes", ErrInvalidHook, maxMatcherBytes)
+	}
+	if len(h.Command) > maxActionBytes || len(h.Inject) > maxActionBytes {
+		return fmt.Errorf("%w: action exceeds %d bytes", ErrInvalidHook, maxActionBytes)
+	}
+	return nil
+}
+
+func (h Hook) validateMatcher() error {
+	if h.Matcher == "" {
+		return nil
+	}
+	if h.Event != PreToolUse && h.Event != PostToolUse {
+		return fmt.Errorf("%w: matcher is only valid for tool events", ErrInvalidHook)
+	}
+	if _, err := path.Match(h.Matcher, ""); err != nil {
+		return fmt.Errorf("%w: invalid matcher %q: %w", ErrInvalidHook, h.Matcher, err)
 	}
 	return nil
 }

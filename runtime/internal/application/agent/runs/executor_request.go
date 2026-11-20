@@ -37,34 +37,34 @@ func newExecutorRequest[T any]() *executorRequest[T] {
 	return &executorRequest[T]{done: make(chan struct{})}
 }
 
-func (e *executorRequest[T]) claim() bool {
+// claim takes a pending request for decision. Only the claimant may settle
+// it, so settling has no state left to refuse.
+func (e *executorRequest[T]) claim() (claimedRequest[T], bool) {
 	if e == nil {
-		return false
+		return claimedRequest[T]{}, false
 	}
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	if e.state != executorRequestPending {
-		return false
+		return claimedRequest[T]{}, false
 	}
 	e.state = executorRequestClaimed
-	return true
+	return claimedRequest[T]{request: e}, true
 }
 
-func (e *executorRequest[T]) complete(value T, err error) error {
-	if e == nil {
-		return errors.New("runs: complete nil executor request")
-	}
+// claimedRequest is the consumer's exclusive right to decide one request.
+type claimedRequest[T any] struct{ request *executorRequest[T] }
+
+func (c claimedRequest[T]) settle(value T, err error) {
+	e := c.request
 	e.mu.Lock()
+	defer e.mu.Unlock()
 	if e.state != executorRequestClaimed {
-		state := e.state
-		e.mu.Unlock()
-		return fmt.Errorf("runs: complete executor request in %s state; want claimed", state)
+		panic(fmt.Sprintf("runs: settle executor request in %s state", e.state))
 	}
 	e.state = executorRequestCompleted
 	e.result = executorRequestResult[T]{value: value, err: err}
 	close(e.done)
-	e.mu.Unlock()
-	return nil
 }
 
 func (e *executorRequest[T]) await(ctx context.Context) (T, error) {

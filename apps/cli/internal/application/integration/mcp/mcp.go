@@ -116,36 +116,41 @@ type ConnectionInput struct {
 func (c ConnectionInput) Validate() error {
 	switch c.Transport {
 	case protocol.MCPTransportStreamableHTTP:
-		if strings.TrimSpace(c.URL) == "" {
-			return errors.New("HTTP MCP connection input URL is empty")
-		}
-		if c.Command != "" || len(c.Args) != 0 || c.Environment != nil || c.Directory != "" {
-			return errors.New("HTTP MCP connection input carries stdio fields")
-		}
-		if c.Authorization != nil {
-			if err := c.Authorization.Validate(); err != nil {
-				return err
-			}
-		}
-		if c.Headers != nil {
-			if err := c.Headers.Validate(); err != nil {
-				return err
-			}
-		}
+		return c.validateHTTP()
 	case protocol.MCPTransportStdio:
-		if c.Command == "" {
-			return errors.New("stdio MCP connection input command is empty")
-		}
-		if c.URL != "" || c.Authorization != nil || c.Headers != nil {
-			return errors.New("stdio MCP connection input carries HTTP fields")
-		}
-		if c.Environment != nil {
-			if err := c.Environment.Validate(); err != nil {
-				return err
-			}
-		}
+		return c.validateStdio()
 	default:
 		return fmt.Errorf("MCP transport %q is invalid", c.Transport)
+	}
+}
+
+func (c ConnectionInput) validateHTTP() error {
+	if strings.TrimSpace(c.URL) == "" {
+		return errors.New("HTTP MCP connection input URL is empty")
+	}
+	if c.Command != "" || len(c.Args) != 0 || c.Environment != nil || c.Directory != "" {
+		return errors.New("HTTP MCP connection input carries stdio fields")
+	}
+	if c.Authorization != nil {
+		if err := c.Authorization.Validate(); err != nil {
+			return err
+		}
+	}
+	if c.Headers != nil {
+		return c.Headers.Validate()
+	}
+	return nil
+}
+
+func (c ConnectionInput) validateStdio() error {
+	if c.Command == "" {
+		return errors.New("stdio MCP connection input command is empty")
+	}
+	if c.URL != "" || c.Authorization != nil || c.Headers != nil {
+		return errors.New("stdio MCP connection input carries HTTP fields")
+	}
+	if c.Environment != nil {
+		return c.Environment.Validate()
 	}
 	return nil
 }

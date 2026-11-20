@@ -55,8 +55,11 @@ func (i Installation) AuthorizeLocale(release Release, digest framevalue.Digest,
 	return Locale{}, fmt.Errorf("%w: locale %q", ErrNotFound, tag)
 }
 
+// undeterminedBase is the base of "und", which names no language.
+var undeterminedBase, _, _ = language.Und.Raw()
+
 func validTranslationTag(value string) bool {
 	tag, err := language.Parse(value)
 	base, _, _ := tag.Raw()
-	return err == nil && tag.String() == value && base.String() != "und" && tag != baseLocale && len(value) <= MaxLocaleTagBytes
+	return err == nil && tag.String() == value && base != undeterminedBase && tag != baseLocale && len(value) <= MaxLocaleTagBytes
 }

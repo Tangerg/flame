@@ -17,9 +17,14 @@ var repositoryPart = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
 
 type repository struct{ owner, name string }
 
+const (
+	maxRepositoryBytes = 256
+	maxTokenBytes      = 4096
+)
+
 func newRepository(value string) (repository, error) {
 	parts := strings.Split(value, "/")
-	if len(parts) != 2 || len(value) > 256 {
+	if len(parts) != 2 || len(value) > maxRepositoryBytes {
 		return repository{}, errResource
 	}
 	for _, part := range parts {
@@ -38,7 +43,8 @@ func (r repository) apiPath() string {
 type filePath struct{ encoded string }
 
 func newFilePath(value string) (filePath, error) {
-	if !utf8.ValidString(value) || len(value) > 4096 || strings.ContainsAny(value, "\\\x00") {
+	// The method contract already bounds the length; this admits segment syntax.
+	if !utf8.ValidString(value) || strings.ContainsAny(value, "\\\x00") {
 		return filePath{}, errResource
 	}
 	parts := strings.Split(value, "/")
@@ -59,7 +65,7 @@ func newCredential(value *string) (credential, error) {
 	if value == nil {
 		return credential{}, nil
 	}
-	if *value == "" || len(*value) > 4096 || strings.ContainsFunc(*value, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) || r > unicode.MaxASCII }) {
+	if *value == "" || len(*value) > maxTokenBytes || strings.ContainsFunc(*value, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) || r > unicode.MaxASCII }) {
 		return credential{}, errors.New("github: configured token must be nonempty printable ASCII without whitespace")
 	}
 	return credential{token: *value}, nil

@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
@@ -32,66 +33,104 @@ type PluginBinding struct {
 }
 
 type PluginMethod[P, R any] struct {
-	caller  PluginCaller
+	boundMethod
+	caller PluginCaller
+}
+
+func BindPluginMethod[P, R any](caller PluginCaller, binding PluginBinding, method *pluginmcp.Method[P, R]) (*PluginMethod[P, R], error) {
+	if lo.IsNil(caller) || method == nil {
+		return nil, errors.New("runtime: plugin caller, binding and typed method are required")
+	}
+	bound, err := bindMethod(binding, method.Descriptor())
+	if err != nil {
+		return nil, err
+	}
+	return &PluginMethod[P, R]{boundMethod: bound, caller: caller}, nil
+}
+
+// boundMethod is one admitted method of a captured plugin binding. Calls and
+// streams share its request admission and output decoding.
+type boundMethod struct {
 	binding PluginBinding
 	method  *frame.Method
 }
 
-func BindPluginMethod[P, R any](caller PluginCaller, binding PluginBinding, method *pluginmcp.Method[P, R]) (*PluginMethod[P, R], error) {
-	if lo.IsNil(caller) || binding.Contract == nil || method == nil {
-		return nil, errors.New("runtime: plugin caller, binding and typed method are required")
-	}
-	captured, required, err := admitPluginBinding(binding, method.Descriptor())
-	if err != nil {
-		return nil, err
-	}
-	return &PluginMethod[P, R]{caller: caller, binding: captured, method: required}, nil
-}
-
-func admitPluginBinding(binding PluginBinding, descriptor frame.MethodDescriptor) (PluginBinding, *frame.Method, error) {
+func bindMethod(binding PluginBinding, descriptor frame.MethodDescriptor) (boundMethod, error) {
 	if binding.Contract == nil {
-		return PluginBinding{}, nil, errors.New("runtime: plugin binding contract is required")
+		return boundMethod{}, errors.New("runtime: plugin binding contract is required")
 	}
 	binding.Contract = new(*binding.Contract)
 	required, found := binding.Contract.Method(descriptor.Name)
 	actual, err := frame.AdmitMethod(descriptor)
 	if err != nil {
-		return PluginBinding{}, nil, err
+		return boundMethod{}, err
 	}
 	if !found || required.Identity() != actual.Identity() {
-		return PluginBinding{}, nil, errors.New("runtime: typed method differs from its required capability")
+		return boundMethod{}, errors.New("runtime: typed method differs from its required capability")
 	}
 	if err := binding.Target.Validate(); err != nil {
-		return PluginBinding{}, nil, err
+		return boundMethod{}, err
 	}
 	if binding.Target.Scope != required.Descriptor().Target {
-		return PluginBinding{}, nil, errors.New("runtime: plugin target differs from its method contract")
+		return boundMethod{}, errors.New("runtime: plugin target differs from its method contract")
 	}
 	if err := protocol.ValidateWireTree(protocol.PluginReleaseRequest{InstallationID: binding.InstallationID, Digest: binding.Digest}); err != nil {
-		return PluginBinding{}, nil, err
+		return boundMethod{}, err
 	}
 	if err := protocol.ValidateWireTree(protocol.SelectPluginProviderRequest{InstallationID: binding.InstallationID, Contribution: binding.Contribution, Role: binding.Contract.Descriptor().Reference}); err != nil {
-		return PluginBinding{}, nil, err
+		return boundMethod{}, err
 	}
-	return binding, required, nil
+	return boundMethod{binding: binding, method: required}, nil
+}
+
+// request admits one invocation's input against the method contract.
+func (b boundMethod) request(input any, options protocol.PluginCallOptions) (protocol.CallPluginRequest, error) {
+	if b.method.Kind() == frame.Query && (options.IdempotencyKey != "" || options.IdempotencyNamespace != "") {
+		return protocol.CallPluginRequest{}, errors.New("runtime: plugin query cannot carry a command identity")
+	}
+	encoded, err := framevalue.EncodeJSON(input)
+	if err != nil {
+		return protocol.CallPluginRequest{}, err
+	}
+	if err := b.method.ValidateInput(encoded); err != nil {
+		return protocol.CallPluginRequest{}, err
+	}
+	return protocol.CallPluginRequest{
+		InstallationID: b.binding.InstallationID, Digest: b.binding.Digest, Contribution: b.binding.Contribution,
+		Contract: string(b.binding.Contract.Identity().Bytes()), Method: b.method.Name(), Input: string(encoded.Bytes()), Target: b.binding.Target,
+	}, nil
+}
+
+// contractBreach is a response that broke the method contract. A command's
+// acknowledgement is then unknown, because its effect may already be durable.
+func (b boundMethod) contractBreach(err error) error {
+	err = errors.Join(protocol.ErrInvalidResponse, err)
+	if b.method.Kind() == frame.Command {
+		return errors.Join(ErrAcknowledgementUnknown, err)
+	}
+	return err
+}
+
+func decodeOutput[T any](validate func(jsontext.Value) error, raw string) (T, error) {
+	var value T
+	if err := validate(jsontext.Value(raw)); err != nil {
+		return value, err
+	}
+	err := json.Unmarshal([]byte(raw), &value, json.RejectUnknownMembers(true), framevalue.Numbers())
+	return value, err
+}
+
+func pluginRefusal(failure *protocol.PluginCallFailure) error {
+	return &framecall.Refusal{Code: failure.Code, Message: failure.Message}
 }
 
 func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options protocol.PluginCallOptions) (R, error) {
 	var zero R
-	if m == nil || m.method == nil {
-		return zero, errors.New("runtime: bound plugin method is required")
-	}
-	if m.method.Kind() == frame.Query && (options.IdempotencyKey != "" || options.IdempotencyNamespace != "") {
-		return zero, errors.New("runtime: plugin query cannot carry a command identity")
-	}
-	inputJSON, err := framevalue.EncodeJSON(input)
+	request, err := m.request(input, options)
 	if err != nil {
 		return zero, err
 	}
-	if err := m.method.ValidateInput(inputJSON); err != nil {
-		return zero, err
-	}
-	result, err := m.caller.CallPlugin(ctx, protocol.CallPluginRequest{InstallationID: m.binding.InstallationID, Digest: m.binding.Digest, Contribution: m.binding.Contribution, Contract: string(m.binding.Contract.Identity().Bytes()), Method: m.method.Name(), Input: string(inputJSON.Bytes()), Target: m.binding.Target}, options)
+	result, err := m.caller.CallPlugin(ctx, request, options)
 	if err != nil {
 		return zero, err
 	}
@@ -102,14 +141,11 @@ func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options protocol
 		return zero, errors.Join(protocol.ErrInvalidResponse, err)
 	}
 	if result.Failure != nil {
-		return zero, &framecall.Refusal{Code: result.Failure.Code, Message: result.Failure.Message}
+		return zero, pluginRefusal(result.Failure)
 	}
-	if err := m.method.ValidateOutput([]byte(result.Output)); err != nil {
+	value, err := decodeOutput[R](m.method.ValidateOutput, result.Output)
+	if err != nil {
 		return zero, fmt.Errorf("runtime: plugin output: %w", errors.Join(protocol.ErrInvalidResponse, err))
-	}
-	var value R
-	if err := json.Unmarshal([]byte(result.Output), &value, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
-		return zero, errors.Join(protocol.ErrInvalidResponse, err)
 	}
 	return value, nil
 }

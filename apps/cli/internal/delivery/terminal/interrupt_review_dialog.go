@@ -46,69 +46,86 @@ func (p *interruptPrompts) openInterruptSummary() {
 		p.run.fail(fmt.Errorf("review interrupts: %w", err))
 		return
 	}
-	decision := interruptReviewSubmit
 	choice := base.NewSelect(base.SelectConfig[interruptReviewDecision]{
 		Same:  base.Equal[interruptReviewDecision],
-		Label: "Review complete", Initial: decision, Rows: 3,
+		Label: "Review complete", Initial: interruptReviewSubmit, Rows: 3,
 	})
 	choice.SetOptions([]base.Option[interruptReviewDecision]{
 		{Label: "Submit all decisions", Value: interruptReviewSubmit},
 		{Label: "Go back and edit", Value: interruptReviewBack},
 		{Label: "Cancel the run", Value: interruptReviewCancel},
 	})
+	summary := &interruptSummaryDialog{prompts: p, review: review, choice: choice}
 	form := kit.FormConfig{Fields: []base.Field{choice}, Theme: p.theme, Glyphs: p.glyphs,
-		Hints: []keymap.Action{base.Submit, base.Cancel}}
+		Hints: []keymap.Action{base.Submit, base.Cancel}, Submit: summary.submit}
 	form.Keys = base.DefaultFormKeys()
-	var dialog *presentationDialog
-	settled := false
-	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
-		if settled || p.review != review || p.reviewDialog != dialog {
-			return scene.Unchanged, nil
-		}
-		selected, selectedOK := choice.Chosen()
-		if !selectedOK {
-			return scene.Unchanged, fmt.Errorf("review decision is required")
-		}
-		decision := selected.Value
-		if err := decision.Validate(); err != nil {
-			p.run.fail(err)
-			return scene.Unchanged, nil
-		}
-		settled = true
-		dialog.Dismiss()
-		p.reviewDialog = nil
-		switch decision {
-		case interruptReviewSubmit:
-			p.run.resumeInterrupts(p.review)
-		case interruptReviewBack:
-			p.backInterrupt()
-		case interruptReviewCancel:
-			p.abort(interruptReviewCancellationReason)
-		}
-		return scene.Applied, nil
-	}
-	leave := func() {
-		if settled || p.review != review || p.reviewDialog != dialog {
-			return
-		}
-		settled = true
-		dialog.Dismiss()
-		p.reviewDialog = nil
-		if !p.backInterrupt() {
-			p.abort(interruptReviewCancellationReason)
-		}
-	}
 	dressed := kit.NewForm(form)
-	summary := kit.NewParagraph(interruptSummary(review), p.theme.Text)
-	viewport := base.NewViewport(base.ViewportConfig{Content: passiveElement(summary)})
+	paragraph := kit.NewParagraph(interruptSummary(review), p.theme.Text)
+	viewport := base.NewViewport(base.ViewportConfig{Content: passiveElement(paragraph)})
 	viewport.Scroll().Wheel(p.wheel)
 	pane := &interruptSummaryPane{viewport: viewport, form: dressed}
-	dialog = newPresentationDialog(p.stack, kit.DialogConfig{Theme: p.theme, Glyphs: p.glyphs,
-		Title: "Review interrupts", Body: formNavigation(pane.Element(), leave),
-		Where: layout.Placement{Width: 88, Height: 22},
+	summary.dialog = newPresentationDialog(p.stack, kit.DialogConfig{Theme: p.theme, Glyphs: p.glyphs,
+		Title: "Review interrupts", Body: formNavigation(pane.Element(), summary.leave),
+		Where: layout.Placement{Width: standardDialogWidth, Height: 22},
 	})
-	p.reviewDialog = dialog
-	dialog.Show()
+	p.reviewDialog = summary.dialog
+	summary.dialog.Show()
+}
+
+// interruptSummaryDialog settles a finished review exactly once: by the
+// chosen decision, or by leaving, which returns to the last interrupt or
+// cancels the Run.
+type interruptSummaryDialog struct {
+	prompts *interruptPrompts
+	review  *interruptReview
+	choice  *base.Select[interruptReviewDecision]
+	dialog  *presentationDialog
+	settled bool
+}
+
+func (d *interruptSummaryDialog) current() bool {
+	return !d.settled && d.prompts.review == d.review && d.prompts.reviewDialog == d.dialog
+}
+
+func (d *interruptSummaryDialog) settle() {
+	d.settled = true
+	d.dialog.Dismiss()
+	d.prompts.reviewDialog = nil
+}
+
+func (d *interruptSummaryDialog) submit(base.SubmissionID) (scene.ActionState, error) {
+	if !d.current() {
+		return scene.Unchanged, nil
+	}
+	selected, chosen := d.choice.Chosen()
+	if !chosen {
+		return scene.Unchanged, fmt.Errorf("review decision is required")
+	}
+	decision := selected.Value
+	if err := decision.Validate(); err != nil {
+		d.prompts.run.fail(err)
+		return scene.Unchanged, nil
+	}
+	d.settle()
+	switch decision {
+	case interruptReviewSubmit:
+		d.prompts.run.resumeInterrupts(d.prompts.review)
+	case interruptReviewBack:
+		d.prompts.backInterrupt()
+	case interruptReviewCancel:
+		d.prompts.abort(interruptReviewCancellationReason)
+	}
+	return scene.Applied, nil
+}
+
+func (d *interruptSummaryDialog) leave() {
+	if !d.current() {
+		return
+	}
+	d.settle()
+	if !d.prompts.backInterrupt() {
+		d.prompts.abort(interruptReviewCancellationReason)
+	}
 }
 
 func interruptSummary(review *interruptReview) string {

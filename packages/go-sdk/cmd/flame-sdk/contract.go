@@ -20,17 +20,27 @@ func runContract(args []string) error {
 	if flags.NArg() != 0 || *role == "" {
 		return fmt.Errorf("one model-contract is required")
 	}
-	return writeModelContract(*role)
+	return writeModelContract(modelContractRole(*role))
 }
-func writeModelContract(role string) error {
+
+// modelContractRole names a model contribution role a backend can implement.
+type modelContractRole string
+
+const (
+	modelContextRole   modelContractRole = "context"
+	modelInputRole     modelContractRole = "input"
+	modelSelectionRole modelContractRole = "selection"
+)
+
+func writeModelContract(role modelContractRole) error {
 	var contract *plugincontract.Capability
 	var err error
 	switch role {
-	case "context":
+	case modelContextRole:
 		contract, err = plugin.ModelContextContract()
-	case "input":
+	case modelInputRole:
 		contract, err = plugin.ModelInputContract()
-	case "selection":
+	case modelSelectionRole:
 		contract, err = plugin.ModelSelectionContract()
 	default:
 		return fmt.Errorf("unknown model contract %q", role)

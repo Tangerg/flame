@@ -39,7 +39,7 @@ type TrajectorySource interface {
 type TrajectoryRun struct{ Run run.Run }
 
 type TrajectoryModel struct {
-	RunID      string
+	RunID      identity.RunID
 	Invocation runs.ModelInvocationCommit
 }
 
@@ -48,7 +48,7 @@ type TrajectoryEndpoint struct{ Observation modelref.EndpointObservation }
 type TrajectoryItem struct{ Item transcript.Item }
 
 func (s TrajectoryRun) trajectoryKey() (TrajectoryKind, string) {
-	return TrajectoryKindRun, s.Run.ID()
+	return TrajectoryKindRun, s.Run.ID().String()
 }
 
 func (s TrajectoryModel) trajectoryKey() (TrajectoryKind, string) {
@@ -60,7 +60,7 @@ func (s TrajectoryEndpoint) trajectoryKey() (TrajectoryKind, string) {
 }
 
 func (s TrajectoryItem) trajectoryKey() (TrajectoryKind, string) {
-	return TrajectoryKindItem, s.Item.ID()
+	return TrajectoryKindItem, s.Item.ID().String()
 }
 
 func (e TrajectoryEntry) Position() TrajectoryPosition {
@@ -94,15 +94,15 @@ func (p TrajectoryPosition) validate() error {
 // queryTrajectoryReader returns a bounded page hydrated from one database
 // snapshot, including the Session existence check and descendant filter.
 type queryTrajectoryReader interface {
-	PageTrajectory(context.Context, string, bool, *TrajectoryPosition, int) ([]TrajectoryEntry, error)
+	PageTrajectory(context.Context, identity.SessionID, bool, *TrajectoryPosition, int) ([]TrajectoryEntry, error)
 }
 
-func (c *QueryCoordinator) ListTrajectoryPage(ctx context.Context, sessionID string, includeDescendants bool, cursor string, limit pagination.RequestedLimit) (pagination.Page[TrajectoryEntry], error) {
+func (c *QueryCoordinator) ListTrajectoryPage(ctx context.Context, sessionID identity.SessionID, includeDescendants bool, cursor string, limit pagination.RequestedLimit) (pagination.Page[TrajectoryEntry], error) {
 	const namespace = "session-trajectory"
-	if err := identity.ValidateSession(sessionID); err != nil {
+	if err := sessionID.Validate(); err != nil {
 		return pagination.Page[TrajectoryEntry]{}, err
 	}
-	filters := []string{sessionID, strconv.FormatBool(includeDescendants)}
+	filters := []string{sessionID.String(), strconv.FormatBool(includeDescendants)}
 	key, err := pagination.Decode(cursor, namespace, filters)
 	if err != nil {
 		return pagination.Page[TrajectoryEntry]{}, err
@@ -111,7 +111,7 @@ func (c *QueryCoordinator) ListTrajectoryPage(ctx context.Context, sessionID str
 	if err != nil {
 		return pagination.Page[TrajectoryEntry]{}, err
 	}
-	size, err := limit.Resolve(100)
+	size, err := limit.Resolve(trajectoryPageLimit)
 	if err != nil {
 		return pagination.Page[TrajectoryEntry]{}, err
 	}

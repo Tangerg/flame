@@ -205,12 +205,12 @@ func testRollbackAcknowledgementCrash(t *testing.T, cut string, scope protocol.R
 	}
 	reopenPluginStores(t, &cfg)
 	if material != "" && cut == rollbackReceiptWrite {
-		persisted, err := cfg.stores.Runs.ListRuns(ctx, session.ID)
+		persisted, err := cfg.stores.Runs.ListRuns(ctx, testsupport.MustSessionID(session.ID))
 		if err != nil || len(persisted) != 2 {
 			t.Fatalf("history changed before the receipt committed: %v, %v", persisted, err)
 		}
 		pending, err := cfg.stores.WorkspaceMutations.ListPending(ctx)
-		if err != nil || len(pending) != 1 || pending[0].ToRunID != runIDs[0] || pending[0].Receipt.Key != rollbackCrashKey {
+		if err != nil || len(pending) != 1 || pending[0].ToRunID.String() != runIDs[0] || pending[0].Receipt.Key != rollbackCrashKey {
 			t.Fatalf("crash lost the original workspace intent: %+v, %v", pending, err)
 		}
 	}

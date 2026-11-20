@@ -57,14 +57,21 @@ type pullWire struct {
 	ChangedFiles        *int64             `json:"changed_files"`
 }
 
-func (wire pullWire) admit(repository repository) (contractwire.PullRequest, error) {
-	if wire.Number <= 0 || wire.Title == "" || wire.URL == "" || wire.UpdatedAt.IsZero() || wire.State != contractwire.Open && wire.State != contractwire.Closed || wire.Draft == nil || wire.Head == nil || wire.Base == nil {
-		return contractwire.PullRequest{}, errors.New("github: incomplete pull request representation")
+func (wire pullWire) validate() error {
+	if wire.Number <= 0 || wire.Title == "" || wire.URL == "" || wire.UpdatedAt.IsZero() || !wire.State.Valid() || wire.Draft == nil || wire.Head == nil || wire.Base == nil {
+		return errors.New("github: incomplete pull request representation")
 	}
 	for _, count := range []*int64{wire.Additions, wire.Deletions, wire.ChangedFiles} {
 		if count != nil && *count < 0 {
-			return contractwire.PullRequest{}, errors.New("github: invalid pull request change count")
+			return errors.New("github: invalid pull request change count")
 		}
+	}
+	return nil
+}
+
+func (wire pullWire) admit(repository repository) (contractwire.PullRequest, error) {
+	if err := wire.validate(); err != nil {
+		return contractwire.PullRequest{}, err
 	}
 	head, err := wire.Head.admit()
 	if err != nil {
@@ -125,7 +132,7 @@ func (c *connector) listPullFiles(ctx context.Context, input contractwire.Thread
 	}
 	const fileLimit = 3000
 	if input.Limit < 1 || input.Page < 1 || input.Page > int64((fileLimit-1)/input.Limit+1) {
-		return contractwire.FilePage{}, refused("invalid_query", "pull request files are limited to the first 3000 entries")
+		return contractwire.FilePage{}, refused(refusalInvalidQuery, "pull request files are limited to the first 3000 entries")
 	}
 	path := repository.apiPath() + "/pulls/" + strconv.FormatInt(input.Number, 10) + "/files"
 	page, err := readPage(ctx, c, path, nil, input.Page, input.Limit, func(wire struct {

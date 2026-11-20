@@ -82,23 +82,12 @@ func (o *observerLifecycle) run() {
 			o.report(errors.New("filesystem observation stopped after a defect"))
 		}
 	}()
+	// Timer channels are synchronous since Go 1.23: Reset never leaves a stale
+	// tick, so each hint simply restarts the quiet period.
 	timer := time.NewTimer(debounce)
-	if !timer.Stop() {
-		<-timer.C
-	}
+	timer.Stop()
 	defer timer.Stop()
-	armed := false
-	failed := false
-	armAfter := func(delay time.Duration) {
-		if armed && !timer.Stop() {
-			select {
-			case <-timer.C:
-			default:
-			}
-		}
-		timer.Reset(delay)
-		armed = true
-	}
+	failing := false
 	for {
 		select {
 		case <-o.done:
@@ -108,33 +97,36 @@ func (o *observerLifecycle) run() {
 				o.report(errors.New("filesystem observation event channel closed"))
 				return
 			}
-			armAfter(debounce)
+			timer.Reset(debounce)
 		case err, ok := <-o.fsw.errors:
 			if !ok {
 				o.report(errors.New("filesystem observation error channel closed"))
 				return
 			}
-			if errors.Is(err, fsnotify.ErrEventOverflow) {
-				armAfter(debounce)
-				continue
+			if !errors.Is(err, fsnotify.ErrEventOverflow) {
+				o.report(fmt.Errorf("filesystem observation failed: %w", err))
+				return
 			}
-			o.report(fmt.Errorf("filesystem observation failed: %w", err))
-			return
+			timer.Reset(debounce)
 		case <-timer.C:
-			armed = false
-			if err := o.reconcile(acceptance{}); err != nil {
-				if !failed {
-					o.report(err)
-				}
-				failed = true
+			failing = o.reconcileQuiet(failing)
+			if failing {
 				// A rename may have produced the final backend event before path
 				// watches were rebuilt, so retry without waiting for another hint.
-				armAfter(retryDelay)
-			} else {
-				failed = false
+				timer.Reset(retryDelay)
 			}
 		}
 	}
+}
+
+// reconcileQuiet reconciles after a quiet period and reports whether it
+// failed; an outage is reported once, when it begins.
+func (o *observerLifecycle) reconcileQuiet(failing bool) bool {
+	err := o.reconcile(acceptance{})
+	if err != nil && !failing {
+		o.report(err)
+	}
+	return err != nil
 }
 
 func (o *observerLifecycle) Accept(keys, identities []string) error {

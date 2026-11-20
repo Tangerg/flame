@@ -326,7 +326,7 @@ func fingerprintPhysicalTarget(
 	physical string,
 	roots *observationRoots,
 ) (_ observedPath, err error) {
-	root, name, inside, err := roots.access(candidate.physicalBoundary, physical)
+	observed, inside, err := roots.access(candidate.physicalBoundary, physical)
 	if err != nil {
 		return observedPath{}, fmt.Errorf("observe files: confine %q: %w", candidate.path, err)
 	}
@@ -336,12 +336,7 @@ func fingerprintPhysicalTarget(
 		return observedPath{fingerprint: encoder.sum()}, nil
 	}
 	encoder.field(fingerprintFieldPhysicalPath, physical)
-	var physicalInfo os.FileInfo
-	if root != nil {
-		physicalInfo, err = root.Stat(name)
-	} else {
-		physicalInfo, err = os.Stat(name)
-	}
+	physicalInfo, err := observed.stat()
 	if errors.Is(err, os.ErrNotExist) {
 		encoder.state(fingerprintStateMissingTarget)
 		return observedPath{fingerprint: encoder.sum(), physical: physical}, nil
@@ -357,20 +352,13 @@ func fingerprintPhysicalTarget(
 			encoder.state(fingerprintStateTooLarge)
 			return observedPath{fingerprint: encoder.sum(), physical: physical, dependencies: dependencies}, nil
 		}
-		var file *os.File
-		var opened os.FileInfo
-		var openErr error
-		if root != nil {
-			file, opened, openErr = filesystem.OpenFileAtExpected(root, name, physicalInfo, candidate.maxBytes)
-		} else {
-			file, opened, openErr = filesystem.OpenFileExpected(name, physicalInfo, candidate.maxBytes)
-		}
+		file, opened, openErr := observed.openFile(physicalInfo, candidate.maxBytes)
 		if openErr != nil {
 			return observedPath{}, fmt.Errorf("observe files: open %q: %w", physical, openErr)
 		}
 		encoder.fileInfo(fingerprintFieldPhysicalInfo, opened)
 		copyErr := encoder.content(file, opened.Size())
-		versionErr := verifyObservedFileVersion(root, name, file, opened)
+		versionErr := verifyObservedFileVersion(observed, file, opened)
 		closeErr := file.Close()
 		if copyErr != nil || versionErr != nil || closeErr != nil {
 			return observedPath{}, fmt.Errorf("observe files: read %q: %w", physical, errors.Join(copyErr, versionErr, closeErr))
@@ -378,7 +366,7 @@ func fingerprintPhysicalTarget(
 	} else {
 		encoder.fileInfo(fingerprintFieldPhysicalInfo, physicalInfo)
 		if physicalInfo.IsDir() && candidate.maxEntries > 0 {
-			dependencies, err = fingerprintDirectory(encoder, root, name, physical, candidate.maxEntries)
+			dependencies, err = fingerprintDirectory(encoder, observed, physical, candidate.maxEntries)
 			if err != nil {
 				return observedPath{}, err
 			}
@@ -387,13 +375,8 @@ func fingerprintPhysicalTarget(
 	return observedPath{fingerprint: encoder.sum(), physical: physical, dependencies: dependencies}, nil
 }
 
-func fingerprintDirectory(encoder *fingerprintEncoder, root *os.Root, name, physical string, limit int) (dependencies []string, err error) {
-	var directory *os.File
-	if root != nil {
-		directory, err = root.Open(name)
-	} else {
-		directory, err = os.Open(name)
-	}
+func fingerprintDirectory(encoder *fingerprintEncoder, observed observedName, physical string, limit int) (dependencies []string, err error) {
+	directory, err := observed.open()
 	if err != nil {
 		return nil, fmt.Errorf("observe files: open directory: %w", err)
 	}
@@ -408,13 +391,7 @@ func fingerprintDirectory(encoder *fingerprintEncoder, root *os.Root, name, phys
 	dependencies = []string{physical}
 	slices.SortFunc(entries, func(a, b os.DirEntry) int { return strings.Compare(a.Name(), b.Name()) })
 	for _, entry := range entries {
-		var info os.FileInfo
-		var err error
-		if root != nil {
-			info, err = root.Lstat(filepath.Join(name, entry.Name()))
-		} else {
-			info, err = os.Lstat(filepath.Join(name, entry.Name()))
-		}
+		info, err := observed.child(entry.Name()).lstat()
 		if err != nil {
 			return nil, fmt.Errorf("observe files: inspect directory entry: %w", err)
 		}

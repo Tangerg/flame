@@ -3,6 +3,8 @@ package testsupport
 import (
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -56,20 +58,66 @@ func MustRunMetrics(input RunMetricsInput) run.Metrics {
 
 // MustRestoreRun constructs a valid Run or panics. Tests exercising invalid
 // snapshots must call run.Restore themselves and assert the returned error.
+func MustSessionID(text string) identity.SessionID {
+	id, err := identity.ParseSession(text)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
+func MustRunID(text string) identity.RunID {
+	id, err := identity.ParseRun(text)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
+func MustSegmentID(text string) identity.SegmentID {
+	id, err := identity.ParseSegment(text)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
+func MustItemID(text string) identity.ItemID {
+	id, err := identity.ParseItem(text)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 func MustRestoreRun(snapshot run.Snapshot) run.Run {
-	if snapshot.ID == "" {
-		snapshot.ID = "run_fixture"
+	defaultRunIdentity(&snapshot)
+	defaultRunLifecycle(&snapshot)
+	defaultRunTimes(&snapshot)
+	restored, err := run.Restore(snapshot)
+	if err != nil {
+		panic(err)
 	}
-	if snapshot.SessionID == "" {
-		snapshot.SessionID = "session_fixture"
+	return restored
+}
+
+func defaultRunIdentity(snapshot *run.Snapshot) {
+	if snapshot.ID.IsZero() {
+		snapshot.ID = MustRunID("run_fixture")
 	}
-	if snapshot.CreatedAt.IsZero() {
-		snapshot.CreatedAt = time.Unix(1, 0).UTC()
+	if snapshot.SessionID.IsZero() {
+		snapshot.SessionID = MustSessionID("session_fixture")
 	}
 	if snapshot.ModelSelection.Provider() == "" && snapshot.ModelSelection.Model() == "" &&
 		snapshot.ModelSelection.ReasoningEffort() == "" {
 		snapshot.ModelSelection = DefaultModelSelection()
 	}
+}
+
+// defaultRunLifecycle derives a consistent state from what the fixture names:
+// an ending finishes the Run, a terminal Run has an ending, and only a
+// Running Run has an active Segment.
+func defaultRunLifecycle(snapshot *run.Snapshot) {
 	if snapshot.State == "" {
 		snapshot.State = run.Running
 	}
@@ -79,32 +127,30 @@ func MustRestoreRun(snapshot run.Snapshot) run.Run {
 	if snapshot.State.IsTerminal() && snapshot.Ending == nil {
 		snapshot.Ending = run.Completed{}
 	}
-	if snapshot.State == run.Running && snapshot.ActiveSegmentID == "" {
-		snapshot.ActiveSegmentID = "segment_fixture"
+	if snapshot.State == run.Running && snapshot.ActiveSegmentID.IsZero() {
+		snapshot.ActiveSegmentID = MustSegmentID("segment_fixture")
 	}
 	if snapshot.State != run.Running {
-		snapshot.ActiveSegmentID = ""
-	}
-	if snapshot.State.IsTerminal() {
-		if snapshot.FinishedAt.IsZero() {
-			snapshot.FinishedAt = snapshot.CreatedAt
-		}
+		snapshot.ActiveSegmentID = identity.SegmentID{}
 	}
 	if !snapshot.State.IsTerminal() || snapshot.Lineage.IsChild() {
 		snapshot.MessageMark = run.UnknownMessageMark()
 	}
+}
+
+func defaultRunTimes(snapshot *run.Snapshot) {
+	if snapshot.CreatedAt.IsZero() {
+		snapshot.CreatedAt = time.Unix(1, 0).UTC()
+	}
+	if snapshot.State.IsTerminal() && snapshot.FinishedAt.IsZero() {
+		snapshot.FinishedAt = snapshot.CreatedAt
+	}
 	if snapshot.UpdatedAt.IsZero() {
+		snapshot.UpdatedAt = snapshot.CreatedAt
 		if !snapshot.FinishedAt.IsZero() {
 			snapshot.UpdatedAt = snapshot.FinishedAt
-		} else {
-			snapshot.UpdatedAt = snapshot.CreatedAt
 		}
 	}
-	restored, err := run.Restore(snapshot)
-	if err != nil {
-		panic(err)
-	}
-	return restored
 }
 
 // EndingFor returns a representative ending for outcome, for fixtures that
@@ -134,7 +180,7 @@ func Usage(total accounting.Totals, byModel map[string]accounting.Totals) *accou
 
 // ChildLineage builds a child Run's lineage; an invalid edge set is a broken
 // fixture, so it panics.
-func ChildLineage(spawnedByItemID, parentRunID, rootRunID string) run.Lineage {
+func ChildLineage(spawnedByItemID identity.ItemID, parentRunID, rootRunID identity.RunID) run.Lineage {
 	lineage, err := run.NewLineage(spawnedByItemID, parentRunID, rootRunID)
 	if err != nil {
 		panic(err)

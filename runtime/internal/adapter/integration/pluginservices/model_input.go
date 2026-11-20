@@ -53,40 +53,12 @@ func (o *CallComposition) PrepareInput(ctx context.Context, bindings []plugins.C
 	}
 	current := request.Clone()
 	for _, binding := range bindings {
-		calling, err := enterContributionPhase(ctx, binding)
+		input := pluginsdk.ModelInputRequest{Selection: pluginsdk.ModelSelection{Provider: selection.Provider(), Model: selection.Model(), ReasoningEffort: selection.ReasoningEffort()}, Request: *current.Clone()}
+		projected, err := callContribution(ctx, o.calls.pool, binding, contract, method, input)
 		if err != nil {
 			return nil, err
 		}
-		borrowed, err := borrowContribution(calling, o.calls.pool, binding)
-		if err != nil {
-			return nil, err
-		}
-		defer borrowed.Close()
-		calling = borrowed.Context()
-		session := borrowed.Session()
-		if _, err := o.calls.pool.SessionActor(calling, binding.ServerID, session); err != nil {
-			return nil, err
-		}
-		exported, err := pluginmcp.ResolveCapability(calling, session, binding.Export, contract)
-		if err != nil {
-			return nil, err
-		}
-		operation, err := method.Bind(exported)
-		if err != nil {
-			return nil, err
-		}
-		metadata, release, err := o.calls.pool.OpenRPC(calling, binding.ServerID, session)
-		if err != nil {
-			return nil, err
-		}
-		result, err := func() (chat.Request, error) {
-			defer release()
-			result, err := operation.CallWithMetadata(calling, pluginsdk.ModelInputRequest{Selection: pluginsdk.ModelSelection{Provider: selection.Provider(), Model: selection.Model(), ReasoningEffort: selection.ReasoningEffort()}, Request: *current.Clone()}, metadata)
-			return chat.Request(result), err
-		}()
-		if err != nil {
-			return nil, err
-		}
+		result := chat.Request(projected)
 		if err := pluginsdk.ValidateModelInput(current, &result); err != nil {
 			return nil, err
 		}

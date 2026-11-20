@@ -74,7 +74,7 @@ func hooksDocument(workspacePath string, catalog workspace.HookCatalog) readerDo
 func (h *hookScreens) PrepareHookTrust(trusted bool) error {
 	workspacePath := h.session.current.Workspace.Path
 	h.status.note("loading project hook trust")
-	if !h.tasks.session(hookOperation, false,
+	if !h.tasks.session(hookOperation,
 		func(ctx context.Context) (workspace.HookCatalog, error) { return h.service.Catalog(ctx, workspacePath) },
 		func(catalog workspace.HookCatalog, err error) {
 			if err != nil {
@@ -108,7 +108,7 @@ func (h *hookScreens) PrepareHookTrust(trusted bool) error {
 func (h *hookScreens) setHookTrust(workspacePath, projectRoot string, trusted bool) {
 	presentation := h.session.context
 	h.status.note("updating project hook trust")
-	if !h.tasks.admissionMutation(hookOperation, false,
+	if !h.tasks.admissionMutation(hookOperation,
 		func(ctx context.Context) (workspace.HookCatalog, error) {
 			if err := h.service.SetProjectTrust(ctx, projectRoot, trusted); err != nil {
 				return workspace.HookCatalog{}, err

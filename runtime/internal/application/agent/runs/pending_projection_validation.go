@@ -3,12 +3,14 @@ package runs
 import (
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-func indexPendingItems(items []transcript.Item) map[string]transcript.Item {
-	indexed := make(map[string]transcript.Item, len(items))
+func indexPendingItems(items []transcript.Item) map[identity.ItemID]transcript.Item {
+	indexed := make(map[identity.ItemID]transcript.Item, len(items))
 	for _, item := range items {
 		indexed[item.ID()] = item
 	}
@@ -16,11 +18,11 @@ func indexPendingItems(items []transcript.Item) map[string]transcript.Item {
 }
 
 func validatePendingRunningItems(
-	rootRunID string,
-	activeRuns map[string]run.Run,
+	rootRunID identity.RunID,
+	activeRuns map[identity.RunID]run.Run,
 	items []transcript.Item,
-	interruptItems map[string]struct{},
-	drainedItems map[string]struct{},
+	interruptItems map[identity.ItemID]struct{},
+	drainedItems map[identity.ItemID]struct{},
 ) error {
 	for _, item := range items {
 		if _, active := activeRuns[item.RunID()]; !active || item.Status() != transcript.ItemRunning {
@@ -41,10 +43,10 @@ func validatePendingRunningItems(
 }
 
 func validatePendingContinuationTools(
-	rootRunID string,
+	rootRunID identity.RunID,
 	continuation Continuation,
-	itemsByID map[string]transcript.Item,
-	claimedItems map[string]string,
+	itemsByID map[identity.ItemID]transcript.Item,
+	claimedItems map[identity.ItemID]string,
 ) error {
 	for _, drained := range continuation.DrainedTools {
 		if err := claimPendingItem(rootRunID, continuation.RunID, drained.ItemID, "drained tool", claimedItems); err != nil {
@@ -58,11 +60,11 @@ func validatePendingContinuationTools(
 }
 
 func claimPendingItem(
-	rootRunID string,
-	runID string,
-	itemID string,
+	rootRunID identity.RunID,
+	runID identity.RunID,
+	itemID identity.ItemID,
 	role string,
-	claimedItems map[string]string,
+	claimedItems map[identity.ItemID]string,
 ) error {
 	if previous, duplicate := claimedItems[itemID]; duplicate {
 		return fmt.Errorf(

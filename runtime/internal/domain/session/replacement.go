@@ -46,12 +46,12 @@ func (r Replacement) State() Session { return r.state }
 // same-identity monotonic replacement. Each Session's own legality is settled
 // by the constructor or transition that produced it.
 func (r Replacement) Validate() error {
-	if r.state.ID() == "" {
+	if r.state.ID().IsZero() {
 		return fmt.Errorf("%w: replacement carries no Session", ErrInvalid)
 	}
 	if r.initial {
 		firstRevision := exactint.First().Value()
-		if r.expected.ID() != "" || r.expected.Revision() != 0 {
+		if !r.expected.ID().IsZero() || r.expected.Revision() != 0 {
 			return fmt.Errorf("%w: initial replacement has an expected Session", ErrInvalid)
 		}
 		if r.state.Revision() != firstRevision {

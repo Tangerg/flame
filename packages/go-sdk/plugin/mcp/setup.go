@@ -165,79 +165,95 @@ func (b *Backend) registerSetup() error {
 	if err := b.registerActivation(); err != nil {
 		return err
 	}
-	return sdk.AddReceivingCustomMethod(b.server, SetupMethod, func(ctx context.Context, session *sdk.ServerSession, params *setupParams) (*methodResult[bool], error) {
-		var err error
-		if err := validateSetup(params.Contributions); err != nil {
-			return nil, err
+	return sdk.AddReceivingCustomMethod(b.server, SetupMethod, b.setUp)
+}
+
+func (b *Backend) setUp(ctx context.Context, session *sdk.ServerSession, params *setupParams) (*methodResult[bool], error) {
+	if err := validateSetup(params.Contributions); err != nil {
+		return nil, err
+	}
+	ctx, err := bindCallbackMetadata(ctx, params.Meta)
+	if err != nil {
+		return nil, err
+	}
+	activation, handler, err := b.claimActivation(ctx, session, params.Contributions)
+	if err != nil {
+		return nil, err
+	}
+	stop := context.AfterFunc(ctx, activation.cancel)
+	err = activation.setUp(handler, params.Contributions)
+	stop()
+	if err == nil {
+		err = ctx.Err()
+	}
+	if err != nil {
+		return nil, errors.Join(err, activation.close())
+	}
+	return reply(true, nil, nil)
+}
+
+// claimActivation gives a session its single activation, retired when the
+// session ends.
+func (b *Backend) claimActivation(ctx context.Context, session *sdk.ServerSession, contributions []SetupContribution) (*setupActivation, func(context.Context, Setup) (io.Closer, error), error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if err := b.admitSetupLocked(session, contributions); err != nil {
+		return nil, nil, err
+	}
+	lifetime, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	activation := &setupActivation{lifetime: lifetime, cancel: cancel, ready: make(chan struct{}), done: make(chan struct{})}
+	activation.start = sync.OnceValue(func() error {
+		if resource, ok := activation.resource.(ActivationResource); ok {
+			return startActivation(resource)
 		}
-		ctx, err = bindCallbackMetadata(ctx, params.Meta)
-		if err != nil {
-			return nil, err
-		}
-		b.mu.Lock()
-		if b.phase != backendPublished {
-			b.mu.Unlock()
-			return nil, errors.New("plugin: backend setup is unavailable")
-		}
-		if b.activations[session] != nil {
-			b.mu.Unlock()
-			return nil, errors.New("plugin: backend session is already set up")
-		}
-		for _, value := range params.Contributions {
-			if b.capabilities[value.Export] == nil {
-				b.mu.Unlock()
-				return nil, errors.New("plugin: setup contribution export is not registered")
-			}
-			if (len(value.Requires) > 0 || value.Background != nil) && b.setup == nil {
-				b.mu.Unlock()
-				return nil, errors.New("plugin: declared dependencies or background role require a setup handler")
-			}
-		}
-		lifetime, cancel := context.WithCancel(context.WithoutCancel(ctx))
-		activation := &setupActivation{lifetime: lifetime, cancel: cancel, ready: make(chan struct{}), done: make(chan struct{})}
-		activation.start = sync.OnceValue(func() error {
-			if resource, ok := activation.resource.(ActivationResource); ok {
-				return startActivation(resource)
-			}
-			return nil
-		})
-		b.activations[session] = activation
-		b.setupJoins.Add(1)
-		handler := b.setup
-		b.mu.Unlock()
-		go func() {
-			defer b.setupJoins.Done()
-			_ = session.Wait()
-			closeErr := activation.close()
-			b.mu.Lock()
-			b.closeErr = errors.Join(b.closeErr, closeErr)
-			delete(b.activations, session)
-			b.mu.Unlock()
-		}()
-		stop := context.AfterFunc(ctx, cancel)
-		if handler != nil {
-			activation.resource, err = invokeSetup(handler, lifetime, Setup{contributions: params.Contributions})
-		}
-		if err == nil {
-			for _, value := range params.Contributions {
-				if value.Background != nil {
-					if _, ok := activation.resource.(ActivationResource); !ok {
-						err = errors.New("plugin: background setup requires an activation resource")
-					}
-				}
-			}
-		}
-		activation.setupErr = err
-		close(activation.ready)
-		stop()
-		if err == nil {
-			err = ctx.Err()
-		}
-		if err != nil {
-			return nil, errors.Join(err, activation.close())
-		}
-		return reply(true, nil, nil)
+		return nil
 	})
+	b.activations[session] = activation
+	b.setupJoins.Add(1)
+	go func() {
+		defer b.setupJoins.Done()
+		_ = session.Wait()
+		closeErr := activation.close()
+		b.mu.Lock()
+		b.closeErr = errors.Join(b.closeErr, closeErr)
+		delete(b.activations, session)
+		b.mu.Unlock()
+	}()
+	return activation, b.setup, nil
+}
+
+func (b *Backend) admitSetupLocked(session *sdk.ServerSession, contributions []SetupContribution) error {
+	if b.phase != backendPublished {
+		return errors.New("plugin: backend setup is unavailable")
+	}
+	if b.activations[session] != nil {
+		return errors.New("plugin: backend session is already set up")
+	}
+	for _, value := range contributions {
+		if b.capabilities[value.Export] == nil {
+			return errors.New("plugin: setup contribution export is not registered")
+		}
+		if (len(value.Requires) > 0 || value.Background != nil) && b.setup == nil {
+			return errors.New("plugin: declared dependencies or background role require a setup handler")
+		}
+	}
+	return nil
+}
+
+// setUp runs the plugin's setup handler once and releases every waiter on the
+// outcome, successful or not.
+func (a *setupActivation) setUp(handler func(context.Context, Setup) (io.Closer, error), contributions []SetupContribution) error {
+	var err error
+	if handler != nil {
+		a.resource, err = invokeSetup(handler, a.lifetime, Setup{contributions: contributions})
+	}
+	background := slices.ContainsFunc(contributions, func(value SetupContribution) bool { return value.Background != nil })
+	if _, ok := a.resource.(ActivationResource); err == nil && background && !ok {
+		err = errors.New("plugin: background setup requires an activation resource")
+	}
+	a.setupErr = err
+	close(a.ready)
+	return err
 }
 
 func invokeSetup(handler func(context.Context, Setup) (io.Closer, error), ctx context.Context, setup Setup) (resource io.Closer, err error) {

@@ -243,7 +243,7 @@ func newLiveSearch(stack *workspaceScene, theme kit.Theme, glyphs kit.Glyphs, ta
 
 	dressed := kit.NewForm(form)
 	p.dialog = newPresentationDialog(stack, kit.DialogConfig{Theme: theme, Glyphs: glyphs, Title: "Search", Body: formNavigation(dressed.Element(), func() { p.dialog.Dismiss() }),
-		Where: layout.Placement{Width: 68, Height: 7},
+		Where: layout.Placement{Width: compactDialogWidth, Height: 7},
 	})
 	return p
 }
@@ -269,7 +269,7 @@ func (p *liveSearch) step(delta int) {
 func (p *liveSearch) listen() {
 	results := p.transcript().SearchResults()
 	operations := p.tasks.operations
-	operations.Go(searchOperation, true, func(ctx context.Context, lease operationLease) {
+	operations.Go(searchOperation, func(ctx context.Context, lease operationLease) {
 		for {
 			select {
 			case result, ok := <-results:

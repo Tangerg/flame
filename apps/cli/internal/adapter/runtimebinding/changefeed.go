@@ -19,26 +19,36 @@ func (r *Connection) Supports(topic protocol.RuntimeTopic) bool {
 	return r.profile.supportsRuntimeTopic(topic)
 }
 
-func (r *Connection) Subscribe(ctx context.Context, subscription changefeed.Subscription) (changefeed.EventStream, error) {
-	if err := subscription.Validate(); err != nil {
-		return nil, err
-	}
+// admitSubscription refuses what this Runtime did not advertise: file watches
+// without the feature, more topics or watches than its limits, or an unknown
+// topic.
+func (r *Connection) admitSubscription(subscription changefeed.Subscription) error {
 	if len(subscription.Watches) != 0 {
 		if err := r.requireFeature(protocol.FeatureFileWatch); err != nil {
-			return nil, err
+			return err
 		}
 	}
 	limits := r.profile.discovery.Capabilities.Limits.RuntimeSubscription
 	if limits.MaxTopics > 0 && len(subscription.Topics) > limits.MaxTopics {
-		return nil, fmt.Errorf("runtime change subscription has %d topics; maximum is %d", len(subscription.Topics), limits.MaxTopics)
+		return fmt.Errorf("runtime change subscription has %d topics; maximum is %d", len(subscription.Topics), limits.MaxTopics)
 	}
 	if limits.MaxWatches > 0 && len(subscription.Watches) > limits.MaxWatches {
-		return nil, fmt.Errorf("runtime change subscription has %d watches; maximum is %d", len(subscription.Watches), limits.MaxWatches)
+		return fmt.Errorf("runtime change subscription has %d watches; maximum is %d", len(subscription.Watches), limits.MaxWatches)
 	}
 	for _, topic := range subscription.Topics {
 		if !r.Supports(topic) {
-			return nil, errors.New("runtime does not support change topic " + string(topic))
+			return errors.New("runtime does not support change topic " + string(topic))
 		}
+	}
+	return nil
+}
+
+func (r *Connection) Subscribe(ctx context.Context, subscription changefeed.Subscription) (changefeed.EventStream, error) {
+	if err := subscription.Validate(); err != nil {
+		return nil, err
+	}
+	if err := r.admitSubscription(subscription); err != nil {
+		return nil, err
 	}
 	// Event validation retains this declaration after Subscribe returns.
 	// The wire call borrows the same owned topics while registering the stream.

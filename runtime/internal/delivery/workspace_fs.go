@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
@@ -11,7 +12,7 @@ import (
 // ListWorkspaceFiles projects a paged application workspace-file listing onto
 // the wire contract.
 func (s *Handler) ListWorkspaceFiles(ctx context.Context, in protocol.ListFilesRequest) (*protocol.FileListPage, error) {
-	limit, err := requestedPageLimit(in.Limit)
+	limit, err := pagination.ParseLimit(in.Limit)
 	if err != nil {
 		return nil, wireWorkspaceError(wirePageError(err))
 	}

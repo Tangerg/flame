@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 
@@ -13,7 +15,7 @@ import (
 )
 
 type RunEvidence interface {
-	PendingGoalRun(context.Context, string) (goal.RunReceipt, bool, error)
+	PendingGoalRun(context.Context, identity.SessionID) (goal.RunReceipt, bool, error)
 	SettleGoalRun(context.Context, goal.RunReceipt, *goal.Replacement) error
 }
 
@@ -32,7 +34,7 @@ func NewRunSettler(evidence RunEvidence, publish invalidation.Publish) (*RunSett
 
 // Drain never holds the Run's terminal transaction across a plugin call. A
 // restart repeats an unacknowledged decision against the same immutable Run.
-func (r *RunSettler) Drain(ctx context.Context, store Store, workflow Workflow, sessionID string) error {
+func (r *RunSettler) Drain(ctx context.Context, store Store, workflow Workflow, sessionID identity.SessionID) error {
 	for {
 		if err := ctx.Err(); err != nil {
 			return err

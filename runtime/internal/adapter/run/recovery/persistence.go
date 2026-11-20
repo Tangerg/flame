@@ -6,6 +6,7 @@ package recovery
 import (
 	"context"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -23,23 +24,23 @@ type runStore interface {
 }
 
 type sessionStore interface {
-	Get(ctx context.Context, sessionID string) (session.Session, error)
+	Get(ctx context.Context, sessionID identity.SessionID) (session.Session, error)
 }
 
 type interruptStore interface {
-	List(ctx context.Context, sessionID string) ([]runs.Pending, error)
-	Delete(ctx context.Context, rootRunID string) error
+	ListOpen(ctx context.Context) ([]runs.Pending, error)
+	Delete(ctx context.Context, rootRunID identity.RunID) error
 }
 
 type transcriptStore interface {
-	List(ctx context.Context, sessionID string) ([]transcript.Item, error)
+	List(ctx context.Context, sessionID identity.SessionID) ([]transcript.Item, error)
 	ReplaceItem(ctx context.Context, replacement transcript.Replacement) error
 }
 
 type conversationStore interface {
-	Read(ctx context.Context, sessionID string) ([]corechat.Message, error)
-	Write(ctx context.Context, sessionID string, messages ...corechat.Message) error
-	Count(ctx context.Context, sessionID string) (int, error)
+	Read(ctx context.Context, sessionID identity.SessionID) ([]corechat.Message, error)
+	Write(ctx context.Context, sessionID identity.SessionID, messages ...corechat.Message) error
+	Count(ctx context.Context, sessionID identity.SessionID) (int, error)
 }
 
 type goalRunRecorder interface {
@@ -48,7 +49,7 @@ type goalRunRecorder interface {
 
 type executorCheckpointStore interface {
 	LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error)
-	DeleteSessionCheckpoints(ctx context.Context, sessionID string) error
+	DeleteSessionCheckpoints(ctx context.Context, sessionID identity.SessionID) error
 }
 
 type modelInvocationStore interface {
@@ -60,7 +61,7 @@ type modelInvocationStore interface {
 
 type toolInvocationStore interface {
 	ListOpenToolInvocations(context.Context) ([]runs.OpenToolInvocation, error)
-	RecordToolInvocation(ctx context.Context, sessionID, runID string, invocation runs.ToolInvocationCommit) error
+	RecordToolInvocation(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, invocation runs.ToolInvocationCommit) error
 }
 
 // childRunStartReservations owns the process-scoped callback ledger behind
@@ -68,7 +69,7 @@ type toolInvocationStore interface {
 // process, so reconciliation retires the claimed Session's abandoned ledger in
 // the same transaction as the public Run repair.
 type childRunStartReservations interface {
-	DeleteSession(ctx context.Context, sessionID string) error
+	DeleteSession(ctx context.Context, sessionID identity.SessionID) error
 }
 
 type Transactor func(ctx context.Context, fn func(context.Context) error) error
@@ -134,7 +135,7 @@ func New(config Config) (*Persistence, error) {
 	}, nil
 }
 
-func (p *Persistence) SessionByID(ctx context.Context, sessionID string) (session.Session, error) {
+func (p *Persistence) SessionByID(ctx context.Context, sessionID identity.SessionID) (session.Session, error) {
 	return p.sessions.Get(ctx, sessionID)
 }
 
@@ -143,7 +144,7 @@ func (p *Persistence) ListNonTerminalRuns(ctx context.Context) ([]run.Run, error
 }
 
 func (p *Persistence) ListPendingInterrupts(ctx context.Context) ([]runs.Pending, error) {
-	return p.interrupts.List(ctx, "")
+	return p.interrupts.ListOpen(ctx)
 }
 
 func (p *Persistence) ListIndependentEndpoints(ctx context.Context) ([]modelref.EndpointObservation, error) {
@@ -158,15 +159,15 @@ func (p *Persistence) ListOpenToolInvocations(ctx context.Context) ([]runs.OpenT
 	return p.toolInvocations.ListOpenToolInvocations(ctx)
 }
 
-func (p *Persistence) ListTranscript(ctx context.Context, sessionID string) ([]transcript.Item, error) {
+func (p *Persistence) ListTranscript(ctx context.Context, sessionID identity.SessionID) ([]transcript.Item, error) {
 	return p.transcript.List(ctx, sessionID)
 }
 
-func (p *Persistence) UnpublishedToolResults(ctx context.Context, sessionID, runID string) ([]corechat.ToolResult, error) {
+func (p *Persistence) UnpublishedToolResults(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) ([]corechat.ToolResult, error) {
 	return p.runs.UnpublishedToolResults(ctx, sessionID, runID)
 }
 
-func (p *Persistence) ReadMessages(ctx context.Context, sessionID string) ([]corechat.Message, error) {
+func (p *Persistence) ReadMessages(ctx context.Context, sessionID identity.SessionID) ([]corechat.Message, error) {
 	return p.messages.Read(ctx, sessionID)
 }
 

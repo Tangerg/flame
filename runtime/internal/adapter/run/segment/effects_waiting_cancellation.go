@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 
@@ -134,9 +136,9 @@ func (e *Effects) persistWaitingCancellationProjection(
 func (e *Effects) terminalizeWaitingCancellationRuns(
 	ctx context.Context,
 	planned []run.Replacement,
-	targetRunID, winningCancellationKey string,
-) (map[string]run.Run, error) {
-	terminalByID := make(map[string]run.Run, len(planned))
+	targetRunID identity.RunID, winningCancellationKey string,
+) (map[identity.RunID]run.Run, error) {
+	terminalByID := make(map[identity.RunID]run.Run, len(planned))
 	for _, replacement := range planned {
 		runID := replacement.State().ID()
 		finalReplacement := replacement
@@ -216,16 +218,16 @@ func (e *Effects) persistWaitingCancellationDisposition(
 	return nil
 }
 
-func waitingCancellationRootSegmentID(commit runs.WaitingSubtreeCancellationCommit) (string, error) {
+func waitingCancellationRootSegmentID(commit runs.WaitingSubtreeCancellationCommit) (identity.SegmentID, error) {
 	if _, stillWaiting := commit.RemainingPending(); stillWaiting {
-		return "", nil
+		return identity.SegmentID{}, nil
 	}
 	resume, resuming := commit.Resume()
 	if !resuming {
-		return "", errors.New("segment: waiting cancellation has no surviving disposition")
+		return identity.SegmentID{}, errors.New("segment: waiting cancellation has no surviving disposition")
 	}
 	if resume.RootRunID() != commit.RootRunID() {
-		return "", errors.New("segment: waiting cancellation resume has no root Run")
+		return identity.SegmentID{}, errors.New("segment: waiting cancellation resume has no root Run")
 	}
 	return resume.Runs[len(resume.Runs)-1].State().ActiveSegmentID(), nil
 }

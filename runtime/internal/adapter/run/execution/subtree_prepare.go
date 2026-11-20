@@ -54,7 +54,7 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 	expectedCheckpoint runs.ExecutorCheckpoint,
 	memberID string,
 	reason string,
-) (runs.PreparedWaitingSubtreeCancellation, error) {
+) (_ runs.PreparedWaitingSubtreeCancellation, err error) {
 	if ctx == nil {
 		return runs.PreparedWaitingSubtreeCancellation{}, errors.New(
 			"execution: waiting subtree preparation context is required",
@@ -72,42 +72,22 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 			err,
 		)
 	}
-	i.state.mu.Lock()
-	if i.state.phase == interactionFinished || i.state.process == nil {
-		i.state.mu.Unlock()
-		return runs.PreparedWaitingSubtreeCancellation{}, runs.ErrExecutorNotLive
+	rootID, preparedSignal, err := i.claimSubtreePreparation(expectedCheckpoint, targetID)
+	if err != nil {
+		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
-	switch {
-	case i.state.boundary != interactionBoundaryWaiting:
-		i.state.mu.Unlock()
-		return runs.PreparedWaitingSubtreeCancellation{}, fmt.Errorf(
-			"%w: Interaction tree is crossing another execution boundary",
-			runs.ErrExecutionClaimed,
-		)
-	case i.state.observer != nil:
-		i.state.mu.Unlock()
-		return runs.PreparedWaitingSubtreeCancellation{}, fmt.Errorf(
-			"%w: Interaction tree has an active observer",
-			runs.ErrExecutionClaimed,
-		)
-	}
-	if !executorCheckpointsEqual(i.state.waitingCheckpoint, expectedCheckpoint) {
-		i.state.mu.Unlock()
-		return runs.PreparedWaitingSubtreeCancellation{}, fmt.Errorf(
-			"%w: live Interaction checkpoint differs from the waiting subtree request",
-			runs.ErrInvalidExecutorCheckpoint,
-		)
-	}
-	rootID := i.state.process.ID().Root()
-	managed := i.state.delegateChildren[targetID]
-	if managed == nil {
-		i.state.mu.Unlock()
-		return runs.PreparedWaitingSubtreeCancellation{}, errors.New("execution: waiting subtree target has no delegate binding")
-	}
-	preparedSignal := make(chan struct{})
-	i.state.boundary = interactionBoundarySubtreePreparing
-	i.state.subtreePrepared = preparedSignal
-	i.state.mu.Unlock()
+	defer func() {
+		if err == nil {
+			return
+		}
+		// Every failure gives the waiting cut back. Discard is detached because
+		// the request may already be canceled, and bounded because its only way
+		// out of an in-flight preparation is its context.
+		i.failSubtreePreparation(preparedSignal)
+		discardCtx, cancelDiscard := context.WithTimeout(context.WithoutCancel(ctx), executionCleanupTimeout)
+		_ = i.discardPreparedSubtree(discardCtx)
+		cancelDiscard()
+	}()
 
 	// A requested cancellation is committed the moment it is submitted and drains
 	// from there, so the executor cannot hold a tree that has already been asked
@@ -115,26 +95,10 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 	// already parked on, which nothing can advance while its input stays
 	// unanswered, and leaves the submission itself to Apply.
 	if _, found := i.engine.Process(targetID); !found {
-		i.failSubtreePreparation(preparedSignal)
 		return runs.PreparedWaitingSubtreeCancellation{}, errors.New("execution: waiting subtree target is unavailable")
 	}
-	discard := true
-	defer func() {
-		if discard {
-			// Detached because the request may already be canceled, and bounded
-			// because discardPreparedSubtree's only way out of an in-flight
-			// preparation is its context: hand it one that cannot end and the
-			// rollback waits forever instead of giving the cut back.
-			discardCtx, cancelDiscard := context.WithTimeout(
-				context.WithoutCancel(ctx), executionCleanupTimeout,
-			)
-			_ = i.discardPreparedSubtree(discardCtx)
-			cancelDiscard()
-		}
-	}()
 	stagedTree, err := i.stagedTree()
 	if err != nil {
-		i.failSubtreePreparation(preparedSignal)
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
 	canceled, err := i.canceledSubtree(stagedTree, targetID)
@@ -143,25 +107,18 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 	}
 	resultingTree, err := i.committedTree(ctx, rootID)
 	if err != nil {
-		i.failSubtreePreparation(preparedSignal)
-		return runs.PreparedWaitingSubtreeCancellation{}, fmt.Errorf(
-			"execution: capture waiting Interaction subtree: %w",
-			err,
-		)
+		return runs.PreparedWaitingSubtreeCancellation{}, fmt.Errorf("execution: capture waiting Interaction subtree: %w", err)
 	}
 	checkpoint, err := i.executorCheckpoint(resultingTree)
 	if err != nil {
-		i.failSubtreePreparation(preparedSignal)
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
 	canceledMembers, err := i.executorMemberIDs(canceled)
 	if err != nil {
-		i.failSubtreePreparation(preparedSignal)
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
 	interruptions, err := i.pendingInterruptions(resultingTree)
 	if err != nil {
-		i.failSubtreePreparation(preparedSignal)
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
 	// The cut still shows the target's own input wait, because the accepted
@@ -176,25 +133,44 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 		targetID: targetID, reason: reason,
 		canceled: slices.Clone(canceled),
 	}
-	prepared, err := runs.NewPreparedWaitingSubtreeCancellation(
-		canceledMembers,
-		interruptions,
-		checkpoint,
-		change,
-	)
+	prepared, err := runs.NewPreparedWaitingSubtreeCancellation(canceledMembers, interruptions, checkpoint, change)
 	if err != nil {
-		i.failSubtreePreparation(preparedSignal)
-		return runs.PreparedWaitingSubtreeCancellation{}, fmt.Errorf(
-			"execution: build prepared waiting subtree cancellation: %w",
-			err,
-		)
+		return runs.PreparedWaitingSubtreeCancellation{}, fmt.Errorf("execution: build prepared waiting subtree cancellation: %w", err)
 	}
 	if err := i.completeSubtreePreparation(preparedSignal, change); err != nil {
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
 	change.armExpiration(ctx)
-	discard = false
 	return prepared, nil
+}
+
+// claimSubtreePreparation moves the waiting tree that the request addressed
+// into preparation, so no other boundary can cross it meanwhile.
+func (i *interactionSession) claimSubtreePreparation(
+	expectedCheckpoint runs.ExecutorCheckpoint,
+	targetID scoperun.ProcessID,
+) (scoperun.ProcessID, chan struct{}, error) {
+	i.state.mu.Lock()
+	defer i.state.mu.Unlock()
+	switch {
+	case i.state.phase == interactionFinished || i.state.process == nil:
+		return scoperun.ProcessID{}, nil, runs.ErrExecutorNotLive
+	case i.state.boundary != interactionBoundaryWaiting:
+		return scoperun.ProcessID{}, nil, fmt.Errorf("%w: Interaction tree is crossing another execution boundary", runs.ErrExecutionClaimed)
+	case i.state.observer != nil:
+		return scoperun.ProcessID{}, nil, fmt.Errorf("%w: Interaction tree has an active observer", runs.ErrExecutionClaimed)
+	case !executorCheckpointsEqual(i.state.waitingCheckpoint, expectedCheckpoint):
+		return scoperun.ProcessID{}, nil, fmt.Errorf(
+			"%w: live Interaction checkpoint differs from the waiting subtree request",
+			runs.ErrInvalidExecutorCheckpoint,
+		)
+	case i.state.delegateChildren[targetID] == nil:
+		return scoperun.ProcessID{}, nil, errors.New("execution: waiting subtree target has no delegate binding")
+	}
+	preparedSignal := make(chan struct{})
+	i.state.boundary = interactionBoundarySubtreePreparing
+	i.state.subtreePrepared = preparedSignal
+	return i.state.process.ID().Root(), preparedSignal, nil
 }
 
 func (i *interactionSession) executorMemberIDs(

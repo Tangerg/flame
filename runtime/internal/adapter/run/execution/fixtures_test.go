@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
@@ -26,7 +28,7 @@ const interactionTestRunID = "run_root"
 
 func interactionTestStart() runs.RootExecutionStart {
 	return runs.RootExecutionStart{
-		SessionID: "session_1", RunID: interactionTestRunID, ModelSelection: testDefaultSelection(),
+		SessionID: testsupport.MustSessionID("session_1"), RunID: testsupport.MustRunID(interactionTestRunID), ModelSelection: testDefaultSelection(),
 		WorkingContext: []chat.Message{chat.NewUserMessage(chat.NewTextPart("current question"))},
 	}
 }
@@ -289,7 +291,7 @@ func (testInteractionToolInterpreter) ApprovalSubject(domaintool.Ref, domaintool
 
 func (testInteractionToolInterpreter) ShellCommand(domaintool.Ref, string) string { return "" }
 
-func (testInteractionToolInterpreter) ProjectOutcome(context.Context, string, domaintool.Ref, bool) (runs.ExecutionFact, error) {
+func (testInteractionToolInterpreter) ProjectOutcome(context.Context, identity.SessionID, domaintool.Ref, bool) (runs.ExecutionFact, error) {
 	return nil, nil
 }
 
@@ -310,9 +312,9 @@ func rootInteractionExecutionContinuation(
 	capabilities run.Capabilities,
 ) runs.ExecutionContinuation {
 	return runs.ExecutionContinuation{
-		SessionID: checkpoint.SessionID, ExecutorID: executorID, RootRunID: interactionTestRunID,
+		SessionID: checkpoint.SessionID, ExecutorID: executorID, RootRunID: testsupport.MustRunID(interactionTestRunID),
 		Members: []runs.ExecutionMember{{
-			RunID: interactionTestRunID, MemberID: checkpoint.RootMemberID,
+			RunID: testsupport.MustRunID(interactionTestRunID), MemberID: checkpoint.RootMemberID,
 			ModelSelection: interactionTestStart().ModelSelection,
 		}},
 		Checkpoint: checkpoint, Capabilities: capabilities, Workspace: workspace,

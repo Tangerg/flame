@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
@@ -11,8 +13,8 @@ import (
 // working-tree admission state. A file rollback's checkout must see
 // both a sibling's segment admission and its already-live run on the same cwd.
 type Admissions interface {
-	AcquireSession(ctx context.Context, sessionID string) (release func(), ok bool, err error)
-	AcquireWorkspaceRollback(ctx context.Context, sessionID string) (release func(), ok bool, err error)
+	AcquireSession(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error)
+	AcquireWorkspaceRollback(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error)
 	AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, err error)
 }
 
@@ -32,7 +34,7 @@ func (w WorkingTreeAdmission) Release() {
 // Admission is a held single-writer slot. Release is idempotent across
 // value copies.
 type Admission struct {
-	SessionID string
+	SessionID identity.SessionID
 	release   *releaseOnce
 }
 
@@ -56,7 +58,7 @@ func (r *releaseOnce) run() {
 
 // heldSessionAdmission builds a slot whose Release drops its owned
 // single-writer claim exactly once.
-func heldSessionAdmission(sessionID string, release func()) Admission {
+func heldSessionAdmission(sessionID identity.SessionID, release func()) Admission {
 	return Admission{
 		SessionID: sessionID,
 		release:   newReleaseOnce(release),
@@ -71,7 +73,7 @@ func heldWorkingTreeAdmission(release func()) WorkingTreeAdmission {
 // writer nor a parked Run. Use it for operations whose result cannot remain
 // coherent with an existing executor continuation, such as export, import, or
 // editing execution workspace policy.
-func (c *Coordinator) ClaimIdleSession(ctx context.Context, sessionID string) (Admission, error) {
+func (c *Coordinator) ClaimIdleSession(ctx context.Context, sessionID identity.SessionID) (Admission, error) {
 	release, ok, leaseErr := c.admissions.AcquireSession(ctx, sessionID)
 	if leaseErr != nil {
 		return Admission{}, leaseErr
@@ -95,7 +97,7 @@ func (c *Coordinator) ClaimIdleSession(ctx context.Context, sessionID string) (A
 // ClaimSessionMutation reserves a Session for a lifecycle write-set that
 // explicitly consumes or terminalizes any parked Run it finds. It deliberately
 // does not reject open interrupts; callers must own that disposition atomically.
-func (c *Coordinator) ClaimSessionMutation(ctx context.Context, sessionID string) (Admission, error) {
+func (c *Coordinator) ClaimSessionMutation(ctx context.Context, sessionID identity.SessionID) (Admission, error) {
 	release, ok, leaseErr := c.admissions.AcquireSession(ctx, sessionID)
 	if leaseErr != nil {
 		return Admission{}, leaseErr

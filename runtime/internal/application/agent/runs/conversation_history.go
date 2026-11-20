@@ -23,15 +23,15 @@ var errConversationSessionIDRequired = errors.New("runs: conversation session ID
 // [ErrConversationWriteUncertain]: such a write must not be retried as though it
 // had definitely been rejected.
 type conversationStore interface {
-	Read(ctx context.Context, sessionID string) ([]chat.Message, error)
-	Write(ctx context.Context, sessionID string, messages ...chat.Message) error
-	Count(ctx context.Context, sessionID string) (int, error)
-	Replace(ctx context.Context, sessionID string, messages ...chat.Message) error
+	Read(ctx context.Context, sessionID identity.SessionID) ([]chat.Message, error)
+	Write(ctx context.Context, sessionID identity.SessionID, messages ...chat.Message) error
+	Count(ctx context.Context, sessionID identity.SessionID) (int, error)
+	Replace(ctx context.Context, sessionID identity.SessionID, messages ...chat.Message) error
 	// Truncate keeps the first keepN messages and removes the rest as one
 	// durable step, so retention neither reads the history back nor needs the
 	// caller to hold a transaction for the two halves to agree.
-	Truncate(ctx context.Context, sessionID string, keepN int) error
-	Clear(ctx context.Context, sessionID string) error
+	Truncate(ctx context.Context, sessionID identity.SessionID, keepN int) error
+	Clear(ctx context.Context, sessionID identity.SessionID) error
 }
 
 // ErrConversationWriteUncertain marks an append whose durable effect is unknown.
@@ -51,7 +51,7 @@ func NewConversationHistory(store conversationStore) (*ConversationHistory, erro
 }
 
 // Read returns the validated durable conversation snapshot.
-func (m *ConversationHistory) Read(ctx context.Context, sessionID string) ([]chat.Message, error) {
+func (m *ConversationHistory) Read(ctx context.Context, sessionID identity.SessionID) ([]chat.Message, error) {
 	if err := validateConversationSessionIdentity(sessionID); err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (m *ConversationHistory) Read(ctx context.Context, sessionID string) ([]cha
 
 // Seed installs a prefix into a fresh conversation. Existing history is never
 // silently appended to or replaced by a fork/import operation.
-func (m *ConversationHistory) Seed(ctx context.Context, sessionID string, messages []chat.Message) error {
+func (m *ConversationHistory) Seed(ctx context.Context, sessionID identity.SessionID, messages []chat.Message) error {
 	if err := validateConversationSessionIdentity(sessionID); err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func (m *ConversationHistory) Seed(ctx context.Context, sessionID string, messag
 }
 
 // Append extends an existing conversation with validated model-context messages.
-func (m *ConversationHistory) Append(ctx context.Context, sessionID string, messages ...chat.Message) error {
+func (m *ConversationHistory) Append(ctx context.Context, sessionID identity.SessionID, messages ...chat.Message) error {
 	if err := validateConversationSessionIdentity(sessionID); err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func (m *ConversationHistory) Append(ctx context.Context, sessionID string, mess
 }
 
 // Count returns the durable message watermark.
-func (m *ConversationHistory) Count(ctx context.Context, sessionID string) (int, error) {
+func (m *ConversationHistory) Count(ctx context.Context, sessionID identity.SessionID) (int, error) {
 	if err := validateConversationSessionIdentity(sessionID); err != nil {
 		return 0, err
 	}
@@ -120,7 +120,7 @@ func (m *ConversationHistory) Count(ctx context.Context, sessionID string) (int,
 // tail in place: reading the history back to re-install a prefix would decode
 // and rewrite every kept message, and would lose anything appended between the
 // two halves unless a caller happened to hold a transaction around them.
-func (m *ConversationHistory) Truncate(ctx context.Context, sessionID string, keepN int) error {
+func (m *ConversationHistory) Truncate(ctx context.Context, sessionID identity.SessionID, keepN int) error {
 	if err := validateConversationSessionIdentity(sessionID); err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func (m *ConversationHistory) Truncate(ctx context.Context, sessionID string, ke
 }
 
 // Clear atomically removes every message without first decoding stored rows.
-func (m *ConversationHistory) Clear(ctx context.Context, sessionID string) error {
+func (m *ConversationHistory) Clear(ctx context.Context, sessionID identity.SessionID) error {
 	if err := validateConversationSessionIdentity(sessionID); err != nil {
 		return err
 	}
@@ -142,8 +142,8 @@ func (m *ConversationHistory) Clear(ctx context.Context, sessionID string) error
 	return nil
 }
 
-func validateConversationSessionIdentity(sessionID string) error {
-	if err := identity.ValidateSession(sessionID); err != nil {
+func validateConversationSessionIdentity(sessionID identity.SessionID) error {
+	if err := sessionID.Validate(); err != nil {
 		return fmt.Errorf("%w: %v", errConversationSessionIDRequired, err)
 	}
 	return nil

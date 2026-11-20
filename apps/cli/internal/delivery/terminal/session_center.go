@@ -163,31 +163,37 @@ func (s *sessionCenterPane) drawPreview(view grid.View) {
 }
 
 func (s *sessionCenterPane) Handle(event input.Event) bool {
-	if key, ok := event.(input.Key); ok && key.Down() && key.Mods == input.Alt {
-		s.picker.cancelPress()
-		session, selected := s.picker.Current()
-		switch key.Rune {
-		case 'l':
-			if s.HasMore() && s.loadMore != nil {
-				s.loadMore()
-			}
-			return true
-		case 'f':
-			if selected && s.toggleFavorite != nil {
-				s.toggleFavorite(session)
-			}
-			return true
-		case 'r':
-			if selected && s.rename != nil {
-				s.rename(session)
-			}
-			return true
-		case 'd':
-			if selected && s.delete != nil {
-				s.delete(session)
-			}
-			return true
-		}
+	key, ok := event.(input.Key)
+	if !ok || !key.Down() || key.Mods != input.Alt {
+		return false
 	}
-	return false
+	s.picker.cancelPress()
+	if key.Rune == 'l' {
+		if s.HasMore() && s.loadMore != nil {
+			s.loadMore()
+		}
+		return true
+	}
+	act, known := s.sessionShortcut(key.Rune)
+	if !known {
+		return false
+	}
+	if session, selected := s.picker.Current(); selected && act != nil {
+		act(session)
+	}
+	return true
+}
+
+// sessionShortcut is the Alt-key action on the selected session.
+func (s *sessionCenterPane) sessionShortcut(key rune) (func(conversation.Session), bool) {
+	switch key {
+	case 'f':
+		return s.toggleFavorite, true
+	case 'r':
+		return s.rename, true
+	case 'd':
+		return s.delete, true
+	default:
+		return nil, false
+	}
 }

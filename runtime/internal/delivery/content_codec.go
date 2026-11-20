@@ -2,9 +2,9 @@ package delivery
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"mime"
-	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -22,39 +22,53 @@ type contentDecodeError struct {
 	detail string
 }
 
+// decodeContent decodes the wire encoding of one block; the content shape
+// itself is the transcript's rule, addressed here by wire field name.
 func decodeContent(encoded encodedContent) (transcript.ContentBlock, *contentDecodeError) {
+	block := transcript.ContentBlock{Text: encoded.text}
 	switch encoded.kind {
 	case protocol.ContentBlockText:
-		if encoded.text == "" {
-			return transcript.ContentBlock{}, &contentDecodeError{field: "text", detail: "must not be empty"}
-		}
-		if encoded.mime != "" || encoded.data != "" {
-			return transcript.ContentBlock{}, &contentDecodeError{field: "type", detail: "text content cannot carry mime or data"}
-		}
-		return transcript.ContentBlock{Kind: transcript.TextContent, Text: encoded.text}, nil
+		block.Kind = transcript.TextContent
 	case protocol.ContentBlockImage:
-		if encoded.mime == "" {
-			return transcript.ContentBlock{}, &contentDecodeError{field: "mime", detail: "is required for image content"}
-		}
-		if encoded.data == "" {
-			return transcript.ContentBlock{}, &contentDecodeError{field: "data", detail: "is required for image content"}
-		}
-		if encoded.text != "" {
-			return transcript.ContentBlock{}, &contentDecodeError{field: "type", detail: "image content cannot carry text"}
-		}
+		block.Kind = transcript.ImageContent
+	default:
+		return transcript.ContentBlock{}, &contentDecodeError{field: wireContentField(transcript.ContentKindField), detail: "must be text or image"}
+	}
+	if encoded.mime != "" {
 		mediaType, _, err := mime.ParseMediaType(encoded.mime)
-		if err != nil || !strings.HasPrefix(mediaType, "image/") {
-			return transcript.ContentBlock{}, &contentDecodeError{
-				field: "mime", detail: fmt.Sprintf("must be a supported image MIME, got %q", encoded.mime),
-			}
+		if err != nil {
+			return transcript.ContentBlock{}, &contentDecodeError{field: wireContentField(transcript.ContentMediaTypeField), detail: fmt.Sprintf("must be a valid MIME type, got %q", encoded.mime)}
 		}
+		block.MediaType = mediaType
+	}
+	if encoded.data != "" {
 		data, err := base64.StdEncoding.DecodeString(encoded.data)
 		if err != nil {
-			return transcript.ContentBlock{}, &contentDecodeError{field: "data", detail: "must be valid base64"}
+			return transcript.ContentBlock{}, &contentDecodeError{field: wireContentField(transcript.ContentBytesField), detail: "must be valid base64"}
 		}
-		return transcript.ContentBlock{Kind: transcript.ImageContent, MediaType: mediaType, Bytes: data}, nil
+		block.Bytes = data
+	}
+	if err := block.Validate(); err != nil {
+		invalid, ok := errors.AsType[*transcript.ContentError](err)
+		if !ok {
+			return transcript.ContentBlock{}, &contentDecodeError{field: wireContentField(transcript.ContentKindField), detail: err.Error()}
+		}
+		return transcript.ContentBlock{}, &contentDecodeError{field: wireContentField(invalid.Field), detail: invalid.Detail}
+	}
+	return block, nil
+}
+
+// wireContentField names a content field as the protocol's ContentBlock does.
+func wireContentField(field transcript.ContentField) string {
+	switch field {
+	case transcript.ContentTextField:
+		return "text"
+	case transcript.ContentMediaTypeField:
+		return "mime"
+	case transcript.ContentBytesField:
+		return "data"
 	default:
-		return transcript.ContentBlock{}, &contentDecodeError{field: "type", detail: "must be text or image"}
+		return "type"
 	}
 }
 

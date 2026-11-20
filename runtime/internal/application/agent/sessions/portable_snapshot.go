@@ -6,6 +6,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
@@ -39,7 +41,7 @@ type PortableSnapshot struct {
 // Items do not carry their offload, so the archive links each body to the Item
 // that offloaded it from this side instead.
 type PortableToolResult struct {
-	ItemID    string
+	ItemID    identity.ItemID
 	Blob      transcript.ToolResultBlob
 	ModelOnly bool
 }
@@ -48,7 +50,7 @@ type PortableToolResult struct {
 // live aggregate details such as lineage, isolation, and revision: an
 // imported archive is always admitted as a standalone conversation.
 type PortableSession struct {
-	ID        string
+	ID        identity.SessionID
 	Title     string
 	CWD       string
 	Selection modelchoice.Selection
@@ -60,13 +62,13 @@ type PortableSession struct {
 // PortableRun is one terminal run in a portable snapshot. State is not carried
 // because every portable Run has ended.
 type PortableRun struct {
-	SessionID       string
-	ID              string
-	SpawnedByItemID string
+	SessionID       identity.SessionID
+	ID              identity.RunID
+	SpawnedByItemID identity.ItemID
 	// ParentRunID and RootRunID are the child edges. Together with
 	// SpawnedByItemID they preserve the execution tree exactly across export/import.
-	ParentRunID string
-	RootRunID   string
+	ParentRunID identity.RunID
+	RootRunID   identity.RunID
 	Selection   modelchoice.Selection
 	Ending      run.Ending
 	// UnresolvedEffects retains source execution identities as historical evidence.
@@ -86,8 +88,8 @@ type PortableRun struct {
 
 // rootID is the Run that owns this Run's capabilities: itself for a root and
 // RootRunID for a child.
-func (p PortableRun) rootID() string {
-	if p.RootRunID != "" {
+func (p PortableRun) rootID() identity.RunID {
+	if !p.RootRunID.IsZero() {
 		return p.RootRunID
 	}
 	return p.ID
@@ -138,7 +140,7 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 	}
 	// A child reads its root's capabilities, so root values are collected before
 	// any Run is rebuilt. The archive states each value exactly once.
-	capabilitySets := make(map[string]run.Capabilities, len(p.Runs))
+	capabilitySets := make(map[identity.RunID]run.Capabilities, len(p.Runs))
 	for _, portable := range p.Runs {
 		if portable.Capabilities != nil {
 			capabilitySets[portable.ID] = *portable.Capabilities
@@ -196,7 +198,7 @@ func (p PortableSession) session() (session.Session, error) {
 }
 
 func bindPortableToolResults(snapshot *Snapshot, results []PortableToolResult) error {
-	items := make(map[string]int, len(snapshot.Items))
+	items := make(map[identity.ItemID]int, len(snapshot.Items))
 	for index, item := range snapshot.Items {
 		if _, duplicate := items[item.ID()]; duplicate {
 			return fmt.Errorf("sessions: portable snapshot contains duplicate item %q", item.ID())

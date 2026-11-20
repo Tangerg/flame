@@ -189,11 +189,8 @@ func (g *gitWatch) run() {
 			g.fail(errors.New("git observation stopped after a defect"))
 		}
 	}()
-	timer := time.NewTimer(gitWatchDebounce)
-	defer timer.Stop()
-	timer.Stop()
-	armed := false
-	failures := 0
+	debounce := newGitWatchDebouncer()
+	defer debounce.timer.Stop()
 	for {
 		select {
 		case <-g.done:
@@ -203,10 +200,7 @@ func (g *gitWatch) run() {
 				g.fail(errors.New("git observation channel closed"))
 				return
 			}
-			if !armed {
-				timer.Reset(gitWatchDebounce)
-				armed = true
-			}
+			debounce.arm()
 		case err, ok := <-g.fsw.Errors:
 			if !ok {
 				g.fail(errors.New("git observation channel closed"))
@@ -214,31 +208,68 @@ func (g *gitWatch) run() {
 			}
 			slog.ErrorContext(g.lifetime, "workspace: git watcher notification failed", "error", err)
 			// An overflow can lose the event that would have armed a resync.
-			if !armed {
-				timer.Reset(gitWatchDebounce)
-				armed = true
-			}
-		case <-timer.C:
-			armed = false
-			changed, err := g.semanticStateChanged()
-			err = errors.Join(err, g.reconcileDirectories())
-			if err != nil && g.lifetime.Err() == nil {
-				slog.ErrorContext(g.lifetime, "workspace: read watched git state failed", "error", err)
-				failures++
-				if failures >= 5 {
-					g.fail(fmt.Errorf("git observation failed after retries: %w", err))
-					return
-				}
-				timer.Reset(gitWatchDebounce << failures)
-				armed = true
-			} else {
-				failures = 0
-			}
-			if len(changed) > 0 && g.notify != nil {
-				g.notify(changed)
+			debounce.arm()
+		case <-debounce.timer.C:
+			debounce.armed = false
+			if !g.readState(debounce) {
+				return
 			}
 		}
 	}
+}
+
+// readState publishes what changed since the last read. A failed read backs
+// off and retries; it reports false once observation has given up.
+func (g *gitWatch) readState(debounce *gitWatchDebouncer) bool {
+	changed, err := g.semanticStateChanged()
+	err = errors.Join(err, g.reconcileDirectories())
+	if err != nil && g.lifetime.Err() == nil {
+		slog.ErrorContext(g.lifetime, "workspace: read watched git state failed", "error", err)
+		if !debounce.retry() {
+			g.fail(fmt.Errorf("git observation failed after retries: %w", err))
+			return false
+		}
+	} else {
+		debounce.failures = 0
+	}
+	if len(changed) > 0 && g.notify != nil {
+		g.notify(changed)
+	}
+	return true
+}
+
+// gitWatchMaxFailures is how many consecutive failed reads end observation.
+const gitWatchMaxFailures = 5
+
+// gitWatchDebouncer coalesces bursts of git notifications into one read and
+// spaces retries of a failing read exponentially.
+type gitWatchDebouncer struct {
+	timer    *time.Timer
+	armed    bool
+	failures int
+}
+
+func newGitWatchDebouncer() *gitWatchDebouncer {
+	timer := time.NewTimer(gitWatchDebounce)
+	timer.Stop()
+	return &gitWatchDebouncer{timer: timer}
+}
+
+func (d *gitWatchDebouncer) arm() {
+	if !d.armed {
+		d.timer.Reset(gitWatchDebounce)
+		d.armed = true
+	}
+}
+
+func (d *gitWatchDebouncer) retry() bool {
+	d.failures++
+	if d.failures >= gitWatchMaxFailures {
+		return false
+	}
+	d.timer.Reset(gitWatchDebounce << d.failures)
+	d.armed = true
+	return true
 }
 
 // The backend drops registrations when directories disappear. Reconcile its

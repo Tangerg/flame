@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
@@ -60,8 +62,8 @@ func (t TreeBarrierCommit) Validate() error {
 	}
 	validator := treeBarrierValidator{
 		barrier:       t,
-		continuations: make(map[string]Continuation, len(t.pending.Continuations)),
-		seenRunIDs:    make(map[string]struct{}, len(t.runs)),
+		continuations: make(map[identity.RunID]Continuation, len(t.pending.Continuations)),
+		seenRunIDs:    make(map[identity.RunID]struct{}, len(t.runs)),
 	}
 	for _, continuation := range t.pending.Continuations {
 		validator.continuations[continuation.RunID] = continuation
@@ -85,19 +87,19 @@ func (t TreeBarrierCommit) Runs() []EventCommit { return cloneEventCommits(t.run
 func (t TreeBarrierCommit) Checkpoint() ExecutorCheckpoint { return t.checkpoint.Clone() }
 
 // SessionID is the Session of the tree's root Run, which owns it.
-func (t TreeBarrierCommit) SessionID() string {
+func (t TreeBarrierCommit) SessionID() identity.SessionID {
 	for _, commit := range t.runs {
 		if commit.RunID == t.pending.RootRunID && commit.Run != nil {
 			return commit.Run.SessionID()
 		}
 	}
-	return ""
+	return identity.SessionID{}
 }
 
 type treeBarrierValidator struct {
 	barrier       TreeBarrierCommit
-	continuations map[string]Continuation
-	seenRunIDs    map[string]struct{}
+	continuations map[identity.RunID]Continuation
+	seenRunIDs    map[identity.RunID]struct{}
 }
 
 func (t treeBarrierValidator) validateCheckpoint(rootContinuation Continuation) error {

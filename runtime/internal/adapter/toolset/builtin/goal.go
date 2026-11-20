@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -59,7 +61,7 @@ type reportArgs struct {
 
 // GoalReader is get_goal's complete consumer view.
 type GoalReader interface {
-	Current(ctx context.Context, sessionID string) (goalstate.Goal, bool, error)
+	Current(ctx context.Context, sessionID identity.SessionID) (goalstate.Goal, bool, error)
 }
 
 // GoalOutcomeReporter is report_goal_outcome's complete consumer view.
@@ -70,7 +72,7 @@ type GoalOutcomeReporter interface {
 // goalStarter is the one lifecycle operation create_goal needs. The Driver owns
 // admission waiting and loop lifetime; the tool does not reproduce either.
 type goalStarter interface {
-	Start(ctx context.Context, sessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goalstate.Goal, error)
+	Start(ctx context.Context, sessionID identity.SessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goalstate.Goal, error)
 }
 
 type creator struct{ goals goalStarter }
@@ -141,7 +143,7 @@ func NewReport(reporter GoalOutcomeReporter) (toolcontract.Tool, error) {
 
 func (c *creator) create(ctx context.Context, args createArgs) (goalResult, error) {
 	sessionID := executionctx.SessionID(ctx)
-	if sessionID == "" {
+	if sessionID.IsZero() {
 		return goalResult{Message: "No active session; a Goal must belong to a session."}, nil
 	}
 	if strings.TrimSpace(args.Objective) == "" {
@@ -174,7 +176,7 @@ func (c *creator) create(ctx context.Context, args createArgs) (goalResult, erro
 
 func (g *getter) get(ctx context.Context, _ getArgs) (goalResult, error) {
 	sessionID := executionctx.SessionID(ctx)
-	if sessionID == "" {
+	if sessionID.IsZero() {
 		return goalResult{Message: "No active session; there is no session Goal to inspect."}, nil
 	}
 	current, ok, err := g.goals.Current(ctx, sessionID)
@@ -190,7 +192,7 @@ func (g *getter) get(ctx context.Context, _ getArgs) (goalResult, error) {
 
 func (o *outcomeReporter) report(ctx context.Context, args reportArgs) (string, error) {
 	sessionID := executionctx.SessionID(ctx)
-	if sessionID == "" {
+	if sessionID.IsZero() {
 		return "No active session; cannot report a Goal outcome.", nil
 	}
 	incarnationID, goalRun := executionctx.GoalIncarnationID(ctx)
@@ -236,7 +238,7 @@ func (o *outcomeReporter) report(ctx context.Context, args reportArgs) (string, 
 func viewOf(g goalstate.Goal) goalView {
 	selection, used := g.ModelSelection(), g.Used()
 	return goalView{
-		SessionID:       g.SessionID(),
+		SessionID:       g.SessionID().String(),
 		Objective:       g.Objective(),
 		Status:          g.Status(),
 		Reason:          reasonText(g.Reason()),

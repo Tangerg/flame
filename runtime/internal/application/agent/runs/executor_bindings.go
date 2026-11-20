@@ -13,8 +13,8 @@ import (
 // address. A child binding is reserved before its durable opening commit,
 // closing the otherwise observable gap in which the Run row exists but
 // cancellation cannot address its member.
-func (r *runTreeOwner) bindExecutorMember(runID, memberID string) error {
-	if err := identity.ValidateRun(runID); err != nil {
+func (r *runTreeOwner) bindExecutorMember(runID identity.RunID, memberID string) error {
+	if err := runID.Validate(); err != nil {
 		return fmt.Errorf("runs: bind executor member: %w", err)
 	}
 	if err := ValidateMember(memberID); err != nil {
@@ -51,7 +51,7 @@ func (r *runTreeOwner) bindExecutorMember(runID, memberID string) error {
 // unbindExecutorMember rolls back a pre-commit child reservation. It removes
 // only the exact binding this opening installed, so it cannot erase a later
 // owner after a conflict.
-func (r *runTreeOwner) unbindExecutorMember(runID, memberID string) {
+func (r *runTreeOwner) unbindExecutorMember(runID identity.RunID, memberID string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if existing, bound := r.executorMembers[runID]; bound && existing == memberID {
@@ -59,10 +59,10 @@ func (r *runTreeOwner) unbindExecutorMember(runID, memberID string) {
 	}
 }
 
-func (r *runTreeOwner) executorMemberSnapshot() map[string]string {
+func (r *runTreeOwner) executorMemberSnapshot() map[identity.RunID]string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	members := make(map[string]string, len(r.executorMembers))
+	members := make(map[identity.RunID]string, len(r.executorMembers))
 	maps.Copy(members, r.executorMembers)
 	return members
 }

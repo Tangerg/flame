@@ -7,6 +7,8 @@ import (
 	"iter"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -28,6 +30,10 @@ import (
 // approval, after which the run suspends and the client answers via
 // runs.resume.
 func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return nil, nil, parseErr
+	}
 	options := generationOptionsFromWire(in.Params)
 	selection, err := modelchoice.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
@@ -45,7 +51,7 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 		return nil, nil, err
 	}
 	command := runs.StartCommand{
-		SessionID:      in.SessionID,
+		SessionID:      sessionID,
 		ModelSelection: selection,
 		Options:        options,
 		Capabilities:   capabilities,
@@ -53,7 +59,15 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 		Acceptance:     runCommandIdentity(ctx),
 	}
 	if in.NewSession != nil {
-		command.NewSession = &runs.SessionOpening{SessionID: in.NewSession.SessionID, RunID: in.NewSession.RunID, Title: in.NewSession.Title, CWD: s.sessionWorkspacePath(in.NewSession.Workspace)}
+		runID, err := wireIdentity("newSession.runId", in.NewSession.RunID, identity.ParseRun)
+		if err != nil {
+			return nil, nil, err
+		}
+		sessionID, err := wireIdentity("newSession.sessionId", in.NewSession.SessionID, identity.ParseSession)
+		if err != nil {
+			return nil, nil, err
+		}
+		command.NewSession = &runs.SessionOpening{SessionID: sessionID, RunID: runID, Title: in.NewSession.Title, CWD: s.sessionWorkspacePath(in.NewSession.Workspace)}
 	}
 	if actor, present := operation.ActorFrom(ctx); present {
 		command.Actor = &actor
@@ -64,11 +78,11 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 	}
 	if result.Reopened() {
 		events, err := s.acceptedRunEvents(ctx, result)
-		return &protocol.StartRunResponse{RunID: result.RunID, SegmentID: result.SegmentID, UserItemID: result.UserItemID}, events, err
+		return &protocol.StartRunResponse{RunID: result.RunID.String(), SegmentID: result.SegmentID.String(), UserItemID: result.UserItemID.String()}, events, err
 	}
 	// Return the opening userMessage Item id so the client reconciles its
 	// optimistic bubble by exact id (same id the stream + items.list carry).
-	return &protocol.StartRunResponse{RunID: result.RunID, SegmentID: result.SegmentID, UserItemID: result.UserItemID}, mapRunEvents(result.Events), nil
+	return &protocol.StartRunResponse{RunID: result.RunID.String(), SegmentID: result.SegmentID.String(), UserItemID: result.UserItemID.String()}, mapRunEvents(result.Events), nil
 }
 
 func runCommandIdentity(ctx context.Context) *runs.CommandIdentity {
@@ -88,7 +102,7 @@ func (s *Handler) acceptedRunEvents(ctx context.Context, accepted runs.StartResu
 	if accepted.Opening == runs.OpeningRetired {
 		return emptyRunEventStream, nil
 	}
-	_, events, err := s.SubscribeRun(ctx, protocol.SubscribeRunRequest{RunID: accepted.RunID, SegmentID: accepted.SegmentID})
+	_, events, err := s.SubscribeRun(ctx, protocol.SubscribeRunRequest{RunID: accepted.RunID.String(), SegmentID: accepted.SegmentID.String()})
 	switch {
 	case unattachable(err):
 		return emptyRunEventStream, nil
@@ -136,7 +150,7 @@ func wireRunStartErr(err error) error {
 	// steer / resume / cancel, and the runtime cancels nothing on its own.
 	if conflict, ok := errors.AsType[*runs.ActiveRunConflictError](err); ok {
 		return &ActiveRunConflictError{ActiveRun: protocol.ActiveRunRef{
-			RunID: conflict.RunID, Status: presentRunStatus(conflict.State),
+			RunID: conflict.RunID.String(), Status: presentRunStatus(conflict.State),
 		}}
 	}
 	switch {

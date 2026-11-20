@@ -24,10 +24,11 @@ type Registry struct {
 // closure. Type erasure exists only at this private narrow waist; registrations
 // and public bindings remain fully typed.
 type Method struct {
-	Meta     MethodMeta
-	invoke   func(any, context.Context, any) rawResult
-	prepare  func(any, context.Context, any) (*Method, error)
-	classify func(any) (OperationKind, error)
+	Meta        MethodMeta
+	invoke      func(any, context.Context, any) rawResult
+	prepare     func(any, context.Context, any) (*Method, error)
+	classify    func(any) (OperationKind, error)
+	ownedReplay ownedReplay
 }
 
 type rawResult struct {
@@ -40,15 +41,33 @@ func newRegistry() *Registry {
 	return &Registry{byName: make(map[Name]*Method)}
 }
 
-func (r *Registry) add(meta MethodMeta, invoke func(any, context.Context, any) rawResult) {
+func (r *Registry) add(meta MethodMeta, invoke func(any, context.Context, any) rawResult) *Method {
 	if err := meta.Validate(); err != nil {
 		panic("operation: invalid method registration: " + err.Error())
 	}
 	if _, exists := r.byName[meta.Name]; exists {
 		panic(fmt.Sprintf("operation: method %q is registered twice", meta.Name))
 	}
-	r.byName[meta.Name] = &Method{Meta: cloneMethodMeta(meta), invoke: invoke}
+	method := &Method{Meta: cloneMethodMeta(meta), invoke: invoke}
+	r.byName[meta.Name] = method
 	r.names = append(r.names, meta.Name)
+	return method
+}
+
+// withOwnedReplay lets the command's owner settle a keyed call together with its
+// mutation. Like invocation, it names the capability it needs rather than the
+// Handler type.
+func (m *Method) withOwnedReplay[Capability, Params any](settle func(Capability, context.Context, Params, keyedCall) protocol.OperationResult) {
+	if m.Meta.Params != reflect.TypeFor[Params]() || m.Meta.Idempotency != idempotencyReplayResponse {
+		panic(fmt.Sprintf("operation: %s cannot settle its own replay for %s", m.Meta.Name, reflect.TypeFor[Params]()))
+	}
+	m.ownedReplay = func(target any, ctx context.Context, parameters any, call keyedCall) protocol.OperationResult {
+		capability, ok := target.(Capability)
+		if !ok {
+			return failed(projectError(fmt.Errorf("operation: target cannot settle %s", m.Meta.Name)))
+		}
+		return settle(capability, ctx, parameters.(Params), call)
+	}
 }
 
 func (r *Registry) lookup(name Name) (*Method, bool) {
@@ -119,14 +138,14 @@ func (r *Registry) query[Capability, Params, Response any](
 func (r *Registry) command[Capability, Params, Response any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Response, error),
-) {
+) *Method {
 	meta.Kind = kindUnary
 	meta.Operation = OperationCommand
 	if meta.Idempotency == "" {
 		meta.Idempotency = idempotencyReplayResponse
 	}
 	meta.ReplayCursor = replayCursorNone
-	r.registerUnary(meta, call)
+	return r.registerUnary(meta, call)
 }
 
 // extension resolves the consumer's admitted method before delivery chooses
@@ -219,7 +238,7 @@ func (r *Registry) registerExtension[Capability, Params any](meta MethodMeta, cl
 func (r *Registry) registerUnary[Capability, Params, Response any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Response, error),
-) {
+) *Method {
 	meta.Params = reflect.TypeFor[Params]()
 	meta.Result = reflect.TypeFor[Response]()
 	pagination, err := paginationOf(meta.Params, meta.Result)
@@ -227,7 +246,7 @@ func (r *Registry) registerUnary[Capability, Params, Response any](
 		panic(fmt.Sprintf("operation: %s has invalid pagination shapes: %v", meta.Name, err))
 	}
 	meta.Pagination = pagination
-	r.add(meta, func(target any, ctx context.Context, parameters any) rawResult {
+	return r.add(meta, func(target any, ctx context.Context, parameters any) rawResult {
 		typed, ok := parameters.(Params)
 		if !ok {
 			return rawResult{err: fmt.Errorf("operation: %s received parameters of type %T, want %s", meta.Name, parameters, meta.Params)}
@@ -245,7 +264,7 @@ func (r *Registry) registerUnary[Capability, Params, Response any](
 func (r *Registry) commandAck[Capability, Params any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) error,
-) {
+) *Method {
 	meta.Kind = kindUnary
 	meta.Operation = OperationCommand
 	if meta.Idempotency == "" {
@@ -254,7 +273,7 @@ func (r *Registry) commandAck[Capability, Params any](
 	meta.ReplayCursor = replayCursorNone
 	meta.Pagination = paginationNone
 	meta.Params = reflect.TypeFor[Params]()
-	r.add(meta, func(target any, ctx context.Context, parameters any) rawResult {
+	return r.add(meta, func(target any, ctx context.Context, parameters any) rawResult {
 		typed, ok := parameters.(Params)
 		if !ok {
 			return rawResult{err: fmt.Errorf("operation: %s received parameters of type %T, want %s", meta.Name, parameters, meta.Params)}
@@ -355,6 +374,15 @@ func eraseEventType[Event any](events iter.Seq2[Event, error]) iter.Seq2[any, er
 	}
 }
 
+// The protocol's page vocabulary: a cursor request names cursor and limit, and
+// a page result names data and nextCursor.
+const (
+	cursorField     = "cursor"
+	limitField      = "limit"
+	dataField       = "data"
+	nextCursorField = "nextCursor"
+)
+
 // paginationOf distinguishes cursor reads from bounded collection reads using
 // the actual request and response shapes.
 func paginationOf(params, result reflect.Type) (PaginationKind, error) {
@@ -364,53 +392,58 @@ func paginationOf(params, result reflect.Type) (PaginationKind, error) {
 	if err := protocol.ValidateWireType(params); err != nil {
 		return paginationNone, fmt.Errorf("invalid params declaration: %w", err)
 	}
-	if result != nil {
-		if err := protocol.ValidateWireType(result); err != nil {
-			return paginationNone, fmt.Errorf("invalid result declaration: %w", err)
-		}
-	}
 	params = protocol.WireBaseType(params)
 	if params.Kind() != reflect.Struct {
 		return paginationNone, fmt.Errorf("params must declare a JSON object, got %s", params)
 	}
-	cursor, hasCursor := protocol.WireFieldNamed(params, "cursor")
-	limit, hasLimit := protocol.WireFieldNamed(params, "limit")
-	var data, nextCursor protocol.WireField
-	var hasData, hasNextCursor bool
-	if result != nil {
-		result = protocol.WireBaseType(result)
-		data, hasData = protocol.WireFieldNamed(result, "data")
-		nextCursor, hasNextCursor = protocol.WireFieldNamed(result, "nextCursor")
+	page, err := isPageResult(result)
+	if err != nil {
+		return paginationNone, err
 	}
-
-	if !hasData && !hasNextCursor {
-		if hasCursor {
-			return paginationNone, fmt.Errorf("%s has a cursor request field but its result is not a page", params)
-		}
+	cursor, hasCursor := protocol.WireFieldNamed(params, cursorField)
+	limit, hasLimit := protocol.WireFieldNamed(params, limitField)
+	switch {
+	case !page && hasCursor:
+		return paginationNone, fmt.Errorf("%s has a cursor request field but its result is not a page", params)
+	case !page:
 		return paginationNone, nil
-	}
-	if !hasData || !hasNextCursor {
-		return paginationNone, fmt.Errorf("page results require data and nextCursor together; result=%s", result)
-	}
-	if hasCursor != hasLimit {
+	case hasCursor != hasLimit:
 		return paginationNone, fmt.Errorf("%s must declare cursor and limit together", params)
-	}
-	if data.Type.Kind() != reflect.Slice || data.Optional {
-		return paginationNone, fmt.Errorf("%s.data must be a required array", result)
-	}
-	if nextCursor.Type.Kind() != reflect.String || !nextCursor.Optional {
-		return paginationNone, fmt.Errorf("%s.nextCursor must be an optional string", result)
-	}
-	if !hasCursor {
+	case !hasCursor:
 		return paginationNone, nil
-	}
-	if cursor.Type.Kind() != reflect.String || !cursor.Optional {
+	case cursor.Type.Kind() != reflect.String || !cursor.Optional:
 		return paginationNone, fmt.Errorf("%s.cursor must be an optional string", params)
-	}
-	if limit.Type.Kind() != reflect.Pointer || limit.Type.Elem().Kind() != reflect.Int || !limit.Optional {
+	case limit.Type.Kind() != reflect.Pointer || limit.Type.Elem().Kind() != reflect.Int || !limit.Optional:
 		return paginationNone, fmt.Errorf("%s.limit must be a pointer-backed optional int", params)
+	default:
+		return paginationCursor, nil
 	}
-	return paginationCursor, nil
+}
+
+// isPageResult reports whether a result declares the page shape, refusing one
+// that declares only half of it.
+func isPageResult(result reflect.Type) (bool, error) {
+	if result == nil {
+		return false, nil
+	}
+	if err := protocol.ValidateWireType(result); err != nil {
+		return false, fmt.Errorf("invalid result declaration: %w", err)
+	}
+	result = protocol.WireBaseType(result)
+	data, hasData := protocol.WireFieldNamed(result, dataField)
+	nextCursor, hasNextCursor := protocol.WireFieldNamed(result, nextCursorField)
+	switch {
+	case !hasData && !hasNextCursor:
+		return false, nil
+	case !hasData || !hasNextCursor:
+		return false, fmt.Errorf("page results require data and nextCursor together; result=%s", result)
+	case data.Type.Kind() != reflect.Slice || data.Optional:
+		return false, fmt.Errorf("%s.data must be a required array", result)
+	case nextCursor.Type.Kind() != reflect.String || !nextCursor.Optional:
+		return false, fmt.Errorf("%s.nextCursor must be an optional string", result)
+	default:
+		return true, nil
+	}
 }
 
 // Contract returns the Runtime operation catalog. Registration is package-local

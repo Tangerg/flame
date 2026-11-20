@@ -3,6 +3,7 @@ package workspace
 import (
 	"cmp"
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -116,7 +117,7 @@ func (s *Skills) Get(ctx context.Context, cwd, name string) (SkillDetail, error)
 		return SkillDetail{}, err
 	}
 	revision, err := hex.DecodeString(detail.Revision)
-	if err != nil || len(revision) != 32 || detail.Name != name || strings.TrimSpace(detail.Path) == "" || !utf8.ValidString(detail.Instructions) || len(detail.Instructions) > skills.MaxAuthoredSkillDocumentBytes {
+	if err != nil || len(revision) != sha256.Size || detail.Name != name || strings.TrimSpace(detail.Path) == "" || !utf8.ValidString(detail.Instructions) || len(detail.Instructions) > skills.MaxAuthoredSkillDocumentBytes {
 		return SkillDetail{}, fmt.Errorf("workspace: invalid Skill detail %q", name)
 	}
 	return detail, nil

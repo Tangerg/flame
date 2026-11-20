@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	app "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -32,66 +33,82 @@ func (c *ExternalConnector) StartAuthorization(ctx context.Context, server mcpse
 	if u == nil {
 		return app.AuthorizationAttempt{}, nil, plugin.ErrUnavailable
 	}
-	release := func() { _ = u.session.release(context.Background()) }
+	attempt, err := c.startAttempt(ctx, u, server, id)
+	if err != nil {
+		_ = u.session.release(context.Background())
+		return app.AuthorizationAttempt{}, nil, err
+	}
+	completion := externalAttemptCompletion{
+		connector: c, server: server.ID(), id: id, source: u.source, epoch: u.epoch,
+		operationID: operation.Identity(operation.Start(ctx, extension.Automatic, c.methods.Finish.Name(), id.String())),
+		parentID:    operation.Identity(ctx),
+	}
+	if err := u.session.release(context.Background()); err != nil {
+		return app.AuthorizationAttempt{}, nil, err
+	}
+	return attempt, completion.finish, nil
+}
+
+func (c *ExternalConnector) startAttempt(ctx context.Context, u *connectorUse, server mcpserver.Server, id app.AuthorizationAttemptID) (app.AuthorizationAttempt, error) {
 	e, found, err := c.find(ctx, u, server.Name)
 	if err != nil || !found {
-		release()
-		return app.AuthorizationAttempt{}, nil, errors.Join(err, app.ErrUnknownServer)
+		return app.AuthorizationAttempt{}, errors.Join(err, app.ErrUnknownServer)
 	}
 	current, err := c.materialize(ctx, u, e)
 	if err != nil || !current.SameConnection(server) {
-		release()
-		return app.AuthorizationAttempt{}, nil, errors.Join(err, app.ErrUnknownServer)
+		return app.AuthorizationAttempt{}, errors.Join(err, app.ErrUnknownServer)
 	}
 	input := wire.Start{Name: e.Name, Grant: e.LaunchGrant, Epoch: u.epoch, AttemptID: id.String()}
 	result, err := connectorCall(ctx, u, c.methods.Start, input)
 	if err != nil {
-		release()
-		return app.AuthorizationAttempt{}, nil, err
+		return app.AuthorizationAttempt{}, err
 	}
-	attempt, err := readStartedExternalAttempt(result, id, server.ID())
+	return readStartedExternalAttempt(result, id, server.ID())
+}
+
+// A browser wait retains no Frame Use. Only the same directory incarnation can
+// settle its original receipt.
+type externalAttemptCompletion struct {
+	connector   *ExternalConnector
+	server      mcpserver.ID
+	id          app.AuthorizationAttemptID
+	source      plugins.ContributionBinding
+	epoch       string
+	operationID string
+	parentID    string
+}
+
+func (a externalAttemptCompletion) finish(ctx context.Context, status app.AuthorizationAttemptStatus) error {
+	c := a.connector
+	current, err := c.acquire(ctx)
 	if err != nil {
-		release()
-		return app.AuthorizationAttempt{}, nil, err
+		return err
 	}
-	source, epoch := u.source, u.epoch
-	completionID := operation.Identity(operation.Start(ctx, extension.Automatic, c.methods.Finish.Name(), id.String()))
-	parentID := operation.Identity(ctx)
-	if err := u.session.release(context.Background()); err != nil {
-		return app.AuthorizationAttempt{}, nil, err
+	if current == nil {
+		return plugin.ErrUnavailable
 	}
-	// A browser wait retains no Frame Use. Only the same directory incarnation can settle its original receipt.
-	finish := func(ctx context.Context, status app.AuthorizationAttemptStatus) error {
-		current, err := c.acquire(ctx)
-		if err != nil {
-			return err
-		}
-		if current == nil {
-			return plugin.ErrUnavailable
-		}
-		defer current.session.release(context.Background())
-		if !current.source.SameContribution(source) || current.epoch != epoch {
-			return plugin.ErrStale
-		}
-		ctx = operation.Adopt(ctx, completionID, extension.Automatic, parentID)
-		input := wire.Completion{ID: id.String(), Epoch: epoch, Status: wire.Outcome(status)}
-		decision, err := connectorCall(ctx, current, c.methods.Finish, input)
-		if err == nil && decision == wire.Applied {
+	defer current.session.release(context.Background())
+	if !current.source.SameContribution(a.source) || current.epoch != a.epoch {
+		return plugin.ErrStale
+	}
+	ctx = operation.Adopt(ctx, a.operationID, extension.Automatic, a.parentID)
+	input := wire.Completion{ID: a.id.String(), Epoch: a.epoch, Status: wire.Outcome(status)}
+	decision, err := connectorCall(ctx, current, c.methods.Finish, input)
+	if err == nil && decision == wire.Applied {
+		return nil
+	}
+	// A lost acknowledgement or superseding sign-in may already have settled
+	// this exact attempt. Only its owner can confirm a terminal status.
+	request := wire.Request{ID: a.id.String(), Epoch: a.epoch}
+	result, readErr := connectorCall(operation.Start(ctx, extension.Automatic, c.methods.Get.Name(), a.id.String()), current, c.methods.Get, request)
+	if readErr == nil {
+		observed, decodeErr := readExternalAttempt(result, a.id)
+		if decodeErr == nil && observed.Server == a.server && observed.Status != app.AuthorizationAttemptPending {
 			return nil
 		}
-		// A lost acknowledgement or superseding sign-in may already have settled
-		// this exact attempt. Only its owner can confirm a terminal status.
-		result, readErr := connectorCall(operation.Start(ctx, extension.Automatic, c.methods.Get.Name(), id.String()), current, c.methods.Get, wire.Request{ID: id.String(), Epoch: epoch})
-		if readErr == nil {
-			observed, decodeErr := readExternalAttempt(result, id)
-			if decodeErr == nil && observed.Server == server.ID() && observed.Status != app.AuthorizationAttemptPending {
-				return nil
-			}
-			readErr = decodeErr
-		}
-		return errors.Join(plugin.ErrUnavailable, err, readErr)
+		readErr = decodeErr
 	}
-	return attempt, finish, nil
+	return errors.Join(plugin.ErrUnavailable, err, readErr)
 }
 func (c *ExternalConnector) ReadAuthorization(ctx context.Context, id app.AuthorizationAttemptID) (app.AuthorizationAttempt, error) {
 	u, err := c.acquire(ctx)

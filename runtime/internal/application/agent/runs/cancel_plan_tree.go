@@ -3,14 +3,16 @@ package runs
 import (
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 func newCancellationPlan(
-	targetRunID string,
+	targetRunID identity.RunID,
 	runs []rundomain.Run,
 	executor ExecutorRef,
-	memberIDsByRunID map[string]string,
+	memberIDsByRunID map[identity.RunID]string,
 	pending *Pending,
 ) (cancellationPlan, error) {
 	runTree, err := buildCancellationRunTree(targetRunID, runs)
@@ -40,7 +42,7 @@ func newCancellationPlan(
 			runTree.root.ID(),
 		)
 	}
-	targetRunIDSet := make(map[string]struct{}, len(targetRunIDs))
+	targetRunIDSet := make(map[identity.RunID]struct{}, len(targetRunIDs))
 	for _, runID := range targetRunIDs {
 		targetRunIDSet[runID] = struct{}{}
 	}
@@ -67,11 +69,11 @@ func newCancellationPlan(
 type cancellationRunTree struct {
 	root     rundomain.Run
 	topology rundomain.Tree
-	byRunID  map[string]rundomain.Run
+	byRunID  map[identity.RunID]rundomain.Run
 }
 
 func buildCancellationRunTree(
-	targetRunID string,
+	targetRunID identity.RunID,
 	runs []rundomain.Run,
 ) (cancellationRunTree, error) {
 	target, found := runByID(runs, targetRunID)
@@ -90,7 +92,7 @@ func buildCancellationRunTree(
 		)
 	}
 
-	byRunID := make(map[string]rundomain.Run, len(runs))
+	byRunID := make(map[identity.RunID]rundomain.Run, len(runs))
 	treeMembers := make([]rundomain.TreeMember, 0, len(runs))
 	for _, run := range runs {
 		if run.SessionID() != root.SessionID() {
@@ -128,9 +130,9 @@ func buildCancellationRunTree(
 }
 
 func (c cancellationRunTree) openRunIDs(
-	bindings map[string]cancellationRun,
-) ([]string, error) {
-	openRunIDs := make([]string, 0, len(c.byRunID))
+	bindings map[identity.RunID]cancellationRun,
+) ([]identity.RunID, error) {
+	openRunIDs := make([]identity.RunID, 0, len(c.byRunID))
 	for _, runID := range c.topology.Postorder() {
 		run := c.byRunID[runID]
 		if run.State().IsTerminal() {
@@ -149,14 +151,14 @@ func (c cancellationRunTree) openRunIDs(
 }
 
 func cancellationBindings(
-	runs map[string]rundomain.Run,
-	memberIDsByRunID map[string]string,
-) (map[string]cancellationRun, error) {
-	bindings := make(map[string]cancellationRun, len(runs))
+	runs map[identity.RunID]rundomain.Run,
+	memberIDsByRunID map[identity.RunID]string,
+) (map[identity.RunID]cancellationRun, error) {
+	bindings := make(map[identity.RunID]cancellationRun, len(runs))
 	for runID, run := range runs {
 		bindings[runID] = cancellationRun{run: run}
 	}
-	memberOwners := make(map[string]string, len(memberIDsByRunID))
+	memberOwners := make(map[string]identity.RunID, len(memberIDsByRunID))
 	for runID, memberID := range memberIDsByRunID {
 		member, exists := bindings[runID]
 		if !exists {
@@ -188,8 +190,8 @@ func cancellationBindings(
 }
 
 func validateCancellationMemberBindings(
-	runs map[string]rundomain.Run,
-	bindings map[string]cancellationRun,
+	runs map[identity.RunID]rundomain.Run,
+	bindings map[identity.RunID]cancellationRun,
 ) error {
 	for runID, run := range runs {
 		if run.State().IsTerminal() {
@@ -216,8 +218,8 @@ func validateCancellationMemberBindings(
 
 func validateCancellationPending(
 	root rundomain.Run,
-	openRunIDs []string,
-	bindings map[string]cancellationRun,
+	openRunIDs []identity.RunID,
+	bindings map[identity.RunID]cancellationRun,
 	pending *Pending,
 ) error {
 	if root.State() == rundomain.Running {

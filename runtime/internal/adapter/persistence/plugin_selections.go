@@ -50,7 +50,7 @@ func (s *providerSelectionStore) List(ctx context.Context) ([]plugin.ProviderSel
 		return result, rows.Err()
 	})
 }
-func restoreProviderSelection(role, installation, contribution string) (plugin.ProviderSelection, error) {
+func restoreProviderSelection(role string, installation string, contribution string) (plugin.ProviderSelection, error) {
 	id, err := identity.ParseInstallation(installation)
 	if err != nil {
 		return plugin.ProviderSelection{}, err

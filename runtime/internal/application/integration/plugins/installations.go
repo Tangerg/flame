@@ -295,21 +295,50 @@ func (c *Coordinator) Configure(ctx context.Context, id identity.InstallationID,
 		return i.Configure(release, configuration)
 	})
 }
+
+// currentFrameworkInstallation returns the framework's record of an
+// installation, refusing a change whose stored state the framework no longer
+// mirrors.
+func (c *Coordinator) currentFrameworkInstallation(snapshot plugin.Snapshot) (framehost.InstallationRecord, error) {
+	expected, found := c.framework.Installation(snapshot.Installation.ID().Host())
+	if !found {
+		return framehost.InstallationRecord{}, plugin.ErrNotFound
+	}
+	configuration, err := EncodeFrameworkConfiguration(snapshot.Installation.Snapshot())
+	if err != nil {
+		return framehost.InstallationRecord{}, err
+	}
+	if expected.Release != snapshot.Selected.Digest() || expected.Enabled != snapshot.Installation.Enabled() || !bytes.Equal(expected.Configuration, configuration) {
+		return framehost.InstallationRecord{}, plugin.ErrStale
+	}
+	return expected, nil
+}
+
+// changedServerIDs names the servers a change touched, which must reconnect.
+func changedServerIDs(installation plugin.Installation, before plugin.Snapshot, after plugin.Release) ([]mcpserver.ID, error) {
+	changed, err := installation.ChangedServers(before.Installation, before.Selected, after)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]mcpserver.ID, 0, len(changed))
+	for _, name := range changed {
+		server, err := installation.ServerID(name)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, server)
+	}
+	return ids, nil
+}
+
 func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, transition func(context.Context, plugin.Installation, plugin.Release) (plugin.Installation, error)) (Inspection, error) {
 	snapshot, err := c.installationSnapshot(ctx, id)
 	if err != nil {
 		return Inspection{}, err
 	}
-	expected, found := c.framework.Installation(id.Host())
-	if !found {
-		return Inspection{}, plugin.ErrNotFound
-	}
-	configuration, err := EncodeFrameworkConfiguration(snapshot.Installation.Snapshot())
+	expected, err := c.currentFrameworkInstallation(snapshot)
 	if err != nil {
 		return Inspection{}, err
-	}
-	if expected.Release.String() != snapshot.Selected.Digest().String() || expected.Enabled != snapshot.Installation.Enabled() || !bytes.Equal(expected.Configuration, configuration) {
-		return Inspection{}, plugin.ErrStale
 	}
 	installation, err := transition(ctx, snapshot.Installation, snapshot.Selected)
 	if err != nil {
@@ -329,24 +358,16 @@ func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, tr
 	if err := RegisterFrameworkRelease(c.framework, projection); err != nil {
 		return Inspection{}, err
 	}
-	configuration, err = EncodeFrameworkConfiguration(installation.Snapshot())
+	configuration, err := EncodeFrameworkConfiguration(installation.Snapshot())
 	if err != nil {
 		return Inspection{}, err
 	}
 	if err := c.framework.Update(ctx, expected, framehost.InstallationConfig{ID: expected.ID, Plugin: projection.Plugin, Configuration: configuration, Enabled: installation.Enabled()}); err != nil {
 		return Inspection{}, FrameworkError(err)
 	}
-	changed, err := installation.ChangedServers(snapshot.Installation, snapshot.Selected, after)
+	reconcile, err := changedServerIDs(installation, snapshot, after)
 	if err != nil {
 		return Inspection{}, err
-	}
-	var reconcile []mcpserver.ID
-	for _, name := range changed {
-		server, err := installation.ServerID(name)
-		if err != nil {
-			return Inspection{}, err
-		}
-		reconcile = append(reconcile, server)
 	}
 	withdrawErr := c.connections.WithdrawInstallation(ctx, reconcile)
 	c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins}, invalidation.Notice{Resource: invalidation.Skills})

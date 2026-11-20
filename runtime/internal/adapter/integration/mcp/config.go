@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/httpresponse"
 	"github.com/Tangerg/flame/packages/go-sdk/procgroup"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/secret"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"github.com/samber/lo"
@@ -31,7 +32,7 @@ type ServerConfig struct {
 }
 
 func (s ServerConfig) Format(state fmt.State, _ rune) {
-	_, _ = fmt.Fprintf(state, "ServerConfig{Server:%v, OAuthHandler:%s}", s.Server, mcpserver.SecretPresence(s.OAuthHandler != nil))
+	_, _ = fmt.Fprintf(state, "ServerConfig{Server:%v, OAuthHandler:%s}", s.Server, secret.Presence(s.OAuthHandler != nil))
 }
 
 func (s ServerConfig) Clone() ServerConfig {
@@ -78,65 +79,70 @@ func dial(
 	client *sdkmcp.Client,
 	input *launch,
 ) (_ *sdkmcp.ClientSession, _ sessionCleanup, err error) {
-	if input == nil {
-		return nil, nil, errors.New("mcp: launch is required")
-	}
 	defer func() {
 		if err != nil {
 			err = errors.Join(err, input.close())
 		}
 	}()
-	cfg := input.config
-	if ctx == nil {
-		return nil, nil, errors.New("mcp: dial context is required")
-	}
-	if lifetime == nil {
-		return nil, nil, errors.New("mcp: session lifetime is required")
-	}
-	if err := cfg.Validate(); err != nil {
+	if err := input.config.Validate(); err != nil {
 		return nil, nil, err
 	}
-	if client == nil {
-		return nil, nil, errors.New("mcp: client must not be nil")
-	}
-	var command *exec.Cmd
-	connect := func(sessionCtx context.Context) (*sdkmcp.ClientSession, error) {
-		switch connection := cfg.Connection.(type) {
-		case mcpserver.HTTPConnection:
-			httpClient, err := endpointHTTPClient(connection.URL, connection.Authorization, connection.Headers)
-			if err != nil {
-				return nil, fmt.Errorf("mcp server %q: build HTTP client: %w", cfg.ID(), err)
-			}
-			transport := &sdkmcp.StreamableClientTransport{
-				Endpoint:     connection.URL,
-				HTTPClient:   httpClient,
-				OAuthHandler: authorizationChallenge{oauth: cfg.OAuthHandler},
-			}
-			return client.Connect(sessionCtx, transport, nil)
-		case mcpserver.StdioConnection:
-			stdio := input.stdio
-			if stdio == nil {
-				stdio = &stdioLaunch{Command: connection.Command, Args: connection.Args, Env: connection.Env, Dir: connection.Dir}
-			}
-			cmd := exec.CommandContext(sessionCtx, stdio.Command, stdio.Args...)
-			cmd.Env = processEnvironment(stdio.Env)
-			cmd.Dir = stdio.Dir
-			procgroup.Prepare(cmd)
-			cmd.Cancel = func() error { return procgroup.Stop(cmd) }
-			command = cmd
-			return client.Connect(sessionCtx, &sdkmcp.CommandTransport{Command: cmd}, nil)
-		default:
-			return nil, fmt.Errorf("mcp: unknown transport %q", cfg.Transport())
-		}
-	}
+	connection := &dialedConnection{client: client, input: input}
 	var timeout *time.Duration
-	if duration, bounded := cfg.HandshakeTimeout.Duration(); bounded {
+	if duration, bounded := input.config.HandshakeTimeout.Duration(); bounded {
 		timeout = &duration
 	}
-	session, cancelLifetime, err := connectSession(ctx, lifetime, timeout, connect)
+	session, cancelLifetime, err := connectSession(ctx, lifetime, timeout, connection.connect)
 	retire := input.retire
 	input.retire = nil
-	cleanup := sessionCleanup(func() (err error) {
+	cleanup := connection.cleanup(retire, cancelLifetime)
+	if err != nil {
+		return nil, nil, errors.Join(err, cleanup())
+	}
+	return session, cleanup, nil
+}
+
+// dialedConnection remembers the stdio process its connect started, so cleanup
+// stops that same process group.
+type dialedConnection struct {
+	client  *sdkmcp.Client
+	input   *launch
+	command *exec.Cmd
+}
+
+func (d *dialedConnection) connect(ctx context.Context) (*sdkmcp.ClientSession, error) {
+	cfg := d.input.config
+	switch connection := cfg.Connection.(type) {
+	case mcpserver.HTTPConnection:
+		httpClient, err := endpointHTTPClient(connection.URL, connection.Authorization, connection.Headers)
+		if err != nil {
+			return nil, fmt.Errorf("mcp server %q: build HTTP client: %w", cfg.ID(), err)
+		}
+		transport := &sdkmcp.StreamableClientTransport{
+			Endpoint:     connection.URL,
+			HTTPClient:   httpClient,
+			OAuthHandler: authorizationChallenge{oauth: cfg.OAuthHandler},
+		}
+		return d.client.Connect(ctx, transport, nil)
+	case mcpserver.StdioConnection:
+		stdio := d.input.stdio
+		if stdio == nil {
+			stdio = &stdioLaunch{Command: connection.Command, Args: connection.Args, Env: connection.Env, Dir: connection.Dir}
+		}
+		cmd := exec.CommandContext(ctx, stdio.Command, stdio.Args...)
+		cmd.Env = processEnvironment(stdio.Env)
+		cmd.Dir = stdio.Dir
+		procgroup.Prepare(cmd)
+		cmd.Cancel = func() error { return procgroup.Stop(cmd) }
+		d.command = cmd
+		return d.client.Connect(ctx, &sdkmcp.CommandTransport{Command: cmd}, nil)
+	default:
+		return nil, fmt.Errorf("mcp: unknown transport %q", cfg.Transport())
+	}
+}
+
+func (d *dialedConnection) cleanup(retire sessionCleanup, cancelLifetime context.CancelFunc) sessionCleanup {
+	return func() (err error) {
 		if retire != nil {
 			defer func() {
 				if retireErr := retire(); retireErr != nil {
@@ -147,22 +153,14 @@ func dial(
 		if cancelLifetime != nil {
 			cancelLifetime()
 		}
-		if command == nil {
+		if d.command == nil {
 			return nil
 		}
-		stopStdioProcessErr := procgroup.Stop(command)
-		if errors.Is(stopStdioProcessErr, os.ErrProcessDone) {
-			return nil
-		}
-		if stopStdioProcessErr != nil {
-			return fmt.Errorf("mcp: stop stdio process group: %w", stopStdioProcessErr)
+		if err := procgroup.Stop(d.command); err != nil && !errors.Is(err, os.ErrProcessDone) {
+			return fmt.Errorf("mcp: stop stdio process group: %w", err)
 		}
 		return nil
-	})
-	if err != nil {
-		return nil, nil, errors.Join(err, cleanup())
 	}
-	return session, cleanup, nil
 }
 
 type sessionCleanup func() error

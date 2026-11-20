@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -19,12 +21,12 @@ import (
 )
 
 type sessionTitles interface {
-	PrepareGeneratedTitle(ctx context.Context, sessionID, runID string) (*sessions.GeneratedTitle, error)
+	PrepareGeneratedTitle(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) (*sessions.GeneratedTitle, error)
 }
 
 // checkpoints anchors the working tree at a terminal run boundary.
 type checkpoints interface {
-	Snapshot(ctx context.Context, sessionID, cwd, runID string) error
+	Snapshot(ctx context.Context, sessionID identity.SessionID, cwd string, runID identity.RunID) error
 }
 
 // taskLauncher starts request-detached work owned by its component lifecycle.
@@ -135,8 +137,8 @@ func observeSegmentMaintenance(ctx context.Context, fin runs.Finish, operation s
 	ctx, span := otel.Tracer(runsegmentTracerName).Start(ctx, "run segment maintenance",
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
-			attribute.String("run.id", fin.RunID),
-			attribute.String("gen_ai.conversation.id", fin.SessionID),
+			attribute.String("run.id", fin.RunID.String()),
+			attribute.String("gen_ai.conversation.id", fin.SessionID.String()),
 			attribute.String("maintenance.operation", operation),
 			attribute.Bool("run.parked", fin.Parked),
 		),
@@ -150,14 +152,14 @@ func observeSegmentMaintenance(ctx context.Context, fin runs.Finish, operation s
 	return err
 }
 
-func (f *Finalizer) snapshot(ctx context.Context, sessionID, cwd, runID string) error {
+func (f *Finalizer) snapshot(ctx context.Context, sessionID identity.SessionID, cwd string, runID identity.RunID) error {
 	if err := f.checkpoints.Snapshot(ctx, sessionID, cwd, runID); err != nil {
 		return fmt.Errorf("segment: snapshot workspace for run %q: %w", runID, err)
 	}
 	return nil
 }
 
-func (f *Finalizer) title(ctx context.Context, claim *sessions.GeneratedTitle, sessionID, prompt string) error {
+func (f *Finalizer) title(ctx context.Context, claim *sessions.GeneratedTitle, sessionID identity.SessionID, prompt string) error {
 	title, generationErr := f.titles.Generate(ctx, strings.TrimSpace(prompt))
 	title = strings.TrimSpace(title)
 	if generationErr != nil {

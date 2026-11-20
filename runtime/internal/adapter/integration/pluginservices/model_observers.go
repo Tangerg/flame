@@ -145,11 +145,11 @@ func (o *observedModel) prepare(ctx context.Context, request *chat.Request, deli
 func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 	ctx, err := enterContributionPhase(ctx, o.binding)
 	if err != nil {
-		return nil, continuationNotExecuted(err)
+		return nil, notExecuted(err)
 	}
 	borrowed, binding, err := o.prepare(ctx, request, unaryCall)
 	if err != nil {
-		return nil, continuationNotExecuted(err)
+		return nil, notExecuted(err)
 	}
 	defer borrowed.Close()
 	ctx = borrowed.Context()
@@ -158,7 +158,7 @@ func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.
 	frozen := request.Clone()
 	input, err := framevalue.EncodeJSON((*scopewire.Request)(frozen))
 	if err != nil {
-		return nil, continuationNotExecuted(err)
+		return nil, notExecuted(err)
 	}
 	admission := &observedContinuation{request: input, id: pluginmcp.CommandID(invocation.ID)}
 	next, err := pluginsdk.NewModelCallback(func(requestCtx context.Context, command pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
@@ -168,7 +168,7 @@ func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.
 		calling, release := modelContinuationContext(ctx, requestCtx)
 		defer release()
 		if err := calling.Err(); err != nil {
-			failure := continuationNotExecuted(errors.Join(err, context.Cause(calling)))
+			failure := notExecuted(errors.Join(err, context.Cause(calling)))
 			admission.finish(nil, failure)
 			return nil, failure
 		}
@@ -177,11 +177,11 @@ func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.
 		return response, err
 	})
 	if err != nil {
-		return nil, continuationNotExecuted(err)
+		return nil, notExecuted(err)
 	}
 	metadata, release, err := o.owner.calls.pool.OpenRPC(ctx, o.binding.ServerID, session, next)
 	if err != nil {
-		return nil, continuationNotExecuted(err)
+		return nil, notExecuted(err)
 	}
 	defer release()
 	_, observerErr := binding.InvokeWithMetadata(ctx, admission.id, input, metadata)
@@ -194,12 +194,12 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 	return func(yield func(*chat.ResponseDelta, error) bool) {
 		calling, err := enterContributionPhase(ctx, o.binding)
 		if err != nil {
-			yield(nil, continuationNotExecuted(err))
+			yield(nil, notExecuted(err))
 			return
 		}
 		borrowed, binding, err := o.prepare(calling, frozen, streamedCall)
 		if err != nil {
-			yield(nil, continuationNotExecuted(err))
+			yield(nil, notExecuted(err))
 			return
 		}
 		defer borrowed.Close()
@@ -208,7 +208,7 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 		invocation, _ := pluginmcp.InvocationFromContext(calling)
 		input, err := framevalue.EncodeJSON((*scopewire.Request)(frozen))
 		if err != nil {
-			yield(nil, continuationNotExecuted(err))
+			yield(nil, notExecuted(err))
 			return
 		}
 		admission := &observedContinuation{request: input, id: pluginmcp.CommandID(invocation.ID)}
@@ -221,7 +221,7 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 				continuation, release := modelContinuationContext(calling, requestCtx)
 				defer release()
 				if err := continuation.Err(); err != nil {
-					failure := continuationNotExecuted(errors.Join(err, context.Cause(continuation)))
+					failure := notExecuted(errors.Join(err, context.Cause(continuation)))
 					admission.finish(nil, failure)
 					yield(nil, failure)
 					return
@@ -230,12 +230,12 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 			}
 		})
 		if err != nil {
-			yield(nil, continuationNotExecuted(err))
+			yield(nil, notExecuted(err))
 			return
 		}
 		metadata, release, err := o.owner.calls.pool.OpenRPC(calling, o.binding.ServerID, session, next)
 		if err != nil {
-			yield(nil, continuationNotExecuted(err))
+			yield(nil, notExecuted(err))
 			return
 		}
 		defer release()

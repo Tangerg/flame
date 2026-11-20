@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -57,7 +59,7 @@ func (t *ToolInvocationStore) ListOpenToolInvocations(ctx context.Context) ([]ru
 
 // RecordToolInvocation applies one journal transition committed with its Run
 // event or with boot recovery.
-func (t *ToolInvocationStore) RecordToolInvocation(ctx context.Context, sessionID, runID string, invocation runs.ToolInvocationCommit) error {
+func (t *ToolInvocationStore) RecordToolInvocation(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, invocation runs.ToolInvocationCommit) error {
 	if err := invocation.Validate(); err != nil {
 		return err
 	}
@@ -74,7 +76,7 @@ func (t *ToolInvocationStore) RecordToolInvocation(ctx context.Context, sessionI
 	}
 }
 
-func (t *ToolInvocationStore) start(ctx context.Context, sessionID, runID string, invocation runs.ToolInvocationCommit) error {
+func (t *ToolInvocationStore) start(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, invocation runs.ToolInvocationCommit) error {
 	if err := instant.Validate(invocation.StartedAt); err != nil {
 		return fmt.Errorf("sqlite: Tool invocation start time: %w", err)
 	}
@@ -103,7 +105,7 @@ func (t *ToolInvocationStore) start(ctx context.Context, sessionID, runID string
 	})
 }
 
-func (t *ToolInvocationStore) complete(ctx context.Context, sessionID, runID string, invocation runs.ToolInvocationCommit) error {
+func (t *ToolInvocationStore) complete(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, invocation runs.ToolInvocationCommit) error {
 	return t.db.write(ctx, func(ctx context.Context) error {
 		if err := instant.Validate(invocation.StartedAt, invocation.FinishedAt); err != nil {
 			return fmt.Errorf("sqlite: Tool invocation times: %w", err)
@@ -130,7 +132,7 @@ func (t *ToolInvocationStore) complete(ctx context.Context, sessionID, runID str
 	})
 }
 
-func (t *ToolInvocationStore) finish(ctx context.Context, sessionID, runID string, invocation runs.ToolInvocationCommit) error {
+func (t *ToolInvocationStore) finish(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, invocation runs.ToolInvocationCommit) error {
 	return t.db.write(ctx, func(ctx context.Context) error {
 		if err := instant.Validate(invocation.StartedAt, invocation.FinishedAt); err != nil {
 			return fmt.Errorf("sqlite: Tool invocation times: %w", err)
@@ -153,11 +155,11 @@ func (t *ToolInvocationStore) finish(ctx context.Context, sessionID, runID strin
 	})
 }
 
-func validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID string) error {
+func validateToolInvocationIdentity(sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, callID string, itemID identity.ItemID) error {
 	if err := validateRunCoordinates("Tool invocation", sessionID, runID, segmentID); err != nil {
 		return err
 	}
-	if err := validateItemResource("Tool invocation", itemID); err != nil {
+	if err := validateResource("Tool invocation", itemID); err != nil {
 		return err
 	}
 	if err := runs.ValidateInvocation(callID); err != nil {
@@ -168,9 +170,9 @@ func validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID 
 
 type toolInvocationRecord struct {
 	CallID     string
-	ItemID     string
-	RunID      string
-	SegmentID  string
+	ItemID     identity.ItemID
+	RunID      identity.RunID
+	SegmentID  identity.SegmentID
 	State      string
 	StartedAt  time.Time
 	FinishedAt time.Time
@@ -178,9 +180,9 @@ type toolInvocationRecord struct {
 
 // The export reader bounds the complete Session's stored bytes and record count
 // in its transaction before reading this untruncated evidence collection.
-func (t *ToolInvocationStore) ListSession(ctx context.Context, sessionID string) ([]toolInvocationRecord, error) {
+func (t *ToolInvocationStore) ListSession(ctx context.Context, sessionID identity.SessionID) ([]toolInvocationRecord, error) {
 	return scopedValue(ctx, t.db.read, func(ctx context.Context) ([]toolInvocationRecord, error) {
-		if err := validateSessionResource("tool invocation", sessionID); err != nil {
+		if err := validateResource("tool invocation", sessionID); err != nil {
 			return nil, err
 		}
 		rows, err := t.db.connection(ctx).QueryContext(ctx, `

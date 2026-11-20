@@ -106,17 +106,27 @@ func ValidateWireType(owner reflect.Type) error {
 	return validateWireType(owner, make(map[reflect.Type]bool))
 }
 
+// wireReferent is the type a pointer chain finally refers to; a cyclic chain
+// has no wire shape at all.
+func wireReferent(owner reflect.Type) (reflect.Type, error) {
+	pointers := make(map[reflect.Type]bool)
+	for owner.Kind() == reflect.Pointer {
+		if pointers[owner] {
+			return nil, fmt.Errorf("protocol: pointer cycle %s has no wire shape", owner)
+		}
+		pointers[owner] = true
+		owner = owner.Elem()
+	}
+	return owner, nil
+}
+
 func validateWireType(owner reflect.Type, visited map[reflect.Type]bool) error {
 	if owner == nil {
 		return errors.New("protocol: wire type is required")
 	}
-	pointers := make(map[reflect.Type]bool)
-	for owner.Kind() == reflect.Pointer {
-		if pointers[owner] {
-			return fmt.Errorf("protocol: pointer cycle %s has no wire shape", owner)
-		}
-		pointers[owner] = true
-		owner = owner.Elem()
+	owner, err := wireReferent(owner)
+	if err != nil {
+		return err
 	}
 	if visited[owner] || wireScalar(owner) || owner.Kind() == reflect.Interface {
 		return nil
@@ -134,16 +144,7 @@ func validateWireType(owner reflect.Type, visited map[reflect.Type]bool) error {
 		}
 		return validateWireType(owner.Elem(), visited)
 	case reflect.Struct:
-		fields, _, err := wireDeclaration(owner, make(map[reflect.Type]bool))
-		if err != nil {
-			return err
-		}
-		for _, field := range fields {
-			if err := validateWireType(field.Type, visited); err != nil {
-				return fmt.Errorf("protocol field %s.%s: %w", owner, field.Name, err)
-			}
-		}
-		return nil
+		return validateWireFields(owner, visited)
 	case reflect.Bool, reflect.String, reflect.Int, reflect.Int8, reflect.Int16,
 		reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
 		reflect.Uint32, reflect.Uint64, reflect.Float32, reflect.Float64:
@@ -151,6 +152,19 @@ func validateWireType(owner reflect.Type, visited map[reflect.Type]bool) error {
 	default:
 		return fmt.Errorf("protocol: unsupported wire type %s", owner)
 	}
+}
+
+func validateWireFields(owner reflect.Type, visited map[reflect.Type]bool) error {
+	fields, _, err := wireDeclaration(owner, make(map[reflect.Type]bool))
+	if err != nil {
+		return err
+	}
+	for _, field := range fields {
+		if err := validateWireType(field.Type, visited); err != nil {
+			return fmt.Errorf("protocol field %s.%s: %w", owner, field.Name, err)
+		}
+	}
+	return nil
 }
 
 func wireScalar(owner reflect.Type) bool {
@@ -301,24 +315,34 @@ func validateWirePresence(encoded jsontext.Value, owner reflect.Type, path strin
 		if owner.Elem().Kind() == reflect.Uint8 {
 			return nil
 		}
-		var values []jsontext.Value
-		if err := json.Unmarshal(encoded, &values); err != nil {
-			return err
-		}
-		for index, child := range values {
-			if err := validateWirePresence(child, owner.Elem(), fmt.Sprintf("%s[%d]", path, index)); err != nil {
-				return err
-			}
-		}
+		return validateWireArrayPresence(encoded, owner.Elem(), path)
 	case reflect.Map:
-		var object map[string]jsontext.Value
-		if err := json.Unmarshal(encoded, &object); err != nil {
+		return validateWireMapPresence(encoded, owner.Elem(), path)
+	}
+	return nil
+}
+
+func validateWireArrayPresence(encoded jsontext.Value, element reflect.Type, path string) error {
+	var values []jsontext.Value
+	if err := json.Unmarshal(encoded, &values); err != nil {
+		return err
+	}
+	for index, child := range values {
+		if err := validateWirePresence(child, element, fmt.Sprintf("%s[%d]", path, index)); err != nil {
 			return err
 		}
-		for _, key := range slices.Sorted(maps.Keys(object)) {
-			if err := validateWirePresence(object[key], owner.Elem(), framevalue.MapPath(path, key)); err != nil {
-				return err
-			}
+	}
+	return nil
+}
+
+func validateWireMapPresence(encoded jsontext.Value, element reflect.Type, path string) error {
+	var object map[string]jsontext.Value
+	if err := json.Unmarshal(encoded, &object); err != nil {
+		return err
+	}
+	for _, key := range slices.Sorted(maps.Keys(object)) {
+		if err := validateWirePresence(object[key], element, framevalue.MapPath(path, key)); err != nil {
+			return err
 		}
 	}
 	return nil

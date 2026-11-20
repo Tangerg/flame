@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
@@ -11,12 +13,12 @@ import (
 )
 
 type conversationHistory interface {
-	Count(ctx context.Context, sessionID string) (int, error)
-	Replace(ctx context.Context, sessionID string, messages ...chat.Message) error
+	Count(ctx context.Context, sessionID identity.SessionID) (int, error)
+	Replace(ctx context.Context, sessionID identity.SessionID, messages ...chat.Message) error
 }
 
 type conversationRuns interface {
-	ListRuns(ctx context.Context, sessionID string) ([]run.Run, error)
+	ListRuns(ctx context.Context, sessionID identity.SessionID) ([]run.Run, error)
 	RebaseMessageMark(ctx context.Context, replacement run.Replacement) error
 }
 

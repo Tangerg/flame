@@ -114,7 +114,7 @@ func (c *Openings) AdmitSelection(ctx context.Context, selection modelchoice.Sel
 // the live admission gate and the durable Session Run projection are
 // free before attempting its own Start. It does not reserve either resource;
 // Start remains the authority that acquires them.
-func (c *Openings) WaitSessionStartable(ctx context.Context, sessionID string) error {
+func (c *Openings) WaitSessionStartable(ctx context.Context, sessionID identity.SessionID) error {
 	sess, err := c.sessionReader.Get(ctx, sessionID)
 	if err != nil {
 		return err
@@ -157,16 +157,16 @@ type rootStartPreparation struct {
 // key never admits a second Run.
 func (c *Openings) Start(ctx context.Context, cmd StartCommand) (StartResult, error) {
 	if cmd.NewSession != nil {
-		if cmd.SessionID != "" || cmd.Acceptance == nil {
+		if !cmd.SessionID.IsZero() || cmd.Acceptance == nil {
 			return StartResult{}, fmt.Errorf("%w: new Session opening requires its own target and command identity", ErrInvalidStart)
 		}
-		if err := identity.ValidateSession(cmd.NewSession.SessionID); err != nil {
+		if err := cmd.NewSession.SessionID.Validate(); err != nil {
 			return StartResult{}, fmt.Errorf("%w: %w", ErrInvalidStart, err)
 		}
-		if err := identity.ValidateRun(cmd.NewSession.RunID); err != nil {
+		if err := cmd.NewSession.RunID.Validate(); err != nil {
 			return StartResult{}, fmt.Errorf("%w: %w", ErrInvalidStart, err)
 		}
-	} else if err := identity.ValidateSession(cmd.SessionID); err != nil {
+	} else if err := cmd.SessionID.Validate(); err != nil {
 		return StartResult{}, fmt.Errorf("%w: %w", ErrInvalidStart, err)
 	}
 	if cmd.Acceptance != nil {
@@ -264,7 +264,7 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 	createdAt := c.segments.publications.nowUTC()
 	modelOnlyInput := cmd.GoalIncarnationID != ""
 	conversationInput := draft.WorkingContext[len(draft.WorkingContext)-1].Clone()
-	sessionReplacement, err := prepareStartSessionReplacement(preparation, createdAt)
+	sessionWrite, err := prepareStartSessionWrite(preparation, createdAt)
 	if err != nil {
 		return StartResult{}, err
 	}
@@ -276,17 +276,16 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 		Isolated:     preparation.session.Isolated(),
 		ExecutorID:   ref.ExecutorID,
 		Opening: rootOpening{
-			ModelSelection:     draft.ModelSelection,
-			GoalIncarnationID:  cmd.GoalIncarnationID,
-			InitialSession:     preparation.initialSession,
-			SessionReplacement: sessionReplacement,
-			Actor:              cmd.Actor,
-			CreatedAt:          createdAt,
-			OpeningUserText:    preparation.openingUserText,
-			Input:              cmd.Input,
-			ConversationInput:  &conversationInput,
-			ModelOnlyInput:     modelOnlyInput,
-			Capabilities:       cmd.Capabilities,
+			ModelSelection:    draft.ModelSelection,
+			GoalIncarnationID: cmd.GoalIncarnationID,
+			SessionWrite:      sessionWrite,
+			Actor:             cmd.Actor,
+			CreatedAt:         createdAt,
+			OpeningUserText:   preparation.openingUserText,
+			Input:             cmd.Input,
+			ConversationInput: &conversationInput,
+			ModelOnlyInput:    modelOnlyInput,
+			Capabilities:      cmd.Capabilities,
 		},
 		CommandAcceptance: cmd.Acceptance,
 		admission:         &runAdmission,
@@ -302,7 +301,7 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 	c.segments.publications.publishRunMoved(preparation.session.ID(), runID)
 	userItemID := userMessageItemID(segmentID)
 	if modelOnlyInput {
-		userItemID = ""
+		userItemID = identity.ItemID{}
 	}
 	return StartResult{
 		RunID: runID, SegmentID: segmentID, SessionID: preparation.session.ID(),
@@ -377,11 +376,14 @@ func (c *Openings) prepareRootStart(
 	}, nil
 }
 
-func prepareStartSessionReplacement(
+func prepareStartSessionWrite(
 	preparation rootStartPreparation,
 	createdAt time.Time,
-) (*session.Replacement, error) {
-	if preparation.initialSession != nil || !preparation.requestedSelection.Configured() {
+) (OpeningSessionWrite, error) {
+	if preparation.initialSession != nil {
+		return SessionInsert{Session: *preparation.initialSession}, nil
+	}
+	if !preparation.requestedSelection.Configured() {
 		return nil, nil
 	}
 	next, changed, err := preparation.session.Apply(
@@ -397,10 +399,10 @@ func prepareStartSessionReplacement(
 	if err != nil {
 		return nil, fmt.Errorf("runs: prepare Session replacement: %w", err)
 	}
-	return &replacement, nil
+	return SessionSave{Replacement: replacement}, nil
 }
 
-func (c *Openings) resolveOpeningError(ctx context.Context, sessionID string, err error) error {
+func (c *Openings) resolveOpeningError(ctx context.Context, sessionID identity.SessionID, err error) error {
 	if !errors.Is(err, run.ErrSessionBusy) {
 		return err
 	}
@@ -490,7 +492,7 @@ func (c *Openings) claimFreshRun(ctx context.Context, sess session.Session) (own
 // it has none. One author, because the same conflict is reachable twice: this process
 // can see the Run before admission, and the durable unique index can reject the
 // INSERT after another process created one.
-func (c *Openings) activeRunConflict(ctx context.Context, sessionID string) (*ActiveRunConflictError, error) {
+func (c *Openings) activeRunConflict(ctx context.Context, sessionID identity.SessionID) (*ActiveRunConflictError, error) {
 	run, found, err := c.activeRuns.ActiveRun(ctx, sessionID)
 	if err != nil || !found {
 		return nil, err

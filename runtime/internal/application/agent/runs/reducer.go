@@ -7,6 +7,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -88,6 +90,14 @@ type openTool struct {
 	finishedAt        time.Time
 }
 
+// startedAs reports whether this open call is the one start describes.
+func (t *openTool) startedAs(start ToolCallStarted) bool {
+	call, _ := t.item.ToolCall()
+	return t.modelCallSequence == start.ModelCallSequence && t.toolCallIndex == start.ToolCallIndex &&
+		t.sourceCallID == start.SourceCallID && call.Invocation.MatchesSource(start.ToolName, start.Source) &&
+		t.attemptInvocation.Input.Equal(start.Input)
+}
+
 type toolPosition struct {
 	modelCallSequence uint64
 	toolCallIndex     uint32
@@ -161,7 +171,7 @@ func cloneResumeBinding(value *resumeBinding) *resumeBinding {
 	return &cloned
 }
 
-func (r *reducer) nextItemID() (string, error) { return r.itemIDs.Next() }
+func (r *reducer) nextItemID() (identity.ItemID, error) { return r.itemIDs.Next() }
 
 func (r *reducer) open() (reductionBatch, error) {
 	if r.resume != nil && r.resume.err != nil {
@@ -205,27 +215,9 @@ func (r *reducer) reduce(ev ExecutionFact) (reductionBatch, error) {
 func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 	switch e := ev.(type) {
 	case MessageDelta:
-		// Reasoning and message are two concurrent projections of one model
-		// response, not mutually exclusive stream modes. Keep each Item open until
-		// ModelCallCompleted supplies the authoritative full message; completing one
-		// merely because the other emitted would make that final message duplicate it.
-		if r.modelBoundaryClosed {
-			return factReduction{}, nil
-		}
-		appended, err := r.appendText(e.Text)
-		if err != nil {
-			return factReduction{}, fmt.Errorf("%w: append text: %w", errReducerInvariant, err)
-		}
-		return factReduction{events: appended}, nil
+		return r.streamDelta("text", r.appendText, e.Text)
 	case ReasoningDelta:
-		if r.modelBoundaryClosed {
-			return factReduction{}, nil
-		}
-		appended, err := r.appendReasoning(e.Text)
-		if err != nil {
-			return factReduction{}, fmt.Errorf("%w: append reasoning: %w", errReducerInvariant, err)
-		}
-		return factReduction{events: appended}, nil
+		return r.streamDelta("reasoning", r.appendReasoning, e.Text)
 	case ModelCallStarted:
 		return r.startModelCall(e)
 	case ModelCallCompleted:
@@ -238,51 +230,19 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 		}
 		return r.startToolCall(e)
 	case ToolCallPrepared:
-		if err := e.Caller.Validate(); err != nil {
-			return factReduction{}, err
-		}
-		caller := e.Caller.Snapshot()
-		if caller.Invocation.ID != e.Start.CallID || !e.Start.MatchesCapturedRef(caller.Tool) {
-			return factReduction{}, fmt.Errorf("%w: prepared Tool caller differs from execution", errExecutorContract)
-		}
-		e.Start.Source = caller.Tool
-		reduced, err := r.startToolCall(e.Start)
-		if err != nil {
-			return reduced, err
-		}
-		if len(reduced.toolInvocations) != 1 {
-			return factReduction{}, fmt.Errorf("%w: prepared Tool has no invocation", errExecutorContract)
-		}
-		reduced.toolInvocations[0].Caller = new(e.Caller)
-		reduced.executionContext = new(e.Context.Clone())
-		return reduced, err
+		return r.prepareToolCall(e)
 	case ToolResultsCommitted:
 		return r.finishToolResults(e)
 	case SteerMessagesApplied:
-		events, err := r.steerMessagesApplied(e)
-		if err != nil {
-			return factReduction{}, fmt.Errorf("%w: applied steers: %w", errExecutorContract, err)
-		}
-		var messages []corechat.Message
-		if r.cfg.Opened.Lineage().IsRoot() {
-			messages = make([]corechat.Message, len(e.Messages))
-			for index, applied := range e.Messages {
-				message, err := MaterializeUserMessage(applied.Content)
-				if err != nil {
-					return factReduction{}, fmt.Errorf("%w: applied steer message[%d]: %w", errExecutorContract, index, err)
-				}
-				messages[index] = message
-			}
-		}
-		return factReduction{events: events, conversationMessages: messages}, nil
+		return r.applySteers(e)
 	case PlanUpdated:
 		return factReduction{events: r.planSnapshot(e)}, nil
 	case CompactionBoundary:
 		events, err := r.compaction(e)
 		if err != nil {
-			return factReduction{}, fmt.Errorf("%w: compaction: %w", errReducerInvariant, err)
+			err = fmt.Errorf("%w: compaction: %w", errReducerInvariant, err)
 		}
-		return factReduction{events: events}, nil
+		return factReduction{events: events}, err
 	case SegmentEnded:
 		return r.endSegment(e)
 	default:
@@ -290,8 +250,67 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 	}
 }
 
+// streamDelta appends one streamed fragment. Reasoning and message are two
+// concurrent projections of one model response, not exclusive stream modes:
+// each Item stays open until ModelCallCompleted supplies the authoritative full
+// message, so completing one because the other emitted would duplicate it.
+func (r *reducer) streamDelta(kind string, appendDelta func(string) ([]ProjectionEvent, error), text string) (factReduction, error) {
+	if r.modelBoundaryClosed {
+		return factReduction{}, nil
+	}
+	appended, err := appendDelta(text)
+	if err != nil {
+		return factReduction{}, fmt.Errorf("%w: append %s: %w", errReducerInvariant, kind, err)
+	}
+	return factReduction{events: appended}, nil
+}
+
+func (r *reducer) prepareToolCall(prepared ToolCallPrepared) (factReduction, error) {
+	if err := prepared.Caller.Validate(); err != nil {
+		return factReduction{}, err
+	}
+	caller := prepared.Caller.Snapshot()
+	if caller.Invocation.ID != prepared.Start.CallID || !prepared.Start.MatchesCapturedRef(caller.Tool) {
+		return factReduction{}, fmt.Errorf("%w: prepared Tool caller differs from execution", errExecutorContract)
+	}
+	prepared.Start.Source = caller.Tool
+	reduced, err := r.startToolCall(prepared.Start)
+	if err != nil {
+		return reduced, err
+	}
+	if len(reduced.toolInvocations) != 1 {
+		return factReduction{}, fmt.Errorf("%w: prepared Tool has no invocation", errExecutorContract)
+	}
+	reduced.toolInvocations[0].Caller = new(prepared.Caller)
+	reduced.executionContext = new(prepared.Context.Clone())
+	return reduced, nil
+}
+
+// applySteers projects applied steers; only a root Run's conversation carries
+// them as user messages.
+func (r *reducer) applySteers(applied SteerMessagesApplied) (factReduction, error) {
+	events, err := r.steerMessagesApplied(applied)
+	if err != nil {
+		return factReduction{}, fmt.Errorf("%w: applied steers: %w", errExecutorContract, err)
+	}
+	if !r.cfg.Opened.Lineage().IsRoot() {
+		return factReduction{events: events}, nil
+	}
+	messages := make([]corechat.Message, len(applied.Messages))
+	for index, steer := range applied.Messages {
+		message, err := MaterializeUserMessage(steer.Content)
+		if err != nil {
+			return factReduction{}, fmt.Errorf("%w: applied steer message[%d]: %w", errExecutorContract, index, err)
+		}
+		messages[index] = message
+	}
+	return factReduction{events: events, conversationMessages: messages}, nil
+}
+
+// adoptToolAttempt reopens a durable Tool attempt on its original Item and
+// start time, whether the executor replays its start or recovery stages it.
 func (r *reducer) adoptToolAttempt(started ToolCallStarted, attempt OpenToolInvocation) error {
-	if r.resume == nil || r.resume.callItems[started.CallID].ID() != attempt.ItemID ||
+	if r.resume == nil || attempt.CallID != started.CallID || r.resume.callItems[started.CallID].ID() != attempt.ItemID ||
 		attempt.SessionID != r.cfg.Opened.SessionID() || started.ModelCallSequence == 0 {
 		return fmt.Errorf("%w: restored Tool attempt %q differs from its durable Item", errExecutorContract, started.CallID)
 	}
@@ -393,46 +412,27 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 		return factReduction{}, fmt.Errorf("%w: model call failure: %v", errExecutorContract, err)
 	}
 	call, started := r.modelCalls[failed.CallID]
-	startedAt := call.startedAt
 	if !started {
 		return factReduction{}, fmt.Errorf("%w: model call %q failed without a start", errExecutorContract, failed.CallID)
 	}
 	finishedAt := r.now()
-	if finishedAt.Before(startedAt) {
-		return factReduction{}, fmt.Errorf(
-			"%w: model call %q failure precedes its start",
-			errExecutorContract,
-			failed.CallID,
-		)
+	if finishedAt.Before(call.startedAt) {
+		return factReduction{}, fmt.Errorf("%w: model call %q failure precedes its start", errExecutorContract, failed.CallID)
 	}
-	if call.purpose == run.ModelIndependent && (failed.Observation != (ModelObservation{}) || failed.FirstOutputLatencyMillis != nil || (failed.Accounting != nil && (failed.Accounting.Message != nil || failed.Accounting.ContextTokens != 0 || failed.Accounting.FirstOutputLatencyMillis != nil))) {
-		return factReduction{}, fmt.Errorf("%w: independent model failure carries conversation state", errExecutorContract)
+	if err := failed.validateFor(call.purpose); err != nil {
+		return factReduction{}, err
 	}
 	var events []ProjectionEvent
-	var err error
 	if call.purpose == run.ModelConversation {
-		events, err = r.retainIncompleteModelOutput(failed.Observation)
-	}
-	if err != nil {
-		return factReduction{}, err
+		retained, err := r.retainIncompleteModelOutput(failed.Observation)
+		if err != nil {
+			return factReduction{}, err
+		}
+		events = retained
 	}
 	var usage *corechat.Usage
 	var progressed *run.Run
-	if failed.KnownResponse != nil {
-		if err := failed.KnownResponse.Validate(); err != nil {
-			return factReduction{}, err
-		}
-		if failed.Accounting == nil || failed.Accounting.CallID != failed.CallID {
-			return factReduction{}, errExecutorContract
-		}
-		if !modelref.UsageMatchesResponse(failed.Accounting.ReportedUsage, failed.KnownResponse) {
-			return factReduction{}, errExecutorContract
-		}
-	}
 	if failed.Accounting != nil {
-		if failed.Accounting.CallID != failed.CallID || (failed.KnownResponse == nil && (failed.Accounting.ReportedUsage != nil || failed.Accounting.Cost.OptionalUSD() != nil || failed.Accounting.ContextTokens != 0 || failed.Accounting.Message != nil)) {
-			return factReduction{}, errExecutorContract
-		}
 		progressEvents, err := r.modelUsageProgress(*failed.Accounting)
 		if err != nil {
 			return factReduction{}, err
@@ -455,7 +455,7 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 		events:   append(events, SegmentProgressed{Progress: Progress{Activity: FailedModelCallActivity{}}}),
 		modelInvocations: []ModelInvocationCommit{{
 			CallID: failed.CallID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
-			State: modelref.InvocationFailed, Purpose: call.purpose, StartedAt: startedAt, FinishedAt: finishedAt,
+			State: modelref.InvocationFailed, Purpose: call.purpose, StartedAt: call.startedAt, FinishedAt: finishedAt,
 			Usage: usage, KnownResponse: failed.KnownResponse.Clone(),
 			FirstOutputLatencyMillis: failed.FirstOutputLatencyMillis,
 		}},
@@ -552,7 +552,7 @@ func appendClonedMessages(dst []corechat.Message, messages ...corechat.Message) 
 	return dst
 }
 
-func closedToolInvocationCommits(segmentID string, tools []*openTool) []ToolInvocationCommit {
+func closedToolInvocationCommits(segmentID identity.SegmentID, tools []*openTool) []ToolInvocationCommit {
 	commits := make([]ToolInvocationCommit, 0, len(tools))
 	for _, ref := range tools {
 		if ref == nil || ref.modelCallSequence == 0 || ref.finishedAt.IsZero() {
@@ -654,24 +654,13 @@ func (r *reducer) now() time.Time {
 }
 
 func (r *reducer) finishToolResults(batch ToolResultsCommitted) (factReduction, error) {
-	if err := batch.Publication.Validate(); err != nil {
+	if err := batch.validate(); err != nil {
 		return factReduction{}, err
 	}
-	if len(batch.Results) == 0 || len(batch.Starts) != len(batch.Results) {
-		return factReduction{}, errors.New("runs: result publication requires its complete call set")
-	}
-	sequence := batch.Starts[0].ModelCallSequence
-	if sequence == 0 {
-		return factReduction{}, errors.New("runs: result publication requires model attribution")
-	}
 	var reduced factReduction
-	for index, start := range batch.Starts {
-		if start.ModelCallSequence != sequence || (index > 0 && start.ToolCallIndex <= batch.Starts[index-1].ToolCallIndex) || start.CallID != batch.Results[index].CallID {
-			return factReduction{}, errors.New("runs: result publication call set is not in declared order")
-		}
+	for _, start := range batch.Starts {
 		if ref, open := r.tools.get(start.CallID); open {
-			call, _ := ref.item.ToolCall()
-			if ref.modelCallSequence != sequence || ref.toolCallIndex != start.ToolCallIndex || ref.sourceCallID != start.SourceCallID || !call.Invocation.MatchesSource(start.ToolName, start.Source) {
+			if !ref.startedAs(start) {
 				return factReduction{}, errors.New("runs: result publication differs from its open call")
 			}
 			continue

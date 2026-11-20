@@ -32,7 +32,7 @@ func (f *feedbackScreens) RecordFeedback(argument string) error {
 		return err
 	}
 	f.status.note("recording feedback")
-	if !f.tasks.application(feedbackOperation, false,
+	if !f.tasks.application(feedbackOperation,
 		func(ctx context.Context) (protocol.FeedbackRequest, error) {
 			return request, f.service.Record(ctx, request)
 		},

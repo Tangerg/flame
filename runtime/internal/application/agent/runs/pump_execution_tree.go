@@ -135,7 +135,7 @@ func (s *segmentPump) stageTreeFacts(facts []ExecutorEvent, startedRoutes map[st
 		if candidate == nil {
 			candidate = route.reducer.clone()
 		}
-		fact, cancellation := s.owner.projectCancellation(s.classifyChildCancellationFact(route, fact, commit.Events), route.lineage.IsChild())
+		fact, cancellation := s.owner.projectCancellation(s.classifyChildCancellationFact(route, fact, commit.Events), route.lineage)
 		batch, err := candidate.reduce(fact)
 		if err != nil {
 			return nil, err

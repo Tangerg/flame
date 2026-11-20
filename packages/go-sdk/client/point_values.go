@@ -32,23 +32,8 @@ func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contra
 		return nil, errors.New("runtime: point resolver and admitted contract are required")
 	}
 	contract = new(*contract)
-	if err := framevalue.ValidateType(reflect.TypeFor[T]()); err != nil {
+	if err := requirePointValueType[T](contract); err != nil {
 		return nil, err
-	}
-	schema, err := framevalue.SchemaFor[T]()
-	if err != nil {
-		return nil, err
-	}
-	actual, err := framevalue.ParseJSON(schema)
-	if err != nil {
-		return nil, err
-	}
-	required, err := framevalue.ParseJSON(contract.Definition().Value)
-	if err != nil {
-		return nil, err
-	}
-	if actual != required {
-		return nil, errors.New("runtime: consumer type differs from its point value schema")
 	}
 	contextJSON, err := framevalue.EncodeJSON(attributes)
 	if err != nil {
@@ -69,18 +54,48 @@ func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contra
 	}
 	values := make([]PointValue[T], 0, len(page.Data))
 	for _, binding := range page.Data {
-		input, err := framevalue.ParseJSON([]byte(binding.Value))
+		value, err := decodePointValue[T](contract, binding.Value)
 		if err != nil {
-			return nil, errors.Join(protocol.ErrInvalidResponse, err)
-		}
-		if err := contract.ValidateValue(input); err != nil {
-			return nil, errors.Join(protocol.ErrInvalidResponse, err)
-		}
-		var value T
-		if err := json.Unmarshal(input.Bytes(), &value, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
 			return nil, errors.Join(protocol.ErrInvalidResponse, err)
 		}
 		values = append(values, PointValue[T]{InstallationID: binding.InstallationID, Digest: binding.Digest, Contribution: binding.Contribution, Value: value})
 	}
 	return values, nil
+}
+
+// requirePointValueType refuses a consumer type whose schema is not exactly the
+// point's published value schema.
+func requirePointValueType[T any](contract *plugincontract.Point) error {
+	if err := framevalue.ValidateType(reflect.TypeFor[T]()); err != nil {
+		return err
+	}
+	schema, err := framevalue.SchemaFor[T]()
+	if err != nil {
+		return err
+	}
+	actual, err := framevalue.ParseJSON(schema)
+	if err != nil {
+		return err
+	}
+	required, err := framevalue.ParseJSON(contract.Definition().Value)
+	if err != nil {
+		return err
+	}
+	if actual != required {
+		return errors.New("runtime: consumer type differs from its point value schema")
+	}
+	return nil
+}
+
+func decodePointValue[T any](contract *plugincontract.Point, encoded string) (T, error) {
+	var value T
+	input, err := framevalue.ParseJSON([]byte(encoded))
+	if err != nil {
+		return value, err
+	}
+	if err := contract.ValidateValue(input); err != nil {
+		return value, err
+	}
+	err = json.Unmarshal(input.Bytes(), &value, json.RejectUnknownMembers(true), framevalue.Numbers())
+	return value, err
 }

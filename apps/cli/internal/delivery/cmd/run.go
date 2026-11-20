@@ -81,50 +81,7 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 		return err
 	}
 
-	var (
-		runtime Runtime
-		profile RuntimeProfile
-		opened  conversation.SessionSnapshot
-		message authoring.Message
-	)
-	if r.sessionID == "" {
-		workspacePath, workspaceErr := resolveWorkspace(cmd, config)
-		if workspaceErr != nil {
-			return workspaceErr
-		}
-		attachmentRoot := workspacePath
-		if config.Runtime.Mode == settings.RuntimeRemote {
-			attachmentRoot, err = resolveLocalDirectory(cmd)
-			if err != nil {
-				return err
-			}
-		}
-		message, err = r.buildMessage(cmd.Context(), messageText, attachmentRoot)
-		if err != nil {
-			return err
-		}
-		runtime, profile, err = provider.Open(cmd)
-		if err != nil {
-			return err
-		}
-		opened, err = session.Open(cmd.Context(), runtime, "", workspacePath)
-	} else {
-		runtime, profile, err = provider.Open(cmd)
-		if err != nil {
-			return err
-		}
-		opened, err = session.Open(cmd.Context(), runtime, r.sessionID, "")
-		if err == nil {
-			attachmentRoot := opened.Session.Workspace.Path
-			if config.Runtime.Mode == settings.RuntimeRemote {
-				attachmentRoot, err = resolveLocalDirectory(cmd)
-				if err != nil {
-					return err
-				}
-			}
-			message, err = r.buildMessage(cmd.Context(), messageText, attachmentRoot)
-		}
-	}
+	runtime, profile, opened, message, err := r.openTarget(cmd, provider, config, messageText)
 	if err != nil {
 		return err
 	}
@@ -143,6 +100,52 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 		ApproveAll:   r.approveAll,
 		ReplayPolicy: replayPolicy,
 	})
+}
+
+// openTarget opens the Session the run addresses and authors its message. A
+// new Session resolves attachments before connecting; an existing one must be
+// read first, since its workspace roots the attachments.
+func (r *runFlags) openTarget(cmd *cobra.Command, provider runtimeProvider, config settings.Config, messageText string) (Runtime, RuntimeProfile, conversation.SessionSnapshot, authoring.Message, error) {
+	if r.sessionID == "" {
+		workspacePath, err := resolveWorkspace(cmd, config)
+		if err != nil {
+			return nil, nil, conversation.SessionSnapshot{}, authoring.Message{}, err
+		}
+		message, err := r.messageFrom(cmd, config, messageText, workspacePath)
+		if err != nil {
+			return nil, nil, conversation.SessionSnapshot{}, authoring.Message{}, err
+		}
+		runtime, profile, err := provider.Open(cmd)
+		if err != nil {
+			return nil, nil, conversation.SessionSnapshot{}, authoring.Message{}, err
+		}
+		opened, err := session.Open(cmd.Context(), runtime, "", workspacePath)
+		return runtime, profile, opened, message, err
+	}
+	runtime, profile, err := provider.Open(cmd)
+	if err != nil {
+		return nil, nil, conversation.SessionSnapshot{}, authoring.Message{}, err
+	}
+	opened, err := session.Open(cmd.Context(), runtime, r.sessionID, "")
+	if err != nil {
+		return nil, nil, conversation.SessionSnapshot{}, authoring.Message{}, err
+	}
+	message, err := r.messageFrom(cmd, config, messageText, opened.Session.Workspace.Path)
+	return runtime, profile, opened, message, err
+}
+
+// messageFrom authors the message with attachments rooted at the workspace,
+// or at the local directory when the Runtime is remote and cannot read ours.
+func (r *runFlags) messageFrom(cmd *cobra.Command, config settings.Config, messageText, workspacePath string) (authoring.Message, error) {
+	attachmentRoot := workspacePath
+	if config.Runtime.Mode == settings.RuntimeRemote {
+		local, err := resolveLocalDirectory(cmd)
+		if err != nil {
+			return authoring.Message{}, err
+		}
+		attachmentRoot = local
+	}
+	return r.buildMessage(cmd.Context(), messageText, attachmentRoot)
 }
 
 type outputFormat string

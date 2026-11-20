@@ -18,10 +18,47 @@ import (
 // A checkpoint retains call attribution and receipt authority across waits.
 // A completed outcome is durable only with its Scope settlement and Item.
 type toolCallCapture struct {
-	Receipt   *toolReceiptEvidence `json:"receipt,omitzero"`
-	MemberID  string               `json:"member_id"`
-	ProcessID scoperun.ProcessID   `json:"process_id"`
-	Start     runs.ToolCallStarted `json:"start"`
+	Receipt   *toolReceiptEvidence
+	MemberID  string
+	ProcessID scoperun.ProcessID
+	Start     runs.ToolCallStarted
+}
+
+// toolCallCaptureWire stores admitted arguments only: a capture exists to
+// recover a call that reached its Tool, and rejected input never does.
+type toolCallCaptureWire struct {
+	Receipt           *toolReceiptEvidence `json:"receipt,omitzero"`
+	MemberID          string               `json:"member_id"`
+	ProcessID         scoperun.ProcessID   `json:"process_id"`
+	CallID            string               `json:"call_id"`
+	ModelCallSequence uint64               `json:"model_call_sequence"`
+	ToolCallIndex     uint32               `json:"tool_call_index"`
+	SourceCallID      string               `json:"source_call_id"`
+	Source            tool.Ref             `json:"source,omitzero"`
+	ToolName          string               `json:"tool_name"`
+	Arguments         tool.Arguments       `json:"arguments"`
+	SafetyClass       tool.SafetyClass     `json:"safety_class"`
+}
+
+func (t toolCallCapture) wire() toolCallCaptureWire {
+	start := t.Start
+	return toolCallCaptureWire{
+		Receipt: t.Receipt, MemberID: t.MemberID, ProcessID: t.ProcessID,
+		CallID: start.CallID, ModelCallSequence: start.ModelCallSequence, ToolCallIndex: start.ToolCallIndex,
+		SourceCallID: start.SourceCallID, Source: start.Source, ToolName: start.ToolName,
+		Arguments: start.Input.Arguments(), SafetyClass: start.SafetyClass,
+	}
+}
+
+func (w toolCallCaptureWire) capture() toolCallCapture {
+	return toolCallCapture{
+		Receipt: w.Receipt, MemberID: w.MemberID, ProcessID: w.ProcessID,
+		Start: runs.ToolCallStarted{
+			CallID: w.CallID, ModelCallSequence: w.ModelCallSequence, ToolCallIndex: w.ToolCallIndex,
+			SourceCallID: w.SourceCallID, Source: w.Source, ToolName: w.ToolName,
+			Input: transcript.AdmittedInput(w.Arguments), SafetyClass: w.SafetyClass,
+		},
+	}
 }
 
 type toolCallMetadata struct {
@@ -77,8 +114,10 @@ func (t toolCallCapture) validate() error {
 			return err
 		}
 	}
-	_, err = tool.ParseArguments(t.Start.Arguments)
-	return err
+	if _, rejected := t.Start.Input.Rejected(); rejected {
+		return errors.New("execution: captured Tool input was never admitted")
+	}
+	return nil
 }
 
 func (i *interactionSession) rememberToolMetadata(metadata toolCallMetadata) error {
@@ -117,7 +156,7 @@ func (i *interactionSession) toolResultProjection(relation scoperun.ProcessID, s
 	i.state.mu.Unlock()
 	start := runs.ToolCallStarted{
 		CallID: identity.String(), SourceCallID: entry.Call.ID, ModelCallSequence: sequence,
-		ToolCallIndex: entry.ToolCallIndex, ToolName: entry.Call.Name, ArgumentsText: entry.Call.Arguments,
+		ToolCallIndex: entry.ToolCallIndex, ToolName: entry.Call.Name, Input: transcript.RejectedInput(entry.Call.Arguments),
 	}
 	end := runs.ToolCallFinished{CallID: identity.String(), ModelResult: new(entry.Result.Clone())}
 	if prepared {
@@ -125,7 +164,6 @@ func (i *interactionSession) toolResultProjection(relation scoperun.ProcessID, s
 			return runs.ExecutorEvent{}, errors.New("execution: result metadata belongs to another member")
 		}
 		start = metadata.Start
-		end.Arguments = metadata.Start.Arguments
 		if presentation := metadata.presentation; presentation != nil {
 			end.Result, end.Offload = presentation.result, presentation.offload
 			end.OutputText, end.MutatedPaths, end.Failure = presentation.outputText, presentation.mutatedPaths, presentation.failure
@@ -191,10 +229,11 @@ func (i *interactionSession) retireToolReceiptPrefix(memberID string) {
 	}
 }
 
-func decodeToolCalls(values []toolCallCapture, processes map[scoperun.ProcessID]struct{}) (map[string]toolCallMetadata, error) {
+func decodeToolCalls(values []toolCallCaptureWire, processes map[scoperun.ProcessID]struct{}) (map[string]toolCallMetadata, error) {
 	metadata := make(map[string]toolCallMetadata, len(values))
 	previous := ""
-	for _, value := range values {
+	for _, encoded := range values {
+		value := encoded.capture()
 		if err := value.validate(); err != nil {
 			return nil, err
 		}

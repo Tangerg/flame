@@ -10,6 +10,42 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
+// Workspace command options. A bare optionTerminator ends option parsing.
+const (
+	optionPrefix     = "--"
+	optionTerminator = "--"
+	baseOption       = "--base"
+	worktreeOption   = "--worktree"
+	rowsOption       = "--rows"
+	rawOption        = "--raw"
+	limitOption      = "--limit"
+	linesOption      = "--lines"
+	pathOption       = "--path"
+	scanAllOption    = "--scan-all"
+	recursiveOption  = "--recursive"
+	ignoredOption    = "--ignored"
+	globOption       = "--glob"
+	startOption      = "--start"
+	endOption        = "--end"
+	maxBytesOption   = "--max-bytes"
+)
+
+const defaultPreviewLines = 80
+
+// exclusiveOptions admits at most one option of a mutually exclusive group.
+type exclusiveOptions struct {
+	group  string
+	chosen string
+}
+
+func (g *exclusiveOptions) choose(option string) error {
+	if g.chosen != "" {
+		return fmt.Errorf("workspace diff %s was specified more than once", g.group)
+	}
+	g.chosen = option
+	return nil
+}
+
 type commandOptionCursor struct {
 	remaining string
 	seen      map[string]struct{}
@@ -25,11 +61,11 @@ func (c *commandOptionCursor) Next() (string, bool, error) {
 		return "", false, nil
 	}
 	token, rest := nextCommandToken(c.remaining)
-	if token == "--" {
+	if token == optionTerminator {
 		c.remaining, c.stopped = strings.TrimSpace(rest), true
 		return "", false, nil
 	}
-	if !strings.HasPrefix(token, "--") {
+	if !strings.HasPrefix(token, optionPrefix) {
 		return "", false, nil
 	}
 	c.remaining = strings.TrimSpace(rest)
@@ -42,7 +78,7 @@ func (c *commandOptionCursor) Next() (string, bool, error) {
 
 func (c *commandOptionCursor) Value(option string) (string, error) {
 	value, rest := nextCommandToken(c.remaining)
-	if value == "" || strings.HasPrefix(value, "--") {
+	if value == "" || strings.HasPrefix(value, optionPrefix) {
 		return "", fmt.Errorf("option %s requires a value", option)
 	}
 	c.remaining = strings.TrimSpace(rest)
@@ -87,7 +123,8 @@ func parseWorkspaceDiffSelection(argument string) (workspaceDiffSelection, error
 		limit: workspace.DefaultDiffRowLimit(),
 	}
 	cursor := newCommandOptionCursor(argument)
-	var modeSet, formatSet bool
+	mode := exclusiveOptions{group: "mode"}
+	format := exclusiveOptions{group: "format"}
 	for {
 		option, ok, err := cursor.Next()
 		if err != nil {
@@ -97,23 +134,21 @@ func parseWorkspaceDiffSelection(argument string) (workspaceDiffSelection, error
 			break
 		}
 		switch option {
-		case "--base", "--worktree":
-			if modeSet {
-				return workspaceDiffSelection{}, errors.New("workspace diff mode was specified more than once")
+		case baseOption, worktreeOption:
+			if err := mode.choose(option); err != nil {
+				return workspaceDiffSelection{}, err
 			}
-			modeSet = true
-			if option == "--base" {
+			if option == baseOption {
 				selection.mode = protocol.DiffModeBase
 			}
-		case "--rows", "--raw":
-			if formatSet {
-				return workspaceDiffSelection{}, errors.New("workspace diff format was specified more than once")
+		case rowsOption, rawOption:
+			if err := format.choose(option); err != nil {
+				return workspaceDiffSelection{}, err
 			}
-			formatSet = true
-			if option == "--rows" {
+			if option == rowsOption {
 				selection.format = protocol.DiffFormatRows
 			}
-		case "--limit":
+		case limitOption:
 			rows, parseErr := cursor.PositiveInt(option)
 			if parseErr != nil {
 				return workspaceDiffSelection{}, parseErr
@@ -139,7 +174,7 @@ type workspacePreviewSelection struct {
 }
 
 func parseWorkspacePreviewSelection(argument string) (workspacePreviewSelection, error) {
-	selection := workspacePreviewSelection{lines: 80}
+	selection := workspacePreviewSelection{lines: defaultPreviewLines}
 	cursor := newCommandOptionCursor(argument)
 	for {
 		option, ok, err := cursor.Next()
@@ -149,7 +184,7 @@ func parseWorkspacePreviewSelection(argument string) (workspacePreviewSelection,
 		if !ok {
 			break
 		}
-		if option != "--lines" {
+		if option != linesOption {
 			return workspacePreviewSelection{}, fmt.Errorf("unknown file preview option %q", option)
 		}
 		selection.lines, err = cursor.PositiveInt(option)
@@ -183,11 +218,11 @@ func parseWorkspaceSearchSelection(argument string) (workspaceSearchSelection, e
 			break
 		}
 		switch option {
-		case "--path":
+		case pathOption:
 			selection.path, err = cursor.Value(option)
-		case "--scan-all":
+		case scanAllOption:
 			selection.scanAll = true
-		case "--limit":
+		case limitOption:
 			matches, parseErr := cursor.PositiveInt(option)
 			if parseErr != nil {
 				return workspaceSearchSelection{}, parseErr
@@ -226,11 +261,11 @@ func parseWorkspaceFilesSelection(argument string) (workspaceFilesSelection, err
 			break
 		}
 		switch option {
-		case "--recursive":
+		case recursiveOption:
 			selection.recursive = true
-		case "--ignored":
+		case ignoredOption:
 			selection.includeIgnored = true
-		case "--glob":
+		case globOption:
 			selection.glob, err = cursor.Value(option)
 			if err != nil {
 				return workspaceFilesSelection{}, err
@@ -254,56 +289,51 @@ func parseWorkspaceReadSelection(argument string) (workspaceReadSelection, error
 		lineRange: workspace.WholeFileReadRange(),
 		byteLimit: workspace.DefaultReadByteLimit(),
 	}
-	var startLine, endLine *int
 	cursor := newCommandOptionCursor(argument)
-	for {
-		option, ok, err := cursor.Next()
-		if err != nil {
-			return workspaceReadSelection{}, err
-		}
-		if !ok {
-			break
-		}
-		switch option {
-		case "--start":
-			value, parseErr := cursor.PositiveInt(option)
-			if parseErr != nil {
-				return workspaceReadSelection{}, parseErr
-			}
-			startLine = &value
-		case "--end":
-			value, parseErr := cursor.PositiveInt(option)
-			if parseErr != nil {
-				return workspaceReadSelection{}, parseErr
-			}
-			endLine = &value
-		case "--max-bytes":
-			value, parseErr := cursor.PositiveInt(option)
-			if parseErr != nil {
-				return workspaceReadSelection{}, parseErr
-			}
-			selection.byteLimit, err = workspace.NewReadByteLimit(value)
-		default:
-			return workspaceReadSelection{}, fmt.Errorf("unknown workspace read option %q", option)
-		}
-		if err != nil {
-			return workspaceReadSelection{}, err
-		}
+	startLine, endLine, err := parseWorkspaceReadOptions(cursor, &selection)
+	if err != nil {
+		return workspaceReadSelection{}, err
 	}
 	selection.path = cursor.Rest()
-	var rangeErr error
-	switch {
-	case selection.path == "":
+	if selection.path == "" {
 		return workspaceReadSelection{}, errors.New("usage: /read [--start N] [--end N] [--max-bytes N] <path>")
+	}
+	switch {
 	case startLine == nil && endLine != nil:
 		return workspaceReadSelection{}, errors.New("workspace read --end requires --start")
 	case startLine != nil && endLine == nil:
-		selection.lineRange, rangeErr = workspace.NewReadTailRange(*startLine)
+		selection.lineRange, err = workspace.NewReadTailRange(*startLine)
 	case startLine != nil && endLine != nil:
-		selection.lineRange, rangeErr = workspace.NewReadLineRange(*startLine, *endLine)
+		selection.lineRange, err = workspace.NewReadLineRange(*startLine, *endLine)
 	}
-	if rangeErr != nil {
-		return workspaceReadSelection{}, rangeErr
+	if err != nil {
+		return workspaceReadSelection{}, err
 	}
 	return selection, nil
+}
+
+// parseWorkspaceReadOptions consumes the leading options; the line bounds
+// stay separate because only their combination names a range.
+func parseWorkspaceReadOptions(cursor *commandOptionCursor, selection *workspaceReadSelection) (startLine, endLine *int, err error) {
+	for {
+		option, ok, err := cursor.Next()
+		if err != nil || !ok {
+			return startLine, endLine, err
+		}
+		value, err := cursor.PositiveInt(option)
+		switch {
+		case option != startOption && option != endOption && option != maxBytesOption:
+			return nil, nil, fmt.Errorf("unknown workspace read option %q", option)
+		case err != nil:
+			return nil, nil, err
+		case option == startOption:
+			startLine = &value
+		case option == endOption:
+			endLine = &value
+		default:
+			if selection.byteLimit, err = workspace.NewReadByteLimit(value); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
 }

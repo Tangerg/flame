@@ -5,10 +5,14 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -45,7 +49,7 @@ func wireSessionErr(err error) error {
 // NextCursor is the "has more" signal — never a silent truncation. The page is
 // cut by the read, so only the sessions on it are resolved.
 func (s *Handler) ListSessions(ctx context.Context, q protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
-	limit, err := requestedPageLimit(q.Limit)
+	limit, err := pagination.ParseLimit(q.Limit)
 	if err != nil {
 		return nil, wirePageError(err)
 	}
@@ -76,7 +80,11 @@ func (s *Handler) ListSessions(ctx context.Context, q protocol.ListSessionsReque
 }
 
 func (s *Handler) GetSession(ctx context.Context, id string) (*protocol.Session, error) {
-	view, err := s.sessions.View(ctx, id)
+	sessionID, err := wireIdentity("sessionId", id, identity.ParseSession)
+	if err != nil {
+		return nil, err
+	}
+	view, err := s.sessions.View(ctx, sessionID)
 	if err != nil {
 		return nil, wireSessionErr(err)
 	}
@@ -88,8 +96,35 @@ func (s *Handler) GetSession(ctx context.Context, id string) (*protocol.Session,
 // complete material read used by mounted clients. Capability checks apply to
 // the snapshot as a whole, so no response can silently trim a waiting set or a
 // child Run that the caller could not fold.
+// requireAnswerableInterrupts refuses a snapshot whose open interrupts demand
+// capabilities this caller did not negotiate.
+func requireAnswerableInterrupts(snapshot sessions.MaterialSnapshot, caller rundomain.Capabilities) error {
+	for _, pending := range snapshot.Interrupts {
+		root, found := snapshot.Run(pending.RootRunID)
+		if !found {
+			return fmt.Errorf("delivery: open interrupt set %q has no root Run in the snapshot", pending.RootRunID)
+		}
+		if gap := root.Capabilities().MissingFrom(caller); !gap.IsEmpty() {
+			return capabilityGap(gap)
+		}
+	}
+	return nil
+}
+
+func presentSteerInput(accepted runs.CommandAcceptance) protocol.SteerInput {
+	input := protocol.SteerInput{RunID: accepted.RunID.String(), SegmentID: accepted.SegmentID.String(), UserItemID: accepted.UserItemID.String()}
+	for _, block := range accepted.SteerInput {
+		input.Input = append(input.Input, presentContent(block))
+	}
+	return input
+}
+
 func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSessionSnapshotRequest) (*protocol.SessionSnapshot, error) {
-	snapshot, view, err := s.sessions.MaterialView(ctx, in.SessionID)
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return nil, parseErr
+	}
+	snapshot, view, err := s.sessions.MaterialView(ctx, sessionID)
 	if err != nil {
 		return nil, wireSessionErr(err)
 	}
@@ -97,14 +132,8 @@ func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSession
 	if err != nil {
 		return nil, err
 	}
-	for _, pending := range snapshot.Interrupts {
-		root, found := snapshot.Run(pending.RootRunID)
-		if !found {
-			return nil, fmt.Errorf("delivery: open interrupt set %q has no root Run in the snapshot", pending.RootRunID)
-		}
-		if gap := root.Capabilities().MissingFrom(caller); !gap.IsEmpty() {
-			return nil, capabilityGap(gap)
-		}
+	if err := requireAnswerableInterrupts(snapshot, caller); err != nil {
+		return nil, err
 	}
 	out := &protocol.SessionSnapshot{
 		Session:    presentSession(view),
@@ -116,11 +145,7 @@ func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSession
 		out.Items = append(out.Items, presentItem(item))
 	}
 	for _, accepted := range snapshot.SteerInputs {
-		input := protocol.SteerInput{RunID: accepted.RunID, SegmentID: accepted.SegmentID, UserItemID: accepted.UserItemID}
-		for _, block := range accepted.SteerInput {
-			input.Input = append(input.Input, presentContent(block))
-		}
-		out.SteerInputs = append(out.SteerInputs, input)
+		out.SteerInputs = append(out.SteerInputs, presentSteerInput(accepted))
 	}
 	for _, record := range snapshot.Runs {
 		if !in.IncludeDescendants && record.Lineage().IsChild() {
@@ -134,13 +159,13 @@ func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSession
 	}
 	for _, set := range sets {
 		out.Interrupts = append(out.Interrupts, protocol.PendingInterruptSet{
-			RootRunID:  set.Pending.RootRunID,
-			SessionID:  set.SessionID,
+			RootRunID:  set.Pending.RootRunID.String(),
+			SessionID:  set.SessionID.String(),
 			Interrupts: presentInterrupts(set.Interrupts),
 			CreatedAt:  set.Pending.CreatedAt,
 		})
 	}
-	plan := presentStoredPlan(in.SessionID, snapshot.Plan)
+	plan := presentStoredPlan(sessionID, snapshot.Plan)
 	out.Plan = &plan
 	if snapshot.Goal != nil {
 		out.Goal, err = presentGoal(*snapshot.Goal)
@@ -156,13 +181,26 @@ func (s *Handler) CreateSession(ctx context.Context, in protocol.CreateSessionRe
 	return applySessionCreation(ctx, plan, err)
 }
 
+func (s *Handler) commitCreateSession(ctx context.Context, in protocol.CreateSessionRequest, outcome atomicOutcome) error {
+	creation, err := s.prepareCreate(ctx, in)
+	return outcome.commitCreation(ctx, creation, err)
+}
+
 func (s *Handler) DeleteSession(ctx context.Context, id string) error {
 	var deleted struct{}
 	return s.deleteSession(ctx, id, directReply(&deleted))
 }
 
 func (s *Handler) deleteSession(ctx context.Context, id string, complete operation.Reply[struct{}]) error {
-	return wireSessionMutationErr(s.sessions.DeleteSession(ctx, id, complete), id)
+	sessionID, err := wireIdentity("sessionId", id, identity.ParseSession)
+	if err != nil {
+		return err
+	}
+	return wireSessionMutationErr(s.sessions.DeleteSession(ctx, sessionID, complete), sessionID)
+}
+
+func (s *Handler) commitDeleteSession(ctx context.Context, in protocol.DeleteSessionRequest, outcome atomicOutcome) error {
+	return outcome.settleRefusal(ctx, s.deleteSession(ctx, in.SessionID, outcome.acknowledgement()))
 }
 
 func (s *Handler) UpdateSession(ctx context.Context, in protocol.UpdateSessionRequest) (*protocol.Session, error) {
@@ -171,13 +209,22 @@ func (s *Handler) UpdateSession(ctx context.Context, in protocol.UpdateSessionRe
 	})
 }
 
+func (s *Handler) commitUpdateSession(ctx context.Context, in protocol.UpdateSessionRequest, outcome atomicOutcome) error {
+	reply := outcome.sessionView(func(session *protocol.Session) any { return session })
+	return outcome.settleRefusal(ctx, s.updateSession(ctx, in, reply))
+}
+
 func (s *Handler) updateSession(ctx context.Context, in protocol.UpdateSessionRequest, complete operation.Reply[sessions.View]) error {
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return parseErr
+	}
 	var cwd *string
 	if in.Workspace != nil {
 		path := in.Workspace.Path
 		cwd = &path
 	}
-	err := s.sessions.Update(ctx, in.SessionID, sessions.Patch{
+	err := s.sessions.Update(ctx, sessionID, sessions.Patch{
 		Title: in.Title,
 		ModelSelection: modelchoice.Patch{
 			Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort,
@@ -187,7 +234,7 @@ func (s *Handler) updateSession(ctx context.Context, in protocol.UpdateSessionRe
 		Isolated:         in.Isolated,
 		ExpectedRevision: in.ExpectedRevision,
 	}, complete)
-	return wireSessionMutationErr(err, in.SessionID)
+	return wireSessionMutationErr(err, sessionID)
 }
 
 func completeSessionView(command func(operation.Reply[sessions.View]) error) (*protocol.Session, error) {
@@ -199,7 +246,7 @@ func completeSessionView(command func(operation.Reply[sessions.View]) error) (*p
 	return &presented, nil
 }
 
-func wireSessionMutationErr(err error, sessionID string) error {
+func wireSessionMutationErr(err error, sessionID identity.SessionID) error {
 	if err == nil {
 		return nil
 	}
@@ -224,14 +271,27 @@ func (s *Handler) ForkSession(ctx context.Context, in protocol.ForkSessionReques
 	return applySessionCreation(ctx, plan, err)
 }
 
+func (s *Handler) commitForkSession(ctx context.Context, in protocol.ForkSessionRequest, outcome atomicOutcome) error {
+	creation, err := s.prepareFork(ctx, in)
+	return outcome.commitCreation(ctx, creation, err)
+}
+
 func (s *Handler) prepareCreate(ctx context.Context, in protocol.CreateSessionRequest) (sessions.Creation, error) {
 	return s.sessions.PrepareCreate(ctx, in.Title, s.sessionWorkspacePath(in.Workspace))
 }
 
 func (s *Handler) prepareFork(ctx context.Context, in protocol.ForkSessionRequest) (sessions.Creation, error) {
-	plan, err := s.sessions.PrepareFork(ctx, sessions.ForkSpec{ParentID: in.SessionID, FromRunID: in.FromRunID, Title: in.Title})
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return sessions.Creation{}, parseErr
+	}
+	fromRunID, err := wireIdentity("fromRunId", in.FromRunID, identity.ParseOptionalRun)
 	if err != nil {
-		if in.FromRunID != "" {
+		return sessions.Creation{}, err
+	}
+	plan, err := s.sessions.PrepareFork(ctx, sessions.ForkSpec{ParentID: sessionID, FromRunID: fromRunID, Title: in.Title})
+	if err != nil {
+		if !fromRunID.IsZero() {
 			err = wireBoundaryErr(err)
 		}
 		return sessions.Creation{}, wireSessionErr(err)
@@ -256,7 +316,7 @@ func applySessionCreation(ctx context.Context, creation sessions.Creation, err e
 // or model-default lookup.
 func presentSession(view sessions.View) protocol.Session {
 	return protocol.Session{
-		ID:              view.ID,
+		ID:              view.ID.String(),
 		Title:           view.Title,
 		Workspace:       presentWorkspaceInfo(view.Workspace.Path, view.Workspace.ProjectRoot, view.Workspace.Missing),
 		Provider:        view.Provider,

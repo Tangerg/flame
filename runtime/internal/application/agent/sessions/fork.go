@@ -14,13 +14,13 @@ import (
 
 // ForkSpec describes where a session fork should branch.
 type ForkSpec struct {
-	ParentID  string
-	FromRunID string
+	ParentID  identity.SessionID
+	FromRunID identity.RunID
 	Title     string
 }
 
 type RunPlanBoundary struct {
-	RunID    string
+	RunID    identity.RunID
 	Document plan.Document
 }
 
@@ -29,8 +29,8 @@ type ForkMaterial struct {
 	PlanBoundaries []RunPlanBoundary
 }
 
-func (m ForkMaterial) planAt(runID string) plan.Document {
-	if runID == "" {
+func (m ForkMaterial) planAt(runID identity.RunID) plan.Document {
+	if runID.IsZero() {
 		return plan.Document{Steps: []plan.Step{}}
 	}
 	for _, boundary := range m.PlanBoundaries {
@@ -51,10 +51,10 @@ type ForkBoundary struct {
 	// RunIDs are the terminal Run facts whose user-visible transcript belongs to
 	// Messages. A fork remaps them into the child instead of leaving the model with
 	// context the client cannot see through runs.list/items.list.
-	RunIDs []string
+	RunIDs []identity.RunID
 	// RunID is the boundary run, empty when the parent has no terminal run to
 	// branch from (nothing to copy).
-	RunID string
+	RunID identity.RunID
 }
 
 // ResolveForkBoundary applies a durable run boundary to parent history.
@@ -62,12 +62,7 @@ type ForkBoundary struct {
 // change and therefore is not a portable fork boundary. An explicit target
 // must itself be terminal; an implicit whole-conversation fork stops at the
 // latest terminal run.
-func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID string) (ForkBoundary, error) {
-	if fromRunID != "" {
-		if err := identity.ValidateRun(fromRunID); err != nil {
-			return ForkBoundary{}, fmt.Errorf("sessions: fork boundary: %w", err)
-		}
-	}
+func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID identity.RunID) (ForkBoundary, error) {
 	for _, run := range runs {
 		if !run.State().IsTerminal() || !run.Lineage().IsRoot() {
 			continue
@@ -104,7 +99,7 @@ func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec) (session.Session,
 }
 
 func (c *Coordinator) PrepareFork(ctx context.Context, spec ForkSpec) (Creation, error) {
-	if err := identity.ValidateSession(spec.ParentID); err != nil {
+	if err := spec.ParentID.Validate(); err != nil {
 		return Creation{}, fmt.Errorf("sessions: fork: %w", err)
 	}
 	source, err := c.snapshots.ReadForkMaterial(ctx, spec.ParentID)

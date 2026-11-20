@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -20,7 +22,7 @@ func (r *runTreeOwner) admitCancellation(root rundomain.Run, record Record) erro
 	if root.State() == rundomain.Waiting && parking {
 		return fmt.Errorf("%w: Run %q is completing parked maintenance", rundomain.ErrSessionBusy, root.ID())
 	}
-	if root.State() != rundomain.Running || record.SegmentID != root.ActiveSegmentID() {
+	if !root.Executes(record.SegmentID) {
 		return fmt.Errorf(
 			"runs: cancellation root %q durable segment %q differs from live owner %q",
 			root.ID(), root.ActiveSegmentID(), record.SegmentID,
@@ -33,9 +35,9 @@ func (r *runTreeOwner) admitCancellation(root rundomain.Run, record Record) erro
 // The owner admits either this boundary or whole-tree cancellation, never both.
 type childCancellation struct {
 	id             CancellationID
-	targetRunID    string
-	parentRunID    string
-	spawningItemID string
+	targetRunID    identity.RunID
+	parentRunID    identity.RunID
+	spawningItemID identity.ItemID
 	reason         string
 	root           rundomain.Run
 	executor       ExecutorRef
@@ -107,7 +109,7 @@ func (r *runTreeOwner) beginChildCancellation(
 	return attempt, nil
 }
 
-func (r *runTreeOwner) matchingChildCancellationKey(id CancellationID, runID string) string {
+func (r *runTreeOwner) matchingChildCancellationKey(id CancellationID, runID identity.RunID) string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	attempt := r.childCancel
@@ -142,8 +144,8 @@ func (r *runTreeOwner) finishChildCancellationLocked(attempt *childCancellation)
 }
 
 func (r *runTreeOwner) classifyChildCancellationTool(
-	parentRunID string,
-	itemID string,
+	parentRunID identity.RunID,
+	itemID identity.ItemID,
 	event ToolCallFinished,
 	prior []EventCommit,
 ) ToolCallFinished {
@@ -183,7 +185,7 @@ func (c *childCancellation) result(terminal rundomain.Run) CancelResult {
 	return CancelResult{Run: terminal, RootRun: &root}
 }
 
-func (r *runTreeOwner) recordChildCancellationItem(parentRunID string, item transcript.Item) {
+func (r *runTreeOwner) recordChildCancellationItem(parentRunID identity.RunID, item transcript.Item) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	attempt := r.childCancel
@@ -237,7 +239,7 @@ func (r *runTreeOwner) recordTerminalRun(run rundomain.Run, cancellation Cancell
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.terminalRuns == nil {
-		r.terminalRuns = make(map[string]terminalRun)
+		r.terminalRuns = make(map[identity.RunID]terminalRun)
 	}
 	if _, duplicate := r.terminalRuns[run.ID()]; duplicate {
 		panic(fmt.Sprintf("runs: Run %q committed more than one terminal snapshot", run.ID()))
@@ -292,10 +294,10 @@ func (r *runTreeOwner) commitInterrupt(ctx context.Context, commit func(context.
 	return true, nil
 }
 
-func (r *runTreeOwner) cancellationReason(id CancellationID, child bool) (string, bool) {
+func (r *runTreeOwner) cancellationReason(id CancellationID, lineage rundomain.Lineage) (string, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if child && r.childCancel != nil && r.childCancel.id == id {
+	if lineage.IsChild() && r.childCancel != nil && r.childCancel.id == id {
 		return r.childCancel.reason, true
 	}
 	if r.rootCancel != nil && r.rootCancel.id == id {
@@ -304,12 +306,12 @@ func (r *runTreeOwner) cancellationReason(id CancellationID, child bool) (string
 	return "", false
 }
 
-func (r *runTreeOwner) projectCancellation(fact ExecutionFact, child bool) (ExecutionFact, CancellationID) {
+func (r *runTreeOwner) projectCancellation(fact ExecutionFact, lineage rundomain.Lineage) (ExecutionFact, CancellationID) {
 	end, ok := fact.(SegmentEnded)
 	if !ok || end.cancellation.IsZero() {
 		return fact, CancellationID{}
 	}
-	reason, matched := r.cancellationReason(end.cancellation, child)
+	reason, matched := r.cancellationReason(end.cancellation, lineage)
 	if !matched {
 		return fact, CancellationID{}
 	}

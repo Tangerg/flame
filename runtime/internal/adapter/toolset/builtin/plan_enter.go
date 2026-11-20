@@ -41,7 +41,7 @@ func newEnter(modes planEnterPolicy, available func(context.Context) (bool, erro
 
 func (e *enterer) enter(ctx context.Context, _ enterArgs) (string, error) {
 	sessionID := executionctx.SessionID(ctx)
-	if sessionID == "" {
+	if sessionID.IsZero() {
 		return "", errors.New("enter_plan_mode: no active session")
 	}
 	ready, err := e.available(ctx)

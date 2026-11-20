@@ -10,15 +10,15 @@ import (
 )
 
 type queryModelInvocationReader interface {
-	PageModelInvocations(context.Context, string, int64, string, int) ([]runs.ModelInvocationCommit, error)
+	PageModelInvocations(context.Context, identity.RunID, int64, string, int) ([]runs.ModelInvocationCommit, error)
 }
 
-func (c *QueryCoordinator) ListModelInvocationPage(ctx context.Context, runID, cursor string, limit pagination.RequestedLimit) (pagination.Page[runs.ModelInvocationCommit], error) {
+func (c *QueryCoordinator) ListModelInvocationPage(ctx context.Context, runID identity.RunID, cursor string, limit pagination.RequestedLimit) (pagination.Page[runs.ModelInvocationCommit], error) {
 	const namespace = "model-invocations"
-	if err := identity.ValidateRun(runID); err != nil {
+	if err := runID.Validate(); err != nil {
 		return pagination.Page[runs.ModelInvocationCommit]{}, err
 	}
-	filters := []string{runID}
+	filters := []string{runID.String()}
 	anchor, err := pagination.Decode(cursor, namespace, filters)
 	if err != nil {
 		return pagination.Page[runs.ModelInvocationCommit]{}, err
@@ -35,7 +35,7 @@ func (c *QueryCoordinator) ListModelInvocationPage(ctx context.Context, runID, c
 		}
 		beforeCallID = anchor[1]
 	}
-	size, err := limit.Resolve(100)
+	size, err := limit.Resolve(modelInvocationPageLimit)
 	if err != nil {
 		return pagination.Page[runs.ModelInvocationCommit]{}, err
 	}

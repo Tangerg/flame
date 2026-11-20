@@ -7,6 +7,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -30,31 +31,12 @@ func (o *CallComposition) SelectModel(ctx context.Context, proposal models.Selec
 	if err != nil {
 		return modelchoice.Selection{}, err
 	}
-	var binding plugins.ContributionBinding
-	chosen := false
-	err = o.admission.Under(ctx, func() error {
-		_, found, err := o.calls.selections.Get(ctx, contract.Descriptor().Reference)
-		if err != nil || !found {
-			return err
-		}
-		binding, chosen, err = plugins.SelectedContribution(ctx, o.calls.framework, o.calls.installations, o.calls.selections, contract)
-		if err != nil {
-			return err
-		}
-		if !chosen {
-			return plugin.ErrUnavailable
-		}
-		return nil
-	})
+	binding, chosen, err := o.selectedModelRoute(ctx, contract)
 	if err != nil {
 		return modelchoice.Selection{}, err
 	}
 	if !chosen {
 		return proposal.Proposed, nil
-	}
-	ctx, err = enterContributionPhase(ctx, binding)
-	if err != nil {
-		return modelchoice.Selection{}, err
 	}
 	live, err := o.calls.resolveContribution(ctx, plugins.CallRequest{Installation: binding.InstallationID, Digest: binding.Digest, Contribution: binding.ContributionID, Contract: contract})
 	if err != nil {
@@ -63,40 +45,11 @@ func (o *CallComposition) SelectModel(ctx context.Context, proposal models.Selec
 	if !live.SameContribution(binding) {
 		return modelchoice.Selection{}, plugin.ErrStale
 	}
-	borrowed, err := borrowContribution(ctx, o.calls.pool, binding)
-	if err != nil {
-		return modelchoice.Selection{}, err
-	}
-	defer borrowed.Close()
-	ctx = borrowed.Context()
-	session := borrowed.Session()
-	if _, err := o.calls.pool.SessionActor(ctx, binding.ServerID, session); err != nil {
-		return modelchoice.Selection{}, err
-	}
-	id := uuid.NewString()
-	target := framecall.Target{Scope: extension.ScopeCall, Reference: id}
-	invocation := framecall.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: target}
-	if parent, err := operation.Capture(ctx, target); err == nil {
-		invocation.Origin = parent.Origin
-		invocation.Parent = parent.ID
-	}
-	if parent, err := pluginmcp.InvocationFromContext(ctx); err == nil {
-		invocation.Origin = parent.Origin
-		invocation.Parent = parent.ID
-	}
-	ctx, err = pluginmcp.WithInvocation(ctx, invocation)
-	if err != nil {
-		return modelchoice.Selection{}, err
-	}
-	exported, err := pluginmcp.ResolveCapability(ctx, session, binding.Export, contract)
+	ctx, err = pluginmcp.WithInvocation(ctx, selectionInvocation(ctx))
 	if err != nil {
 		return modelchoice.Selection{}, err
 	}
 	method, err := pluginsdk.ModelSelectionMethod()
-	if err != nil {
-		return modelchoice.Selection{}, err
-	}
-	bound, err := method.Bind(exported)
 	if err != nil {
 		return modelchoice.Selection{}, err
 	}
@@ -112,12 +65,7 @@ func (o *CallComposition) SelectModel(ctx context.Context, proposal models.Selec
 	if proposal.Request != nil {
 		input.Request = proposal.Request.Clone()
 	}
-	metadata, release, err := o.calls.pool.OpenRPC(ctx, binding.ServerID, session)
-	if err != nil {
-		return modelchoice.Selection{}, err
-	}
-	defer release()
-	result, err := bound.CallWithMetadata(ctx, input, metadata)
+	result, err := callContribution(ctx, o.calls.pool, binding, contract, method, input)
 	if err != nil {
 		return modelchoice.Selection{}, err
 	}
@@ -129,4 +77,39 @@ func (o *CallComposition) SelectModel(ctx context.Context, proposal models.Selec
 		return modelchoice.Selection{}, errors.Join(err, errors.New("model selection: selected route is invalid"))
 	}
 	return selected, nil
+}
+
+// selectedModelRoute reads the explicit model-selection choice under
+// installation admission. No choice is not an error; a choice whose provider is
+// gone is.
+func (o *CallComposition) selectedModelRoute(ctx context.Context, contract *plugincontract.Capability) (plugins.ContributionBinding, bool, error) {
+	var binding plugins.ContributionBinding
+	chosen := false
+	err := o.admission.Under(ctx, func() error {
+		_, found, err := o.calls.selections.Get(ctx, contract.Descriptor().Reference)
+		if err != nil || !found {
+			return err
+		}
+		binding, chosen, err = plugins.SelectedContribution(ctx, o.calls.framework, o.calls.installations, o.calls.selections, contract)
+		if err == nil && !chosen {
+			err = plugin.ErrUnavailable
+		}
+		return err
+	})
+	return binding, chosen, err
+}
+
+// selectionInvocation is the call-scoped invocation a selection runs under. It
+// inherits the origin and parent of the operation or plugin call it serves.
+func selectionInvocation(ctx context.Context) framecall.Invocation {
+	id := uuid.NewString()
+	target := framecall.Target{Scope: extension.ScopeCall, Reference: id}
+	invocation := framecall.Invocation{ID: id, Origin: extension.Automatic, Parent: operation.Identity(ctx), Target: target}
+	if parent, err := operation.Capture(ctx, target); err == nil {
+		invocation.Origin, invocation.Parent = parent.Origin, parent.ID
+	}
+	if parent, err := pluginmcp.InvocationFromContext(ctx); err == nil {
+		invocation.Origin, invocation.Parent = parent.Origin, parent.ID
+	}
+	return invocation
 }

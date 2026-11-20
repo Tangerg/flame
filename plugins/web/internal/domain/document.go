@@ -86,8 +86,10 @@ func Restore(snapshot Snapshot) (Document, error) {
 	return document, nil
 }
 
+const MaxURLBytes = 4096
+
 func ValidateURL(raw string) error {
-	if !utf8.ValidString(raw) || len(raw) > 4096 || strings.TrimSpace(raw) != raw {
+	if !utf8.ValidString(raw) || len(raw) > MaxURLBytes || strings.TrimSpace(raw) != raw {
 		return ErrDocument
 	}
 	if _, err := httporigin.ParseEndpoint(raw); err != nil {

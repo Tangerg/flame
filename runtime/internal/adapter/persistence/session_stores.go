@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
@@ -66,17 +68,17 @@ type Transactor func(context.Context, func(context.Context) error) error
 // a delete. Save applies an application-decided aggregate transition with CAS;
 // this adapter assigns neither revision nor update time.
 type planProjection interface {
-	State(ctx context.Context, sessionID string) (plan.Current, error)
-	ListBoundaries(ctx context.Context, sessionID string) ([]sessions.RunPlanBoundary, error)
+	State(ctx context.Context, sessionID identity.SessionID) (plan.Current, error)
+	ListBoundaries(ctx context.Context, sessionID identity.SessionID) ([]sessions.RunPlanBoundary, error)
 	RestoreBoundaries(ctx context.Context, boundaries []sessions.RunPlanBoundary) error
-	Save(ctx context.Context, sessionID string, replacement plan.Replacement) error
-	DeleteSession(ctx context.Context, sessionID string) error
+	Save(ctx context.Context, sessionID identity.SessionID, replacement plan.Replacement) error
+	DeleteSession(ctx context.Context, sessionID identity.SessionID) error
 }
 
 // sessionStateCleaner is the lifecycle port shared by projections whose rows
 // cannot outlive or leak across a complete Session replacement.
 type sessionStateCleaner interface {
-	DeleteSession(ctx context.Context, sessionID string) error
+	DeleteSession(ctx context.Context, sessionID identity.SessionID) error
 }
 
 // childRunStartReservationCleaner is the Session-lifecycle slice of the
@@ -84,14 +86,14 @@ type sessionStateCleaner interface {
 // write-set; this persistence adapter removes its invisible technical rows
 // alongside the public state they cannot outlive.
 type childRunStartReservationCleaner interface {
-	DeleteSession(ctx context.Context, sessionID string) error
+	DeleteSession(ctx context.Context, sessionID identity.SessionID) error
 }
 
 // goalStore also captures a terminal Goal-owned root Run inside the write-set
 // that ended the Run.
 type goalStore interface {
-	Get(ctx context.Context, sessionID string) (goal.Current, error)
-	Clear(ctx context.Context, sessionID string) error
+	Get(ctx context.Context, sessionID identity.SessionID) (goal.Current, error)
+	Clear(ctx context.Context, sessionID identity.SessionID) error
 	CaptureGoalRun(ctx context.Context, value rundomain.Run) error
 }
 
@@ -151,7 +153,7 @@ var (
 	_ sessions.WriteSets              = (*SessionStores)(nil)
 )
 
-func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID string) (sessions.MaterialSnapshot, error) {
+func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID identity.SessionID) (sessions.MaterialSnapshot, error) {
 	var snapshot sessions.MaterialSnapshot
 	err := s.readSnapshot(ctx, func(ctx context.Context) error {
 		ses, err := s.sessions.Get(ctx, sessionID)
@@ -197,7 +199,7 @@ func (s *SessionStores) ReadMaterialSnapshot(ctx context.Context, sessionID stri
 	return snapshot, err
 }
 
-func (s *SessionStores) ReadSnapshot(ctx context.Context, sessionID string) (sessions.Snapshot, error) {
+func (s *SessionStores) ReadSnapshot(ctx context.Context, sessionID identity.SessionID) (sessions.Snapshot, error) {
 	var snapshot sessions.Snapshot
 	err := s.readSnapshot(ctx, func(ctx context.Context) error {
 		history, err := s.readHistory(ctx, sessionID)
@@ -218,7 +220,7 @@ func (s *SessionStores) ReadSnapshot(ctx context.Context, sessionID string) (ses
 	return snapshot, err
 }
 
-func (s *SessionStores) ReadForkMaterial(ctx context.Context, sessionID string) (sessions.ForkMaterial, error) {
+func (s *SessionStores) ReadForkMaterial(ctx context.Context, sessionID identity.SessionID) (sessions.ForkMaterial, error) {
 	var material sessions.ForkMaterial
 	err := s.readSnapshot(ctx, func(ctx context.Context) error {
 		history, err := s.readHistory(ctx, sessionID)
@@ -235,7 +237,7 @@ func (s *SessionStores) ReadForkMaterial(ctx context.Context, sessionID string) 
 	return material, err
 }
 
-func (s *SessionStores) readHistory(ctx context.Context, sessionID string) (sessions.HistorySnapshot, error) {
+func (s *SessionStores) readHistory(ctx context.Context, sessionID identity.SessionID) (sessions.HistorySnapshot, error) {
 	ses, err := s.sessions.Get(ctx, sessionID)
 	if err != nil {
 		return sessions.HistorySnapshot{}, err
@@ -335,7 +337,7 @@ func (s *SessionStores) republishRollbackState(ctx context.Context, rollback ses
 	return nil
 }
 
-func (s *SessionStores) deleteRolledBackRuns(ctx context.Context, sessionID string, runIDs []string) error {
+func (s *SessionStores) deleteRolledBackRuns(ctx context.Context, sessionID identity.SessionID, runIDs []identity.RunID) error {
 	for _, runID := range runIDs {
 		if err := s.transcript.DeleteRun(ctx, sessionID, runID); err != nil {
 			return err
@@ -399,7 +401,7 @@ func (s *SessionStores) saveSessionReplacement(
 
 func (s *SessionStores) restorePlanAndHistory(
 	ctx context.Context,
-	sessionID string,
+	sessionID identity.SessionID,
 	messages []chat.Message,
 	planReplacement *plan.Replacement,
 ) error {
@@ -409,7 +411,7 @@ func (s *SessionStores) restorePlanAndHistory(
 	return s.history.Seed(ctx, sessionID, messages)
 }
 
-func (s *SessionStores) savePlanReplacement(ctx context.Context, sessionID string, replacement *plan.Replacement) error {
+func (s *SessionStores) savePlanReplacement(ctx context.Context, sessionID identity.SessionID, replacement *plan.Replacement) error {
 	if replacement == nil {
 		return nil
 	}
@@ -439,7 +441,7 @@ func (s *SessionStores) ApplyDelete(ctx context.Context, deletion sessions.Delet
 	})
 }
 
-func (s *SessionStores) requireAvailableResources(ctx context.Context, sessionID string) error {
+func (s *SessionStores) requireAvailableResources(ctx context.Context, sessionID identity.SessionID) error {
 	pending, err := s.resourceRetirements.pending(ctx, sessionID)
 	if err != nil {
 		return err
@@ -450,21 +452,21 @@ func (s *SessionStores) requireAvailableResources(ctx context.Context, sessionID
 	return nil
 }
 
-func (s *SessionStores) deleteSession(ctx context.Context, sessionID string) error {
+func (s *SessionStores) deleteSession(ctx context.Context, sessionID identity.SessionID) error {
 	if err := s.clearSessionOwnedState(ctx, sessionID); err != nil {
 		return err
 	}
 	return s.sessions.Delete(ctx, sessionID)
 }
 
-func (s *SessionStores) clearSessionOwnedState(ctx context.Context, sessionID string) error {
+func (s *SessionStores) clearSessionOwnedState(ctx context.Context, sessionID identity.SessionID) error {
 	if err := s.clearSessionOwnedStateExceptPlan(ctx, sessionID); err != nil {
 		return err
 	}
 	return s.plan.DeleteSession(ctx, sessionID)
 }
 
-func (s *SessionStores) clearSessionOwnedStateExceptPlan(ctx context.Context, sessionID string) error {
+func (s *SessionStores) clearSessionOwnedStateExceptPlan(ctx context.Context, sessionID identity.SessionID) error {
 	if err := s.transcript.DeleteSession(ctx, sessionID); err != nil {
 		return err
 	}
@@ -538,7 +540,7 @@ func (s *SessionStores) restoreTranscript(ctx context.Context, items []transcrip
 		if ref := call.Invocation.Offload; ref != nil {
 			body = byID[ref.ID]
 		}
-		if err := s.transcript.writeItem(ctx, item, nil, true, body); err != nil {
+		if err := s.transcript.writeItem(ctx, item, appendPrecondition(), body); err != nil {
 			return err
 		}
 	}
@@ -563,14 +565,14 @@ func (s *SessionStores) clearParkedRunState(
 	return s.deleteChildRunStarts(ctx, root.SessionID())
 }
 
-func (s *SessionStores) deleteChildRunStarts(ctx context.Context, sessionID string) error {
+func (s *SessionStores) deleteChildRunStarts(ctx context.Context, sessionID identity.SessionID) error {
 	if err := s.childRunStarts.DeleteSession(ctx, sessionID); err != nil {
 		return fmt.Errorf("persistence: delete child Run start reservations for Session %q: %w", sessionID, err)
 	}
 	return nil
 }
 
-func (s *SessionStores) terminalizeParkedRuns(ctx context.Context, runs []rundomain.Replacement, rootRunID, winningCancellationKey string) error {
+func (s *SessionStores) terminalizeParkedRuns(ctx context.Context, runs []rundomain.Replacement, rootRunID identity.RunID, winningCancellationKey string) error {
 	for _, replacement := range runs {
 		run := replacement.State()
 		outcome, terminal := run.Outcome()
@@ -607,7 +609,7 @@ func (s *SessionStores) recordGoalTerminalRun(ctx context.Context, root rundomai
 	return nil
 }
 
-func (s *SessionStores) deleteInterrupts(ctx context.Context, sessionID string) error {
+func (s *SessionStores) deleteInterrupts(ctx context.Context, sessionID identity.SessionID) error {
 	pending, err := s.interrupts.List(ctx, sessionID)
 	if err != nil {
 		return err

@@ -316,7 +316,7 @@ func compilePluginMetadata(declared pluginManifest) (extensions.Plugin, error) {
 	if declared.SchemaVersion != manifestSchemaVersion {
 		return extensions.Plugin{}, fmt.Errorf("schemaVersion is %d, want %d", declared.SchemaVersion, manifestSchemaVersion)
 	}
-	if declared.ID == "terminal" || strings.HasPrefix(declared.ID, "terminal.") {
+	if extensions.ReservedPluginID(declared.ID) {
 		return extensions.Plugin{}, fmt.Errorf("plugin id %q uses the reserved terminal namespace", declared.ID)
 	}
 	if len(declared.Contributes.Commands) == 0 {
@@ -458,9 +458,12 @@ func compileCommand(
 	}, nil
 }
 
+// declaredNoArguments is the manifest's explicit spelling of an omitted mode.
+const declaredNoArguments = "none"
+
 func commandArgumentMode(name, declared string) (extensions.ArgumentMode, error) {
 	value := strings.TrimSpace(declared)
-	if value == "" || value == "none" {
+	if value == "" || value == declaredNoArguments {
 		return extensions.NoArguments, nil
 	}
 	mode := extensions.ArgumentMode(value)

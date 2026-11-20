@@ -35,6 +35,14 @@ type taskBinding struct {
 	ContextID string             `json:"contextId"`
 }
 
+const (
+	refusalAgentChanged      = "agent_changed"
+	refusalAgentUnconfigured = "agent_unconfigured"
+	refusalDiscoveryFailed   = "discovery_failed"
+	refusalEndpointRejected  = "endpoint_rejected"
+	refusalTaskUnavailable   = "task_unavailable"
+)
+
 func openConnector(ctx context.Context, path string, specs []agentSpec) (*connector, error) {
 	agents, err := configureAgents(specs)
 	if err != nil {
@@ -62,18 +70,9 @@ func (c *connector) send(ctx context.Context, method, id string, input framevalu
 	var request wire.SendRequest
 	var selected agent
 	prepared, reply, err := pluginstorage.AdmitCommand(ctx, c.db, method, id, input, func(context.Context) error {
-		if err := json.Unmarshal(input.Bytes(), &request, json.RejectUnknownMembers(true)); err != nil {
-			return invalidRequest()
-		}
-		if !utf8.ValidString(request.Message) || len(request.Message) > 64<<10 || strings.TrimSpace(request.Message) == "" {
-			return invalidRequest()
-		}
-		var found bool
-		selected, found = c.agents[request.Agent]
-		if !found {
-			return &framecall.Refusal{Code: "agent_unconfigured", Message: "a2a: agent is not configured"}
-		}
-		return nil
+		var err error
+		request, selected, err = c.admitSend(input)
+		return err
 	})
 	if err != nil {
 		return wire.Result{}, err
@@ -89,7 +88,7 @@ func (c *connector) send(ctx context.Context, method, id string, input framevalu
 		if ctx.Err() != nil {
 			return wire.Result{}, errors.Join(err, ctx.Err(), context.Cause(ctx))
 		}
-		return complete(ctx, prepared, wire.Result{}, &framecall.Refusal{Code: "discovery_failed", Message: "a2a: agent discovery or endpoint admission failed"})
+		return complete(ctx, prepared, wire.Result{}, &framecall.Refusal{Code: refusalDiscoveryFailed, Message: "a2a: agent discovery or endpoint admission failed"})
 	}
 	defer func() { err = errors.Join(err, client.Destroy()) }()
 	message := a2a.NewMessage(a2a.MessageRoleUser, a2a.NewTextPart(request.Message))
@@ -118,6 +117,24 @@ func (c *connector) send(ctx context.Context, method, id string, input framevalu
 		return err
 	})
 	return result, err
+}
+
+// maxMessageBytes bounds the one user message a send carries.
+const maxMessageBytes = 64 << 10
+
+func (c *connector) admitSend(input framevalue.JSON) (wire.SendRequest, agent, error) {
+	var request wire.SendRequest
+	if err := json.Unmarshal(input.Bytes(), &request, json.RejectUnknownMembers(true)); err != nil {
+		return wire.SendRequest{}, agent{}, invalidRequest()
+	}
+	if !utf8.ValidString(request.Message) || len(request.Message) > maxMessageBytes || strings.TrimSpace(request.Message) == "" {
+		return wire.SendRequest{}, agent{}, invalidRequest()
+	}
+	selected, found := c.agents[request.Agent]
+	if !found {
+		return wire.SendRequest{}, agent{}, &framecall.Refusal{Code: refusalAgentUnconfigured, Message: "a2a: agent is not configured"}
+	}
+	return request, selected, nil
 }
 
 func (c *connector) status(ctx context.Context, request wire.TaskRequest) (_ wire.Result, err error) {
@@ -160,7 +177,7 @@ func (c *connector) cancel(ctx context.Context, method, id string, input frameva
 	}
 	client, err := selected.connect(ctx, binding.Endpoint)
 	if err != nil {
-		return complete(ctx, prepared, wire.Result{}, &framecall.Refusal{Code: "endpoint_rejected", Message: "a2a: original endpoint cannot be admitted"})
+		return complete(ctx, prepared, wire.Result{}, &framecall.Refusal{Code: refusalEndpointRejected, Message: "a2a: original endpoint cannot be admitted"})
 	}
 	defer func() { err = errors.Join(err, client.Destroy()) }()
 	task, err := client.CancelTask(ctx, &a2a.CancelTaskRequest{ID: binding.TaskID})
@@ -183,7 +200,7 @@ func (c *connector) binding(ctx context.Context, id string) (taskBinding, agent,
 		return reader.QueryRowContext(ctx, `SELECT binding FROM bindings WHERE request_id=?`, id).Scan(&raw)
 	})
 	if errors.Is(err, sql.ErrNoRows) {
-		return taskBinding{}, agent{}, &framecall.Refusal{Code: "task_unavailable", Message: "a2a: original request has no confirmed remote task binding"}
+		return taskBinding{}, agent{}, &framecall.Refusal{Code: refusalTaskUnavailable, Message: "a2a: original request has no confirmed remote task binding"}
 	}
 	if err != nil {
 		return taskBinding{}, agent{}, err
@@ -197,7 +214,7 @@ func (c *connector) binding(ctx context.Context, id string) (taskBinding, agent,
 	}
 	selected, found := c.agents[binding.Agent]
 	if !found || selected.authority != binding.Authority {
-		return taskBinding{}, agent{}, &framecall.Refusal{Code: "agent_changed", Message: "a2a: original agent authority is no longer configured"}
+		return taskBinding{}, agent{}, &framecall.Refusal{Code: refusalAgentChanged, Message: "a2a: original agent authority is no longer configured"}
 	}
 	return binding, selected, nil
 }

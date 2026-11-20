@@ -3,14 +3,49 @@ package delivery
 import (
 	"context"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
+	"github.com/Tangerg/flame/runtime/internal/domain/annotation"
 )
 
 func (s *Handler) CreateFeedback(ctx context.Context, in protocol.FeedbackRequest) error {
-	return s.feedback.Record(ctx, feedbackCommand(in))
+	command, err := feedbackCommand(in)
+	if err != nil {
+		return err
+	}
+	return s.feedback.Record(ctx, command)
 }
 
-func feedbackCommand(in protocol.FeedbackRequest) extension.FeedbackDraft {
-	return extension.FeedbackDraft{SessionID: in.SessionID, RunID: in.RunID, ItemID: in.ItemID, Source: in.Source, Rating: string(in.Rating), Text: in.Text}
+func (s *Handler) commitFeedback(ctx context.Context, in protocol.FeedbackRequest, outcome atomicOutcome) error {
+	command, err := feedbackCommand(in)
+	if err != nil {
+		return err
+	}
+	write, err := s.feedback.Prepare(ctx, command)
+	if err != nil {
+		return err
+	}
+	return outcome.acknowledgement()(ctx, func(tx context.Context) (struct{}, error) {
+		return struct{}{}, write(tx)
+	})
+}
+
+func feedbackCommand(in protocol.FeedbackRequest) (feedback.Command, error) {
+	sessionID, err := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if err != nil {
+		return feedback.Command{}, err
+	}
+	runID, err := wireIdentity("runId", in.RunID, identity.ParseOptionalRun)
+	if err != nil {
+		return feedback.Command{}, err
+	}
+	itemID, err := wireIdentity("itemId", in.ItemID, identity.ParseOptionalItem)
+	if err != nil {
+		return feedback.Command{}, err
+	}
+	return feedback.Command{
+		Subject: annotation.Subject{SessionID: sessionID, RunID: runID, ItemID: itemID},
+		Source:  in.Source, Rating: string(in.Rating), Text: in.Text,
+	}, nil
 }

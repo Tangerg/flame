@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -68,7 +70,7 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 		if err != nil {
 			t.Fatal(err)
 		}
-		ctx := executionctx.WithScope(operation.Start(t.Context(), extension.Model, "test-agent", key), runs.ExecutionScope{SessionID: "ses_review", CWD: cfg.defaultWorkspacePath, WorkspaceCWD: cfg.defaultWorkspacePath})
+		ctx := executionctx.WithScope(operation.Start(t.Context(), extension.Model, "test-agent", key), runs.ExecutionScope{SessionID: testsupport.MustSessionID("ses_review"), CWD: cfg.defaultWorkspacePath, WorkspaceCWD: cfg.defaultWorkspacePath})
 		result, err := bound.Call(ctx, invocation)
 		if err != nil {
 			t.Fatal(err)

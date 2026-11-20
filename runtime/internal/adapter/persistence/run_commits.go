@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
@@ -14,7 +16,7 @@ import (
 // RecordRunCommit stamps one exact active Segment's latest immutable
 // Application write-set identity into the Run row. Callers invoke it only at
 // the end of the command transaction, after every projection has succeeded.
-func (r *RunStore) RecordRunCommit(ctx context.Context, sessionID string, runID string, segmentID string, commitID runs.CommitID) error {
+func (r *RunStore) RecordRunCommit(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, commitID runs.CommitID) error {
 	return r.db.write(ctx, func(ctx context.Context) error {
 		if err := validateRunCommitIdentity(sessionID, runID, segmentID, commitID); err != nil {
 			return err
@@ -38,7 +40,7 @@ func (r *RunStore) RecordRunCommit(ctx context.Context, sessionID string, runID 
 // RecordWaitingRunCommit stamps a command that transforms an already-waiting
 // tree without opening a new Segment. The empty Segment is deliberate: the
 // unique command identity and Waiting root own this boundary.
-func (r *RunStore) RecordWaitingRunCommit(ctx context.Context, sessionID string, runID string, commitID runs.CommitID) error {
+func (r *RunStore) RecordWaitingRunCommit(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, commitID runs.CommitID) error {
 	return r.db.write(ctx, func(ctx context.Context) error {
 		if err := validateWaitingRunCommitIdentity(sessionID, runID, commitID); err != nil {
 			return err
@@ -65,11 +67,11 @@ func (r *RunStore) RecordWaitingRunCommit(ctx context.Context, sessionID string,
 // transition carries no individual receipt, as with a child in a root-owned
 // tree barrier.
 type runCommitMarker struct {
-	segmentID string
+	segmentID identity.SegmentID
 	commitID  runs.CommitID
 }
 
-func newRunCommitMarker(sessionID string, runID string, segmentID string, commitID runs.CommitID) (*runCommitMarker, error) {
+func newRunCommitMarker(sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, commitID runs.CommitID) (*runCommitMarker, error) {
 	if err := validateRunCommitIdentity(sessionID, runID, segmentID, commitID); err != nil {
 		return nil, err
 	}
@@ -79,7 +81,7 @@ func (r *runCommitMarker) databaseValues() (string, string) {
 	if r == nil {
 		return "", ""
 	}
-	return r.segmentID, r.commitID.String()
+	return r.segmentID.String(), r.commitID.String()
 }
 
 // RunCommitCommitted proves that this exact immutable Application Run write-set crossed
@@ -88,9 +90,9 @@ func (r *runCommitMarker) databaseValues() (string, string) {
 // or absent marker. Running markers require the same active Segment; waiting
 // barriers and terminal boundaries retain the Segment that produced them.
 // A command that starts and ends while already Waiting uses an empty Segment.
-func (r *RunStore) RunCommitCommitted(ctx context.Context, sessionID string, runID string, segmentID string, commitID runs.CommitID) (bool, error) {
+func (r *RunStore) RunCommitCommitted(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, commitID runs.CommitID) (bool, error) {
 	return scopedValue(ctx, r.db.read, func(ctx context.Context) (bool, error) {
-		if segmentID == "" {
+		if segmentID.IsZero() {
 			if err := validateWaitingRunCommitIdentity(sessionID, runID, commitID); err != nil {
 				return false, err
 			}
@@ -109,7 +111,7 @@ func (r *RunStore) RunCommitCommitted(ctx context.Context, sessionID string, run
 		return found == 1, nil
 	})
 }
-func validateRunCommitIdentity(sessionID, runID, segmentID string, commitID runs.CommitID) error {
+func validateRunCommitIdentity(sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, commitID runs.CommitID) error {
 	if err := validateRunCoordinates("verify Run commit", sessionID, runID, segmentID); err != nil {
 		return err
 	}
@@ -118,23 +120,23 @@ func validateRunCommitIdentity(sessionID, runID, segmentID string, commitID runs
 	}
 	return nil
 }
-func validateRunCoordinates(operation, sessionID, runID, segmentID string) error {
-	if err := validateSessionResource(operation, sessionID); err != nil {
+func validateRunCoordinates(operation string, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID) error {
+	if err := validateResource(operation, sessionID); err != nil {
 		return err
 	}
-	if err := validateRunResource(operation, runID); err != nil {
+	if err := validateResource(operation, runID); err != nil {
 		return err
 	}
-	if err := validateSegmentResource(operation, segmentID); err != nil {
-		return err
+	if err := segmentID.Validate(); err != nil {
+		return fmt.Errorf("sqlite: %s: %w", operation, err)
 	}
 	return nil
 }
-func validateWaitingRunCommitIdentity(sessionID, runID string, commitID runs.CommitID) error {
-	if err := validateSessionResource("verify waiting Run commit", sessionID); err != nil {
+func validateWaitingRunCommitIdentity(sessionID identity.SessionID, runID identity.RunID, commitID runs.CommitID) error {
+	if err := validateResource("verify waiting Run commit", sessionID); err != nil {
 		return err
 	}
-	if err := validateRunResource("verify waiting Run commit", runID); err != nil {
+	if err := validateResource("verify waiting Run commit", runID); err != nil {
 		return err
 	}
 	if err := commitID.Validate(); err != nil {
@@ -145,12 +147,14 @@ func validateWaitingRunCommitIdentity(sessionID, runID string, commitID runs.Com
 
 // ResultPublicationCommitted proves exact content under the currently active
 // Segment. A stale writer cannot adopt a receipt from a replaced Segment.
-func (r *RunStore) ResultPublicationCommitted(ctx context.Context, sessionID, runID, segmentID, publicationID, digest string) (bool, error) {
+func (r *RunStore) ResultPublicationCommitted(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, publicationID, digest string) (bool, error) {
 	return scopedValue(ctx, r.db.read, func(ctx context.Context) (bool, error) {
 		if err := r.RequireActiveSegment(ctx, sessionID, runID, segmentID); err != nil {
 			return false, err
 		}
-		var storedSession, storedRun, storedSegment, storedDigest string
+		var storedSession identity.SessionID
+		var storedSegment, storedDigest string
+		var storedRun identity.RunID
 		err := r.db.connection(ctx).QueryRowContext(ctx, `SELECT session_id, run_id, segment_id, digest FROM result_publications WHERE publication_id = ?`, publicationID).Scan(&storedSession, &storedRun, &storedSegment, &storedDigest)
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, nil
@@ -158,7 +162,7 @@ func (r *RunStore) ResultPublicationCommitted(ctx context.Context, sessionID, ru
 		if err != nil {
 			return false, fmt.Errorf("sqlite: read result publication: %w", err)
 		}
-		if storedSession != sessionID || storedRun != runID || storedSegment != segmentID || storedDigest != digest {
+		if storedSession != sessionID || storedRun != runID || storedSegment != segmentID.String() || storedDigest != digest {
 			return false, errors.New("sqlite: result publication identity conflicts with stored content or owner")
 		}
 		return true, nil
@@ -166,7 +170,7 @@ func (r *RunStore) ResultPublicationCommitted(ctx context.Context, sessionID, ru
 }
 
 // RecordResultPublication participates in the transaction owning its results.
-func (r *RunStore) RecordResultPublication(ctx context.Context, sessionID, runID, segmentID, publicationID, digest string, results []chat.ToolResult) error {
+func (r *RunStore) RecordResultPublication(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, publicationID, digest string, results []chat.ToolResult) error {
 	return r.db.write(ctx, func(ctx context.Context) error {
 		if err := r.RequireActiveSegment(ctx, sessionID, runID, segmentID); err != nil {
 			return err
@@ -194,7 +198,7 @@ func (r *RunStore) RecordResultPublication(ctx context.Context, sessionID, runID
 		return nil
 	})
 }
-func (r *RunStore) UnpublishedToolResults(ctx context.Context, sessionID, runID string) ([]chat.ToolResult, error) {
+func (r *RunStore) UnpublishedToolResults(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) ([]chat.ToolResult, error) {
 	return scopedValue(ctx, r.db.read, func(ctx context.Context) ([]chat.ToolResult, error) {
 		rows, err := r.db.connection(ctx).QueryContext(ctx, `SELECT model_results FROM result_publications
  WHERE session_id = ? AND run_id = ? AND (model_results IS NULL OR source_message_seq = (SELECT max(seq) FROM messages WHERE conversation_id = ?))

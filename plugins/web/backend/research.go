@@ -56,7 +56,7 @@ func (r *research) searchWeb(ctx context.Context, input web.SearchRequest) (wire
 		return wire.SearchResponse{}, err
 	}
 	if len(encoded) > maxSearchResponseBytes {
-		return wire.SearchResponse{}, &framecall.Refusal{Code: "response_too_large", Message: fmt.Sprintf("web: search result exceeds %d KiB", maxSearchResponseBytes>>10)}
+		return wire.SearchResponse{}, &framecall.Refusal{Code: refusalResponseTooLarge, Message: fmt.Sprintf("web: search result exceeds %d KiB", maxSearchResponseBytes>>10)}
 	}
 	result := wire.SearchResponse{Query: response.Query, Results: make([]wire.SearchResult, len(response.Results))}
 	for index, source := range response.Results {

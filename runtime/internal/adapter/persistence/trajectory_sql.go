@@ -26,7 +26,7 @@ func newTrajectoryStore(db *database) *trajectoryStore {
 
 type trajectoryRow struct {
 	sessions.TrajectoryPosition
-	runID string
+	runID identity.RunID
 }
 
 // trajectoryPositionsQuery orders every timeline fact by the application's
@@ -42,8 +42,8 @@ var trajectoryPositionsQuery = fmt.Sprintf(`SELECT occurred_at, kind, id, run_id
 	) WHERE 1 = 1`,
 	sessions.TrajectoryKindRun, sessions.TrajectoryKindModel, sessions.TrajectoryKindEndpoint, sessions.TrajectoryKindItem)
 
-func (s *trajectoryStore) PageTrajectory(ctx context.Context, sessionID string, includeDescendants bool, anchor *sessions.TrajectoryPosition, limit int) ([]sessions.TrajectoryEntry, error) {
-	if err := identity.ValidateSession(sessionID); err != nil {
+func (s *trajectoryStore) PageTrajectory(ctx context.Context, sessionID identity.SessionID, includeDescendants bool, anchor *sessions.TrajectoryPosition, limit int) ([]sessions.TrajectoryEntry, error) {
+	if err := sessionID.Validate(); err != nil {
 		return nil, err
 	}
 	if limit <= 0 {
@@ -78,7 +78,7 @@ func (s *trajectoryStore) PageTrajectory(ctx context.Context, sessionID string, 
 	return entries, nil
 }
 
-func (s *trajectoryStore) positions(ctx context.Context, sessionID string, includeDescendants bool, anchor *sessions.TrajectoryPosition, limit int) ([]trajectoryRow, error) {
+func (s *trajectoryStore) positions(ctx context.Context, sessionID identity.SessionID, includeDescendants bool, anchor *sessions.TrajectoryPosition, limit int) ([]trajectoryRow, error) {
 	query := trajectoryPositionsQuery
 	args := []any{sessionID, sessionID, sessionID, sessionID}
 	if !includeDescendants {
@@ -116,17 +116,10 @@ func (s *trajectoryStore) positions(ctx context.Context, sessionID string, inclu
 
 // source hydrates one position. Journal rows are bound to their Run's Session
 // by foreign key; a history Item carries no such key, so its Run is checked.
-func (s *trajectoryStore) source(ctx context.Context, sessionID string, row trajectoryRow) (sessions.TrajectorySource, error) {
+func (s *trajectoryStore) source(ctx context.Context, sessionID identity.SessionID, row trajectoryRow) (sessions.TrajectorySource, error) {
 	switch row.Kind {
 	case sessions.TrajectoryKindRun:
-		value, found, err := s.runs.Run(ctx, row.ID)
-		if err != nil {
-			return nil, err
-		}
-		if !found {
-			return nil, errors.New("sqlite: trajectory Run vanished from its snapshot")
-		}
-		return sessions.TrajectoryRun{Run: value}, nil
+		return s.runSource(ctx, row.ID)
 	case sessions.TrajectoryKindModel:
 		value, err := s.models.trajectoryInvocation(ctx, row.runID, row.ID)
 		if err != nil {
@@ -140,27 +133,50 @@ func (s *trajectoryStore) source(ctx context.Context, sessionID string, row traj
 		}
 		return sessions.TrajectoryEndpoint{Observation: value}, nil
 	case sessions.TrajectoryKindItem:
-		value, found, err := s.transcript.Item(ctx, row.ID)
-		if err != nil {
-			return nil, err
-		}
-		if !found {
-			return nil, errors.New("sqlite: trajectory Item vanished from its snapshot")
-		}
-		owner, found, err := s.runs.Run(ctx, value.RunID())
-		if err != nil {
-			return nil, err
-		}
-		if !found || owner.SessionID() != sessionID {
-			return nil, errors.New("sqlite: trajectory Item has no owning Session Run")
-		}
-		return sessions.TrajectoryItem{Item: value}, nil
+		return s.itemSource(ctx, sessionID, row.ID)
 	default:
 		return nil, fmt.Errorf("sqlite: unknown trajectory kind %q", row.Kind)
 	}
 }
 
-func (m *ModelInvocationStore) trajectoryInvocation(ctx context.Context, runID, callID string) (runs.ModelInvocationCommit, error) {
+func (s *trajectoryStore) runSource(ctx context.Context, id string) (sessions.TrajectorySource, error) {
+	runID, err := identity.ParseRun(id)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: trajectory Run: %w", err)
+	}
+	value, found, err := s.runs.Run(ctx, runID)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, errors.New("sqlite: trajectory Run vanished from its snapshot")
+	}
+	return sessions.TrajectoryRun{Run: value}, nil
+}
+
+func (s *trajectoryStore) itemSource(ctx context.Context, sessionID identity.SessionID, id string) (sessions.TrajectorySource, error) {
+	itemID, err := identity.ParseItem(id)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: trajectory Item: %w", err)
+	}
+	value, found, err := s.transcript.Item(ctx, itemID)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, errors.New("sqlite: trajectory Item vanished from its snapshot")
+	}
+	owner, found, err := s.runs.Run(ctx, value.RunID())
+	if err != nil {
+		return nil, err
+	}
+	if !found || owner.SessionID() != sessionID {
+		return nil, errors.New("sqlite: trajectory Item has no owning Session Run")
+	}
+	return sessions.TrajectoryItem{Item: value}, nil
+}
+
+func (m *ModelInvocationStore) trajectoryInvocation(ctx context.Context, runID identity.RunID, callID string) (runs.ModelInvocationCommit, error) {
 	return scopedValue(ctx, m.db.read, func(ctx context.Context) (runs.ModelInvocationCommit, error) {
 		row := m.db.connection(ctx).QueryRowContext(ctx, `SELECT `+modelInvocationColumns+` FROM model_invocations WHERE run_id = ? AND call_id = ? AND endpoint_json IS NULL`, runID, callID)
 		return scanModelInvocation(row)

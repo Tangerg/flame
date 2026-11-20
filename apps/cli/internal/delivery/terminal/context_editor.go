@@ -212,7 +212,7 @@ func (e *contextEditing) open(request contextEditorRequest) *contextEditorSessio
 	}
 	dialog = newPresentationDialog(e.stack, kit.DialogConfig{Theme: e.theme, Glyphs: e.glyphs,
 		Title: request.Title, Description: request.Description, Body: editor.Element(),
-		Where: layout.Placement{Width: 100, Height: 24}, Keys: editor.keys,
+		Where: layout.Placement{Width: wideDialogWidth, Height: 24}, Keys: editor.keys,
 	})
 	session.dialog = dialog
 	e.active = session

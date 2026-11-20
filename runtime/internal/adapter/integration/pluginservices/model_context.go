@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
-	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/content"
 )
@@ -82,47 +81,10 @@ func (o *CallComposition) PrepareContext(ctx context.Context, bindings []plugins
 	var material []chat.Message
 	frozen := request.Clone()
 	for _, binding := range bindings {
-		calling, err := enterContributionPhase(ctx, binding)
-		if err != nil {
-			return nil, err
-		}
-		borrowed, err := borrowContribution(calling, o.calls.pool, binding)
-		if err != nil {
-			return nil, err
-		}
-		defer borrowed.Close()
-		calling = borrowed.Context()
-		session := borrowed.Session()
-		if _, err := o.calls.pool.SessionActor(calling, binding.ServerID, session); err != nil {
-			return nil, err
-		}
-		exported, err := pluginmcp.NewCapabilityBinding(session, binding.Export, contract)
-		if err != nil {
-			return nil, err
-		}
-		operation, err := exported.Method(method.Descriptor().Name)
-		if err != nil {
-			return nil, err
-		}
 		current := base
 		current.Request = *frozen.Clone()
-		input, err := framevalue.EncodeJSON(current)
+		result, err := callContribution(ctx, o.calls.pool, binding, contract, method, current)
 		if err != nil {
-			return nil, err
-		}
-		metadata, release, err := o.calls.pool.OpenRPC(calling, binding.ServerID, session)
-		if err != nil {
-			return nil, err
-		}
-		raw, err := func() (framevalue.JSON, error) {
-			defer release()
-			return operation.InvokeWithMetadata(calling, "", input, metadata)
-		}()
-		if err != nil {
-			return nil, err
-		}
-		var result pluginsdk.ModelContextResult
-		if err := json.Unmarshal(raw.Bytes(), &result, json.RejectUnknownMembers(true)); err != nil {
 			return nil, err
 		}
 		if err := result.Validate(); err != nil {

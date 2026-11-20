@@ -120,6 +120,42 @@ func queryContext(ctx context.Context, location plugins.ContributionBinding) (co
 	return pluginmcp.WithInvocation(ctx, invocation)
 }
 
+// callContribution calls one composition member's typed method on a borrowed
+// session of its contribution and returns the session before the next member.
+// The connection owner verified the session's exports when it admitted the
+// connection, so the captured contract binds without rediscovery.
+func callContribution[P, R any](ctx context.Context, pool *mcp.Pool, binding plugins.ContributionBinding, contract *plugincontract.Capability, method *pluginmcp.Method[P, R], input P) (R, error) {
+	var zero R
+	calling, err := enterContributionPhase(ctx, binding)
+	if err != nil {
+		return zero, err
+	}
+	borrowed, err := borrowContribution(calling, pool, binding)
+	if err != nil {
+		return zero, err
+	}
+	defer borrowed.Close()
+	calling = borrowed.Context()
+	session := borrowed.Session()
+	if _, err := pool.SessionActor(calling, binding.ServerID, session); err != nil {
+		return zero, err
+	}
+	exported, err := pluginmcp.NewCapabilityBinding(session, binding.Export, contract)
+	if err != nil {
+		return zero, err
+	}
+	bound, err := method.Bind(exported)
+	if err != nil {
+		return zero, err
+	}
+	metadata, release, err := pool.OpenRPC(calling, binding.ServerID, session)
+	if err != nil {
+		return zero, err
+	}
+	defer release()
+	return bound.CallWithMetadata(calling, input, metadata)
+}
+
 func borrowContribution(ctx context.Context, pool *mcp.Pool, binding plugins.ContributionBinding) (*mcp.BorrowedSession, error) {
 	if binding.Activation != nil {
 		return pool.BorrowActivation(ctx, binding.ServerID, *binding.Activation)

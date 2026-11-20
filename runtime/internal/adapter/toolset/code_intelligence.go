@@ -13,8 +13,10 @@ import (
 	"github.com/Tangerg/scope/tools/fs"
 )
 
+// CodeIntelligence acquires the selected backend; none is selected when the
+// user has chosen no provider, which is not a failure.
 type CodeIntelligence interface {
-	AcquireCodeIntelligence(context.Context) (CodeIntelligenceUse, error)
+	AcquireCodeIntelligence(context.Context) (CodeIntelligenceUse, bool, error)
 }
 
 // A use retains one selected backend and the original invocation's cancellation
@@ -31,82 +33,114 @@ func withCodeIntelligence(inner toolcontract.Tool, intelligence CodeIntelligence
 		if err != nil {
 			return out, err
 		}
-		use, acquireErr := intelligence.AcquireCodeIntelligence(ctx)
-		var notices []string
-		defer func() {
-			if use != nil {
-				if closeErr := use.Close(); closeErr != nil {
-					if err != nil {
-						err = errors.Join(err, closeErr)
-					} else {
-						notices = append(notices, closeErr.Error())
-					}
-				}
+		use, selected, acquireErr := intelligence.AcquireCodeIntelligence(ctx)
+		if acquireErr != nil {
+			out, err = inner.Call(ctx, invocation)
+			if err == nil {
+				out.Output = appendCodeIntelligenceNotices(out.Output, []string{"Unavailable: " + acquireErr.Error()})
 			}
-			if err == nil && len(notices) > 0 {
-				out.Output = appendToolOutputText(out.Output, "\n\nCode intelligence:\n"+strings.Join(notices, "\n"))
+			return out, err
+		}
+		if !selected {
+			return inner.Call(ctx, invocation)
+		}
+		review := codeReview{use: use, root: root, executor: executor}
+		defer func() {
+			if closeErr := use.Close(); closeErr != nil {
+				if err != nil {
+					err = errors.Join(err, closeErr)
+					return
+				}
+				review.notices = append(review.notices, closeErr.Error())
+			}
+			if err == nil {
+				out.Output = appendCodeIntelligenceNotices(out.Output, review.notices)
 			}
 		}()
-		if acquireErr != nil {
-			notices = append(notices, "Unavailable: "+acquireErr.Error())
-			return inner.Call(ctx, invocation)
-		}
-		if use == nil {
-			return inner.Call(ctx, invocation)
-		}
-		baseline := make(map[string][]string, len(paths))
-		for _, path := range paths {
-			document, _, found, readErr := captureCodeDocument(ctx, root, executor, path)
-			if readErr != nil {
-				notices = append(notices, fmt.Sprintf("%s baseline unavailable: %v", path, readErr))
-				continue
-			}
-			if !found {
-				continue
-			}
-			report, inspectErr := use.Inspect(codeintel.Inspection{Document: document})
-			if inspectErr == nil {
-				inspectErr = report.Validate(document)
-			}
-			if inspectErr != nil {
-				notices = append(notices, fmt.Sprintf("%s baseline unavailable: %v", path, inspectErr))
-				continue
-			}
-			baseline[path] = report.Problems
-		}
+		baseline := review.baseline(ctx, paths)
 		out, err = inner.Call(ctx, invocation)
 		if err != nil {
 			return out, err
 		}
-		for _, path := range paths {
-			if formatErr := formatPath(ctx, use, root, executor, path); formatErr != nil {
-				notices = append(notices, fmt.Sprintf("%s formatting unavailable: %v", path, formatErr))
-			}
-			document, source, found, readErr := captureCodeDocument(ctx, root, executor, path)
-			if readErr != nil {
-				notices = append(notices, fmt.Sprintf("%s diagnostics unavailable: %v", path, readErr))
-				continue
-			}
-			if !found {
-				continue
-			}
-			report, inspectErr := use.Inspect(codeintel.Inspection{Document: document, Baseline: baseline[path]})
-			if inspectErr == nil {
-				inspectErr = report.Validate(document)
-			}
-			if inspectErr == nil {
-				inspectErr = verifyCodeSource(root, document.Path, source)
-			}
-			if inspectErr != nil {
-				notices = append(notices, fmt.Sprintf("%s diagnostics unavailable: %v", path, inspectErr))
-				continue
-			}
-			if report.Summary != "" {
-				notices = append(notices, report.Summary)
-			}
-		}
+		review.inspectChanges(ctx, paths, baseline)
 		return out, nil
 	})
+}
+
+func appendCodeIntelligenceNotices(output toolcontract.Output, notices []string) toolcontract.Output {
+	if len(notices) == 0 {
+		return output
+	}
+	return appendToolOutputText(output, "\n\nCode intelligence:\n"+strings.Join(notices, "\n"))
+}
+
+// codeReview formats and diagnoses the files one Tool call mutates. Its
+// notices are advisory: a backend failure never fails the Tool call itself.
+type codeReview struct {
+	use      CodeIntelligenceUse
+	root     *filesystemRoot
+	executor *fs.LocalExecutor
+	notices  []string
+}
+
+func (r *codeReview) notice(format string, args ...any) {
+	r.notices = append(r.notices, fmt.Sprintf(format, args...))
+}
+
+// baseline records each existing file's problems before the call, so the
+// final report names only problems the call introduced.
+func (r *codeReview) baseline(ctx context.Context, paths []string) map[string][]string {
+	baseline := make(map[string][]string, len(paths))
+	for _, path := range paths {
+		document, _, found, err := captureCodeDocument(ctx, r.root, r.executor, path)
+		if err != nil {
+			r.notice("%s baseline unavailable: %v", path, err)
+			continue
+		}
+		if !found {
+			continue
+		}
+		report, err := r.use.Inspect(codeintel.Inspection{Document: document})
+		if err == nil {
+			err = report.Validate(document)
+		}
+		if err != nil {
+			r.notice("%s baseline unavailable: %v", path, err)
+			continue
+		}
+		baseline[path] = report.Problems
+	}
+	return baseline
+}
+
+func (r *codeReview) inspectChanges(ctx context.Context, paths []string, baseline map[string][]string) {
+	for _, path := range paths {
+		if err := formatPath(ctx, r.use, r.root, r.executor, path); err != nil {
+			r.notice("%s formatting unavailable: %v", path, err)
+		}
+		document, source, found, err := captureCodeDocument(ctx, r.root, r.executor, path)
+		if err != nil {
+			r.notice("%s diagnostics unavailable: %v", path, err)
+			continue
+		}
+		if !found {
+			continue
+		}
+		report, err := r.use.Inspect(codeintel.Inspection{Document: document, Baseline: baseline[path]})
+		if err == nil {
+			err = report.Validate(document)
+		}
+		if err == nil {
+			err = verifyCodeSource(r.root, document.Path, source)
+		}
+		if err != nil {
+			r.notice("%s diagnostics unavailable: %v", path, err)
+			continue
+		}
+		if report.Summary != "" {
+			r.notices = append(r.notices, report.Summary)
+		}
+	}
 }
 
 func captureCodeDocument(ctx context.Context, root *filesystemRoot, executor *fs.LocalExecutor, path string) (codeintel.Document, autoFormatSource, bool, error) {

@@ -52,7 +52,7 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 	// The driver clears a Goal whose Session lost its model selection, so the
 	// Session must carry one for this to reach the pause it is meant to prove.
 	if insertErr := cfg.stores.Sessions.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{
-		ID: sessionID, Workspace: testsupport.MustWorkspace(t.TempDir()),
+		ID: testsupport.MustSessionID(sessionID), Workspace: testsupport.MustWorkspace(t.TempDir()),
 		Selection: selection, CreatedAt: createdAt, UpdatedAt: createdAt,
 	})); insertErr != nil {
 		t.Fatalf("insert Session: %v", insertErr)
@@ -65,11 +65,11 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 	if err != nil || decision.Next == nil {
 		t.Fatalf("original author did not issue the objective: %v", err)
 	}
-	active, err := (goal.Snapshot{SessionID: sessionID, CreatedAt: createdAt, ModelSelection: selection}).Publish(*decision.Next, decision.Source, incarnationID, createdAt)
+	active, err := (goal.Snapshot{SessionID: testsupport.MustSessionID(sessionID), CreatedAt: createdAt, ModelSelection: selection}).Publish(*decision.Next, decision.Source, incarnationID, createdAt)
 	if err != nil {
 		t.Fatal(err)
 	}
-	unwritten, err := goal.Unwritten(sessionID)
+	unwritten, err := goal.Unwritten(testsupport.MustSessionID(sessionID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,7 +83,7 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 
 	// The crash window: admitted under the Goal's incarnation, never terminalized.
 	if admitErr := cfg.stores.Runs.Admit(ctx, run.Draft{
-		RunID: runID, SessionID: sessionID, SegmentID: "seg_goal_lost",
+		RunID: testsupport.MustRunID(runID), SessionID: testsupport.MustSessionID(sessionID), SegmentID: testsupport.MustSegmentID("seg_goal_lost"),
 		ModelSelection: selection, GoalIncarnationID: incarnationID, CreatedAt: createdAt,
 	}); admitErr != nil {
 		t.Fatalf("admit Goal-owned Run: %v", admitErr)
@@ -98,7 +98,7 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 		t.Fatalf("recover uncertain executions: %v", err)
 	}
 
-	storedRuns, err := cfg.stores.Runs.ListRuns(ctx, sessionID)
+	storedRuns, err := cfg.stores.Runs.ListRuns(ctx, testsupport.MustSessionID(sessionID))
 	if err != nil || len(storedRuns) != 1 {
 		t.Fatalf("runs after recovery = (%+v, %v), want one", storedRuns, err)
 	}
@@ -163,7 +163,7 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 
 	// The Session is the user's again: nothing holds its single-writer slot.
 	if admitErr := cfg.stores.Runs.Admit(ctx, run.Draft{
-		RunID: "run_after_recovery", SessionID: sessionID, SegmentID: "seg_after_recovery",
+		RunID: testsupport.MustRunID("run_after_recovery"), SessionID: testsupport.MustSessionID(sessionID), SegmentID: testsupport.MustSegmentID("seg_after_recovery"),
 		ModelSelection: selection, CreatedAt: createdAt.Add(time.Hour),
 	}); admitErr != nil {
 		t.Fatalf("admit after recovery = %v, want the Session slot freed", admitErr)
@@ -187,7 +187,7 @@ func TestActiveGoalWithNoRunInFlightPausesAsRestarted(t *testing.T) {
 		t.Fatal(err)
 	}
 	if insertErr := cfg.stores.Sessions.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{
-		ID: sessionID, Workspace: testsupport.MustWorkspace(t.TempDir()),
+		ID: testsupport.MustSessionID(sessionID), Workspace: testsupport.MustWorkspace(t.TempDir()),
 		Selection: selection, CreatedAt: createdAt, UpdatedAt: createdAt,
 	})); insertErr != nil {
 		t.Fatalf("insert Session: %v", insertErr)
@@ -199,11 +199,11 @@ func TestActiveGoalWithNoRunInFlightPausesAsRestarted(t *testing.T) {
 	if err != nil || decision.Next == nil {
 		t.Fatalf("original author did not issue the objective: %v", err)
 	}
-	active, err := (goal.Snapshot{SessionID: sessionID, CreatedAt: createdAt, ModelSelection: selection}).Publish(*decision.Next, decision.Source, incarnationID, createdAt)
+	active, err := (goal.Snapshot{SessionID: testsupport.MustSessionID(sessionID), CreatedAt: createdAt, ModelSelection: selection}).Publish(*decision.Next, decision.Source, incarnationID, createdAt)
 	if err != nil {
 		t.Fatal(err)
 	}
-	unwritten, err := goal.Unwritten(sessionID)
+	unwritten, err := goal.Unwritten(testsupport.MustSessionID(sessionID))
 	if err != nil {
 		t.Fatal(err)
 	}

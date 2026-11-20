@@ -252,7 +252,7 @@ func (c *composerContent) detach(argument string) (string, error) {
 	if len(elements) == 0 {
 		return "", errors.New("the composer has no attachments")
 	}
-	if strings.EqualFold(argument, "all") {
+	if isAllArgument(argument) {
 		for _, element := range elements {
 			if element.Kind == fileElement {
 				c.Controller().RemoveElement(element.ID)

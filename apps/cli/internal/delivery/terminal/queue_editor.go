@@ -118,7 +118,7 @@ func (q *queueEditor) holdQueuedPrompt(entry authoring.QueueEntry) error {
 	q.sync()
 	return nil
 }
-func (q *queueEditor) saveQueuedPrompt(entry authoring.QueueEntry, message authoring.Message, sendNow bool) error {
+func (q *queueEditor) saveQueuedPrompt(entry authoring.QueueEntry, message authoring.Message, disposition queuedEditDisposition) error {
 	if entry.SessionID != q.session.current.ID {
 		return errors.New("queued prompt belongs to another session")
 	}
@@ -129,7 +129,7 @@ func (q *queueEditor) saveQueuedPrompt(entry authoring.QueueEntry, message autho
 		return err
 	}
 	q.sync()
-	if sendNow {
+	if disposition == promoteNow {
 		return q.sendQueuedNow(entry.ID)
 	}
 	q.run.drainQueue()

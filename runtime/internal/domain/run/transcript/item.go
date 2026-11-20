@@ -14,21 +14,21 @@ import (
 // ItemIdentity is the immutable ownership and occurrence identity shared by
 // every transcript Item variant.
 type ItemIdentity struct {
-	SessionID  string
-	RunID      string
-	ItemID     string
+	SessionID  flameidentity.SessionID
+	RunID      flameidentity.RunID
+	ItemID     flameidentity.ItemID
 	OccurredAt time.Time
 }
 
 // Validate reports whether the identity is complete and canonical.
 func (i ItemIdentity) Validate() error {
-	if err := flameidentity.ValidateSession(i.SessionID); err != nil {
+	if err := i.SessionID.Validate(); err != nil {
 		return fmt.Errorf("transcript: %w", err)
 	}
-	if err := flameidentity.ValidateRun(i.RunID); err != nil {
+	if err := i.RunID.Validate(); err != nil {
 		return fmt.Errorf("transcript: %w", err)
 	}
-	if err := flameidentity.ValidateItem(i.ItemID); err != nil {
+	if err := i.ItemID.Validate(); err != nil {
 		return fmt.Errorf("transcript: %w", err)
 	}
 	if i.OccurredAt.IsZero() {
@@ -138,13 +138,13 @@ func (i Item) Snapshot() ItemSnapshot {
 // ownership identities. Semantic content and lifecycle times are preserved. An
 // offloaded Tool result keeps its id: ids are Session-scoped, and the preview
 // spells the id out, so the child Session holds the body under the same one.
-func (i Item) Fork(sessionID flameidentity.SessionID, runID flameidentity.RunID, itemID string) (Item, error) {
+func (i Item) Fork(sessionID flameidentity.SessionID, runID flameidentity.RunID, itemID flameidentity.ItemID) (Item, error) {
 	if i.status == ItemRunning {
 		return Item{}, errors.New("transcript: only a terminal Item can be forked")
 	}
 	snapshot := i.Snapshot()
-	snapshot.Identity.SessionID = sessionID.String()
-	snapshot.Identity.RunID = runID.String()
+	snapshot.Identity.SessionID = sessionID
+	snapshot.Identity.RunID = runID
 	snapshot.Identity.ItemID = itemID
 	return RestoreItem(snapshot)
 }
@@ -299,12 +299,13 @@ func (i Item) validate() error {
 	return i.body.validate(i.status, i.identity.OccurredAt)
 }
 
-func (i Item) SessionID() string     { return i.identity.SessionID }
-func (i Item) RunID() string         { return i.identity.RunID }
-func (i Item) ID() string            { return i.identity.ItemID }
-func (i Item) Status() ItemStatus    { return i.status }
-func (i Item) OccurredAt() time.Time { return i.identity.OccurredAt }
-func (i Item) Kind() ItemKind        { return i.body.Kind() }
+func (i Item) Identity() ItemIdentity             { return i.identity }
+func (i Item) SessionID() flameidentity.SessionID { return i.identity.SessionID }
+func (i Item) RunID() flameidentity.RunID         { return i.identity.RunID }
+func (i Item) ID() flameidentity.ItemID           { return i.identity.ItemID }
+func (i Item) Status() ItemStatus                 { return i.status }
+func (i Item) OccurredAt() time.Time              { return i.identity.OccurredAt }
+func (i Item) Kind() ItemKind                     { return i.body.Kind() }
 
 // Body returns an ownership-isolated copy of the Item's variant.
 func (i Item) Body() Body { return i.body.clone() }

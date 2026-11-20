@@ -42,10 +42,10 @@ func (r *runs) cancel() {
 		r.requestRuntimeCancellation(r.execution.pendingCancel.request, r.execution.pendingCancel.policy)
 		return
 	}
-	if !r.execution.conversation.Busy() && !r.execution.following {
+	if !r.execution.conversation.Busy() && !r.execution.following() {
 		return
 	}
-	r.status.doing = "canceling"
+	r.status.doing = statusCanceling
 	runID := r.execution.conversation.RunID()
 	if runID == "" {
 		pending, staged, err := r.stageOpeningCancellation()
@@ -99,7 +99,7 @@ func (r *runs) stageOpeningCancellation() (workbench.PendingRun, bool, error) {
 }
 
 func (r *runs) reconcileCanceledStart(pending workbench.PendingRun) {
-	r.tasks.operations.GoSession(pendingRunRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
+	r.tasks.operations.GoSession(pendingRunRecoveryOperation, func(ctx context.Context, lease operationLease) {
 		opened, err := openStartRunWithBackoff(
 			ctx, r.runtime, r.workbench, pending, r.replayPolicy, runtimeRecoveryBackoff,
 		)
@@ -183,7 +183,7 @@ func (r *runs) retireCanceledStart(pending workbench.PendingRun) error {
 }
 
 func (r *runs) activeCancellation() (conversation.CancelRun, bool) {
-	if r.execution.projectionFailed {
+	if r.execution.projectionFailed() {
 		return conversation.CancelRun{}, false
 	}
 	if runID := r.execution.conversation.RunID(); runID != "" && r.execution.conversation.Busy() {
@@ -252,7 +252,7 @@ func (r *runs) requestRuntimeCancellation(target conversation.CancelRun, policy 
 		}
 	}
 	r.execution.pendingCancel = &pending
-	r.tasks.operations.Go(cancelRunOperation, true, func(ownerCtx context.Context, lease operationLease) {
+	r.tasks.operations.Go(cancelRunOperation, func(ownerCtx context.Context, lease operationLease) {
 		err := r.cancelRootRun(ownerCtx, target, pending.replay)
 		_ = r.tasks.deliver(ownerCtx, func() {
 			r.handleRuntimeCancellation(lease, pending, err)
@@ -327,7 +327,7 @@ func (r *runs) handleRuntimeCancellation(
 		// The stream was rejected after Runtime had accepted the command. A
 		// cancellation receipt cannot reconstruct durable Items that were never
 		// projected, so the authoritative snapshot is the queue-admission fence.
-		r.sessions.refreshInvalidatedSession(true)
+		r.sessions.refreshInvalidatedSession(refreshSettlingRun)
 		return
 	}
 	// The receipt names only the root Run. Its children and open tool calls
@@ -336,7 +336,7 @@ func (r *runs) handleRuntimeCancellation(
 	r.status.note("canceled")
 	r.prompt.SetBusy(false)
 	r.syncAnimation()
-	r.sessions.refreshInvalidatedSession(true)
+	r.sessions.refreshInvalidatedSession(refreshSettlingRun)
 }
 
 func (r *runs) openingCommandForRun(runID string) authoring.CommandID {

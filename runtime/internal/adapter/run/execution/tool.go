@@ -17,12 +17,13 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 
 	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/agent/interaction"
+	scoperun "github.com/Tangerg/scope/agent/run"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/samber/lo"
@@ -82,14 +83,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	if err != nil {
 		return toolcontract.Result{}, err
 	}
-	defer func() {
-		if err != nil {
-			if _, known := toolcontract.ClassifyFailure(err); !known {
-				o.session.effectFailures.record(invocation.EffectID(), err)
-				o.session.lifetime.wakeUnknown()
-			}
-		}
-	}()
+	defer func() { o.recordUnknownEffect(invocation, err) }()
 	call := invocation.ToolCall()
 	identity, err := logicalToolCallID(reference.process, reference.sequence, reference.index, call.ID, call.Name)
 	if err != nil {
@@ -108,79 +102,104 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	if err != nil {
 		return toolcontract.Result{}, err
 	}
-	effectiveArguments, denied, denialReason, inputRequest, prepareErr := o.prepare(ctx, bound, callID, call.Name, arguments, preparedInput)
-	if inputRequest != nil {
-		return toolcontract.Result{InputRequest: inputRequest}, nil
+	prepared, err := o.prepare(ctx, bound, callID, call.Name, arguments, preparedInput)
+	if err != nil {
+		return toolcontract.Result{}, err
 	}
-	if prepareErr != nil {
-		if _, known := toolcontract.ClassifyFailure(prepareErr); !known {
-			return toolcontract.Result{}, prepareErr
-		}
+	if prepared.input != nil {
+		return toolcontract.Result{InputRequest: prepared.input}, nil
 	}
-	arguments = effectiveArguments
+	arguments = prepared.arguments
 
-	rawArguments := arguments.Canonical()
 	start := runs.ToolCallStarted{
 		CallID: callID, ModelCallSequence: reference.sequence,
 		ToolCallIndex: reference.index, SourceCallID: call.ID, ToolName: call.Name, Source: o.ref,
-		Arguments: rawArguments, SafetyClass: o.interpreter.SafetyClass(o.ref),
+		Input: transcript.AdmittedInput(arguments), SafetyClass: o.interpreter.SafetyClass(o.ref),
 	}
-	var prepared runs.ExecutionFact = start
-	if o.receiptRelease != nil && !denied && prepareErr == nil {
-		prepared, err = o.capturePreparedTool(ctx, invocation, member, start)
-		if err != nil {
-			return toolcontract.Result{}, err
-		}
-	}
-	if err := o.session.commitFact(ctx, member, prepared); err != nil {
-		return toolcontract.Result{}, o.projectionFailure(fmt.Errorf("execution: commit Tool call start: %w", err))
+	if err := o.commitStart(ctx, invocation, member, start, prepared.runs()); err != nil {
+		return toolcontract.Result{}, err
 	}
 	var output toolcontract.Output
-	var callErr error
+	callErr := prepared.failure
 	var mutatedPaths []string
-	if prepareErr != nil {
-		callErr = prepareErr
-	} else if denied {
-		failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
-			Kind: toolcontract.FailureKindRejected, Output: toolcontract.NewTextOutput(denialReason),
-		})
-		if err != nil {
-			return toolcontract.Result{}, err
+	if prepared.runs() {
+		var ran toolcontract.Result
+		ran, mutatedPaths, callErr = o.run(ctx, bound, call, arguments, continuation)
+		if callErr == nil && ran.InputRequest != nil {
+			return toolcontract.Result{InputRequest: ran.InputRequest}, nil
 		}
-		callErr = failure
-	} else {
-		ctx = toolset.WithMutationRecorder(ctx, func(paths []string) {
-			mutatedPaths = append(mutatedPaths, paths...)
-		})
-		result, invokeErr := o.invoke(ctx, corechat.ToolCall{
-			ID: call.ID, Name: call.Name, Arguments: rawArguments,
-		}, arguments, toolcontract.Admission{IdempotencyKey: bound.IdempotencyKey(), Continuation: continuation})
-		if invokeErr == nil && result.InputRequest != nil {
-			return toolcontract.Result{InputRequest: result.InputRequest}, nil
-		}
-		output, callErr = result.Output, invokeErr
+		output = ran.Output
 	}
-
 	projection, err := o.projectToolResult(start.ToolName, arguments, output, callErr, mutatedPaths)
 	if err != nil {
 		return toolcontract.Result{}, err
 	}
+	if err := o.settle(ctx, member, invocation.ProcessID(), start, arguments, projection, callErr); err != nil {
+		return toolcontract.Result{}, err
+	}
+	return toolcontract.Result{Output: projection.output}, projection.outcome
+}
+
+// recordUnknownEffect keeps a failure the Tool could not classify: its effect
+// may have happened, so the Run must reconcile it rather than report it.
+func (o *observedInteractionTool) recordUnknownEffect(invocation interaction.ToolInvocation, err error) {
+	if err == nil {
+		return
+	}
+	if _, known := toolcontract.ClassifyFailure(err); known {
+		return
+	}
+	o.session.effectFailures.record(invocation.EffectID(), err)
+	o.session.lifetime.wakeUnknown()
+}
+
+// commitStart makes the call's start durable before it runs. A Tool with a
+// receipt contract captures its prepared receipt in the same fact.
+func (o *observedInteractionTool) commitStart(ctx context.Context, invocation interaction.ToolInvocation, member runs.ExecutorMember, start runs.ToolCallStarted, captures bool) error {
+	var started runs.ExecutionFact = start
+	if o.receiptRelease != nil && captures {
+		var err error
+		started, err = o.capturePreparedTool(ctx, invocation, member, start)
+		if err != nil {
+			return err
+		}
+	}
+	if err := o.session.commitFact(ctx, member, started); err != nil {
+		return o.projectionFailure(fmt.Errorf("execution: commit Tool call start: %w", err))
+	}
+	return nil
+}
+
+// run invokes the underlying Tool, recording every workspace path it mutates.
+func (o *observedInteractionTool) run(ctx context.Context, bound toolcontract.Invocation, call corechat.ToolCall, arguments tool.Arguments, continuation *toolcontract.Continuation) (toolcontract.Result, []string, error) {
+	var mutatedPaths []string
+	ctx = toolset.WithMutationRecorder(ctx, func(paths []string) {
+		mutatedPaths = append(mutatedPaths, paths...)
+	})
+	result, err := o.invoke(ctx, corechat.ToolCall{
+		ID: call.ID, Name: call.Name, Arguments: arguments.Canonical(),
+	}, arguments, toolcontract.Admission{IdempotencyKey: bound.IdempotencyKey(), Continuation: continuation})
+	return result, mutatedPaths, err
+}
+
+// settle records the call's presentation and tells observers how it ended. A
+// denied call never reached its Tool, so it has no outcome to report.
+func (o *observedInteractionTool) settle(ctx context.Context, member runs.ExecutorMember, processID scoperun.ProcessID, start runs.ToolCallStarted, arguments tool.Arguments, projection projectedToolResult, callErr error) error {
 	metadata := toolCallMetadata{
-		toolCallCapture: toolCallCapture{MemberID: member.MemberID, ProcessID: invocation.ProcessID(), Start: start},
+		toolCallCapture: toolCallCapture{MemberID: member.MemberID, ProcessID: processID, Start: start},
 		presentation:    &projection.presentation,
 	}
 	if err := o.session.rememberToolMetadata(metadata); err != nil {
-		return toolcontract.Result{}, o.projectionFailure(err)
+		return o.projectionFailure(err)
 	}
-	if projection.presentation.failure == nil || projection.presentation.failure.Kind != tool.FailureDenied {
-		outcomeCtx, cancelOutcome := context.WithTimeout(
-			context.WithoutCancel(ctx), auxiliaryOperationTimeout,
-		)
-		o.projectToolOutcome(outcomeCtx, member, call.Name, callErr == nil)
-		cancelOutcome()
-		o.runAfterToolUseHook(ctx, callID, call.Name, arguments, projection.output, callErr)
+	if projection.presentation.failure != nil && projection.presentation.failure.Kind == tool.FailureDenied {
+		return nil
 	}
-	return toolcontract.Result{Output: projection.output}, projection.outcome
+	outcomeCtx, cancelOutcome := context.WithTimeout(context.WithoutCancel(ctx), auxiliaryOperationTimeout)
+	o.projectToolOutcome(outcomeCtx, member, start.ToolName, callErr == nil)
+	cancelOutcome()
+	o.runAfterToolUseHook(ctx, start.CallID, start.ToolName, arguments, projection.output, callErr)
+	return nil
 }
 
 func restoreToolInput(bound toolcontract.Invocation) (*runinput.Continuation, *toolcontract.Continuation, error) {
@@ -408,6 +427,31 @@ func (o *observedInteractionTool) runAfterToolUseHook(
 	}
 }
 
+// preparedCall is a Tool call after policy and before it runs: it proceeds
+// with its effective arguments, settles with a known Tool failure (a refusal
+// is a rejected failure carrying the reason the model sees), or waits for a
+// person. A failed call still records the arguments it was judged on.
+type preparedCall struct {
+	arguments tool.Arguments
+	failure   error
+	input     *toolcontract.InputRequest
+}
+
+func (p preparedCall) runs() bool { return p.failure == nil && p.input == nil }
+
+// refuseCall returns the refusal as a known Tool failure judged on arguments.
+func refuseCall(arguments tool.Arguments, reason string) (preparedCall, error) {
+	failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
+		Kind: toolcontract.FailureKindRejected, Output: toolcontract.NewTextOutput(reason),
+	})
+	if err != nil {
+		return preparedCall{}, hostFailure(err)
+	}
+	return preparedCall{arguments: arguments}, failure
+}
+
+// prepare decides how a call proceeds. Only a host fault is returned as an
+// error; a known Tool failure becomes the call's own recorded outcome.
 func (o *observedInteractionTool) prepare(
 	ctx context.Context,
 	bound toolcontract.Invocation,
@@ -415,35 +459,36 @@ func (o *observedInteractionTool) prepare(
 	name string,
 	arguments tool.Arguments,
 	continued *runinput.Continuation,
-) (tool.Arguments, bool, string, *toolcontract.InputRequest, error) {
+) (preparedCall, error) {
+	prepared, err := o.decideCall(ctx, bound, callID, name, arguments, continued)
+	if err == nil {
+		return prepared, nil
+	}
+	if _, known := toolcontract.ClassifyFailure(err); !known {
+		return preparedCall{}, err
+	}
+	return preparedCall{arguments: prepared.arguments, failure: err}, nil
+}
+
+// decideCall applies proposals, hooks and approval policy. With a known Tool
+// failure it still returns the arguments that failure judged.
+func (o *observedInteractionTool) decideCall(
+	ctx context.Context,
+	bound toolcontract.Invocation,
+	callID string,
+	name string,
+	arguments tool.Arguments,
+	continued *runinput.Continuation,
+) (preparedCall, error) {
 	if continued != nil {
-		args, denied, reason, err := o.resumePreparedTool(ctx, callID, name, *continued)
-		return args, denied, reason, nil, err
+		return o.resumePreparedTool(ctx, callID, name, *continued)
 	}
 	if len(o.session.toolProposals) > 0 {
-		activations, err := o.session.callComposition.Activations(ctx, o.session.compositionBindings())
+		proposed, err := o.proposedArguments(ctx, callID, name, arguments)
 		if err != nil {
-			return tool.Arguments{}, false, "", nil, err
+			return preparedCall{}, err
 		}
-		if !slices.EqualFunc(activations, o.session.compositionActivations, plugin.Activation.Equal) {
-			return tool.Arguments{}, false, "", nil, plugin.ErrStale
-		}
-		invocation, err := operation.Capture(ctx, framecall.Target{Scope: extension.ScopeCall, Reference: callID})
-		if err != nil {
-			return tool.Arguments{}, false, "", nil, err
-		}
-		calling, err := pluginmcp.WithInvocation(ctx, invocation)
-		if err != nil {
-			return tool.Arguments{}, false, "", nil, err
-		}
-		proposal, err := o.session.callComposition.PrepareToolProposal(calling, o.session.toolProposals, corechat.ToolCall{ID: callID, Name: name, Arguments: arguments.Canonical()})
-		if err != nil {
-			return tool.Arguments{}, false, "", nil, err
-		}
-		arguments, err = tool.ParseArguments(proposal.Arguments)
-		if err != nil {
-			return tool.Arguments{}, false, "", nil, err
-		}
+		arguments = proposed
 	}
 	request, decision, err := (toolAdmission{
 		binding: o.binding, executable: o.inner, ref: o.ref, fingerprint: o.sourceFingerprint,
@@ -454,23 +499,48 @@ func (o *observedInteractionTool) prepare(
 		if errors.Is(err, tool.ErrInvalidArguments) {
 			failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindFailed, Cause: err, Output: toolcontract.NewTextOutput("invalid effective arguments: " + run.Diagnostic(err))})
 			if failureErr != nil {
-				return tool.Arguments{}, false, "", nil, hostFailure(failureErr)
+				return preparedCall{}, hostFailure(failureErr)
 			}
-			return request.Arguments, false, "", nil, failure
+			return preparedCall{arguments: request.Arguments}, failure
 		}
-		return tool.Arguments{}, false, "", nil, hostFailure(err)
+		return preparedCall{}, hostFailure(err)
 	}
 	arguments = request.Arguments
 	if rewritten, ok := decision.EffectiveArguments(); ok {
 		arguments = rewritten
 	}
 	if reason, denied := decision.Denied(); denied {
-		return arguments, true, reason, nil, nil
+		return refuseCall(arguments, reason)
 	}
 	if prompt, ok := decision.Approval(); ok {
 		return o.requestToolApproval(ctx, bound, request, prompt)
 	}
-	return arguments, false, "", nil, nil
+	return preparedCall{arguments: arguments}, nil
+}
+
+// proposedArguments lets installed Tool proposals rewrite the model's
+// arguments, refusing a composition that changed since the Run captured it.
+func (o *observedInteractionTool) proposedArguments(ctx context.Context, callID, name string, arguments tool.Arguments) (tool.Arguments, error) {
+	activations, err := o.session.callComposition.Activations(ctx, o.session.compositionBindings())
+	if err != nil {
+		return tool.Arguments{}, err
+	}
+	if !slices.EqualFunc(activations, o.session.compositionActivations, plugin.Activation.Equal) {
+		return tool.Arguments{}, plugin.ErrStale
+	}
+	invocation, err := operation.Capture(ctx, framecall.Target{Scope: extension.ScopeCall, Reference: callID})
+	if err != nil {
+		return tool.Arguments{}, err
+	}
+	calling, err := pluginmcp.WithInvocation(ctx, invocation)
+	if err != nil {
+		return tool.Arguments{}, err
+	}
+	proposal, err := o.session.callComposition.PrepareToolProposal(calling, o.session.toolProposals, corechat.ToolCall{ID: callID, Name: name, Arguments: arguments.Canonical()})
+	if err != nil {
+		return tool.Arguments{}, err
+	}
+	return tool.ParseArguments(proposal.Arguments)
 }
 
 // validateApprovalSubject turns effective arguments that cannot derive an
@@ -516,22 +586,21 @@ func (o *observedInteractionTool) requestToolApproval(
 	bound toolcontract.Invocation,
 	request ToolAuthorizationRequest,
 	prompt runs.ApprovalPrompt,
-) (tool.Arguments, bool, string, *toolcontract.InputRequest, error) {
+) (preparedCall, error) {
 	if !slices.Contains(o.start.InterruptTypes, run.InterruptApproval) {
-		return request.Arguments, true, "approval input is unavailable for this Run", nil, nil
+		return refuseCall(request.Arguments, "approval input is unavailable for this Run")
 	}
 	if err := validateToolApprovalPrompt(request, prompt); err != nil {
-		return tool.Arguments{}, false, "", nil, fmt.Errorf("execution: invalid Tool approval prompt: %w", err)
+		return preparedCall{}, fmt.Errorf("execution: invalid Tool approval prompt: %w", err)
 	}
 	resolution, inputRequest, err := runinput.Require(ctx, bound, prompt)
 	if err != nil {
-		return tool.Arguments{}, false, "", nil, err
+		return preparedCall{}, err
 	}
 	if inputRequest != nil {
-		return tool.Arguments{}, false, "", inputRequest, nil
+		return preparedCall{input: inputRequest}, nil
 	}
-	args, denied, reason, err := o.resolveToolApproval(ctx, request, prompt, resolution)
-	return args, denied, reason, nil, err
+	return o.resolveToolApproval(ctx, request, prompt, resolution)
 }
 
 func (o *observedInteractionTool) resumePreparedTool(
@@ -539,72 +608,60 @@ func (o *observedInteractionTool) resumePreparedTool(
 	callID string,
 	name string,
 	continued runinput.Continuation,
-) (tool.Arguments, bool, string, error) {
+) (preparedCall, error) {
 	storedName, storedArguments := continued.Interrupt.ToolCall()
 	if storedName != name {
-		return tool.Arguments{}, false, "", errors.New("execution: continued Tool input belongs to another Tool")
+		return preparedCall{}, errors.New("execution: continued Tool input belongs to another Tool")
 	}
 	arguments, err := tool.ParseArguments(storedArguments)
 	if err != nil {
-		return tool.Arguments{}, false, "", fmt.Errorf("execution: parse continued Tool arguments: %w", err)
+		return preparedCall{}, fmt.Errorf("execution: parse continued Tool arguments: %w", err)
 	}
 	var prompt runs.ApprovalPrompt
 	switch interrupt := continued.Interrupt.(type) {
 	case runs.QuestionPrompt:
-		return arguments, false, "", nil
+		return preparedCall{arguments: arguments}, nil
 	case runs.ApprovalPrompt:
 		prompt = interrupt
 	default:
-		return tool.Arguments{}, false, "", errors.New("execution: continued Tool input has an unsupported kind")
+		return preparedCall{}, errors.New("execution: continued Tool input has an unsupported kind")
 	}
 	if prompt.CallID != callID {
-		return tool.Arguments{}, false, "", errors.New("execution: continued Tool approval call identity changed")
+		return preparedCall{}, errors.New("execution: continued Tool approval call identity changed")
 	}
 	request, err := o.authorizationRequest(callID, name, arguments)
 	if err != nil {
-		return arguments, false, "", err
+		return preparedCall{arguments: arguments}, err
 	}
 	return o.resolveToolApproval(ctx, request, prompt, continued.Resolution)
 }
 
+// resolveToolApproval applies a person's answer. An approved call, including
+// one whose arguments the person edited, must still satisfy the Tool's own
+// contract before it runs.
 func (o *observedInteractionTool) resolveToolApproval(
 	ctx context.Context,
 	request ToolAuthorizationRequest,
 	prompt runs.ApprovalPrompt,
 	resolution run.InterruptResolution,
-) (tool.Arguments, bool, string, error) {
-	if err := validateToolApprovalPrompt(request, prompt); err != nil {
-		return tool.Arguments{}, false, "", err
-	}
-	verdict := resolution.Approval()
-	if verdict == nil {
-		return tool.Arguments{}, false, "", errors.New("execution: expected Tool approval answer")
-	}
-	if verdict.Decision == approval.Allow {
-		arguments := request.Arguments
-		if verdict.EditedArguments != "" {
-			var err error
-			arguments, err = tool.ParseArguments(verdict.EditedArguments)
-			if err != nil {
-				return tool.Arguments{}, false, "", fmt.Errorf("execution: parse approved Tool arguments: %w", err)
-			}
-		}
-		if _, err := o.prepareInvocation(corechat.ToolCall{
-			ID: request.CallID, Name: request.Tool.PublishedName(request.QualifiedName), Arguments: arguments.Canonical(),
-		}, arguments, toolcontract.Admission{}); err != nil {
-			return arguments, false, "", err
-		}
-	}
+) (preparedCall, error) {
 	decision, err := o.authorizer.ResolveToolApproval(ctx, request, prompt, resolution)
 	if err != nil {
-		return tool.Arguments{}, false, "", hostFailure(fmt.Errorf("execution: resolve Tool %q approval: %w", request.Tool.PublishedName(request.QualifiedName), err))
+		return preparedCall{}, hostFailure(fmt.Errorf("execution: resolve Tool %q approval: %w", request.Tool.PublishedName(request.QualifiedName), err))
 	}
 	arguments := request.Arguments
 	if rewritten, ok := decision.EffectiveArguments(); ok {
 		arguments = rewritten
 	}
-	reason, denied := decision.Denied()
-	return arguments, denied, reason, nil
+	if reason, denied := decision.Denied(); denied {
+		return refuseCall(arguments, reason)
+	}
+	if _, err := o.prepareInvocation(corechat.ToolCall{
+		ID: request.CallID, Name: request.Tool.PublishedName(request.QualifiedName), Arguments: arguments.Canonical(),
+	}, arguments, toolcontract.Admission{}); err != nil {
+		return preparedCall{arguments: arguments}, err
+	}
+	return preparedCall{arguments: arguments}, nil
 }
 
 func runtimeToolResult(output toolcontract.Output) (tool.Result, bool, error) {
@@ -660,60 +717,83 @@ func wrapInteractionTools(
 			return nil, nil, nil, nil, errors.New("execution: Interaction Tools require a Tool authorizer")
 		}
 	}
-	contracts = make(map[tool.Ref]toolcontract.Contract)
-	owners = make(map[tool.Ref]*observedInteractionTool)
-	wrap := func(values []toolcontract.Tool) ([]toolcontract.Tool, error) {
-		wrapped := make([]toolcontract.Tool, len(values))
-		for index, executable := range values {
-			binding, bindErr := toolcontract.Bind(executable)
-			if bindErr != nil {
-				return nil, fmt.Errorf("execution: bind Interaction Tool[%d]: %w", index, bindErr)
-			}
-			name := binding.Contract().Definition().Name
-			ref, err := toolset.Identify(executable)
-			if err != nil {
-				return nil, err
-			}
-			fingerprint, err := toolset.SourceFingerprint(executable, ref)
-			if err != nil {
-				return nil, err
-			}
-			if class := config.ToolInterpreter.SafetyClass(ref); !class.Valid() {
-				return nil, fmt.Errorf("execution: Interaction Tool %q has invalid safety class %q", name, class)
-			}
-			observed := &observedInteractionTool{
-				ref: ref, sourceFingerprint: fingerprint, inner: executable, binding: binding, session: session, interpreter: config.ToolInterpreter,
-				presenter: config.ToolPresenter, authorizer: config.ToolAuthorizer,
-				hooks: config.ToolHooks, offloadPolicy: offloadPolicy,
-				start: start,
-			}
-			if err := observed.captureReceiptSource(ctx, config.OriginalToolResults); err != nil {
-				return nil, err
-			}
-			if config.ToolHooks == nil && len(session.toolProposals) == 0 && !config.ToolInterpreter.UsesStandardPolicy(ref) &&
-				!slices.Contains(start.InterruptTypes, run.InterruptApproval) {
-				if concurrent, found := executable.(interaction.ConcurrentTool); found {
-					observed.concurrent = concurrent.ConcurrencyPolicy()
-				}
-			}
-			contracts[ref] = binding.Contract()
-			owners[ref] = observed
-			if direct, found := executable.(interaction.DirectResultTool); found {
-				observed.direct = direct.ReturnsDirectResult()
-			}
-			wrapped[index] = observed
-			if advertiser, found := executable.(interaction.AdvertisingTool); found {
-				wrapped[index] = &observedAdvertisingTool{observedInteractionTool: observed, advertiser: advertiser}
-			}
-		}
-		return wrapped, nil
+	wrapping := toolWrapping{
+		session: session, config: config, offloadPolicy: offloadPolicy, start: start,
+		contracts: make(map[tool.Ref]toolcontract.Contract), owners: make(map[tool.Ref]*observedInteractionTool),
 	}
-	visible, err = wrap(manifest.Visible)
+	visible, err = wrapping.wrapAll(ctx, manifest.Visible)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	deferred, err = wrap(manifest.Deferred)
-	return visible, deferred, contracts, owners, err
+	deferred, err = wrapping.wrapAll(ctx, manifest.Deferred)
+	return visible, deferred, wrapping.contracts, wrapping.owners, err
+}
+
+// toolWrapping observes each Tool of one Interaction and indexes it by its
+// source reference.
+type toolWrapping struct {
+	session       *interactionSession
+	config        InteractionExecutorConfig
+	offloadPolicy toolResultOffloadPolicy
+	start         runs.RootExecutionStart
+	contracts     map[tool.Ref]toolcontract.Contract
+	owners        map[tool.Ref]*observedInteractionTool
+}
+
+func (w toolWrapping) wrapAll(ctx context.Context, values []toolcontract.Tool) ([]toolcontract.Tool, error) {
+	wrapped := make([]toolcontract.Tool, len(values))
+	for index, executable := range values {
+		observed, err := w.observe(ctx, executable)
+		if err != nil {
+			return nil, fmt.Errorf("execution: Interaction Tool[%d]: %w", index, err)
+		}
+		w.contracts[observed.ref] = observed.binding.Contract()
+		w.owners[observed.ref] = observed
+		wrapped[index] = observed
+		if advertiser, found := executable.(interaction.AdvertisingTool); found {
+			wrapped[index] = &observedAdvertisingTool{observedInteractionTool: observed, advertiser: advertiser}
+		}
+	}
+	return wrapped, nil
+}
+
+func (w toolWrapping) observe(ctx context.Context, executable toolcontract.Tool) (*observedInteractionTool, error) {
+	binding, err := toolcontract.Bind(executable)
+	if err != nil {
+		return nil, err
+	}
+	ref, err := toolset.Identify(executable)
+	if err != nil {
+		return nil, err
+	}
+	fingerprint, err := toolset.SourceFingerprint(executable, ref)
+	if err != nil {
+		return nil, err
+	}
+	if class := w.config.ToolInterpreter.SafetyClass(ref); !class.Valid() {
+		return nil, fmt.Errorf("execution: Interaction Tool %q has invalid safety class %q", binding.Contract().Definition().Name, class)
+	}
+	observed := &observedInteractionTool{
+		ref: ref, sourceFingerprint: fingerprint, inner: executable, binding: binding, session: w.session, interpreter: w.config.ToolInterpreter,
+		presenter: w.config.ToolPresenter, authorizer: w.config.ToolAuthorizer,
+		hooks: w.config.ToolHooks, offloadPolicy: w.offloadPolicy,
+		start: w.start,
+	}
+	if err := observed.captureReceiptSource(ctx, w.config.OriginalToolResults); err != nil {
+		return nil, err
+	}
+	// Concurrent execution is safe only when nothing can pause or rewrite a
+	// call: no hooks, proposals, policy prompts or approval interrupts.
+	if w.config.ToolHooks == nil && len(w.session.toolProposals) == 0 && !w.config.ToolInterpreter.UsesStandardPolicy(ref) &&
+		!slices.Contains(w.start.InterruptTypes, run.InterruptApproval) {
+		if concurrent, found := executable.(interaction.ConcurrentTool); found {
+			observed.concurrent = concurrent.ConcurrencyPolicy()
+		}
+	}
+	if direct, found := executable.(interaction.DirectResultTool); found {
+		observed.direct = direct.ReturnsDirectResult()
+	}
+	return observed, nil
 }
 
 func (o *observedInteractionTool) captureReceiptSource(ctx context.Context, results originalToolResults) error {

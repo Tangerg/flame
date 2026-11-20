@@ -18,6 +18,7 @@ package approval
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -168,7 +169,7 @@ func (r Rule) Decision() Decision                   { return r.decision }
 // call's working directory (the project scope key); empty for sessions without
 // a cwd. Subject is derived by the concrete tool owner before policy evaluation.
 type Query struct {
-	SessionID         string
+	SessionID         identity.SessionID
 	ProjectDir        string
 	Tool              tool.Ref
 	SourceFingerprint framevalue.Digest
@@ -179,7 +180,7 @@ type Query struct {
 // choice. Subject is derived from the confirmed invocation by InvocationSubject.
 type RememberRequest struct {
 	Scope             Scope
-	SessionID         string
+	SessionID         identity.SessionID
 	ProjectDir        string
 	Tool              tool.Ref
 	SourceFingerprint framevalue.Digest

@@ -10,9 +10,9 @@ import (
 
 const executableName = identity.ProductName
 
-// version is overridden at link time via -ldflags "-X main.version=...".
-// Default "dev" indicates a local / unreleased build.
-var version = "dev"
+// version is stamped at link time via -ldflags "-X main.version=..."; empty
+// means an unstamped build, whose version bootstrap derives.
+var version string
 
 func main() {
 	if len(os.Args) > 1 {

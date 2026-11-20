@@ -11,6 +11,8 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 )
 
@@ -26,7 +28,7 @@ type Isolator struct {
 	readOnlyPaths []string
 
 	mu         sync.Mutex
-	workspaces map[string]*ownedWorkspace
+	workspaces map[identity.SessionID]*ownedWorkspace
 	closed     bool
 }
 
@@ -66,7 +68,7 @@ func NewIsolator(userHome, baseDir string, readOnlyPaths []string) (*Isolator, e
 		userHome:      userHome,
 		baseDir:       baseDir,
 		readOnlyPaths: slices.Clone(readOnlyPaths),
-		workspaces:    map[string]*ownedWorkspace{},
+		workspaces:    map[identity.SessionID]*ownedWorkspace{},
 	}, nil
 }
 
@@ -75,7 +77,7 @@ func NewIsolator(userHome, baseDir string, readOnlyPaths []string) (*Isolator, e
 // it thereafter. It fails closed with [sandbox.ErrUnavailable] when the host has
 // no isolation backend, so an isolated run is refused rather than run
 // unconfined.
-func (i *Isolator) Workspace(ctx context.Context, sessionID, projectRoot string) (string, error) {
+func (i *Isolator) Workspace(ctx context.Context, sessionID identity.SessionID, projectRoot string) (string, error) {
 	owned, closed := i.lookup(sessionID)
 	if closed {
 		return "", sandbox.ErrShutdown
@@ -90,9 +92,8 @@ func (i *Isolator) Workspace(ctx context.Context, sessionID, projectRoot string)
 		return owned.workspace.Path()
 	}
 	// Materialize the copy OUTSIDE the lock: a tar copy is slow I/O and must not
-	// block another session's Workspace/Discard. A session's runs are serialized
-	// by admission, so the same session cannot race here; the store-back below
-	// still resolves a race defensively (discarding the losing copy).
+	// block another session's Workspace/Discard. Run admission serializes a
+	// session's openings, so no other copy for it can appear meanwhile.
 	fresh, err := sandbox.New(ctx, sandbox.Config{
 		UserHome:      i.userHome,
 		BaseDir:       i.sessionDir(sessionID),
@@ -106,23 +107,18 @@ func (i *Isolator) Workspace(ctx context.Context, sessionID, projectRoot string)
 	if i.closed {
 		return "", errors.Join(sandbox.ErrShutdown, fresh.Shutdown())
 	}
-	if existing := i.workspaces[sessionID]; existing != nil {
-		if err := fresh.Shutdown(); err != nil {
-			return "", fmt.Errorf("isolation: discard redundant workspace: %w", err)
-		}
-		if existing.retiring {
-			return "", errWorkspaceRetiring
-		}
-		if existing.source != projectRoot {
-			return "", errWorkspaceChanged
-		}
-		return existing.workspace.Path()
+	if i.workspaces[sessionID] != nil {
+		return "", errors.Join(errConcurrentWorkspace, fresh.Shutdown())
 	}
 	i.workspaces[sessionID] = &ownedWorkspace{workspace: fresh, source: projectRoot}
 	return fresh.Path()
 }
 
-func (i *Isolator) lookup(sessionID string) (*ownedWorkspace, bool) {
+// errConcurrentWorkspace reports two openings materializing one session's copy
+// at once, which Run admission forbids; neither copy is trusted.
+var errConcurrentWorkspace = errors.New("isolation: concurrent workspace materialization")
+
+func (i *Isolator) lookup(sessionID identity.SessionID) (*ownedWorkspace, bool) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	return i.workspaces[sessionID], i.closed
@@ -132,7 +128,7 @@ func (i *Isolator) lookup(sessionID string) (*ownedWorkspace, bool) {
 // that never ran isolated (no workspace) is a no-op. A failed destruction
 // leaves the copy poisoned and retryable; Workspace will not expose stale
 // scratch state while cleanup is incomplete.
-func (i *Isolator) Discard(sessionID string) error {
+func (i *Isolator) Discard(sessionID identity.SessionID) error {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	if i.closed {
@@ -141,7 +137,7 @@ func (i *Isolator) Discard(sessionID string) error {
 	return i.discardLocked(sessionID)
 }
 
-func (i *Isolator) discardLocked(sessionID string) error {
+func (i *Isolator) discardLocked(sessionID identity.SessionID) error {
 	if owned := i.workspaces[sessionID]; owned != nil {
 		owned.retiring = true
 		if err := owned.workspace.Shutdown(); err != nil {
@@ -156,8 +152,8 @@ func (i *Isolator) discardLocked(sessionID string) error {
 	return nil
 }
 
-func (i *Isolator) sessionDir(sessionID string) string {
-	digest := sha256.Sum256([]byte(sessionID))
+func (i *Isolator) sessionDir(sessionID identity.SessionID) string {
+	digest := sha256.Sum256([]byte(sessionID.String()))
 	return filepath.Join(i.baseDir, "session-"+hex.EncodeToString(digest[:]))
 }
 
@@ -167,11 +163,11 @@ func (i *Isolator) Close() error {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	i.closed = true
-	ids := make([]string, 0, len(i.workspaces))
+	ids := make([]identity.SessionID, 0, len(i.workspaces))
 	for sessionID := range i.workspaces {
 		ids = append(ids, sessionID)
 	}
-	slices.Sort(ids)
+	slices.SortFunc(ids, identity.SessionID.Compare)
 	var errs []error
 	for _, sessionID := range ids {
 		if err := i.discardLocked(sessionID); err != nil {
@@ -189,8 +185,8 @@ var ErrIsolationDisabled = errors.New("isolation: no sandbox directory is config
 // isolated Session cannot run, and there is never a copy to discard.
 type NoIsolation struct{}
 
-func (NoIsolation) Workspace(context.Context, string, string) (string, error) {
+func (NoIsolation) Workspace(context.Context, identity.SessionID, string) (string, error) {
 	return "", ErrIsolationDisabled
 }
 
-func (NoIsolation) Discard(string) error { return nil }
+func (NoIsolation) Discard(identity.SessionID) error { return nil }

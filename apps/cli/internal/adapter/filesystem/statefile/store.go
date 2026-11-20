@@ -41,29 +41,9 @@ type openedRoots struct {
 
 // Open validates, creates, and pins an owned state root.
 func Open(root string) (_ *Store, err error) {
-	if strings.TrimSpace(root) == "" {
-		return nil, errors.New("state directory is empty")
-	}
-	if !filepath.IsAbs(root) {
-		return nil, errors.New("state directory must be absolute")
-	}
-	root, err = filesystem.CanonicalPath(root)
+	root, expected, err := resolveStateRoot(root)
 	if err != nil {
-		return nil, fmt.Errorf("resolve state directory: %w", err)
-	}
-	if err := os.MkdirAll(root, 0o700); err != nil {
-		return nil, fmt.Errorf("create state directory: %w", err)
-	}
-	root, err = filepath.EvalSymlinks(root)
-	if err != nil {
-		return nil, fmt.Errorf("resolve state directory: %w", err)
-	}
-	expected, err := os.Lstat(root)
-	if err != nil {
-		return nil, fmt.Errorf("inspect state directory: %w", err)
-	}
-	if !expected.IsDir() || expected.Mode()&os.ModeSymlink != 0 {
-		return nil, errors.New("state root is not a directory")
+		return nil, err
 	}
 	lease, err := filesystem.TryDirectoryLease(root)
 	if err != nil {
@@ -86,35 +66,67 @@ func Open(root string) (_ *Store, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("inspect state boundary: %w", err)
 	}
-	boundary, err := os.OpenRoot(boundaryName)
+	boundary, err := openVerifiedRoot("state boundary", boundaryExpected, func() (*os.Root, error) { return os.OpenRoot(boundaryName) })
 	if err != nil {
-		return nil, fmt.Errorf("open state boundary: %w", err)
+		return nil, err
 	}
-	boundaryOpened, err := boundary.Stat(".")
-	if err != nil || !boundaryOpened.IsDir() || !os.SameFile(boundaryExpected, boundaryOpened) {
-		_ = boundary.Close()
-		if err != nil {
-			return nil, fmt.Errorf("inspect opened state boundary: %w", err)
-		}
-		return nil, errors.New("state boundary changed while it was being opened")
-	}
-	pinned, err := boundary.OpenRoot(rootName)
+	pinned, err := openVerifiedRoot("state directory", expected, func() (*os.Root, error) { return boundary.OpenRoot(rootName) })
 	if err != nil {
 		_ = boundary.Close()
-		return nil, fmt.Errorf("open state directory: %w", err)
-	}
-	opened, err := pinned.Stat(".")
-	if err != nil || !opened.IsDir() || !os.SameFile(expected, opened) {
-		_ = pinned.Close()
-		_ = boundary.Close()
-		if err != nil {
-			return nil, fmt.Errorf("inspect opened state directory: %w", err)
-		}
-		return nil, errors.New("state directory changed while it was being opened")
+		return nil, err
 	}
 	store := &Store{boundary: boundary, rootName: rootName, root: pinned, lease: lease}
 	store.addCleanup()
 	return store, nil
+}
+
+// resolveStateRoot creates root and returns its canonical path with the
+// directory identity every later open must match.
+func resolveStateRoot(root string) (string, os.FileInfo, error) {
+	if strings.TrimSpace(root) == "" {
+		return "", nil, errors.New("state directory is empty")
+	}
+	if !filepath.IsAbs(root) {
+		return "", nil, errors.New("state directory must be absolute")
+	}
+	root, err := filesystem.CanonicalPath(root)
+	if err != nil {
+		return "", nil, fmt.Errorf("resolve state directory: %w", err)
+	}
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		return "", nil, fmt.Errorf("create state directory: %w", err)
+	}
+	root, err = filepath.EvalSymlinks(root)
+	if err != nil {
+		return "", nil, fmt.Errorf("resolve state directory: %w", err)
+	}
+	expected, err := os.Lstat(root)
+	if err != nil {
+		return "", nil, fmt.Errorf("inspect state directory: %w", err)
+	}
+	if !expected.IsDir() || expected.Mode()&os.ModeSymlink != 0 {
+		return "", nil, errors.New("state root is not a directory")
+	}
+	return root, expected, nil
+}
+
+// openVerifiedRoot opens a directory root and refuses it unless it is still the
+// directory expected describes.
+func openVerifiedRoot(name string, expected os.FileInfo, open func() (*os.Root, error)) (*os.Root, error) {
+	root, err := open()
+	if err != nil {
+		return nil, fmt.Errorf("open %s: %w", name, err)
+	}
+	opened, err := root.Stat(".")
+	if err != nil {
+		_ = root.Close()
+		return nil, fmt.Errorf("inspect opened %s: %w", name, err)
+	}
+	if !opened.IsDir() || !os.SameFile(expected, opened) {
+		_ = root.Close()
+		return nil, fmt.Errorf("%s changed while it was being opened", name)
+	}
+	return root, nil
 }
 
 // Close releases the pinned state root. It is idempotent.
@@ -149,7 +161,7 @@ func (s *Store) Read(name string, maximumBytes int64) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	directory, err := s.openDirectory(filepath.Dir(relative), false)
+	directory, err := s.openDirectory(filepath.Dir(relative), existingDirectory)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +212,7 @@ func (s *Store) ListFiles(name, extension string) (_ []string, err error) {
 	if err := s.ensureRoot(); err != nil {
 		return nil, err
 	}
-	directory, err := s.openDirectory(name, false)
+	directory, err := s.openDirectory(name, existingDirectory)
 	if err != nil {
 		return nil, err
 	}
@@ -240,7 +252,7 @@ func (s *Store) Replace(name string, body []byte) (result commit.Result) {
 	if err != nil {
 		return commit.Result{Err: err}
 	}
-	directory, err := s.openDirectory(filepath.Dir(relative), true)
+	directory, err := s.openDirectory(filepath.Dir(relative), createdDirectory)
 	if err != nil {
 		return commit.Result{Err: err}
 	}
@@ -298,7 +310,7 @@ func (s *Store) Remove(name string) (result commit.Result) {
 	if err != nil {
 		return commit.Result{Err: err}
 	}
-	directory, err := s.openDirectory(filepath.Dir(relative), false)
+	directory, err := s.openDirectory(filepath.Dir(relative), existingDirectory)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return commit.Result{State: commit.Durable}
@@ -348,7 +360,7 @@ func (s *Store) ConfirmDurability() error {
 }
 
 func (s *Store) confirmDirectory(name string) (err error) {
-	directory, err := s.openDirectory(name, false)
+	directory, err := s.openDirectory(name, existingDirectory)
 	if err != nil {
 		return err
 	}
@@ -442,8 +454,16 @@ func stateName(name string) (string, error) {
 	return filepath.Join(parts...), nil
 }
 
-func (s *Store) openDirectory(name string, create bool) (_ *os.Root, err error) {
-	relative, expected, err := s.directory(name, create)
+// directoryAccess says whether opening a state directory may create its path.
+type directoryAccess uint8
+
+const (
+	existingDirectory directoryAccess = iota
+	createdDirectory
+)
+
+func (s *Store) openDirectory(name string, access directoryAccess) (_ *os.Root, err error) {
+	relative, expected, err := s.directory(name, access)
 	if err != nil {
 		return nil, err
 	}
@@ -466,7 +486,7 @@ func (s *Store) openDirectory(name string, create bool) (_ *os.Root, err error) 
 	return directory, nil
 }
 
-func (s *Store) directory(name string, create bool) (string, os.FileInfo, error) {
+func (s *Store) directory(name string, access directoryAccess) (string, os.FileInfo, error) {
 	if name == "." {
 		info, err := s.root.Lstat(".")
 		return ".", info, err
@@ -484,7 +504,7 @@ func (s *Store) directory(name string, create bool) (string, os.FileInfo, error)
 		}
 		current = filepath.Join(current, part)
 		info, err = s.root.Lstat(current)
-		if errors.Is(err, os.ErrNotExist) && create {
+		if errors.Is(err, os.ErrNotExist) && access == createdDirectory {
 			if mkdirErr := s.root.Mkdir(current, 0o700); mkdirErr != nil && !errors.Is(mkdirErr, os.ErrExist) {
 				return "", nil, fmt.Errorf("create state directory: %w", mkdirErr)
 			}
@@ -496,7 +516,7 @@ func (s *Store) directory(name string, create bool) (string, os.FileInfo, error)
 		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 			return "", nil, fmt.Errorf("state path %q contains a component that is not a directory", name)
 		}
-		if create {
+		if access == createdDirectory {
 			if syncErr := syncDirectoryAt(s.root, parent); syncErr != nil {
 				return "", nil, fmt.Errorf("commit state directory: %w", syncErr)
 			}

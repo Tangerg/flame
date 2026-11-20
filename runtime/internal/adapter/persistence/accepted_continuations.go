@@ -3,6 +3,8 @@ package persistence
 import (
 	"context"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
@@ -20,7 +22,7 @@ func (s *acceptedContinuationStore) Put(ctx context.Context, accepted runs.Accep
 }
 
 func (s *acceptedContinuationStore) List(ctx context.Context) ([]runs.AcceptedContinuation, error) {
-	records, err := s.continuationRecords(ctx, false, "")
+	records, err := s.continuationRecords(ctx, `WHERE canceled_run_id IS NULL`)
 	if err != nil {
 		return nil, err
 	}
@@ -52,8 +54,16 @@ func (s *acceptedContinuationStore) PutSubtreeCancellation(ctx context.Context, 
 	})
 }
 
-func (s *acceptedContinuationStore) SubtreeCancellations(ctx context.Context, rootRunID string) ([]runs.AcceptedSubtreeCancellation, error) {
-	records, err := s.continuationRecords(ctx, true, rootRunID)
+func (s *acceptedContinuationStore) ListSubtreeCancellations(ctx context.Context) ([]runs.AcceptedSubtreeCancellation, error) {
+	return s.subtreeCancellations(ctx, `WHERE canceled_run_id IS NOT NULL`)
+}
+
+func (s *acceptedContinuationStore) SubtreeCancellations(ctx context.Context, rootRunID identity.RunID) ([]runs.AcceptedSubtreeCancellation, error) {
+	return s.subtreeCancellations(ctx, `WHERE canceled_run_id IS NOT NULL AND root_run_id = ?`, rootRunID)
+}
+
+func (s *acceptedContinuationStore) subtreeCancellations(ctx context.Context, filter string, args ...any) ([]runs.AcceptedSubtreeCancellation, error) {
+	records, err := s.continuationRecords(ctx, filter, args...)
 	if err != nil {
 		return nil, err
 	}

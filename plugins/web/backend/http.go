@@ -23,6 +23,14 @@ type requests struct {
 	binding *tool.Binding
 }
 
+const (
+	refusalFetchNotConfigured  = "fetch_not_configured"
+	refusalHTTPUnconfigured    = "http_unconfigured"
+	refusalRequestRejected     = "request_rejected"
+	refusalResponseTooLarge    = "response_too_large"
+	refusalSearchNotConfigured = "search_not_configured"
+)
+
 func newRequests(db sqlite.Database, config httpreq.ClientConfig) (*requests, error) {
 	if !db.Valid() {
 		return nil, errors.New("web: request storage is required")
@@ -51,10 +59,10 @@ func (r *requests) execute(ctx context.Context, method, id string, input frameva
 	var invocation tool.Invocation
 	prepared, reply, err := pluginstorage.AdmitCommand(ctx, r.db, method, id, input, func(context.Context) error {
 		if r.binding == nil {
-			return &framecall.Refusal{Code: "http_unconfigured", Message: "web: configure http-allowed-hosts before making HTTP requests"}
+			return &framecall.Refusal{Code: refusalHTTPUnconfigured, Message: "web: configure http-allowed-hosts before making HTTP requests"}
 		}
 		var err error
-		invocation, err = r.binding.Contract().Prepare((chat.ToolCall{ID: id, Name: "http_request", Arguments: input.String()}).Request(), tool.Admission{})
+		invocation, err = r.binding.Contract().Prepare((chat.ToolCall{ID: id, Name: requestTool, Arguments: input.String()}).Request(), tool.Admission{})
 		if err != nil {
 			return &framecall.Refusal{Code: pluginmcp.InvalidInputCode, Message: "web: invalid HTTP request"}
 		}
@@ -86,7 +94,7 @@ func (r *requests) execute(ctx context.Context, method, id string, input frameva
 		if !text {
 			return wire.HTTPResponse{}, callErr
 		}
-		callErr = &framecall.Refusal{Code: "request_rejected", Message: message}
+		callErr = &framecall.Refusal{Code: refusalRequestRejected, Message: message}
 	}
 	encoded, err := pluginmcp.EncodeReply(response, callErr, nil)
 	if err != nil {

@@ -30,8 +30,8 @@ func presentRunStatus(status rundomain.State) protocol.RunStatus {
 // back in bulk.
 func presentRunSummary(run rundomain.Run) protocol.RunSummary {
 	summary := protocol.RunSummary{
-		ID: run.ID(), SessionID: run.SessionID(), SpawnedByItemID: run.Lineage().SpawnedByItemID(),
-		ParentRunID: run.Lineage().ParentRunID(), RootRunID: run.Lineage().RootRunID(),
+		ID: run.ID().String(), SessionID: run.SessionID().String(), SpawnedByItemID: run.Lineage().SpawnedByItemID().String(),
+		ParentRunID: run.Lineage().ParentRunID().String(), RootRunID: run.Lineage().RootRunID().String(),
 		Provider: run.ModelSelection().Provider(), Model: run.ModelSelection().Model(),
 		ReasoningEffort: run.ModelSelection().ReasoningEffort(),
 		Status:          presentRunStatus(run.State()),
@@ -49,7 +49,7 @@ func presentRunSummary(run rundomain.Run) protocol.RunSummary {
 func presentRun(run rundomain.Run) protocol.RunRef {
 	ref := protocol.RunRef{
 		RunSummary:      presentRunSummary(run),
-		ActiveSegmentID: run.ActiveSegmentID(),
+		ActiveSegmentID: run.ActiveSegmentID().String(),
 		Metrics:         presentMetrics(run.Metrics()),
 		ContextTokens:   run.ContextTokens(),
 	}
@@ -160,7 +160,7 @@ func presentActivity(activity runs.Activity) *protocol.Activity {
 	case runs.ApplyingUserInputActivity:
 		return &protocol.Activity{Type: protocol.ActivityApplyingUserInput}
 	case runs.ToolCallActivity:
-		return &protocol.Activity{Type: protocol.ActivityToolCall, ItemID: activity.ItemID, Tool: activity.Tool}
+		return &protocol.Activity{Type: protocol.ActivityToolCall, ItemID: activity.ItemID.String(), Tool: activity.Tool}
 	default:
 		return nil
 	}
@@ -220,7 +220,7 @@ func presentToolFailure(failure *tool.Failure) *protocol.ProblemData {
 func presentInterrupts(interrupts []transcript.Interrupt) []protocol.Interrupt {
 	out := make([]protocol.Interrupt, 0, len(interrupts))
 	for _, request := range interrupts {
-		entry := protocol.Interrupt{ItemID: request.ItemID, RunID: request.RunID}
+		entry := protocol.Interrupt{ItemID: request.ItemID.String(), RunID: request.RunID.String()}
 		entry.Type = presentInterruptType(request.Type())
 		switch prompt := request.Prompt.(type) {
 		case transcript.Approval:

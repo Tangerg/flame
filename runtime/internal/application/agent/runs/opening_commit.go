@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -14,41 +16,56 @@ import (
 // OpeningCommit is the atomic acceptance write-set for one fresh admission or
 // one continuation.
 type OpeningCommit struct {
-	commitID           CommitID
-	admit              *run.Draft
-	resume             *run.TreeResumeDraft
-	resumeAcceptance   *ResumeAcceptance
-	initialSession     *session.Session
-	sessionReplacement *session.Replacement
-	actor              *operation.Actor
-	commandAcceptance  *CommandAcceptance
-	events             []EventCommit
+	commitID          CommitID
+	action            openingAction
+	commandAcceptance *CommandAcceptance
+	events            []EventCommit
 }
+
+// openingAction is closed to admissionOpening and resumeOpening.
+type openingAction interface {
+	validate() error
+	owner() (identity.SessionID, identity.RunID, identity.SegmentID, error)
+	ownsEvent(EventCommit) error
+}
+
+type admissionOpening struct {
+	draft   run.Draft
+	session OpeningSessionWrite
+	actor   *operation.Actor
+}
+
+type resumeOpening struct {
+	draft      run.TreeResumeDraft
+	acceptance *ResumeAcceptance
+}
+
+// OpeningSessionWrite is the Session change a fresh root admission commits with
+// its Run: the Session it creates, or the replacement it saves. It is closed to
+// SessionInsert and SessionSave.
+type OpeningSessionWrite interface{ openingSessionWrite() }
+
+type SessionInsert struct{ Session session.Session }
+
+type SessionSave struct{ Replacement session.Replacement }
+
+func (SessionInsert) openingSessionWrite() {}
+func (SessionSave) openingSessionWrite()   {}
 
 // NewAdmissionOpeningCommit binds a fresh Run admission to every root-owned
 // Session or Actor fact and opening projection written in its transaction.
 func NewAdmissionOpeningCommit(
 	commitID CommitID,
 	admit run.Draft,
-	initialSession *session.Session,
-	sessionReplacement *session.Replacement,
+	sessionWrite OpeningSessionWrite,
 	actor *operation.Actor,
 	events []EventCommit,
 ) (OpeningCommit, error) {
-	admit = cloneOpeningAdmission(admit)
-	opening := OpeningCommit{commitID: commitID, admit: &admit, events: cloneEventCommits(events)}
-	opening.initialSession = initialSession
-	if opening.initialSession != nil {
-		opening.initialSession = new(*opening.initialSession)
+	action := admissionOpening{draft: cloneOpeningAdmission(admit), session: sessionWrite}
+	if actor != nil {
+		action.actor = new(*actor)
 	}
-	opening.sessionReplacement = sessionReplacement
-	if opening.sessionReplacement != nil {
-		opening.sessionReplacement = new(*opening.sessionReplacement)
-	}
-	opening.actor = actor
-	if opening.actor != nil {
-		opening.actor = new(*opening.actor)
-	}
+	opening := OpeningCommit{commitID: commitID, action: action, events: cloneEventCommits(events)}
 	if err := opening.Validate(); err != nil {
 		return OpeningCommit{}, err
 	}
@@ -75,9 +92,8 @@ func NewResumeOpeningCommit(
 	resume run.TreeResumeDraft,
 	events []EventCommit,
 ) (OpeningCommit, error) {
-	resume = cloneOpeningResume(resume)
 	opening := OpeningCommit{
-		commitID: commitID, resume: &resume, events: cloneEventCommits(events),
+		commitID: commitID, action: resumeOpening{draft: cloneOpeningResume(resume)}, events: cloneEventCommits(events),
 	}
 	if err := opening.Validate(); err != nil {
 		return OpeningCommit{}, err
@@ -90,11 +106,13 @@ func NewResumeOpeningCommit(
 // replacements commit with the resumed tree. It returns a new validated value and
 // never mutates the receiver.
 func (o OpeningCommit) WithResumeAcceptance(acceptance ResumeAcceptance) (OpeningCommit, error) {
-	if o.resume == nil {
+	resume, ok := o.action.(resumeOpening)
+	if !ok {
 		return OpeningCommit{}, errors.New("runs: resume acceptance requires a tree continuation")
 	}
+	resume.acceptance = &acceptance
 	next := o
-	next.resumeAcceptance = &acceptance
+	next.action = resume
 	if err := next.Validate(); err != nil {
 		return OpeningCommit{}, err
 	}
@@ -122,23 +140,11 @@ func (o OpeningCommit) Validate() error {
 	if err := o.commitID.Validate(); err != nil {
 		return fmt.Errorf("runs: opening: %w", err)
 	}
-	if (o.admit == nil) == (o.resume == nil) {
+	if o.action == nil {
 		return errors.New("runs: opening requires exactly one admission action")
 	}
-	if o.admit != nil {
-		if err := o.validateAdmission(); err != nil {
-			return err
-		}
-	} else {
-		if err := o.resume.Validate(); err != nil {
-			return fmt.Errorf("runs: opening resume: %w", err)
-		}
-		if o.initialSession != nil || o.sessionReplacement != nil || o.actor != nil {
-			return errors.New("runs: resumed opening carries fresh-run facts")
-		}
-		if err := o.validateResumeAcceptance(); err != nil {
-			return err
-		}
+	if err := o.action.validate(); err != nil {
+		return err
 	}
 	if err := o.validateCommandAcceptance(); err != nil {
 		return err
@@ -146,39 +152,52 @@ func (o OpeningCommit) Validate() error {
 	return o.validateEvents()
 }
 
-func (o OpeningCommit) validateAdmission() error {
-	if o.actor != nil {
-		if err := o.actor.Validate(); err != nil {
+func (a admissionOpening) validate() error {
+	if a.actor != nil {
+		if err := a.actor.Validate(); err != nil {
 			return err
 		}
 	}
-	if err := o.admit.Validate(); err != nil {
+	if err := a.draft.Validate(); err != nil {
 		return fmt.Errorf("runs: opening admission: %w", err)
 	}
-	if o.resumeAcceptance != nil {
-		return errors.New("runs: fresh admission carries a resume acceptance")
-	}
-	if o.admit.Lineage().IsChild() &&
-		(o.initialSession != nil || o.sessionReplacement != nil || o.actor != nil ||
-			o.commandAcceptance != nil) {
+	if a.draft.Lineage().IsChild() && (a.session != nil || a.actor != nil) {
 		return errors.New("runs: child opening carries root admission facts")
 	}
-	if o.initialSession != nil {
-		if o.initialSession.ID() != o.admit.SessionID || o.initialSession.Revision() != 1 {
+	switch write := a.session.(type) {
+	case SessionInsert:
+		if write.Session.ID() != a.draft.SessionID || write.Session.Revision() != 1 {
 			return errors.New("runs: opening initial Session differs from admitted Run")
 		}
-	}
-	if o.sessionReplacement != nil {
-		if err := o.sessionReplacement.Validate(); err != nil {
+	case SessionSave:
+		if err := write.Replacement.Validate(); err != nil {
 			return fmt.Errorf("runs: invalid opening Session replacement: %w", err)
 		}
-		if _, replacing := o.sessionReplacement.Expected(); !replacing ||
-			o.sessionReplacement.State().ID() != o.admit.SessionID {
+		if _, replacing := write.Replacement.Expected(); !replacing || write.Replacement.State().ID() != a.draft.SessionID {
 			return errors.New("runs: opening Session replacement differs from admitted Run")
 		}
 	}
-	if o.initialSession != nil && o.sessionReplacement != nil {
-		return errors.New("runs: opening cannot insert and replace the same Session")
+	return nil
+}
+
+// validate proves the answer write-set names the exact tree this continuation
+// resumes.
+func (r resumeOpening) validate() error {
+	if err := r.draft.Validate(); err != nil {
+		return fmt.Errorf("runs: opening resume: %w", err)
+	}
+	if r.acceptance == nil {
+		return nil
+	}
+	if len(r.acceptance.itemChanges) == 0 {
+		return errors.New("runs: resume acceptance has no settled Items")
+	}
+	_, rootID, _, err := r.owner()
+	if err != nil {
+		return err
+	}
+	if r.acceptance.SessionID() != r.draft.SessionID() || r.acceptance.expected.RootRunID != rootID {
+		return errors.New("runs: opening resume acceptance differs from the resumed tree")
 	}
 	return nil
 }
@@ -187,32 +206,15 @@ func (o OpeningCommit) validateCommandAcceptance() error {
 	if o.commandAcceptance == nil {
 		return nil
 	}
+	if admission, ok := o.action.(admissionOpening); ok && admission.draft.Lineage().IsChild() {
+		return errors.New("runs: child opening carries root admission facts")
+	}
 	expected, err := AcceptCommand(o.commandAcceptance.Key, o.commandAcceptance.Fingerprint, o)
 	if err != nil {
 		return err
 	}
 	if !expected.Equal(*o.commandAcceptance) {
 		return errors.New("runs: command acceptance differs from its opening")
-	}
-	return nil
-}
-
-// validateResumeAcceptance proves the answer write-set names the exact tree this
-// continuation resumes.
-func (o OpeningCommit) validateResumeAcceptance() error {
-	if o.resumeAcceptance == nil {
-		return nil
-	}
-	if len(o.resumeAcceptance.itemChanges) == 0 {
-		return errors.New("runs: resume acceptance has no settled Items")
-	}
-	if len(o.resume.Runs) == 0 {
-		return errors.New("runs: resumed opening has no Runs")
-	}
-	root := o.resume.Runs[len(o.resume.Runs)-1].State()
-	if o.resumeAcceptance.SessionID() != o.resume.SessionID() ||
-		o.resumeAcceptance.expected.RootRunID != root.ID() {
-		return errors.New("runs: opening resume acceptance differs from the resumed tree")
 	}
 	return nil
 }
@@ -225,7 +227,7 @@ func (o OpeningCommit) validateEvents() error {
 		if err := commit.Validate(); err != nil {
 			return fmt.Errorf("runs: opening event[%d]: %w", index, err)
 		}
-		if err := o.validateEventOwner(commit); err != nil {
+		if err := o.action.ownsEvent(commit); err != nil {
 			return fmt.Errorf("runs: opening event[%d]: %w", index, err)
 		}
 		if err := validateOpeningProjection(commit); err != nil {
@@ -252,27 +254,28 @@ func validateOpeningProjection(commit EventCommit) error {
 	return nil
 }
 
-func (o OpeningCommit) validateEventOwner(commit EventCommit) error {
-	if o.admit != nil {
-		if commit.SessionID != o.admit.SessionID {
-			return errors.New("event Session differs from admitted Run")
-		}
-		if commit.RunID == o.admit.RunID {
-			if commit.SegmentID != o.admit.SegmentID {
-				return errors.New("admitted Run event belongs to another Segment")
-			}
-			return nil
-		}
-		lineage := o.admit.Lineage()
-		if lineage.IsChild() && commit.RunID == lineage.ParentRunID() {
-			return nil
-		}
-		return errors.New("event belongs to a Run outside the admission")
+func (a admissionOpening) ownsEvent(commit EventCommit) error {
+	if commit.SessionID != a.draft.SessionID {
+		return errors.New("event Session differs from admitted Run")
 	}
-	if commit.SessionID != o.resume.SessionID() {
+	if commit.RunID == a.draft.RunID {
+		if commit.SegmentID != a.draft.SegmentID {
+			return errors.New("admitted Run event belongs to another Segment")
+		}
+		return nil
+	}
+	lineage := a.draft.Lineage()
+	if lineage.IsChild() && commit.RunID == lineage.ParentRunID() {
+		return nil
+	}
+	return errors.New("event belongs to a Run outside the admission")
+}
+
+func (r resumeOpening) ownsEvent(commit EventCommit) error {
+	if commit.SessionID != r.draft.SessionID() {
 		return errors.New("event Session differs from resumed tree")
 	}
-	for _, resumed := range o.resume.Runs {
+	for _, resumed := range r.draft.Runs {
 		if commit.RunID == resumed.State().ID() {
 			if commit.SegmentID != resumed.State().ActiveSegmentID() {
 				return errors.New("resumed Run event belongs to another Segment")
@@ -286,45 +289,41 @@ func (o OpeningCommit) validateEventOwner(commit EventCommit) error {
 func (o OpeningCommit) CommitID() CommitID { return o.commitID }
 
 func (o OpeningCommit) Admission() (run.Draft, bool) {
-	if o.admit == nil {
+	admission, ok := o.action.(admissionOpening)
+	if !ok {
 		return run.Draft{}, false
 	}
-	return cloneOpeningAdmission(*o.admit), true
+	return cloneOpeningAdmission(admission.draft), true
 }
 
 func (o OpeningCommit) Resume() (run.TreeResumeDraft, bool) {
-	if o.resume == nil {
+	resume, ok := o.action.(resumeOpening)
+	if !ok {
 		return run.TreeResumeDraft{}, false
 	}
-	return cloneOpeningResume(*o.resume), true
+	return cloneOpeningResume(resume.draft), true
 }
 
 func (o OpeningCommit) ResumeAcceptance() (ResumeAcceptance, bool) {
-	if o.resumeAcceptance == nil {
+	resume, ok := o.action.(resumeOpening)
+	if !ok || resume.acceptance == nil {
 		return ResumeAcceptance{}, false
 	}
-	return *o.resumeAcceptance, true
+	return *resume.acceptance, true
 }
 
-func (o OpeningCommit) InitialSession() (session.Session, bool) {
-	if o.initialSession == nil {
-		return session.Session{}, false
-	}
-	return *o.initialSession, true
-}
-
-func (o OpeningCommit) SessionReplacement() (session.Replacement, bool) {
-	if o.sessionReplacement == nil {
-		return session.Replacement{}, false
-	}
-	return *o.sessionReplacement, true
+// SessionWrite is nil when the opening changes no Session.
+func (o OpeningCommit) SessionWrite() OpeningSessionWrite {
+	admission, _ := o.action.(admissionOpening)
+	return admission.session
 }
 
 func (o OpeningCommit) Actor() (operation.Actor, bool) {
-	if o.actor == nil {
+	admission, ok := o.action.(admissionOpening)
+	if !ok || admission.actor == nil {
 		return operation.Actor{}, false
 	}
-	return *o.actor, true
+	return *admission.actor, true
 }
 
 func (o OpeningCommit) CommandAcceptance() (CommandAcceptance, bool) {
@@ -334,41 +333,45 @@ func (o OpeningCommit) CommandAcceptance() (CommandAcceptance, bool) {
 	return *o.commandAcceptance, true
 }
 
-func (o OpeningCommit) ownerIdentity() (sessionID, runID, segmentID string, err error) {
-	if o.admit != nil {
-		return o.admit.SessionID, o.admit.RunID, o.admit.SegmentID, nil
-	}
-	if o.resume != nil && len(o.resume.Runs) > 0 {
-		root := o.resume.Runs[len(o.resume.Runs)-1].State()
-		return root.SessionID(), root.ID(), root.ActiveSegmentID(), nil
-	}
-	return "", "", "", errors.New("runs: opening has no owner")
-}
-
-// ownerIdentity is the one rule for which Session, Run, and Segment an opening
+// OwnerIdentity is the one rule for which Session, Run, and Segment an opening
 // opens, so the acceptance record, the commit receipt, and the input-item scan
 // cannot name different Runs for it.
-func (o OpeningCommit) OwnerIdentity() (sessionID, runID, segmentID string, err error) {
-	return o.ownerIdentity()
+func (o OpeningCommit) OwnerIdentity() (sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, err error) {
+	if o.action == nil {
+		return identity.SessionID{}, identity.RunID{}, identity.SegmentID{}, errors.New("runs: opening has no owner")
+	}
+	return o.action.owner()
+}
+
+func (a admissionOpening) owner() (identity.SessionID, identity.RunID, identity.SegmentID, error) {
+	return a.draft.SessionID, a.draft.RunID, a.draft.SegmentID, nil
+}
+
+func (r resumeOpening) owner() (identity.SessionID, identity.RunID, identity.SegmentID, error) {
+	if len(r.draft.Runs) == 0 {
+		return identity.SessionID{}, identity.RunID{}, identity.SegmentID{}, errors.New("runs: resumed opening has no Runs")
+	}
+	root := r.draft.Runs[len(r.draft.Runs)-1].State()
+	return root.SessionID(), root.ID(), root.ActiveSegmentID(), nil
 }
 
 // UserInputItemID is the one rule for which Item an opening accepted as its input,
 // so the acceptance record and the continuation binding cannot name different
 // Items. More than one root user input is a fault, not silently narrowed to one.
-func (o OpeningCommit) UserInputItemID() (string, error) {
-	_, root, _, err := o.ownerIdentity()
+func (o OpeningCommit) UserInputItemID() (identity.ItemID, error) {
+	_, root, _, err := o.OwnerIdentity()
 	if err != nil {
-		return "", err
+		return identity.ItemID{}, err
 	}
-	var id string
+	var id identity.ItemID
 	for _, event := range o.events {
 		for _, write := range event.Items {
 			item := write.Item()
 			if item.Kind() != transcript.UserMessage || item.RunID() != root {
 				continue
 			}
-			if id != "" {
-				return "", errors.New("runs: opening repeats its user input")
+			if !id.IsZero() {
+				return identity.ItemID{}, errors.New("runs: opening repeats its user input")
 			}
 			id = item.ID()
 		}

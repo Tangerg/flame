@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"bytes"
@@ -34,9 +35,42 @@ func invalidArtifact(path, format string, args ...any) error {
 // portableArtifactFromWire performs only protocol decoding and enum mapping.
 // Aggregate ownership, union rules, references, terminal boundaries, and tool
 // result bindings are validated by sessions.RestorePortableSession.
+// decodeIndexed decodes each element at its artifact path, so a refusal names
+// the exact element.
+func decodeIndexed[W, T any](prefix string, encoded []W, decode func(path string, value W) (T, error)) ([]T, error) {
+	values := make([]T, 0, len(encoded))
+	for index, value := range encoded {
+		decoded, err := decode(fmt.Sprintf("%s[%d]", prefix, index), value)
+		if err != nil {
+			return nil, err
+		}
+		values = append(values, decoded)
+	}
+	return values, nil
+}
+
+func portableToolResultFromArtifact(sessionID identity.SessionID, path string, encoded protocol.ArtifactToolResult) (sessions.PortableToolResult, error) {
+	id, err := transcript.ParseToolResultID(encoded.ID)
+	if err != nil {
+		return sessions.PortableToolResult{}, invalidArtifact(path+".id", "%v", err)
+	}
+	itemID, err := identity.ParseItem(encoded.ItemID)
+	if err != nil {
+		return sessions.PortableToolResult{}, invalidArtifact(path+".itemId", "%v", err)
+	}
+	return sessions.PortableToolResult{
+		ItemID: itemID, ModelOnly: encoded.ModelOnly,
+		Blob: transcript.ToolResultBlob{ID: id, SessionID: sessionID, Body: encoded.Body, CreatedAt: encoded.CreatedAt},
+	}, nil
+}
+
 func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSnapshot, error) {
 	if err := protocol.ValidateWireTree(art); err != nil {
 		return sessions.PortableSnapshot{}, invalidArtifact("artifact", "%v", err)
+	}
+	sessionID, err := identity.ParseSession(art.Session.ID)
+	if err != nil {
+		return sessions.PortableSnapshot{}, invalidArtifact("artifact.session.id", "%v", err)
 	}
 	selection, err := modelchoice.NewWithReasoningEffort(art.Session.Provider, art.Session.Model, art.Session.ReasoningEffort)
 	if err == nil {
@@ -47,43 +81,25 @@ func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSn
 			"artifact.session", "invalid model selection: %v", err,
 		)
 	}
-	messages := make([]chat.Message, 0, len(art.Messages))
-	for index, encoded := range art.Messages {
-		path := fmt.Sprintf("artifact.messages[%d]", index)
-		message, decodeErr := portableMessageFromArtifact(path, encoded)
-		if decodeErr != nil {
-			return sessions.PortableSnapshot{}, decodeErr
-		}
-		messages = append(messages, message)
+	messages, err := decodeIndexed("artifact.messages", art.Messages, portableMessageFromArtifact)
+	if err != nil {
+		return sessions.PortableSnapshot{}, err
 	}
-	runs := make([]sessions.PortableRun, 0, len(art.Runs))
-	for index, encoded := range art.Runs {
-		run, portableRunFromArtifactErr := portableRunFromArtifact(fmt.Sprintf("artifact.runs[%d]", index), encoded)
-		if portableRunFromArtifactErr != nil {
-			return sessions.PortableSnapshot{}, portableRunFromArtifactErr
-		}
-		runs = append(runs, run)
+	runs, err := decodeIndexed("artifact.runs", art.Runs, portableRunFromArtifact)
+	if err != nil {
+		return sessions.PortableSnapshot{}, err
 	}
-	items := make([]transcript.Item, 0, len(art.Items))
-	for index, encoded := range art.Items {
-		item, portableItemFromArtifactErr := portableItemFromArtifact(art.Session.ID, fmt.Sprintf("artifact.items[%d]", index), encoded)
-		if portableItemFromArtifactErr != nil {
-			return sessions.PortableSnapshot{}, portableItemFromArtifactErr
-		}
-		items = append(items, item)
+	items, err := decodeIndexed("artifact.items", art.Items, func(path string, encoded protocol.ArtifactItem) (transcript.Item, error) {
+		return portableItemFromArtifact(sessionID, path, encoded)
+	})
+	if err != nil {
+		return sessions.PortableSnapshot{}, err
 	}
-	toolResults := make([]sessions.PortableToolResult, 0, len(art.ToolResults))
-	for index, encoded := range art.ToolResults {
-		id, parseIDErr := transcript.ParseToolResultID(encoded.ID)
-		if parseIDErr != nil {
-			return sessions.PortableSnapshot{}, invalidArtifact(fmt.Sprintf("artifact.toolResults[%d].id", index), "%v", parseIDErr)
-		}
-		toolResults = append(toolResults, sessions.PortableToolResult{
-			ItemID: encoded.ItemID, ModelOnly: encoded.ModelOnly,
-			Blob: transcript.ToolResultBlob{
-				ID: id, SessionID: art.Session.ID, Body: encoded.Body, CreatedAt: encoded.CreatedAt,
-			},
-		})
+	toolResults, err := decodeIndexed("artifact.toolResults", art.ToolResults, func(path string, encoded protocol.ArtifactToolResult) (sessions.PortableToolResult, error) {
+		return portableToolResultFromArtifact(sessionID, path, encoded)
+	})
+	if err != nil {
+		return sessions.PortableSnapshot{}, err
 	}
 	var source extension.ContributionSource
 	if art.PlanSource != nil {
@@ -98,7 +114,7 @@ func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSn
 	}
 	return sessions.PortableSnapshot{
 		Session: sessions.PortableSession{
-			ID: art.Session.ID, Title: art.Session.Title, CWD: art.Session.Workspace.Path, Selection: selection,
+			ID: sessionID, Title: art.Session.Title, CWD: art.Session.Workspace.Path, Selection: selection,
 			CreatedAt: art.Session.CreatedAt, UpdatedAt: art.Session.UpdatedAt, Favorite: art.Session.Favorite,
 		},
 		Messages: messages, Runs: runs, Items: items, ToolResults: toolResults, Plan: plan, PlanSource: source,
@@ -193,9 +209,29 @@ func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessio
 	if err != nil {
 		return sessions.PortableRun{}, invalidArtifact(path, "invalid model selection: %v", err)
 	}
+	id, err := identity.ParseRun(artifact.ID)
+	if err != nil {
+		return sessions.PortableRun{}, invalidArtifact(path+".id", "%v", err)
+	}
+	parentRunID, err := identity.ParseOptionalRun(artifact.ParentRunID)
+	if err != nil {
+		return sessions.PortableRun{}, invalidArtifact(path+".parentRunId", "%v", err)
+	}
+	rootRunID, err := identity.ParseOptionalRun(artifact.RootRunID)
+	if err != nil {
+		return sessions.PortableRun{}, invalidArtifact(path+".rootRunId", "%v", err)
+	}
+	sessionID, err := identity.ParseSession(artifact.SessionID)
+	if err != nil {
+		return sessions.PortableRun{}, invalidArtifact(path+".sessionId", "%v", err)
+	}
+	spawnedByItemID, err := identity.ParseOptionalItem(artifact.SpawnedByItemID)
+	if err != nil {
+		return sessions.PortableRun{}, invalidArtifact(path+".spawnedByItemId", "%v", err)
+	}
 	return sessions.PortableRun{
-		SessionID: artifact.SessionID, ID: artifact.ID, SpawnedByItemID: artifact.SpawnedByItemID,
-		ParentRunID: artifact.ParentRunID, RootRunID: artifact.RootRunID,
+		SessionID: sessionID, ID: id, SpawnedByItemID: spawnedByItemID,
+		ParentRunID: parentRunID, RootRunID: rootRunID,
 		Selection: selection, Ending: ending,
 		UnresolvedEffects: effects,
 		Metrics:           metrics,
@@ -337,7 +373,7 @@ func portableUsageFromArtifact(artifact *protocol.Usage) (*accounting.Usage, err
 	return &usage, nil
 }
 
-func portableItemFromArtifact(sessionID, path string, artifact protocol.ArtifactItem) (transcript.Item, error) {
+func portableItemFromArtifact(sessionID identity.SessionID, path string, artifact protocol.ArtifactItem) (transcript.Item, error) {
 	status, err := portableItemStatus(path+".status", artifact.Status)
 	if err != nil {
 		return transcript.Item{}, err
@@ -346,52 +382,70 @@ func portableItemFromArtifact(sessionID, path string, artifact protocol.Artifact
 	if err != nil {
 		return transcript.Item{}, err
 	}
+	runID, err := identity.ParseOptionalRun(artifact.RunID)
+	if err != nil {
+		return transcript.Item{}, invalidArtifact(path+".runId", "%v", err)
+	}
+	itemID, err := identity.ParseItem(artifact.ID)
+	if err != nil {
+		return transcript.Item{}, invalidArtifact(path+".id", "%v", err)
+	}
 	snapshot := transcript.ItemSnapshot{
 		Identity: transcript.ItemIdentity{
-			SessionID: sessionID, ItemID: artifact.ID, RunID: artifact.RunID,
+			SessionID: sessionID, ItemID: itemID, RunID: runID,
 			OccurredAt: artifact.CreatedAt,
 		},
 		Status: status,
 	}
-	var content []transcript.ContentBlock
-	for index, block := range artifact.Content {
-		decoded, err := portableContentFromArtifact(fmt.Sprintf("%s.content[%d]", path, index), block)
-		if err != nil {
-			return transcript.Item{}, err
-		}
-		content = append(content, decoded)
+	body, err := portableItemBody(kind, status, path, artifact)
+	if err != nil {
+		return transcript.Item{}, err
 	}
-	switch kind {
-	case transcript.UserMessage:
-		snapshot.Body = transcript.UserMessageBody{Content: content}
-	case transcript.AgentMessage:
-		snapshot.Body = transcript.AgentMessageBody{Phase: portableMessagePhase(artifact.Phase), Content: content}
-	case transcript.Reasoning:
-		snapshot.Body = transcript.ReasoningBody{Text: artifact.Text, Redacted: artifact.Redacted}
-	case transcript.Compaction:
-		snapshot.Body = transcript.CompactionBody{Summary: artifact.Summary, DroppedMessages: artifact.DroppedMessages}
-	case transcript.QuestionItem:
-		if artifact.Question == nil {
-			return transcript.Item{}, invalidArtifact(path+".question", "is required")
-		}
-		question, err := portableQuestionFromArtifact(path+".question", *artifact.Question)
-		if err != nil {
-			return transcript.Item{}, err
-		}
-		snapshot.Body = transcript.QuestionBody{Question: question}
-	case transcript.ToolCall:
-		call, err := portableToolCallFromArtifact(path, status, artifact)
-		if err != nil {
-			return transcript.Item{}, err
-		}
+	snapshot.Body = body
+	if kind == transcript.ToolCall {
 		snapshot.Identity.OccurredAt = artifact.StartedAt
-		snapshot.Body = call
 	}
 	item, err := transcript.RestoreItem(snapshot)
 	if err != nil {
 		return transcript.Item{}, invalidArtifact(path, "%v", err)
 	}
 	return item, nil
+}
+
+// portableItemBody decodes the body the item's kind carries; a ToolCall is
+// dated by when it started rather than when it was created.
+func portableItemBody(kind transcript.ItemKind, status transcript.ItemStatus, path string, artifact protocol.ArtifactItem) (transcript.Body, error) {
+	var content []transcript.ContentBlock
+	for index, block := range artifact.Content {
+		decoded, err := portableContentFromArtifact(fmt.Sprintf("%s.content[%d]", path, index), block)
+		if err != nil {
+			return nil, err
+		}
+		content = append(content, decoded)
+	}
+	switch kind {
+	case transcript.UserMessage:
+		return transcript.UserMessageBody{Content: content}, nil
+	case transcript.AgentMessage:
+		return transcript.AgentMessageBody{Phase: portableMessagePhase(artifact.Phase), Content: content}, nil
+	case transcript.Reasoning:
+		return transcript.ReasoningBody{Text: artifact.Text, Redacted: artifact.Redacted}, nil
+	case transcript.Compaction:
+		return transcript.CompactionBody{Summary: artifact.Summary, DroppedMessages: artifact.DroppedMessages}, nil
+	case transcript.QuestionItem:
+		if artifact.Question == nil {
+			return nil, invalidArtifact(path+".question", "is required")
+		}
+		question, err := portableQuestionFromArtifact(path+".question", *artifact.Question)
+		if err != nil {
+			return nil, err
+		}
+		return transcript.QuestionBody{Question: question}, nil
+	case transcript.ToolCall:
+		return portableToolCallFromArtifact(path, status, artifact)
+	default:
+		return nil, nil
+	}
 }
 
 func portableToolCallFromArtifact(path string, status transcript.ItemStatus, artifact protocol.ArtifactItem) (transcript.ToolCallBody, error) {

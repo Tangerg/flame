@@ -5,16 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"os"
 	"slices"
-	"strings"
 	"time"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -23,11 +20,9 @@ import (
 
 	framehost "github.com/Tangerg/frame/host"
 	framevalue "github.com/Tangerg/frame/value"
-	"github.com/Tangerg/scope/agent/interaction"
 	scoperun "github.com/Tangerg/scope/agent/run"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
-	otelagent "github.com/Tangerg/scope/otel/agent"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 )
@@ -61,7 +56,7 @@ type executionJournal interface {
 type originalToolResults interface {
 	OwnsToolSource(context.Context, domaintool.Ref, framevalue.Digest, plugin.Activation) (bool, error)
 	AwaitOriginalToolSource(context.Context, domaintool.Ref, framevalue.Digest, framevalue.Digest, plugin.Activation) (bool, error)
-	OriginalToolResult(context.Context, domaintool.Ref, framevalue.Digest, framevalue.Digest, plugin.Activation, string, string) (*toolcontract.Output, error)
+	OriginalToolResult(context.Context, domaintool.Ref, framevalue.Digest, framevalue.Digest, plugin.Activation, string, domaintool.Arguments) (*toolcontract.Output, error)
 }
 
 // InteractionExecutorConfig freezes the host-owned inputs shared by
@@ -183,11 +178,11 @@ func (i *InteractionExecutor) acceptsBuild(raw string) bool {
 	return err == nil && identity == i.buildID
 }
 
-func interactionStartID(sessionID, runID string) scoperun.StartID {
-	return scoperun.StartID{Scope: sessionID, Key: runID}
+func interactionStartID(sessionID flameidentity.SessionID, runID flameidentity.RunID) scoperun.StartID {
+	return scoperun.StartID{Scope: sessionID.String(), Key: runID.String()}
 }
 
-func newExecutorRef(sessionID string) runs.ExecutorRef {
+func newExecutorRef(sessionID flameidentity.SessionID) runs.ExecutorRef {
 	return runs.ExecutorRef{SessionID: sessionID, ExecutorID: "exec_" + uuid.NewString()}
 }
 
@@ -208,308 +203,12 @@ func validateModelOutputReservation(
 	return nil
 }
 
-// StageRoot assembles one exact Interaction Deployment and independent Engine
-// without starting a Process or crossing the model/tool side-effect boundary.
-func (i *InteractionExecutor) StageRoot(
-	ctx context.Context,
-	start runs.RootExecutionStart,
-) (_ runs.ExecutorRef, err error) {
-	finishAssembly, err := i.sessions.beginAssembly()
-	if err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	defer finishAssembly()
-	start = start.Clone()
-	if err := flameidentity.ValidateSession(start.SessionID); err != nil {
-		return runs.ExecutorRef{}, fmt.Errorf("execution: Interaction: %w", err)
-	}
-	if err := flameidentity.ValidateRun(start.RunID); err != nil {
-		return runs.ExecutorRef{}, fmt.Errorf("execution: Interaction: %w", err)
-	}
-	if !interactionStartID(start.SessionID, start.RunID).Valid() {
-		return runs.ExecutorRef{}, fmt.Errorf("%w: invalid Scope start identity", runs.ErrInvalidStart)
-	}
-	if err := start.Validate(); err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	ref := newExecutorRef(start.SessionID)
-	session, err := i.assembleInteraction(ctx, ref, start, nil)
-	if err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	defer func() {
-		if err != nil {
-			err = errors.Join(err, i.discardInteraction(session))
-		}
-	}()
-	input, err := scoperun.EncodePayload(interaction.Input{
-		Messages: cloneChatMessages(start.WorkingContext), Options: executionOptions(start.ModelSelection, start.Options),
-	})
-	if err != nil {
-		return runs.ExecutorRef{}, fmt.Errorf("execution: encode Interaction input: %w", err)
-	}
-	session.input = input
-	if err := i.publishInteraction(ctx, session); err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	return ref, nil
-}
-
 var (
 	errProposalCompositionUnavailable = errors.New("execution: captured Tool proposal composition is unavailable")
 	errModelInputUnavailable          = errors.New("execution: captured model input is unavailable")
 	errModelContextUnavailable        = errors.New("execution: captured model context is unavailable")
 	errModelObserversUnavailable      = errors.New("execution: captured model observers are unavailable")
 )
-
-// captureComposition fixes the call composition a Run executes with. A
-// restored checkpoint replays its original capture instead of resolving the
-// current composition again.
-func (i *InteractionExecutor) captureComposition(ctx context.Context, session *interactionSession, checkpoint *interactionCheckpointState) error {
-	if checkpoint != nil {
-		session.modelObservers = slices.Clone(checkpoint.modelObservers)
-		session.modelContexts = slices.Clone(checkpoint.modelContexts)
-		session.modelInputs = slices.Clone(checkpoint.modelInputs)
-		session.toolProposals = slices.Clone(checkpoint.toolProposals)
-		return nil
-	}
-	composition := i.config.CallComposition
-	if composition == nil {
-		return nil
-	}
-	var err error
-	if session.modelObservers, err = composition.Resolve(ctx); err != nil {
-		return err
-	}
-	if session.modelContexts, err = composition.ResolveContext(ctx); err != nil {
-		return err
-	}
-	if session.modelInputs, err = composition.ResolveInput(ctx); err != nil {
-		return err
-	}
-	session.toolProposals, err = composition.ResolveToolProposals(ctx)
-	return err
-}
-
-// validateCaptured revalidates a captured composition member against the live
-// composition; a capture this Runtime can no longer compose is refused.
-func (i *InteractionExecutor) validateCaptured(captured bool, unavailable error, validate func() error) error {
-	if !captured {
-		return nil
-	}
-	if i.config.CallComposition == nil {
-		return unavailable
-	}
-	return validate()
-}
-
-func (i *InteractionExecutor) assembleInteraction(
-	ctx context.Context,
-	ref runs.ExecutorRef,
-	start runs.RootExecutionStart,
-	checkpoint *interactionCheckpointState,
-) (_ *interactionSession, err error) {
-	var resolved modeladapter.ResolvedChat
-	if checkpoint != nil {
-		resolved, err = i.config.ChatResolver.RestoreChat(ctx, start.ModelSelection, checkpoint.modelProvider)
-	} else {
-		resolved, err = i.resolveChat(ctx, start.ModelSelection)
-	}
-	if err != nil {
-		return nil, err
-	}
-	transferred := false
-	defer func() {
-		if !transferred {
-			err = errors.Join(err, resolved.Close(context.WithoutCancel(ctx)))
-		}
-	}()
-	model := resolved.Model()
-	streamer, _ := resolved.Streamer()
-	counter, _ := resolved.InputTokenCounter()
-	telemetry, err := otelagent.NewObserver(otelagent.ObserverConfig{})
-	if err != nil {
-		return nil, fmt.Errorf("execution: observe Interaction execution: %w", err)
-	}
-	selected, err := modeladapter.NewSelectedChat(start.ModelSelection, resolved)
-	if err != nil {
-		return nil, err
-	}
-	if err := validateModelOutputReservation(selected.TokenLimits(), start.Options); err != nil {
-		return nil, err
-	}
-	session := newInteractionSession(i.lifetime, ref, start, i.config, i.buildID, i.policy, telemetry)
-	session.selectedChat = selected
-	transferred = true
-	i.sessions.own(session)
-	defer func() {
-		if err != nil {
-			err = errors.Join(err, i.discardInteraction(session))
-		}
-	}()
-	if err := i.captureComposition(ctx, session, checkpoint); err != nil {
-		return nil, err
-	}
-	composition := i.config.CallComposition
-	if err := i.validateCaptured(len(session.toolProposals) > 0, errProposalCompositionUnavailable, func() error {
-		return composition.ValidateToolProposals(ctx, session.toolProposals)
-	}); err != nil {
-		return nil, err
-	}
-	if composition != nil {
-		var activations []plugin.Activation
-		if checkpoint != nil {
-			activations = checkpoint.bindings
-		} else if activations, err = composition.Activations(ctx, session.compositionBindings()); err != nil {
-			return nil, err
-		}
-		if err := session.bindCompositionActivations(activations); err != nil {
-			return nil, err
-		}
-	}
-	if err := i.validateCaptured(len(session.modelInputs) > 0, errModelInputUnavailable, func() error {
-		return composition.ValidateInput(ctx, session.modelInputs)
-	}); err != nil {
-		return nil, err
-	}
-	if err := i.validateCaptured(len(session.modelContexts) > 0, errModelContextUnavailable, func() error {
-		return composition.ValidateContext(ctx, session.modelContexts)
-	}); err != nil {
-		return nil, err
-	}
-	if err := i.validateCaptured(len(session.modelObservers) > 0, errModelObserversUnavailable, func() error {
-		return composition.Validate(ctx, session.modelObservers)
-	}); err != nil {
-		return nil, err
-	}
-	if len(session.modelObservers) > 0 {
-		model, streamer = composition.Bind(model, streamer, session.modelObservers)
-	}
-	observed, err := newObservedInteractionModel(model, streamer, session)
-	if err != nil {
-		return nil, fmt.Errorf("execution: observe Interaction model: %w", err)
-	}
-	store, err := telemetry.WrapStore(session)
-	if err != nil {
-		return nil, fmt.Errorf("execution: observe Interaction store: %w", err)
-	}
-	session.deltas = make(chan scoperun.Delta, i.policy.deltaBufferCapacity)
-	session.engine, err = scoperun.New(session.lifetime.execution, scoperun.Config{
-		Store: store, Build: i.buildID.String(),
-		ProcessAdmitter: scoperun.ProcessAdmitterFunc(session.admitProcess),
-		Deltas:          session.deltas, TreeLimits: interactionTreeLimits(start),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("execution: build Interaction Runtime: %w", err)
-	}
-	deployments, err := i.buildInteractionDeployments(
-		runExecutionContext(ctx, rootExecutionScope(start), start), session, start, observed, counter, checkpoint,
-	)
-	if err != nil {
-		return nil, err
-	}
-	if installDeploymentsErr := session.installDeployments(deployments); installDeploymentsErr != nil {
-		return nil, errors.Join(installDeploymentsErr, deployments.close())
-	}
-	return session, nil
-}
-
-// The Deployment's configuration digest names what makes two executions
-// interchangeable. The mutable model history stays outside this identity;
-// static Tool and Delegate bindings enter it through Scope's ChildDeployments.
-func (i *InteractionExecutor) interactionConfiguration(
-	session *interactionSession,
-	group domaintool.Group,
-	depth uint32,
-	instructions []corechat.Message,
-) ([]byte, error) {
-	configuration, err := scoperun.EncodePayload(struct {
-		Provider               string                    `json:"provider"`
-		Model                  string                    `json:"model"`
-		Streaming              bool                      `json:"streaming"`
-		MaxConcurrentToolCalls int                       `json:"maxConcurrentToolCalls"`
-		ContextCompaction      bool                      `json:"contextCompaction"`
-		Group                  domaintool.Group          `json:"group"`
-		Depth                  uint32                    `json:"depth"`
-		DelegateOptions        corechat.Options          `json:"delegateOptions"`
-		Instructions           []corechat.Message        `json:"instructions,omitempty"`
-		ModelObservers         []contributionBindingWire `json:"modelObservers"`
-		CompositionActivations []string                  `json:"compositionActivations"`
-		ModelContexts          []contributionBindingWire `json:"modelContexts"`
-		ModelInputs            []contributionBindingWire `json:"modelInputs"`
-		ToolProposals          []contributionBindingWire `json:"toolProposals"`
-	}{
-		Provider: session.start.ModelSelection.Provider(), Model: session.start.ModelSelection.Model(),
-		Streaming:              i.config.StreamModelResponses,
-		MaxConcurrentToolCalls: i.policy.maxConcurrentToolCalls,
-		ContextCompaction:      i.config.ModelContextCompactor != nil,
-		Group:                  group, Depth: depth,
-		Instructions: cloneChatMessages(instructions), DelegateOptions: delegatedExecutionOptions(session.start),
-		ModelObservers:         contributionBindingsWire(session.modelObservers),
-		CompositionActivations: activationIdentities(session.compositionActivations),
-		ModelContexts:          contributionBindingsWire(session.modelContexts),
-		ModelInputs:            contributionBindingsWire(session.modelInputs),
-		ToolProposals:          contributionBindingsWire(session.toolProposals),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("execution: encode Interaction configuration identity: %w", err)
-	}
-	return configuration.JSON(), nil
-}
-
-func (i *InteractionExecutor) interactionToolConfiguration(manifest toolset.Manifest, observed map[domaintool.Ref]*observedInteractionTool) ([]byte, error) {
-	visible, err := toolIdentities(manifest.Visible, observed)
-	if err != nil {
-		return nil, err
-	}
-	deferred, err := toolIdentities(manifest.Deferred, observed)
-	if err != nil {
-		return nil, err
-	}
-	// Deferred authority is a set; discovery owns its presentation order.
-	// Reconnection order must not change a waiting execution's identity.
-	slices.SortFunc(deferred, func(a, b toolConfigurationIdentity) int {
-		return strings.Compare(a.Reference, b.Reference)
-	})
-	configuration, err := scoperun.EncodePayload(struct {
-		Installations     []installationDependencyWire `json:"installations"`
-		ToolResultOffload *toolResultOffloadIdentity   `json:"toolResultOffload,omitzero"`
-		ToolHooks         bool                         `json:"toolHooks"`
-		VisibleTools      []toolConfigurationIdentity  `json:"visibleTools,omitempty"`
-		DeferredTools     []toolConfigurationIdentity  `json:"deferredTools,omitempty"`
-	}{installationDependencies(manifest.Installations), i.policy.toolResultOffload.identity(), i.config.ToolHooks != nil, visible, deferred})
-	if err != nil {
-		return nil, fmt.Errorf("execution: encode Interaction Tool configuration identity: %w", err)
-	}
-	return configuration.JSON(), nil
-}
-
-type toolConfigurationIdentity struct {
-	Definition        toolcontract.Definition `json:"definition"`
-	Reference         string                  `json:"reference"`
-	SourceFingerprint string                  `json:"sourceFingerprint,omitempty"`
-	Activation        string                  `json:"activation,omitempty"`
-}
-
-func toolIdentities(tools []toolcontract.Tool, observed map[domaintool.Ref]*observedInteractionTool) ([]toolConfigurationIdentity, error) {
-	identities := make([]toolConfigurationIdentity, 0, len(tools))
-	for _, executable := range tools {
-		ref, err := toolset.Identify(executable)
-		if err != nil {
-			return nil, err
-		}
-		owner := observed[ref]
-		if owner == nil {
-			return nil, fmt.Errorf("execution: Tool %s has no admitted contract", ref)
-		}
-		activation, err := toolset.InstallationActivation(owner.inner)
-		if err != nil {
-			return nil, err
-		}
-		identities = append(identities, toolConfigurationIdentity{Definition: owner.binding.Contract().Definition(), Reference: ref.String(), SourceFingerprint: owner.sourceFingerprint.String(), Activation: activation.Identity.String()})
-	}
-	return identities, nil
-}
 
 // BeginShutdown rejects new assembly and publication. AwaitShutdown joins
 // admitted assembly and releases its resources under the caller's deadline.
@@ -614,167 +313,6 @@ func (i *InteractionExecutor) BeginRoot(_ context.Context, ref runs.ExecutorRef)
 	return nil
 }
 
-// RestoreWaitingExecution reconstructs an exact committed waiting tree without
-// claiming it for continuation. An existing owner is rejected: recovery must
-// first prove that the obsolete execution was released.
-func (i *InteractionExecutor) RestoreWaitingExecution(
-	ctx context.Context,
-	continuation runs.ExecutionContinuation,
-) (runs.ExecutorRef, error) {
-	continuation = continuation.Clone()
-	if err := continuation.Validate(); err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	if !i.acceptsBuild(continuation.Checkpoint.BuildID) {
-		return runs.ExecutorRef{}, fmt.Errorf(
-			"%w: checkpoint build %q does not match %q",
-			runs.ErrExecutorStateLost,
-			continuation.Checkpoint.BuildID,
-			i.buildID.String(),
-		)
-	}
-	ref := runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}
-	if _, err := i.session(ref); err == nil {
-		return runs.ExecutorRef{}, runs.ErrExecutionClaimed
-	} else if !errors.Is(err, runs.ErrExecutorNotLive) {
-		return runs.ExecutorRef{}, err
-	}
-	if err := i.restoreContinuationTree(
-		ctx,
-		ref,
-		continuation,
-		interactionBoundaryWaiting,
-		nil,
-	); err != nil {
-		return runs.ExecutorRef{}, err
-	}
-	return ref, nil
-}
-
-func (i *InteractionExecutor) restoreContinuationTree(
-	ctx context.Context,
-	ref runs.ExecutorRef,
-	continuation runs.ExecutionContinuation,
-	boundary interactionBoundary,
-	subtree *subtreeCancellationRestore,
-) (err error) {
-	finishAssembly, err := i.sessions.beginAssembly()
-	if err != nil {
-		return err
-	}
-	defer finishAssembly()
-	if err := validateRestoreWorkspace(continuation); err != nil {
-		return err
-	}
-	checkpoint, err := decodeRunCheckpoint(continuation.Checkpoint, continuation.SessionID, continuation.RootRunID)
-	if err != nil {
-		return fmt.Errorf("%w: parse Interaction checkpoint: %w", runs.ErrExecutorStateLost, err)
-	}
-	rootID := checkpoint.handoff.rootID
-	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, continuation.SessionID, rootID.String())
-	if err != nil {
-		return err
-	}
-	if !found {
-		return fmt.Errorf("%w: execution tree head is missing", runs.ErrExecutorStateLost)
-	}
-	checkpoint.tree, err = decodeExecutionTree(head, rootID)
-	if err != nil {
-		return fmt.Errorf("%w: %w", runs.ErrExecutorStateLost, err)
-	}
-	if boundary == interactionBoundaryWaiting {
-		inspection, err := checkpoint.tree.Inspect()
-		if err != nil {
-			return err
-		}
-		if root, found := inspection.Process(rootID); !found || !isInteractionWaitingBoundary(root.Status) {
-			return fmt.Errorf("%w: Interaction restore requires a product waiting boundary", runs.ErrExecutorStateLost)
-		}
-	}
-	if subtree != nil {
-		continuation, err = subtree.bindMembers(continuation, checkpoint)
-		if err != nil {
-			return err
-		}
-	}
-	start := checkpoint.restoredStart(continuation)
-	session, err := i.assembleInteraction(ctx, ref, start, &checkpoint)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err != nil {
-			err = errors.Join(err, i.discardInteraction(session))
-		}
-	}()
-	if pendingCheckpointSources(session, checkpoint) {
-		return errors.New("execution: required MCP source is still connecting")
-	}
-	if err := session.validateContinuationTree(ctx, continuation, checkpoint, subtree == nil && boundary == interactionBoundaryAccepted); err != nil {
-		return fmt.Errorf("execution: validate continuation tree: %w", err)
-	}
-	// Recover commits activation without replaying process admission. Its first
-	// Store callback must already see the original product ownership projection.
-	if err := session.restoreContinuationProjection(continuation, checkpoint, boundary); err != nil {
-		return err
-	}
-	if subtree != nil {
-		subtree.retireProjection(session, checkpoint)
-		return i.publishInteraction(ctx, session)
-	}
-	if boundary == interactionBoundaryAccepted {
-		// A partially released tree can drive Scope immediately on Recover.
-		// Begin must attach the product observer before taking its writer.
-		return i.publishInteraction(ctx, session)
-	}
-	if err := session.recoverInputHandoff(ctx); err != nil {
-		return err
-	}
-	interruptions, err := session.pendingInterruptions(checkpoint.tree)
-	if err != nil {
-		return fmt.Errorf("%w: inspect restored Interaction input: %w", runs.ErrExecutorStateLost, err)
-	}
-	if len(interruptions) == 0 {
-		return fmt.Errorf("%w: restored Interaction tree has no pending input", runs.ErrExecutorStateLost)
-	}
-	if err := i.publishInteraction(ctx, session); err != nil {
-		return err
-	}
-	session.startWorkers()
-	return nil
-}
-
-func validateRestoreWorkspace(continuation runs.ExecutionContinuation) error {
-	if continuation.Isolated {
-		return fmt.Errorf("%w: isolated workspaces are not restorable after executor loss", runs.ErrExecutorStateLost)
-	}
-	path := continuation.Workspace
-	info, err := os.Stat(path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("%w: restore workspace %q: %w", runs.ErrExecutorStateLost, path, err)
-		}
-		return fmt.Errorf("execution: inspect restore workspace %q: %w", path, err)
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("%w: restore workspace %q is unavailable", runs.ErrExecutorStateLost, path)
-	}
-	return nil
-}
-
-func (i *InteractionExecutor) discardInteraction(session *interactionSession) error {
-	cleanupCtx, cancel := context.WithTimeout(
-		context.WithoutCancel(session.lifetime.execution),
-		executionCleanupTimeout,
-	)
-	defer cancel()
-	if err := session.release(cleanupCtx); err != nil {
-		return fmt.Errorf("execution: discard Interaction %q: %w", session.ref.ExecutorID, err)
-	}
-	i.sessions.remove(session)
-	return nil
-}
-
 func rootExecutionScope(start runs.RootExecutionStart) runs.ExecutionScope {
 	return runs.ExecutionScope{
 		SessionID: start.SessionID, CWD: start.CWD, WorkspaceCWD: start.WorkspaceCWD,
@@ -798,9 +336,6 @@ func runExecutionContext(
 // Release tears down one staged or terminal per-root Engine. It is idempotent
 // and does not decide the product Run outcome.
 func (i *InteractionExecutor) Release(ctx context.Context, ref runs.ExecutorRef) error {
-	if i == nil {
-		return nil
-	}
 	session, err := i.sessions.lookup(ref)
 	if err != nil {
 		return err
@@ -869,9 +404,6 @@ func (i *InteractionExecutor) resolveChat(
 }
 
 func (i *InteractionExecutor) session(ref runs.ExecutorRef) (*interactionSession, error) {
-	if i == nil {
-		return nil, errors.New("execution: Interaction executor is nil")
-	}
 	return i.sessions.require(ref)
 }
 

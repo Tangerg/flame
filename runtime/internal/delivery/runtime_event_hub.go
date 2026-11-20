@@ -1,18 +1,11 @@
 package delivery
 
 import (
-	"context"
 	"errors"
-	"fmt"
-	"io"
-	"iter"
-	"log/slog"
 	"slices"
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
 
 // errSubscriptionAdmissionsClosed reports that a runtime subscription could not
@@ -24,7 +17,7 @@ var errSubscriptionAdmissionsClosed = errors.New("delivery: runtime subscription
 // subscription folds excess signals into one scoped resync.
 const runtimeSubscriptionQueueCapacity = 64
 
-// workspaceHub fans runtime change signals out to the live runtime.subscribe
+// runtimeEventHub fans runtime change signals out to the live runtime.subscribe
 // streams. It is the non-run, ephemeral counterpart to the per-run hubs:
 // coalescing rather than back-pressuring the publisher (a change signal carries no
 // truth of its own, so several of them collapse into "re-read these topics"),
@@ -37,17 +30,17 @@ const runtimeSubscriptionQueueCapacity = 64
 // gap tells a client only that something was lost, while a resync tells it what to
 // read, and inferring loss from a missing number means a client that never notices
 // on a quiet stream.
-type workspaceHub struct {
+type runtimeEventHub struct {
 	mu            sync.Mutex
-	subscriptions map[*workspaceSubscription]struct{}
+	subscriptions map[*runtimeSubscription]struct{}
 	closed        bool
 }
 
-func newWorkspaceHub() *workspaceHub {
-	return &workspaceHub{subscriptions: make(map[*workspaceSubscription]struct{})}
+func newRuntimeEventHub() *runtimeEventHub {
+	return &runtimeEventHub{subscriptions: make(map[*runtimeSubscription]struct{})}
 }
 
-type workspaceSubscription struct {
+type runtimeSubscription struct {
 	events chan protocol.RuntimeEvent
 	// exhausted closes exactly once when this connection has used every sequence
 	// identity JSON clients can represent exactly. The stream drains frames already
@@ -91,12 +84,12 @@ func (s runtimeEventSequence) wire() uint64 { return uint64(s) }
 // idempotent unregister. It does NOT close the channel — the owner does, after
 // it has stopped every other writer (the file watcher), so a late broadcast
 // can't send on a closed channel.
-func (w *workspaceHub) register(
+func (w *runtimeEventHub) register(
 	events chan protocol.RuntimeEvent,
 	topics map[protocol.RuntimeTopic]bool,
 	watchIDs []string,
-) (*workspaceSubscription, func(), bool) {
-	subscription := &workspaceSubscription{
+) (*runtimeSubscription, func(), bool) {
+	subscription := &runtimeSubscription{
 		events:    events,
 		exhausted: make(chan struct{}),
 		topics:    topics,
@@ -120,7 +113,7 @@ func (w *workspaceHub) register(
 // registration. Existing request-owned streams keep running until their own
 // contexts end, but once this returns no racing check-then-register path can
 // create another subscription.
-func (w *workspaceHub) closeAdmissions() {
+func (w *runtimeEventHub) closeAdmissions() {
 	w.mu.Lock()
 	w.closed = true
 	w.mu.Unlock()
@@ -128,7 +121,7 @@ func (w *workspaceHub) closeAdmissions() {
 
 // publish fans event to every subscriber, folding it into a pending resync for any
 // whose buffer is full (see the type doc).
-func (w *workspaceHub) publish(event protocol.RuntimeEvent) {
+func (w *runtimeEventHub) publish(event protocol.RuntimeEvent) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	for subscription := range w.subscriptions {
@@ -140,7 +133,7 @@ func (w *workspaceHub) publish(event protocol.RuntimeEvent) {
 // took a frame, so the queue has room the publisher did not have. Without this a
 // pending resync would wait for the next unrelated signal, which on a quiet stream
 // is never — the loss would be silent, which is the one outcome this hub forbids.
-func (w *workspaceHub) drained(subscription *workspaceSubscription) {
+func (w *runtimeEventHub) drained(subscription *runtimeSubscription) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if _, registered := w.subscriptions[subscription]; registered {
@@ -151,7 +144,7 @@ func (w *workspaceHub) drained(subscription *workspaceSubscription) {
 // publishTo sends a subscription-local event through the same serialization
 // point as broadcasts. This keeps each subscriber's sequence strictly ordered
 // even when its git watcher races a global workspace event.
-func (w *workspaceHub) publishTo(subscription *workspaceSubscription, event protocol.RuntimeEvent) {
+func (w *runtimeEventHub) publishTo(subscription *runtimeSubscription, event protocol.RuntimeEvent) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if _, registered := w.subscriptions[subscription]; registered {
@@ -159,7 +152,7 @@ func (w *workspaceHub) publishTo(subscription *workspaceSubscription, event prot
 	}
 }
 
-func (*workspaceHub) sendLocked(subscription *workspaceSubscription, event protocol.RuntimeEvent) {
+func (*runtimeEventHub) sendLocked(subscription *runtimeSubscription, event protocol.RuntimeEvent) {
 	if subscription.sequenceExhausted() {
 		return
 	}
@@ -209,26 +202,15 @@ func (*workspaceHub) sendLocked(subscription *workspaceSubscription, event proto
 // in protocol declaration order. Invalid scope is intentionally left intact:
 // offerLocked's complete wire validation then widens it to this subscription's
 // full resync instead of guessing what a malformed producer meant.
-func (w *workspaceSubscription) scopeResync(
+func (w *runtimeSubscription) scopeResync(
 	event protocol.RuntimeEvent,
 ) (protocol.RuntimeEvent, bool) {
 	if len(event.Topics) == 0 {
 		return event, true
 	}
-	seenWatchIDs := make(map[string]bool, len(event.WatchIDs))
-	for _, watchID := range event.WatchIDs {
-		if watchID == "" || seenWatchIDs[watchID] {
-			return event, true
-		}
-		seenWatchIDs[watchID] = true
-	}
-	knownTopics := protocol.RuntimeTopics()
-	requested := make(map[protocol.RuntimeTopic]bool, len(event.Topics))
-	for _, topic := range event.Topics {
-		if !slices.Contains(knownTopics, topic) || requested[topic] {
-			return event, true
-		}
-		requested[topic] = true
+	watchIDs, requested, wellFormed := resyncScope(event)
+	if !wellFormed {
+		return event, true
 	}
 	if len(event.WatchIDs) > 0 && !requested[protocol.TopicFilesChanged] {
 		// watchIds only narrows files.changed. This cross-field contradiction cannot
@@ -237,20 +219,13 @@ func (w *workspaceSubscription) scopeResync(
 		return w.resyncEvent(), true
 	}
 	if requested[protocol.TopicFilesChanged] && len(event.WatchIDs) > 0 {
-		scopedWatchIDs := make([]string, 0, len(event.WatchIDs))
-		for _, watchID := range w.watchIDs {
-			if seenWatchIDs[watchID] {
-				scopedWatchIDs = append(scopedWatchIDs, watchID)
-			}
-		}
-		if len(scopedWatchIDs) == 0 {
+		event.WatchIDs = w.heldWatchIDs(watchIDs)
+		if len(event.WatchIDs) == 0 {
 			delete(requested, protocol.TopicFilesChanged)
 		}
-		event.WatchIDs = scopedWatchIDs
 	}
-
 	scoped := make([]protocol.RuntimeTopic, 0, len(requested))
-	for _, topic := range knownTopics {
+	for _, topic := range protocol.RuntimeTopics() {
 		if requested[topic] && w.topics[topic] {
 			scoped = append(scoped, topic)
 		}
@@ -265,11 +240,43 @@ func (w *workspaceSubscription) scopeResync(
 	return event, true
 }
 
+// resyncScope reads the watches and topics a resync names. A repeated, empty
+// or unknown entry makes the scope malformed, and the event passes unscoped.
+func resyncScope(event protocol.RuntimeEvent) (map[string]bool, map[protocol.RuntimeTopic]bool, bool) {
+	watchIDs := make(map[string]bool, len(event.WatchIDs))
+	for _, watchID := range event.WatchIDs {
+		if watchID == "" || watchIDs[watchID] {
+			return nil, nil, false
+		}
+		watchIDs[watchID] = true
+	}
+	knownTopics := protocol.RuntimeTopics()
+	requested := make(map[protocol.RuntimeTopic]bool, len(event.Topics))
+	for _, topic := range event.Topics {
+		if !slices.Contains(knownTopics, topic) || requested[topic] {
+			return nil, nil, false
+		}
+		requested[topic] = true
+	}
+	return watchIDs, requested, true
+}
+
+// heldWatchIDs keeps the named watches this subscription holds, in its order.
+func (w *runtimeSubscription) heldWatchIDs(named map[string]bool) []string {
+	held := make([]string, 0, len(named))
+	for _, watchID := range w.watchIDs {
+		if named[watchID] {
+			held = append(held, watchID)
+		}
+	}
+	return held
+}
+
 // prepareLocked gives a signal one canonical, validated meaning before either
 // queueing or coalescing it. Doing this before stallLocked is essential: otherwise
 // an invalid producer frame is widened to a full resync when the queue has room but
 // narrowed to its superficial topic when the queue is full.
-func (w *workspaceSubscription) prepareLocked(event protocol.RuntimeEvent) (protocol.RuntimeEvent, bool) {
+func (w *runtimeSubscription) prepareLocked(event protocol.RuntimeEvent) (protocol.RuntimeEvent, bool) {
 	next, ok := w.sequence.next()
 	if !ok {
 		w.exhaustLocked()
@@ -290,7 +297,7 @@ func (w *workspaceSubscription) prepareLocked(event protocol.RuntimeEvent) (prot
 
 // offerPreparedLocked hands a canonical event to the queue, advancing the
 // subscription sequence only when it fits.
-func (w *workspaceSubscription) offerPreparedLocked(event protocol.RuntimeEvent) bool {
+func (w *runtimeSubscription) offerPreparedLocked(event protocol.RuntimeEvent) bool {
 	if w.sequenceExhausted() {
 		return false
 	}
@@ -304,12 +311,12 @@ func (w *workspaceSubscription) offerPreparedLocked(event protocol.RuntimeEvent)
 }
 
 // offerLocked is the preparation boundary used by synthetic recovery events.
-func (w *workspaceSubscription) offerLocked(event protocol.RuntimeEvent) bool {
+func (w *runtimeSubscription) offerLocked(event protocol.RuntimeEvent) bool {
 	prepared, ok := w.prepareLocked(event)
 	return ok && w.offerPreparedLocked(prepared)
 }
 
-func (w *workspaceSubscription) exhaustLocked() {
+func (w *runtimeSubscription) exhaustLocked() {
 	if w.sequenceExhausted() {
 		return
 	}
@@ -319,7 +326,7 @@ func (w *workspaceSubscription) exhaustLocked() {
 	close(w.exhausted)
 }
 
-func (w *workspaceSubscription) sequenceExhausted() bool {
+func (w *runtimeSubscription) sequenceExhausted() bool {
 	select {
 	case <-w.exhausted:
 		return true
@@ -328,7 +335,7 @@ func (w *workspaceSubscription) sequenceExhausted() bool {
 	}
 }
 
-func (w *workspaceSubscription) resyncEvent() protocol.RuntimeEvent {
+func (w *runtimeSubscription) resyncEvent() protocol.RuntimeEvent {
 	topics := make([]protocol.RuntimeTopic, 0, len(w.topics))
 	for _, topic := range protocol.RuntimeTopics() {
 		if w.topics[topic] {
@@ -369,7 +376,7 @@ func clearEmptyRuntimeScopes(event *protocol.RuntimeEvent) {
 // stallLocked folds an undeliverable signal's scope into the pending resync. A
 // resync being stalled contributes its own scope, so a coalesced resync never
 // narrows what an earlier one had already widened.
-func (w *workspaceSubscription) stallLocked(event protocol.RuntimeEvent) {
+func (w *runtimeSubscription) stallLocked(event protocol.RuntimeEvent) {
 	if w.sequenceExhausted() {
 		return
 	}
@@ -400,7 +407,7 @@ func (w *workspaceSubscription) stallLocked(event protocol.RuntimeEvent) {
 // once any missed file signal had no watch id, the eventual resync must omit
 // watchIds too. Retaining an earlier narrow list would falsely tell the client
 // that its other file projections are still current.
-func (w *workspaceSubscription) stallFileScopeLocked(ids []string) {
+func (w *runtimeSubscription) stallFileScopeLocked(ids []string) {
 	if len(ids) == 0 {
 		w.stalledAllWatches = true
 		w.stalledWatchIDs = nil
@@ -419,7 +426,7 @@ func (w *workspaceSubscription) stallFileScopeLocked(ids []string) {
 // flushStalledLocked delivers the pending resync if there is one. Reports whether
 // the subscription is caught up — false means the queue is still full and the
 // caller's own signal has to fold in too.
-func (w *workspaceSubscription) flushStalledLocked() bool {
+func (w *runtimeSubscription) flushStalledLocked() bool {
 	if w.sequenceExhausted() {
 		return false
 	}
@@ -467,252 +474,4 @@ func cloneRuntimeEvent(event protocol.RuntimeEvent) protocol.RuntimeEvent {
 	event.Topics = slices.Clone(event.Topics)
 	event.WatchIDs = slices.Clone(event.WatchIDs)
 	return event
-}
-
-// SubscribeRuntime opens the change-signal stream. The stream's lifetime is
-// bounded by the request ctx and by the consumer's range: it ends on client
-// disconnect, transport shutdown (the transport force-closes the connection), or an
-// early range stop.
-//
-// The caller says which topics it can fold. There is no wildcard: a client that has
-// not named a topic cannot be sent it, because a signal it does not understand is a
-// refetch it will not perform. Frames for topics it did not ask for are filtered here
-// rather than at the producer — one hub, many subscriptions, each with its own set.
-//
-// Watches observe Git state and the bounded exact paths the client is currently
-// reading. Content notifications preserve workspace/path identity; Git notices
-// invalidate only the watch whose semantic HEAD/index state changed.
-func (s *Handler) SubscribeRuntime(ctx context.Context, request protocol.RuntimeSubscribeRequest) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error) {
-	topics, err := s.subscribedTopics(request.Topics)
-	if err != nil {
-		return nil, nil, err
-	}
-	workingDirectories, watchIDs, err := validateWorkspaceWatches(request.Watches, topics)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// SubscribeRuntime owns the channel: the hub broadcasts to it and (when
-	// watches are present) the application-owned watcher emits to it. Closing it
-	// only after that watcher has stopped keeps emit from racing the close.
-	events := make(chan protocol.RuntimeEvent, runtimeSubscriptionQueueCapacity)
-	subscription, unregister, registered := s.workspaceHub.register(events, topics, watchIDs)
-	if !registered {
-		close(events)
-		return nil, nil, errSubscriptionAdmissionsClosed
-	}
-
-	observationErrors := make(chan error, 1)
-	reportObservationError := func(err error) {
-		select {
-		case observationErrors <- err:
-		default:
-		}
-	}
-	var fileWatcher io.Closer
-	if len(workingDirectories) > 0 {
-		scopes := make([]workspaceapp.WatchScope, len(request.Watches))
-		for index, watch := range request.Watches {
-			scopes[index] = workspaceapp.WatchScope{Key: watch.WatchID, Root: watch.Workspace.Path, Paths: watch.Paths}
-		}
-		fileWatcher, err = s.workspaceWatch.Watch(scopes, func(change workspaceapp.ObservationChange) {
-			event := protocol.RuntimeEvent{
-				Type: protocol.RuntimeFilesChanged, WatchID: change.Key,
-				Workspace: &protocol.WorkspaceRef{Path: change.Root}, Paths: change.Paths,
-			}
-			if len(change.Paths) == 0 {
-				event = protocol.RuntimeEvent{Type: protocol.RuntimeResync, Topics: []protocol.RuntimeTopic{protocol.TopicFilesChanged}, WatchIDs: []string{change.Key}}
-			}
-			s.workspaceHub.publishTo(subscription, event)
-		}, reportObservationError)
-		if err != nil {
-			unregister()
-			close(events)
-			return nil, nil, wireWorkspaceError(fmt.Errorf("start workspace watcher: %w", err))
-		}
-	}
-	var authoredWatcher io.Closer
-	authoredResources := subscribedAuthoredResources(topics)
-	if len(authoredResources) > 0 {
-		authoredWatcher, err = s.workspaceAuthoredWatch.Watch(
-			workingDirectories,
-			authoredResources,
-			func(resource workspaceapp.AuthoredResource) {
-				invalidationResource := resource.InvalidationResource()
-				if !invalidationResource.Valid() {
-					return
-				}
-				if event, ok := runtimeEventFor(invalidation.Notice{Resource: invalidationResource}); ok {
-					s.workspaceHub.publishTo(subscription, event)
-				}
-			},
-			reportObservationError,
-		)
-		if err != nil {
-			var cleanupErr error
-			if fileWatcher != nil {
-				cleanupErr = fileWatcher.Close()
-			}
-			unregister()
-			close(events)
-			return nil, nil, wireWorkspaceError(fmt.Errorf("start authored resource watcher: %w", errors.Join(err, cleanupErr)))
-		}
-	}
-
-	releaseSubscription := sync.OnceValue(func() error {
-		var authoredErr, fileErr error
-		if authoredWatcher != nil {
-			authoredErr = authoredWatcher.Close()
-		}
-		if fileWatcher != nil {
-			fileErr = fileWatcher.Close()
-		}
-		unregister()
-		close(events)
-		err := errors.Join(authoredErr, fileErr)
-		if err != nil {
-			// An abandoned consumer has no terminal frame to receive cleanup failure.
-			slog.ErrorContext(ctx, "runtime subscription cleanup failed", "error", err)
-		}
-		return err
-	})
-	stopContextRelease := context.AfterFunc(ctx, func() { _ = releaseSubscription() })
-	stopSubscription := func() error {
-		stopContextRelease()
-		return releaseSubscription()
-	}
-	return &protocol.RuntimeSubscribeResponse{}, subscriptionEventSequence(
-		events,
-		observationErrors,
-		subscription.exhausted,
-		func() { s.workspaceHub.drained(subscription) },
-		stopSubscription,
-	), nil
-}
-
-func subscribedAuthoredResources(topics map[protocol.RuntimeTopic]bool) []workspaceapp.AuthoredResource {
-	resources := make([]workspaceapp.AuthoredResource, 0, 2)
-	if topics[protocol.TopicHooksChanged] {
-		resources = append(resources, workspaceapp.AuthoredHooks)
-	}
-	if topics[protocol.TopicSkillsChanged] {
-		resources = append(resources, workspaceapp.AuthoredSkills)
-	}
-	return resources
-}
-
-// subscriptionEventSequence presents a subscription channel as the iter.Seq
-// used by the wire streaming contract. The coalescing fan-out hub keeps its
-// channels internally; only this outer boundary is a sequence. queueDrained lets
-// the hub flush a pending resync, and stopSubscription releases an early-ending
-// consumer.
-func subscriptionEventSequence(
-	events <-chan protocol.RuntimeEvent,
-	failures <-chan error,
-	exhausted <-chan struct{},
-	queueDrained func(),
-	stopSubscription func() error,
-) iter.Seq2[protocol.RuntimeEvent, error] {
-	return func(yield func(protocol.RuntimeEvent, error) bool) {
-		defer stopSubscription()
-		consume := func() (bool, error) {
-			for {
-				select {
-				case err := <-failures:
-					return true, err
-				case event, open := <-events:
-					if !open {
-						return true, nil
-					}
-					queueDrained()
-					if !yield(event, nil) {
-						return false, nil
-					}
-				case <-exhausted:
-					// Exhaustion fences producers, so only already accepted frames remain.
-					for {
-						select {
-						case event, open := <-events:
-							if !open {
-								return true, nil
-							}
-							if !yield(event, nil) {
-								return false, nil
-							}
-						default:
-							return true, nil
-						}
-					}
-				}
-			}
-		}
-		completed, err := consume()
-		cleanupErr := stopSubscription()
-		if !completed {
-			return
-		}
-		// Joined watchers cannot publish after this final failure read.
-		select {
-		case pending := <-failures:
-			err = errors.Join(err, pending)
-		default:
-		}
-		if err = errors.Join(err, cleanupErr); err != nil {
-			yield(protocol.RuntimeEvent{}, wireWorkspaceError(fmt.Errorf("runtime subscription ended: %w", err)))
-		}
-	}
-}
-
-// subscribedTopics materializes the already shape-validated request as a lookup
-// set. The generated RuntimeSubscribeRequest validator owns non-empty/unique
-// semantics; this method retains the composition-dependent checks: the enforced
-// fan-out cap and whether this runtime actually advertises each topic.
-func (s *Handler) subscribedTopics(requested []protocol.RuntimeTopic) (map[protocol.RuntimeTopic]bool, error) {
-	if len(requested) > protocol.MaxSubscriptionTopics {
-		return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("at most %d topics per subscription", protocol.MaxSubscriptionTopics))
-	}
-	advertised := s.capabilities().RuntimeTopics
-	topics := make(map[protocol.RuntimeTopic]bool, len(requested))
-	for _, topic := range requested {
-		if !slices.Contains(advertised, topic) {
-			return nil, NewCapabilityGapError(protocol.CapabilityRequirement{
-				Type: protocol.RequirementRuntimeTopic, Name: string(topic),
-			})
-		}
-		topics[topic] = true
-	}
-	return topics, nil
-}
-
-// validateWorkspaceWatches validates the wire-only portion of workspace watches
-// and returns the working directories and stable watch identities they name. Root resolution,
-// repository layout and filesystem notification are application/adapter concerns;
-// Delivery retains only the protocol's required watch identifier.
-//
-// Watches are legal only with files.changed: the other topics are global, so a watch
-// would narrow nothing — and a caller that registered one expecting it to is holding
-// a belief the runtime would never honor.
-func validateWorkspaceWatches(watches []protocol.WatchSpec, topics map[protocol.RuntimeTopic]bool) (workingDirectories, watchIDs []string, err error) {
-	if len(watches) == 0 {
-		return nil, nil, nil
-	}
-	if !topics[protocol.TopicFilesChanged] {
-		return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("watches require the %s topic", protocol.TopicFilesChanged))
-	}
-	if len(watches) > protocol.MaxSubscriptionWatches {
-		return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("at most %d watches per subscription", protocol.MaxSubscriptionWatches))
-	}
-	workingDirectories = make([]string, 0, len(watches))
-	watchIDs = make([]string, 0, len(watches))
-	for _, spec := range watches {
-		if spec.WatchID == "" {
-			return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, "watchId is required")
-		}
-		if slices.Contains(watchIDs, spec.WatchID) {
-			return nil, nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("watchId %q is registered twice", spec.WatchID))
-		}
-		workingDirectories = append(workingDirectories, spec.Workspace.Path)
-		watchIDs = append(watchIDs, spec.WatchID)
-	}
-	return workingDirectories, watchIDs, nil
 }

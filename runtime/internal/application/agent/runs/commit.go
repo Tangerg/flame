@@ -37,7 +37,7 @@ type ModelInvocationCommit struct {
 	// breakdown stays absent rather than being stored as a reported zero.
 	Usage      *corechat.Usage
 	CallID     string
-	SegmentID  string
+	SegmentID  identity.SegmentID
 	State      modelref.InvocationState
 	StartedAt  time.Time
 	FinishedAt time.Time
@@ -60,6 +60,12 @@ func (t ToolInvocationState) Valid() bool {
 	return t == ToolInvocationStarted || t == ToolInvocationCompleted || t == ToolInvocationIncomplete
 }
 
+// Settled reports a Tool attempt that reached its boundary, with or without a
+// definite result.
+func (t ToolInvocationState) Settled() bool {
+	return t == ToolInvocationCompleted || t == ToolInvocationIncomplete
+}
+
 // String returns the durable Tool-invocation state name.
 func (t ToolInvocationState) String() string {
 	if !t.Valid() {
@@ -74,8 +80,8 @@ func (t ToolInvocationState) String() string {
 type ToolInvocationCommit struct {
 	Caller     *plugin.ToolCaller
 	CallID     string
-	ItemID     string
-	SegmentID  string
+	ItemID     identity.ItemID
+	SegmentID  identity.SegmentID
 	State      ToolInvocationState
 	StartedAt  time.Time
 	FinishedAt time.Time
@@ -96,29 +102,31 @@ func (t ToolInvocationCommit) Validate() error {
 	if err := ValidateInvocation(t.CallID); err != nil {
 		return fmt.Errorf("runs: Tool invocation: %w", err)
 	}
-	if err := identity.ValidateItem(t.ItemID); err != nil {
+	if err := t.ItemID.Validate(); err != nil {
 		return fmt.Errorf("runs: Tool invocation: %w", err)
 	}
-	if err := identity.ValidateSegment(t.SegmentID); err != nil {
+	if err := t.SegmentID.Validate(); err != nil {
 		return fmt.Errorf("runs: Tool invocation: %w", err)
 	}
-	if t.StartedAt.IsZero() {
-		return errors.New("runs: Tool invocation start time is required")
-	}
-	switch t.State {
-	case ToolInvocationStarted:
-		if !t.FinishedAt.IsZero() {
-			return errors.New("runs: started Tool invocation carries a finish time")
-		}
-	case ToolInvocationCompleted, ToolInvocationIncomplete:
-		if t.FinishedAt.IsZero() {
-			return errors.New("runs: terminal Tool invocation has no finish time")
-		}
-		if t.FinishedAt.Before(t.StartedAt) {
-			return errors.New("runs: Tool invocation finish time precedes start time")
-		}
-	default:
+	if !t.State.Valid() {
 		return fmt.Errorf("runs: Tool invocation has unknown state %q", t.State)
+	}
+	return validateAttemptTiming("Tool invocation", t.State.Settled(), t.StartedAt, t.FinishedAt)
+}
+
+// validateAttemptTiming requires every attempt to have started, an unsettled
+// one to carry no finish time, and a settled one to finish no earlier than it
+// started.
+func validateAttemptTiming(subject string, settled bool, startedAt, finishedAt time.Time) error {
+	switch {
+	case startedAt.IsZero():
+		return fmt.Errorf("runs: %s start time is required", subject)
+	case !settled && !finishedAt.IsZero():
+		return fmt.Errorf("runs: started %s carries a finish time", subject)
+	case settled && finishedAt.IsZero():
+		return fmt.Errorf("runs: terminal %s has no finish time", subject)
+	case settled && finishedAt.Before(startedAt):
+		return fmt.Errorf("runs: %s finish time precedes start time", subject)
 	}
 	return nil
 }
@@ -127,10 +135,27 @@ func (m ModelInvocationCommit) Validate() error {
 	if err := m.Purpose.Validate(); err != nil {
 		return err
 	}
-	if m.FirstOutputLatencyMillis != nil {
-		if *m.FirstOutputLatencyMillis < 0 || (m.State != modelref.InvocationCompleted && m.State != modelref.InvocationFailed) {
-			return errors.New("runs: first output latency requires a nonnegative measurement and a definite model outcome")
-		}
+	if err := m.State.Validate(); err != nil {
+		return fmt.Errorf("runs: model invocation: %w", err)
+	}
+	if err := m.validateEvidence(); err != nil {
+		return err
+	}
+	if err := ValidateInvocation(m.CallID); err != nil {
+		return fmt.Errorf("runs: model invocation: %w", err)
+	}
+	if err := m.SegmentID.Validate(); err != nil {
+		return fmt.Errorf("runs: model invocation: %w", err)
+	}
+	return validateAttemptTiming("model invocation", m.State.Settled(), m.StartedAt, m.FinishedAt)
+}
+
+// validateEvidence admits only what the outcome can carry: latency needs a
+// definite outcome, usage needs a known response, and a known response can
+// only explain a failed call.
+func (m ModelInvocationCommit) validateEvidence() error {
+	if m.FirstOutputLatencyMillis != nil && (*m.FirstOutputLatencyMillis < 0 || !m.State.HasResponse()) {
+		return errors.New("runs: first output latency requires a nonnegative measurement and a definite model outcome")
 	}
 	if m.Usage != nil {
 		if m.State != modelref.InvocationCompleted && (m.State != modelref.InvocationFailed || m.KnownResponse == nil) {
@@ -140,40 +165,17 @@ func (m ModelInvocationCommit) Validate() error {
 			return fmt.Errorf("runs: model invocation usage: %w", err)
 		}
 	}
-	if m.KnownResponse != nil {
-		if m.State != modelref.InvocationFailed {
-			return errors.New("runs: known response evidence requires a failed outer model invocation")
-		}
-		if err := m.KnownResponse.Validate(); err != nil {
-			return err
-		}
-		if !modelref.UsageMatchesResponse(m.Usage, m.KnownResponse) {
-			return errors.New("runs: usage differs from known response evidence")
-		}
+	if m.KnownResponse == nil {
+		return nil
 	}
-	if err := ValidateInvocation(m.CallID); err != nil {
-		return fmt.Errorf("runs: model invocation: %w", err)
+	if m.State != modelref.InvocationFailed {
+		return errors.New("runs: known response evidence requires a failed outer model invocation")
 	}
-	if err := identity.ValidateSegment(m.SegmentID); err != nil {
-		return fmt.Errorf("runs: model invocation: %w", err)
+	if err := m.KnownResponse.Validate(); err != nil {
+		return err
 	}
-	if m.StartedAt.IsZero() {
-		return errors.New("runs: model invocation start time is required")
-	}
-	switch m.State {
-	case modelref.InvocationStarted:
-		if !m.FinishedAt.IsZero() {
-			return errors.New("runs: started model invocation carries a finish time")
-		}
-	case modelref.InvocationCompleted, modelref.InvocationFailed, modelref.InvocationUnknown:
-		if m.FinishedAt.IsZero() {
-			return errors.New("runs: terminal model invocation has no finish time")
-		}
-		if m.FinishedAt.Before(m.StartedAt) {
-			return errors.New("runs: model invocation finish time precedes start time")
-		}
-	default:
-		return fmt.Errorf("runs: model invocation has unknown state %q", m.State)
+	if !modelref.UsageMatchesResponse(m.Usage, m.KnownResponse) {
+		return errors.New("runs: usage differs from known response evidence")
 	}
 	return nil
 }
@@ -183,12 +185,12 @@ type EventCommit struct {
 	ExecutionContext  *ExecutorCheckpoint
 	ResultPublication *ResultPublication
 	ToolResults       []corechat.ToolResult
-	RunID             string
-	SessionID         string
+	RunID             identity.RunID
+	SessionID         identity.SessionID
 	// SegmentID owns the complete event write-set, including projections that do
 	// not otherwise carry segment identity. Persistence admits the transaction
 	// only while this exact Segment is still active for the Run.
-	SegmentID string
+	SegmentID identity.SegmentID
 	// CommitID is the stable identity of one immutable top-level CommitEvent
 	// write-set. Persistence records it inside that transaction, allowing a lost
 	// COMMIT receipt to be reconciled without treating another Segment or write
@@ -368,7 +370,7 @@ func (e EventCommit) validateProgress() error {
 	if e.Progress.ID() != e.RunID || e.Progress.SessionID() != e.SessionID {
 		return fmt.Errorf("runs: event commit progress belongs to Run %q in Session %q", e.Progress.ID(), e.Progress.SessionID())
 	}
-	if e.Progress.State() != run.Running || e.Progress.ActiveSegmentID() != e.SegmentID {
+	if !e.Progress.Executes(e.SegmentID) {
 		return fmt.Errorf(
 			"runs: event commit progress is %s in Segment %q, want running Segment %q",
 			e.Progress.State(), e.Progress.ActiveSegmentID(), e.SegmentID,
@@ -387,10 +389,10 @@ func (e EventCommit) validateConversationMessages() error {
 }
 
 func (e EventCommit) validateEnvelope() error {
-	if err := identity.ValidateRun(e.RunID); err != nil {
+	if err := e.RunID.Validate(); err != nil {
 		return fmt.Errorf("runs: event commit: %w", err)
 	}
-	if err := identity.ValidateSession(e.SessionID); err != nil {
+	if err := e.SessionID.Validate(); err != nil {
 		return fmt.Errorf("runs: event commit: %w", err)
 	}
 	if e.ExecutionContext != nil {
@@ -401,25 +403,20 @@ func (e EventCommit) validateEnvelope() error {
 			return err
 		}
 	}
-	if err := identity.ValidateSegment(e.SegmentID); err != nil {
+	if err := e.SegmentID.Validate(); err != nil {
 		return fmt.Errorf("runs: event commit: %w", err)
 	}
 	if err := validateOptionalMember(e.ObsoleteCheckpointRootID); err != nil {
 		return fmt.Errorf("runs: event commit checkpoint root: %w", err)
 	}
-	if !e.CommitID.IsZero() {
-		if err := e.CommitID.Validate(); err != nil {
-			return fmt.Errorf("runs: event commit: %w", err)
-		}
-	}
 	return nil
 }
 
 func (e EventCommit) validateItems() error {
-	seenItems := make(map[string]struct{}, len(e.Items))
+	seenItems := make(map[identity.ItemID]struct{}, len(e.Items))
 	for index, write := range e.Items {
 		item := write.Item()
-		if item.ID() == "" || item.RunID() != e.RunID || item.SessionID() != e.SessionID {
+		if item.ID().IsZero() || item.RunID() != e.RunID || item.SessionID() != e.SessionID {
 			return fmt.Errorf("runs: event commit Item[%d] is not owned by Run %q", index, e.RunID)
 		}
 		if _, duplicate := seenItems[item.ID()]; duplicate {
@@ -431,7 +428,7 @@ func (e EventCommit) validateItems() error {
 }
 
 func (e EventCommit) validateInvocations() error {
-	items := make(map[string]transcript.Item, len(e.Items))
+	items := make(map[identity.ItemID]transcript.Item, len(e.Items))
 	for _, write := range e.Items {
 		items[write.Item().ID()] = write.Item()
 	}
@@ -458,9 +455,9 @@ func (e EventCommit) validateModelInvocations() error {
 	return nil
 }
 
-func (e EventCommit) validateToolInvocations(items map[string]transcript.Item) error {
+func (e EventCommit) validateToolInvocations(items map[identity.ItemID]transcript.Item) error {
 	seenTools := make(map[string]struct{}, len(e.ToolInvocations))
-	seenToolItems := make(map[string]struct{}, len(e.ToolInvocations))
+	seenToolItems := make(map[identity.ItemID]struct{}, len(e.ToolInvocations))
 	for index, invocation := range e.ToolInvocations {
 		if err := invocation.Validate(); err != nil {
 			return fmt.Errorf("runs: event commit Tool invocation[%d]: %w", index, err)
@@ -514,6 +511,29 @@ func validateToolInvocationItem(invocation ToolInvocationCommit, item transcript
 	return nil
 }
 
+func (e EventCommit) validateSuspend() error {
+	if e.Run == nil || e.Run.State() != run.Waiting {
+		return errors.New("runs: suspend event commit has no waiting Run")
+	}
+	if e.ObsoleteCheckpointRootID != "" {
+		return errors.New("runs: suspend event commit carries terminal facts")
+	}
+	return nil
+}
+
+func (e EventCommit) validateTerminalize() error {
+	if e.CommitID.IsZero() {
+		return errors.New("runs: terminal event commit has no commit identity")
+	}
+	if e.Run == nil || !e.Run.State().IsTerminal() {
+		return errors.New("runs: terminal event commit has no matching terminal Run")
+	}
+	if e.ObsoleteCheckpointRootID != "" && !e.Run.Lineage().IsRoot() {
+		return errors.New("runs: only a root terminal retires execution checkpoints")
+	}
+	return nil
+}
+
 func (e EventCommit) validateLifecycle() error {
 	switch e.State {
 	case StateUnchanged:
@@ -522,21 +542,12 @@ func (e EventCommit) validateLifecycle() error {
 		}
 		return nil
 	case StateSuspend:
-		if e.Run == nil || e.Run.State() != run.Waiting {
-			return errors.New("runs: suspend event commit has no waiting Run")
-		}
-		if e.ObsoleteCheckpointRootID != "" {
-			return errors.New("runs: suspend event commit carries terminal facts")
+		if err := e.validateSuspend(); err != nil {
+			return err
 		}
 	case StateTerminalize:
-		if e.CommitID.IsZero() {
-			return errors.New("runs: terminal event commit has no commit identity")
-		}
-		if e.Run == nil || !e.Run.State().IsTerminal() {
-			return errors.New("runs: terminal event commit has no matching terminal Run")
-		}
-		if e.ObsoleteCheckpointRootID != "" && !e.Run.Lineage().IsRoot() {
-			return errors.New("runs: only a root terminal retires execution checkpoints")
+		if err := e.validateTerminalize(); err != nil {
+			return err
 		}
 	default:
 		return fmt.Errorf("runs: event commit has unknown state change %q", e.State)

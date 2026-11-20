@@ -13,15 +13,15 @@ import (
 // the first page, so no zero time or empty identity stands in for absence.
 type PageAnchor struct {
 	createdAt time.Time
-	runID     string
+	runID     identity.RunID
 }
 
-func NewPageAnchor(createdAt time.Time, runID string) (PageAnchor, error) {
-	if err := identity.ValidateRun(runID); err != nil {
+func NewPageAnchor(createdAt time.Time, runID identity.RunID) (PageAnchor, error) {
+	if err := runID.Validate(); err != nil {
 		return PageAnchor{}, fmt.Errorf("run: page anchor: %w", err)
 	}
 	return PageAnchor{createdAt: createdAt.UTC(), runID: runID}, nil
 }
 
-func (a PageAnchor) CreatedAt() time.Time { return a.createdAt }
-func (a PageAnchor) RunID() string        { return a.runID }
+func (a PageAnchor) CreatedAt() time.Time  { return a.createdAt }
+func (a PageAnchor) RunID() identity.RunID { return a.runID }

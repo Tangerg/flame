@@ -12,8 +12,10 @@ import (
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
+	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	framecall "github.com/Tangerg/frame/call"
@@ -92,18 +94,18 @@ type providerChat struct{ use *providerUse }
 
 func (p *providerChat) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
 	if err := p.use.admitRequest(ctx, request); err != nil {
-		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
+		return nil, notExecuted(err)
 	}
 	if err := request.Validate(); err != nil {
-		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
+		return nil, notExecuted(err)
 	}
 	caller, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
-		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
+		return nil, notExecuted(err)
 	}
 	method, err := modelprovider.CallMethod()
 	if err != nil {
-		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
+		return nil, notExecuted(err)
 	}
 	result, err := providerMethod(ctx, p.use, method, caller.ID, modelprovider.ChatRequest{Handle: p.use.handle, Request: *request.Clone()})
 	if err != nil {
@@ -122,101 +124,118 @@ func (p *streamingProviderChat) Stream(ctx context.Context, request *chat.Reques
 	return func(yield func(*chat.ResponseDelta, error) bool) {
 		sender := newModelStreamSender(yield)
 		defer sender.finish()
-		if err := p.use.admitRequest(ctx, request); err != nil {
-			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
-			return
-		}
-		if err := request.Validate(); err != nil {
-			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
-			return
-		}
-		caller, err := pluginmcp.InvocationFromContext(ctx)
+		stream, release, err := p.openStream(ctx, request)
 		if err != nil {
-			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
-			return
-		}
-		calling, leave, err := p.use.enter(ctx)
-		if err != nil {
-			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
-			return
-		}
-		defer leave()
-		calling, err = providerContext(calling, p.use.binding, caller.ID)
-		if err != nil {
-			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
-			return
-		}
-		borrowed, err := borrowContribution(calling, p.use.owner.config.Connections, p.use.binding)
-		if err != nil {
-			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
+			sender.fail(notExecuted(err))
 			return
 		}
 		defer func() {
-			if err := borrowed.Close(); err != nil {
+			if err := release(); err != nil {
 				sender.fail(err)
 			}
 		}()
-		method, err := modelprovider.StreamMethod()
+		relayProviderStream(sender, stream)
+	}
+}
+
+type providerStream = iter.Seq2[pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.StreamReceipt], error]
+
+// openStream admits the request and binds the provider's stream method on a
+// borrowed session. Release returns the borrow, then leaves the provider use.
+func (p *streamingProviderChat) openStream(ctx context.Context, request *chat.Request) (_ providerStream, _ func() error, err error) {
+	if err := p.use.admitRequest(ctx, request); err != nil {
+		return nil, nil, err
+	}
+	if err := request.Validate(); err != nil {
+		return nil, nil, err
+	}
+	caller, err := pluginmcp.InvocationFromContext(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	calling, leave, err := p.use.enter(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() {
 		if err != nil {
-			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
+			leave()
+		}
+	}()
+	calling, err = providerContext(calling, p.use.binding, caller.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	borrowed, err := borrowContribution(calling, p.use.owner.config.Connections, p.use.binding)
+	if err != nil {
+		return nil, nil, err
+	}
+	release := func() error {
+		defer leave()
+		return borrowed.Close()
+	}
+	method, err := modelprovider.StreamMethod()
+	if err != nil {
+		return nil, nil, errors.Join(err, borrowed.Close())
+	}
+	exported, err := pluginmcp.NewCapabilityBinding(borrowed.Session(), p.use.binding.Export, p.use.owner.contract)
+	if err != nil {
+		return nil, nil, errors.Join(err, borrowed.Close())
+	}
+	binding, err := exported.Method(method.Descriptor().Name)
+	if err != nil {
+		return nil, nil, errors.Join(err, borrowed.Close())
+	}
+	input := modelprovider.ChatRequest{Handle: p.use.handle, Request: *request}
+	limits := pluginmcp.CallbackLimits{MaxRequestBytes: sdk.DefaultMaxLineLength, MaxResponseBytes: sdk.DefaultMaxLineLength}
+	return method.StreamWithMetadata(borrowed.Context(), binding, p.use.owner.config.Callbacks, limits, pluginmcp.CommandID(caller.ID), input, sdk.ParamsBase{}), release, nil
+}
+
+// relayProviderStream forwards deltas as they arrive, but holds the finishing
+// delta until the provider's receipt confirms the exact response: a consumer
+// can promote a generation as soon as it sees that delta.
+func relayProviderStream(sender *modelStreamSender, stream providerStream) {
+	var received chat.ResponseAccumulator
+	var terminal *chat.ResponseDelta
+	for value, err := range stream {
+		if err != nil {
+			sender.fail(unconfirmedProvider(err))
 			return
 		}
-		exported, err := pluginmcp.NewCapabilityBinding(borrowed.Session(), p.use.binding.Export, p.use.owner.contract)
-		if err != nil {
-			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
-			return
+		if value.Chunk != nil {
+			delta := (*chat.ResponseDelta)(value.Chunk)
+			if err := received.Add(delta); err != nil {
+				sender.fail(unconfirmedProvider(err))
+				return
+			}
+			if delta.FinishReason != "" {
+				terminal = delta
+				continue
+			}
+			if !sender.send(delta.Clone(), nil) {
+				return
+			}
+			continue
 		}
-		binding, err := exported.Method(method.Descriptor().Name)
-		if err != nil {
-			sender.fail(&coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err})
-			return
-		}
-		input := modelprovider.ChatRequest{Handle: p.use.handle, Request: *request}
-		limits := pluginmcp.CallbackLimits{MaxRequestBytes: sdk.DefaultMaxLineLength, MaxResponseBytes: sdk.DefaultMaxLineLength}
-		var received chat.ResponseAccumulator
-		var terminal *chat.ResponseDelta
-		for value, err := range method.StreamWithMetadata(borrowed.Context(), binding, p.use.owner.config.Callbacks, limits, pluginmcp.CommandID(caller.ID), input, sdk.ParamsBase{}) {
+		var response *chat.Response
+		if terminal != nil {
+			response, err = received.Response()
 			if err != nil {
 				sender.fail(unconfirmedProvider(err))
 				return
 			}
-			if value.Chunk != nil {
-				delta := (*chat.ResponseDelta)(value.Chunk)
-				if err := received.Add(delta); err != nil {
-					sender.fail(unconfirmedProvider(err))
-					return
-				}
-				if delta.FinishReason != "" {
-					// A consumer can promote the generation as soon as it sees
-					// this delta. First confirm the exact durable outcome.
-					terminal = delta
-					continue
-				}
-				if !sender.send(delta.Clone(), nil) {
-					return
-				}
-				continue
-			}
-			var response *chat.Response
-			if terminal != nil {
-				response, err = received.Response()
-				if err != nil {
-					sender.fail(unconfirmedProvider(err))
-					return
-				}
-			}
-			if err := value.Result.VerifyResponse(response); err != nil {
-				sender.fail(unconfirmedProvider(err))
-				return
-			}
-			if terminal != nil && !sender.send(terminal, nil) {
-				return
-			}
-			sender.fail(providerFailure(value.Result.Failure))
+		}
+		if err := value.Result.VerifyResponse(response); err != nil {
+			sender.fail(unconfirmedProvider(err))
 			return
 		}
-		sender.fail(unconfirmedProvider(errors.New("model provider: missing stream outcome")))
+		if terminal != nil && !sender.send(terminal, nil) {
+			return
+		}
+		sender.fail(providerFailure(value.Result.Failure))
+		return
 	}
+	sender.fail(unconfirmedProvider(errors.New("model provider: missing stream outcome")))
 }
 
 type providerCounter struct{ use *providerUse }
@@ -246,11 +265,11 @@ type providerEmbedding struct{ use *providerUse }
 
 func (p *providerEmbedding) Call(ctx context.Context, request *embedding.Request) (*embedding.Response, error) {
 	if err := request.Validate(); err != nil {
-		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
+		return nil, notExecuted(err)
 	}
 	caller, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
-		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
+		return nil, notExecuted(err)
 	}
 	method, err := modelprovider.EmbedMethod()
 	if err != nil {
@@ -258,20 +277,20 @@ func (p *providerEmbedding) Call(ctx context.Context, request *embedding.Request
 	}
 	encoded, err := json.Marshal(request)
 	if err != nil {
-		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
+		return nil, notExecuted(err)
 	}
 	input := modelprovider.EmbeddingRequest{Handle: p.use.handle, Request: encoded}
 	admitted, err := framevalue.EncodeJSON(input)
 	if err != nil {
-		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
+		return nil, notExecuted(err)
 	}
 	target, err := providerContext(ctx, p.use.binding, caller.ID)
 	if err != nil {
-		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}
+		return nil, notExecuted(err)
 	}
 	fits, err := p.use.frameFits(target, method.Name(), caller.ID, admitted)
 	if err != nil || !fits {
-		return nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: errors.Join(err, errors.New("model provider: embedding request exceeds transport capacity"))}
+		return nil, notExecuted(errors.Join(err, errors.New("model provider: embedding request exceeds transport capacity")))
 	}
 	result, err := providerMethod(ctx, p.use, method, caller.ID, input)
 	if err != nil {
@@ -323,9 +342,11 @@ func (u *providerUse) futureRequestFits(ctx context.Context, request *chat.Reque
 	if err != nil {
 		return false, err
 	}
-	id := "endpoint_00000000-0000-0000-0000-000000000000"
+	// The future call is measured under a placeholder identity of real length,
+	// distinct from its parent, so the frame estimate matches the actual call.
+	id := modelref.NewEndpointID(uuid.Nil.String())
 	if caller.ID == id {
-		id = "endpoint_00000000-0000-0000-0000-000000000001"
+		id = modelref.NewEndpointID(uuid.Max.String())
 	}
 	ctx, err = pluginmcp.WithInvocation(ctx, framecall.Invocation{ID: id, Origin: caller.Origin, Parent: caller.ID, Target: framecall.Target{Scope: extension.ScopeCall, Reference: id}})
 	if err != nil {

@@ -26,7 +26,21 @@ func GrantMemoryModels(ctx context.Context, callbacks *pluginmcp.Callbacks, sess
 		return pluginmcp.CallbackRef{}, nil, errors.New("memory: model and embedding collaborators cannot be typed nil")
 	}
 	admission := newExternalCallLedger("memory", memorycontract.MaxModelCalls)
-	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
+	completion, err := memoryModelCallback(model, admission)
+	if err != nil {
+		return pluginmcp.CallbackRef{}, nil, err
+	}
+	embedding, err := memoryEmbeddingCallback(embed, admission)
+	if err != nil {
+		return pluginmcp.CallbackRef{}, nil, err
+	}
+	return callbacks.Open(ctx, session, pluginmcp.CallbackLimits{MaxRequestBytes: memorycontract.MaxCallbackInputBytes, MaxResponseBytes: memorycontract.MaxCallbackOutputBytes}, completion, embedding)
+}
+
+// memoryModelCallback admits one model call per command within the memory
+// envelope; without a model every call is refused.
+func memoryModelCallback(model chat.Model, admission *externalCallLedger) (pluginmcp.Callback, error) {
+	return pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
 		request := chat.Request(command.Input)
 		if lo.IsNil(model) || !memoryModelRequests.admits(request) {
 			return nil, &framecall.Refusal{Code: refusalModelEnvelope, Message: "memory: model envelope refused"}
@@ -40,17 +54,19 @@ func GrantMemoryModels(ctx context.Context, callbacks *pluginmcp.Callbacks, sess
 		}
 		return model.Call(ctx, request.Clone())
 	})
-	if err != nil {
-		return pluginmcp.CallbackRef{}, nil, err
-	}
-	embedding, err := pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command pluginmcp.Command[[]string]) (pluginsdk.TextEmbeddings, error) {
+}
+
+// memoryEmbeddingCallback admits bounded embedding batches; without an
+// embedder every call is refused.
+func memoryEmbeddingCallback(embed models.TextEmbedder, admission *externalCallLedger) (pluginmcp.Callback, error) {
+	return pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command pluginmcp.Command[[]string]) (pluginsdk.TextEmbeddings, error) {
 		texts := command.Input
 		input, err := command.RequestInput()
 		if err != nil {
 			return pluginsdk.TextEmbeddings{}, err
 		}
 		if lo.IsNil(embed) || len(texts) == 0 || len(texts) > memorycontract.MaxEmbeddingTexts || int64(len(input.Bytes())) > memorycontract.MaxEmbeddingInputBytes {
-			return pluginsdk.TextEmbeddings{}, &framecall.Refusal{Code: "embedding_envelope", Message: "memory: embedding envelope refused"}
+			return pluginsdk.TextEmbeddings{}, &framecall.Refusal{Code: refusalEmbeddingEnvelope, Message: "memory: embedding envelope refused"}
 		}
 		if err := admission.admit(string(command.ID), externalEmbeddingCall, input); err != nil {
 			return pluginsdk.TextEmbeddings{}, err
@@ -58,10 +74,6 @@ func GrantMemoryModels(ctx context.Context, callbacks *pluginmcp.Callbacks, sess
 		vectors, err := embed.Embed(ctx, texts)
 		return pluginsdk.TextEmbeddings{Space: embed.ID(), Vectors: vectors}, err
 	})
-	if err != nil {
-		return pluginmcp.CallbackRef{}, nil, err
-	}
-	return callbacks.Open(ctx, session, pluginmcp.CallbackLimits{MaxRequestBytes: memorycontract.MaxCallbackInputBytes, MaxResponseBytes: memorycontract.MaxCallbackOutputBytes}, completion, embedding)
 }
 
 var memoryModelRequests = auxiliaryTextRequest{maxOutputTokens: memorycontract.MaxModelOutputTokens, maxInputBytes: memorycontract.MaxModelInputBytes}

@@ -321,26 +321,11 @@ func (s *SkillGovernance) ApproveProposal(ctx context.Context, root string, ref 
 		return nil, err
 	}
 	record := approval.Snapshot()
-	var original skilllearning.ReviewRef
-	if err := json.Unmarshal(record.Input.Bytes(), &original); err != nil {
+	if err := sameApproval(record, doc, method.Name(), reference); err != nil {
 		return nil, err
 	}
-	if record.Method != method.Name() || record.Provider != doc.record.Provider || record.Contract != doc.record.Contract || record.Contribution != doc.record.Contribution || record.Invocation.Origin != extension.Human || original != reference {
-		return nil, skills.ErrProposalChanged
-	}
-	var changed []string
-	publishErr := s.calls.framework.Admission().Admit(ctx, func(ctx context.Context) error {
-		if err := s.calls.admitDispatch(ctx, doc.record); err != nil {
-			return err
-		}
-		if err := s.calls.admitDispatch(ctx, record); err != nil {
-			return err
-		}
-		var err error
-		changed, err = s.files.Publish(ctx, root, doc.proposal(), doc.draft.Previous, permit.Decision)
-		return err
-	})
-	if publishErr != nil && !errors.Is(publishErr, skills.ErrProposalChanged) && !errors.Is(publishErr, skills.ErrConflict) && !errors.Is(publishErr, skills.ErrLibraryCapacity) {
+	changed, publishErr := s.publishApproved(ctx, root, doc, record, permit.Decision)
+	if publishErr != nil && !publicationRefused(publishErr) {
 		return changed, publishErr
 	}
 	confirm, err := skilllearning.ConfirmMethod()
@@ -352,6 +337,43 @@ func (s *SkillGovernance) ApproveProposal(ctx context.Context, root string, ref 
 		s.changed()
 	}
 	return changed, errors.Join(publishErr, err)
+}
+
+// sameApproval proves the human approval names this exact review of this
+// proposal by its owner.
+func sameApproval(record plugin.CommandBinding, doc reviewDocument, method string, reference skilllearning.ReviewRef) error {
+	var original skilllearning.ReviewRef
+	if err := json.Unmarshal(record.Input.Bytes(), &original); err != nil {
+		return err
+	}
+	if record.Method != method || record.Provider != doc.record.Provider || record.Contract != doc.record.Contract || record.Contribution != doc.record.Contribution || record.Invocation.Origin != extension.Human || original != reference {
+		return skills.ErrProposalChanged
+	}
+	return nil
+}
+
+// publishApproved writes the approved bytes while both the proposal and its
+// approval still hold dispatch admission.
+func (s *SkillGovernance) publishApproved(ctx context.Context, root string, doc reviewDocument, approval plugin.CommandBinding, decision string) ([]string, error) {
+	var changed []string
+	err := s.calls.framework.Admission().Admit(ctx, func(ctx context.Context) error {
+		if err := s.calls.admitDispatch(ctx, doc.record); err != nil {
+			return err
+		}
+		if err := s.calls.admitDispatch(ctx, approval); err != nil {
+			return err
+		}
+		var err error
+		changed, err = s.files.Publish(ctx, root, doc.proposal(), doc.draft.Previous, decision)
+		return err
+	})
+	return changed, err
+}
+
+// publicationRefused names the outcomes a confirmation still records: the
+// library declined the bytes rather than failing to answer.
+func publicationRefused(err error) bool {
+	return errors.Is(err, skills.ErrProposalChanged) || errors.Is(err, skills.ErrConflict) || errors.Is(err, skills.ErrLibraryCapacity)
 }
 func (s *SkillGovernance) changed() {
 	s.calls.publish.Notify(invalidation.Notice{Resource: invalidation.Skills})

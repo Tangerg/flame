@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -14,7 +15,7 @@ import (
 // DeleteSession commits history deletion and its resource retirement together.
 // Only the committed responsibility authorizes destruction; failed cleanup
 // retains a durable admission fence for recovery rather than undoing deletion.
-func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string, complete operation.Reply[struct{}]) error {
+func (c *Coordinator) DeleteSession(ctx context.Context, sessionID identity.SessionID, complete operation.Reply[struct{}]) error {
 	deletion, err := NewDeletePlan(sessionID)
 	if err != nil {
 		return err
@@ -29,7 +30,7 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string, compl
 	var pending []runs.Pending
 	return c.goals.WithSessionMutation(
 		ctx,
-		[]string{sessionID},
+		[]identity.SessionID{sessionID},
 		func(commitCtx context.Context) error {
 			open, err := c.interrupts.List(commitCtx, sessionID)
 			if err != nil {
@@ -39,7 +40,7 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string, compl
 			if err := c.transientState.QuiesceSession(sessionID); err != nil {
 				return fmt.Errorf("sessions: quiesce process-local Session state before delete: %w", err)
 			}
-			return c.titles.commitHistoryChange(commitCtx, sessionID, func(string) bool { return true }, func() error {
+			return c.titles.commitHistoryChange(commitCtx, sessionID, func(identity.RunID) bool { return true }, func() error {
 				return complete(commitCtx, func(tx context.Context) (struct{}, error) {
 					return struct{}{}, c.writes.ApplyDelete(tx, deletion)
 				})
@@ -49,7 +50,7 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string, compl
 			// The durable cascade is gone as of here, so the signal cannot outrun it.
 			// Executor release is independent of durable resource retirement;
 			// a refusal must not suppress either cleanup responsibility.
-			c.publishAggregateMoved([]string{sessionID}, nil)
+			c.publishAggregateMoved([]identity.SessionID{sessionID}, nil)
 			cleanupErrs := []error{c.retirer.complete(ctx, deletion.Retirement())}
 			for _, item := range pending {
 				if err := c.releaseExecution(ctx, RunExecutionBinding{
@@ -92,9 +93,9 @@ func (c *Coordinator) RestorePortableSession(ctx context.Context, portable Porta
 	var restore RestorePlan
 	return c.goals.WithSessionMutation(
 		ctx,
-		[]string{sessionID},
+		[]identity.SessionID{sessionID},
 		func(ctx context.Context) error {
-			return c.titles.commitHistoryChange(ctx, sessionID, func(string) bool { return true }, func() error {
+			return c.titles.commitHistoryChange(ctx, sessionID, func(identity.RunID) bool { return true }, func() error {
 				replacement, err := c.prepareSessionRestore(ctx, snapshot.Session)
 				if err != nil {
 					return err
@@ -119,7 +120,7 @@ func (c *Coordinator) RestorePortableSession(ctx context.Context, portable Porta
 			// Restore replaced the whole history, so process-local read evidence
 			// from before the restore is stale.
 			c.transientState.ForgetSessionContext(sessionID)
-			c.publishAggregateMoved([]string{sessionID}, nil)
+			c.publishAggregateMoved([]identity.SessionID{sessionID}, nil)
 			if retirement, replaced := restore.Retirement(); replaced {
 				return c.retirer.complete(ctx, retirement)
 			}

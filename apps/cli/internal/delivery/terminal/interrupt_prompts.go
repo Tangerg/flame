@@ -73,7 +73,7 @@ func newInterruptPrompts(cfg interruptPromptsConfig) *interruptPrompts {
 	p.approvalPane.initialize(cfg.wheel)
 	p.setApprovalForm(approvalAllowOnce)
 	p.approvalDialog = newPresentationDialog(cfg.stack, kit.DialogConfig{Theme: cfg.theme, Glyphs: cfg.glyphs, Title: "Tool approval", Body: p.approvalPane.Element(),
-		Where: layout.Placement{Width: 88, Height: 24},
+		Where: layout.Placement{Width: standardDialogWidth, Height: 24},
 	})
 	return p
 }
@@ -90,7 +90,7 @@ func (p *interruptPrompts) decline() bool {
 	case p.approval != nil:
 		p.answerApproval(approvalDenyOnce)
 	case p.questionnaire != nil:
-		p.finishQuestionnaire(true)
+		p.cancelQuestionnaire()
 	default:
 		return false
 	}

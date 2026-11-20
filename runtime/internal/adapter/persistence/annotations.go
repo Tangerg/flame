@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/annotation"
 	framevalue "github.com/Tangerg/frame/value"
 )
@@ -32,7 +34,7 @@ func (s *annotationStore) Append(ctx context.Context, e annotation.Entry) error 
 		return err
 	})
 }
-func (s *annotationStore) ListSession(ctx context.Context, sessionID string) ([]annotation.Entry, error) {
+func (s *annotationStore) ListSession(ctx context.Context, sessionID identity.SessionID) ([]annotation.Entry, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]annotation.Entry, error) {
 		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT command_id,installation,release,contribution,contract,
 	session_id,run_id,item_id,content,created_at_ns FROM session_annotations WHERE `+sessionAnnotationPredicate+` ORDER BY created_at_ns,command_id`, sessionID, sessionID, sessionID)

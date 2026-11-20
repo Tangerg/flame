@@ -100,11 +100,11 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 			t.Fatal(err)
 		}
 		now := time.Now().UTC()
-		original, err := (goal.Snapshot{SessionID: session.ID, CreatedAt: now}).Publish(*issued.Next, issued.Source, "original-goal", now)
+		original, err := (goal.Snapshot{SessionID: testsupport.MustSessionID(session.ID), CreatedAt: now}).Publish(*issued.Next, issued.Source, "original-goal", now)
 		if err != nil {
 			t.Fatal(err)
 		}
-		initial, err := goal.Unwritten(session.ID)
+		initial, err := goal.Unwritten(testsupport.MustSessionID(session.ID))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -121,7 +121,7 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 			t.Fatal(err)
 		}
 		finish := now.Add(time.Second)
-		raw := testsupport.MustRestoreRun(run.Snapshot{SessionID: session.ID, ID: "run_original_receipt", GoalIncarnationID: original.IncarnationID(), Ending: testsupport.EndingFor(run.OutcomeFailed), CreatedAt: now, FinishedAt: finish, UpdatedAt: finish, MessageMark: run.MessageMarkAt(0)})
+		raw := testsupport.MustRestoreRun(run.Snapshot{SessionID: testsupport.MustSessionID(session.ID), ID: testsupport.MustRunID("run_original_receipt"), GoalIncarnationID: original.IncarnationID(), Ending: testsupport.EndingFor(run.OutcomeFailed), CreatedAt: now, FinishedAt: finish, UpdatedAt: finish, MessageMark: run.MessageMarkAt(0)})
 		if err := cfg.stores.Transactor(ctx, func(ctx context.Context) error {
 			if err := cfg.stores.Runs.Restore(ctx, raw); err != nil {
 				return err
@@ -130,10 +130,10 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 		}); err != nil {
 			t.Fatal(err)
 		}
-		if err := settler.Drain(ctx, store, calls, session.ID); !errors.Is(err, plugin.ErrUnavailable) {
+		if err := settler.Drain(ctx, store, calls, testsupport.MustSessionID(session.ID)); !errors.Is(err, plugin.ErrUnavailable) {
 			t.Fatalf("substitute consumed a pending receipt: %v", err)
 		}
-		if p, found, err := store.PendingGoalRun(ctx, session.ID); err != nil || !found || !p.Owns(original) {
+		if p, found, err := store.PendingGoalRun(ctx, testsupport.MustSessionID(session.ID)); err != nil || !found || !p.Owns(original) {
 			t.Fatalf("lost original receipt: %+v %t %v", p, found, err)
 		}
 		created, err := calls.DecideGoal(ctx, unbound, create)
@@ -141,10 +141,10 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 			t.Fatalf("new goal attributed to %v, %v", created.Source, err)
 		}
 		r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: first.ID, Enabled: true}, "restore-original-goal")
-		if err := settler.Drain(ctx, store, calls, session.ID); err != nil {
+		if err := settler.Drain(ctx, store, calls, testsupport.MustSessionID(session.ID)); err != nil {
 			t.Fatal(err)
 		}
-		head, err := store.Get(ctx, session.ID)
+		head, err := store.Get(ctx, testsupport.MustSessionID(session.ID))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -155,7 +155,7 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 		if err := store.CaptureGoalRun(ctx, raw); err != nil {
 			t.Fatal(err)
 		}
-		if _, pending, err := store.PendingGoalRun(ctx, session.ID); err != nil || pending {
+		if _, pending, err := store.PendingGoalRun(ctx, testsupport.MustSessionID(session.ID)); err != nil || pending {
 			t.Fatalf("the same receipt was payable twice: %t %v", pending, err)
 		}
 		terminal := goalworkflow.Request{Signal: goalworkflow.TerminalRun, Current: issued.Next, Outcome: runoutcome.Failed}

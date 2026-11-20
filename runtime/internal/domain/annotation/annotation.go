@@ -12,7 +12,13 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-type Subject struct{ SessionID, RunID, ItemID string }
+// Subject names what an observation is about. Each identity is optional, and a
+// reference may outlive its target.
+type Subject struct {
+	SessionID identity.SessionID
+	RunID     identity.RunID
+	ItemID    identity.ItemID
+}
 
 type Entry struct {
 	CommandID string
@@ -30,21 +36,6 @@ func (e Entry) Validate() error {
 	}
 	if err := e.Source.Validate(); err != nil {
 		return err
-	}
-	if e.Subject.SessionID != "" {
-		if err := identity.ValidateSession(e.Subject.SessionID); err != nil {
-			return err
-		}
-	}
-	if e.Subject.RunID != "" {
-		if err := identity.ValidateRun(e.Subject.RunID); err != nil {
-			return err
-		}
-	}
-	if e.Subject.ItemID != "" {
-		if err := identity.ValidateItem(e.Subject.ItemID); err != nil {
-			return err
-		}
 	}
 	return errors.Join(e.Content.Validate(), instant.Validate(e.CreatedAt))
 }

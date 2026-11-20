@@ -174,7 +174,7 @@ func (e *embedder) start(ctx context.Context, request *embedding.Request) (model
 	if err != nil {
 		return modelref.EndpointInvocation{}, err
 	}
-	invocation := modelref.EndpointInvocation{ID: "endpoint_" + uuid.NewString(), Caller: caller, Provider: e.selection.Provider(), Model: e.selection.Model(), SessionID: executionctx.SessionID(ctx), Request: modelref.EmbeddingEndpointRequest{Embedding: cloneEmbeddingRequest(request)}, StartedAt: time.Now().UTC()}
+	invocation := modelref.EndpointInvocation{ID: modelref.NewEndpointID(uuid.NewString()), Caller: caller, Provider: e.selection.Provider(), Model: e.selection.Model(), SessionID: executionctx.SessionID(ctx), Request: modelref.EmbeddingEndpointRequest{Embedding: cloneEmbeddingRequest(request)}, StartedAt: time.Now().UTC()}
 	if err := invocation.Validate(); err != nil {
 		return modelref.EndpointInvocation{}, err
 	}

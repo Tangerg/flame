@@ -147,20 +147,26 @@ func (p *picker[T]) handleListMouse(mouse input.Mouse) bool {
 		p.items.Handle(mouse)
 		return true
 	case input.MouseUp:
-		if _, held := p.press.pressed(); mouse.Button != input.ButtonLeft || !held {
-			p.press.cancel()
-			return false
-		}
-		pressed, click := p.press.release()
-		if click && p.listIndexAt(mouse.Pos) == pressed && p.items.Selected() == pressed {
-			if item, ok := p.items.Current(); ok && p.pick != nil {
-				p.pick(item)
-			}
-		}
-		return true
+		return p.releaseListPress(mouse)
 	default:
 		return p.items.Handle(mouse)
 	}
+}
+
+// releaseListPress picks the item a left press began and ended on.
+func (p *picker[T]) releaseListPress(mouse input.Mouse) bool {
+	if _, held := p.press.pressed(); mouse.Button != input.ButtonLeft || !held {
+		p.press.cancel()
+		return false
+	}
+	pressed, click := p.press.release()
+	if !click || p.listIndexAt(mouse.Pos) != pressed || p.items.Selected() != pressed {
+		return true
+	}
+	if item, ok := p.items.Current(); ok && p.pick != nil {
+		p.pick(item)
+	}
+	return true
 }
 
 func (p *picker[T]) listIndexAt(point image.Point) int {

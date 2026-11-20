@@ -57,7 +57,7 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 				t.Fatal(err)
 			}
 			stream, err := connection.StartRun(t.Context(), authoring.StartRun{
-				SessionID: session.ID, Message: authoring.Message{Text: "delegate approval probe"},
+				SessionID: session.ID, Message: authoring.Message{Text: runtimefixture.DelegateApprovalProbe},
 				Options: authoring.RunOptions{Provider: "deepseek", Model: "deepseek-chat"},
 			})
 			if err != nil {

@@ -382,50 +382,13 @@ func (c *Callbacks) open(ctx context.Context, session *sdk.ClientSession, limits
 		return CallbackRef{}, nil, errors.New("plugin: callback context, session and capacities are required")
 	}
 	c.mu.Lock()
-	activation := c.activations[session]
-	if c.closed || activation == nil || activation.retiring {
-		c.mu.Unlock()
-		return CallbackRef{}, nil, ErrStaleCall
+	defer c.mu.Unlock()
+	activation, err := c.admitCallLocked(ctx, session)
+	if err != nil {
+		return CallbackRef{}, nil, err
 	}
-	if c.serveErr != nil {
-		c.mu.Unlock()
-		return CallbackRef{}, nil, fmt.Errorf("plugin: callback endpoint stopped: %w", c.serveErr)
-	}
-	if err := ctx.Err(); err != nil {
-		c.mu.Unlock()
-		return CallbackRef{}, nil, errors.Join(err, context.Cause(ctx))
-	}
-	count := 0
-	for _, admitted := range c.activations {
-		count += len(admitted.calls)
-	}
-	if count >= maxCallbackCalls {
-		c.mu.Unlock()
-		return CallbackRef{}, nil, ErrCallbackCapacity
-	}
-	if c.server == nil {
-		listener, err := net.Listen("tcp", net.JoinHostPort(callbackHost, "0"))
-		if err != nil {
-			c.mu.Unlock()
-			return CallbackRef{}, nil, fmt.Errorf("plugin: open callback endpoint: %w", err)
-		}
-		c.server = &http.Server{Handler: http.HandlerFunc(c.serve)}
-		c.endpoint = callbackScheme + "://" + listener.Addr().String() + "/"
-		c.served = make(chan struct{})
-		server, served := c.server, c.served
-		go func() {
-			defer close(served)
-			if err := server.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
-				c.mu.Lock()
-				c.serveErr = err
-				for _, activation := range c.activations {
-					for _, call := range activation.calls {
-						call.cancel(err)
-					}
-				}
-				c.mu.Unlock()
-			}
-		}()
+	if err := c.serveLocked(); err != nil {
+		return CallbackRef{}, nil, err
 	}
 	lifetime, cancel := context.WithCancelCause(ctx)
 	call := &callbackCall{context: lifetime, cancel: cancel, handler: handler, limits: limits, done: make(chan struct{})}
@@ -434,9 +397,58 @@ func (c *Callbacks) open(ctx context.Context, session *sdk.ClientSession, limits
 	call.retirement = &callbackRetirement{finish: func() { c.release(activation, id, call) }, done: call.done}
 	release := call.retirement.close
 	call.stop = context.AfterFunc(lifetime, release)
-	ref := CallbackRef{Endpoint: c.endpoint, Credential: activation.credential, Call: id, MaxResponseBytes: limits.MaxResponseBytes}
-	c.mu.Unlock()
-	return ref, release, nil
+	return CallbackRef{Endpoint: c.endpoint, Credential: activation.credential, Call: id, MaxResponseBytes: limits.MaxResponseBytes}, release, nil
+}
+
+func (c *Callbacks) admitCallLocked(ctx context.Context, session *sdk.ClientSession) (*callbackActivation, error) {
+	activation := c.activations[session]
+	if c.closed || activation == nil || activation.retiring {
+		return nil, ErrStaleCall
+	}
+	if c.serveErr != nil {
+		return nil, fmt.Errorf("plugin: callback endpoint stopped: %w", c.serveErr)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, errors.Join(err, context.Cause(ctx))
+	}
+	count := 0
+	for _, admitted := range c.activations {
+		count += len(admitted.calls)
+	}
+	if count >= maxCallbackCalls {
+		return nil, ErrCallbackCapacity
+	}
+	return activation, nil
+}
+
+// serveLocked opens the loopback endpoint on first use. A serving failure
+// cancels every admitted call, since none of them can be answered any more.
+func (c *Callbacks) serveLocked() error {
+	if c.server != nil {
+		return nil
+	}
+	listener, err := net.Listen("tcp", net.JoinHostPort(callbackHost, "0"))
+	if err != nil {
+		return fmt.Errorf("plugin: open callback endpoint: %w", err)
+	}
+	c.server = &http.Server{Handler: http.HandlerFunc(c.serve)}
+	c.endpoint = callbackScheme + "://" + listener.Addr().String() + "/"
+	c.served = make(chan struct{})
+	server, served := c.server, c.served
+	go func() {
+		defer close(served)
+		if err := server.Serve(listener); !errors.Is(err, http.ErrServerClosed) {
+			c.mu.Lock()
+			c.serveErr = err
+			for _, activation := range c.activations {
+				for _, call := range activation.calls {
+					call.cancel(err)
+				}
+			}
+			c.mu.Unlock()
+		}
+	}()
+	return nil
 }
 
 func (c *Callbacks) release(activation *callbackActivation, id string, call *callbackCall) {
@@ -606,7 +618,7 @@ func serveCallback(w http.ResponseWriter, r *http.Request, methods map[string]bo
 		return
 	}
 	if method.stream != nil {
-		if r.Header.Get("Accept") != "text/event-stream" {
+		if r.Header.Get("Accept") != eventStreamMediaType {
 			http.Error(w, "callback requires streaming consumption", http.StatusNotAcceptable)
 			return
 		}

@@ -55,6 +55,8 @@ type clientConstruction struct {
 	client   *client
 }
 
+const refusalModelUnavailable = "model_unavailable"
+
 func openStore(ctx context.Context, path string) (*store, error) {
 	db, err := sqlite.OpenSchema(ctx, path, []string{
 		pluginstorage.CommandsSchema,
@@ -120,7 +122,7 @@ func openClient[R any](ctx context.Context, s *store, method string, kind client
 func prepareClient(ctx context.Context, kind clientKind, input modelprovider.Open) (clientConstruction, error) {
 	created, err := constructClient(ctx, kind, input)
 	if err != nil {
-		return clientConstruction{}, &framecall.Refusal{Code: "model_unavailable", Message: "model provider: client construction was refused"}
+		return clientConstruction{}, &framecall.Refusal{Code: refusalModelUnavailable, Message: "model provider: client construction was refused"}
 	}
 	id, err := modelprovider.NewHandleID()
 	if err != nil {
@@ -147,47 +149,66 @@ func (s *store) reopenChat(ctx context.Context, method, originalMethod string, c
 		if err := input.Validate(); err != nil {
 			return pluginstorage.CommandPlan[modelprovider.Chat]{}, err
 		}
-		var storedMethod, snapshot string
-		var reply []byte
-		if err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, input.Original).Scan(&storedMethod, &snapshot, &reply); err != nil {
+		original, specification, err := s.originalChat(ctx, originalMethod, input.Original)
+		if err != nil {
 			return pluginstorage.CommandPlan[modelprovider.Chat]{}, err
-		}
-		if storedMethod != originalMethod || len(reply) == 0 {
-			return pluginstorage.CommandPlan[modelprovider.Chat]{}, errors.New("model provider: original chat construction is unconfirmed")
-		}
-		original, err := pluginmcp.DecodeReply[modelprovider.Chat](reply)
-		if err != nil || original.Original != input.Original {
-			return pluginstorage.CommandPlan[modelprovider.Chat]{}, errors.New("model provider: original chat construction was refused")
-		}
-		var specification modelprovider.Open
-		if err := json.Unmarshal([]byte(snapshot), &specification, json.RejectUnknownMembers(true)); err != nil {
-			return pluginstorage.CommandPlan[modelprovider.Chat]{}, err
-		}
-		if err := original.Validate(); err != nil || original.Model != specification.Model || original.Provider != specification.Connection.Provider {
-			return pluginstorage.CommandPlan[modelprovider.Chat]{}, errors.Join(err, errors.New("model provider: original construction identity changed"))
 		}
 		construction, err := prepareClient(ctx, chatClient, specification)
 		if err != nil {
 			return pluginstorage.CommandPlan[modelprovider.Chat]{}, err
 		}
 		restored := chatProjection(construction.handle, construction.client, specification, original.Original)
-		expected := original
-		expected.Handle = construction.handle
-		expectedJSON, err := json.Marshal(expected)
-		if err != nil {
+		if err := sameConstruction(original, construction.handle, restored); err != nil {
 			return pluginstorage.CommandPlan[modelprovider.Chat]{}, err
-		}
-		restoredJSON, err := json.Marshal(restored)
-		if err != nil {
-			return pluginstorage.CommandPlan[modelprovider.Chat]{}, err
-		}
-		if string(expectedJSON) != string(restoredJSON) {
-			return pluginstorage.CommandPlan[modelprovider.Chat]{}, errors.New("model provider: original construction facts changed")
 		}
 		return pluginstorage.NewCommandPlan(restored, func(ctx context.Context) error {
 			return construction.insert(ctx, s.db)
 		})
 	})
+}
+
+// originalChat reads the confirmed construction a reopen continues, with the
+// specification it was built from.
+func (s *store) originalChat(ctx context.Context, originalMethod string, originalID pluginmcp.CommandID) (modelprovider.Chat, modelprovider.Open, error) {
+	var storedMethod, snapshot string
+	var reply []byte
+	if err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, originalID).Scan(&storedMethod, &snapshot, &reply); err != nil {
+		return modelprovider.Chat{}, modelprovider.Open{}, err
+	}
+	if storedMethod != originalMethod || len(reply) == 0 {
+		return modelprovider.Chat{}, modelprovider.Open{}, errors.New("model provider: original chat construction is unconfirmed")
+	}
+	original, err := pluginmcp.DecodeReply[modelprovider.Chat](reply)
+	if err != nil || original.Original != originalID {
+		return modelprovider.Chat{}, modelprovider.Open{}, errors.New("model provider: original chat construction was refused")
+	}
+	var specification modelprovider.Open
+	if err := json.Unmarshal([]byte(snapshot), &specification, json.RejectUnknownMembers(true)); err != nil {
+		return modelprovider.Chat{}, modelprovider.Open{}, err
+	}
+	if err := original.Validate(); err != nil || original.Model != specification.Model || original.Provider != specification.Connection.Provider {
+		return modelprovider.Chat{}, modelprovider.Open{}, errors.Join(err, errors.New("model provider: original construction identity changed"))
+	}
+	return original, specification, nil
+}
+
+// sameConstruction proves the rebuilt client publishes the original facts,
+// differing only by its new handle.
+func sameConstruction(original modelprovider.Chat, handle modelprovider.Handle, restored modelprovider.Chat) error {
+	expected := original
+	expected.Handle = handle
+	expectedJSON, err := json.Marshal(expected)
+	if err != nil {
+		return err
+	}
+	restoredJSON, err := json.Marshal(restored)
+	if err != nil {
+		return err
+	}
+	if string(expectedJSON) != string(restoredJSON) {
+		return errors.New("model provider: original construction facts changed")
+	}
+	return nil
 }
 
 // acquire is the only path into the cache. It reads the durable snapshot under

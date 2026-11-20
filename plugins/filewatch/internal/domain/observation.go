@@ -42,8 +42,7 @@ func NewObservation(capture Capture) (Observation, error) {
 	if _, err := uuid.Parse(capture.Generation); err != nil {
 		return Observation{}, ErrInvalid
 	}
-	if capture.Sequence == 0 || capture.Sequence > uint64(exactint.Maximum) || capture.Revision < 1 || capture.Revision > exactint.Maximum || capture.ObservedAt.IsZero() ||
-		!slices.Contains(capture.Kind.JSONSchemaEnum(), string(capture.Kind)) || len(capture.Paths) == 0 || len(capture.Paths) > maxPaths {
+	if !capture.positioned() {
 		return Observation{}, ErrInvalid
 	}
 	trigger, err := newTrigger(capture.Trigger)
@@ -56,20 +55,33 @@ func NewObservation(capture Capture) (Observation, error) {
 	if capture.Invocation.Origin != extension.Automatic || capture.Invocation.Parent != "" || capture.Invocation.Target.Scope != extension.ScopeInstallation {
 		return Observation{}, ErrInvalid
 	}
-	seen := make(map[string]bool, len(capture.Paths))
-	for _, path := range capture.Paths {
-		if !slices.Contains(capture.Trigger.Paths, path) || seen[path] {
-			return Observation{}, ErrInvalid
-		}
-		seen[path] = true
-	}
-	if capture.Kind == Resync && !slices.Equal(capture.Paths, capture.Trigger.Paths) {
+	if !capture.observesTriggerPaths() {
 		return Observation{}, ErrInvalid
 	}
 	capture.Trigger = trigger.Draft()
 	capture.Paths = slices.Clone(capture.Paths)
 	capture.ObservedAt = capture.ObservedAt.UTC()
 	return Observation{capture: capture}, nil
+}
+
+// positioned reports a capture that names its place in the observation
+// sequence and a bounded, known change.
+func (c Capture) positioned() bool {
+	return c.Sequence != 0 && c.Sequence <= uint64(exactint.Maximum) && c.Revision >= 1 && c.Revision <= exactint.Maximum && !c.ObservedAt.IsZero() &&
+		slices.Contains(c.Kind.JSONSchemaEnum(), string(c.Kind)) && len(c.Paths) != 0 && len(c.Paths) <= maxPaths
+}
+
+// observesTriggerPaths reports distinct paths drawn from the trigger; a resync
+// reports every trigger path in order.
+func (c Capture) observesTriggerPaths() bool {
+	seen := make(map[string]bool, len(c.Paths))
+	for _, path := range c.Paths {
+		if !slices.Contains(c.Trigger.Paths, path) || seen[path] {
+			return false
+		}
+		seen[path] = true
+	}
+	return c.Kind != Resync || slices.Equal(c.Paths, c.Trigger.Paths)
 }
 
 func (o Observation) Capture() Capture {

@@ -26,6 +26,13 @@ const (
 	analyzersDependency = "analyzers"
 )
 
+// The Tool names the model sees.
+const (
+	listReviewsTool   = "list_reviews"
+	updateReviewTool  = "update_review"
+	analyzeReviewTool = "analyze_review"
+)
+
 func newServer(store *store) (*sdk.Server, error) {
 	if store == nil {
 		return nil, fmt.Errorf("reviews: store is required")
@@ -34,75 +41,8 @@ func newServer(store *store) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	read := func(ctx context.Context) (reviews.ListResult, error) {
-		snapshots, err := store.list(ctx)
-		return reviews.ListResult{Reviews: snapshots}, err
-	}
-	// One analyzer business, reached identically through the typed query and the
-	// model Tool below; both call the declared analyzer dependency as host.
-	analyze := func(ctx context.Context) (result reviews.Analysis, resultErr error) {
-		current, err := store.list(ctx)
-		if err != nil {
-			return reviews.Analysis{}, err
-		}
-		if len(current) != 1 {
-			return reviews.Analysis{}, fmt.Errorf("reviews: expected the owned example review")
-		}
-		invocation, err := pluginmcp.InvocationFromContext(ctx)
-		if err != nil {
-			return reviews.Analysis{}, err
-		}
-		ref, err := pluginmcp.CallbackFromContext(ctx)
-		if err != nil {
-			return reviews.Analysis{}, err
-		}
-		client, err := runtimeclient.ConnectCallback(ctx, ref)
-		if err != nil {
-			return reviews.Analysis{}, err
-		}
-		defer func() { resultErr = errors.Join(resultErr, client.Close()) }()
-		return analyzeReview(ctx, client, invocation.Target, current[0])
-	}
-	list, err := tool.NewFunc(tool.FuncConfig{Name: "list_reviews", Description: contracts.List.Descriptor().Description}, func(ctx context.Context, _ struct{}) (reviews.ListResult, error) {
-		return read(ctx)
-	})
-	if err != nil {
-		return nil, err
-	}
-	update, err := tool.NewFunc(tool.FuncConfig{Name: "update_review", Description: contracts.Update.Descriptor().Description + " Runtime supplies the invocation identity; do not add a retry key to arguments."}, func(ctx context.Context, _ reviews.Update) (reviews.UpdateResult, error) {
-		id, err := pluginsdk.InvocationID(ctx)
-		if err != nil {
-			return reviews.UpdateResult{}, rejected("bounded invocation identity is required")
-		}
-		admitted, err := pluginmcp.RequestInput(ctx)
-		if err != nil {
-			return reviews.UpdateResult{}, err
-		}
-		result, err := store.update(ctx, id, admitted)
-		if err != nil {
-			return reviews.UpdateResult{}, err
-		}
-		if result.Type == reviews.Updated {
-			return result, nil
-		}
-		encoded, err := json.Marshal(result)
-		if err != nil {
-			return reviews.UpdateResult{}, err
-		}
-		output := tool.NewTextOutput(string(encoded))
-		output.Details = encoded
-		failure, err := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindFailed, Output: output, Cause: fmt.Errorf("reviews: %s", result.Type)})
-		if err != nil {
-			return reviews.UpdateResult{}, err
-		}
-		return reviews.UpdateResult{}, failure
-	})
-	if err != nil {
-		return nil, err
-	}
-	analyzeTool, err := tool.NewFunc(tool.FuncConfig{Name: "analyze_review", Description: contracts.Analyzers.Descriptor().Description}, func(ctx context.Context, _ struct{}) (reviews.Analysis, error) {
-		return analyze(ctx)
-	})
+	service := reviewService{store: store, contracts: contracts}
+	tools, err := service.modelTools()
 	if err != nil {
 		return nil, err
 	}
@@ -111,60 +51,13 @@ func newServer(store *store) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := backend.OnSetup(func(_ context.Context, setup pluginmcp.Setup) (io.Closer, error) {
-		values, err := setup.Contributions()
-		if err != nil {
-			return nil, err
-		}
-		required, err := reviews.NewAnalyzerContracts()
-		if err != nil {
-			return nil, err
-		}
-		for _, value := range values {
-			if value.Export != capabilityExport || len(value.Requires) != 1 || value.Requires[0].ID != analyzersDependency || !value.Requires[0].Optional {
-				return nil, fmt.Errorf("reviews: named optional analyzers dependency is required")
-			}
-			actual, err := plugincontract.AdmitCapability(value.Requires[0].Contract)
-			if err != nil {
-				return nil, err
-			}
-			if actual.Identity() != required.Capability.Identity() {
-				return nil, fmt.Errorf("reviews: analyzer setup contract differs from the consumer")
-			}
-		}
-		return nil, nil
-	}); err != nil {
+	if err := backend.OnSetup(admitSetup); err != nil {
 		return nil, err
 	}
-	if err := pluginsdk.RegisterTools(server, list, update, analyzeTool); err != nil {
+	if err := pluginsdk.RegisterTools(server, tools...); err != nil {
 		return nil, err
 	}
-	receipts, err := pluginmcp.ReceiptQuery()
-	if err != nil {
-		return nil, err
-	}
-	if err := receipts.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.ReceiptRequest]) (pluginmcp.Receipt, error) {
-		return store.receipt(ctx, command.Input, contracts.Update.Name())
-	}); err != nil {
-		return nil, err
-	}
-	if err := contracts.List.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[struct{}]) (reviews.ListResult, error) {
-		return read(ctx)
-	}); err != nil {
-		return nil, err
-	}
-	if err := contracts.Update.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[reviews.Update]) (reviews.UpdateResult, error) {
-		admitted, err := command.RequestInput()
-		if err != nil {
-			return reviews.UpdateResult{}, err
-		}
-		return store.update(ctx, string(command.ID), admitted)
-	}); err != nil {
-		return nil, err
-	}
-	if err := contracts.Analyzers.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[struct{}]) (reviews.Analysis, error) {
-		return analyze(ctx)
-	}); err != nil {
+	if err := service.register(backend); err != nil {
 		return nil, err
 	}
 	if err := backend.BindCapability(capabilityExport, contracts.Capability); err != nil {
@@ -174,6 +67,145 @@ func newServer(store *store) (*sdk.Server, error) {
 		return nil, err
 	}
 	return server, nil
+}
+
+// reviewService is the plugin's business, reached identically through its
+// typed queries and its model Tools.
+type reviewService struct {
+	store     *store
+	contracts reviews.Contracts
+}
+
+func (s reviewService) read(ctx context.Context) (reviews.ListResult, error) {
+	snapshots, err := s.store.list(ctx)
+	return reviews.ListResult{Reviews: snapshots}, err
+}
+
+// analyze calls the declared analyzer dependency, with Runtime as the host.
+func (s reviewService) analyze(ctx context.Context) (result reviews.Analysis, resultErr error) {
+	current, err := s.store.list(ctx)
+	if err != nil {
+		return reviews.Analysis{}, err
+	}
+	if len(current) != 1 {
+		return reviews.Analysis{}, fmt.Errorf("reviews: expected the owned example review")
+	}
+	invocation, err := pluginmcp.InvocationFromContext(ctx)
+	if err != nil {
+		return reviews.Analysis{}, err
+	}
+	ref, err := pluginmcp.CallbackFromContext(ctx)
+	if err != nil {
+		return reviews.Analysis{}, err
+	}
+	client, err := runtimeclient.ConnectCallback(ctx, ref)
+	if err != nil {
+		return reviews.Analysis{}, err
+	}
+	defer func() { resultErr = errors.Join(resultErr, client.Close()) }()
+	return analyzeReview(ctx, client, invocation.Target, current[0])
+}
+
+// updateFromModel applies a model's edit under Runtime's invocation identity.
+// A refused edit is reported as the Tool's own failure, carrying the result.
+func (s reviewService) updateFromModel(ctx context.Context, _ reviews.Update) (reviews.UpdateResult, error) {
+	id, err := pluginsdk.InvocationID(ctx)
+	if err != nil {
+		return reviews.UpdateResult{}, rejected("bounded invocation identity is required")
+	}
+	admitted, err := pluginmcp.RequestInput(ctx)
+	if err != nil {
+		return reviews.UpdateResult{}, err
+	}
+	result, err := s.store.update(ctx, id, admitted)
+	if err != nil {
+		return reviews.UpdateResult{}, err
+	}
+	if result.Type == reviews.Updated {
+		return result, nil
+	}
+	encoded, err := json.Marshal(result)
+	if err != nil {
+		return reviews.UpdateResult{}, err
+	}
+	output := tool.NewTextOutput(string(encoded))
+	output.Details = encoded
+	failure, err := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindFailed, Output: output, Cause: fmt.Errorf("reviews: %s", result.Type)})
+	if err != nil {
+		return reviews.UpdateResult{}, err
+	}
+	return reviews.UpdateResult{}, failure
+}
+
+func (s reviewService) modelTools() ([]tool.Tool, error) {
+	list, err := tool.NewFunc(tool.FuncConfig{Name: listReviewsTool, Description: s.contracts.List.Descriptor().Description}, func(ctx context.Context, _ struct{}) (reviews.ListResult, error) {
+		return s.read(ctx)
+	})
+	if err != nil {
+		return nil, err
+	}
+	update, err := tool.NewFunc(tool.FuncConfig{Name: updateReviewTool, Description: s.contracts.Update.Descriptor().Description + " Runtime supplies the invocation identity; do not add a retry key to arguments."}, s.updateFromModel)
+	if err != nil {
+		return nil, err
+	}
+	analyze, err := tool.NewFunc(tool.FuncConfig{Name: analyzeReviewTool, Description: s.contracts.Analyzers.Descriptor().Description}, func(ctx context.Context, _ struct{}) (reviews.Analysis, error) {
+		return s.analyze(ctx)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return []tool.Tool{list, update, analyze}, nil
+}
+
+func (s reviewService) register(backend *pluginmcp.Backend) error {
+	receipts, err := pluginmcp.ReceiptQuery()
+	if err != nil {
+		return err
+	}
+	return errors.Join(
+		receipts.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.ReceiptRequest]) (pluginmcp.Receipt, error) {
+			return s.store.receipt(ctx, command.Input, s.contracts.Update.Name())
+		}),
+		s.contracts.List.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[struct{}]) (reviews.ListResult, error) {
+			return s.read(ctx)
+		}),
+		s.contracts.Update.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[reviews.Update]) (reviews.UpdateResult, error) {
+			admitted, err := command.RequestInput()
+			if err != nil {
+				return reviews.UpdateResult{}, err
+			}
+			return s.store.update(ctx, string(command.ID), admitted)
+		}),
+		s.contracts.Analyzers.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, _ pluginmcp.Command[struct{}]) (reviews.Analysis, error) {
+			return s.analyze(ctx)
+		}),
+	)
+}
+
+// admitSetup refuses an activation whose analyzer dependency is not the named
+// optional contract this consumer was built against.
+func admitSetup(_ context.Context, setup pluginmcp.Setup) (io.Closer, error) {
+	values, err := setup.Contributions()
+	if err != nil {
+		return nil, err
+	}
+	required, err := reviews.NewAnalyzerContracts()
+	if err != nil {
+		return nil, err
+	}
+	for _, value := range values {
+		if value.Export != capabilityExport || len(value.Requires) != 1 || value.Requires[0].ID != analyzersDependency || !value.Requires[0].Optional {
+			return nil, fmt.Errorf("reviews: named optional analyzers dependency is required")
+		}
+		actual, err := plugincontract.AdmitCapability(value.Requires[0].Contract)
+		if err != nil {
+			return nil, err
+		}
+		if actual.Identity() != required.Capability.Identity() {
+			return nil, fmt.Errorf("reviews: analyzer setup contract differs from the consumer")
+		}
+	}
+	return nil, nil
 }
 
 func rejected(message string) error {

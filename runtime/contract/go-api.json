@@ -2533,6 +2533,7 @@
     {
       "path": "github.com/Tangerg/flame/packages/go-sdk/identity",
       "imports": [
+        "database/sql/driver",
         "github.com/Tangerg/frame/host",
         "github.com/Tangerg/frame/value"
       ],
@@ -2611,8 +2612,32 @@
           "signature": "func(text string) (InstallationID, error)"
         },
         {
+          "name": "ParseItem",
+          "signature": "func(text string) (ItemID, error)"
+        },
+        {
+          "name": "ParseOptionalItem",
+          "signature": "func(text string) (ItemID, error)"
+        },
+        {
+          "name": "ParseOptionalRun",
+          "signature": "func(text string) (RunID, error)"
+        },
+        {
+          "name": "ParseOptionalSegment",
+          "signature": "func(text string) (SegmentID, error)"
+        },
+        {
+          "name": "ParseOptionalSession",
+          "signature": "func(text string) (SessionID, error)"
+        },
+        {
           "name": "ParseRun",
           "signature": "func(text string) (RunID, error)"
+        },
+        {
+          "name": "ParseSegment",
+          "signature": "func(text string) (SegmentID, error)"
         },
         {
           "name": "ParseSession",
@@ -2661,6 +2686,44 @@
       ],
       "types": [
         {
+          "name": "ID",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Compare",
+              "signature": "func(other ID[K]) int"
+            },
+            {
+              "name": "IsZero",
+              "signature": "func() bool"
+            },
+            {
+              "name": "MarshalText",
+              "signature": "func() ([]byte, error)"
+            },
+            {
+              "name": "Scan",
+              "signature": "func(source any) error"
+            },
+            {
+              "name": "String",
+              "signature": "func() string"
+            },
+            {
+              "name": "UnmarshalText",
+              "signature": "func(text []byte) error"
+            },
+            {
+              "name": "Validate",
+              "signature": "func() error"
+            },
+            {
+              "name": "Value",
+              "signature": "func() (driver.Value, error)"
+            }
+          ]
+        },
+        {
           "name": "InstallationID",
           "kind": "struct",
           "methods": [
@@ -2679,24 +2742,24 @@
           ]
         },
         {
+          "name": "ItemID",
+          "kind": "alias",
+          "underlying": "ID[itemKind]"
+        },
+        {
           "name": "RunID",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "String",
-              "signature": "func() string"
-            }
-          ]
+          "kind": "alias",
+          "underlying": "ID[runKind]"
+        },
+        {
+          "name": "SegmentID",
+          "kind": "alias",
+          "underlying": "ID[segmentKind]"
         },
         {
           "name": "SessionID",
-          "kind": "struct",
-          "methods": [
-            {
-              "name": "String",
-              "signature": "func() string"
-            }
-          ]
+          "kind": "alias",
+          "underlying": "ID[sessionKind]"
         }
       ]
     },
@@ -3613,6 +3676,10 @@
         {
           "name": "PageOf",
           "signature": "func[T any](rows []T, limit int, namespace string, filters []string, nextKey func(T) []string) (Page[T], error)"
+        },
+        {
+          "name": "ParseLimit",
+          "signature": "func(value *int) (RequestedLimit, error)"
         }
       ],
       "types": [
@@ -3929,6 +3996,14 @@
           "signature": "func() (*mcp.StreamingMethod[scopewire.Request, scopewire.ResponseDelta, ModelResult], error)"
         },
         {
+          "name": "NewFailedToolReceipt",
+          "signature": "func(failure *tool.Failure) (ToolReceipt, error)"
+        },
+        {
+          "name": "NewJSONToolReceipt",
+          "signature": "func[R any](result R) (ToolReceipt, error)"
+        },
+        {
           "name": "NewModelCallback",
           "signature": "func(call func(context.Context, mcp.Command[scopewire.Request]) (*chat.Response, error)) (mcp.Callback, error)"
         },
@@ -3950,7 +4025,7 @@
         },
         {
           "name": "NewToolReceipt",
-          "signature": "func(output tool.Output, failed bool) (ToolReceipt, error)"
+          "signature": "func(output tool.Output) (ToolReceipt, error)"
         },
         {
           "name": "PrepareFeedbackMethod",
@@ -5351,6 +5426,10 @@
           "signature": "func[T any](value T, err error, classify Classifier) (value.JSON, error)"
         },
         {
+          "name": "Implement",
+          "signature": "func[P, R any](set *MethodSet, name string) *Method[P, R]"
+        },
+        {
           "name": "ImplementMethod",
           "signature": "func[P, R any](owner *contract.Capability, name string) (*Method[P, R], error)"
         },
@@ -5393,6 +5472,10 @@
         {
           "name": "NewMethod",
           "signature": "func[P, R any](config frame.MethodConfig) (*Method[P, R], error)"
+        },
+        {
+          "name": "NewMethodSet",
+          "signature": "func(owner *contract.Capability) *MethodSet"
         },
         {
           "name": "NewProcessClient",
@@ -5786,6 +5869,16 @@
             {
               "name": "RegisterServer",
               "signature": "func(backend *Backend, classify Classifier, handler func(context.Context, *mcp.ServerSession, Command[P]) (R, error)) error"
+            }
+          ]
+        },
+        {
+          "name": "MethodSet",
+          "kind": "struct",
+          "methods": [
+            {
+              "name": "Err",
+              "signature": "func() error"
             }
           ]
         },

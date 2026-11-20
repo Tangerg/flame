@@ -183,37 +183,20 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 		fail := func(err error) {
 			yield(StreamValue[jsontext.Value, jsontext.Value]{}, errors.Join(ErrStreamUnconfirmed, err, ctx.Err(), context.Cause(ctx)))
 		}
-		if b == nil || b.method == nil || callbacks == nil || len(b.method.Descriptor().Stream) == 0 {
-			fail(errors.New("plugin: streaming binding and callback owner are required"))
-			return
-		}
-		if metadataErr != nil {
-			fail(metadataErr)
-			return
-		}
-		metadata := sdk.ParamsBase{Meta: sdk.Meta(frozen.Clone())}
-		if err := b.method.ValidateInput(input); err != nil {
+		if err := errors.Join(b.validateStream(callbacks, input), metadataErr); err != nil {
 			fail(err)
 			return
 		}
 		call, cancel := context.WithCancel(ctx)
 		defer cancel()
 		chunks := make(chan pendingChunk)
-		receiver, err := b.streamReceiver(call, chunks, limits)
-		if err != nil {
-			fail(err)
-			return
-		}
-		ref, release, err := callbacks.Open(call, b.session, limits, receiver)
+		metadata := sdk.ParamsBase{Meta: sdk.Meta(frozen.Clone())}
+		release, err := b.openStreamCallback(call, callbacks, limits, chunks, &metadata)
 		if err != nil {
 			fail(err)
 			return
 		}
 		defer release()
-		if err := metadata.Set(StreamMetadataKey, ref); err != nil {
-			fail(err)
-			return
-		}
 		done := make(chan struct{})
 		var completion streamCompletion
 		go func() {
@@ -232,14 +215,14 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 				}
 			case <-done:
 				result, err := completion.result(limits.MaxResponseBytes)
-				if err != nil {
-					if refusal, known := errors.AsType[*framecall.Refusal](err); known {
-						yield(StreamValue[jsontext.Value, jsontext.Value]{}, refusal)
-					} else {
-						fail(err)
-					}
-				} else {
+				refusal, refused := errors.AsType[*framecall.Refusal](err)
+				switch {
+				case err == nil:
 					yield(StreamValue[jsontext.Value, jsontext.Value]{Result: new(result)}, nil)
+				case refused:
+					yield(StreamValue[jsontext.Value, jsontext.Value]{}, refusal)
+				default:
+					fail(err)
 				}
 				return
 			case <-call.Done():
@@ -248,6 +231,31 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 			}
 		}
 	}
+}
+
+func (b *Binding) validateStream(callbacks *Callbacks, input framevalue.JSON) error {
+	if b == nil || b.method == nil || callbacks == nil || len(b.method.Descriptor().Stream) == 0 {
+		return errors.New("plugin: streaming binding and callback owner are required")
+	}
+	return b.method.ValidateInput(input)
+}
+
+// openStreamCallback opens the callback that receives chunks and names it in
+// the command metadata, so the backend streams to this call alone.
+func (b *Binding) openStreamCallback(call context.Context, callbacks *Callbacks, limits CallbackLimits, chunks chan pendingChunk, metadata *sdk.ParamsBase) (func(), error) {
+	receiver, err := b.streamReceiver(call, chunks, limits)
+	if err != nil {
+		return nil, err
+	}
+	ref, release, err := callbacks.Open(call, b.session, limits, receiver)
+	if err != nil {
+		return nil, err
+	}
+	if err := metadata.Set(StreamMetadataKey, ref); err != nil {
+		release()
+		return nil, err
+	}
+	return release, nil
 }
 
 func (m *StreamingMethod[P, C, R]) StreamWithMetadata(ctx context.Context, binding *Binding, callbacks *Callbacks, limits CallbackLimits, id CommandID, input P, metadata sdk.ParamsBase) iter.Seq2[StreamValue[C, R], error] {

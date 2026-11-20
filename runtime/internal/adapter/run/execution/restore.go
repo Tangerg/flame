@@ -155,7 +155,7 @@ func (i *interactionSession) restoredExecutionMembers(
 		members[processID] = member
 	}
 	rootMember, found := members[rootID]
-	if !found || rootMember.RunID != continuation.RootRunID || rootMember.ParentRunID != "" {
+	if !found || rootMember.RunID != continuation.RootRunID || !rootMember.ParentRunID.IsZero() {
 		return nil, errors.New("restored root Process differs from the product root member")
 	}
 	if err := validateRestoredLineage(deployments, members, snapshots, rootID); err != nil {
@@ -253,6 +253,21 @@ func nearestProductMember(process scoperun.ProcessID, members map[scoperun.Proce
 	return runs.ExecutionMember{}, false
 }
 
+// delegateChildSnapshot is the child Process the attribution names, keyed
+// under its parent exactly as the interaction state recorded it.
+func delegateChildSnapshot(snapshots map[scoperun.ProcessID]scoperun.ProcessInspection, parentID scoperun.ProcessID, child interaction.DelegateAttribution) (scoperun.ProcessInspection, error) {
+	childSnapshot, exists := snapshots[child.ProcessID()]
+	if !exists {
+		return scoperun.ProcessInspection{}, fmt.Errorf("delegate child %s is absent from the tree", child.ProcessID())
+	}
+	relationParent, hasParent := childSnapshot.ID.Parent()
+	relationKey, hasKey := childSnapshot.ID.Key()
+	if !hasParent || !hasKey || relationParent != parentID || relationKey != child.ChildKey() {
+		return scoperun.ProcessInspection{}, fmt.Errorf("delegate child %s relation differs from interaction state", child.ProcessID())
+	}
+	return childSnapshot, nil
+}
+
 func restoreManagedDelegateCall(
 	deployments *interactionDeploymentSet,
 	snapshots map[scoperun.ProcessID]scoperun.ProcessInspection,
@@ -261,15 +276,9 @@ func restoreManagedDelegateCall(
 	parentSnapshot scoperun.ProcessInspection,
 	child interaction.DelegateAttribution,
 ) (*managedDelegateCall, error) {
-	childSnapshot, exists := snapshots[child.ProcessID()]
-	if !exists {
-		return nil, fmt.Errorf("delegate child %s is absent from the tree", child.ProcessID())
-	}
-	relation := childSnapshot.ID
-	relationParent, hasParent := relation.Parent()
-	relationKey, hasKey := relation.Key()
-	if !hasParent || !hasKey || relationParent != parentID || relationKey != child.ChildKey() {
-		return nil, fmt.Errorf("delegate child %s relation differs from interaction state", child.ProcessID())
+	childSnapshot, err := delegateChildSnapshot(snapshots, parentID, child)
+	if err != nil {
+		return nil, err
 	}
 	member, survives := members[child.ProcessID()]
 	if !survives && !childSnapshot.Status.Terminal() {
@@ -298,17 +307,10 @@ func restoreManagedDelegateCall(
 	if err != nil {
 		return nil, err
 	}
-	var pending bool
 	parentMember, _ := nearestProductMember(parentID, members)
-	for _, drained := range parentMember.DrainedTools {
-		if drained.CallID != callID.String() {
-			continue
-		}
-		if drained.SourceCallID != child.ToolCall().ID {
-			return nil, fmt.Errorf("delegate child %s differs from its unfinished parent tool", child.ProcessID())
-		}
-		pending = true
-		break
+	pending, err := parentToolPending(parentMember, callID, child.ToolCall().ID)
+	if err != nil {
+		return nil, fmt.Errorf("delegate child %s: %w", child.ProcessID(), err)
 	}
 	if survives && !pending {
 		return nil, fmt.Errorf("delegate child %s has no unfinished parent tool", child.ProcessID())
@@ -330,4 +332,19 @@ func restoreManagedDelegateCall(
 		// retains their result until the waiting parent can commit its Tool batch.
 		segmentProjected: !survives,
 	}, nil
+}
+
+// parentToolPending reports whether the parent still awaits the delegating
+// Tool call, and refuses one that names a different model call.
+func parentToolPending(parent runs.ExecutionMember, callID runs.InvocationID, sourceCallID string) (bool, error) {
+	for _, drained := range parent.DrainedTools {
+		if drained.CallID != callID.String() {
+			continue
+		}
+		if drained.SourceCallID != sourceCallID {
+			return false, errors.New("child differs from its unfinished parent tool")
+		}
+		return true, nil
+	}
+	return false, nil
 }

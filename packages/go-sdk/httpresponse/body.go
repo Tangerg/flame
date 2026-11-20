@@ -34,7 +34,7 @@ func LimitBody(response *http.Response, mode BodyMode, maxFrameBytes int64, tooL
 
 func isEventStream(response *http.Response) bool {
 	mediaType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
-	return response.StatusCode >= 200 && response.StatusCode < 300 && err == nil && strings.EqualFold(mediaType, "text/event-stream")
+	return response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices && err == nil && strings.EqualFold(mediaType, "text/event-stream")
 }
 
 func validateFrameLimit(maxFrameBytes int64, tooLarge error) {

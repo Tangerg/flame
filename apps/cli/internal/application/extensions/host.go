@@ -154,9 +154,6 @@ func (h *Host) statusLocked(id string) Status {
 // Affected returns id and its transitive dependents in stable load order. An
 // adapter uses it to retire provider-owned work before reload or unload.
 func (h *Host) Affected(id string) ([]string, error) {
-	if h == nil {
-		return nil, errors.New("extensions: host is required")
-	}
 	h.stateMu.RLock()
 	defer h.stateMu.RUnlock()
 	if h.phase == hostClosed {

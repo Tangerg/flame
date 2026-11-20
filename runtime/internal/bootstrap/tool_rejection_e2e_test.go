@@ -102,7 +102,7 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 				t.Fatal(err)
 			}
 			if test.planMode {
-				if _, err := stores.ApprovalModes.StartPlanMode(ctx, session.ID); err != nil {
+				if _, err := stores.ApprovalModes.StartPlanMode(ctx, testsupport.MustSessionID(session.ID)); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -123,7 +123,7 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 					t.Fatalf("Run failed after rejection: %+v", finished.Outcome)
 				}
 			}
-			items, err := stores.Transcript.List(ctx, session.ID)
+			items, err := stores.Transcript.List(ctx, testsupport.MustSessionID(session.ID))
 			if err != nil {
 				t.Fatal(err)
 			}

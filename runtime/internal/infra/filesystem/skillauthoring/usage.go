@@ -165,41 +165,49 @@ func activeSkillNames(ctx context.Context, root *os.Root) ([]string, error) {
 	return active, err
 }
 
+// readUsageFile reads the bounded usage metadata, refusing a file that changed
+// while it was read; an absent file is not present.
+func readUsageFile(ctx context.Context, root *os.Root) ([]byte, bool, error) {
+	file, opened, err := filesystem.OpenFileAt(root, usageFile, maxUsageMetadataBytes)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		return nil, false, nil
+	case errors.Is(err, filesystem.ErrNotRegular):
+		return nil, false, fmt.Errorf("skillauthoring: usage metadata admission: %w", err)
+	case errors.Is(err, filesystem.ErrFileTooLarge):
+		return nil, false, fmt.Errorf("%w: metadata admission: %w", skills.ErrUsageTooLarge, err)
+	case err != nil:
+		return nil, false, fmt.Errorf("skillauthoring: open usage: %w", err)
+	}
+	contextReader, err := capture.NewReader(ctx, file)
+	if err != nil {
+		return nil, false, errors.Join(err, file.Close())
+	}
+	data, readErr := io.ReadAll(io.LimitReader(contextReader, maxUsageMetadataBytes+1))
+	verifyErr := filesystem.VerifyAtVersion(file, opened, root, usageFile)
+	closeErr := file.Close()
+	if readErr != nil || closeErr != nil {
+		return nil, false, fmt.Errorf("skillauthoring: read usage: %w", errors.Join(readErr, verifyErr, closeErr))
+	}
+	if len(data) > maxUsageMetadataBytes {
+		return nil, false, fmt.Errorf("%w: exceeds %d bytes", skills.ErrUsageTooLarge, maxUsageMetadataBytes)
+	}
+	if verifyErr != nil {
+		return nil, false, fmt.Errorf("skillauthoring: read usage: %w", verifyErr)
+	}
+	return data, true, nil
+}
+
 func readUsage(ctx context.Context, root *os.Root) (map[string]usageRecord, error) {
 	if err := contextError(ctx, "read skill usage"); err != nil {
 		return nil, err
 	}
-	file, opened, err := filesystem.OpenFileAt(root, usageFile, maxUsageMetadataBytes)
-	if errors.Is(err, os.ErrNotExist) {
+	data, present, err := readUsageFile(ctx, root)
+	if err != nil {
+		return nil, err
+	}
+	if !present {
 		return map[string]usageRecord{}, nil
-	}
-	if errors.Is(err, filesystem.ErrNotRegular) {
-		return nil, fmt.Errorf("skillauthoring: usage metadata admission: %w", err)
-	}
-	if errors.Is(err, filesystem.ErrFileTooLarge) {
-		return nil, fmt.Errorf("%w: metadata admission: %w", skills.ErrUsageTooLarge, err)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("skillauthoring: open usage: %w", err)
-	}
-	contextReader, err := capture.NewReader(ctx, file)
-	if err != nil {
-		return nil, errors.Join(err, file.Close())
-	}
-	data, readErr := io.ReadAll(io.LimitReader(
-		contextReader,
-		maxUsageMetadataBytes+1,
-	))
-	verifyErr := filesystem.VerifyAtVersion(file, opened, root, usageFile)
-	closeErr := file.Close()
-	if readErr != nil || closeErr != nil {
-		return nil, fmt.Errorf("skillauthoring: read usage: %w", errors.Join(readErr, verifyErr, closeErr))
-	}
-	if len(data) > maxUsageMetadataBytes {
-		return nil, fmt.Errorf("%w: exceeds %d bytes", skills.ErrUsageTooLarge, maxUsageMetadataBytes)
-	}
-	if verifyErr != nil {
-		return nil, fmt.Errorf("skillauthoring: read usage: %w", verifyErr)
 	}
 	var usage map[string]usageRecord
 	if err := json.Unmarshal(data, &usage, json.RejectUnknownMembers(true)); err != nil {

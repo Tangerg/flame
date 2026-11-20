@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -34,7 +36,11 @@ func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSess
 	if format == protocol.ExportFormatMarkdown {
 		results = sessions.ExpandedToolResults
 	}
-	result, err := s.sessions.ExportSession(ctx, request.SessionID, results)
+	sessionID, err := wireIdentity("sessionId", request.SessionID, identity.ParseSession)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.sessions.ExportSession(ctx, sessionID, results)
 	if err != nil {
 		if errors.Is(err, rundomain.ErrSessionBusy) {
 			return nil, protocol.NewFailure(protocol.ErrSessionBusy, fmt.Sprintf("session %q has a run in flight or open interrupt", request.SessionID), err)
@@ -59,7 +65,7 @@ func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSess
 		if len(document) > protocol.MaximumSessionArtifactBytes {
 			return nil, protocol.ErrExportTooLarge
 		}
-		rendered, err := s.pluginCalls.RenderSessionMarkdown(ctx, artifact.Session.ID, document)
+		rendered, err := s.pluginCalls.RenderSessionMarkdown(ctx, sessionID, document)
 		if err != nil {
 			return nil, wirePluginError(err)
 		}
@@ -83,6 +89,13 @@ func (s *Handler) ImportSession(ctx context.Context, request protocol.ImportSess
 	return &protocol.ImportSessionResponse{Session: presented}, nil
 }
 
+func (s *Handler) commitImportSession(ctx context.Context, in protocol.ImportSessionRequest, outcome atomicOutcome) error {
+	reply := outcome.sessionView(func(session *protocol.Session) any {
+		return &protocol.ImportSessionResponse{Session: session}
+	})
+	return outcome.settleRefusal(ctx, s.importSession(ctx, in, reply))
+}
+
 func (s *Handler) importSession(ctx context.Context, request protocol.ImportSessionRequest, complete operation.Reply[sessions.View]) error {
 	artifact := request.Artifact
 	if artifact.Version != protocol.SessionArtifactVersion {
@@ -99,7 +112,7 @@ func (s *Handler) importSession(ctx context.Context, request protocol.ImportSess
 	if errors.Is(err, sessions.ErrInvalidPortableSnapshot) || errors.Is(err, transcript.ErrIdentityConflict) || errors.Is(err, transcript.ErrToolResultIdentityConflict) {
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	}
-	return wireSessionMutationErr(err, artifact.Session.ID)
+	return wireSessionMutationErr(err, portable.Session.ID)
 }
 
 func validatePortableSize(artifact protocol.SessionArtifact) error {

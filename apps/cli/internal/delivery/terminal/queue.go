@@ -224,7 +224,7 @@ func (r *runs) retryAuthoringSettlement(slot operationSlot, settle func() error,
 		return
 	}
 	sessionID := r.session.current.ID
-	r.tasks.operations.GoSessionSettlement(slot, false, func(ctx context.Context, lease operationLease) {
+	r.tasks.operations.GoSessionSettlement(slot, func(ctx context.Context, lease operationLease) {
 		for failures := 1; ; failures++ {
 			if err := runtimeRecoveryBackoff.Wait(ctx, failures); err != nil {
 				return

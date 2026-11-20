@@ -91,7 +91,7 @@ type ToolResultOffload struct {
 // scopes the ID because forks preserve IDs already embedded in model messages.
 type ToolResultBlob struct {
 	ID        ToolResultID
-	SessionID string
+	SessionID identity.SessionID
 	Body      string
 	CreatedAt time.Time
 }
@@ -101,7 +101,7 @@ func (b ToolResultBlob) Validate() error {
 	if err := b.ID.Validate(); err != nil {
 		errs = append(errs, err)
 	}
-	if err := identity.ValidateSession(b.SessionID); err != nil {
+	if err := b.SessionID.Validate(); err != nil {
 		errs = append(errs, fmt.Errorf("transcript: tool result: %w", err))
 	}
 	if b.Body == "" {

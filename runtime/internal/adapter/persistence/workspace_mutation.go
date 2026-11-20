@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -109,7 +111,7 @@ func (s *WorkspaceMutationStore) Complete(ctx context.Context, m sessions.Worksp
 	return nil
 }
 
-func (s *WorkspaceMutationStore) SessionPending(ctx context.Context, sessionID string) (bool, error) {
+func (s *WorkspaceMutationStore) SessionPending(ctx context.Context, sessionID identity.SessionID) (bool, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) (bool, error) {
 		var pending bool
 		err := s.db.connection(ctx).QueryRowContext(ctx,
@@ -160,10 +162,10 @@ func (s *WorkspaceMutationStore) ListPending(ctx context.Context) ([]sessions.Wo
 }
 
 func validateWorkspaceMutation(m sessions.WorkspaceMutation) error {
-	if err := validateSessionResource("workspace mutation", m.SessionID); err != nil {
+	if err := validateResource("workspace mutation", m.SessionID); err != nil {
 		return err
 	}
-	if err := validateRunResource("workspace mutation", m.ToRunID); err != nil {
+	if err := validateResource("workspace mutation", m.ToRunID); err != nil {
 		return err
 	}
 	if m.CWD == "" {
@@ -175,7 +177,7 @@ func validateWorkspaceMutation(m sessions.WorkspaceMutation) error {
 	return nil
 }
 
-func workspaceMutationsOverlap(leftSessionID, leftPath, rightSessionID, rightPath string) (bool, error) {
+func workspaceMutationsOverlap(leftSessionID identity.SessionID, leftPath string, rightSessionID identity.SessionID, rightPath string) (bool, error) {
 	if leftSessionID == rightSessionID {
 		return true, nil
 	}

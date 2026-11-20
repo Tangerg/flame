@@ -15,7 +15,6 @@ import (
 
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/keymap"
-	"github.com/Tangerg/oolong/ui/core/layout"
 	"github.com/Tangerg/oolong/ui/core/scene"
 	"github.com/Tangerg/oolong/ui/kit"
 )
@@ -44,7 +43,7 @@ func (p *pluginScreens) loadPluginViews() {
 		views    []pluginview.View
 		problems []error
 	}
-	p.tasks.application(pluginViewsOperation, true,
+	p.tasks.application(pluginViewsOperation,
 		func(ctx context.Context) (loaded, error) {
 			installations, err := p.service.ListPlugins(ctx)
 			if err != nil {
@@ -233,7 +232,7 @@ func (p *pluginScreens) startPluginViewAction(view pluginview.View, action proto
 		}
 	}
 	here := p.pluginViewContext()
-	p.tasks.application(pluginViewOperation, false,
+	p.tasks.application(pluginViewOperation,
 		func(ctx context.Context) (pluginview.Row, error) {
 			rows, err := p.readPluginViewRows(ctx, view, here, form)
 			if err != nil {
@@ -322,7 +321,7 @@ func (p *pluginScreens) runPluginViewAction(view pluginview.View, action protoco
 		return view.ActionRequest(action, here, row, form)
 	}
 	p.status.note(strings.ToLower(action.Title) + " · " + view.Title)
-	started := p.tasks.application(pluginViewOperation, false,
+	started := p.tasks.application(pluginViewOperation,
 		func(ctx context.Context) (struct{}, error) {
 			if view.Mutates(action) {
 				return struct{}{}, workbench.ExecuteInstalledCommand(ctx, p.service, p.workbench, intent, p.replayPolicy, prepare)
@@ -424,7 +423,7 @@ func (p *pluginScreens) openPluginViewForm(view pluginview.View, action protocol
 	}
 	dialog = newPresentationDialog(p.stack, kit.DialogConfig{Theme: p.theme, Glyphs: p.glyphs,
 		Title: title, Body: formNavigation(body.Element(), dismiss),
-		Where: layout.Placement{Width: 88, Height: formDialogHeight(body.HeightForWidth(84), len(controls), 24)},
+		Where: formDialogPlacement(standardDialogWidth, len(controls), 24, body),
 	})
 	p.dialog = dialog
 	dialog.Show()

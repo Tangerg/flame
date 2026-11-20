@@ -63,29 +63,13 @@ func registerServer(server *sdk.Server, db framesqlite.Database, store store, pa
 	if err != nil {
 		return nil, err
 	}
+	handlers := scheduleServer{db: db, store: store, coordinator: coordinator, scanner: scanner, connect: connect}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, db),
 		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
-			input := command.Input
-			return toolReceipt(ctx, db, input)
+			return toolReceipt(ctx, db, command.Input)
 		}),
-		contracts.List.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ListInput]) (wire.Page, error) {
-			input := command.Input
-			limit := pagination.DefaultLimit()
-			if input.Limit != nil {
-				var err error
-				limit, err = pagination.NewLimit(*input.Limit)
-				if err != nil {
-					return wire.Page{}, err
-				}
-			}
-			page, err := coordinator.ListPage(ctx, input.Cursor, limit)
-			rows := make([]schedule.Snapshot, len(page.Rows))
-			for i, value := range page.Rows {
-				rows[i] = value.Snapshot()
-			}
-			return wire.Page{Rows: rows, NextCursor: page.NextCursor}, err
-		}),
+		contracts.List.RegisterServer(backend, classify, handlers.list),
 		registerManagementCommands(backend, db, contracts, coordinator),
 		contracts.RunNow.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ItemInput]) (app.RunReference, error) {
 			return runNow(ctx, db, store, connect, command)
@@ -96,44 +80,73 @@ func registerServer(server *sdk.Server, db framesqlite.Database, store store, pa
 	if err := backend.BindCapability(wire.CapabilityReference, contracts.Capability); err != nil {
 		return nil, err
 	}
-	if err := backend.OnSetup(func(ctx context.Context, setup pluginmcp.Setup) (io.Closer, error) {
-		values, err := setup.Contributions()
-		if err != nil {
-			return nil, err
-		}
-		for _, value := range values {
-			if value.Export != wire.CapabilityReference || value.Background == nil {
-				continue
-			}
-			ref, err := pluginmcp.CallbackFromContext(ctx)
-			if err != nil {
-				return nil, err
-			}
-			host, close, err := connect(ctx, ref)
-			if err != nil {
-				return nil, err
-			}
-			namespace, err := host.Namespace(ctx)
-			if err == nil {
-				err = pluginstorage.CheckRuntimeTarget(ctx, db, namespace)
-			}
-			if err != nil {
-				return nil, errors.Join(err, close())
-			}
-			background, err := newBackground(ctx, db, store, scanner, host, value.ID, *value.Background, close)
-			if err != nil {
-				return nil, errors.Join(err, close())
-			}
-			return background, nil
-		}
-		return nil, nil
-	}); err != nil {
+	if err := backend.OnSetup(handlers.setup); err != nil {
 		return nil, err
 	}
 	if err := backend.Publish(); err != nil {
 		return nil, err
 	}
 	return backend, nil
+}
+
+// scheduleServer serves the schedules capability and starts its background
+// worker when Runtime activates the background contribution.
+type scheduleServer struct {
+	db          framesqlite.Database
+	store       store
+	coordinator *app.Coordinator
+	scanner     *app.Scanner
+	connect     runConnector
+}
+
+func (s scheduleServer) list(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ListInput]) (wire.Page, error) {
+	input := command.Input
+	limit, err := pagination.ParseLimit(input.Limit)
+	if err != nil {
+		return wire.Page{}, err
+	}
+	page, err := s.coordinator.ListPage(ctx, input.Cursor, limit)
+	rows := make([]schedule.Snapshot, len(page.Rows))
+	for i, value := range page.Rows {
+		rows[i] = value.Snapshot()
+	}
+	return wire.Page{Rows: rows, NextCursor: page.NextCursor}, err
+}
+
+// setup starts the background scanner for this capability's background
+// contribution, bound to the Runtime that activated it. A Runtime that is not
+// this database's target is refused rather than scheduled against.
+func (s scheduleServer) setup(ctx context.Context, setup pluginmcp.Setup) (io.Closer, error) {
+	values, err := setup.Contributions()
+	if err != nil {
+		return nil, err
+	}
+	for _, value := range values {
+		if value.Export != wire.CapabilityReference || value.Background == nil {
+			continue
+		}
+		ref, err := pluginmcp.CallbackFromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+		host, close, err := s.connect(ctx, ref)
+		if err != nil {
+			return nil, err
+		}
+		namespace, err := host.Namespace(ctx)
+		if err == nil {
+			err = pluginstorage.CheckRuntimeTarget(ctx, s.db, namespace)
+		}
+		if err != nil {
+			return nil, errors.Join(err, close())
+		}
+		background, err := newBackground(ctx, s.db, s.store, s.scanner, host, value.ID, *value.Background, close)
+		if err != nil {
+			return nil, errors.Join(err, close())
+		}
+		return background, nil
+	}
+	return nil, nil
 }
 
 type toolCommands struct {

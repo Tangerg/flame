@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -15,7 +17,7 @@ import (
 // one waiting Run tree. It combines a coherent Session snapshot with the exact
 // Pending hand-off, but owns neither persistence nor executor cleanup.
 type parkedRunTerminalization struct {
-	sessionID            string
+	sessionID            identity.SessionID
 	finishedAt           time.Time
 	outcome              rundomain.Outcome
 	detail               string
@@ -74,8 +76,8 @@ func (p parkedRunTerminalization) build() (TerminalPlan, error) {
 	return plan, nil
 }
 
-func (p parkedRunTerminalization) indexRuns() (map[string]rundomain.Run, error) {
-	runsByID := make(map[string]rundomain.Run, len(p.snapshot.Runs))
+func (p parkedRunTerminalization) indexRuns() (map[identity.RunID]rundomain.Run, error) {
+	runsByID := make(map[identity.RunID]rundomain.Run, len(p.snapshot.Runs))
 	for _, run := range p.snapshot.Runs {
 		if _, duplicate := runsByID[run.ID()]; duplicate {
 			return nil, fmt.Errorf(
@@ -93,7 +95,7 @@ func (p parkedRunTerminalization) indexRuns() (map[string]rundomain.Run, error) 
 			p.pending.RootRunID,
 		)
 	}
-	pendingRunIDs := make(map[string]struct{}, len(p.pending.Continuations))
+	pendingRunIDs := make(map[identity.RunID]struct{}, len(p.pending.Continuations))
 	for _, continuation := range p.pending.Continuations {
 		pendingRunIDs[continuation.RunID] = struct{}{}
 	}
@@ -113,7 +115,7 @@ func (p parkedRunTerminalization) indexRuns() (map[string]rundomain.Run, error) 
 }
 
 func (p parkedRunTerminalization) terminalRuns(
-	runsByID map[string]rundomain.Run,
+	runsByID map[identity.RunID]rundomain.Run,
 	messageMark int,
 ) ([]rundomain.Replacement, error) {
 	terminalRuns := make([]rundomain.Replacement, 0, len(p.pending.Continuations))
@@ -165,30 +167,30 @@ func (p parkedRunTerminalization) terminalItems() ([]transcript.Replacement, err
 // parkedInterrupt is one open interrupt and the Run whose member it binds.
 type parkedInterrupt struct {
 	open  runs.OpenInterrupt
-	runID string
+	runID identity.RunID
 }
 
 type parkedTerminalItemProjection struct {
 	owner         parkedRunTerminalization
-	interrupts    map[string]parkedInterrupt
-	pendingRunIDs map[string]struct{}
-	drained       map[string]runs.DrainedTool
+	interrupts    map[identity.ItemID]parkedInterrupt
+	pendingRunIDs map[identity.RunID]struct{}
+	drained       map[identity.ItemID]runs.DrainedTool
 	items         []transcript.Replacement
 }
 
 func newParkedTerminalItemProjection(owner parkedRunTerminalization) *parkedTerminalItemProjection {
-	runByMember := make(map[string]string, len(owner.pending.Continuations))
+	runByMember := make(map[string]identity.RunID, len(owner.pending.Continuations))
 	for _, continuation := range owner.pending.Continuations {
 		runByMember[continuation.MemberID] = continuation.RunID
 	}
-	interrupts := make(map[string]parkedInterrupt, len(owner.pending.Interrupts))
+	interrupts := make(map[identity.ItemID]parkedInterrupt, len(owner.pending.Interrupts))
 	for index, interruption := range owner.pending.Interrupts {
 		interrupts[interruption.ItemID] = parkedInterrupt{
 			open: interruption, runID: runByMember[owner.pending.Bindings[index].MemberID],
 		}
 	}
-	pendingRunIDs := make(map[string]struct{}, len(owner.pending.Continuations))
-	drained := make(map[string]runs.DrainedTool)
+	pendingRunIDs := make(map[identity.RunID]struct{}, len(owner.pending.Continuations))
+	drained := make(map[identity.ItemID]runs.DrainedTool)
 	for _, continuation := range owner.pending.Continuations {
 		pendingRunIDs[continuation.RunID] = struct{}{}
 		for _, tool := range continuation.DrainedTools {

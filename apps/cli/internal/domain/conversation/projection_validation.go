@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
@@ -123,9 +124,9 @@ func (b Block) validateLifecycle(completed bool) error {
 	return b.validateProjection()
 }
 
-// validateEnvelope checks the block vocabulary this package derives from a
-// Runtime Item: kind, status, and which projections each kind may carry.
-func (b Block) validateEnvelope(completed bool) error {
+// validateStatus admits a status the event allows for this kind: only a
+// streamed kind can be running, and a whole-only kind arrives completed.
+func (b Block) validateStatus(completed bool) error {
 	if !slices.Contains([]BlockStatus{BlockStatusRunning, BlockStatusCompleted, BlockStatusIncomplete}, b.Status) {
 		return fmt.Errorf("block %s has invalid status %q", b.ID, b.Status)
 	}
@@ -138,9 +139,17 @@ func (b Block) validateEnvelope(completed bool) error {
 	if b.Status == BlockStatusRunning && !slices.Contains([]BlockKind{BlockAssistant, BlockReasoning, BlockTool}, b.Kind) {
 		return fmt.Errorf("%s block %s cannot be running", b.Kind, b.ID)
 	}
-	wholeOnly := slices.Contains([]BlockKind{BlockUser, BlockQuestion, BlockNotice}, b.Kind)
-	if wholeOnly && b.Status != BlockStatusCompleted {
+	if slices.Contains([]BlockKind{BlockUser, BlockQuestion, BlockNotice}, b.Kind) && b.Status != BlockStatusCompleted {
 		return fmt.Errorf("%s block %s must be completed", b.Kind, b.ID)
+	}
+	return nil
+}
+
+// validateEnvelope checks the block vocabulary this package derives from a
+// Runtime Item: kind, status, and which projections each kind may carry.
+func (b Block) validateEnvelope(completed bool) error {
+	if err := b.validateStatus(completed); err != nil {
+		return err
 	}
 	if b.Kind != BlockUser && len(b.Attachments) != 0 {
 		return fmt.Errorf("%s block %s carries attachments", b.Kind, b.ID)
@@ -184,7 +193,7 @@ func (i InlineImage) Validate() error {
 	if strings.TrimSpace(i.Name) == "" {
 		problems = append(problems, errors.New("name is empty"))
 	}
-	if !strings.HasPrefix(strings.ToLower(strings.TrimSpace(i.MIMEType)), "image/") {
+	if !authoring.IsImageMediaType(i.MIMEType) {
 		problems = append(problems, errors.New("MIME type is not an image"))
 	}
 	if len(i.Data) == 0 {

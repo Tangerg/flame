@@ -140,8 +140,7 @@ func presentUnknownTool(call conversation.ToolCall) toolPresentation {
 	}
 }
 
-func toolSections(call conversation.ToolCall, output toolSection) []toolSection {
-	sections := make([]toolSection, 0, 6)
+func executionMetadata(call conversation.ToolCall) []string {
 	metadata := make([]string, 0, 3)
 	if call.Safety != "" {
 		metadata = append(metadata, "safety   "+string(call.Safety))
@@ -153,21 +152,33 @@ func toolSections(call conversation.ToolCall, output toolSection) []toolSection 
 		metadata = append(metadata, "finished "+call.FinishedAt.Format(time.RFC3339))
 	}
 	if page := call.OutputPage; page != nil {
-		metadata = append(metadata, fmt.Sprintf("output bytes [%d, %d)", page.Offset, page.NextOffset))
-		if page.ShellID != "" {
-			metadata = append(metadata, "shell    "+page.ShellID)
-		}
-		if page.Status != "" {
-			metadata = append(metadata, "process  "+page.Status)
-		}
-		if page.HasMore {
-			metadata = append(metadata, "more output remains in the original shell")
-		}
-		if page.Dropped {
-			metadata = append(metadata, "output recording failed; retained bytes are incomplete")
-		}
+		metadata = append(metadata, outputPageMetadata(*page)...)
 	}
-	if len(metadata) > 0 {
+	return metadata
+}
+
+// outputPageMetadata says which bytes of a shell's output this call shows and
+// whether the recording is complete.
+func outputPageMetadata(page builtin.CommandOutputPage) []string {
+	metadata := []string{fmt.Sprintf("output bytes [%d, %d)", page.Offset, page.NextOffset)}
+	if page.ShellID != "" {
+		metadata = append(metadata, "shell    "+page.ShellID)
+	}
+	if page.Status != "" {
+		metadata = append(metadata, "process  "+page.Status)
+	}
+	if page.HasMore {
+		metadata = append(metadata, "more output remains in the original shell")
+	}
+	if page.Dropped {
+		metadata = append(metadata, "output recording failed; retained bytes are incomplete")
+	}
+	return metadata
+}
+
+func toolSections(call conversation.ToolCall, output toolSection) []toolSection {
+	sections := make([]toolSection, 0, 6)
+	if metadata := executionMetadata(call); len(metadata) > 0 {
 		sections = append(sections, toolSection{
 			Title: "Execution", Style: toolSectionCode, Text: strings.Join(metadata, "\n"),
 		})

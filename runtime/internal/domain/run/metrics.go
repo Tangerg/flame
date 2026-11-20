@@ -75,6 +75,32 @@ func (m Metrics) Validate() error {
 
 // ValidateAdvanceFrom proves that metrics is a monotonic continuation of the
 // previous committed value.
+// retainsUnreportedModels proves every model earlier metrics could not price
+// is still attributed, and still unpriced once usage is reported.
+func (m Metrics) retainsUnreportedModels(previous []string) error {
+	if len(previous) == 0 {
+		return nil
+	}
+	if m.usage == nil {
+		for _, model := range previous {
+			if _, found := slices.BinarySearch(m.unreportedModels, model); !found {
+				return errors.New("run: unreported model attribution disappeared")
+			}
+		}
+		return nil
+	}
+	byModel := m.usage.ByModel()
+	if byModel == nil {
+		return nil
+	}
+	for _, model := range previous {
+		if part, found := byModel[model]; !found || part.Cost != (accounting.Cost{}) {
+			return errors.New("run: unreported model became priced or disappeared")
+		}
+	}
+	return nil
+}
+
 func (m Metrics) ValidateAdvanceFrom(previous Metrics) error {
 	if err := previous.Validate(); err != nil {
 		return fmt.Errorf("run: previous metrics: %w", err)
@@ -85,23 +111,8 @@ func (m Metrics) ValidateAdvanceFrom(previous Metrics) error {
 	if m.steps < previous.steps || m.activeDuration < previous.activeDuration {
 		return errors.New("run: cumulative metrics regressed")
 	}
-	if len(previous.unreportedModels) > 0 {
-		var byModel map[string]accounting.Totals
-		if m.usage != nil {
-			byModel = m.usage.ByModel()
-		}
-		for _, model := range previous.unreportedModels {
-			if m.usage == nil {
-				if _, found := slices.BinarySearch(m.unreportedModels, model); !found {
-					return errors.New("run: unreported model attribution disappeared")
-				}
-			} else if byModel != nil {
-				part, found := byModel[model]
-				if !found || part.Cost != (accounting.Cost{}) {
-					return errors.New("run: unreported model became priced or disappeared")
-				}
-			}
-		}
+	if err := m.retainsUnreportedModels(previous.unreportedModels); err != nil {
+		return err
 	}
 	switch {
 	case previous.usage != nil && m.usage == nil:

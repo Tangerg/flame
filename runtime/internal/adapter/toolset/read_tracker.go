@@ -1,6 +1,7 @@
 package toolset
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
@@ -10,7 +11,7 @@ import (
 // admitted only while the file still has that content and consumes the evidence.
 type readTracker struct {
 	mu   sync.Mutex
-	seen map[string]map[string]readStamp
+	seen map[identity.SessionID]map[string]readStamp
 }
 
 type readStamp struct {
@@ -20,14 +21,14 @@ type readStamp struct {
 type contentFingerprint [32]byte
 
 func newReadTracker() *readTracker {
-	return &readTracker{seen: map[string]map[string]readStamp{}}
+	return &readTracker{seen: map[identity.SessionID]map[string]readStamp{}}
 }
 
-func (r *readTracker) record(session, path string, fingerprint contentFingerprint) {
+func (r *readTracker) record(session identity.SessionID, path string, fingerprint contentFingerprint) {
 	r.put(session, path, readStamp{hash: fingerprint})
 }
 
-func (r *readTracker) forget(session, path string) {
+func (r *readTracker) forget(session identity.SessionID, path string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	paths := r.seen[session]
@@ -37,7 +38,7 @@ func (r *readTracker) forget(session, path string) {
 	}
 }
 
-func (r *readTracker) forgetSession(session string) {
+func (r *readTracker) forgetSession(session identity.SessionID) {
 	r.mu.Lock()
 	delete(r.seen, session)
 	r.mu.Unlock()
@@ -62,7 +63,7 @@ func (r *readTracker) forgetWorkspace(root string) {
 	}
 }
 
-func (r *readTracker) check(session, path string, current contentFingerprint) guardVerdict {
+func (r *readTracker) check(session identity.SessionID, path string, current contentFingerprint) guardVerdict {
 	st, ok := r.get(session, path)
 	if !ok {
 		return readRequired
@@ -73,7 +74,7 @@ func (r *readTracker) check(session, path string, current contentFingerprint) gu
 	return mutationAllowed
 }
 
-func (r *readTracker) put(session, path string, st readStamp) {
+func (r *readTracker) put(session identity.SessionID, path string, st readStamp) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	paths := r.seen[session]
@@ -84,7 +85,7 @@ func (r *readTracker) put(session, path string, st readStamp) {
 	paths[path] = st
 }
 
-func (r *readTracker) get(session, path string) (readStamp, bool) {
+func (r *readTracker) get(session identity.SessionID, path string) (readStamp, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	st, ok := r.seen[session][path]

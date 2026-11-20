@@ -2,7 +2,8 @@ package execution
 
 import (
 	"fmt"
-	"unicode/utf8"
+
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 )
 
 // renderToolResultPreview renders the model-facing replacement for an offloaded
@@ -25,17 +26,6 @@ func renderToolResultRangePreview(body, id string, offsetBytes, previewBytes int
 }
 
 func toolResultPreview(body, marker string, previewBytes int) string {
-	previewBytes = min(max(previewBytes, 0), len(body))
-	head := previewBytes * 3 / 4
-	tailStart := len(body) - previewBytes/4
-	for head > 0 && !utf8.RuneStart(body[head]) {
-		head--
-	}
-	for tailStart < len(body) && !utf8.RuneStart(body[tailStart]) {
-		tailStart++
-	}
-	if tailStart < head {
-		tailStart = head
-	}
+	head, tailStart := modeladapter.HeadTailCut(body, previewBytes)
 	return body[:head] + marker + body[tailStart:]
 }

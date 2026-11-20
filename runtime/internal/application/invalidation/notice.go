@@ -12,6 +12,7 @@
 package invalidation
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -70,8 +71,8 @@ func (r Resource) String() string {
 // which is the honest answer when a mutation's scope is not enumerable.
 type Notice struct {
 	Resource   Resource
-	SessionIDs []string
-	RunIDs     []string
+	SessionIDs []identity.SessionID
+	RunIDs     []identity.RunID
 	Servers    []mcpserver.ID
 }
 
@@ -85,13 +86,13 @@ func (n Notice) Clone() Notice {
 
 // InSession is the notice for a resource that moved inside one session, optionally
 // naming the runs involved.
-func InSession(resource Resource, sessionID string, runIDs ...string) Notice {
+func InSession(resource Resource, sessionID identity.SessionID, runIDs ...identity.RunID) Notice {
 	return Notice{Resource: resource, SessionIDs: sessionIDs(sessionID), RunIDs: slices.Clone(runIDs)}
 }
 
 // InSessions is the notice for a resource that moved in several sessions at
 // once, such as a bulk lifecycle mutation.
-func InSessions(resource Resource, ids ...string) Notice {
+func InSessions(resource Resource, ids ...identity.SessionID) Notice {
 	return Notice{Resource: resource, SessionIDs: slices.Clone(ids)}
 }
 
@@ -100,11 +101,11 @@ func ForMCP(servers ...mcpserver.ID) Notice {
 	return Notice{Resource: MCP, Servers: slices.Clone(servers)}
 }
 
-func sessionIDs(id string) []string {
-	if id == "" {
+func sessionIDs(id identity.SessionID) []identity.SessionID {
+	if id.IsZero() {
 		return nil
 	}
-	return []string{id}
+	return []identity.SessionID{id}
 }
 
 // Publish hands a use case's notices to the Runtime change stream. Every

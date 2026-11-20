@@ -22,15 +22,15 @@ var ErrSessionBusy = errors.New("run: session busy")
 // Outcome accrue afterward. Executor recovery handles do not belong on the Run
 // row; a parked interrupt records its opaque executor member identity when known.
 type Draft struct {
-	RunID           string
-	SessionID       string
-	SpawnedByItemID string
-	ParentRunID     string
-	RootRunID       string
+	RunID           identity.RunID
+	SessionID       identity.SessionID
+	SpawnedByItemID identity.ItemID
+	ParentRunID     identity.RunID
+	RootRunID       identity.RunID
 	// SegmentID is the first segment this Run opens with. Admission records it
 	// with the Run, because a Running Run without the segment driving it is a Run
 	// nothing can attach to.
-	SegmentID      string
+	SegmentID      identity.SegmentID
 	ModelSelection modelchoice.Selection
 	// GoalIncarnationID is the autonomous-goal incarnation that admitted this root
 	// Run. It is durable admission provenance so crash recovery can terminalize
@@ -47,14 +47,14 @@ type Draft struct {
 
 // Validate checks the complete fresh Run value before it enters the lifecycle.
 func (d Draft) Validate() error {
-	if err := identity.ValidateRun(d.RunID); err != nil {
+	if err := d.RunID.Validate(); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
-	if err := identity.ValidateSession(d.SessionID); err != nil {
+	if err := d.SessionID.Validate(); err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
-	if err := identity.ValidateSegment(d.SegmentID); err != nil {
-		return fmt.Errorf("run: opening %w", err)
+	if d.SegmentID.IsZero() {
+		return errors.New("run: opening Segment is required")
 	}
 	if _, _, err := goalref.ParseOptionalIncarnation(d.GoalIncarnationID); err != nil {
 		return fmt.Errorf("run: %w", err)

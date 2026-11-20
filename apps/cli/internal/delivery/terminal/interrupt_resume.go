@@ -139,10 +139,10 @@ func (r *runs) restoreRejectedInterruptReview(review *interruptReview, command c
 			return errors.Join(failure, fmt.Errorf("release refused interrupt decisions: %w", err))
 		}
 	}
-	r.execution.following = false
+	r.execution.stopFollowing()
 	if r.session.invalidated {
 		r.status.note("resume refused · refreshing session")
-		r.sessions.refreshInvalidatedSession(false)
+		r.sessions.refreshInvalidatedSession(refreshAfterChange)
 		return nil
 	}
 	r.status.note("resume refused · review preserved")

@@ -39,6 +39,15 @@ func readTool[P, R any](name, description string, read func(context.Context, P) 
 	})
 }
 
+// The Tool names the model sees, and the capability export the Runtime binds.
+const (
+	searchTool       = "web_search"
+	fetchTool        = "web_fetch"
+	browseTool       = "web_browse"
+	requestTool      = "http_request"
+	capabilityExport = "web"
+)
+
 func newServer(research *research, requests *requests) (*sdk.Server, error) {
 	if research == nil || requests == nil {
 		return nil, errors.New("web: research and request owners are required")
@@ -52,19 +61,36 @@ func newServer(research *research, requests *requests) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	search, err := readTool("web_search", contracts.Search.Descriptor().Description, research.searchWeb)
+	tools, err := webTools(contracts, research, requests)
 	if err != nil {
 		return nil, err
 	}
-	fetch, err := readTool("web_fetch", contracts.Fetch.Descriptor().Description, research.fetchPage)
+	if err := pluginsdk.RegisterTools(server, tools...); err != nil {
+		return nil, err
+	}
+	if err := registerMethods(backend, contracts, research, requests); err != nil {
+		return nil, err
+	}
+	if err := backend.Publish(); err != nil {
+		return nil, err
+	}
+	return server, nil
+}
+
+func webTools(contracts rpc.Contracts, research *research, requests *requests) ([]tool.Tool, error) {
+	search, err := readTool(searchTool, contracts.Search.Descriptor().Description, research.searchWeb)
 	if err != nil {
 		return nil, err
 	}
-	browse, err := readTool("web_browse", contracts.Browse.Descriptor().Description, research.browse)
+	fetch, err := readTool(fetchTool, contracts.Fetch.Descriptor().Description, research.fetchPage)
 	if err != nil {
 		return nil, err
 	}
-	request, err := tool.NewFunc(tool.FuncConfig{Name: "http_request", Description: contracts.Request.Descriptor().Description}, func(ctx context.Context, _ httpreq.Request) (wire.HTTPResponse, error) {
+	browse, err := readTool(browseTool, contracts.Browse.Descriptor().Description, research.browse)
+	if err != nil {
+		return nil, err
+	}
+	request, err := tool.NewFunc(tool.FuncConfig{Name: requestTool, Description: contracts.Request.Descriptor().Description}, func(ctx context.Context, _ httpreq.Request) (wire.HTTPResponse, error) {
 		id, err := pluginsdk.ToolCommandID(ctx)
 		if err != nil {
 			return wire.HTTPResponse{}, err
@@ -79,14 +105,15 @@ func newServer(research *research, requests *requests) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := pluginsdk.RegisterTools(server, search, fetch, browse, request); err != nil {
-		return nil, err
-	}
+	return []tool.Tool{search, fetch, browse, request}, nil
+}
+
+func registerMethods(backend *pluginmcp.Backend, contracts rpc.Contracts, research *research, requests *requests) error {
 	toolReceipts, err := pluginsdk.ToolReceiptQuery()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if err := errors.Join(
+	return errors.Join(
 		pluginstorage.RegisterReceipts(backend, requests.db),
 		contracts.Request.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[httpreq.Request]) (wire.HTTPResponse, error) {
 			input, err := command.RequestInput()
@@ -97,7 +124,7 @@ func newServer(research *research, requests *requests) (*sdk.Server, error) {
 		}),
 		toolReceipts.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
 			input := command.Input
-			if input.Method != "http_request" {
+			if input.Method != requestTool {
 				return pluginsdk.ToolReceipt{}, nil
 			}
 			input.Method = contracts.Request.Name()
@@ -112,12 +139,6 @@ func newServer(research *research, requests *requests) (*sdk.Server, error) {
 		contracts.Browse.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.BrowseInput]) (capture.Page, error) {
 			return research.browse(ctx, command.Input)
 		}),
-		backend.BindCapability("web", contracts.Capability),
-	); err != nil {
-		return nil, err
-	}
-	if err := backend.Publish(); err != nil {
-		return nil, err
-	}
-	return server, nil
+		backend.BindCapability(capabilityExport, contracts.Capability),
+	)
 }

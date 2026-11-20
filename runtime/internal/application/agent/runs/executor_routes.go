@@ -4,8 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -19,9 +20,9 @@ import (
 type executorRoute struct {
 	member      ExecutorMember
 	memberBound bool
-	runID       string
-	segmentID   string
-	rootRunID   string
+	runID       identity.RunID
+	segmentID   identity.SegmentID
+	rootRunID   identity.RunID
 	lineage     rundomain.Lineage
 	reducer     *reducer
 	// resumed is the Replacement that reopens this parked Run; nil for a Run
@@ -32,12 +33,9 @@ type executorRoute struct {
 }
 
 type executorRoutes struct {
-	// admission is the fresh root's Draft; nil when the tree resumes. The root
-	// reducer's opened Run is admitted from this same value.
-	admission      *rundomain.Draft
 	root           *executorRoute
 	byMember       map[string]*executorRoute
-	byRunID        map[string]*executorRoute
+	byRunID        map[identity.RunID]*executorRoute
 	admissionOrder []*executorRoute
 }
 
@@ -60,16 +58,7 @@ func (c *Segments) rootExecutorRoutes(spec segmentSpec, opening rootOpening) (*e
 		opening.ConversationInput.Role != corechat.RoleUser || opening.ConversationInput.Validate() != nil) {
 		return nil, errors.New("runs: fresh root requires its exact composed conversation input")
 	}
-	admission := rundomain.Draft{
-		RunID:             spec.RunID,
-		SessionID:         spec.SessionID,
-		SegmentID:         spec.SegmentID,
-		ModelSelection:    opening.ModelSelection,
-		GoalIncarnationID: opening.GoalIncarnationID,
-		Capabilities:      opening.Capabilities,
-		CreatedAt:         opening.CreatedAt,
-	}
-	opened, err := rundomain.Admit(admission)
+	opened, err := rundomain.Admit(opening.draft(spec))
 	if err != nil {
 		return nil, fmt.Errorf("runs: admit root: %w", err)
 	}
@@ -84,10 +73,9 @@ func (c *Segments) rootExecutorRoutes(spec segmentSpec, opening rootOpening) (*e
 		}),
 	}
 	return &executorRoutes{
-		admission:      &admission,
 		root:           root,
 		byMember:       make(map[string]*executorRoute),
-		byRunID:        map[string]*executorRoute{root.runID: root},
+		byRunID:        map[identity.RunID]*executorRoute{root.runID: root},
 		admissionOrder: []*executorRoute{root},
 	}, nil
 }
@@ -105,9 +93,9 @@ func (c *Segments) resumedExecutorRoutes(spec segmentSpec, resumption treeResump
 		resumedAt:    c.publications.nowUTC(),
 		routes: &executorRoutes{
 			byMember: make(map[string]*executorRoute, len(continuation.continuations)),
-			byRunID:  make(map[string]*executorRoute, len(continuation.continuations)),
+			byRunID:  make(map[identity.RunID]*executorRoute, len(continuation.continuations)),
 		},
-		segmentIDs: map[string]struct{}{spec.SegmentID: {}},
+		segmentIDs: map[identity.SegmentID]struct{}{spec.SegmentID: {}},
 	}
 	return builder.build()
 }
@@ -128,7 +116,7 @@ func validateResumedRouteRequest(spec segmentSpec, continuation *treeContinuatio
 			continuation.rootRunID,
 		)
 	}
-	if spec.SegmentID == "" {
+	if spec.SegmentID.IsZero() {
 		return errors.New("runs: resumed root segment id is required")
 	}
 	return nil
@@ -141,12 +129,12 @@ func validateResumedRouteRequest(spec segmentSpec, continuation *treeContinuatio
 type resumedRouteBuilder struct {
 	spec         segmentSpec
 	resumption   treeResumption
-	newSegmentID func() string
+	newSegmentID func() identity.SegmentID
 	now          func() time.Time
 	// resumedAt is the one opening time every Run in the tree resumes at.
 	resumedAt  time.Time
 	routes     *executorRoutes
-	segmentIDs map[string]struct{}
+	segmentIDs map[identity.SegmentID]struct{}
 }
 
 func (r *resumedRouteBuilder) build() (*executorRoutes, error) {
@@ -168,6 +156,27 @@ func (r *resumedRouteBuilder) build() (*executorRoutes, error) {
 		return nil, err
 	}
 	return r.routes, nil
+}
+
+// restoreSegment continues the parked Segment itself: its Items keep their
+// identities and its open Tool attempts wait for the executor to replay them.
+func (r *resumedRouteBuilder) restoreSegment(reducer *reducer, runID identity.RunID, segmentID identity.SegmentID) error {
+	var ids []identity.ItemID
+	for _, item := range r.resumption.Continuation.items {
+		if item.RunID() == runID {
+			ids = append(ids, item.ID())
+		}
+	}
+	if err := reducer.itemIDs.Restore(ids); err != nil {
+		return err
+	}
+	reducer.restoredToolAttempts = make(map[string]OpenToolInvocation)
+	for _, attempt := range r.resumption.toolAttempts {
+		if attempt.RunID == runID && attempt.SegmentID == segmentID {
+			reducer.restoredToolAttempts[attempt.CallID] = attempt
+		}
+	}
+	return nil
 }
 
 func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executorRoute, error) {
@@ -201,38 +210,20 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 		UserInput: userInput, Continuation: r.resumption.Continuation, Now: r.now,
 	})
 	if r.spec.restoresSegments() {
-		var ids []string
-		for _, item := range r.resumption.Continuation.items {
-			if item.RunID() == opened.ID() {
-				ids = append(ids, item.ID())
-			}
-		}
-		if err := reducer.itemIDs.Restore(ids); err != nil {
+		if err := r.restoreSegment(reducer, opened.ID(), segmentID); err != nil {
 			return nil, err
-		}
-		reducer.restoredToolAttempts = make(map[string]OpenToolInvocation)
-		for _, attempt := range r.resumption.toolAttempts {
-			if attempt.RunID == opened.ID() && attempt.SegmentID == segmentID {
-				reducer.restoredToolAttempts[attempt.CallID] = attempt
-			}
 		}
 	}
 	for _, recovered := range r.resumption.Continuation.recoveredTools {
 		if recovered.Invocation.RunID != opened.ID() {
 			continue
 		}
-		if recovered.Invocation.SegmentID != segmentID || recovered.Invocation.CallID != recovered.Start.CallID {
+		if recovered.Invocation.SegmentID != segmentID {
 			return nil, errors.New("runs: recovered Tool changed its owner")
 		}
-		if _, err := reducer.toolStart(recovered.Start); err != nil {
+		if err := reducer.adoptToolAttempt(recovered.Start, recovered.Invocation); err != nil {
 			return nil, err
 		}
-		ref, _ := reducer.tools.get(recovered.Start.CallID)
-		if ref.item.ID() != recovered.Invocation.ItemID {
-			return nil, errors.New("runs: recovered Tool changed its Item")
-		}
-		ref.attemptStartedAt = recovered.Invocation.StartedAt
-		delete(reducer.restoredToolAttempts, recovered.Start.CallID)
 	}
 	return &executorRoute{
 		member:      member,
@@ -246,11 +237,11 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 	}, nil
 }
 
-func (r *resumedRouteBuilder) segmentIDFor(runID string) (string, error) {
+func (r *resumedRouteBuilder) segmentIDFor(runID identity.RunID) (identity.SegmentID, error) {
 	if r.spec.restoresSegments() {
 		value, found := r.resumption.Continuation.run(runID)
 		if !found || value.State() != rundomain.Running {
-			return "", errors.New("runs: accepted member is not running")
+			return identity.SegmentID{}, errors.New("runs: accepted member is not running")
 		}
 		return value.ActiveSegmentID(), nil
 	}
@@ -259,14 +250,14 @@ func (r *resumedRouteBuilder) segmentIDFor(runID string) (string, error) {
 	}
 	segmentID := r.newSegmentID()
 	if _, duplicate := r.segmentIDs[segmentID]; duplicate {
-		return "", fmt.Errorf("runs: resumed tree generated duplicate segment %q", segmentID)
+		return identity.SegmentID{}, fmt.Errorf("runs: resumed tree generated duplicate segment %q", segmentID)
 	}
 	r.segmentIDs[segmentID] = struct{}{}
 	return segmentID, nil
 }
 
 func (r *resumedRouteBuilder) orderRoutesPreorder() error {
-	childrenByParentRunID := make(map[string][]*executorRoute, len(r.routes.byRunID))
+	childrenByParentRunID := make(map[identity.RunID][]*executorRoute, len(r.routes.byRunID))
 	for _, route := range r.routes.byRunID {
 		if route != r.routes.root {
 			childrenByParentRunID[route.lineage.ParentRunID()] = append(
@@ -277,7 +268,7 @@ func (r *resumedRouteBuilder) orderRoutesPreorder() error {
 	}
 	for parentRunID := range childrenByParentRunID {
 		slices.SortFunc(childrenByParentRunID[parentRunID], func(left, right *executorRoute) int {
-			return strings.Compare(left.runID, right.runID)
+			return left.runID.Compare(right.runID)
 		})
 	}
 	var appendPreorder func(*executorRoute)
@@ -300,7 +291,7 @@ func (e *executorRoutes) unfinishedInPostorder() ([]*executorRoute, error) {
 	if e == nil || e.root == nil {
 		return nil, errors.New("runs: executor routes have no root")
 	}
-	byRunID := make(map[string]*executorRoute, len(e.admissionOrder))
+	byRunID := make(map[identity.RunID]*executorRoute, len(e.admissionOrder))
 	members := make([]rundomain.TreeMember, 0, len(e.admissionOrder))
 	for _, route := range e.admissionOrder {
 		if route == nil {
@@ -486,10 +477,10 @@ func (e *executorRoutes) abortUnfinished(cause error) {
 // from becoming cross-Run transcript corruption.
 func validateRouteReductionBatch(
 	route *executorRoute,
-	sessionID string,
+	sessionID identity.SessionID,
 	batch reductionBatch,
 ) error {
-	if route.runID == "" || route.segmentID == "" {
+	if route.runID.IsZero() || route.segmentID.IsZero() {
 		return fmt.Errorf("%w: executor route has incomplete run or segment identity", errReducerInvariant)
 	}
 	if err := route.lineage.Validate(route.runID); err != nil {
@@ -509,7 +500,7 @@ func validateRouteReductionBatch(
 	return nil
 }
 
-func validateRouteCommit(route *executorRoute, sessionID string, commit *EventCommit) error {
+func validateRouteCommit(route *executorRoute, sessionID identity.SessionID, commit *EventCommit) error {
 	if commit == nil {
 		return nil
 	}
@@ -537,7 +528,7 @@ func validateRouteCommit(route *executorRoute, sessionID string, commit *EventCo
 	return nil
 }
 
-func validateRoutedEvent(route *executorRoute, sessionID string, routed ProjectionEvent) error {
+func validateRoutedEvent(route *executorRoute, sessionID identity.SessionID, routed ProjectionEvent) error {
 	if routed == nil {
 		return fmt.Errorf("%w: route %q carries a nil event", errReducerInvariant, route.runID)
 	}
@@ -569,21 +560,22 @@ func validateRoutedEvent(route *executorRoute, sessionID string, routed Projecti
 	return nil
 }
 
-func validateRouteItemStart(route *executorRoute, sessionID string, item ItemStart) error {
-	if item.RunID != route.runID || item.SessionID != sessionID {
+func validateRouteItemStart(route *executorRoute, sessionID identity.SessionID, item ItemStart) error {
+	started := item.Identity()
+	if started.RunID != route.runID || started.SessionID != sessionID {
 		return fmt.Errorf(
 			"%w: route %q carries Item start %q for run %q in session %q",
 			errReducerInvariant,
 			route.runID,
-			item.ItemID,
-			item.RunID,
-			item.SessionID,
+			started.ItemID,
+			started.RunID,
+			started.SessionID,
 		)
 	}
-	return item.validate()
+	return nil
 }
 
-func validateRouteRun(route *executorRoute, sessionID string, value rundomain.Run) error {
+func validateRouteRun(route *executorRoute, sessionID identity.SessionID, value rundomain.Run) error {
 	if value.ID() != route.runID ||
 		value.SessionID() != sessionID ||
 		value.Lineage() != route.lineage {
@@ -610,7 +602,7 @@ func validateRouteRun(route *executorRoute, sessionID string, value rundomain.Ru
 	return nil
 }
 
-func validateRouteItem(route *executorRoute, sessionID string, item transcript.Item) error {
+func validateRouteItem(route *executorRoute, sessionID identity.SessionID, item transcript.Item) error {
 	if item.RunID() != route.runID || item.SessionID() != sessionID {
 		return fmt.Errorf(
 			"%w: route %q carries item %q for run %q in session %q",
@@ -712,6 +704,29 @@ func (c *Segments) prepareChildStart(
 
 // The Runtime admission clock owns the product Run time. The route remains
 // invisible until its opening and the executor tree commit together.
+// openingEvents commits the parent's spawning Item with the child's opening
+// projections; an opening may not finish, park or nudge anything.
+func (p *preparedChildStart) openingEvents(sessionID identity.SessionID, projected reductionBatch) ([]EventCommit, error) {
+	if len(projected.events) == 0 || projected.parkCommit != nil {
+		return nil, fmt.Errorf("runs: child member %q produced an invalid opening batch", p.member.MemberID)
+	}
+	events := []EventCommit{{
+		RunID:     p.parent.runID,
+		SessionID: sessionID,
+		SegmentID: p.parent.segmentID,
+		Items:     NewItemWrites(p.spawningItem),
+	}}
+	for _, reduced := range projected.events {
+		if reduced.Event.Terminal() || reduced.Nudge != nil {
+			return nil, fmt.Errorf("runs: child member %q produced an invalid opening event", p.member.MemberID)
+		}
+		if reduced.Commit != nil {
+			events = append(events, *reduced.Commit)
+		}
+	}
+	return events, nil
+}
+
 func (c *Segments) finalizeChildOpening(
 	spec segmentSpec,
 	prepared *preparedChildStart,
@@ -742,22 +757,9 @@ func (c *Segments) finalizeChildOpening(
 	if err != nil {
 		return fmt.Errorf("runs: reduce child member %q opening: %w", prepared.member.MemberID, err)
 	}
-	if len(projected.events) == 0 || projected.parkCommit != nil {
-		return fmt.Errorf("runs: child member %q produced an invalid opening batch", prepared.member.MemberID)
-	}
-	events := []EventCommit{{
-		RunID:     prepared.parent.runID,
-		SessionID: spec.SessionID,
-		SegmentID: prepared.parent.segmentID,
-		Items:     NewItemWrites(prepared.spawningItem),
-	}}
-	for _, reduced := range projected.events {
-		if reduced.Event.Terminal() || reduced.Nudge != nil {
-			return fmt.Errorf("runs: child member %q produced an invalid opening event", prepared.member.MemberID)
-		}
-		if reduced.Commit != nil {
-			events = append(events, *reduced.Commit)
-		}
+	events, err := prepared.openingEvents(spec.SessionID, projected)
+	if err != nil {
+		return err
 	}
 	if err := validateRouteReductionBatch(child, spec.SessionID, projected); err != nil {
 		return err

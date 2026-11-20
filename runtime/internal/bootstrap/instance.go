@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"runtime/debug"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 
@@ -59,12 +61,9 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	}()
 	cfg.DataDirectory = directory.directory
 
-	buildID := cfg.BuildID
-	if buildID == "" {
-		buildID, err = ExecutableBuildID()
-		if err != nil {
-			return nil, config.Settings{}, err
-		}
+	buildID, err := cfg.buildID()
+	if err != nil {
+		return nil, config.Settings{}, err
 	}
 	settings, err := config.Load(cfg.ConfigDirectories)
 	if err != nil {
@@ -82,21 +81,15 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 		}
 	}()
 
-	if err = seedConfiguredProvider(ctx, stores.Providers, settings); err != nil {
-		return nil, config.Settings{}, err
-	}
-	providers, err := providerRegistry(stores.Providers, settings)
+	providers, err := seedSettings(ctx, stores, settings)
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
-	if err = seedUtilityRole(ctx, stores.UtilityRole, settings); err != nil {
-		return nil, config.Settings{}, err
-	}
-	processRunner, err := runner.NewDaemon(runner.DaemonConfig{Executable: cfg.RunnerExecutable, Directory: filepath.Join(cfg.DataDirectory, "runner"), StartTimeout: 10 * time.Second})
+	processRunner, err := runner.NewDaemon(runner.DaemonConfig{Executable: cfg.RunnerExecutable, Directory: filepath.Join(cfg.DataDirectory, "runner"), StartTimeout: runnerStartTimeout})
 	if err != nil {
 		return nil, config.Settings{}, err
 	}
-	assemblyConfig := composeConfig(settings, stores, nil, providers, buildID)
+	assemblyConfig := composeConfig(settings, stores, providers, buildID)
 	assemblyConfig.processRunner = processRunner
 	assemblyConfig.firstPartyDirectory = cfg.FirstPartyDirectory
 	// Resources close in reverse acquisition order. The directory must remain
@@ -125,45 +118,95 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 			err = errors.Join(err, host.Close())
 		}
 	}()
-	if err = host.application.recoverStartup(ctx); err != nil {
+	if err := host.start(ctx, runtimeContext, stopRuntime, cfg.serverInfo(), idempotencyNamespace, directory.validate); err != nil {
 		return nil, config.Settings{}, err
 	}
-
-	serverInfo := cfg.ServerInfo
-	serverInfo.InstanceID = delivery.NewInstanceID()
-	if serverInfo.Name == "" {
-		serverInfo.Name = identity.ProductName
-	}
-	if serverInfo.Version == "" {
-		serverInfo.Version = "dev"
-	}
-	serverInfo.Home = cfg.UserHome
-	serverInfo.DefaultWorkspace = protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}
-	endpoint, err := host.application.newDeliveryEndpoint(
-		runtimeContext,
-		serverInfo,
-		idempotencyNamespace,
-		directory.validate,
-	)
-	if err != nil {
-		return nil, config.Settings{}, err
-	}
-	host.lifetime.delivery = endpoint
-	host.lifetime.stopRuntime = stopRuntime
-	// The delivery endpoint published the callback RPC, so background plugins can
-	// now activate; only now may uncertain-execution revival query their sessions.
-	if err = host.application.recoverUncertainExecutions(ctx); err != nil && !startupRecoveryDeferred(err) {
-		return nil, config.Settings{}, err
-	}
-	workerJoins := host.application.startWorkers(runtimeContext)
-
-	host.serverInfo = serverInfo
 	host.stores = stores
-	host.lifetime.recoveryDone = workerJoins.recovery
 
 	runtimeOwned = false
 	hostOwned = false
 	return host, settings, nil
+}
+
+func (c InstanceConfig) buildID() (string, error) {
+	if c.BuildID != "" {
+		return c.BuildID, nil
+	}
+	return ExecutableBuildID()
+}
+
+// start recovers durable work, opens delivery and starts the workers, in the
+// order each step needs the previous one.
+func (h *Instance) start(ctx, runtimeContext context.Context, stopRuntime context.CancelFunc, serverInfo protocol.ServerInfo, idempotencyNamespace string, validateDirectory func() error) error {
+	if err := h.application.recoverStartup(ctx); err != nil {
+		return err
+	}
+	endpoint, err := h.application.newDeliveryEndpoint(runtimeContext, serverInfo, idempotencyNamespace, validateDirectory)
+	if err != nil {
+		return err
+	}
+	h.lifetime.delivery = endpoint
+	h.lifetime.stopRuntime = stopRuntime
+	// The delivery endpoint published the callback RPC, so background plugins can
+	// now activate; only now may uncertain-execution revival query their sessions.
+	if err := h.application.recoverUncertainExecutions(ctx); err != nil && !startupRecoveryDeferred(err) {
+		return err
+	}
+	workerJoins := h.application.startWorkers(runtimeContext)
+	h.serverInfo = serverInfo
+	h.lifetime.recoveryDone = workerJoins.recovery
+	return nil
+}
+
+// runnerStartTimeout bounds how long startup waits for the sandbox runner
+// daemon before failing instead of hanging.
+const runnerStartTimeout = 10 * time.Second
+
+// developmentVersion names a build that was not stamped with a release.
+const developmentVersion = "dev"
+
+// unstampedModuleVersion is Go's build-info placeholder for a main module
+// built from a working tree rather than a tagged module.
+const unstampedModuleVersion = "(devel)"
+
+// BuildVersion is this binary's module version, or developmentVersion for a
+// local build.
+func BuildVersion() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok || info.Main.Version == "" || info.Main.Version == unstampedModuleVersion {
+		return developmentVersion
+	}
+	return info.Main.Version
+}
+
+// seedSettings applies configured providers and roles to the store and
+// returns the provider registry they define.
+func seedSettings(ctx context.Context, stores *persistence.Bundle, settings config.Settings) (models.ProviderRegistry, error) {
+	if err := seedConfiguredProvider(ctx, stores.Providers, settings); err != nil {
+		return nil, err
+	}
+	providers, err := providerRegistry(stores.Providers, settings)
+	if err != nil {
+		return nil, err
+	}
+	if err := seedUtilityRole(ctx, stores.UtilityRole, settings); err != nil {
+		return nil, err
+	}
+	return providers, nil
+}
+
+func (i InstanceConfig) serverInfo() protocol.ServerInfo {
+	info := i.ServerInfo
+	info.InstanceID = delivery.NewInstanceID()
+	if info.Name == "" {
+		info.Name = identity.ProductName
+	}
+	if info.Version == "" {
+		info.Version = BuildVersion()
+	}
+	info.Home = i.UserHome
+	info.DefaultWorkspace = protocol.WorkspaceRef{Path: i.DefaultWorkspacePath}
+	return info
 }
 
 func (i InstanceConfig) validate() error {

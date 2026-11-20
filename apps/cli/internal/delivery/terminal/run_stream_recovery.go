@@ -76,7 +76,7 @@ func (s *streamFollower) restoreAttachedSession(sessionID string) (runworkflow.R
 		}
 		if runworkflow.RecoveryRequired(err) {
 			s.failures++
-			if !s.postRetryStatus(false) || runtimeRecoveryBackoff.Wait(s.ctx, s.failures) != nil {
+			if !s.postRetryStatus(awaitingReconnect) || runtimeRecoveryBackoff.Wait(s.ctx, s.failures) != nil {
 				return runworkflow.Recovery{}, false
 			}
 			continue
@@ -136,7 +136,7 @@ func (s *streamFollower) postOpenAccepted(opened conversation.SegmentStream) str
 func (s *streamFollower) waitBeforeOpenRetry(cause error) bool {
 	s.failures++
 	if s.opening.persistent && mutation.AcknowledgementUncertain(cause) {
-		return s.postRetryStatus(true) && runtimeRecoveryBackoff.Wait(s.ctx, s.failures) == nil
+		return s.postRetryStatus(awaitingDelivery) && runtimeRecoveryBackoff.Wait(s.ctx, s.failures) == nil
 	}
 	delay, shouldRetry, policyErr := retry.ReconnectDelay(s.failures, cause)
 	if policyErr != nil {
@@ -147,7 +147,7 @@ func (s *streamFollower) waitBeforeOpenRetry(cause error) bool {
 		s.postOpenFailure(cause)
 		return false
 	}
-	return s.postRetryStatus(false) && retry.Wait(s.ctx, delay) == nil
+	return s.postRetryStatus(awaitingReconnect) && retry.Wait(s.ctx, delay) == nil
 }
 
 func (s *streamFollower) runStream(current conversation.SegmentStream) {
@@ -270,7 +270,7 @@ func (s *streamFollower) reconnect(request conversation.SubscribeRun, cause erro
 			default:
 				if runworkflow.RecoveryRequired(recovery.cause) {
 					s.failures++
-					if !s.postRetryStatus(false) || runtimeRecoveryBackoff.Wait(s.ctx, s.failures) != nil {
+					if !s.postRetryStatus(awaitingReconnect) || runtimeRecoveryBackoff.Wait(s.ctx, s.failures) != nil {
 						return conversation.SegmentStream{}, false
 					}
 				} else if !s.waitBeforeRetry(recovery.cause) {
@@ -301,17 +301,28 @@ func (s *streamFollower) waitBeforeRetry(cause error) bool {
 		s.postFailure(cause)
 		return false
 	}
-	return s.postRetryStatus(false) && retry.Wait(s.ctx, delay) == nil
+	return s.postRetryStatus(awaitingReconnect) && retry.Wait(s.ctx, delay) == nil
 }
 
-func (s *streamFollower) postRetryStatus(persistent bool) bool {
+// retryWait is what the follower waits on between attempts.
+type retryWait uint8
+
+const (
+	awaitingReconnect retryWait = iota
+	awaitingDelivery
+)
+
+func (w retryWait) status(attempt int) string {
+	if w == awaitingDelivery {
+		return fmt.Sprintf("confirming delivery · attempt %d", attempt)
+	}
+	return fmt.Sprintf("reconnecting · attempt %d", attempt)
+}
+
+func (s *streamFollower) postRetryStatus(wait retryWait) bool {
 	err := s.runs.tasks.deliver(s.ctx, func() {
 		if s.current() {
-			label := fmt.Sprintf("reconnecting · attempt %d", s.failures)
-			if persistent {
-				label = fmt.Sprintf("confirming delivery · attempt %d", s.failures)
-			}
-			s.runs.status.note(label)
+			s.runs.status.note(wait.status(s.failures))
 			s.runs.syncAnimation()
 		}
 	})

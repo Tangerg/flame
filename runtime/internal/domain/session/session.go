@@ -35,7 +35,7 @@ var (
 // start a root Session. ID generation, workspace resolution, and time acquisition
 // occur before this value reaches the aggregate.
 type Draft struct {
-	ID        string
+	ID        identity.SessionID
 	Title     string
 	Workspace Workspace
 	Selection modelchoice.Selection
@@ -60,11 +60,11 @@ func (p Patch) Empty() bool {
 // Snapshot is the complete technical representation used only to reconstruct
 // or persist a Session. It is not a mutation API.
 type Snapshot struct {
-	ID        string
+	ID        identity.SessionID
 	Title     string
 	Workspace Workspace
 	Selection modelchoice.Selection
-	ParentID  string
+	ParentID  identity.SessionID
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Favorite  bool
@@ -76,11 +76,11 @@ type Snapshot struct {
 // start time are immutable during ordinary edits; every mutable value changes
 // through aggregate behavior and advances one monotonic revision.
 type Session struct {
-	id        string
+	id        identity.SessionID
 	title     string
 	workspace Workspace
 	selection modelchoice.Selection
-	parentID  string
+	parentID  identity.SessionID
 	createdAt time.Time
 	updatedAt time.Time
 	favorite  bool
@@ -125,7 +125,7 @@ func Restore(snapshot Snapshot) (Session, error) {
 // Edit applies a person's patch to the revision they inspected; any other
 // revision, including none, conflicts.
 func (s Session) Edit(expectedRevision uint64, patch Patch, updatedAt time.Time) (Session, bool, error) {
-	if s.id != "" && expectedRevision != s.revision.Value() {
+	if !s.id.IsZero() && expectedRevision != s.revision.Value() {
 		return Session{}, false, ErrRevisionConflict
 	}
 	return s.Apply(patch, updatedAt)
@@ -136,7 +136,7 @@ func (s Session) Edit(expectedRevision uint64, patch Patch, updatedAt time.Time)
 // command and then bypass its aggregate checks. A semantic no-op returns s and
 // changed=false without advancing revision or time.
 func (s Session) Apply(patch Patch, updatedAt time.Time) (next Session, changed bool, err error) {
-	if s.id == "" {
+	if s.id.IsZero() {
 		return Session{}, false, fmt.Errorf("%w: current state was never constructed", ErrInvalid)
 	}
 	if patch.Empty() {
@@ -189,8 +189,8 @@ func (s Session) NameIfUntitled(title string, updatedAt time.Time) (Session, boo
 // isolation choice and exact model selection, starts a fresh conversation with
 // no favorite flag, and records immutable lineage back to s. An empty title keeps
 // the parent's own title; wording a fork in a person's language is the client's.
-func (s Session) Fork(id, title string, createdAt time.Time) (Session, error) {
-	if s.id == "" {
+func (s Session) Fork(id identity.SessionID, title string, createdAt time.Time) (Session, error) {
+	if s.id.IsZero() {
 		return Session{}, fmt.Errorf("%w: parent was never constructed", ErrInvalid)
 	}
 	title = strings.TrimSpace(title)
@@ -209,7 +209,7 @@ func (s Session) Fork(id, title string, createdAt time.Time) (Session, error) {
 // canonical identity admitted before reconstruction. It is not an
 // edit: revision and timestamps remain the archive's facts.
 func (s Session) InstallRestoredWorkspace(workspace Workspace) (Session, error) {
-	if s.id == "" {
+	if s.id.IsZero() {
 		return Session{}, fmt.Errorf("%w: value was never constructed", ErrInvalid)
 	}
 	if err := workspace.Validate(); err != nil {
@@ -224,7 +224,7 @@ func (s Session) InstallRestoredWorkspace(workspace Workspace) (Session, error) 
 // values and immutable origin facts; the target aggregate owns the next
 // revision and the caller supplies when the replacement occurred.
 func (s Session) ReplaceWithRestore(restored Session, updatedAt time.Time) (Session, error) {
-	if s.id == "" || restored.id == "" {
+	if s.id.IsZero() || restored.id.IsZero() {
 		return Session{}, fmt.Errorf("%w: replacement needs a constructed current and restored Session", ErrInvalid)
 	}
 	if s.id != restored.id {
@@ -258,7 +258,7 @@ func (s *Session) advance(previous Session, updatedAt time.Time) error {
 // Every constructor and every transition closes here, so a Session that exists
 // is already legal and no reader has to ask again.
 func (s Session) validate() error {
-	if err := identity.ValidateSession(s.id); err != nil {
+	if err := s.id.Validate(); err != nil {
 		return fmt.Errorf("%w: id: %v", ErrInvalid, err)
 	}
 	if err := s.workspace.Validate(); err != nil {
@@ -269,11 +269,6 @@ func (s Session) validate() error {
 	}
 	if err := s.selection.ValidateExact(); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalid, err)
-	}
-	if s.parentID != "" {
-		if err := identity.ValidateSession(s.parentID); err != nil {
-			return fmt.Errorf("%w: parent id: %v", ErrInvalid, err)
-		}
 	}
 	if s.parentID == s.id {
 		return fmt.Errorf("%w: invalid parent identity", ErrInvalid)
@@ -303,7 +298,7 @@ func (s Session) Snapshot() Snapshot {
 }
 
 // ID returns the immutable Session identity.
-func (s Session) ID() string { return s.id }
+func (s Session) ID() identity.SessionID { return s.id }
 
 // Title returns the user-facing title, which may be empty before generation.
 func (s Session) Title() string { return s.title }
@@ -315,7 +310,7 @@ func (s Session) Workspace() Workspace { return s.workspace }
 func (s Session) Selection() modelchoice.Selection { return s.selection }
 
 // ParentID returns the immutable parent Session identity, or empty for a root.
-func (s Session) ParentID() string { return s.parentID }
+func (s Session) ParentID() identity.SessionID { return s.parentID }
 
 // CreatedAt returns when the Session aggregate originated.
 func (s Session) CreatedAt() time.Time { return s.createdAt }

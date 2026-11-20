@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 )
 
@@ -57,9 +59,9 @@ func (p *ModeStore) SetDefaultMode(ctx context.Context, mode approval.Mode) erro
 		return nil
 	})
 }
-func (p *ModeStore) PlanModeActive(ctx context.Context, sessionID string) (bool, error) {
+func (p *ModeStore) PlanModeActive(ctx context.Context, sessionID identity.SessionID) (bool, error) {
 	return scopedValue(ctx, p.db.read, func(ctx context.Context) (bool, error) {
-		if err := validateSessionResource("read Session Plan mode", sessionID); err != nil {
+		if err := validateResource("read Session Plan mode", sessionID); err != nil {
 			return false, err
 		}
 		var active bool
@@ -71,9 +73,9 @@ func (p *ModeStore) PlanModeActive(ctx context.Context, sessionID string) (bool,
 }
 
 // StartPlanMode reports whether the Session entered Plan mode now.
-func (p *ModeStore) StartPlanMode(ctx context.Context, sessionID string) (bool, error) {
+func (p *ModeStore) StartPlanMode(ctx context.Context, sessionID identity.SessionID) (bool, error) {
 	return scopedValue(ctx, p.db.write, func(ctx context.Context) (bool, error) {
-		if err := validateSessionResource("enter Session Plan mode", sessionID); err != nil {
+		if err := validateResource("enter Session Plan mode", sessionID); err != nil {
 			return false, err
 		}
 		result, err := p.db.connection(ctx).ExecContext(ctx, `INSERT INTO session_plan_modes(session_id) VALUES (?) ON CONFLICT(session_id) DO NOTHING`, sessionID)
@@ -85,9 +87,9 @@ func (p *ModeStore) StartPlanMode(ctx context.Context, sessionID string) (bool, 
 }
 
 // EndPlanMode reports whether the Session left Plan mode now.
-func (p *ModeStore) EndPlanMode(ctx context.Context, sessionID string, revision uint64) (bool, error) {
+func (p *ModeStore) EndPlanMode(ctx context.Context, sessionID identity.SessionID, revision uint64) (bool, error) {
 	return scopedValue(ctx, p.db.write, func(ctx context.Context) (bool, error) {
-		if err := validateSessionResource("leave Session Plan mode", sessionID); err != nil {
+		if err := validateResource("leave Session Plan mode", sessionID); err != nil {
 			return false, err
 		}
 		result, err := p.db.connection(ctx).ExecContext(ctx, `DELETE FROM session_plan_modes WHERE session_id = ? AND EXISTS (
@@ -104,9 +106,9 @@ func (p *ModeStore) EndPlanMode(ctx context.Context, sessionID string, revision 
 // uses this before reseeding portable material: permission policy is local
 // Runtime state and is deliberately not inherited from the Session that an
 // imported archive replaces.
-func (p *ModeStore) DeleteSession(ctx context.Context, sessionID string) error {
+func (p *ModeStore) DeleteSession(ctx context.Context, sessionID identity.SessionID) error {
 	return p.db.write(ctx, func(ctx context.Context) error {
-		if err := validateSessionResource("delete Session Plan mode", sessionID); err != nil {
+		if err := validateResource("delete Session Plan mode", sessionID); err != nil {
 			return err
 		}
 		_, err := p.db.connection(ctx).ExecContext(ctx, `DELETE FROM session_plan_modes WHERE session_id = ?`, sessionID)

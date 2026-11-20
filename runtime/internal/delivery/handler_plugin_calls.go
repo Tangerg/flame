@@ -5,6 +5,7 @@ import (
 	"errors"
 	"iter"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -19,7 +20,7 @@ import (
 )
 
 type pluginCallUseCases interface {
-	RenderSessionMarkdown(context.Context, string, []byte) (string, error)
+	RenderSessionMarkdown(context.Context, identity.SessionID, []byte) (string, error)
 	Command(context.Context, string) (*plugin.Command, error)
 	RetireCommand(context.Context, string) error
 	NotifyChange(context.Context, plugin.ContributionID) error

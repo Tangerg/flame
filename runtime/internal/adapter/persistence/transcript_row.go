@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -12,9 +14,9 @@ const storedTranscriptColumns = `h.session_id, h.run_id, h.item_id, h.occurred_a
 const storedTranscriptFrom = `FROM history_items AS h LEFT JOIN tool_result_blobs AS b ON b.item_id = h.item_id`
 
 type storedTranscriptRow struct {
-	sessionID  string
-	runID      string
-	itemID     string
+	sessionID  identity.SessionID
+	runID      identity.RunID
+	itemID     identity.ItemID
 	occurredAt int64
 	payload    string
 	offloadID  string

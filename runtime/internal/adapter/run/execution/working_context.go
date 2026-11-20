@@ -50,7 +50,7 @@ type WorkingContextComposer struct {
 	config WorkingContextConfig
 
 	mu           sync.Mutex
-	seenSessions map[string]struct{}
+	seenSessions map[identity.SessionID]struct{}
 }
 
 // NewWorkingContextComposer builds a prompt composer. Construction has no I/O.
@@ -74,7 +74,7 @@ func NewWorkingContextComposer(config WorkingContextConfig) (*WorkingContextComp
 	}
 	return &WorkingContextComposer{
 		config:       config,
-		seenSessions: make(map[string]struct{}),
+		seenSessions: make(map[identity.SessionID]struct{}),
 	}, nil
 }
 
@@ -86,7 +86,7 @@ func (w *WorkingContextComposer) ComposeWorkingContext(
 	ctx context.Context,
 	input runs.WorkingContextInput,
 ) ([]corechat.Message, error) {
-	if err := identity.ValidateSession(input.SessionID); err != nil {
+	if err := input.SessionID.Validate(); err != nil {
 		return nil, fmt.Errorf("execution: working context: %w", err)
 	}
 	if strings.TrimSpace(input.CWD) == "" || input.CWD != strings.TrimSpace(input.CWD) {
@@ -175,7 +175,7 @@ func (w *WorkingContextComposer) evaluatePromptHooks(
 	result := promptHookResult{}
 	if w.claimSessionStart(input.SessionID) {
 		result.decision = bound.Run(ctx, hookdata.Input{
-			Event: hookdata.SessionStart, SessionID: input.SessionID, CWD: input.CWD,
+			Event: hookdata.SessionStart, SessionID: input.SessionID.String(), CWD: input.CWD,
 		})
 		if strings.TrimSpace(result.decision.InjectContext) != "" {
 			result.sources = append(
@@ -185,7 +185,7 @@ func (w *WorkingContextComposer) evaluatePromptHooks(
 		}
 	}
 	submitted := bound.Run(ctx, hookdata.Input{
-		Event: hookdata.UserPromptSubmit, SessionID: input.SessionID,
+		Event: hookdata.UserPromptSubmit, SessionID: input.SessionID.String(),
 		CWD: input.CWD, Prompt: input.PromptText,
 	})
 	if strings.TrimSpace(submitted.InjectContext) != "" {
@@ -207,7 +207,7 @@ func (w *WorkingContextComposer) evaluatePromptHooks(
 	return result, nil
 }
 
-func (w *WorkingContextComposer) claimSessionStart(sessionID string) bool {
+func (w *WorkingContextComposer) claimSessionStart(sessionID identity.SessionID) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if _, seen := w.seenSessions[sessionID]; seen {
@@ -219,7 +219,7 @@ func (w *WorkingContextComposer) claimSessionStart(sessionID string) bool {
 
 // ForgetSession releases the process-local SessionStart marker after the
 // Session aggregate is durably deleted.
-func (w *WorkingContextComposer) ForgetSession(sessionID string) {
+func (w *WorkingContextComposer) ForgetSession(sessionID identity.SessionID) {
 	w.mu.Lock()
 	delete(w.seenSessions, sessionID)
 	w.mu.Unlock()
@@ -239,7 +239,7 @@ func (w *WorkingContextComposer) BeforeToolUse(
 	defer func() { returned = errors.Join(returned, bound.Close()) }()
 	decision := bound.Run(ctx, hookdata.Input{
 		Event:     hookdata.PreToolUse,
-		SessionID: input.SessionID,
+		SessionID: input.SessionID.String(),
 		CWD:       input.CWD,
 		Tool: &hookdata.ToolInput{
 			Name:      input.ToolName,
@@ -277,7 +277,7 @@ func (w *WorkingContextComposer) AfterToolUse(
 	}
 	_ = bound.Run(ctx, hookdata.Input{
 		Event:     hookdata.PostToolUse,
-		SessionID: input.SessionID,
+		SessionID: input.SessionID.String(),
 		CWD:       input.CWD,
 		Tool: &hookdata.ToolInput{
 			Name:      input.ToolName,
@@ -293,7 +293,7 @@ func (w *WorkingContextComposer) AfterToolUse(
 // maintenance pipeline selected a compaction candidate.
 func (w *WorkingContextComposer) BeforeCompaction(
 	ctx context.Context,
-	sessionID, cwd string,
+	sessionID identity.SessionID, cwd string,
 ) (_ bool, returned error) {
 	bound, err := w.config.Hooks.For(ctx, cwd)
 	if err != nil {
@@ -301,7 +301,7 @@ func (w *WorkingContextComposer) BeforeCompaction(
 	}
 	defer func() { returned = errors.Join(returned, bound.Close()) }()
 	decision := bound.Run(ctx, hookdata.Input{
-		Event: hookdata.PreCompact, SessionID: sessionID, CWD: cwd,
+		Event: hookdata.PreCompact, SessionID: sessionID.String(), CWD: cwd,
 	})
 	return decision.Verdict != domainhooks.VerdictBlock, nil
 }
@@ -310,7 +310,7 @@ func (w *WorkingContextComposer) BeforeCompaction(
 // external-input boundary.
 func (w *WorkingContextComposer) NotifyWaiting(
 	ctx context.Context,
-	sessionID, cwd string,
+	sessionID identity.SessionID, cwd string,
 ) error {
 	return w.runObserveOnlyHook(ctx, hookdata.Notification, sessionID, cwd, "interrupt")
 }
@@ -318,7 +318,7 @@ func (w *WorkingContextComposer) NotifyWaiting(
 // NotifyStopped runs the observe-only terminal hook.
 func (w *WorkingContextComposer) NotifyStopped(
 	ctx context.Context,
-	sessionID, cwd, reason string,
+	sessionID identity.SessionID, cwd, reason string,
 ) error {
 	return w.runObserveOnlyHook(ctx, hookdata.Stop, sessionID, cwd, reason)
 }
@@ -326,7 +326,7 @@ func (w *WorkingContextComposer) NotifyStopped(
 func (w *WorkingContextComposer) runObserveOnlyHook(
 	ctx context.Context,
 	event hookdata.Event,
-	sessionID, cwd, reason string,
+	sessionID identity.SessionID, cwd, reason string,
 ) (returned error) {
 	bound, err := w.config.Hooks.For(ctx, cwd)
 	if err != nil {
@@ -334,7 +334,7 @@ func (w *WorkingContextComposer) runObserveOnlyHook(
 	}
 	defer func() { returned = errors.Join(returned, bound.Close()) }()
 	_ = bound.Run(ctx, hookdata.Input{
-		Event: event, SessionID: sessionID, CWD: cwd, Reason: reason,
+		Event: event, SessionID: sessionID.String(), CWD: cwd, Reason: reason,
 	})
 	return nil
 }
@@ -395,8 +395,8 @@ func (w *WorkingContextComposer) recallPart(
 }
 
 var (
-	_ runs.WorkingContextComposer        = (*WorkingContextComposer)(nil)
-	_ interactionToolHooks               = (*WorkingContextComposer)(nil)
-	_ interactionLifecycleHooks          = (*WorkingContextComposer)(nil)
-	_ interface{ ForgetSession(string) } = (*WorkingContextComposer)(nil)
+	_ runs.WorkingContextComposer                    = (*WorkingContextComposer)(nil)
+	_ interactionToolHooks                           = (*WorkingContextComposer)(nil)
+	_ interactionLifecycleHooks                      = (*WorkingContextComposer)(nil)
+	_ interface{ ForgetSession(identity.SessionID) } = (*WorkingContextComposer)(nil)
 )

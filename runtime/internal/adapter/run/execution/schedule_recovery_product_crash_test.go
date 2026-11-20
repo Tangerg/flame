@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -166,7 +167,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			originalTool := ""
+			var originalTool identity.ItemID
 			var originalSource tool.Ref
 			for _, item := range items {
 				if invocation, ok := testsupport.ToolInvocationOf(item); ok && invocation.Name == "schedules_create_schedule" {
@@ -182,10 +183,10 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 					}
 				}
 			}
-			if originalTool == "" {
+			if originalTool.IsZero() {
 				t.Fatal("original Tool Item was not committed")
 			}
-			scopeRoot := (scoperun.StartID{Scope: receipt.Acceptance.SessionID, Key: receipt.Acceptance.RunID}).Root()
+			scopeRoot := (scoperun.StartID{Scope: receipt.Acceptance.SessionID.String(), Key: receipt.Acceptance.RunID.String()}).Root()
 			checkpoint, err := stores.ExecutorCheckpoints.LoadCheckpoint(t.Context(), scopeRoot.String())
 			if err != nil {
 				t.Fatalf("original Run's checkpoint: %v", err)
@@ -231,7 +232,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				invoke(cut, true)
 			}
 			if cut == "resolution" {
-				assertScheduleResolutionCommitted(t, home, checkpoint.SessionID, checkpoint.RootMemberID, originalEffect)
+				assertScheduleResolutionCommitted(t, home, checkpoint.SessionID.String(), checkpoint.RootMemberID, originalEffect)
 			}
 			phase := "finish"
 			if negative {
@@ -390,7 +391,7 @@ func assertScheduleResolutionCommitted(t *testing.T, home, sessionID, rootID str
 			t.Error(err)
 		}
 	}()
-	head, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(t.Context(), sessionID, rootID)
+	head, found, err := stores.ExecutorCheckpoints.LoadExecutionTree(t.Context(), testsupport.MustSessionID(sessionID), rootID)
 	if err != nil || !found {
 		t.Fatalf("resolution cut: found=%t error=%v", found, err)
 	}

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -19,7 +21,7 @@ func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessi
 		return nil, err
 	}
 	if restoreType != protocol.RestoreHistory {
-		result, err := s.rollbackWorkspace(ctx, in, restoreType, sessions.WorkspaceRollbackReceipt{}, nil)
+		result, err := s.rollbackWorkspace(ctx, in, restoreType, sessions.WorkspaceRollbackReceipt{})
 		if err != nil {
 			return nil, err
 		}
@@ -33,54 +35,78 @@ func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessi
 }
 
 func (s *Handler) rollbackHistory(ctx context.Context, in protocol.RollbackSessionRequest, complete operation.Reply[sessions.RollbackResult]) error {
-	if err := s.sessions.RollbackHistory(ctx, in.SessionID, in.ToRunID, complete); err != nil {
-		return wireRollbackErr(err, in.SessionID)
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return parseErr
+	}
+	toRunID, err := wireIdentity("toRunId", in.ToRunID, identity.ParseOptionalRun)
+	if err != nil {
+		return err
+	}
+	if err := s.sessions.RollbackHistory(ctx, sessionID, toRunID, complete); err != nil {
+		return wireRollbackErr(err, sessionID)
 	}
 	return nil
 }
 
-func (s *Handler) rollbackWorkspace(ctx context.Context, in protocol.RollbackSessionRequest, restoreType protocol.RestoreType, receipt sessions.WorkspaceRollbackReceipt, encode sessions.RollbackReceiptEncoder) (sessions.RollbackResult, error) {
-	result, err := s.sessions.RollbackWorkspace(ctx, sessions.WorkspaceRollbackSpec{
-		SessionID: in.SessionID, ToRunID: in.ToRunID,
-		RestoreHistory: restoreType == protocol.RestoreBoth, Receipt: receipt,
-	}, encode)
+func (s *Handler) rollbackWorkspace(ctx context.Context, in protocol.RollbackSessionRequest, restoreType protocol.RestoreType, receipt sessions.WorkspaceRollbackReceipt) (sessions.RollbackResult, error) {
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return sessions.RollbackResult{}, parseErr
+	}
+	toRunID, err := wireIdentity("toRunId", in.ToRunID, identity.ParseRun)
 	if err != nil {
-		return sessions.RollbackResult{}, wireRollbackErr(err, in.SessionID)
+		return sessions.RollbackResult{}, err
+	}
+	result, err := s.sessions.RollbackWorkspace(ctx, sessions.WorkspaceRollbackSpec{
+		SessionID: sessionID, ToRunID: toRunID,
+		RestoreHistory: restoreType == protocol.RestoreBoth, Receipt: receipt,
+	})
+	if err != nil {
+		return sessions.RollbackResult{}, wireRollbackErr(err, sessionID)
 	}
 	return result, nil
 }
 
-func (e *Endpoint) replayRollback(ctx context.Context, s *Handler, method *Method, in protocol.RollbackSessionRequest, key, fingerprint string) ([]byte, error) {
-	restoreType, err := rollbackTypeFromWire(in)
-	if err != nil || restoreType == protocol.RestoreHistory {
-		return e.idempotency.InvokeAtomic(ctx, key, fingerprint, func(complete *operation.AtomicCompletion) error {
-			if err != nil {
-				return commitAtomicFailure(ctx, complete, err)
+// replayRollback settles a keyed history rollback in its own write and a keyed
+// file rollback through its recoverable intent.
+func (s *Handler) replayRollback(ctx context.Context, in protocol.RollbackSessionRequest, call keyedCall) protocol.OperationResult {
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return protocol.OperationResult{}
+	}
+	restoreType, refusal := rollbackTypeFromWire(in)
+	if refusal != nil || restoreType == protocol.RestoreHistory {
+		return call.invokeAtomic(ctx, func(outcome atomicOutcome) error {
+			if refusal != nil {
+				return outcome.commitFailure(ctx, refusal)
 			}
-			return s.commitRollbackOutcome(ctx, method, in, complete)
+			reply := atomicReply(outcome.complete, func(result sessions.RollbackResult) ([]byte, error) {
+				return encodeAtomicResult(outcome.method, presentRollbackResult(result))
+			})
+			return outcome.settleRefusal(ctx, s.rollbackHistory(ctx, in, reply))
 		})
 	}
-	return e.idempotency.InvokeRecoverable(ctx, key, fingerprint, func() ([]byte, error) {
-		receipt := sessions.WorkspaceRollbackReceipt{Key: key, Fingerprint: fingerprint}
-		var payload []byte
-		_, err := s.rollbackWorkspace(ctx, in, restoreType, receipt, func(sessionID string, result sessions.RollbackResult, cause error) ([]byte, error) {
-			encoded, err := EncodeWorkspaceRollbackReceipt(sessionID, result, cause)
-			payload = encoded
-			return encoded, err
-		})
+	// The intent's completion stores the receipt in the rollback's own
+	// transaction. A refusal it already stored is found again by the replay's
+	// refusal commit, which never overwrites a settled record.
+	payload, err := call.replay.InvokeRecoverable(ctx, call.key, call.fingerprint, func() ([]byte, error) {
+		receipt := sessions.WorkspaceRollbackReceipt{Key: call.key, Fingerprint: call.fingerprint}
+		result, err := s.rollbackWorkspace(ctx, in, restoreType, receipt)
 		if errors.Is(err, sessions.ErrRollbackRecoveryPending) {
 			return nil, errors.Join(operation.ErrOutcomePending, err)
 		}
-		if len(payload) != 0 {
-			return payload, nil
+		if err != nil {
+			return nil, err
 		}
-		return nil, err
+		return EncodeWorkspaceRollbackReceipt(sessionID, result, nil)
 	}, func(err error) ([]byte, error) {
 		return encodeStoredOutcome(failed(projectError(err)))
 	})
+	return call.result(ctx, payload, err)
 }
 
-func EncodeWorkspaceRollbackReceipt(sessionID string, result sessions.RollbackResult, cause error) ([]byte, error) {
+func EncodeWorkspaceRollbackReceipt(sessionID identity.SessionID, result sessions.RollbackResult, cause error) ([]byte, error) {
 	if cause != nil {
 		return encodeStoredOutcome(failed(projectError(wireRollbackErr(cause, sessionID))))
 	}
@@ -117,7 +143,7 @@ func presentRollbackResult(result sessions.RollbackResult) *protocol.RollbackSes
 
 // wireRollbackErr maps session rollback errors onto their wire
 // errors (the boundary sentinels are already wire-mapped inside the resolver).
-func wireRollbackErr(err error, sessionID string) error {
+func wireRollbackErr(err error, sessionID identity.SessionID) error {
 	switch {
 	case errors.Is(err, sessions.ErrRollbackRecoveryPending):
 		return protocol.NewFailure(protocol.ErrInternalError, "file rollback recovery is still pending; retain the original request for recovery", err)

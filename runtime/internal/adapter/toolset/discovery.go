@@ -32,6 +32,8 @@ const (
 	discoveryDefaultLimit = 5
 	discoveryMaxLimit     = 20
 	discoveryCatalogBytes = 4096
+	// omissionNoticeBytes is the catalog room kept for the omitted-tools notice.
+	omissionNoticeBytes = 200
 )
 
 // discoveryDescription is static because the tool declarations open the
@@ -167,7 +169,7 @@ func (d *Discovery) Catalog() string {
 		}
 		// Keep complete identities and leave room for the omission notice. The
 		// search index remains complete; this is only a bounded request projection.
-		if b.Len()+len(entry)+200 > discoveryCatalogBytes {
+		if b.Len()+len(entry)+omissionNoticeBytes > discoveryCatalogBytes {
 			omitted++
 			continue
 		}

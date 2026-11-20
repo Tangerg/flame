@@ -36,30 +36,38 @@ func parse(ctx context.Context, root *os.Root, digest framevalue.Digest) (plugin
 	return builder.Release(digest)
 }
 
-// manifestFields is the portable manifest envelope. Other members are reported
-// as diagnostics; they never reject the package.
-var manifestFields = []string{"$schema", "name", "version", "description", "author", "homepage", "repository", "license", "keywords", "extensions"}
+// extensionsMember carries the Flame declaration inside the portable manifest.
+const extensionsMember = "extensions"
 
 var authorFields = []string{"name", "email", "url"}
 
-func validateManifestField(key string, raw jsontext.Value) error {
+// manifestMemberRule is the portable manifest envelope: the rule each known
+// member satisfies. Other members are reported as diagnostics; they never
+// reject the package.
+func manifestMemberRule(key string) (func(jsontext.Value) error, bool) {
 	switch key {
-	case "extensions":
-		return nil
+	case "$schema", "name", "version", "description", "homepage", "repository", "license":
+		return func(raw jsontext.Value) error { return requireText(raw, "manifest field", key) }, true
 	case "keywords":
-		var keywords []string
-		if err := framevalue.DecodeValue(raw, &keywords, "plugin declaration"); err != nil {
-			return fmt.Errorf("%w: manifest keywords: %w", plugin.ErrInvalid, err)
-		}
-		if keywords == nil {
-			return fmt.Errorf("%w: invalid keywords", plugin.ErrInvalid)
-		}
-		return nil
+		return validateKeywords, true
 	case "author":
-		return validateAuthor(raw)
+		return validateAuthor, true
+	case extensionsMember:
+		return func(jsontext.Value) error { return nil }, true
 	default:
-		return requireText(raw, "manifest field", key)
+		return nil, false
 	}
+}
+
+func validateKeywords(raw jsontext.Value) error {
+	var keywords []string
+	if err := framevalue.DecodeValue(raw, &keywords, "plugin declaration"); err != nil {
+		return fmt.Errorf("%w: manifest keywords: %w", plugin.ErrInvalid, err)
+	}
+	if keywords == nil {
+		return fmt.Errorf("%w: invalid keywords", plugin.ErrInvalid)
+	}
+	return nil
 }
 
 func validateAuthor(raw jsontext.Value) error {
@@ -92,40 +100,55 @@ func requireText(raw jsontext.Value, kind, name string) error {
 	return nil
 }
 
+// admitManifestFields validates every known top-level field and reports each
+// unknown one as a diagnostic rather than a refusal.
+func admitManifestFields(body []byte) (map[string]jsontext.Value, []plugin.Diagnostic, error) {
+	var envelope map[string]jsontext.Value
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return nil, nil, fmt.Errorf("%w: manifest object: %w", plugin.ErrInvalid, err)
+	}
+	if envelope == nil {
+		return nil, nil, fmt.Errorf("%w: manifest must be a JSON object", plugin.ErrInvalid)
+	}
+	var unknown []plugin.Diagnostic
+	for _, key := range slices.Sorted(maps.Keys(envelope)) {
+		validate, known := manifestMemberRule(key)
+		if !known {
+			unknown = append(unknown, plugin.Diagnostic{Component: plugin.Component{Kind: plugin.ComponentManifestField, Name: key}, Code: plugin.DiagnosticUnknownField})
+			continue
+		}
+		if err := validate(envelope[key]); err != nil {
+			return nil, nil, err
+		}
+	}
+	return envelope, unknown, nil
+}
+
 func parseMetadata(ctx context.Context, root *os.Root) (*plugin.Builder, error) {
-	body, err := read(ctx, root, "plugin.json", maxManifestBytes)
+	body, err := read(ctx, root, pluginManifestFile, maxManifestBytes)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, errResourceLimit) {
 			return nil, fmt.Errorf("%w: manifest: %w", plugin.ErrInvalid, err)
 		}
 		return nil, fmt.Errorf("pluginpackage: read manifest: %w", err)
 	}
-	var envelope map[string]jsontext.Value
-	if err = json.Unmarshal(body, &envelope); err != nil {
-		return nil, fmt.Errorf("%w: manifest object: %w", plugin.ErrInvalid, err)
+	envelope, unknown, err := admitManifestFields(body)
+	if err != nil {
+		return nil, err
 	}
-	if envelope == nil {
-		return nil, fmt.Errorf("%w: manifest must be a JSON object", plugin.ErrInvalid)
+	var identity struct {
+		Schema      string `json:"$schema"`
+		Name        string `json:"name"`
+		Version     string `json:"version"`
+		Description string `json:"description"`
 	}
-	var unknown []plugin.Diagnostic
-	for _, key := range slices.Sorted(maps.Keys(envelope)) {
-		if !slices.Contains(manifestFields, key) {
-			unknown = append(unknown, plugin.Diagnostic{Component: plugin.Component{Kind: plugin.ComponentManifestField, Name: key}, Code: plugin.DiagnosticUnknownField})
-			continue
-		}
-		if err := validateManifestField(key, envelope[key]); err != nil {
-			return nil, err
-		}
+	if err := json.Unmarshal(body, &identity); err != nil {
+		return nil, fmt.Errorf("%w: manifest identity: %w", plugin.ErrInvalid, err)
 	}
-	var schema, name, version, description string
-	_ = json.Unmarshal(envelope["$schema"], &schema)
-	_ = json.Unmarshal(envelope["name"], &name)
-	_ = json.Unmarshal(envelope["version"], &version)
-	_ = json.Unmarshal(envelope["description"], &description)
-	if schema != manifestSchema {
-		return nil, fmt.Errorf("%w: unsupported manifest schema %q", plugin.ErrInvalid, schema)
+	if identity.Schema != manifestSchema {
+		return nil, fmt.Errorf("%w: unsupported manifest schema %q", plugin.ErrInvalid, identity.Schema)
 	}
-	release, err := plugin.NewBuilder(name, version, description)
+	release, err := plugin.NewBuilder(identity.Name, identity.Version, identity.Description)
 	if err != nil {
 		return nil, fmt.Errorf("manifest: %w", err)
 	}
@@ -136,7 +159,7 @@ func parseMetadata(ctx context.Context, root *os.Root) (*plugin.Builder, error) 
 	if err != nil {
 		return nil, err
 	}
-	if raw, found := envelope["extensions"]; found {
+	if raw, found := envelope[extensionsMember]; found {
 		if err := parseExtensions(raw, release, ctx, root, nativeServers); err != nil {
 			return nil, err
 		}
@@ -451,7 +474,7 @@ func admission(err error) (plugin.DiagnosticCode, bool) {
 }
 
 func parseMCP(ctx context.Context, root *os.Root, release *plugin.Builder) ([]string, error) {
-	body, err := read(ctx, root, "mcp.json", maxManifestBytes)
+	body, err := read(ctx, root, mcpManifestFile, maxManifestBytes)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
@@ -478,29 +501,52 @@ func parseMCP(ctx context.Context, root *os.Root, release *plugin.Builder) ([]st
 	}
 	for _, name := range names {
 		server, err := portableServer(name, envelope.Servers[name])
-		if err == nil && server.Transport() != mcpserver.TransportStdio {
-			return nil, fmt.Errorf("%w: installed server %q requires a packaged process; configure remote MCP through the host registry", plugin.ErrInvalid, name)
-		}
 		if err == nil {
-			if _, packaged := server.PackagedCommand(); !packaged {
-				return nil, fmt.Errorf("%w: installed server %q requires a packaged executable", plugin.ErrInvalid, name)
+			if err := requirePackagedServer(name, server); err != nil {
+				return nil, err
 			}
-			err = inspectServerFiles(root, server)
+			err = admitPackagedServer(root, release, server)
 		}
-		if err == nil {
-			err = release.AdmitServer(server)
-		}
-		code, admitted := admission(err)
-		switch {
-		case admitted:
-		case code == plugin.DiagnosticComponentLimit:
-			report(release, plugin.Component{Kind: plugin.ComponentMCP}, code)
+		if limited := reportServerAdmission(release, name, err); limited {
 			return names, nil
-		default:
-			report(release, plugin.Component{Kind: plugin.ComponentMCPServer, Name: name}, code)
 		}
 	}
 	return names, nil
+}
+
+// requirePackagedServer refuses the whole release for a server it cannot
+// launch from its own files; remote MCP belongs to the host registry.
+func requirePackagedServer(name string, server plugin.Server) error {
+	if server.Transport() != mcpserver.TransportStdio {
+		return fmt.Errorf("%w: installed server %q requires a packaged process; configure remote MCP through the host registry", plugin.ErrInvalid, name)
+	}
+	if _, packaged := server.PackagedCommand(); !packaged {
+		return fmt.Errorf("%w: installed server %q requires a packaged executable", plugin.ErrInvalid, name)
+	}
+	return nil
+}
+
+func admitPackagedServer(root *os.Root, release *plugin.Builder, server plugin.Server) error {
+	if err := inspectServerFiles(root, server); err != nil {
+		return err
+	}
+	return release.AdmitServer(server)
+}
+
+// reportServerAdmission records a refused server and reports whether the
+// release reached its MCP component limit, which ends server admission.
+func reportServerAdmission(release *plugin.Builder, name string, err error) bool {
+	code, admitted := admission(err)
+	switch {
+	case admitted:
+		return false
+	case code == plugin.DiagnosticComponentLimit:
+		report(release, plugin.Component{Kind: plugin.ComponentMCP}, code)
+		return true
+	default:
+		report(release, plugin.Component{Kind: plugin.ComponentMCPServer, Name: name}, code)
+		return false
+	}
 }
 
 // portableServer is the only translation from a portable mcp.json declaration

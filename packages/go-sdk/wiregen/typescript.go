@@ -191,7 +191,7 @@ func (t *TypeScript) TypeOf(node *Schema) string {
 	if len(names) == 0 {
 		// An empty schema is any JSON value. `unknown` forces the reader to narrow,
 		// which is exactly right for an opaque passthrough.
-		return "unknown"
+		return tsUnknown
 	}
 	parts := make([]string, 0, len(names))
 	for _, name := range names {
@@ -265,6 +265,12 @@ func typeKeywords(value SchemaType) []SchemaType {
 	return []SchemaType{value}
 }
 
+// TypeScript's top and bottom types: any value, and no value.
+const (
+	tsUnknown = "unknown"
+	tsNever   = "never"
+)
+
 var identifier = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
 
 // JSON escapes preserve JavaScript string values; Go's \a and \U escapes do not.
@@ -294,15 +300,15 @@ func QuoteAll(values []string) []string {
 func unionOf(parts []string) string {
 	var members []string
 	for _, part := range parts {
-		if part == "unknown" {
-			return "unknown"
+		if part == tsUnknown {
+			return tsUnknown
 		}
-		if part != "never" && !slices.Contains(members, part) {
+		if part != tsNever && !slices.Contains(members, part) {
 			members = append(members, part)
 		}
 	}
 	if len(members) == 0 {
-		return "never"
+		return tsNever
 	}
 	return strings.Join(members, " | ")
 }
@@ -310,16 +316,16 @@ func unionOf(parts []string) string {
 func intersectionOf(parts []string) string {
 	var members []string
 	for _, part := range parts {
-		if part == "never" {
-			return "never"
+		if part == tsNever {
+			return tsNever
 		}
-		if part == "unknown" || slices.Contains(members, part) {
+		if part == tsUnknown || slices.Contains(members, part) {
 			continue
 		}
 		members = append(members, part)
 	}
 	if len(members) == 0 {
-		return "unknown"
+		return tsUnknown
 	}
 	if len(members) == 1 {
 		return members[0]

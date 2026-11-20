@@ -13,9 +13,20 @@ const (
 
 func (State) JSONSchemaEnum() []string { return []string{string(Open), string(Closed)} }
 
+func (s State) Valid() bool { return s == Open || s == Closed }
+
+// Filter selects listed issues by State; GitHub spells "either state" all.
 type Filter string
 
-func (Filter) JSONSchemaEnum() []string { return []string{string(Open), string(Closed), "all"} }
+const (
+	OpenOnly   = Filter(Open)
+	ClosedOnly = Filter(Closed)
+	AnyState   = Filter("all")
+)
+
+func (Filter) JSONSchemaEnum() []string {
+	return []string{string(OpenOnly), string(ClosedOnly), string(AnyState)}
+}
 
 type ListInput struct {
 	Repository string `json:"repository" jsonschema:"minLength=3,maxLength=256"`

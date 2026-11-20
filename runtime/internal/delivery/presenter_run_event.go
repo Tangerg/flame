@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -31,7 +33,7 @@ func presentRunEvent(event runs.ProjectionEvent) protocol.StreamEvent {
 		return protocol.StreamEvent{Type: protocol.StreamItemStarted, Item: &item}
 	case runs.ItemChanged:
 		delta := presentDelta(event.Delta)
-		return protocol.StreamEvent{Type: protocol.StreamItemDelta, ItemID: event.ItemID, Delta: &delta}
+		return protocol.StreamEvent{Type: protocol.StreamItemDelta, ItemID: event.ItemID.String(), Delta: &delta}
 	case runs.ItemCompleted:
 		item := presentItem(event.Item)
 		return protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &item}
@@ -50,7 +52,7 @@ func presentRunEvent(event runs.ProjectionEvent) protocol.StreamEvent {
 // one shape, so live following and cold recovery cannot disagree about the Plan.
 func presentPlan(event runs.PlanSnapshot) protocol.Plan {
 	state := presentPlanState(event.Revision, event.UpdatedAt, event.Steps)
-	return protocol.Plan{SessionID: event.SessionID, State: &state}
+	return protocol.Plan{SessionID: event.SessionID.String(), State: &state}
 }
 
 func presentPlanState(revision uint64, updatedAt time.Time, steps []plan.Step) protocol.PlanState {
@@ -71,8 +73,8 @@ func presentPlanStepList(steps []plan.Step) []protocol.PlanStep {
 
 // presentStoredPlan is the same projection read cold. It goes through the run-event
 // shape so the two cannot describe the list differently: one presenter, one answer.
-func presentStoredPlan(sessionID string, current plan.Current) protocol.Plan {
-	out := protocol.Plan{SessionID: sessionID}
+func presentStoredPlan(sessionID identity.SessionID, current plan.Current) protocol.Plan {
+	out := protocol.Plan{SessionID: sessionID.String()}
 	state, committed := current.State()
 	if !committed {
 		return out
@@ -108,7 +110,7 @@ func mapRunEvents(in iter.Seq[runs.Event]) iter.Seq2[protocol.RunEvent, error] {
 				return
 			}
 			wire := protocol.RunEvent{
-				RunID: event.RunID, SegmentID: event.SegmentID,
+				RunID: event.RunID.String(), SegmentID: event.SegmentID.String(),
 				EventID: protocol.IDPrefixEvent + event.Cursor, Timestamp: event.Timestamp,
 				Event: presented,
 			}

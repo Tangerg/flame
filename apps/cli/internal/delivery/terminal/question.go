@@ -9,7 +9,6 @@ import (
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/keymap"
-	"github.com/Tangerg/oolong/ui/core/layout"
 	"github.com/Tangerg/oolong/ui/core/scene"
 	"github.com/Tangerg/oolong/ui/kit"
 )
@@ -152,9 +151,6 @@ func (q *questionnaire) response(index int) *questionResponse {
 }
 
 func (q *questionnaire) Answer() (conversation.QuestionAnswer, error) {
-	if q == nil {
-		return conversation.QuestionAnswer{}, errors.New("questionnaire is not active")
-	}
 	answer := conversation.QuestionAnswer{Values: make([][]string, len(q.question.Fields))}
 	for index := range q.responses {
 		if !q.responses[index].confirmed {
@@ -372,7 +368,7 @@ func (p *interruptPrompts) showQuestionDialog(review *questionnaire, fields []ba
 	}
 	dialog = newPresentationDialog(p.stack, kit.DialogConfig{Theme: p.theme, Glyphs: p.glyphs,
 		Title: title, Body: formNavigation(dressed.Element(), leave),
-		Where: layout.Placement{Width: 88, Height: formDialogHeight(dressed.HeightForWidth(80), len(fields), 18)},
+		Where: formDialogPlacement(standardDialogWidth, len(fields), 18, dressed),
 	})
 	p.questionDialog = dialog
 	dialog.Show()
@@ -393,7 +389,7 @@ func (p *interruptPrompts) advanceQuestionnaire() {
 		p.openQuestionField()
 		return
 	}
-	p.finishQuestionnaire(false)
+	p.submitQuestionnaire()
 }
 
 func (p *interruptPrompts) backOrCancelQuestionnaire() {
@@ -407,24 +403,26 @@ func (p *interruptPrompts) backOrCancelQuestionnaire() {
 		p.openQuestionField()
 		return
 	}
-	p.finishQuestionnaire(true)
+	p.cancelQuestionnaire()
 }
 
-func (p *interruptPrompts) finishQuestionnaire(canceled bool) {
+// closeQuestionnaire dismisses the open question and returns the review it
+// belonged to, if any.
+func (p *interruptPrompts) closeQuestionnaire() (*questionnaire, bool) {
 	review := p.questionnaire
 	if review == nil {
-		return
+		return nil, false
 	}
 	if p.questionDialog != nil {
 		p.questionDialog.Dismiss()
 		p.questionDialog = nil
 	}
-	if canceled {
-		p.questionnaire = nil
-		if p.backInterrupt() {
-			return
-		}
-		p.abort("question canceled by the terminal user")
+	return review, true
+}
+
+func (p *interruptPrompts) submitQuestionnaire() {
+	review, open := p.closeQuestionnaire()
+	if !open {
 		return
 	}
 	answer, err := review.Answer()
@@ -438,6 +436,17 @@ func (p *interruptPrompts) finishQuestionnaire(canceled bool) {
 	}
 	p.questionnaire = nil
 	p.advanceInterruptReview()
+}
+
+func (p *interruptPrompts) cancelQuestionnaire() {
+	if _, open := p.closeQuestionnaire(); !open {
+		return
+	}
+	p.questionnaire = nil
+	if p.backInterrupt() {
+		return
+	}
+	p.abort("question canceled by the terminal user")
 }
 
 func questionOptions(field conversation.QuestionField) []base.Option[questionChoice] {

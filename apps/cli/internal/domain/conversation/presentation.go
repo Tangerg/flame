@@ -136,12 +136,7 @@ func (b Block) Equal(other Block) bool {
 		b.Text != other.Text || !slices.Equal(b.Attachments, other.Attachments) || !equalInlineImages(b.Images, other.Images) {
 		return false
 	}
-	if (b.Question == nil) != (other.Question == nil) ||
-		(b.Question != nil && !b.Question.Equal(*other.Question)) {
-		return false
-	}
-	return (b.Tool == nil) == (other.Tool == nil) &&
-		(b.Tool == nil || b.Tool.Equal(*other.Tool))
+	return equalOptionalValue(b.Question, other.Question) && equalOptionalValue(b.Tool, other.Tool)
 }
 
 // InlineImage is model-produced media embedded in an assistant message. It is
@@ -189,6 +184,13 @@ const (
 	ToolError    ToolStatus = "error"
 	ToolCanceled ToolStatus = "canceled"
 )
+
+func (s ToolStatus) valid() bool {
+	return s == ToolRunning || s == ToolOK || s.Failed()
+}
+
+// Failed reports whether the call ended without its result.
+func (s ToolStatus) Failed() bool { return s == ToolError || s == ToolCanceled }
 
 // ToolCall is a tool invocation as the Runtime binding chose to present it.
 //
@@ -249,13 +251,10 @@ func (t ToolCall) Equal(other ToolCall) bool {
 		!t.StartedAt.Equal(other.StartedAt) || !t.FinishedAt.Equal(other.FinishedAt) ||
 		t.Output != other.Output || !bytes.Equal(t.ResultJSON, other.ResultJSON) ||
 		!failure.Equal(t.Problem, other.Problem) ||
-		t.Diff != other.Diff || t.Duration != other.Duration ||
-		(t.ExitCode == nil) != (other.ExitCode == nil) ||
-		(t.OutputPage == nil) != (other.OutputPage == nil) {
+		t.Diff != other.Diff || t.Duration != other.Duration {
 		return false
 	}
-	return (t.ExitCode == nil || *t.ExitCode == *other.ExitCode) &&
-		(t.OutputPage == nil || *t.OutputPage == *other.OutputPage)
+	return equalOptional(t.ExitCode, other.ExitCode) && equalOptional(t.OutputPage, other.OutputPage)
 }
 
 // sameInvocation compares the provider-visible call while deliberately
@@ -268,15 +267,18 @@ func (t ToolCall) sameInvocation(other ToolCall) bool {
 }
 
 func (t ToolCall) Validate() error {
+	if err := errors.Join(t.validateVocabulary(), t.validateTiming(), t.validatePayloads()); err != nil {
+		return fmt.Errorf("tool call: %w", err)
+	}
+	return nil
+}
+
+func (t ToolCall) validateVocabulary() error {
 	var problems []error
-	switch t.Kind {
-	case "", builtin.CategoryShell, builtin.CategoryEdit, builtin.CategoryRead, builtin.CategorySearch, builtin.CategoryTask:
-	default:
+	if t.Kind != "" && !slices.Contains(t.Kind.Values(), string(t.Kind)) {
 		problems = append(problems, fmt.Errorf("kind %q is invalid", t.Kind))
 	}
-	switch t.Status {
-	case ToolRunning, ToolOK, ToolError, ToolCanceled:
-	default:
+	if !t.Status.valid() {
 		problems = append(problems, fmt.Errorf("status %q is invalid", t.Status))
 	}
 	switch t.Safety {
@@ -287,24 +289,30 @@ func (t ToolCall) Validate() error {
 	if t.Kind == "" && strings.TrimSpace(t.Name) == "" {
 		problems = append(problems, errors.New("unknown tool has no provider name"))
 	}
-	if t.Status == ToolRunning && t.ExitCode != nil {
-		problems = append(problems, errors.New("running tool has an exit code"))
+	if t.Problem != nil && !t.Status.Failed() {
+		problems = append(problems, errors.New("successful or running tool carries a problem"))
 	}
+	return errors.Join(problems...)
+}
+
+// validateTiming checks that only a finished call has an exit code, a duration
+// and a finish time, and that its times are ordered.
+func (t ToolCall) validateTiming() error {
+	var problems []error
 	if t.Duration < 0 {
 		problems = append(problems, errors.New("tool duration is negative"))
 	}
-	if t.Status == ToolRunning && t.Duration != 0 {
-		problems = append(problems, errors.New("running tool has a duration"))
+	if t.Status == ToolRunning && (t.ExitCode != nil || t.Duration != 0 || !t.FinishedAt.IsZero()) {
+		problems = append(problems, errors.New("running tool has a finish record"))
 	}
-	if t.Status == ToolRunning && !t.FinishedAt.IsZero() {
-		problems = append(problems, errors.New("running tool has a finish time"))
+	if !t.FinishedAt.IsZero() && (t.StartedAt.IsZero() || t.FinishedAt.Before(t.StartedAt)) {
+		problems = append(problems, errors.New("tool finish time has no earlier start time"))
 	}
-	if !t.FinishedAt.IsZero() && t.StartedAt.IsZero() {
-		problems = append(problems, errors.New("finished tool has no start time"))
-	}
-	if !t.FinishedAt.IsZero() && t.FinishedAt.Before(t.StartedAt) {
-		problems = append(problems, errors.New("tool finish time precedes start time"))
-	}
+	return errors.Join(problems...)
+}
+
+func (t ToolCall) validatePayloads() error {
+	var problems []error
 	if len(t.ArgumentsJSON) > 0 {
 		var arguments map[string]jsontext.Value
 		if !jsontext.Value(t.ArgumentsJSON).IsValid() || json.Unmarshal(t.ArgumentsJSON, &arguments) != nil || arguments == nil {
@@ -314,15 +322,7 @@ func (t ToolCall) Validate() error {
 	if len(t.ResultJSON) > 0 && !jsontext.Value(t.ResultJSON).IsValid() {
 		problems = append(problems, errors.New("result JSON is invalid"))
 	}
-	if t.Problem != nil {
-		if t.Status != ToolError && t.Status != ToolCanceled {
-			problems = append(problems, errors.New("successful or running tool carries a problem"))
-		}
-	}
-	if err := errors.Join(problems...); err != nil {
-		return fmt.Errorf("tool call: %w", err)
-	}
-	return nil
+	return errors.Join(problems...)
 }
 
 // Outcome is a finished run's verdict.

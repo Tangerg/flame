@@ -71,37 +71,49 @@ func (entry *transcriptEntry) passive() *transcriptEntry {
 	return entry.projection
 }
 
-func (t *transcriptView) retainReadingIntent(preserve bool) transcriptReadingIntent {
+// retainReadingIntent captures where the reader is before the window is
+// rebuilt, so the rebuilt window can return there.
+func (t *transcriptView) retainReadingIntent() transcriptReadingIntent {
 	intent := transcriptReadingIntent{follow: true}
-	if preserve && t.windowIntent != nil {
+	if t.windowIntent != nil {
 		intent = *t.windowIntent
 	}
-	if t.content != nil {
-		previous := t.content.Layout()
-		if preserve && previous.Width() > 0 {
-			intent.width, intent.height = previous.Width(), t.viewport.Value()
-			intent.follow, intent.offset = t.scroll.FollowingEnd(), t.scroll.Offset()
-			if native, local, ok := previous.At(previous.StartRow() + intent.offset); ok {
-				intent.anchor, intent.anchorOffset = t.nativeEntries[native], local
-			}
-			if t.selectionIntent == nil && t.selection.Active() {
-				start, end := t.selection.Range()
-				first, firstOK := previous.Block(start.Content).(*transcriptEntry)
-				last, lastOK := previous.Block(end.Content).(*transcriptEntry)
-				if firstOK && lastOK {
-					t.selectionIntent = &transcriptSelectionIntent{
-						start: transcriptSelectionPoint{entry: t.nativeEntries[start.Content], body: first, position: start.Position},
-						end:   transcriptSelectionPoint{entry: t.nativeEntries[end.Content], body: last, position: end.Position},
-					}
-				}
+	if t.content == nil {
+		return intent
+	}
+	previous := t.content.Layout()
+	if previous.Width() == 0 {
+		return intent
+	}
+	intent.width, intent.height = previous.Width(), t.viewport.Value()
+	intent.follow, intent.offset = t.scroll.FollowingEnd(), t.scroll.Offset()
+	if native, local, ok := previous.At(previous.StartRow() + intent.offset); ok {
+		intent.anchor, intent.anchorOffset = t.nativeEntries[native], local
+	}
+	if t.selectionIntent == nil && t.selection.Active() {
+		start, end := t.selection.Range()
+		first, firstOK := previous.Block(start.Content).(*transcriptEntry)
+		last, lastOK := previous.Block(end.Content).(*transcriptEntry)
+		if firstOK && lastOK {
+			t.selectionIntent = &transcriptSelectionIntent{
+				start: transcriptSelectionPoint{entry: t.nativeEntries[start.Content], body: first, position: start.Position},
+				end:   transcriptSelectionPoint{entry: t.nativeEntries[end.Content], body: last, position: end.Position},
 			}
 		}
 	}
 	return intent
 }
 
-func (t *transcriptView) resetWindow(preserve bool) {
-	intent := t.retainReadingIntent(preserve)
+// resetWindow opens an empty window that follows the newest entry.
+func (t *transcriptView) resetWindow() {
+	t.selectionIntent = nil
+	t.installWindow(transcriptReadingIntent{follow: true})
+}
+
+// rebuildWindow replaces the window and returns the reader to where they were.
+func (t *transcriptView) rebuildWindow() { t.installWindow(t.retainReadingIntent()) }
+
+func (t *transcriptView) installWindow(intent transcriptReadingIntent) {
 	if t.content != nil {
 		t.content.Close()
 	}
@@ -132,9 +144,6 @@ func (t *transcriptView) resetWindow(preserve bool) {
 	}
 	t.restoreReadingIntent(intent)
 
-	if !preserve {
-		t.selectionIntent = nil
-	}
 	if t.selectionIntent != nil {
 		intent := t.selectionIntent
 		first, last := t.entries[intent.start.entry], t.entries[intent.end.entry]

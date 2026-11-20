@@ -47,7 +47,7 @@ func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) 
 			t.Fatal(err)
 		}
 		value := testsupport.MustRestoreRun(run.Snapshot{
-			ID: fmt.Sprintf("run_usage_%d", index), SessionID: sessionID, ModelSelection: selection,
+			ID: testsupport.MustRunID(fmt.Sprintf("run_usage_%d", index)), SessionID: testsupport.MustSessionID(sessionID), ModelSelection: selection,
 			Ending: run.Completed{}, CreatedAt: now, FinishedAt: now, UpdatedAt: now,
 			Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: testsupport.Usage(accounting.Totals{InputTokens: 10}, map[string]accounting.Totals{model: {InputTokens: 10}})}),
 		})
@@ -56,7 +56,7 @@ func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) 
 		}
 		request, _ := chat.NewRequest(chat.NewUserMessage(chat.NewTextPart("captured")))
 		id := fmt.Sprintf("usage_model_%d", index)
-		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: framecall.Invocation{ID: id, Origin: extension.Human, Target: framecall.Target{Scope: extension.ScopeCall, Reference: id}}, Provider: provider, Model: model, SessionID: sessionID, StartedAt: now, Request: modelref.ChatEndpointRequest{Chat: request}}
+		invocation := modelref.EndpointInvocation{ID: "endpoint_" + id, Caller: framecall.Invocation{ID: id, Origin: extension.Human, Target: framecall.Target{Scope: extension.ScopeCall, Reference: id}}, Provider: provider, Model: model, SessionID: testsupport.MustSessionID(sessionID), StartedAt: now, Request: modelref.ChatEndpointRequest{Chat: request}}
 		if err := stores.ModelInvocations.StartEndpointInvocation(t.Context(), invocation, ""); err != nil {
 			t.Fatal(err)
 		}

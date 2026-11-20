@@ -36,6 +36,33 @@ func (FileBrowser) List(ctx context.Context, root string, options workspaceapp.F
 	return entries, nil
 }
 
+// openFailure names why a path cannot be read as a file.
+func openFailure(path string, err error) error {
+	switch {
+	case errors.Is(err, filesystem.ErrNotRegular):
+		return fmt.Errorf("%w: %s: %w", workspaceapp.ErrUnsupportedFile, path, err)
+	case errors.Is(err, filesystem.ErrFileTooLarge):
+		return fmt.Errorf("%w: %s: %w", workspaceapp.ErrFileReadTooLarge, path, err)
+	default:
+		return err
+	}
+}
+
+// scanFailure names why an opened file's text cannot be read.
+func scanFailure(path string, err error) error {
+	switch {
+	case errors.Is(err, textread.ErrInputTooLarge):
+		return fmt.Errorf("%w: %s grew while reading: %w", workspaceapp.ErrFileReadTooLarge, path, err)
+	case errors.Is(err, textread.ErrLineTooLarge):
+		return fmt.Errorf("%w: %s line %d exceeds the %d MiB limit: %w",
+			workspaceapp.ErrFileReadTooLarge, path, textread.LineNumber(err), workspaceapp.MaxFileReadLineBytes>>20, err)
+	case errors.Is(err, textread.ErrInvalidText):
+		return fmt.Errorf("%w: %s: %w", workspaceapp.ErrUnsupportedFile, path, err)
+	default:
+		return fmt.Errorf("workspace: scan %s: %w", path, err)
+	}
+}
+
 func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.FileReadPlan) (_ workspaceapp.FileReadResult, err error) {
 	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return workspaceapp.FileReadResult{}, cause
@@ -65,14 +92,7 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 		workspaceapp.MaxFileReadSourceBytes,
 	)
 	if err != nil {
-		switch {
-		case errors.Is(err, filesystem.ErrNotRegular):
-			return workspaceapp.FileReadResult{}, fmt.Errorf("%w: %s: %w", workspaceapp.ErrUnsupportedFile, input.Path, err)
-		case errors.Is(err, filesystem.ErrFileTooLarge):
-			return workspaceapp.FileReadResult{}, fmt.Errorf("%w: %s: %w", workspaceapp.ErrFileReadTooLarge, input.Path, err)
-		default:
-			return workspaceapp.FileReadResult{}, err
-		}
+		return workspaceapp.FileReadResult{}, openFailure(input.Path, err)
 	}
 	defer func() {
 		err = errors.Join(err, file.Close())
@@ -89,20 +109,7 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 	result, err := scanFileWindow(ctx, source, input, start, lines)
 	err = errors.Join(err, source.readErr, errors.Join(ctx.Err(), context.Cause(ctx)))
 	if err != nil {
-		switch {
-		case errors.Is(err, textread.ErrInputTooLarge):
-			return workspaceapp.FileReadResult{}, fmt.Errorf("%w: %s grew while reading: %w", workspaceapp.ErrFileReadTooLarge, input.Path, err)
-		case errors.Is(err, textread.ErrLineTooLarge):
-			return workspaceapp.FileReadResult{}, fmt.Errorf(
-				"%w: %s line %d exceeds the %d MiB limit: %w",
-				workspaceapp.ErrFileReadTooLarge, input.Path, textread.LineNumber(err),
-				workspaceapp.MaxFileReadLineBytes>>20, err,
-			)
-		case errors.Is(err, textread.ErrInvalidText):
-			return workspaceapp.FileReadResult{}, fmt.Errorf("%w: %s: %w", workspaceapp.ErrUnsupportedFile, input.Path, err)
-		default:
-			return workspaceapp.FileReadResult{}, fmt.Errorf("workspace: scan %s: %w", input.Path, err)
-		}
+		return workspaceapp.FileReadResult{}, scanFailure(input.Path, err)
 	}
 	if err := filesystem.VerifyAtVersion(file, opened, rootHandle, filepath.FromSlash(relative)); err != nil {
 		return workspaceapp.FileReadResult{}, fmt.Errorf("workspace: verify %s after reading: %w", input.Path, err)

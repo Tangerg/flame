@@ -5,6 +5,8 @@ import (
 	"errors"
 	"log/slog"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 const (
@@ -44,7 +46,7 @@ func (r *terminalCommitRetry) advance() time.Duration {
 	return r.next
 }
 
-func commitRunBoundary(ctx context.Context, sessionID, runID string, write func() error, retryOnFailure bool) error {
+func commitRunBoundary(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, write func() error, retryOnFailure bool) error {
 	retry := terminalCommitRetry{}
 	reported := false
 	for {

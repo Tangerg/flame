@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -63,7 +65,7 @@ func (c *Coordinator) List(ctx context.Context) ([]session.Session, error) {
 }
 
 // Get returns the saved Session with id.
-func (c *Coordinator) Get(ctx context.Context, id string) (session.Session, error) {
+func (c *Coordinator) Get(ctx context.Context, id identity.SessionID) (session.Session, error) {
 	return c.sessions.Get(ctx, id)
 }
 
@@ -120,7 +122,8 @@ func (c *Coordinator) PrepareCreate(ctx context.Context, title, cwd string) (Cre
 // identity is refused: only the original Run acceptance may authorize replay.
 func (c *Coordinator) PrepareOpening(
 	ctx context.Context,
-	id, title, cwd string,
+	id identity.SessionID,
+	title, cwd string,
 	selection modelchoice.Selection,
 ) (current session.Session, initial *session.Session, err error) {
 	_, err = c.Get(ctx, id)
@@ -141,7 +144,9 @@ func (c *Coordinator) DefaultModelSelection() modelchoice.Selection {
 
 func (c *Coordinator) prepareInitial(
 	ctx context.Context,
-	id, title, cwd string,
+	id identity.SessionID,
+	title string,
+	cwd string,
 	selection modelchoice.Selection,
 ) (session.Session, *session.Session, error) {
 	workspace, err := c.resolveSessionWorkspace(cwd)
@@ -171,15 +176,22 @@ func (c *Coordinator) prepareInitial(
 // execution-policy change must not inherit processes, context evidence, or an
 // isolated copy from the preceding policy, so those resources are retired
 // before persistence exposes the replacement.
-func (c *Coordinator) Update(ctx context.Context, id string, patch Patch, complete operation.Reply[View]) error {
+func (c *Coordinator) patchedWorkspace(path *string) (*session.Workspace, error) {
+	if path == nil {
+		return nil, nil
+	}
+	resolved, err := c.resolveSessionWorkspace(*path)
+	if err != nil {
+		return nil, err
+	}
+	return &resolved, nil
+}
+
+func (c *Coordinator) Update(ctx context.Context, id identity.SessionID, patch Patch, complete operation.Reply[View]) error {
 	patch = patch.clone()
-	var workspace *session.Workspace
-	if patch.WorkspacePath != nil {
-		resolved, err := c.resolveSessionWorkspace(*patch.WorkspacePath)
-		if err != nil {
-			return err
-		}
-		workspace = &resolved
+	workspace, err := c.patchedWorkspace(patch.WorkspacePath)
+	if err != nil {
+		return err
 	}
 	if workspace != nil || patch.Isolated != nil {
 		admission, err := c.ClaimIdleSession(ctx, id)
@@ -192,16 +204,9 @@ func (c *Coordinator) Update(ctx context.Context, id string, patch Patch, comple
 	if err != nil {
 		return err
 	}
-	var selection *modelchoice.Selection
-	if !patch.ModelSelection.Empty() {
-		resolved, selectionErr := patch.ModelSelection.Apply(current.Selection())
-		if selectionErr != nil {
-			return selectionErr
-		}
-		if selectionErr = c.models.AdmitSelection(ctx, resolved); selectionErr != nil {
-			return fmt.Errorf("sessions: model selection is not admitted: %w", selectionErr)
-		}
-		selection = &resolved
+	selection, err := c.admittedSelection(ctx, patch.ModelSelection, current.Selection())
+	if err != nil {
+		return err
 	}
 	updated, changed, err := current.Edit(patch.ExpectedRevision, session.Patch{
 		Title: patch.Title, Selection: selection, Workspace: workspace,
@@ -219,18 +224,10 @@ func (c *Coordinator) Update(ctx context.Context, id string, patch Patch, comple
 	if err != nil {
 		return fmt.Errorf("sessions: prepare Session replacement: %w", err)
 	}
-	executionPolicyChanged := current.Workspace() != updated.Workspace() || current.Isolated() != updated.Isolated()
-	if executionPolicyChanged {
-		if err := c.transientState.QuiesceSession(id); err != nil {
-			return fmt.Errorf("sessions: quiesce process-local Session state before execution policy change: %w", err)
+	if current.Workspace() != updated.Workspace() || current.Isolated() != updated.Isolated() {
+		if err := c.retireExecutionPolicy(id); err != nil {
+			return err
 		}
-		if err := c.sandbox.Discard(id); err != nil {
-			return fmt.Errorf("sessions: discard sandbox copy before execution policy change: %w", err)
-		}
-		// This cache is optional, derived state. Retiring it before the CAS is
-		// conservative: a conflicting durable edit can rebuild the old policy's
-		// context, while carrying evidence across a successful relocation is unsafe.
-		c.transientState.ForgetSessionContext(id)
 	}
 	if err := complete(ctx, func(tx context.Context) (View, error) {
 		view, err := c.viewForSession(tx, updated)
@@ -242,6 +239,38 @@ func (c *Coordinator) Update(ctx context.Context, id string, patch Patch, comple
 		return err
 	}
 	c.publishSessionMoved(id)
+	return nil
+}
+
+// admittedSelection resolves a selection patch against the Session's current
+// choice; an empty patch keeps it.
+func (c *Coordinator) admittedSelection(ctx context.Context, patch modelchoice.Patch, current modelchoice.Selection) (*modelchoice.Selection, error) {
+	if patch.Empty() {
+		return nil, nil
+	}
+	resolved, err := patch.Apply(current)
+	if err != nil {
+		return nil, err
+	}
+	if err := c.models.AdmitSelection(ctx, resolved); err != nil {
+		return nil, fmt.Errorf("sessions: model selection is not admitted: %w", err)
+	}
+	return &resolved, nil
+}
+
+// retireExecutionPolicy drops every process-local fact bound to the old
+// workspace or isolation before the Session moves.
+func (c *Coordinator) retireExecutionPolicy(id identity.SessionID) error {
+	if err := c.transientState.QuiesceSession(id); err != nil {
+		return fmt.Errorf("sessions: quiesce process-local Session state before execution policy change: %w", err)
+	}
+	if err := c.sandbox.Discard(id); err != nil {
+		return fmt.Errorf("sessions: discard sandbox copy before execution policy change: %w", err)
+	}
+	// This cache is optional, derived state. Retiring it before the CAS is
+	// conservative: a conflicting durable edit can rebuild the old policy's
+	// context, while carrying evidence across a successful relocation is unsafe.
+	c.transientState.ForgetSessionContext(id)
 	return nil
 }
 

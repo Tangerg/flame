@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/checkpoint"
@@ -39,7 +41,7 @@ func (c *Checkpoints) CheckpointsEnabled() bool {
 // Snapshot anchors sessionID's working tree (at cwd) under runID so a later
 // Restore can revert to it. A disabled store is a no-op. Operational failures
 // remain observable; the caller owns best-effort maintenance policy.
-func (c *Checkpoints) Snapshot(ctx context.Context, sessionID, cwd, runID string) error {
+func (c *Checkpoints) Snapshot(ctx context.Context, sessionID identity.SessionID, cwd string, runID identity.RunID) error {
 	if !c.CheckpointsEnabled() {
 		return nil
 	}
@@ -57,18 +59,18 @@ func (c *Checkpoints) Snapshot(ctx context.Context, sessionID, cwd, runID string
 	if !repository {
 		return nil
 	}
-	return c.store.Snapshot(ctx, sessionID, cwd, runID)
+	return c.store.Snapshot(ctx, sessionID.String(), cwd, runID.String())
 }
 
 // Restore checks out sessionID's working tree (at cwd) to the runID snapshot. A
 // disabled store or missing snapshot surfaces as [sessions.ErrCheckpointUnavailable]; a
 // failed checkout that may have changed part of the tree surfaces as
 // [sessions.ErrCheckpointRestoreIncomplete].
-func (c *Checkpoints) Restore(ctx context.Context, sessionID, cwd, runID string) error {
+func (c *Checkpoints) Restore(ctx context.Context, sessionID identity.SessionID, cwd string, runID identity.RunID) error {
 	if !c.CheckpointsEnabled() {
 		return sessions.ErrCheckpointUnavailable
 	}
-	err := c.store.Restore(ctx, sessionID, cwd, runID)
+	err := c.store.Restore(ctx, sessionID.String(), cwd, runID.String())
 	switch {
 	case errors.Is(err, checkpoint.ErrUnavailable):
 		return fmt.Errorf("%w: %w", sessions.ErrCheckpointUnavailable, err)
@@ -83,9 +85,9 @@ func (c *Checkpoints) Restore(ctx context.Context, sessionID, cwd, runID string)
 
 // DropSession removes a session's shadow repo (on session delete).
 // Best-effort no-op when checkpoints are disabled.
-func (c *Checkpoints) DropSession(ctx context.Context, sessionID string) error {
+func (c *Checkpoints) DropSession(ctx context.Context, sessionID identity.SessionID) error {
 	if !c.CheckpointsEnabled() {
 		return nil
 	}
-	return c.store.DropSession(ctx, sessionID)
+	return c.store.DropSession(ctx, sessionID.String())
 }

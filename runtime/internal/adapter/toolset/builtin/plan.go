@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
@@ -13,13 +15,13 @@ import (
 
 // planStateReader supplies the canonical session Plan approved by exit_plan_mode.
 type planStateReader interface {
-	State(ctx context.Context, sessionID string) (plandomain.Current, error)
+	State(ctx context.Context, sessionID identity.SessionID) (plandomain.Current, error)
 	Review(context.Context, plandomain.State) (string, error)
 }
 
 // planReplacer executes the application use case behind set_plan.
 type planReplacer interface {
-	Replace(ctx context.Context, sessionID string, steps []plandomain.Step) (plandomain.State, error)
+	Replace(ctx context.Context, sessionID identity.SessionID, steps []plandomain.Step) (plandomain.State, error)
 }
 
 // PlanUseCases is the union of what this tool family consumes; each tool still
@@ -31,13 +33,13 @@ type PlanUseCases interface {
 
 // planEnterPolicy narrows one session into Plan mode.
 type planEnterPolicy interface {
-	EnterPlanMode(ctx context.Context, sessionID string) (changed bool, err error)
+	EnterPlanMode(ctx context.Context, sessionID identity.SessionID) (changed bool, err error)
 }
 
 // planExitPolicy reads one session's permission mode and ends its Plan mode.
 type planExitPolicy interface {
-	Mode(ctx context.Context, sessionID string) (approval.Mode, error)
-	ExitPlanMode(ctx context.Context, sessionID string, revision uint64) (restored approval.Mode, changed bool, err error)
+	Mode(ctx context.Context, sessionID identity.SessionID) (approval.Mode, error)
+	ExitPlanMode(ctx context.Context, sessionID identity.SessionID, revision uint64) (restored approval.Mode, changed bool, err error)
 }
 
 // PlanModePolicy owns both transitions of the same session Plan-mode lifecycle.

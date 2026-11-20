@@ -26,6 +26,33 @@ func (s *Store) Restore(ctx context.Context, sessionID, cwd, runID string) error
 	}
 	defer release()
 	gitDir := s.gitDir(sessionID, cwd)
+	if err := s.requireBoundary(ctx, gitDir, cwd, runID); err != nil {
+		return err
+	}
+	if err := s.materializeAlternates(ctx, gitDir); err != nil {
+		return err
+	}
+	// The pre-restore commit is what makes the restore reversible. If it fails,
+	// checkout must not run: it would discard the working tree with no recovery
+	// point.
+	if err := s.archiveWorkspace(ctx, gitDir, cwd, "pre-restore"); err != nil {
+		return err
+	}
+	if err := s.checkRestoreConflicts(ctx, gitDir, cwd, tagFor(runID)); err != nil {
+		return err
+	}
+	// Checkout also checks for changes after the archive and preflight. Unlike
+	// reset --hard (or --merge), --no-overwrite-ignore protects ignored blockers.
+	// Once checkout starts, any error conservatively retains the recovery intent.
+	if _, err := s.git(ctx, gitDir, cwd, "checkout", "-q", "--detach", "--no-overwrite-ignore", tagFor(runID)); err != nil {
+		return fmt.Errorf("%w: %w", ErrRestoreIncomplete, err)
+	}
+	return nil
+}
+
+// requireBoundary reports ErrUnavailable unless this workspace's shadow
+// repository holds the runID boundary.
+func (s *Store) requireBoundary(ctx context.Context, gitDir, cwd, runID string) error {
 	present, err := repoExists(gitDir)
 	if err != nil {
 		return err
@@ -45,36 +72,6 @@ func (s *Store) Restore(ctx context.Context, sessionID, cwd, runID string) error
 			return ErrUnavailable
 		}
 		return err
-	}
-	if err := s.materializeAlternates(ctx, gitDir); err != nil {
-		return err
-	}
-	// Reversibility: capture the pre-restore state as a commit before checkout,
-	// but only when there's something to capture (no empty commit otherwise).
-	if err := s.stageChanges(ctx, gitDir, cwd); err != nil {
-		return err
-	}
-	shouldCommit, err := s.shouldCommit(ctx, gitDir, cwd)
-	if err != nil {
-		return err
-	}
-	if shouldCommit {
-		// The pre-restore commit is what makes the restore reversible (unrevert).
-		// If it fails, do NOT proceed to checkout below — that would
-		// discard the working-tree state with no recovery point, turning a
-		// "reversible" restore irreversible. Fail instead.
-		if _, err := s.git(ctx, gitDir, cwd, "commit", "-q", "-m", "pre-restore"); err != nil {
-			return err
-		}
-	}
-	if err := s.checkRestoreConflicts(ctx, gitDir, cwd, tagFor(runID)); err != nil {
-		return err
-	}
-	// Checkout also checks for changes after the archive and preflight. Unlike
-	// reset --hard (or --merge), --no-overwrite-ignore protects ignored blockers.
-	// Once checkout starts, any error conservatively retains the recovery intent.
-	if _, err := s.git(ctx, gitDir, cwd, "checkout", "-q", "--detach", "--no-overwrite-ignore", tagFor(runID)); err != nil {
-		return fmt.Errorf("%w: %w", ErrRestoreIncomplete, err)
 	}
 	return nil
 }

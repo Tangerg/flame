@@ -20,11 +20,11 @@ import (
 const modelProcessStopReason = "model call cannot continue"
 const cancellationControlPrefix = "run cancel command "
 
-func steerSignalID(itemID string) (scoperun.SignalID, error) {
-	if err := identity.ValidateItem(itemID); err != nil {
+func steerSignalID(itemID identity.ItemID) (scoperun.SignalID, error) {
+	if err := itemID.Validate(); err != nil {
 		return scoperun.SignalID{}, err
 	}
-	return scoperun.ParseSignalID("steer:" + itemID)
+	return scoperun.ParseSignalID("steer:" + itemID.String())
 }
 
 // Application retains the exact user note. Scope receives a bounded diagnostic
@@ -84,56 +84,70 @@ func (i *interactionSession) stopModelProcess(ctx context.Context, processID sco
 func (i *interactionSession) submitSteer(
 	ctx context.Context,
 	prepared runs.PreparedSteer,
-) (string, error) {
-	if ctx == nil {
-		return "", errors.New("execution: steer context is required")
-	}
+) (identity.ItemID, error) {
 	if err := ctx.Err(); err != nil {
-		return "", err
+		return identity.ItemID{}, err
 	}
 	process := i.state.processHandle()
 	if process == nil {
-		return "", runs.ErrExecutorNotLive
+		return identity.ItemID{}, runs.ErrExecutorNotLive
 	}
-	itemID := prepared.ItemID()
 	if command, bound := prepared.Command(); bound && (command.SessionID != i.start.SessionID || command.RunID != i.start.RunID) {
-		return "", errors.New("execution: steer command addresses another Run")
+		return identity.ItemID{}, errors.New("execution: steer command addresses another Run")
 	}
-	signalID, err := steerSignalID(itemID)
+	signalID, signal, err := steerSignal(prepared)
 	if err != nil {
-		return "", fmt.Errorf("execution: construct Interaction steer identity: %w", err)
-	}
-	message, err := runs.MaterializeUserMessage(prepared.Input())
-	if err != nil {
-		return "", err
-	}
-	signal, err := materializeSteerSignal(signalID, message)
-	if err != nil {
-		return "", fmt.Errorf("execution: construct Interaction steer Signal: %w", err)
+		return identity.ItemID{}, err
 	}
 	// Rejected duplicate dispatch must never erase or replace the original
 	// mapping while Scope is committing or applying that same Signal.
 	release, err := i.steerAdmissions.Acquire(ctx, signalID.String())
 	if err != nil {
-		return "", err
+		return identity.ItemID{}, err
 	}
 	defer release()
+	if err := i.deliverSteer(ctx, process, signalID, signal, prepared); err != nil {
+		return identity.ItemID{}, err
+	}
+	return prepared.ItemID(), nil
+}
+
+func steerSignal(prepared runs.PreparedSteer) (scoperun.SignalID, scoperun.Signal, error) {
+	signalID, err := steerSignalID(prepared.ItemID())
+	if err != nil {
+		return scoperun.SignalID{}, scoperun.Signal{}, fmt.Errorf("execution: construct Interaction steer identity: %w", err)
+	}
+	message, err := runs.MaterializeUserMessage(prepared.Input())
+	if err != nil {
+		return scoperun.SignalID{}, scoperun.Signal{}, err
+	}
+	signal, err := materializeSteerSignal(signalID, message)
+	if err != nil {
+		return scoperun.SignalID{}, scoperun.Signal{}, fmt.Errorf("execution: construct Interaction steer Signal: %w", err)
+	}
+	return signalID, signal, nil
+}
+
+// deliverSteer delivers a steer Signal exactly once. A Signal Scope already
+// admitted is a duplicate whose receipt is that admission; a pending one must
+// be the same steer, or the command key was reused.
+func (i *interactionSession) deliverSteer(ctx context.Context, process *scoperun.Handle[scoperun.Payload], signalID scoperun.SignalID, signal scoperun.Signal, prepared runs.PreparedSteer) error {
 	i.state.mu.Lock()
 	prior, present := i.state.pendingSteers[signalID]
 	i.state.mu.Unlock()
 	if present && !prior.Equal(prepared) {
-		return "", runs.ErrCommandKeyConflict
+		return runs.ErrCommandKeyConflict
 	}
 	committed, err := i.committedTree(ctx, process.ID().Root())
 	if err != nil {
-		return "", err
+		return err
 	}
 	matched, err := exactSignalAdmission(committed, process.ID(), signal)
 	if err != nil {
-		return "", errors.Join(runs.ErrCommandKeyConflict, err)
+		return errors.Join(runs.ErrCommandKeyConflict, err)
 	}
 	if matched {
-		return itemID, nil
+		return nil
 	}
 	if !present {
 		i.state.mu.Lock()
@@ -151,22 +165,22 @@ func (i *interactionSession) submitSteer(
 			!errors.Is(deliverErr, context.DeadlineExceeded) {
 			i.removePendingSteer(signalID)
 		}
-		return "", fmt.Errorf("execution: deliver Interaction steer Signal: %w", deliverErr)
+		return fmt.Errorf("execution: deliver Interaction steer Signal: %w", deliverErr)
 	}
 	if !accepted {
 		tree, err := i.committedTree(ctx, process.ID().Root())
 		if err != nil {
-			return "", err
+			return err
 		}
 		matched, err := exactSignalAdmission(tree, process.ID(), signal)
 		if err != nil {
-			return "", err
+			return err
 		}
 		if !matched {
-			return "", errors.New("execution: steer duplicate has no exact admission receipt")
+			return errors.New("execution: steer duplicate has no exact admission receipt")
 		}
 	}
-	return itemID, nil
+	return nil
 }
 
 func (i *interactionSession) removePendingSteer(signalID scoperun.SignalID) {

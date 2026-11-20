@@ -192,6 +192,7 @@ func (c GrepCoverage) Complete() bool { return c.SkippedFiles == 0 && c.Remainin
 const (
 	defaultFileListPageLimit = 1000
 	fileListPageNamespace    = "workspace.files"
+	directoryPageNamespace   = "workspace.directory"
 )
 
 // Workspace file reads retain at most 1 MiB by default and 8 MiB when a
@@ -219,6 +220,43 @@ const (
 	MaxGrepSourceBytes       = 512 << 20
 )
 
+// listDirectory pages one directory level natively; its cursor holds the
+// enumeration offset and the directory revision it is valid for.
+func (f *Files) listDirectory(ctx context.Context, root, path string, input FileListInput) (FilePage, error) {
+	size, err := input.Limit.Resolve(defaultFileListPageLimit)
+	if err != nil {
+		return FilePage{}, fmt.Errorf("%w: %w", ErrPageLimit, err)
+	}
+	filters := []string{root, path, strconv.FormatBool(input.IncludeIgnored)}
+	anchor, err := pagination.Decode(input.Cursor, directoryPageNamespace, filters)
+	if err != nil {
+		return FilePage{}, fmt.Errorf("%w: %w", ErrPageCursor, err)
+	}
+	plan := DirectoryListPlan{Path: path, IncludeIgnored: input.IncludeIgnored, Limit: size}
+	if len(anchor) > 0 {
+		if len(anchor) != 2 {
+			return FilePage{}, ErrPageCursor
+		}
+		plan.Offset, err = strconv.Atoi(anchor[0])
+		if err != nil || plan.Offset < 0 {
+			return FilePage{}, ErrPageCursor
+		}
+		plan.Revision = anchor[1]
+	}
+	page, err := f.files.ListDirectory(ctx, root, plan)
+	if err != nil {
+		return FilePage{}, err
+	}
+	next := ""
+	if !page.Complete {
+		next, err = pagination.Encode(directoryPageNamespace, filters, []string{strconv.Itoa(page.NextOffset), page.Revision})
+		if err != nil {
+			return FilePage{}, fmt.Errorf("%w: %w", ErrPageCursor, err)
+		}
+	}
+	return FilePage{Entries: page.Entries, NextCursor: next, Complete: page.Complete, FileListCoverage: page.FileListCoverage}, nil
+}
+
 // List returns one stable cursor page of entries below a workspace root.
 func (f *Files) List(ctx context.Context, input FileListInput) (FilePage, error) {
 	root, err := f.scope.ResolveRoot(input.CWD)
@@ -240,38 +278,7 @@ func (f *Files) List(ctx context.Context, input FileListInput) (FilePage, error)
 		return FilePage{}, ErrInvalidFileNameQuery
 	}
 	if !input.Recursive && input.Glob == "" && input.NameQuery == nil {
-		size, err := input.Limit.Resolve(defaultFileListPageLimit)
-		if err != nil {
-			return FilePage{}, fmt.Errorf("%w: %w", ErrPageLimit, err)
-		}
-		filters := []string{root, path, strconv.FormatBool(input.IncludeIgnored)}
-		anchor, err := pagination.Decode(input.Cursor, "workspace.directory", filters)
-		if err != nil {
-			return FilePage{}, fmt.Errorf("%w: %w", ErrPageCursor, err)
-		}
-		plan := DirectoryListPlan{Path: path, IncludeIgnored: input.IncludeIgnored, Limit: size}
-		if len(anchor) > 0 {
-			if len(anchor) != 2 {
-				return FilePage{}, ErrPageCursor
-			}
-			plan.Offset, err = strconv.Atoi(anchor[0])
-			if err != nil || plan.Offset < 0 {
-				return FilePage{}, ErrPageCursor
-			}
-			plan.Revision = anchor[1]
-		}
-		page, err := f.files.ListDirectory(ctx, root, plan)
-		if err != nil {
-			return FilePage{}, err
-		}
-		next := ""
-		if !page.Complete {
-			next, err = pagination.Encode("workspace.directory", filters, []string{strconv.Itoa(page.NextOffset), page.Revision})
-			if err != nil {
-				return FilePage{}, fmt.Errorf("%w: %w", ErrPageCursor, err)
-			}
-		}
-		return FilePage{Entries: page.Entries, NextCursor: next, Complete: page.Complete, FileListCoverage: page.FileListCoverage}, nil
+		return f.listDirectory(ctx, root, path, input)
 	}
 	entries, err := f.files.List(ctx, root, FileListOptions{
 		Path: path, Glob: input.Glob, Recursive: input.Recursive || input.NameQuery != nil, IncludeIgnored: input.IncludeIgnored,
@@ -315,13 +322,9 @@ func (f *Files) Read(ctx context.Context, cwd string, input FileReadInput) (File
 		return FileReadResult{}, err
 	}
 	start, end := input.Range.Bounds()
-	return f.readFile(ctx, root, FileReadPlan{
+	return f.files.Read(ctx, root, FileReadPlan{
 		Path: path, StartLine: start, EndLine: end, MaxBytes: input.ByteLimit.Bytes(), FromEnd: input.FromEnd,
 	})
-}
-
-func (f *Files) readFile(ctx context.Context, root string, input FileReadPlan) (FileReadResult, error) {
-	return f.files.Read(ctx, root, input)
 }
 
 // Grep searches a workspace root or an existing subdirectory. Coverage separates

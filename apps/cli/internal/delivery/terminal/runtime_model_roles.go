@@ -51,7 +51,7 @@ func (m *modelConfigScreens) SetModelRole(kind models.RoleKind, argument string)
 		return err
 	}
 	m.status.note("updating " + string(kind) + " model role")
-	started := m.tasks.admissionMutation(modelConfigOperation, false,
+	started := m.tasks.admissionMutation(modelConfigOperation,
 		func(ctx context.Context) (models.Role, error) { return m.service.SetRole(ctx, role) },
 		func(updated models.Role, err error) {
 			if err != nil {

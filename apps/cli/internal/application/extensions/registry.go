@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strings"
 	"sync"
 )
 
@@ -27,7 +28,15 @@ func (s registrationSequence) successor() (registrationSequence, bool) {
 // Capability names a permission explicitly declared by an executable plugin.
 type Capability string
 
-const CommandsCapability Capability = "terminal.commands"
+// HostNamespace names the terminal host's own contributions. No sideloaded
+// plugin may claim it or an identity inside it.
+const HostNamespace = "terminal"
+
+const CommandsCapability Capability = HostNamespace + ".commands"
+
+func ReservedPluginID(id string) bool {
+	return id == HostNamespace || strings.HasPrefix(id, HostNamespace+".")
+}
 
 type commandRegistry struct {
 	mu      sync.RWMutex

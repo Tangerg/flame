@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -168,7 +169,7 @@ func (c *ExternalConnector) materialize(ctx context.Context, u *connectorUse, e 
 	}
 	s := mcpserver.Server{DirectoryRevision: e.Revision, Name: name, Source: source, Connection: connection, Enabled: e.Enabled, Description: e.Description}
 	if e.HandshakeSeconds != 0 {
-		if e.HandshakeSeconds < 0 || e.HandshakeSeconds > int64((1<<63-1)/time.Second) {
+		if e.HandshakeSeconds < 0 || e.HandshakeSeconds > int64(math.MaxInt64/time.Second) {
 			return s, app.ErrInvalidServerConfiguration
 		}
 		s.HandshakeTimeout, err = mcpserver.NewHandshakeTimeout(time.Duration(e.HandshakeSeconds) * time.Second)

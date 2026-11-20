@@ -129,12 +129,12 @@ func storageHealthProbe(check func(context.Context) error) flamehttp.HealthProbe
 }
 
 // resolvedVersion keeps HTTP identity and telemetry resource metadata aligned:
-// an explicit link-time version wins, then Go module build info, then "dev".
+// an explicit link-time version wins over the module build version.
 func resolvedVersion() string {
-	if version != "" && version != "dev" {
+	if version != "" {
 		return version
 	}
-	return flamehttp.ServerInfoOrDefault().Version
+	return bootstrap.BuildVersion()
 }
 
 type runtimeHTTPServer interface {

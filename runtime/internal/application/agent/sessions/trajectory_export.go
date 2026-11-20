@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/annotation"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -19,12 +21,12 @@ const (
 var ErrExportTooLarge = errors.New("sessions: trajectory export exceeds resource limits")
 
 type RecordedModelInvocation struct {
-	RunID      string
+	RunID      identity.RunID
 	Invocation runs.ModelInvocationCommit
 }
 
 type RecordedToolAttempt struct {
-	RunID      string
+	RunID      identity.RunID
 	Invocation runs.ToolInvocationCommit
 }
 
@@ -39,7 +41,7 @@ type TrajectoryEvidence struct {
 // ReadTrajectoryExport must read every collection in one transaction and reject
 // resource limits before materializing unbounded stored bodies.
 type trajectoryExportReader interface {
-	ReadTrajectoryExport(context.Context, string) (TrajectoryEvidence, error)
+	ReadTrajectoryExport(context.Context, identity.SessionID) (TrajectoryEvidence, error)
 }
 
 type TrajectoryExport struct {
@@ -60,7 +62,7 @@ func NewTrajectoryExporter(coordinator *Coordinator, reader trajectoryExportRead
 	return &TrajectoryExporter{coordinator: coordinator, reader: reader}, nil
 }
 
-func (e *TrajectoryExporter) Export(ctx context.Context, sessionID string) (TrajectoryExport, error) {
+func (e *TrajectoryExporter) Export(ctx context.Context, sessionID identity.SessionID) (TrajectoryExport, error) {
 	admission, err := e.coordinator.ClaimIdleSession(ctx, sessionID)
 	if err != nil {
 		return TrajectoryExport{}, err

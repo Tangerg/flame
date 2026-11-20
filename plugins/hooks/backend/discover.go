@@ -29,51 +29,15 @@ func discover(ctx context.Context, input hookprovider.Discovery) ([]hook.Hook, e
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, err
 	}
-	cwd, root, home := filepath.Clean(input.CWD), filepath.Clean(input.ProjectRoot), input.Home
-	var out []hook.Hook
-	seen := make(map[string]struct{})
-	add := func(path string, scope hook.Scope) error {
-		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
-			return err
-		}
-		abs := filepath.Clean(path)
-		if _, dup := seen[abs]; dup {
-			return nil
-		}
-		seen[abs] = struct{}{}
-		file, ok, err := readHooksFile(ctx, abs)
-		if err != nil {
-			return fmt.Errorf("hooks: load config %q: %w", abs, err)
-		}
-		if !ok {
-			return nil
-		}
-		if err := hook.ValidateHookCascade(len(out) + len(file.Hooks)); err != nil {
-			return fmt.Errorf("hooks: load cascade after %q: %w", abs, err)
-		}
-		for _, wire := range file.Hooks {
-			h := wire.rule()
-			h.Scope = scope
-			h.Source = abs
-			out = append(out, h)
-		}
-		return nil
-	}
-
-	if home != "" {
-		if err := add(filepath.Join(home, hooksRelPath), hook.ScopeGlobal); err != nil {
+	cascade := hookCascade{seen: make(map[string]struct{})}
+	if input.Home != "" {
+		if err := cascade.add(ctx, filepath.Join(input.Home, hooksRelPath), hook.ScopeGlobal); err != nil {
 			return nil, err
 		}
 	}
 	if input.IncludeProject {
-		chain := []string{cwd}
-		for dir := cwd; dir != root; {
-			dir = filepath.Dir(dir)
-			chain = append(chain, dir)
-		}
-		slices.Reverse(chain)
-		for _, dir := range chain {
-			if err := add(filepath.Join(dir, hooksRelPath), hook.ScopeProject); err != nil {
+		for _, dir := range projectChain(filepath.Clean(input.CWD), filepath.Clean(input.ProjectRoot)) {
+			if err := cascade.add(ctx, filepath.Join(dir, hooksRelPath), hook.ScopeProject); err != nil {
 				return nil, err
 			}
 		}
@@ -81,7 +45,54 @@ func discover(ctx context.Context, input hookprovider.Discovery) ([]hook.Hook, e
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, err
 	}
-	return out, nil
+	return cascade.hooks, nil
+}
+
+// hookCascade collects hooks from global to innermost project file, reading
+// each file once and bounding the whole cascade.
+type hookCascade struct {
+	hooks []hook.Hook
+	seen  map[string]struct{}
+}
+
+func (c *hookCascade) add(ctx context.Context, path string, scope hook.Scope) error {
+	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
+		return err
+	}
+	abs := filepath.Clean(path)
+	if _, dup := c.seen[abs]; dup {
+		return nil
+	}
+	c.seen[abs] = struct{}{}
+	file, ok, err := readHooksFile(ctx, abs)
+	if err != nil {
+		return fmt.Errorf("hooks: load config %q: %w", abs, err)
+	}
+	if !ok {
+		return nil
+	}
+	if err := hook.ValidateHookCascade(len(c.hooks) + len(file.Hooks)); err != nil {
+		return fmt.Errorf("hooks: load cascade after %q: %w", abs, err)
+	}
+	for _, wire := range file.Hooks {
+		h := wire.rule()
+		h.Scope = scope
+		h.Source = abs
+		c.hooks = append(c.hooks, h)
+	}
+	return nil
+}
+
+// projectChain lists the directories from the project root down to cwd, so an
+// inner project file follows the files that enclose it.
+func projectChain(cwd, root string) []string {
+	chain := []string{cwd}
+	for dir := cwd; dir != root; {
+		dir = filepath.Dir(dir)
+		chain = append(chain, dir)
+	}
+	slices.Reverse(chain)
+	return chain
 }
 
 // hooksFile is the validated wire shape of one hooks.json file.

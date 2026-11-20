@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
@@ -88,7 +89,7 @@ func (s *SkillLearning) MaintainSkills(ctx context.Context, input execution.RunM
 }
 
 func (s *SkillLearning) mine(ctx context.Context, binding plugins.ContributionBinding, input execution.RunMaintenanceInput, completedToolCalls int64) error {
-	if input.SessionID == "" || input.WorkspaceCWD == "" || input.RootMemberID == "" {
+	if input.SessionID.IsZero() || input.WorkspaceCWD == "" || input.RootMemberID == "" {
 		return nil
 	}
 	method, err := skilllearning.MineMethod()
@@ -96,35 +97,21 @@ func (s *SkillLearning) mine(ctx context.Context, binding plugins.ContributionBi
 		return err
 	}
 	mining := operation.Start(ctx, extension.Automatic, method.Name(), input.RootMemberID)
-	record, getErr := s.commands.routing.Get(mining, operation.Identity(mining))
-	if getErr == nil {
-		binding, err = s.commands.original(ctx, record.Snapshot())
-		if err != nil {
-			return err
-		}
-	} else if !errors.Is(getErr, plugin.ErrNotFound) && !errors.Is(getErr, plugin.ErrCommandUnconfirmed) {
-		return getErr
+	binding, err = s.miningBinding(ctx, mining, binding)
+	if err != nil {
+		return err
 	}
 	library, err := s.proposals.libraryID(ctx, input.WorkspaceCWD, skills.ScopeUser, binding)
 	if err != nil {
 		return err
 	}
-	request := skilllearning.Run{SessionID: input.SessionID, ToolCalls: completedToolCalls, Library: library}
+	request := skilllearning.Run{SessionID: input.SessionID.String(), ToolCalls: completedToolCalls, Library: library}
 	if err := request.Validate(); err != nil {
 		return err
 	}
 	state := &learningAdmission{models: newExternalCallLedger("skill learning", skilllearning.MaxModelCalls)}
 	reply, err := invokeResolvedCommand[skilllearning.Run, skilllearning.MineResult](mining, s.commands, method.Name(), request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
-		grant, release, err := s.grant(ctx, session, input.SessionID, state)
-		if err != nil {
-			return sdk.ParamsBase{}, nil, err
-		}
-		metadata, err := pluginmcp.CallbackMetadata(grant)
-		if err != nil {
-			release()
-			return sdk.ParamsBase{}, nil, err
-		}
-		return metadata, func() error { release(); return nil }, nil
+		return s.grantMetadata(ctx, session, input.SessionID, state)
 	})
 	_, callbackErr := state.outcome()
 	if err := errors.Join(err, callbackErr); err != nil {
@@ -135,12 +122,34 @@ func (s *SkillLearning) mine(ctx context.Context, binding plugins.ContributionBi
 		return nil
 	}
 	s.proposals.changed()
-	kind := "new"
-	if advice.Revises {
-		kind = "revise"
-	}
-	recordMinedSkillProposal(ctx, kind)
+	recordMinedSkillProposal(ctx, advice.Revises)
 	return nil
+}
+
+// miningBinding is the provider a recorded mining command was routed to, so a
+// retried maintenance pass never retargets its original command.
+func (s *SkillLearning) miningBinding(ctx, mining context.Context, selected plugins.ContributionBinding) (plugins.ContributionBinding, error) {
+	record, err := s.commands.routing.Get(mining, operation.Identity(mining))
+	if errors.Is(err, plugin.ErrNotFound) || errors.Is(err, plugin.ErrCommandUnconfirmed) {
+		return selected, nil
+	}
+	if err != nil {
+		return plugins.ContributionBinding{}, err
+	}
+	return s.commands.original(ctx, record.Snapshot())
+}
+
+func (s *SkillLearning) grantMetadata(ctx context.Context, session *sdk.ClientSession, sessionID identity.SessionID, state *learningAdmission) (sdk.ParamsBase, func() error, error) {
+	grant, release, err := s.grant(ctx, session, sessionID, state)
+	if err != nil {
+		return sdk.ParamsBase{}, nil, err
+	}
+	metadata, err := pluginmcp.CallbackMetadata(grant)
+	if err != nil {
+		release()
+		return sdk.ParamsBase{}, nil, err
+	}
+	return metadata, func() error { release(); return nil }, nil
 }
 
 func (s *SkillLearning) archive(ctx context.Context, binding plugins.ContributionBinding, now time.Time) error {

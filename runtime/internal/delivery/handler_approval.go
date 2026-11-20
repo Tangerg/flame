@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -42,7 +44,11 @@ func (s *Handler) SetApprovalMode(ctx context.Context, in protocol.SetApprovalMo
 // global rules. Runtime resolves the session's project directory; an unknown
 // session degrades to session + global only.
 func (s *Handler) ListApprovalRules(ctx context.Context, in protocol.ListApprovalRulesRequest) (*protocol.ListApprovalRulesResult, error) {
-	rules, err := s.approvals.ListRules(ctx, in.SessionID)
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return nil, parseErr
+	}
+	rules, err := s.approvals.ListRules(ctx, sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -193,6 +199,10 @@ func approvalModeFromWire(m protocol.ApprovalMode) (approval.Mode, bool) {
 }
 
 func (s *Handler) SetApprovalRule(ctx context.Context, in protocol.SetApprovalRuleRequest) error {
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return parseErr
+	}
 	ref, err := toolRefFromWire(in.Tool)
 	if err != nil {
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error())
@@ -201,7 +211,7 @@ func (s *Handler) SetApprovalRule(ctx context.Context, in protocol.SetApprovalRu
 	if !scope.Valid() || !decision.Valid() {
 		return protocol.NewFailure(protocol.ErrInvalidParams, "invalid approval rule")
 	}
-	err = s.approvals.SetRule(ctx, approvals.RuleChange{Tool: ref, Scope: scope, SessionID: in.SessionID, Subject: approval.Subject{Type: approval.SubjectType(in.Subject.Type), Value: in.Subject.Value}, Decision: decision})
+	err = s.approvals.SetRule(ctx, approvals.RuleChange{Tool: ref, Scope: scope, SessionID: sessionID, Subject: approval.Subject{Type: approval.SubjectType(in.Subject.Type), Value: in.Subject.Value}, Decision: decision})
 	if errors.Is(err, approval.ErrInvalidRule) {
 		return protocol.InvalidParameters(err)
 	}

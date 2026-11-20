@@ -213,6 +213,32 @@ func (p *PendingResume) UnmarshalJSON(encoded []byte) error {
 	return nil
 }
 
+// validateStateFacts holds each state to the facts it may carry: only a
+// canceling run names a cancel command, and a queued run has prepared nothing
+// the Runtime could replay.
+func (p PendingRun) validateStateFacts() error {
+	switch p.State {
+	case PendingRunCanceling:
+		if err := p.CancelCommandID.Validate(); err != nil {
+			return fmt.Errorf("cancel command: %w", err)
+		}
+	default:
+		if p.CancelCommandID != "" {
+			return errors.New("non-canceling run carries a cancel command")
+		}
+	}
+	if p.State != PendingRunQueued {
+		return nil
+	}
+	if p.Replay.Protected() || p.CancelReplay.Protected() {
+		return errors.New("queued run carries a runtime replay guard")
+	}
+	if p.InputDigest != "" || p.Command.Input != nil {
+		return errors.New("queued run carries prepared input")
+	}
+	return nil
+}
+
 func (p PendingRun) validate(sessionID string) error {
 	if err := p.InputDigest.validate(); err != nil {
 		return err
@@ -232,21 +258,8 @@ func (p PendingRun) validate(sessionID string) error {
 	if err := p.CancelReplay.Validate(); err != nil {
 		return err
 	}
-	switch p.State {
-	case PendingRunCanceling:
-		if err := p.CancelCommandID.Validate(); err != nil {
-			return fmt.Errorf("cancel command: %w", err)
-		}
-	default:
-		if p.CancelCommandID != "" {
-			return errors.New("non-canceling run carries a cancel command")
-		}
-	}
-	if p.State == PendingRunQueued && (p.Replay.Protected() || p.CancelReplay.Protected()) {
-		return errors.New("queued run carries a runtime replay guard")
-	}
-	if p.State == PendingRunQueued && (p.InputDigest != "" || p.Command.Input != nil) {
-		return errors.New("queued run carries prepared input")
+	if err := p.validateStateFacts(); err != nil {
+		return err
 	}
 	if p.Command.SessionID != sessionID {
 		return fmt.Errorf("command belongs to session %s", p.Command.SessionID)

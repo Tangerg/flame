@@ -1,52 +1,13 @@
 package persistence
 
-import (
-	"fmt"
+import "fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
-)
-
-// SQLite methods are adapter boundaries: even when an Application aggregate
-// was valid when planned, a corrupted in-memory record must not become a
-// different durable key. These helpers retain the Domain's exact, bounded
-// resource policy without normalizing the caller's value.
-func validateSessionResource(operation, value string) error {
-	if err := identity.ValidateSession(value); err != nil {
-		return fmt.Errorf("sqlite: %s: %w", operation, err)
-	}
-	return nil
-}
-
-func validateOptionalSessionResource(operation, value string) error {
-	if value == "" {
-		return nil
-	}
-	return validateSessionResource(operation, value)
-}
-
-func validateRunResource(operation, value string) error {
-	if err := identity.ValidateRun(value); err != nil {
-		return fmt.Errorf("sqlite: %s: %w", operation, err)
-	}
-	return nil
-}
-
-func validateOptionalRunResource(operation, value string) error {
-	if value == "" {
-		return nil
-	}
-	return validateRunResource(operation, value)
-}
-
-func validateSegmentResource(operation, value string) error {
-	if err := identity.ValidateSegment(value); err != nil {
-		return fmt.Errorf("sqlite: %s: %w", operation, err)
-	}
-	return nil
-}
-
-func validateItemResource(operation, value string) error {
-	if err := identity.ValidateItem(value); err != nil {
+// validateResource requires a present identity at a SQLite boundary. A present
+// identity was parsed where it entered, so the zero value is the only invalid
+// one left: a corrupted in-memory record must not become a different durable
+// key.
+func validateResource(operation string, value interface{ Validate() error }) error {
+	if err := value.Validate(); err != nil {
 		return fmt.Errorf("sqlite: %s: %w", operation, err)
 	}
 	return nil

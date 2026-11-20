@@ -10,43 +10,71 @@ import (
 	"github.com/Tangerg/oolong/ui/core/program"
 )
 
-type operationSlot string
+// operationSlot is one unit of background work that at most one owner runs.
+// Its contention says what a new request does while the slot is occupied.
+type operationSlot struct {
+	name       string
+	contention slotContention
+}
+
+type slotContention uint8
 
 const (
-	streamOperation               operationSlot = "stream"
-	inputPreparationOperation     operationSlot = "input-preparation"
-	pendingRunRecoveryOperation   operationSlot = "pending-run-recovery"
-	pendingRunSettlementOperation operationSlot = "pending-run-settlement"
-	resumeSettlementOperation     operationSlot = "resume-settlement"
-	resumeRecoveryOperation       operationSlot = "resume-recovery"
-	ownershipSettlementOperation  operationSlot = "ownership-settlement"
-	completionOperation           operationSlot = "completion"
-	searchOperation               operationSlot = "search"
-	readerSearchOperation         operationSlot = "reader-search"
-	readerDocumentOperation       operationSlot = "reader-document"
-	pickerCatalogOperation        operationSlot = "picker-catalog"
-	approvalModeOperation         operationSlot = "approval-mode"
-	sessionCenterOperation        operationSlot = "session-center"
-	sessionChangeOperation        operationSlot = "session-change"
-	sessionOutputOperation        operationSlot = "session-output"
-	approvalRuleOperation         operationSlot = "approval-rule"
-	cancelRunOperation            operationSlot = "cancel-run"
-	steerRunOperation             operationSlot = "steer-run"
-	steerReceiptReadOperation     operationSlot = "steer-receipt-read"
-	workspaceQueryOperation       operationSlot = "workspace-query"
-	runtimeChangesOperation       operationSlot = "runtime-changes"
-	sessionInvalidationOperation  operationSlot = "session-invalidation"
-	modelConfigOperation          operationSlot = "model-config"
-	goalOperation                 operationSlot = "goal"
-	skillOperation                operationSlot = "skill"
-	mcpOperation                  operationSlot = "mcp"
-	mcpAuthorizationOperation     operationSlot = "mcp-authorization"
-	pluginViewsOperation          operationSlot = "plugin-views"
-	pluginViewOperation           operationSlot = "plugin-view"
-	diagnosticToolOperation       operationSlot = "diagnostic-tool"
-	authoringContextOperation     operationSlot = "authoring-context"
-	hookOperation                 operationSlot = "hook"
-	feedbackOperation             operationSlot = "feedback"
+	// keepRunning refuses a new request while earlier work owns the slot.
+	keepRunning slotContention = iota
+	// replaceRunning cancels earlier work because only the latest result matters.
+	replaceRunning
+)
+
+func exclusiveSlot(name string) operationSlot {
+	return operationSlot{name: name, contention: keepRunning}
+}
+
+func latestSlot(name string) operationSlot {
+	return operationSlot{name: name, contention: replaceRunning}
+}
+
+// superseding is this slot for a request that must displace whatever already
+// runs there.
+func (s operationSlot) superseding() operationSlot {
+	s.contention = replaceRunning
+	return s
+}
+
+var (
+	streamOperation               = exclusiveSlot("stream")
+	inputPreparationOperation     = exclusiveSlot("input-preparation")
+	pendingRunRecoveryOperation   = exclusiveSlot("pending-run-recovery")
+	pendingRunSettlementOperation = exclusiveSlot("pending-run-settlement")
+	resumeSettlementOperation     = exclusiveSlot("resume-settlement")
+	resumeRecoveryOperation       = exclusiveSlot("resume-recovery")
+	ownershipSettlementOperation  = exclusiveSlot("ownership-settlement")
+	completionOperation           = latestSlot("completion")
+	searchOperation               = latestSlot("search")
+	readerSearchOperation         = latestSlot("reader-search")
+	readerDocumentOperation       = latestSlot("reader-document")
+	pickerCatalogOperation        = latestSlot("picker-catalog")
+	approvalModeOperation         = latestSlot("approval-mode")
+	sessionCenterOperation        = exclusiveSlot("session-center")
+	sessionChangeOperation        = exclusiveSlot("session-change")
+	sessionOutputOperation        = exclusiveSlot("session-output")
+	approvalRuleOperation         = exclusiveSlot("approval-rule")
+	cancelRunOperation            = latestSlot("cancel-run")
+	steerRunOperation             = exclusiveSlot("steer-run")
+	steerReceiptReadOperation     = exclusiveSlot("steer-receipt-read")
+	workspaceQueryOperation       = latestSlot("workspace-query")
+	runtimeChangesOperation       = latestSlot("runtime-changes")
+	sessionInvalidationOperation  = exclusiveSlot("session-invalidation")
+	modelConfigOperation          = exclusiveSlot("model-config")
+	goalOperation                 = exclusiveSlot("goal")
+	skillOperation                = exclusiveSlot("skill")
+	mcpOperation                  = exclusiveSlot("mcp")
+	mcpAuthorizationOperation     = exclusiveSlot("mcp-authorization")
+	pluginViewsOperation          = latestSlot("plugin-views")
+	pluginViewOperation           = exclusiveSlot("plugin-view")
+	diagnosticToolOperation       = exclusiveSlot("diagnostic-tool")
+	hookOperation                 = exclusiveSlot("hook")
+	feedbackOperation             = exclusiveSlot("feedback")
 )
 
 type operationLease struct {
@@ -98,7 +126,7 @@ type operationOwner struct {
 
 	mu        sync.Mutex
 	next      operationLeaseID
-	active    map[operationSlot]ownedOperation
+	active    map[string]ownedOperation
 	closed    bool
 	failure   error
 	onFailure func()
@@ -118,20 +146,19 @@ func post(ctx context.Context, dispatcher program.Dispatcher, fn func()) error {
 
 func newOperationOwner(parent context.Context) *operationOwner {
 	ctx, cancel := context.WithCancel(parent)
-	return &operationOwner{ctx: ctx, cancel: cancel, active: make(map[operationSlot]ownedOperation)}
+	return &operationOwner{ctx: ctx, cancel: cancel, active: make(map[string]ownedOperation)}
 }
 
-// Go starts work in slot. A replaceable operation cancels the previous owner;
-// an exclusive operation is rejected while the slot is occupied.
-func (o *operationOwner) Go(slot operationSlot, replace bool, work func(context.Context, operationLease)) bool {
-	return o.goWithPolicy(operationPolicy{scope: applicationOperationScope}, slot, replace, work)
+// Go starts work in slot under the slot's contention.
+func (o *operationOwner) Go(slot operationSlot, work func(context.Context, operationLease)) bool {
+	return o.goWithPolicy(operationPolicy{scope: applicationOperationScope}, slot, work)
 }
 
 // GoSession starts work owned by the current terminal session projection. A
 // successful projection replacement cancels all work in this scope before the
 // new session becomes visible, so a late result cannot bleed into it.
-func (o *operationOwner) GoSession(slot operationSlot, replace bool, work func(context.Context, operationLease)) bool {
-	return o.goWithPolicy(operationPolicy{scope: sessionOperationScope}, slot, replace, work)
+func (o *operationOwner) GoSession(slot operationSlot, work func(context.Context, operationLease)) bool {
+	return o.goWithPolicy(operationPolicy{scope: sessionOperationScope}, slot, work)
 }
 
 // GoSessionSettlement owns recovery of an accepted command whose local durable
@@ -140,18 +167,16 @@ func (o *operationOwner) GoSession(slot operationSlot, replace bool, work func(c
 // lease is released or the whole session projection is replaced.
 func (o *operationOwner) GoSessionSettlement(
 	slot operationSlot,
-	replace bool,
 	work func(context.Context, operationLease),
 ) bool {
 	return o.goWithPolicy(operationPolicy{
 		scope: sessionOperationScope, runAdmission: runAdmissionAfterSettlement,
-	}, slot, replace, work)
+	}, slot, work)
 }
 
 func (o *operationOwner) goWithPolicy(
 	policy operationPolicy,
 	slot operationSlot,
-	replace bool,
 	work func(context.Context, operationLease),
 ) bool {
 	o.mu.Lock()
@@ -164,8 +189,8 @@ func (o *operationOwner) goWithPolicy(
 		o.mu.Unlock()
 		return false
 	}
-	if previous, exists := o.active[slot]; exists {
-		if !replace {
+	if previous, exists := o.active[slot.name]; exists {
+		if slot.contention != replaceRunning {
 			o.mu.Unlock()
 			return false
 		}
@@ -174,7 +199,7 @@ func (o *operationOwner) goWithPolicy(
 	ctx, cancel := context.WithCancel(o.ctx)
 	o.next = next
 	lease := operationLease{slot: slot, id: next}
-	o.active[slot] = ownedOperation{id: lease.id, policy: policy, cancel: cancel}
+	o.active[slot.name] = ownedOperation{id: lease.id, policy: policy, cancel: cancel}
 	o.wg.Go(func() {
 		defer o.release(lease, cancel)
 		work(ctx, lease)
@@ -186,14 +211,14 @@ func (o *operationOwner) goWithPolicy(
 func (o *operationOwner) Current(lease operationLease) bool {
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	active, ok := o.active[lease.slot]
+	active, ok := o.active[lease.slot.name]
 	return !o.closed && ok && active.id == lease.id
 }
 
 func (o *operationOwner) Active(slot operationSlot) bool {
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	_, ok := o.active[slot]
+	_, ok := o.active[slot.name]
 	return !o.closed && ok
 }
 
@@ -217,9 +242,9 @@ func (o *operationOwner) BlocksRunAdmission() bool {
 
 func (o *operationOwner) Cancel(slot operationSlot) {
 	o.mu.Lock()
-	active, ok := o.active[slot]
+	active, ok := o.active[slot.name]
 	if ok {
-		delete(o.active, slot)
+		delete(o.active, slot.name)
 	}
 	o.mu.Unlock()
 	if ok {
@@ -251,9 +276,9 @@ func (o *operationOwner) CancelScope(scope operationScope) {
 // same slot; a stale worker can never release its successor.
 func (o *operationOwner) Release(lease operationLease) bool {
 	o.mu.Lock()
-	active, ok := o.active[lease.slot]
+	active, ok := o.active[lease.slot.name]
 	if ok && active.id == lease.id {
-		delete(o.active, lease.slot)
+		delete(o.active, lease.slot.name)
 	}
 	o.mu.Unlock()
 	if ok && active.id == lease.id {
@@ -311,8 +336,8 @@ func (o *operationOwner) Failure() error {
 func (o *operationOwner) release(lease operationLease, cancel context.CancelFunc) {
 	cancel()
 	o.mu.Lock()
-	if active, ok := o.active[lease.slot]; ok && active.id == lease.id {
-		delete(o.active, lease.slot)
+	if active, ok := o.active[lease.slot.name]; ok && active.id == lease.id {
+		delete(o.active, lease.slot.name)
 	}
 	o.mu.Unlock()
 }
@@ -339,30 +364,30 @@ func (r taskRunner) deliver(ctx context.Context, apply func()) error {
 // session owns a user-initiated task for the lifetime of the current session
 // projection. Most commands belong here because their result is interpreted
 // against the session and workspace that launched them.
-func (r taskRunner) session[T any](slot operationSlot, replace bool, work func(context.Context) (T, error), apply func(T, error)) bool {
-	return runTask(r, operationPolicy{scope: sessionOperationScope}, slot, replace, work, apply)
+func (r taskRunner) session[T any](slot operationSlot, work func(context.Context) (T, error), apply func(T, error)) bool {
+	return runTask(r, operationPolicy{scope: sessionOperationScope}, slot, work, apply)
 }
 
 // sessionSettlement owns a session command whose durable acknowledgement
 // boundary orders subsequent Run admission. Prompts may be authored and queued
 // while it settles, but dispatch cannot overtake the command journal.
-func (r taskRunner) sessionSettlement[T any](slot operationSlot, replace bool, work func(context.Context) (T, error), apply func(T, error)) bool {
-	return runTask(r, operationPolicy{scope: sessionOperationScope, runAdmission: runAdmissionAfterSettlement}, slot, replace, work, apply)
+func (r taskRunner) sessionSettlement[T any](slot operationSlot, work func(context.Context) (T, error), apply func(T, error)) bool {
+	return runTask(r, operationPolicy{scope: sessionOperationScope, runAdmission: runAdmissionAfterSettlement}, slot, work, apply)
 }
 
 // sessionFence blocks Run admission while an authoritative Session read is in
 // flight without assuming that completion means success. The caller owns retry
 // state and explicitly drains the queue only after installing the result.
-func (r taskRunner) sessionFence[T any](slot operationSlot, replace bool, work func(context.Context) (T, error), apply func(T, error)) bool {
-	return runTask(r, operationPolicy{scope: sessionOperationScope, runAdmission: runAdmissionFence}, slot, replace, work, apply)
+func (r taskRunner) sessionFence[T any](slot operationSlot, work func(context.Context) (T, error), apply func(T, error)) bool {
+	return runTask(r, operationPolicy{scope: sessionOperationScope, runAdmission: runAdmissionFence}, slot, work, apply)
 }
 
 // application owns work whose domain lifetime is independent of a chat
 // session. It survives projection replacement but is still canceled and joined
 // when the terminal closes. Callers must keep apply safe when any
 // session-scoped presentation they opened has since been dismissed.
-func (r taskRunner) application[T any](slot operationSlot, replace bool, work func(context.Context) (T, error), apply func(T, error)) bool {
-	return runTask(r, operationPolicy{scope: applicationOperationScope}, slot, replace, work, apply)
+func (r taskRunner) application[T any](slot operationSlot, work func(context.Context) (T, error), apply func(T, error)) bool {
+	return runTask(r, operationPolicy{scope: applicationOperationScope}, slot, work, apply)
 }
 
 // admissionMutation owns an application-level mutation whose settled state is
@@ -370,12 +395,12 @@ func (r taskRunner) application[T any](slot operationSlot, replace bool, work fu
 // is active, but queue dispatch waits until apply has observed the mutation
 // result, so a Run cannot race stale approval, provider, tool, or
 // authored-context state.
-func (r taskRunner) admissionMutation[T any](slot operationSlot, replace bool, work func(context.Context) (T, error), apply func(T, error)) bool {
-	return runTask(r, operationPolicy{scope: applicationOperationScope, runAdmission: runAdmissionAfterSettlement}, slot, replace, work, apply)
+func (r taskRunner) admissionMutation[T any](slot operationSlot, work func(context.Context) (T, error), apply func(T, error)) bool {
+	return runTask(r, operationPolicy{scope: applicationOperationScope, runAdmission: runAdmissionAfterSettlement}, slot, work, apply)
 }
 
-func runTask[T any](r taskRunner, policy operationPolicy, slot operationSlot, replace bool, work func(context.Context) (T, error), apply func(T, error)) bool {
-	return r.operations.goWithPolicy(policy, slot, replace, func(ctx context.Context, lease operationLease) {
+func runTask[T any](r taskRunner, policy operationPolicy, slot operationSlot, work func(context.Context) (T, error), apply func(T, error)) bool {
+	return r.operations.goWithPolicy(policy, slot, func(ctx context.Context, lease operationLease) {
 		result, err := work(ctx)
 		if context.Cause(ctx) != nil {
 			return

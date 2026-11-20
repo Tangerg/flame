@@ -22,6 +22,11 @@ const reviewsSchema = `CREATE TABLE IF NOT EXISTS reviews (
 	decision TEXT, PRIMARY KEY(library,name)
 )`
 
+const (
+	refusalHumanRequired     = "human_required"
+	refusalInvalidSkillDraft = "invalid_skill_draft"
+)
+
 func staleReview() error {
 	return &framecall.Refusal{Code: skilllearning.StaleReview, Message: "the proposal is no longer available for this decision"}
 }
@@ -133,7 +138,7 @@ func humanDecision(ctx context.Context) (framecall.Invocation, error) {
 		return inv, err
 	}
 	if inv.Origin != extension.Human {
-		return inv, &framecall.Refusal{Code: "human_required", Message: "an explicit human review is required"}
+		return inv, &framecall.Refusal{Code: refusalHumanRequired, Message: "an explicit human review is required"}
 	}
 	return inv, nil
 }

@@ -2,6 +2,7 @@ package dispatch
 
 import (
 	"reflect"
+	"slices"
 
 	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -14,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -963,7 +965,7 @@ func registerTrajectoryValues(s *Shapes) {
 
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ListModelInvocationsRequest](), Constraints: requiredResourceIdentity("runId")})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ListModelEndpointsRequest](), Constraints: []FieldConstraint{
-		{Field: "parentCallId", Kind: ConstraintNonEmpty}, {Field: "parentCallId", Kind: ConstraintIdentity}, {Field: "parentCallId", Kind: ConstraintMaxLength, Limit: 256},
+		{Field: "parentCallId", Kind: ConstraintNonEmpty}, {Field: "parentCallId", Kind: ConstraintIdentity}, {Field: "parentCallId", Kind: ConstraintMaxLength, Limit: modelref.MaximumInvocationIDCharacters},
 	}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ModelEndpointInvocation](), Constraints: append(append(resourceIdentity("sessionId"), resourceIdentity("runId")...), []FieldConstraint{
 		{Field: "costUSD", Kind: ConstraintNonNegative},
@@ -1016,54 +1018,29 @@ func registerPluginValues(s *Shapes) {
 		{Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxPresentationTitleBytes},
 	}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.OpenPluginResourcesRequest](), Constraints: []FieldConstraint{{Field: "componentId", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern}}})
-	for _, shape := range []reflect.Type{typeOf[protocol.ReadPluginLocaleRequest](), typeOf[protocol.PluginLocale]()} {
-		constraints := []FieldConstraint{{Field: "tag", Kind: ConstraintNonEmpty}, {Field: "tag", Kind: ConstraintMaxLength, Limit: plugin.MaxLocaleTagBytes}}
-		if shape == typeOf[protocol.PluginLocale]() {
-			constraints = append(constraints, FieldConstraint{Field: "title", Kind: ConstraintNonEmpty}, FieldConstraint{Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxPresentationTitleBytes})
-		}
-		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
+	declared := func(field string) FieldConstraint {
+		return FieldConstraint{Field: field, Kind: ConstraintPattern, Value: identity.DeclarationIDPattern}
 	}
-	for _, shape := range []reflect.Type{typeOf[protocol.PluginPoint](), typeOf[protocol.PluginPointValue](), typeOf[protocol.ResolvePluginPointRequest]()} {
-		constraints := []FieldConstraint{{Field: "contract", Kind: ConstraintNonEmpty}}
-		if shape != typeOf[protocol.ResolvePluginPointRequest]() {
-			constraints = append(constraints, FieldConstraint{Field: "id", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern})
-		}
-		if shape == typeOf[protocol.PluginPointValue]() {
-			constraints = append(constraints, FieldConstraint{Field: "value", Kind: ConstraintNonEmpty})
-		}
-		if shape == typeOf[protocol.ResolvePluginPointRequest]() {
-			constraints = append(constraints, FieldConstraint{Field: "attributes", Kind: ConstraintNonEmpty})
-		}
-		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
-	}
-	for _, shape := range []reflect.Type{typeOf[protocol.PluginPointReference](), typeOf[protocol.PluginPointBinding]()} {
-		constraints := []FieldConstraint{
-			{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()},
-			{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
-		}
-		if shape == typeOf[protocol.PluginPointBinding]() {
-			constraints = append(constraints, FieldConstraint{Field: "digest", Kind: ConstraintPattern, Value: framevalue.DigestPattern()}, FieldConstraint{Field: "value", Kind: ConstraintNonEmpty})
-		}
-		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
-	}
-	for _, shape := range []reflect.Type{typeOf[protocol.ResolvePluginRequirementsRequest](), typeOf[protocol.PluginOperationBinding]()} {
-		constraints := []FieldConstraint{
-			{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()},
-			{Field: "digest", Kind: ConstraintPattern, Value: framevalue.DigestPattern()},
-			{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
-		}
-		if shape == typeOf[protocol.PluginOperationBinding]() {
-			constraints = append(constraints, FieldConstraint{Field: "contract", Kind: ConstraintNonEmpty})
-		}
-		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
-	}
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginChangeNotice](), Constraints: []FieldConstraint{{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern}}})
-	for _, shape := range []reflect.Type{typeOf[protocol.PluginRequirement](), typeOf[protocol.PluginCollaborator]()} {
-		constraints := []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern}}
-		if shape == typeOf[protocol.PluginRequirement]() {
-			constraints = append(constraints, FieldConstraint{Field: "contract", Kind: ConstraintNonEmpty})
-		}
-		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
+	nonEmpty := func(field string) FieldConstraint { return FieldConstraint{Field: field, Kind: ConstraintNonEmpty} }
+	installation := FieldConstraint{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()}
+	digest := FieldConstraint{Field: "digest", Kind: ConstraintPattern, Value: framevalue.DigestPattern()}
+	localeTag := []FieldConstraint{nonEmpty("tag"), {Field: "tag", Kind: ConstraintMaxLength, Limit: plugin.MaxLocaleTagBytes}}
+	title := []FieldConstraint{nonEmpty("title"), {Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxPresentationTitleBytes}}
+	for _, spec := range []FieldConstraintSpec{
+		{GoType: typeOf[protocol.ReadPluginLocaleRequest](), Constraints: localeTag},
+		{GoType: typeOf[protocol.PluginLocale](), Constraints: slices.Concat(localeTag, title)},
+		{GoType: typeOf[protocol.PluginPoint](), Constraints: []FieldConstraint{nonEmpty("contract"), declared("id")}},
+		{GoType: typeOf[protocol.PluginPointValue](), Constraints: []FieldConstraint{nonEmpty("contract"), declared("id"), nonEmpty("value")}},
+		{GoType: typeOf[protocol.ResolvePluginPointRequest](), Constraints: []FieldConstraint{nonEmpty("contract"), nonEmpty("attributes")}},
+		{GoType: typeOf[protocol.PluginPointReference](), Constraints: []FieldConstraint{installation, declared("contribution")}},
+		{GoType: typeOf[protocol.PluginPointBinding](), Constraints: []FieldConstraint{installation, declared("contribution"), digest, nonEmpty("value")}},
+		{GoType: typeOf[protocol.ResolvePluginRequirementsRequest](), Constraints: []FieldConstraint{installation, digest, declared("contribution")}},
+		{GoType: typeOf[protocol.PluginOperationBinding](), Constraints: []FieldConstraint{installation, digest, declared("contribution"), nonEmpty("contract")}},
+		{GoType: typeOf[protocol.PluginChangeNotice](), Constraints: []FieldConstraint{declared("contribution")}},
+		{GoType: typeOf[protocol.PluginRequirement](), Constraints: []FieldConstraint{declared("id"), nonEmpty("contract")}},
+		{GoType: typeOf[protocol.PluginCollaborator](), Constraints: []FieldConstraint{declared("id")}},
+	} {
+		s.valueConstraint(spec)
 	}
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.CallPluginRequest](), Constraints: []FieldConstraint{
 		{Field: "contract", Kind: ConstraintNonEmpty},
@@ -1072,7 +1049,7 @@ func registerPluginValues(s *Shapes) {
 		{Field: "digest", Kind: ConstraintPattern, Value: framevalue.DigestPattern()},
 		{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 		{Field: "method", Kind: ConstraintNonEmpty},
-		{Field: "method", Kind: ConstraintMaxLength, Limit: 256},
+		{Field: "method", Kind: ConstraintMaxLength, Limit: plugin.MaximumCommandTextCharacters},
 		{Field: "method", Kind: ConstraintIdentity},
 		{Field: "target.scope", Kind: ConstraintNonEmpty},
 		{Field: "target.scope", Kind: ConstraintIdentity},
@@ -1122,7 +1099,7 @@ func registerPluginValues(s *Shapes) {
 		constraints := []FieldConstraint{
 			FieldConstraint{Field: "contribution", Kind: ConstraintPattern, Value: identity.DeclarationIDPattern},
 			FieldConstraint{Field: "role", Kind: ConstraintNonEmpty},
-			FieldConstraint{Field: "role", Kind: ConstraintMaxLength, Limit: 256},
+			FieldConstraint{Field: "role", Kind: ConstraintMaxLength, Limit: plugin.MaximumRoleCharacters},
 			FieldConstraint{Field: "installationId", Kind: ConstraintPattern, Value: identity.InstallationIDPattern()},
 		}
 		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
@@ -1146,10 +1123,10 @@ func registerPluginValues(s *Shapes) {
 		}
 		switch shape {
 		case typeOf[protocol.StagePluginRequest]():
-			constraints = append(constraints, FieldConstraint{Field: "source", Kind: ConstraintNonEmpty}, FieldConstraint{Field: "source", Kind: ConstraintMaxLength, Limit: 4096})
+			constraints = append(constraints, FieldConstraint{Field: "source", Kind: ConstraintNonEmpty}, FieldConstraint{Field: "source", Kind: ConstraintMaxLength, Limit: plugin.MaximumSourceCharacters})
 		}
 		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
 	}
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.InstallPluginRequest](), Constraints: []FieldConstraint{{Field: "source", Kind: ConstraintNonEmpty}, {Field: "source", Kind: ConstraintMaxLength, Limit: 4096}}})
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginValueChange](), Constraints: []FieldConstraint{{Field: "value", Kind: ConstraintMaxLength, Limit: 8192}}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.InstallPluginRequest](), Constraints: []FieldConstraint{{Field: "source", Kind: ConstraintNonEmpty}, {Field: "source", Kind: ConstraintMaxLength, Limit: plugin.MaximumSourceCharacters}}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginValueChange](), Constraints: []FieldConstraint{{Field: "value", Kind: ConstraintMaxLength, Limit: plugin.MaximumValueCharacters}}})
 }

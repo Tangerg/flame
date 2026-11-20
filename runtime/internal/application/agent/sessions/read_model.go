@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -34,7 +36,7 @@ type WorkspaceView struct {
 // View is the complete application read model for a session. Live lineage and
 // other aggregate-only state stay inside the session domain.
 type View struct {
-	ID              string
+	ID              identity.SessionID
 	Title           string
 	Workspace       WorkspaceView
 	Provider        string
@@ -53,12 +55,12 @@ type View struct {
 // sessions.list linearized with the runs.changed/sessions.changed notifications:
 // once the terminal transaction publishes, a refetch cannot still report the
 // already-terminal Run as running while maintenance releases its admission.
-func (c *Coordinator) Activities(ctx context.Context, sessionIDs []string) (map[string]Activity, error) {
-	activities := make(map[string]Activity, len(sessionIDs))
+func (c *Coordinator) Activities(ctx context.Context, sessionIDs []identity.SessionID) (map[identity.SessionID]Activity, error) {
+	activities := make(map[identity.SessionID]Activity, len(sessionIDs))
 	if len(sessionIDs) == 0 {
 		return activities, nil
 	}
-	requested := make(map[string]struct{}, len(sessionIDs))
+	requested := make(map[identity.SessionID]struct{}, len(sessionIDs))
 	for _, id := range sessionIDs {
 		requested[id] = struct{}{}
 		activities[id] = activityIdle
@@ -105,7 +107,7 @@ const viewPageNamespace = "sessions"
 const viewPageLimit = 100
 
 func catalogAnchorKey(value session.Session) []string {
-	return []string{strconv.FormatBool(value.Favorite()), strconv.FormatInt(value.UpdatedAt().UnixNano(), 10), value.ID()}
+	return []string{strconv.FormatBool(value.Favorite()), strconv.FormatInt(value.UpdatedAt().UnixNano(), 10), value.ID().String()}
 }
 
 func parseCatalogAnchor(key []string) (*session.CatalogAnchor, error) {
@@ -123,7 +125,11 @@ func parseCatalogAnchor(key []string) (*session.CatalogAnchor, error) {
 	if err != nil {
 		return nil, pagination.ErrInvalidCursor
 	}
-	anchor, err := session.NewCatalogAnchor(favorite, time.Unix(0, updatedAtNanos).UTC(), key[2])
+	sessionID, err := identity.ParseSession(key[2])
+	if err != nil {
+		return nil, pagination.ErrInvalidCursor
+	}
+	anchor, err := session.NewCatalogAnchor(favorite, time.Unix(0, updatedAtNanos).UTC(), sessionID)
 	if err != nil {
 		return nil, pagination.ErrInvalidCursor
 	}
@@ -175,7 +181,7 @@ func (c *Coordinator) ListViewPage(
 }
 
 // View resolves one session's complete application read model.
-func (c *Coordinator) View(ctx context.Context, id string) (View, error) {
+func (c *Coordinator) View(ctx context.Context, id identity.SessionID) (View, error) {
 	value, err := c.Get(ctx, id)
 	if err != nil {
 		return View{}, err
@@ -194,7 +200,7 @@ func (c *Coordinator) CreateView(ctx context.Context, title, cwd string) (View, 
 }
 
 func (c *Coordinator) viewForSession(ctx context.Context, value session.Session) (View, error) {
-	activities, err := c.Activities(ctx, []string{value.ID()})
+	activities, err := c.Activities(ctx, []identity.SessionID{value.ID()})
 	if err != nil {
 		return View{}, err
 	}
@@ -213,7 +219,7 @@ func (c *Coordinator) ForkView(ctx context.Context, spec ForkSpec) (View, error)
 }
 
 func (c *Coordinator) views(ctx context.Context, values []session.Session) ([]View, error) {
-	ids := make([]string, len(values))
+	ids := make([]identity.SessionID, len(values))
 	for index, value := range values {
 		ids[index] = value.ID()
 	}

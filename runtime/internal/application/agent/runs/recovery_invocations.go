@@ -48,17 +48,17 @@ func (o OpenToolInvocation) Validate() error {
 	if err := o.InvocationAttempt.Validate(); err != nil {
 		return err
 	}
-	return identity.ValidateItem(o.ItemID)
+	return o.ItemID.Validate()
 }
 
 // validateOpenInvocationOwners proves each open attempt still belongs to its
 // active Run's current Segment; the journal writer admits only that Segment.
 func validateOpenInvocationOwners(
-	trees map[string]recoveryRunTree,
+	trees map[identity.RunID]recoveryRunTree,
 	models []OpenModelInvocation,
 	tools []OpenToolInvocation,
 ) error {
-	activeRuns := make(map[string]rundomain.Run)
+	activeRuns := make(map[identity.RunID]rundomain.Run)
 	for _, tree := range trees {
 		maps.Copy(activeRuns, tree.runsByID)
 	}
@@ -82,7 +82,7 @@ func validateOpenInvocationOwners(
 	return nil
 }
 
-func validateOpenInvocationSegment(kind string, index int, attempt InvocationAttempt, activeRuns map[string]rundomain.Run) error {
+func validateOpenInvocationSegment(kind string, index int, attempt InvocationAttempt, activeRuns map[identity.RunID]rundomain.Run) error {
 	owner, active := activeRuns[attempt.RunID]
 	if !active {
 		// An operational row may outlive a Run already made terminal by an

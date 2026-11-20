@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -140,7 +142,7 @@ func TestWaitingChildCancellationRecoveryHelper(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitForRunEvents(t, collectRunEvents(events), "child question")
-	pending, found, err := stores.Interrupts.Get(ctx, opening.RunID)
+	pending, found, err := stores.Interrupts.Get(ctx, testsupport.MustRunID(opening.RunID))
 	if err != nil || !found || len(pending.Bindings) != 1 {
 		t.Fatalf("expected the original child question: %+v, %v", pending, err)
 	}
@@ -148,7 +150,7 @@ func TestWaitingChildCancellationRecoveryHelper(t *testing.T) {
 	marker.ChildMember = pending.Bindings[0].MemberID
 	for _, member := range pending.Continuations {
 		if member.MemberID == marker.ChildMember {
-			marker.ChildID = member.RunID
+			marker.ChildID = member.RunID.String()
 			break
 		}
 	}
@@ -170,7 +172,7 @@ func TestWaitingChildCancellationRecoveryHelper(t *testing.T) {
 		case err != nil || result.RootRun == nil:
 			t.Fatalf("the cancellation did not release the parent: %+v, %v", result, err)
 		}
-		accepted, err := stores.AcceptedContinuations.SubtreeCancellations(ctx, marker.RootID)
+		accepted, err := stores.AcceptedContinuations.SubtreeCancellations(ctx, testsupport.MustRunID(marker.RootID))
 		if err != nil || (len(accepted) != 0) != (cut == waitingChildRetirementRefused) {
 			t.Fatalf("unexpected retained cancellation after Scope release: %+v, %v", accepted, err)
 		}
@@ -241,7 +243,7 @@ func testReleasedChildCancellation(t *testing.T, cut string) {
 	if err != nil || canceled.Outcome == nil || canceled.Outcome.Type != protocol.OutcomeCanceled {
 		t.Fatalf("parent recovery changed its child's confirmed cancellation: %+v, %v", canceled, err)
 	}
-	accepted, err := stores.AcceptedContinuations.SubtreeCancellations(runtimeCtx, marker.RootID)
+	accepted, err := stores.AcceptedContinuations.SubtreeCancellations(runtimeCtx, testsupport.MustRunID(marker.RootID))
 	if err != nil || len(accepted) != 0 {
 		t.Fatalf("recovery left a stale cancellation: %+v, %v", accepted, err)
 	}

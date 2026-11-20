@@ -75,26 +75,9 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 	case MessageDelta, ReasoningDelta, ModelCallStarted, ToolCallStarted, PlanUpdated:
 		return fact, true
 	case ModelCallCompleted:
-		if value.FirstOutputLatencyMillis != nil {
-			value.FirstOutputLatencyMillis = new(*value.FirstOutputLatencyMillis)
-		}
-		if value.ReportedUsage != nil {
-			value.ReportedUsage = new(value.ReportedUsage.Clone())
-		}
-		if value.Message != nil {
-			value.Message = new(value.Message.Clone())
-		}
-		return value, true
+		return value.clone(), true
 	case ModelCallFailed:
-		value.KnownResponse = value.KnownResponse.Clone()
-		if value.Accounting != nil {
-			owned, _ := cloneExecutionFact(*value.Accounting)
-			value.Accounting = new(owned.(ModelCallCompleted))
-		}
-		if value.FirstOutputLatencyMillis != nil {
-			value.FirstOutputLatencyMillis = new(*value.FirstOutputLatencyMillis)
-		}
-		return value, true
+		return value.clone(), true
 	case ToolCallPrepared:
 		value.Context = value.Context.Clone()
 		return value, true
@@ -113,14 +96,42 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 		}
 		return value.WithUnresolvedEffects(value.unresolvedEffects), true
 	case SteerMessagesApplied:
-		value.Messages = slices.Clone(value.Messages)
-		for index := range value.Messages {
-			value.Messages[index].Content = transcript.CloneContent(value.Messages[index].Content)
-		}
-		return value, true
+		return value.clone(), true
 	default:
 		return nil, false
 	}
+}
+
+func (c ModelCallCompleted) clone() ModelCallCompleted {
+	if c.FirstOutputLatencyMillis != nil {
+		c.FirstOutputLatencyMillis = new(*c.FirstOutputLatencyMillis)
+	}
+	if c.ReportedUsage != nil {
+		c.ReportedUsage = new(c.ReportedUsage.Clone())
+	}
+	if c.Message != nil {
+		c.Message = new(c.Message.Clone())
+	}
+	return c
+}
+
+func (f ModelCallFailed) clone() ModelCallFailed {
+	f.KnownResponse = f.KnownResponse.Clone()
+	if f.Accounting != nil {
+		f.Accounting = new(f.Accounting.clone())
+	}
+	if f.FirstOutputLatencyMillis != nil {
+		f.FirstOutputLatencyMillis = new(*f.FirstOutputLatencyMillis)
+	}
+	return f
+}
+
+func (s SteerMessagesApplied) clone() SteerMessagesApplied {
+	s.Messages = slices.Clone(s.Messages)
+	for index := range s.Messages {
+		s.Messages[index].Content = transcript.CloneContent(s.Messages[index].Content)
+	}
+	return s
 }
 
 // Complete resolves the producer receipt after the consumer has committed or

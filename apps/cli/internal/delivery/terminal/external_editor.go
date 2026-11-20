@@ -43,38 +43,19 @@ func configuredDraftEditor() (*draftEditor, error) {
 }
 
 func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspace, original string) (edited string, err error) {
-	if d == nil || len(d.command) == 0 {
-		return "", errors.New("external editor is unavailable")
-	}
 	if len(original) > authoring.MaxMessageTextBytes {
 		return "", fmt.Errorf("editor draft exceeds %d bytes", authoring.MaxMessageTextBytes)
 	}
-	temporary, err := os.CreateTemp("", "flame-prompt-*.md")
+	path, err := writeEditorDraft(original)
 	if err != nil {
-		return "", fmt.Errorf("create editor draft: %w", err)
+		return "", err
 	}
-	path := temporary.Name()
 	defer func() {
 		if removeErr := os.Remove(path); removeErr != nil && !errors.Is(removeErr, os.ErrNotExist) {
 			edited = ""
 			err = errors.Join(err, fmt.Errorf("remove editor draft: %w", removeErr))
 		}
 	}()
-	if chmodErr := temporary.Chmod(0o600); chmodErr != nil {
-		_ = temporary.Close()
-		return "", fmt.Errorf("protect editor draft: %w", chmodErr)
-	}
-	if _, writeStringErr := io.WriteString(temporary, original); writeStringErr != nil {
-		_ = temporary.Close()
-		return "", fmt.Errorf("write editor draft: %w", writeStringErr)
-	}
-	if syncErr := temporary.Sync(); syncErr != nil {
-		_ = temporary.Close()
-		return "", fmt.Errorf("sync editor draft: %w", syncErr)
-	}
-	if closeErr := temporary.Close(); closeErr != nil {
-		return "", fmt.Errorf("close editor draft: %w", closeErr)
-	}
 	arguments := append(slices.Clone(d.command[1:]), path)
 	command := exec.CommandContext(ctx, d.command[0], arguments...) //nolint:gosec // The user explicitly configures their editor command.
 	command.Dir = workspace
@@ -82,6 +63,43 @@ func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspa
 	if handErr := session.Hand(command.Run); handErr != nil {
 		return "", fmt.Errorf("run external editor: %w", handErr)
 	}
+	return readEditedDraft(path)
+}
+
+// writeEditorDraft stores original in a private temporary file and returns its
+// path. A failed write leaves no file behind.
+func writeEditorDraft(original string) (_ string, err error) {
+	temporary, err := os.CreateTemp("", "flame-prompt-*.md")
+	if err != nil {
+		return "", fmt.Errorf("create editor draft: %w", err)
+	}
+	path := temporary.Name()
+	defer func() {
+		if err != nil {
+			_ = os.Remove(path)
+		}
+	}()
+	if err := temporary.Chmod(0o600); err != nil {
+		_ = temporary.Close()
+		return "", fmt.Errorf("protect editor draft: %w", err)
+	}
+	if _, err := io.WriteString(temporary, original); err != nil {
+		_ = temporary.Close()
+		return "", fmt.Errorf("write editor draft: %w", err)
+	}
+	if err := temporary.Sync(); err != nil {
+		_ = temporary.Close()
+		return "", fmt.Errorf("sync editor draft: %w", err)
+	}
+	if err := temporary.Close(); err != nil {
+		return "", fmt.Errorf("close editor draft: %w", err)
+	}
+	return path, nil
+}
+
+// readEditedDraft reads back the file the editor saved, refusing one that was
+// replaced, grew past the message limit or changed while it was read.
+func readEditedDraft(path string) (string, error) {
 	source, err := os.Lstat(path)
 	if err != nil {
 		return "", fmt.Errorf("inspect edited draft: %w", err)
@@ -91,16 +109,7 @@ func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspa
 	}
 	file, opened, err := filesystem.OpenFileExpected(path, source, authoring.MaxMessageTextBytes)
 	if err != nil {
-		switch {
-		case errors.Is(err, filesystem.ErrChanged):
-			return "", errors.New("edited draft changed while it was being opened")
-		case errors.Is(err, filesystem.ErrNotRegular):
-			return "", errors.New("edited draft is not a regular file")
-		case errors.Is(err, filesystem.ErrFileTooLarge):
-			return "", fmt.Errorf("edited draft exceeds %d bytes", authoring.MaxMessageTextBytes)
-		default:
-			return "", fmt.Errorf("open edited draft: %w", err)
-		}
+		return "", openedDraftError(err)
 	}
 	defer func() { _ = file.Close() }()
 	if err := validateEditedDraft(opened); err != nil {
@@ -123,6 +132,19 @@ func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspa
 		return "", errors.New("edited draft is not valid text")
 	}
 	return strings.TrimRight(string(content), "\r\n"), nil
+}
+
+func openedDraftError(err error) error {
+	switch {
+	case errors.Is(err, filesystem.ErrChanged):
+		return errors.New("edited draft changed while it was being opened")
+	case errors.Is(err, filesystem.ErrNotRegular):
+		return errors.New("edited draft is not a regular file")
+	case errors.Is(err, filesystem.ErrFileTooLarge):
+		return fmt.Errorf("edited draft exceeds %d bytes", authoring.MaxMessageTextBytes)
+	default:
+		return fmt.Errorf("open edited draft: %w", err)
+	}
 }
 
 func validateEditedDraft(info os.FileInfo) error {

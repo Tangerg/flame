@@ -61,7 +61,7 @@ func (s *ToolResults) toolSource(ctx context.Context, ref tool.Ref, release fram
 	return zero, false, nil
 }
 
-func (s *ToolResults) OriginalToolResult(ctx context.Context, ref tool.Ref, release, authority framevalue.Digest, activation plugin.Activation, callID, arguments string) (_ *toolcontract.Output, err error) {
+func (s *ToolResults) OriginalToolResult(ctx context.Context, ref tool.Ref, release, authority framevalue.Digest, activation plugin.Activation, callID string, arguments tool.Arguments) (_ *toolcontract.Output, err error) {
 	borrowed, err := s.originalToolSession(ctx, ref, release, authority, activation)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func (s *ToolResults) OriginalToolResult(ctx context.Context, ref tool.Ref, rele
 	defer func() { err = errors.Join(err, borrowed.Close()) }()
 	ctx = borrowed.Context()
 	session := borrowed.Session()
-	admitted, err := framevalue.ParseJSON([]byte(arguments))
+	admitted, err := framevalue.ParseJSON([]byte(arguments.Canonical()))
 	if err != nil {
 		return nil, err
 	}

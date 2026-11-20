@@ -100,9 +100,6 @@ func (p QuestionBody) validate(status ItemStatus, _ time.Time) error {
 }
 
 func (p ToolCallBody) validate(status ItemStatus, occurredAt time.Time) error {
-	if err := instant.Validate(p.FinishedAt); err != nil {
-		return fmt.Errorf("transcript: %w", err)
-	}
 	if err := p.Invocation.Validate(status == ItemRunning); err != nil {
 		return err
 	}
@@ -114,6 +111,21 @@ func (p ToolCallBody) validate(status ItemStatus, occurredAt time.Time) error {
 			return err
 		}
 	}
+	if p.Failure != nil {
+		if err := p.Failure.Validate(); err != nil {
+			return fmt.Errorf("transcript: Tool failure: %w", err)
+		}
+	}
+	if err := p.validateTerminalFacts(status); err != nil {
+		return err
+	}
+	return p.validateTiming(occurredAt)
+}
+
+// validateTerminalFacts ties finish, duration and failure to the status: a
+// running call has none, a completed one has a finish and duration but no
+// failure, and an incomplete one at least finished.
+func (p ToolCallBody) validateTerminalFacts(status ItemStatus) error {
 	switch status {
 	case ItemRunning:
 		if !p.FinishedAt.IsZero() || p.ExecutionDuration != nil || p.Failure != nil {
@@ -128,21 +140,26 @@ func (p ToolCallBody) validate(status ItemStatus, occurredAt time.Time) error {
 			return errors.New("transcript: incomplete ToolCall has no finish time")
 		}
 	}
+	return nil
+}
+
+// validateTiming keeps the finish and the measured execution inside the
+// call's own lifecycle.
+func (p ToolCallBody) validateTiming(occurredAt time.Time) error {
+	if err := instant.Validate(p.FinishedAt); err != nil {
+		return fmt.Errorf("transcript: %w", err)
+	}
 	if !p.FinishedAt.IsZero() && p.FinishedAt.Before(occurredAt) {
 		return errors.New("transcript: ToolCall finish time precedes its occurrence")
 	}
-	if p.ExecutionDuration != nil {
-		if *p.ExecutionDuration < 0 {
-			return errors.New("transcript: ToolCall execution duration is negative")
-		}
-		if *p.ExecutionDuration > p.FinishedAt.Sub(occurredAt) {
-			return errors.New("transcript: ToolCall execution duration exceeds its lifecycle")
-		}
+	if p.ExecutionDuration == nil {
+		return nil
 	}
-	if p.Failure != nil {
-		if err := p.Failure.Validate(); err != nil {
-			return fmt.Errorf("transcript: Tool failure: %w", err)
-		}
+	if *p.ExecutionDuration < 0 {
+		return errors.New("transcript: ToolCall execution duration is negative")
+	}
+	if *p.ExecutionDuration > p.FinishedAt.Sub(occurredAt) {
+		return errors.New("transcript: ToolCall execution duration exceeds its lifecycle")
 	}
 	return nil
 }

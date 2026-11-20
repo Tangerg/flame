@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/chat"
@@ -40,30 +42,30 @@ func NewConversationStore(messages conversationMessages) (*ConversationStore, er
 	return &ConversationStore{messages: messages}, nil
 }
 
-func (c *ConversationStore) Read(ctx context.Context, sessionID string) ([]chat.Message, error) {
-	return c.messages.Read(ctx, history.ConversationID(sessionID))
+func (c *ConversationStore) Read(ctx context.Context, sessionID identity.SessionID) ([]chat.Message, error) {
+	return c.messages.Read(ctx, history.ConversationID(sessionID.String()))
 }
 
-func (c *ConversationStore) Write(ctx context.Context, sessionID string, messages ...chat.Message) error {
-	err := c.messages.Write(ctx, history.ConversationID(sessionID), messages...)
+func (c *ConversationStore) Write(ctx context.Context, sessionID identity.SessionID, messages ...chat.Message) error {
+	err := c.messages.Write(ctx, history.ConversationID(sessionID.String()), messages...)
 	if errors.Is(err, sqlite.ErrIndeterminate) {
 		return errors.Join(runsapp.ErrConversationWriteUncertain, err)
 	}
 	return err
 }
 
-func (c *ConversationStore) Count(ctx context.Context, sessionID string) (int, error) {
-	return c.messages.Count(ctx, history.ConversationID(sessionID))
+func (c *ConversationStore) Count(ctx context.Context, sessionID identity.SessionID) (int, error) {
+	return c.messages.Count(ctx, history.ConversationID(sessionID.String()))
 }
 
-func (c *ConversationStore) Replace(ctx context.Context, sessionID string, messages ...chat.Message) error {
-	return c.messages.Replace(ctx, history.ConversationID(sessionID), messages...)
+func (c *ConversationStore) Replace(ctx context.Context, sessionID identity.SessionID, messages ...chat.Message) error {
+	return c.messages.Replace(ctx, history.ConversationID(sessionID.String()), messages...)
 }
 
-func (c *ConversationStore) Truncate(ctx context.Context, sessionID string, keepN int) error {
-	return c.messages.Truncate(ctx, history.ConversationID(sessionID), keepN)
+func (c *ConversationStore) Truncate(ctx context.Context, sessionID identity.SessionID, keepN int) error {
+	return c.messages.Truncate(ctx, history.ConversationID(sessionID.String()), keepN)
 }
 
-func (c *ConversationStore) Clear(ctx context.Context, sessionID string) error {
-	return c.messages.Clear(ctx, history.ConversationID(sessionID))
+func (c *ConversationStore) Clear(ctx context.Context, sessionID identity.SessionID) error {
+	return c.messages.Clear(ctx, history.ConversationID(sessionID.String()))
 }

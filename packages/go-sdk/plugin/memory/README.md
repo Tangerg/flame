@@ -11,9 +11,9 @@ package publishes those schemas and the existing business-owned caller policy.
 The workspace coordinator runs this before generating backend package resources.
 Generated files are projections, never independently edited definitions.
 
-Implementations parse `CapabilityJSON` through `portable.ParseCapability` from
-`github.com/Tangerg/frame` and bind their own codecs with
-`pluginmcp.ImplementMethod` from `github.com/Tangerg/flame/packages/go-sdk/plugin/mcp`.
+Implementations parse `CapabilityJSON` with `plugincontract.ParseCapability` and
+bind their own codecs through `pluginmcp.Implement` from
+`github.com/Tangerg/flame/packages/go-sdk/plugin/mcp`.
 The first-party backend uses this same
 path. Changing an implementation's module namespace cannot change the contract's
 identity. Invalid input is refused before business execution; invalid output

@@ -54,30 +54,39 @@ func (b *Bundle) commitPluginReferences(ctx context.Context, host framehost.Host
 			if err != nil && !errors.Is(err, runs.ErrExecutorCheckpointNotFound) {
 				return err
 			}
-			for _, activation := range checkpoint.Bindings {
-				binding, err := plugins.DecodeActivation(activation)
-				if err != nil {
-					return err
-				}
-				preserved := slices.ContainsFunc(previous.Bindings, activation.Equal)
-				if !preserved {
-					if err := host.ValidateBindingUnder(txCtx, binding); err != nil {
-						return err
-					}
-				}
-			}
-			for _, resource := range checkpoint.Resources {
-				if slices.Contains(previous.Resources, resource) {
-					continue
-				}
-				installation, exists := host.Installation(resource.InstallationID.Host())
-				if !exists || !installation.Enabled || installation.Release.String() != resource.Digest.String() {
-					return fmt.Errorf("%w: retained content source changed", framehost.ErrStaleBinding)
-				}
+			if err := validateAddedReferences(txCtx, host, previous, checkpoint); err != nil {
+				return err
 			}
 			return fn(context.WithValue(txCtx, referenceWriteKey{}, referenceWrite{checkpoint: checkpoint}))
 		})
 	})
+}
+
+// validateAddedReferences checks only what this checkpoint adds: a reference
+// the previous checkpoint already retained was validated when it was added.
+func validateAddedReferences(ctx context.Context, host framehost.Host, previous, checkpoint runs.ExecutorCheckpoint) error {
+	for _, activation := range checkpoint.Bindings {
+		binding, err := plugins.DecodeActivation(activation)
+		if err != nil {
+			return err
+		}
+		if slices.ContainsFunc(previous.Bindings, activation.Equal) {
+			continue
+		}
+		if err := host.ValidateBindingUnder(ctx, binding); err != nil {
+			return err
+		}
+	}
+	for _, resource := range checkpoint.Resources {
+		if slices.Contains(previous.Resources, resource) {
+			continue
+		}
+		installation, exists := host.Installation(resource.InstallationID.Host())
+		if !exists || !installation.Enabled || installation.Release != resource.Digest {
+			return fmt.Errorf("%w: retained content source changed", framehost.ErrStaleBinding)
+		}
+	}
+	return nil
 }
 
 // The technical request identifies the original storage write-set. It encodes
@@ -102,7 +111,7 @@ func encodeCheckpointIdentity(checkpoint runs.ExecutorCheckpoint) ([]byte, error
 		Payload   []byte          `json:"payload"`
 		Bindings  []string        `json:"bindings"`
 		Resources []contentSource `json:"resources"`
-	}{checkpoint.RootMemberID, checkpoint.SessionID, checkpoint.BuildID, checkpoint.Payload, bindings, resources})
+	}{checkpoint.RootMemberID, checkpoint.SessionID.String(), checkpoint.BuildID, checkpoint.Payload, bindings, resources})
 }
 
 func (b *Bundle) commitPluginWrite(ctx context.Context, request []byte, fn func(context.Context) error) error {

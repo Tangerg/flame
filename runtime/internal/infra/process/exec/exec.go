@@ -212,6 +212,46 @@ const NoExitStatus = -1
 // rather than being severed by a bare context.Background(). An enabled timeout
 // hard-kills the command when it elapses; a disabled [Timeout] lets it run until
 // it exits or is killed.
+// admitShellLocked reserves the next identity and an output spool for sh.
+func (s *Shells) admitShellLocked(ctx context.Context, sh *Shell) (shellID, error) {
+	if s.closed {
+		return shellID{}, errShellsClosed
+	}
+	if cause := context.Cause(ctx); cause != nil {
+		return shellID{}, cause
+	}
+	if s.nextID == math.MaxUint64 {
+		return shellID{}, errShellIdentityExhausted
+	}
+	if len(s.shells) >= maxRetainedShells {
+		return shellID{}, errShellCapacity
+	}
+	log, logPath, err := openShellLog()
+	if err != nil {
+		return shellID{}, fmt.Errorf("exec: admit shell output spool: %w", err)
+	}
+	sh.log, sh.logPath, sh.spoolBytes = log, logPath, &s.retainedBytes
+	s.nextID++
+	return newShellID(s.epoch, s.nextID), nil
+}
+
+// exitStatus reports how the leader exited. A leader that exited while a
+// descendant held a copied pipe keeps its real status; process-group cleanup
+// owns that descendant, and the pipe backstop must not rewrite the status.
+func exitStatus(cmd *exec.Cmd, err error) (string, int) {
+	if errors.Is(err, exec.ErrWaitDelay) && cmd.ProcessState != nil {
+		code := cmd.ProcessState.ExitCode()
+		return "exit " + strconv.Itoa(code), code
+	}
+	if err == nil {
+		return "exit 0", 0
+	}
+	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
+		return "exit " + strconv.Itoa(exitErr.ExitCode()), exitErr.ExitCode()
+	}
+	return err.Error(), NoExitStatus
+}
+
 func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, timeout Timeout, isolated bool) (string, error) {
 	if cause := context.Cause(ctx); cause != nil {
 		return "", cause
@@ -269,35 +309,12 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 	s.lifecycle.Lock()
 	defer s.lifecycle.Unlock()
 	s.mu.Lock()
-	if s.closed {
+	id, err := s.admitShellLocked(ctx, sh)
+	if err != nil {
 		s.mu.Unlock()
 		cancel()
-		return "", errShellsClosed
+		return "", err
 	}
-	if cause := context.Cause(ctx); cause != nil {
-		s.mu.Unlock()
-		cancel()
-		return "", cause
-	}
-	if s.nextID == math.MaxUint64 {
-		s.mu.Unlock()
-		cancel()
-		return "", errShellIdentityExhausted
-	}
-	if len(s.shells) >= maxRetainedShells {
-		s.mu.Unlock()
-		cancel()
-		return "", errShellCapacity
-	}
-	log, logPath, logErr := openShellLog()
-	if logErr != nil {
-		s.mu.Unlock()
-		cancel()
-		return "", fmt.Errorf("exec: admit shell output spool: %w", logErr)
-	}
-	sh.log, sh.logPath, sh.spoolBytes = log, logPath, &s.retainedBytes
-	s.nextID++
-	id := newShellID(s.epoch, s.nextID)
 	// Start while holding the owner lock so shutdown cannot observe a Shell
 	// whose exec.Cmd is only partly initialized. Once the shell is published,
 	// cmd.Process is immutable and Kill/KillAll may safely use it.
@@ -316,21 +333,7 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 		killed := runCtx.Err() != nil // ctx done = timeout or an explicit Kill
 		cancel()
 		cleanupErr := process.stop()
-		code, info := 0, "exit 0"
-		if errors.Is(err, exec.ErrWaitDelay) && cmd.ProcessState != nil {
-			// The leader exited successfully but one of its descendants retained a
-			// copied pipe. Final process-group cleanup above owns that descendant;
-			// the pipe backstop must not rewrite the leader's real exit status.
-			code = cmd.ProcessState.ExitCode()
-			info = "exit " + strconv.Itoa(code)
-		} else if err != nil {
-			if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
-				code = exitErr.ExitCode()
-				info = "exit " + strconv.Itoa(code)
-			} else {
-				code, info = NoExitStatus, err.Error()
-			}
-		}
+		info, code := exitStatus(cmd, err)
 		sh.finish(info, code, killed, cleanupErr)
 	}()
 	return id.String(), nil

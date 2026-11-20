@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"fmt"
+	"maps"
 	"os"
 	"path"
 	"slices"
@@ -37,43 +38,8 @@ func componentModule(ctx context.Context, root *os.Root, component plugin.Client
 	if err := json.Unmarshal(encoded, &graph, json.RejectUnknownMembers(true)); err != nil {
 		return nil, fmt.Errorf("%w: component module graph: %w", plugin.ErrInvalid, err)
 	}
-	if graph.SchemaVersion != moduleGraphSchemaVersion || graph.Entry != path.Base(component.Entry) || len(graph.Modules) == 0 {
-		return nil, plugin.ErrInvalid
-	}
-	modules := map[string]moduleEntry{}
-	for _, module := range graph.Modules {
-		if !plugin.ValidResourcePath(module.Path) || modules[module.Path].Path != "" {
-			return nil, plugin.ErrInvalid
-		}
-		modules[module.Path] = module
-	}
-	entry, found := modules[graph.Entry]
-	if !found || !slices.Contains(entry.Exports, component.Export) {
-		return nil, fmt.Errorf("%w: component export differs from compiled module graph", plugin.ErrInvalid)
-	}
-	shared := map[string]bool{}
-	for _, module := range graph.Modules {
-		for _, dependency := range append(slices.Clone(module.Imports), module.DynamicImports...) {
-			if _, found := modules[dependency]; found {
-				continue
-			}
-			if !slices.Contains(hostModuleSpecifiers[:], dependency) {
-				return nil, fmt.Errorf("%w: component shared module is outside host profile", plugin.ErrInvalid)
-			}
-			shared[dependency] = true
-		}
-	}
-	if len(shared) != len(graph.SharedSpecifiers) {
-		return nil, plugin.ErrInvalid
-	}
-	for _, name := range graph.SharedSpecifiers {
-		if !shared[name] {
-			return nil, plugin.ErrInvalid
-		}
-		delete(shared, name)
-	}
-	if len(shared) != 0 {
-		return nil, plugin.ErrInvalid
+	if err := graph.validate(component); err != nil {
+		return nil, err
 	}
 	result := &distribution.Module{Entry: component.Entry, Imports: []distribution.ModuleImport{}}
 	for _, module := range graph.Modules {
@@ -86,6 +52,59 @@ func componentModule(ctx context.Context, root *os.Root, component plugin.Client
 	}
 	slices.SortFunc(result.Imports, func(a, b distribution.ModuleImport) int { return strings.Compare(a.Specifier, b.Specifier) })
 	return result, nil
+}
+
+// validate proves the compiled graph is the component's complete closure: its
+// entry exports the component, and every dependency outside it is a host
+// module the graph declares exactly once.
+// importedHostModules collects every non-local import, each of which must be a
+// module the host profile shares.
+func (g moduleGraph) importedHostModules(local map[string]moduleEntry) (map[string]bool, error) {
+	shared := make(map[string]bool)
+	for _, module := range g.Modules {
+		for _, dependency := range slices.Concat(module.Imports, module.DynamicImports) {
+			if _, found := local[dependency]; found {
+				continue
+			}
+			if !slices.Contains(hostModuleSpecifiers[:], dependency) {
+				return nil, fmt.Errorf("%w: component shared module is outside host profile", plugin.ErrInvalid)
+			}
+			shared[dependency] = true
+		}
+	}
+	return shared, nil
+}
+
+func (g moduleGraph) validate(component plugin.ClientComponent) error {
+	if g.SchemaVersion != moduleGraphSchemaVersion || g.Entry != path.Base(component.Entry) || len(g.Modules) == 0 {
+		return plugin.ErrInvalid
+	}
+	modules := make(map[string]moduleEntry, len(g.Modules))
+	for _, module := range g.Modules {
+		if _, duplicate := modules[module.Path]; duplicate || !plugin.ValidResourcePath(module.Path) {
+			return plugin.ErrInvalid
+		}
+		modules[module.Path] = module
+	}
+	entry, found := modules[g.Entry]
+	if !found || !slices.Contains(entry.Exports, component.Export) {
+		return fmt.Errorf("%w: component export differs from compiled module graph", plugin.ErrInvalid)
+	}
+	shared, err := g.importedHostModules(modules)
+	if err != nil {
+		return err
+	}
+	declared := make(map[string]bool, len(g.SharedSpecifiers))
+	for _, name := range g.SharedSpecifiers {
+		if declared[name] {
+			return plugin.ErrInvalid
+		}
+		declared[name] = true
+	}
+	if !maps.Equal(shared, declared) {
+		return plugin.ErrInvalid
+	}
+	return nil
 }
 
 // ComponentModules supplies the exact native shared profile and complete local

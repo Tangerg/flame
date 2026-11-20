@@ -60,6 +60,30 @@ func enumValues(t reflect.Type) ([]string, bool) {
 }
 
 // A marker closes the type; Go's type checker owns values and conversions.
+// markEnums records each enum-marked type of one declaration group; a marker
+// on the group itself must name exactly one type.
+func markEnums(pkg *packages.Package, group *ast.GenDecl, marked map[string]bool) error {
+	if enumMarker(group.Doc) && len(group.Specs) != 1 {
+		return fmt.Errorf("enum marker requires one named type")
+	}
+	for _, item := range group.Specs {
+		spec := item.(*ast.TypeSpec)
+		if !enumMarker(spec.Doc) && !enumMarker(group.Doc) {
+			continue
+		}
+		object, ok := pkg.TypesInfo.Defs[spec.Name].(*types.TypeName)
+		if !ok || object.IsAlias() {
+			return fmt.Errorf("enum %s must be a named string type", spec.Name.Name)
+		}
+		basic, ok := object.Type().Underlying().(*types.Basic)
+		if !ok || basic.Kind() != types.String {
+			return fmt.Errorf("enum %s must have string underlying type", object.Name())
+		}
+		marked[object.Name()] = true
+	}
+	return nil
+}
+
 func closedEnums(pkg *packages.Package) (map[string][]string, error) {
 	marked := map[string]bool{}
 	for _, file := range pkg.Syntax {
@@ -68,23 +92,8 @@ func closedEnums(pkg *packages.Package) (map[string][]string, error) {
 			if !ok || group.Tok != token.TYPE {
 				continue
 			}
-			if enumMarker(group.Doc) && len(group.Specs) != 1 {
-				return nil, fmt.Errorf("enum marker requires one named type")
-			}
-			for _, item := range group.Specs {
-				spec := item.(*ast.TypeSpec)
-				if !enumMarker(spec.Doc) && !enumMarker(group.Doc) {
-					continue
-				}
-				object, ok := pkg.TypesInfo.Defs[spec.Name].(*types.TypeName)
-				if !ok || object.IsAlias() {
-					return nil, fmt.Errorf("enum %s must be a named string type", spec.Name.Name)
-				}
-				basic, ok := object.Type().Underlying().(*types.Basic)
-				if !ok || basic.Kind() != types.String {
-					return nil, fmt.Errorf("enum %s must have string underlying type", object.Name())
-				}
-				marked[object.Name()] = true
+			if err := markEnums(pkg, group, marked); err != nil {
+				return nil, err
 			}
 		}
 	}

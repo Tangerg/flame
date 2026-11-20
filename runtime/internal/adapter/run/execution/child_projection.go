@@ -38,21 +38,7 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 	if len(calls) == 0 {
 		return false, nil
 	}
-	slices.SortFunc(calls, func(left, right *managedDelegateCall) int {
-		if depth := int(right.parentRelation.Depth()+1) - int(left.parentRelation.Depth()+1); depth != 0 {
-			return depth
-		}
-		if parent := strings.Compare(left.identity.parentID.String(), right.identity.parentID.String()); parent != 0 {
-			return parent
-		}
-		if left.modelCallSequence != right.modelCallSequence {
-			return cmp.Compare(left.modelCallSequence, right.modelCallSequence)
-		}
-		if left.toolCallIndex != right.toolCallIndex {
-			return cmp.Compare(left.toolCallIndex, right.toolCallIndex)
-		}
-		return strings.Compare(left.childProcessID.String(), right.childProcessID.String())
-	})
+	slices.SortFunc(calls, delegateProjectionOrder)
 	// One inspection decides which delegated children have finished. Asking each
 	// child separately would compose the answer out of readings taken at
 	// different moments, and this reconciliation publishes terminal facts.
@@ -65,33 +51,57 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 	}
 	progressed := false
 	for _, managed := range calls {
-		managed.mu.Lock()
-		processID := managed.childProcessID
-		done := managed.segmentProjected
-
-		managed.mu.Unlock()
-		if done || !processID.Valid() {
-			continue
-		}
-		member, inspected := inspection.Process(processID)
-		if !inspected || !member.Status.Terminal() {
-			continue
-		}
-		process, found := i.engine.Process(processID)
-		if !found {
-			continue
-		}
-		result, err := process.Await(ctx)
-		if err != nil {
-			return progressed, fmt.Errorf("execution: await delegated child %s: %w", processID, err)
-		}
-		projected, err := i.projectDelegateTerminal(ctx, managed, result)
+		projected, err := i.projectFinishedDelegate(ctx, inspection, managed)
 		if err != nil {
 			return progressed, err
 		}
 		progressed = progressed || projected
 	}
 	return progressed, nil
+}
+
+// delegateProjectionOrder projects the deepest children first, then by
+// parent and the position of the delegating call, so a parent's Tool batch
+// sees its children's terminals.
+func delegateProjectionOrder(left, right *managedDelegateCall) int {
+	if depth := int(right.parentRelation.Depth()+1) - int(left.parentRelation.Depth()+1); depth != 0 {
+		return depth
+	}
+	if parent := strings.Compare(left.identity.parentID.String(), right.identity.parentID.String()); parent != 0 {
+		return parent
+	}
+	if left.modelCallSequence != right.modelCallSequence {
+		return cmp.Compare(left.modelCallSequence, right.modelCallSequence)
+	}
+	if left.toolCallIndex != right.toolCallIndex {
+		return cmp.Compare(left.toolCallIndex, right.toolCallIndex)
+	}
+	return strings.Compare(left.childProcessID.String(), right.childProcessID.String())
+}
+
+// projectFinishedDelegate publishes the terminal of a child the inspection
+// saw finish, once.
+func (i *interactionSession) projectFinishedDelegate(ctx context.Context, inspection scoperun.TreeInspection, managed *managedDelegateCall) (bool, error) {
+	managed.mu.Lock()
+	processID := managed.childProcessID
+	done := managed.segmentProjected
+	managed.mu.Unlock()
+	if done || !processID.Valid() {
+		return false, nil
+	}
+	member, inspected := inspection.Process(processID)
+	if !inspected || !member.Status.Terminal() {
+		return false, nil
+	}
+	process, found := i.engine.Process(processID)
+	if !found {
+		return false, nil
+	}
+	result, err := process.Await(ctx)
+	if err != nil {
+		return false, fmt.Errorf("execution: await delegated child %s: %w", processID, err)
+	}
+	return i.projectDelegateTerminal(ctx, managed, result)
 }
 
 func (i *interactionSession) inspectCompletedDelegates(

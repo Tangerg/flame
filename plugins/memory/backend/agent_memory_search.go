@@ -65,7 +65,7 @@ func agentMemorySearchDefinition() toolcontract.FuncConfig {
 func (a *agentMemorySearcher) run(ctx context.Context, req agentMemorySearchRequest) (memoryResults, error) {
 	query, limit, err := req.normalized()
 	if err != nil {
-		return memoryResults{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("search_memory: %w", err))
+		return memoryResults{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: %w", rpc.ModelCallerPolicy().SearchToolName, err))
 	}
 	scope, err := pluginsdk.ToolContextFromContext(ctx)
 	if err != nil {
@@ -74,7 +74,7 @@ func (a *agentMemorySearcher) run(ctx context.Context, req agentMemorySearchRequ
 	cwd := scope.CWD
 	items, err := a.search.Search(ctx, cwd, query, limit)
 	if err != nil {
-		return memoryResults{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("search_memory: %w", err))
+		return memoryResults{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: %w", rpc.ModelCallerPolicy().SearchToolName, err))
 	}
 	return memorySearchResults(items), nil
 }

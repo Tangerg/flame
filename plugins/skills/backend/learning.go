@@ -71,28 +71,10 @@ func (l *learner) mine(ctx context.Context, run skilllearning.Run, inputs learni
 	name = strings.TrimSpace(name)
 	var previous string
 	if revision {
-		if err := skillspec.ValidateName(name); err != nil {
-			return skilllearning.MineResult{}, errors.Join(errInvalidSkillDraft, err)
-		}
-		read, err := inputs.ReadSkill(ctx, name)
-		current := read.Skill
-		previous = read.Revision
-		if err != nil {
+		var found bool
+		document, previous, found, err = reviseSkill(ctx, inputs, name, conversation.Transcript)
+		if err != nil || !found || noSkill(document) {
 			return skilllearning.MineResult{}, err
-		}
-		if current == nil {
-			return skilllearning.MineResult{}, nil
-		}
-		if current.Name != name {
-			return skilllearning.MineResult{}, errors.New("skill learning: source belongs to another skill")
-		}
-		input := "CURRENT SKILL.md\n---\nname: " + current.Name + "\ndescription: " + current.Description + "\n\n" + current.Instructions + "\n\nCONVERSATION\n---\n" + conversation.Transcript
-		document, err = inputs.Complete(ctx, skillRevisePrompt, input)
-		if err != nil {
-			return skilllearning.MineResult{}, err
-		}
-		if noSkill(document) {
-			return skilllearning.MineResult{}, nil
 		}
 	}
 	skill, err := skillspec.Parse([]byte(strings.TrimSpace(document)))
@@ -107,6 +89,25 @@ func (l *learner) mine(ctx context.Context, run skilllearning.Run, inputs learni
 	return skilllearning.MineResult{Proposal: &skilllearning.Proposal{
 		Skill: skilllearning.Skill{Name: skill.Name, Description: skill.Description, Instructions: skill.Instructions}, Revises: revision, Previous: previous,
 	}}, nil
+}
+
+// reviseSkill asks for a revision of the existing skill the miner named; a
+// skill that no longer exists is not found and yields no proposal.
+func reviseSkill(ctx context.Context, inputs learningInputs, name, transcript string) (document, previous string, found bool, err error) {
+	if err := skillspec.ValidateName(name); err != nil {
+		return "", "", false, errors.Join(errInvalidSkillDraft, err)
+	}
+	read, err := inputs.ReadSkill(ctx, name)
+	if err != nil || read.Skill == nil {
+		return "", "", false, err
+	}
+	current := read.Skill
+	if current.Name != name {
+		return "", "", false, errors.New("skill learning: source belongs to another skill")
+	}
+	input := "CURRENT SKILL.md\n---\nname: " + current.Name + "\ndescription: " + current.Description + "\n\n" + current.Instructions + "\n\nCONVERSATION\n---\n" + transcript
+	document, err = inputs.Complete(ctx, skillRevisePrompt, input)
+	return document, read.Revision, true, err
 }
 
 var errInvalidSkillDraft = errors.New("skill learning: model returned an invalid skill document")

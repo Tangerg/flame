@@ -22,9 +22,9 @@ type waitingSubtreeCancellationState struct {
 	// CommitID identifies the complete cancellation transaction. A cancellation
 	// that resumes the surviving tree reuses its OpeningCommit identity.
 	CommitID    CommitID
-	RootRunID   string
-	TargetRunID string
-	SessionID   string
+	RootRunID   identity.RunID
+	TargetRunID identity.RunID
+	SessionID   identity.SessionID
 	// ParkedRuns is the complete waiting tree before the cancellation. Its Runs
 	// own the lineage, capabilities and Goal incarnation the Pending names.
 	ParkedRuns       []rundomain.Run
@@ -44,7 +44,7 @@ type waitingSubtreeCancellationState struct {
 // surviving tree behind one reduced waiting barrier.
 func NewParkedSubtreeCancellationCommit(
 	commitID CommitID,
-	targetRunID string,
+	targetRunID identity.RunID,
 	parkedRuns []rundomain.Run,
 	expectedPending Pending,
 	remainingPending Pending,
@@ -65,7 +65,7 @@ func NewParkedSubtreeCancellationCommit(
 // every surviving Run through one opening transaction.
 func NewResumingSubtreeCancellationCommit(
 	commitID CommitID,
-	targetRunID string,
+	targetRunID identity.RunID,
 	parkedRuns []rundomain.Run,
 	expectedPending Pending,
 	checkpoint ExecutorCheckpoint,
@@ -114,13 +114,13 @@ func (w WaitingSubtreeCancellationCommit) CommitID() CommitID {
 }
 
 // RootRunID returns the root of the affected waiting tree.
-func (w WaitingSubtreeCancellationCommit) RootRunID() string { return w.state.RootRunID }
+func (w WaitingSubtreeCancellationCommit) RootRunID() identity.RunID { return w.state.RootRunID }
 
 // TargetRunID returns the child subtree root being canceled.
-func (w WaitingSubtreeCancellationCommit) TargetRunID() string { return w.state.TargetRunID }
+func (w WaitingSubtreeCancellationCommit) TargetRunID() identity.RunID { return w.state.TargetRunID }
 
 // SessionID returns the Session that owns the complete tree.
-func (w WaitingSubtreeCancellationCommit) SessionID() string { return w.state.SessionID }
+func (w WaitingSubtreeCancellationCommit) SessionID() identity.SessionID { return w.state.SessionID }
 
 // ParkedRuns returns the complete waiting tree before the cancellation.
 func (w WaitingSubtreeCancellationCommit) ParkedRuns() []rundomain.Run {
@@ -133,7 +133,7 @@ func (w WaitingSubtreeCancellationCommit) RootRun() rundomain.Run {
 	return root
 }
 
-func (c waitingSubtreeCancellationState) parkedRun(runID string) (rundomain.Run, bool) {
+func (c waitingSubtreeCancellationState) parkedRun(runID identity.RunID) (rundomain.Run, bool) {
 	for _, value := range c.ParkedRuns {
 		if value.ID() == runID {
 			return value, true
@@ -190,12 +190,12 @@ type WaitingSubtreeCancellationResult struct {
 
 type waitingCancellationValidation struct {
 	commit              waitingSubtreeCancellationState
-	continuationByRunID map[string]Continuation
-	canceledRunIDs      []string
+	continuationByRunID map[identity.RunID]Continuation
+	canceledRunIDs      []identity.RunID
 	canceledMemberIDs   map[string]struct{}
-	survivingRunIDs     []string
-	terminalRunIDs      map[string]struct{}
-	finishedAtByRunID   map[string]time.Time
+	survivingRunIDs     []identity.RunID
+	terminalRunIDs      map[identity.RunID]struct{}
+	finishedAtByRunID   map[identity.RunID]time.Time
 }
 
 // Validate proves that the write-set is exactly the canonical transformation
@@ -242,8 +242,8 @@ func newWaitingCancellationValidation(
 		canceledRunIDs:      topology.canceledRunIDs,
 		canceledMemberIDs:   topology.canceledMemberIDs,
 		survivingRunIDs:     topology.survivingRunIDs,
-		terminalRunIDs:      make(map[string]struct{}, len(state.TerminalRuns)),
-		finishedAtByRunID:   make(map[string]time.Time, len(state.TerminalRuns)),
+		terminalRunIDs:      make(map[identity.RunID]struct{}, len(state.TerminalRuns)),
+		finishedAtByRunID:   make(map[identity.RunID]time.Time, len(state.TerminalRuns)),
 	}, nil
 }
 
@@ -251,13 +251,13 @@ func validateWaitingCancellationBoundary(c waitingSubtreeCancellationState) erro
 	if err := c.CommitID.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting cancellation: %w", err)
 	}
-	if err := identity.ValidateRun(c.RootRunID); err != nil {
+	if err := c.RootRunID.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting cancellation root: %w", err)
 	}
-	if err := identity.ValidateRun(c.TargetRunID); err != nil {
+	if err := c.TargetRunID.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting cancellation target: %w", err)
 	}
-	if err := identity.ValidateSession(c.SessionID); err != nil {
+	if err := c.SessionID.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting cancellation: %w", err)
 	}
 	if err := c.ExpectedPending.ValidateForRoot(c.RootRunID); err != nil {
@@ -296,17 +296,17 @@ func validateWaitingCancellationDispositionEnvelope(c waitingSubtreeCancellation
 }
 
 type waitingCancellationTopology struct {
-	continuationByRunID map[string]Continuation
-	canceledRunIDs      []string
+	continuationByRunID map[identity.RunID]Continuation
+	canceledRunIDs      []identity.RunID
 	canceledMemberIDs   map[string]struct{}
-	survivingRunIDs     []string
+	survivingRunIDs     []identity.RunID
 }
 
 func buildWaitingCancellationTopology(
 	c waitingSubtreeCancellationState,
 ) (waitingCancellationTopology, error) {
 	members := make([]rundomain.TreeMember, 0, len(c.ExpectedPending.Continuations))
-	continuationByRunID := make(map[string]Continuation, len(c.ExpectedPending.Continuations))
+	continuationByRunID := make(map[identity.RunID]Continuation, len(c.ExpectedPending.Continuations))
 	for _, continuation := range c.ExpectedPending.Continuations {
 		parked, found := c.parkedRun(continuation.RunID)
 		if !found {
@@ -323,13 +323,13 @@ func buildWaitingCancellationTopology(
 	if !found || c.TargetRunID == c.RootRunID {
 		return waitingCancellationTopology{}, errors.New("runs: waiting cancellation target is not a child in the pending tree")
 	}
-	canceledRunSet := make(map[string]struct{}, len(canceledRunIDs))
+	canceledRunSet := make(map[identity.RunID]struct{}, len(canceledRunIDs))
 	canceledMemberIDs := make(map[string]struct{}, len(canceledRunIDs))
 	for _, runID := range canceledRunIDs {
 		canceledRunSet[runID] = struct{}{}
 		canceledMemberIDs[continuationByRunID[runID].MemberID] = struct{}{}
 	}
-	var survivingRunIDs []string
+	var survivingRunIDs []identity.RunID
 	for _, runID := range tree.Postorder() {
 		if _, canceled := canceledRunSet[runID]; !canceled {
 			survivingRunIDs = append(survivingRunIDs, runID)
@@ -379,38 +379,46 @@ func (w *waitingCancellationValidation) validateTerminalRuns() error {
 	return nil
 }
 
-func (w waitingCancellationValidation) validateTerminalItems() error {
-	c := w.commit
-	type expectedTool struct {
-		runID string
-	}
-	expectedByItemID := make(map[string]expectedTool)
-	for index, request := range c.ExpectedPending.Interrupts {
-		continuation, _ := continuationForMember(c.ExpectedPending.Continuations, c.ExpectedPending.Bindings[index].MemberID)
+// canceledToolOwners maps each Tool Item the cancellation ends to its Run:
+// approvals of canceled Runs and the Tools those Runs drained, each once.
+func (w waitingCancellationValidation) canceledToolOwners() (map[identity.ItemID]identity.RunID, error) {
+	pending := w.commit.ExpectedPending
+	owners := make(map[identity.ItemID]identity.RunID)
+	for index, request := range pending.Interrupts {
+		continuation, _ := continuationForMember(pending.Continuations, pending.Bindings[index].MemberID)
 		if _, terminal := w.terminalRunIDs[continuation.RunID]; terminal && request.Type() == rundomain.InterruptApproval {
-			expectedByItemID[request.ItemID] = expectedTool{runID: continuation.RunID}
+			owners[request.ItemID] = continuation.RunID
 		}
 	}
-	for _, continuation := range c.ExpectedPending.Continuations {
+	for _, continuation := range pending.Continuations {
 		if _, terminal := w.terminalRunIDs[continuation.RunID]; !terminal {
 			continue
 		}
 		for _, drained := range continuation.DrainedTools {
-			if _, duplicate := expectedByItemID[drained.ItemID]; duplicate {
-				return fmt.Errorf("runs: waiting cancellation Tool Item %q has multiple terminal roles", drained.ItemID)
+			if _, duplicate := owners[drained.ItemID]; duplicate {
+				return nil, fmt.Errorf("runs: waiting cancellation Tool Item %q has multiple terminal roles", drained.ItemID)
 			}
-			expectedByItemID[drained.ItemID] = expectedTool{runID: continuation.RunID}
+			owners[drained.ItemID] = continuation.RunID
 		}
+	}
+	return owners, nil
+}
+
+func (w waitingCancellationValidation) validateTerminalItems() error {
+	c := w.commit
+	expectedByItemID, err := w.canceledToolOwners()
+	if err != nil {
+		return err
 	}
 	if len(c.TerminalItems) != len(expectedByItemID) {
 		return fmt.Errorf("runs: waiting cancellation has %d terminal Items, want %d", len(c.TerminalItems), len(expectedByItemID))
 	}
-	seen := make(map[string]struct{}, len(c.TerminalItems))
+	seen := make(map[identity.ItemID]struct{}, len(c.TerminalItems))
 	for index, replacement := range c.TerminalItems {
 		expectedItem := replacement.Expected()
-		expectedTool, expected := expectedByItemID[expectedItem.ID()]
+		ownerRunID, expected := expectedByItemID[expectedItem.ID()]
 		if !expected || expectedItem.SessionID() != c.SessionID ||
-			expectedItem.RunID() != expectedTool.runID || expectedItem.Status() != transcript.ItemRunning {
+			expectedItem.RunID() != ownerRunID || expectedItem.Status() != transcript.ItemRunning {
 			return fmt.Errorf("runs: waiting cancellation terminal Item[%d] is outside canceled Tools", index)
 		}
 		if _, duplicate := seen[expectedItem.ID()]; duplicate {
@@ -419,7 +427,7 @@ func (w waitingCancellationValidation) validateTerminalItems() error {
 		seen[expectedItem.ID()] = struct{}{}
 		if err := validateAbandonedToolReplacement(
 			replacement,
-			w.finishedAtByRunID[expectedTool.runID],
+			w.finishedAtByRunID[ownerRunID],
 		); err != nil {
 			return fmt.Errorf("runs: waiting cancellation terminal Item %q: %w", expectedItem.ID(), err)
 		}
@@ -462,7 +470,7 @@ func (w waitingCancellationValidation) validateDisposition() error {
 	return w.validateSurvivingContinuations()
 }
 
-func (w waitingCancellationValidation) validateDispositionAndCollectRunIDs() ([]string, error) {
+func (w waitingCancellationValidation) validateDispositionAndCollectRunIDs() ([]identity.RunID, error) {
 	if w.commit.RemainingPending != nil {
 		return w.validateReducedPendingAndCollectRunIDs()
 	}
@@ -474,14 +482,14 @@ func (w waitingCancellationValidation) validateDispositionAndCollectRunIDs() ([]
 			)
 		}
 	}
-	runIDs := make([]string, 0, len(w.commit.Resume.Runs))
+	runIDs := make([]identity.RunID, 0, len(w.commit.Resume.Runs))
 	for _, draft := range w.commit.Resume.Runs {
 		runIDs = append(runIDs, draft.State().ID())
 	}
 	return runIDs, nil
 }
 
-func (w waitingCancellationValidation) validateReducedPendingAndCollectRunIDs() ([]string, error) {
+func (w waitingCancellationValidation) validateReducedPendingAndCollectRunIDs() ([]identity.RunID, error) {
 	c := w.commit
 	var survivingRequestIndexes []int
 	for index, binding := range c.ExpectedPending.Bindings {
@@ -502,7 +510,7 @@ func (w waitingCancellationValidation) validateReducedPendingAndCollectRunIDs() 
 		!c.RemainingPending.CreatedAt.Equal(c.ExpectedPending.CreatedAt) {
 		return nil, errors.New("runs: waiting cancellation changed immutable Pending facts")
 	}
-	runIDs := make([]string, 0, len(c.RemainingPending.Continuations))
+	runIDs := make([]identity.RunID, 0, len(c.RemainingPending.Continuations))
 	for _, continuation := range c.RemainingPending.Continuations {
 		runIDs = append(runIDs, continuation.RunID)
 	}
@@ -522,7 +530,7 @@ func (w waitingCancellationValidation) validateSurvivingContinuations() error {
 
 func (w waitingCancellationValidation) validateOpeningEvents() error {
 	c := w.commit
-	surviving := make(map[string]struct{}, len(w.survivingRunIDs))
+	surviving := make(map[identity.RunID]struct{}, len(w.survivingRunIDs))
 	for _, runID := range w.survivingRunIDs {
 		surviving[runID] = struct{}{}
 	}
@@ -548,9 +556,9 @@ func (w waitingCancellationValidation) validateOpeningEvents() error {
 
 // parkedTreeSessionID is the Session of the parked tree's root Run, which owns
 // it; an absent root leaves it empty for validation to refuse.
-func parkedTreeSessionID(parked []rundomain.Run, rootRunID string) string {
+func parkedTreeSessionID(parked []rundomain.Run, rootRunID identity.RunID) identity.SessionID {
 	if root, found := parkedRoot(rootRunID, parked); found {
 		return root.SessionID()
 	}
-	return ""
+	return identity.SessionID{}
 }

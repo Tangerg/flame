@@ -52,26 +52,16 @@ func (c *connector) submitReview(ctx context.Context, input contractwire.SubmitR
 	if !commitSHA.MatchString(string(input.CommitID)) {
 		return contractwire.Review{}, invalidInput("an exact inspected review commit SHA is required")
 	}
-	var expectedState string
-	switch input.Event {
-	case contractwire.Approve:
-		expectedState = "APPROVED"
-	case contractwire.RequestChanges:
-		expectedState = "CHANGES_REQUESTED"
-	case contractwire.CommentReview:
-		expectedState = "COMMENTED"
-	default:
+	expectedState, submittable := submittedReviewState(input.Event)
+	if !submittable {
 		return contractwire.Review{}, invalidInput("a submitted review event is required")
 	}
 	if input.Event != contractwire.Approve && (input.Body == nil || !textPresent(*input.Body)) {
 		return contractwire.Review{}, invalidInput("COMMENT and REQUEST_CHANGES reviews require a nonblank body")
 	}
-	comments := make([]inlineCommentWire, len(input.Comments))
-	for i, comment := range input.Comments {
-		comments[i], err = inlineComment(comment)
-		if err != nil {
-			return contractwire.Review{}, err
-		}
+	comments, err := inlineComments(input.Comments)
+	if err != nil {
+		return contractwire.Review{}, err
 	}
 	payload := struct {
 		CommitID string                   `json:"commit_id"`
@@ -85,6 +75,21 @@ func (c *connector) submitReview(ctx context.Context, input contractwire.SubmitR
 		}
 		return wire.admit()
 	})
+}
+
+// submittedReviewState is the state GitHub reports for a review submitted
+// with event; a pending review is not submittable.
+func submittedReviewState(event contractwire.ReviewEvent) (string, bool) {
+	switch event {
+	case contractwire.Approve:
+		return "APPROVED", true
+	case contractwire.RequestChanges:
+		return "CHANGES_REQUESTED", true
+	case contractwire.CommentReview:
+		return "COMMENTED", true
+	default:
+		return "", false
+	}
 }
 
 func (c *connector) mergePull(ctx context.Context, input contractwire.MergePullInput) (contractwire.MergeResult, error) {

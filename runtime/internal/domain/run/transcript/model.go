@@ -227,7 +227,7 @@ func (t ToolInvocation) Equal(other ToolInvocation) bool {
 
 // Interrupt is one thing a person has to answer before execution continues.
 type Interrupt struct {
-	ItemID string
+	ItemID identity.ItemID
 	// ItemOccurredAt preserves the identity timestamp of the Item this interrupt
 	// references. An approval eventually settles that same ToolCall; a Question is
 	// already a complete prompt fact. Neither path may manufacture a new occurrence
@@ -240,7 +240,7 @@ type Interrupt struct {
 	//
 	// It is recorded rather than derived, because the derivation stops working
 	// exactly when it starts to matter.
-	RunID string
+	RunID identity.RunID
 	// Prompt is the Approval or Question a person must answer; it alone
 	// decides the interrupt's Kind.
 	Prompt Prompt
@@ -265,13 +265,13 @@ func (i Interrupt) Type() run.InterruptType { return i.Prompt.Type() }
 // item and run identity. An open question that already holds an accepted
 // answer is no longer open, so it is rejected here rather than resumed.
 func (i Interrupt) Validate() error {
-	if err := identity.ValidateItem(i.ItemID); err != nil {
+	if err := i.ItemID.Validate(); err != nil {
 		return fmt.Errorf("pending interrupt: %w", err)
 	}
 	if i.ItemOccurredAt.IsZero() {
 		return errors.New("item occurrence time is required")
 	}
-	if err := identity.ValidateRun(i.RunID); err != nil {
+	if err := i.RunID.Validate(); err != nil {
 		return fmt.Errorf("pending interrupt: %w", err)
 	}
 	switch prompt := i.Prompt.(type) {
@@ -316,25 +316,50 @@ func (a Approval) Validate() error {
 	return nil
 }
 
+// imageMediaTypePrefix is the media type family image content must belong to.
+const imageMediaTypePrefix = "image/"
+
+// ContentField names the part of a content block that breaks its kind's shape,
+// so each boundary can address the error in its own vocabulary.
+type ContentField uint8
+
+const (
+	ContentKindField ContentField = iota
+	ContentTextField
+	ContentMediaTypeField
+	ContentBytesField
+)
+
+// ContentError reports which field of a content block breaks its shape.
+type ContentError struct {
+	Field  ContentField
+	Detail string
+}
+
+func (e *ContentError) Error() string { return "transcript: content " + e.Detail }
+
 // Validate reports whether the content block has the shape required by its kind.
 func (c ContentBlock) Validate() error {
 	switch c.Kind {
 	case TextContent:
 		if strings.TrimSpace(c.Text) == "" {
-			return errors.New("text content requires text")
+			return &ContentError{Field: ContentTextField, Detail: "must contain non-whitespace text"}
 		}
 		if c.MediaType != "" || len(c.Bytes) != 0 {
-			return errors.New("text content cannot carry media")
+			return &ContentError{Field: ContentKindField, Detail: "text content cannot carry media"}
 		}
 	case ImageContent:
-		if !strings.HasPrefix(c.MediaType, "image/") || len(c.Bytes) == 0 {
-			return errors.New("image content requires an image media type and bytes")
-		}
 		if c.Text != "" {
-			return errors.New("image content cannot carry text")
+			return &ContentError{Field: ContentKindField, Detail: "image content cannot carry text"}
+		}
+		if !strings.HasPrefix(c.MediaType, imageMediaTypePrefix) {
+			return &ContentError{Field: ContentMediaTypeField, Detail: fmt.Sprintf("must be an image media type, got %q", c.MediaType)}
+		}
+		if len(c.Bytes) == 0 {
+			return &ContentError{Field: ContentBytesField, Detail: "must not be empty"}
 		}
 	default:
-		return fmt.Errorf("unknown content kind %q", c.Kind)
+		return &ContentError{Field: ContentKindField, Detail: fmt.Sprintf("kind %q is unknown", c.Kind)}
 	}
 	return nil
 }

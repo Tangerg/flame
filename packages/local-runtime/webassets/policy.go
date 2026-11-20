@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	policyFile    = ".vite/flame-web-policy.json"
-	policyVersion = 1
-	entryDocument = "index.html"
+	policyFile        = ".vite/flame-web-policy.json"
+	policyVersion     = 1
+	entryDocument     = "index.html"
+	documentExtension = ".html"
 )
 
 type documentKind string
@@ -50,7 +51,7 @@ func (a artifact) validate(name string) error {
 	if a.Fingerprint == contentAddressed && path.Base(name) != a.SHA256+path.Ext(name) {
 		return errors.New("webassets: invalid content-addressed asset")
 	}
-	if path.Ext(name) != ".html" {
+	if !isDocument(name) {
 		if a.Document != "" {
 			return errors.New("webassets: document kind on a non-document artifact")
 		}
@@ -107,3 +108,5 @@ func (p policy) validate() error {
 	}
 	return nil
 }
+
+func isDocument(name string) bool { return path.Ext(name) == documentExtension }

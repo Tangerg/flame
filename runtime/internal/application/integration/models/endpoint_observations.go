@@ -17,6 +17,10 @@ type endpointReader interface {
 
 type EndpointObservations struct{ reader endpointReader }
 
+// endpointObservationPageLimit is the widest page of endpoint observations
+// one read serves.
+const endpointObservationPageLimit = 100
+
 func NewEndpointObservations(reader endpointReader) (*EndpointObservations, error) {
 	if lo.IsNil(reader) {
 		return nil, errors.New("models: endpoint observation reader is required")
@@ -50,7 +54,7 @@ func (r *EndpointObservations) List(ctx context.Context, parent, cursor string, 
 		}
 		before = &position
 	}
-	size, err := limit.Resolve(100)
+	size, err := limit.Resolve(endpointObservationPageLimit)
 	if err != nil {
 		return zero, err
 	}

@@ -152,7 +152,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
  if err != nil || !receipt.Found { t.Fatalf("public owner read = %+v, %v", receipt, err) }
  value, err := pluginmcp.DecodeReply[bool](receipt.Reply)
  if err != nil || !value { t.Fatalf("original owner value = %v, %v", value, err) }
- projected, err := pluginsdk.NewToolReceipt(toolcontract.NewTextOutput("owned"), false)
+ projected, err := pluginsdk.NewToolReceipt(toolcontract.NewTextOutput("owned"))
  if err != nil || projected.Result == nil || projected.Result.IsError { t.Fatalf("public Tool projection = %+v, %v", projected, err) }
  changed, err := framevalue.EncodeJSON(map[string]bool{"changed": true})
  if err != nil { t.Fatal(err) }

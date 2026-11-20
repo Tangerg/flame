@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -21,7 +23,7 @@ import (
 // is derived and persisted by the acceptance owner, in the transaction that
 // accepts the answer, never by a Tool replay.
 type interactionApprovalPolicy interface {
-	Mode(ctx context.Context, sessionID string) (approval.Mode, error)
+	Mode(ctx context.Context, sessionID identity.SessionID) (approval.Mode, error)
 	Decide(ctx context.Context, query approval.Query) (approval.Decision, bool, error)
 }
 
@@ -130,7 +132,7 @@ func (t *ToolAuthorizer) ResolveToolApproval(
 		}
 	}
 	if !(verdict.Decision == approval.Allow) {
-		return denyTool(denialReason(verdict.Reason)), nil
+		return denyTool(refusalReason(verdict.Reason, userRefusal)), nil
 	}
 	if arguments.Canonical() == request.Arguments.Canonical() {
 		return allowTool(), nil
@@ -145,7 +147,7 @@ func validateToolAuthorizationRequest(request ToolAuthorizationRequest) error {
 	if err := request.Tool.ValidateFingerprint(request.SourceFingerprint); err != nil {
 		return err
 	}
-	if err := validateToolAuthorizationText("SessionID", request.SessionID); err != nil {
+	if err := request.SessionID.Validate(); err != nil {
 		return err
 	}
 	if err := validateToolAuthorizationText("workspace CWD", request.WorkspaceCWD); err != nil {
@@ -242,13 +244,6 @@ func approvalPromptReason(cause approval.PromptCause) string {
 	default:
 		return "Has an unknown safety classification."
 	}
-}
-
-func denialReason(reason string) string {
-	if strings.TrimSpace(reason) == "" {
-		return "tool call denied by user"
-	}
-	return strings.TrimSpace(reason)
 }
 
 var _ interactionToolAuthorizer = (*ToolAuthorizer)(nil)

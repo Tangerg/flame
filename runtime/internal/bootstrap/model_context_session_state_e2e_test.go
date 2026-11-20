@@ -148,7 +148,7 @@ func TestActiveGoalAndPlanStayCurrentAcrossLongRunCompaction(t *testing.T) {
 			stateChecks,
 		)
 	}
-	planState, err := stores.Plan.State(ctx, sessionID)
+	planState, err := stores.Plan.State(ctx, testsupport.MustSessionID(sessionID))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,10 +182,10 @@ func newSessionStateE2ERuntime(
 	cfg := composeConfig(
 		config.Settings{DefaultSelection: testsupport.MustModelSelection("anthropic", "claude-test")},
 		stores,
-		testChatResolver(client),
 		stores.Providers,
 		"sha256:0000000000000000000000000000000000000000000000000000000000000000",
 	)
+	cfg.modelProviders = testChatResolver(client)
 	cfg.userHome = home
 	cfg.defaultWorkspacePath = home
 	cfg.maintenance = noMaintenance{}
@@ -222,7 +222,7 @@ func createSessionWithInitialPlan(
 	}
 	if _, err := mustPlanCoordinator(sessions.PlanDependencies{Store: stores.Plan, Now: time.Now}).Replace(
 		ctx,
-		session.ID,
+		testsupport.MustSessionID(session.ID),
 		[]plandomain.Step{{Description: stalePlanText, Status: plandomain.StatusInProgress}},
 	); err != nil {
 		t.Fatal(err)

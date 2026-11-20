@@ -18,24 +18,20 @@ type Contracts struct {
 }
 
 func NewContracts() (Contracts, error) {
-	var c Contracts
-	var err error
-	c.Capability, err = plugincontract.ParseCapability([]byte(contracts.CapabilityJSON))
+	capability, err := plugincontract.ParseCapability([]byte(contracts.CapabilityJSON))
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Agents, err = pluginmcp.ImplementMethod[struct{}, wire.Agents](c.Capability, contracts.AgentsV1Method)
-	if err != nil {
+	methods := pluginmcp.NewMethodSet(capability)
+	c := Contracts{
+		Capability: capability,
+		Agents:     pluginmcp.Implement[struct{}, wire.Agents](methods, contracts.AgentsV1Method),
+		Send:       pluginmcp.Implement[wire.SendRequest, wire.Result](methods, contracts.SendV1Method),
+		Status:     pluginmcp.Implement[wire.TaskRequest, wire.Result](methods, contracts.StatusV1Method),
+		Cancel:     pluginmcp.Implement[wire.TaskRequest, wire.Result](methods, contracts.CancelV1Method),
+	}
+	if err := methods.Err(); err != nil {
 		return Contracts{}, err
 	}
-	c.Send, err = pluginmcp.ImplementMethod[wire.SendRequest, wire.Result](c.Capability, contracts.SendV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Status, err = pluginmcp.ImplementMethod[wire.TaskRequest, wire.Result](c.Capability, contracts.StatusV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Cancel, err = pluginmcp.ImplementMethod[wire.TaskRequest, wire.Result](c.Capability, contracts.CancelV1Method)
-	return c, err
+	return c, nil
 }

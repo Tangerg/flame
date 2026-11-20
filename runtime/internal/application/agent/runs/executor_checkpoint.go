@@ -22,7 +22,7 @@ var ErrInvalidExecutorCheckpoint = errors.New("invalid executor checkpoint")
 // every delegated child. Sessions, workspace isolation, and autonomous-goal
 // leases are host facts, not planner state.
 type ExecutionScope struct {
-	SessionID         string
+	SessionID         identity.SessionID
 	CWD               string
 	WorkspaceCWD      string
 	Isolated          bool
@@ -41,7 +41,7 @@ type ExecutorCheckpoint struct {
 	Bindings     []plugin.Activation
 	Resources    []plugin.Dependency
 	RootMemberID string
-	SessionID    string
+	SessionID    identity.SessionID
 	Payload      []byte
 	BuildID      string
 }
@@ -77,7 +77,7 @@ func (e ExecutorCheckpoint) Validate() error {
 	if _, err := ParseBuild(e.BuildID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
 	}
-	if err := identity.ValidateSession(e.SessionID); err != nil {
+	if err := e.SessionID.Validate(); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	return nil
@@ -95,14 +95,14 @@ func (e ExecutorCheckpoint) Dependencies() []plugin.Dependency {
 // name the same root member and Session. Callers use this at every atomic
 // Pending/checkpoint write boundary so two separately valid values cannot be
 // committed as one mismatched continuation.
-func (e ExecutorCheckpoint) ValidateOwnership(rootMemberID, sessionID string) error {
+func (e ExecutorCheckpoint) ValidateOwnership(rootMemberID string, sessionID identity.SessionID) error {
 	if err := e.Validate(); err != nil {
 		return err
 	}
 	if err := ValidateMember(rootMemberID); err != nil {
 		return fmt.Errorf("%w: expected %v", ErrInvalidExecutorCheckpoint, err)
 	}
-	if err := identity.ValidateSession(sessionID); err != nil {
+	if err := sessionID.Validate(); err != nil {
 		return fmt.Errorf("%w: expected %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	if e.RootMemberID != rootMemberID {

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -538,7 +540,7 @@ func (c *Cancellations) resumeAfterWaitingChildCancellation(
 		},
 	})
 	if err != nil {
-		if committed.TargetRun.ID() != "" {
+		if !committed.TargetRun.ID().IsZero() {
 			return CancelResult{}, &CancellationSettlementError{Cause: err}
 		}
 		return CancelResult{}, err
@@ -554,10 +556,10 @@ func (c *Cancellations) publishWaitingChildCancellation(
 	plan cancellationPlan,
 	transformation waitingCancellationTransformation,
 ) {
-	affected := make([]string, 0, len(transformation.canceledRunIDs)+len(plan.survivingTree)+2)
-	seen := make(map[string]struct{}, cap(affected))
-	appendRunID := func(runID string) {
-		if runID == "" {
+	affected := make([]identity.RunID, 0, len(transformation.canceledRunIDs)+len(plan.survivingTree)+2)
+	seen := make(map[identity.RunID]struct{}, cap(affected))
+	appendRunID := func(runID identity.RunID) {
+		if runID.IsZero() {
 			return
 		}
 		if _, duplicate := seen[runID]; duplicate {

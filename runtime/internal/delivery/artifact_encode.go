@@ -46,7 +46,7 @@ func artifactFromPortable(portable sessions.PortableSnapshot) (protocol.SessionA
 	toolResults := make([]protocol.ArtifactToolResult, 0, len(portable.ToolResults))
 	for _, result := range portable.ToolResults {
 		toolResults = append(toolResults, protocol.ArtifactToolResult{
-			ID: result.Blob.ID.String(), ItemID: result.ItemID,
+			ID: result.Blob.ID.String(), ItemID: result.ItemID.String(),
 			Body: result.Blob.Body, ModelOnly: result.ModelOnly, CreatedAt: result.Blob.CreatedAt,
 		})
 	}
@@ -68,7 +68,7 @@ func artifactFromPortable(portable sessions.PortableSnapshot) (protocol.SessionA
 
 func artifactSessionFromPortable(value sessions.PortableSession) protocol.ArtifactSession {
 	return protocol.ArtifactSession{
-		ID: value.ID, Title: value.Title, Workspace: protocol.WorkspaceRef{Path: value.CWD},
+		ID: value.ID.String(), Title: value.Title, Workspace: protocol.WorkspaceRef{Path: value.CWD},
 		Provider: value.Selection.Provider(), Model: value.Selection.Model(),
 		ReasoningEffort: value.Selection.ReasoningEffort(),
 		CreatedAt:       value.CreatedAt, UpdatedAt: value.UpdatedAt, Favorite: value.Favorite,
@@ -82,11 +82,11 @@ func artifactRunFromPortable(run sessions.PortableRun) (protocol.ArtifactRun, er
 	}
 	outcome.UnresolvedEffects = presentUnresolvedEffects(run.UnresolvedEffects)
 	return protocol.ArtifactRun{
-		ID: run.ID, SessionID: run.SessionID, SpawnedByItemID: run.SpawnedByItemID,
+		ID: run.ID.String(), SessionID: run.SessionID.String(), SpawnedByItemID: run.SpawnedByItemID.String(),
 		Provider: run.Selection.Provider(), Model: run.Selection.Model(),
 		ReasoningEffort: run.Selection.ReasoningEffort(),
-		ParentRunID:     run.ParentRunID,
-		RootRunID:       run.RootRunID,
+		ParentRunID:     run.ParentRunID.String(),
+		RootRunID:       run.RootRunID.String(),
 		Metrics:         presentMetrics(run.Metrics),
 		ContextTokens:   run.ContextTokens,
 		Capabilities:    presentArtifactCapabilities(run.Capabilities),
@@ -148,7 +148,7 @@ func artifactToolFailureFromDomain(failure *tool.Failure) (*protocol.ArtifactPro
 
 func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, error) {
 	out := protocol.ArtifactItem{
-		ID: item.ID(), RunID: item.RunID(), Status: presentItemStatus(item.Status()),
+		ID: item.ID().String(), RunID: item.RunID().String(), Status: presentItemStatus(item.Status()),
 		Type: presentItemKind(item.Kind()),
 	}
 	payload := item.Body()

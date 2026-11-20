@@ -10,7 +10,7 @@ import (
 
 const (
 	defaultInteractionDeltaBuffer         = 256
-	defaultInteractionConcurrentToolCalls = 1
+	defaultInteractionConcurrentToolCalls = 8
 )
 
 // interactionExecutionPolicy is the validated, immutable execution policy

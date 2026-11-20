@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -35,8 +37,8 @@ func (r cancellationRefusal) cause() error {
 
 // A Run can finish after the cancellation plan reads its active snapshot. The
 // reservation must see terminal state through the same writer as Run settlement.
-func (i *idempotencyStore) refuseLateCancellation(ctx context.Context, runID string) (cancellationRefusal, error) {
-	if runID == "" {
+func (i *idempotencyStore) refuseLateCancellation(ctx context.Context, runID identity.RunID) (cancellationRefusal, error) {
+	if runID.IsZero() {
 		return "", nil
 	}
 	var raw string

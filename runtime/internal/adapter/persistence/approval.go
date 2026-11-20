@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -36,11 +38,8 @@ func (a *ApprovalRuleStore) Put(ctx context.Context, r approval.Rule) error {
 // Scope predicate expressed as a WHERE clause — the mirror of approval's
 // visible(): session rules for this session, project rules for this cwd
 // (skipped entirely when the call has no cwd), and all global rules.
-func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID, projectDir string, limit int) ([]approval.Rule, error) {
+func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID identity.SessionID, projectDir string, limit int) ([]approval.Rule, error) {
 	return scopedValue(ctx, a.db.read, func(ctx context.Context) ([]approval.Rule, error) {
-		if err := validateOptionalSessionResource("list visible approval rules", sessionID); err != nil {
-			return nil, err
-		}
 		if limit <= 0 || limit > approval.MaximumVisibleRules+1 {
 			return nil, fmt.Errorf("sqlite: list approval rules: invalid limit %d", limit)
 		}
@@ -101,9 +100,9 @@ func (a *ApprovalRuleStore) Delete(ctx context.Context, id string) error {
 		return nil
 	})
 }
-func (a *ApprovalRuleStore) DeleteSession(ctx context.Context, sessionID string) error {
+func (a *ApprovalRuleStore) DeleteSession(ctx context.Context, sessionID identity.SessionID) error {
 	return a.db.write(ctx, func(ctx context.Context) error {
-		if err := validateSessionResource("delete Session approval rules", sessionID); err != nil {
+		if err := validateResource("delete Session approval rules", sessionID); err != nil {
 			return err
 		}
 		if _, err := a.db.connection(ctx).ExecContext(ctx, `DELETE FROM approval_rules WHERE scope = 'session' AND scope_key = ?`, sessionID); err != nil {

@@ -31,6 +31,16 @@ type ServerSpec struct {
 	RootMarkers []string `json:"rootMarkers"`
 }
 
+func validateLanguageRoute(extension, language string) error {
+	if !validServerField(language) || extension != strings.ToLower(extension) {
+		return fmt.Errorf("invalid document language route %q", extension)
+	}
+	if len(extension) < 2 || extension[0] != '.' || !validServerField(extension) || strings.ContainsAny(extension, `/\\`) {
+		return fmt.Errorf("file extension %q is invalid", extension)
+	}
+	return nil
+}
+
 func (s ServerSpec) validate() error {
 	for _, required := range []struct {
 		name  string
@@ -47,11 +57,8 @@ func (s ServerSpec) validate() error {
 		return fmt.Errorf("server requires document languages")
 	}
 	for extension, language := range s.Languages {
-		if !validServerField(language) || extension != strings.ToLower(extension) {
-			return fmt.Errorf("invalid document language route %q", extension)
-		}
-		if len(extension) < 2 || extension[0] != '.' || !validServerField(extension) || strings.ContainsAny(extension, `/\\`) {
-			return fmt.Errorf("file extension %q is invalid", extension)
+		if err := validateLanguageRoute(extension, language); err != nil {
+			return err
 		}
 	}
 	for _, marker := range s.RootMarkers {

@@ -181,7 +181,7 @@ func newTranscriptView(
 			return scene.EventResult{}
 		},
 	}})
-	c.resetWindow(false)
+	c.resetWindow()
 
 	return c
 }
@@ -313,9 +313,9 @@ func (t *transcriptView) Do(action keymap.Action) bool {
 	case base.SelectNext:
 		return t.moveSelection(1)
 	case base.SelectFirst:
-		return t.selectEdge(false)
+		return t.selectFirst()
 	case base.SelectLast:
-		return t.selectEdge(true)
+		return t.selectLast()
 	case base.Collapse:
 		return t.setSelectedExpanded(false)
 	case base.Expand:
@@ -599,7 +599,7 @@ func (t *transcriptView) place(block base.Block, state transcriptEntryState) tra
 	t.order = append(t.order, id)
 	entry.settled = state == settledEntry
 	entry.projection = snapshotTranscriptEntry(entry)
-	t.resetWindow(true)
+	t.rebuildWindow()
 	if image, ok := block.(*terminalImageBlock); ok {
 		t.prepareImage(id, image)
 	}
@@ -626,7 +626,7 @@ func (t *transcriptView) projectEntry(id transcriptEntryID) {
 	if entry := t.entries[id]; entry != nil {
 		entry.projection = snapshotTranscriptEntry(entry)
 		entry.document = nil
-		t.resetWindow(true)
+		t.rebuildWindow()
 	}
 }
 
@@ -645,7 +645,7 @@ func (t *transcriptView) DiscardExcess() {
 	discarded := slices.Clone(t.order[:excess])
 	t.order = slices.Clone(t.order[excess:])
 	// The new window releases every old native reference before semantic resources retire.
-	t.resetWindow(true)
+	t.rebuildWindow()
 	for _, id := range discarded {
 		t.releaseEntry(t.entries[id])
 		delete(t.entries, id)
@@ -674,7 +674,7 @@ func (t *transcriptView) Reset() {
 	t.order = nil
 	t.selected = nil
 	t.selectionIntent = nil
-	t.resetWindow(false)
+	t.resetWindow()
 	for _, entry := range old {
 		t.releaseEntry(entry)
 	}

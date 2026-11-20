@@ -32,42 +32,24 @@ func run(args []string, output io.Writer) (err error) {
 		return err
 	}
 	var writer io.Writer = io.Discard
-	var file *os.File
-	complete := false
+	var out *archiveOutput
 	if *archive != "" {
-		if !filepath.IsAbs(*archive) {
-			return errors.New("pluginpack: archive must be absolute")
-		}
-		physicalParent, err := filepath.EvalSymlinks(filepath.Dir(*archive))
+		out, err = createArchive(physicalSource, *archive)
 		if err != nil {
 			return err
 		}
-		relative, relErr := filepath.Rel(physicalSource, filepath.Join(physicalParent, filepath.Base(*archive)))
-		if relErr != nil || filepath.IsLocal(relative) {
-			return errors.New("pluginpack: archive must be outside source")
-		}
-		file, err = os.OpenFile(*archive, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			err = errors.Join(err, file.Close())
-			if !complete {
-				err = errors.Join(err, os.Remove(*archive))
-			}
-		}()
-		writer = file
+		defer func() { err = errors.Join(err, out.close()) }()
+		writer = out.file
 	}
 	release, err := pluginpackage.BuildRelease(context.Background(), *source, pluginpackage.BuildTarget{OS: *osName, Arch: *arch}, writer)
 	if err != nil {
 		return err
 	}
-	if file != nil {
-		if err := file.Sync(); err != nil {
+	if out != nil {
+		if err := out.commit(); err != nil {
 			return err
 		}
 	}
-	complete = true
 	encoded, err := json.Marshal(struct {
 		Package string `json:"package"`
 		Version string `json:"version"`
@@ -84,4 +66,47 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+// archiveOutput is a new ZIP that survives only a completed build; an
+// abandoned build removes it.
+type archiveOutput struct {
+	path     string
+	file     *os.File
+	complete bool
+}
+
+func createArchive(physicalSource, path string) (*archiveOutput, error) {
+	if !filepath.IsAbs(path) {
+		return nil, errors.New("pluginpack: archive must be absolute")
+	}
+	physicalParent, err := filepath.EvalSymlinks(filepath.Dir(path))
+	if err != nil {
+		return nil, err
+	}
+	relative, err := filepath.Rel(physicalSource, filepath.Join(physicalParent, filepath.Base(path)))
+	if err != nil || filepath.IsLocal(relative) {
+		return nil, errors.New("pluginpack: archive must be outside source")
+	}
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	if err != nil {
+		return nil, err
+	}
+	return &archiveOutput{path: path, file: file}, nil
+}
+
+func (a *archiveOutput) commit() error {
+	if err := a.file.Sync(); err != nil {
+		return err
+	}
+	a.complete = true
+	return nil
+}
+
+func (a *archiveOutput) close() error {
+	err := a.file.Close()
+	if !a.complete {
+		err = errors.Join(err, os.Remove(a.path))
+	}
+	return err
 }

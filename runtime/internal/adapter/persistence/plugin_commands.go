@@ -111,27 +111,30 @@ func (s *pluginCommandStore) save(ctx context.Context, command *plugin.Command) 
 			return err
 		}
 		if found {
-			old := previous.Snapshot()
-			if old.Method != r.Method || old.Input != r.Input || old.Contract != r.Contract || old.Provider != r.Provider || old.Server != r.Server || old.Contribution != r.Contribution || old.Export != r.Export || old.Invocation != r.Invocation || !old.Activation.Equal(r.Activation) {
+			if !previous.SameBinding(command) {
 				return plugin.ErrCommandConflict
 			}
 			_, err = s.db.connection(ctx).ExecContext(ctx, `UPDATE plugin_commands SET phase=? WHERE id=?`, r.Phase, r.ID)
 			return err
 		}
-		if r.Phase != plugin.CommandPrepared {
-			return plugin.ErrInvalid
-		}
-		invocation, err := json.Marshal(r.Invocation)
-		if err != nil {
-			return err
-		}
-		activation, err := encodeCommandActivation(r.Activation)
-		if err != nil {
-			return err
-		}
-		_, err = s.db.connection(ctx).ExecContext(ctx, `INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,activation_json,phase) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, r.ID, r.Method, r.Input.String(), r.Contract.String(), r.Provider.InstallationID.String(), r.Provider.Digest.String(), r.Server.String(), r.Contribution.String(), r.Export, string(invocation), activation, r.Phase)
-		return err
+		return s.insert(ctx, r)
 	})
+}
+
+func (s *pluginCommandStore) insert(ctx context.Context, r plugin.CommandBinding) error {
+	if r.Phase != plugin.CommandPrepared {
+		return plugin.ErrInvalid
+	}
+	invocation, err := json.Marshal(r.Invocation)
+	if err != nil {
+		return err
+	}
+	activation, err := encodeCommandActivation(r.Activation)
+	if err != nil {
+		return err
+	}
+	_, err = s.db.connection(ctx).ExecContext(ctx, `INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,activation_json,phase) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, r.ID, r.Method, r.Input.String(), r.Contract.String(), r.Provider.InstallationID.String(), r.Provider.Digest.String(), r.Server.String(), r.Contribution.String(), r.Export, string(invocation), activation, r.Phase)
+	return err
 }
 func (s *pluginCommandStore) PendingCommandDependencies(ctx context.Context) ([]plugin.Dependency, error) {
 	bindings, err := s.pendingBindings(ctx)
@@ -146,7 +149,12 @@ func (s *pluginCommandStore) PendingCommandDependencies(ctx context.Context) ([]
 }
 func (s *pluginCommandStore) pendingBindings(ctx context.Context) ([]plugin.Activation, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]plugin.Activation, error) {
-		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT installation_id,release_digest,activation_json FROM plugin_commands WHERE phase IN (?,?) ORDER BY id`, plugin.CommandPrepared, plugin.CommandDispatched)
+		phases := plugin.PendingCommandPhases()
+		args := make([]any, len(phases))
+		for index, phase := range phases {
+			args[index] = phase
+		}
+		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT installation_id,release_digest,activation_json FROM plugin_commands WHERE phase IN (`+placeholders(len(phases))+`) ORDER BY id`, args...)
 		if err != nil {
 			return nil, err
 		}

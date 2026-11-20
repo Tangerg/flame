@@ -3,6 +3,7 @@ package goal
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"math"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -31,8 +32,8 @@ func (u Usage) validate() error {
 // UsageOf requires complete terminal trees. Only roots carry Goal attribution;
 // descendants inherit it through immutable lineage. Cost stays priced only while
 // every process's cost is.
-func UsageOf(sessionID, incarnationID string, runs []run.Run) (Usage, error) {
-	byID := make(map[string]run.Run, len(runs))
+func UsageOf(sessionID identity.SessionID, incarnationID string, runs []run.Run) (Usage, error) {
+	byID := make(map[identity.RunID]run.Run, len(runs))
 	for _, value := range runs {
 		if value.SessionID() != sessionID {
 			return Usage{}, fmt.Errorf("%w: Run %q belongs to another Session", errRunIdentityConflict, value.ID())

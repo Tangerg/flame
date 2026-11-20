@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -8,7 +9,7 @@ import (
 
 func (s *Handler) observeFileChanges(observe func(func(workspaceapp.FileChangeNotice))) {
 	observe(func(change workspaceapp.FileChangeNotice) {
-		s.workspaceHub.publish(protocol.RuntimeEvent{
+		s.runtimeEvents.publish(protocol.RuntimeEvent{
 			Type:      protocol.RuntimeFilesChanged,
 			Workspace: workspaceRefFromPath(change.CWD),
 			Paths:     change.Paths,
@@ -19,7 +20,7 @@ func (s *Handler) observeFileChanges(observe func(func(workspaceapp.FileChangeNo
 func (s *Handler) observeInvalidations(observe func(func(invalidation.Notice))) {
 	observe(func(notice invalidation.Notice) {
 		if event, ok := runtimeEventFor(notice); ok {
-			s.workspaceHub.publish(event)
+			s.runtimeEvents.publish(event)
 		}
 	})
 }
@@ -32,23 +33,23 @@ func runtimeEventFor(notice invalidation.Notice) (protocol.RuntimeEvent, bool) {
 		return protocol.RuntimeEvent{Type: protocol.RuntimeResync, Topics: protocol.RuntimeTopics()}, true
 	case invalidation.Sessions:
 		return protocol.RuntimeEvent{
-			Type: protocol.RuntimeSessionsChanged, SessionIDs: notice.SessionIDs,
+			Type: protocol.RuntimeSessionsChanged, SessionIDs: presentSessionIDs(notice.SessionIDs),
 		}, true
 	case invalidation.Runs:
 		return protocol.RuntimeEvent{
-			Type: protocol.RuntimeRunsChanged, SessionIDs: notice.SessionIDs, RunIDs: notice.RunIDs,
+			Type: protocol.RuntimeRunsChanged, SessionIDs: presentSessionIDs(notice.SessionIDs), RunIDs: presentRunIDs(notice.RunIDs),
 		}, true
 	case invalidation.Interrupts:
 		return protocol.RuntimeEvent{
-			Type: protocol.RuntimeInterruptsChanged, SessionIDs: notice.SessionIDs, RunIDs: notice.RunIDs,
+			Type: protocol.RuntimeInterruptsChanged, SessionIDs: presentSessionIDs(notice.SessionIDs), RunIDs: presentRunIDs(notice.RunIDs),
 		}, true
 	case invalidation.Goals:
 		return protocol.RuntimeEvent{
-			Type: protocol.RuntimeGoalsChanged, SessionIDs: notice.SessionIDs,
+			Type: protocol.RuntimeGoalsChanged, SessionIDs: presentSessionIDs(notice.SessionIDs),
 		}, true
 	case invalidation.Plan:
 		return protocol.RuntimeEvent{
-			Type: protocol.RuntimePlanChanged, SessionIDs: notice.SessionIDs,
+			Type: protocol.RuntimePlanChanged, SessionIDs: presentSessionIDs(notice.SessionIDs),
 		}, true
 	case invalidation.PluginData:
 		return protocol.RuntimeEvent{Type: protocol.RuntimePluginDataChanged}, true
@@ -67,4 +68,20 @@ func runtimeEventFor(notice invalidation.Notice) (protocol.RuntimeEvent, bool) {
 	default:
 		return protocol.RuntimeEvent{}, false
 	}
+}
+
+func presentRunIDs(ids []identity.RunID) []string {
+	out := make([]string, len(ids))
+	for index, id := range ids {
+		out[index] = id.String()
+	}
+	return out
+}
+
+func presentSessionIDs(ids []identity.SessionID) []string {
+	out := make([]string, len(ids))
+	for index, id := range ids {
+		out[index] = id.String()
+	}
+	return out
 }

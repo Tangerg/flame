@@ -1,6 +1,7 @@
 package testsupport
 
 import (
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"time"
 
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
@@ -13,9 +14,9 @@ import (
 // Domain Item itself private. It is intentionally test-only and is not a second
 // production representation.
 type ItemInput struct {
-	SessionID         string
-	RunID             string
-	ID                string
+	SessionID         identity.SessionID
+	RunID             identity.RunID
+	ID                identity.ItemID
 	Status            transcript.ItemStatus
 	FinishedAt        time.Time
 	ExecutionDuration *time.Duration
@@ -36,15 +37,15 @@ type ItemInput struct {
 
 // MustRestoreItem returns one valid Item or panics. Tests exercising invalid
 // snapshots must call transcript.RestoreItem directly and assert the error.
-func MustRestoreItem(input ItemInput) transcript.Item {
-	if input.SessionID == "" {
-		input.SessionID = "session_fixture"
+func (input *ItemInput) defaultIdentity() {
+	if input.SessionID.IsZero() {
+		input.SessionID = MustSessionID("session_fixture")
 	}
-	if input.RunID == "" {
-		input.RunID = "run_fixture"
+	if input.RunID.IsZero() {
+		input.RunID = MustRunID("run_fixture")
 	}
-	if input.ID == "" {
-		input.ID = "item_fixture"
+	if input.ID.IsZero() {
+		input.ID = MustItemID("item_fixture")
 	}
 	if input.OccurredAt.IsZero() {
 		input.OccurredAt = time.Unix(1, 0).UTC()
@@ -52,6 +53,11 @@ func MustRestoreItem(input ItemInput) transcript.Item {
 	if input.Kind == "" {
 		input.Kind = transcript.UserMessage
 	}
+}
+
+// defaultBody fills the minimum each kind requires; only a Tool call may stay
+// running, and a settled one finishes when it occurred.
+func (input *ItemInput) defaultBody() {
 	switch input.Kind {
 	case transcript.UserMessage, transcript.AgentMessage:
 		input.Status = transcript.ItemCompleted
@@ -76,17 +82,29 @@ func MustRestoreItem(input ItemInput) transcript.Item {
 	case transcript.Compaction:
 		input.Status = transcript.ItemCompleted
 	case transcript.ToolCall:
-		if input.Tool == nil {
-			input.Tool = &transcript.ToolInvocation{Name: "fixture"}
-		}
-		if input.Status != transcript.ItemRunning && input.FinishedAt.IsZero() {
-			input.FinishedAt = input.OccurredAt
-		}
-		if input.Status != transcript.ItemRunning && input.ExecutionDuration == nil {
-			duration := input.FinishedAt.Sub(input.OccurredAt)
-			input.ExecutionDuration = &duration
-		}
+		input.defaultToolCall()
 	}
+}
+
+func (input *ItemInput) defaultToolCall() {
+	if input.Tool == nil {
+		input.Tool = &transcript.ToolInvocation{Name: "fixture"}
+	}
+	if input.Status == transcript.ItemRunning {
+		return
+	}
+	if input.FinishedAt.IsZero() {
+		input.FinishedAt = input.OccurredAt
+	}
+	if input.ExecutionDuration == nil {
+		duration := input.FinishedAt.Sub(input.OccurredAt)
+		input.ExecutionDuration = &duration
+	}
+}
+
+func MustRestoreItem(input ItemInput) transcript.Item {
+	input.defaultIdentity()
+	input.defaultBody()
 	item, err := transcript.RestoreItem(transcript.ItemSnapshot{
 		Identity: transcript.ItemIdentity{
 			SessionID: input.SessionID, RunID: input.RunID, ItemID: input.ID,

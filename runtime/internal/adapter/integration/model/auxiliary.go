@@ -140,6 +140,22 @@ const (
 // Complete resolves the live auxiliary selection and returns a complete text
 // generation inside the caller's resource envelope. A rejected or incomplete
 // generation cannot become a durable summary, memory, or skill proposal.
+// recordAuxiliaryFailure marks the span with the stage that failed; an invalid
+// answer from a call that ran is a response failure, not a calling one.
+func recordAuxiliaryFailure(span trace.Span, stage auxiliaryFailureStage, err error) {
+	if stage == failedCalling && errors.Is(err, chatclient.ErrInvalidOutput) {
+		stage = failedResponse
+	}
+	span.SetStatus(codes.Error, "auxiliary model failed")
+	span.SetAttributes(attribute.String("auxiliary.failure_stage", string(stage)))
+	switch {
+	case errors.Is(err, context.Canceled):
+		span.SetAttributes(attribute.String("error.type", "canceled"))
+	case errors.Is(err, context.DeadlineExceeded):
+		span.SetAttributes(attribute.String("error.type", "deadline_exceeded"))
+	}
+}
+
 func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt) (text string, err error) {
 	if r == nil {
 		return "", errors.New("auxiliary model: resolver is required")
@@ -170,16 +186,7 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 	stage := failedResolving
 	defer func() {
 		if err != nil {
-			if stage == failedCalling && errors.Is(err, chatclient.ErrInvalidOutput) {
-				stage = failedResponse
-			}
-			span.SetStatus(codes.Error, "auxiliary model failed")
-			span.SetAttributes(attribute.String("auxiliary.failure_stage", string(stage)))
-			if errors.Is(err, context.Canceled) {
-				span.SetAttributes(attribute.String("error.type", "canceled"))
-			} else if errors.Is(err, context.DeadlineExceeded) {
-				span.SetAttributes(attribute.String("error.type", "deadline_exceeded"))
-			}
+			recordAuxiliaryFailure(span, stage, err)
 		}
 		span.End()
 	}()
@@ -204,7 +211,7 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 		chat.NewUserMessage(chat.NewTextPart(prompt.UserPrompt)),
 	}, Options: chat.Options{MaxOutputTokens: &prompt.Budget.MaxOutputTokens}}, chatclient.Text())
 	if err != nil {
-		if _, complete := err.(*chatclient.OutputCompletionError); complete {
+		if _, complete := errors.AsType[*chatclient.OutputCompletionError](err); complete {
 			err = &coreinvocation.Failure{Kind: coreinvocation.FailureFailed, Cause: err}
 		}
 		return "", err

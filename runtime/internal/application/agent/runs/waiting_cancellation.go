@@ -8,6 +8,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -133,8 +135,8 @@ type waitingCancellationTransformation struct {
 	continuation   *treeContinuation
 	checkpoint     ExecutorCheckpoint
 	parked         []rundomain.Run
-	targetRunID    string
-	canceledRunIDs []string
+	targetRunID    identity.RunID
+	canceledRunIDs []identity.RunID
 }
 
 // waitingCancellationBuilder owns the pure Application transformation from a
@@ -239,10 +241,10 @@ func (w waitingCancellationBuilder) validate() error {
 
 func (w waitingCancellationBuilder) terminalProjection(
 	canceledMembers map[string]struct{},
-) ([]rundomain.Replacement, []string, error) {
+) ([]rundomain.Replacement, []identity.RunID, error) {
 	expectedProcesses := make(map[string]struct{})
 	var terminalRuns []rundomain.Replacement
-	var canceledRunIDs []string
+	var canceledRunIDs []identity.RunID
 	for _, member := range w.plan.targetSubtree {
 		if member.run.State().IsTerminal() {
 			continue
@@ -352,7 +354,7 @@ func (w waitingCancellationBuilder) remainingInterruptions(
 	for index, binding := range w.plan.pending.Bindings {
 		oldBindingByKey[inputRequestIdentity(binding.MemberID, binding.RequestID)] = index
 	}
-	survivingRunByMemberID := make(map[string]string, len(continuations))
+	survivingRunByMemberID := make(map[string]identity.RunID, len(continuations))
 	for _, continuation := range continuations {
 		survivingRunByMemberID[continuation.MemberID] = continuation.RunID
 	}

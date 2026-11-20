@@ -24,56 +24,72 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+// publication is one immutable module version written into a file proxy.
+type publication struct {
+	repository, revision, treeTime, output, modulePath, subdir, version string
+}
+
 func run() error {
-	repository := flag.String("repository", "", "Git source repository")
-	revision := flag.String("revision", "", "frozen Git source")
-	treeTime := flag.String("tree-time", "", "publication time of a frozen module directory tree")
-	output := flag.String("output", "", "file proxy directory")
-	modulePath := flag.String("module", "", "module path")
-	subdir := flag.String("subdir", "", "module source directory")
-	version := flag.String("version", "", "immutable candidate version")
+	var p publication
+	flag.StringVar(&p.repository, "repository", "", "Git source repository")
+	flag.StringVar(&p.revision, "revision", "", "frozen Git source")
+	flag.StringVar(&p.treeTime, "tree-time", "", "publication time of a frozen module directory tree")
+	flag.StringVar(&p.output, "output", "", "file proxy directory")
+	flag.StringVar(&p.modulePath, "module", "", "module path")
+	flag.StringVar(&p.subdir, "subdir", "", "module source directory")
+	flag.StringVar(&p.version, "version", "", "immutable candidate version")
 	flag.Parse()
-	if *repository == "" || *revision == "" || *output == "" || *modulePath == "" || *version == "" {
+	if p.repository == "" || p.revision == "" || p.output == "" || p.modulePath == "" || p.version == "" {
 		return errors.New("module proxy: repository, revision, output, module and version are required")
 	}
-	if err := module.Check(*modulePath, *version); err != nil {
+	if err := module.Check(p.modulePath, p.version); err != nil {
 		return err
 	}
-	escaped, err := module.EscapePath(*modulePath)
+	escaped, err := module.EscapePath(p.modulePath)
 	if err != nil {
 		return err
 	}
-	escapedVersion, err := module.EscapeVersion(*version)
-	if err != nil {
-		return err
-	}
-	directory := filepath.Join(*output, escaped, "@v")
+	directory := filepath.Join(p.output, escaped, "@v")
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		return err
 	}
+	if err := p.publishArtifacts(directory); err != nil {
+		return err
+	}
+	return writeVersionList(directory)
+}
+
+// publishArtifacts writes the version's zip, go.mod and info exactly once and
+// proves the zip is a valid module archive.
+func (p publication) publishArtifacts(directory string) error {
+	escapedVersion, err := module.EscapeVersion(p.version)
+	if err != nil {
+		return err
+	}
 	var archive bytes.Buffer
-	frozen, err := archiveModule(&archive, module.Version{Path: *modulePath, Version: *version}, *repository, *revision, *subdir)
+	frozen, err := archiveModule(&archive, module.Version{Path: p.modulePath, Version: p.version}, p.repository, p.revision, p.subdir)
 	if err != nil {
 		return err
 	}
 	source := "go.mod"
-	if *subdir != "" {
-		source = filepath.ToSlash(filepath.Join(*subdir, "go.mod"))
+	if p.subdir != "" {
+		source = filepath.ToSlash(filepath.Join(p.subdir, "go.mod"))
 	}
 	read := func(args ...string) ([]byte, error) {
 		command := exec.Command("git", args...)
-		command.Dir = *repository
+		command.Dir = p.repository
 		return command.Output()
 	}
 	mod, err := read("show", frozen+":"+source)
 	if err != nil {
 		return err
 	}
-	timestamp, err := publicationTime(*subdir, *treeTime, frozen, read)
+	timestamp, err := publicationTime(p.subdir, p.treeTime, frozen, read)
 	if err != nil {
 		return err
 	}
-	info, err := versionInfo(filepath.Join(directory, escapedVersion+".info"), *version, timestamp, *treeTime == "")
+	info, err := versionInfo(filepath.Join(directory, escapedVersion+".info"), p.version, timestamp, p.treeTime == "")
 	if err != nil {
 		return err
 	}
@@ -81,14 +97,16 @@ func run() error {
 		suffix string
 		data   []byte
 	}{{".zip", archive.Bytes()}, {".mod", mod}, {".info", info}} {
-		name := filepath.Join(directory, escapedVersion+artifact.suffix)
-		if err := publishImmutable(name, artifact.data); err != nil {
+		if err := publishImmutable(filepath.Join(directory, escapedVersion+artifact.suffix), artifact.data); err != nil {
 			return err
 		}
 	}
-	if _, err := modzip.CheckZip(module.Version{Path: *modulePath, Version: *version}, filepath.Join(directory, escapedVersion+".zip")); err != nil {
-		return err
-	}
+	_, err = modzip.CheckZip(module.Version{Path: p.modulePath, Version: p.version}, filepath.Join(directory, escapedVersion+".zip"))
+	return err
+}
+
+// writeVersionList lists every version the proxy directory publishes.
+func writeVersionList(directory string) error {
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		return err

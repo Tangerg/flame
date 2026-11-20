@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -13,7 +15,7 @@ import (
 // ReviveAcceptedSubtreeCancellations runs before ordinary Run-loss recovery.
 // The reduced product tree cannot prove that Scope has retired its old members.
 func (c *Cancellations) ReviveAcceptedSubtreeCancellations(ctx context.Context) error {
-	accepted, err := c.acceptedSubtreeCancellations.SubtreeCancellations(ctx, "")
+	accepted, err := c.acceptedSubtreeCancellations.ListSubtreeCancellations(ctx)
 	if err != nil {
 		return err
 	}
@@ -31,10 +33,10 @@ func (c *Cancellations) ReviveAcceptedSubtreeCancellations(ctx context.Context) 
 // unrevivedSubtreeCancellations are accepted cancellations whose busy Session
 // kept them from reviving; Run-loss recovery leaves their trees to them.
 func (c *Cancellations) unrevivedSubtreeCancellations(ctx context.Context) ([]AcceptedSubtreeCancellation, error) {
-	return c.acceptedSubtreeCancellations.SubtreeCancellations(ctx, "")
+	return c.acceptedSubtreeCancellations.ListSubtreeCancellations(ctx)
 }
 
-func (c *Cancellations) SettleAcceptedSubtreeCancellation(ctx context.Context, ref ExecutorRef, rootRunID, targetRunID string) error {
+func (c *Cancellations) SettleAcceptedSubtreeCancellation(ctx context.Context, ref ExecutorRef, rootRunID, targetRunID identity.RunID) error {
 	cleanupCtx, cancel := runCleanupContext(ctx)
 	defer cancel()
 	values, err := c.acceptedSubtreeCancellations.SubtreeCancellations(cleanupCtx, rootRunID)

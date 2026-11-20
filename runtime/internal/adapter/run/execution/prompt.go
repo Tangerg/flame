@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/planpresentation"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
@@ -107,10 +109,10 @@ func (w *WorkingContextComposer) composeSystemMessage(
 // current values and never occupies a position in the cached prefix.
 func (w *WorkingContextComposer) CurrentSessionState(
 	ctx context.Context,
-	sessionID string,
+	sessionID identity.SessionID,
 ) ([]corechat.Message, error) {
 	messages := make([]corechat.Message, 0, 2)
-	if sessionID != "" {
+	if !sessionID.IsZero() {
 		current, found, err := w.config.Goal.Current(ctx, sessionID)
 		if err != nil {
 			return nil, fmt.Errorf("execution: load current Session Goal: %w", err)
@@ -121,7 +123,7 @@ func (w *WorkingContextComposer) CurrentSessionState(
 				"## Current Autonomous Goal\n\nObjective: "+strconv.Quote(current.Objective())+
 					"\nStatus: "+string(current.Status())+
 					"\n\nThis snapshot is current for this model call. Use get_goal for full usage and reason details.",
-				contextSourceSessionGoal.source(sessionID),
+				contextSourceSessionGoal.source(sessionID.String()),
 			)
 			message, err := prompt.runtimeContextMessage(RuntimeContextSessionGoal)
 			if err != nil {
@@ -142,9 +144,9 @@ func (w *WorkingContextComposer) CurrentSessionState(
 
 func (w *WorkingContextComposer) currentSessionPlan(
 	ctx context.Context,
-	sessionID string,
+	sessionID identity.SessionID,
 ) (corechat.Message, bool, error) {
-	if sessionID == "" {
+	if sessionID.IsZero() {
 		return corechat.Message{}, false, nil
 	}
 	steps, listErr := w.config.Plan.List(ctx, sessionID)
@@ -160,7 +162,7 @@ func (w *WorkingContextComposer) currentSessionPlan(
 	var prompt promptComposition
 	prompt.append(
 		"## Current Plan\n\n"+planpresentation.Render(steps),
-		contextSourceSessionPlan.source(sessionID),
+		contextSourceSessionPlan.source(sessionID.String()),
 	)
 	message, err := prompt.runtimeContextMessage(RuntimeContextSessionPlan)
 	if err != nil {

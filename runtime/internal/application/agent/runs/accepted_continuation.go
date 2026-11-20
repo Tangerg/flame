@@ -19,20 +19,20 @@ import (
 // Item and is read back by InterruptItemID, so no resolution is stored twice and a
 // later edit through the Item cannot diverge from the binding.
 type AcceptedContinuation struct {
-	SessionID   string
+	SessionID   identity.SessionID
 	Pending     Pending
 	Segments    []AcceptedSegment
-	InputItemID string
+	InputItemID identity.ItemID
 }
 
 type AcceptedSegment struct {
-	RunID     string
-	SegmentID string
+	RunID     identity.RunID
+	SegmentID identity.SegmentID
 }
 
 // NewAcceptedContinuation reads only routing from the Pending; the resolutions it
 // carries at revival are read from the settled Items, never copied here.
-func NewAcceptedContinuation(sessionID string, pending Pending, resume run.TreeResumeDraft, inputItemID string) (AcceptedContinuation, error) {
+func NewAcceptedContinuation(sessionID identity.SessionID, pending Pending, resume run.TreeResumeDraft, inputItemID identity.ItemID) (AcceptedContinuation, error) {
 	if err := resume.ValidateForTree(sessionID, pending.RootRunID); err != nil {
 		return AcceptedContinuation{}, err
 	}
@@ -48,7 +48,7 @@ func NewAcceptedContinuation(sessionID string, pending Pending, resume run.TreeR
 }
 
 func (a AcceptedContinuation) Validate() error {
-	if err := identity.ValidateSession(a.SessionID); err != nil {
+	if err := a.SessionID.Validate(); err != nil {
 		return fmt.Errorf("runs: accepted continuation session: %w", err)
 	}
 	if err := a.Pending.Validate(); err != nil {
@@ -57,12 +57,12 @@ func (a AcceptedContinuation) Validate() error {
 	if len(a.Segments) != len(a.Pending.Continuations) {
 		return errors.New("runs: accepted continuation segment set differs from its members")
 	}
-	seen := make(map[string]bool, len(a.Segments))
+	seen := make(map[identity.SegmentID]bool, len(a.Segments))
 	for index, segment := range a.Segments {
 		if segment.RunID != a.Pending.Continuations[index].RunID {
 			return errors.New("runs: accepted continuation segment order differs from its members")
 		}
-		if err := identity.ValidateSegment(segment.SegmentID); err != nil {
+		if err := segment.SegmentID.Validate(); err != nil {
 			return err
 		}
 		if seen[segment.SegmentID] {
@@ -70,15 +70,10 @@ func (a AcceptedContinuation) Validate() error {
 		}
 		seen[segment.SegmentID] = true
 	}
-	if a.InputItemID != "" {
-		if err := identity.ValidateItem(a.InputItemID); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
-func (a AcceptedContinuation) RootRunID() string { return a.Pending.RootRunID }
+func (a AcceptedContinuation) RootRunID() identity.RunID { return a.Pending.RootRunID }
 
 func (a AcceptedContinuation) Clone() AcceptedContinuation {
 	a.Pending = a.Pending.Clone()

@@ -5,8 +5,10 @@ import (
 	"unicode/utf8"
 )
 
+const maxResourcePathBytes = 1024
+
 func ValidResourcePath(name string) bool {
-	if !utf8.ValidString(name) || strings.ContainsAny(name, "\\:\x00<>\"|?*") || len(name) > 1024 {
+	if !utf8.ValidString(name) || strings.ContainsAny(name, "\\:\x00<>\"|?*") || len(name) > maxResourcePathBytes {
 		return false
 	}
 	for _, segment := range strings.Split(name, "/") {

@@ -59,7 +59,7 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 	parkedAt := createdAt.Add(time.Second)
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: questioncontract.Text}}}
 	value := testsupport.MustRestoreSession(session.Snapshot{
-		ID: sessionID, Workspace: testsupport.MustWorkspace(t.TempDir()), CreatedAt: createdAt, UpdatedAt: createdAt,
+		ID: testsupport.MustSessionID(sessionID), Workspace: testsupport.MustWorkspace(t.TempDir()), CreatedAt: createdAt, UpdatedAt: createdAt,
 	})
 	if err := cfg.stores.Sessions.Insert(ctx, value); err != nil {
 		t.Fatalf("insert Session: %v", err)
@@ -68,20 +68,20 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 		InterruptTypes: []run.InterruptType{run.InterruptQuestion},
 	}
 	if err := cfg.stores.Runs.Admit(ctx, run.Draft{
-		RunID: runID, SessionID: sessionID, SegmentID: "seg_open",
+		RunID: testsupport.MustRunID(runID), SessionID: testsupport.MustSessionID(sessionID), SegmentID: testsupport.MustSegmentID("seg_open"),
 		Capabilities: profile, ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
-	if err := cfg.stores.Runs.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Waiting,
+	if err := cfg.stores.Runs.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: testsupport.MustSessionID(sessionID), ID: testsupport.MustRunID(runID), State: run.Waiting,
 		Capabilities: profile,
 		CreatedAt:    createdAt, MessageMark: run.UnknownMessageMark()}),
-		"seg_open", runs.CommitID{},
+		testsupport.MustSegmentID("seg_open"), runs.CommitID{},
 	); err != nil {
 		t.Fatalf("suspend: %v", err)
 	}
 	if err := cfg.stores.Transcript.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
-		ID: "item_park", RunID: runID, SessionID: sessionID,
+		ID: testsupport.MustItemID("item_park"), RunID: testsupport.MustRunID(runID), SessionID: testsupport.MustSessionID(sessionID),
 		Kind:     transcript.QuestionItem,
 		Question: question, OccurredAt: parkedAt,
 	})); err != nil {
@@ -115,13 +115,13 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 		t.Fatalf("recover uncertain executions: %v", err)
 	}
 
-	if pending, listErr := cfg.stores.Interrupts.List(ctx, sessionID); listErr != nil || len(pending) != 0 {
+	if pending, listErr := cfg.stores.Interrupts.List(ctx, testsupport.MustSessionID(sessionID)); listErr != nil || len(pending) != 0 {
 		t.Fatalf("pending after assemble = (%+v, %v), want none", pending, listErr)
 	}
 	if _, loadCheckpointErr := cfg.stores.ExecutorCheckpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("executor checkpoint after assemble = %v, want not found", loadCheckpointErr)
 	}
-	runs, err := cfg.stores.Runs.ListRuns(ctx, sessionID)
+	runs, err := cfg.stores.Runs.ListRuns(ctx, testsupport.MustSessionID(sessionID))
 	lost := false
 	if len(runs) == 1 {
 		_, lost = runs[0].Loss()

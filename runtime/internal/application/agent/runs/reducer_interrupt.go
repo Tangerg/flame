@@ -7,6 +7,8 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -275,7 +277,7 @@ func drainedToolRefs(
 
 func mergeDrainedTools(groups ...[]DrainedTool) []DrainedTool {
 	var merged []DrainedTool
-	seen := make(map[string]struct{})
+	seen := make(map[identity.ItemID]struct{})
 	for _, group := range groups {
 		for _, tool := range group {
 			if _, duplicate := seen[tool.ItemID]; duplicate {
@@ -288,7 +290,7 @@ func mergeDrainedTools(groups ...[]DrainedTool) []DrainedTool {
 	return merged
 }
 
-func (r *reducer) removeDrained(itemID string) {
+func (r *reducer) removeDrained(itemID identity.ItemID) {
 	r.drained = slices.DeleteFunc(r.drained, func(tool DrainedTool) bool {
 		return tool.ItemID == itemID
 	})

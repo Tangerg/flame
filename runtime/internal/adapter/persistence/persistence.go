@@ -104,7 +104,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 	if err != nil {
 		return nil, errors.Join(err, store.Close())
 	}
-	uses, err := store.Owner("flame")
+	uses, err := store.Owner(flameOwner)
 	if err != nil {
 		return nil, errors.Join(err, store.Close())
 	}

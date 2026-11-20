@@ -123,14 +123,6 @@ export async function buildPlugin({
 }) {
   await validateDestination(source, output);
   const plan = await readBuildPlan(source);
-  if (
-    plan.native &&
-    (!["darwin", "linux", "windows"].includes(os) ||
-      !["amd64", "arm64"].includes(arch))
-  )
-    throw new Error(
-      "native backends require a supported target OS and architecture",
-    );
   const resources = join(source, "package");
   const { manifest } = plan;
   await mkdir(output);

@@ -17,8 +17,10 @@ func IgnoredPaths(ctx context.Context, root string, paths []string) (map[string]
 		return nil, ErrNotRepo
 	}
 	ignored := make(map[string]bool)
-	for start := 0; start < len(paths); start += 128 {
-		args := append([]string{"check-ignore", "--"}, paths[start:min(start+128, len(paths))]...)
+	// Batches keep each check-ignore argument list well under the OS limit.
+	const batch = 128
+	for start := 0; start < len(paths); start += batch {
+		args := append([]string{"check-ignore", "--"}, paths[start:min(start+batch, len(paths))]...)
 		output, err := runAllowingExitCode(ctx, root, 1, args...)
 		if err != nil {
 			return nil, err

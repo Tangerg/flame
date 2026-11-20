@@ -2,19 +2,14 @@ package pluginservices
 
 import (
 	"context"
-	"errors"
+	"encoding/json/jsontext"
 	"iter"
 
-	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	"github.com/Tangerg/frame"
-	framecall "github.com/Tangerg/frame/call"
-
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -30,194 +25,97 @@ func (c *CommandCalls) PrepareStream(_ context.Context, request plugins.CallRequ
 
 func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEvent, error] {
 	return func(yield func(plugins.StreamEvent, error) bool) {
+		stream := c.streamCommand
 		if c.Kind() == frame.Query {
-			c.streamQuery(ctx, yield)
-			return
+			stream = c.streamQuery
 		}
-		fail := func(err error) { yield(plugins.StreamEvent{}, errors.Join(plugin.ErrCommandUnconfirmed, err)) }
-		record, err := c.calls.admitCommandRoute(ctx, c.request.Method, c.request.Input, c.accepts, c.resolve, func(plugins.ContributionBinding) framecall.Target { return c.request.Target }, streamedCall)
-		if err != nil {
+		if err := stream(ctx, yield); err != nil {
 			yield(plugins.StreamEvent{}, err)
-			return
 		}
-		ctx, err = pluginmcp.WithInvocation(ctx, record.Invocation)
-		if err != nil {
-			yield(plugins.StreamEvent{}, err)
-			return
-		}
-		if record.Phase != plugin.CommandPrepared {
-			defer c.calls.publish.Notify(invalidation.Notice{Resource: invalidation.PluginData})
-		}
-		location, err := c.calls.original(ctx, record)
-		if err != nil {
-			fail(err)
-			return
-		}
-		borrowed, err := c.calls.pool.BorrowActivation(ctx, location.ServerID, record.Activation)
-		if err != nil {
-			fail(err)
-			return
-		}
-		defer borrowed.Close()
-		ctx = borrowed.Context()
-		session := borrowed.Session()
-		contract, err := plugincontract.ParseCapability(record.Contract.Bytes())
-		if err != nil {
-			fail(err)
-			return
-		}
-		exported, err := pluginmcp.NewCapabilityBinding(session, record.Export, contract)
-		if err != nil {
-			fail(err)
-			return
-		}
-		binding, err := exported.Method(record.Method)
-		if err != nil {
-			fail(err)
-			return
-		}
-		var result framevalue.JSON
-		if record.Phase == plugin.CommandPrepared {
-			metadata, release, err := c.calls.pool.OpenRPC(ctx, location.ServerID, session)
-			if err != nil {
-				yield(plugins.StreamEvent{}, err)
-				return
-			}
-			defer release()
-
-			if err := c.calls.routing.Dispatch(ctx, record.ID, c.calls.admitDispatch); err != nil {
-				yield(plugins.StreamEvent{}, err)
-				return
-			}
-			defer c.calls.publish.Notify(invalidation.Notice{Resource: invalidation.PluginData})
-			for value, err := range c.calls.pool.Stream(ctx, location.ServerID, session, binding, record.ID, record.Input, metadata) {
-				if err != nil {
-					if refusal, known := errors.AsType[*framecall.Refusal](err); known {
-						if observeErr := c.calls.routing.Observe(ctx, record.ID); observeErr != nil {
-							fail(errors.Join(err, observeErr))
-							return
-						}
-						yield(plugins.StreamEvent{}, refusal)
-						return
-					}
-					fail(err)
-					return
-				}
-				if value.Chunk != nil {
-					chunk, err := framevalue.ParseJSON(*value.Chunk)
-					if err != nil {
-						fail(err)
-						return
-					}
-					if !yield(plugins.StreamEvent{Kind: plugins.StreamChunk, Value: chunk}, nil) {
-						return
-					}
-				} else if value.Result != nil {
-					result, err = framevalue.ParseJSON(*value.Result)
-					if err != nil {
-						fail(err)
-						return
-					}
-				}
-			}
-		} else {
-			var found bool
-			result, found, err = binding.ReadReceipt(ctx, pluginmcp.CommandID(record.ID), record.Input)
-			if err != nil {
-				if _, known := errors.AsType[*framecall.Refusal](err); known {
-					if observeErr := c.calls.routing.Observe(ctx, record.ID); observeErr != nil {
-						fail(errors.Join(err, observeErr))
-						return
-					}
-					yield(plugins.StreamEvent{}, err)
-					return
-				}
-				fail(err)
-				return
-			}
-			if !found {
-				fail(plugin.ErrCommandUnconfirmed)
-				return
-			}
-		}
-		if err := result.Validate(); err != nil {
-			fail(err)
-			return
-		}
-		if err := c.calls.routing.Observe(ctx, record.ID); err != nil {
-			fail(err)
-			return
-		}
-		yield(plugins.StreamEvent{Kind: plugins.StreamResult, Value: result}, nil)
 	}
 }
 
-func (c *installedStream) streamQuery(ctx context.Context, yield func(plugins.StreamEvent, error) bool) {
-	fail := func(err error) { yield(plugins.StreamEvent{}, err) }
-	location, err := c.resolve(ctx)
+// streamCommand relays a dispatched command's chunks, or recovers a dispatched
+// one's receipt, and yields the settled result last. It returns the failure
+// that ends the stream; a consumer that stops early ends it without one.
+func (c *installedStream) streamCommand(ctx context.Context, yield func(plugins.StreamEvent, error) bool) error {
+	record, err := c.calls.admitCommandRoute(ctx, c.request.Method, c.request.Input, c.accepts, c.resolve, c.target, streamedCall)
 	if err != nil {
-		fail(err)
-		return
+		return err
 	}
-	borrowed, err := c.calls.pool.BorrowSession(ctx, location.ServerID)
+	ctx, command, err := c.calls.openCommand(ctx, record)
 	if err != nil {
-		fail(err)
-		return
+		return err
 	}
-	defer borrowed.Close()
-	ctx = borrowed.Context()
-	session := borrowed.Session()
-	exported, err := pluginmcp.ResolveCapability(ctx, session, location.Export, c.request.Contract)
+	defer command.close()
+	settle := func(result framevalue.JSON, err error) error {
+		result, err = command.settle(ctx, result, err, framevalue.JSON.Validate)
+		if err != nil {
+			return err
+		}
+		yield(plugins.StreamEvent{Kind: plugins.StreamResult, Value: result}, nil)
+		return nil
+	}
+	if record.Phase != plugin.CommandPrepared {
+		return settle(command.readReceipt(ctx))
+	}
+	metadata, release, err := c.calls.pool.OpenRPC(ctx, command.binding.ServerID, command.session)
 	if err != nil {
-		fail(err)
-		return
-	}
-	binding, err := exported.Method(c.request.Method)
-	if err != nil {
-		fail(err)
-		return
-	}
-	if err := validateInput(ctx, binding, c.request.Input); err != nil {
-		fail(err)
-		return
-	}
-	invocation, err := operation.Capture(ctx, c.request.Target)
-	if err != nil {
-		fail(err)
-		return
-	}
-	ctx, err = pluginmcp.WithInvocation(ctx, invocation)
-	if err != nil {
-		fail(err)
-		return
-	}
-	metadata, release, err := c.calls.pool.OpenRPC(ctx, location.ServerID, session)
-	if err != nil {
-		fail(err)
-		return
+		return err
 	}
 	defer release()
-	for value, err := range c.calls.pool.Stream(ctx, location.ServerID, session, binding, "", c.request.Input, metadata) {
+	if err := command.dispatch(ctx); err != nil {
+		return err
+	}
+	var result *framevalue.JSON
+	for value, err := range c.calls.pool.Stream(ctx, command.binding.ServerID, command.session, command.method, record.ID, record.Input, metadata) {
+		event, err := streamEvent(value, err)
 		if err != nil {
-			fail(err)
-			return
+			return settle(framevalue.JSON{}, err)
 		}
-		var event plugins.StreamEvent
-		if value.Chunk != nil {
-			event.Kind = plugins.StreamChunk
-			event.Value, err = framevalue.ParseJSON(*value.Chunk)
-		} else if value.Result != nil {
-			event.Kind = plugins.StreamResult
-			event.Value, err = framevalue.ParseJSON(*value.Result)
-		} else {
-			err = pluginmcp.ErrStreamUnconfirmed
-		}
-		if err != nil {
-			fail(err)
-			return
+		if event.Kind == plugins.StreamResult {
+			result = &event.Value
+			continue
 		}
 		if !yield(event, nil) {
-			return
+			return nil
 		}
+	}
+	if result == nil {
+		return settle(framevalue.JSON{}, pluginmcp.ErrStreamUnconfirmed)
+	}
+	return settle(*result, nil)
+}
+
+func (c *installedStream) streamQuery(ctx context.Context, yield func(plugins.StreamEvent, error) bool) error {
+	ctx, query, err := c.openQuery(ctx)
+	if err != nil {
+		return err
+	}
+	defer query.release()
+	for value, err := range c.calls.pool.Stream(ctx, query.location.ServerID, query.session, query.method, "", c.request.Input, query.metadata) {
+		event, err := streamEvent(value, err)
+		if err != nil {
+			return err
+		}
+		if !yield(event, nil) {
+			return nil
+		}
+	}
+	return nil
+}
+
+func streamEvent(value pluginmcp.StreamValue[jsontext.Value, jsontext.Value], err error) (plugins.StreamEvent, error) {
+	switch {
+	case err != nil:
+		return plugins.StreamEvent{}, err
+	case value.Chunk != nil:
+		chunk, err := framevalue.ParseJSON(*value.Chunk)
+		return plugins.StreamEvent{Kind: plugins.StreamChunk, Value: chunk}, err
+	case value.Result != nil:
+		result, err := framevalue.ParseJSON(*value.Result)
+		return plugins.StreamEvent{Kind: plugins.StreamResult, Value: result}, err
+	default:
+		return plugins.StreamEvent{}, pluginmcp.ErrStreamUnconfirmed
 	}
 }

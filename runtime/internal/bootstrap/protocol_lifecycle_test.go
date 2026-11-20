@@ -317,7 +317,7 @@ func (p *protocolLifecycleFixture) domainFailureDiagnostic(runID string) string 
 	if p.stores == nil || p.stores.Runs == nil {
 		return "unavailable"
 	}
-	value, found, err := p.stores.Runs.Run(p.ctx, runID)
+	value, found, err := p.stores.Runs.Run(p.ctx, testsupport.MustRunID(runID))
 	if err != nil {
 		return "read error: " + err.Error()
 	}
@@ -560,10 +560,10 @@ func protocolRuntimeConfig(t *testing.T, stores *persistence.Bundle, model chat.
 	cfg := composeConfig(
 		config.Settings{DefaultSelection: testsupport.MustModelSelection("anthropic", "claude-test")},
 		stores,
-		testChatResolver(client),
 		stores.Providers,
 		"sha256:0000000000000000000000000000000000000000000000000000000000000000",
 	)
+	cfg.modelProviders = testChatResolver(client)
 	cfg.userHome = stores.DataDirectory
 	cfg.defaultWorkspacePath = stores.DataDirectory
 	cfg.maintenance = noMaintenance{}

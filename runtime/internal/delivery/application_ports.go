@@ -5,10 +5,12 @@ import (
 	"io"
 	"time"
 
-	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
@@ -35,16 +37,16 @@ type sessionUseCases interface {
 	PrepareFork(context.Context, sessions.ForkSpec) (sessions.Creation, error)
 	CreateView(ctx context.Context, title, cwd string) (sessions.View, error)
 	DefaultModelSelection() modelchoice.Selection
-	DeleteSession(ctx context.Context, sessionID string, complete operation.Reply[struct{}]) error
+	DeleteSession(ctx context.Context, sessionID identity.SessionID, complete operation.Reply[struct{}]) error
 	ForkView(ctx context.Context, spec sessions.ForkSpec) (sessions.View, error)
 	ListViewPage(ctx context.Context, filter session.CatalogFilter, cursor string, limit pagination.RequestedLimit) (pagination.Page[sessions.View], error)
-	ExportSession(ctx context.Context, sessionID string, results sessions.ToolResultExport) (sessions.PortableSnapshot, error)
-	MaterialView(ctx context.Context, sessionID string) (sessions.MaterialSnapshot, sessions.View, error)
+	ExportSession(ctx context.Context, sessionID identity.SessionID, results sessions.ToolResultExport) (sessions.PortableSnapshot, error)
+	MaterialView(ctx context.Context, sessionID identity.SessionID) (sessions.MaterialSnapshot, sessions.View, error)
 	RestorePortableSession(ctx context.Context, snapshot sessions.PortableSnapshot, complete operation.Reply[sessions.View]) error
-	RollbackHistory(ctx context.Context, sessionID, toRunID string, complete operation.Reply[sessions.RollbackResult]) error
-	RollbackWorkspace(ctx context.Context, spec sessions.WorkspaceRollbackSpec, encode sessions.RollbackReceiptEncoder) (sessions.RollbackResult, error)
-	Update(ctx context.Context, id string, patch sessions.Patch, complete operation.Reply[sessions.View]) error
-	View(ctx context.Context, id string) (sessions.View, error)
+	RollbackHistory(ctx context.Context, sessionID identity.SessionID, toRunID identity.RunID, complete operation.Reply[sessions.RollbackResult]) error
+	RollbackWorkspace(ctx context.Context, spec sessions.WorkspaceRollbackSpec) (sessions.RollbackResult, error)
+	Update(ctx context.Context, id identity.SessionID, patch sessions.Patch, complete operation.Reply[sessions.View]) error
+	View(ctx context.Context, id identity.SessionID) (sessions.View, error)
 }
 
 type mcpUseCases interface {
@@ -65,7 +67,7 @@ type mcpUseCases interface {
 type approvalUseCases interface {
 	SetRule(context.Context, approvals.RuleChange) error
 	ForgetRule(ctx context.Context, id string) error
-	ListRules(ctx context.Context, sessionID string) ([]approvals.RuleView, error)
+	ListRules(ctx context.Context, sessionID identity.SessionID) ([]approvals.RuleView, error)
 	DefaultMode(ctx context.Context) (approval.Mode, error)
 	SetDefaultMode(ctx context.Context, mode approval.Mode) error
 }
@@ -89,7 +91,7 @@ type toolUseCases interface {
 type runUseCases interface {
 	LookupCommandAcceptance(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error)
 	Resume(ctx context.Context, cmd runs.ResumeCommand) (runs.StartResult, error)
-	Steer(ctx context.Context, cmd runs.SteerCommand) (string, error)
+	Steer(ctx context.Context, cmd runs.SteerCommand) (identity.ItemID, error)
 }
 
 type runOpeningUseCases interface {
@@ -98,13 +100,13 @@ type runOpeningUseCases interface {
 
 type runCancellationUseCases interface {
 	Cancel(ctx context.Context, cmd runs.CancelCommand) (runs.CancelResult, error)
-	SettleRootCancellation(ctx context.Context, ref runs.ExecutorRef, runID string) error
-	SettleAcceptedSubtreeCancellation(ctx context.Context, ref runs.ExecutorRef, rootRunID, targetRunID string) error
+	SettleRootCancellation(ctx context.Context, ref runs.ExecutorRef, runID identity.RunID) error
+	SettleAcceptedSubtreeCancellation(ctx context.Context, ref runs.ExecutorRef, rootRunID, targetRunID identity.RunID) error
 }
 
 type runStreamUseCases interface {
 	Subscribe(ctx context.Context, req runs.SubscribeRequest) (runs.Subscription, error)
-	SubscribeSnapshot(ctx context.Context, req runs.SubscribeRequest, read func(context.Context, string) error) (runs.Subscription, error)
+	SubscribeSnapshot(ctx context.Context, req runs.SubscribeRequest, read func(context.Context, identity.SessionID) error) (runs.Subscription, error)
 	// ReplayRetention is what discovery publishes. Reading it from the enforcer is
 	// the point: a limit the client is told and a limit the runtime evicts by must
 	// be one number, or discovery is describing a runtime that does not exist.
@@ -112,23 +114,23 @@ type runStreamUseCases interface {
 }
 
 type queryUseCases interface {
-	ListTrajectoryPage(context.Context, string, bool, string, pagination.RequestedLimit) (pagination.Page[sessions.TrajectoryEntry], error)
-	ListModelInvocationPage(context.Context, string, string, pagination.RequestedLimit) (pagination.Page[runs.ModelInvocationCommit], error)
+	ListTrajectoryPage(context.Context, identity.SessionID, bool, string, pagination.RequestedLimit) (pagination.Page[sessions.TrajectoryEntry], error)
+	ListModelInvocationPage(context.Context, identity.RunID, string, pagination.RequestedLimit) (pagination.Page[runs.ModelInvocationCommit], error)
 	ListItemPage(ctx context.Context, scope sessions.ItemScope, order transcript.SequenceOrder, cursor string, limit pagination.RequestedLimit) (sessions.ItemPage, error)
-	ListPendingInterruptPage(ctx context.Context, sessionID, rootRunID string, caller run.Capabilities, cursor string, limit pagination.RequestedLimit) (pagination.Page[sessions.InterruptSet], error)
-	Run(ctx context.Context, runID string) (run.Run, bool, error)
-	PlanState(ctx context.Context, sessionID string) (plan.Current, error)
+	ListPendingInterruptPage(ctx context.Context, sessionID identity.SessionID, rootRunID identity.RunID, caller run.Capabilities, cursor string, limit pagination.RequestedLimit) (pagination.Page[sessions.InterruptSet], error)
+	Run(ctx context.Context, runID identity.RunID) (run.Run, bool, error)
+	PlanState(ctx context.Context, sessionID identity.SessionID) (plan.Current, error)
 	ListRunPage(ctx context.Context, filter sessions.RunPageFilter, cursor string, limit pagination.RequestedLimit) (pagination.Page[run.Run], error)
 }
 
 type usageUseCases interface {
-	Session(ctx context.Context, sessionID string) (sessions.UsageReport, error)
+	Session(ctx context.Context, sessionID identity.SessionID) (sessions.UsageReport, error)
 	Summary(ctx context.Context, period sessions.UsageSummaryPeriod) (sessions.UsageSummary, error)
 }
 
 type feedbackUseCases interface {
-	Prepare(context.Context, extension.FeedbackDraft) (func(context.Context) error, error)
-	Record(ctx context.Context, command extension.FeedbackDraft) error
+	Prepare(context.Context, feedback.Command) (func(context.Context) error, error)
+	Record(context.Context, feedback.Command) error
 }
 
 type workspaceFileUseCases interface {

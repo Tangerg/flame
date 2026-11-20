@@ -15,14 +15,14 @@ func (i *interactionSession) interactionCheckpointPayload(
 	i.state.mu.Lock()
 	pendingSteers := maps.Clone(i.state.pendingSteers)
 	pendingResumeInputs := slices.Clone(i.state.pendingResumeInputs)
-	metadata := make([]toolCallCapture, 0, len(i.state.toolMetadata))
+	metadata := make([]toolCallCaptureWire, 0, len(i.state.toolMetadata))
 	for _, value := range i.state.toolMetadata {
 		if value.Receipt != nil || value.presentation == nil {
-			metadata = append(metadata, value.toolCallCapture)
+			metadata = append(metadata, value.wire())
 		}
 	}
-	slices.SortFunc(metadata, func(left, right toolCallCapture) int {
-		return strings.Compare(left.Start.CallID, right.Start.CallID)
+	slices.SortFunc(metadata, func(left, right toolCallCaptureWire) int {
+		return strings.Compare(left.CallID, right.CallID)
 	})
 	i.state.mu.Unlock()
 

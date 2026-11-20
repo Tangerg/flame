@@ -66,8 +66,13 @@ func (a *app) handleConfiguredAction(event input.Event, action keymap.Action) bo
 	if a.handleSessionAction(action) {
 		return true
 	}
-	// Completion owns its navigation and acceptance keys before prompt-level
-	// history, submission, or editing actions, matching the visual layer on top.
+	return a.handlePromptLayerAction(event, action)
+}
+
+// handlePromptLayerAction routes the actions the prompt layer owns. Completion owns
+// its navigation and acceptance keys before prompt-level history, submission,
+// or editing actions, matching the visual layer on top.
+func (a *app) handlePromptLayerAction(event input.Event, action keymap.Action) bool {
 	if action == sendPrompt && a.completion.exactCommandCompletion() {
 		if !a.completion.popup.Dismiss() {
 			return true

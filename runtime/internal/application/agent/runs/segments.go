@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
@@ -30,8 +32,8 @@ type Segments struct {
 	toolAttempts openToolInvocationReader
 	admission    *ownership.Gate
 	publications runPublications
-	newRunID     func() string
-	newSegmentID func() string
+	newRunID     func() identity.RunID
+	newSegmentID func() identity.SegmentID
 }
 
 // PublicationPorts commit what a segment publishes, in durable-write-before-
@@ -56,8 +58,8 @@ type SegmentDependencies struct {
 	Now          func() time.Time
 	// Retention bounds every segment's replay window; discovery advertises it.
 	Retention    Retention
-	NewRunID     func() string
-	NewSegmentID func() string
+	NewRunID     func() identity.RunID
+	NewSegmentID func() identity.SegmentID
 	// Invalidations publishes run/session/interrupt/state invalidations for clients that
 	// are not following the run.
 	Invalidations invalidation.Publish

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
@@ -64,7 +66,7 @@ func (g *goalDrive) quiesce() {
 // admission.
 func (d *Driver) launchLocked(
 	parent context.Context,
-	sessionID, incarnationID string,
+	sessionID identity.SessionID, incarnationID string,
 ) error {
 	owner, release, ok := d.tasks.Attach(parent)
 	if !ok {
@@ -116,11 +118,11 @@ func (d *Driver) launchLocked(
 	return nil
 }
 
-func (d *Driver) retireDrive(ctx context.Context, sessionID string) {
+func (d *Driver) retireDrive(ctx context.Context, sessionID identity.SessionID) {
 	d.joinRetiredDrive(ctx, sessionID, d.mutations.quiesce(sessionID))
 }
 
-func (d *Driver) joinRetiredDrive(ctx context.Context, sessionID string, drive *goalDrive) {
+func (d *Driver) joinRetiredDrive(ctx context.Context, sessionID identity.SessionID, drive *goalDrive) {
 	if err := d.mutations.joinDrive(ctx, sessionID, drive); err != nil {
 		trace.SpanFromContext(ctx).RecordError(err)
 		slog.ErrorContext(ctx, "goals: committed Goal drive retirement did not settle", "session.id", sessionID, "error", err)
@@ -131,7 +133,7 @@ func (d *Driver) joinRetiredDrive(ctx context.Context, sessionID string, drive *
 // goal after a command discovers an active row. A failed owner remains
 // registered and its error is returned until an explicit lifecycle command
 // quiesces it. The caller holds this session's mutation lock.
-func (d *Driver) ensureDriveLocked(ctx context.Context, sessionID, incarnationID string) error {
+func (d *Driver) ensureDriveLocked(ctx context.Context, sessionID identity.SessionID, incarnationID string) error {
 	if d.tasks.Closed() {
 		return ErrClosed
 	}
@@ -152,7 +154,7 @@ func (d *Driver) ensureDriveLocked(ctx context.Context, sessionID, incarnationID
 
 // Startup reconciles Goals left active at shutdown so this loop consumes
 // resources only after an explicit resume.
-func (d *Driver) drive(ctx context.Context, sessionID, incarnationID string) error {
+func (d *Driver) drive(ctx context.Context, sessionID identity.SessionID, incarnationID string) error {
 	for {
 		if ctx.Err() != nil {
 			return nil
@@ -186,7 +188,7 @@ func (d *Driver) drive(ctx context.Context, sessionID, incarnationID string) err
 // completed, so nothing is metered.
 func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (settlement runSettlement, err error) {
 	ctx, span := driverTracer.Start(ctx, "goal.run", trace.WithAttributes(
-		attribute.String("goal.session", g.SessionID()),
+		attribute.String("goal.session", g.SessionID().String()),
 		attribute.Int("goal.run_ordinal", g.Used().Runs+1),
 	))
 	defer span.End()
@@ -199,54 +201,13 @@ func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (settlement runSett
 		}
 	}()
 
-	if ctxErr := ctx.Err(); ctxErr != nil {
+	if ctx.Err() != nil {
 		return runSettlement{}, nil
 	}
-	var result runs.StartResult
-	for {
-		if waitSessionStartableErr := d.runs.WaitSessionStartable(ctx, g.SessionID()); waitSessionStartableErr != nil {
-			return d.resolveGoalRunStartError(ctx, g, span, waitSessionStartableErr)
-		}
-
-		// Waiting is an observation boundary, not a reservation. The Run that
-		// released the Session may have charged this same Goal incarnation or
-		// reported its terminal outcome. Re-read before every admission attempt so
-		// a resumed HITL Run can block/complete the Goal without an extra Run being
-		// launched from the pre-wait snapshot.
-		owned, refreshOwnedGoalErr := d.refreshOwnedGoal(ctx, g)
-		if refreshOwnedGoalErr != nil {
-			span.RecordError(refreshOwnedGoalErr)
-			return runSettlement{}, refreshOwnedGoalErr
-		}
-		if !owned {
-			return runSettlement{}, nil
-		}
-		current, refreshOwnedGoalErr := d.settleOwned(ctx, g)
-		if refreshOwnedGoalErr != nil {
-			return runSettlement{}, driveFailure(ctx, refreshOwnedGoalErr)
-		}
-		if !current.continues() {
-			// This drive did not launch a Run, so it settles none. The Run that
-			// changed the Goal owns its own observation.
-			return runSettlement{}, nil
-		}
-
-		command, err := d.command(ctx, *g)
-		if err != nil {
-			return runSettlement{}, driveFailure(ctx, err)
-		}
-		result, refreshOwnedGoalErr = d.runs.Start(ctx, command)
-		if !errors.Is(refreshOwnedGoalErr, runs.ErrRunAdmissionBusy) {
-			if refreshOwnedGoalErr != nil {
-				return d.resolveGoalRunStartError(ctx, g, span, refreshOwnedGoalErr)
-			}
-			break
-		}
-		// Another Run or working-tree mutation won after the observation. Retry
-		// from the real boundary and re-read the Goal again before attempting
-		// admission.
+	result, settlement, started, err := d.startGoalRun(ctx, g, span)
+	if !started {
+		return settlement, err
 	}
-
 	if result.Reopened() {
 		return runSettlement{}, nil
 	}
@@ -260,22 +221,69 @@ func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (settlement runSett
 	recordTerminalRunAttributes(span, finished)
 
 	// Re-read: the model may have reported completed/blocked mid-Run.
-	owned, err := d.refreshOwnedGoal(ctx, g)
-	if err != nil {
-		span.RecordError(err)
+	settlement, owned, err := d.observeOwned(ctx, g, span)
+	if err != nil || !owned {
 		return runSettlement{}, err
-	}
-	if !owned {
-		return runSettlement{}, nil
-	}
-	settlement, err = d.settleOwned(ctx, g)
-	if err != nil {
-		return runSettlement{}, driveFailure(ctx, err)
 	}
 	if !settlement.continues() {
 		return settlement, nil
 	}
 	return d.resolveTerminalRun(ctx, g, span, finished)
+}
+
+// startGoalRun admits the Goal's next Run, re-reading the Goal at every
+// admission boundary. Without a started Run the returned settlement is final.
+func (d *Driver) startGoalRun(ctx context.Context, g *goal.Goal, span trace.Span) (runs.StartResult, runSettlement, bool, error) {
+	for {
+		if err := d.runs.WaitSessionStartable(ctx, g.SessionID()); err != nil {
+			settlement, err := d.resolveGoalRunStartError(ctx, g, span, err)
+			return runs.StartResult{}, settlement, false, err
+		}
+		// Waiting is an observation boundary, not a reservation. The Run that
+		// released the Session may have charged this same Goal incarnation or
+		// reported its terminal outcome. Re-read before every admission attempt so
+		// a resumed HITL Run can block/complete the Goal without an extra Run being
+		// launched from the pre-wait snapshot.
+		current, owned, err := d.observeOwned(ctx, g, span)
+		if err != nil || !owned || !current.continues() {
+			// This drive did not launch a Run, so it settles none. The Run that
+			// changed the Goal owns its own observation.
+			return runs.StartResult{}, runSettlement{}, false, err
+		}
+		command, err := d.command(ctx, *g)
+		if err != nil {
+			return runs.StartResult{}, runSettlement{}, false, driveFailure(ctx, err)
+		}
+		result, err := d.runs.Start(ctx, command)
+		if err == nil {
+			return result, runSettlement{}, true, nil
+		}
+		if !errors.Is(err, runs.ErrRunAdmissionBusy) {
+			settlement, err := d.resolveGoalRunStartError(ctx, g, span, err)
+			return runs.StartResult{}, settlement, false, err
+		}
+		// Another Run or working-tree mutation won after the observation. Retry
+		// from the real boundary and re-read the Goal again before attempting
+		// admission.
+	}
+}
+
+// observeOwned re-reads the Goal and settles whatever its latest durable state
+// decides, provided this Driver still owns it.
+func (d *Driver) observeOwned(ctx context.Context, g *goal.Goal, span trace.Span) (runSettlement, bool, error) {
+	owned, err := d.refreshOwnedGoal(ctx, g)
+	if err != nil {
+		span.RecordError(err)
+		return runSettlement{}, false, err
+	}
+	if !owned {
+		return runSettlement{}, false, nil
+	}
+	settlement, err := d.settleOwned(ctx, g)
+	if err != nil {
+		return runSettlement{}, false, driveFailure(ctx, err)
+	}
+	return settlement, true, nil
 }
 
 func (d *Driver) resolveGoalRunStartError(
@@ -433,7 +441,7 @@ func (d *Driver) command(ctx context.Context, g goal.Goal) (runs.StartCommand, e
 // are valid members of the stream but cannot decide the owning Goal's lifecycle.
 // Nil means the stream violated its root-boundary contract; waiting is expressed
 // by a non-nil Run whose authoritative state is [run.Waiting].
-func drainRootBoundary(events iter.Seq[runs.Event], rootRunID string) *run.Run {
+func drainRootBoundary(events iter.Seq[runs.Event], rootRunID identity.RunID) *run.Run {
 	var finished *run.Run
 	for ev := range events {
 		if seg, ok := ev.Payload.(runs.SegmentFinished); ok && ev.RunID == rootRunID {
@@ -540,7 +548,7 @@ func (d *Driver) settleOwned(ctx context.Context, current *goal.Goal) (runSettle
 	}
 }
 
-func (d *Driver) cancelRun(ctx context.Context, runID string) error {
+func (d *Driver) cancelRun(ctx context.Context, runID identity.RunID) error {
 	cancelCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), goalRunCleanupTimeout)
 	defer cancel()
 	_, err := d.cancellations.Cancel(cancelCtx, runs.CancelCommand{

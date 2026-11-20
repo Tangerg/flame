@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"reflect"
@@ -31,7 +32,7 @@ type storedEndpointInvocation struct {
 	Caller    framecall.Invocation  `json:"caller"`
 	Provider  string                `json:"provider"`
 	Model     string                `json:"model"`
-	SessionID string                `json:"sessionId,omitzero"`
+	SessionID identity.SessionID    `json:"sessionId,omitzero"`
 	Request   *chat.Request         `json:"request,omitzero"`
 	Embedding *embedding.Request    `json:"embedding,omitzero"`
 	StartedAt time.Time             `json:"startedAt"`
@@ -106,7 +107,7 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 			return err
 		}
 		var session any
-		if invocation.SessionID != "" {
+		if !invocation.SessionID.IsZero() {
 			session = invocation.SessionID
 		}
 		scope := `SELECT ? session_id, NULL run_id, NULL segment_id`
@@ -115,7 +116,7 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 			if err := runs.ValidateInvocation(ownerCallID); err != nil {
 				return err
 			}
-			if invocation.SessionID == "" {
+			if invocation.SessionID.IsZero() {
 				return errors.New("sqlite: endpoint execution owner requires its captured Session")
 			}
 			scope = `SELECT owner.session_id, owner.run_id, owner.segment_id FROM (
@@ -218,7 +219,7 @@ func (m *ModelInvocationStore) PageEndpointInvocations(ctx context.Context, pare
 		defer rows.Close()
 		values := []modelref.EndpointObservation{}
 		for rows.Next() {
-			value, err := scanEndpointObservation(rows, parent)
+			value, err := scanEndpointObservation(rows)
 			if err != nil {
 				return nil, err
 			}
@@ -227,7 +228,43 @@ func (m *ModelInvocationStore) PageEndpointInvocations(ctx context.Context, pare
 		return values, rows.Err()
 	})
 }
-func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObservation, error) {
+
+// storedEndpointRequest keeps the exact request bytes an invocation stored, so
+// the observation reproduces them without re-encoding.
+type storedEndpointRequest struct {
+	Request   jsontext.Value `json:"request"`
+	Embedding jsontext.Value `json:"embedding"`
+}
+
+func (r storedEndpointRequest) of(kind modelref.EndpointKind) (framevalue.JSON, error) {
+	if kind == modelref.EndpointEmbedding {
+		return framevalue.ParseJSON(r.Embedding)
+	}
+	return framevalue.ParseJSON(r.Request)
+}
+
+func decodeEndpointInvocation(encoded []byte, value *modelref.EndpointRecord) error {
+	var err error
+	if value.InvocationJSON, err = framevalue.ParseJSON(encoded); err != nil {
+		return err
+	}
+	var admission storedEndpointInvocation
+	if err := decodeStoredJSON(encoded, &admission); err != nil {
+		return err
+	}
+	if value.Invocation, err = admission.invocation(); err != nil {
+		return err
+	}
+	// The strict decode above owns the shape; this pass only keeps raw bytes.
+	var request storedEndpointRequest
+	if err := json.Unmarshal(encoded, &request); err != nil {
+		return err
+	}
+	value.RequestJSON, err = request.of(admission.Kind)
+	return err
+}
+
+func scanEndpointObservation(row scanRow) (modelref.EndpointObservation, error) {
 	var err error
 	var value modelref.EndpointRecord
 	var encoded string
@@ -243,31 +280,10 @@ func scanEndpointObservation(row scanRow, parent string) (modelref.EndpointObser
 	if value.Cost, err = accounting.CostFromOptionalNanoUSD(costNanoUSD); err != nil {
 		return modelref.EndpointObservation{}, fmt.Errorf("sqlite: decode model invocation cost: %w", err)
 	}
-	value.InvocationJSON, err = framevalue.ParseJSON([]byte(encoded))
-	if err != nil {
+	if err := decodeEndpointInvocation([]byte(encoded), &value); err != nil {
 		return modelref.EndpointObservation{}, err
 	}
-	var admission storedEndpointInvocation
-	if err := decodeStoredJSON([]byte(encoded), &admission); err != nil {
-		return modelref.EndpointObservation{}, err
-	}
-	value.Invocation, err = admission.invocation()
-	if err != nil {
-		return modelref.EndpointObservation{}, err
-	}
-	var fields map[string]jsontext.Value
-	if err := decodeStoredJSON([]byte(encoded), &fields); err != nil {
-		return modelref.EndpointObservation{}, err
-	}
-	requestField := "request"
-	if admission.Kind == modelref.EndpointEmbedding {
-		requestField = "embedding"
-	}
-	value.RequestJSON, err = framevalue.ParseJSON(fields[requestField])
-	if err != nil {
-		return modelref.EndpointObservation{}, err
-	}
-	if value.Invocation.ID != id || value.Invocation.StartedAt.UTC().UnixNano() != startedAt || (parent != "" && value.Invocation.Caller.ID != parent && value.Invocation.Caller.Parent != parent) {
+	if value.Invocation.ID != id || value.Invocation.StartedAt.UTC().UnixNano() != startedAt {
 		return modelref.EndpointObservation{}, errors.New("sqlite: endpoint observation identity differs from its row")
 	}
 	if response != nil {
@@ -299,7 +315,7 @@ func (m *ModelInvocationStore) ReconcileEndpointInvocations(ctx context.Context,
 func (m *ModelInvocationStore) EndpointForCaller(ctx context.Context, caller string) (modelref.EndpointObservation, bool, error) {
 	return scopedPair(ctx, m.db.read, func(ctx context.Context) (modelref.EndpointObservation, bool, error) {
 		row := m.db.connection(ctx).QueryRowContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND json_extract(endpoint_json,'$.caller.id')=?`, caller)
-		value, err := scanEndpointObservation(row, caller)
+		value, err := scanEndpointObservation(row)
 		if errors.Is(err, sql.ErrNoRows) {
 			return modelref.EndpointObservation{}, false, nil
 		}
@@ -309,9 +325,9 @@ func (m *ModelInvocationStore) EndpointForCaller(ctx context.Context, caller str
 
 // ListSessionEndpoints materializes evidence after the export caller checks
 // source limits in the same transaction. Ordinary inspection uses bounded pages.
-func (m *ModelInvocationStore) ListSessionEndpoints(ctx context.Context, sessionID string) ([]modelref.EndpointObservation, error) {
+func (m *ModelInvocationStore) ListSessionEndpoints(ctx context.Context, sessionID identity.SessionID) ([]modelref.EndpointObservation, error) {
 	return scopedValue(ctx, m.db.read, func(ctx context.Context) ([]modelref.EndpointObservation, error) {
-		if err := identity.ValidateSession(sessionID); err != nil {
+		if err := sessionID.Validate(); err != nil {
 			return nil, err
 		}
 		rows, err := m.db.connection(ctx).QueryContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? ORDER BY started_at,call_id`, sessionID)
@@ -321,7 +337,7 @@ func (m *ModelInvocationStore) ListSessionEndpoints(ctx context.Context, session
 		defer rows.Close()
 		values := []modelref.EndpointObservation{}
 		for rows.Next() {
-			value, err := scanEndpointObservation(rows, "")
+			value, err := scanEndpointObservation(rows)
 			if err != nil {
 				return nil, err
 			}
@@ -330,10 +346,10 @@ func (m *ModelInvocationStore) ListSessionEndpoints(ctx context.Context, session
 		return values, rows.Err()
 	})
 }
-func (m *ModelInvocationStore) trajectoryEndpoint(ctx context.Context, sessionID, id string) (modelref.EndpointObservation, error) {
+func (m *ModelInvocationStore) trajectoryEndpoint(ctx context.Context, sessionID identity.SessionID, id string) (modelref.EndpointObservation, error) {
 	return scopedValue(ctx, m.db.read, func(ctx context.Context) (modelref.EndpointObservation, error) {
 		row := m.db.connection(ctx).QueryRowContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? AND call_id=?`, sessionID, id)
-		return scanEndpointObservation(row, "")
+		return scanEndpointObservation(row)
 	})
 }
 
@@ -398,14 +414,9 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, aband
 // VisitEndpointInvocations reads one coherent retained source snapshot with one
 // body materialized at a time. It includes Session-only and unattached calls;
 // aggregate consumers never fold the logical Run projections a second time.
-func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, sessionID string, since time.Time, yield func(modelref.EndpointObservation) error) error {
+func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, sessionID identity.SessionID, since time.Time, yield func(modelref.EndpointObservation) error) error {
 	if yield == nil {
 		return errors.New("sqlite: endpoint usage consumer is required")
-	}
-	if sessionID != "" {
-		if err := identity.ValidateSession(sessionID); err != nil {
-			return err
-		}
 	}
 	if !since.IsZero() {
 		if err := instant.Validate(since); err != nil {
@@ -413,7 +424,7 @@ func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, ses
 		}
 	}
 	return m.db.read(ctx, func(ctx context.Context) error {
-		if sessionID != "" {
+		if !sessionID.IsZero() {
 			var exists bool
 			if err := m.db.connection(ctx).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sessions WHERE id=?)`, sessionID).Scan(&exists); err != nil {
 				return err
@@ -424,7 +435,7 @@ func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, ses
 		}
 		query := `SELECT ` + endpointObservationColumns + ` FROM model_invocations WHERE endpoint_json IS NOT NULL`
 		var args []any
-		if sessionID != "" {
+		if !sessionID.IsZero() {
 			query += ` AND session_id=?`
 			args = append(args, sessionID)
 		}
@@ -439,7 +450,7 @@ func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, ses
 		}
 		defer rows.Close()
 		for rows.Next() {
-			value, err := scanEndpointObservation(rows, "")
+			value, err := scanEndpointObservation(rows)
 			if err != nil {
 				return err
 			}
@@ -465,7 +476,7 @@ func (m *ModelInvocationStore) ListIndependentEndpoints(ctx context.Context) ([]
 		defer rows.Close()
 		values := []modelref.EndpointObservation{}
 		for rows.Next() {
-			value, err := scanEndpointObservation(rows, "")
+			value, err := scanEndpointObservation(rows)
 			if err != nil {
 				return nil, err
 			}
@@ -483,7 +494,7 @@ func (m *ModelInvocationStore) validateEndpointProjection(ctx context.Context, e
 	if err != nil {
 		return err
 	}
-	if !found || record.RunID == "" || !reflect.DeepEqual(source.Snapshot(), record) {
+	if !found || record.RunID.IsZero() || !reflect.DeepEqual(source.Snapshot(), record) {
 		return errors.New("sqlite: independent endpoint recovery source changed")
 	}
 	return nil

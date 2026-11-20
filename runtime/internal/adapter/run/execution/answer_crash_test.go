@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -31,7 +33,7 @@ type answerFixtureTrees struct {
 	results *testExecutionTrees
 }
 
-func (s answerFixtureTrees) ExecutionResultCommitted(ctx context.Context, sessionID string, publication runs.ResultPublication) (bool, error) {
+func (s answerFixtureTrees) ExecutionResultCommitted(ctx context.Context, sessionID identity.SessionID, publication runs.ResultPublication) (bool, error) {
 	return s.results.ExecutionResultCommitted(ctx, sessionID, publication)
 }
 
@@ -97,7 +99,7 @@ func checkpointAnswers(t *testing.T, checkpoint runs.ExecutorCheckpoint) []runs.
 	}
 	var answers []runs.InterruptAnswer
 	for waitID, target := range state.handoff.inputs {
-		answers = append(answers, runs.InterruptAnswer{InterruptItemID: "item_" + waitID, MemberID: target.memberID.String(), RequestID: waitID, Resolution: testsupport.QuestionAnswer(t, [][]string{{"chosen"}})})
+		answers = append(answers, runs.InterruptAnswer{InterruptItemID: testsupport.MustItemID("item_" + waitID), MemberID: target.memberID.String(), RequestID: waitID, Resolution: testsupport.QuestionAnswer(t, [][]string{{"chosen"}})})
 	}
 	return answers
 }

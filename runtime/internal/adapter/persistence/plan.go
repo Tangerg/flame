@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -21,7 +23,7 @@ type PlanStore struct{ db *database }
 func newPlanStore(db *database) *PlanStore {
 	return &PlanStore{db: db}
 }
-func (p *PlanStore) List(ctx context.Context, sessionID string) ([]plan.Step, error) {
+func (p *PlanStore) List(ctx context.Context, sessionID identity.SessionID) ([]plan.Step, error) {
 	state, err := p.State(ctx, sessionID)
 	if err != nil {
 		return nil, err
@@ -30,9 +32,9 @@ func (p *PlanStore) List(ctx context.Context, sessionID string) ([]plan.Step, er
 }
 
 // State returns an explicit unwritten Current when no Plan row exists.
-func (p *PlanStore) State(ctx context.Context, sessionID string) (plan.Current, error) {
+func (p *PlanStore) State(ctx context.Context, sessionID identity.SessionID) (plan.Current, error) {
 	return scopedValue(ctx, p.db.read, func(ctx context.Context) (plan.Current, error) {
-		if err := validateSessionResource("read Session Plan", sessionID); err != nil {
+		if err := validateResource("read Session Plan", sessionID); err != nil {
 			return plan.Current{}, err
 		}
 		var (
@@ -87,8 +89,8 @@ func decodePlanSteps(stepsJSON, digest string) ([]plan.Step, error) {
 
 // Save persists one Domain-decided replacement iff its expected version is
 // still current. It assigns neither time nor revision.
-func (p *PlanStore) Save(ctx context.Context, sessionID string, change plan.Replacement) error {
-	if err := validateSessionResource("save Session Plan", sessionID); err != nil {
+func (p *PlanStore) Save(ctx context.Context, sessionID identity.SessionID, change plan.Replacement) error {
+	if err := validateResource("save Session Plan", sessionID); err != nil {
 		return err
 	}
 	return p.db.write(ctx, func(ctx context.Context) error {
@@ -111,7 +113,7 @@ func (p *PlanStore) storeDocument(ctx context.Context, steps []plan.Step) (frame
 	}
 	return digest, nil
 }
-func (p *PlanStore) advance(ctx context.Context, sessionID string, digest framevalue.Digest, change plan.Replacement) error {
+func (p *PlanStore) advance(ctx context.Context, sessionID identity.SessionID, digest framevalue.Digest, change plan.Replacement) error {
 	return p.db.write(ctx, func(ctx context.Context) error {
 		expected := change.ExpectedVersion()
 		replacement := change.State()
@@ -147,12 +149,12 @@ func (p *PlanStore) advance(ctx context.Context, sessionID string, digest framev
 }
 
 // CaptureBoundary freezes the session's current Plan at one terminal Run.
-func (p *PlanStore) CaptureBoundary(ctx context.Context, sessionID, runID string) error {
+func (p *PlanStore) CaptureBoundary(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) error {
 	return p.db.write(ctx, func(ctx context.Context) error {
-		if err := validateSessionResource("capture Plan boundary", sessionID); err != nil {
+		if err := validateResource("capture Plan boundary", sessionID); err != nil {
 			return err
 		}
-		if err := validateRunResource("capture Plan boundary", runID); err != nil {
+		if err := validateResource("capture Plan boundary", runID); err != nil {
 			return err
 		}
 		if _, err := p.db.connection(ctx).ExecContext(ctx, `INSERT INTO plan_boundaries(run_id,document,source)
@@ -165,9 +167,9 @@ func (p *PlanStore) CaptureBoundary(ctx context.Context, sessionID, runID string
 
 // Boundary returns the Plan captured by runID. recorded=false means the Run
 // never captured a boundary; it does not mean an empty Plan.
-func (p *PlanStore) Boundary(ctx context.Context, runID string) (plan.Document, bool, error) {
+func (p *PlanStore) Boundary(ctx context.Context, runID identity.RunID) (plan.Document, bool, error) {
 	return scopedPair(ctx, p.db.read, func(ctx context.Context) (plan.Document, bool, error) {
-		if err := validateRunResource("read Plan boundary", runID); err != nil {
+		if err := validateResource("read Plan boundary", runID); err != nil {
 			return plan.Document{}, false, err
 		}
 		var sourceJSON string
@@ -186,9 +188,9 @@ func (p *PlanStore) Boundary(ctx context.Context, runID string) (plan.Document, 
 	})
 }
 
-func (p *PlanStore) ListBoundaries(ctx context.Context, sessionID string) ([]sessions.RunPlanBoundary, error) {
+func (p *PlanStore) ListBoundaries(ctx context.Context, sessionID identity.SessionID) ([]sessions.RunPlanBoundary, error) {
 	return scopedValue(ctx, p.db.read, func(ctx context.Context) ([]sessions.RunPlanBoundary, error) {
-		if err := validateSessionResource("read Plan boundaries", sessionID); err != nil {
+		if err := validateResource("read Plan boundaries", sessionID); err != nil {
 			return nil, err
 		}
 		rows, err := p.db.connection(ctx).QueryContext(ctx, `SELECT b.run_id, doc.steps, b.document, b.source
@@ -201,7 +203,8 @@ func (p *PlanStore) ListBoundaries(ctx context.Context, sessionID string) ([]ses
 		defer func() { _ = rows.Close() }()
 		var boundaries []sessions.RunPlanBoundary
 		for rows.Next() {
-			var id, source string
+			var id identity.RunID
+			var source string
 			var steps, digest sql.NullString
 			if err := rows.Scan(&id, &steps, &digest, &source); err != nil {
 				return nil, fmt.Errorf("sqlite: scan Plan boundary: %w", err)
@@ -261,9 +264,9 @@ func (p *PlanStore) RestoreBoundaries(ctx context.Context, boundaries []sessions
 		return nil
 	})
 }
-func (p *PlanStore) DeleteSession(ctx context.Context, sessionID string) error {
+func (p *PlanStore) DeleteSession(ctx context.Context, sessionID identity.SessionID) error {
 	return p.db.write(ctx, func(ctx context.Context) error {
-		if err := validateSessionResource("delete Session Plan", sessionID); err != nil {
+		if err := validateResource("delete Session Plan", sessionID); err != nil {
 			return err
 		}
 		if _, err := p.db.connection(ctx).ExecContext(ctx, `DELETE FROM session_plans WHERE session_id = ?`, sessionID); err != nil {

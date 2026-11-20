@@ -43,7 +43,7 @@ type queuePresentation struct {
 
 type queueDrawerActions struct {
 	BeginEdit  func(authoring.QueueEntry) error
-	SaveEdit   func(authoring.QueueEntry, authoring.Message, bool) error
+	SaveEdit   func(authoring.QueueEntry, authoring.Message, queuedEditDisposition) error
 	CancelEdit func(authoring.QueueEntry) error
 	Remove     func(authoring.QueueEntryID) error
 	Move       func(authoring.QueueEntryID, int) error
@@ -275,11 +275,11 @@ func (q *queueDrawer) handleEditKey(key input.Key) bool {
 	if key.Code == input.Enter {
 		switch {
 		case key.Mods == input.Ctrl:
-			q.saveEdit(true)
+			q.saveEdit(promoteNow)
 		case action == insertNewline || key.Mods == input.Shift || key.Mods == input.Alt:
 			q.editor.Controller().Insert("\n")
 		default:
-			q.saveEdit(false)
+			q.saveEdit(stayQueued)
 		}
 		return true
 	}
@@ -307,7 +307,12 @@ func (q *queueDrawer) handleMouse(mouse input.Mouse) bool {
 		q.moveSelection(1)
 		return true
 	}
-	target := q.hitAt(mouse.Pos)
+	return q.handlePointer(mouse, q.hitAt(mouse.Pos))
+}
+
+// handlePointer tracks one left-button press: a release over the target it
+// began on activates it; any other button or a drag away cancels it.
+func (q *queueDrawer) handlePointer(mouse input.Mouse, target queueTarget) bool {
 	switch mouse.Action {
 	case input.MouseMove:
 		q.hovered = target
@@ -414,22 +419,34 @@ func (q *queueDrawer) cancelEditState() {
 	_ = q.Element().RequestFocus()
 }
 
-func (q *queueDrawer) saveEdit(sendNow bool) {
+// queuedEditDisposition is where an edited queued prompt goes once saved.
+type queuedEditDisposition uint8
+
+const (
+	stayQueued queuedEditDisposition = iota
+	promoteNow
+)
+
+func (d queuedEditDisposition) notice() string {
+	if d == promoteNow {
+		return "queued prompt promoted for immediate send"
+	}
+	return "queued prompt updated"
+}
+
+func (q *queueDrawer) saveEdit(disposition queuedEditDisposition) {
 	if !q.Editing() || q.actions.SaveEdit == nil {
 		return
 	}
 	entry := *q.editingEntry
 	message := q.editingMessage.Clone()
 	message.Text = q.editor.Controller().Text()
-	if err := q.actions.SaveEdit(entry, message, sendNow); err != nil {
+	if err := q.actions.SaveEdit(entry, message, disposition); err != nil {
 		q.notice = err.Error()
 		return
 	}
 	q.cancelEditState()
-	q.notice = "queued prompt updated"
-	if sendNow {
-		q.notice = "queued prompt promoted for immediate send"
-	}
+	q.notice = disposition.notice()
 }
 
 func (q *queueDrawer) removeSelected() {

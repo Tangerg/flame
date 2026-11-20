@@ -81,15 +81,34 @@ func (s *Server) trustedLoopbackRequest(r *http.Request) bool {
 	if len(origins) == 0 {
 		return true
 	}
-	if len(origins) != 1 || origins[0] == "" || origins[0] == "*" || origins[0] == "null" {
+	if len(origins) != 1 {
 		return false
 	}
-	u, err := url.Parse(origins[0])
-	if err != nil || u.Host == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.ForceQuery || strings.ContainsRune(origins[0], '#') {
+	u, bare := bareOriginURL(origins[0])
+	if !bare {
 		return false
 	}
 	origin, err := httporigin.FromURL(u)
 	return (err == nil && origin == requestOrigin) || slices.Contains(s.corsOrigins, origins[0])
+}
+
+const (
+	wildcardOrigin = "*"
+	// opaqueOrigin is how browsers serialize an origin with no host (RFC 6454).
+	opaqueOrigin = "null"
+)
+
+// bareOriginURL parses an Origin value that is exactly scheme://host[:port];
+// empty, wildcard, opaque and decorated values are refused.
+func bareOriginURL(value string) (*url.URL, bool) {
+	if value == "" || value == wildcardOrigin || value == opaqueOrigin {
+		return nil, false
+	}
+	u, err := url.Parse(value)
+	if err != nil || u.Host == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.ForceQuery || strings.ContainsRune(value, '#') {
+		return nil, false
+	}
+	return u, true
 }
 
 // The auth-scheme is case-insensitive (RFC 9110 §11.1); the token is compared

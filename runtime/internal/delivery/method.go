@@ -392,6 +392,13 @@ func (m MethodMeta) validateProblems() error {
 }
 
 func (m MethodMeta) validateOperationPolicy() error {
+	if m.Pagination == paginationCursor && m.Operation != OperationQuery {
+		return fmt.Errorf("%s: only a query may return a cursor page", m.Name)
+	}
+	return errors.Join(m.validateMaterializes(), m.validateIdempotency(), m.validateReplayCursor())
+}
+
+func (m MethodMeta) validateMaterializes() error {
 	if len(m.Materializes) > 0 && m.Operation != OperationQuery {
 		return fmt.Errorf("%s: only a query may materialize other query facts", m.Name)
 	}
@@ -403,6 +410,10 @@ func (m MethodMeta) validateOperationPolicy() error {
 			return fmt.Errorf("%s: materialized query %q is declared twice", m.Name, name)
 		}
 	}
+	return nil
+}
+
+func (m MethodMeta) validateIdempotency() error {
 	switch m.Operation {
 	case OperationExtension:
 		if m.Idempotency != idempotencyOwnerResponse {
@@ -417,25 +428,27 @@ func (m MethodMeta) validateOperationPolicy() error {
 			return fmt.Errorf("%s: a subscription must stream and must not keep an idempotency replay", m.Name)
 		}
 	case OperationCommand:
-		if m.Kind == kindUnary && m.Idempotency != idempotencyReplayResponse && m.Idempotency != idempotencyOwnerResponse && m.Idempotency != IdempotencyOwnerRun {
+		if m.Kind == kindUnary && !m.Idempotency.Replays() {
 			return fmt.Errorf("%s: a unary command must replay its first response", m.Name)
 		}
-		if m.Kind == KindStream && m.Idempotency != IdempotencyOwnerRun && m.Idempotency != idempotencyOwnerResponse {
+		if m.Kind == KindStream && !m.Idempotency.OwnsOutcome() {
 			return fmt.Errorf("%s: a streaming command must own its outcome", m.Name)
 		}
 	}
-	if m.ReplayCursor == ReplayCursorRun {
-		switch {
-		case m.Kind != KindStream:
-			return fmt.Errorf("%s: only a streaming method may accept a run replay cursor", m.Name)
-		case m.Operation == OperationCommand && m.Idempotency != IdempotencyOwnerRun:
-			return fmt.Errorf("%s: a cursor-aware command must own its run opening", m.Name)
-		case m.Operation != OperationCommand && m.Operation != OperationSubscription:
-			return fmt.Errorf("%s: only a run command or subscription may accept a run replay cursor", m.Name)
-		}
+	return nil
+}
+
+func (m MethodMeta) validateReplayCursor() error {
+	if m.ReplayCursor != ReplayCursorRun {
+		return nil
 	}
-	if m.Pagination == paginationCursor && m.Operation != OperationQuery {
-		return fmt.Errorf("%s: only a query may return a cursor page", m.Name)
+	switch {
+	case m.Kind != KindStream:
+		return fmt.Errorf("%s: only a streaming method may accept a run replay cursor", m.Name)
+	case m.Operation == OperationCommand && m.Idempotency != IdempotencyOwnerRun:
+		return fmt.Errorf("%s: a cursor-aware command must own its run opening", m.Name)
+	case m.Operation != OperationCommand && m.Operation != OperationSubscription:
+		return fmt.Errorf("%s: only a run command or subscription may accept a run replay cursor", m.Name)
 	}
 	return nil
 }

@@ -80,6 +80,18 @@ func (c *connector) deleteCommentIn(ctx context.Context, input contractwire.Comm
 	return contractwire.DeletedComment{ID: input.CommentID}, nil
 }
 
+func inlineComments(inputs []contractwire.InlineComment) ([]inlineCommentWire, error) {
+	comments := make([]inlineCommentWire, len(inputs))
+	for i, input := range inputs {
+		comment, err := inlineComment(input)
+		if err != nil {
+			return nil, err
+		}
+		comments[i] = comment
+	}
+	return comments, nil
+}
+
 func inlineComment(input contractwire.InlineComment) (inlineCommentWire, error) {
 	if _, err := newFilePath(input.Path); err != nil {
 		return inlineCommentWire{}, err

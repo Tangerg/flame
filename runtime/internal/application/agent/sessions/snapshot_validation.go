@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 // ValidateToolResults verifies that every typed transcript offload names
 // exactly one blob of this Session and that every blob is named by one Item.
 func (s HistorySnapshot) ValidateToolResults() error {
-	owners := make(map[transcript.ToolResultID]string, len(s.ToolResults))
+	owners := make(map[transcript.ToolResultID]identity.ItemID, len(s.ToolResults))
 	for index, blob := range s.ToolResults {
 		if err := blob.Validate(); err != nil {
 			return fmt.Errorf("sessions: tool result %d: %w", index, err)
@@ -21,7 +23,7 @@ func (s HistorySnapshot) ValidateToolResults() error {
 		if _, duplicate := owners[blob.ID]; duplicate {
 			return fmt.Errorf("sessions: tool result %q appears more than once", blob.ID)
 		}
-		owners[blob.ID] = ""
+		owners[blob.ID] = identity.ItemID{}
 	}
 	for _, item := range s.Items {
 		call, present := item.ToolCall()
@@ -37,13 +39,13 @@ func (s HistorySnapshot) ValidateToolResults() error {
 		if !exists {
 			return fmt.Errorf("sessions: item %q references missing tool result %q", item.ID(), ref.ID)
 		}
-		if owner != "" {
+		if !owner.IsZero() {
 			return fmt.Errorf("sessions: tool result %q is named by both items %q and %q", ref.ID, owner, item.ID())
 		}
 		owners[ref.ID] = item.ID()
 	}
 	for id, owner := range owners {
-		if owner == "" {
+		if owner.IsZero() {
 			return fmt.Errorf("sessions: tool result %q is named by no transcript item", id)
 		}
 	}

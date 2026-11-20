@@ -14,6 +14,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -54,8 +56,8 @@ type goalRunRecorder interface {
 // continuation accepts its answers or the owning root terminalizes.
 type InterruptStore interface {
 	Open(ctx context.Context, p runs.Pending) error
-	Consume(ctx context.Context, rootRunID string) (runs.Pending, bool, error)
-	Delete(ctx context.Context, rootRunID string) error
+	Consume(ctx context.Context, rootRunID identity.RunID) (runs.Pending, bool, error)
+	Delete(ctx context.Context, rootRunID identity.RunID) error
 }
 
 // TranscriptStore is the run-segment append side of durable transcript
@@ -84,21 +86,21 @@ type rememberedRuleStore interface {
 type acceptedContinuationStore interface {
 	Put(ctx context.Context, accepted runs.AcceptedContinuation) error
 	PutSubtreeCancellation(ctx context.Context, accepted runs.AcceptedSubtreeCancellation) error
-	Delete(ctx context.Context, rootRunID string) error
+	Delete(ctx context.Context, rootRunID identity.RunID) error
 }
 
 // modelInvocationJournal applies provider-attempt transitions. It is an
 // operational evidence journal. A known inner response can accompany outer failure;
 // it never creates executable Transcript continuation or advances Run accounting.
 type modelInvocationJournal interface {
-	RecordModelInvocation(ctx context.Context, sessionID, runID string, invocation runs.ModelInvocationCommit) error
+	RecordModelInvocation(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, invocation runs.ModelInvocationCommit) error
 }
 
 // toolInvocationJournal records pre-call and terminal attempt boundaries without
 // using Transcript insertion order as an operational lock. Final semantic Tool
 // Items are still committed through TranscriptStore in canonical model order.
 type toolInvocationJournal interface {
-	RecordToolInvocation(ctx context.Context, sessionID, runID string, invocation runs.ToolInvocationCommit) error
+	RecordToolInvocation(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, invocation runs.ToolInvocationCommit) error
 }
 
 // runWriter applies the run's lifecycle transitions inside the event commit:
@@ -117,23 +119,23 @@ type toolInvocationJournal interface {
 type runWriter interface {
 	Admit(ctx context.Context, draft run.Draft) error
 	Resume(ctx context.Context, replacement run.Replacement) error
-	RequireActiveSegment(ctx context.Context, sessionID, runID, segmentID string) error
-	Suspend(ctx context.Context, run run.Run, segmentID string, commitID runs.CommitID) error
+	RequireActiveSegment(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID) error
+	Suspend(ctx context.Context, run run.Run, segmentID identity.SegmentID, commitID runs.CommitID) error
 	Terminalize(ctx context.Context, replacement run.Replacement, winningCancellationKey string) error
-	RecordRunCommit(ctx context.Context, sessionID, runID, segmentID string, commitID runs.CommitID) error
-	RecordWaitingRunCommit(ctx context.Context, sessionID, runID string, commitID runs.CommitID) error
-	TerminalizeEvent(ctx context.Context, run run.Run, segmentID string, commitID runs.CommitID, winningCancellationKey string) error
+	RecordRunCommit(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, commitID runs.CommitID) error
+	RecordWaitingRunCommit(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, commitID runs.CommitID) error
+	TerminalizeEvent(ctx context.Context, run run.Run, segmentID identity.SegmentID, commitID runs.CommitID, winningCancellationKey string) error
 }
 
 // RunStore combines lifecycle writes with the exact durable reads required to
 // prove and reconstruct a result after an ambiguous command commit.
 type RunStore interface {
-	ResultPublicationCommitted(ctx context.Context, sessionID, runID, segmentID, publicationID, digest string) (bool, error)
-	RecordResultPublication(ctx context.Context, sessionID, runID, segmentID, publicationID, digest string, results []chat.ToolResult) error
+	ResultPublicationCommitted(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, publicationID, digest string) (bool, error)
+	RecordResultPublication(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, publicationID, digest string, results []chat.ToolResult) error
 	runs.ToolResultPublications
 	runWriter
-	Run(ctx context.Context, runID string) (run.Run, bool, error)
-	RunCommitCommitted(ctx context.Context, sessionID, runID, segmentID string, commitID runs.CommitID) (bool, error)
+	Run(ctx context.Context, runID identity.RunID) (run.Run, bool, error)
+	RunCommitCommitted(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, commitID runs.CommitID) (bool, error)
 }
 
 // RunProgressWriter writes the running Run the Application advanced at one
@@ -150,7 +152,7 @@ type RunProgressWriter interface {
 type executorCheckpointStore interface {
 	SaveCheckpoint(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error
 	LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error)
-	DeleteCheckpoints(ctx context.Context, sessionID string, rootIDs []string) error
+	DeleteCheckpoints(ctx context.Context, sessionID identity.SessionID, rootIDs []string) error
 }
 
 // childRunStartReservationStore is the technical persistence mechanism behind
@@ -164,7 +166,7 @@ type childRunStartReservationStore interface {
 		record persistence.ChildRunStartReservationRecord,
 		conclusion runs.ChildRunStartOutcome,
 	) (changed bool, err error)
-	DeleteSession(ctx context.Context, sessionID string) error
+	DeleteSession(ctx context.Context, sessionID identity.SessionID) error
 }
 
 // Transactor runs fn inside one storage transaction: every store call made by
@@ -179,12 +181,12 @@ type BindingTransactor func(context.Context, string, runs.ExecutorCheckpoint, fu
 // conversationStore appends root execution context and resolves the watermark
 // recorded by a terminal Run. Both operations join the event transaction.
 type conversationStore interface {
-	Read(ctx context.Context, sessionID string) ([]chat.Message, error)
-	Write(ctx context.Context, sessionID string, messages ...chat.Message) error
-	Count(ctx context.Context, sessionID string) (int, error)
+	Read(ctx context.Context, sessionID identity.SessionID) ([]chat.Message, error)
+	Write(ctx context.Context, sessionID identity.SessionID, messages ...chat.Message) error
+	Count(ctx context.Context, sessionID identity.SessionID) (int, error)
 }
 
-type sessionContextInvalidator interface{ ForgetSessionContext(string) }
+type sessionContextInvalidator interface{ ForgetSessionContext(identity.SessionID) }
 
 // Config bundles the Effects dependencies.
 type Config struct {

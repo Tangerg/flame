@@ -126,14 +126,14 @@ func (f CatalogFilter) CursorIdentity() []string {
 type CatalogAnchor struct {
 	favorite  bool
 	updatedAt time.Time
-	id        string
+	id        identity.SessionID
 }
 
-func NewCatalogAnchor(favorite bool, updatedAt time.Time, id string) (CatalogAnchor, error) {
+func NewCatalogAnchor(favorite bool, updatedAt time.Time, id identity.SessionID) (CatalogAnchor, error) {
 	if updatedAt.IsZero() {
 		return CatalogAnchor{}, errors.New("sessions: catalog anchor update time is required")
 	}
-	if err := identity.ValidateSession(id); err != nil {
+	if err := id.Validate(); err != nil {
 		return CatalogAnchor{}, fmt.Errorf("sessions: catalog anchor: %w", err)
 	}
 	return CatalogAnchor{favorite: favorite, updatedAt: updatedAt.UTC(), id: id}, nil
@@ -148,9 +148,9 @@ func (a CatalogAnchor) Validate() error {
 	return nil
 }
 
-func (a CatalogAnchor) Favorite() bool       { return a.favorite }
-func (a CatalogAnchor) UpdatedAt() time.Time { return a.updatedAt }
-func (a CatalogAnchor) ID() string           { return a.id }
+func (a CatalogAnchor) Favorite() bool         { return a.favorite }
+func (a CatalogAnchor) UpdatedAt() time.Time   { return a.updatedAt }
+func (a CatalogAnchor) ID() identity.SessionID { return a.id }
 
 // CatalogRead is the complete persistence request for one bounded keyset read.
 type CatalogRead struct {

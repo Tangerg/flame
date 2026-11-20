@@ -5,6 +5,8 @@ package approvals
 import (
 	"context"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -13,13 +15,13 @@ import (
 // SessionLookup resolves the validated application-owned Session read so rule
 // listing can scope rules to its project directory.
 type SessionLookup interface {
-	Get(ctx context.Context, id string) (session.Session, error)
+	Get(ctx context.Context, id identity.SessionID) (session.Session, error)
 }
 
 type RuleChange struct {
 	Tool      tool.Ref
 	Scope     approval.Scope
-	SessionID string
+	SessionID identity.SessionID
 	Subject   approval.Subject
 	Decision  approval.Decision
 }

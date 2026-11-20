@@ -19,6 +19,15 @@ import (
 // workspace browser. It scans in process so source, line, retained material,
 // cancellation, and coverage semantics remain owned by this product port
 // instead of inheriting a subprocess executor's post-hoc result slicing.
+// wantsMore reports whether the search still has source budget and, unless it
+// scans everything, room for another match.
+func (g *workspaceGrep) wantsMore() bool {
+	if g.remainingSource <= 0 {
+		return false
+	}
+	return g.plan.ScanAll || g.collectMatches && len(g.result.Matches) < g.plan.Limit
+}
+
 func (FileBrowser) Grep(ctx context.Context, root string, input workspaceapp.GrepPlan) (_ workspaceapp.GrepResult, err error) {
 	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return workspaceapp.GrepResult{}, cause
@@ -55,7 +64,7 @@ func (FileBrowser) Grep(ctx context.Context, root string, input workspaceapp.Gre
 		collectMatches:  true,
 	}
 	for _, entry := range entries {
-		if search.remainingSource <= 0 || (!input.ScanAll && (!search.collectMatches || len(search.result.Matches) >= input.Limit)) {
+		if !search.wantsMore() {
 			break
 		}
 		if err := search.scanEntry(entry); err != nil {

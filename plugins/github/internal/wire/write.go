@@ -34,6 +34,18 @@ func (StateReason) JSONSchemaEnum() []string {
 	return []string{string(Completed), string(NotPlanned), string(Duplicate), string(Reopened)}
 }
 
+// State is the issue state GitHub requires alongside the reason.
+func (r StateReason) State() (State, bool) {
+	switch r {
+	case Completed, NotPlanned, Duplicate:
+		return Closed, true
+	case Reopened:
+		return Open, true
+	default:
+		return "", false
+	}
+}
+
 type UpdateIssueInput struct {
 	IssueInput
 	Title            *string      `json:"title,omitzero" jsonschema:"minLength=1"`

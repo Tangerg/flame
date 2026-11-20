@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"slices"
@@ -138,8 +139,12 @@ func (c requirementCatalog) binding(snapshot plugin.Snapshot, declaration plugin
 	return ContributionBinding{InstallationID: snapshot.Installation.ID(), ContributionID: declaration.ID, Digest: snapshot.Selected.Digest(), ServerID: id, ServerName: declaration.Server, Export: declaration.Export, Contract: declaration.Contract}, nil
 }
 
-func bindingKey(binding ContributionBinding) string {
-	return binding.InstallationID.String() + "/" + binding.ContributionID.String()
+// compareBindings orders bindings by installation, then contribution.
+func compareBindings(a, b ContributionBinding) int {
+	return cmp.Or(
+		strings.Compare(a.InstallationID.String(), b.InstallationID.String()),
+		strings.Compare(a.ContributionID.String(), b.ContributionID.String()),
+	)
 }
 
 func (c requirementCatalog) candidates(required plugin.Requirement) ([]ContributionBinding, error) {
@@ -148,44 +153,14 @@ func (c requirementCatalog) candidates(required plugin.Requirement) ([]Contribut
 		return nil, err
 	}
 	descriptor := contract.Descriptor()
-	var bindings []ContributionBinding
 	if descriptor.Composition == plugincontract.Decoration {
-		record, found := c.compositions[descriptor.Reference]
-		if !found {
-			if required.Optional {
-				return []ContributionBinding{}, nil
-			}
-			return nil, fmt.Errorf("%w: dependency %s needs an explicit decoration composition", plugin.ErrUnavailable, required.ID)
-		}
-		if record.Contract != contract.Identity() {
-			return nil, fmt.Errorf("%w: dependency %s composition contract differs", plugin.ErrUnavailable, required.ID)
-		}
-		composition, err := plugin.NewOrderedComposition(record)
-		if err != nil {
-			return nil, err
-		}
-		bindings, err := resolveCompositionMembers(composition, func(id identity.InstallationID) (plugin.Snapshot, bool, error) {
-			snapshot, found := c.installations[id]
-			return snapshot, found, nil
-		})
-		if err != nil {
-			return nil, err
-		}
-		if len(bindings) == 0 && !required.Optional {
-			return nil, fmt.Errorf("%w: required dependency %s composition is empty", plugin.ErrUnavailable, required.ID)
-		}
-		return bindings, nil
+		return c.decorators(required, contract)
 	}
+	var bindings []ContributionBinding
 	for _, snapshot := range c.installations {
 		for _, declaration := range snapshot.Selected.Declaration().Contributions {
-			if declaration.Contract != contract.Identity() || !snapshot.Installation.ServerEnabled(declaration.Server) {
+			if !c.implements(snapshot, declaration, contract) {
 				continue
-			}
-			if descriptor.Composition == plugincontract.Selection {
-				choice, found := c.selections[descriptor.Reference]
-				if !found || choice.Installation != snapshot.Installation.ID() || choice.Contribution != declaration.ID {
-					continue
-				}
 			}
 			binding, err := c.binding(snapshot, declaration)
 			if err != nil {
@@ -194,9 +169,53 @@ func (c requirementCatalog) candidates(required plugin.Requirement) ([]Contribut
 			bindings = append(bindings, binding)
 		}
 	}
-	slices.SortFunc(bindings, func(a, b ContributionBinding) int { return strings.Compare(bindingKey(a), bindingKey(b)) })
+	slices.SortFunc(bindings, compareBindings)
 	if len(bindings) == 0 && !required.Optional {
 		return nil, fmt.Errorf("%w: required dependency %s (%s) has no enabled implementation", plugin.ErrUnavailable, required.ID, descriptor.Reference)
+	}
+	return bindings, nil
+}
+
+// implements reports whether an enabled contribution serves the contract; a
+// selection contract admits only the contribution the user selected.
+func (c requirementCatalog) implements(snapshot plugin.Snapshot, declaration plugin.Contribution, contract *plugincontract.Capability) bool {
+	if declaration.Contract != contract.Identity() || !snapshot.Installation.ServerEnabled(declaration.Server) {
+		return false
+	}
+	descriptor := contract.Descriptor()
+	if descriptor.Composition != plugincontract.Selection {
+		return true
+	}
+	choice, found := c.selections[descriptor.Reference]
+	return found && choice.Installation == snapshot.Installation.ID() && choice.Contribution == declaration.ID
+}
+
+// decorators resolves a decoration contract through its explicit ordered
+// composition; decorators never apply by mere installation.
+func (c requirementCatalog) decorators(required plugin.Requirement, contract *plugincontract.Capability) ([]ContributionBinding, error) {
+	record, found := c.compositions[contract.Descriptor().Reference]
+	if !found {
+		if required.Optional {
+			return []ContributionBinding{}, nil
+		}
+		return nil, fmt.Errorf("%w: dependency %s needs an explicit decoration composition", plugin.ErrUnavailable, required.ID)
+	}
+	if record.Contract != contract.Identity() {
+		return nil, fmt.Errorf("%w: dependency %s composition contract differs", plugin.ErrUnavailable, required.ID)
+	}
+	composition, err := plugin.NewOrderedComposition(record)
+	if err != nil {
+		return nil, err
+	}
+	bindings, err := resolveCompositionMembers(composition, func(id identity.InstallationID) (plugin.Snapshot, bool, error) {
+		snapshot, found := c.installations[id]
+		return snapshot, found, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(bindings) == 0 && !required.Optional {
+		return nil, fmt.Errorf("%w: required dependency %s composition is empty", plugin.ErrUnavailable, required.ID)
 	}
 	return bindings, nil
 }
@@ -204,49 +223,66 @@ func (c requirementCatalog) candidates(required plugin.Requirement) ([]Contribut
 func (c requirementCatalog) collaborators(root plugin.Snapshot, declaration plugin.Contribution, binding framehost.BindingSnapshot) ([]Collaborator, error) {
 	resolved := make([]Collaborator, 0, len(declaration.Requires))
 	for _, required := range declaration.Requires {
-		var chosen *framehost.ImportBinding
-		for _, unit := range binding.Units {
-			if unit.Source.InstallationID != root.Installation.ID().Host() || unit.Source.Release != root.Selected.Digest() || unit.Source.UnitID != BackendUnit(declaration.Server) {
-				continue
-			}
-			for _, slot := range unit.Imports {
-				if slot.Slot == RequirementSlot(declaration.ID, required.ID) {
-					copy := slot
-					chosen = &copy
-					break
-				}
-			}
-		}
-		if chosen == nil {
+		chosen, found := capturedRequirement(root, declaration, required, binding)
+		if !found {
 			return nil, fmt.Errorf("%w: captured requirement is missing", plugin.ErrInvalid)
 		}
 		bindings := make([]ContributionBinding, 0, len(chosen.Providers))
 		for _, provider := range chosen.Providers {
-			id, err := identity.ParseHostInstallation(provider.InstallationID)
+			actual, err := c.capturedProvider(provider, required)
 			if err != nil {
 				return nil, err
-			}
-			snapshot, found := c.installations[id]
-			if !found || snapshot.Selected.Digest().String() != provider.Release.String() {
-				return nil, plugin.ErrStale
-			}
-			contribution, found := snapshot.Selected.Contribution(plugin.ContributionID(provider.Export))
-			if !found || BackendUnit(contribution.Server) != provider.UnitID || contribution.Contract != required.Contract {
-				return nil, plugin.ErrUnavailable
-			}
-			actual, err := c.binding(snapshot, contribution)
-			if err != nil {
-				return nil, err
-			}
-			source, err := ContributionSource(actual)
-			if err != nil || source != provider {
-				return nil, fmt.Errorf("%w: captured provider contract differs", plugin.ErrInvalid)
 			}
 			bindings = append(bindings, actual)
 		}
 		resolved = append(resolved, Collaborator{ID: required.ID, Bindings: bindings})
 	}
 	return resolved, nil
+}
+
+// capturedRequirement finds the import slot the captured binding resolved for
+// one requirement of the root's own backend unit.
+func capturedRequirement(root plugin.Snapshot, declaration plugin.Contribution, required plugin.Requirement, binding framehost.BindingSnapshot) (framehost.ImportBinding, bool) {
+	var chosen framehost.ImportBinding
+	found := false
+	for _, unit := range binding.Units {
+		if unit.Source.InstallationID != root.Installation.ID().Host() || unit.Source.Release != root.Selected.Digest() || unit.Source.UnitID != BackendUnit(declaration.Server) {
+			continue
+		}
+		for _, slot := range unit.Imports {
+			if slot.Slot == RequirementSlot(declaration.ID, required.ID) {
+				chosen, found = slot, true
+				break
+			}
+		}
+	}
+	return chosen, found
+}
+
+// capturedProvider rebinds a captured provider only while its installation
+// still selects the same release and contract.
+func (c requirementCatalog) capturedProvider(provider framehost.ExportRef, required plugin.Requirement) (ContributionBinding, error) {
+	id, err := identity.ParseHostInstallation(provider.InstallationID)
+	if err != nil {
+		return ContributionBinding{}, err
+	}
+	snapshot, found := c.installations[id]
+	if !found || snapshot.Selected.Digest() != provider.Release {
+		return ContributionBinding{}, plugin.ErrStale
+	}
+	contribution, found := snapshot.Selected.Contribution(plugin.ContributionID(provider.Export))
+	if !found || BackendUnit(contribution.Server) != provider.UnitID || contribution.Contract != required.Contract {
+		return ContributionBinding{}, plugin.ErrUnavailable
+	}
+	actual, err := c.binding(snapshot, contribution)
+	if err != nil {
+		return ContributionBinding{}, err
+	}
+	source, err := ContributionSource(actual)
+	if err != nil || source != provider {
+		return ContributionBinding{}, fmt.Errorf("%w: captured provider contract differs", plugin.ErrInvalid)
+	}
+	return actual, nil
 }
 
 func (c requirementCatalog) plan(ctx context.Context, host framehost.Host, root plugin.Snapshot, server mcpserver.ServerName) (framehost.BindingPlan, error) {

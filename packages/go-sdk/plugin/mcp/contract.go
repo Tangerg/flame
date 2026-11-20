@@ -40,6 +40,25 @@ func ImplementMethod[P, R any](owner *plugincontract.Capability, name string) (*
 	return &Method[P, R]{contract: method}, nil
 }
 
+// MethodSet binds one capability's published methods and reports every failed
+// binding together, so a plugin builds its whole contract surface before
+// deciding whether it can serve.
+type MethodSet struct {
+	owner *plugincontract.Capability
+	errs  []error
+}
+
+func NewMethodSet(owner *plugincontract.Capability) *MethodSet { return &MethodSet{owner: owner} }
+
+// Implement binds one published method; its failure is reported by Err.
+func Implement[P, R any](set *MethodSet, name string) *Method[P, R] {
+	method, err := ImplementMethod[P, R](set.owner, name)
+	set.errs = append(set.errs, err)
+	return method
+}
+
+func (s *MethodSet) Err() error { return errors.Join(s.errs...) }
+
 func NewMethod[P, R any](config frame.MethodConfig) (*Method[P, R], error) {
 	if err := validateMethodCodecs[P, R](config.Name); err != nil {
 		return nil, err

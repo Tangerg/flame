@@ -15,16 +15,16 @@ import (
 // for every use case inside that lifetime.
 type Gate struct {
 	mu               sync.Mutex
-	runs             map[string]reservedRun
+	runs             map[identity.RunID]reservedRun
 	pending          map[*runAdmissionLease]reservedRun
 	maintenance      map[*maintenanceReservation]struct{}
-	claims           map[string]sessionClaimKind
+	claims           map[identity.SessionID]sessionClaimKind
 	treeMutations    map[string]struct{}
 	changed          chan struct{}
 	resolveTree      func(string) (string, error)
 	treesOverlap     func(string, string) (bool, error)
-	settleRetirement func(context.Context, string) (bool, error)
-	rollbackPending  func(context.Context, string) (bool, error)
+	settleRetirement func(context.Context, identity.SessionID) (bool, error)
+	rollbackPending  func(context.Context, identity.SessionID) (bool, error)
 }
 
 // GateConfig binds resolution and comparison to the same physical path semantics.
@@ -33,8 +33,8 @@ type GateConfig struct {
 	TreesOverlap func(string, string) (bool, error)
 	// SettleRetirement completes the Session's committed resource retirement
 	// under the caller's exclusive claim and reports whether none remains.
-	SettleRetirement         func(context.Context, string) (bool, error)
-	WorkspaceRollbackPending func(context.Context, string) (bool, error)
+	SettleRetirement         func(context.Context, identity.SessionID) (bool, error)
+	WorkspaceRollbackPending func(context.Context, identity.SessionID) (bool, error)
 }
 
 // NewGate shares physical tree identity and committed resource retirement with
@@ -57,10 +57,10 @@ func NewGate(cfg GateConfig) (*Gate, error) {
 		treesOverlap:     cfg.TreesOverlap,
 		settleRetirement: cfg.SettleRetirement,
 		rollbackPending:  cfg.WorkspaceRollbackPending,
-		runs:             make(map[string]reservedRun),
+		runs:             make(map[identity.RunID]reservedRun),
 		pending:          make(map[*runAdmissionLease]reservedRun),
 		maintenance:      make(map[*maintenanceReservation]struct{}),
-		claims:           make(map[string]sessionClaimKind),
+		claims:           make(map[identity.SessionID]sessionClaimKind),
 		treeMutations:    make(map[string]struct{}),
 		changed:          make(chan struct{}),
 	}, nil
@@ -70,7 +70,7 @@ func NewGate(cfg GateConfig) (*Gate, error) {
 // is pending admission, live, or in terminal maintenance; the map holding it
 // says which.
 type reservedRun struct {
-	sessionID string
+	sessionID identity.SessionID
 	cwd       string
 }
 
@@ -101,11 +101,11 @@ const (
 
 // A Run identity cannot transfer an existing Session reservation. A refused
 // identity leaves the pending admission releasable by its original caller.
-func (r RunAdmission) Admit(runID string) bool {
+func (r RunAdmission) Admit(runID identity.RunID) bool {
 	if r.lease == nil {
 		return false
 	}
-	if err := identity.ValidateRun(runID); err != nil {
+	if err := runID.Validate(); err != nil {
 		return false
 	}
 	g := r.lease.gate
@@ -139,7 +139,7 @@ func (r RunAdmission) Release() {
 
 // AcquireSession reserves one session's single-writer slot. Release is safe to
 // call more than once and affects only this acquisition.
-func (g *Gate) AcquireSession(ctx context.Context, sessionID string) (release func(), ok bool, err error) {
+func (g *Gate) AcquireSession(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error) {
 	release, ok, err = g.acquireForegroundSession(ctx, sessionID)
 	if err != nil || !ok {
 		return nil, false, err
@@ -149,11 +149,11 @@ func (g *Gate) AcquireSession(ctx context.Context, sessionID string) (release fu
 
 // A file rollback can reach its intent even when it owns a durable fence.
 // The operation log still has to admit its exact request before checkout.
-func (g *Gate) AcquireWorkspaceRollback(ctx context.Context, sessionID string) (release func(), ok bool, err error) {
+func (g *Gate) AcquireWorkspaceRollback(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error) {
 	return g.acquireForegroundSession(ctx, sessionID)
 }
 
-func (g *Gate) acquireForegroundSession(ctx context.Context, sessionID string) (release func(), ok bool, err error) {
+func (g *Gate) acquireForegroundSession(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error) {
 	if err := g.lockForegroundSession(ctx, sessionID); err != nil {
 		return nil, false, err
 	}
@@ -173,7 +173,7 @@ func (g *Gate) acquireForegroundSession(ctx context.Context, sessionID string) (
 
 // AcquireRecoverySession probes abandoned ownership without delaying other recovery sweeps.
 // Foreground commands wait for this internal check instead of reporting a live Run conflict.
-func (g *Gate) AcquireRecoverySession(ctx context.Context, sessionID string) (release func(), ok bool, err error) {
+func (g *Gate) AcquireRecoverySession(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error) {
 	g.mu.Lock()
 	release, ok, err = g.acquireSessionLocked(sessionID, sessionRecovery)
 	g.mu.Unlock()
@@ -183,7 +183,7 @@ func (g *Gate) AcquireRecoverySession(ctx context.Context, sessionID string) (re
 	return g.checkRollbackFence(ctx, sessionID, release)
 }
 
-func (g *Gate) checkRollbackFence(ctx context.Context, sessionID string, release func()) (func(), bool, error) {
+func (g *Gate) checkRollbackFence(ctx context.Context, sessionID identity.SessionID, release func()) (func(), bool, error) {
 	pending, err := g.rollbackPending(ctx, sessionID)
 	if err != nil || pending {
 		release()
@@ -192,8 +192,8 @@ func (g *Gate) checkRollbackFence(ctx context.Context, sessionID string, release
 	return release, true, nil
 }
 
-func (g *Gate) acquireSessionLocked(sessionID string, kind sessionClaimKind) (release func(), ok bool, err error) {
-	if sessionID == "" {
+func (g *Gate) acquireSessionLocked(sessionID identity.SessionID, kind sessionClaimKind) (release func(), ok bool, err error) {
+	if sessionID.IsZero() {
 		return nil, false, errors.New("session admission: session identity is required")
 	}
 	if g.activeSessionLocked(sessionID) {
@@ -205,8 +205,8 @@ func (g *Gate) acquireSessionLocked(sessionID string, kind sessionClaimKind) (re
 // AcquireRun atomically reserves a fresh run's session and working tree. The
 // returned admission must be either admitted after the durable opening commit
 // or released when admission fails.
-func (g *Gate) AcquireRun(ctx context.Context, sessionID, cwd string) (RunAdmission, bool, error) {
-	if sessionID == "" {
+func (g *Gate) AcquireRun(ctx context.Context, sessionID identity.SessionID, cwd string) (RunAdmission, bool, error) {
+	if sessionID.IsZero() {
 		return RunAdmission{}, false, errors.New("session admission: session identity is required")
 	}
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
@@ -236,7 +236,7 @@ func (g *Gate) AcquireRun(ctx context.Context, sessionID, cwd string) (RunAdmiss
 	return admission, true, nil
 }
 
-func (g *Gate) acquireRunLocked(sessionID, cwd string) (RunAdmission, bool, error) {
+func (g *Gate) acquireRunLocked(sessionID identity.SessionID, cwd string) (RunAdmission, bool, error) {
 	if g.activeSessionLocked(sessionID) {
 		return RunAdmission{}, false, nil
 	}
@@ -253,7 +253,7 @@ func (g *Gate) acquireRunLocked(sessionID, cwd string) (RunAdmission, bool, erro
 // BeginMaintenance converts a live run into a maintenance reservation. Both
 // its session and working tree remain unavailable until Release returns, so a
 // checkpoint snapshot cannot race a destructive mutation of an overlapping tree.
-func (g *Gate) BeginMaintenance(runID string) (release func(), ok bool) {
+func (g *Gate) BeginMaintenance(runID identity.RunID) (release func(), ok bool) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	run, ok := g.runs[runID]
@@ -299,10 +299,10 @@ func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, 
 
 // ActiveSessions snapshots every session with a pending or live Run, or a held
 // session-only admission.
-func (g *Gate) ActiveSessions() map[string]bool {
+func (g *Gate) ActiveSessions() map[identity.SessionID]bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	set := make(map[string]bool, len(g.runs)+len(g.pending)+len(g.maintenance)+len(g.claims))
+	set := make(map[identity.SessionID]bool, len(g.runs)+len(g.pending)+len(g.maintenance)+len(g.claims))
 	for id := range g.activeSessionsLocked {
 		set[id] = true
 	}
@@ -321,7 +321,7 @@ func (g *Gate) Changes() <-chan struct{} {
 // pending reservation, a live Run, or a Run in maintenance. Admission asks whether one session is
 // active and observers ask which ones are; both read this, so a session cannot
 // be busy for one question and idle for the other.
-func (g *Gate) activeSessionsLocked(yield func(string) bool) {
+func (g *Gate) activeSessionsLocked(yield func(identity.SessionID) bool) {
 	for id := range g.claims {
 		if !yield(id) {
 			return
@@ -339,7 +339,7 @@ func (g *Gate) activeSessionsLocked(yield func(string) bool) {
 // is an observation boundary, not a reservation: callers must still acquire
 // their own Run admission after it returns and may wait again if another owner
 // wins that race.
-func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) error {
+func (g *Gate) WaitRunStartable(ctx context.Context, sessionID identity.SessionID, cwd string) error {
 	if ctx == nil {
 		return errors.New("session admission: wait context is required")
 	}
@@ -381,7 +381,7 @@ func (g *Gate) WaitRunStartable(ctx context.Context, sessionID, cwd string) erro
 
 // Successful return transfers the locked Gate to the foreground admission. The
 // recheck and reservation share that lock, so another probe cannot slip between them.
-func (g *Gate) lockForegroundSession(ctx context.Context, sessionID string) error {
+func (g *Gate) lockForegroundSession(ctx context.Context, sessionID identity.SessionID) error {
 	for {
 		g.mu.Lock()
 		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
@@ -401,7 +401,7 @@ func (g *Gate) lockForegroundSession(ctx context.Context, sessionID string) erro
 	}
 }
 
-func (g *Gate) activeSessionLocked(sessionID string) bool {
+func (g *Gate) activeSessionLocked(sessionID identity.SessionID) bool {
 	for id := range g.activeSessionsLocked {
 		if id == sessionID {
 			return true
@@ -452,7 +452,7 @@ func (g *Gate) treeReservedLocked(cwd string) (bool, error) {
 	return false, nil
 }
 
-func (g *Gate) addClaimLocked(sessionID string, kind sessionClaimKind) func() {
+func (g *Gate) addClaimLocked(sessionID identity.SessionID, kind sessionClaimKind) func() {
 	g.claims[sessionID] = kind
 
 	var once sync.Once

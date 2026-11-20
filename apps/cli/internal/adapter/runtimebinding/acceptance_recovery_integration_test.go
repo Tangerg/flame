@@ -76,7 +76,7 @@ func TestOneShotQueriesAcceptedStartAndResumeAfterDeliveryExpiry(t *testing.T) {
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
-	command := authoring.StartRun{CommandID: mutation.NewCommandID(), SessionID: session.ID, Message: authoring.Message{Text: "delegate approval probe"}, Options: authoring.RunOptions{Provider: "deepseek", Model: "deepseek-chat"}}
+	command := authoring.StartRun{CommandID: mutation.NewCommandID(), SessionID: session.ID, Message: authoring.Message{Text: runtimefixture.DelegateApprovalProbe}, Options: authoring.RunOptions{Provider: "deepseek", Model: "deepseek-chat"}}
 	if err := runapplication.Execute(ctx, runapplication.Invocation{Runtime: runtime, Renderer: new(recoveryRenderer), ReplayPolicy: policy, ApproveAll: true, Start: command}); err != nil {
 		t.Fatal(err)
 	}

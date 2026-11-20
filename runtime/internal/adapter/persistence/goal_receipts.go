@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
@@ -29,7 +31,7 @@ func (g *GoalStore) CaptureGoalRun(ctx context.Context, value run.Run) error {
 		return nil
 	})
 }
-func (g *GoalStore) PendingGoalRun(ctx context.Context, sessionID string) (goal.RunReceipt, bool, error) {
+func (g *GoalStore) PendingGoalRun(ctx context.Context, sessionID identity.SessionID) (goal.RunReceipt, bool, error) {
 	return scopedPair(ctx, g.db.read, func(ctx context.Context) (goal.RunReceipt, bool, error) {
 		var r goal.RunReceipt
 		var finished int64

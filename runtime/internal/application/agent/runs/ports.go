@@ -5,6 +5,8 @@ import (
 	"iter"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -52,7 +54,7 @@ type RunningRootCancellationRequester interface {
 // seed a fresh executor working context. Once execution starts, restoration is
 // self-contained in the executor checkpoint and never re-reads Conversation.
 type ConversationReader interface {
-	Read(ctx context.Context, sessionID string) ([]corechat.Message, error)
+	Read(ctx context.Context, sessionID identity.SessionID) ([]corechat.Message, error)
 }
 
 // WorkingContextComposer turns one Host conversation seed into the complete,
@@ -79,7 +81,7 @@ type modelAdmitter interface {
 // PromptText is the user-authored text supplied to prompt hooks and relevance
 // recall; it is kept distinct from media and from the historical seed.
 type WorkingContextInput struct {
-	SessionID string
+	SessionID identity.SessionID
 	// CWD is where this Run's tools operate. WorkspaceCWD is the Session's
 	// project directory: what a trust grant was given to, and what durable
 	// project knowledge is addressed by. They differ for an isolated Run.
@@ -132,12 +134,13 @@ type approvalRulePreparer interface {
 // acceptedContinuationStore reads and retires the accepted answer handoff.
 type acceptedContinuationStore interface {
 	List(ctx context.Context) ([]AcceptedContinuation, error)
-	Delete(ctx context.Context, rootRunID string) error
+	Delete(ctx context.Context, rootRunID identity.RunID) error
 }
 
 type acceptedSubtreeCancellationStore interface {
-	SubtreeCancellations(ctx context.Context, rootRunID string) ([]AcceptedSubtreeCancellation, error)
-	DeleteSubtreeCancellation(ctx context.Context, rootRunID, targetRunID string) error
+	ListSubtreeCancellations(ctx context.Context) ([]AcceptedSubtreeCancellation, error)
+	SubtreeCancellations(ctx context.Context, rootRunID identity.RunID) ([]AcceptedSubtreeCancellation, error)
+	DeleteSubtreeCancellation(ctx context.Context, rootRunID, targetRunID identity.RunID) error
 }
 
 type AcceptedSubtreeCancellationRestorer interface {
@@ -152,7 +155,7 @@ type RecoveredSubtreeCancellation interface {
 // The implementation must consume it only at its documented safe boundary and
 // reject an execution that is already waiting or terminal.
 type RunningExecutionSteerer interface {
-	SubmitSteer(ctx context.Context, ref ExecutorRef, input PreparedSteer) (string, error)
+	SubmitSteer(ctx context.Context, ref ExecutorRef, input PreparedSteer) (identity.ItemID, error)
 }
 
 // RunningSubtreeCanceler submits the Application's already-validated product
@@ -227,7 +230,7 @@ type PreparedWaitingSubtreeCancellation struct {
 
 // sessionReader resolves the product Session a Run belongs to.
 type sessionReader interface {
-	Get(ctx context.Context, id string) (session.Session, error)
+	Get(ctx context.Context, id identity.SessionID) (session.Session, error)
 }
 
 // sessionCreator owns the one Session creation path consumed by Run start: a
@@ -238,28 +241,29 @@ type sessionReader interface {
 type sessionCreator interface {
 	PrepareOpening(
 		ctx context.Context,
-		id, title, cwd string,
+		id identity.SessionID,
+		title, cwd string,
 		selection modelchoice.Selection,
 	) (session.Session, *session.Session, error)
 }
 
 // activeRunReader reports the Session's current non-terminal Run for admission.
 type activeRunReader interface {
-	ActiveRun(ctx context.Context, sessionID string) (run.Run, bool, error)
+	ActiveRun(ctx context.Context, sessionID identity.SessionID) (run.Run, bool, error)
 }
 
 // pendingInterruptReader returns the valid root-owned waiting boundary for an
 // addressed Run without exposing checkpoint storage. A found value belongs to
 // the requested root Run.
 type pendingInterruptReader interface {
-	LookupOpenInterrupt(ctx context.Context, runID string) (Pending, bool, error)
+	LookupOpenInterrupt(ctx context.Context, runID identity.RunID) (Pending, bool, error)
 }
 
 // terminationCommitter owns the atomic application write-sets for canceling
 // a parked Run or declaring its executor state unrecoverable.
 type terminationCommitter interface {
-	ApplyRunCancel(ctx context.Context, ref ExecutorRef, runID, reason string, finishedAt time.Time, receipt CancellationReceipt) (run.Run, error)
-	ApplyRunLost(ctx context.Context, sessionID, runID string, finishedAt time.Time) error
+	ApplyRunCancel(ctx context.Context, ref ExecutorRef, runID identity.RunID, reason string, finishedAt time.Time, receipt CancellationReceipt) (run.Run, error)
+	ApplyRunLost(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, finishedAt time.Time) error
 }
 
 // Projection is the run use cases' durable Run read. Run answers point
@@ -269,24 +273,24 @@ type terminationCommitter interface {
 // facts, not cancellation policy: application/domain code owns topology
 // validation and subtree meaning.
 type Projection interface {
-	ListRuns(context.Context, string) ([]run.Run, error)
-	Run(ctx context.Context, runID string) (run.Run, bool, error)
-	Tree(ctx context.Context, runID string) ([]run.Run, error)
+	ListRuns(context.Context, identity.SessionID) ([]run.Run, error)
+	Run(ctx context.Context, runID identity.RunID) (run.Run, bool, error)
+	Tree(ctx context.Context, runID identity.RunID) ([]run.Run, error)
 }
 
 // ItemProjection resolves the exact transcript Item a command plans to replace.
 // Waiting child cancellation uses it to freeze the parent spawning Item before
 // either executor or persistence side effects begin.
 type ItemProjection interface {
-	Item(ctx context.Context, itemID string) (transcript.Item, bool, error)
+	Item(ctx context.Context, itemID identity.ItemID) (transcript.Item, bool, error)
 }
 
 // RootExecutionStart carries a fresh root's input, frozen policy, and resolved
 // execution scope. During pre-admission validation the scope fields are empty;
 // the Application fills them before passing the value to StageRoot.
 type RootExecutionStart struct {
-	SessionID string
-	RunID     string
+	SessionID identity.SessionID
+	RunID     identity.RunID
 	// CWD is the execution directory — the sandbox copy for an isolated
 	// run, else the session's project directory. The durable run record keeps the
 	// project directory; only the executor sees the copy.
@@ -317,10 +321,10 @@ type RootExecutionStart struct {
 // remains independent of executor topology and is cross-checked at the executor
 // boundary.
 type ExecutionMember struct {
-	RunID           string
+	RunID           identity.RunID
 	MemberID        string
-	ParentRunID     string
-	SpawnedByItemID string
+	ParentRunID     identity.RunID
+	SpawnedByItemID identity.ItemID
 	ModelSelection  modelchoice.Selection
 	// DrainedTools distinguishes an unfinished parent Tool from a result already
 	// committed while the executor still retains the child in an active batch.
@@ -334,9 +338,9 @@ type ExecutionMember struct {
 // Isolated the owning Session's: a restored executor reads its policy from
 // them, never from a copy inside the checkpoint.
 type ExecutionContinuation struct {
-	SessionID         string
+	SessionID         identity.SessionID
 	ExecutorID        string
-	RootRunID         string
+	RootRunID         identity.RunID
 	Members           []ExecutionMember
 	Checkpoint        ExecutorCheckpoint
 	Capabilities      run.Capabilities
@@ -349,5 +353,5 @@ type ExecutionContinuation struct {
 // session's Run executes in, creating it from the project directory on first
 // use. nil means isolation is unavailable and an isolated start is refused.
 type isolationProvider interface {
-	Workspace(ctx context.Context, sessionID, projectRoot string) (string, error)
+	Workspace(ctx context.Context, sessionID identity.SessionID, projectRoot string) (string, error)
 }

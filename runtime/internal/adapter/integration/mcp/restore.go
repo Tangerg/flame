@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -20,22 +21,9 @@ func (p *Pool) RestoreTools(ctx context.Context, refs []domaintool.Ref, activati
 	if prepare == nil {
 		return nil, nil, errors.New("mcp: restored tools require call preparation")
 	}
-	groups := make(map[mcpserver.ID]struct{})
-	var sources []mcpserver.ID
-	seen := make(map[domaintool.Ref]struct{}, len(refs))
-	for _, ref := range refs {
-		source, _, valid := ref.MCP()
-		if _, managed := source.Origin().Installation(); !valid || !managed {
-			return nil, nil, plugin.ErrInvalid
-		}
-		if _, duplicate := seen[ref]; duplicate {
-			return nil, nil, plugin.ErrInvalid
-		}
-		seen[ref] = struct{}{}
-		if _, found := groups[source]; !found {
-			sources = append(sources, source)
-		}
-		groups[source] = struct{}{}
+	sources, requested, err := restoredSources(refs)
+	if err != nil {
+		return nil, nil, err
 	}
 	var borrowed []*BorrowedSession
 	var once sync.Once
@@ -55,47 +43,13 @@ func (p *Pool) RestoreTools(ctx context.Context, refs []domaintool.Ref, activati
 	}()
 	tools := make(map[domaintool.Ref]toolcontract.Tool, len(refs))
 	for _, source := range sources {
-		descriptor, found, err := p.registry.Dispatchable(ctx, source)
-		if err != nil || !found || !descriptor.Enabled {
-			return nil, nil, errors.Join(ErrUnavailable, err)
-		}
-		installation, _ := source.Origin().Installation()
-		release, _, _ := descriptor.Source.Release()
-		activation, err := plugins.OriginalActivation(activations, installation, release, source.Name())
-		if err != nil {
-			return nil, nil, err
-		}
-		use, err := p.BorrowActivation(ctx, source, activation)
+		use, descriptor, err := p.borrowOriginal(ctx, source, activations)
 		if err != nil {
 			return nil, nil, err
 		}
 		borrowed = append(borrowed, use)
-		_, err = p.SessionActor(use.Context(), source, use.Session())
-		if err != nil {
+		if err := p.restoreSourceTools(use, source, descriptor, requested, prepare, tools); err != nil {
 			return nil, nil, err
-		}
-		config := ServerConfig{Server: descriptor}
-		fingerprint, err := use.SourceFingerprint()
-		if err != nil {
-			return nil, nil, err
-		}
-		if fingerprint != config.AuthorityFingerprint() {
-			return nil, nil, plugin.ErrStale
-		}
-		candidates, err := sourceTools(use.Context(), nil, config, use.Session())
-		if err != nil {
-			return nil, nil, err
-		}
-		for _, candidate := range candidates {
-			ref, found, err := IdentifyTool(candidate)
-			if err != nil || !found {
-				return nil, nil, errors.Join(ErrUnavailable, err)
-			}
-			if _, requested := seen[ref]; !requested {
-				continue
-			}
-			candidate.held, candidate.owner = use, p.inner
-			tools[ref] = authorizedTool{source: candidate, registry: p.registry, pool: p, prepare: prepare}
 		}
 	}
 	result := make([]toolcontract.Tool, 0, len(refs))
@@ -107,4 +61,74 @@ func (p *Pool) RestoreTools(ctx context.Context, refs []domaintool.Ref, activati
 		result = append(result, value)
 	}
 	return result, release, nil
+}
+
+// restoredSources lists each installed source once, in first-reference order,
+// with the exact tools requested from it.
+func restoredSources(refs []domaintool.Ref) ([]mcpserver.ID, map[domaintool.Ref]struct{}, error) {
+	var sources []mcpserver.ID
+	requested := make(map[domaintool.Ref]struct{}, len(refs))
+	for _, ref := range refs {
+		source, _, valid := ref.MCP()
+		if _, managed := source.Origin().Installation(); !valid || !managed {
+			return nil, nil, plugin.ErrInvalid
+		}
+		if _, duplicate := requested[ref]; duplicate {
+			return nil, nil, plugin.ErrInvalid
+		}
+		requested[ref] = struct{}{}
+		if !slices.Contains(sources, source) {
+			sources = append(sources, source)
+		}
+	}
+	return sources, requested, nil
+}
+
+// borrowOriginal borrows the exact activation the checkpoint recorded for an
+// installed source.
+func (p *Pool) borrowOriginal(ctx context.Context, source mcpserver.ID, activations []plugin.Activation) (*BorrowedSession, mcpserver.Server, error) {
+	descriptor, found, err := p.registry.Dispatchable(ctx, source)
+	if err != nil || !found || !descriptor.Enabled {
+		return nil, mcpserver.Server{}, errors.Join(ErrUnavailable, err)
+	}
+	installation, _ := source.Origin().Installation()
+	release, _, _ := descriptor.Source.Release()
+	activation, err := plugins.OriginalActivation(activations, installation, release, source.Name())
+	if err != nil {
+		return nil, mcpserver.Server{}, err
+	}
+	use, err := p.BorrowActivation(ctx, source, activation)
+	return use, descriptor, err
+}
+
+// restoreSourceTools rediscovers the requested tools on a borrowed session,
+// refusing a source whose authority changed since the checkpoint.
+func (p *Pool) restoreSourceTools(use *BorrowedSession, source mcpserver.ID, descriptor mcpserver.Server, requested map[domaintool.Ref]struct{}, prepare ToolPreparation, tools map[domaintool.Ref]toolcontract.Tool) error {
+	if _, err := p.SessionActor(use.Context(), source, use.Session()); err != nil {
+		return err
+	}
+	config := ServerConfig{Server: descriptor}
+	fingerprint, err := use.SourceFingerprint()
+	if err != nil {
+		return err
+	}
+	if fingerprint != config.AuthorityFingerprint() {
+		return plugin.ErrStale
+	}
+	candidates, err := sourceTools(use.Context(), nil, config, use.Session())
+	if err != nil {
+		return err
+	}
+	for _, candidate := range candidates {
+		ref, found, err := IdentifyTool(candidate)
+		if err != nil || !found {
+			return errors.Join(ErrUnavailable, err)
+		}
+		if _, wanted := requested[ref]; !wanted {
+			continue
+		}
+		candidate.held, candidate.owner = use, p.inner
+		tools[ref] = authorizedTool{source: candidate, registry: p.registry, pool: p, prepare: prepare}
+	}
+	return nil
 }

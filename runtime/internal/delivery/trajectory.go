@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/packages/go-sdk/pagination"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 )
@@ -27,11 +30,15 @@ func registerSessionTrajectory(registry *Registry) {
 }
 
 func (s *Handler) ListSessionTrajectory(ctx context.Context, in protocol.ListSessionTrajectoryRequest) (*protocol.Page[protocol.TrajectoryEntry], error) {
-	limit, err := requestedPageLimit(in.Limit)
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return nil, parseErr
+	}
+	limit, err := pagination.ParseLimit(in.Limit)
 	if err != nil {
 		return nil, wirePageError(err)
 	}
-	page, err := s.queries.ListTrajectoryPage(ctx, in.SessionID, in.IncludeDescendants, in.Cursor, limit)
+	page, err := s.queries.ListTrajectoryPage(ctx, sessionID, in.IncludeDescendants, in.Cursor, limit)
 	if err != nil {
 		return nil, wireItemScopeError(wirePageError(err))
 	}

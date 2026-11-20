@@ -72,7 +72,7 @@ func (r *runs) startRun(commandID authoring.CommandID, message authoring.Message
 	// The queue reservation owns this candidate while the existing operation
 	// owner reads and saves its bytes. Only the UI callback can publish dispatch:
 	// canceling preparation therefore leaves an ordinary editable queue entry.
-	started := r.tasks.sessionFence(inputPreparationOperation, false,
+	started := r.tasks.sessionFence(inputPreparationOperation,
 		func(ctx context.Context) (*workbench.PreparedInput, error) {
 			blocks, err := r.runtime.PrepareInput(ctx, pending.Command.Message)
 			if err != nil {
@@ -183,7 +183,7 @@ func (r *runs) prepareRunStart(input *authoring.StartRun, prepared *workbench.Pr
 }
 
 func (r *runs) presentRunStart(status string) {
-	r.execution.projectionFailed = false
+	r.execution.trustProjection()
 	r.transcript().Follow()
 	r.activity.Reset()
 	r.header.SetUsage(conversation.Usage{})
@@ -203,7 +203,7 @@ func (r *runs) acceptStartedRun(input authoring.StartRun, opened conversation.Se
 		r.settleQueuedDispatch(input.CommandID)
 		return
 	}
-	r.status.active("canceling")
+	r.status.active(statusCanceling)
 	r.requestRuntimeCancellation(conversation.CancelRun{
 		CommandID: pending[0].CancelCommandID,
 		RunID:     opened.RunID,
@@ -284,49 +284,65 @@ func (r *runs) applyPresentationEvent(envelope conversation.RunEvent) {
 	switch event := envelope.Event.(type) {
 	case conversation.SegmentStarted:
 		if event.Run.Lineage.IsRoot() {
-			r.observeCurrentRunStatus()
-			if r.execution.opening != nil && r.execution.opening.RunID == event.Run.ID && !r.tasks.operations.Active(pendingRunSettlementOperation) {
-				r.execution.opening = nil
-			}
-			if r.queuedDispatchCanceling() {
-				r.status.active("canceling")
-			} else if r.tasks.operations.Active(pendingRunSettlementOperation) {
-				r.status.note("working · retrying local settlement")
-			} else {
-				r.status.active("working")
-			}
-			r.execution.clock.start(event.Run.Usage.Duration, time.Now())
+			r.noteRootSegmentStarted(event)
 		}
 	case conversation.BlockStarted:
 		r.noteBlockStarted(event.Block)
 	case conversation.BlockCompleted:
 		if event.Block.Kind == conversation.BlockTool {
-			r.status.active("working")
+			r.status.active(statusWorking)
 		}
 	case conversation.PlanChanged:
 		r.activity.Set(r.execution.conversation.PlanItems())
 	case conversation.RunProgress:
-		if envelope.RunID == r.execution.conversation.RunID() {
-			r.header.SetUsage(r.execution.conversation.Usage())
-			r.observeCurrentRunStatus()
-			r.status.progress(event)
-		} else if event.Activity != nil {
-			r.status.active("subagent · " + activityLabel(event.Activity))
-		}
+		r.noteProgress(envelope.RunID, event)
 	case conversation.SegmentFinished:
-		switch {
-		case event.Run.Status == protocol.RunStatusFinished:
-			if envelope.RunID == r.execution.conversation.RunID() {
-				r.noteRunFinished()
-			}
-		case r.execution.conversation.Phase() == conversation.Waiting:
-			r.openInterrupts(r.execution.conversation.Interrupts())
-			r.header.SetUsage(r.execution.conversation.Usage())
-			r.observeCurrentRunStatus()
-			r.status.note(statusWaitingForAnswers)
-		}
+		r.noteSegmentFinished(envelope.RunID, event)
 	case conversation.BlockDelta, conversation.ToolArgumentsDelta, conversation.CustomEvent:
 	default:
+	}
+}
+
+func (r *runs) noteRootSegmentStarted(event conversation.SegmentStarted) {
+	r.observeCurrentRunStatus()
+	settling := r.tasks.operations.Active(pendingRunSettlementOperation)
+	if r.execution.opening != nil && r.execution.opening.RunID == event.Run.ID && !settling {
+		r.execution.opening = nil
+	}
+	switch {
+	case r.queuedDispatchCanceling():
+		r.status.active(statusCanceling)
+	case settling:
+		r.status.note(statusWorking + " · retrying local settlement")
+	default:
+		r.status.active(statusWorking)
+	}
+	r.execution.clock.start(event.Run.Usage.Duration, time.Now())
+}
+
+// noteProgress shows the current Run's own progress; a descendant reports
+// only what it is doing.
+func (r *runs) noteProgress(runID string, event conversation.RunProgress) {
+	if runID == r.execution.conversation.RunID() {
+		r.header.SetUsage(r.execution.conversation.Usage())
+		r.observeCurrentRunStatus()
+		r.status.progress(event)
+	} else if event.Activity != nil {
+		r.status.active("subagent · " + activityLabel(event.Activity))
+	}
+}
+
+func (r *runs) noteSegmentFinished(runID string, event conversation.SegmentFinished) {
+	switch {
+	case event.Run.Status == protocol.RunStatusFinished:
+		if runID == r.execution.conversation.RunID() {
+			r.noteRunFinished()
+		}
+	case r.execution.conversation.Phase() == conversation.Waiting:
+		r.openInterrupts(r.execution.conversation.Interrupts())
+		r.header.SetUsage(r.execution.conversation.Usage())
+		r.observeCurrentRunStatus()
+		r.status.note(statusWaitingForAnswers)
 	}
 }
 
@@ -347,11 +363,10 @@ func (r *runs) noteRunFinished() {
 }
 
 func (r *runs) finishFollowing() {
-	r.execution.following = false
-	r.execution.projectionFailed = false
+	r.execution.observation = observationDetached
 	r.link.refreshOpenTimeline()
 	if r.session.invalidated {
-		r.sessions.refreshInvalidatedSession(true)
+		r.sessions.refreshInvalidatedSession(refreshSettlingRun)
 		return
 	}
 	if r.execution.conversation.Phase() != conversation.Idle || r.execution.conversation.Outcome().Status == "" {
@@ -363,7 +378,7 @@ func (r *runs) finishFollowing() {
 	if !dispatching {
 		r.execution.opening = nil
 	} else if r.queuedDispatchCanceling() || r.execution.pendingCancel != nil {
-		r.status.note("canceling")
+		r.status.note(statusCanceling)
 	} else if r.tasks.operations.Active(pendingRunSettlementOperation) {
 		r.status.note("run complete · retrying local settlement")
 	} else {
@@ -395,7 +410,7 @@ func (r *runs) fail(err error) {
 	if err == nil || errors.Is(err, context.Canceled) {
 		return
 	}
-	r.execution.following = false
+	r.execution.stopFollowing()
 	r.prompts.dismiss()
 	if r.execution.conversation.Phase() == conversation.Running &&
 		r.execution.conversation.RunID() == "" && r.execution.opening == nil {
@@ -405,7 +420,10 @@ func (r *runs) fail(err error) {
 	r.transcript().Append(presentError(r.transcript().theme, err.Error()))
 	r.header.SetUsage(r.execution.conversation.Usage())
 	blocked := r.runAdmissionBlocked()
-	r.execution.projectionFailed = r.execution.conversation.Busy()
+	r.execution.observation = observationDetached
+	if r.execution.conversation.Busy() {
+		r.execution.observation = observationFailed
+	}
 	r.prompt.SetBusy(blocked)
 	r.status.fail(err.Error(), blocked)
 	r.syncAnimation()
@@ -414,21 +432,21 @@ func (r *runs) fail(err error) {
 
 func (r *runs) dropStream() {
 	r.tasks.operations.Cancel(streamOperation)
-	r.execution.following = false
+	r.execution.stopFollowing()
 }
 
 func (r *runs) startFollowing(work func(context.Context, operationLease)) {
 	r.dropStream()
-	r.execution.following = true
-	if r.tasks.operations.Go(streamOperation, false, work) {
+	r.execution.observation = observationFollowing
+	if r.tasks.operations.Go(streamOperation, work) {
 		return
 	}
-	r.execution.following = false
+	r.execution.stopFollowing()
 	r.fail(errStreamFollowerUnavailable)
 }
 
 func (r *runs) syncAnimation() {
-	running := r.execution.conversation.Phase() == conversation.Running && r.execution.following
+	running := r.execution.conversation.Phase() == conversation.Running && r.execution.following()
 	switch {
 	case running && r.execution.stopClock == nil:
 		r.execution.stopClock = r.every(animationInterval, func() {

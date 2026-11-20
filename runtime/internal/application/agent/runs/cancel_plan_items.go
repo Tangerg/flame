@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -47,8 +49,8 @@ func (c *Cancellations) loadWaitingCancellationItems(ctx context.Context, plan *
 
 // pendingItems reads every Item a hand-off names; those Items, not the
 // hand-off, own what each interrupt asked and each drained Tool invoked.
-func pendingItems(ctx context.Context, items ItemProjection, pending Pending) (map[string]transcript.Item, error) {
-	itemsByID := make(map[string]transcript.Item)
+func pendingItems(ctx context.Context, items ItemProjection, pending Pending) (map[identity.ItemID]transcript.Item, error) {
+	itemsByID := make(map[identity.ItemID]transcript.Item)
 	for _, itemID := range pendingItemIDs(pending) {
 		item, found, err := items.Item(ctx, itemID)
 		if err != nil {
@@ -88,8 +90,8 @@ func (c *Cancellations) loadWaitingCancellationSpawningItem(
 	return nil
 }
 
-func cancellationTargetRunIDs(subtree []cancellationRun) map[string]struct{} {
-	targetRunIDs := make(map[string]struct{}, len(subtree))
+func cancellationTargetRunIDs(subtree []cancellationRun) map[identity.RunID]struct{} {
+	targetRunIDs := make(map[identity.RunID]struct{}, len(subtree))
 	for _, member := range subtree {
 		targetRunIDs[member.run.ID()] = struct{}{}
 	}

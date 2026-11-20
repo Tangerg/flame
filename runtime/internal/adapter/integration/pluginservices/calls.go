@@ -100,53 +100,78 @@ func (c *installedCall) accepts(record plugin.CommandBinding) error {
 	return nil
 }
 
+func (c *installedCall) target(plugins.ContributionBinding) framecall.Target { return c.request.Target }
+
 func (c *installedCall) Invoke(ctx context.Context) (framevalue.JSON, error) {
 	if c.Kind() == frame.Command {
-		reply, err := invokeRawCommand(ctx, c.calls, c.request.Method, c.request.Input, nil, c.accepts, c.resolve, func(ctx context.Context, binding plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
+		reply, err := invokeRawCommand(ctx, c.calls, c.request.Method, c.request.Input, framevalue.JSON.Validate, c.accepts, c.resolve, func(ctx context.Context, binding plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
 			metadata, release, err := c.calls.pool.OpenRPC(ctx, binding.ServerID, session)
 			if err != nil {
 				return metadata, nil, err
 			}
 			return metadata, func() error { release(); return nil }, nil
-		}, func(plugins.ContributionBinding) framecall.Target { return c.request.Target })
+		}, c.target)
 		return reply.value, err
 	}
-	location, err := c.resolve(ctx)
+	ctx, query, err := c.openQuery(ctx)
 	if err != nil {
 		return framevalue.JSON{}, err
+	}
+	defer query.release()
+	return query.method.InvokeWithMetadata(ctx, "", c.request.Input, query.metadata)
+}
+
+// openedQuery is a query bound to a borrowed session of its resolved
+// contribution under a captured invocation.
+type openedQuery struct {
+	location plugins.ContributionBinding
+	session  *sdk.ClientSession
+	method   *pluginmcp.Binding
+	metadata sdk.ParamsBase
+	release  func()
+}
+
+func (c *installedCall) openQuery(ctx context.Context) (context.Context, openedQuery, error) {
+	location, err := c.resolve(ctx)
+	if err != nil {
+		return ctx, openedQuery{}, err
 	}
 	borrowed, err := c.calls.pool.BorrowSession(ctx, location.ServerID)
 	if err != nil {
-		return framevalue.JSON{}, err
+		return ctx, openedQuery{}, err
 	}
-	defer borrowed.Close()
+	fail := func(err error) (context.Context, openedQuery, error) {
+		_ = borrowed.Close()
+		return ctx, openedQuery{}, err
+	}
 	ctx = borrowed.Context()
 	session := borrowed.Session()
 	exported, err := pluginmcp.ResolveCapability(ctx, session, location.Export, c.request.Contract)
 	if err != nil {
-		return framevalue.JSON{}, err
+		return fail(err)
 	}
-	bound, err := exported.Method(c.request.Method)
+	method, err := exported.Method(c.request.Method)
 	if err != nil {
-		return framevalue.JSON{}, err
+		return fail(err)
 	}
-	if err := validateInput(ctx, bound, c.request.Input); err != nil {
-		return framevalue.JSON{}, err
+	if err := validateInput(ctx, method, c.request.Input); err != nil {
+		return fail(err)
 	}
 	invocation, err := operation.Capture(ctx, c.request.Target)
 	if err != nil {
-		return framevalue.JSON{}, err
+		return fail(err)
 	}
-	ctx, err = pluginmcp.WithInvocation(ctx, invocation)
-	if err != nil {
-		return framevalue.JSON{}, err
+	if ctx, err = pluginmcp.WithInvocation(ctx, invocation); err != nil {
+		return fail(err)
 	}
 	metadata, release, err := c.calls.pool.OpenRPC(ctx, location.ServerID, session)
 	if err != nil {
-		return framevalue.JSON{}, err
+		return fail(err)
 	}
-	defer release()
-	return bound.InvokeWithMetadata(ctx, "", c.request.Input, metadata)
+	return ctx, openedQuery{
+		location: location, session: session, method: method, metadata: metadata,
+		release: func() { release(); _ = borrowed.Close() },
+	}, nil
 }
 
 func validateInput(ctx context.Context, binding *pluginmcp.Binding, input framevalue.JSON) error {
@@ -170,26 +195,29 @@ func (d callDelivery) admits(method frame.MethodDescriptor) bool {
 	return (len(method.Stream) != 0) == (d == streamedCall)
 }
 
+// refuseHostOwnedContract keeps a client from calling a contract whose
+// authority only the host can grant.
+func refuseHostOwnedContract(reference string) error {
+	switch reference {
+	case mcpconnector.Reference:
+		return fmt.Errorf("%w: external MCP commands require a host-admitted launch grant", plugin.ErrInvalid)
+	case skilllearning.Reference:
+		return fmt.Errorf("%w: Skill governance requires a host-admitted library and review authority", plugin.ErrInvalid)
+	case hookprovider.Reference:
+		return fmt.Errorf("%w: lifecycle hook evaluation requires host-admitted project trust", plugin.ErrInvalid)
+	default:
+		return nil
+	}
+}
+
 func admitCallRequest(request plugins.CallRequest, delivery callDelivery) (*frame.Method, error) {
 	if request.Contract == nil {
 		return nil, plugin.ErrInvalid
 	}
-	if request.Contract.Descriptor().Reference == mcpconnector.Reference {
-		return nil, fmt.Errorf("%w: external MCP commands require a host-admitted launch grant", plugin.ErrInvalid)
-	}
-	if request.Contract.Descriptor().Reference == skilllearning.Reference {
-		return nil, fmt.Errorf("%w: Skill governance requires a host-admitted library and review authority", plugin.ErrInvalid)
-	}
-	if request.Contract.Descriptor().Reference == hookprovider.Reference {
-		return nil, fmt.Errorf("%w: lifecycle hook evaluation requires host-admitted project trust", plugin.ErrInvalid)
-	}
-	if err := request.Installation.Validate(); err != nil {
+	if err := refuseHostOwnedContract(request.Contract.Descriptor().Reference); err != nil {
 		return nil, err
 	}
-	if err := request.Digest.Validate(); err != nil {
-		return nil, err
-	}
-	if err := request.Contribution.Validate(); err != nil {
+	if err := errors.Join(request.Installation.Validate(), request.Digest.Validate(), request.Contribution.Validate()); err != nil {
 		return nil, err
 	}
 	method, found := request.Contract.Method(request.Method)

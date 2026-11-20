@@ -1,14 +1,18 @@
 package sessions
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+)
 
 // ErrWorkspaceMutationPending reports that an unfinished file rollback still
 // owns the Session or the working tree a new rollback addresses.
 var ErrWorkspaceMutationPending = errors.New("sessions: workspace mutation is pending")
 
 type WorkspaceRollbackSpec struct {
-	SessionID      string
-	ToRunID        string
+	SessionID      identity.SessionID
+	ToRunID        identity.RunID
 	RestoreHistory bool
 	Receipt        WorkspaceRollbackReceipt
 }

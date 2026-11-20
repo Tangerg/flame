@@ -14,6 +14,8 @@ import (
 	"fmt"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -39,7 +41,7 @@ does not contain enough information.`
 // store (consumer-side interface). Fetch returns found=false with a nil error
 // for an unknown id, which the tool surfaces to the model as a recoverable miss.
 type ToolResultStore interface {
-	Fetch(ctx context.Context, sessionID string, id transcript.ToolResultID) (body string, found bool, err error)
+	Fetch(ctx context.Context, sessionID identity.SessionID, id transcript.ToolResultID) (body string, found bool, err error)
 }
 
 // readArgs is the model-facing argument shape; [toolcontract.NewFunc] derives the JSON
@@ -72,7 +74,7 @@ func NewToolResultReader(store ToolResultStore) (toolcontract.Tool, error) {
 
 func (t *toolResultReader) read(ctx context.Context, a toolResultReadArgs) (string, error) {
 	sessionID := executionctx.SessionID(ctx)
-	if sessionID == "" {
+	if sessionID.IsZero() {
 		return "error: no active session — cannot read a stored tool result", nil
 	}
 	id, err := transcript.ParseToolResultID(a.ResultID)

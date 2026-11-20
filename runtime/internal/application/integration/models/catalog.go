@@ -236,6 +236,13 @@ func validateDetails(details *Details) error {
 	if details == nil {
 		return nil
 	}
+	if err := validateReasoning(details); err != nil {
+		return err
+	}
+	return validatePricing(details.Pricing)
+}
+
+func validateReasoning(details *Details) error {
 	if !details.Reasoning && (len(details.ReasoningLevels) != 0 || details.ReasoningDefault != "") {
 		return errors.New("models: non-reasoning model carries reasoning identities")
 	}
@@ -260,11 +267,15 @@ func validateDetails(details *Details) error {
 			return fmt.Errorf("models: default reasoning level %q is not offered", details.ReasoningDefault)
 		}
 	}
-	for index, band := range details.Pricing {
+	return nil
+}
+
+func validatePricing(bands []PriceBand) error {
+	for index, band := range bands {
 		if index == 0 && band.AboveInputTokens != 0 {
 			return errors.New("models: the first price band must start at zero input tokens")
 		}
-		if index > 0 && band.AboveInputTokens <= details.Pricing[index-1].AboveInputTokens {
+		if index > 0 && band.AboveInputTokens <= bands[index-1].AboveInputTokens {
 			return errors.New("models: price bands must rise by input tokens")
 		}
 		for _, rate := range []float64{band.InputPerMillion, band.OutputPerMillion, band.CacheReadPerMillion, band.CacheWritePerMillion} {

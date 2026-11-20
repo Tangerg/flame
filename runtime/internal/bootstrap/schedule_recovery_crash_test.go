@@ -175,10 +175,10 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 		t.Fatalf("original receipt: %+v,%v", receipt, err)
 	}
 	segmentID := receipt.Acceptance.SegmentID
-	if receipt.CurrentRun != nil && receipt.CurrentRun.ActiveSegmentID() != "" {
+	if receipt.CurrentRun != nil && !receipt.CurrentRun.ActiveSegmentID().IsZero() {
 		segmentID = receipt.CurrentRun.ActiveSegmentID()
 	}
-	_, events, err := api.SubscribeRun(acceptedCrashContext(t), protocol.SubscribeRunRequest{RunID: receipt.Acceptance.RunID, SegmentID: segmentID, Snapshot: true})
+	_, events, err := api.SubscribeRun(acceptedCrashContext(t), protocol.SubscribeRunRequest{RunID: receipt.Acceptance.RunID.String(), SegmentID: segmentID.String(), Snapshot: true})
 	if err != nil && !errors.Is(err, protocol.ErrRunFinished) {
 		t.Fatal(err)
 	}
@@ -189,7 +189,7 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 			}
 		}
 	}
-	value, err := api.GetRun(acceptedCrashContext(t), protocol.GetRunRequest{RunID: receipt.Acceptance.RunID})
+	value, err := api.GetRun(acceptedCrashContext(t), protocol.GetRunRequest{RunID: receipt.Acceptance.RunID.String()})
 	want := protocol.OutcomeCompleted
 	if phase == "absent" || phase == "conflict" || phase == "malformed" || phase == "disabled" {
 		want = protocol.OutcomeLost
@@ -233,7 +233,7 @@ func disableOriginalScheduleBinding(t *testing.T, cfg assemblyConfig) {
 	if err != nil || receipt.Use != runs.CommandKeyAccepted {
 		t.Fatalf("original accepted command: %t, %v", receipt.Use == runs.CommandKeyAccepted, err)
 	}
-	root := (scoperun.StartID{Scope: receipt.Acceptance.SessionID, Key: receipt.Acceptance.RunID}).Root()
+	root := (scoperun.StartID{Scope: receipt.Acceptance.SessionID.String(), Key: receipt.Acceptance.RunID.String()}).Root()
 	checkpoint, err := cfg.stores.ExecutorCheckpoints.LoadCheckpoint(t.Context(), root.String())
 	if err != nil {
 		t.Fatalf("original retained execution: %v", err)

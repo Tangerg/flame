@@ -13,18 +13,18 @@ import (
 // ForkPlan is the atomic durable command for creating one child Session with
 // the complete visible history and Plan held by its resolved parent boundary.
 type ForkPlan struct {
-	parentID        string
+	parentID        identity.SessionID
 	history         HistorySnapshot
 	planBoundaries  []RunPlanBoundary
 	planReplacement *plan.Replacement
 }
 
 func newForkPlan(
-	parentID string,
+	parentID identity.SessionID,
 	material ForkMaterial,
 	planReplacement *plan.Replacement,
 ) (ForkPlan, error) {
-	if err := identity.ValidateSession(parentID); err != nil {
+	if err := parentID.Validate(); err != nil {
 		return ForkPlan{}, fmt.Errorf("sessions: fork plan parent: %w", err)
 	}
 	owned, err := ownHistory(material.HistorySnapshot)
@@ -56,7 +56,7 @@ func newForkPlan(
 }
 
 func ownForkPlanBoundaries(runs []run.Run, captures []RunPlanBoundary) ([]RunPlanBoundary, error) {
-	roots := make(map[string]struct{}, len(runs))
+	roots := make(map[identity.RunID]struct{}, len(runs))
 	for _, value := range runs {
 		if value.Lineage().IsRoot() {
 			roots[value.ID()] = struct{}{}
@@ -75,7 +75,7 @@ func ownForkPlanBoundaries(runs []run.Run, captures []RunPlanBoundary) ([]RunPla
 }
 
 // ParentID returns the canonical parent Session identity.
-func (f ForkPlan) ParentID() string { return f.parentID }
+func (f ForkPlan) ParentID() identity.SessionID { return f.parentID }
 
 func (f ForkPlan) History() HistorySnapshot { return f.history.clone() }
 

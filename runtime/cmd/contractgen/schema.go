@@ -128,59 +128,44 @@ func (s *schemaSet) walk(t reflect.Type) (node *wiregen.Schema) {
 	return s.walkAdmitted(t, nil)
 }
 
-func (s *schemaSet) walkAdmitted(t reflect.Type, collections map[reflect.Type]bool) (node *wiregen.Schema) {
-	// Only named objects reserve references before descending. Collection-only
-	// cycles have no definition that could stop their expansion.
-	switch t.Kind() {
-	case reflect.Pointer, reflect.Slice, reflect.Array, reflect.Map:
-		if collections[t] {
-			panic(fmt.Sprintf("contractgen: recursive collection %s requires a named object reference", t))
-		}
-		if collections == nil {
-			collections = make(map[reflect.Type]bool)
-		}
-		collections[t] = true
-		defer delete(collections, t)
+// base64ContentEncoding is how encoding/json carries a []byte.
+const base64ContentEncoding = "base64"
+
+func (s *schemaSet) stringSchema(t reflect.Type) *wiregen.Schema {
+	if values, ok := s.enums[t]; ok {
+		return s.define(t, &wiregen.Schema{Type: wiregen.SchemaTypeString, Enum: slices.Clone(values)})
 	}
+	if values, ok := enumValues(t); ok {
+		return s.define(t, &wiregen.Schema{Type: wiregen.SchemaTypeString, Enum: values})
+	}
+	return &wiregen.Schema{Type: wiregen.SchemaTypeString}
+}
+
+func (s *schemaSet) walkAdmitted(t reflect.Type, collections map[reflect.Type]bool) (node *wiregen.Schema) {
+	collections, leave := enterCollection(t, collections)
+	defer leave()
 	defer func() {
 		if s.walked == nil {
 			s.walked = make(map[reflect.Type]*wiregen.Schema)
 		}
 		s.walked[t] = node
 	}()
-	switch t {
-	case timeType:
-		// RFC 3339 in, RFC 3339 out — time.Time's own JSON encoding.
-		return &wiregen.Schema{Type: wiregen.SchemaTypeString, Format: "date-time"}
-	case rawMessageType:
-		// An opaque passthrough: any JSON value, by design. Naming a shape here
-		// would be inventing one the runtime does not enforce.
-		return &wiregen.Schema{}
+	if special, ok := specialSchema(t); ok {
+		return special
+	}
+	if scalar, ok := scalarSchema(t.Kind()); ok {
+		return scalar
 	}
 	switch t.Kind() {
 	case reflect.Pointer:
 		return s.walkAdmitted(t.Elem(), collections)
 	case reflect.Interface:
 		return &wiregen.Schema{}
-	case reflect.Bool:
-		return &wiregen.Schema{Type: wiregen.SchemaTypeBoolean}
 	case reflect.String:
-		if values, ok := s.enums[t]; ok {
-			return s.define(t, &wiregen.Schema{Type: wiregen.SchemaTypeString, Enum: slices.Clone(values)})
-		}
-		if values, ok := enumValues(t); ok {
-			return s.define(t, &wiregen.Schema{Type: wiregen.SchemaTypeString, Enum: values})
-		}
-		return &wiregen.Schema{Type: wiregen.SchemaTypeString}
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return &wiregen.Schema{Type: wiregen.SchemaTypeInteger}
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return &wiregen.Schema{Type: wiregen.SchemaTypeInteger, Minimum: new(int64(0))}
-	case reflect.Float32, reflect.Float64:
-		return &wiregen.Schema{Type: wiregen.SchemaTypeNumber}
+		return s.stringSchema(t)
 	case reflect.Slice, reflect.Array:
 		if t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Uint8 {
-			return &wiregen.Schema{Type: wiregen.SchemaTypeString, ContentEncoding: "base64"}
+			return &wiregen.Schema{Type: wiregen.SchemaTypeString, ContentEncoding: base64ContentEncoding}
 		}
 		return &wiregen.Schema{Type: wiregen.SchemaTypeArray, Items: s.walkAdmitted(t.Elem(), collections)}
 	case reflect.Map:
@@ -195,6 +180,55 @@ func (s *schemaSet) walkAdmitted(t reflect.Type, collections map[reflect.Type]bo
 		return s.define(t, nil)
 	default:
 		panic(fmt.Sprintf("contractgen: %s (%s) has no JSON representation", t, t.Kind()))
+	}
+}
+
+// enterCollection guards one level of collection descent. Only named objects
+// reserve references before descending, so a collection-only cycle has no
+// definition that could stop its expansion.
+func enterCollection(t reflect.Type, collections map[reflect.Type]bool) (map[reflect.Type]bool, func()) {
+	switch t.Kind() {
+	case reflect.Pointer, reflect.Slice, reflect.Array, reflect.Map:
+	default:
+		return collections, func() {}
+	}
+	if collections[t] {
+		panic(fmt.Sprintf("contractgen: recursive collection %s requires a named object reference", t))
+	}
+	if collections == nil {
+		collections = make(map[reflect.Type]bool)
+	}
+	collections[t] = true
+	return collections, func() { delete(collections, t) }
+}
+
+// specialSchema names the types whose JSON encoding is not their Go shape.
+func specialSchema(t reflect.Type) (*wiregen.Schema, bool) {
+	switch t {
+	case timeType:
+		// RFC 3339 in, RFC 3339 out — time.Time's own JSON encoding.
+		return &wiregen.Schema{Type: wiregen.SchemaTypeString, Format: "date-time"}, true
+	case rawMessageType:
+		// An opaque passthrough: any JSON value, by design. Naming a shape here
+		// would be inventing one the runtime does not enforce.
+		return &wiregen.Schema{}, true
+	default:
+		return nil, false
+	}
+}
+
+func scalarSchema(kind reflect.Kind) (*wiregen.Schema, bool) {
+	switch kind {
+	case reflect.Bool:
+		return &wiregen.Schema{Type: wiregen.SchemaTypeBoolean}, true
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return &wiregen.Schema{Type: wiregen.SchemaTypeInteger}, true
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return &wiregen.Schema{Type: wiregen.SchemaTypeInteger, Minimum: new(int64(0))}, true
+	case reflect.Float32, reflect.Float64:
+		return &wiregen.Schema{Type: wiregen.SchemaTypeNumber}, true
+	default:
+		return nil, false
 	}
 }
 
@@ -243,19 +277,7 @@ func (s *schemaSet) reserve(t reflect.Type, body *wiregen.Schema) {
 // fact.
 func (s *schemaSet) object(t reflect.Type, collections map[reflect.Type]bool) *wiregen.Schema {
 	out := &wiregen.Schema{Type: wiregen.SchemaTypeObject, Properties: make(map[string]any)}
-	// Flattened fields still have a public named owner and its wire validator.
-	for i := range t.NumField() {
-		field := t.Field(i)
-		if field.Anonymous && field.IsExported() {
-			embedded := field.Type
-			if embedded.Kind() == reflect.Pointer {
-				embedded = embedded.Elem()
-			}
-			if embedded.Kind() == reflect.Struct && embedded.PkgPath() == t.PkgPath() {
-				s.defineEmbedded(embedded)
-			}
-		}
-	}
+	s.defineEmbeddedOwners(t)
 	for _, field := range protocol.WireFields(t) {
 		node := s.walkAdmitted(field.Type, collections)
 		// A value constraint on a directly-owned field narrows it in place; the
@@ -268,23 +290,7 @@ func (s *schemaSet) object(t reflect.Type, collections map[reflect.Type]bool) *w
 			out.Required = append(out.Required, field.Name)
 		}
 	}
-	// A constraint on a NESTED field cannot narrow the shared definition it lives in
-	// — the rule belongs to this enclosing shape, not to every carrier of that type
-	// — so it rides an allOf branch on the owner instead.
-	for _, constraint := range s.values[t] {
-		if !strings.Contains(constraint.Field, ".") {
-			continue
-		}
-		branch := &wiregen.Schema{}
-		parent, leaf := descend(branch, t, constraint.Field, false)
-		if parent.Properties == nil {
-			parent.Properties = make(map[string]any)
-		}
-		narrowed := &wiregen.Schema{}
-		applyValueConstraints(narrowed, []dispatch.FieldConstraint{constraint})
-		parent.Properties[leaf] = narrowed
-		out.AllOf = append(out.AllOf, branch)
-	}
+	out.AllOf = append(out.AllOf, s.nestedConstraintBranches(t)...)
 	if union, ok := s.unions[t]; ok {
 		// A variant states the whole frame it permits, which is stricter and more
 		// precise than the encoder's per-field view — so the branches own `required`
@@ -307,6 +313,48 @@ func (s *schemaSet) object(t reflect.Type, collections map[reflect.Type]bool) *w
 	return out
 }
 
+// defineEmbeddedOwners defines each exported embedded struct of the same
+// package: flattened fields still have a public named owner and its wire
+// validator.
+func (s *schemaSet) defineEmbeddedOwners(t reflect.Type) {
+	for i := range t.NumField() {
+		field := t.Field(i)
+		if !field.Anonymous || !field.IsExported() {
+			continue
+		}
+		embedded := field.Type
+		if embedded.Kind() == reflect.Pointer {
+			embedded = embedded.Elem()
+		}
+		if embedded.Kind() == reflect.Struct && embedded.PkgPath() == t.PkgPath() {
+			s.defineEmbedded(embedded)
+		}
+	}
+}
+
+// nestedConstraintBranches carries each constraint on a nested field as an
+// allOf branch: it cannot narrow the shared definition the field lives in,
+// because the rule belongs to this enclosing shape, not to every carrier of
+// that type.
+func (s *schemaSet) nestedConstraintBranches(t reflect.Type) []*wiregen.Schema {
+	var branches []*wiregen.Schema
+	for _, constraint := range s.values[t] {
+		if !strings.Contains(constraint.Field, ".") {
+			continue
+		}
+		branch := &wiregen.Schema{}
+		parent, leaf := descend(branch, t, constraint.Field, false)
+		if parent.Properties == nil {
+			parent.Properties = make(map[string]any)
+		}
+		narrowed := &wiregen.Schema{}
+		applyValueConstraints(narrowed, []dispatch.FieldConstraint{constraint})
+		parent.Properties[leaf] = narrowed
+		branches = append(branches, branch)
+	}
+	return branches
+}
+
 // variants renders a discriminated union as `oneOf`: each branch pins or narrows
 // the discriminator, requires that branch's fields, and forbids every field
 // belonging to another branch.
@@ -321,10 +369,10 @@ func (s *schemaSet) variants(t reflect.Type, union dispatch.UnionSpec) []*wirege
 		}
 		claimed := slices.Concat(variant.Required, variant.Optional)
 		branch := &wiregen.Schema{
-			Properties: map[string]any{union.Discriminator: &wiregen.Schema{Const: variant.Tag}},
-			Required:   []string{union.Discriminator},
+			Properties: map[string]any{dispatch.UnionDiscriminator: &wiregen.Schema{Const: variant.Tag}},
+			Required:   []string{dispatch.UnionDiscriminator},
 		}
-		forbiddenFields := append(forbidden(t, union.Discriminator, roots, claimed), union.Forbidden...)
+		forbiddenFields := append(forbidden(t, dispatch.UnionDiscriminator, roots, claimed), union.Forbidden...)
 		constrain(branch, t, variant.Required, forbiddenFields)
 		restrictAllowedValues(branch, t, variant.AllowedValues)
 		normalize(branch)
@@ -333,13 +381,13 @@ func (s *schemaSet) variants(t reflect.Type, union dispatch.UnionSpec) []*wirege
 	if pattern := union.PatternVariant; pattern != nil {
 		claimed := slices.Concat(pattern.Required, pattern.Optional)
 		branch := &wiregen.Schema{
-			Properties: map[string]any{union.Discriminator: &wiregen.Schema{
+			Properties: map[string]any{dispatch.UnionDiscriminator: &wiregen.Schema{
 				Type: wiregen.SchemaTypeString, Pattern: pattern.TagPattern,
 				TypeScriptType: pattern.TypeScriptType,
 			}},
-			Required: []string{union.Discriminator},
+			Required: []string{dispatch.UnionDiscriminator},
 		}
-		forbiddenFields := append(forbidden(t, union.Discriminator, roots, claimed), union.Forbidden...)
+		forbiddenFields := append(forbidden(t, dispatch.UnionDiscriminator, roots, claimed), union.Forbidden...)
 		constrain(branch, t, pattern.Required, forbiddenFields)
 		normalize(branch)
 		out = append(out, branch)
@@ -351,7 +399,7 @@ func (s *schemaSet) variants(t reflect.Type, union dispatch.UnionSpec) []*wirege
 // type, so a variant tag that is not one of them fails generation rather than
 // producing a branch nothing can satisfy.
 func (s *schemaSet) discriminatorValues(t reflect.Type, union dispatch.UnionSpec) []string {
-	field, ok := protocol.WireFieldNamed(t, union.Discriminator)
+	field, ok := protocol.WireFieldNamed(t, dispatch.UnionDiscriminator)
 	if !ok {
 		return nil
 	}
@@ -577,57 +625,79 @@ func defName(t reflect.Type) string {
 // the schema and the generated validators refuse the same frames.
 func applyValueConstraints(node *wiregen.Schema, constraints []dispatch.FieldConstraint) {
 	for _, constraint := range constraints {
-		switch constraint.Kind {
-		case dispatch.ConstraintNonEmpty:
-			node.MinLength = new(1)
-		case dispatch.ConstraintPositive:
-			if node.Type == wiregen.SchemaTypeNumber {
-				node.ExclusiveMinimum = new(int64(0))
-			} else {
-				node.Minimum = new(int64(1))
-			}
-		case dispatch.ConstraintNonNegative:
-			node.Minimum = new(int64(0))
-		case dispatch.ConstraintNonEmptyItems:
-			node.MinItems = new(1)
-		case dispatch.ConstraintNonEmptyProperties:
-			node.MinProperties = new(1)
-		case dispatch.ConstraintUniqueItems:
-			node.UniqueItems = true
-		case dispatch.ConstraintMinItems:
-			node.MinItems = new(int(constraint.Limit))
-		case dispatch.ConstraintMaxItems:
-			node.MaxItems = new(int(constraint.Limit))
-		case dispatch.ConstraintMaxLength:
-			node.MaxLength = new(int(constraint.Limit))
-		case dispatch.ConstraintMaxItemLength:
-			node.Items.MaxLength = new(int(constraint.Limit))
-		case dispatch.ConstraintIdentity:
-			addPattern(node, dispatch.IdentityPattern)
-		case dispatch.ConstraintIdentityItems:
-			addPattern(node.Items, dispatch.IdentityPattern)
-		case dispatch.ConstraintMaxPropertyNameLength:
-			propertyNames(node).MaxLength = new(int(constraint.Limit))
-		case dispatch.ConstraintIdentityPropertyNames:
-			addPattern(propertyNames(node), dispatch.IdentityPattern)
-		case dispatch.ConstraintPrefix:
-			addPattern(node, "^"+regexp.QuoteMeta(constraint.Value))
-		case dispatch.ConstraintPrefixItems:
-			addPattern(node.Items, "^"+regexp.QuoteMeta(constraint.Value))
-		case dispatch.ConstraintPatternItems:
-			addPattern(node.Items, constraint.Value)
-		case dispatch.ConstraintPattern:
-			addPattern(node, constraint.Value)
-		case dispatch.ConstraintMinimum:
-			node.Minimum = new(constraint.Limit)
-		case dispatch.ConstraintMaximum:
-			node.Maximum = new(constraint.Limit)
-		default:
-			panic(fmt.Sprintf(
-				"contractgen: unsupported value constraint %s",
-				constraint.Kind,
-			))
+		if target, kind, textual := stringConstraintTarget(node, constraint.Kind); textual {
+			applyStringConstraint(target, kind, constraint)
+			continue
 		}
+		applyShapeConstraint(node, constraint)
+	}
+}
+
+// stringConstraintTarget resolves a string constraint to the schema it binds:
+// the value itself, each array item, or each property name. Item and key
+// constraints are the plain string constraint applied one level down.
+func stringConstraintTarget(node *wiregen.Schema, kind dispatch.ConstraintKind) (*wiregen.Schema, dispatch.ConstraintKind, bool) {
+	switch kind {
+	case dispatch.ConstraintNonEmpty, dispatch.ConstraintMaxLength, dispatch.ConstraintIdentity, dispatch.ConstraintPrefix, dispatch.ConstraintPattern:
+		return node, kind, true
+	case dispatch.ConstraintMaxItemLength:
+		return node.Items, dispatch.ConstraintMaxLength, true
+	case dispatch.ConstraintIdentityItems:
+		return node.Items, dispatch.ConstraintIdentity, true
+	case dispatch.ConstraintPrefixItems:
+		return node.Items, dispatch.ConstraintPrefix, true
+	case dispatch.ConstraintPatternItems:
+		return node.Items, dispatch.ConstraintPattern, true
+	case dispatch.ConstraintMaxPropertyNameLength:
+		return propertyNames(node), dispatch.ConstraintMaxLength, true
+	case dispatch.ConstraintIdentityPropertyNames:
+		return propertyNames(node), dispatch.ConstraintIdentity, true
+	default:
+		return nil, kind, false
+	}
+}
+
+func applyStringConstraint(target *wiregen.Schema, kind dispatch.ConstraintKind, constraint dispatch.FieldConstraint) {
+	switch kind {
+	case dispatch.ConstraintNonEmpty:
+		target.MinLength = new(1)
+	case dispatch.ConstraintMaxLength:
+		target.MaxLength = new(int(constraint.Limit))
+	case dispatch.ConstraintIdentity:
+		addPattern(target, dispatch.IdentityPattern)
+	case dispatch.ConstraintPrefix:
+		addPattern(target, "^"+regexp.QuoteMeta(constraint.Value))
+	case dispatch.ConstraintPattern:
+		addPattern(target, constraint.Value)
+	}
+}
+
+func applyShapeConstraint(node *wiregen.Schema, constraint dispatch.FieldConstraint) {
+	switch constraint.Kind {
+	case dispatch.ConstraintPositive:
+		if node.Type == wiregen.SchemaTypeNumber {
+			node.ExclusiveMinimum = new(int64(0))
+		} else {
+			node.Minimum = new(int64(1))
+		}
+	case dispatch.ConstraintNonNegative:
+		node.Minimum = new(int64(0))
+	case dispatch.ConstraintNonEmptyItems:
+		node.MinItems = new(1)
+	case dispatch.ConstraintNonEmptyProperties:
+		node.MinProperties = new(1)
+	case dispatch.ConstraintUniqueItems:
+		node.UniqueItems = true
+	case dispatch.ConstraintMinItems:
+		node.MinItems = new(int(constraint.Limit))
+	case dispatch.ConstraintMaxItems:
+		node.MaxItems = new(int(constraint.Limit))
+	case dispatch.ConstraintMinimum:
+		node.Minimum = new(constraint.Limit)
+	case dispatch.ConstraintMaximum:
+		node.Maximum = new(constraint.Limit)
+	default:
+		panic(fmt.Sprintf("contractgen: unsupported value constraint %s", constraint.Kind))
 	}
 }
 

@@ -122,18 +122,26 @@ type EndpointInvocation struct {
 	Caller    framecall.Invocation
 	Provider  string
 	Model     string
-	SessionID string
+	SessionID identity.SessionID
 	Request   EndpointRequest
 	StartedAt time.Time
 }
 
 func (i EndpointInvocation) Kind() EndpointKind { return i.Request.Kind() }
 
-const maxInvocationIdentityBytes = 256
+// MaximumInvocationIDCharacters bounds a model call identity, which is
+// URI-safe ASCII, so characters and bytes coincide.
+const MaximumInvocationIDCharacters = 256
+
+// endpointIDPrefix namespaces physical endpoint calls among invocation ids.
+const endpointIDPrefix = "endpoint_"
+
+// NewEndpointID names one physical endpoint call from opaque entropy.
+func NewEndpointID(entropy string) string { return endpointIDPrefix + entropy }
 
 // ValidateInvocationID admits exact physical or parent model-call identity.
 func ValidateInvocationID(value string) error {
-	return identity.ValidateURISafeASCII(value, maxInvocationIdentityBytes)
+	return identity.ValidateURISafeASCII(value, MaximumInvocationIDCharacters)
 }
 
 func (i EndpointInvocation) Validate() error {
@@ -148,11 +156,6 @@ func (i EndpointInvocation) Validate() error {
 	}
 	if _, err := modelchoice.New(i.Provider, i.Model); err != nil {
 		return err
-	}
-	if i.SessionID != "" {
-		if err := identity.ValidateSession(i.SessionID); err != nil {
-			return err
-		}
 	}
 	switch i.Request.(type) {
 	case nil:
@@ -213,6 +216,7 @@ func (s InvocationState) rule() (EndpointEvidenceRule, error) {
 
 func (s InvocationState) Validate() error   { _, err := s.rule(); return err }
 func (s InvocationState) HasResponse() bool { rule, _ := s.rule(); return rule.Response }
+func (s InvocationState) Settled() bool     { rule, _ := s.rule(); return rule.Settled }
 
 // EndpointOutcome is the provider observation submitted for settlement. Admission
 // derives its state; a caller cannot label missing evidence as a known failure.
@@ -288,8 +292,8 @@ func embeddingReportedUsage(response *embedding.Response) *chat.Usage {
 type EndpointRecord struct {
 	Cost           accounting.Cost
 	Usage          *chat.Usage
-	RunID          string
-	SegmentID      string
+	RunID          identity.RunID
+	SegmentID      identity.SegmentID
 	Invocation     EndpointInvocation
 	State          InvocationState
 	Failure        string
@@ -306,22 +310,66 @@ type EndpointObservation struct {
 	servedModel string
 }
 
+// decodeKnownResponse restores the provider's answer for the invocation's
+// kind, adopting the model it reports serving and returning the usage it
+// reports.
+func (o *EndpointObservation) decodeKnownResponse() (*chat.Usage, error) {
+	raw := o.record.ResponseJSON.Bytes()
+	switch o.record.Invocation.Kind() {
+	case EndpointChat:
+		response, err := decodeEndpointResponse[chat.Response](raw)
+		if err != nil {
+			return nil, err
+		}
+		o.response = response
+		if response.Metadata == nil {
+			return nil, nil
+		}
+		if response.Metadata.Model != "" {
+			o.servedModel = response.Metadata.Model
+		}
+		return response.Metadata.Usage, nil
+	case EndpointEmbedding:
+		response, err := decodeEndpointResponse[embedding.Response](raw)
+		if err != nil {
+			return nil, err
+		}
+		if response.Metadata != nil && response.Metadata.Model != "" {
+			o.servedModel = response.Metadata.Model
+		}
+		return embeddingReportedUsage(response), nil
+	default:
+		return nil, nil
+	}
+}
+
+func decodeEndpointResponse[R any, P interface {
+	*R
+	Validate() error
+}](raw []byte) (*R, error) {
+	var response *R
+	if err := json.Unmarshal(raw, &response, json.RejectUnknownMembers(true)); err != nil {
+		return nil, err
+	}
+	if response == nil {
+		return nil, errors.New("models: null endpoint response")
+	}
+	return response, P(response).Validate()
+}
+
 func RestoreEndpointObservation(record EndpointRecord) (EndpointObservation, error) {
 	var zero EndpointObservation
 	if err := record.Invocation.Validate(); err != nil {
 		return zero, err
 	}
-	if (record.RunID == "") != (record.SegmentID == "") {
+	if (record.RunID.IsZero()) != record.SegmentID.IsZero() {
 		return zero, errors.New("models: endpoint execution association is incomplete")
 	}
-	if record.RunID != "" {
-		if record.Invocation.SessionID == "" {
+	if !record.RunID.IsZero() {
+		if record.Invocation.SessionID.IsZero() {
 			return zero, errors.New("models: endpoint run has no session")
 		}
-		if err := identity.ValidateRun(record.RunID); err != nil {
-			return zero, err
-		}
-		if err := identity.ValidateSegment(record.SegmentID); err != nil {
+		if err := record.RunID.Validate(); err != nil {
 			return zero, err
 		}
 	}
@@ -338,40 +386,10 @@ func RestoreEndpointObservation(record EndpointRecord) (EndpointObservation, err
 	observation := EndpointObservation{record: cloneEndpointRecord(record), servedModel: record.Invocation.Model}
 	var reported *chat.Usage
 	if known {
-		switch record.Invocation.Kind() {
-		case EndpointChat:
-			var response *chat.Response
-			if err := json.Unmarshal(record.ResponseJSON.Bytes(), &response, json.RejectUnknownMembers(true)); err != nil {
-				return zero, err
-			}
-			if response == nil {
-				return zero, errors.New("models: null endpoint response")
-			}
-			if err := response.Validate(); err != nil {
-				return zero, err
-			}
-			observation.response = response
-			if response.Metadata != nil {
-				reported = response.Metadata.Usage
-				if response.Metadata.Model != "" {
-					observation.servedModel = response.Metadata.Model
-				}
-			}
-		case EndpointEmbedding:
-			var response *embedding.Response
-			if err := json.Unmarshal(record.ResponseJSON.Bytes(), &response, json.RejectUnknownMembers(true)); err != nil {
-				return zero, err
-			}
-			if response == nil {
-				return zero, errors.New("models: null endpoint response")
-			}
-			if err := response.Validate(); err != nil {
-				return zero, err
-			}
-			reported = embeddingReportedUsage(response)
-			if response.Metadata != nil && response.Metadata.Model != "" {
-				observation.servedModel = response.Metadata.Model
-			}
+		var err error
+		reported, err = observation.decodeKnownResponse()
+		if err != nil {
+			return zero, err
 		}
 	}
 	if !reflect.DeepEqual(record.Usage, reported) {

@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -49,7 +51,7 @@ var (
 
 // AutonomousRuns is the Goal driver's narrow view of the Run entry point.
 type AutonomousRuns interface {
-	WaitSessionStartable(ctx context.Context, sessionID string) error
+	WaitSessionStartable(ctx context.Context, sessionID identity.SessionID) error
 	AdmitSelection(ctx context.Context, selection modelchoice.Selection) error
 	Start(ctx context.Context, cmd runs.StartCommand) (runs.StartResult, error)
 }
@@ -64,7 +66,7 @@ type RunCancellations interface {
 // from it: without its own override a Goal Run uses the Session's selection
 // when it starts.
 type SessionExistence interface {
-	Exists(ctx context.Context, sessionID string) (bool, error)
+	Exists(ctx context.Context, sessionID identity.SessionID) (bool, error)
 }
 
 // Driver owns the per-session autonomous drives. Each active Goal has at most one
@@ -77,7 +79,7 @@ type SessionExistence interface {
 // sessions; drive goroutines and reported outcomes use the store CAS.
 type Driver struct {
 	workflow       Workflow
-	settle         func(context.Context, string) error
+	settle         func(context.Context, identity.SessionID) error
 	goals          Store
 	runs           AutonomousRuns
 	cancellations  RunCancellations
@@ -97,7 +99,7 @@ func NewDriver(
 	cancellations RunCancellations,
 	sessions SessionExistence,
 	mutations *SessionMutations,
-	workflow Workflow, settle func(context.Context, string) error,
+	workflow Workflow, settle func(context.Context, identity.SessionID) error,
 ) (*Driver, error) {
 	if lo.IsNil(workflow) || settle == nil {
 		return nil, errors.New("goals: workflow and receipt settlement are required")
@@ -136,7 +138,7 @@ func NewDriver(
 // previously-cleared Goal can no longer write it.
 func (d *Driver) Start(
 	ctx context.Context,
-	sessionID, objective string,
+	sessionID identity.SessionID, objective string,
 	selection modelchoice.Selection,
 	capabilities run.Capabilities,
 ) (goal.Goal, error) {
@@ -182,7 +184,7 @@ func (d *Driver) Start(
 	return d.commitCommand(ctx, expected, g)
 }
 
-func (d *Driver) beginGoal(ctx context.Context, sessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goal.Goal, error) {
+func (d *Driver) beginGoal(ctx context.Context, sessionID identity.SessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goal.Goal, error) {
 	now := d.now()
 	state := goal.Snapshot{SessionID: sessionID, ModelSelection: selection, Capabilities: capabilities.Normalized(), CreatedAt: now}
 	g, changed, err := decideGoal(ctx, d.workflow, state, goalworkflow.Request{Signal: goalworkflow.Start, Objective: objective}, d.newIncarnation(), now)
@@ -194,7 +196,7 @@ func (d *Driver) beginGoal(ctx context.Context, sessionID, objective string, sel
 
 // Resume preserves the objective incarnation so a parked Run can still settle
 // its original Goal. An already-active Goal can reattach its missing drive.
-func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabilities) (goal.Goal, error) {
+func (d *Driver) Resume(ctx context.Context, sessionID identity.SessionID, caller run.Capabilities) (goal.Goal, error) {
 	release, err := d.mutations.acquire(ctx, sessionID)
 	if err != nil {
 		return goal.Goal{}, err
@@ -229,7 +231,7 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 	return d.commitCommand(ctx, g.Version(), replacement)
 }
 
-func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) {
+func (d *Driver) Stop(ctx context.Context, sessionID identity.SessionID) (goal.Goal, error) {
 	release, err := d.mutations.acquire(ctx, sessionID)
 	if err != nil {
 		return goal.Goal{}, err
@@ -278,7 +280,7 @@ func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) 
 // objective cannot decide or charge the replacement.
 func (d *Driver) UpdateObjective(
 	ctx context.Context,
-	sessionID, objective string,
+	sessionID identity.SessionID, objective string,
 	caller run.Capabilities,
 ) (goal.Goal, error) {
 	release, err := d.mutations.acquire(ctx, sessionID)
@@ -345,7 +347,7 @@ func (d *Driver) saveCommand(ctx context.Context, expected goal.Version, replace
 
 // Clear commits the Goal's removal before retiring its drive. An already-absent
 // Goal lets a clear converge with automatic completion.
-func (d *Driver) Clear(ctx context.Context, sessionID string) error {
+func (d *Driver) Clear(ctx context.Context, sessionID identity.SessionID) error {
 	release, err := d.mutations.acquire(ctx, sessionID)
 	if err != nil {
 		return err
@@ -373,7 +375,7 @@ func (d *Driver) Clear(ctx context.Context, sessionID string) error {
 }
 
 // Current returns the session's Goal, or (zero, false, nil) when it has none.
-func (d *Driver) Current(ctx context.Context, sessionID string) (goal.Goal, bool, error) {
+func (d *Driver) Current(ctx context.Context, sessionID identity.SessionID) (goal.Goal, bool, error) {
 	return loadGoal(ctx, d.goals, sessionID)
 }
 
@@ -420,38 +422,39 @@ func (d *Driver) reconcileGoal(ctx context.Context, g goal.Goal) error {
 		return err
 	}
 	var applied bool
-	if !exists || g.Status() == goal.StatusComplete {
+	switch {
+	case !exists || g.Status() == goal.StatusComplete:
 		applied, err = d.goals.ClearIf(ctx, g.SessionID(), g.Version())
-	} else if g.Status() == goal.StatusActive {
-		replacement, transitionErr := transition(ctx, d.workflow, g, goalworkflow.Request{Signal: goalworkflow.Pause, Reason: goalworkflow.GoalReasonRuntimeRestarted}, g.IncarnationID(), d.now())
-		if errors.Is(transitionErr, plugin.ErrUnavailable) {
-			return nil
-		}
-		if transitionErr != nil {
-			return transitionErr
-		}
-		change, replacementErr := goal.NewReplacement(g.Version(), replacement)
-		if replacementErr != nil {
-			return replacementErr
-		}
-		applied, err = d.goals.Save(ctx, change)
-	} else {
+	case g.Status() == goal.StatusActive:
+		applied, err = d.pauseAfterRestart(ctx, g)
+	default:
 		return nil
 	}
-	if err != nil {
+	if err != nil || applied {
 		return err
 	}
-	if !applied {
-		return ErrGoalConflict
+	return ErrGoalConflict
+}
+
+// pauseAfterRestart pauses a Goal the previous process left active. A
+// workflow that is not available yet leaves it for the next reconciliation.
+func (d *Driver) pauseAfterRestart(ctx context.Context, g goal.Goal) (bool, error) {
+	replacement, err := transition(ctx, d.workflow, g, goalworkflow.Request{Signal: goalworkflow.Pause, Reason: goalworkflow.GoalReasonRuntimeRestarted}, g.IncarnationID(), d.now())
+	if errors.Is(err, plugin.ErrUnavailable) {
+		return true, nil
 	}
-	return nil
+	if err != nil {
+		return false, err
+	}
+	change, err := goal.NewReplacement(g.Version(), replacement)
+	if err != nil {
+		return false, err
+	}
+	return d.goals.Save(ctx, change)
 }
 
 // BeginShutdown cancels every running Goal drive.
 func (d *Driver) BeginShutdown() {
-	if d == nil {
-		return
-	}
 	release := d.mutations.acquireAll()
 	defer release()
 	d.tasks.Cancel()
@@ -459,8 +462,5 @@ func (d *Driver) BeginShutdown() {
 
 // AwaitShutdown joins every running Goal drive after [BeginShutdown].
 func (d *Driver) AwaitShutdown(ctx context.Context) error {
-	if d == nil {
-		return nil
-	}
 	return d.tasks.Wait(ctx)
 }

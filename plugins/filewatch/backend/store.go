@@ -129,13 +129,13 @@ func (s *store) capture(ctx context.Context, observation filewatch.Observation) 
 
 func (s *store) pending(ctx context.Context) ([]filewatch.Event, error) {
 	result := make([]filewatch.Event, 0)
-	err := s.visitEvents(ctx, true, func(event filewatch.Event) { result = append(result, event) })
+	err := s.visitEvents(ctx, pendingEvents, func(event filewatch.Event) { result = append(result, event) })
 	return result, err
 }
 
 func (s *store) headers(ctx context.Context) ([]filewatch.Header, error) {
 	result := make([]filewatch.Header, 0)
-	err := s.visitEvents(ctx, false, func(event filewatch.Event) { result = append(result, event.Header()) })
+	err := s.visitEvents(ctx, recentEvents, func(event filewatch.Event) { result = append(result, event.Header()) })
 	return result, err
 }
 
@@ -155,13 +155,22 @@ func (s *store) event(ctx context.Context, id string) (filewatch.Event, error) {
 	return decodeEvent(id, generation, sequence, raw, accepted)
 }
 
-func (s *store) visitEvents(ctx context.Context, pendingOnly bool, visit func(filewatch.Event)) error {
-	query, limit := `SELECT id,generation,sequence,capture,accepted FROM events ORDER BY rowid DESC LIMIT ?`, maxEvents
-	if pendingOnly {
-		query, limit = `SELECT id,generation,sequence,capture,accepted FROM events WHERE accepted=0 ORDER BY rowid LIMIT ?`, maxPending
-	}
+// eventSelection is one bounded read of stored events. Reading past limit means
+// the store holds more than it may, which is a storage fault.
+type eventSelection struct {
+	query string
+	limit int
+}
+
+var (
+	pendingEvents = eventSelection{`SELECT id,generation,sequence,capture,accepted FROM events WHERE accepted=0 ORDER BY rowid LIMIT ?`, maxPending}
+	recentEvents  = eventSelection{`SELECT id,generation,sequence,capture,accepted FROM events ORDER BY rowid DESC LIMIT ?`, maxEvents}
+)
+
+func (s *store) visitEvents(ctx context.Context, selection eventSelection, visit func(filewatch.Event)) error {
+	limit := selection.limit
 	return s.db.Read(ctx, func(reader sqlite.Reader) error {
-		rows, err := reader.QueryContext(ctx, query, limit+1)
+		rows, err := reader.QueryContext(ctx, selection.query, limit+1)
 		if err != nil {
 			return err
 		}

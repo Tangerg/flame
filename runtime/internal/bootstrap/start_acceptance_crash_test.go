@@ -124,7 +124,7 @@ func TestStartAcceptanceSurvivesCommitBeforeResponseCrash(t *testing.T) {
 	if err := json.Unmarshal(encoded, &ack); err != nil {
 		t.Fatal(err)
 	}
-	if ack.Type != protocol.RunAcceptanceAccepted || ack.RunID != record.Acceptance.RunID || ack.SegmentID != record.Acceptance.SegmentID || ack.UserItemID != record.Acceptance.UserItemID || ack.SessionID != record.Acceptance.SessionID {
+	if ack.Type != protocol.RunAcceptanceAccepted || ack.RunID != record.Acceptance.RunID.String() || ack.SegmentID != record.Acceptance.SegmentID.String() || ack.UserItemID != record.Acceptance.UserItemID.String() || ack.SessionID != record.Acceptance.SessionID.String() {
 		t.Fatalf("fresh query changed acceptance: %+v, original=%+v", ack, record.Acceptance)
 	}
 	if _, err := os.Stat(filepath.Join(home, "unexpected-model-call")); !errors.Is(err, os.ErrNotExist) {

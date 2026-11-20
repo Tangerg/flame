@@ -5,6 +5,8 @@ import (
 	"errors"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -26,7 +28,7 @@ func (c childCancellationCommit) validate(commit EventCommit) error {
 	return nil
 }
 
-func settlesChildCancellationItem(items []ItemWrite, itemID string) bool {
+func settlesChildCancellationItem(items []ItemWrite, itemID identity.ItemID) bool {
 	return slices.ContainsFunc(items, func(write ItemWrite) bool {
 		item := write.Item()
 		return item.ID() == itemID && item.Kind() == transcript.ToolCall && item.Status() == transcript.ItemIncomplete

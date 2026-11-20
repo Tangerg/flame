@@ -84,8 +84,8 @@ func (t *transcriptView) prepareImage(id transcriptEntryID, pending *terminalIma
 		return
 	}
 	owner, dispatch := t.media.workers, t.media.dispatch
-	slot := operationSlot(fmt.Sprintf("image-%p", pending))
-	started := owner.Go(slot, false, func(ctx context.Context, lease operationLease) {
+	slot := exclusiveSlot(fmt.Sprintf("image-%p", pending))
+	started := owner.Go(slot, func(ctx context.Context, lease operationLease) {
 		image, err := t.images.transmit(ctx, pending.theme, pending.data, pending.alt)
 		transferred := false
 		delivery := post(ctx, dispatch, func() {

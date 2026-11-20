@@ -133,10 +133,10 @@ func (r *readerPane) Open(target readerTarget) {
 	r.search.Submit(nil, "", 0)
 	if target.source != nil {
 		r.observingSource = true
-		initial := true
+		placement := readerAtTop
 		r.releaseSource = target.source.Observe(func(document readerDocument) {
-			r.replace(document, r.placementFor(!initial))
-			initial = false
+			r.replace(document, r.placementFor(placement))
+			placement = readerKeepsPlace
 		})
 		return
 	}
@@ -154,15 +154,13 @@ const (
 )
 
 // placementFor keeps a reader that follows the end following it.
-func (r *readerPane) placementFor(keepPlace bool) readerPlacement {
-	switch {
-	case r.scroll.FollowingEnd():
+// placementFor keeps a reader that follows the end there and otherwise
+// applies requested.
+func (r *readerPane) placementFor(requested readerPlacement) readerPlacement {
+	if r.scroll.FollowingEnd() {
 		return readerFollowsEnd
-	case keepPlace:
-		return readerKeepsPlace
-	default:
-		return readerAtTop
 	}
+	return requested
 }
 
 func (r *readerPane) replace(document readerDocument, placement readerPlacement) {
@@ -365,15 +363,21 @@ func (r *readerPane) handleMouse(mouse input.Mouse, handled, delivered bool) {
 			r.interruptSelectionGesture()
 		}
 	case input.MouseUp:
-		owned := mouse.Button == input.ButtonLeft && r.selectionGesture.release()
-		if mouse.Button != input.ButtonLeft {
-			r.interruptSelectionGesture()
-		}
-		if owned && delivered && r.selection.Active() {
-			r.copy()
-		}
+		r.releaseSelectionGesture(mouse, delivered)
 	case input.WheelUp, input.WheelDown:
 		r.interruptSelectionGesture()
+	}
+}
+
+// releaseSelectionGesture copies a selection that a left press drew and the
+// reader received to the end.
+func (r *readerPane) releaseSelectionGesture(mouse input.Mouse, delivered bool) {
+	owned := mouse.Button == input.ButtonLeft && r.selectionGesture.release()
+	if mouse.Button != input.ButtonLeft {
+		r.interruptSelectionGesture()
+	}
+	if owned && delivered && r.selection.Active() {
+		r.copy()
 	}
 }
 

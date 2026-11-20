@@ -51,7 +51,7 @@ func (d *diagnosticScreens) InvokeDiagnosticTool(argument string) error {
 	}
 	workspacePath := d.session.current.Workspace.Path
 	d.status.note("invoking diagnostic tool " + identity)
-	started := d.tasks.session(diagnosticToolOperation, false,
+	started := d.tasks.session(diagnosticToolOperation,
 		func(ctx context.Context) (diagnosticInvocationResult, error) {
 			tools, err := d.service.Tools(ctx)
 			if err != nil {

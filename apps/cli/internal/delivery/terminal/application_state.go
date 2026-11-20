@@ -23,17 +23,45 @@ type openingReceipt struct {
 // acknowledged command association until projection or local settlement takes
 // over; Runtime owns the product lifecycle facts.
 type executionState struct {
-	conversation     *conversation.Conversation
-	opening          *openingReceipt
-	pendingCancel    *pendingCancellation
-	following        bool
-	projectionFailed bool
-	stopClock        func()
-	clock            activeDurationClock
+	conversation  *conversation.Conversation
+	opening       *openingReceipt
+	pendingCancel *pendingCancellation
+	observation   observation
+	stopClock     func()
+	clock         activeDurationClock
 }
 
 func (e executionState) observing() bool {
-	return e.conversation.Busy() || e.following
+	return e.conversation.Busy() || e.following()
+}
+
+// observation is how this terminal watches the current Run: not at all,
+// following its event stream, or holding a projection it no longer trusts
+// after a local failure while the Run may still be running.
+type observation uint8
+
+const (
+	observationDetached observation = iota
+	observationFollowing
+	observationFailed
+)
+
+func (e executionState) following() bool { return e.observation == observationFollowing }
+
+func (e executionState) projectionFailed() bool { return e.observation == observationFailed }
+
+// stopFollowing ends the stream without forgetting a failed projection.
+func (e *executionState) stopFollowing() {
+	if e.observation == observationFollowing {
+		e.observation = observationDetached
+	}
+}
+
+// trustProjection forgets a local failure once a fresh projection replaces it.
+func (e *executionState) trustProjection() {
+	if e.observation == observationFailed {
+		e.observation = observationDetached
+	}
 }
 
 func (e executionState) blocksAdmission() bool {

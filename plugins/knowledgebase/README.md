@@ -95,6 +95,6 @@ The plugin's `contractgen/` program owns its Portable definition. `make generate
 from the repository root refreshes `contracts/contract.generated.go` before the
 package and client projections. Handwritten DTOs and schema hooks in
 `internal/wire` remain independent of that generated descriptor. The backend and
-exported author implementation bind the published contract with `ImplementMethod`;
+exported author implementation bind the published contract with `pluginmcp.Implement`;
 an author's local `go generate` refreshes projections without redefining identity
 from relocated Go types.

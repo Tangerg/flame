@@ -105,9 +105,9 @@ type capabilityRow struct {
 }
 
 type conditionRow struct {
-	Field    string `json:"field"`
-	Operator string `json:"operator"`
-	Value    string `json:"value,omitempty"`
+	Field    string                     `json:"field"`
+	Operator delivery.ConditionOperator `json:"operator"`
+	Value    string                     `json:"value,omitempty"`
 }
 
 // eventEntry is the reliability classification derived from the
@@ -346,7 +346,7 @@ func conditions(in []delivery.FieldCondition) []conditionRow {
 	out := make([]conditionRow, 0, len(in))
 	for _, condition := range in {
 		out = append(out, conditionRow{
-			Field: condition.Field, Operator: condition.Operator.String(), Value: condition.Value,
+			Field: condition.Field, Operator: condition.Operator, Value: condition.Value,
 		})
 	}
 	return out
@@ -435,7 +435,7 @@ func unions(shapes *dispatch.Shapes) []unionEntry {
 			}
 		}
 		out = append(out, unionEntry{
-			Type: spec.GoType.Name(), Discriminator: spec.Discriminator,
+			Type: spec.GoType.Name(), Discriminator: dispatch.UnionDiscriminator,
 			Variants: variants, PatternVariant: pattern, Forbidden: spec.Forbidden,
 		})
 	}

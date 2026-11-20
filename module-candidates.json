@@ -37,6 +37,10 @@
     "v0.1.6-dev.20261117.t12800f1dcd3b": {
       "tree": "12800f1dcd3b325f0a0a71234d3d1c4000e5338d",
       "time": "2026-11-17T11:15:23Z"
+    },
+    "v0.1.8-dev.20261120.te6fa71dfd898": {
+      "tree": "e6fa71dfd898910e04548ff9dabcc46fa6eda780",
+      "time": "2026-11-20T02:40:56Z"
     }
   },
   "github.com/Tangerg/flame/packages/go-sdk": {
@@ -180,6 +184,10 @@
     "v0.1.27-dev.20261119.tc8b308bfe433": {
       "tree": "c8b308bfe433edf05a37e6f4422cb17d911ed171",
       "time": "2026-11-18T23:13:30Z"
+    },
+    "v0.1.34-dev.20261120.tc1784594a7ac": {
+      "tree": "c1784594a7ac8b1a409c08ee01b15e26863ac852",
+      "time": "2026-11-20T02:40:56Z"
     }
   },
   "github.com/Tangerg/flame/plugins": {

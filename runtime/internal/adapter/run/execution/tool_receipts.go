@@ -110,7 +110,7 @@ func (i *interactionSession) investigateToolReceipt(ctx context.Context, tree sc
 		return false, err
 	}
 	queryCtx, stop := context.WithTimeout(ctx, auxiliaryOperationTimeout)
-	output, queryErr := i.toolResults.OriginalToolResult(queryCtx, metadata.Start.Source, proof.Release, proof.Authority, original, metadata.Start.CallID, metadata.Start.Arguments)
+	output, queryErr := i.toolResults.OriginalToolResult(queryCtx, metadata.Start.Source, proof.Release, proof.Authority, original, metadata.Start.CallID, metadata.Start.Input.Arguments())
 	stop()
 	if err := ctx.Err(); err != nil {
 		return false, err
@@ -134,11 +134,7 @@ func (i *interactionSession) investigateToolReceipt(ctx context.Context, tree sc
 }
 
 func (i *interactionSession) publishToolReceipt(ctx context.Context, request scoperun.EffectRequest, owner *observedInteractionTool, capture toolCallCapture, output toolcontract.Output, outcomeErr error) (bool, error) {
-	arguments, err := tool.ParseArguments(capture.Start.Arguments)
-	if err != nil {
-		return false, err
-	}
-	projection, err := owner.projectToolResult(capture.Start.ToolName, arguments, output, outcomeErr, nil)
+	projection, err := owner.projectToolResult(capture.Start.ToolName, capture.Start.Input.Arguments(), output, outcomeErr, nil)
 	if err != nil {
 		return false, err
 	}

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
@@ -19,21 +21,25 @@ import (
 // or an explicit user stop.
 
 type goalUseCases interface {
-	Start(ctx context.Context, sessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goal.Goal, error)
-	UpdateObjective(ctx context.Context, sessionID, objective string, caller run.Capabilities) (goal.Goal, error)
-	Clear(ctx context.Context, sessionID string) error
-	Resume(ctx context.Context, sessionID string, caller run.Capabilities) (goal.Goal, error)
-	Stop(ctx context.Context, sessionID string) (goal.Goal, error)
-	Current(ctx context.Context, sessionID string) (goal.Goal, bool, error)
+	Start(ctx context.Context, sessionID identity.SessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goal.Goal, error)
+	UpdateObjective(ctx context.Context, sessionID identity.SessionID, objective string, caller run.Capabilities) (goal.Goal, error)
+	Clear(ctx context.Context, sessionID identity.SessionID) error
+	Resume(ctx context.Context, sessionID identity.SessionID, caller run.Capabilities) (goal.Goal, error)
+	Stop(ctx context.Context, sessionID identity.SessionID) (goal.Goal, error)
+	Current(ctx context.Context, sessionID identity.SessionID) (goal.Goal, bool, error)
 }
 
 // UpdateGoal revises only the current objective (goals.update).
 func (s *Handler) UpdateGoal(ctx context.Context, in protocol.UpdateGoalRequest) (*protocol.Goal, error) {
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return nil, parseErr
+	}
 	caller, err := s.negotiateCapabilities(ctx)
 	if err != nil {
 		return nil, err
 	}
-	g, err := s.goals.UpdateObjective(ctx, in.SessionID, in.Objective, caller)
+	g, err := s.goals.UpdateObjective(ctx, sessionID, in.Objective, caller)
 	if uncovered, ok := errors.AsType[*run.InsufficientCapabilitiesError](err); ok {
 		return nil, capabilityGap(uncovered.Missing)
 	}
@@ -45,11 +51,19 @@ func (s *Handler) UpdateGoal(ctx context.Context, in protocol.UpdateGoalRequest)
 
 // ClearGoal removes the current objective and stops its drive (goals.clear).
 func (s *Handler) ClearGoal(ctx context.Context, in protocol.GoalRequest) error {
-	return mapGoalErr(s.goals.Clear(ctx, in.SessionID))
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return parseErr
+	}
+	return mapGoalErr(s.goals.Clear(ctx, sessionID))
 }
 
 // StartGoal opens and begins driving a goal for the session (goals.start).
 func (s *Handler) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (*protocol.Goal, error) {
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return nil, parseErr
+	}
 	selection, err := modelchoice.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
 		return nil, mapGoalErr(err)
@@ -58,7 +72,7 @@ func (s *Handler) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (
 	if err != nil {
 		return nil, err
 	}
-	g, err := s.goals.Start(ctx, in.SessionID, in.Objective, selection, capabilities)
+	g, err := s.goals.Start(ctx, sessionID, in.Objective, selection, capabilities)
 	if err != nil {
 		return nil, mapGoalErr(err)
 	}
@@ -67,7 +81,11 @@ func (s *Handler) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (
 
 // GetGoal returns the session's goal, or a nil result when it has none (goals.get).
 func (s *Handler) GetGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
-	g, ok, err := s.goals.Current(ctx, in.SessionID)
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return nil, parseErr
+	}
+	g, ok, err := s.goals.Current(ctx, sessionID)
 	if err != nil {
 		return nil, mapGoalErr(err)
 	}
@@ -79,7 +97,11 @@ func (s *Handler) GetGoal(ctx context.Context, in protocol.GoalRequest) (*protoc
 
 // StopGoal pauses the session's goal and stops the loop (goals.stop).
 func (s *Handler) StopGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
-	g, err := s.goals.Stop(ctx, in.SessionID)
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return nil, parseErr
+	}
+	g, err := s.goals.Stop(ctx, sessionID)
 	if err != nil {
 		return nil, mapGoalErr(err)
 	}
@@ -88,11 +110,15 @@ func (s *Handler) StopGoal(ctx context.Context, in protocol.GoalRequest) (*proto
 
 // ResumeGoal re-activates a paused or blocked goal (goals.resume).
 func (s *Handler) ResumeGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
+	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	if parseErr != nil {
+		return nil, parseErr
+	}
 	caller, err := s.negotiateCapabilities(ctx)
 	if err != nil {
 		return nil, err
 	}
-	g, err := s.goals.Resume(ctx, in.SessionID, caller)
+	g, err := s.goals.Resume(ctx, sessionID, caller)
 	if uncovered, ok := errors.AsType[*run.InsufficientCapabilitiesError](err); ok {
 		return nil, capabilityGap(uncovered.Missing)
 	}
@@ -136,7 +162,7 @@ func presentGoal(g goal.Goal) (*protocol.Goal, error) {
 	}
 	selection, used := g.ModelSelection(), g.Used()
 	w := protocol.Goal{
-		SessionID:       g.SessionID(),
+		SessionID:       g.SessionID().String(),
 		Objective:       g.Objective(),
 		Status:          status,
 		Reason:          reason,

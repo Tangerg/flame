@@ -92,16 +92,19 @@ func (o *observedInteractionModel) Stream(
 			yield(nil, err)
 			return
 		}
+		notExecuted := func(cause error) error {
+			return o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: cause})
+		}
 		sent, err := o.request(invocation, request)
 		if err != nil {
-			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}))
+			yield(nil, notExecuted(err))
 			return
 		}
-		dispatchedAt := time.Now()
+		streamed := streamedResponse{dispatchedAt: time.Now()}
 		ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.process), callID)
 		ctx, err = pluginmcp.WithInvocation(ctx, framecall.Invocation{ID: callID, Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: framecall.Target{Scope: extension.ScopeCall, Reference: callID}})
 		if err != nil {
-			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: err}))
+			yield(nil, notExecuted(err))
 			return
 		}
 		sequence := o.streamer.Stream(ctx, sent)
@@ -110,34 +113,15 @@ func (o *observedInteractionModel) Stream(
 				errors.New("execution: model streamer returned a nil sequence")))
 			return
 		}
-		var accumulated corechat.ResponseAccumulator
-		var text, reasoning strings.Builder
-		observation := func() runs.ModelObservation {
-			return runs.ModelObservation{Text: text.String(), Reasoning: reasoning.String()}
-		}
-		var firstOutputLatencyMillis *int64
 		var failure error
 		var stopped bool
 		for chunk, streamErr := range sequence {
+			if streamErr == nil {
+				streamErr = streamed.add(chunk, time.Now())
+			}
 			if streamErr != nil {
 				failure = streamErr
 				break
-			}
-			receivedAt := time.Now()
-			if err := accumulated.Add(chunk); err != nil {
-				failure = err
-				break
-			}
-			for _, part := range chunk.Parts {
-				switch part.Kind {
-				case corechat.PartDeltaText, corechat.PartDeltaRefusal:
-					text.WriteString(part.Text)
-				case corechat.PartDeltaReasoning:
-					reasoning.WriteString(part.Text)
-				}
-			}
-			if firstOutputLatencyMillis == nil && hasModelOutput(chunk) {
-				firstOutputLatencyMillis = new(receivedAt.Sub(dispatchedAt).Milliseconds())
 			}
 			if !yield(chunk, nil) {
 				stopped = true
@@ -147,32 +131,56 @@ func (o *observedInteractionModel) Stream(
 		// Every early exit must unwind the physical stream before reading its
 		// settled evidence, including errors raised by an outer observer.
 		if failure != nil {
-			yield(nil, o.finishFailedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis, failure))
+			yield(nil, o.finishFailedCall(ctx, invocation, callID, streamed.observation(), streamed.firstOutputLatencyMillis, failure))
 			return
 		}
 		if stopped {
-			if err := o.settleFailedCall(ctx, invocation, callID, observation(), firstOutputLatencyMillis); err != nil {
+			if err := o.settleFailedCall(ctx, invocation, callID, streamed.observation(), streamed.firstOutputLatencyMillis); err != nil {
 				// Preserve the settlement failure locally; yielding again violates the stream.
 				o.session.effectFailures.record(invocation.effect, err)
 			}
 			return
 		}
-		response, responseErr := accumulated.Response()
-		if responseErr != nil {
-			yield(nil, o.finishFailedCall(
-				ctx,
-				invocation,
-				callID,
-				observation(),
-				firstOutputLatencyMillis,
-				responseErr,
-			))
+		response, err := streamed.accumulated.Response()
+		if err != nil {
+			yield(nil, o.finishFailedCall(ctx, invocation, callID, streamed.observation(), streamed.firstOutputLatencyMillis, err))
 			return
 		}
-		if err := o.complete(ctx, invocation, callID, response, firstOutputLatencyMillis); err != nil {
+		if err := o.complete(ctx, invocation, callID, response, streamed.firstOutputLatencyMillis); err != nil {
 			yield(nil, err)
 		}
 	}
+}
+
+// streamedResponse is what one model stream has delivered so far: the response
+// it accumulates and the partial output a failed call still reports.
+type streamedResponse struct {
+	accumulated              corechat.ResponseAccumulator
+	text, reasoning          strings.Builder
+	dispatchedAt             time.Time
+	firstOutputLatencyMillis *int64
+}
+
+func (s *streamedResponse) add(chunk *corechat.ResponseDelta, receivedAt time.Time) error {
+	if err := s.accumulated.Add(chunk); err != nil {
+		return err
+	}
+	for _, part := range chunk.Parts {
+		switch part.Kind {
+		case corechat.PartDeltaText, corechat.PartDeltaRefusal:
+			s.text.WriteString(part.Text)
+		case corechat.PartDeltaReasoning:
+			s.reasoning.WriteString(part.Text)
+		}
+	}
+	if s.firstOutputLatencyMillis == nil && hasModelOutput(chunk) {
+		s.firstOutputLatencyMillis = new(receivedAt.Sub(s.dispatchedAt).Milliseconds())
+	}
+	return nil
+}
+
+func (s *streamedResponse) observation() runs.ModelObservation {
+	return runs.ModelObservation{Text: s.text.String(), Reasoning: s.reasoning.String()}
 }
 
 func (o *observedInteractionModel) finishFailedCall(

@@ -50,7 +50,7 @@ func TestDispatchedUnknownModelCallInvalidatesRunTotalCost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sources, err := stores.ModelInvocations.ListSessionEndpoints(ctx, session.ID)
+	sources, err := stores.ModelInvocations.ListSessionEndpoints(ctx, testsupport.MustSessionID(session.ID))
 	if err != nil {
 		t.Fatal(err)
 	}

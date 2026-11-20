@@ -59,7 +59,9 @@ func registerSessions(registry *Registry) {
 		CreateSession(context.Context, protocol.CreateSessionRequest) (*protocol.Session, error)
 	}, ctx context.Context, request protocol.CreateSessionRequest) (*protocol.Session, error) {
 		return service.CreateSession(ctx, request)
-	})
+	}).withOwnedReplay(atomicReplay((interface {
+		commitCreateSession(context.Context, protocol.CreateSessionRequest, atomicOutcome) error
+	}).commitCreateSession))
 
 	// Setting workspace is a relocate, which is its own capability — hence a
 	// conditional rule: the rest of sessions.update stays available when relocate
@@ -88,7 +90,9 @@ func registerSessions(registry *Registry) {
 		UpdateSession(context.Context, protocol.UpdateSessionRequest) (*protocol.Session, error)
 	}, ctx context.Context, request protocol.UpdateSessionRequest) (*protocol.Session, error) {
 		return service.UpdateSession(ctx, request)
-	})
+	}).withOwnedReplay(atomicReplay((interface {
+		commitUpdateSession(context.Context, protocol.UpdateSessionRequest, atomicOutcome) error
+	}).commitUpdateSession))
 
 	registry.commandAck(MethodMeta{
 		Name: SessionsDelete, GoName: "DeleteSession",
@@ -97,7 +101,9 @@ func registerSessions(registry *Registry) {
 		DeleteSession(context.Context, string) error
 	}, ctx context.Context, request protocol.DeleteSessionRequest) error {
 		return service.DeleteSession(ctx, request.SessionID)
-	})
+	}).withOwnedReplay(atomicReplay((interface {
+		commitDeleteSession(context.Context, protocol.DeleteSessionRequest, atomicOutcome) error
+	}).commitDeleteSession))
 
 	registry.command(MethodMeta{
 		Name: sessionsFork, GoName: "ForkSession",
@@ -109,7 +115,9 @@ func registerSessions(registry *Registry) {
 		ForkSession(context.Context, protocol.ForkSessionRequest) (*protocol.Session, error)
 	}, ctx context.Context, request protocol.ForkSessionRequest) (*protocol.Session, error) {
 		return service.ForkSession(ctx, request)
-	})
+	}).withOwnedReplay(atomicReplay((interface {
+		commitForkSession(context.Context, protocol.ForkSessionRequest, atomicOutcome) error
+	}).commitForkSession))
 
 	// restoreType files/both rewind the working tree from a shadow-git snapshot,
 	// which needs features.checkpoints; the default history rollback needs nothing
@@ -138,7 +146,9 @@ func registerSessions(registry *Registry) {
 		RollbackSession(context.Context, protocol.RollbackSessionRequest) (*protocol.RollbackSessionResponse, error)
 	}, ctx context.Context, request protocol.RollbackSessionRequest) (*protocol.RollbackSessionResponse, error) {
 		return service.RollbackSession(ctx, request)
-	})
+	}).withOwnedReplay((interface {
+		replayRollback(context.Context, protocol.RollbackSessionRequest, keyedCall) protocol.OperationResult
+	}).replayRollback)
 
 	registry.query(MethodMeta{
 		Name: sessionsExport, GoName: "ExportSession",
@@ -158,5 +168,7 @@ func registerSessions(registry *Registry) {
 		ImportSession(context.Context, protocol.ImportSessionRequest) (*protocol.ImportSessionResponse, error)
 	}, ctx context.Context, request protocol.ImportSessionRequest) (*protocol.ImportSessionResponse, error) {
 		return service.ImportSession(ctx, request)
-	})
+	}).withOwnedReplay(atomicReplay((interface {
+		commitImportSession(context.Context, protocol.ImportSessionRequest, atomicOutcome) error
+	}).commitImportSession))
 }

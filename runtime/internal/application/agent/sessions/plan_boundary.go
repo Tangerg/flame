@@ -2,10 +2,9 @@ package sessions
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
@@ -15,64 +14,25 @@ type PlanServices struct {
 	Replacements *PlanCoordinator
 }
 
-// PlanBoundary is a Plan recovered from a Run boundary: the value, and
-// whether that boundary recorded one at all. The difference is not cosmetic — an
-// unrecorded boundary must leave the live list untouched, while a recorded empty
-// one must clear it, and a single nil slice cannot say which is meant.
-type PlanBoundary struct {
-	plan.Document
-	Recorded bool
-}
-
-// planBoundary resolves the Plan the boundary at runID held. An empty runID
-// is a boundary that keeps no run at all: it predates every list this session ever
-// wrote, so its value is the empty list — known, not unknown. Otherwise the answer
-// is whatever that run recorded when it ended, including "nothing was recorded",
-// which the caller must not turn into emptiness (an imported run's boundaries were
-// never captured; see [PlanBoundaries]).
-func (c *Coordinator) planBoundary(ctx context.Context, runID string) (PlanBoundary, error) {
-	if runID == "" {
-		return newPlanBoundary(plan.Document{}, true)
-	}
-	if err := identity.ValidateRun(runID); err != nil {
-		return PlanBoundary{}, fmt.Errorf("sessions: Plan boundary: %w", err)
-	}
-	steps, recorded, err := c.plan.Boundaries.Boundary(ctx, runID)
-	if err != nil {
-		return PlanBoundary{}, err
-	}
-	return newPlanBoundary(steps, recorded)
-}
-
-func newPlanBoundary(doc plan.Document, recorded bool) (PlanBoundary, error) {
-	if !recorded {
-		if len(doc.Steps) != 0 {
-			return PlanBoundary{}, errors.New("sessions: unrecorded Plan boundary carries steps")
+// boundaryPlanReplacement restores the Plan the boundary at runID held. An
+// empty runID keeps no Run: it predates every list this Session wrote, so its
+// Plan is the empty list, known rather than unknown. A boundary that recorded no
+// Plan (an imported Run's boundaries were never captured) leaves the live list
+// untouched instead of clearing it.
+func (c *Coordinator) boundaryPlanReplacement(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) (*plan.Replacement, error) {
+	doc := plan.Document{Steps: []plan.Step{}}
+	if !runID.IsZero() {
+		recorded, found, err := c.plan.Boundaries.Boundary(ctx, runID)
+		if err != nil || !found {
+			return nil, err
 		}
-		return PlanBoundary{}, nil
-	}
-	if err := plan.ValidateSteps(doc.Steps); err != nil {
-		return PlanBoundary{}, fmt.Errorf("sessions: invalid Plan boundary: %w", err)
-	}
-	if doc.Steps == nil {
-		doc.Steps = []plan.Step{}
-	}
-	return PlanBoundary{Document: doc, Recorded: true}, nil
-}
-
-func (c *Coordinator) prepareBoundaryPlanReplacement(
-	ctx context.Context,
-	sessionID string,
-	boundary PlanBoundary,
-) (*plan.Replacement, error) {
-	if !boundary.Recorded {
-		return nil, nil
+		doc = recorded
 	}
 	current, err := c.plan.Replacements.State(ctx, sessionID)
 	if err != nil {
 		return nil, err
 	}
-	replacement, err := c.plan.Replacements.reference(current, boundary.Document)
+	replacement, err := c.plan.Replacements.reference(current, doc)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +52,7 @@ func (c *Coordinator) prepareInitialPlanReplacement(doc plan.Document) (*plan.Re
 
 func (c *Coordinator) prepareRestoredPlanReplacement(
 	ctx context.Context,
-	sessionID string,
+	sessionID identity.SessionID,
 	doc plan.Document,
 ) (*plan.Replacement, error) {
 	if doc.Steps == nil {

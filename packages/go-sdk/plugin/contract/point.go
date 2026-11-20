@@ -59,26 +59,30 @@ func ParsePoint(data []byte) (*Point, error) {
 	return AdmitPoint(descriptor)
 }
 
-func AdmitPoint(descriptor PointDescriptor) (*Point, error) {
-	if descriptor.Protocol != Protocol || !frame.ValidName(descriptor.Reference) || !frame.ValidName(descriptor.Scope) {
-		return nil, errors.New("point: current protocol, reference and scope are required")
+func (d PointDescriptor) validate() error {
+	if d.Protocol != Protocol || !frame.ValidName(d.Reference) || !frame.ValidName(d.Scope) {
+		return errors.New("point: current protocol, reference and scope are required")
 	}
-	if descriptor.Composition != Collection && descriptor.Composition != Selection && descriptor.Composition != Decoration {
-		return nil, errors.New("point: unknown composition")
+	if d.Composition != Collection && d.Composition != Selection && d.Composition != Decoration {
+		return errors.New("point: unknown composition")
 	}
-	if descriptor.Ordering != CanonicalKeys && descriptor.Ordering != ExplicitList || descriptor.Composition != Collection && descriptor.Ordering != ExplicitList {
-		return nil, errors.New("point: selection and decoration require explicit composition")
+	if d.Ordering != CanonicalKeys && d.Ordering != ExplicitList || d.Composition != Collection && d.Ordering != ExplicitList {
+		return errors.New("point: selection and decoration require explicit composition")
 	}
-	for _, raw := range []jsontext.Value{descriptor.Value, descriptor.Applicability} {
+	for _, raw := range []jsontext.Value{d.Value, d.Applicability} {
 		if err := framevalue.CheckDescriptor(raw); err != nil {
-			return nil, err
+			return err
 		}
 	}
-	encoded, err := framevalue.EncodeJSON(descriptor)
+	encoded, err := framevalue.EncodeJSON(d)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if err := framevalue.CheckDescriptor(encoded.Bytes()); err != nil {
+	return framevalue.CheckDescriptor(encoded.Bytes())
+}
+
+func AdmitPoint(descriptor PointDescriptor) (*Point, error) {
+	if err := descriptor.validate(); err != nil {
 		return nil, err
 	}
 	descriptor = descriptor.clone()
@@ -148,18 +152,9 @@ type PointValue struct {
 // Compose returns a detached, frozen value projection. Explicit decoration
 // order is outermost first; it never implies that wrappers have executed.
 func (c *Point) Compose(values []PointValue, order []string) ([]PointValue, error) {
-	byKey := make(map[string]PointValue, len(values))
-	for _, value := range values {
-		if value.Key == "" || len(value.Key) > maxContributionKeyBytes {
-			return nil, errors.New("point: canonical contribution key is required")
-		}
-		if _, exists := byKey[value.Key]; exists {
-			return nil, fmt.Errorf("point: duplicate contribution %s", value.Key)
-		}
-		if err := c.ValidateValue(value.Data); err != nil {
-			return nil, fmt.Errorf("point: contribution %s: %w", value.Key, err)
-		}
-		byKey[value.Key] = value
+	byKey, err := c.indexValues(values)
+	if err != nil {
+		return nil, err
 	}
 	if len(values) == 0 && !c.descriptor.Optional {
 		return nil, errors.New("point: required point has no applicable contributions")
@@ -175,6 +170,37 @@ func (c *Point) Compose(values []PointValue, order []string) ([]PointValue, erro
 	if c.descriptor.Composition == Selection && len(order) > 1 {
 		return nil, errors.New("point: selection requires one explicit contribution")
 	}
+	result, err := orderedValues(byKey, order)
+	if err != nil {
+		return nil, err
+	}
+	if c.descriptor.Composition == Collection && len(result) != len(values) {
+		return nil, errors.New("point: explicit order omits an applicable contribution")
+	}
+	if len(result) == 0 && !c.descriptor.Optional {
+		return nil, errors.New("point: required point needs an explicit composition")
+	}
+	return result, nil
+}
+
+func (c *Point) indexValues(values []PointValue) (map[string]PointValue, error) {
+	byKey := make(map[string]PointValue, len(values))
+	for _, value := range values {
+		if value.Key == "" || len(value.Key) > maxContributionKeyBytes {
+			return nil, errors.New("point: canonical contribution key is required")
+		}
+		if _, exists := byKey[value.Key]; exists {
+			return nil, fmt.Errorf("point: duplicate contribution %s", value.Key)
+		}
+		if err := c.ValidateValue(value.Data); err != nil {
+			return nil, fmt.Errorf("point: contribution %s: %w", value.Key, err)
+		}
+		byKey[value.Key] = value
+	}
+	return byKey, nil
+}
+
+func orderedValues(byKey map[string]PointValue, order []string) ([]PointValue, error) {
 	result := make([]PointValue, 0, len(order))
 	seen := make(map[string]bool, len(order))
 	for _, key := range order {
@@ -184,12 +210,6 @@ func (c *Point) Compose(values []PointValue, order []string) ([]PointValue, erro
 		}
 		seen[key] = true
 		result = append(result, value)
-	}
-	if c.descriptor.Composition == Collection && len(result) != len(values) {
-		return nil, errors.New("point: explicit order omits an applicable contribution")
-	}
-	if len(result) == 0 && !c.descriptor.Optional {
-		return nil, errors.New("point: required point needs an explicit composition")
 	}
 	return result, nil
 }

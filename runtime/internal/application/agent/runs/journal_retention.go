@@ -29,22 +29,22 @@ const (
 // and replay reuse the charge stored beside the event.
 func retainedBytes(event Event) int {
 	if event.Payload == nil {
-		return retainedEventHeaderBytes + len(event.RunID) + len(event.SegmentID) + len(event.Cursor)
+		return retainedEventHeaderBytes + len(event.RunID.String()) + len(event.SegmentID.String()) + len(event.Cursor)
 	}
-	return retainedEventHeaderBytes + len(event.RunID) + len(event.SegmentID) + len(event.Cursor) +
+	return retainedEventHeaderBytes + len(event.RunID.String()) + len(event.SegmentID.String()) + len(event.Cursor) +
 		event.Payload.retainedBytes()
 }
 
 func retainedRunBytes(value run.Run) int {
 	snapshot := value.Snapshot()
 	bytes := retainedRunHeaderBytes + stringsBytes(
-		snapshot.SessionID,
-		snapshot.ID,
-		snapshot.Lineage.SpawnedByItemID(),
-		snapshot.Lineage.ParentRunID(),
-		snapshot.Lineage.RootRunID(),
+		snapshot.SessionID.String(),
+		snapshot.ID.String(),
+		snapshot.Lineage.SpawnedByItemID().String(),
+		snapshot.Lineage.ParentRunID().String(),
+		snapshot.Lineage.RootRunID().String(),
 		snapshot.GoalIncarnationID,
-		snapshot.ActiveSegmentID,
+		snapshot.ActiveSegmentID.String(),
 		snapshot.ModelSelection.Provider(),
 		snapshot.ModelSelection.Model(),
 		snapshot.ModelSelection.ReasoningEffort(),
@@ -70,7 +70,7 @@ func retainedRunBytes(value run.Run) int {
 }
 
 func retainedItemBytes(item transcript.Item) int {
-	bytes := retainedItemHeaderBytes + stringsBytes(item.SessionID(), item.ID(), item.RunID())
+	bytes := retainedItemHeaderBytes + stringsBytes(item.SessionID().String(), item.ID().String(), item.RunID().String())
 	switch payload := item.Body().(type) {
 	case transcript.UserMessageBody:
 		bytes += retainedContentBytes(payload.Content)
@@ -103,18 +103,16 @@ func retainedContentBytes(content []transcript.ContentBlock) int {
 }
 
 func retainedItemStartBytes(item ItemStart) int {
-	bytes := retainedItemHeaderBytes + stringsBytes(
-		item.SessionID,
-		item.RunID,
-		item.ItemID,
-		string(item.SafetyClass),
-	)
-	bytes += retainedToolInvocationBytes(item.ToolInvocation)
+	identity := item.Identity()
+	bytes := retainedItemHeaderBytes + stringsBytes(identity.SessionID.String(), identity.RunID.String(), identity.ItemID.String())
+	if call, ok := item.ToolCall(); ok {
+		bytes += len(call.SafetyClass) + retainedToolInvocationBytes(&call.Invocation)
+	}
 	return bytes
 }
 
 func retainedPlanSnapshotBytes(snapshot PlanSnapshot) int {
-	bytes := retainedEventHeaderBytes + len(snapshot.SessionID) + cap(snapshot.Steps)*retainedPlanEntryBytes
+	bytes := retainedEventHeaderBytes + len(snapshot.SessionID.String()) + cap(snapshot.Steps)*retainedPlanEntryBytes
 	for _, item := range snapshot.Steps {
 		bytes += len(item.Description)
 	}
@@ -122,7 +120,7 @@ func retainedPlanSnapshotBytes(snapshot PlanSnapshot) int {
 }
 
 func retainedInterruptPayloadBytes(interrupt transcript.Interrupt) int {
-	bytes := len(interrupt.ItemID) + len(interrupt.RunID)
+	bytes := len(interrupt.ItemID.String()) + len(interrupt.RunID.String())
 	switch prompt := interrupt.Prompt.(type) {
 	case transcript.Approval:
 		bytes += retainedToolInvocationBytes(&prompt.Tool)

@@ -150,12 +150,12 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 		host, api = buildProtocolRuntime(t, cfg, home)
 		defer host.Close()
 		endpoint = host.Endpoint()
-		stored, found, err := stores.Interrupts.Get(ctx, started.RunID)
+		stored, found, err := stores.Interrupts.Get(ctx, testsupport.MustRunID(started.RunID))
 		if err != nil || !found {
 			t.Fatalf("cold waiting handoff=%t,%v", found, err)
 		}
 		member, _ := stored.RootContinuation()
-		waitingHead, found, err = stores.ExecutorCheckpoints.LoadExecutionTree(ctx, session.ID, member.MemberID)
+		waitingHead, found, err = stores.ExecutorCheckpoints.LoadExecutionTree(ctx, testsupport.MustSessionID(session.ID), member.MemberID)
 		if err != nil || !found {
 			t.Fatalf("cold waiting head=%t,%v", found, err)
 		}
@@ -246,8 +246,8 @@ func TestAcceptedContinuationDoesNotRepeatAnUnacknowledgedTool(t *testing.T) {
 		}
 	})
 	runID := bindings[0].RootRunID()
-	waitForProtocolRunTerminal(t, acceptedCrashContext(t), api, runID)
-	result, err := api.GetRun(t.Context(), protocol.GetRunRequest{RunID: runID})
+	waitForProtocolRunTerminal(t, acceptedCrashContext(t), api, runID.String())
+	result, err := api.GetRun(t.Context(), protocol.GetRunRequest{RunID: runID.String()})
 	if err != nil || result.Outcome == nil || result.Outcome.Type != protocol.OutcomeLost {
 		t.Fatalf("unacknowledged attempt must conclude as lost: %+v, %v", result, err)
 	}
@@ -288,14 +288,14 @@ func testAcceptedContinuationSurvivesRestart(t *testing.T, phase string) {
 			t.Error(err)
 		}
 	})
-	waitForProtocolRunTerminal(t, acceptedCrashContext(t), api, accepted.RootRunID())
+	waitForProtocolRunTerminal(t, acceptedCrashContext(t), api, accepted.RootRunID().String())
 	endpoint := host.Endpoint()
 	lookup := protocol.GetRunAcceptanceRequest{Namespace: testsupport.IdempotencyNamespace, Key: acceptedCommandKey, Operation: protocol.RunCommandResume}
 	ack, err := endpoint.Call[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](t.Context(), delivery.RunsGetAcceptance, lookup, protocol.CallMetadata{})
-	if err != nil || ack.SegmentID != record.Acceptance.SegmentID || ack.UserItemID != accepted.InputItemID || ack.Run == nil || ack.Run.Status != protocol.RunStatusFinished {
+	if err != nil || ack.SegmentID != record.Acceptance.SegmentID.String() || ack.UserItemID != accepted.InputItemID.String() || ack.Run == nil || ack.Run.Status != protocol.RunStatusFinished {
 		t.Fatalf("acceptance lookup after terminal=%+v,%v", ack, err)
 	}
-	request := acceptedResumeRequest(accepted.RootRunID(), accepted.Pending.Bindings[0].InterruptItemID)
+	request := acceptedResumeRequest(accepted.RootRunID().String(), accepted.Pending.Bindings[0].InterruptItemID.String())
 	redelivered := endpoint.Invoke(t.Context(), delivery.RunsResume, request, acceptedCommandOptions())
 	if redelivered.Failure != nil {
 		t.Fatalf("terminal Resume redelivery=%v", redelivered.Failure)
@@ -312,7 +312,7 @@ func testAcceptedContinuationSurvivesRestart(t *testing.T, phase string) {
 	if failure := endpoint.Invoke(t.Context(), delivery.RunsResume, changed, acceptedCommandOptions()).Failure; !errors.Is(failure, protocol.ErrIdempotencyConflict) {
 		t.Fatalf("changed Resume accepted=%v", failure)
 	}
-	value, err := api.GetRun(t.Context(), protocol.GetRunRequest{RunID: accepted.RootRunID()})
+	value, err := api.GetRun(t.Context(), protocol.GetRunRequest{RunID: accepted.RootRunID().String()})
 	if err != nil || value.Outcome == nil || value.Outcome.Type != protocol.OutcomeCompleted {
 		t.Fatalf("revived run=%+v, outcome=%+v, %v", value, value.Outcome, err)
 	}
@@ -334,7 +334,7 @@ func testAcceptedContinuationSurvivesRestart(t *testing.T, phase string) {
 	}
 	cold, api := openProtocolRuntime(t, acceptedCrashModel(t, home))
 	t.Cleanup(func() { _ = cold.Close() })
-	after, err := api.GetRun(t.Context(), protocol.GetRunRequest{RunID: accepted.RootRunID()})
+	after, err := api.GetRun(t.Context(), protocol.GetRunRequest{RunID: accepted.RootRunID().String()})
 	if err != nil || !reflect.DeepEqual(after, value) {
 		t.Fatalf("terminal changed: %+v, %v", after, err)
 	}

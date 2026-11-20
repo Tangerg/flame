@@ -94,7 +94,7 @@ func newReaderSurface(cfg readerSurfaceConfig) *readerSurface {
 
 	dressed := kit.NewForm(form)
 	r.searchDialog = newPresentationDialog(cfg.stack, kit.DialogConfig{Theme: cfg.theme, Glyphs: cfg.glyphs, Title: "Search reader", Body: formNavigation(dressed.Element(), func() { r.searchDialog.Dismiss() }),
-		Where: layout.Placement{Width: 68, Height: 7},
+		Where: layout.Placement{Width: compactDialogWidth, Height: 7},
 	})
 	r.listenForSearch()
 	return r
@@ -103,7 +103,7 @@ func newReaderSurface(cfg readerSurfaceConfig) *readerSurface {
 func (r *readerSurface) listenForSearch() {
 	results := r.pane.SearchResults()
 	operations := r.tasks.operations
-	operations.Go(readerSearchOperation, true, func(ctx context.Context, lease operationLease) {
+	operations.Go(readerSearchOperation, func(ctx context.Context, lease operationLease) {
 		for {
 			select {
 			case result, ok := <-results:
@@ -131,7 +131,7 @@ func (r *readerSurface) show(query *readerQuery) {
 
 func (r *readerSurface) load(query *readerQuery, read func(context.Context) (readerDocument, error)) {
 	r.status.note(query.status)
-	r.tasks.session(readerDocumentOperation, true, read, func(document readerDocument, err error) {
+	r.tasks.session(readerDocumentOperation, read, func(document readerDocument, err error) {
 		if err != nil {
 			message := query.status + " failed: " + err.Error()
 			if r.showing(query) {
@@ -166,7 +166,7 @@ func (r *readerSurface) showing(query *readerQuery) bool {
 // update replaces the document query opened, keeping the reader's place.
 func (r *readerSurface) update(query *readerQuery, document readerDocument) {
 	if r.showing(query) {
-		r.pane.replace(document, r.pane.placementFor(true))
+		r.pane.replace(document, r.pane.placementFor(readerKeepsPlace))
 	}
 }
 

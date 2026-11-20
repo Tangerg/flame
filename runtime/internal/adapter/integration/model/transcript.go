@@ -177,6 +177,20 @@ func renderTranscriptParts(prefix string, values []string, budget int) string {
 	return capText(rendered.String(), budget)
 }
 
+// HeadTailCut splits a budget of kept bytes into a head (¾) and a tail (¼) of
+// s, snapping both cuts to rune boundaries so a multibyte rune is never split.
+func HeadTailCut(s string, kept int) (head, tailStart int) {
+	kept = min(max(kept, 0), len(s))
+	head, tailStart = kept*3/4, len(s)-kept/4
+	for head > 0 && !utf8.RuneStart(s[head]) {
+		head--
+	}
+	for tailStart < len(s) && !utf8.RuneStart(s[tailStart]) {
+		tailStart++
+	}
+	return head, max(head, tailStart)
+}
+
 // HeadTail reduces s to a head (¾) + tail (¼) preview when it exceeds limit,
 // including the elision marker inside that exact byte limit. Cuts snap to rune
 // boundaries so a multibyte rune is never split. Shared by transient model
@@ -187,13 +201,7 @@ func HeadTail(s string, limit int, marker func(elided int) string) string {
 	}
 	keptBytes := limit
 	for {
-		head, tailStart := keptBytes*3/4, len(s)-keptBytes/4
-		for head > 0 && !utf8.RuneStart(s[head]) {
-			head--
-		}
-		for tailStart < len(s) && !utf8.RuneStart(s[tailStart]) {
-			tailStart++
-		}
+		head, tailStart := HeadTailCut(s, keptBytes)
 		elision := marker(tailStart - head)
 		if head+len(elision)+len(s)-tailStart <= limit {
 			return s[:head] + elision + s[tailStart:]

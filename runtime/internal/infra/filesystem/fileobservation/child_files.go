@@ -195,7 +195,7 @@ func resolveChildFileRoot(
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("observe child files: resolve %q: %w", candidate.path, err)
 	}
-	root, name, inside, err := roots.access(candidate.physicalBoundary, physical)
+	observed, inside, err := roots.access(candidate.physicalBoundary, physical)
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("observe child files: confine %q: %w", candidate.path, err)
 	}
@@ -203,12 +203,7 @@ func resolveChildFileRoot(
 		directory, directoryErr := nearestExistingDirectory(filepath.Dir(candidate.path))
 		return "", nil, []string{directory}, directoryErr
 	}
-	var info os.FileInfo
-	if root != nil {
-		info, err = root.Stat(name)
-	} else {
-		info, err = os.Stat(name)
-	}
+	info, err := observed.stat()
 	if errors.Is(err, os.ErrNotExist) {
 		directory, directoryErr := nearestExistingDirectory(filepath.Dir(physical))
 		return "", nil, []string{directory}, directoryErr
@@ -278,19 +273,14 @@ func observeImmediateChildFile(
 	roots *observationRoots,
 ) (string, observedPath, bool, error) {
 	path := filepath.Join(directory, relative)
-	root, name, inside, err := roots.access(candidate.physicalBoundary, path)
+	match, inside, err := roots.access(candidate.physicalBoundary, path)
 	if err != nil {
 		return "", observedPath{}, false, fmt.Errorf("observe child files: confine %q: %w", path, err)
 	}
 	if !inside {
 		return "", observedPath{}, false, nil
 	}
-	var matched os.FileInfo
-	if root != nil {
-		matched, err = root.Lstat(name)
-	} else {
-		matched, err = os.Lstat(name)
-	}
+	matched, err := match.lstat()
 	if errors.Is(err, os.ErrNotExist) {
 		return "", observedPath{}, false, nil
 	}
@@ -323,19 +313,14 @@ func readChildFileEntries(
 	info os.FileInfo,
 	maxEntries int,
 ) ([]os.DirEntry, bool, error) {
-	root, name, inside, err := roots.access(boundary, path)
+	observed, inside, err := roots.access(boundary, path)
 	if err != nil {
 		return nil, false, err
 	}
 	if !inside {
 		return nil, false, errors.New("child file directory is outside its observation boundary")
 	}
-	var directory *os.File
-	if root != nil {
-		directory, _, err = filesystem.OpenDirectoryAtExpected(root, name, info)
-	} else {
-		directory, _, err = filesystem.OpenDirectoryExpected(name, info)
-	}
+	directory, _, err := observed.openDirectory(info)
 	if err != nil {
 		return nil, false, err
 	}
@@ -373,19 +358,14 @@ func fingerprintResolvedChildFile(
 	maxBytes int64,
 	roots *observationRoots,
 ) (observedPath, error) {
-	root, name, inside, err := roots.access(boundary, resolved)
+	observed, inside, err := roots.access(boundary, resolved)
 	if err != nil {
 		return observedPath{}, fmt.Errorf("observe child files: confine file %q: %w", logical, err)
 	}
 	if !inside {
 		return observedPath{}, nil
 	}
-	var info os.FileInfo
-	if root != nil {
-		info, err = root.Stat(name)
-	} else {
-		info, err = os.Stat(name)
-	}
+	info, err := observed.stat()
 	if errors.Is(err, os.ErrNotExist) {
 		encoder := newFingerprintEncoder()
 		encoder.field(fingerprintFieldLogicalPath, logical)
@@ -411,13 +391,7 @@ func fingerprintResolvedChildFile(
 		encoder.state(fingerprintStateTooLarge)
 		return observedPath{fingerprint: encoder.sum(), physical: resolved, dependencies: []string{resolved}}, nil
 	}
-	var file *os.File
-	var opened os.FileInfo
-	if root != nil {
-		file, opened, err = filesystem.OpenFileAtExpected(root, name, info, maxBytes)
-	} else {
-		file, opened, err = filesystem.OpenFileExpected(name, info, maxBytes)
-	}
+	file, opened, err := observed.openFile(info, maxBytes)
 	if err != nil {
 		return observedPath{}, fmt.Errorf("observe child files: open %q: %w", logical, err)
 	}
@@ -425,7 +399,7 @@ func fingerprintResolvedChildFile(
 	encoder.field(fingerprintFieldLogicalPath, logical)
 	encoder.field(fingerprintFieldPhysicalPath, resolved)
 	copyErr := encoder.content(file, opened.Size())
-	versionErr := verifyObservedFileVersion(root, name, file, opened)
+	versionErr := verifyObservedFileVersion(observed, file, opened)
 	closeErr := file.Close()
 	if copyErr != nil || versionErr != nil || closeErr != nil {
 		return observedPath{}, fmt.Errorf("observe child files: read %q: %w", logical, errors.Join(copyErr, versionErr, closeErr))

@@ -22,34 +22,21 @@ type Contracts struct {
 }
 
 func NewContracts() (Contracts, error) {
-	var c Contracts
-	var err error
-	c.Capability, err = plugincontract.ParseCapability([]byte(published.CapabilityJSON))
+	capability, err := plugincontract.ParseCapability([]byte(published.CapabilityJSON))
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Import, err = pluginmcp.ImplementMethod[wire.ImportInput, knowledge.Header](c.Capability, published.ImportV1Method)
-	if err != nil {
-		return Contracts{}, err
+	methods := pluginmcp.NewMethodSet(capability)
+	c := Contracts{
+		Capability: capability,
+		Import:     pluginmcp.Implement[wire.ImportInput, knowledge.Header](methods, published.ImportV1Method),
+		Reindex:    pluginmcp.Implement[wire.DocumentInput, knowledge.Header](methods, published.ReindexV1Method),
+		Delete:     pluginmcp.Implement[wire.DocumentInput, bool](methods, published.DeleteV1Method),
+		List:       pluginmcp.Implement[struct{}, []knowledge.Header](methods, published.ListV1Method),
+		Search:     pluginmcp.Implement[wire.SearchInput, []knowledge.Match](methods, published.SearchV1Method),
+		Read:       pluginmcp.Implement[wire.ReadInput, wire.DocumentRead](methods, published.ReadV1Method),
 	}
-	c.Reindex, err = pluginmcp.ImplementMethod[wire.DocumentInput, knowledge.Header](c.Capability, published.ReindexV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Delete, err = pluginmcp.ImplementMethod[wire.DocumentInput, bool](c.Capability, published.DeleteV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.List, err = pluginmcp.ImplementMethod[struct{}, []knowledge.Header](c.Capability, published.ListV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Search, err = pluginmcp.ImplementMethod[wire.SearchInput, []knowledge.Match](c.Capability, published.SearchV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Read, err = pluginmcp.ImplementMethod[wire.ReadInput, wire.DocumentRead](c.Capability, published.ReadV1Method)
-	if err != nil {
+	if err := methods.Err(); err != nil {
 		return Contracts{}, err
 	}
 	return c, nil

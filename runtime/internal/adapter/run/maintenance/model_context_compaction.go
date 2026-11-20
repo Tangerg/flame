@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
@@ -27,46 +29,46 @@ var (
 // CompactModelContext reduces the exact mutable context for one imminent model
 // call. A durable rewrite is an immutable proposal for the Run fact owner;
 // computation never changes stored history or derived Session authority.
+// durableHistory aligns the candidate with the stored context: the stored
+// history is what gets folded, and the candidate's suffix past it is ephemeral
+// and reattached verbatim.
+func (c *Compactor) durableHistory(ctx context.Context, request executionadapter.ModelContextCompaction) ([]chat.Message, []chat.Message, int, error) {
+	candidate := request.Candidate()
+	stored, err := c.store.Read(ctx, request.SessionID())
+	if err != nil {
+		return nil, nil, 0, fmt.Errorf("maintenance: read model context: %w", err)
+	}
+	candidatePrefix, matches, difference, err := request.CompareDurableHistory(stored)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	if !matches {
+		return nil, nil, 0, fmt.Errorf("%w: candidate_messages=%d durable_messages=%d first_difference=%s",
+			errModelContextDiverged, len(candidate), len(stored), difference)
+	}
+	ephemeral := candidate[candidatePrefix:]
+	// ProtectedTail counts trailing Candidate messages, and the ephemeral
+	// suffix already satisfies that many of them. Only what reaches past it has
+	// to be protected inside the durable history this compaction folds.
+	protectedTail := max(request.ProtectedTail()-len(ephemeral), 0)
+	if protectedTail > len(stored) {
+		return nil, nil, 0, fmt.Errorf("%w: protected durable tail %d exceeds stored history %d",
+			errModelContextDiverged, protectedTail, len(stored))
+	}
+	return stored, ephemeral, protectedTail, nil
+}
+
 func (c *Compactor) CompactModelContext(
 	ctx context.Context,
 	request executionadapter.ModelContextCompaction,
 ) (executionadapter.ModelContextCompactionResult, error) {
 	candidate := request.Candidate()
-	history := candidate
-	protectedTail := request.ProtectedTail()
-	var ephemeral []chat.Message
+	history, ephemeral, protectedTail := candidate, []chat.Message(nil), request.ProtectedTail()
 	if request.Durable() {
-		stored, err := c.store.Read(ctx, request.SessionID())
-		if err != nil {
-			return executionadapter.ModelContextCompactionResult{}, fmt.Errorf("maintenance: read model context: %w", err)
-		}
-		candidatePrefix, matches, difference, err := request.CompareDurableHistory(stored)
+		var err error
+		history, ephemeral, protectedTail, err = c.durableHistory(ctx, request)
 		if err != nil {
 			return executionadapter.ModelContextCompactionResult{}, err
-		}
-		if !matches {
-			return executionadapter.ModelContextCompactionResult{}, fmt.Errorf(
-				"%w: candidate_messages=%d durable_messages=%d first_difference=%s",
-				errModelContextDiverged,
-				len(candidate),
-				len(stored),
-				difference,
-			)
-		}
-		history = stored
-		ephemeral = candidate[candidatePrefix:]
-		// ProtectedTail counts trailing Candidate messages, and the ephemeral
-		// suffix is reattached verbatim after the fold, so it already satisfies
-		// that many of them. Only what reaches past it has to be protected inside
-		// the durable history, which is the sequence this compaction folds.
-		protectedTail = max(protectedTail-len(ephemeral), 0)
-		if protectedTail > len(history) {
-			return executionadapter.ModelContextCompactionResult{}, fmt.Errorf(
-				"%w: protected durable tail %d exceeds stored history %d",
-				errModelContextDiverged,
-				protectedTail,
-				len(history),
-			)
 		}
 	}
 
@@ -171,7 +173,7 @@ func (m modelContextCounter) CountInputTokens(
 
 func (c *Compactor) materializeModelContextPlan(
 	ctx context.Context,
-	sessionID string,
+	sessionID identity.SessionID,
 	plan compactionPlan,
 ) (
 	replacement []chat.Message,

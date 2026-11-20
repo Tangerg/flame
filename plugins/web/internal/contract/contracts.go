@@ -22,26 +22,19 @@ type Contracts struct {
 }
 
 func NewContracts() (Contracts, error) {
-	var c Contracts
-	var err error
-	c.Capability, err = plugincontract.ParseCapability([]byte(contracts.CapabilityJSON))
+	capability, err := plugincontract.ParseCapability([]byte(contracts.CapabilityJSON))
 	if err != nil {
 		return Contracts{}, err
 	}
-	c.Search, err = pluginmcp.ImplementMethod[web.SearchRequest, wire.SearchResponse](c.Capability, contracts.SearchV1Method)
-	if err != nil {
-		return Contracts{}, err
+	methods := pluginmcp.NewMethodSet(capability)
+	c := Contracts{
+		Capability: capability,
+		Search:     pluginmcp.Implement[web.SearchRequest, wire.SearchResponse](methods, contracts.SearchV1Method),
+		Fetch:      pluginmcp.Implement[web.FetchRequest, capture.Page](methods, contracts.FetchV1Method),
+		Browse:     pluginmcp.Implement[wire.BrowseInput, capture.Page](methods, contracts.BrowseV1Method),
+		Request:    pluginmcp.Implement[httpreq.Request, wire.HTTPResponse](methods, contracts.RequestV1Method),
 	}
-	c.Fetch, err = pluginmcp.ImplementMethod[web.FetchRequest, capture.Page](c.Capability, contracts.FetchV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Browse, err = pluginmcp.ImplementMethod[wire.BrowseInput, capture.Page](c.Capability, contracts.BrowseV1Method)
-	if err != nil {
-		return Contracts{}, err
-	}
-	c.Request, err = pluginmcp.ImplementMethod[httpreq.Request, wire.HTTPResponse](c.Capability, contracts.RequestV1Method)
-	if err != nil {
+	if err := methods.Err(); err != nil {
 		return Contracts{}, err
 	}
 	return c, nil

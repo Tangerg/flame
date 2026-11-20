@@ -35,7 +35,7 @@ type runOptionScreens struct {
 func (o *runOptionScreens) buildModelPicker(theme kit.Theme, glyphs kit.Glyphs) {
 	o.models = newPickerDialog(pickerDialogConfig[protocol.Model]{
 		stack: o.stack, theme: theme, glyphs: glyphs, title: "Models", search: "search models",
-		where: layout.Placement{Width: 76, Height: 14},
+		where: layout.Placement{Width: standardDialogWidth, Height: 14},
 		label: func(model protocol.Model) string {
 			label := model.DisplayName
 			if label == "" {
@@ -96,7 +96,7 @@ func (o *runOptionScreens) refreshModelPicker() {
 	if presentation == nil {
 		return
 	}
-	o.tasks.session(pickerCatalogOperation, true,
+	o.tasks.session(pickerCatalogOperation,
 		func(ctx context.Context) ([]protocol.Model, error) { return o.service.ListModels(ctx) },
 		func(models []protocol.Model, err error) {
 			if !presentation.current(o.models.dialog.Identity()) {
@@ -116,7 +116,7 @@ func (o *runOptionScreens) refreshModelPicker() {
 }
 
 func (o *runOptionScreens) ShowRuntimeStatus() {
-	o.tasks.session(pickerCatalogOperation, true,
+	o.tasks.session(pickerCatalogOperation,
 		func(ctx context.Context) (protocol.ApprovalModeResult, error) { return o.service.GetApprovalMode(ctx) },
 		func(result protocol.ApprovalModeResult, err error) {
 			if err != nil {

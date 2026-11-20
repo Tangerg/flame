@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 
 	framehost "github.com/Tangerg/frame/host"
@@ -40,43 +42,59 @@ func (s *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 		}
 	}
 	return s.db.write(ctx, func(ctx context.Context) error {
-		var owner, buildID string
+		var owner identity.SessionID
+		var buildID string
 		err := s.db.connection(ctx).QueryRowContext(ctx, `SELECT session_id, build_id
 			   FROM executor_checkpoints
 			  WHERE root_member_id = ?`, checkpoint.RootMemberID).Scan(&owner, &buildID)
-		if errors.Is(err, sql.ErrNoRows) {
-			_, err = s.db.connection(ctx).ExecContext(ctx, `INSERT INTO executor_checkpoints(
-					root_member_id, session_id, build_id, payload
-				 ) VALUES (?, ?, ?, ?)`, checkpoint.RootMemberID, checkpoint.SessionID, checkpoint.BuildID, checkpoint.Payload)
-			if err != nil {
-				return fmt.Errorf("sqlite: insert executor checkpoint %q: %w", checkpoint.RootMemberID, err)
-			}
-			return s.replaceReferences(ctx, checkpoint)
-		}
-		if err != nil {
-			return fmt.Errorf("sqlite: inspect executor checkpoint %q before save: %w", checkpoint.RootMemberID, err)
-		}
 		switch {
-		case owner != checkpoint.SessionID:
-			return fmt.Errorf("sqlite: executor checkpoint %q belongs to Session %q, not %q: %w", checkpoint.RootMemberID, owner, checkpoint.SessionID, runs.ErrInvalidExecutorCheckpoint)
-		case buildID != checkpoint.BuildID:
-			return fmt.Errorf("sqlite: executor checkpoint %q build is immutable: stored %q, replacement %q: %w", checkpoint.RootMemberID, buildID, checkpoint.BuildID, runs.ErrInvalidExecutorCheckpoint)
+		case errors.Is(err, sql.ErrNoRows):
+			err = s.insertCheckpoint(ctx, checkpoint)
+		case err != nil:
+			return fmt.Errorf("sqlite: inspect executor checkpoint %q before save: %w", checkpoint.RootMemberID, err)
+		default:
+			err = s.advanceCheckpoint(ctx, checkpoint, owner, buildID)
 		}
-		result, err := s.db.connection(ctx).ExecContext(ctx, `UPDATE executor_checkpoints
-			    SET payload = ?
-			  WHERE root_member_id = ?`, checkpoint.Payload, checkpoint.RootMemberID)
 		if err != nil {
-			return fmt.Errorf("sqlite: advance executor checkpoint %q: %w", checkpoint.RootMemberID, err)
-		}
-		written, err := result.RowsAffected()
-		if err != nil {
-			return fmt.Errorf("sqlite: inspect advanced executor checkpoint %q: %w", checkpoint.RootMemberID, err)
-		}
-		if written != 1 {
-			return fmt.Errorf("sqlite: advance executor checkpoint %q affected %d rows", checkpoint.RootMemberID, written)
+			return err
 		}
 		return s.replaceReferences(ctx, checkpoint)
 	})
+}
+
+func (s *ExecutorCheckpointStore) insertCheckpoint(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error {
+	_, err := s.db.connection(ctx).ExecContext(ctx, `INSERT INTO executor_checkpoints(
+			root_member_id, session_id, build_id, payload
+		 ) VALUES (?, ?, ?, ?)`, checkpoint.RootMemberID, checkpoint.SessionID, checkpoint.BuildID, checkpoint.Payload)
+	if err != nil {
+		return fmt.Errorf("sqlite: insert executor checkpoint %q: %w", checkpoint.RootMemberID, err)
+	}
+	return nil
+}
+
+// advanceCheckpoint replaces only the payload; the owning Session and build
+// are immutable for a root member.
+func (s *ExecutorCheckpointStore) advanceCheckpoint(ctx context.Context, checkpoint runs.ExecutorCheckpoint, owner identity.SessionID, buildID string) error {
+	switch {
+	case owner != checkpoint.SessionID:
+		return fmt.Errorf("sqlite: executor checkpoint %q belongs to Session %q, not %q: %w", checkpoint.RootMemberID, owner, checkpoint.SessionID, runs.ErrInvalidExecutorCheckpoint)
+	case buildID != checkpoint.BuildID:
+		return fmt.Errorf("sqlite: executor checkpoint %q build is immutable: stored %q, replacement %q: %w", checkpoint.RootMemberID, buildID, checkpoint.BuildID, runs.ErrInvalidExecutorCheckpoint)
+	}
+	result, err := s.db.connection(ctx).ExecContext(ctx, `UPDATE executor_checkpoints
+		    SET payload = ?
+		  WHERE root_member_id = ?`, checkpoint.Payload, checkpoint.RootMemberID)
+	if err != nil {
+		return fmt.Errorf("sqlite: advance executor checkpoint %q: %w", checkpoint.RootMemberID, err)
+	}
+	written, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("sqlite: inspect advanced executor checkpoint %q: %w", checkpoint.RootMemberID, err)
+	}
+	if written != 1 {
+		return fmt.Errorf("sqlite: advance executor checkpoint %q affected %d rows", checkpoint.RootMemberID, written)
+	}
+	return nil
 }
 
 // The payload and its executable and resource bindings share a snapshot.
@@ -85,7 +103,8 @@ func (s *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 		return runs.ExecutorCheckpoint{}, fmt.Errorf("sqlite: load executor checkpoint: %w", err)
 	}
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) (runs.ExecutorCheckpoint, error) {
-		var sessionID, buildID string
+		var sessionID identity.SessionID
+		var buildID string
 		var payload []byte
 		err := s.db.connection(ctx).QueryRowContext(ctx, `SELECT session_id, build_id, payload
 		   FROM executor_checkpoints
@@ -112,8 +131,8 @@ func (s *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 // transaction, but only when they belong to sessionID. Unknown roots are
 // already absent and therefore succeed; a root owned by another Session is
 // rejected as corruption rather than deleted.
-func (s *ExecutorCheckpointStore) DeleteCheckpoints(ctx context.Context, sessionID string, rootIDs []string) error {
-	if err := validateSessionResource("delete executor checkpoints", sessionID); err != nil {
+func (s *ExecutorCheckpointStore) DeleteCheckpoints(ctx context.Context, sessionID identity.SessionID, rootIDs []string) error {
+	if err := validateResource("delete executor checkpoints", sessionID); err != nil {
 		return err
 	}
 	if len(rootIDs) == 0 {
@@ -141,8 +160,8 @@ func (s *ExecutorCheckpointStore) DeleteCheckpoints(ctx context.Context, session
 
 // DeleteSessionCheckpoints removes every checkpoint aggregate owned by
 // sessionID.
-func (s *ExecutorCheckpointStore) DeleteSessionCheckpoints(ctx context.Context, sessionID string) error {
-	if err := validateSessionResource("delete session executor checkpoints", sessionID); err != nil {
+func (s *ExecutorCheckpointStore) DeleteSessionCheckpoints(ctx context.Context, sessionID identity.SessionID) error {
+	if err := validateResource("delete session executor checkpoints", sessionID); err != nil {
 		return err
 	}
 	return s.db.write(ctx, func(ctx context.Context) error {
@@ -159,7 +178,7 @@ func (s *ExecutorCheckpointStore) DeleteSessionCheckpoints(ctx context.Context, 
 		return err
 	})
 }
-func (s *ExecutorCheckpointStore) sessionCheckpointRootIDs(ctx context.Context, sessionID string) ([]string, error) {
+func (s *ExecutorCheckpointStore) sessionCheckpointRootIDs(ctx context.Context, sessionID identity.SessionID) ([]string, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]string, error) {
 		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT root_member_id FROM executor_checkpoints WHERE session_id = ? ORDER BY root_member_id`, sessionID)
 		if err != nil {
@@ -184,7 +203,7 @@ func (s *ExecutorCheckpointStore) sessionCheckpointRootIDs(ctx context.Context, 
 		return rootIDs, nil
 	})
 }
-func (s *ExecutorCheckpointStore) deleteOwnedCheckpoint(ctx context.Context, sessionID string, rootMemberID string) error {
+func (s *ExecutorCheckpointStore) deleteOwnedCheckpoint(ctx context.Context, sessionID identity.SessionID, rootMemberID string) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		result, err := s.db.connection(ctx).ExecContext(ctx, `DELETE FROM executor_checkpoints WHERE root_member_id = ? AND session_id = ?`, rootMemberID, sessionID)
 		if err != nil {
@@ -197,7 +216,7 @@ func (s *ExecutorCheckpointStore) deleteOwnedCheckpoint(ctx context.Context, ses
 		if deleted == 1 {
 			return nil
 		}
-		var owner string
+		var owner identity.SessionID
 		err = s.db.connection(ctx).QueryRowContext(ctx, `SELECT session_id FROM executor_checkpoints WHERE root_member_id = ?`, rootMemberID).Scan(&owner)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil

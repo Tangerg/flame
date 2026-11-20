@@ -24,6 +24,7 @@ import (
 
 const (
 	addMemoryTool    = "add_memory"
+	listMemoriesTool = "list_memories"
 	updateMemoryTool = "update_memory"
 	deleteMemoryTool = "delete_memory"
 	reviewMemoryTool = "review_memory"
@@ -112,7 +113,7 @@ func buildMemoryTools(coordinator *app.Coordinator, db framesqlite.Database) ([]
 		return nil, errors.New("memory: coordinator and database are required")
 	}
 	t := memoryTools{coordinator: coordinator, db: db}
-	list, err := tool.NewFunc[listMemoryArgs, memoryPage](tool.FuncConfig{Name: "list_memories", Description: "List active and pending memories with their exact ids, scopes and revisions. Choose project for the current workspace or user for shared user memory. Follow next_cursor to continue."}, t.list)
+	list, err := tool.NewFunc[listMemoryArgs, memoryPage](tool.FuncConfig{Name: listMemoriesTool, Description: "List active and pending memories with their exact ids, scopes and revisions. Choose project for the current workspace or user for shared user memory. Follow next_cursor to continue."}, t.list)
 	if err != nil {
 		return nil, err
 	}
@@ -148,12 +149,9 @@ func (t memoryTools) list(ctx context.Context, input listMemoryArgs) (memoryPage
 	if err != nil {
 		return memoryPage{}, pluginsdk.DefiniteToolFailure(err)
 	}
-	limit := pagination.DefaultLimit()
-	if input.Limit != nil {
-		limit, err = pagination.NewLimit(*input.Limit)
-		if err != nil {
-			return memoryPage{}, pluginsdk.DefiniteToolFailure(err)
-		}
+	limit, err := pagination.ParseLimit(input.Limit)
+	if err != nil {
+		return memoryPage{}, pluginsdk.DefiniteToolFailure(err)
 	}
 	page, err := t.coordinator.List(ctx, app.ListInput{Scope: input.Scope, CWD: cwd, Cursor: input.Cursor, Limit: limit})
 	if err != nil {
@@ -260,16 +258,5 @@ func memoryToolReceipt(ctx context.Context, db framesqlite.Database, input plugi
 		return pluginsdk.ToolReceipt{}, err
 	}
 	value, err := pluginmcp.DecodeReply[jsontext.Value](receipt.Reply)
-	if err != nil {
-		failure, known := tool.ClassifyFailure(memoryToolFailure(input.Method, err))
-		if !known {
-			return pluginsdk.ToolReceipt{}, err
-		}
-		return pluginsdk.NewToolReceipt(failure.Output(), true)
-	}
-	output, err := tool.NewJSONOutput(value)
-	if err != nil {
-		return pluginsdk.ToolReceipt{}, err
-	}
-	return pluginsdk.NewToolReceipt(output, false)
+	return pluginsdk.ToolReceiptFrom(value, err, func(err error) error { return memoryToolFailure(input.Method, err) })
 }

@@ -172,12 +172,12 @@ func TestAcceptedQuestionSurvivesAcceptanceAndAnswerReceiptCrash(t *testing.T) {
 			accepted := bindings[0]
 			host, api := buildProtocolRuntime(t, protocolRuntimeConfig(t, stores, acceptedQuestionModel()), home)
 			t.Cleanup(func() { _ = host.Close() })
-			waitForProtocolRunTerminal(t, t.Context(), api, accepted.RootRunID())
-			value, err := api.GetRun(t.Context(), protocol.GetRunRequest{RunID: accepted.RootRunID()})
+			waitForProtocolRunTerminal(t, t.Context(), api, accepted.RootRunID().String())
+			value, err := api.GetRun(t.Context(), protocol.GetRunRequest{RunID: accepted.RootRunID().String()})
 			if err != nil || value.Outcome == nil || value.Outcome.Type != protocol.OutcomeCompleted {
 				t.Fatalf("recovered question Run = %+v, %v", value, err)
 			}
-			items, err := api.ListItems(t.Context(), protocol.ListItemsRequest{Scope: protocol.ItemListScope{Type: protocol.ItemScopeSession, SessionID: accepted.SessionID}})
+			items, err := api.ListItems(t.Context(), protocol.ListItemsRequest{Scope: protocol.ItemListScope{Type: protocol.ItemScopeSession, SessionID: accepted.SessionID.String()}})
 			if err != nil {
 				t.Fatal(err)
 			}

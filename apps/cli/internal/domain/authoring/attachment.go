@@ -30,11 +30,8 @@ func (a Attachment) Validate() error {
 	if !slices.Contains([]protocol.ContentBlockType{protocol.ContentBlockImage, protocol.ContentBlockText}, a.Kind) {
 		problems = append(problems, fmt.Errorf("kind %q is invalid", a.Kind))
 	}
-	if a.Kind == protocol.ContentBlockImage {
-		mediaType, _, err := mime.ParseMediaType(a.MimeType)
-		if err != nil || !strings.HasPrefix(mediaType, "image/") {
-			problems = append(problems, fmt.Errorf("image MIME %q is invalid", a.MimeType))
-		}
+	if a.Kind == protocol.ContentBlockImage && !IsImageMediaType(a.MimeType) {
+		problems = append(problems, fmt.Errorf("image MIME %q is invalid", a.MimeType))
 	}
 	if strings.TrimSpace(a.Name) == "" {
 		problems = append(problems, errors.New("name is empty"))
@@ -48,4 +45,11 @@ func (a Attachment) Validate() error {
 		return fmt.Errorf("attachment: %w", err)
 	}
 	return nil
+}
+
+// IsImageMediaType reports whether value names a well-formed image media type,
+// the only media Runtime accepts as image content.
+func IsImageMediaType(value string) bool {
+	mediaType, _, err := mime.ParseMediaType(value)
+	return err == nil && strings.HasPrefix(mediaType, "image/")
 }

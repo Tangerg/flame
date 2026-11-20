@@ -25,6 +25,12 @@ import (
 const maxPackageBytes int64 = 128 << 20
 const maxManifestBytes int64 = 4 << 20
 
+// Package-root manifest files the release format reads.
+const (
+	pluginManifestFile = "plugin.json"
+	mcpManifestFile    = "mcp.json"
+)
+
 var errResourceLimit = errors.New("pluginpackage: resource limit exceeded")
 
 type releaseCatalog interface {
@@ -88,6 +94,28 @@ func (c *Candidate) Discard() error { return c.lease.Close() }
 // Materialize holds the neutral release before its bytes become visible. The
 // claim survives metadata publication until the installation workflow discards
 // this original candidate, including admission failures and response loss.
+// importSource holds a package directory or archive in content storage.
+func (r *Releases) importSource(ctx context.Context, source string, info os.FileInfo) (distribution.Lease, error) {
+	var lease distribution.Lease
+	var err error
+	switch {
+	case info.IsDir():
+		lease, err = r.content.ImportDirectoryHeld(ctx, source)
+	case info.Mode().IsRegular():
+		var digest framevalue.Digest
+		digest, err = localArchiveDigest(ctx, source, info)
+		if err == nil {
+			lease, err = r.content.ImportArchiveHeld(ctx, source, digest)
+		}
+	default:
+		return lease, fmt.Errorf("%w: package source must be a directory or regular archive: %w", plugin.ErrInvalid, filesystem.ErrNotRegular)
+	}
+	if err != nil {
+		return lease, packageInputError(err)
+	}
+	return lease, nil
+}
+
 func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Candidate, err error) {
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return nil, err
@@ -99,20 +127,9 @@ func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Ca
 	if err != nil {
 		return nil, err
 	}
-	var lease distribution.Lease
-	if info.IsDir() {
-		lease, err = r.content.ImportDirectoryHeld(ctx, source)
-	} else if info.Mode().IsRegular() {
-		var digest framevalue.Digest
-		digest, err = localArchiveDigest(ctx, source, info)
-		if err == nil {
-			lease, err = r.content.ImportArchiveHeld(ctx, source, digest)
-		}
-	} else {
-		return nil, fmt.Errorf("%w: package source must be a directory or regular archive: %w", plugin.ErrInvalid, filesystem.ErrNotRegular)
-	}
+	lease, err := r.importSource(ctx, source, info)
 	if err != nil {
-		return nil, packageInputError(err)
+		return nil, err
 	}
 	defer func() {
 		if err != nil {

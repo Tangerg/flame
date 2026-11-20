@@ -9,6 +9,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
@@ -81,29 +83,41 @@ var (
 // preserving the application error category callers branch on.
 type InputBlockError struct {
 	Index  int
-	Field  string
+	Field  transcript.ContentField
 	Detail string
 	Cause  error
 }
 
 func (i *InputBlockError) Error() string {
-	return fmt.Sprintf("runs: input block %d %s %s", i.Index, i.Field, i.Detail)
+	return fmt.Sprintf("runs: input block %d: %s", i.Index, i.Detail)
 }
 
 func (i *InputBlockError) Unwrap() error { return i.Cause }
 
-func invalidInputBlock(index int, field, detail string, cause error) error {
-	return &InputBlockError{Index: index, Field: field, Detail: detail, Cause: cause}
+// invalidInputContent addresses a block that breaks its content shape. Missing
+// text means no input was given; every other break is unsupported media.
+func invalidInputContent(index int, err error) error {
+	invalid, ok := errors.AsType[*transcript.ContentError](err)
+	if !ok {
+		return &InputBlockError{Index: index, Field: transcript.ContentKindField, Detail: err.Error(), Cause: ErrUnsupportedMedia}
+	}
+	cause := ErrUnsupportedMedia
+	if invalid.Field == transcript.ContentTextField {
+		cause = ErrInputRequired
+	}
+	return &InputBlockError{Index: index, Field: invalid.Field, Detail: invalid.Detail, Cause: cause}
 }
 
 // SessionOpening captures the new Session and Run created by one keyed opening.
 type SessionOpening struct {
-	SessionID, RunID, Title, CWD string
+	SessionID  identity.SessionID
+	Title, CWD string
+	RunID      identity.RunID
 }
 
 // StartCommand addresses an existing Session or an atomic new Session opening.
 type StartCommand struct {
-	SessionID      string
+	SessionID      identity.SessionID
 	NewSession     *SessionOpening
 	Actor          *operation.Actor
 	ModelSelection modelchoice.Selection
@@ -151,35 +165,18 @@ func (s StartCommand) clone() StartCommand {
 func MaterializeUserMessage(input []transcript.ContentBlock) (corechat.Message, error) {
 	parts := make([]corechat.Part, 0, len(input))
 	for index, block := range input {
-		switch block.Kind {
-		case transcript.TextContent:
-			if strings.TrimSpace(block.Text) == "" {
-				return corechat.Message{}, invalidInputBlock(index, "text", "must contain non-whitespace text", ErrInputRequired)
-			}
-			if block.MediaType != "" || len(block.Bytes) != 0 {
-				return corechat.Message{}, invalidInputBlock(index, "type", "text content cannot carry media", ErrUnsupportedMedia)
-			}
-			parts = append(parts, corechat.NewTextPart(block.Text))
-		case transcript.ImageContent:
-			if block.Text != "" {
-				return corechat.Message{}, invalidInputBlock(index, "type", "image content cannot carry text", ErrUnsupportedMedia)
-			}
-			if !strings.HasPrefix(block.MediaType, "image/") {
-				return corechat.Message{}, invalidInputBlock(
-					index, "mediaType", fmt.Sprintf("must be an image media type, got %q", block.MediaType), ErrUnsupportedMedia,
-				)
-			}
-			if len(block.Bytes) == 0 {
-				return corechat.Message{}, invalidInputBlock(index, "bytes", "must not be empty", ErrUnsupportedMedia)
-			}
-			image, mediaErr := media.NewBytes(block.MediaType, block.Bytes)
-			if mediaErr != nil {
-				return corechat.Message{}, invalidInputBlock(index, "bytes", mediaErr.Error(), ErrUnsupportedMedia)
-			}
-			parts = append(parts, corechat.NewMediaPart(image))
-		default:
-			return corechat.Message{}, invalidInputBlock(index, "type", "is unknown", ErrUnsupportedMedia)
+		if err := block.Validate(); err != nil {
+			return corechat.Message{}, invalidInputContent(index, err)
 		}
+		if block.Kind == transcript.TextContent {
+			parts = append(parts, corechat.NewTextPart(block.Text))
+			continue
+		}
+		image, err := media.NewBytes(block.MediaType, block.Bytes)
+		if err != nil {
+			return corechat.Message{}, &InputBlockError{Index: index, Field: transcript.ContentBytesField, Detail: err.Error(), Cause: ErrUnsupportedMedia}
+		}
+		parts = append(parts, corechat.NewMediaPart(image))
 	}
 	if len(parts) == 0 {
 		return corechat.Message{}, ErrInputRequired
@@ -193,7 +190,7 @@ func MaterializeUserMessage(input []transcript.ContentBlock) (corechat.Message, 
 
 // ResumeCommand is the complete input for resuming a waiting Run.
 type ResumeCommand struct {
-	RunID      string
+	RunID      identity.RunID
 	Responses  []ResumeResponse
 	Acceptance *CommandIdentity
 	// Input is optional user content whose transcript Item commits with the
@@ -234,14 +231,14 @@ func (r ResumeCommand) clone() ResumeCommand {
 // visible at the first root model boundary after the answered Tool result,
 // append it to Conversation once, and never project a second transcript Item.
 type CommittedUserInput struct {
-	ItemID  string
+	ItemID  identity.ItemID
 	Content []transcript.ContentBlock
 }
 
 // ResumeResponse is the answer to one durable interrupt item.
 // Exactly one payload must match Kind.
 type ResumeResponse struct {
-	ItemID   string
+	ItemID   identity.ItemID
 	Kind     run.InterruptType
 	Approval *ApprovalResponse
 	Question *QuestionResponse
@@ -262,7 +259,7 @@ type QuestionResponse struct {
 // durable question schema. Index is -1 when the answer collection itself is
 // malformed.
 type QuestionAnswerError struct {
-	ItemID string
+	ItemID identity.ItemID
 	Index  int
 	Detail string
 }
@@ -278,7 +275,7 @@ func (q *QuestionAnswerError) Unwrap() error { return ErrInvalidInterruptRespons
 
 // CancelCommand abandons a live or parked run.
 type CancelCommand struct {
-	RunID  string
+	RunID  identity.RunID
 	Reason string
 	// AllowChildRun is the caller's already-negotiated authority to address a
 	// child directly. It is false for the minimal capability set and while the
@@ -296,7 +293,7 @@ type CancellationReceipt interface {
 	// refuses every other cancellation linked to that Run.
 	Key() string
 	// ReserveForRun links the key to a live Run before its owner can settle it.
-	ReserveForRun(ctx context.Context, runID string) error
+	ReserveForRun(ctx context.Context, runID identity.RunID) error
 	// Refuse completes the key with a refusal that changed no Run.
 	Refuse(ctx context.Context, reason error) error
 	// Stage runs commit in the transaction ctx carries, opening one when it
@@ -372,12 +369,12 @@ type CancelResult struct {
 // SteerCommand injects structured user content into an actively executing run.
 type SteerCommand struct {
 	Identity *CommandIdentity
-	RunID    string
+	RunID    identity.RunID
 	// ExpectedSegmentID is the segment the caller believes is executing. It is
 	// required: without it "inject into whatever is running now" would deliver the
 	// user's instruction to a continuation they never saw — the run they meant
 	// could have parked and been resumed between typing and sending.
-	ExpectedSegmentID string
+	ExpectedSegmentID identity.SegmentID
 	Input             []transcript.ContentBlock
 }
 
@@ -391,11 +388,11 @@ func (s SteerCommand) clone() SteerCommand {
 
 // SubscribeRequest attaches a caller to a run's live segment.
 type SubscribeRequest struct {
-	RunID string
+	RunID identity.RunID
 	// SegmentID is the segment the caller believes is executing, required for the
 	// same reason a steer needs it: a reconnect that says only "this run" would
 	// attach to a stream that is not the one it was folding.
-	SegmentID string
+	SegmentID identity.SegmentID
 	// Cursor is the opaque position the caller last folded, empty for a fresh
 	// attach. Empty is tail-only — history comes from the transcript reads.
 	Cursor string
@@ -435,11 +432,11 @@ const (
 
 // StartResult identifies the admitted Segment and exposes its event stream.
 type StartResult struct {
-	RunID     string
-	SegmentID string
-	SessionID string
+	RunID     identity.RunID
+	SegmentID identity.SegmentID
+	SessionID identity.SessionID
 	// UserItemID is absent for an autonomous Goal or a response-only Resume.
-	UserItemID string
+	UserItemID identity.ItemID
 	Events     iter.Seq[Event]
 	Opening    Opening
 }
@@ -514,7 +511,7 @@ func validateOptions(options *corechat.Options) error {
 // It is a typed error rather than a sentinel: the identity IS the information, and a
 // sentinel would leave the caller to go find out what blocked it.
 type ActiveRunConflictError struct {
-	RunID string
+	RunID identity.RunID
 	State run.State
 }
 

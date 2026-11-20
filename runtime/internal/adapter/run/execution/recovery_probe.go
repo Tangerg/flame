@@ -53,8 +53,7 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	if err := continuation.Validate(); err != nil {
 		return unresumable(ctx, continuation, run.LossWaitingStateUnavailable, "continuation is malformed", err)
 	}
-	checkpoint := continuation.Checkpoint
-	if !i.acceptsBuild(checkpoint.BuildID) {
+	if !i.acceptsBuild(continuation.Checkpoint.BuildID) {
 		return unresumable(ctx, continuation, run.LossOtherBuild, "checkpoint belongs to another build", nil)
 	}
 	if continuation.Isolated {
@@ -66,36 +65,27 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		}
 		return runs.WaitingResumption{}, err
 	}
-	state, err := decodeRunCheckpoint(checkpoint, continuation.SessionID, continuation.RootRunID)
-	if err != nil {
-		return unresumable(ctx, continuation, run.LossWaitingStateUnavailable, "checkpoint payload cannot be decoded", err)
+	state, err := i.loadCheckpointTree(ctx, continuation)
+	if err == nil {
+		err = requireWaitingBoundary(state)
 	}
-	rootID := state.handoff.rootID
-	head, found, err := i.config.ExecutionTrees.LoadExecutionTree(ctx, continuation.SessionID, rootID.String())
-	if err != nil {
-		return runs.WaitingResumption{}, err
+	if errors.Is(err, runs.ErrExecutorStateLost) {
+		return unresumable(ctx, continuation, run.LossWaitingStateUnavailable, "waiting checkpoint cannot be restored", err)
 	}
-	if !found {
-		return unresumable(ctx, continuation, run.LossWaitingStateUnavailable, "execution tree head is missing", nil)
-	}
-	state.tree, err = decodeExecutionTree(head, rootID)
 	if err != nil {
 		return runs.WaitingResumption{}, err
 	}
-	inspection, err := state.tree.Inspect()
-	if err != nil {
-		return runs.WaitingResumption{}, err
-	}
-	snapshots := inspection.Processes
-	if len(snapshots) == 0 || snapshots[0].ID != rootID ||
-		!isInteractionWaitingBoundary(snapshots[0].Status) {
-		return unresumable(ctx, continuation, run.LossWaitingStateUnavailable, "checkpoint tree is not at a waiting boundary", nil)
-	}
-	start := state.restoredStart(continuation)
 	eligibility, err := i.probeCapturedContributions(ctx, continuation, state)
 	if err != nil || !eligibility.Resumable() {
 		return eligibility, err
 	}
+	return i.probeAssembledTree(ctx, continuation, state)
+}
+
+// probeAssembledTree assembles the checkpoint without running it, and proves
+// the waiting tree still validates against today's configuration.
+func (i *InteractionExecutor) probeAssembledTree(ctx context.Context, continuation runs.ExecutionContinuation, state interactionCheckpointState) (resumption runs.WaitingResumption, err error) {
+	start := state.restoredStart(continuation)
 	ref := runs.ExecutorRef{SessionID: start.SessionID, ExecutorID: continuation.ExecutorID}
 	assembled, err := i.assembleInteraction(ctx, ref, start, &state)
 	if err != nil {

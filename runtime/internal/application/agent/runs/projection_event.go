@@ -4,13 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
@@ -41,21 +39,28 @@ type SegmentFinished struct {
 // reasoning deltas need a rendering anchor, but they are not running Domain
 // Items. Only a running ToolCall may carry a durable Item into a waiting
 // boundary.
+// ItemStart opens a streamed Item. A ToolCall start is its running durable
+// Item; a message or reasoning stream has only an identity until it completes.
 type ItemStart struct {
-	SessionID      string
-	RunID          string
-	ItemID         string
-	Kind           transcript.ItemKind
-	OccurredAt     time.Time
-	ToolInvocation *transcript.ToolInvocation
-	SafetyClass    tool.SafetyClass
+	identity transcript.ItemIdentity
+	kind     transcript.ItemKind
+	toolCall *transcript.Item
+}
 
-	durable *transcript.Item
+func (i ItemStart) Identity() transcript.ItemIdentity { return i.identity }
+func (i ItemStart) Kind() transcript.ItemKind         { return i.kind }
+
+// ToolCall returns the running invocation a ToolCall start opened.
+func (i ItemStart) ToolCall() (transcript.ToolCallBody, bool) {
+	if i.toolCall == nil {
+		return transcript.ToolCallBody{}, false
+	}
+	return i.toolCall.ToolCall()
 }
 
 type ItemStarted struct{ Item ItemStart }
 type ItemChanged struct {
-	ItemID string
+	ItemID flameidentity.ItemID
 	Delta  ItemDelta
 }
 type ItemCompleted struct {
@@ -80,7 +85,7 @@ type QuestionAnswered struct{ Item transcript.Item }
 // replaced wholesale, so a fold that only saw contents could not tell an older
 // snapshot from a newer one.
 type PlanSnapshot struct {
-	SessionID string
+	SessionID flameidentity.SessionID
 	Steps     []plan.Step
 	Revision  uint64
 	UpdatedAt time.Time
@@ -90,7 +95,7 @@ type PlanSnapshot struct {
 // Plan state is useful to a cold query, but it is not a change and therefore is
 // never a plan.updated event.
 func (p PlanSnapshot) validate() error {
-	if err := flameidentity.ValidateSession(p.SessionID); err != nil {
+	if err := p.SessionID.Validate(); err != nil {
 		return fmt.Errorf("runs: Plan snapshot: %w", err)
 	}
 	if p.Revision == 0 {
@@ -134,7 +139,7 @@ func (s SegmentProgressed) validate() error { return s.Progress.validate() }
 func (s SegmentFinished) validate() error {
 	// Unlike a started Segment, no state comparison below rejects a Run that was
 	// never attached: the zero value is simply "not running".
-	if s.Run.ID() == "" {
+	if s.Run.ID().IsZero() {
 		return errors.New("runs: finished Segment carries no Run")
 	}
 	if s.Run.State() == run.Running {
@@ -143,7 +148,7 @@ func (s SegmentFinished) validate() error {
 	if s.Run.State().IsTerminal() && len(s.Interrupts) != 0 {
 		return errors.New("runs: terminal Segment carries pending interrupts")
 	}
-	seen := make(map[string]struct{}, len(s.Interrupts))
+	seen := make(map[flameidentity.ItemID]struct{}, len(s.Interrupts))
 	for index, pending := range s.Interrupts {
 		if err := pending.Validate(); err != nil {
 			return fmt.Errorf("runs: finished Segment interrupt %d: %w", index, err)
@@ -163,14 +168,14 @@ func (i ItemStarted) validate() error { return i.Item.validate() }
 // was attached at all: a private-field aggregate cannot be built invalid, but
 // its zero value is writable anywhere.
 func (i ItemCompleted) validate() error {
-	if i.Item.ID() == "" {
+	if i.Item.ID().IsZero() {
 		return errors.New("runs: completed Item event carries no Item")
 	}
 	return nil
 }
 
 func (q QuestionAnswered) validate() error {
-	if q.Item.ID() == "" {
+	if q.Item.ID().IsZero() {
 		return errors.New("runs: answered Question event carries no Item")
 	}
 	return nil
@@ -230,7 +235,7 @@ type ApplyingUserInputActivity struct{}
 
 // ToolCallActivity names the running ToolCall Item and its tool.
 type ToolCallActivity struct {
-	ItemID string
+	ItemID flameidentity.ItemID
 	Tool   string
 }
 
@@ -252,7 +257,7 @@ func (p Progress) validate() error {
 	if p.ContextTokens != nil && *p.ContextTokens < 0 {
 		return errors.New("runs: progress context tokens must not be negative")
 	}
-	if activity, ok := p.Activity.(ToolCallActivity); ok && (activity.ItemID == "" || activity.Tool == "") {
+	if activity, ok := p.Activity.(ToolCallActivity); ok && (activity.ItemID.IsZero() || activity.Tool == "") {
 		return errors.New("runs: tool activity names no ToolCall")
 	}
 	return nil
@@ -332,7 +337,7 @@ func (d ToolArgumentsItemDelta) Text() string { return d.text }
 func (d ToolOutputItemDelta) Text() string    { return d.text }
 
 func (i ItemChanged) validate() error {
-	if err := flameidentity.ValidateItem(i.ItemID); err != nil {
+	if err := i.ItemID.Validate(); err != nil {
 		return fmt.Errorf("runs: changed Item: %w", err)
 	}
 	if i.Delta == nil {
@@ -348,53 +353,20 @@ func newTransientItemStart(identity transcript.ItemIdentity, kind transcript.Ite
 	if kind != transcript.AgentMessage && kind != transcript.Reasoning {
 		return ItemStart{}, fmt.Errorf("runs: Item start kind %q is not a transient stream", kind)
 	}
-	return ItemStart{
-		SessionID: identity.SessionID, RunID: identity.RunID, ItemID: identity.ItemID,
-		Kind: kind, OccurredAt: identity.OccurredAt,
-	}, nil
+	return ItemStart{identity: identity, kind: kind}, nil
 }
 
 func newToolItemStart(item transcript.Item) (ItemStart, error) {
-	call, ok := item.ToolCall()
-	if !ok || item.Status() != transcript.ItemRunning {
+	if _, ok := item.ToolCall(); !ok || item.Status() != transcript.ItemRunning {
 		return ItemStart{}, errors.New("runs: durable Item start is not a running ToolCall")
 	}
-	owned := item
-	return ItemStart{
-		SessionID: item.SessionID(), RunID: item.RunID(), ItemID: item.ID(),
-		Kind: item.Kind(), OccurredAt: item.OccurredAt(), ToolInvocation: &call.Invocation,
-		SafetyClass: call.SafetyClass, durable: &owned,
-	}, nil
+	return ItemStart{identity: item.Identity(), kind: item.Kind(), toolCall: &item}, nil
 }
 
+// Both constructors validate completely; a zero start never came from either.
 func (i ItemStart) validate() error {
-	if err := (transcript.ItemIdentity{
-		SessionID: i.SessionID, RunID: i.RunID, ItemID: i.ItemID,
-		OccurredAt: i.OccurredAt,
-	}).Validate(); err != nil {
-		return err
-	}
-	if i.Kind != transcript.AgentMessage && i.Kind != transcript.Reasoning && i.Kind != transcript.ToolCall {
-		return fmt.Errorf("runs: unsupported Item start kind %q", i.Kind)
-	}
-	if i.Kind != transcript.ToolCall {
-		if i.ToolInvocation != nil || i.SafetyClass != "" || i.durable != nil {
-			return errors.New("runs: transient Item start carries ToolCall facts")
-		}
-		return nil
-	}
-	if i.ToolInvocation == nil || strings.TrimSpace(i.ToolInvocation.Name) == "" || i.durable == nil {
-		return errors.New("runs: ToolCall start has no durable invocation")
-	}
-	item := *i.durable
-	if item.SessionID() != i.SessionID || item.RunID() != i.RunID ||
-		item.ID() != i.ItemID || item.Kind() != i.Kind ||
-		!item.OccurredAt().Equal(i.OccurredAt) {
-		return errors.New("runs: ToolCall start differs from its durable Item")
-	}
-	call, present := item.ToolCall()
-	if !present || !call.Invocation.Equal(*i.ToolInvocation) || call.SafetyClass != i.SafetyClass {
-		return errors.New("runs: ToolCall start differs from its durable invocation")
+	if i.kind == "" {
+		return errors.New("runs: Item start was not constructed")
 	}
 	return nil
 }

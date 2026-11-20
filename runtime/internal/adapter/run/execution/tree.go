@@ -73,6 +73,28 @@ func (i *InteractionExecutor) CancelRunningSubtree(
 // complete answer set is delivered. Proving the wait first avoids capturing a
 // half-step with no durable Interrupt to resume; retired child subtrees are
 // excluded because the continuation never resumes them.
+// holdTreeAtBarrier asks every live member to pause at the input barrier and
+// reports whether all of them are already held there.
+func (i *interactionSession) holdTreeAtBarrier(ctx context.Context, tree scoperun.Log, requestedPauses map[scoperun.ProcessID]struct{}) (bool, error) {
+	parents := capturedParents(tree)
+	captured, err := tree.Inspect()
+	if err != nil {
+		return false, err
+	}
+	allHeld := true
+	for _, snapshot := range captured.Processes {
+		if snapshot.Status.Terminal() || i.retiredSubtreeMember(snapshot.ID, parents) {
+			continue
+		}
+		held, err := i.holdAtBarrier(ctx, tree, snapshot, requestedPauses)
+		if err != nil {
+			return false, err
+		}
+		allHeld = allHeld && held
+	}
+	return allHeld, nil
+}
+
 func (i *interactionSession) captureHumanInputBarrier(
 	ctx context.Context,
 ) (scoperun.Log, []runs.MemberInterruption, bool, error) {
@@ -106,23 +128,11 @@ func (i *interactionSession) captureHumanInputBarrier(
 		if len(interruptions) == 0 {
 			return scoperun.Log{}, nil, false, nil
 		}
-		parents := capturedParents(tree)
-		captured, err := tree.Inspect()
+		held, err := i.holdTreeAtBarrier(ctx, tree, requestedPauses)
 		if err != nil {
 			return scoperun.Log{}, nil, false, err
 		}
-		var unsettled bool
-		for _, snapshot := range captured.Processes {
-			if snapshot.Status.Terminal() || i.retiredSubtreeMember(snapshot.ID, parents) {
-				continue
-			}
-			held, err := i.holdAtBarrier(ctx, tree, snapshot, requestedPauses)
-			if err != nil {
-				return scoperun.Log{}, nil, false, err
-			}
-			unsettled = unsettled || !held
-		}
-		if unsettled {
+		if !held {
 			select {
 			case <-i.lifetime.stateWake:
 			case <-ticker.C:

@@ -20,11 +20,14 @@ const (
 	MaximumDocumentBytes = protocol.MaximumSessionArtifactBytes
 )
 
+// markdownFormatName is the spelled-out alias people type for Markdown.
+const markdownFormatName protocol.ExportFormat = "markdown"
+
 func ParseDocumentFormat(value string) (protocol.ExportFormat, error) {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "md", "markdown":
+	switch protocol.ExportFormat(strings.ToLower(strings.TrimSpace(value))) {
+	case protocol.ExportFormatMarkdown, markdownFormatName:
 		return protocol.ExportFormatMarkdown, nil
-	case "json":
+	case protocol.ExportFormatJSON:
 		return protocol.ExportFormatJSON, nil
 	default:
 		return "", fmt.Errorf("export format %q is unsupported; use markdown or json", strings.TrimSpace(value))

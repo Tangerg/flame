@@ -11,12 +11,11 @@ import (
 
 // composeConfig translates process settings and already-opened adapters into
 // the construction input consumed by assembly.
-func composeConfig(cfg config.Settings, stores *persistence.Bundle, adapters modelProviderAdapters, providers models.ProviderRegistry, buildID string) assemblyConfig {
+func composeConfig(cfg config.Settings, stores *persistence.Bundle, providers models.ProviderRegistry, buildID string) assemblyConfig {
 	return assemblyConfig{
 		stores:                     stores,
 		resources:                  []terminalResource{stores},
 		buildID:                    buildID,
-		modelProviders:             adapters,
 		skillsUserDir:              filepath.Join(stores.DataDirectory, "skills"),
 		sandboxShell:               cfg.SandboxShell,
 		sandboxReadOnlyPaths:       cfg.SandboxReadOnlyPaths,

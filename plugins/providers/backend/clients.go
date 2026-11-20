@@ -117,7 +117,7 @@ var providers = mustProviderCatalog(
 	bundledProvider(providerOpenRouter, apiMount, openrouter.ModelAuto, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
 		return openrouter.NewChatCompletions(ctx, openrouter.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}),
-	endpointProvider(providerPerplexity, apiMount, false, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
+	endpointProvider(providerPerplexity, apiMount, providerEndpoint, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
 		return perplexity.NewResponses(ctx, perplexity.ResponsesConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}),
 	bundledProvider(providerTogether, apiMount, together.ModelGPTOSS120B, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
@@ -135,12 +135,12 @@ var providers = mustProviderCatalog(
 
 	// Azure: the base URL is the complete per-resource /openai/v1 endpoint;
 	// the model id is a deployment name. Both are user-supplied.
-	endpointProvider(providerAzureOpenAI, azureMount, true, buildAzureOpenAIModel).
+	endpointProvider(providerAzureOpenAI, azureMount, userEndpoint, buildAzureOpenAIModel).
 		withEmbedding("", buildAzureOpenAIEmbeddingModel),
 
 	// Generic bring-your-own-endpoint providers: direct adapter + caller URL.
-	endpointProvider(providerOpenAICompatible, apiMount, true, buildOpenAICompatibleModel),
-	endpointProvider(providerAnthropicCompatible, anthropicMount, true, buildAnthropicCompatibleModel),
+	endpointProvider(providerOpenAICompatible, apiMount, userEndpoint, buildOpenAICompatibleModel),
+	endpointProvider(providerAnthropicCompatible, anthropicMount, userEndpoint, buildAnthropicCompatibleModel),
 )
 
 // anthropicRequestFields are top-level Messages API fields Scope forwards verbatim.

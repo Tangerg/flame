@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strings"
 
+	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
+
 	"encoding/json/jsontext"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -39,7 +41,7 @@ type interactionCheckpointPayloadWire struct {
 	ModelObservers      *[]contributionBindingWire     `json:"model_observers"`
 	MCPManifests        *map[domaintool.Group][]string `json:"mcp_manifests"`
 	Options             *corechat.Options              `json:"options"`
-	ToolCalls           []toolCallCapture              `json:"tool_calls,omitempty"`
+	ToolCalls           []toolCallCaptureWire          `json:"tool_calls,omitempty"`
 	Handoff             *interactionHandoffWire        `json:"handoff"`
 	Instructions        *[]corechat.Message            `json:"instructions"`
 	Contexts            []interactionModelContextWire  `json:"contexts,omitempty"`
@@ -55,20 +57,20 @@ type interactionModelContextWire struct {
 
 type interactionPendingSteerWire struct {
 	Command *interactionSteerCommandWire  `json:"command,omitzero"`
-	ItemID  string                        `json:"item_id"`
+	ItemID  identity.ItemID               `json:"item_id"`
 	Content []interactionContentBlockWire `json:"content"`
 }
 
 type interactionSteerCommandWire struct {
-	Key         string `json:"key"`
-	Fingerprint string `json:"fingerprint"`
-	SessionID   string `json:"session_id"`
-	RunID       string `json:"run_id"`
-	SegmentID   string `json:"segment_id"`
+	Key         string             `json:"key"`
+	Fingerprint string             `json:"fingerprint"`
+	SessionID   identity.SessionID `json:"session_id"`
+	RunID       identity.RunID     `json:"run_id"`
+	SegmentID   identity.SegmentID `json:"segment_id"`
 }
 
 type interactionResumeInputWire struct {
-	ItemID  string                        `json:"item_id"`
+	ItemID  identity.ItemID               `json:"item_id"`
 	Content []interactionContentBlockWire `json:"content"`
 }
 
@@ -144,7 +146,7 @@ func encodeInteractionCheckpointPayload(
 	instructions []corechat.Message,
 	pendingSteers map[scoperun.SignalID]runs.PreparedSteer,
 	pendingResumeInputs []runs.CommittedUserInput,
-	toolCalls []toolCallCapture,
+	toolCalls []toolCallCaptureWire,
 	options corechat.Options,
 	mcpManifests map[domaintool.Group][]string,
 	skillDiscoveries map[domaintool.Group]string,
@@ -254,7 +256,7 @@ func encodeInteractionPendingSteers(
 		values = append(values, value)
 	}
 	slices.SortFunc(values, func(left, right interactionPendingSteerWire) int {
-		return strings.Compare(left.ItemID, right.ItemID)
+		return left.ItemID.Compare(right.ItemID)
 	})
 	return values, nil
 }
@@ -307,34 +309,12 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
-	provider, err := decodeModelProvider(wire.ModelProvider)
-	if err != nil {
-		return interactionCheckpointState{}, err
-	}
-	if wire.ToolProposals == nil {
-		return interactionCheckpointState{}, errors.New("execution: checkpoint Tool proposal bindings are required")
-	}
-	proposalContract, err := pluginsdk.ToolProposalContract()
-	if err != nil {
-		return interactionCheckpointState{}, err
-	}
-	proposals, err := decodeContributionBindings(*wire.ToolProposals, proposalContract.Identity())
+	state, err := decodeCheckpointContributions(wire)
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
 	if wire.MCPManifests == nil {
 		return interactionCheckpointState{}, errors.New("execution: checkpoint MCP manifests are required")
-	}
-	if wire.ModelObservers == nil {
-		return interactionCheckpointState{}, errors.New("execution: frozen model observers are required")
-	}
-	observerContract, err := pluginsdk.ModelObserverContract()
-	if err != nil {
-		return interactionCheckpointState{}, err
-	}
-	observers, err := decodeContributionBindings(*wire.ModelObservers, observerContract.Identity())
-	if err != nil {
-		return interactionCheckpointState{}, err
 	}
 	if wire.Options == nil || wire.Instructions == nil {
 		return interactionCheckpointState{}, errors.New("execution: frozen options and instructions are required")
@@ -344,28 +324,6 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 		return interactionCheckpointState{}, err
 	}
 	if err := wire.Options.Validate(); err != nil {
-		return interactionCheckpointState{}, err
-	}
-	if wire.ModelInputs == nil {
-		return interactionCheckpointState{}, errors.New("execution: checkpoint model input bindings are required")
-	}
-	inputContract, err := pluginsdk.ModelInputContract()
-	if err != nil {
-		return interactionCheckpointState{}, err
-	}
-	inputs, err := decodeContributionBindings(*wire.ModelInputs, inputContract.Identity())
-	if err != nil {
-		return interactionCheckpointState{}, err
-	}
-	if wire.ModelContexts == nil {
-		return interactionCheckpointState{}, errors.New("execution: checkpoint model context bindings are required")
-	}
-	contextContract, err := pluginsdk.ModelContextContract()
-	if err != nil {
-		return interactionCheckpointState{}, err
-	}
-	contexts, err := decodeContributionBindings(*wire.ModelContexts, contextContract.Identity())
-	if err != nil {
 		return interactionCheckpointState{}, err
 	}
 	handoff, processes, err := decodeInteractionHandoff(wire.Handoff)
@@ -392,18 +350,50 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, err
 	}
-	return interactionCheckpointState{
-		modelProvider:    provider,
-		toolProposals:    proposals,
-		modelObservers:   observers,
-		modelContexts:    contexts,
-		modelInputs:      inputs,
-		mcpManifests:     manifests,
-		skillDiscoveries: wire.SkillDiscoveries,
-		handoff:          handoff,
-		contextByProcess: contextByProcess, instructions: instructions, options: wire.Options.Clone(), pendingSteers: pendingSteers,
-		pendingResumeInputs: pendingResumeInputs, toolMetadata: metadata,
-	}, nil
+	state.mcpManifests, state.skillDiscoveries, state.handoff = manifests, wire.SkillDiscoveries, handoff
+	state.contextByProcess, state.instructions, state.options = contextByProcess, instructions, wire.Options.Clone()
+	state.pendingSteers, state.pendingResumeInputs, state.toolMetadata = pendingSteers, pendingResumeInputs, metadata
+	return state, nil
+}
+
+// decodeCheckpointContributions restores the model provider and the plugin
+// contributions frozen into the checkpoint, each bound to its contract.
+func decodeCheckpointContributions(wire interactionCheckpointPayloadWire) (interactionCheckpointState, error) {
+	provider, err := decodeModelProvider(wire.ModelProvider)
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
+	proposals, err := decodeFrozenBindings("Tool proposal", wire.ToolProposals, pluginsdk.ToolProposalContract)
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
+	observers, err := decodeFrozenBindings("model observer", wire.ModelObservers, pluginsdk.ModelObserverContract)
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
+	inputs, err := decodeFrozenBindings("model input", wire.ModelInputs, pluginsdk.ModelInputContract)
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
+	contexts, err := decodeFrozenBindings("model context", wire.ModelContexts, pluginsdk.ModelContextContract)
+	if err != nil {
+		return interactionCheckpointState{}, err
+	}
+	return interactionCheckpointState{modelProvider: provider, toolProposals: proposals, modelObservers: observers, modelInputs: inputs, modelContexts: contexts}, nil
+}
+
+// decodeFrozenBindings restores the contributions a checkpoint froze for one
+// contract. An absent set is not an empty one: the checkpoint cannot prove
+// which contributions its execution observed.
+func decodeFrozenBindings(name string, frozen *[]contributionBindingWire, contract func() (*plugincontract.Capability, error)) ([]plugins.ContributionBinding, error) {
+	if frozen == nil {
+		return nil, fmt.Errorf("execution: checkpoint %s bindings are required", name)
+	}
+	capability, err := contract()
+	if err != nil {
+		return nil, err
+	}
+	return decodeContributionBindings(*frozen, capability.Identity())
 }
 
 func decodeInteractionCheckpointWire(payload []byte) (interactionCheckpointPayloadWire, error) {
@@ -460,9 +450,9 @@ func decodeInteractionPendingSteers(
 	values []interactionPendingSteerWire,
 ) (map[scoperun.SignalID]runs.PreparedSteer, error) {
 	pending := make(map[scoperun.SignalID]runs.PreparedSteer, len(values))
-	previous := ""
+	var previous identity.ItemID
 	for _, value := range values {
-		if value.ItemID <= previous {
+		if value.ItemID.Compare(previous) <= 0 {
 			return nil, errors.New("pending steer Items are not in canonical order")
 		}
 		steer, err := value.decode()
@@ -503,9 +493,9 @@ func (w interactionPendingSteerWire) decode() (runs.PreparedSteer, error) {
 
 func decodeInteractionResumeInputs(values []interactionResumeInputWire) ([]runs.CommittedUserInput, error) {
 	inputs := make([]runs.CommittedUserInput, len(values))
-	seen := make(map[string]struct{}, len(values))
+	seen := make(map[identity.ItemID]struct{}, len(values))
 	for index, value := range values {
-		if err := identity.ValidateItem(value.ItemID); err != nil {
+		if err := value.ItemID.Validate(); err != nil {
 			return nil, fmt.Errorf("Resume input %d: %w", index, err)
 		}
 		if _, duplicate := seen[value.ItemID]; duplicate {

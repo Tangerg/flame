@@ -6,12 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"slices"
 	"sync"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/bootstrap"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -74,10 +71,6 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 		FirstPartyDirectory:  firstPartyDirectory,
 		RunnerExecutable:     runnerExecutable,
 		ConfigDirectories:    resolved.ConfigDirectories,
-		ServerInfo: protocol.ServerInfo{
-			Name:    identity.ProductName,
-			Version: buildVersion(),
-		},
 	})
 	if err != nil {
 		return nil, err
@@ -128,14 +121,6 @@ func (c Config) resolve() (Config, error) {
 		UserHomePath:         filepath.Clean(userHome),
 		ConfigDirectories:    directories,
 	}, nil
-}
-
-func buildVersion() string {
-	info, ok := debug.ReadBuildInfo()
-	if !ok || info.Main.Version == "" || info.Main.Version == "(devel)" {
-		return "dev"
-	}
-	return info.Main.Version
 }
 
 func (r *Runtime) endpoint() (*delivery.Endpoint, error) {

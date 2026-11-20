@@ -64,12 +64,6 @@ func (r *reducer) metrics() (run.Metrics, error) {
 }
 
 func (r *reducer) finishedRun(ending run.Ending, effects []run.UnresolvedEffect) (SegmentFinished, error) {
-	if err := run.ValidateEnding(ending); err != nil {
-		return SegmentFinished{}, err
-	}
-	if _, ok := run.Running.Terminate(ending.Outcome()); !ok {
-		return SegmentFinished{}, fmt.Errorf("outcome %q does not terminate a running run", ending.Outcome())
-	}
 	current, err := r.runRecord(run.Running)
 	if err != nil {
 		return SegmentFinished{}, err

@@ -3,6 +3,8 @@ package persistence
 import (
 	"context"
 	"fmt"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
 const sessionAnnotationPredicate = `session_id = ?
@@ -11,7 +13,7 @@ const sessionAnnotationPredicate = `session_id = ?
 
 // TrajectoryExportSize counts stored source bytes before their JSON bodies are
 // decoded. Final wire encoding has a separate bound because escaping expands JSON.
-func (s *SessionStore) TrajectoryExportSize(ctx context.Context, sessionID string) (records, bytes int64, err error) {
+func (s *SessionStore) TrajectoryExportSize(ctx context.Context, sessionID identity.SessionID) (records, bytes int64, err error) {
 	return scopedPair(ctx, s.db.read, func(ctx context.Context) (records, bytes int64, err error) {
 		query := `SELECT COALESCE(SUM(records), 0), COALESCE(SUM(bytes), 0) FROM (
 		SELECT COUNT(*) records, SUM(length(CAST(title AS BLOB)) + length(CAST(workspace_path AS BLOB))

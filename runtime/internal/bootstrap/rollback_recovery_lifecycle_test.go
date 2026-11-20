@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -172,7 +174,7 @@ func TestUnfinishedFileRollbackFencesTheSessionUntilRecovery(t *testing.T) {
 	// the tree, and nothing cleared it.
 	unfinished := sessions.WorkspaceMutation{
 		WorkspaceRollbackSpec: sessions.WorkspaceRollbackSpec{
-			SessionID: session.ID, ToRunID: started.RunID, RestoreHistory: true,
+			SessionID: testsupport.MustSessionID(session.ID), ToRunID: testsupport.MustRunID(started.RunID), RestoreHistory: true,
 		},
 		CWD: session.Workspace.Ref.Path,
 	}

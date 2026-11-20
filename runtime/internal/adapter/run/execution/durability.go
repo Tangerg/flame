@@ -42,46 +42,13 @@ func (i *interactionSession) Append(ctx context.Context, batch scoperun.Batch) e
 	if err != nil || retry {
 		return err
 	}
-	entryJSON, err := json.Marshal(batch.Entries(), json.Deterministic(true))
+	history, entriesJSON, err := i.appendedHistory(head, found, history, batch)
 	if err != nil {
 		return err
 	}
-	var entries []scoperun.Entry
-	if err := json.Unmarshal(entryJSON, &entries); err != nil {
-		return err
-	}
-	priorJSON := "[]"
-	if found {
-		priorJSON, err = i.logCache.encodedEntries(head, history)
-		if err != nil {
-			return err
-		}
-	}
-	entriesJSON := appendEntryJSON(priorJSON, entryJSON)
-	history.Entries = append(slices.Clip(history.Entries), entries...)
-	// Batch.Admit owns the Store's append decision. The runtime validates the
-	// transition; replaying the entire computation here duplicates that owner.
-	material, err := i.material.snapshot(history)
+	update, err := i.treeUpdate(head, found, history, batch, entriesJSON)
 	if err != nil {
 		return err
-	}
-	payload, err := encodeExecutionLog(history.Root, entriesJSON, material)
-	if err != nil {
-		return err
-	}
-	intent, err := json.Marshal(batch, json.Deterministic(true))
-	if err != nil {
-		return err
-	}
-	digest := scoperun.ComputeDigest(intent).String()
-	update := runs.ExecutionTreeUpdate{Head: runs.ExecutionTreeHead{
-		SessionID: i.start.SessionID, RootID: batch.Root.String(),
-		Writer: strconv.FormatUint(uint64(history.Epoch()), 10), Sequence: uint64(history.Head()),
-		Digest: scoperun.ComputeDigest(payload).String(), Payload: payload,
-		CommitID: digest, CommitDigest: digest,
-	}}
-	if found {
-		update.PreviousWriter, update.PreviousDigest = head.Writer, head.Digest
 	}
 	if err := i.commitTree(ctx, history, update, batch.Records); err != nil {
 		return err
@@ -93,6 +60,57 @@ func (i *interactionSession) Append(ctx context.Context, batch scoperun.Batch) e
 	i.lifetime.wakeState()
 	i.lifetime.wakeUnknown()
 	return nil
+}
+
+// appendedHistory extends the stored log with the admitted batch, reusing the
+// cached encoding of the prior entries.
+func (i *interactionSession) appendedHistory(head runs.ExecutionTreeHead, found bool, history scoperun.Log, batch scoperun.Batch) (scoperun.Log, string, error) {
+	entryJSON, err := json.Marshal(batch.Entries(), json.Deterministic(true))
+	if err != nil {
+		return scoperun.Log{}, "", err
+	}
+	var entries []scoperun.Entry
+	if err := json.Unmarshal(entryJSON, &entries); err != nil {
+		return scoperun.Log{}, "", err
+	}
+	priorJSON := "[]"
+	if found {
+		priorJSON, err = i.logCache.encodedEntries(head, history)
+		if err != nil {
+			return scoperun.Log{}, "", err
+		}
+	}
+	history.Entries = append(slices.Clip(history.Entries), entries...)
+	return history, appendEntryJSON(priorJSON, entryJSON), nil
+}
+
+// treeUpdate is the compare-and-swap that commits history. Batch.Admit owns
+// the Store's append decision; the runtime validates the transition rather
+// than replaying the computation.
+func (i *interactionSession) treeUpdate(head runs.ExecutionTreeHead, found bool, history scoperun.Log, batch scoperun.Batch, entriesJSON string) (runs.ExecutionTreeUpdate, error) {
+	material, err := i.material.snapshot(history)
+	if err != nil {
+		return runs.ExecutionTreeUpdate{}, err
+	}
+	payload, err := encodeExecutionLog(history.Root, entriesJSON, material)
+	if err != nil {
+		return runs.ExecutionTreeUpdate{}, err
+	}
+	intent, err := json.Marshal(batch, json.Deterministic(true))
+	if err != nil {
+		return runs.ExecutionTreeUpdate{}, err
+	}
+	digest := scoperun.ComputeDigest(intent).String()
+	update := runs.ExecutionTreeUpdate{Head: runs.ExecutionTreeHead{
+		SessionID: i.start.SessionID, RootID: batch.Root.String(),
+		Writer: strconv.FormatUint(uint64(history.Epoch()), 10), Sequence: uint64(history.Head()),
+		Digest: scoperun.ComputeDigest(payload).String(), Payload: payload,
+		CommitID: digest, CommitDigest: digest,
+	}}
+	if found {
+		update.PreviousWriter, update.PreviousDigest = head.Writer, head.Digest
+	}
+	return update, nil
 }
 
 func (i *interactionSession) Load(ctx context.Context, root scoperun.ProcessID) (scoperun.Log, bool, error) {
@@ -179,26 +197,14 @@ func (i *interactionSession) commitTree(ctx context.Context, tree scoperun.Log, 
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-
-	if i.executionTrees == nil {
-		return errors.New("execution: execution tree store is required")
-	}
-	changed, err := i.toolResultsChanged(tree, records)
+	rounds, err := i.changedToolResults(tree, records)
 	if err != nil {
 		return err
-	}
-	var rounds []interaction.RoundResults
-	if changed {
-		rounds, err = i.settledToolResults(tree)
-		if err != nil {
-			return err
-		}
 	}
 	children, err := i.childPublications(records)
 	if err != nil {
 		return err
 	}
-	fact := runs.ExecutionTreeSettled{Update: update, Children: children}
 	i.state.mu.Lock()
 	hasChildren := len(i.state.delegateChildren) > 0
 	contextAdvances := (len(i.state.pendingSteers) > 0 || i.toolResults != nil && i.state.deployments.hasToolReceipts()) && i.state.boundary != interactionBoundaryAccepted
@@ -207,61 +213,85 @@ func (i *interactionSession) commitTree(ctx context.Context, tree scoperun.Log, 
 	if err != nil {
 		return err
 	}
-	fact.InputAcceptances = acceptances
 	if hasChildren {
 		i.childProjection.lock()
 		defer i.childProjection.unlock()
 	}
-	var terminalChildren []*managedDelegateCall
-	var retired []runs.InvocationID
+	settled := settledTree{fact: runs.ExecutionTreeSettled{Update: update, Children: children, InputAcceptances: acceptances}}
 	if i.state.observerAttached() {
-		if contextAdvances {
-			checkpoint, err := i.executorCheckpoint(tree)
-			if err != nil {
-				return err
-			}
-			fact.Context = &checkpoint
-		}
-		if containsProcessExit(records) {
-			facts, children, err := i.terminalFacts(tree)
-			if err != nil {
-				return err
-			}
-			fact.Facts, terminalChildren = facts, children
-		}
-		retired, err = i.projectSettledToolResults(ctx, tree, rounds, &fact)
-		if err != nil {
+		if err := i.observeSettlement(ctx, tree, records, rounds, contextAdvances, &settled); err != nil {
 			return err
 		}
 	}
-	orderExecutionFacts(tree, fact.Facts)
-	if len(fact.Facts) == 0 && len(fact.Children) == 0 && fact.Context == nil && len(fact.InputAcceptances) == 0 {
-		err = i.saveExecutionTree(ctx, update)
-	} else {
-		// The product owner owns the transaction after handoff. A storage deadline
-		// must not abandon its receipt while that transaction can still commit.
-		publication, stop := i.lifetime.publicationContext(ctx)
-		err = i.commitFact(publication, runs.ExecutorMember{MemberID: tree.Root.String()}, fact)
-		stop()
+	orderExecutionFacts(tree, settled.fact.Facts)
+	if err := i.persistSettledTree(ctx, tree.Root, update, settled.fact); err != nil {
+		return fmt.Errorf("execution: commit execution tree: %w", scopeCommitConflict(err))
 	}
-	if err != nil {
-		switch {
-		case errors.Is(err, runs.ErrExecutionTreeCommitConflict):
-			err = errors.Join(scoperun.ErrCommitConflict, err)
-		case errors.Is(err, runs.ErrExecutionTreeWriterConflict):
-			err = errors.Join(scoperun.ErrEpochConflict, err)
-		}
-		return fmt.Errorf("execution: commit execution tree: %w", err)
-	}
-	i.publishChildBindings(fact.Children)
-	for _, child := range terminalChildren {
+	i.publishChildBindings(settled.fact.Children)
+	for _, child := range settled.terminalChildren {
 		child.mu.Lock()
 		child.segmentProjected = true
 		child.mu.Unlock()
 		i.modelFailures.forget(child.childProcessID)
 	}
-	i.retirePublishedToolMetadata(retired)
+	i.retirePublishedToolMetadata(settled.retired)
 	return nil
+}
+
+// persistSettledTree saves a head-only advance directly and hands any other
+// settlement to the product owner, which owns the transaction after handoff:
+// a storage deadline must not abandon its receipt while it can still commit.
+func (i *interactionSession) persistSettledTree(ctx context.Context, root scoperun.ProcessID, update runs.ExecutionTreeUpdate, fact runs.ExecutionTreeSettled) error {
+	if fact.AdvancesHeadOnly() {
+		return i.saveExecutionTree(ctx, update)
+	}
+	publication, stop := i.lifetime.publicationContext(ctx)
+	defer stop()
+	return i.commitFact(publication, runs.ExecutorMember{MemberID: root.String()}, fact)
+}
+
+// settledTree is one executor cut projected to product facts, with the
+// process-local state to release once the cut commits.
+type settledTree struct {
+	fact             runs.ExecutionTreeSettled
+	terminalChildren []*managedDelegateCall
+	retired          []runs.InvocationID
+}
+
+func (i *interactionSession) observeSettlement(ctx context.Context, tree scoperun.Log, records []scoperun.Record, rounds []interaction.RoundResults, contextAdvances bool, settled *settledTree) error {
+	if contextAdvances {
+		checkpoint, err := i.executorCheckpoint(tree)
+		if err != nil {
+			return err
+		}
+		settled.fact.Context = &checkpoint
+	}
+	if containsProcessExit(records) {
+		facts, children, err := i.terminalFacts(tree)
+		if err != nil {
+			return err
+		}
+		settled.fact.Facts, settled.terminalChildren = facts, children
+	}
+	retired, err := i.projectSettledToolResults(ctx, tree, rounds, &settled.fact)
+	if err != nil {
+		return err
+	}
+	settled.retired = retired
+	return nil
+}
+
+// scopeCommitConflict tells Scope which of its own conflicts a product commit
+// refusal means, so the engine retries or fences exactly as it would locally.
+func scopeCommitConflict(err error) error {
+	switch {
+	case errors.Is(err, runs.ErrExecutionTreeCommitConflict):
+		return errors.Join(scoperun.ErrCommitConflict, err)
+	case errors.Is(err, runs.ErrExecutionTreeWriterConflict):
+		return errors.Join(scoperun.ErrEpochConflict, err)
+	default:
+		return err
+	}
 }
 
 func (i *interactionSession) saveExecutionTree(ctx context.Context, update runs.ExecutionTreeUpdate) error {
@@ -440,6 +470,15 @@ func decodeExecutionTree(head runs.ExecutionTreeHead, rootID scoperun.ProcessID)
 		return scoperun.Log{}, errors.New("execution: execution log storage identity mismatch")
 	}
 	return history, nil
+}
+
+// changedToolResults reads settled rounds only when records changed them.
+func (i *interactionSession) changedToolResults(tree scoperun.Log, records []scoperun.Record) ([]interaction.RoundResults, error) {
+	changed, err := i.toolResultsChanged(tree, records)
+	if err != nil || !changed {
+		return nil, err
+	}
+	return i.settledToolResults(tree)
 }
 
 func (i *interactionSession) settledToolResults(history scoperun.Log) ([]interaction.RoundResults, error) {

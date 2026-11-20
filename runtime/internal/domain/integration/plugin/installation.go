@@ -95,50 +95,30 @@ func New(id identity.InstallationID, source string, release Release) (Installati
 
 // Restore validates persisted state against its admitted release definitions.
 // A record alone cannot prove configuration, enablement or staged package identity.
+// Text bounds the plugin protocol publishes, counted in Unicode code points as
+// the wire contract counts them.
+const (
+	MaximumSourceCharacters      = 4096
+	MaximumValueCharacters       = 8192
+	MaximumCommandTextCharacters = 256
+	MaximumRoleCharacters        = 256
+)
+
 func Restore(r Record, selected Release, staged *Release) (Installation, error) {
 	if err := r.ID.Validate(); err != nil {
 		return Installation{}, fmt.Errorf("%w: installation identity: %w", ErrInvalid, err)
 	}
-	if r.Source == "" || len(r.Source) > 4096 || !utf8.ValidString(r.Source) {
+	if r.Source == "" || !utf8.ValidString(r.Source) || utf8.RuneCountInString(r.Source) > MaximumSourceCharacters {
 		return Installation{}, fmt.Errorf("%w: installation source", ErrInvalid)
 	}
-	if err := r.Selected.Validate(); err != nil {
-		return Installation{}, fmt.Errorf("%w: selected release: %w", ErrInvalid, err)
-	}
-	if selected.Digest() != r.Selected {
-		return Installation{}, fmt.Errorf("%w: selected release binding", ErrStale)
-	}
-	if r.Staged != nil {
-		if err := r.Staged.Validate(); err != nil {
-			return Installation{}, fmt.Errorf("%w: staged release: %w", ErrInvalid, err)
-		}
-		if staged == nil || staged.Digest() != *r.Staged {
-			return Installation{}, fmt.Errorf("%w: staged release binding", ErrStale)
-		}
-		if err := validateStaged(selected, *staged); err != nil {
-			return Installation{}, err
-		}
-	} else if staged != nil {
-		return Installation{}, fmt.Errorf("%w: unexpected staged release", ErrStale)
+	if err := r.bindReleases(selected, staged); err != nil {
+		return Installation{}, err
 	}
 	if err := validateValues(selected, r.Values); err != nil {
 		return Installation{}, err
 	}
-	for _, name := range r.DisabledServers {
-		if err := name.Validate(); err != nil {
-			return Installation{}, fmt.Errorf("%w: disabled server: %w", ErrInvalid, err)
-		}
-		if _, declared := selected.server(name); !declared {
-			return Installation{}, fmt.Errorf("%w: unknown disabled server %q", ErrInvalid, name)
-		}
-	}
-	for _, name := range r.DisabledSkills {
-		if !selected.declaresSkill(name) {
-			return Installation{}, fmt.Errorf("%w: unknown disabled skill %q", ErrInvalid, name)
-		}
-	}
-	if duplicateNames(r.DisabledServers) || duplicateNames(r.DisabledSkills) {
-		return Installation{}, fmt.Errorf("%w: duplicate disabled component", ErrInvalid)
+	if err := r.validateDisabled(selected); err != nil {
+		return Installation{}, err
 	}
 	if r.Enabled {
 		if err := requiredValues(selected, r.Values, r.DisabledServers); err != nil {
@@ -152,6 +132,52 @@ func Restore(r Record, selected Release, staged *Release) (Installation, error) 
 	sortServers(record.DisabledServers)
 	slices.Sort(record.DisabledSkills)
 	return Installation{record: record}, nil
+}
+
+// bindReleases proves the record names exactly the admitted selected release
+// and, only when staged, the admitted staged one.
+func (r Record) bindReleases(selected Release, staged *Release) error {
+	if err := r.Selected.Validate(); err != nil {
+		return fmt.Errorf("%w: selected release: %w", ErrInvalid, err)
+	}
+	if selected.Digest() != r.Selected {
+		return fmt.Errorf("%w: selected release binding", ErrStale)
+	}
+	if r.Staged == nil {
+		if staged != nil {
+			return fmt.Errorf("%w: unexpected staged release", ErrStale)
+		}
+		return nil
+	}
+	if err := r.Staged.Validate(); err != nil {
+		return fmt.Errorf("%w: staged release: %w", ErrInvalid, err)
+	}
+	if staged == nil || staged.Digest() != *r.Staged {
+		return fmt.Errorf("%w: staged release binding", ErrStale)
+	}
+	return validateStaged(selected, *staged)
+}
+
+// validateDisabled admits only components the selected release declares,
+// each disabled once.
+func (r Record) validateDisabled(selected Release) error {
+	for _, name := range r.DisabledServers {
+		if err := name.Validate(); err != nil {
+			return fmt.Errorf("%w: disabled server: %w", ErrInvalid, err)
+		}
+		if _, declared := selected.server(name); !declared {
+			return fmt.Errorf("%w: unknown disabled server %q", ErrInvalid, name)
+		}
+	}
+	for _, name := range r.DisabledSkills {
+		if !selected.declaresSkill(name) {
+			return fmt.Errorf("%w: unknown disabled skill %q", ErrInvalid, name)
+		}
+	}
+	if duplicateNames(r.DisabledServers) || duplicateNames(r.DisabledSkills) {
+		return fmt.Errorf("%w: duplicate disabled component", ErrInvalid)
+	}
+	return nil
 }
 
 func clone(r Record) Record {
@@ -346,11 +372,11 @@ func applyComponentChanges[N comparable](disabled []N, changes map[N]ComponentCh
 }
 
 func validateValueText(key, value string) error {
-	if len(value) > 8192 {
-		return fmt.Errorf("%w: input %q length", ErrInvalid, key)
-	}
 	if !utf8.ValidString(value) || strings.ContainsRune(value, 0) {
 		return fmt.Errorf("%w: input %q encoding", ErrInvalid, key)
+	}
+	if utf8.RuneCountInString(value) > MaximumValueCharacters {
+		return fmt.Errorf("%w: input %q length", ErrInvalid, key)
 	}
 	return nil
 }

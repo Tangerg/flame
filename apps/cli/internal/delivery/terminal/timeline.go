@@ -144,7 +144,7 @@ func newTimelineDialog(stack *workspaceScene, theme kit.Theme, glyphs kit.Glyphs
 	}
 	t.pane = newTimelinePane(theme, glyphs, chosen(jump), chosen(fork))
 	t.dialog = newPresentationDialog(stack, kit.DialogConfig{Theme: theme, Glyphs: glyphs, Title: "Current session timeline", Body: t.pane.Element(),
-		Where: layout.Placement{Width: 88, Height: 20},
+		Where: layout.Placement{Width: standardDialogWidth, Height: 20},
 	})
 	t.pane.picker.cancel = t.dialog.Dismiss
 	return t

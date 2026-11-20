@@ -38,10 +38,10 @@ func (i *itemProjection) project() error {
 	switch i.source.Type {
 	case protocol.ItemTypeUserMessage:
 		i.block.Kind = conversation.BlockUser
-		return i.projectMessage(true)
+		return i.projectUserMessage()
 	case protocol.ItemTypeAgentMessage:
 		i.block.Kind = conversation.BlockAssistant
-		return i.projectMessage(false)
+		return i.projectAgentMessage()
 	case protocol.ItemTypeReasoning:
 		i.block.Kind = conversation.BlockReasoning
 		i.block.Text = i.source.Text
@@ -76,16 +76,18 @@ func (i *itemProjection) project() error {
 	return nil
 }
 
-func (i *itemProjection) projectMessage(allowAttachments bool) error {
-	if allowAttachments {
-		text, attachments, err := projectContent(i.source.ID, i.source.Content)
-		if err != nil {
-			return err
-		}
-		i.block.Text = text
-		i.block.Attachments = attachments
-		return nil
+// A user message may carry attachments; an agent message carries only images.
+func (i *itemProjection) projectUserMessage() error {
+	text, attachments, err := projectContent(i.source.ID, i.source.Content)
+	if err != nil {
+		return err
 	}
+	i.block.Text = text
+	i.block.Attachments = attachments
+	return nil
+}
+
+func (i *itemProjection) projectAgentMessage() error {
 	text, images, err := projectAssistantContent(i.source.ID, i.source.Content)
 	if err != nil {
 		return err
@@ -201,19 +203,8 @@ func projectTool(projection toolProjection) (conversation.ToolCall, error) {
 	if projection.durationMillis != nil {
 		tool.Duration = time.Duration(*projection.durationMillis) * time.Millisecond
 	}
-	switch projection.status {
-	case protocol.ItemStatusRunning:
-		tool.Status = conversation.ToolRunning
-	case protocol.ItemStatusCompleted:
-		tool.Status = conversation.ToolOK
-	case protocol.ItemStatusIncomplete:
-		tool.Status = conversation.ToolError
-		if projection.problem != nil && (projection.problem.Type == protocol.ProblemDeniedByUser ||
-			projection.problem.Type == protocol.ProblemChildRunCanceled || projection.problem.Type == protocol.ProblemToolCanceled) {
-			tool.Status = conversation.ToolCanceled
-		}
-	default:
-		return conversation.ToolCall{}, fmt.Errorf("tool status %q is unsupported", projection.status)
+	if tool.Status, err = projection.toolStatus(); err != nil {
+		return conversation.ToolCall{}, err
 	}
 	if projection.problem != nil && strings.TrimSpace(projection.problem.Detail) != "" {
 		tool.Output = projection.problem.Detail
@@ -222,6 +213,25 @@ func projectTool(projection toolProjection) (conversation.ToolCall, error) {
 		return conversation.ToolCall{}, err
 	}
 	return tool, nil
+}
+
+// toolStatus reads an incomplete call the user or a cancellation stopped as
+// canceled rather than failed.
+func (p toolProjection) toolStatus() (conversation.ToolStatus, error) {
+	switch p.status {
+	case protocol.ItemStatusRunning:
+		return conversation.ToolRunning, nil
+	case protocol.ItemStatusCompleted:
+		return conversation.ToolOK, nil
+	case protocol.ItemStatusIncomplete:
+		if p.problem != nil && (p.problem.Type == protocol.ProblemDeniedByUser ||
+			p.problem.Type == protocol.ProblemChildRunCanceled || p.problem.Type == protocol.ProblemToolCanceled) {
+			return conversation.ToolCanceled, nil
+		}
+		return conversation.ToolError, nil
+	default:
+		return "", fmt.Errorf("tool status %q is unsupported", p.status)
+	}
 }
 
 const toolSummaryRuneLimit = 120

@@ -53,7 +53,7 @@ func insideGitMetadata(physical string) bool {
 // rest are skipped only when not includeIgnored, as a coarse stand-in for
 // .gitignore outside a git repo.
 var backstopExclude = map[string]bool{
-	".git": true, "node_modules": true, ".next": true, "dist": true,
+	gitMetadataDir: true, "node_modules": true, ".next": true, "dist": true,
 	"build": true, "target": true, "vendor": true, ".venv": true,
 	"venv": true, "__pycache__": true, ".idea": true, ".vscode": true,
 	".cache": true, "coverage": true, ".turbo": true, ".svn": true, ".hg": true,
@@ -102,63 +102,78 @@ func (scope fileSelection) list(ctx context.Context, opts workspaceapp.FileListO
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", errInvalidGlob, err)
 	}
-
 	if insideGitMetadata(scope.physical) {
 		return []workspaceapp.FileEntry{}, nil
 	}
-	repository := false
-	var files []string
-	if !opts.IncludeIgnored {
-		files, err = git.ListFiles(ctx, scope.root, scope.physical, maxListEntries)
-		switch {
-		case err == nil:
-			repository = true
-			files = scope.project(files)
-		case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
-			return nil, err
-		case errors.Is(err, git.ErrNotRepo), errors.Is(err, git.ErrUnavailable):
-			// Git-aware listing is unavailable for this workspace. The
-			// filesystem fallback below remains authoritative in this case.
-		case errors.Is(err, git.ErrResultTooLarge):
-			return nil, fmt.Errorf("%w: %w", errListingTooLarge, err)
-		default:
-			return nil, err
-		}
+	files, tracked, err := scope.trackedFiles(ctx, opts.IncludeIgnored)
+	if err != nil {
+		return nil, err
 	}
-	if !repository && !opts.IncludeIgnored {
-		directory := scope.physical
-		if !scope.directory {
-			directory = path.Dir(directory)
-		}
-		for _, part := range strings.Split(directory, "/") {
-			if backstopExclude[part] {
-				return []workspaceapp.FileEntry{}, nil
-			}
-		}
+	if !tracked {
+		return scope.listUntracked(ctx, opts, glob)
+	}
+	return scope.entries(ctx, files, opts, glob)
+}
+
+// trackedFiles lists the selection through Git, which hides ignored paths. A
+// request for ignored files, or a workspace without usable Git, has no tracked
+// corpus; the filesystem is then authoritative.
+func (scope fileSelection) trackedFiles(ctx context.Context, includeIgnored bool) ([]string, bool, error) {
+	if includeIgnored {
+		return nil, false, nil
+	}
+	files, err := git.ListFiles(ctx, scope.root, scope.physical, maxListEntries)
+	switch {
+	case err == nil:
+		return scope.project(files), true, nil
+	case errors.Is(err, git.ErrNotRepo), errors.Is(err, git.ErrUnavailable):
+		return nil, false, nil
+	case errors.Is(err, git.ErrResultTooLarge):
+		return nil, false, fmt.Errorf("%w: %w", errListingTooLarge, err)
+	default:
+		return nil, false, err
+	}
+}
+
+func (scope fileSelection) listUntracked(ctx context.Context, opts workspaceapp.FileListOptions, glob fileGlob) ([]workspaceapp.FileEntry, error) {
+	if !opts.IncludeIgnored && scope.backstopExcluded() {
+		return []workspaceapp.FileEntry{}, nil
 	}
 	// A non-recursive filesystem listing is genuinely one level. Walking the
 	// entire subtree first defeats lazy tree loading: a home-directory workspace
 	// can hit an unreadable descendant or the global safety limit before its
-	// immediate children are returned. Git-backed listings still derive their
-	// children from `git ls-files` so ignored directories stay hidden.
-	if !opts.Recursive && opts.Glob == "" && !repository {
+	// immediate children are returned.
+	if !opts.Recursive && opts.Glob == "" {
 		return levelFilesystemEntries(ctx, scope, opts.IncludeIgnored)
 	}
+	files := []string{scope.logical}
+	if scope.directory {
+		walked, err := walkFiles(ctx, scope, opts.IncludeIgnored, maxListEntries)
+		if err != nil {
+			return nil, err
+		}
+		files = walked
+	}
+	return scope.entries(ctx, files, opts, glob)
+}
 
-	if !repository {
-		if scope.directory {
-			files, err = walkFiles(ctx, scope, opts.IncludeIgnored, maxListEntries)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			files = []string{scope.logical}
+func (scope fileSelection) backstopExcluded() bool {
+	directory := scope.physical
+	if !scope.directory {
+		directory = path.Dir(directory)
+	}
+	for _, part := range strings.Split(directory, "/") {
+		if backstopExclude[part] {
+			return true
 		}
 	}
+	return false
+}
+
+func (scope fileSelection) entries(ctx context.Context, files []string, opts workspaceapp.FileListOptions, glob fileGlob) ([]workspaceapp.FileEntry, error) {
 	if len(files) > maxListEntries {
 		return nil, fmt.Errorf("%w: more than %d files", errListingTooLarge, maxListEntries)
 	}
-
 	if opts.Recursive || opts.Glob != "" {
 		return recursiveFiles(ctx, scope, files, glob)
 	}
@@ -503,6 +518,9 @@ const (
 
 type fileGlob []string
 
+// anyDirectories is the glob segment matching zero or more directories.
+const anyDirectories = "**"
+
 func compileGlob(pattern string) (fileGlob, error) {
 	if pattern == "" {
 		return nil, nil
@@ -515,7 +533,7 @@ func compileGlob(pattern string) (fileGlob, error) {
 		if part == "" || part == "." || part == ".." {
 			return nil, path.ErrBadPattern
 		}
-		if part == "**" && len(glob) > 0 && glob[len(glob)-1] == "**" {
+		if part == anyDirectories && len(glob) > 0 && glob[len(glob)-1] == anyDirectories {
 			continue
 		}
 		if _, err := path.Match(part, ""); err != nil {
@@ -532,14 +550,14 @@ func (g fileGlob) matches(candidate string) bool {
 	states := make([]bool, len(g)+1)
 	states[0] = true
 	for i, part := range g {
-		states[i+1] = states[i] && part == "**"
+		states[i+1] = states[i] && part == anyDirectories
 	}
 	for component := range strings.SplitSeq(candidate, "/") {
 		prev := states[0]
 		states[0] = false
 		for i, part := range g {
 			before := states[i+1]
-			if part == "**" {
+			if part == anyDirectories {
 				states[i+1] = before || states[i]
 			} else {
 				match, _ := path.Match(part, component)

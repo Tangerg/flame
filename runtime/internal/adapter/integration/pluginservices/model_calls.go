@@ -21,51 +21,8 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]pl
 	if lo.IsNil(resolve) {
 		return nil, errors.New("model composition: selected model resolver is required")
 	}
-	capture := func(ctx context.Context, input pluginsdk.ModelCallRequest) (models.SelectedChat, *chat.Request, func() error, error) {
-		if err := input.Validate(); err != nil {
-			return models.SelectedChat{}, nil, nil, err
-		}
-		invocation, err := pluginmcp.InvocationFromContext(ctx)
-		if err != nil {
-			return models.SelectedChat{}, nil, nil, err
-		}
-		if invocation.ID == executionctx.InvocationOwner(ctx) {
-			return models.SelectedChat{}, nil, nil, errors.New("model call: independent invocation cannot claim its executing owner identity")
-		}
-
-		selection, err := modelchoice.NewWithReasoningEffort(input.Selection.Provider, input.Selection.Model, input.Selection.ReasoningEffort)
-		if err != nil {
-			return models.SelectedChat{}, nil, nil, err
-		}
-		selection, err = o.SelectModel(ctx, modelapp.SelectionInput{
-			Context: modelchoice.SelectionContext{Use: modelchoice.Independent, Limits: &modelchoice.SelectionLimits{
-				InputKind: modelchoice.RequestBytes, MaxInputBytes: input.Budget.MaxRequestBytes, MaxOutputTokens: input.Budget.MaxOutputTokens,
-			}},
-			Proposed: selection,
-			Request:  &input.Request,
-		})
-		if err != nil {
-			return models.SelectedChat{}, nil, nil, err
-		}
-		resolved, err := resolve.ResolveChat(ctx, selection)
-		if err != nil {
-			return models.SelectedChat{}, nil, nil, err
-		}
-		selected, err := models.NewSelectedChat(selection, resolved)
-		if err != nil {
-			return models.SelectedChat{}, nil, nil, errors.Join(err, resolved.Close(context.WithoutCancel(ctx)))
-		}
-		captured, release, err := o.capture(ctx, selected, modelchoice.Independent, func() error { return resolved.Close(context.WithoutCancel(ctx)) }, input.Budget.Admit)
-		if err != nil {
-			return models.SelectedChat{}, nil, nil, err
-		}
-		request := input.Request.Clone()
-		request.Options.Model = selection.Model()
-		request.Options.ReasoningEffort = chat.ReasoningEffort(selection.ReasoningEffort())
-		return captured, request, release, nil
-	}
 	call, err := pluginsdk.NewSelectedModelCallback(func(ctx context.Context, command pluginmcp.Command[pluginsdk.ModelCallRequest]) (response *chat.Response, returned error) {
-		selected, request, release, err := capture(ctx, command.Input)
+		selected, request, release, err := o.captureIndependent(ctx, resolve, command.Input)
 		if err != nil {
 			return nil, err
 		}
@@ -79,7 +36,7 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]pl
 		return func(yield func(*chat.ResponseDelta, error) bool) {
 			sender := newModelStreamSender(yield)
 			defer sender.finish()
-			selected, request, release, err := capture(ctx, command.Input)
+			selected, request, release, err := o.captureIndependent(ctx, resolve, command.Input)
 			if err != nil {
 				sender.fail(err)
 				return
@@ -101,4 +58,50 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]pl
 		return nil, err
 	}
 	return []pluginmcp.Callback{call, stream}, nil
+}
+
+// captureIndependent selects and captures the model an independent plugin
+// call asked for, under the call's own budget and invocation identity.
+func (o *CallComposition) captureIndependent(ctx context.Context, resolve models.ChatModelResolver, input pluginsdk.ModelCallRequest) (models.SelectedChat, *chat.Request, func() error, error) {
+	if err := input.Validate(); err != nil {
+		return models.SelectedChat{}, nil, nil, err
+	}
+	invocation, err := pluginmcp.InvocationFromContext(ctx)
+	if err != nil {
+		return models.SelectedChat{}, nil, nil, err
+	}
+	if invocation.ID == executionctx.InvocationOwner(ctx) {
+		return models.SelectedChat{}, nil, nil, errors.New("model call: independent invocation cannot claim its executing owner identity")
+	}
+
+	selection, err := modelchoice.NewWithReasoningEffort(input.Selection.Provider, input.Selection.Model, input.Selection.ReasoningEffort)
+	if err != nil {
+		return models.SelectedChat{}, nil, nil, err
+	}
+	selection, err = o.SelectModel(ctx, modelapp.SelectionInput{
+		Context: modelchoice.SelectionContext{Use: modelchoice.Independent, Limits: &modelchoice.SelectionLimits{
+			InputKind: modelchoice.RequestBytes, MaxInputBytes: input.Budget.MaxRequestBytes, MaxOutputTokens: input.Budget.MaxOutputTokens,
+		}},
+		Proposed: selection,
+		Request:  &input.Request,
+	})
+	if err != nil {
+		return models.SelectedChat{}, nil, nil, err
+	}
+	resolved, err := resolve.ResolveChat(ctx, selection)
+	if err != nil {
+		return models.SelectedChat{}, nil, nil, err
+	}
+	selected, err := models.NewSelectedChat(selection, resolved)
+	if err != nil {
+		return models.SelectedChat{}, nil, nil, errors.Join(err, resolved.Close(context.WithoutCancel(ctx)))
+	}
+	captured, release, err := o.capture(ctx, selected, modelchoice.Independent, func() error { return resolved.Close(context.WithoutCancel(ctx)) }, input.Budget.Admit)
+	if err != nil {
+		return models.SelectedChat{}, nil, nil, err
+	}
+	request := input.Request.Clone()
+	request.Options.Model = selection.Model()
+	request.Options.ReasoningEffort = chat.ReasoningEffort(selection.ReasoningEffort())
+	return captured, request, release, nil
 }

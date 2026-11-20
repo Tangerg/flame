@@ -18,6 +18,13 @@ import (
 	"github.com/Tangerg/scope/core/tool"
 )
 
+// The Tool names the model sees.
+const (
+	searchKnowledgeTool = "search_knowledge"
+	listDocumentsTool   = "list_knowledge_documents"
+	readDocumentTool    = "read_knowledge_document"
+)
+
 func newServer(library *library) (*sdk.Server, error) {
 	if library == nil {
 		return nil, errors.New("knowledge base: library is required")
@@ -39,17 +46,17 @@ func newServer(library *library) (*sdk.Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	search, err := tool.NewFunc(tool.FuncConfig{Name: "search_knowledge", Description: contracts.Search.Descriptor().Description}, func(ctx context.Context, input wire.SearchInput) ([]knowledge.Match, error) {
+	search, err := tool.NewFunc(tool.FuncConfig{Name: searchKnowledgeTool, Description: contracts.Search.Descriptor().Description}, func(ctx context.Context, input wire.SearchInput) ([]knowledge.Match, error) {
 		return modelResult(library.search(ctx, input))
 	})
 	if err != nil {
 		return nil, err
 	}
-	list, err := tool.NewFunc(tool.FuncConfig{Name: "list_knowledge_documents", Description: contracts.List.Descriptor().Description}, func(ctx context.Context, _ struct{}) ([]knowledge.Header, error) { return library.list(ctx) })
+	list, err := tool.NewFunc(tool.FuncConfig{Name: listDocumentsTool, Description: contracts.List.Descriptor().Description}, func(ctx context.Context, _ struct{}) ([]knowledge.Header, error) { return library.list(ctx) })
 	if err != nil {
 		return nil, err
 	}
-	read, err := tool.NewFunc(tool.FuncConfig{Name: "read_knowledge_document", Description: contracts.Read.Descriptor().Description}, func(ctx context.Context, input wire.ReadInput) (wire.DocumentRead, error) {
+	read, err := tool.NewFunc(tool.FuncConfig{Name: readDocumentTool, Description: contracts.Read.Descriptor().Description}, func(ctx context.Context, input wire.ReadInput) (wire.DocumentRead, error) {
 		return modelResult(library.read(ctx, input))
 	})
 	if err != nil {

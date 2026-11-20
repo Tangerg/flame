@@ -160,7 +160,7 @@ func (item ToolArgumentsDelta) equal(event Event) bool {
 
 func (item RunProgress) equal(event Event) bool {
 	other, ok := event.(RunProgress)
-	return ok && equalOptional(item.Step, other.Step) && equalOptionalUsage(item.Usage, other.Usage) &&
+	return ok && equalOptional(item.Step, other.Step) && equalOptionalValue(item.Usage, other.Usage) &&
 		equalOptional(item.ContextTokens, other.ContextTokens) && equalOptional(item.Activity, other.Activity)
 }
 
@@ -251,6 +251,7 @@ func equalOptional[T comparable](left, right *T) bool {
 	return (left == nil) == (right == nil) && (left == nil || *left == *right)
 }
 
-func equalOptionalUsage(left, right *Usage) bool {
-	return (left == nil) == (right == nil) && (left == nil || left.Equal(*right))
+// equalOptionalValue is equalOptional for values that define their own Equal.
+func equalOptionalValue[T interface{ Equal(T) bool }](left, right *T) bool {
+	return (left == nil) == (right == nil) && (left == nil || (*left).Equal(*right))
 }

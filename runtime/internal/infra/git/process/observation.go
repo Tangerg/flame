@@ -13,6 +13,10 @@ import (
 	"strings"
 )
 
+// unbornHead lets a comparison repository without commits compare its index
+// and worktree.
+const unbornHead = "ref: refs/heads/unborn\n"
+
 type repositoryQuery struct {
 	ctx         context.Context
 	env, prefix []string
@@ -32,65 +36,86 @@ func (q repositoryQuery) path(args ...string) (string, error) {
 	return strings.TrimSuffix(string(r.Stdout), "\n"), nil
 }
 
-func observeWorktree(ctx context.Context, env, prefix, args []string) (_ Result, err error) {
-	q := repositoryQuery{ctx: ctx, env: env, prefix: prefix}
-	noIndex := len(args) > 1 && args[0] == "diff" && args[1] == "--no-index"
-	tree := ""
-	if !noIndex {
-		root, err := q.run("rev-parse", "--show-toplevel")
-		if err != nil || root.ExitCode != 0 {
-			return root, err
-		}
-		tree = strings.TrimSuffix(string(root.Stdout), "\n")
+func observeWorktree(ctx context.Context, env, prefix, args []string) (Result, error) {
+	if len(args) > 1 && args[0] == "diff" && args[1] == "--no-index" {
+		return observePaths(ctx, env, prefix, args)
 	}
+	return observeRepository(ctx, env, prefix, args)
+}
+
+// observePaths compares paths outside any repository, so its view needs only
+// an unborn HEAD.
+func observePaths(ctx context.Context, env, prefix, args []string) (_ Result, err error) {
+	view, err := newReadDirectory("")
+	if err != nil {
+		return Result{}, err
+	}
+	defer func() { err = errors.Join(err, os.RemoveAll(view)) }()
+	if err := os.WriteFile(filepath.Join(view, "HEAD"), []byte(unbornHead), 0600); err != nil {
+		return Result{}, err
+	}
+	return Run(ctx, readViewEnvironment(env, view), append(slices.Clone(prefix), args...)...)
+}
+
+func observeRepository(ctx context.Context, env, prefix, args []string) (_ Result, err error) {
+	q := repositoryQuery{ctx: ctx, env: env, prefix: prefix}
+	root, err := q.run("rev-parse", "--show-toplevel")
+	if err != nil || root.ExitCode != 0 {
+		return root, err
+	}
+	tree := strings.TrimSuffix(string(root.Stdout), "\n")
 	view, err := newReadDirectory(tree)
 	if err != nil {
 		return Result{}, err
 	}
 	defer func() { err = errors.Join(err, os.RemoveAll(view)) }()
-	baseEnv := append(slices.Clone(env), "GIT_DIR="+view, "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_ATTR_NOSYSTEM=1")
-	if noIndex {
-		if err := os.WriteFile(filepath.Join(view, "HEAD"), []byte("ref: refs/heads/unborn\n"), 0600); err != nil {
-			return Result{}, err
-		}
-		return Run(ctx, baseEnv, append(slices.Clone(prefix), args...)...)
-	}
-	gitDir, err := q.path("--git-dir")
-	if err != nil {
-		return Result{}, err
-	}
 	common, err := q.path("--git-common-dir")
 	if err != nil {
 		return Result{}, err
 	}
-
-	env, err = q.installReadConfig(view, baseEnv)
+	env, err = q.installReadConfig(view, readViewEnvironment(env, view))
 	if err != nil {
 		return Result{}, err
 	}
 	if err := q.installReadHead(view); err != nil {
 		return Result{}, err
 	}
-	if err := copyReadMaterial(filepath.Join(gitDir, "index"), filepath.Join(view, "index")); err != nil {
+	if err := q.installReadIndex(view, common); err != nil {
 		return Result{}, err
+	}
+	env = append(env, "GIT_WORK_TREE="+tree, "GIT_OBJECT_DIRECTORY="+filepath.Join(common, "objects"))
+	return Run(ctx, env, append(slices.Clone(prefix), args...)...)
+}
+
+func readViewEnvironment(env []string, view string) []string {
+	return append(slices.Clone(env), "GIT_DIR="+view, "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_ATTR_NOSYSTEM=1")
+}
+
+// installReadIndex shares the worktree's index, split index and ignore rules
+// with the comparison repository.
+func (q repositoryQuery) installReadIndex(view, common string) error {
+	gitDir, err := q.path("--git-dir")
+	if err != nil {
+		return err
+	}
+	if err := copyReadMaterial(filepath.Join(gitDir, "index"), filepath.Join(view, "index")); err != nil {
+		return err
 	}
 	shared, err := q.path("--shared-index-path")
 	if err != nil {
-		return Result{}, err
+		return err
 	}
 	if shared != "" {
 		if err := copyReadMaterial(shared, filepath.Join(view, filepath.Base(shared))); err != nil {
-			return Result{}, err
+			return err
 		}
 	}
 	for _, name := range []string{"attributes", "exclude"} {
 		if err := copyReadMaterial(filepath.Join(common, "info", name), filepath.Join(view, "info", name)); err != nil {
-			return Result{}, err
+			return err
 		}
 	}
-	env = append(env, "GIT_WORK_TREE="+tree, "GIT_OBJECT_DIRECTORY="+filepath.Join(common, "objects"))
-	result, err := Run(ctx, env, append(slices.Clone(prefix), args...)...)
-	return result, err
+	return nil
 }
 
 func newReadDirectory(tree string) (string, error) {
@@ -128,7 +153,7 @@ func (q repositoryQuery) installReadHead(view string) error {
 	case 0:
 		head = r.Stdout
 	case 1:
-		head = []byte("ref: refs/heads/unborn\n")
+		head = []byte(unbornHead)
 	default:
 		return fmt.Errorf("git: resolve comparison HEAD: %s", r.Stderr)
 	}

@@ -96,49 +96,59 @@ func (s *InstallationStore) records(ctx context.Context, query string, args ...a
 		return result, rows.Err()
 	})
 }
+func (s *InstallationStore) installationValues(ctx context.Context, id string) (map[string]string, error) {
+	rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT input_id,value FROM plugin_installation_values WHERE installation_id=?`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	values := map[string]string{}
+	for rows.Next() {
+		var input, value string
+		if err := rows.Scan(&input, &value); err != nil {
+			return nil, err
+		}
+		values[input] = value
+	}
+	return values, rows.Err()
+}
+
+func (s *InstallationStore) restoreDisabled(ctx context.Context, record *plugin.Record) error {
+	id := record.ID.String()
+	rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT kind,name FROM plugin_installation_disabled WHERE installation_id=? ORDER BY kind,name`, id)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var kind, name string
+		if err := rows.Scan(&kind, &name); err != nil {
+			return err
+		}
+		switch kind {
+		case disabledServer:
+			server, err := mcpserver.ParseServerName(name)
+			if err != nil {
+				return fmt.Errorf("sqlite: installation %s disabled server: %w", id, err)
+			}
+			record.DisabledServers = append(record.DisabledServers, server)
+		case disabledSkill:
+			record.DisabledSkills = append(record.DisabledSkills, name)
+		default:
+			return fmt.Errorf("sqlite: installation %s disabled component kind %q", id, kind)
+		}
+	}
+	return rows.Err()
+}
+
 func (s *InstallationStore) restore(ctx context.Context, record plugin.Record) (plugin.Snapshot, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) (plugin.Snapshot, error) {
 		id := record.ID.String()
-		values, err := s.db.connection(ctx).QueryContext(ctx, `SELECT input_id,value FROM plugin_installation_values WHERE installation_id=?`, id)
-		if err != nil {
+		var err error
+		if record.Values, err = s.installationValues(ctx, id); err != nil {
 			return plugin.Snapshot{}, err
 		}
-		defer values.Close()
-		record.Values = map[string]string{}
-		for values.Next() {
-			var input, value string
-			if err := values.Scan(&input, &value); err != nil {
-				return plugin.Snapshot{}, err
-			}
-			record.Values[input] = value
-		}
-		if err := values.Err(); err != nil {
-			return plugin.Snapshot{}, err
-		}
-		disabled, err := s.db.connection(ctx).QueryContext(ctx, `SELECT kind,name FROM plugin_installation_disabled WHERE installation_id=? ORDER BY kind,name`, id)
-		if err != nil {
-			return plugin.Snapshot{}, err
-		}
-		defer disabled.Close()
-		for disabled.Next() {
-			var kind, name string
-			if err := disabled.Scan(&kind, &name); err != nil {
-				return plugin.Snapshot{}, err
-			}
-			switch kind {
-			case disabledServer:
-				server, err := mcpserver.ParseServerName(name)
-				if err != nil {
-					return plugin.Snapshot{}, fmt.Errorf("sqlite: installation %s disabled server: %w", id, err)
-				}
-				record.DisabledServers = append(record.DisabledServers, server)
-			case disabledSkill:
-				record.DisabledSkills = append(record.DisabledSkills, name)
-			default:
-				return plugin.Snapshot{}, fmt.Errorf("sqlite: installation %s disabled component kind %q", id, kind)
-			}
-		}
-		if err := disabled.Err(); err != nil {
+		if err := s.restoreDisabled(ctx, &record); err != nil {
 			return plugin.Snapshot{}, err
 		}
 		selected, err := s.releases.Get(ctx, record.Selected)

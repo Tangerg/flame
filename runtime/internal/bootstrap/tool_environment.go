@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -42,7 +44,6 @@ type toolEnvironment struct {
 	pluginCalls           *pluginservices.CommandCalls
 	callComposition       *pluginservices.CallComposition
 	modelCallbacks        []pluginmcp.Callback
-	utilityModel          modeladapter.AuxiliaryResolver
 	closers               []*teardownStep
 	admission             framehost.Admission
 	validatePluginSources func(context.Context, []plugin.Activation, []plugin.Dependency) error
@@ -56,7 +57,7 @@ type toolEnvironmentDependencies struct {
 	callbacks      *pluginmcp.Callbacks
 	workspaceScope *workspace.Scope
 	conversation   interface {
-		Read(context.Context, string) ([]chat.Message, error)
+		Read(context.Context, identity.SessionID) ([]chat.Message, error)
 	}
 	publish        invalidation.Publish
 	packageSkills  promptsource.PackageSkills
@@ -73,6 +74,80 @@ type toolEnvironmentDependencies struct {
 }
 
 type toolEnvironmentBuilder func(context.Context, toolEnvironmentDependencies) (toolEnvironment, error)
+
+// composeModels resolves the model providers, roles and plugin model
+// callbacks. Installed providers join teardown only when this process opened
+// them.
+func (environment *toolEnvironment) composeModels(ctx context.Context, deps toolEnvironmentDependencies, commandCalls *pluginservices.CommandCalls) error {
+	cfg := deps.config
+	providerAdapters := cfg.modelProviders
+	if providerAdapters == nil {
+		installed, err := pluginservices.NewModelProviders(pluginservices.ModelProvidersConfig{
+			Lifetime: deps.lifetime, Framework: deps.framework.host, Admission: environment.admission, Installations: cfg.stores.Installations,
+			Selections: cfg.stores.ProviderSelections, Connections: environment.mcp, Callbacks: deps.callbacks,
+		})
+		if err != nil {
+			return err
+		}
+		environment.closers = append(environment.closers, terminalStep(func(ctx context.Context) error { return installed.Close(context.WithoutCancel(ctx)) }))
+		providerAdapters = installed
+	}
+	modelServices, err := buildModelEnvironment(ctx, cfg, deps.callbacks, providerAdapters)
+	if err != nil {
+		return err
+	}
+	environment.callComposition, err = pluginservices.NewCallComposition(commandCalls, deps.callbacks, environment.admission)
+	if err != nil {
+		return err
+	}
+	environment.modelCallbacks, err = environment.callComposition.ModelCallbacks(modelServices.chatResolver)
+	if err != nil {
+		return err
+	}
+	embedding, err := pluginservices.EmbeddingRoleCallback(modelServices.liveEmbedder.Resolve)
+	if err != nil {
+		return err
+	}
+	environment.modelCallbacks = append(environment.modelCallbacks, embedding)
+	utility, err := modeladapter.LiveUtilityModel(modelServices.chatResolver, cfg.defaultSelection, modelServices.utilityRoleState, environment.callComposition)
+	if err != nil {
+		return err
+	}
+	modelServices.utilityModel = environment.callComposition.Auxiliary(utility)
+	environment.models = modelServices
+	return nil
+}
+
+// composeSkills joins the user library, package Skills and their governing
+// provider into the catalog and the learning loop that proposes new Skills.
+func (environment *toolEnvironment) composeSkills(deps toolEnvironmentDependencies, commandCalls *pluginservices.CommandCalls) (promptsource.SkillSources, error) {
+	cfg := deps.config
+	skillSource, err := promptsource.NewSkillSource(cfg.skillsUserDir, cfg.skillsUserDir)
+	if err != nil {
+		return promptsource.SkillSources{}, fmt.Errorf("runtime: user skill source: %w", err)
+	}
+	reviews, err := pluginservices.NewSkillGovernance(commandCalls, deps.workspace.skillLibraries)
+	if err != nil {
+		return promptsource.SkillSources{}, err
+	}
+	skillSources := promptsource.SkillSources{Packages: deps.packageSkills, Discover: reviews.Discover}
+	skillCatalog, err := promptsource.NewSkills(cfg.skillsUserDir, skillSources)
+	if err != nil {
+		return promptsource.SkillSources{}, err
+	}
+	environment.skills, err = workspace.NewSkills(deps.workspace.scope, skillCatalog, deps.skillStore, reviews, deps.workspace.authoredWatch, deps.publish)
+	if err != nil {
+		return promptsource.SkillSources{}, err
+	}
+	environment.skillLearning, err = pluginservices.NewSkillLearning(pluginservices.SkillLearningConfig{
+		Commands: commandCalls, Callbacks: deps.callbacks, Utility: environment.models.utilityModel,
+		Conversation: deps.conversation, Source: skillSource, Proposals: reviews, Archives: deps.skillArchives,
+	})
+	if err != nil {
+		return promptsource.SkillSources{}, err
+	}
+	return skillSources, nil
+}
 
 func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies) (toolEnvironment, error) {
 	cfg := deps.config
@@ -107,71 +182,18 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		return environment, err
 	}
 	environment.pluginCalls = commandCalls
-	providerAdapters := cfg.modelProviders
-	if providerAdapters == nil {
-		installed, err := pluginservices.NewModelProviders(pluginservices.ModelProvidersConfig{
-			Lifetime: deps.lifetime, Framework: deps.framework.host, Admission: admission, Installations: cfg.stores.Installations,
-			Selections: cfg.stores.ProviderSelections, Connections: mcpPool, Callbacks: deps.callbacks,
-		})
-		if err != nil {
-			return environment, err
-		}
-		environment.closers = append(environment.closers, terminalStep(func(ctx context.Context) error { return installed.Close(context.WithoutCancel(ctx)) }))
-		providerAdapters = installed
+	if err := environment.composeModels(ctx, deps, commandCalls); err != nil {
+		return environment, err
 	}
-	modelServices, err := buildModelEnvironment(ctx, cfg, deps.callbacks, providerAdapters)
+	prepareTool, err := pluginservices.NewToolPreparation(pluginservices.ToolPreparationConfig{Installations: cfg.stores.Installations, Callbacks: deps.callbacks, Embeddings: environment.models.liveEmbedder.Resolve, Invalidations: deps.publish})
 	if err != nil {
 		return environment, err
 	}
-	environment.models = modelServices
-	prepareTool, err := pluginservices.NewToolPreparation(pluginservices.ToolPreparationConfig{Installations: cfg.stores.Installations, Callbacks: deps.callbacks, Embeddings: modelServices.liveEmbedder.Resolve, Invalidations: deps.publish})
+	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.stores.Installations, Connections: mcpPool, Callbacks: deps.callbacks, Utility: environment.models.utilityModel, Embeddings: environment.models.liveEmbedder.Resolve, Conversation: deps.conversation, Commands: commandCalls})
 	if err != nil {
 		return environment, err
 	}
-	environment.callComposition, err = pluginservices.NewCallComposition(commandCalls, deps.callbacks, admission)
-	if err != nil {
-		return environment, err
-	}
-	environment.modelCallbacks, err = environment.callComposition.ModelCallbacks(modelServices.chatResolver)
-	if err != nil {
-		return environment, err
-	}
-	embedding, err := pluginservices.EmbeddingRoleCallback(modelServices.liveEmbedder.Resolve)
-	if err != nil {
-		return environment, err
-	}
-	environment.modelCallbacks = append(environment.modelCallbacks, embedding)
-	utility, err := modeladapter.LiveUtilityModel(modelServices.chatResolver, cfg.defaultSelection, modelServices.utilityRoleState, environment.callComposition)
-	if err != nil {
-		return environment, err
-	}
-	environment.utilityModel = environment.callComposition.Auxiliary(utility)
-	environment.models.utilityModel = environment.utilityModel
-	environment.memory, err = pluginservices.NewMemory(pluginservices.MemoryConfig{Installations: cfg.stores.Installations, Connections: mcpPool, Callbacks: deps.callbacks, Utility: environment.utilityModel, Embeddings: modelServices.liveEmbedder.Resolve, Conversation: deps.conversation, Commands: commandCalls})
-	if err != nil {
-		return environment, err
-	}
-	skillSource, err := promptsource.NewSkillSource(cfg.skillsUserDir, cfg.skillsUserDir)
-	if err != nil {
-		return environment, fmt.Errorf("runtime: user skill source: %w", err)
-	}
-	reviews, err := pluginservices.NewSkillGovernance(commandCalls, deps.workspace.skillLibraries)
-	if err != nil {
-		return environment, err
-	}
-	skillSources := promptsource.SkillSources{Packages: deps.packageSkills, Discover: reviews.Discover}
-	skillCatalog, err := promptsource.NewSkills(cfg.skillsUserDir, skillSources)
-	if err != nil {
-		return environment, err
-	}
-	environment.skills, err = workspace.NewSkills(deps.workspace.scope, skillCatalog, deps.skillStore, reviews, deps.workspace.authoredWatch, deps.publish)
-	if err != nil {
-		return environment, err
-	}
-	environment.skillLearning, err = pluginservices.NewSkillLearning(pluginservices.SkillLearningConfig{
-		Commands: commandCalls, Callbacks: deps.callbacks, Utility: environment.utilityModel,
-		Conversation: deps.conversation, Source: skillSource, Proposals: reviews, Archives: deps.skillArchives,
-	})
+	skillSources, err := environment.composeSkills(deps, commandCalls)
 	if err != nil {
 		return environment, err
 	}

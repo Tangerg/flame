@@ -22,9 +22,9 @@ func newToolResultStore(db *database) *ToolResultStore {
 // with a nil error — when no such row exists (an unknown id is a recoverable
 // miss the caller surfaces to the model, not a failure). Scoping the read by
 // session id keeps one session from reading another's offloaded output.
-func (t *ToolResultStore) Fetch(ctx context.Context, sessionID string, id transcript.ToolResultID) (body string, found bool, err error) {
+func (t *ToolResultStore) Fetch(ctx context.Context, sessionID identity.SessionID, id transcript.ToolResultID) (body string, found bool, err error) {
 	return scopedPair(ctx, t.db.read, func(ctx context.Context) (body string, found bool, err error) {
-		if validateErr := identity.ValidateSession(sessionID); validateErr != nil {
+		if validateErr := sessionID.Validate(); validateErr != nil {
 			return "", false, fmt.Errorf("sqlite: fetch tool result: %w", validateErr)
 		}
 		if validateErr := id.Validate(); validateErr != nil {
@@ -42,9 +42,9 @@ func (t *ToolResultStore) Fetch(ctx context.Context, sessionID string, id transc
 }
 
 // List returns every transcript-bound blob owned by sessionID in stable order.
-func (t *ToolResultStore) List(ctx context.Context, sessionID string) ([]transcript.ToolResultBlob, error) {
+func (t *ToolResultStore) List(ctx context.Context, sessionID identity.SessionID) ([]transcript.ToolResultBlob, error) {
 	return scopedValue(ctx, t.db.read, func(ctx context.Context) ([]transcript.ToolResultBlob, error) {
-		if err := identity.ValidateSession(sessionID); err != nil {
+		if err := sessionID.Validate(); err != nil {
 			return nil, fmt.Errorf("sqlite: list tool results: %w", err)
 		}
 		rows, err := t.db.connection(ctx).QueryContext(ctx, `SELECT id, session_id, body, created_at_ns

@@ -3,6 +3,8 @@ package runs
 import (
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
@@ -12,7 +14,7 @@ import (
 // the hand-off names it: an approval names a running ToolCall with no verdict,
 // a Question names an unanswered Question Item, and every Item belongs to the
 // Run whose member its binding answers.
-func (p Pending) ProjectInterrupts(itemsByID map[string]transcript.Item) ([]transcript.Interrupt, error) {
+func (p Pending) ProjectInterrupts(itemsByID map[identity.ItemID]transcript.Item) ([]transcript.Interrupt, error) {
 	if err := p.Validate(); err != nil {
 		return nil, err
 	}
@@ -79,8 +81,8 @@ func OpenInterruptsOf(projected []transcript.Interrupt) []OpenInterrupt {
 // drainedToolItem resolves the open Tool Item a drained tool re-binds. The
 // Item, not the hand-off, owns its occurrence and invocation.
 func drainedToolItem(
-	itemsByID map[string]transcript.Item,
-	runID string,
+	itemsByID map[identity.ItemID]transcript.Item,
+	runID identity.RunID,
 	drained DrainedTool,
 ) (transcript.Item, transcript.ToolInvocation, error) {
 	item, found := itemsByID[drained.ItemID]
@@ -95,8 +97,8 @@ func drainedToolItem(
 
 // pendingItemIDs lists every Item a hand-off names: its open interrupts and
 // its drained Tools.
-func pendingItemIDs(pending Pending) []string {
-	ids := make([]string, 0, len(pending.Interrupts))
+func pendingItemIDs(pending Pending) []identity.ItemID {
+	ids := make([]identity.ItemID, 0, len(pending.Interrupts))
 	for _, open := range pending.Interrupts {
 		ids = append(ids, open.ItemID)
 	}

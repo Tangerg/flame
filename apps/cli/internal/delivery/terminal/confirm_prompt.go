@@ -55,13 +55,13 @@ func (c *confirmPrompt) ask(title, question, action, content string, confirm fun
 		},
 	})
 	body := formBody.Element()
-	placement := layout.Placement{Width: 78, Height: 9}
+	placement := layout.Placement{Width: standardDialogWidth, Height: 9}
 	if content != "" {
 		viewport := base.NewViewport(base.ViewportConfig{Content: passiveElement(kit.NewParagraph(content, c.theme.Text))})
 		viewport.Scroll().Wheel(c.wheel)
 		pane := &confirmationContentPane{viewport: viewport, form: formBody}
 		body = pane.Element()
-		placement = layout.Placement{Width: 96, Height: 26}
+		placement = layout.Placement{Width: wideDialogWidth, Height: 26}
 	}
 	dialog = newPresentationDialog(c.stack, kit.DialogConfig{
 		Theme: c.theme, Glyphs: c.glyphs, Title: title, Body: formNavigation(body, dismiss), Where: placement,

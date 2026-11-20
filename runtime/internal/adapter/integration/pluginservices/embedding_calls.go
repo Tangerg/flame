@@ -28,7 +28,7 @@ func EmbeddingRoleCallback(resolve func(context.Context) (models.TextEmbedder, e
 			return pluginsdk.TextEmbeddings{}, err
 		}
 		if model == nil {
-			return pluginsdk.TextEmbeddings{}, &framecall.Refusal{Code: "model_role_unconfigured", Message: "embedding call: role is not configured"}
+			return pluginsdk.TextEmbeddings{}, &framecall.Refusal{Code: refusalModelRoleUnconfigured, Message: "embedding call: role is not configured"}
 		}
 		if lo.IsNil(model) {
 			return pluginsdk.TextEmbeddings{}, errors.New("embedding call: resolved role is typed nil")
