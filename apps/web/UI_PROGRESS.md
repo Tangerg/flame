@@ -35784,6 +35784,62 @@ Three previews stop. Cleanup removes three registrations, six
 private Library directories, ten checkout outputs and the scratch
 tree.
 
+### Fit expanded recorded output to its line count (2026-11-20)
+
+Actual Wails at `672eca5de` expands the captured ten-line Shell
+output to a 380 CSS px viewport. At **1121 × 950** with a **440 px**
+conversation and EN/light/14 px/Flame Orange, the lines occupy 199.8 px
+and leave 180.2 px below them. The signed candidate at the same native
+geometry measures 209.97 px, with 10.17 px of clearance. The 32 px
+caption, 362 px client width, 495 px horizontal extent and line content
+match. Native Right reaches the end of the horizontal range, exposing
+the complete `8.412s` with the scrollbar clear of the last row.
+
+The expanded body in `recorded-output.tsx` adds the captured line
+count in CSS line-height units plus the existing bottom and focus
+insets to the existing `24rem` and `60vh` limits. The same value for
+typography sizes the non-wrapping rows. The existing viewport owns
+focus, selection and scrolling. ZCode's read-only
+`packages/ui/src/ToolCallBlocks/renderers/ExecuteOutput.tsx` bounds its
+preview by line height. The layout and typography review uses that
+principle for the short expansion and retains Flame's long-output cap.
+[CSS line-height units](https://www.w3.org/TR/css-values-4/#lh).
+
+- The diagnostic baseline and candidate use a passive readout.
+  Keyboard Collapse in the candidate retains the same disclosure,
+  and the Composer draft continues as `111543`.
+- EN/light/14 px/Flame Orange in the standard 1121 × 950 Lab.
+  Find `31415` locates one match in the 50,000-line capture. Escape
+  restores the reader, and Right and Left keep the 31387–31431
+  rendered range, matching the preceding batch at this size.
+  Page Down and the wheel reach different vertical ranges.
+  Jump to latest reaches `49999`. Collapse focuses the original
+  nine-line preview disclosure, and the draft continues as `11136518`.
+- ZH/dark/18 px/`#3B82F6` in the standard 1121 × 950 Workspace Lab.
+  At 440 px conversation width, Find shows the first of three
+  Rollback matches. Escape focuses the reader. Right shows
+  `8.412s` above the horizontal scrollbar, and Left returns to the
+  row starts. Keyboard Collapse restores the preview disclosure.
+  Splitter End then sets the Files Dock to 320 px. Opening the current
+  file shows the eight-line `store.go` capture. Return to conversation
+  restores the exact source opener, and the draft continues as `11142638`.
+
+Scoped Prettier, `make check-native` and the canonical five-document
+Lab build pass. Only the Tool results ESM changes in Web staging.
+Plugin checks pass 44 Node cases, 20 source tests and 20 catalogs
+across eight locales. Six existing conditional source tests skip.
+Web passes 155 tests, 940 keys across eight locales and 26 bundle
+contracts, with bootstrap and module linkage. The diagnostic readout is
+private to the two measurement builds. The source uses the existing
+tests and the actual before/after native geometry for this sizing change.
+
+The native tasks use captured outputs and an inert file sample. Live
+tool execution, VoiceOver, physical IME and other native platforms
+remain outside this check. Four app launches exit normally and three
+previews stop. Cleanup removes three private registrations, six Library
+directories, ten checkout outputs and the scratch tree. Continue with
+the recorded changes task from Activity to detail and back.
+
 ### Captured shell page reading after main (2026-11-06)
 
 Scope is reply → recorded command → captured page provenance → output preview →

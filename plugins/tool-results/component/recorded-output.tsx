@@ -257,7 +257,9 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
           minHeight: 0,
           display: "flex",
           flexDirection: "column",
-          height: expanded ? "min(24rem, 60vh)" : undefined,
+          height: expanded
+            ? `min(24rem, 60vh, calc(${lines.length}lh + ${frameInset} + 2 * var(--focus-inset-edge)))`
+            : undefined,
           overflowX: expanded ? undefined : "auto",
           overscrollBehaviorX: expanded ? undefined : "contain",
           paddingBlockEnd: expanded ? undefined : frameInset,
