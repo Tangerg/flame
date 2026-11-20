@@ -215,11 +215,19 @@ choices and fields read-only, and refuses late pointer, paste or IME changes,
 until canonical history replaces the admitted answer or submission becomes
 available again.
 
-Conversation search covers revealed message text, including text reached by
-scrolling. Collapsed, hidden and inert content is excluded regardless of its
-mounting history. Expand a disclosure to include its content; closing it updates
-the count and retires its ranges. Search reads that visibility projection and
-preserves the disclosure and keyboard focus owners.
+Conversation search covers message text, including text reached by
+scrolling and the full text of folded user messages. Activating a match opens a
+user message if its fold clips or fades the match. Matches in the clear preview
+leave the message folded. Find omits visually hidden accessibility text and
+hidden or inert disclosure content regardless of its mounting history. Closing a
+disclosure updates the count and retires its ranges. Search preserves the
+keyboard focus and disclosure owners.
+Find highlights the current match inside a rendered Mermaid diagram.
+Each line of a diagram label is searched independently.
+In prose, a run of collapsible spaces or tabs matches one space across inline
+formatting. Code and preserved whitespace match literally. Explicit breaks and
+block boundaries still split phrases.
+Find leaves keyboard focus inside a modal while it hides the transcript.
 Closing Find restores the original Composer's last editing selection when its
 mounted document is still current. The Composer owns that return through
 Lexical, and the search bar retains its ordinary return for other controls.
@@ -246,9 +254,10 @@ reader. An accepted page starts at its top, while a refresh retains that page's
 reading position.
 Source selection and copy refer only to the presented page. Partial pages stay
 in source mode, and the header shows their actual served line range. For a whole
-file the header shows its line count.
+file the header shows its line count. The Source gutter numbers the served lines
+using their absolute file positions.
 The file reader scopes Select All to its displayed content in both Preview and
-Source, excluding its path and host controls. Source highlights the mounted code
+Source, excluding its path, host controls and line gutter. Source highlights the mounted code
 for the current page. Preview retains native formatted copy. Source and renderer
 fallbacks copy the literal captured page as plain text. Nested code readers and
 editable fields keep their own selection behavior.
@@ -631,6 +640,9 @@ distinguishable before invocation. The shared search overlay retains query,
 selection, scrolling, dismissal and action handoff ownership.
 Its handoff supplies the captured opener to view navigation, so the Workspace
 host can present a narrow destination full width and return to that source.
+Context-specific actions such as Quote in message capture their source as the
+menu opens, before the search field takes focus. They appear for that opening
+when their context is available and run after dismissal.
 
 Shared text, search and selection fields use the same quiet sunken fill,
 transparent resting edge and independent keyboard focus perimeter. The theme
@@ -889,7 +901,8 @@ browser's editing default for these keys to preserve a held Composer selection.
 Back to files restores the file just read when its key is in the current tree.
 The virtualizer presents that row and the file tree reveals it inside its own
 scrollport. When the key is unavailable, the tree uses its existing tab stop.
-Later directory arrivals preserve the user's current focus.
+If the row arrives while the tree itself still holds focus, the tree finishes
+restoring it. Moving focus to a row or leaving the tree retires that return.
 
 Query owns directory pages and their cache. Runtime enumerates only the
 requested level and publishes its
@@ -1058,9 +1071,10 @@ placeholder appears when both captured messages and run details are absent.
 
 Conversation Find matches rendered text, so while Find is open the transcript
 reader renders every row and the first query already sees all of them. Legend
-keeps every container it has filled, so closing Find starts a fresh windowed list
-at the same reading position, or at the end when it was following. Matches follow the reader's row order rather than virtual container
-order. Refreshes retain the selected occurrence in its message, rebuild current
+keeps every container it has filled. After Find closes, the transcript starts a
+fresh windowed list as soon as focus is outside the reader. It retains the reading
+position or the end when following. Matches follow the reader's row order.
+Refreshes retain the selected occurrence in its message, rebuild current
 highlight ranges and preserve focus and reading position. Earlier details keep a
 still-rendered word current; replaced text uses its message occurrence as the
 existing fallback. Query changes and explicit navigation reveal a match: nested
@@ -1126,12 +1140,22 @@ there is no block splitter, remend repair, reveal clock or raw HTML renderer.
 available and single-dollar currency stays literal. Proprietary bracket/marker
 math syntax is removed. Code copying retains the parser's original literal value.
 The complete source is available through a stable context for table operations.
+An inline code span consisting of one file address opens through the same
+workspace reference action as prose. The filename keeps its original Unicode
+spelling. Line, line-and-column and quoted range addresses keep their complete
+label. Workspace-relative Markdown links ending in `#Lline` or `#Lfirst-Llast`
+open through the same action and retain their authored label and title. A range
+opens at its first line.
 
-Generated SVG fences stay inert images inside their code preview. The image
-button is the keyboard stop for scrolling the preview and opening the shared
-gallery. The gallery keeps source order within the reply, owns zoom/pan and
-source return, and captures the image set for each opening. Code copying retains
-the complete original SVG text.
+Generated SVG fences show readable source until the browser decodes an inert
+image. The last accepted preview or source stays visible while new SVG text
+decodes. The image button opens the shared gallery, and its inset focus ring
+stays around the visible preview as it scrolls. The gallery captures the
+available images in reply order at each opening and retains that capture
+through later source changes. If a decode replaces a focused reader or image
+button, focus follows the replacement. Closing a gallery with a retired button
+returns to the source reader. Code copying retains the complete original SVG
+text.
 
 Activity disclosures compose Base UI Collapsible directly. Consumers request an
 explicit open value; the workspace command owns each tool's expanded state.
@@ -1209,7 +1233,14 @@ public worker APIs with `preferredHighlighter: "shiki-js"`. A shared semantic
 CSS-variable theme responds to the selected palette. The former application
 Shiki worker, language registry, queue and HTML cache have been removed. Search,
 line targets and captured copying remain host policies, using public renderer
-roots and original source bytes.
+roots and original source bytes. Switching between unified and split layouts
+or toggling wrap for the same accepted patch keeps its first visible source row
+at the same vertical offset where the viewport allows. If unwrapping would
+hide the preserved row, the reader aligns its start. Returning from the same
+paired split row keeps the side the reader was viewing.
+When the diff region has focus and no diff text is selected, Up and Down scroll
+its enclosing reader one step at a time. The region reserves transparent inline
+edges so the focus outline remains visible beside the gutters and change fills.
 
 File previews keep their filename to two visible lines beside persistent navigation,
 range and commands. Header groups share a row when their natural widths fit and
@@ -1224,8 +1255,13 @@ line placement, renderer mode and source-return history retain their existing
 owners.
 
 An accepted file source jump marks its target with the palette's bounded
-selection fill and an inset leading rule. The mark identifies the destination
-when the whole file already fits in the reader.
+selection fill and an inset leading rule, including when the whole file fits in
+the reader. The jump centers the row vertically and keeps the current horizontal
+offset. Line numbers, quote addresses and target marks stop at the last served
+line. Quote selection uses the composed selection within one visible reader.
+A whole Source selection includes the page's absolute served range. A partial
+selection includes its absolute line range when both endpoints address served
+lines.
 
 When WebKit retains the Composer's range, the focused File viewport uses the
 shared relative line scroll for Up and Down in both Preview and Source.
@@ -1328,7 +1364,11 @@ Lab cameras use react-zoom-pan-pinch with fit and actual-size intents. Internal
 Dock reordering uses dnd-kit; pragmatic-drag-and-drop handles only external files
 and retains their original intake source. Copying publishes immutable operation
 receipts to Toast, including completions after the source unmounts. Selection
-quoting captures an immutable snapshot only from a context menu or explicit
-shortcut. GenUI renders official A2UI 1.0 through a trusted Flame catalog; its
+quoting captures an immutable snapshot from a context menu or its configurable
+shortcut, `Ctrl+Shift+Q` by default. A message menu offers Quote in message
+when its target and the selection endpoints share one visible source. It appends
+to the captured Composer after the menu closes.
+
+GenUI renders official A2UI 1.0 through a trusted Flame catalog; its
 processor lifetime is outside virtual rows. Highlights remains deferred under the
 production CSP, which grants neither unsafe-eval nor wasm-unsafe-eval.

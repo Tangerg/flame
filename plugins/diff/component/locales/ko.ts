@@ -50,8 +50,7 @@ export const ko: Record<string, string> = {
   "file.renamed": "이름 변경 전:",
   "file.binary":
     "바이너리 콘텐츠는 표시되지 않습니다. 행 수를 사용할 수 없습니다.",
-  "file.metadataOnly":
-    "행 변경 사항이 없습니다. 파일 메타데이터만 변경되었습니다.",
+  "file.noLineChanges": "행 변경 사항이 없습니다.",
   "file.status.added": "추가됨",
   "file.status.modified": "수정됨",
   "file.status.deleted": "삭제됨",

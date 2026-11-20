@@ -53,7 +53,7 @@ export const en: Record<string, string> = {
   "file.renamed": "Renamed from",
   "file.binary":
     "Binary content is not displayed. Line counts are unavailable.",
-  "file.metadataOnly": "No line changes. Only file metadata changed.",
+  "file.noLineChanges": "No line changes.",
   "file.status.added": "Added",
   "file.status.modified": "Modified",
   "file.status.deleted": "Deleted",

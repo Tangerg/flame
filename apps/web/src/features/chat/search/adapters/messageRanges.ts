@@ -1,5 +1,6 @@
 import { readingRow, type ReadingListHandle } from "@flame/ui";
 import { MESSAGE_CONTENT_SELECTOR } from "@/features/chat/public/message/rendering";
+import { isChatSearchHighlightMarker } from "./searchHighlights";
 
 export interface MessageMatch {
   readonly range: Range;
@@ -10,17 +11,20 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Formatting splits text nodes without splitting a phrase; block layout still separates flows.
-function continuesInlineFlow(element: Element): boolean {
-  const display = getComputedStyle(element).display;
-  return display === "contents" || display.startsWith("inline");
-}
-
-function isHidden(element: Element): boolean {
-  if (element.hasAttribute("hidden") || element.hasAttribute("inert")) return true;
-  const style = getComputedStyle(element);
+function isHidden(element: Element, style = getComputedStyle(element)): boolean {
+  if (element.matches("[hidden], [inert], .sr-only")) return true;
   return (
     style.display === "none" || style.visibility === "hidden" || style.visibility === "collapse"
+  );
+}
+
+function collapsesHorizontalSpace(style: CSSStyleDeclaration): boolean {
+  const mode = style.getPropertyValue("white-space-collapse");
+  if (mode) return mode === "collapse" || mode === "preserve-breaks";
+  return (
+    style.whiteSpace === "normal" ||
+    style.whiteSpace === "nowrap" ||
+    style.whiteSpace === "pre-line"
   );
 }
 
@@ -31,32 +35,50 @@ function hasHiddenAncestor(element: Element): boolean {
   return false;
 }
 
-function collectTextFlows(messageRoot: HTMLElement): Text[][] {
-  const flows: Text[][] = [];
-  let flow: Text[] = [];
+type FlowText = { node: Text; collapseSpace: boolean };
+
+function collectTextFlows(messageRoot: HTMLElement): FlowText[][] {
+  const flows: FlowText[][] = [];
+  let flow: FlowText[] = [];
 
   const endFlow = () => {
     if (flow.length > 0) flows.push(flow);
     flow = [];
   };
 
-  const visit = (node: Node) => {
+  const visit = (node: Node, collapseSpace = false, diagramLine?: { y: string | null }) => {
     if (node.nodeType === Node.TEXT_NODE) {
-      flow.push(node as Text);
+      flow.push({ node: node as Text, collapseSpace });
       return;
     }
-    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    if (node.nodeType !== Node.ELEMENT_NODE || isChatSearchHighlightMarker(node)) return;
 
     const element = node as Element;
-    if (isHidden(element)) return;
+    const style = getComputedStyle(element);
+    if (isHidden(element, style)) return;
     if (element.nodeName === "BR") {
       endFlow();
       return;
     }
 
-    const inline = element !== messageRoot && continuesInlineFlow(element);
+    const line =
+      element instanceof SVGTextElement && element.closest('[data-slot="mermaid-stage"]')
+        ? { y: element.getAttribute("y") }
+        : diagramLine;
+    if (line && element.matches("tspan[x][y]")) {
+      const y = element.getAttribute("y");
+      // Pele can position several runs separately at the same y.
+      if (line.y !== y) endFlow();
+      line.y = y;
+    }
+
+    // Formatting splits text nodes without splitting a phrase.
+    const inline =
+      element !== messageRoot &&
+      (style.display === "contents" || style.display.startsWith("inline"));
+    const collapseChildren = collapsesHorizontalSpace(style) && !element.closest("code, pre");
     if (!inline) endFlow();
-    for (const child of element.childNodes) visit(child);
+    for (const child of element.childNodes) visit(child, collapseChildren, line);
     if (!inline) endFlow();
   };
 
@@ -64,17 +86,44 @@ function collectTextFlows(messageRoot: HTMLElement): Text[][] {
   return flows;
 }
 
-function findFlowRanges(flow: Text[], pattern: RegExp, ranges: Range[]): void {
+function findFlowRanges(flow: FlowText[], pattern: RegExp, ranges: Range[]): void {
+  const adjustments: { offset: number; removed: number }[] = [];
   let text = "";
-  const segments = flow.map((node) => {
-    const start = text.length;
-    text += node.data;
-    return { node, start, end: text.length };
+  let sourceLength = 0;
+  let previousSpaceEnd = -1;
+  let removed = 0;
+  const segments = flow.map(({ node, collapseSpace }) => {
+    const start = sourceLength;
+    sourceLength += node.length;
+    if (collapseSpace) {
+      text += node.data.replace(/[ \t]+/g, (spaces, offset: number) => {
+        const continuesRun = start + offset === previousSpaceEnd;
+        previousSpaceEnd = start + offset + spaces.length;
+        const hidden = spaces.length - (continuesRun ? 0 : 1);
+        if (hidden > 0) {
+          removed += hidden;
+          adjustments.push({ offset: previousSpaceEnd - removed, removed });
+        }
+        return continuesRun ? "" : " ";
+      });
+    } else {
+      text += node.data;
+    }
+    return { node, start, end: sourceLength };
   });
 
+  // Match boundaries advance in order, and the end of a projected space includes its full source run.
+  let nextAdjustment = 0;
+  const toSourceOffset = (offset: number): number => {
+    while (nextAdjustment < adjustments.length && adjustments[nextAdjustment]!.offset <= offset) {
+      nextAdjustment++;
+    }
+    return offset + (adjustments[nextAdjustment - 1]?.removed ?? 0);
+  };
+
   for (const match of text.matchAll(pattern)) {
-    const start = match.index;
-    const end = start + match[0].length;
+    const start = toSourceOffset(match.index);
+    const end = toSourceOffset(match.index + match[0].length);
     // Every non-empty match lies within this flow, so both character offsets have a segment.
     const first = segments.find((segment) => segment.end > start)!;
     const last = segments.find((segment) => segment.end >= end)!;
@@ -130,10 +179,12 @@ export function observeMessageChanges(root: HTMLElement, changed: () => void): (
 }
 
 function changesMessage(record: MutationRecord): boolean {
+  const changedNodes = [...record.addedNodes, ...record.removedNodes];
+  if (changedNodes.length > 0 && changedNodes.every(isChatSearchHighlightMarker)) return false;
   const target = record.target instanceof Element ? record.target : record.target.parentElement;
   if (target?.closest(MESSAGE_CONTENT_SELECTOR)) return true;
   if (record.type === "attributes" && target?.querySelector(MESSAGE_CONTENT_SELECTOR)) return true;
-  return [...record.addedNodes, ...record.removedNodes].some(
+  return changedNodes.some(
     (node) =>
       node instanceof Element &&
       (node.matches(MESSAGE_CONTENT_SELECTOR) || node.querySelector(MESSAGE_CONTENT_SELECTOR)),

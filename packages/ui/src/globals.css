@@ -204,6 +204,14 @@
   outline: none;
 }
 
+.reading-unwrapped-rows {
+  overscroll-behavior-x: contain;
+}
+/* A paint-contained Legend item must fit its row before the viewport can scroll it. */
+.reading-unwrapped-rows :has(> [data-reading-key]) {
+  min-inline-size: max-content;
+}
+
 .t-icon-swap {
   position: relative;
   display: inline-grid;
@@ -539,7 +547,7 @@
 :where(
   [data-slot="document-body"] :not(pre) > code,
   [data-slot="inline-code"],
-  [data-slot="file-reference"]
+  [data-slot="file-reference"]:not([data-file-reference-authored-label])
 ) {
   font-family: var(--font-mono);
   font-size: var(--fs-code);
@@ -564,7 +572,11 @@
   word-break: break-word;
 }
 :where([data-prose])
-  :where(a[href] strong, a[href] b, a[href] code:not(pre > code)) {
+  :where(
+    a[href],
+    [data-slot="file-reference"][data-file-reference-authored-label]
+  )
+  :where(strong, b, code:not(pre > code)) {
   color: inherit;
 }
 :where([data-slot="document-body"] table, table[data-slot="prose-table"]) {

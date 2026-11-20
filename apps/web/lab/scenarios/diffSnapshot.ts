@@ -1,4 +1,4 @@
-import type { Diff, WorkspaceFileChange } from "@flame/runtime-client/wire";
+import type { Diff, DiffMode, WorkspaceFileChange } from "@flame/runtime-client/wire";
 
 export const ACTIVE_DIFF_FILE = "apps/web/src/features/shell/workbench/panel/DockResizer.tsx";
 type VisualRead = Extract<Diff, { type: "visual" }>;
@@ -181,39 +181,45 @@ export function scaledReview(
   return { ...result, visual: { ...result.visual, truncated: admitted < fileCount } };
 }
 
-export function evidenceDiff(path?: string, mode = "worktree", refreshed = false): VisualRead {
-  return visualRead(
-    [
-      {
-        change: { path: ACTIVE_DIFF_FILE, status: "modified", added: 2, removed: 2 },
-        body: [
-          "@@ -1,4 +1,4 @@",
-          " alpha中🙂omega\r",
-          "-old\tvalue\r",
-          mode === "base" ? "+branch\tvalue\r" : "+new\tvalue\r",
-          " \r",
-          "-tail-before",
-          "\\ No newline at end of file",
-          mode === "base" ? (refreshed ? "+refreshed-after" : "+branch-after") : "+tail-after",
-          "\\ No newline at end of file",
-        ],
+export function evidenceDiff(
+  path?: string,
+  mode: DiffMode = "worktree",
+  refreshed = false,
+): VisualRead {
+  const files: CapturedFile[] = [
+    {
+      change: { path: ACTIVE_DIFF_FILE, status: "modified", added: 2, removed: 2 },
+      body: [
+        "@@ -1,4 +1,4 @@",
+        " alpha中🙂omega\r",
+        "-old\tvalue\r",
+        mode === "base" ? "+branch\tvalue\r" : "+new\tvalue\r",
+        " \r",
+        "-tail-before",
+        "\\ No newline at end of file",
+        mode === "base" ? (refreshed ? "+refreshed-after" : "+branch-after") : "+tail-after",
+        "\\ No newline at end of file",
+      ],
+    },
+    {
+      change: {
+        path: "docs/新名字.md",
+        previousPath: "docs/旧名字.md",
+        status: "renamed",
+        added: 0,
+        removed: 0,
       },
-      {
-        change: {
-          path: "docs/新名字.md",
-          previousPath: "docs/旧名字.md",
-          status: "renamed",
-          added: 0,
-          removed: 0,
-        },
-        body: [],
-      },
-      { change: { path: "assets/image.bin", status: "modified", binary: true }, body: [] },
-      { change: { path: "empty.txt", status: "untracked", added: 0, removed: 0 }, body: [] },
-    ],
-    mode === "base" ? MERGE_BASE : HEAD,
-    path,
-  );
+      body: [],
+    },
+    { change: { path: "assets/image.bin", status: "modified", binary: true }, body: [] },
+  ];
+  if (mode === "worktree") {
+    files.push({
+      change: { path: "empty.txt", status: "untracked", added: 0, removed: 0 },
+      body: [],
+    });
+  }
+  return visualRead(files, mode === "base" ? MERGE_BASE : HEAD, path);
 }
 
 export function budgetDiff(): VisualRead {

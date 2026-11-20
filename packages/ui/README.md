@@ -189,8 +189,8 @@ Navigation history, origin focus and the destination belong to the consumer.
 directory and compact state/count metadata. `DiffFileHeader` keeps the filename
 to two visible lines beside state and reader actions, preserving its full heading
 text and ref. Its row aligns the filename and same-row reader actions on their
-first text baseline; an action that does not fit wraps beneath at its intrinsic
-width. The consumer supplies the complete path in scrolling reader content;
+first text baseline. Its grouped reader actions can wrap below the heading,
+and controls within the group can wrap on their own line. The consumer supplies the complete path in scrolling reader content;
 path-only patch results may omit state/count evidence rather than invent it.
 `DiffFilePath` allows complete directory segments to wrap. Selection and source-return history belong to the consumer;
 these components do not query files or own a second navigation model.
@@ -321,6 +321,7 @@ These components own presentation only and do not query or advance product facts
 as the transcript's code and diagram artifacts. Its named code viewport is the
 bounded keyboard scroll region. An optional `caption` keeps a captured source's
 identity visible in its header without changing the `language` used for highlighting.
+An optional `sourceBodyRef` exposes that same scroll region for local reading continuity.
 `CodeBody` owns that stable literal source region,
 its code typography, shared wrap preference and host-supplied highlighting. It
 reserves a transparent 2 px edge outside the content clip, so scrolled glyphs
@@ -382,7 +383,8 @@ header for every renderer, including the transcript's highlighted blocks: the re
 label (or `text`), any consumer actions passed as children, a wrap action bound to
 the single page-wide `useCodeWrap` preference, and a copy action that writes the exact
 literal and reports success only after the clipboard accepts it. Callers supply
-localized `CodeActionLabels`; the defaults are English. The wrap label names
+localized `CodeActionLabels`; the defaults are English. `CodeWrapButton` can
+place the same action in persistent reader controls. The wrap label names
 the next action. It is an ordinary button rather
 than a pressed toggle whose label reverses meaning; its active visual indicator
 and the shared wrap preference remain unchanged. Syntax color is a host capability:
@@ -433,10 +435,10 @@ The link appearance marks content that navigates: anchors with a destination
 and actionable workspace file references, which mark themselves as the
 `file-reference` slot. Both read as accent text with a tinted underline that
 strengthens on hover; an anchor without a destination remains ordinary text.
-Emphasis and inline code inside a link anchor inherit the link color. A file
-reference also uses inline code's mono family and code size, without the code
-tint, so a path never reads larger than the code beside it. Its text remains
-selectable within the surrounding prose while retaining button activation.
+Emphasis and inline code inside link labels inherit the link color. A literal
+file path label uses inline code's mono family and code size. An authored
+Markdown link label retains the surrounding prose typography and its markup.
+Both file reference labels remain selectable and retain button activation.
 Captured documents
 do not navigate: their link labels remain ordinary text, and a destination shown
 beside a label uses the muted `link-destination` slot.
@@ -533,12 +535,17 @@ Pointer-caused focus does not move a pressed control before activation finishes.
 to continue through the enclosing reading viewport. Bounded image and diagram
 viewers explicitly contain both axes in their own viewport styles.
 Read-only code regions follow the same horizontal-only containment policy.
+For an empty or collapsed selection, `scrollReaderWithLocalArrow` can route
+vertical arrow keys from the focused reader to its nearest vertical scrollport.
 
 `LightboxDialog` owns expanded figure, document and media reading over Base UI.
 It retires when its inherited content becomes hidden, releases only its own
 portal focus and keeps that capture closed when the owner returns. Ordinary
 dismissal retains Base UI's trigger return; an explicit final-focus policy stays
-with the caller. These are the same semantics used by transcript previews.
+with the caller. The optional `renderEntry` places the native trigger inside
+the caller's inline content. A controlled popup can stay open while that entry
+renders without a trigger, and the trigger keeps its identity when it returns.
+These are the same semantics used by transcript previews.
 
 `ImageViewport` delegates transform, fit, zoom and pan to react-zoom-pan-pinch.
 The library owns x/y/scale and gesture state. Fit allows scales below one, actual

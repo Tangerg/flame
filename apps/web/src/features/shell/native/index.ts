@@ -6,13 +6,15 @@ const WINDOW_INACTIVE_ATTR = "data-window-inactive";
 export default definePlugin({
   name: "flame.builtin.native-shell",
   setup(ctx) {
-    const onContextMenu = (e: MouseEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target?.closest(EDITABLE)) return;
-      e.preventDefault();
+    const onContextMenu = (event: MouseEvent) => {
+      if (event.defaultPrevented) return;
+      const target = event.target;
+      if (target instanceof Element && target.closest(EDITABLE)) return;
+      event.preventDefault();
     };
-    document.addEventListener("contextmenu", onContextMenu);
-    ctx.lifetime.defer(() => document.removeEventListener("contextmenu", onContextMenu));
+    // Element and document menus can claim this event before the shell fallback.
+    window.addEventListener("contextmenu", onContextMenu);
+    ctx.lifetime.defer(() => window.removeEventListener("contextmenu", onContextMenu));
 
     const syncFocus = () => {
       document.documentElement.toggleAttribute(WINDOW_INACTIVE_ATTR, !document.hasFocus());

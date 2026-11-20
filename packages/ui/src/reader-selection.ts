@@ -136,11 +136,18 @@ function scrollReaderByArrow(
 
 export function scrollReaderWithLocalArrow(
   event: KeyboardEvent<HTMLElement>,
+  verticalScroll: "local" | "nearest" = "local",
 ): void {
   const axis = readerArrowAxis(event);
   if (!axis) return;
   const viewport = event.currentTarget;
   if (viewport.ownerDocument.getSelection()?.isCollapsed === false) return;
+
+  if (axis === "top" && verticalScroll === "nearest") {
+    const scroller = nearestVerticalScrollport(viewport);
+    if (scroller) scrollReaderByArrow(event, scroller, axis);
+    return;
+  }
 
   const { clientHeight, clientWidth, scrollHeight, scrollWidth } = viewport;
   const verticalOverflow = clientHeight > 0 && scrollHeight > clientHeight;

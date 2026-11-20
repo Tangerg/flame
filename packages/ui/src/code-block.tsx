@@ -156,6 +156,25 @@ export function CodeFrame({
   );
 }
 
+export function CodeWrapButton({
+  labels = ENGLISH_CODE_ACTIONS,
+  size = "xs",
+}: {
+  labels?: Pick<CodeActionLabels, "wrap" | "unwrap">;
+  size?: ComponentPropsWithoutRef<typeof IconButton>["size"];
+}) {
+  const wrapped = useCodeWrap();
+  return (
+    <IconButton
+      icon={wrapped ? WrapText : UnfoldHorizontal}
+      size={size}
+      active={wrapped}
+      onClick={() => setCodeWrap(!wrapped)}
+      aria-label={wrapped ? labels.unwrap : labels.wrap}
+    />
+  );
+}
+
 export function CodeCaption({
   language,
   code,
@@ -173,7 +192,6 @@ export function CodeCaption({
   copyable?: boolean;
   copyReveal?: { "data-reveal": string; className: string };
 }) {
-  const wrapped = useCodeWrap();
   const copy = useCopy(code, labels.copy);
   return (
     <div
@@ -184,15 +202,7 @@ export function CodeCaption({
       <span {...stylex.props(styles.language)}>{language || "text"}</span>
       <span {...stylex.props(styles.actions)}>
         {children}
-        {wrappable && (
-          <IconButton
-            icon={wrapped ? WrapText : UnfoldHorizontal}
-            size="xs"
-            active={wrapped}
-            onClick={() => setCodeWrap(!wrapped)}
-            aria-label={wrapped ? labels.unwrap : labels.wrap}
-          />
-        )}
+        {wrappable && <CodeWrapButton labels={labels} />}
         {copyable && (
           <IconButton
             icon={Copy}
@@ -272,12 +282,14 @@ export function CodeBlock({
   caption,
   language,
   labels,
+  sourceBodyRef,
 }: {
   children: string;
   label: string;
   caption?: string;
   language?: string;
   labels?: CodeActionLabels;
+  sourceBodyRef?: Ref<HTMLDivElement>;
 }) {
   return (
     <CodeFrame bounded data-slot="code-block" data-focus-unit="">
@@ -286,7 +298,7 @@ export function CodeBlock({
         code={children}
         labels={labels}
       />
-      <CodeBody label={label} language={language || "text"}>
+      <CodeBody ref={sourceBodyRef} label={label} language={language || "text"}>
         {children}
       </CodeBody>
     </CodeFrame>

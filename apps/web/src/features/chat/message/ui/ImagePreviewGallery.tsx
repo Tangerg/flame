@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type ComponentProps,
   type KeyboardEventHandler,
   type MouseEventHandler,
   type ReactElement,
@@ -106,8 +107,8 @@ interface TriggerProps {
   onClick: MouseEventHandler<HTMLButtonElement>;
 }
 
-interface Props {
-  item: ImageSource;
+interface Props extends Pick<ComponentProps<typeof LightboxDialog>, "renderEntry" | "finalFocus"> {
+  item?: ImageSource;
   trigger: (props: TriggerProps) => ReactElement;
 }
 
@@ -154,7 +155,7 @@ function collectGallery(trigger: HTMLButtonElement, fallback: ImageSource): Gall
   return items.length > 0 ? { items, index } : { items: [fallback], index: 0 };
 }
 
-export function ImagePreviewGallery({ item, trigger }: Props) {
+export function ImagePreviewGallery({ item, trigger, renderEntry, finalFocus }: Props) {
   const saveInlineImage = useImageSave();
   const t = useT();
   const [gallery, setGallery] = useState<GalleryState | null>(null);
@@ -162,7 +163,7 @@ export function ImagePreviewGallery({ item, trigger }: Props) {
   const failureId = useId();
   const open = gallery !== null;
   const active = gallery?.items[gallery.index] ?? item;
-  const activeLabel = active.alt || t("message.image.previewTitle");
+  const activeLabel = active?.alt || t("message.image.previewTitle");
   const hasGallery = (gallery?.items.length ?? 0) > 1;
   const failure = gallery?.downloadFailure;
   useLayoutEffect(() => {
@@ -185,6 +186,7 @@ export function ImagePreviewGallery({ item, trigger }: Props) {
     },
   });
   const download = () => {
+    if (!active) return;
     save.run(() => {
       setGallery((current) => current && { ...current, downloadFailure: undefined });
       return saveInlineImage(active.src);
@@ -221,10 +223,15 @@ export function ImagePreviewGallery({ item, trigger }: Props) {
       }}
       title={activeLabel}
       kind="media"
-      trigger={trigger({
-        "data-message-image-preview-trigger": "true",
-        onClick: (event) => setGallery(collectGallery(event.currentTarget, item)),
-      })}
+      finalFocus={finalFocus}
+      renderEntry={renderEntry}
+      trigger={
+        item &&
+        trigger({
+          "data-message-image-preview-trigger": "true",
+          onClick: (event) => setGallery(collectGallery(event.currentTarget, item)),
+        })
+      }
     >
       <div {...stylex.props(ig.frame)}>
         <div {...stylex.props(ig.header)}>
@@ -303,15 +310,17 @@ export function ImagePreviewGallery({ item, trigger }: Props) {
             />
           </>
         )}
-        <ImageViewport
-          image={active}
-          label={activeLabel}
-          labels={{
-            fit: t("message.image.fit"),
-            zoomIn: t("message.image.zoomIn"),
-            zoomOut: t("message.image.zoomOut"),
-          }}
-        />
+        {active && (
+          <ImageViewport
+            image={active}
+            label={activeLabel}
+            labels={{
+              fit: t("message.image.fit"),
+              zoomIn: t("message.image.zoomIn"),
+              zoomOut: t("message.image.zoomOut"),
+            }}
+          />
+        )}
       </div>
     </LightboxDialog>
   );

@@ -230,7 +230,7 @@ export const en: Record<string, string> = {
   "msgActions.regenerate": "Regenerate response",
   "msgActions.regenerateRestore": "Regenerate, restore files",
   "chatSearch.label": "Search in chat",
-  "chatSearch.placeholder": "Search visible message text…",
+  "chatSearch.placeholder": "Search message text…",
   "chatSearch.prev": "Previous match",
   "chatSearch.next": "Next match",
   "plan.complete": "{{done}} of {{total}} complete",

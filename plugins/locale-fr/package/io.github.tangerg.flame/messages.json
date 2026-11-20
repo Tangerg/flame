@@ -194,7 +194,7 @@
   "msgActions.regenerate": "Régénérer la réponse",
   "msgActions.regenerateRestore": "Régénérer, restaurer les fichiers",
   "chatSearch.label": "Rechercher dans le chat",
-  "chatSearch.placeholder": "Rechercher le texte visible…",
+  "chatSearch.placeholder": "Rechercher dans les messages…",
   "chatSearch.prev": "Correspondance précédente",
   "chatSearch.next": "Correspondance suivante",
   "plan.complete": "{{done}} sur {{total}} terminées",

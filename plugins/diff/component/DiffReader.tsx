@@ -1,4 +1,9 @@
-import { CodeCaption, CodeFrame, DiffBody } from "@flame/ui";
+import {
+  CodeCaption,
+  CodeFrame,
+  DiffBody,
+  type CodeActionLabels,
+} from "@flame/ui";
 import type { Translate } from "@flame/component-sdk";
 
 export function DiffReader({
@@ -6,12 +11,14 @@ export function DiffReader({
   source,
   patch,
   layout,
+  labels,
   t,
 }: {
   path: string;
   source: string;
   patch: string;
   layout: "unified" | "split";
+  labels: CodeActionLabels;
   t: Translate;
 }) {
   return (
@@ -19,11 +26,8 @@ export function DiffReader({
       <CodeCaption
         language="diff"
         code={patch}
-        labels={{
-          copy: t("patch.copy"),
-          wrap: t("patch.wrap"),
-          unwrap: t("patch.unwrap"),
-        }}
+        labels={labels}
+        wrappable={false}
       >
         {t("patch.accepted")}
       </CodeCaption>

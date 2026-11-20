@@ -194,7 +194,7 @@
   "msgActions.regenerate": "응답 다시 생성",
   "msgActions.regenerateRestore": "다시 생성, 파일 복원",
   "chatSearch.label": "채팅에서 검색",
-  "chatSearch.placeholder": "표시된 메시지 내용 검색…",
+  "chatSearch.placeholder": "메시지 내용 검색…",
   "chatSearch.prev": "이전 일치",
   "chatSearch.next": "다음 일치",
   "plan.complete": "{{total}}개 중 {{done}}개 완료",

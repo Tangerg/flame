@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import type { ReactNode, Ref } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode, Ref, RefObject } from "react";
 import type { Translate } from "@flame/component-sdk";
 import { Activity, Cpu, Terminal, FileText, Server } from "@flame/icons/react";
 import type { Page, TrajectoryEntry } from "@flame/runtime-client/wire";
@@ -167,6 +167,9 @@ function identity(row: TrajectoryEntry): string {
         ? row.endpoint.id
         : row.item.id;
 }
+function recordKey(row: TrajectoryEntry): string {
+  return `${row.type}:${identity(row)}`;
+}
 function title(row: TrajectoryEntry, t: Translate, clock: Intl.DateTimeFormat) {
   const title =
     row.type === "run"
@@ -247,13 +250,50 @@ function RecordedImage({
   );
 }
 
+interface EvidenceScrollPosition {
+  row: TrajectoryEntry;
+  left: number;
+  top: number;
+}
+
+interface ExpandedRecord {
+  evidenceOpen: boolean;
+  sourcePosition: RefObject<EvidenceScrollPosition | null>;
+}
+
 function Observation({
   row: recorded,
   t,
+  expansion,
+  onEvidenceOpenChange,
 }: {
   row: TrajectoryEntry;
   t: Translate;
+  expansion?: ExpandedRecord;
+  onEvidenceOpenChange: (open: boolean) => void;
 }) {
+  const sourcePosition = expansion?.sourcePosition;
+  const sourceBodyRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (!node || !sourcePosition) return;
+      const saved = sourcePosition.current;
+      if (saved?.row === recorded)
+        node.scrollTo({
+          left: saved.left,
+          top: saved.top,
+          behavior: "instant",
+        });
+      return () => {
+        if (node.isConnected && node.clientWidth && node.clientHeight)
+          sourcePosition.current = {
+            row: recorded,
+            left: node.scrollLeft,
+            top: node.scrollTop,
+          };
+      };
+    },
+    [recorded, sourcePosition],
+  );
   const row = evidence(recorded);
   const body: ReactNode[] = [];
   if (row.type === "item") {
@@ -364,6 +404,11 @@ function Observation({
     <CodeBlock
       label={t("evidence.recorded")}
       language="json"
+      sourceBodyRef={
+        sourcePosition && (!body.length || expansion?.evidenceOpen)
+          ? sourceBodyRef
+          : undefined
+      }
       labels={{
         copy: t("code.copy"),
         wrap: t("code.wrap"),
@@ -380,7 +425,13 @@ function Observation({
         <Metadata key={index}>{note}</Metadata>
       ))}
       {body.length ? (
-        <Disclosure title={t("evidence.recorded")}>{raw}</Disclosure>
+        <Disclosure
+          title={t("evidence.recorded")}
+          open={expansion?.evidenceOpen ?? false}
+          onOpenChange={onEvidenceOpenChange}
+        >
+          {raw}
+        </Disclosure>
       ) : (
         raw
       )}
@@ -412,6 +463,43 @@ export function TrajectoryReport({
   locale: string;
 }) {
   const rows = page.data;
+  const [expanded, setExpanded] = useState<ReadonlyMap<string, ExpandedRecord>>(
+    () => new Map(),
+  );
+  useEffect(() => {
+    setExpanded((current) => {
+      if (!current.size) return current;
+      const keys = new Set(rows.map(recordKey));
+      const retained = new Map([...current].filter(([key]) => keys.has(key)));
+      return retained.size === current.size ? current : retained;
+    });
+  }, [rows]);
+
+  function setRecordOpen(key: string, open: boolean) {
+    setExpanded((current) => {
+      if (current.has(key) === open) return current;
+      const next = new Map(current);
+      if (open)
+        next.set(key, {
+          evidenceOpen: false,
+          sourcePosition: { current: null },
+        });
+      else next.delete(key);
+      return next;
+    });
+  }
+  function setEvidenceOpen(key: string, open: boolean) {
+    setExpanded((current) => {
+      const expansion = current.get(key);
+      if (!expansion || expansion.evidenceOpen === open) return current;
+      // A closing panel can detach after the next evidence reader has opened.
+      return new Map(current).set(key, {
+        evidenceOpen: open,
+        sourcePosition: { current: null },
+      });
+    });
+  }
+
   const query = search.toLocaleLowerCase();
   const matching = rows.filter((row) => {
     const category = row.type === "item" ? row.item.type : row.type;
@@ -467,24 +555,35 @@ export function TrajectoryReport({
         </RecordMeta>
       </Metadata>
       <RecordGroup variant="list" id="records" aria-label={t("records.label")}>
-        {matching.map((row) => (
-          <Disclosure
-            variant="row"
-            key={`${row.type}:${identity(row)}`}
-            data-trajectory-record={`${row.type}:${identity(row)}`}
-            data-trajectory-kind={
-              row.type === "item" ? row.item.type : row.type
-            }
-            title={title(row, t, clock)}
-          >
-            <Metadata>
-              <time dateTime={row.occurredAt}>
-                {occurred.format(new Date(row.occurredAt))}
-              </time>
-            </Metadata>
-            <Observation row={row} t={t} />
-          </Disclosure>
-        ))}
+        {matching.map((row) => {
+          const key = recordKey(row);
+          const expansion = expanded.get(key);
+          return (
+            <Disclosure
+              variant="row"
+              key={key}
+              data-trajectory-record={key}
+              data-trajectory-kind={
+                row.type === "item" ? row.item.type : row.type
+              }
+              title={title(row, t, clock)}
+              open={expansion !== undefined}
+              onOpenChange={(open) => setRecordOpen(key, open)}
+            >
+              <Metadata>
+                <time dateTime={row.occurredAt}>
+                  {occurred.format(new Date(row.occurredAt))}
+                </time>
+              </Metadata>
+              <Observation
+                row={row}
+                t={t}
+                expansion={expansion}
+                onEvidenceOpenChange={(open) => setEvidenceOpen(key, open)}
+              />
+            </Disclosure>
+          );
+        })}
         {!matching.length && (
           <EmptyState
             icon={Activity}

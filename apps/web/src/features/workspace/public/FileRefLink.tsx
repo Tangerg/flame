@@ -1,7 +1,6 @@
 import { ButtonPrimitive } from "@flame/ui";
 import { useWorkspace } from "@/features/workspace/public/workspace";
-import { createContext, Fragment, use, type RefObject } from "react";
-import { formatFileRef } from "@/features/agent/public/fileRefs";
+import { createContext, Fragment, use, type ReactNode, type RefObject } from "react";
 import { openWorkspaceFile } from "@/features/workspace/public/navigation";
 
 export interface FileReferencePresentation {
@@ -16,21 +15,24 @@ export const FileReferencePresentationContext = createContext<FileReferencePrese
 export function FileRefLink({
   path,
   line,
-  column = 0,
+  label,
+  children,
+  title,
 }: {
   path: string;
   line: number;
-  column?: number;
-}) {
+  title?: string;
+} & ({ label: string; children?: never } | { label?: never; children: ReactNode })) {
   const workspaceAccess = useWorkspace();
 
   const presentation = use(FileReferencePresentationContext);
-  const label = formatFileRef({ path, line, column });
   return (
     <ButtonPrimitive
       render={<span />}
       nativeButton={false}
       data-slot="file-reference"
+      data-file-reference-authored-label={label === undefined ? "" : undefined}
+      title={title}
       aria-label={label}
       onClick={(event) => {
         const selection = event.currentTarget.ownerDocument.getSelection();
@@ -50,13 +52,15 @@ export function FileRefLink({
         presentation?.onOpen();
       }}
     >
-      {label.split("/").map((segment, index) => (
-        <Fragment key={index}>
-          {index > 0 && "/"}
-          {index > 0 && (index > 1 || !label.startsWith("/")) && <wbr />}
-          {segment}
-        </Fragment>
-      ))}
+      {label === undefined
+        ? children
+        : label.split("/").map((segment, index) => (
+            <Fragment key={index}>
+              {index > 0 && "/"}
+              {index > 0 && (index > 1 || !label.startsWith("/")) && <wbr />}
+              {segment}
+            </Fragment>
+          ))}
     </ButtonPrimitive>
   );
 }

@@ -12,7 +12,12 @@ import {
 } from "react";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { useContentVisible } from "./content-visibility";
-import { scrollReaderWithForeignSelection } from "./reader-selection";
+import { isImeKey } from "./keyboard";
+import {
+  scrollReaderWithForeignSelection,
+  scrollReaderWithLocalArrow,
+} from "./reader-selection";
+import { scrollWithHorizontalArrow } from "./scroll-region";
 
 export type ReadingListHandle = LegendListRef;
 // Nested readers reuse the row attribute, so a row counts only inside the list's own item.
@@ -211,12 +216,27 @@ export function ReadingList<T>({
       list.anchorVisibleContent();
     };
   }, [list, releaseInitialEnd, visible]);
-  useLayoutEffect(() => {
-    const wasComplete = renderedAll.current;
-    renderedAll.current = renderAll;
-    if (!wasComplete || renderAll || !list) return;
+  const compact = useEffectEvent(() => {
+    const node = root.current;
+    if (
+      !renderedAll.current ||
+      renderAll ||
+      !node ||
+      !list ||
+      currentList.current !== list
+    )
+      return;
+    const active = node.ownerDocument.activeElement;
+    if (
+      visible &&
+      active &&
+      (node.contains(active) || focusOwner.current?.target === active)
+    )
+      return;
+
+    renderedAll.current = false;
     // Legend keeps every container it has filled, so ending a complete render
-    // starts a fresh windowed list at the same reading position.
+    // starts a fresh windowed list once the reader can release its focus owner.
     const state = list.getState();
     const anchor = state.isAtEnd
       ? undefined
@@ -229,7 +249,11 @@ export function ReadingList<T>({
           ? { index, viewOffset: -anchor.offset }
           : null,
     }));
-  }, [renderAll, list]);
+  });
+  useLayoutEffect(() => {
+    if (renderAll) renderedAll.current = true;
+    else compact();
+  }, [renderAll, list, visible]);
   const selectionChanged = useEffectEvent(() => {
     const node = root.current;
     if (!list || !node) return;
@@ -257,8 +281,17 @@ export function ReadingList<T>({
   useEffect(() => {
     const owner = root.current?.ownerDocument;
     if (!owner) return;
+    const view = owner.defaultView;
+    let frame: number | undefined;
     const focusChanged = (event?: FocusEvent) => {
       selectionChanged();
+      // Focus can move before a new request to render the full list has committed.
+      if (event && view && renderedAll.current && frame === undefined) {
+        frame = view.requestAnimationFrame(() => {
+          frame = undefined;
+          compact();
+        });
+      }
       if (focusOwner.current?.target === (event?.target ?? owner.activeElement))
         return;
       focusOwner.current = null;
@@ -272,6 +305,7 @@ export function ReadingList<T>({
     return () => {
       owner.removeEventListener("selectionchange", selectionChanged);
       owner.removeEventListener("focusin", focusChanged);
+      if (frame !== undefined) view?.cancelAnimationFrame(frame);
     };
   }, [list, rowSelector]);
   useLayoutEffect(() => {
@@ -352,8 +386,15 @@ export function ReadingList<T>({
         aria-label={hasScrollStop ? label : undefined}
         tabIndex={hasScrollStop ? 0 : undefined}
         onKeyDown={(event) => {
-          if (currentList.current?.getScrollableNode() === event.currentTarget)
+          if (currentList.current?.getScrollableNode() !== event.currentTarget)
+            return;
+          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+            if (event.cancelable && !isImeKey(event.nativeEvent))
+              scrollWithHorizontalArrow(event);
+            scrollReaderWithLocalArrow(event);
+          } else {
             scrollReaderWithForeignSelection(event, "vertical");
+          }
         }}
         className={className}
         data={data}

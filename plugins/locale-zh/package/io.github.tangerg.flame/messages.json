@@ -203,7 +203,7 @@
   "msgActions.regenerate": "重新生成回复",
   "msgActions.regenerateRestore": "重新生成，恢复文件",
   "chatSearch.label": "在对话中搜索",
-  "chatSearch.placeholder": "搜索已展开的消息内容…",
+  "chatSearch.placeholder": "搜索消息内容…",
   "chatSearch.prev": "上一个匹配",
   "chatSearch.next": "下一个匹配",
   "plan.complete": "已完成 {{done}} / {{total}}",

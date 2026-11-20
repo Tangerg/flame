@@ -18,23 +18,29 @@ function sourceLine(file: FileDiffMetadata, line: Element): string {
   return text;
 }
 
-// The public post-render callback supplies this one renderer's root. Selection
-// remains native; the clipboard projection excludes gutters and EOF labels.
+// WebKit can report a collapsed document selection for a range inside the diff.
+export function selectedDiffRange(root: ShadowRoot): Range | null {
+  const document = root.ownerDocument;
+  const selection = document.getSelection();
+  const selected = selection?.getComposedRanges({ shadowRoots: [root] })[0];
+  if (!selected || !root.contains(selected.startContainer) || !root.contains(selected.endContainer))
+    return null;
+  const range = document.createRange();
+  range.setStart(selected.startContainer, selected.startOffset);
+  range.setEnd(selected.endContainer, selected.endOffset);
+  return range.collapsed ? null : range;
+}
+
+// Selection remains native; the clipboard projection excludes gutters and EOF labels.
 export function copyDiffSelection(
   event: ClipboardEvent<HTMLElement>,
   root: ShadowRoot,
   file: FileDiffMetadata,
 ) {
   if (event.defaultPrevented) return;
+  const range = selectedDiffRange(root);
+  if (!range) return;
   const document = root.ownerDocument;
-  const selection = document.getSelection();
-  const selected = selection?.getComposedRanges({ shadowRoots: [root] })[0];
-  if (!selected || !root.contains(selected.startContainer) || !root.contains(selected.endContainer))
-    return;
-  const range = document.createRange();
-  range.setStart(selected.startContainer, selected.startOffset);
-  range.setEnd(selected.endContainer, selected.endOffset);
-  if (range.collapsed) return;
   const parts: string[] = [];
   for (const line of root.querySelectorAll("[data-code] [data-line]")) {
     if (!range.intersectsNode(line)) continue;

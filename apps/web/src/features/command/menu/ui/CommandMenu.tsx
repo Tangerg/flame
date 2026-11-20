@@ -9,6 +9,8 @@ import { SearchOverlay } from "@/ui/index";
 import { EmptyState } from "@flame/ui";
 import { knownIconName } from "@/ui/icons/index";
 import { useEffectiveCommands } from "@/features/command/public/shortcutOverrides";
+import { COMMAND } from "@/features/command/public/extensionPoints";
+import { lookupExtensionByKey } from "@/extensions/selectors/extensions";
 import { useWorkspaceViews } from "@/features/workspace/public/views";
 import { useContextDockCatalog } from "@/features/workspace/public/contextDockCatalog";
 import {
@@ -44,7 +46,7 @@ export function CommandMenu() {
   const workspaceAccess = useWorkspace();
 
   const t = useT();
-  const open = useCommandMenuStore((state) => state.open);
+  const preparedActions = useCommandMenuStore((state) => state.preparedActions);
   const setOpen = useCommandMenuStore((state) => state.setOpen);
   const commands = useEffectiveCommands();
   const catalog = useContextDockCatalog();
@@ -64,12 +66,18 @@ export function CommandMenu() {
   });
 
   const choices: CommandChoice[] = [
-    ...commands.map((command) => ({
-      key: command.id,
-      label: t(command.label),
-      combo: command.combo,
-      run: () => void command.run(),
-    })),
+    ...commands.flatMap((command) => {
+      let run = () => void command.run();
+      if (command.prepareForMenu) {
+        const registration = lookupExtensionByKey(COMMAND, command.id);
+        const action = registration && preparedActions?.get(registration);
+        if (!action) return [];
+        run = () => {
+          if (lookupExtensionByKey(COMMAND, command.id) === registration) void action();
+        };
+      }
+      return [{ key: command.id, label: t(command.label), combo: command.combo, run }];
+    }),
     ...views
       .filter((view) => view.id !== WORKSPACE_SETTINGS_VIEW)
       .map((view) => viewRow(view.id, view.title, view.icon)),
@@ -77,7 +85,7 @@ export function CommandMenu() {
 
   return (
     <SearchOverlay
-      open={open}
+      open={preparedActions !== null}
       onOpenChange={setOpen}
       label={t("command.openCommandMenu")}
       placeholder={t("commandMenu.placeholder")}

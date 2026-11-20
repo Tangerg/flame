@@ -8,10 +8,12 @@ import {
   CodeFrame,
   IconButton,
   copyReaderSelection,
+  isImeKey,
   markReaderSource,
   quoteSourceProps,
   readerLineProps,
   readerSourceProps,
+  scrollWithHorizontalArrow,
   selectAllInReader,
 } from "@flame/ui";
 import type { Translate } from "@flame/component-sdk";
@@ -231,6 +233,8 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
         {...TOOL_OUTPUT_QUOTE_SOURCE}
         onKeyDown={(event) => {
           selectAllInReader(event);
+          if (!expanded && event.cancelable && !isImeKey(event.nativeEvent))
+            scrollWithHorizontalArrow(event);
           if (expanded && isFindShortcut(event)) {
             event.preventDefault();
             event.stopPropagation();
@@ -253,13 +257,18 @@ export function RecordedOutput({ text, t }: { text: string; t: Translate }) {
           minHeight: 0,
           display: "flex",
           flexDirection: "column",
-          height: expanded ? "min(24rem, 60vh)" : undefined,
+          height: expanded
+            ? `min(24rem, 60vh, calc(${lines.length}lh + ${frameInset} + 2 * var(--focus-inset-edge)))`
+            : undefined,
+          overflowX: expanded ? undefined : "auto",
+          overscrollBehaviorX: expanded ? undefined : "contain",
+          paddingBlockEnd: expanded ? undefined : frameInset,
         }}
       >
         {expanded ? (
           <ReadingList
             ref={reader}
-            className="reading-focus-edge"
+            className="reading-focus-edge reading-unwrapped-rows"
             data={lineIndices}
             keyExtractor={String}
             label={t("output.region")}

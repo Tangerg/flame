@@ -1,6 +1,8 @@
 # Desktop UI progress and handoff
 
-UI polishing **resumed at the user's explicit request (2026-11-19)** in the isolated `main` worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) [Draft attachments and past messages](#draft-attachments-when-editing-past-messages-2026-11-19) [Draft attachments and history rollback](#draft-attachments-before-history-rollback-2026-11-19) [Deliverables archive return](#return-from-a-retained-document-to-its-archive-row-2026-11-19) [Mermaid reading](#diagram-zoom-feedback-and-keyboard-focus-2026-11-19) [Composer selection after Find](#composer-selection-after-closing-find-2026-11-19) [Goal conflict review](#goal-conflict-review-inside-the-editor-2026-11-19) [Final question submission](#final-question-skip-names-submission-2026-11-19) [Transcript reading and turn navigation](#centered-transcript-and-turn-navigation-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
+UI polishing **paused at the user's request (2026-11-20)** after the [prose file-reference repair](#keep-unicode-spelling-in-prose-file-references-2026-11-20). The preceding tool summary change is `13c7ea284`.
+
+The preceding work resumed at the user's request on 2026-11-19. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) [Draft attachments and past messages](#draft-attachments-when-editing-past-messages-2026-11-19) [Draft attachments and history rollback](#draft-attachments-before-history-rollback-2026-11-19) [Deliverables archive return](#return-from-a-retained-document-to-its-archive-row-2026-11-19) [Mermaid reading](#diagram-zoom-feedback-and-keyboard-focus-2026-11-19) [Composer selection after Find](#composer-selection-after-closing-find-2026-11-19) [Goal conflict review](#goal-conflict-review-inside-the-editor-2026-11-19) [Final question submission](#final-question-skip-names-submission-2026-11-19) [Transcript reading and turn navigation](#centered-transcript-and-turn-navigation-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
@@ -38,7 +40,7 @@ runtime fallback is an accepted migration state.
 | D8       | New dnd-kit internal sorting; PDD external file adapter                           | Integrated                                                                            |
 | D9       | Pierre File/FileDiff/CodeView with the shiki-js baseline                          | Integrated; one shared worker pool for application code readers                       |
 | D10      | Public Pierre Highlights ANSI tokens                                              | Deferred: production CSP grants no Wasm; ANSI parser retained; V3 blocked             |
-| D11      | Native focus-visible, Base UI focus, immutable copy/quote commands                | Integrated; quote uses context menu and Mod+Shift+Q                                   |
+| D11      | Native focus-visible, Base UI focus, immutable copy/quote commands                | Integrated. Quote uses the context menu and Ctrl+Shift+Q                              |
 | D12      | Standard react-markdown/unified/gfm/math/katex pipeline                           | Integrated as one current document; V4 not run                                        |
 | D13      | Native fields with CSS field-sizing and explicit capability floor                 | field-sizing with rows fallback; V6 and the WKWebView floor not run                   |
 | D14      | Browser selection, reader-owned Find, existing Query/Pacer boundaries             | Not separately audited                                                                |
@@ -22891,6 +22893,403 @@ Verification and limits:
 Continue with evidence from complete reading and return paths. Revisit any
 selection concern only after reproducing a valid source-local interaction.
 
+### Quote selected file source in the native window (2026-11-20)
+
+In signed Wails on `218f03629`, selecting `row`
+in `DockResizer.tsx` line 4 gives a noncollapsed composed range
+and the native text `row`, although the document selection reports
+collapsed. The standard workspace fixture omits the quote and
+native-shell plugins. With those production plugins wired into its
+normal overlay in production order and only the capture fix applied,
+right-click still opens neither menu. The shell's early document
+listener cancels the event before the quote listener receives it.
+
+`captureQuote` uses the native text and a noncollapsed composed
+range in one connected visible reader. The window's bubble listener
+suppresses the system menu after element and document menus have
+handled the event. Editable targets keep their system menu. The
+quote action captures the text and append intent before moving focus,
+then the existing Composer owner inserts the text and restores
+writing focus. ZCode's read-only `ConversationSelectionTooltip`
+also requires a single selectable region. The composed selection and
+ordered propagation contracts come from the
+[Selection API](https://www.w3.org/TR/selection-api/#dom-selection-getcomposedranges)
+and [DOM dispatch](https://dom.spec.whatwg.org/#concept-event-dispatch).
+
+- ZH/dark/18 px/`#3B82F6` in a 1121 × 950 window at Actual Size
+  with a 320 px Dock. Right-click on `row` shows the localized action.
+  Escape leaves draft `8647` intact. Reopening, Down and Return
+  add the literal word in a fenced block labeled with the workspace
+  path and absolute line number `:4`. Immediate typing appends `512` in its own
+  paragraph and the same file stays open. A right-click on blank
+  reader space opens no menu. Selected draft text still opens
+  WebKit's Copy and Paste menu.
+- EN/light/14 px/Flame Orange in a 560.5 px Dock. Shift-click
+  extends the selection from line 4 into 5. Choosing `Quote in message`
+  appends exactly WebKit's selected text and the file address `:4-5`
+  after `8639`. The assistant's own context menu retains its
+  copy and regenerate actions and dismisses with Escape. The
+  same draft then continues with `728`, with the file still open.
+
+Scoped formatting, the full Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and five
+canonical Lab documents pass. Native acceptance used signed Wails
+with the production plugins and a captured workspace. The default
+shortcut, clipboard transfer, VoiceOver, live filesystem reads,
+Send, browser suites and benchmarks were outside this run.
+
+Four native launches and three loopback previews exit. Cleanup
+removes four registrations, eight private Library directories,
+one private preference file, ten checkout outputs and the scratch tree.
+Next inspect quoting selected text inside the assistant's own menu.
+
+### Quote selected text from its message menu (2026-11-20)
+
+On signed Wails at `e8ca43819`, both endpoints of the
+`boundary` selection belong to the assistant's reply. The reply's
+menu shows Copy markdown, Copy plain text and Regenerate response.
+Base UI gives that menu the event before the selection-quote
+overlay can handle it.
+
+The message menu captures the selection at its existing open
+callback before menu focus moves. The two composed endpoints and
+the right-click target must resolve to the same connected visible
+source. The scope-bound append action uses the same Composer
+capability as the explicit command and the Files reader. Quote
+in message is the first item when available and runs through
+the menu's existing after-close action. ZCode's read-only
+`ConversationSelectionTooltip` likewise limits eligible text
+to one selectable region. The existing menu owns open, close,
+item navigation and focus. [Base UI Context Menu](https://base-ui.com/react/components/context-menu)
+
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 and a 320 px Dock.
+  Right-click offers the quote action alongside the three existing
+  reply actions. Escape preserves `8746` and returns to the same
+  Copy message control as on the baseline. Down and Return quote
+  only `boundary` and restore Composer focus. The draft continues
+  with `381` after a blank paragraph. Blank reply space opens the
+  original three actions. The Files reader stays open.
+- EN/light/14 px/Flame Orange in a 560.5 px Dock. A drag initially
+  selects text across the user and assistant messages. WebKit's
+  ensuing right-click on the assistant word resolves the action
+  to `boundary` alone. Selecting `atomicity` in the user message
+  offers the quote alongside copy, edit, Restore to here and Fork
+  up to here. The existing Files overlay also adds only `row`
+  with the workspace path and absolute line 4. After all three
+  choices, draft `8735` continues with `724` in the focused Composer.
+  The menu fits beside its pointer with distinct quote and copy
+  actions, and Escape leaves the resulting draft intact.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and five
+canonical Lab documents pass. Signed Wails uses a captured
+workspace with the production menu plugins. The explicit
+shortcut, actions that change history or send, clipboard transfer,
+VoiceOver, browser suites and benchmarks were outside this run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Check the default
+native shortcut for the same quote action next.
+
+### Use Control Shift Q for native quoting (2026-11-20)
+
+Signed Wails on `6ef64cdb4` displays `⇧ ⌘ Q` for
+Quote in message in Keyboard shortcuts. Apple uses that chord for
+system logout. Applying Control Shift Q while `boundary` is selected
+on the baseline leaves draft `8812` and the selection untouched.
+[Apple keyboard shortcuts](https://support.apple.com/en-us/102650)
+
+The existing command now defaults to `Ctrl+Shift+Q`. Its identity
+and captured Composer action stay the same. The settings row and
+dispatcher read the same command and any saved override. The
+pinned TanStack normalizer resolves the previous and new defaults
+to the same chord on Windows and Linux.
+
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 and a 320 px Dock.
+  The hardware chord quotes only `boundary` from the assistant
+  response, restores writing focus and extends `8841` with
+  `625` outside the quote. Invoking it on a collapsed selection
+  leaves the draft intact. Keyboard shortcuts shows `⌃ ⇧ Q`,
+  and Close returns to the same draft and file.
+- EN/light/14 px/Flame Orange in a 560.5 px Dock. The new chord
+  quotes only `row` with the workspace path and absolute line 4.
+  The same draft begins `8837` and continues with `594`. The
+  command leaves a full selection inside the Composer and its
+  draft intact. English Keyboard shortcuts shows `⌃ ⇧ Q` and
+  returns to the same file. Its right-click action still opens
+  and dismisses without modifying the draft.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and five
+canonical Lab documents pass. The signed fixture mounts the
+production shortcut and quote plugins with a captured workspace.
+The system logout chord, changed shortcut preferences, Windows
+and Linux native UI, Send, VoiceOver, browser suites and benchmarks
+were outside this run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Next verify whether
+multiline source quotes preserve the served indentation.
+
+### Preserve the source selection through the command menu (2026-11-20)
+
+In signed English Wails on `043d00ca3`, Cmd+Shift+P opens the
+command menu with `boundary` selected in an assistant response.
+Focusing the search field collapses that selection. Clicking
+Quote in message then closes the menu and leaves draft `9124`
+untouched. The private Lab wiring initially loaded shortcuts
+twice, so a single native key event toggled the menu twice.
+Using the fixture's existing shortcuts provider restored the
+production dispatch path for the baseline and both candidates.
+
+`commandMenuState.ts` captures contextual command actions
+before taking focus, one time per opening. `CommandMenu.tsx`
+offers the actions available for that opening and checks the
+original registration again when delivering one after the
+overlay closes. Closing discards the captured actions.
+Quote in message prepares the same scoped Composer append
+used by its direct shortcut. Ordinary commands still run
+through their existing action. The Lab shell calls the same
+state transition as the production menu.
+[Selection API](https://www.w3.org/TR/selection-api/#dom-selection-getcomposedranges)
+
+- EN/light/14 px/Flame Orange at 1121 × 950 and a 560.5 px
+  Dock. Search for Quote in message and press Return. The
+  source selection has already collapsed by that point.
+  Draft `9137` gets exactly one quote for `boundary` and
+  resumes with `428` outside it. Open without a selection
+  and Quote in message is absent. Keyboard shortcuts still
+  opens by Return, lists the customizable `⌃ ⇧ Q`, and
+  closes back to the same file and draft.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. Open on the
+  assistant selection and cancel with Escape. Draft `9142`
+  remains intact. Reopen from `row` in the source reader.
+  Search for 引用 and press Return to quote only `row` with
+  its workspace path and absolute line 4. Focus returns to
+  the same Composer and `563` continues after the code
+  fence, with the file still open.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and
+five canonical Lab documents pass. Native checks use captured
+content and no live Send or filesystem operation. VoiceOver,
+browser suites and benchmarks were outside the run.
+
+Six native launches and five loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Continue by tracing
+keyboard return from another reader or workspace action.
+
+### Open addressed source from the transcript (2026-11-20)
+
+In signed English Wails on `0ed57281d`, clicking the assistant's
+inline `DockResizer.tsx:4` and a captured user quote headed
+`DockResizer.tsx:4-5` leaves the Files list in place. Both
+addresses have the existing code presentation. A prose reference
+to `apps/web/package.json:6` opens line 6 and Back to conversation
+focuses that exact reference. The draft is `9214` throughout.
+
+`rehypeFileRefs.ts` now recognizes a complete file address in an
+ordinary code span. `fileRefs.ts` uses the existing file grammar
+and validates the line, any column, and the range end. The
+inline code wrapper keeps its reading direction and exact label.
+`FileRefLink` receives the visible address and the file's first
+line as separate facts and uses the same workspace inspection
+and return path as a prose reference. Composer uses the same
+address formatter. ZCode's message renderer also hands resolved
+addresses to its workspace file action. Flame qualifies its own
+inline code after CommonMark parsing.
+[CommonMark code spans](https://spec.commonmark.org/0.31.2/#code-spans)
+
+- EN/light/14 px/Flame Orange at 1121 × 950 and a 560.5 px Dock.
+  The prose button still opens line 6. From its restored focus,
+  Tab lands on the exact reply address and Return opens line 4
+  of `DockResizer.tsx`. Tab and Return on Back to conversation
+  restore the address's visible focus outline at the same scroll
+  position. The Dock retains its current file. Dragging through
+  the inline address selects text with no inspection handoff.
+  The function call and fenced path render as literal code.
+  Draft `9236` continues as `9236572`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. A native scroll
+  moves the transcript from 94 px to 0. The file address wraps
+  at a directory boundary and retains its `:4-5` suffix. A
+  click on its second visual line opens the file at line 4.
+  返回对话 returns focus to the same range address at scroll
+  position 0. Draft `9247` continues as `9247638`.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and
+five canonical Lab documents pass. The native fixture supplies
+captured messages and file windows. Column rendering and guard
+cases are reviewed in source. VoiceOver, RTL, live Send and
+filesystem reads, browser suites and benchmarks were outside
+the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Verify the same
+reading path with a real repository filename in Chinese next.
+
+### Keep Unicode spelling in an inline source address (2026-11-20)
+
+In signed Chinese Wails on `c671d9dc5`, inline references to
+the tracked `docs/audit/全仓审计.md:4` and
+`docs/audit/附录A-gocyclo-over20.txt:3-5` render as code.
+Clicking either leaves the Files list and draft `9314` in place.
+The ASCII control in the same directory opens
+`docs/audit/upstream-issues.md` at line 6. 返回对话 restores
+that address's focus.
+
+`fileRefs.ts` now matches the complete inline span against a
+Unicode filename and an ASCII line, column or range suffix.
+The shared file plausibility check and safe numeric bounds
+still apply. The matched path goes through the existing file
+action in its original spelling. The prose scanner keeps
+its existing token grammar. The visible label includes the
+original suffix and a range opens at its first line.
+[ECMAScript character class escapes](https://tc39.es/ecma262/2022/multipage/text-processing.html#prod-CharacterClassEscape).
+[Apple filename normalization FAQ](https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/APFS_Guide/FAQ/FAQ.html).
+
+- EN/light/14 px/Flame Orange at 1121 × 950 and a 560.5 px
+  Dock. The ASCII control opens line 6 and returns to its
+  address. Tab reaches the Chinese address and then the
+  synthetic decomposed `résumé.md:2:3` address. Return
+  opens line 2 with both original U+0301 characters in the
+  viewer's path. The exact label keeps its column suffix.
+  Tab and Return on Back to conversation restore that
+  button and scroll position. Draft `9336` continues with `571`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. Physical clicks
+  on the path and Chinese filename open the exact
+  `全仓审计.md` path and line 4. The original range label
+  opens the appendix at line 3, retaining its `:3-5`
+  suffix. Each 返回对话 restores the corresponding address
+  at scroll position 0. Draft `9347` continues with `638`.
+  The first short click reached the correct button without
+  opening it. Two deliberate pointer clicks, including one
+  at the same Chinese glyph, qualified the single-line route.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and
+five canonical Lab documents pass. Signed Wails uses captured
+file contents under the tracked names and a synthetic accent
+case. Live filesystem reads, VoiceOver, Send, browser suites
+and benchmarks were outside the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Inspect explicit
+Markdown file links with line fragments next.
+
+### Route Markdown line links to the workspace file (2026-11-20)
+
+In signed English Wails on `1c5f7f90`, Inspect the guard
+and 附录第 3 至 5 行 are ordinary new-window links. Native
+clicks target the relative `#L4` URL and the UTF-8 encoded
+`#L3-L5` URL. An observer prevents the default on those two
+private fixture anchors. Neither click opens a workspace
+file. Draft `9412` stays intact.
+
+`fileRefs.ts` recognizes a workspace-relative pathname with
+an exact line fragment. It decodes the URI path once and
+checks pathname and numeric bounds through the existing file
+reference rules. The same `FileRefLink` receives the authored
+label, title, decoded path and first line. It uses the current
+inspection and focus return. Shared prose styles retain the
+label's inherited typography, nested markup and link treatment.
+Literal path labels use code typography. ZCode's message link
+resolver also directs line-fragment targets to its file action.
+[CommonMark links](https://spec.commonmark.org/0.31.2/#links).
+[GitHub code permalinks](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/creating-a-permanent-link-to-a-code-snippet).
+
+- EN/light/14 px/Flame Orange at 1121 × 950 and a 560.5 px
+  Dock. A pointer click and Return on Inspect the guard
+  open `DockResizer.tsx` at line 4. Its label uses 16 px
+  prose and retains Guard at line 4 as native help.
+  Tab and Return on Back to conversation restore the
+  exact link action at scroll position 0. The adjacent
+  inline address still opens and returns from line 5.
+  Draft `9436` continues as `9436668`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. A native
+  click on 附录第 3 至 5 行 opens the exact Unicode
+  appendix path at line 3. 返回对话 restores the same
+  label at the original scroll position. Draft `9442`
+  continues as `9442528`. The measured authored link
+  label uses the same 21 px family and size as its
+  surrounding prose.
+
+Native accessibility and fixture observation confirm that
+the same-document fragment, ordinary relative URL,
+external URL and parent-relative URL keep their ordinary
+link behaviors. The external controls are inspected in
+place. Candidate inspection bypasses the private default
+observer because its actions belong to the workspace.
+
+Scoped formatting, shared UI typecheck and package
+consumer, the Web gate with 137 tests and 940 keys across
+eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and
+five canonical Lab documents pass. Native cases use captured
+content. Live external navigation, filesystem reads, Send,
+VoiceOver, browser suites and benchmarks were outside the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Next inspect a
+keyboard continuation in a different reading or search surface.
+
+### Keep Unicode spelling in prose file references (2026-11-20)
+
+The baseline at `13c7ea284` turns `runtime/internal/会话/store.go:8` into a
+button for `/store.go:8` and leaves `docs/旧名字.md:4` as plain text. The
+prose scanner used an ASCII path boundary.
+
+`apps/web/src/features/agent/public/fileRefs.ts` gives the prose scanner
+and inline addresses the same Unicode path character class. Letters,
+numbers and combining marks stay in the original path sent to
+`FileRefLink` with the parsed line and column. ZCode's read-only
+`packages/ui/src/lib/assistantFileReferences.ts` uses a Unicode-aware path
+matcher. Better Writing informed keeping the exact filename in the visible
+action and accessible name.
+
+Three Vitest regressions cover a mixed-script path, decomposed spelling
+with a column and punctuation, and mention and URL boundaries. The Web
+gate passes 160 tests, 940 locale keys across eight locales and 26 bundle
+contracts. Scoped formatting, the macOS build and tests, five canonical
+Lab documents and the isolated app signatures pass.
+
+- ZH/dark/18 px/`#3B82F6` at 1120 × 850 in signed Wails. An AppKit click
+  opens `runtime/internal/会话/store.go` at line 8. 返回对话 restores
+  focus to the exact source reference. Tab and Enter open
+  `docs/旧名字.md` at line 4, and keyboard return restores that
+  reference. The draft `q` survives both round trips. PageDown moves the
+  transcript from 0 to 445 CSS px. PageUp returns to 0 with the draft and
+  reference focus intact. The Wails view shows the complete path labels and
+  the selected line in the file reader.
+- EN/light/14 px after resizing the same native window to 1440 × 900.
+  The three path labels remain complete. Pointer inspection opens the
+  ASCII control `apps/web/package.json` at line 6. Back to conversation
+  restores its focus and the original transcript offset of 56 CSS px.
+  Both sizes use default zoom.
+
+The acceptance app loads an isolated Workspace Lab with captured file
+content and an inert Runtime endpoint. AppKit events enter the window
+and its own WKWebView and produce trusted WebKit input events. Scrolling
+uses native PageDown and PageUp, and resizing uses the AppKit window API.
+Visual inspection uses snapshots of that same Wails WebView.
+
+Both AppKit acceptance sessions and the preview exited. Cleanup removed
+the private application registration, two private Library directories,
+generated checkout outputs and the scratch directory. The isolated
+Runtime regression also removed its fixture directory.
+
 ### Native short-paste continuation qualification
 
 No actionable focus/caret finding in the inspected trace. Approve the observed
@@ -23630,6 +24029,478 @@ Lab builds and signature checks pass. Three private app launches and two
 preview servers exit. Two registrations, four Library paths, ten checkout
 output roots and the scratch tree are removed. Live Runtime, physical IME and
 VoiceOver remain outside this capture.
+
+### Reveal the active Find match in a folded message (2026-11-20)
+
+On signed English Wails at `db05a6263`, Find reports
+`1 / 1` for `Folded horizon marker` in a 1,088 px user
+message. Its 182 px preview scrolls internally by 903 px.
+The highlighted match ends at y=277.4, 0.6 px from the
+fold's bottom edge. The existing two-line fade leaves the
+word barely legible. An earlier, clear match stays in the
+same folded preview at local scroll zero.
+
+`UserMessageFold.tsx` exposes a reveal request on its
+exact frame. Its own clipping and fade dimensions decide
+when the current match needs the existing expanded state.
+Query changes and Previous or Next request this reveal.
+`ChatSearchOverlay.tsx` uses the resulting layout to
+position the same range through the transcript reader.
+Passive reflow skips the disclosure frame. Other nested
+scrollers use their existing reveal path. ZCode's Find
+navigator provides a reference for explicit next and
+previous selection. The HTML reveal-before-scroll pattern
+and CSS clipping behavior inform the local handoff.
+[HTML ancestor revealing](https://html.spec.whatwg.org/multipage/interaction.html#ancestor-revealing-algorithm).
+[CSS overflow](https://www.w3.org/TR/css-overflow-3/#valdef-overflow-hidden).
+
+- EN/light/14 px/Flame Orange at 1121 × 950 and a 560.5 px
+  Dock. Opening fold witness is visible and stays folded.
+  Changing the query reveals the full tail, with the
+  highlight at y=574.6–593.4 inside the transcript's
+  y=86–798.8 viewport. The fold's local scroll remains zero,
+  its mask is gone, and the Find field keeps focus and
+  `1 / 1`. Escape restores Composer and clears the
+  highlight. Draft `9537` continues as `9537426`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. The query
+  `fold` starts at `1 / 2` in the closed preview. Return
+  reaches `2 / 2`, expands the message and reveals the
+  tail within the outer viewport. Manual 收起 restores
+  the preview at local scroll zero. 上一个匹配 keeps
+  the prefix folded and 下一个匹配 opens the tail again.
+  Escape from that button returns to the existing Composer.
+  Draft `9542` continues as `9542638`.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and
+five canonical Lab documents pass. Native cases use captured
+messages. VoiceOver, physical IME composition, live Send,
+browser suites and benchmarks were outside the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. The Chinese Find
+placeholder describes expanded messages. Review that wording
+and whether Find matches text across visible Markdown soft
+breaks next.
+
+### Match the spaces readers see in conversation Find (2026-11-20)
+
+In signed English Wails on `3eb586c9`, four source spaces
+before the bold `handoff` display as one. `review handoff`
+returns `0 / 0`, while `handoff` returns `1 / 1`. The
+source newline in the neighboring Markdown example is a
+rendered break, created by the existing remark-breaks
+plugin. Across that line and an explicit hard break,
+two-word searches each return zero.
+
+`messageRanges.ts` projects runs of spaces and tabs to
+one space inside collapsible prose flows. The projection
+extends across inline formatting and retains adjustments
+to recover the complete original DOM range. Code and
+preserved-whitespace displays use literal text. Rendered
+line and block boundaries separate phrases. All eight
+catalogs describe the search as message text, including
+the folded user text Find can now reveal.
+[CSS white-space processing](https://www.w3.org/TR/css-text-3/#white-space-processing).
+
+- EN/light/14 px/Flame Orange at 1121 × 950 with a 560.5 px
+  Dock. Search message text is the placeholder.
+  `review handoff` gives `1 / 1`, with the entire phrase
+  highlighted across the bold boundary. Its native range
+  retains all 17 source characters, including the four
+  spaces. The two rendered breaks and the separate
+  paragraphs each give `0 / 0`. Escape returns to the
+  original Composer and `9636` continues as `9636518`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. The Find
+  placeholder is 搜索消息内容. The disclosed captured
+  compaction summary keeps its literal spacing. Searching
+  `Literal bridge` gives `0 / 0`, and the four-space query
+  gives `1 / 1` with the original 17-character range in the
+  viewport. Closing the disclosure retires that highlight.
+  Escape from Find returns to the same Composer, and
+  `9642` continues as `9642638`.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, the complete plugin check,
+macOS build and native tests, and five canonical Lab
+documents pass. Native cases use captured messages and
+compaction. Live compaction, VoiceOver, other locale
+windows, Send, browser suites and benchmarks were outside
+the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Inspect Find with
+a diagram that keeps supplementary source for accessibility.
+
+### Count the visible diagram text in conversation Find (2026-11-20)
+
+In signed English Wails on `6b116111`, a fully rendered
+Mermaid diagram shows one Visible checkpoint label. Its
+supplementary source is a 1 × 1 px `sr-only` element with
+`clip-path: inset(50%)`. A query for its source-only comment
+gives `1 / 1`. Searching the visible label gives `1 / 2`,
+and Return moves to the clipped source copy at `2 / 2`.
+
+The same visibility check in `messageRanges.ts` now
+recognizes the shared `sr-only` class when it visits a
+message or a text subtree. Find uses the rendered diagram
+label and surrounding prose. The diagram exposes its
+supplementary source through the accessibility tree and
+its existing copy payload.
+[W3C visually hidden text technique](https://www.w3.org/WAI/WCAG21/Techniques/css/C7).
+[Mermaid flowchart comments](https://mermaid.js.org/syntax/flowchart.html#comments).
+
+- EN/light/14 px/Flame Orange at 1121 × 950 with a 560.5 px
+  Dock. The source-only query gives `0 / 0`. Visible
+  checkpoint gives `1 / 1` with one active DOM range in the
+  SVG. Return stays on that range. The prose after the
+  diagram still matches, and Escape lets draft `9736`
+  continue as `9736518`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. 下一个匹配
+  also stays on the unique label. The source-only query
+  gives `0 / 0` and disables the navigation actions.
+  Mermaid 源代码 and 复制 Mermaid remain in the native
+  accessibility tree, and the captured copy payload keeps
+  its source. Draft `9742` continues as `9742638`.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and
+five canonical Lab documents pass. Native cases use a
+captured diagram. VoiceOver speech, clipboard transfer,
+live Send, browser suites and benchmarks were outside the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. The selected label
+keeps its neutral background in the native screenshot while its
+exact range is active. Inspect how to paint that match next.
+
+### Show the current Mermaid match in conversation Find (2026-11-20)
+
+In signed English Wails on `2de460e7`, `checkpoint` gives
+`1 / 2` and Return moves the active SVG text range to the
+second label at `2 / 2`. Both labels keep their neutral
+backgrounds. `Reading continues` in the same reply paints
+its ordinary text range in Flame Orange.
+
+`searchHighlights.ts` draws one decorative SVG path before
+the current text label. The active DOM range supplies the
+substring width and each rendered text run supplies the
+vertical bounds. The parent coordinate transform keeps the
+path aligned as the transcript scrolls or its width changes.
+The accent wash preserves authors' label and node colors.
+The path is pointer-transparent and hidden from assistive technology.
+`messageRanges.ts` skips marker nodes during collection and
+ignores mutation records composed entirely of those nodes.
+Existing Find actions and teardown retire the same marker.
+Read-only ZCode conversation Find informed the distinction
+between active and inactive ranges.
+[CSS Highlight API](https://www.w3.org/TR/css-highlight-api-1/).
+[SVG graphics coordinates](https://www.w3.org/TR/SVG2/types.html#InterfaceSVGGraphicsElement).
+
+The first candidate's `SVGMatrix` lacked the fields expected
+of a `DOMMatrix`. Normalizing at the SVG boundary enabled
+painting. The next candidate drew across the word because
+both WebKit range tops read 348 px. The rendered `<text>`
+starts at 338.1 px and the first `<tspan>` at 327.6 px.
+The `<tspan>` client bounds cover its own 18.8 px run.
+[WebKit SVG graphics binding](https://github.com/WebKit/WebKit/blob/main/Source/WebCore/svg/SVGGraphicsElement.idl).
+[Geometry Interfaces matrix conversion](https://drafts.csswg.org/geometry/#dom-dommatrix-frommatrix).
+
+- EN/light/14 px/Flame Orange at 1121 × 950. Return moves
+  the outline from the 77 px substring in the first label
+  to the 78 px substring in the authored two-line label.
+  The screenshot shows the white text and both lines clearly.
+  Wheel scrolling moves the transcript from 0 to 239 px.
+  Reducing the Dock from 560.5 to 320 px moves the current
+  cue from x377.5 to x497.7 with its word. The prose result
+  has no diagram path. Escape removes the current path and
+  draft `9836571` continues as `98365718`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. Pointer
+  activation of 下一个匹配 moves the blue outline to the first
+  run of the styled second label. `Authored caption` places
+  it 21 px lower on the second run. The source-only query
+  gives `0 / 0` and clears the path. The accessible source
+  and exact captured copy payload remain available. Draft
+  `9842` continues as `9842638`.
+
+Scoped formatting, 137 Web tests, 940 keys across eight
+locales, bootstrap, plugin resources, 26 bundle contracts,
+module linkage, the macOS native gate and five canonical
+Lab documents pass. Native coverage uses a captured reply,
+with a private authored multiline label and enough body
+text to scroll. VoiceOver speech, clipboard transfer, live
+Send, browser suites and benchmarks were outside the run.
+
+Six native launches and five loopback previews exit.
+Cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+Searching `checkpointAuthored` still gives one match across
+the two visible lines in the captured label. Reproduce the
+line boundary and preserve legitimate inline formatting in
+the next Find pass.
+
+### Keep Mermaid Find matches within a label line (2026-11-20)
+
+Signed English Wails on `9404e6a90` returns `1 / 1` for
+`checkpointAuthored`. The screenshot highlights the bold
+word on the first line and the start of the next line in
+the same label. The actual ranges start at y328 and end
+at y349. `Second checkpoint` gives one legitimate match
+across two formatted runs at y328.
+
+`messageRanges.ts` follows the last explicit y within each
+rendered Mermaid SVG text label. A positioned `tspan` for
+a different y starts a new search flow. Same-y runs and
+unpositioned formatting runs continue their line. The pinned
+Pele artifact places the first rich-text run of each line
+at x/y and keeps later styled runs inline. Its optional
+icon path can also position several runs at the same y.
+Range matching and paint use the same visible text.
+[SVG text and positioning](https://www.w3.org/TR/SVG2/text.html).
+
+- EN/light/14 px/Flame Orange at 1121 × 950. Both joined
+  and space-separated cross-line queries give `0 / 0`.
+  `Second checkpoint` returns `1 / 1` across the actual
+  normal and bold runs at y328. The wheel moves the
+  transcript from 0 to 239 px. `Authored caption` is a
+  separate match 21 px below the first line. Return and
+  Shift-Return move between the two real `checkpoint`
+  hits. Escape restores draft `9936` and it continues
+  as `9936518`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. The joined
+  query clears the cue and disables Next. Mouse activation
+  of 下一个匹配 moves the visible cue from y377 to y366.
+  The caption has its own cue at y387. Ordinary prose
+  still matches. The source-only comment gives `0 / 0`,
+  while the accessible source and exact captured copy
+  payload remain available. Draft `9942` continues
+  as `9942638`.
+
+Scoped formatting, 137 Web tests, 940 keys across eight
+locales, bootstrap, plugin resources, 26 bundle contracts,
+module linkage, the macOS native gate and five canonical
+Lab documents pass. The initial stage lacked the locked
+Rolldown Darwin ARM64 binding. Warming that exact package
+URL in the private npm cache and rerunning standard setup
+restored the locked dependency and stage.
+
+Native cases use a captured rich Mermaid label. A longer
+private reply supplies the wheel case. The installed renderer
+was inspected for the optional icon case. Wails uses Flame's
+existing renderer options. VoiceOver speech, system clipboard
+transfer, live Send, browser suites and benchmarks were
+outside the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. A single same-line
+hit still shows an interior stroke at the formatting boundary.
+Inspect contiguous highlight shapes in the next pass.
+
+### Draw one outline for a contiguous diagram match (2026-11-20)
+
+In signed English Wails on `bb44350e9`, `handoff` is one
+result in `File hand**off**`. The screenshot shows a
+vertical stroke in the middle of the word. The two text
+runs overlap by 0.45 CSS px and have identical y bounds.
+`Second checkpoint` has two touching pieces at x351.86.
+Both examples draw two closed SVG subpaths before the fix.
+
+`searchHighlights.ts` joins overlapping or touching pieces
+with the same vertical bounds in viewport space. It draws
+the group's outer boundary in the label parent's SVG space.
+Separate bands and positive gaps keep their own outlines.
+The search count, exact DOM range and theme come from the
+existing owners.
+[SVG stroke shape](https://www.w3.org/TR/SVG2/painting.html#StrokeShape).
+
+- EN/light/14 px/Flame Orange at 1121 × 950. The matched
+  word has one outline from x150 to x206.71 and retains
+  the two rendered text fragments. `hand` and `off` separately
+  outline x150–186 and x185.55–206.71. The longer phrase
+  also has one outline. The wheel moves the transcript
+  239 px. Changing the Dock from 560.5 to 320 px moves
+  the outline with the phrase. Enter stays on the only
+  result and Escape lets `10036` continue as `10036518`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. The two
+  styled runs of `Second checkpoint` have one blue outline
+  from x415.93 to x555.81. Pointer Next moves from the
+  diagram's File at `1 / 2` to prose file at `2 / 2`
+  and retires the SVG path. Previous restores one outline.
+  The cross-line query and the source-only comment each
+  give `0 / 0`. The accessible source and copy payload
+  are present. Draft `10042` continues as `10042638`.
+
+Scoped formatting, 137 Web tests, 940 keys across eight
+locales, bootstrap, plugin resources, 26 bundle contracts,
+module linkage, the macOS native gate and five canonical
+Lab documents pass. The private captured reply exercises
+normal and bold runs, a second line, and actual scroll.
+VoiceOver speech, system clipboard transfer, live Send,
+browser suites and benchmarks were outside the run.
+
+Three native launches and two loopback previews exit.
+Cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+A separate native pass opens the enlarged Diagram and
+presses Cmd+F. Focus moves to the underlying Find field
+while the dialog stays open. Escape then leaves focus on
+the document. Ordinary dialog Escape returns to Enlarge
+diagram. Inspect the modal's keyboard scope next.
+
+### Keep conversation Find behind a modal's focus boundary (2026-11-20)
+
+Signed English Wails on `45f3e00be` opens the enlarged
+Diagram and moves focus into its popup. Cmd+F opens the
+background conversation Find field and focuses it while
+the dialog stays visible. Escape dismisses the two
+surfaces and leaves document focus. Before delivery, the
+native key trace already sees `aria-hidden="true"` on
+a transcript ancestor.
+
+`ChatSearchOverlay` checks the mounted transcript or the
+existing Find bar for inherited ARIA or inert isolation
+before it captures a return target or opens or focuses
+Find. The existing Command Menu delivery runs the selected
+command after its own modal isolation clears.
+[WAI modal dialog keyboard pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/).
+[Radix Dialog keyboard interactions](https://www.radix-ui.com/primitives/docs/components/dialog#keyboard-interactions).
+
+- EN/light/14 px/Flame Orange at 1121 × 950. Cmd+F leaves
+  focus inside the enlarged Diagram. Tab reaches Fit and
+  Escape returns to Enlarge diagram at the same transcript
+  scroll. Outside the dialog, Cmd+F opens Find normally.
+  The actual Command Menu selects Find in chat and opens
+  `handoff` at `1 / 1` after dismissal. Reopening Diagram
+  over this query and pressing Cmd+F preserves the query
+  and local dialog focus. Dialog Escape restores its trigger.
+  Closing the existing Find field restores Composer, where
+  `10136` continues as `10136518`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. Cmd+F keeps
+  focus on 适应窗口. Pointer 关闭 returns to 放大图表.
+  Normal Find from the Composer finds the caption. The
+  transcript scrolls from 0 to 409 px before Find Escape.
+  The draft continues from `10142` to `10142638`.
+
+Scoped formatting, 137 Web tests, 940 keys across eight
+locales, bootstrap, plugin resources, 26 bundle contracts,
+module linkage, the macOS native gate and five canonical
+Lab documents pass. The private Lab mounts the product
+Command Menu with the existing shortcuts provider and a
+captured reply. VoiceOver speech, live Send, browser suites
+and benchmarks were outside the run.
+
+Three native launches and two loopback previews exit.
+Cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+Separate native Find from the inline Enlarge diagram button
+matches the caption and leaves document focus on Escape.
+Check the opener's lifetime when Find exits next.
+
+### Preserve the inline opener when conversation Find closes (2026-11-20)
+
+Signed English Wails on `9884f69ab` starts Find from
+Enlarge diagram and finds the caption. Escape focuses the
+original button once. The viewport and button then disconnect
+as Legend returns to a windowed list. Focus ends on the document
+and the next Tab lands on Conversation.
+
+`ReadingList` retains its current generation while a visible
+reader owns focus, including focus in a portal belonging to
+its row. When focus leaves, the existing windowed reset
+carries forward the current scroll anchor or end-follow state.
+The first candidate compacted during focusin when reopening
+Find, before the new full-render request had committed. The
+same listener now schedules one frame to check the latest
+request and focus. Its cleanup cancels outstanding work.
+[WAI keyboard focus persistence](https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/).
+[React layout effects and commits](https://react.dev/reference/react/useLayoutEffect#caveats).
+
+- EN/light/14 px/Flame Orange at 1121 × 950. Two Find
+  round trips each return to the exact original Enlarge
+  diagram button and scrollport. Tab reaches Copy Mermaid.
+  The enlarged Diagram opens from the retained row and
+  Escape returns. Wheel scrolling reaches 199 px. Focusing
+  the Composer retires the original list and keeps 199 px.
+  Ordinary Find from the Composer restores draft editing.
+  The draft continues from `10236` to `102365186`.
+- ZH/dark/18 px/`#3B82F6` with a 320 px Dock. Pointer
+  close returns to the original 放大图表 button, and Tab
+  reaches 复制 Mermaid. Moving focus outside the reader
+  retires the list. Home on the focused splitter widens
+  the Dock to 681 px and the original draft continues
+  from `10242` to `10242638`.
+
+Scoped formatting, shared UI type checking and its package
+consumer test, 137 Web tests, 940 keys across eight locales,
+bootstrap, plugin resources, 26 bundle contracts, module
+linkage, the macOS native gate and five canonical Lab
+documents pass. Native cases use a captured reply and
+passive DOM identity observations. VoiceOver speech, live
+Send, browser suites and benchmarks were outside the run.
+
+Four native launches and three loopback previews exit.
+Cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+
+### Fullwidth digits in file line navigation (2026-11-20)
+
+Signed Wails at `ba8865289` opens the 64-line `reading-blocks.md` in
+Preview. In the Chinese Dock, Go to line keeps `６４` in the field
+with the positive-integer error. Replacing it with `64` opens Source,
+marks line 64 and returns focus to Go to line.
+
+`FileWorkspace.tsx` uses the local `fileLineNumber.ts` parser for this
+field. It accepts ASCII and fullwidth decimal digits, including mixed
+input, after trimming surrounding whitespace. The allowed characters
+are checked before width normalization. The result must be a positive
+safe integer. The form displays the raw input and submits the parsed
+number through its composition guard to the existing file route.
+[Unicode width variants](https://www.unicode.org/charts/PDF/UFF00.pdf).
+[HTML input-mode guidance](https://html.spec.whatwg.org/multipage/interaction.html#attr-inputmode).
+
+Read-only ZCode `previewPaneMarkdownContent.tsx` and
+`components/ui/code-viewer.tsx` keep rendered preview and source line
+presentation with their respective readers. Flame's field handles
+digit width before it hands a number to the existing file route.
+
+- EN/light/14 px/Flame Orange at native 1121 × 950. `1e1` gives the
+  validation error and preserves Preview. Correcting to `６0` and
+  pressing Enter marks source line 60 in `reading-guide.md` and
+  restores the trigger. Reopening presents an empty field. Escape
+  returns to Go to line, keyboard Back returns to the original file
+  row, and the draft continues as `10336518`.
+- ZH/dark/18 px/`#3B82F6` at native 1121 × 950 with a 320 px Dock.
+  `６．４` remains invalid. Correcting it to `６４` and clicking the
+  local submit button marks the same last line 64 as the ASCII
+  baseline. Wheel reading reaches line 1 with the trigger still
+  focused. Pointer Back returns to the original file row. The same
+  isolated draft survives the build change and continues as `1034217538`.
+
+An independent pointer-navigation limit still reproduces on macOS
+27.2 and WebKit `22625.2.8.11.9`. A click on nested Preview text leaves
+four Shift+Tabs at the named reader. Forward Tab reaches Dock Collapse.
+Keyboard reentry and a second reverse step reach Copy path. In the
+Source comparison a reverse step after pointer entry reaches Copy path
+directly. The earlier minimal Wails control documents the same pattern.
+[WHATWG focus-navigation issue](https://github.com/whatwg/html/issues/12514).
+
+The 14 focused parser cases, 151 full Web tests, 940 keys across eight
+locales, bootstrap and plugin gates, 26 bundle contracts,
+`make check-native` and the five-document Lab build pass. Scoped formatting
+and checked source hashes pass. Native input uses paste for the
+fullwidth literals. OS IME composition, VoiceOver speech, other
+platforms and live file or provider activity remain outside this run.
+
+Four signed native launches exit normally. Both loopback previews
+stop and cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
 
 ### Find follows rendered reply updates
 
@@ -32469,6 +33340,196 @@ checkout modification.
 The latest unchanged-source File/Diff task qualification is recorded under
 **File and Diff native reading review after main (2026-11-05)** above.
 
+### Diff filtering follows the accepted file list (2026-11-20)
+
+Signed Wails at `ab6337ad4` shows an enabled filter in a 320 px Dock
+after a targeted Diff exhausts its read budget and includes zero files.
+Typing `dock` adds “0 of 0 files match” below the empty section. Show
+changed files accepts the workspace scope and focuses that empty filter.
+
+The accepted manifest now determines whether the filter and file
+collection are available. A zero-file read presents one existing state
+for its actual outcome. A truncated read reports the read limit, and
+a complete comparison reports no changes. The requested path, accepted
+scope, baseline, time, Refresh and Comparison details stay available.
+The existing overview focus handoff uses Refresh when the file list
+is empty. It consumes the retired focus target and preserves focus that
+the user has moved elsewhere.
+[WAI keyboard focus persistence](https://www.w3.org/WAI/ARIA/apg/practices/keyboard-interface/).
+
+Read-only HeroUI `autocomplete/default.tsx` keeps its search and clear
+flow in a filtered collection even when the query matches no options.
+Flame retains its own SearchField and EmptyState. The accepted manifest
+remains the source of collection coverage.
+
+- EN/light/14 px/Flame Orange at 1121 × 950. An isolated 4-file partial
+  read reports `0 of 4` for an unmatched query and keeps Clear. Filter
+  `dock` opens `DockResizer.tsx` with its original before/after lines.
+  Escape returns to the exact row with `dock` preserved. During a
+  delayed Branch changes read, the accepted partial list and filter
+  remain available. The complete empty result retires the focused
+  field and focuses Refresh. Returning to the partial result restores
+  the query. A second empty read keeps later Composer focus and the
+  continued `10436518` draft.
+- ZH/dark/18 px/`#3B82F6` in the standard Lab at a native 320 px Dock.
+  One budget message and the complete requested path remain visible.
+  Keyboard Show changed files accepts Workspace scope and focuses
+  Refresh, which issues a fresh read. Comparison details reveals the
+  full baseline. Opening from the conversation and returning restores
+  the exact review button. The draft continues as `10442638`.
+
+Two component regressions fail on the original code and pass on the
+candidate. The first plugin typecheck rejects the test context cast.
+The final test fixture supplies the focus revision and generic track
+shape before the isolated mock cast. Plugin verification passes 44
+Node checks and 16 source tests, with six pre-existing conditional
+skips. Twenty plugin catalogs across eight locales and all published
+resources verify. Web passes 151 tests, 940 locale keys across eight
+locales, bootstrap, 26 bundle contracts and module linkage.
+`make check-native`, the canonical five-document Lab build, source
+formatting and accepted hashes pass.
+
+The normal publisher rebuilds the tracked Diff ESM. The signed Lab
+loads those bytes. The English acceptance varies only captured input
+and read timing. The Chinese run uses the canonical build. Live Git
+reads, other operating systems, VoiceOver speech and browser suites
+are outside this run. Existing installations use normal package
+selection to receive the new digest.
+
+Three signed native launches exit normally. Three loopback previews
+stop and cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+
+### Diff line evidence for empty files (2026-11-20)
+
+The standard signed Wails fixture on `0f522202a` shows `empty.txt` as
+Untracked at file 4 of 4 with `+0 −0`. Its body also says only file
+metadata changed. A private `git diff --no-index` comparison of a new
+empty file produces `new file mode 100644`, zero hunks and `0 / 0`
+numstat. [Git patch format](https://git-scm.com/docs/diff-format).
+
+The nonbinary reader displays `file.noLineChanges` when the accepted
+file has no text hunks. All eight catalogs use their existing first
+sentence. Status comes from the accepted manifest. The rename also
+shows the previous path, and binary files retain the explicit
+unavailable-count notice. Read-only ZCode `GitPaneChangeCard.tsx`
+keeps path and counts with the file identity, above the source body.
+
+- EN/light/14 px/Flame Orange at 1121 × 950. `empty.txt` shows the
+  untracked status and the exact “No line changes.” sentence. Previous
+  moves through `image.bin` and `新名字.md` with distinct binary evidence
+  and the complete old path. Escape returns to the exact renamed row.
+  The `empty` filter, keyboard entry and Escape retain the selected
+  `empty.txt` row and query. The draft continues as `10536518`.
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 in a 320 px Dock. Filtering
+  by `旧名字` reaches `新名字.md`, both paths and the line note. Escape
+  keeps the original query and row. Clearing it gives access to the
+  untracked empty file and the binary notice. Return from the
+  conversation inspection focuses its exact review button. The
+  draft continues as `10542638`.
+
+The new component case fails with the original label and passes
+with the repaired sentence. All three focused Diff cases pass.
+Plugin verification passes 44 Node checks, 17 source tests, twenty
+catalogs across eight locales and published resource reproduction.
+Six existing conditional source cases skip. Web passes 151 tests,
+940 keys across eight locales, bootstrap, 26 bundle contracts and
+module linkage. Scoped formatting, `make check-native` and the
+canonical five-document Lab build pass.
+
+Both accepted Wails scenes load the rebuilt Diff ESM from the
+canonical Lab. Existing installations receive the new digest through
+normal package selection. Live Runtime Git reads, VoiceOver speech
+and other native platforms remain outside this run.
+
+Three signed native launches exit normally. Both loopback previews
+stop and cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+
+### Keep Diff comparison facts together on wrap (2026-11-20)
+
+Signed Wails at `5aa394b77` splits the Chinese merge-base name
+across lines in a 320 px Dock. The worktree single-file view can
+also place a standalone separator before the read time. The file
+and its source still fit in that view.
+
+The accepted comparison, scope, baseline and time now flow as four
+items within the existing `Metadata` paragraph. The portable component
+uses the shared control gap for horizontal spacing and natural flex
+line wrapping. The baseline retains its localized separator, short
+commit and full-commit title. `time` retains its accepted `dateTime`.
+The detail disclosure shows the full baseline.
+[CSS flex line wrapping](https://www.w3.org/TR/css-flexbox-1/#flex-wrap-property).
+
+- EN/light/14 px/Flame Orange at 1121 × 950. All four items fit on
+  one visible line for the file-scoped Worktree read. The Workspace
+  overview and its `dock` filter open the original `DockResizer.tsx`
+  with its exact source and HEAD. Comparison details reveals the full
+  commit. Escape restores the same filtered row and the draft
+  continues as `10636518`.
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 in a 320 px Dock. The
+  Branch reader uses three lines, with `合并基础 · abcdef12` together
+  and the complete code patch still visible. Refresh updates the read
+  time and changes `branch-after` to `refreshed-after` for the same
+  baseline. Full width and its Dock return retain the file and its
+  accepted metadata. The full commit, Escape to the original row and
+  draft continuation `10642638` are observed.
+
+Plugin verification passes 44 Node checks, 17 source tests, twenty
+catalogs across eight locales and published resource checks. Six
+existing conditional source cases skip. Web passes 151 tests, 940
+keys across eight locales, bootstrap, 26 bundle contracts and module
+linkage. Scoped formatting, `make check-native` and the canonical
+five-document Lab build pass.
+
+Both signed candidate apps display the rebuilt Diff ESM in the canonical
+Lab. Live Runtime Git reads, VoiceOver speech and other native
+platforms remain outside this run. Existing installations receive
+the rebuilt digest through normal package selection.
+
+Three signed native launches exit normally. Both loopback previews
+stop and cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+
+### Keep Lab branch comparison within tracked files (2026-11-20)
+
+Signed Wails at `0a97e33cc` shows four files in the Lab's Branch
+comparison, including untracked `empty.txt`. The same accepted
+comparison describes its scope as excluding untracked files. Filtering
+to `empty` and opening the result reaches an untracked file reader
+under the merge base.
+
+Runtime adds untracked paths only for Worktree comparisons in
+`runtime/internal/infra/git/diff_source.go`. The Lab's evidence fixture
+now appends `empty.txt` only to Worktree. The existing fixture reader
+derives the manifest and patch from the same scoped file collection.
+Four fixture tests cover Branch and Worktree at workspace and file
+scope. The two Branch cases fail on the original fixture.
+
+- EN/light/14 px/Flame Orange at 1121 × 950. The Worktree filter
+  `empty` has one of four matches. Branch retains the query and shows
+  zero of three matches alongside the correct comparison details.
+  Worktree restores the untracked match. Escape returns to that row,
+  and the conversation draft continues as `10736518`.
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 in a 320 px Dock. Branch
+  contains three tracked entries and shows its complete merge-base
+  commit. Opening `DockResizer.tsx` shows `1 / 3`; Refresh changes
+  `branch-after` to `refreshed-after` at that same baseline. Escape
+  restores the row. Worktree shows four files under HEAD. Returning
+  to the conversation restores the Worktree opener and the draft
+  continues as `10742638`.
+
+Scoped formatting and Web checks pass, including 155 tests, 940 keys
+across eight locales, 26 bundle contracts and plugin resource
+reproduction. `make check-native` and the canonical five-document Lab
+build pass. The native runs use the Lab fixture and the existing Diff
+plugin. Live Runtime reads and other native platforms remain outside
+this run.
+
+Three signed native launches exit normally. Both loopback previews
+stop and cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+
 ### Persistent Diff navigation at default zoom (2026-11-19)
 
 The Wails baseline at `a589bc610` reproduces an interrupted review in a
@@ -32565,6 +33626,168 @@ tracked Diff ESM. Acceptance uses recorded data at default zoom. Native
 clipboard bytes, VoiceOver, live Runtime, browser visual suites and
 benchmarks were outside this scope. The owned apps, preview, registrations,
 profiles, build outputs and temporary logs are removed.
+
+### Keep the source line when switching Diff layouts (2026-11-20)
+
+In signed Wails on `ad4bddc04`, a narrow Dock shows added line 13 at
+−16.42 px from the reading viewport's top. Changing Unified to Side by
+side leaves the body at 1281 px and moves the first visible source to
+the pair at line 45. The layout selector retains focus. The same numeric
+scroll offset now points to a different part of the patch.
+
+The Web Pierre adapter captures the first visible source line and its
+vertical inset before FileDiff replaces its columns. The pinned
+renderer gives each source row the same index pair across the two
+layouts. The adapter uses that identity to restore the line in the
+existing Panel body after the render, subject to the new scroll range.
+If the reader returns from the same paired row, the previous source side
+guides the handoff. A different paired row starts from its newer side.
+The change applies to layout switches within one accepted patch.
+[React pre-update snapshots](https://react.dev/reference/react/Component#getsnapshotbeforeupdate)
+[Pierre renderer lifecycle](https://diffs.com/docs)
+[CSS Scroll Anchoring](https://www.w3.org/TR/css-scroll-anchoring/)
+
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 and scale 1 with a 320 px Dock.
+  The 284 × 651 px body returns added line 13 at −16.42 px in both
+  directions, with scroll offsets 1281 → 489 → 1281. Deleted line 20
+  returns to its deletion side at −18.17 px. After native wheel input
+  reaches a different pair, Unified opens on added line 48 at −18.17 px.
+  The layout selector retains keyboard focus after the choices.
+- In the main view, whose reader is 848 px wide, added line 48 remains at
+  −18.47 px while switching to Side by side. Returning to the Dock keeps
+  the layout. Files focuses the accepted DockResizer row. From that file
+  at scroll offset 465 px, Next opens `session.go` at 0 px. Escape restores
+  its row and the composer draft continues as `822614`.
+- EN/light/14 px/Flame Orange at Actual Size uses the canonical Lab.
+  Escape closes the layout menu and returns focus to its existing choice.
+  The changed files list retains its current file. The binary
+  `image.bin` shows its evidence message, Escape restores its row and
+  the composer draft continues as `823759`.
+
+Scoped formatting, the full Web gate with 137 tests and 940 keys across
+eight locales, bootstrap, plugin resources, 26 bundle contracts, module
+linkage, the macOS build and native tests, and five canonical Lab
+documents pass. The private fixture supplies a two-file workspace patch
+with long replacements and a passive visible-line readout. The canonical
+build excludes that fixture variation. Live Git, VoiceOver, other
+platforms, browser suites and performance benchmarks were outside this
+qualification.
+
+Three native launches and three loopback preview launches exit. Cleanup
+removes three registrations, six private Library directories, ten checkout
+outputs and the scratch tree. Continue from the next observed reading or
+return issue.
+
+### Keep wrap within reach while reviewing a file (2026-11-20)
+
+In signed Wails on `bdf33587f`, a reader at scroll offset 1281 px
+sees added line 13. The wrap action inside the patch caption is above
+the viewport. Tab from Diff layout reaches the action and pulls the
+reader back to offset 0 and line 1 before activation.
+
+The Diff file header places the existing wrap action beside the layout
+selector above the Panel body. The header lets that group wrap when the
+available width calls for it. The patch caption keeps included-patch
+Copy. The shared `CodeWrapButton` projects the page-wide preference
+that also serves literal code. The existing locale strings name the
+next action. [HeroUI toolbar examples](https://heroui.com/en/docs/react/components/toolbar)
+[ARIA button pattern](https://www.w3.org/WAI/ARIA/apg/patterns/button/)
+
+Pierre restores the same accepted source row across wrap changes. When
+the previous inset would hide a newly unwrapped row, it reveals that
+row from the start. The first candidate exposed a 0.58 px tail of
+line 12 after unwrapping line 13. A second wrap grew that tail into
+the first row and moved line 13 to 223.33 px. The final capture ignores
+subpixel intersections. Restoration rounds an aligned row start into
+that row and rounds other offsets to the nearest pixel.
+
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950, scale 1 and a 320 px Dock.
+  The 284 × 651 px reading viewport keeps its size. Tab reaches the
+  visible wrap button at offset 1281 px. Space keeps added line 13 at
+  −16.67 px from −16.42 px. Pointer unwrap returns it to −16.42 px
+  with focus on the same action.
+- In Side by side, native wheel input places the pair at line 13 at
+  −92.67 px while wrapped. Four consecutive keyboard activations
+  keep both sides at line 13. The unwrapped/wrapped offsets are
+  −0.42/−0.67 px on each cycle. In the 848 px main-view reader,
+  pointer unwrap keeps that pair within 0.25 px. Returning to the
+  Dock retains the chosen wrap state, one wrap action and one Copy
+  action. The draft continues as `834628`.
+- EN/light/14 px/Flame Orange at Actual Size uses the canonical Lab.
+  Enabling wrap in Diff presents Disable word wrap on the literal
+  Trajectory JSON. Disabling it there updates the original Diff
+  control. Binary and metadata-only files offer their evidence;
+  Escape restores the file rows. The draft continues as `833762`.
+
+Scoped formatting, shared UI typecheck and packed consumer test, 44
+plugin script checks, 14 plugin source tests, 20 plugin catalogs across
+eight locales, 137 Web tests, 940 Web keys across eight locales,
+bootstrap, 26 bundle contracts, module linkage, native build and tests,
+and five canonical Lab documents pass. Six existing plugin source tests
+remain skipped. The rebuilt Diff ESM matches the accepted bytes after
+the native gate. The private Wails qualification uses a long captured
+patch and passive reading measurements. Live Git, clipboard bytes,
+VoiceOver, other platforms, browser suites and benchmarks were outside
+this qualification.
+
+Four native launches and five loopback preview launches exit. Cleanup
+removes four registrations, eight private Library directories, ten
+checkout outputs and the scratch tree. Continue from a newly observed
+reading or return issue.
+
+### Keep keyboard reading visible in the diff (2026-11-20)
+
+In signed Wails on `e1bc09d40`, Tab focuses the named diff region.
+Two Down keys advance its enclosing body from 164 to 244 px while the
+Composer retains its caret. Clicking the code moves the collapsed
+selection into the diff. The next three Down keys leave the body at
+244 px. Page Down reaches 855 px, with the focus outline hidden under
+the change fills along both visible sides.
+
+The named Pierre reader uses the existing relative arrow step and the
+nearest eligible vertical scrollport. For a selected source range it
+uses the same composed selection as the existing copy action. The first
+candidate showed why that matters. WebKit described the document range
+as collapsed while an actual dragged range remained inside the shadow
+root, and Down wrongly scrolled another 40 px. The final reader leaves
+that event to native selection handling.
+
+The reader reserves 2 px on each inline edge for the existing inset
+focus outline. StyleX omitted the original shorthand from the first
+candidate's stylesheet. The separate logical width, style and color
+declarations emit the edge and leave the block geometry as before.
+[WCAG keyboard](https://www.w3.org/WAI/WCAG22/Understanding/keyboard.html)
+[WCAG focus visible](https://www.w3.org/WAI/WCAG22/Understanding/focus-visible.html)
+
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950, scale 1 and a 320 px Dock.
+  The 284 × 651 px Panel body keeps its dimensions. The Composer caret
+  remains at offset 3 through Down from 164 to 244 px. A click in the
+  diff and three Down keys reach 364 px. With text then dragged inside
+  the diff, Down leaves y364 as WebKit collapses that selection. Up
+  reaches y324, Right reaches x27, and Page Down reaches y935 with
+  both blue focus rails visible beside the red and green change strips.
+- Page Up and Left return to y324 and x0. The native wheel reaches y704
+  with the reader still focused. Shift+Tab to Copy included patch
+  clears its outline. The draft continues as `844516`.
+- EN/light/14 px/Flame Orange at Actual Size uses the canonical Lab.
+  The named Side by side reader keeps focus through Up and Down and
+  exposes both EOF markers. Reverse Tab reaches Copy included patch.
+  Files restores the original file row and the draft continues as
+  `843672`.
+
+Scoped formatting, shared UI typecheck and its packed consumer test,
+the full Web gate with 137 tests and 940 keys across eight locales,
+bootstrap, plugin resources, 26 bundle contracts, module linkage, the
+macOS build and native tests, and five canonical Lab documents pass.
+The private changed-file capture supplies passive selection and geometry
+readings. Live Git, clipboard bytes, VoiceOver, physical IME, forced
+colors, other platforms, browser suites and benchmarks were outside
+this qualification.
+
+Four native launches and five loopback preview launches exit. Cleanup
+removes four registrations, eight private Library directories, ten
+checkout outputs and the scratch tree. Continue from the next observed
+reading or navigation issue.
 
 ### Diff filename and reader-action alignment (2026-11-03)
 
@@ -34431,6 +35654,238 @@ ESM. This pass covers recorded output. VoiceOver, live Tool execution,
 native clipboard bytes, browser visual suites and benchmarks were outside
 the scope. Both private bundle registrations, processes, previews, caches,
 build outputs and temporary logs are removed.
+
+### Scroll wide recorded output in its preview (2026-11-20)
+
+Signed Wails at `07807fa5b` clips the `2.104s` duration at the end of a
+two-line `Read output` record when the conversation narrows to 440 px.
+The named preview has keyboard focus and the captured text is present.
+Repeated Right and the attempted native horizontal gesture leave the line
+end clipped. Its preformatted rows exceed the width of the existing
+clipping CodeFrame, and the preview has no scroll viewport of its own.
+
+`RecordedOutput` puts horizontal scrolling on the same named preview
+element and contains only horizontal overscroll. It uses the shared
+code reader's horizontal-arrow handler and respects composing and
+modified keystrokes. The first signed candidate reaches the line end.
+Its overlay scrollbar crosses the last line, so the final preview uses
+the existing code-frame inset beneath the text. Read-only ZCode
+`ToolCallBlocks/renderers/ExecuteOutput.tsx` and Better Accessibility
+inform this bounded reading surface. [CSS overflow](https://www.w3.org/TR/css-overflow-3/#overflow-properties)
+[CSS overscroll](https://www.w3.org/TR/css-overscroll-1/#overscroll-behavior-x).
+
+- EN/light/14 px/Flame Orange at 1121 × 950 and 440 px of conversation.
+  In the focused `sh_01` preview, Right reveals `2.104s` and Left
+  returns to the full line starts. The visible scrollbar stays below
+  the text. Clicking its right-hand track after returning to the start
+  also reveals `2.104s` with the same preview focused. The row closes
+  through its original keyboard trigger and the draft continues as
+  `10836518`.
+- ZH/dark/18 px/`#3B82F6` at the same window and conversation widths.
+  Right in `工具输出预览` reveals `8.412s` and retains ANSI colors.
+  A downward wheel over the preview moves the transcript and leaves
+  focus in the preview. The ten-line view opens from the preview,
+  local Find reaches `1 / 3` then `2 / 3`, and Escape returns focus
+  to the expanded reader. Collapse returns to the same preview
+  disclosure. The 320 px Files Dock opens the captured `store.go`
+  source target. Return to conversation restores the exact original
+  opener and the draft continues as `10842638`.
+
+The focused preview regression fails on the original and passes on the
+candidate. Plugin checks pass 44 Node cases, 18 source tests, 20 catalogs
+in eight locales and generated resource reproduction. Six existing
+conditional source tests skip. Web passes 155 tests, 940 keys across
+eight locales, 26 bundle contracts and production module linkage. Scoped
+formatting, `make check-native` and the canonical five-document Lab build
+pass. The Tool results ESM is rebuilt through normal packaging.
+
+The native runs use captured output and the existing file sample. The
+track click qualifies pointer panning. The automated horizontal wheel
+and thumb drag trials did not pan, and a physical trackpad, VoiceOver,
+clipboard writes and live Tool execution remain unverified. In the
+expanded list, keyboard Right still leaves the long line clipped after
+Find returns focus. That existing viewport is the next reading task.
+
+Four signed native launches exit normally. Three loopback previews
+stop and cleanup removes three registrations, six private Library
+directories, ten checkout outputs and the scratch tree.
+
+### Scroll wide lines in expanded recorded output (2026-11-20)
+
+Signed Wails at `6ee185490` returns from Find to the focused full
+`Tool output` reader. At 440 px of conversation width, Right still
+leaves `8.412s` outside the visible line. The first candidate passes
+the focused keyboard regression with provided scroll dimensions.
+Native Wails still clips the line. Its private passive readout shows a
+495.2 px line, a 362 px paint-contained Legend item and equal 362 px
+client and scroll widths on the actual focused viewport. Right reaches
+that viewport and its horizontal overflow test correctly finds no room.
+
+The expanded output opts into `reading-unwrapped-rows`. The shared
+stylesheet allows the positioned item containing each authored reading
+row to fit its unwrapped content while keeping Legend's paint containment.
+The same Legend viewport owns horizontal overflow and contains only that
+axis. `ReadingList` routes plain cancelable horizontal arrows through the
+existing shared handler on the real scroll node. Its existing vertical
+reading and selection path still handles the same events as before.
+The fixture regression opens the real reader and covers focus, left and
+right movement, and the fitting-width case. It fails on the original.
+[CSS paint containment](https://www.w3.org/TR/css-contain-2/#containment-paint)
+[Legend's scroll node](https://www.legendapp.com/open-source/list/v3/api/#getscrollablenode).
+
+- EN/light/14 px/Flame Orange at 1121 × 950 with a 440 px conversation.
+  Local Find advances `Rollback` from the first to the second result.
+  Escape focuses the full reader. Right exposes `8.412s` and Left
+  exposes the line starts with the same output outline. Collapse
+  returns to the original disclosure. At 320 px Dock width, opening
+  `store.go` and selecting Back to conversation restores the exact
+  Open the current file action. The draft continues as `10936518`.
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 in the 50,000-line capture.
+  Find locates `31415`. The Close find button restores the actual
+  scroll node. Once the observed range is 31425–31461, a further Right
+  keeps that range. The first Page Down then reaches 31439–31475 and
+  the wheel returns to earlier lines. Jump to latest reaches `49999`.
+  Collapse restores the nine-line preview and the original disclosure,
+  and the conversation draft continues as `10942638`.
+
+The first Right observation after pointer Close find shifts the
+50,000-line range from 31402–31438 to 31425–31461. The signed original
+reproduces those exact bounds and the steady second press. The cause
+of this existing vertical movement remains open. Final native builds
+use the canonical Lab without the diagnostic observer. Live Tool
+execution, VoiceOver and physical trackpad use remain unverified.
+
+The packed UI and icons consumer passes. Plugin checks pass 44 Node
+cases, 19 source tests, 20 catalogs across eight locales and generated
+resource reproduction. Six existing conditional source tests skip.
+Web passes 155 tests, 940 keys across eight locales, 26 bundle contracts
+and production module linkage. Scoped formatting, `make check-native`
+and the canonical five-document Lab build pass. The Tool results ESM
+includes the expanded output's layout opt-in.
+
+Six signed native launches exit normally and all five previews stop.
+Cleanup removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree.
+
+### Keep fitted output at the current reading position (2026-11-20)
+
+In the signed Chinese 50,000-line capture at `7d178cde1`, clicking
+Close find for `31415` returns focus to the actual Legend viewport.
+The passive trace records the matching center line, 714 / 714 CSS px
+of scroll and client width, a 380 px client height and a stable
+`scrollTop` of 5023124. The first Right reaches that viewport and
+its native default establishes a collapsed text caret on row 31438.
+The viewport moves 568 px to 5023692 with focus still on the reader.
+The trace records that transition after more than eight seconds of
+stable reading following Find closure.
+
+`ReadingList` first applies the shared horizontal pan when the
+attached viewport has horizontal overflow. For Left and Right, it
+then uses the existing local-arrow guard used by the inline table
+reader. In a vertically scrollable viewport whose lines fit, the
+guard prevents the native caret jump. Real selected ranges and
+active modifiers continue through the existing helper's conditions.
+The vertical foreign-selection path and occupied scroll node remain
+the existing ones. The reader adds no second scroll position.
+[Selection API](https://www.w3.org/TR/selection-api/#dom-selection-iscollapsed)
+[CSSOM relative scrolling](https://drafts.csswg.org/cssom-view/#dom-element-scrollby).
+
+- The signed ZH diagnostic candidate at the same **1121 × 950**,
+  dark/18 px/`#3B82F6` geometry keeps y5023124, center row 31415,
+  reader focus and the empty selection through the first Right.
+  The trace reports a canceled default. A native double-click
+  selects text in row 31415, and Right collapses that range in
+  place. AX supplies the final selection observation after the trace
+  text reaches its length limit. The first Page Down moves the
+  rendered range from 31402–31438 to 31415–31451.
+- EN/light/14 px/Flame Orange in the clean 1121 × 950 Lab build.
+  Escape from Find returns focus to Tool output with the match
+  visible. Right, Left and Right retain the 31387–31431 rendered
+  range. Page Down reaches 31416–31460 and the wheel returns to
+  31384–31428. Jump to latest reaches line 49999. Collapse returns
+  to the nine-line preview disclosure and the draft continues as
+  `11036518`.
+- ZH/dark/18 px/`#3B82F6` in the clean 1121 × 950 Workspace Lab.
+  At 440 px conversation width, Find records three Rollback
+  matches and Escape returns to the full reader. Right still
+  pans to the complete `8.412s` line end. After collapse and the
+  320 px Files Dock adjustment, the existing source entry opens
+  `store.go`. Return to conversation restores its exact opener
+  and leaves the preview available. The draft continues as
+  `11042638`.
+
+The new focused regression fails against the original and passes
+with the existing preview and full-output tests. The packed UI and
+icons consumer passes. Plugin checks pass 44 Node cases, 20 source
+tests, 20 catalogs across eight locales and published resource
+reproduction. Six existing conditional source tests skip. Web
+passes 155 tests, 940 keys across eight locales and 26 bundle
+contracts, with bootstrap and module linkage. Scoped formatting,
+`make check-native` and the canonical five-document Lab build pass.
+The existing Tool results resource reproduces byte for byte.
+
+The graphical tasks use captured output and file samples. Live Tool
+execution, VoiceOver, physical IME and other native platforms
+remain outside this check. Four signed native launches exit normally.
+Three previews stop. Cleanup removes three registrations, six
+private Library directories, ten checkout outputs and the scratch
+tree.
+
+### Fit expanded recorded output to its line count (2026-11-20)
+
+Actual Wails at `672eca5de` expands the captured ten-line Shell
+output to a 380 CSS px viewport. At **1121 × 950** with a **440 px**
+conversation and EN/light/14 px/Flame Orange, the lines occupy 199.8 px
+and leave 180.2 px below them. The signed candidate at the same native
+geometry measures 209.97 px, with 10.17 px of clearance. The 32 px
+caption, 362 px client width, 495 px horizontal extent and line content
+match. Native Right reaches the end of the horizontal range, exposing
+the complete `8.412s` with the scrollbar clear of the last row.
+
+The expanded body in `recorded-output.tsx` adds the captured line
+count in CSS line-height units plus the existing bottom and focus
+insets to the existing `24rem` and `60vh` limits. The same value for
+typography sizes the non-wrapping rows. The existing viewport owns
+focus, selection and scrolling. ZCode's read-only
+`packages/ui/src/ToolCallBlocks/renderers/ExecuteOutput.tsx` bounds its
+preview by line height. The layout and typography review uses that
+principle for the short expansion and retains Flame's long-output cap.
+[CSS line-height units](https://www.w3.org/TR/css-values-4/#lh).
+
+- The diagnostic baseline and candidate use a passive readout.
+  Keyboard Collapse in the candidate retains the same disclosure,
+  and the Composer draft continues as `111543`.
+- EN/light/14 px/Flame Orange in the standard 1121 × 950 Lab.
+  Find `31415` locates one match in the 50,000-line capture. Escape
+  restores the reader, and Right and Left keep the 31387–31431
+  rendered range, matching the preceding batch at this size.
+  Page Down and the wheel reach different vertical ranges.
+  Jump to latest reaches `49999`. Collapse focuses the original
+  nine-line preview disclosure, and the draft continues as `11136518`.
+- ZH/dark/18 px/`#3B82F6` in the standard 1121 × 950 Workspace Lab.
+  At 440 px conversation width, Find shows the first of three
+  Rollback matches. Escape focuses the reader. Right shows
+  `8.412s` above the horizontal scrollbar, and Left returns to the
+  row starts. Keyboard Collapse restores the preview disclosure.
+  Splitter End then sets the Files Dock to 320 px. Opening the current
+  file shows the eight-line `store.go` capture. Return to conversation
+  restores the exact source opener, and the draft continues as `11142638`.
+
+Scoped Prettier, `make check-native` and the canonical five-document
+Lab build pass. Only the Tool results ESM changes in Web staging.
+Plugin checks pass 44 Node cases, 20 source tests and 20 catalogs
+across eight locales. Six existing conditional source tests skip.
+Web passes 155 tests, 940 keys across eight locales and 26 bundle
+contracts, with bootstrap and module linkage. The diagnostic readout is
+private to the two measurement builds. The source uses the existing
+tests and the actual before/after native geometry for this sizing change.
+
+The native tasks use captured outputs and an inert file sample. Live
+tool execution, VoiceOver, physical IME and other native platforms
+remain outside this check. Four app launches exit normally and three
+previews stop. Cleanup removes three private registrations, six Library
+directories, ten checkout outputs and the scratch tree. Continue with
+the recorded changes task from Activity to detail and back.
 
 ### Captured shell page reading after main (2026-11-06)
 
@@ -40724,6 +42179,161 @@ ten checkout outputs and the scratch tree. The native 1–59 window
 labels the next action with 200 lines. The accepted file has 34 lines
 remaining. The next task is to name the actual planned page.
 
+### Display the accepted file source line numbers (2026-11-20)
+
+Signed Wails on `8b762c6c0` opens the accepted range 237–437
+after Go to line 237. The target has a mark and the trigger regains
+focus. The code has no visible line numbers. Showing the preceding
+200 lines accepts 37–236 and the literal source ends at 236. The
+renderer also exposes trailing empty rows, one of which takes the
+old target mark for 237 even though the accepted source ends earlier.
+
+Files passes the displayed read's served bounds into the existing
+Pierre source view. The gutter projects absolute numbers into the
+renderer's number cells. Its local indices continue to serve selection
+and text projection. Addressable source lines, visible numbers and
+the target mark stop at the accepted end. An accepted authored blank
+retains its own address. Transcript blocks and formatted Preview keep
+their existing presentations. ZCode's code viewer likewise maps its
+local indices to source positions for selection and comments.
+[Pierre file rendering](https://diffs.com/docs)
+
+The first candidate revealed two interactions with the new gutter.
+Vertical target placement panned 49 px and clipped the start of the
+source, and whole-source selection included the gutter values.
+The adapter now preserves the horizontal position of the active code
+scrollport during target placement. Its two DOM references expose the
+actual source text for selection and the existing code scrollport
+for panning. Whole-source copy projects the same accepted bytes.
+
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950, scale 1 and a 320 px
+  Dock. The private final capture extends the same file to 1,470
+  lines. The initial 6–206 range and Go to line 237 both begin
+  at horizontal offset 0. Go to line returns focus to its trigger.
+  Earlier shows exactly 37–236. The previous mark and visible
+  number for 237 are absent. Cmd+A selects 13,376 characters
+  beginning with the actual code. The first candidate selected
+  14,113 characters beginning with the gutter.
+- Right pans the actual 312 px code region to x31. Jumping to a
+  new accepted range starts at x0. The four-digit gutter is 57 px
+  wide and shows 1450–1470. Earlier shows 1250–1449, then the
+  last 21 lines restore the real 1450 target. Back from this direct
+  file entry focuses the table and a pointer opens the same file.
+  Return on the table alone keeps the list visible. The draft continues
+  as `854612`.
+- EN/light/14 px/Flame Orange at Actual Size uses the canonical
+  Lab. The eight-line source displays 1–8, and Go to line 4
+  retains the trigger. The 93-line reading guide displays its
+  numbers in Source and its document in Preview. Back from the
+  list-owned guide restores its exact row. Return opens the same
+  guide and the draft continues as `853758`.
+
+Scoped formatting, the full Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and five
+canonical Lab documents pass. The private acceptance uses captured
+line windows and passive geometry and selection readings. Clipboard
+transfer, VoiceOver, live filesystem reads, physical IME, other
+platforms, browser suites and benchmarks were outside this qualification.
+
+Four native launches and five loopback preview launches exit.
+Cleanup removes four registrations, eight private Library directories,
+ten checkout outputs and the scratch tree. Continue with a verified
+reading or return case.
+
+### Restore a directly opened file when its list arrives (2026-11-20)
+
+The real Composer value for a source selection from line 4,
+offset 2, to line 5, offset 9, retains both leading spaces on
+line 5. The abbreviated observation label had combined the
+spaces. The file return path exposed a separate issue.
+
+In signed Wails on `9a9700023`, Back from a direct
+`DockResizer.tsx` read requests that exact path while the visible
+tree has zero rows and document focus is at body. The directory
+read starts when the list becomes visible. The row later appears
+and the tree itself still has focus. Return stays on the list.
+
+The first candidate keeps the pending path and selects its key
+when the row arrives. Native trace shows React Aria still reports
+the tree as unfocused after progressing from zero to six and then
+seven rows. Its empty grid exposes a tab stop before it installs
+the populated grid's focus handler. The file tree now synchronizes
+that manager when the collection becomes nonempty and the exact
+fallback viewport still holds DOM focus. The same virtualizer and
+row reveal path finish the one pending return. A different row,
+focus outside, a hidden tree or a new return retires the request.
+[React Aria Tree](https://react-aria.adobe.com/Tree)
+[ARIA tree keyboard interaction](https://www.w3.org/WAI/ARIA/apg/patterns/treeview/#keyboardinteraction)
+
+- EN/light/14 px/Flame Orange in the 560.5 px Dock. Before the
+  child directory arrives, the Files table holds focus. When it
+  arrives, focus moves to the precise `DockResizer.tsx` row.
+  Return reopens its source and focuses Back to files. Return
+  there immediately restores the same row using the loaded list.
+  The draft continues as `8938614`.
+- ZH/dark/18 px/`#3B82F6` in a 320 px Dock at 1121 × 950.
+  In the controlled delay, the Composer receives focus before
+  the row appears. The row arrives and the Composer keeps its
+  focus and exact continued draft `8941726`.
+- With the child directory confirmed empty in EN/light/14 px,
+  the requested file has no row. Focus stays on the table until
+  Down reaches the existing `apps` row. The draft remains `8964`.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and five
+canonical Lab documents pass. Signed Wails uses captured
+directory responses. Live filesystem operations, native IME,
+VoiceOver, Send, browser suites and benchmarks were outside the run.
+
+Ten native launches across four signed bundles and seven
+loopback previews exit. Cleanup removes four registrations,
+eight private Library directories, ten checkout outputs and the
+scratch tree. Continue with a verified reading and return path.
+
+### Include the absolute range for a whole source selection (2026-11-20)
+
+Signed Wails on `96f548c3e` accepts lines 6–206 of a
+470-line file. Cmd+A starts and ends on the same Pierre source
+column, at offsets 0 and 202. The composed selection contains
+13,465 characters. Ctrl+Shift+Q inserts the 201 served lines,
+from record 006 to 206, with only the workspace path in the label.
+
+The same declared reader and composed range still determine the
+quote. When both endpoints address marked rows, the existing
+line calculation applies. A complete selection of the precise
+Pierre File source column takes the first and last marked row.
+The unmarked synthetic trailing row stays outside the resulting
+address. The existing formatter and captured Composer action
+use that range with the selected text. [Selection API](https://www.w3.org/TR/selection-api/#dom-selection-getcomposedranges)
+
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 and a 320 px Dock.
+  Cmd+A and Ctrl+Shift+Q give `:6-206` and the same 201 body
+  lines in draft `9042`. Typing `817` continues outside the
+  code fence. Go to line 450 restores its trigger and presents
+  450–470. The next quote uses `:450-470` and exactly 21 body
+  lines, ending with record 470. Draft `9063` continues with
+  `428` and the same file remains open.
+- EN/light/14 px/Flame Orange in a 560.5 px Dock. All eight
+  lines of the short file quote as `:1-8` in draft `9037`.
+  Double-click and the existing right-click action then quote
+  only `row` as `:4`. Draft `9054` continues with `781`
+  in the same Composer, with the file still open.
+
+Scoped formatting, the Web gate with 137 tests and 940 keys
+across eight locales, bootstrap, plugin resources, 26 bundle
+contracts, module linkage, macOS build and native tests, and
+five canonical Lab documents pass. Signed Wails uses captured
+file windows and the production quote and shortcut plugins.
+Clipboard transfer, VoiceOver, live filesystem reads, Send,
+browser suites and benchmarks were outside the run.
+
+Three native launches and two loopback previews exit. Cleanup
+removes three registrations, six private Library directories,
+ten checkout outputs and the scratch tree. Inspect a verified
+path from quoted material back to writing next.
+
 ### File continuation names its planned window (2026-11-19)
 
 The previous native acceptance reads `reading-guide.md` lines 1–59 of 93
@@ -41805,6 +43415,234 @@ registrations, ten private Library directories, ten checkout outputs and the
 scratch tree. The English tall preview clips the top edge of the button's
 outline at End. Inspect the outline through local scrolling next.
 
+### Keep SVG keyboard focus visible while scrolling (2026-11-20)
+
+On `ae2e098b4`, native wheel input moved the tall SVG 58 CSS px within its
+preview. The button kept keyboard focus while the scrollport clipped both
+horizontal edges of its outline. The first scroller-outline candidate recovered
+the edges, but WebKit painted the SVG over them through the center.
+
+The existing preview body now draws its outline when the direct gallery
+button matches `:focus-visible`. The same match replaces the button outline.
+A transparent focus inset clips the image before the perimeter, and the same
+measure comes out of the existing padding. This follows the source reader's
+reserved focus edge and keeps the caption's own indicator. The focus color
+comes from the active theme and uses system Highlight in forced colors.
+[WCAG keyboard focus technique](https://www.w3.org/WAI/WCAG22/Techniques/css/C45)
+
+- EN/light/14 px/Flame Orange, 1440 × 900 at scale 1. The tall capture shows all
+  four edges across the image with the wheel at a 56 CSS px local offset and at
+  End. Home to End still spans 87 CSS px. The surrounding transcript and code
+  frame stay at the same position during local scrolling. Return opens image
+  3 / 3, Escape restores the focused button and exact offset, and Shift+Tab
+  reaches Copy code in one step. The draft continues as `775183`.
+- ZH/dark/18 px/`#3B82F6`, 1121 × 950 at scale 1 with a 320 px Dock. The blue
+  outline spans the visible preview at End and Home to End still moves the image
+  13 CSS px. Pointer open and Close restore the same trigger and outer position.
+  The local image offset differs by 3 CSS px after return. The draft continues
+  as `776428`.
+- The canonical short SVG opens as image 3 / 3 and returns to its one button.
+  Shift+Tab moves the visible ring to Copy code and clears it from the preview.
+  The eight-line `store.go` reader opens and returns to its original link.
+  The draft continues as `777639`.
+
+The final candidate was built on `1b9ff40fa` after fast-forwarding independent
+CLI and audit documentation changes. Scoped formatting, 137 Web tests, 940
+keys across eight locales, bootstrap, generated plugin resources, 26 bundle
+contracts, production module linkage, native build and tests, and five canonical
+Lab documents pass. The forced-colors selector is present in emitted CSS. The
+canonical output excludes the private SVG. Native forced colors, VoiceOver,
+clipboard, live providers and other platforms were outside this qualification.
+
+Five native launches and five loopback previews exit. Cleanup removes five
+registrations, ten private Library directories, ten checkout outputs and the
+scratch tree. Continue with another supporting-detail entry and return from
+a captured reply.
+
+### Keep undecodable SVG available as source (2026-11-20)
+
+On `23fba35e9`, the native reply gives a truncated SVG a full image preview.
+Return opens that broken image as item 3 / 3. The pending delta repairs the
+inline drawing behind the gallery, while the open capture keeps displaying
+the broken item until the reader closes and reopens it.
+
+The detached browser image decoder admits the latest settled SVG to the inline
+preview. The literal code reader is available before the first success and
+after an accepted failure. The previous presentation stays in place while
+new source decodes. The SVG stays an image data URL. The active inline entry
+hands focus to its replacement if the browser would otherwise drop it.
+[HTML image processing](https://html.spec.whatwg.org/multipage/images.html)
+[SVG processing modes](https://www.w3.org/TR/SVG2/conform.html#processing-modes)
+
+The shared Lightbox keeps its captured gallery and places its native trigger
+inside the code frame. An absent trigger drops the undecodable SVG from new
+captures. An already open gallery keeps its captured order and source. When
+that gallery closes with the trigger retired, the code reader receives focus.
+
+- EN/light/14 px/Flame Orange at 1440 × 900 and scale 1. The literal truncated
+  start tag is readable. Inline detail opens as 2 / 2 and returns to its
+  trigger. With the SVG source reader focused, a captured delta completes the
+  drawing and hands focus to the image button without opening the gallery.
+  Return opens the readable SVG as 3 / 3. Escape returns to the image button.
+  The draft continues as `781628`.
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 and scale 1 with a 320 px Dock.
+  Completing the drawing leaves focus on draft `782`. Pointer entry opens
+  the now-decodable image. An authoritative `item.completed` then replaces
+  the inline drawing with the truncated source. The same valid SVG remains
+  visible at 3 / 3 in the open gallery. Pointer Close returns to the localized
+  code reader and the draft continues as `782396`.
+- Canonical EN/light/14 px/Flame Orange. The original SVG opens at 3 / 3.
+  Left selects Inline detail at 2 / 3 and Escape returns to the original SVG.
+  Mermaid at 100%, the expanded table and the eight-line `store.go` each open
+  and return to their own entry. The draft continues as `783541`.
+
+Scoped formatting, shared UI types and the independent packed consumer,
+all 137 Web tests, 940 keys across eight locales, bootstrap, generated plugin
+resources, 26 bundle contracts, production module linkage, native build and
+tests, and five canonical Lab documents pass on `23fba35e9`. The private
+Lab changes captured reply input through the existing event fold, and the
+canonical output excludes the private event endpoint and text. Native
+clipboard writes, saves, VoiceOver, live provider execution and other platforms
+were outside this qualification.
+
+Four native launches and three loopback previews exit. Cleanup removes four
+registrations, eight private Library directories, ten checkout outputs and
+the scratch tree. Continue with another reading and return path across the
+conversation and its supporting workspace.
+
+### Restore expanded trajectory records after filtering (2026-11-20)
+
+On `0952e4b38`, the standard Wails trajectory shows 11 records on page 1.
+After the reader expands `run_root`, an unmatched text filter hides it.
+Clear filters restores the same page and search focus with the Run collapsed.
+The filtered render had removed the disclosure that owned expansion.
+
+The report now owns the expanded top-level records by their existing type and
+record identity. The filter still renders only results. A record opens when it
+becomes visible again if the reader left it expanded. Explicit collapse clears
+that choice. Accepted-page changes discard keys for records no longer present.
+Nested details keep their existing lifetimes. ZCode's trajectory distinguishes
+saved expansion from search reveal, and the existing Flame disclosure supplies
+the keyboard and expanded-state semantics.
+[ARIA disclosure pattern](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/)
+
+- EN/light/14 px/Flame Orange at Actual Size. Run and Read both remain expanded
+  after a zero-match filter and keyboard Clear filters. Focus returns to the
+  search field and all 11 records return on page 1. Explicitly collapsing Run
+  persists through another filter cycle. Refresh accepts the same page with
+  Read open, Run closed and focus on Refresh. The draft continues as `791426`.
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 and scale 1 with a 320 px Dock.
+  Pointer expansion and Clear all filters restore the Run and filter focus.
+  Native wheel input moves the Dock from scroll offset 0 to 79 while reading
+  the record. Keyboard selection of Workspace diff and return to Session
+  trajectory retain page 1 and the expanded Run. The draft continues as
+  `792615`.
+
+Scoped formatting, 44 plugin script checks, 14 plugin source tests, 20 plugin
+catalogs across eight locales, 137 Web tests, 940 Web keys across eight locales,
+bootstrap, 26 bundle contracts, production module linkage, native build and
+tests, and five canonical Lab documents pass. The plugin source suite reports
+six existing skips. Standard publication regenerates the Trajectory ESM, which
+matches the checked bytes after the native build. The two locales use the
+canonical captured session. Different-page navigation, live providers,
+VoiceOver and other platforms were outside this qualification.
+
+Three native launches and two loopback previews exit. Cleanup removes three
+registrations, six private Library directories, ten checkout outputs and the
+scratch tree. Continue with another evidenced reading task in the workspace.
+
+### Restore recorded JSON after a temporary trajectory filter (2026-11-20)
+
+On `eb707e07e`, the first page restores its expanded User message after
+Clear filters. The nested Recorded evidence control returns collapsed,
+hiding the literal `item_prompt` JSON that was open before the filter.
+Explicitly closing and reopening the User message also resets its evidence
+in the baseline.
+
+One page-local record map now holds the two disclosure choices. An entry
+exists for an open observation and carries its Recorded evidence flag.
+Filtering still mounts only matches. When a hidden record matches again
+the original nested control projects its saved state. Explicit record
+closure removes the entry. Accepted-page changes retain only matching
+record identities. Structured records continue to show their primary JSON.
+The existing disclosure controls expose each layer with its own state.
+[ARIA disclosure pattern](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/)
+
+- EN/light/14 px/Flame Orange at Actual Size. From Page 1 with 11 records,
+  the keyboard opens User message and Recorded evidence. The zero-match
+  filter hides the record. Clear filters returns focus to the search field
+  and reveals both open controls with the same serialized `item_prompt`
+  JSON. Refresh keeps the JSON open and keeps focus on Refresh. An explicit
+  nested close survives re-filtering. Closing and reopening the parent
+  starts with evidence collapsed. The draft continues as `801364`.
+- ZH/dark/18 px/`#3B82F6` at 1121 × 950 and scale 1 with a 320 px Dock.
+  Pointer evidence entry and Clear all filters restore the same JSON and
+  search focus. Tab enters the localized evidence reader. Native wheel
+  moves the Dock offset from 673 to 879 with its code region focused.
+  Opening the next Read record shows its primary Tool JSON directly.
+  The draft continues as `802539`.
+
+Scoped formatting, 44 plugin script checks, 14 plugin source tests, 20 plugin
+catalogs across eight locales, 137 Web tests, 940 Web keys across eight locales,
+bootstrap, 26 bundle contracts, production module linkage, native build and
+tests, and five canonical Lab documents pass. The plugin source suite retains
+six existing skips. The regenerated Trajectory ESM matches the accepted bytes
+after the native build. The two locales use the canonical captured session.
+Exact inner scroll restoration across filters, different-page navigation,
+clipboard, live providers, VoiceOver and other platforms were outside this
+qualification.
+
+Three native launches and two loopback previews exit. Cleanup removes three
+registrations, six private Library directories, ten checkout outputs and the
+scratch tree. Continue from a newly observed task in the conversation or Dock.
+
+### Restore the reading position of filtered trajectory evidence (2026-11-20)
+
+On `3dfdd8d7d`, clearing a zero-match filter restores the open User message
+and Recorded evidence disclosures. The same JSON reader moved from its first
+column to 138 px and returned at 0 px in a 236 px viewport. Finding the
+same text again required another horizontal scan.
+
+Each expanded record retains its source reader's offsets when it leaves
+the result list. The shared `CodeBlock` exposes its existing scroll region
+to Trajectory, which applies the saved offsets when the same accepted
+record returns. An intentional evidence close discards its position, and
+an outer close removes its entry. Restoring the code region does not move
+keyboard focus. The browser clamps both offsets to the current scrollable
+range. [CSSOM View](https://www.w3.org/TR/cssom-view-1/#scroll-an-element)
+[WCAG focus order](https://www.w3.org/WAI/WCAG22/Understanding/focus-order.html)
+
+- ZH/dark/18 px/`#3B82F6` in Wails at 1121 × 950, scale 1 and a
+  320 px Dock. On the candidate, Tab returns to the same `item_prompt`
+  literal JSON at 138 px in a 236 px viewport with 894 px of content.
+  Clear all filters leaves focus in the search field. Explicitly closing
+  and reopening Recorded evidence returns to the first column.
+- In the same window, the primary JSON for `run_root` keeps 46 px
+  inline and 146 px vertically after keyboard panning, native wheel
+  scrolling and a filter round trip. The reader measures 236 × 444 px
+  against 387 × 590 px of content. Its literal JSON remains the same,
+  and the composer draft continues as `811624`.
+- EN/light/14 px/Flame Orange at Actual Size uses the canonical Lab.
+  Keyboard filtering and clear keep the search field focused and reopen
+  the same User message and its Recorded evidence. The explicit evidence
+  close remains available. The draft continues as `812563`.
+
+Scoped formatting, shared UI typecheck and packed consumer test, 44
+plugin script checks, 14 plugin source tests, 20 plugin catalogs across
+eight locales, 137 Web tests, 940 Web keys across eight locales, bootstrap,
+26 bundle contracts, production module linkage, native build and tests,
+and five canonical Lab documents pass. Six existing plugin source tests
+remain skipped. The exact regenerated Trajectory ESM survives the native
+build. The private Chinese fixture exposes passive scroll measurements
+for the canonical capture. Clipboard, live Runtime, different-page
+navigation, mixed-direction layouts, VoiceOver and other platforms are
+outside this qualification.
+
+Three native launches and three loopback preview launches exit. Cleanup
+removes three registrations, six private Library directories, ten checkout
+outputs and the scratch tree. Continue from the next observed reading
+or navigation issue in the workspace.
+
 ## Wide-content breakout in the reading band
 
 Actual Wails on `955cfb690` exposed the missing boundary in the original broad
@@ -42707,6 +44545,187 @@ evidence files and 19 screenshot digests, gzip SHA-256
 `0626ff7fb2400dbb3eeb538853af88fe22d2141355da7ba331fa49e44de75e1f`.
 Primary work, user data and references remain untouched. This documentation-only
 receipt changes no tested source.
+
+### Use Runtime tool presentation in captured evidence (2026-11-20)
+
+The signed ZH Workspace Lab at `879d96ed7` opened the three-file
+Apply Patch receipt as one generic JSON line wrapping through the
+result reader. The 440 px conversation showed the exact data,
+including a move and its previous path. The Lab's wire fixture
+omitted the `patch` result shape that Runtime adds through
+`presentTool`. The installed exact-name renderer still receives the
+result and uses its shape to decide whether to show the change list.
+
+The existing client-fixture generator now projects both the category
+and any shared result shape from the built-in Go presentation table.
+Standard Lab snapshots consume that generated projection in one
+lookup. The captured status, arguments, paths, previous path and
+zero counts are unchanged. The real snapshot-to-session-fold
+regression fails on the original missing shape and passes after
+generation. A Read receipt still has no shared result shape.
+ZCode's read-only `GitPaneChangeCard.tsx` also keeps the change
+identity beside its outcome. The actual Flame verification uses
+the installed Tool results declaration and shared reader.
+
+- EN/light/14 px/Flame Orange in a native **1121 × 950** window
+  at default zoom with a **440 px** conversation. The receipt
+  presents Edited, Moved and Deleted as separate entries. The
+  moved row includes `From runtime/internal/session/store_atomicity.go`,
+  and the absolute first path remains complete. Keyboard Arguments
+  reveals the captured patch source, and closing it and then
+  collapsing the receipt retains the respective trigger focus.
+  The draft continues as `11236518`.
+- ZH/dark/18 px/`#3B82F6` at the same window and conversation
+  width. The three localized statuses and previous path remain
+  readable. The splitter then sets Files to **320 px**. Enter
+  on Open current file opens the eight-line `store.go` sample.
+  Back to conversation restores the exact opener and the expanded
+  three-file receipt. The separate single-file receipt shows
+  Created with `atomicity.md`. The draft continues as `11242638`.
+- DE/dark/18 px/`#3B82F6` at 440 px conversation width renders the
+  localized three-file receipt and the exact previous path.
+  `Verschoben` and the first path glyph touch visually in the
+  existing fixed-width renderer column. Keyboard collapse and the
+  continued draft `11261528` pass. The next batch addresses the
+  renderer's spacing with this captured reproduction.
+
+Scoped Prettier and gofmt, disposable `make check-generated`, the
+canonical five-document Lab and strict native signatures pass. The
+contract generator package compiles via Go test and has no test files. Web passes 157 tests, 940 locale keys across
+eight languages and 26 bundle contracts, with bootstrap, installed
+resource reproduction and production module linkage.
+`make check-native` passes. This is a Lab data and generator repair.
+Native acceptance uses captured histories and an inert file sample.
+Live patch execution, spoken VoiceOver, physical IME and other native
+platforms remain outside this check.
+
+Four signed launches exit normally and two preview sessions stop.
+Cleanup removes four private registrations, eight Library
+directories, ten checkout outputs and the scratch tree.
+
+### Size patch receipt columns to the localized status (2026-11-20)
+
+The actual signed DE/dark/18 px/`#3B82F6` capture at `d4fceac8b`
+places the first path glyph **5.86 CSS px inside** the text range
+of `Verschoben`. At **1121 × 950**, the same overlap persists
+when the conversation changes from **440 px to 801 px**. The
+existing fixed table sizes the status track at 85 px in both
+positions. The rendered text and the path are both present in AX.
+
+The recorded-result change table uses native automatic column
+sizing. The localized status prefers a compact track and stays
+on one line. The existing logical content gap separates it
+from the wrapping path. Literal unknown status text retains
+its width hint and can wrap. The path and move-from metadata
+keep the existing receipt presentation. Better Layout's
+localization guidance and Better Typography's short-label
+guidance inform the choice. Read-only ZCode
+`GitPaneChangeCard.tsx` similarly gives its status/other
+metadata intrinsic space alongside the shrinkable file identity.
+[CSS Table Module](https://www.w3.org/TR/css-tables-3/).
+
+- The signed DE comparison measures **12.01 px of clearance**
+  in both positions and after a round trip. At 440 px, the
+  368 px table has 103 px for status and 265 px for path. At
+  801 px, the same status track leaves 610 px for the path.
+  All three status labels fit one line. The three captured
+  destinations and the move source remain readable. Pointer
+  collapse, keyboard reentry and the original Arguments
+  disclosure work, and the draft continues as `11361528`.
+- EN/light/14 px/Flame Orange in the standard 1121 × 950 Lab.
+  At 440 px conversation width, Edited, Moved and Deleted
+  have separate paths and the move includes its original path.
+  The wheel leaves focus on Arguments. Closing it and the
+  patch returns to their original controls, with draft
+  `11336518`.
+- ZH/dark/18 px/`#3B82F6` in the standard Workspace Lab at
+  the same native window size. The absolute path fits three
+  lines at 440 px, compared with four in the preceding sample.
+  At the 320 px Files Dock width, the Read opener reaches
+  the eight-line `store.go` sample. Back to conversation
+  restores that opener and the existing patch list. The
+  separate Created row shows `atomicity.md` and the draft
+  continues as `11342638`.
+
+Scoped Prettier, canonical five-document Lab, strict signatures
+and `make check-native` pass. Only the Tool results ESM changes
+during Web staging. Plugin checks pass 44 Node cases, 20 source
+tests and 20 catalogs across eight locales. Six existing
+conditional source tests skip. Web passes 157 tests, 940 keys
+across eight locales and 26 bundle contracts, with bootstrap
+and production module linkage. The passive range measurements
+are confined to two private Lab builds. The standard builds
+use the same released renderer without the readout.
+
+The native tasks use captured outputs and an inert file sample.
+Live patch execution, spoken VoiceOver, physical IME and other
+native platforms remain outside the checks. Four app launches
+exit normally and three previews stop. Cleanup removes three
+registrations, six private Library directories, ten checkout
+outputs and the scratch tree. Continue with the collapsed
+activity summary and the decision to inspect its Shell result.
+
+### Wrap localized tool activity summaries (2026-11-20)
+
+In signed Wails at `9b17647fc`, the German collapsed tool group
+shows `1 ausgef…` at 440 px conversation width and 18 px text.
+The one-line category label needs 307 CSS px and has 292 px.
+The accessibility tree still exposes `1 ausgeführt`, along with
+the existing issue, denied and step counts.
+
+`ToolActivitySummary.tsx` now uses the shared wrapping vocabulary
+for the existing label in both tool groups and narrative waves.
+The auto-height disclosure takes the extra line when needed.
+The group label, severity and counts still come from their
+existing presentation owners. ZCode's read-only
+`ToolSummaryRow.tsx` gives the primary summary separate space
+alongside status. Better Layout and Better Typography guide the
+reflow of the existing text.
+[WCAG reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html)
+[CSS text wrapping](https://www.w3.org/TR/css-text-4/).
+
+- DE/dark/18 px/`#3B82F6` at **1121 × 950**. The candidate
+  uses 292 px of available width with no horizontal overflow
+  and shows the whole `1 ausgeführt` on the second line.
+  The wider divider position returns the category text to one
+  line. Returning to 440 px restores the full wrapped label.
+  Keyboard disclosure reaches the captured Shell failure
+  `TestRollbackOnFlushFailure`. Collapsing the group restores
+  that summary's focus, and the draft continues as `11461528`.
+- EN/light/14 px/Flame Orange in the standard left-tiled
+  Waves Lab at 440 px conversation width. The first wave
+  shows one read, one search and three steps. The second
+  shows one write and two steps. Enter reaches the first
+  wave's two recorded RunInTx matches in `store.go:88`
+  and `segment.go:143`. Collapsing the search and wave
+  returns to the source summary. The draft continues as
+  `11436518`.
+- ZH/dark/18 px/`#3B82F6` in the standard Workspace Lab at
+  **1121 × 1051**. The narrow summary presents all three
+  categories, issue and denied counts, and six steps.
+  Pointer expansion reaches the Shell failure and the
+  recorded `8.412s`; native wheel input leaves focus on
+  the preview. With a 320 px Files Dock, the Read opener
+  reaches the eight-line `store.go` fixture. Return restores
+  the exact opener. Keyboard collapse returns to the group
+  and the draft continues as `11442638`.
+
+Scoped Prettier, five-document Lab, strict signatures and the
+Web and native gates pass. Web passes 157 tests, 940 keys across
+eight locales and 26 bundle contracts. The standard Lab build
+excludes the private measurement readout. The interruption
+retired the original shell handles. The final build and test
+logs, completed native binary and matching source hash verify
+the gates on resumption.
+
+Native checks cover captured history and an inert file sample.
+Live tool execution, spoken VoiceOver, physical IME and other
+native platforms remain outside this scope. Four witnessed app
+launches and the three preview sessions are retired. Cleanup
+removes three private registrations, six Library directories,
+ten checkout outputs and the scratch tree. For a separate task,
+review the point where a conversation link opens a changed file
+and returns to the original turn.
 
 ### Canonical tool-evidence qualification
 
