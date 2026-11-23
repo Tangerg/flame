@@ -52,7 +52,8 @@ const styles = stylex.create({
   triggerLine: {
     gap: space.s2,
     paddingBlock: space.s0_5,
-    paddingRight: 0,
+    // Trailing meta ends the row; keep it clear of the inset focus ring.
+    paddingRight: space.s1,
     paddingLeft: 0,
     minHeight: "max(var(--control-height-sm), var(--control-target-min))",
   },

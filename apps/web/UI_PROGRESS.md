@@ -46585,8 +46585,12 @@ row and focuses its trigger, with the full path below. In `dock-subagents`,
 delegation truncates its title, not `Delegated`.
 
 Checks: Web, SDK and plugin typecheck, SDK tests (11), Web contract tests
-(6 files / 112) and published resource rebuild. The inset focus ring still
-touches the trailing meta at the row's end edge; this predates the batch.
+(6 files / 112) and published resource rebuild.
+
+Follow-up the same day: the line-shell trigger had no end padding, so the
+inset focus ring cut through trailing meta (`6 line|s`). The trigger now
+keeps `space.s1` at its end; its start edge stays on the prose axis. Native
+keyboard expansion of the Read row shows `6 lines` fully inside the ring.
 
 ## Tool row action context
 
