@@ -39,6 +39,7 @@ import {
   type OpenForReading,
 } from "./archive";
 import { ImportForm } from "./importing";
+import { SlideStudio } from "./slides";
 import { EvidencePanel, Findings } from "./evidence";
 import {
   useDeliverables,
@@ -744,6 +745,14 @@ function Workspace({
         inspection={inspection.value}
       />
       <ArchiveReadStatus read={state.read} t={t} />
+      {document?.revision.format === "pptx" && (
+        <SlideStudio
+          key={document.document.id}
+          state={state}
+          document={document}
+          t={t}
+        />
+      )}
       {document && (
         <Inspector
           key={document.revision.id}

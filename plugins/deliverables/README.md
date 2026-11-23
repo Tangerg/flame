@@ -82,6 +82,28 @@ returns an actual retained PNG so a model can examine the render it is reviewing
 Every method declaration explicitly selects its `model` or `host` audience;
 adding a new method cannot silently expose a new transfer operation to the model.
 
+### Slide editor
+
+A PPTX revision opens in the slide editor. Each element's native frame is drawn
+as a selectable box; this is an editing surface, not a rendering, and actual page
+images remain the render evidence. Elements can be dragged, resized, nudged with
+the arrow keys (Shift moves an inch) or reached from the element list, which also
+lists elements without a frame. Frame, text, chart-data and deletion changes
+collect in a local draft with undo; saving submits one edit against the draft's
+base revision. Reordering, duplicating and deleting slides submit immediately and
+need an empty draft.
+
+When the current revision moves past the draft's base, the draft is compared
+operation by operation. Clean changes are re-addressed to the current revision,
+changes it already contains are dropped, and changes made on both sides keep the
+current value unless the user keeps theirs, which then carries the current value
+as its precondition. The native write still refuses anything that changed after
+that choice.
+
+Installed workspace views have no host capability to place input in the
+Composer, so "Copy reference for Agent" copies the document, revision, slide and
+element identities for the user to paste. The model resolves them with `slides`.
+
 ### Bounded model inspection
 
 The native archive, complete typed contract and original receipts remain the
