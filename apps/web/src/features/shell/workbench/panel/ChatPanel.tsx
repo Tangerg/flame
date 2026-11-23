@@ -466,7 +466,6 @@ export function ChatPanel({ onSend, ref }: Props) {
       <AgentDockRow
         ref={dockRowRef}
         open={dockVisible}
-        available={dockAvailable}
         presentation={presentedMain ? "main" : "dock"}
       >
         <Group

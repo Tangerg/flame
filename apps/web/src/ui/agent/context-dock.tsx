@@ -265,13 +265,11 @@ function DockTab({
 
 export function AgentDockRow({
   open,
-  available,
   presentation,
   ref,
   children,
 }: {
   open: boolean;
-  available: boolean;
   presentation: "dock" | "main";
   ref?: Ref<HTMLDivElement>;
   children: ReactNode;
@@ -281,7 +279,6 @@ export function AgentDockRow({
       ref={ref}
       className={cn("agent-dock-row", stylex.props(styles.row).className)}
       data-dock={open ? "open" : "collapsed"}
-      data-dock-available={available ? "" : undefined}
       data-presentation={presentation}
     >
       {children}

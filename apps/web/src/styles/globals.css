@@ -585,7 +585,7 @@ body:has([data-slot="notification-toast"])
   contain: layout paint;
   background: var(--app-dock-surface);
 }
-.agent-dock-row[data-dock="collapsed"] .agent-context-dock {
+.agent-dock-row[data-presentation="dock"][data-dock="collapsed"] .agent-context-dock {
   visibility: hidden;
 }
 
