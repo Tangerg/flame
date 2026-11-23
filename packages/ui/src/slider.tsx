@@ -34,7 +34,7 @@ const styles = stylex.create({
     borderWidth: "var(--control-edge-width)",
     borderStyle: "solid",
     borderColor: surface.controlEdge,
-    backgroundColor: color.onAccent,
+    backgroundColor: surface.thumb,
     boxShadow: "var(--shadow-control)",
   },
 });

@@ -220,6 +220,8 @@ export function paletteThemePreview(
       "color-drawer": drawer,
       "color-surface": surface,
       "color-elevated": elevated,
+      // A switch or slider thumb is a physical part, not ink on the accent: it stays light.
+      "color-thumb": scheme === "light" ? "#ffffff" : text,
       "color-sunken": sunken,
       "color-surface-2": surface2,
       "color-surface-3": surface3,

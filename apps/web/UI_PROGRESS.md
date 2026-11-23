@@ -9464,6 +9464,28 @@ probe artifacts and three native hashes; SHA-256
 Read-only references, user data, the primary checkout and unrelated processes
 remain untouched. This repair is committed locally; no push occurs.
 
+### Light control thumbs on every accent (2026-11-24)
+
+Switch and slider thumbs used `--color-text-on-accent`, the ink chosen for
+labels on the accent fill. With the default Flame Orange that ink is dark, so
+every switch and slider in Settings and plugin pages showed a black knob,
+and a blue accent flipped it to white. HeroUI, Radix Themes and macOS all
+draw the thumb as a light physical part independent of the accent.
+
+- `palette.ts` adds the `color-thumb` role: white in light, neutral step 12 in
+  dark. `tooling/presentation.mjs` regenerates the first-paint
+  `presentation.generated.css`; no other projection changes. `@flame/ui`
+  exposes it as `surface.thumb`, and `switch.tsx` and `slider.tsx` use it. The
+  checkbox mark keeps `onAccent`, because it is ink on the accent fill.
+- Native Settings → Appearance, light and dark: the Font smoothing switch
+  shows a white or light neutral knob on the orange track, and the Contrast
+  thumb matches.
+
+Observation, not changed: opening Settings lands focus on the full-pane
+region, and WebKit treats that programmatic focus as focus-visible, so a ring
+frames the whole pane. That entry-focus policy is qualified above; revisit it
+as its own task before changing it.
+
 ### Hover and selection reading
 
 At frozen base `b94d8740cf6019bcf93c70de856b7ec430a9dde4`, actual Wails

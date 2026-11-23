@@ -47,6 +47,7 @@ export const surface = stylex.defineVars({
   surface: "var(--color-surface)",
   canvas: "var(--color-bg)",
   elevated: "var(--color-elevated)",
+  thumb: "var(--color-thumb)",
   floating: "var(--app-floating-surface)",
   scrim: "var(--color-scrim)",
   hover: "var(--wash-hover)",

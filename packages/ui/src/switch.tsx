@@ -24,7 +24,7 @@ const styles = stylex.create({
     display: "block",
     height: "calc(var(--control-height-xs) - var(--spacing))",
     width: "calc(var(--control-height-xs) - var(--spacing))",
-    backgroundColor: color.onAccent,
+    backgroundColor: surface.thumb,
     boxShadow: "var(--shadow-control)",
     transitionProperty: "translate",
     transitionDuration: motion.fast,

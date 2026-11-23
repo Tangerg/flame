@@ -11,6 +11,7 @@
   --color-drawer: #f0f0f0;
   --color-surface: #f0f0f0;
   --color-elevated: #fdfdfd;
+  --color-thumb: #ffffff;
   --color-sunken: #eaeaea;
   --color-surface-2: #e6e6e6;
   --color-surface-3: #dddddd;
@@ -217,6 +218,7 @@ html.theme-dark {
   --color-drawer: #0f0f0f;
   --color-surface: #1e1e1e;
   --color-elevated: #1e1e1e;
+  --color-thumb: #eeeeee;
   --color-sunken: #242424;
   --color-surface-2: #2c2c2c;
   --color-surface-3: #3a3a3a;
