@@ -81,9 +81,6 @@ export function DelegatedRunLink({
         }
         className={stylex.props(styles.link, current && styles.current).className}
       >
-        <span {...stylex.props(vocab.firstLine, typeStep.uiMd)}>
-          <Icon name="bot" size="md" />
-        </span>
         <span {...stylex.props(styles.detail)}>
           <RecordSummary
             title={

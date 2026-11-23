@@ -511,8 +511,6 @@
   "subagents.active": "进行中",
   "subagents.finished": "已结束",
   "subagents.all": "查看全部子智能体",
-  "subagents.count_other": "{{count}} 个子智能体",
-  "subagents.running_other": "{{count}} 个运行中",
   "subagents.empty": "暂无子智能体",
   "subagents.unavailable": "此子智能体已不可用",
   "agent.runTree.delegated.many": "子智能体 {{index}} / {{count}}",

@@ -478,8 +478,6 @@
   "subagents.active": "実行中",
   "subagents.finished": "終了済み",
   "subagents.all": "サブエージェント一覧",
-  "subagents.count_other": "サブエージェント {{count}} 件",
-  "subagents.running_other": "{{count}} 件実行中",
   "subagents.empty": "サブエージェントはまだありません",
   "subagents.unavailable": "このサブエージェントは利用できません",
   "agent.runTree.delegated.many": "サブエージェント {{index}} / {{count}}",

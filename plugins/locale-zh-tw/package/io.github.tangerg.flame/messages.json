@@ -484,8 +484,6 @@
   "subagents.active": "進行中",
   "subagents.finished": "已結束",
   "subagents.all": "查看全部子代理",
-  "subagents.count_other": "{{count}} 個子智慧體",
-  "subagents.running_other": "{{count}} 個執行中",
   "subagents.empty": "尚無子代理",
   "subagents.unavailable": "此子代理已無法使用",
   "agent.runTree.delegated.many": "子代理 {{index}} / {{count}}",

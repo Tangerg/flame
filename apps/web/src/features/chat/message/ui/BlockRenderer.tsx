@@ -1,5 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { motion } from "motion/react";
+import { space } from "@flame/ui/tokens.stylex";
 import { stepEnter } from "@/lib/motion";
 import { type ContentBlock } from "@/features/agent/public/contentBlock";
 import { type TranscriptRow, type TurnFacts } from "@/features/agent/public/conversation";
@@ -30,7 +31,11 @@ import { DelegatedRunLink } from "@/features/chat/message/ui/DelegatedRunLink";
 import { NarrativeWave } from "@/features/chat/message/ui/NarrativeWave";
 export type { BlockCtx } from "@/features/chat/message/ui/blockContext";
 
-const styles = stylex.create({ arrival: { position: "relative" } });
+const styles = stylex.create({
+  arrival: { position: "relative" },
+  // Delegated runs sit under the tool's label column as its children.
+  delegatedRuns: { paddingInlineStart: space.s6 },
+});
 
 export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, ctx: BlockCtx) {
   switch (block.kind) {
@@ -60,14 +65,18 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
             expanded={ctx.expandedIds.has(block.toolCallId)}
             onExpandedChange={(expanded) => ctx.onExpandedChange(block.toolCallId, expanded)}
           />
-          {delegatedRuns.map((narrative, index) => (
-            <DelegatedRunLink
-              key={narrative.run.id}
-              run={narrative.run}
-              ordinal={index + 1}
-              siblingCount={delegatedRuns.length}
-            />
-          ))}
+          {delegatedRuns.length > 0 && (
+            <div {...stylex.props(styles.delegatedRuns)}>
+              {delegatedRuns.map((narrative, index) => (
+                <DelegatedRunLink
+                  key={narrative.run.id}
+                  run={narrative.run}
+                  ordinal={index + 1}
+                  siblingCount={delegatedRuns.length}
+                />
+              ))}
+            </div>
+          )}
         </div>
       );
     }

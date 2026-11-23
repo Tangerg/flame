@@ -20885,6 +20885,34 @@ deletion; rerunning with its exact digest passed all source, artifact, native,
 publication and ownership checks. This documentation receipt changes no tested
 source. The primary checkout and its parallel work remain untouched.
 
+### One delegation title in the Subagents list (2026-11-24)
+
+The Subagents Dock repeated a four-way delegation title on every member
+(`Audit persistence boundaries … · Sub-agent 1 of 4`, four times), drew the
+same robot glyph on each row and restated the group counts as a mono
+`6 subagents · 1 running` line above `Active · 2` and `Finished · 4`.
+
+- `SubagentEntry` carries its `delegationId` (the delegating tool call).
+  `SubagentsPanel` renders consecutive siblings of one delegation under one
+  muted task title inside a labelled group, so members read
+  `Sub-agent 2 of 4 · Error`. Single-member delegations keep the task title
+  as their row label. The selected task's header still shows the full label.
+- The overview has no header line; the header exists only while a task is
+  selected (back, identity, status, Stop). `subagents.count` and
+  `subagents.running` leave all eight catalogs.
+- `DelegatedRunLink` drops its glyph. In the transcript, `BlockRenderer`
+  indents a tool's delegated runs to the tool label column, so the rows read
+  as children of `Delegated …`.
+
+Native, EN/light/14 px, `dock-subagents`: the list shows two active rows,
+then `Finished · 4`, the task title once and four member rows with their
+outcome notes. Opening `Sub-agent 2 of 4` shows the complete label and error;
+Return on the focused back control returns focus to the same row. The
+transcript nests `Sub-agent 1 of 4` … under its `Delegated` line.
+
+Checks: Web typecheck, `check:locales` (939 keys × 8) and Web contract tests
+pass.
+
 ## Global Composer focus and retained material
 
 The existing `composer.focus` command belongs to the installed workbench. Its ID,

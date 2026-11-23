@@ -33,7 +33,7 @@ import { ContentVisibility, useContentVisible } from "@/ui/index";
 import { EmptyState, IconButton, RecordBody, toneInk, vocab } from "@flame/ui";
 import { AgentJumpToBottom } from "@/ui/agent/index";
 import { AgentWorkspaceView } from "@/ui/agent/index";
-import { face, space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
+import { space, type as typeStep, weight } from "@flame/ui/tokens.stylex";
 import { subagentEntries, type SubagentEntry } from "@/features/chat/message/application/subagents";
 import {
   delegatedRunSummary,
@@ -59,10 +59,16 @@ const styles = stylex.create({
     paddingInline: "var(--layout-compact-gutter)",
     paddingBlock: space.s2,
   },
-  headLine: { minWidth: 0, flex: 1, alignSelf: "center" },
   overview: { paddingBlock: space.s3, paddingInline: "var(--layout-compact-gutter)" },
   group: { marginBottom: space.s4 },
   title: { marginBottom: space.s2 },
+  delegation: { marginBlockEnd: space.s2 },
+  delegationTitle: {
+    display: "block",
+    paddingBlock: space.s1,
+    overflowWrap: "anywhere",
+    textWrap: "pretty",
+  },
   readerSlot: {
     position: "relative",
     display: "flex",
@@ -258,7 +264,6 @@ export function SubagentsPanel() {
         selected.taskLabel,
       )
     : null;
-  const running = entries.filter(({ narrative }) => agentRunIsRunning(narrative.run)).length;
   return (
     <SubagentPanelLayout
       panel={panelRef}
@@ -268,8 +273,8 @@ export function SubagentsPanel() {
       visible={visible}
       label={t("subagents.title")}
     >
-      <header data-slot="subagent-header" {...stylex.props(styles.header)}>
-        {selectedId && (
+      {selectedId && (
+        <header data-slot="subagent-header" {...stylex.props(styles.header)}>
           <IconButton
             ref={backRef}
             icon={iconGlyph("chevron-left")}
@@ -278,46 +283,33 @@ export function SubagentsPanel() {
             data-chrome-focus=""
             onClick={() => openWorkspaceSubagentRun(workspaceAccess, null)}
           />
-        )}
-        {summary ? (
-          <div {...stylex.props(styles.summary)}>
-            <ScrollArea
-              tabIndex={0}
-              role="group"
-              aria-label={summary.label}
-              className={stylex.props(styles.identity).className}
-            >
-              <span
-                id={summaryId}
-                data-slot="subagent-identity"
-                {...stylex.props(styles.name, typeStep.uiSm)}
+          {summary && (
+            <div {...stylex.props(styles.summary)}>
+              <ScrollArea
+                tabIndex={0}
+                role="group"
+                aria-label={summary.label}
+                className={stylex.props(styles.identity).className}
               >
-                {summary.label}
+                <span
+                  id={summaryId}
+                  data-slot="subagent-identity"
+                  {...stylex.props(styles.name, typeStep.uiSm)}
+                >
+                  {summary.label}
+                </span>
+              </ScrollArea>
+              <span {...stylex.props(vocab.line, vocab.hold, toneInk[summary.ink], typeStep.uiXs)}>
+                <StatusDot tone={summary.dotTone} />
+                {summary.statusLabel}
               </span>
-            </ScrollArea>
-            <span {...stylex.props(vocab.line, vocab.hold, toneInk[summary.ink], typeStep.uiXs)}>
-              <StatusDot tone={summary.dotTone} />
-              {summary.statusLabel}
-            </span>
-          </div>
-        ) : (
-          <span
-            {...stylex.props(
-              styles.headLine,
-              vocab.truncate,
-              vocab.muted,
-              typeStep.uiSm,
-              face.mono,
-            )}
-          >
-            {t("subagents.count", { count: entries.length })}
-            {running > 0 && ` · ${t("subagents.running", { count: running })}`}
-          </span>
-        )}
-        {selected && summary?.cancelable && (
-          <SubagentStopButton run={selected.narrative.run} summaryId={summaryId} />
-        )}
-      </header>
+            </div>
+          )}
+          {selected && summary?.cancelable && (
+            <SubagentStopButton run={selected.narrative.run} summaryId={summaryId} />
+          )}
+        </header>
+      )}
       <div {...stylex.props(styles.readerSlot)}>
         <Activity
           key={entries[0]?.narrative.run.sessionId}
@@ -375,25 +367,57 @@ export function SubagentsPanel() {
   );
 }
 
+// Siblings of one delegation read under its task once, as they do in the transcript.
+function delegations(entries: readonly SubagentEntry[]): SubagentEntry[][] {
+  const runs: SubagentEntry[][] = [];
+  for (const entry of entries) {
+    const last = runs.at(-1);
+    if (last?.[0]?.delegationId === entry.delegationId) last.push(entry);
+    else runs.push([entry]);
+  }
+  return runs;
+}
+
 function SubagentGroup({ title, entries }: { title: string; entries: SubagentEntry[] }) {
   const workspaceAccess = useWorkspace();
 
   if (entries.length === 0) return null;
+  const link = (
+    { narrative, ordinal, siblingCount }: SubagentEntry,
+    taskLabel: string | undefined,
+  ) => (
+    <DelegatedRunLink
+      key={narrative.run.id}
+      run={narrative.run}
+      taskLabel={taskLabel}
+      ordinal={ordinal}
+      siblingCount={siblingCount}
+      onOpen={() => openWorkspaceSubagentRun(workspaceAccess, narrative.run.id)}
+    />
+  );
   return (
     <div {...stylex.props(styles.group)}>
       <SectionLabel className={stylex.props(styles.title).className}>
         {title} · {entries.length}
       </SectionLabel>
-      {entries.map(({ narrative, ordinal, siblingCount, taskLabel }) => (
-        <DelegatedRunLink
-          key={narrative.run.id}
-          run={narrative.run}
-          taskLabel={taskLabel}
-          ordinal={ordinal}
-          siblingCount={siblingCount}
-          onOpen={() => openWorkspaceSubagentRun(workspaceAccess, narrative.run.id)}
-        />
-      ))}
+      {delegations(entries).map((members) => {
+        const [first] = members;
+        if (!first || first.siblingCount === 1 || !first.taskLabel)
+          return members.map((entry) => link(entry, entry.taskLabel));
+        return (
+          <div
+            key={first.narrative.run.id}
+            role="group"
+            aria-label={first.taskLabel}
+            {...stylex.props(styles.delegation)}
+          >
+            <span aria-hidden {...stylex.props(styles.delegationTitle, vocab.muted, typeStep.uiSm)}>
+              {first.taskLabel}
+            </span>
+            {members.map((entry) => link(entry, undefined))}
+          </div>
+        );
+      })}
     </div>
   );
 }
