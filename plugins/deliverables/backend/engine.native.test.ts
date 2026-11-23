@@ -3,7 +3,14 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { expect, it } from "vitest";
 import { Engine } from "./engine";
-import { catalog, createFile, exportCSV, inspectFile } from "./formats";
+import {
+  catalog,
+  createFile,
+  editFile,
+  exportCSV,
+  inspectFile,
+  layoutFile,
+} from "./formats";
 import { LIMITS } from "../contracts/limits";
 
 // Explicit host qualification uses the same production owner and confinement.
@@ -70,6 +77,126 @@ native(
           exportCSV(result.bytes, "xl/worksheets/sheet1.xml"),
         ).toString("utf8"),
       ).toContain("212");
+    } finally {
+      await engine.close();
+      await rm(data, { recursive: true, force: true });
+    }
+  },
+  LIMITS.processMs + 10_000,
+);
+
+native(
+  "renders a presentation after element, chart-data and slide edits with the real confined toolchain",
+  async () => {
+    const data = await mkdtemp(
+      join(await realpath(tmpdir()), "flame-deliverables-native-"),
+    );
+    const engine = new Engine(process.env, data);
+    try {
+      const created = await createFile(
+        "pptx",
+        JSON.stringify({
+          title: "Edited review",
+          slides: [
+            {
+              title: "Revenue",
+              elements: [
+                {
+                  type: "text",
+                  x: 0.5,
+                  y: 0.5,
+                  width: 9,
+                  height: 1,
+                  text: "Revenue grew",
+                },
+                {
+                  type: "chart",
+                  chart: "bar",
+                  x: 1,
+                  y: 2,
+                  width: 8,
+                  height: 4,
+                  series: [
+                    {
+                      name: "Revenue (USD million)",
+                      labels: ["Q1", "Q2"],
+                      values: [100, 112],
+                    },
+                  ],
+                },
+              ],
+              notes: "Explain the growth",
+            },
+            {
+              title: "Appendix",
+              elements: [
+                {
+                  type: "text",
+                  x: 0.5,
+                  y: 0.5,
+                  width: 9,
+                  height: 1,
+                  text: "Appendix detail",
+                },
+              ],
+            },
+          ],
+        }),
+      );
+      const [first, second] = layoutFile(created).slides;
+      const title = first!.elements.find((element) => element.kind === "text")!;
+      const chart = first!.elements.find((element) => element.kind === "chart")!;
+      const edited = await editFile(
+        "pptx",
+        created,
+        JSON.stringify({
+          operations: [
+            {
+              type: "setFrame",
+              id: title.id,
+              expect: title.frame,
+              frame: { ...title.frame!, y: title.frame!.y + 457200 },
+            },
+            {
+              type: "replaceText",
+              id: title.text[0]!.id,
+              expect: "Revenue grew",
+              text: "Revenue grew 12%",
+            },
+            {
+              type: "setChartData",
+              id: chart.id,
+              expect: chart.chart!.data,
+              data: {
+                categories: ["North", "South"],
+                series: [{ name: "Converted", values: [720, 806.4] }],
+              },
+            },
+          ],
+        }),
+      );
+      const restructured = await editFile(
+        "pptx",
+        edited,
+        JSON.stringify({
+          operations: [
+            { type: "duplicateSlide", id: first!.id },
+            { type: "deleteSlide", id: second!.id },
+          ],
+        }),
+      );
+      const result = await engine.render(
+        "pptx",
+        restructured,
+        new AbortController().signal,
+      );
+      expect(result.report.pages).toHaveLength(2);
+      expect(
+        result.report.checks.filter((check) => check.severity === "error"),
+      ).toEqual([]);
+      const text = result.report.extractedText;
+      expect(text.split("Revenue grew 12%")).toHaveLength(3);
+      expect(text).not.toContain("Appendix detail");
     } finally {
       await engine.close();
       await rm(data, { recursive: true, force: true });
