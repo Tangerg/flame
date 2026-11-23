@@ -6,7 +6,7 @@ import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { t } from "@/lib/i18n/index";
 
-import { invalidateAgentSessions } from "@/features/agent/public/session";
+import { invalidateAgentSessions, sessionDisplayTitle } from "@/features/agent/public/session";
 
 import { runtimeCapability } from "@/features/connection/public/capabilities";
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
@@ -89,7 +89,7 @@ export function createConversationImport(
         notifications.show({
           level: "success",
           message: t("convExport.importSuccess", {
-            title: session.title?.trim() || t("session.untitled"),
+            title: sessionDisplayTitle(t, session.title),
           }),
         });
       } catch (error) {

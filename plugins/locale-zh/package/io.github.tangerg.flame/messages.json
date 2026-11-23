@@ -265,6 +265,7 @@
   "status.notifications": "通知",
   "status.notifications.unread_other": "{{count}} 条未读通知",
   "session.untitled": "未命名会话",
+  "session.draft": "新建会话",
   "session.action.pin": "置顶",
   "session.action.unpin": "取消置顶",
   "session.action.fork": "复刻",

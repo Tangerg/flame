@@ -256,6 +256,7 @@
   "status.notifications": "알림",
   "status.notifications.unread_other": "읽지 않은 알림 {{count}}건",
   "session.untitled": "제목 없는 세션",
+  "session.draft": "새 세션",
   "session.action.pin": "맨 위에 고정",
   "session.action.unpin": "고정 해제",
   "session.action.fork": "포크",

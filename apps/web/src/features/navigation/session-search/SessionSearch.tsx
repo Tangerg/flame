@@ -6,7 +6,7 @@ import { useT } from "@/lib/i18n/index";
 import { DataError, Icon, SearchOverlay, SkeletonList } from "@/ui/index";
 import { EmptyState } from "@flame/ui";
 
-import { useAgentSessions } from "@/features/agent/public/session";
+import { sessionDisplayTitle, useAgentSessions } from "@/features/agent/public/session";
 import { matchSessions } from "@/features/navigation/session-search/sessionMatches";
 import { useSessionSearchStore } from "@/features/navigation/session-search/sessionSearchState";
 import { color, leading, type as typeStep } from "@flame/ui/tokens.stylex";
@@ -62,7 +62,7 @@ export function SessionSearch() {
               children: (
                 <>
                   <Icon name="chat" size="sm" className={stylex.props(cmd.glyph).className} />
-                  <span {...stylex.props(cmd.label)}>{session.title}</span>
+                  <span {...stylex.props(cmd.label)}>{sessionDisplayTitle(t, session.title)}</span>
                   <span {...stylex.props(cmd.stamp, typeStep.uiSm)}>
                     {formatRelative(session.time)}
                   </span>

@@ -33,8 +33,12 @@ import {
 } from "@/ui/agent/index";
 import { AgentDockCatalog } from "@/ui/agent/index";
 import { AgentDockToggle, AgentSurfaceHeader } from "@/ui/agent/index";
-import { useActiveSession, useActiveSessionId } from "@/features/agent/public/session";
-import { useAgentSessions } from "@/features/agent/public/session";
+import {
+  sessionDisplayTitle,
+  useActiveSession,
+  useActiveSessionId,
+  useAgentSessions,
+} from "@/features/agent/public/session";
 import { registerComposerFocusPresentation } from "@/features/composer/public/focus";
 import {
   closeWorkspaceView,
@@ -254,7 +258,7 @@ function ConversationContent({
       <AgentSurfaceHeader corner="window">
         <SessionIdentity
           sessionId={sessionId}
-          title={session?.title.trim() || t("sidebar.action.newSession")}
+          title={session ? sessionDisplayTitle(t, session.title) : t("session.draft")}
           workspacePath={session?.workspace.path}
           detail={<RunStatusPill />}
         />

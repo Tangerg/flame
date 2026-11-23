@@ -262,6 +262,7 @@
   "status.notifications.unread_one": "{{count}} ungelesene Benachrichtigung",
   "status.notifications.unread_other": "{{count}} ungelesene Benachrichtigungen",
   "session.untitled": "Unbenannte Sitzung",
+  "session.draft": "Neue Sitzung",
   "session.action.pin": "Oben anpinnen",
   "session.action.unpin": "Loslösen",
   "session.action.fork": "Verzweigen",

@@ -189,6 +189,7 @@ function SearchOverlayContent({
           <Icon name="search" size="md" />
           <Autocomplete.Input
             render={<TextField variant="bare" />}
+            data-chrome-focus=""
             autoFocus={open}
             onKeyDown={(event) => {
               if (isImeKey(event.nativeEvent)) event.preventBaseUIHandler();

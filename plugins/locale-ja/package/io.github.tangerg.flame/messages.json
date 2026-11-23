@@ -256,6 +256,7 @@
   "status.notifications": "通知",
   "status.notifications.unread_other": "未読の通知 {{count}} 件",
   "session.untitled": "無題のセッション",
+  "session.draft": "新規セッション",
   "session.action.pin": "上部にピン留め",
   "session.action.unpin": "ピン留めを解除",
   "session.action.fork": "フォーク",

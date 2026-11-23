@@ -5,6 +5,7 @@ import { PluginBoundary } from "@/extensions/host/PluginBoundary";
 import { ModalDialog } from "@flame/ui";
 import { presentationTitle } from "@/lib/i18n/presentationTitle";
 import { useLocale, useT } from "@/lib/i18n/index";
+import { sessionDisplayTitle } from "@/features/agent/public/session";
 export function SessionActionDialog({
   action,
   session,
@@ -22,7 +23,7 @@ export function SessionActionDialog({
     <ModalDialog
       open
       title={title}
-      description={session.title.trim() || t("session.untitled")}
+      description={sessionDisplayTitle(t, session.title)}
       closeLabel={t("common.close")}
       size="lg"
       finalFocus={finalFocus}

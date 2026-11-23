@@ -300,6 +300,7 @@ export const en: Record<string, string> = {
   "status.notifications.unread_one": "{{count}} unread notification",
   "status.notifications.unread_other": "{{count}} unread notifications",
   "session.untitled": "Untitled session",
+  "session.draft": "New session",
   "session.action.pin": "Pin to top",
   "session.action.unpin": "Unpin",
   "session.action.fork": "Fork",

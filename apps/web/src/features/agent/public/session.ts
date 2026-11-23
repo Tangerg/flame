@@ -16,6 +16,7 @@ export {
   type AgentSessionSummary,
 } from "@/features/agent/application/session/sessionQueries";
 export { useCreateSession } from "@/features/agent/application/session/createSession";
+export { sessionDisplayTitle } from "@/features/agent/presentation/sessionTitle";
 export { useDeleteSession } from "@/features/agent/application/session/deleteSession";
 export { useToggleFavorite } from "@/features/agent/application/session/favoriteSession";
 export { useForkSession } from "@/features/agent/application/session/forkSession";

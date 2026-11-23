@@ -268,6 +268,7 @@
   "status.notifications.unread_many": "{{count}} de notifications non lues",
   "status.notifications.unread_other": "{{count}} notifications non lues",
   "session.untitled": "Session sans titre",
+  "session.draft": "Nouvelle session",
   "session.action.pin": "Épingler en haut",
   "session.action.unpin": "Désépingler",
   "session.action.fork": "Bifurquer",

@@ -17,6 +17,7 @@ import { presentationTitle } from "@/lib/i18n/presentationTitle";
 import { useLocale, useT } from "@/lib/i18n/index";
 import { formatRelative } from "@/lib/i18n/relativeTime";
 import { type WorkSession } from "@/features/navigation/public/workIndex";
+import { sessionDisplayTitle } from "@/features/agent/public/session";
 import {
   sessionIsRunning,
   sessionIsWaiting,
@@ -69,7 +70,7 @@ export function SessionRow({
       : undefined;
   const when = formatRelative(session.time);
   const accessibleStatus = attentionLabel ? `${attentionLabel} · ${when}` : when;
-  const title = session.title.trim() || t("session.untitled");
+  const title = sessionDisplayTitle(t, session.title);
 
   const menu: {
     id: string;
