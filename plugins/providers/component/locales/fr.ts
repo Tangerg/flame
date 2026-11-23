@@ -30,7 +30,7 @@ export const fr: Record<string, string> = {
   "providers.models.refresh": "Actualiser les modèles",
   "providers.empty": "Aucun fournisseur",
   "providers.empty.sub":
-    "Le runtime ne signale aucun fournisseur LLM pris en charge.",
+    "Le Runtime ne signale aucun fournisseur LLM pris en charge.",
   "providers.apiKey.envPlaceholder":
     "Clé d'environnement utilisée — saisissez pour la remplacer",
   "providers.fromEnv": "depuis l'environnement",

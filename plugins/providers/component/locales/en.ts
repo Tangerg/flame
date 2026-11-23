@@ -31,7 +31,7 @@ export const en: Record<string, string> = {
   "providers.models.error": "Couldn't load models.",
   "providers.models.refresh": "Refresh models",
   "providers.empty": "No providers",
-  "providers.empty.sub": "The runtime reports no supported LLM providers.",
+  "providers.empty.sub": "The Runtime reports no supported LLM providers.",
   "providers.utility.title": "Utility model",
   "providers.utility.desc":
     "Model for summaries, titles, and fact extraction. Uses the Runtime default when unset. Changes apply to the next utility call, including in an existing run.",

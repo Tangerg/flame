@@ -65,7 +65,7 @@ export const en: Record<string, string> = {
   "mcp.importing": "Importing…",
   "mcp.import.ok_one": "Imported {{count}} server",
   "mcp.import.ok_other": "Imported {{count}} servers",
-  "mcp.import.renamed": "Renamed to match what the runtime accepts: {{names}}",
+  "mcp.import.renamed": "Renamed to match what the Runtime accepts: {{names}}",
   "mcp.import.interrupted":
     "Imported {{count}} of {{total}} servers before the Runtime connection changed.",
   "mcp.import.partial": "Imported {{count}} of {{total}} servers.",

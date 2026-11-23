@@ -274,7 +274,7 @@ export const en: Record<string, string> = {
   "goal.error.update": "Could not update the goal",
   "slash.goal": "Set a goal the agent keeps pursuing",
   "goal.error.unavailable":
-    "No goal can be set right now — this runtime may not support goals, or one is already running",
+    "No goal can be set right now — this Runtime may not support goals, or one is already running",
   "goal.replace.title": "Replace the current goal?",
   "goal.replace.confirm": "Replace goal",
   "goal.replace.body": "“{{objective}}” ends here. The conversation is kept.",
@@ -312,10 +312,10 @@ export const en: Record<string, string> = {
   "toolInspector.arguments": "Arguments",
   "toolInspector.result": "Result",
   "toolInspector.noResult": "(no result body — tool returned empty)",
-  "runtime.unsupported.title": "Not supported by this runtime",
-  "runtime.unsupported.sub": "The connected runtime doesn't expose this capability yet.",
+  "runtime.unsupported.title": "Not supported by this Runtime",
+  "runtime.unsupported.sub": "The connected Runtime doesn't expose this capability yet.",
   "dataView.error.title": "Couldn't load",
-  "dataView.error.sub": "The runtime didn't answer this request. Check the connection and retry.",
+  "dataView.error.sub": "The Runtime didn't answer this request. Check the connection and retry.",
   "welcome.title": "What should we build?",
   "welcome.projectTitle": "What should we build in <projectSelect>{{project}}?</projectSelect>",
   "composer.project.choose": "Choose project",
@@ -376,7 +376,7 @@ export const en: Record<string, string> = {
   "approvals.stale": "Source changed",
   "approvals.forget": "Forget {{tool}}",
   "approvals.unavailable": "Approval controls unavailable",
-  "approvals.unavailable.sub": "This runtime doesn't expose approval-mode control.",
+  "approvals.unavailable.sub": "This Runtime doesn't expose approval-mode control.",
   "approvals.error.loadMode": "Couldn't load approval mode",
   "approvals.error.mode": "Couldn't change the approval mode.",
   "approvals.error.forget": "Couldn't clear the decision.",
@@ -447,9 +447,8 @@ export const en: Record<string, string> = {
   "settings.paperTexture.strength": "Texture strength",
   "settings.language.label": "Language",
   "settings.pane.connection": "Connection",
-  "settings.connection.title": "Backend",
-  "settings.connection.sub":
-    "Where the Flame runtime is reachable. Applying reconnects the desktop app.",
+  "settings.connection.title": "Runtime",
+  "settings.connection.sub": "Where the Flame Runtime is reachable. Applying reconnects.",
   "settings.connection.clearToken": "Clear token",
   "settings.connection.discardToken": "Discard token change",
   "settings.connection.tokenSet": "A token is set for the current Runtime address.",
@@ -463,7 +462,7 @@ export const en: Record<string, string> = {
   "settings.connection.url": "URL",
   "settings.connection.apply": "Apply",
   "settings.connection.reset": "Reset to default",
-  "settings.connection.status.checking": "Checking runtime…",
+  "settings.connection.status.checking": "Checking Runtime…",
   "settings.connection.status.reconnecting": "Reconnecting…",
   "agent.steer.accepted": "Accepted · waiting for model context",
   "agent.steer.pending": "Sending input",
@@ -489,7 +488,7 @@ export const en: Record<string, string> = {
   "settings.connection.status.degraded": "Degraded",
   "settings.connection.status.unhealthy": "Unhealthy",
   "settings.connection.status.unavailable": "Unavailable",
-  "settings.connection.status.timeout": "The runtime did not respond in time.",
+  "settings.connection.status.timeout": "The Runtime did not respond in time.",
   "settings.connection.status.refresh": "Refresh",
   "settings.connection.status.server": "Server",
   "settings.connection.status.protocol": "Protocol",
@@ -541,10 +540,10 @@ export const en: Record<string, string> = {
   "session.identity.copiedId": "Session ID copied",
   "session.status.waiting": "Needs input",
   "agent.loss.restart":
-    "The runtime stopped while this run was active, so its result was not saved.",
+    "The Runtime stopped while this run was active, so its result was not saved.",
   "agent.loss.isolatedWorkspace": "This run's isolated workspace does not survive a restart.",
   "agent.loss.workspaceUnavailable": "This run's workspace is no longer available.",
-  "agent.loss.otherBuild": "This run was waiting in state written by a different runtime version.",
+  "agent.loss.otherBuild": "This run was waiting in state written by a different Runtime version.",
   "agent.loss.waitingStateUnavailable": "This run's waiting state could not be restored.",
   "agent.loss.configurationChanged": "This run's configuration changed while it was waiting.",
   "agent.loss.unresolvedEffects": "External operations from this run have no confirmed result.",
@@ -572,7 +571,7 @@ export const en: Record<string, string> = {
   "agent.unresolved.effectId": "Effect ID",
   "agent.unresolved.cause": "Left unconfirmed",
   "agent.unresolved.causes.termination": "When execution ended",
-  "agent.unresolved.causes.runtimeFailure": "When the runtime failed",
+  "agent.unresolved.causes.runtimeFailure": "When the Runtime failed",
   "agent.unresolved.reason": "Runtime diagnostic",
   "agent.unresolved.output": "Observed output (outcome unconfirmed)",
   "agent.runOutcome.canceled": "Canceled",
@@ -633,7 +632,7 @@ export const en: Record<string, string> = {
   "projects.error.sub": "Check the Runtime connection, then reopen the work index.",
   "convExport.import": "Import conversation from JSON",
   "convExport.importSuccess": "Imported “{{title}}”.",
-  "convExport.unsupported": "This runtime doesn't support session export or import.",
+  "convExport.unsupported": "This Runtime doesn't support session export or import.",
   "convExport.readFailed":
     "Couldn't read the selected file. Select it again or choose another JSON file.",
   "convExport.notJson":
@@ -701,7 +700,7 @@ export const en: Record<string, string> = {
     "Restore was refused to protect files not saved in the checkpoint. No files were changed.",
   "rpcError.prompt_source_too_large":
     "The instruction files exceed the size or count limit. Shorten them or use fewer files, then try again.",
-  "rpcError.workspace_unavailable": "That workspace does not exist on the runtime's disk.",
+  "rpcError.workspace_unavailable": "That workspace does not exist on the Runtime's disk.",
   "rpcError.vcs_unavailable": "This folder isn't a git repository.",
   "rpcError.rate_limited":
     "The model provider is rate-limiting requests — wait a moment, then retry.",
@@ -722,7 +721,7 @@ export const en: Record<string, string> = {
   "rpcError.idempotency_in_progress":
     "The command outcome is not yet known. Check the session before sending again; a new request could repeat an action that already completed.",
   "rpcError.internal_error":
-    "Something broke inside the runtime — retry, and check diagnostics if it keeps happening.",
+    "Something broke inside the Runtime — retry, and check diagnostics if it keeps happening.",
   "rpcError.mcp_authorization_attempt_not_found": "This sign-in attempt expired. Start again.",
   "rpcError.skill_not_found": "That skill is no longer in the library.",
   "rpcError.skill_unavailable":
@@ -737,10 +736,10 @@ export const en: Record<string, string> = {
   "rpcError.idempotency_conflict": "The same request was already made with different contents.",
   "rpcError.plugin_changed":
     "A plugin changed while the run was being prepared. Nothing was started — send again to retry.",
-  "rpcError.capability_not_negotiated": "The connected runtime doesn't offer this feature.",
+  "rpcError.capability_not_negotiated": "The connected Runtime doesn't offer this feature.",
   "rpcError.export_too_large": "This session is too large to export as one trajectory.",
   "rpcError.invalid_protocol_version":
-    "This runtime speaks a different protocol version — update Flame or the runtime.",
+    "This Runtime speaks a different protocol version — update Flame or the Runtime.",
   "rpcError.mcp_owned_by_installation":
     "A plugin provides this server — change it through the plugin instead.",
   "rpcError.plugin_in_use":
