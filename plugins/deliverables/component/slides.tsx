@@ -92,13 +92,13 @@ function inches(value: number): string {
   return String(Math.round((value / EMU_PER_INCH) * 1000) / 1000);
 }
 
+// Runs carry no paragraph boundaries, so joining them would fuse words.
 function excerpt(element: ElementView): string {
-  const text = element.text
-    .map((run) => run.text)
-    .join("")
-    .replace(/\s+/gu, " ")
-    .trim();
-  return text.length > 80 ? `${text.slice(0, 80)}…` : text;
+  const runs = element.text.filter((run) => run.text.trim());
+  const text = (runs[0]?.text ?? "").replace(/\s+/gu, " ").trim();
+  return text.length > 80 || runs.length > 1
+    ? `${text.slice(0, 80)}…`
+    : text;
 }
 
 function label(element: ElementView, t: Translate): string {
@@ -648,19 +648,28 @@ function Reconcile({
   );
 }
 
+export type DraftUpdate = (current: Draft | undefined) => Draft | undefined;
+
+// The workspace owns drafts by document, so reading another revision (which
+// unmounts this view while it loads) never discards unsubmitted intent.
 export function SlideStudio({
   state,
   document,
+  draft,
+  onDraft,
   t,
 }: {
   state: DeliverablesState;
   document: DocumentRead;
+  draft: Draft | undefined;
+  onDraft(update: DraftUpdate): void;
   t: Translate;
 }) {
   const documentId = document.document.id;
   const head = document.document.head;
   const viewed = document.revision.id;
-  const [draft, setDraft] = useState<Draft>();
+  const setDraft = (next: Draft | undefined | DraftUpdate) =>
+    onDraft(typeof next === "function" ? next : () => next);
   const [saving, setSaving] = useState(false);
   const [slideId, setSlideId] = useState<string>();
   const [elementId, setElementId] = useState<string>();
@@ -696,11 +705,11 @@ export function SlideStudio({
     .flatMap((entry) => entry.elements)
     .find((entry) => entry.id === elementId);
   const dirty = !!draft?.operations.length;
-  const changed = (id: string) =>
+  const changed = (target: ElementView) =>
     !!draft?.operations.some(
       (operation) =>
-        operation.id === id ||
-        original?.text.some((run) => run.id === operation.id),
+        operation.id === target.id ||
+        target.text.some((run) => run.id === operation.id),
     );
 
   const change = (operation: DraftOperation, target?: ElementView) => {
@@ -902,7 +911,7 @@ export function SlideStudio({
                 >
                   {t(`slides.kind.${entry.kind}`)} · {label(entry, t)}
                   {!entry.frame && ` · ${t("slides.noFrame")}`}
-                  {changed(entry.id) && <Badge>{t("slides.changed")}</Badge>}
+                  {changed(entry) && <Badge>{t("slides.changed")}</Badge>}
                 </Button>
               ))}
             </RecordGroup>
@@ -966,7 +975,7 @@ export function SlideStudio({
                     {t("slides.delete")}
                   </Button>
                   <Button
-                    disabled={!editing || !changed(element.id) || !original}
+                    disabled={!editing || !changed(element) || !original}
                     onClick={() => {
                       if (original)
                         setDraft((current) => current && revert(current, original));
@@ -988,7 +997,7 @@ export function SlideStudio({
                     {t("slides.reference")}
                   </Button>
                 </Toolbar>
-                {changed(element.id) && (
+                {changed(element) && (
                   <Metadata>{t("slides.reference.unsaved")}</Metadata>
                 )}
                 {copied && (

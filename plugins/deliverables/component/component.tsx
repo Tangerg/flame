@@ -40,6 +40,7 @@ import {
 } from "./archive";
 import { ImportForm } from "./importing";
 import { SlideStudio } from "./slides";
+import type { Draft } from "./slides-draft";
 import { EvidencePanel, Findings } from "./evidence";
 import {
   useDeliverables,
@@ -614,6 +615,7 @@ function Workspace({
     [locale],
   );
   const state = useDeliverables(context);
+  const [slideDrafts, setSlideDrafts] = useState<Record<string, Draft>>({});
   const bodyViewport = useRef<HTMLDivElement>(null);
   const archiveSearchField = useRef<HTMLInputElement>(null);
   const archiveOrigin = useRef<{
@@ -750,6 +752,15 @@ function Workspace({
           key={document.document.id}
           state={state}
           document={document}
+          draft={slideDrafts[document.document.id]}
+          onDraft={(update) => {
+            const id = document.document.id;
+            setSlideDrafts((all) => {
+              const { [id]: current, ...rest } = all;
+              const next = update(current);
+              return next ? { ...rest, [id]: next } : rest;
+            });
+          }}
           t={t}
         />
       )}
