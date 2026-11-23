@@ -21,23 +21,22 @@ export const visualLocalePackages = definePlugin<{}, {}>({
         throw error;
       },
     );
-    await reconcile(
-      Object.entries(declarations).flatMap(([path, declaration]) =>
-        declaration.contributes.locales.map((locale) => ({
-          key: path,
-          tag: locale.tag,
-          title: locale.title,
-          async load(signal: AbortSignal) {
-            const entry =
-              path.slice(0, path.lastIndexOf("/io.github.tangerg.flame/")) + "/" + locale.entry;
-            const read = dictionaries[entry];
-            if (!read) throw new Error(`locale catalog is unavailable: ${entry}`);
-            const dictionary = await read();
-            signal.throwIfAborted();
-            return dictionary;
-          },
-        })),
-      ),
+    const sources = Object.entries(declarations).flatMap(([path, declaration]) =>
+      declaration.contributes.locales.map((locale) => ({
+        key: path,
+        tag: locale.tag,
+        title: locale.title,
+        async load(signal: AbortSignal) {
+          const entry =
+            path.slice(0, path.lastIndexOf("/io.github.tangerg.flame/")) + "/" + locale.entry;
+          const read = dictionaries[entry];
+          if (!read) throw new Error(`locale catalog is unavailable: ${entry}`);
+          const dictionary = await read();
+          signal.throwIfAborted();
+          return dictionary;
+        },
+      })),
     );
+    await reconcile(sources, new Set(sources.map((source) => source.tag)));
   },
 });

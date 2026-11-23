@@ -43,9 +43,9 @@ function contributeLocale(
 export function createLocaleReconciler(
   scope: ContributionScope,
   report: (error: Error) => void,
-): (sources: readonly LocaleSource[]) => Promise<void> {
+): (sources: readonly LocaleSource[], offered: ReadonlySet<string>) => Promise<void> {
   const current = new Map<string, { signature: string; lifetime: ContributionScope }>();
-  return async (sources) => {
+  return async (sources, offered) => {
     const byTag = new Map<string, LocaleSource[]>();
     for (const source of sources) {
       const group = byTag.get(source.tag) ?? [];
@@ -82,6 +82,6 @@ export function createLocaleReconciler(
         load: (signal) => source.load(signal),
       });
     }
-    retireProvisionalLocale(new Set(byTag.keys()));
+    retireProvisionalLocale(offered);
   };
 }

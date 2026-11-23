@@ -116,6 +116,13 @@ function createPackageReconciler(
   );
   return async (installations: PluginInstallation[]) => {
     const admitted = installations.filter((item) => item.presentation === "admitted");
+    // A withheld but enabled package is still the user's language source; only
+    // disabling or removing it retires the dictionary kept from the last launch.
+    const offered = new Set(
+      installations
+        .filter((item) => item.enabled)
+        .flatMap((item) => item.selected.locales.map((locale) => locale.tag)),
+    );
     await reconcileLocales(
       admitted.flatMap((installation) =>
         installation.selected.locales.map((locale) => {
@@ -133,6 +140,7 @@ function createPackageReconciler(
           };
         }),
       ),
+      offered,
     );
     retainThemeSelection(
       themeAccess.preference,
