@@ -6,6 +6,19 @@ The preceding work resumed at the user's request on 2026-11-19. Current Wails ch
 
 This user-requested file is the maintained progress and handoff record for the desktop UI work. Update its sections in place as the product changes. Git history retains the chronology; keep progress organized by product area rather than numbered rounds or additional progress files.
 
+## Live Runtime workbench pass (2026-11-24)
+
+A second polish track ran against a real, isolated Runtime (`FLAME_HOME` under `/tmp`, local-token gate off, DeepSeek) with the Vite workbench in the built-in browser, instead of the Lab. Each item below was reproduced in that workbench, fixed at its owner, re-observed and pushed to main.
+
+- **Full-page views and the collapsed Dock.** Settings and every other full-page view render inside the Dock panel, and the collapsed-Dock rule hid that surface in every presentation. With no Session the Dock is always collapsed, so Settings opened blank, including from the Runtime-unavailable notice. The rule now applies only to the Dock presentation (`64ad1fe7f`).
+- **Session display title.** `sessionDisplayTitle` owns "title or Untitled". Session search no longer renders untitled sessions as blank rows, and the header no longer borrows the sidebar's New session label; its draft state has `session.draft`. zh-TW names a Session 工作階段 throughout, and the search overlay's bare query field no longer draws its own focus ring (`6b272ebc7`).
+- **Runtime connection budget.** Browsers allow six HTTP/1.1 connections per origin. An idle workbench held all six: an unused `plugins.openResources` lease stream per component module and a `runtime.subscribe` stream per live consumer, including each plugin component. Health probes timed out, the Runtime was reported unavailable and every stream was rebuilt every 40 s. Topic-only subscribers now share one change-feed stream (`runtime-client` `runtimeEventFeed.ts`, per-subscriber inbox and contiguous sequence), component modules hold no Runtime resource, and a Realm admits one component acquisition at a time because Frame returns a grant only after the page's own control pump prepares it. Six concurrent requests went from 13–34 s to 3–4 ms (`3c0005e91`). Two workbench pages in one browser share the same six connections. The Frame protocol limits are in `docs/audit/upstream-issues.md`.
+- **Startup language.** Dictionaries arrive with installed locale packages after `plugins.list`, so each launch rendered about 1.6 s of English. The active dictionary is kept from the previous launch, keyed by its exact package source, mounted provisionally before the first render, replaced when the package mounts and retired only when no enabled installation offers the language (`51d0d7f0a`, `0d3c8361e`).
+- **One name for the Runtime.** The Connection pane is titled Runtime, not Backend, with a host-neutral description; English, French and Spanish catalogs and the computer, MCP and providers components write Runtime consistently (`d90c6ab20`).
+- **Installed packages.** Configure inputs appears only when the selected release declares inputs, servers or skills; only the Disabled state is marked, without a trailing full stop (`3e189894b`). MCP servers that report zero tools no longer offer an empty tool disclosure (`133e95b05`).
+
+Open from this pass: after a Runtime crash and a page reload, plugin recovery waits for browser uses that only the lost Realm can prove, so every package stays withheld and Settings misreports "files failed verification"; and the vestigial `plugins.openResources` contract still exists server-side. Both are proposed as separate sessions.
+
 ## Target behavior infrastructure migration (2026-11-17)
 
 The newly supplied desktop report
