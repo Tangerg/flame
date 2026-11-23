@@ -19,10 +19,11 @@ export function BannerAction({
   disabled?: boolean;
   pending?: boolean;
 }) {
+  // One filled recovery action; the alternatives stay quiet so the banner does not read as tags.
   return (
     <Button
       size="xs"
-      variant={primary ? "tonal" : "soft"}
+      variant={primary ? "tonal" : "ghost"}
       tone={primary ? tone : undefined}
       onClick={onClick}
       disabled={disabled}

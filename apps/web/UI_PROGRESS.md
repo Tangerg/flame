@@ -50229,6 +50229,20 @@ context.locale)`, threads the translator (and active locale) into sub-components
   single-token `<code>` data and translated expression props. The one remaining open item is
   native host acceptance of the localized dock views, which only the user can perform.
 
+### One filled recovery action in workbench banners (2026-11-24)
+
+The run-error banner drew Retry, Inspect context and Diagnostics as three
+filled pills with icons. Alternatives read as peers of the recovery, and the
+row read as tags. `BannerAction` keeps the tonal fill for the primary
+action and renders alternatives as ghost buttons. `RunErrorBanner` stops
+passing icons to the alternatives, so only Retry keeps its glyph. The
+missing-folder banner (`CwdMissingBanner`) already has one primary action
+and is unchanged; its edit row's Cancel is now quiet beside Apply. Native
+`error-retryable` in EN/light and ZH/dark shows `↻ Retry` filled and
+`Inspect context` / `Diagnostics` as text. The selectable `provider_error`
+code stays beside the title as the exact failure identity. Web typecheck
+passes.
+
 ## Conversation/transcript surface audit
 
 A deep audit of the chat stream (message blocks, narrative rails, plan progress,
