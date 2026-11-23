@@ -74,84 +74,8 @@ func remoteDeletionConnection(t *testing.T, malformed bool) (
 	if err != nil {
 		t.Fatal(err)
 	}
-	var mu sync.Mutex
-	var keys []string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/v2/rpc" || request.Header.Get("Authorization") != "Bearer test-token" {
-			t.Errorf("remote request path/auth = %s, %t", request.URL.Path, request.Header.Get("Authorization") != "")
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		body, err := io.ReadAll(request.Body)
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		var envelope struct {
-			ID     jsontext.Value `json:"id"`
-			Method string         `json:"method"`
-			Params jsontext.Value `json:"params"`
-		}
-		if err := json.Unmarshal(body, &envelope); err != nil {
-			t.Error(err)
-			return
-		}
-		var result any
-		switch envelope.Method {
-		case "runtime.discover":
-			result, err = target.Discover(request.Context(), protocol.CallOptions{RequestMeta: requestMeta("test")})
-		case "sessions.delete":
-			var parameters protocol.DeleteSessionRequest
-			if err := json.Unmarshal(envelope.Params, &parameters); err != nil {
-				t.Error(err)
-				return
-			}
-			key := request.Header.Get("Idempotency-Key")
-			err = target.DeleteSession(request.Context(), parameters, protocol.CommandOptions{
-				RequestMeta: requestMeta("test"), IdempotencyKey: key,
-				IdempotencyNamespace: request.Header.Get("Idempotency-Namespace"),
-			})
-			mu.Lock()
-			keys = append(keys, key)
-			attempt := len(keys)
-			mu.Unlock()
-			if err == nil && attempt == 1 {
-				if malformed {
-					w.Header().Set("Content-Type", "application/json")
-					_, _ = io.WriteString(w, `{}`)
-					return
-				}
-				transport, _, hijackErr := w.(http.Hijacker).Hijack()
-				if hijackErr != nil {
-					t.Error(hijackErr)
-					return
-				}
-				_ = transport.Close()
-				return
-			}
-			result = struct{}{}
-		default:
-			t.Errorf("unexpected remote operation %s", envelope.Method)
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if err != nil {
-			t.Error(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		encoded, err := json.Marshal(struct {
-			JSONRPC string         `json:"jsonrpc"`
-			ID      jsontext.Value `json:"id"`
-			Result  any            `json:"result"`
-		}{JSONRPC: "2.0", ID: envelope.ID, Result: result})
-		if err != nil {
-			t.Error(err)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(encoded)
-	}))
+	remote := &remoteDeletionServer{t: t, target: target, malformed: malformed}
+	server := httptest.NewServer(remote)
 	t.Cleanup(server.Close)
 	owner := NewOwner(Config{RemoteToken: "test-token", ClientVersion: "test"})
 	t.Cleanup(func() {
@@ -163,9 +87,107 @@ func remoteDeletionConnection(t *testing.T, malformed bool) (
 	if err != nil {
 		t.Fatal(err)
 	}
-	return target, owner, connection, *created, func() []string {
-		mu.Lock()
-		defer mu.Unlock()
-		return append([]string(nil), keys...)
+	return target, owner, connection, *created, remote.attemptKeys
+}
+
+// remoteDeletionServer serves the Runtime over JSON-RPC and loses the first
+// successful deletion reply (a dropped connection, or a malformed body), so
+// the client must retry with the same idempotency key.
+type remoteDeletionServer struct {
+	t         *testing.T
+	target    *flameruntime.Runtime
+	malformed bool
+	mu        sync.Mutex
+	keys      []string
+}
+
+func (s *remoteDeletionServer) attemptKeys() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]string(nil), s.keys...)
+}
+
+func (s *remoteDeletionServer) ServeHTTP(w http.ResponseWriter, request *http.Request) {
+	if request.URL.Path != "/v2/rpc" || request.Header.Get("Authorization") != "Bearer test-token" {
+		s.t.Errorf("remote request path/auth = %s, %t", request.URL.Path, request.Header.Get("Authorization") != "")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
 	}
+	var envelope struct {
+		ID     jsontext.Value `json:"id"`
+		Method string         `json:"method"`
+		Params jsontext.Value `json:"params"`
+	}
+	if err := json.UnmarshalRead(request.Body, &envelope); err != nil {
+		s.t.Error(err)
+		return
+	}
+	var result any
+	var err error
+	switch envelope.Method {
+	case "runtime.discover":
+		result, err = s.target.Discover(request.Context(), protocol.CallOptions{RequestMeta: requestMeta("test")})
+	case "sessions.delete":
+		var lost bool
+		if lost, err = s.deleteSession(w, request, envelope.Params); lost {
+			return
+		}
+		result = struct{}{}
+	default:
+		s.t.Errorf("unexpected remote operation %s", envelope.Method)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		s.t.Error(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	s.writeResult(w, envelope.ID, result)
+}
+
+// deleteSession reports whether it deliberately lost the reply.
+func (s *remoteDeletionServer) deleteSession(w http.ResponseWriter, request *http.Request, params jsontext.Value) (bool, error) {
+	var parameters protocol.DeleteSessionRequest
+	if err := json.Unmarshal(params, &parameters); err != nil {
+		return false, err
+	}
+	key := request.Header.Get("Idempotency-Key")
+	err := s.target.DeleteSession(request.Context(), parameters, protocol.CommandOptions{
+		RequestMeta: requestMeta("test"), IdempotencyKey: key,
+		IdempotencyNamespace: request.Header.Get("Idempotency-Namespace"),
+	})
+	s.mu.Lock()
+	s.keys = append(s.keys, key)
+	attempt := len(s.keys)
+	s.mu.Unlock()
+	if err != nil || attempt != 1 {
+		return false, err
+	}
+	if s.malformed {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{}`)
+		return true, nil
+	}
+	transport, _, hijackErr := w.(http.Hijacker).Hijack()
+	if hijackErr != nil {
+		s.t.Error(hijackErr)
+		return true, nil
+	}
+	_ = transport.Close()
+	return true, nil
+}
+
+func (s *remoteDeletionServer) writeResult(w http.ResponseWriter, id jsontext.Value, result any) {
+	encoded, err := json.Marshal(struct {
+		JSONRPC string         `json:"jsonrpc"`
+		ID      jsontext.Value `json:"id"`
+		Result  any            `json:"result"`
+	}{JSONRPC: "2.0", ID: id, Result: result})
+	if err != nil {
+		s.t.Error(err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_, _ = w.Write(encoded)
 }

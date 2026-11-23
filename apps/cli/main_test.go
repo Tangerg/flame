@@ -697,24 +697,11 @@ func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T)
 	environment := terminalTestEnvironment(t, map[string]string{
 		"FLAME_PROVIDER": "anthropic", "FLAME_MODEL": "claude-opus-5", "FLAME_APIKEY": "test-key",
 	})
-	var flameHome string
-	for _, entry := range environment {
-		if value, found := strings.CutPrefix(entry, "FLAME_HOME="); found {
-			flameHome = value
-			break
-		}
-	}
-	if flameHome == "" || flameHome == ambientHome {
-		t.Fatal("test process did not acquire an isolated product home")
-	}
+	flameHome := isolatedProductHome(t, environment, ambientHome)
 
-	profileOutput := runTestBinary(t, binary, environment, "runtime", "info", "--json")
-	var profile struct {
+	profile := decodeCommandJSON[struct {
 		Discovery protocol.DiscoverResponse `json:"discovery"`
-	}
-	if err := json.Unmarshal(profileOutput, &profile); err != nil {
-		t.Fatalf("decode in-process runtime profile: %v\n%s", err, profileOutput)
-	}
+	}](t, runTestBinary(t, binary, environment, "runtime", "info", "--json"), "in-process runtime profile")
 	if profile.Discovery.ProtocolVersion == "" || profile.Discovery.ServerInfo.Name == "" || len(profile.Discovery.Capabilities.RuntimeTopics) == 0 {
 		t.Fatalf("incomplete in-process runtime profile: %+v", profile)
 	}
@@ -728,13 +715,9 @@ func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T)
 
 	// A second process opening the same store proves the first process completed
 	// owner teardown and released the Runtime's store resources.
-	sessionsOutput := runTestBinary(t, binary, environment, "sessions", "ls", "--json")
-	var sessions struct {
+	sessions := decodeCommandJSON[struct {
 		Items []jsontext.Value `json:"items"`
-	}
-	if err := json.Unmarshal(sessionsOutput, &sessions); err != nil {
-		t.Fatalf("decode in-process session page: %v\n%s", err, sessionsOutput)
-	}
+	}](t, runTestBinary(t, binary, environment, "sessions", "ls", "--json"), "in-process session page")
 	if len(sessions.Items) != 0 {
 		t.Fatalf("fresh in-process runtime sessions = %d, want 0", len(sessions.Items))
 	}
@@ -742,6 +725,31 @@ func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T)
 	if err != nil || len(entries) != 0 {
 		t.Fatalf("child process changed the ambient product home: %v, %v", entries, err)
 	}
+}
+
+// isolatedProductHome is the FLAME_HOME the test environment assigns, which
+// must differ from the ambient home so the child cannot touch it.
+func isolatedProductHome(t *testing.T, environment []string, ambient string) string {
+	t.Helper()
+	for _, entry := range environment {
+		if value, found := strings.CutPrefix(entry, "FLAME_HOME="); found {
+			if value == "" || value == ambient {
+				break
+			}
+			return value
+		}
+	}
+	t.Fatal("test process did not acquire an isolated product home")
+	return ""
+}
+
+func decodeCommandJSON[T any](t *testing.T, output []byte, what string) T {
+	t.Helper()
+	var value T
+	if err := json.Unmarshal(output, &value); err != nil {
+		t.Fatalf("decode %s: %v\n%s", what, err, output)
+	}
+	return value
 }
 
 func runTestBinary(t *testing.T, binary string, environment []string, arguments ...string) []byte {
