@@ -45,15 +45,14 @@ export const MENU_SURFACE = stylex.create({
     cursor: "default",
     textAlign: "start",
     overflowWrap: "anywhere",
+    // Base UI moves the highlight with the pointer; a separate :hover wash would light a
+    // second row under a resting cursor while the keyboard moves the highlight elsewhere.
     backgroundColor: {
       default: "transparent",
-      ":hover:not(:disabled, [aria-disabled=true], [data-disabled])": {
-        "@media (hover: hover)": surface.hover,
-      },
       ":is([data-highlighted]):not(:disabled, [aria-disabled=true], [data-disabled])":
         surface.hover,
       ':is([aria-selected="true"])': surface.selected,
-      ':is([aria-selected="true"]):is(:hover, [data-highlighted]):not(:disabled, [aria-disabled=true], [data-disabled])':
+      ':is([aria-selected="true"]):is([data-highlighted]):not(:disabled, [aria-disabled=true], [data-disabled])':
         surface.selectedHover,
     },
     opacity: {

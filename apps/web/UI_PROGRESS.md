@@ -48343,6 +48343,22 @@ Verification and coverage for this repair:
   fast dismissal/focus continuity, retained-content popup retirement and the
   actual MCP failure/recovery boundary. The current goal remains active.
 
+### One highlighted row in menus and search overlays (2026-11-24)
+
+The command palette lit two adjacent rows with the same wash. The
+keyboard-active row carried `data-highlighted`, and the row under a resting
+cursor matched CSS `:hover`, so it was unclear which command Enter would
+run. `MENU_SURFACE.item` (`packages/ui/src/control-surface.ts`) painted both.
+Every consumer — action menu, Select, app menus, `SearchOverlay` and the
+catalog picker — is a Base UI item whose highlight already follows pointer
+movement. The separate `:hover` wash is removed, and the selected-row hover
+step keys off `[data-highlighted]` alone.
+
+Native `overlay=commands` with the cursor resting on `Go back`: only
+`Close panel or chat` is lit. Down then lights only `Go back`. In the Lab
+under Chromium, a real hover on `Go forward` moves `data-highlighted` there
+and clears the previous row. Published plugin resources are unchanged.
+
 ## Immediate popup dismissal and keyboard continuity
 
 Base UI marks a Menu Escape dismissal with `data-instant="dismiss"`. The shared
