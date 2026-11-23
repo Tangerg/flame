@@ -278,8 +278,6 @@ export const en: Record<string, string> = {
   "goal.replace.title": "Replace the current goal?",
   "goal.replace.confirm": "Replace goal",
   "goal.replace.body": "“{{objective}}” ends here. The conversation is kept.",
-  "tools.group.calls_one": "{{count}} call",
-  "tools.group.calls_other": "{{count}} calls",
   "tools.group.running_one": "{{count}} running",
   "tools.group.running_other": "{{count}} running",
   "tools.group.issues_one": "{{count}} issue",

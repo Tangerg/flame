@@ -8,7 +8,6 @@ export type ToolGroupPinnedState = boolean | null;
 
 interface ToolGroupModel {
   summary: string;
-  count: number;
   needsAttention: boolean;
   expanded: boolean;
 }
@@ -23,7 +22,6 @@ export function toolGroupModel(
   const expanded = pinned ?? (needsAttention && !superseded);
   return {
     summary: summarizeActivity(t, tools),
-    count: tools.length,
     needsAttention,
     expanded,
   };

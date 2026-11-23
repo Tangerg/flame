@@ -10,8 +10,7 @@ import {
 } from "@/features/chat/tools/application/toolGroupModel";
 import { ToolGroupMember } from "@/features/chat/tools/ui/ToolGroupMember";
 import { ToolActivitySummary } from "@/features/chat/tools/ui/ToolActivitySummary";
-import { space, type as typeStep } from "@flame/ui/tokens.stylex";
-import { vocab } from "@flame/ui";
+import { space } from "@flame/ui/tokens.stylex";
 interface ToolGroupRowsProps {
   tools: ToolCall[];
   expandedIds: Set<string>;
@@ -37,11 +36,6 @@ export function ToolGroup({ tools, expandedIds, onExpandedChange, superseded }: 
       shell="line"
       contentInset="rows"
       label={<ToolActivitySummary label={model.summary} tools={tools} />}
-      trailing={
-        <span {...stylex.props(vocab.faint, typeStep.uiXs)}>
-          {t("tools.group.calls", { count: model.count })}
-        </span>
-      }
       open={model.expanded}
       onOpenChange={setPinned}
     >

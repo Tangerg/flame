@@ -46618,6 +46618,13 @@ inset focus ring cut through trailing meta (`6 line|s`). The trigger now
 keeps `space.s1` at its end; its start edge stays on the prose axis. Native
 keyboard expansion of the Read row shows `6 lines` fully inside the ring.
 
+Second follow-up: standalone tool groups still repeated their per-kind summary
+as a trailing total (`3 search ›` … `3 calls`) on the far right edge.
+`ToolGroup` drops that trailing count, `toolGroupModel` drops its dead `count`,
+and `tools.group.calls` leaves all eight catalogs. Native `tool-search` reads
+`3 search ›`. Web typecheck, `check:locales` (936 keys) and Web contract tests
+(112) pass.
+
 ## Tool row action context
 
 Single and grouped Tool row actions now reference their existing visible summary.

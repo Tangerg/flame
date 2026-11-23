@@ -240,8 +240,6 @@
   "goal.replace.title": "Aktuelles Ziel ersetzen?",
   "goal.replace.body": "„{{objective}}“ endet hier. Die Unterhaltung bleibt erhalten.",
   "goal.replace.confirm": "Ziel ersetzen",
-  "tools.group.calls_one": "{{count}} Aufruf",
-  "tools.group.calls_other": "{{count}} Aufrufe",
   "tools.group.running_one": "{{count}} aktiv",
   "tools.group.running_other": "{{count}} aktiv",
   "tools.group.issues_one": "{{count}} Problem",

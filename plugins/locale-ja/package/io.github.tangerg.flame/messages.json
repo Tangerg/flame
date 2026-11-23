@@ -240,7 +240,6 @@
   "goal.replace.title": "現在の目標を置き換えますか？",
   "goal.replace.body": "「{{objective}}」はここで終了します。会話はそのまま残ります。",
   "goal.replace.confirm": "目標を置き換える",
-  "tools.group.calls_other": "{{count}} 件の呼び出し",
   "tools.group.running_other": "{{count}} 件実行中",
   "tools.group.issues_other": "{{count}} 件の問題",
   "tools.group.denied_other": "{{count}} 件拒否",
