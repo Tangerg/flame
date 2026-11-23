@@ -53,7 +53,7 @@ there is no claim of arbitrary Office feature support.
 | ------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
 | DOCX   | Rich text, headings, lists, tables, PNG/JPEG images, headers, footers, page numbers and references     | Replace exact text runs; append paragraphs                                                             |
 | XLSX   | Typed cells, formulas, styles, comments, tables, merges, freeze panes and editable bar/line/pie charts | Set exact cells; invalidate dependent caches; recalculate through LibreOffice; export one sheet as CSV |
-| PPTX   | Editable text, shapes, tables, charts, images, notes and masters                                       | Replace exact slide/notes text; reorder the original slides                                            |
+| PPTX   | Editable text, shapes, tables, charts, images, notes and masters                                       | Replace exact text; set element frames; delete elements; replace chart data; reorder, duplicate or delete slides |
 | PDF    | Produced by the actual Office renderer                                                                 | Import passive classic-xref PDFs; rotate/reorder pages; fill supported AcroForm fields                 |
 
 The catalog is the executable schema and limitation reference. Imported PDF object
@@ -91,6 +91,22 @@ text results have a 32 KiB UTF-8 limit. Structured tool results retain the compl
 original value, including native identities, provenance and original reports.
 The same pure command projection is used for the initial result and receipt
 recovery. Actual page images remain image content, outside this text budget.
+
+`slides` projects one PPTX revision from its native bytes in the confined format
+process: slide order, top-level element identities, frames in EMUs, text runs,
+notes and chart data. It is derived on each read and never stored, so every
+existing revision has it. A placeholder without its own frame reports the
+layout or master frame it inherits. Element identities are the slide part plus
+the element's `cNvPr` id; text-run identities remain the `replaceText` ids.
+
+Element edits name the exact source revision. `setFrame` and `setChartData`
+carry the value they replace as `expect`, so a stale value is refused instead
+of overwritten, while edits to other properties still apply on a later revision.
+`setChartData` keeps category and series counts. It regenerates an embedded chart
+workbook only when that workbook holds nothing but the chart's ranges; otherwise
+the edit is refused so Office's "Edit Data" cannot revert the chart. Duplicating
+a slide copies its notes and charts; deleting one removes only the parts that
+deletion disconnected and refuses slides that custom shows or links still use.
 
 `catalog` returns a short format, engine and limit overview. Request
 `{"format":"docx","section":"edit"}` for one original edit schema, or choose

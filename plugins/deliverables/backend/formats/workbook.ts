@@ -11,6 +11,7 @@ import {
   assertSafeFormula,
   OfficePackage,
   relationshipTarget,
+  relationshipsPath,
 } from "./archive";
 import { officeReport } from "./inspection";
 import { addWorkbookCharts } from "./workbook-charts";
@@ -209,7 +210,7 @@ export async function createWorkbook(json: string): Promise<Uint8Array> {
   return result;
 }
 
-function worksheetCells(document: XmlDocument): Map<string, XmlNode> {
+export function worksheetCells(document: XmlDocument): Map<string, XmlNode> {
   const result = new Map<string, XmlNode>();
   for (const node of document.nodes.filter(
     (node) => node.uri === namespaces.sheet && node.local === "c",
@@ -520,9 +521,7 @@ export function editWorkbook(archive: OfficePackage, json: string): Uint8Array {
       (node) => node.uri === namespaces.sheet && node.local === "tablePart",
     );
     if (tableParts.length) {
-      const name = part.slice(part.lastIndexOf("/") + 1);
-      const relPart = `${part.slice(0, part.lastIndexOf("/") + 1)}_rels/${name}.rels`;
-      const relations = archive.xml(relPart).root.children;
+      const relations = archive.xml(relationshipsPath(part)).root.children;
       for (const tablePart of tableParts) {
         const relation = relations.find(
           (node) =>

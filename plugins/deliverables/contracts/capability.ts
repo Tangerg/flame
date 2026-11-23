@@ -104,6 +104,12 @@ export const schemas = Object.freeze({
       .array(assessment.omit({ reportJSON: true }))
       .max(LIMITS.assessments),
   }),
+  slides: z.strictObject({
+    document: header,
+    revision: id,
+    sourceSha256: id,
+    layoutJSON: z.string().max(LIMITS.reportBytes),
+  }),
   assessmentInput: selected.extend({ assessmentId: id }),
   historyInput: page.extend({ id }),
   history: z.strictObject({
@@ -204,6 +210,14 @@ export const definitions = [
     "Inspect a deliverable and exact native revision, its editable item identities and source-bound checks. Omitting revision reads the current head once.",
     schemas.readInput,
     schemas.read,
+    "model",
+  ),
+  method(
+    "slides",
+    "query",
+    "Project a PPTX revision's slides, element identities, frames, text runs, notes and chart data from its native bytes. Omitting revision reads the current head once. Use these identities with expect values in catalog-defined presentation edits.",
+    schemas.readInput,
+    schemas.slides,
     "model",
   ),
   method(

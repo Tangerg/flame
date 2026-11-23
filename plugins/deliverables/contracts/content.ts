@@ -355,6 +355,91 @@ export const presentationContentSchema = z.strictObject({
 });
 export type PresentationContent = z.infer<typeof presentationContentSchema>;
 
+// DrawingML coordinates are whole EMUs (914400 per inch) within ST_Coordinate.
+const coordinate = z.number().int().min(-27273042316900).max(27273042316900);
+const extent = z.number().int().min(0).max(27273042316900);
+export const frameSchema = z.strictObject({
+  x: coordinate,
+  y: coordinate,
+  width: extent,
+  height: extent,
+});
+export type Frame = z.infer<typeof frameSchema>;
+export const chartDataSchema = z.strictObject({
+  categories: z.array(shortText).min(1).max(1000),
+  series: z
+    .array(
+      z.strictObject({
+        name: shortText,
+        values: z.array(z.number().finite().nullable()).min(1).max(1000),
+      }),
+    )
+    .min(1)
+    .max(255),
+});
+export type ChartData = z.infer<typeof chartDataSchema>;
+export const CHART_TYPES = [
+  "bar",
+  "bar3D",
+  "line",
+  "line3D",
+  "pie",
+  "pie3D",
+  "doughnut",
+  "area",
+  "area3D",
+  "radar",
+] as const;
+const textRunSchema = z.strictObject({
+  id: z.string().min(1).max(1024),
+  text: z.string(),
+});
+export const slideLayoutSchema = z.strictObject({
+  width: extent,
+  height: extent,
+  slides: z.array(
+    z.strictObject({
+      id: z.string().min(1).max(1024),
+      number: z.number().int().min(1),
+      name: z.string(),
+      hidden: z.boolean(),
+      elements: z.array(
+        z.strictObject({
+          id: z.string().min(1).max(1024),
+          kind: z.enum([
+            "text",
+            "shape",
+            "picture",
+            "chart",
+            "table",
+            "group",
+            "connector",
+            "other",
+          ]),
+          name: z.string(),
+          frame: frameSchema.optional(),
+          frameSource: z.enum(["slide", "layout", "master"]).optional(),
+          rotation: z.number().finite().optional(),
+          text: z.array(textRunSchema),
+          chart: z
+            .strictObject({
+              type: z.enum(CHART_TYPES),
+              // "chart": the embedded workbook holds only these ranges and is
+              // rewritten with the data; "mixed": it holds more, so edits are refused.
+              workbook: z.enum(["none", "chart", "mixed"]),
+              data: chartDataSchema,
+            })
+            .optional(),
+        }),
+      ),
+      notes: z.array(textRunSchema),
+    }),
+  ),
+});
+export type SlideLayout = z.infer<typeof slideLayoutSchema>;
+export type SlideView = SlideLayout["slides"][number];
+export type ElementView = SlideView["elements"][number];
+
 const replaceText = z.strictObject({
   type: z.literal("replaceText"),
   id: z.string().min(1).max(1024),
@@ -365,6 +450,7 @@ const reorderSlides = z.strictObject({
   type: z.literal("reorderSlides"),
   ids: z.array(z.string().min(1).max(1024)).min(1).max(2000),
 });
+const elementId = z.string().min(1).max(1024);
 export const documentEditSchema = z.strictObject({
   operations: z
     .array(
@@ -397,10 +483,33 @@ export const workbookEditSchema = z.strictObject({
 });
 export const presentationEditSchema = z.strictObject({
   operations: z
-    .array(z.discriminatedUnion("type", [replaceText, reorderSlides]))
+    .array(
+      z.discriminatedUnion("type", [
+        replaceText,
+        reorderSlides,
+        z.strictObject({
+          type: z.literal("setFrame"),
+          id: elementId,
+          expect: frameSchema,
+          frame: frameSchema,
+        }),
+        z.strictObject({ type: z.literal("deleteElement"), id: elementId }),
+        z.strictObject({
+          type: z.literal("setChartData"),
+          id: elementId,
+          expect: chartDataSchema,
+          data: chartDataSchema,
+        }),
+        z.strictObject({ type: z.literal("duplicateSlide"), id: elementId }),
+        z.strictObject({ type: z.literal("deleteSlide"), id: elementId }),
+      ]),
+    )
     .min(1)
     .max(1000),
 });
+export type PresentationOperation = z.infer<
+  typeof presentationEditSchema
+>["operations"][number];
 export const PAGE_ROTATIONS = [0, 90, 180, 270] as const;
 
 export const pdfEditSchema = z.strictObject({

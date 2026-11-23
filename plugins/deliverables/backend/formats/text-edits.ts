@@ -5,7 +5,7 @@ import {
 } from "../../contracts/content";
 import { OfficePackage } from "./archive";
 import { textNodes, textParts } from "./inspection";
-import { escapeXML, openTag, patchXML, type XmlPatch } from "./xml";
+import { escapeXML, openTag, type XmlPatch } from "./xml";
 
 type ReplaceText = Extract<
   | z.infer<typeof documentEditSchema>["operations"][number]
@@ -13,12 +13,13 @@ type ReplaceText = Extract<
   { type: "replaceText" }
 >;
 
-export function replaceText(
+export function textPatches(
   archive: OfficePackage,
   operations: ReplaceText[],
-): void {
+): Map<string, XmlPatch[]> {
   const parts = new Set(textParts(archive));
-  const edits = new Map<string, { source: string; patches: XmlPatch[] }>();
+  const edits = new Map<string, XmlPatch[]>();
+  const runs = new Map<string, ReturnType<typeof textNodes>["nodes"]>();
   const seen = new Set<string>();
   for (const operation of operations) {
     if (seen.has(operation.id))
@@ -32,22 +33,30 @@ export function replaceText(
         "native text identifier does not belong to this document",
       );
     const part = match[1]!;
-    const { document, nodes } = textNodes(archive, part);
+    const nodes = runs.get(part) ?? textNodes(archive, part).nodes;
+    runs.set(part, nodes);
     const node = nodes[Number(match[2])];
     if (!node || node.children.length || node.text !== operation.expect)
       throw new Error(
         "native text precondition does not match the exact revision",
       );
-    const entry = edits.get(part) ?? { source: document.source, patches: [] };
-    entry.patches.push({
+    const patches = edits.get(part) ?? [];
+    patches.push({
       start: node.start,
       end: node.end,
       value: `${openTag(node, { ...node.attributes, "xml:space": "preserve" })}${escapeXML(operation.text)}</${node.name}>`,
     });
-    edits.set(part, entry);
+    edits.set(part, patches);
   }
-  for (const [part, edit] of edits)
-    archive.setXML(part, patchXML(edit.source, edit.patches));
+  return edits;
+}
+
+export function replaceText(
+  archive: OfficePackage,
+  operations: ReplaceText[],
+): void {
+  for (const [part, patches] of textPatches(archive, operations))
+    archive.patch(part, patches);
 }
 
 export function assertPermutation(

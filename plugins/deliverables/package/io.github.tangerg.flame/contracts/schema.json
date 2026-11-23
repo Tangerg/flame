@@ -2036,6 +2036,87 @@
       ],
       "type": "object"
     },
+    "SlidesV1Input": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "SlidesV1Output": {
+      "additionalProperties": false,
+      "properties": {
+        "document": {
+          "additionalProperties": false,
+          "properties": {
+            "createdAt": {
+              "maxLength": 40,
+              "minLength": 1,
+              "type": "string"
+            },
+            "format": {
+              "enum": [
+                "docx",
+                "xlsx",
+                "pptx",
+                "pdf"
+              ],
+              "type": "string"
+            },
+            "head": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "id": {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            "title": {
+              "maxLength": 180,
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "format",
+            "head",
+            "createdAt"
+          ],
+          "type": "object"
+        },
+        "layoutJSON": {
+          "maxLength": 1048576,
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        },
+        "sourceSha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document",
+        "revision",
+        "sourceSha256",
+        "layoutJSON"
+      ],
+      "type": "object"
+    },
     "UploadV1Input": {
       "additionalProperties": false,
       "properties": {

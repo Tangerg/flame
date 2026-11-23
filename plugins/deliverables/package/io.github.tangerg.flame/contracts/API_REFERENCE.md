@@ -20,6 +20,7 @@ Generated from the feature's Go-owned method contracts.
 | `flame.deliverables/remove.v1` | command | installation | Remove one deliverable and its native/derived bytes only if the expected current revision still matches. Original receipts remain and cannot resurrect removed content. |
 | `flame.deliverables/render.v1` | command | installation | Render the exact native revision through configured confined LibreOffice/Poppler. Record actual engine versions, PDF/page hashes and extraction checks; successful rendering does not establish visual correctness. |
 | `flame.deliverables/review.v1` | command | installation | Record the caller's visual review of enumerated pages from an exact render. This is attributed review evidence, not an automatic quality certification or approval to publish. |
+| `flame.deliverables/slides.v1` | query | installation | Project a PPTX revision's slides, element identities, frames, text runs, notes and chart data from its native bytes. Omitting revision reads the current head once. Use these identities with expect values in catalog-defined presentation edits. |
 | `flame.deliverables/upload.v1` | command | installation | Reserve a bounded native-file upload for the exact size and SHA-256. No host path or URL is read. |
 | `flame.deliverables/uploads.v1` | query | installation | Read admitted staging uploads and their current acknowledged offsets. Reselect only bytes matching the declared SHA-256 to resume. |
 

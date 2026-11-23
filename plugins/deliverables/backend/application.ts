@@ -110,7 +110,11 @@ export class Application {
     });
   }
 
-  query(operation: Operation, input: Input): unknown {
+  async query(
+    operation: Operation,
+    input: Input,
+    signal: AbortSignal,
+  ): Promise<unknown> {
     switch (operation) {
       case "catalog":
         return this.catalog();
@@ -136,6 +140,33 @@ export class Application {
       case "history": {
         const value = schemas.historyInput.parse(input);
         return this.#archive.history(value.id, value.before, value.limit);
+      }
+      case "slides": {
+        const value = schemas.readInput.parse(input);
+        const header = this.#archive.document(value.id).snapshot();
+        const source = this.#archive.revision(
+          value.id,
+          value.revision ?? header.head,
+        );
+        if (source.metadata.format !== "pptx")
+          throw new Refusal(
+            "invalid_format",
+            "slide projection requires a native PPTX revision",
+          );
+        const layoutJSON = canonicalJSON(
+          await this.#formats.slides(source.bytes, signal),
+        );
+        if (Buffer.byteLength(layoutJSON) > LIMITS.reportBytes)
+          throw new Refusal(
+            "report_capacity",
+            "slide projection exceeds its report capacity",
+          );
+        return schemas.slides.parse({
+          document: header,
+          revision: source.metadata.id,
+          sourceSha256: source.metadata.sha256,
+          layoutJSON,
+        });
       }
       case "uploads":
         return this.#archive.uploads();

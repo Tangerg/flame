@@ -4,13 +4,37 @@ import {
   presentationContentSchema,
   presentationEditSchema,
   type Inspection,
+  type PresentationOperation,
   type SlideElement,
 } from "../../contracts/content";
-import { OfficePackage, relationshipTarget } from "./archive";
+import { canonicalJSON } from "@frame/sdk/json";
+import { OfficePackage, relations, relationshipsPath } from "./archive";
+import { setChartData } from "./charts";
 import { imageBytes } from "./images";
 import { inspectOfficeText, officeReport } from "./inspection";
-import { assertPermutation, replaceText } from "./text-edits";
-import { attribute, namespaces, openTag, patchXML } from "./xml";
+import {
+  pruneParts,
+  reachableParts,
+  restructureSlides,
+} from "./slide-structure";
+import {
+  chartPart,
+  child,
+  elementFrame,
+  propertiesNode,
+  resolveElement,
+  slideList,
+  transformNode,
+} from "./slides";
+import { assertPermutation, textPatches } from "./text-edits";
+import {
+  namespaces,
+  openTag,
+  patchXML,
+  type XmlDocument,
+  type XmlNode,
+  type XmlPatch,
+} from "./xml";
 
 const CHART_COLORS = ["245B78", "39A597", "DF9D3A", "8B6FB3"];
 
@@ -259,39 +283,6 @@ export async function createPresentation(json: string): Promise<Uint8Array> {
   return archive.save();
 }
 
-function slideList(archive: OfficePackage) {
-  const document = archive.xml("ppt/presentation.xml");
-  const list = document.root.children.find(
-    (node) => node.uri === namespaces.presentation && node.local === "sldIdLst",
-  );
-  const relationships = archive.xml("ppt/_rels/presentation.xml.rels").root
-    .children;
-  if (!list) throw new Error("presentation has no slide list");
-  const slides = list.children.map((node) => {
-    const relation = relationships.find(
-      (relation) =>
-        relation.attributes.Id ===
-        attribute(node, namespaces.officeRelationships, "id"),
-    );
-    if (
-      node.uri !== namespaces.presentation ||
-      node.local !== "sldId" ||
-      !relation?.attributes.Type?.endsWith("/slide")
-    )
-      throw new Error("invalid presentation slide relationship");
-    return {
-      node,
-      id: relationshipTarget(
-        "ppt/presentation.xml",
-        relation.attributes.Target!,
-      ),
-    };
-  });
-  if (new Set(slides.map((slide) => slide.id)).size !== slides.length)
-    throw new Error("presentation contains duplicate slide references");
-  return { document, list, slides };
-}
-
 export function inspectPresentation(archive: OfficePackage): Inspection {
   const report = officeReport(archive);
   const { slides } = slideList(archive);
@@ -319,18 +310,149 @@ export function inspectPresentation(archive: OfficePackage): Inspection {
   return report.finish();
 }
 
-export function editPresentation(
+type Operation<T extends PresentationOperation["type"]> = Extract<
+  PresentationOperation,
+  { type: T }
+>;
+
+function drawingName(document: XmlDocument, local: string) {
+  const prefix = Object.entries(document.root.attributes).find(
+    ([name, value]) => name.startsWith("xmlns:") && value === namespaces.drawing,
+  )?.[0];
+  return prefix
+    ? { name: `${prefix.slice(6)}:${local}`, declaration: "" }
+    : { name: `a:${local}`, declaration: ` xmlns:a="${namespaces.drawing}"` };
+}
+
+function framePatch(
+  archive: OfficePackage,
+  part: string,
+  document: XmlDocument,
+  node: XmlNode,
+  operation: Operation<"setFrame">,
+): XmlPatch {
+  const current = elementFrame(archive, part, node)?.frame;
+  if (!current || canonicalJSON(current) !== canonicalJSON(operation.expect))
+    throw new Error(
+      "element frame precondition does not match the exact revision",
+    );
+  const { x, y, width, height } = operation.frame;
+  const transform = transformNode(node);
+  const offset = child(transform, namespaces.drawing, "off");
+  const extent = child(transform, namespaces.drawing, "ext");
+  if (offset && extent && offset.end <= extent.start)
+    return {
+      start: offset.start,
+      end: extent.end,
+      value: `<${offset.name} x="${x}" y="${y}"/>${document.source.slice(offset.end, extent.start)}<${extent.name} cx="${width}" cy="${height}"/>`,
+    };
+  // An inherited placeholder frame becomes explicit on the slide.
+  const properties = propertiesNode(node);
+  if (transform || !properties)
+    throw new Error("element frame cannot be stated on this element");
+  const xfrm = drawingName(document, "xfrm");
+  const name = (local: string) => xfrm.name.replace(/xfrm$/u, local);
+  const markup = `<${xfrm.name}${xfrm.declaration}><${name("off")} x="${x}" y="${y}"/><${name("ext")} cx="${width}" cy="${height}"/></${xfrm.name}>`;
+  return properties.selfClosing
+    ? {
+        start: properties.start,
+        end: properties.end,
+        value: `${openTag(properties)}${markup}</${properties.name}>`,
+      }
+    : { start: properties.openEnd, end: properties.openEnd, value: markup };
+}
+
+function referencedRelationships(node: XmlNode, found = new Set<string>()) {
+  for (const [name, value] of Object.entries(node.qualifiedAttributes))
+    if (name.startsWith(`${namespaces.officeRelationships}|`)) found.add(value);
+  for (const entry of node.children) referencedRelationships(entry, found);
+  return found;
+}
+
+// Every identifier names the exact source revision; one revision applies the
+// whole set or none of it.
+export async function editPresentation(
   archive: OfficePackage,
   json: string,
-): Uint8Array {
+): Promise<Uint8Array> {
   const { operations } = parseContent(presentationEditSchema, json);
-  replaceText(
-    archive,
-    operations.filter((operation) => operation.type === "replaceText"),
+  const of = <T extends PresentationOperation["type"]>(...types: T[]) =>
+    operations.filter((operation): operation is Operation<T> =>
+      (types as string[]).includes(operation.type),
+    );
+  const structural = of("duplicateSlide", "deleteSlide");
+  if (structural.length) {
+    if (structural.length !== operations.length)
+      throw new Error(
+        "duplicateSlide and deleteSlide need a revision without other operation types",
+      );
+    restructureSlides(archive, structural);
+    return archive.save();
+  }
+  const targets = of("setFrame", "deleteElement", "setChartData").map(
+    (operation) => `${operation.type} ${operation.id}`,
   );
-  const reorders = operations.filter(
-    (operation) => operation.type === "reorderSlides",
-  );
+  if (new Set(targets).size !== targets.length)
+    throw new Error(
+      "one element property may be changed only once per revision",
+    );
+  const patches = textPatches(archive, of("replaceText"));
+  const add = (part: string, patch: XmlPatch) =>
+    patches.set(part, [...(patches.get(part) ?? []), patch]);
+  const deleted = new Set<string>();
+  const released = new Map<string, Set<string>>();
+  for (const operation of of("deleteElement")) {
+    const { part, element } = resolveElement(archive, operation.id);
+    if (
+      (patches.get(part) ?? []).some(
+        (patch) =>
+          patch.start >= element.node.start && patch.end <= element.node.end,
+      )
+    )
+      throw new Error("a deleted element cannot also be edited");
+    deleted.add(operation.id);
+    add(part, { start: element.node.start, end: element.node.end, value: "" });
+    released.set(
+      part,
+      referencedRelationships(element.node, released.get(part)),
+    );
+  }
+  for (const operation of of("setFrame")) {
+    if (deleted.has(operation.id))
+      throw new Error("a deleted element cannot also be edited");
+    const { part, document, element } = resolveElement(archive, operation.id);
+    add(part, framePatch(archive, part, document, element.node, operation));
+  }
+  const charts = of("setChartData").map((operation) => {
+    if (deleted.has(operation.id))
+      throw new Error("a deleted element cannot also be edited");
+    const { part, element } = resolveElement(archive, operation.id);
+    const chart = chartPart(archive, part, element.node);
+    if (!chart) throw new Error("setChartData requires a chart element");
+    return { chart, operation };
+  });
+  const reachable = deleted.size ? reachableParts(archive) : undefined;
+  for (const [part, edits] of patches) archive.patch(part, edits);
+  for (const { chart, operation } of charts)
+    await setChartData(archive, chart, operation.expect, operation.data);
+  for (const [part, candidates] of released) {
+    const remaining = referencedRelationships(archive.xml(part).root);
+    archive.patch(
+      relationshipsPath(part),
+      relations(archive, part)
+        .filter(
+          (relation) =>
+            candidates.has(relation.id) && !remaining.has(relation.id),
+        )
+        .map((relation) => ({
+          start: relation.node.start,
+          end: relation.node.end,
+          value: "",
+        })),
+    );
+  }
+  if (reachable) pruneParts(archive, reachable);
+  const reorders = of("reorderSlides");
   if (reorders.length > 1)
     throw new Error("slides may be reordered only once per revision");
   if (reorders[0]) {
@@ -345,16 +467,13 @@ export function editPresentation(
         document.source.slice(slide.node.start, slide.node.end),
       ]),
     );
-    archive.setXML(
-      "ppt/presentation.xml",
-      patchXML(document.source, [
-        {
-          start: list.openEnd,
-          end: list.closeStart,
-          value: reorders[0].ids.map((id) => values.get(id)!).join(""),
-        },
-      ]),
-    );
+    archive.patch("ppt/presentation.xml", [
+      {
+        start: list.openEnd,
+        end: list.closeStart,
+        value: reorders[0].ids.map((id) => values.get(id)!).join(""),
+      },
+    ]);
   }
   return archive.save();
 }

@@ -1,7 +1,15 @@
 import { posix } from "node:path";
 import { crc32, deflateRawSync, inflateRawSync } from "node:zlib";
 import { contentLimits, type OfficeFormat } from "../../contracts/content";
-import { attribute, namespaces, parseXML, type XmlDocument } from "./xml";
+import {
+  attribute,
+  namespaces,
+  parseXML,
+  patchXML,
+  type XmlDocument,
+  type XmlNode,
+  type XmlPatch,
+} from "./xml";
 
 interface InflationBudget {
   bytes: number;
@@ -276,11 +284,16 @@ export function assertSafeFormula(formula: string): void {
     );
 }
 
-function sourceForRelationships(path: string): string {
+export function sourceForRelationships(path: string): string {
   if (path === "_rels/.rels") return "";
   const matched = /^(.*\/)??_rels\/([^/]+)\.rels$/u.exec(path);
   if (!matched) throw new Error("invalid relationships part path");
   return `${matched[1] ?? ""}${matched[2]}`;
+}
+
+export function relationshipsPath(part: string): string {
+  const separator = part.lastIndexOf("/");
+  return `${part.slice(0, separator + 1)}_rels/${part.slice(separator + 1)}.rels`;
 }
 
 export function relationshipTarget(source: string, target: string): string {
@@ -299,6 +312,31 @@ export function relationshipTarget(source: string, target: string): string {
   if (!safePath(result))
     throw new Error("package relationship escapes the archive");
   return result;
+}
+
+export interface Relation {
+  id: string;
+  // The final segment of the relationship type URI, such as "slide" or "chart".
+  type: string;
+  // Absent for external targets.
+  target?: string;
+  node: XmlNode;
+}
+
+export function relations(archive: OfficePackage, part: string): Relation[] {
+  const path = relationshipsPath(part);
+  if (!archive.parts.has(path)) return [];
+  return archive.xml(path).root.children.map((node) => {
+    const type = node.attributes.Type!;
+    return {
+      id: node.attributes.Id!,
+      type: type.slice(type.lastIndexOf("/") + 1),
+      ...(node.attributes.TargetMode === "External"
+        ? {}
+        : { target: relationshipTarget(part, node.attributes.Target!) }),
+      node,
+    };
+  });
 }
 
 export class OfficePackage {
@@ -331,6 +369,12 @@ export class OfficePackage {
   setXML(path: string, value: string): void {
     parseXML(value);
     this.parts.set(path, Buffer.from(value, "utf8"));
+  }
+
+  // Patch offsets index the exact source parsed from the part's current bytes.
+  patch(path: string, patches: XmlPatch[]): void {
+    if (patches.length)
+      this.setXML(path, patchXML(this.xml(path).source, patches));
   }
 
   save(): Uint8Array {

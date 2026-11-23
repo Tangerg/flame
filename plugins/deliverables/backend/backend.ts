@@ -84,7 +84,7 @@ export function createBackend(
       (context, value) => {
         context.signal.throwIfAborted();
         return method.descriptor.kind === "query"
-          ? application.query(operation, value)
+          ? application.query(operation, value, context.signal)
           : application.command(context, operation, value);
       },
     );
@@ -115,7 +115,12 @@ export function createBackend(
         try {
           context.signal.throwIfAborted();
           if (method.descriptor.kind === "query") {
-            const result = queryProjection(application, operation, decoded);
+            const result = await queryProjection(
+              application,
+              operation,
+              decoded,
+              context.signal,
+            );
             return toolResult({ value: result.retained }, result.model);
           }
           const result = await application.command(

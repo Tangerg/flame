@@ -22,6 +22,7 @@ import { z } from "zod";
 import descriptor, { METHODS } from "../contracts/capability";
 import { digest } from "./document";
 import { inspectFile } from "./formats";
+import { OfficePackage } from "./formats/archive";
 import { LIMITS } from "../contracts/limits";
 const bundlePreparationTimeoutMilliseconds = 60_000;
 const requestTimeoutMilliseconds = 90_000;
@@ -454,6 +455,202 @@ it(
         expect(await backend.invoke(METHODS.uploads, {})).toEqual([]);
       }
     }
+  },
+  scenarioTimeoutMilliseconds,
+);
+it(
+  "live slide edits keep independent concurrent changes, refuse stale ones and leave valid native packages",
+  async ({ backend }) => {
+    const created = await backend.invoke(METHODS.create, {
+      title: "Review deck",
+      format: "pptx",
+      contentJSON: JSON.stringify({
+        title: "Review deck",
+        slides: [
+          {
+            title: "Revenue",
+            elements: [
+              {
+                type: "text",
+                x: 0.5,
+                y: 0.5,
+                width: 6,
+                height: 1,
+                text: "Revenue grew",
+              },
+              {
+                type: "shape",
+                shape: "rect",
+                x: 0.5,
+                y: 2,
+                width: 2,
+                height: 1,
+                fill: "245B78",
+              },
+              {
+                type: "chart",
+                chart: "bar",
+                x: 4,
+                y: 2,
+                width: 6,
+                height: 4,
+                series: [
+                  {
+                    name: "Revenue (USD million)",
+                    labels: ["Q1", "Q2"],
+                    values: [100, 112],
+                  },
+                ],
+              },
+            ],
+            notes: "Explain the growth",
+          },
+        ],
+      }),
+      provenance,
+    });
+    const id = created.documentId;
+    const layout = async (revision) =>
+      JSON.parse(
+        (await backend.invoke(METHODS.slides, { id, revision })).layoutJSON,
+      );
+    const edit = (expectedRevision, operations, command) =>
+      backend.invoke(
+        METHODS.edit,
+        { id, expectedRevision, operationsJSON: JSON.stringify({ operations }) },
+        command,
+      );
+    const native = async (revision) => {
+      const chunk = await backend.invoke(METHODS.download, {
+        assetId: revision.native.id,
+        offset: 0,
+        length: LIMITS.chunkBytes,
+      });
+      expect(chunk.done).toBe(true);
+      return OfficePackage.open("pptx", Buffer.from(chunk.base64, "base64"));
+    };
+    const [slide] = (await layout(created.id)).slides;
+    const title = slide.elements.find((element) => element.kind === "text");
+    const shape = slide.elements.find((element) => element.kind === "shape");
+    const chart = slide.elements.find((element) => element.kind === "chart");
+    expect(chart.chart).toEqual({
+      type: "bar",
+      workbook: "chart",
+      data: {
+        categories: ["Q1", "Q2"],
+        series: [{ name: "Revenue (USD million)", values: [100, 112] }],
+      },
+    });
+    expect(slide.notes.map((run) => run.text)).toEqual(["Explain the growth"]);
+
+    const moved = { ...shape.frame, x: shape.frame.x + 914400 };
+    const human = [
+      { type: "setFrame", id: shape.id, expect: shape.frame, frame: moved },
+    ];
+    const byHuman = await edit(created.id, human, "human-move");
+    const converted = {
+      categories: ["Q1", "Q2"],
+      series: [{ name: "Revenue (CNY 10k)", values: [720, 806.4] }],
+    };
+    const byAgent = await edit(
+      byHuman.id,
+      [
+        {
+          type: "replaceText",
+          id: title.text[0].id,
+          expect: "Revenue grew",
+          text: "Revenue grew 12%",
+        },
+        {
+          type: "setChartData",
+          id: chart.id,
+          expect: chart.chart.data,
+          data: converted,
+        },
+      ],
+      "agent-edit",
+    );
+    const [current] = (await layout(byAgent.id)).slides;
+    const find = (target) =>
+      current.elements.find((element) => element.id === target.id);
+    expect(find(shape).frame).toEqual(moved);
+    expect(find(title).text.map((run) => run.text)).toEqual([
+      "Revenue grew 12%",
+    ]);
+    expect(find(chart).chart.data).toEqual(converted);
+    const deck = await native(byAgent);
+    const workbooks = [...deck.parts.keys()].filter((part) =>
+      part.startsWith("ppt/embeddings/"),
+    );
+    expect(workbooks).toHaveLength(1);
+    const cells = (
+      await inspectFile("xlsx", deck.parts.get(workbooks[0]))
+    ).items.filter((item) => item.kind === "cell");
+    for (const value of ['"Revenue (CNY 10k)"', "720", "806.4"])
+      expect(cells.some((cell) => cell.text.includes(value))).toBe(true);
+    expect(cells.some((cell) => cell.text.includes("112"))).toBe(false);
+    await expect(edit(byAgent.id, human, "stale-move")).rejects.toMatchObject({
+      code: "invalid_native",
+    });
+    expect((await layout()).slides[0]).toEqual(current);
+
+    const duplicated = await edit(
+      byAgent.id,
+      [{ type: "duplicateSlide", id: slide.id }],
+      "duplicate",
+    );
+    const [original, copy] = (await layout(duplicated.id)).slides;
+    expect(original.id).toBe(slide.id);
+    expect(copy.id).not.toBe(slide.id);
+    expect(copy.notes.map((run) => run.text)).toEqual(["Explain the growth"]);
+    const copiedChart = copy.elements.find((element) => element.kind === "chart");
+    const independent = await edit(
+      duplicated.id,
+      [
+        {
+          type: "setChartData",
+          id: copiedChart.id,
+          expect: converted,
+          data: {
+            categories: ["H1", "H2"],
+            series: [{ name: "Copy", values: [1, null] }],
+          },
+        },
+      ],
+      "copy-chart",
+    );
+    const separated = await layout(independent.id);
+    expect(
+      separated.slides[0].elements.find((element) => element.kind === "chart")
+        .chart.data,
+    ).toEqual(converted);
+
+    const before = await native(independent);
+    const removed = await edit(
+      independent.id,
+      [{ type: "deleteSlide", id: slide.id }],
+      "delete-original",
+    );
+    const remaining = await layout(removed.id);
+    expect(remaining.slides.map((entry) => entry.id)).toEqual([copy.id]);
+    const after = await native(removed);
+    const gone = [...before.parts.keys()].filter(
+      (part) => !after.parts.has(part),
+    );
+    expect(gone).toContain(slide.id);
+    expect(gone.filter((part) => part.startsWith("ppt/charts/chart"))).toHaveLength(1);
+    expect(gone.filter((part) => part.startsWith("ppt/embeddings/"))).toHaveLength(1);
+    expect(gone.filter((part) => part.startsWith("ppt/notesSlides/notesSlide"))).toHaveLength(1);
+    await expect(
+      edit(removed.id, [{ type: "deleteSlide", id: copy.id }], "delete-last"),
+    ).rejects.toMatchObject({ code: "invalid_native" });
+
+    const outline = await backend.tool("slides", { id });
+    expect(outline.isError, JSON.stringify(outline)).not.toBe(true);
+    expect(JSON.parse(outline.content[0].text).value).toMatchObject({
+      revision: removed.id,
+      slides: [{ id: copy.id, elements: copy.elements.length }],
+    });
   },
   scenarioTimeoutMilliseconds,
 );

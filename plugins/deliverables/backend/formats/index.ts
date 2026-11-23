@@ -12,6 +12,7 @@ import {
   type FormatCatalog,
   type Inspection,
   type OfficeFormat,
+  type SlideLayout,
 } from "../../contracts/content";
 import { OfficePackage } from "./archive";
 import { createDocument, editDocument, inspectDocument } from "./document";
@@ -21,6 +22,7 @@ import {
   editPresentation,
   inspectPresentation,
 } from "./presentation";
+import { slideLayout } from "./slides";
 import {
   createWorkbook,
   editWorkbook,
@@ -81,13 +83,17 @@ export async function editFile(
       result = editWorkbook(archive, operationsJSON);
       break;
     case "pptx":
-      result = editPresentation(archive, operationsJSON);
+      result = await editPresentation(archive, operationsJSON);
       break;
     default:
       throw new Error("unsupported native editing format");
   }
   OfficePackage.open(format, result);
   return result;
+}
+
+export function layoutFile(bytes: Uint8Array): SlideLayout {
+  return slideLayout(OfficePackage.open("pptx", bytes));
 }
 
 export function exportCSV(bytes: Uint8Array, sheetPart: string): Uint8Array {
@@ -280,7 +286,11 @@ export function catalog(): FormatCatalog {
         limitations: [
           ...officeLimits,
           "Creates editable text, shapes, tables, charts, PNG/JPEG images, speaker notes and masters. Masters support text, images, rectangles and lines. Slide measurements are in inches.",
-          "Native edits replace exact text runs in slide/notes XML and reorder all original slides. Imported layouts, masters, chart workbooks and relationships remain native; arbitrary shape/chart/template restructuring is not supported.",
+          "Read the slides query for slide, element, text-run and chart identities of an exact revision. Element frames are whole EMUs (914400 per inch); a placeholder without its own frame reports the inherited layout or master frame, and setFrame makes it explicit on the slide.",
+          "Native edits replace exact text runs, set an element frame, delete a top-level element, replace a chart's data, and reorder, duplicate or delete slides. setFrame and setChartData carry the exact current value as expect; every identifier names the source revision.",
+          "setChartData edits one bar, line, pie, doughnut, area or radar chart group whose series share categories, keeping category and series counts. It rewrites the chart caches; an embedded workbook is regenerated only when it holds nothing but those ranges (its formatting and tables are not retained), otherwise the edit is refused.",
+          "duplicateSlide and deleteSlide form their own revision. A duplicate follows its source with independent notes and charts; deletion keeps at least one slide, refuses slides used by custom shows or links, and removes only parts the deletion disconnected.",
+          "Imported layouts, masters and relationships otherwise remain native; grouping, restyling and template restructuring are not supported.",
         ],
       },
       {

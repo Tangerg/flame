@@ -2168,6 +2168,95 @@
       }
     },
     {
+      "name": "flame.deliverables/slides.v1",
+      "kind": "query",
+      "target": "installation",
+      "description": "Project a PPTX revision's slides, element identities, frames, text runs, notes and chart data from its native bytes. Omitting revision reads the current head once. Use these identities with expect values in catalog-defined presentation edits.",
+      "input": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "output": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "properties": {
+          "document": {
+            "additionalProperties": false,
+            "properties": {
+              "createdAt": {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              "format": {
+                "enum": [
+                  "docx",
+                  "xlsx",
+                  "pptx",
+                  "pdf"
+                ],
+                "type": "string"
+              },
+              "head": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "id": {
+                "pattern": "^[a-f0-9]{64}$",
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 180,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "title",
+              "format",
+              "head",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "layoutJSON": {
+            "maxLength": 1048576,
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          },
+          "sourceSha256": {
+            "pattern": "^[a-f0-9]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document",
+          "revision",
+          "sourceSha256",
+          "layoutJSON"
+        ],
+        "type": "object"
+      }
+    },
+    {
       "name": "flame.deliverables/upload.v1",
       "kind": "command",
       "target": "installation",
