@@ -608,9 +608,12 @@ narrative line is what replaced it.
 
 There is no dense bottom data row. Run telemetry (tokens / cost / rate) lives in the **composer footer**; global status + notifications live in the **sidebar footer**. A persistent mono data strip read as "console" — the chrome stays calm.
 
-### Reasoning block — mono header, no caps
+### Reasoning block — one quiet activity line
 
-Header was `THOUGHT FOR 1S` ALL-CAPS — now `thought · 1.2s` in `caption-mono` lowercase. Body italic stays.
+The reasoning block is an activity line like a tool call: `Thought for 1.2s` in
+the body face at dim ink, a one-line glimpse while collapsed, and the reasoning
+text as quoted Markdown in a bounded reader when opened. No caps, no italics and
+no mono; an interrupted stream says so in plain text under the quote.
 
 ### Shortcuts pane — auto-derived
 

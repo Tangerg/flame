@@ -589,7 +589,7 @@
   "reasoning.thinking": "Denkt nach",
   "reasoning.thought": "Gedacht",
   "reasoning.thoughtFor": "{{duration}} nachgedacht",
-  "reasoning.interrupted": "unterbrochen",
+  "reasoning.interrupted": "Unterbrochen",
   "reasoning.text": "Gedankengang",
   "composer.action.steer": "Laufenden Zug steuern",
   "composer.paste.lines_one": "Eingefügt · {{count}} Zeile",

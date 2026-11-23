@@ -44176,6 +44176,19 @@ parallel main history remains outside this batch. The temporary delivery checkou
 is removed after remote confirmation. No protocol, persisted-data or
 external-consumer migration is needed.
 
+### Interrupted reasoning as one quiet line (2026-11-24)
+
+An interrupted reasoning stream ended with a mono note: an `×` glyph and
+`已中断` stacked on two lines, because the block note was not a flex row.
+The glyph also read as a dismiss control. The note is now plain muted body
+text, sentence-cased in the Latin catalogs (`Interrupted`, `Interrumpido`,
+`Interrompu`, `Unterbrochen`). DESIGN.md's reasoning entry described a mono
+lowercase header and an italic body. Neither exists in code, so the entry
+now describes the actual activity line, glimpse and quoted reader. The Lab
+reasoning story `incomplete`, opened natively, shows `已中断` as one line
+under the quote. Web typecheck and `check:locales` pass. Markdown `em` in
+prose keeps its italics, because that is the author's emphasis.
+
 ### Reasoning disclosure height and keyboard entry (2026-11-19)
 
 Signed Wails on `b01b653e5` opens a one-line completed Thought in a 240 px

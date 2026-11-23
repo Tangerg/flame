@@ -2,13 +2,12 @@ import * as stylex from "@stylexjs/stylex";
 import { type BlockStatus } from "@/features/agent/public/contentBlock";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { MarkdownMessage } from "@/features/chat/message/ui/markdown/MarkdownMessage";
-import { Icon } from "@/ui/index";
 import { Loader } from "@/ui/index";
-import { ReadingList } from "@flame/ui";
+import { ReadingList, vocab } from "@flame/ui";
 import { AgentActivityDisclosure } from "@/ui/agent/index";
 import { fmtDuration } from "@/lib/format";
 import { useT } from "@/lib/i18n/index";
-import { face, space, type as typeStep } from "@flame/ui/tokens.stylex";
+import { space, type as typeStep } from "@flame/ui/tokens.stylex";
 import { messageStyles as ms } from "@/features/chat/message/ui/messageStyles";
 const GLIMPSE_LEAD = "16px";
 
@@ -126,8 +125,8 @@ export function ReasoningBlock({ text, status }: Props) {
           <div className={stylex.props(ms.quote, typeStep.uiMd).className}>
             <MarkdownMessage text={text} streaming={streaming} />
             {status === "incomplete" && (
-              <div {...stylex.props(rb.note, typeStep.uiSm, face.mono)}>
-                <Icon name="x" size="xs" /> {t("reasoning.interrupted")}
+              <div {...stylex.props(rb.note, vocab.muted, typeStep.uiSm)}>
+                {t("reasoning.interrupted")}
               </div>
             )}
           </div>

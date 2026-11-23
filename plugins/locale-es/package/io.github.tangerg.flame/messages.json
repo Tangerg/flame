@@ -598,7 +598,7 @@
   "reasoning.thinking": "Pensando",
   "reasoning.thought": "Pensamiento",
   "reasoning.thoughtFor": "Pensamiento de {{duration}}",
-  "reasoning.interrupted": "interrumpido",
+  "reasoning.interrupted": "Interrumpido",
   "reasoning.text": "Texto del razonamiento",
   "composer.action.steer": "Guiar el turno en curso",
   "composer.paste.lines_one": "Pegado · {{count}} línea",

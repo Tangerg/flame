@@ -598,7 +598,7 @@
   "reasoning.thinking": "Réflexion",
   "reasoning.thought": "Réflexion",
   "reasoning.thoughtFor": "Réflexion de {{duration}}",
-  "reasoning.interrupted": "interrompu",
+  "reasoning.interrupted": "Interrompu",
   "reasoning.text": "Texte de la réflexion",
   "composer.action.steer": "Orienter le tour en cours",
   "composer.paste.lines_one": "Collé · {{count}} ligne",
