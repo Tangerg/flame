@@ -587,8 +587,29 @@ function Reconcile({
     [base, head.layout, draft.operations],
   );
   const [mine, setMine] = useState<ReadonlySet<number>>(new Set());
-  const show = (value: unknown) =>
-    typeof value === "string" ? value : JSON.stringify(value);
+  const show = (operation: DraftOperation, value: unknown): string => {
+    if (operation.type === "setFrame") {
+      const frame = value as Frame;
+      return `${inches(frame.x)}, ${inches(frame.y)} · ${inches(frame.width)} × ${inches(frame.height)} in`;
+    }
+    if (operation.type === "setChartData") {
+      const data = value as ChartData;
+      return data.series
+        .map(
+          (series) =>
+            `${series.name}: ${data.categories
+              .map(
+                (category, point) =>
+                  `${category} ${series.values[point] ?? "–"}`,
+              )
+              .join(" · ")}`,
+        )
+        .join("; ");
+    }
+    if (operation.type === "deleteElement")
+      return label(value as ElementView, t);
+    return String(value);
+  };
   return (
     <RecordGroup>
       <Metadata>{t("slides.reconcile.help")}</Metadata>
@@ -607,6 +628,7 @@ function Reconcile({
                     result.operation.type === "deleteElement"
                       ? t("slides.kind.deleted")
                       : show(
+                          result.operation,
                           "text" in result.operation
                             ? result.operation.text
                             : "frame" in result.operation
@@ -614,7 +636,10 @@ function Reconcile({
                               : result.operation.data,
                         ),
                   ],
-                  [t("slides.theirs"), show(result.current)],
+                  [
+                    t("slides.theirs"),
+                    show(result.operation, result.current),
+                  ],
                 ]}
               />
               <Segmented
