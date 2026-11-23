@@ -229,10 +229,16 @@ func newLiveSearch(stack *workspaceScene, theme kit.Theme, glyphs kit.Glyphs, ta
 	p := &liveSearch{transcript: transcript, tasks: tasks, notify: notify}
 	field := base.NewText(base.TextConfig{Label: "Find in the live transcript", Placeholder: "text", Initial: "", Check: requiredText})
 	p.field = field
-	form := kit.FormConfig{Fields: []base.Field{field}, Theme: theme, Glyphs: glyphs,
-		Hints: []keymap.Action{base.Submit, base.Cancel}}
-	form.Keys = base.DefaultFormKeys()
-	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
+	form := kit.FormConfig{
+		Behavior: base.FormConfig{
+			Fields: []base.Field{field},
+		},
+		Theme:  theme,
+		Glyphs: glyphs,
+		Hints:  []keymap.Action{base.Submit, base.Cancel},
+	}
+	form.Behavior.Keys = base.DefaultFormKeys()
+	form.Behavior.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if !p.dialog.Open() {
 			return scene.Unchanged, nil
 		}
@@ -242,8 +248,14 @@ func newLiveSearch(stack *workspaceScene, theme kit.Theme, glyphs kit.Glyphs, ta
 	}
 
 	dressed := kit.NewForm(form)
-	p.dialog = newPresentationDialog(stack, kit.DialogConfig{Theme: theme, Glyphs: glyphs, Title: "Search", Body: formNavigation(dressed.Element(), func() { p.dialog.Dismiss() }),
-		Where: layout.Placement{Width: compactDialogWidth, Height: 7},
+	p.dialog = newPresentationDialog(stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:   "Search",
+			Content: formNavigation(dressed.Element(), func() { p.dialog.Dismiss() }),
+		},
+		Theme:  theme,
+		Glyphs: glyphs,
+		Where:  layout.Placement{Width: compactDialogWidth, Height: 7},
 	})
 	return p
 }

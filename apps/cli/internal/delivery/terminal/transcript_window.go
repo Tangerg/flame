@@ -118,19 +118,17 @@ func (t *transcriptView) installWindow(intent transcriptReadingIntent) {
 		t.content.Close()
 	}
 
-	view, err := kit.NewTranscript(kit.TranscriptConfig{
+	view := kit.NewTranscript(kit.TranscriptConfig{
 		Behavior: base.TranscriptConfig{Key: "conversation-window", MaxItems: max(len(t.order), 1)}, Theme: t.theme, Glyphs: t.glyphs,
 	})
-	if err != nil {
-		panic(err)
-	}
 	t.view, t.content = view, view.Controller()
 	t.scroll, t.selection = t.content.Scroll(), t.content.Selection()
-	t.scroll.Wheel(t.wheel)
+	t.scroll.SetWheel(t.wheel)
 	t.nativeEntries = make(map[base.BlockID]transcriptEntryID, len(t.order))
 	for _, id := range t.order {
 		entry := t.entries[id]
 		var item *base.TranscriptItem
+		var err error
 		if entry.document != nil {
 			item, err = t.content.AddDocument(entry.document)
 		} else {
@@ -151,12 +149,8 @@ func (t *transcriptView) installWindow(intent transcriptReadingIntent) {
 			t.selectionIntent = nil
 		}
 	}
-	if err := view.Element().SetPaint(t.Draw); err != nil {
-		panic(err)
-	}
-	if err := view.Element().SetFocusable(func() bool { return false }); err != nil {
-		panic(err)
-	}
+	view.Element().SetPaint(t.Draw)
+	view.Element().SetFocusable(func() bool { return false })
 	if err := t.group.Set(scene.Item{Element: view.Element()}); err != nil {
 		panic(err)
 	}

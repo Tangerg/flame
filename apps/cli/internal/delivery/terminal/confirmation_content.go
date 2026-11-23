@@ -20,9 +20,7 @@ func (p *confirmationContentPane) Element() scene.Element {
 	if p.group == nil {
 		// Decisions own arrow-key focus; the reviewed document remains readable
 		// through the wheel and the pane's page-key actions.
-		if err := p.viewport.Element().SetFocusable(func() bool { return false }); err != nil {
-			panic(err)
-		}
+		p.viewport.Element().SetFocusable(func() bool { return false })
 		p.group = scene.NewGroup(scene.GroupConfig{
 			Axis:  layout.Down,
 			Items: []scene.Item{{Element: p.viewport.Element(), Size: layout.Flex(1)}, {Element: p.form.Element(), Size: layout.Measured(0, 7)}},

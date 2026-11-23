@@ -44,7 +44,7 @@ type manualCommand struct {
 // The queue retains both so recovery never guesses a Tool's command namespace.
 func captureManual(ctx context.Context, db framesqlite.Database, store store, connect runConnector, command manualCommand) (result app.RunReference, err error) {
 	var input wire.ItemInput
-	if err := json.Unmarshal(command.admitted.Bytes(), &input, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
+	if err := command.admitted.Decode(&input); err != nil {
 		return result, err
 	}
 	invocation, err := pluginmcp.InvocationFromContext(ctx)
@@ -56,7 +56,7 @@ func captureManual(ctx context.Context, db framesqlite.Database, store store, co
 		return result, err
 	}
 	admission := manualAdmission{store: store, command: command, scheduleID: input.ID, invocation: invocation, sessionID: sessionID, runID: runID}
-	if err := framesqlite.RunInTx(ctx, db, func(ctx context.Context) error { return admission.admit(ctx, db) }); err != nil {
+	if err := db.RunInTx(ctx, func(ctx context.Context) error { return admission.admit(ctx, db) }); err != nil {
 		return result, errors.Join(pluginmcp.ErrOutcomeUnconfirmed, err)
 	}
 	if admission.prepared == nil {

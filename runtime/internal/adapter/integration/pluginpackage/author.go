@@ -71,19 +71,14 @@ func BuildRelease(ctx context.Context, source string, target BuildTarget, archiv
 	if err != nil {
 		return distribution.Release{}, err
 	}
-	lock, err := distribution.Build(ctx, source, manifest, archive)
+	release, err := distribution.Build(ctx, source, manifest, archive)
 	if err != nil {
 		return distribution.Release{}, err
 	}
-	manifest.Artifacts = slices.Clone(lock.Artifacts)
-	manifest.Release = lock.Release
-	if err := writeRecord(root, distribution.ManifestName, manifest); err != nil {
+	if err := writeRecord(root, distribution.ManifestName, release.Manifest); err != nil {
 		return distribution.Release{}, err
 	}
-	if err := writeRecord(root, distribution.LockName, lock); err != nil {
-		return distribution.Release{}, err
-	}
-	return distribution.Release{Digest: lock.Release, Manifest: manifest, Lock: lock}, nil
+	return release, nil
 }
 
 // inventoryArtifacts lists every packaged file. A native variant entry must
@@ -105,7 +100,7 @@ func inventoryArtifacts(ctx context.Context, root *os.Root, manifest distributio
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if name == "." || entry.IsDir() || name == distribution.ManifestName || name == distribution.LockName {
+		if name == "." || entry.IsDir() || name == distribution.ManifestName {
 			return nil
 		}
 		info, err := entry.Info()

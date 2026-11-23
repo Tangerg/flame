@@ -66,8 +66,14 @@ type readerSurfaceConfig struct {
 func newReaderSurface(cfg readerSurfaceConfig) *readerSurface {
 	r := &readerSurface{tasks: cfg.tasks, status: cfg.status, message: cfg.message}
 	r.pane = newReaderPane(cfg.theme, cfg.glyphs, cfg.syntax, cfg.loop.Environment().Wheel(), cfg.loop.Clipboard())
-	r.dialog = newPresentationDialog(cfg.stack, kit.DialogConfig{Theme: cfg.theme, Glyphs: cfg.glyphs, Title: "Reader", Body: r.pane.Element(),
-		Where: layout.Placement{},
+	r.dialog = newPresentationDialog(cfg.stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:   "Reader",
+			Content: r.pane.Element(),
+		},
+		Theme:  cfg.theme,
+		Glyphs: cfg.glyphs,
+		Where:  layout.Placement{},
 	})
 	r.pane.dismiss = r.dismiss
 	r.pane.openSearch = func() {
@@ -80,10 +86,16 @@ func newReaderSurface(cfg readerSurfaceConfig) *readerSurface {
 
 	field := base.NewText(base.TextConfig{Label: "Find in the reader", Placeholder: "text", Initial: "", Check: requiredText})
 	r.searchField = field
-	form := kit.FormConfig{Fields: []base.Field{field}, Theme: cfg.theme, Glyphs: cfg.glyphs,
-		Hints: []keymap.Action{base.Submit, base.Cancel}}
-	form.Keys = base.DefaultFormKeys()
-	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
+	form := kit.FormConfig{
+		Behavior: base.FormConfig{
+			Fields: []base.Field{field},
+		},
+		Theme:  cfg.theme,
+		Glyphs: cfg.glyphs,
+		Hints:  []keymap.Action{base.Submit, base.Cancel},
+	}
+	form.Behavior.Keys = base.DefaultFormKeys()
+	form.Behavior.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if !r.dialog.Open() || !r.searchDialog.Open() {
 			return scene.Unchanged, nil
 		}
@@ -93,8 +105,14 @@ func newReaderSurface(cfg readerSurfaceConfig) *readerSurface {
 	}
 
 	dressed := kit.NewForm(form)
-	r.searchDialog = newPresentationDialog(cfg.stack, kit.DialogConfig{Theme: cfg.theme, Glyphs: cfg.glyphs, Title: "Search reader", Body: formNavigation(dressed.Element(), func() { r.searchDialog.Dismiss() }),
-		Where: layout.Placement{Width: compactDialogWidth, Height: 7},
+	r.searchDialog = newPresentationDialog(cfg.stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:   "Search reader",
+			Content: formNavigation(dressed.Element(), func() { r.searchDialog.Dismiss() }),
+		},
+		Theme:  cfg.theme,
+		Glyphs: cfg.glyphs,
+		Where:  layout.Placement{Width: compactDialogWidth, Height: 7},
 	})
 	r.listenForSearch()
 	return r

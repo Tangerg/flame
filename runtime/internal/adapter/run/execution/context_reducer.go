@@ -81,6 +81,12 @@ func (i *interactionModelContextReducer) admitUncompacted(calling context.Contex
 	return contextView.canonical(candidate), nil
 }
 
+// PreparationTrigger selects every model call: each call reads the current
+// Session state and admits its own provider request.
+func (i *interactionModelContextReducer) PreparationTrigger() func(uint64, *corechat.Request) bool {
+	return func(uint64, *corechat.Request) bool { return true }
+}
+
 func (i *interactionModelContextReducer) PrepareContext(
 	ctx context.Context,
 	preparation interaction.ContextInvocation,
@@ -383,7 +389,7 @@ func sameInteractionMessages(left, right []corechat.Message) (bool, error) {
 	return bytes.Equal(effective.JSON(), frozen.JSON()), nil
 }
 
-var _ interaction.ContextProcessor = (*interactionModelContextReducer)(nil)
+var _ interaction.ContextPreparer = (*interactionModelContextReducer)(nil)
 
 func (i *interactionModelContextReducer) prepareInput(calling context.Context, request *corechat.Request) (*corechat.Request, error) {
 	if len(i.session.modelInputs) == 0 {

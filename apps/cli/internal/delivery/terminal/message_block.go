@@ -34,7 +34,7 @@ var (
 const selfSpeaker = "you"
 
 func newUserMessageBlock(theme kit.Theme, speaker, body string) *userMessageBlock {
-	message := &kit.Entry{Theme: theme, Label: speaker, Body: body}
+	message := &kit.Entry{Theme: theme, Label: speaker, Body: kit.NewParagraph(body, theme.Text)}
 	if speaker == selfSpeaker {
 		message.LabelStyle = theme.Accent
 	}
@@ -155,17 +155,14 @@ func (m *markdownBlock) Rows(width int) []text.Row {
 	return append(rows, text.Row{})
 }
 
-func markdownLook(theme kit.Theme, glyphs kit.Glyphs, locale string, syntax highlight.Renderer) markdown.Look {
+func markdownLook(theme kit.Theme, locale string, syntax highlight.Renderer) markdown.Look {
 	look := markdown.Look{
 		Text: theme.Text, Headings: []grid.Style{theme.Heading, theme.Strong},
 		Strong: theme.Strong, Emphasis: grid.Style{Attr: grid.Italic},
 		Struck: theme.Muted, Code: theme.Info, Block: theme.Sunken,
 		Link: theme.Accent, Quote: theme.Muted, Rail: theme.Subtle,
 		Marker: theme.Accent, Rule: theme.Divider,
-		Glyphs: markdown.Glyphs{
-			Bullet: glyphs.Bullet, Bar: glyphs.Vertical.String(), Divider: glyphs.Rule,
-			Checked: glyphs.Taken, Unchecked: glyphs.Free,
-		},
+		Glyphs: markdown.GlyphsFor(locale),
 	}
 	look.SetRenderer(markdown.FencedCode, markdownFences(syntax, nil))
 	look.SetRenderer(markdown.DisplayMath, func(_ string, source string) (grid.Drawable, error) {
@@ -178,5 +175,5 @@ func markdownLook(theme kit.Theme, glyphs kit.Glyphs, locale string, syntax high
 func presentError(theme kit.Theme, message string) base.Block {
 	danger := theme
 	danger.Text = theme.Danger
-	return &kit.Entry{Theme: danger, Label: "runtime", Body: message}
+	return &kit.Entry{Theme: danger, Label: "runtime", Body: kit.NewParagraph(message, danger.Text)}
 }

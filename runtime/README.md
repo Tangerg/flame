@@ -1,12 +1,14 @@
 # Flame Runtime
 
-Frame v0.3.0 requires matching Host, runner, backend SDK and rebuilt plugin bytes.
-The SQLite authority and runner journal use new private formats. Finish accepted
-work with its original executable and preserve the old data directory; start the
-upgraded application with a fresh development directory. There is no automatic
-state migration or old-protocol adapter. Host restoration reads its original
-Authority under maintenance admission, while Flame supplies exact retained
-plugin definitions and restores its own business bindings.
+Frame v0.5.0 and Scope v0.64.0 require matching Host, runner, backend SDK and
+rebuilt plugin bytes. Releases are one `manifest.json` and its artifacts, binding
+identities use Frame's canonical document, and Scope logs derive Effect intents
+from their Steps. Finish accepted work with its original executable and preserve
+the old data directory; start the upgraded application with a fresh development
+directory. There is no automatic state migration or old-protocol adapter. Host
+restoration reads its original Authority under maintenance admission and confirms
+its own projection, while Flame supplies exact retained plugin definitions and
+restores its own business bindings.
 
 Delivery selects an operation problem's registered kind explicitly. Diagnostic
 causes cannot reclassify an output defect as a caller error; cancellation stays
@@ -100,7 +102,7 @@ after the history change and acknowledgement commit.
 
 Runtime is not another agent framework. Scope owns process execution, strategies, tools, and provider libraries; Runtime adapts those capabilities to Flame's Session, Run, Goal, Plan, persistence, recovery, and protocol model.
 
-Scope v0.62.0 owns complete Tool failure classification. Runtime uses
+Scope v0.64.0 owns complete Tool failure classification. Runtime uses
 `tool.ClassifyFailure` for dispatch and original-result recovery: independent
 joined errors cannot establish a definite result. A plugin's classified Failure
 retains its diagnostic cause inside that outcome instead of joining it as a
@@ -611,13 +613,12 @@ The complete operation schemas and error categories are generated in
 Runtime capability.
 
 Install from an absolute directory or ZIP path on the Runtime machine. Each
-release must contain Frame's `manifest.json`, `plugin.lock.json` and exactly its
-listed artifacts. The neutral manifest supplies the sole immutable release
+release must contain Frame's `manifest.json` and exactly its listed artifacts. The neutral manifest supplies the sole immutable release
 identity. `plugin.json` remains Flame product metadata using Agent Plugins 1.0.
 Its `io.github.tangerg.flame` namespace names one local declaration document with
 `plugin.DeclarationProtocol`, independently of `frame.CapabilityProtocol` used by
-callable contracts. Raw legacy source trees without the neutral release files
-are refused.
+callable contracts. Raw legacy source trees without the neutral manifest are
+refused.
 
 `frame/distribution` owns deterministic archive creation, path and entry safety,
 byte quotas, artifact digests, immutable content and read leases. The composition
@@ -1468,10 +1469,10 @@ emit a separate per-Run interrupt event.
 Repeated identical Tool results are allowed, including polling. Tool authorization and lifecycle-hook approvals remain enforced.
 
 Canceling a delegated Run submits cancellation to that child. If its in-flight
-attempt has no definite result, Scope retains the unknown Effect and keeps the
-affected subtree draining without an Exit. Flame projects loss for unfinished
-product members and preserves the original Effect evidence; it cannot supply a
-normal delegate result or retry the attempt. Cancellation before dispatch and a
+attempt has no definite result, Scope exits the child while that Effect stays
+Unknown. Flame projects loss for the affected product members and preserves the
+original Effect evidence; it cannot supply a normal delegate result or retry the
+attempt. Cancellation before dispatch and a
 known result that arrives during draining remain distinct cases.
 
 Known Tool and Delegate results are extracted through Scope's
@@ -2084,14 +2085,14 @@ retrieval or compaction to reconstruct an already prepared request.
 
 Scope's `SettledResults` describes executed operations. Locally rejected Tool
 proposals have no Effect identity; Runtime records the exact feedback supplied to
-the next `ContextProcessor` before dispatching that provider request. Runtime never
+the next `ContextPreparer` before dispatching that provider request. Runtime never
 promotes unconfirmed external output into a completed Tool result.
 
 An admitted Runtime detaches work from its Start caller. Flame explicitly binds
 its lifetime to the process owner and joins `Runtime.Close` before releasing Tool
 and provider resources. Cancel and Kill do not settle unknown external outcomes:
-Scope remains draining without an Exit, and Flame retains the original Effect
-evidence when projecting loss. Completed physical model responses retain their
+Scope exits the terminated process while each Effect stays Unknown, and Flame
+projects the Run as lost with that original Effect evidence. Completed physical model responses retain their
 usage even if Scope later rejects an oversized settlement. Stream delta limits
 and final response limits are separate Scope contracts.
 
@@ -2394,7 +2395,7 @@ compaction's mutable candidate or the transcript. Compaction budgets count it. R
 rebuilds the same deferred set, which the deployment configuration digest already binds,
 so the catalog is the same projection after restore or compaction. A layer with no
 deferred tools has neither `search_tools` nor the catalog message.
-Scope v0.62.0 retains advertised tools and rebuilds their ordinary function definitions
+Scope v0.64.0 retains advertised tools and rebuilds their ordinary function definitions
 in canonical name order. Loading another tool can therefore change the tools prefix;
 Flame does not claim native provider tool-search or append-only wire ordering. That
 framework capability must be implemented and released by Scope rather than shadowed

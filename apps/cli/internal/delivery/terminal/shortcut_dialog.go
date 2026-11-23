@@ -53,9 +53,16 @@ func newShortcutGuide(stack *workspaceScene, theme kit.Theme, glyphs kit.Glyphs,
 	}
 	viewport := base.NewViewport(base.ViewportConfig{Content: passiveElement(table)})
 	viewport.SetKeys(guideKeys)
-	viewport.Scroll().Wheel(wheel)
-	return &shortcutGuide{viewport: viewport, dialog: newPresentationDialog(stack, kit.DialogConfig{Theme: theme, Glyphs: glyphs, Title: "Shortcuts", Body: viewport.Element(),
-		Where: layout.Placement{Width: standardDialogWidth, Height: 24}, Keys: guideKeys,
+	viewport.Scroll().SetWheel(wheel)
+	return &shortcutGuide{viewport: viewport, dialog: newPresentationDialog(stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:   "Shortcuts",
+			Content: viewport.Element(),
+			Keys:    guideKeys,
+		},
+		Theme:  theme,
+		Glyphs: glyphs,
+		Where:  layout.Placement{Width: standardDialogWidth, Height: 24},
 	})}
 }
 

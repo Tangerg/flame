@@ -59,8 +59,8 @@ type frameworkOwner struct {
 
 // references reports the releases of installation that pending checkpoints
 // and commands still depend on.
-func (o *frameworkOwner) references(ctx context.Context, executor sqlite.Reader, installation framehost.InstallationID) ([]framehost.Dependency, error) {
-	var dependencies []framehost.Dependency
+func (o *frameworkOwner) references(ctx context.Context, executor sqlite.Reader, installation framehost.InstallationID) ([]framevalue.Digest, error) {
+	var releases []framevalue.Digest
 	err := o.db.withReader(ctx, executor, func(ctx context.Context) error {
 		checkpoints, err := newExecutorCheckpointStore(o.db).PendingCheckpointDependencies(ctx)
 		if err != nil {
@@ -72,12 +72,12 @@ func (o *frameworkOwner) references(ctx context.Context, executor sqlite.Reader,
 		}
 		for _, dependency := range append(checkpoints, commands...) {
 			if dependency.InstallationID.Host() == installation {
-				dependencies = append(dependencies, framehost.Dependency{InstallationID: installation, Release: dependency.Digest})
+				releases = append(releases, dependency.Digest)
 			}
 		}
 		return nil
 	})
-	return framehost.CompactDependencies(dependencies), err
+	return releases, err
 }
 
 // projectInstallation mirrors a framework installation change into Flame's

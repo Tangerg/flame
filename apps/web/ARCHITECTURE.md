@@ -316,6 +316,9 @@ missing theme. Extension point identity and key policy are captured and immutabl
 Contribution options are captured when registered; `update` never rereads the caller's
 options. Ordering belongs only to the contribution value's `order`; the registration
 options and envelope carry no separate sorting hint.
+The kernel reads contribution values through Dougong's `ContributionView.retain`
+leases and disposes them when the view reports a new snapshot, so a retiring
+contribution scope withdraws its values before its lifetime stops.
 
 Dougong's `SerialQueue` owns ordered execution. Client task cohorts partition
 queues by product identity and fence retired generations, releasing pending

@@ -36,8 +36,8 @@ func (a *app) copyLastAssistant() error {
 				a.message("copy canceled because the active session changed")
 				return
 			}
-			if !a.loop.Clipboard().Copy(result.value) {
-				a.message("the terminal host does not provide a clipboard")
+			if err := a.loop.Clipboard().Copy(result.value); err != nil {
+				a.message("could not copy the last assistant response: " + err.Error())
 				return
 			}
 			a.message("copied the last assistant response")

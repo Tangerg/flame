@@ -184,11 +184,17 @@ func (m *mcpScreens) showMCPFormStep(flow *mcpFormFlow) {
 	}
 	fields, secretFields, capture := m.mcpFormFields(flow)
 	flow.secretFields = append(flow.secretFields, secretFields...)
-	form := kit.FormConfig{Fields: fields, Theme: m.theme, Glyphs: m.glyphs,
-		Hints: []keymap.Action{base.Submit, base.Cancel}}
-	form.Keys = base.DefaultFormKeys()
+	form := kit.FormConfig{
+		Behavior: base.FormConfig{
+			Fields: fields,
+		},
+		Theme:  m.theme,
+		Glyphs: m.glyphs,
+		Hints:  []keymap.Action{base.Submit, base.Cancel},
+	}
+	form.Behavior.Keys = base.DefaultFormKeys()
 	var dialog *presentationDialog
-	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
+	form.Behavior.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if m.form != flow || flow.dialog != dialog || flow.state != mcpFormEditing {
 			return scene.Unchanged, nil
 		}
@@ -221,9 +227,14 @@ func (m *mcpScreens) showMCPFormStep(flow *mcpFormFlow) {
 	}
 	step, total, label := flow.progress()
 	title += fmt.Sprintf(" · %d/%d", step, total)
-	dialog = newPresentationDialog(m.stack, kit.DialogConfig{Theme: m.theme, Glyphs: m.glyphs,
-		Title: title, Body: formNavigation(body.Element(), leave),
-		Where: formDialogPlacement(wideDialogWidth, len(fields), 24, body),
+	dialog = newPresentationDialog(m.stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:   title,
+			Content: formNavigation(body.Element(), leave),
+		},
+		Theme:  m.theme,
+		Glyphs: m.glyphs,
+		Where:  formDialogPlacement(wideDialogWidth, len(fields), 24, body),
 	})
 	dialog.Controller().SetDescription(label)
 	flow.dialog = dialog
@@ -303,9 +314,9 @@ func (m *mcpScreens) submitMCPForm(flow *mcpFormFlow) {
 func (m *mcpScreens) showMCPFormSubmission(flow *mcpFormFlow, message string) {
 	flow.dialog.Dismiss()
 	form := kit.FormConfig{Theme: m.theme, Glyphs: m.glyphs}
-	form.Keys = base.DefaultFormKeys()
+	form.Behavior.Keys = base.DefaultFormKeys()
 	var dialog *presentationDialog
-	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
+	form.Behavior.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if m.form == flow && flow.dialog == dialog {
 			m.submitMCPForm(flow)
 		}
@@ -324,14 +335,17 @@ func (m *mcpScreens) showMCPFormSubmission(flow *mcpFormFlow, message string) {
 	} else if flow.state == mcpFormBlocked {
 		title = "Outcome unknown · replay is unavailable"
 	}
-	form.Title, form.Hints = title+"\n"+message, hints
+	form.Behavior.Title, form.Hints = title+"\n"+message, hints
 	body := kit.NewForm(form)
-	if err := body.Controller().Element().SetFocusable(func() bool { return true }); err != nil {
-		panic(err)
-	}
-	dialog = newPresentationDialog(m.stack, kit.DialogConfig{Theme: m.theme, Glyphs: m.glyphs,
-		Title: "MCP submission", Description: message, Body: formNavigation(body.Element(), leave),
-		Where: formDialogPlacement(wideDialogWidth, 0, 24, body),
+	dialog = newPresentationDialog(m.stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:       "MCP submission",
+			Description: message,
+			Content:     formNavigation(body.Element(), leave),
+		},
+		Theme:  m.theme,
+		Glyphs: m.glyphs,
+		Where:  formDialogPlacement(wideDialogWidth, 0, 24, body),
 	})
 	flow.dialog = dialog
 	flow.view = body

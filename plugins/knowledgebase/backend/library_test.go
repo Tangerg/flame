@@ -16,7 +16,6 @@ import (
 
 	framecall "github.com/Tangerg/frame/call"
 
-	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
@@ -116,8 +115,8 @@ func TestImportPublishesItsOnlyReceiptAndNeverRepeatsAnUnconfirmedEmbedding(t *t
 	if headers, err := library.list(t.Context()); err != nil || len(headers) != 1 || headers[0] != first {
 		t.Fatalf("failed publication changed the document: %+v, %v", headers, err)
 	}
-	if err := sqlite.RunInTx(t.Context(), reopened.db, func(ctx context.Context) error {
-		_, err := sqlite.Connection(ctx, reopened.db).ExecContext(ctx, `UPDATE documents SET snapshot='{"content":{}}'`)
+	if err := reopened.db.RunInTx(t.Context(), func(ctx context.Context) error {
+		_, err := reopened.db.Executor(ctx).ExecContext(ctx, `UPDATE documents SET snapshot='{"content":{}}'`)
 		return err
 	}); err != nil {
 		t.Fatal(err)

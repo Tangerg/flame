@@ -161,7 +161,7 @@ type terminalAppearance struct {
 func newTerminalAppearance(loop *program.Runtime) terminalAppearance {
 	ground := loop.Environment().Ground()
 	scheme := highlight.Scheme("github-dark")
-	if !ground.BG.Default() && !ground.BG.RGB().Dark() {
+	if ground.Light() {
 		scheme = "github"
 	}
 	return terminalAppearance{
@@ -240,8 +240,7 @@ func newApp(loop *program.Runtime, cfg appConfig) (*app, error) {
 	})
 	a.transcript.images = newTerminalImagePresenter(loop.Images())
 	diagramTheme := "dark"
-	ground := loop.Environment().Ground()
-	if !ground.BG.Default() && !ground.BG.RGB().Dark() {
+	if loop.Environment().Ground().Light() {
 		diagramTheme = "default"
 	}
 	a.prepareDiagram = prepareMermaid(diagramTheme)
@@ -330,10 +329,16 @@ func (a *app) setProgress(progress term.Progress) {
 }
 
 func (a *app) configureComposer(appearance terminalAppearance, keys *keymap.Map, initial authoring.Message) {
-	a.composer.Composer = kit.NewComposer(kit.ComposerConfig{
-		Theme: appearance.theme, Glyphs: appearance.glyphs, Prompt: appearance.glyphs.Marker + " ", MaxRows: 6,
-		Placeholder: "Ask flame to inspect, explain, or change something",
-		Keys:        keys, Clipboard: a.loop.Clipboard(),
+	a.composer.Editor = kit.NewEditor(kit.EditorConfig{
+		Behavior: base.EditorConfig{
+			MaxRows:     6,
+			Placeholder: "Ask flame to inspect, explain, or change something",
+			Keys:        keys,
+			Clipboard:   a.loop.Clipboard(),
+		},
+		Theme:  appearance.theme,
+		Glyphs: appearance.glyphs,
+		Prompt: appearance.glyphs.Marker + " ",
 	})
 	if a.workbench != nil {
 		a.composer.history.Load(a.workbench.History())
@@ -351,7 +356,7 @@ func (a *app) configureCompletion(appearance terminalAppearance) {
 
 func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.Map) {
 	theme, glyphs := appearance.theme, appearance.glyphs
-	a.prompt = newPromptView(theme, glyphs, editorKeys, a.composer.Composer, a.displayOptions())
+	a.prompt = newPromptView(theme, glyphs, editorKeys, a.composer.Editor, a.displayOptions())
 	a.completion.prompt = a.prompt
 	a.shell = newShellView(a.header, a.transcript, a.activity, a.queueView, a.status, a.prompt)
 	a.wireTranscript(a.transcript)
@@ -569,7 +574,7 @@ func (a *app) presentOptions() {
 
 // appendNote adds a labelled note to the current transcript.
 func (a *app) appendNote(label, body string) {
-	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: label, Body: body})
+	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: label, Body: kit.NewParagraph(body, a.transcript.theme.Text)})
 }
 
 func (a *app) cancelPluginCommands(pluginIDs ...string) {

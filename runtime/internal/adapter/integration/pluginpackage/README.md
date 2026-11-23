@@ -5,11 +5,11 @@ own a second archive format, content cache, release digest, integrity stamp or
 execution tree. `frame/distribution` owns those bytes and their original leases.
 The composition root supplies one content Store and its shared Admission.
 
-Every installed directory or ZIP contains `manifest.json`, `plugin.lock.json` and
-exactly the listed artifacts. `plugin.json` remains Flame's product metadata. Its
+Every installed directory or ZIP contains `manifest.json` and exactly the listed
+artifacts. `plugin.json` remains Flame's product metadata. Its
 namespace references a document with the public `plugin.DeclarationProtocol`;
 that version is independent of Frame's portable contract and transport versions.
-Legacy directories without the neutral manifest and lock are refused.
+Legacy directories without the neutral manifest are refused.
 
 `plugins.ProjectFrameworkDeclaration` is the only mapping from admitted Flame
 metadata to Frame Units, contracts and import slots. Both Runtime and the author

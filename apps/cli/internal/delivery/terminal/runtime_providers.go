@@ -139,9 +139,15 @@ func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
 	keyChoice, keyField := providerKeyFields(provider)
 	baseField.SetClipboard(m.clipboard)
 	keyField.SetClipboard(m.clipboard)
-	form := kit.FormConfig{Fields: []base.Field{baseChoice, baseField, keyChoice, keyField}, Theme: m.theme, Glyphs: m.glyphs,
-		Hints: []keymap.Action{base.Submit, base.Cancel}}
-	form.Keys = base.DefaultFormKeys()
+	form := kit.FormConfig{
+		Behavior: base.FormConfig{
+			Fields: []base.Field{baseChoice, baseField, keyChoice, keyField},
+		},
+		Theme:  m.theme,
+		Glyphs: m.glyphs,
+		Hints:  []keymap.Action{base.Submit, base.Cancel},
+	}
+	form.Behavior.Keys = base.DefaultFormKeys()
 	var dialog *presentationDialog
 	clearKey := func() { keyField.SetText("") }
 	dismiss := func() {
@@ -151,7 +157,7 @@ func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
 			m.providerDialog = nil
 		}
 	}
-	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
+	form.Behavior.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if m.providerDialog != dialog {
 			clearKey()
 			return scene.Unchanged, nil
@@ -176,9 +182,14 @@ func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
 	}
 
 	dressed := kit.NewForm(form)
-	dialog = newPresentationDialog(m.stack, kit.DialogConfig{Theme: m.theme, Glyphs: m.glyphs,
-		Title: "Configure provider · " + provider.ID(), Body: formNavigation(dressed.Element(), dismiss),
-		Where: formDialogPlacement(standardDialogWidth, len(form.Fields), 18, dressed),
+	dialog = newPresentationDialog(m.stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:   "Configure provider · " + provider.ID(),
+			Content: formNavigation(dressed.Element(), dismiss),
+		},
+		Theme:  m.theme,
+		Glyphs: m.glyphs,
+		Where:  formDialogPlacement(standardDialogWidth, len(form.Behavior.Fields), 18, dressed),
 	})
 	m.providerDialog = dialog
 	dialog.Show()

@@ -51,22 +51,21 @@ func committedModelResponse(history scoperun.Log, process scoperun.ProcessID, se
 			if record.ID.Process == process {
 				settlements[record.ID] = record
 			}
-		case scoperun.EffectIntent:
-			if record.ID.Process != process {
+		case scoperun.Stepped:
+			if record.Process != process {
 				continue
 			}
-			intent, found, err := interaction.ModelCallFromEffect(record.Effect)
-			if err != nil {
-				return nil, err
+			for _, declared := range slices.Backward(record.Intents()) {
+				intent, found, err := interaction.ModelCallFromEffect(declared.Effect)
+				if err != nil {
+					return nil, err
+				}
+				if !found || intent.Sequence != sequence {
+					continue
+				}
+				settlement, err := interaction.ModelSettlementFromRecord(settlements[declared.ID])
+				return settlement.Response, err
 			}
-			if !found {
-				continue
-			}
-			if intent.Sequence != sequence {
-				continue
-			}
-			settlement, err := interaction.ModelSettlementFromRecord(settlements[record.ID])
-			return settlement.Response, err
 		}
 	}
 	return nil, nil

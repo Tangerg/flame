@@ -22,7 +22,7 @@ const (
 // never destroy the user's draft.
 type contextEditor struct {
 	group    *scene.Group
-	composer *kit.Composer
+	composer *kit.Editor
 	theme    kit.Theme
 	keys     *keymap.Map
 	save     func(string)
@@ -89,8 +89,11 @@ func newContextEditor(theme kit.Theme, clipboard base.Clipboard, content, placeh
 	keys.Bind(cancelContextDocument, input.Chord{Code: input.Esc})
 	editor := &contextEditor{
 		theme: theme, keys: keys,
-		composer: kit.NewComposer(kit.ComposerConfig{
-			Theme: theme, MaxRows: 1_000,
+		composer: kit.NewEditor(kit.EditorConfig{
+			Behavior: base.EditorConfig{
+				MaxRows: 1_000,
+			},
+			Theme: theme,
 		}),
 	}
 	editor.composer.Controller().SetKeys(keys)
@@ -210,9 +213,16 @@ func (e *contextEditing) open(request contextEditorRequest) *contextEditorSessio
 			e.notify(request.Title + ": " + err.Error())
 		}
 	}
-	dialog = newPresentationDialog(e.stack, kit.DialogConfig{Theme: e.theme, Glyphs: e.glyphs,
-		Title: request.Title, Description: request.Description, Body: editor.Element(),
-		Where: layout.Placement{Width: wideDialogWidth, Height: 24}, Keys: editor.keys,
+	dialog = newPresentationDialog(e.stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:       request.Title,
+			Description: request.Description,
+			Content:     editor.Element(),
+			Keys:        editor.keys,
+		},
+		Theme:  e.theme,
+		Glyphs: e.glyphs,
+		Where:  layout.Placement{Width: wideDialogWidth, Height: 24},
 	})
 	session.dialog = dialog
 	e.active = session

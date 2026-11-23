@@ -21,9 +21,9 @@ type CapturedSource struct {
 
 func (s CapturedSource) SourceConfig() ServerConfig { return s.Config.Clone() }
 
-// Source reads the explicit declaration preserved by the product decorators.
+// Source reads the declaration through every product decorator.
 func Source(executable toolcontract.Tool) (CapturedSource, bool) {
-	source, ok := executable.(interface{ MCPSource() (CapturedSource, bool) })
+	source, ok := toolcontract.As[interface{ MCPSource() (CapturedSource, bool) }](executable)
 	if !ok {
 		return CapturedSource{}, false
 	}

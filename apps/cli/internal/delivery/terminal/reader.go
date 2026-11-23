@@ -179,7 +179,7 @@ func (r *readerPane) replace(document readerDocument, placement readerPlacement)
 		}
 	}
 	if len(blocks) == 0 {
-		blocks = append(blocks, &kit.Entry{Theme: r.theme, Body: "No content is available for this entry."})
+		blocks = append(blocks, &kit.Entry{Theme: r.theme, Body: kit.NewParagraph("No content is available for this entry.", r.theme.Text)})
 	}
 	r.resetContent(blocks, placement)
 	r.selection.Clear()
@@ -197,13 +197,10 @@ func (r *readerPane) resetContent(blocks []base.Block, placement readerPlacement
 		}
 		r.content.Close()
 	}
-	view, err := kit.NewTranscript(kit.TranscriptConfig{Behavior: base.TranscriptConfig{Key: "reader-window", MaxItems: max(len(blocks), 1), Keys: r.keys}, Theme: r.theme, Glyphs: r.glyphs})
-	if err != nil {
-		panic(err)
-	}
+	view := kit.NewTranscript(kit.TranscriptConfig{Behavior: base.TranscriptConfig{Key: "reader-window", MaxItems: max(len(blocks), 1), Keys: r.keys}, Theme: r.theme, Glyphs: r.glyphs})
 	r.view, r.content, r.blocks = view, view.Controller(), blocks
 	r.scroll, r.selection = r.content.Scroll(), r.content.Selection()
-	r.scroll.Wheel(r.wheel)
+	r.scroll.SetWheel(r.wheel)
 	for _, block := range blocks {
 		if _, err := r.content.Add(block); err != nil {
 			panic(err)
@@ -216,12 +213,8 @@ func (r *readerPane) resetContent(blocks []base.Block, placement readerPlacement
 	case readerKeepsPlace:
 		r.scroll.Reveal(offset, offset+max(r.viewport.Value().Y, 1)-1)
 	}
-	if err := view.Element().SetPaint(r.drawBody); err != nil {
-		panic(err)
-	}
-	if err := view.Element().SetFocusable(func() bool { return false }); err != nil {
-		panic(err)
-	}
+	view.Element().SetPaint(r.drawBody)
+	view.Element().SetFocusable(func() bool { return false })
 	if err := r.body.Set(scene.Item{Element: view.Element()}); err != nil {
 		panic(err)
 	}
@@ -451,7 +444,7 @@ func (r *readerPane) copy() {
 	if value == "" {
 		value = copyableRowsText(layout.Rows(layout.StartRow(), layout.Height()))
 	}
-	if value == "" || r.clipboard == nil || !r.clipboard.Copy(value) {
+	if value == "" || r.clipboard == nil || r.clipboard.Copy(value) != nil {
 		return
 	}
 	if r.onCopied != nil {

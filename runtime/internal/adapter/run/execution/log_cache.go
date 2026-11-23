@@ -62,16 +62,6 @@ func (c *executionLogCache) encodedEntries(head runs.ExecutionTreeHead, history 
 	return immutable, err
 }
 
-func cloneLogEntry(entry scoperun.Entry) (scoperun.Entry, error) {
-	data, err := json.Marshal(entry)
-	if err != nil {
-		return scoperun.Entry{}, err
-	}
-	var cloned scoperun.Entry
-	err = json.Unmarshal(data, &cloned)
-	return cloned, err
-}
-
 func (i *interactionSession) inspectCommittedTree(ctx context.Context) (scoperun.TreeInspection, error) {
 	history, err := i.committedTree(ctx, i.rootID)
 	if err != nil {

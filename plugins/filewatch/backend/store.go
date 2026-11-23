@@ -80,8 +80,8 @@ func (s *store) capture(ctx context.Context, observation filewatch.Observation) 
 	if err != nil {
 		return err
 	}
-	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
-		connection := sqlite.Connection(ctx, s.db)
+	return s.db.RunInTx(ctx, func(ctx context.Context) error {
+		connection := s.db.Executor(ctx)
 		var previous string
 		err := connection.QueryRowContext(ctx, `SELECT capture FROM events WHERE generation=? AND sequence=?`, capture.Generation, capture.Sequence).Scan(&previous)
 		if err == nil {
@@ -213,8 +213,8 @@ func decodeEvent(id, generation string, sequence uint64, raw string, accepted in
 }
 
 func (s *store) acceptRun(ctx context.Context, id string) error {
-	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
-		result, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE events SET accepted=1 WHERE id=?`, id)
+	return s.db.RunInTx(ctx, func(ctx context.Context) error {
+		result, err := s.db.Executor(ctx).ExecContext(ctx, `UPDATE events SET accepted=1 WHERE id=?`, id)
 		if err != nil {
 			return err
 		}

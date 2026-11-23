@@ -65,7 +65,7 @@ func (p *CatalogPermission) Read(ctx context.Context, recordID string, grant fra
 		return framehost.BindingSnapshot{}, err
 	}
 	for _, binding := range bindings {
-		if binding.Identity.String() == recordID {
+		if binding.Identity().String() == recordID {
 			accepted, err := plugins.DecodeActivation(binding)
 			if err == nil {
 				if evidence, ok := ctx.Value(restorationEvidenceKey{}).(*restorationEvidence); ok {

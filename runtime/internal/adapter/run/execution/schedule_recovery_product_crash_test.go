@@ -202,20 +202,22 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			var originalEffect scoperun.EffectID
 			var originalEffects []scoperun.EffectID
 			for _, entry := range originalTree.Entries {
-				intent, ok := entry.Record.(scoperun.EffectIntent)
-				if !ok || intent.ID.Process != originalTree.Root {
+				stepped, ok := entry.Record.(scoperun.Stepped)
+				if !ok || stepped.Process != originalTree.Root {
 					continue
 				}
-				call, tool, err := interaction.ToolCallFromEffect(intent.Effect)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if tool && call.Call.Name == "schedules_create_schedule" {
-					if call.ContinuationOf != originalEffect {
-						t.Fatal("original create call has multiple independent effect intents")
+				for _, intent := range stepped.Intents() {
+					call, tool, err := interaction.ToolCallFromEffect(intent.Effect)
+					if err != nil {
+						t.Fatal(err)
 					}
-					originalEffect = intent.ID
-					originalEffects = append(originalEffects, intent.ID)
+					if tool && call.Call.Name == "schedules_create_schedule" {
+						if call.ContinuationOf != originalEffect {
+							t.Fatal("original create call has multiple independent effect intents")
+						}
+						originalEffect = intent.ID
+						originalEffects = append(originalEffects, intent.ID)
+					}
 				}
 			}
 			if !originalEffect.Valid() {
@@ -274,19 +276,21 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				}
 				var retained []scoperun.EffectID
 				for _, entry := range finalTree.Entries {
-					intent, ok := entry.Record.(scoperun.EffectIntent)
-					if !ok || intent.ID.Process != originalTree.Root {
+					stepped, ok := entry.Record.(scoperun.Stepped)
+					if !ok || stepped.Process != originalTree.Root {
 						continue
 					}
-					call, tool, err := interaction.ToolCallFromEffect(intent.Effect)
-					if err != nil {
-						t.Fatal(err)
-					}
-					if tool && call.Call.Name == "schedules_create_schedule" {
-						if !slices.Contains(originalEffects, intent.ID) {
-							t.Fatal("recovery prepared another create effect")
+					for _, intent := range stepped.Intents() {
+						call, tool, err := interaction.ToolCallFromEffect(intent.Effect)
+						if err != nil {
+							t.Fatal(err)
 						}
-						retained = append(retained, intent.ID)
+						if tool && call.Call.Name == "schedules_create_schedule" {
+							if !slices.Contains(originalEffects, intent.ID) {
+								t.Fatal("recovery prepared another create effect")
+							}
+							retained = append(retained, intent.ID)
+						}
 					}
 				}
 				if !slices.Equal(retained, originalEffects) || finalTree.Root != originalTree.Root {

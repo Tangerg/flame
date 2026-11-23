@@ -56,7 +56,7 @@ func buildPluginPackages(cfg assemblyConfig, lifetime *runtimeLifetime) (*plugin
 	content, err := distribution.Open(distribution.Config{
 		Directory: filepath.Join(cfg.stores.DataDirectory, "plugins", "frame"),
 		Admission: cfg.stores.Admission,
-		Trust: func(_ context.Context, source distribution.Source, _ distribution.Manifest, _ distribution.Lock) error {
+		Trust: func(_ context.Context, source distribution.Source, _ distribution.Release) error {
 			// Flame installs explicitly selected local packages. Remote download
 			// and publisher authentication require a distinct product policy.
 			if !filepath.IsAbs(source.Location) {
@@ -179,7 +179,7 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	if err != nil {
 		return frameworkComposition{}, err
 	}
-	profile, err := process.New(process.Config{Runner: newProcessRunner(cfg.processRunner), Store: cfg.stores.Frame, Source: source, CloseTimeout: pluginProcessCloseTimeout, Protocol: source, MaxFrameBytes: sdk.DefaultMaxLineLength})
+	profile, err := process.New(process.Config{Runner: cfg.processRunner, Store: cfg.stores.Frame, Source: source, CloseTimeout: pluginProcessCloseTimeout, Protocol: source, MaxFrameBytes: sdk.DefaultMaxLineLength})
 	if err != nil {
 		return frameworkComposition{}, err
 	}
@@ -254,9 +254,6 @@ func restoreFramework(ctx context.Context, stores *persistence.Bundle, host fram
 	}
 	if err := host.Restore(ctx, definitions); err != nil {
 		return fmt.Errorf("plugins: restore original framework records: %w", err)
-	}
-	if err := stores.Frame.ConfirmRestoredInstallations(ctx); err != nil {
-		return err
 	}
 	return stores.RecoverPluginBindings(ctx)
 }

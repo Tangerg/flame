@@ -5,7 +5,7 @@ import {
   type Provisions,
   type Requirements,
 } from "dougong";
-import { capturePluginDeclaration, normalizePlainRecord } from "dougong/advanced";
+import { capturePluginDeclaration, capturePlainRecord } from "dougong/advanced";
 import { ContributionScope } from "@/extensions/contributionScope";
 import { type AmbientShell } from "@/extensions/context";
 import { startTask, type TaskStartOptions } from "@/extensions/tasksStore";
@@ -35,11 +35,9 @@ const specFields: ReadonlySet<string> = new Set(["name", "requires", "provides",
 export function definePlugin<Requires extends Requirements = {}, Provides extends Provisions = {}>(
   spec: PluginSpec<Requires, Provides>,
 ): AnyPlugin {
-  const { name, requires, provides, setup } = normalizePlainRecord(
-    spec,
-    "flame plugin declaration",
-    { fields: specFields },
-  );
+  const { name, requires, provides, setup } = capturePlainRecord(spec, "flame plugin declaration", {
+    fields: specFields,
+  });
   if (typeof setup !== "function") throw new TypeError("plugin setup must be a function");
   return capturePluginDeclaration({
     name,

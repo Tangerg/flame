@@ -5,9 +5,9 @@ import {
   type ContributionOperations,
   type LifetimeContext,
 } from "dougong";
-import { batchSnapshotNotifications, normalizePlainRecord } from "dougong/advanced";
+import { batchSnapshotNotifications, capturePlainRecord } from "dougong/advanced";
 import { ExactSequence } from "@/foundation/exactSequence";
-import { type Contribution, type PublishedContribution } from "@/extensions/contracts";
+import { type Contribution } from "@/extensions/contracts";
 import {
   type ExtensionContributionOptions,
   type ExtensionPoint,
@@ -36,25 +36,9 @@ export interface ExtensionContribution<T> {
   [Symbol.dispose](): void;
 }
 
-export class ContributionLease {
-  readonly #release = Promise.withResolvers<void>();
-  readonly #joined = Promise.withResolvers<void>();
-  readonly untilReleased = this.#release.promise;
-  readonly settled = this.#joined.promise;
-
-  release(): void {
-    this.#release.resolve();
-  }
-
-  join(borrow: Promise<unknown>): void {
-    void borrow.then(() => this.#joined.resolve(), this.#joined.reject);
-  }
-}
-
 export class ContributionScope {
   readonly #publications = new Set<{ [Symbol.dispose](): void }>();
   readonly #children = new Set<ContributionScope>();
-  readonly #leases = new Set<ContributionLease>();
   readonly #operations: ContributionOperations;
   readonly #plugin: string;
   readonly #owned: ChildLifetime | undefined;
@@ -92,16 +76,11 @@ export class ContributionScope {
     const captured =
       options === undefined
         ? undefined
-        : normalizePlainRecord(options, "flame contribution options", {
+        : capturePlainRecord(options, "flame contribution options", {
             fields: contributionFields,
           });
     const key = domainKey(point, item, captured);
-    const publish = (value: T): PublishedContribution<T> => ({
-      key,
-      plugin: this.#plugin,
-      item: value,
-      retain: () => this.#retain(),
-    });
+    const publish = (value: T): Contribution<T> => ({ key, plugin: this.#plugin, item: value });
     const contribution = this.#operations.add(point.token, key, publish(item), {
       lifetime: this.lifetime,
     });
@@ -126,34 +105,15 @@ export class ContributionScope {
     if (this.#sealed) throw new Error("contribution scope is retiring");
   }
 
-  #retain(): ContributionLease {
-    this.assertOpen();
-    const lease = new ContributionLease();
-    this.#leases.add(lease);
-    void lease.settled.then(
-      () => this.#leases.delete(lease),
-      () => this.#leases.delete(lease),
-    );
-    return lease;
-  }
-
   #withdraw(): void {
     for (const child of this.#children) child.#withdraw();
     for (const publication of this.#publications) publication[disposeSymbol]();
     this.#publications.clear();
-    for (const lease of this.#leases) lease.release();
   }
 
   #seal(): void {
     this.#sealed = true;
     for (const child of this.#children) child.#seal();
-  }
-
-  #readers(): Promise<void>[] {
-    return [
-      ...[...this.#leases].map((lease) => lease.settled),
-      ...[...this.#children].flatMap((child) => child.#readers()),
-    ];
   }
 
   [asyncDisposeSymbol](): Promise<void> {
@@ -162,40 +122,13 @@ export class ContributionScope {
     const retirement = Promise.withResolvers<void>();
     this.#retirement = retirement.promise;
     this.#seal();
-    // Withdraw the rendering projection before stopping its borrowed generation.
-    // Dougong then joins the same borrows before releasing the underlying resources.
+    // Withdrawal notifies the kernel, which disposes its leases on these
+    // values before the owned lifetime stops.
     batchSnapshotNotifications(() => this.#withdraw());
-    const readers = this.#readers();
-    const stopping = readers.length
-      ? Promise.all(readers).then(() => this.#owned![asyncDisposeSymbol]())
-      : this.#owned[asyncDisposeSymbol]();
-    void stopping.then(() => {
+    void this.#owned[asyncDisposeSymbol]().then(() => {
       if (this.#parent) this.#parent.#children.delete(this);
       retirement.resolve();
     }, retirement.reject);
     return retirement.promise;
   }
-}
-
-export function retainContribution<T>(
-  view: import("dougong").ContributionView<PublishedContribution<T>>,
-  id: string,
-): {
-  readonly value?: Contribution<T>;
-  readonly release: () => void;
-  readonly settled: Promise<void>;
-} {
-  let lease: ContributionLease | undefined;
-  let value: Contribution<T> | undefined;
-  const borrow = view.use(id, (entry) => {
-    lease = entry.retain();
-    value = { key: entry.key, plugin: entry.plugin, item: entry.item };
-    return lease.untilReleased;
-  });
-  if (lease) {
-    const retained = lease;
-    retained.join(borrow);
-    return { value, release: () => retained.release(), settled: retained.settled };
-  }
-  return { release: () => {}, settled: borrow.then(() => undefined) };
 }

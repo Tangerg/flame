@@ -180,9 +180,6 @@ func (s *segmentPump) treeFactRoute(event ExecutorEvent, startedRoutes map[strin
 	switch fact := event.Payload.(type) {
 	case ToolResultsCommitted:
 	case SegmentEnded:
-		if len(fact.unresolvedEffects) > 0 {
-			return nil, errors.New("runs: settled execution tree terminal carries unresolved effects")
-		}
 		if !fact.cancellation.IsZero() {
 			canceled, ok := fact.Ending.(run.Canceled)
 			if !ok || canceled.Detail != "" {

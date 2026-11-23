@@ -32,7 +32,7 @@ func withReadTracking(inner toolcontract.Tool, tr *readTracker, root *filesystem
 	if tr == nil {
 		return inner
 	}
-	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
+	return decorateCall(inner, func(ctx context.Context, next toolcontract.Caller, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		request, decodeErr := decodeToolArguments[fs.ReadRequest](invocation)
 		if decodeErr != nil {
 			return toolcontract.Result{}, fmt.Errorf("track read arguments: %w", decodeErr)
@@ -46,7 +46,7 @@ func withReadTracking(inner toolcontract.Tool, tr *readTracker, root *filesystem
 		if err != nil {
 			return toolcontract.Result{}, fmt.Errorf("track read %s: %w", request.Path, err)
 		}
-		out, err := inner.Call(ctx, invocation)
+		out, err := next.Call(ctx, invocation)
 		if err != nil {
 			return out, err
 		}
@@ -71,7 +71,7 @@ func withMutationGuard(inner toolcontract.Tool, tr *readTracker, root *filesyste
 	if tr == nil {
 		return inner
 	}
-	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
+	return decorateCall(inner, func(ctx context.Context, next toolcontract.Caller, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
 			err = fmt.Errorf("inspect mutation paths before applying patch: %w", err)
@@ -94,7 +94,7 @@ func withMutationGuard(inner toolcontract.Tool, tr *readTracker, root *filesyste
 		for _, target := range targets {
 			tr.forget(sessionID, target)
 		}
-		return inner.Call(ctx, invocation)
+		return next.Call(ctx, invocation)
 	})
 }
 

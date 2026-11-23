@@ -35,7 +35,7 @@ type presentationDialog struct {
 func newPresentationDialog(workspace *workspaceScene, config kit.DialogConfig) *presentationDialog {
 	p := &presentationDialog{workspace: workspace}
 	body := scene.NewGroup(scene.GroupConfig{
-		Items: []scene.Item{{Element: config.Body, Size: layout.Flex(1)}},
+		Items: []scene.Item{{Element: config.Behavior.Content, Size: layout.Flex(1)}},
 		Element: scene.ElementConfig{
 			Paint: func(frame scene.Frame) { p.presented.Stage(frame, p.identity) },
 			Preview: func(event scene.Event) scene.EventResult {
@@ -53,9 +53,9 @@ func newPresentationDialog(workspace *workspaceScene, config kit.DialogConfig) *
 			},
 		},
 	})
-	config.Body = body.Element()
-	dismissed := config.Dismissed
-	config.Dismissed = func() {
+	config.Behavior.Content = body.Element()
+	dismissed := config.Behavior.Dismissed
+	config.Behavior.Dismissed = func() {
 		p.identity.retire()
 		workspace.dismissDialog(p.dialog.Element())
 		if dismissed != nil {

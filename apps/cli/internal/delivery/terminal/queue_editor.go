@@ -68,7 +68,7 @@ func newQueueEditor(cfg queueEditorConfig) *queueEditor {
 		Remove:     q.removeQueuedPrompt,
 		Move:       q.moveQueuedPrompt,
 		SendNow:    q.sendQueuedNow,
-		Dismiss:    q.dialog.Dismiss,
+		Dismiss:    func() { q.dialog.Dismiss() },
 	})
 	return q
 }

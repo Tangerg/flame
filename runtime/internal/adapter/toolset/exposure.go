@@ -98,14 +98,15 @@ func (m *manifestBuilder) deferTools(tools ...toolcontract.Tool) {
 
 // manifest freezes the surface and instruments every Tool on it. Scope's Tool
 // telemetry owns the call boundary's span and duration without recording model
-// arguments or results. The product decorators preserve source declarations.
+// arguments or results. Decorators unwrap to their source, so tool.As still
+// reads every source declaration.
 func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, error) {
 	if m.err != nil {
 		return Manifest{}, m.err
 	}
 	installations := slices.Clone(m.installations)
 	var bindings []plugin.Activation
-	if !m.skillDiscovery.Activation.Identity.IsZero() {
+	if !m.skillDiscovery.Activation.Identity().IsZero() {
 		bindings = append(bindings, m.skillDiscovery.Activation)
 		installations = append(installations, m.skillDiscovery.Activation.Dependencies...)
 	}
@@ -117,15 +118,15 @@ func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, erro
 				return nil, err
 			}
 			installations = append(installations, activation.Dependencies...)
-			if !activation.Identity.IsZero() {
+			if !activation.Identity().IsZero() {
 				if !slices.ContainsFunc(bindings, activation.Equal) {
 					bindings = append(bindings, activation.Clone())
 				}
-				executable = preserveDeclarations(frozenInstallationTool{Tool: executable, activation: activation.Clone()}, executable)
+				executable = frozenInstallationTool{Tool: executable, activation: activation.Clone()}
 			}
-			frozen[index] = executable
+			frozen[index] = toolcontract.Wrap(executable, telemetry.Call)
 		}
-		return instrumentTools(telemetry, frozen)
+		return frozen, nil
 	}
 	visible, err := freeze(m.visible)
 	if err != nil {
@@ -145,14 +146,6 @@ func cloneManifestBindings(values []plugin.Activation) []plugin.Activation {
 		result[index] = result[index].Clone()
 	}
 	return result
-}
-
-func instrumentTools(telemetry oteltool.Middleware, tools []toolcontract.Tool) ([]toolcontract.Tool, error) {
-	instrumented := make([]toolcontract.Tool, 0, len(tools))
-	for _, candidate := range tools {
-		instrumented = append(instrumented, decorateCall(candidate, telemetry.Call(candidate).Call))
-	}
-	return instrumented, nil
 }
 
 func (m *manifestBuilder) builtIn(executable toolcontract.Tool) toolcontract.Tool {
@@ -179,6 +172,8 @@ func (t namedRemoteTool) Definition() toolcontract.Definition {
 	definition.Name = t.name
 	return definition
 }
+
+func (t namedRemoteTool) Unwrap() toolcontract.Tool { return t.Tool }
 
 // A recovering Run keeps the original competition even after one source
 // becomes unavailable. Revocation removes authority without renaming its peers.
@@ -213,7 +208,7 @@ func (m *manifestBuilder) bindModelNames(retained *Retained) error {
 			}
 			assigned[name] = ref
 			if name != executable.Definition().Name {
-				set[index] = preserveDeclarations(namedRemoteTool{Tool: executable, name: name}, executable)
+				set[index] = namedRemoteTool{Tool: executable, name: name}
 			}
 		}
 	}

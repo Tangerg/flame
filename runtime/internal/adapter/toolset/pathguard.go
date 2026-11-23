@@ -33,7 +33,7 @@ var protectedDirs = []string{".git"}
 // Shell/git capabilities remain the explicit route for operations outside the
 // workspace.
 func withPathGuard(inner toolcontract.Tool, root *filesystemRoot) toolcontract.Tool {
-	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
+	return decorateCall(inner, func(ctx context.Context, next toolcontract.Caller, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
 			err = fmt.Errorf("inspect mutation paths: %w", err)
@@ -50,7 +50,7 @@ func withPathGuard(inner toolcontract.Tool, root *filesystemRoot) toolcontract.T
 				return toolcontract.Result{}, beforeCallFailure(ctx, failure)
 			}
 		}
-		return inner.Call(ctx, invocation)
+		return next.Call(ctx, invocation)
 	})
 }
 

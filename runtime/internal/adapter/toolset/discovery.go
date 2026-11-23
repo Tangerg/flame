@@ -125,29 +125,11 @@ func NewDiscovery(withheld []toolcontract.Tool) (*Discovery, error) {
 	return t, nil
 }
 
-// DeferredToolNames exposes the exact executable names represented by this
-// search surface. The Resolver remains the authority for visible/deferred sets.
-func (d *Discovery) DeferredToolNames() []string {
-	if d == nil {
-		return nil
-	}
-	names := make([]string, len(d.entries))
-	for index, entry := range d.entries {
-		names[index] = entry.definition.Name
-	}
-	return names
-}
-
 func (d *Discovery) Definition() toolcontract.Definition {
 	return d.inner.Definition()
 }
 
-func (d *Discovery) InputValidator() func([]byte) error {
-	if declaration, ok := d.inner.(toolcontract.InputValidatingTool); ok {
-		return declaration.InputValidator()
-	}
-	return nil
-}
+func (d *Discovery) Unwrap() toolcontract.Tool { return d.inner }
 
 // Catalog renders the Run's deferred catalog for a per-request model context
 // message. It lists a bounded set of exact names select: accepts, grouped in the
@@ -197,7 +179,7 @@ func (d *Discovery) Call(ctx context.Context, invocation toolcontract.Invocation
 
 // The result carries the names actually selected after any argument rewrite.
 // Repeating a search from the original invocation would advertise a different set.
-func (d *Discovery) AdvertiseDeferred(_ context.Context, _ toolcontract.Invocation, result toolcontract.Result) ([]string, error) {
+func (d *Discovery) AdvertiseDeferred(_ toolcontract.Invocation, result toolcontract.Result) ([]string, error) {
 	matched, err := decodeDiscoveryResult(result)
 	return matched.Names, err
 }

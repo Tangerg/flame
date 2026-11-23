@@ -183,7 +183,7 @@ func (i *interactionSession) Read(ctx context.Context, root scoperun.ProcessID, 
 				yield(scoperun.Entry{}, err)
 				return
 			}
-			cloned, err := cloneLogEntry(entry)
+			cloned, err := entry.Clone()
 			if !yield(cloned, err) || err != nil {
 				return
 			}
@@ -404,28 +404,41 @@ func (i *interactionSession) toolResultsChanged(history scoperun.Log, records []
 			if record.Failure != nil || record.Outcome.Status() != scoperun.SettlementStatusSucceeded {
 				continue
 			}
-			for _, entry := range slices.Backward(history.Entries) {
-				intent, found := entry.Record.(scoperun.EffectIntent)
-				if !found || intent.ID != record.ID {
-					continue
-				}
-				// A refused child start is itself a settled delegate result.
-				if intent.Effect.Target() != scoperun.EffectTargetDispatcher {
-					return true, nil
-				}
-				program, found := capturedProgram(history, intent.ID.Process)
-				if _, owned := i.state.deployments.interactions[program]; !found || !owned {
-					break
-				}
-				_, tool, err := interaction.ToolCallFromEffect(intent.Effect)
-				if err != nil || tool {
-					return tool, err
-				}
-				break
+			intent, found := declaredIntent(history, record.ID)
+			if !found {
+				continue
+			}
+			// A refused child start is itself a settled delegate result.
+			if intent.Effect.Target() != scoperun.EffectTargetDispatcher {
+				return true, nil
+			}
+			program, found := capturedProgram(history, intent.ID.Process)
+			if _, owned := i.state.deployments.interactions[program]; !found || !owned {
+				continue
+			}
+			_, tool, err := interaction.ToolCallFromEffect(intent.Effect)
+			if err != nil || tool {
+				return tool, err
 			}
 		}
 	}
 	return false, nil
+}
+
+// declaredIntent finds the Effect a committed Step declared under id.
+func declaredIntent(history scoperun.Log, id scoperun.EffectID) (scoperun.EffectIntent, bool) {
+	for _, entry := range slices.Backward(history.Entries) {
+		stepped, found := entry.Record.(scoperun.Stepped)
+		if !found || stepped.Process != id.Process || stepped.Step != id.Step {
+			continue
+		}
+		intents := stepped.Intents()
+		if int(id.Index) >= len(intents) {
+			return scoperun.EffectIntent{}, false
+		}
+		return intents[id.Index], true
+	}
+	return scoperun.EffectIntent{}, false
 }
 
 func capturedProgram(history scoperun.Log, process scoperun.ProcessID) (scoperun.ProgramRef, bool) {

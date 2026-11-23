@@ -155,7 +155,7 @@ func newTranscriptView(
 ) *transcriptView {
 	c := &transcriptView{
 		theme: theme, glyphs: glyphs, wheel: wheel,
-		look: markdownLook(theme, glyphs, locale, syntax), syntax: syntax,
+		look: markdownLook(theme, locale, syntax), syntax: syntax,
 		search: newTranscriptSearch(), retain: max(retain, 4), details: details,
 		clipboard: clipboard, entries: make(map[transcriptEntryID]*transcriptEntry),
 		tools: make(map[string]liveTool), textStreams: make(map[string]*liveText),

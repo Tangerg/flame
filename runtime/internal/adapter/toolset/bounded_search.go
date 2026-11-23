@@ -100,12 +100,7 @@ type runtimePathSearchResponse struct {
 
 type concurrentSearchTool struct{ toolcontract.Tool }
 
-func (source concurrentSearchTool) InputValidator() func([]byte) error {
-	if declaration, ok := source.Tool.(toolcontract.InputValidatingTool); ok {
-		return declaration.InputValidator()
-	}
-	return nil
-}
+func (source concurrentSearchTool) Unwrap() toolcontract.Tool { return source.Tool }
 
 func (concurrentSearchTool) ConcurrencyPolicy() func(toolcontract.Invocation) (string, bool) {
 	return func(toolcontract.Invocation) (string, bool) { return "", true }

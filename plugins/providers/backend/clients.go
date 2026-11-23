@@ -189,23 +189,29 @@ func buildAnthropicCompatibleModel(ctx context.Context, spec clientSpec, opts ch
 	})
 }
 
+// singleAttempt sends each generation request once, so every provider attempt
+// reaches Flame's endpoint observation and accounting instead of an SDK retry.
+func singleAttempt() *int { return new(0) }
+
 func buildOpenAIResponsesModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
-	return openai.NewResponses(ctx, openai.ResponsesConfig{
+	return openai.NewResponses(ctx, openai.ChatModelConfig{
 		APIKey:         spec.connection.APIKey,
 		DefaultOptions: opts,
 		BaseURL:        spec.connection.BaseURL,
 		HTTPClient:     spec.httpClient,
+		MaxRetries:     singleAttempt(),
 	})
 }
 
 func buildAzureOpenAIModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
 	// The resource catalog proves credential access. The deployment inventory
 	// owns the names used for generation.
-	return openaiprotocol.NewChatCompletions(ctx, openaiprotocol.ChatCompletionsConfig{
+	return openaiprotocol.NewChatCompletions(ctx, openaiprotocol.ChatModelConfig{
 		APIKey:         spec.connection.APIKey,
 		DefaultOptions: opts,
 		BaseURL:        spec.connection.BaseURL,
 		HTTPClient:     spec.httpClient,
+		MaxRetries:     singleAttempt(),
 	}, openaiprotocol.DialectConfig{
 		Provider:        string(providerAzureOpenAI),
 		TokenLimitField: openaiprotocol.TokenLimitMaxCompletionTokens,
@@ -213,11 +219,12 @@ func buildAzureOpenAIModel(ctx context.Context, spec clientSpec, opts chat.Optio
 }
 
 func buildOpenAICompatibleModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
-	return openaiprotocol.NewChatCompletions(ctx, openaiprotocol.ChatCompletionsConfig{
+	return openaiprotocol.NewChatCompletions(ctx, openaiprotocol.ChatModelConfig{
 		APIKey:         spec.connection.APIKey,
 		DefaultOptions: opts,
 		BaseURL:        spec.connection.BaseURL,
 		HTTPClient:     spec.httpClient,
+		MaxRetries:     singleAttempt(),
 	}, openaiprotocol.DialectConfig{
 		Provider:        string(providerOpenAICompatible),
 		TokenLimitField: openaiprotocol.TokenLimitMaxCompletionTokens,

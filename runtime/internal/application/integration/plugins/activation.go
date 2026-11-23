@@ -16,16 +16,11 @@ import (
 // Identity and dependency lists are read projections of that one frozen value.
 
 func ProjectActivation(binding framehost.BindingSnapshot) (plugin.Activation, error) {
-	data, err := binding.CanonicalJSON()
+	canonical, err := binding.Canonical()
 	if err != nil {
 		return plugin.Activation{}, err
 	}
-	value, err := framevalue.ParseJSON(data)
-	if err != nil {
-		return plugin.Activation{}, err
-	}
-	digest := framevalue.Hash(data)
-	activation := plugin.Activation{Binding: value, Identity: digest}
+	activation := plugin.Activation{Binding: canonical}
 	for _, dependency := range binding.Dependencies() {
 		installation, err := identity.ParseHostInstallation(dependency.InstallationID)
 		if err != nil {
@@ -54,7 +49,7 @@ func DecodeActivation(activation plugin.Activation) (framehost.BindingSnapshot, 
 	if err != nil {
 		return framehost.BindingSnapshot{}, err
 	}
-	if original.Binding != activation.Binding || original.Identity != activation.Identity || !slices.Equal(original.Dependencies, activation.Dependencies) {
+	if original.Binding != activation.Binding || !slices.Equal(original.Dependencies, activation.Dependencies) {
 		return framehost.BindingSnapshot{}, fmt.Errorf("%w: activation projection differs from its original binding", plugin.ErrInvalid)
 	}
 	return binding, nil
@@ -80,7 +75,7 @@ func OriginalActivation(activations []plugin.Activation, installation identity.I
 		if err != nil {
 			return plugin.Activation{}, err
 		}
-		root := slices.Contains(binding.UnitRoots, source) || slices.ContainsFunc(binding.Roots, func(root framehost.ExportRef) bool { return root.Unit() == source })
+		root := slices.Contains(binding.UnitRoots, source) || slices.ContainsFunc(binding.Roots, func(root framehost.ExportRef) bool { return root.UnitRef == source })
 		if !root {
 			continue
 		}

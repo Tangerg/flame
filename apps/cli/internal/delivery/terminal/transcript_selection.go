@@ -271,7 +271,7 @@ func (t *transcriptView) copy(value string) {
 	if value == "" {
 		return
 	}
-	if t.clipboard == nil || !t.clipboard.Copy(value) {
+	if t.clipboard == nil || t.clipboard.Copy(value) != nil {
 		return
 	}
 	if t.onCopy != nil {

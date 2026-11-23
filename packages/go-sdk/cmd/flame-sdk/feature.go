@@ -77,7 +77,7 @@ func generateFeature(capability *contract.Capability, directory, tsDirectory str
 		return err
 	}
 	staged := stageFeatureOutputs(stage, directory, tsDirectory, goOutput)
-	if err := contractgen.Generate(source, staged.directory, staged.typescript, staged.goOutput); err != nil {
+	if err := contractgen.Generate(staged.generateConfig(source)); err != nil {
 		return err
 	}
 	if err := staged.writeCapabilityProjections(capability, projection); err != nil {
@@ -111,6 +111,14 @@ func stageFeatureOutputs(stage, directory, tsDirectory string, goOutput contract
 		staged.artifacts = append(staged.artifacts, featureArtifact{staged.goOutput.Path, goOutput.Path})
 	}
 	return staged
+}
+
+func (s stagedFeature) generateConfig(source string) contractgen.GenerateConfig {
+	config := contractgen.GenerateConfig{Source: source, ArtifactDirectory: s.directory, TypeScriptDirectory: s.typescript}
+	if s.goOutput.Path != "" {
+		config.Go = []contractgen.GoOutput{s.goOutput}
+	}
+	return config
 }
 
 func (s stagedFeature) writeCapabilityProjections(capability *contract.Capability, projection frame.CapabilityDescriptor) error {

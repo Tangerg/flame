@@ -717,6 +717,9 @@
         "model": {
           "type": "string"
         },
+        "native_finish_reason": {
+          "type": "string"
+        },
         "usage": {
           "$ref": "#/$defs/CallV1OutputChatUsage"
         }
@@ -1940,6 +1943,9 @@
           "type": "string"
         },
         "model": {
+          "type": "string"
+        },
+        "native_finish_reason": {
           "type": "string"
         },
         "usage": {

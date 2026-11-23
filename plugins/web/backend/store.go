@@ -47,7 +47,7 @@ func (s *store) read(ctx context.Context, id string) (capture.Document, error) {
 }
 
 func (s *store) capture(ctx context.Context, document capture.Document) error {
-	return sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	return s.db.RunInTx(ctx, func(ctx context.Context) error {
 		original, err := s.read(ctx, document.Snapshot().ID)
 		if err == nil {
 			if original.Snapshot() != document.Snapshot() {
@@ -62,10 +62,10 @@ func (s *store) capture(ctx context.Context, document capture.Document) error {
 		if err != nil {
 			return err
 		}
-		if _, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO snapshots(id,snapshot) VALUES(?,?)`, document.Snapshot().ID, string(encoded)); err != nil {
+		if _, err := s.db.Executor(ctx).ExecContext(ctx, `INSERT INTO snapshots(id,snapshot) VALUES(?,?)`, document.Snapshot().ID, string(encoded)); err != nil {
 			return err
 		}
-		_, err = sqlite.Connection(ctx, s.db).ExecContext(ctx, `DELETE FROM snapshots WHERE id IN (SELECT id FROM (SELECT id, row_number() OVER (ORDER BY rowid DESC) AS position, sum(length(CAST(snapshot AS BLOB))) OVER (ORDER BY rowid DESC) AS bytes FROM snapshots) WHERE position>? OR bytes>?)`, capture.MaxDocuments, capture.MaxArchiveBytes)
+		_, err = s.db.Executor(ctx).ExecContext(ctx, `DELETE FROM snapshots WHERE id IN (SELECT id FROM (SELECT id, row_number() OVER (ORDER BY rowid DESC) AS position, sum(length(CAST(snapshot AS BLOB))) OVER (ORDER BY rowid DESC) AS bytes FROM snapshots) WHERE position>? OR bytes>?)`, capture.MaxDocuments, capture.MaxArchiveBytes)
 		return err
 	})
 }

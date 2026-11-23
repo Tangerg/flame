@@ -76,7 +76,7 @@ func (n schemaNode) property(path string) (schemaNode, bool) {
 	}
 	current := n
 	for _, segment := range segments {
-		if !current.acceptsType(framevalue.TypeObject) {
+		if !current.acceptsType(framevalue.SchemaTypeObject) {
 			return schemaNode{}, false
 		}
 		var ok bool
@@ -89,7 +89,7 @@ func (n schemaNode) property(path string) (schemaNode, bool) {
 }
 
 func (n schemaNode) items() (schemaNode, bool) {
-	if !n.isType(framevalue.TypeArray) {
+	if !n.isType(framevalue.SchemaTypeArray) {
 		return schemaNode{}, false
 	}
 	var items []*jsonschema.Schema
@@ -116,7 +116,7 @@ func (n schemaNode) acceptsType(kind framevalue.SchemaType) bool {
 		if slices.Contains(allowed, string(kind)) {
 			continue
 		}
-		if kind == framevalue.TypeInteger && slices.Contains(allowed, string(framevalue.TypeNumber)) {
+		if kind == framevalue.SchemaTypeInteger && slices.Contains(allowed, string(framevalue.SchemaTypeNumber)) {
 			continue
 		}
 		return false
@@ -128,15 +128,15 @@ func (n schemaNode) types() []framevalue.SchemaType {
 	types := slices.DeleteFunc(framevalue.ProfileSchema().Types, func(kind framevalue.SchemaType) bool {
 		return !n.acceptsType(kind)
 	})
-	if slices.Contains(types, framevalue.TypeNumber) {
-		types = slices.DeleteFunc(types, func(kind framevalue.SchemaType) bool { return kind == framevalue.TypeInteger })
+	if slices.Contains(types, framevalue.SchemaTypeNumber) {
+		types = slices.DeleteFunc(types, func(kind framevalue.SchemaType) bool { return kind == framevalue.SchemaTypeInteger })
 	}
 	return types
 }
 
 // Entered values can choose the non-null alternative; observed values cannot.
 func (n schemaNode) inputTypes() []framevalue.SchemaType {
-	return slices.DeleteFunc(n.types(), func(kind framevalue.SchemaType) bool { return kind == framevalue.TypeNull })
+	return slices.DeleteFunc(n.types(), func(kind framevalue.SchemaType) bool { return kind == framevalue.SchemaTypeNull })
 }
 
 func (n schemaNode) isType(kind framevalue.SchemaType) bool {
@@ -154,13 +154,13 @@ func (n schemaNode) formKind() (extension.TerminalFormKind, []string, bool) {
 		return "", nil, false
 	}
 	switch types[0] {
-	case framevalue.TypeString:
+	case framevalue.SchemaTypeString:
 		return extension.TerminalFormText, nil, true
-	case framevalue.TypeInteger:
+	case framevalue.SchemaTypeInteger:
 		return extension.TerminalFormInteger, nil, true
-	case framevalue.TypeNumber:
+	case framevalue.SchemaTypeNumber:
 		return extension.TerminalFormNumber, nil, true
-	case framevalue.TypeBoolean:
+	case framevalue.SchemaTypeBoolean:
 		return extension.TerminalFormBoolean, nil, true
 	default:
 		return "", nil, false

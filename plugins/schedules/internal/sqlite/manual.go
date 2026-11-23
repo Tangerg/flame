@@ -7,15 +7,13 @@ import (
 	"errors"
 	"fmt"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
 	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 )
 
 var manualSchema = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS manual_firings (run_id TEXT PRIMARY KEY, captured_request_json TEXT NOT NULL CHECK(json_valid(captured_request_json)) CHECK(json_type(captured_request_json,'$.CommandID') IS 'text' AND length(json_extract(captured_request_json,'$.CommandID')) > 0), state TEXT NOT NULL CHECK(state IN ('%s','%s')))`, scheduleFiringPending.databaseValue(), scheduleFiringAccepted.databaseValue())
 
 func (s *ScheduleStore) QueueManual(ctx context.Context, request schedule.RunRequest) error {
-	return framesqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	return s.db.RunInTx(ctx, func(ctx context.Context) error {
 		if err := request.Validate(); err != nil {
 			return err
 		}
@@ -26,17 +24,17 @@ func (s *ScheduleStore) QueueManual(ctx context.Context, request schedule.RunReq
 		if err != nil {
 			return err
 		}
-		_, err = framesqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO manual_firings(run_id,captured_request_json,state) VALUES(?,?,?)`, request.RunID(), string(encoded), scheduleFiringPending.databaseValue())
+		_, err = s.db.Executor(ctx).ExecContext(ctx, `INSERT INTO manual_firings(run_id,captured_request_json,state) VALUES(?,?,?)`, request.RunID(), string(encoded), scheduleFiringPending.databaseValue())
 		return err
 	})
 }
 func (s *ScheduleStore) PendingManual(ctx context.Context, afterID string, limit int) ([]schedule.RunRequest, error) {
 	var result []schedule.RunRequest
-	err := framesqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
+	err := s.db.RunReadSnapshot(ctx, func(ctx context.Context) error {
 		if limit <= 0 || limit > schedule.MaximumDispatchBatch {
 			return errors.New("schedule: invalid manual dispatch limit")
 		}
-		rows, err := framesqlite.Connection(ctx, s.db).QueryContext(ctx, `SELECT run_id,captured_request_json FROM manual_firings WHERE state=? AND run_id>? ORDER BY run_id LIMIT ?`, scheduleFiringPending.databaseValue(), afterID, limit)
+		rows, err := s.db.Executor(ctx).QueryContext(ctx, `SELECT run_id,captured_request_json FROM manual_firings WHERE state=? AND run_id>? ORDER BY run_id LIMIT ?`, scheduleFiringPending.databaseValue(), afterID, limit)
 		if err != nil {
 			return err
 		}
@@ -74,9 +72,9 @@ func restoreManual(id, encoded string) (schedule.RunRequest, error) {
 	return request, nil
 }
 func (s *ScheduleStore) AcceptRun(ctx context.Context, id string) error {
-	return framesqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	return s.db.RunInTx(ctx, func(ctx context.Context) error {
 		var rawID string
-		err := framesqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT id FROM schedule_firings WHERE run_id=?`, id).Scan(&rawID)
+		err := s.db.Executor(ctx).QueryRowContext(ctx, `SELECT id FROM schedule_firings WHERE run_id=?`, id).Scan(&rawID)
 		if err == nil {
 			occurrenceID, err := schedule.ParseAcceptance(rawID, id)
 			if err != nil {
@@ -88,7 +86,7 @@ func (s *ScheduleStore) AcceptRun(ctx context.Context, id string) error {
 			return err
 		}
 		var encoded, state string
-		if err := framesqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT captured_request_json,state FROM manual_firings WHERE run_id=?`, id).Scan(&encoded, &state); err != nil {
+		if err := s.db.Executor(ctx).QueryRowContext(ctx, `SELECT captured_request_json,state FROM manual_firings WHERE run_id=?`, id).Scan(&encoded, &state); err != nil {
 			return fmt.Errorf("schedule: find manual dispatch: %w", err)
 		}
 		request, err := restoreManual(id, encoded)
@@ -107,7 +105,7 @@ func (s *ScheduleStore) AcceptRun(ctx context.Context, id string) error {
 		if _, err := s.recordAcceptedRun(ctx, record.ScheduleID(), record.RanAt()); err != nil {
 			return err
 		}
-		_, err = framesqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE manual_firings SET state=? WHERE run_id=?`, scheduleFiringAccepted.databaseValue(), id)
+		_, err = s.db.Executor(ctx).ExecContext(ctx, `UPDATE manual_firings SET state=? WHERE run_id=?`, scheduleFiringAccepted.databaseValue(), id)
 		return err
 	})
 }

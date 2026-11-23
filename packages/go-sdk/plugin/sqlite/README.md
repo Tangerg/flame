@@ -21,11 +21,11 @@ before `apply` can run. A nil `apply` represents a successful decision requiring
 mutation. The plan does not retain a second mutable copy of the typed reply.
 
 After the read lease ends, the command applies the decided mutation and inserts
-its receipt in the same transaction. Repositories use
-`github.com/Tangerg/frame/sqlite.Connection` inside that scope. Related standalone
-repository operations compose their decision and write with Frame's `RunInTx`.
-Every unscoped read enters `Database.Read` or `RunReadSnapshot`; rows and connection
-capabilities must be consumed before that callback returns.
+its receipt in the same transaction. Repositories use the Frame
+`sqlite.Database.Executor` inside that scope. Related standalone repository
+operations compose their decision and write with `Database.RunInTx`. Every
+unscoped read enters `Database.Read` or `Database.RunReadSnapshot`; rows and
+connection capabilities must be consumed before that callback returns.
 
 The classifier is used only during preparation. A mutation, cancellation, receipt
 write or transaction failure returns `plugin/mcp.ErrOutcomeUnconfirmed` and cannot

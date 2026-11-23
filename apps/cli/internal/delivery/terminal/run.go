@@ -348,6 +348,6 @@ func (a *app) announceStartup(notices ...string) {
 	case 1:
 		a.message(notices[0])
 	default:
-		a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: "startup", Body: strings.Join(notices, "\n")})
+		a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: "startup", Body: kit.NewParagraph(strings.Join(notices, "\n"), a.transcript.theme.Text)})
 	}
 }

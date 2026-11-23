@@ -20,7 +20,7 @@ import (
 type picker[T any] struct {
 	theme  kit.Theme
 	glyphs kit.Glyphs
-	query  *kit.Composer
+	query  *kit.Editor
 	items  *base.Filter[T]
 	label  func(T) string
 	detail func(T) string
@@ -33,7 +33,14 @@ type picker[T any] struct {
 
 func newPicker[T any](theme kit.Theme, glyphs kit.Glyphs, placeholder string, label, detail func(T) string, pick func(T)) *picker[T] {
 	p := &picker[T]{theme: theme, glyphs: glyphs, label: label, detail: detail, pick: pick}
-	p.query = kit.NewComposer(kit.ComposerConfig{Theme: theme, Glyphs: glyphs, Prompt: glyphs.Marker + " ", MaxRows: 1})
+	p.query = kit.NewEditor(kit.EditorConfig{
+		Behavior: base.EditorConfig{
+			MaxRows: 1,
+		},
+		Theme:  theme,
+		Glyphs: glyphs,
+		Prompt: glyphs.Marker + " ",
+	})
 	p.query.Controller().SetPlaceholder(placeholder)
 	p.items = base.NewFilter(base.FilterConfig[T]{Row: p.row})
 	p.query.Controller().Session().Subscribe(func(base.ChangeMap) {

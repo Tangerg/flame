@@ -56,17 +56,29 @@ func (p *interruptPrompts) openInterruptSummary() {
 		{Label: "Cancel the run", Value: interruptReviewCancel},
 	})
 	summary := &interruptSummaryDialog{prompts: p, review: review, choice: choice}
-	form := kit.FormConfig{Fields: []base.Field{choice}, Theme: p.theme, Glyphs: p.glyphs,
-		Hints: []keymap.Action{base.Submit, base.Cancel}, Submit: summary.submit}
-	form.Keys = base.DefaultFormKeys()
+	form := kit.FormConfig{
+		Behavior: base.FormConfig{
+			Fields: []base.Field{choice},
+			Submit: summary.submit,
+		},
+		Theme:  p.theme,
+		Glyphs: p.glyphs,
+		Hints:  []keymap.Action{base.Submit, base.Cancel},
+	}
+	form.Behavior.Keys = base.DefaultFormKeys()
 	dressed := kit.NewForm(form)
 	paragraph := kit.NewParagraph(interruptSummary(review), p.theme.Text)
 	viewport := base.NewViewport(base.ViewportConfig{Content: passiveElement(paragraph)})
-	viewport.Scroll().Wheel(p.wheel)
+	viewport.Scroll().SetWheel(p.wheel)
 	pane := &interruptSummaryPane{viewport: viewport, form: dressed}
-	summary.dialog = newPresentationDialog(p.stack, kit.DialogConfig{Theme: p.theme, Glyphs: p.glyphs,
-		Title: "Review interrupts", Body: formNavigation(pane.Element(), summary.leave),
-		Where: layout.Placement{Width: standardDialogWidth, Height: 22},
+	summary.dialog = newPresentationDialog(p.stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:   "Review interrupts",
+			Content: formNavigation(pane.Element(), summary.leave),
+		},
+		Theme:  p.theme,
+		Glyphs: p.glyphs,
+		Where:  layout.Placement{Width: standardDialogWidth, Height: 22},
 	})
 	p.reviewDialog = summary.dialog
 	summary.dialog.Show()

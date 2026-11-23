@@ -100,18 +100,13 @@ func (a *approvalPane) replacePreview(blocks []base.Block, wheel input.Wheel) {
 	if a.preview != nil {
 		a.preview.Close()
 	}
-	view, err := kit.NewTranscript(kit.TranscriptConfig{Behavior: base.TranscriptConfig{Key: "approval-preview", MaxItems: max(len(blocks), 1)}, Theme: a.theme, Glyphs: a.glyphs})
-	if err != nil {
-		panic(err)
-	}
+	view := kit.NewTranscript(kit.TranscriptConfig{Behavior: base.TranscriptConfig{Key: "approval-preview", MaxItems: max(len(blocks), 1)}, Theme: a.theme, Glyphs: a.glyphs})
 	a.view, a.preview = view, view.Controller()
 	// Approval decisions own keyboard focus. The preview still accepts pointer
 	// selection and wheel input without displacing the active form field.
-	if err := view.Element().SetFocusable(func() bool { return false }); err != nil {
-		panic(err)
-	}
+	view.Element().SetFocusable(func() bool { return false })
 	a.scroll = a.preview.Scroll()
-	a.scroll.Wheel(wheel)
+	a.scroll.SetWheel(wheel)
 	a.scroll.ToTop()
 	for _, block := range blocks {
 		if _, err := a.preview.Add(block); err != nil {
@@ -152,14 +147,20 @@ func (p *interruptPrompts) setApprovalForm(initial approvalAction) {
 		return true
 	}
 	dressed := kit.NewForm(kit.FormConfig{
-		Theme: p.approvalPane.theme, Glyphs: p.approvalPane.glyphs, Fields: []base.Field{choice, reason}, Keys: base.DefaultFormKeys(), Hints: []keymap.Action{base.Submit, base.Cancel},
-		Submit: func(base.SubmissionID) (scene.ActionState, error) {
-			if !capture() {
-				return scene.Unchanged, nil
-			}
-			p.answerApproval(draft.choice)
-			return scene.Applied, nil
+		Behavior: base.FormConfig{
+			Fields: []base.Field{choice, reason},
+			Keys:   base.DefaultFormKeys(),
+			Submit: func(base.SubmissionID) (scene.ActionState, error) {
+				if !capture() {
+					return scene.Unchanged, nil
+				}
+				p.answerApproval(draft.choice)
+				return scene.Applied, nil
+			},
 		},
+		Theme:  p.approvalPane.theme,
+		Glyphs: p.approvalPane.glyphs,
+		Hints:  []keymap.Action{base.Submit, base.Cancel},
 	})
 	p.approvalForm = dressed.Controller()
 	p.approvalPane.setForm(dressed, func() {
@@ -214,7 +215,7 @@ func (p *interruptPrompts) setApprovalPreview(sections []toolSection) {
 		}
 	}
 	if len(blocks) == 0 {
-		blocks = append(blocks, &kit.Entry{Theme: p.approvalPane.theme, Body: "This request has no additional preview."})
+		blocks = append(blocks, &kit.Entry{Theme: p.approvalPane.theme, Body: kit.NewParagraph("This request has no additional preview.", p.approvalPane.theme.Text)})
 	}
 	p.approvalPane.replacePreview(blocks, p.wheel)
 }

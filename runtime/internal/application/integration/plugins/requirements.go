@@ -327,7 +327,7 @@ func (c requirementCatalog) plan(ctx context.Context, host framehost.Host, root 
 						return framehost.BindingPlan{}, err
 					}
 					choice.Providers = append(choice.Providers, source)
-					pending = append(pending, entry{source: source.Unit(), path: path + ": "})
+					pending = append(pending, entry{source: source.UnitRef, path: path + ": "})
 				}
 				choices = append(choices, choice)
 			}

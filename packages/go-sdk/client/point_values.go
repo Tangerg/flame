@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 	"reflect"
 
@@ -96,6 +95,6 @@ func decodePointValue[T any](contract *plugincontract.Point, encoded string) (T,
 	if err := contract.ValidateValue(input); err != nil {
 		return value, err
 	}
-	err = json.Unmarshal(input.Bytes(), &value, json.RejectUnknownMembers(true), framevalue.Numbers())
+	err = input.Decode(&value)
 	return value, err
 }

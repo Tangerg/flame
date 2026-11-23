@@ -13,7 +13,7 @@ import {
   type DocumentRead,
 } from "../contracts/capability";
 import { LIMITS } from "../contracts/limits";
-import { projectNumbers } from "../contracts/json";
+import { projectNumbers, type FrozenJSONValue } from "@frame/sdk/json";
 import {
   engineCatalogSchema,
   renderReportSchema,
@@ -31,7 +31,8 @@ export type Operation = keyof typeof METHODS;
 export function decodeInput(schema: z.ZodType, value: unknown): unknown {
   // Envelope numbers are bounded integer counts and offsets. Content numbers
   // stay inside the format owner's original JSON string until format admission.
-  return schema.parse(projectNumbers(value));
+  // Frame admits method and tool input as frozen JSON.
+  return schema.parse(projectNumbers(value as FrozenJSONValue));
 }
 
 function encoded(value: unknown): string {

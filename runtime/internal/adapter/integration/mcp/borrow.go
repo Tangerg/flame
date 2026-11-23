@@ -103,7 +103,7 @@ func (p *Pool) BorrowActivation(ctx context.Context, id mcpserver.ID, activation
 	if observation != nil {
 		managed, err = observation.acquire(ctx)
 	} else {
-		managed, err = p.installed.acquireRecord(ctx, id, activation.Identity.String())
+		managed, err = p.installed.acquireRecord(ctx, id, activation.Identity().String())
 	}
 	if err != nil {
 		return nil, err

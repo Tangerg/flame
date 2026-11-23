@@ -2,6 +2,8 @@ package execution
 
 import (
 	"context"
+	"maps"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -15,8 +17,10 @@ import (
 // Depth changes a Program, not its group's captured Tool authority. Sharing this
 // frozen binding also keeps receipt capability and schemas fixed across depths.
 type interactionToolGroup struct {
-	manifest  toolset.Manifest
-	tools     interaction.ToolSet
+	manifest toolset.Manifest
+	tools    interaction.ToolSet
+	// authority digests the group's Tool sources; the Interaction revision binds it.
+	authority string
 	contracts map[domaintool.Ref]toolcontract.Contract
 	observed  map[domaintool.Ref]*observedInteractionTool
 }
@@ -34,8 +38,14 @@ func (i *InteractionExecutor) bindInteractionToolGroup(ctx context.Context, mani
 	if err != nil {
 		return interactionToolGroup{}, err
 	}
+	group.authority = scoperun.ComputeDigest(configuration).String()
+	// Scope requires a ToolSet Revision exactly when a Tool declares a concurrency policy.
+	var revision string
+	if slices.ContainsFunc(slices.Collect(maps.Values(observed)), func(tool *observedInteractionTool) bool { return tool.concurrent != nil }) {
+		revision = i.buildID.String() + ":" + group.authority
+	}
 	group.tools, err = interaction.NewToolSet(interaction.ToolSetConfig{
-		Revision: i.buildID.String() + ":" + scoperun.ComputeDigest(configuration).String(),
+		Revision: revision,
 		Tools:    visible, DeferredTools: deferred,
 		MaxConcurrentCalls: i.policy.maxConcurrentToolCalls,
 	})

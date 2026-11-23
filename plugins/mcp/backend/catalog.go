@@ -53,7 +53,7 @@ func (c catalog) prepareChange(ctx context.Context, _ *sdk.ServerSession, change
 		return pluginstorage.NewCommandPlan(wire.Conflict, nil)
 	}
 	var revision, grant string
-	err := framesqlite.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT revision,grant FROM entries WHERE name=?`, change.Name).Scan(&revision, &grant)
+	err := c.db.Executor(ctx).QueryRowContext(ctx, `SELECT revision,grant FROM entries WHERE name=?`, change.Name).Scan(&revision, &grant)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return pluginstorage.CommandPlan[wire.Decision]{}, err
 	}
@@ -65,7 +65,7 @@ func (c catalog) prepareChange(ctx context.Context, _ *sdk.ServerSession, change
 			return pluginstorage.NewCommandPlan(wire.Conflict, nil)
 		}
 		return pluginstorage.NewCommandPlan(wire.Applied, func(ctx context.Context) error {
-			if _, err := framesqlite.Connection(ctx, c.db).ExecContext(ctx, `DELETE FROM entries WHERE name=?`, change.Name); err != nil {
+			if _, err := c.db.Executor(ctx).ExecContext(ctx, `DELETE FROM entries WHERE name=?`, change.Name); err != nil {
 				return err
 			}
 			return c.cancelPending(ctx, change.Name, c.now())
@@ -77,7 +77,7 @@ func (c catalog) prepareChange(ctx context.Context, _ *sdk.ServerSession, change
 	}
 	entry.Revision = rand.Text()
 	return pluginstorage.NewCommandPlan(wire.Applied, func(ctx context.Context) error {
-		if _, err := framesqlite.Connection(ctx, c.db).ExecContext(ctx, `INSERT INTO entries VALUES(?,?,?,?,?,?) ON CONFLICT(name) DO UPDATE SET revision=excluded.revision,grant=excluded.grant, enabled=excluded.enabled, description=excluded.description, handshake_seconds=excluded.handshake_seconds`, entry.Name, entry.Revision, entry.LaunchGrant, entry.Enabled, entry.Description, entry.HandshakeSeconds); err != nil {
+		if _, err := c.db.Executor(ctx).ExecContext(ctx, `INSERT INTO entries VALUES(?,?,?,?,?,?) ON CONFLICT(name) DO UPDATE SET revision=excluded.revision,grant=excluded.grant, enabled=excluded.enabled, description=excluded.description, handshake_seconds=excluded.handshake_seconds`, entry.Name, entry.Revision, entry.LaunchGrant, entry.Enabled, entry.Description, entry.HandshakeSeconds); err != nil {
 			return err
 		}
 		if !entry.Enabled || grant != entry.LaunchGrant {
@@ -88,7 +88,7 @@ func (c catalog) prepareChange(ctx context.Context, _ *sdk.ServerSession, change
 }
 
 func (c catalog) cancelPending(ctx context.Context, name string, finished time.Time) error {
-	_, err := framesqlite.Connection(ctx, c.db).ExecContext(ctx, `UPDATE attempts SET status=?,finished=? WHERE name=? AND status=?`, wire.Canceled, finished.UnixNano(), name, wire.Pending)
+	_, err := c.db.Executor(ctx).ExecContext(ctx, `UPDATE attempts SET status=?,finished=? WHERE name=? AND status=?`, wire.Canceled, finished.UnixNano(), name, wire.Pending)
 	return err
 }
 
@@ -97,7 +97,7 @@ func (c catalog) prepareStart(ctx context.Context, _ *sdk.ServerSession, start w
 		return pluginstorage.NewCommandPlan(wire.AttemptResult{}, nil)
 	}
 	var enabled bool
-	err := framesqlite.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT enabled FROM entries WHERE name=? AND grant=?`, start.Name, start.Grant).Scan(&enabled)
+	err := c.db.Executor(ctx).QueryRowContext(ctx, `SELECT enabled FROM entries WHERE name=? AND grant=?`, start.Name, start.Grant).Scan(&enabled)
 	if errors.Is(err, sql.ErrNoRows) || err == nil && !enabled {
 		return pluginstorage.NewCommandPlan(wire.AttemptResult{}, nil)
 	}
@@ -110,7 +110,7 @@ func (c catalog) prepareStart(ctx context.Context, _ *sdk.ServerSession, start w
 		if err := c.cancelPending(ctx, start.Name, now); err != nil {
 			return err
 		}
-		connection := framesqlite.Connection(ctx, c.db)
+		connection := c.db.Executor(ctx)
 		if _, err := connection.ExecContext(ctx, `DELETE FROM attempts WHERE finished<=?`, now.Add(-wire.AttemptRetentionSeconds*time.Second).UnixNano()); err != nil {
 			return err
 		}
@@ -124,7 +124,7 @@ func (c catalog) prepareFinish(ctx context.Context, _ *sdk.ServerSession, comple
 		return pluginstorage.NewCommandPlan(wire.Conflict, nil)
 	}
 	var pending bool
-	if err := framesqlite.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM attempts WHERE id=? AND epoch=? AND status=?)`, completion.ID, completion.Epoch, wire.Pending).Scan(&pending); err != nil {
+	if err := c.db.Executor(ctx).QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM attempts WHERE id=? AND epoch=? AND status=?)`, completion.ID, completion.Epoch, wire.Pending).Scan(&pending); err != nil {
 		return pluginstorage.CommandPlan[wire.Decision]{}, err
 	}
 	if !pending {
@@ -132,7 +132,7 @@ func (c catalog) prepareFinish(ctx context.Context, _ *sdk.ServerSession, comple
 	}
 	finished := c.now().UnixNano()
 	return pluginstorage.NewCommandPlan(wire.Applied, func(ctx context.Context) error {
-		_, err := framesqlite.Connection(ctx, c.db).ExecContext(ctx, `UPDATE attempts SET status=?,finished=? WHERE id=?`, completion.Status, finished, completion.ID)
+		_, err := c.db.Executor(ctx).ExecContext(ctx, `UPDATE attempts SET status=?,finished=? WHERE id=?`, completion.Status, finished, completion.ID)
 		return err
 	})
 }
@@ -167,7 +167,7 @@ func (c catalog) prepareRecovery(_ context.Context, _ *sdk.ServerSession, recove
 	}
 	finished := c.now().UnixNano()
 	return pluginstorage.NewCommandPlan(wire.Applied, func(ctx context.Context) error {
-		_, err := framesqlite.Connection(ctx, c.db).ExecContext(ctx, `UPDATE attempts SET status=?,finished=? WHERE epoch<>? AND status=?`, wire.Unconfirmed, finished, recovery.Epoch, wire.Pending)
+		_, err := c.db.Executor(ctx).ExecContext(ctx, `UPDATE attempts SET status=?,finished=? WHERE epoch<>? AND status=?`, wire.Unconfirmed, finished, recovery.Epoch, wire.Pending)
 		return err
 	})
 }

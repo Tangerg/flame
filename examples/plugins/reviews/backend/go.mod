@@ -3,15 +3,15 @@ module github.com/Tangerg/flame/examples/plugins/reviews/backend
 go 1.27.4
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.34-dev.20261120.tc1784594a7ac
-	github.com/Tangerg/frame v0.4.0
+	github.com/Tangerg/flame/packages/go-sdk v0.1.35-dev.20261123.t3776cd641a8d
+	github.com/Tangerg/frame v0.5.0
 	github.com/Tangerg/go-sdk v1.9.0-scope.1
-	github.com/Tangerg/scope/core v0.62.0
+	github.com/Tangerg/scope/core v0.64.0
 )
 
 require (
-	github.com/Tangerg/scope/mcp v0.62.0 // indirect
-	github.com/Tangerg/scope/otel v0.62.0 // indirect
+	github.com/Tangerg/scope/mcp v0.64.0 // indirect
+	github.com/Tangerg/scope/otel v0.64.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.6.1 // indirect
@@ -37,7 +37,7 @@ require (
 	go.opentelemetry.io/otel/log v1.47.0 // indirect
 	go.opentelemetry.io/otel/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
-	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/net v0.63.0 // indirect
 	golang.org/x/oauth2 v0.38.0 // indirect
 	golang.org/x/sync v0.25.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect

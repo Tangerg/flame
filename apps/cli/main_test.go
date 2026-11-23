@@ -84,11 +84,11 @@ func requireTerminalModeLifecycle(t *testing.T, binary string, test terminalMode
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	waitForVisibleTerminalText(t, session, ptytest.Size{Cols: 80, Rows: 24}, "Ask flame")
+	waitForVisibleTerminalText(t, session, "Ask flame")
 	if _, err := io.WriteString(session, "\x11"); err != nil {
 		t.Fatal(err)
 	}
-	waitForVisibleTerminalText(t, session, ptytest.Size{Cols: 80, Rows: 24}, "repeat ctrl+q or ctrl+d to quit")
+	waitForVisibleTerminalText(t, session, "repeat ctrl+q or ctrl+d to quit")
 	if _, err := io.WriteString(session, "\x11"); err != nil {
 		t.Fatal(err)
 	}
@@ -188,15 +188,15 @@ func requireSubmittedInputSequence(t *testing.T, binary string, size ptytest.Siz
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	waitForVisibleTerminalText(t, session, size, "Ask flame")
+	waitForVisibleTerminalText(t, session, "Ask flame")
 	if written, writeStringErr := io.WriteString(session, test.input); writeStringErr != nil || written != len(test.input) {
 		t.Fatalf("write input = (%d, %v), want %d bytes", written, writeStringErr, len(test.input))
 	}
 	// This item appears only after the runtime receives the submission, so it
 	// proves Enter was decoded separately from the preceding input bytes.
-	waitForVisibleTerminalText(t, session, size, "Reproduce the flake")
+	waitForVisibleTerminalText(t, session, "Reproduce the flake")
 	quitInteractiveSession(t, session)
-	screen, err := session.Transcript().Screen(size)
+	screen, err := session.Transcript().Screen()
 	if err != nil {
 		t.Fatalf("decode final screen: %v", err)
 	}
@@ -227,12 +227,11 @@ func TestInteractiveBinarySurvivesResizeAndApprovalRoundTrip(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = session.Close() })
 
-	waitForVisibleTerminalText(t, session, ptytest.Size{Cols: 96, Rows: 24}, "Ask flame")
+	waitForVisibleTerminalText(t, session, "Ask flame")
 	if _, err := io.WriteString(session, "resize-hitl-contract\r"); err != nil {
 		t.Fatal(err)
 	}
-	waitForVisibleTerminalText(t, session, ptytest.Size{Cols: 96, Rows: 24}, "Tool approval")
-	narrowAfter := len(session.Transcript().Bytes())
+	waitForVisibleTerminalText(t, session, "Tool approval")
 	narrowSize := ptytest.Size{Cols: 70, Rows: 18}
 	if err := session.Resize(narrowSize); err != nil {
 		t.Fatal(err)
@@ -240,9 +239,8 @@ func TestInteractiveBinarySurvivesResizeAndApprovalRoundTrip(t *testing.T) {
 	if _, err := io.WriteString(session, "\tNARROW_APPROVAL_MARKER"); err != nil {
 		t.Fatal(err)
 	}
-	narrow := waitForTerminalScreen(t, session, narrowSize, narrowAfter, "Tool approval", "NARROW_APPROVAL_MARKER")
+	narrow := waitForVisibleTerminalText(t, session, "Tool approval", "NARROW_APPROVAL_MARKER")
 	requireFullViewportDialog(t, narrow, "Tool approval")
-	wideAfter := len(session.Transcript().Bytes())
 	wideSize := ptytest.Size{Cols: 128, Rows: 36}
 	if err := session.Resize(wideSize); err != nil {
 		t.Fatal(err)
@@ -250,11 +248,11 @@ func TestInteractiveBinarySurvivesResizeAndApprovalRoundTrip(t *testing.T) {
 	if _, err := io.WriteString(session, "_WIDE_MARKER"); err != nil {
 		t.Fatal(err)
 	}
-	waitForTerminalScreen(t, session, wideSize, wideAfter, "Tool approval", "NARROW_APPROVAL_MARKER_WIDE_MARKER")
+	waitForVisibleTerminalText(t, session, "Tool approval", "NARROW_APPROVAL_MARKER_WIDE_MARKER")
 	if _, err := io.WriteString(session, "\r"); err != nil {
 		t.Fatal(err)
 	}
-	waitForTerminalScreen(t, session, wideSize, wideAfter, "Ran the test 50 times", "$0.0412", "complete")
+	waitForVisibleTerminalText(t, session, "Ran the test 50 times", "$0.0412", "complete")
 	quitInteractiveSession(t, session)
 }
 
@@ -283,36 +281,39 @@ func TestInteractiveTerminalCompletesMixedInterruptReviewThroughPTY(t *testing.T
 	}
 	t.Cleanup(func() { _ = session.Close() })
 
-	waitForVisibleTerminalText(t, session, size, "Ask flame")
+	waitForVisibleTerminalText(t, session, "Ask flame")
 	writeTerminalInput(t, session, "exercise mixed interrupts\r")
-	waitForVisibleTerminalText(t, session, size, "Run contract checks", "Allow once")
+	waitForVisibleTerminalText(t, session, "Run contract checks", "Allow once")
 	writeTerminalInput(t, session, strings.Repeat("\x1b[B", 8)+"\r")
-	waitForVisibleTerminalText(t, session, size, "Edit tool arguments", `"command": "go test ./..."`)
+	waitForVisibleTerminalText(t, session, "Edit tool arguments", `"command": "go test ./..."`)
 	writeTerminalInput(t, session, "\x1ba"+`{"command":"go test ./...","count":2}`+"\x13")
-	waitForVisibleTerminalText(t, session, size, "Edited arguments · one-shot", `"count": 2`)
+	waitForVisibleTerminalText(t, session, "Edited arguments · one-shot", `"count": 2`)
 	writeTerminalInput(t, session, "\x1b[B\x1b[B\r")
-	waitForVisibleTerminalText(t, session, size, "Describe intent")
+	waitForVisibleTerminalText(t, session, "Describe intent")
 	writeTerminalInput(t, session, "ship safely\r")
-	waitForVisibleTerminalText(t, session, size, "Choose platform", "Linux")
+	waitForVisibleTerminalText(t, session, "Choose platform", "Linux")
 	writeTerminalInput(t, session, "\x1b[B\r")
-	waitForVisibleTerminalText(t, session, size, "Choose checks", "Unit", "Integration")
+	waitForVisibleTerminalText(t, session, "Choose checks", "Unit", "Integration")
 	writeTerminalInput(t, session, " \r")
-	waitForVisibleTerminalText(t, session, size, "Review interrupts")
+	waitForVisibleTerminalText(t, session, "Review interrupts")
 
 	minimal := ptytest.Size{Cols: 1, Rows: 1}
 	if err := session.Resize(minimal); err != nil {
 		t.Fatal(err)
 	}
-	if err := session.Resize(size); err != nil {
+	// The restored size differs from the original, so the redraw does not
+	// depend on the program observing the transient minimal size.
+	restored := ptytest.Size{Cols: size.Cols + 4, Rows: size.Rows + 2}
+	if err := session.Resize(restored); err != nil {
 		t.Fatal(err)
 	}
-	waitForVisibleTerminalText(t, session, size, "Review interrupts", "Submit all decisions")
+	waitForVisibleTerminalText(t, session, "Review interrupts", "Submit all decisions")
 	writeTerminalInput(t, session, "\x1b[B\r")
-	waitForVisibleTerminalText(t, session, size, "Choose checks", "Unit", "Integration")
+	waitForVisibleTerminalText(t, session, "Choose checks", "Unit", "Integration")
 	writeTerminalInput(t, session, "\x1b[B \r")
-	waitForVisibleTerminalText(t, session, size, "Review interrupts")
+	waitForVisibleTerminalText(t, session, "Review interrupts")
 	writeTerminalInput(t, session, "\r")
-	waitForVisibleTerminalText(t, session, size, "PTY HITL contract accepted", "complete")
+	waitForVisibleTerminalText(t, session, "PTY HITL contract accepted", "complete")
 	quitInteractiveSession(t, session)
 }
 
@@ -357,22 +358,22 @@ func TestInteractiveTerminalCanStartANewRunAfterCancelingInterruptReview(t *test
 	}
 	t.Cleanup(func() { _ = session.Close() })
 
-	waitForVisibleTerminalText(t, session, size, "Ask flame")
+	waitForVisibleTerminalText(t, session, "Ask flame")
 	writeTerminalInput(t, session, "cancel interrupt review\r")
-	waitForVisibleTerminalText(t, session, size, "Run contract checks", "Allow once")
+	waitForVisibleTerminalText(t, session, "Run contract checks", "Allow once")
 	writeTerminalInput(t, session, "\r")
-	waitForVisibleTerminalText(t, session, size, "Describe intent")
+	waitForVisibleTerminalText(t, session, "Describe intent")
 	writeTerminalInput(t, session, "cancel safely\r")
-	waitForVisibleTerminalText(t, session, size, "Choose platform", "Linux")
+	waitForVisibleTerminalText(t, session, "Choose platform", "Linux")
 	writeTerminalInput(t, session, "\r")
-	waitForVisibleTerminalText(t, session, size, "Choose checks", "Unit")
+	waitForVisibleTerminalText(t, session, "Choose checks", "Unit")
 	writeTerminalInput(t, session, " \r")
-	waitForVisibleTerminalText(t, session, size, "Review interrupts")
+	waitForVisibleTerminalText(t, session, "Review interrupts")
 	writeTerminalInput(t, session, "\x1b[B\x1b[B\r")
-	waitForVisibleTerminalText(t, session, size, "canceled", "Ask flame")
+	waitForVisibleTerminalText(t, session, "canceled", "Ask flame")
 
 	writeTerminalInput(t, session, "run after cancellation\r")
-	waitForVisibleTerminalText(t, session, size, "PTY cancellation reentry accepted", "complete")
+	waitForVisibleTerminalText(t, session, "PTY cancellation reentry accepted", "complete")
 	if bytes.Contains(session.Transcript().Bytes(), []byte("PTY cancellation contract violated")) {
 		t.Fatal("canceling the interrupt review resumed the rejected decisions")
 	}
@@ -516,66 +517,15 @@ func requireFullViewportDialog(t *testing.T, screen *ptytest.Screen, title strin
 	}
 }
 
-func waitForVisibleTerminalText(t *testing.T, session *ptytest.Session, size ptytest.Size, tokens ...string) *ptytest.Screen {
+func waitForVisibleTerminalText(t *testing.T, session *ptytest.Session, tokens ...string) *ptytest.Screen {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
-	var lastVisible string
-	var lastErr error
-	for {
-		screen, err := session.Transcript().Screen(size)
-		lastErr = err
-		if err == nil {
-			visible := strings.Join(screen.Rows(), "\n")
-			lastVisible = visible
-			if containsEvery(visible, tokens) {
-				return screen
-			}
-		}
-		select {
-		case <-ticker.C:
-		case <-ctx.Done():
-			t.Fatalf("terminal screen never showed %q: %v (decode: %v)\n%s", tokens, context.Cause(ctx), lastErr, lastVisible)
-		}
+	screen, err := session.Transcript().WaitForScreen(ctx, tokens...)
+	if err != nil {
+		t.Fatalf("terminal screen never showed %q: %v", tokens, err)
 	}
-}
-
-func waitForTerminalScreen(t *testing.T, session *ptytest.Session, size ptytest.Size, after int, tokens ...string) *ptytest.Screen {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
-	defer cancel()
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
-	var lastVisible string
-	var lastErr error
-	for {
-		transcript := session.Transcript()
-		written := transcript.Bytes()
-		if len(written) > after {
-			screen, err := ptytest.NewScreen(size)
-			if err == nil {
-				err = screen.Apply(written[after:])
-			}
-			if err == nil {
-				err = screen.Flush()
-			}
-			lastErr = err
-			if err == nil {
-				visible := strings.Join(screen.Rows(), "\n")
-				lastVisible = visible
-				if containsEvery(visible, tokens) {
-					return screen
-				}
-			}
-		}
-		select {
-		case <-ticker.C:
-		case <-ctx.Done():
-			t.Fatalf("terminal screen never showed %q: %v (decode: %v)\n%s", tokens, context.Cause(ctx), lastErr, lastVisible)
-		}
-	}
+	return screen
 }
 
 func containsEvery(value string, tokens []string) bool {

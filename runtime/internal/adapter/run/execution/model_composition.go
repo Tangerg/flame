@@ -113,7 +113,7 @@ func decodeContributionBindings(values []contributionBindingWire, contract frame
 func activationIdentities(activations []plugin.Activation) []string {
 	identities := make([]string, len(activations))
 	for i, activation := range activations {
-		identities[i] = activation.Identity.String()
+		identities[i] = activation.Identity().String()
 	}
 	return identities
 }

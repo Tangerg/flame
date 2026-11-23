@@ -100,12 +100,12 @@ func (r *Releases) importSource(ctx context.Context, source string, info os.File
 	var err error
 	switch {
 	case info.IsDir():
-		lease, err = r.content.ImportDirectoryHeld(ctx, source)
+		lease, err = r.content.ImportDirectory(ctx, source)
 	case info.Mode().IsRegular():
 		var digest framevalue.Digest
 		digest, err = localArchiveDigest(ctx, source, info)
 		if err == nil {
-			lease, err = r.content.ImportArchiveHeld(ctx, source, digest)
+			lease, err = r.content.ImportArchive(ctx, source, digest)
 		}
 	default:
 		return lease, fmt.Errorf("%w: package source must be a directory or regular archive: %w", plugin.ErrInvalid, filesystem.ErrNotRegular)
@@ -252,7 +252,7 @@ func read(ctx context.Context, root *os.Root, name string, limit int64) (body []
 // Frame admits the archive against this exact local selection; a replacement
 // between selection and import must still contain the same pinned bytes.
 func localArchiveDigest(ctx context.Context, path string, expected os.FileInfo) (_ framevalue.Digest, err error) {
-	file, opened, err := filesystem.OpenFileExpected(path, expected, distribution.DefaultLimits().ArchiveBytes)
+	file, opened, err := filesystem.OpenFileExpected(path, expected, distribution.DefaultLimits().MaxArchiveBytes)
 	if err != nil {
 		return framevalue.Digest{}, err
 	}
@@ -262,7 +262,7 @@ func localArchiveDigest(ctx context.Context, path string, expected os.FileInfo) 
 		return framevalue.Digest{}, err
 	}
 	hash := sha256.New()
-	if _, err := io.Copy(hash, io.LimitReader(reader, distribution.DefaultLimits().ArchiveBytes+1)); err != nil {
+	if _, err := io.Copy(hash, io.LimitReader(reader, distribution.DefaultLimits().MaxArchiveBytes+1)); err != nil {
 		return framevalue.Digest{}, err
 	}
 	if err := filesystem.VerifyPathVersion(file, opened, path); err != nil {

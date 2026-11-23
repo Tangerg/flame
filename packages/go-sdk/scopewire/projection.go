@@ -100,11 +100,12 @@ type outputProjection struct {
 }
 
 type responseMetadataProjection struct {
-	ID        string            `json:"id,omitempty"`
-	Model     string            `json:"model,omitempty"`
-	Usage     *chat.Usage       `json:"usage,omitzero"`
-	CreatedAt instant.Timestamp `json:"created_at,omitzero"`
-	Extra     metadata.Map      `json:"extra,omitzero"`
+	ID                 string            `json:"id,omitempty"`
+	Model              string            `json:"model,omitempty"`
+	NativeFinishReason string            `json:"native_finish_reason,omitempty"`
+	Usage              *chat.Usage       `json:"usage,omitzero"`
+	CreatedAt          instant.Timestamp `json:"created_at,omitzero"`
+	Extra              metadata.Map      `json:"extra,omitzero"`
 }
 
 type responseDeltaProjection struct {

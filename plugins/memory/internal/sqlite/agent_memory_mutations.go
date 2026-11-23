@@ -6,14 +6,13 @@ import (
 
 	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 	"github.com/Tangerg/flame/plugins/memory/internal/management"
-	framesqlite "github.com/Tangerg/frame/sqlite"
 )
 
 // Standalone callers need the same decision and write to share one lock. Receipt
 // commands instead prepare under their own read lease and apply the decided plan.
 func (a *AgentMemoryStore) mutate(ctx context.Context, prepare func(context.Context) (management.Mutation, error)) (management.Mutation, error) {
 	var mutation management.Mutation
-	err := framesqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
+	err := a.db.RunInTx(ctx, func(ctx context.Context) error {
 		var err error
 		mutation, err = prepare(ctx)
 		if err != nil {

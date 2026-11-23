@@ -90,9 +90,9 @@ func (s *store) documents(ctx context.Context) ([]knowledge.Document, error) {
 
 func (s *store) indexTarget(ctx context.Context, id string, expected int64) (knowledge.Document, error) {
 	var current knowledge.Document
-	err := sqlite.RunReadSnapshot(ctx, s.db, func(ctx context.Context) error {
+	err := s.db.RunReadSnapshot(ctx, func(ctx context.Context) error {
 		var retired bool
-		connection := sqlite.Connection(ctx, s.db)
+		connection := s.db.Executor(ctx)
 		if err := connection.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM retired_documents WHERE id=?)`, id).Scan(&retired); err != nil {
 			return err
 		}
@@ -136,7 +136,7 @@ func (s *store) prepareReplacement(ctx context.Context, id string, expected int6
 		return pluginstorage.CommandPlan[knowledge.Header]{}, err
 	}
 	return pluginstorage.NewCommandPlan(next.Header(), func(ctx context.Context) error {
-		_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `INSERT INTO documents(id,snapshot) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET snapshot=excluded.snapshot`, id, string(encoded))
+		_, err := s.db.Executor(ctx).ExecContext(ctx, `INSERT INTO documents(id,snapshot) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET snapshot=excluded.snapshot`, id, string(encoded))
 		return err
 	})
 }
@@ -150,7 +150,7 @@ func (s *store) prepareDeletion(ctx context.Context, id string, expected int64) 
 		return pluginstorage.CommandPlan[bool]{}, err
 	}
 	return pluginstorage.NewCommandPlan(true, func(ctx context.Context) error {
-		connection := sqlite.Connection(ctx, s.db)
+		connection := s.db.Executor(ctx)
 		if _, err := connection.ExecContext(ctx, `INSERT INTO retired_documents(id) VALUES(?)`, id); err != nil {
 			return err
 		}

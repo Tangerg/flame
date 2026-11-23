@@ -142,7 +142,7 @@ func TestPublicSQLiteReceiptsKeepTheBusinessOwner(t *testing.T) {
   value, err := pluginstorage.Command(t.Context(), db, "records.update", "original", input, nil, func(_ context.Context, _ struct{}) (pluginstorage.CommandPlan[bool], error) {
    calls++
    return pluginstorage.NewCommandPlan(true, func(ctx context.Context) error {
-    _, err := sqlitebase.Connection(ctx, db).ExecContext(ctx, "INSERT INTO records VALUES ('owned')")
+    _, err := db.Executor(ctx).ExecContext(ctx, "INSERT INTO records VALUES ('owned')")
     return err
    })
   })

@@ -140,7 +140,7 @@ func testReleaseStore(t *testing.T) (*Releases, *installationFixture, *persisten
 	if err != nil {
 		t.Fatal(err)
 	}
-	content, err := distribution.Open(distribution.Config{Directory: filepath.Join(directory, "releases"), Admission: db.Admission, Trust: func(_ context.Context, source distribution.Source, _ distribution.Manifest, _ distribution.Lock) error {
+	content, err := distribution.Open(distribution.Config{Directory: filepath.Join(directory, "releases"), Admission: db.Admission, Trust: func(_ context.Context, source distribution.Source, _ distribution.Release) error {
 		if !filepath.IsAbs(source.Location) {
 			return distribution.ErrUntrusted
 		}

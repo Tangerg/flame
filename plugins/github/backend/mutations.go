@@ -16,7 +16,6 @@ import (
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 
 	"github.com/Tangerg/frame"
-	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/tool"
@@ -42,12 +41,12 @@ func mutate[P, R any](ctx context.Context, c *connector, method *frame.Method, i
 		if err := method.ValidateInput(admitted); err != nil {
 			return err
 		}
-		if err := json.Unmarshal(admitted.Bytes(), &input, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
+		if err := admitted.Decode(&input); err != nil {
 			return err
 		}
 		// Any dispatched write can affect several query pages. Invalidation joins
 		// admission so a lost acknowledgement cannot preserve a pre-write cache.
-		_, err := sqlite.Connection(ctx, c.store.db).ExecContext(ctx, `DELETE FROM responses`)
+		_, err := c.store.db.Executor(ctx).ExecContext(ctx, `DELETE FROM responses`)
 		return err
 	})
 	if err != nil {
@@ -129,11 +128,7 @@ func writeFailure(err error) error {
 	if _, refused := classify(err); err == nil || !refused {
 		return err
 	}
-	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: tool.NewTextOutput(err.Error()), Cause: err})
-	if failureErr != nil {
-		return errors.Join(failureErr, err)
-	}
-	return failure
+	return tool.FailureFromCause(tool.FailureKindRejected, err)
 }
 
 func (c *connector) sendWrite(ctx context.Context, method, path string, payload any, status int) (body []byte, err error) {

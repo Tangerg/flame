@@ -11,7 +11,7 @@ import (
 // Scope schedules one execution tree. These resolver-owned locks coordinate
 // reads and mutations of the same physical path across concurrent Runs.
 func withPathLock(inner toolcontract.Tool, locker *keylock.Set, root *filesystemRoot) toolcontract.Tool {
-	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
+	return decorateCall(inner, func(ctx context.Context, next toolcontract.Caller, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		paths, err := resolvedMutationPaths(inner, invocation, root)
 		if err != nil {
 			return toolcontract.Result{}, beforeCallFailure(ctx, err)
@@ -24,6 +24,6 @@ func withPathLock(inner toolcontract.Tool, locker *keylock.Set, root *filesystem
 			return toolcontract.Result{}, beforeCallFailure(ctx, err)
 		}
 		defer release()
-		return inner.Call(ctx, invocation)
+		return next.Call(ctx, invocation)
 	})
 }

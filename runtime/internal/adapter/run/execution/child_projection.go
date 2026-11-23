@@ -162,7 +162,18 @@ func (i *interactionSession) projectDelegateTerminal(
 		SpawnCallID: callID,
 	}
 	duration := i.segmentClock.duration(result.StartedAt(), result.FinishedAt())
-	end := i.terminalFact(result.ProcessID(), result.Termination(), duration)
+	history, err := i.committedTree(ctx, i.rootID)
+	if err != nil {
+		return false, fmt.Errorf("execution: read delegated child terminal: %w", err)
+	}
+	unknown, err := i.retainedUnknownEffects(history)
+	if err != nil {
+		return false, fmt.Errorf("execution: read delegated child terminal: %w", err)
+	}
+	end, err := i.terminalFact(member, result.ProcessID(), result.Termination(), unknown, duration)
+	if err != nil {
+		return false, fmt.Errorf("execution: project delegated child terminal: %w", err)
+	}
 	if err := i.commitFact(context.WithoutCancel(ctx), member, end); err != nil {
 		return false, fmt.Errorf("execution: publish delegated child terminal: %w", err)
 	}

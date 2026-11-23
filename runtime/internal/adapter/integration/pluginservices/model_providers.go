@@ -66,21 +66,18 @@ func NewModelProviders(config ModelProvidersConfig) (*ModelProviders, error) {
 
 func (*ModelProviders) ID() string { return "flame.model-provider-captures" }
 
-func (p *ModelProviders) Held(_ context.Context, installation framehost.InstallationID) ([]framehost.Dependency, error) {
+func (p *ModelProviders) Held(_ context.Context, installation framehost.InstallationID) ([]framevalue.Digest, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	var result []framehost.Dependency
+	var releases []framevalue.Digest
 	for use := range p.uses {
 		for _, dependency := range use.binding.Activation.Dependencies {
 			if dependency.InstallationID.Host() == installation {
-				value := framehost.Dependency{InstallationID: installation, Release: dependency.Digest}
-				if !slices.Contains(result, value) {
-					result = append(result, value)
-				}
+				releases = append(releases, dependency.Digest)
 			}
 		}
 	}
-	return result, nil
+	return releases, nil
 }
 
 func (p *ModelProviders) selectedBinding(ctx context.Context, role string) (plugins.ContributionBinding, plugins.SelectionState, error) {

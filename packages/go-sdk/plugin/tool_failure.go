@@ -25,15 +25,7 @@ func DefiniteToolFailure(cause error) error {
 	if _, known := toolcontract.ClassifyFailure(cause); known {
 		return cause
 	}
-	failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
-		Kind:   toolcontract.FailureKindFailed,
-		Cause:  cause,
-		Output: toolcontract.NewTextOutput(cause.Error()),
-	})
-	if err != nil {
-		return err
-	}
-	return failure
+	return toolcontract.FailureFromCause(toolcontract.FailureKindFailed, cause)
 }
 
 // RefusedToolFailure reports a business refusal to the model as a rejected

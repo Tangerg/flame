@@ -229,26 +229,28 @@ func toolProposalSource(history scoperun.Log, reference scoperun.EffectID, call 
 			if foundReference && record.ID.Process == reference.Process {
 				settlements[record.ID] = record
 			}
-		case scoperun.EffectIntent:
-			if record.ID == reference {
-				foundReference = true
-				continue
+		case scoperun.Stepped:
+			for _, declared := range slices.Backward(record.Intents()) {
+				if declared.ID == reference {
+					foundReference = true
+					continue
+				}
+				if !foundReference || declared.ID.Process != reference.Process {
+					continue
+				}
+				intent, model, err := interaction.ModelCallFromEffect(declared.Effect)
+				if err != nil {
+					return toolCallSource{}, err
+				}
+				if !model {
+					continue
+				}
+				settled, err := interaction.ModelSettlementFromRecord(settlements[declared.ID])
+				if err != nil {
+					return toolCallSource{}, err
+				}
+				return proposalCallSource(reference.Process, intent.Sequence, settled.Response, call)
 			}
-			if !foundReference || record.ID.Process != reference.Process {
-				continue
-			}
-			intent, model, err := interaction.ModelCallFromEffect(record.Effect)
-			if err != nil {
-				return toolCallSource{}, err
-			}
-			if !model {
-				continue
-			}
-			settled, err := interaction.ModelSettlementFromRecord(settlements[record.ID])
-			if err != nil {
-				return toolCallSource{}, err
-			}
-			return proposalCallSource(reference.Process, intent.Sequence, settled.Response, call)
 		}
 	}
 	return toolCallSource{}, fmt.Errorf("execution: missing original Tool effect %s", reference)

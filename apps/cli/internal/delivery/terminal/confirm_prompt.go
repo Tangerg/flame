@@ -37,34 +37,45 @@ func (c *confirmPrompt) ask(title, question, action, content string, confirm fun
 		}
 	}
 	formBody := kit.NewForm(kit.FormConfig{
-		Theme: c.theme, Glyphs: c.glyphs, Fields: []base.Field{choice}, Keys: base.DefaultFormKeys(),
-		Hints: []keymap.Action{base.Submit, base.Cancel},
-		Submit: func(base.SubmissionID) (scene.ActionState, error) {
-			if c.dialog != dialog {
-				return scene.Unchanged, scene.ErrStale
-			}
-			selected, ok := choice.Chosen()
-			if !ok {
-				return scene.Unchanged, base.ErrInvalidValue
-			}
-			dismiss()
-			if selected.Value && c.session.context.current(generation) {
-				confirm()
-			}
-			return scene.Applied, nil
+		Behavior: base.FormConfig{
+			Fields: []base.Field{choice},
+			Keys:   base.DefaultFormKeys(),
+			Submit: func(base.SubmissionID) (scene.ActionState, error) {
+				if c.dialog != dialog {
+					return scene.Unchanged, scene.ErrStale
+				}
+				selected, ok := choice.Chosen()
+				if !ok {
+					return scene.Unchanged, base.ErrInvalidValue
+				}
+				dismiss()
+				if selected.Value && c.session.context.current(generation) {
+					confirm()
+				}
+				return scene.Applied, nil
+			},
 		},
+		Theme:  c.theme,
+		Glyphs: c.glyphs,
+		Hints:  []keymap.Action{base.Submit, base.Cancel},
 	})
 	body := formBody.Element()
 	placement := layout.Placement{Width: standardDialogWidth, Height: 9}
 	if content != "" {
 		viewport := base.NewViewport(base.ViewportConfig{Content: passiveElement(kit.NewParagraph(content, c.theme.Text))})
-		viewport.Scroll().Wheel(c.wheel)
+		viewport.Scroll().SetWheel(c.wheel)
 		pane := &confirmationContentPane{viewport: viewport, form: formBody}
 		body = pane.Element()
 		placement = layout.Placement{Width: wideDialogWidth, Height: 26}
 	}
 	dialog = newPresentationDialog(c.stack, kit.DialogConfig{
-		Theme: c.theme, Glyphs: c.glyphs, Title: title, Body: formNavigation(body, dismiss), Where: placement,
+		Behavior: base.DialogConfig{
+			Title:   title,
+			Content: formNavigation(body, dismiss),
+		},
+		Theme:  c.theme,
+		Glyphs: c.glyphs,
+		Where:  placement,
 	})
 	c.dialog = dialog
 	dialog.Show()

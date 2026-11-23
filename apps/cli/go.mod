@@ -3,16 +3,16 @@ module github.com/Tangerg/flame/apps/cli
 go 1.27.4
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.34-dev.20261120.tc1784594a7ac
+	github.com/Tangerg/flame/packages/go-sdk v0.1.35-dev.20261123.t3776cd641a8d
 	github.com/Tangerg/flame/packages/local-runtime v0.1.8-dev.20261120.te6fa71dfd898
-	github.com/Tangerg/flame/runtime v0.1.82-dev.20261119.t9659ea2a7ba1
-	github.com/Tangerg/frame v0.4.0
-	github.com/Tangerg/oolong/extensions/highlight v0.27.1
-	github.com/Tangerg/oolong/extensions/latex v0.29.0
-	github.com/Tangerg/oolong/extensions/markdown v0.29.0
-	github.com/Tangerg/oolong/extensions/mermaid v0.28.1
-	github.com/Tangerg/oolong/ui v0.29.0
-	github.com/Tangerg/scope/tools v0.62.0
+	github.com/Tangerg/flame/runtime v0.1.83-dev.20261123.tad29afffb922
+	github.com/Tangerg/frame v0.5.0
+	github.com/Tangerg/oolong/extensions/highlight v0.27.2
+	github.com/Tangerg/oolong/extensions/latex v0.30.0
+	github.com/Tangerg/oolong/extensions/markdown v0.30.0
+	github.com/Tangerg/oolong/extensions/mermaid v0.29.0
+	github.com/Tangerg/oolong/ui v0.30.0
+	github.com/Tangerg/scope/tools v0.64.0
 	github.com/mattn/go-shellwords v1.0.16
 	github.com/muesli/cancelreader v0.2.2
 	github.com/spf13/cobra v1.10.2
@@ -25,14 +25,14 @@ require (
 require (
 	codeberg.org/go-latex/latex v0.3.0 // indirect
 	github.com/Tangerg/go-sdk v1.9.0-scope.1 // indirect
-	github.com/Tangerg/scope/agent v0.62.0 // indirect
-	github.com/Tangerg/scope/core v0.62.0 // indirect
-	github.com/Tangerg/scope/mcp v0.62.0 // indirect
-	github.com/Tangerg/scope/models/catalog v0.62.0 // indirect
-	github.com/Tangerg/scope/otel v0.62.0 // indirect
-	github.com/Tangerg/scope/otel/agent v0.62.0 // indirect
-	github.com/Tangerg/scope/skills v0.62.0 // indirect
-	github.com/Tangerg/scope/tools/skills v0.62.0 // indirect
+	github.com/Tangerg/scope/agent v0.64.0 // indirect
+	github.com/Tangerg/scope/core v0.64.0 // indirect
+	github.com/Tangerg/scope/mcp v0.64.0 // indirect
+	github.com/Tangerg/scope/models/catalog v0.64.0 // indirect
+	github.com/Tangerg/scope/otel v0.64.0 // indirect
+	github.com/Tangerg/scope/otel/agent v0.64.0 // indirect
+	github.com/Tangerg/scope/skills v0.64.0 // indirect
+	github.com/Tangerg/scope/tools/skills v0.64.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/alecthomas/chroma/v2 v2.27.0 // indirect
 	github.com/alecthomas/repr v0.5.4 // indirect
@@ -80,7 +80,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.6 // indirect
 	go.yaml.in/yaml/v4 v4.0.0 // indirect
 	golang.org/x/image v0.48.0 // indirect
-	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/net v0.63.0 // indirect
 	golang.org/x/oauth2 v0.38.0 // indirect
 	golang.org/x/sync v0.25.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect

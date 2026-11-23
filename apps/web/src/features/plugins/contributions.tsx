@@ -505,22 +505,10 @@ export function registerPackageContributions(
     ),
   );
   const fetcher = async (_params?: unknown, signal?: AbortSignal) =>
-    (
-      await trackContributionIO(scope, () =>
-        client.plugins.list(
-          signal ? AbortSignal.any([scope.lifetime.signal, signal]) : scope.lifetime.signal,
-        ),
-      )
-    ).data;
+    (await scope.lifetime.run((owned) => client.plugins.list(owned), signal)).value.data;
   scope.add(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher });
   const fetchProviders = async (_params?: unknown, signal?: AbortSignal) =>
-    (
-      await trackContributionIO(scope, () =>
-        client.plugins.listProviders(
-          signal ? AbortSignal.any([scope.lifetime.signal, signal]) : scope.lifetime.signal,
-        ),
-      )
-    ).data;
+    (await scope.lifetime.run((owned) => client.plugins.listProviders(owned), signal)).value.data;
   scope.add(DATA_PROVIDER, { key: PROVIDERS_KEY, fetcher: fetchProviders });
 
   let failure: PackageRealizationFailure | null = null;

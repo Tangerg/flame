@@ -30,8 +30,7 @@ func toolQuery[P, R any](name, description string, call func(context.Context, P)
 		if _, refused := classify(err); err == nil || !refused {
 			return result, err
 		}
-		failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: tool.NewTextOutput(err.Error()), Cause: err})
-		return result, errors.Join(failure, failureErr)
+		return result, tool.FailureFromCause(tool.FailureKindRejected, err)
 	})
 }
 

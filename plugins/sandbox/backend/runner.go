@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 	"path/filepath"
 	"runtime"
@@ -59,7 +58,7 @@ func (r *runner) limits() wire.Limits {
 func (r *runner) execute(ctx context.Context, method, id string, original framevalue.JSON) (sandbox.Result, error) {
 	var input wire.ExecuteInput
 	prepared, reply, err := pluginstorage.AdmitCommand(ctx, r.db, method, id, original, func(context.Context) error {
-		return json.Unmarshal(original.Bytes(), &input, json.RejectUnknownMembers(true), framevalue.Numbers())
+		return original.Decode(&input)
 	})
 	if err != nil {
 		return sandbox.Result{}, err

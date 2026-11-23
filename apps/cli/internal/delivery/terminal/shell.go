@@ -68,7 +68,10 @@ func newShellView(header *sessionHeader, transcript *transcriptView, activity *a
 				if !ok || !key.Down() || key.Code != input.Tab {
 					return scene.EventResult{}
 				}
-				return scene.EventResult{Consumed: event.FocusNext(key.Mods&input.Shift != 0)}
+				if key.Mods&input.Shift != 0 {
+					return scene.EventResult{Consumed: event.FocusPrev()}
+				}
+				return scene.EventResult{Consumed: event.FocusNext()}
 			},
 		},
 		Layout: func(space image.Point, items []scene.Item) []image.Rectangle {

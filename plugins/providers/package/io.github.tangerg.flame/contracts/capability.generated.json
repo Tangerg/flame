@@ -670,6 +670,9 @@
               "model": {
                 "type": "string"
               },
+              "native_finish_reason": {
+                "type": "string"
+              },
               "usage": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL3Njb3BlL2NvcmUvY2hhdA.VXNhZ2U"
               }
@@ -2770,6 +2773,9 @@
                 "type": "string"
               },
               "model": {
+                "type": "string"
+              },
+              "native_finish_reason": {
                 "type": "string"
               },
               "usage": {

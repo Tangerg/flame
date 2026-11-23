@@ -1,8 +1,6 @@
 package execution
 
 import (
-	"context"
-
 	"github.com/Tangerg/scope/agent/interaction"
 	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/agent/workflow"
@@ -26,11 +24,11 @@ func compileDelegatedInteraction(
 			Instructions []corechat.Message
 			Options      corechat.Options
 		}{cloneChatMessages(instructions), options.Clone()},
-	}, inner, func(_ context.Context, task delegateInput) (interaction.Input, error) {
+	}, inner, func(task delegateInput) (interaction.Input, error) {
 		messages := cloneChatMessages(instructions)
 		messages = append(messages, corechat.NewUserMessage(corechat.NewTextPart(task.Instructions)))
 		return interaction.Input{Messages: messages, Options: options.Clone()}, nil
-	}, func(_ context.Context, output interaction.Output) (interaction.Output, error) {
+	}, func(output interaction.Output) (interaction.Output, error) {
 		return output, nil
 	})
 }

@@ -1,11 +1,11 @@
 import { type ExtensionPoint as ContractToken } from "dougong";
-import { type PublishedContribution } from "@/extensions/contracts";
+import { type Contribution } from "@/extensions/contracts";
 export type ExtensionKeying = "single" | "multi";
 
 export interface ExtensionPoint<T> {
   readonly id: string;
   readonly keying: ExtensionKeying;
-  readonly token: ContractToken<PublishedContribution<T>>;
+  readonly token: ContractToken<Contribution<T>>;
   readonly keyOf?: (item: T) => string;
   readonly normalizeKey?: (key: string) => string;
 }

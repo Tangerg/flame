@@ -41,7 +41,6 @@ type observedInteractionTool struct {
 	offloadPolicy     toolResultOffloadPolicy
 	start             runs.RootExecutionStart
 	concurrent        func(toolcontract.Invocation) (string, bool)
-	direct            bool
 }
 
 func (o *observedInteractionTool) Definition() toolcontract.Definition {
@@ -56,16 +55,9 @@ func (o *observedInteractionTool) InputValidator() func([]byte) error {
 	}
 }
 
-func (o *observedInteractionTool) ReturnsDirectResult() bool { return o.direct }
-
-type observedAdvertisingTool struct {
-	*observedInteractionTool
-	advertiser interaction.AdvertisingTool
-}
-
-func (o *observedAdvertisingTool) AdvertiseDeferred(ctx context.Context, invocation toolcontract.Invocation, result toolcontract.Result) ([]string, error) {
-	return o.advertiser.AdvertiseDeferred(ctx, invocation, result)
-}
+// Unwrap leaves the source declarations this owner does not restate, such as
+// direct results and deferred advertisement, discoverable through As.
+func (o *observedInteractionTool) Unwrap() toolcontract.Tool { return o.inner }
 
 // Arguments rewritten after admission cannot retain an inner resource key.
 // Scope schedules these calls exclusively; immutable calls keep the declaration.
@@ -511,9 +503,6 @@ func (w toolWrapping) wrapAll(ctx context.Context, values []toolcontract.Tool) (
 		w.contracts[observed.ref] = observed.binding.Contract()
 		w.owners[observed.ref] = observed
 		wrapped[index] = observed
-		if advertiser, found := executable.(interaction.AdvertisingTool); found {
-			wrapped[index] = &observedAdvertisingTool{observedInteractionTool: observed, advertiser: advertiser}
-		}
 	}
 	return wrapped, nil
 }
@@ -547,12 +536,9 @@ func (w toolWrapping) observe(ctx context.Context, executable toolcontract.Tool)
 	// call: no hooks, proposals, policy prompts or approval interrupts.
 	if w.config.ToolHooks == nil && len(w.session.toolProposals) == 0 && !w.config.ToolInterpreter.UsesStandardPolicy(ref) &&
 		!slices.Contains(w.start.InterruptTypes, run.InterruptApproval) {
-		if concurrent, found := executable.(interaction.ConcurrentTool); found {
+		if concurrent, found := toolcontract.As[interaction.ConcurrentTool](executable); found {
 			observed.concurrent = concurrent.ConcurrencyPolicy()
 		}
-	}
-	if direct, found := executable.(interaction.DirectResultTool); found {
-		observed.direct = direct.ReturnsDirectResult()
 	}
 	return observed, nil
 }

@@ -10,9 +10,9 @@ import {
 import { pluginMethod } from "@flame/runtime-client";
 import {
   canonicalJSON,
-  isJSONNumber,
   parseJSON,
-  projectNumber,
+  projectNumbers,
+  type FrozenJSONValue,
 } from "@frame/sdk/json";
 import type { CallPluginRequest } from "@flame/runtime-client/wire";
 import { z } from "zod3";
@@ -121,19 +121,11 @@ export const documentJSONSchema = {
 };
 
 function normalize(value: unknown): unknown {
-  if (isJSONNumber(value)) {
-    try {
-      return projectNumber(value);
-    } catch (cause) {
-      throw new InvalidPresentation("use strings for exact quantities", cause);
-    }
+  try {
+    return projectNumbers(value as FrozenJSONValue);
+  } catch (cause) {
+    throw new InvalidPresentation("use strings for exact quantities", cause);
   }
-  if (Array.isArray(value)) return value.map(normalize);
-  if (value !== null && typeof value === "object")
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [key, normalize(item)]),
-    );
-  return value;
 }
 function bounded(value: unknown): unknown {
   if (new TextEncoder().encode(canonicalJSON(value)).byteLength > limits.bytes)

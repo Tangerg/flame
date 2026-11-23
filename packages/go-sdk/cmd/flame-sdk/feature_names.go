@@ -217,9 +217,9 @@ func (r definitionReferences) reference(raw jsontext.Value) (jsontext.Value, err
 
 func (r definitionReferences) children(raw jsontext.Value, kind framevalue.SchemaChildren) (jsontext.Value, error) {
 	switch kind {
-	case framevalue.SchemaChild:
+	case framevalue.SchemaChildrenSchema:
 		return r.rewrite(raw)
-	case framevalue.SchemaMap:
+	case framevalue.SchemaChildrenMap:
 		var children map[string]jsontext.Value
 		if err := json.Unmarshal(raw, &children); err != nil {
 			return nil, err
@@ -232,7 +232,7 @@ func (r definitionReferences) children(raw jsontext.Value, kind framevalue.Schem
 			children[name] = projected
 		}
 		return json.Marshal(children, json.Deterministic(true))
-	case framevalue.SchemaArray:
+	case framevalue.SchemaChildrenArray:
 		var children []jsontext.Value
 		if err := json.Unmarshal(raw, &children); err != nil {
 			return nil, err

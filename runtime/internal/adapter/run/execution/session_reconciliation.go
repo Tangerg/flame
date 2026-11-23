@@ -102,13 +102,10 @@ func (i *interactionSession) reportUnknownEffects() bool {
 	i.state.mu.Unlock()
 	// Unknown effects need execution to stop, but cannot override cancellation
 	// already accepted by Scope. Both causes enter its ordered control queue;
-	// the immutable result decides which cause became authoritative.
+	// the immutable result decides which cause became authoritative. Scope
+	// exits the terminated process and keeps each Effect Unknown, so the
+	// terminal projection reports the loss with that evidence.
 	if err := process.Cancel(ctx, unresolvedEffectsStopReason); err != nil && !errors.Is(err, scoperun.ErrProcessFinished) {
-		i.reportProjectionFailure(err)
-	}
-	// A control request cannot resolve uncertainty. Stop the writer and let
-	// Await report its retained effects; the product owner decides loss.
-	if err := i.engine.Close(ctx); err != nil {
 		i.reportProjectionFailure(err)
 	}
 	return true

@@ -45,7 +45,7 @@ type dispatchCommit struct {
 }
 
 func (s dispatchCommit) AcceptRun(ctx context.Context, id string) error {
-	err := framesqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	err := s.db.RunInTx(ctx, func(ctx context.Context) error {
 		request, err := s.DispatchStore.CapturedRun(ctx, id)
 		if err != nil {
 			return err

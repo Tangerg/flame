@@ -74,10 +74,10 @@ go run ./runtime/cmd/pluginpack --source "$PWD/out/plugins/reviews" --os "$(go e
 ```
 
 Use a new output directory for each build. Install the assembled release rather
-than a source directory. `pluginpack` writes Frame's neutral `manifest.json` and
-`plugin.lock.json` through the same Flame declaration projection used during
-admission. The manifest supplies the sole immutable release identity; a raw
-directory without those release files is refused. The commands above target
+than a source directory. `pluginpack` writes Frame's neutral `manifest.json`
+through the same Flame declaration projection used during admission. The
+manifest supplies the sole immutable release identity; a raw directory without it
+is refused. The commands above target
 the current Go target; select the Runtime host's `GOOS` and `GOARCH` together
 when cross-compiling. Flame binds `PLUGIN_ROOT` to immutable leased content
 and `PLUGIN_DATA` to the installation's private data directory. The stripped

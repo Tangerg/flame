@@ -323,11 +323,17 @@ func questionFieldLabel(specification conversation.QuestionField) string {
 }
 
 func (p *interruptPrompts) showQuestionDialog(review *questionnaire, fields []base.Field) {
-	form := kit.FormConfig{Fields: fields, Theme: p.theme, Glyphs: p.glyphs,
-		Title: strings.Join(nonEmptyStrings([]string{
-			p.review.SubmissionFailure(),
-		}), " · "),
-		Hints: []keymap.Action{base.Submit, base.Cancel}}
+	form := kit.FormConfig{
+		Behavior: base.FormConfig{
+			Fields: fields,
+			Title: strings.Join(nonEmptyStrings([]string{
+				p.review.SubmissionFailure(),
+			}), " · "),
+		},
+		Theme:  p.theme,
+		Glyphs: p.glyphs,
+		Hints:  []keymap.Action{base.Submit, base.Cancel},
+	}
 	response := review.response(review.current)
 	collect := func() questionResponse {
 		candidate := *response
@@ -346,9 +352,9 @@ func (p *interruptPrompts) showQuestionDialog(review *questionnaire, fields []ba
 		}
 		return candidate
 	}
-	form.Check = func() error { candidate := collect(); _, err := candidate.values(); return err }
+	form.Behavior.Check = func() error { candidate := collect(); _, err := candidate.values(); return err }
 	var dialog *presentationDialog
-	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
+	form.Behavior.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if p.questionnaire == review && p.questionDialog == dialog {
 			*response = collect()
 			p.advanceQuestionnaire()
@@ -366,9 +372,14 @@ func (p *interruptPrompts) showQuestionDialog(review *questionnaire, fields []ba
 	if review.question.Fields[review.current].Kind != conversation.QuestionSingle {
 		title += " · empty skips"
 	}
-	dialog = newPresentationDialog(p.stack, kit.DialogConfig{Theme: p.theme, Glyphs: p.glyphs,
-		Title: title, Body: formNavigation(dressed.Element(), leave),
-		Where: formDialogPlacement(standardDialogWidth, len(fields), 18, dressed),
+	dialog = newPresentationDialog(p.stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:   title,
+			Content: formNavigation(dressed.Element(), leave),
+		},
+		Theme:  p.theme,
+		Glyphs: p.glyphs,
+		Where:  formDialogPlacement(standardDialogWidth, len(fields), 18, dressed),
 	})
 	p.questionDialog = dialog
 	dialog.Show()

@@ -36,9 +36,9 @@ func AdmitCommand(ctx context.Context, db sqlite.Database, method, id string, in
 	}
 	var reply []byte
 	started := false
-	err := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
+	err := db.RunInTx(ctx, func(ctx context.Context) error {
 		var previousMethod, previousInput string
-		err := sqlite.Connection(ctx, db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
+		err := db.Executor(ctx).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
 		if err == nil {
 			if previousMethod != method || previousInput != input.String() {
 				return framecall.ErrConflict
@@ -53,7 +53,7 @@ func AdmitCommand(ctx context.Context, db sqlite.Database, method, id string, in
 				return err
 			}
 		}
-		if _, err := sqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO commands(id,method,business_input_json,reply) VALUES(?,?,?,NULL)`, id, method, input.String()); err != nil {
+		if _, err := db.Executor(ctx).ExecContext(ctx, `INSERT INTO commands(id,method,business_input_json,reply) VALUES(?,?,?,NULL)`, id, method, input.String()); err != nil {
 			return err
 		}
 		started = true
@@ -107,14 +107,14 @@ const externalSettlementTimeout = 10 * time.Second
 func (c *PreparedCommand) SettleExternal(ctx context.Context, reply []byte, record func(context.Context) error) error {
 	settlement, cancel := context.WithTimeout(context.WithoutCancel(ctx), externalSettlementTimeout)
 	defer cancel()
-	return c.complete(settlement, reply, record, sqlite.RunIndependentTx)
+	return c.complete(settlement, reply, record, sqlite.Database.RunIndependentTx)
 }
 
 func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
-	return c.complete(ctx, reply, nil, sqlite.RunInTx)
+	return c.complete(ctx, reply, nil, sqlite.Database.RunInTx)
 }
 
-type replyTransaction func(context.Context, sqlite.Database, func(context.Context) error) error
+type replyTransaction func(sqlite.Database, context.Context, func(context.Context) error) error
 
 func (c *PreparedCommand) complete(ctx context.Context, reply []byte, record func(context.Context) error, transact replyTransaction) error {
 	if c == nil {
@@ -128,7 +128,7 @@ func (c *PreparedCommand) complete(ctx context.Context, reply []byte, record fun
 			return err
 		}
 	}
-	err := transact(ctx, c.db, func(ctx context.Context) error {
+	err := transact(c.db, ctx, func(ctx context.Context) error {
 		original, err := c.readReply(ctx)
 		if err != nil {
 			return err
@@ -155,7 +155,7 @@ func (c *PreparedCommand) complete(ctx context.Context, reply []byte, record fun
 func (c *PreparedCommand) readReply(ctx context.Context) ([]byte, error) {
 	var method, input string
 	var reply []byte
-	if err := sqlite.Connection(ctx, c.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, c.id).Scan(&method, &input, &reply); err != nil {
+	if err := c.db.Executor(ctx).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, c.id).Scan(&method, &input, &reply); err != nil {
 		return nil, err
 	}
 	if method != c.method || input != c.input.String() {
@@ -165,7 +165,7 @@ func (c *PreparedCommand) readReply(ctx context.Context) ([]byte, error) {
 }
 
 func (c *PreparedCommand) storeReply(ctx context.Context, reply []byte) error {
-	result, err := sqlite.Connection(ctx, c.db).ExecContext(ctx, `UPDATE commands SET reply=? WHERE id=? AND reply IS NULL`, string(reply), c.id)
+	result, err := c.db.Executor(ctx).ExecContext(ctx, `UPDATE commands SET reply=? WHERE id=? AND reply IS NULL`, string(reply), c.id)
 	if err != nil {
 		return err
 	}
@@ -196,7 +196,7 @@ func CompleteCommand[R any](ctx context.Context, command *PreparedCommand, class
 		return zero, err
 	}
 	var reply []byte
-	err := sqlite.RunIndependentTx(ctx, command.db, func(ctx context.Context) error {
+	err := command.db.RunIndependentTx(ctx, func(ctx context.Context) error {
 		var err error
 		reply, err = command.readReply(ctx)
 		if err != nil || len(reply) != 0 {

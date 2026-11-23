@@ -238,7 +238,7 @@ func (m *BoundMethod[P, R]) ReadReceipt(ctx context.Context, id CommandID, input
 		return zero, found, err
 	}
 	var result R
-	if err := json.Unmarshal(value.Bytes(), &result, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
+	if err := value.Decode(&result); err != nil {
 		return zero, false, err
 	}
 	return result, true, nil

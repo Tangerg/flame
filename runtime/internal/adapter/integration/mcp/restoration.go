@@ -43,7 +43,7 @@ func (e *restorationEvidence) snapshot() framehost.BindingSnapshot {
 }
 
 func (s *Installed) restoreRetained(ctx context.Context, original plugin.Activation, grant framehost.ScopeGrant) error {
-	evidence := &restorationEvidence{recordID: original.Identity.String()}
+	evidence := &restorationEvidence{recordID: original.Identity().String()}
 	attempt := context.WithValue(ctx, restorationEvidenceKey{}, evidence)
 	use, err := s.host.AcquireRecord(attempt, evidence.recordID, framehost.UseConfig{Owner: s.owner, Scope: grant})
 	if err == errBindingNotRetained {
@@ -76,10 +76,10 @@ func (s *Installed) failedRestoration(ctx context.Context, original plugin.Activ
 	lifetime := s.owner.Context()
 	waitErr, lifetimeErr := ctx.Err(), lifetime.Err()
 	return &restorationFailure{
-		binding: original.Identity,
+		binding: original.Identity(),
 		// SDK cleanup can report cancellation without ending the admitted wait
 		// or its Host. Only those original lifetimes may cancel this conclusion.
-		completed: waitErr == nil && lifetimeErr == nil && err == nil && identity == original.Identity,
+		completed: waitErr == nil && lifetimeErr == nil && err == nil && identity == original.Identity(),
 		cause: plugins.FrameworkError(errors.Join(cause, waitErr, context.Cause(ctx),
 			lifetimeErr, context.Cause(lifetime))),
 	}
@@ -96,7 +96,7 @@ func (p *Pool) RestorationFailure(id mcpserver.ID, activation plugin.Activation)
 		return false, nil
 	}
 	failure, found := errors.AsType[*restorationFailure](current.cause)
-	if !found || failure.binding != activation.Identity {
+	if !found || failure.binding != activation.Identity() {
 		return false, nil
 	}
 	cause := current.cause

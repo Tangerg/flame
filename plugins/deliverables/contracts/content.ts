@@ -1,8 +1,7 @@
 import { z } from "zod/v4";
-import { parseJSON } from "@frame/sdk/json";
+import { parseJSON, projectNumbers } from "@frame/sdk/json";
 import { FIELD_LIMITS, LIMITS } from "./limits";
 import { checkSchema } from "./evidence";
-import { projectNumbers } from "./json";
 
 export const contentLimits = {
   fileBytes: LIMITS.fileBytes,

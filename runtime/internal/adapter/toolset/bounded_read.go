@@ -50,8 +50,8 @@ func newRuntimeReadTool(reader fs.Reader) (*fs.ReadTool, error) {
 // Wrap outermost, so a guard stack in front of the tool is covered by one rule
 // rather than one per layer.
 func withDefiniteOutcome(inner toolcontract.Tool) toolcontract.Tool {
-	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
-		output, err := inner.Call(ctx, invocation)
+	return decorateCall(inner, func(ctx context.Context, next toolcontract.Caller, invocation toolcontract.Invocation) (toolcontract.Result, error) {
+		output, err := next.Call(ctx, invocation)
 		if err == nil {
 			return output, err
 		}

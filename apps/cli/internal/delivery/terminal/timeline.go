@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/scene"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
@@ -143,8 +144,14 @@ func newTimelineDialog(stack *workspaceScene, theme kit.Theme, glyphs kit.Glyphs
 		}
 	}
 	t.pane = newTimelinePane(theme, glyphs, chosen(jump), chosen(fork))
-	t.dialog = newPresentationDialog(stack, kit.DialogConfig{Theme: theme, Glyphs: glyphs, Title: "Current session timeline", Body: t.pane.Element(),
-		Where: layout.Placement{Width: standardDialogWidth, Height: 20},
+	t.dialog = newPresentationDialog(stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:   "Current session timeline",
+			Content: t.pane.Element(),
+		},
+		Theme:  theme,
+		Glyphs: glyphs,
+		Where:  layout.Placement{Width: standardDialogWidth, Height: 20},
 	})
 	t.pane.picker.cancel = t.dialog.Dismiss
 	return t

@@ -66,7 +66,7 @@ type queueDrawer struct {
 
 	editingEntry   *authoring.QueueEntry
 	editingMessage authoring.Message
-	editor         *kit.Composer
+	editor         *kit.Editor
 
 	hovered queueTarget
 	press   pointerPress[queueTarget]
@@ -78,7 +78,14 @@ type queueDrawer struct {
 
 func newQueueDrawer(theme kit.Theme, glyphs kit.Glyphs, keys *keymap.Map, clipboard base.Clipboard) *queueDrawer {
 	drawer := &queueDrawer{theme: theme, glyphs: glyphs, keys: keys}
-	drawer.editor = kit.NewComposer(kit.ComposerConfig{Theme: theme, Glyphs: glyphs, Prompt: glyphs.Marker + " ", MaxRows: 4})
+	drawer.editor = kit.NewEditor(kit.EditorConfig{
+		Behavior: base.EditorConfig{
+			MaxRows: 4,
+		},
+		Theme:  theme,
+		Glyphs: glyphs,
+		Prompt: glyphs.Marker + " ",
+	})
 	drawer.editor.Controller().SetKeys(keys)
 	drawer.editor.Controller().SetClipboard(clipboard)
 	drawer.editor.Controller().SetPlaceholder("Edit queued prompt")

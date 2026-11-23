@@ -102,7 +102,7 @@ func (r DiagnosticRegistry) Invoke(ctx context.Context, root, name string, argum
 func diagnosticRegistry(tools []toolcontract.Tool, telemetry oteltool.Middleware) (toolcontract.Registry, error) {
 	bindings := make([]toolcontract.Binding, len(tools))
 	for index, executable := range tools {
-		binding, err := toolcontract.Bind(executable, telemetry.Call)
+		binding, err := toolcontract.Bind(toolcontract.Wrap(executable, telemetry.Call))
 		if err != nil {
 			return toolcontract.Registry{}, err
 		}

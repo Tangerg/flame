@@ -28,21 +28,21 @@ type CodeIntelligenceUse interface {
 }
 
 func withCodeIntelligence(inner toolcontract.Tool, intelligence CodeIntelligence, root *filesystemRoot, executor *fs.LocalExecutor) toolcontract.Tool {
-	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (out toolcontract.Result, err error) {
+	return decorateCall(inner, func(ctx context.Context, next toolcontract.Caller, invocation toolcontract.Invocation) (out toolcontract.Result, err error) {
 		paths, err := mutationPaths(inner, invocation)
 		if err != nil {
 			return out, err
 		}
 		use, selected, acquireErr := intelligence.AcquireCodeIntelligence(ctx)
 		if acquireErr != nil {
-			out, err = inner.Call(ctx, invocation)
+			out, err = next.Call(ctx, invocation)
 			if err == nil {
 				out.Output = appendCodeIntelligenceNotices(out.Output, []string{"Unavailable: " + acquireErr.Error()})
 			}
 			return out, err
 		}
 		if !selected {
-			return inner.Call(ctx, invocation)
+			return next.Call(ctx, invocation)
 		}
 		review := codeReview{use: use, root: root, executor: executor}
 		defer func() {
@@ -58,7 +58,7 @@ func withCodeIntelligence(inner toolcontract.Tool, intelligence CodeIntelligence
 			}
 		}()
 		baseline := review.baseline(ctx, paths)
-		out, err = inner.Call(ctx, invocation)
+		out, err = next.Call(ctx, invocation)
 		if err != nil {
 			return out, err
 		}

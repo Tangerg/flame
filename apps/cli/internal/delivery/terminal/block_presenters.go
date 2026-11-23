@@ -63,7 +63,7 @@ func presentQuestion(p blockPresentation, block conversation.Block) []base.Block
 }
 
 func presentNotice(p blockPresentation, block conversation.Block) []base.Block {
-	return []base.Block{&kit.Entry{Theme: p.Theme, Label: "notice", Body: block.Text}}
+	return []base.Block{&kit.Entry{Theme: p.Theme, Label: "notice", Body: kit.NewParagraph(block.Text, p.Theme.Text)}}
 }
 
 func presentFailure(p blockPresentation, block conversation.Block) []base.Block {

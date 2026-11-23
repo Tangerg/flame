@@ -19,9 +19,6 @@ func (i *interactionSession) endingForProcess(owner scoperun.ProcessID, terminat
 	return terminationEnding(termination)
 }
 
-// Scope v0.62 records this classification without exposing a public match.
-const scopeToolCallsNotCompletedCode = "interaction.model.tool_calls_not_completed"
-
 func terminationEnding(termination scoperun.Termination) run.Ending {
 	failed := func(kind run.FailureKind, detail string) run.Ending {
 		return run.Failed{Failure: run.Failure{Kind: kind, Detail: detail}}
@@ -42,9 +39,8 @@ func terminationEnding(termination scoperun.Termination) run.Ending {
 	case scoperun.TerminationCauseExternalFailure:
 		failure, _ := termination.Failure()
 		detail := run.Diagnostic(errors.New(failure.Message()))
-		invalidResponse, _ := scoperun.StepFailure(interaction.ErrInvalidModelResponse)
-		switch failure.Code() {
-		case invalidResponse.Code(), scopeToolCallsNotCompletedCode:
+		switch failure.Classification() {
+		case interaction.ErrInvalidModelResponse.Classification(), interaction.FailureToolCallsNotCompleted:
 			return failed(run.FailureProviderRejected, detail)
 		}
 		return failed(run.FailureInternal, detail)

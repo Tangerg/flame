@@ -3,7 +3,6 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"reflect"
@@ -60,8 +59,8 @@ func Command[P, R any](ctx context.Context, db framesqlite.Database, method, id 
 		return zero, err
 	}
 	var reply []byte
-	err := framesqlite.RunIndependentTx(ctx, db, func(ctx context.Context) error {
-		connection := framesqlite.Connection(ctx, db)
+	err := db.RunIndependentTx(ctx, func(ctx context.Context) error {
+		connection := db.Executor(ctx)
 		var previousMethod, previousInput string
 		err := connection.QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
 		if err == nil {
@@ -81,10 +80,7 @@ func Command[P, R any](ctx context.Context, db framesqlite.Database, method, id 
 		// The retained request is the only input authority; accepting a separate
 		// typed argument would allow effects that disagree with their receipt.
 		var input P
-		if err := framevalue.ValidateType(reflect.TypeFor[P]()); err != nil {
-			return err
-		}
-		if err := json.Unmarshal(admitted.Bytes(), &input, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
+		if err := admitted.Decode(&input); err != nil {
 			return err
 		}
 		reply, err = executeCommandPlan(ctx, db, classify, func(ctx context.Context) (CommandPlan[R], error) {
@@ -108,7 +104,7 @@ func Command[P, R any](ctx context.Context, db framesqlite.Database, method, id 
 func executeCommandPlan[R any](ctx context.Context, db framesqlite.Database, classify pluginmcp.Classifier, prepare func(context.Context) (CommandPlan[R], error)) ([]byte, error) {
 	var plan CommandPlan[R]
 	var decisionErr error
-	if err := framesqlite.RunReadSnapshot(ctx, db, func(ctx context.Context) error {
+	if err := db.RunReadSnapshot(ctx, func(ctx context.Context) error {
 		plan, decisionErr = prepare(ctx)
 		return nil
 	}); err != nil {

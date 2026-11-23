@@ -149,14 +149,14 @@ func verifyWorkspacePath(root *filesystemRoot) error {
 }
 
 func withWorkspacePath(inner toolcontract.Tool, root *filesystemRoot) toolcontract.Tool {
-	return decorateCall(inner, func(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
+	return decorateCall(inner, func(ctx context.Context, next toolcontract.Caller, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 			return toolcontract.Result{}, cause
 		}
 		if err := verifyWorkspacePath(root); err != nil {
 			return toolcontract.Result{}, pluginsdk.DefiniteToolFailure(err)
 		}
-		out, err := inner.Call(ctx, invocation)
+		out, err := next.Call(ctx, invocation)
 		if err != nil {
 			return out, errors.Join(err, errors.Join(ctx.Err(), context.Cause(ctx)))
 		}

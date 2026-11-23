@@ -111,11 +111,7 @@ func modelResult[T any](value T, err error) (T, error) {
 	if _, refused := classify(err); err == nil || !refused {
 		return value, err
 	}
-	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: tool.FailureKindRejected, Output: tool.NewTextOutput(err.Error()), Cause: err})
-	if failureErr != nil {
-		return value, errors.Join(failureErr, err)
-	}
-	return value, failure
+	return value, tool.FailureFromCause(tool.FailureKindRejected, err)
 }
 
 func (l *library) contribute(ctx context.Context, input pluginsdk.ModelContextRequest) (pluginsdk.ModelContextResult, error) {

@@ -95,8 +95,8 @@ func TestOriginalHookCommandReceiptSurvivesRestartWithoutRepeatingItsEffect(t *t
 		t.Fatalf("original=%+v, %v", first, err)
 	}
 	// Model a crash after the shell receipt commits but before the enclosing event reply.
-	if err := sqlite.RunInTx(t.Context(), db, func(ctx context.Context) error {
-		_, err := sqlite.Connection(ctx, db).ExecContext(ctx, "UPDATE commands SET reply=NULL WHERE id=?", "original")
+	if err := db.RunInTx(t.Context(), func(ctx context.Context) error {
+		_, err := db.Executor(ctx).ExecContext(ctx, "UPDATE commands SET reply=NULL WHERE id=?", "original")
 		return err
 	}); err != nil {
 		t.Fatal(err)

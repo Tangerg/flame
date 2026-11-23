@@ -386,9 +386,7 @@ func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]scoperun.E
 			}
 		}
 	}
-	slices.SortFunc(ids, func(left, right scoperun.EffectID) int {
-		return strings.Compare(left.String(), right.String())
-	})
+	slices.SortFunc(ids, scoperun.EffectID.Compare)
 	ids = slices.Compact(ids)
 	return ids, nil
 }

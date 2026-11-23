@@ -15,7 +15,6 @@ import (
 
 	framecall "github.com/Tangerg/frame/call"
 
-	"github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -113,8 +112,8 @@ func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
 			})
 			c, session, close := connectGitHubWrites(t, path, transport, &token)
 			if failure == "commit" {
-				if err := sqlite.RunInTx(t.Context(), c.store.db, func(ctx context.Context) error {
-					_, err := sqlite.Connection(ctx, c.store.db).ExecContext(ctx, `CREATE TRIGGER refuse_settlement BEFORE UPDATE OF reply ON commands WHEN NEW.reply IS NOT NULL BEGIN SELECT RAISE(FAIL,'fixture commit failed'); END`)
+				if err := c.store.db.RunInTx(t.Context(), func(ctx context.Context) error {
+					_, err := c.store.db.Executor(ctx).ExecContext(ctx, `CREATE TRIGGER refuse_settlement BEFORE UPDATE OF reply ON commands WHEN NEW.reply IS NOT NULL BEGIN SELECT RAISE(FAIL,'fixture commit failed'); END`)
 					return err
 				}); err != nil {
 					t.Fatal(err)
@@ -132,8 +131,8 @@ func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
 				t.Fatalf("uncertain request was retried: %d", calls)
 			}
 			if failure == "commit" {
-				if err := sqlite.RunInTx(t.Context(), c.store.db, func(ctx context.Context) error {
-					_, err := sqlite.Connection(ctx, c.store.db).ExecContext(ctx, `DROP TRIGGER refuse_settlement`)
+				if err := c.store.db.RunInTx(t.Context(), func(ctx context.Context) error {
+					_, err := c.store.db.Executor(ctx).ExecContext(ctx, `DROP TRIGGER refuse_settlement`)
 					return err
 				}); err != nil {
 					t.Fatal(err)

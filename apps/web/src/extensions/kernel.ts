@@ -1,8 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { disposeSymbol, type ContributionView, type Host, type HostSnapshot } from "dougong";
 import { SnapshotPublisher } from "dougong/advanced";
-import { retainContribution } from "@/extensions/contributionScope";
-import { type Contribution, type PublishedContribution } from "@/extensions/contracts";
+import { type Contribution } from "@/extensions/contracts";
 import { type ExtensionPoint } from "@/extensions/types/extensionPoint";
 import { reportPluginError } from "@/extensions/errors";
 const NOTHING: ReadonlyArray<Contribution<never>> = Object.freeze([]);
@@ -18,13 +17,12 @@ const publication = new SnapshotPublisher(
   (error) => reportPluginError("kernel", "events", error),
 );
 
-let views = new Map<string, ContributionView<PublishedContribution<unknown>>>();
+let views = new Map<string, ContributionView<Contribution<unknown>>>();
 
 let releases: Array<() => void> = [];
 
 let entries = new Map<string, ReadonlyArray<Contribution<unknown>>>();
 let borrowed = new Map<string, Array<() => void>>();
-const pending = new WeakMap<Host, Set<Promise<void>>>();
 
 function releasePoint(id: string): void {
   const release = borrowed.get(id);
@@ -58,30 +56,25 @@ export function publishKernel(next: Host): void {
   announce();
 }
 
-export function retractKernel(owner: Host): Promise<boolean> {
-  if (host !== owner) {
-    return Promise.all(pending.get(owner) ?? []).then(() => false);
-  }
+// Leases are released synchronously, so a retracted Host has no remaining readers.
+export function retractKernel(owner: Host): void {
+  if (host !== owner) return;
   retractViews();
   host = undefined;
   announce();
-  const readers = pending.get(owner);
-  return readers?.size ? Promise.all(readers).then(() => true) : Promise.resolve(true);
 }
 
 export function publishedKernel(): Host | undefined {
   return publication.view.get();
 }
 
-function viewOf<T>(
-  point: ExtensionPoint<T>,
-): ContributionView<PublishedContribution<T>> | undefined {
+function viewOf<T>(point: ExtensionPoint<T>): ContributionView<Contribution<T>> | undefined {
   const owner = host;
   if (!owner) return undefined;
   const cached = views.get(point.id);
-  if (cached) return cached as ContributionView<PublishedContribution<T>>;
+  if (cached) return cached as ContributionView<Contribution<T>>;
   const view = owner.contributions(point.token);
-  views.set(point.id, view as ContributionView<PublishedContribution<unknown>>);
+  views.set(point.id, view as ContributionView<Contribution<unknown>>);
   const subscription = view.subscribe(() => {
     if (host !== owner) return;
     releasePoint(point.id);
@@ -97,26 +90,21 @@ function sortKey(entry: Contribution<unknown>): number {
 
 function resolve<T>(
   point: ExtensionPoint<T>,
-  view: ContributionView<PublishedContribution<T>>,
+  view: ContributionView<Contribution<T>>,
 ): ReadonlyArray<Contribution<T>> {
-  const owner = host;
-  if (!owner) return NOTHING;
+  if (!host) return NOTHING;
   const all: Contribution<T>[] = [];
-  const active = pending.get(owner) ?? new Set<Promise<void>>();
-  pending.set(owner, active);
   const close: Array<() => void> = [];
   for (const id of view.get()) {
-    const lease = retainContribution(view, id);
-    close.push(lease.release);
-    active.add(lease.settled);
-    void lease.settled.then(
-      () => active.delete(lease.settled),
-      (error) => {
-        active.delete(lease.settled);
-        reportPluginError("kernel", "events", error);
-      },
-    );
-    if (lease.value) all.push(lease.value);
+    // An id whose withdrawal is not yet published cannot be lent; the view's
+    // next notification re-resolves this point.
+    try {
+      const lease = view.retain(id);
+      close.push(() => lease[disposeSymbol]());
+      all.push(lease.value);
+    } catch (error) {
+      reportPluginError("kernel", "events", error);
+    }
   }
   borrowed.set(point.id, close);
   const kept =

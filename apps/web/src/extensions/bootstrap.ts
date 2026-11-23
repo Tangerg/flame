@@ -48,7 +48,7 @@ export async function startKernel(
 }
 
 export async function stopKernel(host: Host): Promise<void> {
-  await retractKernel(host);
+  retractKernel(host);
   await host.stop();
 }
 

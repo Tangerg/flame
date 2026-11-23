@@ -58,7 +58,7 @@ func (q *questionBlock) setQuestion(question conversation.Question) {
 	q.question = question.Clone()
 	q.message = kit.Entry{
 		Theme: q.theme, Label: question.Title,
-		Body: presentQuestionBody(q.glyphs, question),
+		Body: kit.NewParagraph(presentQuestionBody(q.glyphs, question), q.theme.Text),
 	}
 }
 

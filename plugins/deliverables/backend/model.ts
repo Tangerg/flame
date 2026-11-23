@@ -1,5 +1,5 @@
 import { canonicalJSON, parseJSON, Refusal } from "@flame/backend-sdk/mcp";
-import { isJSONNumber } from "@frame/sdk/json";
+import { isJSONNumber, projectNumbers } from "@frame/sdk/json";
 import { z } from "zod";
 import {
   schemas,
@@ -9,7 +9,6 @@ import {
 import { formatCatalogSchema, inspectionSchema } from "../contracts/content";
 import { renderReportSchema, reviewReportSchema } from "../contracts/evidence";
 import { LIMITS, MODEL_LIMITS } from "../contracts/limits";
-import { projectNumbers } from "../contracts/json";
 import type { Application, Operation } from "./application";
 import type { Reply } from "./archive";
 

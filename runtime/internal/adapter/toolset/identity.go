@@ -24,7 +24,7 @@ func Identify(executable toolcontract.Tool) (tool.Ref, error) {
 	if err != nil || found {
 		return ref, err
 	}
-	identity, found := executable.(toolIdentity)
+	identity, found := toolcontract.As[toolIdentity](executable)
 	if !found {
 		return tool.Ref{}, fmt.Errorf("toolset: executable has no source identity")
 	}
@@ -33,7 +33,7 @@ func Identify(executable toolcontract.Tool) (tool.Ref, error) {
 }
 
 func SourceFingerprint(executable toolcontract.Tool, ref tool.Ref) (framevalue.Digest, error) {
-	authority, found := executable.(sourceAuthority)
+	authority, found := toolcontract.As[sourceAuthority](executable)
 	var source framevalue.Digest
 	if found {
 		source = authority.SourceFingerprint()
@@ -50,7 +50,7 @@ func WithIdentity(executable toolcontract.Tool, ref tool.Ref, source framevalue.
 	if executable == nil || executable.Definition().Name != ref.ModelName() {
 		return nil, fmt.Errorf("toolset: definition differs from source reference %s", ref)
 	}
-	return preserveDeclarations(identifiedTool{Tool: executable, ref: ref, fingerprint: source}, executable), nil
+	return identifiedTool{Tool: executable, ref: ref, fingerprint: source}, nil
 }
 
 type identifiedTool struct {
@@ -61,6 +61,7 @@ type identifiedTool struct {
 
 func (t identifiedTool) ToolRef() tool.Ref                    { return t.ref }
 func (t identifiedTool) SourceFingerprint() framevalue.Digest { return t.fingerprint }
+func (t identifiedTool) Unwrap() toolcontract.Tool                 { return t.Tool }
 
 func CaptureToolCaller(executable toolcontract.Tool, invocation framecall.Invocation) (plugin.ToolCaller, error) {
 	ref, err := Identify(executable)
@@ -124,7 +125,7 @@ func InstallationActivation(executable toolcontract.Tool) (plugin.Activation, er
 	if err != nil || !installed {
 		return plugin.Activation{}, err
 	}
-	source, found := executable.(installationActivation)
+	source, found := toolcontract.As[installationActivation](executable)
 	if !found {
 		return plugin.Activation{}, fmt.Errorf("toolset: installation tool has no activation proof")
 	}
@@ -151,10 +152,15 @@ type frozenInstallationTool struct {
 func (t frozenInstallationTool) InstallationActivation() (plugin.Activation, error) {
 	return t.activation.Clone(), nil
 }
+func (t frozenInstallationTool) Unwrap() toolcontract.Tool { return t.Tool }
 func (t frozenInstallationTool) Call(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
-	original, found := t.Tool.(activationCaller)
+	original, found := toolcontract.As[activationCaller](t.Tool)
 	if !found {
 		return toolcontract.Result{}, fmt.Errorf("toolset: installed Tool does not support its retained binding")
 	}
 	return original.CallActivation(ctx, t.activation.Clone(), invocation)
+}
+
+type activationCaller interface {
+	CallActivation(context.Context, plugin.Activation, toolcontract.Invocation) (toolcontract.Result, error)
 }

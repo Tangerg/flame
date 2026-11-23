@@ -162,13 +162,13 @@ func (i *InteractionExecutor) assembleInteraction(
 	if err != nil {
 		return nil, fmt.Errorf("execution: observe Interaction model: %w", err)
 	}
-	store, err := telemetry.WrapStore(session)
+	storeTelemetry, err := otelagent.NewMiddleware(otelagent.MiddlewareConfig{})
 	if err != nil {
 		return nil, fmt.Errorf("execution: observe Interaction store: %w", err)
 	}
 	session.deltas = make(chan scoperun.Delta, i.policy.deltaBufferCapacity)
 	session.engine, err = scoperun.New(session.lifetime.execution, scoperun.Config{
-		Store: store, Build: i.buildID.String(),
+		Store: storeTelemetry.Store(session), Build: i.buildID.String(),
 		ProcessAdmitter: scoperun.ProcessAdmitterFunc(session.admitProcess),
 		Deltas:          session.deltas, TreeLimits: interactionTreeLimits(start),
 	})
@@ -237,6 +237,7 @@ func (i *InteractionExecutor) compositionActivations(ctx context.Context, sessio
 func (i *InteractionExecutor) interactionConfiguration(
 	session *interactionSession,
 	group domaintool.Group,
+	toolAuthority string,
 	depth uint32,
 	instructions []corechat.Message,
 ) ([]byte, error) {
@@ -247,6 +248,7 @@ func (i *InteractionExecutor) interactionConfiguration(
 		MaxConcurrentToolCalls int                       `json:"maxConcurrentToolCalls"`
 		ContextCompaction      bool                      `json:"contextCompaction"`
 		Group                  domaintool.Group          `json:"group"`
+		ToolAuthority          string                    `json:"toolAuthority,omitempty"`
 		Depth                  uint32                    `json:"depth"`
 		DelegateOptions        corechat.Options          `json:"delegateOptions"`
 		Instructions           []corechat.Message        `json:"instructions,omitempty"`
@@ -260,7 +262,7 @@ func (i *InteractionExecutor) interactionConfiguration(
 		Streaming:              i.config.StreamModelResponses,
 		MaxConcurrentToolCalls: i.policy.maxConcurrentToolCalls,
 		ContextCompaction:      i.config.ModelContextCompactor != nil,
-		Group:                  group, Depth: depth,
+		Group:                  group, ToolAuthority: toolAuthority, Depth: depth,
 		Instructions: cloneChatMessages(instructions), DelegateOptions: delegatedExecutionOptions(session.start),
 		ModelObservers:         contributionBindingsWire(session.modelObservers),
 		CompositionActivations: activationIdentities(session.compositionActivations),
@@ -323,7 +325,7 @@ func toolIdentities(tools []toolcontract.Tool, observed map[domaintool.Ref]*obse
 		if err != nil {
 			return nil, err
 		}
-		identities = append(identities, toolConfigurationIdentity{Definition: owner.binding.Contract().Definition(), Reference: ref.String(), SourceFingerprint: owner.sourceFingerprint.String(), Activation: activation.Identity.String()})
+		identities = append(identities, toolConfigurationIdentity{Definition: owner.binding.Contract().Definition(), Reference: ref.String(), SourceFingerprint: owner.sourceFingerprint.String(), Activation: activation.Identity().String()})
 	}
 	return identities, nil
 }

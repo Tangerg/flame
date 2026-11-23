@@ -45,8 +45,8 @@ func (c *store) readCache(ctx context.Context, key string) (response, error) {
 }
 
 func (c *store) saveCache(ctx context.Context, key string, result response) error {
-	return sqlite.RunInTx(ctx, c.db, func(ctx context.Context) error {
-		connection := sqlite.Connection(ctx, c.db)
+	return c.db.RunInTx(ctx, func(ctx context.Context) error {
+		connection := c.db.Executor(ctx)
 		if result.etag == "" {
 			_, err := connection.ExecContext(ctx, `DELETE FROM responses WHERE key=?`, key)
 			return err

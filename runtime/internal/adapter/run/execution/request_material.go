@@ -190,16 +190,22 @@ func settledPreparations(history scoperun.Log, prepared map[scoperun.ProcessID]p
 	settled := make(map[scoperun.EffectID]struct{})
 	for _, entry := range history.Entries {
 		switch record := entry.Record.(type) {
-		case scoperun.EffectIntent:
-			preparation, owned := prepared[record.ID.Process]
-			if !owned || !preparation.effectID.Precedes(record.ID) {
+		case scoperun.Stepped:
+			preparation, owned := prepared[record.Process]
+			if !owned {
 				continue
 			}
-			intent, model, err := interaction.ModelCallFromEffect(record.Effect)
-			if err != nil {
-				return nil, err
-			}
-			if model {
+			for _, declared := range record.Intents() {
+				if !preparation.effectID.Precedes(declared.ID) {
+					continue
+				}
+				intent, model, err := interaction.ModelCallFromEffect(declared.Effect)
+				if err != nil {
+					return nil, err
+				}
+				if !model {
+					continue
+				}
 				reference, _, err := modelPreparationReference(intent.Request.Messages)
 				if err != nil {
 					return nil, err
@@ -207,7 +213,7 @@ func settledPreparations(history scoperun.Log, prepared map[scoperun.ProcessID]p
 				if reference.Sequence != intent.Sequence {
 					return nil, errors.New("execution: settled model differs from its preparation sequence")
 				}
-				models[record.ID] = reference
+				models[declared.ID] = reference
 			}
 		case scoperun.EffectSettled:
 			if ref, model := models[record.ID]; model && record.Outcome.Status() != scoperun.SettlementStatusUnknown {

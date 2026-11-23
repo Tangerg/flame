@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	framesqlite "github.com/Tangerg/frame/sqlite"
-
 	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 )
 
@@ -21,9 +19,9 @@ func (a *AgentMemoryStore) AppendLedger(ctx context.Context, batch agentmemory.F
 		return nil, nil
 	}
 	var inserted []agentmemory.LedgerFact
-	err = framesqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
+	err = a.db.RunInTx(ctx, func(ctx context.Context) error {
 		for _, fact := range normalized.Facts {
-			result, execContextErr := framesqlite.Connection(ctx, a.db).ExecContext(ctx,
+			result, execContextErr := a.db.Executor(ctx).ExecContext(ctx,
 				`INSERT OR IGNORE INTO agent_memory_ledger(
 					project, day, session_id, fact, digest, captured_at
 				) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -65,7 +63,7 @@ func (a *AgentMemoryStore) AppendLedger(ctx context.Context, batch agentmemory.F
 
 func (a *AgentMemoryStore) PendingLedger(ctx context.Context, project string, watermark int64, limit int) ([]agentmemory.LedgerFact, error) {
 	var result []agentmemory.LedgerFact
-	err := framesqlite.RunReadSnapshot(ctx, a.db, func(ctx context.Context) error {
+	err := a.db.RunReadSnapshot(ctx, func(ctx context.Context) error {
 		if err := agentmemory.ValidateTarget(agentmemory.ScopeProject, project); err != nil {
 			return err
 		}
@@ -78,7 +76,7 @@ func (a *AgentMemoryStore) PendingLedger(ctx context.Context, project string, wa
 				agentmemory.MaxLedgerFoldFacts,
 			)
 		}
-		rows, err := framesqlite.Connection(ctx, a.db).QueryContext(ctx,
+		rows, err := a.db.Executor(ctx).QueryContext(ctx,
 			`SELECT seq, day, fact, captured_at
 		 FROM agent_memory_ledger
 		 WHERE project = ? AND seq > ?
@@ -112,13 +110,13 @@ func (a *AgentMemoryStore) PendingLedger(ctx context.Context, project string, wa
 
 func (a *AgentMemoryStore) State(ctx context.Context, project string) (agentmemory.State, error) {
 	var result agentmemory.State
-	err := framesqlite.RunReadSnapshot(ctx, a.db, func(ctx context.Context) error {
+	err := a.db.RunReadSnapshot(ctx, func(ctx context.Context) error {
 		if err := agentmemory.ValidateTarget(agentmemory.ScopeProject, project); err != nil {
 			return err
 		}
 		var st agentmemory.State
 		var updatedAt int64
-		err := framesqlite.Connection(ctx, a.db).QueryRowContext(ctx,
+		err := a.db.Executor(ctx).QueryRowContext(ctx,
 			`SELECT watermark, updated_at FROM agent_memory_state WHERE project = ?`, project).
 			Scan(&st.Watermark, &updatedAt)
 		if errors.Is(err, sql.ErrNoRows) {
@@ -151,9 +149,9 @@ func (a *AgentMemoryStore) Reconcile(
 	expectedWatermark := publication.ExpectedState().Watermark
 	state := publication.State()
 	through := state.Watermark
-	err = framesqlite.RunInTx(ctx, a.db, func(ctx context.Context) error {
+	err = a.db.RunInTx(ctx, func(ctx context.Context) error {
 		var one int
-		if scanErr := framesqlite.Connection(ctx, a.db).QueryRowContext(ctx,
+		if scanErr := a.db.Executor(ctx).QueryRowContext(ctx,
 			`SELECT 1 FROM agent_memory_ledger WHERE project = ? AND seq = ?`,
 			project, through).Scan(&one); scanErr != nil {
 			if errors.Is(scanErr, sql.ErrNoRows) {
@@ -161,12 +159,12 @@ func (a *AgentMemoryStore) Reconcile(
 			}
 			return fmt.Errorf("sqlite: verify agent memory watermark: %w", scanErr)
 		}
-		if _, execContextErr := framesqlite.Connection(ctx, a.db).ExecContext(ctx,
+		if _, execContextErr := a.db.Executor(ctx).ExecContext(ctx,
 			`INSERT OR IGNORE INTO agent_memory_state(project, watermark, updated_at) VALUES (?, 0, 0)`,
 			project); execContextErr != nil {
 			return fmt.Errorf("sqlite: initialize agent memory state: %w", execContextErr)
 		}
-		result, execContextErr := framesqlite.Connection(ctx, a.db).ExecContext(ctx,
+		result, execContextErr := a.db.Executor(ctx).ExecContext(ctx,
 			`UPDATE agent_memory_state SET watermark = ?, updated_at = ?
 			 WHERE project = ? AND watermark = ?`,
 			through, state.UpdatedAt.UnixNano(), project, expectedWatermark)

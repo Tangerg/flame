@@ -113,7 +113,7 @@ func (c *connector) send(ctx context.Context, method, id string, input framevalu
 		if err != nil {
 			return err
 		}
-		_, err = sqlite.Connection(ctx, c.db).ExecContext(ctx, `INSERT INTO bindings(request_id,binding) VALUES(?,?)`, id, string(data))
+		_, err = c.db.Executor(ctx).ExecContext(ctx, `INSERT INTO bindings(request_id,binding) VALUES(?,?)`, id, string(data))
 		return err
 	})
 	return result, err

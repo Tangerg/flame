@@ -158,7 +158,11 @@ test("repository native packaging resolves Go modules with workspace mode disabl
       await readFile(join(output, "memory/manifest.json"), "utf8"),
     );
     assert.equal(release.package, "flame.memory");
-    assert.match(release.release, /^[a-f0-9]{64}$/);
+    // A Frame release is one manifest and its artifacts; a lock file would be
+    // an undeclared artifact that installation refuses.
+    await assert.rejects(readFile(join(output, "memory/plugin.lock.json")), {
+      code: "ENOENT",
+    });
     assert.deepEqual(
       release.units.find((unit) => unit.id === "backend/memory").variants,
       [{ os: "linux", arch: "amd64", path: "bin/memory" }],

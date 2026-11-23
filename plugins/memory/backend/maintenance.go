@@ -23,7 +23,7 @@ type maintenancePublication struct {
 
 func (s maintenancePublication) Reconcile(ctx context.Context, publication memory.Publication) (bool, error) {
 	var published bool
-	err := framesqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
+	err := s.db.RunInTx(ctx, func(ctx context.Context) error {
 		var err error
 		published, err = s.CurationStore.Reconcile(ctx, publication)
 		if err != nil {

@@ -15,7 +15,7 @@ import (
 type promptView struct {
 	theme             kit.Theme
 	box               kit.Box
-	composer          *kit.Composer
+	composer          *kit.Editor
 	help              kit.Help
 	rows              *scene.Group
 	keys              *keymap.Map
@@ -33,7 +33,7 @@ func newPromptView(
 	theme kit.Theme,
 	glyphs kit.Glyphs,
 	keys *keymap.Map,
-	composer *kit.Composer,
+	composer *kit.Editor,
 	options authoring.RunOptions,
 ) *promptView {
 	p := &promptView{

@@ -172,12 +172,11 @@ func DataPoint(contract *plugincontract.Point) (framehost.Point[framevalue.JSON,
 	if contract == nil {
 		return framehost.Point[framevalue.JSON, framevalue.JSON]{}, plugin.ErrInvalid
 	}
-	ref := framehost.ContractRef{Name: contract.Definition().Reference, Version: "1", Digest: framevalue.Hash(contract.Identity().Bytes()), Kind: framehost.ServiceKind, Mode: framehost.PortableMode}
-	value, err := framehost.BindContract[framevalue.JSON](ref, contract.Identity().Bytes())
+	value, err := framehost.NewDescriptorContract[framevalue.JSON](contract.Definition().Reference, "1", contract.Identity().Bytes())
 	if err != nil {
 		return framehost.Point[framevalue.JSON, framevalue.JSON]{}, err
 	}
-	return framehost.NewPortablePoint[framevalue.JSON](ref.Name, "1", contract.Definition().Value, value)
+	return framehost.NewPortablePoint[framevalue.JSON](contract.Definition().Reference, "1", contract.Definition().Value, value)
 }
 
 // FrameworkDefinition is the one Flame-to-Frame declaration projection shared

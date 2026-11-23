@@ -1,15 +1,10 @@
 import { extensionPoint } from "dougong";
-import { normalizePlainRecord } from "dougong/advanced";
-import { type ContributionLease } from "@/extensions/contributionScope";
+import { capturePlainRecord } from "dougong/advanced";
 import { type ExtensionKeying, type ExtensionPoint } from "@/extensions/types/extensionPoint";
 export interface Contribution<T> {
   readonly key: string;
   readonly plugin: string;
   readonly item: T;
-}
-
-export interface PublishedContribution<T> extends Contribution<T> {
-  retain(): ContributionLease;
 }
 
 const taken = new Set<string>();
@@ -24,7 +19,7 @@ interface ExtensionPointSpec<T> {
 }
 
 export function defineExtensionPoint<T>(spec: ExtensionPointSpec<T>): ExtensionPoint<T> {
-  const declaration = normalizePlainRecord(spec, "flame extension point", { fields: specFields });
+  const declaration = capturePlainRecord(spec, "flame extension point", { fields: specFields });
   if (declaration.keying !== "single" && declaration.keying !== "multi")
     throw new TypeError("extension keying must be single or multi");
   for (const callback of [declaration.keyOf, declaration.normalizeKey]) {
@@ -36,7 +31,7 @@ export function defineExtensionPoint<T>(spec: ExtensionPointSpec<T>): ExtensionP
   }
   const point = Object.freeze({
     ...declaration,
-    token: extensionPoint<PublishedContribution<T>>(declaration.id),
+    token: extensionPoint<Contribution<T>>(declaration.id),
   });
   taken.add(point.id);
   return point;

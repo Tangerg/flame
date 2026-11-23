@@ -33,8 +33,8 @@ func OpenSnapshot[S any](ctx context.Context, db framesqlite.Database, table str
 		return nil, fmt.Errorf("managed plugin: encode initial %s: %w", table, err)
 	}
 	snapshot := &Snapshot[S]{db: db, table: table}
-	err = framesqlite.RunInTx(ctx, db, func(ctx context.Context) error {
-		_, err := framesqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO `+table+`(id,snapshot) VALUES(1,?) ON CONFLICT(id) DO NOTHING`, string(encoded))
+	err = db.RunInTx(ctx, func(ctx context.Context) error {
+		_, err := db.Executor(ctx).ExecContext(ctx, `INSERT INTO `+table+`(id,snapshot) VALUES(1,?) ON CONFLICT(id) DO NOTHING`, string(encoded))
 		return err
 	})
 	if err != nil {
@@ -68,7 +68,7 @@ func Replace[S, R any](s *Snapshot[S], result R, next S) (CommandPlan[R], error)
 		return CommandPlan[R]{}, fmt.Errorf("managed plugin: encode %s: %w", s.table, err)
 	}
 	return NewCommandPlan(result, func(ctx context.Context) error {
-		_, err := framesqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE `+s.table+` SET snapshot=? WHERE id=1`, string(encoded))
+		_, err := s.db.Executor(ctx).ExecContext(ctx, `UPDATE `+s.table+` SET snapshot=? WHERE id=1`, string(encoded))
 		return err
 	})
 }

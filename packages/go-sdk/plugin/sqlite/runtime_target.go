@@ -43,11 +43,11 @@ func CheckRuntimeTarget(ctx context.Context, db framesqlite.Database, namespace 
 // BindRuntimeTarget binds the database to namespace, idempotent for the same
 // namespace and ErrRuntimeTargetConflict for any other.
 func BindRuntimeTarget(ctx context.Context, db framesqlite.Database, namespace string) error {
-	return framesqlite.RunInTx(ctx, db, func(ctx context.Context) error {
+	return db.RunInTx(ctx, func(ctx context.Context) error {
 		if err := CheckRuntimeTarget(ctx, db, namespace); err != nil {
 			return err
 		}
-		_, err := framesqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO runtime_target(id,namespace) VALUES(1,?) ON CONFLICT(id) DO NOTHING`, namespace)
+		_, err := db.Executor(ctx).ExecContext(ctx, `INSERT INTO runtime_target(id,namespace) VALUES(1,?) ON CONFLICT(id) DO NOTHING`, namespace)
 		return err
 	})
 }

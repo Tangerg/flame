@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/layout"
 	"github.com/Tangerg/oolong/ui/kit"
 )
@@ -35,7 +36,15 @@ func newPickerDialog[T any](cfg pickerDialogConfig[T]) *pickerDialog[T] {
 		d.dismiss(cfg.dismissed)
 		cfg.choose(item)
 	})
-	d.dialog = newPresentationDialog(cfg.stack, kit.DialogConfig{Theme: cfg.theme, Glyphs: cfg.glyphs, Title: cfg.title, Body: d.picker.Element(), Where: cfg.where})
+	d.dialog = newPresentationDialog(cfg.stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:   cfg.title,
+			Content: d.picker.Element(),
+		},
+		Theme:  cfg.theme,
+		Glyphs: cfg.glyphs,
+		Where:  cfg.where,
+	})
 	d.picker.cancel = func() { d.dismiss(cfg.dismissed) }
 	return d
 }

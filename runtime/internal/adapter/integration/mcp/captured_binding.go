@@ -27,7 +27,7 @@ func (p *Pool) ValidateCapturedBindingUnder(ctx context.Context, activation plug
 	permission.mu.Lock()
 	grant := permission.scope
 	permission.mu.Unlock()
-	binding, err := permission.Read(ctx, activation.Identity.String(), grant)
+	binding, err := permission.Read(ctx, activation.Identity().String(), grant)
 	if err != nil {
 		return err
 	}

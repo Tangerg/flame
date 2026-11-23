@@ -4,6 +4,7 @@ import {
   type MethodDescriptor,
 } from "@frame/sdk/node";
 import { canonicalJSON, freezeJSON } from "@frame/sdk/json";
+import { MAX_NAME_BYTES } from "@frame/sdk/protocol";
 import wire from "./protocol.generated.json";
 
 export { canonicalJSON, freezeJSON } from "@frame/sdk/json";
@@ -32,11 +33,12 @@ export function validCommand(value: unknown): value is string {
   );
 }
 
-export function validToken(value: unknown): value is string {
+// Frame's one name rule, the TypeScript counterpart of frame.ValidName.
+export function validName(value: unknown): value is string {
   return (
     typeof value === "string" &&
     value.length > 0 &&
-    Buffer.byteLength(value) <= wire.limits.maxTokenBytes &&
+    Buffer.byteLength(value) <= MAX_NAME_BYTES &&
     !/[\p{Surrogate}\p{White_Space}\p{Cc}]/u.test(value)
   );
 }
@@ -94,8 +96,8 @@ export class Capability {
     ]);
     if (
       descriptor.protocol !== PROTOCOL ||
-      !validToken(descriptor.reference) ||
-      !validToken(descriptor.scope) ||
+      !validName(descriptor.reference) ||
+      !validName(descriptor.scope) ||
       !Array.isArray(descriptor.methods) ||
       (descriptor.composition !== "collection" &&
         descriptor.composition !== "selection" &&

@@ -113,8 +113,8 @@ including all workspace pages, renderers, native executables and the complete
 managed JavaScript graph.
 The same build copies each backend's generated contracts and declared resources.
 It invokes the prebuilt `pluginpack` author command to write the neutral
-`manifest.json` and `plugin.lock.json`, using the same Flame-to-Frame projection as
-Runtime. Raw source directories without these files are not installable releases.
+`manifest.json`, using the same Flame-to-Frame projection as Runtime. Raw source
+directories without that manifest are not installable releases.
 GitHub uses the same package path with a declared optional secret token input;
 its unset configuration supports public reads without blocking catalog initialization.
 Package namespaces contain projections of their owner's canonical contracts.

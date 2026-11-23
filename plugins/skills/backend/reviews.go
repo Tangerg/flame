@@ -87,7 +87,7 @@ func (r reviewQueue) stage(ctx context.Context, _ *sdk.ServerSession, draft skil
 }
 
 func (r reviewQueue) prepareStage(ctx context.Context, command string, draft skilllearning.Draft) (func(context.Context) error, error) {
-	connection := framesqlite.Connection(ctx, r.db)
+	connection := r.db.Executor(ctx)
 	var decision sql.NullString
 	err := connection.QueryRowContext(ctx, `SELECT decision FROM reviews WHERE library=? AND name=?`, draft.Library, draft.Skill.Name).Scan(&decision)
 	switch {
@@ -107,7 +107,7 @@ func (r reviewQueue) prepareStage(ctx context.Context, command string, draft ski
 	}
 	library, name := draft.Library, draft.Skill.Name
 	return func(ctx context.Context) error {
-		_, err := framesqlite.Connection(ctx, r.db).ExecContext(ctx, `INSERT INTO reviews(library,name,proposal) VALUES(?,?,?) ON CONFLICT(library,name) DO UPDATE SET proposal=excluded.proposal`, library, name, command)
+		_, err := r.db.Executor(ctx).ExecContext(ctx, `INSERT INTO reviews(library,name,proposal) VALUES(?,?,?) ON CONFLICT(library,name) DO UPDATE SET proposal=excluded.proposal`, library, name, command)
 		return err
 	}, nil
 }
@@ -145,7 +145,7 @@ func humanDecision(ctx context.Context) (framecall.Invocation, error) {
 
 func (r reviewQueue) decision(ctx context.Context, proposal string) (sql.NullString, error) {
 	var decision sql.NullString
-	err := framesqlite.Connection(ctx, r.db).QueryRowContext(ctx, `SELECT decision FROM reviews WHERE proposal=?`, proposal).Scan(&decision)
+	err := r.db.Executor(ctx).QueryRowContext(ctx, `SELECT decision FROM reviews WHERE proposal=?`, proposal).Scan(&decision)
 	if errors.Is(err, sql.ErrNoRows) {
 		return decision, staleReview()
 	}
@@ -165,7 +165,7 @@ func (r reviewQueue) authorize(ctx context.Context, _ *sdk.ServerSession, ref sk
 		return storage.NewCommandPlan(skilllearning.Permit{Decision: decision.String}, nil)
 	}
 	return storage.NewCommandPlan(skilllearning.Permit{Decision: invocation.ID}, func(ctx context.Context) error {
-		_, err := framesqlite.Connection(ctx, r.db).ExecContext(ctx, `UPDATE reviews SET decision=? WHERE proposal=?`, invocation.ID, ref.Command)
+		_, err := r.db.Executor(ctx).ExecContext(ctx, `UPDATE reviews SET decision=? WHERE proposal=?`, invocation.ID, ref.Command)
 		return err
 	})
 }
@@ -182,7 +182,7 @@ func (r reviewQueue) confirm(ctx context.Context, _ *sdk.ServerSession, publicat
 		return storage.CommandPlan[struct{}]{}, staleReview()
 	}
 	return storage.NewCommandPlan(struct{}{}, func(ctx context.Context) error {
-		_, err := framesqlite.Connection(ctx, r.db).ExecContext(ctx, `DELETE FROM reviews WHERE proposal=?`, publication.Proposal.Command)
+		_, err := r.db.Executor(ctx).ExecContext(ctx, `DELETE FROM reviews WHERE proposal=?`, publication.Proposal.Command)
 		return err
 	})
 }
@@ -199,7 +199,7 @@ func (r reviewQueue) reject(ctx context.Context, _ *sdk.ServerSession, ref skill
 		return storage.CommandPlan[struct{}]{}, staleReview()
 	}
 	return storage.NewCommandPlan(struct{}{}, func(ctx context.Context) error {
-		_, err := framesqlite.Connection(ctx, r.db).ExecContext(ctx, `DELETE FROM reviews WHERE proposal=?`, ref.Command)
+		_, err := r.db.Executor(ctx).ExecContext(ctx, `DELETE FROM reviews WHERE proposal=?`, ref.Command)
 		return err
 	})
 }

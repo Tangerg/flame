@@ -208,11 +208,11 @@ func (i *interactionDeploymentBuilder) buildAtDepth(ctx context.Context, depth i
 	if err != nil {
 		return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, err
 	}
-	configuration, err := i.executor.interactionConfiguration(i.session, group, uint32(depth), i.instructions)
+	configuration, err := i.executor.interactionConfiguration(i.session, group, bound.authority, uint32(depth), i.instructions)
 	if err != nil {
 		return scoperun.Program[scoperun.Payload, scoperun.Payload]{}, err
 	}
-	contextProcessor := newInteractionModelContextReducer(
+	contextPreparer := newInteractionModelContextReducer(
 		i.executor.config.ModelContextCompactor, i.executor.config.ModelContextState,
 		i.session, i.start, i.instructions, deferredCatalogMessage(bound.manifest), i.counter,
 	)
@@ -223,7 +223,7 @@ func (i *interactionDeploymentBuilder) buildAtDepth(ctx context.Context, depth i
 	config := interaction.Config{
 		Name: definitionName, Description: definitionDescription,
 		Revision: i.executor.buildID.String() + ":" + scoperun.ComputeDigest(configuration).String(),
-		Model:    model, ContextProcessor: contextProcessor, Tools: bound.tools, Delegates: delegates,
+		Model:    model, ContextPreparer: contextPreparer, Tools: bound.tools, Delegates: delegates,
 	}
 	program, err := interaction.Compile(i.session.engine.Compiler(), config)
 	if err != nil {

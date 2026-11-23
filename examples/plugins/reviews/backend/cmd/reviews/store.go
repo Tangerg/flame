@@ -134,7 +134,7 @@ func (s *store) update(ctx context.Context, invocationID string, admitted framev
 		return reviews.UpdateResult{}, err
 	}
 	var input reviews.Update
-	if err := json.Unmarshal(admitted.Bytes(), &input, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
+	if err := admitted.Decode(&input); err != nil {
 		return reviews.UpdateResult{}, err
 	}
 	if err := s.inputSchema.Validate(admitted.Bytes()); err != nil {
@@ -142,8 +142,8 @@ func (s *store) update(ctx context.Context, invocationID string, admitted framev
 	}
 	arguments := admitted.String()
 	var result reviews.UpdateResult
-	err = sqlite.RunIndependentTx(ctx, s.db, func(ctx context.Context) error {
-		connection := sqlite.Connection(ctx, s.db)
+	err = s.db.RunIndependentTx(ctx, func(ctx context.Context) error {
+		connection := s.db.Executor(ctx)
 		var previousArguments string
 		var encoded []byte
 		err := connection.QueryRowContext(ctx, `SELECT input_json, result FROM invocations WHERE id = ?`, invocationID).Scan(&previousArguments, &encoded)

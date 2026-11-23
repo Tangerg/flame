@@ -19,12 +19,18 @@ import (
 // that preview, so every reason reports it: a payload this Runtime cannot parse
 // is a framework boundary defect, not a quiet no-op.
 func (i *interactionSession) projectDelta(ctx context.Context, delta scoperun.Delta) {
-	parsed, err := interaction.ParseModelResponseDelta(delta.Payload())
+	parsed, err := interaction.ParseDelta(delta.Payload())
 	if err != nil {
 		i.reportDroppedDelta(ctx, delta, err)
 		return
 	}
-	response := parsed.ResponseDelta()
+	model, ok := parsed.(interaction.ModelResponseDelta)
+	if !ok {
+		// Tool progress has no preview projection.
+		i.reportDroppedDelta(ctx, delta, errUnroutableDelta)
+		return
+	}
+	response := model.ResponseDelta()
 	for _, part := range response.Parts {
 		var payload runs.ExecutionFact
 		switch part.Kind {

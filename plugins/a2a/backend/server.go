@@ -92,8 +92,7 @@ func (c *connector) statusTool(ctx context.Context, input wire.TaskRequest) (wir
 	if _, refused := errors.AsType[*framecall.Refusal](err); refused {
 		kind = tool.FailureKindRejected
 	}
-	failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: kind, Output: tool.NewTextOutput(err.Error()), Cause: err})
-	return result, errors.Join(failure, failureErr)
+	return result, tool.FailureFromCause(kind, err)
 }
 
 func (c *connector) registerMethods(backend *pluginmcp.Backend, contracts rpc.Contracts) error {

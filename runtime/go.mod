@@ -32,7 +32,7 @@ require (
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.yaml.in/yaml/v4 v4.0.0 // indirect
 	golang.org/x/mod v0.43.0 // indirect
-	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/net v0.63.0 // indirect
 	golang.org/x/sync v0.25.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
 	modernc.org/libc v1.80.2 // indirect
@@ -41,19 +41,19 @@ require (
 )
 
 require (
-	github.com/Tangerg/flame/packages/go-sdk v0.1.34-dev.20261120.tc1784594a7ac
+	github.com/Tangerg/flame/packages/go-sdk v0.1.35-dev.20261123.t3776cd641a8d
 	github.com/Tangerg/flame/packages/local-runtime v0.1.8-dev.20261120.te6fa71dfd898
-	github.com/Tangerg/frame v0.4.0
+	github.com/Tangerg/frame v0.5.0
 	github.com/Tangerg/go-sdk v1.9.0-scope.1
-	github.com/Tangerg/scope/agent v0.62.0
-	github.com/Tangerg/scope/core v0.62.0
-	github.com/Tangerg/scope/mcp v0.62.0
-	github.com/Tangerg/scope/models/catalog v0.62.0
-	github.com/Tangerg/scope/otel v0.62.0
-	github.com/Tangerg/scope/otel/agent v0.62.0
-	github.com/Tangerg/scope/skills v0.62.0
-	github.com/Tangerg/scope/tools v0.62.0
-	github.com/Tangerg/scope/tools/skills v0.62.0
+	github.com/Tangerg/scope/agent v0.64.0
+	github.com/Tangerg/scope/core v0.64.0
+	github.com/Tangerg/scope/mcp v0.64.0
+	github.com/Tangerg/scope/models/catalog v0.64.0
+	github.com/Tangerg/scope/otel v0.64.0
+	github.com/Tangerg/scope/otel/agent v0.64.0
+	github.com/Tangerg/scope/skills v0.64.0
+	github.com/Tangerg/scope/tools v0.64.0
+	github.com/Tangerg/scope/tools/skills v0.64.0
 	github.com/Tangerg/sse v0.0.6
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-chi/chi/v5 v5.5.0

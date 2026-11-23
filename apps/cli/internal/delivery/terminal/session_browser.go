@@ -61,8 +61,14 @@ func newSessionBrowser(cfg sessionBrowserConfig) *sessionBrowser {
 	b.pane.toggleFavorite = b.toggleSessionFavorite
 	b.pane.rename = b.openSessionRename
 	b.pane.delete = b.openSessionDelete
-	b.dialog = newPresentationDialog(b.stack, kit.DialogConfig{Theme: b.theme, Glyphs: b.glyphs, Title: "Sessions · Center", Body: b.pane.Element(),
-		Where: layout.Placement{Width: wideDialogWidth, Height: 24},
+	b.dialog = newPresentationDialog(b.stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:   "Sessions · Center",
+			Content: b.pane.Element(),
+		},
+		Theme:  b.theme,
+		Glyphs: b.glyphs,
+		Where:  layout.Placement{Width: wideDialogWidth, Height: 24},
 	})
 	b.pane.picker.cancel = func() {
 		b.tasks.operations.Cancel(pickerCatalogOperation)
@@ -139,12 +145,18 @@ func (b *sessionBrowser) openSessionRename(session conversation.Session) {
 	title := session.Title
 	field := base.NewText(base.TextConfig{Label: "Session title", Initial: title, Check: requiredText})
 	field.SetClipboard(b.clipboard)
-	form := kit.FormConfig{Fields: []base.Field{field}, Theme: b.theme, Glyphs: b.glyphs,
-		Hints: []keymap.Action{base.Submit, base.Cancel}}
-	form.Keys = base.DefaultFormKeys()
+	form := kit.FormConfig{
+		Behavior: base.FormConfig{
+			Fields: []base.Field{field},
+		},
+		Theme:  b.theme,
+		Glyphs: b.glyphs,
+		Hints:  []keymap.Action{base.Submit, base.Cancel},
+	}
+	form.Behavior.Keys = base.DefaultFormKeys()
 	var dressed *kit.Form
 	var dialog *presentationDialog
-	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
+	form.Behavior.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if b.renameDialog != dialog {
 			return scene.Unchanged, nil
 		}
@@ -184,9 +196,14 @@ func (b *sessionBrowser) openSessionRename(session conversation.Session) {
 		}
 	}
 	dressed = kit.NewForm(form)
-	dialog = newPresentationDialog(b.stack, kit.DialogConfig{Theme: b.theme, Glyphs: b.glyphs,
-		Title: "Rename session", Body: formNavigation(dressed.Element(), leave),
-		Where: layout.Placement{Width: compactDialogWidth, Height: 11},
+	dialog = newPresentationDialog(b.stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:   "Rename session",
+			Content: formNavigation(dressed.Element(), leave),
+		},
+		Theme:  b.theme,
+		Glyphs: b.glyphs,
+		Where:  layout.Placement{Width: compactDialogWidth, Height: 11},
 	})
 	b.renameDialog = dialog
 	dialog.Show()
@@ -200,11 +217,17 @@ func (b *sessionBrowser) openSessionDelete(session conversation.Session) {
 	confirmed := false
 	choice := base.NewSelect(base.SelectConfig[bool]{Same: base.Equal[bool], Label: "Delete " + displayTitle(session) + "?", Initial: confirmed, Rows: 2})
 	choice.SetOptions([]base.Option[bool]{{Label: "Cancel", Value: false}, {Label: "Delete permanently", Value: true}})
-	form := kit.FormConfig{Fields: []base.Field{choice}, Theme: b.theme, Glyphs: b.glyphs,
-		Hints: []keymap.Action{base.Submit, base.Cancel}}
-	form.Keys = base.DefaultFormKeys()
+	form := kit.FormConfig{
+		Behavior: base.FormConfig{
+			Fields: []base.Field{choice},
+		},
+		Theme:  b.theme,
+		Glyphs: b.glyphs,
+		Hints:  []keymap.Action{base.Submit, base.Cancel},
+	}
+	form.Behavior.Keys = base.DefaultFormKeys()
 	var dialog *presentationDialog
-	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
+	form.Behavior.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if b.deleteDialog != dialog {
 			return scene.Unchanged, nil
 		}
@@ -222,9 +245,14 @@ func (b *sessionBrowser) openSessionDelete(session conversation.Session) {
 		}
 	}
 	dressed := kit.NewForm(form)
-	dialog = newPresentationDialog(b.stack, kit.DialogConfig{Theme: b.theme, Glyphs: b.glyphs,
-		Title: "Delete session", Body: formNavigation(dressed.Element(), leave),
-		Where: layout.Placement{Width: compactDialogWidth, Height: 8},
+	dialog = newPresentationDialog(b.stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:   "Delete session",
+			Content: formNavigation(dressed.Element(), leave),
+		},
+		Theme:  b.theme,
+		Glyphs: b.glyphs,
+		Where:  layout.Placement{Width: compactDialogWidth, Height: 8},
 	})
 	b.deleteDialog = dialog
 	dialog.Show()

@@ -30,15 +30,15 @@ const promptHistoryCapacity = 1000
 // file chips. Every chip in the editor has a backing attachment; message
 // refuses an editor whose chips lost theirs. The zero value is empty.
 type composerContent struct {
-	*kit.Composer
+	*kit.Editor
 	chips map[base.ElementID]authoring.Attachment
 }
 
 func (c *composerContent) Controller() *base.Editor {
-	if c.Composer == nil {
-		c.Composer = kit.NewComposer(kit.ComposerConfig{})
+	if c.Editor == nil {
+		c.Editor = kit.NewEditor(kit.EditorConfig{})
 	}
-	return c.Composer.Controller()
+	return c.Editor.Controller()
 }
 
 // promptComposer owns the prompt being written: its editor content and

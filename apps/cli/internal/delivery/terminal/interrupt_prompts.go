@@ -72,8 +72,14 @@ func newInterruptPrompts(cfg interruptPromptsConfig) *interruptPrompts {
 	p.approvalPane = approvalPane{theme: cfg.theme, glyphs: cfg.glyphs, detail: kit.NewParagraph("", cfg.theme.Text)}
 	p.approvalPane.initialize(cfg.wheel)
 	p.setApprovalForm(approvalAllowOnce)
-	p.approvalDialog = newPresentationDialog(cfg.stack, kit.DialogConfig{Theme: cfg.theme, Glyphs: cfg.glyphs, Title: "Tool approval", Body: p.approvalPane.Element(),
-		Where: layout.Placement{Width: standardDialogWidth, Height: 24},
+	p.approvalDialog = newPresentationDialog(cfg.stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:   "Tool approval",
+			Content: p.approvalPane.Element(),
+		},
+		Theme:  cfg.theme,
+		Glyphs: cfg.glyphs,
+		Where:  layout.Placement{Width: standardDialogWidth, Height: 24},
 	})
 	return p
 }

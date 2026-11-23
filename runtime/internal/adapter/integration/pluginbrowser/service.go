@@ -82,7 +82,7 @@ func (s *Service) Acquire(ctx context.Context, request app.ComponentRequest) (fr
 	if err != nil {
 		return framebrowser.UseGrant{}, consumerError(err)
 	}
-	plan, err := s.config.Registry.ComponentPlan(ctx, framebrowser.RealmID(credentials.Realm), request.Installation, request.Digest, request.Component)
+	plan, err := s.config.Registry.ComponentPlan(ctx, credentials.Realm.HostRealm(), request.Installation, request.Digest, request.Component)
 	if err != nil {
 		return framebrowser.UseGrant{}, consumerError(err)
 	}

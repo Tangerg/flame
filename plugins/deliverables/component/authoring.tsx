@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { failureText, type Translate } from "@flame/component-sdk";
-import { parseJSON, projectNumber } from "@frame/sdk/json";
+import { parseJSON, projectNumber, projectNumbers } from "@frame/sdk/json";
 import {
   Button,
   Callout,
@@ -38,7 +38,6 @@ import {
 } from "../contracts/content";
 import { FIELD_LIMITS, LIMITS } from "../contracts/limits";
 import { METHODS } from "../contracts/methods";
-import { projectNumbers } from "../contracts/json";
 import type { DeliverablesState } from "./useDeliverables";
 import { emptyProvenance, type DocumentRead, type Provenance } from "./types";
 

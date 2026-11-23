@@ -32,7 +32,7 @@ import {
   exactFields,
   freezeJSON,
   validCommand,
-  validToken,
+  validName,
 } from "./contract.ts";
 import {
   callbackRef,
@@ -79,7 +79,7 @@ function validateRequirements(
     exactFields(dependency, ["id", "contract", "optional", "bindings"]);
     if (
       typeof dependency.id !== "string" ||
-      !validToken(dependency.id) ||
+      !validName(dependency.id) ||
       requirements.has(dependency.id) ||
       typeof dependency.optional !== "boolean" ||
       !Array.isArray(dependency.bindings)
@@ -110,9 +110,9 @@ function validateSetupBinding(
   ]);
   if (
     typeof binding.installationId !== "string" ||
-    !validToken(binding.installationId) ||
+    !validName(binding.installationId) ||
     typeof binding.contribution !== "string" ||
-    !validToken(binding.contribution) ||
+    !validName(binding.contribution) ||
     typeof binding.digest !== "string" ||
     !/^[a-f0-9]{64}$/.test(binding.digest) ||
     new Capability(binding.contract).identity !== contract.identity
@@ -459,12 +459,12 @@ export class Backend {
       exactFields(invocation, ["id", "origin", "target"], ["parent"]);
       exactFields(invocation.target, ["scope", "reference"]);
       if (
-        !validToken(invocation.id) ||
-        !validToken(invocation.origin) ||
+        !validName(invocation.id) ||
+        !validName(invocation.origin) ||
         (invocation.parent !== undefined &&
-          (!validToken(invocation.parent) ||
+          (!validName(invocation.parent) ||
             invocation.parent === invocation.id)) ||
-        !validToken(invocation.target.scope) ||
+        !validName(invocation.target.scope) ||
         typeof invocation.target.reference !== "string" ||
         !invocation.target.reference ||
         /\p{Cc}/u.test(invocation.target.reference) ||
@@ -499,7 +499,7 @@ export class Backend {
       exactFields(value, ["id", "export", "requires"], ["background"]);
       if (
         typeof value.id !== "string" ||
-        !validToken(value.id) ||
+        !validName(value.id) ||
         ids.has(value.id) ||
         typeof value.export !== "string" ||
         !this.#capabilities.has(value.export) ||
@@ -512,7 +512,7 @@ export class Backend {
         if (
           value.background.scope !== "installation" ||
           typeof value.background.reference !== "string" ||
-          !validToken(value.background.reference)
+          !validName(value.background.reference)
         )
           throw new Error("plugin: background must identify its installation");
       }
@@ -562,7 +562,7 @@ export class Backend {
     });
   }
   bindCapability(name: string, contract: Capability): void {
-    if (this.#published || !validToken(name) || this.#capabilities.has(name))
+    if (this.#published || !validName(name) || this.#capabilities.has(name))
       throw new Error("plugin: invalid or duplicate capability export");
     this.#capabilities.set(name, contract);
   }
@@ -706,7 +706,7 @@ export function decodeReceipt(value: unknown): ReceiptRequest {
   const request = value as ReceiptRequest;
   if (
     !validCommand(request.id) ||
-    !validToken(request.method) ||
+    !validName(request.method) ||
     !/^[a-f0-9]{64}$/.test(request.inputDigest)
   )
     throw new Error("plugin: invalid receipt identity");

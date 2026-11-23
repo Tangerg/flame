@@ -72,7 +72,7 @@ const unconfirmedModelOutcome = {
   loss: expect.objectContaining({ reason: "unresolvedEffects", detail: expect.any(String) }),
   unresolvedEffects: [
     expect.objectContaining({
-      cause: "runtime_failure",
+      cause: "termination",
       detail: expect.stringContaining("model provider: exchange is unconfirmed"),
     }),
   ],

@@ -136,7 +136,7 @@ func prepareClient(ctx context.Context, kind clientKind, input modelprovider.Ope
 }
 
 func (c clientConstruction) insert(ctx context.Context, db sqlite.Database) error {
-	_, err := sqlite.Connection(ctx, db).ExecContext(ctx, `INSERT INTO clients(id,kind,snapshot) VALUES(?,?,?)`, c.handle.ID, string(c.kind), string(c.snapshot))
+	_, err := db.Executor(ctx).ExecContext(ctx, `INSERT INTO clients(id,kind,snapshot) VALUES(?,?,?)`, c.handle.ID, string(c.kind), string(c.snapshot))
 	return err
 }
 
@@ -172,7 +172,7 @@ func (s *store) reopenChat(ctx context.Context, method, originalMethod string, c
 func (s *store) originalChat(ctx context.Context, originalMethod string, originalID pluginmcp.CommandID) (modelprovider.Chat, modelprovider.Open, error) {
 	var storedMethod, snapshot string
 	var reply []byte
-	if err := sqlite.Connection(ctx, s.db).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, originalID).Scan(&storedMethod, &snapshot, &reply); err != nil {
+	if err := s.db.Executor(ctx).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, originalID).Scan(&storedMethod, &snapshot, &reply); err != nil {
 		return modelprovider.Chat{}, modelprovider.Open{}, err
 	}
 	if storedMethod != originalMethod || len(reply) == 0 {
@@ -261,8 +261,8 @@ func (s *store) closeClient(ctx context.Context, handle modelprovider.Handle) er
 	entry := s.clients[handle.ID]
 	// The durable tombstone fences lazy reconstruction before accepted calls
 	// join. Existing users hold the concrete client, rather than re-reading it.
-	err := sqlite.RunInTx(ctx, s.db, func(ctx context.Context) error {
-		_, err := sqlite.Connection(ctx, s.db).ExecContext(ctx, `UPDATE clients SET snapshot=NULL WHERE id=?`, handle.ID)
+	err := s.db.RunInTx(ctx, func(ctx context.Context) error {
+		_, err := s.db.Executor(ctx).ExecContext(ctx, `UPDATE clients SET snapshot=NULL WHERE id=?`, handle.ID)
 		return err
 	})
 	s.mu.Unlock()

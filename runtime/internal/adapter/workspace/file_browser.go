@@ -118,8 +118,8 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 		return workspaceapp.FileReadResult{}, workspaceapp.ErrInvalidFileRange
 	}
 	return workspaceapp.FileReadResult{
-		Content: result.Content, TotalLines: result.TotalLines, StartLine: result.StartLine,
-		EndLine: result.EndLine, Truncated: result.Truncated(),
+		Content: result.Content, TotalLines: result.TotalLines, StartLine: result.Offset,
+		EndLine: result.Offset + result.Lines, Truncated: result.Truncated(),
 	}, nil
 }
 
@@ -127,13 +127,12 @@ func scanFileWindow(ctx context.Context, source io.Reader, input workspaceapp.Fi
 	if !input.FromEnd {
 		return textread.Scan(ctx, source, textread.Options{
 			InputBytes: workspaceapp.MaxFileReadSourceBytes, LineBytes: workspaceapp.MaxFileReadLineBytes,
-			OutputBytes: input.MaxBytes, StartLine: start, MaxLines: lines,
+			OutputBytes: input.MaxBytes, Offset: start, MaxLines: lines,
 		})
 	}
 
 	var content bytes.Buffer
-	result := textread.Result{StartLine: start, EndLine: start}
-	retained := 0
+	result := textread.Result{Offset: start}
 	err := textread.VisitLines(ctx, source, textread.Limits{
 		InputBytes: workspaceapp.MaxFileReadSourceBytes, LineBytes: workspaceapp.MaxFileReadLineBytes,
 	}, func(number int, line []byte) error {
@@ -143,28 +142,26 @@ func scanFileWindow(ctx context.Context, source io.Reader, input workspaceapp.Fi
 		}
 		if len(line) > input.MaxBytes {
 			content.Reset()
-			retained = 0
-			result.StartLine, result.EndLine = number-1, number-1
+			result.Offset, result.Lines = number-1, 0
 			return nil
 		}
 		// Retire whole leading rows so the requested end remains reachable at the byte cap.
-		for retained > 0 && content.Len()+1+len(line) > input.MaxBytes {
-			if retained == 1 {
+		for result.Lines > 0 && content.Len()+1+len(line) > input.MaxBytes {
+			if result.Lines == 1 {
 				content.Reset()
 			} else {
 				content.Next(bytes.IndexByte(content.Bytes(), '\n') + 1)
 			}
-			retained--
-			result.StartLine++
+			result.Lines--
+			result.Offset++
 		}
-		if retained == 0 {
-			result.StartLine = number - 1
+		if result.Lines == 0 {
+			result.Offset = number - 1
 		} else {
 			content.WriteByte('\n')
 		}
 		content.Write(line)
-		retained++
-		result.EndLine = number
+		result.Lines++
 		return nil
 	})
 	if err != nil {

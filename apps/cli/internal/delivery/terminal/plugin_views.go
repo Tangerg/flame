@@ -393,9 +393,15 @@ func (p *pluginScreens) openPluginViewForm(view pluginview.View, action protocol
 			controls = append(controls, text)
 		}
 	}
-	form := kit.FormConfig{Fields: controls, Theme: p.theme, Glyphs: p.glyphs,
-		Hints: []keymap.Action{base.Submit, base.Cancel}}
-	form.Keys = base.DefaultFormKeys()
+	form := kit.FormConfig{
+		Behavior: base.FormConfig{
+			Fields: controls,
+		},
+		Theme:  p.theme,
+		Glyphs: p.glyphs,
+		Hints:  []keymap.Action{base.Submit, base.Cancel},
+	}
+	form.Behavior.Keys = base.DefaultFormKeys()
 	var dialog *presentationDialog
 	dismiss := func() {
 		if p.dialog == dialog {
@@ -403,7 +409,7 @@ func (p *pluginScreens) openPluginViewForm(view pluginview.View, action protocol
 			p.dialog = nil
 		}
 	}
-	form.Submit = func(base.SubmissionID) (scene.ActionState, error) {
+	form.Behavior.Submit = func(base.SubmissionID) (scene.ActionState, error) {
 		if p.dialog != dialog || !p.session.context.current(generation) {
 			return scene.Unchanged, nil
 		}
@@ -421,9 +427,14 @@ func (p *pluginScreens) openPluginViewForm(view pluginview.View, action protocol
 	if key != "" {
 		title += " · " + key
 	}
-	dialog = newPresentationDialog(p.stack, kit.DialogConfig{Theme: p.theme, Glyphs: p.glyphs,
-		Title: title, Body: formNavigation(body.Element(), dismiss),
-		Where: formDialogPlacement(standardDialogWidth, len(controls), 24, body),
+	dialog = newPresentationDialog(p.stack, kit.DialogConfig{
+		Behavior: base.DialogConfig{
+			Title:   title,
+			Content: formNavigation(body.Element(), dismiss),
+		},
+		Theme:  p.theme,
+		Glyphs: p.glyphs,
+		Where:  formDialogPlacement(standardDialogWidth, len(controls), 24, body),
 	})
 	p.dialog = dialog
 	dialog.Show()

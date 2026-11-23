@@ -331,7 +331,7 @@ func (s *statusView) Draw(view grid.View) {
 	}
 	if s.phase == statusActive {
 		s.status.Theme, s.status.Glyphs = s.theme, s.glyphs
-		s.status.Doing, s.status.Elapsed = statusLineText(s.doing), s.elapsed
+		s.status.Label, s.status.Elapsed = statusLineText(s.doing), s.elapsed
 		right := joinStatusLabels(
 			contextLabel(s.contextTokens),
 			runningDescendantsLabel(s.glyphs, s.runningDescendants),

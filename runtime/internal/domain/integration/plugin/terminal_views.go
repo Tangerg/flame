@@ -186,10 +186,10 @@ func admitTerminalList(contract *plugincontract.Capability, list TerminalList) e
 		if err != nil {
 			return err
 		}
-		if cursor, ok := input.property(list.Paging.Input); !ok || !slices.Equal(cursor.inputTypes(), []framevalue.SchemaType{framevalue.TypeString}) {
+		if cursor, ok := input.property(list.Paging.Input); !ok || !slices.Equal(cursor.inputTypes(), []framevalue.SchemaType{framevalue.SchemaTypeString}) {
 			return fmt.Errorf("paging input %q must be a string input property", list.Paging.Input)
 		}
-		if cursor, ok := output.property(list.Paging.Output); !ok || !cursor.isType(framevalue.TypeString) {
+		if cursor, ok := output.property(list.Paging.Output); !ok || !cursor.isType(framevalue.SchemaTypeString) {
 			return fmt.Errorf("paging output %q must be a string output property", list.Paging.Output)
 		}
 		bound = append(bound, list.Paging.Input)
@@ -210,7 +210,7 @@ func listRowSchema(contract *plugincontract.Capability, list TerminalList) (sche
 	if err != nil {
 		return schemaNode{}, err
 	}
-	if !output.isType(framevalue.TypeObject) {
+	if !output.isType(framevalue.SchemaTypeObject) {
 		return schemaNode{}, fmt.Errorf("list output must be an object")
 	}
 	rows, ok := output.property(list.Rows)
@@ -221,7 +221,7 @@ func listRowSchema(contract *plugincontract.Capability, list TerminalList) (sche
 	if !ok {
 		return schemaNode{}, fmt.Errorf("rows %q is not an array", list.Rows)
 	}
-	if !row.isType(framevalue.TypeObject) {
+	if !row.isType(framevalue.SchemaTypeObject) {
 		return schemaNode{}, fmt.Errorf("rows %q must contain objects", list.Rows)
 	}
 	if _, ok := row.property(list.Key); !ok {
@@ -282,7 +282,7 @@ func terminalMethod(contract *plugincontract.Capability, name string) (*frame.Me
 // what its target can supply, and that every required property on each bound
 // object is bound. row is nil when no row is selected.
 func admitBindings(input schemaNode, bindings []InputBinding, row *schemaNode, alsoBound []string) error {
-	if !input.acceptsType(framevalue.TypeObject) {
+	if !input.acceptsType(framevalue.SchemaTypeObject) {
 		return fmt.Errorf("terminal input must accept an object")
 	}
 	paths := slices.Clone(alsoBound)
