@@ -72,6 +72,7 @@ function SortableTabRow({
         aria-label={reorderLabel}
         tabIndex={showHandle ? 0 : -1}
         styles={showHandle ? styles.sortHandle : styles.hiddenSortHandle}
+        className={showHandle ? stylex.props(reveal.shown).className : undefined}
       />
       <IconButton
         data-reveal="hover"

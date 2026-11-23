@@ -33197,6 +33197,19 @@ native close-focus proof. Better-series review retains current type, semantic
 surfaces, Orange/custom-blue focus and the same workbench composition. Static
 Ace references supply no keyboard evidence.
 
+### Reorder handle at rest (2026-11-24)
+
+The active Dock tab always drew its six-dot reorder handle, so every Dock
+screen carried a permanent grip beside the title. The close control already
+appears only on hover or focus. The handle now uses the same `reveal.shown`
+projection inside the tab row's `reveal.host`. It keeps its width, so hover
+does not shift the strip, and it stays a focusable, labelled control.
+Pointer dragging still uses the whole tab.
+
+Native, `dock-files`: at rest the active `Files` tab shows only its icon and
+title. Hover reveals the tab controls. Keyboard focus on the handle shows it
+with its ring and the `Reorder Files` tooltip.
+
 ### Focus after a tab closes from its menu (2026-11-19)
 
 At published `8562e80db`, a real Wails session with a 320 px Dock reproduces
