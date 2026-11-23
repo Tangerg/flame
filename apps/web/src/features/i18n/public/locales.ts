@@ -2,7 +2,7 @@ import { asyncDisposeSymbol } from "dougong";
 import { type ContributionScope } from "@/extensions/definePlugin";
 import { LOCALE } from "@/features/i18n/public/extensionPoints";
 import { type LocaleSpec } from "@/features/i18n/public/types";
-import { activeLocale, mountLocaleBundle } from "@/lib/i18n/index";
+import { activeLocale, mountLocaleBundle, retireProvisionalLocale } from "@/lib/i18n/index";
 
 interface LocaleSource {
   readonly key: string;
@@ -14,6 +14,7 @@ interface LocaleSource {
 function contributeLocale(
   scope: Pick<ContributionScope, "lifetime" | "add">,
   spec: Omit<LocaleSpec, "activate"> & {
+    source: string;
     load(signal: AbortSignal): Promise<Record<string, string>>;
   },
 ): void {
@@ -25,7 +26,7 @@ function contributeLocale(
         .spawn(async (signal) => {
           const dictionary = await spec.load(signal);
           signal.throwIfAborted();
-          scope.lifetime.defer(mountLocaleBundle(spec.id, dictionary));
+          scope.lifetime.defer(mountLocaleBundle(spec.id, spec.source, dictionary));
         })
         .result.then(() => undefined);
       activation = attempt;
@@ -77,8 +78,10 @@ export function createLocaleReconciler(
       contributeLocale(lifetime, {
         id: tag,
         label: source.title,
+        source: source.key,
         load: (signal) => source.load(signal),
       });
     }
+    retireProvisionalLocale(new Set(byTag.keys()));
   };
 }
