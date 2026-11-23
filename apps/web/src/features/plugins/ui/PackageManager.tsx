@@ -214,6 +214,8 @@ function PackageRow({
   const request = { installationId: installation.id, digest: installation.selected.digest };
   const identity = { name: installation.selected.name, version: installation.selected.version };
   const enabled = installation.enabled;
+  const { inputs, servers, skills } = installation.selected;
+  const configurable = inputs.length + servers.length + skills.length > 0;
   const enablementLabel = enabled ? "packages.disable" : "packages.enable";
   const run = (label: string, operation: () => Promise<unknown>) =>
     runFeedback(async () => {
@@ -289,33 +291,31 @@ function PackageRow({
       <RecordHeading
         title={installation.selected.name}
         description={installation.selected.version}
-        status={
-          <Badge tone={enabled ? "success" : "neutral"}>
-            {t(enabled ? "packages.enabled" : "packages.disabled")}
-          </Badge>
-        }
+        status={enabled ? undefined : <Badge tone="neutral">{t("packages.disabled")}</Badge>}
         actions={
           <Toolbar label={t("packages.actions")}>
-            <Button
-              variant="soft"
-              size="sm"
-              pending={busy}
-              onClick={() => {
-                reset();
-                setEdit({
-                  type: "configure",
-                  target: request,
-                  ...identity,
-                  value: JSON.stringify(
-                    { valueChanges: {}, serverChanges: {}, skillChanges: {} },
-                    null,
-                    2,
-                  ),
-                });
-              }}
-            >
-              {t("packages.configure")}
-            </Button>
+            {configurable && (
+              <Button
+                variant="soft"
+                size="sm"
+                pending={busy}
+                onClick={() => {
+                  reset();
+                  setEdit({
+                    type: "configure",
+                    target: request,
+                    ...identity,
+                    value: JSON.stringify(
+                      { valueChanges: {}, serverChanges: {}, skillChanges: {} },
+                      null,
+                      2,
+                    ),
+                  });
+                }}
+              >
+                {t("packages.configure")}
+              </Button>
+            )}
             <ActionMenu
               label={t("packages.actions")}
               disabled={busy}
