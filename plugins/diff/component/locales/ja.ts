@@ -4,12 +4,9 @@ export const ja: Record<string, string> = {
   "panel.title": "ワークスペース diff",
   refresh: "更新",
   "scope.label": "比較範囲",
-  "scope.workspace": "ワークスペース",
   "read.failedShort": "読み取り失敗",
-  "scope.file": "単一ファイル",
   "read.at": "{{time}} に読み取り",
   "patch.copy": "読み取ったパッチをコピー",
-  "patch.copied": "コピーしました",
   "patch.wrap": "折り返しを有効にする",
   "patch.unwrap": "折り返しを無効にする",
   "comparison.label": "比較",
@@ -69,5 +66,4 @@ export const ja: Record<string, string> = {
   "baseline.head": "HEAD",
   "baseline.mergeBase": "マージベース",
   "budget.empty": "今回の読み取り上限では完全なファイルを含められません。",
-  "patch.accepted": "読み取ったパッチ",
 };

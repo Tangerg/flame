@@ -4,12 +4,9 @@ export const es: Record<string, string> = {
   "panel.title": "Diff del espacio de trabajo",
   refresh: "Actualizar",
   "scope.label": "Alcance de la comparación",
-  "scope.workspace": "Espacio de trabajo",
   "read.failedShort": "Error de lectura",
-  "scope.file": "Un archivo",
   "read.at": "Leído a las {{time}}",
   "patch.copy": "Copiar el parche incluido",
-  "patch.copied": "Copiado",
   "patch.wrap": "Activar ajuste de línea",
   "patch.unwrap": "Desactivar ajuste de línea",
   "comparison.label": "Comparación",
@@ -75,5 +72,4 @@ export const es: Record<string, string> = {
   "baseline.head": "HEAD",
   "baseline.mergeBase": "base de fusión",
   "budget.empty": "Ningún archivo completo cabe en el límite de esta lectura.",
-  "patch.accepted": "Parche incluido",
 };

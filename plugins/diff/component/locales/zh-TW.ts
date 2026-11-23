@@ -4,12 +4,9 @@ export const zhTW: Record<string, string> = {
   "panel.title": "工作區 diff",
   refresh: "重新整理",
   "scope.label": "比較範圍",
-  "scope.workspace": "工作區",
   "read.failedShort": "讀取失敗",
-  "scope.file": "單一檔案",
   "read.at": "讀取於 {{time}}",
   "patch.copy": "複製本次已讀取的補丁",
-  "patch.copied": "已複製",
   "patch.wrap": "啟用自動換行",
   "patch.unwrap": "關閉自動換行",
   "comparison.label": "比較",
@@ -67,5 +64,4 @@ export const zhTW: Record<string, string> = {
   "baseline.head": "HEAD",
   "baseline.mergeBase": "合併基礎",
   "budget.empty": "此次讀取的預算無法容納完整檔案。",
-  "patch.accepted": "本次已讀取的補丁",
 };

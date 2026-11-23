@@ -4,11 +4,8 @@ export const en: Record<string, string> = {
   "panel.title": "Workspace diff",
   refresh: "Refresh",
   "scope.label": "Comparison scope",
-  "scope.workspace": "Workspace",
-  "scope.file": "Single file",
   "read.at": "Read at {{time}}",
   "patch.copy": "Copy included patch",
-  "patch.copied": "Copied",
   "patch.wrap": "Enable word wrap",
   "patch.unwrap": "Disable word wrap",
   "comparison.label": "Comparison",
@@ -72,5 +69,4 @@ export const en: Record<string, string> = {
   "baseline.head": "HEAD",
   "baseline.mergeBase": "merge base",
   "budget.empty": "No complete file fits this read’s budget.",
-  "patch.accepted": "Included patch",
 };

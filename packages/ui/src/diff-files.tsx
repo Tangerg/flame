@@ -9,13 +9,11 @@ import { color, layout, space, type, weight } from "./tokens.stylex";
 
 export interface DiffFileSummary {
   path: string;
-  status: string;
+  /** Omitted when the line counts already say what happened to the file. */
+  status?: string;
   added?: number;
   removed?: number;
   binary?: boolean;
-}
-
-interface DiffFileRow extends DiffFileSummary {
   previous?: { path: string; label: string };
 }
 
@@ -51,19 +49,15 @@ const styles = stylex.create({
   },
   state: { color: color.fgMuted, fontWeight: weight.regular },
   glyph: { color: color.fgMuted, marginBlockStart: space.s0_5 },
+  heading: { display: "grid", gap: space.s1, minWidth: 0 },
   headingLine: {
     display: "flex",
-    alignItems: "baseline",
+    alignItems: "center",
     flexWrap: "wrap",
     gap: layout.controlGap,
     minWidth: 0,
   },
-  headingCopy: {
-    display: "grid",
-    flex: "1 1 min(12rem, 50%)",
-    gap: space.s1,
-    minWidth: 0,
-  },
+  headingName: { flex: "1 1 8rem" },
   headingActions: {
     display: "flex",
     flexWrap: "wrap",
@@ -72,6 +66,8 @@ const styles = stylex.create({
     maxWidth: "100%",
   },
 });
+
+const directoryEnd = (path: string) => path.lastIndexOf("/") + 1;
 
 export function DiffFilePath({ path }: { path: string }) {
   return (
@@ -91,24 +87,18 @@ export function DiffFilePath({ path }: { path: string }) {
   );
 }
 
-function FileState({
-  file,
-  previous,
-}: {
-  file: DiffFileSummary;
-  previous?: DiffFileRow["previous"];
-}) {
+function FileState({ file }: { file: DiffFileSummary }) {
+  const { previous } = file;
+  if (!previous && !file.status && file.binary) return null;
   return (
     <span {...stylex.props(styles.identity, styles.state, type.uiSm)}>
-      <span {...stylex.props(previous && styles.identity)}>
-        {previous ? (
-          <>
-            <span>{previous.label}</span> <DiffFilePath path={previous.path} />
-          </>
-        ) : (
-          file.status
-        )}
-      </span>
+      {previous ? (
+        <span {...stylex.props(styles.identity)}>
+          <span>{previous.label}</span> <DiffFilePath path={previous.path} />
+        </span>
+      ) : (
+        file.status && <span>{file.status}</span>
+      )}
       {!file.binary && <DiffStat added={file.added} removed={file.removed} />}
     </span>
   );
@@ -121,7 +111,7 @@ export function DiffFileList({
   onSelect,
   ref,
 }: {
-  files: readonly DiffFileRow[];
+  files: readonly DiffFileSummary[];
   label: string;
   currentPath?: string | null;
   onSelect: (path: string, origin: HTMLButtonElement) => void;
@@ -135,7 +125,7 @@ export function DiffFileList({
       hidden={!files.length}
     >
       {files.map((file) => {
-        const cut = file.path.lastIndexOf("/") + 1;
+        const cut = directoryEnd(file.path);
         return (
           <RecordButton
             key={file.path}
@@ -150,7 +140,7 @@ export function DiffFileList({
                 {file.path.slice(cut)}
               </span>
               {cut > 0 && <DiffFilePath path={file.path.slice(0, cut - 1)} />}
-              <FileState file={file} previous={file.previous} />
+              <FileState file={file} />
             </span>
           </RecordButton>
         );
@@ -164,26 +154,33 @@ export function DiffFileHeader({
   children,
   ref,
 }: {
-  file: DiffFileSummary | Pick<DiffFileSummary, "path">;
+  file: DiffFileSummary;
   children?: ReactNode;
   ref?: Ref<HTMLHeadingElement>;
 }) {
   const Tag = useHeadingTag();
+  const cut = directoryEnd(file.path);
   return (
-    <div {...stylex.props(styles.headingLine)}>
-      <div {...stylex.props(styles.headingCopy)}>
+    <div {...stylex.props(styles.heading)}>
+      <div {...stylex.props(styles.headingLine)}>
         <Tag
           ref={ref}
           tabIndex={-1}
-          {...stylex.props(styles.name, styles.clamp, type.uiMd)}
+          {...stylex.props(
+            styles.name,
+            styles.clamp,
+            styles.headingName,
+            type.uiMd,
+          )}
         >
-          {file.path.slice(file.path.lastIndexOf("/") + 1)}
+          {file.path.slice(cut)}
         </Tag>
-        {"status" in file && <FileState file={file} />}
+        {children && (
+          <div {...stylex.props(styles.headingActions)}>{children}</div>
+        )}
       </div>
-      {children && (
-        <div {...stylex.props(styles.headingActions)}>{children}</div>
-      )}
+      {cut > 0 && <DiffFilePath path={file.path.slice(0, cut - 1)} />}
+      <FileState file={file} />
     </div>
   );
 }

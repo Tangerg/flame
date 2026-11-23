@@ -4,12 +4,9 @@ export const de: Record<string, string> = {
   "panel.title": "Workspace-Diff",
   refresh: "Aktualisieren",
   "scope.label": "Vergleichsbereich",
-  "scope.workspace": "Arbeitsbereich",
   "read.failedShort": "Lesen fehlgeschlagen",
-  "scope.file": "Einzelne Datei",
   "read.at": "Gelesen um {{time}}",
   "patch.copy": "Enthaltenen Patch kopieren",
-  "patch.copied": "Kopiert",
   "patch.wrap": "Zeilenumbruch aktivieren",
   "patch.unwrap": "Zeilenumbruch deaktivieren",
   "comparison.label": "Vergleich",
@@ -74,5 +71,4 @@ export const de: Record<string, string> = {
   "baseline.head": "HEAD",
   "baseline.mergeBase": "Merge-Basis",
   "budget.empty": "Keine vollständige Datei passt in das Leselimit.",
-  "patch.accepted": "Enthaltener Patch",
 };

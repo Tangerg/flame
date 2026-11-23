@@ -1,6 +1,5 @@
 import { summarizeWorkingTreeChanges } from "./workingTreeChanges";
 import { parseVisualDiff } from "./visualDiff";
-import { DiffReader } from "./DiffReader";
 import {
   useCallback,
   useEffect,
@@ -21,6 +20,7 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  Copy,
   FileDiff as FileDiffIcon,
   List,
   Refresh,
@@ -29,6 +29,7 @@ import type { DiffMode, WorkspaceFileChange } from "@flame/runtime-client/wire";
 import {
   Button,
   CodeWrapButton,
+  DiffBody,
   DiffFileHeader,
   DiffFileList,
   DiffFilePath,
@@ -46,6 +47,7 @@ import {
   SearchField,
   Select,
   Toolbar,
+  useCopy,
   type DiffFileSummary,
 } from "@flame/ui";
 import { en } from "./locales/en";
@@ -68,10 +70,19 @@ const fileSummary = (
   file: WorkspaceFileChange,
 ): DiffFileSummary => ({
   path: file.path,
-  status: t(`file.status.${file.status}`),
+  status:
+    file.status === "modified" &&
+    !file.binary &&
+    file.added !== undefined &&
+    file.removed !== undefined
+      ? undefined
+      : t(`file.status.${file.status}`),
   added: file.added,
   removed: file.removed,
   binary: file.binary,
+  previous: file.previousPath
+    ? { path: file.previousPath, label: t("file.renamed") }
+    : undefined,
 });
 
 type Query = { mode: DiffMode; path?: string };
@@ -203,14 +214,15 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
   const file = selection.view === "file" ? selected : undefined;
   const filePath = file?.path;
   const fileChanges = file ? t("file.changes", { path: file.path }) : undefined;
-  const renamedFrom = t("file.renamed");
   const rendered = file ? accepted?.rendered.get(file.path) : undefined;
   const readable = rendered !== undefined && rendered.file.hunks.length > 0;
   const patchActions = {
-    copy: t("patch.copy"),
     wrap: t("patch.wrap"),
     unwrap: t("patch.unwrap"),
   };
+  const copyPatch = useCopy(accepted?.diff.visual.patch ?? "", t("patch.copy"));
+  const staleComparison =
+    accepted !== undefined && accepted.query.mode !== query.mode;
   const showingReader = file !== undefined;
   const returnsToFiles =
     selection.view === "file" && selection.returnTo === "files";
@@ -485,6 +497,12 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                         ]}
                       />
                       <CodeWrapButton labels={patchActions} size="sm" />
+                      <IconButton
+                        icon={Copy}
+                        size="sm"
+                        aria-label={t("patch.copy")}
+                        onClick={() => void copyPatch()}
+                      />
                     </>
                   )}
                 </DiffFileHeader>
@@ -506,49 +524,9 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               }
             />
           ) : null}
-          {accepted && (
-            <Metadata
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                columnGap: "var(--layout-control-gap)",
-              }}
-            >
-              <span>{comparisonName(t, accepted.query.mode)}</span>{" "}
-              <span>
-                {t(accepted.query.path ? "scope.file" : "scope.workspace")}
-              </span>{" "}
-              <span
-                title={
-                  accepted.diff.baseline.type === "emptyTree"
-                    ? undefined
-                    : accepted.diff.baseline.commit
-                }
-              >
-                {accepted.diff.baseline.type === "emptyTree"
-                  ? t("baseline.emptyTree")
-                  : t("baseline.label", {
-                      ref: t(
-                        accepted.diff.baseline.type === "head"
-                          ? "baseline.head"
-                          : "baseline.mergeBase",
-                      ),
-                      commit: accepted.diff.baseline.commit.slice(0, 8),
-                    })}
-              </span>{" "}
-              <time dateTime={accepted.at}>
-                {t("read.at", {
-                  time: timeFormat.format(new Date(accepted.at)),
-                })}
-              </time>
-            </Metadata>
-          )}
         </>
       }
     >
-      <Metadata>
-        <DiffFilePath path={workspace.ref.path} />
-      </Metadata>
       {read.loading && (
         <Metadata role="status">
           {t("status.reading", {
@@ -565,7 +543,10 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
         </Metadata>
       )}
       {accepted && (read.loading || read.error || accepted.query !== query) && (
-        <Metadata role="status" className="sr-only">
+        <Metadata
+          role="status"
+          className={staleComparison ? undefined : "sr-only"}
+        >
           {t("status.stale", {
             name: comparisonName(t, accepted.query.mode).toLocaleLowerCase(),
           })}
@@ -632,12 +613,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                 )}
                 <DiffFileList
                   ref={list}
-                  files={matching.map((item) => ({
-                    ...fileSummary(t, item),
-                    previous: item.previousPath
-                      ? { path: item.previousPath, label: renamedFrom }
-                      : undefined,
-                  }))}
+                  files={matching.map((item) => fileSummary(t, item))}
                   label={t("files.region")}
                   currentPath={selection.path}
                   onSelect={(path) => openFile(path)}
@@ -647,25 +623,14 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
           )}
           {file && (
             <section aria-label={fileChanges}>
-              <Metadata>
-                <DiffFilePath path={file.path} />
-              </Metadata>
-              {file.previousPath && (
-                <Metadata>
-                  {renamedFrom} <DiffFilePath path={file.previousPath} />
-                </Metadata>
-              )}
               {file.binary ? (
                 <Metadata>{t("file.binary")}</Metadata>
               ) : readable ? (
-                <DiffReader
+                <DiffBody
                   key={file.path}
-                  path={file.path}
-                  source={rendered.source}
-                  patch={accepted.diff.visual.patch}
+                  patch={rendered.source}
                   layout={layout}
-                  labels={patchActions}
-                  t={t}
+                  label={t("reader.region", { path: file.path })}
                 />
               ) : (
                 <Metadata>{t("file.noLineChanges")}</Metadata>
@@ -690,6 +655,16 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
                         : t("baseline.mergeBase"),
                     commit: accepted.diff.baseline.commit,
                   })}
+            </Metadata>
+            <Metadata>
+              <DiffFilePath path={workspace.ref.path} />
+            </Metadata>
+            <Metadata>
+              <time dateTime={accepted.at}>
+                {t("read.at", {
+                  time: timeFormat.format(new Date(accepted.at)),
+                })}
+              </time>
             </Metadata>
           </Disclosure>
         </>

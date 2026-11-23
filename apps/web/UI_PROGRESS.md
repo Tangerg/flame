@@ -1,6 +1,6 @@
 # Desktop UI progress and handoff
 
-UI polishing **paused at the user's request (2026-11-20)** after the [prose file-reference repair](#keep-unicode-spelling-in-prose-file-references-2026-11-20). The preceding tool summary change is `13c7ea284`.
+UI polishing **resumed at the user's request (2026-11-24)** with a removal lens: tags, italics, dividers, bordered containers, code breadcrumbs, numbered sections, extra tint steps and over-detailed UI are removed unless layout cannot carry their meaning. First batch: [One Diff identity and a frameless reader](#one-diff-identity-and-a-frameless-reader-2026-11-24). The earlier pause followed the [prose file-reference repair](#keep-unicode-spelling-in-prose-file-references-2026-11-20).
 
 The preceding work resumed at the user's request on 2026-11-19. Current Wails checks qualify the Context Dock separator, tab closure, keyboard sorting and retained file reading. [Dock geometry](#native-workspace-zoom-and-dock-geometry) [Dock tab continuity](#dock-tab-task-continuity) [Persistent Diff navigation](#persistent-diff-navigation-at-default-zoom-2026-11-19) [Diff wrapping](#line-wrapping-in-narrow-diff-readers-2026-11-19) [Tool output return](#focus-return-from-output-find-2026-11-19) [A2UI form and details](#captured-a2ui-report-and-dialog-return-2026-11-19) [Grouped tool return](#grouped-tool-result-return-2026-11-19) [Expanded tool paths](#complete-paths-in-expanded-tool-rows-2026-11-19) [MCP editor Escape](#escape-scope-in-the-mcp-editor-2026-11-19) [Skills reading controls](#skills-controls-during-catalog-and-document-reading-2026-11-19) [Subagent reading return](#subagent-reading-through-the-task-list-2026-11-19) [Approval argument cancellation](#canceling-approval-argument-edits-2026-11-19) [Draft attachments and past messages](#draft-attachments-when-editing-past-messages-2026-11-19) [Draft attachments and history rollback](#draft-attachments-before-history-rollback-2026-11-19) [Deliverables archive return](#return-from-a-retained-document-to-its-archive-row-2026-11-19) [Mermaid reading](#diagram-zoom-feedback-and-keyboard-focus-2026-11-19) [Composer selection after Find](#composer-selection-after-closing-find-2026-11-19) [Goal conflict review](#goal-conflict-review-inside-the-editor-2026-11-19) [Final question submission](#final-question-skip-names-submission-2026-11-19) [Transcript reading and turn navigation](#centered-transcript-and-turn-navigation-2026-11-19) Recorded identity, web-search provenance, HTTP response boundaries, saved-report locale behavior, Brand failure language, current copy feedback, Skills command language and proposal empty states, Diff read ownership, Memory command continuity, Diagnostics accepted-read continuity, Usage range/read continuity, literal MCP and Provider command-error reading, Schedule model-catalog continuity, Hooks read/watch continuity, Trajectory page/failure display continuity, Deliverables draft/captured-I/O continuity, Computer reviewed-draft/captured-I/O continuity, GenUI local-action display continuity, message-menu keyboard entry, complete Session-search title reading, complete same-basename file-directory reading, file-tree menus and Dock reading return, and the Agent fixture's installed command entry are qualified in the actual Wails host. The syntax-test reliability milestone remains verified and published. The Lab remains the sole visual verification owner. **Use default zoom and ordinary window sizes for acceptance; the user explicitly stopped unnecessary zoom testing.** Prefer bounded subagent implementation; the primary agent owns source review, actual native qualification and publication to main. Conversation Find retains its scoped follow controller and reading continuity. The syntax mapping tests observe the same tokenizer pass they verify. The historical frontend baseline at `90c0dd698` passes 440 files / 5,135 tests; subsequent tree, Skills, Find and Diff changes retain their focused checks and scoped native qualification below. Native coordinate pointer acceptance and continuation also pass in Chinese; AX-targeted click restoration remains unqualified. Whole-product visual acceptance, historical Runtime aggregate failures and live Runtime execution remain open.
 
@@ -33446,50 +33446,64 @@ Three signed native launches exit normally. Both loopback previews
 stop and cleanup removes three registrations, six private Library
 directories, ten checkout outputs and the scratch tree.
 
-### Keep Diff comparison facts together on wrap (2026-11-20)
+### One Diff identity and a frameless reader (2026-11-24)
 
-Signed Wails at `5aa394b77` splits the Chinese merge-base name
-across lines in a 320 px Dock. The worktree single-file view can
-also place a standalone separator before the read time. The file
-and its source still fit in that view.
+This replaces the 2026-11-20 always-visible comparison facts line. The
+native reader stacked the file identity three times (name, workspace root,
+full path), repeated the selected comparison, scope, baseline and read time
+above every read, labelled each modified file `Modified` beside its counts,
+and wrapped the patch in a bordered artifact card with a `diff · Included
+patch` caption. The user's design-slop list (tags, dividers, bordered
+containers, code breadcrumbs, over-detailed UI) names each of these.
 
-The accepted comparison, scope, baseline and time now flow as four
-items within the existing `Metadata` paragraph. The portable component
-uses the shared control gap for horizontal spacing and natural flex
-line wrapping. The baseline retains its localized separator, short
-commit and full-commit title. `time` retains its accepted `dateTime`.
-The detail disclosure shows the full baseline.
-[CSS flex line wrapping](https://www.w3.org/TR/css-flexbox-1/#flex-wrap-property).
+- `DiffFileHeader` (`packages/ui/src/diff-files.tsx`) now owns one identity:
+  name with the layout, wrap and copy actions on its line, then the
+  directory, then rename origin or status with counts. List rows and the
+  header share one `DiffFileSummary`, including `previous`.
+- A status word appears only when counts cannot describe the change
+  (added, deleted, renamed, untracked, binary). Modified text files show
+  their counts alone.
+- The patch renders through `DiffBody` directly in the Dock reading flow;
+  `DiffReader.tsx` and its caption are removed. Copy keeps its label and
+  still copies the accepted included patch.
+- The selected comparison is not restated. A retained result names its
+  comparison visibly only while it differs from the selected one, through
+  the existing `status.stale` message, so the retained-scope rule in
+  `DESIGN.md` still holds. The workspace root, baseline and read time move
+  into Comparison details after the comparison explanation. Four orphaned
+  strings leave all eight catalogs.
 
-- EN/light/14 px/Flame Orange at 1121 × 950. All four items fit on
-  one visible line for the file-scoped Worktree read. The Workspace
-  overview and its `dock` filter open the original `DockResizer.tsx`
-  with its exact source and HEAD. Comparison details reveals the full
-  commit. Escape restores the same filtered row and the draft
-  continues as `10636518`.
-- ZH/dark/18 px/`#3B82F6` at 1121 × 950 in a 320 px Dock. The
-  Branch reader uses three lines, with `合并基础 · abcdef12` together
-  and the complete code patch still visible. Refresh updates the read
-  time and changes `branch-after` to `refreshed-after` for the same
-  baseline. Full width and its Dock return retain the file and its
-  accepted metadata. The full commit, Escape to the original row and
-  draft continuation `10642638` are observed.
+References: ZCode `GitPaneChangeCard.tsx` keeps path and counts with the
+file identity above the source; ChatGPT and Codex place patch actions with
+the file, not inside a code card.
 
-Plugin verification passes 44 Node checks, 17 source tests, twenty
-catalogs across eight locales and published resource checks. Six
-existing conditional source cases skip. Web passes 151 tests, 940
-keys across eight locales, bootstrap, 26 bundle contracts and module
-linkage. Scoped formatting, `make check-native` and the canonical
-five-document Lab build pass.
+Native qualification uses a private Wails v3.1.0 bundle built from the
+unchanged `apps/desktop` sources with a `go build -overlay` that only reads
+its initial URL from the environment, pointed at the static Lab build served
+on loopback. The Vite development Lab fails in WKWebView with
+`Unexpected token ':'` for installed components (untranspiled development
+modules); the static build renders, so use `lab:build` plus `vite preview`
+for native checks.
 
-Both signed candidate apps display the rebuilt Diff ESM in the canonical
-Lab. Live Runtime Git reads, VoiceOver speech and other native
-platforms remain outside this run. Existing installations receive
-the rebuilt digest through normal package selection.
+- EN/light/14 px/Flame Orange, 1439 × 899: `dock-review` opens the scoped
+  file with name, directory and `+18 −6`; the patch fills the Dock. Files
+  shows the comparison select, search, `2 changed files +25 −9` and the
+  rows; Comparison details reveals explanation, full commit, root and read
+  time.
+- ZH/dark/18 px, `dock-diff-evidence`: rows show counts alone for modified
+  text, `重命名自 docs/旧名字.md +0 −0`, `已修改` for the binary and
+  `未跟踪 +0 −0`. Tab and Return open `新名字.md` with heading focus and the
+  rename origin; Escape returns focus to the same row. Copy writes the
+  20-line patch and shows the `已复制` receipt. At a 1000 × 760 window
+  (Dock ≈ 350 px) name and actions share one row and the directory wraps at
+  separators.
 
-Three signed native launches exit normally. Both loopback previews
-stop and cleanup removes three registrations, six private Library
-directories, ten checkout outputs and the scratch tree.
+Checks: plugin typecheck, `check-i18n` (20 catalogs × 8 locales),
+`build-components --check`, the three Diff component cases, the Web Diff
+and file-reference contracts (7), `@flame/ui` package test and Web
+typecheck pass. The stale-comparison note was not observed natively
+because fixture reads settle immediately. Live Runtime Git reads,
+VoiceOver and other platforms are outside this run.
 
 ### Keep Lab branch comparison within tracked files (2026-11-20)
 
@@ -56438,7 +56452,7 @@ and native command focus.” Choose fresh task evidence before selecting a repai
 - Portable renderer changes include rebuilding and checking their published ESM resources. A source or resource rebuild does not update an existing Runtime installation; verify the actual selected resource when that installation is in scope.
 - When the user requests the frontend, they mean the desktop app. Use actual Wails acceptance for desktop behavior. Visual review uses isolated fixtures; an explicitly requested live model check uses the user's existing configuration without printing or copying credentials.
 - If the Mac is locked, advance independent source, reference and build work, and finish native acceptance after unlock. A native build does not prove native interaction.
-- Work on `main` in the isolated UI worktree at `/Users/tangerg/.codex/worktrees/flame-ui-workspace/flame`. Commit explicit owned paths, fast-forward remote main and preserve unrelated primary-checkout work. Clean owned resources and update this file in place. Do not continually synchronize advancing main during a scoped UI task.
+- Work in an isolated UI worktree. Commit explicit owned paths, rebase on the latest remote main immediately before each push (the user changes main in parallel), push each verified batch promptly and preserve unrelated primary-checkout work. Clean owned resources and update this file in place.
 - Keep user-facing replies in Chinese and repository content in English. Preserve the approved visual direction and task model. Continue evidence-backed UI batches until the user explicitly stops the resumed goal.
 
 ## Milestone closure (2026-10-23)

@@ -4,12 +4,9 @@ export const ko: Record<string, string> = {
   "panel.title": "작업 공간 diff",
   refresh: "새로 고침",
   "scope.label": "비교 범위",
-  "scope.workspace": "작업 공간",
   "read.failedShort": "읽기 실패",
-  "scope.file": "단일 파일",
   "read.at": "{{time}}에 읽음",
   "patch.copy": "읽은 패치 복사",
-  "patch.copied": "복사됨",
   "patch.wrap": "자동 줄 바꿈 사용",
   "patch.unwrap": "자동 줄 바꿈 사용 안 함",
   "comparison.label": "비교",
@@ -69,5 +66,4 @@ export const ko: Record<string, string> = {
   "baseline.head": "HEAD",
   "baseline.mergeBase": "병합 기준",
   "budget.empty": "이번 읽기 한도에 전체 파일을 포함할 수 없습니다.",
-  "patch.accepted": "읽은 패치",
 };
