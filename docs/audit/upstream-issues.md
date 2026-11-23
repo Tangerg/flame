@@ -13,4 +13,9 @@ An entry identifies a reproducible problem in a framework contract or implementa
 
 Framework changes use framework-native types and standalone fixtures. Flame translates those contracts into its product model and verifies the integration against released modules.
 
-No framework issue is open.
+## Frame browser control over HTTP/1.1 (Frame v0.5.0)
+
+Browsers open at most six HTTP/1.1 connections per origin, and the Realm's control requests share that pool with every other Runtime request.
+
+- **Idle polling.** `ControlPump` only short-polls: each `POST /v2/frame` returns at once, so an idle Realm polls at its host-chosen interval for as long as it lives (100 ms in Flame, about ten requests per second with no work). The smallest framework change is a poll that waits, up to a bounded duration, for pending plans or fences.
+- **Acquisition depends on the caller's own poll.** `Bridge.AcquirePlan` returns only after the browser pump has prepared the plan, so every pending acquisition holds a connection while it waits for another request from the same page. Under the connection limit, concurrent acquisitions starved the pump and stalled for about 80 s until the client's health timeout tore the connection down (reproduced 2026-11-24). Flame admits one acquisition per Realm at a time (`apps/web/src/features/plugins/adapters/componentModules.ts`). The smallest framework change is to deliver the grant through the control channel, or to state the one-at-a-time requirement in the browser contract.

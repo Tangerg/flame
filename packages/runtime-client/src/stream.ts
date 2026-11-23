@@ -95,7 +95,7 @@ class BoundRunResponse {
   }
 }
 
-function iterableOf<T>(channel: PushPullChannel<T>, cleanup: () => void): AsyncIterable<T> {
+export function iterableOf<T>(channel: PushPullChannel<T>, cleanup: () => void): AsyncIterable<T> {
   return {
     [Symbol.asyncIterator]() {
       const inner = channel.iterator();

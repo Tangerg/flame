@@ -1,5 +1,5 @@
 import { createElement, type ComponentProps, type ComponentType, type ReactNode } from "react";
-import { Lifetime, Service, FrameError, defineUnit, sameContract, type Cleanup } from "@frame/sdk";
+import { Lifetime, Service, FrameError, defineUnit, sameContract } from "@frame/sdk";
 import { parseJSON } from "@frame/sdk/json";
 import { ControlPump, HTTPControl, RealmModules, Runtime, type Use } from "@frame/sdk/browser";
 import { type ObjectRef, type PlannedUnit } from "@frame/sdk/protocol";
@@ -69,6 +69,10 @@ export class ComponentModules {
   #sealed = false;
   #retiring?: Promise<void>;
   #closed = false;
+  // An acquisition completes only after this Realm's control pump prepares its plan.
+  // Concurrent acquisitions can hold every browser connection to the Runtime origin
+  // and starve the pump they wait for, so the Realm admits one at a time.
+  #admissions: Promise<unknown> = Promise.resolve();
 
   constructor(wrap: (children: ReactNode) => ReactNode = (children) => children) {
     this.#wrap = wrap;
@@ -219,39 +223,19 @@ export class ComponentModules {
     const configuration = parseJSON(unit.configurationJson) as { component?: { id?: unknown } };
     if (!client || typeof configuration.component?.id !== "string" || !configuration.component.id)
       throw new FrameError("invalid_plan", "component execution has no Flame artifact source");
-    const request = {
-      installationId: unit.instance.source.installationId,
-      digest: unit.instance.source.release,
-      componentId: configuration.component.id,
-    };
     const resource = await client.plugins.readResource(
-      { ...request, path: unit.module.path },
+      {
+        installationId: unit.instance.source.installationId,
+        digest: unit.instance.source.release,
+        componentId: configuration.component.id,
+        path: unit.module.path,
+      },
       signal,
     );
-    const bytes = Uint8Array.from(atob(resource.body), (character) => character.charCodeAt(0));
-    // Read before acquiring the lease so a failed read cannot strand an unreturned resource.
-    // Frame hashes and evaluates these same captured bytes after lease admission.
-    const resources = await client.plugins.openResources(request, signal);
-    let ended = false;
-    let release: Cleanup | undefined;
-    void resources.closed.then(
-      () => {
-        ended = true;
-        release?.confirmReleased("original component resource subscription closed");
-      },
-      () => {},
-    );
+    // Frame evaluates these captured bytes as a data URL, so the module holds no Runtime resource.
     return {
-      bytes,
-      closed: resources.closed,
-      async close(released: Cleanup) {
-        release = released;
-        try {
-          await resources.close();
-        } catch (error) {
-          return { status: ended ? ("released" as const) : ("unconfirmed" as const), error };
-        }
-      },
+      bytes: Uint8Array.from(atob(resource.body), (character) => character.charCodeAt(0)),
+      close() {},
     };
   }
 
@@ -285,17 +269,21 @@ export class ComponentModules {
           "component admission requires the current Host control channel",
         );
       const operationId = crypto.randomUUID();
-      const grant = await this.#bootstrap.run((signal) =>
-        this.#client!.plugins.acquireComponent(
-          {
-            ...request,
-            operationId,
-            realm: session.realm,
-            ...(parent ? { parentUseId: parent.id } : {}),
-          },
-          signal,
+      const admission = this.#admissions.then(() =>
+        this.#bootstrap.run((signal) =>
+          this.#client!.plugins.acquireComponent(
+            {
+              ...request,
+              operationId,
+              realm: session.realm,
+              ...(parent ? { parentUseId: parent.id } : {}),
+            },
+            signal,
+          ),
         ),
       );
+      this.#admissions = admission.catch(() => undefined);
+      const grant = await admission;
       const use = await runtime.accept(grant);
       try {
         if (parent) use.lifetime.dependsOn(parent.lifetime);

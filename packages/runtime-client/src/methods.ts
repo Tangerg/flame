@@ -133,6 +133,7 @@ import type {
   WorkspaceSummary,
 } from "@flame/runtime-client/wire";
 import { streamRunEvents, streamRuntimeEvents } from "./stream";
+import { createRuntimeEventFeed } from "./runtimeEventFeed";
 import { openResourceLease, type ResourceSubscription } from "./resources";
 import type { AutoPagingPromise } from "./pagination";
 import { RUNTIME_SUBSCRIBE_METHOD } from "./transport";
@@ -844,8 +845,8 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
     plan: {
       get: (sessionId, signal) => call("plan.get", { sessionId }, signal ? { signal } : undefined),
     },
-    runtimeEvents: {
-      subscribe: async (params, signal) => {
+    runtimeEvents: createRuntimeEventFeed(
+      async (params, signal) => {
         const stream = streamRuntimeEvents(client, signal);
         const result = await callOrDispose(stream, () =>
           call(RUNTIME_SUBSCRIBE_METHOD, params, {
@@ -855,7 +856,8 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
         );
         return { result, events: stream.events };
       },
-    },
+      () => options.capabilities?.()?.runtimeTopics,
+    ),
     interrupts: {
       list: (query, signal) =>
         call("interrupts.list", query ?? {}, signal ? { signal } : undefined),
