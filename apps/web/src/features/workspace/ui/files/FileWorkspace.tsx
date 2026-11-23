@@ -79,7 +79,7 @@ const fp = stylex.create({
   hidden: { display: "none" },
   identity: { display: "flex", alignItems: "center", gap: space.s1_5, minWidth: 0 },
   identityIcon: { flexShrink: 0, color: color.fgFaint },
-  // The header never shrinks, so a long name is bounded here; the reader shows the full path.
+  // The header never shrinks, so a long name is bounded here; the directory below completes it.
   identityName: {
     display: "-webkit-box",
     WebkitBoxOrient: "vertical",
@@ -88,12 +88,7 @@ const fp = stylex.create({
     minWidth: 0,
     overflowWrap: "anywhere",
   },
-  path: {
-    margin: 0,
-    paddingInline: space.s3,
-    paddingBlockStart: space.s2,
-    overflowWrap: "anywhere",
-  },
+  directory: { display: "block", overflowWrap: "anywhere" },
   preview: { display: "contents" },
   edge: { display: "flex", justifyContent: "center", paddingBlock: space.s1_5 },
   jumpStatus: { display: "inline-block", maxWidth: "100%" },
@@ -488,7 +483,7 @@ function FilePreview({
 
   const kind = fileKind(viewer.path);
   const icon = fileIconName(viewer.path);
-  const { name } = splitFilePath(viewer.path);
+  const { name, directory } = splitFilePath(viewer.path);
   const invalidLine = !page && targetLine > 0 && workspaceAccess.errors.isInvalidReadRequest(error);
   const rejectedJump = invalidLine && previousData !== undefined;
   const rejectedInitialLine = invalidLine && !retained;
@@ -551,18 +546,35 @@ function FilePreview({
         ? t("file.range", { start: data.startLine, end: data.endLine, total: data.totalLines })
         : t("file.lines", { count: data.totalLines })
       : undefined;
-  const sub = lineSummary && (
-    <>
-      {lineSummary}
-      {jumpLabel && " "}
-      <span
-        role="status"
-        {...stylex.props(fp.jumpStatus, rejectedJump ? vocab.negative : vocab.accent)}
-      >
-        {jumpLabel}
-      </span>
-    </>
+  const location = directory && (
+    <span dir="ltr" {...stylex.props(fp.directory, face.mono)}>
+      {/* Prefer directory boundaries before emergency wrapping without changing the path text. */}
+      {directory.split("/").map((component, index) => (
+        <Fragment key={index}>
+          {index > 0 && (
+            <>
+              /<wbr />
+            </>
+          )}
+          {component}
+        </Fragment>
+      ))}
+    </span>
   );
+  const sub =
+    location || lineSummary ? (
+      <>
+        {location}
+        {lineSummary}
+        {jumpLabel && " "}
+        <span
+          role="status"
+          {...stylex.props(fp.jumpStatus, rejectedJump ? vocab.negative : vocab.accent)}
+        >
+          {jumpLabel}
+        </span>
+      </>
+    ) : undefined;
 
   return (
     <WorkspaceViewLayout
@@ -623,23 +635,6 @@ function FilePreview({
         </>
       }
     >
-      <p
-        data-slot="file-path"
-        dir="ltr"
-        {...stylex.props(fp.path, face.mono, typeStep.uiXs, vocab.muted)}
-      >
-        {/* Prefer directory boundaries before emergency wrapping without changing the path text. */}
-        {viewer.path.split("/").map((component, index) => (
-          <Fragment key={index}>
-            {index > 0 && (
-              <>
-                /<wbr />
-              </>
-            )}
-            {component}
-          </Fragment>
-        ))}
-      </p>
       {unsupported ? (
         <EmptyState
           icon={iconGlyph(icon)}

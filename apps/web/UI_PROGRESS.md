@@ -33137,6 +33137,34 @@ is absent. This documentation-only receipt changes no tested source. Primary
 parallel work remains preserved. Continue from a new observed UI task on the
 accepted frozen base; incoming main commits do not restart unrelated checks.
 
+### File identity in the header and a tree without overhang (2026-11-24)
+
+The File viewer header showed the name and line count, then repeated the
+whole path, filename included, as a mono row at the top of the reading body.
+That breadcrumb sat apart from the identity it completed. `DESIGN.md` already
+asks for the complete, wrapping directory beneath the identity.
+
+- `FileWorkspace.tsx` puts the directory (mono, wrapping at separators) in the
+  header's metadata above the line summary and jump status. It removes the
+  body `file-path` row. Root-level files show only the line summary. This is
+  the same grammar as the Diff reader header.
+- The Files tree scroller had inline padding, but React Aria's `ListLayout`
+  sizes each virtualized row to the scroller's full client width. Rows
+  overhung the content box by 16 px, the tree scrolled sideways, and trailing
+  git letters (`M`) were clipped at the Dock edge. The scroller keeps only
+  block padding. The 8 px inline inset moves onto the row content and the
+  loading row. Tree rows use the shared `data-focus-inset` ring, so the
+  ring stays inside the row on every side. `ListLayout`'s numeric `padding`
+  was rejected because `--spacing` is rem-based.
+
+Native, EN/light/14 px, `dock-file`: the header reads `DockResizer.tsx`,
+`apps/web/src/features/shell/workbench/panel`, `8 lines`, and the code
+starts below it. Back returns to the tree with `apps` expanded. `M` sits
+fully inside the Dock, and Down moves a complete ring to `go.mod`. The Lab
+measures tree `scrollWidth` equal to `clientWidth` (579 px).
+
+Checks: Web typecheck and contract tests pass.
+
 ## Dock tab task continuity
 
 `apps/web/src/ui/agent/context-dock.tsx` keeps tab selection and close/reorder

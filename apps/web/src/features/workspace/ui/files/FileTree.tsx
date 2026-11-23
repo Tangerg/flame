@@ -38,9 +38,11 @@ import { useDirectory } from "@/features/workspace/application/fileTree";
 import type { WorkspaceFileEntry } from "@/features/workspace/application/workspaceQueries";
 import { space, color, radius, type as typeStep } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
-  tree: { minHeight: 0, height: "100%", overflow: "auto", padding: space.s2 },
+  // The virtualizer sizes rows to the scroller's full width, so the inline inset lives on rows.
+  tree: { minHeight: 0, height: "100%", overflow: "auto", paddingBlock: space.s2 },
   row: {
     display: "flex",
+    marginInline: space.s2,
     alignItems: "center",
     gap: space.s1_5,
     minHeight: "2rem",
@@ -52,6 +54,7 @@ const styles = stylex.create({
     backgroundColor: { default: "transparent", "[aria-current]": "var(--control-active-surface)" },
   },
   name: { flex: 1, overflowWrap: "anywhere" },
+  loading: { marginInline: space.s2 },
 });
 type Directory = ReturnType<typeof useDirectory>;
 function More({ query }: { query: Directory }) {
@@ -69,7 +72,9 @@ function More({ query }: { query: Directory }) {
           : undefined
       }
     >
-      <span role="status">{t("common.loading")}</span>
+      <span role="status" {...stylex.props(styles.loading)}>
+        {t("common.loading")}
+      </span>
     </TreeLoadMoreItem>
   );
 }
@@ -156,6 +161,7 @@ function Item({
       aria-label={entry.name}
       aria-describedby={change ? changeId : undefined}
       data-file-path={entry.path}
+      data-focus-inset=""
       hasChildItems={directory}
       onAction={directory ? undefined : () => onSelectFile(entry.path)}
     >
