@@ -17,11 +17,12 @@ type usageReport struct {
 	summary conversation.UsageSummary
 }
 
-// usageScreens reports session and runtime usage.
 type usageScreens struct {
 	screenHost
 	service Usage
 }
+
+const costUnavailable = "cost unavailable"
 
 func (u *usageScreens) ShowUsage(argument string) error {
 	period, err := parseUsagePeriod(argument)
@@ -108,7 +109,7 @@ func usageTotalsText(totals protocol.ModelUsage) string {
 	if totals.CostUSD != nil {
 		parts = append(parts, format.USD(*totals.CostUSD))
 	} else {
-		parts = append(parts, "cost unavailable")
+		parts = append(parts, costUnavailable)
 	}
 	return strings.Join(parts, "  · ")
 }

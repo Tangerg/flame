@@ -13,25 +13,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
-// The method surface, as TypeScript reads it: which methods exist, what each one
-// carries, and what has to be negotiated before one will run.
-//
-// TypeScript cannot read the Go registry, so its method surface is generated.
-// Go consumers read the registry directly; a second table of method constants
-// would duplicate the same facts without serving another boundary.
-//
-// The ergonomic SDK still owns transport handles such as AbortSignal, but it reads
-// operation and idempotency behavior from the policy emitted here. Otherwise every
-// wrapper would have to choose between query and mutation paths by hand, which is
-// exactly how a newly added command can accidentally skip replay protection.
 const tsMethodsFileName = "wire.methods.generated.ts"
 
 type methodsEmitter struct {
 	tsTypes
 	out strings.Builder
 
-	// imported collects the published shapes the module names, so its import list is
-	// exactly those — the binding compiles with noUnusedLocals.
 	imported map[string]bool
 }
 
@@ -39,7 +26,6 @@ func newWireMethods(registry *delivery.Registry, set *schemaSet) string {
 	emitter := &methodsEmitter{tsTypes: tsTypes{set: set, TypeScript: wiregen.NewTypeScript(set.defs)}, imported: make(map[string]bool)}
 	metas := registry.Metas()
 
-	// Rendered first: the shapes it names decide the import list.
 	shapes := emitter.shapes(metas)
 
 	emitter.header()
@@ -56,9 +42,6 @@ func newWireMethods(registry *delivery.Registry, set *schemaSet) string {
 	return emitter.out.String()
 }
 
-// methodPolicy emits the semantic category and response/replay behavior for every
-// method. The SDK consumes this table to attach idempotency keys to commands by
-// construction; method wrappers never classify themselves.
 func (m *methodsEmitter) methodPolicy(metas []delivery.MethodMeta) {
 	m.line("export type WireOperationKind = %s;", methodPolicyUnion(metas, func(meta delivery.MethodMeta) string { return meta.Operation.String() }))
 	m.line("export type WireResponseKind = %s;", methodPolicyUnion(metas, func(meta delivery.MethodMeta) string { return meta.Kind.String() }))
@@ -125,10 +108,6 @@ func (m *methodsEmitter) methodPolicy(metas []delivery.MethodMeta) {
 	m.line("")
 }
 
-// policy emits the capability rules the SDK preflights against what the server
-// advertised. The dispatcher, discovery, and SDK share the same rules. Typing
-// the table with WireFeature also makes a rule naming an unpublished key a compile
-// error on this side, not only in Go.
 func (m *methodsEmitter) policy(metas []delivery.MethodMeta) {
 	m.line("/** One condition on the request that decides whether a rule applies. */")
 	m.line("export interface WireCapabilityCondition {")
@@ -163,7 +142,6 @@ func (m *methodsEmitter) policy(metas []delivery.MethodMeta) {
 	m.line("")
 }
 
-// renderRule writes one capability rule's members.
 func renderRule(rule delivery.CapabilityRule) string {
 	var members []string
 	if len(rule.When) != 0 {
@@ -275,13 +253,6 @@ func (m *methodsEmitter) valueMethodNames(metas []delivery.MethodMeta) {
 	m.line("")
 }
 
-// shapes renders the frames each method carries. A method with no result has no
-// `result` member rather than carrying `void`: an ack-only method answers with an
-// empty success, and WireResult reads that absence.
-//
-// A stream's events are absent for the same reason its ack is present: the SDK names
-// RunEvent and WorkspaceEvent directly, which are already this contract's types, so
-// a per-method event alias would only add a second way to spell one of two answers.
 func (m *methodsEmitter) shapes(metas []delivery.MethodMeta) string {
 	var out strings.Builder
 	fmt.Fprintln(&out, "/** The frames each method carries. */")
@@ -310,10 +281,6 @@ func (m *methodsEmitter) helpers() {
 	m.line("  WireShapes[M] extends { result: infer R } ? R : void;")
 }
 
-// shape names a Go frame type as TypeScript spells it, recording a published shape
-// so the import list can name it. A frame with no published definition renders
-// inline instead — the empty request struct as `Record<string, never>`, an opaque
-// tool result as `unknown` — and there is nothing to import.
 func (m *methodsEmitter) shape(t reflect.Type) string {
 	name := m.typeName(t)
 	if _, published := m.set.defs[name]; published {

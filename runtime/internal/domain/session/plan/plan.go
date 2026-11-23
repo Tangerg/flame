@@ -1,7 +1,3 @@
-// Package plan owns the session-scoped execution Plan maintained by the root
-// Agent. A Plan is one ordered list of Steps; it is neither a second task
-// system nor Plan-mode state. The aggregate owns replacement, validation, and
-// monotonic revision semantics. Persistence and presentation remain outside.
 package plan
 
 import (
@@ -17,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 )
 
-// Status is one Step's execution state.
 type Status string
 
 const (
@@ -28,7 +23,6 @@ const (
 
 var statuses = [...]Status{StatusPending, StatusInProgress, StatusCompleted}
 
-// Valid reports whether s is a recognized Step status.
 func (s Status) Valid() bool {
 	return slices.Contains(statuses[:], s)
 }
@@ -41,16 +35,13 @@ func (Status) JSONSchemaEnum() []string {
 	return values
 }
 
-// Step is one ordered unit of work in a Plan.
 type Step struct {
 	Description string
 	Status      Status
 }
 
 var (
-	// ErrInvalid marks Plan state that violates a domain invariant.
-	ErrInvalid = errors.New("plan: invalid plan")
-	// ErrRevisionConflict marks a replacement based on a stale Plan revision.
+	ErrInvalid          = errors.New("plan: invalid plan")
 	ErrRevisionConflict = errors.New("plan: revision conflict")
 )
 
@@ -79,8 +70,6 @@ func ValidateSteps(steps []Step) error {
 	return nil
 }
 
-// Snapshot is the persistence representation of a Plan aggregate. It is a
-// technical reconstruction boundary, not a mutation API.
 type Snapshot struct {
 	Source    extension.ContributionSource
 	Steps     []Step
@@ -88,9 +77,6 @@ type Snapshot struct {
 	UpdatedAt time.Time
 }
 
-// State is one immutable committed Plan replacement. Its private representation
-// may be shared by value; mutable step input and output are copied at the boundary.
-// Whether a Session has ever committed a Plan belongs to [Current].
 type State struct {
 	source    extension.ContributionSource
 	steps     []Step
@@ -98,25 +84,17 @@ type State struct {
 	updatedAt time.Time
 }
 
-// Current is the optional latest Plan aggregate for one Session. Its zero value
-// explicitly means unwritten; a committed empty State is distinct and remains
-// available through State.
 type Current struct{ state *State }
 
-// Version is the optimistic-concurrency identity of a Current Plan. Its zero
-// value is the explicit unwritten version; committed revisions remain private
-// so callers cannot pair a numeric sentinel with unrelated Plan content.
 type Version struct {
 	revision  exactint.Counter
 	committed bool
 }
 
-// Restore reconstructs a Plan aggregate from a trusted persistence boundary
-// while rechecking every invariant.
 func Restore(snapshot Snapshot) (State, error) {
 	revision, err := exactint.Restore(snapshot.Revision)
 	if err != nil {
-		return State{}, fmt.Errorf("%w: revision: %v", ErrInvalid, err)
+		return State{}, fmt.Errorf("%w: revision: %w", ErrInvalid, err)
 	}
 	state := State{source: snapshot.Source,
 		steps:     cloneSteps(snapshot.Steps),
@@ -135,6 +113,7 @@ type Document struct {
 }
 
 func (s State) Document() Document { return Document{Source: s.source, Steps: s.Steps()} }
+
 func (c Current) Reference(doc Document, now time.Time) (State, error) {
 	if doc.Source != (extension.ContributionSource{}) {
 		if err := doc.Source.Validate(); err != nil {
@@ -149,7 +128,6 @@ func (c Current) Reference(doc Document, now time.Time) (State, error) {
 	return next, nil
 }
 
-// CurrentOf wraps one validated committed State as the latest Session value.
 func CurrentOf(state State) (Current, error) {
 	if err := state.Validate(); err != nil {
 		return Current{}, err
@@ -157,7 +135,6 @@ func CurrentOf(state State) (Current, error) {
 	return Current{state: &state}, nil
 }
 
-// State returns the immutable committed State and whether one has been written.
 func (c Current) State() (State, bool) {
 	if c.state == nil {
 		return State{}, false
@@ -165,9 +142,6 @@ func (c Current) State() (State, bool) {
 	return *c.state, true
 }
 
-// Steps returns the latest ordered value. Unwritten and explicitly cleared
-// Plans both render as an empty list; callers that need to distinguish them use
-// State or Version.
 func (c Current) Steps() []Step {
 	if c.state == nil {
 		return nil
@@ -175,7 +149,6 @@ func (c Current) Steps() []Step {
 	return c.state.Steps()
 }
 
-// Version returns the concurrency identity coupled to this optional value.
 func (c Current) Version() Version {
 	if c.state == nil {
 		return Version{}
@@ -183,8 +156,6 @@ func (c Current) Version() Version {
 	return Version{revision: c.state.revision, committed: true}
 }
 
-// Replace decides one committed whole-list replacement. An unwritten Current
-// receives the first revision; an existing State advances once.
 func (c Current) Replace(steps []Step, updatedAt time.Time) (State, error) {
 	if c.state == nil {
 		return create(steps, updatedAt)
@@ -192,9 +163,6 @@ func (c Current) Replace(steps []Step, updatedAt time.Time) (State, error) {
 	return c.state.Replace(steps, updatedAt)
 }
 
-// Replace returns the next complete Plan state. The caller supplies the clock
-// value; the aggregate owns revision advancement and rejects time travel or
-// revision overflow.
 func (s State) Replace(steps []Step, updatedAt time.Time) (State, error) {
 	if s.revision.IsZero() {
 		return State{}, fmt.Errorf("%w: replaced Plan state was never written", ErrInvalid)
@@ -214,7 +182,7 @@ func (s State) Replace(steps []Step, updatedAt time.Time) (State, error) {
 	}
 	revision, err := s.revision.Next()
 	if err != nil {
-		return State{}, fmt.Errorf("%w: revision: %v", ErrInvalid, err)
+		return State{}, fmt.Errorf("%w: revision: %w", ErrInvalid, err)
 	}
 	return State{
 		steps:     cloneSteps(steps),
@@ -231,7 +199,6 @@ func create(steps []Step, updatedAt time.Time) (State, error) {
 	return state, nil
 }
 
-// Validate verifies the aggregate's reconstruction and lifecycle invariants.
 func (s State) Validate() error {
 	if s.source != (extension.ContributionSource{}) {
 		if err := s.source.Validate(); err != nil {
@@ -254,34 +221,27 @@ func (s State) Validate() error {
 	return nil
 }
 
-// Steps returns a defensive copy of the ordered Plan value.
 func (s State) Steps() []Step { return cloneSteps(s.steps) }
 
-// Revision returns the monotonic replacement revision.
 func (s State) Revision() uint64 { return s.revision.Value() }
 
-// UpdatedAt returns when this replacement was committed.
 func (s State) UpdatedAt() time.Time { return s.updatedAt }
 
-// Snapshot returns a defensive persistence representation.
 func (s State) Snapshot() Snapshot {
 	return Snapshot{Source: s.source, Steps: cloneSteps(s.steps), Revision: s.revision.Value(), UpdatedAt: s.updatedAt}
 }
 
-// IsUnwritten reports whether v identifies the absence of a committed Plan.
 func (v Version) IsUnwritten() bool { return !v.committed }
 
-// Revision returns the committed revision and whether one exists.
 func (v Version) Revision() (uint64, bool) { return v.revision.Value(), v.committed }
 
-// AdvancesTo verifies that next is exactly one replacement after v.
 func (v Version) AdvancesTo(next State) error {
 	expected := exactint.First()
 	if v.committed {
 		var err error
 		expected, err = v.revision.Next()
 		if err != nil {
-			return fmt.Errorf("%w: revision: %v", ErrInvalid, err)
+			return fmt.Errorf("%w: revision: %w", ErrInvalid, err)
 		}
 	}
 	if next.revision != expected {

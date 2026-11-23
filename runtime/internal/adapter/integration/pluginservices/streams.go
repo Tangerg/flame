@@ -35,11 +35,8 @@ func (c *installedStream) Stream(ctx context.Context) iter.Seq2[plugins.StreamEv
 	}
 }
 
-// streamCommand relays a dispatched command's chunks, or recovers a dispatched
-// one's receipt, and yields the settled result last. It returns the failure
-// that ends the stream; a consumer that stops early ends it without one.
 func (c *installedStream) streamCommand(ctx context.Context, yield func(plugins.StreamEvent, error) bool) error {
-	record, err := c.calls.admitCommandRoute(ctx, c.request.Method, c.request.Input, c.accepts, c.resolve, c.target, streamedCall)
+	record, err := c.calls.admitCommandRoute(ctx, c.route(), streamedCall)
 	if err != nil {
 		return err
 	}
@@ -106,16 +103,16 @@ func (c *installedStream) streamQuery(ctx context.Context, yield func(plugins.St
 }
 
 func streamEvent(value pluginmcp.StreamValue[jsontext.Value, jsontext.Value], err error) (plugins.StreamEvent, error) {
-	switch {
-	case err != nil:
+	if err != nil {
 		return plugins.StreamEvent{}, err
-	case value.Chunk != nil:
-		chunk, err := framevalue.ParseJSON(*value.Chunk)
-		return plugins.StreamEvent{Kind: plugins.StreamChunk, Value: chunk}, err
-	case value.Result != nil:
-		result, err := framevalue.ParseJSON(*value.Result)
-		return plugins.StreamEvent{Kind: plugins.StreamResult, Value: result}, err
-	default:
-		return plugins.StreamEvent{}, pluginmcp.ErrStreamUnconfirmed
 	}
+	if chunk, ok := value.Chunk(); ok {
+		parsed, err := framevalue.ParseJSON(chunk)
+		return plugins.StreamEvent{Kind: plugins.StreamChunk, Value: parsed}, err
+	}
+	if result, ok := value.Result(); ok {
+		parsed, err := framevalue.ParseJSON(result)
+		return plugins.StreamEvent{Kind: plugins.StreamResult, Value: parsed}, err
+	}
+	return plugins.StreamEvent{}, pluginmcp.ErrStreamUnconfirmed
 }

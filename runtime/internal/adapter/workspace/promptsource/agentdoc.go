@@ -1,8 +1,3 @@
-// Package promptsource is the filesystem adapter for the prompt-source domains:
-// it discovers the AGENTS.md and skill files a session exposes, walking
-// the project tree and the well-known user-level directories. The precedence,
-// render, and parse RULES are the domains' (agentdoc / skills); the
-// file discovery and reads are here.
 package promptsource
 
 import (
@@ -13,30 +8,16 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/project"
 )
 
-// DiscoverAgentDocs walks the project tree + user-level locations and returns
-// the AGENTS.md files in render order:
-//
-//  1. ~/.flame/AGENTS.md           (Flame-specific user scope)
-//  2. ~/.agents/AGENTS.md         (cross-tool generic; first match
-//     of AGENTS.md / agents.md)
-//  3. for each dir from project-root → cwd inclusive:
-//     - {dir}/.flame/AGENTS.md     (Flame subdir convention)
-//     - {dir}/AGENTS.md           (first match of AGENTS.md / agents.md)
-//
-// Project root = the nearest ancestor containing a `.git` entry; if none is
-// found, root = cwd (single-level scan). Symlinked duplicate paths are deduped
-// by resolved absolute path.
-//
-// ctx cancels long walks; cwd / home are absolute composition inputs. Missing
-// and empty files contribute nothing. An existing unreadable, invalid, or
-// oversized document rejects the complete cascade so management and execution
-// cannot observe different instruction sets. The agent-execution adapter
-// renders the resulting values.
-func DiscoverAgentDocs(ctx context.Context, cwd, home string) ([]workspaceapp.AgentDocFile, error) {
+const agentDocName = "AGENTS.md"
+
+type AgentDocs struct{}
+
+func (AgentDocs) Find(ctx context.Context, cwd, home string) ([]workspaceapp.AgentDocFile, error) {
 	if err := validateAgentDocPaths(cwd, home); err != nil {
 		return nil, err
 	}
@@ -68,24 +49,12 @@ func validateAgentDocPaths(cwd, home string) error {
 	return nil
 }
 
-// AgentDocs adapts prompt-source discovery to the workspace application port.
-type AgentDocs struct{}
-
-func (AgentDocs) Find(ctx context.Context, cwd, home string) ([]workspaceapp.AgentDocFile, error) {
-	return DiscoverAgentDocs(ctx, cwd, home)
-}
-
-// agentDocScan carries de-duplication and complete-cascade admission across the
-// walk. Missing/empty candidates remain absent; an existing invalid candidate
-// returns its error instead of silently changing the instruction set.
 type agentDocScan struct {
 	seen     map[string]struct{}
 	files    []workspaceapp.AgentDocFile
 	rawBytes int
 }
 
-// discoverHome applies the user-level order: Flame-specific first, then the
-// first non-empty generic candidate.
 func (a *agentDocScan) discoverHome(ctx context.Context, home string) (err error) {
 	if home == "" {
 		return nil
@@ -98,17 +67,9 @@ func (a *agentDocScan) discoverHome(ctx context.Context, home string) (err error
 		return err
 	}
 	defer func() { err = errors.Join(err, root.Close()) }()
-	if _, err := a.try(ctx, root, filepath.Join(home, ".flame", "AGENTS.md"), workspaceapp.AgentDocScopeHome); err != nil {
-		return err
-	}
-	return a.tryFirst(ctx, root, workspaceapp.AgentDocScopeHome,
-		filepath.Join(home, ".agents", "AGENTS.md"),
-		filepath.Join(home, ".agents", "agents.md"),
-	)
+	return a.discoverIn(ctx, root, home, filepath.Join(home, ".agents"), workspaceapp.AgentDocScopeHome)
 }
 
-// discoverProjectTree walks root to leaf so the most specific files remain at
-// the end of the cascade consumed by prompt assembly.
 func (a *agentDocScan) discoverProjectTree(ctx context.Context, cwd string) (err error) {
 	root, err := project.Root(cwd)
 	if err != nil {
@@ -127,17 +88,22 @@ func (a *agentDocScan) discoverProjectTree(ctx context.Context, cwd string) (err
 		if dir == cwd {
 			scope = workspaceapp.AgentDocScopeCWD
 		}
-		if _, err := a.try(ctx, boundary, filepath.Join(dir, ".flame", "AGENTS.md"), scope); err != nil {
-			return err
-		}
-		if err := a.tryFirst(ctx, boundary, scope,
-			filepath.Join(dir, "AGENTS.md"),
-			filepath.Join(dir, "agents.md"),
-		); err != nil {
+		if err := a.discoverIn(ctx, boundary, dir, dir, scope); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// A location contributes Flame's own document and the first spelling of the shared agent document.
+func (a *agentDocScan) discoverIn(ctx context.Context, root *os.Root, flameParent, sharedDir string, scope workspaceapp.AgentDocScope) error {
+	if _, err := a.try(ctx, root, filepath.Join(flameParent, identity.AuthoredDirectory, agentDocName), scope); err != nil {
+		return err
+	}
+	return a.tryFirst(ctx, root, scope,
+		filepath.Join(sharedDir, agentDocName),
+		filepath.Join(sharedDir, "agents.md"),
+	)
 }
 
 func openDocumentRoot(path string) (*os.Root, error) {
@@ -148,9 +114,8 @@ func openDocumentRoot(path string) (*os.Root, error) {
 	return os.OpenRoot(physical)
 }
 
-// try reports whether a non-empty candidate matched. A duplicate physical
-// source still counts as a match so a first-match group never falls through to
-// a lower-precedence alias merely because the source was already admitted.
+// A duplicate physical source still counts as a match so a first-match group never
+// falls through to a lower-precedence alias.
 func (a *agentDocScan) try(ctx context.Context, root *os.Root, path string, scope workspaceapp.AgentDocScope) (bool, error) {
 	abs, found, err := resolveAgentDocCandidate(ctx, path)
 	if err != nil || !found {
@@ -231,8 +196,6 @@ func (a *agentDocScan) tryFirst(ctx context.Context, root *os.Root, scope worksp
 	return nil
 }
 
-// readIfNonEmpty returns trimmed, admitted content and its complete encoded
-// size. Empty files remain absent; an existing invalid file remains observable.
 func readIfNonEmpty(ctx context.Context, root *os.Root, path string) (string, int, bool, error) {
 	data, err := readAuthoredPromptFile(ctx, root, path)
 	if err != nil {

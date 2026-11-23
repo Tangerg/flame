@@ -1,10 +1,10 @@
 import { joinDraftParts } from "@/features/composer/domain/draft";
-export interface SlashIntent {
+interface SlashIntent {
   cmd: string;
   args: string;
 }
 
-export interface ComposerSendIntent {
+interface ComposerSendIntent {
   text: string;
   body: string;
   slash: SlashIntent | null;
@@ -45,7 +45,7 @@ export function createComposerSendIntent({
   };
 }
 
-export function parseSlash(text: string): SlashIntent | null {
+function parseSlash(text: string): SlashIntent | null {
   if (!text.startsWith("/")) return null;
   const space = text.search(/\s/);
   if (space === -1) return { cmd: text, args: "" };

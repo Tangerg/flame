@@ -9,11 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// ProjectInterrupts joins each open interrupt with the Item that owns it, in
-// the hand-off's canonical order. It refuses an Item that is not open the way
-// the hand-off names it: an approval names a running ToolCall with no verdict,
-// a Question names an unanswered Question Item, and every Item belongs to the
-// Run whose member its binding answers.
 func (p Pending) ProjectInterrupts(itemsByID map[identity.ItemID]transcript.Item) ([]transcript.Interrupt, error) {
 	if err := p.Validate(); err != nil {
 		return nil, err
@@ -63,8 +58,6 @@ func (o OpenInterrupt) project(item transcript.Item) (transcript.Interrupt, erro
 	return projected, nil
 }
 
-// OpenInterruptsOf is a hand-off's share of projected interrupts: the Items
-// they name and, for each approval, the policy's review.
 func OpenInterruptsOf(projected []transcript.Interrupt) []OpenInterrupt {
 	open := make([]OpenInterrupt, len(projected))
 	for index, value := range projected {
@@ -78,25 +71,19 @@ func OpenInterruptsOf(projected []transcript.Interrupt) []OpenInterrupt {
 	return open
 }
 
-// drainedToolItem resolves the open Tool Item a drained tool re-binds. The
-// Item, not the hand-off, owns its occurrence and invocation.
 func drainedToolItem(
 	itemsByID map[identity.ItemID]transcript.Item,
 	runID identity.RunID,
 	drained DrainedTool,
-) (transcript.Item, transcript.ToolInvocation, error) {
+) (transcript.Item, error) {
 	item, found := itemsByID[drained.ItemID]
-	call, isToolCall := item.ToolCall()
+	_, isToolCall := item.ToolCall()
 	if !found || item.RunID() != runID || !isToolCall || item.Status() != transcript.ItemRunning {
-		return transcript.Item{}, transcript.ToolInvocation{}, fmt.Errorf(
-			"drained Tool Item %q is not an open ToolCall of Run %q", drained.ItemID, runID,
-		)
+		return transcript.Item{}, fmt.Errorf("drained Tool Item %q is not an open ToolCall of Run %q", drained.ItemID, runID)
 	}
-	return item, call.Invocation, nil
+	return item, nil
 }
 
-// pendingItemIDs lists every Item a hand-off names: its open interrupts and
-// its drained Tools.
 func pendingItemIDs(pending Pending) []identity.ItemID {
 	ids := make([]identity.ItemID, 0, len(pending.Interrupts))
 	for _, open := range pending.Interrupts {

@@ -10,8 +10,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// Actor identifies the managed code making a nested call. It is captured by
-// the connection owner and never decoded from a plugin's business arguments.
 type Actor struct {
 	installation identity.InstallationID
 	release      framevalue.Digest
@@ -70,8 +68,6 @@ func ActorFrom(ctx context.Context) (Actor, bool) {
 	return actor, found
 }
 
-// ScopedKey separates actors while preserving a logical command across release
-// and activation replacement. Release bytes are authority, not command identity.
 func ScopedKey(ctx context.Context, key string) string {
 	actor, found := ActorFrom(ctx)
 	if key == "" || !found {

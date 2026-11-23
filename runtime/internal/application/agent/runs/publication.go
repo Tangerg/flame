@@ -12,9 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// segmentBoundary names what publishing did to the source segment. A Run parks
-// by ending its segment, so parking is a way of finishing rather than a state
-// beside it, and the two cannot disagree.
 type segmentBoundary uint8
 
 const (
@@ -23,7 +20,6 @@ const (
 	boundaryParked
 )
 
-// reductionPublication reports what publishing a batch did.
 type reductionPublication struct {
 	published bool
 	boundary  segmentBoundary
@@ -35,18 +31,12 @@ func (b segmentBoundary) parked() bool   { return b == boundaryParked }
 func (p reductionPublication) finished() bool { return p.boundary.finished() }
 func (p reductionPublication) parked() bool   { return p.boundary.parked() }
 
-// treePublisher owns the batch boundary between source-Run reductions and
-// their persisted and live projections. Every child keeps its own Run/Segment
-// envelope while all events share the root Segment's journal and replay scope.
 type treePublisher struct {
 	publications *runPublications
 	rootSpec     segmentSpec
 	owner        *runTreeOwner
 }
 
-// publish validates a complete batch before any side effect, then commits every
-// persisted fact before appending its event. published=false without an error
-// means cancellation won the interrupt-commit race.
 func (t treePublisher) publish(
 	ctx context.Context,
 	route *executorRoute,
@@ -104,11 +94,8 @@ func (t treePublisher) commitIncrementalReduction(
 	if reduced.Commit == nil {
 		return nil
 	}
-	// Every durable projection lands before its event is delivered or retained
-	// for replay. A failed commit aborts execution instead of publishing an
-	// event the stores do not yet support.
-	// validateIncrementalPublication routes every segment-finishing reduction to
-	// atomic publication, so an incremental commit never changes Run state.
+	// Every durable projection lands before its event is delivered or retained for
+	// replay.
 	commit := *reduced.Commit
 	if commit.CommitID.IsZero() {
 		commit.CommitID = newRunCommitID()
@@ -124,11 +111,6 @@ func (t treePublisher) commitIncrementalReduction(
 	return nil
 }
 
-// publishAuthoritativeAtomically commits every durable projection derived from
-// one model/tool fact in a single transaction before publishing any live event.
-// The caller reduces against a speculative reducer and swaps that state in only
-// after this method succeeds, so a failed final/result/usage write leaves the
-// previously committed start boundary intact for unknown reconciliation.
 func (t treePublisher) publishAuthoritativeAtomically(
 	ctx context.Context,
 	route *executorRoute,
@@ -171,10 +153,6 @@ func (t treePublisher) publishAuthoritativeAtomically(
 	return reductionPublication{published: true}, nil
 }
 
-// publishTerminalAtomically commits every item closure and the terminal Run in
-// one EventCommit before publishing any event. Unknown external outcomes use
-// this path so a failed transaction leaves the live executor tree blocked and the
-// exact immutable batch can be retried without exposing a partial RunLost fact.
 func (t treePublisher) publishTerminalAtomically(
 	ctx context.Context,
 	route *executorRoute,
@@ -249,11 +227,6 @@ func (t treePublisher) bindTerminalCancellation(commit *EventCommit) {
 	commit.rootCancellation = &rootCancellationCommit{executor: t.rootSpec.executorRef(), receipt: cancellation.receipt}
 }
 
-// combineTerminalEventCommit materializes the one write-set that the reducer
-// batch represents. Item closures may be projected on events that precede the
-// terminal Run event, but they are not independent persistence boundaries:
-// terminal state, invocation journals, transcript Items, and accounting either
-// all commit or all roll back.
 func combineTerminalEventCommit(batch reductionBatch) (EventCommit, error) {
 	combined := EventCommit{}
 	envelopeSet := false
@@ -441,8 +414,6 @@ func (t treePublisher) reduceInterruptedRoute(
 	directInterruptions []MemberInterruption,
 	boundaryAt time.Time,
 ) (treeBarrierReduction, []InterruptBinding, Continuation, error) {
-	// Preparing a barrier cannot consume committed starts before the whole
-	// tree transaction accepts their closures and continuation bindings.
 	next := route.reducer.clone()
 	var reduced factReduction
 	var err error
@@ -521,9 +492,9 @@ func suspendedInterrupts(events []ProjectionEvent) []transcript.Interrupt {
 func (t treePublisher) append(route *executorRoute, reduced reduction) error {
 	event := t.publications.event(route.runID, route.segmentID, reduced)
 	if route.runID == t.rootSpec.RunID && reduced.Event.Terminal() {
-		// The client uses root segment.finished as the stream/completion boundary.
-		// Its facts are already durable, but publication must not outrun terminal
-		// maintenance and admission release or an immediate next command sees busy.
+		// Root segment.finished is the client's completion boundary, so publication must
+		// not outrun terminal maintenance and admission release or an immediate next
+		// command sees busy.
 		t.owner.hub.deferCloseEvent(event)
 	} else {
 		if err := t.owner.hub.append(event); err != nil {

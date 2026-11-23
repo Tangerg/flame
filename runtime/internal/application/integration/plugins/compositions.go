@@ -65,8 +65,6 @@ func (c *Compositions) Set(ctx context.Context, record plugin.CompositionRecord)
 	return value, err
 }
 
-// ResolveComposition freezes the exact selected releases in stored order. A
-// missing or withdrawn member refuses the chain rather than silently shortening it.
 func ResolveComposition(ctx context.Context, installations Store, compositions CompositionStore, required *plugincontract.Capability) ([]ContributionBinding, error) {
 	if required == nil || required.Descriptor().Composition != plugincontract.Decoration {
 		return nil, plugin.ErrInvalid

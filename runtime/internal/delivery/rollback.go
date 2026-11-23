@@ -15,6 +15,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
+const toRunIDField = "toRunId"
+
 func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessionRequest) (*protocol.RollbackSessionResponse, error) {
 	restoreType, err := rollbackTypeFromWire(in)
 	if err != nil {
@@ -35,11 +37,11 @@ func (s *Handler) RollbackSession(ctx context.Context, in protocol.RollbackSessi
 }
 
 func (s *Handler) rollbackHistory(ctx context.Context, in protocol.RollbackSessionRequest, complete operation.Reply[sessions.RollbackResult]) error {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return parseErr
 	}
-	toRunID, err := wireIdentity("toRunId", in.ToRunID, identity.ParseOptionalRun)
+	toRunID, err := wireIdentity(toRunIDField, in.ToRunID, identity.ParseOptionalRun)
 	if err != nil {
 		return err
 	}
@@ -50,11 +52,11 @@ func (s *Handler) rollbackHistory(ctx context.Context, in protocol.RollbackSessi
 }
 
 func (s *Handler) rollbackWorkspace(ctx context.Context, in protocol.RollbackSessionRequest, restoreType protocol.RestoreType, receipt sessions.WorkspaceRollbackReceipt) (sessions.RollbackResult, error) {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return sessions.RollbackResult{}, parseErr
 	}
-	toRunID, err := wireIdentity("toRunId", in.ToRunID, identity.ParseRun)
+	toRunID, err := wireIdentity(toRunIDField, in.ToRunID, identity.ParseRun)
 	if err != nil {
 		return sessions.RollbackResult{}, err
 	}
@@ -68,10 +70,8 @@ func (s *Handler) rollbackWorkspace(ctx context.Context, in protocol.RollbackSes
 	return result, nil
 }
 
-// replayRollback settles a keyed history rollback in its own write and a keyed
-// file rollback through its recoverable intent.
 func (s *Handler) replayRollback(ctx context.Context, in protocol.RollbackSessionRequest, call keyedCall) protocol.OperationResult {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return protocol.OperationResult{}
 	}
@@ -87,9 +87,6 @@ func (s *Handler) replayRollback(ctx context.Context, in protocol.RollbackSessio
 			return outcome.settleRefusal(ctx, s.rollbackHistory(ctx, in, reply))
 		})
 	}
-	// The intent's completion stores the receipt in the rollback's own
-	// transaction. A refusal it already stored is found again by the replay's
-	// refusal commit, which never overwrites a settled record.
 	payload, err := call.replay.InvokeRecoverable(ctx, call.key, call.fingerprint, func() ([]byte, error) {
 		receipt := sessions.WorkspaceRollbackReceipt{Key: call.key, Fingerprint: call.fingerprint}
 		result, err := s.rollbackWorkspace(ctx, in, restoreType, receipt)
@@ -141,8 +138,6 @@ func presentRollbackResult(result sessions.RollbackResult) *protocol.RollbackSes
 	return &protocol.RollbackSessionResponse{Session: &sess, DroppedRuns: droppedRuns}
 }
 
-// wireRollbackErr maps session rollback errors onto their wire
-// errors (the boundary sentinels are already wire-mapped inside the resolver).
 func wireRollbackErr(err error, sessionID identity.SessionID) error {
 	switch {
 	case errors.Is(err, sessions.ErrRollbackRecoveryPending):

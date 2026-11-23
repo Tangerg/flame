@@ -10,16 +10,15 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// MaxAttachmentBytes is the largest local file one authored attachment may carry.
 const MaxAttachmentBytes int64 = 20 << 20
 
 type Attachment struct {
-	ID       string
-	Kind     protocol.ContentBlockType
-	Name     string
-	Path     string
-	MimeType string
-	Size     int64
+	ID       string                    `json:"id"`
+	Kind     protocol.ContentBlockType `json:"kind"`
+	Name     string                    `json:"name"`
+	Path     string                    `json:"path"`
+	MimeType string                    `json:"mimeType"`
+	Size     int64                     `json:"size"`
 }
 
 func (a Attachment) Validate() error {
@@ -47,8 +46,6 @@ func (a Attachment) Validate() error {
 	return nil
 }
 
-// IsImageMediaType reports whether value names a well-formed image media type,
-// the only media Runtime accepts as image content.
 func IsImageMediaType(value string) bool {
 	mediaType, _, err := mime.ParseMediaType(value)
 	return err == nil && strings.HasPrefix(mediaType, "image/")

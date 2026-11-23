@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	"github.com/Tangerg/flame/plugins/memory/internal/agentmemory"
 )
 
 func (a *AgentMemoryStore) AppendLedger(ctx context.Context, batch agentmemory.FactBatch) ([]agentmemory.LedgerFact, error) {
@@ -137,7 +137,6 @@ func (a *AgentMemoryStore) State(ctx context.Context, project string) (agentmemo
 	return result, err
 }
 
-// Watermark CAS and item folding share a transaction so a losing publication cannot rewrite memory.
 func (a *AgentMemoryStore) Reconcile(
 	ctx context.Context,
 	publication agentmemory.Publication,

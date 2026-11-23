@@ -13,23 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 )
 
-// The Go wire validator enforces registered constraints at Runtime boundaries.
-//
-// It replaces hand-written request checks and also guards typed output boundaries.
-// Generating Go, schema, and TypeScript checks from the same registry prevents
-// the three representations from declaring different constraints.
-//
-// Four rule sources, and none restates another's job:
-//
-//   - the declared value constraints (a string that may not be empty, a number
-//     that may not be zero) — reflection cannot see these;
-//   - closed-enum membership, DERIVED from the enum's own declared value set. Go's
-//     decoder puts any string into a named string type, so without this check a
-//     bogus tag reaches a use case or client;
-//   - registered union variants;
-//   - registered conditional field rules.
-
-// validatorFile is written into the protocol package, beside the shapes it checks.
 const validatorFile = "wire_constraints.generated.go"
 
 type validatorRuleIndex struct {
@@ -73,10 +56,6 @@ func (r validatorRuleIndex) checks(target reflect.Type) []string {
 }
 
 func validatorTargets(registry *delivery.Registry, shapes *dispatch.Shapes, walked *schemaSet) []reflect.Type {
-	// Request roots come first in method-registration order. Registered unions,
-	// conditional objects and value-constrained roots follow in declaration order.
-	// This makes every Registry-authored shape rule reachable by the Go generator,
-	// including DTOs that only travel from server to client.
 	var targets []reflect.Type
 	written := make(map[reflect.Type]bool)
 	for _, meta := range registry.Metas() {
@@ -106,10 +85,6 @@ func appendValidatorTarget(targets []reflect.Type, written map[reflect.Type]bool
 }
 
 func reachableProtocolStructs(walked *schemaSet) []reflect.Type {
-	// Closed enums are derived from field types rather than registered against
-	// their carrier objects. Include every reachable protocol struct so a DTO
-	// whose only local rule is enum membership receives the same Go validator as
-	// its JSON Schema and TypeScript projections.
 	protocolPackage := reflect.TypeFor[protocol.Session]().PkgPath()
 	definitionNames := make([]string, 0, len(walked.origin))
 	for name := range walked.origin {
@@ -140,11 +115,8 @@ func writeValidator(out *strings.Builder, target reflect.Type, checks []string) 
 	out.WriteString("\t)\n}\n")
 }
 
-// inheritedValueConstraints returns the constraints visible on an encoded
-// shape, including fields flattened from embedded DTOs. encoding/json does not
-// preserve the embedded object boundary, so a generated Go validator that only
-// checked the outer declaration would disagree with the schema and TypeScript
-// validators for the exact same JSON frame.
+// encoding/json does not preserve the embedded object boundary, so constraints
+// from embedded DTOs must be checked on the carrier.
 func inheritedValueConstraints(shape reflect.Type, declared map[reflect.Type][]dispatch.FieldConstraint) []dispatch.FieldConstraint {
 	owners := append([]reflect.Type{shape}, protocol.WireEmbeds(shape)...)
 	var out []dispatch.FieldConstraint
@@ -158,10 +130,6 @@ func inheritedValueConstraints(shape reflect.Type, declared map[reflect.Type][]d
 	return out
 }
 
-// receiverName is the identifier the generated method binds its receiver to.
-// Generated methods follow the same rule as hand-written ones — the lowercased
-// first letter of the type — so a shape does not answer to two different names
-// depending on which half of the file a reader is in.
 func receiverName(shape reflect.Type) string {
 	if shape.Name() == "" {
 		panic("contractgen: cannot name a receiver for an unnamed shape")
@@ -169,7 +137,6 @@ func receiverName(shape reflect.Type) string {
 	return strings.ToLower(shape.Name()[:1])
 }
 
-// validatorChecks builds every frame-local check registered for one wire shape.
 func validatorChecks(
 	shape reflect.Type,
 	constraints []dispatch.FieldConstraint,
@@ -211,7 +178,7 @@ func constraintCheck(
 	case dispatch.ConstraintNonEmptyItems, dispatch.ConstraintUniqueItems,
 		dispatch.ConstraintMinItems, dispatch.ConstraintMaxItems,
 		dispatch.ConstraintMaxItemLength, dispatch.ConstraintIdentityItems,
-		dispatch.ConstraintPrefixItems, dispatch.ConstraintPatternItems:
+		dispatch.ConstraintPatternItems:
 		return itemConstraintCheck(shape, selector, leaf, constraint)
 	case dispatch.ConstraintNonEmptyProperties, dispatch.ConstraintMaxPropertyNameLength,
 		dispatch.ConstraintIdentityPropertyNames:
@@ -266,11 +233,9 @@ func nonEmptyConstraintCheck(
 	constraint dispatch.FieldConstraint,
 	requiredByShape bool,
 ) string {
-	// A non-pointer scalar cannot distinguish an omitted JSON property from its
-	// zero value after decoding. When a shape rule owns the property's
-	// requiredness, requiredWhen below already rejects that zero value in the
-	// branch where it is required and accepts it where the property is forbidden.
-	// An unconditional requiredText would reject every other legal branch.
+	// A non-pointer scalar cannot distinguish omission from zero after decoding.
+	// requiredWhen owns its branch-specific requiredness; an unconditional
+	// requiredText would reject legal branches.
 	if leaf.Optional && leaf.Type.Kind() != reflect.Pointer && requiredByShape {
 		return ""
 	}
@@ -312,9 +277,7 @@ func patternConstraintCheck(
 	constraint dispatch.FieldConstraint,
 ) string {
 	validatorName := "requiredTextPattern"
-	if leaf.Type.Kind() == reflect.Pointer {
-		validatorName = "optionalTextPointerPattern"
-	} else if leaf.Optional {
+	if leaf.Optional {
 		validatorName = "optionalTextPattern"
 	}
 	return fmt.Sprintf(
@@ -391,13 +354,6 @@ func itemConstraintCheck(
 		return fmt.Sprintf("%s(%s, %s, %d)", validatorName, field, ref, constraint.Limit)
 	case dispatch.ConstraintIdentityItems:
 		return fmt.Sprintf("identityItems(%s, %s)", field, ref)
-	case dispatch.ConstraintPrefixItems:
-		return fmt.Sprintf(
-			"textPrefixItems(%s, %s, %s)",
-			field,
-			ref,
-			strconv.Quote(constraint.Value),
-		)
 	case dispatch.ConstraintPatternItems:
 		return fmt.Sprintf(
 			"textPatternItems(%s, %s, %s)",
@@ -482,10 +438,10 @@ func unionChecks(union dispatch.UnionSpec, recv string) []string {
 		checks = append(checks, patternUnionTagCheck(union, *pattern, recv))
 	}
 	for _, variant := range union.Variants {
-		checks = append(checks, literalUnionChecks(union, variant, paths, recv)...)
+		checks = append(checks, literalUnionChecks(variant, paths, recv)...)
 	}
 	if pattern := union.PatternVariant; pattern != nil {
-		checks = append(checks, patternUnionChecks(union, *pattern, paths, recv)...)
+		checks = append(checks, patternUnionChecks(*pattern, paths, recv)...)
 	}
 	return checks
 }
@@ -506,7 +462,6 @@ func patternUnionTagCheck(union dispatch.UnionSpec, pattern dispatch.PatternVari
 }
 
 func literalUnionChecks(
-	union dispatch.UnionSpec,
 	variant dispatch.VariantSpec,
 	paths []string,
 	recv string,
@@ -517,7 +472,6 @@ func literalUnionChecks(
 }
 
 func patternUnionChecks(
-	union dispatch.UnionSpec,
 	pattern dispatch.PatternVariantSpec,
 	paths []string,
 	recv string,
@@ -564,16 +518,19 @@ func objectChecks(rules []dispatch.ConditionalRule, recv string) []string {
 	var checks []string
 	for _, rule := range rules {
 		applies := conditionExpression(rule.When, recv)
+		conditional := len(rule.When) > 0
 		for _, field := range rule.Required {
-			checks = append(checks, fmt.Sprintf("requiredWhen(%s, %q, %s)", applies, field, recv))
+			if conditional {
+				checks = append(checks, fmt.Sprintf("requiredWhen(%s, %q, %s)", applies, field, recv))
+			} else {
+				checks = append(checks, fmt.Sprintf("required(%q, %s)", field, recv))
+			}
 		}
 		if len(rule.RequiredAny) > 0 {
-			checks = append(checks, fmt.Sprintf(
-				"requiredAnyWhen(%s, %s, %s)",
-				applies,
-				valueList(rule.RequiredAny),
-				recv,
-			))
+			if conditional {
+				panic("contractgen: a conditional requiredAny rule has no Go validator")
+			}
+			checks = append(checks, fmt.Sprintf("requiredAny(%s, %s)", valueList(rule.RequiredAny), recv))
 		}
 		for _, field := range rule.Forbidden {
 			checks = append(checks, fmt.Sprintf("forbiddenWhen(%s, %q, %s)", applies, field, recv))
@@ -617,10 +574,8 @@ func conditionExpression(conditions []delivery.FieldCondition, recv string) stri
 	return strings.Join(parts, " && ")
 }
 
-// stringExpr reads a field as a string. A named string type — a closed enum, an id —
-// needs the conversion, and a plain string must not have one: an identity conversion
-// is what the linter deletes, so emitting one everywhere would make the generated
-// file fail the check it is generated to pass.
+// An identity conversion on a plain string is what the linter deletes, so the
+// conversion is emitted only for named string types.
 func stringExpr(shape reflect.Type, selector string, leaf reflect.Type) string {
 	const builtinStringTypeName = "string"
 
@@ -642,8 +597,6 @@ func valueList(values []string) string {
 	return "[]string{" + strings.Join(quoted, ", ") + "}"
 }
 
-// valueConstraintsFor returns the declared constraints on one field of a shape,
-// so the schema walk can state the same rule with its corresponding keyword.
 func (s *schemaSet) valueConstraintsFor(owner reflect.Type, field string) []dispatch.FieldConstraint {
 	var out []dispatch.FieldConstraint
 	owners := append([]reflect.Type{owner}, protocol.WireEmbeds(owner)...)

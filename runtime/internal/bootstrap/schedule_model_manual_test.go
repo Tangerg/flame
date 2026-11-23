@@ -57,7 +57,7 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 		for _, definition := range request.Tools {
 			if definition.Name == modelName {
 				issued.Store(true)
-				call = chat.ToolCall{ID: "manual-schedule-call", Name: modelName, Arguments: `{"ID":"` + scheduleID + `"}`}
+				call = chat.ToolCall{ID: "manual-schedule-call", Name: modelName, Arguments: `{"id":"` + scheduleID + `"}`}
 			}
 		}
 		message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
@@ -88,7 +88,7 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 		t.Fatal("manual schedule tool was not published")
 	}
 	definition := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesDraft{Instructions: "Run the captured fixture once", Cron: "0 * * * *", TimeZone: "UTC", Enabled: false}), "manual-definition")
-	scheduleID = definition.ID
+	scheduleID = definition.Id
 	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Manual schedule caller"}, "manual-session").(*protocol.Session)
 	started := r.endpoint.Invoke(t.Context(), delivery.RunsStart, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Run this schedule once now."}}}, protocol.CallMetadata{IdempotencyKey: "manual-from-model", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if started.Failure != nil {
@@ -104,7 +104,7 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 		select {
 		case committed := <-opening:
 			child := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: committed.RunID}, "").(*protocol.RunRef)
-			accepted.RunID, accepted.SessionID = child.ID, child.SessionID
+			accepted.RunId, accepted.SessionId = child.ID, child.SessionID
 		default:
 			t.Fatal("unknown Tool did not retain the committed Runtime opening")
 		}
@@ -123,22 +123,22 @@ func scheduleModelManualRun(t *testing.T, lost bool) {
 			time.Sleep(10 * time.Millisecond)
 		}
 	} else {
-		if err := json.Unmarshal([]byte(receipt.Load().(string)), &accepted, json.RejectUnknownMembers(true)); err != nil || accepted.RunID == "" || accepted.SessionID == "" {
+		if err := json.Unmarshal([]byte(receipt.Load().(string)), &accepted, json.RejectUnknownMembers(true)); err != nil || accepted.RunId == "" || accepted.SessionId == "" {
 			root := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: started.Value.(*protocol.StartRunResponse).RunID}, "").(*protocol.RunRef)
 			encoded, _ := json.Marshal(root)
 			t.Fatalf("model did not receive original Run acceptance: %+v, %v; issued=%t exchanges=%d run=%s", accepted, err, issued.Load(), exchanges.Load(), encoded)
 		}
 	}
-	child := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunID}, "").(*protocol.RunRef)
-	if child.SessionID != accepted.SessionID || child.SessionID == session.ID {
+	child := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunId}, "").(*protocol.RunRef)
+	if child.SessionID != accepted.SessionId || child.SessionID == session.ID {
 		t.Fatalf("manual tool did not enter the existing new-Session owner: %+v", child)
 	}
-	createdSession := r.must(delivery.SessionsGet, protocol.GetSessionRequest{SessionID: accepted.SessionID}, "").(*protocol.Session)
+	createdSession := r.must(delivery.SessionsGet, protocol.GetSessionRequest{SessionID: accepted.SessionId}, "").(*protocol.Session)
 	if createdSession.Workspace.Ref.Path != session.Workspace.Ref.Path {
 		t.Fatalf("omitted schedule workspace did not use Runtime's default: %+v", createdSession)
 	}
 	page := readSchedulePage(r, protocol.PageQuery{})
-	if len(page.Data) != 1 || page.Data[0].ID != definition.ID || page.Data[0].LastRunAt == nil {
+	if len(page.Data) != 1 || page.Data[0].Id != definition.Id || page.Data[0].LastRunAt == nil {
 		t.Fatalf("manual acceptance failed to settle its private definition: %+v", page)
 	}
 }

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/models/alibaba"
@@ -65,8 +65,6 @@ func newClientSpec(connection modelprovider.Connection) (clientSpec, error) {
 type buildFunc func(context.Context, clientSpec, chat.Options) (chat.Model, error)
 
 const (
-	// These are gateway examples, not SDK defaults. Version-owning protocols
-	// append their API version after the supplied mount point.
 	gatewayRoot  = "https://gateway.example/model-service"
 	gatewayV1    = gatewayRoot + "/v1"
 	azureAPIPath = "/openai/v1"
@@ -74,14 +72,13 @@ const (
 )
 
 var (
-	anthropicMount = modelchoice.EndpointPolicy{Example: gatewayRoot, AppendsPath: "/v1"}
-	googleMount    = modelchoice.EndpointPolicy{Example: gatewayRoot, AppendsPath: "/v1beta"}
-	apiMount       = modelchoice.EndpointPolicy{Example: gatewayV1}
-	azureMount     = modelchoice.EndpointPolicy{Example: azureGateway, RequiredSuffix: azureAPIPath}
+	anthropicMount = flamemodel.EndpointPolicy{Example: gatewayRoot, AppendsPath: "/v1"}
+	googleMount    = flamemodel.EndpointPolicy{Example: gatewayRoot, AppendsPath: "/v1beta"}
+	apiMount       = flamemodel.EndpointPolicy{Example: gatewayV1}
+	azureMount     = flamemodel.EndpointPolicy{Example: azureGateway, RequiredSuffix: azureAPIPath}
 )
 
 var providers = mustProviderCatalog(
-	// Direct vendor wire adapters (base URL optional — defaults to the vendor endpoint).
 	bundledProvider(providerAnthropic, anthropicMount, defaultAnthropicModel, buildAnthropicModel),
 	bundledProvider(providerOpenAI, apiMount, defaultOpenAIModel, buildOpenAIResponsesModel).
 		withEmbedding(defaultOpenAIEmbeddingModel, buildOpenAIEmbeddingModel),
@@ -89,7 +86,6 @@ var providers = mustProviderCatalog(
 		return google.NewChat(ctx, google.ChatConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}).withEmbedding(google.ModelGeminiEmbedding2, buildGoogleEmbeddingModel),
 
-	// OpenAI-compatible vendors — each adapter encodes its own endpoint.
 	bundledProvider(providerMoonshot, apiMount, moonshot.ModelK3, func(ctx context.Context, s clientSpec, o chat.Options) (chat.Model, error) {
 		return moonshot.NewChatCompletions(ctx, moonshot.ChatCompletionsConfig{APIKey: s.connection.APIKey, DefaultOptions: o, BaseURL: s.connection.BaseURL, HTTPClient: s.httpClient})
 	}),
@@ -138,12 +134,10 @@ var providers = mustProviderCatalog(
 	endpointProvider(providerAzureOpenAI, azureMount, userEndpoint, buildAzureOpenAIModel).
 		withEmbedding("", buildAzureOpenAIEmbeddingModel),
 
-	// Generic bring-your-own-endpoint providers: direct adapter + caller URL.
 	endpointProvider(providerOpenAICompatible, apiMount, userEndpoint, buildOpenAICompatibleModel),
 	endpointProvider(providerAnthropicCompatible, anthropicMount, userEndpoint, buildAnthropicCompatibleModel),
 )
 
-// anthropicRequestFields are top-level Messages API fields Scope forwards verbatim.
 type anthropicRequestFields struct {
 	CacheControl anthropicCacheControl `json:"cache_control"`
 }
@@ -155,7 +149,6 @@ type anthropicCacheControl struct {
 const anthropicEphemeralCache = "ephemeral"
 
 func buildAnthropicModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
-	// A Scope extension default keeps cache opt-in under normal option precedence.
 	var defaults chat.Options
 	if err := defaults.Extensions.Set(anthropicprotocol.RequestExtensionKey, anthropicRequestFields{
 		CacheControl: anthropicCacheControl{Type: anthropicEphemeralCache},
@@ -189,8 +182,8 @@ func buildAnthropicCompatibleModel(ctx context.Context, spec clientSpec, opts ch
 	})
 }
 
-// singleAttempt sends each generation request once, so every provider attempt
-// reaches Flame's endpoint observation and accounting instead of an SDK retry.
+// One attempt per request so every provider attempt reaches Flame's endpoint
+// observation and accounting instead of an SDK retry.
 func singleAttempt() *int { return new(0) }
 
 func buildOpenAIResponsesModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
@@ -204,8 +197,6 @@ func buildOpenAIResponsesModel(ctx context.Context, spec clientSpec, opts chat.O
 }
 
 func buildAzureOpenAIModel(ctx context.Context, spec clientSpec, opts chat.Options) (chat.Model, error) {
-	// The resource catalog proves credential access. The deployment inventory
-	// owns the names used for generation.
 	return openaiprotocol.NewChatCompletions(ctx, openaiprotocol.ChatModelConfig{
 		APIKey:         spec.connection.APIKey,
 		DefaultOptions: opts,
@@ -233,7 +224,7 @@ func buildOpenAICompatibleModel(ctx context.Context, spec clientSpec, opts chat.
 }
 
 func buildModel(ctx context.Context, spec clientSpec, modelID string) (chat.Model, error) {
-	identity, err := modelchoice.NewModelIdentity(modelID)
+	identity, err := flamemodel.NewModelIdentity(modelID)
 	if err != nil {
 		return nil, err
 	}

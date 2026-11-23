@@ -47,7 +47,6 @@ func (l *sessionLifecycle) retireSessionContext() {
 	l.root.dismissModals()
 }
 
-// dismissModals closes every modal that belonged to the retired Session.
 func (a *app) dismissModals() {
 	a.prompts.dismiss()
 	a.confirm.dismiss()

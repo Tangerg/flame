@@ -428,7 +428,7 @@ soft wrapping from authored blank lines. Tests never mutate an exported seed to
 change a transport that has already captured it.
 
 The Memory fixture selects its recorded Project or User page from the explicit
-`flame.memory/list.v2` input scope. The two original Project records remain
+`flame.memory/list.v3` input scope. The two original Project records remain
 separate from the User record, including their IDs, revisions and source facts.
 Missing, unknown or malformed scopes refuse rather than displaying another
 target's page. Scope, edit/cancel and conversation-return checks use the same

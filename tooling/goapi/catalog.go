@@ -43,9 +43,18 @@ type publicGoFunction struct {
 	Signature string `json:"signature"`
 }
 
+type publicGoTypeKind string
+
+const (
+	publicGoAlias     publicGoTypeKind = "alias"
+	publicGoStruct    publicGoTypeKind = "struct"
+	publicGoInterface publicGoTypeKind = "interface"
+	publicGoDefined   publicGoTypeKind = "defined"
+)
+
 type publicGoType struct {
 	Name       string             `json:"name"`
-	Kind       string             `json:"kind"`
+	Kind       publicGoTypeKind   `json:"kind"`
 	Underlying string             `json:"underlying,omitempty"`
 	Fields     []publicGoField    `json:"fields,omitempty"`
 	Methods    []publicGoFunction `json:"methods,omitempty"`
@@ -118,7 +127,11 @@ func projectPublicGoPackage(pkg *packages.Package) (publicGoPackage, error) {
 		case *types.Func:
 			projection.Functions = append(projection.Functions, publicGoFunction{Name: value.Name(), Signature: typeString(value.Type())})
 		case *types.TypeName:
-			projection.Types = append(projection.Types, projectPublicGoType(value, typeString))
+			typeProjection, err := projectPublicGoType(value, typeString)
+			if err != nil {
+				return publicGoPackage{}, err
+			}
+			projection.Types = append(projection.Types, typeProjection)
 		}
 	}
 	for imported := range imports {
@@ -131,17 +144,20 @@ func projectPublicGoPackage(pkg *packages.Package) (publicGoPackage, error) {
 	return projection, nil
 }
 
-func projectPublicGoType(object *types.TypeName, typeString func(types.Type) string) publicGoType {
+func projectPublicGoType(object *types.TypeName, typeString func(types.Type) string) (publicGoType, error) {
 	projection := publicGoType{Name: object.Name()}
-	if object.IsAlias() {
-		projection.Kind = "alias"
-		projection.Underlying = typeString(object.Type().(*types.Alias).Rhs())
-		return projection
+	if alias, ok := object.Type().(*types.Alias); ok {
+		projection.Kind = publicGoAlias
+		projection.Underlying = typeString(alias.Rhs())
+		return projection, nil
 	}
-	named := object.Type().(*types.Named)
+	named, ok := object.Type().(*types.Named)
+	if !ok {
+		return publicGoType{}, fmt.Errorf("public type %s is %T, not a named type", object.Name(), object.Type())
+	}
 	switch underlying := named.Underlying().(type) {
 	case *types.Struct:
-		projection.Kind = "struct"
+		projection.Kind = publicGoStruct
 		for index := range underlying.NumFields() {
 			field := underlying.Field(index)
 			if !field.Exported() {
@@ -152,9 +168,9 @@ func projectPublicGoType(object *types.TypeName, typeString func(types.Type) str
 			})
 		}
 	case *types.Interface:
-		projection.Kind = "interface"
+		projection.Kind = publicGoInterface
 	default:
-		projection.Kind = "defined"
+		projection.Kind = publicGoDefined
 		projection.Underlying = typeString(underlying)
 	}
 
@@ -175,5 +191,5 @@ func projectPublicGoType(object *types.TypeName, typeString func(types.Type) str
 	slices.SortFunc(projection.Methods, func(left, right publicGoFunction) int {
 		return strings.Compare(left.Name, right.Name)
 	})
-	return projection
+	return projection, nil
 }

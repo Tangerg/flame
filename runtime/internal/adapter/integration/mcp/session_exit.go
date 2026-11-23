@@ -9,8 +9,6 @@ import (
 
 var errSessionEnded = errors.New("mcp: backend session ended")
 
-// Each observer belongs to one owned SDK session, including the interval before
-// publication. Shutdown first closes those sessions, then joins their observers.
 func (c *connections) observeSessionEnd(session *sdk.ClientSession, owned *ownedSession) {
 	defer c.observers.Done()
 	err := session.Wait()
@@ -23,7 +21,7 @@ func (c *connections) observeSessionEnd(session *sdk.ClientSession, owned *owned
 		if configured.session != session {
 			continue
 		}
-		configured.settle(nil, nil, mcpserver.ConnectionFailed, mcpserver.FailureConnection, errors.Join(errSessionEnded, err))
+		configured.markFailed(mcpserver.FailureConnection, errors.Join(errSessionEnded, err))
 		c.publishToolsLocked(configured.id)
 	}
 }

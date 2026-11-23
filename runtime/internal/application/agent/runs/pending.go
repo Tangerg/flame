@@ -14,51 +14,29 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// Pending is one complete Run-tree barrier awaiting human decisions. The set is
-// keyed by RootRunID and consumed all-or-nothing: individual member Runs do not
-// own separate resume claims. Interrupts names the Items awaiting answers;
-// Bindings connects each Item to the executor request it answers;
-// Continuations is the durable state required to reopen every surviving Run
-// with a fresh Segment, including after host restart. The parked Runs own
-// their Session, lineage, capabilities, and Goal incarnation, and the Items own
-// what was asked; a Pending names them and never restates those facts.
+// Consumed all-or-nothing: member Runs do not own separate resume claims.
 type Pending struct {
 	RootRunID     identity.RunID
 	ExecutorID    string
 	Interrupts    []OpenInterrupt
 	Bindings      []InterruptBinding
 	Continuations []Continuation
-	// CreatedAt orders open sets. It is the barrier commit time, not any one
-	// input request's creation time.
-	CreatedAt time.Time
+	CreatedAt     time.Time
 }
 
-// Continuation is the durable hand-off for one suspended Run. MemberID is the
-// opaque binding between that Run and its executor member; the
-// executor's parent/spawn topology remains inside its opaque checkpoint. The
-// Run's own lineage is the product's tree fact.
 type Continuation struct {
 	RunID        identity.RunID
 	MemberID     string
 	DrainedTools []DrainedTool
 }
 
-// InterruptBinding is the private correspondence between one published
-// interrupt Item and the executor input request that must receive its answer.
 type InterruptBinding struct {
 	InterruptItemID identity.ItemID
 	MemberID        string
 	RequestID       string
-	// ToolCallID is the stable executor call identity of an approval boundary. It is
-	// intentionally private continuation data: edited arguments may change the
-	// invocation replayed after approval, so neither name nor arguments can own
-	// the resumed ToolCall identity. Questions leave it empty because their
-	// underlying tool is already carried as a drained Tool.
-	ToolCallID string
-	// ToolRef and SourceFingerprint freeze the exact Tool authority an approval
-	// boundary was gated against, so a continuation can derive and strictly admit
-	// a remembered rule without inferring authority from a display name. Both are
-	// empty for a Question boundary.
+	// Edited arguments may change the replayed invocation, so neither name nor
+	// arguments can own the resumed ToolCall identity.
+	ToolCallID        string
 	ToolRef           tool.Ref
 	SourceFingerprint framevalue.Digest
 }
@@ -81,10 +59,6 @@ type pendingBindingValidator struct {
 	boundToolCalls   map[memberToolCallIdentity]struct{}
 }
 
-// InterruptAnswer is one validated decision bound to the exact executor
-// boundary that must consume it. InterruptItemID keeps the transcript item
-// identity attached until the execution-control boundary; MemberID and
-// RequestID prevents execution from guessing which parked branch it answers.
 type InterruptAnswer struct {
 	InterruptItemID identity.ItemID
 	MemberID        string
@@ -92,25 +66,17 @@ type InterruptAnswer struct {
 	Resolution      run.InterruptResolution
 }
 
-// OpenInterrupt is one Item a waiting tree awaits an answer for. The Item owns
-// the Run that raised it, its occurrence, and the Tool invocation or Question
-// asked; the hand-off owns only that the Item is open and, for an approval,
-// the policy's review.
 type OpenInterrupt struct {
-	ItemID identity.ItemID
-	// Approval is the policy's review when the Item is a ToolCall awaiting a
-	// verdict; nil when it is a Question Item awaiting answers.
+	ItemID   identity.ItemID
 	Approval *ApprovalReview
 }
 
-// ApprovalReview is the approval policy's explanation of one held Tool call.
 type ApprovalReview struct {
 	Risk         tool.RiskLevel
 	Reason       string
 	Rememberable bool
 }
 
-// Kind is the answer the open Item awaits.
 func (o OpenInterrupt) Type() run.InterruptType {
 	if o.Approval != nil {
 		return run.InterruptApproval
@@ -118,19 +84,12 @@ func (o OpenInterrupt) Type() run.InterruptType {
 	return run.InterruptQuestion
 }
 
-// DrainedTool binds one Tool Item that was still open when its Run suspended
-// to the executor call that will re-fire it, so the continuation reuses the
-// original Item instead of minting a duplicate. The Item owns its occurrence
-// and invocation.
 type DrainedTool struct {
-	ItemID identity.ItemID
-	CallID string
-	// SourceCallID is the provider ToolCall identity used by model-context results.
+	ItemID       identity.ItemID
+	CallID       string
 	SourceCallID string
 }
 
-// RootContinuation returns the root Run's hand-off. A valid Pending always has
-// exactly one.
 func (p Pending) RootContinuation() (Continuation, bool) {
 	for _, continuation := range p.Continuations {
 		if continuation.RunID == p.RootRunID {
@@ -140,7 +99,6 @@ func (p Pending) RootContinuation() (Continuation, bool) {
 	return Continuation{}, false
 }
 
-// Clone returns an ownership-isolated copy of the complete waiting hand-off.
 func (p Pending) Clone() Pending {
 	p.Interrupts = slices.Clone(p.Interrupts)
 	for index := range p.Interrupts {
@@ -157,9 +115,6 @@ func (p Pending) Clone() Pending {
 	return p
 }
 
-// Validate checks the complete tree hand-off. It deliberately validates both
-// directions of the item/input-request relation so accepting a response never
-// requires guessing which executor boundary it belongs to.
 func (p Pending) Validate() error {
 	if err := p.validateEnvelope(); err != nil {
 		return err
@@ -174,9 +129,6 @@ func (p Pending) Validate() error {
 	return p.validateBindings(interruptsByItem)
 }
 
-// ValidateForRoot verifies the complete hand-off and its exact requested root
-// Run identity. Point reads use it before stored continuation state can
-// influence a use case.
 func (p Pending) ValidateForRoot(expectedRootRunID identity.RunID) error {
 	if err := p.Validate(); err != nil {
 		return err
@@ -423,8 +375,6 @@ func (v *pendingBindingValidator) record(binding InterruptBinding) error {
 	return nil
 }
 
-// Validate checks one Run-to-member continuation and all of its transcript
-// hand-off identities independently of the root-owned Pending aggregate.
 func (c Continuation) Validate() error {
 	if err := c.validateRun(); err != nil {
 		return err

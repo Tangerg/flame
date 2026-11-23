@@ -1,5 +1,3 @@
-// Package pluginbrowser defines Flame's trusted browser composition boundary.
-// Frame owns admission and execution; Flame supplies component authoring policy.
 package pluginbrowser
 
 import (
@@ -41,8 +39,6 @@ type ComponentRequest struct {
 	Component    plugin.ContributionID
 }
 
-// Service is invoked by the trusted application client. A unit's callback grant
-// does not expose browser bootstrap or permission expansion through this port.
 type Service interface {
 	Open(context.Context, OpenRequest) (Session, error)
 	Acquire(context.Context, ComponentRequest) (framebrowser.UseGrant, error)

@@ -14,7 +14,7 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-func (s *SkillGovernance) Discover(ctx context.Context, candidates skilllearning.Candidates, capture *promptsource.SkillCapture) (skilllearning.Catalog, error) {
+func (s *SkillGovernance) Discover(ctx context.Context, candidates skilllearning.Candidates, capture *promptsource.SkillCapture) (_ skilllearning.Catalog, returned error) {
 	var zero skilllearning.Catalog
 	if capture != nil && capture.Restore {
 		if capture.Command == "" {
@@ -33,7 +33,7 @@ func (s *SkillGovernance) Discover(ctx context.Context, candidates skilllearning
 	if err != nil {
 		return zero, err
 	}
-	defer borrowed.Close()
+	defer func() { returned = errors.Join(returned, borrowed.Close()) }()
 	ctx = borrowed.Context()
 	if capture == nil {
 		method, err := skilllearning.DiscoverMethod()
@@ -63,6 +63,7 @@ func (s *SkillGovernance) Discover(ctx context.Context, candidates skilllearning
 	capture.Activation = record.Snapshot().Activation
 	return reply.value, nil
 }
+
 func (s *SkillGovernance) restoreCatalog(ctx context.Context, library string, capture *promptsource.SkillCapture) (skilllearning.Catalog, error) {
 	var zero skilllearning.Catalog
 	cmd, err := s.calls.routing.Get(ctx, capture.Command)
@@ -102,7 +103,9 @@ func admitSkillChoices(input skilllearning.Candidates, output skilllearning.Cata
 	}
 	seen := make(map[string]bool, len(output.Entries))
 	for _, choice := range output.Entries {
-		if seen[choice.Name] || (!allowed[choice] && !(choice.Source == "" && counts[choice.Name] > 1)) {
+		// An unsourced choice may name a skill that several sources share.
+		ambiguousName := choice.Source == "" && counts[choice.Name] > 1
+		if seen[choice.Name] || (!allowed[choice] && !ambiguousName) {
 			return plugin.ErrInvalid
 		}
 		seen[choice.Name] = true

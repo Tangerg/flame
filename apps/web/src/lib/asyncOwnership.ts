@@ -48,7 +48,7 @@ export function settleBeforeAbort<T>(
   });
 }
 
-export type NextTaskSettlement<T> =
+type NextTaskSettlement<T> =
   { status: "fulfilled"; value: T } | { status: "rejected" } | { status: "pending" };
 
 export function settleWithinNextTask<T>(operation: Promise<T>): Promise<NextTaskSettlement<T>> {

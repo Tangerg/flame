@@ -43,6 +43,7 @@ func (s *InstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error)
 	})
 	return result, err
 }
+
 func (s *InstallationStore) Get(ctx context.Context, id identity.InstallationID) (plugin.Snapshot, bool, error) {
 	var result plugin.Snapshot
 	found := false
@@ -63,6 +64,7 @@ func (s *InstallationStore) Get(ctx context.Context, id identity.InstallationID)
 	}
 	return result, found, nil
 }
+
 func (s *InstallationStore) records(ctx context.Context, query string, args ...any) ([]plugin.Record, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]plugin.Record, error) {
 		rows, err := s.db.connection(ctx).QueryContext(ctx, query, args...)
@@ -96,6 +98,7 @@ func (s *InstallationStore) records(ctx context.Context, query string, args ...a
 		return result, rows.Err()
 	})
 }
+
 func (s *InstallationStore) installationValues(ctx context.Context, id string) (map[string]string, error) {
 	rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT input_id,value FROM plugin_installation_values WHERE installation_id=?`, id)
 	if err != nil {
@@ -171,9 +174,6 @@ func (s *InstallationStore) restore(ctx context.Context, record plugin.Record) (
 	})
 }
 
-// projectRecord writes only the Host's transaction-bound product index.
-// Server membership is the release catalog's, recorded with the
-// release, so the sources follow it and never a caller-supplied copy.
 func (s *InstallationStore) projectRecord(ctx context.Context, record plugin.Record) error {
 	id := record.ID.String()
 	var staged any
@@ -216,8 +216,6 @@ func (s *InstallationStore) projectRecord(ctx context.Context, record plugin.Rec
 	})
 }
 
-// Initialized records completion separately from the independently durable
-// installation operations. An interrupted bootstrap resumes the same identities.
 func (s *InstallationStore) Initialized(ctx context.Context) (bool, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) (bool, error) {
 		var initialized bool
@@ -225,6 +223,7 @@ func (s *InstallationStore) Initialized(ctx context.Context) (bool, error) {
 		return initialized, err
 	})
 }
+
 func (s *InstallationStore) MarkInitialized(ctx context.Context) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		_, err := s.db.connection(ctx).ExecContext(ctx, `INSERT INTO plugin_initialization(id) VALUES(1) ON CONFLICT(id) DO NOTHING`)
@@ -232,7 +231,6 @@ func (s *InstallationStore) MarkInitialized(ctx context.Context) error {
 	})
 }
 
-// Stage advances only Flame's proposed update, not the Host's selected release.
 func (s *InstallationStore) Stage(ctx context.Context, id identity.InstallationID, digest framevalue.Digest) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		if err := digest.Validate(); err != nil {

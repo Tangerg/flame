@@ -16,9 +16,6 @@ var (
 	ErrExecutionTreeWriterConflict = errors.New("runs: execution tree writer conflict")
 )
 
-// ExecutionTreeHead is the executor's opaque recovery cut. The expected writer
-// and digest fence replacements; sequence and commit identity distinguish
-// repeated content from a retry of the current acknowledged transition.
 type ExecutionTreeHead struct {
 	SessionID    identity.SessionID
 	RootID       string
@@ -46,14 +43,54 @@ func (u ExecutionTreeUpdate) Validate() error {
 	return nil
 }
 
+// Stores evaluate Admit inside the write that replaces the head, so two writers
+// cannot both advance from the same predecessor. A commit already recorded
+// under the update's id is accepted only as an identical replay.
+// ExecutionTreeObservation is what storage holds for an update's root. The zero
+// value is an absent tree with no recorded commit.
+type ExecutionTreeObservation struct {
+	current        ExecutionTreeHead
+	found          bool
+	recordedDigest string
+	recorded       bool
+}
+
+func ObservedExecutionTree(current ExecutionTreeHead) ExecutionTreeObservation {
+	return ExecutionTreeObservation{current: current, found: true}
+}
+
+func (o ExecutionTreeObservation) WithRecordedCommit(digest string) ExecutionTreeObservation {
+	o.recordedDigest, o.recorded = digest, true
+	return o
+}
+
+func (u ExecutionTreeUpdate) Admit(observed ExecutionTreeObservation) (replayed bool, err error) {
+	next := u.Head
+	current, found, recordedDigest, recorded := observed.current, observed.found, observed.recordedDigest, observed.recorded
+	if found && u.PreviousWriter == next.Writer && current.Writer != next.Writer {
+		return false, ErrExecutionTreeWriterConflict
+	}
+	if recorded {
+		if found && recordedDigest == next.CommitDigest && current.SameCommit(next) {
+			return true, nil
+		}
+		return false, ErrExecutionTreeCommitConflict
+	}
+	if current.Writer != u.PreviousWriter {
+		return false, ErrExecutionTreeWriterConflict
+	}
+	if current.Digest != u.PreviousDigest || next.Sequence == 0 || found && next.Sequence <= current.Sequence {
+		return false, ErrExecutionTreeCommitConflict
+	}
+	return false, nil
+}
+
 type ExecutionTreeStore interface {
 	ExecutionResultCommitted(context.Context, identity.SessionID, ResultPublication) (bool, error)
 	LoadExecutionTree(context.Context, identity.SessionID, string) (ExecutionTreeHead, bool, error)
 	SaveExecutionTree(context.Context, ExecutionTreeUpdate) error
 }
 
-// ExecutionTreeSettled commits the recovery head and its newly known product
-// facts together. A receipt authorizes Scope to advance; a projection event does not.
 type ExecutionTreeSettled struct {
 	Context          *ExecutorCheckpoint
 	InputAcceptances []CommandAcceptance
@@ -63,8 +100,6 @@ type ExecutionTreeSettled struct {
 	Facts    []ExecutorEvent
 }
 
-// AdvancesHeadOnly reports a settlement that carries no product fact: the
-// executor tree head moves without a product transaction.
 func (e ExecutionTreeSettled) AdvancesHeadOnly() bool {
 	return len(e.Facts) == 0 && len(e.Children) == 0 && e.Context == nil && len(e.InputAcceptances) == 0
 }
@@ -74,8 +109,6 @@ type ChildRunPublication struct {
 	Outcome ChildRunStartOutcome
 }
 
-// Child admission, settled results and Run terminals commit with the executor
-// cut that proves them.
 type ExecutionTreeCommit struct {
 	Context          *ExecutorCheckpoint
 	InputAcceptances []CommandAcceptance

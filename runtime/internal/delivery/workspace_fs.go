@@ -9,8 +9,6 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
 
-// ListWorkspaceFiles projects a paged application workspace-file listing onto
-// the wire contract.
 func (s *Handler) ListWorkspaceFiles(ctx context.Context, in protocol.ListFilesRequest) (*protocol.FileListPage, error) {
 	limit, err := pagination.ParseLimit(in.Limit)
 	if err != nil {
@@ -58,7 +56,6 @@ func presentFileEntryType(kind workspaceapp.FileEntryKind) (protocol.FileEntryTy
 	}
 }
 
-// ReadWorkspaceFile maps the application file read onto the protocol response.
 func (s *Handler) ReadWorkspaceFile(ctx context.Context, in protocol.ReadFileRequest) (*protocol.FileContent, error) {
 	lineRange, err := fileLineRangeFromWire(in.StartLine, in.EndLine)
 	if err != nil {
@@ -88,7 +85,6 @@ func (s *Handler) ReadWorkspaceFile(ctx context.Context, in protocol.ReadFileReq
 	return out, nil
 }
 
-// GrepWorkspace maps the application content search onto the protocol result.
 func (s *Handler) GrepWorkspace(ctx context.Context, in protocol.GrepRequest) (*protocol.GrepResult, error) {
 	limit := workspaceapp.DefaultGrepResultLimit()
 	if in.Limit != nil {

@@ -1,7 +1,5 @@
 package wiregen
 
-// refPrefix is where a reusable definition lives inside the bundle. Request
-// projections rewrite object references to their closed receiving context.
 const RefPrefix = "#/$defs/"
 
 type SchemaType string
@@ -16,11 +14,7 @@ const (
 	SchemaTypeString  SchemaType = "string"
 )
 
-// schema is a JSON Schema node, holding only the keywords this contract needs.
-//
-// Properties values are `any` because a forbidden field is the boolean schema
-// `false` — the one keyword that says "this may not be present at all", which is
-// how a union variant excludes another variant's fields.
+// Property values are any because a forbidden field is the boolean schema false.
 type Schema struct {
 	Ref              string         `json:"$ref,omitempty"`
 	Type             SchemaType     `json:"type,omitempty"`

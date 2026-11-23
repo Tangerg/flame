@@ -5,10 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"slices"
 	"sync"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 	framecall "github.com/Tangerg/frame/call"
@@ -23,8 +24,8 @@ var (
 	ErrOutcomePending  = errors.New("operation outcome persistence is still pending")
 )
 
-// Completed results expire; an unresolved reservation cannot expire because
-// elapsed time does not prove whether its business mutation committed.
+// An unresolved reservation cannot expire: elapsed time does not prove whether its
+// business mutation committed.
 const ReplayRetention = 24 * time.Hour
 
 const replayWriteTimeout = 5 * time.Second
@@ -42,9 +43,7 @@ func (r ReplayRecord) Settled() bool { return len(r.Payload) != 0 || r.Refusal !
 type ReplayClaim struct {
 	Key         string
 	Fingerprint string
-	// RunID binds a deferred response to the original Run material so its
-	// recovery can settle the reservation if the writer is lost.
-	RunID identity.RunID
+	RunID       identity.RunID
 }
 
 type ReplayStore interface {
@@ -52,17 +51,10 @@ type ReplayStore interface {
 	Transact(context.Context, func(context.Context) error) error
 	// An existing claim never authorizes the business write to run again.
 	Claim(context.Context, ReplayClaim) (ReplayRecord, bool, error)
-	// StageSettlement retains the work that can be settled after the original
-	// business transaction commits.
 	StageSettlement(context.Context, ReplayRecord) error
-	// Complete advances a pending record or returns its already committed
-	// owner refusal. A lost claim cannot be recreated here.
 	Complete(context.Context, ReplayRecord) (ReplayRecord, error)
 }
 
-// Replay owns admission and receipt settlement for opaque operation results.
-// Delivery alone chooses their encoding. A known execution result stays with
-// this owner until durable completion is acknowledged, including during close.
 type Replay struct {
 	store     ReplayStore
 	inFlight  *keylock.Set
@@ -77,15 +69,10 @@ func NewReplay(store ReplayStore) (*Replay, error) {
 	return &Replay{store: store, inFlight: keylock.NewSet(), pending: make(map[string]ReplayRecord)}, nil
 }
 
-// Serialize holds a Run command through its opening acknowledgement. Its
-// acceptance transaction remains that command's durable result owner.
 func (r *Replay) Serialize(ctx context.Context, key string) (func(), error) {
 	return r.inFlight.Acquire(ctx, key)
 }
 
-// A recoverable command owns admission and settlement of its durable intent.
-// Only that intent can authorize adoption of a pending key. An admission
-// refusal can settle directly if no intent was ever accepted.
 func (r *Replay) InvokeRecoverable(ctx context.Context, key, fingerprint string, execute func() ([]byte, error), refuse func(error) ([]byte, error)) ([]byte, error) {
 	release, err := r.inFlight.Acquire(ctx, key)
 	if err != nil {
@@ -173,12 +160,8 @@ func (r *Replay) persistOutcome(ctx context.Context, record ReplayRecord) (Repla
 	return settled, nil
 }
 
-// Reply runs a use case's durable write and records the command's reply with
-// it, so the reply exists exactly when the write committed.
 type Reply[T any] func(ctx context.Context, write func(context.Context) (T, error)) error
 
-// AtomicCompletion is borrowed by one synchronous command. A failed write
-// remains retryable by its caller after the database rolls back both effects.
 type AtomicCompletion struct {
 	commit    func(context.Context, func(context.Context) ([]byte, error)) error
 	attempted bool
@@ -196,8 +179,6 @@ func (c *AtomicCompletion) Attempted() bool { return c.attempted }
 
 var errAtomicResultExists = errors.New("idempotency: another writer committed the outcome")
 
-// The command keeps its own admission through completion. Only its database
-// write and result encoding run in the receipt transaction.
 func (r *Replay) InvokeAtomic(ctx context.Context, key, fingerprint string, execute func(*AtomicCompletion) error) ([]byte, error) {
 	release, err := r.inFlight.Acquire(ctx, key)
 	if err != nil {
@@ -284,8 +265,6 @@ func (r *Replay) completeWithin(ctx context.Context, record ReplayRecord) (Repla
 	return r.store.Complete(writeContext, record)
 }
 
-// FlushPending runs after operation admission closes and its outcome producers
-// have joined. Failed settlements remain available to a later close.
 func (r *Replay) FlushPending(ctx context.Context) error {
 	if ctx == nil {
 		return errors.New("idempotency: flush context is required")

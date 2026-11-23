@@ -23,6 +23,7 @@ type methodMeta struct {
 }
 
 func lookupMethod(name string) (methodMeta, bool) { meta, ok := methodMetadata[name]; return meta, ok }
+
 func (m methodMeta) decodeResult(encoded []byte) (any, error) {
 	if m.ResultNullable && bytes.Equal(bytes.TrimSpace(encoded), []byte("null")) {
 		return reflect.Zero(m.Result).Interface(), nil
@@ -34,7 +35,6 @@ func (m methodMeta) decodeResult(encoded []byte) (any, error) {
 	return target.Elem().Interface(), nil
 }
 
-// methodKind is how a Runtime method delivers its result.
 type methodKind uint8
 
 const (
@@ -42,8 +42,6 @@ const (
 	streamMethod
 )
 
-// operation is what a call means; an extension call takes its meaning from
-// the plugin method it invokes.
 type operation uint8
 
 const (
@@ -63,9 +61,6 @@ func invocationOperation(meta methodMeta, request any) (operation, error) {
 	}
 	kind, err := plugincontract.MethodKindFor([]byte(call.Contract), call.Method)
 	if err != nil {
-		// A malformed contract or an undeclared method is a caller error; project
-		// it to the public invalid_params identity the local handler also uses,
-		// before any transport, so errors.Is/As stay recognizable to callers.
 		return 0, protocol.InvalidParameters(err)
 	}
 	if kind == frame.Command {

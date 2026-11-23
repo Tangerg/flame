@@ -172,7 +172,6 @@ type AgentActivityDisclosureProps = Omit<ComponentPropsWithoutRef<"div">, "child
     label: ReactNode;
     detail?: ReactNode;
     detailPlacement?: "inline" | "below";
-    // A glimpse of the shut body; it sits beside the toggle so changing text never renames the control.
     preview?: ReactNode;
     trailing?: ReactNode;
     actions?: ReactNode;

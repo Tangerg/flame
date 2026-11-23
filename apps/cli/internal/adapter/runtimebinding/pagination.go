@@ -7,14 +7,10 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// maximumPaginationCursorBytes projects the Runtime-owned public contract into
-// the CLI adapter. Pagination cursors are ASCII, so characters and bytes are the
-// same unit here; the CLI never owns a second numeric ceiling.
 const maximumPaginationCursorBytes = protocol.MaximumPaginationCursorCharacters
 
-// requireCompletePage protects adapters for list operations whose request has
-// no continuation cursor. Accepting NextCursor there would silently truncate
-// the CLI projection because the runtime offers no way to fetch the remainder.
+// These requests have no continuation cursor, so accepting NextCursor would
+// silently truncate the projection.
 func requireCompletePage[T any](operation string, page *protocol.Page[T]) ([]T, error) {
 	if page == nil {
 		return nil, runtimeContractViolation("%s returned a nil page", operation)
@@ -25,9 +21,6 @@ func requireCompletePage[T any](operation string, page *protocol.Page[T]) ([]T, 
 	return page.Data, nil
 }
 
-// projectUniqueValues projects and identity-checks one complete catalog. The
-// operation returns no partial list: an unprojectable or repeated row makes the
-// whole Runtime response a contract violation.
 func projectUniqueValues[Source any, Target any](
 	operation string,
 	values []Source,
@@ -39,8 +32,6 @@ func projectUniqueValues[Source any, Target any](
 	}, identity)
 }
 
-// projectUniqueValuesFallible is the variant for projections whose wire union
-// carries a variant the CLI cannot present.
 func projectUniqueValuesFallible[Source any, Target any](
 	operation string,
 	values []Source,
@@ -147,9 +138,6 @@ func validateContinuationCursor(operation, request, next string) error {
 	return nil
 }
 
-// protocolPositiveInt owns pointer-backed optional-positive wire construction.
-// Callers decide presence and units before reaching this boundary; this helper
-// only prevents an invalid non-positive value from being serialized as present.
 func protocolPositiveInt(value int) *int {
 	if value <= 0 {
 		panic("runtimebinding: protocol positive integer must be greater than zero")

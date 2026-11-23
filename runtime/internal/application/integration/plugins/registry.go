@@ -1,5 +1,3 @@
-// Package plugins owns installation admission and derives package contributions.
-// MCP connection lifetime and tool policy remain with their established owners.
 package plugins
 
 import (
@@ -29,16 +27,10 @@ type packageSources interface {
 	Server(context.Context, plugin.Installation, plugin.Release, mcpserver.ServerName, Reach) (mcpserver.Server, bool, error)
 }
 
-// Reach is how far a single-server read realizes an installation's release.
-// Each step adds to the one before it; user servers have no release to realize.
 type Reach uint8
 
 const (
-	// Declared projects desired configuration and standing policy without
-	// consulting package bytes, so it can never admit a dispatch.
 	Declared Reach = iota + 1
-	// Dispatchable requires verified release bytes and a realizable backend for
-	// the target server: the authority an admitted tool call rechecks.
 	Dispatchable
 )
 
@@ -47,8 +39,6 @@ type userServers interface {
 	Get(context.Context, mcpserver.ServerName) (mcpserver.Server, bool, error)
 }
 
-// Registry is the only MCP registry projection. Installation descriptors are
-// always derived from the installation owner; no editable server rows exist.
 type Registry struct {
 	framework     framehost.Host
 	user          userServers
@@ -76,11 +66,12 @@ func NewRegistry(host framehost.Host, installations Store, packages packageSourc
 	return &Registry{framework: host, installations: installations, packages: packages, selections: selections, compositions: compositions}, nil
 }
 
-// WithExternalDirectory adds the optional external connector after the installed-only planner exists.
-func (r Registry) WithExternalDirectory(user userServers) *Registry { r.user = user; return &r }
+func (r *Registry) WithExternalDirectory(user userServers) *Registry {
+	copied := *r
+	copied.user = user
+	return &copied
+}
 
-// ComponentPlan prepares one immutable component export in its target Realm.
-// The Host revalidates the plan before the browser receives execution authority.
 func (r *Registry) ComponentPlan(ctx context.Context, realm framehost.RealmID, id identity.InstallationID, digest framevalue.Digest, component plugin.ContributionID) (framehost.BindingPlan, error) {
 	snapshot, found, err := r.installations.Get(ctx, id)
 	if err != nil {
@@ -105,8 +96,6 @@ func (r *Registry) ComponentPlan(ctx context.Context, realm framehost.RealmID, i
 	})
 }
 
-// Definitions projects desired configuration without observing executable bytes
-// or backend availability. Connection admission and plugin inspection own those reads.
 func (r *Registry) Definitions(ctx context.Context) ([]mcpserver.Server, error) {
 	var result []mcpserver.Server
 	if r.user != nil {
@@ -131,9 +120,6 @@ func (r *Registry) Definitions(ctx context.Context) ([]mcpserver.Server, error) 
 	return result, nil
 }
 
-// resolve reads one source without acquiring launch resources. A user server is its
-// stored descriptor; an installation server is realized from the selected
-// release only as far as reach requires, and only for the requested server.
 func (r *Registry) resolve(ctx context.Context, id mcpserver.ID, reach Reach) (mcpserver.Server, bool, error) {
 	installationID, installed := id.Origin().Installation()
 	if !installed {
@@ -152,20 +138,14 @@ func (r *Registry) resolve(ctx context.Context, id mcpserver.ID, reach Reach) (m
 	return r.packages.Server(ctx, snapshot.Installation, snapshot.Selected, id.Name(), reach)
 }
 
-// Definition reads desired configuration and authority independently of executable
-// availability. It may describe standing policy, but cannot admit a dispatch.
 func (r *Registry) Definition(ctx context.Context, id mcpserver.ID) (mcpserver.Server, bool, error) {
 	return r.resolve(ctx, id, Declared)
 }
 
-// Dispatchable reads the current executable authority an admitted call must
-// still hold.
 func (r *Registry) Dispatchable(ctx context.Context, id mcpserver.ID) (mcpserver.Server, bool, error) {
 	return r.resolve(ctx, id, Dispatchable)
 }
 
-// BackendPlan captures consumer choices once for Frame admission of the complete
-// exact Unit graph, including an entry with no public export.
 func (r *Registry) BackendPlan(ctx context.Context, id mcpserver.ID) (framehost.BindingPlan, error) {
 	installationID, installed := id.Origin().Installation()
 	if !installed {
@@ -192,8 +172,6 @@ func (r *Registry) BackendPlan(ctx context.Context, id mcpserver.ID) (framehost.
 	return catalog.plan(ctx, r.framework, root, id.Name())
 }
 
-// Connection supplies ordinary user-owned MCP configuration. Installed Units
-// are materialized only through BackendPlan and Frame's execution profiles.
 func (r *Registry) Connection(ctx context.Context, id mcpserver.ID) (mcpapp.Launch, error) {
 	if _, installed := id.Origin().Installation(); installed {
 		return mcpapp.Launch{}, fmt.Errorf("%w: installed backend requires an approved Frame Use", plugin.ErrInvalid)

@@ -82,7 +82,6 @@ func TestModelRouterInstalledPolicyBindsNewRunWithoutRewritingSessionOrAcceptedR
 	}
 }
 
-// The provider binds identity during construction; request options may omit it.
 type routerTestResolver struct {
 	modelProviderAdapters
 	calls *sync.Map
@@ -93,7 +92,7 @@ func (r routerTestResolver) OpenChat(_ context.Context, selection model.Selectio
 		r.calls.Store(selection, true)
 		return completedTextResponse("routed"), nil
 	})}
-	return modeladapter.NewResolvedChat(provider, nil, nil)
+	return testsupport.OfflineChat(provider, nil, nil, testsupport.Unpriced())
 }
 
 func (r routerTestResolver) RestoreChat(ctx context.Context, selection model.Selection, _ *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error) {

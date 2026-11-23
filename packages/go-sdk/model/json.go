@@ -6,7 +6,6 @@ import (
 	"fmt"
 )
 
-// Schema emission and presence-aware decoding share the same closed field set.
 type selectionJSON[T any] struct {
 	Model           T `json:"model"`
 	Provider        T `json:"provider"`
@@ -16,6 +15,7 @@ type selectionJSON[T any] struct {
 func (s Selection) MarshalJSON() ([]byte, error) {
 	return json.Marshal(selectionJSON[string]{Provider: s.Provider(), Model: s.Model(), ReasoningEffort: s.ReasoningEffort()}, json.Deterministic(true))
 }
+
 func (s *Selection) UnmarshalJSON(data []byte) error {
 	var encoded selectionJSON[*string]
 	if bytes.Equal(bytes.TrimSpace(data), []byte("null")) {

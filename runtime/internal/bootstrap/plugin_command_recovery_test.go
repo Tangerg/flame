@@ -10,10 +10,11 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 )
 
 func TestMissingOwnerReceiptNeverResubmitsAnUnconfirmedCommand(t *testing.T) {
-	source, _ := managedMessageLossPackage(t, "memory", "flame.memory/add.v2", "request")
+	source, _ := managedMessageLossPackage(t, "memory", "flame.memory/add.v3", "request")
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	installed := poMCPActivate(r, source)
@@ -51,7 +52,7 @@ func reopenPluginStores(t *testing.T, cfg *assemblyConfig) {
 	if err := cfg.stores.Close(); err != nil {
 		t.Fatal(err)
 	}
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: directory})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: directory, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}

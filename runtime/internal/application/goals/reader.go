@@ -10,12 +10,10 @@ import (
 	"github.com/samber/lo"
 )
 
-// Reader exposes current Goal state without persistence or mutation operations.
 type Reader struct {
 	goals Store
 }
 
-// NewReader constructs the read boundary over the required Goal store.
 func NewReader(store Store) (*Reader, error) {
 	if lo.IsNil(store) {
 		return nil, errors.New("goals: reader store is required")
@@ -23,7 +21,6 @@ func NewReader(store Store) (*Reader, error) {
 	return &Reader{goals: store}, nil
 }
 
-// Current returns the session's current Goal.
 func (r *Reader) Current(ctx context.Context, sessionID identity.SessionID) (goal.Goal, bool, error) {
 	return loadGoal(ctx, r.goals, sessionID)
 }

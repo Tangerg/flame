@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	sdkplugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -22,8 +21,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 
 	framevalue "github.com/Tangerg/frame/value"
-	sdk "github.com/Tangerg/scope/skills"
+	skillspec "github.com/Tangerg/scope/skills"
 )
+
+const jsonNull = "null"
 
 const manifestSchema = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
 const MCPSchema = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
@@ -36,14 +37,10 @@ func parse(ctx context.Context, root *os.Root, digest framevalue.Digest) (plugin
 	return builder.Release(digest)
 }
 
-// extensionsMember carries the Flame declaration inside the portable manifest.
 const extensionsMember = "extensions"
 
 var authorFields = []string{"name", "email", "url"}
 
-// manifestMemberRule is the portable manifest envelope: the rule each known
-// member satisfies. Other members are reported as diagnostics; they never
-// reject the package.
 func manifestMemberRule(key string) (func(jsontext.Value) error, bool) {
 	switch key {
 	case "$schema", "name", "version", "description", "homepage", "repository", "license":
@@ -91,7 +88,7 @@ func validateAuthor(raw jsontext.Value) error {
 
 func requireText(raw jsontext.Value, kind, name string) error {
 	var text string
-	if string(raw) == "null" {
+	if string(raw) == jsonNull {
 		return fmt.Errorf("%w: invalid %s %q", plugin.ErrInvalid, kind, name)
 	}
 	if err := json.Unmarshal(raw, &text); err != nil {
@@ -100,8 +97,6 @@ func requireText(raw jsontext.Value, kind, name string) error {
 	return nil
 }
 
-// admitManifestFields validates every known top-level field and reports each
-// unknown one as a diagnostic rather than a refusal.
 func admitManifestFields(body []byte) (map[string]jsontext.Value, []plugin.Diagnostic, error) {
 	var envelope map[string]jsontext.Value
 	if err := json.Unmarshal(body, &envelope); err != nil {
@@ -196,73 +191,109 @@ func admitManagedBackends(raw jsontext.Value, release *plugin.Builder, root *os.
 	return nil
 }
 
+const (
+	protocolMember        = "protocol"
+	managedBackendsMember = "managedBackends"
+	contributesMember     = "contributes"
+)
+
+// Each entry is the only reference to its member name, so the accepted member set is exactly the
+// admitted set and a diagnostic names the member it admits.
+type declarationMember struct {
+	name  string
+	admit func(raw jsontext.Value)
+}
+
+func contributionMember[T any](release *plugin.Builder, kind plugin.ComponentKind, name string, admit func(T) error) declarationMember {
+	return declarationMember{name: name, admit: func(raw jsontext.Value) {
+		admitContributions(raw, release, plugin.Component{Kind: kind, Name: name}, admit)
+	}}
+}
+
 func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Context, root *os.Root, nativeServers []string) error {
 	resources := declarationResources{root: root}
-	members, found := loadDeclaration(ctx, raw, release, resources)
+	contributions := []declarationMember{
+		contributionMember(release, plugin.ComponentContribution, "contributions", func(w wireContribution) error {
+			value, err := resources.contribution(ctx, w)
+			if err != nil {
+				return err
+			}
+			return release.AdmitContribution(value)
+		}),
+		contributionMember(release, plugin.ComponentContribution, "points", func(w wirePoint) error {
+			contract, err := resources.point(ctx, w.Contract)
+			if err != nil {
+				return err
+			}
+			return release.AdmitPoint(plugin.Point{ID: w.ID, Contract: contract.Identity()})
+		}),
+		contributionMember(release, plugin.ComponentContribution, "pointValues", func(w wirePointValue) error {
+			contract, err := resources.point(ctx, w.Contract)
+			if err != nil {
+				return err
+			}
+			value, err := framevalue.ParseJSON(w.Value)
+			if err != nil {
+				return err
+			}
+			return release.AdmitPointValue(plugin.PointValue{ID: w.ID, Contract: contract.Identity(), Value: value})
+		}),
+		contributionMember(release, plugin.ComponentExtensionField, "inputs", func(w wireInput) error { return release.AdmitInput(w.domain()) }),
+		contributionMember(release, plugin.ComponentContribution, "components", func(w wireComponent) error {
+			component, err := resources.component(ctx, w)
+			if err != nil {
+				return err
+			}
+			return release.AdmitComponent(component)
+		}),
+		contributionMember(release, plugin.ComponentContribution, "terminalViews", func(w wireTerminalView) error {
+			view, err := w.domain()
+			if err != nil {
+				return err
+			}
+			return release.AdmitTerminalView(view)
+		}),
+	}
+	presentation := []declarationMember{
+		contributionMember(release, plugin.ComponentContribution, "locales", func(w wireLocale) error {
+			locale, err := resources.locale(ctx, w)
+			if err != nil {
+				return err
+			}
+			return release.AdmitLocale(locale)
+		}),
+		contributionMember(release, plugin.ComponentContribution, "themes", func(w wireTheme) error {
+			theme, err := w.domain()
+			if err != nil {
+				return err
+			}
+			return release.AdmitTheme(theme)
+		}),
+	}
+	members, found := loadDeclaration(ctx, raw, release, resources, contributions)
 	if !found {
 		return nil
 	}
-	if raw, found := members["managedBackends"]; found {
+	if raw, found := members[managedBackendsMember]; found {
 		if err := admitManagedBackends(raw, release, root, nativeServers); err != nil {
 			return err
 		}
 	}
-	var contributes map[string]jsontext.Value
-	if raw := members["contributes"]; len(raw) != 0 {
-		if err := json.Unmarshal(raw, &contributes); err != nil || contributes == nil || !onlyFields(contributes, presentationFields) {
-			report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
-			return nil
-		}
+	contributes, ok := decodePresentation(members[contributesMember], presentation)
+	if !ok {
+		report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
+		return nil
 	}
-	admitContributions(members["contributions"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "contributions"}, func(w wireContribution) error {
-		value, err := resources.contribution(ctx, w)
-		if err != nil {
-			return err
-		}
-		return release.AdmitContribution(value)
-	})
-	admitContributions(members["points"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "points"}, func(w wirePoint) error {
-		contract, err := resources.point(ctx, w.Contract)
-		if err != nil {
-			return err
-		}
-		return release.AdmitPoint(plugin.Point{ID: w.ID, Contract: contract.Identity()})
-	})
-	admitContributions(members["pointValues"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "pointValues"}, func(w wirePointValue) error {
-		contract, err := resources.point(ctx, w.Contract)
-		if err != nil {
-			return err
-		}
-		value, err := framevalue.ParseJSON(w.Value)
-		if err != nil {
-			return err
-		}
-		return release.AdmitPointValue(plugin.PointValue{ID: w.ID, Contract: contract.Identity(), Value: value})
-	})
-	admitContributions(members["inputs"], release, plugin.Component{Kind: plugin.ComponentExtensionField, Name: "inputs"}, func(w wireInput) error { return release.AdmitInput(w.domain()) })
-	admitContributions(members["components"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "components"}, func(w wireComponent) error {
-		component, err := resources.component(ctx, w)
-		if err != nil {
-			return err
-		}
-		return release.AdmitComponent(component)
-	})
-	admitContributions(members["terminalViews"], release, plugin.Component{Kind: plugin.ComponentContribution, Name: "terminalViews"}, func(w wireTerminalView) error {
-		view, err := w.domain()
-		if err != nil {
-			return err
-		}
-		return release.AdmitTerminalView(view)
-	})
-	for _, component := range slices.Sorted(maps.Keys(contributes)) {
-		admitPresentation(ctx, release, resources, component, contributes[component])
+	for _, member := range contributions {
+		member.admit(members[member.name])
+	}
+	for _, member := range presentation {
+		member.admit(contributes[member.name])
 	}
 	return nil
 }
 
-// loadDeclaration reads the Flame namespace's declaration. An absent namespace
-// is not found; an invalid one is reported on the release and also not found.
-func loadDeclaration(ctx context.Context, raw jsontext.Value, release *plugin.Builder, resources declarationResources) (map[string]jsontext.Value, bool) {
+func loadDeclaration(ctx context.Context, raw jsontext.Value, release *plugin.Builder, resources declarationResources, contributions []declarationMember) (map[string]jsontext.Value, bool) {
 	var namespaces map[string]jsontext.Value
 	if err := json.Unmarshal(raw, &namespaces); err != nil || namespaces == nil {
 		report(release, plugin.Component{Kind: plugin.ComponentManifestField, Name: "extensions"}, plugin.DiagnosticInvalidDeclaration)
@@ -285,49 +316,36 @@ func loadDeclaration(ctx context.Context, raw jsontext.Value, release *plugin.Bu
 	if err == nil {
 		err = json.Unmarshal(body, &members)
 	}
-	if err != nil || members == nil || json.Unmarshal(members["protocol"], &requiredProtocol) != nil || requiredProtocol != sdkplugin.DeclarationProtocol || !onlyFields(members, declarationFields) {
+	if err != nil || members == nil || json.Unmarshal(members[protocolMember], &requiredProtocol) != nil || requiredProtocol != plugincontract.Protocol || !onlyMembers(members, contributions, protocolMember, managedBackendsMember, contributesMember) {
 		report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
 		return nil, false
 	}
 	return members, true
 }
 
-func onlyFields(members map[string]jsontext.Value, allowed []string) bool {
-	for field := range members {
-		if !slices.Contains(allowed, field) {
+// An absent contributes member is valid; a present one must be an object of declared members.
+func decodePresentation(raw jsontext.Value, presentation []declarationMember) (map[string]jsontext.Value, bool) {
+	if len(raw) == 0 {
+		return nil, true
+	}
+	var contributes map[string]jsontext.Value
+	if err := json.Unmarshal(raw, &contributes); err != nil || contributes == nil {
+		return nil, false
+	}
+	return contributes, onlyMembers(contributes, presentation)
+}
+
+func onlyMembers(members map[string]jsontext.Value, declared []declarationMember, fixed ...string) bool {
+	for name := range members {
+		if !slices.Contains(fixed, name) && !slices.ContainsFunc(declared, func(member declarationMember) bool { return member.name == name }) {
 			return false
 		}
 	}
 	return true
 }
 
-func admitPresentation(ctx context.Context, release *plugin.Builder, resources declarationResources, component string, raw jsontext.Value) {
-	scope := plugin.Component{Kind: plugin.ComponentContribution, Name: component}
-	switch component {
-	case "locales":
-		admitContributions(raw, release, scope, func(w wireLocale) error {
-			locale, err := resources.locale(ctx, w)
-			if err != nil {
-				return err
-			}
-			return release.AdmitLocale(locale)
-		})
-	case "themes":
-		admitContributions(raw, release, scope, func(w wireTheme) error {
-			theme, err := w.domain()
-			if err != nil {
-				return err
-			}
-			return release.AdmitTheme(theme)
-		})
-	default:
-		report(release, scope, plugin.DiagnosticUnsupportedContribution)
-	}
-}
-
 type declarationResources struct{ root *os.Root }
 
-// Declared resources live under the Flame namespace of the package root.
 func (r declarationResources) readWithin(ctx context.Context, resource string, limit int64) ([]byte, error) {
 	if !plugin.ValidResourcePath(resource) || !strings.HasPrefix(resource, plugin.Namespace+"/") {
 		return nil, plugin.ErrInvalid
@@ -376,7 +394,6 @@ func (r declarationResources) locale(ctx context.Context, w wireLocale) (plugin.
 	return plugin.Locale{Tag: w.Tag, Title: w.Title, Entry: w.Entry}, nil
 }
 
-// presentText admits an optional member that, when declared, is never empty.
 func presentText(value *string) (string, error) {
 	if value == nil {
 		return "", nil
@@ -432,8 +449,6 @@ func report(release *plugin.Builder, component plugin.Component, code plugin.Dia
 	release.Report(plugin.Diagnostic{Component: component, Code: code})
 }
 
-// admitContributions isolates each invalid member of one component. A member
-// that decodes is validated once, against the members admitted before it.
 func admitContributions[T any](raw jsontext.Value, release *plugin.Builder, component plugin.Component, admit func(T) error) {
 	if len(raw) == 0 {
 		return
@@ -460,9 +475,6 @@ func admitContributions[T any](raw jsontext.Value, release *plugin.Builder, comp
 	}
 }
 
-// admission names the diagnostic for a builder's refusal. Capacity belongs to
-// the builder alone: the first member it refuses for capacity ends the
-// component, so the remaining members are reported once rather than each.
 func admission(err error) (plugin.DiagnosticCode, bool) {
 	if err == nil {
 		return "", true
@@ -514,8 +526,6 @@ func parseMCP(ctx context.Context, root *os.Root, release *plugin.Builder) ([]st
 	return names, nil
 }
 
-// requirePackagedServer refuses the whole release for a server it cannot
-// launch from its own files; remote MCP belongs to the host registry.
 func requirePackagedServer(name string, server plugin.Server) error {
 	if server.Transport() != mcpserver.TransportStdio {
 		return fmt.Errorf("%w: installed server %q requires a packaged process; configure remote MCP through the host registry", plugin.ErrInvalid, name)
@@ -533,8 +543,6 @@ func admitPackagedServer(root *os.Root, release *plugin.Builder, server plugin.S
 	return release.AdmitServer(server)
 }
 
-// reportServerAdmission records a refused server and reports whether the
-// release reached its MCP component limit, which ends server admission.
 func reportServerAdmission(release *plugin.Builder, name string, err error) bool {
 	code, admitted := admission(err)
 	switch {
@@ -549,8 +557,6 @@ func reportServerAdmission(release *plugin.Builder, name string, err error) bool
 	}
 }
 
-// portableServer is the only translation from a portable mcp.json declaration
-// into the MCP registry vocabulary the release declares.
 func portableServer(name string, raw jsontext.Value) (plugin.Server, error) {
 	var wire struct {
 		Type    mcpserver.Transport `json:"type"`
@@ -592,8 +598,6 @@ func portableServer(name string, raw jsontext.Value) (plugin.Server, error) {
 	return server, nil
 }
 
-// inspectServerFiles requires a package-relative command and working
-// directory to exist in the exact bytes being admitted.
 func inspectServerFiles(root *os.Root, s plugin.Server) error {
 	packaged, found := s.PackagedCommand()
 	if managed, ok := s.Startup.(plugin.ManagedBackend); ok {
@@ -632,7 +636,7 @@ func parseSkills(ctx context.Context, root *os.Root, release *plugin.Builder) er
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return err
 	}
-	dir, err := fs.ReadDir(root.FS(), "skills")
+	dir, err := fs.ReadDir(root.FS(), skillsDirectory)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
@@ -647,7 +651,7 @@ func parseSkills(ctx context.Context, root *os.Root, release *plugin.Builder) er
 		if !entry.IsDir() {
 			continue
 		}
-		content, err := read(ctx, root, path.Join("skills", entry.Name(), sdk.SkillFile), domainskills.MaxAuthoredSkillDocumentBytes)
+		content, err := read(ctx, root, path.Join(skillsDirectory, entry.Name(), skillspec.SkillFile), domainskills.MaxAuthoredSkillDocumentBytes)
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}

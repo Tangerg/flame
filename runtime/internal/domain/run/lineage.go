@@ -7,27 +7,14 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-// ErrInvalidLineage reports a Run whose root/child identity is incomplete or
-// self-referential. Relationships to other Runs and Items are aggregate
-// invariants checked by the tree transaction; this value owns the frame-local
-// shape that every layer can validate without I/O.
 var ErrInvalidLineage = errors.New("run: invalid lineage")
 
-// Lineage is the immutable identity edge set of a Run.
-//
-// A root has the zero value. A child carries all three edges: the parent Run is
-// the direct topology edge, the root Run is the tree control/stream scope, and
-// the spawning Item anchors the child to the parent tool-call Item. The edges are
-// unexported so a half-built child cannot be constructed outside [NewLineage].
 type Lineage struct {
 	spawnedByItemID identity.ItemID
 	parentRunID     identity.RunID
 	rootRunID       identity.RunID
 }
 
-// NewLineage builds a lineage from its edges: all empty for a root, all present
-// for a child. Whether a child names itself is a rule of the Run that carries it,
-// checked by [Lineage.Validate].
 func NewLineage(spawnedByItemID identity.ItemID, parentRunID, rootRunID identity.RunID) (Lineage, error) {
 	lineage := Lineage{spawnedByItemID: spawnedByItemID, parentRunID: parentRunID, rootRunID: rootRunID}
 	if err := lineage.validateShape(); err != nil {
@@ -36,19 +23,15 @@ func NewLineage(spawnedByItemID identity.ItemID, parentRunID, rootRunID identity
 	return lineage, nil
 }
 
-// SpawnedByItemID returns the parent tool-call Item of a child, or "" for a root.
 func (l Lineage) SpawnedByItemID() identity.ItemID { return l.spawnedByItemID }
 
-// ParentRunID returns the direct parent of a child, or "" for a root.
 func (l Lineage) ParentRunID() identity.RunID { return l.parentRunID }
 
-// RootRunID returns the tree root of a child, or "" for a root.
 func (l Lineage) RootRunID() identity.RunID { return l.rootRunID }
 
-// Validate reports whether l is a root or child shape that does not name runID.
 func (l Lineage) Validate(runID identity.RunID) error {
 	if err := runID.Validate(); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidLineage, err)
+		return fmt.Errorf("%w: %w", ErrInvalidLineage, err)
 	}
 	if err := l.validateShape(); err != nil {
 		return err
@@ -73,29 +56,25 @@ func (l Lineage) validateShape() error {
 		return fmt.Errorf("%w: a child requires spawnedByItemId, parentRunId, and rootRunId together", ErrInvalidLineage)
 	}
 	if err := l.spawnedByItemID.Validate(); err != nil {
-		return fmt.Errorf("%w: spawned-by %v", ErrInvalidLineage, err)
+		return fmt.Errorf("%w: spawned-by %w", ErrInvalidLineage, err)
 	}
 	if err := l.parentRunID.Validate(); err != nil {
-		return fmt.Errorf("%w: parent %v", ErrInvalidLineage, err)
+		return fmt.Errorf("%w: parent %w", ErrInvalidLineage, err)
 	}
 	if err := l.rootRunID.Validate(); err != nil {
-		return fmt.Errorf("%w: root %v", ErrInvalidLineage, err)
+		return fmt.Errorf("%w: root %w", ErrInvalidLineage, err)
 	}
 	return nil
 }
 
-// IsRoot reports whether l has the root shape.
 func (l Lineage) IsRoot() bool {
 	return l == Lineage{}
 }
 
-// IsChild reports whether l has the complete child shape.
 func (l Lineage) IsChild() bool {
 	return !l.spawnedByItemID.IsZero() && !l.parentRunID.IsZero() && !l.rootRunID.IsZero()
 }
 
-// TreeRootID returns the root Run that owns the tree. Callers validate l
-// before relying on the result.
 func (l Lineage) TreeRootID(runID identity.RunID) identity.RunID {
 	if l.IsRoot() {
 		return runID
@@ -103,8 +82,6 @@ func (l Lineage) TreeRootID(runID identity.RunID) identity.RunID {
 	return l.rootRunID
 }
 
-// MessageMark is the conversation watermark a Run on this lineage records when
-// its tree ends at treeMark: the root records it, and a child records none.
 func (l Lineage) MessageMark(treeMark int) MessageMark {
 	if l.IsChild() {
 		return UnknownMessageMark()

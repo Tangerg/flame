@@ -22,8 +22,6 @@ func (c *connections) toolListChanged(_ context.Context, request *sdk.ToolListCh
 	}
 }
 
-// Notification versions invalidate captured catalogs before any refresh I/O.
-// Each session has one worker; a later notification discards an older result.
 func (c *connections) watchToolChangesLocked(session *sdk.ClientSession, owned *ownedSession, config ServerConfig, publishedVersion uint64) {
 	ctx, cancel := context.WithCancel(c.lifetime)
 	owned.cancelTools = cancel
@@ -64,13 +62,13 @@ func (c *connections) watchToolChanges(ctx context.Context, session *sdk.ClientS
 			continue
 		}
 		if err != nil {
-			target.settle(nil, nil, mcpserver.ConnectionFailed, mcpserver.FailureToolDiscovery, err)
+			target.markFailed(mcpserver.FailureToolDiscovery, err)
 			c.retireSessionLocked(session)
 		} else {
 			for index := range tools {
 				tools[index].catalogVersion = version
 			}
-			target.settle(session, tools, mcpserver.ConnectionConnected, "", nil)
+			target.markConnected(session, tools)
 			publishedVersion = version
 		}
 		c.publishToolsLocked(config.ID())
@@ -81,8 +79,6 @@ func (c *connections) watchToolChanges(ctx context.Context, session *sdk.ClientS
 	}
 }
 
-// toolWatchTargetLocked reports whether the watched session still serves its
-// server. A replaced, closing, or retired session stops watching.
 func (c *connections) toolWatchTargetLocked(id mcpserver.ID, session *sdk.ClientSession, owned *ownedSession) (*server, bool) {
 	target := c.find(id)
 	if c.closed || target == nil || target.session != session || c.sessions[session] != owned || owned.close != nil {

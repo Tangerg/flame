@@ -8,13 +8,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 )
 
-// Store returns restored Domain values. Get addresses the exact Session; List
-// contains each Session once. Decoding and row integrity belong to the store.
 type Store interface {
 	Get(ctx context.Context, sessionID identity.SessionID) (goal.Current, error)
-	// Save executes one domain-decided exact durable replacement. Persistence
-	// never assigns or rewrites Goal identity.
-	// A lost compare-and-swap returns applied=false.
 	Save(ctx context.Context, replacement goal.Replacement) (applied bool, err error)
 	ClearIf(ctx context.Context, sessionID identity.SessionID, expected goal.Version) (applied bool, err error)
 	List(ctx context.Context) ([]goal.Goal, error)

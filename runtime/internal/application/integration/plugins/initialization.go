@@ -23,8 +23,6 @@ type DefaultProvider struct {
 	Role, Package, Contribution string
 }
 
-// Initialize commits the distribution catalog and configured provider choices
-// once. Installation and composition owners advance their own facts thereafter.
 func Initialize(ctx context.Context, host framehost.Host, store initializationStore, packages packages, sources func() ([]string, error), selections SelectionStore, defaults []DefaultProvider) error {
 	if !host.Valid() {
 		return plugin.ErrInvalid
@@ -49,8 +47,6 @@ func Initialize(ctx context.Context, host framehost.Host, store initializationSt
 	return store.MarkInitialized(ctx)
 }
 
-// Preflight holds the same immutable candidates through publication. Failure to
-// identify any source leaves existing installation decisions untouched.
 func installDistribution(ctx context.Context, host framehost.Host, store Store, packages packages, paths []string) (err error) {
 	distribution := make([]distributionCandidate, 0, len(paths))
 	defer func() {
@@ -103,8 +99,6 @@ func (entry distributionCandidate) install(ctx context.Context, host framehost.H
 	if err != nil {
 		return err
 	}
-	// Keep identifiable failed releases visible to installation inspection and repair.
-	// Only a release without admission findings can participate in default roles.
 	if len(release.Declaration().Diagnostics) == 0 {
 		installation, err = installation.Enable(release)
 		if err != nil {

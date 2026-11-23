@@ -1,6 +1,3 @@
-// Package provider owns model-provider identity, credential provenance,
-// endpoint configuration, and update semantics. Persistence, environment
-// lookup, model metadata, and client construction remain outside this package.
 package provider
 
 import (
@@ -10,7 +7,7 @@ import (
 	"unicode"
 
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/secret"
 )
 
@@ -23,8 +20,7 @@ var (
 	errChangeCorrupted = errors.New("provider: change is corrupted")
 )
 
-// APIKey is a validated opaque provider credential. It deliberately exposes
-// no String method so formatting a Provider cannot accidentally print a key.
+// No String method, so formatting a Provider cannot print a key.
 type APIKey struct {
 	value string
 }
@@ -41,9 +37,6 @@ func NewAPIKey(value string) (APIKey, error) {
 
 func (k APIKey) Present() bool { return k.value != "" }
 
-// Format makes every fmt verb a redaction boundary, including recursive %+v
-// and %#v formatting of Credential or Provider. Reveal remains the only API
-// that can expose the secret to an explicit consumer.
 func (k APIKey) Format(state fmt.State, _ rune) {
 	_, _ = state.Write([]byte(secret.Redacted))
 }
@@ -52,8 +45,6 @@ func (k APIKey) Format(state fmt.State, _ rune) {
 // project its result.
 func (k APIKey) Reveal() string { return k.value }
 
-// BaseURL is an optional validated provider endpoint. Its zero value means the
-// provider-owned default endpoint, rather than an empty-string convention.
 type BaseURL struct {
 	value string
 }
@@ -76,8 +67,6 @@ func NewBaseURL(value string) (BaseURL, error) {
 func (u BaseURL) Present() bool  { return u.value != "" }
 func (u BaseURL) String() string { return u.value }
 
-// KeySource is the closed set of credential origins. Credential absence is
-// represented by an unconfigured Credential, never by an empty KeySource.
 type KeySource string
 
 const (
@@ -85,8 +74,6 @@ const (
 	KeyEnvironment KeySource = "environment"
 )
 
-// Credential keeps the secret and its provenance inseparable. Its zero value
-// is the explicit unconfigured state.
 type Credential struct {
 	key    APIKey
 	source KeySource
@@ -124,10 +111,8 @@ func (c Credential) Source() (KeySource, bool) {
 	return c.source, true
 }
 
-// Provider is one registry entry. Its fields are private so invalid primitive
-// combinations cannot leak between the Domain, storage, protocol, and UI.
 type Provider struct {
-	id         modelchoice.ProviderIdentity
+	id         flamemodel.ProviderIdentity
 	credential Credential
 	baseURL    BaseURL
 }
@@ -146,14 +131,15 @@ func New(id string) (Provider, error) {
 	if strings.TrimSpace(id) == "" {
 		return Provider{}, errIDRequired
 	}
-	identity, err := modelchoice.NewProviderIdentity(id)
+	identity, err := flamemodel.NewProviderIdentity(id)
 	if err != nil {
-		return Provider{}, fmt.Errorf("%w: %v", errIDInvalid, err)
+		return Provider{}, fmt.Errorf("%w: %w", errIDInvalid, err)
 	}
 	return Provider{id: identity}, nil
 }
 
 func (p Provider) ID() string { return p.id.String() }
+
 func (p Provider) BaseURL() (BaseURL, bool) {
 	return p.baseURL, p.baseURL.Present()
 }
@@ -166,8 +152,6 @@ func (p Provider) APIKey() (APIKey, bool) {
 	return p.credential.APIKey()
 }
 
-// WithEnvironmentFallback supplies an environment credential only when no
-// stored credential exists. Stored credentials therefore win by construction.
 func (p Provider) WithEnvironmentFallback(key APIKey) Provider {
 	if p.credential.Configured() || !key.Present() {
 		return p
@@ -184,8 +168,6 @@ const (
 	changeClear
 )
 
-// Change models preserve, set, and clear as distinct states. This removes the
-// former pointer/empty-string convention from every update boundary.
 type Change[T any] struct {
 	kind  changeKind
 	value T
@@ -205,14 +187,15 @@ func (c Change[T]) Format(state fmt.State, _ rune) {
 }
 
 func Preserve[T any]() Change[T] { return Change[T]{} }
+
 func Set[T any](value T) Change[T] {
 	return Change[T]{kind: changeSet, value: value}
 }
+
 func Clear[T any]() Change[T] { return Change[T]{kind: changeClear} }
 
 func (c Change[T]) Empty() bool { return c.kind == changePreserve }
 
-// Resolve applies the change to current without exposing its internal tag.
 func (c Change[T]) Resolve(current T) (T, error) {
 	switch c.kind {
 	case changePreserve:
@@ -228,7 +211,6 @@ func (c Change[T]) Resolve(current T) (T, error) {
 	}
 }
 
-// Patch is an atomic partial update to persisted provider configuration.
 type Patch struct {
 	APIKey  Change[APIKey]
 	BaseURL Change[BaseURL]
@@ -249,9 +231,6 @@ func (p Patch) validate() error {
 	return nil
 }
 
-// Apply returns a new Provider with patch applied. Environment credentials are
-// intentionally converted to stored credentials only by an explicit key set;
-// the environment registry never persists its effective overlay.
 func (p Provider) Apply(patch Patch) (Provider, error) {
 	if err := patch.validate(); err != nil {
 		return Provider{}, err

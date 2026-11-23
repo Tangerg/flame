@@ -9,10 +9,9 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// auxiliaryTextRequest bounds the only model call a plugin callback may ask the
-// Runtime to make on its behalf: one system and one user text message, an
-// output cap and text output. Anything else could select tools, a model or
-// provider options the callback was never granted.
+// Anything beyond one system and one user text message, an output cap and text
+// output could select tools, a model or provider options the callback was never
+// granted.
 type auxiliaryTextRequest struct {
 	maxOutputTokens int64
 	maxInputBytes   int
@@ -41,9 +40,8 @@ func (a auxiliaryTextRequest) admits(request chat.Request) bool {
 	return len(request.Messages[0].Text())+len(request.Messages[1].Text()) <= a.maxInputBytes
 }
 
-// externalCallLedger fences each callback-requested external call before its
-// first I/O. Providers issue no receipt, so an identity is admitted once: a
-// repeat is refused rather than replayed, and the budget counts admissions.
+// Providers issue no receipt, so an identity is admitted once: a repeat is refused
+// rather than replayed.
 type externalCallLedger struct {
 	owner string
 	limit int

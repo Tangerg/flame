@@ -9,8 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 )
 
-// VCS adapts Git status and diff reads to the workspace application ports.
-// It translates raw Git failures into application-level outcomes.
 type VCS struct{}
 
 func (VCS) Changes(ctx context.Context, root string, maxChanges int) ([]workspaceapp.FileChange, error) {
@@ -37,12 +35,19 @@ func (VCS) StructuredDiff(
 	root, path string,
 	base bool,
 	format workspaceapp.DiffFormat,
-	maxFiles, maxRows, maxBytes int,
+	budget workspaceapp.DiffBudget,
 ) (workspaceapp.StructuredDiffResult, error) {
-	projection := git.Projection(format)
-	result, err := git.Diff(ctx, root, path, diffMode(base), projection, maxFiles, maxRows, maxBytes)
+	projection, err := diffProjection(format)
+	if err != nil {
+		return workspaceapp.StructuredDiffResult{}, err
+	}
+	result, err := git.Diff(ctx, root, path, diffMode(base), projection, git.DiffBudget{Files: budget.Files, Rows: budget.Rows, Bytes: budget.Bytes})
 	if err != nil {
 		return workspaceapp.StructuredDiffResult{}, vcsError(err)
+	}
+	baseline, err := diffBaseline(result.Baseline)
+	if err != nil {
+		return workspaceapp.StructuredDiffResult{}, err
 	}
 	out := make([]workspaceapp.FileDiff, 0, len(result.Files))
 	for _, file := range result.Files {
@@ -66,17 +71,46 @@ func (VCS) StructuredDiff(
 		})
 	}
 	return workspaceapp.StructuredDiffResult{
-		Baseline: workspaceapp.DiffBaseline{Type: workspaceapp.DiffBaselineType(result.Baseline.Type), Commit: result.Baseline.Commit},
-		Files:    out, Patch: result.Patch, Truncated: result.Truncated,
+		Baseline: baseline, Files: out, Patch: result.Patch, Truncated: result.Truncated,
 	}, nil
 }
 
 func (VCS) RawDiff(ctx context.Context, root, path string, base bool, maxBytes int) (workspaceapp.RawDiffResult, error) {
 	result, err := git.RawDiff(ctx, root, path, diffMode(base), maxBytes)
-	return workspaceapp.RawDiffResult{
-		Baseline: workspaceapp.DiffBaseline{Type: workspaceapp.DiffBaselineType(result.Baseline.Type), Commit: result.Baseline.Commit},
-		Patch:    result.Patch,
-	}, vcsError(err)
+	if err != nil {
+		return workspaceapp.RawDiffResult{}, vcsError(err)
+	}
+	baseline, err := diffBaseline(result.Baseline)
+	if err != nil {
+		return workspaceapp.RawDiffResult{}, err
+	}
+	return workspaceapp.RawDiffResult{Baseline: baseline, Patch: result.Patch}, nil
+}
+
+func diffProjection(format workspaceapp.DiffFormat) (git.Projection, error) {
+	switch format {
+	case workspaceapp.DiffFormatRows:
+		return git.Rows, nil
+	case workspaceapp.DiffFormatVisual:
+		return git.Visual, nil
+	default:
+		return "", fmt.Errorf("workspace: diff format %q has no structured projection", format)
+	}
+}
+
+func diffBaseline(baseline git.Baseline) (workspaceapp.DiffBaseline, error) {
+	var kind workspaceapp.DiffBaselineType
+	switch baseline.Type {
+	case git.BaselineHead:
+		kind = workspaceapp.DiffBaselineHead
+	case git.BaselineMergeBase:
+		kind = workspaceapp.DiffBaselineMergeBase
+	case git.BaselineEmptyTree:
+		kind = workspaceapp.DiffBaselineEmptyTree
+	default:
+		return workspaceapp.DiffBaseline{}, fmt.Errorf("workspace: unsupported git baseline %q", baseline.Type)
+	}
+	return workspaceapp.DiffBaseline{Type: kind, Commit: baseline.Commit}, nil
 }
 
 func fileStatus(status git.Status) (workspaceapp.FileStatus, bool) {

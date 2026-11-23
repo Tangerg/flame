@@ -15,9 +15,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-// sessionRoot is what the Session lifecycle asks of the terminal root, which
-// owns the view tree and the modals: present a Session and its transcript,
-// close what belonged to a retired Session, and follow the new workspace.
 type sessionRoot interface {
 	message(label string)
 	presentSession(session conversation.Session)
@@ -33,10 +30,6 @@ type sessionRoot interface {
 	requireRuntimeFeature(feature string) error
 }
 
-// sessionLifecycle owns which Session the terminal presents: creating,
-// switching, forking, renaming, relocating, importing and rolling back
-// Sessions, refreshing the presented one after Runtime changes, and installing
-// a projection with its draft. It is the only writer of sessionState.
 type sessionLifecycle struct {
 	state sessionState
 	root  sessionRoot
@@ -156,11 +149,11 @@ func (l *sessionLifecycle) runSessionChangeWithDraftDisposition[T any](
 		return
 	}
 	if l.tasks.operations.Active(sessionChangeOperation) {
-		l.root.message("wait for the current session change to finish")
+		l.root.message(sessionChangeOperation.busy().Error())
 		return
 	}
 	if l.tasks.operations.Active(sessionCenterOperation) {
-		l.root.message("wait for the current session action to finish")
+		l.root.message(sessionCenterOperation.busy().Error())
 		return
 	}
 	l.tasks.operations.Cancel(pickerCatalogOperation)
@@ -193,14 +186,10 @@ func (l *sessionLifecycle) runSessionChangeWithDraftDisposition[T any](
 		}
 	}) {
 		l.settleSessionChange()
-		l.root.message("wait for the current session change to finish")
+		l.root.message(sessionChangeOperation.busy().Error())
 	}
 }
 
-// cancelSessionChange abandons the pending projection replacement while
-// retaining the composer state authored during it. Runtime mutations that
-// completed before cancellation remain discoverable through the session list;
-// the terminal only withdraws its unfinished local transition.
 func (l *sessionLifecycle) cancelSessionChange() bool {
 	if !l.tasks.operations.Active(sessionChangeOperation) {
 		return false
@@ -211,8 +200,6 @@ func (l *sessionLifecycle) cancelSessionChange() bool {
 	return true
 }
 
-// settleSessionChange closes the terminal-side draft transaction and resumes
-// any authoritative refresh that runtime notifications deferred behind it.
 func (l *sessionLifecycle) settleSessionChange() {
 	l.state.draftTransition = nil
 	if l.state.invalidated && l.runs.conversation().Phase() != conversation.Running &&
@@ -228,9 +215,6 @@ const (
 	retireSourceDraft
 )
 
-// sessionDraftTransition owns the authoring-state boundary while a session
-// change is in flight. User-requested navigation preserves the source draft;
-// forced replacement transfers it because the source session no longer exists.
 type sessionDraftTransition struct {
 	sourceSessionID string
 	baseline        authoring.Message
@@ -264,9 +248,6 @@ func (s sessionDraftTransition) resolve(
 		}
 		return merged, nil
 	case preserveSourceDraft:
-		// Mutations such as rollback replace the authoritative projection without
-		// changing session identity, so no cross-Session transfer is necessary.
-		// Confirmed rollback input is materialized after this transition resolves.
 		if destinationSessionID == s.sourceSessionID {
 			return destinationDraft, nil
 		}
@@ -341,14 +322,22 @@ func (l *sessionLifecycle) prepareDestinationDraft(
 			return authoring.Message{}, nil, transitionErr
 		}
 	}
-	// Draft transfer is the last separate preparation that can abort projection
-	// installation. Activation then materializes rollback recovery and retires
-	// its one-time report in the same durable Session state replacement.
 	activation, err := l.workbench.ActivateSessionDraft(session.ID, authoring.Message{})
 	if err != nil {
 		return authoring.Message{}, nil, fmt.Errorf("activate destination session draft: %w", err)
 	}
 	return activation.Draft, activation.Rollback, nil
+}
+
+// A replaced session is already installed, so its local cleanup is reported rather than failing the replacement.
+func (l *sessionLifecycle) reportRetiredSessionState(discarded int, err error) {
+	if err != nil {
+		l.root.message("replacement installed; local state cleanup failed: " + err.Error())
+		return
+	}
+	if discarded > 0 {
+		l.root.message(fmt.Sprintf("discarded %s from the deleted session", countedNoun(discarded, "queued prompt")))
+	}
 }
 
 func (l *sessionLifecycle) retireSessionState(sessionID string) (int, error) {
@@ -370,9 +359,6 @@ func (l *sessionLifecycle) retireSessionState(sessionID string) (int, error) {
 	return discarded, nil
 }
 
-// readSessionAfterMutation converges the authoritative projection without
-// repeating a mutation that may already be durable. Its caller owns cancellation,
-// just as the observer owns live Run recovery.
 func (l *sessionLifecycle) readSessionAfterMutation(ctx context.Context, sessionID string) (conversation.SessionSnapshot, error) {
 	for failures := 0; ; {
 		snapshot, err := l.runtime.GetSession(ctx, sessionID)
@@ -393,7 +379,6 @@ func (l *sessionLifecycle) readSessionAfterMutation(ctx context.Context, session
 	}
 }
 
-// install presents an installation as the current Session.
 func (l *sessionLifecycle) install(s sessionInstallation) {
 	previousSessionID := l.state.current.ID
 	previousWorkspace := l.state.current.Workspace

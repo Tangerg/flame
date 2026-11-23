@@ -1,6 +1,3 @@
-// Package scopewire declares Scope values at Flame's portable JSON boundary.
-// Scope retains semantic admission; these projections make byte, numeric and
-// timestamp encodings explicit without adding another model of their behavior.
 package scopewire
 
 import (

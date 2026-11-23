@@ -15,8 +15,6 @@ import (
 	skillspec "github.com/Tangerg/scope/skills"
 )
 
-// List returns active and archived skills from one library snapshot. Directory
-// encounter order is preserved; Application owns public catalog order.
 func (s *Store) List(ctx context.Context) ([]skills.Entry, error) {
 	if err := contextError(ctx, "list managed skills"); err != nil {
 		return nil, err

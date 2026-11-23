@@ -1,7 +1,7 @@
 import { type MessageRoleSpec } from "@/features/chat/public/messageRoles";
 import { definePlugin } from "@/extensions/definePlugin";
 import { MESSAGE_ROLE } from "@/features/chat/public/messageRoles";
-export function defaultMessageRoles(): MessageRoleSpec[] {
+function defaultMessageRoles(): MessageRoleSpec[] {
   return [
     {
       id: "user",

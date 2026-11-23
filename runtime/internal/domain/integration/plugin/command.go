@@ -39,8 +39,6 @@ func validCommandText(value string) bool {
 	return value != "" && utf8.ValidString(value) && utf8.RuneCountInString(value) <= MaximumCommandTextCharacters
 }
 
-// CommandBinding is immutable routing evidence, not a business result. Keeping
-// it after observation prevents an old identity from becoming a new-provider call.
 type CommandBinding struct {
 	ID           string
 	Method       string
@@ -90,8 +88,6 @@ func RestoreCommand(record CommandBinding) (*Command, error) {
 	return &Command{record: record}, nil
 }
 
-// validateContract proves the command is a Command method of its original
-// capability, with an input and invocation that capability admits.
 func (record CommandBinding) validateContract() (framevalue.JSON, error) {
 	if err := record.Input.Validate(); err != nil {
 		return framevalue.JSON{}, err
@@ -116,9 +112,6 @@ func (record CommandBinding) validateContract() (framevalue.JSON, error) {
 	return contract.Identity(), nil
 }
 
-// validateProvenance binds the command to the provider it was routed to: the
-// activation must depend on that provider, and an installation-scoped call
-// must target the provider's own installation.
 func (record CommandBinding) validateProvenance() error {
 	if err := record.Provider.Validate(); err != nil {
 		return err
@@ -141,8 +134,6 @@ func (c *Command) Snapshot() CommandBinding {
 	return record
 }
 
-// SameBinding reports whether other carries this command's routing evidence.
-// Only the phase advances once a command exists.
 func (c *Command) SameBinding(other *Command) bool {
 	a, b := c.record, other.record
 	return a.ID == b.ID && a.Method == b.Method && a.Input == b.Input && a.Contract == b.Contract &&
@@ -154,16 +145,16 @@ func (c *Command) Matches(method string, input framevalue.JSON) bool {
 	return c.record.Method == method && c.record.Input == input
 }
 
-// pendingCommandPhases are the phases whose outcome is not settled yet.
 var pendingCommandPhases = []CommandPhase{CommandPrepared, CommandDispatched}
 
-// PendingCommandPhases lists the phases of a command still awaiting its outcome.
 func PendingCommandPhases() []CommandPhase { return slices.Clone(pendingCommandPhases) }
 
 func (c *Command) Pending() bool { return slices.Contains(pendingCommandPhases, c.record.Phase) }
+
 func (c *Command) WasDispatched() bool {
 	return c.record.Phase == CommandDispatched || c.record.Phase == CommandObserved
 }
+
 func (c *Command) Dispatch() error {
 	if c.record.Phase == CommandRetired {
 		return ErrCommandRetired
@@ -174,6 +165,7 @@ func (c *Command) Dispatch() error {
 	c.record.Phase = CommandDispatched
 	return nil
 }
+
 func (c *Command) Retire() error {
 	switch c.record.Phase {
 	case CommandPrepared, CommandRetired:
@@ -183,6 +175,7 @@ func (c *Command) Retire() error {
 		return ErrCommandUnconfirmed
 	}
 }
+
 func (c *Command) Observe() error {
 	if !c.WasDispatched() {
 		return fmt.Errorf("%w: command has no dispatch admission", ErrInvalid)

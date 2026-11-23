@@ -14,8 +14,9 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 )
 
 func TestWebApplicationKeepsProtocolAuthenticationAndAssetConfinement(t *testing.T) {
@@ -74,7 +75,7 @@ func TestWebApplicationKeepsProtocolAuthenticationAndAssetConfinement(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir()})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir(), ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,12 +84,13 @@ func TestWebApplicationKeepsProtocolAuthenticationAndAssetConfinement(t *testing
 			t.Error(err)
 		}
 	})
-	endpoint, err := delivery.NewEndpoint(struct{}{}, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: stores.Idempotency, IdempotencyNamespace: stores.IdempotencyNamespace.String()})
+	endpoint, err := delivery.NewEndpoint(struct{}{}, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: stores.Idempotency, IdempotencyNamespace: stores.IdempotencyNamespace.String(), ValidateStorage: stores.ValidateDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
-	server, err := flamehttp.NewServer(flamehttp.Config{
+	server, err := runtimehttp.NewServer(runtimehttp.Config{
 		Endpoint:       endpoint,
+		PluginControl:  http.NotFoundHandler(),
 		Addr:           ":0",
 		ServerInfo:     protocol.ServerInfo{Name: "flame-test", Version: "dev", InstanceID: testsupport.RuntimeInstanceID},
 		Authentication: mustLocalToken(t, "web-test-token"), WebApplication: assets,
@@ -143,9 +145,9 @@ func TestWebApplicationKeepsProtocolAuthenticationAndAssetConfinement(t *testing
 	}
 }
 
-func mustLocalToken(t testing.TB, token string) flamehttp.Authentication {
+func mustLocalToken(t testing.TB, token string) runtimehttp.Authentication {
 	t.Helper()
-	authentication, err := flamehttp.LocalTokenAuthentication(token)
+	authentication, err := runtimehttp.LocalTokenAuthentication(token)
 	if err != nil {
 		t.Fatal(err)
 	}

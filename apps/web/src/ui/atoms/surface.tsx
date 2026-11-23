@@ -19,7 +19,7 @@ const styles = stylex.create({
 
 const INSET = { none: null, xs: styles.insetXs, sm: styles.insetSm, md: styles.insetMd } as const;
 
-export type SurfaceProps = ComponentPropsWithRef<"div"> & {
+type SurfaceProps = ComponentPropsWithRef<"div"> & {
   variant?: SurfaceVariant;
   inset?: keyof typeof INSET;
 };

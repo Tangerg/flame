@@ -14,14 +14,6 @@ import (
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
-// TestInstalledToolEntryReachesDeclaredAnalyzerDependency proves the model Tool
-// entry now receives the same call-scoped host grant the public plugins.call
-// entry receives. The reviews backend registers one analyzer business and exposes
-// it as both a typed query and the reviews_analyze_review Tool; reached through the
-// Tool, an ordinary (non-Memory) backend still obtains its CallbackFromContext
-// grant and calls the same declared analyzer dependency. Before the installed grant
-// reached ordinary Tools this backend's CallbackFromContext failed and the Tool
-// produced no findings.
 func TestInstalledToolEntryReachesDeclaredAnalyzerDependency(t *testing.T) {
 	cfg := poMCPConfig(t)
 	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
@@ -56,8 +48,6 @@ func TestInstalledToolEntryReachesDeclaredAnalyzerDependency(t *testing.T) {
 		installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-"+key).(*protocol.PluginInstallation)
 		return r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-"+key).(*protocol.PluginInstallation)
 	}
-	// The consumer freezes its analyzer dependency from the servers connected at
-	// setup, so the dependency must be admitted before the reviews backend connects.
 	waitConnected := func(installed *protocol.PluginInstallation, name string) {
 		t.Helper()
 		id := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: name}

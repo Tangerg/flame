@@ -35,6 +35,13 @@ type connector struct {
 	credential credential
 }
 
+const (
+	headerETag = "ETag"
+	headerLink = "Link"
+)
+
+const pageParameter = "page"
+
 const requestTimeout = 30 * time.Second
 
 func newConnector(store *store, transport http.RoundTripper, credential credential) (*connector, error) {
@@ -45,7 +52,6 @@ func newConnector(store *store, transport http.RoundTripper, credential credenti
 	return &connector{store: store, http: client, credential: credential}, nil
 }
 
-// GitHub refusal codes name why a request was refused; callers do not retry them.
 const (
 	refusalBinaryFile         = "binary_file"
 	refusalConflict           = "conflict"
@@ -63,8 +69,6 @@ const (
 	refusalUnsupportedFile    = "unsupported_file"
 )
 
-// identify marks a request with the API version this plugin speaks and, when
-// configured, the credential it acts as.
 func (c *connector) identify(request *http.Request) {
 	request.Header.Set("Accept", "application/vnd.github+json")
 	request.Header.Set("X-GitHub-Api-Version", apiVersion)
@@ -147,26 +151,22 @@ func freshResponse(upstream *http.Response) (response, error) {
 	if len(body) > maxResponseBytes {
 		return response{}, refused(refusalResponseTooLarge, "response exceeds four MiB")
 	}
-	return response{body: body, etag: upstream.Header.Get("ETag"), links: upstream.Header.Get("Link")}, nil
+	return response{body: body, etag: upstream.Header.Get(headerETag), links: upstream.Header.Get(headerLink)}, nil
 }
 
-// revalidated is the cached representation a 304 confirmed, carrying any
-// validators the confirmation refreshed.
 func (r response) revalidated(header http.Header) (response, error) {
 	if r.etag == "" {
 		return response{}, errors.New("github: conditional response has no original representation")
 	}
-	if tag := header.Get("ETag"); tag != "" {
+	if tag := header.Get(headerETag); tag != "" {
 		r.etag = tag
 	}
-	if links := header.Get("Link"); links != "" {
+	if links := header.Get(headerLink); links != "" {
 		r.links = links
 	}
 	return r, nil
 }
 
-// GitHub can signal secondary exhaustion only in the response message, even
-// while the primary budget has capacity. Do not expose arbitrary error bodies.
 func accessRefusal(response *http.Response) error {
 	limited := response.StatusCode == http.StatusTooManyRequests || response.Header.Get("X-RateLimit-Remaining") == "0" || response.Header.Get("Retry-After") != ""
 	if !limited {
@@ -198,7 +198,7 @@ func author(user *userWire) string {
 }
 
 func pagination(page int64, limit int) url.Values {
-	return url.Values{"page": {strconv.FormatInt(page, 10)}, "per_page": {strconv.Itoa(limit)}}
+	return url.Values{pageParameter: {strconv.FormatInt(page, 10)}, "per_page": {strconv.Itoa(limit)}}
 }
 
 type page[T any] struct {
@@ -221,7 +221,6 @@ func admitRows[W, R any](rows []W, limit int, admit func(W) (R, error)) ([]R, er
 	return result, nil
 }
 
-// readPage reads one page of a listing; filters never carry the page cursor.
 func readPage[W, R any](ctx context.Context, c *connector, path string, filters url.Values, current int64, limit int, admit func(W) (R, error)) (page[R], error) {
 	parameters := pagination(current, limit)
 	maps.Copy(parameters, filters)
@@ -288,7 +287,7 @@ func (c *connector) listIssues(ctx context.Context, input contractwire.ListInput
 	if err != nil {
 		return contractwire.IssuePage{}, err
 	}
-	filters := url.Values{"state": {string(input.State)}, "sort": {"updated"}, "direction": {"desc"}}
+	filters := recentlyUpdated(input.State)
 	path := repository.apiPath() + "/issues"
 	page, err := readPage(ctx, c, path, filters, input.Page, input.Limit, func(wire issueWire) (contractwire.Issue, error) { return wire.admit(repository) })
 	return contractwire.IssuePage{Issues: page.rows, NextPage: page.next}, err
@@ -316,8 +315,7 @@ func nextPage(header string, current int64) (*int64, error) {
 		if err != nil || target.User != nil || target.Fragment != "" || target.Scheme+"://"+target.Host != apiOrigin {
 			return nil, errors.New("github: invalid pagination origin")
 		}
-		// Only the page number is projected; later requests retain the caller's repository.
-		page, err := strconv.ParseInt(target.Query().Get("page"), 10, 64)
+		page, err := strconv.ParseInt(target.Query().Get(pageParameter), 10, 64)
 		if err != nil || page <= current {
 			return nil, errors.New("github: invalid next page")
 		}
@@ -372,7 +370,6 @@ func (c *connector) readFile(ctx context.Context, input contractwire.FileInput) 
 	})
 }
 
-// contentResponse is GitHub's contents representation of one repository path.
 type contentResponse struct {
 	Type     string `json:"type"`
 	Path     string `json:"path"`
@@ -383,7 +380,6 @@ type contentResponse struct {
 	Content  string `json:"content"`
 }
 
-// text admits only a complete, bounded UTF-8 file at the requested path.
 func (r contentResponse) text(requested string) (string, error) {
 	if r.Type == "" {
 		return "", errors.New("github: incomplete file representation")
@@ -408,4 +404,14 @@ func (r contentResponse) text(requested string) (string, error) {
 		return "", refused(refusalBinaryFile, "file content is not UTF-8")
 	}
 	return string(content), nil
+}
+
+func ordered(field, direction string) url.Values {
+	return url.Values{"sort": {field}, "direction": {direction}}
+}
+
+func recentlyUpdated(state contractwire.Filter) url.Values {
+	filters := ordered("updated", "desc")
+	filters.Set("state", string(state))
+	return filters
 }

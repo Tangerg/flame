@@ -15,9 +15,6 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-// Process exports are Flame's frozen business mapping. Frame alone admits the
-// neutral service contract and owns the attached process and its release proof.
-
 type processExport struct {
 	Name     string                              `json:"name"`
 	Contract plugincontract.CapabilityDescriptor `json:"contract"`

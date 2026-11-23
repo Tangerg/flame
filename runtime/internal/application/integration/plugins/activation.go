@@ -12,9 +12,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// ProjectActivation keeps the complete original graph with its business owner.
-// Identity and dependency lists are read projections of that one frozen value.
-
 func ProjectActivation(binding framehost.BindingSnapshot) (plugin.Activation, error) {
 	canonical, err := binding.Canonical()
 	if err != nil {
@@ -35,8 +32,6 @@ func ProjectActivation(binding framehost.BindingSnapshot) (plugin.Activation, er
 	return activation, activation.Validate()
 }
 
-// DecodeActivation verifies every projection against the original graph. A
-// caller cannot authorize a retained route by changing its digest or references.
 func DecodeActivation(activation plugin.Activation) (framehost.BindingSnapshot, error) {
 	if err := activation.Validate(); err != nil {
 		return framehost.BindingSnapshot{}, err
@@ -55,8 +50,6 @@ func DecodeActivation(activation plugin.Activation) (framehost.BindingSnapshot, 
 	return binding, nil
 }
 
-// ReadActivation is the storage boundary for an original retained graph. No
-// dependency or identity column can supply an alternative routing fact.
 func ReadActivation(data []byte) (plugin.Activation, error) {
 	binding, err := framehost.ParseBinding(data)
 	if err != nil {
@@ -65,8 +58,6 @@ func ReadActivation(data []byte) (plugin.Activation, error) {
 	return ProjectActivation(binding)
 }
 
-// OriginalActivation locates a retained entry without selecting collaborators.
-// Transitive membership does not grant a new root entry into another Unit.
 func OriginalActivation(activations []plugin.Activation, installation identity.InstallationID, release framevalue.Digest, server mcpserver.ServerName) (plugin.Activation, error) {
 	source := framehost.UnitRef{InstallationID: installation.Host(), Release: release, UnitID: BackendUnit(server)}
 	var selected *plugin.Activation

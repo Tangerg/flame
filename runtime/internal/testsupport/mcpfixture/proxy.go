@@ -1,4 +1,3 @@
-// Package mcpfixture supplies transport-only helpers for process integration tests.
 package mcpfixture
 
 import (
@@ -9,8 +8,6 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-// Forward bridges the original SDK transports without interpreting lifecycle,
-// contracts or business results. The upstream must implement its own protocol.
 func Forward(parent context.Context, endpoint string) error {
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()

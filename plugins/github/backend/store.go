@@ -54,7 +54,6 @@ func (c *store) saveCache(ctx context.Context, key string, result response) erro
 		if _, err := connection.ExecContext(ctx, `INSERT INTO responses(key,etag,links,body,checked_at) VALUES(?,?,?,?,?) ON CONFLICT(key) DO UPDATE SET etag=excluded.etag,links=excluded.links,body=excluded.body,checked_at=excluded.checked_at`, key, result.etag, result.links, result.body, time.Now().UnixNano()); err != nil {
 			return err
 		}
-		// Cache eviction releases projections; it can never retire a business receipt.
 		_, err := connection.ExecContext(ctx, `DELETE FROM responses WHERE key IN (SELECT key FROM (SELECT key,SUM(length(body)+length(etag)+length(links)+length(key)) OVER (ORDER BY checked_at DESC,key) AS retained_bytes FROM responses) WHERE retained_bytes>?)`, maxCacheBytes)
 		return err
 	})

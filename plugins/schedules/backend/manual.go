@@ -11,8 +11,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
-	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/plugins/schedules/internal/schedule"
+	"github.com/Tangerg/flame/plugins/schedules/internal/scheduling"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 
 	framecall "github.com/Tangerg/frame/call"
@@ -20,19 +20,19 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-func runNow(ctx context.Context, db framesqlite.Database, store store, connect runConnector, command pluginmcp.Command[wire.ItemInput]) (app.RunReference, error) {
+func runNow(ctx context.Context, db framesqlite.Database, store store, command pluginmcp.Command[wire.ItemInput]) (scheduling.RunReference, error) {
 	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
-		return app.RunReference{}, err
+		return scheduling.RunReference{}, err
 	}
 	if invocation.ID != string(command.ID) {
-		return app.RunReference{}, errors.New("schedules: manual command differs from its calling owner")
+		return scheduling.RunReference{}, errors.New("schedules: manual command differs from its calling owner")
 	}
 	input, err := command.RequestInput()
 	if err != nil {
-		return app.RunReference{}, err
+		return scheduling.RunReference{}, err
 	}
-	return captureManual(ctx, db, store, connect, manualCommand{id: string(command.ID), admitted: input})
+	return captureManual(ctx, db, store, manualCommand{id: string(command.ID), admitted: input})
 }
 
 type manualCommand struct {
@@ -40,9 +40,7 @@ type manualCommand struct {
 	admitted framevalue.JSON
 }
 
-// A logical caller and its private receipt command have distinct identities.
-// The queue retains both so recovery never guesses a Tool's command namespace.
-func captureManual(ctx context.Context, db framesqlite.Database, store store, connect runConnector, command manualCommand) (result app.RunReference, err error) {
+func captureManual(ctx context.Context, db framesqlite.Database, store store, command manualCommand) (result scheduling.RunReference, err error) {
 	var input wire.ItemInput
 	if err := command.admitted.Decode(&input); err != nil {
 		return result, err
@@ -60,46 +58,46 @@ func captureManual(ctx context.Context, db framesqlite.Database, store store, co
 		return result, errors.Join(pluginmcp.ErrOutcomeUnconfirmed, err)
 	}
 	if admission.prepared == nil {
-		return pluginmcp.DecodeReply[app.RunReference](admission.original)
+		return pluginmcp.DecodeReply[scheduling.RunReference](admission.original)
 	}
 	captured := admission.captured
 	if captured.Invocation() != invocation || captured.CommandID() != command.id || captured.ScheduleID() != input.ID || captured.SessionID() != sessionID {
 		return result, errors.New("schedules: manual request differs from its original capture")
 	}
-	runs, close, err := connectRuntime(ctx, db, connect)
+	runs, release, err := connectRuntime(ctx, db)
 	if err != nil {
 		return result, err
 	}
-	defer func() { err = errors.Join(err, close()) }()
-	dispatcher, err := app.NewDispatcher(dispatchCommit{DispatchStore: store, db: db, command: admission.prepared}, runs)
+	defer func() { err = errors.Join(err, release()) }()
+	dispatcher, err := scheduling.NewDispatcher(dispatchCommit{DispatchStore: store, db: db, command: admission.prepared}, runs)
 	if err != nil {
 		return result, err
 	}
 	return dispatcher.Dispatch(ctx, captured.RunID())
 }
 
-// manualRunIdentity derives the Session and Run a manual request opens from
-// its caller and command, so a retried request names the same Run.
-func manualRunIdentity(invocation framecall.Invocation, commandID string) (string, string, error) {
+func manualRunIdentity(invocation framecall.Invocation, commandID string) (identity.SessionID, identity.RunID, error) {
 	identityInput, err := json.Marshal([2]string{invocation.Target.Reference, commandID})
 	if err != nil {
-		return "", "", err
+		return identity.SessionID{}, identity.RunID{}, err
 	}
 	digest := sha256.Sum256(identityInput)
 	suffix := hex.EncodeToString(digest[:])
-	return identity.SessionPrefix + suffix, identity.RunPrefix + suffix, nil
+	sessionID, err := identity.NewSession(suffix)
+	if err != nil {
+		return identity.SessionID{}, identity.RunID{}, err
+	}
+	runID, err := identity.NewRun(suffix)
+	return sessionID, runID, err
 }
 
-// manualAdmission is one manual request's transaction: it either captures a
-// Run to dispatch (prepared) or settles the command with a stored reply
-// (original).
 type manualAdmission struct {
 	store      store
 	command    manualCommand
 	scheduleID string
 	invocation framecall.Invocation
-	sessionID  string
-	runID      string
+	sessionID  identity.SessionID
+	runID      identity.RunID
 
 	captured schedule.RunRequest
 	prepared *pluginstorage.PreparedCommand
@@ -113,7 +111,7 @@ func (m *manualAdmission) admit(ctx context.Context, db framesqlite.Database) er
 	})
 	m.prepared, m.original = prepared, original
 	if errors.Is(err, framecall.ErrConflict) {
-		conflict, encodeErr := pluginmcp.EncodeReply(app.RunReference{}, framecall.ErrConflict, nil)
+		conflict, encodeErr := pluginmcp.EncodeReply(scheduling.RunReference{}, framecall.ErrConflict, nil)
 		m.original, m.prepared = conflict.Bytes(), nil
 		return encodeErr
 	}
@@ -134,10 +132,8 @@ func (m *manualAdmission) admit(ctx context.Context, db framesqlite.Database) er
 	return m.refuse(ctx, err)
 }
 
-// refuse settles a newly admitted command whose Schedule refused the run, so
-// a retry replays the refusal instead of trying again.
 func (m *manualAdmission) refuse(ctx context.Context, refusal error) error {
-	reply, err := pluginmcp.EncodeReply(app.RunReference{}, refusal, classify)
+	reply, err := pluginmcp.EncodeReply(scheduling.RunReference{}, refusal, classify)
 	if err != nil {
 		return err
 	}

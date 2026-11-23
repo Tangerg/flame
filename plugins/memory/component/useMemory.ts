@@ -171,11 +171,11 @@ export function useMemory(context: ComponentContext) {
       setRead((previous) => ({ ...previous, loading: true, error: undefined }));
       try {
         const page = await operations.query(
-          "flame.memory/list.v2",
+          "flame.memory/list.v3",
           {
-            Scope: scope,
-            CWD: cwd,
-            Cursor: cursors.at(-1)!,
+            scope,
+            cwd,
+            cursor: cursors.at(-1)!,
           },
           signal,
         );

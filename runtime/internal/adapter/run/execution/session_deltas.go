@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 
 	"github.com/Tangerg/scope/agent/interaction"
 	scoperun "github.com/Tangerg/scope/agent/run"
@@ -14,10 +15,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// projectDelta forwards the preview text a client renders before the durable
-// Item exists. Every reason a delta cannot be forwarded leaves the same hole in
-// that preview, so every reason reports it: a payload this Runtime cannot parse
-// is a framework boundary defect, not a quiet no-op.
 func (i *interactionSession) projectDelta(ctx context.Context, delta scoperun.Delta) {
 	parsed, err := interaction.ParseDelta(delta.Payload())
 	if err != nil {
@@ -26,7 +23,6 @@ func (i *interactionSession) projectDelta(ctx context.Context, delta scoperun.De
 	}
 	model, ok := parsed.(interaction.ModelResponseDelta)
 	if !ok {
-		// Tool progress has no preview projection.
 		i.reportDroppedDelta(ctx, delta, errUnroutableDelta)
 		return
 	}
@@ -49,8 +45,6 @@ func (i *interactionSession) projectDelta(ctx context.Context, delta scoperun.De
 	}
 }
 
-// errUnroutableDelta names the drop that is not a defect: the process has no
-// installed executor route, or the run tree stopped accepting events.
 var errUnroutableDelta = errors.New("execution: delta has no accepting executor route")
 
 func (i *interactionSession) reportDroppedDelta(ctx context.Context, delta scoperun.Delta, cause error) {
@@ -58,19 +52,17 @@ func (i *interactionSession) reportDroppedDelta(ctx context.Context, delta scope
 	span.AddEvent(
 		"execution.delta.dropped",
 		trace.WithAttributes(
-			attribute.String("process.id", delta.ProcessID().String()),
+			telemetry.ProcessIDKey.String(delta.ProcessID().String()),
 			attribute.String("drop.cause", cause.Error()),
 		),
 	)
 	if !errors.Is(cause, errUnroutableDelta) {
 		span.RecordError(cause)
 		slog.ErrorContext(ctx, "execution: model response delta dropped",
-			"process.id", delta.ProcessID().String(), "error", cause)
+			telemetry.ProcessID(delta.ProcessID().String()), telemetry.Error(cause))
 	}
 }
 
-// Delta delivery is a host-owned preview channel. Flush asks its sole reader to
-// finish every already-emitted preview before the durable result is published.
 func (i *interactionSession) flushDeltas(ctx context.Context) error {
 	done := make(chan struct{})
 	select {
@@ -119,6 +111,6 @@ func (i *interactionSession) consumeTelemetry() {
 		return
 	}
 	if _, err := i.telemetry.Consume(i.lifetime.releasing, process, 0); err != nil && i.lifetime.releasing.Err() == nil {
-		slog.ErrorContext(i.lifetime.releasing, "execution: observe Interaction log", "error", err)
+		slog.ErrorContext(i.lifetime.releasing, "execution: observe Interaction log", telemetry.Error(err))
 	}
 }

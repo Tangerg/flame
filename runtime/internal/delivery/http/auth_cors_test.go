@@ -10,11 +10,11 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 )
 
 func TestDefaultCORSOriginsAuthorizeShippedDesktopClients(t *testing.T) {
-	ts := newGatedServerWithOrigins(t, flamehttp.DefaultCORSOrigins())
+	ts := newGatedServerWithOrigins(t, runtimehttp.DefaultCORSOrigins())
 	defer ts.Close()
 
 	for _, origin := range []string{
@@ -42,37 +42,36 @@ func TestDefaultCORSOriginsAuthorizeShippedDesktopClients(t *testing.T) {
 		})
 	}
 
-	if slices.Contains(flamehttp.DefaultCORSOrigins(), "*") {
+	if slices.Contains(runtimehttp.DefaultCORSOrigins(), "*") {
 		t.Fatal("default desktop CORS policy must not allow every browser origin")
 	}
 	for _, unrelated := range []string{"tauri://localhost", "http://localhost:3000"} {
-		if slices.Contains(flamehttp.DefaultCORSOrigins(), unrelated) {
+		if slices.Contains(runtimehttp.DefaultCORSOrigins(), unrelated) {
 			t.Fatalf("default desktop CORS policy still allows unrelated origin %q", unrelated)
 		}
 	}
 }
 
-func mustLocalToken(t testing.TB, token string) flamehttp.Authentication {
+func mustLocalToken(t testing.TB, token string) runtimehttp.Authentication {
 	t.Helper()
-	authentication, err := flamehttp.LocalTokenAuthentication(token)
+	authentication, err := runtimehttp.LocalTokenAuthentication(token)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return authentication
 }
 
-// newGatedServer builds a test server with the local-token gate +
-// CORS allowlist set. Token is "test-token", origins is "http://app".
 func newGatedServer(t *testing.T) *httptest.Server {
 	return newGatedServerWithOrigins(t, []string{"http://app"})
 }
 
 func newGatedServerWithOrigins(t *testing.T, origins []string) *httptest.Server {
 	t.Helper()
-	srv, err := flamehttp.NewServer(flamehttp.Config{
-		Endpoint:   newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
-		Addr:       ":0",
-		ServerInfo: protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
+	srv, err := runtimehttp.NewServer(runtimehttp.Config{
+		Endpoint:      newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
+		PluginControl: netHTTP.NotFoundHandler(),
+		Addr:          ":0",
+		ServerInfo:    protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
 
 		Authentication: mustLocalToken(t, "test-token"),
 		CORSOrigins:    origins,
@@ -83,8 +82,6 @@ func newGatedServerWithOrigins(t *testing.T, origins []string) *httptest.Server 
 	return httptest.NewServer(srv.Handler())
 }
 
-// TestAuthGateMissingToken — gate-on POST without Authorization gets
-// 401 + a transport problem. This MUST NOT use the JSON-RPC envelope.
 func TestAuthGateMissingToken(t *testing.T) {
 	ts := newGatedServer(t)
 	defer ts.Close()
@@ -125,9 +122,6 @@ func TestAuthGateWrongToken(t *testing.T) {
 	}
 }
 
-// TestCORSDisallowedOrigin — request from a non-allowlisted origin
-// gets no Allow-Origin header (the browser will reject the response).
-// We don't 4xx in this case — the request itself is well-formed.
 func TestCORSDisallowedOrigin(t *testing.T) {
 	ts := newGatedServer(t)
 	defer ts.Close()
@@ -151,19 +145,19 @@ func TestNewServerRefusesAnUngatedNonLoopbackListener(t *testing.T) {
 	endpoint := newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{})
 	info := protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID}
 	for _, addr := range []string{":17171", "0.0.0.0:17171", "192.168.1.10:17171", "localhost:17171", "[::]:17171"} {
-		if _, err := flamehttp.NewServer(flamehttp.Config{Endpoint: endpoint, Addr: addr, ServerInfo: info, Authentication: flamehttp.LoopbackOnlyAuthentication()}); err == nil {
+		if _, err := runtimehttp.NewServer(runtimehttp.Config{Endpoint: endpoint, PluginControl: netHTTP.NotFoundHandler(), Addr: addr, ServerInfo: info, Authentication: runtimehttp.LoopbackOnlyAuthentication()}); err == nil {
 			t.Fatalf("NewServer admitted an ungated listener on %q", addr)
 		}
 	}
 	for _, addr := range []string{"127.0.0.1:0", "[::1]:0"} {
-		if _, err := flamehttp.NewServer(flamehttp.Config{Endpoint: endpoint, Addr: addr, ServerInfo: info, Authentication: flamehttp.LoopbackOnlyAuthentication()}); err != nil {
+		if _, err := runtimehttp.NewServer(runtimehttp.Config{Endpoint: endpoint, PluginControl: netHTTP.NotFoundHandler(), Addr: addr, ServerInfo: info, Authentication: runtimehttp.LoopbackOnlyAuthentication()}); err != nil {
 			t.Fatalf("NewServer refused loopback listener %q: %v", addr, err)
 		}
 	}
-	if _, err := flamehttp.NewServer(flamehttp.Config{Endpoint: endpoint, Addr: "127.0.0.1:0", ServerInfo: info}); err == nil {
+	if _, err := runtimehttp.NewServer(runtimehttp.Config{Endpoint: endpoint, PluginControl: netHTTP.NotFoundHandler(), Addr: "127.0.0.1:0", ServerInfo: info}); err == nil {
 		t.Fatal("NewServer admitted a server without an authentication policy")
 	}
-	if _, err := flamehttp.LocalTokenAuthentication(""); err == nil {
+	if _, err := runtimehttp.LocalTokenAuthentication(""); err == nil {
 		t.Fatal("LocalTokenAuthentication admitted an empty token")
 	}
 }

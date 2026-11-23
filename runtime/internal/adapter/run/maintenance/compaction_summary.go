@@ -50,10 +50,6 @@ const (
 	compactionModelPrefix                = "[Earlier conversation summary]\n"
 )
 
-// summarize asks the LLM to fold the older messages into a single
-// system message of bullet points. Failure aborts compaction —
-// keeping the existing history is always preferable to losing it
-// behind a bad summary.
 func (c *Compactor) summarize(ctx context.Context, msgs []chat.Message) (string, error) {
 	transcript := modeladapter.RenderCompactionTranscript(msgs)
 	for {
@@ -83,8 +79,6 @@ func (c *Compactor) summarize(ctx context.Context, msgs []chat.Message) (string,
 			}
 			fmt.Fprintf(&summaries, "[Summary of consecutive portion %d of %d]\n%s\n", index+1, len(chunks), strings.TrimSpace(text))
 		}
-		// A failed reduction cannot authorize silently deleting input or looping
-		// forever. The caller retains its original history until final admission.
 		if summaries.Len() >= len(transcript) {
 			return "", errors.New("maintenance: partial summaries did not reduce the transcript")
 		}
@@ -92,8 +86,6 @@ func (c *Compactor) summarize(ctx context.Context, msgs []chat.Message) (string,
 	}
 }
 
-// compactionChunks partitions every input byte exactly once. Prefer a message
-// or line boundary in the latter half of each chunk, and never split a UTF-8 rune.
 func compactionChunks(text string, limit int) []string {
 	var chunks []string
 	for len(text) > limit {

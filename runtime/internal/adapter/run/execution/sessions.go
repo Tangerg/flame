@@ -11,10 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
-// interactionSessions owns resources from assembly through successful release.
-// live indexes only published executors; probes and failed assemblies remain
-// owned without becoming callable. Shutdown joins admitted assembly before
-// taking its release snapshot.
 type interactionSessions struct {
 	mu         sync.Mutex
 	live       map[string]*interactionSession

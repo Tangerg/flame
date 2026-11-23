@@ -25,9 +25,6 @@ func openShellLog() (*os.File, string, error) {
 	return file, file.Name(), nil
 }
 
-// Write is the stdout/stderr sink of the original process. Capacity or disk
-// failure cancels that process, preserving every successfully admitted byte and
-// its error. It never discards an early diagnostic to make room for a later one.
 func (s *Shell) Write(p []byte) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -96,8 +93,6 @@ func (s *Shell) read() (Output, bool, error) {
 	return output, output.Exit != nil && !output.HasMore && cleanupErr == nil, errors.Join(cleanupErr, s.outputErr)
 }
 
-// releaseLog joins the existing process owner's final-read and teardown paths.
-// A failed release retains the same handle and quota until its resource settles.
 func (s *Shell) releaseLog() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

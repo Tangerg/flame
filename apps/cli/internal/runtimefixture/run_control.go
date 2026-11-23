@@ -252,9 +252,6 @@ func resumeRunRevisionChanges(session *sessionState, message *authoring.Message,
 	return changes
 }
 
-// acceptedQuestionBlocksLocked mirrors the production runtime's resume
-// linearization point: accepted answers replace the durable Question items, and
-// the continuation segment re-completes each one right after it starts.
 func (r *Runtime) acceptedQuestionBlocksLocked(run *runState, answers []conversation.InterruptAnswer) ([]conversation.Block, error) {
 	session := r.sessions[run.sessionID]
 	accepted := make([]conversation.Block, 0, len(answers))

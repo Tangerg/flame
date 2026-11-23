@@ -1,8 +1,5 @@
 package bridge
 
-// NotificationAuthorization projects the platform's permission answer. Before a
-// request a refusal is undecided; after the request it is denied.
-//
 //flame:enum
 type NotificationAuthorization string
 
@@ -13,12 +10,11 @@ const (
 	NotificationsDenied      NotificationAuthorization = "denied"
 )
 
-// Target is opaque to the host and may be absent when sending a notification.
 type DesktopNotification struct {
-	ID     string `json:"id"`
-	Title  string `json:"title"`
-	Body   string `json:"body,omitempty"`
-	Target string `json:"target,omitempty"`
+	ID     string             `json:"id"`
+	Title  string             `json:"title"`
+	Body   string             `json:"body,omitempty"`
+	Target NotificationTarget `json:"target,omitempty"`
 }
 
 type NotificationTarget string

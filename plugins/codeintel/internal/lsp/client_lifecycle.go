@@ -16,22 +16,10 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-// initializeTimeout bounds the initialize handshake. gopls answers initialize
-// quickly (indexing continues in the background), but a cold first start on a
-// large module can still take a few seconds.
 const initializeTimeout = 30 * time.Second
 
-// clientShutdownTimeout bounds the protocol-level shutdown handshake. Once it
-// expires, close hard-stops and reaps the owned child process.
 const clientShutdownTimeout = 2 * time.Second
 
-// startClient launches spec's server with its working directory at root,
-// wires its stdio to a JSON-RPC connection, and completes the LSP initialize
-// handshake. Once a process starts, the caller owns the returned client even
-// when initialization fails; only its confirmed retirement permits replacement.
-// ctx is component-owned rather than request-owned. The
-// connection's read loop is detached from the launch attempt because it stays
-// warm until Servers closes it, while retaining the component trace values.
 func startClient(ctx context.Context, spec ServerSpec, root string) (_ *client, err error) {
 	workspace, err := os.OpenRoot(root)
 	if err != nil {
@@ -47,7 +35,7 @@ func startClient(ctx context.Context, spec ServerSpec, root string) (_ *client, 
 	// CommandContext would kill a healthy server when the handshake ctx ends.
 	cmd := exec.Command(spec.Command, spec.Args...) //nolint:noctx
 	cmd.Dir = root
-	cmd.Stderr = io.Discard // server logs are noise; failures surface as call errors
+	cmd.Stderr = io.Discard
 	cmd.WaitDelay = time.Second
 	procgroup.Prepare(cmd)
 
@@ -79,9 +67,8 @@ func startClient(ctx context.Context, spec ServerSpec, root string) (_ *client, 
 		close(wait)
 	}()
 
-	// WithoutCancel: the read loop outlives this call (the connection is cached
-	// and reused) so it must not die when ctx ends, but keeping ctx's values
-	// preserves the trace span instead of severing it with context.Background().
+	// WithoutCancel: the cached connection's read loop outlives this call but keeps
+	// the trace values.
 	shutdownBase := context.WithoutCancel(ctx)
 	connCtx, cancel := context.WithCancel(shutdownBase)
 	c := &client{
@@ -95,16 +82,13 @@ func startClient(ctx context.Context, spec ServerSpec, root string) (_ *client, 
 		diags:        map[string]diagSet{},
 		updated:      make(chan struct{}),
 	}
-	workspace = nil // ownership transfers to the client before initialization
+	workspace = nil
 	stream := jsonrpc2.NewBufferedStream(pipes, lspObjectCodec{})
 	c.conn = newConnection(connCtx, stream, jsonrpc2.AsyncHandler(c))
 	if childCloseErr != nil {
 		return c, fmt.Errorf("lsp: close inherited pipe copies: %w", childCloseErr)
 	}
 
-	// The handshake is synchronous within this call, so it rides ctx directly —
-	// keeping the trace span and honoring caller cancellation — bounded by the
-	// initialize timeout.
 	initCtx, initCancel := context.WithTimeout(ctx, initializeTimeout)
 	defer initCancel()
 	if err := c.initialize(initCtx); err != nil {
@@ -143,9 +127,6 @@ func (c *client) initialize(ctx context.Context) error {
 	return nil
 }
 
-// close shuts the server down: a best-effort graceful shutdown/exit, then the
-// connection (which closes stdin), then a hard process kill as a backstop.
-// Safe to call more than once.
 func (c *client) close() error {
 	c.closeOnce.Do(func() {
 		ctx, cancel := context.WithTimeout(c.shutdownBase, clientShutdownTimeout)
@@ -198,8 +179,6 @@ func (c *client) close() error {
 	return errors.Join(c.processErr, c.cleanupErr)
 }
 
-// retire joins a disconnected server before replacement. Its exit status is
-// the previous connection's outcome; cleanup failure still prevents replacement.
 func (c *client) retire() error {
 	_ = c.close()
 	if c.processErr != nil {
@@ -210,10 +189,6 @@ func (c *client) retire() error {
 	return c.cleanupErr
 }
 
-// killAndJoinProcess is the hard-stop half of client ownership. cmd.Wait has a
-// dedicated goroutine, so this function sends the terminal signal and consumes
-// that goroutine's result before returning. The resulting ExitError is expected
-// after Kill; the caller already reports why a hard stop was necessary.
 func killAndJoinProcess(name string, stop func() error, wait <-chan processEnd) error {
 	if err := stop(); err != nil {
 		return fmt.Errorf("lsp: kill unresponsive %s: %w", name, err)

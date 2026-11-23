@@ -7,7 +7,7 @@ import (
 	"errors"
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+	"github.com/Tangerg/flame/plugins/knowledgebase/internal/knowledge"
 
 	"github.com/Tangerg/frame/sqlite"
 )

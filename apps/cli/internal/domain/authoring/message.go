@@ -1,4 +1,3 @@
-// Package authoring owns CLI-authored messages, options and immutable command input.
 package authoring
 
 import (
@@ -14,8 +13,8 @@ const (
 )
 
 type Message struct {
-	Text        string
-	Attachments []Attachment
+	Text        string       `json:"text"`
+	Attachments []Attachment `json:"attachments"`
 }
 
 func (m Message) Validate() error {
@@ -55,18 +54,10 @@ func (m Message) Clone() Message {
 	return m
 }
 
-// Equal reports whether two messages have the same complete authoring value.
-// Attachment metadata participates because restored drafts and history must not
-// silently retain a stale projection for an otherwise identical attachment ID.
 func (m Message) Equal(other Message) bool {
 	return m.Text == other.Text && slices.Equal(m.Attachments, other.Attachments)
 }
 
-// HasText reports whether the authored text contains semantic content. It does
-// not normalize Text: leading indentation and trailing newlines belong to the
-// user's prompt and must survive delivery unchanged.
 func (m Message) HasText() bool { return strings.TrimSpace(m.Text) != "" }
 
-// IsEmpty reports whether the message has neither semantic text nor an
-// attachment. Whitespace next to attachments is not a separate text block.
 func (m Message) IsEmpty() bool { return !m.HasText() && len(m.Attachments) == 0 }

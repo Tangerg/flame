@@ -1,15 +1,15 @@
 package model
 
 import (
-	coreinvocation "github.com/Tangerg/scope/core/invocation"
-
 	"context"
 	"errors"
 	"fmt"
 	"slices"
 	"time"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	coreinvocation "github.com/Tangerg/scope/core/invocation"
+
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -22,49 +22,29 @@ import (
 	"github.com/samber/lo"
 )
 
-// TextEmbedder exposes the model adapter's captured vector space and observed call.
-// A feature consumes this port without owning provider resolution or evidence.
-type TextEmbedder interface {
-	ID() string
-	Embed(context.Context, []string) ([][]float32, error)
-	Close(context.Context) error
-}
-
-// EmbeddingResolver builds observed embedding clients from the current
-// provider-registry snapshot. Construction is intentionally uncached so
-// credential generations do not accumulate for the process lifetime. Persisted
-// vector identity remains provider/model/endpoint-owned and deliberately
-// excludes credential rotation. Every resolved embedder journals its real
-// provider request through the shared endpoint evidence owner.
+// Construction is uncached so credential generations do not accumulate for the
+// process lifetime.
 type EmbeddingResolver struct {
 	providers credentialLookup
 	clients   embeddingFactory
 	journal   endpointJournal
-	pricing   accounting.Pricing
 }
 
 type embeddingFactory interface {
-	OpenEmbedding(context.Context, modelchoice.Selection, modelprovider.Connection) (ResolvedEmbedding, error)
+	OpenEmbedding(context.Context, flamemodel.Selection, modelprovider.Connection) (ResolvedEmbedding, error)
 }
 
-// NewEmbeddingResolver returns a complete resolver over the provider credential
-// lookup. The endpoint journal owns physical admission and settlement; pricing
-// is optional and absent when no price table is configured.
-func NewEmbeddingResolver(providers credentialLookup, clients embeddingFactory, journal endpointJournal, pricing accounting.Pricing) (*EmbeddingResolver, error) {
+func NewEmbeddingResolver(providers credentialLookup, clients embeddingFactory, journal endpointJournal) (*EmbeddingResolver, error) {
 	if lo.IsNil(providers) || lo.IsNil(clients) {
 		return nil, errors.New("model: embedding provider credentials and installed adapter are required")
 	}
 	if lo.IsNil(journal) {
 		return nil, errors.New("model: embedding endpoint journal is required")
 	}
-	return &EmbeddingResolver{providers: providers, clients: clients, journal: journal, pricing: pricing}, nil
+	return &EmbeddingResolver{providers: providers, clients: clients, journal: journal}, nil
 }
 
-// Resolve builds an embedder for the current selection and registry snapshot.
-func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelchoice.Selection) (TextEmbedder, error) {
-	if e == nil || lo.IsNil(e.providers) || lo.IsNil(e.journal) {
-		return nil, errors.New("model: embedding resolver is not configured")
-	}
+func (e *EmbeddingResolver) Resolve(ctx context.Context, selection flamemodel.Selection) (*Embedder, error) {
 	if err := selection.ValidateExact(); err != nil {
 		return nil, fmt.Errorf("model: embedding selection: %w", err)
 	}
@@ -76,51 +56,28 @@ func (e *EmbeddingResolver) Resolve(ctx context.Context, selection modelchoice.S
 	if err != nil {
 		return nil, err
 	}
-	pricing := resolved.pricing
-	if e.pricing != nil {
-		pricing = e.pricing
-	}
-	created := &embedder{id: resolved.space, model: resolved.model, selection: selection, journal: e.journal, pricing: pricing, close: resolved.close}
+	created := &Embedder{id: resolved.space, model: resolved.model, selection: selection, journal: e.journal, pricing: resolved.pricing, close: resolved.close}
 	return created, nil
 }
 
-// ValidateEmbeddingModel implements the application role-validation port while
-// keeping the usable embedder inside the adapter that owns it.
 func (e *EmbeddingResolver) ValidateEmbeddingModel(ctx context.Context, providerID, model string) error {
-	selection, err := modelchoice.New(providerID, model)
-	if err != nil {
-		return err
-	}
-	resolved, err := e.Resolve(ctx, selection)
-	if err != nil {
-		return err
-	}
-	return resolved.Close(ctx)
+	return validateByOpening(ctx, providerID, model, e.Resolve)
 }
 
-// embedder observes one embedding provider boundary: it admits the real request
-// before dispatch, settles its known response or uncertainty through the shared
-// endpoint journal, and projects the output vectors back to the search port. It
-// never reconstructs a provider response from vectors.
-type embedder struct {
+type Embedder struct {
 	id        string
 	model     embedding.Model
-	selection modelchoice.Selection
+	selection flamemodel.Selection
 	journal   endpointJournal
 	pricing   accounting.Pricing
 	close     func(context.Context) error
 }
 
-func (e *embedder) ID() string { return e.id }
+func (e *Embedder) ID() string { return e.id }
 
-func (e *embedder) Close(ctx context.Context) error {
-	if e.close != nil {
-		return e.close(ctx)
-	}
-	return nil
-}
+func (e *Embedder) Close(ctx context.Context) error { return e.close(ctx) }
 
-func (e *embedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
+func (e *Embedder) Embed(ctx context.Context, texts []string) ([][]float32, error) {
 	request, err := embedding.NewRequest(texts)
 	if err != nil {
 		return nil, err
@@ -169,7 +126,7 @@ func projectEmbeddingVectors(response *embedding.Response) ([][]float32, error) 
 	return vectors, nil
 }
 
-func (e *embedder) start(ctx context.Context, request *embedding.Request) (modelref.EndpointInvocation, error) {
+func (e *Embedder) start(ctx context.Context, request *embedding.Request) (modelref.EndpointInvocation, error) {
 	caller, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return modelref.EndpointInvocation{}, err
@@ -184,7 +141,7 @@ func (e *embedder) start(ctx context.Context, request *embedding.Request) (model
 	return invocation, nil
 }
 
-func (e *embedder) finish(ctx context.Context, invocation modelref.EndpointInvocation, response *embedding.Response, cause error) error {
+func (e *Embedder) finish(ctx context.Context, invocation modelref.EndpointInvocation, response *embedding.Response, cause error) error {
 	if response != nil {
 		if err := response.Validate(); err != nil {
 			cause = errors.Join(cause, err)
@@ -193,7 +150,7 @@ func (e *embedder) finish(ctx context.Context, invocation modelref.EndpointInvoc
 	}
 	var cost accounting.Cost
 	var pricingErr error
-	if response != nil && response.Metadata != nil && response.Metadata.Usage != nil && e.pricing != nil {
+	if response != nil && response.Metadata != nil && response.Metadata.Usage != nil {
 		served := response.Metadata.Model
 		if served == "" {
 			served = invocation.Model

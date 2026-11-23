@@ -2,8 +2,6 @@ package workspace
 
 import "errors"
 
-// SearchResultLimit preserves an explicit positive request. Zero leaves the
-// default and material limits with Runtime.
 type SearchResultLimit struct{ matches int }
 
 func DefaultSearchResultLimit() SearchResultLimit { return SearchResultLimit{} }
@@ -17,8 +15,6 @@ func NewSearchResultLimit(matches int) (SearchResultLimit, error) {
 
 func (l SearchResultLimit) Matches() int { return l.matches }
 
-// ReadByteLimit preserves an explicit positive request. Zero leaves the byte
-// budget with Runtime, including when a preview selects a line window.
 type ReadByteLimit struct{ bytes int }
 
 func DefaultReadByteLimit() ReadByteLimit { return ReadByteLimit{} }
@@ -32,8 +28,6 @@ func NewReadByteLimit(bytes int) (ReadByteLimit, error) {
 
 func (l ReadByteLimit) Bytes() int { return l.bytes }
 
-// ReadLineRange is whole-file when zero. A positive start selects a tail;
-// a positive end bounds that window. Constructors own the ordering invariant.
 type ReadLineRange struct {
 	start int
 	end   int

@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -23,9 +23,6 @@ type modelLister interface {
 	ListModels(context.Context, int, int64) ([]string, error)
 }
 
-// listModels uses the registered Scope binding for authentication, endpoint
-// selection, pagination and bounded response admission. Flame owns the probe
-// budget and the identities its product accepts.
 func listModels(ctx context.Context, spec clientSpec, deployments azureDeployments) ([]string, error) {
 	if Provider(spec.connection.Provider) == providerAzureOpenAI {
 		return deployments.forEndpoint(spec.connection.BaseURL), nil
@@ -47,10 +44,8 @@ func listModels(ctx context.Context, spec clientSpec, deployments azureDeploymen
 	return advertisedModels(ctx, discovery)
 }
 
-// verifyConnection proves the credentials and endpoint without generating
-// where the binding reads a model listing, because a capped generation is
-// refused by reasoning models whose minimum output exceeds the cap. A binding
-// without a listing is verified by one ordinary default-model exchange.
+// A capped generation is refused by reasoning models whose minimum output exceeds
+// the cap, so a model listing proves the connection where the binding has one.
 func verifyConnection(ctx context.Context, spec clientSpec) error {
 	profile, _ := providers.lookup(Provider(spec.connection.Provider))
 	model, err := profile.chatBuilder(ctx, spec, chat.Options{Model: profile.profile.DefaultModel})
@@ -82,7 +77,7 @@ func advertisedModels(ctx context.Context, discovery modelLister) ([]string, err
 		return nil, err
 	}
 	for _, id := range ids {
-		if _, err := modelchoice.NewModelIdentity(id); err != nil {
+		if _, err := flamemodel.NewModelIdentity(id); err != nil {
 			return nil, fmt.Errorf("model: advertised model identity %q: %w", id, err)
 		}
 	}

@@ -9,17 +9,19 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestFailedStreamObservationSurvivesRuntimeRestart(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,6 +101,7 @@ type incompleteObservationModel struct{}
 func (incompleteObservationModel) Call(context.Context, *chat.Request) (*chat.Response, error) {
 	return nil, errors.New("expected streaming")
 }
+
 func (incompleteObservationModel) Stream(context.Context, *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
 	return func(yield func(*chat.ResponseDelta, error) bool) {
 		const (
@@ -131,10 +134,10 @@ func (incompleteObservationModel) Stream(context.Context, *chat.Request) iter.Se
 
 type observationResolver struct{ modelProviderAdapters }
 
-func (observationResolver) OpenChat(context.Context, modelchoice.Selection, modelprovider.Connection) (modeladapter.ResolvedChat, error) {
-	return modeladapter.NewResolvedChat(incompleteObservationModel{}, nil, nil)
+func (observationResolver) OpenChat(context.Context, flamemodel.Selection, modelprovider.Connection) (modeladapter.ResolvedChat, error) {
+	return testsupport.OfflineChat(incompleteObservationModel{}, nil, nil, testsupport.Unpriced())
 }
 
-func (r observationResolver) RestoreChat(ctx context.Context, selection modelchoice.Selection, _ *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error) {
+func (r observationResolver) RestoreChat(ctx context.Context, selection flamemodel.Selection, _ *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error) {
 	return r.OpenChat(ctx, selection, modelprovider.Connection{})
 }

@@ -1,21 +1,20 @@
 package identity
 
-// Server-generated namespaces. Consumers treat the resulting identities as
-// opaque and must not infer behavior from these prefixes.
+// Consumers treat these identities as opaque and must not infer behavior from the
+// prefixes.
 const (
-	SessionPrefix = "ses_"
-	RunPrefix     = "run_"
-	SegmentPrefix = "seg_"
+	sessionPrefix = "ses_"
+	runPrefix     = "run_"
+	segmentPrefix = "seg_"
 	ItemPrefix    = "item_"
 	EventPrefix   = "evt_"
 )
 
-// MaximumResourceCharacters keeps every ordinary durable resource key bounded while
-// leaving substantial headroom over Flame's current 36-character UUID entropy
-// and future collision-safe encodings. Replay Event identities have a separate
-// cursor-sized envelope because they carry an opaque resume position.
+func NewSession(entropy string) (SessionID, error) { return ParseSession(sessionPrefix + entropy) }
+func NewRun(entropy string) (RunID, error)         { return ParseRun(runPrefix + entropy) }
+func NewSegment(entropy string) (SegmentID, error) { return ParseSegment(segmentPrefix + entropy) }
+func NewItem(entropy string) (ItemID, error)       { return ParseItem(ItemPrefix + entropy) }
+
 const MaximumResourceCharacters = 256
 
-// MaximumEventCharacters is the separate public envelope for an opaque replay
-// identity carrying a complete bounded cursor.
 const MaximumEventCharacters = len(EventPrefix) + MaximumCursorCharacters

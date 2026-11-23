@@ -9,7 +9,7 @@ import (
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 	rpc "github.com/Tangerg/flame/plugins/guardrails/internal/contract"
-	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
+	"github.com/Tangerg/flame/plugins/guardrails/internal/guardrail"
 	"github.com/Tangerg/flame/plugins/guardrails/internal/wire"
 
 	sdk "github.com/Tangerg/go-sdk/mcp"

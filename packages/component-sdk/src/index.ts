@@ -82,8 +82,6 @@ export interface CapturedToolResult {
   readonly fnKind?: "path";
   readonly args: string;
   readonly status: "running" | "ok" | "err" | "denied";
-  // The built-in tool's declared result contract; a renderer chosen for this
-  // shape renders by it and never re-derives one from the result's members.
   readonly resultShape?: ResultShape;
   readonly added?: number;
   readonly removed?: number;
@@ -92,8 +90,6 @@ export interface CapturedToolResult {
   readonly files?: number;
   readonly lines?: number;
   readonly exitCode?: number;
-  // Recorded display facts from this tool result, without a live process handle
-  // or a dependency on the Runtime transport record.
   readonly outputPage?: {
     readonly shellId?: string;
     readonly status?: string;
@@ -253,8 +249,6 @@ export interface ComponentComposition {
   readonly children?: ReactNode;
 }
 
-// The point's consumer owns the value schema, including props. The component
-// reference is local to the contributor's exact admitted release.
 export interface ComponentValue<Props = unknown> {
   readonly component: string;
   readonly props?: Props;

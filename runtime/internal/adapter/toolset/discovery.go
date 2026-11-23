@@ -1,19 +1,10 @@
-// Package toolset composes Runtime-owned and integrated tools, applies their
-// execution/path/presentation policies, and resolves model-facing manifests.
-//
-// Tool discovery exposes the model-facing search_tools meta-tool: a
-// progressive-disclosure surface over a set of tools deliberately withheld from
-// the initial manifest. The withheld
-// tools stay resolvable in the Run's registry but are not advertised, so the
-// prompt does not carry every deferred JSON schema every round. The model
-// calls search_tools to find the ones it needs; Scope commits the successful
-// result's exact matches through its AdvertisingTool capability.
 package toolset
 
 import (
 	"cmp"
 	"context"
 	json "encoding/json/v2"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -25,15 +16,11 @@ import (
 	"github.com/samber/lo"
 )
 
-// defaultLimit caps how many tools one search returns (and promotes). Kept small
-// so the model loads what it needs incrementally rather than re-flooding the
-// manifest with a whole catalog.
 const (
 	discoveryDefaultLimit = 5
 	discoveryMaxLimit     = 20
 	discoveryCatalogBytes = 4096
-	// omissionNoticeBytes is the catalog room kept for the omitted-tools notice.
-	omissionNoticeBytes = 200
+	omissionNoticeBytes   = 200
 )
 
 // discoveryDescription is static because the tool declarations open the
@@ -42,8 +29,6 @@ const (
 const discoveryDescription = "Load deferred built-in or integration tools on demand. A bounded directory in the conversation gives examples; search covers the complete deferred set. " +
 	"Search by capability (query=\"...\") or load exact tools (query=\"select:name1,name2\"); matches become directly callable on your next step."
 
-// selectPrefix switches search_tools from keyword search to exact selection:
-// query "select:a,b,c" loads those tools by name, no scoring.
 const discoverySelectPrefix = "select:"
 
 type discoveryArgs struct {
@@ -51,20 +36,16 @@ type discoveryArgs struct {
 	Limit *int   `json:"limit,omitzero" jsonschema:"minimum=1,maximum=20" jsonschema_description:"Maximum keyword matches to load. Defaults to 5. Exact select: queries ignore this value."`
 }
 
-// searchableTool is one withheld tool with its precomputed match terms.
 type discoverableTool struct {
 	definition toolcontract.Definition
-	source     string   // runtime or MCP server identity, for grouping and fairness
-	nameTerms  []string // tokenized qualified name
+	source     string
+	nameTerms  []string
 	nameLower  string
 	descLower  string
 }
 
-// Discovery is the search_tools meta-tool over a fixed set of withheld tools. It is
-// built per Run from the resolver's complete deferred set, so its rendered
-// catalog and promotable definitions never drift.
 type Discovery struct {
-	entries []discoverableTool // in stable source-then-name order
+	entries []discoverableTool
 	byName  map[string]discoverableTool
 	inner   toolcontract.Tool
 }
@@ -76,11 +57,9 @@ type discoveryResult struct {
 	Message string   `json:"message"`
 }
 
-// NewDiscovery builds a search_tools tool over withheld. It returns nil when withheld is
-// empty so the caller simply omits the tool — there is nothing to search.
 func NewDiscovery(withheld []toolcontract.Tool) (*Discovery, error) {
 	if len(withheld) == 0 {
-		return nil, nil
+		return nil, errors.New("discovery: withheld Tools are required")
 	}
 	t := &Discovery{byName: make(map[string]discoverableTool, len(withheld))}
 	for _, executable := range withheld {
@@ -103,8 +82,6 @@ func NewDiscovery(withheld []toolcontract.Tool) (*Discovery, error) {
 		t.entries = append(t.entries, e)
 		t.byName[def.Name] = e
 	}
-	// Stable order: source, then name — drives the round-robin rotation and the
-	// rendered catalog.
 	slices.SortFunc(t.entries, func(a, b discoverableTool) int {
 		if a.source != b.source {
 			return strings.Compare(a.source, b.source)
@@ -131,15 +108,7 @@ func (d *Discovery) Definition() toolcontract.Definition {
 
 func (d *Discovery) Unwrap() toolcontract.Tool { return d.inner }
 
-// Catalog renders the Run's deferred catalog for a per-request model context
-// message. It lists a bounded set of exact names select: accepts, grouped in the
-// stable source-then-name order, and no schemas, so loading still goes through
-// search_tools. Scope may already have advertised some entries; only the
-// execution strategy owns that visibility, so the catalog does not claim it.
 func (d *Discovery) Catalog() string {
-	if d == nil {
-		return ""
-	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "Deferred tools for this run: %d total. Until loaded they are not in your tool list; load them with search_tools before calling them, either by capability (query=\"...\") or by exact name (query=\"select:name1,name2\").", len(d.entries))
 	lastSource := ""
@@ -149,8 +118,6 @@ func (d *Discovery) Catalog() string {
 		if e.source != lastSource {
 			entry = fmt.Sprintf("\n[%s] %s", e.source, e.definition.Name)
 		}
-		// Keep complete identities and leave room for the omission notice. The
-		// search index remains complete; this is only a bounded request projection.
 		if b.Len()+len(entry)+omissionNoticeBytes > discoveryCatalogBytes {
 			omitted++
 			continue
@@ -219,8 +186,6 @@ func (d *Discovery) search(_ context.Context, args discoveryArgs) (discoveryResu
 	return discoveryResult{Names: names, Message: d.renderMatches(matches)}, nil
 }
 
-// selectByName resolves an exact "select:a,b,c" list, preserving request order
-// and dropping unknown names.
 func (d *Discovery) selectByName(list string) []discoverableTool {
 	var out []discoverableTool
 	seen := make(map[string]struct{})
@@ -245,9 +210,6 @@ type rankedTool struct {
 	score int
 }
 
-// searchByKeyword ranks the withheld tools against the query terms, then spreads
-// the top results across servers (round-robin) so one large integration cannot
-// starve the others out of the result window.
 func (d *Discovery) searchByKeyword(query string, limit int) []discoverableTool {
 	terms := strings.Fields(strings.ToLower(query))
 	if len(terms) == 0 {
@@ -259,7 +221,6 @@ func (d *Discovery) searchByKeyword(query string, limit int) []discoverableTool 
 			hits = append(hits, rankedTool{tool: e, score: s})
 		}
 	}
-	// Highest score first; stable by name so ties are deterministic.
 	slices.SortStableFunc(hits, func(a, b rankedTool) int {
 		if a.score != b.score {
 			return cmp.Compare(b.score, a.score)
@@ -269,8 +230,6 @@ func (d *Discovery) searchByKeyword(query string, limit int) []discoverableTool 
 	return roundRobinBySource(hits, limit)
 }
 
-// scoreEntry weights a name-term match above a description-only match. A term
-// prefixed with + is mandatory: if it matches nothing, the tool is excluded.
 func scoreEntry(terms []string, e discoverableTool) (int, bool) {
 	total := 0
 	for _, term := range terms {
@@ -296,14 +255,12 @@ func scoreEntry(terms []string, e discoverableTool) (int, bool) {
 	return total, total > 0
 }
 
-// roundRobinBySource draws from each source's ranked list in turn until limit
-// is reached, so one large capability family cannot monopolize the result.
 func roundRobinBySource(hits []rankedTool, limit int) []discoverableTool {
 	if len(hits) == 0 {
 		return nil
 	}
 	perSource := make(map[string][]discoverableTool)
-	var order []string // first-seen source order (already score-then-name sorted)
+	var order []string
 	for _, h := range hits {
 		if _, ok := perSource[h.tool.source]; !ok {
 			order = append(order, h.tool.source)
@@ -351,9 +308,6 @@ func (d *Discovery) renderNoMatch(query string) string {
 	return fmt.Sprintf("No tools matched %q. %d tool(s) are available — try a broader keyword, or select:name to load one by exact name.", query, len(d.entries))
 }
 
-// tokenize splits a qualified tool name into lowercase terms on non-alphanumeric
-// boundaries and camelCase humps, so "linear_create_issue" and "createIssue"
-// both yield useful search terms.
 func tokenize(name string) []string {
 	var terms []string
 	var cur strings.Builder

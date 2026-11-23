@@ -1,9 +1,3 @@
-// Package runtimebinding adapts the public Runtime bindings and owns
-// the immutable capability profile negotiated for CLI consumers. Validated
-// management, catalog, and workspace results transfer ownership to the caller.
-// Retained profiles and live event projections acquire their own mutable values.
-// Calls borrow the connection's immutable request metadata; Runtime owns the
-// snapshot retained by an operation or stream.
 package runtimebinding
 
 import (
@@ -40,12 +34,7 @@ func requiredRunEventTypes() []protocol.StreamEventType {
 	return []protocol.StreamEventType{protocol.StreamSegmentStarted, protocol.StreamSegmentFinished, protocol.StreamItemStarted, protocol.StreamItemDelta, protocol.StreamItemCompleted, protocol.StreamPlanUpdated}
 }
 
-// Config contains local Runtime paths, remote authorization, and client identity.
-// Paths retain the semantics documented by flameruntime.Config.
 type Config struct {
-	// ProductRoot is FLAME_HOME. Runtime's durability lives at a segment beneath
-	// it that localruntime owns and publishes for every local surface, so this
-	// boundary resolves it rather than accepting a composed path.
 	ProductRoot          string
 	DefaultWorkspacePath string
 	UserHomePath         string
@@ -62,8 +51,6 @@ type discoveryBinding interface {
 	Discover(context.Context, protocol.CallOptions) (*protocol.DiscoverResponse, error)
 }
 
-// runtimeBinding is the composition boundary shared by the embedded Runtime
-// and its public HTTP client. Consumers continue to receive their narrow ports.
 type runtimeBinding interface {
 	runtimeLifecycle
 	discoveryBinding
@@ -88,8 +75,6 @@ type runtimeBinding interface {
 	feedbackBinding
 }
 
-// Connection owns one negotiated Runtime binding and translates its protocol
-// DTOs into CLI-owned consumer interfaces. It owns no product state machine.
 type Connection struct {
 	lifecycle        runtimeLifecycle
 	discovery        discoveryBinding
@@ -124,15 +109,11 @@ func openEmbeddedBinding(ctx context.Context, cfg Config) (*flameruntime.Runtime
 	if err != nil {
 		return nil, fmt.Errorf("resolve runtime data directory: %w", err)
 	}
-	configDirectories := cfg.ConfigDirectories
-	if len(configDirectories) == 0 {
-		configDirectories = []string{dataDirectory.Path()}
-	}
 	return flameruntime.Open(ctx, flameruntime.Config{
 		DataDirectory:        dataDirectory.Path(),
 		DefaultWorkspacePath: cfg.DefaultWorkspacePath,
 		UserHomePath:         cfg.UserHomePath,
-		ConfigDirectories:    configDirectories,
+		ConfigDirectories:    cfg.ConfigDirectories,
 	})
 }
 
@@ -301,15 +282,12 @@ func validateDiscovery(discovery *protocol.DiscoverResponse) error {
 	return nil
 }
 
-// Close releases the selected binding. The embedded binding tears down its own
-// Runtime; the remote binding only detaches this client's calls and streams.
 func (r *Connection) Close() error {
 	return classifyError(r.lifecycle.Close())
 }
 
-// Owner lazily opens exactly one Runtime connection for a process and owns its
-// shutdown. A failed open may be retried after successful cleanup; incomplete
-// cleanup moves the owner into shutdown so it cannot create a second Runtime.
+// A failed open may be retried after successful cleanup; incomplete cleanup moves
+// the owner into shutdown so it cannot create a second Runtime.
 type Owner struct {
 	mu         sync.Mutex
 	config     Config
@@ -357,13 +335,10 @@ func (o *Owner) rejectOpen(opened *Connection, openErr error) error {
 	return errors.Join(openErr, fmt.Errorf("close runtime after failed negotiation: %w", closeErr))
 }
 
-// Profile returns the immutable discovery projection for this connection.
 func (r *Connection) Profile() Profile { return r.profile }
 
-// The accessors below hand out a usable binding for their surface. Whether the connected Runtime offers that surface is the
-// composition root's question, asked once against the Profile: an accessor that
-// answered it by returning a nil pointer would arrive at a consumer's interface
-// field as a non-nil interface, and defeat the very check that asks.
+// An accessor that returned a nil pointer would reach a consumer's interface field
+// as a non-nil interface and defeat the composition root's availability check.
 func (r *Connection) DiagnosticTools() *DiagnosticTools {
 	return &DiagnosticTools{runtime: r}
 }
@@ -380,12 +355,8 @@ func (r *Connection) Feedback() *Feedback {
 	return &Feedback{runtime: r}
 }
 
-func (r *Connection) supportsFeature(name string) bool {
-	return r.profile.Supports(name)
-}
-
 func (r *Connection) requireFeature(name string) error {
-	if r.supportsFeature(name) {
+	if r.profile.Supports(name) {
 		return nil
 	}
 	return fmt.Errorf("%w: runtime capability %q was not negotiated", conversation.ErrIncompatibleRuntime, name)

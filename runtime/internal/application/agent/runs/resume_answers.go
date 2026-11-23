@@ -65,9 +65,6 @@ func settleResumeAnswer(item transcript.Item, prompt transcript.Prompt, response
 		if response.Kind != run.InterruptQuestion || response.Question == nil || response.Approval != nil {
 			return transcript.Replacement{}, errors.New("question response is required")
 		}
-		if len(response.Question.Answers) == 0 {
-			return transcript.Replacement{}, errors.New("interrupt: question answer requires fields")
-		}
 		change, err := item.AnswerQuestion(response.Question.Answers)
 		if err == nil {
 			return change, nil
@@ -82,8 +79,6 @@ func settleResumeAnswer(item transcript.Item, prompt transcript.Prompt, response
 	}
 }
 
-// Live acceptance and restart route the settled Items through the same handoff
-// so a redelivered Signal repeats the exact accepted identity and bytes.
 func (p Pending) settledAnswers(sessionID identity.SessionID, items map[identity.ItemID]transcript.Item) ([]InterruptAnswer, error) {
 	answers := make([]InterruptAnswer, 0, len(p.Bindings))
 	for index, binding := range p.Bindings {

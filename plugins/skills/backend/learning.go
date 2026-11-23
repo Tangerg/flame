@@ -1,9 +1,9 @@
 package main
 
 import (
-	"container/list"
 	"context"
 	"errors"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -27,8 +27,8 @@ const (
 type learner struct {
 	db          sqlite.Database
 	mu          sync.Mutex
-	complexRuns map[string]*list.Element
-	recent      list.List
+	complexRuns map[string]*miningSession
+	visits      uint64
 	lastArchive time.Time
 }
 
@@ -37,16 +37,10 @@ func openLearner(ctx context.Context, path string) (*learner, error) {
 	if err != nil {
 		return nil, errors.Join(err, db.Close())
 	}
-	return &learner{db: db, complexRuns: make(map[string]*list.Element)}, nil
+	return &learner{db: db, complexRuns: make(map[string]*miningSession)}, nil
 }
 
-type learningInputs interface {
-	Conversation(context.Context) (skilllearning.Conversation, error)
-	ReadSkill(context.Context, string) (skilllearning.ReadResult, error)
-	Complete(context.Context, string, string) (string, error)
-}
-
-func (l *learner) mine(ctx context.Context, run skilllearning.Run, inputs learningInputs) (skilllearning.MineResult, error) {
+func (l *learner) mine(ctx context.Context, run skilllearning.Run, inputs remoteInputs) (skilllearning.MineResult, error) {
 	if run.ToolCalls < minimumToolCalls || !l.miningDue(run.SessionID) {
 		return skilllearning.MineResult{}, nil
 	}
@@ -91,9 +85,7 @@ func (l *learner) mine(ctx context.Context, run skilllearning.Run, inputs learni
 	}}, nil
 }
 
-// reviseSkill asks for a revision of the existing skill the miner named; a
-// skill that no longer exists is not found and yields no proposal.
-func reviseSkill(ctx context.Context, inputs learningInputs, name, transcript string) (document, previous string, found bool, err error) {
+func reviseSkill(ctx context.Context, inputs remoteInputs, name, transcript string) (document, previous string, found bool, err error) {
 	if err := skillspec.ValidateName(name); err != nil {
 		return "", "", false, errors.Join(errInvalidSkillDraft, err)
 	}
@@ -113,8 +105,8 @@ func reviseSkill(ctx context.Context, inputs learningInputs, name, transcript st
 var errInvalidSkillDraft = errors.New("skill learning: model returned an invalid skill document")
 
 type miningSession struct {
-	id   string
-	runs int
+	runs      int
+	lastVisit uint64
 }
 
 func (l *learner) miningDue(session string) bool {
@@ -122,23 +114,31 @@ func (l *learner) miningDue(session string) bool {
 	defer l.mu.Unlock()
 	entry := l.complexRuns[session]
 	if entry == nil {
-		if l.recent.Len() == maxTrackedSessions {
-			oldest := l.recent.Back()
-			delete(l.complexRuns, oldest.Value.(*miningSession).id)
-			l.recent.Remove(oldest)
+		if len(l.complexRuns) == maxTrackedSessions {
+			l.forgetLeastRecentSession()
 		}
-		entry = l.recent.PushFront(&miningSession{id: session})
+		entry = &miningSession{}
 		l.complexRuns[session] = entry
 	}
-	l.recent.MoveToFront(entry)
-	count := entry.Value.(*miningSession)
-	count.runs++
-	if count.runs < runsPerMiningAttempt {
+	l.visits++
+	entry.lastVisit = l.visits
+	entry.runs++
+	if entry.runs < runsPerMiningAttempt {
 		return false
 	}
-	l.recent.Remove(entry)
 	delete(l.complexRuns, session)
 	return true
+}
+
+func (l *learner) forgetLeastRecentSession() {
+	var oldest string
+	oldestVisit := uint64(math.MaxUint64)
+	for session, entry := range l.complexRuns {
+		if entry.lastVisit < oldestVisit {
+			oldest, oldestVisit = session, entry.lastVisit
+		}
+	}
+	delete(l.complexRuns, oldest)
 }
 
 func (l *learner) archive(now time.Time) skilllearning.ArchiveAdvice {

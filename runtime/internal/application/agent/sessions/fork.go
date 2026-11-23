@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// ForkSpec describes where a session fork should branch.
 type ForkSpec struct {
 	ParentID  identity.SessionID
 	FromRunID identity.RunID
@@ -41,27 +40,12 @@ func (m ForkMaterial) planAt(runID identity.RunID) plan.Document {
 	return plan.Document{}
 }
 
-// ForkBoundary is where a fork branches: the parent history prefix the child is
-// seeded with, and the run that prefix stops at. They travel together because the
-// child's Plan is copied from that same run's boundary — a fork
-// whose conversation and Plan came from different runs would hand the branch
-// a plan that never went with what it remembers.
 type ForkBoundary struct {
 	Messages []chat.Message
-	// RunIDs are the terminal Run facts whose user-visible transcript belongs to
-	// Messages. A fork remaps them into the child instead of leaving the model with
-	// context the client cannot see through runs.list/items.list.
-	RunIDs []identity.RunID
-	// RunID is the boundary run, empty when the parent has no terminal run to
-	// branch from (nothing to copy).
-	RunID identity.RunID
+	RunIDs   []identity.RunID
+	RunID    identity.RunID
 }
 
-// ResolveForkBoundary applies a durable run boundary to parent history.
-// Non-terminal runs never contribute messages: their current tail can still
-// change and therefore is not a portable fork boundary. An explicit target
-// must itself be terminal; an implicit whole-conversation fork stops at the
-// latest terminal run.
 func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID identity.RunID) (ForkBoundary, error) {
 	for _, run := range runs {
 		if !run.State().IsTerminal() || !run.Lineage().IsRoot() {
@@ -86,10 +70,6 @@ func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID identity
 	}, nil
 }
 
-// Fork creates a child session, seeds it with the resolved parent history prefix
-// and the Plan that boundary held, and renames it as one atomic write-set.
-// The application resolves the boundary and commits the branch through
-// its persistence port.
 func (c *Coordinator) Fork(ctx context.Context, spec ForkSpec) (session.Session, error) {
 	creation, err := c.PrepareFork(ctx, spec)
 	if err != nil {

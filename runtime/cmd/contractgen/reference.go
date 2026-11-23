@@ -7,12 +7,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
-// reference renders the human-readable projection of the Contract Registry.
-//
-// It is generated from the same registry the dispatcher routes off, which is the
-// only way a reference stays true: a hand-written method table is a second
-// source. This file restates what the code does, and the drift gate proves it
-// still does.
 func reference(m manifest) string {
 	var b strings.Builder
 	writeReferenceHeader(&b, m.ProtocolVersion, len(m.Methods))

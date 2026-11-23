@@ -1,70 +1,39 @@
 package protocol
 
-// UtilityRole is the (provider, model) the in-house maintenance services run
-// on (models.getUtilityRole / setUtilityRole). Empty model uses the Runtime
-// composition's default selection. Provider must be configured when assigned.
-// The selection remains stored if credentials later change, so clients that
-// need effective availability join it with providers.list.
-// Saving affects the next utility invocation, including during an existing Run.
-// It does not replace that Run's main-model deployment or an in-flight invocation.
 type UtilityRole struct {
 	Provider string `json:"provider,omitempty"`
 	Model    string `json:"model,omitempty"`
 }
 
-// EmbeddingRole is the optional (provider, model) used to enrich agent-memory
-// ranking (models.getEmbeddingRole / setEmbeddingRole). Empty model leaves
-// memory search keyword-only. Provider must be configured and embedding-capable when
-// the role is assigned. The selection remains stored if credentials later
-// change, so clients that need effective availability join it with
-// providers.list. A distinct type from [UtilityRole] (same shape, different
-// domain — under the rule-of-three for sharing).
-// Saving affects subsequent searches, without rewriting earlier search results.
 type EmbeddingRole struct {
 	Provider string `json:"provider,omitempty"`
 	Model    string `json:"model,omitempty"`
 }
 
-// ListModelsRequest selects the provider that owns the model catalog.
 type ListModelsRequest struct {
 	Provider string `json:"provider"`
 }
 
-// Model is one entry in models.list. A provider's complete page contains each
-// model ID once in ascending ID order.
 type Model struct {
-	ID          string `json:"id"`
-	Provider    string `json:"provider"`
-	DisplayName string `json:"displayName,omitempty"`
-	// TokenLimits is omitted when the provider publishes no context-envelope
-	// facts. Every present member is strictly positive and at least one member
-	// must be present; numeric zero is never a wire spelling of unknown.
-	TokenLimits *ModelTokenLimits `json:"tokenLimits,omitzero"`
-	// KnowledgeCutoff is the training cutoff (RFC3339 date), empty when unknown.
-	KnowledgeCutoff string `json:"knowledgeCutoff,omitempty"`
-	// Deprecated marks a model the provider has retired; clients hide or flag it.
-	Deprecated bool `json:"deprecated,omitzero"`
-	// Default marks the model a Session created without a selection runs on,
-	// so a client shows that model instead of choosing a stand-in of its own.
-	Default      bool               `json:"default,omitzero"`
-	Capabilities *ModelCapabilities `json:"capabilities,omitzero"`
-	Pricing      []ModelPriceBand   `json:"pricing,omitempty"`
+	ID              string             `json:"id"`
+	Provider        string             `json:"provider"`
+	DisplayName     string             `json:"displayName,omitempty"`
+	TokenLimits     *ModelTokenLimits  `json:"tokenLimits,omitzero"`
+	KnowledgeCutoff string             `json:"knowledgeCutoff,omitempty"`
+	Deprecated      bool               `json:"deprecated,omitzero"`
+	Default         bool               `json:"default,omitzero"`
+	Capabilities    *ModelCapabilities `json:"capabilities,omitzero"`
+	Pricing         []ModelPriceBand   `json:"pricing,omitempty"`
 }
 
-// ModelTokenLimits is the provider-published context envelope for one exact
-// model. The three maxima are independent facts rather than simultaneously
-// attainable quotas. A streaming/multimodal model may legitimately publish an
-// output maximum above its input context window.
+// The three maxima are independent facts, not simultaneously attainable quotas: an
+// output maximum may exceed the input context window.
 type ModelTokenLimits struct {
 	ContextWindow   *int64 `json:"contextWindow,omitzero"`
 	MaxInputTokens  *int64 `json:"maxInputTokens,omitzero"`
 	MaxOutputTokens *int64 `json:"maxOutputTokens,omitzero"`
 }
 
-// Modality is a media type a model takes as input or emits as output
-// It mirrors core's chat.Modality. The enum is open, so new media types
-// are added without bumping the contract.
-//
 //flame:enum
 type Modality string
 
@@ -76,36 +45,17 @@ const (
 	ModalityPDF   Modality = "pdf"
 )
 
-// ModelCapabilities describes per-model capabilities. The booleans are
-// quick gates; the list / level fields carry the detail a model picker needs
-// (which media the model accepts, what reasoning effort levels it offers).
 type ModelCapabilities struct {
-	// Reasoning reports whether the model supports extended thinking at all.
-	Reasoning bool `json:"reasoning,omitzero"`
-	// ReasoningLevels are the discrete effort levels the model accepts, in
-	// increasing order (e.g. ["low","medium","high"]). Empty when reasoning is
-	// budget-controlled (no discrete levels) or unsupported.
-	ReasoningLevels []string `json:"reasoningLevels,omitempty"`
-	// ReasoningDefaultLevel is the effort used when the caller picks none. It
-	// is one of ReasoningLevels, present exactly when there are levels.
-	ReasoningDefaultLevel string `json:"reasoningDefaultLevel,omitempty"`
-	// Multimodal is a convenience flag: the model accepts image input. The
-	// full set is InputModalities.
-	Multimodal bool `json:"multimodal,omitzero"`
-	// InputModalities lists every media type the model accepts (text first,
-	// then richer types). OutputModalities lists what it emits (text for chat).
-	InputModalities  []Modality `json:"inputModalities,omitempty"`
-	OutputModalities []Modality `json:"outputModalities,omitempty"`
-	// ToolUse reports tool / function calling support.
-	ToolUse bool `json:"toolUse,omitzero"`
-	// StructuredOutput reports native structured-output / JSON-schema support.
-	StructuredOutput bool `json:"structuredOutput,omitzero"`
+	Reasoning             bool       `json:"reasoning,omitzero"`
+	ReasoningLevels       []string   `json:"reasoningLevels,omitempty"`
+	ReasoningDefaultLevel string     `json:"reasoningDefaultLevel,omitempty"`
+	Multimodal            bool       `json:"multimodal,omitzero"`
+	InputModalities       []Modality `json:"inputModalities,omitempty"`
+	OutputModalities      []Modality `json:"outputModalities,omitempty"`
+	ToolUse               bool       `json:"toolUse,omitzero"`
+	StructuredOutput      bool       `json:"structuredOutput,omitzero"`
 }
 
-// ModelPriceBand is one effective per-million-token rate in a model's rate
-// card, which lists bands in ascending threshold order. A band reprices a whole
-// call whose input exceeds AboveInputTokens; the first band starts at zero.
-// Cache rates are what the catalog bills; zero is free.
 type ModelPriceBand struct {
 	AboveInputTokens              int64   `json:"aboveInputTokens,omitzero"`
 	InputUSDPerMillionTokens      float64 `json:"inputUsdPerMillionTokens,omitzero"`

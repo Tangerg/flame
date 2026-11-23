@@ -46,7 +46,7 @@ export interface PaletteTheme {
   palette: ThemePalette;
 }
 
-export const SCHEME_BASE: Record<Scheme, { background: string; foreground: string }> = {
+const SCHEME_BASE: Record<Scheme, { background: string; foreground: string }> = {
   dark: { background: "#0f0f0f", foreground: "#eeeeee" },
   light: { background: "#f5f5f5", foreground: "#1b1b1b" },
 };

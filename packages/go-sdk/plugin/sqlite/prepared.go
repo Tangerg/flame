@@ -11,23 +11,18 @@ import (
 
 	framecall "github.com/Tangerg/frame/call"
 
-	"github.com/Tangerg/frame/sqlite"
+	framesqlite "github.com/Tangerg/frame/sqlite"
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// PreparedCommand is a projection of a durable private command admission.
-// Model or other external I/O cannot be repeated merely because no final reply
-// exists. The actual mutation owner completes it in its own short transaction.
 type PreparedCommand struct {
-	db         sqlite.Database
+	db         framesqlite.Database
 	id, method string
 	input      framevalue.JSON
 	fresh      bool
 }
 
-// validateNew checks only local preconditions before the first durable admission.
-// Existing pending work and receipts must reconcile without acquiring new collaborators.
-func AdmitCommand(ctx context.Context, db sqlite.Database, method, id string, input framevalue.JSON, validateNew func(context.Context) error) (*PreparedCommand, []byte, error) {
+func AdmitCommand(ctx context.Context, db framesqlite.Database, method, id string, input framevalue.JSON, validateNew func(context.Context) error) (*PreparedCommand, []byte, error) {
 	if err := validateCommandIdentity(db, method, id); err != nil {
 		return nil, nil, err
 	}
@@ -37,12 +32,12 @@ func AdmitCommand(ctx context.Context, db sqlite.Database, method, id string, in
 	var reply []byte
 	started := false
 	err := db.RunInTx(ctx, func(ctx context.Context) error {
-		var previousMethod, previousInput string
-		err := db.Executor(ctx).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
+		stored, err := readStoredCommand(ctx, db.Executor(ctx), id)
 		if err == nil {
-			if previousMethod != method || previousInput != input.String() {
+			if !stored.admits(method, input) {
 				return framecall.ErrConflict
 			}
+			reply = stored.reply
 			return nil
 		}
 		if !errors.Is(err, sql.ErrNoRows) {
@@ -68,53 +63,49 @@ func AdmitCommand(ctx context.Context, db sqlite.Database, method, id string, in
 	return &PreparedCommand{db: db, id: id, method: method, input: input, fresh: started}, nil, nil
 }
 
-// ResumeCommand reads original private input and admission without creating work.
-func ResumeCommand(ctx context.Context, db sqlite.Database, method, id string) (*PreparedCommand, framevalue.JSON, []byte, error) {
+func ResumeCommand(ctx context.Context, db framesqlite.Database, method, id string) (*PreparedCommand, framevalue.JSON, []byte, error) {
 	if err := validateCommandIdentity(db, method, id); err != nil {
 		return nil, framevalue.JSON{}, nil, err
 	}
-	var storedMethod, raw string
-	var reply []byte
-	if err := db.Read(ctx, func(reader sqlite.Reader) error {
-		return reader.QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&storedMethod, &raw, &reply)
+	var stored storedCommand
+	if err := db.Read(ctx, func(reader framesqlite.Reader) error {
+		var err error
+		stored, err = readStoredCommand(ctx, reader, id)
+		return err
 	}); err != nil {
 		return nil, framevalue.JSON{}, nil, err
 	}
-	if storedMethod != method {
+	if stored.method != method {
 		return nil, framevalue.JSON{}, nil, framecall.ErrConflict
 	}
-	input, err := framevalue.ParseJSON([]byte(raw))
+	input, err := framevalue.ParseJSON([]byte(stored.input))
 	if err != nil {
 		return nil, framevalue.JSON{}, nil, err
 	}
-	if input.String() != raw {
+	if input.String() != stored.input {
 		return nil, framevalue.JSON{}, nil, errors.New("managed plugin: retained input is not canonical")
 	}
-	if len(reply) != 0 {
-		return nil, input, reply, nil
+	if len(stored.reply) != 0 {
+		return nil, input, stored.reply, nil
 	}
 	return &PreparedCommand{db: db, id: id, method: method, input: input}, input, nil, nil
 }
 
-// NewlyAdmitted authorizes the first effect attempt. A pending admission requires
-// owner-provided reconciliation evidence before its caller can proceed.
 func (c *PreparedCommand) NewlyAdmitted() bool { return c != nil && c.fresh }
 
-// An upstream acknowledgement survives cancellation of the request which obtained
-// it. Its local write-set still has a finite lifetime if storage is unavailable.
 const externalSettlementTimeout = 10 * time.Second
 
 func (c *PreparedCommand) SettleExternal(ctx context.Context, reply []byte, record func(context.Context) error) error {
 	settlement, cancel := context.WithTimeout(context.WithoutCancel(ctx), externalSettlementTimeout)
 	defer cancel()
-	return c.complete(settlement, reply, record, sqlite.Database.RunIndependentTx)
+	return c.complete(settlement, reply, record, framesqlite.Database.RunIndependentTx)
 }
 
 func (c *PreparedCommand) Complete(ctx context.Context, reply []byte) error {
-	return c.complete(ctx, reply, nil, sqlite.Database.RunInTx)
+	return c.complete(ctx, reply, nil, framesqlite.Database.RunInTx)
 }
 
-type replyTransaction func(sqlite.Database, context.Context, func(context.Context) error) error
+type replyTransaction func(framesqlite.Database, context.Context, func(context.Context) error) error
 
 func (c *PreparedCommand) complete(ctx context.Context, reply []byte, record func(context.Context) error, transact replyTransaction) error {
 	if c == nil {
@@ -153,15 +144,14 @@ func (c *PreparedCommand) complete(ctx context.Context, reply []byte, record fun
 }
 
 func (c *PreparedCommand) readReply(ctx context.Context) ([]byte, error) {
-	var method, input string
-	var reply []byte
-	if err := c.db.Executor(ctx).QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, c.id).Scan(&method, &input, &reply); err != nil {
+	stored, err := readStoredCommand(ctx, c.db.Executor(ctx), c.id)
+	if err != nil {
 		return nil, err
 	}
-	if method != c.method || input != c.input.String() {
+	if !stored.admits(c.method, c.input) {
 		return nil, framecall.ErrConflict
 	}
-	return reply, nil
+	return stored.reply, nil
 }
 
 func (c *PreparedCommand) storeReply(ctx context.Context, reply []byte) error {
@@ -185,8 +175,6 @@ func CompleteExternalCommand[R any](ctx context.Context, command *PreparedComman
 	return CompleteCommand(settlement, command, classify, prepare)
 }
 
-// CompleteCommand decides local publication after external work. The original
-// pending admission remains the only receipt owner and prevents a second attempt.
 func CompleteCommand[R any](ctx context.Context, command *PreparedCommand, classify pluginmcp.Classifier, prepare func(context.Context) (CommandPlan[R], error)) (R, error) {
 	var zero R
 	if command == nil || prepare == nil {

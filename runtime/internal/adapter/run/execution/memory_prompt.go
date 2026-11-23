@@ -3,13 +3,11 @@ package execution
 import (
 	"slices"
 	"strings"
+	"unicode/utf8"
 )
 
 const memoryPromptCharsPerToken = 4
 
-// pinnedMemoryPrompt projects memory values into the agent system prompt. Its
-// ordering, text form, and token approximation belong to the model adapter;
-// the domain retains only memory lifecycle and content invariants.
 type pinnedMemoryPrompt struct {
 	text    string
 	sources contextSources
@@ -68,7 +66,7 @@ func estimateMemoryPromptTokens(text string) int {
 	ascii := 0
 	tokens := 0
 	for _, r := range text {
-		if r <= 0x7f {
+		if r < utf8.RuneSelf {
 			ascii++
 		} else {
 			tokens++

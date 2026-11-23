@@ -9,10 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// presentRunStatus publishes a lifecycle position. Which state IS which position
-// is the domain's answer ([rundomain.State.Status]) — the durable status filter
-// reads the same one, so a run selected as waiting cannot be published as
-// finished; this only spells it for the wire.
 func presentRunStatus(status rundomain.State) protocol.RunStatus {
 	switch status {
 	case rundomain.Running:
@@ -26,8 +22,6 @@ func presentRunStatus(status rundomain.State) protocol.RunStatus {
 	}
 }
 
-// presentRunSummary maps the identity and lifecycle half — what a cold read hands
-// back in bulk.
 func presentRunSummary(run rundomain.Run) protocol.RunSummary {
 	summary := protocol.RunSummary{
 		ID: run.ID().String(), SessionID: run.SessionID().String(), SpawnedByItemID: run.Lineage().SpawnedByItemID().String(),
@@ -37,8 +31,6 @@ func presentRunSummary(run rundomain.Run) protocol.RunSummary {
 		Status:          presentRunStatus(run.State()),
 		CreatedAt:       run.CreatedAt(), FinishedAt: run.FinishedAt(),
 	}
-	// A waiting run has no outcome: what it is waiting on is the answer, and the
-	// interrupts carry that.
 	if run.State().IsTerminal() {
 		outcome := presentOutcome(run)
 		summary.Outcome = &outcome
@@ -77,9 +69,6 @@ func presentCancelResult(result runs.CancelResult) *protocol.CancelRunResponse {
 	}
 }
 
-// presentRunCapabilities maps the Run's capabilities to the external
-// protocol contract. Both sets are allocated even when empty: a Run that
-// requires nothing has known, empty capabilities, not null ones.
 func presentRunCapabilities(capabilities rundomain.Capabilities) protocol.RunCapabilities {
 	out := protocol.RunCapabilities{
 		RequiredFeatures: make([]protocol.RunCapabilityFeature, 0, 1),
@@ -118,14 +107,48 @@ func presentOutcome(run rundomain.Run) protocol.RunOutcome {
 	return outcome
 }
 
+var lossReasons = wireVocabulary[rundomain.LossReason, protocol.LossReason]{
+	{rundomain.LossRestart, protocol.LossRestart},
+	{rundomain.LossIsolatedWorkspace, protocol.LossIsolatedWorkspace},
+	{rundomain.LossWorkspaceUnavailable, protocol.LossWorkspaceUnavailable},
+	{rundomain.LossOtherBuild, protocol.LossOtherBuild},
+	{rundomain.LossWaitingStateUnavailable, protocol.LossWaitingStateUnavailable},
+	{rundomain.LossConfigurationChanged, protocol.LossConfigurationChanged},
+	{rundomain.LossUnresolvedEffects, protocol.LossUnresolvedEffects},
+	{rundomain.LossUnresolvedModelCall, protocol.LossUnresolvedModelCall},
+}
+
+var unresolvedCauses = wireVocabulary[rundomain.UnresolvedCause, protocol.UnresolvedEffectCause]{
+	{rundomain.UnresolvedAtTermination, protocol.UnresolvedAtTermination},
+	{rundomain.UnresolvedAtRuntimeFailure, protocol.UnresolvedAtRuntimeFailure},
+}
+
+var runFailureKinds = wireVocabulary[rundomain.FailureKind, protocol.ArtifactProblemType]{
+	{rundomain.FailureInternal, protocol.ArtifactProblemInternalError},
+	{rundomain.FailureAgentStuck, protocol.ArtifactProblemAgentStuck},
+	{rundomain.FailureRateLimited, protocol.ArtifactProblemRateLimited},
+	{rundomain.FailureInvalidCredentials, protocol.ArtifactProblemInvalidCredentials},
+	{rundomain.FailureTimeout, protocol.ArtifactProblemTimeout},
+	{rundomain.FailureProviderUnavailable, protocol.ArtifactProblemProviderUnavailable},
+	{rundomain.FailureProviderRejected, protocol.ArtifactProblemProviderRejected},
+}
+
+var toolFailureKinds = wireVocabulary[tool.FailureKind, protocol.ArtifactProblemType]{
+	{tool.FailureInternal, protocol.ArtifactProblemInternalError},
+	{tool.FailureDenied, protocol.ArtifactProblemDeniedByUser},
+	{tool.FailureExecution, protocol.ArtifactProblemToolFailed},
+	{tool.FailureChildRunCanceled, protocol.ArtifactProblemChildRunCanceled},
+	{tool.FailureCanceled, protocol.ArtifactProblemToolCanceled},
+}
+
 func presentLoss(loss rundomain.Loss) *protocol.RunLoss {
-	return &protocol.RunLoss{Reason: protocol.LossReason(loss.Reason), Detail: loss.Detail}
+	return &protocol.RunLoss{Reason: lossReasons.mustWire(loss.Reason), Detail: loss.Detail}
 }
 
 func presentUnresolvedEffects(effects []rundomain.UnresolvedEffect) []protocol.UnresolvedEffect {
 	projected := make([]protocol.UnresolvedEffect, 0, len(effects))
 	for _, effect := range effects {
-		projected = append(projected, protocol.UnresolvedEffect{ProcessID: effect.ProcessID(), EffectID: effect.EffectID(), Cause: effect.Cause(), Reason: effect.Reason(), Detail: effect.Detail(), Output: effect.Output()})
+		projected = append(projected, protocol.UnresolvedEffect{ProcessID: effect.ProcessID(), EffectID: effect.EffectID(), Cause: unresolvedCauses.mustWire(effect.Cause()), Reason: effect.Reason(), Detail: effect.Detail(), Output: effect.Output()})
 	}
 	return projected
 }
@@ -192,15 +215,8 @@ func presentRunFailure(problem *rundomain.Failure) *protocol.ProblemData {
 	if problem == nil {
 		return nil
 	}
-	if !problem.Kind.Valid() {
-		panic("delivery: unknown run failure kind")
-	}
-	// The problem's scope is not published: where the frame LANDS already says it —
-	// a run's outcome or a tool call's error — and a field restating that is a second
-	// answer a client could find disagreeing with the first. The domain keeps its own
-	// scope, which is what stops a run problem being stored in a tool slot.
 	return &protocol.ProblemData{
-		Type: string(problem.Kind), Detail: problem.Detail, DocURL: problem.DocURL,
+		Type: string(runFailureKinds.mustWire(problem.Kind)), Detail: problem.Detail, DocURL: problem.DocURL,
 		RetryAfterSeconds: problem.RetryAfterSeconds(),
 	}
 }
@@ -209,11 +225,8 @@ func presentToolFailure(failure *tool.Failure) *protocol.ProblemData {
 	if failure == nil {
 		return nil
 	}
-	if !failure.Kind.Valid() {
-		panic("delivery: unknown tool failure kind")
-	}
 	return &protocol.ProblemData{
-		Type: string(failure.Kind), Detail: failure.Detail, DocURL: failure.DocURL,
+		Type: string(toolFailureKinds.mustWire(failure.Kind)), Detail: failure.Detail, DocURL: failure.DocURL,
 	}
 }
 

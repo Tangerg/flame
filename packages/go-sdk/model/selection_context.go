@@ -33,8 +33,6 @@ const (
 
 func (InputKind) JSONSchemaEnum() []string { return []string{string(TextBytes), string(RequestBytes)} }
 
-// SelectionLimits projects a caller-owned envelope; selection cannot change or
-// enforce it. Text bytes and encoded request bytes measure different resources.
 type SelectionLimits struct {
 	InputKind       InputKind `json:"inputKind"`
 	MaxInputBytes   int64     `json:"maxInputBytes" jsonschema:"minimum=1"`

@@ -2,7 +2,6 @@ package terminal
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/filesystem/sessionartifact"
@@ -44,7 +43,7 @@ func (a *app) copyLastAssistant() error {
 		},
 	)
 	if !started {
-		return errors.New("another session output operation is already running")
+		return sessionOutputOperation.busy()
 	}
 	return nil
 }
@@ -77,7 +76,7 @@ func (l *sessionLifecycle) exportSession(argument string) error {
 		},
 	)
 	if !started {
-		return errors.New("another session output operation is already running")
+		return sessionOutputOperation.busy()
 	}
 	return nil
 }

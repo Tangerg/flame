@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	app "github.com/Tangerg/flame/plugins/memory/internal/application"
+	"github.com/Tangerg/flame/plugins/memory/internal/coordination"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 
@@ -18,7 +18,7 @@ type remoteModels struct {
 	space string
 }
 
-func (r remoteModels) Complete(ctx context.Context, prompt app.Prompt) (string, error) {
+func (r remoteModels) Complete(ctx context.Context, prompt coordination.Prompt) (string, error) {
 	if err := prompt.Validate(); err != nil {
 		return "", err
 	}
@@ -30,7 +30,9 @@ func (r remoteModels) Complete(ctx context.Context, prompt app.Prompt) (string, 
 	}
 	return client.Output(ctx, &chat.Request{Messages: []chat.Message{chat.NewSystemMessage(prompt.SystemPrompt), chat.NewUserMessage(chat.NewTextPart(prompt.UserPrompt))}, Options: chat.Options{MaxOutputTokens: &prompt.MaxOutputTokens}}, chatclient.Text())
 }
+
 func (r remoteModels) ID() string { return r.space }
+
 func (r remoteModels) Embed(ctx context.Context, texts []string) ([][]float32, error) {
 	result, err := pluginsdk.CallTextEmbedding(ctx, r.grant, pluginmcp.NewCommandID(), texts)
 	if err != nil {

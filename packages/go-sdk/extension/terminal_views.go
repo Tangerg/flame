@@ -2,8 +2,6 @@ package extension
 
 import "slices"
 
-// TerminalActionTarget is what a terminal view action acts on: the whole view
-// or one selected row.
 type TerminalActionTarget string
 
 const (
@@ -17,7 +15,6 @@ func (TerminalActionTarget) Values() []string {
 
 func (t TerminalActionTarget) Valid() bool { return slices.Contains(t.Values(), string(t)) }
 
-// TerminalBindingSource is where a terminal view takes one input value from.
 type TerminalBindingSource string
 
 const (
@@ -33,7 +30,6 @@ func (TerminalBindingSource) Values() []string {
 
 func (s TerminalBindingSource) Valid() bool { return slices.Contains(s.Values(), string(s)) }
 
-// TerminalContext is a fact a terminal client supplies about where it runs.
 type TerminalContext string
 
 const (
@@ -47,7 +43,6 @@ func (TerminalContext) Values() []string {
 
 func (c TerminalContext) Valid() bool { return slices.Contains(c.Values(), string(c)) }
 
-// TerminalFormKind is how a person enters one form field.
 type TerminalFormKind string
 
 const (

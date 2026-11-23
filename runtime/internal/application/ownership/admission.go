@@ -1,4 +1,3 @@
-// Package ownership owns Runtime's Run admission and ordered recovery boundaries.
 package ownership
 
 import (
@@ -9,10 +8,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-// Gate serializes one writer per session, records live Runs, and coordinates
-// their working-tree admissions with destructive workspace mutations. Runtime's
-// data-directory lease excludes other processes; this registry owns admission
-// for every use case inside that lifetime.
 type Gate struct {
 	mu               sync.Mutex
 	runs             map[identity.RunID]reservedRun
@@ -27,18 +22,13 @@ type Gate struct {
 	rollbackPending  func(context.Context, identity.SessionID) (bool, error)
 }
 
-// GateConfig binds resolution and comparison to the same physical path semantics.
 type GateConfig struct {
-	ResolveTree  func(string) (string, error)
-	TreesOverlap func(string, string) (bool, error)
-	// SettleRetirement completes the Session's committed resource retirement
-	// under the caller's exclusive claim and reports whether none remains.
+	ResolveTree              func(string) (string, error)
+	TreesOverlap             func(string, string) (bool, error)
 	SettleRetirement         func(context.Context, identity.SessionID) (bool, error)
 	WorkspaceRollbackPending func(context.Context, identity.SessionID) (bool, error)
 }
 
-// NewGate shares physical tree identity and committed resource retirement with
-// every foreground admission: an exclusive claim settles the Session's fence.
 func NewGate(cfg GateConfig) (*Gate, error) {
 	if cfg.ResolveTree == nil {
 		return nil, errors.New("session admission: working-tree resolver is required")
@@ -66,24 +56,15 @@ func NewGate(cfg GateConfig) (*Gate, error) {
 	}, nil
 }
 
-// reservedRun is one Run's hold on its session and working tree, whether it
-// is pending admission, live, or in terminal maintenance; the map holding it
-// says which.
 type reservedRun struct {
 	sessionID identity.SessionID
 	cwd       string
 }
 
-// maintenanceReservation is a run in terminal maintenance. Its address is the
-// registry identity; the field keeps it non-zero-sized so addresses are distinct.
 type maintenanceReservation struct {
 	run reservedRun
 }
 
-// RunAdmission owns a fresh run's session and working-tree reservation until
-// it either becomes a live run or is released. Its methods are safe to call
-// more than once and across value copies; only the first terminal transition
-// takes effect.
 type RunAdmission struct {
 	lease *runAdmissionLease
 }
@@ -99,8 +80,6 @@ const (
 	sessionRecovery
 )
 
-// A Run identity cannot transfer an existing Session reservation. A refused
-// identity leaves the pending admission releasable by its original caller.
 func (r RunAdmission) Admit(runID identity.RunID) bool {
 	if r.lease == nil {
 		return false
@@ -123,7 +102,6 @@ func (r RunAdmission) Admit(runID identity.RunID) bool {
 	return true
 }
 
-// Release abandons a pending run reservation. It does nothing after Admit.
 func (r RunAdmission) Release() {
 	if r.lease == nil {
 		return
@@ -137,8 +115,6 @@ func (r RunAdmission) Release() {
 	}
 }
 
-// AcquireSession reserves one session's single-writer slot. Release is safe to
-// call more than once and affects only this acquisition.
 func (g *Gate) AcquireSession(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error) {
 	release, ok, err = g.acquireForegroundSession(ctx, sessionID)
 	if err != nil || !ok {
@@ -147,8 +123,6 @@ func (g *Gate) AcquireSession(ctx context.Context, sessionID identity.SessionID)
 	return g.checkRollbackFence(ctx, sessionID, release)
 }
 
-// A file rollback can reach its intent even when it owns a durable fence.
-// The operation log still has to admit its exact request before checkout.
 func (g *Gate) AcquireWorkspaceRollback(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error) {
 	return g.acquireForegroundSession(ctx, sessionID)
 }
@@ -171,8 +145,6 @@ func (g *Gate) acquireForegroundSession(ctx context.Context, sessionID identity.
 	return release, true, nil
 }
 
-// AcquireRecoverySession probes abandoned ownership without delaying other recovery sweeps.
-// Foreground commands wait for this internal check instead of reporting a live Run conflict.
 func (g *Gate) AcquireRecoverySession(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error) {
 	g.mu.Lock()
 	release, ok, err = g.acquireSessionLocked(sessionID, sessionRecovery)
@@ -202,9 +174,6 @@ func (g *Gate) acquireSessionLocked(sessionID identity.SessionID, kind sessionCl
 	return g.addClaimLocked(sessionID, kind), true, nil
 }
 
-// AcquireRun atomically reserves a fresh run's session and working tree. The
-// returned admission must be either admitted after the durable opening commit
-// or released when admission fails.
 func (g *Gate) AcquireRun(ctx context.Context, sessionID identity.SessionID, cwd string) (RunAdmission, bool, error) {
 	if sessionID.IsZero() {
 		return RunAdmission{}, false, errors.New("session admission: session identity is required")
@@ -250,9 +219,6 @@ func (g *Gate) acquireRunLocked(sessionID identity.SessionID, cwd string) (RunAd
 	return RunAdmission{lease: admission}, true, nil
 }
 
-// BeginMaintenance converts a live run into a maintenance reservation. Both
-// its session and working tree remain unavailable until Release returns, so a
-// checkpoint snapshot cannot race a destructive mutation of an overlapping tree.
 func (g *Gate) BeginMaintenance(runID identity.RunID) (release func(), ok bool) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -274,9 +240,6 @@ func (g *Gate) BeginMaintenance(runID identity.RunID) (release func(), ok bool) 
 	}, true
 }
 
-// AcquireWorkingTreeMutation reserves exclusive access for a destructive
-// operation such as a checkpoint restore. It rejects a run while it is pending,
-// live, or executing synchronous terminal maintenance in an overlapping tree.
 func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, err error) {
 	if cwd == "" {
 		return func() {}, true, nil
@@ -297,8 +260,6 @@ func (g *Gate) AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, 
 	return g.releaseTreeMutation(cwd), true, nil
 }
 
-// ActiveSessions snapshots every session with a pending or live Run, or a held
-// session-only admission.
 func (g *Gate) ActiveSessions() map[identity.SessionID]bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -309,18 +270,14 @@ func (g *Gate) ActiveSessions() map[identity.SessionID]bool {
 	return set
 }
 
-// Changes captures the current admission version before a durable read. Its
-// closure means a held claim was released; observers must re-read both facts.
 func (g *Gate) Changes() <-chan struct{} {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	return g.changed
 }
 
-// activeSessionsLocked yields every session holding a session-only admission, a
-// pending reservation, a live Run, or a Run in maintenance. Admission asks whether one session is
-// active and observers ask which ones are; both read this, so a session cannot
-// be busy for one question and idle for the other.
+// Admission and observers both read this so a session cannot be busy for one
+// question and idle for the other.
 func (g *Gate) activeSessionsLocked(yield func(identity.SessionID) bool) {
 	for id := range g.claims {
 		if !yield(id) {
@@ -334,11 +291,8 @@ func (g *Gate) activeSessionsLocked(yield func(identity.SessionID) bool) {
 	}
 }
 
-// WaitRunStartable blocks until sessionID has no pending, live, maintenance, or
-// session-only admission and cwd overlaps no destructive working-tree mutation. It
-// is an observation boundary, not a reservation: callers must still acquire
-// their own Run admission after it returns and may wait again if another owner
-// wins that race.
+// An observation boundary, not a reservation: callers must still acquire their own
+// admission and may wait again.
 func (g *Gate) WaitRunStartable(ctx context.Context, sessionID identity.SessionID, cwd string) error {
 	if ctx == nil {
 		return errors.New("session admission: wait context is required")

@@ -10,41 +10,28 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// cancellationRun is one immutable member of a command-bound cancellation
-// plan. MemberID is present only for a non-terminal Run whose executor member
-// must remain addressable at this boundary; executor topology is not an
-// application cancellation fact.
 type cancellationRun struct {
 	run       rundomain.Run
 	memberID  string
 	hasMember bool
 }
 
-// cancellationPlan is the complete, immutable fact set one cancellation command
-// acts on. It is application-private because it combines domain Run topology,
-// durable pending state, and process-local executor bindings; none of those
-// outer representations belongs in the execution domain itself.
 type cancellationPlan struct {
-	root          cancellationRun
-	target        cancellationRun
-	targetSubtree []cancellationRun
-	survivingTree []cancellationRun
-	executor      ExecutorRef
-	pending       *Pending
-	spawningItem  *transcript.Item
-	// items are every Item the hand-off names, and interrupts its open
-	// interrupts projected from them.
+	root                 cancellationRun
+	target               cancellationRun
+	targetSubtree        []cancellationRun
+	survivingTree        []cancellationRun
+	executor             ExecutorRef
+	pending              *Pending
+	spawningItem         *transcript.Item
 	items                map[identity.ItemID]transcript.Item
 	interrupts           []transcript.Interrupt
 	targetInterruptItems []transcript.Item
 	targetDrainedItems   []transcript.Item
 }
 
-// treeState is the lifecycle state of the whole tree, which its root owns.
 func (p cancellationPlan) treeState() rundomain.State { return p.root.run.State() }
 
-// treeRuns is every Run of the planned tree: the surviving members and the
-// target subtree.
 func (p cancellationPlan) treeRuns() []rundomain.Run {
 	runs := p.survivingRuns()
 	for _, member := range p.targetSubtree {
@@ -61,10 +48,6 @@ func (p cancellationPlan) survivingRuns() []rundomain.Run {
 	return runs
 }
 
-// cancellationPlanSource is the coherent read model used to build one
-// cancellation plan. It keeps repository facts and the process-local owner
-// together only inside this use case; neither representation is promoted to a
-// domain or executor contract.
 type cancellationPlanSource struct {
 	runs             []rundomain.Run
 	pending          *Pending
@@ -74,9 +57,6 @@ type cancellationPlanSource struct {
 	memberIDsByRunID map[identity.RunID]string
 }
 
-// cancellationPlanFor resolves either a root or child address to one complete
-// tree snapshot before any executor side effect. The single Tree read avoids
-// racing a target lookup against a second aggregate lookup.
 func (c *Cancellations) cancellationPlanFor(
 	ctx context.Context,
 	cmd CancelCommand,
@@ -277,12 +257,6 @@ func (c *Cancellations) resolveCancellationOwner(
 	}
 }
 
-// classifyCancellationOwnerDrift distinguishes a durable lifecycle transition
-// from a persistent ownership invariant violation. Tree, interrupt, and live
-// owner facts come from different consistency domains, so Resume or terminal
-// commit can linearize between those reads. That loser is a normal busy/finished
-// outcome; only a contradiction that still exists at the refreshed Run state is
-// an internal invariant fault.
 func (c *Cancellations) classifyCancellationOwnerDrift(
 	ctx context.Context,
 	targetRunID identity.RunID,
@@ -307,13 +281,14 @@ func (c *Cancellations) classifyCancellationOwnerDrift(
 			refreshed.State(),
 		)
 	case refreshed.State() != sourceState:
+		// The refreshed state decides the category; the drift cause stays text so its own sentinels cannot compete.
 		return fmt.Errorf(
-			"%w: Run %q moved from %s to %s while cancellation ownership was resolved: %v",
+			"%w: Run %q moved from %s to %s while cancellation ownership was resolved: %s",
 			rundomain.ErrSessionBusy,
 			targetRunID,
 			sourceState,
 			refreshed.State(),
-			cause,
+			cause.Error(),
 		)
 	default:
 		return cause

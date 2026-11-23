@@ -20,8 +20,6 @@ type caller struct {
 	parent string
 }
 
-// Bind captures the delivery owner's scoped logical command. An unkeyed
-// invocation is a new command; retries with a key keep exactly that identity.
 func Bind(ctx context.Context, namespace, key string) context.Context {
 	origin := extension.Human
 	if previous, ok := ctx.Value(identityKey{}).(caller); ok {
@@ -32,8 +30,6 @@ func Bind(ctx context.Context, namespace, key string) context.Context {
 	return Start(ctx, origin, namespace, key)
 }
 
-// Start establishes an adapter-owned initiation. Nested Delivery calls use Bind
-// to inherit this origin rather than reclassifying a callback as human input.
 func Start(ctx context.Context, origin framecall.Origin, namespace, key string) context.Context {
 	if key == "" {
 		key = uuid.NewString()
@@ -45,8 +41,6 @@ func Start(ctx context.Context, origin framecall.Origin, namespace, key string) 
 	return context.WithValue(ctx, identityKey{}, caller{id: id, origin: origin, parent: parent})
 }
 
-// Adopt projects an identity already admitted by an execution owner. In
-// particular model Tool identity belongs to the durable Interaction boundary.
 func Adopt(ctx context.Context, id string, origin framecall.Origin, parent string) context.Context {
 	return context.WithValue(ctx, identityKey{}, caller{id: id, origin: origin, parent: parent})
 }

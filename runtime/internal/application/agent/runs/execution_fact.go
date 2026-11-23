@@ -19,22 +19,14 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// ExecutorMember is the executor-owned identity of the member that produced an
-// event. It deliberately carries no Run or Segment identity: mapping executor
-// members onto application Runs belongs to the Coordinator.
 type ExecutorMember struct {
-	MemberID string
-	ParentID string
-	// SpawnCallID is the opaque provider ToolCall ID, not an executor Effect ID.
+	MemberID    string
+	ParentID    string
 	SpawnCallID string
 }
 
-// Child reports whether this member was delegated by another member.
 func (e ExecutorMember) Child() bool { return e.ParentID != "" }
 
-// Validate rejects malformed or self-referential member identity. An entirely
-// empty member is reserved for a root execution that failed before the executor
-// created its member.
 func (e ExecutorMember) Validate() error {
 	if err := validateOptionalMember(e.MemberID); err != nil {
 		return fmt.Errorf("runs: %w", err)
@@ -57,16 +49,11 @@ func (e ExecutorMember) Validate() error {
 	return nil
 }
 
-// ExecutorEvent is the driven-executor port value. Member identifies the
-// concrete root/child member; Payload is the closed application-owned signal
-// family. A root stream may therefore carry child signals without relabeling
-// their producer as the root.
 type ExecutorEvent struct {
 	Member  ExecutorMember
 	Payload executorPayload
 }
 
-// Validate checks the envelope before the Coordinator routes it.
 func (e ExecutorEvent) Validate() error {
 	if e.Payload == nil {
 		return errors.New("runs: executor event payload is required")
@@ -74,10 +61,6 @@ func (e ExecutorEvent) Validate() error {
 	return e.Member.Validate()
 }
 
-// executorPayload is the closed family carried by the ordered executor stream.
-// Most values are reducible [ExecutionFact] facts. A control handshake such as
-// control requests share the stream only when their ordering relative to those
-// facts is itself part of correctness.
 type executorPayload interface {
 	executorPayload()
 }
@@ -86,9 +69,6 @@ type executorPayloadBase struct{}
 
 func (executorPayloadBase) executorPayload() {}
 
-// ExecutionFact is the closed application-owned execution fact family emitted at
-// the ExecutionObserver port. Control handshakes deliberately implement only
-// [ExecutorPayload], so they cannot accidentally enter the reducer.
 type ExecutionFact interface {
 	executorPayload
 	executionFact()
@@ -108,50 +88,30 @@ type ReasoningDelta struct {
 	Text string
 }
 
-// ModelCallStarted is the authoritative pre-provider boundary for one model
-// invocation. CallID is an opaque, stable executor identity; the Application
-// never parses framework Effect identity from it.
 type ModelCallStarted struct {
 	executionFactBase
 	Purpose run.ModelCallPurpose
 	CallID  string
 }
 
-// ModelCallCompleted is the sole authoritative semantic and accounting projection
-// of one completed model invocation. Message is absent when the provider
-// completed without portable content; the strategy owns whether that response
-// can complete execution. Message may contain ToolCall parts; the
-// reducer projects only assistant content/reasoning here because each actual
-// Tool invocation has its own pre-call commit boundary.
 type ModelCallCompleted struct {
 	executionFactBase
 	CallID                   string
 	FirstOutputLatencyMillis *int64
-	// ReportedUsage is the provider's own per-call report, absent when the
-	// provider reported nothing. It keeps the reported shape so an unsupported
-	// breakdown stays absent instead of becoming a zero. Consumption is per-call;
-	// the Run reducer alone owns cumulative accounting.
-	ReportedUsage *corechat.Usage
-	Message       *corechat.Message
-	Model         string
-	Cost          accounting.Cost
-	ContextTokens int64
+	ReportedUsage            *corechat.Usage
+	Message                  *corechat.Message
+	Model                    string
+	Cost                     accounting.Cost
+	ContextTokens            int64
 }
 
-// ModelObservation retains validated visible output without asserting a complete
-// response. It never contains executable calls or canonical continuation state.
 type ModelObservation struct {
 	Text      string
 	Reasoning string
 }
 
-// ModelCallFailed closes an unsuccessful outer model operation. KnownResponse
-// retains an already validated inner response. Accounting exists exactly when
-// physical dispatch evidence exists, including unknown consumption. Neither can
-// introduce Tool calls or messages into continuation. Observation is incomplete
-// transcript content and cannot assert a final response.
-// If this fact cannot be durably committed, the dispatcher must instead leave
-// the invocation open and reconcile the Effect as unknown.
+// If this fact cannot be durably committed, the dispatcher must leave the
+// invocation open and reconcile the Effect as unknown.
 type ModelCallFailed struct {
 	KnownResponse *corechat.Response
 	Accounting    *ModelCallCompleted
@@ -161,9 +121,6 @@ type ModelCallFailed struct {
 	CallID                   string
 }
 
-// validateFor checks a failure's evidence against the purpose of the call it
-// ends. An independent call carries no conversation state, and usage, cost,
-// context tokens or a message are known only with the response they describe.
 func (f ModelCallFailed) validateFor(purpose run.ModelCallPurpose) error {
 	if purpose == run.ModelIndependent && f.carriesConversationState() {
 		return fmt.Errorf("%w: independent model failure carries conversation state", errExecutorContract)
@@ -196,8 +153,6 @@ func (f ModelCallFailed) carriesConversationState() bool {
 	return a != nil && (a.Message != nil || a.ContextTokens != 0 || a.FirstOutputLatencyMillis != nil)
 }
 
-// describesResponse reports whether accounting holds facts only a known
-// response can supply.
 func (c ModelCallCompleted) describesResponse() bool {
 	return c.ReportedUsage != nil || c.Cost.OptionalUSD() != nil || c.ContextTokens != 0 || c.Message != nil
 }
@@ -207,14 +162,11 @@ type ToolCallStarted struct {
 	CallID            string
 	ModelCallSequence uint64
 	ToolCallIndex     uint32
-	// SourceCallID is the executor's parent-call identity. It exists solely to map
-	// a child member causal edge to this
-	// canonical Item without parsing CallID or relying on event timing.
-	SourceCallID string
-	Source       tool.Ref
-	ToolName     string
-	Input        transcript.ToolInput
-	SafetyClass  tool.SafetyClass
+	SourceCallID      string
+	Source            tool.Ref
+	ToolName          string
+	Input             transcript.ToolInput
+	SafetyClass       tool.SafetyClass
 }
 
 func (t ToolCallStarted) MatchesCapturedRef(ref tool.Ref) bool {
@@ -222,18 +174,13 @@ func (t ToolCallStarted) MatchesCapturedRef(ref tool.Ref) bool {
 }
 
 type ToolCallFinished struct {
-	CallID string
-	// ModelResult is the exact provider-neutral value published by Scope.
-	// Result remains the independently presented client transcript value.
+	CallID       string
 	ModelResult  *corechat.ToolResult
 	Result       *tool.Result
 	Offload      *transcript.ToolResultOffload
 	OutputText   string
 	MutatedPaths []string
-	// Failure is the one structured failure channel for a completed Tool call.
-	// nil means success; its Tool taxonomy prevents Run failures from entering
-	// this slot without parallel error strings or boolean classifications.
-	Failure *tool.Failure
+	Failure      *tool.Failure
 }
 
 type ToolCallPrepared struct {
@@ -251,29 +198,20 @@ type CompactionBoundary struct {
 	MessagesAfter  int
 }
 
-// MemberInterruption is one direct external-input boundary discovered in the
-// executor tree. MemberID identifies the member already admitted to an
-// application Run; RequestID is private continuation identity; Interrupt is
-// the application prompt projected from that request.
 type MemberInterruption struct {
 	MemberID  string
 	RequestID string
 	Interrupt Interrupt
 }
 
-// TreeInterrupted is the executor's complete, stable view of one human-input
-// barrier. It is a control payload rather than an ExecutionFact because no single
-// Run reducer may commit it: the Coordinator must suspend the entire active tree
-// in one transaction.
+// A control payload rather than an ExecutionFact: no single Run reducer may commit
+// it, because the whole active tree suspends in one transaction.
 type TreeInterrupted struct {
 	executorPayloadBase
 	checkpoint    ExecutorCheckpoint
 	interruptions []MemberInterruption
 }
 
-// NewTreeInterrupted captures one validated, ownership-independent executor
-// waiting boundary. The Coordinator never interprets the checkpoint; it only
-// places its write into the tree-barrier transaction.
 func NewTreeInterrupted(
 	checkpoint ExecutorCheckpoint,
 	interruptions []MemberInterruption,
@@ -288,12 +226,10 @@ func NewTreeInterrupted(
 	return barrier, nil
 }
 
-// Checkpoint returns an ownership-independent executor snapshot.
 func (t TreeInterrupted) Checkpoint() ExecutorCheckpoint {
 	return t.checkpoint.Clone()
 }
 
-// Interruptions returns ownership-independent external-input bindings.
 func (t TreeInterrupted) Interruptions() []MemberInterruption {
 	return cloneMemberInterruptions(t.interruptions)
 }
@@ -358,9 +294,6 @@ type SegmentEnded struct {
 	Duration          time.Duration
 }
 
-// NewSegmentEnded captures an ownership-independent terminal observation.
-// Contextual outcome checks remain with the reducer,
-// which owns the active Segment state needed to decide them.
 func NewSegmentEnded(ending run.Ending, duration time.Duration) SegmentEnded {
 	return SegmentEnded{Ending: ending, Duration: duration}
 }
@@ -369,26 +302,17 @@ func NewCancellationEnded(cancellation CancellationID, duration time.Duration) S
 	return SegmentEnded{Ending: run.Canceled{}, Duration: duration, cancellation: cancellation}
 }
 
-// PlanUpdated reports the committed Plan after a replacement — read back
-// from the store, so what is published is what was written rather than what the
-// tool was asked to write.
 type PlanUpdated struct {
 	executionFactBase
 	State plan.State
 }
 
-// AppliedSteerMessage is one ordered user message first made visible to a model
-// call. ItemID was reserved at admission. AlreadyProjected identifies input
-// whose transcript Item was committed by a continuation opening.
-// Both paths still append the message to Conversation at this model boundary.
 type AppliedSteerMessage struct {
 	Content          []transcript.ContentBlock
 	ItemID           identity.ItemID
 	AlreadyProjected bool
 }
 
-// SteerMessagesApplied reports one ordered model-boundary batch. The reducer
-// commits its remaining transcript and Conversation projections atomically.
 type SteerMessagesApplied struct {
 	executionFactBase
 	Messages []AppliedSteerMessage
@@ -415,6 +339,7 @@ func (s SegmentEnded) WithUnresolvedEffects(effects []run.UnresolvedEffect) Segm
 	s.unresolvedEffects = slices.Clone(effects)
 	return s
 }
+
 func (s SegmentEnded) UnresolvedEffects() []run.UnresolvedEffect {
 	return slices.Clone(s.unresolvedEffects)
 }

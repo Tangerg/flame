@@ -6,10 +6,8 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// ownHistory isolates one complete terminal projection before a Session
-// write-set owns it.
 func ownHistory(snapshot HistorySnapshot) (HistorySnapshot, error) {
-	if err := snapshot.validate(); err != nil {
+	if err := snapshot.validateHistory(); err != nil {
 		return HistorySnapshot{}, err
 	}
 	owned := snapshot.clone()

@@ -38,8 +38,6 @@ func testMCPServerJSON(t *testing.T, endpoint string) string {
 	return string(data)
 }
 
-// Test remotes own their real Frame lifecycle. The packaged fixture only
-// transports bytes; it cannot manufacture setup or activation acknowledgments.
 func publishTestBackend(t *testing.T, server *sdk.Server) {
 	t.Helper()
 	backend, err := pluginmcp.NewBackend(server)

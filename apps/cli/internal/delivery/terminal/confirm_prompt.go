@@ -9,8 +9,13 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
-// confirmPrompt asks the user to confirm one action at a time; a newer
-// question replaces the open one.
+const cancelLabel = "Cancel"
+
+const (
+	confirmDialogHeight       = 9
+	confirmDetailDialogHeight = 26
+)
+
 type confirmPrompt struct {
 	stack   *workspaceScene
 	theme   kit.Theme
@@ -20,14 +25,12 @@ type confirmPrompt struct {
 	dialog  *presentationDialog
 }
 
-// ask shows question with content, if any, and runs confirm only if the user
-// chooses action while the Session the prompt belongs to is still presented.
 func (c *confirmPrompt) ask(title, question, action, content string, confirm func()) {
 	c.dismiss()
 	generation := c.session.context
 	choice := base.NewSelect(base.SelectConfig[bool]{
 		Same: base.Equal[bool], Label: question, Rows: 2,
-		Options: []base.Option[bool]{{Label: "Cancel", Value: false}, {Label: action, Value: true}},
+		Options: []base.Option[bool]{{Label: cancelLabel, Value: false}, {Label: action, Value: true}},
 	})
 	var dialog *presentationDialog
 	dismiss := func() {
@@ -60,13 +63,13 @@ func (c *confirmPrompt) ask(title, question, action, content string, confirm fun
 		Hints:  []keymap.Action{base.Submit, base.Cancel},
 	})
 	body := formBody.Element()
-	placement := layout.Placement{Width: standardDialogWidth, Height: 9}
+	placement := layout.Placement{Width: standardDialogWidth, Height: confirmDialogHeight}
 	if content != "" {
 		viewport := base.NewViewport(base.ViewportConfig{Content: passiveElement(kit.NewParagraph(content, c.theme.Text))})
 		viewport.Scroll().SetWheel(c.wheel)
 		pane := &confirmationContentPane{viewport: viewport, form: formBody}
 		body = pane.Element()
-		placement = layout.Placement{Width: wideDialogWidth, Height: 26}
+		placement = layout.Placement{Width: wideDialogWidth, Height: confirmDetailDialogHeight}
 	}
 	dialog = newPresentationDialog(c.stack, kit.DialogConfig{
 		Behavior: base.DialogConfig{

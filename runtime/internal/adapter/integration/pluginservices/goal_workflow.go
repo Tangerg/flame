@@ -37,7 +37,7 @@ func (c *CommandCalls) RequireGoalAuthor(ctx context.Context, source extension.C
 	return borrow.Close()
 }
 
-func (c *CommandCalls) DecideGoal(ctx context.Context, source extension.ContributionSource, input goalworkflow.Request) (goalworkflow.AuthoredDecision, error) {
+func (c *CommandCalls) DecideGoal(ctx context.Context, source extension.ContributionSource, input goalworkflow.Request) (_ goalworkflow.AuthoredDecision, returned error) {
 	if source == (extension.ContributionSource{}) && input.Signal != goalworkflow.Start {
 		return goalworkflow.AuthoredDecision{}, plugin.ErrUnavailable
 	}
@@ -49,7 +49,7 @@ func (c *CommandCalls) DecideGoal(ctx context.Context, source extension.Contribu
 	if err != nil {
 		return goalworkflow.AuthoredDecision{}, err
 	}
-	defer borrow.Close()
+	defer func() { returned = errors.Join(returned, borrow.Close()) }()
 	method, err := goalmcp.DecideMethod()
 	if err != nil {
 		return goalworkflow.AuthoredDecision{}, err

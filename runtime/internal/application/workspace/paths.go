@@ -1,5 +1,3 @@
-// Package workspace contains focused project-scoped application use cases for
-// workspace identity, browsing, skills, and Git observation.
 package workspace
 
 import (
@@ -9,7 +7,6 @@ import (
 	"github.com/samber/lo"
 )
 
-// Workspace input failures are stable application errors.
 var (
 	ErrCWDUnavailable       = errors.New("workspace: cwd is unavailable")
 	ErrPathRequired         = errors.New("workspace: path required")
@@ -24,23 +21,18 @@ var (
 	ErrInvalidFileReadLimit = errors.New("workspace: invalid file read byte limit")
 )
 
-// paths resolves the externally-observed filesystem identity used by workspace
-// use cases. Implementations own path canonicalization and symlink inspection;
-// this package owns when each operation is required.
 type paths interface {
 	ResolveExistingDir(path string) (string, error)
 	ResolveInRoot(root, path string) (string, error)
 	ResolveExistingInRoot(root, path string) (string, error)
 }
 
-// Scope resolves the workspace identity shared by independent use cases.
 type Scope struct {
 	defaultWorkspacePath string
 	userHome             string
 	paths                paths
 }
 
-// NewScope constructs the shared workspace root scope.
 func NewScope(defaultWorkspacePath, userHome string, paths paths) (*Scope, error) {
 	if lo.IsNil(paths) {
 		return nil, errors.New("workspace: path resolver is required")
@@ -48,8 +40,6 @@ func NewScope(defaultWorkspacePath, userHome string, paths paths) (*Scope, error
 	return &Scope{defaultWorkspacePath: defaultWorkspacePath, userHome: userHome, paths: paths}, nil
 }
 
-// ResolveRoot returns the effective, existing working directory for a workspace
-// request. Empty cwd selects the host-provided default workspace.
 func (s *Scope) ResolveRoot(cwd string) (string, error) {
 	root := cwd
 	if root == "" {

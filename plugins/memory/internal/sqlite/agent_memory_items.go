@@ -10,7 +10,7 @@ import (
 	"math"
 	"time"
 
-	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	"github.com/Tangerg/flame/plugins/memory/internal/agentmemory"
 	"github.com/Tangerg/flame/plugins/memory/internal/management"
 )
 
@@ -20,21 +20,23 @@ func newMemoryItemID() agentmemory.ItemID {
 	return agentmemory.NewItemID(entropy)
 }
 
+const float32Bytes = 4
+
 func encodeVec(vector []float32) []byte {
-	encoded := make([]byte, 4*len(vector))
-	for index, value := range vector {
-		binary.LittleEndian.PutUint32(encoded[index*4:], math.Float32bits(value))
+	encoded := make([]byte, 0, float32Bytes*len(vector))
+	for _, value := range vector {
+		encoded = binary.LittleEndian.AppendUint32(encoded, math.Float32bits(value))
 	}
 	return encoded
 }
 
 func decodeVec(encoded []byte) ([]float32, error) {
-	if len(encoded) == 0 || len(encoded)%4 != 0 {
+	if len(encoded) == 0 || len(encoded)%float32Bytes != 0 {
 		return nil, errors.New("sqlite: invalid agent memory embedding encoding")
 	}
-	vector := make([]float32, len(encoded)/4)
+	vector := make([]float32, len(encoded)/float32Bytes)
 	for index := range vector {
-		vector[index] = math.Float32frombits(binary.LittleEndian.Uint32(encoded[index*4:]))
+		vector[index] = math.Float32frombits(binary.LittleEndian.Uint32(encoded[index*float32Bytes:]))
 	}
 	if err := agentmemory.ValidateEmbeddingVector(vector); err != nil {
 		return nil, fmt.Errorf("sqlite: decode agent memory embedding: %w", err)
@@ -123,7 +125,6 @@ func (a *AgentMemoryStore) GenerationItems(ctx context.Context, project string) 
 	return result, err
 }
 
-// Pinned and user-authored facts may already occupy the content identity; insertion must preserve them.
 func (a *AgentMemoryStore) insertItem(ctx context.Context, item agentmemory.Item) (bool, error) {
 	result, err := a.db.Executor(ctx).ExecContext(ctx,
 		`INSERT OR IGNORE INTO agent_memory_items(
@@ -144,51 +145,54 @@ func (a *AgentMemoryStore) insertItem(ctx context.Context, item agentmemory.Item
 
 const agentMemoryItemColumns = `id, scope, project, content, origin, status, pinned, session_id, day, created_at, updated_at, revision`
 
+type itemColumns struct {
+	snapshot                 agentmemory.ItemSnapshot
+	id, scope, origin, state string
+	pinned                   int
+	createdAt, updatedAt     int64
+}
+
+// The destinations follow agentMemoryItemColumns; a query may append its own columns after them.
+func (c *itemColumns) targets() []any {
+	return []any{&c.id, &c.scope, &c.snapshot.Project, &c.snapshot.Content, &c.origin, &c.state,
+		&c.pinned, &c.snapshot.SessionID, &c.snapshot.Day, &c.createdAt, &c.updatedAt, &c.snapshot.Revision}
+}
+
+func (c *itemColumns) decode() (agentmemory.ItemSnapshot, error) {
+	snapshot := c.snapshot
+	var err error
+	snapshot.ID, err = agentmemory.ParseItemID(c.id)
+	if err != nil {
+		return agentmemory.ItemSnapshot{}, fmt.Errorf("sqlite: decode agent memory item identity %q: %w", c.id, err)
+	}
+	snapshot.Scope, err = agentmemory.ParseScope(c.scope)
+	if err != nil {
+		return agentmemory.ItemSnapshot{}, fmt.Errorf("sqlite: decode agent memory item %q scope: %w", snapshot.ID, err)
+	}
+	snapshot.Origin, err = agentmemory.ParseOrigin(c.origin)
+	if err != nil {
+		return agentmemory.ItemSnapshot{}, fmt.Errorf("sqlite: decode agent memory item %q origin: %w", snapshot.ID, err)
+	}
+	snapshot.Status, err = agentmemory.ParseStatus(c.state)
+	if err != nil {
+		return agentmemory.ItemSnapshot{}, fmt.Errorf("sqlite: decode agent memory item %q status: %w", snapshot.ID, err)
+	}
+	snapshot.Pinned = c.pinned != 0
+	snapshot.CreatedAt = time.Unix(0, c.createdAt).UTC()
+	snapshot.UpdatedAt = time.Unix(0, c.updatedAt).UTC()
+	return snapshot, nil
+}
+
 func scanItem(row scanRow) (agentmemory.Item, error) {
-	var (
-		snapshot                          agentmemory.ItemSnapshot
-		rawID                             string
-		scopeText, originText, statusText string
-		pinned                            int
-		createdAt, updatedAt              int64
-	)
-	if err := row.Scan(&rawID, &scopeText, &snapshot.Project, &snapshot.Content, &originText, &statusText,
-		&pinned, &snapshot.SessionID, &snapshot.Day, &createdAt, &updatedAt, &snapshot.Revision); err != nil {
+	var columns itemColumns
+	if err := row.Scan(columns.targets()...); err != nil {
 		return agentmemory.Item{}, fmt.Errorf("sqlite: scan agent memory item: %w", err)
 	}
-	if err := decodeItemSnapshot(&snapshot, rawID, scopeText, originText, statusText, pinned, createdAt, updatedAt); err != nil {
+	snapshot, err := columns.decode()
+	if err != nil {
 		return agentmemory.Item{}, err
 	}
 	return restoreItem(snapshot)
-}
-
-func decodeItemSnapshot(
-	snapshot *agentmemory.ItemSnapshot,
-	rawID, scopeText, originText, statusText string,
-	pinned int,
-	createdAt, updatedAt int64,
-) error {
-	var err error
-	snapshot.ID, err = agentmemory.ParseItemID(rawID)
-	if err != nil {
-		return fmt.Errorf("sqlite: decode agent memory item identity %q: %w", rawID, err)
-	}
-	snapshot.Scope, err = agentmemory.ParseScope(scopeText)
-	if err != nil {
-		return fmt.Errorf("sqlite: decode agent memory item %q scope: %w", snapshot.ID, err)
-	}
-	snapshot.Origin, err = agentmemory.ParseOrigin(originText)
-	if err != nil {
-		return fmt.Errorf("sqlite: decode agent memory item %q origin: %w", snapshot.ID, err)
-	}
-	snapshot.Status, err = agentmemory.ParseStatus(statusText)
-	if err != nil {
-		return fmt.Errorf("sqlite: decode agent memory item %q status: %w", snapshot.ID, err)
-	}
-	snapshot.Pinned = pinned != 0
-	snapshot.CreatedAt = time.Unix(0, createdAt).UTC()
-	snapshot.UpdatedAt = time.Unix(0, updatedAt).UTC()
-	return nil
 }
 
 func restoreItem(snapshot agentmemory.ItemSnapshot) (agentmemory.Item, error) {
@@ -232,19 +236,13 @@ func (a *AgentMemoryStore) SearchCorpus(ctx context.Context, project string) ([]
 		var items []agentmemory.Item
 		visibleByScope := make(map[agentmemory.Scope]int, 2)
 		for rows.Next() {
-			var (
-				snapshot                          agentmemory.ItemSnapshot
-				rawID                             string
-				scopeText, originText, statusText string
-				pinned                            int
-				createdAt, updatedAt              int64
-				blob                              []byte
-			)
-			if scanErr := rows.Scan(&rawID, &scopeText, &snapshot.Project, &snapshot.Content, &originText, &statusText,
-				&pinned, &snapshot.SessionID, &snapshot.Day, &createdAt, &updatedAt, &snapshot.Revision, &snapshot.EmbeddingSpace, &blob); scanErr != nil {
+			var columns itemColumns
+			var blob []byte
+			if scanErr := rows.Scan(append(columns.targets(), &columns.snapshot.EmbeddingSpace, &blob)...); scanErr != nil {
 				return fmt.Errorf("sqlite: scan agent memory item: %w", scanErr)
 			}
-			if err := decodeItemSnapshot(&snapshot, rawID, scopeText, originText, statusText, pinned, createdAt, updatedAt); err != nil {
+			snapshot, err := columns.decode()
+			if err != nil {
 				return err
 			}
 			if len(blob) != 0 {

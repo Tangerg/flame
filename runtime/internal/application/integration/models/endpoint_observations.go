@@ -17,8 +17,6 @@ type endpointReader interface {
 
 type EndpointObservations struct{ reader endpointReader }
 
-// endpointObservationPageLimit is the widest page of endpoint observations
-// one read serves.
 const endpointObservationPageLimit = 100
 
 func NewEndpointObservations(reader endpointReader) (*EndpointObservations, error) {

@@ -1,26 +1,19 @@
 package maintenance
 
 import (
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"context"
 	"errors"
 	"fmt"
 	"math"
 	"slices"
 
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/scope/core/chat"
 	corecontent "github.com/Tangerg/scope/core/content"
 )
 
-// modelContextBudget owns the compaction trigger and the exact immutable
-// request material that survives every candidate rewrite. Every main-model call
-// pays only the local preflight cost. Provider counting is reserved for a local
-// threshold hit or provider-priced media, and compaction begins only when that
-// exact count reaches the threshold. Keeping the fixed prefix, mutable
-// conversation, pending tail, Tool manifest, and Options in one value prevents
-// independently rounded "fixed" and "history" token ledgers.
 type modelContextBudget struct {
 	maxTokens    int
 	instructions []chat.Message
@@ -32,17 +25,11 @@ type modelContextBudget struct {
 	fits         func(context.Context, *chat.Request) (bool, error)
 }
 
-// modelContextInputTokenCounter measures a candidate mutable suffix. The
-// implementation owns the imminent call's frozen prefix — instructions, Tools
-// and Options — so callers pass only the messages they are replacing.
 type modelContextInputTokenCounter interface {
 	CountInputTokens(context.Context, []chat.Message) (int64, error)
 }
 
 type modelContextFootprint struct {
-	// tokens owns the capacity decision and may be provider-measured.
-	// estimatedTokens keeps the provider-neutral baseline used to calibrate the
-	// next request against eventual provider usage.
 	tokens           int
 	estimatedTokens  int
 	providerMeasured bool

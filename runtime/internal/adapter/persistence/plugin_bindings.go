@@ -22,10 +22,6 @@ type referenceWrite struct {
 	checkpoint runs.ExecutorCheckpoint
 }
 
-// PluginReferenceTransactor is the stable checkpoint commit port bound by Open.
-// It joins the original product write-set to Frame's one
-// admission and stable storage settlement. Product receipts remain in fn's
-// original tables; the framework receipt identifies only this storage attempt.
 type PluginReferenceTransactor func(ctx context.Context, host framehost.Host, identity string, checkpoint runs.ExecutorCheckpoint, fn func(context.Context) error) error
 
 func (b *Bundle) commitPluginReferences(ctx context.Context, host framehost.Host, identity string, checkpoint runs.ExecutorCheckpoint, fn func(context.Context) error) error {
@@ -62,8 +58,6 @@ func (b *Bundle) commitPluginReferences(ctx context.Context, host framehost.Host
 	})
 }
 
-// validateAddedReferences checks only what this checkpoint adds: a reference
-// the previous checkpoint already retained was validated when it was added.
 func validateAddedReferences(ctx context.Context, host framehost.Host, previous, checkpoint runs.ExecutorCheckpoint) error {
 	for _, activation := range checkpoint.Bindings {
 		binding, err := plugins.DecodeActivation(activation)
@@ -89,8 +83,6 @@ func validateAddedReferences(ctx context.Context, host framehost.Host, previous,
 	return nil
 }
 
-// The technical request identifies the original storage write-set. It encodes
-// domain identities explicitly and retains no independently mutable graph.
 func encodeCheckpointIdentity(checkpoint runs.ExecutorCheckpoint) ([]byte, error) {
 	type contentSource struct {
 		Installation string `json:"installation"`
@@ -138,9 +130,6 @@ func (b *Bundle) commitPluginWrite(ctx context.Context, request []byte, fn func(
 	return errors.Join(err, b.PluginUses.CompactSettledUnder(ctx))
 }
 
-// RecoverPluginBindings settles original storage attempts only. All product
-// facts were committed in their transaction and readers query those original
-// tables; there is no independently advancing retention registry to rebuild.
 func (b *Bundle) RecoverPluginBindings(ctx context.Context) error {
 	if err := b.PluginUses.RecoverPrepared(ctx); err != nil {
 		return err
@@ -160,13 +149,10 @@ func (b *Bundle) RecoverPluginBindings(ctx context.Context) error {
 	return b.PluginUses.CompactSettled(ctx)
 }
 
-// PendingPluginBindings reads the original business owners in one snapshot.
-// Settled commands and completed execution owners no longer pin a setup graph;
-// no copied registry can outlive their decision.
 func (b *Bundle) PendingPluginBindings(ctx context.Context) ([]plugin.Activation, error) {
 	var result []plugin.Activation
 	err := b.db.read(ctx, func(ctx context.Context) error {
-		commands, err := newPluginCommandStore(b.db, nil).pendingBindings(ctx)
+		commands, err := pendingCommandBindings(ctx, b.db)
 		if err != nil {
 			return err
 		}

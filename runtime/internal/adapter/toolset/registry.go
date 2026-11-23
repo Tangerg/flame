@@ -13,10 +13,6 @@ import (
 	oteltool "github.com/Tangerg/scope/otel/tool"
 )
 
-// NewDiagnosticRegistry returns the explicitly direct-invocable diagnostic
-// catalog. It deliberately does not reuse the agent resolver: agent tools may
-// require a process, session, approval flow, or model loop that does not exist
-// for a client-driven call.
 func NewDiagnosticRegistry(directory string) (DiagnosticRegistry, error) {
 	if !filepath.IsAbs(directory) {
 		return DiagnosticRegistry{}, errors.New("toolset: diagnostic catalog directory must be absolute")
@@ -28,16 +24,11 @@ func NewDiagnosticRegistry(directory string) (DiagnosticRegistry, error) {
 	return DiagnosticRegistry{directory: filepath.Clean(directory), telemetry: telemetry}, nil
 }
 
-// DiagnosticRegistry is the direct-invocation adapter for the small diagnostic
-// tool catalog exposed outside an Agent Run. A client-driven call is still a
-// Tool call, so it is instrumented by the same Scope middleware the Agent
-// resolver uses rather than by a second span of this adapter's own.
 type DiagnosticRegistry struct {
 	directory string
 	telemetry oteltool.Middleware
 }
 
-// List projects Scope's admitted, frozen definitions into the product catalog.
 func (r DiagnosticRegistry) List(context.Context) (_ []tool.Tool, err error) {
 	manifest, err := openDirectTools(r.directory)
 	if err != nil {

@@ -4,8 +4,6 @@ import (
 	"errors"
 )
 
-// Capacity is one explicit positive aggregate bound. Config uses pointers so
-// nil means absent/default while a present zero value remains invalid.
 type Capacity struct {
 	value int
 }

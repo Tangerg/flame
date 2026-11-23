@@ -47,7 +47,6 @@ type wireTerminalAction struct {
 	Input   map[string]wireBinding         `json:"input,omitempty"`
 }
 
-// wireBinding names exactly one source of an input value.
 type wireBinding struct {
 	Value   jsontext.Value             `json:"value,omitzero"`
 	Row     *string                    `json:"row,omitzero"`

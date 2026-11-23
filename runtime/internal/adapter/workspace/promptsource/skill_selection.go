@@ -13,25 +13,23 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
-	sdk "github.com/Tangerg/scope/skills"
+	skillspec "github.com/Tangerg/scope/skills"
 )
 
 var errPackageSkillConflict = errors.New("promptsource: package Skill name conflict")
 
 type skillDocumentSource interface {
-	sdk.ResourceSource
-	document(context.Context, string) (*sdk.Skill, []byte, error)
+	skillspec.ResourceSource
+	document(context.Context, string) (*skillspec.Skill, []byte, error)
 	documentPath(string) string
 }
 
 type selectedSkill struct {
-	source      skillDocumentSource // nil retains a package conflict until the next resolution.
+	source      skillDocumentSource
 	origin      workspaceapp.SkillSource
 	packageCopy bool
 }
 
-// Selection is immutable for its consumer. Every callable resource, including
-// one whose document is temporarily unavailable, retains its release dependency.
 type resolvedSkills struct {
 	byName map[string]selectedSkill
 }
@@ -69,15 +67,15 @@ func (s *resolvedSkills) names() []string {
 }
 
 func (s *resolvedSkills) find(ctx context.Context, name string) (selectedSkill, error) {
-	if err := skillSourceContextError(ctx, "select"); err != nil {
+	if err := skillSourceContextError(ctx, skillSourceSelect); err != nil {
 		return selectedSkill{}, err
 	}
 	if s == nil {
-		return selectedSkill{}, sdk.ErrSkillNotFound
+		return selectedSkill{}, skillspec.ErrSkillNotFound
 	}
 	selected, found := s.byName[name]
 	if !found {
-		return selectedSkill{}, sdk.ErrSkillNotFound
+		return selectedSkill{}, skillspec.ErrSkillNotFound
 	}
 	if selected.source == nil {
 		return selectedSkill{}, errors.Join(workspaceapp.ErrSkillUnavailable, errPackageSkillConflict)
@@ -95,12 +93,12 @@ func (s *resolvedSkills) dependencies() []plugin.Dependency {
 	return plugin.CompactDependencies(result)
 }
 
-func (s *runtimeSkillOverlay) modelSource(ctx context.Context, name string) (sdk.ResourceSource, error) {
+func (s *runtimeSkillOverlay) modelSource(ctx context.Context, name string) (skillspec.ResourceSource, error) {
 	selected, err := s.selected.find(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-	if selected.origin.Scope() == domainskills.ScopeUser && s.decorateUser != nil {
+	if selected.origin.Scope() == domainskills.ScopeUser {
 		return s.decorateUser(selected.source), nil
 	}
 	return selected.source, nil

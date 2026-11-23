@@ -44,7 +44,7 @@ func (c *connections) configure(attempt *attempt, prepared *launch) error {
 		c.mu.Unlock()
 		cfg.OAuthHandler = oauth
 	}
-	return c.dialAndSwap(attempt.ctx, attempt, prepared, false)
+	return c.dialAndSwap(attempt.ctx, attempt, prepared)
 }
 
 func reusableOAuth(current, candidate ServerConfig, handler auth.OAuthHandler) auth.OAuthHandler {
@@ -90,14 +90,9 @@ func (c *connections) authorize(attempt *attempt, prepared *launch) (err error) 
 		return err
 	}
 	cfg.OAuthHandler = handler
-	return c.dialAndSwap(ctx, attempt, prepared, true)
+	return c.dialAndSwap(ctx, attempt, prepared)
 }
 
-// dialAndSwap publishes a session only after tool discovery, while its attempt
-// still owns the server. Authorization retains the handler for later reconnects.
-// adoptLaunchSession registers the launch's session: an installed plugin's
-// observed session, or a freshly dialed one this pool owns. It returns the
-// tool-list version at registration, so a later change is not missed.
 func (c *connections) adoptLaunchSession(ctx context.Context, prepared *launch) (*sdk.ClientSession, *ownedSession, uint64, error) {
 	var session *sdk.ClientSession
 	var cleanupSession sessionCleanup
@@ -125,7 +120,7 @@ func (c *connections) adoptLaunchSession(ctx context.Context, prepared *launch) 
 	return session, owned, toolVersion, err
 }
 
-func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepared *launch, keepHandler bool) error {
+func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepared *launch) error {
 	cfg := prepared.config
 	session, owned, toolVersion, err := c.adoptLaunchSession(ctx, prepared)
 	step := mcpserver.FailureConnection
@@ -133,8 +128,6 @@ func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepare
 	if err == nil {
 		verifiedTools, step, err = c.proveSession(ctx, cfg, session, prepared.admission.Run)
 	}
-	// The catalog contains an observation, not a Use. Release discovery before
-	// it returns or joins retirement; later calls must acquire their own lease.
 	if prepared.managed != nil {
 		err = errors.Join(err, prepared.close())
 	}
@@ -152,10 +145,8 @@ func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepare
 	current := c.currentAttempt(attempt) && c.cancellationErr(attempt.ctx) == nil
 	closed := c.closed
 	if closed || !current {
-		// Shutdown ran while we were dialing outside the lock: it niled c.servers
-		// (so this server is detached) and closed every session. Storing the fresh
-		// session here would strand it past Shutdown's sweep — a connection leak.
-		// The unpublished session stays in the retirement ledger.
+		// Shutdown ran while dialing outside the lock; storing the fresh session would
+		// strand it past Shutdown's sweep.
 		c.mu.Unlock()
 		closeErr := c.closeSession(attempt.ctx, session)
 		if closed {
@@ -166,15 +157,14 @@ func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepare
 	if err != nil {
 		attempt.target.fail(err, step)
 	} else {
-		c.connectLocked(attempt.target, session, owned, cfg, verifiedTools, toolVersion, keepHandler)
+		c.connectLocked(attempt, session, owned, cfg, verifiedTools, toolVersion)
 	}
 	attempt.target.attempt = nil
-	// Publish only the snapshots proved above, in the critical section that
-	// settled them. Re-querying every other server here would let an unrelated
-	// transient tools/list failure or cancellation silently erase its tools
-	// while its status remained connected.
+	// Publish only the snapshots proved above: re-querying other servers would let an
+	// unrelated transient tools/list failure erase their tools while their status
+	// stays connected.
 	c.publishToolsLocked(attempt.target.id)
-	// Failed verification withdraws the session. Teardown must run outside mu.
+	// Teardown must run outside mu.
 	staleSession := session
 	if err == nil {
 		staleSession = nil
@@ -187,23 +177,20 @@ func (c *connections) dialAndSwap(ctx context.Context, attempt *attempt, prepare
 	return err
 }
 
-// connectLocked publishes a proved session with the tools discovered on it.
-// An authorized handler is kept for the session's reconnects.
-func (c *connections) connectLocked(target *server, session *sdk.ClientSession, owned *ownedSession, cfg ServerConfig, tools []Executable, toolVersion uint64, keepHandler bool) {
+func (c *connections) connectLocked(attempt *attempt, session *sdk.ClientSession, owned *ownedSession, cfg ServerConfig, tools []Executable, toolVersion uint64) {
+	target := attempt.target
 	for index := range tools {
 		tools[index].catalogVersion = toolVersion
 	}
-	target.settle(session, tools, mcpserver.ConnectionConnected, "", nil)
+	target.markConnected(session, tools)
 	if owned != nil && owned.toolChanges != nil {
 		c.watchToolChangesLocked(session, owned, cfg, toolVersion)
 	}
-	if keepHandler {
+	if attempt.purpose == attemptAuthorize {
 		target.oauth = cfg.OAuthHandler
 	}
 }
 
-// proveSession admits and discovers a dialed session before it is published
-// as connected. It reports the last phase entered, which names a failure.
 func (c *connections) proveSession(ctx context.Context, cfg ServerConfig, session *sdk.ClientSession, admit func(context.Context, *sdk.ClientSession) error) ([]Executable, mcpserver.ConnectionFailure, error) {
 	if admit != nil {
 		admissionCtx := ctx
@@ -231,12 +218,6 @@ func admitSession(ctx context.Context, session *sdk.ClientSession, admit func(co
 
 var errConnectionSuperseded = errors.New("mcp: connection operation superseded")
 
-// refuse records that the configuration owner refused a new connection for
-// name. The refusal is that server's latest operation: it supersedes an
-// in-flight attempt, withdraws the session and its tools, and settles the
-// failure category, so a refused source never keeps serving through the
-// session it had before. ctx belongs to the refused operation; once that
-// operation has been superseded it records nothing.
 func (c *connections) refuse(ctx context.Context, name mcpserver.ID, failure mcpserver.ConnectionFailure) error {
 	if err := name.Validate(); err != nil {
 		return fmt.Errorf("mcp: refused server: %w", err)
@@ -260,7 +241,7 @@ func (c *connections) refuse(ctx context.Context, name mcpserver.ID, failure mcp
 		target.attempt = nil
 	}
 	withdrawn := target.session
-	target.settle(nil, nil, mcpserver.ConnectionFailed, failure, nil)
+	target.markFailed(failure, nil)
 	c.retireSessionLocked(withdrawn)
 	c.publishToolsLocked(name)
 	c.mu.Unlock()

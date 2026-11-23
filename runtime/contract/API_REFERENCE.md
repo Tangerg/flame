@@ -867,7 +867,7 @@ TypeScript validator from this single registry projection.
 | `ModelEndpointInvocation` | `sessionId` | `maxLength(256)` |
 | `ModelEndpointInvocation` | `runId` | `identity` |
 | `ModelEndpointInvocation` | `runId` | `maxLength(256)` |
-| `ModelEndpointInvocation` | `costUSD` | `nonNegative` |
+| `ModelEndpointInvocation` | `costUsd` | `nonNegative` |
 | `ModelEndpointInvocation` | `id` | `identity` |
 | `ModelEndpointInvocation` | `id` | `nonEmpty` |
 | `ModelEndpointInvocation` | `provider` | `nonEmpty` |

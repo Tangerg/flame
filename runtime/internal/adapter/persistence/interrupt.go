@@ -25,59 +25,47 @@ func (i interruptState) databaseValue() string {
 	return string(i)
 }
 
-// InterruptStore is the SQLite-backed registry of root-owned pending interrupt
-// sets. The typed domain values are encoded through explicit adapter rows;
-// protocol payloads and Go field names never define this storage shape.
 type InterruptStore struct{ db *database }
 
-// pendingRecord is SQLite's technical representation of one durable
-// waiting-tree hand-off. Application semantics belong to the persistence
-// adapter; this record only names the values required by the storage codec.
 type pendingRecord struct {
-	RootRunID     identity.RunID
-	ExecutorID    string
-	Interrupts    []openInterruptRecord
-	Bindings      []interruptBindingRecord
-	Continuations []continuationRecord
-	CreatedAt     time.Time
+	RootRunID     identity.RunID           `json:"rootRunId"`
+	ExecutorID    string                   `json:"executorId"`
+	Interrupts    []openInterruptRecord    `json:"interrupts"`
+	Bindings      []interruptBindingRecord `json:"bindings"`
+	Continuations []continuationRecord     `json:"continuations"`
+	CreatedAt     time.Time                `json:"createdAt"`
 }
 
-// continuationRecord is the stored continuation row for one Run.
 type continuationRecord struct {
-	RunID        identity.RunID
-	MemberID     string
-	DrainedTools []drainedToolRecord
+	RunID        identity.RunID      `json:"runId"`
+	MemberID     string              `json:"memberId"`
+	DrainedTools []drainedToolRecord `json:"drainedTools"`
 }
 
-// interruptBindingRecord is the stored item-to-input-request correspondence.
 type interruptBindingRecord struct {
-	InterruptItemID   identity.ItemID
-	MemberID          string
-	RequestID         string
-	ToolCallID        string
-	ToolRef           string
-	SourceFingerprint string
+	InterruptItemID   identity.ItemID `json:"interruptItemId"`
+	MemberID          string          `json:"memberId"`
+	RequestID         string          `json:"requestId"`
+	ToolCallID        string          `json:"toolCallId"`
+	ToolRef           string          `json:"toolRef"`
+	SourceFingerprint string          `json:"sourceFingerprint"`
 }
 
-// openInterruptRecord is the stored open interrupt: the Item it names and, for
-// an approval, the policy's review. The Item owns everything else.
 type openInterruptRecord struct {
-	ItemID   identity.ItemID
-	Approval *approvalReviewRecord
+	ItemID   identity.ItemID       `json:"itemId"`
+	Approval *approvalReviewRecord `json:"approval"`
 }
 
-// approvalReviewRecord is the stored approval policy review of one held call.
 type approvalReviewRecord struct {
-	Risk         tool.RiskLevel
-	Reason       string
-	Rememberable bool
+	Risk         tool.RiskLevel `json:"risk"`
+	Reason       string         `json:"reason"`
+	Rememberable bool           `json:"rememberable"`
 }
 
-// drainedToolRecord is the stored identity of an open tool invocation.
 type drainedToolRecord struct {
-	ItemID       identity.ItemID
-	CallID       string
-	SourceCallID string
+	ItemID       identity.ItemID `json:"itemId"`
+	CallID       string          `json:"callId"`
+	SourceCallID string          `json:"sourceCallId"`
 }
 
 func (i pendingRecord) rootContinuation() (continuationRecord, bool) {
@@ -88,6 +76,7 @@ func (i pendingRecord) rootContinuation() (continuationRecord, bool) {
 	}
 	return continuationRecord{}, false
 }
+
 func (i pendingRecord) validateStorageShape() error {
 	if err := instant.Validate(i.CreatedAt); err != nil {
 		return fmt.Errorf("creation time: %w", err)
@@ -146,16 +135,10 @@ type interruptBindingRow struct {
 	SourceFingerprint string          `json:"sourceFingerprint,omitempty"`
 }
 
-// newInterruptStore binds the SQLite interrupt registry to a database opened via
-// [openDatabase].
 func newInterruptStore(db *database) *InterruptStore {
 	return &InterruptStore{db: db}
 }
 
-// Open records a newly reached barrier. An existing root Run or executor root
-// is an identity conflict; a barrier is replaced only after its owner consumes
-// the previous one (Consume) in the same application transaction, so this insert
-// never updates a surviving row.
 func (s *InterruptStore) insertPending(ctx context.Context, p pendingRecord) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		if err := p.validateStorageShape(); err != nil {
@@ -200,8 +183,6 @@ func (s *InterruptStore) insertPending(ctx context.Context, p pendingRecord) err
 const interruptColumns = `root_run_id, executor_id,
 	root_member_id, payload, continuations, interrupt_bindings, created_at`
 
-// requireTreeRuns proves, in the hand-off's transaction, that the Runs it names
-// are a root Run and that root's descendants.
 func (s *InterruptStore) requireTreeRuns(ctx context.Context, p pendingRecord) error {
 	return s.db.read(ctx, func(ctx context.Context) error {
 		var members sql.NullString
@@ -229,8 +210,6 @@ func (s *InterruptStore) requireTreeRuns(ctx context.Context, p pendingRecord) e
 	})
 }
 
-// list returns open interrupts oldest first, after the position a previous
-// page ended at when one is given.
 func (s *InterruptStore) list(ctx context.Context, sessionID identity.SessionID, rootRunID identity.RunID, after *rundomain.PageAnchor, limit int) ([]pendingRecord, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]pendingRecord, error) {
 		query := `SELECT ` + interruptColumns + ` FROM interrupts`
@@ -261,9 +240,7 @@ func (s *InterruptStore) list(ctx context.Context, sessionID identity.SessionID,
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list interrupts: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		out := make([]pendingRecord, 0)
 		for rows.Next() {
 			p, err := scanPending(rows)
@@ -278,6 +255,7 @@ func (s *InterruptStore) list(ctx context.Context, sessionID identity.SessionID,
 		return out, nil
 	})
 }
+
 func (s *InterruptStore) loadPending(ctx context.Context, runID identity.RunID) (pendingRecord, bool, error) {
 	return scopedPair(ctx, s.db.read, func(ctx context.Context) (pendingRecord, bool, error) {
 		if err := validateResource("read interrupt", runID); err != nil {
@@ -295,11 +273,8 @@ func (s *InterruptStore) loadPending(ctx context.Context, runID identity.RunID) 
 	})
 }
 
-// Consume atomically reads AND deletes the pending interrupt for runID (one
-// DELETE ... RETURNING), or returns ok=false when none is recorded — the resume
-// claim contract. A single statement means two concurrent resumes can't both
-// observe the same open interrupt: one claims it, the other gets ok=false, so a
-// non-idempotent tool never re-fires.
+// One DELETE ... RETURNING so two concurrent resumes cannot both claim the same
+// interrupt and re-fire a non-idempotent tool.
 func (s *InterruptStore) consumePending(ctx context.Context, runID identity.RunID) (pendingRecord, bool, error) {
 	return scopedPair(ctx, s.db.write, func(ctx context.Context) (pendingRecord, bool, error) {
 		if err := runID.Validate(); err != nil {
@@ -317,6 +292,7 @@ func (s *InterruptStore) consumePending(ctx context.Context, runID identity.RunI
 		return p, true, nil
 	})
 }
+
 func (s *InterruptStore) Delete(ctx context.Context, runID identity.RunID) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		if err := runID.Validate(); err != nil {
@@ -329,8 +305,6 @@ func (s *InterruptStore) Delete(ctx context.Context, runID identity.RunID) error
 	})
 }
 
-// scanRow abstracts *sql.Row and *sql.Rows so one scan path serves Get +
-// List.
 func scanPending(row scanRow) (pendingRecord, error) {
 	var (
 		p               pendingRecord
@@ -371,9 +345,6 @@ func scanPending(row scanRow) (pendingRecord, error) {
 	return p, nil
 }
 
-// decodeInterrupts reads the stored open-interrupt set. It is the one reader of
-// that encoding: the Run read joins the same column to prove a parked Run's set
-// is intact, and a second decoder there could disagree about the format.
 func decodeInterrupts(payload string) ([]openInterruptRecord, error) {
 	if payload == "" {
 		return nil, nil
@@ -384,6 +355,7 @@ func decodeInterrupts(payload string) ([]openInterruptRecord, error) {
 	}
 	return interruptsFromPayloads(rows)
 }
+
 func drainedToolRows(tools []drainedToolRecord) []drainedToolRow {
 	rows := make([]drainedToolRow, len(tools))
 	for index, tool := range tools {
@@ -391,6 +363,7 @@ func drainedToolRows(tools []drainedToolRecord) []drainedToolRow {
 	}
 	return rows
 }
+
 func drainedToolsFromRows(rows []drainedToolRow) []drainedToolRecord {
 	tools := make([]drainedToolRecord, len(rows))
 	for index, row := range rows {
@@ -398,6 +371,7 @@ func drainedToolsFromRows(rows []drainedToolRow) []drainedToolRecord {
 	}
 	return tools
 }
+
 func continuationRows(values []continuationRecord) []continuationRow {
 	rows := make([]continuationRow, len(values))
 	for index, value := range values {
@@ -405,6 +379,7 @@ func continuationRows(values []continuationRecord) []continuationRow {
 	}
 	return rows
 }
+
 func continuationsFromRows(rows []continuationRow) []continuationRecord {
 	values := make([]continuationRecord, len(rows))
 	for index, row := range rows {
@@ -412,6 +387,7 @@ func continuationsFromRows(rows []continuationRow) []continuationRecord {
 	}
 	return values
 }
+
 func interruptPayloads(values []openInterruptRecord) []interruptPayload {
 	rows := make([]interruptPayload, len(values))
 	for index, value := range values {
@@ -422,6 +398,7 @@ func interruptPayloads(values []openInterruptRecord) []interruptPayload {
 	}
 	return rows
 }
+
 func interruptsFromPayloads(rows []interruptPayload) ([]openInterruptRecord, error) {
 	values := make([]openInterruptRecord, len(rows))
 	for index, row := range rows {
@@ -436,6 +413,7 @@ func interruptsFromPayloads(rows []interruptPayload) ([]openInterruptRecord, err
 	}
 	return values, nil
 }
+
 func interruptBindingRows(values []interruptBindingRecord) []interruptBindingRow {
 	rows := make([]interruptBindingRow, len(values))
 	for index, value := range values {
@@ -443,6 +421,7 @@ func interruptBindingRows(values []interruptBindingRecord) []interruptBindingRow
 	}
 	return rows
 }
+
 func interruptBindingsFromRows(rows []interruptBindingRow) []interruptBindingRecord {
 	values := make([]interruptBindingRecord, len(rows))
 	for index, row := range rows {

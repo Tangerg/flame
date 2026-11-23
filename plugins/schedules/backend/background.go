@@ -10,8 +10,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
-	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/plugins/schedules/internal/schedule"
+	"github.com/Tangerg/flame/plugins/schedules/internal/scheduling"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 
 	framecall "github.com/Tangerg/frame/call"
@@ -19,18 +19,16 @@ import (
 	"github.com/google/uuid"
 )
 
-// scheduleScanner scans due schedules once a minute for its installation and
-// resumes each captured Run through its original owner.
 type scheduleScanner struct {
 	contribution string
 	db           framesqlite.Database
 	store        store
-	scanner      *app.Scanner
-	host         runHost
+	scanner      *scheduling.Scanner
+	host         remoteRuns
 	target       framecall.Target
 }
 
-func newBackground(ctx context.Context, db framesqlite.Database, store store, scanner *app.Scanner, host runHost, contribution string, target framecall.Target, closeHost func() error) (*pluginmcp.Background, error) {
+func newBackground(ctx context.Context, db framesqlite.Database, store store, scanner *scheduling.Scanner, host remoteRuns, contribution string, target framecall.Target, closeHost func() error) (*pluginmcp.Background, error) {
 	b := &scheduleScanner{contribution: contribution, db: db, store: store, scanner: scanner, host: host, target: target}
 	return pluginmcp.NewBackground(ctx, pluginmcp.BackgroundConfig{Run: b.run, Release: closeHost})
 }
@@ -48,6 +46,7 @@ func (b *scheduleScanner) run(ctx context.Context) {
 		}
 	}
 }
+
 func (b *scheduleScanner) scan(lifetime context.Context, now time.Time) {
 	invocation := framecall.Invocation{ID: uuid.NewString(), Origin: extension.Automatic, Target: b.target}
 	ctx, err := pluginmcp.WithInvocation(lifetime, invocation)
@@ -92,48 +91,56 @@ func (b *scheduleScanner) scan(lifetime context.Context, now time.Time) {
 		}
 	}
 }
+
 func report(lifetime context.Context, stage string, err error) {
 	if lifetime.Err() == nil {
 		slog.ErrorContext(lifetime, "schedules: background operation failed", "stage", stage, "error", err)
 	}
 }
 
-func resumeCaptured(ctx context.Context, db framesqlite.Database, store store, host runHost, request schedule.RunRequest) (app.RunReference, error) {
+func resumeCaptured(ctx context.Context, db framesqlite.Database, store store, host remoteRuns, request schedule.RunRequest) (scheduling.RunReference, error) {
 	if err := request.Validate(); err != nil {
-		return app.RunReference{}, err
+		return scheduling.RunReference{}, err
 	}
 	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
-		return app.RunReference{}, err
+		return scheduling.RunReference{}, err
 	}
 	if invocation != request.Invocation() {
-		return app.RunReference{}, errors.New("schedules: recovery caller differs from original capture")
+		return scheduling.RunReference{}, errors.New("schedules: recovery caller differs from original capture")
 	}
-	dispatchStore := app.DispatchStore(store)
 	if _, manual := request.ManualRecord(); manual {
-		prepared, input, original, err := pluginstorage.ResumeCommand(ctx, db, wire.RunNow, request.CommandID())
-		if err != nil {
-			return app.RunReference{}, err
-		}
-		var item wire.ItemInput
-		if err := json.Unmarshal(input.Bytes(), &item, json.RejectUnknownMembers(true)); err != nil {
-			return app.RunReference{}, err
-		}
-		if item.ID != request.ScheduleID() {
-			return app.RunReference{}, errors.New("schedules: original manual input differs from capture")
-		}
-		if prepared == nil {
-			reference, err := pluginmcp.DecodeReply[app.RunReference](original)
-			if err == nil && (reference.RunID != request.RunID() || reference.SessionID != request.SessionID()) {
-				err = errors.New("schedules: original manual receipt differs from capture")
-			}
-			return reference, err
-		}
-		dispatchStore = dispatchCommit{DispatchStore: store, db: db, command: prepared}
+		return resumeManual(ctx, db, store, host, request)
 	}
-	dispatcher, err := app.NewDispatcher(dispatchStore, host)
+	return dispatchCaptured(ctx, store, host, request)
+}
+
+func resumeManual(ctx context.Context, db framesqlite.Database, store store, host remoteRuns, request schedule.RunRequest) (scheduling.RunReference, error) {
+	prepared, input, original, err := pluginstorage.ResumeCommand(ctx, db, wire.RunNow, request.CommandID())
 	if err != nil {
-		return app.RunReference{}, err
+		return scheduling.RunReference{}, err
+	}
+	var item wire.ItemInput
+	if err := json.Unmarshal(input.Bytes(), &item, json.RejectUnknownMembers(true)); err != nil {
+		return scheduling.RunReference{}, err
+	}
+	if item.ID != request.ScheduleID() {
+		return scheduling.RunReference{}, errors.New("schedules: original manual input differs from capture")
+	}
+	if prepared == nil {
+		reference, err := pluginmcp.DecodeReply[scheduling.RunReference](original)
+		if err == nil && reference != scheduling.NewRunReference(request) {
+			err = errors.New("schedules: original manual receipt differs from capture")
+		}
+		return reference, err
+	}
+	return dispatchCaptured(ctx, dispatchCommit{DispatchStore: store, db: db, command: prepared}, host, request)
+}
+
+func dispatchCaptured(ctx context.Context, dispatchStore scheduling.DispatchStore, host remoteRuns, request schedule.RunRequest) (scheduling.RunReference, error) {
+	dispatcher, err := scheduling.NewDispatcher(dispatchStore, host)
+	if err != nil {
+		return scheduling.RunReference{}, err
 	}
 	return dispatcher.Dispatch(ctx, request.RunID())
 }

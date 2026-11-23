@@ -1,5 +1,3 @@
-// Package localruntime owns deployment handoff material shared by a local
-// Runtime process and its trusted application clients.
 package localruntime
 
 import (
@@ -12,6 +10,12 @@ import (
 	"path/filepath"
 )
 
+// The token authenticates the local Runtime, so only its user may read it or its directory.
+const (
+	tokenDirectoryMode = 0o700
+	tokenFileMode      = 0o600
+)
+
 const (
 	rawTokenBytes         = 32
 	tokenCandidatePattern = ".local-token-*"
@@ -21,25 +25,16 @@ var encodedTokenBytes = base64.RawURLEncoding.EncodedLen(rawTokenBytes)
 
 var ErrInvalidToken = errors.New("invalid local Runtime token")
 
-// Token is a validated local Runtime credential and the durable path that owns
-// its lifecycle. Its fields are private so callers cannot mistake unvalidated
-// file contents for a credential.
 type Token struct {
 	value string
 	path  string
 }
 
-// Value returns the canonical bearer value. Whether a deployment publishes a
-// token at all is the caller's question, asked where the gate is configured; a
-// method that answered it with an empty string would hand back "no credential",
-// which is the value that disables the gate.
+// An empty string would mean no credential, which disables the gate.
 func (t *Token) Value() string { return t.value }
 
 func (t *Token) Path() string { return t.path }
 
-// OpenToken loads the credential owned by path, creating and atomically
-// publishing one when it does not exist. Concurrent Runtime generations converge
-// on the first published value rather than creating process-owned credentials.
 func OpenToken(path string) (*Token, error) {
 	path, err := cleanTokenPath(path)
 	if err != nil {
@@ -54,7 +49,7 @@ func OpenToken(path string) (*Token, error) {
 	}
 
 	parent := filepath.Dir(path)
-	if mkdirErr := os.MkdirAll(parent, 0o700); mkdirErr != nil {
+	if mkdirErr := os.MkdirAll(parent, tokenDirectoryMode); mkdirErr != nil {
 		return nil, fmt.Errorf("local Runtime token: create parent: %w", mkdirErr)
 	}
 	value := newTokenValue()
@@ -64,7 +59,7 @@ func OpenToken(path string) (*Token, error) {
 	}
 	temporaryPath := temporary.Name()
 	defer func() { _ = os.Remove(temporaryPath) }()
-	if err := temporary.Chmod(0o600); err != nil {
+	if err := temporary.Chmod(tokenFileMode); err != nil {
 		_ = temporary.Close()
 		return nil, fmt.Errorf("local Runtime token: protect candidate: %w", err)
 	}
@@ -143,8 +138,6 @@ func readOpenedTokenFile(path string, file *os.File, pathInfo os.FileInfo) (*Tok
 	return &Token{value: string(encoded), path: path}, nil
 }
 
-// readTokenBytes reads one byte past the token so a longer file is refused
-// rather than truncated.
 func readTokenBytes(file io.Reader) ([]byte, error) {
 	encoded := make([]byte, encodedTokenBytes+1)
 	n, err := io.ReadFull(file, encoded)
@@ -195,7 +188,7 @@ func validateTokenFile(info os.FileInfo) error {
 	if !info.Mode().IsRegular() {
 		return invalidToken("path must be a regular file")
 	}
-	if permissions := info.Mode().Perm(); permissions != 0o600 {
+	if permissions := info.Mode().Perm(); permissions != tokenFileMode {
 		return invalidToken(fmt.Sprintf("permissions are %04o, want 0600", permissions))
 	}
 	if info.Size() != int64(encodedTokenBytes) {

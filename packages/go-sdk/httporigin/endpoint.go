@@ -12,7 +12,6 @@ import (
 	"golang.org/x/net/idna"
 )
 
-// HTTP(S) URL vocabulary an endpoint is admitted against.
 const (
 	schemeHTTP       = "http"
 	schemeHTTPS      = "https"
@@ -21,18 +20,12 @@ const (
 	localhostName    = "localhost"
 )
 
-// Endpoint is an absolute HTTP(S) URL with a host, an in-range port and no
-// userinfo. It is the single admission rule for configured endpoints; each
-// boundary composes its own policy (HTTPS outside loopback, origin-only, no
-// query) from the queries below instead of parsing the URL again.
 type Endpoint struct {
-	url url.URL
-	// url.URL drops an empty "#"; admission must still see that it was written.
+	url      url.URL
 	fragment bool
 }
 
-// ParseEndpoint admits raw as an [Endpoint]. Errors never include raw, which
-// may carry credentials.
+// Errors never include raw, which may carry credentials.
 func ParseEndpoint(raw string) (Endpoint, error) {
 	parsed, err := url.Parse(raw)
 	if err != nil {
@@ -104,14 +97,13 @@ func canonicalHost(host string) (string, error) {
 	return strings.ToLower(host), nil
 }
 
-// URL returns a copy the caller may modify.
 func (e Endpoint) URL() *url.URL {
 	clone := e.url
 	return &clone
 }
 
-// CanonicalBase gives transport routing and per-target persistence the same identity.
-// Keep escaped path separators distinct because proxies may route them differently.
+// Escaped path separators stay distinct because proxies may route them
+// differently.
 func (e Endpoint) CanonicalBase() string {
 	origin := e.Origin()
 	path := e.url.JoinPath()
@@ -123,14 +115,10 @@ func (e Endpoint) String() string { return e.url.String() }
 
 func (e Endpoint) Secure() bool { return e.url.Scheme == schemeHTTPS }
 
-// Loopback reports a host that cannot leave this machine: the localhost name
-// or a loopback IP literal.
 func (e Endpoint) Loopback() bool {
 	return e.url.Hostname() == localhostName || e.LoopbackIP()
 }
 
-// LoopbackIP reports a loopback IP literal; unlike [Endpoint.Loopback] it never
-// trusts name resolution.
 func (e Endpoint) LoopbackIP() bool {
 	address, err := netip.ParseAddr(e.url.Hostname())
 	return err == nil && address.Zone() == "" && address.IsLoopback()
@@ -139,7 +127,6 @@ func (e Endpoint) LoopbackIP() bool {
 func (e Endpoint) HasQuery() bool    { return e.url.RawQuery != "" || e.url.ForceQuery }
 func (e Endpoint) HasFragment() bool { return e.fragment }
 
-// Port includes the HTTP(S) default when the URL omits an explicit port.
 func (e Endpoint) Port() string {
 	if port := strings.TrimLeft(e.url.Port(), "0"); port != "" {
 		return port
@@ -150,8 +137,6 @@ func (e Endpoint) Port() string {
 	return defaultHTTPPort
 }
 
-// IsOrigin reports an endpoint that names only its origin: no path beyond
-// "/", no query and no fragment.
 func (e Endpoint) IsOrigin() bool {
 	path := e.url.EscapedPath()
 	return (path == "" || path == "/") && !e.HasQuery() && !e.HasFragment()

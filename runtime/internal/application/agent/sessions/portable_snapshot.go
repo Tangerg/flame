@@ -10,7 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -18,76 +18,52 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// ErrInvalidPortableSnapshot marks a structurally decoded archive that cannot
-// satisfy the product aggregate invariants.
 var ErrInvalidPortableSnapshot = errors.New("sessions: invalid portable snapshot")
 
-// PortableSnapshot is the transport-neutral, terminal-only session archive
-// accepted by restore. It deliberately separates a portable run's outcome from
-// its derived lifecycle state: restore owns rebuilding that state machine.
 type PortableSnapshot struct {
 	Session     PortableSession
 	Messages    []chat.Message
 	Items       []transcript.Item
 	Runs        []PortableRun
 	ToolResults []PortableToolResult
-	// Plan is the session's Plan, carried as a value so an archive restores
-	// the work plan attached to the conversation rather than just the conversation.
-	Plan       []plan.Step
-	PlanSource extension.ContributionSource
+	Plan        []plan.Step
+	PlanSource  extension.ContributionSource
 }
 
-// PortableToolResult is an offloaded body as an archive carries it. Archived
-// Items do not carry their offload, so the archive links each body to the Item
-// that offloaded it from this side instead.
 type PortableToolResult struct {
 	ItemID    identity.ItemID
 	Blob      transcript.ToolResultBlob
 	ModelOnly bool
 }
 
-// PortableSession is the terminal archive identity. It intentionally excludes
-// live aggregate details such as lineage, isolation, and revision: an
-// imported archive is always admitted as a standalone conversation.
 type PortableSession struct {
 	ID        identity.SessionID
 	Title     string
 	CWD       string
-	Selection modelchoice.Selection
+	Selection flamemodel.Selection
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	Favorite  bool
 }
 
-// PortableRun is one terminal run in a portable snapshot. State is not carried
-// because every portable Run has ended.
 type PortableRun struct {
-	SessionID       identity.SessionID
-	ID              identity.RunID
-	SpawnedByItemID identity.ItemID
-	// ParentRunID and RootRunID are the child edges. Together with
-	// SpawnedByItemID they preserve the execution tree exactly across export/import.
-	ParentRunID identity.RunID
-	RootRunID   identity.RunID
-	Selection   modelchoice.Selection
-	Ending      run.Ending
-	// UnresolvedEffects retains source execution identities as historical evidence.
-	// A portable Run has no checkpoint or continuation that could execute them.
+	SessionID         identity.SessionID
+	ID                identity.RunID
+	SpawnedByItemID   identity.ItemID
+	ParentRunID       identity.RunID
+	RootRunID         identity.RunID
+	Selection         flamemodel.Selection
+	Ending            run.Ending
 	UnresolvedEffects []run.UnresolvedEffect
 	Metrics           run.Metrics
 	ContextTokens     int64
-	// Capabilities is a pointer because an empty set is a known minimal Run while
-	// nil means the archive omitted the root-owned fact. A root must carry it; a
-	// child must not and inherits its root's value.
-	Capabilities *run.Capabilities
-	CreatedAt    time.Time
-	FinishedAt   time.Time
-	UpdatedAt    time.Time
-	MessageMark  run.MessageMark
+	Capabilities      *run.Capabilities
+	CreatedAt         time.Time
+	FinishedAt        time.Time
+	UpdatedAt         time.Time
+	MessageMark       run.MessageMark
 }
 
-// rootID is the Run that owns this Run's capabilities: itself for a root and
-// RootRunID for a child.
 func (p PortableRun) rootID() identity.RunID {
 	if !p.RootRunID.IsZero() {
 		return p.RootRunID
@@ -95,12 +71,6 @@ func (p PortableRun) rootID() identity.RunID {
 	return p.ID
 }
 
-// lineage restores the Run's lineage and checks the identity rules a schema
-// cannot: a root carries its capabilities and a child carries none of its own.
-//
-// These are not shape rules — JSON Schema cannot compare two fields, and "root"
-// is the ABSENCE of the child edges, which no presence rule can condition on — so
-// they belong to the transaction that turns an archive into a session.
 func (p PortableRun) lineage() (run.Lineage, error) {
 	lineage, err := run.NewLineage(p.SpawnedByItemID, p.ParentRunID, p.RootRunID)
 	if err != nil {
@@ -121,8 +91,6 @@ func (p PortableRun) lineage() (run.Lineage, error) {
 	return lineage, nil
 }
 
-// CanonicalSnapshot rebuilds and validates the canonical aggregate from a
-// portable archive. The restore use case owns this normalization.
 func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 	restoredSession, err := p.Session.session()
 	if err != nil {
@@ -138,8 +106,6 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 		},
 		Plan: slices.Clone(p.Plan), PlanSource: p.PlanSource,
 	}
-	// A child reads its root's capabilities, so root values are collected before
-	// any Run is rebuilt. The archive states each value exactly once.
 	capabilitySets := make(map[identity.RunID]run.Capabilities, len(p.Runs))
 	for _, portable := range p.Runs {
 		if portable.Capabilities != nil {
@@ -232,8 +198,6 @@ func bindPortableToolResults(snapshot *Snapshot, results []PortableToolResult) e
 	return nil
 }
 
-// PortableSnapshot returns the terminal-only representation used by archive
-// encoders.
 func (s Snapshot) PortableSnapshot() (PortableSnapshot, error) {
 	if err := s.ValidateToolResults(); err != nil {
 		return PortableSnapshot{}, err

@@ -1,5 +1,3 @@
-// Package pluginhost constructs the real installation authority for tests that
-// inspect Flame projections without executing a plugin.
 package pluginhost
 
 import (
@@ -72,6 +70,7 @@ type refusalDriver struct{ profile framehost.Profile }
 
 func (d refusalDriver) Profile() framehost.Profile { return d.profile }
 func (d refusalDriver) RealmBound() bool           { return d.profile == framehost.BrowserJS }
+
 func (refusalDriver) Prepare(context.Context, framehost.Setup) ([]framehost.ExportValue, error) {
 	return nil, errors.New("pluginhost: fixture does not execute plugins")
 }

@@ -1,5 +1,3 @@
-// Queue owns deterministic FIFO and dispatch-reservation transitions.
-// Application supplies mutation identities and commits durable authoring state.
 package authoring
 
 import (
@@ -21,8 +19,6 @@ var (
 	ErrSessionIDRequired = errors.New("prompt queue: session id is empty")
 )
 
-// Entry is one immutable queue projection. Message owns a detached attachment
-// slice, so callers cannot mutate the queue through a snapshot.
 type QueueEntry struct {
 	ID        QueueEntryID
 	CommandID CommandID
@@ -32,13 +28,10 @@ type QueueEntry struct {
 	Held      bool
 }
 
-// Snapshot is one session's detached FIFO view.
 type QueueSnapshot struct {
 	Entries []QueueEntry
 }
 
-// State is a transactional queue snapshot. Dispatching uses pointer presence
-// because a reservation is optional and EntryID has no sentinel value.
 type QueueState struct {
 	Entries     []QueueEntry
 	Dispatching *QueueEntryID
@@ -51,9 +44,6 @@ func (s QueueState) DispatchingID() (QueueEntryID, bool) {
 	return *s.Dispatching, true
 }
 
-// Queue keeps independent FIFO sequences for every session visited by the app.
-// This prevents a failed follow-up from moving to another session when the
-// user switches away and later comes back.
 type Queue struct {
 	mu          sync.RWMutex
 	nextID      uint64
@@ -68,9 +58,6 @@ func NewQueue() *Queue {
 	}
 }
 
-// EnqueueCommand preserves a mutation identity already allocated by the
-// authoring transaction. Queue edits allocate a new identity because changing
-// content creates a different runtime operation fingerprint.
 func (q *Queue) EnqueueCommand(commandID CommandID, sessionID string, message Message, options RunOptions) (QueueEntry, error) {
 	if err := validateEntry(commandID, sessionID, message, options); err != nil {
 		return QueueEntry{}, err
@@ -93,11 +80,6 @@ func (q *Queue) EnqueueCommand(commandID CommandID, sessionID string, message Me
 	return cloneEntry(entry), nil
 }
 
-// Restore replaces one session queue from a durable authoring outbox. Command
-// identity and order are preserved so runtime retries remain idempotent. A
-// non-empty dispatchingCommandID must identify the first command: it restores
-// ownership of an interrupted runtime handshake without exposing that command
-// to ordinary queue mutations.
 func (q *Queue) Restore(sessionID string, commands []StartRun, dispatchingCommandID CommandID) error {
 	entries := make([]QueueEntry, len(commands))
 	seen := make(map[CommandID]struct{}, len(commands))
@@ -148,9 +130,6 @@ func (q *Queue) Restore(sessionID string, commands []StartRun, dispatchingComman
 	return nil
 }
 
-// RestoreState replaces one session with a previously observed transactional
-// state. It is intended for rolling back an in-memory mutation when the
-// corresponding durable authoring transaction cannot be committed.
 func (q *Queue) RestoreState(sessionID string, state QueueState) error {
 	entries := make([]QueueEntry, len(state.Entries))
 	seenIDs := make(map[QueueEntryID]struct{}, len(state.Entries))
@@ -229,11 +208,6 @@ func (q *Queue) State(sessionID string) QueueState {
 	return state
 }
 
-// BeginDispatch reserves the first dispatchable entry. While the reservation
-// is open, authoring mutations may reorder only the entries behind it. This
-// keeps the runtime mutation identity independent from transient queue
-// selection and prevents a priority edit from changing the command being
-// acknowledged or canceled.
 func (q *Queue) BeginDispatch(sessionID string) (QueueEntry, bool) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -246,9 +220,6 @@ func (q *Queue) BeginDispatch(sessionID string) (QueueEntry, bool) {
 	return cloneEntry(entries[0]), true
 }
 
-// Dispatching returns the exact entry whose StartRun handshake is owned by the
-// current process. The entry remains reserved until its first event commits the
-// dispatch or delivery is released for recovery.
 func (q *Queue) Dispatching(sessionID string) (QueueEntry, bool) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
@@ -260,9 +231,6 @@ func (q *Queue) Dispatching(sessionID string) (QueueEntry, bool) {
 	return cloneEntry(q.entries[sessionID][index]), true
 }
 
-// RetireCommand removes the exact command settled by runtime recovery. Unlike
-// an authoring removal, it is allowed to close a dispatch reservation and is
-// therefore safe both before and after a local opening handshake is released.
 func (q *Queue) RetireCommand(sessionID string, commandID CommandID) (QueueEntry, error) {
 	if err := commandID.Validate(); err != nil {
 		return QueueEntry{}, fmt.Errorf("prompt queue: %w", err)
@@ -283,7 +251,6 @@ func (q *Queue) RetireCommand(sessionID string, commandID CommandID) (QueueEntry
 	return removed, nil
 }
 
-// ReleaseDispatch returns the reserved entry to ordinary FIFO ownership.
 func (q *Queue) ReleaseDispatch(sessionID string) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -294,8 +261,6 @@ func (q *Queue) ReleaseDispatch(sessionID string) bool {
 	return true
 }
 
-// Hold prevents the FIFO consumer from dispatching an entry while an editor
-// owns it. A held entry remains visible and keeps its position in the queue.
 func (q *Queue) Hold(sessionID string, id QueueEntryID) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -315,8 +280,6 @@ func (q *Queue) Hold(sessionID string, id QueueEntryID) error {
 	return nil
 }
 
-// Release makes a held entry dispatchable again. It is idempotent so dialog
-// teardown can safely release ownership after any close path.
 func (q *Queue) Release(sessionID string, id QueueEntryID) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -360,9 +323,6 @@ func (q *Queue) Update(sessionID string, id QueueEntryID, message Message, comma
 	return nil
 }
 
-// RequeueDispatch assigns a fresh command identity to the exact reserved entry
-// after the runtime definitively refuses its previous identity, then releases
-// it back to FIFO ownership as one in-memory transition.
 func (q *Queue) RequeueDispatch(sessionID string, previous, replacement CommandID) error {
 	if err := previous.Validate(); err != nil {
 		return fmt.Errorf("prompt queue: previous command: %w", err)
@@ -429,9 +389,6 @@ func (q *Queue) Move(sessionID string, id QueueEntryID, offset int) error {
 	return nil
 }
 
-// Promote moves an entry to the front without changing its stable identity.
-// It is the queue-level half of "send now": orchestration decides whether a
-// running turn must be canceled before the promoted entry can be dispatched.
 func (q *Queue) Promote(sessionID string, id QueueEntryID) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()

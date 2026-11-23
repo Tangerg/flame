@@ -9,18 +9,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
-// MCPAuthorizationStore keeps at most one credential per MCP source, bound to
-// the fingerprint of the OAuth target that requested it. A configuration
-// change yields a different target, so the earlier credential stops matching
-// without any invalidation step; removing the source removes it by cascade.
 type mcpAuthorizationStore struct{ db *database }
 
 func newMCPAuthorizationStore(db *database) *mcpAuthorizationStore {
 	return &mcpAuthorizationStore{db: db}
 }
 
-// An authorization attempt owns one grant even before it has tokens. Replacing
-// that grant revokes every refresh and rejection callback from the old handler.
 func (m *mcpAuthorizationStore) BeginOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) (string, error) {
 	return scopedValue(ctx, m.db.write, func(ctx context.Context) (string, error) {
 		var binding string
@@ -39,6 +33,7 @@ func (m *mcpAuthorizationStore) BeginOAuthSession(ctx context.Context, target mc
 		return binding, nil
 	})
 }
+
 func (m *mcpAuthorizationStore) LoadOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) ([]byte, string, bool, error) {
 	return scopedTriple(ctx, m.db.read, func(ctx context.Context) ([]byte, string, bool, error) {
 		var payload []byte
@@ -58,6 +53,7 @@ func (m *mcpAuthorizationStore) LoadOAuthSession(ctx context.Context, target mcp
 		return payload, binding, true, nil
 	})
 }
+
 func (m *mcpAuthorizationStore) SaveOAuthSession(ctx context.Context, server mcpserver.ID, binding string, payload []byte) error {
 	return m.db.write(ctx, func(ctx context.Context) error {
 		if binding == "" {
@@ -73,6 +69,7 @@ func (m *mcpAuthorizationStore) SaveOAuthSession(ctx context.Context, server mcp
 		return oauthGrantApplied(result)
 	})
 }
+
 func (m *mcpAuthorizationStore) RemoveOAuthSession(ctx context.Context, server mcpserver.ID, binding string) error {
 	return m.db.write(ctx, func(ctx context.Context) error {
 		if binding == "" {
@@ -85,6 +82,7 @@ func (m *mcpAuthorizationStore) RemoveOAuthSession(ctx context.Context, server m
 		return oauthGrantApplied(result)
 	})
 }
+
 func oauthGrantApplied(result sql.Result) error {
 	changed, err := result.RowsAffected()
 	if err != nil {

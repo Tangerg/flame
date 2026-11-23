@@ -13,8 +13,6 @@ import (
 	"github.com/Tangerg/oolong/ui/core/term"
 )
 
-// runLink is what Run execution asks of the rest of the terminal: notices,
-// attention, the authoritative Session refresh and the open timeline.
 type runLink interface {
 	message(label string)
 	terminalClosed() bool
@@ -23,17 +21,11 @@ type runLink interface {
 	refreshOpenTimeline()
 }
 
-// runSession is what Run execution asks of the Session lifecycle: re-read the
-// presented Session, or replace its projection after a replay gap.
 type runSession interface {
 	refreshInvalidatedSession(sessionRefresh)
 	reconcileRunSnapshot(snapshot conversation.SessionSnapshot, stream conversation.SegmentStream) error
 }
 
-// runs owns the observed Run: its conversation projection, the start and
-// cancellation it has in flight, queue dispatch into Run admission, stream
-// following and recovery, and the interrupt resume. Other surfaces read the
-// conversation through runs and never change it.
 type runs struct {
 	execution executionState
 
@@ -70,25 +62,19 @@ func (r *runs) blocksAdmission() bool { return r.execution.blocksAdmission() }
 
 func (r *runs) following() bool { return r.execution.following() }
 
-// restoreSnapshot rebuilds the observed projection from a Session read.
 func (r *runs) restoreSnapshot(snapshot conversation.SessionSnapshot) error {
 	return r.execution.conversation.RestoreSnapshot(snapshot)
 }
 
-// clearPresentation forgets the retained presentation of finished Runs.
 func (r *runs) clearPresentation() { r.execution.conversation.ClearPresentation() }
 
 func (r *runs) cancelPending() bool { return r.execution.pendingCancel != nil }
 
-// adoptProjection makes conversation the observed projection, as a snapshot
-// reconciliation does for the same Session.
 func (r *runs) adoptProjection(conversation *conversation.Conversation) {
 	r.execution.conversation = conversation
 	r.execution.trustProjection()
 }
 
-// switchProjection adopts another Session's projection; no start of the
-// previous Session is still being opened.
 func (r *runs) switchProjection(conversation *conversation.Conversation) {
 	r.execution.opening = nil
 	r.adoptProjection(conversation)
@@ -101,8 +87,6 @@ func (r *runs) stopClock() {
 	}
 }
 
-// shutdownCancellation is what a closing terminal still owes: nothing, the
-// cancellation of an acknowledged Run, or the cancellation of a staged start.
 type shutdownCancellation uint8
 
 const (
@@ -119,8 +103,6 @@ type runShutdown struct {
 	pendingStart workbench.PendingRun
 }
 
-// settleOpeningForShutdown settles an acknowledged start before the terminal
-// closes, so its queue entry does not outlive the process.
 func (r *runs) settleOpeningForShutdown() error {
 	if r.execution.blocksAdmission() || r.execution.opening == nil {
 		return nil
@@ -132,9 +114,6 @@ func (r *runs) settleOpeningForShutdown() error {
 	return nil
 }
 
-// planShutdown decides which Run or start the closing terminal cancels. A
-// detached terminal leaves its Run alive and only finishes a cancellation the
-// user already asked for; stageable reports whether a start may be staged.
 func (r *runs) planShutdown(detach, stageable bool) (runShutdown, error) {
 	if pending := r.execution.pendingCancel; pending != nil {
 		return runShutdown{owes: shutdownCancelsRun, target: pending.request, opening: pending.openingCommandID, replay: pending.replay}, nil
@@ -180,8 +159,6 @@ func (r *runs) finishShutdown(ctx context.Context, plan runShutdown) error {
 	}
 }
 
-// resumeReconciled continues a reconciled projection in its phase. It reports
-// false when Idle dispatched the next queued prompt, which owns what follows.
 func (r *runs) resumeReconciled(snapshot conversation.SessionSnapshot) (bool, error) {
 	switch r.execution.conversation.Phase() {
 	case conversation.Running:
@@ -216,7 +193,6 @@ func (r *runs) resumeReconciled(snapshot conversation.SessionSnapshot) (bool, er
 	return true, nil
 }
 
-// resumeRestored continues a projection restored at startup in its phase.
 func (r *runs) resumeRestored(snapshot conversation.SessionSnapshot) {
 	switch r.execution.conversation.Phase() {
 	case conversation.Waiting:

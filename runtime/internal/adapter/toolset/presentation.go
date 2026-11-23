@@ -12,15 +12,8 @@ import (
 	"github.com/Tangerg/scope/tools/content"
 )
 
-// Presenter owns the client-facing projection of concrete tool schemas. Its
-// zero value is ready for use. Unknown tools retain their canonical result and
-// let the execution adapter supply generic activity text.
 type Presenter struct{}
 
-// PresentationContract describes one built-in tool result after Presenter has
-// projected it into the transcript. ResultType is the exact root object carried
-// by ToolInvocation.result; EnumValues supplies the closed string vocabularies
-// reflection cannot discover.
 type PresentationContract struct {
 	ToolName   string
 	ResultType reflect.Type
@@ -43,9 +36,6 @@ func PresentationContracts() []PresentationContract {
 	return contracts
 }
 
-// Present projects a known tool's canonical arguments and result into the
-// client transcript shape. The second result is optional plain output for
-// clients that render command text separately.
 func (Presenter) Present(ref tool.Ref, arguments tool.Arguments, result tool.Result) (tool.Result, string) {
 	name, ok := ref.BuiltIn()
 	if !ok {
@@ -74,8 +64,6 @@ func commandResultContract() resultProjectionContract {
 	return resultProjectionContract{project: presentCommand, resultType: reflect.TypeFor[builtincontract.CommandResult]()}
 }
 
-// commandExecutionResult is the shell tool's own result shape. The shell
-// captures one interleaved stream, so there is no separate stderr to carry.
 type commandExecutionResult struct {
 	Stdout     content.Content `json:"stdout"`
 	ExitCode   *int            `json:"exit_code"`
@@ -196,9 +184,6 @@ func presentApplyPatchResult(arguments tool.Arguments, result tool.Result) tool.
 	if !ok || len(decoded.Files) == 0 {
 		return result
 	}
-	// The executor reports the paths it actually touched; the patch argument
-	// carries the line counts the executor does not. Joining by path keeps the
-	// applied set authoritative while projecting a diffstat for each file.
 	counts := patchLineCounts(arguments)
 	changes := make([]builtincontract.AppliedChange, 0, len(decoded.Files))
 	for _, file := range decoded.Files {
@@ -222,9 +207,6 @@ func presentApplyPatchResult(arguments tool.Arguments, result tool.Result) tool.
 
 type patchLineCount struct{ added, removed int }
 
-// patchLineCounts projects the per-file added/removed line counts of the patch
-// argument, keyed by the file path the patch names. A missing or unparseable
-// argument yields no counts rather than a guess.
 func patchLineCounts(arguments tool.Arguments) map[string]patchLineCount {
 	args, ok := decodeArguments[applyPatchArguments](arguments, "patch")
 	if !ok || args.Patch == "" {

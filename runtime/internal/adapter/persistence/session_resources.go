@@ -13,14 +13,12 @@ import (
 	"github.com/Tangerg/frame/sqlite"
 )
 
-// ResourceRetirementStore retains cleanup authority after its Session history
-// has been deleted or replaced. Only Session write-sets create these rows, in
-// the transaction that decides that retirement.
 type ResourceRetirementStore struct{ db *database }
 
 func newResourceRetirementStore(db *database) *ResourceRetirementStore {
 	return &ResourceRetirementStore{db: db}
 }
+
 func (s *ResourceRetirementStore) record(ctx context.Context, retirement sessions.ResourceRetirement) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		if err := retirement.Validate(); err != nil {
@@ -43,6 +41,7 @@ func (s *ResourceRetirementStore) record(ctx context.Context, retirement session
 		return nil
 	})
 }
+
 func (s *ResourceRetirementStore) Lookup(ctx context.Context, sessionID identity.SessionID) (sessions.ResourceRetirement, bool, error) {
 	return scopedPair(ctx, s.db.read, func(ctx context.Context) (sessions.ResourceRetirement, bool, error) {
 		var id string
@@ -57,11 +56,13 @@ func (s *ResourceRetirementStore) Lookup(ctx context.Context, sessionID identity
 		return retirement, err == nil, err
 	})
 }
+
 func (s *ResourceRetirementStore) pending(ctx context.Context, sessionID identity.SessionID) (bool, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) (bool, error) {
 		return sessionResourceRetirementPending(ctx, s.db.connection(ctx), sessionID)
 	})
 }
+
 func sessionResourceRetirementPending(ctx context.Context, connection sqlite.Executor, sessionID identity.SessionID) (bool, error) {
 	var pending bool
 	err := connection.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM committed_session_resource_retirements WHERE session_id = ?)`, sessionID).Scan(&pending)
@@ -70,15 +71,14 @@ func sessionResourceRetirementPending(ctx context.Context, connection sqlite.Exe
 	}
 	return pending, nil
 }
+
 func (s *ResourceRetirementStore) ListPending(ctx context.Context) ([]sessions.ResourceRetirement, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]sessions.ResourceRetirement, error) {
 		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT retirement_id, session_id FROM committed_session_resource_retirements ORDER BY session_id`)
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list Session resource retirements: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		var retirements []sessions.ResourceRetirement
 		for rows.Next() {
 			var id string
@@ -98,6 +98,7 @@ func (s *ResourceRetirementStore) ListPending(ctx context.Context) ([]sessions.R
 		return retirements, nil
 	})
 }
+
 func (s *ResourceRetirementStore) Complete(ctx context.Context, retirement sessions.ResourceRetirement) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		if err := retirement.Validate(); err != nil {

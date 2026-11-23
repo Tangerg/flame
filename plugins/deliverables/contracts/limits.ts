@@ -1,4 +1,3 @@
-// Text field bounds shared by the command schemas and the authoring forms.
 export const FIELD_LIMITS = Object.freeze({
   title: 180,
   sourceTitle: 300,

@@ -22,9 +22,6 @@ func (p *presentationIdentity) current(candidate *presentationIdentity) bool {
 	return p != nil && p == candidate && !p.retired
 }
 
-// presentationDialog owns the business identity captured by asynchronous answers.
-// Renewal preserves the native attachment, but input must first see a frame for
-// that presentation. Scene still owns focus, capture and attachment generations.
 type presentationDialog struct {
 	dialog    *kit.Dialog
 	workspace *workspaceScene

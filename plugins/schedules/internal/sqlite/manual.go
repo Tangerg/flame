@@ -7,10 +7,11 @@ import (
 	"errors"
 	"fmt"
 
-	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/plugins/schedules/internal/schedule"
 )
 
-var manualSchema = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS manual_firings (run_id TEXT PRIMARY KEY, captured_request_json TEXT NOT NULL CHECK(json_valid(captured_request_json)) CHECK(json_type(captured_request_json,'$.CommandID') IS 'text' AND length(json_extract(captured_request_json,'$.CommandID')) > 0), state TEXT NOT NULL CHECK(state IN ('%s','%s')))`, scheduleFiringPending.databaseValue(), scheduleFiringAccepted.databaseValue())
+var manualSchema = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS manual_firings (run_id TEXT PRIMARY KEY, captured_request_json TEXT NOT NULL CHECK(json_valid(captured_request_json)) CHECK(json_type(captured_request_json,'$.commandId') IS 'text' AND length(json_extract(captured_request_json,'$.commandId')) > 0), state TEXT NOT NULL CHECK(state IN ('%s','%s')))`, scheduleFiringPending.databaseValue(), scheduleFiringAccepted.databaseValue())
 
 func (s *ScheduleStore) QueueManual(ctx context.Context, request schedule.RunRequest) error {
 	return s.db.RunInTx(ctx, func(ctx context.Context) error {
@@ -28,7 +29,8 @@ func (s *ScheduleStore) QueueManual(ctx context.Context, request schedule.RunReq
 		return err
 	})
 }
-func (s *ScheduleStore) PendingManual(ctx context.Context, afterID string, limit int) ([]schedule.RunRequest, error) {
+
+func (s *ScheduleStore) PendingManual(ctx context.Context, afterID identity.RunID, limit int) ([]schedule.RunRequest, error) {
 	var result []schedule.RunRequest
 	err := s.db.RunReadSnapshot(ctx, func(ctx context.Context) error {
 		if limit <= 0 || limit > schedule.MaximumDispatchBatch {
@@ -40,7 +42,8 @@ func (s *ScheduleStore) PendingManual(ctx context.Context, afterID string, limit
 		}
 		defer rows.Close()
 		for rows.Next() {
-			var id, encoded string
+			var id identity.RunID
+			var encoded string
 			if err := rows.Scan(&id, &encoded); err != nil {
 				return err
 			}
@@ -54,7 +57,8 @@ func (s *ScheduleStore) PendingManual(ctx context.Context, afterID string, limit
 	})
 	return result, err
 }
-func restoreManual(id, encoded string) (schedule.RunRequest, error) {
+
+func restoreManual(id identity.RunID, encoded string) (schedule.RunRequest, error) {
 	var snapshot schedule.RunRequestSnapshot
 	if err := json.Unmarshal([]byte(encoded), &snapshot, json.RejectUnknownMembers(true)); err != nil {
 		return schedule.RunRequest{}, err
@@ -71,7 +75,8 @@ func restoreManual(id, encoded string) (schedule.RunRequest, error) {
 	}
 	return request, nil
 }
-func (s *ScheduleStore) AcceptRun(ctx context.Context, id string) error {
+
+func (s *ScheduleStore) AcceptRun(ctx context.Context, id identity.RunID) error {
 	return s.db.RunInTx(ctx, func(ctx context.Context) error {
 		var rawID string
 		err := s.db.Executor(ctx).QueryRowContext(ctx, `SELECT id FROM schedule_firings WHERE run_id=?`, id).Scan(&rawID)
@@ -102,7 +107,7 @@ func (s *ScheduleStore) AcceptRun(ctx context.Context, id string) error {
 		}
 		record, _ := request.ManualRecord()
 
-		if _, err := s.recordAcceptedRun(ctx, record.ScheduleID(), record.RanAt()); err != nil {
+		if err := s.recordAcceptedRun(ctx, record.ScheduleID(), record.RanAt()); err != nil {
 			return err
 		}
 		_, err = s.db.Executor(ctx).ExecContext(ctx, `UPDATE manual_firings SET state=? WHERE run_id=?`, scheduleFiringAccepted.databaseValue(), id)

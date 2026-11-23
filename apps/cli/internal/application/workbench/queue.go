@@ -12,10 +12,6 @@ import (
 
 var ErrDispatchCanceling = errors.New("queued prompt is awaiting cancellation")
 
-// Queue owns the transaction between the live FIFO and the durable authoring
-// outbox. An uncommitted write leaves the reservation and editable entries intact;
-// an acknowledged start releases its FIFO position after outbox retirement is
-// visible. The Store fences delivery while durability remains unconfirmed.
 type Queue struct {
 	mu    sync.Mutex
 	store *Store
@@ -34,8 +30,6 @@ func NewQueue(store *Store) (*Queue, error) {
 	return &Queue{store: store, fifo: authoring.NewQueue()}, nil
 }
 
-// EnqueueCommand transfers a prompt out of its draft and into both queue
-// representations before a caller may start Runtime delivery.
 func (q *Queue) EnqueueCommand(commandID authoring.CommandID, sessionID string, message authoring.Message, options authoring.RunOptions) (authoring.QueueEntry, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -126,8 +120,6 @@ func (q *Queue) Promote(sessionID string, id authoring.QueueEntryID) error {
 	return q.commit(sessionID, func() error { return q.fifo.Promote(sessionID, id) })
 }
 
-// Restore installs the outbox owned by this workbench, including the exact
-// opening reservation. A caller cannot substitute another queue projection.
 func (q *Queue) Restore(sessionID string) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -143,8 +135,6 @@ func (q *Queue) Restore(sessionID string) error {
 	return q.fifo.Restore(sessionID, commands, dispatching)
 }
 
-// ForgetSession releases a projection after its durable authoring state has
-// been retired by the Session workflow.
 func (q *Queue) ForgetSession(sessionID string) int {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -162,7 +152,6 @@ func (q *Queue) DispatchCanceling(sessionID string) bool {
 	return found && pending.State == PendingRunCanceling
 }
 
-// A later FIFO head cannot inherit an earlier command's acknowledgement.
 func (q *Queue) SettleDispatch(sessionID string, commandID authoring.CommandID) (authoring.QueueEntry, bool, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -175,9 +164,6 @@ func (q *Queue) SettleDispatch(sessionID string, commandID authoring.CommandID) 
 	return q.retire(sessionID, commandID)
 }
 
-// Retire closes the exact accepted, recovered or canceled opening. History and
-// outbox ownership commit before releasing its reservation, including retries
-// after history alone committed during an earlier failed settlement.
 func (q *Queue) Retire(sessionID string, commandID authoring.CommandID) (authoring.QueueEntry, bool, error) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -208,8 +194,6 @@ func (q *Queue) retire(sessionID string, commandID authoring.CommandID) (authori
 	return retired, err == nil, errors.Join(settlementErr, err)
 }
 
-// RequeueDispatch is valid only after Runtime definitively refused this exact
-// command. The durable replacement owns the new identity before FIFO release.
 func (q *Queue) RequeueDispatch(sessionID string, commandID authoring.CommandID) error {
 	q.mu.Lock()
 	defer q.mu.Unlock()

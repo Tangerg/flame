@@ -125,7 +125,7 @@ func commandEnvironment(pluginID, command string) []string {
 	if runtime.GOOS == "windows" {
 		keys = append(keys, "SystemRoot", "ComSpec", "PATHEXT", "USERPROFILE")
 	}
-	environment := make([]string, 0, len(keys)+3)
+	environment := make([]string, 0, len(keys))
 	seen := make(map[string]struct{}, len(keys))
 	for _, key := range keys {
 		lookup := key

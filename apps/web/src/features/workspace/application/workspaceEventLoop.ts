@@ -19,7 +19,7 @@ class WorkspaceEventOpeningTimeoutError extends Error {
   }
 }
 
-export interface WorkspaceEventLoopDeps {
+interface WorkspaceEventLoopDeps {
   subscribe(input: {
     target: WorkspaceWatchTarget;
     signal: AbortSignal;

@@ -1,9 +1,9 @@
 import { z } from "zod";
 import type { ObservationValue } from "./story";
 
-export const OBSERVATION_CHANNEL = "flame.component-lab.observation";
-export const OBSERVATION_VERSION = 1;
-export const OBSERVATION_LIMITS = {
+const OBSERVATION_CHANNEL = "flame.component-lab.observation";
+const OBSERVATION_VERSION = 1;
+const OBSERVATION_LIMITS = {
   instanceIdLength: 128,
   nameLength: 120,
   detailLength: 512,
@@ -34,8 +34,8 @@ const messageSchema = z.strictObject({
   detail: z.string().max(OBSERVATION_LIMITS.detailLength),
 });
 
-export type ObservationMessage = Readonly<z.infer<typeof messageSchema>>;
-export type ObservationEntry = ObservationMessage & {
+type ObservationMessage = Readonly<z.infer<typeof messageSchema>>;
+type ObservationEntry = ObservationMessage & {
   readonly sequence: number;
   readonly receivedAt: number;
 };

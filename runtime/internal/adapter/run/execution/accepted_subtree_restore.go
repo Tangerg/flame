@@ -33,21 +33,18 @@ func (s subtreeCancellationRestore) bindMembers(continuation runs.ExecutionConti
 		}
 		return runs.ExecutionContinuation{}, err
 	}
-	exited := make(map[scoperun.ProcessID]bool, len(retired))
+	exited := make(map[string]bool, len(retired))
 	for _, entry := range checkpoint.tree.Entries {
 		if record, ok := entry.Record.(scoperun.Exited); ok && retired[record.Process] {
-			exited[record.Process] = true
+			exited[record.Process.String()] = true
 		}
 	}
 	continuation.Members = slices.DeleteFunc(slices.Clone(continuation.Members), func(member runs.ExecutionMember) bool {
-		id, _ := scoperun.ParseProcessID(member.MemberID)
-		return exited[id]
+		return exited[member.MemberID]
 	})
 	return runs.NewExecutionContinuation(continuation)
 }
 
-// If a resumed survivor has already advanced beyond the safe handoff, only
-// ordinary Run recovery may settle its subsequent work.
 func survivedScopeResume(cut interactionHandoff, retired map[scoperun.ProcessID]bool, afterExit []scoperun.Entry) bool {
 	for _, entry := range afterExit {
 		control, ok := entry.Record.(scoperun.ControlRequested)
@@ -137,7 +134,7 @@ func (s stagedSubtreeCancellation) Settle(ctx context.Context) error {
 		s.session.startWorkers()
 		return nil
 	}
-	paused, err := s.session.pausedProcessIDs()
+	paused, err := s.session.pausedProcessIDs(ctx)
 	if err != nil {
 		return err
 	}

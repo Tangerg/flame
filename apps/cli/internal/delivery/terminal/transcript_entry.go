@@ -15,9 +15,6 @@ type transcriptEntryID uint64
 
 const transcriptEntryInset = 2
 
-// transcriptEntry gives every retained block the same interrupt surface. The
-// wrapped block remains responsible for its content; this wrapper owns only the
-// stable selection rail used by transcript-focused keyboard navigation.
 type selectionRail uint8
 
 const (

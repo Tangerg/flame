@@ -4,7 +4,7 @@ import "errors"
 
 var (
 	ErrFileListTooLarge     = errors.New("workspace: file listing too large")
-	ErrInvalidFileListPath  = errors.New("workspace: file listing path is not a directory")
+	ErrInvalidFileListPath  = errors.New("workspace: invalid file listing path")
 	ErrInvalidFileNameQuery = errors.New("workspace: file name query exceeds its byte limit")
 	ErrInvalidFileGlob      = errors.New("workspace: invalid file glob")
 	ErrPageLimit            = errors.New("workspace: page limit invalid")

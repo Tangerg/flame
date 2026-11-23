@@ -21,9 +21,6 @@ var (
 	errLSPMessageTooLarge = errors.New("lsp: message body too large")
 )
 
-// lspObjectCodec keeps the mature jsonrpc2 connection lifecycle while owning
-// Flame's finite LSP framing policy. The upstream VS Code codec accepts an
-// unbounded header line and content lengths up to 4 GiB.
 type lspObjectCodec struct{}
 
 func (lspObjectCodec) WriteObject(stream io.Writer, value any) error {
@@ -45,7 +42,6 @@ func (lspObjectCodec) ReadObject(stream *bufio.Reader, value any) error {
 	return readLSPObject(stream, value, maxLSPHeaderBytes, maxLSPMessageBytes)
 }
 
-// lspContentLengthHeader is the one base-protocol header that frames a message.
 const lspContentLengthHeader = "Content-Length"
 
 func readLSPObject(stream *bufio.Reader, value any, headerLimit, messageLimit int) error {
@@ -66,8 +62,6 @@ func readLSPObject(stream *bufio.Reader, value any, headerLimit, messageLimit in
 	return nil
 }
 
-// readLSPContentLength reads one header block and returns its single declared
-// body length; other headers are ignored, as the base protocol allows.
 func readLSPContentLength(stream *bufio.Reader, headerLimit, messageLimit int) (int, error) {
 	remainingHeader := headerLimit
 	contentLength := -1

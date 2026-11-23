@@ -17,10 +17,10 @@ func (s Snapshot) Validate() error {
 	if err := plan.ValidateSteps(s.Plan); err != nil {
 		return fmt.Errorf("sessions: snapshot Plan: %w", err)
 	}
-	return s.HistorySnapshot.validate()
+	return s.validateHistory()
 }
 
-func (s HistorySnapshot) validate() error {
+func (s HistorySnapshot) validateHistory() error {
 	// The Session anchors every ownership comparison below, so an unbuilt one
 	// would make an all-zero snapshot self-consistent.
 	if s.Session.ID().IsZero() {
@@ -52,8 +52,6 @@ func (s HistorySnapshot) validateRuns() (map[identity.RunID]struct{}, error) {
 		if _, exists := runs[run.ID()]; exists {
 			return nil, fmt.Errorf("sessions: snapshot contains duplicate run %q", run.ID())
 		}
-		// A snapshot is a portable record of finished work, so only a terminal Run
-		// belongs in one; whether its facts hold together is the Run's own rule.
 		if !run.State().IsTerminal() {
 			return nil, fmt.Errorf("sessions: snapshot run %q is %s, want terminal", run.ID(), run.State())
 		}
@@ -92,10 +90,6 @@ func (s HistorySnapshot) validateItems(runs map[identity.RunID]struct{}) (map[id
 	return items, nil
 }
 
-// validateSnapshotRunTree proves every Run in the archive belongs to one
-// complete topology. Reachability, cycles, duplicates and the root each child
-// names are run.Tree's rules; a snapshot only adds what its Items say about the
-// call that spawned each child.
 func validateSnapshotRunTree(runs []run.Run, items map[identity.ItemID]transcript.Item) error {
 	index := &snapshotRunTree{runByID: make(map[identity.RunID]run.Run, len(runs))}
 	for _, value := range runs {
@@ -128,9 +122,6 @@ type snapshotRunTree struct {
 	runByID map[identity.RunID]run.Run
 }
 
-// validateChildSpawn proves the Item a child names is the Tool call its parent
-// actually made. run.Tree settles the identities; only the transcript can say
-// whether the call that produced this child exists in it.
 func (s *snapshotRunTree) validateChildSpawn(
 	child run.Run,
 	items map[identity.ItemID]transcript.Item,
@@ -155,17 +146,8 @@ func (s *snapshotRunTree) validateChildSpawn(
 	if !found {
 		return fmt.Errorf("sessions: snapshot run %q references unknown spawning item %q", child.ID(), lineage.SpawnedByItemID())
 	}
-	if item.Kind() != transcript.ToolCall {
-		return fmt.Errorf("sessions: snapshot run %q spawning item %q is not a tool call", child.ID(), lineage.SpawnedByItemID())
-	}
-	if item.RunID() != parent.ID() {
-		return fmt.Errorf(
-			"sessions: snapshot child run %q spawning item %q belongs to run %q, want parent %q",
-			child.ID(),
-			item.ID(),
-			item.RunID(),
-			parent.ID(),
-		)
+	if err := item.ValidateSpawns(child.SessionID(), parent.ID()); err != nil {
+		return fmt.Errorf("sessions: snapshot child run %q: %w", child.ID(), err)
 	}
 	return nil
 }

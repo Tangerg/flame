@@ -10,14 +10,13 @@ import (
 
 const MaximumExportChunkBytes = 1 << 20
 
-// DecodeFileSave refines the native IPC input before any save panel is opened.
-// The suggested name never confers authority over a filesystem destination.
 func DecodeFileSave(suggestedFilename, contentBase64 string) ([]byte, error) {
 	if err := ValidateFileName(suggestedFilename); err != nil {
 		return nil, err
 	}
 	return DecodeExportChunk(contentBase64)
 }
+
 func ValidateFileName(suggestedFilename string) error {
 	if !utf8.ValidString(suggestedFilename) {
 		return errors.New("filename is not valid UTF-8")
@@ -33,6 +32,7 @@ func ValidateFileName(suggestedFilename string) error {
 	}
 	return nil
 }
+
 func DecodeExportChunk(contentBase64 string) ([]byte, error) {
 	if len(contentBase64) > base64.StdEncoding.EncodedLen(MaximumExportChunkBytes) {
 		return nil, errors.New("file exceeds native export capacity")

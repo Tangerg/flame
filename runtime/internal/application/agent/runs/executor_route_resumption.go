@@ -54,19 +54,14 @@ func validateResumedRouteRequest(spec segmentSpec, continuation *treeContinuatio
 	return nil
 }
 
-// resumedRouteBuilder reconstructs every per-Run reducer from one validated
-// continuation and derives their deterministic admission order. Keeping the
-// segment identity set with the construction state makes duplicate detection
-// structural rather than a convention shared by unrelated helpers.
 type resumedRouteBuilder struct {
 	spec         segmentSpec
 	resumption   treeResumption
 	newSegmentID func() identity.SegmentID
 	now          func() time.Time
-	// resumedAt is the one opening time every Run in the tree resumes at.
-	resumedAt  time.Time
-	routes     *executorRoutes
-	segmentIDs map[identity.SegmentID]struct{}
+	resumedAt    time.Time
+	routes       *executorRoutes
+	segmentIDs   map[identity.SegmentID]struct{}
 }
 
 func (r *resumedRouteBuilder) build() (*executorRoutes, error) {
@@ -90,8 +85,6 @@ func (r *resumedRouteBuilder) build() (*executorRoutes, error) {
 	return r.routes, nil
 }
 
-// restoreSegment continues the parked Segment itself: its Items keep their
-// identities and its open Tool attempts wait for the executor to replay them.
 func (r *resumedRouteBuilder) restoreSegment(reducer *reducer, runID identity.RunID, segmentID identity.SegmentID) error {
 	var ids []identity.ItemID
 	for _, item := range r.resumption.Continuation.items {

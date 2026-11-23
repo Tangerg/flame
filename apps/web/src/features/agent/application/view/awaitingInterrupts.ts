@@ -1,7 +1,6 @@
 import { type AgentSessionView, type PendingInterrupt } from "@/features/agent/public/sessionView";
-export interface AwaitingInterruptGroup {
+interface AwaitingInterruptGroup {
   runId: string;
-  /** The root Run whose resume answers these interrupts. */
   rootRunId: string;
   interrupts: readonly PendingInterrupt[];
 }
@@ -21,7 +20,6 @@ export function selectAwaitingGroups(view: AgentSessionView): AwaitingInterruptG
   return awaiting;
 }
 
-/** The Run to resume for every Item awaiting a person's answer. */
 export function selectAwaitingInterrupts(view: AgentSessionView): ReadonlyMap<string, string> {
   const awaiting = new Map<string, string>();
   for (const group of selectAwaitingGroups(view)) {

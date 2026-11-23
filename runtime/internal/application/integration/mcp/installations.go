@@ -8,12 +8,9 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
-// Frame has committed and fenced the installation before this projection changes.
-// Withdrawal supersedes in-flight connection attempts before the following
-// realization. Selection remains readable from its owner after uninstall;
-// withdrawal never performs connection I/O or waits for a dial.
 func (c *Coordinator) WithdrawInstallation(ctx context.Context, servers []mcpserver.ID) error {
 	if ctx == nil {
 		return errors.New("mcp: withdrawal context is required")
@@ -22,7 +19,6 @@ func (c *Coordinator) WithdrawInstallation(ctx context.Context, servers []mcpser
 		return err
 	}
 	affected, result := c.external.Affected(ctx, servers)
-	// Unknown selection cannot leave potentially withdrawn external authority live.
 	if result != nil || affected {
 		result = errors.Join(result, c.WithdrawExternal())
 	}
@@ -32,8 +28,6 @@ func (c *Coordinator) WithdrawInstallation(ctx context.Context, servers []mcpser
 	return result
 }
 
-// ReconcileInstallation realizes committed installation projections in the
-// existing supervisor. It cannot save or edit an installation descriptor.
 func (c *Coordinator) ReconcileInstallation(ctx context.Context, servers []mcpserver.ID) error {
 	if ctx == nil {
 		return errors.New("mcp: realization context is required")
@@ -52,7 +46,6 @@ func (c *Coordinator) ReconcileInstallation(ctx context.Context, servers []mcpse
 	return result
 }
 
-// External directory I/O cannot block recovery of the Frame instances required to read it.
 func (c *Coordinator) RestoreExternal(ctx context.Context, ready <-chan struct{}) {
 	c.tasks.StartLinked(ctx, func(ctx context.Context) {
 		select {
@@ -61,7 +54,7 @@ func (c *Coordinator) RestoreExternal(ctx context.Context, ready <-chan struct{}
 		case <-ready:
 		}
 		if err := c.ReconcileExternal(ctx); err != nil && ctx.Err() == nil {
-			slog.WarnContext(ctx, "external MCP directory could not be restored", "error", err)
+			slog.WarnContext(ctx, "external MCP directory could not be restored", telemetry.Error(err))
 		}
 	})
 }
@@ -88,6 +81,7 @@ func (c *Coordinator) ReconcileExternal(ctx context.Context) error {
 	}
 	return c.reconcileSources(ctx, ids)
 }
+
 func (c *Coordinator) reconcileSources(ctx context.Context, servers []mcpserver.ID) error {
 	write, err := c.beginMutation(ctx)
 	if err != nil {
@@ -103,9 +97,6 @@ func (c *Coordinator) reconcileSources(ctx context.Context, servers []mcpserver.
 		// delayed reconcile may never dispatch a superseded command snapshot.
 		server, found, err := c.registry.Definition(write.ownerCtx, id)
 		if err != nil {
-			// An unverifiable source must not read as merely disconnected
-			// while nothing will dial it; like a dispatch that cannot read its
-			// source, the refusal reaches status readers.
 			result = errors.Join(result, err, c.connections.Refuse(write.ownerCtx, id, mcpserver.FailureConfiguration))
 			events = append(events, c.statusQueue.prepare(id))
 			continue
@@ -131,12 +122,6 @@ func (c *Coordinator) reconcileSources(ctx context.Context, servers []mcpserver.
 	return result
 }
 
-// refuseUnrealized records, at the connection status owner, that committed
-// sources could not be realized. Withdrawal already retired their previous
-// connections; without this refusal an enabled source would read as merely
-// disconnected while nothing will dial it. A removed or disabled source has no
-// connection to report, so it stays absent instead of becoming a failed ghost.
-// The refusal outlives the realization context that just failed.
 func (c *Coordinator) refuseUnrealized(ctx context.Context, servers []mcpserver.ID) error {
 	ctx = context.WithoutCancel(ctx)
 	var result error

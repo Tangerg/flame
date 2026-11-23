@@ -5,14 +5,14 @@ import {
   type MethodInputs,
   type MethodOutputs,
 } from "../package/io.github.tangerg.flame/contracts/methods.generated";
-export type Schedule = MethodOutputs["flame.schedules/list.v1"]["Rows"][number];
-export type Page = MethodOutputs["flame.schedules/list.v1"];
-export type Draft = MethodInputs["flame.schedules/create.v1"];
+export type Schedule = MethodOutputs["flame.schedules/list.v2"]["rows"][number];
+export type Page = MethodOutputs["flame.schedules/list.v2"];
+export type Draft = MethodInputs["flame.schedules/create.v2"];
 export type Mutation =
-  | "flame.schedules/create.v1"
-  | "flame.schedules/update.v1"
-  | "flame.schedules/delete.v1"
-  | "flame.schedules/runNow.v1";
+  | "flame.schedules/create.v2"
+  | "flame.schedules/update.v2"
+  | "flame.schedules/delete.v2"
+  | "flame.schedules/runNow.v2";
 export type Command = {
   method: Mutation;
   promise: MutationPromise<unknown>;
@@ -23,7 +23,7 @@ export type Command = {
 export type CommandState =
   | { phase: "submitting"; command: Command }
   | { phase: "uncertain"; command: Command; error: string };
-export type Notice = string | MethodOutputs["flame.schedules/runNow.v1"];
+export type Notice = string | MethodOutputs["flame.schedules/runNow.v2"];
 export type Read = {
   loading: boolean;
   accepted?: { page: Page; history: string[] };

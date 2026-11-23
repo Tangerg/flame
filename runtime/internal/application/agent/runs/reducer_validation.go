@@ -2,8 +2,6 @@ package runs
 
 import "fmt"
 
-// validateReductionBatch checks the complete pump-facing persistence and
-// publication boundary before either side becomes observable.
 func validateReductionBatch(batch reductionBatch) error {
 	if len(batch.events) == 0 {
 		if batch.parkCommit != nil {

@@ -10,12 +10,8 @@ import (
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
 
-func mustDesktopHost(t *testing.T, home string) *DesktopHost {
+func mustDesktopHost(t *testing.T, root string) *DesktopHost {
 	t.Helper()
-	root, err := localruntime.ResolveProductRoot(home, "")
-	if err != nil {
-		t.Fatal(err)
-	}
 	host, err := newDesktopHost(root, localruntime.DefaultOrigin)
 	if err != nil {
 		t.Fatal(err)
@@ -23,12 +19,8 @@ func mustDesktopHost(t *testing.T, home string) *DesktopHost {
 	return host
 }
 
-func mustDesktopDataDirectory(t *testing.T, home string) localruntime.DataDirectory {
+func mustDesktopDataDirectory(t *testing.T, root string) localruntime.DataDirectory {
 	t.Helper()
-	root, err := localruntime.ResolveProductRoot(home, "")
-	if err != nil {
-		t.Fatal(err)
-	}
 	directory, err := localruntime.DataDirectoryUnder(root)
 	if err != nil {
 		t.Fatal(err)

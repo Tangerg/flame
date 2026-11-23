@@ -12,10 +12,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// followRecoveredSession closes the read-then-subscribe gap when the terminal
-// opens an already-running session. The background owner requests one coherent
-// snapshot subscription, installs its material and opaque head on the UI thread,
-// and only then starts consuming the successor tail.
 func (r *runs) followRecoveredSession() {
 	sessionID := r.session.current.ID
 	r.startFollowing(func(ctx context.Context, lease operationLease) {
@@ -87,9 +83,6 @@ func (s *streamFollower) restoreAttachedSession(sessionID string) (runworkflow.R
 	}
 }
 
-// eventApplicationError marks a runtime event that reached the terminal but could
-// not be folded into its conversation projection. Reconnecting cannot repair an
-// invalid or conflicting event; only transport failures are eligible for replay.
 type eventApplicationError struct{ err error }
 
 func (e *eventApplicationError) Error() string { return e.err.Error() }
@@ -304,7 +297,6 @@ func (s *streamFollower) waitBeforeRetry(cause error) bool {
 	return s.postRetryStatus(awaitingReconnect) && retry.Wait(s.ctx, delay) == nil
 }
 
-// retryWait is what the follower waits on between attempts.
 type retryWait uint8
 
 const (

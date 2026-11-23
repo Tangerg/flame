@@ -2,14 +2,14 @@ import { useNotifications } from "@/features/notifications/public/notifier";
 import { useCallback, useRef, useState } from "react";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { type NotifySource } from "@/features/notifications/public/notifications";
-export interface CommandActionConfig {
+interface CommandActionConfig {
   wasRetired?: (error: unknown) => boolean;
   fallback: string;
   source?: NotifySource;
   onError?: (message: string, error: unknown) => void;
 }
 
-export interface CommandAction {
+interface CommandAction {
   busy: boolean;
   run: (command: () => Promise<unknown>) => void;
 }

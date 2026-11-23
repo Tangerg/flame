@@ -18,15 +18,17 @@ import (
 )
 
 const (
+	sourceRole      = "source"
+	destinationRole = "destination"
+)
+
+const (
 	maxWorkspaceCopyBytes     = 512 << 20
 	maxWorkspaceCopyFileBytes = 128 << 20
 	maxWorkspaceCopyEntries   = 100_000
 	workspaceCopyBufferBytes  = 64 << 10
 )
 
-// copyTree materializes source directly into an empty destination. Both roots
-// remain capability-confined for the whole copy; no archive-sized intermediate
-// representation is created.
 func copyTree(ctx context.Context, source, destination string) error {
 	if ctx == nil {
 		return errors.New("workspace copy context is required")
@@ -37,11 +39,11 @@ func copyTree(ctx context.Context, source, destination string) error {
 	if !filepath.IsAbs(destination) {
 		return errors.New("workspace copy destination must be absolute")
 	}
-	resolvedSource, err := resolveCopyRoot(source, "source")
+	resolvedSource, err := resolveCopyRoot(source, sourceRole)
 	if err != nil {
 		return err
 	}
-	resolvedDestination, err := resolveCopyRoot(destination, "destination")
+	resolvedDestination, err := resolveCopyRoot(destination, destinationRole)
 	if err != nil {
 		return err
 	}
@@ -53,12 +55,12 @@ func copyTree(ctx context.Context, source, destination string) error {
 		return errors.New("workspace copy destination must not be inside source")
 	}
 
-	sourceRoot, sourceInfo, err := openCopyRoot(resolvedSource, "source")
+	sourceRoot, sourceInfo, err := openCopyRoot(resolvedSource, sourceRole)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = sourceRoot.Close() }()
-	destinationRoot, _, err := openCopyRoot(resolvedDestination, "destination")
+	destinationRoot, _, err := openCopyRoot(resolvedDestination, destinationRole)
 	if err != nil {
 		return err
 	}
@@ -199,14 +201,14 @@ func (t *treeCopier) copyEntry(ctx context.Context, name string, entry fs.DirEnt
 	portableName := filepath.ToSlash(name)
 	localName := filepath.FromSlash(portableName)
 	if parent := filepath.Dir(localName); parent != "." {
-		if err := t.destination.MkdirAll(parent, 0o700); err != nil {
+		if err := t.destination.MkdirAll(parent, filesystem.PrivateDirectoryMode); err != nil {
 			return fmt.Errorf("create parent for %q: %w", portableName, err)
 		}
 	}
 
 	switch mode := info.Mode(); {
 	case mode.IsDir():
-		if err := t.destination.MkdirAll(localName, 0o700); err != nil {
+		if err := t.destination.MkdirAll(localName, filesystem.PrivateDirectoryMode); err != nil {
 			return fmt.Errorf("create directory %q: %w", portableName, err)
 		}
 		t.directories = append(t.directories, directoryMode{name: localName, mode: mode.Perm()})

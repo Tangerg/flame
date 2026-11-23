@@ -8,7 +8,7 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 
 	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -16,14 +16,12 @@ import (
 	"github.com/samber/lo"
 )
 
-// Memory retains its own external-call budget; the model exchange is the public
-// Scope request/response contract, while its corpus embedding is a separate method.
-func GrantMemoryModels(ctx context.Context, callbacks *pluginmcp.Callbacks, session *sdk.ClientSession, model chat.Model, embed models.TextEmbedder) (pluginmcp.CallbackRef, func(), error) {
+func GrantMemoryModels(ctx context.Context, callbacks *pluginmcp.Callbacks, session *sdk.ClientSession, model chat.Model, embed *modeladapter.Embedder) (pluginmcp.CallbackRef, func(), error) {
 	if callbacks == nil {
 		return pluginmcp.CallbackRef{}, nil, errors.New("memory: callback owner is required")
 	}
-	if model != nil && lo.IsNil(model) || embed != nil && lo.IsNil(embed) {
-		return pluginmcp.CallbackRef{}, nil, errors.New("memory: model and embedding collaborators cannot be typed nil")
+	if model != nil && lo.IsNil(model) {
+		return pluginmcp.CallbackRef{}, nil, errors.New("memory: model collaborator cannot be typed nil")
 	}
 	admission := newExternalCallLedger("memory", memorycontract.MaxModelCalls)
 	completion, err := memoryModelCallback(model, admission)
@@ -37,8 +35,6 @@ func GrantMemoryModels(ctx context.Context, callbacks *pluginmcp.Callbacks, sess
 	return callbacks.Open(ctx, session, pluginmcp.CallbackLimits{MaxRequestBytes: memorycontract.MaxCallbackInputBytes, MaxResponseBytes: memorycontract.MaxCallbackOutputBytes}, completion, embedding)
 }
 
-// memoryModelCallback admits one model call per command within the memory
-// envelope; without a model every call is refused.
 func memoryModelCallback(model chat.Model, admission *externalCallLedger) (pluginmcp.Callback, error) {
 	return pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
 		request := chat.Request(command.Input)
@@ -56,16 +52,14 @@ func memoryModelCallback(model chat.Model, admission *externalCallLedger) (plugi
 	})
 }
 
-// memoryEmbeddingCallback admits bounded embedding batches; without an
-// embedder every call is refused.
-func memoryEmbeddingCallback(embed models.TextEmbedder, admission *externalCallLedger) (pluginmcp.Callback, error) {
+func memoryEmbeddingCallback(embed *modeladapter.Embedder, admission *externalCallLedger) (pluginmcp.Callback, error) {
 	return pluginsdk.NewTextEmbeddingCallback(func(ctx context.Context, command pluginmcp.Command[[]string]) (pluginsdk.TextEmbeddings, error) {
 		texts := command.Input
 		input, err := command.RequestInput()
 		if err != nil {
 			return pluginsdk.TextEmbeddings{}, err
 		}
-		if lo.IsNil(embed) || len(texts) == 0 || len(texts) > memorycontract.MaxEmbeddingTexts || int64(len(input.Bytes())) > memorycontract.MaxEmbeddingInputBytes {
+		if embed == nil || len(texts) == 0 || len(texts) > memorycontract.MaxEmbeddingTexts || int64(len(input.Bytes())) > memorycontract.MaxEmbeddingInputBytes {
 			return pluginsdk.TextEmbeddings{}, &framecall.Refusal{Code: refusalEmbeddingEnvelope, Message: "memory: embedding envelope refused"}
 		}
 		if err := admission.admit(string(command.ID), externalEmbeddingCall, input); err != nil {

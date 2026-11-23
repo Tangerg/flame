@@ -14,34 +14,19 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// maxToolOutputLines caps how much of a tool's output is shown. A test run that
-// prints ten thousand lines should not bury the answer that follows it.
 const maxToolOutputLines = 12
 
-// No color or cursor movement keeps the same bytes readable in terminals,
-// pipes and logs.
-//
-// Assistant prose is written as it streams, because that is the content a reader
-// is waiting for. Everything else is held until its block completes and then
-// printed as a labeled unit — a marker prefix cannot survive being interleaved
-// with a live token feed.
 type textRenderer struct {
 	w     io.Writer
 	err   error
 	scope outputRunScope
 
-	// streaming contains assistant blocks whose ordered deltas are written
-	// straight through until authoritative completion reconciles the result.
 	streaming map[string]*plainTextStream
-	// pending collects blocks that print only on completion. Retaining the kind
-	// lets this projection enforce the same delta semantics as the aggregate.
-	pending map[string]*pendingTextBlock
-	seen    map[string]struct{}
-	shown   map[string]struct{}
-	settled bool
-	// column tracks whether the cursor sits mid-line, so separators can be
-	// inserted without doubling blank lines.
-	column bool
+	pending   map[string]*pendingTextBlock
+	seen      map[string]struct{}
+	shown     map[string]struct{}
+	settled   bool
+	column    bool
 }
 
 type plainTextStream struct {
@@ -61,9 +46,6 @@ func newTextRenderer(w io.Writer) *textRenderer {
 	}
 }
 
-// Begin binds subsequent live and recovered output to the accepted run. Text
-// does not print the identity, but retaining it prevents a cold read from
-// accidentally selecting a newer run in the same session.
 func (t *textRenderer) Begin(run conversation.Run, _ authoring.RunOptions) error {
 	if t.err != nil {
 		return t.err
@@ -79,8 +61,6 @@ func (t *textRenderer) Begin(run conversation.Run, _ authoring.RunOptions) error
 	return nil
 }
 
-// Render writes one event. The first error is remembered and returned by every
-// later call, so a caller may render a whole run and check once.
 func (t *textRenderer) Render(envelope conversation.RunEvent) error {
 	if t.err != nil {
 		return t.err
@@ -100,14 +80,11 @@ func (t *textRenderer) Render(envelope conversation.RunEvent) error {
 func (t *textRenderer) renderEvent(envelope conversation.RunEvent) {
 	switch event := envelope.Event.(type) {
 	case conversation.SegmentStarted:
-		// A run's identity is machinery, not content.
 	case conversation.BlockStarted:
 		t.begin(event.Block)
 	case conversation.BlockDelta:
 		t.delta(envelope.RunID, event)
 	case conversation.ToolArgumentsDelta, conversation.RunProgress:
-		// These previews are available in NDJSON and the interactive terminal.
-		// Plain text stays focused on human-readable transcript content.
 	case conversation.BlockCompleted:
 		t.finish(event.Block)
 	case conversation.PlanChanged:
@@ -119,7 +96,6 @@ func (t *textRenderer) renderEvent(envelope conversation.RunEvent) {
 	}
 }
 
-// Close ends the output on its own line.
 func (t *textRenderer) Close() error {
 	t.endLine()
 	return t.err
@@ -147,10 +123,12 @@ func (t *textRenderer) begin(b conversation.Block) {
 func (t *textRenderer) delta(runID string, d conversation.BlockDelta) {
 	key := conversation.BlockKey(runID, d.BlockID)
 	if stream := t.streaming[key]; stream != nil {
-		if err := stream.text.Apply(d); err != nil {
+		text, err := stream.text.Append(d)
+		if err != nil {
 			t.err = fmt.Errorf("render text delta %s: %w", d.BlockID, err)
 			return
 		}
+		stream.text = text
 		t.write(d.Text)
 		stream.emitted.WriteString(d.Text)
 		return
@@ -187,9 +165,6 @@ func (t *textRenderer) finish(b conversation.Block) {
 	t.renderCompletedBlock(b, text)
 }
 
-// Reconcile replaces missing streamed facts with an authoritative cold-read
-// projection after replay is no longer possible. Already rendered blocks and
-// interrupts are not printed twice.
 func (t *textRenderer) Reconcile(snapshot conversation.SessionSnapshot) error {
 	if t.err != nil {
 		return t.err
@@ -316,8 +291,6 @@ func (t *textRenderer) tool(b conversation.Block) {
 	if call == nil {
 		return
 	}
-	// A running tool announces itself only once its result is in: printing a
-	// header, then a body arriving later, reads as two events rather than one.
 	if call.Status == conversation.ToolRunning {
 		return
 	}
@@ -330,14 +303,14 @@ func (t *textRenderer) tool(b conversation.Block) {
 func (t *textRenderer) toolHeader(call *conversation.ToolCall) {
 	head := "● " + textToolName(call)
 	if call.Safety != "" {
-		head += " · " + string(call.Safety)
+		head += format.Separator + string(call.Safety)
 	}
 	primary := textToolPrimary(call)
 	if primary != "" {
-		head += " · " + primary
+		head += format.Separator + primary
 	}
 	if call.Summary != "" && call.Summary != primary {
-		head += " · " + call.Summary
+		head += format.Separator + call.Summary
 	}
 	t.line(head)
 }
@@ -356,13 +329,13 @@ func (t *textRenderer) toolBody(call *conversation.ToolCall) {
 }
 
 func (t *textRenderer) toolVerdict(call *conversation.ToolCall) {
-	// The verdict goes last, under what it is a verdict on.
 	mark := "✓"
 	switch call.Status {
 	case conversation.ToolError:
 		mark = "✗"
 	case conversation.ToolCanceled:
 		mark = "−"
+	case conversation.ToolRunning, conversation.ToolOK:
 	}
 	status := "  " + mark
 	if call.Status == conversation.ToolCanceled {
@@ -378,8 +351,6 @@ func (t *textRenderer) toolVerdict(call *conversation.ToolCall) {
 }
 
 func textToolName(call *conversation.ToolCall) string {
-	// A known kind IS its own label; only an unknown kind falls back to the
-	// provider name, so the labels are never re-spelled out of sync with the Runtime category.
 	if call.Kind == "" {
 		if call.Name != "" {
 			return call.Name
@@ -399,7 +370,6 @@ func textToolPrimary(call *conversation.ToolCall) string {
 	case builtin.CategorySearch:
 		value = call.Query
 	case "", builtin.CategoryTask:
-		// These kinds have no more specific primary field.
 	default:
 	}
 	if value != "" {
@@ -422,7 +392,6 @@ func (t *textRenderer) plan(items []protocol.PlanStep) {
 		case protocol.PlanStatusCompleted:
 			mark = "☑"
 		case protocol.PlanStatusPending:
-			// The empty checkbox is already selected.
 		default:
 		}
 		t.line("  " + mark + " " + it.Description)
@@ -486,12 +455,7 @@ func (t *textRenderer) showUsage(u conversation.Usage) {
 	}
 }
 
-// block writes a body with prefix on the first line and matching indentation on
-// the rest, so a multi-line body stays visually one thing.
-//
-// The indent counts runes, not bytes: the markers here are multi-byte and
-// single-width, so a byte count would over-indent every continuation line by the
-// marker's encoded length.
+// The indent counts runes, not bytes: the markers are multi-byte and single-width.
 func (t *textRenderer) block(prefix, text string) {
 	indent := strings.Repeat(" ", utf8.RuneCountInString(prefix))
 	first := true
@@ -510,14 +474,12 @@ func (t *textRenderer) line(s string) {
 	t.endLine()
 }
 
-// blank opens a visual gap before a new unit, without stacking gaps.
 func (t *textRenderer) blank() {
 	t.endLine()
 	t.write("\n")
 	t.column = false
 }
 
-// endLine closes the current line if one is open.
 func (t *textRenderer) endLine() {
 	if !t.column {
 		return

@@ -3,7 +3,7 @@ package plugin
 import (
 	json "encoding/json/v2"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
 
 	"github.com/Tangerg/frame/value"
@@ -17,10 +17,12 @@ type modelCallProjection struct {
 }
 
 func (ModelCallRequest) JSONSchemaModel() any { return modelCallProjection{} }
+
 func (r ModelCallRequest) MarshalJSON() ([]byte, error) {
 	type native ModelCallRequest
 	return json.Marshal(native(r))
 }
+
 func (r *ModelCallRequest) UnmarshalJSON(data []byte) error {
 	var encoded modelCallProjection
 	if err := value.DecodeValue(data, &encoded, "model call"); err != nil {
@@ -31,7 +33,7 @@ func (r *ModelCallRequest) UnmarshalJSON(data []byte) error {
 }
 
 type modelContextProjection struct {
-	Use         modelchoice.Use    `json:"use"`
+	Use         flamemodel.Use     `json:"use"`
 	Provider    string             `json:"provider"`
 	Model       string             `json:"model"`
 	Request     scopewire.Request  `json:"request"`
@@ -39,10 +41,12 @@ type modelContextProjection struct {
 }
 
 func (ModelContextRequest) JSONSchemaModel() any { return modelContextProjection{} }
+
 func (r ModelContextRequest) MarshalJSON() ([]byte, error) {
 	type native ModelContextRequest
 	return json.Marshal(native(r))
 }
+
 func (r *ModelContextRequest) UnmarshalJSON(data []byte) error {
 	var encoded modelContextProjection
 	if err := value.DecodeValue(data, &encoded, "model context"); err != nil {
@@ -58,10 +62,12 @@ type modelInputProjection struct {
 }
 
 func (ModelInputRequest) JSONSchemaModel() any { return modelInputProjection{} }
+
 func (r ModelInputRequest) MarshalJSON() ([]byte, error) {
 	type native ModelInputRequest
 	return json.Marshal(native(r))
 }
+
 func (r *ModelInputRequest) UnmarshalJSON(data []byte) error {
 	var encoded modelInputProjection
 	if err := value.DecodeValue(data, &encoded, "model input"); err != nil {
@@ -72,16 +78,18 @@ func (r *ModelInputRequest) UnmarshalJSON(data []byte) error {
 }
 
 type modelSelectionProjection struct {
-	Context  modelchoice.SelectionContext `json:"context"`
-	Proposed ModelSelection               `json:"proposed"`
-	Request  *scopewire.Request           `json:"request,omitzero"`
+	Context  flamemodel.SelectionContext `json:"context"`
+	Proposed ModelSelection              `json:"proposed"`
+	Request  *scopewire.Request          `json:"request,omitzero"`
 }
 
 func (ModelSelectionRequest) JSONSchemaModel() any { return modelSelectionProjection{} }
+
 func (r ModelSelectionRequest) MarshalJSON() ([]byte, error) {
 	type native ModelSelectionRequest
 	return json.Marshal(native(r))
 }
+
 func (r *ModelSelectionRequest) UnmarshalJSON(data []byte) error {
 	var encoded modelSelectionProjection
 	if err := value.DecodeValue(data, &encoded, "model selection"); err != nil {

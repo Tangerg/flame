@@ -31,9 +31,9 @@ test("parallel Node staging publishes only a verified executable", async (t) => 
   const sha256 = (value) => createHash("sha256").update(value).digest("hex");
   const target = {
     archive,
-    archiveSHA256: sha256(bytes),
+    archiveSha256: sha256(bytes),
     executable,
-    executableSHA256: sha256(payload),
+    executableSha256: sha256(payload),
   };
   await mkdir(join(root, "packages/local-runtime"), { recursive: true });
   await writeFile(

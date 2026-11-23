@@ -18,13 +18,8 @@ type steerRuntime interface {
 	SteerRun(context.Context, flameauthoring.SteerRun) (protocol.SteerRunResponse, error)
 }
 
-// ErrSteerReplayUnavailable reports a durable steer whose outcome can no
-// longer be queried safely from the Runtime replay store. Recovery preserves
-// the journal and its attachments for explicit user reconciliation.
 var ErrSteerReplayUnavailable = errors.New("steer replay guarantee is unavailable")
 
-// StageSteer atomically transfers the source draft's attachments into a durable
-// command journal before delivery can begin.
 func StageSteer(
 	authoring *workbench.Store,
 	sessionID string,
@@ -52,15 +47,12 @@ func StageSteer(
 	return staged, nil
 }
 
-// SteerResult binds settlement to the exact durable command.
 type SteerResult struct {
 	Pending workbench.PendingSteer
 	Outcome mutation.Outcome
 	Receipt protocol.SteerRunResponse
 }
 
-// DeliverSteer settles a freshly staged command, retrying an uncertain
-// acknowledgement only while its replay guard still holds.
 func DeliverSteer(
 	ctx context.Context,
 	runtime steerRuntime,
@@ -100,27 +92,16 @@ func DeliverSteer(
 	return result, err
 }
 
-// SteerRefusal is a recovered steer that Runtime definitively refused. Its
-// attachments are already back in the Session's durable draft; the cause is
-// kept because nothing else tells the user the instruction never arrived.
 type SteerRefusal struct {
 	SessionID string
 	Cause     error
 }
 
-// SteerRecovery reports every steer recovery settled.
 type SteerRecovery struct {
 	Accepted []SteerResult
 	Refused  []SteerRefusal
 }
 
-// RecoverSteers replays every unsettled command only while the same runtime
-// idempotency namespace still guarantees its original response. Definitive
-// refusals atomically return attachments to the durable session draft. Commands
-// outside that guarantee remain journaled while recovery continues for other
-// sessions, then return [ErrSteerReplayUnavailable] for user-visible health.
-// Accepted receipts retain their session and command identities for presentation
-// against durable User Items after recovery opens the relevant Session.
 func RecoverSteers(
 	ctx context.Context,
 	runtime steerRuntime,

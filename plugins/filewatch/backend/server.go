@@ -9,7 +9,7 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/filewatch/internal/contract"
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
+	"github.com/Tangerg/flame/plugins/filewatch/internal/filewatch"
 	"github.com/Tangerg/flame/plugins/filewatch/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
@@ -56,8 +56,6 @@ func newServer(store *store) (*sdk.Server, *pluginmcp.Backend, error) {
 	return server, backend, nil
 }
 
-// activeWatcher is the background watcher the declared contribution started;
-// status reads it while setup may still be installing it.
 type activeWatcher struct {
 	store   *store
 	mu      sync.Mutex
@@ -74,10 +72,7 @@ func (a *activeWatcher) status() filewatch.Status {
 }
 
 func (a *activeWatcher) setUp(ctx context.Context, setup pluginmcp.Setup) (io.Closer, error) {
-	values, err := setup.Contributions()
-	if err != nil {
-		return nil, err
-	}
+	values := setup.Contributions()
 	for _, value := range values {
 		if value.Export == capabilityExport && value.Background != nil {
 			return a.start(ctx, value)

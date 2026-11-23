@@ -78,14 +78,10 @@ func retryingProblem(sentinel error, retryAfterSeconds int) problemSpec {
 	}
 }
 
-// Failure is a safely projected operation failure. Bindings expose Problem while
-// errors.Is still reaches stable protocol and context sentinels through Unwrap.
 type Failure struct {
 	cause error
 	data  ProblemData
 }
-
-var _ ProblemError = (*Failure)(nil)
 
 type problemDetailed interface {
 	error
@@ -101,26 +97,24 @@ func (f *Failure) Error() string {
 
 func (f *Failure) Unwrap() error { return f.cause }
 
-// Problem returns a defensive copy of the client-visible problem.
 func (f *Failure) Problem() ProblemData {
 	return cloneProblemData(f.data)
 }
 
-// NewFailure gives the boundary's explicit registered kind authority over its
-// diagnostic causes. A nested problem must not reclassify that boundary's result.
 func NewFailure(kind error, detail string, causes ...error) *Failure {
-	spec, ok := problemSpecForSentinel(kind)
+	if kind == nil {
+		return internalFailure()
+	}
+	spec, ok := problemSpecForType(kind.Error())
 	if !ok {
 		return internalFailure()
 	}
 	cause := errors.Join(append([]error{kind}, causes...)...)
 	failure := newFailure(spec, cause, detail)
-	// Internal output defects retain their diagnostic cause without projecting
-	// that cause's input fields onto the internal-error wire shape.
-	if detailed, ok := errors.AsType[problemDetailed](cause); ok && spec.sentinel != ErrInternalError && errors.Is(detailed, kind) {
+	if detailed, ok := errors.AsType[problemDetailed](cause); ok && !errors.Is(spec.sentinel, ErrInternalError) && errors.Is(detailed, kind) {
 		detailed.Enrich(&failure.data)
 	}
-	if spec.sentinel == ErrInvalidParams {
+	if errors.Is(spec.sentinel, ErrInvalidParams) {
 		if constraint, ok := errors.AsType[*ConstraintError](cause); ok {
 			failure.data.Errors = slices.Clone(constraint.Fields)
 		}
@@ -131,8 +125,6 @@ func NewFailure(kind error, detail string, causes ...error) *Failure {
 	return failure
 }
 
-// ProjectError maps an implementation error onto the binding-neutral problem
-// vocabulary without exposing arbitrary internal details for unknown failures.
 func ProjectError(err error) *Failure {
 	if err == nil {
 		return nil
@@ -148,15 +140,13 @@ func ProjectError(err error) *Failure {
 				continue
 			}
 			detail := ""
-			if err != spec.sentinel {
-				detail = err.Error()
+			if message := err.Error(); message != spec.sentinel.Error() {
+				detail = message
 			}
 			projected = NewFailure(spec.sentinel, detail, err)
 			break
 		}
 	}
-	// Keep cancellation actionable for in-process callers without retaining
-	// arbitrary endpoint details or adding request lifetime to the wire problem.
 	for _, cause := range []error{context.Canceled, context.DeadlineExceeded} {
 		if errors.Is(err, cause) && !errors.Is(projected, cause) {
 			projected.cause = errors.Join(projected.cause, cause)
@@ -165,8 +155,6 @@ func ProjectError(err error) *Failure {
 	return projected
 }
 
-// InvalidParameters projects strict wire-constraint failures with their field
-// locations intact.
 func InvalidParameters(err error) *Failure {
 	return ProjectError(NewFailure(ErrInvalidParams, err.Error(), err))
 }
@@ -187,8 +175,6 @@ func internalFailure() *Failure {
 	return newFailure(spec, ErrInternalError, "the runtime could not complete the request")
 }
 
-// DecodeFailure restores a wire problem through the authoritative sentinel
-// registry. Invalid remote data is a decoding failure, not an operation failure.
 func DecodeFailure(data ProblemData) (*Failure, error) {
 	spec, ok := problemSpecForType(data.Type)
 	if !ok {
@@ -209,19 +195,16 @@ func cloneProblemData(data ProblemData) ProblemData {
 	return data
 }
 
-// RecoveryFor returns the safe default recovery action for a problem type.
 func RecoveryFor(problemType string) (RecoveryAction, bool) {
 	spec, ok := problemSpecForType(problemType)
 	return spec.recovery, ok
 }
 
-// IsMethodProblemType reports whether method metadata may declare the type.
 func IsMethodProblemType(problemType string) bool {
 	spec, ok := problemSpecForType(problemType)
 	return ok && spec.methodDeclarable
 }
 
-// ProblemTypes returns every registered first-party problem type.
 func ProblemTypes() []string {
 	out := make([]string, 0, len(problemSpecs))
 	for _, spec := range problemSpecs {
@@ -233,15 +216,6 @@ func ProblemTypes() []string {
 func RetryAfterFor(problemType string) int {
 	spec, _ := problemSpecForType(problemType)
 	return spec.retryAfterSeconds
-}
-
-func problemSpecForSentinel(kind error) (problemSpec, bool) {
-	for _, spec := range problemSpecs {
-		if kind == spec.sentinel {
-			return spec, true
-		}
-	}
-	return problemSpec{}, false
 }
 
 func problemSpecForType(problemType string) (problemSpec, bool) {

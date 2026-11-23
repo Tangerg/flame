@@ -34,14 +34,14 @@ func (r *reducer) interrupt(requests []Interrupt, duration time.Duration) (factR
 		return factReduction{}, err
 	}
 	projection := interruptProjection{
-		events: out, items: completedEventItems(nil, out),
+		events: out, items: completedEventItems(out),
 		approvalItems: make(map[int]transcript.Item),
 	}
 	open := r.tools.drain()
 	matched := matchToolApprovals(open, requests)
 	priorDrained := r.resume.remainingDrainedTools()
 	r.drained = mergeDrainedTools(priorDrained, drainedToolRefs(open, matched))
-	if err := r.projectInterruptedTools(&projection, open, matched, requests); err != nil {
+	if err := r.projectInterruptedTools(&projection, open, matched); err != nil {
 		return factReduction{}, err
 	}
 	pending, err := r.projectPendingInterrupts(&projection, requests)
@@ -64,12 +64,11 @@ func (r *reducer) interrupt(requests []Interrupt, duration time.Duration) (factR
 func (r *reducer) projectInterruptedTools(
 	projection *interruptProjection,
 	open []*openTool,
-	matched map[*openTool]int,
-	interrupts []Interrupt,
+	matched map[*openTool]matchedApproval,
 ) error {
 	for _, ref := range open {
-		if index, ok := matched[ref]; ok {
-			if err := r.projectToolApproval(projection, ref, index, interrupts[index].(ApprovalPrompt)); err != nil {
+		if match, ok := matched[ref]; ok {
+			if err := r.projectToolApproval(projection, ref, match.index, match.prompt); err != nil {
 				return err
 			}
 			continue
@@ -154,16 +153,12 @@ func (p *interruptProjection) appendToolItem(item transcript.Item, publishStart 
 	return nil
 }
 
-// suspend closes this Run's Segment because another Run in the same tree raised
-// the human-input barrier. It carries no direct interrupts, which distinguishes
-// a suspended sibling from the Run that owns the barrier. Logical Tool Items stay
-// running across the barrier while their segment-scoped attempts end incomplete.
 func (r *reducer) suspend(duration time.Duration) (factReduction, error) {
 	out, err := r.retainIncompleteModelOutput(ModelObservation{})
 	if err != nil {
 		return factReduction{}, err
 	}
-	parkItems := completedEventItems(nil, out)
+	parkItems := completedEventItems(out)
 	open := r.tools.drain()
 	r.drained = mergeDrainedTools(
 		r.resume.remainingDrainedTools(),
@@ -185,7 +180,8 @@ func (r *reducer) suspend(duration time.Duration) (factReduction, error) {
 	}, nil
 }
 
-func completedEventItems(items []transcript.Item, events []ProjectionEvent) []transcript.Item {
+func completedEventItems(events []ProjectionEvent) []transcript.Item {
+	var items []transcript.Item
 	for _, event := range events {
 		if completed, ok := event.(ItemCompleted); ok {
 			items = append(items, completed.Item)
@@ -236,10 +232,13 @@ func approvalTranscriptInterrupt(item transcript.Item, prompt ApprovalPrompt) tr
 	}
 }
 
-// matchToolApprovals binds approvals to their Tool Items. Questions have their
-// own prompt Items; their Tools suspend through the ordinary continuation path.
-func matchToolApprovals(open []*openTool, values []Interrupt) map[*openTool]int {
-	matched := make(map[*openTool]int)
+type matchedApproval struct {
+	index  int
+	prompt ApprovalPrompt
+}
+
+func matchToolApprovals(open []*openTool, values []Interrupt) map[*openTool]matchedApproval {
+	matched := make(map[*openTool]matchedApproval)
 	for index, value := range values {
 		approval, ok := value.(ApprovalPrompt)
 		if !ok {
@@ -252,7 +251,7 @@ func matchToolApprovals(open []*openTool, values []Interrupt) map[*openTool]int 
 			if _, used := matched[ref]; used {
 				continue
 			}
-			matched[ref] = index
+			matched[ref] = matchedApproval{index: index, prompt: approval}
 			break
 		}
 	}
@@ -261,7 +260,7 @@ func matchToolApprovals(open []*openTool, values []Interrupt) map[*openTool]int 
 
 func drainedToolRefs(
 	open []*openTool,
-	matched map[*openTool]int,
+	matched map[*openTool]matchedApproval,
 ) []DrainedTool {
 	var drained []DrainedTool
 	for _, ref := range open {
@@ -317,11 +316,6 @@ func (r *reducer) abandonUnstartedToolItem(ref *openTool) (ItemCompleted, error)
 	return settledItem(settlement, nil), nil
 }
 
-// endToolAttempt stamps the moment this attempt stopped occupying its tool.
-// Suspension, approval and completion all end one. Whether the window it closes
-// is coherent is settled by ToolInvocationCommit, which compares these same two
-// times, and by the transcript Item that carries the attempt; this owes them the
-// reading rather than a third opinion on it.
 func (r *reducer) endToolAttempt(ref *openTool) {
 	ref.finishedAt = r.now()
 }
@@ -342,10 +336,6 @@ func (r *reducer) questionInterrupt(prompt QuestionPrompt) (transcript.Item, tra
 	}, nil
 }
 
-// openTools owns both call lookup and publication order for one reducer. Direct
-// calls retain their actual registration order as object references; provider-
-// attributed calls use their immutable model-call position. No synthetic
-// process-local sequence is needed to reconstruct either order.
 type openTools struct {
 	byCallID map[string]*openTool
 	direct   []*openTool
@@ -365,7 +355,7 @@ func (o *openTools) add(tool *openTool) {
 	}
 }
 
-func (o openTools) get(callID string) (*openTool, bool) {
+func (o *openTools) get(callID string) (*openTool, bool) {
 	tool, ok := o.byCallID[callID]
 	return tool, ok
 }
@@ -398,7 +388,7 @@ func (o *openTools) drain() []*openTool {
 	return ordered
 }
 
-func (o openTools) ordered() []*openTool {
+func (o *openTools) ordered() []*openTool {
 	attributed := make([]*openTool, 0, len(o.byCallID)-len(o.direct))
 	for _, tool := range o.byCallID {
 		if tool.modelCallSequence > 0 {
@@ -414,7 +404,7 @@ func (o openTools) ordered() []*openTool {
 	return append(slices.Clone(o.direct), attributed...)
 }
 
-func (o openTools) clone() openTools {
+func (o *openTools) clone() openTools {
 	cloned := newOpenTools()
 	for _, current := range o.ordered() {
 		cloned.add(cloneOpenTool(current))

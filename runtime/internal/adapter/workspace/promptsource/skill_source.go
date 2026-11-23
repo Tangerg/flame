@@ -18,19 +18,13 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
-	sdk "github.com/Tangerg/scope/skills"
+	skillspec "github.com/Tangerg/scope/skills"
 )
 
-// SkillSource is Runtime's finite admission boundary around the Agent
-// Skills SDK. The SDK remains the format/resource implementation; Runtime owns
-// the complete-list, document, and model-resource contract required by its
-// model and UI consumers.
 type SkillSource struct {
 	root string
 }
 
-// NewSkillSource admits documents and resources beneath an explicit physical
-// boundary. Discovery, execution and automatic revision share this admission.
 func NewSkillSource(root, boundary string) (*SkillSource, error) {
 	physicalRoot, err := filesystem.ResolvePath("", root)
 	if err != nil {
@@ -55,8 +49,6 @@ func NewSkillSource(root, boundary string) (*SkillSource, error) {
 	return &SkillSource{root: physicalRoot}, nil
 }
 
-// The configured directory is live and may not exist at startup. Open its
-// already-resolved components without granting a replacement symlink authority.
 func (r *SkillSource) openRoot() (*os.Root, error) {
 	volume := filepath.VolumeName(r.root)
 	root, err := os.OpenRoot(volume + string(filepath.Separator))
@@ -101,10 +93,8 @@ func openSkillDirectory(parent *os.Root, name string) (*os.Root, error) {
 	return child, nil
 }
 
-// Scope borrows the root for one operation. An acquired resource file has
-// an independent lifetime; the overlay itself owns no open descriptor.
-func (r *SkillSource) openRepository(ctx context.Context, name string) (*sdk.Repository, *os.Root, error) {
-	if err := sdk.ValidateName(name); err != nil {
+func (r *SkillSource) openRepository(ctx context.Context, name string) (*skillspec.Repository, *os.Root, error) {
+	if err := skillspec.ValidateName(name); err != nil {
 		return nil, nil, err
 	}
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
@@ -116,18 +106,18 @@ func (r *SkillSource) openRepository(ctx context.Context, name string) (*sdk.Rep
 			return nil, nil, errors.Join(err, cancelErr)
 		}
 		if errors.Is(err, fs.ErrNotExist) {
-			err = errors.Join(sdk.ErrSkillNotFound, err)
+			err = errors.Join(skillspec.ErrSkillNotFound, err)
 		}
 		return nil, nil, err
 	}
-	repository, err := sdk.NewDirectoryRepository(root, sdk.RepositoryConfig{})
+	repository, err := skillspec.NewDirectoryRepository(root, skillspec.RepositoryConfig{})
 	if err != nil {
 		return nil, nil, errors.Join(err, root.Close())
 	}
 	return repository, root, nil
 }
 
-func (r *SkillSource) List(ctx context.Context) ([]sdk.Summary, error) {
+func (r *SkillSource) List(ctx context.Context) ([]skillspec.Summary, error) {
 	entries, err := r.directoryEntries(ctx)
 	if err != nil {
 		return nil, err
@@ -148,8 +138,8 @@ func skillCandidateNames(entries []fs.DirEntry) []string {
 	return names
 }
 
-func (r *SkillSource) loadSummaries(ctx context.Context, names []string) ([]sdk.Summary, error) {
-	summaries := make([]sdk.Summary, 0, len(names))
+func (r *SkillSource) loadSummaries(ctx context.Context, names []string) ([]skillspec.Summary, error) {
+	summaries := make([]skillspec.Summary, 0, len(names))
 	for _, name := range names {
 		summary, valid, err := r.loadSummary(ctx, name)
 		if err != nil {
@@ -171,38 +161,38 @@ func (r *SkillSource) loadSummaries(ctx context.Context, names []string) ([]sdk.
 	return summaries, nil
 }
 
-func (r *SkillSource) loadSummary(ctx context.Context, name string) (sdk.Summary, bool, error) {
-	if err := skillSourceContextError(ctx, "list"); err != nil {
-		return sdk.Summary{}, false, err
+func (r *SkillSource) loadSummary(ctx context.Context, name string) (skillspec.Summary, bool, error) {
+	if err := skillSourceContextError(ctx, skillSourceList); err != nil {
+		return skillspec.Summary{}, false, err
 	}
 	skill, err := r.Load(ctx, name)
-	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, sdk.ErrInvalidSkill) {
-		return sdk.Summary{}, false, nil
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, skillspec.ErrInvalidSkill) {
+		return skillspec.Summary{}, false, nil
 	}
 	if err != nil {
-		return sdk.Summary{}, false, fmt.Errorf("runtime skill source: list: %w", err)
+		return skillspec.Summary{}, false, fmt.Errorf("runtime skill source: list: %w", err)
 	}
 	return skill.Summary(), true, nil
 }
 
-func (r *SkillSource) Lookup(ctx context.Context, name string) (sdk.Summary, error) {
+func (r *SkillSource) Lookup(ctx context.Context, name string) (skillspec.Summary, error) {
 	repository, root, err := r.openRepository(ctx, name)
 	if err != nil {
-		return sdk.Summary{}, err
+		return skillspec.Summary{}, err
 	}
 	summary, lookupErr := repository.Lookup(ctx, name)
 	if err := errors.Join(lookupErr, root.Close(), errors.Join(ctx.Err(), context.Cause(ctx))); err != nil {
-		return sdk.Summary{}, err
+		return skillspec.Summary{}, err
 	}
 	return summary, nil
 }
 
-func (r *SkillSource) Load(ctx context.Context, name string) (*sdk.Skill, error) {
+func (r *SkillSource) Load(ctx context.Context, name string) (*skillspec.Skill, error) {
 	skill, _, err := r.document(ctx, name)
 	return skill, err
 }
 
-func (r *SkillSource) CurrentDocument(ctx context.Context, name string) (*sdk.Skill, string, error) {
+func (r *SkillSource) CurrentDocument(ctx context.Context, name string) (*skillspec.Skill, string, error) {
 	skill, content, err := r.document(ctx, name)
 	if err != nil {
 		return nil, "", err
@@ -210,11 +200,11 @@ func (r *SkillSource) CurrentDocument(ctx context.Context, name string) (*sdk.Sk
 	return skill, fmt.Sprintf("%x", sha256.Sum256(content)), nil
 }
 
-func (r *SkillSource) document(ctx context.Context, name string) (*sdk.Skill, []byte, error) {
+func (r *SkillSource) document(ctx context.Context, name string) (*skillspec.Skill, []byte, error) {
 	if !validRuntimeSkillName(name) {
-		return nil, nil, fmt.Errorf("%w %q: invalid name", sdk.ErrInvalidSkill, name)
+		return nil, nil, fmt.Errorf("%w %q: invalid name", skillspec.ErrInvalidSkill, name)
 	}
-	if err := skillSourceContextError(ctx, "load"); err != nil {
+	if err := skillSourceContextError(ctx, skillSourceLoad); err != nil {
 		return nil, nil, err
 	}
 	source, err := r.openSkillDocument(name)
@@ -226,7 +216,7 @@ func (r *SkillSource) document(ctx context.Context, name string) (*sdk.Skill, []
 		return nil, nil, err
 	}
 	content, err := readSkillDocument(ctx, name, source)
-	if cancelErr := skillSourceContextError(ctx, "load"); cancelErr != nil {
+	if cancelErr := skillSourceContextError(ctx, skillSourceLoad); cancelErr != nil {
 		return nil, nil, errors.Join(err, cancelErr)
 	}
 	if err != nil {
@@ -252,7 +242,7 @@ func (r *SkillSource) openSkillDocument(name string) (*openedSkillDocument, erro
 	if err != nil {
 		return nil, fmt.Errorf("runtime skill source: open %q: %w", r.root, err)
 	}
-	path := filepath.Join(name, sdk.SkillFile)
+	path := filepath.Join(name, skillspec.SkillFile)
 	file, info, openErr := filesystem.OpenFileAt(root, path, domainskills.MaxAuthoredSkillDocumentBytes)
 	if openErr != nil {
 		if closeErr := root.Close(); closeErr != nil {
@@ -260,7 +250,7 @@ func (r *SkillSource) openSkillDocument(name string) (*openedSkillDocument, erro
 		}
 		switch {
 		case errors.Is(openErr, filesystem.ErrNotRegular):
-			return nil, fmt.Errorf("%w %q: document admission: %w", sdk.ErrInvalidSkill, name, openErr)
+			return nil, fmt.Errorf("%w %q: document admission: %w", skillspec.ErrInvalidSkill, name, openErr)
 		case errors.Is(openErr, filesystem.ErrFileTooLarge):
 			return nil, fmt.Errorf(
 				"%w: %q document admission: %w",
@@ -336,14 +326,14 @@ func (r *SkillSource) OpenResource(ctx context.Context, name, resource string) (
 			file.Close(),
 		)
 	}
-	if err := skillSourceContextError(ctx, "open resource"); err != nil {
+	if err := skillSourceContextError(ctx, skillSourceOpenResource); err != nil {
 		return nil, errors.Join(err, file.Close())
 	}
 	return &boundedSkillResource{File: file, ctx: ctx, name: name, resource: resource}, nil
 }
 
 func (r *SkillSource) directoryEntries(ctx context.Context) ([]fs.DirEntry, error) {
-	if err := skillSourceContextError(ctx, "list"); err != nil {
+	if err := skillSourceContextError(ctx, skillSourceList); err != nil {
 		return nil, err
 	}
 	root, err := r.openRoot()
@@ -373,17 +363,28 @@ func (r *SkillSource) directoryEntries(ctx context.Context) ([]fs.DirEntry, erro
 			domainskills.MaxSkillDirectoryEntries,
 		)
 	}
-	if err := skillSourceContextError(ctx, "list"); err != nil {
+	if err := skillSourceContextError(ctx, skillSourceList); err != nil {
 		return nil, err
 	}
 	return entries, nil
 }
 
 func validRuntimeSkillName(name string) bool {
-	return sdk.ValidateName(name) == nil
+	return skillspec.ValidateName(name) == nil
 }
 
-func skillSourceContextError(ctx context.Context, operation string) error {
+type skillSourceOperation string
+
+const (
+	skillSourceInspect      skillSourceOperation = "inspect"
+	skillSourceList         skillSourceOperation = "list"
+	skillSourceLoad         skillSourceOperation = "load"
+	skillSourceLookup       skillSourceOperation = "lookup"
+	skillSourceOpenResource skillSourceOperation = "open resource"
+	skillSourceSelect       skillSourceOperation = "select"
+)
+
+func skillSourceContextError(ctx context.Context, operation skillSourceOperation) error {
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return fmt.Errorf("runtime skill source: %s: %w", operation, err)
 	}
@@ -433,5 +434,5 @@ func (b *boundedSkillResource) tooLarge() error {
 }
 
 func (r *SkillSource) documentPath(name string) string {
-	return filepath.Join(r.root, name, sdk.SkillFile)
+	return filepath.Join(r.root, name, skillspec.SkillFile)
 }

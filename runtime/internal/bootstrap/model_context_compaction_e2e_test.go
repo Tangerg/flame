@@ -1,8 +1,6 @@
 package bootstrap
 
 import (
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"context"
 	"errors"
 	"fmt"
@@ -11,16 +9,18 @@ import (
 	"sync"
 	"testing"
 
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
-	chathistory "github.com/Tangerg/scope/core/history"
 )
 
 const modelCallsBeforeMidRunCompaction = 12
@@ -30,7 +30,7 @@ const longContextCompactionSummary = "## Goal\nKeep the long Run stable.\n\n## P
 func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T)
 			t.Fatalf("main call %d deferred catalog = %q, want the same frozen catalog before and after compaction", index+1, catalog)
 		}
 	}
-	history, err := stores.ChatHistory.Read(ctx, chathistory.ConversationID(session.ID))
+	history, err := stores.Conversations.Read(ctx, testsupport.MustSessionID(session.ID))
 	if err != nil {
 		t.Fatal(err)
 	}

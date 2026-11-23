@@ -57,11 +57,6 @@ type draftFlush struct {
 	done     chan error
 }
 
-// draftPersistence is the single filesystem writer for composer recovery
-// state. Schedule only replaces pending work; Flush is a serialization barrier
-// used by session transitions before they mutate runtime state. Whether drafts
-// are persisted at all is the application's decision — a terminal with no
-// workbench simply never builds one.
 func newDraftPersistence(repository draftRepository, notify func(draftPersistenceResult)) *draftPersistence {
 	persistence := &draftPersistence{
 		repository: repository,
@@ -75,9 +70,7 @@ func newDraftPersistence(repository draftRepository, notify func(draftPersistenc
 	return persistence
 }
 
-// Schedule records the latest complete authoring value without blocking the
-// caller on filesystem latency. A snapshot is cloned at this boundary because
-// attachment slices remain owned by the UI model.
+// The snapshot is cloned because attachment slices remain owned by the UI model.
 func (d *draftPersistence) Schedule(sessionID string, message authoring.Message) error {
 	if sessionID == "" {
 		return nil
@@ -100,9 +93,8 @@ func (d *draftPersistence) Schedule(sessionID string, message authoring.Message)
 	return nil
 }
 
-// Flush supersedes older pending work and waits until every older write has
-// finished before saving snapshot. This ordering prevents an older writer from
-// winning a rename race after a session transition has committed newer state.
+// Waiting for older writes prevents an older writer from winning a rename race
+// after a session transition has committed newer state.
 func (d *draftPersistence) Flush(sessionID string, message authoring.Message) error {
 	if sessionID == "" {
 		return nil
@@ -221,7 +213,5 @@ func (d *draftPersistence) save(snapshot draftSnapshot) error {
 }
 
 func (d *draftPersistence) publish(snapshot draftSnapshot, err error) {
-	if d.notify != nil {
-		d.notify(draftPersistenceResult{revision: snapshot.revision, err: err})
-	}
+	d.notify(draftPersistenceResult{revision: snapshot.revision, err: err})
 }

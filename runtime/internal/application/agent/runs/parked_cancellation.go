@@ -10,10 +10,6 @@ import (
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// cancelWithoutLiveSegment resolves the small window in which a segment has
-// left the live registry after the first durable read. A second durable read
-// classifies a real terminal race; a still-running orphan is an invariant fault,
-// never run_not_found.
 func (c *Cancellations) cancelWithoutLiveSegment(ctx context.Context, cmd CancelCommand, value rundomain.Run) (CancelResult, error) {
 	if value.State() == rundomain.Waiting {
 		cleanupCtx, cancel := runCleanupContext(ctx)
@@ -42,10 +38,9 @@ func (c *Cancellations) cancelWithoutLiveSegment(ctx context.Context, cmd Cancel
 	}
 }
 
-// cancelParkedRun claims the Session before resolving its open interrupt. That
-// admission order linearizes cancel against resume: whichever command owns the
-// Session decides the one durable transition, and the loser observes busy or
-// the resulting terminal state instead of misreporting run_not_found.
+// Claiming the Session before resolving the open interrupt linearizes cancel
+// against resume: whichever command owns the Session decides the one durable
+// transition.
 func (c *Cancellations) cancelParkedRun(ctx context.Context, cmd CancelCommand, value rundomain.Run) (CancelResult, error) {
 	releaseSession, ok, leaseErr := c.admission.AcquireSession(ctx, value.SessionID())
 	if leaseErr != nil {
@@ -79,10 +74,6 @@ func (c *Cancellations) cancelParkedRun(ctx context.Context, cmd CancelCommand, 
 	})
 }
 
-// cancelKnownParkedRun is used only after the live Run-tree owner proves its
-// interrupt transaction committed. The owner's Segment binding is therefore the exact
-// executor that transaction parked; resolving it again would introduce a second,
-// weaker source of identity between two halves of one command.
 func (c *Cancellations) cancelKnownParkedRun(
 	ctx context.Context,
 	cmd CancelCommand,

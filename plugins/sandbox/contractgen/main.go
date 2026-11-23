@@ -4,7 +4,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
+	"github.com/Tangerg/flame/plugins/sandbox/internal/sandbox"
 	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
 
 	"github.com/Tangerg/frame"

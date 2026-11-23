@@ -15,54 +15,40 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
+const reasoningStream = "reasoning"
+
 var (
 	errExecutorContract = errors.New("runs: executor contract violation")
 	errReducerInvariant = errors.New("runs: reducer invariant violation")
 )
 
 type reducerConfig struct {
-	// Opened is the Run exactly as this Segment's opening admits or resumes it.
-	// Every record the reducer commits is a domain transition from it, so the
-	// Run's identity, provenance, and prior accrual have this one source.
-	Opened       run.Run
-	WorkspaceCWD string
-	Isolated     bool
-	UserInput    []transcript.ContentBlock
-	// ConversationInput is the exact composed model message for a fresh root.
-	// nil is reserved for continuation input, which has no composition layer.
+	Opened            run.Run
+	WorkspaceCWD      string
+	Isolated          bool
+	UserInput         []transcript.ContentBlock
 	ConversationInput *corechat.Message
-	// ModelOnlyInput suppresses only the opening userMessage Item. The same input
-	// still enters the durable provider conversation in open(), so hiding Runtime
-	// control material from the narrative cannot starve the model of instructions.
-	ModelOnlyInput bool
-	Continuation   *treeContinuation
-	Now            func() time.Time
+	ModelOnlyInput    bool
+	Continuation      *treeContinuation
+	Now               func() time.Time
 }
 
-// reducer is the per-segment state machine that turns executor events into the
-// canonical Event family and EventCommit facts. It owns open item state,
-// item identity, resume correlation, terminal synthesis, and error semantics.
 type modelCall struct {
 	startedAt time.Time
 	purpose   run.ModelCallPurpose
 }
 
 type reducer struct {
-	cfg     reducerConfig
-	resume  *resumeBinding
-	itemIDs segmentItemIdentities
-	// accrued is the Run's consumption through its latest model call; only this
-	// reducer advances it. The segment's active duration joins at metrics().
-	accrued         run.Metrics
-	contextTokens   int64
-	segmentDuration time.Duration
-	userInput       []transcript.ContentBlock
-	text            *openText
-	reasoning       *openText
-	modelCalls      map[string]modelCall
-	// modelBoundaryClosed fences lossy stream observations that arrive after the
-	// authoritative model completion or failure commit. A later ModelCallStarted reopens
-	// the observation window for the next provider turn.
+	cfg                  reducerConfig
+	resume               *resumeBinding
+	itemIDs              segmentItemIdentities
+	accrued              run.Metrics
+	contextTokens        int64
+	segmentDuration      time.Duration
+	userInput            []transcript.ContentBlock
+	text                 *openText
+	reasoning            *openText
+	modelCalls           map[string]modelCall
 	modelBoundaryClosed  bool
 	toolCallIDs          map[string]struct{}
 	toolPositions        map[toolPosition]string
@@ -70,11 +56,7 @@ type reducer struct {
 	tools                openTools
 	drained              []DrainedTool
 	errFailure           *run.Failure
-	// plan is the last Plan this segment published, kept so the segment
-	// can fence its final value before finishing. Nil means this segment never
-	// changed the projection, and a segment that changed nothing has nothing to
-	// fence.
-	plan *PlanSnapshot
+	plan                 *PlanSnapshot
 }
 
 type openTool struct {
@@ -83,14 +65,11 @@ type openTool struct {
 	modelCallSequence uint64
 	toolCallIndex     uint32
 	item              transcript.Item
-	// The executor's admitted attempt input can differ from the reviewed Item
-	// after edits or hooks. Settlement commits this observation into the Item.
 	attemptInvocation transcript.ToolInvocation
 	attemptStartedAt  time.Time
 	finishedAt        time.Time
 }
 
-// startedAs reports whether this open call is the one start describes.
 func (t *openTool) startedAs(start ToolCallStarted) bool {
 	call, _ := t.item.ToolCall()
 	return t.modelCallSequence == start.ModelCallSequence && t.toolCallIndex == start.ToolCallIndex &&
@@ -125,10 +104,8 @@ func newReducer(cfg reducerConfig) *reducer {
 	}
 }
 
-// clone creates the speculative reducer used by an authoritative fact commit.
-// The Run pump swaps it in only after the complete persistence batch succeeds;
-// a rejected write therefore cannot consume model/tool state or mint identities
-// that the durable projection never observed.
+// The pump swaps this in only after the batch succeeds, so a rejected write cannot
+// consume model/tool state or mint identities the durable projection never saw.
 func (r *reducer) clone() *reducer {
 	if r == nil {
 		return nil
@@ -217,7 +194,7 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 	case MessageDelta:
 		return r.streamDelta("text", r.appendText, e.Text)
 	case ReasoningDelta:
-		return r.streamDelta("reasoning", r.appendReasoning, e.Text)
+		return r.streamDelta(reasoningStream, r.appendReasoning, e.Text)
 	case ModelCallStarted:
 		return r.startModelCall(e)
 	case ModelCallCompleted:
@@ -250,10 +227,8 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 	}
 }
 
-// streamDelta appends one streamed fragment. Reasoning and message are two
-// concurrent projections of one model response, not exclusive stream modes:
-// each Item stays open until ModelCallCompleted supplies the authoritative full
-// message, so completing one because the other emitted would duplicate it.
+// Reasoning and message are concurrent projections of one response; completing one
+// because the other emitted would duplicate it.
 func (r *reducer) streamDelta(kind string, appendDelta func(string) ([]ProjectionEvent, error), text string) (factReduction, error) {
 	if r.modelBoundaryClosed {
 		return factReduction{}, nil
@@ -286,8 +261,6 @@ func (r *reducer) prepareToolCall(prepared ToolCallPrepared) (factReduction, err
 	return reduced, nil
 }
 
-// applySteers projects applied steers; only a root Run's conversation carries
-// them as user messages.
 func (r *reducer) applySteers(applied SteerMessagesApplied) (factReduction, error) {
 	events, err := r.steerMessagesApplied(applied)
 	if err != nil {
@@ -307,8 +280,6 @@ func (r *reducer) applySteers(applied SteerMessagesApplied) (factReduction, erro
 	return factReduction{events: events, conversationMessages: messages}, nil
 }
 
-// adoptToolAttempt reopens a durable Tool attempt on its original Item and
-// start time, whether the executor replays its start or recovery stages it.
 func (r *reducer) adoptToolAttempt(started ToolCallStarted, attempt OpenToolInvocation) error {
 	if r.resume == nil || attempt.CallID != started.CallID || r.resume.callItems[started.CallID].ID() != attempt.ItemID ||
 		attempt.SessionID != r.cfg.Opened.SessionID() || started.ModelCallSequence == 0 {
@@ -328,7 +299,7 @@ func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error
 		return factReduction{}, fmt.Errorf("%w: %w", errExecutorContract, err)
 	}
 	if err := ValidateInvocation(started.CallID); err != nil {
-		return factReduction{}, fmt.Errorf("%w: model call start: %v", errExecutorContract, err)
+		return factReduction{}, fmt.Errorf("%w: model call start: %w", errExecutorContract, err)
 	}
 	if _, duplicate := r.modelCalls[started.CallID]; duplicate {
 		return factReduction{}, fmt.Errorf("%w: model call %q started more than once", errExecutorContract, started.CallID)
@@ -349,7 +320,7 @@ func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error
 
 func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction, error) {
 	if err := ValidateInvocation(completed.CallID); err != nil {
-		return factReduction{}, fmt.Errorf("%w: model call completion: %v", errExecutorContract, err)
+		return factReduction{}, fmt.Errorf("%w: model call completion: %w", errExecutorContract, err)
 	}
 	call, started := r.modelCalls[completed.CallID]
 	startedAt := call.startedAt
@@ -409,7 +380,7 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 
 func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 	if err := ValidateInvocation(failed.CallID); err != nil {
-		return factReduction{}, fmt.Errorf("%w: model call failure: %v", errExecutorContract, err)
+		return factReduction{}, fmt.Errorf("%w: model call failure: %w", errExecutorContract, err)
 	}
 	call, started := r.modelCalls[failed.CallID]
 	if !started {
@@ -578,8 +549,6 @@ func (r *reducer) synthesizeTerminal(rootCancellationReason string) (reductionBa
 		return reductionBatch{}, fmt.Errorf("%w: drain tools: %w", errReducerInvariant, err)
 	}
 	out = append(out, drained...)
-	// No SegmentEnded arrived, so nothing fresh was reported: the Segment's accrual
-	// stands as last reported and is committed as-is.
 	var ending run.Ending = run.Canceled{Detail: rootCancellationReason}
 	if len(r.modelCalls) > 0 {
 		ending = run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedModelCall}}
@@ -611,10 +580,6 @@ func (r *reducer) synthesizeTerminal(rootCancellationReason string) (reductionBa
 	return batch, nil
 }
 
-// abandonUnconsumedResumeTools closes logical Tool Items that were carried
-// across a human boundary but whose executor attempt never restarted in this
-// Segment. Without this step an activation failure or a cancel-before-activate
-// can terminalize the Run while leaving its preexisting Tool Item running.
 func (r *reducer) abandonUnconsumedResumeTools() ([]ProjectionEvent, error) {
 	if r.resume == nil {
 		return nil, nil
@@ -638,7 +603,6 @@ func (r *reducer) abandonUnconsumedResumeTools() ([]ProjectionEvent, error) {
 	return events, nil
 }
 
-// abort retains the first failure through terminal cleanup and persistence retries.
 func (r *reducer) abort(cause error) {
 	if r.errFailure == nil {
 		r.errFailure = &run.Failure{Kind: run.FailureInternal, Detail: run.Diagnostic(cause)}
@@ -669,8 +633,6 @@ func (r *reducer) finishToolResults(batch ToolResultsCommitted) (factReduction, 
 		if err != nil {
 			return factReduction{}, err
 		}
-		// The final Item and journal row supersede the running projection within
-		// this same transaction.
 		reduced.events = append(reduced.events, started.events...)
 	}
 	for _, result := range batch.Results {

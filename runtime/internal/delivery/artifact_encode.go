@@ -14,9 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// artifactFromPortable maps the terminal archive projection to the versioned
-// protocol document. Tool results remain the canonical values stored in the
-// transcript; archive encoding does not reinterpret them.
 func artifactFromPortable(portable sessions.PortableSnapshot) (protocol.SessionArtifact, error) {
 	messages := make([]jsontext.Value, 0, len(portable.Messages))
 	for _, message := range portable.Messages {
@@ -96,10 +93,6 @@ func artifactRunFromPortable(run sessions.PortableRun) (protocol.ArtifactRun, er
 	}, nil
 }
 
-// presentArtifactCapabilities writes the protocol contract a root Run
-// published under, and
-// nothing for a child — a child reads its root's, and writing a second copy is how
-// the two come to disagree.
 func presentArtifactCapabilities(capabilities *run.Capabilities) *protocol.RunCapabilities {
 	if capabilities == nil {
 		return nil
@@ -124,7 +117,7 @@ func artifactOutcomeFromEnding(ending run.Ending) (protocol.ArtifactOutcome, err
 			return protocol.ArtifactOutcome{}, err
 		}
 		return protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeFailed, Error: &protocol.ArtifactProblem{
-			Type: protocol.ArtifactProblemType(ending.Failure.Kind), Detail: ending.Failure.Detail, DocURL: ending.Failure.DocURL,
+			Type: runFailureKinds.mustWire(ending.Failure.Kind), Detail: ending.Failure.Detail, DocURL: ending.Failure.DocURL,
 			RetryAfterSeconds: ending.Failure.RetryAfterSeconds(),
 		}}, nil
 	case run.Lost:
@@ -142,14 +135,14 @@ func artifactToolFailureFromDomain(failure *tool.Failure) (*protocol.ArtifactPro
 		return nil, err
 	}
 	return &protocol.ArtifactProblem{
-		Type: protocol.ArtifactProblemType(failure.Kind), Detail: failure.Detail, DocURL: failure.DocURL,
+		Type: toolFailureKinds.mustWire(failure.Kind), Detail: failure.Detail, DocURL: failure.DocURL,
 	}, nil
 }
 
 func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, error) {
 	out := protocol.ArtifactItem{
 		ID: item.ID().String(), RunID: item.RunID().String(), Status: presentItemStatus(item.Status()),
-		Type: presentItemKind(item.Kind()),
+		Type: itemKinds.mustWire(item.Kind()),
 	}
 	payload := item.Body()
 	if _, isToolCall := payload.(transcript.ToolCallBody); !isToolCall {

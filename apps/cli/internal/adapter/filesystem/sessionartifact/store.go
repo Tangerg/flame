@@ -1,4 +1,3 @@
-// Package sessionartifact safely loads and publishes portable session files.
 package sessionartifact
 
 import (
@@ -20,18 +19,13 @@ import (
 )
 
 const (
-	portableFilenameByteLimit = 255
-	// fileflow tries conflict suffixes through -100. Reserve the largest one
-	// so every name it derives remains portable as well as the first choice.
+	portableFilenameByteLimit  = 255
 	maximumConflictSuffixBytes = len("-100")
+	untitledDocumentStem       = "flame-session"
 )
 
-// Store owns the filesystem boundary for session documents. Its zero value is
-// ready to use and publishes without overwriting different existing content.
 type Store struct{}
 
-// Publication retains the selected path even when confirmation or staging
-// cleanup fails after publication. Repeating the export is a separate intent.
 type Publication struct {
 	Path string
 	commit.Result
@@ -84,9 +78,6 @@ func publishStaged(publish func() (string, error), confirm func(string) error) P
 	return result
 }
 
-// Load reads an explicitly selected JSON artifact. Relative paths resolve from
-// the active workspace; absolute paths remain valid so users can move sessions
-// between projects without first copying them into the destination workspace.
 func (Store) Load(workspace, selectedPath string) (session.Document, error) {
 	path, err := resolveInputPath(workspace, selectedPath)
 	if err != nil {
@@ -174,28 +165,9 @@ func resolveInputPath(workspace, selected string) (string, error) {
 }
 
 func documentName(title, requested, desiredExtension string) (string, error) {
-	requested = strings.TrimSpace(requested)
-	var stem, extension string
-	if requested == "" {
-		stem = strings.TrimSpace(title)
-		if stem == "" {
-			stem = "flame-session"
-		}
-		extension = desiredExtension
-	} else {
-		if strings.ContainsAny(requested, `/\`) || filepath.Base(requested) != requested || requested == "." || requested == ".." {
-			return "", errors.New("export name must be a filename, not a path")
-		}
-		extension = filepath.Ext(requested)
-		if extension == "" {
-			extension = desiredExtension
-			stem = requested
-		} else {
-			if !strings.EqualFold(extension, desiredExtension) {
-				return "", fmt.Errorf("export filename must end in %s", desiredExtension)
-			}
-			stem = strings.TrimSuffix(requested, extension)
-		}
+	stem, extension, err := documentStem(title, strings.TrimSpace(requested), desiredExtension)
+	if err != nil {
+		return "", err
 	}
 	maximumStemBytes := portableFilenameByteLimit - maximumConflictSuffixBytes - len(extension)
 	if maximumStemBytes <= 0 {
@@ -203,7 +175,7 @@ func documentName(title, requested, desiredExtension string) (string, error) {
 	}
 	stem = pathologize.Clean(stem)
 	if stem == "_" {
-		stem = "flame-session"
+		stem = untitledDocumentStem
 	}
 	stem = truncateUTF8(stem, maximumStemBytes)
 	cleaned := stem + extension
@@ -211,6 +183,26 @@ func documentName(title, requested, desiredExtension string) (string, error) {
 		return "", errors.New("export filename is not portable after normalization")
 	}
 	return cleaned, nil
+}
+
+func documentStem(title, requested, desiredExtension string) (stem, extension string, err error) {
+	if requested == "" {
+		if stem = strings.TrimSpace(title); stem == "" {
+			stem = untitledDocumentStem
+		}
+		return stem, desiredExtension, nil
+	}
+	if strings.ContainsAny(requested, `/\`) || filepath.Base(requested) != requested || requested == "." || requested == ".." {
+		return "", "", errors.New("export name must be a filename, not a path")
+	}
+	extension = filepath.Ext(requested)
+	if extension == "" {
+		return requested, desiredExtension, nil
+	}
+	if !strings.EqualFold(extension, desiredExtension) {
+		return "", "", fmt.Errorf("export filename must end in %s", desiredExtension)
+	}
+	return strings.TrimSuffix(requested, extension), extension, nil
 }
 
 func truncateUTF8(value string, maximumBytes int) string {

@@ -8,12 +8,11 @@ import (
 	"log/slog"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// RequestDiagnostics is derived from a captured Scope request, not vendor wire
-// bytes or a cache-hit observation. It owns no request, usage or billing state.
 type RequestDiagnostics struct {
 	Bytes          int
 	SystemDigest   string
@@ -70,8 +69,6 @@ func diagnosticDigest(value any) (string, error) {
 	return fmt.Sprintf("%x", sha256.Sum256(encoded)), nil
 }
 
-// FirstChangedMessage returns the first differing zero-based Scope message, or
-// -1 when the projections are identical. An appended tail starts at the old size.
 func (d RequestDiagnostics) FirstChangedMessage(next RequestDiagnostics) int {
 	for index := range min(len(d.MessageDigests), len(next.MessageDigests)) {
 		if d.MessageDigests[index] != next.MessageDigests[index] {
@@ -94,15 +91,15 @@ func logRequestDiagnostics(ctx context.Context, invocation modelref.EndpointInvo
 	}
 	diagnostic, err := DescribeRequest(request.Chat)
 	if err != nil {
-		slog.DebugContext(ctx, "model request diagnostics unavailable", "endpoint.id", invocation.ID, "error", err)
+		slog.DebugContext(ctx, "model request diagnostics unavailable", telemetry.EndpointID(invocation.ID), telemetry.Error(err))
 		return
 	}
-	slog.DebugContext(ctx, "model request projection", "endpoint.id", invocation.ID,
-		"caller.id", invocation.Caller.ID, "provider", invocation.Provider, "model", invocation.Model,
-		"projection", "scope_request", "request.bytes", diagnostic.Bytes,
-		"system.sha256", diagnostic.SystemDigest, "tools.sha256", diagnostic.ToolsDigest,
-		"messages.sha256", diagnostic.MessagesDigest, "options.sha256", diagnostic.OptionsDigest,
-		"message.count", len(diagnostic.MessageDigests))
+	slog.DebugContext(ctx, "model request projection", telemetry.EndpointID(invocation.ID),
+		telemetry.CallerID(invocation.Caller.ID), telemetry.ProviderID(invocation.Provider), telemetry.Model(invocation.Model),
+		telemetry.ScopeRequestProjection(), slog.Any("request.bytes", diagnostic.Bytes),
+		slog.Any("system.sha256", diagnostic.SystemDigest), slog.Any("tools.sha256", diagnostic.ToolsDigest),
+		slog.Any("messages.sha256", diagnostic.MessagesDigest), slog.Any("options.sha256", diagnostic.OptionsDigest),
+		slog.Any("message.count", len(diagnostic.MessageDigests)))
 }
 
 func logResponseDiagnostics(ctx context.Context, invocation modelref.EndpointInvocation, response *chat.Response) {

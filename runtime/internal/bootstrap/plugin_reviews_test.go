@@ -19,7 +19,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 
 	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
@@ -74,8 +74,8 @@ func reviewCLIInvocation(t *testing.T, runtime *poMCPRuntime) (func(...string) (
 		t.Fatalf("build CLI: %s, %v", output, err)
 	}
 	discovery := runtime.must(delivery.RuntimeDiscover, struct{}{}, "").(*protocol.DiscoverResponse)
-	server, err := flamehttp.NewServer(flamehttp.Config{
-		Endpoint: runtime.endpoint, Addr: "127.0.0.1:0", ServerInfo: discovery.ServerInfo, Authentication: mustLocalToken(t, "review-acceptance-token"),
+	server, err := runtimehttp.NewServer(runtimehttp.Config{
+		Endpoint: runtime.endpoint, PluginControl: runtime.host.PluginControl(), Addr: "127.0.0.1:0", ServerInfo: discovery.ServerInfo, Authentication: mustLocalToken(t, "review-acceptance-token"),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -300,8 +300,6 @@ func TestReviewBackendUsesInstallationRunApprovalAndRecoveryOwners(t *testing.T)
 	phase.Store(2)
 	update := start()
 	request := approval(update)
-	// The actual backend process closes while its update is still awaiting the
-	// existing Interrupt. Its private data and the Runtime checkpoint survive.
 	r = reopenPluginRuntime(t, r, &cfg)
 	r.poMCPTools(&server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	accepted := invoke(delivery.RunsResume, request, "update-approved")

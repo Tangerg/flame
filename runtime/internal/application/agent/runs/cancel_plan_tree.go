@@ -63,9 +63,6 @@ func newCancellationPlan(
 	return plan, nil
 }
 
-// cancellationRunTree is the validated durable Run snapshot on which one
-// cancellation decision is based. It owns product lifecycle and topology
-// facts only; process-local executor bindings remain outside this value.
 type cancellationRunTree struct {
 	root     rundomain.Run
 	topology rundomain.Tree

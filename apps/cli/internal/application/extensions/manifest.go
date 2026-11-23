@@ -15,8 +15,6 @@ var (
 	pluginIDPattern = regexp.MustCompile(`^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$`)
 )
 
-// ValidateManifest checks the metadata the extension host relies on before
-// any plugin code runs.
 func ValidateManifest(plugin Plugin) error {
 	id := plugin.ID
 	if !pluginIDPattern.MatchString(id) {

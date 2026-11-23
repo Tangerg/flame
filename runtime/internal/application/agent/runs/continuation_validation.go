@@ -11,10 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// ValidateProjection proves that one Pending barrier is the complete owner of
-// the durable Run and transcript facts a mounted client will receive. Values
-// may contain the Session's full history; only this barrier's Run tree is
-// selected, while every referenced Item is resolved from the complete Item set.
 func (p Pending) ValidateProjection(values []rundomain.Run, items []transcript.Item) error {
 	treeRuns := make([]rundomain.Run, 0, len(p.Continuations))
 	for _, value := range values {
@@ -72,10 +68,6 @@ func (p Pending) ValidateProjection(values []rundomain.Run, items []transcript.I
 	return nil
 }
 
-// validatePendingRunTree cross-checks the complete active Run tree before a
-// continuation can drive an executor or a lifecycle transformation. Terminal
-// descendants may remain in the historical tree, but every non-terminal Run is
-// Waiting and represented by exactly one canonical continuation.
 func validatePendingRunTree(pending Pending, values []rundomain.Run) error {
 	if err := checkPendingRunTree(pending, values); err != nil {
 		return fmt.Errorf("runs: validate parked Run tree %q: %w", pending.RootRunID, err)
@@ -107,13 +99,12 @@ func checkPendingRunTree(pending Pending, values []rundomain.Run) error {
 	return validateContinuationOrder(pending, active, root)
 }
 
-// indexParkedRuns indexes a stored tree, separating the Runs still active.
 func indexParkedRuns(values []rundomain.Run) (map[identity.RunID]rundomain.Run, map[identity.RunID]rundomain.Run, error) {
 	all := make(map[identity.RunID]rundomain.Run, len(values))
 	active := make(map[identity.RunID]rundomain.Run)
 	for index, value := range values {
 		if value.ID().IsZero() {
-			return nil, nil, fmt.Errorf("Run[%d] was never constructed", index)
+			return nil, nil, fmt.Errorf("run[%d] was never constructed", index)
 		}
 		if _, duplicate := all[value.ID()]; duplicate {
 			return nil, nil, fmt.Errorf("duplicate Run %q", value.ID())
@@ -126,8 +117,6 @@ func indexParkedRuns(values []rundomain.Run) (map[identity.RunID]rundomain.Run, 
 	return all, active, nil
 }
 
-// admitParkedTree proves the root's capabilities cover what the tree parked:
-// every interrupt kind, and child Runs when more than one Run waits.
 func admitParkedTree(pending Pending, root rundomain.Run) error {
 	capabilities := root.Capabilities()
 	for _, open := range pending.Interrupts {
@@ -141,8 +130,6 @@ func admitParkedTree(pending Pending, root rundomain.Run) error {
 	return nil
 }
 
-// validateContinuationOrder requires one continuation per active waiting Run
-// of the root's Session, listed in the tree's canonical postorder.
 func validateContinuationOrder(pending Pending, active map[identity.RunID]rundomain.Run, root rundomain.Run) error {
 	members := make([]rundomain.TreeMember, 0, len(pending.Continuations))
 	for _, continuation := range pending.Continuations {

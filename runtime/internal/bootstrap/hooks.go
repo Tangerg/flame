@@ -8,15 +8,14 @@ import (
 
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
 	"github.com/samber/lo"
+
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
-// hookTrust reports whether a project root may run user lifecycle hooks.
 type hookTrust interface {
 	IsTrusted(ctx context.Context, projectRoot string) (bool, error)
 }
 
-// newHookResolver builds the runtime hook resolver from the composition root's
-// user-home snapshot and the durable project trust policy.
 func newHookResolver(userHome string, trust hookTrust, source adapterhooks.Source) (*adapterhooks.Resolver, error) {
 	if lo.IsNil(trust) {
 		return nil, errors.New("hooks: trust store is required")
@@ -31,7 +30,7 @@ func newHookResolver(userHome string, trust hookTrust, source adapterhooks.Sourc
 		},
 		source,
 		func(ctx context.Context, source string, err error) {
-			slog.ErrorContext(ctx, "hooks: command failed", "source", source, "error", err)
+			slog.ErrorContext(ctx, "hooks: command failed", slog.Any("source", source), telemetry.Error(err))
 		},
 	)
 }

@@ -4,14 +4,14 @@ import { LOCALE } from "@/features/i18n/public/extensionPoints";
 import { type LocaleSpec } from "@/features/i18n/public/types";
 import { activeLocale, mountLocaleBundle } from "@/lib/i18n/index";
 
-export interface LocaleSource {
+interface LocaleSource {
   readonly key: string;
   readonly tag: string;
   readonly title: string;
   load(signal: AbortSignal): Promise<Record<string, string>>;
 }
 
-export function contributeLocale(
+function contributeLocale(
   scope: Pick<ContributionScope, "lifetime" | "add">,
   spec: Omit<LocaleSpec, "activate"> & {
     load(signal: AbortSignal): Promise<Record<string, string>>;

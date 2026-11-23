@@ -19,20 +19,14 @@ const (
 	processWaitDelay = time.Second
 )
 
-// ErrOutputTooLarge reports a Git command whose stdout cannot enter a Runtime
-// VCS read model as one complete value.
 var ErrOutputTooLarge = errors.New("process: output too large")
 
-// Result is one completed Git command. Non-zero process exits are data here so
-// the Git use case can interpret documented predicate and diff exit codes.
 type Result struct {
 	Stdout   []byte
 	Stderr   string
 	ExitCode int
 }
 
-// Run executes Git with bounded stdout and a bounded-drain stderr. overrides
-// are command-owned environment entries such as a stable parsing locale.
 func Run(ctx context.Context, overrides []string, args ...string) (Result, error) {
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return Result{}, err
@@ -88,8 +82,6 @@ func Run(ctx context.Context, overrides []string, args ...string) (Result, error
 		stderrDone <- err
 	}()
 
-	// Files belong to this invocation, so Wait observes only the root process.
-	// Its exit starts retirement and the drain budget, never an operation timeout.
 	waitErr := command.Wait()
 	cleanupErr := stop()
 	drainDone := make(chan struct{})
@@ -136,13 +128,8 @@ func readOutput(ctx context.Context, source io.Reader) ([]byte, error) {
 	return output, err
 }
 
-// parsingLocale keeps Git's diagnostics and its collation in one language, so a
-// caller reading them is reading the same text on every machine.
 var parsingLocale = []string{"LC_ALL=C", "LANG=C"}
 
-// At restricts commands that interpret worktree attributes to a disposable Git
-// directory. No repository, system or global configuration can name an external
-// clean filter in the process that reads user-controlled worktree bytes.
 func At(ctx context.Context, dir string, args ...string) (Result, error) {
 	prefix := []string{"--no-pager", "--no-optional-locks", "-C", dir, "-c", "core.quotepath=false", "-c", "core.fsmonitor=false", "-c", "core.hooksPath=" + os.DevNull, "-c", "diff.ignoreSubmodules=dirty", "-c", "submodule.recurse=false"}
 	env := append([]string{"GIT_NO_LAZY_FETCH=1", "GIT_ALLOW_PROTOCOL=", "GIT_NO_REPLACE_OBJECTS=1"}, parsingLocale...)

@@ -11,11 +11,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 )
 
 const testRuntimeInstanceID = testsupport.RuntimeInstanceID
 
-// fakeRuntime implements only the operations exercised by transport tests.
 type fakeRuntime struct {
 	canceledRuns []string
 }
@@ -66,7 +66,7 @@ func newTestEndpoint(t *testing.T, target any, config delivery.EndpointConfig) *
 	t.Helper()
 	config.Lifetime = t.Context()
 	if config.IdempotencyStore == nil {
-		stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir()})
+		stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: t.TempDir(), ValidateDirectory: persistencefixture.UnleasedDirectory})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -76,6 +76,8 @@ func newTestEndpoint(t *testing.T, target any, config delivery.EndpointConfig) *
 			}
 		})
 		config.IdempotencyStore = stores.Idempotency
+		config.IdempotencyNamespace = stores.IdempotencyNamespace.String()
+		config.ValidateStorage = stores.ValidateDirectory
 	}
 	endpoint, err := delivery.NewEndpoint(target, config)
 	if err != nil {
@@ -84,8 +86,6 @@ func newTestEndpoint(t *testing.T, target any, config delivery.EndpointConfig) *
 	return endpoint
 }
 
-// readBody reads the response body into a string for diagnostic t.Fatalf
-// messages.
 func readBody(r *netHTTP.Response) string {
 	buf := new(bytes.Buffer)
 	_, _ = buf.ReadFrom(r.Body)

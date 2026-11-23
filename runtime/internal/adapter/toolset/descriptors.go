@@ -23,8 +23,6 @@ type resultProjectionContract struct {
 	enums      func() map[reflect.Type][]string
 }
 
-// This catalog owns current executable metadata. Durable identities can outlive
-// their executables; retaining an old reference cannot make it dispatchable.
 type builtInDescriptor struct {
 	safety        tool.SafetyClass
 	orchestration bool
@@ -56,8 +54,6 @@ var builtInDescriptors = map[builtincontract.Name]builtInDescriptor{
 	builtincontract.StopShell:         builtInDescriptor{safety: tool.SafetyClassExec},
 }
 
-// resultContractFor binds the projection implementing a built-in's declared
-// result shape; the shape itself is owned by the builtin contract.
 func resultContractFor(name builtincontract.Name) (resultProjectionContract, bool) {
 	switch name.ResultShape() {
 	case extension.ResultShapeCommand:
@@ -80,6 +76,7 @@ func descriptors() iter.Seq2[builtincontract.Name, builtInDescriptor] {
 		}
 	}
 }
+
 func descriptorFor(ref tool.Ref) (builtInDescriptor, bool) {
 	name, ok := ref.BuiltIn()
 	if !ok {

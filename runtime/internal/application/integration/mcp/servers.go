@@ -13,40 +13,22 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
-// errClosed reports that a post-commit reconcile / background task could not be
-// launched because the component is shutting down.
 var errClosed = errors.New("mcp: closed")
 
-// ErrInvalidServerConfiguration marks a malformed MCP configuration command.
-// Callers map it to their validation error without re-running domain
-// validation or inspecting persistence state.
 var ErrInvalidServerConfiguration = errors.New("mcp: invalid MCP server configuration")
 
-// ErrUnknownServer is the application boundary's stable unknown-server
-// result. The underlying domain sentinel remains internal to this package.
 var ErrUnknownServer = errors.New("mcp: unknown MCP server")
 
-// ErrServerAlreadyExists reports a create whose stable name is already in
-// use. Create and update remain distinct operations; storage never guesses from
-// an upsert whether the caller meant to replace an existing resource.
 var ErrServerAlreadyExists = errors.New("mcp: MCP server already exists")
 
-// ErrServerDisabled reports a connection command against a configured
-// server whose durable enablement gate is closed.
 var ErrServerDisabled = errors.New("mcp: MCP server is disabled")
 
 var ErrOwnedByInstallation = errors.New("mcp: server is owned by installation")
 
-// ErrAuthorizationAttemptNotFound reports an unknown or expired interactive
-// authorization attempt.
 var ErrAuthorizationAttemptNotFound = errors.New("mcp: MCP authorization attempt not found")
 
-// ErrAuthorizationUnsupported reports interactive authorization requested
-// for a transport that cannot perform OAuth.
 var ErrAuthorizationUnsupported = errors.New("mcp: MCP authorization requires streamable HTTP")
 
-// CreateServer creates one durable resource and projects it into the live MCP
-// pool. A duplicate name is a conflict, never an implicit update.
 func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Server, error) {
 	id, err := userServer(input.Name)
 	if err != nil {
@@ -69,8 +51,6 @@ func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Serv
 	return c.commitServer(write, srv, true)
 }
 
-// UpdateServer applies an explicit partial update to an existing resource.
-// The mutation lock keeps the read/patch/save sequence atomic inside the runtime.
 func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ID, patch ServerPatch) (Server, error) {
 	if name.Origin().Kind() != mcpserver.OriginUser {
 		return Server{}, ErrOwnedByInstallation
@@ -128,8 +108,6 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server, r
 	return serverView(srv, c.statusesByName()[srv.ID()])
 }
 
-// DeleteServer deletes a server from the registry and drops it from the live
-// connections.
 func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ID) error {
 	if name.Origin().Kind() != mcpserver.OriginUser {
 		return ErrOwnedByInstallation
@@ -148,7 +126,6 @@ func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ID) error
 	if err := c.store.Remove(write.requestCtx, current); err != nil {
 		return err
 	}
-	// Detachment retires live executables; exposure still closes if it fails.
 	projectionErr := c.connections.Detach(name)
 	c.exposure.removeServer(name)
 	event := c.statusQueue.prepare(name)
@@ -157,8 +134,6 @@ func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ID) error
 	return projectionErr
 }
 
-// mutationScope owns one registry mutation's request lifetime, detached repair
-// lifetime, and serialization lock.
 type mutationScope struct {
 	coordinator *Coordinator
 	requestCtx  context.Context
@@ -167,9 +142,6 @@ type mutationScope struct {
 	locked      bool
 }
 
-// beginMutation owns both task scopes and the durable mutation lock. Callers
-// release the lock before invoking status sinks or dispatching live dials, then
-// defer close to release the task scopes on every exit.
 func (c *Coordinator) beginMutation(ctx context.Context) (*mutationScope, error) {
 	if ctx == nil {
 		return nil, errors.New("mcp: mutation context is required")
@@ -218,8 +190,6 @@ func (m *mutationScope) close() {
 	m.finish = nil
 }
 
-// Publish the committed enablement even when the live adapter fails to detach.
-// The exposure gate must not depend on a second registry read after the write.
 func (c *Coordinator) applyRegistryChange(srv mcpserver.Server) error {
 	var err error
 	if !srv.Enabled {
@@ -229,13 +199,7 @@ func (c *Coordinator) applyRegistryChange(srv mcpserver.Server) error {
 	return err
 }
 
-// TestServer dials srv with a throwaway client and proves its tools list — a
-// connection test that touches neither the registry nor the live set, EXCEPT it
-// reuses an active OAuth sign-in for the same-named server (so an authorized
-// OAuth server tests as connected, not "unauthorized"). Returns the dial /
-// tools-list failure as a sanitized outcome; invalid candidates and registry failures
-// are returned as errors.
-func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (TestResult, error) {
+func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (result TestResult, err error) {
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
@@ -243,7 +207,11 @@ func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (TestRe
 	if err != nil {
 		return "", err
 	}
-	defer release()
+	defer func() {
+		if releaseErr := release(); releaseErr != nil {
+			result, err = "", errors.Join(err, releaseErr)
+		}
+	}()
 	srv, err := c.validatedServer(ctx, input)
 	if err != nil {
 		return "", err
@@ -278,8 +246,6 @@ func (c *Coordinator) validatedServer(ctx context.Context, input ServerInput) (m
 	return serverCandidate(input, current)
 }
 
-// Create and test address the user's registry; an installation's records
-// arrive only through its own admission.
 func userServer(name mcpserver.ServerName) (mcpserver.ID, error) {
 	id, err := mcpserver.NewID(mcpserver.UserOrigin(), name)
 	if err != nil {
@@ -342,8 +308,8 @@ func resolveConnection(input ConnectionInput, current *mcpserver.Server) (mcpser
 	}
 }
 
-// A secret may be inherited only by the same target: a different HTTP origin
-// or process must state its credentials again rather than receive the old ones.
+// A secret is inherited only by the same target: a different HTTP origin or
+// process must state its credentials again.
 func resolveHTTPConnection(input ConnectionInput, current *mcpserver.Server) (mcpserver.Connection, error) {
 	if input.Environment != nil {
 		return nil, fmt.Errorf("%w: environment applies to stdio transport only", ErrInvalidServerConfiguration)
@@ -388,8 +354,6 @@ type ToolView struct {
 	Conflicts []tool.Ref
 }
 
-// Tools lists tools advertised by the connected MCP servers (scoped to server
-// when non-empty) for tool discovery, ordered by server then tool name.
 func (c *Coordinator) Tools(_ context.Context, server *mcpserver.ID) ([]ToolView, error) {
 	if server != nil {
 		if err := server.Validate(); err != nil {

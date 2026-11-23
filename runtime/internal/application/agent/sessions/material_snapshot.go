@@ -14,9 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
-// MaterialSnapshot is the coherent durable state needed to reconstruct one
-// mounted Session. It is a live read model, so active Runs and open interrupts
-// are valid members and Plan revision metadata is retained.
 type MaterialSnapshot struct {
 	SteerInputs []runs.CommandAcceptance
 	Session     session.Session
@@ -27,11 +24,6 @@ type MaterialSnapshot struct {
 	Goal        *goal.Goal
 }
 
-// MaterialView reads the complete mounted-session projection at one database
-// snapshot, together with the Session read model resolved from that same
-// snapshot. No process-local admission is required: concurrent writes either
-// precede or follow the storage transaction and can never split the returned
-// Session, Run, interrupt, transcript, and Plan facts.
 func (c *Coordinator) MaterialView(ctx context.Context, sessionID identity.SessionID) (MaterialSnapshot, View, error) {
 	snapshot, err := c.materialSnapshots.ReadMaterialSnapshot(ctx, sessionID)
 	if err != nil {
@@ -48,17 +40,12 @@ func (c *Coordinator) MaterialView(ctx context.Context, sessionID identity.Sessi
 	return snapshot, view, nil
 }
 
-// InterruptSet is one open waiting hand-off with its interrupts projected from
-// the Items they name.
 type InterruptSet struct {
-	// SessionID is the Session of the set's root Run, which owns it.
 	SessionID  identity.SessionID
 	Pending    runs.Pending
 	Interrupts []transcript.Interrupt
 }
 
-// InterruptSets projects every open hand-off's interrupts from the snapshot's
-// Items.
 func (m MaterialSnapshot) InterruptSets() ([]InterruptSet, error) {
 	itemsByID := make(map[identity.ItemID]transcript.Item, len(m.Items))
 	for _, item := range m.Items {
@@ -75,8 +62,6 @@ func (m MaterialSnapshot) InterruptSets() ([]InterruptSet, error) {
 	return sets, nil
 }
 
-// Run returns the snapshot's Run with runID; an open interrupt set's root Run
-// is always present, and owns the set's capabilities.
 func (m MaterialSnapshot) Run(runID identity.RunID) (run.Run, bool) {
 	for _, value := range m.Runs {
 		if value.ID() == runID {

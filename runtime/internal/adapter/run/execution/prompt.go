@@ -16,15 +16,8 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// agentMemoryInjectBudget bounds each prompt-resident Agent Memory block by the
-// same conservative token estimate: the always-on pinned core and the
-// per-message relevant recall. Items stay whole; lower-priority items beyond a
-// block's budget remain available through search_memory.
 const agentMemoryInjectBudget = 4096
 
-// basePrompt is the always-on identity / behavioral preamble. It
-// stays small on purpose — project-specific context lives in agent memory or
-// AGENTS.md and gets appended during prompt assembly.
 const basePrompt = `You are Flame, a general-purpose AI coding agent.
 
 You can read and modify files, run shell commands, search the
@@ -37,25 +30,6 @@ When you change files, show the change. When a tool returns an
 error, read the message and adjust — don't blindly retry. If a
 task is ambiguous, ask one focused question rather than guess.`
 
-// composeSystemMessage assembles the system prompt for one turn. Global
-// context loads from broadest to narrowest so more local instructions extend
-// and override the broader layer:
-//
-//	<base prompt>
-//	<pinned agent memory>  (durable, project-scoped, agent-managed)
-//	<discovered>      (agentdoc cascade — global AGENTS.md first
-//	                   (~/.flame, ~/.agents), then project root → cwd)
-//
-// Agent documents follow the execution directory, as the filesystem tools do.
-// Durable project memory follows the Session workspace even when an isolated
-// Run executes in a disposable copy.
-//
-// The AGENTS.md cascade is the one human-authored instruction surface.
-// Pinned memory is an explicit instruction source. Current Goal and Plan are authoritative
-// Session state: read failures fail construction instead of silently
-// retaining or deleting an old snapshot. An existing Agent document is likewise
-// authoritative authored input: invalid or individually unprojectable material
-// fails construction instead of silently deleting instructions.
 func (w *WorkingContextComposer) composeSystemMessage(
 	ctx context.Context,
 	executionCWD, workspaceCWD string,
@@ -66,9 +40,6 @@ func (w *WorkingContextComposer) composeSystemMessage(
 		contextSourceBasePrompt.source("builtin:flame"),
 	)
 
-	// The always-on core is the PINNED items (project + user scope). Non-pinned
-	// approved memory is surfaced per turn by relevance (the recall block), so a
-	// growing corpus never bloats every prompt.
 	var pinned []MemoryPromptItem
 	if project := strings.TrimSpace(workspaceCWD); project != "" {
 		items, err := w.config.AgentMemory.Items(ctx, memorycontract.ItemsInputScopeProject, filepath.Clean(project))
@@ -84,12 +55,8 @@ func (w *WorkingContextComposer) composeSystemMessage(
 	pinned = append(pinned, userItems...)
 	newPinnedMemoryPrompt(pinned, agentMemoryInjectBudget).appendTo(&prompt)
 
-	// AGENTS.md cascade. Missing/empty sources contribute nothing; an existing
-	// invalid source remains observable so a turn cannot run under silently
-	// incomplete instructions. User Home is injected rather than rediscovered
-	// inside every prompt assembly.
 	if dir := strings.TrimSpace(executionCWD); dir != "" {
-		files, err := promptsource.DiscoverAgentDocs(ctx, dir, w.config.UserHome)
+		files, err := promptsource.AgentDocs{}.Find(ctx, dir, w.config.UserHome)
 		if err != nil {
 			return corechat.Message{}, fmt.Errorf("execution: load agent documents: %w", err)
 		}
@@ -103,10 +70,6 @@ func (w *WorkingContextComposer) composeSystemMessage(
 	return prompt.systemMessage()
 }
 
-// CurrentSessionState returns the complete model-facing snapshot of durable
-// Session state that can change during one Interaction, Goal before Plan. The
-// reducer sends it as part of each call's tail, so it always reflects the
-// current values and never occupies a position in the cached prefix.
 func (w *WorkingContextComposer) CurrentSessionState(
 	ctx context.Context,
 	sessionID identity.SessionID,

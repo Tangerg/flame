@@ -8,9 +8,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
-// A checkpoint cannot archive or restore its own mutable Git metadata. This
-// boundary precedes repository creation and pre-restore archiving, including
-// when storage is reached through an alias or has not been created yet.
 func (s *Store) checkStorageBoundary(ctx context.Context, cwd string) error {
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return err

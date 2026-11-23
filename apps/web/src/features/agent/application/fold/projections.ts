@@ -123,11 +123,11 @@ function nameLabel(tool: AgentToolInvocation): string | undefined {
   }
 }
 
-export function toolLabel(tool: AgentToolInvocation): string {
+function toolLabel(tool: AgentToolInvocation): string {
   return labelSource(tool).text;
 }
 
-export function toolLabelKind(tool: AgentToolInvocation): "path" | "text" {
+function toolLabelKind(tool: AgentToolInvocation): "path" | "text" {
   return labelSource(tool).path ? "path" : "text";
 }
 
@@ -174,7 +174,7 @@ function rawLabelSource(tool: AgentToolInvocation): { text: string; path: boolea
   }
 }
 
-export function toolFields(tool: AgentToolInvocation): Partial<ToolCall> {
+function toolFields(tool: AgentToolInvocation): Partial<ToolCall> {
   const result = asRecord(tool.result);
   const operation = asString(tool.arguments.operation);
   return {
@@ -257,7 +257,7 @@ function categoryFields(
       };
 }
 
-export function argsText(tool: AgentToolInvocation): string {
+function argsText(tool: AgentToolInvocation): string {
   if (tool.argumentsText !== undefined) return tool.argumentsText;
   return Object.keys(tool.arguments).length > 0 ? prettyJSON(tool.arguments) : "";
 }

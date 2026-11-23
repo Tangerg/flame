@@ -9,9 +9,6 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
-// Retained supplies the original execution's authority before discovery or
-// collision resolution. Its graphs belong to that execution's checkpoint;
-// restoring them never publishes them as the current catalog for new work.
 type Retained struct {
 	SkillDiscovery string
 	MCP            []domaintool.Ref

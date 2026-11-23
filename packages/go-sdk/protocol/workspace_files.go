@@ -2,18 +2,10 @@ package protocol
 
 import "time"
 
-// WorkspaceQuery is the common explicit scope for workspace reads.
 type WorkspaceQuery struct {
 	Workspace WorkspaceRef `json:"workspace"`
 }
 
-// GrepRequest — workspace.files.search body. Query is a Go/RE2-compatible
-// regular expression of at most 64 KiB. A zero Limit selects 100 retained
-// matches; larger values are capped at 1000. The service may retain fewer rows
-// when the 8 MiB result-material budget is reached. By default, the service
-// stops after the complete file satisfying that budget. ScanAll asks to inspect
-// the remaining catalog within the source budget. Inspect result coverage before
-// interpreting Total as an exact count.
 type GrepRequest struct {
 	Workspace WorkspaceRef `json:"workspace"`
 	Query     string       `json:"query"`
@@ -22,11 +14,6 @@ type GrepRequest struct {
 	ScanAll   bool         `json:"scanAll,omitzero"`
 }
 
-// ListFilesRequest is the workspace.files.list body. It lists files under
-// Path (relative to CWD, jailed). Recursive (or a Glob) yields a flat subtree
-// file list — the @file / fuzzy source; otherwise the immediate children — the
-// lazy file-tree level. .gitignore + backstop excludes apply unless
-// IncludeIgnored. PageQuery carries stable cursor pagination.
 type ListFilesRequest struct {
 	Workspace      WorkspaceRef `json:"workspace"`
 	Path           string       `json:"path,omitempty"`
@@ -37,13 +24,6 @@ type ListFilesRequest struct {
 	PageQuery
 }
 
-// ReadFileRequest is the workspace.files.read body. It reads the whole
-// file, or the StartLine..EndLine window (1-based inclusive, editor-facing)
-// when given. An omitted MaxBytes selects the 1 MiB default; larger values are
-// capped at 8 MiB. Only complete normalized source lines are returned. FromEnd
-// retains the suffix of the requested range instead of its prefix; the returned
-// lines remain in source order. FileContent.Truncated reports omitted material.
-// Non-regular files and content that is not valid UTF-8 text are unsupported.
 type ReadFileRequest struct {
 	Workspace WorkspaceRef `json:"workspace"`
 	Path      string       `json:"path"`
@@ -53,12 +33,6 @@ type ReadFileRequest struct {
 	FromEnd   bool         `json:"fromEnd,omitzero"`
 }
 
-// FileContent is the workspace.files.read result. Content is valid UTF-8 text;
-// binary files are rejected before projection. TotalLines is the whole-file
-// line count even for a windowed read (so the UI can show "12–40 / 320").
-// StartLine/EndLine describe the served window (1-based inclusive) and are
-// present together whenever at least one complete line was served. If no line
-// fits the requested byte budget, both fields are omitted and Truncated is true.
 type FileContent struct {
 	Content    string `json:"content"`
 	TotalLines int    `json:"totalLines"`
@@ -67,8 +41,6 @@ type FileContent struct {
 	EndLine    int    `json:"endLine,omitzero"`
 }
 
-// FileEntryType is a listed workspace entry's kind.
-//
 //flame:enum
 type FileEntryType string
 
@@ -78,9 +50,6 @@ const (
 	FileEntrySymlink FileEntryType = "symlink"
 )
 
-// FileEntry is one inspected entry in workspace.files.list. Path
-// is relative to the workspace root; type, size, and modification time come
-// from one inspection of that entry.
 type FileEntry struct {
 	Path       string        `json:"path"`
 	Name       string        `json:"name"`
@@ -89,10 +58,6 @@ type FileEntry struct {
 	ModifiedAt time.Time     `json:"modifiedAt"`
 }
 
-// GrepResult is the workspace.files.search result. Matches is a
-// stable whole-line prefix; Total is the count observed in admitted files and
-// may exceed len(Matches). It is exact for the selected catalog only when
-// Complete is true. Skipped files and unread files are never counted as absent.
 type GrepResult struct {
 	Matches  []GrepMatch  `json:"matches"`
 	Total    int          `json:"total"`
@@ -100,7 +65,6 @@ type GrepResult struct {
 	Coverage GrepCoverage `json:"coverage"`
 }
 
-// GrepCoverage describes the selected catalog's admission and read coverage.
 type GrepCoverage struct {
 	ScannedFiles   int   `json:"scannedFiles"`
 	SkippedFiles   int   `json:"skippedFiles"`
@@ -108,16 +72,12 @@ type GrepCoverage struct {
 	SourceBytes    int64 `json:"sourceBytes"`
 }
 
-// GrepMatch is one plain-text grep hit.
 type GrepMatch struct {
 	Path       string `json:"path"`
 	LineNumber int    `json:"lineNumber"`
 	Text       string `json:"text"`
 }
 
-// FileListPage is one covered portion of a workspace listing. An incomplete page
-// always supplies a cursor, including pages whose scan budget excluded every entry.
-// Directory traversal uses native enumeration order and refuses a changed revision.
 type FileListPage struct {
 	Data []FileEntry `json:"data"`
 	PageContinuation
@@ -125,7 +85,6 @@ type FileListPage struct {
 	Coverage FileListCoverage `json:"coverage"`
 }
 
-// FileListCoverage records observations made while producing this page.
 type FileListCoverage struct {
 	ScannedEntries  int  `json:"scannedEntries"`
 	ExcludedEntries int  `json:"excludedEntries"`

@@ -47,14 +47,14 @@ func connectLearning(t *testing.T, path string) (*sdk.ClientSession, *pluginmcp.
 		t.Fatal(err)
 	}
 	var once sync.Once
-	close := func() {
+	release := func() {
 		once.Do(func() {
 			if err := errors.Join(session.Close(), connection.Close(), learner.db.Close()); err != nil {
 				t.Error(err)
 			}
 		})
 	}
-	t.Cleanup(close)
+	t.Cleanup(release)
 	contract, err := skilllearning.Contract()
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func connectLearning(t *testing.T, path string) (*sdk.ClientSession, *pluginmcp.
 	if err != nil {
 		t.Fatal(err)
 	}
-	return session, method, close
+	return session, method, release
 }
 
 func learningInvocation(t *testing.T, id string) context.Context {

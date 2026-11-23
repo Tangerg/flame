@@ -8,7 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
+	"github.com/Tangerg/flame/plugins/web/internal/capture"
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
 
 	framecall "github.com/Tangerg/frame/call"
@@ -83,7 +83,7 @@ func (r *research) fetchPage(ctx context.Context, input web.FetchRequest) (captu
 	if err := response.ValidateFor(prepared); err != nil {
 		return capture.Page{}, err
 	}
-	document, err := capture.NewDocument(capture.Content{URL: prepared.URL, Format: capture.Format(response.Format), Text: response.Content})
+	document, err := capture.NewDocument(capture.Content{URL: prepared.URL, Format: response.Format, Text: response.Content})
 	if err != nil {
 		return capture.Page{}, err
 	}

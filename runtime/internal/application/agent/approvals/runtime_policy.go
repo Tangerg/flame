@@ -13,9 +13,6 @@ import (
 	"github.com/samber/lo"
 )
 
-// NewRuntimePolicy constructs permission policy over durable permission modes
-// and remembered rules. initialDefault is the Runtime default until a user
-// chooses one; only a Session may enter Plan mode.
 func NewRuntimePolicy(
 	initialDefault approval.Mode,
 	store RuleStore,
@@ -43,15 +40,6 @@ func NewRuntimePolicy(
 	}, nil
 }
 
-// modeStore persists permission modes: the Runtime default a user chose, and
-// explicit per-session Plan mode. A missing session row means the session
-// follows the Runtime default; a missing default means none was chosen.
-// Implementations validate ownership and decoded modes at their persistence
-// boundary.
-//
-// Retiring a deleted Session's state is not here: the session write-set owns
-// that, transactionally with everything else the delete removes, through its
-// own cleaner port.
 type modeStore interface {
 	DefaultMode(ctx context.Context) (mode approval.Mode, found bool, err error)
 	SetDefaultMode(ctx context.Context, mode approval.Mode) error
@@ -60,10 +48,6 @@ type modeStore interface {
 	EndPlanMode(ctx context.Context, sessionID identity.SessionID, revision uint64) (changed bool, err error)
 }
 
-// RuntimePolicy combines two policy facts consumed together at the tool-call
-// boundary: session-effective permission mode and remembered approval rules.
-// The Runtime default is durable so a restart never loosens or tightens the
-// stance a user chose.
 type RuntimePolicy struct {
 	initialDefault approval.Mode
 	authorities    sourceAuthorities
@@ -73,8 +57,6 @@ type RuntimePolicy struct {
 	invalidations  invalidation.Publish
 }
 
-// DefaultMode returns the runtime fallback used by sessions without an explicit
-// mode row.
 func (r *RuntimePolicy) DefaultMode(ctx context.Context) (approval.Mode, error) {
 	mode, found, err := r.modeStore.DefaultMode(ctx)
 	if err != nil {
@@ -86,8 +68,6 @@ func (r *RuntimePolicy) DefaultMode(ctx context.Context) (approval.Mode, error) 
 	return mode, nil
 }
 
-// SetDefaultMode changes the runtime fallback. Plan mode is session-only and is
-// therefore rejected here.
 func (r *RuntimePolicy) SetDefaultMode(ctx context.Context, mode approval.Mode) error {
 	if !mode.ValidDefault() {
 		return fmt.Errorf("%w: %q", approval.ErrInvalidMode, mode)
@@ -99,12 +79,10 @@ func (r *RuntimePolicy) SetDefaultMode(ctx context.Context, mode approval.Mode) 
 	return nil
 }
 
-// Mode returns the effective mode for sessionID. An empty id reads the runtime
-// default; a Session outside Plan mode follows that default.
 func (r *RuntimePolicy) Mode(ctx context.Context, sessionID identity.SessionID) (approval.Mode, error) {
 	if !sessionID.IsZero() {
 		if err := sessionID.Validate(); err != nil {
-			return "", fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, err)
+			return "", fmt.Errorf("%w: %w", approval.ErrInvalidSessionMode, err)
 		}
 		planning, err := r.modeStore.PlanModeActive(ctx, sessionID)
 		if err != nil {
@@ -117,21 +95,16 @@ func (r *RuntimePolicy) Mode(ctx context.Context, sessionID identity.SessionID) 
 	return r.DefaultMode(ctx)
 }
 
-// EnterPlanMode narrows one session to read-only. It returns changed=false
-// when already active.
 func (r *RuntimePolicy) EnterPlanMode(ctx context.Context, sessionID identity.SessionID) (changed bool, err error) {
 	if parseErr := sessionID.Validate(); parseErr != nil {
-		return false, fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, parseErr)
+		return false, fmt.Errorf("%w: %w", approval.ErrInvalidSessionMode, parseErr)
 	}
 	return r.modeStore.StartPlanMode(ctx, sessionID)
 }
 
-// ExitPlanMode returns the session to the Runtime default, reporting the mode
-// it now follows. It returns changed=false when the session is not in Plan
-// mode.
 func (r *RuntimePolicy) ExitPlanMode(ctx context.Context, sessionID identity.SessionID, revision uint64) (restored approval.Mode, changed bool, err error) {
 	if parseErr := sessionID.Validate(); parseErr != nil {
-		return "", false, fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, parseErr)
+		return "", false, fmt.Errorf("%w: %w", approval.ErrInvalidSessionMode, parseErr)
 	}
 	changed, err = r.modeStore.EndPlanMode(ctx, sessionID, revision)
 	if err != nil {
@@ -163,13 +136,6 @@ func (r *RuntimePolicy) Decide(ctx context.Context, q approval.Query) (approval.
 	return d, ok, nil
 }
 
-// PrepareRule validates one remembered-rule request against the current source
-// authority and derives its durable rule without persisting it. The acceptance
-// transaction that accepts the answer persists the returned rule atomically with
-// the answer, consumed open set, and Segment opening; a changed source authority
-// rejects the whole acceptance through ErrSourceAuthorityChanged rather than
-// silently downgrading remember to a one-shot answer. Invalidations are published
-// by the acceptance owner only after that transaction commits.
 func (r *RuntimePolicy) PrepareRule(ctx context.Context, req approval.RememberRequest) (approval.Rule, error) {
 	rule, err := req.Rule()
 	if err != nil {
@@ -207,8 +173,6 @@ type RuleView struct {
 	Stale      bool
 }
 
-// ListRules returns the global rules, plus the session and project rules visible
-// from sessionID when one is named.
 func (r *RuntimePolicy) ListRules(ctx context.Context, sessionID identity.SessionID) ([]RuleView, error) {
 	projectDir := ""
 	if !sessionID.IsZero() {
@@ -261,8 +225,6 @@ func (r *RuntimePolicy) SetRule(ctx context.Context, change RuleChange) error {
 	if !found {
 		return fmt.Errorf("%w: tool source is missing", approval.ErrInvalidRule)
 	}
-	// The authority was read here, so the rule binds it without the
-	// frozen-versus-current comparison Remember makes for an execution.
 	rule, err := approval.RememberRequest{Scope: change.Scope, SessionID: change.SessionID, ProjectDir: projectDir, Tool: change.Tool, SourceFingerprint: authority, Subject: change.Subject, Decision: change.Decision}.Rule()
 	if err != nil {
 		return err
@@ -281,7 +243,6 @@ func (r *RuntimePolicy) visibleRules(ctx context.Context, sessionID identity.Ses
 	return rules, nil
 }
 
-// ForgetRule removes one persisted approval rule by id.
 func (r *RuntimePolicy) ForgetRule(ctx context.Context, id string) error {
 	if id == "" {
 		return fmt.Errorf("%w: id is required", approval.ErrInvalidRule)

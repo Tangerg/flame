@@ -9,7 +9,6 @@ import (
 
 var ErrLockUnsupported = errors.New("advisory lock: unsupported platform")
 
-// Release must settle once even when competing callers initiate shutdown.
 type DirectoryLease struct {
 	mu      sync.Mutex
 	release func() (done bool, err error)
@@ -20,8 +19,6 @@ func newLease(release func() (done bool, err error)) *DirectoryLease {
 	return &DirectoryLease{release: release}
 }
 
-// Release retries only while the owned resource permits another attempt.
-// Once cleanup settles, repeated calls return its result without more OS calls.
 func (l *DirectoryLease) Release() error {
 	if l == nil {
 		return nil
@@ -39,7 +36,6 @@ func (l *DirectoryLease) Release() error {
 	return err
 }
 
-// A nil lease with no error denotes contention. Cleanup failures remain errors.
 func TryDirectoryLease(directory string) (*DirectoryLease, error) {
 	physical, err := resolveDirectory(directory)
 	if err != nil {
@@ -48,7 +44,6 @@ func TryDirectoryLease(directory string) (*DirectoryLease, error) {
 	return tryDirectory(physical)
 }
 
-// Directory leases create no files in the target tree.
 func AcquireDirectoryLease(ctx context.Context, directory string) (*DirectoryLease, error) {
 	if ctx == nil {
 		return nil, errors.New("advisory lock: context is required")

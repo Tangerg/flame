@@ -1,13 +1,3 @@
-// Package config loads Flame's runtime settings via Viper.
-//
-// Sources, from lowest to highest precedence:
-//
-//  1. Built-in defaults
-//  2. The first config.yaml found in caller-supplied search-directory order
-//  3. Environment variables (FLAME_*)
-//
-// The yaml file is where the API key lives in dev; it is gitignored.
-// Copy config/config.example.yaml → config/config.yaml and fill it in.
 package config
 
 import (
@@ -20,17 +10,13 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/spf13/viper"
 )
 
 const maximumRuntimeConfigBytes int64 = 256 << 10
 
-// Load resolves configuration from yaml + env + defaults. A missing config
-// file is fine (defaults + env only). Provider catalog admission and
-// provider-specific API-key fallback are deliberately outside config-source
-// parsing because they depend on the live provider catalog.
 func Load(configDirectories []string) (Settings, error) {
 	v := viper.NewWithOptions(viper.ExperimentalBindStruct())
 	v.SetConfigType("yaml")
@@ -65,7 +51,7 @@ func Load(configDirectories []string) (Settings, error) {
 	if source.Model == "" {
 		return Settings{}, errors.New("config: model is required — set `model:` in config/config.yaml or FLAME_MODEL; names never infer a model")
 	}
-	selection, err := modelchoice.New(source.Provider, source.Model)
+	selection, err := flamemodel.New(source.Provider, source.Model)
 	if err != nil {
 		return Settings{}, fmt.Errorf("config: model selection: %w", err)
 	}
@@ -141,14 +127,11 @@ func readConfigFile(configDirectories []string) (string, []byte, error) {
 	return "", nil, nil
 }
 
-// configShape is the closed YAML vocabulary accepted at the process boundary.
-// Settings is intentionally not reused here: it is the resolved application
-// value, while sandbox and LSP retain their source nesting only in YAML.
 type configShape struct {
 	Provider          string                 `mapstructure:"provider"`
 	Model             string                 `mapstructure:"model"`
 	APIKey            string                 `mapstructure:"apiKey"`
-	BaseURL           string                 `mapstructure:"baseURL"`
+	BaseURL           string                 `mapstructure:"baseUrl"`
 	UtilityModel      string                 `mapstructure:"utilityModel"`
 	ToolResultOffload toolResultOffloadShape `mapstructure:"toolResultOffload"`
 	Sandbox           struct {

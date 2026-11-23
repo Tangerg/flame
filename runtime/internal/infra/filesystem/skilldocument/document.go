@@ -1,4 +1,3 @@
-// Package skilldocument binds verified document bytes to Scope's Skill loader.
 package skilldocument
 
 import (
@@ -10,20 +9,21 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
-	sdk "github.com/Tangerg/scope/skills"
+	skillspec "github.com/Tangerg/scope/skills"
 )
 
-// Load lets Scope own format and directory identity without reopening a path
-// whose content may have changed since the caller verified it.
-func Load(ctx context.Context, name string, content []byte) (*sdk.Skill, error) {
+const openOperation = "open"
+
+func Load(ctx context.Context, name string, content []byte) (*skillspec.Skill, error) {
 	if len(content) > skills.MaxAuthoredSkillDocumentBytes {
 		return nil, fmt.Errorf("%w: %q exceeds %d bytes", skills.ErrDocumentTooLarge, name, skills.MaxAuthoredSkillDocumentBytes)
 	}
 	if !utf8.Valid(content) {
-		return nil, fmt.Errorf("%w %q: document is not UTF-8", sdk.ErrInvalidSkill, name)
+		return nil, fmt.Errorf("%w %q: document is not UTF-8", skillspec.ErrInvalidSkill, name)
 	}
-	repository, err := sdk.NewRepository(documentFS{name: name, content: content}, sdk.RepositoryConfig{MaxSkillBytes: skills.MaxAuthoredSkillDocumentBytes})
+	repository, err := skillspec.NewRepository(documentFS{name: name, content: content}, skillspec.RepositoryConfig{MaxSkillBytes: skills.MaxAuthoredSkillDocumentBytes})
 	if err != nil {
 		return nil, err
 	}
@@ -36,18 +36,16 @@ type documentFS struct {
 }
 
 func (f documentFS) Open(name string) (fs.File, error) {
-	if name != f.name+"/"+sdk.SkillFile {
-		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+	if name != f.name+"/"+skillspec.SkillFile {
+		return nil, &fs.PathError{Op: openOperation, Path: name, Err: fs.ErrNotExist}
 	}
 	return &documentFile{bytes.NewReader(f.content)}, nil
 }
 
 func (f documentFS) OpenInDir(dir, name string) (fs.File, error) {
 	if !fs.ValidPath(dir) || !fs.ValidPath(name) {
-		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrInvalid}
+		return nil, &fs.PathError{Op: openOperation, Path: name, Err: fs.ErrInvalid}
 	}
-	// This filesystem owns only captured bytes; no symlink or host path can
-	// redirect the confined resource lookup after validation.
 	return f.Open(path.Join(dir, name))
 }
 
@@ -55,9 +53,9 @@ type documentFile struct{ *bytes.Reader }
 
 func (f *documentFile) Close() error               { return nil }
 func (f *documentFile) Stat() (fs.FileInfo, error) { return f, nil }
-func (f *documentFile) Name() string               { return sdk.SkillFile }
+func (f *documentFile) Name() string               { return skillspec.SkillFile }
 func (f *documentFile) Size() int64                { return f.Reader.Size() }
-func (f *documentFile) Mode() fs.FileMode          { return 0400 }
+func (f *documentFile) Mode() fs.FileMode          { return filesystem.ReadOnlyFileMode }
 func (f *documentFile) ModTime() time.Time         { return time.Time{} }
 func (f *documentFile) IsDir() bool                { return false }
 func (f *documentFile) Sys() any                   { return nil }

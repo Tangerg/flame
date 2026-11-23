@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/spf13/cobra"
@@ -42,8 +43,8 @@ func newRunsListCommand(provider runtimeProvider) *cobra.Command {
 		},
 	}
 	flags.register(command)
-	completeFlag(command, "session", completeSessionIDs(provider))
-	completeFlag(command, "status", completeRunStatus)
+	completeFlag(command, sessionFlag, completeSessionIDs(provider))
+	completeFlag(command, statusFlag, completeRunStatus)
 	return command
 }
 
@@ -57,18 +58,12 @@ type runsListFlags struct {
 }
 
 func (r *runsListFlags) register(command *cobra.Command) {
-	command.Flags().StringVarP(&r.sessionID, "session", "s", "", "Only runs from this session")
-	command.Flags().StringSliceVar(&r.statusNames, "status", nil, "Only these statuses: running, waiting, finished (repeatable)")
+	command.Flags().StringVarP(&r.sessionID, sessionFlag, "s", "", "Only runs from this session")
+	command.Flags().StringSliceVar(&r.statusNames, statusFlag, nil, "Only these statuses: running, waiting, finished (repeatable)")
 	command.Flags().BoolVar(&r.includeDescendants, "include-descendants", false, "Include subagent child runs")
-	command.Flags().StringVar(&r.cursor, "cursor", "", "Opaque cursor returned by the previous page")
-	command.Flags().IntVarP(
-		&r.limit,
-		"limit",
-		"n",
-		conversation.DefaultPageRows,
-		fmt.Sprintf("Maximum runs to return (up to %d)", conversation.MaximumPageRows),
-	)
-	command.Flags().BoolVar(&r.asJSON, "json", false, "Write the page as JSON")
+	command.Flags().StringVar(&r.cursor, cursorFlag, "", "Opaque cursor returned by the previous page")
+	addPageSizeFlag(command, &r.limit, "runs")
+	command.Flags().BoolVar(&r.asJSON, jsonFlag, false, "Write the page as JSON")
 }
 
 func (r *runsListFlags) execute(cmd *cobra.Command, provider runtimeProvider) error {
@@ -76,7 +71,7 @@ func (r *runsListFlags) execute(cmd *cobra.Command, provider runtimeProvider) er
 	if err != nil {
 		return err
 	}
-	pageSize, err := pageSizeFromFlag(cmd, "limit", r.limit)
+	pageSize, err := pageSizeFromFlag(cmd, r.limit)
 	if err != nil {
 		return err
 	}
@@ -150,7 +145,7 @@ func newRunsShowCommand(provider runtimeProvider) *cobra.Command {
 			return writeRunDetails(cmd, run)
 		},
 	}
-	command.Flags().BoolVar(&asJSON, "json", false, "Write the run as JSON")
+	command.Flags().BoolVar(&asJSON, jsonFlag, false, "Write the run as JSON")
 	command.ValidArgsFunction = completeFirstRunArgument(provider)
 	return command
 }
@@ -170,7 +165,7 @@ func writeRunDetails(cmd *cobra.Command, run conversation.Run) error {
 	if run.Status == protocol.RunStatusFinished {
 		outcome := string(run.Outcome.Status)
 		if detail := run.Outcome.Description(); detail != "" {
-			outcome += " · " + detail
+			outcome += format.Separator + detail
 		}
 		rows = append(rows, [2]string{"outcome", outcome})
 	}
@@ -204,7 +199,7 @@ func newRunsCancelCommand(provider runtimeProvider) *cobra.Command {
 			}
 			commandID := mutation.NewCommandID()
 			request := conversation.CancelRun{CommandID: commandID, RunID: args[0], Reason: reason}
-			replayPolicy, err := mutation.PolicyFromProfile(profile, time.Now)
+			replayPolicy, err := mutation.NewReplayPolicy(profile.IdempotencyLimits(), time.Now)
 			if err != nil {
 				return fmt.Errorf("runtime command replay policy: %w", err)
 			}
@@ -231,8 +226,8 @@ func newRunsCancelCommand(provider runtimeProvider) *cobra.Command {
 		},
 	}
 	command.Flags().StringVar(&reason, "reason", "canceled from the CLI", "Record why the run was canceled")
-	command.Flags().BoolVarP(&yes, "yes", "y", false, "Confirm cancellation")
-	command.Flags().BoolVar(&asJSON, "json", false, "Write the cancellation result as JSON")
+	command.Flags().BoolVarP(&yes, yesFlag, "y", false, "Confirm cancellation")
+	command.Flags().BoolVar(&asJSON, jsonFlag, false, "Write the cancellation result as JSON")
 	command.ValidArgsFunction = completeFirstRunArgument(provider)
 	return command
 }

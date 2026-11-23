@@ -4,8 +4,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
-	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/plugins/schedules/internal/schedule"
+	"github.com/Tangerg/flame/plugins/schedules/internal/scheduling"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 
 	"github.com/Tangerg/frame"
@@ -30,7 +30,7 @@ func define() (*plugincontract.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	runNowMethod, err := pluginmcp.NewMethod[wire.ItemInput, app.RunReference](frame.MethodConfig{Name: wire.RunNow, Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Capture and reconcile one manual Run through its original Runtime acceptance."})
+	runNowMethod, err := pluginmcp.NewMethod[wire.ItemInput, scheduling.RunReference](frame.MethodConfig{Name: wire.RunNow, Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Capture and reconcile one manual Run through its original Runtime acceptance."})
 	if err != nil {
 		return nil, err
 	}

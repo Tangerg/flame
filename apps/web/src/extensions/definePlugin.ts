@@ -21,7 +21,7 @@ export type PluginContext<Requires extends Requirements = Requirements> = Omit<
     readonly contributions: ContributionScope;
   };
 
-export type PluginSpec<Requires extends Requirements = {}, Provides extends Provisions = {}> = Pick<
+type PluginSpec<Requires extends Requirements = {}, Provides extends Provisions = {}> = Pick<
   PluginAuthoring<void, Requires, Provides>,
   "name" | "requires" | "provides"
 > & {

@@ -36,14 +36,11 @@ func desktopApplicationOptions(host *DesktopHost) (application.Options, error) {
 			Handler: handler,
 		},
 		Mac: application.MacOptions{
-			// One window, and closing it means quitting. Without this the process outlives
-			// its own window and the dock icon stays lit with nothing behind it.
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	}, nil
 }
 
-// The WebView owns preferences; native first paint projects the same system canvas.
 func desktopWindowBackground() application.RGBA {
 	if !systemPrefersDarkAppearance() {
 		return application.NewRGB(bootstrapLightRed, bootstrapLightGreen, bootstrapLightBlue)
@@ -51,7 +48,6 @@ func desktopWindowBackground() application.RGBA {
 	return application.NewRGB(bootstrapDarkRed, bootstrapDarkGreen, bootstrapDarkBlue)
 }
 
-// Hiding the native titlebar also removes macOS window controls, corners, and shadow.
 func desktopWindowOptions() application.WebviewWindowOptions {
 	return application.WebviewWindowOptions{
 		Title:            productName,

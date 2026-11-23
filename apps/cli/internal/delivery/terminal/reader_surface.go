@@ -17,17 +17,12 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
-// readerQuery is one authoritative read the reader can show. follows reports
-// which change events make the shown document stale; it is nil for a document
-// no event updates. A query without read only identifies a document its owner
-// updates in place.
 type readerQuery struct {
 	status  string
 	read    func(context.Context) (readerDocument, error)
 	follows func(changefeed.Event) bool
 }
 
-// followsTopic reads a topic's own change event and a resync that names it.
 func followsTopic(topics ...protocol.RuntimeTopic) func(changefeed.Event) bool {
 	return func(event changefeed.Event) bool {
 		if event.Type == protocol.RuntimeResync {
@@ -37,9 +32,6 @@ func followsTopic(topics ...protocol.RuntimeTopic) func(changefeed.Event) bool {
 	}
 }
 
-// readerSurface owns the reader dialog and the query behind its document, so
-// a change event re-reads exactly what is shown and no caller remembers the
-// selection that produced it.
 type readerSurface struct {
 	pane         *readerPane
 	dialog       *presentationDialog
@@ -84,7 +76,7 @@ func newReaderSurface(cfg readerSurfaceConfig) *readerSurface {
 	}
 	r.pane.onCopied = func() { r.status.note("copied reader text") }
 
-	field := base.NewText(base.TextConfig{Label: "Find in the reader", Placeholder: "text", Initial: "", Check: requiredText})
+	field := base.NewText(base.TextConfig{Label: "Find in the reader", Placeholder: findPlaceholder, Initial: "", Check: requiredText})
 	r.searchField = field
 	form := kit.FormConfig{
 		Behavior: base.FormConfig{
@@ -112,7 +104,7 @@ func newReaderSurface(cfg readerSurfaceConfig) *readerSurface {
 		},
 		Theme:  cfg.theme,
 		Glyphs: cfg.glyphs,
-		Where:  layout.Placement{Width: compactDialogWidth, Height: 7},
+		Where:  layout.Placement{Width: compactDialogWidth, Height: findDialogHeight},
 	})
 	r.listenForSearch()
 	return r
@@ -142,7 +134,6 @@ func (r *readerSurface) listenForSearch() {
 	})
 }
 
-// show reads query in the background and opens its document.
 func (r *readerSurface) show(query *readerQuery) {
 	r.load(query, query.read)
 }
@@ -163,7 +154,6 @@ func (r *readerSurface) load(query *readerQuery, read func(context.Context) (rea
 	})
 }
 
-// open shows a document query produced; query is nil for a static document.
 func (r *readerSurface) open(query *readerQuery, document readerDocument) {
 	r.openTarget(readerTarget{document: document})
 	r.shown = query
@@ -181,21 +171,18 @@ func (r *readerSurface) showing(query *readerQuery) bool {
 	return query != nil && r.shown == query && r.dialog.Open()
 }
 
-// update replaces the document query opened, keeping the reader's place.
 func (r *readerSurface) update(query *readerQuery, document readerDocument) {
 	if r.showing(query) {
 		r.pane.replace(document, r.pane.placementFor(readerKeepsPlace))
 	}
 }
 
-// follow re-reads the shown document when event makes it stale.
 func (r *readerSurface) follow(event changefeed.Event) {
 	if r.shown != nil && r.shown.follows != nil && r.shown.follows(event) {
 		r.reload()
 	}
 }
 
-// reload re-reads the shown document, retrying while the Runtime reconnects.
 func (r *readerSurface) reload() {
 	if r.shown == nil || r.shown.read == nil || !r.dialog.Open() {
 		return

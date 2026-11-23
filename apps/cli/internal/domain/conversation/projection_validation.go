@@ -10,9 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// Validate checks the CLI-owned construction of a Run projection. Runtime owns
-// every wire fact the adapter copied in, so only the closed values this package
-// builds itself are checked here; a zero Run is the state worth rejecting.
 func (r Run) Validate() error {
 	var problems []error
 	if err := r.Lineage.validate(r.ID); err != nil {
@@ -32,11 +29,6 @@ func (r RunLineage) validate(runID string) error {
 		}
 		return nil
 	case childRunLineage:
-		// The wire contract carries the three child edges together or not at all,
-		// and validates each as an identity, so the projection only has to answer
-		// what it derives itself: which kind this is, and that the tuple does not
-		// name its own run — the one edge rule the contract deliberately leaves to
-		// the child-creation transaction, and the one that would loop this fold.
 	case 0:
 		return errors.New("run lineage is not initialized")
 	default:
@@ -52,9 +44,6 @@ func (r RunLineage) validate(runID string) error {
 	}
 }
 
-// ValidateEvent checks the CLI projection of one runtime event before the
-// conversation folds it. Wire shape belongs to Runtime; what remains here is
-// the CLI's own block vocabulary and the folding facts it depends on.
 func ValidateEvent(event Event) error {
 	switch item := event.(type) {
 	case SegmentStarted:
@@ -115,8 +104,6 @@ func (b Block) validateLifecycle(completed bool) error {
 	return b.validateProjection()
 }
 
-// validateStatus admits a status the event allows for this kind: only a
-// streamed kind can be running, and a whole-only kind arrives completed.
 func (b Block) validateStatus(completed bool) error {
 	if !slices.Contains([]BlockStatus{BlockStatusRunning, BlockStatusCompleted, BlockStatusIncomplete}, b.Status) {
 		return fmt.Errorf("block %s has invalid status %q", b.ID, b.Status)
@@ -136,8 +123,6 @@ func (b Block) validateStatus(completed bool) error {
 	return nil
 }
 
-// validateEnvelope checks the block vocabulary this package derives from a
-// Runtime Item: kind, status, and which projections each kind may carry.
 func (b Block) validateEnvelope(completed bool) error {
 	if err := b.validateStatus(completed); err != nil {
 		return err
@@ -174,8 +159,6 @@ func (b Block) validateAttachments() error {
 	return nil
 }
 
-// Validate checks an inline image the CLI decoded from Runtime content. Name
-// and MIME type are derived here, so their presentation contract is CLI-owned.
 func (i InlineImage) Validate() error {
 	var problems []error
 	if strings.TrimSpace(i.ID) == "" {
@@ -251,8 +234,6 @@ func (t ToolStatus) blockStatus() BlockStatus {
 	}
 }
 
-// validateUsageProgress protects the conversation fold: cumulative Run metering
-// may only move forward across the events and snapshots the CLI merges.
 func validateUsageProgress(previous, next Usage) error {
 	if err := validateModelUsageProgress("total", protocol.ModelUsage{
 		InputTokens: previous.InputTokens, OutputTokens: previous.OutputTokens,
@@ -302,9 +283,6 @@ func validateModelUsageProgress(label string, previous, next protocol.ModelUsage
 	}
 }
 
-// validateInterruptItem binds one pending interrupt to the transcript block
-// the CLI folded for it. The two projections come from different reads, so this
-// relationship is established here and nowhere else.
 func validateInterruptItem(interrupt Interrupt, block Block) error {
 	itemID := InterruptItemID(interrupt)
 	if block.ID != itemID {

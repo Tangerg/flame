@@ -19,13 +19,8 @@ import (
 
 const lostToolResult = "tool result unavailable because execution state was lost"
 
-// RecoveryStore exposes durable application facts and atomically applies the
-// recovery plan derived from them. It never validates executor payloads or
-// decides which Run tree survives.
 type RecoveryStore interface {
 	ToolResultPublications
-	// ListNonTerminalRuns returns the complete, unique set of constructed open
-	// Runs, with at most one root per Session. Storage owns this query contract.
 	ListNonTerminalRuns(ctx context.Context) ([]rundomain.Run, error)
 	ListPendingInterrupts(ctx context.Context) ([]Pending, error)
 	ListOpenModelInvocations(ctx context.Context) ([]OpenModelInvocation, error)
@@ -38,56 +33,33 @@ type RecoveryStore interface {
 	CommitRecovery(ctx context.Context, commit RecoveryCommit) error
 }
 
-// WaitingExecutionResumability is the recovery use case's narrow executor
-// probe. The Application supplies the exact durable continuation; an
-// unresumable verdict names why its opaque state cannot continue, while an
-// error means the probe itself was inconclusive and startup must stop without
-// writes.
+// An error means the probe was inconclusive and startup must stop without writes.
 type WaitingExecutionResumability interface {
 	CanResumeWaitingExecution(ctx context.Context, continuation ExecutionContinuation) (WaitingResumption, error)
 }
 
-// recoveryAdmissions provides the same per-Session writer boundary used by
-// live Run and Session mutations. Recovery skips a Session when another
-// Runtime process still owns it; such a Run is live, not abandoned.
 type recoveryAdmissions interface {
 	AcquireRecoverySession(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error)
 }
 
-// RecoveryCommit is the complete atomic write-set for one ownership-scoped
-// reconciliation. LostRuns retain the exact non-terminal aggregate and its
-// child-before-parent replacement. Checkpoint and callback cleanup name only
-// Sessions whose writer lease was acquired.
 type RecoveryCommit struct {
 	state RecoveryCommitInput
 }
 
-// RecoveryCommitInput is the unvalidated material [NewRecoveryCommit] freezes.
-// It is a value rather than a parameter list because its two Session-identity
-// members carry opposite checkpoint authority and must not be transposable.
+// A value because its two Session-identity members carry opposite checkpoint
+// authority and must not be transposable.
 type RecoveryCommitInput struct {
-	LostRuns                []rundomain.Replacement
-	ItemReplacements        []transcript.Replacement
-	ConversationTransitions []RecoveryConversationTransition
-	ModelInvocations        []ModelInvocationRecovery
-	IndependentEndpoints    []modelref.EndpointObservation
-	ToolInvocations         []ToolInvocationRecovery
-	// DeleteInterrupts names every lost root's interrupt record, including one
-	// hidden in the resuming state after an answer claim; deletion is idempotent.
-	DeleteInterrupts []identity.RunID
-	// PreservedSessionIDs names waiting trees whose compatible checkpoint keeps
-	// them live. Together with lost-tree Sessions it owns the exact callback
-	// cleanup scope.
-	PreservedSessionIDs []identity.SessionID
-	// DeleteCheckpointSessionIDs names recovered lost trees. A preserved waiting
-	// tree is intentionally absent so its opaque checkpoint remains available.
+	LostRuns                   []rundomain.Replacement
+	ItemReplacements           []transcript.Replacement
+	ConversationTransitions    []RecoveryConversationTransition
+	ModelInvocations           []ModelInvocationRecovery
+	IndependentEndpoints       []modelref.EndpointObservation
+	ToolInvocations            []ToolInvocationRecovery
+	DeleteInterrupts           []identity.RunID
+	PreservedSessionIDs        []identity.SessionID
 	DeleteCheckpointSessionIDs []identity.SessionID
 }
 
-// RecoveryConversationTransition closes the model context for one lost Run
-// tree. ExpectedCount is the boot snapshot's durable watermark; Messages is
-// empty when the context was already closed, or one Tool message containing an
-// error result for every unresolved provider ToolCall.
 type RecoveryConversationTransition struct {
 	RootRunID     identity.RunID
 	SessionID     identity.SessionID
@@ -95,10 +67,6 @@ type RecoveryConversationTransition struct {
 	Messages      []corechat.Message
 }
 
-// Recovery owns the application policy that reconciles Run trees abandoned by
-// a dead Runtime process. Each pass claims Session writer ownership before
-// re-reading candidates; CommitRecovery applies the resulting write-set
-// atomically and Run transitions remain CAS guarded by storage.
 type Recovery struct {
 	store                RecoveryStore
 	subtreeCancellations *Cancellations
@@ -108,7 +76,6 @@ type Recovery struct {
 	now                  func() time.Time
 }
 
-// NewRecovery constructs the Run ownership recovery use case.
 func NewRecovery(
 	store RecoveryStore,
 	subtreeCancellations *Cancellations,
@@ -141,9 +108,6 @@ func NewRecovery(
 	}, nil
 }
 
-// Reconcile preserves only complete waiting trees whose durable hand-off
-// and opaque executor checkpoint remain coherent. Every other non-terminal tree
-// is recovered as run_lost in one application transaction.
 func (r *Recovery) Reconcile(ctx context.Context) (int, error) {
 	if err := r.subtreeCancellations.ReviveAcceptedSubtreeCancellations(ctx); err != nil {
 		return 0, err
@@ -168,9 +132,6 @@ func (r *Recovery) Reconcile(ctx context.Context) (int, error) {
 	return reconciled, nil
 }
 
-// recoverySessionClaims owns the Session writer claims for one reconciliation
-// pass. The claimed snapshot and release stack cannot be separated, and release
-// is exact-once across every planning or commit failure.
 type recoverySessionClaims struct {
 	active     []rundomain.Run
 	sessionIDs map[identity.SessionID]struct{}
@@ -183,7 +144,6 @@ func (r *recoverySessionClaims) includes(sessionID identity.SessionID) bool {
 	return ok
 }
 
-// activeRoots names the tree root of every claimed active Run with its Session.
 func (r *recoverySessionClaims) activeRoots() map[identity.RunID]identity.SessionID {
 	roots := make(map[identity.RunID]identity.SessionID, len(r.active))
 	for _, value := range r.active {
@@ -202,11 +162,8 @@ func (r *recoverySessionClaims) release() {
 	}
 }
 
-// publishRecoveredReadModels reports only the durable fact scopes this recovery
-// write-set can change. Periodic survivor recovery commits through this Runtime's
-// own SQLite connection, so PRAGMA data_version deliberately cannot observe it;
-// without an application notice, already-mounted clients would remain pinned to
-// the dead owner's Run/HITL projection even after the database reached RunLost.
+// Survivor recovery commits through this Runtime's own SQLite connection, which
+// PRAGMA data_version cannot observe, so clients need an explicit notice.
 func (r *Recovery) publishRecoveredReadModels(commit RecoveryCommit) {
 	type sessionChanges struct {
 		runIDs  []identity.RunID

@@ -48,14 +48,14 @@ func renderToolMarkdown(b *strings.Builder, item protocol.ArtifactItem) error {
 		return fmt.Errorf("encode call record: %w", err)
 	}
 	b.WriteString("## Tool call\n\n### Call record\n\n")
-	writeMarkdownCode(b, "json", string(record))
+	writeMarkdownCode(b, fenceJSON, string(record))
 	if result == nil {
 		b.WriteString("### Result\n\nNo result was recorded.\n\n")
 		return nil
 	}
 	if text, ok := result.(string); ok {
 		b.WriteString("### Result (text)\n\n")
-		writeMarkdownCode(b, "text", text)
+		writeMarkdownCode(b, fenceText, text)
 		return nil
 	}
 	encoded, err := json.Marshal(result, json.Deterministic(true), jsontext.WithIndent("  "))
@@ -63,12 +63,17 @@ func renderToolMarkdown(b *strings.Builder, item protocol.ArtifactItem) error {
 		return fmt.Errorf("encode result: %w", err)
 	}
 	b.WriteString("### Result (JSON)\n\n")
-	writeMarkdownCode(b, "json", string(encoded))
+	writeMarkdownCode(b, fenceJSON, string(encoded))
 	return nil
 }
 
-// Tool values remain literal evidence even when they contain Markdown fences,
-// headings or HTML. A longer delimiter cannot be closed by the captured text.
+// A delimiter longer than any fence in the captured text keeps tool values
+// literal.
+const (
+	fenceJSON = "json"
+	fenceText = "text"
+)
+
 func writeMarkdownCode(b *strings.Builder, language, text string) {
 	longest, consecutive := minimumMarkdownFenceLength-1, 0
 	for index := range len(text) {

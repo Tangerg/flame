@@ -6,24 +6,25 @@ import (
 	"errors"
 	"strings"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
-	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+	"github.com/Tangerg/flame/plugins/knowledgebase/internal/knowledge"
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/content"
 	"github.com/Tangerg/scope/core/tool"
 )
 
-// The Tool names the model sees.
 const (
 	searchKnowledgeTool = "search_knowledge"
 	listDocumentsTool   = "list_knowledge_documents"
 	readDocumentTool    = "read_knowledge_document"
 )
+
+const modelContextPassages = 4
 
 func newServer(library *library) (*sdk.Server, error) {
 	if library == nil {
@@ -118,13 +119,13 @@ func (l *library) contribute(ctx context.Context, input pluginsdk.ModelContextRe
 	if err := input.Validate(); err != nil {
 		return pluginsdk.ModelContextResult{}, err
 	}
-	if input.Use != modelchoice.Interaction || input.UserMessage == nil || strings.TrimSpace(input.UserMessage.Text()) == "" {
+	if input.Use != flamemodel.Interaction || input.UserMessage == nil || strings.TrimSpace(input.UserMessage.Text()) == "" {
 		return pluginsdk.ModelContextResult{Content: []content.Block{}}, nil
 	}
 	query := input.UserMessage.Text()
 	runes := []rune(query)
 	query = string(runes[max(0, len(runes)-knowledge.MaxQueryRunes):])
-	matches, err := l.search(ctx, wire.SearchInput{Query: query, Limit: 4})
+	matches, err := l.search(ctx, wire.SearchInput{Query: query, Limit: modelContextPassages})
 	if err != nil {
 		return pluginsdk.ModelContextResult{}, err
 	}

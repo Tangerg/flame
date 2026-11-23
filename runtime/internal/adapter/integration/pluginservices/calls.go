@@ -65,8 +65,6 @@ func (c *installedCall) resolve(ctx context.Context) (plugins.ContributionBindin
 	return c.calls.resolveContribution(ctx, r)
 }
 
-// Runtime-selected model policies belong to the host composition, not to the
-// invoking plugin's cross-plugin requirements. Both still validate current bytes.
 func (c *CommandCalls) resolveContribution(ctx context.Context, r plugins.CallRequest) (plugins.ContributionBinding, error) {
 	snapshot, found, err := c.installations.Get(ctx, r.Installation)
 	if err != nil {
@@ -102,15 +100,19 @@ func (c *installedCall) accepts(record plugin.CommandBinding) error {
 
 func (c *installedCall) target(plugins.ContributionBinding) framecall.Target { return c.request.Target }
 
+func (c *installedCall) route() commandRoute {
+	return commandRoute{method: c.request.Method, input: c.request.Input, resolve: c.resolve, target: c.target, accepts: c.accepts}
+}
+
 func (c *installedCall) Invoke(ctx context.Context) (framevalue.JSON, error) {
 	if c.Kind() == frame.Command {
-		reply, err := invokeRawCommand(ctx, c.calls, c.request.Method, c.request.Input, framevalue.JSON.Validate, c.accepts, c.resolve, func(ctx context.Context, binding plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
+		reply, err := invokeRawCommand(ctx, c.calls, c.route(), framevalue.JSON.Validate, func(ctx context.Context, binding plugins.ContributionBinding, session *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
 			metadata, release, err := c.calls.pool.OpenRPC(ctx, binding.ServerID, session)
 			if err != nil {
 				return metadata, nil, err
 			}
 			return metadata, func() error { release(); return nil }, nil
-		}, c.target)
+		})
 		return reply.value, err
 	}
 	ctx, query, err := c.openQuery(ctx)
@@ -121,8 +123,6 @@ func (c *installedCall) Invoke(ctx context.Context) (framevalue.JSON, error) {
 	return query.method.InvokeWithMetadata(ctx, "", c.request.Input, query.metadata)
 }
 
-// openedQuery is a query bound to a borrowed session of its resolved
-// contribution under a captured invocation.
 type openedQuery struct {
 	location plugins.ContributionBinding
 	session  *sdk.ClientSession
@@ -182,8 +182,6 @@ func validateInput(ctx context.Context, binding *pluginmcp.Binding, input framev
 	return err
 }
 
-// callDelivery is how the caller consumes a call's outcome; it must match
-// whether the declared method streams events.
 type callDelivery uint8
 
 const (
@@ -195,8 +193,6 @@ func (d callDelivery) admits(method frame.MethodDescriptor) bool {
 	return (len(method.Stream) != 0) == (d == streamedCall)
 }
 
-// refuseHostOwnedContract keeps a client from calling a contract whose
-// authority only the host can grant.
 func refuseHostOwnedContract(reference string) error {
 	switch reference {
 	case mcpconnector.Reference:

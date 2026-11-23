@@ -1,7 +1,7 @@
 import { type Message } from "@/features/agent/public/sessionView";
 import { type InputImage } from "@/features/composer/public/input";
 import { flattenText } from "@/features/agent/public/messageContent";
-export interface MessageDraftContent {
+interface MessageDraftContent {
   text: string;
   images: readonly InputImage[];
 }

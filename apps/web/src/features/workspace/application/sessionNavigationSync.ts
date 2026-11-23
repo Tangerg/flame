@@ -3,7 +3,7 @@ type AgentSessionListener = (sessionId: string) => void;
 
 type AgentSessionLifecycleListener = (state: AgentOpenSessions) => void;
 
-export interface WorkspaceSessionNavigationPorts {
+interface WorkspaceSessionNavigationPorts {
   getActiveSessionId: () => string;
   getLifecycleSnapshot: () => AgentOpenSessions;
   subscribeActiveSessionId: (listener: AgentSessionListener) => () => void;
@@ -13,7 +13,7 @@ export interface WorkspaceSessionNavigationPorts {
   forgetSessionScopes: (openSessionIds: string[]) => void;
 }
 
-export function syncWorkspaceSessionLifecycle(
+function syncWorkspaceSessionLifecycle(
   state: AgentOpenSessions,
   ports: Pick<WorkspaceSessionNavigationPorts, "forgetSessionScopes">,
 ): void {

@@ -12,7 +12,6 @@ import (
 
 var errDataDirectoryInUse = errors.New("runtime data directory is already in use")
 
-// dataDirectory owns the physical directory until every Runtime resource closes.
 type dataDirectory struct {
 	directory string
 	lease     *filesystem.DirectoryLease
@@ -33,7 +32,7 @@ func openDataDirectory(ctx context.Context, directory string) (*dataDirectory, e
 		return nil, errors.New("runtime ownership: data directory must be absolute")
 	}
 	cleaned := filepath.Clean(directory)
-	if err := os.MkdirAll(cleaned, 0o700); err != nil {
+	if err := os.MkdirAll(cleaned, filesystem.PrivateDirectoryMode); err != nil {
 		return nil, fmt.Errorf("runtime ownership: create data directory %q: %w", cleaned, err)
 	}
 	canonical, err := filepath.EvalSymlinks(cleaned)
@@ -59,7 +58,7 @@ func openDataDirectory(ctx context.Context, directory string) (*dataDirectory, e
 	if err := ctx.Err(); err != nil {
 		return nil, errors.Join(err, lease.Release())
 	}
-	if err := os.Chmod(canonical, 0o700); err != nil {
+	if err := os.Chmod(canonical, filesystem.PrivateDirectoryMode); err != nil {
 		return nil, errors.Join(fmt.Errorf("runtime ownership: protect data directory %q: %w", canonical, err), lease.Release())
 	}
 	return &dataDirectory{directory: canonical, lease: lease, identity: identity}, nil

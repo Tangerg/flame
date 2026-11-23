@@ -7,7 +7,7 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/plugins/guardrails/contracts"
-	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
+	"github.com/Tangerg/flame/plugins/guardrails/internal/guardrail"
 	"github.com/Tangerg/flame/plugins/guardrails/internal/wire"
 )
 

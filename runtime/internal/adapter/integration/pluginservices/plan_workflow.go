@@ -21,7 +21,7 @@ func (c *CommandCalls) PlanAvailable(ctx context.Context) (bool, error) {
 	return found, err
 }
 
-func (c *CommandCalls) AuthorPlan(ctx context.Context, source extension.ContributionSource, proposal planworkflow.Proposal) (planworkflow.AuthoredDocument, error) {
+func (c *CommandCalls) AuthorPlan(ctx context.Context, source extension.ContributionSource, proposal planworkflow.Proposal) (_ planworkflow.AuthoredDocument, returned error) {
 	contract, err := planmcp.Contract()
 	if err != nil {
 		return planworkflow.AuthoredDocument{}, err
@@ -30,7 +30,7 @@ func (c *CommandCalls) AuthorPlan(ctx context.Context, source extension.Contribu
 	if err != nil {
 		return planworkflow.AuthoredDocument{}, err
 	}
-	defer borrow.Close()
+	defer func() { returned = errors.Join(returned, borrow.Close()) }()
 	method, err := planmcp.AuthorMethod()
 	if err != nil {
 		return planworkflow.AuthoredDocument{}, err
@@ -43,7 +43,7 @@ func (c *CommandCalls) AuthorPlan(ctx context.Context, source extension.Contribu
 	return planworkflow.AuthoredDocument{Document: document, Source: location.ContributionSource()}, err
 }
 
-func (c *CommandCalls) ReviewPlan(ctx context.Context, source extension.ContributionSource, document planworkflow.Document) (string, error) {
+func (c *CommandCalls) ReviewPlan(ctx context.Context, source extension.ContributionSource, document planworkflow.Document) (_ string, returned error) {
 	contract, err := planmcp.Contract()
 	if err != nil {
 		return "", err
@@ -52,7 +52,7 @@ func (c *CommandCalls) ReviewPlan(ctx context.Context, source extension.Contribu
 	if err != nil {
 		return "", err
 	}
-	defer borrow.Close()
+	defer func() { returned = errors.Join(returned, borrow.Close()) }()
 	method, err := planmcp.ReviewMethod()
 	if err != nil {
 		return "", err

@@ -31,8 +31,6 @@ func (i *InteractionExecutor) StageUncertainExecution(ctx context.Context, activ
 	return i.stageUncertainRecovery(ctx, plan)
 }
 
-// uncertainRecoveryPlan is a retained root checkpoint whose receipted Tool
-// calls can still be verified against their original sources.
 type uncertainRecoveryPlan struct {
 	rootID       scoperun.ProcessID
 	checkpoint   interactionCheckpointState
@@ -43,8 +41,6 @@ type uncertainRecoveryPlan struct {
 	continuation runs.ExecutionContinuation
 }
 
-// planUncertainRecovery reports unavailable, not an error, for every missing
-// proof that ordinary Run-loss recovery already settles.
 func (i *InteractionExecutor) planUncertainRecovery(ctx context.Context, active runs.ActiveExecution) (uncertainRecoveryPlan, bool, error) {
 	root := active.Run
 	retained, checkpoint, rootID, available, err := i.loadRetainedRootCheckpoint(ctx, root)
@@ -89,8 +85,6 @@ func (i *InteractionExecutor) planUncertainRecovery(ctx context.Context, active 
 	}, true, nil
 }
 
-// loadRetainedRootCheckpoint reads the root checkpoint and the acknowledged
-// tree it extends; a missing or foreign-build checkpoint is unavailable.
 func (i *InteractionExecutor) loadRetainedRootCheckpoint(ctx context.Context, root run.Run) (runs.ExecutorCheckpoint, interactionCheckpointState, scoperun.ProcessID, bool, error) {
 	start := interactionStartID(root.SessionID(), root.ID())
 	if !start.Valid() {
@@ -122,8 +116,6 @@ func (i *InteractionExecutor) loadRetainedRootCheckpoint(ctx context.Context, ro
 	return retained, checkpoint, rootID, true, nil
 }
 
-// stageUncertainRecovery assembles the recovered Interaction and verifies its
-// captured Tool settlements before the executor can be published.
 func (i *InteractionExecutor) stageUncertainRecovery(ctx context.Context, plan uncertainRecoveryPlan) (_ runs.UncertainRecovery, resultErr error) {
 	finish, err := i.sessions.beginAssembly()
 	if err != nil {
@@ -168,8 +160,6 @@ func (i *InteractionExecutor) stageUncertainRecovery(ctx context.Context, plan u
 	return runs.StagedRecovery{Ref: plan.ref, MemberID: plan.rootID.String(), Tools: plan.tools}, nil
 }
 
-// recoverSegmentTools reports receipted false when any active call lacks an
-// original receipt; a mismatched Item is a contradiction, not unavailability.
 func recoverSegmentTools(active runs.ActiveExecution, checkpoint interactionCheckpointState) ([]runs.RecoveredTool, bool, error) {
 	var tools []runs.RecoveredTool
 	for _, invocation := range active.Tools {
@@ -237,10 +227,6 @@ func (i interactionCheckpointState) recoverableReceipts(inspection scoperun.Tree
 	return proofs, nil
 }
 
-// receiptsBoundRecovery reports whether retained receipts cover every
-// unresolved Effect. A committed Tool settlement can leave the program running
-// before its next step commits; an explicitly paused or waiting process is
-// excluded.
 func receiptsBoundRecovery(inspection scoperun.TreeInspection, rootID scoperun.ProcessID, proofs map[scoperun.EffectID]toolCallCapture) bool {
 	root, found := inspection.Process(rootID)
 	if !found || (root.Status != scoperun.StatusRunning && root.Status != scoperun.StatusWaiting && root.Status != scoperun.StatusDraining) {
@@ -338,8 +324,6 @@ func (i *InteractionExecutor) originalSourcesAvailable(ctx context.Context, chec
 		if err != nil {
 			return false, err
 		}
-		// The ownership sweep can close the lost Core Run without consuming or
-		// replaying the unavailable plugin's original private receipt.
 		if !available {
 			return false, nil
 		}

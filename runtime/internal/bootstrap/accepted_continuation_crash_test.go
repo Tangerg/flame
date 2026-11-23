@@ -17,10 +17,11 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
-	runapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 	modernsqlite "modernc.org/sqlite"
 )
@@ -63,11 +64,11 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 		}
 	}
 	home := os.Getenv("FLAME_HOME")
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
-	var waitingHead runapp.ExecutionTreeHead
+	var waitingHead runsapp.ExecutionTreeHead
 	installCrash := func() {
 		tx := stores.Transactor
 		stores.Transactor = func(ctx context.Context, apply func(context.Context) error) error {
@@ -140,7 +141,7 @@ func TestAcceptedContinuationCrashHelper(t *testing.T) {
 		if err := host.Close(); err != nil {
 			t.Fatal(err)
 		}
-		stores, err = persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+		stores, err = persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -262,14 +263,12 @@ func testAcceptedContinuationSurvivesRestart(t *testing.T, phase string) {
 	}
 	accepted := bindings[0]
 	record, err := stores.CommandAcceptances.Lookup(t.Context(), acceptedCommandKey)
-	if err != nil || record.Use != runapp.CommandKeyAccepted || record.Acceptance.Operation != "resume" || record.Acceptance.SegmentID != accepted.Segments[len(accepted.Segments)-1].SegmentID || record.Acceptance.UserItemID != accepted.InputItemID {
+	if err != nil || record.Use != runsapp.CommandKeyAccepted || record.Acceptance.Operation != "resume" || record.Acceptance.SegmentID != accepted.Segments[len(accepted.Segments)-1].SegmentID || record.Acceptance.UserItemID != accepted.InputItemID {
 		t.Fatalf("crash lost original command acceptance: %+v,%v", record, err)
 	}
 	if _, err := os.Stat(filepath.Join(home, "effect.txt")); !os.IsNotExist(err) {
 		t.Fatalf("unactivated Tool executed: %v", err)
 	}
-	// Forgetting a rule after acceptance must survive revival: only the original
-	// acceptance transaction may create it.
 	rules, err := stores.ApprovalRules.Visible(t.Context(), accepted.SessionID, home, approval.MaximumVisibleRules+1)
 	if err != nil {
 		t.Fatal(err)
@@ -371,7 +370,7 @@ func acceptedCrashStores(t *testing.T, phase string) (string, *persistence.Bundl
 			t.Fatal(err)
 		}
 	}
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +384,7 @@ func TestResumeAcceptanceRollbackSurvivesAbruptRestart(t *testing.T) {
 	if err != nil || len(bindings) != 0 {
 		t.Fatalf("rollback kept acceptance: %+v,%v", bindings, err)
 	}
-	if record, err := stores.CommandAcceptances.Lookup(t.Context(), acceptedCommandKey); err != nil || record.Use == runapp.CommandKeyAccepted {
+	if record, err := stores.CommandAcceptances.Lookup(t.Context(), acceptedCommandKey); err != nil || record.Use == runsapp.CommandKeyAccepted {
 		t.Fatalf("rollback kept command acceptance: %+v,%v", record, err)
 	}
 	cfg := protocolRuntimeConfig(t, stores, acceptedCrashModel(t, home))

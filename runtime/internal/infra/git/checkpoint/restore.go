@@ -10,12 +10,6 @@ import (
 	"strings"
 )
 
-// Restore checks out the runID snapshot after archiving the currently admitted
-// files. It refuses target paths that overlap unarchived material, including
-// ignored files, oversized files, and directories that obstruct target files.
-// The pre-restore commit preserves the admitted current state for recovery.
-// Store and Application guards serialize Runtime writers; external filesystem
-// writers do not participate, so this is not a filesystem transaction.
 func (s *Store) Restore(ctx context.Context, sessionID, cwd, runID string) error {
 	if err := s.checkStorageBoundary(ctx, cwd); err != nil {
 		return err
@@ -44,14 +38,12 @@ func (s *Store) Restore(ctx context.Context, sessionID, cwd, runID string) error
 	// Checkout also checks for changes after the archive and preflight. Unlike
 	// reset --hard (or --merge), --no-overwrite-ignore protects ignored blockers.
 	// Once checkout starts, any error conservatively retains the recovery intent.
-	if _, err := s.git(ctx, gitDir, cwd, "checkout", "-q", "--detach", "--no-overwrite-ignore", tagFor(runID)); err != nil {
+	if err := s.git(ctx, gitDir, cwd, "checkout", "-q", "--detach", "--no-overwrite-ignore", tagFor(runID)); err != nil {
 		return fmt.Errorf("%w: %w", ErrRestoreIncomplete, err)
 	}
 	return nil
 }
 
-// requireBoundary reports ErrUnavailable unless this workspace's shadow
-// repository holds the runID boundary.
 func (s *Store) requireBoundary(ctx context.Context, gitDir, cwd, runID string) error {
 	present, err := repoExists(gitDir)
 	if err != nil {
@@ -67,7 +59,7 @@ func (s *Store) requireBoundary(ctx context.Context, gitDir, cwd, runID string) 
 	if !matches {
 		return ErrUnavailable
 	}
-	if _, err := s.git(ctx, gitDir, cwd, "rev-parse", "-q", "--verify", "refs/tags/"+tagFor(runID)); err != nil {
+	if err := s.git(ctx, gitDir, cwd, "rev-parse", "-q", "--verify", "refs/tags/"+tagFor(runID)); err != nil {
 		if gitExitCode(err) == 1 {
 			return ErrUnavailable
 		}

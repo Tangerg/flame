@@ -46,9 +46,6 @@ func (s *ExecutorCheckpointStore) LoadExecutionTree(ctx context.Context, session
 	})
 }
 
-// SaveExecutionTree advances one tree head by compare-and-swap on the writer and
-// digest the executor last observed. Replaying the exact committed head is a
-// no-op; any other reuse of a commit identity is a conflict.
 func (s *ExecutorCheckpointStore) SaveExecutionTree(ctx context.Context, update runs.ExecutionTreeUpdate) error {
 	if err := update.Validate(); err != nil {
 		return err
@@ -59,20 +56,19 @@ func (s *ExecutorCheckpointStore) SaveExecutionTree(ctx context.Context, update 
 		if err != nil {
 			return err
 		}
-		if found && update.PreviousWriter == next.Writer && current.Writer != next.Writer {
-			return runs.ErrExecutionTreeWriterConflict
-		}
-		committedDigest, committed, err := s.committedTreeDigest(ctx, next.RootID, next.CommitID)
+		recordedDigest, recorded, err := s.committedTreeDigest(ctx, next.RootID, next.CommitID)
 		if err != nil {
 			return err
 		}
-		if committed {
-			if found && committedDigest == next.CommitDigest && current.SameCommit(next) {
-				return nil
-			}
-			return runs.ErrExecutionTreeCommitConflict
+		var observed runs.ExecutionTreeObservation
+		if found {
+			observed = runs.ObservedExecutionTree(current)
 		}
-		if err := admitTreeAdvance(current, found, update); err != nil {
+		if recorded {
+			observed = observed.WithRecordedCommit(recordedDigest)
+		}
+		replayed, err := update.Admit(observed)
+		if err != nil || replayed {
 			return err
 		}
 		return s.writeExecutionTree(ctx, found, next)
@@ -86,20 +82,6 @@ func (s *ExecutorCheckpointStore) committedTreeDigest(ctx context.Context, rootI
 		return "", false, nil
 	}
 	return digest, err == nil, err
-}
-
-// admitTreeAdvance accepts a new commit only from the writer and digest the
-// update observed. The executor owns batch positions: one atomic append can
-// advance several records, and changing writers does not reset them.
-func admitTreeAdvance(current runs.ExecutionTreeHead, found bool, update runs.ExecutionTreeUpdate) error {
-	next := update.Head
-	if next.CommitID == "" || next.CommitDigest == "" || current.Writer != update.PreviousWriter {
-		return runs.ErrExecutionTreeWriterConflict
-	}
-	if current.Digest != update.PreviousDigest || next.Sequence == 0 || found && next.Sequence <= current.Sequence {
-		return runs.ErrExecutionTreeCommitConflict
-	}
-	return nil
 }
 
 func (s *ExecutorCheckpointStore) writeExecutionTree(ctx context.Context, found bool, next runs.ExecutionTreeHead) error {

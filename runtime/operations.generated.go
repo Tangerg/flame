@@ -8,318 +8,318 @@ import (
 	"iter"
 )
 
-func (r *binding) Discover(ctx context.Context, options protocol.CallOptions) (*protocol.DiscoverResponse, error) {
+func (r *Runtime) Discover(ctx context.Context, options protocol.CallOptions) (*protocol.DiscoverResponse, error) {
 	return r.invoke[struct{}, *protocol.DiscoverResponse](ctx, delivery.Name("runtime.discover"), struct{}{}, options.Metadata())
 }
-func (r *binding) ListSessionTrajectory(ctx context.Context, request protocol.ListSessionTrajectoryRequest, options protocol.CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error) {
+func (r *Runtime) ListSessionTrajectory(ctx context.Context, request protocol.ListSessionTrajectoryRequest, options protocol.CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error) {
 	return r.invoke[protocol.ListSessionTrajectoryRequest, *protocol.Page[protocol.TrajectoryEntry]](ctx, delivery.Name("sessions.trajectory"), request, options.Metadata())
 }
-func (r *binding) ExportTrajectory(ctx context.Context, request protocol.ExportTrajectoryRequest, options protocol.CallOptions) (*protocol.ExportTrajectoryResponse, error) {
+func (r *Runtime) ExportTrajectory(ctx context.Context, request protocol.ExportTrajectoryRequest, options protocol.CallOptions) (*protocol.ExportTrajectoryResponse, error) {
 	return r.invoke[protocol.ExportTrajectoryRequest, *protocol.ExportTrajectoryResponse](ctx, delivery.Name("sessions.exportTrajectory"), request, options.Metadata())
 }
-func (r *binding) ListSessions(ctx context.Context, request protocol.ListSessionsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Session], error) {
+func (r *Runtime) ListSessions(ctx context.Context, request protocol.ListSessionsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Session], error) {
 	return r.invoke[protocol.ListSessionsRequest, *protocol.Page[protocol.Session]](ctx, delivery.Name("sessions.list"), request, options.Metadata())
 }
-func (r *binding) GetSession(ctx context.Context, request protocol.GetSessionRequest, options protocol.CallOptions) (*protocol.Session, error) {
+func (r *Runtime) GetSession(ctx context.Context, request protocol.GetSessionRequest, options protocol.CallOptions) (*protocol.Session, error) {
 	return r.invoke[protocol.GetSessionRequest, *protocol.Session](ctx, delivery.Name("sessions.get"), request, options.Metadata())
 }
-func (r *binding) GetSessionSnapshot(ctx context.Context, request protocol.GetSessionSnapshotRequest, options protocol.CallOptions) (*protocol.SessionSnapshot, error) {
+func (r *Runtime) GetSessionSnapshot(ctx context.Context, request protocol.GetSessionSnapshotRequest, options protocol.CallOptions) (*protocol.SessionSnapshot, error) {
 	return r.invoke[protocol.GetSessionSnapshotRequest, *protocol.SessionSnapshot](ctx, delivery.Name("sessions.snapshot"), request, options.Metadata())
 }
-func (r *binding) CreateSession(ctx context.Context, request protocol.CreateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error) {
+func (r *Runtime) CreateSession(ctx context.Context, request protocol.CreateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error) {
 	return r.invoke[protocol.CreateSessionRequest, *protocol.Session](ctx, delivery.Name("sessions.create"), request, options.Metadata())
 }
-func (r *binding) UpdateSession(ctx context.Context, request protocol.UpdateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error) {
+func (r *Runtime) UpdateSession(ctx context.Context, request protocol.UpdateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error) {
 	return r.invoke[protocol.UpdateSessionRequest, *protocol.Session](ctx, delivery.Name("sessions.update"), request, options.Metadata())
 }
-func (r *binding) DeleteSession(ctx context.Context, request protocol.DeleteSessionRequest, options protocol.CommandOptions) error {
+func (r *Runtime) DeleteSession(ctx context.Context, request protocol.DeleteSessionRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.DeleteSessionRequest](ctx, delivery.Name("sessions.delete"), request, options.Metadata())
 }
-func (r *binding) ForkSession(ctx context.Context, request protocol.ForkSessionRequest, options protocol.CommandOptions) (*protocol.Session, error) {
+func (r *Runtime) ForkSession(ctx context.Context, request protocol.ForkSessionRequest, options protocol.CommandOptions) (*protocol.Session, error) {
 	return r.invoke[protocol.ForkSessionRequest, *protocol.Session](ctx, delivery.Name("sessions.fork"), request, options.Metadata())
 }
-func (r *binding) RollbackSession(ctx context.Context, request protocol.RollbackSessionRequest, options protocol.CommandOptions) (*protocol.RollbackSessionResponse, error) {
+func (r *Runtime) RollbackSession(ctx context.Context, request protocol.RollbackSessionRequest, options protocol.CommandOptions) (*protocol.RollbackSessionResponse, error) {
 	return r.invoke[protocol.RollbackSessionRequest, *protocol.RollbackSessionResponse](ctx, delivery.Name("sessions.rollback"), request, options.Metadata())
 }
-func (r *binding) ExportSession(ctx context.Context, request protocol.ExportSessionRequest, options protocol.CallOptions) (*protocol.ExportSessionResponse, error) {
+func (r *Runtime) ExportSession(ctx context.Context, request protocol.ExportSessionRequest, options protocol.CallOptions) (*protocol.ExportSessionResponse, error) {
 	return r.invoke[protocol.ExportSessionRequest, *protocol.ExportSessionResponse](ctx, delivery.Name("sessions.export"), request, options.Metadata())
 }
-func (r *binding) ImportSession(ctx context.Context, request protocol.ImportSessionRequest, options protocol.CommandOptions) (*protocol.ImportSessionResponse, error) {
+func (r *Runtime) ImportSession(ctx context.Context, request protocol.ImportSessionRequest, options protocol.CommandOptions) (*protocol.ImportSessionResponse, error) {
 	return r.invoke[protocol.ImportSessionRequest, *protocol.ImportSessionResponse](ctx, delivery.Name("sessions.import"), request, options.Metadata())
 }
-func (r *binding) ListModelEndpoints(ctx context.Context, request protocol.ListModelEndpointsRequest, options protocol.CallOptions) (*protocol.Page[protocol.ModelEndpointInvocation], error) {
+func (r *Runtime) ListModelEndpoints(ctx context.Context, request protocol.ListModelEndpointsRequest, options protocol.CallOptions) (*protocol.Page[protocol.ModelEndpointInvocation], error) {
 	return r.invoke[protocol.ListModelEndpointsRequest, *protocol.Page[protocol.ModelEndpointInvocation]](ctx, delivery.Name("modelInvocations.endpoints"), request, options.Metadata())
 }
-func (r *binding) ListModelInvocations(ctx context.Context, request protocol.ListModelInvocationsRequest, options protocol.CallOptions) (*protocol.Page[protocol.ModelInvocation], error) {
+func (r *Runtime) ListModelInvocations(ctx context.Context, request protocol.ListModelInvocationsRequest, options protocol.CallOptions) (*protocol.Page[protocol.ModelInvocation], error) {
 	return r.invoke[protocol.ListModelInvocationsRequest, *protocol.Page[protocol.ModelInvocation]](ctx, delivery.Name("modelInvocations.list"), request, options.Metadata())
 }
-func (r *binding) StartRun(ctx context.Context, request protocol.StartRunRequest, options protocol.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+func (r *Runtime) StartRun(ctx context.Context, request protocol.StartRunRequest, options protocol.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 	return r.invokeStream[protocol.StartRunRequest, *protocol.StartRunResponse, protocol.RunEvent](ctx, delivery.Name("runs.start"), request, options.Metadata())
 }
-func (r *binding) ResumeRun(ctx context.Context, request protocol.ResumeRunRequest, options protocol.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+func (r *Runtime) ResumeRun(ctx context.Context, request protocol.ResumeRunRequest, options protocol.RunCommandOptions) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 	return r.invokeStream[protocol.ResumeRunRequest, *protocol.ResumeRunResponse, protocol.RunEvent](ctx, delivery.Name("runs.resume"), request, options.Metadata())
 }
-func (r *binding) SubscribeRun(ctx context.Context, request protocol.SubscribeRunRequest, options protocol.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
+func (r *Runtime) SubscribeRun(ctx context.Context, request protocol.SubscribeRunRequest, options protocol.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 	return r.invokeStream[protocol.SubscribeRunRequest, *protocol.SubscribeRunResponse, protocol.RunEvent](ctx, delivery.Name("runs.subscribe"), request, options.Metadata())
 }
-func (r *binding) CancelRun(ctx context.Context, request protocol.CancelRunRequest, options protocol.CommandOptions) (*protocol.CancelRunResponse, error) {
+func (r *Runtime) CancelRun(ctx context.Context, request protocol.CancelRunRequest, options protocol.CommandOptions) (*protocol.CancelRunResponse, error) {
 	return r.invoke[protocol.CancelRunRequest, *protocol.CancelRunResponse](ctx, delivery.Name("runs.cancel"), request, options.Metadata())
 }
-func (r *binding) SteerRun(ctx context.Context, request protocol.SteerRunRequest, options protocol.CommandOptions) (*protocol.SteerRunResponse, error) {
+func (r *Runtime) SteerRun(ctx context.Context, request protocol.SteerRunRequest, options protocol.CommandOptions) (*protocol.SteerRunResponse, error) {
 	return r.invoke[protocol.SteerRunRequest, *protocol.SteerRunResponse](ctx, delivery.Name("runs.steer"), request, options.Metadata())
 }
-func (r *binding) GetRun(ctx context.Context, request protocol.GetRunRequest, options protocol.CallOptions) (*protocol.RunRef, error) {
+func (r *Runtime) GetRun(ctx context.Context, request protocol.GetRunRequest, options protocol.CallOptions) (*protocol.RunRef, error) {
 	return r.invoke[protocol.GetRunRequest, *protocol.RunRef](ctx, delivery.Name("runs.get"), request, options.Metadata())
 }
-func (r *binding) GetRunAcceptance(ctx context.Context, request protocol.GetRunAcceptanceRequest, options protocol.CallOptions) (*protocol.RunAcceptance, error) {
+func (r *Runtime) GetRunAcceptance(ctx context.Context, request protocol.GetRunAcceptanceRequest, options protocol.CallOptions) (*protocol.RunAcceptance, error) {
 	return r.invoke[protocol.GetRunAcceptanceRequest, *protocol.RunAcceptance](ctx, delivery.Name("runs.getAcceptance"), request, options.Metadata())
 }
-func (r *binding) ListRuns(ctx context.Context, request protocol.ListRunsRequest, options protocol.CallOptions) (*protocol.Page[protocol.RunRef], error) {
+func (r *Runtime) ListRuns(ctx context.Context, request protocol.ListRunsRequest, options protocol.CallOptions) (*protocol.Page[protocol.RunRef], error) {
 	return r.invoke[protocol.ListRunsRequest, *protocol.Page[protocol.RunRef]](ctx, delivery.Name("runs.list"), request, options.Metadata())
 }
-func (r *binding) ListInterrupts(ctx context.Context, request protocol.ListInterruptsRequest, options protocol.CallOptions) (*protocol.Page[protocol.PendingInterruptSet], error) {
+func (r *Runtime) ListInterrupts(ctx context.Context, request protocol.ListInterruptsRequest, options protocol.CallOptions) (*protocol.Page[protocol.PendingInterruptSet], error) {
 	return r.invoke[protocol.ListInterruptsRequest, *protocol.Page[protocol.PendingInterruptSet]](ctx, delivery.Name("interrupts.list"), request, options.Metadata())
 }
-func (r *binding) GetPlan(ctx context.Context, request protocol.GetPlanRequest, options protocol.CallOptions) (*protocol.Plan, error) {
+func (r *Runtime) GetPlan(ctx context.Context, request protocol.GetPlanRequest, options protocol.CallOptions) (*protocol.Plan, error) {
 	return r.invoke[protocol.GetPlanRequest, *protocol.Plan](ctx, delivery.Name("plan.get"), request, options.Metadata())
 }
-func (r *binding) ListItems(ctx context.Context, request protocol.ListItemsRequest, options protocol.CallOptions) (*protocol.ListItemsResponse, error) {
+func (r *Runtime) ListItems(ctx context.Context, request protocol.ListItemsRequest, options protocol.CallOptions) (*protocol.ListItemsResponse, error) {
 	return r.invoke[protocol.ListItemsRequest, *protocol.ListItemsResponse](ctx, delivery.Name("items.list"), request, options.Metadata())
 }
-func (r *binding) ResolveWorkspace(ctx context.Context, request protocol.ResolveWorkspaceRequest, options protocol.CallOptions) (*protocol.WorkspaceInfo, error) {
+func (r *Runtime) ResolveWorkspace(ctx context.Context, request protocol.ResolveWorkspaceRequest, options protocol.CallOptions) (*protocol.WorkspaceInfo, error) {
 	return r.invoke[protocol.ResolveWorkspaceRequest, *protocol.WorkspaceInfo](ctx, delivery.Name("workspaces.resolve"), request, options.Metadata())
 }
-func (r *binding) ListWorkspaces(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error) {
+func (r *Runtime) ListWorkspaces(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.WorkspaceSummary]](ctx, delivery.Name("workspaces.list"), struct{}{}, options.Metadata())
 }
-func (r *binding) ListWorkspaceFileChanges(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.WorkspaceFileChange], error) {
+func (r *Runtime) ListWorkspaceFileChanges(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.WorkspaceFileChange], error) {
 	return r.invoke[protocol.WorkspaceQuery, *protocol.Page[protocol.WorkspaceFileChange]](ctx, delivery.Name("workspace.changes.list"), request, options.Metadata())
 }
-func (r *binding) GetWorkspaceDiff(ctx context.Context, request protocol.GetDiffRequest, options protocol.CallOptions) (*protocol.Diff, error) {
+func (r *Runtime) GetWorkspaceDiff(ctx context.Context, request protocol.GetDiffRequest, options protocol.CallOptions) (*protocol.Diff, error) {
 	return r.invoke[protocol.GetDiffRequest, *protocol.Diff](ctx, delivery.Name("workspace.diff.get"), request, options.Metadata())
 }
-func (r *binding) SearchWorkspaceFiles(ctx context.Context, request protocol.GrepRequest, options protocol.CallOptions) (*protocol.GrepResult, error) {
+func (r *Runtime) SearchWorkspaceFiles(ctx context.Context, request protocol.GrepRequest, options protocol.CallOptions) (*protocol.GrepResult, error) {
 	return r.invoke[protocol.GrepRequest, *protocol.GrepResult](ctx, delivery.Name("workspace.files.search"), request, options.Metadata())
 }
-func (r *binding) ListWorkspaceFiles(ctx context.Context, request protocol.ListFilesRequest, options protocol.CallOptions) (*protocol.FileListPage, error) {
+func (r *Runtime) ListWorkspaceFiles(ctx context.Context, request protocol.ListFilesRequest, options protocol.CallOptions) (*protocol.FileListPage, error) {
 	return r.invoke[protocol.ListFilesRequest, *protocol.FileListPage](ctx, delivery.Name("workspace.files.list"), request, options.Metadata())
 }
-func (r *binding) ReadWorkspaceFile(ctx context.Context, request protocol.ReadFileRequest, options protocol.CallOptions) (*protocol.FileContent, error) {
+func (r *Runtime) ReadWorkspaceFile(ctx context.Context, request protocol.ReadFileRequest, options protocol.CallOptions) (*protocol.FileContent, error) {
 	return r.invoke[protocol.ReadFileRequest, *protocol.FileContent](ctx, delivery.Name("workspace.files.read"), request, options.Metadata())
 }
-func (r *binding) SubscribeRuntime(ctx context.Context, request protocol.RuntimeSubscribeRequest, options protocol.SubscriptionOptions) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error) {
+func (r *Runtime) SubscribeRuntime(ctx context.Context, request protocol.RuntimeSubscribeRequest, options protocol.SubscriptionOptions) (*protocol.RuntimeSubscribeResponse, iter.Seq2[protocol.RuntimeEvent, error], error) {
 	return r.invokeStream[protocol.RuntimeSubscribeRequest, *protocol.RuntimeSubscribeResponse, protocol.RuntimeEvent](ctx, delivery.Name("runtime.subscribe"), request, options.Metadata())
 }
-func (r *binding) ListDiscoveredSkills(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.SkillDiscovery, error) {
+func (r *Runtime) ListDiscoveredSkills(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.SkillDiscovery, error) {
 	return r.invoke[protocol.WorkspaceQuery, *protocol.SkillDiscovery](ctx, delivery.Name("skills.discovered.list"), request, options.Metadata())
 }
-func (r *binding) GetDiscoveredSkill(ctx context.Context, request protocol.SkillDetailRequest, options protocol.CallOptions) (*protocol.SkillDetail, error) {
+func (r *Runtime) GetDiscoveredSkill(ctx context.Context, request protocol.SkillDetailRequest, options protocol.CallOptions) (*protocol.SkillDetail, error) {
 	return r.invoke[protocol.SkillDetailRequest, *protocol.SkillDetail](ctx, delivery.Name("skills.discovered.get"), request, options.Metadata())
 }
-func (r *binding) ListManagedSkills(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ManagedSkill], error) {
+func (r *Runtime) ListManagedSkills(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ManagedSkill], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.ManagedSkill]](ctx, delivery.Name("skills.library.list"), struct{}{}, options.Metadata())
 }
-func (r *binding) ArchiveSkill(ctx context.Context, request protocol.SkillNameRequest, options protocol.CommandOptions) error {
+func (r *Runtime) ArchiveSkill(ctx context.Context, request protocol.SkillNameRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.SkillNameRequest](ctx, delivery.Name("skills.library.archive"), request, options.Metadata())
 }
-func (r *binding) RestoreSkill(ctx context.Context, request protocol.SkillNameRequest, options protocol.CommandOptions) error {
+func (r *Runtime) RestoreSkill(ctx context.Context, request protocol.SkillNameRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.SkillNameRequest](ctx, delivery.Name("skills.library.restore"), request, options.Metadata())
 }
-func (r *binding) ListSkillProposals(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.SkillProposal], error) {
+func (r *Runtime) ListSkillProposals(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.SkillProposal], error) {
 	return r.invoke[protocol.WorkspaceQuery, *protocol.Page[protocol.SkillProposal]](ctx, delivery.Name("skills.proposals.list"), request, options.Metadata())
 }
-func (r *binding) ApproveSkillProposal(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error {
+func (r *Runtime) ApproveSkillProposal(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.SkillProposalRef](ctx, delivery.Name("skills.proposals.approve"), request, options.Metadata())
 }
-func (r *binding) RejectSkillProposal(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error {
+func (r *Runtime) RejectSkillProposal(ctx context.Context, request protocol.SkillProposalRef, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.SkillProposalRef](ctx, delivery.Name("skills.proposals.reject"), request, options.Metadata())
 }
-func (r *binding) ListAgentDocs(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.AgentDoc], error) {
+func (r *Runtime) ListAgentDocs(ctx context.Context, request protocol.WorkspaceQuery, options protocol.CallOptions) (*protocol.Page[protocol.AgentDoc], error) {
 	return r.invoke[protocol.WorkspaceQuery, *protocol.Page[protocol.AgentDoc]](ctx, delivery.Name("agentDocs.list"), request, options.Metadata())
 }
-func (r *binding) GetMCPToolExposure(ctx context.Context, request protocol.MCPServerRequest, options protocol.CallOptions) (*protocol.MCPToolExposure, error) {
+func (r *Runtime) GetMCPToolExposure(ctx context.Context, request protocol.MCPServerRequest, options protocol.CallOptions) (*protocol.MCPToolExposure, error) {
 	return r.invoke[protocol.MCPServerRequest, *protocol.MCPToolExposure](ctx, delivery.Name("mcp.tools.exposure"), request, options.Metadata())
 }
-func (r *binding) SetMCPToolExposure(ctx context.Context, request protocol.SetMCPToolExposureRequest, options protocol.CommandOptions) error {
+func (r *Runtime) SetMCPToolExposure(ctx context.Context, request protocol.SetMCPToolExposureRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.SetMCPToolExposureRequest](ctx, delivery.Name("mcp.tools.setExposure"), request, options.Metadata())
 }
-func (r *binding) ListMCPServers(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.MCPServer], error) {
+func (r *Runtime) ListMCPServers(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.MCPServer], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.MCPServer]](ctx, delivery.Name("mcp.servers.list"), struct{}{}, options.Metadata())
 }
-func (r *binding) CreateMCPServer(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CommandOptions) (*protocol.MCPServer, error) {
+func (r *Runtime) CreateMCPServer(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CommandOptions) (*protocol.MCPServer, error) {
 	return r.invoke[protocol.MCPServerCandidate, *protocol.MCPServer](ctx, delivery.Name("mcp.servers.create"), request, options.Metadata())
 }
-func (r *binding) UpdateMCPServer(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) (*protocol.MCPServer, error) {
+func (r *Runtime) UpdateMCPServer(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) (*protocol.MCPServer, error) {
 	return r.invoke[protocol.UpdateMCPServerRequest, *protocol.MCPServer](ctx, delivery.Name("mcp.servers.update"), request, options.Metadata())
 }
-func (r *binding) DeleteMCPServer(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error {
+func (r *Runtime) DeleteMCPServer(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.MCPServerRequest](ctx, delivery.Name("mcp.servers.delete"), request, options.Metadata())
 }
-func (r *binding) TestMCPServer(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CallOptions) (*protocol.MCPTestResult, error) {
+func (r *Runtime) TestMCPServer(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CallOptions) (*protocol.MCPTestResult, error) {
 	return r.invoke[protocol.MCPServerCandidate, *protocol.MCPTestResult](ctx, delivery.Name("mcp.servers.test"), request, options.Metadata())
 }
-func (r *binding) ListMCPTools(ctx context.Context, request protocol.MCPListToolsRequest, options protocol.CallOptions) (*protocol.Page[protocol.MCPTool], error) {
+func (r *Runtime) ListMCPTools(ctx context.Context, request protocol.MCPListToolsRequest, options protocol.CallOptions) (*protocol.Page[protocol.MCPTool], error) {
 	return r.invoke[protocol.MCPListToolsRequest, *protocol.Page[protocol.MCPTool]](ctx, delivery.Name("mcp.tools.list"), request, options.Metadata())
 }
-func (r *binding) ReconnectMCPServer(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error {
+func (r *Runtime) ReconnectMCPServer(ctx context.Context, request protocol.MCPServerRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.MCPServerRequest](ctx, delivery.Name("mcp.servers.reconnect"), request, options.Metadata())
 }
-func (r *binding) CreateMCPAuthorizationAttempt(ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options protocol.CommandOptions) (*protocol.MCPAuthorizationAttempt, error) {
+func (r *Runtime) CreateMCPAuthorizationAttempt(ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options protocol.CommandOptions) (*protocol.MCPAuthorizationAttempt, error) {
 	return r.invoke[protocol.CreateMCPAuthorizationAttemptRequest, *protocol.MCPAuthorizationAttempt](ctx, delivery.Name("mcp.authorizationAttempts.create"), request, options.Metadata())
 }
-func (r *binding) GetMCPAuthorizationAttempt(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error) {
+func (r *Runtime) GetMCPAuthorizationAttempt(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options protocol.CallOptions) (*protocol.MCPAuthorizationAttempt, error) {
 	return r.invoke[protocol.MCPAuthorizationAttemptRequest, *protocol.MCPAuthorizationAttempt](ctx, delivery.Name("mcp.authorizationAttempts.get"), request, options.Metadata())
 }
-func (r *binding) OpenPluginBrowserRealm(ctx context.Context, request protocol.OpenPluginBrowserRealmRequest, options protocol.CommandOptions) (*protocol.PluginBrowserSession, error) {
+func (r *Runtime) OpenPluginBrowserRealm(ctx context.Context, request protocol.OpenPluginBrowserRealmRequest, options protocol.CommandOptions) (*protocol.PluginBrowserSession, error) {
 	return r.invoke[protocol.OpenPluginBrowserRealmRequest, *protocol.PluginBrowserSession](ctx, delivery.Name("plugins.openBrowserRealm"), request, options.Metadata())
 }
-func (r *binding) AcquirePluginComponent(ctx context.Context, request protocol.AcquirePluginComponentRequest, options protocol.CommandOptions) (*protocol.PluginBrowserUseGrant, error) {
+func (r *Runtime) AcquirePluginComponent(ctx context.Context, request protocol.AcquirePluginComponentRequest, options protocol.CommandOptions) (*protocol.PluginBrowserUseGrant, error) {
 	return r.invoke[protocol.AcquirePluginComponentRequest, *protocol.PluginBrowserUseGrant](ctx, delivery.Name("plugins.acquireComponent"), request, options.Metadata())
 }
-func (r *binding) ClosePluginBrowserRealm(ctx context.Context, request protocol.ClosePluginBrowserRealmRequest, options protocol.CommandOptions) error {
+func (r *Runtime) ClosePluginBrowserRealm(ctx context.Context, request protocol.ClosePluginBrowserRealmRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.ClosePluginBrowserRealmRequest](ctx, delivery.Name("plugins.closeBrowserRealm"), request, options.Metadata())
 }
-func (r *binding) GetPluginCommand(ctx context.Context, request protocol.PluginCommandRequest, options protocol.CallOptions) (*protocol.CallPluginRequest, error) {
+func (r *Runtime) GetPluginCommand(ctx context.Context, request protocol.PluginCommandRequest, options protocol.CallOptions) (*protocol.CallPluginRequest, error) {
 	return r.invoke[protocol.PluginCommandRequest, *protocol.CallPluginRequest](ctx, delivery.Name("plugins.getCommand"), request, options.Metadata())
 }
-func (r *binding) RetirePluginCommand(ctx context.Context, request protocol.PluginCommandRequest, options protocol.CommandOptions) error {
+func (r *Runtime) RetirePluginCommand(ctx context.Context, request protocol.PluginCommandRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.PluginCommandRequest](ctx, delivery.Name("plugins.retireCommand"), request, options.Metadata())
 }
-func (r *binding) StreamPlugin(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
+func (r *Runtime) StreamPlugin(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
 	return r.invokeStream[protocol.CallPluginRequest, struct{}, protocol.PluginStreamEvent](ctx, delivery.Name("plugins.stream"), request, options.Metadata())
 }
-func (r *binding) NotifyPluginChange(ctx context.Context, request protocol.PluginChangeNotice, options protocol.CommandOptions) error {
+func (r *Runtime) NotifyPluginChange(ctx context.Context, request protocol.PluginChangeNotice, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.PluginChangeNotice](ctx, delivery.Name("plugins.notifyChange"), request, options.Metadata())
 }
-func (r *binding) OpenPluginResources(ctx context.Context, request protocol.OpenPluginResourcesRequest, options protocol.SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error) {
+func (r *Runtime) OpenPluginResources(ctx context.Context, request protocol.OpenPluginResourcesRequest, options protocol.SubscriptionOptions) (*protocol.PluginResourceLease, iter.Seq2[protocol.PluginResourceEvent, error], error) {
 	return r.invokeStream[protocol.OpenPluginResourcesRequest, *protocol.PluginResourceLease, protocol.PluginResourceEvent](ctx, delivery.Name("plugins.openResources"), request, options.Metadata())
 }
-func (r *binding) ReadPluginResource(ctx context.Context, request protocol.ReadPluginResourceRequest, options protocol.CallOptions) (*protocol.PluginResource, error) {
+func (r *Runtime) ReadPluginResource(ctx context.Context, request protocol.ReadPluginResourceRequest, options protocol.CallOptions) (*protocol.PluginResource, error) {
 	return r.invoke[protocol.ReadPluginResourceRequest, *protocol.PluginResource](ctx, delivery.Name("plugins.readResource"), request, options.Metadata())
 }
-func (r *binding) ReadPluginLocale(ctx context.Context, request protocol.ReadPluginLocaleRequest, options protocol.CallOptions) (*protocol.PluginLocaleCatalog, error) {
+func (r *Runtime) ReadPluginLocale(ctx context.Context, request protocol.ReadPluginLocaleRequest, options protocol.CallOptions) (*protocol.PluginLocaleCatalog, error) {
 	return r.invoke[protocol.ReadPluginLocaleRequest, *protocol.PluginLocaleCatalog](ctx, delivery.Name("plugins.readLocale"), request, options.Metadata())
 }
-func (r *binding) ResolvePluginPoint(ctx context.Context, request protocol.ResolvePluginPointRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginPointBinding], error) {
+func (r *Runtime) ResolvePluginPoint(ctx context.Context, request protocol.ResolvePluginPointRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginPointBinding], error) {
 	return r.invoke[protocol.ResolvePluginPointRequest, *protocol.Page[protocol.PluginPointBinding]](ctx, delivery.Name("plugins.resolvePoint"), request, options.Metadata())
 }
-func (r *binding) ResolvePluginRequirements(ctx context.Context, request protocol.ResolvePluginRequirementsRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginCollaborator], error) {
+func (r *Runtime) ResolvePluginRequirements(ctx context.Context, request protocol.ResolvePluginRequirementsRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginCollaborator], error) {
 	return r.invoke[protocol.ResolvePluginRequirementsRequest, *protocol.Page[protocol.PluginCollaborator]](ctx, delivery.Name("plugins.resolveRequirements"), request, options.Metadata())
 }
-func (r *binding) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (*protocol.CallPluginResponse, error) {
+func (r *Runtime) CallPlugin(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (*protocol.CallPluginResponse, error) {
 	return r.invoke[protocol.CallPluginRequest, *protocol.CallPluginResponse](ctx, delivery.Name("plugins.call"), request, options.Metadata())
 }
-func (r *binding) ListPluginProviders(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginProviderSelection], error) {
+func (r *Runtime) ListPluginProviders(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginProviderSelection], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.PluginProviderSelection]](ctx, delivery.Name("plugins.listProviders"), struct{}{}, options.Metadata())
 }
-func (r *binding) SelectPluginProvider(ctx context.Context, request protocol.SelectPluginProviderRequest, options protocol.CommandOptions) (*protocol.PluginProviderSelection, error) {
+func (r *Runtime) SelectPluginProvider(ctx context.Context, request protocol.SelectPluginProviderRequest, options protocol.CommandOptions) (*protocol.PluginProviderSelection, error) {
 	return r.invoke[protocol.SelectPluginProviderRequest, *protocol.PluginProviderSelection](ctx, delivery.Name("plugins.selectProvider"), request, options.Metadata())
 }
-func (r *binding) ListPluginCompositions(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginComposition], error) {
+func (r *Runtime) ListPluginCompositions(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginComposition], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.PluginComposition]](ctx, delivery.Name("plugins.listCompositions"), struct{}{}, options.Metadata())
 }
-func (r *binding) SetPluginComposition(ctx context.Context, request protocol.SetPluginCompositionRequest, options protocol.CommandOptions) (*protocol.PluginComposition, error) {
+func (r *Runtime) SetPluginComposition(ctx context.Context, request protocol.SetPluginCompositionRequest, options protocol.CommandOptions) (*protocol.PluginComposition, error) {
 	return r.invoke[protocol.SetPluginCompositionRequest, *protocol.PluginComposition](ctx, delivery.Name("plugins.setComposition"), request, options.Metadata())
 }
-func (r *binding) ResolvePluginComposition(ctx context.Context, request protocol.ResolvePluginCompositionRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginOperationBinding], error) {
+func (r *Runtime) ResolvePluginComposition(ctx context.Context, request protocol.ResolvePluginCompositionRequest, options protocol.CallOptions) (*protocol.Page[protocol.PluginOperationBinding], error) {
 	return r.invoke[protocol.ResolvePluginCompositionRequest, *protocol.Page[protocol.PluginOperationBinding]](ctx, delivery.Name("plugins.resolveComposition"), request, options.Metadata())
 }
-func (r *binding) ListPlugins(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginInstallation], error) {
+func (r *Runtime) ListPlugins(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginInstallation], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.PluginInstallation]](ctx, delivery.Name("plugins.list"), struct{}{}, options.Metadata())
 }
-func (r *binding) InstallPlugin(ctx context.Context, request protocol.InstallPluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
+func (r *Runtime) InstallPlugin(ctx context.Context, request protocol.InstallPluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.InstallPluginRequest, *protocol.PluginInstallation](ctx, delivery.Name("plugins.install"), request, options.Metadata())
 }
-func (r *binding) StagePlugin(ctx context.Context, request protocol.StagePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
+func (r *Runtime) StagePlugin(ctx context.Context, request protocol.StagePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.StagePluginRequest, *protocol.PluginInstallation](ctx, delivery.Name("plugins.stage"), request, options.Metadata())
 }
-func (r *binding) SelectPlugin(ctx context.Context, request protocol.PluginReleaseRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
+func (r *Runtime) SelectPlugin(ctx context.Context, request protocol.PluginReleaseRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.PluginReleaseRequest, *protocol.PluginInstallation](ctx, delivery.Name("plugins.select"), request, options.Metadata())
 }
-func (r *binding) ConfigurePlugin(ctx context.Context, request protocol.ConfigurePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
+func (r *Runtime) ConfigurePlugin(ctx context.Context, request protocol.ConfigurePluginRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.ConfigurePluginRequest, *protocol.PluginInstallation](ctx, delivery.Name("plugins.configure"), request, options.Metadata())
 }
-func (r *binding) SetPluginEnablement(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
+func (r *Runtime) SetPluginEnablement(ctx context.Context, request protocol.SetPluginEnablementRequest, options protocol.CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.SetPluginEnablementRequest, *protocol.PluginInstallation](ctx, delivery.Name("plugins.setEnablement"), request, options.Metadata())
 }
-func (r *binding) UninstallPlugin(ctx context.Context, request protocol.PluginRequest, options protocol.CommandOptions) error {
+func (r *Runtime) UninstallPlugin(ctx context.Context, request protocol.PluginRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.PluginRequest](ctx, delivery.Name("plugins.uninstall"), request, options.Metadata())
 }
-func (r *binding) ListHooks(ctx context.Context, request protocol.ListHooksRequest, options protocol.CallOptions) (*protocol.HooksListResult, error) {
+func (r *Runtime) ListHooks(ctx context.Context, request protocol.ListHooksRequest, options protocol.CallOptions) (*protocol.HooksListResult, error) {
 	return r.invoke[protocol.ListHooksRequest, *protocol.HooksListResult](ctx, delivery.Name("hooks.list"), request, options.Metadata())
 }
-func (r *binding) SetHookTrust(ctx context.Context, request protocol.SetHookTrustRequest, options protocol.CommandOptions) error {
+func (r *Runtime) SetHookTrust(ctx context.Context, request protocol.SetHookTrustRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.SetHookTrustRequest](ctx, delivery.Name("hooks.setTrust"), request, options.Metadata())
 }
-func (r *binding) SetApprovalRule(ctx context.Context, request protocol.SetApprovalRuleRequest, options protocol.CommandOptions) error {
+func (r *Runtime) SetApprovalRule(ctx context.Context, request protocol.SetApprovalRuleRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.SetApprovalRuleRequest](ctx, delivery.Name("approval.setRule"), request, options.Metadata())
 }
-func (r *binding) GetApprovalMode(ctx context.Context, options protocol.CallOptions) (*protocol.ApprovalModeResult, error) {
+func (r *Runtime) GetApprovalMode(ctx context.Context, options protocol.CallOptions) (*protocol.ApprovalModeResult, error) {
 	return r.invoke[struct{}, *protocol.ApprovalModeResult](ctx, delivery.Name("approval.getMode"), struct{}{}, options.Metadata())
 }
-func (r *binding) SetApprovalMode(ctx context.Context, request protocol.SetApprovalModeRequest, options protocol.CommandOptions) (*protocol.ApprovalModeResult, error) {
+func (r *Runtime) SetApprovalMode(ctx context.Context, request protocol.SetApprovalModeRequest, options protocol.CommandOptions) (*protocol.ApprovalModeResult, error) {
 	return r.invoke[protocol.SetApprovalModeRequest, *protocol.ApprovalModeResult](ctx, delivery.Name("approval.setMode"), request, options.Metadata())
 }
-func (r *binding) ListApprovalRules(ctx context.Context, request protocol.ListApprovalRulesRequest, options protocol.CallOptions) (*protocol.ListApprovalRulesResult, error) {
+func (r *Runtime) ListApprovalRules(ctx context.Context, request protocol.ListApprovalRulesRequest, options protocol.CallOptions) (*protocol.ListApprovalRulesResult, error) {
 	return r.invoke[protocol.ListApprovalRulesRequest, *protocol.ListApprovalRulesResult](ctx, delivery.Name("approval.listRules"), request, options.Metadata())
 }
-func (r *binding) ForgetApprovalRule(ctx context.Context, request protocol.ForgetApprovalRuleRequest, options protocol.CommandOptions) error {
+func (r *Runtime) ForgetApprovalRule(ctx context.Context, request protocol.ForgetApprovalRuleRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.ForgetApprovalRuleRequest](ctx, delivery.Name("approval.forgetRule"), request, options.Metadata())
 }
-func (r *binding) StartGoal(ctx context.Context, request protocol.StartGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
+func (r *Runtime) StartGoal(ctx context.Context, request protocol.StartGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
 	return r.invoke[protocol.StartGoalRequest, *protocol.Goal](ctx, delivery.Name("goals.start"), request, options.Metadata())
 }
-func (r *binding) UpdateGoal(ctx context.Context, request protocol.UpdateGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
+func (r *Runtime) UpdateGoal(ctx context.Context, request protocol.UpdateGoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
 	return r.invoke[protocol.UpdateGoalRequest, *protocol.Goal](ctx, delivery.Name("goals.update"), request, options.Metadata())
 }
-func (r *binding) ClearGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) error {
+func (r *Runtime) ClearGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.GoalRequest](ctx, delivery.Name("goals.clear"), request, options.Metadata())
 }
-func (r *binding) GetGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CallOptions) (*protocol.Goal, error) {
+func (r *Runtime) GetGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CallOptions) (*protocol.Goal, error) {
 	return r.invoke[protocol.GoalRequest, *protocol.Goal](ctx, delivery.Name("goals.get"), request, options.Metadata())
 }
-func (r *binding) StopGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
+func (r *Runtime) StopGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
 	return r.invoke[protocol.GoalRequest, *protocol.Goal](ctx, delivery.Name("goals.stop"), request, options.Metadata())
 }
-func (r *binding) ResumeGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
+func (r *Runtime) ResumeGoal(ctx context.Context, request protocol.GoalRequest, options protocol.CommandOptions) (*protocol.Goal, error) {
 	return r.invoke[protocol.GoalRequest, *protocol.Goal](ctx, delivery.Name("goals.resume"), request, options.Metadata())
 }
-func (r *binding) ListProviders(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.Provider], error) {
+func (r *Runtime) ListProviders(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.Provider], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.Provider]](ctx, delivery.Name("providers.list"), struct{}{}, options.Metadata())
 }
-func (r *binding) UpdateProvider(ctx context.Context, request protocol.UpdateProviderRequest, options protocol.CommandOptions) (*protocol.Provider, error) {
+func (r *Runtime) UpdateProvider(ctx context.Context, request protocol.UpdateProviderRequest, options protocol.CommandOptions) (*protocol.Provider, error) {
 	return r.invoke[protocol.UpdateProviderRequest, *protocol.Provider](ctx, delivery.Name("providers.update"), request, options.Metadata())
 }
-func (r *binding) TestProvider(ctx context.Context, request protocol.TestProviderRequest, options protocol.CallOptions) (*protocol.ProviderTestResult, error) {
+func (r *Runtime) TestProvider(ctx context.Context, request protocol.TestProviderRequest, options protocol.CallOptions) (*protocol.ProviderTestResult, error) {
 	return r.invoke[protocol.TestProviderRequest, *protocol.ProviderTestResult](ctx, delivery.Name("providers.test"), request, options.Metadata())
 }
-func (r *binding) ListModels(ctx context.Context, request protocol.ListModelsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Model], error) {
+func (r *Runtime) ListModels(ctx context.Context, request protocol.ListModelsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Model], error) {
 	return r.invoke[protocol.ListModelsRequest, *protocol.Page[protocol.Model]](ctx, delivery.Name("models.list"), request, options.Metadata())
 }
-func (r *binding) GetUtilityRole(ctx context.Context, options protocol.CallOptions) (*protocol.UtilityRole, error) {
+func (r *Runtime) GetUtilityRole(ctx context.Context, options protocol.CallOptions) (*protocol.UtilityRole, error) {
 	return r.invoke[struct{}, *protocol.UtilityRole](ctx, delivery.Name("models.getUtilityRole"), struct{}{}, options.Metadata())
 }
-func (r *binding) SetUtilityRole(ctx context.Context, request protocol.UtilityRole, options protocol.CommandOptions) (*protocol.UtilityRole, error) {
+func (r *Runtime) SetUtilityRole(ctx context.Context, request protocol.UtilityRole, options protocol.CommandOptions) (*protocol.UtilityRole, error) {
 	return r.invoke[protocol.UtilityRole, *protocol.UtilityRole](ctx, delivery.Name("models.setUtilityRole"), request, options.Metadata())
 }
-func (r *binding) GetEmbeddingRole(ctx context.Context, options protocol.CallOptions) (*protocol.EmbeddingRole, error) {
+func (r *Runtime) GetEmbeddingRole(ctx context.Context, options protocol.CallOptions) (*protocol.EmbeddingRole, error) {
 	return r.invoke[struct{}, *protocol.EmbeddingRole](ctx, delivery.Name("models.getEmbeddingRole"), struct{}{}, options.Metadata())
 }
-func (r *binding) SetEmbeddingRole(ctx context.Context, request protocol.EmbeddingRole, options protocol.CommandOptions) (*protocol.EmbeddingRole, error) {
+func (r *Runtime) SetEmbeddingRole(ctx context.Context, request protocol.EmbeddingRole, options protocol.CommandOptions) (*protocol.EmbeddingRole, error) {
 	return r.invoke[protocol.EmbeddingRole, *protocol.EmbeddingRole](ctx, delivery.Name("models.setEmbeddingRole"), request, options.Metadata())
 }
-func (r *binding) ListTools(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ToolSpec], error) {
+func (r *Runtime) ListTools(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.ToolSpec], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.ToolSpec]](ctx, delivery.Name("tools.list"), struct{}{}, options.Metadata())
 }
-func (r *binding) InvokeTool(ctx context.Context, request protocol.InvokeToolRequest, options protocol.CommandOptions) (interface{}, error) {
+func (r *Runtime) InvokeTool(ctx context.Context, request protocol.InvokeToolRequest, options protocol.CommandOptions) (interface{}, error) {
 	return r.invoke[protocol.InvokeToolRequest, interface{}](ctx, delivery.Name("tools.invoke"), request, options.Metadata())
 }
-func (r *binding) GetSessionUsage(ctx context.Context, request protocol.SessionUsageRequest, options protocol.CallOptions) (*protocol.SessionUsage, error) {
+func (r *Runtime) GetSessionUsage(ctx context.Context, request protocol.SessionUsageRequest, options protocol.CallOptions) (*protocol.SessionUsage, error) {
 	return r.invoke[protocol.SessionUsageRequest, *protocol.SessionUsage](ctx, delivery.Name("usage.session"), request, options.Metadata())
 }
-func (r *binding) GetUsageSummary(ctx context.Context, request protocol.UsageSummaryRequest, options protocol.CallOptions) (*protocol.UsageSummary, error) {
+func (r *Runtime) GetUsageSummary(ctx context.Context, request protocol.UsageSummaryRequest, options protocol.CallOptions) (*protocol.UsageSummary, error) {
 	return r.invoke[protocol.UsageSummaryRequest, *protocol.UsageSummary](ctx, delivery.Name("usage.summary"), request, options.Metadata())
 }
-func (r *binding) CreateFeedback(ctx context.Context, request protocol.FeedbackRequest, options protocol.CommandOptions) error {
+func (r *Runtime) CreateFeedback(ctx context.Context, request protocol.FeedbackRequest, options protocol.CommandOptions) error {
 	return r.invokeAck[protocol.FeedbackRequest](ctx, delivery.Name("feedback.create"), request, options.Metadata())
 }

@@ -15,6 +15,7 @@ func pluginProviderErrors(other ...string) []string {
 func runtimeProduced(detail string, cause error) *protocol.Failure {
 	return protocol.NewFailure(protocol.ErrInternalError, "the runtime produced "+detail, cause)
 }
+
 func failureFromData(data protocol.ProblemData) *protocol.Failure {
 	failure, err := protocol.DecodeFailure(data)
 	if err != nil {

@@ -8,9 +8,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
-	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -19,9 +18,6 @@ import (
 	"github.com/samber/lo"
 )
 
-// Openings starts root Runs: it resolves the Session and model selection, claims
-// the fresh Run under start admission, composes its working context and opens
-// its first segment.
 type Openings struct {
 	commandAcceptances commandAcceptanceReader
 	startAdmissions    *keylock.Set
@@ -29,17 +25,16 @@ type Openings struct {
 	conversation       ConversationReader
 	workingContexts    WorkingContextComposer
 	models             modelAdmitter
-	modelSelector      modelapp.Selector
+	modelSelector      models.Selector
 	sessionReader      sessionReader
 	sessionCreator     sessionCreator
 	activeRuns         activeRunReader
-	isolation          isolationProvider // resolves an isolated session's sandbox copy; nil = isolation off
+	isolation          isolationProvider
 	releases           ExecutionReleaser
 	admission          *ownership.Gate
 	segments           *Segments
 }
 
-// OpeningDependencies are the collaborators starting a root Run requires.
 type OpeningDependencies struct {
 	CommandAcceptances commandAcceptanceReader
 	RootStarts         RootExecutionStarter
@@ -47,7 +42,7 @@ type OpeningDependencies struct {
 	Conversation       ConversationReader
 	WorkingContexts    WorkingContextComposer
 	Models             modelAdmitter
-	ModelSelector      modelapp.Selector
+	ModelSelector      models.Selector
 	Sessions           sessionReader
 	SessionCreator     sessionCreator
 	ActiveRuns         activeRunReader
@@ -98,11 +93,9 @@ func NewOpenings(deps OpeningDependencies) (*Openings, error) {
 	}, nil
 }
 
-// AdmitSelection exposes the same model policy Start applies before any Goal
-// can freeze that selection durably.
-func (c *Openings) AdmitSelection(ctx context.Context, selection modelchoice.Selection) error {
+func (c *Openings) AdmitSelection(ctx context.Context, selection flamemodel.Selection) error {
 	if err := c.models.AdmitSelection(ctx, selection); err != nil {
-		if !errors.Is(err, modelchoice.ErrUnsupported) {
+		if !errors.Is(err, flamemodel.ErrUnsupported) {
 			return err
 		}
 		return fmt.Errorf("%w: %w", ErrUnsupportedModelSelection, err)
@@ -110,10 +103,6 @@ func (c *Openings) AdmitSelection(ctx context.Context, selection modelchoice.Sel
 	return nil
 }
 
-// WaitSessionStartable lets an application-owned continuation wait until both
-// the live admission gate and the durable Session Run projection are
-// free before attempting its own Start. It does not reserve either resource;
-// Start remains the authority that acquires them.
 func (c *Openings) WaitSessionStartable(ctx context.Context, sessionID identity.SessionID) error {
 	sess, err := c.sessionReader.Get(ctx, sessionID)
 	if err != nil {
@@ -142,7 +131,7 @@ func (c *Openings) WaitSessionStartable(ctx context.Context, sessionID identity.
 
 type rootStartPreparation struct {
 	command            StartCommand
-	requestedSelection modelchoice.Selection
+	requestedSelection flamemodel.Selection
 	session            session.Session
 	initialSession     *session.Session
 	draft              RootExecutionStart
@@ -151,10 +140,6 @@ type rootStartPreparation struct {
 	openingUserText    string
 }
 
-// Start opens a Run in the supplied Session or captured new Session. When the
-// command carries an external acceptance identity, an exact prior acceptance is
-// returned as the original opening before any mutable preparation, so a retried
-// key never admits a second Run.
 func (c *Openings) Start(ctx context.Context, cmd StartCommand) (StartResult, error) {
 	if cmd.NewSession != nil {
 		if !cmd.SessionID.IsZero() || cmd.Acceptance == nil {
@@ -189,9 +174,6 @@ func (c *Openings) Start(ctx context.Context, cmd StartCommand) (StartResult, er
 	return c.startRoot(ctx, cmd.clone())
 }
 
-// startRoot claims the Session and working tree, stages execution, and commits
-// the opening. A captured new Session commits in the same write-set. Activation
-// continues under the lifecycle supervisor after that acceptance boundary.
 func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result StartResult, err error) {
 	runAdmission, preparation, err := c.admitRootStart(ctx, cmd)
 	if err != nil {
@@ -236,7 +218,7 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 	if draft.Options != nil {
 		request.Options = draft.Options.Clone()
 	}
-	selected, err := c.modelSelector.SelectModel(ctx, models.SelectionInput{Context: modelchoice.SelectionContext{Use: modelchoice.Interaction}, Proposed: draft.ModelSelection, Request: request.Clone()})
+	selected, err := c.modelSelector.SelectModel(ctx, models.SelectionInput{Context: flamemodel.SelectionContext{Use: flamemodel.Interaction}, Proposed: draft.ModelSelection, Request: request.Clone()})
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: select opening model: %w", err)
 	}
@@ -262,7 +244,7 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 	runID := draft.RunID
 	segmentID := c.segments.newSegmentID()
 	createdAt := c.segments.publications.nowUTC()
-	modelOnlyInput := cmd.GoalIncarnationID != ""
+	modelOnlyInput := !cmd.GoalIncarnationID.IsZero()
 	conversationInput := draft.WorkingContext[len(draft.WorkingContext)-1].Clone()
 	sessionWrite, err := prepareStartSessionWrite(preparation, createdAt)
 	if err != nil {
@@ -309,12 +291,9 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 	}, nil
 }
 
-// admitRootStart prepares the opening and claims its Run admission. The claim
-// reserves the working tree by the Session's path and blocks further Session
-// edits, so an edit committed between the read and the claim would otherwise
-// stage the Segment under a policy no admission covers: the preparation is
-// re-derived and the claim retaken until the admitted Session is the prepared
-// one. A Session that is not durable yet has no other writer.
+// An edit committed between the read and the claim would stage the Segment under a
+// policy no admission covers, so preparation is re-derived until the admitted
+// Session is the prepared one.
 func (c *Openings) admitRootStart(
 	ctx context.Context,
 	cmd StartCommand,
@@ -406,41 +385,36 @@ func (c *Openings) resolveOpeningError(ctx context.Context, sessionID identity.S
 	if !errors.Is(err, run.ErrSessionBusy) {
 		return err
 	}
-	// The durable unique index rejected the INSERT, which means another writer
-	// got there first. Naming that Run is the pre-admission conflict answer too.
 	if conflict, lookupErr := c.activeRunConflict(ctx, sessionID); lookupErr == nil && conflict != nil {
 		return conflict
 	}
 	return err
 }
 
-// resolveSessionSelection admits an explicitly requested selection, resolves
-// the Session that owns the default, and returns the proposal from which
-// the opening selects its immutable execution route. Existing Sessions never fall back to Runtime config.
 func (c *Openings) resolveSessionSelection(
 	ctx context.Context,
 	cmd StartCommand,
-) (session.Session, *session.Session, modelchoice.Selection, error) {
+) (session.Session, *session.Session, flamemodel.Selection, error) {
 	requested := cmd.ModelSelection
 	if requested.Configured() {
 		if err := c.AdmitSelection(ctx, requested); err != nil {
-			return session.Session{}, nil, modelchoice.Selection{}, err
+			return session.Session{}, nil, flamemodel.Selection{}, err
 		}
 	}
 	sess, initial, err := c.resolveSession(ctx, cmd, requested)
 	if err != nil {
-		return session.Session{}, nil, modelchoice.Selection{}, err
+		return session.Session{}, nil, flamemodel.Selection{}, err
 	}
 	effective := requested
 	if !effective.Configured() {
 		effective = sess.Selection()
 	}
 	if err := effective.ValidateExact(); err != nil {
-		return session.Session{}, nil, modelchoice.Selection{}, fmt.Errorf("runs: effective model selection: %w", err)
+		return session.Session{}, nil, flamemodel.Selection{}, fmt.Errorf("runs: effective model selection: %w", err)
 	}
 	if effective != requested {
 		if err := c.AdmitSelection(ctx, effective); err != nil {
-			return session.Session{}, nil, modelchoice.Selection{}, err
+			return session.Session{}, nil, flamemodel.Selection{}, err
 		}
 	}
 	return sess, initial, effective, nil
@@ -449,7 +423,7 @@ func (c *Openings) resolveSessionSelection(
 func (c *Openings) resolveSession(
 	ctx context.Context,
 	cmd StartCommand,
-	selection modelchoice.Selection,
+	selection flamemodel.Selection,
 ) (session.Session, *session.Session, error) {
 	if cmd.NewSession != nil {
 		return c.sessionCreator.PrepareOpening(
@@ -466,11 +440,6 @@ func (c *Openings) claimFreshRun(ctx context.Context, sess session.Session) (own
 	if leaseErr != nil {
 		return ownership.RunAdmission{}, leaseErr
 	}
-	// A Run the Session already holds is reported WITH its identity: the caller has to
-	// choose between steering it, answering it and canceling it, and it cannot choose
-	// without knowing which run and what state. Waiting counts — a Run parked on a
-	// person is still the Session's Run. A live Run holds the admission lease, so
-	// the same durable read must also explain a refused claim.
 	conflict, err := c.activeRunConflict(ctx, sess.ID())
 	if err != nil {
 		runAdmission.Release()
@@ -481,17 +450,11 @@ func (c *Openings) claimFreshRun(ctx context.Context, sess session.Session) (own
 		return ownership.RunAdmission{}, conflict
 	}
 	if !ok {
-		// An opening not yet committed or a working-tree mutation has no durable
-		// active Run to name. Contention alone cannot manufacture that identity.
 		return ownership.RunAdmission{}, ErrRunAdmissionBusy
 	}
 	return runAdmission, nil
 }
 
-// activeRunConflict reports the Session's non-terminal Run as a conflict, or nil when
-// it has none. One author, because the same conflict is reachable twice: this process
-// can see the Run before admission, and the durable unique index can reject the
-// INSERT after another process created one.
 func (c *Openings) activeRunConflict(ctx context.Context, sessionID identity.SessionID) (*ActiveRunConflictError, error) {
 	run, found, err := c.activeRuns.ActiveRun(ctx, sessionID)
 	if err != nil || !found {
@@ -500,10 +463,6 @@ func (c *Openings) activeRunConflict(ctx context.Context, sessionID identity.Ses
 	return &ActiveRunConflictError{RunID: run.ID(), State: run.State()}, nil
 }
 
-// executionCWD resolves where a Session's tools operate: the sandbox copy
-// for an isolated session (created on first use), else the project directory.
-// It fails closed when isolation is requested but unavailable — an isolated run
-// must never fall back to the real tree.
 func (c *Openings) executionCWD(ctx context.Context, sess session.Session) (cwd string, isolated bool, err error) {
 	if !sess.Isolated() {
 		return sess.Workspace().Path(), false, nil

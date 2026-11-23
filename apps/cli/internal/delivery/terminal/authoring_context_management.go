@@ -7,7 +7,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// agentDocumentScreens shows the AGENTS.md documents that apply to the workspace.
 type agentDocumentScreens struct {
 	screenHost
 	service AuthoringContext

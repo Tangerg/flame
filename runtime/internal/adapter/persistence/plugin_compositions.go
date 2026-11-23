@@ -24,6 +24,7 @@ type storedCompositionMember struct {
 func newCompositionStore(db *database) *compositionStore {
 	return &compositionStore{db: db}
 }
+
 func (s *compositionStore) Get(ctx context.Context, reference string) (plugin.OrderedComposition, bool, error) {
 	return scopedPair(ctx, s.db.read, func(ctx context.Context) (plugin.OrderedComposition, bool, error) {
 		var encoded string
@@ -38,6 +39,7 @@ func (s *compositionStore) Get(ctx context.Context, reference string) (plugin.Or
 		return value, err == nil, err
 	})
 }
+
 func (s *compositionStore) List(ctx context.Context) ([]plugin.OrderedComposition, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]plugin.OrderedComposition, error) {
 		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT reference,composition_json FROM plugin_compositions ORDER BY reference`)
@@ -60,6 +62,7 @@ func (s *compositionStore) List(ctx context.Context) ([]plugin.OrderedCompositio
 		return values, rows.Err()
 	})
 }
+
 func restoreComposition(reference string, encoded string) (plugin.OrderedComposition, error) {
 	var stored storedComposition
 	if err := decodeStoredJSON([]byte(encoded), &stored); err != nil {
@@ -88,6 +91,7 @@ func restoreComposition(reference string, encoded string) (plugin.OrderedComposi
 	}
 	return value, nil
 }
+
 func (s *compositionStore) Save(ctx context.Context, value plugin.OrderedComposition) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		if err := value.Validate(); err != nil {

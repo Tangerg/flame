@@ -37,11 +37,12 @@ func memoryQuery(r *poMCPRuntime, input memorycontract.ListInput) (protocol.Call
 			if !installation.Enabled {
 				return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 			}
-			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().Bytes()), Method: memorycontract.ListV2Method, Input: string(encoded), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}}, nil
+			return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().Bytes()), Method: memorycontract.ListV3Method, Input: string(encoded), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}}, nil
 		}
 	}
 	return protocol.CallPluginRequest{}, protocol.ErrPluginUnavailable
 }
+
 func memoryQueryResult(r *poMCPRuntime, input memorycontract.ListInput) protocol.OperationResult {
 	request, err := memoryQuery(r, input)
 	if err != nil {
@@ -49,7 +50,8 @@ func memoryQueryResult(r *poMCPRuntime, input memorycontract.ListInput) protocol
 	}
 	return r.endpoint.Invoke(r.t.Context(), delivery.PluginsCall, request, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 }
-func readMemoryPage(r *poMCPRuntime, input memorycontract.ListInput) *protocol.Page[*memorycontract.ListV2OutputDomainItemSnapshot] {
+
+func readMemoryPage(r *poMCPRuntime, input memorycontract.ListInput) *protocol.Page[*memorycontract.ListV3OutputContractItem] {
 	r.t.Helper()
 	result := memoryQueryResult(r, input)
 	if result.Failure != nil {
@@ -76,10 +78,11 @@ func memoryAddRequest(r *poMCPRuntime, input memorycontract.AddInput) protocol.C
 	if err != nil {
 		r.t.Fatal(err)
 	}
-	request.Method, request.Input = memorycontract.AddV2Method, string(encoded)
+	request.Method, request.Input = memorycontract.AddV3Method, string(encoded)
 	return request
 }
-func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *memorycontract.AddV2OutputDomainItemSnapshot {
+
+func mustMemoryAdd(r *poMCPRuntime, request protocol.CallPluginRequest, key string) *memorycontract.AddV3OutputContractItem {
 	r.t.Helper()
 	reply := r.must(delivery.PluginsCall, request, key).(*protocol.CallPluginResponse)
 	if reply.Failure != nil {

@@ -10,23 +10,13 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// treeContinuation is the application-private execution hand-off shared by
-// human-driven Resume and a host-settled continuation. It deliberately does not
-// mean "an interrupt is open": Pending owns that external-input fact, while a
-// tree whose final interrupt was canceled still has enough continuation state
-// to open fresh Segments without inventing a fake human answer.
 type treeContinuation struct {
 	recoveredTools []RecoveredTool
 	rootRunID      identity.RunID
 	answered       []InterruptBinding
 	continuations  []Continuation
-	// runs are the parked Runs the continuations hand off, by ID. A resumed
-	// route reads its admission, accounting and creation from them; the
-	// continuation carries none of those facts.
-	runs map[identity.RunID]run.Run
-	// items are the complete Items the hand-off names, including the claim's
-	// accepted answers and verdicts. Reducers continue these values directly.
-	items map[identity.ItemID]transcript.Item
+	runs           map[identity.RunID]run.Run
+	items          map[identity.ItemID]transcript.Item
 }
 
 func (t *treeContinuation) answeredQuestionsFor(runID identity.RunID) []transcript.Item {
@@ -40,7 +30,6 @@ func (t *treeContinuation) answeredQuestionsFor(runID identity.RunID) []transcri
 	return answered
 }
 
-// sessionID is the parked root Run's Session.
 func (t *treeContinuation) sessionID() identity.SessionID {
 	return t.runs[t.rootRunID].SessionID()
 }
@@ -85,8 +74,6 @@ func treeContinuationForAnswers(
 	return continuation, nil
 }
 
-// continuationMembers maps each executor member to its parked Run; a Run or
-// member continues at most once.
 func (t *treeContinuation) continuationMembers() (map[string]identity.RunID, []run.TreeMember, error) {
 	runIDs := make(map[identity.RunID]struct{}, len(t.continuations))
 	memberOwners := make(map[string]identity.RunID, len(t.continuations))

@@ -1,5 +1,3 @@
-// Command contracts projects the Reviews owner's current typed methods for
-// contractgen. It does not open private data or execute a business operation.
 package main
 
 import (
@@ -19,7 +17,6 @@ func main() {
 	}
 }
 
-// projection names the one contract artifact a run emits.
 type projection string
 
 const (

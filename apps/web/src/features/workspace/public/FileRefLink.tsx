@@ -3,7 +3,7 @@ import { useWorkspace } from "@/features/workspace/public/workspace";
 import { createContext, Fragment, use, type ReactNode, type RefObject } from "react";
 import { openWorkspaceFile } from "@/features/workspace/public/navigation";
 
-export interface FileReferencePresentation {
+interface FileReferencePresentation {
   origin: RefObject<HTMLElement | null>;
   onOpen: () => void;
 }

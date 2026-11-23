@@ -10,8 +10,6 @@ import (
 	contractwire "github.com/Tangerg/flame/plugins/github/internal/wire"
 )
 
-// commentCollection names the API collection that owns a comment ID: issue
-// comments and pull request review comments are separate resources.
 type commentCollection string
 
 const (
@@ -23,15 +21,23 @@ type commentBody struct {
 	Body string `json:"body"`
 }
 
+func newCommentBody(body string) (commentBody, error) {
+	if !textPresent(body) {
+		return commentBody{}, invalidInput("comment body must be nonblank")
+	}
+	return commentBody{body}, nil
+}
+
 func (c *connector) createComment(ctx context.Context, input contractwire.CreateCommentInput) (contractwire.Comment, error) {
 	repository, err := targetRepository(input.IssueInput)
 	if err != nil {
 		return contractwire.Comment{}, err
 	}
-	if !textPresent(input.Body) {
-		return contractwire.Comment{}, invalidInput("comment body must be nonblank")
+	body, err := newCommentBody(input.Body)
+	if err != nil {
+		return contractwire.Comment{}, err
 	}
-	return writeValue(ctx, c, http.MethodPost, fmt.Sprintf("%s/issues/%d/comments", repository.apiPath(), input.Number), commentBody{input.Body}, http.StatusCreated, commentWire.admit)
+	return writeValue(ctx, c, http.MethodPost, fmt.Sprintf("%s/issues/%d/comments", repository.apiPath(), input.Number), body, http.StatusCreated, commentWire.admit)
 }
 
 func commentPath(input contractwire.CommentInput, collection commentCollection) (string, error) {
@@ -50,10 +56,11 @@ func (c *connector) updateComment(ctx context.Context, input contractwire.Update
 	if err != nil {
 		return contractwire.Comment{}, err
 	}
-	if !textPresent(input.Body) {
-		return contractwire.Comment{}, invalidInput("comment body must be nonblank")
+	body, err := newCommentBody(input.Body)
+	if err != nil {
+		return contractwire.Comment{}, err
 	}
-	return writeValue(ctx, c, http.MethodPatch, path, commentBody{input.Body}, http.StatusOK, func(wire commentWire) (contractwire.Comment, error) {
+	return writeValue(ctx, c, http.MethodPatch, path, body, http.StatusOK, func(wire commentWire) (contractwire.Comment, error) {
 		if wire.ID != input.CommentID {
 			return contractwire.Comment{}, errors.New("github: updated comment ID differs from original target")
 		}
@@ -96,13 +103,13 @@ func inlineComment(input contractwire.InlineComment) (inlineCommentWire, error) 
 	if _, err := newFilePath(input.Path); err != nil {
 		return inlineCommentWire{}, err
 	}
-	if !textPresent(input.Body) || input.Line <= 0 || input.Side != contractwire.Left && input.Side != contractwire.Right {
+	if !textPresent(input.Body) || input.Line <= 0 || !input.Side.Valid() {
 		return inlineCommentWire{}, invalidInput("inline comment requires a nonblank body and positive line with LEFT or RIGHT side")
 	}
 	if (input.StartLine == nil) != (input.StartSide == nil) {
 		return inlineCommentWire{}, invalidInput("a comment range requires both startLine and startSide")
 	}
-	if input.StartLine != nil && (*input.StartLine <= 0 || *input.StartSide != contractwire.Left && *input.StartSide != contractwire.Right || *input.StartSide == input.Side && *input.StartLine >= input.Line) {
+	if input.StartLine != nil && (*input.StartLine <= 0 || !input.StartSide.Valid() || *input.StartSide == input.Side && *input.StartLine >= input.Line) {
 		return inlineCommentWire{}, invalidInput("inline comment range is invalid")
 	}
 	return inlineCommentWire{Path: input.Path, Body: input.Body, Line: input.Line, Side: input.Side, StartLine: input.StartLine, StartSide: input.StartSide}, nil
@@ -146,10 +153,14 @@ func (c *connector) replyReviewComment(ctx context.Context, input contractwire.R
 	if err != nil {
 		return contractwire.ReviewComment{}, err
 	}
-	if input.CommentID <= 0 || !textPresent(input.Body) {
-		return contractwire.ReviewComment{}, invalidInput("a positive parent comment ID and nonblank reply body are required")
+	if input.CommentID <= 0 {
+		return contractwire.ReviewComment{}, invalidInput("a positive parent comment ID is required")
 	}
-	return writeValue(ctx, c, http.MethodPost, fmt.Sprintf("%s/pulls/%d/comments/%d/replies", repository.apiPath(), input.Number, input.CommentID), commentBody{input.Body}, http.StatusCreated, func(wire reviewCommentWire) (contractwire.ReviewComment, error) {
+	body, err := newCommentBody(input.Body)
+	if err != nil {
+		return contractwire.ReviewComment{}, err
+	}
+	return writeValue(ctx, c, http.MethodPost, fmt.Sprintf("%s/pulls/%d/comments/%d/replies", repository.apiPath(), input.Number, input.CommentID), body, http.StatusCreated, func(wire reviewCommentWire) (contractwire.ReviewComment, error) {
 		if wire.InReplyTo == nil || *wire.InReplyTo != input.CommentID {
 			return contractwire.ReviewComment{}, errors.New("github: reply belongs to a different comment thread")
 		}
@@ -162,10 +173,11 @@ func (c *connector) updateReviewComment(ctx context.Context, input contractwire.
 	if err != nil {
 		return contractwire.ReviewComment{}, err
 	}
-	if !textPresent(input.Body) {
-		return contractwire.ReviewComment{}, invalidInput("comment body must be nonblank")
+	body, err := newCommentBody(input.Body)
+	if err != nil {
+		return contractwire.ReviewComment{}, err
 	}
-	return writeValue(ctx, c, http.MethodPatch, path, commentBody{input.Body}, http.StatusOK, func(wire reviewCommentWire) (contractwire.ReviewComment, error) {
+	return writeValue(ctx, c, http.MethodPatch, path, body, http.StatusOK, func(wire reviewCommentWire) (contractwire.ReviewComment, error) {
 		if wire.ID != input.CommentID {
 			return contractwire.ReviewComment{}, errors.New("github: updated comment ID differs from original target")
 		}

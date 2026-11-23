@@ -29,7 +29,7 @@ export interface ComposerSubmitModeSpec {
   submit(context: ComposerSubmitModeContext): void | Promise<void>;
 }
 
-export interface SlashCommandRunCtx {
+interface SlashCommandRunCtx {
   args: string;
   accept(): void;
   send: (text: string) => boolean;

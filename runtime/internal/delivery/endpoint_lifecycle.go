@@ -7,11 +7,6 @@ import (
 	"sync"
 )
 
-// invocationGroup owns Endpoint admission and the exact lifetime of every
-// accepted unary call or stream. It is delivery-local: application task groups
-// continue to own request-detached product work, while this group prevents the
-// process owner from closing their dependencies underneath an active binding
-// call.
 type invocationGroup struct {
 	lifetime context.Context
 
@@ -21,8 +16,6 @@ type invocationGroup struct {
 	done   chan struct{}
 }
 
-// invocationPhase orders shutdown: admission stops first, and the group
-// finishes once the last accepted invocation returns.
 type invocationPhase uint8
 
 const (
@@ -31,8 +24,6 @@ const (
 	invocationsFinished
 )
 
-// invocation is one accepted binding call and its cancellation capability.
-// It is process-local, so its object identity is the registry key.
 type invocation struct {
 	cancel context.CancelFunc
 }
@@ -72,9 +63,6 @@ func (i *invocationGroup) Attach(parent context.Context) (context.Context, func(
 	return ctx, release, true
 }
 
-// BeginShutdown closes admission and broadcasts cancellation before waiting on
-// any one operation. Calls already inside their source remain registered until
-// they actually return.
 func (i *invocationGroup) BeginShutdown() {
 	i.mu.Lock()
 	if i.phase == invocationsAdmitting {
@@ -112,10 +100,6 @@ func (i *invocationGroup) finishShutdownLocked() {
 	i.phase = invocationsFinished
 }
 
-// ownStream keeps one accepted operation registered until its source returns.
-// If a caller never starts ranging, cancellation claims and ranges the source
-// itself with a rejecting yield. That joins source-side teardown instead of
-// merely assuming every context.AfterFunc callback has already completed.
 func ownStream(
 	ctx context.Context,
 	events iter.Seq2[any, error],

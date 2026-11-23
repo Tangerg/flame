@@ -11,7 +11,6 @@ import (
 
 func metadataWatchPath(path string, mode os.FileMode) string {
 	if mode&os.ModeSymlink != 0 {
-		// Directory events cover the link entry without opening its target.
 		return filepath.Dir(path)
 	}
 	return path

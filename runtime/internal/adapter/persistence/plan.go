@@ -16,13 +16,12 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// Session heads and terminal Run boundaries hold references so a fork can retain
-// precisely the reviewed content even after an unrelated Session advances.
 type PlanStore struct{ db *database }
 
 func newPlanStore(db *database) *PlanStore {
 	return &PlanStore{db: db}
 }
+
 func (p *PlanStore) List(ctx context.Context, sessionID identity.SessionID) ([]plan.Step, error) {
 	state, err := p.State(ctx, sessionID)
 	if err != nil {
@@ -31,7 +30,6 @@ func (p *PlanStore) List(ctx context.Context, sessionID identity.SessionID) ([]p
 	return state.Steps(), nil
 }
 
-// State returns an explicit unwritten Current when no Plan row exists.
 func (p *PlanStore) State(ctx context.Context, sessionID identity.SessionID) (plan.Current, error) {
 	return scopedValue(ctx, p.db.read, func(ctx context.Context) (plan.Current, error) {
 		if err := validateResource("read Session Plan", sessionID); err != nil {
@@ -69,6 +67,7 @@ func (p *PlanStore) State(ctx context.Context, sessionID identity.SessionID) (pl
 		return current, nil
 	})
 }
+
 func decodePlanSteps(stepsJSON, digest string) ([]plan.Step, error) {
 	var rows []planworkflow.Step
 	if err := decodeStoredJSON([]byte(stepsJSON), &rows); err != nil {
@@ -87,8 +86,6 @@ func decodePlanSteps(stepsJSON, digest string) ([]plan.Step, error) {
 	return steps, nil
 }
 
-// Save persists one Domain-decided replacement iff its expected version is
-// still current. It assigns neither time nor revision.
 func (p *PlanStore) Save(ctx context.Context, sessionID identity.SessionID, change plan.Replacement) error {
 	if err := validateResource("save Session Plan", sessionID); err != nil {
 		return err
@@ -113,6 +110,7 @@ func (p *PlanStore) storeDocument(ctx context.Context, steps []plan.Step) (frame
 	}
 	return digest, nil
 }
+
 func (p *PlanStore) advance(ctx context.Context, sessionID identity.SessionID, digest framevalue.Digest, change plan.Replacement) error {
 	return p.db.write(ctx, func(ctx context.Context) error {
 		expected := change.ExpectedVersion()
@@ -148,7 +146,6 @@ func (p *PlanStore) advance(ctx context.Context, sessionID identity.SessionID, d
 	})
 }
 
-// CaptureBoundary freezes the session's current Plan at one terminal Run.
 func (p *PlanStore) CaptureBoundary(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) error {
 	return p.db.write(ctx, func(ctx context.Context) error {
 		if err := validateResource("capture Plan boundary", sessionID); err != nil {
@@ -165,8 +162,6 @@ func (p *PlanStore) CaptureBoundary(ctx context.Context, sessionID identity.Sess
 	})
 }
 
-// Boundary returns the Plan captured by runID. recorded=false means the Run
-// never captured a boundary; it does not mean an empty Plan.
 func (p *PlanStore) Boundary(ctx context.Context, runID identity.RunID) (plan.Document, bool, error) {
 	return scopedPair(ctx, p.db.read, func(ctx context.Context) (plan.Document, bool, error) {
 		if err := validateResource("read Plan boundary", runID); err != nil {
@@ -200,7 +195,7 @@ func (p *PlanStore) ListBoundaries(ctx context.Context, sessionID identity.Sessi
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: read Plan boundaries: %w", err)
 		}
-		defer func() { _ = rows.Close() }()
+		defer rows.Close()
 		var boundaries []sessions.RunPlanBoundary
 		for rows.Next() {
 			var id identity.RunID
@@ -264,6 +259,7 @@ func (p *PlanStore) RestoreBoundaries(ctx context.Context, boundaries []sessions
 		return nil
 	})
 }
+
 func (p *PlanStore) DeleteSession(ctx context.Context, sessionID identity.SessionID) error {
 	return p.db.write(ctx, func(ctx context.Context) error {
 		if err := validateResource("delete Session Plan", sessionID); err != nil {

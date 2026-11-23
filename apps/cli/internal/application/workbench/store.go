@@ -1,5 +1,3 @@
-// Package workbench owns durable, CLI-local authoring state. It deliberately
-// knows nothing about terminal widgets or runtime persistence.
 package workbench
 
 import (
@@ -17,8 +15,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// ErrUnavailable rejects a workflow without the workbench it needs to retain
-// local intent. Terminal composition always opens one, including memory-only use.
 var ErrUnavailable = errors.New("CLI workbench is unavailable")
 
 const (
@@ -33,9 +29,6 @@ const (
 	sessionDeletionsName     = "session-deletions.json"
 )
 
-// Config controls bounded state and supplies deterministic identity sources to
-// tests. Absent capacities select production defaults; present capacities must
-// be explicit positive values.
 type Config struct {
 	HistoryCapacity   *Capacity
 	StashCapacity     *Capacity
@@ -44,7 +37,6 @@ type Config struct {
 	Random            io.Reader
 }
 
-// Stash is an explicitly named prompt snapshot.
 type Stash struct {
 	ID        string            `json:"id"`
 	CreatedAt time.Time         `json:"createdAt"`
@@ -65,10 +57,6 @@ func (s Stash) Validate() error {
 	return nil
 }
 
-// stashTransfer is the durable intent for the only workbench mutation that
-// spans the global stash catalog and one session aggregate. Recovery uses the
-// draft value as an ownership precondition: it completes an interrupted move
-// only while that exact draft still occupies the source session.
 type stashTransfer struct {
 	SessionID string            `json:"sessionId"`
 	Draft     authoring.Message `json:"draft"`
@@ -95,8 +83,6 @@ func stashEqual(left, right Stash) bool {
 	return left.ID == right.ID && left.CreatedAt.Equal(right.CreatedAt) && left.Message.Equal(right.Message)
 }
 
-// Workspace is one recently used Runtime reference. Its path is interpreted by
-// the selected Runtime, which may use another operating system.
 type Workspace struct {
 	Path       string    `json:"path"`
 	LastOpened time.Time `json:"lastOpened"`
@@ -112,18 +98,12 @@ func (w Workspace) Validate() error {
 	return nil
 }
 
-// historyEntry binds a runtime-accepted prompt to its mutation identity. Plain
-// authoring history intentionally has no identity; accepted starts use it to
-// make the history half of outbox settlement idempotent across process or
-// filesystem failure between the two durable files.
 type historyEntry struct {
 	authoring.Message
 
 	CommandID authoring.CommandID `json:"commandId,omitzero"`
 }
 
-// Store owns CLI authoring persistence and lifetime. Visible writes publish
-// their projections before reporting a later durability failure.
 type Store struct {
 	mu                sync.Mutex
 	persistence       Persistence
@@ -148,15 +128,10 @@ type Store struct {
 	closeErr          error
 }
 
-// OpenMemory constructs an explicitly process-local Store.
 func OpenMemory(config Config) (*Store, error) {
-	return newStore(nil, config)
+	return newStore(newMemoryStorage(), config)
 }
 
-// Open loads an explicitly durable Store through its filesystem-neutral port.
-// Ownership of storage transfers here in both outcomes: the Store closes it
-// when it implements io.Closer, and a failed construction closes it before
-// returning, so no caller has to remember which failures leak the handle.
 func Open(storage Persistence, config Config) (*Store, error) {
 	if missingPersistence(storage) {
 		return nil, errors.New("workbench persistence is not configured")
@@ -213,7 +188,6 @@ func newStore(storage Persistence, config Config) (*Store, error) {
 	return store, nil
 }
 
-// Close releases resources owned by durable persistence. It is idempotent.
 func (s *Store) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -225,7 +199,6 @@ func (s *Store) Close() error {
 	return s.closeErr
 }
 
-// History returns detached prompts in oldest-to-newest order.
 func (s *Store) History() []authoring.Message {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -236,7 +209,6 @@ func (s *Store) History() []authoring.Message {
 	return messages
 }
 
-// Remember records a submitted or deliberately cleared prompt.
 func (s *Store) Remember(message authoring.Message) error {
 	message = message.Clone()
 	if message.IsEmpty() {
@@ -255,8 +227,6 @@ func (s *Store) Remember(message authoring.Message) error {
 	return s.save(historyName, next, func() { s.history = next })
 }
 
-// Draft returns a detached session-specific prompt without consuming it.
-// Open owns durable decoding, so reads from an opened Store cannot fail.
 func (s *Store) Draft(sessionID string) (authoring.Message, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -264,7 +234,6 @@ func (s *Store) Draft(sessionID string) (authoring.Message, bool) {
 	return draft.Clone(), !draft.IsEmpty()
 }
 
-// SaveDraft atomically replaces a session draft, or removes it when empty.
 func (s *Store) SaveDraft(sessionID string, message authoring.Message) error {
 	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
@@ -279,8 +248,6 @@ func (s *Store) SaveDraft(sessionID string, message authoring.Message) error {
 	return s.saveSessionState(sessionID, message, s.pendingRuns[sessionID])
 }
 
-// newStash mints the value both stash entry points store. They differ in what
-// else the write moves, not in what a stash is.
 func (s *Store) newStash(message authoring.Message) (Stash, error) {
 	message = message.Clone()
 	if message.IsEmpty() {
@@ -297,7 +264,6 @@ func (s *Store) newStash(message authoring.Message) (Stash, error) {
 	return stash, nil
 }
 
-// StashPrompt preserves a prompt independently of its session draft.
 func (s *Store) StashPrompt(message authoring.Message) (Stash, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -314,9 +280,6 @@ func (s *Store) StashPrompt(message authoring.Message) (Stash, error) {
 	return cloneStash(stash), nil
 }
 
-// StashDraft transfers one session draft into the bounded stash collection.
-// A durable intent makes the cross-file move restart-safe. Only an uncommitted
-// step may be compensated; a committed failure leaves forward recovery in charge.
 func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, error) {
 	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return Stash{}, err
@@ -364,9 +327,6 @@ func (s *Store) StashDraft(sessionID string, message authoring.Message) (Stash, 
 	return cloneStash(stash), nil
 }
 
-// undoStash unwinds a stash whose source draft could not be cleared: restore
-// the previous stashes and drop the transfer journal. Any step that cannot be
-// undone blocks writes so recovery sees a consistent state.
 func (s *Store) undoStash(clearErr error, previous, next []Stash) error {
 	if writeCommitted(clearErr) {
 		return s.blockWrites(fmt.Errorf("clear session draft: %w", clearErr))
@@ -434,7 +394,6 @@ func (s *Store) recoverStashTransfer() error {
 	return nil
 }
 
-// Stashes returns newest prompts first.
 func (s *Store) Stashes() []Stash {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -445,7 +404,6 @@ func (s *Store) Stashes() []Stash {
 	return out
 }
 
-// Stash returns one detached prompt by identity.
 func (s *Store) Stash(id string) (Stash, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -457,7 +415,6 @@ func (s *Store) Stash(id string) (Stash, bool) {
 	return Stash{}, false
 }
 
-// DeleteStash permanently removes one stash.
 func (s *Store) DeleteStash(id string) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -472,7 +429,6 @@ func (s *Store) DeleteStash(id string) (bool, error) {
 	return true, nil
 }
 
-// RememberWorkspace moves a workspace to the front of the recent list.
 func (s *Store) RememberWorkspace(path string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -486,7 +442,6 @@ func (s *Store) RememberWorkspace(path string) error {
 	return s.save(workspacesName, next, func() { s.workspaces = next })
 }
 
-// Workspaces returns recent workspaces in newest-first order.
 func (s *Store) Workspaces() []Workspace {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -521,7 +476,6 @@ func validateWorkspaces(workspaces []Workspace) error {
 	return validateDistinct("workspace", workspaces, func(workspace Workspace) string { return workspace.Path })
 }
 
-// validateDistinct validates each record and rejects a repeated identity.
 func validateDistinct[T interface{ Validate() error }](noun string, records []T, identity func(T) string) error {
 	seen := make(map[string]struct{}, len(records))
 	for index, record := range records {
@@ -537,14 +491,6 @@ func validateDistinct[T interface{ Validate() error }](noun string, records []T,
 	return nil
 }
 
-// recordPromptHistoryLocked files message in prompt history under commandID,
-// exactly once. A repeated call for the same identity is the retry of a
-// half-completed command and must not append the prompt again; the same
-// identity carrying a different message is a caller defect.
-//
-// History and the session aggregate are separate durable records, so this half
-// is published as soon as it is saved: a failed session replacement can then
-// retry by command identity without a second entry.
 func (s *Store) recordPromptHistoryLocked(commandID authoring.CommandID, message authoring.Message) error {
 	next := cloneHistory(s.history)
 	index := slices.IndexFunc(next, func(entry historyEntry) bool {
@@ -560,9 +506,6 @@ func (s *Store) recordPromptHistoryLocked(commandID authoring.CommandID, message
 	return s.save(historyName, next, func() { s.history = next })
 }
 
-// trimHistory keeps every prompt an unsettled command still owns, plus the most
-// recent unpinned ones up to capacity. A history already within capacity needs
-// no special case: every entry is either pinned or among the last capacity many.
 func (s *Store) trimHistory(history []historyEntry) []historyEntry {
 	pinned := make(map[authoring.CommandID]struct{})
 	for _, commands := range s.pendingRuns {

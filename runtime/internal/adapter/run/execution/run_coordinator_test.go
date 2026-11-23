@@ -1,10 +1,10 @@
 package execution
 
 import (
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-func testDefaultSelection() modelchoice.Selection {
+func testDefaultSelection() flamemodel.Selection {
 	return testsupport.MustModelSelection("test-provider", "test-model")
 }

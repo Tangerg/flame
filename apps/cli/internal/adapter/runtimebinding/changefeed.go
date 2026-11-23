@@ -19,9 +19,6 @@ func (r *Connection) Supports(topic protocol.RuntimeTopic) bool {
 	return r.profile.supportsRuntimeTopic(topic)
 }
 
-// admitSubscription refuses what this Runtime did not advertise: file watches
-// without the feature, more topics or watches than its limits, or an unknown
-// topic.
 func (r *Connection) admitSubscription(subscription changefeed.Subscription) error {
 	if len(subscription.Watches) != 0 {
 		if err := r.requireFeature(protocol.FeatureFileWatch); err != nil {
@@ -50,8 +47,6 @@ func (r *Connection) Subscribe(ctx context.Context, subscription changefeed.Subs
 	if err := r.admitSubscription(subscription); err != nil {
 		return nil, err
 	}
-	// Event validation retains this declaration after Subscribe returns.
-	// The wire call borrows the same owned topics while registering the stream.
 	subscription.Topics = slices.Clone(subscription.Topics)
 	subscription.Watches = slices.Clone(subscription.Watches)
 	wire := protocol.RuntimeSubscribeRequest{

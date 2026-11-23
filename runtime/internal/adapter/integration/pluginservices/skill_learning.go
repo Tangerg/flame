@@ -11,8 +11,8 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	execution "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -35,7 +35,7 @@ type learningArchives interface {
 type SkillLearningConfig struct {
 	Commands     *CommandCalls
 	Callbacks    *pluginmcp.Callbacks
-	Utility      models.AuxiliaryResolver
+	Utility      modeladapter.AuxiliaryResolver
 	Conversation conversationReader
 	Source       learningSkillSource
 	Proposals    *SkillGovernance
@@ -46,7 +46,7 @@ type SkillLearning struct {
 	contract  *plugincontract.Capability
 	commands  *CommandCalls
 	callbacks *pluginmcp.Callbacks
-	utility   models.AuxiliaryResolver
+	utility   modeladapter.AuxiliaryResolver
 	history   conversationReader
 	source    learningSkillSource
 	proposals *SkillGovernance
@@ -72,7 +72,7 @@ func NewSkillLearning(config SkillLearningConfig) (*SkillLearning, error) {
 	return &SkillLearning{contract: contract, commands: config.Commands, callbacks: config.Callbacks, utility: config.Utility, history: config.Conversation, source: config.Source, proposals: config.Proposals, archives: config.Archives}, nil
 }
 
-func (s *SkillLearning) MaintainSkills(ctx context.Context, input execution.RunMaintenanceInput, completedToolCalls int64) error {
+func (s *SkillLearning) MaintainSkills(ctx context.Context, input execution.RunMaintenanceInput, completedToolCalls int64) (returned error) {
 	c := s.commands
 	binding, borrowed, err := contributionSession(ctx, c.framework, c.installations, c.selections, c.pool, s.contract)
 	if errors.Is(err, errInactive) {
@@ -81,7 +81,7 @@ func (s *SkillLearning) MaintainSkills(ctx context.Context, input execution.RunM
 	if err != nil {
 		return err
 	}
-	defer borrowed.Close()
+	defer func() { returned = errors.Join(returned, borrowed.Close()) }()
 	ctx = borrowed.Context()
 	mineErr := s.mine(ctx, binding, input, completedToolCalls)
 	archiveErr := s.archive(ctx, binding, time.Now())
@@ -126,8 +126,6 @@ func (s *SkillLearning) mine(ctx context.Context, binding plugins.ContributionBi
 	return nil
 }
 
-// miningBinding is the provider a recorded mining command was routed to, so a
-// retried maintenance pass never retargets its original command.
 func (s *SkillLearning) miningBinding(ctx, mining context.Context, selected plugins.ContributionBinding) (plugins.ContributionBinding, error) {
 	record, err := s.commands.routing.Get(mining, operation.Identity(mining))
 	if errors.Is(err, plugin.ErrNotFound) || errors.Is(err, plugin.ErrCommandUnconfirmed) {
@@ -157,7 +155,7 @@ func (s *SkillLearning) archive(ctx context.Context, binding plugins.Contributio
 	if err != nil {
 		return err
 	}
-	reply, err := invokeResolvedCommand[skilllearning.ArchiveRequest, skilllearning.ArchiveAdvice](operation.Start(ctx, extension.Automatic, "plugins.automatic", uuid.NewString()), s.commands, method.Name(), skilllearning.ArchiveRequest{Now: now}, func(advice skilllearning.ArchiveAdvice) error { return advice.Validate(now) }, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, nil)
+	reply, err := invokeResolvedCommand[skilllearning.ArchiveRequest, skilllearning.ArchiveAdvice](operation.Start(ctx, extension.Automatic, automaticOperationNamespace, uuid.NewString()), s.commands, method.Name(), skilllearning.ArchiveRequest{Now: now}, func(advice skilllearning.ArchiveAdvice) error { return advice.Validate(now) }, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, nil)
 	if err != nil {
 		return fmt.Errorf("skill learning: archive advice: %w", err)
 	}

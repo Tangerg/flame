@@ -20,11 +20,11 @@ func (s *Store) Preimage(ctx context.Context, proposal skills.Proposal) (string,
 	if err := s.validatePublication(proposal); err != nil {
 		return "", err
 	}
-	root, close, err := s.openLeasedRoot(ctx, "inspect publication target")
+	root, release, err := s.openLeasedRoot(ctx, "inspect publication target")
 	if err != nil {
 		return "", err
 	}
-	defer close()
+	defer release()
 	content, exists, err := readSkill(root, s.activeDir(proposal.Name))
 	if err != nil {
 		return "", err
@@ -34,6 +34,7 @@ func (s *Store) Preimage(ctx context.Context, proposal skills.Proposal) (string,
 	}
 	return digestDocument(content, exists), nil
 }
+
 func (s *Store) validatePublication(p skills.Proposal) error {
 	if p.Scope != s.scope {
 		return skills.ErrConflict

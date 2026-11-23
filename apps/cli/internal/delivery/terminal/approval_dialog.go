@@ -19,6 +19,11 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
+const (
+	approvalDetailMaxRows = 4
+	approvalChoiceRows    = 3
+)
+
 type approvalPane struct {
 	theme       kit.Theme
 	glyphs      kit.Glyphs
@@ -65,7 +70,7 @@ func (a *approvalPane) initialize(wheel input.Wheel) {
 		if a.form != nil {
 			formRows = min(a.form.Element().Measure(layout.Down, space.X), max(space.Y-1, 0))
 		}
-		detailRows := min(a.detail.HeightForWidth(space.X), min(4, max(space.Y-formRows-1, 0)))
+		detailRows := min(a.detail.HeightForWidth(space.X), min(approvalDetailMaxRows, max(space.Y-formRows-1, 0)))
 		slots := []layout.Slot{{Size: layout.Fixed(1)}, {Size: layout.Fixed(detailRows)}, {Size: layout.Flex(1)}}
 		if a.form != nil {
 			slots = append(slots, layout.Slot{Size: layout.Fixed(formRows)})
@@ -102,8 +107,6 @@ func (a *approvalPane) replacePreview(blocks []base.Block, wheel input.Wheel) {
 	}
 	view := kit.NewTranscript(kit.TranscriptConfig{Behavior: base.TranscriptConfig{Key: "approval-preview", MaxItems: max(len(blocks), 1)}, Theme: a.theme, Glyphs: a.glyphs})
 	a.view, a.preview = view, view.Controller()
-	// Approval decisions own keyboard focus. The preview still accepts pointer
-	// selection and wheel input without displacing the active form field.
 	view.Element().SetFocusable(func() bool { return false })
 	a.scroll = a.preview.Scroll()
 	a.scroll.SetWheel(wheel)
@@ -133,7 +136,7 @@ func (p *interruptPrompts) setApprovalForm(initial approvalAction) {
 		return
 	}
 	draft.choice = value
-	choice := base.NewSelect(base.SelectConfig[approvalAction]{Same: base.Equal[approvalAction], Label: "How should flame proceed?", Initial: value, Options: approvalOptions(rememberable), Rows: 3})
+	choice := base.NewSelect(base.SelectConfig[approvalAction]{Same: base.Equal[approvalAction], Label: "How should flame proceed?", Initial: value, Options: approvalOptions(rememberable), Rows: approvalChoiceRows})
 	reason := base.NewText(base.TextConfig{Label: "Denial feedback (optional)", Placeholder: "Explain what should change before retrying", Initial: draft.reason, Clipboard: p.clipboard})
 	capture := func() bool {
 		if p.review != review || p.approval != approval || p.approvalDraft != draft {
@@ -210,7 +213,7 @@ func (p *interruptPrompts) setApprovalPreview(sections []toolSection) {
 	presentation := blockPresentation{Theme: p.approvalPane.theme, Glyphs: p.approvalPane.glyphs, Syntax: p.syntax}
 	var blocks []base.Block
 	for _, section := range sections {
-		for _, block := range renderToolSections(presentation, []toolSection{section}, false) {
+		for _, block := range renderToolSections(presentation, []toolSection{section}, fullToolDetail) {
 			blocks = append(blocks, newReaderSectionBlock(p.approvalPane.theme, section.Title, block))
 		}
 	}
@@ -254,7 +257,7 @@ func (p *interruptPrompts) openCurrentInterrupt() {
 	case conversation.Question:
 		p.openQuestion(item)
 	default:
-		p.run.fail(errors.New("runtime returned an unknown interrupt"))
+		p.run.fail(fmt.Errorf("%w: %T", conversation.ErrUnsupportedInterrupt, interrupt))
 	}
 }
 
@@ -328,11 +331,6 @@ func (p *interruptPrompts) backInterrupt() bool {
 	return true
 }
 
-// reopenCompletedInterruptReview restores the UI owner of a completed HITL
-// draft when the draft could not be durably staged or its delivery was
-// definitively refused. A multi-item draft returns to its review summary; a
-// single-item draft returns to the answered interrupt so the user can retry
-// or revise it.
 func (p *interruptPrompts) reopenCompletedInterruptReview(review *interruptReview) error {
 	if review == nil || p.review != review {
 		return errors.New("completed interrupt review is no longer active")

@@ -1,8 +1,6 @@
 package bootstrap
 
 import (
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"context"
 	"encoding/json/jsontext"
 	"fmt"
@@ -12,6 +10,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"

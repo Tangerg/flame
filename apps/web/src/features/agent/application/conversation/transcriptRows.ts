@@ -20,7 +20,6 @@ import {
 export interface TurnFacts {
   toolCalls: Record<string, ToolCall>;
   delegatedRuns: DelegatedRunNarrativesByItemId;
-  /** The Run to resume for each of this turn's Items that awaits an answer. */
   awaiting: ReadonlyMap<string, string>;
 }
 

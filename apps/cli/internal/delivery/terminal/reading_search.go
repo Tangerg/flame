@@ -20,9 +20,6 @@ type readingSearchRequest struct {
 	cancel  context.CancelFunc
 }
 
-// One worker owns search work for a reading session. Replacement cancels the old
-// immutable row scan, and its exact request identity gates delivery even when the
-// query text repeats. Results and pending work each retain at most one snapshot.
 type readingSearch struct {
 	mu       sync.Mutex
 	requests chan *readingSearchRequest
@@ -73,7 +70,9 @@ func (s *readingSearch) Current(result readingSearchResult) bool {
 	defer s.mu.Unlock()
 	return result.request != nil && s.current == result.request && result.request.context.Err() == nil
 }
+
 func (s *readingSearch) Results() <-chan readingSearchResult { return s.results }
+
 func (s *readingSearch) Close() {
 	s.once.Do(func() {
 		s.mu.Lock()
@@ -85,6 +84,7 @@ func (s *readingSearch) Close() {
 		<-s.done
 	})
 }
+
 func (s *readingSearch) run() {
 	defer close(s.done)
 	defer close(s.results)

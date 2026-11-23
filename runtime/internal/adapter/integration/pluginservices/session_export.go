@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+	"errors"
 	"iter"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -18,7 +19,7 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-func (c *CommandCalls) RenderSessionMarkdown(ctx context.Context, sessionID identity.SessionID, document []byte) (string, error) {
+func (c *CommandCalls) RenderSessionMarkdown(ctx context.Context, sessionID identity.SessionID, document []byte) (_ string, returned error) {
 	contract, err := pluginsdk.SessionMarkdownContract()
 	if err != nil {
 		return "", err
@@ -27,7 +28,7 @@ func (c *CommandCalls) RenderSessionMarkdown(ctx context.Context, sessionID iden
 	if err != nil {
 		return "", err
 	}
-	defer borrow.Close()
+	defer func() { returned = errors.Join(returned, borrow.Close()) }()
 	ctx = borrow.Context()
 	actor, err := operation.Capture(ctx, framecall.Target{Scope: string(extension.ComponentScopeSession), Reference: sessionID.String()})
 	if err != nil {
@@ -89,19 +90,21 @@ func readRenderedDocument(source iter.Seq2[pluginmcp.StreamValue[jsontext.Value,
 		if finished {
 			return "", pluginmcp.ErrStreamUnconfirmed
 		}
+		encodedChunk, isChunk := value.Chunk()
+		encodedResult, isResult := value.Result()
 		switch {
-		case value.Chunk != nil:
+		case isChunk:
 			var chunk string
-			if err := json.Unmarshal(*value.Chunk, &chunk); err != nil {
+			if err := json.Unmarshal(encodedChunk, &chunk); err != nil {
 				return "", err
 			}
 			if err := pluginsdk.ValidateRenderedChunk(body.Len(), len(chunk)); err != nil {
 				return "", err
 			}
 			body.WriteString(chunk)
-		case value.Result != nil:
+		case isResult:
 			var result pluginsdk.DocumentIdentity
-			if err := json.Unmarshal(*value.Result, &result, json.RejectUnknownMembers(true)); err != nil {
+			if err := json.Unmarshal(encodedResult, &result, json.RejectUnknownMembers(true)); err != nil {
 				return "", err
 			}
 			if result != pluginsdk.IdentifyDocument(body.Bytes()) {

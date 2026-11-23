@@ -11,9 +11,6 @@ const (
 	confirmQuit
 )
 
-// pressConfirmation owns short-lived, destructive double-press gestures. Only
-// two presses of the same semantic action confirm; arming a different action
-// replaces the previous one.
 type pressConfirmation struct {
 	kind     confirmationKind
 	deadline time.Time

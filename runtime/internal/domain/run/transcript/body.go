@@ -12,8 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
-// Body is the closed set of Item variants. The variant alone decides the
-// Item's Kind, so no field of one variant can appear on another.
 type Body interface {
 	Kind() ItemKind
 	validate(status ItemStatus, occurredAt time.Time) error
@@ -39,13 +37,9 @@ type QuestionBody struct {
 	Question Question
 }
 
-// ToolCallBody is the only variant with a lifecycle: the terminal facts are
-// absent while running and recorded once by settlement.
 type ToolCallBody struct {
-	Invocation  ToolInvocation
-	SafetyClass tool.SafetyClass
-	// Approval is the accepted human verdict; nil means none was required or
-	// it is still unresolved.
+	Invocation        ToolInvocation
+	SafetyClass       tool.SafetyClass
 	Approval          *approval.Resolution
 	FinishedAt        time.Time
 	ExecutionDuration *time.Duration
@@ -71,7 +65,6 @@ func (p UserMessageBody) validate(status ItemStatus, _ time.Time) error {
 	return validateMessageContent(p.Content)
 }
 
-// Visible model observations can settle incomplete without becoming a response.
 func (p AgentMessageBody) validate(status ItemStatus, _ time.Time) error {
 	if status != ItemCompleted && status != ItemIncomplete {
 		return errors.New("transcript: agentMessage must be complete or incomplete")
@@ -122,9 +115,6 @@ func (p ToolCallBody) validate(status ItemStatus, occurredAt time.Time) error {
 	return p.validateTiming(occurredAt)
 }
 
-// validateTerminalFacts ties finish, duration and failure to the status: a
-// running call has none, a completed one has a finish and duration but no
-// failure, and an incomplete one at least finished.
 func (p ToolCallBody) validateTerminalFacts(status ItemStatus) error {
 	switch status {
 	case ItemRunning:
@@ -143,8 +133,6 @@ func (p ToolCallBody) validateTerminalFacts(status ItemStatus) error {
 	return nil
 }
 
-// validateTiming keeps the finish and the measured execution inside the
-// call's own lifecycle.
 func (p ToolCallBody) validateTiming(occurredAt time.Time) error {
 	if err := instant.Validate(p.FinishedAt); err != nil {
 		return fmt.Errorf("transcript: %w", err)
@@ -206,7 +194,9 @@ func (p QuestionBody) clone() Body {
 	return QuestionBody{Question: cloneQuestion(p.Question)}
 }
 
-func (p ToolCallBody) clone() Body {
+func (p ToolCallBody) clone() Body { return p.cloned() }
+
+func (p ToolCallBody) cloned() ToolCallBody {
 	p.Invocation = p.Invocation.clone()
 	if p.Approval != nil {
 		p.Approval = new(*p.Approval)
@@ -261,8 +251,6 @@ func equalPointers[T comparable](left, right *T) bool {
 	return *left == *right
 }
 
-// Validate reports whether an invocation has a canonical identity and result
-// shape. pending requires the result and offload reference to be absent.
 func (t ToolInvocation) Validate(pending bool) error {
 	if strings.TrimSpace(t.Name) == "" || t.Name != strings.TrimSpace(t.Name) {
 		return errors.New("transcript: Tool name is required without surrounding whitespace")
@@ -308,12 +296,8 @@ func cloneQuestion(question Question) Question {
 	return cloned
 }
 
-// CloneAnswers copies one question's answers away from their producer.
-//
-// A row is appended onto a nil slice rather than cloned, so an answered-but-empty
-// field arrives as nil and encodes as JSON null. That is the published shape for
-// a skipped field: slices.Clone would preserve the empty slice and publish [],
-// changing the wire for every consumer that reads a skipped answer back.
+// Appended onto a nil slice rather than cloned so a skipped field encodes as null,
+// the published shape; slices.Clone would publish [].
 func CloneAnswers(answers [][]string) [][]string {
 	if answers == nil {
 		return nil

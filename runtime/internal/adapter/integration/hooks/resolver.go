@@ -1,4 +1,3 @@
-// Package hooks admits installed rule sources under Runtime project trust.
 package hooks
 
 import (
@@ -15,12 +14,10 @@ import (
 	"github.com/samber/lo"
 )
 
-// Source supplies one exact installed provider. Absence contributes no hooks.
 type Source interface {
 	AcquireHooks(context.Context) (Use, error)
 }
 
-// Use retains the captured provider until discovery and every event have joined.
 type Use interface {
 	Discover(context.Context, hookprovider.Discovery) ([]hook.Hook, error)
 	Evaluate(context.Context, hookprovider.Evaluation) (hookprovider.Advice, error)
@@ -35,19 +32,22 @@ type Resolver struct {
 }
 
 func NewResolver(home string, trusted func(context.Context, string) (bool, error), source Source, onError func(context.Context, string, error)) (*Resolver, error) {
-	if lo.IsNil(source) || (home != "" && !filepath.IsAbs(home)) {
-		return nil, errors.New("hooks: installed source and absolute home are required")
+	if lo.IsNil(source) || trusted == nil || onError == nil || (home != "" && !filepath.IsAbs(home)) {
+		return nil, errors.New("hooks: installed source, trust, diagnostics and absolute home are required")
 	}
 	return &Resolver{home: home, trusted: trusted, source: source, onError: onError}, nil
 }
 
 func (r *Resolver) For(ctx context.Context, cwd string) (*apphooks.Bound, error) {
-	if r == nil || cwd == "" {
-		return nil, nil
+	if cwd == "" {
+		return apphooks.Unbound(), nil
 	}
-	inspection, use, err := r.discover(ctx, cwd, false)
-	if err != nil || use == nil {
+	inspection, use, err := r.discover(ctx, cwd, trustedProjectRules)
+	if err != nil {
 		return nil, err
+	}
+	if use == nil {
+		return apphooks.Unbound(), nil
 	}
 	evaluate := use.Evaluate
 	if slices.ContainsFunc(inspection.Hooks, func(rule hook.Hook) bool { return rule.Scope == hook.ScopeProject }) {
@@ -65,31 +65,42 @@ func (r *Resolver) For(ctx context.Context, cwd string) (*apphooks.Bound, error)
 			return use.Evaluate(ctx, event)
 		}
 	}
-	return apphooks.NewBound(inspection.Hooks, evaluate, r.onError, use.Close), nil
+	bound, err := apphooks.NewBound(inspection.Hooks, evaluate, r.onError, use.Close)
+	if err != nil {
+		return nil, errors.Join(err, use.Close())
+	}
+	return bound, nil
 }
 
 func (r *Resolver) Inspect(ctx context.Context, cwd string) (_ apphooks.Inspection, returned error) {
-	if r == nil || cwd == "" {
+	if cwd == "" {
 		return apphooks.Inspection{}, nil
 	}
-	inspection, use, err := r.discover(ctx, cwd, true)
+	inspection, use, err := r.discover(ctx, cwd, everyProjectRule)
 	if use != nil {
 		defer func() { returned = errors.Join(returned, use.Close()) }()
 	}
 	return inspection, err
 }
 
-func (r *Resolver) discover(ctx context.Context, cwd string, includeUntrusted bool) (_ apphooks.Inspection, _ Use, returned error) {
+// Inspection lists an untrusted project's rules so the user can decide on trust;
+// binding never loads them.
+type projectRuleSelection int
+
+const (
+	trustedProjectRules projectRuleSelection = iota
+	everyProjectRule
+)
+
+func (r *Resolver) discover(ctx context.Context, cwd string, selection projectRuleSelection) (_ apphooks.Inspection, _ Use, returned error) {
 	root, err := project.Root(cwd)
 	if err != nil {
 		return apphooks.Inspection{}, nil, fmt.Errorf("hooks: locate project root: %w", err)
 	}
 	inspection := apphooks.Inspection{ProjectRoot: root}
-	if r.trusted != nil {
-		inspection.ProjectTrusted, err = r.trusted(ctx, root)
-		if err != nil {
-			return apphooks.Inspection{}, nil, err
-		}
+	inspection.ProjectTrusted, err = r.trusted(ctx, root)
+	if err != nil {
+		return apphooks.Inspection{}, nil, err
 	}
 	use, err := r.source.AcquireHooks(ctx)
 	if err != nil || lo.IsNil(use) {
@@ -100,7 +111,7 @@ func (r *Resolver) discover(ctx context.Context, cwd string, includeUntrusted bo
 			returned = errors.Join(returned, use.Close())
 		}
 	}()
-	query := hookprovider.Discovery{CWD: cwd, ProjectRoot: root, Home: r.home, IncludeProject: includeUntrusted || inspection.ProjectTrusted}
+	query := hookprovider.Discovery{CWD: cwd, ProjectRoot: root, Home: r.home, IncludeProject: selection == everyProjectRule || inspection.ProjectTrusted}
 	inspection.Hooks, err = use.Discover(ctx, query)
 	if err != nil {
 		return apphooks.Inspection{}, nil, fmt.Errorf("hooks: discover installed rules: %w", err)

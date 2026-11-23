@@ -12,8 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
-// ListDiscoveredSkills maps the application-owned, name-ordered visible Skill
-// catalog to the protocol shape.
 func (s *Handler) ListDiscoveredSkills(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.SkillDiscovery, error) {
 	found, err := s.workspaceSkills.List(ctx, in.Workspace.Path)
 	if err != nil {
@@ -46,10 +44,6 @@ func (s *Handler) GetDiscoveredSkill(ctx context.Context, in protocol.SkillDetai
 	return &protocol.SkillDetail{Skill: value, Path: detail.Path, Revision: detail.Revision, Instructions: detail.Instructions}, nil
 }
 
-// ListManagedSkills returns the user self-authored Skill library — active then
-// archived, ordered by name within each lifecycle and tagged with its lifecycle
-// (skills.library.list). The library is small, so it comes back in one page
-// and has no continuation cursor.
 func (s *Handler) ListManagedSkills(ctx context.Context) (*protocol.Page[protocol.ManagedSkill], error) {
 	entries, err := s.workspaceSkills.Managed(ctx)
 	if err != nil {
@@ -81,16 +75,10 @@ func presentSkillLifecycle(lifecycle skills.Lifecycle) (protocol.SkillLifecycle,
 	}
 }
 
-// ArchiveSkill removes a skill from active use without deleting it
-// (skills.library.archive). The application use case publishes the refresh
-// nudge after its durable mutation commits.
 func (s *Handler) ArchiveSkill(ctx context.Context, in protocol.SkillNameRequest) error {
 	return mapSkillError(s.workspaceSkills.Archive(ctx, in.Name))
 }
 
-// RestoreSkill returns an archived skill to active use
-// (skills.library.restore). The application use case publishes the refresh
-// nudge after its durable mutation commits.
 func (s *Handler) RestoreSkill(ctx context.Context, in protocol.SkillNameRequest) error {
 	return mapSkillError(s.workspaceSkills.Restore(ctx, in.Name))
 }
@@ -111,8 +99,6 @@ func mapSkillError(err error) error {
 	return protocol.NewFailure(kind, detail, err)
 }
 
-// ListSkillProposals returns the one current proposal per scoped Skill name,
-// ordered project first and then by name (skills.proposals.list).
 func (s *Handler) ListSkillProposals(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.SkillProposal], error) {
 	proposals, err := s.workspaceSkills.Proposals(ctx, in.Workspace.Path)
 	if err != nil {
@@ -142,7 +128,6 @@ func (s *Handler) ListSkillProposals(ctx context.Context, in protocol.WorkspaceQ
 	return protocol.NewPage(out), nil
 }
 
-// ApproveSkillProposal activates exactly the reviewed immutable proposal.
 func (s *Handler) ApproveSkillProposal(ctx context.Context, in protocol.SkillProposalRef) error {
 	ref, err := skillProposalRef(in)
 	if err != nil {
@@ -151,7 +136,6 @@ func (s *Handler) ApproveSkillProposal(ctx context.Context, in protocol.SkillPro
 	return mapSkillProposalErr(s.workspaceSkills.ApproveProposal(ctx, in.Workspace.Path, ref))
 }
 
-// RejectSkillProposal removes exactly the reviewed immutable proposal.
 func (s *Handler) RejectSkillProposal(ctx context.Context, in protocol.SkillProposalRef) error {
 	ref, err := skillProposalRef(in)
 	if err != nil {
@@ -179,8 +163,6 @@ func presentSkillProposalScope(scope skills.Scope) (protocol.SkillProposalScope,
 	}
 }
 
-// proposalScopeDomain maps a scope the endpoint's wire validation has already
-// admitted to its closed set.
 func proposalScopeDomain(scope protocol.SkillProposalScope) skills.Scope {
 	switch scope {
 	case protocol.SkillProposalScopeProject:

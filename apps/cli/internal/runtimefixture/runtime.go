@@ -10,6 +10,15 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
+const (
+	balancedContextWindow   = 200_000
+	balancedMaxOutputTokens = 32_000
+	fastContextWindow       = 128_000
+	fastMaxOutputTokens     = 16_000
+	deepContextWindow       = 400_000
+	deepMaxOutputTokens     = 64_000
+)
+
 var errCanceled = errors.New("mock: run canceled")
 
 const (
@@ -30,12 +39,7 @@ type SubscriptionFault struct {
 	After int
 }
 
-// Runtime is an in-memory implementation of the CLI's consumer port. It models
-// stable Runs, per-resume Segments, opaque event IDs, authoritative cold reads,
-// and complete interrupt sets independently from any delivery transport.
 type Runtime struct {
-	// ToolModelNames supplies explicit catalog labels for approval command tests,
-	// keyed by conversation.ToolSource because a reference holds a pointer.
 	ToolModelNames map[string]string
 	Instant        bool
 	Script         func(authoredPrompt string) Script
@@ -90,9 +94,7 @@ type runState struct {
 	cancelOnce      sync.Once
 	usage           conversation.Usage
 	outcome         conversation.Outcome
-	// streaming holds the text previews Runtime would close as incomplete
-	// Items before a terminal event; they are never durable while open.
-	streaming []conversation.Block
+	streaming       []conversation.Block
 }
 
 type segmentState struct {
@@ -123,9 +125,9 @@ func (r *Runtime) ListModels(ctx context.Context) ([]protocol.Model, error) {
 		return nil, err
 	}
 	models := []protocol.Model{
-		{ID: defaultModel, Provider: defaultProvider, DisplayName: "Mock Balanced", TokenLimits: mockModelTokenLimits(200_000, 32_000), Capabilities: &protocol.ModelCapabilities{Reasoning: true, ReasoningLevels: []string{"low", "medium", "high"}, ReasoningDefaultLevel: "medium", Multimodal: true, InputModalities: []protocol.Modality{protocol.ModalityText, protocol.ModalityImage}, OutputModalities: []protocol.Modality{protocol.ModalityText}, ToolUse: true, StructuredOutput: true}},
-		{ID: "fast", Provider: "mock", DisplayName: "Mock Fast", TokenLimits: mockModelTokenLimits(128_000, 16_000), Capabilities: &protocol.ModelCapabilities{InputModalities: []protocol.Modality{protocol.ModalityText}, OutputModalities: []protocol.Modality{protocol.ModalityText}, ToolUse: true}},
-		{ID: "deep", Provider: "synthetic", DisplayName: "Synthetic Deep", TokenLimits: mockModelTokenLimits(400_000, 64_000), Capabilities: &protocol.ModelCapabilities{Reasoning: true, ReasoningLevels: []string{"medium", "high", "max"}, ReasoningDefaultLevel: "high", InputModalities: []protocol.Modality{protocol.ModalityText}, OutputModalities: []protocol.Modality{protocol.ModalityText}, ToolUse: true}},
+		{ID: defaultModel, Provider: defaultProvider, DisplayName: "Mock Balanced", TokenLimits: mockModelTokenLimits(balancedContextWindow, balancedMaxOutputTokens), Capabilities: &protocol.ModelCapabilities{Reasoning: true, ReasoningLevels: []string{"low", "medium", "high"}, ReasoningDefaultLevel: "medium", Multimodal: true, InputModalities: []protocol.Modality{protocol.ModalityText, protocol.ModalityImage}, OutputModalities: []protocol.Modality{protocol.ModalityText}, ToolUse: true, StructuredOutput: true}},
+		{ID: "fast", Provider: defaultProvider, DisplayName: "Mock Fast", TokenLimits: mockModelTokenLimits(fastContextWindow, fastMaxOutputTokens), Capabilities: &protocol.ModelCapabilities{InputModalities: []protocol.Modality{protocol.ModalityText}, OutputModalities: []protocol.Modality{protocol.ModalityText}, ToolUse: true}},
+		{ID: "deep", Provider: "synthetic", DisplayName: "Synthetic Deep", TokenLimits: mockModelTokenLimits(deepContextWindow, deepMaxOutputTokens), Capabilities: &protocol.ModelCapabilities{Reasoning: true, ReasoningLevels: []string{"medium", "high", "max"}, ReasoningDefaultLevel: "high", InputModalities: []protocol.Modality{protocol.ModalityText}, OutputModalities: []protocol.Modality{protocol.ModalityText}, ToolUse: true}},
 	}
 	return models, nil
 }
@@ -134,8 +136,6 @@ func mockModelTokenLimits(contextWindow, maxOutput int64) *protocol.ModelTokenLi
 	return &protocol.ModelTokenLimits{ContextWindow: &contextWindow, MaxOutputTokens: &maxOutput}
 }
 
-// approvalModePolicies is the fixture's stand-in for the Runtime's published
-// gate matrix.
 func approvalModePolicies() []protocol.ApprovalModePolicy {
 	return []protocol.ApprovalModePolicy{
 		{Mode: protocol.ApprovalModeSafe, Write: protocol.ApprovalGatePrompt, Exec: protocol.ApprovalGatePrompt, Network: protocol.ApprovalGatePrompt},

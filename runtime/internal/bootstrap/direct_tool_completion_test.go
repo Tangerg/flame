@@ -16,10 +16,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
-	chathistory "github.com/Tangerg/scope/core/history"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -72,7 +73,7 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 				message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
 				return &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls}}, nil
 			})}
-			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -137,7 +138,7 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 				t.Fatalf("model calls=%d, Tool executions=%d", calls.Load(), executions.Load())
 			}
 			if !delegated {
-				history, err := stores.ChatHistory.Read(ctx, chathistory.ConversationID(session.ID))
+				history, err := stores.Conversations.Read(ctx, testsupport.MustSessionID(session.ID))
 				if err != nil {
 					t.Fatal(err)
 				}

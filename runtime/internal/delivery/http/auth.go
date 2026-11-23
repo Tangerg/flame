@@ -13,9 +13,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 )
 
-// Authentication is the RPC gate policy. The zero value is invalid so every
-// server chooses one, and an ungated server is admitted only on a loopback
-// listener: the RPC surface runs shell and file tools.
 type Authentication struct {
 	token string
 	open  bool
@@ -54,13 +51,11 @@ func loopbackListener(addr string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-// A loopback listener establishes the socket peer, not the browser origin.
-// In particular a rebinding domain can be same-origin to the browser.
 func (s *Server) protectRPC(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.authentication.gated() {
 			if !validBearer(r.Header.Get(headerAuthorization), s.authentication.token) {
-				w.Header().Set("WWW-Authenticate", "Bearer")
+				w.Header().Set("WWW-Authenticate", bearerScheme)
 				writeProblem(w, problemUnauthorized, "a valid local bearer token is required")
 				return
 			}
@@ -94,12 +89,10 @@ func (s *Server) trustedLoopbackRequest(r *http.Request) bool {
 
 const (
 	wildcardOrigin = "*"
-	// opaqueOrigin is how browsers serialize an origin with no host (RFC 6454).
+	// Browsers serialize an origin with no host as "null" (RFC 6454).
 	opaqueOrigin = "null"
 )
 
-// bareOriginURL parses an Origin value that is exactly scheme://host[:port];
-// empty, wildcard, opaque and decorated values are refused.
 func bareOriginURL(value string) (*url.URL, bool) {
 	if value == "" || value == wildcardOrigin || value == opaqueOrigin {
 		return nil, false
@@ -115,7 +108,7 @@ func bareOriginURL(value string) (*url.URL, bool) {
 // in constant time.
 func validBearer(header, expected string) bool {
 	scheme, credentials, found := strings.Cut(header, " ")
-	if !found || !strings.EqualFold(scheme, "Bearer") {
+	if !found || !strings.EqualFold(scheme, bearerScheme) {
 		return false
 	}
 	got := strings.TrimSpace(credentials)

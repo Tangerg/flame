@@ -43,7 +43,7 @@ import {
   type Edit,
   type ModelRead,
 } from "./types";
-export const enabled = (item: Schedule) => item.NextRunAt !== undefined;
+export const enabled = (item: Schedule) => item.nextRunAt !== undefined;
 export const selection = (model?: Model, reasoningEffort = "") => ({
   provider: model?.provider ?? "",
   model: model?.id ?? "",
@@ -120,8 +120,8 @@ export function useSchedules(context: ComponentContext) {
       setRead((previous) => ({ ...previous, loading: true, error: undefined }));
       try {
         const page = await operations.query(
-          "flame.schedules/list.v1",
-          { Cursor: history.at(-1) ?? "" },
+          "flame.schedules/list.v2",
+          { cursor: history.at(-1) ?? "" },
           signal,
         );
         if (!signal.aborted) {
@@ -243,8 +243,8 @@ export function useSchedules(context: ComponentContext) {
         setEdit(undefined);
         setDeleting(undefined);
         setNotice(
-          captured.method === "flame.schedules/runNow.v1"
-            ? (output as MethodOutputs["flame.schedules/runNow.v1"])
+          captured.method === "flame.schedules/runNow.v2"
+            ? (output as MethodOutputs["flame.schedules/runNow.v2"])
             : t("notice.completed", { label: captured.label }),
         );
         void refresh();
@@ -324,13 +324,13 @@ export function useSchedules(context: ComponentContext) {
     setNotice(undefined);
     setEdit({
       draft: {
-        Title: template ? t(`template.${template.id}.title`) : "",
-        Instructions: template ? t(`template.${template.id}.instructions`) : "",
-        Cron: template?.cron ?? "",
-        TimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        CWD: context.workspace?.ref.path ?? "",
-        ModelSelection: selection(),
-        Enabled: true,
+        title: template ? t(`template.${template.id}.title`) : "",
+        instructions: template ? t(`template.${template.id}.instructions`) : "",
+        cron: template?.cron ?? "",
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        cwd: context.workspace?.ref.path ?? "",
+        modelSelection: selection(),
+        enabled: true,
       },
     });
     setDeleting(undefined);
@@ -346,33 +346,29 @@ export function useSchedules(context: ComponentContext) {
     if (!edit || !canSave) return;
     const draft = {
       ...edit.draft,
-      Title: edit.draft.Title.trim(),
-      Instructions: edit.draft.Instructions.trim(),
-      Cron: edit.draft.Cron.trim(),
-      TimeZone: edit.draft.TimeZone.trim(),
-      CWD: edit.draft.CWD.trim(),
+      title: edit.draft.title.trim(),
+      instructions: edit.draft.instructions.trim(),
+      cron: edit.draft.cron.trim(),
+      timeZone: edit.draft.timeZone.trim(),
+      cwd: edit.draft.cwd.trim(),
     };
     if (edit.basis)
       submit(
-        "flame.schedules/update.v1",
+        "flame.schedules/update.v2",
         {
-          ID: edit.basis.ID,
-          ExpectedRevision: edit.basis.Revision,
-          Title: draft.Title,
-          Instructions: draft.Instructions,
-          Cron: draft.Cron,
-          TimeZone: draft.TimeZone,
-          CWD: draft.CWD,
-          Enabled: draft.Enabled,
-          ModelSelection: {
-            Provider: draft.ModelSelection.provider,
-            Model: draft.ModelSelection.model,
-            ReasoningEffort: draft.ModelSelection.reasoningEffort,
-          },
+          id: edit.basis.id,
+          expectedRevision: edit.basis.revision,
+          title: draft.title,
+          instructions: draft.instructions,
+          cron: draft.cron,
+          timeZone: draft.timeZone,
+          cwd: draft.cwd,
+          enabled: draft.enabled,
+          modelSelection: draft.modelSelection,
         },
         t("command.save"),
       );
-    else submit("flame.schedules/create.v1", draft, t("command.create"));
+    else submit("flame.schedules/create.v2", draft, t("command.create"));
   }
   function cancelTask() {
     if (command) return;
@@ -391,35 +387,35 @@ export function useSchedules(context: ComponentContext) {
       position.element.scrollTop = 0;
   }
   const page = read.accepted?.page;
-  const rows = page?.Rows ?? [];
+  const rows = page?.rows ?? [];
   const matching = rows.filter(
     (item) =>
       (status === "all" ||
         (enabled(item) ? "enabled" : "disabled") === status) &&
-      `${item.ID} ${item.Title} ${item.Instructions} ${item.Cron} ${item.CWD}`
+      `${item.id} ${item.title} ${item.instructions} ${item.cron} ${item.cwd}`
         .toLocaleLowerCase()
         .includes(search.toLocaleLowerCase()),
   );
   const busy = Boolean(command);
   const canSave = Boolean(
     !busy &&
-    edit?.draft.Instructions.trim() &&
-    edit.draft.Cron.trim() &&
-    edit.draft.TimeZone.trim(),
+    edit?.draft.instructions.trim() &&
+    edit.draft.cron.trim() &&
+    edit.draft.timeZone.trim(),
   );
   const editorOpen = Boolean(edit || deleting);
   const actionsDisabled = busy || editorOpen;
   const disabled = actionsDisabled || read.loading || Boolean(read.error);
   const selectedModel = models.find(
     (model) =>
-      model.provider === edit?.draft.ModelSelection.provider &&
-      model.id === edit?.draft.ModelSelection.model,
+      model.provider === edit?.draft.modelSelection.provider &&
+      model.id === edit?.draft.modelSelection.model,
   );
   const selectedKey =
-    edit?.draft.ModelSelection.provider && edit.draft.ModelSelection.model
+    edit?.draft.modelSelection.provider && edit.draft.modelSelection.model
       ? JSON.stringify([
-          edit.draft.ModelSelection.provider,
-          edit.draft.ModelSelection.model,
+          edit.draft.modelSelection.provider,
+          edit.draft.modelSelection.model,
         ])
       : "default";
   return {

@@ -5,7 +5,7 @@ import {
   type RpcRunsGateway,
 } from "@/features/agent/adapters/rpcAgentDriver";
 import { type Translate } from "@/lib/i18n/index";
-export type ActiveSessionId = () => string | null | undefined;
+type ActiveSessionId = () => string | null | undefined;
 
 export function rpcAgentSource(
   t: Translate,

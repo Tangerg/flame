@@ -22,8 +22,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// Fixtures explicitly include the neutral author inputs. The original product
-// schema remains independent, so malformed metadata still reaches its parser.
 func writePackage(t *testing.T, files map[string]string) string {
 	t.Helper()
 	directory := t.TempDir()
@@ -65,8 +63,6 @@ func writePackage(t *testing.T, files map[string]string) string {
 			}
 		}
 	}
-	// Handwritten module fixtures have a matching explicit compiler graph. Real
-	// generated graphs are tested by component-sdk with its actual compiler.
 	var declaration struct {
 		Components []struct {
 			Entry  string `json:"entry"`
@@ -191,8 +187,6 @@ type installationFixture struct {
 	catalog releaseCatalog
 }
 
-// The profile is registered to validate declarations. Metadata tests must never
-// execute code; real process and browser drivers have their own integration tests.
 type unopenedProfile framehost.Profile
 
 func (p unopenedProfile) Profile() framehost.Profile { return framehost.Profile(p) }

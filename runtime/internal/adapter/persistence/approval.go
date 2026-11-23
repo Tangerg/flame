@@ -14,17 +14,12 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// ApprovalRuleStore persists approval rules in SQLite. It satisfies the
-// Application consumer interface structurally without importing it. This is the
-// persistent home for fine-grained "remember this decision" rules. Put is an
-// upsert by deterministic rule id, replacing the decision and source authority.
-// The DB must have been opened via [Open] so the approval_rules table exists.
 type ApprovalRuleStore struct{ db *database }
 
-// newApprovalRuleStore binds the rule store to db.
 func newApprovalRuleStore(db *database) *ApprovalRuleStore {
 	return &ApprovalRuleStore{db: db}
 }
+
 func (a *ApprovalRuleStore) Put(ctx context.Context, r approval.Rule) error {
 	return a.db.write(ctx, func(ctx context.Context) error {
 		_, err := a.db.connection(ctx).ExecContext(ctx, putApprovalRuleSQL, approvalRuleArgs(r)...)
@@ -35,9 +30,6 @@ func (a *ApprovalRuleStore) Put(ctx context.Context, r approval.Rule) error {
 	})
 }
 
-// Scope predicate expressed as a WHERE clause — the mirror of approval's
-// visible(): session rules for this session, project rules for this cwd
-// (skipped entirely when the call has no cwd), and all global rules.
 func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID identity.SessionID, projectDir string, limit int) ([]approval.Rule, error) {
 	return scopedValue(ctx, a.db.read, func(ctx context.Context) ([]approval.Rule, error) {
 		if limit <= 0 || limit > approval.MaximumVisibleRules+1 {
@@ -54,9 +46,7 @@ func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID identity.Sess
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list approval rules: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		var out []approval.Rule
 		for rows.Next() {
 			var storedID, scope, scopeKey, decision, kind, name, fingerprint string
@@ -92,6 +82,7 @@ func (a *ApprovalRuleStore) Visible(ctx context.Context, sessionID identity.Sess
 		return out, nil
 	})
 }
+
 func (a *ApprovalRuleStore) Delete(ctx context.Context, id string) error {
 	return a.db.write(ctx, func(ctx context.Context) error {
 		if _, err := a.db.connection(ctx).ExecContext(ctx, `DELETE FROM approval_rules WHERE id = ?`, id); err != nil {
@@ -100,6 +91,7 @@ func (a *ApprovalRuleStore) Delete(ctx context.Context, id string) error {
 		return nil
 	})
 }
+
 func (a *ApprovalRuleStore) DeleteSession(ctx context.Context, sessionID identity.SessionID) error {
 	return a.db.write(ctx, func(ctx context.Context) error {
 		if err := validateResource("delete Session approval rules", sessionID); err != nil {
@@ -112,10 +104,6 @@ func (a *ApprovalRuleStore) DeleteSession(ctx context.Context, sessionID identit
 	})
 }
 
-// approvalRulesSchema keeps the closed scope and tool reference vocabularies
-// with their owners. The id is derived from the scope, its key, the tool
-// reference and the subject, but not the decision: remembering a decision for
-// the same rule replaces it.
 func approvalRulesSchema() string {
 	kinds := make([]string, 0, len(tool.RefKinds()))
 	for _, kind := range tool.RefKinds() {
@@ -160,6 +148,7 @@ func approvalRuleArgs(r approval.Rule) []any {
 	subject := r.Subject()
 	return append(args, r.SourceFingerprint().String(), string(subject.Type), subject.Value, string(r.Decision()))
 }
+
 func decodeRuleTool(kind, name string, source storedMCPSource) (tool.Ref, error) {
 	switch tool.RefKind(kind) {
 	case tool.BuiltInKind:
@@ -179,7 +168,6 @@ func decodeRuleTool(kind, name string, source storedMCPSource) (tool.Ref, error)
 	}
 }
 
-// sqlValues spells a closed vocabulary as an SQL value list.
 func sqlValues(values ...string) string {
 	quoted := make([]string, len(values))
 	for index, value := range values {

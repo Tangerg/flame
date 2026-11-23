@@ -57,8 +57,6 @@ func validateRecoveryToolInvocationItems(
 			continue
 		}
 		if _, active := tree.runsByID[invocation.RunID]; !active {
-			// The invocation journal may outlive an already-terminal Run. It no
-			// longer has an active Transcript lifecycle to reconcile.
 			continue
 		}
 		item, present := itemsByID[invocation.ItemID]

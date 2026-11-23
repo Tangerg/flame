@@ -9,9 +9,8 @@ import (
 	"github.com/Tangerg/scope/tools/fs"
 )
 
-// FileMutationReporter supplies prospective paths for approval, locking, and
-// mutation guards. MutationPaths must be side-effect-free; its result never
-// acknowledges actual file effects.
+// MutationPaths must be side-effect-free; its result never acknowledges actual
+// file effects.
 type FileMutationReporter interface {
 	MutationPaths(arguments []byte) ([]string, error)
 }
@@ -29,9 +28,6 @@ func mutationPaths(tool toolcontract.Tool, invocation toolcontract.Invocation) (
 		paths = append(paths, reported...)
 	}
 	if len(paths) == 0 {
-		// Only ApplyPatchTool declares its endpoints; every other file Tool names
-		// one path in its schema. Guards depend on this answer, so arguments
-		// that cannot be read refuse the call rather than naming no path.
 		var a struct {
 			Path string `json:"path"`
 		}

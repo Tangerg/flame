@@ -10,6 +10,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
+const modelsTitle = "Models"
+
 func (o *runOptionScreens) ShowModels() {
 	o.reader.show(o.modelsReaderQuery())
 }
@@ -36,13 +38,13 @@ func (o *runOptionScreens) modelsReaderQuery() *readerQuery {
 
 func modelCatalogDocument(models []protocol.Model) readerDocument {
 	if len(models) == 0 {
-		return paragraphDocument("Models", "none available", []string{"The runtime did not advertise any models."})
+		return paragraphDocument(modelsTitle, "none available", []string{"The runtime did not advertise any models."})
 	}
 	sections := make([]toolSection, 0, len(models))
 	for _, model := range models {
 		title := model.Provider + "/" + model.ID
 		if model.DisplayName != "" && model.DisplayName != model.ID {
-			title += " · " + model.DisplayName
+			title += format.Separator + model.DisplayName
 		}
 		if model.Deprecated {
 			title += " · deprecated"
@@ -52,11 +54,11 @@ func modelCatalogDocument(models []protocol.Model) readerDocument {
 			Text: strings.Join(modelCatalogLines(model), "\n"),
 		})
 	}
-	return readerDocument{Title: "Models", Detail: fmt.Sprintf("%d available", len(models)), Sections: sections}
+	return readerDocument{Title: modelsTitle, Detail: fmt.Sprintf("%d available", len(models)), Sections: sections}
 }
 
 func modelCatalogLines(model protocol.Model) []string {
-	lines := make([]string, 0, 7)
+	var lines []string
 	if limits := modelTokenLimits(model); limits != "" {
 		lines = append(lines, "tokens        "+limits)
 	}
@@ -98,11 +100,11 @@ func modelTokenLimits(model protocol.Model) string {
 			limits = append(limits, limit.name+" "+format.Thousands(*limit.value))
 		}
 	}
-	return strings.Join(limits, " · ")
+	return strings.Join(limits, format.Separator)
 }
 
 func modelCapabilityLines(capabilities protocol.ModelCapabilities) []string {
-	features := make([]string, 0, 4)
+	var features []string
 	if capabilities.Reasoning {
 		reasoning := "reasoning"
 		if len(capabilities.ReasoningLevels) > 0 {
@@ -125,7 +127,7 @@ func modelCapabilityLines(capabilities protocol.ModelCapabilities) []string {
 	if len(features) == 0 {
 		features = append(features, "none advertised")
 	}
-	lines := []string{"capabilities  " + strings.Join(features, " · ")}
+	lines := []string{"capabilities  " + strings.Join(features, format.Separator)}
 	if len(capabilities.InputModalities) > 0 {
 		lines = append(lines, "input         "+joinModalities(capabilities.InputModalities))
 	}
@@ -150,7 +152,7 @@ func modelPricingText(pricing protocol.ModelPriceBand) string {
 		"cache read $" + formatModelRate(pricing.CacheReadUSDPerMillionTokens) + "/M",
 		"cache write $" + formatModelRate(pricing.CacheWriteUSDPerMillionTokens) + "/M",
 	}
-	text := strings.Join(rates, " · ")
+	text := strings.Join(rates, format.Separator)
 	if pricing.AboveInputTokens > 0 {
 		text = "above " + strconv.FormatInt(pricing.AboveInputTokens, 10) + " input tokens: " + text
 	}

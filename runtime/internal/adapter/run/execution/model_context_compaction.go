@@ -1,28 +1,27 @@
 package execution
 
 import (
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"context"
 	"errors"
 	"fmt"
 	"math"
 	"strings"
 
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
 )
 
-var errInvalidModelContextCompaction = errors.New("execution: invalid model-context compaction")
+var (
+	errInvalidModelContextCompaction = errors.New("execution: invalid model-context compaction")
+	ErrModelContextDiverged          = errors.New("execution: model context diverged from durable conversation")
+)
 
-// ModelContextTokenCalibration binds one provider-reported prompt footprint to
-// the provider-neutral estimate of that exact request. The next request reuses
-// only their delta, so provider framing/tokenizer behavior calibrates the same
-// complete-request budget instead of creating a second token ledger.
 type ModelContextTokenCalibration struct {
 	reported  int64
 	estimated int
@@ -84,14 +83,10 @@ type modelContextInputTokenCounter interface {
 	CountInputTokens(context.Context, *corechat.Request) (int64, error)
 }
 
-// ModelContextCompaction is one immutable request to reduce only the mutable
-// conversational portion of an Interaction model context. Instructions and
-// newly applied input stay outside the foldable region and are reattached by
-// the caller after the compactor returns.
 type ModelContextCompaction struct {
 	persistence   modelContextPersistence
 	sessionID     identity.SessionID
-	selection     modelchoice.Selection
+	selection     flamemodel.Selection
 	limits        modelref.TokenLimits
 	instructions  []corechat.Message
 	candidate     []corechat.Message
@@ -105,48 +100,34 @@ type ModelContextCompaction struct {
 	preCompact    func(context.Context) (bool, error)
 }
 
-// ModelContextCompactionInput is the complete input one reduction request is
-// built from. It is a value rather than a parameter list because two of its
-// members are message slices of the same type that must not be transposable.
+// A value rather than parameters because two members are message slices that must
+// not be transposable.
 type ModelContextCompactionInput struct {
 	SessionID    identity.SessionID
-	Selection    modelchoice.Selection
+	Selection    flamemodel.Selection
 	Limits       modelref.TokenLimits
 	Instructions []corechat.Message
 	Candidate    []corechat.Message
-	// Trailer is Runtime context the model boundary appends after the reduced
-	// messages of this one call. It counts toward the budget but is never
-	// folded, returned, or adopted into the Interaction context.
-	Trailer     []corechat.Message
-	Tools       []toolcontract.Definition
-	Options     corechat.Options
-	Calibration ModelContextTokenCalibration
-	Counter     modelContextInputTokenCounter
-	RequestFits func(context.Context, *corechat.Request) (bool, error)
-	// ProtectedTail is how many trailing Candidate messages must survive verbatim.
-	// It is counted against Candidate, not against whatever the compactor ends up
-	// folding: a durable compaction folds the Session's stored history and
-	// reattaches the rest of Candidate afterwards, so that suffix already
-	// satisfies its share of this count.
+	Trailer      []corechat.Message
+	Tools        []toolcontract.Definition
+	Options      corechat.Options
+	Calibration  ModelContextTokenCalibration
+	Counter      modelContextInputTokenCounter
+	RequestFits  func(context.Context, *corechat.Request) (bool, error)
+	// Counted against Candidate, not against what the compactor folds: a durable
+	// compaction reattaches the rest of Candidate afterwards.
 	ProtectedTail int
 	PreCompact    func(context.Context) (bool, error)
 }
 
-// NewDurableModelContextCompaction builds a request whose candidate begins
-// with the Runtime's current durable conversation. The concrete compactor must
-// prove that prefix against storage before it rewrites either representation.
 func NewDurableModelContextCompaction(input ModelContextCompactionInput) (ModelContextCompaction, error) {
 	return newModelContextCompaction(modelContextDurable, input)
 }
 
-// newTransientModelContextCompaction builds a request for an isolated child
-// Interaction whose complete candidate exists only in Strategy recovery state.
 func newTransientModelContextCompaction(input ModelContextCompactionInput) (ModelContextCompaction, error) {
 	return newModelContextCompaction(modelContextTransient, input)
 }
 
-// validateMessages requires System-only instructions and well-formed
-// messages in every part of the request.
 func (input ModelContextCompactionInput) validateMessages() error {
 	for index := range input.Instructions {
 		if input.Instructions[index].Role != corechat.RoleSystem {
@@ -184,7 +165,7 @@ func (input ModelContextCompactionInput) validate() error {
 	}
 	for index := range input.Tools {
 		if err := input.Tools[index].Validate(); err != nil {
-			return fmt.Errorf("Tool definition %d: %w", index, err)
+			return fmt.Errorf("tool definition %d: %w", index, err)
 		}
 	}
 	if err := input.Options.Validate(); err != nil {
@@ -233,18 +214,15 @@ func newModelContextCompaction(
 	}, nil
 }
 
-// Durable reports whether the foldable prefix must be reconciled with and
-// atomically rewritten in the Runtime conversation store.
 func (m ModelContextCompaction) Durable() bool {
 	return m.persistence == modelContextDurable
 }
 
-// SessionID returns the Session that owns this root or delegated Interaction.
 func (m ModelContextCompaction) SessionID() identity.SessionID { return m.sessionID }
 
-// ModelSelection returns the model whose actual context limit governs this call.
-func (m ModelContextCompaction) ModelSelection() modelchoice.Selection { return m.selection }
-func (m ModelContextCompaction) TokenLimits() modelref.TokenLimits     { return m.limits }
+func (m ModelContextCompaction) ModelSelection() flamemodel.Selection { return m.selection }
+func (m ModelContextCompaction) TokenLimits() modelref.TokenLimits    { return m.limits }
+
 func (m ModelContextCompaction) RequestFits(ctx context.Context, request *corechat.Request) (bool, error) {
 	if m.fits == nil {
 		return true, nil
@@ -252,37 +230,26 @@ func (m ModelContextCompaction) RequestFits(ctx context.Context, request *corech
 	return m.fits(ctx, request)
 }
 
-// Instructions returns an independently owned immutable prompt prefix.
 func (m ModelContextCompaction) Instructions() []corechat.Message {
 	return cloneChatMessages(m.instructions)
 }
 
-// Candidate returns the complete mutable suffix before reduction.
 func (m ModelContextCompaction) Candidate() []corechat.Message {
 	return cloneChatMessages(m.candidate)
 }
 
-// CompareDurableHistory matches persisted history against this candidate and
-// returns its end position in the candidate's original message coordinates.
-// Scope owns complete message identity; only unannotated Tool-result grouping
-// can differ between an Interaction and the Runtime's durable projection.
-func (m ModelContextCompaction) CompareDurableHistory(
-	durable []corechat.Message,
-) (prefix int, matches bool, difference string, err error) {
+func (m ModelContextCompaction) EphemeralSuffixStart(durable []corechat.Message) (int, error) {
 	candidateMessages, err := normalizedModelContextMessages(m.candidate, "Interaction conversation")
 	if err != nil {
-		return 0, false, "candidate_invalid", err
+		return 0, err
 	}
 	durableMessages, err := normalizedModelContextMessages(durable, "durable conversation")
 	if err != nil {
-		return 0, false, "durable_invalid", err
+		return 0, err
 	}
 	if len(candidateMessages) < len(durableMessages) {
-		return 0, false, fmt.Sprintf(
-			"semantic_message_count=%d/%d",
-			len(candidateMessages),
-			len(durableMessages),
-		), nil
+		return 0, fmt.Errorf("%w: semantic_message_count=%d/%d",
+			ErrModelContextDiverged, len(candidateMessages), len(durableMessages))
 	}
 	for index := range durableMessages {
 		equal, err := sameInteractionMessages(
@@ -290,16 +257,16 @@ func (m ModelContextCompaction) CompareDurableHistory(
 			[]corechat.Message{durableMessages[index].message},
 		)
 		if err != nil {
-			return 0, false, "message_invalid", fmt.Errorf("execution: compare durable message %d: %w", index, err)
+			return 0, fmt.Errorf("execution: compare durable message %d: %w", index, err)
 		}
 		if !equal {
-			return 0, false, fmt.Sprintf("message[%d]", index), nil
+			return 0, fmt.Errorf("%w: first_difference=message[%d]", ErrModelContextDiverged, index)
 		}
 	}
 	if len(durableMessages) == 0 {
-		return 0, true, "none", nil
+		return 0, nil
 	}
-	return candidateMessages[len(durableMessages)-1].sourceEnd, true, "none", nil
+	return candidateMessages[len(durableMessages)-1].sourceEnd, nil
 }
 
 type modelContextMessage struct {
@@ -314,8 +281,6 @@ func normalizedModelContextMessages(messages []corechat.Message, owner string) (
 			return nil, fmt.Errorf("execution: %s message %d: %w", owner, index, err)
 		}
 		message := messages[index].Clone()
-		// Scope groups unannotated Tool results that Runtime can persist one at
-		// a time. Message-scoped metadata gives a boundary its own meaning.
 		if message.Role == corechat.RoleTool && len(message.Metadata) == 0 && len(normalized) > 0 &&
 			normalized[len(normalized)-1].message.Role == corechat.RoleTool &&
 			len(normalized[len(normalized)-1].message.Metadata) == 0 {
@@ -329,12 +294,10 @@ func normalizedModelContextMessages(messages []corechat.Message, owner string) (
 	return normalized, nil
 }
 
-// Trailer returns the per-call messages measured after every candidate.
 func (m ModelContextCompaction) Trailer() []corechat.Message {
 	return cloneChatMessages(m.trailer)
 }
 
-// Tools returns the exact model-visible Tool manifest for budget estimation.
 func (m ModelContextCompaction) Tools() []toolcontract.Definition {
 	tools := make([]toolcontract.Definition, len(m.tools))
 	for index := range m.tools {
@@ -343,21 +306,14 @@ func (m ModelContextCompaction) Tools() []toolcontract.Definition {
 	return tools
 }
 
-// Options returns the exact model-call options included in the complete request estimate.
 func (m ModelContextCompaction) Options() corechat.Options { return m.options.Clone() }
 
-// TokenEstimateAdjustment returns the provider calibration delta applied to
-// every candidate built from this request's immutable model identity.
 func (m ModelContextCompaction) TokenEstimateAdjustment() int {
 	return m.calibration.Adjustment()
 }
 
-// HasInputTokenCounter reports whether this imminent call can be measured by
-// the same provider adapter that will execute it.
 func (m ModelContextCompaction) HasInputTokenCounter() bool { return m.counter != nil }
 
-// CountInputTokens measures an alternative mutable suffix together with this
-// value's frozen instructions, tools, options, and model defaults.
 func (m ModelContextCompaction) CountInputTokens(
 	ctx context.Context,
 	candidate []corechat.Message,
@@ -387,10 +343,8 @@ func (m ModelContextCompaction) CountInputTokens(
 	return count, nil
 }
 
-// ProtectedTail returns how many candidate messages must remain verbatim.
 func (m ModelContextCompaction) ProtectedTail() int { return m.protectedTail }
 
-// AllowsCompaction applies the product lifecycle veto, when one is configured.
 func (m ModelContextCompaction) AllowsCompaction(ctx context.Context) (bool, error) {
 	if m.preCompact == nil {
 		return true, nil
@@ -398,9 +352,6 @@ func (m ModelContextCompaction) AllowsCompaction(ctx context.Context) (bool, err
 	return m.preCompact(ctx)
 }
 
-// ModelContextCompactionResult is the immutable effective mutable suffix after
-// one compaction decision. Summarized distinguishes a semantic history fold
-// from a coordinate-preserving deterministic trim.
 type ModelContextCompactionResult struct {
 	rewrite         *conversation.Compaction
 	messages        []corechat.Message
@@ -410,7 +361,6 @@ type ModelContextCompactionResult struct {
 	estimatedTokens int
 }
 
-// NewModelContextCompactionResult validates and freezes one effective suffix.
 func NewModelContextCompactionResult(
 	messages []corechat.Message,
 	changed bool,
@@ -488,37 +438,23 @@ func (m ModelContextCompactionResult) Rewrite() (conversation.Compaction, bool) 
 	return *m.rewrite, true
 }
 
-// Messages returns an independently owned effective mutable suffix.
 func (m ModelContextCompactionResult) Messages() []corechat.Message {
 	return cloneChatMessages(m.messages)
 }
 
-// Changed reports whether any candidate content was rewritten.
 func (m ModelContextCompactionResult) Changed() bool { return m.changed }
 
-// Summarized reports whether older messages were replaced by a semantic summary.
 func (m ModelContextCompactionResult) Summarized() bool { return m.summary != "" }
 
-// Summary returns the exact user-readable semantic fold, without model-only
-// framing. It is empty for unchanged and deterministic trim results.
 func (m ModelContextCompactionResult) Summary() string { return m.summary }
 
-// MessageCounts returns the before/after coordinates for observable boundaries.
 func (m ModelContextCompactionResult) MessageCounts() (before int, after int) {
 	return m.messagesBefore, len(m.messages)
 }
 
-// EstimatedTokens returns the raw provider-neutral estimate for the exact
-// request material returned by this reduction. The accounting owner pairs it
-// with the provider's eventual input-token report.
 func (m ModelContextCompactionResult) EstimatedTokens() int { return m.estimatedTokens }
 
-// ModelContextCompactor owns the optional Runtime implementation of model-call
-// context reduction. It computes durable rewrite proposals without persisting
-// history or owning the Interaction state that consumes the replacement.
 type ModelContextCompactor interface {
-	// CompactModelContext returns the exact suffix the Interaction must install
-	// before invoking the model.
 	CompactModelContext(
 		ctx context.Context,
 		request ModelContextCompaction,

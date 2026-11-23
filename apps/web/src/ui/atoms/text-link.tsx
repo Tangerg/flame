@@ -1,5 +1,5 @@
 import { type ReactNode, type ComponentPropsWithRef } from "react";
-export type TextLinkProps = Omit<ComponentPropsWithRef<"a">, "children" | "rel" | "target"> & {
+type TextLinkProps = Omit<ComponentPropsWithRef<"a">, "children" | "rel" | "target"> & {
   children: ReactNode;
 };
 

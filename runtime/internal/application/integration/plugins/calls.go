@@ -24,8 +24,6 @@ type CallRequest struct {
 	Target       framecall.Target
 }
 
-// Call retains an admitted consumer contract until its concrete invocation ends.
-// Preparation performs no backend I/O or business effect.
 type Call interface {
 	Kind() frame.MethodKind
 	Invoke(context.Context) (framevalue.JSON, error)

@@ -2,8 +2,6 @@ package main
 
 import "github.com/wailsapp/wails/v3/pkg/application"
 
-// installNativeZoom keeps the default menu and replaces only the zoom roles'
-// actions, so labels and accelerators stay native while the page reflows.
 func installNativeZoom(app *application.App) {
 	menu := application.DefaultApplicationMenu()
 	overrides := map[application.Role]pageZoomChange{

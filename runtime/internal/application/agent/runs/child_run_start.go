@@ -8,15 +8,11 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// ChildRunStartReservation is the durable, non-public identity allocated for
-// one admitted executor child before its executor child is published in the durable tree.
-// It is not a Run and must never be returned by Run projections. The exact
-// value is consumed when the child either enters Running or aborts.
 type ChildRunStartReservation struct {
 	SessionID       identity.SessionID
 	ExecutorID      string
@@ -28,8 +24,6 @@ type ChildRunStartReservation struct {
 	ReservedAt      time.Time
 }
 
-// Validate proves that the reservation binds one child executor identity to
-// one future product child without copying executor topology into the Run.
 func (c ChildRunStartReservation) Validate() error {
 	if err := c.validateIdentity(); err != nil {
 		return err
@@ -75,9 +69,7 @@ func (c ChildRunStartReservation) validateIdentity() error {
 	return nil
 }
 
-// draft is the child Run this reservation admits once its executor child is
-// durably published: every identity comes from the reservation, which owns them.
-func (c ChildRunStartReservation) draft(model modelchoice.Selection, startedAt time.Time) rundomain.Draft {
+func (c ChildRunStartReservation) draft(model flamemodel.Selection, startedAt time.Time) rundomain.Draft {
 	return rundomain.Draft{
 		RunID:           c.Binding.RunID,
 		SessionID:       c.SessionID,
@@ -90,19 +82,14 @@ func (c ChildRunStartReservation) draft(model modelchoice.Selection, startedAt t
 	}
 }
 
-// StartedChildRun is the write-set that concludes one reservation with the
-// Running child Run it admits. The opening is derived from the reservation, so
-// the two cannot name different children.
 type StartedChildRun struct {
 	reservation ChildRunStartReservation
 	opening     OpeningCommit
 }
 
-// NewStartedChildRun derives the child Run admission from the reservation it
-// concludes.
 func NewStartedChildRun(
 	reservation ChildRunStartReservation,
-	model modelchoice.Selection,
+	model flamemodel.Selection,
 	startedAt time.Time,
 	events []EventCommit,
 ) (StartedChildRun, error) {
@@ -118,37 +105,24 @@ func NewStartedChildRun(
 	return StartedChildRun{reservation: reservation, opening: opening}, nil
 }
 
-// Reservation returns the reservation the start concludes.
 func (s StartedChildRun) Reservation() ChildRunStartReservation { return s.reservation }
 
-// Opening returns the child Run's admission write-set.
 func (s StartedChildRun) Opening() OpeningCommit { return s.opening }
 
-// ChildRunStartCommitter reserves an invisible child identity and withdraws
-// unpublished reservations during cleanup. Publication belongs to the atomic
-// ExecutionTreeCommit. Exact repeated requests are idempotent; contradictory
-// conclusions fail.
 type ChildRunStartCommitter interface {
 	ReserveChildRunStart(ctx context.Context, reservation ChildRunStartReservation) error
 	AbortChildRunStart(ctx context.Context, reservation ChildRunStartReservation) error
 }
 
-// ChildRunReservationRequest asks the Run pump to durably reserve one child
-// Run identity before the corresponding executor child initializes. The event
-// envelope carries the opaque child/parent/call causality. The Application
-// assigns the reservation time; an executor start time does not exist yet.
 type ChildRunReservationRequest struct {
 	executorPayloadBase
 	exchange *executorRequest[ChildRunBinding]
 }
 
-// ChildRunReservationReceipt is the executor's read-only side of one
-// child reservation request.
 type ChildRunReservationReceipt struct {
 	exchange *executorRequest[ChildRunBinding]
 }
 
-// NewChildRunReservationRequest creates one single-use reservation handshake.
 func NewChildRunReservationRequest() (ChildRunReservationRequest, ChildRunReservationReceipt) {
 	exchange := newExecutorRequest[ChildRunBinding]()
 	return ChildRunReservationRequest{exchange: exchange},
@@ -167,27 +141,20 @@ func (c ChildRunReservationRequest) claim() (claimedReservation, bool) {
 	return claimedReservation{request: claimed}, ok
 }
 
-// claimedReservation is the pump's exclusive right to answer one reservation:
-// it grants a reserved binding or refuses, never both.
 type claimedReservation struct {
 	request claimedRequest[ChildRunBinding]
 }
 
-// grant answers with a binding taken from a validated reservation.
 func (c claimedReservation) grant(binding ChildRunBinding) { c.request.settle(binding, nil) }
 
 func (c claimedReservation) refuse(err error) { c.request.settle(ChildRunBinding{}, err) }
 
-// Await returns the exact product binding after the Application durably stores
-// the invisible reservation.
 func (c ChildRunReservationReceipt) Await(
 	ctx context.Context,
 ) (ChildRunBinding, error) {
 	return c.exchange.await(ctx)
 }
 
-// ChildRunStartOutcome identifies the conclusive executor publication
-// result applied to one durable reservation. The zero value is invalid.
 type ChildRunStartOutcome string
 
 const (
@@ -195,12 +162,10 @@ const (
 	ChildRunStartAborted ChildRunStartOutcome = "aborted"
 )
 
-// Valid reports whether c is one conclusive child publication fact.
 func (c ChildRunStartOutcome) Valid() bool {
 	return c == ChildRunStarted || c == ChildRunStartAborted
 }
 
-// String returns the durable child-start conclusion name.
 func (c ChildRunStartOutcome) String() string {
 	if !c.Valid() {
 		return "invalid"
@@ -208,9 +173,6 @@ func (c ChildRunStartOutcome) String() string {
 	return string(c)
 }
 
-// MaxActiveChildRuns bounds product delegation independently of ordinary Tool
-// processes. Reservations count until publication aborts or the drained
-// child's authoritative terminal commits.
 const MaxActiveChildRuns = 4
 
 type preparedChildStart struct {
@@ -230,9 +192,6 @@ func (p *preparedChildStart) releaseBinding(owner *runTreeOwner) {
 	owner.unbindExecutorMember(p.route.runID, p.member.MemberID)
 }
 
-// prepareChildStart allocates and binds one prospective child identity without
-// constructing a Run. The actual lifecycle starts only after Scope reports a
-// conclusive started outcome with its authoritative start time.
 func (c *Segments) prepareChildStart(
 	spec segmentSpec,
 	owner *runTreeOwner,
@@ -299,10 +258,6 @@ func (c *Segments) prepareChildStart(
 	}, nil
 }
 
-// The Runtime admission clock owns the product Run time. The route remains
-// invisible until its opening and the executor tree commit together.
-// openingEvents commits the parent's spawning Item with the child's opening
-// projections; an opening may not finish, park or nudge anything.
 func (p *preparedChildStart) openingEvents(sessionID identity.SessionID, projected reductionBatch) ([]EventCommit, error) {
 	if len(projected.events) == 0 || projected.parkCommit != nil {
 		return nil, fmt.Errorf("runs: child member %q produced an invalid opening batch", p.member.MemberID)

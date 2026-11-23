@@ -8,25 +8,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// Capability negotiation: what a request is entitled to, resolved once.
-//
-// runs.start freezes the answer onto the new Run as its capabilities;
-// runs.resume and runs.subscribe hand the same answer to the application, which
-// refuses a caller that cannot cover what the Run already publishes. Both readings
-// come from this one function, so "what you may ask for" and "what you must be
-// able to follow" can never become two vocabularies that disagree.
-
-// negotiateCapabilities resolves what the caller declared against what this build
-// advertises.
-//
-// A declared capability this build cannot honor is a refusal, never a silent drop.
-// Dropping it is the failure mode the contract names explicitly: a client that
-// asked for childRuns and received an ordinary run would fold a stream believing
-// child events could appear in it, and a client whose interrupt type was quietly
-// discarded would be handed a wait it never said it could answer.
-//
-// Absent capabilities select the Minimal Profile, which supports sending a
-// message, watching the reply, and reloading history.
+// A declared capability this build cannot honor is a refusal, never a silent drop:
+// the client would fold a stream expecting events that never come.
 func (s *Handler) negotiateCapabilities(ctx context.Context) (run.Capabilities, error) {
 	caps, ok := clientCapabilitiesFrom(ctx)
 	if !ok {
@@ -38,8 +21,6 @@ func (s *Handler) negotiateCapabilities(ctx context.Context) (run.Capabilities, 
 	var capabilities run.Capabilities
 	for key, preference := range caps.Features {
 		if !preference.Enabled {
-			// Declining a feature is always honorable, including one this build has
-			// never heard of.
 			continue
 		}
 		published, known := protocol.LookupFeature(key)
@@ -48,9 +29,6 @@ func (s *Handler) negotiateCapabilities(ctx context.Context) (run.Capabilities, 
 				Type: protocol.RequirementFeature, Name: key,
 			})
 		}
-		// Only a feature that changes what the Run PUBLISHES belongs on the Run: the
-		// capability set exists so a later subscriber can be told what it must understand,
-		// and a feature invisible in the stream demands nothing of it.
 		if published.RequiredByRun {
 			switch key {
 			case protocol.FeatureChildRuns:
@@ -75,9 +53,6 @@ func (s *Handler) negotiateCapabilities(ctx context.Context) (run.Capabilities, 
 	return capabilities.Normalized(), nil
 }
 
-// missingFeatureRequirements is the Delivery entry point for a gate whose
-// trigger depends on durable state and therefore cannot live in MethodMeta.When.
-// The actual Runtime/client decision is shared with the static dispatcher gate.
 func (s *Handler) missingFeatureRequirements(
 	ctx context.Context,
 	required ...string,
@@ -103,10 +78,6 @@ func (s *Handler) requestCanUseFeature(ctx context.Context, feature string) bool
 	return len(s.missingFeatureRequirements(ctx, feature)) == 0
 }
 
-// capabilityGap maps the complete missing semantic set to protocol requirements.
-//
-// Every gap at once, because a caller told about one at a time cannot get itself into
-// a state where the call succeeds.
 func capabilityGap(missing run.Capabilities) *CapabilityGapError {
 	requirements := make([]protocol.CapabilityRequirement, 0,
 		1+len(missing.InterruptTypes))
@@ -123,9 +94,6 @@ func capabilityGap(missing run.Capabilities) *CapabilityGapError {
 	return NewCapabilityGapError(requirements...)
 }
 
-// interruptTypeFromWire maps a declared interrupt type onto the durable type the
-// runtime raises. It reports false for a type the runtime does not raise — which
-// is not the same as an unknown value, and the caller distinguishes them.
 func interruptTypeFromWire(kind protocol.InterruptType) (run.InterruptType, bool) {
 	switch kind {
 	case protocol.InterruptApproval:
@@ -137,8 +105,6 @@ func interruptTypeFromWire(kind protocol.InterruptType) (run.InterruptType, bool
 	}
 }
 
-// presentInterruptType is the same mapping read outward, for a Run's capabilities or an
-// interrupt on its way to the wire.
 func presentInterruptType(kind run.InterruptType) protocol.InterruptType {
 	switch kind {
 	case run.InterruptApproval:

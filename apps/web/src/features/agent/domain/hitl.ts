@@ -7,11 +7,9 @@ import {
 } from "@/foundation/protocolValues.generated";
 export type { ApprovalDecision, ApprovalGate, ApprovalMode, RememberScope };
 
-/** What a remembered approval matches within one Tool. */
 export type ApprovalSubject =
   { type: "all" } | { type: "exact"; value: string } | { type: "glob"; value: string };
 
-/** The Tool a remembered approval belongs to. */
 export type ApprovalToolRef =
   | { type: "builtIn"; name: BuiltinToolName }
   | {

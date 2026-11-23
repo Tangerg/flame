@@ -67,7 +67,7 @@ func TestRuntimeRestartDoesNotUndoAStoredProviderClear(t *testing.T) {
 	configDirectory := testsupport.TempDirectory(t)
 	if err := os.WriteFile(
 		filepath.Join(configDirectory, "config.yaml"),
-		[]byte("provider: anthropic\nmodel: claude-opus-5\napiKey: sk-file\nbaseURL: https://config.example.test\n"),
+		[]byte("provider: anthropic\nmodel: claude-opus-5\napiKey: sk-file\nbaseUrl: https://config.example.test\n"),
 		0o600,
 	); err != nil {
 		t.Fatal(err)

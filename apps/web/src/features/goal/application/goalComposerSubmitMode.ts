@@ -10,7 +10,7 @@ import {
   GoalComposerModeOwner,
   type GoalComposerSubmission,
 } from "@/features/goal/application/goalComposerMode";
-export interface GoalComposerSubmitDependencies {
+interface GoalComposerSubmitDependencies {
   getActiveSessionId(): string | null;
   goalState(sessionId: string): GoalState | undefined;
   runtimeAvailable(): boolean;

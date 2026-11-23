@@ -9,12 +9,12 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -39,8 +39,6 @@ type ModelProvidersConfig struct {
 	Callbacks     *pluginmcp.Callbacks
 }
 
-// ModelProviders retains admitted model constructions. The private construction
-// inputs never enter the public plugin-command projection or a Run checkpoint.
 type ModelProviders struct {
 	config   ModelProvidersConfig
 	contract *plugincontract.Capability
@@ -284,10 +282,10 @@ func (p *ModelProviders) openUse(ctx context.Context, connection modelprovider.C
 	return use, profile, nil
 }
 
-func (p *ModelProviders) OpenChat(ctx context.Context, selection modelchoice.Selection, connection modelprovider.Connection) (_ models.ResolvedChat, returned error) {
+func (p *ModelProviders) OpenChat(ctx context.Context, selection flamemodel.Selection, connection modelprovider.Connection) (_ modeladapter.ResolvedChat, returned error) {
 	use, profile, err := p.openUse(ctx, connection)
 	if err != nil {
-		return models.ResolvedChat{}, err
+		return modeladapter.ResolvedChat{}, err
 	}
 	defer func() {
 		if returned != nil {
@@ -296,36 +294,36 @@ func (p *ModelProviders) OpenChat(ctx context.Context, selection modelchoice.Sel
 	}()
 	ctx, leave, err := use.enter(ctx)
 	if err != nil {
-		return models.ResolvedChat{}, err
+		return modeladapter.ResolvedChat{}, err
 	}
 	defer leave()
 	method, err := modelprovider.OpenChatMethod()
 	if err != nil {
-		return models.ResolvedChat{}, err
+		return modeladapter.ResolvedChat{}, err
 	}
 	id := uuid.NewString()
 	opened, err := providerMethod(ctx, use, method, id, modelprovider.Open{Connection: connection, Model: selection.Model()})
 	if err != nil {
-		return models.ResolvedChat{}, err
+		return modeladapter.ResolvedChat{}, err
 	}
 	use.handle = opened.Handle
 	if opened.Original != pluginmcp.CommandID(id) {
-		return models.ResolvedChat{}, errors.New("model providers: original construction identity changed")
+		return modeladapter.ResolvedChat{}, errors.New("model providers: original construction identity changed")
 	}
 	return use.chat(selection, profile, opened)
 }
 
-func (p *ModelProviders) RestoreChat(ctx context.Context, selection modelchoice.Selection, original *models.ProviderCapture) (_ models.ResolvedChat, returned error) {
+func (p *ModelProviders) RestoreChat(ctx context.Context, selection flamemodel.Selection, original *modeladapter.ProviderCapture) (_ modeladapter.ResolvedChat, returned error) {
 	if original == nil {
-		return models.ResolvedChat{}, errors.New("model providers: original construction is required")
+		return modeladapter.ResolvedChat{}, errors.New("model providers: original construction is required")
 	}
 	capture := original.Clone()
 	if err := capture.ValidateSelection(selection); err != nil {
-		return models.ResolvedChat{}, err
+		return modeladapter.ResolvedChat{}, err
 	}
 	use, err := p.acquire(ctx, capture.Binding)
 	if err != nil {
-		return models.ResolvedChat{}, err
+		return modeladapter.ResolvedChat{}, err
 	}
 	defer func() {
 		if returned != nil {
@@ -334,54 +332,54 @@ func (p *ModelProviders) RestoreChat(ctx context.Context, selection modelchoice.
 	}()
 	ctx, leave, err := use.enter(ctx)
 	if err != nil {
-		return models.ResolvedChat{}, err
+		return modeladapter.ResolvedChat{}, err
 	}
 	defer leave()
 	method, err := modelprovider.ReopenChatMethod()
 	if err != nil {
-		return models.ResolvedChat{}, err
+		return modeladapter.ResolvedChat{}, err
 	}
 	opened, err := providerMethod(ctx, use, method, uuid.NewString(), modelprovider.Reopen{Original: capture.Chat.Original})
 	if err != nil {
-		return models.ResolvedChat{}, err
+		return modeladapter.ResolvedChat{}, err
 	}
 	use.handle = opened.Handle
 	if opened.Original != capture.Chat.Original || opened.Streaming != capture.Chat.Streaming || opened.TokenCounting != capture.Chat.TokenCounting {
-		return models.ResolvedChat{}, errors.New("model providers: original construction capabilities changed")
+		return modeladapter.ResolvedChat{}, errors.New("model providers: original construction capabilities changed")
 	}
 	expected := capture.Chat
 	expected.Handle = opened.Handle
 	originalFacts, err := framevalue.EncodeJSON(expected)
 	if err != nil {
-		return models.ResolvedChat{}, err
+		return modeladapter.ResolvedChat{}, err
 	}
 	restoredFacts, err := framevalue.EncodeJSON(opened)
 	if err != nil {
-		return models.ResolvedChat{}, err
+		return modeladapter.ResolvedChat{}, err
 	}
 	if originalFacts != restoredFacts {
-		return models.ResolvedChat{}, errors.New("model providers: original construction facts changed")
+		return modeladapter.ResolvedChat{}, errors.New("model providers: original construction facts changed")
 	}
 	return use.chat(selection, capture.Profile, opened)
 }
 
-func (u *providerUse) chat(selection modelchoice.Selection, profile modelprovider.Profile, opened modelprovider.Chat) (models.ResolvedChat, error) {
+func (u *providerUse) chat(selection flamemodel.Selection, profile modelprovider.Profile, opened modelprovider.Chat) (modeladapter.ResolvedChat, error) {
 	call, err := modelprovider.CallMethod()
 	if err != nil {
-		return models.ResolvedChat{}, err
+		return modeladapter.ResolvedChat{}, err
 	}
 	u.requestMethods = []string{call.Name()}
 	if opened.Streaming {
 		stream, err := modelprovider.StreamMethod()
 		if err != nil {
-			return models.ResolvedChat{}, err
+			return modeladapter.ResolvedChat{}, err
 		}
 		u.requestMethods = append(u.requestMethods, stream.Descriptor().Name)
 	}
 	if opened.TokenCounting {
 		count, err := modelprovider.CountMethod()
 		if err != nil {
-			return models.ResolvedChat{}, err
+			return modeladapter.ResolvedChat{}, err
 		}
 		u.requestMethods = append(u.requestMethods, count.Name())
 	}
@@ -390,11 +388,11 @@ func (u *providerUse) chat(selection modelchoice.Selection, profile modelprovide
 	if opened.Streaming {
 		model = &streamingProviderChat{providerChat: base}
 	}
-	var counter models.InputTokenCounter
+	var counter modeladapter.InputTokenCounter
 	if opened.TokenCounting {
 		counter = &providerCounter{use: u}
 	}
-	return models.NewCapturedChat(selection, models.ProviderCapture{Binding: u.binding, Profile: profile, Chat: opened}, model, counter, u.Close, u.futureRequestFits)
+	return modeladapter.NewCapturedChat(selection, modeladapter.ProviderCapture{Binding: u.binding, Profile: profile, Chat: opened}, model, counter, u.Close, u.futureRequestFits)
 }
 
 func (p *ModelProviders) Close(ctx context.Context) error {

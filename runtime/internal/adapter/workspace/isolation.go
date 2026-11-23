@@ -16,12 +16,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 )
 
-// Isolator holds one sandbox Workspace per isolated session. The copy is
-// created lazily on the session's first isolated run and reused across its
-// Runs (so the agent's work accumulates), then destroyed when the session is
-// deleted or the runtime stops. The copy is a scratch tree: it is never
-// snapshotted or written back — isolation means the project is left untouched.
-// Safe for concurrent use.
 type Isolator struct {
 	userHome      string
 	baseDir       string
@@ -43,9 +37,6 @@ var (
 	errWorkspaceChanged  = errors.New("isolation: session workspace changed without retiring its copy")
 )
 
-// NewIsolator builds an isolator rooting its ephemeral copies under baseDir (a trusted
-// path owned by the runtime). readOnlyPaths re-opens toolchain roots below the
-// hidden home for the jailed shell.
 func NewIsolator(userHome, baseDir string, readOnlyPaths []string) (*Isolator, error) {
 	if userHome == "" {
 		return nil, errors.New("isolation: user home is required")
@@ -72,11 +63,6 @@ func NewIsolator(userHome, baseDir string, readOnlyPaths []string) (*Isolator, e
 	}, nil
 }
 
-// Workspace returns the isolated working-copy directory for sessionID, creating
-// it from projectRoot (a tar copy of the real project) on first use and reusing
-// it thereafter. It fails closed with [sandbox.ErrUnavailable] when the host has
-// no isolation backend, so an isolated run is refused rather than run
-// unconfined.
 func (i *Isolator) Workspace(ctx context.Context, sessionID identity.SessionID, projectRoot string) (string, error) {
 	owned, closed := i.lookup(sessionID)
 	if closed {
@@ -91,9 +77,8 @@ func (i *Isolator) Workspace(ctx context.Context, sessionID identity.SessionID, 
 		}
 		return owned.workspace.Path()
 	}
-	// Materialize the copy OUTSIDE the lock: a tar copy is slow I/O and must not
-	// block another session's Workspace/Discard. Run admission serializes a
-	// session's openings, so no other copy for it can appear meanwhile.
+	// The tar copy runs outside the lock so slow I/O cannot block another session; Run
+	// admission serializes a session's openings, so no second copy for it can appear.
 	fresh, err := sandbox.New(ctx, sandbox.Config{
 		UserHome:      i.userHome,
 		BaseDir:       i.sessionDir(sessionID),
@@ -114,8 +99,6 @@ func (i *Isolator) Workspace(ctx context.Context, sessionID identity.SessionID, 
 	return fresh.Path()
 }
 
-// errConcurrentWorkspace reports two openings materializing one session's copy
-// at once, which Run admission forbids; neither copy is trusted.
 var errConcurrentWorkspace = errors.New("isolation: concurrent workspace materialization")
 
 func (i *Isolator) lookup(sessionID identity.SessionID) (*ownedWorkspace, bool) {
@@ -124,10 +107,6 @@ func (i *Isolator) lookup(sessionID identity.SessionID) (*ownedWorkspace, bool) 
 	return i.workspaces[sessionID], i.closed
 }
 
-// Discard destroys a session's isolated working copy. Idempotent: a session
-// that never ran isolated (no workspace) is a no-op. A failed destruction
-// leaves the copy poisoned and retryable; Workspace will not expose stale
-// scratch state while cleanup is incomplete.
 func (i *Isolator) Discard(sessionID identity.SessionID) error {
 	i.mu.Lock()
 	defer i.mu.Unlock()
@@ -144,7 +123,6 @@ func (i *Isolator) discardLocked(sessionID identity.SessionID) error {
 			return err
 		}
 	}
-	// The Session namespace also reaches scratch copies left by a prior process.
 	if err := os.RemoveAll(i.sessionDir(sessionID)); err != nil {
 		return fmt.Errorf("isolation: remove Session scratch namespace: %w", err)
 	}
@@ -157,8 +135,6 @@ func (i *Isolator) sessionDir(sessionID identity.SessionID) string {
 	return filepath.Join(i.baseDir, "session-"+hex.EncodeToString(digest[:]))
 }
 
-// Close destroys every live working copy — the process-shutdown closer. It
-// joins every teardown error.
 func (i *Isolator) Close() error {
 	i.mu.Lock()
 	defer i.mu.Unlock()
@@ -177,12 +153,8 @@ func (i *Isolator) Close() error {
 	return errors.Join(errs...)
 }
 
-// ErrIsolationDisabled reports a Runtime configured without a sandbox
-// directory, so no Session can obtain an isolated working copy.
 var ErrIsolationDisabled = errors.New("isolation: no sandbox directory is configured")
 
-// NoIsolation is the isolation of a Runtime without a sandbox directory: an
-// isolated Session cannot run, and there is never a copy to discard.
 type NoIsolation struct{}
 
 func (NoIsolation) Workspace(context.Context, identity.SessionID, string) (string, error) {

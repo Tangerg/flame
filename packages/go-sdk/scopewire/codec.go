@@ -16,6 +16,7 @@ type Request chat.Request
 
 func (Request) JSONSchemaModel() any           { return requestProjection{} }
 func (r Request) MarshalJSON() ([]byte, error) { return chat.Request(r).MarshalJSON() }
+
 func (r *Request) UnmarshalJSON(data []byte) error {
 	var projection requestProjection
 	if err := value.DecodeValue(data, &projection, "chat request"); err != nil {
@@ -36,6 +37,7 @@ type Message chat.Message
 
 func (Message) JSONSchemaModel() any           { return messageProjection{} }
 func (m Message) MarshalJSON() ([]byte, error) { return chat.Message(m).MarshalJSON() }
+
 func (m *Message) UnmarshalJSON(data []byte) error {
 	var projection messageProjection
 	if err := value.DecodeValue(data, &projection, "chat message"); err != nil {
@@ -53,6 +55,7 @@ type Response chat.Response
 
 func (Response) JSONSchemaModel() any           { return responseProjection{} }
 func (r Response) MarshalJSON() ([]byte, error) { return chat.Response(r).MarshalJSON() }
+
 func (r *Response) UnmarshalJSON(data []byte) error {
 	var projection responseProjection
 	if err := value.DecodeValue(data, &projection, "chat response"); err != nil {
@@ -70,6 +73,7 @@ type ResponseDelta chat.ResponseDelta
 
 func (ResponseDelta) JSONSchemaModel() any           { return responseDeltaProjection{} }
 func (r ResponseDelta) MarshalJSON() ([]byte, error) { return chat.ResponseDelta(r).MarshalJSON() }
+
 func (r *ResponseDelta) UnmarshalJSON(data []byte) error {
 	var projection responseDeltaProjection
 	if err := value.DecodeValue(data, &projection, "chat response delta"); err != nil {
@@ -87,6 +91,7 @@ type ToolOutput tool.Output
 
 func (ToolOutput) JSONSchemaModel() any           { return toolOutputProjection{} }
 func (o ToolOutput) MarshalJSON() ([]byte, error) { return tool.Output(o).MarshalJSON() }
+
 func (o *ToolOutput) UnmarshalJSON(data []byte) error {
 	var projection toolOutputProjection
 	if err := value.DecodeValue(data, &projection, "tool output"); err != nil {
@@ -104,6 +109,7 @@ type Block content.Block
 
 func (Block) JSONSchemaModel() any           { return blockProjection{} }
 func (b Block) MarshalJSON() ([]byte, error) { return content.Block(b).MarshalJSON() }
+
 func (b *Block) UnmarshalJSON(data []byte) error {
 	var projection blockProjection
 	if err := value.DecodeValue(data, &projection, "content block"); err != nil {

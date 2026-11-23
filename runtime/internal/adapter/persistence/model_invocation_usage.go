@@ -7,9 +7,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// Both totals are reported on every call, so their absence is a corrupt
-// record. A breakdown is null exactly when the provider does not report that
-// dimension, which is not the same fact as a reported zero.
 type modelInvocationUsageRow struct {
 	InputTokens      *int64 `json:"inputTokens"`
 	OutputTokens     *int64 `json:"outputTokens"`

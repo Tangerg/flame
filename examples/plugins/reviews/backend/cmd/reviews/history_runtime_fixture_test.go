@@ -34,8 +34,6 @@ func TestReceiptHistoryRuntimeFixture(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Retain the former cutoff through real business calls before publishing the
-	// endpoint, so history setup cannot consume Runtime's handshake window.
 	for index := range 4096 {
 		result, err := store.update(t.Context(), fmt.Sprintf("runtime-history-%d", index), admitted)
 		if err != nil || result.Type != reviews.NotFound {
@@ -71,7 +69,6 @@ func TestReceiptHistoryRuntimeFixture(t *testing.T) {
 			}
 			switch operation.Method {
 			case contracts.Update.Name():
-				// Structural admission has no mutation authority or receipt identity.
 				if operation.CommandID == "" {
 					inputChecks.Add(1)
 				} else {

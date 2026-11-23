@@ -1,4 +1,3 @@
-// Package annotation preserves opaque author observations in the same read cut as session evidence.
 package annotation
 
 import (
@@ -12,8 +11,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// Subject names what an observation is about. Each identity is optional, and a
-// reference may outlive its target.
 type Subject struct {
 	SessionID identity.SessionID
 	RunID     identity.RunID

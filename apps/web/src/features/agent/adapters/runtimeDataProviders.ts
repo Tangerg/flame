@@ -1,5 +1,5 @@
 import { type Contributor } from "@/extensions/definePlugin";
-import { DATA_PROVIDER } from "@/extensions/dataProvider";
+import { DATA_PROVIDER, requiredParams } from "@/extensions/dataProvider";
 import { asSessionId, type FlameClient } from "@flame/runtime-client";
 import {
   APPROVAL_MODE_KEY,
@@ -9,11 +9,6 @@ import {
 } from "@/features/agent/application/approvalPolicyQueries";
 import { AGENT_SESSIONS_KEY } from "@/features/agent/application/session/sessionQueries";
 import { toAgentSessionSummary } from "@/features/agent/adapters/runtimeSessionSummary";
-function requiredParams<P>(key: string, params: unknown): P {
-  if (params === undefined) throw new Error(`Data provider "${key}" requires parameters`);
-  return params as P;
-}
-
 export function registerAgentDataProviders(
   ctx: Contributor,
   runtimeClient: () => FlameClient,

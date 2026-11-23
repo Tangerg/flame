@@ -108,11 +108,10 @@ func pluginResolveCommand[R, T any](provider runtimeProvider, use, short, reques
 		}
 		return writePage(cmd, values)
 	}}
-	command.Flags().StringVar(&input, "request", "{}", requestHelp)
+	command.Flags().StringVar(&input, requestFlag, "{}", requestHelp)
 	return command
 }
 
-// writePage keeps an empty result a JSON array, never null.
 func writePage[T any](cmd *cobra.Command, values []T) error {
 	if values == nil {
 		values = []T{}
@@ -137,7 +136,7 @@ func newPluginGetCommand(provider runtimeProvider) *cobra.Command {
 		}
 		return writeJSONLine(cmd.OutOrStdout(), original)
 	}}
-	command.Flags().StringVar(&input, "request", "{}", "Original Runtime store namespace and command key as JSON")
+	command.Flags().StringVar(&input, requestFlag, "{}", "Original Runtime store namespace and command key as JSON")
 	return command
 }
 
@@ -182,12 +181,11 @@ func newPluginCallCommand(provider runtimeProvider) *cobra.Command {
 		}
 		return writeJSONLine(cmd.OutOrStdout(), result)
 	}}
-	command.Flags().StringVar(&input, "request", "{}", "Installed operation request as JSON; contract and input contain JSON strings")
-	command.Flags().StringVar(&key, "command-id", "", "Retain this identity and request to reconcile a command; queries forbid it")
+	command.Flags().StringVar(&input, requestFlag, "{}", "Installed operation request as JSON; contract and input contain JSON strings")
+	command.Flags().StringVar(&key, commandIDFlag, "", "Retain this identity and request to reconcile a command; queries forbid it")
 	return command
 }
 
-// pluginMutationCommand prints the canonical result the Runtime reports.
 func pluginMutationCommand[Input, Output any](provider runtimeProvider, name, description string, run func(pluginRuntime, context.Context, Input, authoring.CommandID) (Output, error)) *cobra.Command {
 	return pluginCommand(provider, name, description, func(runtime pluginRuntime, cmd *cobra.Command, request Input, commandID authoring.CommandID) error {
 		result, err := run(runtime, cmd.Context(), request, commandID)
@@ -221,13 +219,11 @@ func pluginCommand[Input any](provider runtimeProvider, name, description string
 		}
 		return run(runtime, cmd, request, commandID)
 	}}
-	command.Flags().StringVar(&input, "request", "{}", "Exact Runtime request as JSON; source paths belong to the Runtime")
-	command.Flags().StringVar(&key, "command-id", "", "Retain this exact identity and request for replay after an unknown acknowledgement")
+	command.Flags().StringVar(&input, requestFlag, "{}", "Exact Runtime request as JSON; source paths belong to the Runtime")
+	command.Flags().StringVar(&key, commandIDFlag, "", "Retain this exact identity and request for replay after an unknown acknowledgement")
 	return command
 }
 
-// maximumPluginRequestBytes bounds CLI-authored JSON before opening Runtime.
-// Publisher input and Runtime envelope limits remain owned by their contracts.
 const maximumPluginRequestBytes = 1 << 20
 
 func decodePluginRequest[T any](input string) (T, error) {

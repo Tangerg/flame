@@ -15,13 +15,10 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	skillspec "github.com/Tangerg/scope/skills"
 )
 
-// Store serializes writes to one scoped skills root. The same instance must be
-// shared by every in-process consumer of that root. A scoped directory lease
-// linearizes capacity checks, replacement, lifecycle moves, and review
-// decisions across Runtime processes that share the library.
 type Store struct {
 	root              string
 	project, relative string
@@ -29,8 +26,6 @@ type Store struct {
 	mu                sync.RWMutex
 }
 
-// NewStore roots the authoring store at one project or user Skill library.
-// The absolute root keeps every operation bound to the configured library.
 func NewStore(root string, scope skills.Scope) (*Store, error) {
 	if !filepath.IsAbs(root) {
 		return nil, errors.New("skillauthoring: skills root must be absolute")
@@ -64,12 +59,12 @@ func (s *Store) openRoot() (*os.Root, error) {
 			return nil, err
 		}
 		defer parent.Close()
-		if err := parent.MkdirAll(s.relative, 0755); err != nil {
+		if err := parent.MkdirAll(s.relative, filesystem.SharedDirectoryMode); err != nil {
 			return nil, err
 		}
 		return parent.OpenRoot(s.relative)
 	}
-	if err := os.MkdirAll(s.root, 0o755); err != nil {
+	if err := os.MkdirAll(s.root, filesystem.SharedDirectoryMode); err != nil {
 		return nil, fmt.Errorf("skillauthoring: create skills root: %w", err)
 	}
 	root, err := os.OpenRoot(s.root)
@@ -94,13 +89,10 @@ func (s *Store) openLeasedRoot(ctx context.Context, operation string) (*os.Root,
 	if err := errors.Join(actualErr, pathErr); err != nil || !os.SameFile(actual, path) {
 		return nil, nil, errors.Join(skills.ErrConflict, err, lease.Release(), root.Close())
 	}
-	// The operation's own outcome is already decided when cleanup runs, so a
-	// failure here cannot change it; but a lease that stays held stalls every
-	// later library operation, and its cause would otherwise reach no one.
 	cleanup := func() {
 		if err := errors.Join(lease.Release(), root.Close()); err != nil {
 			slog.ErrorContext(ctx, "skillauthoring: release library lease",
-				"operation", operation, "error", err)
+				slog.Any("operation", operation), telemetry.Error(err))
 		}
 	}
 	return root, cleanup, nil
@@ -161,19 +153,16 @@ func (s *Store) lifecycleDir(lifecycle skills.Lifecycle, name string) (string, e
 	}
 }
 
-func validateSkill(ctx context.Context, name string, content []byte) (*skillspec.Skill, error) {
+func validateSkill(ctx context.Context, name string, content []byte) error {
 	skill, err := skilldocument.Load(ctx, name, content)
 	if err != nil {
-		return nil, fmt.Errorf("skillauthoring: load skill %q: %w", name, err)
+		return fmt.Errorf("skillauthoring: load skill %q: %w", name, err)
 	}
 	if strings.TrimSpace(skill.Instructions) == "" {
-		return nil, fmt.Errorf("skillauthoring: validate skill %q: skill instructions are required", name)
+		return fmt.Errorf("skillauthoring: validate skill %q: skill instructions are required", name)
 	}
 	proposal := skills.Proposal{Name: skill.Name, Description: skill.Description, Instructions: skill.Instructions}
-	if err := proposal.CheckSafety(); err != nil {
-		return nil, err
-	}
-	return skill, nil
+	return proposal.CheckSafety()
 }
 
 func contextError(ctx context.Context, operation string) error {

@@ -5,7 +5,7 @@ import { userContentBlocks } from "@/features/agent/application/fold/projections
 import { ExactSequence } from "@/foundation/exactSequence";
 const optimisticMessageIds = new ExactSequence();
 
-export interface OptimisticUserMessage {
+interface OptimisticUserMessage {
   localId: string;
   message: Message;
 }

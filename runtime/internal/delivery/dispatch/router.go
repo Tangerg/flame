@@ -12,13 +12,10 @@ import (
 	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
-// Router adapts JSON-RPC envelopes to the binding-neutral Delivery Endpoint.
-// It owns no validation, capability, idempotency or business invocation policy.
 type Router struct {
 	endpoint *delivery.Endpoint
 }
 
-// New builds a Router over the canonical Runtime Delivery Endpoint.
 func New(endpoint *delivery.Endpoint) (*Router, error) {
 	if endpoint == nil {
 		return nil, errors.New("dispatch: delivery endpoint is required")
@@ -26,14 +23,11 @@ func New(endpoint *delivery.Endpoint) (*Router, error) {
 	return &Router{endpoint: endpoint}, nil
 }
 
-// Result holds the JSON-RPC reply and optional stream frames for one envelope.
 type Result struct {
 	Response    *jsonrpc.Response
 	EventStream iter.Seq[StreamFrame]
 }
 
-// Dispatch validates the envelope, decodes its typed parameters and delegates
-// the operation itself to the shared endpoint.
 func (r *Router) Dispatch(ctx context.Context, message jsonrpc.Message, options protocol.CallMetadata) Result {
 	request, ok := message.(*jsonrpc.Request)
 	if !ok || request == nil {
@@ -93,9 +87,8 @@ func adaptResult(id jsonrpc.ID, result protocol.OperationResult) Result {
 	return response
 }
 
-// adaptOperationEvents ends the stream on the first event it cannot deliver.
-// Skipping one frame and continuing would hand the client a complete-looking
-// stream with a hole in it; ending it lets Last-Event-Id resume replay the gap.
+// Skipping a frame would hand the client a complete-looking stream with a hole;
+// ending it lets Last-Event-Id replay the gap.
 func adaptOperationEvents(events iter.Seq2[any, error]) iter.Seq[StreamFrame] {
 	return func(yield func(StreamFrame) bool) {
 		for event, err := range events {

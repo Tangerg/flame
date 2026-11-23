@@ -12,9 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
-// RollbackPlan is the atomic durable command for truncating a Session back to
-// one Domain-resolved Run boundary. A parked Run among the dropped identities
-// needs no terminalization: dropping its record also releases the admission slot.
 type RollbackPlan struct {
 	sessionID         identity.SessionID
 	keepMessageMark   rundomain.MessageMark
@@ -23,9 +20,6 @@ type RollbackPlan struct {
 	planReplacement   *plan.Replacement
 }
 
-// NewRollbackPlan binds one resolved transcript boundary, its parked executor
-// roots, and its already-decided Plan replacement to the exact Session owner.
-// It is the plan's only validation: every field is parsed or proven here once.
 func NewRollbackPlan(
 	sessionID identity.SessionID,
 	boundary transcript.Boundary,
@@ -62,8 +56,6 @@ func NewRollbackPlan(
 	}, nil
 }
 
-// validateRollbackRunIDs checks the boundary drops at least one Run and names
-// each once.
 func validateRollbackRunIDs(values []identity.RunID) ([]identity.RunID, error) {
 	if len(values) == 0 {
 		return nil, errors.New("sessions: rollback plan has no dropped runs")
@@ -98,19 +90,14 @@ func parseRollbackCheckpointRoots(values []string) ([]runs.MemberID, error) {
 	return ids, nil
 }
 
-// SessionID returns the exact durable owner.
 func (r RollbackPlan) SessionID() identity.SessionID { return r.sessionID }
 
-// TruncationMark returns the exact retained message count when the boundary has
-// one. Unknown pre-watermark boundaries return false and leave history intact.
 func (r RollbackPlan) TruncationMark() (int, bool) {
 	return r.keepMessageMark.Count()
 }
 
-// DropRunIDs returns the isolated canonical Run deletion order.
 func (r RollbackPlan) DropRunIDs() []identity.RunID { return slices.Clone(r.dropRunIDs) }
 
-// CheckpointRootIDs returns the isolated parked-executor roots to remove.
 func (r RollbackPlan) CheckpointRootIDs() []string {
 	ids := make([]string, len(r.checkpointRootIDs))
 	for index, id := range r.checkpointRootIDs {
@@ -119,7 +106,6 @@ func (r RollbackPlan) CheckpointRootIDs() []string {
 	return ids
 }
 
-// PlanReplacement returns an isolated copy of the boundary Plan transition.
 func (r RollbackPlan) PlanReplacement() *plan.Replacement {
 	clonedPlanReplacement := r.planReplacement
 	if clonedPlanReplacement != nil {

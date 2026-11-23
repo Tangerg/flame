@@ -32,10 +32,8 @@ const styles = stylex.create({
     pointerEvents: "none",
   },
   list: {
-    outlineColor: { default: null, ":focus-visible": surface.fieldFocus },
-    outlineStyle: { default: null, ":focus-visible": "solid" },
-    outlineWidth: { default: null, ":focus-visible": "2px" },
-    outlineOffset: "-2px",
+    outline: { default: null, ":focus-visible": "var(--focus-ring)" },
+    outlineOffset: "var(--focus-inset-offset)",
     position: "relative",
     display: "flex",
     flexDirection: "column",

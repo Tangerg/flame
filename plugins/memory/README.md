@@ -32,15 +32,16 @@ An observed invalid reply settles the original maintenance command as an
 model call. Failed model exchanges or receipt/publication writes retain their
 unconfirmed outcome; a known validation decision cannot confirm failed storage.
 
-Each item owns a positive exact `Revision`. Editing content, pinning, reviewing,
+Each item owns a positive exact `revision`. Editing content, pinning, reviewing,
 or explicitly reactivating a record advances that revision; derived embeddings
 and unchanged edits do not. Update, review and deletion require the caller's
-observed `ExpectedRevision`. A stale command is refused before changing data,
+observed `expectedRevision`. A stale command is refused before changing data,
 while replay of an acknowledged command returns its original receipt. The
 content identity is unique within each target. Editing into another item's content
 refuses with `duplicate_content` and retains that refusal in the original receipt;
 neither item's content, pinning nor revision changes. The published item operations
-use `v2`; the former methods are removed. The private
+use `v3` and maintenance uses `v2`: fields are camelCase and published items omit
+the private embedding. The former methods are removed. The private
 schema requires revisions and refuses older data directories without conversion.
 Retain the old directory separately and open a fresh directory for this build.
 
@@ -158,7 +159,7 @@ projection in `packages/go-sdk/plugin/memory`; components consume the generated
 TypeScript projection of that same descriptor. None imports private Domain or
 Application implementations.
 
-Model prompts and their resource envelope belong to `internal/application`.
+Model prompts and their resource envelope belong to `internal/coordination`.
 The workflow validates its fixed input limit directly; each request carries only
 its output-token allocation. The caller policy is a generated projection of that
 workflow budget. Extraction and curation share its existing ledger/publication

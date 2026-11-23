@@ -9,7 +9,7 @@ import (
 	"time"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -37,11 +37,9 @@ const (
 	defaultInteractionStatePoll      = 250 * time.Millisecond
 )
 
-// InteractionChatResolver resolves one exact provider construction selected by
-// a Run. Resolution happens during staging and must not invoke the model.
 type InteractionChatResolver interface {
-	ResolveChat(ctx context.Context, selection modelchoice.Selection) (modeladapter.ResolvedChat, error)
-	RestoreChat(context.Context, modelchoice.Selection, *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error)
+	ResolveChat(ctx context.Context, selection flamemodel.Selection) (modeladapter.ResolvedChat, error)
+	RestoreChat(context.Context, flamemodel.Selection, *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error)
 }
 
 type interactionModelEvidence interface {
@@ -59,18 +57,9 @@ type originalToolResults interface {
 	OriginalToolResult(context.Context, domaintool.Ref, framevalue.Digest, framevalue.Digest, plugin.Activation, string, domaintool.Arguments) (*toolcontract.Output, error)
 }
 
-// InteractionExecutorConfig freezes the host-owned inputs shared by
-// Interaction root executions. Identity strings must change whenever the
-// executable Interaction adapter or behavior-affecting dispatcher configuration
-// changes, so Agent Framework Deployment references remain honest.
 type InteractionExecutorConfig struct {
-	Admission framehost.Admission
-	// ValidatePluginSources rechecks captured plans and package releases under the
-	// original shared admission before the execution becomes a live use owner.
-	ValidatePluginSources func(context.Context, []plugin.Activation, []plugin.Dependency) error
-	// Lifetime is the process-owned root for every Interaction staged by this
-	// executor. Request contexts may bound staging and commands, but accepted
-	// execution must outlive the request that created it.
+	Admission                 framehost.Admission
+	ValidatePluginSources     func(context.Context, []plugin.Activation, []plugin.Dependency) error
 	Lifetime                  context.Context
 	ExecutionTrees            executionJournal
 	OriginalToolResults       originalToolResults
@@ -95,48 +84,27 @@ type InteractionExecutorConfig struct {
 	StatePollInterval         *time.Duration
 }
 
-// InteractionExecutor is the Agent Framework root execution adapter. Each staged
-// root owns an independent Engine and exactly one Interaction Process; the
-// Application owns durable Run state and consumes only [runs.ExecutorEvent].
 type InteractionExecutor struct {
-	installations framehost.Admission
-	lifetime      context.Context
-	config        InteractionExecutorConfig
-	policy        interactionExecutionPolicy
-	buildID       runs.BuildID
+	lifetime context.Context
+	config   InteractionExecutorConfig
+	policy   interactionExecutionPolicy
+	buildID  runs.BuildID
 
 	sessions interactionSessions
 }
 
-// NewInteractionExecutor validates immutable host configuration. It creates no
-// Engine, goroutine, model call, or tool call; those resources are per staged
-// root execution.
 func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecutor, error) {
-	if config.Lifetime == nil {
-		return nil, errors.New("execution: Interaction lifetime is required")
-	}
-	if lo.IsNil(config.ChatResolver) {
-		return nil, errors.New("execution: Interaction requires a chat resolver")
-	}
-	if lo.IsNil(config.ModelEvidence) {
-		return nil, errors.New("execution: Interaction model evidence is required")
-	}
-	if config.ValidatePluginSources == nil {
-		return nil, errors.New("execution: plugin source validation is required")
-	}
 	if !config.Admission.Valid() {
 		return nil, errors.New("execution: installation admission is required")
-	}
-	if lo.IsNil(config.ExecutionTrees) {
-		return nil, errors.New("execution: execution tree store is required")
-	}
-	if lo.IsNil(config.ModelContextCompactor) != lo.IsNil(config.ModelContextState) {
-		return nil, errors.New("execution: model-context compactor and state source must be configured together")
 	}
 	for _, capability := range []struct {
 		name  string
 		value any
 	}{
+		{name: "lifetime", value: config.Lifetime},
+		{name: "plugin source validation", value: config.ValidatePluginSources},
+		{name: "execution tree store", value: config.ExecutionTrees},
+		{name: "model evidence", value: config.ModelEvidence},
 		{name: "chat resolver", value: config.ChatResolver},
 		{name: "model composition", value: config.CallComposition},
 		{name: "original Tool results", value: config.OriginalToolResults},
@@ -150,8 +118,8 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 		{name: "model-context state", value: config.ModelContextState},
 		{name: "lifecycle hooks", value: config.LifecycleHooks},
 	} {
-		if capability.value != nil && lo.IsNil(capability.value) {
-			return nil, fmt.Errorf("execution: Interaction %s is typed nil", capability.name)
+		if lo.IsNil(capability.value) {
+			return nil, fmt.Errorf("execution: Interaction %s is required", capability.name)
 		}
 	}
 	buildID, err := runs.ParseBuild(config.BuildID)
@@ -167,9 +135,8 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	config.BuildID = ""
 	return &InteractionExecutor{
 		lifetime: lifetime, config: config, policy: policy,
-		buildID:       buildID,
-		sessions:      newInteractionSessions(),
-		installations: config.Admission,
+		buildID:  buildID,
+		sessions: newInteractionSessions(),
 	}, nil
 }
 
@@ -203,21 +170,10 @@ func validateModelOutputReservation(
 	return nil
 }
 
-var (
-	errProposalCompositionUnavailable = errors.New("execution: captured Tool proposal composition is unavailable")
-	errModelInputUnavailable          = errors.New("execution: captured model input is unavailable")
-	errModelContextUnavailable        = errors.New("execution: captured model context is unavailable")
-	errModelObserversUnavailable      = errors.New("execution: captured model observers are unavailable")
-)
-
-// BeginShutdown rejects new assembly and publication. AwaitShutdown joins
-// admitted assembly and releases its resources under the caller's deadline.
 func (i *InteractionExecutor) BeginShutdown() {
 	i.sessions.closeAdmission()
 }
 
-// AwaitShutdown releases published roots, probes, and failed assemblies.
-// Successful targets are removed; failed or timed-out targets stay owned.
 func (i *InteractionExecutor) AwaitShutdown(ctx context.Context) error {
 	if ctx == nil {
 		return errors.New("execution: Interaction shutdown context is required")
@@ -245,9 +201,6 @@ func (i *InteractionExecutor) AwaitShutdown(ctx context.Context) error {
 	return errors.Join(failures...)
 }
 
-// Observe attaches the single Application Run pump before Process start.
-// Scope's committed results cross this pump with a durability receipt. Stream
-// previews can be dropped without changing those results.
 func (i *InteractionExecutor) Observe(
 	ctx context.Context,
 	ref runs.ExecutorRef,
@@ -287,10 +240,8 @@ func (i *InteractionExecutor) Observe(
 	}, nil
 }
 
-// BeginRoot starts the staged Process exactly once. The accepted Run uses the
-// staged session lifecycle rather than the caller's request context, so a client
-// disconnect cannot cancel durable execution. Agent Framework owns every step;
-// this adapter commits the immutable terminal result with the Run.
+// The accepted Run uses the staged session lifecycle rather than the request
+// context so a client disconnect cannot cancel durable execution.
 func (i *InteractionExecutor) BeginRoot(_ context.Context, ref runs.ExecutorRef) error {
 	session, err := i.session(ref)
 	if err != nil {
@@ -333,8 +284,6 @@ func runExecutionContext(
 	return executionctx.WithRunCapabilities(ctx, capabilities)
 }
 
-// Release tears down one staged or terminal per-root Engine. It is idempotent
-// and does not decide the product Run outcome.
 func (i *InteractionExecutor) Release(ctx context.Context, ref runs.ExecutorRef) error {
 	session, err := i.sessions.lookup(ref)
 	if err != nil {
@@ -351,10 +300,6 @@ func (i *InteractionExecutor) Release(ctx context.Context, ref runs.ExecutorRef)
 	return err
 }
 
-// RequestRootCancellation submits the Application's accepted cancellation to
-// Agent Framework without deciding the product outcome or releasing the tree.
-// Success acknowledges submission only; Scope owns cancellation propagation and
-// the immutable result reports whether cancellation became the terminal cause.
 func (i *InteractionExecutor) RequestRootCancellation(
 	ctx context.Context,
 	ref runs.ExecutorRef,
@@ -388,7 +333,7 @@ func (i *InteractionExecutor) RequestRootCancellation(
 
 func (i *InteractionExecutor) resolveChat(
 	ctx context.Context,
-	selection modelchoice.Selection,
+	selection flamemodel.Selection,
 ) (modeladapter.ResolvedChat, error) {
 	if err := selection.ValidateExact(); err != nil {
 		return modeladapter.ResolvedChat{}, fmt.Errorf("execution: Interaction: %w", err)
@@ -422,7 +367,7 @@ func clonedOptions(options *corechat.Options) corechat.Options {
 	return options.Clone()
 }
 
-func executionOptions(selection modelchoice.Selection, options *corechat.Options) corechat.Options {
+func executionOptions(selection flamemodel.Selection, options *corechat.Options) corechat.Options {
 	cloned := clonedOptions(options)
 	cloned.ReasoningEffort = corechat.ReasoningEffort(selection.ReasoningEffort())
 	return cloned
@@ -437,8 +382,6 @@ var (
 	_ runs.RunningExecutionSteerer          = (*InteractionExecutor)(nil)
 )
 
-// Delegates inherit generation policy, but root output framing belongs only to
-// the root task. The deployment digest binds this policy across restoration.
 func delegatedExecutionOptions(start runs.RootExecutionStart) corechat.Options {
 	options := executionOptions(start.ModelSelection, start.Options)
 	options.OutputFormat = nil

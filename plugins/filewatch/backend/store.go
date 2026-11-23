@@ -8,7 +8,7 @@ import (
 	"errors"
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
+	"github.com/Tangerg/flame/plugins/filewatch/internal/filewatch"
 
 	"github.com/Tangerg/frame/sqlite"
 )
@@ -118,7 +118,6 @@ func (s *store) capture(ctx context.Context, observation filewatch.Observation) 
 		if pending >= maxPending {
 			return filewatch.ErrCapacity
 		}
-		// Only confirmed historical observations may leave the bounded read archive.
 		if _, err := connection.ExecContext(ctx, `DELETE FROM events WHERE rowid IN (SELECT rowid FROM events WHERE accepted=1 ORDER BY rowid LIMIT (SELECT max(0,count(*)-?) FROM events))`, maxEvents-1); err != nil {
 			return err
 		}
@@ -155,8 +154,6 @@ func (s *store) event(ctx context.Context, id string) (filewatch.Event, error) {
 	return decodeEvent(id, generation, sequence, raw, accepted)
 }
 
-// eventSelection is one bounded read of stored events. Reading past limit means
-// the store holds more than it may, which is a storage fault.
 type eventSelection struct {
 	query string
 	limit int

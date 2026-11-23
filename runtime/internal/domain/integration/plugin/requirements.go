@@ -28,8 +28,6 @@ type ResolvedRequirement struct {
 	Bindings     []BoundContribution
 }
 
-// RequiredBindings freezes the entry's declared collaborators for its lifetime.
-// Selection changes can produce another value, never alter this one.
 type RequiredBindings struct{ values []ResolvedRequirement }
 
 func NewRequiredBindings(values []ResolvedRequirement) (*RequiredBindings, error) {
@@ -63,8 +61,6 @@ func NewRequiredBindings(values []ResolvedRequirement) (*RequiredBindings, error
 	return owned, nil
 }
 
-// validateRequirementProviders proves every provider exports exactly the
-// required contract and appears once.
 func validateRequirementProviders(key string, contract framevalue.JSON, bindings []BoundContribution) error {
 	type provider struct {
 		installation identity.InstallationID

@@ -13,7 +13,7 @@ import (
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -114,7 +114,7 @@ func TestClientsShareRuntimeWithoutSharingOwnership(t *testing.T) {
 	_, err = second.ListRuns(t.Context(), protocol.ListRunsRequest{IncludeDescendants: true}, protocol.CallOptions{
 		RequestMeta: protocol.RequestMeta{ClientCapabilities: &protocol.ClientCapabilities{}},
 	})
-	var problem protocol.ProblemError
+	var problem *protocol.Failure
 	if !errors.Is(err, protocol.ErrCapabilityNotNeg) || !errors.As(err, &problem) || len(problem.Problem().RequiredCapabilities) == 0 {
 		t.Fatalf("capability metadata = %v", err)
 	}
@@ -170,8 +170,8 @@ func remoteRuntime(t *testing.T) (*Runtime, *httptest.Server, *protocol.Discover
 
 func remoteHTTPHandler(t *testing.T, endpoint *delivery.Endpoint, info protocol.ServerInfo) http.Handler {
 	t.Helper()
-	server, err := flamehttp.NewServer(flamehttp.Config{
-		Endpoint: endpoint, Addr: "127.0.0.1:0", ServerInfo: info,
+	server, err := runtimehttp.NewServer(runtimehttp.Config{
+		Endpoint: endpoint, PluginControl: http.NotFoundHandler(), Addr: "127.0.0.1:0", ServerInfo: info,
 		Authentication: mustLocalToken(t, "test-local-token"),
 	})
 	if err != nil {
@@ -194,9 +194,9 @@ func remoteTestClient(t *testing.T, endpoint string) *runtimeclient.Client {
 	return client
 }
 
-func mustLocalToken(t testing.TB, token string) flamehttp.Authentication {
+func mustLocalToken(t testing.TB, token string) runtimehttp.Authentication {
 	t.Helper()
-	authentication, err := flamehttp.LocalTokenAuthentication(token)
+	authentication, err := runtimehttp.LocalTokenAuthentication(token)
 	if err != nil {
 		t.Fatal(err)
 	}

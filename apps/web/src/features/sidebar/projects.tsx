@@ -69,7 +69,7 @@ function ProjectGroupNode({
   );
 }
 
-export function ProjectsSection() {
+function ProjectsSection() {
   const t = useT();
   const workIndex = useWorkIndex();
   const actions = useWorkIndexActions();

@@ -9,13 +9,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
-// archiveActive moves the active skill <name> into _archive/<name>, OVERWRITING
-// any older archived version — the single history slot the module keeps. The
-// caller holds s.mu and owns root. Shared by the revision-replace path and the
-// idle-lifecycle sweep.
 func (s *Store) archiveActive(root *os.Root, name string) ([]string, error) {
 	activeDir := s.activeDir(name)
 	content, found, err := readSkill(root, activeDir)
@@ -31,7 +28,7 @@ func (s *Store) archiveActive(root *os.Root, name string) ([]string, error) {
 	if err != nil {
 		return identities, fmt.Errorf("skillauthoring: clear archive slot for %q: %w", name, err)
 	}
-	if err := root.MkdirAll(archivedSubdir, 0o755); err != nil {
+	if err := root.MkdirAll(archivedSubdir, filesystem.SharedDirectoryMode); err != nil {
 		return identities, fmt.Errorf("skillauthoring: create archive area: %w", err)
 	}
 	if err := root.Rename(activeDir, archiveDir); err != nil {
@@ -44,7 +41,6 @@ func (s *Store) archiveActive(root *os.Root, name string) ([]string, error) {
 	return distinctPaths(append(identities, s.skillIdentities(activeDir, archiveDir)...)), nil
 }
 
-// lifecycleMove is one of the two Skill relocations the store performs.
 type lifecycleMove struct {
 	verb     string
 	from, to skills.Lifecycle
@@ -55,14 +51,10 @@ var (
 	restoreMove = lifecycleMove{verb: "restore", from: skills.Archived, to: skills.Active}
 )
 
-// Archive moves an active skill out of discovery and retires its usage under
-// one library lease. Returned identities include any committed move on error.
 func (s *Store) Archive(ctx context.Context, name string) ([]string, error) {
 	return s.moveLifecycle(ctx, name, archiveMove)
 }
 
-// Restore moves an archived skill back into the active set and returns the
-// exact public file identities changed by the move.
 func (s *Store) Restore(ctx context.Context, name string) ([]string, error) {
 	return s.moveLifecycle(ctx, name, restoreMove)
 }
@@ -129,8 +121,6 @@ func (s *Store) moveLifecycle(ctx context.Context, name string, move lifecycleMo
 	return identities, nil
 }
 
-// renameLifecycle moves the skill, accepting a rename that already landed
-// before an interrupted attempt could report it.
 func renameLifecycle(root *os.Root, name, source, destination, verb string, content []byte) error {
 	err := root.Rename(source, destination)
 	if err == nil {
@@ -142,8 +132,6 @@ func renameLifecycle(root *os.Root, name, source, destination, verb string, cont
 	return nil
 }
 
-// readMoveSource returns the valid Skill about to move. A missing source is a
-// replay of a move that already committed, settled from its destination.
 func readMoveSource(ctx context.Context, root *os.Root, name, source, destination string, move lifecycleMove) ([]byte, bool, error) {
 	info, err := root.Lstat(source)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -162,7 +150,7 @@ func readMoveSource(ctx context.Context, root *os.Root, name, source, destinatio
 	if !found {
 		return nil, false, fmt.Errorf("%w: cannot %s %q", skills.ErrNotFound, move.verb, name)
 	}
-	if _, err := validateSkill(ctx, name, content); err != nil {
+	if err := validateSkill(ctx, name, content); err != nil {
 		return nil, false, err
 	}
 	return content, false, nil
@@ -174,7 +162,7 @@ func prepareMoveDestination(root *os.Root, name, destination string, move lifecy
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("skillauthoring: inspect %s destination for %q: %w", move.verb, name, err)
 	}
-	if err := root.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
+	if err := root.MkdirAll(filepath.Dir(destination), filesystem.SharedDirectoryMode); err != nil {
 		return fmt.Errorf("skillauthoring: prepare %s destination for %q: %w", move.verb, name, err)
 	}
 	return nil
@@ -186,7 +174,7 @@ func inspectCompletedLifecycleMove(ctx context.Context, root *os.Root, name, des
 		return fmt.Errorf("skillauthoring: inspect completed %s for %q: %w", operation, name, err)
 	}
 	if found {
-		if _, err := validateSkill(ctx, name, content); err != nil {
+		if err := validateSkill(ctx, name, content); err != nil {
 			return fmt.Errorf("%w: cannot replay %s %q: %w", skills.ErrConflict, operation, name, err)
 		}
 		return nil

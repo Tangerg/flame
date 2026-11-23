@@ -6,17 +6,12 @@ import (
 	"reflect"
 )
 
-// OperationResult is one catalog operation's outcome with its declared Go
-// shapes erased. A Failure is the whole outcome; otherwise Value is the
-// response or stream acknowledgement and Events carries a stream's frames.
 type OperationResult struct {
 	Value   any
 	Events  iter.Seq2[any, error]
 	Failure *Failure
 }
 
-// ValueAs restores the declared response type. An opaque JSON null is the zero
-// value of an interface-typed response.
 func (r OperationResult) ValueAs[T any]() (T, bool) {
 	var zero T
 	if r.Value == nil && reflect.TypeFor[T]().Kind() == reflect.Interface {
@@ -26,7 +21,6 @@ func (r OperationResult) ValueAs[T any]() (T, bool) {
 	return value, ok
 }
 
-// Response restores a unary operation's declared response.
 func (r OperationResult) Response[T any](method string) (T, error) {
 	var zero T
 	if r.Failure != nil {
@@ -39,7 +33,6 @@ func (r OperationResult) Response[T any](method string) (T, error) {
 	return value, nil
 }
 
-// Stream restores a streaming operation's acknowledgement and event type.
 func (r OperationResult) Stream[Ack, Event any](method string) (Ack, iter.Seq2[Event, error], error) {
 	var zero Ack
 	if r.Failure != nil {

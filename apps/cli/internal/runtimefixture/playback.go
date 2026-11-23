@@ -77,8 +77,6 @@ func internalFailure(err error) Finish {
 	return Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}}
 }
 
-// applyRememberedLocked publishes the interrupts and answers those a
-// remembered approval rule already decides, returning the ones still pending.
 func (r *Runtime) applyRememberedLocked(run *runState, interruptEvents []conversation.Event) ([]conversation.Interrupt, error) {
 	resolved, pending := r.resolveRememberedLocked(run, run.script.Interrupts)
 	approvalEvents := approvalCompletionEvents(run, resolved)
@@ -111,7 +109,6 @@ func (r *Runtime) applyRememberedLocked(run *runState, interruptEvents []convers
 	}})
 }
 
-// awaitAnswersLocked parks the Run on the interrupts no rule decides.
 func (r *Runtime) awaitAnswersLocked(run *runState, pending []conversation.Interrupt) error {
 	run.status = protocol.RunStatusWaiting
 	run.interrupts = conversation.CloneInterrupts(pending)
@@ -123,8 +120,6 @@ func (r *Runtime) awaitAnswersLocked(run *runState, pending []conversation.Inter
 	return r.setSessionStatusLocked(r.sessions[run.sessionID], protocol.SessionStatusWaiting)
 }
 
-// continueWithAnswers plays the script past interrupts every remembered rule
-// answered, unless the Run stopped meanwhile.
 func (r *Runtime) continueWithAnswers(run *runState, answers []conversation.InterruptAnswer, err error) {
 	var steps []Step
 	if err == nil {
@@ -303,8 +298,6 @@ func (r *Runtime) emitLocked(run *runState, event conversation.Event) error {
 	return nil
 }
 
-// ownedBlockEvent stamps a scripted block with its Run and the status its
-// event implies.
 func ownedBlockEvent(runID string, event conversation.Event) conversation.Event {
 	switch item := event.(type) {
 	case conversation.BlockStarted:
@@ -322,8 +315,6 @@ func ownedBlockEvent(runID string, event conversation.Event) conversation.Event 
 	}
 }
 
-// applyEventLocked folds a published event into the durable state a later
-// snapshot reads: streamed text stays open until its block completes.
 func (r *Runtime) applyEventLocked(run *runState, session *sessionState, segment *segmentState, event conversation.Event) {
 	switch item := event.(type) {
 	case conversation.BlockStarted:

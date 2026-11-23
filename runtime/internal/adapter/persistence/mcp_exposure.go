@@ -41,6 +41,7 @@ func (m *MCPServerStore) ListExposure(ctx context.Context) ([]tool.Ref, error) {
 		return out, rows.Err()
 	})
 }
+
 func (m *MCPServerStore) SetToolExposure(ctx context.Context, ref tool.Ref, disabled bool) error {
 	return m.db.write(ctx, func(ctx context.Context) error {
 		server, remote, ok := ref.MCP()

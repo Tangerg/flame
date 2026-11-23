@@ -3,16 +3,15 @@ package goal
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"math"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
 
-// Usage counts the terminal root Runs of one Goal incarnation and includes the
-// process-owned spending of all their descendants. Runs remain the only durable
-// accounting owners; Usage is derived by [UsageOf].
 type Usage struct {
 	Runs  int
 	Cost  accounting.Cost
@@ -29,10 +28,7 @@ func (u Usage) validate() error {
 	return nil
 }
 
-// UsageOf requires complete terminal trees. Only roots carry Goal attribution;
-// descendants inherit it through immutable lineage. Cost stays priced only while
-// every process's cost is.
-func UsageOf(sessionID identity.SessionID, incarnationID string, runs []run.Run) (Usage, error) {
+func UsageOf(sessionID identity.SessionID, incarnationID goalref.IncarnationID, runs []run.Run) (Usage, error) {
 	byID := make(map[identity.RunID]run.Run, len(runs))
 	for _, value := range runs {
 		if value.SessionID() != sessionID {

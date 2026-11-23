@@ -6,7 +6,7 @@ import (
 	"slices"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -25,10 +25,10 @@ type interactionCallComposition interface {
 	Activations(context.Context, []plugins.ContributionBinding) ([]plugin.Activation, error)
 	ResolveInput(context.Context) ([]plugins.ContributionBinding, error)
 	ValidateInput(context.Context, []plugins.ContributionBinding) error
-	PrepareInput(context.Context, []plugins.ContributionBinding, modelchoice.Selection, *chat.Request) (*chat.Request, error)
+	PrepareInput(context.Context, []plugins.ContributionBinding, flamemodel.Selection, *chat.Request) (*chat.Request, error)
 	ResolveContext(context.Context) ([]plugins.ContributionBinding, error)
 	ValidateContext(context.Context, []plugins.ContributionBinding) error
-	PrepareContext(context.Context, []plugins.ContributionBinding, modelchoice.Selection, modelchoice.Use, *chat.Request, *chat.Message, []chat.Message) ([]chat.Message, error)
+	PrepareContext(context.Context, []plugins.ContributionBinding, flamemodel.Selection, flamemodel.Use, *chat.Request, *chat.Message, []chat.Message) ([]chat.Message, error)
 	Resolve(context.Context) ([]plugins.ContributionBinding, error)
 	Validate(context.Context, []plugins.ContributionBinding) error
 	HeldDependencies() []plugin.Dependency

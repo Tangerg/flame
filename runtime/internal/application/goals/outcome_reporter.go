@@ -17,8 +17,6 @@ import (
 	"github.com/samber/lo"
 )
 
-// Outcome is a terminal result a Goal Run may report. Any other value is
-// refused as ReportInvalidOutcome.
 type Outcome string
 
 const (
@@ -38,18 +36,13 @@ func (Outcome) JSONSchemaEnum() []string {
 	return values
 }
 
-// ReportCommand is a model-originated terminal outcome for the active Goal.
-// IncarnationID is required and identifies the Goal that admitted this Run.
-// Reason explains a blocked outcome and must be empty for a completed one;
-// surrounding whitespace is not part of it.
 type ReportCommand struct {
 	SessionID     identity.SessionID
-	IncarnationID string
+	IncarnationID goalref.IncarnationID
 	Outcome       Outcome
 	Reason        string
 }
 
-// ReportResult identifies the recoverable outcome of one report.
 type ReportResult string
 
 const (
@@ -62,14 +55,12 @@ const (
 	ReportInvalidOutcome  ReportResult = "invalidOutcome"
 )
 
-// OutcomeReporter owns terminal outcome validation and compare-and-swap.
 type OutcomeReporter struct {
 	workflow Workflow
 	goals    Store
 	now      func() time.Time
 }
 
-// NewOutcomeReporter constructs terminal outcome reporting over the required store.
 func NewOutcomeReporter(store Store, workflow Workflow) (*OutcomeReporter, error) {
 	if lo.IsNil(store) || lo.IsNil(workflow) {
 		return nil, errors.New("goals: outcome store is required")
@@ -77,9 +68,8 @@ func NewOutcomeReporter(store Store, workflow Workflow) (*OutcomeReporter, error
 	return &OutcomeReporter{workflow: workflow, goals: store, now: time.Now}, nil
 }
 
-// Report applies one model-declared terminal outcome to the active Goal.
 func (o *OutcomeReporter) Report(ctx context.Context, cmd ReportCommand) (ReportResult, error) {
-	if _, err := goalref.ParseIncarnation(cmd.IncarnationID); err != nil {
+	if err := cmd.IncarnationID.Validate(); err != nil {
 		return "", fmt.Errorf("goals: report: %w", err)
 	}
 	reason := strings.TrimSpace(cmd.Reason)

@@ -5,11 +5,9 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
-	toolsvc "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
-// ListTools projects the complete safe direct-invocation catalog in the
-// Application-owned unique name order.
 func (s *Handler) ListTools(ctx context.Context) (*protocol.Page[protocol.ToolSpec], error) {
 	internal, err := s.tools.List(ctx)
 	if err != nil {
@@ -31,11 +29,8 @@ func (s *Handler) ListTools(ctx context.Context) (*protocol.Page[protocol.ToolSp
 	return protocol.NewPage(out), nil
 }
 
-// InvokeTool runs one diagnostic tool directly outside a run. The application
-// admits cwd before the adapter confines tool paths beneath it; the result is
-// a canonical JSON value projected only at this Delivery boundary.
 func (s *Handler) InvokeTool(ctx context.Context, in protocol.InvokeToolRequest) (any, error) {
-	args, err := toolsvc.ArgumentsFromMap(in.Arguments)
+	args, err := domaintool.ArgumentsFromMap(in.Arguments)
 	if err != nil {
 		return nil, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	}

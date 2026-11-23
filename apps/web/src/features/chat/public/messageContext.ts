@@ -2,7 +2,7 @@ import { type Message } from "@/features/agent/public/sessionView";
 import { type HistoryEditScope } from "@/features/chat/message-actions/public/messageActions";
 import { createContext, use } from "react";
 
-export interface MessageContextValue {
+interface MessageContextValue {
   sessionId: string;
   message: Message;
   editInComposer(origin?: HTMLElement): void;

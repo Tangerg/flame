@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 
 	"github.com/Tangerg/frame"
@@ -56,8 +57,6 @@ func runFeature(args []string) error {
 
 type featureArtifact struct{ source, target string }
 
-// Frame owns schema and language projections. Flame supplies readable definition
-// labels and restores the original contract with its composition and target policy.
 func generateFeature(capability *contract.Capability, directory, tsDirectory string, goOutput contractgen.GoOutput) error {
 	stage, err := os.MkdirTemp("", "flame-feature-*")
 	if err != nil {
@@ -73,7 +72,7 @@ func generateFeature(capability *contract.Capability, directory, tsDirectory str
 		return err
 	}
 	source := filepath.Join(stage, "service.json")
-	if err := os.WriteFile(source, neutral.Bytes(), 0o600); err != nil {
+	if err := os.WriteFile(source, neutral.Bytes(), filesystem.PrivateFileMode); err != nil {
 		return err
 	}
 	staged := stageFeatureOutputs(stage, directory, tsDirectory, goOutput)
@@ -83,34 +82,57 @@ func generateFeature(capability *contract.Capability, directory, tsDirectory str
 	if err := staged.writeCapabilityProjections(capability, projection); err != nil {
 		return err
 	}
-	return publishFeatureArtifacts(staged.artifacts)
+	artifacts, err := staged.artifacts()
+	if err != nil {
+		return err
+	}
+	return publishFeatureArtifacts(artifacts)
 }
 
-// stagedFeature generates every requested output in a scratch directory first,
-// so a failed generation publishes nothing.
 type stagedFeature struct {
 	directory, typescript string
 	goOutput              contractgen.GoOutput
-	artifacts             []featureArtifact
+	targetDirectory       string
+	targetTypeScript      string
+	targetGo              string
 }
 
 func stageFeatureOutputs(stage, directory, tsDirectory string, goOutput contractgen.GoOutput) stagedFeature {
-	staged := stagedFeature{goOutput: goOutput}
+	staged := stagedFeature{goOutput: goOutput, targetDirectory: directory, targetTypeScript: tsDirectory, targetGo: goOutput.Path}
 	if directory != "" {
 		staged.directory = filepath.Join(stage, "contracts")
-		for _, name := range []string{"schema.json", "methods.generated.json", "capability.generated.json", "API_REFERENCE.md"} {
-			staged.artifacts = append(staged.artifacts, featureArtifact{filepath.Join(staged.directory, name), filepath.Join(directory, name)})
-		}
 	}
 	if tsDirectory != "" {
 		staged.typescript = filepath.Join(stage, "typescript")
-		staged.artifacts = append(staged.artifacts, featureArtifact{filepath.Join(staged.typescript, "methods.generated.ts"), filepath.Join(tsDirectory, "methods.generated.ts")})
 	}
 	if goOutput.Path != "" {
 		staged.goOutput.Path = filepath.Join(stage, "methods.generated.go")
-		staged.artifacts = append(staged.artifacts, featureArtifact{staged.goOutput.Path, goOutput.Path})
 	}
 	return staged
+}
+
+// Publishing what the generator actually staged keeps its file names with the generator.
+func (s stagedFeature) artifacts() ([]featureArtifact, error) {
+	var artifacts []featureArtifact
+	for _, directory := range []struct{ staged, target string }{{s.directory, s.targetDirectory}, {s.typescript, s.targetTypeScript}} {
+		if directory.staged == "" {
+			continue
+		}
+		entries, err := os.ReadDir(directory.staged)
+		if err != nil {
+			return nil, err
+		}
+		for _, entry := range entries {
+			if !entry.Type().IsRegular() {
+				return nil, fmt.Errorf("feature contracts: staged output is not a regular file: %s", entry.Name())
+			}
+			artifacts = append(artifacts, featureArtifact{filepath.Join(directory.staged, entry.Name()), filepath.Join(directory.target, entry.Name())})
+		}
+	}
+	if s.targetGo != "" {
+		artifacts = append(artifacts, featureArtifact{s.goOutput.Path, s.targetGo})
+	}
+	return artifacts, nil
 }
 
 func (s stagedFeature) generateConfig(source string) contractgen.GenerateConfig {
@@ -131,7 +153,7 @@ func (s stagedFeature) writeCapabilityProjections(capability *contract.Capabilit
 		if err != nil {
 			return err
 		}
-		if err := os.WriteFile(filepath.Join(s.directory, "capability.generated.json"), append(pretty, '\n'), 0o600); err != nil {
+		if err := os.WriteFile(filepath.Join(s.directory, "capability.generated.json"), append(pretty, '\n'), filesystem.PrivateFileMode); err != nil {
 			return err
 		}
 	}
@@ -177,7 +199,7 @@ func writeFeatureTypeScript(capability *contract.Capability, file string) error 
 	if changed != 2 {
 		return errors.New("feature contracts: Frame TypeScript identity projection is missing")
 	}
-	if err := os.WriteFile(file, []byte(strings.Join(lines, "\n")), 0o600); err != nil {
+	if err := os.WriteFile(file, []byte(strings.Join(lines, "\n")), filesystem.PrivateFileMode); err != nil {
 		return err
 	}
 	return nil
@@ -197,7 +219,7 @@ func writeFeatureGo(projection frame.CapabilityDescriptor, descriptor value.JSON
 		return errors.New("feature contracts: Frame Go identity projection is missing")
 	}
 	data = bytes.Replace(data, original, []byte(strconv.Quote(descriptor.String())), 1)
-	if err := os.WriteFile(file, data, 0o600); err != nil {
+	if err := os.WriteFile(file, data, filesystem.PrivateFileMode); err != nil {
 		return err
 	}
 	return nil
@@ -225,10 +247,10 @@ func publishFeatureArtifacts(artifacts []featureArtifact) error {
 		if err != nil {
 			return err
 		}
-		if err := os.MkdirAll(filepath.Dir(output.target), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(output.target), filesystem.SharedDirectoryMode); err != nil {
 			return err
 		}
-		if err := os.WriteFile(output.target, body, 0o644); err != nil {
+		if err := os.WriteFile(output.target, body, filesystem.SharedFileMode); err != nil {
 			return err
 		}
 	}

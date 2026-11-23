@@ -20,8 +20,6 @@ import (
 
 var errFormattedTooLarge = errors.New("code intelligence: formatted output exceeds document capacity")
 
-// formatter captures the installation's explicit workspace grants. They do not
-// inherit hook trust or authorize descendants as separate workspace roots.
 type formatter struct{ prettierWorkspaces map[string]os.FileInfo }
 
 func newFormatter(workspaces []string) (formatter, error) {

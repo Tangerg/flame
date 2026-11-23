@@ -6,9 +6,6 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
-// pickerDialog is a searchable list in a modal. Choosing an item closes the
-// modal before choose runs, so choose sees the picker already dismissed;
-// dismissed runs whenever the modal is closed without a choice.
 type pickerDialog[T any] struct {
 	picker *picker[T]
 	dialog *presentationDialog
@@ -56,7 +53,6 @@ func (d *pickerDialog[T]) dismiss(dismissed func()) {
 	d.dialog.Dismiss()
 }
 
-// show opens the picker over items, clearing any previous search.
 func (d *pickerDialog[T]) show(items []T) {
 	d.picker.Reset()
 	d.picker.SetItems(items)

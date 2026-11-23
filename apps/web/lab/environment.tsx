@@ -16,7 +16,7 @@ import { loadPluginsForTest, resetKernelForTest } from "@/test/kernel";
 import { visualLocalePackages } from "./scenarios/localePackages";
 import type { LabLocale, LabMotion, LabTheme } from "./story";
 
-export interface LabAppearance {
+interface LabAppearance {
   readonly theme: LabTheme;
   readonly locale: LabLocale;
   readonly motion: LabMotion;

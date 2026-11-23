@@ -1,4 +1,3 @@
-// Package retry owns retry schedules and classified transport-recovery policy.
 package retry
 
 import (
@@ -10,8 +9,6 @@ import (
 
 var ErrInvalidBackoff = errors.New("retry backoff is invalid")
 
-// Backoff is an unbounded retry schedule whose delay has a finite ceiling.
-// The caller's context decides its lifetime.
 // The zero value is unconfigured: a schedule with no floor would busy-spin.
 type Backoff struct {
 	base    time.Duration
@@ -58,10 +55,8 @@ func (b Backoff) Wait(ctx context.Context, failure int) error {
 	return Wait(ctx, delay)
 }
 
-// Wait pauses before the next attempt. Cancellation is decided before the
-// delay is ever consulted: a timer that is already ready would otherwise race
-// a closed Done channel, and a select between two ready cases lets a canceled
-// loop take another attempt.
+// Cancellation is decided before the delay: a select between a ready timer and a
+// closed Done channel may let a canceled loop take another attempt.
 func Wait(ctx context.Context, delay time.Duration) error {
 	if cause := context.Cause(ctx); cause != nil {
 		return cause

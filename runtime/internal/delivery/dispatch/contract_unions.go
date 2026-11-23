@@ -155,8 +155,6 @@ func (u *unionValidation) claimFields(
 		if err := protocol.ValidateWirePath(u.spec.GoType, field); err != nil {
 			return fmt.Errorf("%s: %w", owner, err)
 		}
-		// A nested declaration accounts for the frame that holds it: claiming
-		// `payload.tool` claims `payload`.
 		root := strings.Split(field, ".")[0]
 		if !slices.Contains(u.accounted, root) {
 			u.accounted = append(u.accounted, root)
@@ -166,8 +164,6 @@ func (u *unionValidation) claimFields(
 }
 
 func (u *unionValidation) validateCoverage() error {
-	// The drift that actually happens: a field is added to the struct and no
-	// variant claims it, so the generated schema would allow it under every tag.
 	for _, field := range protocol.WireFieldNames(u.spec.GoType) {
 		if !slices.Contains(u.accounted, field) {
 			return fmt.Errorf(

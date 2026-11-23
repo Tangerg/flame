@@ -85,9 +85,6 @@ func (c contextSources) attach(target *coremetadata.Map, targetName string) erro
 	return nil
 }
 
-// originalUserMessage removes only the context this owner attributed. Retrieval
-// must query the caller's text instead of querying hook or recalled-memory text
-// appended to the same durable User message. The provider still sees both.
 func originalUserMessage(messages []corechat.Message) (*corechat.Message, error) {
 	for index := len(messages) - 1; index >= 0; index-- {
 		message := messages[index]
@@ -101,7 +98,7 @@ func originalUserMessage(messages []corechat.Message) (*corechat.Message, error)
 		if reminder {
 			continue
 		}
-		_, hostMessage, err := readContextSources(message.Metadata)
+		hostMessage, err := hasContextSources(message.Metadata)
 		if err != nil {
 			return nil, err
 		}
@@ -111,7 +108,7 @@ func originalUserMessage(messages []corechat.Message) (*corechat.Message, error)
 		projected := message.Clone()
 		projected.Parts = nil
 		for _, part := range message.Parts {
-			_, hostPart, err := readContextSources(part.Metadata)
+			hostPart, err := hasContextSources(part.Metadata)
 			if err != nil {
 				return nil, err
 			}
@@ -126,15 +123,12 @@ func originalUserMessage(messages []corechat.Message) (*corechat.Message, error)
 	return nil, nil
 }
 
-func readContextSources(values coremetadata.Map) (contextSources, bool, error) {
+func hasContextSources(values coremetadata.Map) (bool, error) {
 	sources, found, err := values.Decode[contextSources](contextProvenanceMetadataKey)
 	if err != nil || !found {
-		return nil, found, err
+		return found, err
 	}
-	if err := sources.validate(); err != nil {
-		return nil, true, err
-	}
-	return sources, true, nil
+	return true, sources.validate()
 }
 
 type promptSection struct {
@@ -162,7 +156,7 @@ func (p *promptComposition) append(
 	})
 }
 
-func (p promptComposition) render() string {
+func (p *promptComposition) render() string {
 	var rendered strings.Builder
 	for index, section := range p.sections {
 		if index > 0 {
@@ -173,7 +167,7 @@ func (p promptComposition) render() string {
 	return rendered.String()
 }
 
-func (p promptComposition) sources() contextSources {
+func (p *promptComposition) sources() contextSources {
 	count := 0
 	for _, section := range p.sections {
 		count += len(section.sources)
@@ -185,10 +179,9 @@ func (p promptComposition) sources() contextSources {
 	return sources
 }
 
-// runtimeContextMessage renders the composition as a User message framed as
-// one kind of Runtime-authored context. Per-call state is sent after the
-// conversation, where a System message would be hoisted ahead of it.
-func (p promptComposition) runtimeContextMessage(kind RuntimeContextKind) (corechat.Message, error) {
+// Per-call state is sent after the conversation as a User message; a System
+// message would be hoisted ahead of it.
+func (p *promptComposition) runtimeContextMessage(kind RuntimeContextKind) (corechat.Message, error) {
 	message := corechat.NewUserMessage(corechat.NewTextPart(FrameRuntimeContext(kind, p.render())))
 	if err := p.sources().attach(&message.Metadata, string(kind)+" message"); err != nil {
 		return corechat.Message{}, err
@@ -196,7 +189,7 @@ func (p promptComposition) runtimeContextMessage(kind RuntimeContextKind) (corec
 	return message, nil
 }
 
-func (p promptComposition) systemMessage() (corechat.Message, error) {
+func (p *promptComposition) systemMessage() (corechat.Message, error) {
 	message := corechat.NewSystemMessage(p.render())
 	if err := p.sources().attach(&message.Metadata, "system message"); err != nil {
 		return corechat.Message{}, err

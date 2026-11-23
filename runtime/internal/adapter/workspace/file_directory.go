@@ -15,15 +15,13 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 )
 
-// Directory pages inspect only one level. A cursor retains the directory revision
-// and native enumeration offset; a changed directory requires a new traversal.
 func (FileBrowser) ListDirectory(ctx context.Context, root string, plan workspaceapp.DirectoryListPlan) (_ workspaceapp.DirectoryPage, err error) {
 	scope, err := resolveFileSelection(root, plan.Path)
 	if err != nil {
 		return workspaceapp.DirectoryPage{}, err
 	}
 	if !scope.directory {
-		return workspaceapp.DirectoryPage{}, workspaceapp.ErrInvalidFileListPath
+		return workspaceapp.DirectoryPage{}, fmt.Errorf("%w: %q is not a directory", workspaceapp.ErrInvalidFileListPath, plan.Path)
 	}
 	if insideGitMetadata(scope.physical) {
 		return workspaceapp.DirectoryPage{Complete: true}, nil
@@ -60,14 +58,10 @@ func (FileBrowser) ListDirectory(ctx context.Context, root string, plan workspac
 	return result, nil
 }
 
-// directoryRevision names one directory state; a page cursor is valid only
-// while it holds.
 func directoryRevision(info fs.FileInfo) string {
 	return strconv.FormatInt(info.ModTime().UnixNano(), 10) + ":" + strconv.FormatInt(info.Size(), 10)
 }
 
-// A page scans a bounded number of entries so heavily ignored directories
-// still return promptly, reporting an exhausted budget instead of looping.
 const (
 	minimumDirectoryScan = 256
 	directoryScanPerItem = 4
@@ -80,7 +74,6 @@ func (scope fileSelection) readPage(ctx context.Context, directory *os.File, pla
 		if err := context.Cause(ctx); err != nil {
 			return workspaceapp.DirectoryPage{}, err
 		}
-		// Read only the remaining output capacity so every read entry is covered by this cursor.
 		children, readErr := directory.ReadDir(min(plan.Limit-len(result.Entries), budget-result.ScannedEntries))
 		if readErr != nil && !errors.Is(readErr, io.EOF) {
 			return workspaceapp.DirectoryPage{}, fmt.Errorf("read directory page: %w", readErr)
@@ -97,8 +90,6 @@ func (scope fileSelection) readPage(ctx context.Context, directory *os.File, pla
 	return result, nil
 }
 
-// seekDirectory skips the entries an earlier page already covered. A directory
-// that ends before the offset no longer matches the cursor.
 func seekDirectory(ctx context.Context, directory *os.File, offset int) error {
 	for remaining := offset; remaining > 0; {
 		if err := context.Cause(ctx); err != nil {
@@ -116,8 +107,6 @@ func seekDirectory(ctx context.Context, directory *os.File, offset int) error {
 	return nil
 }
 
-// page records one read of children: every child advances the cursor, and
-// only a presentable, unexcluded child becomes an entry.
 func (s fileSelection) page(ctx context.Context, children []os.DirEntry, includeIgnored bool, result *workspaceapp.DirectoryPage) error {
 	excluded, err := s.excludedChildren(ctx, children, includeIgnored)
 	if err != nil {
@@ -143,9 +132,6 @@ func (s fileSelection) page(ctx context.Context, children []os.DirEntry, include
 	return nil
 }
 
-// excludedChildren applies Git ignore rules, keeping an ignored directory that
-// still holds tracked files. Outside a repository the backstop excludes bulky
-// directories instead.
 func (s fileSelection) excludedChildren(ctx context.Context, children []os.DirEntry, includeIgnored bool) ([]bool, error) {
 	paths := make([]string, len(children))
 	for index, child := range children {
@@ -167,7 +153,7 @@ func (s fileSelection) excludedChildren(ctx context.Context, children []os.DirEn
 	excluded := make([]bool, len(children))
 	for index, child := range children {
 		switch {
-		case child.Name() == gitMetadataDir:
+		case child.Name() == git.MetadataDirectory:
 			excluded[index] = true
 		case ignored[paths[index]] && child.IsDir():
 			tracked, err := git.HasTrackedFiles(ctx, s.root, paths[index])

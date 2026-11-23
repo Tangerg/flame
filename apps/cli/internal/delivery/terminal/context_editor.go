@@ -17,9 +17,6 @@ const (
 	cancelContextDocument keymap.Action = "cancel editing"
 )
 
-// contextEditor is a reusable, multiline editor for durable context. Its value
-// lives in the editor until Save succeeds, so validation or backend failures
-// never destroy the user's draft.
 type contextEditor struct {
 	group    *scene.Group
 	composer *kit.Editor
@@ -104,36 +101,44 @@ func newContextEditor(theme kit.Theme, clipboard base.Clipboard, content, placeh
 }
 
 func (c *contextEditor) Element() scene.Element {
-	if c.group == nil {
-		c.group = scene.NewGroup(scene.GroupConfig{
-			Items: []scene.Item{{Element: c.composer.Element(), Size: layout.Flex(1)}},
-			Element: scene.ElementConfig{
-				Preview: func(event scene.Event) scene.EventResult { return scene.EventResult{Consumed: c.Handle(event.Input())} },
-				Paint: func(frame scene.Frame) {
-					width, height := frame.Size()
-					if height >= 2 {
-						notice := c.notice()
-						if notice == "" {
-							notice = "ctrl+s save · esc close"
-						}
-						style := c.theme.Subtle
-						if c.phase == contextSaveFailed {
-							style = c.theme.Danger
-						}
-						frame.Sub(grid.Area(0, height-1, width, 1)).Text(0, 0, notice, style)
-					}
-				},
-			},
-			Layout: func(space image.Point, _ []scene.Item) []image.Rectangle {
-				height := space.Y
-				if height >= 2 {
-					height--
-				}
-				return []image.Rectangle{grid.Area(0, 0, space.X, height)}
-			},
-		})
+	if c.group != nil {
+		return c.group.Element()
 	}
+	c.group = scene.NewGroup(scene.GroupConfig{
+		Items: []scene.Item{{Element: c.composer.Element(), Size: layout.Flex(1)}},
+		Element: scene.ElementConfig{
+			Preview: func(event scene.Event) scene.EventResult { return scene.EventResult{Consumed: c.Handle(event.Input())} },
+			Paint:   c.paintStatus,
+		},
+		Layout: layoutContextEditor,
+	})
 	return c.group.Element()
+}
+
+const contextStatusRows = 1
+
+func (c *contextEditor) paintStatus(frame scene.Frame) {
+	width, height := frame.Size()
+	if height <= contextStatusRows {
+		return
+	}
+	notice := c.notice()
+	if notice == "" {
+		notice = formatKeyBindings(c.keys, saveContextDocument, "/") + " save · " + formatKeyBindings(c.keys, cancelContextDocument, "/") + " close"
+	}
+	style := c.theme.Subtle
+	if c.phase == contextSaveFailed {
+		style = c.theme.Danger
+	}
+	frame.Sub(grid.Area(0, height-contextStatusRows, width, contextStatusRows)).Text(0, 0, notice, style)
+}
+
+func layoutContextEditor(space image.Point, _ []scene.Item) []image.Rectangle {
+	height := space.Y
+	if height > contextStatusRows {
+		height -= contextStatusRows
+	}
+	return []image.Rectangle{grid.Area(0, 0, space.X, height)}
 }
 
 func (c *contextEditor) Handle(event input.Event) bool {
@@ -155,8 +160,6 @@ func (c *contextEditor) Handle(event input.Event) bool {
 	return false
 }
 
-// contextEditing opens one multiline editor at a time; opening another
-// dismisses the open one.
 type contextEditing struct {
 	stack     *workspaceScene
 	theme     kit.Theme
@@ -177,9 +180,7 @@ func (e *contextEditing) open(request contextEditorRequest) *contextEditorSessio
 		if e.active == session {
 			e.active = nil
 		}
-		if request.Dismissed != nil {
-			request.Dismissed()
-		}
+		request.Dismissed()
 	}
 	editor.cancel = session.Dismiss
 	editor.save = func(value string) {
@@ -222,7 +223,7 @@ func (e *contextEditing) open(request contextEditorRequest) *contextEditorSessio
 		},
 		Theme:  e.theme,
 		Glyphs: e.glyphs,
-		Where:  layout.Placement{Width: wideDialogWidth, Height: 24},
+		Where:  layout.Placement{Width: wideDialogWidth, Height: tallDialogHeight},
 	})
 	session.dialog = dialog
 	e.active = session

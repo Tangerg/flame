@@ -29,6 +29,27 @@ export function createAgent(
   scope: RuntimeServerScope,
   notifications: NotificationFeed,
 ) {
+  const { access, Provider, start, dispose } = composeAgent(
+    client,
+    navigation,
+    runtime,
+    stream,
+    scope,
+    notifications,
+  );
+  return { access, Provider, start, dispose };
+}
+export type AgentOwner = ReturnType<typeof createAgent>;
+
+// The UI lab replaces dependencies of this one composition; createAgent exposes only the owner surface.
+export function composeAgent(
+  client: () => FlameClient,
+  navigation: Navigator,
+  runtime: RuntimeAccess,
+  stream: RuntimeStream,
+  scope: RuntimeServerScope,
+  notifications: NotificationFeed,
+) {
   const sessions = createAgentSessionStore();
   const projection = createAgentStore(sessions);
   const state = createAgentState(navigation, sessions, projection);
@@ -52,7 +73,7 @@ export function createAgent(
       if (generation) stream.reportConnectionLoss(generation);
     },
   );
-  const dependencies: AgentDependencies = {
+  let dependencies: AgentDependencies = {
     notifications,
     state: state.state,
     view: state.view,
@@ -63,12 +84,23 @@ export function createAgent(
     sharedMaterial,
     interrupts,
   };
-  const access = createAgentAccess(dependencies);
+  let access = createAgentAccess(dependencies);
   const stops: Array<() => void> = [];
   let started = false;
   let disposed = false;
   return {
-    access,
+    get access() {
+      return access;
+    },
+    get dependencies() {
+      return dependencies;
+    },
+    set dependencies(next: AgentDependencies) {
+      dependencies = next;
+      access = createAgentAccess(next);
+    },
+    sessions,
+    projection,
     Provider({ children }: { children: ReactNode }) {
       return createElement(AgentScope, { dependencies, access }, children);
     },
@@ -98,4 +130,3 @@ export function createAgent(
     },
   };
 }
-export type AgentOwner = ReturnType<typeof createAgent>;

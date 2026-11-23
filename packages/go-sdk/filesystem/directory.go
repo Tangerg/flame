@@ -5,8 +5,6 @@ import (
 	"os"
 )
 
-// OpenDirectory opens path only when it remains the same directory observed
-// before the non-blocking open.
 func OpenDirectory(path string) (*os.File, os.FileInfo, error) {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -15,15 +13,13 @@ func OpenDirectory(path string) (*os.File, os.FileInfo, error) {
 	return OpenDirectoryExpected(path, info)
 }
 
-// OpenDirectoryExpected opens path only when it still identifies expected.
 func OpenDirectoryExpected(path string, expected os.FileInfo) (*os.File, os.FileInfo, error) {
 	return openExpectedDirectory(expected, func() (*os.File, error) { return openPath(path) })
 }
 
-// OpenDirectoryAt applies OpenDirectory through an os.Root.
 func OpenDirectoryAt(root *os.Root, name string) (*os.File, os.FileInfo, error) {
 	if root == nil {
-		return nil, nil, errors.New("file input: root is required")
+		return nil, nil, errRootRequired
 	}
 	info, err := root.Stat(name)
 	if err != nil {
@@ -32,10 +28,9 @@ func OpenDirectoryAt(root *os.Root, name string) (*os.File, os.FileInfo, error) 
 	return openExpectedDirectory(info, func() (*os.File, error) { return openRootPath(root, name) })
 }
 
-// OpenDirectoryAtExpected applies OpenDirectoryExpected through an os.Root.
 func OpenDirectoryAtExpected(root *os.Root, name string, expected os.FileInfo) (*os.File, os.FileInfo, error) {
 	if root == nil {
-		return nil, nil, errors.New("file input: root is required")
+		return nil, nil, errRootRequired
 	}
 	return openExpectedDirectory(expected, func() (*os.File, error) { return openRootPath(root, name) })
 }

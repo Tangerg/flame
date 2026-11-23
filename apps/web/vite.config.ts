@@ -80,7 +80,6 @@ export default defineConfig({
                 // unnamed, it is a lone module Rolldown may fold into a big neighbour, which is
                 // how the entry acquired a monolith twice already.
                 if (id.includes("node_modules/@wailsio/runtime")) return "wails-runtime";
-                // Stable vendor deps
                 if (
                   id.includes("node_modules/react/") ||
                   id.includes("node_modules/react-dom/") ||
@@ -89,9 +88,7 @@ export default defineConfig({
                   return "vendor";
                 if (id.includes("node_modules/motion")) return "vendor-motion";
                 if (id.includes("node_modules/zustand")) return "vendor";
-                // Headless interaction primitives
                 if (id.includes("node_modules/@base-ui")) return "base-ui";
-                // TanStack
                 if (id.includes("node_modules/@tanstack")) return "tanstack";
                 // Brand marks are deliberately NOT named here. The composer pulls in the ten it
                 // draws with whatever imports them, and the icon gallery globs the whole catalogue
@@ -122,9 +119,7 @@ export default defineConfig({
                 // to the eager JS group and emit it in index.html. Keep the style on
                 // the renderer's lazy edge with a distinct identity.
                 if (id.includes("node_modules/katex/dist/katex.min.css")) return "katex-style";
-                // Math rendering JS.
                 if (id.includes("node_modules/katex/")) return "katex";
-                // Mermaid
                 if (id.includes("node_modules/pele/dist/esm/lazy.js")) return "mermaid";
                 // OpenTelemetry, ONE CHUNK PER PACKAGE, which is not the tidy
                 // grouping it looks like it should be.

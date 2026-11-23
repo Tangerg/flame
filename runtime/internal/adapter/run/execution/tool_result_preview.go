@@ -6,9 +6,6 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 )
 
-// renderToolResultPreview renders the model-facing replacement for an offloaded
-// tool result. This wording contains the agent tool's retrieval contract, so it
-// belongs with the executor adapter rather than in a generic component.
 func renderToolResultPreview(body, id string, previewBytes int) string {
 	marker := fmt.Sprintf(
 		"\n\n…[%d bytes offloaded to keep the context small — retrieve omitted bytes with %s: {\"result_id\":\"%s\"}; page with offset_bytes and limit_bytes.]…\n\n",

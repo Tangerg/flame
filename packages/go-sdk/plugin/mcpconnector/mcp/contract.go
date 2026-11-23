@@ -1,4 +1,3 @@
-// Package mcp binds the external connector contract to Frame's MCP transport.
 package mcp
 
 import (
@@ -23,6 +22,7 @@ type Methods struct {
 func method[P, R any](name, description string, kind frame.MethodKind) (*pluginmcp.Method[P, R], error) {
 	return pluginmcp.NewMethod[P, R](frame.MethodConfig{Name: "flame.external-mcp/" + name + ".v1", Description: description, Kind: kind, Target: extension.ScopeInstallation})
 }
+
 func NewMethods() (Methods, error) {
 	var m Methods
 	var err error

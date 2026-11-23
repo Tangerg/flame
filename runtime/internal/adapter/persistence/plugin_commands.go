@@ -24,6 +24,7 @@ type pluginCommandStore struct {
 func newPluginCommandStore(db *database, commit func(context.Context, []byte, func(context.Context) error) error) *pluginCommandStore {
 	return &pluginCommandStore{db: db, commit: commit}
 }
+
 func (s *pluginCommandStore) Get(ctx context.Context, id string) (*plugin.Command, bool, error) {
 	return scopedPair(ctx, s.db.read, func(ctx context.Context) (*plugin.Command, bool, error) {
 		var record plugin.CommandBinding
@@ -63,8 +64,9 @@ func (s *pluginCommandStore) Get(ctx context.Context, id string) (*plugin.Comman
 		return command, err == nil, err
 	})
 }
+
 func (s *pluginCommandStore) Save(ctx context.Context, command *plugin.Command) error {
-	if command == nil || s.commit == nil {
+	if command == nil {
 		return plugin.ErrInvalid
 	}
 	record := command.Snapshot()
@@ -100,6 +102,7 @@ func (s *pluginCommandStore) Save(ctx context.Context, command *plugin.Command) 
 		return s.save(ctx, command)
 	})
 }
+
 func (s *pluginCommandStore) save(ctx context.Context, command *plugin.Command) error {
 	if command == nil {
 		return plugin.ErrInvalid
@@ -136,8 +139,13 @@ func (s *pluginCommandStore) insert(ctx context.Context, r plugin.CommandBinding
 	_, err = s.db.connection(ctx).ExecContext(ctx, `INSERT INTO plugin_commands(id,method,business_input_json,contract_json,installation_id,release_digest,server_name,contribution_id,export_name,invocation_json,activation_json,phase) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`, r.ID, r.Method, r.Input.String(), r.Contract.String(), r.Provider.InstallationID.String(), r.Provider.Digest.String(), r.Server.String(), r.Contribution.String(), r.Export, string(invocation), activation, r.Phase)
 	return err
 }
+
 func (s *pluginCommandStore) PendingCommandDependencies(ctx context.Context) ([]plugin.Dependency, error) {
-	bindings, err := s.pendingBindings(ctx)
+	return pendingCommandDependencies(ctx, s.db)
+}
+
+func pendingCommandDependencies(ctx context.Context, db *database) ([]plugin.Dependency, error) {
+	bindings, err := pendingCommandBindings(ctx, db)
 	if err != nil {
 		return nil, err
 	}
@@ -147,14 +155,15 @@ func (s *pluginCommandStore) PendingCommandDependencies(ctx context.Context) ([]
 	}
 	return plugin.CompactDependencies(held), nil
 }
-func (s *pluginCommandStore) pendingBindings(ctx context.Context) ([]plugin.Activation, error) {
-	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]plugin.Activation, error) {
+
+func pendingCommandBindings(ctx context.Context, db *database) ([]plugin.Activation, error) {
+	return scopedValue(ctx, db.read, func(ctx context.Context) ([]plugin.Activation, error) {
 		phases := plugin.PendingCommandPhases()
 		args := make([]any, len(phases))
 		for index, phase := range phases {
 			args[index] = phase
 		}
-		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT installation_id,release_digest,activation_json FROM plugin_commands WHERE phase IN (`+placeholders(len(phases))+`) ORDER BY id`, args...)
+		rows, err := db.connection(ctx).QueryContext(ctx, `SELECT installation_id,release_digest,activation_json FROM plugin_commands WHERE phase IN (`+placeholders(len(phases))+`) ORDER BY id`, args...)
 		if err != nil {
 			return nil, err
 		}
@@ -179,12 +188,14 @@ func (s *pluginCommandStore) pendingBindings(ctx context.Context) ([]plugin.Acti
 		return bindings, rows.Err()
 	})
 }
+
 func encodeCommandActivation(activation plugin.Activation) (string, error) {
 	if _, err := plugins.DecodeActivation(activation); err != nil {
 		return "", err
 	}
 	return activation.Binding.String(), nil
 }
+
 func decodeCommandActivation(source string) (plugin.Activation, error) {
 	return plugins.ReadActivation([]byte(source))
 }

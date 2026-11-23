@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"slices"
 
 	"github.com/Tangerg/frame"
 	"github.com/Tangerg/frame/value"
@@ -45,8 +46,6 @@ type CapabilityDescriptor struct {
 	Methods     []frame.MethodDescriptor `json:"methods"`
 }
 
-// Frame owns callable service identity. Flame's scope and selection policy are
-// product metadata and cannot change that service's schema or implementation.
 type Capability struct {
 	service     *frame.Capability
 	composition Composition
@@ -100,13 +99,20 @@ func AdmitCapability(descriptor CapabilityDescriptor) (*Capability, error) {
 	return capability, nil
 }
 
+func (d CapabilityDescriptor) Clone() CapabilityDescriptor {
+	d.Methods = slices.Clone(d.Methods)
+	for index, method := range d.Methods {
+		method.Input, method.Output, method.Stream = slices.Clone(method.Input), slices.Clone(method.Output), slices.Clone(method.Stream)
+		d.Methods[index] = method
+	}
+	return d
+}
+
 func (c *Capability) Descriptor() CapabilityDescriptor {
 	service := c.service.Descriptor()
 	return CapabilityDescriptor{Protocol: Protocol, Reference: service.Reference, Composition: c.composition, Scope: c.scope, Methods: service.Methods}
 }
 
-// WriteDescriptor writes the published descriptor in Frame's canonical
-// encoding, the form ParseCapability admits.
 func (c *Capability) WriteDescriptor(w io.Writer) error {
 	encoded, err := value.EncodeJSON(c.Descriptor())
 	if err != nil {
@@ -116,8 +122,6 @@ func (c *Capability) WriteDescriptor(w io.Writer) error {
 	return err
 }
 
-// Publish is the main of a descriptor publisher; generators read the
-// capability from its standard output.
 func Publish(define func() (*Capability, error)) {
 	capability, err := define()
 	if err == nil {
@@ -129,6 +133,7 @@ func Publish(define func() (*Capability, error)) {
 }
 
 func (c *Capability) Identity() value.JSON { return c.identity }
+
 func (c *Capability) Service() *frame.Capability {
 	if c.service == nil {
 		return nil

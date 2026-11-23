@@ -19,6 +19,8 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
+const workspaceDialogHeight = 20
+
 type workspaceChoice struct {
 	workspace workbench.Workspace
 	current   bool
@@ -29,7 +31,7 @@ type workspaceChoice struct {
 func (a *app) buildWorkspacePicker(theme kit.Theme, glyphs kit.Glyphs) {
 	a.workspaceChoices = newPickerDialog(pickerDialogConfig[workspaceChoice]{
 		stack: &a.stack, theme: theme, glyphs: glyphs, title: "Workspaces", search: "search recent workspaces",
-		where: layout.Placement{Width: wideDialogWidth, Height: 20},
+		where: layout.Placement{Width: wideDialogWidth, Height: workspaceDialogHeight},
 		label: func(choice workspaceChoice) string { return choice.workspace.Path },
 		detail: func(choice workspaceChoice) string {
 			if choice.current {
@@ -49,45 +51,15 @@ func (l *sessionLifecycle) chooseWorkspaceChoice(choice workspaceChoice) {
 		l.root.message("workspace is no longer available · " + choice.workspace.Path)
 		return
 	}
-	if l.workspaces != nil {
-		l.resolveAndStartWorkspace(choice.workspace.Path)
-		return
-	}
-	if err := l.createSessionInWorkspace(choice.workspace.Path); err != nil {
-		l.root.message(err.Error())
-	}
+	l.resolveAndStartWorkspace(choice.workspace.Path)
 }
 
 func (l *sessionLifecycle) chooseWorkspace(argument string) error {
 	if strings.TrimSpace(argument) != "" {
-		if l.workspaces != nil {
-			l.resolveAndStartWorkspace(argument)
-			return nil
-		}
-		return l.createSessionInWorkspace(argument)
-	}
-	if l.workspaces != nil {
-		l.loadWorkspaceChoices()
+		l.resolveAndStartWorkspace(argument)
 		return nil
 	}
-	return l.showLocalWorkspaceChoices()
-}
-
-func (l *sessionLifecycle) showLocalWorkspaceChoices() error {
-	workspaces := l.workbench.Workspaces()
-	if len(workspaces) == 0 {
-		return errors.New("there are no recent workspaces")
-	}
-	choices := make([]workspaceChoice, 0, len(workspaces))
-	for _, workspace := range workspaces {
-		choices = append(choices, workspaceChoice{
-			workspace: workspace,
-			current:   workspace.Path == l.state.current.Workspace.Path,
-			available: true,
-		})
-	}
-	l.workspaceChoices.show(choices)
-	l.status.note("choose a workspace")
+	l.loadWorkspaceChoices()
 	return nil
 }
 
@@ -185,15 +157,6 @@ func (l *sessionLifecycle) resolveAndStartWorkspace(requested string) {
 	)
 }
 
-func (l *sessionLifecycle) createSessionInWorkspace(requested string) error {
-	workspace, err := l.resolveWorkspaceInput(requested)
-	if err != nil {
-		return err
-	}
-	l.startSessionInWorkspace(workspace)
-	return nil
-}
-
 func (l *sessionLifecycle) RelocateSession(requested string) error {
 	if err := l.root.requireRuntimeFeature(protocol.FeatureRelocate); err != nil {
 		return err
@@ -201,10 +164,6 @@ func (l *sessionLifecycle) RelocateSession(requested string) error {
 	path, err := l.resolveWorkspaceInput(requested)
 	if err != nil {
 		return err
-	}
-	if l.workspaces == nil {
-		l.relocateSession(path)
-		return nil
 	}
 	l.status.note("resolving workspace")
 	l.tasks.session(workspaceQueryOperation,
@@ -249,9 +208,6 @@ func (l *sessionLifecycle) relocateSession(path string) {
 	)
 }
 
-// startSessionInWorkspace accepts an already established workspace identity.
-// Callers resolving new user input go through createSessionInWorkspace; /new
-// reuses the runtime-authoritative workspace of the current session directly.
 func (l *sessionLifecycle) startSessionInWorkspace(workspace string) {
 	l.runSessionChange("creating session in "+workspace,
 		func(ctx context.Context) (conversation.SessionSnapshot, error) {
@@ -262,9 +218,6 @@ func (l *sessionLifecycle) startSessionInWorkspace(workspace string) {
 	)
 }
 
-// replaceDeletedSessionInWorkspace is the forced counterpart to /new. The
-// current draft moves to the replacement because its source identity is gone;
-// queued follow-ups remain session-scoped and are retired after installation.
 func (l *sessionLifecycle) replaceDeletedSessionInWorkspace(workspace string) {
 	retiredSessionID := l.state.current.ID
 	l.runSessionChangeWithDraftDisposition("creating replacement session in "+workspace, retireSourceDraft,
@@ -276,14 +229,7 @@ func (l *sessionLifecycle) replaceDeletedSessionInWorkspace(workspace string) {
 			if err := l.installSnapshot(snapshot); err != nil {
 				return err
 			}
-			discarded, err := l.retireSessionState(retiredSessionID)
-			if err != nil {
-				l.root.message("replacement installed; local state cleanup failed: " + err.Error())
-				return nil
-			}
-			if discarded > 0 {
-				l.root.message(fmt.Sprintf("discarded %s from the deleted session", countedNoun(discarded, "queued prompt")))
-			}
+			l.reportRetiredSessionState(l.retireSessionState(retiredSessionID))
 			return nil
 		},
 	)

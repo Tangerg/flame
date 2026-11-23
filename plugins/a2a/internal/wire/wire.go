@@ -25,5 +25,5 @@ type Result struct {
 	TaskID    string `json:"taskId,omitempty"`
 	ContextID string `json:"contextId,omitempty"`
 	State     string `json:"state,omitempty"`
-	ValueJSON string `json:"valueJSON"`
+	ValueJSON string `json:"valueJson"`
 }

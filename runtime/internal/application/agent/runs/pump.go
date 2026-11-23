@@ -6,15 +6,12 @@ import (
 	"fmt"
 	"iter"
 	"log/slog"
-	"runtime/debug"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	"go.opentelemetry.io/otel/trace"
 )
 
-// pump starts the single goroutine that owns every mutable route and reducer in
-// this Segment. Event handling and cleanup are methods on one concrete object;
-// no state is shared with another worker.
 func (c *Segments) pump(
 	ctx context.Context,
 	ownerCtx context.Context,
@@ -34,17 +31,10 @@ func (c *Segments) pump(
 		routes:   routes,
 	}
 	pump.publisher = treePublisher{publications: &c.publications, rootSpec: spec, owner: owner}
-	// The inner recovery turns a projection defect into this Run's failure; this
-	// one covers a defect in that failure path itself. Either way the process
-	// keeps every other Session, and the Run this pump abandoned is left for boot
-	// recovery, which already owns a Run whose owner disappeared.
 	defer pump.recoverAbandonedRun()
 	pump.run(initialErr)
 }
 
-// segmentPump serializes executor events into durable Run-tree projections. A
-// successful terminal or park is committed before publication; a projection
-// failure aborts execution rather than exposing an event without durable facts.
 type segmentPump struct {
 	segments  *Segments
 	ctx       context.Context
@@ -55,9 +45,7 @@ type segmentPump struct {
 	routes    *executorRoutes
 	publisher treePublisher
 
-	childStarts map[string]*managedChildStart
-	// deferredRootTerminal is the root's own segment boundary, withheld until
-	// every child run has terminalized. See resumeDeferredRootTerminal.
+	childStarts          map[string]*managedChildStart
 	deferredRootTerminal ExecutionFact
 }
 
@@ -81,9 +69,6 @@ func (s *segmentPump) run(initialErr error) {
 	}
 }
 
-// refuseAfterFinish answers anything still queued behind a terminal tree
-// commit, which leaves the stream open only for executor teardown; the
-// committed outcome stays intact.
 func refuseAfterFinish(payload executorPayload) {
 	switch pending := payload.(type) {
 	case ExecutionFactCommit:
@@ -95,10 +80,8 @@ func refuseAfterFinish(payload executorPayload) {
 	}
 }
 
-// commitAuthoritative reports the write's outcome to the executor and keeps
-// pumping: a rejected write still yields the executor's definite or unknown
-// settlement, and stopping here would tear down the only source able to
-// report it.
+// A rejected write still yields the executor's settlement; stopping here would
+// tear down the only source able to report it.
 func (s *segmentPump) commitAuthoritative(member ExecutorMember, commit ExecutionFactCommit) bool {
 	if err := commit.validate(); err != nil {
 		commit.Complete(err)
@@ -221,8 +204,6 @@ func (s *segmentPump) abortPreparedChildStart(prepared *preparedChildStart) {
 	prepared.releaseBinding(s.owner)
 }
 
-// authoritativeRoute is the bound route a fact from member reduces on; a
-// prepared Tool call must carry a checkpoint this Session's root owns.
 func (s *segmentPump) authoritativeRoute(member ExecutorMember, fact ExecutionFact) (*executorRoute, error) {
 	route, err := s.routes.resolve(member)
 	if err != nil {
@@ -281,8 +262,6 @@ func (s *segmentPump) handleAuthoritativeFact(member ExecutorMember, fact Execut
 	return nil
 }
 
-// attachCompactionPlan binds a rewrite to the Session's Runs as they stand now;
-// the reducer that produced the commit cannot read them.
 func (s *segmentPump) attachCompactionPlan(rewrite conversation.Compaction, batch *reductionBatch) error {
 	current, err := s.segments.runs.ListRuns(s.ownerCtx, s.spec.SessionID)
 	if err != nil {
@@ -352,8 +331,6 @@ func (s *segmentPump) handleExecutionFact(member ExecutorMember, executionFact E
 	return s.projectFact(route, executionFact)
 }
 
-// projectFact commits one route's reduction and reports whether this pump may
-// keep consuming.
 func (s *segmentPump) projectFact(route *executorRoute, executionFact ExecutionFact) (bool, error) {
 	executionFact, cancellation := s.owner.projectCancellation(executionFact, route.lineage)
 	projecting := route.reducer
@@ -387,16 +364,12 @@ func (s *segmentPump) projectFact(route *executorRoute, executionFact ExecutionF
 	if route != s.routes.root {
 		return s.resumeDeferredRootTerminal()
 	}
-	// A committed root boundary is the last event this Segment can durably
-	// support. Leave a park alive for resume and never consume buffered events
-	// after a terminal transition.
 	return !s.routes.root.boundary.finished(), nil
 }
 
-// A non-authoritative executor may report the root boundary before its children.
-// Hold that exact fact until the children finish: synthesizing it would discard
-// the root's outcome, diagnostics, and timing. Authoritative receipts require
-// child-first publication and reject this ordering instead.
+// A non-authoritative executor may report the root boundary before its children;
+// synthesizing it would discard the root's outcome, so the exact fact is held
+// until the children finish.
 func (s *segmentPump) resumeDeferredRootTerminal() (bool, error) {
 	if s.deferredRootTerminal == nil || s.routes.unfinishedCount() != 1 {
 		return true, nil
@@ -426,23 +399,16 @@ func (s *segmentPump) classifyChildCancellationFact(
 	return fact
 }
 
-// recoverProjectionDefect keeps one Run's impossible state from ending every
-// other Run in the process. This pump already owns "the projection cannot
-// continue": aborting its routes lets the terminal synthesis that follows close
-// the tree as an internal failure, instead of unwinding out of a goroutine
-// nothing can recover from and taking every other Session with it.
-//
-// It must be deferred directly so recover() sees the panic. The stack cannot
-// travel in the Run's failure and is the only thing that fixes the defect, so it
-// goes to the operator here.
+// Deferred directly so recover() sees the panic; it keeps one Run's impossible
+// state from ending every other Run in the process.
 func (s *segmentPump) recoverProjectionDefect() {
 	recovered := recover()
 	if recovered == nil {
 		return
 	}
 	slog.ErrorContext(s.ownerCtx, "runs: run projection panicked",
-		"session.id", s.spec.SessionID, "run.id", s.spec.RunID,
-		"panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+		telemetry.SessionID(s.spec.SessionID), telemetry.RunID(s.spec.RunID),
+		telemetry.Panic(recovered))
 	defect := fmt.Errorf("runs: Run %q projection panicked: %v", s.spec.RunID, recovered)
 	trace.SpanFromContext(s.ownerCtx).RecordError(defect)
 	s.fail(defect)
@@ -454,8 +420,8 @@ func (s *segmentPump) recoverAbandonedRun() {
 		return
 	}
 	slog.ErrorContext(s.ownerCtx, "runs: run projection abandoned its Run",
-		"session.id", s.spec.SessionID, "run.id", s.spec.RunID,
-		"panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+		telemetry.SessionID(s.spec.SessionID), telemetry.RunID(s.spec.RunID),
+		telemetry.Panic(recovered))
 	trace.SpanFromContext(s.ownerCtx).RecordError(
 		fmt.Errorf("runs: Run %q projection abandoned its Run: %v", s.spec.RunID, recovered),
 	)
@@ -472,11 +438,8 @@ func (s *segmentPump) finish() {
 	<-s.owner.activation.done
 	s.owner.observation.Lock()
 	defer s.owner.observation.Unlock()
-	// Closing the journal is what tells subscribers the Segment ended, and
-	// releasing the executor is what stops it working. Both are deferred so a
-	// terminal projection that cannot complete still ends the Segment for the
-	// clients waiting on it, instead of leaving a Run nobody can finish and a
-	// stream nobody can leave.
+	// Deferred so a terminal projection that cannot complete still ends the Segment
+	// for waiting clients.
 	defer s.finishBoundary()
 	defer s.releaseExecutorTree()
 	for memberID, managed := range s.childStarts {
@@ -490,19 +453,14 @@ func (s *segmentPump) finish() {
 	}
 }
 
-// releaseExecutorTree ends the executor behind every non-waiting boundary
-// exactly once. The product outcome is already committed (or was synthesized);
-// Release is resource ownership, not a second cancellation decision.
 func (s *segmentPump) releaseExecutorTree() {
 	if !s.routes.root.boundary.parked() {
 		s.tearDownExecutor()
 	}
 }
 
-// synthesizeUnfinished establishes durable terminal boundaries before executor
-// teardown. Children close in canonical postorder; the root closes only if
-// every child did, so persistence never advertises a closed tree with a live
-// descendant row.
+// Children close in canonical postorder and the root only if every child did, so
+// persistence never shows a closed tree with a live descendant.
 func (s *segmentPump) synthesizeUnfinished() {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(s.ownerCtx), runCleanupTimeout)
 	defer cancel()
@@ -569,19 +527,12 @@ func (s *segmentPump) tearDownExecutor() {
 	}
 }
 
-// finishBoundary settles what a finished Run still owes the rest of the process.
-// Every obligation here is deferred so a defect in the maintenance it fences
-// still reaches them on its way out: the outer recovery is willing to abandon one
-// Run, and losing this boundary instead leaves a Session that can never admit
-// another Run and a stream no subscriber can leave.
 func (s *segmentPump) finishBoundary() {
 	defer s.segments.registry.RemoveSegment(s.spec.RunID, s.spec.SegmentID)
 	defer s.closeJournal()
 	s.settleMaintenanceFence()
 }
 
-// closeJournal ends the externally observable completion boundary. The
-// synchronous maintenance fence and admission claim are already gone.
 func (s *segmentPump) closeJournal() {
 	if err := s.owner.hub.close(); err != nil {
 		s.owner.completionErr = fmt.Errorf("runs: close replay journal: %w", err)
@@ -589,10 +540,8 @@ func (s *segmentPump) closeJournal() {
 	}
 }
 
-// settleMaintenanceFence runs post-Run maintenance while this Run's admission
-// still holds its Session and working tree, so a following Run cannot write into
-// the snapshot this one is taking, and gives that admission back before
-// returning.
+// Maintenance runs while admission still holds the Session and working tree so a
+// following Run cannot write into this Run's snapshot.
 func (s *segmentPump) settleMaintenanceFence() {
 	releaseMaintenance, maintenanceHeld := s.segments.admission.BeginMaintenance(s.spec.RunID)
 	if maintenanceHeld {
@@ -628,16 +577,11 @@ func engineEventEndsSegment(event ExecutionFact) bool {
 	}
 }
 
-// recordRunCleanupError reports a failure in work a finished Run still owed:
-// releasing its executor, closing its journal, aborting a reserved child start,
-// running post-Run maintenance. None of it can change the Run's settled outcome,
-// and a span carries it only where the host configured tracing, so the
-// operator's copy goes to the logging channel.
 func recordRunCleanupError(ctx context.Context, err error) {
 	if err == nil {
 		return
 	}
-	slog.ErrorContext(ctx, "runs: Run cleanup failed", "error", err)
+	slog.ErrorContext(ctx, "runs: Run cleanup failed", telemetry.Error(err))
 	trace.SpanFromContext(ctx).RecordError(err)
 }
 

@@ -14,38 +14,38 @@ func (AddInputScope) JSONSchemaEnum() []string {
 	return []string{string(AddInputScopeProject), string(AddInputScopeUser)}
 }
 
-type AddV2OutputDomainItemSnapshotOrigin string
+type AddV3OutputContractItemOrigin string
 
 const (
-	AddV2OutputDomainItemSnapshotOriginAuto AddV2OutputDomainItemSnapshotOrigin = "auto"
-	AddV2OutputDomainItemSnapshotOriginUser AddV2OutputDomainItemSnapshotOrigin = "user"
+	AddV3OutputContractItemOriginAuto AddV3OutputContractItemOrigin = "auto"
+	AddV3OutputContractItemOriginUser AddV3OutputContractItemOrigin = "user"
 )
 
-func (AddV2OutputDomainItemSnapshotOrigin) JSONSchemaEnum() []string {
-	return []string{string(AddV2OutputDomainItemSnapshotOriginAuto), string(AddV2OutputDomainItemSnapshotOriginUser)}
+func (AddV3OutputContractItemOrigin) JSONSchemaEnum() []string {
+	return []string{string(AddV3OutputContractItemOriginAuto), string(AddV3OutputContractItemOriginUser)}
 }
 
-type AddV2OutputDomainItemSnapshotScope string
+type AddV3OutputContractItemScope string
 
 const (
-	AddV2OutputDomainItemSnapshotScopeProject AddV2OutputDomainItemSnapshotScope = "project"
-	AddV2OutputDomainItemSnapshotScopeUser    AddV2OutputDomainItemSnapshotScope = "user"
+	AddV3OutputContractItemScopeProject AddV3OutputContractItemScope = "project"
+	AddV3OutputContractItemScopeUser    AddV3OutputContractItemScope = "user"
 )
 
-func (AddV2OutputDomainItemSnapshotScope) JSONSchemaEnum() []string {
-	return []string{string(AddV2OutputDomainItemSnapshotScopeProject), string(AddV2OutputDomainItemSnapshotScopeUser)}
+func (AddV3OutputContractItemScope) JSONSchemaEnum() []string {
+	return []string{string(AddV3OutputContractItemScopeProject), string(AddV3OutputContractItemScopeUser)}
 }
 
-type AddV2OutputDomainItemSnapshotStatus string
+type AddV3OutputContractItemStatus string
 
 const (
-	AddV2OutputDomainItemSnapshotStatusActive   AddV2OutputDomainItemSnapshotStatus = "active"
-	AddV2OutputDomainItemSnapshotStatusPending  AddV2OutputDomainItemSnapshotStatus = "pending"
-	AddV2OutputDomainItemSnapshotStatusRejected AddV2OutputDomainItemSnapshotStatus = "rejected"
+	AddV3OutputContractItemStatusActive   AddV3OutputContractItemStatus = "active"
+	AddV3OutputContractItemStatusPending  AddV3OutputContractItemStatus = "pending"
+	AddV3OutputContractItemStatusRejected AddV3OutputContractItemStatus = "rejected"
 )
 
-func (AddV2OutputDomainItemSnapshotStatus) JSONSchemaEnum() []string {
-	return []string{string(AddV2OutputDomainItemSnapshotStatusActive), string(AddV2OutputDomainItemSnapshotStatusPending), string(AddV2OutputDomainItemSnapshotStatusRejected)}
+func (AddV3OutputContractItemStatus) JSONSchemaEnum() []string {
+	return []string{string(AddV3OutputContractItemStatusActive), string(AddV3OutputContractItemStatusPending), string(AddV3OutputContractItemStatusRejected)}
 }
 
 type ItemsInputScope string
@@ -59,38 +59,38 @@ func (ItemsInputScope) JSONSchemaEnum() []string {
 	return []string{string(ItemsInputScopeProject), string(ItemsInputScopeUser)}
 }
 
-type ItemsV2OutputDomainItemSnapshotOrigin string
+type ItemsV3OutputContractItemOrigin string
 
 const (
-	ItemsV2OutputDomainItemSnapshotOriginAuto ItemsV2OutputDomainItemSnapshotOrigin = "auto"
-	ItemsV2OutputDomainItemSnapshotOriginUser ItemsV2OutputDomainItemSnapshotOrigin = "user"
+	ItemsV3OutputContractItemOriginAuto ItemsV3OutputContractItemOrigin = "auto"
+	ItemsV3OutputContractItemOriginUser ItemsV3OutputContractItemOrigin = "user"
 )
 
-func (ItemsV2OutputDomainItemSnapshotOrigin) JSONSchemaEnum() []string {
-	return []string{string(ItemsV2OutputDomainItemSnapshotOriginAuto), string(ItemsV2OutputDomainItemSnapshotOriginUser)}
+func (ItemsV3OutputContractItemOrigin) JSONSchemaEnum() []string {
+	return []string{string(ItemsV3OutputContractItemOriginAuto), string(ItemsV3OutputContractItemOriginUser)}
 }
 
-type ItemsV2OutputDomainItemSnapshotScope string
+type ItemsV3OutputContractItemScope string
 
 const (
-	ItemsV2OutputDomainItemSnapshotScopeProject ItemsV2OutputDomainItemSnapshotScope = "project"
-	ItemsV2OutputDomainItemSnapshotScopeUser    ItemsV2OutputDomainItemSnapshotScope = "user"
+	ItemsV3OutputContractItemScopeProject ItemsV3OutputContractItemScope = "project"
+	ItemsV3OutputContractItemScopeUser    ItemsV3OutputContractItemScope = "user"
 )
 
-func (ItemsV2OutputDomainItemSnapshotScope) JSONSchemaEnum() []string {
-	return []string{string(ItemsV2OutputDomainItemSnapshotScopeProject), string(ItemsV2OutputDomainItemSnapshotScopeUser)}
+func (ItemsV3OutputContractItemScope) JSONSchemaEnum() []string {
+	return []string{string(ItemsV3OutputContractItemScopeProject), string(ItemsV3OutputContractItemScopeUser)}
 }
 
-type ItemsV2OutputDomainItemSnapshotStatus string
+type ItemsV3OutputContractItemStatus string
 
 const (
-	ItemsV2OutputDomainItemSnapshotStatusActive   ItemsV2OutputDomainItemSnapshotStatus = "active"
-	ItemsV2OutputDomainItemSnapshotStatusPending  ItemsV2OutputDomainItemSnapshotStatus = "pending"
-	ItemsV2OutputDomainItemSnapshotStatusRejected ItemsV2OutputDomainItemSnapshotStatus = "rejected"
+	ItemsV3OutputContractItemStatusActive   ItemsV3OutputContractItemStatus = "active"
+	ItemsV3OutputContractItemStatusPending  ItemsV3OutputContractItemStatus = "pending"
+	ItemsV3OutputContractItemStatusRejected ItemsV3OutputContractItemStatus = "rejected"
 )
 
-func (ItemsV2OutputDomainItemSnapshotStatus) JSONSchemaEnum() []string {
-	return []string{string(ItemsV2OutputDomainItemSnapshotStatusActive), string(ItemsV2OutputDomainItemSnapshotStatusPending), string(ItemsV2OutputDomainItemSnapshotStatusRejected)}
+func (ItemsV3OutputContractItemStatus) JSONSchemaEnum() []string {
+	return []string{string(ItemsV3OutputContractItemStatusActive), string(ItemsV3OutputContractItemStatusPending), string(ItemsV3OutputContractItemStatusRejected)}
 }
 
 type ListInputScope string
@@ -104,38 +104,38 @@ func (ListInputScope) JSONSchemaEnum() []string {
 	return []string{string(ListInputScopeProject), string(ListInputScopeUser)}
 }
 
-type ListV2OutputDomainItemSnapshotOrigin string
+type ListV3OutputContractItemOrigin string
 
 const (
-	ListV2OutputDomainItemSnapshotOriginAuto ListV2OutputDomainItemSnapshotOrigin = "auto"
-	ListV2OutputDomainItemSnapshotOriginUser ListV2OutputDomainItemSnapshotOrigin = "user"
+	ListV3OutputContractItemOriginAuto ListV3OutputContractItemOrigin = "auto"
+	ListV3OutputContractItemOriginUser ListV3OutputContractItemOrigin = "user"
 )
 
-func (ListV2OutputDomainItemSnapshotOrigin) JSONSchemaEnum() []string {
-	return []string{string(ListV2OutputDomainItemSnapshotOriginAuto), string(ListV2OutputDomainItemSnapshotOriginUser)}
+func (ListV3OutputContractItemOrigin) JSONSchemaEnum() []string {
+	return []string{string(ListV3OutputContractItemOriginAuto), string(ListV3OutputContractItemOriginUser)}
 }
 
-type ListV2OutputDomainItemSnapshotScope string
+type ListV3OutputContractItemScope string
 
 const (
-	ListV2OutputDomainItemSnapshotScopeProject ListV2OutputDomainItemSnapshotScope = "project"
-	ListV2OutputDomainItemSnapshotScopeUser    ListV2OutputDomainItemSnapshotScope = "user"
+	ListV3OutputContractItemScopeProject ListV3OutputContractItemScope = "project"
+	ListV3OutputContractItemScopeUser    ListV3OutputContractItemScope = "user"
 )
 
-func (ListV2OutputDomainItemSnapshotScope) JSONSchemaEnum() []string {
-	return []string{string(ListV2OutputDomainItemSnapshotScopeProject), string(ListV2OutputDomainItemSnapshotScopeUser)}
+func (ListV3OutputContractItemScope) JSONSchemaEnum() []string {
+	return []string{string(ListV3OutputContractItemScopeProject), string(ListV3OutputContractItemScopeUser)}
 }
 
-type ListV2OutputDomainItemSnapshotStatus string
+type ListV3OutputContractItemStatus string
 
 const (
-	ListV2OutputDomainItemSnapshotStatusActive   ListV2OutputDomainItemSnapshotStatus = "active"
-	ListV2OutputDomainItemSnapshotStatusPending  ListV2OutputDomainItemSnapshotStatus = "pending"
-	ListV2OutputDomainItemSnapshotStatusRejected ListV2OutputDomainItemSnapshotStatus = "rejected"
+	ListV3OutputContractItemStatusActive   ListV3OutputContractItemStatus = "active"
+	ListV3OutputContractItemStatusPending  ListV3OutputContractItemStatus = "pending"
+	ListV3OutputContractItemStatusRejected ListV3OutputContractItemStatus = "rejected"
 )
 
-func (ListV2OutputDomainItemSnapshotStatus) JSONSchemaEnum() []string {
-	return []string{string(ListV2OutputDomainItemSnapshotStatusActive), string(ListV2OutputDomainItemSnapshotStatusPending), string(ListV2OutputDomainItemSnapshotStatusRejected)}
+func (ListV3OutputContractItemStatus) JSONSchemaEnum() []string {
+	return []string{string(ListV3OutputContractItemStatusActive), string(ListV3OutputContractItemStatusPending), string(ListV3OutputContractItemStatusRejected)}
 }
 
 type ReviewInputDecision string
@@ -149,283 +149,263 @@ func (ReviewInputDecision) JSONSchemaEnum() []string {
 	return []string{string(ReviewInputDecisionApprove), string(ReviewInputDecisionReject)}
 }
 
-type SearchV2OutputDomainItemSnapshotOrigin string
+type SearchV3OutputContractItemOrigin string
 
 const (
-	SearchV2OutputDomainItemSnapshotOriginAuto SearchV2OutputDomainItemSnapshotOrigin = "auto"
-	SearchV2OutputDomainItemSnapshotOriginUser SearchV2OutputDomainItemSnapshotOrigin = "user"
+	SearchV3OutputContractItemOriginAuto SearchV3OutputContractItemOrigin = "auto"
+	SearchV3OutputContractItemOriginUser SearchV3OutputContractItemOrigin = "user"
 )
 
-func (SearchV2OutputDomainItemSnapshotOrigin) JSONSchemaEnum() []string {
-	return []string{string(SearchV2OutputDomainItemSnapshotOriginAuto), string(SearchV2OutputDomainItemSnapshotOriginUser)}
+func (SearchV3OutputContractItemOrigin) JSONSchemaEnum() []string {
+	return []string{string(SearchV3OutputContractItemOriginAuto), string(SearchV3OutputContractItemOriginUser)}
 }
 
-type SearchV2OutputDomainItemSnapshotScope string
+type SearchV3OutputContractItemScope string
 
 const (
-	SearchV2OutputDomainItemSnapshotScopeProject SearchV2OutputDomainItemSnapshotScope = "project"
-	SearchV2OutputDomainItemSnapshotScopeUser    SearchV2OutputDomainItemSnapshotScope = "user"
+	SearchV3OutputContractItemScopeProject SearchV3OutputContractItemScope = "project"
+	SearchV3OutputContractItemScopeUser    SearchV3OutputContractItemScope = "user"
 )
 
-func (SearchV2OutputDomainItemSnapshotScope) JSONSchemaEnum() []string {
-	return []string{string(SearchV2OutputDomainItemSnapshotScopeProject), string(SearchV2OutputDomainItemSnapshotScopeUser)}
+func (SearchV3OutputContractItemScope) JSONSchemaEnum() []string {
+	return []string{string(SearchV3OutputContractItemScopeProject), string(SearchV3OutputContractItemScopeUser)}
 }
 
-type SearchV2OutputDomainItemSnapshotStatus string
+type SearchV3OutputContractItemStatus string
 
 const (
-	SearchV2OutputDomainItemSnapshotStatusActive   SearchV2OutputDomainItemSnapshotStatus = "active"
-	SearchV2OutputDomainItemSnapshotStatusPending  SearchV2OutputDomainItemSnapshotStatus = "pending"
-	SearchV2OutputDomainItemSnapshotStatusRejected SearchV2OutputDomainItemSnapshotStatus = "rejected"
+	SearchV3OutputContractItemStatusActive   SearchV3OutputContractItemStatus = "active"
+	SearchV3OutputContractItemStatusPending  SearchV3OutputContractItemStatus = "pending"
+	SearchV3OutputContractItemStatusRejected SearchV3OutputContractItemStatus = "rejected"
 )
 
-func (SearchV2OutputDomainItemSnapshotStatus) JSONSchemaEnum() []string {
-	return []string{string(SearchV2OutputDomainItemSnapshotStatusActive), string(SearchV2OutputDomainItemSnapshotStatusPending), string(SearchV2OutputDomainItemSnapshotStatusRejected)}
+func (SearchV3OutputContractItemStatus) JSONSchemaEnum() []string {
+	return []string{string(SearchV3OutputContractItemStatusActive), string(SearchV3OutputContractItemStatusPending), string(SearchV3OutputContractItemStatusRejected)}
 }
 
-type UpdateV2OutputDomainItemSnapshotOrigin string
+type UpdateV3OutputContractItemOrigin string
 
 const (
-	UpdateV2OutputDomainItemSnapshotOriginAuto UpdateV2OutputDomainItemSnapshotOrigin = "auto"
-	UpdateV2OutputDomainItemSnapshotOriginUser UpdateV2OutputDomainItemSnapshotOrigin = "user"
+	UpdateV3OutputContractItemOriginAuto UpdateV3OutputContractItemOrigin = "auto"
+	UpdateV3OutputContractItemOriginUser UpdateV3OutputContractItemOrigin = "user"
 )
 
-func (UpdateV2OutputDomainItemSnapshotOrigin) JSONSchemaEnum() []string {
-	return []string{string(UpdateV2OutputDomainItemSnapshotOriginAuto), string(UpdateV2OutputDomainItemSnapshotOriginUser)}
+func (UpdateV3OutputContractItemOrigin) JSONSchemaEnum() []string {
+	return []string{string(UpdateV3OutputContractItemOriginAuto), string(UpdateV3OutputContractItemOriginUser)}
 }
 
-type UpdateV2OutputDomainItemSnapshotScope string
+type UpdateV3OutputContractItemScope string
 
 const (
-	UpdateV2OutputDomainItemSnapshotScopeProject UpdateV2OutputDomainItemSnapshotScope = "project"
-	UpdateV2OutputDomainItemSnapshotScopeUser    UpdateV2OutputDomainItemSnapshotScope = "user"
+	UpdateV3OutputContractItemScopeProject UpdateV3OutputContractItemScope = "project"
+	UpdateV3OutputContractItemScopeUser    UpdateV3OutputContractItemScope = "user"
 )
 
-func (UpdateV2OutputDomainItemSnapshotScope) JSONSchemaEnum() []string {
-	return []string{string(UpdateV2OutputDomainItemSnapshotScopeProject), string(UpdateV2OutputDomainItemSnapshotScopeUser)}
+func (UpdateV3OutputContractItemScope) JSONSchemaEnum() []string {
+	return []string{string(UpdateV3OutputContractItemScopeProject), string(UpdateV3OutputContractItemScopeUser)}
 }
 
-type UpdateV2OutputDomainItemSnapshotStatus string
+type UpdateV3OutputContractItemStatus string
 
 const (
-	UpdateV2OutputDomainItemSnapshotStatusActive   UpdateV2OutputDomainItemSnapshotStatus = "active"
-	UpdateV2OutputDomainItemSnapshotStatusPending  UpdateV2OutputDomainItemSnapshotStatus = "pending"
-	UpdateV2OutputDomainItemSnapshotStatusRejected UpdateV2OutputDomainItemSnapshotStatus = "rejected"
+	UpdateV3OutputContractItemStatusActive   UpdateV3OutputContractItemStatus = "active"
+	UpdateV3OutputContractItemStatusPending  UpdateV3OutputContractItemStatus = "pending"
+	UpdateV3OutputContractItemStatusRejected UpdateV3OutputContractItemStatus = "rejected"
 )
 
-func (UpdateV2OutputDomainItemSnapshotStatus) JSONSchemaEnum() []string {
-	return []string{string(UpdateV2OutputDomainItemSnapshotStatusActive), string(UpdateV2OutputDomainItemSnapshotStatusPending), string(UpdateV2OutputDomainItemSnapshotStatusRejected)}
+func (UpdateV3OutputContractItemStatus) JSONSchemaEnum() []string {
+	return []string{string(UpdateV3OutputContractItemStatusActive), string(UpdateV3OutputContractItemStatusPending), string(UpdateV3OutputContractItemStatusRejected)}
 }
 
 type AddInput struct {
-	CWD     string        `json:"CWD"`
-	Content string        `json:"Content"`
-	Scope   AddInputScope `json:"Scope"`
+	Content string        `json:"content"`
+	Cwd     string        `json:"cwd"`
+	Scope   AddInputScope `json:"scope"`
 }
 
 type AddResult struct {
-	Changed bool                           `json:"Changed"`
-	Item    *AddV2OutputDomainItemSnapshot `json:"Item"`
+	Changed bool                     `json:"changed"`
+	Item    *AddV3OutputContractItem `json:"item"`
 }
 
-type AddV2OutputDomainItemID string
+type AddV3OutputAgentmemoryItemID string
 
-type AddV2OutputDomainItemSnapshot struct {
-	Content        string                              `json:"Content"`
-	CreatedAt      AddV2OutputInstantTimestamp         `json:"CreatedAt"`
-	Day            string                              `json:"Day"`
-	Embedding      []AddV2OutputValueNumber            `json:"Embedding"`
-	EmbeddingSpace string                              `json:"EmbeddingSpace"`
-	ID             AddV2OutputDomainItemID             `json:"ID"`
-	Origin         AddV2OutputDomainItemSnapshotOrigin `json:"Origin"`
-	Pinned         bool                                `json:"Pinned"`
-	Project        string                              `json:"Project"`
-	Revision       framevalue.Number                   `json:"Revision"`
-	Scope          AddV2OutputDomainItemSnapshotScope  `json:"Scope"`
-	SessionID      string                              `json:"SessionID"`
-	Status         AddV2OutputDomainItemSnapshotStatus `json:"Status"`
-	UpdatedAt      AddV2OutputInstantTimestamp         `json:"UpdatedAt"`
+type AddV3OutputContractItem struct {
+	Content   string                        `json:"content"`
+	CreatedAt AddV3OutputInstantTimestamp   `json:"createdAt"`
+	Day       string                        `json:"day"`
+	Id        AddV3OutputAgentmemoryItemID  `json:"id"`
+	Origin    AddV3OutputContractItemOrigin `json:"origin"`
+	Pinned    bool                          `json:"pinned"`
+	Project   string                        `json:"project"`
+	Revision  framevalue.Number             `json:"revision"`
+	Scope     AddV3OutputContractItemScope  `json:"scope"`
+	SessionId string                        `json:"sessionId"`
+	Status    AddV3OutputContractItemStatus `json:"status"`
+	UpdatedAt AddV3OutputInstantTimestamp   `json:"updatedAt"`
 }
 
-type AddV2OutputInstantTimestamp string
-
-type AddV2OutputValueNumber struct{ framevalue.Number }
+type AddV3OutputInstantTimestamp string
 
 type Conversation struct {
-	MessageCount framevalue.Number `json:"MessageCount"`
-	Transcript   string            `json:"Transcript"`
+	MessageCount framevalue.Number `json:"messageCount"`
+	Transcript   string            `json:"transcript"`
 }
 
-type DeleteV2OutputContractAck struct {
+type DeleteV3OutputContractAck struct {
 }
 
 type ItemInput struct {
-	ExpectedRevision framevalue.Number `json:"ExpectedRevision"`
-	ID               string            `json:"ID"`
+	ExpectedRevision framevalue.Number `json:"expectedRevision"`
+	Id               string            `json:"id"`
 }
 
 type ItemsInput struct {
-	Project string          `json:"Project"`
-	Scope   ItemsInputScope `json:"Scope"`
+	Project string          `json:"project"`
+	Scope   ItemsInputScope `json:"scope"`
 }
 
-type ItemsV2Output []*ItemsV2OutputDomainItemSnapshot
+type ItemsV3Output []*ItemsV3OutputContractItem
 
-type ItemsV2OutputDomainItemID string
+type ItemsV3OutputAgentmemoryItemID string
 
-type ItemsV2OutputDomainItemSnapshot struct {
-	Content        string                                `json:"Content"`
-	CreatedAt      ItemsV2OutputInstantTimestamp         `json:"CreatedAt"`
-	Day            string                                `json:"Day"`
-	Embedding      []ItemsV2OutputValueNumber            `json:"Embedding"`
-	EmbeddingSpace string                                `json:"EmbeddingSpace"`
-	ID             ItemsV2OutputDomainItemID             `json:"ID"`
-	Origin         ItemsV2OutputDomainItemSnapshotOrigin `json:"Origin"`
-	Pinned         bool                                  `json:"Pinned"`
-	Project        string                                `json:"Project"`
-	Revision       framevalue.Number                     `json:"Revision"`
-	Scope          ItemsV2OutputDomainItemSnapshotScope  `json:"Scope"`
-	SessionID      string                                `json:"SessionID"`
-	Status         ItemsV2OutputDomainItemSnapshotStatus `json:"Status"`
-	UpdatedAt      ItemsV2OutputInstantTimestamp         `json:"UpdatedAt"`
+type ItemsV3OutputContractItem struct {
+	Content   string                          `json:"content"`
+	CreatedAt ItemsV3OutputInstantTimestamp   `json:"createdAt"`
+	Day       string                          `json:"day"`
+	Id        ItemsV3OutputAgentmemoryItemID  `json:"id"`
+	Origin    ItemsV3OutputContractItemOrigin `json:"origin"`
+	Pinned    bool                            `json:"pinned"`
+	Project   string                          `json:"project"`
+	Revision  framevalue.Number               `json:"revision"`
+	Scope     ItemsV3OutputContractItemScope  `json:"scope"`
+	SessionId string                          `json:"sessionId"`
+	Status    ItemsV3OutputContractItemStatus `json:"status"`
+	UpdatedAt ItemsV3OutputInstantTimestamp   `json:"updatedAt"`
 }
 
-type ItemsV2OutputInstantTimestamp string
-
-type ItemsV2OutputValueNumber struct{ framevalue.Number }
+type ItemsV3OutputInstantTimestamp string
 
 type ListInput struct {
-	CWD    string            `json:"CWD"`
-	Cursor string            `json:"Cursor"`
-	Limit  framevalue.Number `json:"Limit,omitzero"`
-	Scope  ListInputScope    `json:"Scope"`
+	Cursor string            `json:"cursor"`
+	Cwd    string            `json:"cwd"`
+	Limit  framevalue.Number `json:"limit,omitzero"`
+	Scope  ListInputScope    `json:"scope"`
 }
 
-type ListV2OutputDomainItemID string
+type ListV3OutputAgentmemoryItemID string
 
-type ListV2OutputDomainItemSnapshot struct {
-	Content        string                               `json:"Content"`
-	CreatedAt      ListV2OutputInstantTimestamp         `json:"CreatedAt"`
-	Day            string                               `json:"Day"`
-	Embedding      []ListV2OutputValueNumber            `json:"Embedding"`
-	EmbeddingSpace string                               `json:"EmbeddingSpace"`
-	ID             ListV2OutputDomainItemID             `json:"ID"`
-	Origin         ListV2OutputDomainItemSnapshotOrigin `json:"Origin"`
-	Pinned         bool                                 `json:"Pinned"`
-	Project        string                               `json:"Project"`
-	Revision       framevalue.Number                    `json:"Revision"`
-	Scope          ListV2OutputDomainItemSnapshotScope  `json:"Scope"`
-	SessionID      string                               `json:"SessionID"`
-	Status         ListV2OutputDomainItemSnapshotStatus `json:"Status"`
-	UpdatedAt      ListV2OutputInstantTimestamp         `json:"UpdatedAt"`
+type ListV3OutputContractItem struct {
+	Content   string                         `json:"content"`
+	CreatedAt ListV3OutputInstantTimestamp   `json:"createdAt"`
+	Day       string                         `json:"day"`
+	Id        ListV3OutputAgentmemoryItemID  `json:"id"`
+	Origin    ListV3OutputContractItemOrigin `json:"origin"`
+	Pinned    bool                           `json:"pinned"`
+	Project   string                         `json:"project"`
+	Revision  framevalue.Number              `json:"revision"`
+	Scope     ListV3OutputContractItemScope  `json:"scope"`
+	SessionId string                         `json:"sessionId"`
+	Status    ListV3OutputContractItemStatus `json:"status"`
+	UpdatedAt ListV3OutputInstantTimestamp   `json:"updatedAt"`
 }
 
-type ListV2OutputInstantTimestamp string
-
-type ListV2OutputValueNumber struct{ framevalue.Number }
+type ListV3OutputInstantTimestamp string
 
 type MaintenanceInput struct {
-	Compacted    bool          `json:"Compacted"`
-	Conversation *Conversation `json:"Conversation"`
-	Project      string        `json:"Project"`
-	SessionID    string        `json:"SessionID"`
+	Compacted    bool          `json:"compacted"`
+	Conversation *Conversation `json:"conversation"`
+	Project      string        `json:"project"`
+	SessionId    string        `json:"sessionId"`
 }
 
 type MaintenanceResult struct {
-	Published bool `json:"Published"`
+	Published bool `json:"published"`
 }
 
 type Page struct {
-	Capacity   framevalue.Number                 `json:"Capacity"`
-	NextCursor string                            `json:"NextCursor"`
-	Rows       []*ListV2OutputDomainItemSnapshot `json:"Rows"`
+	Capacity   framevalue.Number           `json:"capacity"`
+	NextCursor string                      `json:"nextCursor"`
+	Rows       []*ListV3OutputContractItem `json:"rows"`
 }
 
 type ReviewInput struct {
-	Decision         ReviewInputDecision `json:"Decision"`
-	ExpectedRevision framevalue.Number   `json:"ExpectedRevision"`
-	ID               string              `json:"ID"`
+	Decision         ReviewInputDecision `json:"decision"`
+	ExpectedRevision framevalue.Number   `json:"expectedRevision"`
+	Id               string              `json:"id"`
 }
 
-type ReviewV2OutputContractAck struct {
+type ReviewV3OutputContractAck struct {
 }
 
 type SearchInput struct {
-	EmbeddingSpace string            `json:"EmbeddingSpace"`
-	Project        string            `json:"Project"`
-	Query          string            `json:"Query"`
-	TopK           framevalue.Number `json:"TopK"`
+	EmbeddingSpace string            `json:"embeddingSpace"`
+	Project        string            `json:"project"`
+	Query          string            `json:"query"`
+	TopK           framevalue.Number `json:"topK"`
 }
 
-type SearchV2Output []*SearchV2OutputDomainItemSnapshot
+type SearchV3Output []*SearchV3OutputContractItem
 
-type SearchV2OutputDomainItemID string
+type SearchV3OutputAgentmemoryItemID string
 
-type SearchV2OutputDomainItemSnapshot struct {
-	Content        string                                 `json:"Content"`
-	CreatedAt      SearchV2OutputInstantTimestamp         `json:"CreatedAt"`
-	Day            string                                 `json:"Day"`
-	Embedding      []SearchV2OutputValueNumber            `json:"Embedding"`
-	EmbeddingSpace string                                 `json:"EmbeddingSpace"`
-	ID             SearchV2OutputDomainItemID             `json:"ID"`
-	Origin         SearchV2OutputDomainItemSnapshotOrigin `json:"Origin"`
-	Pinned         bool                                   `json:"Pinned"`
-	Project        string                                 `json:"Project"`
-	Revision       framevalue.Number                      `json:"Revision"`
-	Scope          SearchV2OutputDomainItemSnapshotScope  `json:"Scope"`
-	SessionID      string                                 `json:"SessionID"`
-	Status         SearchV2OutputDomainItemSnapshotStatus `json:"Status"`
-	UpdatedAt      SearchV2OutputInstantTimestamp         `json:"UpdatedAt"`
+type SearchV3OutputContractItem struct {
+	Content   string                           `json:"content"`
+	CreatedAt SearchV3OutputInstantTimestamp   `json:"createdAt"`
+	Day       string                           `json:"day"`
+	Id        SearchV3OutputAgentmemoryItemID  `json:"id"`
+	Origin    SearchV3OutputContractItemOrigin `json:"origin"`
+	Pinned    bool                             `json:"pinned"`
+	Project   string                           `json:"project"`
+	Revision  framevalue.Number                `json:"revision"`
+	Scope     SearchV3OutputContractItemScope  `json:"scope"`
+	SessionId string                           `json:"sessionId"`
+	Status    SearchV3OutputContractItemStatus `json:"status"`
+	UpdatedAt SearchV3OutputInstantTimestamp   `json:"updatedAt"`
 }
 
-type SearchV2OutputInstantTimestamp string
-
-type SearchV2OutputValueNumber struct{ framevalue.Number }
+type SearchV3OutputInstantTimestamp string
 
 type UpdateInput struct {
-	Content          *string           `json:"Content,omitzero"`
-	ExpectedRevision framevalue.Number `json:"ExpectedRevision"`
-	ID               string            `json:"ID"`
-	Pinned           *bool             `json:"Pinned,omitzero"`
+	Content          *string           `json:"content,omitzero"`
+	ExpectedRevision framevalue.Number `json:"expectedRevision"`
+	Id               string            `json:"id"`
+	Pinned           *bool             `json:"pinned,omitzero"`
 }
 
-type UpdateV2OutputDomainItemID string
+type UpdateV3OutputAgentmemoryItemID string
 
-type UpdateV2OutputDomainItemSnapshot struct {
-	Content        string                                 `json:"Content"`
-	CreatedAt      UpdateV2OutputInstantTimestamp         `json:"CreatedAt"`
-	Day            string                                 `json:"Day"`
-	Embedding      []UpdateV2OutputValueNumber            `json:"Embedding"`
-	EmbeddingSpace string                                 `json:"EmbeddingSpace"`
-	ID             UpdateV2OutputDomainItemID             `json:"ID"`
-	Origin         UpdateV2OutputDomainItemSnapshotOrigin `json:"Origin"`
-	Pinned         bool                                   `json:"Pinned"`
-	Project        string                                 `json:"Project"`
-	Revision       framevalue.Number                      `json:"Revision"`
-	Scope          UpdateV2OutputDomainItemSnapshotScope  `json:"Scope"`
-	SessionID      string                                 `json:"SessionID"`
-	Status         UpdateV2OutputDomainItemSnapshotStatus `json:"Status"`
-	UpdatedAt      UpdateV2OutputInstantTimestamp         `json:"UpdatedAt"`
+type UpdateV3OutputContractItem struct {
+	Content   string                           `json:"content"`
+	CreatedAt UpdateV3OutputInstantTimestamp   `json:"createdAt"`
+	Day       string                           `json:"day"`
+	Id        UpdateV3OutputAgentmemoryItemID  `json:"id"`
+	Origin    UpdateV3OutputContractItemOrigin `json:"origin"`
+	Pinned    bool                             `json:"pinned"`
+	Project   string                           `json:"project"`
+	Revision  framevalue.Number                `json:"revision"`
+	Scope     UpdateV3OutputContractItemScope  `json:"scope"`
+	SessionId string                           `json:"sessionId"`
+	Status    UpdateV3OutputContractItemStatus `json:"status"`
+	UpdatedAt UpdateV3OutputInstantTimestamp   `json:"updatedAt"`
 }
 
-type UpdateV2OutputInstantTimestamp string
+type UpdateV3OutputInstantTimestamp string
 
-type UpdateV2OutputValueNumber struct{ framevalue.Number }
+const CapabilityJSON = "{\"composition\":\"selection\",\"methods\":[{\"description\":\"Add a human-authored memory item in the requested scope.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkSW5wdXQ\":{\"additionalProperties\":false,\"properties\":{\"content\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"}},\"required\":[\"scope\",\"cwd\",\"content\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"content\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"}},\"required\":[\"scope\",\"cwd\",\"content\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.memory/add.v3\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\":{\"allOf\":[{\"pattern\":\"^mem_[0-9a-f]{32}$\"}],\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkUmVzdWx0\":{\"additionalProperties\":false,\"properties\":{\"changed\":{\"type\":\"boolean\"},\"item\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\"}},\"required\":[\"item\",\"changed\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"content\":{\"maxLength\":4096},\"revision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"content\":{\"pattern\":\"\\\\S\",\"type\":\"string\"},\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"day\":{\"type\":\"string\"},\"id\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\"},\"origin\":{\"allOf\":[{\"enum\":[\"auto\",\"user\"]}],\"type\":\"string\"},\"pinned\":{\"type\":\"boolean\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"},\"status\":{\"allOf\":[{\"enum\":[\"active\",\"pending\",\"rejected\"]}],\"type\":\"string\"},\"updatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"}},\"required\":[\"id\",\"revision\",\"scope\",\"project\",\"content\",\"origin\",\"status\",\"pinned\",\"sessionId\",\"day\",\"createdAt\",\"updatedAt\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"changed\":{\"type\":\"boolean\"},\"item\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\"}},\"required\":[\"item\",\"changed\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Delete one memory item through its private owner.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbUlucHV0\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"expectedRevision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"expectedRevision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.memory/delete.v3\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWNr\":{\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Read active memory items that can inform a Run.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbXNJbnB1dA\":{\"additionalProperties\":false,\"properties\":{\"project\":{\"type\":\"string\"},\"scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"}},\"required\":[\"scope\",\"project\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"project\":{\"type\":\"string\"},\"scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"}},\"required\":[\"scope\",\"project\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.memory/items.v3\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\":{\"allOf\":[{\"pattern\":\"^mem_[0-9a-f]{32}$\"}],\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"content\":{\"maxLength\":4096},\"revision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"content\":{\"pattern\":\"\\\\S\",\"type\":\"string\"},\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"day\":{\"type\":\"string\"},\"id\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\"},\"origin\":{\"allOf\":[{\"enum\":[\"auto\",\"user\"]}],\"type\":\"string\"},\"pinned\":{\"type\":\"boolean\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"},\"status\":{\"allOf\":[{\"enum\":[\"active\",\"pending\",\"rejected\"]}],\"type\":\"string\"},\"updatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"}},\"required\":[\"id\",\"revision\",\"scope\",\"project\",\"content\",\"origin\",\"status\",\"pinned\",\"sessionId\",\"day\",\"createdAt\",\"updatedAt\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\"},\"type\":\"array\"},\"target\":\"installation\"},{\"description\":\"List memory items visible in the requested scope.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TGlzdElucHV0\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"limit\":{\"maximum\":100,\"minimum\":1}}}],\"properties\":{\"cursor\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"}},\"required\":[\"scope\",\"cwd\",\"cursor\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"limit\":{\"maximum\":100,\"minimum\":1}}}],\"properties\":{\"cursor\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"}},\"required\":[\"scope\",\"cwd\",\"cursor\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.memory/list.v3\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\":{\"allOf\":[{\"pattern\":\"^mem_[0-9a-f]{32}$\"}],\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"content\":{\"maxLength\":4096},\"revision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"content\":{\"pattern\":\"\\\\S\",\"type\":\"string\"},\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"day\":{\"type\":\"string\"},\"id\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\"},\"origin\":{\"allOf\":[{\"enum\":[\"auto\",\"user\"]}],\"type\":\"string\"},\"pinned\":{\"type\":\"boolean\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"},\"status\":{\"allOf\":[{\"enum\":[\"active\",\"pending\",\"rejected\"]}],\"type\":\"string\"},\"updatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"}},\"required\":[\"id\",\"revision\",\"scope\",\"project\",\"content\",\"origin\",\"status\",\"pinned\",\"sessionId\",\"day\",\"createdAt\",\"updatedAt\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UGFnZQ\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"capacity\":{\"maximum\":512,\"minimum\":512},\"rows\":{\"maxItems\":100}}}],\"properties\":{\"capacity\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"nextCursor\":{\"type\":\"string\"},\"rows\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\"},\"type\":\"array\"}},\"required\":[\"rows\",\"nextCursor\",\"capacity\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"capacity\":{\"maximum\":512,\"minimum\":512},\"rows\":{\"maxItems\":100}}}],\"properties\":{\"capacity\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"nextCursor\":{\"type\":\"string\"},\"rows\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\"},\"type\":\"array\"}},\"required\":[\"rows\",\"nextCursor\",\"capacity\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Extract and curate captured conversation under the private ledger and watermark.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\":{\"additionalProperties\":false,\"properties\":{\"messageCount\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"transcript\":{\"type\":\"string\"}},\"required\":[\"messageCount\",\"transcript\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VJbnB1dA\":{\"additionalProperties\":false,\"properties\":{\"compacted\":{\"type\":\"boolean\"},\"conversation\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\"},\"project\":{\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"}},\"required\":[\"sessionId\",\"project\",\"compacted\",\"conversation\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"compacted\":{\"type\":\"boolean\"},\"conversation\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\"},\"project\":{\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"}},\"required\":[\"sessionId\",\"project\",\"compacted\",\"conversation\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.memory/maintain.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VSZXN1bHQ\":{\"additionalProperties\":false,\"properties\":{\"published\":{\"type\":\"boolean\"}},\"required\":[\"published\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"published\":{\"type\":\"boolean\"}},\"required\":[\"published\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Apply a human review decision to a pending memory item.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UmV2aWV3SW5wdXQ\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"expectedRevision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"decision\":{\"allOf\":[{\"enum\":[\"approve\",\"reject\"]}],\"type\":\"string\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\",\"decision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"expectedRevision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"decision\":{\"allOf\":[{\"enum\":[\"approve\",\"reject\"]}],\"type\":\"string\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\",\"decision\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.memory/review.v3\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWNr\":{\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Rank active memories for the supplied project and query.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.U2VhcmNoSW5wdXQ\":{\"additionalProperties\":false,\"properties\":{\"embeddingSpace\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"query\":{\"type\":\"string\"},\"topK\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"project\",\"query\",\"topK\",\"embeddingSpace\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"embeddingSpace\":{\"type\":\"string\"},\"project\":{\"type\":\"string\"},\"query\":{\"type\":\"string\"},\"topK\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"project\",\"query\",\"topK\",\"embeddingSpace\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.memory/search.v3\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\":{\"allOf\":[{\"pattern\":\"^mem_[0-9a-f]{32}$\"}],\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"content\":{\"maxLength\":4096},\"revision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"content\":{\"pattern\":\"\\\\S\",\"type\":\"string\"},\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"day\":{\"type\":\"string\"},\"id\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\"},\"origin\":{\"allOf\":[{\"enum\":[\"auto\",\"user\"]}],\"type\":\"string\"},\"pinned\":{\"type\":\"boolean\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"},\"status\":{\"allOf\":[{\"enum\":[\"active\",\"pending\",\"rejected\"]}],\"type\":\"string\"},\"updatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"}},\"required\":[\"id\",\"revision\",\"scope\",\"project\",\"content\",\"origin\",\"status\",\"pinned\",\"sessionId\",\"day\",\"createdAt\",\"updatedAt\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\"},\"type\":\"array\"},\"target\":\"installation\"},{\"description\":\"Edit the current content or pin state of a memory item.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.VXBkYXRlSW5wdXQ\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"expectedRevision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"content\":{\"type\":\"string\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"pinned\":{\"type\":\"boolean\"}},\"required\":[\"id\",\"expectedRevision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"expectedRevision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"content\":{\"type\":\"string\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"pinned\":{\"type\":\"boolean\"}},\"required\":[\"id\",\"expectedRevision\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.memory/update.v3\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\":{\"allOf\":[{\"pattern\":\"^mem_[0-9a-f]{32}$\"}],\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"content\":{\"maxLength\":4096},\"revision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"content\":{\"pattern\":\"\\\\S\",\"type\":\"string\"},\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"day\":{\"type\":\"string\"},\"id\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\"},\"origin\":{\"allOf\":[{\"enum\":[\"auto\",\"user\"]}],\"type\":\"string\"},\"pinned\":{\"type\":\"boolean\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"},\"status\":{\"allOf\":[{\"enum\":[\"active\",\"pending\",\"rejected\"]}],\"type\":\"string\"},\"updatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"}},\"required\":[\"id\",\"revision\",\"scope\",\"project\",\"content\",\"origin\",\"status\",\"pinned\",\"sessionId\",\"day\",\"createdAt\",\"updatedAt\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"content\":{\"maxLength\":4096},\"revision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"content\":{\"pattern\":\"\\\\S\",\"type\":\"string\"},\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"day\":{\"type\":\"string\"},\"id\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\"},\"origin\":{\"allOf\":[{\"enum\":[\"auto\",\"user\"]}],\"type\":\"string\"},\"pinned\":{\"type\":\"boolean\"},\"project\":{\"type\":\"string\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"},\"status\":{\"allOf\":[{\"enum\":[\"active\",\"pending\",\"rejected\"]}],\"type\":\"string\"},\"updatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"}},\"required\":[\"id\",\"revision\",\"scope\",\"project\",\"content\",\"origin\",\"status\",\"pinned\",\"sessionId\",\"day\",\"createdAt\",\"updatedAt\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/plugin/1\",\"reference\":\"memory\",\"scope\":\"installation\"}"
 
-const CapabilityJSON = "{\"composition\":\"selection\",\"methods\":[{\"description\":\"Add a human-authored memory item in the requested scope.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkSW5wdXQ\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"Content\":{\"type\":\"string\"},\"Scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"}},\"required\":[\"Scope\",\"CWD\",\"Content\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"Content\":{\"type\":\"string\"},\"Scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"}},\"required\":[\"Scope\",\"CWD\",\"Content\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.memory/add.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkUmVzdWx0\":{\"additionalProperties\":false,\"properties\":{\"Changed\":{\"type\":\"boolean\"},\"Item\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\"}},\"required\":[\"Item\",\"Changed\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\":{\"allOf\":[{\"pattern\":\"^mem_[0-9a-f]{32}$\"}],\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"Content\":{\"maxLength\":4096},\"Revision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"Content\":{\"pattern\":\"\\\\S\",\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Day\":{\"type\":\"string\"},\"Embedding\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"type\":\"array\"},\"EmbeddingSpace\":{\"type\":\"string\"},\"ID\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\"},\"Origin\":{\"allOf\":[{\"enum\":[\"auto\",\"user\"]}],\"type\":\"string\"},\"Pinned\":{\"type\":\"boolean\"},\"Project\":{\"type\":\"string\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"Scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"},\"SessionID\":{\"type\":\"string\"},\"Status\":{\"allOf\":[{\"enum\":[\"active\",\"pending\",\"rejected\"]}],\"type\":\"string\"},\"UpdatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"}},\"required\":[\"ID\",\"Revision\",\"Scope\",\"Project\",\"Content\",\"Origin\",\"Status\",\"Pinned\",\"SessionID\",\"Day\",\"CreatedAt\",\"UpdatedAt\",\"EmbeddingSpace\",\"Embedding\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\":{\"type\":\"number\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"Changed\":{\"type\":\"boolean\"},\"Item\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\"}},\"required\":[\"Item\",\"Changed\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Delete one memory item through its private owner.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbUlucHV0\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"ExpectedRevision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"ExpectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\",\"ExpectedRevision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"ExpectedRevision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"ExpectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\",\"ExpectedRevision\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.memory/delete.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWNr\":{\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Read active memory items that can inform a Run.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbXNJbnB1dA\":{\"additionalProperties\":false,\"properties\":{\"Project\":{\"type\":\"string\"},\"Scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"}},\"required\":[\"Scope\",\"Project\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"Project\":{\"type\":\"string\"},\"Scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"}},\"required\":[\"Scope\",\"Project\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.memory/items.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\":{\"allOf\":[{\"pattern\":\"^mem_[0-9a-f]{32}$\"}],\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"Content\":{\"maxLength\":4096},\"Revision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"Content\":{\"pattern\":\"\\\\S\",\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Day\":{\"type\":\"string\"},\"Embedding\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"type\":\"array\"},\"EmbeddingSpace\":{\"type\":\"string\"},\"ID\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\"},\"Origin\":{\"allOf\":[{\"enum\":[\"auto\",\"user\"]}],\"type\":\"string\"},\"Pinned\":{\"type\":\"boolean\"},\"Project\":{\"type\":\"string\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"Scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"},\"SessionID\":{\"type\":\"string\"},\"Status\":{\"allOf\":[{\"enum\":[\"active\",\"pending\",\"rejected\"]}],\"type\":\"string\"},\"UpdatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"}},\"required\":[\"ID\",\"Revision\",\"Scope\",\"Project\",\"Content\",\"Origin\",\"Status\",\"Pinned\",\"SessionID\",\"Day\",\"CreatedAt\",\"UpdatedAt\",\"EmbeddingSpace\",\"Embedding\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\":{\"type\":\"number\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\"},\"type\":\"array\"},\"target\":\"installation\"},{\"description\":\"List memory items visible in the requested scope.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TGlzdElucHV0\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"Limit\":{\"maximum\":100,\"minimum\":1}}}],\"properties\":{\"CWD\":{\"type\":\"string\"},\"Cursor\":{\"type\":\"string\"},\"Limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"Scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"}},\"required\":[\"Scope\",\"CWD\",\"Cursor\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"Limit\":{\"maximum\":100,\"minimum\":1}}}],\"properties\":{\"CWD\":{\"type\":\"string\"},\"Cursor\":{\"type\":\"string\"},\"Limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"Scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"}},\"required\":[\"Scope\",\"CWD\",\"Cursor\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.memory/list.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UGFnZQ\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"Capacity\":{\"maximum\":512,\"minimum\":512},\"Rows\":{\"maxItems\":100}}}],\"properties\":{\"Capacity\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"NextCursor\":{\"type\":\"string\"},\"Rows\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\"},\"type\":\"array\"}},\"required\":[\"Rows\",\"NextCursor\",\"Capacity\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\":{\"allOf\":[{\"pattern\":\"^mem_[0-9a-f]{32}$\"}],\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"Content\":{\"maxLength\":4096},\"Revision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"Content\":{\"pattern\":\"\\\\S\",\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Day\":{\"type\":\"string\"},\"Embedding\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"type\":\"array\"},\"EmbeddingSpace\":{\"type\":\"string\"},\"ID\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\"},\"Origin\":{\"allOf\":[{\"enum\":[\"auto\",\"user\"]}],\"type\":\"string\"},\"Pinned\":{\"type\":\"boolean\"},\"Project\":{\"type\":\"string\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"Scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"},\"SessionID\":{\"type\":\"string\"},\"Status\":{\"allOf\":[{\"enum\":[\"active\",\"pending\",\"rejected\"]}],\"type\":\"string\"},\"UpdatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"}},\"required\":[\"ID\",\"Revision\",\"Scope\",\"Project\",\"Content\",\"Origin\",\"Status\",\"Pinned\",\"SessionID\",\"Day\",\"CreatedAt\",\"UpdatedAt\",\"EmbeddingSpace\",\"Embedding\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\":{\"type\":\"number\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"Capacity\":{\"maximum\":512,\"minimum\":512},\"Rows\":{\"maxItems\":100}}}],\"properties\":{\"Capacity\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"NextCursor\":{\"type\":\"string\"},\"Rows\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\"},\"type\":\"array\"}},\"required\":[\"Rows\",\"NextCursor\",\"Capacity\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Extract and curate captured conversation under the private ledger and watermark.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\":{\"additionalProperties\":false,\"properties\":{\"MessageCount\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"},\"Transcript\":{\"type\":\"string\"}},\"required\":[\"MessageCount\",\"Transcript\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VJbnB1dA\":{\"additionalProperties\":false,\"properties\":{\"Compacted\":{\"type\":\"boolean\"},\"Conversation\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\"},\"Project\":{\"type\":\"string\"},\"SessionID\":{\"type\":\"string\"}},\"required\":[\"SessionID\",\"Project\",\"Compacted\",\"Conversation\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"Compacted\":{\"type\":\"boolean\"},\"Conversation\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\"},\"Project\":{\"type\":\"string\"},\"SessionID\":{\"type\":\"string\"}},\"required\":[\"SessionID\",\"Project\",\"Compacted\",\"Conversation\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.memory/maintain.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VSZXN1bHQ\":{\"additionalProperties\":false,\"properties\":{\"Published\":{\"type\":\"boolean\"}},\"required\":[\"Published\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"Published\":{\"type\":\"boolean\"}},\"required\":[\"Published\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Apply a human review decision to a pending memory item.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UmV2aWV3SW5wdXQ\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"ExpectedRevision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"Decision\":{\"allOf\":[{\"enum\":[\"approve\",\"reject\"]}],\"type\":\"string\"},\"ExpectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\",\"ExpectedRevision\",\"Decision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"ExpectedRevision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"Decision\":{\"allOf\":[{\"enum\":[\"approve\",\"reject\"]}],\"type\":\"string\"},\"ExpectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\",\"ExpectedRevision\",\"Decision\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.memory/review.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWNr\":{\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Rank active memories for the supplied project and query.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.U2VhcmNoSW5wdXQ\":{\"additionalProperties\":false,\"properties\":{\"EmbeddingSpace\":{\"type\":\"string\"},\"Project\":{\"type\":\"string\"},\"Query\":{\"type\":\"string\"},\"TopK\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"Project\",\"Query\",\"TopK\",\"EmbeddingSpace\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"EmbeddingSpace\":{\"type\":\"string\"},\"Project\":{\"type\":\"string\"},\"Query\":{\"type\":\"string\"},\"TopK\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"Project\",\"Query\",\"TopK\",\"EmbeddingSpace\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.memory/search.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\":{\"allOf\":[{\"pattern\":\"^mem_[0-9a-f]{32}$\"}],\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"Content\":{\"maxLength\":4096},\"Revision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"Content\":{\"pattern\":\"\\\\S\",\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Day\":{\"type\":\"string\"},\"Embedding\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"type\":\"array\"},\"EmbeddingSpace\":{\"type\":\"string\"},\"ID\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\"},\"Origin\":{\"allOf\":[{\"enum\":[\"auto\",\"user\"]}],\"type\":\"string\"},\"Pinned\":{\"type\":\"boolean\"},\"Project\":{\"type\":\"string\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"Scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"},\"SessionID\":{\"type\":\"string\"},\"Status\":{\"allOf\":[{\"enum\":[\"active\",\"pending\",\"rejected\"]}],\"type\":\"string\"},\"UpdatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"}},\"required\":[\"ID\",\"Revision\",\"Scope\",\"Project\",\"Content\",\"Origin\",\"Status\",\"Pinned\",\"SessionID\",\"Day\",\"CreatedAt\",\"UpdatedAt\",\"EmbeddingSpace\",\"Embedding\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\":{\"type\":\"number\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\"},\"type\":\"array\"},\"target\":\"installation\"},{\"description\":\"Edit the current content or pin state of a memory item.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.VXBkYXRlSW5wdXQ\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"ExpectedRevision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"Content\":{\"type\":\"string\"},\"ExpectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"ID\":{\"type\":\"string\"},\"Pinned\":{\"type\":\"boolean\"}},\"required\":[\"ID\",\"ExpectedRevision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"ExpectedRevision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"Content\":{\"type\":\"string\"},\"ExpectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"ID\":{\"type\":\"string\"},\"Pinned\":{\"type\":\"boolean\"}},\"required\":[\"ID\",\"ExpectedRevision\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.memory/update.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\":{\"allOf\":[{\"pattern\":\"^mem_[0-9a-f]{32}$\"}],\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"Content\":{\"maxLength\":4096},\"Revision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"Content\":{\"pattern\":\"\\\\S\",\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Day\":{\"type\":\"string\"},\"Embedding\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"type\":\"array\"},\"EmbeddingSpace\":{\"type\":\"string\"},\"ID\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\"},\"Origin\":{\"allOf\":[{\"enum\":[\"auto\",\"user\"]}],\"type\":\"string\"},\"Pinned\":{\"type\":\"boolean\"},\"Project\":{\"type\":\"string\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"Scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"},\"SessionID\":{\"type\":\"string\"},\"Status\":{\"allOf\":[{\"enum\":[\"active\",\"pending\",\"rejected\"]}],\"type\":\"string\"},\"UpdatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"}},\"required\":[\"ID\",\"Revision\",\"Scope\",\"Project\",\"Content\",\"Origin\",\"Status\",\"Pinned\",\"SessionID\",\"Day\",\"CreatedAt\",\"UpdatedAt\",\"EmbeddingSpace\",\"Embedding\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\":{\"type\":\"number\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"Content\":{\"maxLength\":4096},\"Revision\":{\"maximum\":9.007199254740991e+15}}}],\"properties\":{\"Content\":{\"pattern\":\"\\\\S\",\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Day\":{\"type\":\"string\"},\"Embedding\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\"},\"type\":\"array\"},\"EmbeddingSpace\":{\"type\":\"string\"},\"ID\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\"},\"Origin\":{\"allOf\":[{\"enum\":[\"auto\",\"user\"]}],\"type\":\"string\"},\"Pinned\":{\"type\":\"boolean\"},\"Project\":{\"type\":\"string\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"minimum\":1,\"type\":\"integer\"},\"Scope\":{\"allOf\":[{\"enum\":[\"project\",\"user\"]}],\"type\":\"string\"},\"SessionID\":{\"type\":\"string\"},\"Status\":{\"allOf\":[{\"enum\":[\"active\",\"pending\",\"rejected\"]}],\"type\":\"string\"},\"UpdatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"}},\"required\":[\"ID\",\"Revision\",\"Scope\",\"Project\",\"Content\",\"Origin\",\"Status\",\"Pinned\",\"SessionID\",\"Day\",\"CreatedAt\",\"UpdatedAt\",\"EmbeddingSpace\",\"Embedding\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/plugin/1\",\"reference\":\"memory\",\"scope\":\"installation\"}"
+const AddV3Method = "flame.memory/add.v3"
 
-const AddV2Method = "flame.memory/add.v2"
+const DeleteV3Method = "flame.memory/delete.v3"
 
-const DeleteV2Method = "flame.memory/delete.v2"
+const ItemsV3Method = "flame.memory/items.v3"
 
-const ItemsV2Method = "flame.memory/items.v2"
+const ListV3Method = "flame.memory/list.v3"
 
-const ListV2Method = "flame.memory/list.v2"
+const MaintainV2Method = "flame.memory/maintain.v2"
 
-const MaintainV1Method = "flame.memory/maintain.v1"
+const ReviewV3Method = "flame.memory/review.v3"
 
-const ReviewV2Method = "flame.memory/review.v2"
+const SearchV3Method = "flame.memory/search.v3"
 
-const SearchV2Method = "flame.memory/search.v2"
-
-const UpdateV2Method = "flame.memory/update.v2"
+const UpdateV3Method = "flame.memory/update.v3"

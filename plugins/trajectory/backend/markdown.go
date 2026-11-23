@@ -7,9 +7,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// renderSessionMarkdown produces a human-readable transcript of a session — a
-// header plus each canonical item rendered by type. It is not re-importable
-// (use format=json for that).
 func renderSessionMarkdown(session protocol.ArtifactSession, items []protocol.ArtifactItem, toolResults []protocol.ArtifactToolResult) (string, error) {
 	modelText, err := modelTextByItem(items, toolResults)
 	if err != nil {
@@ -51,7 +48,7 @@ func renderSessionItems(b *strings.Builder, items []protocol.ArtifactItem, model
 			}
 			if evidence, present := modelText[item.ID]; present {
 				b.WriteString("### Model-visible text evidence\n\n")
-				writeMarkdownCode(b, "text", evidence.Body)
+				writeMarkdownCode(b, fenceText, evidence.Body)
 			}
 		case protocol.ItemTypeQuestion:
 			if item.Question != nil {
@@ -73,7 +70,6 @@ func renderSessionItems(b *strings.Builder, items []protocol.ArtifactItem, model
 	return nil
 }
 
-// contentText returns the text of an item (image blocks render as "[image]").
 func contentText(item protocol.ArtifactItem) string {
 	if item.Text != "" {
 		return item.Text

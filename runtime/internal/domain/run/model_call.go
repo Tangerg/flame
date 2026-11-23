@@ -2,7 +2,6 @@ package run
 
 import "fmt"
 
-// ModelCallPurpose distinguishes conversation authority from independent consumption.
 type ModelCallPurpose uint8
 
 const (
@@ -16,6 +15,7 @@ func (p ModelCallPurpose) Validate() error {
 	}
 	return nil
 }
+
 func (p ModelCallPurpose) String() string {
 	switch p {
 	case ModelConversation:
@@ -26,6 +26,7 @@ func (p ModelCallPurpose) String() string {
 		return ""
 	}
 }
+
 func ParseModelCallPurpose(value string) (ModelCallPurpose, error) {
 	switch value {
 	case ModelConversation.String():

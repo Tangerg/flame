@@ -5,13 +5,13 @@ export interface ToolInspectorBody {
   isJson: boolean;
 }
 
-export interface ToolInspectorModel {
+interface ToolInspectorModel {
   args: ToolInspectorBody;
   result: ToolInspectorBody;
   showNoResult: boolean;
 }
 
-export function formatToolInspectorBody(raw: string | undefined): ToolInspectorBody {
+function formatToolInspectorBody(raw: string | undefined): ToolInspectorBody {
   if (!raw) return emptyBody();
   const trimmed = raw.trim();
   if (!looksStructured(trimmed) || !isStrictJson(trimmed)) return { text: raw, isJson: false };

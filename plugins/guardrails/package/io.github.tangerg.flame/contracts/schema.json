@@ -7,9 +7,9 @@
       "type": "object"
     },
     "GetPolicyV1Output": {
-      "$ref": "#/$defs/GetPolicyV1OutputDomainSummary"
+      "$ref": "#/$defs/GetPolicyV1OutputGuardrailSummary"
     },
-    "GetPolicyV1OutputDomainSummary": {
+    "GetPolicyV1OutputGuardrailSummary": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -87,9 +87,9 @@
       "$ref": "#/$defs/ReplaceInput"
     },
     "ReplacePolicyV1Output": {
-      "$ref": "#/$defs/ReplacePolicyV1OutputDomainSummary"
+      "$ref": "#/$defs/ReplacePolicyV1OutputGuardrailSummary"
     },
-    "ReplacePolicyV1OutputDomainSummary": {
+    "ReplacePolicyV1OutputGuardrailSummary": {
       "additionalProperties": false,
       "allOf": [
         {

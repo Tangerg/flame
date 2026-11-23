@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { useTheme } from "@/features/theme/public/theme";
 import * as stylex from "@stylexjs/stylex";
 import { DropdownMenu } from "@/ui/index";
-import { Icon } from "@/ui/index";
 import { SelectTrigger } from "@/ui/index";
 import { Switch } from "@flame/ui";
 import { Select, vocab } from "@flame/ui";
@@ -58,9 +57,7 @@ function FontPicker({
               layout="pickPlain"
             >
               <span {...stylex.props(vocab.truncate)}>{family || defaultLabel}</span>
-              <DropdownMenu.RadioItemIndicator>
-                <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
-              </DropdownMenu.RadioItemIndicator>
+              <DropdownMenu.RadioCheck />
             </DropdownMenu.RadioItem>
           ))}
         </DropdownMenu.RadioGroup>

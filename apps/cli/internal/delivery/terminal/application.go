@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/extensions/highlight"
@@ -27,6 +28,8 @@ import (
 	"github.com/Tangerg/oolong/ui/core/program"
 	"github.com/Tangerg/oolong/ui/kit"
 )
+
+const composerMaxRows = 6
 
 const (
 	sendPrompt                     = keymap.Action(settings.ActionSend)
@@ -252,7 +255,6 @@ func newApp(loop *program.Runtime, cfg appConfig) (*app, error) {
 	a.configureMarkdown(a.transcript)
 	a.configureComposer(appearance, cfg.keyBindings.editor, cfg.initialDraft)
 	a.configureCompletion(appearance)
-	a.registerCommands()
 	a.buildInterface(appearance, cfg.keyBindings.editor)
 	a.composer.observe = a.composer.Controller().Session().Subscribe(func(base.ChangeMap) {
 		a.composer.scheduleDraftPersistence()
@@ -277,6 +279,7 @@ func newApp(loop *program.Runtime, cfg appConfig) (*app, error) {
 	}
 	a.runs.sessions = a.lifecycle
 	a.buildScreens(cfg)
+	a.registerCommands()
 	for _, result := range cfg.recoveredSteers {
 		a.steering.receipts.accept(result)
 	}
@@ -315,10 +318,8 @@ func (a *app) every(interval time.Duration, apply func()) func() {
 	return timer.Stop
 }
 
-// An owner callback may observe lifetime cancellation before screen shutdown.
-// Only that explicit refusal is expected; capacity and other failures survive.
 func (a *app) clockCanceled(err error) bool {
-	return (err == program.ErrScopeClosed || err == program.ErrStopped) &&
+	return (errors.Is(err, program.ErrScopeClosed) || errors.Is(err, program.ErrStopped)) &&
 		(a.ctx.Err() != nil || a.scope.Context().Err() != nil)
 }
 
@@ -331,7 +332,7 @@ func (a *app) setProgress(progress term.Progress) {
 func (a *app) configureComposer(appearance terminalAppearance, keys *keymap.Map, initial authoring.Message) {
 	a.composer.Editor = kit.NewEditor(kit.EditorConfig{
 		Behavior: base.EditorConfig{
-			MaxRows:     6,
+			MaxRows:     composerMaxRows,
 			Placeholder: "Ask flame to inspect, explain, or change something",
 			Keys:        keys,
 			Clipboard:   a.loop.Clipboard(),
@@ -382,13 +383,13 @@ func (a *app) buildInterface(appearance terminalAppearance, editorKeys *keymap.M
 	a.buildTimeline(theme, glyphs)
 	a.palette = newPickerDialog(pickerDialogConfig[commandPaletteItem]{
 		stack: &a.stack, theme: theme, glyphs: glyphs, title: "Commands", search: "search commands",
-		where: layout.Placement{Width: standardDialogWidth, Height: 18},
+		where: layout.Placement{Width: standardDialogWidth, Height: standardDialogHeight},
 		label: func(item commandPaletteItem) string { return "/" + item.command.Name },
 		detail: func(item commandPaletteItem) string {
 			if !item.availability.Enabled() {
 				return item.category + " · unavailable: " + item.availability.Reason()
 			}
-			return item.category + " · " + item.command.Title
+			return item.category + format.Separator + item.command.Title
 		},
 		choose: a.chooseCommand,
 	})
@@ -438,15 +439,13 @@ func (a *app) Close(ctx context.Context) error {
 	a.operations.Cancel(completionOperation)
 	a.extensions.cancelPluginCommands()
 	a.operations.Close()
-	if a.screens.mcp != nil && a.screens.mcp.form != nil {
+	if a.screens.mcp.form != nil {
 		a.screens.mcp.closeMCPForm(a.screens.mcp.form)
 	}
 	if a.composer.observe != nil {
 		a.composer.observe()
 	}
 	a.composer.drafts.cancel()
-	// Flush is a serialization barrier: any autosave already in the filesystem
-	// finishes first, then the last visible composer state is written last.
 	closeErr = errors.Join(closeErr, a.composer.persistDraft())
 	closeErr = errors.Join(closeErr, a.composer.drafts.store.Close())
 	closeErr = errors.Join(closeErr, a.runs.finishShutdown(ctx, shutdown))
@@ -482,16 +481,13 @@ func (a *app) submit() {
 	a.dispatchPrompt(message)
 }
 
-// dispatchPrompt owns the single path from an authored message to either the
-// active run or its durable follow-up queue. Callers such as prompt submission
-// cannot bypass session-change exclusion, prompt history, or composer cleanup.
 func (a *app) dispatchPrompt(message authoring.Message) {
 	if err := a.validateMessageCapabilities(message); err != nil {
 		a.message(err.Error())
 		return
 	}
 	if a.operations.Active(sessionChangeOperation) {
-		a.message("wait for the current session change to finish")
+		a.message(sessionChangeOperation.busy().Error())
 		return
 	}
 	commandID := mutation.NewCommandID()
@@ -549,8 +545,6 @@ func (a *app) dismissCompletion() { a.completion.popup.Dismiss() }
 
 func (a *app) currentTranscript() *transcriptView { return a.transcript }
 
-// presentTranscript shows transcript in place of the current one, which it
-// returns for the caller to close once nothing refers to it.
 func (a *app) presentTranscript(transcript *transcriptView) *transcriptView {
 	previous := a.transcript
 	a.transcript = transcript
@@ -560,19 +554,16 @@ func (a *app) presentTranscript(transcript *transcriptView) *transcriptView {
 	return previous
 }
 
-// enterSessionHealth resets workbench health for a newly presented Session.
 func (a *app) enterSessionHealth() {
 	a.workbenchHealth.enterSession()
 	a.status.setProblem(a.workbenchHealth.problem())
 }
 
-// presentOptions shows the effective run options in the prompt and banner.
 func (a *app) presentOptions() {
 	a.prompt.SetOptions(a.displayOptions())
 	a.brand.SetOptions(a.displayOptions())
 }
 
-// appendNote adds a labelled note to the current transcript.
 func (a *app) appendNote(label, body string) {
 	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: label, Body: kit.NewParagraph(body, a.transcript.theme.Text)})
 }

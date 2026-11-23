@@ -17,67 +17,19 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 )
 
-// File browsing returns workspace entries for tree and completion consumers.
-// Listing is gitignore-aware: in a git repo the
-// candidate set comes from `git ls-files` (tracked + untracked-not-ignored, the
-// repo's own .gitignore as authority); outside a repo it's a filesystem walk
-// that skips a backstop set of heavy build/vcs dirs. This package owns Git
-// interaction so callers depend only on listing behavior.
-
-var (
-	// errListingTooLarge asks the caller to narrow Path or Glob instead of
-	// returning an incomplete result that looks authoritative.
-	errListingTooLarge = errors.New("workspace: file listing too large")
-	// errInvalidGlob distinguishes malformed match syntax from a valid pattern
-	// that simply has no matching files.
-	errInvalidGlob = errors.New("workspace: invalid file glob")
-	// errInvalidListPath reports an invalid selection for browsing or search.
-	// Permission and I/O failures remain operational errors.
-	errInvalidListPath = errors.New("workspace: invalid file listing path")
-)
-
-// maxListEntries is a safety boundary, not a silent result cap. Every entry in
-// a filesystem walk consumes it; Git-backed discovery consumes one per file.
-// Crossing it returns ErrListingTooLarge so callers can narrow the request.
 const maxListEntries = 20000
 
-// gitMetadataDir holds a repository's private state; listings never enter it.
-const gitMetadataDir = ".git"
-
 func insideGitMetadata(physical string) bool {
-	return slices.Contains(strings.Split(physical, "/"), gitMetadataDir)
+	return slices.Contains(strings.Split(physical, "/"), git.MetadataDirectory)
 }
 
-// backstopExclude are directories never worth listing. `.git` is always
-// skipped (even with includeIgnored — its internals are never useful); the
-// rest are skipped only when not includeIgnored, as a coarse stand-in for
-// .gitignore outside a git repo.
 var backstopExclude = map[string]bool{
-	gitMetadataDir: true, "node_modules": true, ".next": true, "dist": true,
+	git.MetadataDirectory: true, "node_modules": true, ".next": true, "dist": true,
 	"build": true, "target": true, "vendor": true, ".venv": true,
 	"venv": true, "__pycache__": true, ".idea": true, ".vscode": true,
 	".cache": true, "coverage": true, ".turbo": true, ".svn": true, ".hg": true,
 }
 
-// listFiles lists entries under opts.Path within root. With Recursive (or a
-// Glob) it returns a flat list of files for the subtree; otherwise the
-// immediate children (files + dirs) of opts.Path, for a lazy file tree.
-// The complete, deterministically ordered result is returned for use-case
-// pagination. Oversized trees fail explicitly with ErrListingTooLarge.
-func listFiles(ctx context.Context, root string, opts workspaceapp.FileListOptions) ([]workspaceapp.FileEntry, error) {
-	scope, err := resolveFileSelection(root, opts.Path)
-	if err != nil {
-		return nil, err
-	}
-	if !scope.directory {
-		return nil, fmt.Errorf("%w: %q is not a directory", errInvalidListPath, opts.Path)
-	}
-	return scope.list(ctx, opts)
-}
-
-// SearchFiles selects a single file or a directory's complete file corpus.
-// Both forms use the same containment, ignore, inspection, and size rules.
-// A glob is relative to the directory, or matches the selected file's basename.
 func SearchFiles(ctx context.Context, root, selected, glob string) ([]workspaceapp.FileEntry, error) {
 	scope, err := resolveFileSelection(root, selected)
 	if err != nil {
@@ -100,7 +52,7 @@ func (scope fileSelection) list(ctx context.Context, opts workspaceapp.FileListO
 	scope.handle = rootHandle
 	glob, err := compileGlob(opts.Glob)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", errInvalidGlob, err)
+		return nil, fmt.Errorf("%w: %w", workspaceapp.ErrInvalidFileGlob, err)
 	}
 	if insideGitMetadata(scope.physical) {
 		return []workspaceapp.FileEntry{}, nil
@@ -115,9 +67,6 @@ func (scope fileSelection) list(ctx context.Context, opts workspaceapp.FileListO
 	return scope.entries(ctx, files, opts, glob)
 }
 
-// trackedFiles lists the selection through Git, which hides ignored paths. A
-// request for ignored files, or a workspace without usable Git, has no tracked
-// corpus; the filesystem is then authoritative.
 func (scope fileSelection) trackedFiles(ctx context.Context, includeIgnored bool) ([]string, bool, error) {
 	if includeIgnored {
 		return nil, false, nil
@@ -129,7 +78,7 @@ func (scope fileSelection) trackedFiles(ctx context.Context, includeIgnored bool
 	case errors.Is(err, git.ErrNotRepo), errors.Is(err, git.ErrUnavailable):
 		return nil, false, nil
 	case errors.Is(err, git.ErrResultTooLarge):
-		return nil, false, fmt.Errorf("%w: %w", errListingTooLarge, err)
+		return nil, false, fmt.Errorf("%w: %w", workspaceapp.ErrFileListTooLarge, err)
 	default:
 		return nil, false, err
 	}
@@ -139,10 +88,9 @@ func (scope fileSelection) listUntracked(ctx context.Context, opts workspaceapp.
 	if !opts.IncludeIgnored && scope.backstopExcluded() {
 		return []workspaceapp.FileEntry{}, nil
 	}
-	// A non-recursive filesystem listing is genuinely one level. Walking the
-	// entire subtree first defeats lazy tree loading: a home-directory workspace
-	// can hit an unreadable descendant or the global safety limit before its
-	// immediate children are returned.
+	// Walking the whole subtree first would defeat lazy loading: a home-directory
+	// workspace could hit an unreadable descendant or the safety limit before
+	// returning its immediate children.
 	if !opts.Recursive && opts.Glob == "" {
 		return levelFilesystemEntries(ctx, scope, opts.IncludeIgnored)
 	}
@@ -172,7 +120,7 @@ func (scope fileSelection) backstopExcluded() bool {
 
 func (scope fileSelection) entries(ctx context.Context, files []string, opts workspaceapp.FileListOptions, glob fileGlob) ([]workspaceapp.FileEntry, error) {
 	if len(files) > maxListEntries {
-		return nil, fmt.Errorf("%w: more than %d files", errListingTooLarge, maxListEntries)
+		return nil, fmt.Errorf("%w: more than %d files", workspaceapp.ErrFileListTooLarge, maxListEntries)
 	}
 	if opts.Recursive || opts.Glob != "" {
 		return recursiveFiles(ctx, scope, files, glob)
@@ -193,11 +141,8 @@ func resolveFileSelection(root, sub string) (fileSelection, error) {
 	if sub == "." {
 		sub = ""
 	}
-	// Containment below is a physical decision that also settles symlink
-	// aliases; only "this is not a workspace-relative path at all" has to be
-	// answered before resolving.
 	if path.IsAbs(sub) {
-		return fileSelection{}, fmt.Errorf("%w: %q is not relative to the workspace", errInvalidListPath, sub)
+		return fileSelection{}, fmt.Errorf("%w: %q is not relative to the workspace", workspaceapp.ErrInvalidFileListPath, sub)
 	}
 	physicalRoot, err := filesystem.ResolvePath("", root)
 	if err != nil {
@@ -212,17 +157,17 @@ func resolveFileSelection(root, sub string) (fileSelection, error) {
 		return fileSelection{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
 	}
 	if !inside {
-		return fileSelection{}, fmt.Errorf("%w: %q escapes the workspace", errInvalidListPath, sub)
+		return fileSelection{}, fmt.Errorf("%w: %q escapes the workspace", workspaceapp.ErrInvalidFileListPath, sub)
 	}
 	info, err := os.Stat(physicalPath)
 	if errors.Is(err, os.ErrNotExist) {
-		return fileSelection{}, fmt.Errorf("%w: %q does not exist", errInvalidListPath, sub)
+		return fileSelection{}, fmt.Errorf("%w: %q does not exist", workspaceapp.ErrInvalidFileListPath, sub)
 	}
 	if err != nil {
 		return fileSelection{}, fmt.Errorf("inspect listing path %q: %w", sub, err)
 	}
 	if !info.IsDir() && !info.Mode().IsRegular() {
-		return fileSelection{}, fmt.Errorf("%w: %q is not a regular file or directory", errInvalidListPath, sub)
+		return fileSelection{}, fmt.Errorf("%w: %q is not a regular file or directory", workspaceapp.ErrInvalidFileListPath, sub)
 	}
 	physical, err := filepath.Rel(physicalRoot, physicalPath)
 	if err != nil {
@@ -292,7 +237,7 @@ func levelFilesystemEntries(ctx context.Context, scope fileSelection, includeIgn
 		if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 			return nil, err
 		}
-		if child.Name() == gitMetadataDir || (child.IsDir() && !includeIgnored && backstopExclude[child.Name()]) {
+		if child.Name() == git.MetadataDirectory || (child.IsDir() && !includeIgnored && backstopExclude[child.Name()]) {
 			continue
 		}
 		rel := path.Join(scope.logical, child.Name())
@@ -316,7 +261,7 @@ func readDirectoryEntries(root *os.Root, directory string, limit int) (_ []fs.Di
 	dir, _, err := filesystem.OpenDirectoryAt(root, name)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) || errors.Is(err, filesystem.ErrNotDirectory) || errors.Is(err, filesystem.ErrChanged) {
-			return nil, fmt.Errorf("%w: %q: %w", errInvalidListPath, directory, err)
+			return nil, fmt.Errorf("%w: %q: %w", workspaceapp.ErrInvalidFileListPath, directory, err)
 		}
 		return nil, fmt.Errorf("list %q: %w", directory, err)
 	}
@@ -334,7 +279,7 @@ func readDirectoryEntries(root *os.Root, directory string, limit int) (_ []fs.Di
 		return nil, fmt.Errorf("list %q: %w", directory, err)
 	}
 	if len(children) > limit {
-		return nil, fmt.Errorf("%w: more than %d entries in %q", errListingTooLarge, limit, directory)
+		return nil, fmt.Errorf("%w: more than %d entries in %q", workspaceapp.ErrFileListTooLarge, limit, directory)
 	}
 	slices.SortFunc(children, func(left, right fs.DirEntry) int {
 		return strings.Compare(left.Name(), right.Name())
@@ -342,8 +287,6 @@ func readDirectoryEntries(root *os.Root, directory string, limit int) (_ []fs.Di
 	return children, nil
 }
 
-// walkFiles is the non-repo fallback: a filesystem walk under root/sub that
-// skips backstop directories and fails explicitly at the safety boundary.
 func walkFiles(ctx context.Context, scope fileSelection, includeIgnored bool, maximumEntries int) ([]string, error) {
 	var files []string
 	pendingDirectories := []string{scope.physical}
@@ -364,7 +307,7 @@ func walkFiles(ctx context.Context, scope fileSelection, includeIgnored bool, ma
 			if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 				return nil, err
 			}
-			if child.Name() == gitMetadataDir {
+			if child.Name() == git.MetadataDirectory {
 				continue
 			}
 			candidate := path.Join(directory, child.Name())
@@ -385,7 +328,6 @@ func walkFiles(ctx context.Context, scope fileSelection, includeIgnored bool, ma
 	return files, nil
 }
 
-// recursiveFiles turns flat candidate paths into inspected file entries.
 func recursiveFiles(ctx context.Context, scope fileSelection, files []string, glob fileGlob) ([]workspaceapp.FileEntry, error) {
 	out := make([]workspaceapp.FileEntry, 0, len(files))
 	for _, f := range files {
@@ -423,9 +365,6 @@ func listingRelativePath(file, sub string) (string, bool) {
 	return strings.CutPrefix(file, sub+"/")
 }
 
-// levelEntries derives the immediate children of sub from the flat candidate
-// paths: direct files become file entries, and any deeper path contributes its
-// first path segment as a dir entry (deduped). Dirs sort before files.
 func levelEntries(scope fileSelection, files []string) ([]workspaceapp.FileEntry, error) {
 	prefix := ""
 	if scope.logical != "" {
@@ -509,8 +448,6 @@ func sortFileEntries(entries []workspaceapp.FileEntry) {
 	})
 }
 
-// Bound both pattern compilation and the per-path matching state. Adjacent
-// double-stars accept precisely the same paths as one.
 const (
 	maxGlobBytes    = 4096
 	maxGlobSegments = 128
@@ -518,7 +455,6 @@ const (
 
 type fileGlob []string
 
-// anyDirectories is the glob segment matching zero or more directories.
 const anyDirectories = "**"
 
 func compileGlob(pattern string) (fileGlob, error) {
@@ -544,8 +480,6 @@ func compileGlob(pattern string) (fileGlob, error) {
 	return glob, nil
 }
 
-// Each slot means the corresponding pattern prefix matches the path consumed
-// so far. A double-star can extend that match or consume no component at all.
 func (g fileGlob) matches(candidate string) bool {
 	states := make([]bool, len(g)+1)
 	states[0] = true

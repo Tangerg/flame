@@ -6,36 +6,23 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-// Record names the live Segment that owns one executing Run. The durable Run
-// owns everything else about it.
 type Record struct {
 	ID         identity.RunID
 	SegmentID  identity.SegmentID
 	ExecutorID string
 }
 
-// liveSegment is the coordinator's process-local state for a currently active
-// run. The registry only ever manages Run-tree owners, so making it generic would
-// hide its actual lifecycle ownership. A live segment always has its owner:
-// admission opens the entry from a startup that already built one.
 type liveSegment struct {
 	record Record
 	owner  *runTreeOwner
 }
 
-// registry is the process-local registry of live run segments. Session
-// admission is owned separately by application/ownership because Sessions and
-// Runs share that invariant; durable run history lives in transcript.
-//
-// Its zero value is usable.
 type registry struct {
 	opening sync.RWMutex
 	mu      sync.Mutex
 	runs    map[identity.RunID]liveSegment
 }
 
-// Open publishes the process-local owner together with its durable opening.
-// Running-owner readers cannot pass a committed opening without its owner.
 func (r *registry) Open(record Record, owner *runTreeOwner, commit func() error) error {
 	r.opening.Lock()
 	defer r.opening.Unlock()
@@ -49,10 +36,8 @@ func (r *registry) Open(record Record, owner *runTreeOwner, commit func() error)
 	return nil
 }
 
-// RemoveSegment drops one exact completed segment and returns its former live
-// state. A Run can resume onto a replacement Segment as soon as terminal
-// maintenance releases admission; an older pump must never delete that newer
-// registry entry merely because both Segments share the same Run ID.
+// An older pump must never delete a newer Segment entry merely because both share
+// the Run ID.
 func (r *registry) RemoveSegment(id identity.RunID, segmentID identity.SegmentID) (segment liveSegment, ok bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -64,7 +49,6 @@ func (r *registry) RemoveSegment(id identity.RunID, segmentID identity.SegmentID
 	return segment, ok
 }
 
-// Get returns an active run segment.
 func (r *registry) Get(id identity.RunID) (liveSegment, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -72,9 +56,6 @@ func (r *registry) Get(id identity.RunID) (liveSegment, bool) {
 	return segment, ok
 }
 
-// Running follows a durable Running read across the opening handoff. Waiting
-// cancellation uses Get: it must remain free to reject a contending resume before
-// that resume's commit returns.
 func (r *registry) Running(id identity.RunID) (liveSegment, bool) {
 	r.opening.RLock()
 	defer r.opening.RUnlock()

@@ -421,6 +421,7 @@ export type WireTypeName =
   | "TrajectoryEntryType"
   | "TransportKind"
   | "UnresolvedEffect"
+  | "UnresolvedEffectCause"
   | "UpdateGoalRequest"
   | "UpdateMCPServerRequest"
   | "UpdateProviderRequest"
@@ -2300,7 +2301,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ModelEndpointInvocation: allOf([
     object({
       caller: ref(() => CHECKS.Invocation),
-      costUSD: allOf([numeric(), minimum("0")]),
+      costUsd: allOf([numeric(), minimum("0")]),
       failure: text(),
       id: allOf([text(), minLength(1), pattern("^[^\\p{C}\\p{Z}]*$")]),
       kind: ref(() => CHECKS.ModelEndpointKind),
@@ -2324,7 +2325,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         state: literal("started"),
       }, ["state"]),
       fields({
-        costUSD: absent(),
+        costUsd: absent(),
         failure: absent(),
         response: absent(),
         settledAt: absent(),
@@ -2349,7 +2350,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         state: literal("unknown"),
       }, ["state"]),
       fields({
-        costUSD: absent(),
+        costUsd: absent(),
         response: absent(),
       }, ["failure", "settledAt"]),
     ),
@@ -4652,13 +4653,14 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   TrajectoryEntryType: enumOf(["run", "model", "endpoint", "item"]),
   TransportKind: enumOf(["http"]),
   UnresolvedEffect: object({
-    cause: text(),
+    cause: ref(() => CHECKS.UnresolvedEffectCause),
     detail: text(),
     effectId: text(),
     output: text(),
     processId: text(),
     reason: text(),
   }, ["cause", "effectId", "processId"]),
+  UnresolvedEffectCause: enumOf(["termination", "runtimeFailure"]),
   UpdateGoalRequest: object({
     objective: allOf([text(), pattern("\\S")]),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),

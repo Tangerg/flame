@@ -77,7 +77,7 @@ type VisualStyleTokenName =
   | "shadow-well"
   | "shadow-surface-card";
 
-export type VisualStyleTokens = Record<VisualStyleTokenName, string>;
+type VisualStyleTokens = Record<VisualStyleTokenName, string>;
 
 const WORKBENCH_TOKENS: VisualStyleTokens = {
   "style-shape-2xs": "2px",

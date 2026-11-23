@@ -9,13 +9,8 @@ import (
 	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 )
 
-// errInvalidInspection reports a resolved Hook catalog that cannot safely
-// drive execution or trust management.
 var errInvalidInspection = errors.New("hooks: invalid inspection")
 
-// ValidateFor protects the resolved Hook cascade returned for workspaceRoot.
-// The installed provider owns order; Runtime admits scope and source,
-// including the project boundary used for trust.
 func (i Inspection) ValidateFor(workspaceRoot string) error {
 	if !canonicalAbsolutePath(workspaceRoot) {
 		return fmt.Errorf("%w: workspace root %q is not a canonical absolute path", errInvalidInspection, workspaceRoot)

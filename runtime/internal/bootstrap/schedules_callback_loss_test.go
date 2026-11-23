@@ -12,7 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -22,6 +22,7 @@ type lostOpeningWriter struct {
 }
 
 func (w lostOpeningWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
 func (w lostOpeningWriter) Write(body []byte) (int, error) {
 	start := bytes.Index(body, []byte("data:"))
 	if start < 0 {
@@ -39,7 +40,6 @@ func (w lostOpeningWriter) Write(body []byte) (int, error) {
 
 func poMCPOpenWithCallbackRPC(t *testing.T, cfg assemblyConfig, decorate func(http.Handler) http.Handler) *poMCPRuntime {
 	t.Helper()
-	// Loss fixtures must decorate the original RPC before its single publication.
 	host := assembleTestRuntime(t, cfg)
 	r := &poMCPRuntime{t: t, host: host}
 	t.Cleanup(r.close)
@@ -56,14 +56,14 @@ func poMCPOpenWithCallbackRPC(t *testing.T, cfg assemblyConfig, decorate func(ht
 	}
 	r.api, r.endpoint = api, endpoint
 	host.lifetime.delivery = endpoint
-	rpc, err := flamehttp.NewRPCHandler(endpoint)
+	rpc, err := runtimehttp.NewRPCHandler(endpoint)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rpc = decorate(rpc)
 	mux := http.NewServeMux()
-	for _, route := range flamehttp.Contract().Endpoints {
-		if route.Kind == flamehttp.EndpointKindRPC {
+	for _, route := range runtimehttp.Contract().Endpoints {
+		if route.Kind == runtimehttp.EndpointKindRPC {
 			mux.Handle(route.Method+" "+route.Path, rpc)
 		}
 	}
@@ -112,8 +112,8 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
 	ready := scheduleToolsReady
 	r.poMCPTools(server, ready)
-	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesDraft{Enabled: true, Title: "original", Instructions: "captured input", Cron: "0 0 1 1 *", TimeZone: "UTC", CWD: cfg.defaultWorkspacePath}), "create")
-	request := scheduleRunRequest(r, saved.ID)
+	saved := readScheduleCreate(r, scheduleCreateRequest(r, testsupport.SchedulesDraft{Enabled: true, Title: "original", Instructions: "captured input", Cron: "0 0 1 1 *", TimeZone: "UTC", Cwd: cfg.defaultWorkspacePath}), "create")
+	request := scheduleRunRequest(r, saved.Id)
 	lost := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, protocol.CallMetadata{IdempotencyKey: "lost-core", RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if lost.Failure == nil {
 		t.Fatal("lost Core acknowledgement became private success")
@@ -126,15 +126,13 @@ func TestSchedulesReconcilesLostCoreOpeningBeforePrivateAcknowledgement(t *testi
 	}
 	current := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: accepted.RunID}, "").(*protocol.RunRef)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable")
-	// The private capture is covered by Schedules' own lost-acceptance tests.
-	// Here, a restart must recover the same public Run receipt after Core retires it.
 	r = reopenPluginRuntime(t, r, &cfg)
 	r.must(delivery.SessionsDelete, protocol.DeleteSessionRequest{SessionID: current.SessionID}, "retire-accepted-material")
 	r = reopenPluginRuntime(t, r, &cfg)
 	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "reenable")
 	r.poMCPTools(server, ready)
 	replay := readScheduleRun(r, request, "lost-core")
-	if replay.SessionID != current.SessionID || replay.RunID != accepted.RunID {
+	if replay.SessionId != current.SessionID || replay.RunId != accepted.RunID {
 		t.Fatalf("retired Core acceptance opened another Run: %+v", replay)
 	}
 	page := readSchedulePage(r, protocol.PageQuery{})

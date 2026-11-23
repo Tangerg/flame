@@ -10,8 +10,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -33,8 +34,6 @@ func interactionTestStart() runs.RootExecutionStart {
 	}
 }
 
-// Hold only the host's polling worker so both concurrent Tool waits commit
-// before asking the production barrier to pause them. Scope keeps executing.
 func captureAcceptedTestBarrier(t *testing.T, executor *InteractionExecutor, ref runs.ExecutorRef, count int) runs.TreeInterrupted {
 	t.Helper()
 	session, err := executor.session(ref)
@@ -134,21 +133,21 @@ func interactionChatResolver(
 	model chat.Model,
 	counter modeladapter.InputTokenCounter,
 ) InteractionChatResolver {
-	return interactionChatResolverFunc(func(_ context.Context, selection modelchoice.Selection) (modeladapter.ResolvedChat, error) {
-		return modeladapter.NewResolvedChat(model, counter, testsupport.ModelFacts(selection))
+	return interactionChatResolverFunc(func(_ context.Context, selection flamemodel.Selection) (modeladapter.ResolvedChat, error) {
+		return testsupport.OfflineChat(model, counter, testsupport.ModelFacts(selection), testsupport.Unpriced())
 	})
 }
 
-type interactionChatResolverFunc func(context.Context, modelchoice.Selection) (modeladapter.ResolvedChat, error)
+type interactionChatResolverFunc func(context.Context, flamemodel.Selection) (modeladapter.ResolvedChat, error)
 
 func (i interactionChatResolverFunc) ResolveChat(
 	ctx context.Context,
-	selection modelchoice.Selection,
+	selection flamemodel.Selection,
 ) (modeladapter.ResolvedChat, error) {
 	return i(ctx, selection)
 }
 
-func (r interactionChatResolverFunc) RestoreChat(ctx context.Context, selection modelchoice.Selection, _ *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error) {
+func (r interactionChatResolverFunc) RestoreChat(ctx context.Context, selection flamemodel.Selection, _ *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error) {
 	return r.ResolveChat(ctx, selection)
 }
 
@@ -163,7 +162,7 @@ func interactionTextResponse(text string) *chat.Response {
 	return &chat.Response{Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}}
 }
 
-func newQuestionTool(t *testing.T, name, description string, fields []runs.QuestionFieldSpec, render func(run.InterruptResolution) (string, error)) toolcontract.Tool {
+func newQuestionTool(t *testing.T, name, description string, fields []transcript.QuestionField, render func(run.InterruptResolution) (string, error)) toolcontract.Tool {
 	t.Helper()
 	schema, err := jsonschema.For[struct{}]()
 	if err != nil {
@@ -337,10 +336,6 @@ func collectInteractionEvents(sequence func(func(runs.ExecutorEvent) bool)) <-ch
 	return ready
 }
 
-// questionTool is a test Tool that parks on a product Question through Scope's
-// native input contract, mirroring the production ask_user tool, so the waiting,
-// restore, and delegate tests exercise the real continuation path rather than a
-// substitute. render projects the restored answer into the model-visible result.
 type questionTool struct {
 	definition toolcontract.Definition
 	prompt     runs.Interrupt

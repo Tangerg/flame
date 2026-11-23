@@ -58,7 +58,7 @@ func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecut
 	if config.ModelEvidence == nil && config.ChatResolver != nil {
 		db := testTrees(t).stores
 		journal := db.ModelInvocations
-		resolver, err := modeladapter.NewObservedResolver(config.ChatResolver, newSessionEndpointJournal(db), nil)
+		resolver, err := modeladapter.NewObservedResolver(config.ChatResolver, newSessionEndpointJournal(db))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -74,7 +74,7 @@ func newTestConfiguredInteractionExecutor(t *testing.T, config InteractionExecut
 	if config.ValidatePluginSources == nil {
 		config.ValidatePluginSources = func(context.Context, []plugin.Activation, []plugin.Dependency) error { return nil }
 	}
-	executor, err := NewInteractionExecutor(config)
+	executor, err := NewInteractionExecutor(withRequiredCapabilities(config))
 	if err == nil {
 		t.Cleanup(func() {
 			executor.BeginShutdown()
@@ -109,14 +109,13 @@ func (s *testExecutionTrees) ExecutionResultCommitted(_ context.Context, _ ident
 	}
 	return found, nil
 }
+
 func (s *testExecutionTrees) record(publication runs.ResultPublication) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.publications[publication.ID] = publication
 }
 
-// Adapter-only harnesses expand one tree transaction into their existing fact
-// assertions. Application/SQLite tests exercise the actual atomic transaction.
 func observeTestInteraction(t *testing.T, executor *InteractionExecutor, ctx context.Context, ref runs.ExecutorRef) (iter.Seq[runs.ExecutorEvent], error) {
 	sequence, err := executor.Observe(ctx, ref)
 	if err != nil {
@@ -169,10 +168,6 @@ func observeTestInteraction(t *testing.T, executor *InteractionExecutor, ctx con
 	}, nil
 }
 
-// The execution harness owns Session facts in memory; its separate physical
-// evidence database needs the same Session admission before recording a call.
-// This Session-only model fixture does not simulate relational Run association;
-// that boundary is verified with admitted SQLite Model/Tool owners.
 type sessionEndpointJournal struct {
 	*persistence.ModelInvocationStore
 	db *persistencefixture.Stores

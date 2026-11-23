@@ -20,7 +20,7 @@ const sb = stylex.create({
   stack: { display: "flex", flexDirection: "column", gap: space.s2 },
 });
 
-export function SidebarActions() {
+function SidebarActions() {
   const workspaceAccess = useWorkspace();
 
   const t = useT();

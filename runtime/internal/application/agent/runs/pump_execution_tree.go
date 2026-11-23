@@ -7,8 +7,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// commitExecutionTree stages a settled tree against cloned reducers, commits
-// it in one transaction, and only then activates children and publishes.
 func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 	if err := tree.Update.Validate(); err != nil {
 		return err
@@ -48,8 +46,6 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 	return nil
 }
 
-// bindTreeRoot binds the first tree activation to the product root and
-// rejects a tree owned by another Session or root.
 func (s *segmentPump) bindTreeRoot(update ExecutionTreeUpdate) error {
 	if s.routes.root.member.MemberID == "" {
 		member := ExecutorMember{MemberID: update.Head.RootID}
@@ -67,8 +63,6 @@ func (s *segmentPump) bindTreeRoot(update ExecutionTreeUpdate) error {
 	return nil
 }
 
-// stageChildPublications matches each published child to its reservation. A
-// repeated publication must agree with the outcome already settled.
 func (s *segmentPump) stageChildPublications(publications []ChildRunPublication, commit *ExecutionTreeCommit) ([]*managedChildStart, map[string]*executorRoute, error) {
 	startedRoutes := make(map[string]*executorRoute)
 	var children []*managedChildStart
@@ -112,8 +106,6 @@ func (s *segmentPump) stageChildPublications(publications []ChildRunPublication,
 	return children, startedRoutes, nil
 }
 
-// stageTreeFacts reduces each fact on a clone of its route's reducer; nothing
-// becomes visible until the tree commit succeeds.
 func (s *segmentPump) stageTreeFacts(facts []ExecutorEvent, startedRoutes map[string]*executorRoute, commit *ExecutionTreeCommit) ([]routedTreeProjection, error) {
 	var projections []routedTreeProjection
 	staged := make(map[*executorRoute]*reducer)

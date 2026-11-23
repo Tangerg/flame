@@ -13,7 +13,7 @@ interface RefreshSessionProjectionOptions {
   signal?: AbortSignal;
 }
 
-export interface AgentSessionProjectionRevalidation {
+interface AgentSessionProjectionRevalidation {
   authoritativeView: AgentSessionView;
   committed: boolean;
 }
@@ -76,7 +76,7 @@ export async function revalidateAgentSessionMaterial(
   };
 }
 
-export interface MountedAgentSessionSynchronization {
+interface MountedAgentSessionSynchronization {
   sessionIds?: readonly string[];
   ownership: SessionProjectionSynchronizationOwnership;
 }

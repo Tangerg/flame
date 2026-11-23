@@ -7,12 +7,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-// ErrSubtreeCancellationReleased leaves later abandoned work with ordinary Run
-// recovery. The original Scope cancellation and subsequent release are proven.
 var ErrSubtreeCancellationReleased = errors.New("runs: accepted cancellation has left its Scope release boundary")
 
-// AcceptedSubtreeCancellation retains the consumed tree binding until Scope
-// has joined the canceled subtree and released any newly opened Segments.
 type AcceptedSubtreeCancellation struct {
 	SessionID   identity.SessionID
 	Pending     Pending
@@ -22,8 +18,6 @@ type AcceptedSubtreeCancellation struct {
 
 func (a AcceptedSubtreeCancellation) RootRunID() identity.RunID { return a.Pending.RootRunID }
 
-// Disposition is the tree's state after the cancellation: removing the last
-// external boundary opened continuation Segments, otherwise the tree waits.
 func (a AcceptedSubtreeCancellation) Disposition() WaitingSubtreeDisposition {
 	if len(a.Segments) == 0 {
 		return WaitingSubtreeStaysWaiting

@@ -9,6 +9,13 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
+const (
+	shortcutAreaMinWidth = 4
+	shortcutAreaMaxWidth = 12
+	shortcutKeysMinWidth = 8
+	shortcutKeysMaxWidth = 28
+)
+
 type shortcutRow struct {
 	area        string
 	bindings    string
@@ -22,7 +29,6 @@ type shortcutDefinition struct {
 	keys        *keymap.Map
 }
 
-// shortcutGuide shows every configured key binding.
 type shortcutGuide struct {
 	viewport *base.Viewport
 	dialog   *presentationDialog
@@ -37,8 +43,8 @@ func newShortcutGuide(stack *workspaceScene, theme kit.Theme, glyphs kit.Glyphs,
 	table := &kit.Table{
 		Theme: theme,
 		Columns: []kit.Column{
-			{Title: "Area", Size: layout.Measured(4, 12)},
-			{Title: "Keys", Size: layout.Measured(8, 28)},
+			{Title: "Area", Size: layout.Measured(shortcutAreaMinWidth, shortcutAreaMaxWidth)},
+			{Title: "Keys", Size: layout.Measured(shortcutKeysMinWidth, shortcutKeysMaxWidth)},
 			{Title: "Action", Size: layout.Flex(1)},
 		},
 		Rows:   len(rows),
@@ -62,7 +68,7 @@ func newShortcutGuide(stack *workspaceScene, theme kit.Theme, glyphs kit.Glyphs,
 		},
 		Theme:  theme,
 		Glyphs: glyphs,
-		Where:  layout.Placement{Width: standardDialogWidth, Height: 24},
+		Where:  layout.Placement{Width: standardDialogWidth, Height: tallDialogHeight},
 	})}
 }
 
@@ -71,7 +77,6 @@ func (g *shortcutGuide) show() {
 	g.dialog.Show()
 }
 
-// The guide's own keys sit beside the command categories they document.
 const shortcutAreaGuide = "Guide"
 
 func collectShortcutRows(applicationKeys, transcriptKeys, guideKeys *keymap.Map) []shortcutRow {

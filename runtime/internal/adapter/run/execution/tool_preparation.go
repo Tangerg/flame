@@ -20,10 +20,6 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// preparedCall is a Tool call after policy and before it runs: it proceeds
-// with its effective arguments, settles with a known Tool failure (a refusal
-// is a rejected failure carrying the reason the model sees), or waits for a
-// person. A failed call still records the arguments it was judged on.
 type preparedCall struct {
 	arguments tool.Arguments
 	failure   error
@@ -32,7 +28,6 @@ type preparedCall struct {
 
 func (p preparedCall) runs() bool { return p.failure == nil && p.input == nil }
 
-// refuseCall returns the refusal as a known Tool failure judged on arguments.
 func refuseCall(arguments tool.Arguments, reason string) (preparedCall, error) {
 	failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{
 		Kind: toolcontract.FailureKindRejected, Output: toolcontract.NewTextOutput(reason),
@@ -43,8 +38,6 @@ func refuseCall(arguments tool.Arguments, reason string) (preparedCall, error) {
 	return preparedCall{arguments: arguments}, failure
 }
 
-// prepare decides how a call proceeds. Only a host fault is returned as an
-// error; a known Tool failure becomes the call's own recorded outcome.
 func (o *observedInteractionTool) prepare(
 	ctx context.Context,
 	bound toolcontract.Invocation,
@@ -63,8 +56,6 @@ func (o *observedInteractionTool) prepare(
 	return preparedCall{arguments: prepared.arguments, failure: err}, nil
 }
 
-// decideCall applies proposals, hooks and approval policy. With a known Tool
-// failure it still returns the arguments that failure judged.
 func (o *observedInteractionTool) decideCall(
 	ctx context.Context,
 	bound toolcontract.Invocation,
@@ -111,8 +102,6 @@ func (o *observedInteractionTool) decideCall(
 	return preparedCall{arguments: arguments}, nil
 }
 
-// proposedArguments lets installed Tool proposals rewrite the model's
-// arguments, refusing a composition that changed since the Run captured it.
 func (o *observedInteractionTool) proposedArguments(ctx context.Context, callID, name string, arguments tool.Arguments) (tool.Arguments, error) {
 	activations, err := o.session.callComposition.Activations(ctx, o.session.compositionBindings())
 	if err != nil {
@@ -136,9 +125,6 @@ func (o *observedInteractionTool) proposedArguments(ctx context.Context, callID,
 	return tool.ParseArguments(proposal.Arguments)
 }
 
-// validateApprovalSubject turns effective arguments that cannot derive an
-// approval subject into a known Tool failure before authorization runs, where
-// the same refusal would surface only as a host failure.
 func (o *observedInteractionTool) validateApprovalSubject(name string, arguments tool.Arguments) error {
 	if _, err := o.interpreter.ApprovalSubject(o.ref, arguments); err != nil {
 		cause := fmt.Errorf("execution: derive Tool %q approval subject: %w", name, err)
@@ -229,9 +215,6 @@ func (o *observedInteractionTool) resumePreparedTool(
 	return o.resolveToolApproval(ctx, request, prompt, continued.Resolution)
 }
 
-// resolveToolApproval applies a person's answer. An approved call, including
-// one whose arguments the person edited, must still satisfy the Tool's own
-// contract before it runs.
 func (o *observedInteractionTool) resolveToolApproval(
 	ctx context.Context,
 	request ToolAuthorizationRequest,

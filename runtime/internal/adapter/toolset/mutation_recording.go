@@ -8,8 +8,6 @@ import (
 
 type mutationRecorderKey struct{}
 
-// WithMutationRecorder observes acknowledged filesystem effects. A Tool's
-// potential targets are approval/locking inputs, not proof of a mutation.
 func WithMutationRecorder(ctx context.Context, record func([]string)) context.Context {
 	if record == nil {
 		return ctx

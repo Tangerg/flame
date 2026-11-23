@@ -36,6 +36,7 @@ func newRepository(value string) (repository, error) {
 }
 
 func (r repository) String() string { return r.owner + "/" + r.name }
+
 func (r repository) apiPath() string {
 	return "/repos/" + url.PathEscape(r.owner) + "/" + url.PathEscape(r.name)
 }
@@ -43,7 +44,6 @@ func (r repository) apiPath() string {
 type filePath struct{ encoded string }
 
 func newFilePath(value string) (filePath, error) {
-	// The method contract already bounds the length; this admits segment syntax.
 	if !utf8.ValidString(value) || strings.ContainsAny(value, "\\\x00") {
 		return filePath{}, errResource
 	}
@@ -73,12 +73,14 @@ func newCredential(value *string) (credential, error) {
 
 func (c credential) Format(state fmt.State, _ rune) { _, _ = state.Write([]byte("[REDACTED]")) }
 func (c credential) configured() bool               { return c.token != "" }
+
 func (c credential) authorization() string {
 	if !c.configured() {
 		return ""
 	}
 	return "Bearer " + c.token
 }
+
 func (c credential) cacheKey(resource string) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(c.token+"\x00"+resource)))
 }

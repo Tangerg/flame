@@ -69,9 +69,6 @@ func (a *app) handleConfiguredAction(event input.Event, action keymap.Action) bo
 	return a.handlePromptLayerAction(event, action)
 }
 
-// handlePromptLayerAction routes the actions the prompt layer owns. Completion owns
-// its navigation and acceptance keys before prompt-level history, submission,
-// or editing actions, matching the visual layer on top.
 func (a *app) handlePromptLayerAction(event input.Event, action keymap.Action) bool {
 	if action == sendPrompt && a.completion.exactCommandCompletion() {
 		if !a.completion.popup.Dismiss() {
@@ -321,9 +318,6 @@ func (a *app) handleHistoryAction(action keymap.Action) bool {
 	}
 }
 
-// scheduleDraftPersistenceAfter compares Oolong's semantic content token around
-// an event routed to the main composer. Navigation, focus and handled no-op edits
-// leave the token unchanged, so they cannot keep postponing durable recovery.
 func (a *app) scheduleDraftPersistenceAfter(before uint64) {
 	if a.composer.Controller().Revision() != before {
 		a.composer.scheduleDraftPersistence()

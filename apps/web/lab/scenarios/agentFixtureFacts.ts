@@ -11,7 +11,7 @@ export type VisualFileListState = "error" | "loading";
 
 export const VISUAL_NOW = Date.parse("2026-07-31T14:30:00Z");
 
-export const VISUAL_RUNTIME_FEATURES = [
+const VISUAL_RUNTIME_FEATURES = [
   "git",
   "mcp",
   "fileWatch",

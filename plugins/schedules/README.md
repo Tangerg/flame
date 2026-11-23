@@ -147,8 +147,8 @@ the person's browser zone; `create_schedule` without `time_zone` uses the
 host's zone and fails when the host cannot name one. A `CRON_TZ=` prefix is
 refused because the zone is its own field.
 
-`run_schedule` takes the same `ID` input as the public manual operation; use the
-exact `schedule_id` from a list result. It returns accepted `SessionID`/`RunID`,
+`run_schedule` takes the same `id` input as the public manual operation; use the
+exact `schedule_id` from a list result. It returns accepted `sessionId`/`runId`,
 which do not claim execution has completed. Creation, edits, deletion and manual
 Runs retain original raw inputs and private receipts. Outcome queries do not
 reissue mutations or read a later definition to reconstruct a historical result.
@@ -168,7 +168,7 @@ captured caller or replaying a confirmed opening.
 
 ## Public manual operation
 
-`flame.schedules/runNow.v1` owns the complete manual use case. It captures the
+`flame.schedules/runNow.v2` owns the complete manual use case. It captures the
 current definition and original invocation with its pending command in one private
 transaction, then invokes the existing Runtime Run admission outside that transaction.
 Private acceptance and the original outcome reply commit together. Host human
@@ -322,9 +322,10 @@ the retired schedules.changed topic has no alias or double publication.
 No second scheduler, receipt store or compatibility reader exists. Backend restart,
 withdrawal and non-selected-entry activation use the same declared lifecycle.
 
-The publisher's go:generate contract command also emits the CLI's typed Go schema
-projection, alongside canonical capability JSON and TS. CLI catalog reads freeze
-the selected binding and enter the same public installed list operation as the
+The publisher's go:generate contract command emits canonical capability JSON, TS
+and the typed Go projection the backend implements. Published fields are camelCase
+under `v2`. The CLI reads schedules through the declared terminal view, which freezes
+the selected binding and enters the same public installed list operation as the
 ordinary component. CLI mutations use the public installed operations and original
 receipt recovery; the former Core Schedule facades are removed without aliases.
 

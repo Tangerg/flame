@@ -9,8 +9,6 @@ import (
 
 const defaultDelegateDepth = 4
 
-// The task contract belongs to Flame. Scope's workflow adapter owns conversion,
-// the child Interaction's execution, and recovery of both sides of that call.
 func compileDelegatedInteraction(
 	compiler *scoperun.Compiler,
 	name, revision string,

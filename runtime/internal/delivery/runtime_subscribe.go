@@ -13,23 +13,9 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
-// SubscribeRuntime opens the change-signal stream. The stream's lifetime is
-// bounded by the request ctx and by the consumer's range: it ends on client
-// disconnect, transport shutdown (the transport force-closes the connection), or an
-// early range stop.
-//
-// The caller says which topics it can fold. There is no wildcard: a client that has
-// not named a topic cannot be sent it, because a signal it does not understand is a
-// refetch it will not perform. Frames for topics it did not ask for are filtered here
-// rather than at the producer — one hub, many subscriptions, each with its own set.
-//
-// Watches observe Git state and the bounded exact paths the client is currently
-// reading. Content notifications preserve workspace/path identity; Git notices
-// invalidate only the watch whose semantic HEAD/index state changed.
-// watchFiles publishes each change under its watch; a change without paths
-// means the watcher lost track, so the client resyncs that watch.
 func (s *Handler) watchFiles(watches []protocol.WatchSpec, subscription *runtimeSubscription, report func(error)) (io.Closer, error) {
 	scopes := make([]workspaceapp.WatchScope, len(watches))
 	for index, watch := range watches {
@@ -123,8 +109,7 @@ func (s *Handler) SubscribeRuntime(ctx context.Context, request protocol.Runtime
 		close(events)
 		err := errors.Join(authoredErr, fileErr)
 		if err != nil {
-			// An abandoned consumer has no terminal frame to receive cleanup failure.
-			slog.ErrorContext(ctx, "runtime subscription cleanup failed", "error", err)
+			slog.ErrorContext(ctx, "runtime subscription cleanup failed", telemetry.Error(err))
 		}
 		return err
 	})
@@ -153,11 +138,6 @@ func subscribedAuthoredResources(topics map[protocol.RuntimeTopic]bool) []worksp
 	return resources
 }
 
-// subscriptionEventSequence presents a subscription channel as the iter.Seq
-// used by the wire streaming contract. The coalescing fan-out hub keeps its
-// channels internally; only this outer boundary is a sequence. queueDrained lets
-// the hub flush a pending resync, and stopSubscription releases an early-ending
-// consumer.
 func subscriptionEventSequence(
 	events <-chan protocol.RuntimeEvent,
 	failures <-chan error,
@@ -167,43 +147,11 @@ func subscriptionEventSequence(
 ) iter.Seq2[protocol.RuntimeEvent, error] {
 	return func(yield func(protocol.RuntimeEvent, error) bool) {
 		defer stopSubscription()
-		consume := func() (bool, error) {
-			for {
-				select {
-				case err := <-failures:
-					return true, err
-				case event, open := <-events:
-					if !open {
-						return true, nil
-					}
-					queueDrained()
-					if !yield(event, nil) {
-						return false, nil
-					}
-				case <-exhausted:
-					// Exhaustion fences producers, so only already accepted frames remain.
-					for {
-						select {
-						case event, open := <-events:
-							if !open {
-								return true, nil
-							}
-							if !yield(event, nil) {
-								return false, nil
-							}
-						default:
-							return true, nil
-						}
-					}
-				}
-			}
-		}
-		completed, err := consume()
+		completed, err := consumeSubscription(events, failures, exhausted, queueDrained, yield)
 		cleanupErr := stopSubscription()
 		if !completed {
 			return
 		}
-		// Joined watchers cannot publish after this final failure read.
 		select {
 		case pending := <-failures:
 			err = errors.Join(err, pending)
@@ -215,10 +163,49 @@ func subscriptionEventSequence(
 	}
 }
 
-// subscribedTopics materializes the already shape-validated request as a lookup
-// set. The generated RuntimeSubscribeRequest validator owns non-empty/unique
-// semantics; this method retains the composition-dependent checks: the enforced
-// fan-out cap and whether this runtime actually advertises each topic.
+func consumeSubscription(
+	events <-chan protocol.RuntimeEvent,
+	failures <-chan error,
+	exhausted <-chan struct{},
+	queueDrained func(),
+	yield func(protocol.RuntimeEvent, error) bool,
+) (completed bool, err error) {
+	for {
+		select {
+		case err := <-failures:
+			return true, err
+		case event, open := <-events:
+			if !open {
+				return true, nil
+			}
+			queueDrained()
+			if !yield(event, nil) {
+				return false, nil
+			}
+		case <-exhausted:
+			return drainBufferedEvents(events, yield), nil
+		}
+	}
+}
+
+// An exhausted source publishes nothing new, so only events already buffered
+// remain deliverable.
+func drainBufferedEvents(events <-chan protocol.RuntimeEvent, yield func(protocol.RuntimeEvent, error) bool) (completed bool) {
+	for {
+		select {
+		case event, open := <-events:
+			if !open {
+				return true
+			}
+			if !yield(event, nil) {
+				return false
+			}
+		default:
+			return true
+		}
+	}
+}
+
 func (s *Handler) subscribedTopics(requested []protocol.RuntimeTopic) (map[protocol.RuntimeTopic]bool, error) {
 	if len(requested) > protocol.MaxSubscriptionTopics {
 		return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("at most %d topics per subscription", protocol.MaxSubscriptionTopics))
@@ -236,14 +223,6 @@ func (s *Handler) subscribedTopics(requested []protocol.RuntimeTopic) (map[proto
 	return topics, nil
 }
 
-// validateWorkspaceWatches validates the wire-only portion of workspace watches
-// and returns the working directories and stable watch identities they name. Root resolution,
-// repository layout and filesystem notification are application/adapter concerns;
-// Delivery retains only the protocol's required watch identifier.
-//
-// Watches are legal only with files.changed: the other topics are global, so a watch
-// would narrow nothing — and a caller that registered one expecting it to is holding
-// a belief the runtime would never honor.
 func validateWorkspaceWatches(watches []protocol.WatchSpec, topics map[protocol.RuntimeTopic]bool) (workingDirectories, watchIDs []string, err error) {
 	if len(watches) == 0 {
 		return nil, nil, nil

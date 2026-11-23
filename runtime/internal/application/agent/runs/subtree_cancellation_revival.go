@@ -12,8 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// ReviveAcceptedSubtreeCancellations runs before ordinary Run-loss recovery.
-// The reduced product tree cannot prove that Scope has retired its old members.
 func (c *Cancellations) ReviveAcceptedSubtreeCancellations(ctx context.Context) error {
 	accepted, err := c.acceptedSubtreeCancellations.ListSubtreeCancellations(ctx)
 	if err != nil {
@@ -30,8 +28,6 @@ func (c *Cancellations) ReviveAcceptedSubtreeCancellations(ctx context.Context) 
 	return nil
 }
 
-// unrevivedSubtreeCancellations are accepted cancellations whose busy Session
-// kept them from reviving; Run-loss recovery leaves their trees to them.
 func (c *Cancellations) unrevivedSubtreeCancellations(ctx context.Context) ([]AcceptedSubtreeCancellation, error) {
 	return c.acceptedSubtreeCancellations.ListSubtreeCancellations(ctx)
 }
@@ -109,8 +105,6 @@ func (c *Cancellations) reviveAcceptedSubtreeCancellation(ctx context.Context, a
 	return c.reviveRunningSubtreeCancellation(ctx, revival, &admission)
 }
 
-// acceptedSubtreeRevival is one retained cancellation re-read under the
-// Session's run admission, together with the tree facts its revival replays.
 type acceptedSubtreeRevival struct {
 	accepted AcceptedSubtreeCancellation
 	session  session.Session
@@ -135,8 +129,6 @@ func (c *Cancellations) acceptedSubtreeRevival(ctx context.Context, accepted Acc
 	return acceptedSubtreeRevival{accepted: accepted, session: sess, tree: tree, root: root}, nil
 }
 
-// prepareAcceptedSubtreeRevival rebuilds the original cancellation request and
-// retires the executor that accepted it before any replacement can stage.
 func (c *Cancellations) prepareAcceptedSubtreeRevival(ctx context.Context, revival *acceptedSubtreeRevival) error {
 	accepted := revival.accepted
 	target, found := runByID(revival.tree, accepted.TargetRunID)

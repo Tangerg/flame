@@ -11,8 +11,6 @@ import (
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
-// Acceptance commits with its original SignalAdmitted batch. Recovery's
-// Activated record cannot publish an already acknowledged command again.
 func (i *interactionSession) admittedSteers(root scoperun.ProcessID, records []scoperun.Record) ([]runs.CommandAcceptance, error) {
 	i.state.mu.Lock()
 	pending := maps.Clone(i.state.pendingSteers)

@@ -21,7 +21,7 @@ export interface RuntimeConnectionInspector<Capabilities> {
   inspect(signal: AbortSignal): Promise<RuntimeConnectionInspection<Capabilities>>;
 }
 
-export interface RuntimeServiceSink<Capabilities> {
+interface RuntimeServiceSink<Capabilities> {
   checking(): void;
   replace(inspection: RuntimeConnectionInspection<Capabilities>): void;
   unavailable(failure: RuntimeServiceFailure): void;
@@ -37,13 +37,13 @@ export interface RuntimeServiceController {
   dispose(): void;
 }
 
-export const RUNTIME_SERVICE_INSPECTION_TIMEOUT_MS = 10_000;
+const RUNTIME_SERVICE_INSPECTION_TIMEOUT_MS = 10_000;
 
-export const RUNTIME_SERVICE_HEALTHY_POLL_MS = 30_000;
+const RUNTIME_SERVICE_HEALTHY_POLL_MS = 30_000;
 
-export const RUNTIME_SERVICE_RETRY_BASE_MS = 1_000;
+const RUNTIME_SERVICE_RETRY_BASE_MS = 1_000;
 
-export const RUNTIME_SERVICE_RETRY_CAP_MS = 30_000;
+const RUNTIME_SERVICE_RETRY_CAP_MS = 30_000;
 
 export function createRuntimeServiceController<Capabilities>(
   inspector: RuntimeConnectionInspector<Capabilities>,

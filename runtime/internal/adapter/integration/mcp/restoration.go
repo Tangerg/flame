@@ -16,9 +16,6 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-// Evidence is local to this acquisition. Only Frame's admitted read of the
-// original business owner may supply it; it grants no permission or lifecycle.
-
 type restorationEvidenceKey struct{}
 
 type restorationEvidence struct {
@@ -46,9 +43,7 @@ func (s *Installed) restoreRetained(ctx context.Context, original plugin.Activat
 	evidence := &restorationEvidence{recordID: original.Identity().String()}
 	attempt := context.WithValue(ctx, restorationEvidenceKey{}, evidence)
 	use, err := s.host.AcquireRecord(attempt, evidence.recordID, framehost.UseConfig{Owner: s.owner, Scope: grant})
-	if err == errBindingNotRetained {
-		// The admitted owner settled after the catalog listed its work; that
-		// earlier observation cannot require restoration or authorize execution.
+	if errors.Is(err, errBindingNotRetained) {
 		return nil
 	}
 	if err != nil {
@@ -58,8 +53,6 @@ func (s *Installed) restoreRetained(ctx context.Context, original plugin.Activat
 	return err
 }
 
-// restorationFailure belongs to the existing connection attempt. Its binding
-// identity prevents a failed replacement from settling an original waiting Run.
 type restorationFailure struct {
 	binding   framevalue.Digest
 	completed bool
@@ -69,6 +62,7 @@ type restorationFailure struct {
 func (e *restorationFailure) Error() string {
 	return "mcp: restore original binding: " + e.cause.Error()
 }
+
 func (e *restorationFailure) Unwrap() error { return e.cause }
 
 func (s *Installed) failedRestoration(ctx context.Context, original plugin.Activation, attempted framehost.BindingSnapshot, cause error) error {
@@ -85,9 +79,6 @@ func (s *Installed) failedRestoration(ctx context.Context, original plugin.Activ
 	}
 }
 
-// RestorationFailure reads the current attempt's conclusion for this exact graph.
-// Catalog absence and a superseded or unauthorized attempt supply no such evidence.
-// A non-nil error with definite=false retains an inconclusive original attempt.
 func (p *Pool) RestorationFailure(id mcpserver.ID, activation plugin.Activation) (definite bool, err error) {
 	p.inner.mu.Lock()
 	defer p.inner.mu.Unlock()
@@ -103,7 +94,5 @@ func (p *Pool) RestorationFailure(id mcpserver.ID, activation plugin.Activation)
 	if !failure.completed || errors.Is(cause, framehost.ErrRecoveryRequired) || errors.Is(cause, runner.ErrUnknown) || errors.Is(cause, frame.ErrUnconfirmedRelease) {
 		return false, cause
 	}
-	// Only the original MCP connection or an authoritative source refusal proves
-	// source loss. A completed preparation can also have failed a storage read.
 	return errors.Is(cause, sdk.ErrConnectionClosed) || errors.Is(cause, plugin.ErrUnavailable) || errors.Is(cause, plugin.ErrStale), cause
 }

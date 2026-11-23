@@ -2,7 +2,7 @@ import { type Disposable } from "@/extensions/types/lifetime";
 import { safeCall } from "@/extensions/errors";
 import { service } from "dougong";
 
-export type ConfigValue =
+type ConfigValue =
   string | number | boolean | null | ConfigValue[] | { [key: string]: ConfigValue };
 
 export interface ConfigService {

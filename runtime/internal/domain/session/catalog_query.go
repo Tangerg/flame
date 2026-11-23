@@ -10,9 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-// MaximumCatalogSearchCharacters bounds one user-facing session catalog
-// predicate before it reaches cursor material or persistence. The limit is in
-// Unicode code points, matching the public JSON Schema maxLength contract.
 const MaximumCatalogSearchCharacters = 1024
 
 type catalogFilterKind uint8
@@ -24,36 +21,29 @@ const (
 	searchWorkspaceCatalogEntries
 )
 
-// CatalogFilter is the normalized identity of one sessions.list collection.
-// Search is case-insensitive literal containment over durable title/workspace
-// text; Workspace is an exact admitted Session workspace identity.
 type CatalogFilter struct {
 	kind      catalogFilterKind
 	search    string
 	workspace string
 }
 
-// AllCatalogEntries explicitly selects the unfiltered Session collection.
 func AllCatalogEntries() CatalogFilter { return CatalogFilter{kind: allCatalogEntries} }
 
-// NewCatalogFilter constructs a non-empty filtered collection. A caller maps
-// absent predicates to AllCatalogEntries explicitly; accepting both fields
-// empty here would restore an implicit zero/default mode.
 func NewCatalogFilter(search string, workspace *Workspace) (CatalogFilter, error) {
 	normalizedSearch, err := NormalizeCatalogText(strings.TrimSpace(search))
 	if err != nil {
-		return CatalogFilter{}, fmt.Errorf("sessions: catalog search: %w", err)
+		return CatalogFilter{}, fmt.Errorf("session: catalog search: %w", err)
 	}
 	if utf8.RuneCountInString(normalizedSearch) > MaximumCatalogSearchCharacters {
 		return CatalogFilter{}, fmt.Errorf(
-			"sessions: catalog search exceeds %d characters",
+			"session: catalog search exceeds %d characters",
 			MaximumCatalogSearchCharacters,
 		)
 	}
 	workspacePath := ""
 	if workspace != nil {
 		if err := workspace.Validate(); err != nil {
-			return CatalogFilter{}, fmt.Errorf("sessions: catalog workspace: %w", err)
+			return CatalogFilter{}, fmt.Errorf("session: catalog workspace: %w", err)
 		}
 		workspacePath = workspace.Path()
 	}
@@ -66,13 +56,10 @@ func NewCatalogFilter(search string, workspace *Workspace) (CatalogFilter, error
 	case workspacePath != "":
 		return CatalogFilter{kind: workspaceCatalogEntries, workspace: workspacePath}, nil
 	default:
-		return CatalogFilter{}, errors.New("sessions: filtered catalog requires search or workspace")
+		return CatalogFilter{}, errors.New("session: filtered catalog requires search or workspace")
 	}
 }
 
-// NormalizeCatalogText is the sole canonicalizer shared by query admission and
-// durable Session search material. Keeping persisted Unicode lowercase text in
-// this exact form avoids SQLite's ASCII-only lower() behavior.
 func NormalizeCatalogText(value string) (string, error) {
 	if !utf8.ValidString(value) {
 		return "", errors.New("text is not valid UTF-8")
@@ -83,15 +70,12 @@ func NormalizeCatalogText(value string) (string, error) {
 	return strings.ToLower(value), nil
 }
 
-// Validate rejects the zero filter at every read boundary. Which predicates a
-// mode may carry, and their canonical spelling, are settled by
-// AllCatalogEntries and NewCatalogFilter — the only sources of a filter.
 func (f CatalogFilter) Validate() error {
 	switch f.kind {
 	case allCatalogEntries, searchCatalogEntries, workspaceCatalogEntries, searchWorkspaceCatalogEntries:
 		return nil
 	default:
-		return errors.New("sessions: catalog filter mode is unknown")
+		return errors.New("session: catalog filter mode is unknown")
 	}
 }
 
@@ -103,26 +87,17 @@ func (f CatalogFilter) WorkspacePath() (string, bool) {
 	return f.workspace, f.kind == workspaceCatalogEntries || f.kind == searchWorkspaceCatalogEntries
 }
 
-// CursorIdentity is the fixed-field query identity framed into every keyset
-// token. An unfiltered query keeps the historical nil filter identity.
 func (f CatalogFilter) CursorIdentity() []string {
-	switch f.kind {
-	case allCatalogEntries:
-		return nil
-	case searchCatalogEntries:
-		return []string{"search", f.search}
-	case workspaceCatalogEntries:
-		return []string{"workspace", f.workspace}
-	case searchWorkspaceCatalogEntries:
-		return []string{"search", f.search, "workspace", f.workspace}
-	default:
-		return nil
+	var identity []string
+	if search, ok := f.Search(); ok {
+		identity = append(identity, "search", search)
 	}
+	if workspace, ok := f.WorkspacePath(); ok {
+		identity = append(identity, "workspace", workspace)
+	}
+	return identity
 }
 
-// CatalogAnchor is the complete favorite/recency/id key of the last Session in
-// a page. Pointer presence in CatalogRead distinguishes the first page; no
-// primitive timestamp or id sentinel crosses into persistence.
 type CatalogAnchor struct {
 	favorite  bool
 	updatedAt time.Time
@@ -131,19 +106,17 @@ type CatalogAnchor struct {
 
 func NewCatalogAnchor(favorite bool, updatedAt time.Time, id identity.SessionID) (CatalogAnchor, error) {
 	if updatedAt.IsZero() {
-		return CatalogAnchor{}, errors.New("sessions: catalog anchor update time is required")
+		return CatalogAnchor{}, errors.New("session: catalog anchor update time is required")
 	}
 	if err := id.Validate(); err != nil {
-		return CatalogAnchor{}, fmt.Errorf("sessions: catalog anchor: %w", err)
+		return CatalogAnchor{}, fmt.Errorf("session: catalog anchor: %w", err)
 	}
 	return CatalogAnchor{favorite: favorite, updatedAt: updatedAt.UTC(), id: id}, nil
 }
 
-// Validate rejects the zero anchor. Its UTC normalization and Session identity
-// are established by NewCatalogAnchor, the only source of an anchor.
 func (a CatalogAnchor) Validate() error {
 	if a.updatedAt.IsZero() {
-		return errors.New("sessions: catalog anchor update time is required")
+		return errors.New("session: catalog anchor update time is required")
 	}
 	return nil
 }
@@ -152,7 +125,6 @@ func (a CatalogAnchor) Favorite() bool         { return a.favorite }
 func (a CatalogAnchor) UpdatedAt() time.Time   { return a.updatedAt }
 func (a CatalogAnchor) ID() identity.SessionID { return a.id }
 
-// CatalogRead is the complete persistence request for one bounded keyset read.
 type CatalogRead struct {
 	filter CatalogFilter
 	after  *CatalogAnchor
@@ -164,7 +136,7 @@ func NewCatalogRead(filter CatalogFilter, after *CatalogAnchor, limit int) (Cata
 		return CatalogRead{}, err
 	}
 	if limit <= 0 {
-		return CatalogRead{}, errors.New("sessions: catalog read limit must be greater than zero")
+		return CatalogRead{}, errors.New("session: catalog read limit must be greater than zero")
 	}
 	read := CatalogRead{filter: filter, limit: limit}
 	if after != nil {
@@ -177,11 +149,9 @@ func NewCatalogRead(filter CatalogFilter, after *CatalogAnchor, limit int) (Cata
 	return read, nil
 }
 
-// Validate rejects the zero read. Its filter, anchor and bound are established
-// by NewCatalogRead, the only source of a read.
 func (r CatalogRead) Validate() error {
 	if r.limit <= 0 {
-		return errors.New("sessions: catalog read limit must be greater than zero")
+		return errors.New("session: catalog read limit must be greater than zero")
 	}
 	return r.filter.Validate()
 }

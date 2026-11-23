@@ -14,8 +14,8 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	execution "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	"github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 
@@ -26,13 +26,15 @@ import (
 	"github.com/samber/lo"
 )
 
+const automaticOperationNamespace = "plugins.automatic"
+
 type Memory struct {
 	contract      *plugincontract.Capability
 	installations plugins.Store
 	pool          *mcp.Pool
 	callbacks     *pluginmcp.Callbacks
-	utility       models.AuxiliaryResolver
-	embedder      func(context.Context) (models.TextEmbedder, error)
+	utility       modeladapter.AuxiliaryResolver
+	embedder      func(context.Context) (*modeladapter.Embedder, bool, error)
 	history       conversationReader
 	commands      *CommandCalls
 }
@@ -44,8 +46,8 @@ type MemoryConfig struct {
 	Installations plugins.Store
 	Connections   *mcp.Pool
 	Callbacks     *pluginmcp.Callbacks
-	Utility       models.AuxiliaryResolver
-	Embeddings    func(context.Context) (models.TextEmbedder, error)
+	Utility       modeladapter.AuxiliaryResolver
+	Embeddings    func(context.Context) (*modeladapter.Embedder, bool, error)
 	Conversation  conversationReader
 	Commands      *CommandCalls
 }
@@ -69,7 +71,7 @@ func NewMemory(config MemoryConfig) (*Memory, error) {
 	return &Memory{contract: contract, installations: config.Installations, pool: config.Connections, callbacks: config.Callbacks, utility: config.Utility, embedder: config.Embeddings, history: config.Conversation, commands: config.Commands}, nil
 }
 
-func (m *Memory) Items(ctx context.Context, scope memorycontract.ItemsInputScope, project string) ([]execution.MemoryPromptItem, error) {
+func (m *Memory) Items(ctx context.Context, scope memorycontract.ItemsInputScope, project string) (_ []execution.MemoryPromptItem, returned error) {
 	ctx = operation.Start(ctx, extension.Automatic, "memory.context", uuid.NewString())
 	location, borrowed, err := contributionSession(ctx, m.commands.framework, m.installations, m.commands.selections, m.pool, m.contract)
 	if errors.Is(err, errInactive) {
@@ -78,25 +80,26 @@ func (m *Memory) Items(ctx context.Context, scope memorycontract.ItemsInputScope
 	if err != nil {
 		return nil, err
 	}
-	defer borrowed.Close()
+	defer func() { returned = errors.Join(returned, borrowed.Close()) }()
 	ctx = borrowed.Context()
 	session := borrowed.Session()
-	values, err := query[memorycontract.ItemsInput, memorycontract.ItemsV2Output](ctx, location, session, memorycontract.ItemsV2Method, memorycontract.ItemsInput{Scope: scope, Project: project}, sdk.ParamsBase{})
+	values, err := query[memorycontract.ItemsInput, memorycontract.ItemsV3Output](ctx, location, session, memorycontract.ItemsV3Method, memorycontract.ItemsInput{Scope: scope, Project: project}, sdk.ParamsBase{})
 	if err != nil {
 		return nil, err
 	}
 	items := make([]execution.MemoryPromptItem, len(values))
 	for index, item := range values {
-		if item == nil || item.Status != memorycontract.ItemsV2OutputDomainItemSnapshotStatusActive || item.Scope != memorycontract.ItemsV2OutputDomainItemSnapshotScope(scope) || item.Project != project {
+		if item == nil || item.Status != memorycontract.ItemsV3OutputContractItemStatusActive || item.Scope != memorycontract.ItemsV3OutputContractItemScope(scope) || item.Project != project {
 			return nil, errors.New("memory: backend returned items outside the requested active target")
 		}
-		items[index], err = memoryPromptItem(string(item.ID), item.Content, item.Pinned, string(item.UpdatedAt))
+		items[index], err = memoryPromptItem(string(item.Id), item.Content, item.Pinned, string(item.UpdatedAt))
 		if err != nil {
 			return nil, err
 		}
 	}
 	return items, nil
 }
+
 func (m *Memory) Search(ctx context.Context, project, text string, topK int) (_ []execution.MemoryPromptItem, returned error) {
 	location, borrowed, err := contributionSession(ctx, m.commands.framework, m.installations, m.commands.selections, m.pool, m.contract)
 	if errors.Is(err, errInactive) {
@@ -105,29 +108,27 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) (_ 
 	if err != nil {
 		return nil, err
 	}
-	defer borrowed.Close()
+	defer func() { returned = errors.Join(returned, borrowed.Close()) }()
 	ctx = borrowed.Context()
 	session := borrowed.Session()
 	ctx, err = queryContext(ctx, location)
 	if err != nil {
 		return nil, err
 	}
-	embedder, err := m.embedder(ctx)
+	embedder, embeds, err := m.embedder(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if embedder != nil {
+	space := ""
+	if embeds {
 		defer func() { returned = errors.Join(returned, embedder.Close(context.WithoutCancel(ctx))) }()
+		space = embedder.ID()
 	}
 	grant, release, err := GrantMemoryModels(ctx, m.callbacks, session, nil, embedder)
 	if err != nil {
 		return nil, err
 	}
 	defer release()
-	space := ""
-	if embedder != nil {
-		space = embedder.ID()
-	}
 	metadata, err := pluginmcp.CallbackMetadata(grant)
 	if err != nil {
 		return nil, err
@@ -136,7 +137,7 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) (_ 
 	if err != nil {
 		return nil, err
 	}
-	values, err := query[memorycontract.SearchInput, memorycontract.SearchV2Output](ctx, location, session, memorycontract.SearchV2Method, memorycontract.SearchInput{Project: project, Query: text, TopK: limit, EmbeddingSpace: space}, metadata)
+	values, err := query[memorycontract.SearchInput, memorycontract.SearchV3Output](ctx, location, session, memorycontract.SearchV3Method, memorycontract.SearchInput{Project: project, Query: text, TopK: limit, EmbeddingSpace: space}, metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -146,19 +147,17 @@ func (m *Memory) Search(ctx context.Context, project, text string, topK int) (_ 
 	return searchPromptItems(values, project)
 }
 
-// searchPromptItems admits only active items visible to this project: user
-// memory, or memory of exactly this project.
-func searchPromptItems(values []*memorycontract.SearchV2OutputDomainItemSnapshot, project string) ([]execution.MemoryPromptItem, error) {
+func searchPromptItems(values []*memorycontract.SearchV3OutputContractItem, project string) ([]execution.MemoryPromptItem, error) {
 	items := make([]execution.MemoryPromptItem, len(values))
 	for index, item := range values {
 		if item == nil {
 			return nil, errors.New("memory: backend returned an absent search item")
 		}
-		visibleTarget := item.Scope == memorycontract.SearchV2OutputDomainItemSnapshotScopeUser && item.Project == "" || item.Scope == memorycontract.SearchV2OutputDomainItemSnapshotScopeProject && item.Project == project
-		if item.Status != memorycontract.SearchV2OutputDomainItemSnapshotStatusActive || !visibleTarget {
+		visibleTarget := item.Scope == memorycontract.SearchV3OutputContractItemScopeUser && item.Project == "" || item.Scope == memorycontract.SearchV3OutputContractItemScopeProject && item.Project == project
+		if item.Status != memorycontract.SearchV3OutputContractItemStatusActive || !visibleTarget {
 			return nil, errors.New("memory: backend returned search outside the active target")
 		}
-		prompt, err := memoryPromptItem(string(item.ID), item.Content, item.Pinned, string(item.UpdatedAt))
+		prompt, err := memoryPromptItem(string(item.Id), item.Content, item.Pinned, string(item.UpdatedAt))
 		if err != nil {
 			return nil, err
 		}
@@ -166,7 +165,8 @@ func searchPromptItems(values []*memorycontract.SearchV2OutputDomainItemSnapshot
 	}
 	return items, nil
 }
-func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintenanceInput, compacted bool) error {
+
+func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintenanceInput, compacted bool) (returned error) {
 	binding, borrowed, err := contributionSession(ctx, m.commands.framework, m.installations, m.commands.selections, m.pool, m.contract)
 	if errors.Is(err, errInactive) {
 		return nil
@@ -174,7 +174,7 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 	if err != nil {
 		return err
 	}
-	defer borrowed.Close()
+	defer func() { returned = errors.Join(returned, borrowed.Close()) }()
 	ctx = borrowed.Context()
 	messages, err := m.history.Read(ctx, input.SessionID)
 	if err != nil {
@@ -185,11 +185,11 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 		return err
 	}
 	request := memorycontract.MaintenanceInput{
-		SessionID: input.SessionID.String(), Project: input.WorkspaceCWD, Compacted: compacted,
-		Conversation: &memorycontract.Conversation{MessageCount: count, Transcript: models.RenderTranscript(messages)},
+		SessionId: input.SessionID.String(), Project: input.WorkspaceCWD, Compacted: compacted,
+		Conversation: &memorycontract.Conversation{MessageCount: count, Transcript: modeladapter.RenderTranscript(messages)},
 	}
-	_, err = invokeResolvedCommand[memorycontract.MaintenanceInput, memorycontract.MaintenanceResult](operation.Start(ctx, extension.Automatic, "plugins.automatic", uuid.NewString()), m.commands, memorycontract.MaintainV1Method, request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
-		model, releaseModel, err := m.utility(ctx, models.AuxiliaryBudget{MaxInputBytes: memorycontract.MaxModelInputBytes, MaxOutputTokens: memorycontract.MaxModelOutputTokens})
+	_, err = invokeResolvedCommand[memorycontract.MaintenanceInput, memorycontract.MaintenanceResult](operation.Start(ctx, extension.Automatic, automaticOperationNamespace, uuid.NewString()), m.commands, memorycontract.MaintainV2Method, request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {
+		model, releaseModel, err := m.utility(ctx, modeladapter.AuxiliaryBudget{MaxInputBytes: memorycontract.MaxModelInputBytes, MaxOutputTokens: memorycontract.MaxModelOutputTokens})
 		if err != nil {
 			return sdk.ParamsBase{}, nil, err
 		}
@@ -212,6 +212,7 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 	})
 	return err
 }
+
 func memoryPromptItem(id, content string, pinned bool, updated string) (execution.MemoryPromptItem, error) {
 	instant, err := time.Parse(time.RFC3339Nano, updated)
 	if err != nil || instant.IsZero() {

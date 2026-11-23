@@ -10,19 +10,16 @@ import (
 	"github.com/Tangerg/oolong/ui/core/program"
 )
 
-// operationSlot is one unit of background work that at most one owner runs.
-// Its contention says what a new request does while the slot is occupied.
 type operationSlot struct {
 	name       string
+	subject    string
 	contention slotContention
 }
 
 type slotContention uint8
 
 const (
-	// keepRunning refuses a new request while earlier work owns the slot.
 	keepRunning slotContention = iota
-	// replaceRunning cancels earlier work because only the latest result matters.
 	replaceRunning
 )
 
@@ -30,12 +27,21 @@ func exclusiveSlot(name string) operationSlot {
 	return operationSlot{name: name, contention: keepRunning}
 }
 
+// reported names an exclusive slot the person can start from several entry
+// points, so every refusal tells them the same thing.
+func (s operationSlot) reported(subject string) operationSlot {
+	s.subject = subject
+	return s
+}
+
+func (s operationSlot) busy() error {
+	return fmt.Errorf("wait for the current %s to finish", s.subject)
+}
+
 func latestSlot(name string) operationSlot {
 	return operationSlot{name: name, contention: replaceRunning}
 }
 
-// superseding is this slot for a request that must displace whatever already
-// runs there.
 func (s operationSlot) superseding() operationSlot {
 	s.contention = replaceRunning
 	return s
@@ -43,7 +49,7 @@ func (s operationSlot) superseding() operationSlot {
 
 var (
 	streamOperation               = exclusiveSlot("stream")
-	inputPreparationOperation     = exclusiveSlot("input-preparation")
+	inputPreparationOperation     = exclusiveSlot("input-preparation").reported("input preparation")
 	pendingRunRecoveryOperation   = exclusiveSlot("pending-run-recovery")
 	pendingRunSettlementOperation = exclusiveSlot("pending-run-settlement")
 	resumeSettlementOperation     = exclusiveSlot("resume-settlement")
@@ -55,26 +61,26 @@ var (
 	readerDocumentOperation       = latestSlot("reader-document")
 	pickerCatalogOperation        = latestSlot("picker-catalog")
 	approvalModeOperation         = latestSlot("approval-mode")
-	sessionCenterOperation        = exclusiveSlot("session-center")
-	sessionChangeOperation        = exclusiveSlot("session-change")
-	sessionOutputOperation        = exclusiveSlot("session-output")
-	approvalRuleOperation         = exclusiveSlot("approval-rule")
+	sessionCenterOperation        = exclusiveSlot("session-center").reported("session action")
+	sessionChangeOperation        = exclusiveSlot("session-change").reported("session change")
+	sessionOutputOperation        = exclusiveSlot("session-output").reported("session output operation")
+	approvalRuleOperation         = exclusiveSlot("approval-rule").reported("approval operation")
 	cancelRunOperation            = latestSlot("cancel-run")
-	steerRunOperation             = exclusiveSlot("steer-run")
+	steerRunOperation             = exclusiveSlot("steer-run").reported("steer operation")
 	steerReceiptReadOperation     = exclusiveSlot("steer-receipt-read")
 	workspaceQueryOperation       = latestSlot("workspace-query")
 	runtimeChangesOperation       = latestSlot("runtime-changes")
 	sessionInvalidationOperation  = exclusiveSlot("session-invalidation")
-	modelConfigOperation          = exclusiveSlot("model-config")
-	goalOperation                 = exclusiveSlot("goal")
-	skillOperation                = exclusiveSlot("skill")
-	mcpOperation                  = exclusiveSlot("mcp")
+	modelConfigOperation          = exclusiveSlot("model-config").reported("model configuration operation")
+	goalOperation                 = exclusiveSlot("goal").reported("goal operation")
+	skillOperation                = exclusiveSlot("skill").reported("skill operation")
+	mcpOperation                  = exclusiveSlot("mcp").reported("MCP operation")
 	mcpAuthorizationOperation     = exclusiveSlot("mcp-authorization")
 	pluginViewsOperation          = latestSlot("plugin-views")
 	pluginViewOperation           = exclusiveSlot("plugin-view")
-	diagnosticToolOperation       = exclusiveSlot("diagnostic-tool")
-	hookOperation                 = exclusiveSlot("hook")
-	feedbackOperation             = exclusiveSlot("feedback")
+	diagnosticToolOperation       = exclusiveSlot("diagnostic-tool").reported("diagnostic tool operation")
+	hookOperation                 = exclusiveSlot("hook").reported("hook operation")
+	feedbackOperation             = exclusiveSlot("feedback").reported("feedback operation")
 )
 
 type operationLease struct {
@@ -117,9 +123,6 @@ type ownedOperation struct {
 	cancel context.CancelFunc
 }
 
-// operationOwner gives every asynchronous adapter task a lifetime and, where
-// appropriate, a replaceable slot. Closing it first rejects new work, then
-// cancels and joins every cooperative worker.
 type operationOwner struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -133,10 +136,6 @@ type operationOwner struct {
 	wg        sync.WaitGroup
 }
 
-// post transfers one background result to the terminal loop. Cancellation may
-// abandon an unclaimed callback, but once the dispatcher claims it the caller
-// waits for that callback to finish so no result can commit after its owner has
-// observed cancellation.
 func post(ctx context.Context, dispatcher program.Dispatcher, fn func()) error {
 	return dispatcher.Invoke(ctx, func() error {
 		fn()
@@ -149,22 +148,16 @@ func newOperationOwner(parent context.Context) *operationOwner {
 	return &operationOwner{ctx: ctx, cancel: cancel, active: make(map[string]ownedOperation)}
 }
 
-// Go starts work in slot under the slot's contention.
 func (o *operationOwner) Go(slot operationSlot, work func(context.Context, operationLease)) bool {
 	return o.goWithPolicy(operationPolicy{scope: applicationOperationScope}, slot, work)
 }
 
-// GoSession starts work owned by the current terminal session projection. A
-// successful projection replacement cancels all work in this scope before the
-// new session becomes visible, so a late result cannot bleed into it.
+// A projection replacement cancels all work in this scope before the new session
+// becomes visible, so a late result cannot bleed into it.
 func (o *operationOwner) GoSession(slot operationSlot, work func(context.Context, operationLease)) bool {
 	return o.goWithPolicy(operationPolicy{scope: sessionOperationScope}, slot, work)
 }
 
-// GoSessionSettlement owns recovery of an accepted command whose local durable
-// ownership has not settled yet. A later Run must not cross that boundary: the
-// old command still occupies the session's single authoring outbox until this
-// lease is released or the whole session projection is replaced.
 func (o *operationOwner) GoSessionSettlement(
 	slot operationSlot,
 	work func(context.Context, operationLease),
@@ -222,10 +215,6 @@ func (o *operationOwner) Active(slot operationSlot) bool {
 	return !o.closed && ok
 }
 
-// BlocksRunAdmission reports whether an active operation owns a prerequisite
-// that must settle before the next queued prompt may become a Run. The policy
-// belongs to the operation rather than to call sites that happen to initiate
-// runs, so every dispatch path observes the same ordering boundary.
 func (o *operationOwner) BlocksRunAdmission() bool {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -252,9 +241,8 @@ func (o *operationOwner) Cancel(slot operationSlot) {
 	}
 }
 
-// CancelScope atomically retires every operation in scope before notifying its
-// workers. Removing all leases under one lock is what prevents a completed old
-// worker from winning a race with a newly installed session projection.
+// Removing all leases under one lock prevents a completed old worker from winning
+// a race with a newly installed session projection.
 func (o *operationOwner) CancelScope(scope operationScope) {
 	o.mu.Lock()
 	operations := make([]ownedOperation, 0, len(o.active))
@@ -271,9 +259,6 @@ func (o *operationOwner) CancelScope(scope operationScope) {
 	}
 }
 
-// Release relinquishes an exact operation lease. It is used when applying a
-// completed result may synchronously start the next coalesced operation in the
-// same slot; a stale worker can never release its successor.
 func (o *operationOwner) Release(lease operationLease) bool {
 	o.mu.Lock()
 	active, ok := o.active[lease.slot.name]
@@ -342,59 +327,34 @@ func (o *operationOwner) release(lease operationLease, cancel context.CancelFunc
 	o.mu.Unlock()
 }
 
-// taskRunner starts background work whose result is applied on the terminal
-// loop. A result applies only while its lease is current, so replacement,
-// session change or shutdown drops it; the loop stops before the terminal
-// closes, so no result applies after Close.
 type taskRunner struct {
 	operations *operationOwner
 	dispatch   program.Dispatcher
-	// settled resumes Run admission after a result that gated it has applied.
-	settled func()
+	settled    func()
 }
 
-// deliver refuses an unapplied result explicitly. Losing an accepted command's
-// acknowledgement cannot leave the UI claiming its operation is still running.
 func (r taskRunner) deliver(ctx context.Context, apply func()) error {
 	err := post(ctx, r.dispatch, apply)
 	r.operations.failDelivery(err)
 	return err
 }
 
-// session owns a user-initiated task for the lifetime of the current session
-// projection. Most commands belong here because their result is interpreted
-// against the session and workspace that launched them.
 func (r taskRunner) session[T any](slot operationSlot, work func(context.Context) (T, error), apply func(T, error)) bool {
 	return runTask(r, operationPolicy{scope: sessionOperationScope}, slot, work, apply)
 }
 
-// sessionSettlement owns a session command whose durable acknowledgement
-// boundary orders subsequent Run admission. Prompts may be authored and queued
-// while it settles, but dispatch cannot overtake the command journal.
 func (r taskRunner) sessionSettlement[T any](slot operationSlot, work func(context.Context) (T, error), apply func(T, error)) bool {
 	return runTask(r, operationPolicy{scope: sessionOperationScope, runAdmission: runAdmissionAfterSettlement}, slot, work, apply)
 }
 
-// sessionFence blocks Run admission while an authoritative Session read is in
-// flight without assuming that completion means success. The caller owns retry
-// state and explicitly drains the queue only after installing the result.
 func (r taskRunner) sessionFence[T any](slot operationSlot, work func(context.Context) (T, error), apply func(T, error)) bool {
 	return runTask(r, operationPolicy{scope: sessionOperationScope, runAdmission: runAdmissionFence}, slot, work, apply)
 }
 
-// application owns work whose domain lifetime is independent of a chat
-// session. It survives projection replacement but is still canceled and joined
-// when the terminal closes. Callers must keep apply safe when any
-// session-scoped presentation they opened has since been dismissed.
 func (r taskRunner) application[T any](slot operationSlot, work func(context.Context) (T, error), apply func(T, error)) bool {
 	return runTask(r, operationPolicy{scope: applicationOperationScope}, slot, work, apply)
 }
 
-// admissionMutation owns an application-level mutation whose settled state is
-// an input to subsequently admitted Runs. Prompts may still be queued while it
-// is active, but queue dispatch waits until apply has observed the mutation
-// result, so a Run cannot race stale approval, provider, tool, or
-// authored-context state.
 func (r taskRunner) admissionMutation[T any](slot operationSlot, work func(context.Context) (T, error), apply func(T, error)) bool {
 	return runTask(r, operationPolicy{scope: applicationOperationScope, runAdmission: runAdmissionAfterSettlement}, slot, work, apply)
 }

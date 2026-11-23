@@ -22,8 +22,6 @@ type contentDecodeError struct {
 	detail string
 }
 
-// decodeContent decodes the wire encoding of one block; the content shape
-// itself is the transcript's rule, addressed here by wire field name.
 func decodeContent(encoded encodedContent) (transcript.ContentBlock, *contentDecodeError) {
 	block := transcript.ContentBlock{Text: encoded.text}
 	switch encoded.kind {
@@ -58,7 +56,6 @@ func decodeContent(encoded encodedContent) (transcript.ContentBlock, *contentDec
 	return block, nil
 }
 
-// wireContentField names a content field as the protocol's ContentBlock does.
 func wireContentField(field transcript.ContentField) string {
 	switch field {
 	case transcript.ContentTextField:

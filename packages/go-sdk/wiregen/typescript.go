@@ -10,7 +10,6 @@ import (
 	"strings"
 )
 
-// TypeScript renders one schema graph; callers finish definitions before rendering.
 type TypeScript struct{ defs Definitions }
 
 func NewTypeScript(definitions Definitions) *TypeScript {
@@ -62,8 +61,6 @@ func (t *typeScriptWriter) define(name string, node *Schema) {
 	t.line("")
 }
 
-// objectBody renders an interface's fields. substitute, when set, is the type name
-// to replace with the generic parameter T.
 func (t *TypeScript) ObjectBody(node *Schema, substitute string) string {
 	var out strings.Builder
 	for _, name := range slices.Sorted(maps.Keys(node.Properties)) {
@@ -80,8 +77,6 @@ func (t *TypeScript) ObjectBody(node *Schema, substitute string) string {
 	return out.String()
 }
 
-// branch renders one variant of a discriminated union: the shared fields this tag permits,
-// with the discriminator pinned and the other tags' fields gone.
 func (t *TypeScript) branch(unionSchema, variantSchema *Schema) string {
 	var fields []string
 	for _, name := range discriminatorFirst(unionSchema, variantSchema) {
@@ -91,7 +86,6 @@ func (t *TypeScript) branch(unionSchema, variantSchema *Schema) string {
 		}
 		override, mentioned := variantSchema.Properties[name]
 		if excluded, ok := override.(bool); mentioned && ok && !excluded {
-			// The boolean schema `false`: this tag may not carry the field at all.
 			continue
 		}
 		rendered := t.TypeOf(unionField)
@@ -103,9 +97,6 @@ func (t *TypeScript) branch(unionSchema, variantSchema *Schema) string {
 	return "{ " + strings.Join(fields, "; ") + " }"
 }
 
-// narrow applies a branch's constraint on a nested frame: the tag pins the
-// discriminator to a literal, or claims some of the frame's fields and forbids the
-// rest.
 func (t *TypeScript) narrow(baseChild, narrowing *Schema) string {
 	if narrowing.Const != "" {
 		return StringLiteral(narrowing.Const)
@@ -143,7 +134,6 @@ func (t *TypeScript) narrow(baseChild, narrowing *Schema) string {
 	return "{ " + strings.Join(fields, "; ") + " }"
 }
 
-// resolve follows a reference to the definition it names.
 func (t *TypeScript) resolve(node *Schema) *Schema {
 	name, ok := strings.CutPrefix(node.Ref, RefPrefix)
 	if !ok {
@@ -152,7 +142,6 @@ func (t *TypeScript) resolve(node *Schema) *Schema {
 	return t.defs[name]
 }
 
-// typeOf renders a schema node as a TypeScript type expression.
 func (t *TypeScript) TypeOf(node *Schema) string {
 	if len(node.AllOf) > 0 {
 		base := *node
@@ -189,8 +178,6 @@ func (t *TypeScript) TypeOf(node *Schema) string {
 	}
 	names := typeKeywords(node.Type)
 	if len(names) == 0 {
-		// An empty schema is any JSON value. `unknown` forces the reader to narrow,
-		// which is exactly right for an opaque passthrough.
 		return tsUnknown
 	}
 	parts := make([]string, 0, len(names))
@@ -244,8 +231,6 @@ func (t *TypeScript) keyword(name SchemaType, node *Schema) string {
 	}
 }
 
-// substituteType replaces a concrete type name with the generic parameter. It
-// matches whole identifiers so `Session` in `SessionRef` is left alone.
 func substituteType(rendered, concrete string) string {
 	return regexp.MustCompile(`\b`+regexp.QuoteMeta(concrete)+`\b`).ReplaceAllString(rendered, "T")
 }
@@ -257,7 +242,6 @@ func optionalMark(owner *Schema, property string) string {
 	return "?"
 }
 
-// typeKeywords keeps the type-emission loop uniform for an optional keyword.
 func typeKeywords(value SchemaType) []SchemaType {
 	if value == "" {
 		return nil
@@ -265,7 +249,6 @@ func typeKeywords(value SchemaType) []SchemaType {
 	return []SchemaType{value}
 }
 
-// TypeScript's top and bottom types: any value, and no value.
 const (
 	tsUnknown = "unknown"
 	tsNever   = "never"
@@ -273,7 +256,6 @@ const (
 
 var identifier = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
 
-// JSON escapes preserve JavaScript string values; Go's \a and \U escapes do not.
 func StringLiteral(value string) string {
 	encoded, err := json.Marshal(value, jsontext.EscapeForJS(true))
 	if err != nil {
@@ -338,10 +320,6 @@ func intersectionOf(parts []string) string {
 	return strings.Join(members, " & ")
 }
 
-// discriminatorFirst orders a variant's fields with the tag in front. A reader
-// scanning a union wants to see which case each line is before its payload, and
-// the tag is recognizable without being named: it is the field the branch pins to
-// a literal.
 func discriminatorFirst(unionSchema, variantSchema *Schema) []string {
 	names := slices.Sorted(maps.Keys(unionSchema.Properties))
 	slices.SortStableFunc(names, func(a, b string) int {

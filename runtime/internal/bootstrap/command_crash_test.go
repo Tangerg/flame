@@ -51,16 +51,12 @@ func (s commandCrashStore) Complete(ctx context.Context, record operation.Replay
 	return settled, err
 }
 
-// commandCrashExecutor records business effects in a database of its own, so
-// the Runtime's directory keeps exactly its current schema.
 type commandCrashExecutor struct {
 	effects *sql.DB
 	phase   string
 }
 
 func (s commandCrashExecutor) SetEmbeddingRole(ctx context.Context, role protocol.EmbeddingRole) (*protocol.EmbeddingRole, error) {
-	// The unconstrained fixture records every execution, so replay cannot hide a
-	// duplicate behind a business uniqueness check.
 	if _, err := s.effects.ExecContext(ctx, `INSERT INTO command_crash_effects (item_id) VALUES ('item_crash')`); err != nil {
 		return nil, err
 	}
@@ -70,7 +66,6 @@ func (s commandCrashExecutor) SetEmbeddingRole(ctx context.Context, role protoco
 	return &role, nil
 }
 
-// crashRole is the command's input; its echo is the durable receipt.
 var crashRole = protocol.EmbeddingRole{Provider: "test", Model: "crash-embedding"}
 
 func crashCommand(t *testing.T, db *persistencefixture.Stores, effects *sql.DB, phase string) (*protocol.EmbeddingRole, error) {
@@ -79,6 +74,7 @@ func crashCommand(t *testing.T, db *persistencefixture.Stores, effects *sql.DB, 
 	endpoint, err := delivery.NewEndpoint(commandCrashExecutor{effects: effects, phase: phase}, delivery.EndpointConfig{
 		Lifetime: t.Context(), IdempotencyNamespace: namespace.String(),
 		IdempotencyStore: commandCrashStore{ReplayStore: db.Idempotency, phase: phase},
+		ValidateStorage:  db.ValidateDirectory,
 	})
 	if err != nil {
 		t.Fatal(err)

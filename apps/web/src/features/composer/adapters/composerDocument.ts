@@ -24,7 +24,7 @@ type SerializedFileReference = Spread<
   SerializedTextNode
 >;
 
-export class FileReferenceNode extends TextNode {
+class FileReferenceNode extends TextNode {
   readonly __filePath: string;
   static override getType() {
     return "file-reference";

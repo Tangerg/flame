@@ -21,38 +21,23 @@ import (
 
 const maxDocumentBytes int64 = 8 << 20
 
-// maxOpenDocuments bounds the synchronized document set. A client is opened once
-// per language server and lives as long as the backend, so without a bound both
-// this map and the server's own copy of every file the agent ever inspected grow
-// for the life of the process. Evicting the least recently synced document costs
-// one didOpen when it is next touched.
 const maxOpenDocuments = 128
 
-// errDocumentTooLarge reports a workspace document that cannot be admitted to
-// the in-memory language-server synchronization boundary.
 var errDocumentTooLarge = fmt.Errorf(
-	"lsp: document exceeds the %d MiB limit", maxDocumentBytes>>20)
+	"lsp: document exceeds the %d MiB limit", maxDocumentBytes/filesystem.MiB)
 
-// errUnsupportedDocument reports a source that cannot be represented as one
-// Language Server Protocol text document.
 var errUnsupportedDocument = errors.New("lsp: document is not a regular UTF-8 text file")
 
-// ensureOpen makes the server aware of abs's current on-disk content: a
-// didOpen the first time, a didChange when the content has changed since we
-// last synced (the agent edits files out-of-band). It returns the document
-// version now in effect, which a diagnostics wait uses to recognize fresh
-// pushes. A no-op (content unchanged) returns the existing version.
-func (c *client) ensureOpen(ctx context.Context, abs string) (int, error) {
+func (c *client) ensureOpen(ctx context.Context, abs string) error {
 	text, err := readDocument(ctx, c.workspace, abs)
 	if err != nil {
-		return 0, fmt.Errorf("lsp: read %s: %w", abs, err)
+		return fmt.Errorf("lsp: read %s: %w", abs, err)
 	}
 	if !c.syncPolicy.OpenClose {
-		// File queries can use the server's on-disk view after root-confined admission.
-		// Captured diagnostics use ensureContent directly and require a proved version.
-		return 0, nil
+		return nil
 	}
-	return c.ensureContent(ctx, abs, text)
+	_, err = c.ensureContent(ctx, abs, text)
+	return err
 }
 
 func (c *client) ensureContent(ctx context.Context, abs string, text []byte) (int, error) {
@@ -98,6 +83,7 @@ func (c *client) ensureContent(ctx context.Context, abs string, text []byte) (in
 			return 0, errors.New("lsp: server did not negotiate document changes")
 		case changeIncremental:
 			change.Range = &Range{End: prev.end}
+		case changeFull:
 		}
 		err = c.notify(ctx, "textDocument/didChange", didChangeParams{
 			TextDocument:   versionedTextDocumentIdentifier{URI: uri, Version: version},
@@ -116,8 +102,6 @@ func (c *client) ensureContent(ctx context.Context, abs string, text []byte) (in
 	return version, nil
 }
 
-// Capacity must be released at both ends before another document is admitted.
-// Failed delivery retains the previous document and refuses the new one.
 func (c *client) evictColdestDocumentLocked(ctx context.Context) error {
 	if len(c.open) < maxOpenDocuments {
 		return nil

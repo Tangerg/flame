@@ -7,12 +7,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// Compaction is one complete coordinate transformation of a conversation.
-// The prefix [0, Cutoff) is represented after the rewrite by PrefixAfter
-// messages (normally a summary plus an optional live-state reminder); the
-// suffix keeps its relative positions. Historical watermarks inside the folded
-// prefix consequently collapse onto the one boundary the compacted history can
-// still express.
 type Compaction struct {
 	expectedCount int
 	cutoff        int
@@ -20,9 +14,6 @@ type Compaction struct {
 	replacement   Conversation
 }
 
-// NewCompaction validates a complete compaction replacement. A zero cutoff and
-// prefix describe a content-only rewrite such as tool-result trimming: message
-// coordinates stay unchanged.
 func NewCompaction(expectedCount, cutoff, prefixAfter int, messages []chat.Message) (Compaction, error) {
 	switch {
 	case expectedCount < 0:
@@ -55,10 +46,6 @@ func NewCompaction(expectedCount, cutoff, prefixAfter int, messages []chat.Messa
 	}, nil
 }
 
-// RebaseMessageMark maps an old conversation watermark into the replacement's
-// coordinate space. Zero remains the exact boundary before all conversation
-// content. Positive marks inside the summarized prefix coalesce at its new end;
-// marks in the retained suffix preserve their distance from the cut.
 func (c Compaction) RebaseMessageMark(mark int) (int, error) {
 	if mark < 0 || mark > c.expectedCount {
 		return 0, fmt.Errorf(

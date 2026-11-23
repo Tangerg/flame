@@ -2,7 +2,7 @@ import { useId, useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { ButtonPrimitive } from "@flame/ui";
 
-export interface ColorPickerInputProps {
+interface ColorPickerInputProps {
   id?: string;
   "aria-label": string;
   "aria-describedby"?: string;

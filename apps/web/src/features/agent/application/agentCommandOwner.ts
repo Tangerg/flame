@@ -2,12 +2,12 @@ import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { tupleKey } from "@/lib/tupleKey";
-export interface SessionRollbackLease {
+interface SessionRollbackLease {
   isCurrent(): boolean;
   release(): void;
 }
 
-export interface AgentCommandEffect {
+interface AgentCommandEffect {
   settle(): void;
   rollback(): void;
 }

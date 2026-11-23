@@ -32,7 +32,7 @@ export function useCanSendToAgent(): boolean {
   return canAcceptChatInput(sessionId, Boolean(send), root.status);
 }
 
-export function canAcceptChatInput(
+function canAcceptChatInput(
   sessionId: string,
   mountedSendAvailable: boolean,
   rootStatus: "idle" | "running" | "waiting" | "finished",

@@ -6,11 +6,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// TestSessionIsolationIsReachableThroughTheProtocol walks the projection a unit
-// test cannot: a client turns isolation on, reads the session back, and turns it
-// off again. Isolation is durable Session policy the Runtime has always owned,
-// and both bindings enter this same endpoint — a policy neither of them can
-// address is state no product can reach.
 func TestSessionIsolationIsReachableThroughTheProtocol(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)

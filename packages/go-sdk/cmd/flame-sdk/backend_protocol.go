@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 
@@ -16,8 +17,6 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-// These fields are the consumed language-binding projection. Every protocol
-// value is compiled with the same SDK as the schemas; source paths are not authority.
 type backendProtocolConstants struct {
 	MaximumFrameBytes   int    `json:"maximumFrameBytes"`
 	DeclarationPattern  string `json:"declarationPattern"`
@@ -75,8 +74,8 @@ func generateBackendProtocol(nodeReleasePath, output string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(output), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(output), filesystem.SharedDirectoryMode); err != nil {
 		return err
 	}
-	return os.WriteFile(output, append(data, '\n'), 0644)
+	return os.WriteFile(output, append(data, '\n'), filesystem.SharedFileMode)
 }

@@ -1,10 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
 import { type StyleXStyles } from "@stylexjs/stylex";
 import { type ComponentProps, type ReactNode } from "react";
-import { MENU_SURFACE, useHiddenPopupRelease, useHiddenRootRetirement } from "@flame/ui";
+import { MENU_SURFACE, useHiddenPopupRelease, useHiddenRootRetirement, vocab } from "@flame/ui";
 import { cn } from "@/lib/classNames";
 import { space, surface } from "@flame/ui/tokens.stylex";
 import { Icon, type IconName } from "@/ui/icons/index";
+import { type ProductIconSize } from "@/lib/productIconScale";
 import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { FLOATING_LAYER, FLOATING_PANEL } from "@flame/ui/floating-surface";
@@ -274,6 +275,14 @@ function ContextIconItem({
   );
 }
 
+function DropdownRadioCheck({ size = "xs" }: { size?: ProductIconSize }) {
+  return (
+    <MenuPrimitive.RadioItemIndicator>
+      <Icon name="check" size={size} className={stylex.props(vocab.accent).className} />
+    </MenuPrimitive.RadioItemIndicator>
+  );
+}
+
 function DropdownRoot<Payload = unknown>(props: MenuPrimitive.Root.Props<Payload>) {
   const retirement = useHiddenRootRetirement(props);
   return <MenuPrimitive.Root {...props} {...retirement} />;
@@ -287,6 +296,7 @@ export const DropdownMenu = {
   RadioGroup: DropdownRadioGroup,
   RadioItem: DropdownRadioItem,
   RadioItemIndicator: MenuPrimitive.RadioItemIndicator,
+  RadioCheck: DropdownRadioCheck,
   Separator: DropdownSeparator,
   SubmenuRoot: MenuPrimitive.SubmenuRoot,
   SubmenuTrigger: DropdownSubmenuTrigger,

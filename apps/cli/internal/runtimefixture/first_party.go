@@ -9,6 +9,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+)
+
+const (
+	firstPartyDirectoryVariable = "FLAME_TEST_FIRST_PARTY_DIRECTORY"
+	nodeExecutable              = "node"
 )
 
 func BuildRuntimeCompanions(ctx context.Context, executable, directory, runner string) error {
@@ -17,19 +24,19 @@ func BuildRuntimeCompanions(ctx context.Context, executable, directory, runner s
 		return fmt.Errorf("locate first-party test sources")
 	}
 	repository := filepath.Clean(filepath.Join(filepath.Dir(file), "../../../.."))
-	build := exec.CommandContext(ctx, filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-mod=readonly", "-o", runner, "github.com/Tangerg/frame/cmd/frame-runner")
+	build := exec.CommandContext(ctx, "go", "build", "-mod=readonly", "-o", runner, "github.com/Tangerg/frame/cmd/frame-runner")
 	build.Dir = filepath.Join(repository, "apps", "cli")
 	build.Stdout, build.Stderr = os.Stdout, os.Stderr
 	if err := build.Run(); err != nil {
 		return fmt.Errorf("build actual runner companion: %w", err)
 	}
-	node := exec.CommandContext(ctx, "node", filepath.Join(repository, "tooling/node-companion.mjs"), "--os", runtime.GOOS, "--arch", runtime.GOARCH, "--output", filepath.Dir(executable), "--offline")
+	node := exec.CommandContext(ctx, nodeExecutable, filepath.Join(repository, "tooling/node-companion.mjs"), "--os", runtime.GOOS, "--arch", runtime.GOARCH, "--output", filepath.Dir(executable), "--offline")
 	node.Stdout, node.Stderr = os.Stdout, os.Stderr
 	if err := node.Run(); err != nil {
 		return fmt.Errorf("prepare pinned Node companion: %w", err)
 	}
 	script := filepath.Join(repository, "plugins", "scripts", "build-packages.mjs")
-	command := exec.CommandContext(ctx, "node", script, "--os", runtime.GOOS, "--arch", runtime.GOARCH, "--output", directory)
+	command := exec.CommandContext(ctx, nodeExecutable, script, "--os", runtime.GOOS, "--arch", runtime.GOARCH, "--output", directory)
 	command.Stdout, command.Stderr = os.Stdout, os.Stderr
 	if err := command.Run(); err != nil {
 		return fmt.Errorf("build first-party test packages: %w", err)
@@ -48,7 +55,7 @@ func RunWithRuntimeCompanions(tests *testing.M, directoryForExecutable, runnerFo
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	if os.Getenv("FLAME_TEST_FIRST_PARTY_DIRECTORY") == directory {
+	if os.Getenv(firstPartyDirectoryVariable) == directory {
 		return tests.Run()
 	}
 	runner, err := runnerForExecutable(executable)
@@ -59,7 +66,7 @@ func RunWithRuntimeCompanions(tests *testing.M, directoryForExecutable, runnerFo
 	status := 1
 	if err := BuildRuntimeCompanions(context.Background(), executable, directory, runner); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-	} else if err := os.Setenv("FLAME_TEST_FIRST_PARTY_DIRECTORY", directory); err != nil {
+	} else if err := os.Setenv(firstPartyDirectoryVariable, directory); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	} else {
 		status = tests.Run()
@@ -80,11 +87,10 @@ func RunWithRuntimeCompanions(tests *testing.M, directoryForExecutable, runnerFo
 	return status
 }
 
-// Runtime keeps admitted releases immutable; teardown alone may unseal this test-owned root.
 func TempDirectory(t testing.TB) string {
 	t.Helper()
-	// The production Unix control endpoint has an OS pathname bound. This
-	// fixture owns a short root instead of deriving it from a long test name.
+	// Unix socket paths have an OS length bound, so the fixture owns a short root
+	// instead of deriving it from a long test name.
 	directory, err := os.MkdirTemp("", "flame-cli-")
 	if err != nil {
 		t.Fatal(err)
@@ -100,7 +106,7 @@ func TempDirectory(t testing.TB) string {
 				return err
 			}
 			if entry.IsDir() {
-				return os.Chmod(path, 0700)
+				return os.Chmod(path, filesystem.PrivateDirectoryMode)
 			}
 			return nil
 		}); err != nil {

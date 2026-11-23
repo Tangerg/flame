@@ -10,8 +10,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// Authorities projects permission fingerprints from current source owners.
-// Connection dispatch separately checks the configuration its executable realized.
 type Authorities struct {
 	definition func(context.Context, mcpserver.ID) (mcpserver.Server, bool, error)
 }
@@ -19,6 +17,7 @@ type Authorities struct {
 func NewAuthorities(definition func(context.Context, mcpserver.ID) (mcpserver.Server, bool, error)) *Authorities {
 	return &Authorities{definition: definition}
 }
+
 func (a *Authorities) Fingerprint(ctx context.Context, ref tool.Ref) (framevalue.Digest, bool, error) {
 	if err := ref.Validate(); err != nil {
 		return framevalue.Digest{}, false, err
@@ -41,8 +40,6 @@ func (a *Authorities) Fingerprint(ctx context.Context, ref tool.Ref) (framevalue
 	}
 }
 
-// Fingerprints projects each MCP source once within this read. The result has
-// no authority to admit dispatch and is never retained across requests.
 func (a *Authorities) Fingerprints(ctx context.Context, refs []tool.Ref) (map[tool.Ref]framevalue.Digest, error) {
 	type observedSource struct {
 		authority framevalue.Digest

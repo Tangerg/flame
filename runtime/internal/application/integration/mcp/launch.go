@@ -11,15 +11,11 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// Launch transfers a fresh launch to the connection owner. Server describes
-// revocable source authority; Stdio projects it onto leased execution bytes.
 // Retire must follow the process until teardown, including failed handshakes.
-// Retained source descriptors never retain this resource or initiate a launch.
 type Launch struct {
-	Server mcpserver.Server
-	Stdio  *Stdio
-	Retire io.Closer
-	// Callable entries must prove this declared set before connection publication.
+	Server        mcpserver.Server
+	Stdio         *Stdio
+	Retire        io.Closer
 	Exports       map[string]framevalue.JSON
 	Requirements  *plugin.RequiredBindings
 	Contributions []plugin.Contribution

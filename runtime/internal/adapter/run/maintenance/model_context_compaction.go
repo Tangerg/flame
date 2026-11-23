@@ -15,45 +15,26 @@ import (
 )
 
 var (
-	// errModelContextDiverged reports that the Interaction candidate no longer
-	// begins with the exact durable conversation snapshot.
-	errModelContextDiverged = errors.New("maintenance: model context diverged from durable conversation")
-	// errModelContextCannotFit reports that only protected or fixed context is
-	// over budget, so no truthful compaction can make the request executable.
-	errModelContextCannotFit = errors.New("maintenance: protected model context cannot fit")
-	// errModelContextCompactionVetoed reports that a lifecycle hook blocked a
-	// compaction required to keep the next model request inside its budget.
+	errModelContextCannotFit        = errors.New("maintenance: protected model context cannot fit")
 	errModelContextCompactionVetoed = errors.New("maintenance: required model context compaction was vetoed")
 )
 
-// CompactModelContext reduces the exact mutable context for one imminent model
-// call. A durable rewrite is an immutable proposal for the Run fact owner;
-// computation never changes stored history or derived Session authority.
-// durableHistory aligns the candidate with the stored context: the stored
-// history is what gets folded, and the candidate's suffix past it is ephemeral
-// and reattached verbatim.
 func (c *Compactor) durableHistory(ctx context.Context, request executionadapter.ModelContextCompaction) ([]chat.Message, []chat.Message, int, error) {
 	candidate := request.Candidate()
 	stored, err := c.store.Read(ctx, request.SessionID())
 	if err != nil {
 		return nil, nil, 0, fmt.Errorf("maintenance: read model context: %w", err)
 	}
-	candidatePrefix, matches, difference, err := request.CompareDurableHistory(stored)
+	ephemeralStart, err := request.EphemeralSuffixStart(stored)
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, nil, 0, fmt.Errorf("maintenance: candidate_messages=%d durable_messages=%d: %w",
+			len(candidate), len(stored), err)
 	}
-	if !matches {
-		return nil, nil, 0, fmt.Errorf("%w: candidate_messages=%d durable_messages=%d first_difference=%s",
-			errModelContextDiverged, len(candidate), len(stored), difference)
-	}
-	ephemeral := candidate[candidatePrefix:]
-	// ProtectedTail counts trailing Candidate messages, and the ephemeral
-	// suffix already satisfies that many of them. Only what reaches past it has
-	// to be protected inside the durable history this compaction folds.
+	ephemeral := candidate[ephemeralStart:]
 	protectedTail := max(request.ProtectedTail()-len(ephemeral), 0)
 	if protectedTail > len(stored) {
 		return nil, nil, 0, fmt.Errorf("%w: protected durable tail %d exceeds stored history %d",
-			errModelContextDiverged, protectedTail, len(stored))
+			executionadapter.ErrModelContextDiverged, protectedTail, len(stored))
 	}
 	return stored, ephemeral, protectedTail, nil
 }
@@ -197,10 +178,8 @@ func (c *Compactor) materializeModelContextPlan(
 		if hasReferences {
 			replacement = append(replacement, references)
 		}
-		if c.liveState != nil {
-			if reminder, ok := liveStateReminder(c.liveState(ctx, sessionID)); ok {
-				replacement = append(replacement, reminder)
-			}
+		if reminder, ok := liveStateReminder(c.liveState(ctx, sessionID)); ok {
+			replacement = append(replacement, reminder)
 		}
 		replacement = append(replacement, plan.recent...)
 		return replacement, summary, plan.cutoff, len(replacement) - len(plan.recent), nil

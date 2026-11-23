@@ -14,8 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// TrajectoryKind names the timeline fact an entry projects. Its spelling is the
-// durable ordering and cursor vocabulary.
 type TrajectoryKind string
 
 const (
@@ -25,13 +23,11 @@ const (
 	TrajectoryKindItem     TrajectoryKind = "item"
 )
 
-// TrajectoryEntry is one timeline record projecting exactly one durable fact.
 type TrajectoryEntry struct {
 	OccurredAt time.Time
 	Source     TrajectorySource
 }
 
-// TrajectorySource is closed to the four timeline facts below.
 type TrajectorySource interface {
 	trajectoryKey() (TrajectoryKind, string)
 }
@@ -74,8 +70,11 @@ type TrajectoryPosition struct {
 	ID         string
 }
 
+const trajectoryKeyFields = 3
+
 func (p TrajectoryPosition) key() []string {
-	return []string{strconv.FormatInt(p.OccurredAt, 10), string(p.Kind), p.ID}
+	key := [trajectoryKeyFields]string{strconv.FormatInt(p.OccurredAt, 10), string(p.Kind), p.ID}
+	return key[:]
 }
 
 func (p TrajectoryPosition) validate() error {
@@ -91,8 +90,6 @@ func (p TrajectoryPosition) validate() error {
 	}
 }
 
-// queryTrajectoryReader returns a bounded page hydrated from one database
-// snapshot, including the Session existence check and descendant filter.
 type queryTrajectoryReader interface {
 	PageTrajectory(context.Context, identity.SessionID, bool, *TrajectoryPosition, int) ([]TrajectoryEntry, error)
 }
@@ -128,7 +125,7 @@ func trajectoryAnchor(key []string) (*TrajectoryPosition, error) {
 	if len(key) == 0 {
 		return nil, nil
 	}
-	if len(key) != 3 {
+	if len(key) != trajectoryKeyFields {
 		return nil, pagination.ErrInvalidCursor
 	}
 	occurredAt, err := strconv.ParseInt(key[0], 10, 64)

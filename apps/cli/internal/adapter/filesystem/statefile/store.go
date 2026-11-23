@@ -1,4 +1,3 @@
-// Package statefile owns rooted, atomic file operations for CLI-local state.
 package statefile
 
 import (
@@ -18,12 +17,8 @@ import (
 	"github.com/spf13/pathologize"
 )
 
-// listReadBatchSize bounds temporary directory metadata, not the number of
-// matching state records returned to the owner.
 const listReadBatchSize = 128
 
-// Store confines named state records to one pinned directory tree. It is safe
-// for concurrent use and must be closed when its owning workbench exits.
 type Store struct {
 	mu       sync.Mutex
 	boundary *os.Root
@@ -39,7 +34,6 @@ type openedRoots struct {
 	lease    *filesystem.DirectoryLease
 }
 
-// Open validates, creates, and pins an owned state root.
 func Open(root string) (_ *Store, err error) {
 	root, expected, err := resolveStateRoot(root)
 	if err != nil {
@@ -80,8 +74,6 @@ func Open(root string) (_ *Store, err error) {
 	return store, nil
 }
 
-// resolveStateRoot creates root and returns its canonical path with the
-// directory identity every later open must match.
 func resolveStateRoot(root string) (string, os.FileInfo, error) {
 	if strings.TrimSpace(root) == "" {
 		return "", nil, errors.New("state directory is empty")
@@ -93,7 +85,7 @@ func resolveStateRoot(root string) (string, os.FileInfo, error) {
 	if err != nil {
 		return "", nil, fmt.Errorf("resolve state directory: %w", err)
 	}
-	if err := os.MkdirAll(root, 0o700); err != nil {
+	if err := os.MkdirAll(root, filesystem.PrivateDirectoryMode); err != nil {
 		return "", nil, fmt.Errorf("create state directory: %w", err)
 	}
 	root, err = filepath.EvalSymlinks(root)
@@ -110,8 +102,6 @@ func resolveStateRoot(root string) (string, os.FileInfo, error) {
 	return root, expected, nil
 }
 
-// openVerifiedRoot opens a directory root and refuses it unless it is still the
-// directory expected describes.
 func openVerifiedRoot(name string, expected os.FileInfo, open func() (*os.Root, error)) (*os.Root, error) {
 	root, err := open()
 	if err != nil {
@@ -129,7 +119,6 @@ func openVerifiedRoot(name string, expected os.FileInfo, open func() (*os.Root, 
 	return root, nil
 }
 
-// Close releases the pinned state root. It is idempotent.
 func (s *Store) Close() error {
 	if s == nil {
 		return nil
@@ -147,7 +136,6 @@ func (s *Store) Close() error {
 	return errors.Join(roots.root.Close(), roots.boundary.Close(), roots.lease.Release())
 }
 
-// Read returns one regular state file within the requested size bound.
 func (s *Store) Read(name string, maximumBytes int64) ([]byte, error) {
 	if maximumBytes <= 0 {
 		return nil, errors.New("state read limit must be positive")
@@ -171,9 +159,6 @@ func (s *Store) Read(name string, maximumBytes int64) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// OpenAtExpected is given this same observation and applies the regular-file
-	// and size rules to it before opening, then again to what it opened, so the
-	// switch below already carries both answers.
 	file, opened, err := filesystem.OpenFileAtExpected(directory, base, info, maximumBytes)
 	if err != nil {
 		switch {
@@ -204,8 +189,6 @@ func (s *Store) Read(name string, maximumBytes int64) ([]byte, error) {
 	return body, nil
 }
 
-// ListFiles returns child file names with the requested extension in the order
-// supplied by os.File.ReadDir.
 func (s *Store) ListFiles(name, extension string) (_ []string, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -239,9 +222,8 @@ func (s *Store) ListFiles(name, extension string) (_ []string, err error) {
 	}
 }
 
-// Replace atomically publishes one complete state file. The temporary file is
-// created beside the destination, so Rename cannot cross filesystems and
-// intentionally replaces the prior snapshot instead of conflict-renaming it.
+// The temporary file is created beside the destination so Rename cannot cross
+// filesystems.
 func (s *Store) Replace(name string, body []byte) (result commit.Result) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -299,7 +281,6 @@ func publishSnapshot(temporary snapshotFile, body []byte, rename, confirm func()
 	return confirmedCommit(confirm())
 }
 
-// Remove retires one state file. Missing files are already removed.
 func (s *Store) Remove(name string) (result commit.Result) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -331,8 +312,6 @@ func confirmedCommit(err error) commit.Result {
 	return commit.Result{State: commit.Durable}
 }
 
-// ConfirmDurability establishes the current visible records before an owner
-// recovers their command identities. It never invents records lost by a crash.
 func (s *Store) ConfirmDurability() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -454,7 +433,6 @@ func stateName(name string) (string, error) {
 	return filepath.Join(parts...), nil
 }
 
-// directoryAccess says whether opening a state directory may create its path.
 type directoryAccess uint8
 
 const (
@@ -505,7 +483,7 @@ func (s *Store) directory(name string, access directoryAccess) (string, os.FileI
 		current = filepath.Join(current, part)
 		info, err = s.root.Lstat(current)
 		if errors.Is(err, os.ErrNotExist) && access == createdDirectory {
-			if mkdirErr := s.root.Mkdir(current, 0o700); mkdirErr != nil && !errors.Is(mkdirErr, os.ErrExist) {
+			if mkdirErr := s.root.Mkdir(current, filesystem.PrivateDirectoryMode); mkdirErr != nil && !errors.Is(mkdirErr, os.ErrExist) {
 				return "", nil, fmt.Errorf("create state directory: %w", mkdirErr)
 			}
 			info, err = s.root.Lstat(current)
@@ -527,7 +505,7 @@ func (s *Store) directory(name string, access directoryAccess) (string, os.FileI
 
 func createTemporary(directory *os.Root) (*os.File, string, error) {
 	name := ".flame-state-" + rand.Text()
-	file, err := directory.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+	file, err := directory.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, filesystem.PrivateFileMode)
 	return file, name, err
 }
 

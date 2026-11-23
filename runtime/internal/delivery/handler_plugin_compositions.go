@@ -5,17 +5,10 @@ import (
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
 	framevalue "github.com/Tangerg/frame/value"
 )
-
-type compositionUseCases interface {
-	List(context.Context) ([]plugin.OrderedComposition, error)
-	Set(context.Context, plugin.CompositionRecord) (plugin.OrderedComposition, error)
-	Resolve(context.Context, *plugincontract.Capability) ([]plugins.ContributionBinding, error)
-}
 
 func (s *Handler) ResolvePluginComposition(ctx context.Context, in protocol.ResolvePluginCompositionRequest) (*protocol.Page[protocol.PluginOperationBinding], error) {
 	contract, err := plugincontract.ParseCapability([]byte(in.Contract))

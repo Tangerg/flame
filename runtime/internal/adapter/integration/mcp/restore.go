@@ -14,9 +14,6 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// RestoreTools acquires the original checkpoint graphs before discovering their
-// tools. The returned release belongs to the restored Run manifest; none of
-// these sessions are published as today's catalog for new executions.
 func (p *Pool) RestoreTools(ctx context.Context, refs []domaintool.Ref, activations []plugin.Activation, prepare ToolPreparation) (_ []toolcontract.Tool, _ func() error, err error) {
 	if prepare == nil {
 		return nil, nil, errors.New("mcp: restored tools require call preparation")
@@ -63,8 +60,6 @@ func (p *Pool) RestoreTools(ctx context.Context, refs []domaintool.Ref, activati
 	return result, release, nil
 }
 
-// restoredSources lists each installed source once, in first-reference order,
-// with the exact tools requested from it.
 func restoredSources(refs []domaintool.Ref) ([]mcpserver.ID, map[domaintool.Ref]struct{}, error) {
 	var sources []mcpserver.ID
 	requested := make(map[domaintool.Ref]struct{}, len(refs))
@@ -84,8 +79,6 @@ func restoredSources(refs []domaintool.Ref) ([]mcpserver.ID, map[domaintool.Ref]
 	return sources, requested, nil
 }
 
-// borrowOriginal borrows the exact activation the checkpoint recorded for an
-// installed source.
 func (p *Pool) borrowOriginal(ctx context.Context, source mcpserver.ID, activations []plugin.Activation) (*BorrowedSession, mcpserver.Server, error) {
 	descriptor, found, err := p.registry.Dispatchable(ctx, source)
 	if err != nil || !found || !descriptor.Enabled {
@@ -101,8 +94,6 @@ func (p *Pool) borrowOriginal(ctx context.Context, source mcpserver.ID, activati
 	return use, descriptor, err
 }
 
-// restoreSourceTools rediscovers the requested tools on a borrowed session,
-// refusing a source whose authority changed since the checkpoint.
 func (p *Pool) restoreSourceTools(use *BorrowedSession, source mcpserver.ID, descriptor mcpserver.Server, requested map[domaintool.Ref]struct{}, prepare ToolPreparation, tools map[domaintool.Ref]toolcontract.Tool) error {
 	if _, err := p.SessionActor(use.Context(), source, use.Session()); err != nil {
 		return err

@@ -5,11 +5,12 @@ import (
 	"errors"
 	"log/slog"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -20,6 +21,7 @@ func (o *CallComposition) ResolveInput(ctx context.Context) ([]plugins.Contribut
 	}
 	return plugins.ResolveComposition(ctx, o.calls.installations, o.calls.compositions, contract)
 }
+
 func (o *CallComposition) ValidateInput(ctx context.Context, bindings []plugins.ContributionBinding) error {
 	contract, err := pluginsdk.ModelInputContract()
 	if err != nil {
@@ -27,7 +29,8 @@ func (o *CallComposition) ValidateInput(ctx context.Context, bindings []plugins.
 	}
 	return o.validateCompositionBindings(ctx, contract, bindings)
 }
-func (o *CallComposition) PrepareInput(ctx context.Context, bindings []plugins.ContributionBinding, selection modelchoice.Selection, request *chat.Request) (*chat.Request, error) {
+
+func (o *CallComposition) PrepareInput(ctx context.Context, bindings []plugins.ContributionBinding, selection flamemodel.Selection, request *chat.Request) (*chat.Request, error) {
 	if err := selection.ValidateExact(); err != nil {
 		return nil, err
 	}
@@ -66,16 +69,16 @@ func (o *CallComposition) PrepareInput(ctx context.Context, bindings []plugins.C
 			before, beforeErr := modeladapter.DescribeRequest(current)
 			after, afterErr := modeladapter.DescribeRequest(&result)
 			if err := errors.Join(beforeErr, afterErr); err != nil {
-				slog.DebugContext(ctx, "model input diagnostics unavailable", "contribution", binding.ContributionID, "error", err)
+				slog.DebugContext(ctx, "model input diagnostics unavailable", telemetry.ContributionID(string(binding.ContributionID)), telemetry.Error(err))
 			} else {
 				invocation, _ := pluginmcp.InvocationFromContext(ctx)
-				slog.DebugContext(ctx, "model input projection change", "caller.id", invocation.ID,
-					"installation", binding.InstallationID, "contribution", binding.ContributionID,
-					"projection", "scope_request", "before.bytes", before.Bytes, "after.bytes", after.Bytes,
-					"messages.first_changed", before.FirstChangedMessage(after),
-					"system.changed", before.SystemDigest != after.SystemDigest,
-					"options.changed", before.OptionsDigest != after.OptionsDigest,
-					"before.messages.sha256", before.MessagesDigest, "after.messages.sha256", after.MessagesDigest)
+				slog.DebugContext(ctx, "model input projection change", telemetry.CallerID(invocation.ID),
+					telemetry.InstallationID(binding.InstallationID), telemetry.ContributionID(string(binding.ContributionID)),
+					telemetry.ScopeRequestProjection(), slog.Any("before.bytes", before.Bytes), slog.Any("after.bytes", after.Bytes),
+					slog.Any("messages.first_changed", before.FirstChangedMessage(after)),
+					slog.Any("system.changed", before.SystemDigest != after.SystemDigest),
+					slog.Any("options.changed", before.OptionsDigest != after.OptionsDigest),
+					slog.Any("before.messages.sha256", before.MessagesDigest), slog.Any("after.messages.sha256", after.MessagesDigest))
 			}
 		}
 		current = result.Clone()

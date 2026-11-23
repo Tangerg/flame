@@ -1,7 +1,6 @@
 package runtimebinding
 
 import (
-	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -9,14 +8,11 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// Profile retains one validated discovery and the client's capability agreement.
-// Its private protocol values are immutable and may be shared by value.
 type Profile struct {
 	discovery protocol.DiscoverResponse
 	client    *protocol.ClientCapabilities
 }
 
-// NewProfile borrows its inputs and retains independent protocol values.
 func NewProfile(discovery *protocol.DiscoverResponse, client *protocol.ClientCapabilities) (Profile, error) {
 	if err := validateDiscovery(discovery); err != nil {
 		return Profile{}, fmt.Errorf("negotiate runtime profile: %w", err)
@@ -29,25 +25,12 @@ func NewProfile(discovery *protocol.DiscoverResponse, client *protocol.ClientCap
 	return Profile{discovery: cloneDiscovery(*discovery), client: cloneClientCapabilities(client)}, nil
 }
 
-func (p Profile) Validate() error {
-	if p.discovery.ProtocolVersion == "" {
-		return errors.New("runtime profile has not been negotiated")
-	}
-	return nil
-}
-
-// Discovery returns an owned copy of the Runtime's exact advertised facts.
 func (p Profile) Discovery() protocol.DiscoverResponse { return cloneDiscovery(p.discovery) }
 
-// ClientCapabilities returns an owned copy of the agreement used by this profile.
 func (p Profile) ClientCapabilities() *protocol.ClientCapabilities {
 	return cloneClientCapabilities(p.client)
 }
 
-// IdempotencyLimits answers what the connected Runtime promises about replayed
-// commands: the store identity a key belongs to, and how long its first
-// response stays available. Callers ask rather than walk the discovery
-// response, so a limit moving inside the wire shape moves in one place.
 func (p Profile) IdempotencyLimits() protocol.IdempotencyLimits {
 	return p.discovery.Capabilities.Limits.Idempotency
 }

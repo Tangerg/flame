@@ -18,8 +18,6 @@ const maxResponseBytes = 2 << 20
 
 var errResponseLimit = errors.New("a2a: response exceeds the byte limit")
 
-// Remote errors may embed credential-bearing URLs or arbitrary server bodies.
-// Keep their causes for classification without publishing those strings.
 type remoteError struct {
 	operation string
 	cause     error

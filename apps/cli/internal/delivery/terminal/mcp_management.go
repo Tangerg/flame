@@ -12,14 +12,15 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/apps/cli/internal/application/retry"
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
+const mcpToolCommandArguments = 3
+
 const mcpAuthorizationPollInterval = 500 * time.Millisecond
 
-// mcpScreens manages MCP servers, their tools and authorization through the
-// Runtime's MCP port; form is the server form being filled, if any.
 type mcpScreens struct {
 	screenHost
 	service         MCPManagement
@@ -56,7 +57,7 @@ func mcpServersDocument(servers []protocol.MCPServer) (readerDocument, error) {
 			return readerDocument{}, err
 		}
 		sections = append(sections, toolSection{
-			Title: mcp.ServerLabel(server.ID) + " · " + mcpStateLabel(server.Status), Style: toolSectionCode,
+			Title: mcp.ServerLabel(server.ID) + format.Separator + mcpStateLabel(server.Status), Style: toolSectionCode,
 			Text: detail,
 		})
 	}
@@ -106,9 +107,6 @@ func mcpServerDetail(server protocol.MCPServer) (string, error) {
 	return strings.Join(lines, "\n"), nil
 }
 
-// mcpStatusProblem renders the closed MCP status category as the action it
-// asks of the user. The wire contract, validated at the binding, already ties
-// each category to the states that may carry it, so this only names it.
 func mcpStatusProblem(problem *protocol.MCPStatusProblem) (string, error) {
 	if problem == nil {
 		return "", nil
@@ -209,7 +207,7 @@ func (m *mcpScreens) mcpToolsReaderQuery(server *protocol.MCPServerID) *readerQu
 func mcpToolsDocument(server *protocol.MCPServerID, tools []protocol.MCPTool) (readerDocument, error) {
 	detail := fmt.Sprintf("%d advertised", len(tools))
 	if server != nil {
-		detail += " · " + mcp.ServerLabel(*server)
+		detail += format.Separator + mcp.ServerLabel(*server)
 	}
 	if len(tools) == 0 {
 		return paragraphDocument("MCP tools", detail, []string{"No MCP tools match this server filter."}), nil
@@ -234,7 +232,7 @@ func mcpToolsDocument(server *protocol.MCPServerID, tools []protocol.MCPTool) (r
 			if err != nil {
 				return readerDocument{}, fmt.Errorf("format MCP tool %s input schema: %w", title, err)
 			}
-			sections = append(sections, toolSection{Title: "Input schema", Style: toolSectionCode, Language: "json", Text: string(schema)})
+			sections = append(sections, jsonSection("Input schema", string(schema)))
 		}
 	}
 	return readerDocument{Title: "MCP tools", Detail: detail, Sections: sections}, nil
@@ -290,7 +288,7 @@ func (m *mcpScreens) EditMCPServer(argument string) error {
 		},
 	)
 	if !started {
-		return errors.New("another MCP operation is running")
+		return mcpOperation.busy()
 	}
 	return nil
 }
@@ -338,7 +336,7 @@ func (m *mcpScreens) runMCPAck(label string, command func(context.Context) error
 		},
 	)
 	if !started {
-		m.message("another MCP operation is running")
+		m.message(mcpOperation.busy().Error())
 	}
 }
 
@@ -361,7 +359,6 @@ func (m *mcpScreens) AuthorizeMCPServer(argument string) error {
 				m.message("start MCP authorization failed: " + err.Error())
 				return
 			}
-			// The reader follows this attempt only, so a later reader is not overwritten.
 			view := &readerQuery{status: "MCP authorization"}
 			if m.session.context.current(presentation) {
 				m.reader.open(view, mcpAuthorizationDocument(attempt))
@@ -391,7 +388,7 @@ func (m *mcpScreens) pollMCPAuthorization(initial protocol.MCPAuthorizationAttem
 				return
 			}
 			m.reader.update(view, mcpAuthorizationDocument(attempt))
-			m.message("MCP authorization " + string(attempt.Status.Type) + " · " + mcp.ServerLabel(attempt.Server))
+			m.message("MCP authorization " + string(attempt.Status.Type) + format.Separator + mcp.ServerLabel(attempt.Server))
 		},
 	)
 	if !started {
@@ -479,7 +476,6 @@ func mcpAuthorizationDocument(attempt protocol.MCPAuthorizationAttempt) readerDo
 	return paragraphDocument("MCP authorization", detail, lines)
 }
 
-// Exposure actions are local command words; approval actions reuse the wire decisions.
 const (
 	mcpToolEnable  = "enable"
 	mcpToolDisable = "disable"
@@ -487,7 +483,7 @@ const (
 
 func (m *mcpScreens) ConfigureMCPTool(arguments string) error {
 	parts := strings.Fields(arguments)
-	if len(parts) != 3 {
+	if len(parts) != mcpToolCommandArguments {
 		return errors.New("usage: /mcp-tool <server> <tool> <enable|disable|allow|deny>")
 	}
 	server, err := mcp.ParseServerReference(parts[0])

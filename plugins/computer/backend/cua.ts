@@ -76,7 +76,6 @@ function childEnvironment(
   return environment;
 }
 
-/** Owns one captured application generation and its private execution directories. */
 export class Cua {
   readonly #installation: Installation;
   readonly #engine: Engine;

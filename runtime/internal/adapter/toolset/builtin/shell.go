@@ -19,30 +19,18 @@ import (
 	"github.com/Tangerg/scope/tools/content"
 )
 
-// Shell tools over a shared [exec.Shells]: the primary `shell` tool plus
-// `read_shell_output` / `stop_shell` for the jobs it leaves running.
-//
-// Every command — foreground or explicitly backgrounded — starts as a detached
-// job in that shell set. A foreground command races its completion against an
-// auto-background window: finishing in time yields its output inline and the
-// final output page removes the job; outliving the window leaves it running, addressable by the
-// same shell id, so the lifecycle tools work on it unchanged. This is the
-// auto-background design — flame selects on the per-shell done channel
-// instead of polling. cwd is read per call (executionctx.CWD) so a command runs in the
-// session's working directory.
-
 func validateShellArguments(s builtincontract.ShellArguments) error {
 	if s.Command == "" {
-		return errors.New("shell: command is required")
+		return fmt.Errorf("%s: command is required", builtincontract.Shell)
 	}
 	if strings.TrimSpace(s.Description) == "" {
-		return errors.New("shell: description is required")
+		return fmt.Errorf("%s: description is required", builtincontract.Shell)
 	}
 	if strings.TrimSpace(s.Description) != s.Description {
-		return errors.New("shell: description must not have surrounding whitespace")
+		return fmt.Errorf("%s: description must not have surrounding whitespace", builtincontract.Shell)
 	}
 	if s.RunInBackground && s.AutoBackgroundAfterSeconds != nil {
-		return errors.New("shell: auto_background_after_seconds cannot be used when run_in_background=true")
+		return fmt.Errorf("%s: auto_background_after_seconds cannot be used when run_in_background=true", builtincontract.Shell)
 	}
 	return nil
 }
@@ -53,7 +41,7 @@ func shellAutoBackgroundAfter(seconds *int) (time.Duration, error) {
 		after = *seconds
 	}
 	if int64(after) > math.MaxInt64/int64(time.Second) {
-		return 0, errors.New("shell: auto_background_after_seconds exceeds duration range")
+		return 0, fmt.Errorf("%s: auto_background_after_seconds exceeds duration range", builtincontract.Shell)
 	}
 	return time.Duration(after) * time.Second, nil
 }
@@ -66,10 +54,10 @@ type shellOutputArgs struct {
 
 func (s shellOutputArgs) validate() error {
 	if s.ShellID == "" {
-		return errors.New("read_shell_output: shell_id is required")
+		return fmt.Errorf("%s: shell_id is required", builtincontract.ReadShellOutput)
 	}
 	if !s.Wait && s.TimeoutMillis != nil {
-		return errors.New("read_shell_output: timeout_millis requires wait=true")
+		return fmt.Errorf("%s: timeout_millis requires wait=true", builtincontract.ReadShellOutput)
 	}
 	return nil
 }
@@ -80,7 +68,7 @@ type shellIDArgs struct {
 
 func (s shellIDArgs) validate() error {
 	if s.ShellID == "" {
-		return errors.New("stop_shell: shell_id is required")
+		return fmt.Errorf("%s: shell_id is required", builtincontract.StopShell)
 	}
 	return nil
 }
@@ -91,7 +79,7 @@ type commandTools struct {
 
 func BuildShell(shells *exec.Shells) ([]toolcontract.Tool, error) {
 	if shells == nil {
-		return nil, errors.New("shell: shells is nil")
+		return nil, fmt.Errorf("%s: shells is nil", builtincontract.Shell)
 	}
 	t := &commandTools{shells: shells}
 
@@ -108,7 +96,7 @@ func BuildShell(shells *exec.Shells) ([]toolcontract.Tool, error) {
 		t.run,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("shell: build shell tool: %w", err)
+		return nil, fmt.Errorf("%s: build shell tool: %w", builtincontract.Shell, err)
 	}
 	outputTool, err := toolcontract.NewFunc[shellOutputArgs, string](
 		toolcontract.FuncConfig{
@@ -118,7 +106,7 @@ func BuildShell(shells *exec.Shells) ([]toolcontract.Tool, error) {
 		t.output,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("shell: build read_shell_output tool: %w", err)
+		return nil, fmt.Errorf("%s: build read_shell_output tool: %w", builtincontract.Shell, err)
 	}
 	killTool, err := toolcontract.NewFunc[shellIDArgs, string](
 		toolcontract.FuncConfig{
@@ -128,7 +116,7 @@ func BuildShell(shells *exec.Shells) ([]toolcontract.Tool, error) {
 		t.kill,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("shell: build stop_shell tool: %w", err)
+		return nil, fmt.Errorf("%s: build stop_shell tool: %w", builtincontract.Shell, err)
 	}
 	return []toolcontract.Tool{shellTool, outputTool, killTool}, nil
 }
@@ -137,7 +125,7 @@ func (c *commandTools) run(ctx context.Context, a builtincontract.ShellArguments
 	if err := validateShellArguments(a); err != nil {
 		return "", pluginsdk.DefiniteToolFailure(err)
 	}
-	timeout, err := optionalShellTimeout(a.TimeoutMillis, time.Millisecond, "timeout_millis")
+	timeout, err := shellTimeout(a.TimeoutMillis)
 	if err != nil {
 		return "", pluginsdk.DefiniteToolFailure(err)
 	}
@@ -148,20 +136,17 @@ func (c *commandTools) run(ctx context.Context, a builtincontract.ShellArguments
 
 	cwd, attached := executionctx.CWD(ctx)
 	if !attached {
-		return "", errors.New("shell: no attached Run workspace")
+		return "", fmt.Errorf("%s: no attached Run workspace", builtincontract.Shell)
 	}
 	id, err := c.shells.Launch(ctx, executionctx.SessionID(ctx).String(), cwd, a.Command, timeout, executionctx.Isolated(ctx))
 	if err != nil {
 		return "", err
 	}
 	sh, ok := c.shells.Get(executionctx.SessionID(ctx).String(), id)
-	if !ok { // just launched — unreachable
-		return "", fmt.Errorf("shell: background shell %s vanished", id)
+	if !ok {
+		return "", fmt.Errorf("%s: background shell %s vanished", builtincontract.Shell, id)
 	}
 	if a.RunInBackground {
-		// A command that failed to start is published already finished. Handing
-		// back a background handle for it would send the model to poll a shell
-		// that never ran, so a shell that is already done reports what it did.
 		select {
 		case <-sh.Done():
 			return c.completed(executionctx.SessionID(ctx), id, nil)
@@ -175,7 +160,7 @@ func (c *commandTools) run(ctx context.Context, a builtincontract.ShellArguments
 	case <-sh.Done():
 		return c.completed(executionctx.SessionID(ctx), id, nil)
 	case <-timer.C:
-		return backgroundedJSON(id) // still running — leave it
+		return backgroundedJSON(id)
 	case <-ctx.Done():
 		return c.cancelForeground(ctx, id, sh)
 	}
@@ -184,7 +169,7 @@ func (c *commandTools) run(ctx context.Context, a builtincontract.ShellArguments
 func (c *commandTools) completed(sessionID identity.SessionID, id string, cause error) (string, error) {
 	output, readErr := c.shells.Read(sessionID.String(), id)
 	if output.Exit == nil {
-		return "", errors.Join(cause, readErr, errors.New("shell: completion has no finished output"))
+		return "", errors.Join(cause, readErr, fmt.Errorf("%s: completion has no finished output", builtincontract.Shell))
 	}
 	result, resultErr := completedJSON(output, *output.Exit)
 	return shellResult(result, errors.Join(cause, readErr, resultErr))
@@ -204,7 +189,7 @@ func (c *commandTools) cancelForeground(ctx context.Context, id string, sh *exec
 			output, readErr := c.shells.Read(executionctx.SessionID(ctx).String(), id)
 			result, resultErr := shellOutputJSON(output, id)
 			return shellResult(result, errors.Join(ctx.Err(), context.Cause(ctx),
-				fmt.Errorf("shell: stop canceled foreground command %q: %w", id, err), readErr, resultErr))
+				fmt.Errorf("%s: stop canceled foreground command %q: %w", builtincontract.Shell, id, err), readErr, resultErr))
 		}
 		<-sh.Done()
 		return c.completed(executionctx.SessionID(ctx), id, errors.Join(ctx.Err(), context.Cause(ctx)))
@@ -221,7 +206,7 @@ func (c *commandTools) output(ctx context.Context, a shellOutputArgs) (string, e
 	}
 	var waitErr error
 	if a.Wait {
-		timeout, err := optionalShellTimeout(a.TimeoutMillis, time.Millisecond, "timeout_millis")
+		timeout, err := shellTimeout(a.TimeoutMillis)
 		if err != nil {
 			return "", pluginsdk.DefiniteToolFailure(err)
 		}
@@ -251,13 +236,11 @@ func shellOutputJSON(output exec.Output, id string) (string, error) {
 	}{ShellID: id, Status: state, Stdout: content.New([]byte(output.Text)), Dropped: output.Dropped,
 		Offset: output.Offset, NextOffset: output.NextOffset, HasMore: output.HasMore})
 	if err != nil {
-		return "", fmt.Errorf("shell: encode background command output: %w", err)
+		return "", fmt.Errorf("%s: encode background command output: %w", builtincontract.Shell, err)
 	}
 	return string(encoded), nil
 }
 
-// A failed cleanup or canceled wait does not erase observed process output.
-// CallError preserves that evidence without declaring the command retry-safe.
 func shellResult(result string, cause error) (string, error) {
 	if cause == nil || result == "" {
 		return result, cause
@@ -280,7 +263,7 @@ func (c *commandTools) kill(ctx context.Context, a shellIDArgs) (string, error) 
 	case errors.Is(err, exec.ErrShellNotFound):
 		return fmt.Sprintf("No background shell %s.", a.ShellID), nil
 	case err != nil:
-		return "", fmt.Errorf("shell: kill background shell %q: %w", a.ShellID, err)
+		return "", fmt.Errorf("%s: kill background shell %q: %w", builtincontract.Shell, a.ShellID, err)
 	case running:
 		return fmt.Sprintf("Killed background shell %s.", a.ShellID), nil
 	default:
@@ -288,9 +271,6 @@ func (c *commandTools) kill(ctx context.Context, a shellIDArgs) (string, error) 
 	}
 }
 
-// completedJSON shapes a finished foreground command's result. The combined
-// stdout+stderr goes in "stdout" because the execution spool preserves their
-// combined arrival order. exit_code is always present for a finished command.
 func completedJSON(output exec.Output, exit exec.Exit) (string, error) {
 	out := output.Text
 	b, err := json.Marshal(struct {
@@ -307,14 +287,11 @@ func completedJSON(output exec.Output, exit exec.Exit) (string, error) {
 	}{Stdout: content.New([]byte(out)), ExitCode: exit.Code, Killed: exit.Killed, Duration: exit.Duration.String(), Status: "finished (" + exit.Info + ")",
 		ShellID: output.ShellID, Dropped: output.Dropped, Offset: output.Offset, NextOffset: output.NextOffset, HasMore: output.HasMore})
 	if err != nil {
-		return "", fmt.Errorf("shell: encode completed command result: %w", err)
+		return "", fmt.Errorf("%s: encode completed command result: %w", builtincontract.Shell, err)
 	}
 	return string(b), nil
 }
 
-// backgroundedJSON is the result for a command left running (explicit
-// run_in_background or auto-backgrounded). It omits exit_code — the command
-// has not exited and therefore has no exit status.
 func backgroundedJSON(id string) (string, error) {
 	b, err := json.Marshal(struct {
 		ShellID string          `json:"shell_id"`
@@ -323,16 +300,11 @@ func backgroundedJSON(id string) (string, error) {
 		"Command running in background as shell %s. Continue with read_shell_output {\"shell_id\":%q} or stop_shell {\"shell_id\":%q}.",
 		id, id, id)))})
 	if err != nil {
-		return "", fmt.Errorf("shell: encode background command result: %w", err)
+		return "", fmt.Errorf("%s: encode background command result: %w", builtincontract.Shell, err)
 	}
 	return string(b), nil
 }
 
-// waitForShell blocks until sh exits, ctx is canceled, or an enabled timeout
-// elapses. It reuses the same per-shell done channel the shell
-// foreground path selects on (no polling). A timeout is NOT an error: the
-// caller then reports the current still-running output, just as if wait were
-// off. Preserves both cancellation category and owner cause when the caller ends.
 func waitForShell(ctx context.Context, sh *exec.Shell, timeout exec.Timeout) error {
 	duration, enabled := timeout.Duration()
 	if !enabled {
@@ -347,26 +319,26 @@ func waitForShell(ctx context.Context, sh *exec.Shell, timeout exec.Timeout) err
 	defer timer.Stop()
 	select {
 	case <-sh.Done():
-	case <-timer.C: // still running — fall through to report current state
+	case <-timer.C:
 	case <-ctx.Done():
 		return errors.Join(ctx.Err(), context.Cause(ctx))
 	}
 	return nil
 }
 
-func optionalShellTimeout(value *int, unit time.Duration, field string) (exec.Timeout, error) {
-	if value == nil {
+func shellTimeout(millis *int) (exec.Timeout, error) {
+	if millis == nil {
 		return exec.Timeout{}, nil
 	}
-	if *value <= 0 {
-		return exec.Timeout{}, fmt.Errorf("shell: %s must be positive", field)
+	if *millis <= 0 {
+		return exec.Timeout{}, fmt.Errorf("%s: timeout_millis must be positive", builtincontract.Shell)
 	}
-	if int64(*value) > math.MaxInt64/int64(unit) {
-		return exec.Timeout{}, fmt.Errorf("shell: %s exceeds duration range", field)
+	if int64(*millis) > math.MaxInt64/int64(time.Millisecond) {
+		return exec.Timeout{}, fmt.Errorf("%s: timeout_millis exceeds duration range", builtincontract.Shell)
 	}
-	timeout, err := exec.NewTimeout(time.Duration(*value) * unit)
+	timeout, err := exec.NewTimeout(time.Duration(*millis) * time.Millisecond)
 	if err != nil {
-		return exec.Timeout{}, fmt.Errorf("shell: %s: %w", field, err)
+		return exec.Timeout{}, fmt.Errorf("%s: timeout_millis: %w", builtincontract.Shell, err)
 	}
 	return timeout, nil
 }

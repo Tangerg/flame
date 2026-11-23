@@ -9,15 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// AcceptedContinuation is the Run-owned binding that lets boot recovery revive an
-// accepted but not-yet-delivered continuation after an executor crash. The
-// acceptance transaction writes it from the exact open interrupt set it consumed;
-// the next committed waiting or terminal boundary deletes it. Resume intent is
-// process-local, so keeping the binding until that boundary preserves recovery
-// when the latest acknowledged tree is still paused. It retains the hand-off
-// routing only — each answer's resolution stays owned by its settled transcript
-// Item and is read back by InterruptItemID, so no resolution is stored twice and a
-// later edit through the Item cannot diverge from the binding.
 type AcceptedContinuation struct {
 	SessionID   identity.SessionID
 	Pending     Pending
@@ -30,8 +21,6 @@ type AcceptedSegment struct {
 	SegmentID identity.SegmentID
 }
 
-// NewAcceptedContinuation reads only routing from the Pending; the resolutions it
-// carries at revival are read from the settled Items, never copied here.
 func NewAcceptedContinuation(sessionID identity.SessionID, pending Pending, resume run.TreeResumeDraft, inputItemID identity.ItemID) (AcceptedContinuation, error) {
 	if err := resume.ValidateForTree(sessionID, pending.RootRunID); err != nil {
 		return AcceptedContinuation{}, err

@@ -87,7 +87,7 @@ type observedModel struct {
 
 type streamedObservedModel struct{ *observedModel }
 
-func (o *observedModel) prepare(ctx context.Context, request *chat.Request, delivery callDelivery) (*mcp.BorrowedSession, *pluginmcp.Binding, error) {
+func (o *observedModel) prepare(ctx context.Context, request *chat.Request, delivery callDelivery) (_ *mcp.BorrowedSession, _ *pluginmcp.Binding, returned error) {
 	if err := request.Validate(); err != nil {
 		return nil, nil, err
 	}
@@ -122,7 +122,7 @@ func (o *observedModel) prepare(ctx context.Context, request *chat.Request, deli
 	transferred := false
 	defer func() {
 		if !transferred {
-			borrowed.Close()
+			returned = errors.Join(returned, borrowed.Close())
 		}
 	}()
 	ctx = borrowed.Context()
@@ -142,7 +142,7 @@ func (o *observedModel) prepare(ctx context.Context, request *chat.Request, deli
 	return borrowed, bound, nil
 }
 
-func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.Response, error) {
+func (o *observedModel) Call(ctx context.Context, request *chat.Request) (_ *chat.Response, returned error) {
 	ctx, err := enterContributionPhase(ctx, o.binding)
 	if err != nil {
 		return nil, notExecuted(err)
@@ -151,7 +151,7 @@ func (o *observedModel) Call(ctx context.Context, request *chat.Request) (*chat.
 	if err != nil {
 		return nil, notExecuted(err)
 	}
-	defer borrowed.Close()
+	defer func() { returned = errors.Join(returned, borrowed.Close()) }()
 	ctx = borrowed.Context()
 	session := borrowed.Session()
 	invocation, _ := pluginmcp.InvocationFromContext(ctx)
@@ -202,7 +202,16 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 			yield(nil, notExecuted(err))
 			return
 		}
-		defer borrowed.Close()
+		consumer, listening := yield, true
+		yield = func(delta *chat.ResponseDelta, err error) bool {
+			listening = listening && consumer(delta, err)
+			return listening
+		}
+		defer func() {
+			if err := borrowed.Close(); err != nil && listening {
+				yield(nil, err)
+			}
+		}()
 		calling = borrowed.Context()
 		session := borrowed.Session()
 		invocation, _ := pluginmcp.InvocationFromContext(calling)
@@ -212,23 +221,7 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 			return
 		}
 		admission := &observedContinuation{request: input, id: pluginmcp.CommandID(invocation.ID)}
-		next, err := pluginsdk.NewModelStreamCallback(func(requestCtx context.Context, command pluginmcp.Command[scopewire.Request]) iter.Seq2[*chat.ResponseDelta, error] {
-			return func(yield func(*chat.ResponseDelta, error) bool) {
-				if err := admission.enter(command); err != nil {
-					yield(nil, err)
-					return
-				}
-				continuation, release := modelContinuationContext(calling, requestCtx)
-				defer release()
-				if err := continuation.Err(); err != nil {
-					failure := notExecuted(errors.Join(err, context.Cause(continuation)))
-					admission.finish(nil, failure)
-					yield(nil, failure)
-					return
-				}
-				admission.relay(continuation, o.nextStream.Stream(continuation, frozen.Clone()), yield)
-			}
-		})
+		next, err := pluginsdk.NewModelStreamCallback(o.continuationCallback(calling, frozen, admission))
 		if err != nil {
 			yield(nil, notExecuted(err))
 			return
@@ -239,28 +232,33 @@ func (o *streamedObservedModel) Stream(ctx context.Context, request *chat.Reques
 			return
 		}
 		defer release()
-		var observerErr error
-		for value, err := range o.owner.calls.pool.Stream(calling, o.binding.ServerID, session, binding, invocation.ID, input, metadata) {
-			if err != nil {
-				observerErr = err
-				break
-			}
-			if value.Chunk == nil {
-				continue
-			}
-			chunk, err := admission.matchChunk(*value.Chunk)
-			if err != nil {
-				observerErr = err
-				break
-			}
-			if !yield(chunk.delta.Clone(), nil) {
-				return
-			}
-			admission.acknowledgeChunk(chunk)
+		consumed, observerErr := admission.forward(o.owner.calls.pool.Stream(calling, o.binding.ServerID, session, binding, invocation.ID, input, metadata), yield)
+		if !consumed {
+			return
 		}
 		release()
 		if _, err := admission.outcome(observerErr); err != nil {
 			yield(nil, err)
+		}
+	}
+}
+
+func (o *streamedObservedModel) continuationCallback(calling context.Context, frozen *chat.Request, admission *observedContinuation) func(context.Context, pluginmcp.Command[scopewire.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+	return func(requestCtx context.Context, command pluginmcp.Command[scopewire.Request]) iter.Seq2[*chat.ResponseDelta, error] {
+		return func(yield func(*chat.ResponseDelta, error) bool) {
+			if err := admission.enter(command); err != nil {
+				yield(nil, err)
+				return
+			}
+			continuation, release := modelContinuationContext(calling, requestCtx)
+			defer release()
+			if err := continuation.Err(); err != nil {
+				failure := notExecuted(errors.Join(err, context.Cause(continuation)))
+				admission.finish(nil, failure)
+				yield(nil, failure)
+				return
+			}
+			admission.relay(continuation, o.nextStream.Stream(continuation, frozen.Clone()), yield)
 		}
 	}
 }

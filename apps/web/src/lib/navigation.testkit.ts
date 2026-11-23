@@ -7,7 +7,7 @@ import {
   type LocationPatch,
   type Navigator,
 } from "@/lib/navigation";
-export interface MemoryNavigator extends Navigator {
+interface MemoryNavigator extends Navigator {
   reset(location?: Partial<AppLocation>): void;
   entries(): AppLocation[];
 }

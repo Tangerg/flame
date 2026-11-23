@@ -12,9 +12,6 @@ type trackedQuestion struct {
 	block *questionBlock
 }
 
-// revealAnsweredQuestion shows the answers a resumed Run re-completed for a
-// pending question in place, so the transcript keeps its scroll, selection and
-// search.
 func (t *transcriptView) revealAnsweredQuestion(block conversation.Block) bool {
 	key := conversation.BlockKey(block.RunID, block.ID)
 	tracked, pending := t.pendingQuestions[key]
@@ -40,10 +37,6 @@ func (t *transcriptView) finishPendingQuestions(runID string) {
 	}
 }
 
-// reconcilePendingQuestions closes presentation lifetimes after a cold read.
-// An unanswered durable Question remains hidden and retained only when the same
-// snapshot exposes it as an open interrupt. Canceled historical questions are
-// still intentionally invisible, but must not pin the transcript forever.
 func (t *transcriptView) reconcilePendingQuestions(interrupts []conversation.Interrupt) error {
 	open := make(map[string]struct{}, len(interrupts))
 	for _, interrupt := range interrupts {

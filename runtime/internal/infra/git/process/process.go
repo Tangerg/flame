@@ -1,7 +1,5 @@
-// Package process owns the operating-system process boundary for local Git
-// commands. Runtime commands always name their repository or work tree
-// explicitly, so inheriting a parent process's GIT_* control plane would make
-// their target and semantics ambiguous.
+// Commands always name their repository explicitly, so inherited GIT_* controls
+// would make target and semantics ambiguous.
 package process
 
 import (
@@ -10,13 +8,7 @@ import (
 	"strings"
 )
 
-// environment returns the host environment without inherited Git controls,
-// followed by the command-owned overrides. Clearing the namespace as a whole
-// covers repository routing, alternate object/index files, replace refs,
-// injected config, pathspec modes, and future Git controls without maintaining
-// a version-sensitive denylist. Ordinary Git config discovery through HOME and
-// the explicitly selected repository remains available unless the caller
-// overrides it.
+// Clearing the GIT_ namespace as a whole avoids a version-sensitive denylist.
 func environment(overrides ...string) []string {
 	overridden := make(map[string]struct{}, len(overrides))
 	for _, entry := range overrides {
@@ -40,7 +32,8 @@ func environment(overrides ...string) []string {
 }
 
 func hasGitPrefix(key string) bool {
-	return len(key) >= len("GIT_") && strings.EqualFold(key[:len("GIT_")], "GIT_")
+	const gitVariablePrefix = "GIT_"
+	return len(key) >= len(gitVariablePrefix) && strings.EqualFold(key[:len(gitVariablePrefix)], gitVariablePrefix)
 }
 
 func environmentKey(key string) string {

@@ -1,6 +1,3 @@
-// Package pluginview turns a release's declared terminal views into plugin
-// calls and readable rows. A view carries every input binding and form-field
-// kind, so the CLI renders any package's view without its types or schemas.
 package pluginview
 
 import (
@@ -22,8 +19,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// View is one declared terminal view bound to the installation that serves it.
-
 type View struct {
 	protocol.PluginTerminalView
 	InstallationID string
@@ -32,7 +27,6 @@ type View struct {
 	capability     *plugincontract.Capability
 }
 
-// Presentation admission includes the availability of the selected release.
 func Views(installations []protocol.PluginInstallation) ([]View, []error) {
 	var views []View
 	var problems []error
@@ -59,13 +53,11 @@ func Views(installations []protocol.PluginInstallation) ([]View, []error) {
 	return views, problems
 }
 
-// Context is what the terminal knows about where it runs.
 type Context struct {
 	Workspace string
 	TimeZone  string
 }
 
-// Row is one listed item, read by '/'-separated field path.
 type Row map[string]jsontext.Value
 
 func (r Row) Field(path string) (jsontext.Value, bool) {
@@ -84,7 +76,6 @@ func (r Row) Field(path string) (jsontext.Value, bool) {
 	return value, found
 }
 
-// Text renders one field for reading; a string shows without quotes.
 func (r Row) Text(path string) string {
 	value, found := r.Field(path)
 	if !found {
@@ -97,13 +88,11 @@ func (r Row) Text(path string) string {
 	return string(value)
 }
 
-// Page is one list response.
 type Page struct {
 	Rows []Row
 	Next string
 }
 
-// FormField is one value a person enters, with its starting text.
 type FormField struct {
 	Path    string
 	Title   string
@@ -112,12 +101,10 @@ type FormField struct {
 	Initial string
 }
 
-// ListForm is the list's own form fields, such as a scope to read.
 func (v View) ListForm(context Context) ([]FormField, error) {
 	return formFields(v.List.Input, context, nil)
 }
 
-// ActionForm is what a person fills before action runs on row.
 func (v View) ActionForm(action protocol.PluginTerminalAction, context Context, row Row) ([]FormField, error) {
 	return formFields(action.Input, context, row)
 }
@@ -130,14 +117,11 @@ func (v View) Action(id string) (protocol.PluginTerminalAction, bool) {
 	return v.Actions[index], true
 }
 
-// Mutates reports whether action changes the package's data, so its call must
-// be staged durably.
 func (v View) Mutates(action protocol.PluginTerminalAction) bool {
 	method, found := v.capability.Method(action.Method)
 	return found && method.Kind() == frame.Command
 }
 
-// ListRequest reads one page; cursor is empty for the first.
 func (v View) ListRequest(context Context, form map[string]string, cursor string) (protocol.CallPluginRequest, error) {
 	input := slices.Clone(v.List.Input)
 	if v.List.Paging != nil {
@@ -150,7 +134,6 @@ func (v View) ListRequest(context Context, form map[string]string, cursor string
 	return v.request(v.List.Method, input, context, nil, form)
 }
 
-// ActionRequest calls action; row is nil for a view action.
 func (v View) ActionRequest(action protocol.PluginTerminalAction, context Context, row Row, form map[string]string) (protocol.CallPluginRequest, error) {
 	if (action.Target == extension.TerminalActionRow) != (row != nil) {
 		return protocol.CallPluginRequest{}, errors.New("action target and selected row disagree")
@@ -189,7 +172,6 @@ func (v View) request(method string, bindings []protocol.PluginTerminalInput, co
 	}, nil
 }
 
-// Page decodes a list response's rows and next cursor.
 func (v View) Page(response *protocol.CallPluginResponse) (Page, error) {
 	if response == nil {
 		return Page{}, errors.New("missing list response")

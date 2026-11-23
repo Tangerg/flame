@@ -1,6 +1,3 @@
-// Package failure defines CLI presentation behavior for Runtime problems.
-// Runtime Protocol remains the sole owner of the structured failure value and
-// its validation contract.
 package failure
 
 import (
@@ -11,7 +8,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// Clone returns an independently owned problem. It is safe on nil.
 func Clone(problem *protocol.ProblemData) *protocol.ProblemData {
 	if problem == nil {
 		return nil
@@ -25,7 +21,6 @@ func Clone(problem *protocol.ProblemData) *protocol.ProblemData {
 	return &cloned
 }
 
-// Equal reports whether two optional problems carry the same information.
 func Equal(left, right *protocol.ProblemData) bool {
 	if left == nil || right == nil {
 		return left == right
@@ -38,7 +33,6 @@ func Equal(left, right *protocol.ProblemData) bool {
 	return left.ActiveRun == nil || *left.ActiveRun == *right.ActiveRun
 }
 
-// Message returns the most useful concise explanation for status lines.
 func Message(problem *protocol.ProblemData, fallback string) string {
 	if problem == nil {
 		return fallback
@@ -52,9 +46,6 @@ func Message(problem *protocol.ProblemData, fallback string) string {
 	return fallback
 }
 
-// String returns a complete, single-line human projection. Machine consumers
-// marshal ProblemData directly and therefore retain the same information
-// without parsing this text.
 func String(problem *protocol.ProblemData) string {
 	if problem == nil {
 		return ""
@@ -86,5 +77,5 @@ func String(problem *protocol.ProblemData) string {
 		}
 		parts = append(parts, "fields "+strings.Join(fields, ", "))
 	}
-	return strings.Join(parts, " · ")
+	return strings.Join(parts, "; ")
 }

@@ -12,23 +12,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// SessionRollbackPhase separates a command whose runtime outcome is unknown
-// from one whose authoritative session outcome was confirmed. Confirmed
-// records remain in the session aggregate until activation atomically merges
-// their recovered opening input into the durable draft.
-type SessionRollbackPhase string
-
-const (
-	SessionRollbackPrepared  SessionRollbackPhase = "prepared"
-	SessionRollbackConfirmed SessionRollbackPhase = "confirmed"
-)
-
-// PendingSessionRollback is the crash-safe rollback journal owned by one
-// session aggregate. The exact before/after run projections prove history
-// outcomes without replay; file-affecting commands additionally bind replay to
-// one runtime idempotency store and its advertised retention window.
 type PendingSessionRollback struct {
-	Phase          SessionRollbackPhase  `json:"phase"`
+	Phase          CommandPhase          `json:"phase"`
 	CommandID      authoring.CommandID   `json:"commandId"`
 	SessionID      string                `json:"sessionId"`
 	ToRunID        string                `json:"toRunId,omitzero"`
@@ -50,7 +35,7 @@ func (p PendingSessionRollback) Validate() error {
 	if request.CommandID == "" {
 		return errors.New("session rollback command id is empty")
 	}
-	if p.Phase != SessionRollbackPrepared && p.Phase != SessionRollbackConfirmed {
+	if p.Phase != CommandPrepared && p.Phase != CommandConfirmed {
 		return fmt.Errorf("session rollback phase %q is invalid", p.Phase)
 	}
 	if p.StagedAt.IsZero() {
@@ -62,8 +47,6 @@ func (p PendingSessionRollback) Validate() error {
 	return errors.Join(p.validateProjections(request), p.validateBoundary(request), p.validateReplay(request))
 }
 
-// validateProjections checks the history the rollback leaves behind: a
-// files-only restore keeps it, any other rollback keeps a prefix of it.
 func (p PendingSessionRollback) validateProjections(request conversation.RollbackSession) error {
 	if err := validateRunIDs("session rollback before projection", p.BeforeRunIDs); err != nil {
 		return err
@@ -83,7 +66,6 @@ func (p PendingSessionRollback) validateProjections(request conversation.Rollbac
 	return nil
 }
 
-// validateBoundary checks that the boundary Run is one the rollback keeps.
 func (p PendingSessionRollback) validateBoundary(request conversation.RollbackSession) error {
 	switch {
 	case p.ToRunID == "":
@@ -100,8 +82,6 @@ func (p PendingSessionRollback) validateBoundary(request conversation.RollbackSe
 	return nil
 }
 
-// validateReplay checks that only a file restore, which cannot be repeated
-// safely, carries a replay guarantee outliving its staging.
 func (p PendingSessionRollback) validateReplay(request conversation.RollbackSession) error {
 	if err := p.Replay.Validate(); err != nil {
 		return err
@@ -118,7 +98,6 @@ func (p PendingSessionRollback) validateReplay(request conversation.RollbackSess
 	return nil
 }
 
-// Request reconstructs the exact runtime mutation owned by this journal.
 func (p PendingSessionRollback) Request() conversation.RollbackSession {
 	return conversation.RollbackSession{
 		CommandID: p.CommandID, SessionID: p.SessionID,
@@ -155,8 +134,6 @@ func validateRunIDs(name string, ids []string) error {
 	return nil
 }
 
-// SessionRollbackRecovery is the one-time local authoring result consumed
-// when a session with a confirmed rollback becomes active.
 type SessionRollbackRecovery struct {
 	Draft         authoring.Message
 	DroppedCount  int
@@ -164,15 +141,11 @@ type SessionRollbackRecovery struct {
 	Merged        bool
 }
 
-// SessionDraftActivation is the complete authoring state installed when a
-// Session becomes active. Rollback is present exactly once, on the activation
-// that materializes a confirmed rollback journal.
 type SessionDraftActivation struct {
 	Draft    authoring.Message
 	Rollback *SessionRollbackRecovery
 }
 
-// PendingSessionRollbacks returns rollback journals in stable session order.
 func (s *Store) PendingSessionRollbacks() []PendingSessionRollback {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -186,7 +159,6 @@ func (s *Store) PendingSessionRollbacks() []PendingSessionRollback {
 	return rollbacks
 }
 
-// PendingSessionRollback returns the journal for one session, when present.
 func (s *Store) PendingSessionRollback(sessionID string) (PendingSessionRollback, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -194,9 +166,6 @@ func (s *Store) PendingSessionRollback(sessionID string) (PendingSessionRollback
 	return pending.clone(), exists
 }
 
-// StageSessionRollback durably owns a rollback before it can leave the
-// process. Repeating the exact journal is idempotent; another command cannot
-// replace an outcome whose acknowledgement is still unknown.
 func (s *Store) StageSessionRollback(pending PendingSessionRollback) error {
 	if err := pending.Validate(); err != nil {
 		return err
@@ -216,9 +185,6 @@ func (s *Store) StageSessionRollback(pending PendingSessionRollback) error {
 	)
 }
 
-// ConfirmSessionRollback upgrades the exact prepared command to a durable
-// local recovery record. Draft materialization remains a separate activation
-// transition so a non-active session cannot replace the visible composer.
 func (s *Store) ConfirmSessionRollback(sessionID string, commandID authoring.CommandID) error {
 	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
@@ -229,18 +195,16 @@ func (s *Store) ConfirmSessionRollback(sessionID string, commandID authoring.Com
 	if !exists || pending.CommandID != commandID {
 		return errors.New("session rollback journal does not match the confirmed command")
 	}
-	if pending.Phase == SessionRollbackConfirmed {
+	if pending.Phase == CommandConfirmed {
 		return nil
 	}
-	pending.Phase = SessionRollbackConfirmed
+	pending.Phase = CommandConfirmed
 	return s.saveSessionStateRecord(
 		sessionID, s.drafts[sessionID], s.pendingRuns[sessionID],
 		s.pendingResumePointer(sessionID), &pending, s.pendingSteerPointer(sessionID),
 	)
 }
 
-// RejectSessionRollback retires only the exact prepared command after a
-// definitive runtime refusal.
 func (s *Store) RejectSessionRollback(sessionID string, commandID authoring.CommandID) error {
 	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
@@ -251,7 +215,7 @@ func (s *Store) RejectSessionRollback(sessionID string, commandID authoring.Comm
 	if !exists {
 		return nil
 	}
-	if pending.Phase != SessionRollbackPrepared || pending.CommandID != commandID {
+	if pending.Phase != CommandPrepared || pending.CommandID != commandID {
 		return errors.New("session rollback journal does not match the rejected command")
 	}
 	return s.saveSessionStateRecord(
@@ -260,10 +224,6 @@ func (s *Store) RejectSessionRollback(sessionID string, commandID authoring.Comm
 	)
 }
 
-// ActivateSessionDraft atomically merges incoming authoring input, materializes
-// a confirmed rollback opening, and retires that journal. Existing Session
-// input precedes incoming input; a recovered opening precedes both. The caller
-// therefore receives the only draft value it may install in the composer.
 func (s *Store) ActivateSessionDraft(sessionID string, incoming authoring.Message) (SessionDraftActivation, error) {
 	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return SessionDraftActivation{}, err
@@ -277,7 +237,7 @@ func (s *Store) ActivateSessionDraft(sessionID string, incoming authoring.Messag
 		return SessionDraftActivation{}, err
 	}
 	pending, exists := s.pendingRollbacks[sessionID]
-	confirmed := exists && pending.Phase == SessionRollbackConfirmed
+	confirmed := exists && pending.Phase == CommandConfirmed
 	var recovery *SessionRollbackRecovery
 	if confirmed {
 		var merged bool
@@ -312,8 +272,6 @@ func (s *Store) pendingResumePointer(sessionID string) *PendingResume {
 	return &pending
 }
 
-// MergeSessionRollbackDraft restores one journal's opening text without
-// discarding a newer draft authored while the runtime mutation was settling.
 func MergeSessionRollbackDraft(current authoring.Message, pending PendingSessionRollback) (authoring.Message, bool) {
 	recovered := authoring.Message{Text: pending.OpeningText}
 	current = current.Clone()

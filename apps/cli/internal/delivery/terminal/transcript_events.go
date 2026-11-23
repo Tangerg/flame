@@ -40,8 +40,6 @@ func (t *transcriptView) apply(runID string, event conversation.Event) error {
 		}
 		return t.delta(key, e)
 	case conversation.ToolArgumentsDelta, conversation.RunProgress:
-		// Tool arguments are provisional JSON and progress belongs in the status
-		// chrome. Neither creates an authoritative transcript block.
 	case conversation.BlockCompleted:
 		return t.complete(e.Block)
 	case conversation.SegmentFinished:
@@ -159,8 +157,6 @@ func (t *transcriptView) completeStream(block conversation.Block) error {
 	if err := t.prepareLiveText(live); err != nil {
 		return err
 	}
-	// The completed value is authoritative. Re-rendering it once also repairs a
-	// transport that intentionally replaced an earlier provisional tail.
 	final := &markdownBlock{theme: t.theme, speaker: live.block.speaker}
 	final.setSource(block.Text, t.lookFor(block.Kind))
 	t.finishMarkdown(live.id, final)
@@ -202,8 +198,6 @@ func (t *transcriptView) completeLiveTool(block conversation.Block) bool {
 	return true
 }
 
-// Ending observation releases presentation resources without deciding a Tool
-// outcome. An authoritative cold snapshot replaces the last observed evidence.
 func (t *transcriptView) rejectLivePresentation() {
 	for id, live := range t.textStreams {
 		if err := live.document.End(context.Canceled); err != nil {
@@ -233,9 +227,6 @@ func (t *transcriptView) rejectLivePresentation() {
 	t.announceSelection()
 }
 
-// settleRun ends a Run's presentation. Runtime closes every open Item before
-// a Run finishes and the conversation fold rejects a finish that leaves one
-// open, so only presentation-owned state remains to settle here.
 func (t *transcriptView) settleRun(runID string) {
 	t.finishPendingQuestions(runID)
 	if t.activeToolGroup != nil && t.activeToolGroup.runID == runID {

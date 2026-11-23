@@ -11,11 +11,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
-// A refused probe recovers the whole waiting tree as lost for loss, which the
-// lost Run carries. The finer reason and cause stay in the trace: they
-// distinguish failure modes for an operator and can carry payload details.
 func unresumable(
 	ctx context.Context,
 	continuation runs.ExecutionContinuation,
@@ -24,22 +22,15 @@ func unresumable(
 	cause error,
 ) (runs.WaitingResumption, error) {
 	slog.WarnContext(ctx, "execution: waiting execution is not resumable",
-		"session.id", continuation.SessionID,
-		"executor.id", continuation.ExecutorID,
-		"loss", string(loss),
-		"reason", reason,
-		"error", cause,
+		telemetry.SessionID(continuation.SessionID),
+		slog.Any("executor.id", continuation.ExecutorID),
+		telemetry.RunLoss(string(loss)),
+		slog.Any("reason", reason),
+		telemetry.Error(cause),
 	)
 	return runs.UnresumableWaiting(loss), nil
 }
 
-// CanResumeWaitingExecution probes one exact durable waiting tree without
-// publishing or registering a live executor. Invalid, incompatible, or
-// unknown-effect state returns false; assembly/probe I/O failures remain errors
-// so startup never mutates facts after an inconclusive read. It deliberately
-// validates deployment state and product bindings without acquiring a writer.
-// It takes no installation admission: it publishes nothing, and its pending
-// checkpoint already holds its installation dependencies.
 func (i *InteractionExecutor) CanResumeWaitingExecution(
 	ctx context.Context,
 	continuation runs.ExecutionContinuation,
@@ -82,8 +73,6 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	return i.probeAssembledTree(ctx, continuation, state)
 }
 
-// probeAssembledTree assembles the checkpoint without running it, and proves
-// the waiting tree still validates against today's configuration.
 func (i *InteractionExecutor) probeAssembledTree(ctx context.Context, continuation runs.ExecutionContinuation, state interactionCheckpointState) (resumption runs.WaitingResumption, err error) {
 	start := state.restoredStart(continuation)
 	ref := runs.ExecutorRef{SessionID: start.SessionID, ExecutorID: continuation.ExecutorID}
@@ -111,9 +100,6 @@ func (i *InteractionExecutor) probeAssembledTree(ctx context.Context, continuati
 }
 
 func (i *InteractionExecutor) probeCapturedContributions(ctx context.Context, continuation runs.ExecutionContinuation, state interactionCheckpointState) (runs.WaitingResumption, error) {
-	if i.config.CallComposition == nil {
-		return runs.ResumableWaiting(), nil
-	}
 	bindings := slices.Clone(state.modelObservers)
 	bindings = append(bindings, state.modelContexts...)
 	bindings = append(bindings, state.modelInputs...)
@@ -128,8 +114,6 @@ func (i *InteractionExecutor) probeCapturedContributions(ctx context.Context, co
 	if err != nil {
 		return runs.WaitingResumption{}, fmt.Errorf("execution: restore captured contribution bindings: %w", err)
 	}
-	// Probe source eligibility before allocating an Engine. A definite
-	// withdrawal loses the captured tree; an inconclusive read changes no facts.
 	if _, err := i.config.CallComposition.Activations(ctx, bindings); err != nil {
 		if errors.Is(err, plugin.ErrUnavailable) || errors.Is(err, plugin.ErrStale) {
 			return unresumable(ctx, continuation, run.LossConfigurationChanged, "captured contribution is unavailable", err)

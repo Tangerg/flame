@@ -16,7 +16,6 @@ import (
 	"github.com/samber/lo"
 )
 
-// planStore is the use case's consumer-owned persistence port.
 type planStore interface {
 	State(ctx context.Context, sessionID identity.SessionID) (plan.Current, error)
 	Save(ctx context.Context, sessionID identity.SessionID, replacement plan.Replacement) error
@@ -27,10 +26,8 @@ type PlanAuthor interface {
 	ReviewPlan(context.Context, extension.ContributionSource, planworkflow.Document) (string, error)
 }
 
-// PlanClock supplies the commit time for a Plan replacement.
 type PlanClock func() time.Time
 
-// PlanCoordinator executes Plan use cases over one canonical store.
 type PlanCoordinator struct {
 	store         planStore
 	author        PlanAuthor
@@ -38,7 +35,6 @@ type PlanCoordinator struct {
 	invalidations invalidation.Publish
 }
 
-// PlanDependencies is the collaborator set [NewPlanCoordinator] wires into a PlanCoordinator.
 type PlanDependencies struct {
 	Store         planStore
 	Author        PlanAuthor
@@ -46,7 +42,6 @@ type PlanDependencies struct {
 	Invalidations invalidation.Publish
 }
 
-// NewPlanCoordinator constructs the Plan use cases over a required store.
 func NewPlanCoordinator(deps PlanDependencies) (*PlanCoordinator, error) {
 	if lo.IsNil(deps.Store) {
 		return nil, errors.New("sessions: Plan store is required")
@@ -63,7 +58,6 @@ func NewPlanCoordinator(deps PlanDependencies) (*PlanCoordinator, error) {
 	return &PlanCoordinator{store: deps.Store, author: deps.Author, now: deps.Now, invalidations: deps.Invalidations}, nil
 }
 
-// State returns the canonical optional Plan aggregate for one session.
 func (c *PlanCoordinator) State(ctx context.Context, sessionID identity.SessionID) (plan.Current, error) {
 	if err := sessionID.Validate(); err != nil {
 		return plan.Current{}, fmt.Errorf("sessions: Plan: %w", err)
@@ -71,8 +65,6 @@ func (c *PlanCoordinator) State(ctx context.Context, sessionID identity.SessionI
 	return c.store.State(ctx, sessionID)
 }
 
-// Replace computes and commits one complete replacement using optimistic
-// concurrency. An empty steps slice clears the Plan under a new revision.
 func (c *PlanCoordinator) Replace(ctx context.Context, sessionID identity.SessionID, steps []plan.Step) (plan.State, error) {
 	replacement, err := c.prepareAuthorDecision(ctx, sessionID, plan.Document{Steps: steps})
 	if err != nil {
@@ -117,13 +109,6 @@ func (c *PlanCoordinator) Review(ctx context.Context, state plan.State) (string,
 	return c.author.ReviewPlan(ctx, state.Document().Source, document)
 }
 
-// PrepareReplacement decides a replacement without committing it. Cross-
-// aggregate use cases use this to include the exact Plan transition in their
-// own atomic write set. Steps are borrowed until the synchronous call returns;
-// the decided State owns its snapshot.
-//
-// Persistence receives the decided replacement and may only apply its CAS; it
-// never assigns a revision or update time itself.
 func (c *PlanCoordinator) PrepareReplacement(ctx context.Context, sessionID identity.SessionID, steps []plan.Step) (plan.Replacement, error) {
 	current, err := c.State(ctx, sessionID)
 	if err != nil {
@@ -132,8 +117,6 @@ func (c *PlanCoordinator) PrepareReplacement(ctx context.Context, sessionID iden
 	return c.reference(current, plan.Document{Steps: steps})
 }
 
-// PrepareInitial decides the first Plan state for a not-yet-created session.
-// It is used when a cross-aggregate write set assigns the session identity.
 func (c *PlanCoordinator) PrepareInitial(steps []plan.Step) (plan.Replacement, error) {
 	return c.reference(plan.Current{}, plan.Document{Steps: steps})
 }

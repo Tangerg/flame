@@ -22,14 +22,12 @@ const (
 	PluginFailed    LifecyclePhase = "failed"
 )
 
-// LifecycleResult is the outcome of one activation or lifecycle operation.
 type LifecycleResult struct {
 	PluginID string
 	Phase    LifecyclePhase
 	Err      error
 }
 
-// Status is a read-only plugin lifecycle snapshot.
 type Status struct {
 	ID           string
 	Version      string
@@ -40,8 +38,6 @@ type Status struct {
 	Detail       string
 }
 
-// Host owns discovered manifests and loaded plugin lifetimes. Its zero value
-// is not usable; NewHost creates its private command registry.
 type Host struct {
 	lifecycleMu sync.Mutex
 	stateMu     sync.RWMutex
@@ -54,8 +50,6 @@ type Host struct {
 	closeErr    error
 }
 
-// hostPhase orders a Host's single activation and final close; a Host closed
-// before activation never activates.
 type hostPhase uint8
 
 const (
@@ -73,12 +67,8 @@ func NewHost() *Host {
 	}
 }
 
-// Commands returns detached command descriptors in resolved registration order.
 func (h *Host) Commands() []OwnedCommand { return h.registry.commands() }
 
-// Activate validates, orders, and loads one discovered plugin set. Individual
-// failures are isolated and returned as results; calling Activate twice would
-// make ownership ambiguous and is rejected.
 func (h *Host) Activate(plugins []Plugin) ([]LifecycleResult, error) {
 	h.lifecycleMu.Lock()
 	defer h.lifecycleMu.Unlock()
@@ -117,8 +107,6 @@ func (h *Host) Activate(plugins []Plugin) ([]LifecycleResult, error) {
 	return results, nil
 }
 
-// Statuses returns lifecycle snapshots in resolved load order followed by
-// structurally skipped plugins in stable identity order.
 func (h *Host) Statuses() []Status {
 	h.stateMu.RLock()
 	defer h.stateMu.RUnlock()
@@ -151,8 +139,6 @@ func (h *Host) statusLocked(id string) Status {
 	}
 }
 
-// Affected returns id and its transitive dependents in stable load order. An
-// adapter uses it to retire provider-owned work before reload or unload.
 func (h *Host) Affected(id string) ([]string, error) {
 	h.stateMu.RLock()
 	defer h.stateMu.RUnlock()
@@ -178,8 +164,6 @@ func (h *Host) Affected(id string) ([]string, error) {
 	return append(affected, remaining...), nil
 }
 
-// Reload unloads a plugin and every transitive dependent, then reactivates the
-// closure in dependency order so no dependent retains stale registrations.
 func (h *Host) Reload(id string) ([]LifecycleResult, error) {
 	h.lifecycleMu.Lock()
 	defer h.lifecycleMu.Unlock()
@@ -216,7 +200,6 @@ func (h *Host) Reload(id string) ([]LifecycleResult, error) {
 	return results, nil
 }
 
-// Unload removes a plugin and its transitive dependents in reverse order.
 func (h *Host) Unload(id string) error {
 	h.lifecycleMu.Lock()
 	defer h.lifecycleMu.Unlock()
@@ -322,8 +305,6 @@ func (h *Host) load(id string) LifecycleResult {
 	return result
 }
 
-// Close unloads every plugin in reverse dependency order. It is idempotent and
-// returns the same joined cleanup error to every caller.
 func (h *Host) Close() error {
 	if h == nil {
 		return nil

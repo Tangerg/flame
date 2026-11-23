@@ -4,7 +4,7 @@ import { SHORTCUT } from "@/features/command/public/extensionPoints";
 import { useEffectiveCommands } from "@/features/command/public/shortcutOverrides";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
 import { normalizeHotkey } from "@tanstack/hotkeys";
-export function commandShortcuts(commands: readonly CommandSpec[]): ShortcutSpec[] {
+function commandShortcuts(commands: readonly CommandSpec[]): ShortcutSpec[] {
   return commands.flatMap((command) =>
     command.combo === undefined
       ? []

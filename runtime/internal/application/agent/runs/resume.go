@@ -9,17 +9,12 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// Resume prepares one complete response set without acquiring an executor. Its
-// acceptance transaction consumes the waiting handoff, settles answered Items,
-// and resumes the tree. Writer restoration and activation belong to the accepted
-// Run's lifecycle, which retains the exact committed Segment identities.
 func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResult, error) {
 	cmd = cmd.clone()
 	if cmd.Acceptance != nil {
@@ -36,7 +31,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 		return StartResult{}, err
 	}
 	defer runAdmission.Release()
-	parked, err := c.readParkedTree(ctx, sess.ID(), cmd)
+	parked, err := c.readParkedTree(ctx, cmd)
 	if err != nil {
 		return StartResult{}, err
 	}
@@ -47,15 +42,13 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (StartResul
 	return c.openResumedSegment(ctx, sess, &runAdmission, parked, prepared, cmd)
 }
 
-// parkedTree is the answerable hand-off and the Items and Runs it names, read
-// while this command excludes competing resume and cancellation.
 type parkedTree struct {
 	pending Pending
 	items   map[identity.ItemID]transcript.Item
-	runs    []rundomain.Run
+	runs    []run.Run
 }
 
-func (c *Coordinator) readParkedTree(ctx context.Context, sessionID identity.SessionID, cmd ResumeCommand) (parkedTree, error) {
+func (c *Coordinator) readParkedTree(ctx context.Context, cmd ResumeCommand) (parkedTree, error) {
 	pending, found, err := c.interrupts.LookupOpenInterrupt(ctx, cmd.RunID)
 	if err != nil {
 		return parkedTree{}, err
@@ -63,8 +56,6 @@ func (c *Coordinator) readParkedTree(ctx context.Context, sessionID identity.Ses
 	if !found {
 		return parkedTree{}, ErrInterruptNotOpen
 	}
-	// The Items an open interrupt names cannot change while it is open: only
-	// the opening transaction answers them.
 	items, err := pendingItems(ctx, c.items, pending)
 	if err != nil {
 		return parkedTree{}, err
@@ -82,8 +73,6 @@ func (c *Coordinator) readParkedTree(ctx context.Context, sessionID identity.Ses
 	return parkedTree{pending: pending, items: items, runs: runs}, nil
 }
 
-// preparedResume is the acceptance write-set and the executor continuation it
-// authorizes, prepared without acquiring an executor.
 type preparedResume struct {
 	acceptance   ResumeAcceptance
 	answers      []InterruptAnswer
@@ -139,9 +128,6 @@ func (c *Coordinator) prepareResume(ctx context.Context, sess session.Session, p
 	return preparedResume{acceptance: acceptance, answers: answers, waiting: waiting, continuation: continuation}, nil
 }
 
-// openResumedSegment commits one acceptance transaction that consumes the open
-// set, settles its answered Items, resumes the tree and opens the continuation
-// Segment. Executor activation is detached and owned by the accepted Run.
 func (c *Coordinator) openResumedSegment(
 	ctx context.Context,
 	sess session.Session,
@@ -184,8 +170,6 @@ func (c *Coordinator) openResumedSegment(
 	if err != nil {
 		return StartResult{}, err
 	}
-	// The standing rules committed inside the acceptance; their read model is
-	// invalidated only now that the transaction is durable.
 	if len(prepared.acceptance.rememberedRules) > 0 {
 		c.segments.publications.publishApprovalsChanged()
 	}
@@ -197,19 +181,11 @@ func (c *Coordinator) openResumedSegment(
 	c.segments.publications.publishWaitingMoved(sessionID, parked.pending.RootRunID)
 	result := StartResult{RunID: cmd.RunID, SegmentID: segmentID, SessionID: sessionID, Events: events}
 	if committedInput != nil {
-		// The id derives from the Segment as a fresh Run's does, so the client
-		// reconciles its optimistic bubble by id rather than by content.
 		result.UserItemID = committedInput.ItemID
 	}
 	return result, nil
 }
 
-// rememberedRuleCandidates selects every answered approval that requested a
-// standing rule and assembles the authority skeleton the acceptance owner derives
-// a rule from. The frozen tool authority comes from the interrupt binding, the
-// scope and decision from the accepted answer, and the effective arguments from
-// the confirmed edit or the original invocation. The answers follow the
-// binding order because both are projected from the settled Items.
 func rememberedRuleCandidates(
 	sessionID identity.SessionID, projectDir string,
 	pending Pending,
@@ -243,10 +219,6 @@ func rememberedRuleCandidates(
 	return candidates, nil
 }
 
-// effectiveApprovalArguments is the exact invocation a remembered rule is derived
-// from: the human's confirmed edit when an approval carried one, otherwise the
-// original held invocation. A held approval keeps its unexecuted arguments as
-// verbatim text, so that form is parsed when no edit replaced it.
 func effectiveApprovalArguments(item transcript.Item, resolution approval.Resolution) (tool.Arguments, error) {
 	if resolution.Decision == approval.Allow && resolution.EditedArguments != "" {
 		return tool.ParseArguments(resolution.EditedArguments)

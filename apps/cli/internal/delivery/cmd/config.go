@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/adapter/keybinding"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/settings"
@@ -22,57 +23,42 @@ import (
 
 const maximumCLIConfigBytes int64 = 256 << 10
 
-type flagBinding struct {
-	key  string
-	flag string
-}
-
-var settingFlagBindings = [...]flagBinding{
-	{key: "runtime.mode", flag: "runtime-mode"},
-	{key: "runtime.endpoint", flag: "runtime-url"},
-	{key: "provider", flag: "provider"},
-	{key: "model", flag: "model"},
-	{key: "ui.mouse", flag: "mouse"},
-	{key: "ui.notifications", flag: "notifications"},
-	{key: "ui.tool-details", flag: "tool-details"},
-	{key: "ui.transcript-retain", flag: "transcript-retain"},
-	{key: "plugins.directories", flag: "plugin-dir"},
-}
+const (
+	runtimeModeKey       = "runtime.mode"
+	runtimeEndpointKey   = "runtime.endpoint"
+	pluginDirectoriesKey = "plugins.directories"
+)
 
 func configureRoot(v *viper.Viper, root *cobra.Command) {
 	defaults := settings.Default()
-	setDefaults(v, defaults)
 	v.SetEnvPrefix("FLAME_CLI")
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
 	v.AutomaticEnv()
 
 	flags := root.PersistentFlags()
-	flags.String("runtime-mode", string(defaults.Runtime.Mode), "Runtime connection mode: remote or embedded (exclusively owns local data)")
-	flags.String("runtime-url", defaults.Runtime.Endpoint, "Existing Runtime base URL for remote mode")
-	flags.String("config", "", "YAML configuration file (default: <workspace>/.flame.yaml or the user config directory)")
-	flags.String("provider", defaults.Provider, "Optional provider override for new runs (must be paired with --model)")
-	flags.String("model", defaults.Model, "Optional model override for new runs (must be paired with --provider)")
-	flags.Bool("mouse", defaults.UI.Mouse, "Enable mouse input in the terminal UI")
-	flags.Bool("notifications", defaults.UI.Notifications, "Enable terminal completion notifications")
-	flags.Bool("tool-details", defaults.UI.ToolDetails, "Expand tool output and diffs by default")
-	flags.Int("transcript-retain", defaults.UI.TranscriptRetain, "Finished blocks retained in the live terminal viewport")
-	flags.StringSlice("plugin-dir", defaults.Plugins.Directories, "Directory containing sideloaded plugins (repeatable)")
+	flags.String(configFlag, "", "YAML configuration file (default: <workspace>/.flame.yaml or the user config directory)")
+	preference(v, flags, flags.String, runtimeModeKey, "runtime-mode", string(defaults.Runtime.Mode), "Runtime connection mode: remote or embedded (exclusively owns local data)")
+	preference(v, flags, flags.String, runtimeEndpointKey, "runtime-url", defaults.Runtime.Endpoint, "Existing Runtime base URL for remote mode")
+	preference(v, flags, flags.String, "provider", providerFlag, defaults.Provider, "Optional provider override for new runs (must be paired with --model)")
+	preference(v, flags, flags.String, "model", modelFlag, defaults.Model, "Optional model override for new runs (must be paired with --provider)")
+	preference(v, flags, flags.Bool, "ui.mouse", "mouse", defaults.UI.Mouse, "Enable mouse input in the terminal UI")
+	preference(v, flags, flags.Bool, "ui.notifications", "notifications", defaults.UI.Notifications, "Enable terminal completion notifications")
+	preference(v, flags, flags.Bool, "ui.tool-details", "tool-details", defaults.UI.ToolDetails, "Expand tool output and diffs by default")
+	preference(v, flags, flags.Int, "ui.transcript-retain", "transcript-retain", defaults.UI.TranscriptRetain, "Finished blocks retained in the live terminal viewport")
+	preference(v, flags, flags.StringSlice, pluginDirectoriesKey, "plugin-dir", defaults.Plugins.Directories, "Directory containing sideloaded plugins (repeatable)")
+	v.SetDefault("approval.remember", defaults.Approval.Remember)
+	for _, action := range slices.Sorted(maps.Keys(defaults.Keys)) {
+		v.SetDefault("keys."+string(action), defaults.Keys[action])
+	}
 }
 
-func setDefaults(v *viper.Viper, defaults settings.Config) {
-	v.SetDefault("runtime.mode", defaults.Runtime.Mode)
-	v.SetDefault("runtime.endpoint", defaults.Runtime.Endpoint)
-	v.SetDefault("provider", defaults.Provider)
-	v.SetDefault("model", defaults.Model)
-	v.SetDefault("approval.remember", defaults.Approval.Remember)
-	v.SetDefault("ui.mouse", defaults.UI.Mouse)
-	v.SetDefault("ui.notifications", defaults.UI.Notifications)
-	v.SetDefault("ui.tool-details", defaults.UI.ToolDetails)
-	v.SetDefault("ui.transcript-retain", defaults.UI.TranscriptRetain)
-	v.SetDefault("plugins.directories", defaults.Plugins.Directories)
-	for _, action := range slices.Sorted(maps.Keys(defaults.Keys)) {
-		bindings := defaults.Keys[action]
-		v.SetDefault("keys."+string(action), bindings)
+// Binding the root's own persistent flag keeps a subcommand's same-named local flag (sessions update
+// --model is a provider/model patch) from feeding CLI settings.
+func preference[T any](v *viper.Viper, flags *pflag.FlagSet, define func(name string, value T, usage string) *T, key, flag string, value T, usage string) {
+	define(flag, value, usage)
+	v.SetDefault(key, value)
+	if err := v.BindPFlag(key, flags.Lookup(flag)); err != nil {
+		panic(err)
 	}
 }
 
@@ -90,7 +76,7 @@ type selectedConfigSource struct {
 }
 
 func loadConfig(v *viper.Viper, cmd *cobra.Command) error {
-	path, err := cmd.Flags().GetString("config")
+	path, err := cmd.Flags().GetString(configFlag)
 	if err != nil {
 		return err
 	}
@@ -110,15 +96,12 @@ func loadConfig(v *viper.Viper, cmd *cobra.Command) error {
 		}
 		// Project preferences cannot grant native code execution or route a process-owned bearer.
 		// Validate the already-read bytes, not a second read of a mutable file.
-		if source.authority == projectConfigAuthority && v.InConfig("plugins.directories") {
+		if source.authority == projectConfigAuthority && v.InConfig(pluginDirectoriesKey) {
 			return errors.New("project configuration cannot select executable plugin directories; use --plugin-dir, user configuration, or an explicit --config")
 		}
-		if source.authority == projectConfigAuthority && (v.InConfig("runtime.endpoint") || v.InConfig("runtime.mode")) {
+		if source.authority == projectConfigAuthority && (v.InConfig(runtimeEndpointKey) || v.InConfig(runtimeModeKey)) {
 			return errors.New("project configuration cannot select a runtime endpoint; use --runtime-url, FLAME_CLI_RUNTIME_ENDPOINT, user configuration, or an explicit --config")
 		}
-	}
-	if bindSettingFlagsErr := bindSettingFlags(v, cmd); bindSettingFlagsErr != nil {
-		return bindSettingFlagsErr
 	}
 	_, err = readSettings(v)
 	return err
@@ -184,22 +167,6 @@ func readConfigFile(path string) ([]byte, error) {
 	return content, nil
 }
 
-func bindSettingFlags(v *viper.Viper, cmd *cobra.Command) error {
-	for _, binding := range settingFlagBindings {
-		// A subcommand may own a same-named local flag with different semantics
-		// (sessions update --model is a provider/model patch). Only the root's
-		// persistent preference flags may feed CLI settings.
-		flag := cmd.Root().PersistentFlags().Lookup(binding.flag)
-		if flag == nil {
-			continue
-		}
-		if err := v.BindPFlag(binding.key, flag); err != nil {
-			return fmt.Errorf("bind --%s: %w", binding.flag, err)
-		}
-	}
-	return nil
-}
-
 func readSettings(v *viper.Viper) (settings.Config, error) {
 	var config settings.Config
 	if err := v.UnmarshalExact(&config); err != nil {
@@ -210,7 +177,7 @@ func readSettings(v *viper.Viper) (settings.Config, error) {
 		if err != nil {
 			return settings.Config{}, fmt.Errorf("resolve home directory for plugins: %w", err)
 		}
-		config.Plugins.Directories = []string{filepath.Join(home, ".flame", "plugins")}
+		config.Plugins.Directories = []string{settings.DefaultPluginDirectory(home)}
 	}
 	if err := config.Validate(); err != nil {
 		return settings.Config{}, fmt.Errorf("validate configuration: %w", err)

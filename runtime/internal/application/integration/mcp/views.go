@@ -8,8 +8,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
-// SecretChangeKind is the application's exact secret-mutation vocabulary.
-// Persistence never has to infer intent from an empty string.
 type SecretChangeKind string
 
 const (
@@ -17,15 +15,11 @@ const (
 	SecretClear SecretChangeKind = "clear"
 )
 
-// SecretChange is a write-only mutation of one credential-bearing value: the
-// bearer token, or a full replacement of HTTP headers or a process environment.
 type SecretChange[T any] struct {
 	Kind  SecretChangeKind
 	Value T
 }
 
-// ConnectionInput is a complete connection replacement. Transport-specific
-// validation happens before it becomes the domain's flat persistence descriptor.
 type ConnectionInput struct {
 	Transport     mcpserver.Transport
 	URL           string
@@ -37,7 +31,6 @@ type ConnectionInput struct {
 	Dir           string
 }
 
-// ServerInput is a complete create/test candidate.
 type ServerInput struct {
 	Name             mcpserver.ServerName
 	Enabled          bool
@@ -46,8 +39,6 @@ type ServerInput struct {
 	HandshakeTimeout mcpserver.HandshakeTimeout
 }
 
-// ServerPatch is an update command. nil preserves the current value; a
-// present zero or empty collection clears it.
 type ServerPatch struct {
 	Enabled          *bool
 	Description      *string
@@ -55,13 +46,10 @@ type ServerPatch struct {
 	HandshakeTimeout *mcpserver.HandshakeTimeout
 }
 
-// Empty reports whether the update carries no mutation.
 func (s ServerPatch) Empty() bool {
 	return s.Enabled == nil && s.Description == nil && s.Connection == nil && s.HandshakeTimeout == nil
 }
 
-// Connection is the safe application read model for a connection. Raw
-// secret-bearing values never cross the application boundary.
 type Connection struct {
 	Transport           mcpserver.Transport
 	URL                 string
@@ -73,8 +61,6 @@ type Connection struct {
 	Dir                 string
 }
 
-// Server is the unified application read model: durable configuration and
-// the current connection lifecycle are projected together.
 type Server struct {
 	ID               mcpserver.ID
 	Description      string
@@ -83,9 +69,6 @@ type Server struct {
 	State            ServerState
 }
 
-// ServerState is the application's complete server lifecycle. Disabled is
-// represented explicitly rather than as an absent or contradictory status.
-// Failure names the category exactly when Type is failed.
 type ServerState struct {
 	Type      ServerStateType
 	ToolCount *int
@@ -103,7 +86,6 @@ const (
 	ServerNeedsAuth    ServerStateType = "needsAuth"
 )
 
-// TestResult is the semantic outcome of a non-persisting connection probe.
 type TestResult string
 
 const (

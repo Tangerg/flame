@@ -35,8 +35,6 @@ func prepareMermaid(theme string) diagramPreparation {
 	}
 }
 
-// Workers prepare neutral PNGs. Only the owning transcript may accept a result,
-// upload it, and replace immutable Markdown content before finishing the block.
 type markdownMedia struct {
 	workers  *operationOwner
 	dispatch program.Dispatcher
@@ -86,9 +84,6 @@ func (m *markdownMedia) start(block *markdownBlock, changed func()) bool {
 	return true
 }
 
-// renderPlaceholders shows each Mermaid source as text while its diagram is
-// prepared, and returns the distinct sources to prepare. A terminal that cannot
-// show images keeps the source with the reason.
 func (m *markdownMedia) renderPlaceholders(block *markdownBlock) []string {
 	var sources []string
 	seen := make(map[string]bool)
@@ -113,8 +108,6 @@ func (m *markdownMedia) renderPlaceholders(block *markdownBlock) []string {
 	return sources
 }
 
-// prepareDiagrams renders every source off the UI thread and hands the images
-// to the block only while this worker still owns it; otherwise it closes them.
 func (m *markdownMedia) prepareDiagrams(ctx context.Context, lease operationLease, block *markdownBlock, sources []string, changed func()) {
 	prepared := make(map[string]preparedDiagram, len(sources))
 	transferred := false

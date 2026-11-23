@@ -8,9 +8,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 )
 
-// runPublications owns the post-commit publication boundary: authoritative
-// opening/event/barrier writes, live event timestamps and workspace nudges, and
-// the read-model invalidations emitted only after those writes succeed.
 type runPublications struct {
 	openings      OpeningCommitter
 	events        EventCommitter
@@ -44,18 +41,9 @@ func (r *runPublications) event(runID identity.RunID, segmentID identity.Segment
 	}
 }
 
-// The run lifecycle's invalidations for clients that are not following this run.
-// They are published AFTER the durable transition they describe, from the same
-// places that already own it — a client told a run moved and then reading the old
-// record would be worse than not being told.
-//
-// A session's status is derived from its runs, so every run transition moves the
-// session too; the notices stay separate because a client folds them into different
-// reads (a run list and a session list), and one signal for two reads would make
-// every listener refetch both.
+// Published after the durable transition they describe: a client told a run moved
+// and then reading the old record would be worse than not being told.
 
-// publishRunMoved reports a run whose lifecycle position changed without touching
-// what it is waiting on: a run that started, or one that ended.
 func (r *runPublications) publishRunMoved(sessionID identity.SessionID, runID identity.RunID) {
 	r.invalidations.Notify(
 		invalidation.InSession(invalidation.Runs, sessionID, runID),
@@ -63,8 +51,6 @@ func (r *runPublications) publishRunMoved(sessionID identity.SessionID, runID id
 	)
 }
 
-// publishWaitingMoved reports a transition that also opened, answered or dropped
-// the session's open-interrupt set — a park, a resume, or a canceled park.
 func (r *runPublications) publishWaitingMoved(sessionID identity.SessionID, runID identity.RunID) {
 	r.invalidations.Notify(
 		invalidation.InSession(invalidation.Runs, sessionID, runID),
@@ -73,11 +59,6 @@ func (r *runPublications) publishWaitingMoved(sessionID identity.SessionID, runI
 	)
 }
 
-// publishWaitingSubtreeCanceled reports the complete read set invalidated by a
-// parked child cancellation. affectedRunIDs includes the canceled subtree, the
-// parent whose spawning Item was settled, and every Run resumed when the final
-// external boundary disappeared. The interrupt notice remains root-addressed
-// because one Pending aggregate owns the whole barrier.
 func (r *runPublications) publishWaitingSubtreeCanceled(
 	sessionID identity.SessionID,
 	rootRunID identity.RunID,
@@ -90,18 +71,10 @@ func (r *runPublications) publishWaitingSubtreeCanceled(
 	)
 }
 
-// publishApprovalsChanged reports that an acceptance transaction persisted one or
-// more standing approval rules. The rule write rides the opening transaction, so
-// nothing in the approvals use case sees it; without this notice a client would
-// never learn the remembered decision exists.
 func (r *runPublications) publishApprovalsChanged() {
 	r.invalidations.Notify(invalidation.Notice{Resource: invalidation.Approvals})
 }
 
-// publishGoalMoved reports a run terminal whose commit also charged the session's
-// goal. The accounting rides the run's transaction, so nothing in the goal use case
-// sees this write — without a notice here, a client would watch a goal spend its
-// budget in silence.
 func (r *runPublications) publishGoalMoved(sessionID identity.SessionID) {
 	r.invalidations.Notify(invalidation.InSession(invalidation.Goals, sessionID))
 }

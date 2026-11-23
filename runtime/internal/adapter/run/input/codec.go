@@ -5,17 +5,17 @@ import (
 	"errors"
 	"fmt"
 
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 
 	framevalue "github.com/Tangerg/frame/value"
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
-// EncodePrompt converts one validated product interrupt to its strict executor
-// boundary representation.
 func EncodePrompt(prompt runs.Interrupt) (jsontext.Value, error) {
 	if err := prompt.Validate(); err != nil {
 		return nil, err
@@ -24,12 +24,9 @@ func EncodePrompt(prompt runs.Interrupt) (jsontext.Value, error) {
 	if err != nil {
 		return nil, fmt.Errorf("run input codec: encode prompt: %w", err)
 	}
-	return jsontext.Value(encoded.JSON()), nil
+	return encoded.JSON(), nil
 }
 
-// DecodePrompt restores an application interrupt from persisted executor input
-// JSON. Field names must match exactly; duplicate, unknown, and trailing values
-// are rejected.
 func DecodePrompt(raw []byte) (runs.Interrupt, error) {
 	wire, err := decode[interruptWire](raw)
 	if err != nil {
@@ -45,9 +42,6 @@ func DecodePrompt(raw []byte) (runs.Interrupt, error) {
 	return interrupt, nil
 }
 
-// decodeResolution restores a typed user decision from persisted agent-process
-// response JSON. It applies the same exact-field and single-value contract as
-// [DecodePrompt].
 func decodeResolution(raw []byte) (run.InterruptResolution, error) {
 	wire, err := decode[resolutionPayload](raw)
 	if err != nil {
@@ -56,8 +50,6 @@ func decodeResolution(raw []byte) (run.InterruptResolution, error) {
 	return wire.resolution()
 }
 
-// EncodeResolution converts a typed human decision to the JSON the executor
-// validates against its pending-input response schema before continuing.
 func EncodeResolution(resolution run.InterruptResolution) (jsontext.Value, error) {
 	wire := resolutionPayload{}
 	switch resolution.Type() {
@@ -73,7 +65,7 @@ func EncodeResolution(resolution run.InterruptResolution) (jsontext.Value, error
 	if err != nil {
 		return nil, fmt.Errorf("run input codec: encode resolution: %w", err)
 	}
-	return jsontext.Value(encoded.JSON()), nil
+	return encoded.JSON(), nil
 }
 
 func decode[T any](raw []byte) (T, error) {
@@ -104,22 +96,24 @@ type approvalPromptWire struct {
 }
 
 type questionPromptWire struct {
-	ToolName  string                  `json:"toolName"`
-	Arguments string                  `json:"arguments"`
-	Fields    []questionFieldSpecWire `json:"fields"`
+	ToolName  string              `json:"toolName"`
+	Arguments string              `json:"arguments"`
+	Fields    []questionFieldWire `json:"fields"`
 }
 
-type questionFieldSpecWire struct {
-	Prompt      string               `json:"prompt"`
-	Header      string               `json:"header,omitempty"`
-	Options     []questionOptionWire `json:"options,omitempty"`
-	Multiple    bool                 `json:"multiple,omitzero"`
-	AllowCustom bool                 `json:"allowCustom,omitzero"`
+type questionFieldWire struct {
+	Prompt      string                `json:"prompt"`
+	Header      string                `json:"header,omitempty"`
+	Kind        questioncontract.Kind `json:"kind"`
+	Options     []questionOptionWire  `json:"options,omitempty"`
+	Multiple    bool                  `json:"multiple,omitzero"`
+	AllowCustom bool                  `json:"allowCustom,omitzero"`
 }
 
 type questionOptionWire struct {
 	Label       string `json:"label"`
 	Description string `json:"description,omitempty"`
+	Preview     string `json:"preview,omitempty"`
 }
 
 func promptWireFrom(interrupt runs.Interrupt) interruptWire {
@@ -139,8 +133,6 @@ func promptWireFrom(interrupt runs.Interrupt) interruptWire {
 	return result
 }
 
-// interrupt translates the persisted envelope, whose kind must name the one
-// prompt it carries.
 func (i interruptWire) interrupt() (runs.Interrupt, error) {
 	switch {
 	case i.Kind == run.InterruptApproval && i.Approval != nil && i.Question == nil:
@@ -152,67 +144,47 @@ func (i interruptWire) interrupt() (runs.Interrupt, error) {
 	case i.Kind == run.InterruptQuestion && i.Question != nil && i.Approval == nil:
 		return runs.QuestionPrompt{
 			ToolName: i.Question.ToolName, Arguments: i.Question.Arguments,
-			Fields: questionFieldSpecsFrom(i.Question.Fields),
+			Fields: questionFieldsFrom(i.Question.Fields),
 		}, nil
 	default:
 		return nil, fmt.Errorf("interrupt kind %q does not name its one prompt", i.Kind)
 	}
 }
 
-func questionFieldWiresFrom(specs []runs.QuestionFieldSpec) []questionFieldSpecWire {
-	if specs == nil {
+func questionFieldWiresFrom(fields []transcript.QuestionField) []questionFieldWire {
+	if fields == nil {
 		return nil
 	}
-	result := make([]questionFieldSpecWire, len(specs))
-	for index, spec := range specs {
-		result[index] = questionFieldSpecWire{
-			Prompt: spec.Prompt, Header: spec.Header, Multiple: spec.Multiple,
-			AllowCustom: spec.AllowCustom,
-			Options:     questionOptionWiresFrom(spec.Options),
+	result := make([]questionFieldWire, len(fields))
+	for index, field := range fields {
+		result[index] = questionFieldWire{
+			Prompt: field.Prompt, Header: field.Header, Kind: field.Kind,
+			Multiple: field.Multiple, AllowCustom: field.AllowCustom,
+		}
+		for _, option := range field.Options {
+			result[index].Options = append(result[index].Options, questionOptionWire(option))
 		}
 	}
 	return result
 }
 
-func questionOptionWiresFrom(options []runs.QuestionOptionSpec) []questionOptionWire {
-	if options == nil {
+func questionFieldsFrom(wires []questionFieldWire) []transcript.QuestionField {
+	if len(wires) == 0 {
 		return nil
 	}
-	result := make([]questionOptionWire, len(options))
-	for index, option := range options {
-		result[index] = questionOptionWire{Label: option.Label, Description: option.Description}
-	}
-	return result
-}
-
-func questionFieldSpecsFrom(specs []questionFieldSpecWire) []runs.QuestionFieldSpec {
-	if len(specs) == 0 {
-		return nil
-	}
-	result := make([]runs.QuestionFieldSpec, len(specs))
-	for index, spec := range specs {
-		result[index] = runs.QuestionFieldSpec{
-			Prompt: spec.Prompt, Header: spec.Header, Multiple: spec.Multiple,
-			AllowCustom: spec.AllowCustom,
-			Options:     questionOptionsFrom(spec.Options),
+	result := make([]transcript.QuestionField, len(wires))
+	for index, wire := range wires {
+		result[index] = transcript.QuestionField{
+			Prompt: wire.Prompt, Header: wire.Header, Kind: wire.Kind,
+			Multiple: wire.Multiple, AllowCustom: wire.AllowCustom,
+		}
+		for _, option := range wire.Options {
+			result[index].Options = append(result[index].Options, transcript.QuestionOption(option))
 		}
 	}
 	return result
 }
 
-func questionOptionsFrom(options []questionOptionWire) []runs.QuestionOptionSpec {
-	if len(options) == 0 {
-		return nil
-	}
-	result := make([]runs.QuestionOptionSpec, len(options))
-	for index, option := range options {
-		result[index] = runs.QuestionOptionSpec{Label: option.Label, Description: option.Description}
-	}
-	return result
-}
-
-// resolutionPayload is the closed response contract shared by the checkpoint
-// codec and Scope's pending-input schema.
 type resolutionPayload struct {
 	Question *questionAnswerPayload `json:"question,omitempty" jsonschema:"oneof_required=question"`
 	Approval *approvalAnswerPayload `json:"approval,omitempty" jsonschema:"oneof_required=approval"`
@@ -226,7 +198,7 @@ type approvalAnswerPayload struct {
 	Decision      approval.Decision `json:"decision" jsonschema:"enum=allow,enum=deny"`
 	Arguments     string            `json:"arguments,omitempty"`
 	Reason        string            `json:"reason,omitempty"`
-	RememberScope approval.Scope    `json:"remember_scope,omitempty"`
+	RememberScope approval.Scope    `json:"rememberScope,omitempty"`
 }
 
 func (r resolutionPayload) resolution() (run.InterruptResolution, error) {

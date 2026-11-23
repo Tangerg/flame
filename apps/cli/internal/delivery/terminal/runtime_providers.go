@@ -13,12 +13,13 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/models"
-	"github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/ui/core/scene"
 )
 
-// modelConfigScreens inspects and configures model providers and roles.
+const providerChangeRows = 3
+
 type modelConfigScreens struct {
 	screenHost
 	service        ModelConfiguration
@@ -61,7 +62,7 @@ func providersDocument(providers []models.Provider) readerDocument {
 		}
 		endpoint := ""
 		if baseURL, configured := provider.BaseURL(); configured {
-			endpoint = " · " + baseURL
+			endpoint = format.Separator + baseURL
 		} else if provider.RequiresBaseURL() {
 			endpoint = " · endpoint required"
 		}
@@ -71,7 +72,7 @@ func providersDocument(providers []models.Provider) readerDocument {
 }
 
 func (m *modelConfigScreens) TestConfiguredProvider(providerID string) error {
-	if err := model.ValidateProviderIdentity(providerID); err != nil {
+	if err := flamemodel.ValidateProviderIdentity(providerID); err != nil {
 		return fmt.Errorf("provider test: %w", err)
 	}
 	m.status.note("testing provider " + providerID)
@@ -92,13 +93,13 @@ func (m *modelConfigScreens) TestConfiguredProvider(providerID string) error {
 		},
 	)
 	if !started {
-		return errors.New("another model configuration operation is running")
+		return modelConfigOperation.busy()
 	}
 	return nil
 }
 
 func (m *modelConfigScreens) ConfigureProvider(providerID string) error {
-	if err := model.ValidateProviderIdentity(providerID); err != nil {
+	if err := flamemodel.ValidateProviderIdentity(providerID); err != nil {
 		return fmt.Errorf("provider configuration: %w", err)
 	}
 	presentation := m.session.context
@@ -129,7 +130,7 @@ func (m *modelConfigScreens) ConfigureProvider(providerID string) error {
 		},
 	)
 	if !started {
-		return errors.New("another model configuration operation is running")
+		return modelConfigOperation.busy()
 	}
 	return nil
 }
@@ -169,8 +170,7 @@ func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
 		}
 		update, err := providerUpdate(provider.ID(), baseOption.Value, baseField.Text(), keyOption.Value, keyField.Text())
 		if err != nil {
-			m.message("provider form: " + err.Error())
-			return scene.Unchanged, nil
+			return scene.Unchanged, fmt.Errorf("provider form: %w", err)
 		}
 		dismiss()
 		if update.BaseURL == nil && update.APIKey == nil {
@@ -189,21 +189,19 @@ func (m *modelConfigScreens) openProviderConfig(provider models.Provider) {
 		},
 		Theme:  m.theme,
 		Glyphs: m.glyphs,
-		Where:  formDialogPlacement(standardDialogWidth, len(form.Behavior.Fields), 18, dressed),
+		Where:  formDialogPlacement(standardDialogWidth, len(form.Behavior.Fields), standardDialogHeight, dressed),
 	})
 	m.providerDialog = dialog
 	dialog.Show()
 }
 
-// providerEndpointFields offers to keep, set or clear the endpoint; a
-// provider that requires an endpoint it lacks starts on set.
 func providerEndpointFields(provider models.Provider) (*base.Select[formChange], *base.Text) {
 	baseURL, endpointConfigured := provider.BaseURL()
 	baseMode := formChangeKeep
 	if provider.RequiresBaseURL() && !endpointConfigured {
 		baseMode = formChangeSet
 	}
-	baseChoice := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "Endpoint change", Initial: baseMode, Rows: 3})
+	baseChoice := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "Endpoint change", Initial: baseMode, Rows: providerChangeRows})
 	baseChoice.SetOptions([]base.Option[formChange]{
 		{Label: "Keep current endpoint", Value: formChangeKeep},
 		{Label: "Set endpoint", Value: formChangeSet},
@@ -228,10 +226,8 @@ func providerEndpointFields(provider models.Provider) (*base.Select[formChange],
 	return baseChoice, baseField
 }
 
-// providerKeyFields offers to keep or set a key, and to clear one only when a
-// stored key exists; the entered key is masked.
 func providerKeyFields(provider models.Provider) (*base.Select[formChange], *base.Text) {
-	keyChoice := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "API key change", Initial: formChangeKeep, Rows: 3})
+	keyChoice := base.NewSelect(base.SelectConfig[formChange]{Same: base.Equal[formChange], Label: "API key change", Initial: formChangeKeep, Rows: providerChangeRows})
 	keyOptions := []base.Option[formChange]{
 		{Label: "Keep current key", Value: formChangeKeep},
 		{Label: "Set a stored key", Value: formChangeSet},
@@ -271,7 +267,7 @@ func (d *providerEndpointDraft) Set(value string) {
 	case d.policy.AppendsPath != "":
 		label += " (SDK appends " + d.policy.AppendsPath + ")"
 		if effective := d.policy.EffectivePath(strings.TrimSpace(value)); effective != "" {
-			label += " · " + effective
+			label += format.Separator + effective
 		}
 	case d.policy.RequiredSuffix != "":
 		label += " (must end with " + d.policy.RequiredSuffix + ")"
@@ -327,6 +323,6 @@ func (m *modelConfigScreens) updateProvider(update models.UpdateProvider) {
 		},
 	)
 	if !started {
-		m.message("another model configuration operation is running")
+		m.message(modelConfigOperation.busy().Error())
 	}
 }

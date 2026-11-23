@@ -19,9 +19,7 @@ type workspaceBinding interface {
 }
 
 const (
-	workspaceFilePageLimit = 500
-	// maximumWorkspaceFilePageRequests matches Flame's 20,000-entry
-	// authoritative workspace listing boundary at 500 rows per request.
+	workspaceFilePageLimit           = 500
 	maximumWorkspaceFilePageRequests = 40
 )
 
@@ -149,8 +147,6 @@ func (r *Connection) Search(ctx context.Context, request workspace.SearchRequest
 	return result, nil
 }
 
-// validateFilePage holds a page to its own coverage accounting and the limit
-// this client asked for.
 func validateFilePage(page *protocol.FileListPage, cursor string) error {
 	if page == nil {
 		return runtimeContractViolation("list workspace files after cursor %q returned a nil page", cursor)

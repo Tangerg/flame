@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/plugins/schedules/internal/schedule"
 
 	framesqlite "github.com/Tangerg/frame/sqlite"
 )
@@ -98,7 +99,6 @@ func (s *ScheduleStore) Get(ctx context.Context, id string) (schedule.Schedule, 
 	return result, err
 }
 
-// The identity breaks creation-time ties so page boundaries do not repeat or drop schedules.
 func (s *ScheduleStore) ListPage(ctx context.Context, afterCreatedAt time.Time, afterID string, limit int) ([]schedule.Schedule, error) {
 	if limit <= 0 {
 		return nil, errors.New("sqlite: schedule page limit must be positive")
@@ -135,7 +135,6 @@ func (s *ScheduleStore) Due(ctx context.Context, now time.Time, limit int) ([]sc
 		 LIMIT ?`, now.UnixMilli(), scheduleFiringPending.databaseValue(), limit)
 }
 
-// A claimed cursor needs a durable occurrence in the same transaction or restart loses due work.
 func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claimed bool, err error) {
 	if err := claim.Validate(); err != nil {
 		return false, fmt.Errorf("sqlite: invalid schedule claim: %w", err)
@@ -250,10 +249,10 @@ func (s *ScheduleStore) accept(ctx context.Context, acceptance schedule.Acceptan
 				`SELECT schedule_id, fired_at FROM schedule_firings WHERE id = ? AND run_id = ?`, occurrenceID, runID).Scan(&scheduleID, &firedAt); scanErr != nil {
 				return fmt.Errorf("sqlite: load accepted schedule occurrence: %w", scanErr)
 			}
-			_, err := s.recordAcceptedRun(ctx, scheduleID, time.UnixMilli(firedAt).UTC())
-			return err
+			return s.recordAcceptedRun(ctx, scheduleID, time.UnixMilli(firedAt).UTC())
 		}
-		var storedRunID, rawState string
+		var storedRunID identity.RunID
+		var rawState string
 		err = s.db.Executor(ctx).QueryRowContext(ctx,
 			`SELECT run_id, state FROM schedule_firings WHERE id = ?`, occurrenceID).Scan(&storedRunID, &rawState)
 		if errors.Is(err, sql.ErrNoRows) {
@@ -276,18 +275,17 @@ func (s *ScheduleStore) accept(ctx context.Context, acceptance schedule.Acceptan
 	})
 }
 
-func (s *ScheduleStore) recordAcceptedRun(ctx context.Context, id string, ranAt time.Time) (bool, error) {
+func (s *ScheduleStore) recordAcceptedRun(ctx context.Context, id string, ranAt time.Time) error {
 	current, err := s.Get(ctx, id)
 	if errors.Is(err, schedule.ErrNotFound) {
-		// Acceptance settles captured work after definition deletion without recreating the definition.
-		return false, nil
+		return nil
 	}
 	if err != nil {
-		return false, err
+		return err
 	}
 	next, err := current.AcceptRun(ranAt)
 	if err != nil {
-		return false, err
+		return err
 	}
 	result, err := s.db.Executor(ctx).ExecContext(ctx,
 		`UPDATE schedules
@@ -295,16 +293,16 @@ func (s *ScheduleStore) recordAcceptedRun(ctx context.Context, id string, ranAt 
 		 WHERE id = ? AND revision = ?`,
 		next.LastRunAt().UnixMilli(), next.Revision(), next.ID(), current.Revision())
 	if err != nil {
-		return false, fmt.Errorf("sqlite: persist accepted schedule run: %w", err)
+		return fmt.Errorf("sqlite: persist accepted schedule run: %w", err)
 	}
 	updated, err := result.RowsAffected()
 	if err != nil {
-		return false, fmt.Errorf("sqlite: inspect accepted schedule run: %w", err)
+		return fmt.Errorf("sqlite: inspect accepted schedule run: %w", err)
 	}
 	if updated == 0 {
-		return false, schedule.ErrRevisionConflict
+		return schedule.ErrRevisionConflict
 	}
-	return true, nil
+	return nil
 }
 
 func (s *ScheduleStore) Delete(ctx context.Context, id string) (bool, error) {
@@ -371,7 +369,7 @@ func scanSchedule(scan func(...any) error) (schedule.Schedule, error) {
 		&lastMillis, &nextMillis, &createdMillis, &snapshot.Revision); err != nil {
 		return schedule.Schedule{}, err
 	}
-	selection, err := modelchoice.NewWithReasoningEffort(provider, model, reasoningEffort)
+	selection, err := flamemodel.NewWithReasoningEffort(provider, model, reasoningEffort)
 	if err != nil {
 		return schedule.Schedule{}, fmt.Errorf("sqlite: decode schedule model selection: %w", err)
 	}
@@ -403,7 +401,7 @@ func scanOccurrence(scan func(...any) error) (schedule.Occurrence, error) {
 	if err := json.Unmarshal([]byte(invocation), &snapshot.Invocation, json.RejectUnknownMembers(true)); err != nil {
 		return schedule.Occurrence{}, err
 	}
-	selection, err := modelchoice.NewWithReasoningEffort(provider, model, reasoningEffort)
+	selection, err := flamemodel.NewWithReasoningEffort(provider, model, reasoningEffort)
 	if err != nil {
 		return schedule.Occurrence{}, fmt.Errorf("decode schedule occurrence model selection: %w", err)
 	}

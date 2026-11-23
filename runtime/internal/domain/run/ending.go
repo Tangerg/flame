@@ -5,26 +5,19 @@ import (
 	"strings"
 )
 
-// Ending is how a finished Run ended. The variant alone decides the Run's
-// Outcome and carries exactly the facts that outcome explains.
 type Ending interface {
 	Outcome() Outcome
 	validate() error
 }
 
-// Completed is a Run whose model returned a stop-marker normally.
 type Completed struct{}
 
-// Canceled is a Run its caller canceled; Detail is the stated reason.
 type Canceled struct{ Detail string }
 
-// Failed is a Run that aborted on a classified failure.
 type Failed struct{ Failure Failure }
 
-// TimedOut is a Run that exceeded its governing deadline.
 type TimedOut struct{ Detail string }
 
-// Lost is a Run whose real outcome cannot be established.
 type Lost struct{ Loss Loss }
 
 func (Completed) Outcome() Outcome { return OutcomeCompleted }
@@ -50,8 +43,6 @@ func validateEndingDetail(detail string) error {
 	return nil
 }
 
-// ValidateEnding admits only immutable variants before any observer invokes
-// their methods; a typed nil or mutable pointer cannot own a terminal fact.
 func ValidateEnding(ending Ending) error {
 	switch ending.(type) {
 	case nil:

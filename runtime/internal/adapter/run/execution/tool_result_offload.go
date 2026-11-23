@@ -15,7 +15,6 @@ import (
 
 const toolResultReaderName = string(builtin.ReadToolResult)
 
-// The preview includes a retrieval marker in addition to retained body bytes.
 const toolResultPreviewBytes = 2000
 
 type toolResultOffloadPolicy struct {
@@ -64,7 +63,6 @@ func (p toolResultOffloadPolicy) project(toolName string, output toolcontract.Ou
 	}
 	projected := toolcontract.NewTextOutput(preview)
 	if ref.ModelOnly {
-		// Details-only output keeps its structured value for transcript readers.
 		projected.Details = output.Clone().Details
 	}
 	projected, err := modeladapter.WithToolResultReference(projected, ref, modeladapter.ToolResultRange{LengthBytes: len(text)})
@@ -78,8 +76,6 @@ func offloadableToolText(block content.Block) bool {
 	return block.Kind == content.Text && len(block.Citations) == 0 && len(block.Metadata) == 0
 }
 
-// Rich results keep their structured value. Model previews name exact byte
-// ranges in one body so retrieving one block does not depend on the others.
 func (p toolResultOffloadPolicy) projectRichText(output toolcontract.Output) (toolcontract.Output, *transcript.ToolResultOffload, error) {
 	textBytes, blocks := 0, 0
 	for _, block := range output.Content {

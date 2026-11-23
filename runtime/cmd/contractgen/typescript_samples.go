@@ -7,16 +7,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
 )
 
-// The canonical sample index, projected for the side that cannot read Go.
-//
-// The Go round-trip, TypeScript validator, and JSON Schema checks consume
-// the same batch of hand-written fixtures. "The same batch" needs
-// one statement of which file is which shape, and the binding is that statement. A
-// generated projection prevents a parallel TypeScript list from becoming a second
-// contract index.
-//
-// Samples stay hand-written: generating fixtures from the same source as their
-// validators would make them agree even when that shared source is wrong.
 const tsSamplesFileName = "wire.samples.generated.ts"
 
 func newWireSamples() string {
@@ -43,8 +33,6 @@ export const WIRE_SAMPLES: readonly WireSample[] = [
 	return out.String()
 }
 
-// sampleEntry is the manifest's projection of the same binding, so a reader who has
-// only the artifacts can still tell which fixture proves which shape.
 type sampleEntry struct {
 	File  string `json:"file"`
 	Shape string `json:"shape"`

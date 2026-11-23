@@ -31,8 +31,6 @@ func (r *runTreeOwner) admitCancellation(root rundomain.Run, record Record) erro
 	return nil
 }
 
-// childCancellation is the root Run-tree owner's one active child-cancel boundary.
-// The owner admits either this boundary or whole-tree cancellation, never both.
 type childCancellation struct {
 	id             CancellationID
 	targetRunID    identity.RunID
@@ -256,16 +254,11 @@ func (r *runTreeOwner) recordTerminalRun(run rundomain.Run, cancellation Cancell
 	}
 }
 
-// interruptBoundary records the only two durable facts cancellation needs:
-// whether publication committed, and whether one publication is currently
-// owned. Both fields are guarded by runTreeOwner.mu.
 type interruptBoundary struct {
 	committed bool
 	active    chan struct{}
 }
 
-// Once an interrupt begins its own transaction, cancellation joins that
-// boundary before choosing the live executor or the parked Run.
 func (r *runTreeOwner) commitInterrupt(ctx context.Context, commit func(context.Context) error) (committed bool, err error) {
 	r.mu.Lock()
 	if r.rootCancel != nil {

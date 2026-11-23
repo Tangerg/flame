@@ -27,8 +27,6 @@ func registerProviders(registry *Registry) {
 			return service.UpdateProvider(ctx, request)
 		})
 
-	// The probe's verdict rides its own result, so the call succeeds even when
-	// the provider does not; the read persists nothing and needs no replay guard.
 	registry.query(MethodMeta{Name: providersTest, GoName: "TestProvider", Errors: pluginProviderErrors()},
 		func(service interface {
 			TestProvider(context.Context, string) (*protocol.ProviderTestResult, error)

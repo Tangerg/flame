@@ -125,7 +125,7 @@ func runDroppingStream(ctx context.Context, server *sdk.Server, backend *pluginm
 				yield(pluginmcp.StreamValue[string, bool]{}, err)
 				return
 			}
-			if yield(pluginmcp.StreamValue[string, bool]{Chunk: new("witnessed output")}, nil) {
+			if yield(pluginmcp.StreamChunk[bool]("witnessed output"), nil) {
 				os.Exit(29)
 			}
 		}
@@ -211,7 +211,7 @@ func runObserver(ctx context.Context, server *sdk.Server, backend *pluginmcp.Bac
 					yield(observationFrame{}, err)
 					return
 				}
-				if value.Chunk != nil && !yield(observationFrame{Chunk: value.Chunk}, nil) {
+				if chunk, ok := value.Chunk(); ok && !yield(pluginmcp.StreamChunk[struct{}](chunk), nil) {
 					return
 				}
 			}
@@ -219,7 +219,7 @@ func runObserver(ctx context.Context, server *sdk.Server, backend *pluginmcp.Bac
 				yield(observationFrame{}, err)
 				return
 			}
-			yield(observationFrame{Result: new(struct{})}, nil)
+			yield(pluginmcp.StreamResult[scopewire.ResponseDelta](struct{}{}), nil)
 		}
 	}); err != nil {
 		return err

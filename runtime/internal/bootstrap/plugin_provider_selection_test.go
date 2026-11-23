@@ -12,7 +12,7 @@ import (
 )
 
 func TestProviderChoiceDoesNotFollowEnablementAndNeverRetargetsOriginalCommand(t *testing.T) {
-	loss, evidence := managedMessageLossPackage(t, "memory", "flame.memory/add.v2", "response")
+	loss, evidence := managedMessageLossPackage(t, "memory", "flame.memory/add.v3", "response")
 	cfg := poMCPConfig(t)
 	r := poMCPOpen(t, cfg)
 	install := func(source, key string) *protocol.PluginInstallation {

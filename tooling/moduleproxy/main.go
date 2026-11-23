@@ -18,6 +18,17 @@ import (
 	modzip "golang.org/x/mod/zip"
 )
 
+const (
+	goModFile     = "go.mod"
+	gitExecutable = "git"
+)
+
+// The proxy builds before any candidate module exists, so it owns its published modes instead of importing them.
+const (
+	publishedDirectoryMode = 0o755
+	publishedFileMode      = 0o644
+)
+
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -25,7 +36,6 @@ func main() {
 	}
 }
 
-// publication is one immutable module version written into a file proxy.
 type publication struct {
 	repository, revision, treeTime, output, modulePath, subdir, version string
 }
@@ -51,7 +61,7 @@ func run() error {
 		return err
 	}
 	directory := filepath.Join(p.output, escaped, "@v")
-	if err := os.MkdirAll(directory, 0o755); err != nil {
+	if err := os.MkdirAll(directory, publishedDirectoryMode); err != nil {
 		return err
 	}
 	if err := p.publishArtifacts(directory); err != nil {
@@ -60,8 +70,6 @@ func run() error {
 	return writeVersionList(directory)
 }
 
-// publishArtifacts writes the version's zip, go.mod and info exactly once and
-// proves the zip is a valid module archive.
 func (p publication) publishArtifacts(directory string) error {
 	escapedVersion, err := module.EscapeVersion(p.version)
 	if err != nil {
@@ -72,12 +80,12 @@ func (p publication) publishArtifacts(directory string) error {
 	if err != nil {
 		return err
 	}
-	source := "go.mod"
+	source := goModFile
 	if p.subdir != "" {
-		source = filepath.ToSlash(filepath.Join(p.subdir, "go.mod"))
+		source = filepath.ToSlash(filepath.Join(p.subdir, goModFile))
 	}
 	read := func(args ...string) ([]byte, error) {
-		command := exec.Command("git", args...)
+		command := exec.Command(gitExecutable, args...)
 		command.Dir = p.repository
 		return command.Output()
 	}
@@ -105,7 +113,6 @@ func (p publication) publishArtifacts(directory string) error {
 	return err
 }
 
-// writeVersionList lists every version the proxy directory publishes.
 func writeVersionList(directory string) error {
 	entries, err := os.ReadDir(directory)
 	if err != nil {
@@ -118,7 +125,7 @@ func writeVersionList(directory string) error {
 		}
 	}
 	slices.Sort(versions)
-	return os.WriteFile(filepath.Join(directory, "list"), []byte(strings.Join(versions, "\n")+"\n"), 0o644)
+	return os.WriteFile(filepath.Join(directory, "list"), []byte(strings.Join(versions, "\n")+"\n"), publishedFileMode)
 }
 
 func publicationTime(subdir, treeTime, source string, read func(...string) ([]byte, error)) (string, error) {
@@ -136,14 +143,14 @@ func publicationTime(subdir, treeTime, source string, read func(...string) ([]by
 }
 
 func archiveModule(writer io.Writer, version module.Version, repository, revision, subdir string) (string, error) {
-	resolve := exec.Command("git", "rev-parse", revision+"^{}")
+	resolve := exec.Command(gitExecutable, "rev-parse", revision+"^{}")
 	resolve.Dir = repository
 	frozen, err := resolve.Output()
 	if err != nil {
 		return "", fmt.Errorf("module proxy: resolve frozen source: %w", err)
 	}
 	source := strings.TrimSpace(string(frozen))
-	command := exec.Command("git", "rev-parse", "--path-format=absolute", "--git-common-dir")
+	command := exec.Command(gitExecutable, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	command.Dir = repository
 	data, err := command.Output()
 	if err != nil {
@@ -158,13 +165,16 @@ func archiveModule(writer io.Writer, version module.Version, repository, revisio
 	return source, modzip.CreateFromVCS(writer, version, filepath.Dir(common), source, subdir)
 }
 
-// The archive and manifest must still match this frozen source byte for byte.
-// An already-published version owns its recorded timestamp even when a later
-// commit changes only another module in the repository.
+// Field names are fixed by the GOPROXY protocol's $version.info document.
+type proxyVersionInfo struct {
+	Version string `json:"Version"`
+	Time    string `json:"Time"`
+}
+
 func versionInfo(name, version, timestamp string, usePublishedTime bool) ([]byte, error) {
 	existing, err := os.ReadFile(name)
 	if err == nil {
-		var info struct{ Version, Time string }
+		var info proxyVersionInfo
 		if err := json.Unmarshal(existing, &info); err != nil {
 			return nil, err
 		}
@@ -185,11 +195,10 @@ func versionInfo(name, version, timestamp string, usePublishedTime bool) ([]byte
 	if _, err := time.Parse(time.RFC3339, timestamp); err != nil {
 		return nil, err
 	}
-	info, err := json.Marshal(struct{ Version, Time string }{version, timestamp})
+	info, err := json.Marshal(proxyVersionInfo{Version: version, Time: timestamp})
 	return append(info, '\n'), err
 }
 
-// A version becomes visible atomically and can never replace different bytes.
 func publishImmutable(name string, data []byte) error {
 	staged, err := os.CreateTemp(filepath.Dir(name), ".module-*")
 	if err != nil {
@@ -197,12 +206,10 @@ func publishImmutable(name string, data []byte) error {
 	}
 	defer os.Remove(staged.Name())
 	if _, err := staged.Write(data); err != nil {
-		staged.Close()
-		return err
+		return errors.Join(err, staged.Close())
 	}
-	if err := staged.Chmod(0644); err != nil {
-		staged.Close()
-		return err
+	if err := staged.Chmod(publishedFileMode); err != nil {
+		return errors.Join(err, staged.Close())
 	}
 	if err := staged.Close(); err != nil {
 		return err

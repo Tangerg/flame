@@ -1,7 +1,7 @@
 package wire
 
 import (
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
+	"github.com/Tangerg/flame/plugins/filewatch/internal/filewatch"
 )
 
 type ConfigureInput struct {

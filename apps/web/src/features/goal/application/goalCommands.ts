@@ -8,7 +8,7 @@ import {
 } from "@/features/goal/application/ports/goalCommandsGateway";
 export type GoalProjectionRepair = (sessionId: string) => Promise<unknown>;
 
-export class GoalCommandSessionMismatchError extends Error {
+class GoalCommandSessionMismatchError extends Error {
   constructor(
     readonly expectedSessionId: string,
     readonly actualSessionId: string,

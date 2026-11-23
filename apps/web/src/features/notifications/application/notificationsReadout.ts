@@ -1,4 +1,4 @@
-export interface StatusNotification {
+interface StatusNotification {
   dismissed?: boolean;
 }
 

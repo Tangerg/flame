@@ -16,35 +16,35 @@ func TestMemoryEditSurvivesBackendAndRuntimeRestart(t *testing.T) {
 	installed := poMCPActivate(r, filepath.Join(firstPartyPackages, "memory"))
 	source := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "memory"}
 	r.poMCPTools(&source, memoryToolsReady)
-	item := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddInput{Scope: memorycontract.AddInputScopeProject, CWD: cfg.defaultWorkspacePath, Content: "original fact"}), "add-memory")
+	item := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddInput{Scope: memorycontract.AddInputScopeProject, Cwd: cfg.defaultWorkspacePath, Content: "original fact"}), "add-memory")
 	content := "user correction"
 	pinned := true
-	request, err := memoryQuery(r, memorycontract.ListInput{Scope: memorycontract.ListInputScopeProject, CWD: cfg.defaultWorkspacePath})
+	request, err := memoryQuery(r, memorycontract.ListInput{Scope: memorycontract.ListInputScopeProject, Cwd: cfg.defaultWorkspacePath})
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := json.Marshal(memorycontract.UpdateInput{ID: string(item.ID), ExpectedRevision: item.Revision, Content: &content, Pinned: &pinned})
+	input, err := json.Marshal(memorycontract.UpdateInput{Id: string(item.Id), ExpectedRevision: item.Revision, Content: &content, Pinned: &pinned})
 	if err != nil {
 		t.Fatal(err)
 	}
-	request.Method, request.Input = memorycontract.UpdateV2Method, string(input)
+	request.Method, request.Input = memorycontract.UpdateV3Method, string(input)
 	reply := r.must(delivery.PluginsCall, request, "edit-memory").(*protocol.CallPluginResponse)
-	var edited memorycontract.UpdateV2OutputDomainItemSnapshot
+	var edited memorycontract.UpdateV3OutputContractItem
 	if err := json.Unmarshal([]byte(reply.Output), &edited); err != nil {
 		t.Fatal(err)
 	}
-	if string(edited.ID) != string(item.ID) || edited.Content != content || !edited.Pinned || edited.Origin != memorycontract.UpdateV2OutputDomainItemSnapshotOriginUser || edited.Status != memorycontract.UpdateV2OutputDomainItemSnapshotStatusActive || string(edited.CreatedAt) != string(item.CreatedAt) {
+	if string(edited.Id) != string(item.Id) || edited.Content != content || !edited.Pinned || edited.Origin != memorycontract.UpdateV3OutputContractItemOriginUser || edited.Status != memorycontract.UpdateV3OutputContractItemStatusActive || string(edited.CreatedAt) != string(item.CreatedAt) {
 		t.Fatalf("edited memory=%+v", edited)
 	}
 	r = reopenPluginRuntime(t, r, &cfg)
 	r.poMCPTools(&source, memoryToolsReady)
-	page := readMemoryPage(r, memorycontract.ListInput{Scope: memorycontract.ListInputScopeProject, CWD: cfg.defaultWorkspacePath})
+	page := readMemoryPage(r, memorycontract.ListInput{Scope: memorycontract.ListInputScopeProject, Cwd: cfg.defaultWorkspacePath})
 
 	if len(page.Data) != 1 || generatedJSON(t, page.Data[0]) != generatedJSON(t, edited) {
 		t.Fatalf("restart lost user correction=%+v", page.Data)
 	}
-	replay := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddInput{Scope: memorycontract.AddInputScopeProject, CWD: cfg.defaultWorkspacePath, Content: "original fact"}), "add-memory")
-	if replay.ID != item.ID {
+	replay := mustMemoryAdd(r, memoryAddRequest(r, memorycontract.AddInput{Scope: memorycontract.AddInputScopeProject, Cwd: cfg.defaultWorkspacePath, Content: "original fact"}), "add-memory")
+	if replay.Id != item.Id {
 		t.Fatalf("command replay created another memory=%+v", replay)
 	}
 }

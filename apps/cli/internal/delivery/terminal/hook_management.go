@@ -2,16 +2,15 @@ package terminal
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// hookScreens audits lifecycle hooks and changes project hook trust.
 type hookScreens struct {
 	screenHost
 	service Hooks
@@ -38,7 +37,7 @@ func (h *hookScreens) hooksReaderQuery() *readerQuery {
 func hooksDocument(workspacePath string, catalog workspace.HookCatalog) readerDocument {
 	detail := fmt.Sprintf("%d hooks · project trust %t", len(catalog.Hooks), catalog.ProjectTrusted)
 	if catalog.ProjectRoot != "" {
-		detail += " · " + catalog.ProjectRoot
+		detail += format.Separator + catalog.ProjectRoot
 	}
 	if len(catalog.Hooks) == 0 {
 		return paragraphDocument("Lifecycle hooks", detail, []string{"No global or project hooks are configured for " + workspacePath + "."})
@@ -64,7 +63,7 @@ func hooksDocument(workspacePath string, catalog workspace.HookCatalog) readerDo
 			actionTitle, action = "Shell command", hook.Command
 		}
 		sections = append(sections,
-			toolSection{Title: string(hook.Event) + " · " + state, Style: toolSectionCode, Text: strings.Join(metadata, "\n")},
+			toolSection{Title: string(hook.Event) + format.Separator + state, Style: toolSectionCode, Text: strings.Join(metadata, "\n")},
 			toolSection{Title: actionTitle, Style: toolSectionCode, Text: action},
 		)
 	}
@@ -90,7 +89,7 @@ func (h *hookScreens) PrepareHookTrust(trusted bool) error {
 				if trusted {
 					state = "trusted"
 				}
-				h.message("project hooks are already " + state + " · " + catalog.ProjectRoot)
+				h.message("project hooks are already " + state + format.Separator + catalog.ProjectRoot)
 				return
 			}
 			title, question, action := "Revoke project hooks", "Disable project hooks from "+catalog.ProjectRoot+"?", "Revoke trust"
@@ -100,7 +99,7 @@ func (h *hookScreens) PrepareHookTrust(trusted bool) error {
 			h.confirm(title, question, action, "", func() { h.setHookTrust(workspacePath, catalog.ProjectRoot, trusted) })
 		},
 	) {
-		return errors.New("another hook operation is running")
+		return hookOperation.busy()
 	}
 	return nil
 }
@@ -126,6 +125,6 @@ func (h *hookScreens) setHookTrust(workspacePath, projectRoot string, trusted bo
 			h.status.note("project hook trust updated")
 		},
 	) {
-		h.message("another hook operation is running")
+		h.message(hookOperation.busy().Error())
 	}
 }

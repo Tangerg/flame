@@ -73,7 +73,6 @@ func TestHTTPOriginalResultSurvivesRestartWithoutAnotherRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.db.Close() })
-	// A new owner with no network grant can still read the original result.
 	restarted, err := newRequests(store.db, httpreq.ClientConfig{})
 	if err != nil {
 		t.Fatal(err)

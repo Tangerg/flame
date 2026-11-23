@@ -8,8 +8,16 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-type endpointObservationUseCases interface {
-	List(context.Context, string, string, pagination.RequestedLimit) (pagination.Page[modelref.EndpointObservation], error)
+var modelEndpointKinds = wireVocabulary[modelref.EndpointKind, protocol.ModelEndpointKind]{
+	{modelref.EndpointChat, protocol.ModelEndpointChat},
+	{modelref.EndpointEmbedding, protocol.ModelEndpointEmbedding},
+}
+
+var modelInvocationStates = wireVocabulary[modelref.InvocationState, protocol.ModelInvocationState]{
+	{modelref.InvocationStarted, protocol.ModelInvocationStarted},
+	{modelref.InvocationCompleted, protocol.ModelInvocationCompleted},
+	{modelref.InvocationFailed, protocol.ModelInvocationFailed},
+	{modelref.InvocationUnknown, protocol.ModelInvocationUnknown},
 }
 
 func (s *Handler) ListModelEndpoints(ctx context.Context, in protocol.ListModelEndpointsRequest) (*protocol.Page[protocol.ModelEndpointInvocation], error) {
@@ -43,7 +51,7 @@ func presentModelEndpoint(observation modelref.EndpointObservation) (protocol.Mo
 	if err := row.RequestJSON.Validate(); err != nil {
 		return protocol.ModelEndpointInvocation{}, err
 	}
-	value := protocol.ModelEndpointInvocation{CostUSD: row.Cost.OptionalUSD(), ID: row.Invocation.ID, Kind: protocol.ModelEndpointKind(row.Invocation.Kind()), Caller: row.Invocation.Caller, Provider: row.Invocation.Provider, Model: row.Invocation.Model, SessionID: row.Invocation.SessionID.String(), RunID: row.RunID.String(), SegmentID: row.SegmentID.String(), Request: row.RequestJSON.String(), Failure: row.Failure, State: protocol.ModelInvocationState(row.State), StartedAt: row.Invocation.StartedAt, SettledAt: row.FinishedAt}
+	value := protocol.ModelEndpointInvocation{CostUSD: row.Cost.OptionalUSD(), ID: row.Invocation.ID, Kind: modelEndpointKinds.mustWire(row.Invocation.Kind()), Caller: row.Invocation.Caller, Provider: row.Invocation.Provider, Model: row.Invocation.Model, SessionID: row.Invocation.SessionID.String(), RunID: row.RunID.String(), SegmentID: row.SegmentID.String(), Request: row.RequestJSON.String(), Failure: row.Failure, State: modelInvocationStates.mustWire(row.State), StartedAt: row.Invocation.StartedAt, SettledAt: row.FinishedAt}
 	if observation.HasResponse() {
 		if err := row.ResponseJSON.Validate(); err != nil {
 			return protocol.ModelEndpointInvocation{}, err

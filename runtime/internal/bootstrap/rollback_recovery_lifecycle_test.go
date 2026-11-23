@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -119,12 +120,6 @@ func TestFileRollbackRetriesTheOriginalIntent(t *testing.T) {
 	}
 }
 
-// TestUnfinishedFileRollbackFencesTheSessionUntilRecovery walks the sequence a
-// unit test cannot: an operation that stopped with its recovery intent logged,
-// then the next command, then a query, then a restart, then the next command
-// again. The intent is the only record that a checkout may have changed part of the
-// tree, so until recovery re-drives it the Session admits no Run and no other
-// rollback may displace it — and after recovery the Session works again.
 func TestUnfinishedFileRollbackFencesTheSessionUntilRecovery(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not installed; file rollback recovery needs the checkpoint store")
@@ -170,8 +165,6 @@ func TestUnfinishedFileRollbackFencesTheSessionUntilRecovery(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// The crash window: the intent committed, the checkout may have changed part of
-	// the tree, and nothing cleared it.
 	unfinished := sessions.WorkspaceMutation{
 		WorkspaceRollbackSpec: sessions.WorkspaceRollbackSpec{
 			SessionID: testsupport.MustSessionID(session.ID), ToRunID: testsupport.MustRunID(started.RunID), RestoreHistory: true,
@@ -198,7 +191,6 @@ func TestUnfinishedFileRollbackFencesTheSessionUntilRecovery(t *testing.T) {
 		t.Fatalf("pending = (%+v, %v), want the unfinished operation intact", pending, err)
 	}
 
-	// The restart is what owns re-driving it.
 	closed = true
 	if err := first.Close(); err != nil {
 		t.Fatalf("close Runtime: %v", err)
@@ -226,16 +218,13 @@ func TestUnfinishedFileRollbackFencesTheSessionUntilRecovery(t *testing.T) {
 	waitForProtocolRunTerminal(t, ctx, api, resumedRun.RunID)
 }
 
-// openProtocolRuntimeWithStores opens a Runtime over FLAME_HOME and hands back
-// the same durable stores it runs on, so a test can write the state a crash
-// would have left without a second connection racing the live one.
 func openProtocolRuntimeWithStores(
 	t *testing.T,
 	model chat.Model,
 ) (*Instance, *delivery.Handler, *persistence.Bundle) {
 	t.Helper()
 	dataDirectory := os.Getenv("FLAME_HOME")
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: dataDirectory})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: dataDirectory, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatalf("open persistence: %v", err)
 	}

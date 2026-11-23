@@ -10,25 +10,15 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// Name is the binding-neutral identity of one Runtime operation. Concrete
-// names are declared beside their domain registration so every binding uses
-// the same protocol identity instead of repeating wire strings.
 type Name string
 
-// Valid reports whether n is a dot-separated operation identity with at least
-// one domain segment and one action segment.
 func (n Name) Valid() bool {
 	segments := strings.Split(string(n), ".")
 	return len(segments) >= 2 && !slices.Contains(segments, "")
 }
 
-// String returns the operation's wire identity.
 func (n Name) String() string { return string(n) }
 
-// MethodKind separates the two result shapes an operation can have: one value,
-// or a value followed by this call's own event stream.
-// It is set by the registration factory, never declared by hand — the factory is
-// the only thing that knows which pipeline it built.
 type MethodKind string
 
 const (
@@ -36,7 +26,6 @@ const (
 	KindStream MethodKind = "stream"
 )
 
-// Valid reports whether m names one supported delivery shape.
 func (m MethodKind) Valid() bool { return m == kindUnary || m == KindStream }
 
 func (m MethodKind) String() string {
@@ -46,14 +35,8 @@ func (m MethodKind) String() string {
 	return string(m)
 }
 
-// OperationKind describes what a call means independently of how its response is
-// delivered. A query observes state, a command may change state or cause an
-// external effect, and a subscription observes a live stream. Keeping this
-// separate from [MethodKind] avoids treating "streaming" as a business semantic.
-//
-// Registration factories set this value together with the only valid
-// idempotency policy for the operation. A new command therefore cannot compile
-// into the registry while silently opting out of replay protection.
+// Registration factories set this with its only valid idempotency policy, so a new
+// command cannot compile into the registry while opting out of replay protection.
 type OperationKind string
 
 const (
@@ -64,7 +47,6 @@ const (
 	OperationExtension    OperationKind = "extension"
 )
 
-// Valid reports whether o names one supported operation semantic.
 func (o OperationKind) Valid() bool {
 	return o == OperationQuery || o == OperationCommand || o == OperationSubscription || o == OperationExtension
 }
@@ -79,56 +61,32 @@ func (o OperationKind) String() string {
 	return string(o)
 }
 
-// IdempotencyPolicy says what an `Idempotency-Key` retry of this method must do.
-// It replaces a hand-kept list of replay-protected
-// method names: a method declares its own retry semantics where it is
-// registered, so adding a mutation cannot silently skip replay protection.
 type IdempotencyPolicy string
 
 const (
-	// idempotencyNone keeps no replay record. Reads, and mutations whose repeat
-	// is indistinguishable from the first call, need none.
 	idempotencyNone IdempotencyPolicy = "none"
 
-	// idempotencyReplayResponse caches the first response and returns it verbatim
-	// to a same-key retry, so the business handler runs exactly once.
 	idempotencyReplayResponse IdempotencyPolicy = "replayResponse"
 
-	// idempotencyOwnerResponse re-enters the original owner's command/receipt
-	// path. Runtime retains no competing business outcome or stream chunk history.
 	idempotencyOwnerResponse IdempotencyPolicy = "ownerResponse"
 
-	// IdempotencyOwnerRun records the command acceptance atomically with
-	// its opening or input-admission head. It requires caller-retained identity;
-	// delivery keeps no competing reservation.
 	IdempotencyOwnerRun IdempotencyPolicy = "ownerRun"
 )
 
-// Valid reports whether i is one supported retry contract.
 func (i IdempotencyPolicy) Valid() bool {
 	return i == idempotencyNone || i == idempotencyReplayResponse ||
 		i == idempotencyOwnerResponse || i == IdempotencyOwnerRun
 }
 
-// Replays reports whether this policy has durable replay semantics. Unknown
-// values never acquire replay semantics by accident; registry validation rejects
-// them before invocation starts.
 func (i IdempotencyPolicy) Replays() bool {
 	return i == idempotencyReplayResponse ||
 		i == idempotencyOwnerResponse || i == IdempotencyOwnerRun
 }
 
-// OwnsOutcome reports whether the backend commits this command's mutation and its
-// settlement together, so delivery keeps no competing replay record and routes a
-// keyed retry straight back to the handler.
 func (i IdempotencyPolicy) OwnsOutcome() bool {
 	return i == idempotencyOwnerResponse || i == IdempotencyOwnerRun
 }
 
-// ReplayCursorPolicy says whether a streaming method accepts the opaque run
-// event cursor carried by bindings as AfterEventID / Last-Event-Id. Keeping
-// this beside the method's idempotency policy lets admission and generated
-// clients reject cursor metadata that no handler can honor.
 type ReplayCursorPolicy string
 
 const (
@@ -136,17 +94,8 @@ const (
 	ReplayCursorRun  ReplayCursorPolicy = "run"
 )
 
-// Valid reports whether r is one supported replay-cursor contract.
 func (r ReplayCursorPolicy) Valid() bool { return r == replayCursorNone || r == ReplayCursorRun }
 
-// PaginationKind describes whether one unary response is a cursor page. It is
-// derived from the registered Params and Result wire shapes by the registration
-// factory; authors never classify methods by name or maintain a second list.
-//
-// A cursor page has the one protocol shape: optional cursor/limit request fields
-// and required data plus optional nextCursor result fields. Keeping the fact on
-// MethodMeta lets artifacts and bindings read the same answer the operation
-// registry validated, without putting binding-only mechanics on the wire.
 type PaginationKind string
 
 const (
@@ -154,116 +103,66 @@ const (
 	paginationCursor PaginationKind = "cursor"
 )
 
-// Valid reports whether p names one supported unary pagination shape.
 func (p PaginationKind) Valid() bool { return p == paginationNone || p == paginationCursor }
 
-// ConditionOperator is how a [FieldCondition] tests one request field.
 type ConditionOperator string
 
 const (
-	// OperatorPresent matches when the field is present and not its zero value —
-	// an absent optional field and an explicit empty one are the same request.
 	OperatorPresent ConditionOperator = "present"
-	// OperatorEquals matches when the field's JSON value equals Value.
-	OperatorEquals ConditionOperator = "equals"
+	OperatorEquals  ConditionOperator = "equals"
 )
 
-// Valid reports whether c names one supported field comparison.
 func (c ConditionOperator) Valid() bool { return c == OperatorPresent || c == OperatorEquals }
 
-// FieldCondition tests one field of the request frame. Field is a dotted path
-// into the same frame; it never reaches outside the request, so
-// evaluating a condition can never require a store lookup.
 type FieldCondition struct {
 	Field    string
 	Operator ConditionOperator
 	Value    string
 }
 
-// CapabilityRule states which Runtime features a call needs.
-//
-// An empty When means the whole method needs them. A non-empty When means only
-// the requests matching it do — which is how a method stays available in its
-// default form while one of its options is gated.
-//
-// The rule is the ONLY statement of the requirement: discovery advertises the
-// same feature map the gate reads, so an advertised feature is callable and a
-// disabled one is refused before any use case runs. A handler that re-checks
-// `if !s.features.X` is a second author of the same rule, and the two drift.
 type CapabilityRule struct {
 	When     []FieldCondition
 	Requires []string
 }
 
-// MethodMeta is everything about a method that is not its handler: what it is
-// called, which retry semantics it has, which errors it may return, and which
-// features it needs. Registration is the single place this is stated.
+const includeDescendantsParameter = "includeDescendants"
+
+// Descendant Runs are child Runs, so every request field that reaches them is
+// gated on the child-runs feature.
+func descendantsRequireChildRuns(field string) []CapabilityRule {
+	return []CapabilityRule{{
+		When:     []FieldCondition{{Field: field, Operator: OperatorPresent}},
+		Requires: []string{protocol.FeatureChildRuns},
+	}}
+}
+
 type MethodMeta struct {
-	// Name is the binding-neutral operation name, dotted <domain>.<verb>.
 	Name   Name
 	GoName string
 
-	// Kind is filled in by the registration factory.
-	Kind MethodKind
-	// Operation is filled in by the registration factory. It is orthogonal to
-	// Kind: runs.start is a streaming command, while runs.subscribe is a
-	// subscription.
+	Kind      MethodKind
 	Operation OperationKind
 
 	Idempotency  IdempotencyPolicy
 	ReplayCursor ReplayCursorPolicy
 	Pagination   PaginationKind
 
-	// Errors is the method-specific ProblemData.type values its contract declares.
-	// It deliberately does not include:
-	//
-	//   - internal_error — the universal fallback on every method;
-	//   - invalid_params — carried by any request whose type states constraints
-	//     ([protocol.ValidateWireTree]), so the shape already declares it;
-	//   - capability_not_negotiated — implied by CapabilityRules. A method whose
-	//     gate depends on durable state rather than request shape declares it here,
-	//     because no static rule can describe that trigger.
-	//
-	// It states WHICH errors are possible, never WHEN one fires — the trigger is
-	// a use-case decision and does not belong in wire metadata.
-	//
-	// An absent entry means "the contract has not documented it", not "it cannot
-	// happen": this is the audited set, and closing a gap is a contract edit here.
 	Errors []string
 
 	CapabilityRules []CapabilityRule
 	Acknowledgement []AcknowledgementMatch
 
-	// Materializes names independently callable query fact families this query
-	// returns together. It does not alias their request filters or pagination:
-	// clients still call those methods for standalone browsing. The metadata lets
-	// consumer gates distinguish a deliberately Runtime-composed product read from
-	// an orphaned backend capability without forcing redundant network calls.
 	Materializes []Name
 
-	// Params, Result and Event are the Go types of the method's wire frames, filled
-	// in by the registration factory from its own type parameters — the one place
-	// that knows them without a second declaration to keep in step.
-	//
-	// They exist for the schema walker: an artifact generator needs the type graph,
-	// not just the names. Result is nil for an ack-only method (its success carries
-	// no data) and Event is nil for a unary one.
 	Params reflect.Type
 	Result reflect.Type
 	Event  reflect.Type
 
-	// ResultNullable says the success result may be JSON null: the method answers
-	// "there is none" with an absent value instead of an error.
-	//
-	// It cannot be derived. Nearly every handler returns a pointer, and for all but
-	// one of them nil is impossible — so pointer-ness says nothing, and without this
-	// the published schema would name a shape the runtime may legitimately not send,
-	// leaving a client that validates its results to reject a correct frame.
+	// Cannot be derived: nearly every handler returns a pointer that is never nil, so
+	// pointer-ness says nothing about whether null is legal.
 	ResultNullable bool
 }
 
-// Features returns every feature key this method's rules can require, in
-// declaration order and without duplicates.
 func (m MethodMeta) Features() []string {
 	var out []string
 	for _, rule := range m.CapabilityRules {
@@ -276,10 +175,6 @@ func (m MethodMeta) Features() []string {
 	return out
 }
 
-// protocol.ProblemTypes returns the effective method-level failures in declaration order.
-// Static capability refusals are derived from CapabilityRules; state-dependent
-// refusals remain explicit in Errors because no request-shape rule can state when
-// they apply.
 func (m MethodMeta) ProblemTypes() []string {
 	problems := slices.Clone(m.Errors)
 	if len(m.CapabilityRules) > 0 &&
@@ -289,10 +184,6 @@ func (m MethodMeta) ProblemTypes() []string {
 	return problems
 }
 
-// validate rejects a registration that could not be honored. A contract whose
-// own metadata is inconsistent is worse than none: every generated artifact
-// would inherit the inconsistency.
-// Validate checks that method metadata is complete and internally consistent.
 func (m MethodMeta) Validate() error {
 	if err := m.validateIdentity(); err != nil {
 		return err
@@ -434,6 +325,7 @@ func (m MethodMeta) validateIdempotency() error {
 		if m.Kind == KindStream && !m.Idempotency.OwnsOutcome() {
 			return fmt.Errorf("%s: a streaming command must own its outcome", m.Name)
 		}
+	case operationUnspecified:
 	}
 	return nil
 }
@@ -556,8 +448,6 @@ func (c ConditionOperator) String() string {
 	return string(c)
 }
 
-// ValidateFieldCondition checks a field-local condition against its declared
-// protocol shape. Artifact constraints reuse the same exact interpretation.
 func ValidateFieldCondition(owner string, shape reflect.Type, condition FieldCondition) error {
 	if condition.Field == "" {
 		return fmt.Errorf("%s: condition must name a field", owner)

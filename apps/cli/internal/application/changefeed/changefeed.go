@@ -1,6 +1,3 @@
-// Package changefeed models runtime-wide invalidations. Events deliberately
-// carry identities, not duplicated resource state; consumers refetch through
-// the authoritative bounded-context query port.
 package changefeed
 
 import (
@@ -14,8 +11,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// Topics returns the complete change vocabulary this client understands: the
-// protocol's, because the client decodes every topic its revision defines.
 func Topics() []protocol.RuntimeTopic {
 	return protocol.RuntimeTopics()
 }
@@ -37,10 +32,6 @@ type Subscription struct {
 	Watches []Watch
 }
 
-// SubscriptionLimits are the delivery constraints the Runtime advertises at
-// discovery, where both are always positive. Partition keeps those transport
-// details out of change consumers while preserving every requested topic and
-// workspace-observation scope.
 type SubscriptionLimits struct {
 	MaxTopics  int
 	MaxWatches int
@@ -86,16 +77,13 @@ func (s SubscriptionLimits) Partition(subscription Subscription) ([]Subscription
 	return partitions, nil
 }
 
-// workspaceObservedTopics are global without a watch, but observe the named
-// workspace's externally-authored files when a watch accompanies them. The
-// runtime wire contract uses files.changed as the anchor that makes a watch
-// legal, so a partitioner must keep that anchor and scope beside each topic.
 func workspaceObservedTopics(topics []protocol.RuntimeTopic) []protocol.RuntimeTopic {
 	var observed []protocol.RuntimeTopic
 	for _, topic := range topics {
 		switch topic {
 		case protocol.TopicHooksChanged, protocol.TopicSkillsChanged:
 			observed = append(observed, topic)
+		case protocol.TopicFilesChanged, protocol.TopicMCPChanged, protocol.TopicPluginsChanged, protocol.TopicPluginDataChanged, protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicPlanChanged, protocol.TopicGoalsChanged, protocol.TopicInterruptsChanged, protocol.TopicModelsChanged, protocol.TopicApprovalsChanged:
 		}
 	}
 	return observed
@@ -188,10 +176,6 @@ func (s Subscription) Validate() error {
 	return nil
 }
 
-// ValidateEvent checks both the event shape and the delivery scope owned by
-// this subscription. Runtime events are invalidations, so accepting a frame
-// for an undeclared topic or watch can make an unrelated local projection look
-// authoritative.
 func (s Subscription) ValidateEvent(event Event) error {
 	if err := s.Validate(); err != nil {
 		return err
@@ -271,9 +255,6 @@ func (e Event) Validate() error {
 		return fmt.Errorf("change event type %q is invalid", e.Type)
 	}
 	if topic == protocol.TopicFilesChanged {
-		// Tool writes are broad invalidations and intentionally carry no watch ID.
-		// Watch-produced signals may add WatchID and Workspace so consumers can
-		// narrow the authoritative read, but neither is required by the protocol.
 		if len(e.Paths) == 0 {
 			return errors.New("file change event is incomplete")
 		}
@@ -285,7 +266,5 @@ type EventStream = iter.Seq2[Event, error]
 
 type Source interface {
 	Supports(protocol.RuntimeTopic) bool
-	// Subscribe borrows the request for the call. Implementations own any
-	// declaration retained for the returned stream's lifetime.
 	Subscribe(context.Context, Subscription) (EventStream, error)
 }

@@ -11,10 +11,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// PendingSteer owns an instruction and its borrowed composer attachments until
-// the runtime definitively accepts or rejects the exact command identity.
-// Replay metadata binds cold recovery to the runtime idempotency store that
-// first received the command.
 type PendingSteer struct {
 	inputDigest  inputDigest
 	inputFailure error
@@ -32,14 +28,8 @@ type pendingSteerRecord struct {
 	Replay      authoring.ReplayGuard `json:"replay"`
 }
 
-// SteerSourcePrefix marks a draft as a steer command. The terminal builds the draft
-// with it and StagePendingSteer validates the exact command against it, so the two
-// must share one owner.
 const SteerSourcePrefix = "/steer "
 
-// NewPendingSteer constructs one complete durable steer ownership fact. The
-// instruction must already be canonical so the Runtime command, prompt
-// history, and source composer draft cannot represent different text.
 func NewPendingSteer(
 	sessionID string,
 	command authoring.SteerRun,
@@ -58,7 +48,6 @@ func NewPendingSteer(
 	return pending, nil
 }
 
-// Validate enforces the complete persisted command and replay shape.
 func (p PendingSteer) Validate() error {
 	if err := p.inputDigest.validate(); err != nil {
 		return err
@@ -124,7 +113,6 @@ func (p PendingSteer) Message() authoring.Message     { return p.command.Message
 func (p PendingSteer) StagedAt() time.Time            { return p.stagedAt }
 func (p PendingSteer) Replay() authoring.ReplayGuard  { return p.replay }
 
-// PendingSteers returns unsettled steer commands in stable session order.
 func (s *Store) PendingSteers() []PendingSteer {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -138,7 +126,6 @@ func (s *Store) PendingSteers() []PendingSteer {
 	return pending
 }
 
-// PendingSteer returns the unsettled command for one session, when present.
 func (s *Store) PendingSteer(sessionID string) (PendingSteer, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -146,10 +133,6 @@ func (s *Store) PendingSteer(sessionID string) (PendingSteer, bool) {
 	return pending.clone(), exists
 }
 
-// StagePendingSteer atomically transfers attachment ownership from the exact
-// durable composer draft into a replayable runtime command. A crash therefore
-// observes either the editable attachments or the command journal, never an
-// empty gap between them.
 func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft authoring.Message, input *PreparedInput) (PendingSteer, error) {
 	pending = pending.clone()
 	blocks, digest, err := input.bind(s, pending.command.Message)
@@ -193,11 +176,6 @@ func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft authoring.Me
 	return pending.clone(), nil
 }
 
-// AcknowledgePendingSteer consumes the exact accepted command, records its
-// semantic prompt history idempotently, and preserves any newer session draft.
-// claimPendingSteerLocked returns the steer a settlement names. Acknowledgement
-// and rejection are the same claim asked twice, so they answer with one spelling
-// rather than each deciding for itself which steer it is finishing.
 func (s *Store) claimPendingSteerLocked(sessionID string, commandID authoring.CommandID) (PendingSteer, error) {
 	pending, exists := s.pendingSteers[sessionID]
 	if !exists || pending.command.CommandID != commandID {
@@ -229,10 +207,6 @@ func (s *Store) AcknowledgePendingSteer(sessionID string, commandID authoring.Co
 	)
 }
 
-// RejectPendingSteer returns borrowed attachments after a definitive runtime
-// refusal. currentDraft is an ownership precondition supplied after the
-// terminal has flushed newer input, so the merge and journal retirement are
-// one durable session-aggregate replacement.
 func (s *Store) RejectPendingSteer(
 	sessionID string,
 	commandID authoring.CommandID,
@@ -271,8 +245,6 @@ func (s *Store) RejectPendingSteer(
 	return recovered, nil
 }
 
-// MergeSteerAttachments preserves newer text and attachments while returning
-// each rejected attachment at most once.
 func MergeSteerAttachments(current authoring.Message, rejected []authoring.Attachment) authoring.Message {
 	current = current.Clone()
 	seenIDs := make(map[string]struct{}, len(current.Attachments)+len(rejected))

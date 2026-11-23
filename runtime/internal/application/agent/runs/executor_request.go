@@ -7,11 +7,6 @@ import (
 	"sync"
 )
 
-// executorRequest is the package-private ownership protocol for an executor
-// control request whose durable decision belongs to the Run pump. Cancellation
-// may withdraw a queued request; after claim, the producer must observe the
-// consumer's conclusive result so it cannot act on an ambiguous write-set.
-// The decision is immutable after done closes and remains available to its producer.
 type executorRequest[T any] struct {
 	mu     sync.Mutex
 	state  executorRequestState
@@ -37,8 +32,6 @@ func newExecutorRequest[T any]() *executorRequest[T] {
 	return &executorRequest[T]{done: make(chan struct{})}
 }
 
-// claim takes a pending request for decision. Only the claimant may settle
-// it, so settling has no state left to refuse.
 func (e *executorRequest[T]) claim() (claimedRequest[T], bool) {
 	if e == nil {
 		return claimedRequest[T]{}, false
@@ -52,7 +45,6 @@ func (e *executorRequest[T]) claim() (claimedRequest[T], bool) {
 	return claimedRequest[T]{request: e}, true
 }
 
-// claimedRequest is the consumer's exclusive right to decide one request.
 type claimedRequest[T any] struct{ request *executorRequest[T] }
 
 func (c claimedRequest[T]) settle(value T, err error) {

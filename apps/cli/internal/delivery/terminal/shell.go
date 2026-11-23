@@ -9,6 +9,12 @@ import (
 )
 
 const (
+	shellHeaderMaxRows = 2
+	promptPaneMinRows  = 4
+	promptPaneMaxRows  = 9
+)
+
+const (
 	transcriptPaneKey  = "transcript"
 	promptPaneKey      = "prompt"
 	shortShellHeight   = 16
@@ -76,7 +82,7 @@ func newShellView(header *sessionHeader, transcript *transcriptView, activity *a
 		},
 		Layout: func(space image.Point, items []scene.Item) []image.Rectangle {
 			density := densityForShell(space.X, space.Y)
-			sizes := []layout.Sizing{layout.Measured(0, 2), layout.Flex(1), layout.Measured(0, activityMaxRows), layout.Measured(0, queueMaxRows), layout.Fixed(1), layout.Measured(4, 9)}
+			sizes := []layout.Sizing{layout.Measured(0, shellHeaderMaxRows), layout.Flex(1), layout.Measured(0, activityMaxRows), layout.Measured(0, queueMaxRows), layout.Fixed(1), layout.Measured(promptPaneMinRows, promptPaneMaxRows)}
 			if density.hidesOptionalPanes() {
 				sizes[0], sizes[2], sizes[3] = layout.Fixed(0), layout.Fixed(0), layout.Fixed(0)
 			}

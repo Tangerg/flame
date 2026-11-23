@@ -11,7 +11,7 @@ import { contributionsTo, publishKernel, retractKernel } from "@/extensions/kern
 import { READY_HANDLER } from "@/extensions/lifecycle";
 const resourceAuthority = createResourceAuthority();
 
-export function createKernel(plugins: ReadonlyArray<AnyPlugin>): Host {
+function createKernel(plugins: ReadonlyArray<AnyPlugin>): Host {
   const host = createHost({
     resourceAuthority,
     name: "flame",

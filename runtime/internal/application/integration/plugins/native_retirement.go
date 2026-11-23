@@ -6,8 +6,6 @@ import (
 	framehost "github.com/Tangerg/frame/host"
 )
 
-// Native slots survive release changes. Join the original instance outside
-// admission before acquiring its successor; Frame alone owns the release proof.
 func AwaitNativeUnitRetirement(ctx context.Context, host framehost.Host, unit framehost.UnitRef) error {
 	for _, observed := range host.Observations() {
 		if observed.State == framehost.Preparing || observed.State == framehost.Ready {

@@ -34,7 +34,6 @@ func (StateReason) JSONSchemaEnum() []string {
 	return []string{string(Completed), string(NotPlanned), string(Duplicate), string(Reopened)}
 }
 
-// State is the issue state GitHub requires alongside the reason.
 func (r StateReason) State() (State, bool) {
 	switch r {
 	case Completed, NotPlanned, Duplicate:
@@ -107,6 +106,8 @@ const (
 )
 
 func (DiffSide) JSONSchemaEnum() []string { return []string{string(Left), string(Right)} }
+
+func (s DiffSide) Valid() bool { return s == Left || s == Right }
 
 type InlineComment struct {
 	Path      string    `json:"path" jsonschema:"minLength=1,maxLength=4096"`

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 
@@ -15,19 +16,13 @@ import (
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	corechat "github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
-	"go.opentelemetry.io/otel/attribute"
 )
 
-// errPromptRejected reports that a lifecycle hook explicitly blocked a fresh
-// root prompt. Broken or timed-out hooks remain non-blocking in the hooks
-// application policy and therefore do not produce this error.
 var errPromptRejected = errors.New("execution: prompt rejected by lifecycle hook")
 
-// WorkingContextConfig supplies the Runtime-owned prompt layers used to build
-// one self-contained fresh-root context. Every reader is required; absent user
-// content is an empty result from its owner, not a missing implementation.
 type WorkingContextConfig struct {
 	UserHome          string
 	AgentMemory       agentMemoryReader
@@ -37,15 +32,10 @@ type WorkingContextConfig struct {
 	Hooks             workingContextHookResolver
 }
 
-// workingContextHookResolver resolves the trusted lifecycle hooks for one
-// execution directory. Management inspection is intentionally absent.
 type workingContextHookResolver interface {
 	For(ctx context.Context, cwd string) (*apphooks.Bound, error)
 }
 
-// WorkingContextComposer is the Runtime adapter that adds model instructions,
-// relevant memory and prompt-hook context to a Host conversation seed. It owns
-// no executor and performs no model or Tool call.
 type WorkingContextComposer struct {
 	config WorkingContextConfig
 
@@ -53,7 +43,6 @@ type WorkingContextComposer struct {
 	seenSessions map[identity.SessionID]struct{}
 }
 
-// NewWorkingContextComposer builds a prompt composer. Construction has no I/O.
 func NewWorkingContextComposer(config WorkingContextConfig) (*WorkingContextComposer, error) {
 	if !filepath.IsAbs(config.UserHome) {
 		return nil, errors.New("execution: working context requires an absolute user home")
@@ -78,10 +67,6 @@ func NewWorkingContextComposer(config WorkingContextConfig) (*WorkingContextComp
 	}, nil
 }
 
-// ComposeWorkingContext returns an independent, complete context snapshot.
-// SessionStart fires once per Session per Runtime process; UserPromptSubmit
-// fires once per fresh root. Hook injection becomes an additional text part on
-// the current user message so media and user-authored part ordering stay intact.
 func (w *WorkingContextComposer) ComposeWorkingContext(
 	ctx context.Context,
 	input runs.WorkingContextInput,
@@ -92,8 +77,6 @@ func (w *WorkingContextComposer) ComposeWorkingContext(
 	if strings.TrimSpace(input.CWD) == "" || input.CWD != strings.TrimSpace(input.CWD) {
 		return nil, errors.New("execution: working context requires a CWD without surrounding whitespace")
 	}
-	// Hook trust and memory recall are addressed by the workspace. A blank one
-	// would silently compose a context with neither instead of saying so.
 	if strings.TrimSpace(input.WorkspaceCWD) == "" ||
 		input.WorkspaceCWD != strings.TrimSpace(input.WorkspaceCWD) {
 		return nil, errors.New("execution: working context requires a workspace CWD without surrounding whitespace")
@@ -120,9 +103,6 @@ func (w *WorkingContextComposer) ComposeWorkingContext(
 	if err != nil {
 		return nil, err
 	}
-	// Recall annotates this prompt, just like hook context. The opening commits
-	// that exact message, so later model calls retain the durable conversation
-	// prefix without admitting a second, unpersisted conversational message.
 	if recalled, found, recallErr := w.recallPart(ctx, input.WorkspaceCWD, input.PromptText); recallErr != nil {
 		return nil, recallErr
 	} else if found {
@@ -139,6 +119,14 @@ type promptHookResult struct {
 	sources  contextSources
 }
 
+func (p promptHookResult) including(event hookdata.Event, decision domainhooks.Decision) promptHookResult {
+	if decision.InjectsContext() {
+		p.sources = append(slices.Clip(p.sources), contextSourceLifecycleHook.source(string(event)))
+	}
+	p.decision = p.decision.Then(decision)
+	return p
+}
+
 func (p promptHookResult) applyTo(message *corechat.Message) error {
 	if p.decision.Verdict == domainhooks.VerdictBlock {
 		reason := strings.TrimSpace(p.decision.Reason)
@@ -147,10 +135,10 @@ func (p promptHookResult) applyTo(message *corechat.Message) error {
 		}
 		return fmt.Errorf("%w: %s", errPromptRejected, reason)
 	}
-	injected := strings.TrimSpace(p.decision.InjectContext)
-	if injected == "" {
+	if !p.decision.InjectsContext() {
 		return nil
 	}
+	injected := strings.TrimSpace(p.decision.InjectContext)
 	if len(p.sources) == 0 {
 		return errors.New("execution: injected hook context has no provenance source")
 	}
@@ -174,37 +162,14 @@ func (w *WorkingContextComposer) evaluatePromptHooks(
 
 	result := promptHookResult{}
 	if w.claimSessionStart(input.SessionID) {
-		result.decision = bound.Run(ctx, hookdata.Input{
+		result = result.including(hookdata.SessionStart, bound.Run(ctx, hookdata.Input{
 			Event: hookdata.SessionStart, SessionID: input.SessionID.String(), CWD: input.CWD,
-		})
-		if strings.TrimSpace(result.decision.InjectContext) != "" {
-			result.sources = append(
-				result.sources,
-				contextSourceLifecycleHook.source(string(hookdata.SessionStart)),
-			)
-		}
+		}))
 	}
-	submitted := bound.Run(ctx, hookdata.Input{
+	return result.including(hookdata.UserPromptSubmit, bound.Run(ctx, hookdata.Input{
 		Event: hookdata.UserPromptSubmit, SessionID: input.SessionID.String(),
 		CWD: input.CWD, Prompt: input.PromptText,
-	})
-	if strings.TrimSpace(submitted.InjectContext) != "" {
-		result.sources = append(
-			result.sources,
-			contextSourceLifecycleHook.source(string(hookdata.UserPromptSubmit)),
-		)
-	}
-	if submitted.InjectContext != "" {
-		if result.decision.InjectContext != "" {
-			result.decision.InjectContext += "\n"
-		}
-		result.decision.InjectContext += submitted.InjectContext
-	}
-	if result.decision.Verdict != domainhooks.VerdictBlock && submitted.Verdict == domainhooks.VerdictBlock {
-		result.decision.Verdict, result.decision.Reason = submitted.Verdict, submitted.Reason
-	}
-
-	return result, nil
+	})), nil
 }
 
 func (w *WorkingContextComposer) claimSessionStart(sessionID identity.SessionID) bool {
@@ -217,17 +182,12 @@ func (w *WorkingContextComposer) claimSessionStart(sessionID identity.SessionID)
 	return true
 }
 
-// ForgetSession releases the process-local SessionStart marker after the
-// Session aggregate is durably deleted.
 func (w *WorkingContextComposer) ForgetSession(sessionID identity.SessionID) {
 	w.mu.Lock()
 	delete(w.seenSessions, sessionID)
 	w.mu.Unlock()
 }
 
-// BeforeToolUse projects the trusted Runtime hook decision onto the Interaction
-// executor's framework-neutral Tool boundary. A hook's ASK remains a product
-// approval escalation; it is not encoded as an Agent Framework Signal here.
 func (w *WorkingContextComposer) BeforeToolUse(
 	ctx context.Context,
 	input InteractionToolHookInput,
@@ -260,8 +220,6 @@ func (w *WorkingContextComposer) BeforeToolUse(
 	return allowToolHook(decision.Verdict == domainhooks.VerdictAsk, rewrittenArguments), nil
 }
 
-// AfterToolUse runs the observe-only post-call hook. Its decision cannot alter
-// an already settled Tool result.
 func (w *WorkingContextComposer) AfterToolUse(
 	ctx context.Context,
 	input InteractionToolHookInput,
@@ -289,8 +247,6 @@ func (w *WorkingContextComposer) AfterToolUse(
 	return nil
 }
 
-// BeforeCompaction runs the veto-capable lifecycle hook exactly when the
-// maintenance pipeline selected a compaction candidate.
 func (w *WorkingContextComposer) BeforeCompaction(
 	ctx context.Context,
 	sessionID identity.SessionID, cwd string,
@@ -306,8 +262,6 @@ func (w *WorkingContextComposer) BeforeCompaction(
 	return decision.Verdict != domainhooks.VerdictBlock, nil
 }
 
-// NotifyWaiting runs the observe-only notification hook for a committed
-// external-input boundary.
 func (w *WorkingContextComposer) NotifyWaiting(
 	ctx context.Context,
 	sessionID identity.SessionID, cwd string,
@@ -315,7 +269,6 @@ func (w *WorkingContextComposer) NotifyWaiting(
 	return w.runObserveOnlyHook(ctx, hookdata.Notification, sessionID, cwd, "interrupt")
 }
 
-// NotifyStopped runs the observe-only terminal hook.
 func (w *WorkingContextComposer) NotifyStopped(
 	ctx context.Context,
 	sessionID identity.SessionID, cwd, reason string,
@@ -357,7 +310,7 @@ func (w *WorkingContextComposer) recallPart(
 	)
 	if err != nil {
 		span.RecordError(err)
-		slog.WarnContext(ctx, "execution: recall memory", "error", err)
+		slog.WarnContext(ctx, "execution: recall memory", telemetry.Error(err))
 		return corechat.Part{}, false, nil
 	}
 	var body strings.Builder
@@ -382,11 +335,11 @@ func (w *WorkingContextComposer) recallPart(
 		injected++
 		used += cost
 	}
-	span.SetAttributes(attribute.Int("memory.recalled", injected))
+	span.SetAttributes(telemetry.MemoryRecalledKey.Int(injected))
 	if injected == 0 {
 		return corechat.Part{}, false, nil
 	}
-	loadRecallCounter().Add(ctx, int64(injected))
+	recalledMemoryCounter().Add(ctx, int64(injected))
 	part := corechat.NewTextPart(FrameRuntimeContext(runtimeContextRecalledMemory, strings.TrimSuffix(body.String(), "\n")))
 	if err := sources.attach(&part.Metadata, "recalled-memory part"); err != nil {
 		return corechat.Part{}, false, err

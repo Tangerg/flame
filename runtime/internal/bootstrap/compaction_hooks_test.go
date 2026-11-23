@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
-	chathistory "github.com/Tangerg/scope/core/history"
 )
 
 func TestRuntimeStopsRequiredCompactionWhenHookConfigurationCannotBeRead(t *testing.T) {
@@ -32,8 +32,6 @@ func TestRuntimeStopsRequiredCompactionWhenHookConfigurationCannotBeRead(t *test
 		}
 		response, err := longRun.Call(ctx, request)
 		if err == nil && response.Output != nil && response.Output.Message != nil {
-			// Rejected calls build context without an earlier PreToolUse lookup.
-			// The unreadable policy must be encountered by required compaction.
 			for index := range response.Output.Message.Parts {
 				if call := response.Output.Message.Parts[index].ToolCall; call != nil {
 					call.Name = "unavailable"
@@ -64,8 +62,6 @@ func TestRuntimeStopsRequiredCompactionWhenHookConfigurationCannotBeRead(t *test
 	case <-time.After(lifecycleWaitBudget(t)):
 		t.Fatal("opening model call did not arrive")
 	}
-	// Authored configuration can change while the model is running. A later
-	// required compaction must resolve its veto policy from that current source.
 	if err := os.MkdirAll(filepath.Join(home, ".flame"), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +83,7 @@ func TestRuntimeStopsRequiredCompactionWhenHookConfigurationCannotBeRead(t *test
 	if summaries != 0 {
 		t.Fatalf("summary model calls = %d, want none before hook policy is known", summaries)
 	}
-	history, err := stores.ChatHistory.Read(ctx, chathistory.ConversationID(session.ID))
+	history, err := stores.Conversations.Read(ctx, testsupport.MustSessionID(session.ID))
 	if err != nil {
 		t.Fatal(err)
 	}

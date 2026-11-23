@@ -9,9 +9,6 @@ import (
 	"github.com/Tangerg/oolong/ui/base"
 )
 
-// approvalAction is the terminal's complete decision vocabulary for one tool
-// approval. Keeping it closed prevents form choices and runtime answers from
-// drifting as new persistence scopes are exposed.
 type approvalAction string
 
 const (

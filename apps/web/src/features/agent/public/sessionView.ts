@@ -6,6 +6,7 @@ import {
   type ToolCategory,
   type RunStatus as AgentRunStatus,
   type InterruptType as PendingInterruptType,
+  type UnresolvedEffectCause,
 } from "@/foundation/protocolValues.generated";
 export type { AgentMessagePhase, ToolCategory, AgentRunStatus };
 import { type CapturedToolResult, type RecordedFileChange } from "@flame/component-sdk";
@@ -29,7 +30,6 @@ export type AgentSafetyClass = NonNullable<CapturedToolResult["safetyClass"]>;
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 
-// The reducer advances its current read model; components receive frozen captures.
 export type ToolCall = Mutable<Omit<CapturedToolResult, "changes" | "range">> & {
   category?: ToolCategory;
   changes?: Mutable<RecordedFileChange>[];
@@ -43,10 +43,6 @@ export interface Message {
   createdAt?: string;
   runId: string | null;
   blocks: ContentBlock[];
-  /**
-   * The addressed Run identifies application; Runtime admission and local
-   * delivery observation have separate owners.
-   */
   steer?: {
     runId: string;
     receipt?: "accepted" | "retired";
@@ -66,7 +62,6 @@ export interface RunUsage {
 export interface AgentProblem {
   message?: string;
   code?: string;
-  /** Present when the problem is a lost Run; the client words it. */
   lossReason?: LossReason;
   recovery?: RecoveryAction;
   retryAfterSeconds?: number;
@@ -76,7 +71,7 @@ export interface AgentProblem {
 export interface AgentUnresolvedEffect {
   processId: string;
   effectId: string;
-  cause: string;
+  cause: UnresolvedEffectCause;
   reason?: string;
   detail?: string;
   output?: string;
@@ -108,7 +103,6 @@ export interface AgentRunMetrics {
   usage?: RunUsage;
 }
 
-/** What a running segment is doing; the client words it. */
 export type AgentRunActivity =
   { type: Exclude<ActivityType, "toolCall"> } | { type: "toolCall"; itemId: string; tool: string };
 
@@ -147,8 +141,7 @@ export interface PendingInterrupt {
   type: PendingInterruptType;
 }
 
-/** The open interrupts one Run raised; the Run itself names its tree's root. */
-export interface PendingInterruptGroup {
+interface PendingInterruptGroup {
   runId: string;
   interrupts: PendingInterrupt[];
 }

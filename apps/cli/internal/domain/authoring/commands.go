@@ -8,21 +8,19 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// SteerRun injects an instruction only into the exact running segment the user
-// is currently observing. A stale segment must be rejected, never retargeted.
 type SteerRun struct {
 	CommandID CommandID
 	RunID     string
 	SegmentID string
 	Message   Message
-	Input     []protocol.ContentBlock `json:"-"`
+	Input     []protocol.ContentBlock
 }
 
 type StartRun struct {
-	CommandID CommandID
-	SessionID string
-	Message   Message
-	Options   RunOptions
+	CommandID CommandID               `json:"commandId"`
+	SessionID string                  `json:"sessionId"`
+	Message   Message                 `json:"message"`
+	Options   RunOptions              `json:"options"`
 	Input     []protocol.ContentBlock `json:"-"`
 }
 

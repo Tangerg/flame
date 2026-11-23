@@ -5,7 +5,7 @@
   "scope": "installation",
   "methods": [
     {
-      "name": "flame.schedules/create.v1",
+      "name": "flame.schedules/create.v2",
       "kind": "command",
       "target": "installation",
       "description": "Create one schedule definition.",
@@ -34,39 +34,39 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.RHJhZnQ": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.RHJhZnQ": {
             "additionalProperties": false,
             "properties": {
-              "CWD": {
+              "cron": {
                 "type": "string"
               },
-              "Cron": {
+              "cwd": {
                 "type": "string"
               },
-              "Enabled": {
+              "enabled": {
                 "type": "boolean"
               },
-              "Instructions": {
+              "instructions": {
                 "type": "string"
               },
-              "ModelSelection": {
+              "modelSelection": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
               },
-              "TimeZone": {
+              "timeZone": {
                 "type": "string"
               },
-              "Title": {
+              "title": {
                 "type": "string"
               }
             },
             "required": [
-              "Title",
-              "Instructions",
-              "CWD",
-              "ModelSelection",
-              "Cron",
-              "TimeZone",
-              "Enabled"
+              "title",
+              "instructions",
+              "cwd",
+              "modelSelection",
+              "cron",
+              "timeZone",
+              "enabled"
             ],
             "type": "object"
           }
@@ -74,36 +74,36 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "CWD": {
+          "cron": {
             "type": "string"
           },
-          "Cron": {
+          "cwd": {
             "type": "string"
           },
-          "Enabled": {
+          "enabled": {
             "type": "boolean"
           },
-          "Instructions": {
+          "instructions": {
             "type": "string"
           },
-          "ModelSelection": {
+          "modelSelection": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
           },
-          "TimeZone": {
+          "timeZone": {
             "type": "string"
           },
-          "Title": {
+          "title": {
             "type": "string"
           }
         },
         "required": [
-          "Title",
-          "Instructions",
-          "CWD",
-          "ModelSelection",
-          "Cron",
-          "TimeZone",
-          "Enabled"
+          "title",
+          "instructions",
+          "cwd",
+          "modelSelection",
+          "cron",
+          "timeZone",
+          "enabled"
         ],
         "type": "object"
       },
@@ -135,37 +135,37 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.U25hcHNob3Q": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u": {
             "additionalProperties": false,
             "properties": {
-              "CWD": {
-                "type": "string"
-              },
-              "CreatedAt": {
+              "createdAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
-              "Cron": {
+              "cron": {
                 "type": "string"
               },
-              "ID": {
+              "cwd": {
                 "type": "string"
               },
-              "Instructions": {
+              "id": {
                 "type": "string"
               },
-              "LastRunAt": {
+              "instructions": {
+                "type": "string"
+              },
+              "lastRunAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
-              "ModelSelection": {
+              "modelSelection": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
               },
-              "NextRunAt": {
+              "nextRunAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
-              "Revision": {
+              "revision": {
                 "allOf": [
                   {
                     "maximum": 18446744073709551615,
@@ -174,23 +174,23 @@
                 ],
                 "type": "integer"
               },
-              "TimeZone": {
+              "timeZone": {
                 "type": "string"
               },
-              "Title": {
+              "title": {
                 "type": "string"
               }
             },
             "required": [
-              "ID",
-              "Title",
-              "Instructions",
-              "CWD",
-              "ModelSelection",
-              "Cron",
-              "TimeZone",
-              "CreatedAt",
-              "Revision"
+              "id",
+              "title",
+              "instructions",
+              "cwd",
+              "modelSelection",
+              "cron",
+              "timeZone",
+              "createdAt",
+              "revision"
             ],
             "type": "object"
           }
@@ -198,31 +198,31 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "CWD": {
-            "type": "string"
-          },
-          "CreatedAt": {
+          "createdAt": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
           },
-          "Cron": {
+          "cron": {
             "type": "string"
           },
-          "ID": {
+          "cwd": {
             "type": "string"
           },
-          "Instructions": {
+          "id": {
             "type": "string"
           },
-          "LastRunAt": {
+          "instructions": {
+            "type": "string"
+          },
+          "lastRunAt": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
           },
-          "ModelSelection": {
+          "modelSelection": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
           },
-          "NextRunAt": {
+          "nextRunAt": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
           },
-          "Revision": {
+          "revision": {
             "allOf": [
               {
                 "maximum": 18446744073709551615,
@@ -231,29 +231,29 @@
             ],
             "type": "integer"
           },
-          "TimeZone": {
+          "timeZone": {
             "type": "string"
           },
-          "Title": {
+          "title": {
             "type": "string"
           }
         },
         "required": [
-          "ID",
-          "Title",
-          "Instructions",
-          "CWD",
-          "ModelSelection",
-          "Cron",
-          "TimeZone",
-          "CreatedAt",
-          "Revision"
+          "id",
+          "title",
+          "instructions",
+          "cwd",
+          "modelSelection",
+          "cron",
+          "timeZone",
+          "createdAt",
+          "revision"
         ],
         "type": "object"
       }
     },
     {
-      "name": "flame.schedules/delete.v1",
+      "name": "flame.schedules/delete.v2",
       "kind": "command",
       "target": "installation",
       "description": "Delete one schedule definition.",
@@ -262,12 +262,12 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.SXRlbUlucHV0": {
             "additionalProperties": false,
             "properties": {
-              "ID": {
+              "id": {
                 "type": "string"
               }
             },
             "required": [
-              "ID"
+              "id"
             ],
             "type": "object"
           }
@@ -275,12 +275,12 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "ID": {
+          "id": {
             "type": "string"
           }
         },
         "required": [
-          "ID"
+          "id"
         ],
         "type": "object"
       },
@@ -299,7 +299,7 @@
       }
     },
     {
-      "name": "flame.schedules/list.v1",
+      "name": "flame.schedules/list.v2",
       "kind": "query",
       "target": "installation",
       "description": "List current schedule definitions and revisions.",
@@ -308,10 +308,10 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TGlzdElucHV0": {
             "additionalProperties": false,
             "properties": {
-              "Cursor": {
+              "cursor": {
                 "type": "string"
               },
-              "Limit": {
+              "limit": {
                 "allOf": [
                   {
                     "maximum": 9223372036854775807,
@@ -322,7 +322,7 @@
               }
             },
             "required": [
-              "Cursor"
+              "cursor"
             ],
             "type": "object"
           }
@@ -330,10 +330,10 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "Cursor": {
+          "cursor": {
             "type": "string"
           },
-          "Limit": {
+          "limit": {
             "allOf": [
               {
                 "maximum": 9223372036854775807,
@@ -344,7 +344,7 @@
           }
         },
         "required": [
-          "Cursor"
+          "cursor"
         ],
         "type": "object"
       },
@@ -376,37 +376,37 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.U25hcHNob3Q": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u": {
             "additionalProperties": false,
             "properties": {
-              "CWD": {
-                "type": "string"
-              },
-              "CreatedAt": {
+              "createdAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
-              "Cron": {
+              "cron": {
                 "type": "string"
               },
-              "ID": {
+              "cwd": {
                 "type": "string"
               },
-              "Instructions": {
+              "id": {
                 "type": "string"
               },
-              "LastRunAt": {
+              "instructions": {
+                "type": "string"
+              },
+              "lastRunAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
-              "ModelSelection": {
+              "modelSelection": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
               },
-              "NextRunAt": {
+              "nextRunAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
-              "Revision": {
+              "revision": {
                 "allOf": [
                   {
                     "maximum": 18446744073709551615,
@@ -415,42 +415,42 @@
                 ],
                 "type": "integer"
               },
-              "TimeZone": {
+              "timeZone": {
                 "type": "string"
               },
-              "Title": {
+              "title": {
                 "type": "string"
               }
             },
             "required": [
-              "ID",
-              "Title",
-              "Instructions",
-              "CWD",
-              "ModelSelection",
-              "Cron",
-              "TimeZone",
-              "CreatedAt",
-              "Revision"
+              "id",
+              "title",
+              "instructions",
+              "cwd",
+              "modelSelection",
+              "cron",
+              "timeZone",
+              "createdAt",
+              "revision"
             ],
             "type": "object"
           },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.UGFnZQ": {
             "additionalProperties": false,
             "properties": {
-              "NextCursor": {
+              "nextCursor": {
                 "type": "string"
               },
-              "Rows": {
+              "rows": {
                 "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q"
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.U25hcHNob3Q"
                 },
                 "type": "array"
               }
             },
             "required": [
-              "Rows",
-              "NextCursor"
+              "rows",
+              "nextCursor"
             ],
             "type": "object"
           }
@@ -458,25 +458,25 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "NextCursor": {
+          "nextCursor": {
             "type": "string"
           },
-          "Rows": {
+          "rows": {
             "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q"
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.U25hcHNob3Q"
             },
             "type": "array"
           }
         },
         "required": [
-          "Rows",
-          "NextCursor"
+          "rows",
+          "nextCursor"
         ],
         "type": "object"
       }
     },
     {
-      "name": "flame.schedules/runNow.v1",
+      "name": "flame.schedules/runNow.v2",
       "kind": "command",
       "target": "installation",
       "description": "Capture and reconcile one manual Run through its original Runtime acceptance.",
@@ -485,12 +485,12 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.SXRlbUlucHV0": {
             "additionalProperties": false,
             "properties": {
-              "ID": {
+              "id": {
                 "type": "string"
               }
             },
             "required": [
-              "ID"
+              "id"
             ],
             "type": "object"
           }
@@ -498,30 +498,30 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "ID": {
+          "id": {
             "type": "string"
           }
         },
         "required": [
-          "ID"
+          "id"
         ],
         "type": "object"
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2FwcGxpY2F0aW9u.UnVuUmVmZXJlbmNl": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxpbmc.UnVuUmVmZXJlbmNl": {
             "additionalProperties": false,
             "properties": {
-              "RunID": {
+              "runId": {
                 "type": "string"
               },
-              "SessionID": {
+              "sessionId": {
                 "type": "string"
               }
             },
             "required": [
-              "SessionID",
-              "RunID"
+              "sessionId",
+              "runId"
             ],
             "type": "object"
           }
@@ -529,22 +529,22 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "RunID": {
+          "runId": {
             "type": "string"
           },
-          "SessionID": {
+          "sessionId": {
             "type": "string"
           }
         },
         "required": [
-          "SessionID",
-          "RunID"
+          "sessionId",
+          "runId"
         ],
         "type": "object"
       }
     },
     {
-      "name": "flame.schedules/update.v1",
+      "name": "flame.schedules/update.v2",
       "kind": "command",
       "target": "installation",
       "description": "Change one schedule using its inspected revision.",
@@ -553,13 +553,13 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA": {
             "additionalProperties": false,
             "properties": {
-              "Model": {
+              "model": {
                 "type": "string"
               },
-              "Provider": {
+              "provider": {
                 "type": "string"
               },
-              "ReasoningEffort": {
+              "reasoningEffort": {
                 "type": "string"
               }
             },
@@ -568,16 +568,16 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.VXBkYXRlSW5wdXQ": {
             "additionalProperties": false,
             "properties": {
-              "CWD": {
+              "cron": {
                 "type": "string"
               },
-              "Cron": {
+              "cwd": {
                 "type": "string"
               },
-              "Enabled": {
+              "enabled": {
                 "type": "boolean"
               },
-              "ExpectedRevision": {
+              "expectedRevision": {
                 "allOf": [
                   {
                     "maximum": 18446744073709551615,
@@ -586,26 +586,26 @@
                 ],
                 "type": "integer"
               },
-              "ID": {
+              "id": {
                 "type": "string"
               },
-              "Instructions": {
+              "instructions": {
                 "type": "string"
               },
-              "ModelSelection": {
+              "modelSelection": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA"
               },
-              "TimeZone": {
+              "timeZone": {
                 "type": "string"
               },
-              "Title": {
+              "title": {
                 "type": "string"
               }
             },
             "required": [
-              "ID",
-              "ExpectedRevision",
-              "ModelSelection"
+              "id",
+              "expectedRevision",
+              "modelSelection"
             ],
             "type": "object"
           }
@@ -613,16 +613,16 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "CWD": {
+          "cron": {
             "type": "string"
           },
-          "Cron": {
+          "cwd": {
             "type": "string"
           },
-          "Enabled": {
+          "enabled": {
             "type": "boolean"
           },
-          "ExpectedRevision": {
+          "expectedRevision": {
             "allOf": [
               {
                 "maximum": 18446744073709551615,
@@ -631,26 +631,26 @@
             ],
             "type": "integer"
           },
-          "ID": {
+          "id": {
             "type": "string"
           },
-          "Instructions": {
+          "instructions": {
             "type": "string"
           },
-          "ModelSelection": {
+          "modelSelection": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA"
           },
-          "TimeZone": {
+          "timeZone": {
             "type": "string"
           },
-          "Title": {
+          "title": {
             "type": "string"
           }
         },
         "required": [
-          "ID",
-          "ExpectedRevision",
-          "ModelSelection"
+          "id",
+          "expectedRevision",
+          "modelSelection"
         ],
         "type": "object"
       },
@@ -682,37 +682,37 @@
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.U25hcHNob3Q": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u": {
             "additionalProperties": false,
             "properties": {
-              "CWD": {
-                "type": "string"
-              },
-              "CreatedAt": {
+              "createdAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
-              "Cron": {
+              "cron": {
                 "type": "string"
               },
-              "ID": {
+              "cwd": {
                 "type": "string"
               },
-              "Instructions": {
+              "id": {
                 "type": "string"
               },
-              "LastRunAt": {
+              "instructions": {
+                "type": "string"
+              },
+              "lastRunAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
-              "ModelSelection": {
+              "modelSelection": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
               },
-              "NextRunAt": {
+              "nextRunAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
-              "Revision": {
+              "revision": {
                 "allOf": [
                   {
                     "maximum": 18446744073709551615,
@@ -721,23 +721,23 @@
                 ],
                 "type": "integer"
               },
-              "TimeZone": {
+              "timeZone": {
                 "type": "string"
               },
-              "Title": {
+              "title": {
                 "type": "string"
               }
             },
             "required": [
-              "ID",
-              "Title",
-              "Instructions",
-              "CWD",
-              "ModelSelection",
-              "Cron",
-              "TimeZone",
-              "CreatedAt",
-              "Revision"
+              "id",
+              "title",
+              "instructions",
+              "cwd",
+              "modelSelection",
+              "cron",
+              "timeZone",
+              "createdAt",
+              "revision"
             ],
             "type": "object"
           }
@@ -745,31 +745,31 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "CWD": {
-            "type": "string"
-          },
-          "CreatedAt": {
+          "createdAt": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
           },
-          "Cron": {
+          "cron": {
             "type": "string"
           },
-          "ID": {
+          "cwd": {
             "type": "string"
           },
-          "Instructions": {
+          "id": {
             "type": "string"
           },
-          "LastRunAt": {
+          "instructions": {
+            "type": "string"
+          },
+          "lastRunAt": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
           },
-          "ModelSelection": {
+          "modelSelection": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u"
           },
-          "NextRunAt": {
+          "nextRunAt": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
           },
-          "Revision": {
+          "revision": {
             "allOf": [
               {
                 "maximum": 18446744073709551615,
@@ -778,23 +778,23 @@
             ],
             "type": "integer"
           },
-          "TimeZone": {
+          "timeZone": {
             "type": "string"
           },
-          "Title": {
+          "title": {
             "type": "string"
           }
         },
         "required": [
-          "ID",
-          "Title",
-          "Instructions",
-          "CWD",
-          "ModelSelection",
-          "Cron",
-          "TimeZone",
-          "CreatedAt",
-          "Revision"
+          "id",
+          "title",
+          "instructions",
+          "cwd",
+          "modelSelection",
+          "cron",
+          "timeZone",
+          "createdAt",
+          "revision"
         ],
         "type": "object"
       }

@@ -27,9 +27,6 @@ import (
 	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
-// P-O04: activating a plugin mid-Session changes the deferred catalog that ends
-// each later request, not the tool declarations that open the provider
-// prompt-cache prefix.
 func TestPluginAcceptanceDiscoveryMidSessionActivationKeepsPrefix(t *testing.T) {
 	var remoteCalls atomic.Int32
 	remote := sdk.NewServer(&sdk.Implementation{Name: "review", Version: "1"}, nil)
@@ -200,13 +197,8 @@ func TestPluginAcceptanceDiscoveryMidSessionActivationKeepsPrefix(t *testing.T) 
 	}
 }
 
-// poDeferredCatalogMarker opens the Runtime's per-request deferred catalog.
 var poDeferredCatalogMarker = executionadapter.RuntimeContextOpening(executionadapter.RuntimeContextDeferredTools)
 
-// deferredCatalogOf returns the deferred catalog ending request, or "" when the
-// request has none. The catalog is a per-request projection: it must be the
-// final message, appear exactly once, and so never accumulate in the
-// conversation a later call or Run replays.
 func deferredCatalogOf(request *chat.Request) (string, error) {
 	count := 0
 	for _, message := range request.Messages {
@@ -224,8 +216,6 @@ func deferredCatalogOf(request *chat.Request) (string, error) {
 	return last.Text(), nil
 }
 
-// withoutDeferredCatalog returns the conversation a request carries before its
-// trailing per-request catalog.
 func withoutDeferredCatalog(request *chat.Request) []chat.Message {
 	if catalog, err := deferredCatalogOf(request); err == nil && catalog != "" {
 		return request.Messages[:len(request.Messages)-1]
@@ -242,8 +232,6 @@ func poDeferredCatalog(t *testing.T, request *chat.Request) (string, bool) {
 	return catalog, catalog != ""
 }
 
-// poSameDeclarations requires the complete tool declaration block, which opens
-// the provider prompt-cache prefix, to be byte-identical.
 func poSameDeclarations(t *testing.T, before, after *chat.Request) {
 	t.Helper()
 	encode := func(definition toolcontract.Definition) string {
@@ -263,9 +251,6 @@ func poSameDeclarations(t *testing.T, before, after *chat.Request) {
 	}
 }
 
-// poDiscoveryCompare asserts the prefix a provider cache can reuse: the entire
-// declaration block and the system prompt stay byte-identical, while the
-// trailing catalog message reflects the activation.
 func poDiscoveryCompare(t *testing.T, before, after *chat.Request, target string) {
 	t.Helper()
 	poSameDeclarations(t, before, after)
@@ -294,8 +279,6 @@ func poDiscoveryCompare(t *testing.T, before, after *chat.Request, target string
 	}
 }
 
-// An MCP reconnect that changes the server's tool list reaches later Runs only
-// through the deferred catalog; the declaration block stays byte-identical.
 func TestPluginAcceptanceDiscoveryMCPReconnectKeepsDeclarations(t *testing.T) {
 	remote := sdk.NewServer(&sdk.Implementation{Name: "fixture", Version: "1"}, nil)
 	register := func(name string) {
@@ -390,8 +373,6 @@ func TestPluginAcceptanceDiscoveryMCPReconnectKeepsDeclarations(t *testing.T) {
 	}
 }
 
-// Restoring a waiting Run rebuilds its Discovery from the same frozen deferred
-// set, so the catalog after restart is the same projection, not a stored copy.
 func TestDeferredCatalogSurvivesWaitingRestoreUnchanged(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)

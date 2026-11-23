@@ -16,9 +16,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// Payloads are separate from the 16 MiB authoring record: one supported image
-// alone may contain 20 MiB before base64. The bound covers all supported input,
-// JSON's worst-case escaping, and attachment names already bounded by a record.
 const maximumInputBytes = 6 * (authoring.MaxMessageTextBytes + authoring.MaxMessageAttachments*authoring.MaxAttachmentBytes + 2*maximumStateBytes + 1024)
 
 type inputDigest string
@@ -36,10 +33,6 @@ func (d inputDigest) validate() error {
 
 func (d inputDigest) name() string { return filepath.Join("inputs", string(d)+".json") }
 
-// PreparedInput is immutable content already saved in this Store. Its private
-// fields bind the bytes to the complete source message, so publication cannot
-// accidentally attach an earlier preparation to an edited queue entry.
-// A nil value is sufficient only for a message without filesystem attachments.
 type PreparedInput struct {
 	owner   *Store
 	message authoring.Message
@@ -47,10 +40,6 @@ type PreparedInput struct {
 	digest  inputDigest
 }
 
-// PrepareInput writes the immutable content before a session record publishes
-// its digest with the command ID and replay guard. Expensive encoding and blob
-// I/O run outside the authoring lock and can be owned by a background operation.
-// Cancellation or a failed later record write leaves only an unreferenced blob.
 func (s *Store) PrepareInput(ctx context.Context, message authoring.Message, input []protocol.ContentBlock) (*PreparedInput, error) {
 	if err := context.Cause(ctx); err != nil {
 		return nil, err
@@ -71,7 +60,7 @@ func (s *Store) PrepareInput(ctx context.Context, message authoring.Message, inp
 	}
 	prepared.digest = inputDigest(fmt.Sprintf("%x", sha256.Sum256(encoded)))
 	s.mu.Lock()
-	writable, err := s.writable()
+	err = s.admitWrite()
 	s.mu.Unlock()
 	if err != nil {
 		return nil, err
@@ -79,14 +68,12 @@ func (s *Store) PrepareInput(ctx context.Context, message authoring.Message, inp
 	if err := context.Cause(ctx); err != nil {
 		return nil, err
 	}
-	if writable {
-		result := s.persistence.Replace(prepared.digest.name(), encoded)
-		s.mu.Lock()
-		err := s.acceptCommit(prepared.digest.name(), result, func() {})
-		s.mu.Unlock()
-		if err != nil {
-			return nil, fmt.Errorf("save prepared input: %w", err)
-		}
+	result := s.persistence.Replace(prepared.digest.name(), encoded)
+	s.mu.Lock()
+	err = s.acceptCommit(prepared.digest.name(), result, func() {})
+	s.mu.Unlock()
+	if err != nil {
+		return nil, fmt.Errorf("save prepared input: %w", err)
 	}
 	if err := context.Cause(ctx); err != nil {
 		return nil, err

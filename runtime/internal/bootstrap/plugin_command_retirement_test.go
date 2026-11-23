@@ -50,8 +50,6 @@ func TestPreparedInstalledCommandRetiresAfterRestartWithoutBackendDispatch(t *te
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	// A refused dispatch write leaves the same durable prepared route as a caller
-	// canceled between binding and admission, without adding a production hook.
 	if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER refuse_dispatch BEFORE UPDATE OF phase ON plugin_commands WHEN NEW.phase='dispatched' BEGIN SELECT RAISE(ABORT,'dispatch storage refused'); END`); err != nil {
 		t.Fatal(err)
 	}

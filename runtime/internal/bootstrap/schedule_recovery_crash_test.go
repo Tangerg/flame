@@ -21,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	framehost "github.com/Tangerg/frame/host"
 	"github.com/Tangerg/frame/process/runner"
@@ -66,7 +67,7 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 		return
 	}
 	home := os.Getenv("FLAME_HOME")
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,8 +82,6 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 			if err != nil || !settled {
 				return err
 			}
-			// The real owner has committed. Withhold only its acknowledgement
-			// so the parent can kill this process before continuation advances.
 			if err := scheduleCrashReady(os.Getenv("FLAME_TEST_SCHEDULE_EVIDENCE")); err != nil {
 				return err
 			}
@@ -201,9 +200,6 @@ func TestScheduleRecoveryCrashHelper(t *testing.T) {
 	}
 }
 
-// This phase reconstructs the real execution authority before changing the
-// original installation. It deliberately creates no Run executor that could
-// consume the pending business result before the disable is admitted.
 func disableOriginalScheduleBinding(t *testing.T, cfg assemblyConfig) {
 	t.Helper()
 	lifetime := newRuntimeLifetime(t.Context(), cfg.resources)
@@ -258,8 +254,6 @@ func scheduleResolutionCommitted(ctx context.Context, stores *persistence.Bundle
 	if err != nil {
 		return false, err
 	}
-	// The result Item and opaque executor cut share the original transaction.
-	// The execution-adapter test verifies the exact settlement after SIGKILL.
 	for _, item := range items {
 		if invocation, ok := testsupport.ToolInvocationOf(item); ok && invocation.Name == "schedules_create_schedule" && item.Status() == transcript.ItemCompleted {
 			return true, nil

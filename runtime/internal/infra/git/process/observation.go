@@ -11,10 +11,16 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
-// unbornHead lets a comparison repository without commits compare its index
-// and worktree.
+const (
+	indexFile        = "index"
+	infoDirectory    = "info"
+	objectsDirectory = "objects"
+)
+
 const unbornHead = "ref: refs/heads/unborn\n"
 
 type repositoryQuery struct {
@@ -25,6 +31,7 @@ type repositoryQuery struct {
 func (q repositoryQuery) run(args ...string) (Result, error) {
 	return Run(q.ctx, q.env, append(slices.Clone(q.prefix), args...)...)
 }
+
 func (q repositoryQuery) path(args ...string) (string, error) {
 	r, err := q.run(append([]string{"rev-parse", "--path-format=absolute"}, args...)...)
 	if err != nil {
@@ -43,15 +50,13 @@ func observeWorktree(ctx context.Context, env, prefix, args []string) (Result, e
 	return observeRepository(ctx, env, prefix, args)
 }
 
-// observePaths compares paths outside any repository, so its view needs only
-// an unborn HEAD.
 func observePaths(ctx context.Context, env, prefix, args []string) (_ Result, err error) {
 	view, err := newReadDirectory("")
 	if err != nil {
 		return Result{}, err
 	}
 	defer func() { err = errors.Join(err, os.RemoveAll(view)) }()
-	if err := os.WriteFile(filepath.Join(view, "HEAD"), []byte(unbornHead), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(view, "HEAD"), []byte(unbornHead), filesystem.PrivateFileMode); err != nil {
 		return Result{}, err
 	}
 	return Run(ctx, readViewEnvironment(env, view), append(slices.Clone(prefix), args...)...)
@@ -83,7 +88,7 @@ func observeRepository(ctx context.Context, env, prefix, args []string) (_ Resul
 	if err := q.installReadIndex(view, common); err != nil {
 		return Result{}, err
 	}
-	env = append(env, "GIT_WORK_TREE="+tree, "GIT_OBJECT_DIRECTORY="+filepath.Join(common, "objects"))
+	env = append(env, "GIT_WORK_TREE="+tree, "GIT_OBJECT_DIRECTORY="+filepath.Join(common, objectsDirectory))
 	return Run(ctx, env, append(slices.Clone(prefix), args...)...)
 }
 
@@ -91,14 +96,12 @@ func readViewEnvironment(env []string, view string) []string {
 	return append(slices.Clone(env), "GIT_DIR="+view, "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_ATTR_NOSYSTEM=1")
 }
 
-// installReadIndex shares the worktree's index, split index and ignore rules
-// with the comparison repository.
 func (q repositoryQuery) installReadIndex(view, common string) error {
 	gitDir, err := q.path("--git-dir")
 	if err != nil {
 		return err
 	}
-	if err := copyReadMaterial(filepath.Join(gitDir, "index"), filepath.Join(view, "index")); err != nil {
+	if err := copyReadMaterial(filepath.Join(gitDir, indexFile), filepath.Join(view, indexFile)); err != nil {
 		return err
 	}
 	shared, err := q.path("--shared-index-path")
@@ -111,7 +114,7 @@ func (q repositoryQuery) installReadIndex(view, common string) error {
 		}
 	}
 	for _, name := range []string{"attributes", "exclude"} {
-		if err := copyReadMaterial(filepath.Join(common, "info", name), filepath.Join(view, "info", name)); err != nil {
+		if err := copyReadMaterial(filepath.Join(common, infoDirectory, name), filepath.Join(view, infoDirectory, name)); err != nil {
 			return err
 		}
 	}
@@ -133,16 +136,14 @@ func newReadDirectory(tree string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for _, dir := range []string{"objects", "refs", "info"} {
-		if err := os.Mkdir(filepath.Join(view, dir), 0700); err != nil {
+	for _, dir := range []string{objectsDirectory, "refs", infoDirectory} {
+		if err := os.Mkdir(filepath.Join(view, dir), filesystem.PrivateDirectoryMode); err != nil {
 			return "", errors.Join(err, os.RemoveAll(view))
 		}
 	}
 	return view, nil
 }
 
-// The detached HEAD needs no copy of mutable refs, remote configuration or
-// reflogs. An unborn HEAD still permits an index/worktree comparison.
 func (q repositoryQuery) installReadHead(view string) error {
 	r, err := q.run("rev-parse", "--verify", "--quiet", "HEAD")
 	if err != nil {
@@ -157,7 +158,7 @@ func (q repositoryQuery) installReadHead(view string) error {
 	default:
 		return fmt.Errorf("git: resolve comparison HEAD: %s", r.Stderr)
 	}
-	return os.WriteFile(filepath.Join(view, "HEAD"), head, 0600)
+	return os.WriteFile(filepath.Join(view, "HEAD"), head, filesystem.PrivateFileMode)
 }
 
 // Only display and index interpretation settings cross into the comparison
@@ -195,7 +196,7 @@ func (q repositoryQuery) installReadConfig(view string, env []string) ([]string,
 		env = append(env, "GIT_CONFIG_KEY_"+n+"="+key, "GIT_CONFIG_VALUE_"+n+"="+value)
 		count++
 	}
-	if err := os.WriteFile(filepath.Join(view, "config"), []byte(config), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(view, "config"), []byte(config), filesystem.PrivateFileMode); err != nil {
 		return nil, err
 	}
 	return append(env, "GIT_CONFIG_COUNT="+strconv.Itoa(count)), nil
@@ -222,7 +223,7 @@ func copyReadMaterial(source, destination string) (err error) {
 		return err
 	}
 	defer func() { err = errors.Join(err, in.Close()) }()
-	out, err := os.OpenFile(destination, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	out, err := os.OpenFile(destination, os.O_CREATE|os.O_EXCL|os.O_WRONLY, filesystem.PrivateFileMode)
 	if err != nil {
 		return err
 	}

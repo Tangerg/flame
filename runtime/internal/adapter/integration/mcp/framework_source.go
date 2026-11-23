@@ -30,9 +30,6 @@ type installedPackages interface {
 	Server(context.Context, plugin.Installation, plugin.Release, mcpserver.ServerName, plugins.Reach) (mcpserver.Server, bool, error)
 }
 
-// ProcessSource owns Flame's process configuration and callback authority. Frame
-// owns the process, exact imports and resource lifetime. These projections never
-// resolve a role or select a replacement provider.
 type ProcessSource struct {
 	installations plugins.Store
 	packages      installedPackages
@@ -172,8 +169,6 @@ func (s *ProcessSource) Configure(ctx context.Context, setup framehost.Setup, se
 	return contributions, metadata, err
 }
 
-// admitProcess records the process's authority for this setup instance and
-// admits its callback session, both released by the setup's cleanup.
 func (s *ProcessSource) admitProcess(setup framehost.Setup, session *sdk.ClientSession, actor operation.Actor, server mcpserver.Server, bindings *plugin.RequiredBindings) error {
 	s.mu.Lock()
 	s.projections[setup.InstanceID()] = processProjection{source: setup.Binding().Source, session: session, actor: actor, fingerprint: server.AuthorityFingerprint(), bindings: bindings}
@@ -197,8 +192,6 @@ func (s *ProcessSource) admitProcess(setup framehost.Setup, session *sdk.ClientS
 	return nil
 }
 
-// grantCallbacks opens the process's callback RPC once Runtime serves it. A
-// background contribution's callbacks restore the invocation they belong to.
 func (s *ProcessSource) grantCallbacks(ctx context.Context, setup framehost.Setup, session *sdk.ClientSession, actor operation.Actor, background bool) (pluginmcp.CallbackRef, error) {
 	if err := s.callbacks.WaitRPC(ctx); err != nil {
 		return pluginmcp.CallbackRef{}, err

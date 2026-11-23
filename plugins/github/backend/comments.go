@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"net/url"
 	"strconv"
 
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
@@ -96,7 +95,7 @@ func (c *connector) listReviewComments(ctx context.Context, input contractwire.T
 		return contractwire.ReviewCommentPage{}, err
 	}
 	path := repository.apiPath() + "/pulls/" + strconv.FormatInt(input.Number, 10) + "/comments"
-	filters := url.Values{"sort": {"created"}, "direction": {"asc"}}
+	filters := ordered("created", "asc")
 	page, err := readPage(ctx, c, path, filters, input.Page, input.Limit, reviewCommentWire.admit)
 	return contractwire.ReviewCommentPage{Comments: page.rows, NextPage: page.next}, err
 }

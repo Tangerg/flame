@@ -1,4 +1,3 @@
-// Package mcpconnector defines the installed external-server directory and its OAuth workflow.
 package mcpconnector
 
 const Reference = "flame.external-mcp.v1"
@@ -39,7 +38,6 @@ type Directory struct {
 	Entries []Entry `json:"entries"`
 }
 
-// A missing replacement removes the entry. A missing expected revision creates it.
 type Change struct {
 	Name        string `json:"name"`
 	Expected    string `json:"expected,omitempty"`

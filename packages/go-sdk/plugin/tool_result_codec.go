@@ -15,10 +15,12 @@ type toolResultProjection struct {
 }
 
 func (ToolResult) JSONSchemaModel() any { return toolResultProjection{} }
+
 func (r ToolResult) MarshalJSON() ([]byte, error) {
 	type native ToolResult
 	return json.Marshal(native(r))
 }
+
 func (r *ToolResult) UnmarshalJSON(data []byte) error {
 	var encoded toolResultProjection
 	if err := value.DecodeValue(data, &encoded, "tool result"); err != nil {

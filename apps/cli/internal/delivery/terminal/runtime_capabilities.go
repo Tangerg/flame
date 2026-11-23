@@ -4,15 +4,12 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// RuntimeProfile is the negotiated view needed for terminal admission and
-// presentation. Its implementation owns immutable discovery and agreement data.
 type RuntimeProfile interface {
-	mutation.ReplayProfile
+	IdempotencyLimits() protocol.IdempotencyLimits
 	Discovery() protocol.DiscoverResponse
 	Supports(string) bool
 	AvailableFeatureNames() []string
@@ -43,4 +40,8 @@ func availableWithRuntimeFeature(a *app, feature string) extensions.CommandAvail
 		return extensions.CommandUnavailable(err.Error())
 	}
 	return extensions.CommandAvailable()
+}
+
+func requiresRuntimeFeature(feature string) func(*app) extensions.CommandAvailability {
+	return func(a *app) extensions.CommandAvailability { return availableWithRuntimeFeature(a, feature) }
 }

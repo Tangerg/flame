@@ -10,18 +10,13 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// Held projects only live business owners. Durable checkpoint and command
-// references belong to the SQLite owner, which reads their original bindings.
 func (i *InteractionExecutor) ID() string { return "flame.executions" }
 
 func (i *InteractionExecutor) Held(ctx context.Context, id framehost.InstallationID) ([]framevalue.Digest, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	var held []plugin.Dependency
-	if i.config.CallComposition != nil {
-		held = append(held, i.config.CallComposition.HeldDependencies()...)
-	}
+	held := i.config.CallComposition.HeldDependencies()
 	for _, session := range i.sessions.snapshot() {
 		held = append(held, session.installationDependencies()...)
 	}
@@ -34,8 +29,6 @@ func (i *InteractionExecutor) Held(ctx context.Context, id framehost.Installatio
 	return releases, nil
 }
 
-// installationDependencies is the session's single dependency projection: the
-// canonical union of its frozen manifests' installation releases.
 func (i *interactionSession) installationDependencies() []plugin.Dependency {
 	i.state.mu.Lock()
 	deployments := i.state.deployments
@@ -82,11 +75,9 @@ func installationDependencies(dependencies []plugin.Dependency) []installationDe
 	return result
 }
 
-// Publication and installation mutation share Frame's admission. The validator
-// reads only original captures; assembly never holds this gate during I/O.
 func (i *InteractionExecutor) publishInteraction(ctx context.Context, session *interactionSession) error {
 	bindings, resources := session.checkpointPluginReferences()
-	return i.installations.Admit(ctx, func(admitted context.Context) error {
+	return i.config.Admission.Admit(ctx, func(admitted context.Context) error {
 		if err := i.config.ValidatePluginSources(admitted, bindings, resources); err != nil {
 			return err
 		}

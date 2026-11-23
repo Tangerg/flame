@@ -13,9 +13,8 @@ func catalogTokenLimits(entry catalog.Model) (modelref.TokenLimits, error) {
 	})
 }
 
-// publishedTokenLimit translates the upstream catalog's legacy numeric
-// absence convention exactly once at the infrastructure boundary. Domain and
-// application code never receive zero as an alternate spelling of unknown.
+// The upstream catalog spells unknown as zero; this is the one place that
+// convention is translated.
 func publishedTokenLimit(value int64) *int64 {
 	if value == 0 {
 		return nil

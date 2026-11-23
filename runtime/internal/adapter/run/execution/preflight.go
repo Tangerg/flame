@@ -13,8 +13,6 @@ import (
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
-// PrepareContinuation reads the acknowledged release boundary. It does not assemble
-// resources, claim a local boundary, acquire a writer, or deliver a Signal.
 func (i *InteractionExecutor) PrepareContinuation(ctx context.Context, continuation runs.ExecutionContinuation, answers []runs.InterruptAnswer, candidates []runs.RememberedRuleCandidate) ([]approval.RememberRequest, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -138,8 +136,6 @@ func continuationRetiredProcesses(cut interactionHandoff, head scoperun.Log, mem
 	return retiredHandoffProcesses(cut, head, retiredRoots), nil
 }
 
-// continuationSurvivors maps each continuation member to its captured paused
-// process, refusing a member whose lineage no longer matches the cut.
 func continuationSurvivors(cut interactionHandoff, members []runs.ExecutionMember) (map[scoperun.ProcessID]runs.ExecutionMember, error) {
 	survivors := make(map[scoperun.ProcessID]runs.ExecutionMember)
 	for _, member := range members {

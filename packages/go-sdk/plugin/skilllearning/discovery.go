@@ -8,8 +8,6 @@ import (
 	"github.com/Tangerg/frame"
 )
 
-// An opaque source identifies an admitted reader. A provider can choose a
-// candidate by name and source without receiving a workspace path or file.
 type Candidate struct {
 	Name   string      `json:"name"`
 	Source string      `json:"source"`
@@ -30,6 +28,7 @@ type Catalog struct {
 func DiscoverMethod() (*pluginmcp.Method[Candidates, Catalog], error) {
 	return pluginmcp.NewMethod[Candidates, Catalog](frame.MethodConfig{Name: "flame.skills/discover.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Select among the host-admitted Skill readers for a human catalog."})
 }
+
 func CaptureMethod() (*pluginmcp.Method[Candidates, Catalog], error) {
 	return pluginmcp.NewMethod[Candidates, Catalog](frame.MethodConfig{Name: "flame.skills/capture.v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Record an interaction's original Skill source choices for exact receipt recovery."})
 }

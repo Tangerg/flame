@@ -20,8 +20,6 @@ type ExportTrajectoryResponse struct {
 	Trajectory SessionTrajectory `json:"trajectory"`
 }
 
-// SessionTrajectory contains the complete retained evidence at one idle Session
-// snapshot. It is an evaluation document, not an importable execution checkpoint.
 type SessionTrajectory struct {
 	SchemaVersion    int                       `json:"schemaVersion"`
 	CollectedAt      time.Time                 `json:"collectedAt"`
@@ -47,8 +45,6 @@ const (
 	ToolAttemptIncomplete ToolAttemptState = "incomplete"
 )
 
-// Incomplete includes suspension for input; it does not establish tool failure.
-// A retained started attempt has no known settlement, even on a finished Run.
 type ToolAttempt struct {
 	CallID    string           `json:"callId"`
 	ItemID    string           `json:"itemId"`

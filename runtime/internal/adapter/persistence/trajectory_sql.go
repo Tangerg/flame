@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// trajectoryStore reads one Session timeline from a single database snapshot.
 type trajectoryStore struct {
 	db         *database
 	runs       *RunStore
@@ -29,8 +28,6 @@ type trajectoryRow struct {
 	runID identity.RunID
 }
 
-// trajectoryPositionsQuery orders every timeline fact by the application's
-// kind spelling, which is also the cursor's tie-breaker.
 var trajectoryPositionsQuery = fmt.Sprintf(`SELECT occurred_at, kind, id, run_id FROM (
 		SELECT created_at AS occurred_at, '%s' AS kind, run_id AS id, run_id FROM runs WHERE session_id = ?
 		UNION ALL
@@ -95,9 +92,7 @@ func (s *trajectoryStore) positions(ctx context.Context, sessionID identity.Sess
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: page trajectory: %w", err)
 	}
-	defer func() {
-		_ = rows.Close()
-	}()
+	defer rows.Close()
 	var positions []trajectoryRow
 	for rows.Next() {
 		var row trajectoryRow
@@ -114,8 +109,6 @@ func (s *trajectoryStore) positions(ctx context.Context, sessionID identity.Sess
 	return positions, nil
 }
 
-// source hydrates one position. Journal rows are bound to their Run's Session
-// by foreign key; a history Item carries no such key, so its Run is checked.
 func (s *trajectoryStore) source(ctx context.Context, sessionID identity.SessionID, row trajectoryRow) (sessions.TrajectorySource, error) {
 	switch row.Kind {
 	case sessions.TrajectoryKindRun:

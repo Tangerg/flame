@@ -1,5 +1,3 @@
-// Package hookprovider defines installed lifecycle rule sources and command
-// execution. Runtime retains trust, event ordering and final authorization.
 package hookprovider
 
 import (

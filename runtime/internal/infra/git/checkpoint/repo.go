@@ -15,11 +15,6 @@ import (
 	workspacegit "github.com/Tangerg/flame/runtime/internal/infra/git"
 )
 
-// commonExcludes keep a checkpoint from ballooning into dependency / build
-// output that the source repository does not own. Work-tree .gitignore rules
-// remain in force too. These are a backstop for no-ignore projects, but they
-// must never erase a path already tracked by the source index; stageChanges
-// preserves that distinction after it has selected the exact paths.
 const commonExcludes = "node_modules/\n.venv/\nvenv/\n__pycache__/\ndist/\nbuild/\ntarget/\n.next/\n.DS_Store\n"
 
 const (
@@ -29,7 +24,6 @@ const (
 	workspaceIdentityFile     = "flame-source-workspace"
 )
 
-// ensureRepo lazily initializes the session's shadow repo (idempotent).
 func (s *Store) ensureRepo(ctx context.Context, sessionID, cwd string) (string, error) {
 	gitDir := s.gitDir(sessionID, cwd)
 	present, err := repoExists(gitDir)
@@ -37,8 +31,6 @@ func (s *Store) ensureRepo(ctx context.Context, sessionID, cwd string) (string, 
 		return "", err
 	}
 	if present {
-		// Initialization publishes only complete repositories. HEAD's commit
-		// state does not prove the absence of retained Run boundaries.
 		matches, err := repositoryMatchesWorkspace(gitDir, cwd)
 		if err != nil {
 			return "", err
@@ -50,7 +42,7 @@ func (s *Store) ensureRepo(ctx context.Context, sessionID, cwd string) (string, 
 	}
 
 	parent := filepath.Dir(gitDir)
-	if err := os.MkdirAll(parent, 0o755); err != nil {
+	if err := os.MkdirAll(parent, filesystem.SharedDirectoryMode); err != nil {
 		return "", fmt.Errorf("checkpoint: create repository parent: %w", err)
 	}
 	stagingDir, err := os.MkdirTemp(parent, "."+filepath.Base(gitDir)+".init-")
@@ -68,16 +60,16 @@ func (s *Store) ensureRepo(ctx context.Context, sessionID, cwd string) (string, 
 		}
 	}()
 
-	if _, err := s.git(ctx, stagingDir, cwd, "init", "-q"); err != nil {
+	if err := s.git(ctx, stagingDir, cwd, "init", "-q"); err != nil {
 		return "", err
 	}
 	if err := s.seedFrom(ctx, stagingDir, cwd); err != nil {
 		return "", err
 	}
-	if err := os.WriteFile(filepath.Join(stagingDir, "info", "exclude"), []byte(commonExcludes), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(stagingDir, "info", "exclude"), []byte(commonExcludes), filesystem.SharedFileMode); err != nil {
 		return "", fmt.Errorf("checkpoint: write excludes: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(stagingDir, workspaceIdentityFile), []byte(cwd), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(stagingDir, workspaceIdentityFile), []byte(cwd), filesystem.PrivateFileMode); err != nil {
 		return "", fmt.Errorf("checkpoint: write workspace identity: %w", err)
 	}
 	if err := publishRepo(stagingDir, gitDir); err != nil {
@@ -116,8 +108,8 @@ func readWorkspaceIdentity(source io.Reader) ([]byte, error) {
 	return data, nil
 }
 
-// publishRepo makes a fully initialized repository visible in one rename. The
-// staging directory is a sibling of dst, so the rename cannot cross filesystems.
+// The staging directory is a sibling of dst so the rename cannot cross
+// filesystems.
 func publishRepo(stagingDir, dst string) error {
 	if _, err := os.Lstat(dst); err == nil {
 		return errors.New("checkpoint: repository destination already exists")
@@ -130,8 +122,6 @@ func publishRepo(stagingDir, dst string) error {
 	return nil
 }
 
-// Object borrowing never transfers the source index's path coordinates, ignore
-// policy or flags. Git selects source paths separately for each snapshot.
 func (s *Store) seedFrom(ctx context.Context, gitDir, cwd string) error {
 	repository, err := workspacegit.IsRepo(ctx, cwd)
 	if err != nil {
@@ -188,7 +178,7 @@ func (seed sourceRepositorySeed) resolveAlternates(sourceObjects string) ([]stri
 	// stores that still exist so the chain resolves. Git interprets relative
 	// entries relative to the object database that owns the alternates file.
 	alternates := []string{sourceObjects}
-	data, err := readSourceAlternates(seed.ctx, filepath.Join(sourceObjects, "info", "alternates"))
+	data, err := readSourceAlternates(seed.ctx, alternatesFile(sourceObjects))
 	if err != nil {
 		return nil, fmt.Errorf("checkpoint: read source alternates: %w", err)
 	}
@@ -237,7 +227,7 @@ func (seed sourceRepositorySeed) writeAlternates(alternates []string) error {
 	if err := errors.Join(seed.ctx.Err(), context.Cause(seed.ctx)); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Join(seed.gitDir, "objects", "info"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(alternatesFile(objectDatabase(seed.gitDir))), filesystem.SharedDirectoryMode); err != nil {
 		return fmt.Errorf("checkpoint: create alternates directory: %w", err)
 	}
 	encodedAlternates := []byte(strings.Join(alternates, "\n") + "\n")
@@ -247,7 +237,7 @@ func (seed sourceRepositorySeed) writeAlternates(alternates []string) error {
 			errSnapshotTooLarge, maxSourceAlternatesBytes,
 		)
 	}
-	if err := os.WriteFile(filepath.Join(seed.gitDir, "objects", "info", "alternates"), encodedAlternates, 0o644); err != nil {
+	if err := os.WriteFile(alternatesFile(objectDatabase(seed.gitDir)), encodedAlternates, filesystem.SharedFileMode); err != nil {
 		return fmt.Errorf("checkpoint: write source alternates: %w", err)
 	}
 	return nil
@@ -317,33 +307,36 @@ func repoExists(gitDir string) (bool, error) {
 	return true, nil
 }
 
-// materializeAlternates copies every object reachable from the shadow refs out
-// of borrowed object stores, then removes the alternates link. Completed
-// checkpoints remain independent of source object retention.
-//
-// The pending file closes the crash window around verification: if a process
-// stops after hiding alternates but before deleting the file, the next call
-// verifies the local object graph and either completes the detach or restores
-// the alternate before retrying.
+// A pending file left by an interrupted detach is completed when the shadow
+// store already holds every object, and rolled back otherwise.
+func (s *Store) settlePendingAlternates(ctx context.Context, gitDir, alternatesPath, pendingPath string) (detached bool, err error) {
+	if _, statErr := os.Stat(alternatesPath); statErr == nil {
+		return false, errors.New("checkpoint: both active and pending alternates exist")
+	} else if !errors.Is(statErr, os.ErrNotExist) {
+		return false, fmt.Errorf("checkpoint: inspect active alternates: %w", statErr)
+	}
+	if s.verifyLocalObjects(ctx, gitDir) == nil {
+		if err := os.Remove(pendingPath); err != nil {
+			return false, fmt.Errorf("checkpoint: remove detached alternates: %w", err)
+		}
+		return true, nil
+	}
+	if err := os.Rename(pendingPath, alternatesPath); err != nil {
+		return false, fmt.Errorf("checkpoint: restore interrupted alternates detach: %w", err)
+	}
+	return false, nil
+}
+
+// The pending file closes the crash window: a process that stops after hiding
+// alternates is completed or rolled back by the next call.
 func (s *Store) materializeAlternates(ctx context.Context, gitDir string) error {
-	infoDir := filepath.Join(gitDir, "objects", "info")
-	alternatesPath := filepath.Join(infoDir, "alternates")
-	pendingPath := filepath.Join(infoDir, "alternates.pending")
+	alternatesPath := alternatesFile(objectDatabase(gitDir))
+	pendingPath := alternatesPath + ".pending"
 
 	if _, err := os.Stat(pendingPath); err == nil {
-		if _, statErr := os.Stat(alternatesPath); statErr == nil {
-			return errors.New("checkpoint: both active and pending alternates exist")
-		} else if !errors.Is(statErr, os.ErrNotExist) {
-			return fmt.Errorf("checkpoint: inspect active alternates: %w", statErr)
-		}
-		if verifyLocalObjectsErr := s.verifyLocalObjects(ctx, gitDir); verifyLocalObjectsErr == nil {
-			if removeErr := os.Remove(pendingPath); removeErr != nil {
-				return fmt.Errorf("checkpoint: remove detached alternates: %w", removeErr)
-			}
-			return nil
-		}
-		if renameErr := os.Rename(pendingPath, alternatesPath); renameErr != nil {
-			return fmt.Errorf("checkpoint: restore interrupted alternates detach: %w", renameErr)
+		detached, err := s.settlePendingAlternates(ctx, gitDir, alternatesPath, pendingPath)
+		if err != nil || detached {
+			return err
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("checkpoint: inspect pending alternates: %w", err)
@@ -356,7 +349,7 @@ func (s *Store) materializeAlternates(ctx context.Context, gitDir string) error 
 	}
 	// Without --local, repack deliberately copies reachable borrowed objects
 	// into the shadow object database.
-	if _, err := s.git(ctx, gitDir, "", "repack", "-q", "-a", "-d"); err != nil {
+	if err := s.git(ctx, gitDir, "", "repack", "-q", "-a", "-d"); err != nil {
 		return err
 	}
 	if err := os.Rename(alternatesPath, pendingPath); err != nil {
@@ -375,14 +368,12 @@ func (s *Store) materializeAlternates(ctx context.Context, gitDir string) error 
 }
 
 func (s *Store) verifyLocalObjects(ctx context.Context, gitDir string) error {
-	if _, err := s.git(ctx, gitDir, "", "fsck", "--connectivity-only", "--no-dangling"); err != nil {
+	if err := s.git(ctx, gitDir, "", "fsck", "--connectivity-only", "--no-dangling"); err != nil {
 		return fmt.Errorf("checkpoint: verify local object graph: %w", err)
 	}
 	return nil
 }
 
-// tagFor maps a run id to its snapshot ref name, sanitizing any character git
-// disallows in a ref so an unusual run id can't break tagging.
 func tagFor(runID string) string {
 	var b strings.Builder
 	b.WriteString("chk/")
@@ -396,3 +387,7 @@ func tagFor(runID string) string {
 	}
 	return b.String()
 }
+
+func objectDatabase(gitDir string) string { return filepath.Join(gitDir, "objects") }
+
+func alternatesFile(objects string) string { return filepath.Join(objects, "info", "alternates") }

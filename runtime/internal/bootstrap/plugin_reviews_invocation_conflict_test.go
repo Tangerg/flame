@@ -94,8 +94,6 @@ func TestReviewPrivateInvocationConflictMatchesModelToolAndExecutableCLI(t *test
 	if after := read(); after != before {
 		t.Fatalf("conflicting Tool or CLI mutated the review: %s, want %s", after.Bytes(), before.Bytes())
 	}
-	// The existing private identity owns different input. Recovery must refuse
-	// that receipt instead of overwriting it or redispatching the new request.
 	output, stderr, err = invoke(arguments...)
 	if err == nil || len(output) != 0 || !strings.Contains(string(stderr), protocol.ErrInternalError.Error()) || strings.Contains(string(stderr), protocol.ErrIdempotencyConflict.Error()) {
 		t.Fatalf("conflicting private receipt became a definite recovery: stdout=%s stderr=%s error=%v", output, stderr, err)

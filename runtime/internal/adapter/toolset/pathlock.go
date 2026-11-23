@@ -8,8 +8,6 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// Scope schedules one execution tree. These resolver-owned locks coordinate
-// reads and mutations of the same physical path across concurrent Runs.
 func withPathLock(inner toolcontract.Tool, locker *keylock.Set, root *filesystemRoot) toolcontract.Tool {
 	return decorateCall(inner, func(ctx context.Context, next toolcontract.Caller, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		paths, err := resolvedMutationPaths(inner, invocation, root)

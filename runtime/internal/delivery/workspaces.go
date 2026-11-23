@@ -6,8 +6,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// ResolveWorkspace projects the application's current filesystem identity onto
-// the canonical wire resource.
 func (s *Handler) ResolveWorkspace(_ context.Context, in protocol.ResolveWorkspaceRequest) (*protocol.WorkspaceInfo, error) {
 	path := ""
 	if in.Ref != nil {
@@ -21,8 +19,6 @@ func (s *Handler) ResolveWorkspace(_ context.Context, in protocol.ResolveWorkspa
 	return &out, nil
 }
 
-// ListWorkspaces projects the application-owned distinct-workspace view
-// derived from user-facing sessions.
 func (s *Handler) ListWorkspaces(ctx context.Context) (*protocol.Page[protocol.WorkspaceSummary], error) {
 	workspaces, err := s.workspaceDiscovery.Workspaces(ctx)
 	if err != nil {

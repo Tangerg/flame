@@ -56,7 +56,7 @@ const DEFAULT_ICON: Record<SystemMessageVariant, IconName> = {
   success: "circle-check",
 };
 
-export type SystemMessageProps = ComponentProps<"div"> & {
+type SystemMessageProps = ComponentProps<"div"> & {
   variant?: SystemMessageVariant;
   shape?: SystemMessageShape;
   icon?: IconName;

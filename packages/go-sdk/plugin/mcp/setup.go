@@ -37,7 +37,6 @@ type SetupDependency struct {
 	Bindings []SetupBinding                      `json:"bindings"`
 }
 
-// SetupBinding is the setup transport projection of one resolved implementation.
 type SetupBinding struct {
 	InstallationID string                              `json:"installationId"`
 	Digest         string                              `json:"digest"`
@@ -45,20 +44,23 @@ type SetupBinding struct {
 	Contract       plugincontract.CapabilityDescriptor `json:"contract"`
 }
 
-// Setup supplies only the entry's named, already resolved dependencies.
-// Its callback metadata is ephemeral and never part of business input.
 type Setup struct{ contributions []SetupContribution }
 
-func (s Setup) Contributions() ([]SetupContribution, error) {
-	data, err := json.Marshal(s.contributions)
-	if err != nil {
-		return nil, err
+func (s Setup) Contributions() []SetupContribution {
+	contributions := slices.Clone(s.contributions)
+	for index, contribution := range contributions {
+		if contribution.Background != nil {
+			target := *contribution.Background
+			contribution.Background = &target
+		}
+		contribution.Requires = slices.Clone(contribution.Requires)
+		for at, dependency := range contribution.Requires {
+			dependency.Contract = dependency.Contract.Clone()
+			contribution.Requires[at] = dependency
+		}
+		contributions[index] = contribution
 	}
-	var values []SetupContribution
-	if err := json.Unmarshal(data, &values); err != nil {
-		return nil, err
-	}
-	return values, nil
+	return contributions
 }
 
 type setupParams struct {
@@ -123,7 +125,6 @@ func (a *setupActivation) close() error {
 	return a.err
 }
 
-// Close cancels and joins every setup lifetime before releasing its resources.
 func (b *Backend) Close() error {
 	b.mu.Lock()
 	if b.phase == backendClosed {
@@ -192,8 +193,6 @@ func (b *Backend) setUp(ctx context.Context, session *sdk.ServerSession, params 
 	return reply(true, nil, nil)
 }
 
-// claimActivation gives a session its single activation, retired when the
-// session ends.
 func (b *Backend) claimActivation(ctx context.Context, session *sdk.ServerSession, contributions []SetupContribution) (*setupActivation, func(context.Context, Setup) (io.Closer, error), error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -240,8 +239,6 @@ func (b *Backend) admitSetupLocked(session *sdk.ServerSession, contributions []S
 	return nil
 }
 
-// setUp runs the plugin's setup handler once and releases every waiter on the
-// outcome, successful or not.
 func (a *setupActivation) setUp(handler func(context.Context, Setup) (io.Closer, error), contributions []SetupContribution) error {
 	var err error
 	if handler != nil {
@@ -341,12 +338,14 @@ func SetUp(ctx context.Context, session *sdk.ClientSession, contributions []Setu
 func validateSetupInstallation(value string) error {
 	return framehost.InstallationID(value).Validate()
 }
+
 func validateSetupID(value string) error {
 	if framehost.UnitID(value).Validate() != nil {
 		return errors.New("plugin: invalid declaration identity")
 	}
 	return nil
 }
+
 func validateSetupBindings(id string, bindings []SetupBinding) error {
 	if err := validateSetupID(id); err != nil {
 		return err
@@ -396,6 +395,7 @@ func (b *Backend) registerActivation() error {
 		return reply(true, nil, nil)
 	})
 }
+
 func startActivation(resource ActivationResource) (err error) {
 	defer func() {
 		if value := recover(); value != nil {
@@ -404,6 +404,7 @@ func startActivation(resource ActivationResource) (err error) {
 	}()
 	return resource.Start()
 }
+
 func Activate(ctx context.Context, session *sdk.ClientSession) error {
 	result, err := sdk.CallCustomMethod[*protocolParams, *methodResult[bool]](ctx, session, ActivateMethod, &protocolParams{Protocol: plugincontract.Protocol})
 	if err != nil {

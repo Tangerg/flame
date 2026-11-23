@@ -17,8 +17,6 @@ import (
 type toolIdentity interface{ ToolRef() tool.Ref }
 type sourceAuthority interface{ SourceFingerprint() framevalue.Digest }
 
-// Identify resolves source-owned identity from explicit source declarations.
-// A model label is never a fallback identity for an unrecognized executable.
 func Identify(executable toolcontract.Tool) (tool.Ref, error) {
 	ref, found, err := mcp.IdentifyTool(executable)
 	if err != nil || found {
@@ -41,8 +39,6 @@ func SourceFingerprint(executable toolcontract.Tool, ref tool.Ref) (framevalue.D
 	return source, ref.ValidateFingerprint(source)
 }
 
-// WithIdentity binds a local source at construction. Connected MCP
-// identity and authority stay on Scope's connection-backed executable.
 func WithIdentity(executable toolcontract.Tool, ref tool.Ref, source framevalue.Digest) (toolcontract.Tool, error) {
 	if err := ref.ValidateFingerprint(source); err != nil {
 		return nil, err
@@ -61,7 +57,7 @@ type identifiedTool struct {
 
 func (t identifiedTool) ToolRef() tool.Ref                    { return t.ref }
 func (t identifiedTool) SourceFingerprint() framevalue.Digest { return t.fingerprint }
-func (t identifiedTool) Unwrap() toolcontract.Tool                 { return t.Tool }
+func (t identifiedTool) Unwrap() toolcontract.Tool            { return t.Tool }
 
 func CaptureToolCaller(executable toolcontract.Tool, invocation framecall.Invocation) (plugin.ToolCaller, error) {
 	ref, err := Identify(executable)
@@ -84,9 +80,6 @@ func CaptureToolCaller(executable toolcontract.Tool, invocation framecall.Invoca
 	return plugin.NewToolCaller(plugin.ToolCallerSnapshot{Invocation: invocation, Tool: ref, Release: release, Authority: authority})
 }
 
-// InstallationDependency reports the installation release an executable realizes.
-// The release comes from the executable's own connection configuration, never
-// from the installation's current selection, which may already have moved on.
 func InstallationDependency(executable toolcontract.Tool) (plugin.Dependency, bool, error) {
 	ref, err := Identify(executable)
 	if err != nil {
@@ -119,7 +112,6 @@ type installationActivation interface {
 	InstallationActivation() (plugin.Activation, error)
 }
 
-// The source owns the activation graph; the manifest only freezes its projection.
 func InstallationActivation(executable toolcontract.Tool) (plugin.Activation, error) {
 	root, installed, err := InstallationDependency(executable)
 	if err != nil || !installed {
@@ -142,8 +134,6 @@ func InstallationActivation(executable toolcontract.Tool) (plugin.Activation, er
 	return activation.Clone(), nil
 }
 
-// A manifest's graph identity also fences same-release reconnects whose selected
-// contributions or decorator ordering changed while execution was waiting.
 type frozenInstallationTool struct {
 	toolcontract.Tool
 	activation plugin.Activation
@@ -152,7 +142,9 @@ type frozenInstallationTool struct {
 func (t frozenInstallationTool) InstallationActivation() (plugin.Activation, error) {
 	return t.activation.Clone(), nil
 }
+
 func (t frozenInstallationTool) Unwrap() toolcontract.Tool { return t.Tool }
+
 func (t frozenInstallationTool) Call(ctx context.Context, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 	original, found := toolcontract.As[activationCaller](t.Tool)
 	if !found {

@@ -27,9 +27,6 @@ func InstallationID(t testing.TB) identity.InstallationID {
 	return id
 }
 
-// The MCP identity fixtures below panic on an invalid literal instead of
-// taking a testing.TB, so tables declared outside a test can use them too.
-
 func UserMCPServer(name string) mcpserver.ID {
 	return must(mcpserver.NewID(mcpserver.UserOrigin(), ServerName(name)))
 }

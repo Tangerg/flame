@@ -9,9 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 )
 
-// ListProviders projects the application-owned, ID-ordered supported-provider
-// set onto the protocol page. The application combines static support and
-// runtime state.
 func (s *Handler) ListProviders(ctx context.Context) (*protocol.Page[protocol.Provider], error) {
 	providers, err := s.models.ListProviders(ctx)
 	if err != nil {
@@ -28,8 +25,6 @@ func (s *Handler) ListProviders(ctx context.Context) (*protocol.Page[protocol.Pr
 	return protocol.NewPage(out), nil
 }
 
-// UpdateProvider validates and persists one provider through the application
-// use case, then projects its redacted result onto the wire.
 func (s *Handler) UpdateProvider(ctx context.Context, in protocol.UpdateProviderRequest) (*protocol.Provider, error) {
 	apiKey, err := providerConfigChange(in.APIKey, provider.NewAPIKey)
 	if err != nil {
@@ -78,9 +73,6 @@ func providerConfigChange[T any](change *protocol.ProviderConfigChange, parse fu
 	}
 }
 
-// TestProvider returns an inline verdict for a supported, configured provider.
-// The application owns eligibility and probing; Delivery projects its closed
-// outcome.
 func (s *Handler) TestProvider(ctx context.Context, providerID string) (*protocol.ProviderTestResult, error) {
 	outcome, err := s.models.TestProvider(ctx, providerID)
 	if err != nil {

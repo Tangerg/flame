@@ -21,8 +21,6 @@ const (
 	maximumModelNameBytes         = 64
 )
 
-// RefKinds is the closed variant set. Every boundary that encodes a reference
-// covers exactly these kinds.
 func RefKinds() []RefKind { return []RefKind{BuiltInKind, MCPKind} }
 
 var ErrInvalidRef = errors.New("tool: invalid reference")
@@ -30,10 +28,6 @@ var modelNameExpression = regexp.MustCompile(fmt.Sprintf(`^[A-Za-z0-9_-]{1,%d}$`
 
 func ModelNamePattern() string { return modelNameExpression.String() }
 
-// Ref identifies a source, never a lossy model-facing label. It is a closed
-// union: each variant's data is reachable only through the accessor for that
-// variant, so no caller can read a built-in name from an MCP reference. The
-// zero value is invalid; values are comparable map keys.
 type Ref struct {
 	kind   RefKind
 	name   string
@@ -77,6 +71,7 @@ func (r Ref) Validate() error {
 	}
 	return nil
 }
+
 func (r Ref) IsBuiltIn(name builtincontract.Name) bool {
 	return r.kind == BuiltInKind && r.name == string(name)
 }
@@ -103,9 +98,6 @@ func modelNameByte(c byte) bool {
 	return letter || digit || c == '_' || c == '-'
 }
 
-// String is the reference's only text codec, used where a reference is one
-// value inside an encoded payload or a derived key. No component grammar
-// admits ':', so the fields need no escaping and the spelling is unique.
 func (r Ref) String() string {
 	switch r.kind {
 	case BuiltInKind:
@@ -180,6 +172,7 @@ func (r Ref) MarshalText() ([]byte, error) {
 	}
 	return []byte(r.String()), nil
 }
+
 func (r *Ref) UnmarshalText(text []byte) error {
 	parsed, err := ParseRef(string(text))
 	if err != nil {
@@ -189,8 +182,6 @@ func (r *Ref) UnmarshalText(text []byte) error {
 	return nil
 }
 
-// ValidateFingerprint states which references carry source authority: a
-// built-in's authority is the Runtime binary, every other source has one.
 func (r Ref) ValidateFingerprint(source framevalue.Digest) error {
 	if err := r.Validate(); err != nil {
 		return err

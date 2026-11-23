@@ -12,9 +12,6 @@ import (
 )
 
 const (
-	// MaximumServerNameCharacters keeps the local name compact enough to leave
-	// meaningful space in the 64-byte model-facing "server_tool" namespace.
-	// Server names are ASCII, so bytes and characters are identical.
 	MaximumServerNameCharacters = 32
 	serverNameAlphabet          = `[a-z0-9._-]`
 )
@@ -30,17 +27,12 @@ var (
 	ErrInvalidOrigin     = errors.New("mcpserver: invalid server origin")
 )
 
-// ServerNamePattern projects the canonical public and durable spelling without
-// exposing a separate mutable grammar to consumers.
 func ServerNamePattern() string { return serverNameExpression.String() }
 
-// ServerName is the name a record's origin owner chose for it. It is unique
-// only within that origin; [ID] is the registry identity.
 type ServerName struct {
 	text string
 }
 
-// ParseServerName admits only the canonical name spelling.
 func ParseServerName(raw string) (ServerName, error) {
 	if !serverNameExpression.MatchString(raw) {
 		return ServerName{}, fmt.Errorf(
@@ -57,8 +49,6 @@ func (n ServerName) String() string { return n.text }
 
 func (ServerName) JSONSchemaModel() any { return "" }
 
-// MarshalText and UnmarshalText let a stored declaration carry the canonical
-// spelling; decoding parses it again, so no unparsed name is ever admitted.
 func (n ServerName) MarshalText() ([]byte, error) { return []byte(n.text), nil }
 
 func (n *ServerName) UnmarshalText(text []byte) error {
@@ -70,8 +60,6 @@ func (n *ServerName) UnmarshalText(text []byte) error {
 	return nil
 }
 
-// Validate reports whether the name was parsed. Its exact spelling is
-// established there, so an unconstructed name is all this can reject.
 func (n ServerName) Validate() error {
 	if n.text == "" {
 		return ErrInvalidServerName
@@ -79,7 +67,6 @@ func (n ServerName) Validate() error {
 	return nil
 }
 
-// OriginKind is the closed set of owners that may advance a registry record.
 type OriginKind string
 
 const (
@@ -87,9 +74,6 @@ const (
 	OriginInstallation OriginKind = "installation"
 )
 
-// Origin names the only owner allowed to advance a record's descriptor and
-// enablement: the user's MCP registry, or one installation. The zero value is
-// invalid, so an origin is always an explicit choice.
 type Origin struct {
 	kind         OriginKind
 	installation identity.InstallationID
@@ -124,9 +108,6 @@ func (o Origin) Validate() error {
 	return nil
 }
 
-// ID is the exact registry identity of one MCP server. The same value owns
-// persistence, live connection supersession, OAuth credentials, tool policy
-// and the source half of every MCP tool reference; it is not a display label.
 type ID struct {
 	origin Origin
 	name   ServerName
@@ -155,8 +136,6 @@ func (i ID) Validate() error {
 	return nil
 }
 
-// Compare orders user servers before installation servers, then by
-// installation and name, so every listing has one deterministic order.
 func (i ID) Compare(other ID) int {
 	return cmp.Or(
 		cmp.Compare(i.origin.rank(), other.origin.rank()),
@@ -165,8 +144,6 @@ func (i ID) Compare(other ID) int {
 	)
 }
 
-// String renders the identity for diagnostics only. Every boundary carries the
-// structured value; no reader parses this text.
 func (i ID) String() string {
 	if installation, ok := i.origin.Installation(); ok {
 		return "installation " + installation.String() + " server " + i.name.text
@@ -174,10 +151,6 @@ func (i ID) String() string {
 	return i.name.text
 }
 
-// Source is the owner of one registry record. An installation source also
-// carries the admitted release the record realizes, the tool authority of its
-// code and the recipient its credentials follow, so none of them can be
-// claimed by a user record or omitted from an installation record.
 type Source struct {
 	connector identity.InstallationID
 	origin    Origin
@@ -194,6 +167,7 @@ func ConnectorSource(id identity.InstallationID) (Source, error) {
 	}
 	return Source{origin: UserOrigin(), connector: id}, nil
 }
+
 func InstallationSource(installation identity.InstallationID, release, authority, recipient framevalue.Digest) (Source, error) {
 	origin, err := InstallationOrigin(installation)
 	if err != nil {
@@ -213,12 +187,8 @@ func InstallationSource(installation identity.InstallationID, release, authority
 
 func (s Source) Origin() Origin { return s.origin }
 
-// ID names the record this source owns under name. It is valid exactly when
-// the source and name are.
 func (s Source) ID(name ServerName) ID { return ID{origin: s.origin, name: name} }
 
-// Release reports the admitted release and tool authority of an installation
-// source.
 func (s Source) Release() (release, authority framevalue.Digest, found bool) {
 	return s.release, s.authority, s.origin.kind == OriginInstallation
 }

@@ -6,8 +6,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 )
 
-// ProviderRegistry is the exact credential-registry capability consumed by
-// model configuration use cases.
 type ProviderRegistry interface {
 	List(ctx context.Context) ([]provider.Provider, error)
 	Get(ctx context.Context, id string) (provider.Provider, bool, error)

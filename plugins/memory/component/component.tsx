@@ -255,9 +255,9 @@ export function Memory({ context }: { context: ComponentContext }) {
               ? reconcile
               : () =>
                   change(
-                    "flame.memory/delete.v2",
-                    { ID: edit.item.ID, ExpectedRevision: edit.item.Revision },
-                    { action: "delete", id: edit.item.ID },
+                    "flame.memory/delete.v3",
+                    { id: edit.item.id, expectedRevision: edit.item.revision },
+                    { action: "delete", id: edit.item.id },
                     "editor",
                   )
           }
@@ -275,8 +275,8 @@ export function Memory({ context }: { context: ComponentContext }) {
             </RecordTitle>
             {edit.type === "update" && (
               <RecordMeta>
-                <span>{t(`scope.${edit.item.Scope}`)}</span>
-                <span>{edit.item.ID}</span>
+                <span>{t(`scope.${edit.item.scope}`)}</span>
+                <span>{edit.item.id}</span>
               </RecordMeta>
             )}
             <FormField label={t("content.label")}>
@@ -312,7 +312,7 @@ export function Memory({ context }: { context: ComponentContext }) {
                   : locked ||
                     !edit.content.trim() ||
                     (edit.type === "update" &&
-                      edit.content.trim() === edit.item.Content)
+                      edit.content.trim() === edit.item.content)
               }
               focusableWhenDisabled={locked}
               onClick={
@@ -321,23 +321,23 @@ export function Memory({ context }: { context: ComponentContext }) {
                   : () =>
                       edit.type === "add"
                         ? change(
-                            "flame.memory/add.v2",
+                            "flame.memory/add.v3",
                             {
-                              Scope: scope,
-                              CWD: cwd!,
-                              Content: edit.content.trim(),
+                              scope,
+                              cwd: cwd!,
+                              content: edit.content.trim(),
                             },
                             { action: "add", scope },
                             "editor",
                           )
                         : change(
-                            "flame.memory/update.v2",
+                            "flame.memory/update.v3",
                             {
-                              ID: edit.item.ID,
-                              ExpectedRevision: edit.item.Revision,
-                              Content: edit.content.trim(),
+                              id: edit.item.id,
+                              expectedRevision: edit.item.revision,
+                              content: edit.content.trim(),
                             },
-                            { action: "edit", id: edit.item.ID },
+                            { action: "edit", id: edit.item.id },
                             "editor",
                           )
               }
@@ -380,7 +380,7 @@ export function Memory({ context }: { context: ComponentContext }) {
               beginEdit({
                 type: "update",
                 item: structuredClone(item),
-                content: item.Content,
+                content: item.content,
                 opener,
               });
             }}
@@ -398,7 +398,7 @@ export function Memory({ context }: { context: ComponentContext }) {
           />
           {current &&
             (current.cursors.length > 1 ||
-              Boolean(current.page.NextCursor)) && (
+              Boolean(current.page.nextCursor)) && (
               <PanelFooter>
                 <Toolbar label={t("pages.label")}>
                   <Button
@@ -420,13 +420,13 @@ export function Memory({ context }: { context: ComponentContext }) {
                   <Button
                     pending={read.loading}
                     focusableWhenDisabled
-                    disabled={pending || !current.page.NextCursor}
+                    disabled={pending || !current.page.nextCursor}
                     onClick={(event) => {
                       const owner = observerSignal();
                       if (owner)
                         void load(
                           owner,
-                          [...current.cursors, current.page.NextCursor],
+                          [...current.cursors, current.page.nextCursor],
                           event.currentTarget,
                         );
                     }}

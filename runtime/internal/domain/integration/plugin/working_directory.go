@@ -7,21 +7,15 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/process"
 )
 
-// A package may spell the two process locations as placeholders in its
-// arguments, environment and working directory.
 const (
 	rootPlaceholder = "${" + process.RootVariable + "}"
 	dataPlaceholder = "${" + process.DataVariable + "}"
 )
 
-// ExpandPlaceholders substitutes the release and data directories a package
-// value names.
 func ExpandPlaceholders(value, root, data string) string {
 	return strings.NewReplacer(rootPlaceholder, root, dataPlaceholder, data).Replace(value)
 }
 
-// DirectoryBase is what a package server's working directory is rooted in:
-// the immutable release bytes or the installation's private data.
 type DirectoryBase uint8
 
 const (
@@ -29,10 +23,6 @@ const (
 	DataBase
 )
 
-// WorkingDirectory is a portable server working directory: a base and a
-// resource path beneath it, empty for the base itself. It is the only reading
-// of a declared directory spelling, so admission, preparation and realization
-// cannot disagree about where a server runs.
 type WorkingDirectory struct {
 	base DirectoryBase
 	path string
@@ -40,7 +30,6 @@ type WorkingDirectory struct {
 
 func (w WorkingDirectory) Base() DirectoryBase { return w.base }
 
-// Path is a valid resource path beneath the base, empty for the base itself.
 func (w WorkingDirectory) Path() string { return w.path }
 
 func parseWorkingDirectory(dir string) (WorkingDirectory, error) {
@@ -67,16 +56,12 @@ func parseWorkingDirectory(dir string) (WorkingDirectory, error) {
 	return result, nil
 }
 
-// WorkingDirectory reads where this stdio server runs. An admitted server
-// always has a valid spelling; the error guards a hand-built declaration.
 func (s Server) WorkingDirectory() (WorkingDirectory, error) {
-	stdio, _ := s.stdio()
+	stdio := s.stdio()
 	return parseWorkingDirectory(stdio.Dir)
 }
 
-// PackagedCommand names the release file a stdio server executes, or reports
-// that its command is a bare name resolved from PATH.
 func (s Server) PackagedCommand() (string, bool) {
-	stdio, _ := s.stdio()
+	stdio := s.stdio()
 	return strings.CutPrefix(stdio.Command, "./")
 }

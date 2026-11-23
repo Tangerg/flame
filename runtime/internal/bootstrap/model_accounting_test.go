@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
@@ -18,15 +19,15 @@ import (
 func TestDispatchedUnknownModelCallInvalidatesRunTotalCost(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
 	model := &knownThenUnknownModel{}
 	cfg := protocolRuntimeConfig(t, stores, model)
-	cfg.pricing = func(string, string, *chat.Usage) (accounting.Cost, error) {
+	cfg.modelProviders = staticTestChatResolver{client: cfg.modelProviders.(staticTestChatResolver).client, pricing: func(string, string, *chat.Usage) (accounting.Cost, error) {
 		return accounting.NewCost(.25)
-	}
+	}}
 	host, api := buildProtocolRuntime(t, cfg, home)
 	t.Cleanup(func() {
 		if err := host.Close(); err != nil {

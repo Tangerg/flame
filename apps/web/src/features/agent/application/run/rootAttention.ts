@@ -11,7 +11,6 @@ import type { RootRunSettlement as ComponentRootRunSettlement } from "@flame/com
 export interface RootRunSettlement extends ComponentRootRunSettlement {
   runId: string;
   segmentId: string | null;
-  /** Present when the Run was lost; the client words it. */
   lossReason?: LossReason;
 }
 

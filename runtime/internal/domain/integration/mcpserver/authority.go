@@ -5,10 +5,9 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// AuthorityFingerprint excludes credentials and connection lifecycle settings:
-// a token rotation does not grant authority to a different endpoint. Every slot
-// is always present and the variable-length Args come last behind their count,
-// so two different descriptors cannot frame to the same field sequence.
+// Credentials and lifecycle settings are excluded so a token rotation does not
+// grant authority to a different endpoint; variable-length Args come last behind
+// their count so two descriptors cannot frame to the same sequence.
 func (s Server) AuthorityFingerprint() framevalue.Digest {
 	authority := s.Source.connector.String()
 	if _, release, found := s.Source.Release(); found {
@@ -18,9 +17,6 @@ func (s Server) AuthorityFingerprint() framevalue.Digest {
 	return identity.DigestStrings(append(fields, s.Connection.authorityFields()...)...)
 }
 
-// SameConnection compares the descriptor realized by an executable. Enablement
-// is checked separately at dispatch; notes and future handshake limits cannot
-// change an existing connection.
 func (s Server) SameConnection(other Server) bool {
 	return s.Source == other.Source && s.Name == other.Name && s.Connection != nil && s.Connection.sameAs(other.Connection)
 }

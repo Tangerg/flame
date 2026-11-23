@@ -117,8 +117,6 @@ func (s SegmentStream) Validate() error {
 	return nil
 }
 
-// ValidateStart enforces the runs.start-specific response invariant: every
-// accepted start creates and names its opening user item.
 func (s SegmentStream) ValidateStart() error {
 	if err := s.Validate(); err != nil {
 		return err
@@ -129,9 +127,6 @@ func (s SegmentStream) ValidateStart() error {
 	return nil
 }
 
-// ValidateResume enforces both the target identity and the runs.resume response
-// union. UserItemID exists exactly when an optional continuation message was
-// committed with the answers.
 func (s SegmentStream) ValidateResume(runID string, message *authoring.Message) error {
 	if err := s.Validate(); err != nil {
 		return err
@@ -154,8 +149,6 @@ func (s SegmentStream) ValidateResume(runID string, message *authoring.Message) 
 	return nil
 }
 
-// ValidateSubscription enforces that rebinding an existing segment creates no
-// user item of its own.
 func (s SegmentStream) ValidateSubscription() error {
 	if err := s.Validate(); err != nil {
 		return err

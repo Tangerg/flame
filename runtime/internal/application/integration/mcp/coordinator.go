@@ -1,5 +1,3 @@
-// Package mcp coordinates durable server configuration, live connections, and
-// the tool exposure consumed by run.
 package mcp
 
 import (
@@ -15,25 +13,15 @@ import (
 	"github.com/samber/lo"
 )
 
-// toolCatalog is the live tool set execution admits from. It borrows the
-// optional server scope and transfers one snapshot: the advertised tools and
-// the name conflicts that exclude some of them from Run manifests. A single
-// source keeps the read model from disagreeing with what a Run would freeze.
-// Implementations read admitted state without remote calls.
 type toolCatalog interface {
 	MCPTools(server *mcpserver.ID) ([]mcpserver.AdvertisedTool, map[tool.Ref][]tool.Ref, error)
 }
 
-// Attempt is an admitted connection operation. The connection owner publishes
-// connecting before returning it. Run starts external I/O and joins its result;
-// Close cancels it, including an operation that has not started.
 type Attempt interface {
 	Run() error
 	Close()
 }
 
-// Connections owns all live transitions, tools and per-server supersession.
-// Admission and withdrawal do no external I/O. Statuses is its read projection.
 type Connections interface {
 	Statuses() []mcpserver.ConnectionStatus
 	BeginConnect(ctx context.Context, name mcpserver.ID) (Attempt, error)
@@ -43,14 +31,11 @@ type Connections interface {
 	Detach(name mcpserver.ID) error
 }
 
-// registry supplies durable definitions of every origin independently of
-// executable admission.
 type registry interface {
 	Definitions(ctx context.Context) ([]mcpserver.Server, error)
 	Definition(ctx context.Context, name mcpserver.ID) (mcpserver.Server, bool, error)
 }
 
-// Directory edits go to the selected connector. Tool exposure is a host authorization over every origin.
 type store interface {
 	Save(ctx context.Context, server mcpserver.Server) error
 	Remove(ctx context.Context, current mcpserver.Server) error
@@ -58,24 +43,17 @@ type store interface {
 	SetToolExposure(ctx context.Context, ref tool.Ref, disabled bool) error
 }
 
-// ExternalWorkflow owns user-server authorization records. Installed backends can authorize independently.
 type ExternalWorkflow interface {
 	Invalidate()
 	Affected(context.Context, []mcpserver.ID) (bool, error)
 	List(context.Context) ([]mcpserver.Server, error)
-	AdmitProbe(context.Context) (func(), error)
+	AdmitProbe(context.Context) (func() error, error)
 	StartAuthorization(context.Context, mcpserver.Server, AuthorizationAttemptID) (AuthorizationAttempt, func(context.Context, AuthorizationAttemptStatus) error, error)
 	ReadAuthorization(context.Context, AuthorizationAttemptID) (AuthorizationAttempt, error)
 }
 
-// Coordinator realizes committed directory or installation changes in host connections and exposure. Commands
-// borrow input until they return; constructing a server acquires data retained
-// by persistence or a live dial.
 type Coordinator struct {
-	// mutationMu linearizes durable registry -> exposure/live reconciliation and
-	// the short pre/post boundaries of asynchronous connection operations.
-	// Network and interactive OAuth waits never hold it; Connections owns
-	// per-server latest-operation-wins sequencing.
+	// Network and interactive OAuth waits never hold mutationMu.
 	registry                registry
 	store                   store
 	toolCatalog             toolCatalog
@@ -85,28 +63,22 @@ type Coordinator struct {
 	statusQueue             *statusQueue
 	installedAuthorizations *authorizationAttemptStore
 	external                ExternalWorkflow
-	authorizationDeliveries sync.Map // AuthorizationAttemptID → *authorizationDelivery, indexed only until its owner confirms settlement.
+	authorizationDeliveries pendingDeliveries
 	invalidations           invalidation.Publish
 
-	// tasks is this component's context for post-commit reconcile: MCP registry
-	// mutations outlive the request but are canceled and joined by the
-	// BeginShutdown/AwaitShutdown lifecycle.
 	tasks taskgroup.Group
 }
 
-// Config bundles the Coordinator's dependencies.
 type Config struct {
-	External    ExternalWorkflow
-	Registry    registry
-	Store       store
-	ToolCatalog toolCatalog
-	Connections Connections
-	Exposure    *ExposureState
-	// Invalidations publishes post-commit registry and live-connection changes.
+	External      ExternalWorkflow
+	Registry      registry
+	Store         store
+	ToolCatalog   toolCatalog
+	Connections   Connections
+	Exposure      *ExposureState
 	Invalidations invalidation.Publish
 }
 
-// New constructs the complete durable configuration and live-connection use cases.
 func New(cfg Config) (*Coordinator, error) {
 	for _, required := range []struct {
 		name  string
@@ -139,13 +111,10 @@ func New(cfg Config) (*Coordinator, error) {
 	return coordinator, nil
 }
 
-// BeginShutdown cancels this component's post-commit reconcile work.
-// It is idempotent.
 func (c *Coordinator) BeginShutdown() {
 	c.tasks.Cancel()
 }
 
-// AwaitShutdown joins post-commit reconcile work after [BeginShutdown].
 func (c *Coordinator) AwaitShutdown(ctx context.Context) error {
 	return c.tasks.Wait(ctx)
 }

@@ -6,8 +6,6 @@ import (
 	"github.com/Tangerg/oolong/ui/core/scene"
 )
 
-// Form cancellation belongs to a pending submission. Leaving an editable
-// product step is a separate intent, reached only if the form did not consume it.
 func formNavigation(body scene.Element, leave func()) scene.Element {
 	group := scene.NewGroup(scene.GroupConfig{
 		Items: []scene.Item{{Element: body, Size: layout.Flex(1)}},

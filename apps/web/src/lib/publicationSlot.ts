@@ -1,4 +1,4 @@
-export interface PublicationSlot<T extends object> {
+interface PublicationSlot<T extends object> {
   publish(next: T, retire: (predecessor: T) => void): void;
   current(): T | null;
   owns(candidate: T): boolean;

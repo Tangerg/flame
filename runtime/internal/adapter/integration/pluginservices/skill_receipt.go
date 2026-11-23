@@ -3,6 +3,7 @@ package pluginservices
 import (
 	"context"
 	json "encoding/json/v2"
+	"errors"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 
@@ -10,9 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-// Listing and recovery read immutable source evidence without dispatching a
-// replacement or notifying observers of a mutation during their own refresh.
-func originalSkillReceipt[R any](ctx context.Context, calls *CommandCalls, record plugin.CommandBinding) (R, error) {
+func originalSkillReceipt[R any](ctx context.Context, calls *CommandCalls, record plugin.CommandBinding) (_ R, returned error) {
 	var value R
 	source, err := calls.original(ctx, record)
 	if err != nil {
@@ -26,7 +25,7 @@ func originalSkillReceipt[R any](ctx context.Context, calls *CommandCalls, recor
 	if err != nil {
 		return value, err
 	}
-	defer connection.Close()
+	defer func() { returned = errors.Join(returned, connection.Close()) }()
 	contract, err := plugincontract.ParseCapability(record.Contract.Bytes())
 	if err != nil {
 		return value, err

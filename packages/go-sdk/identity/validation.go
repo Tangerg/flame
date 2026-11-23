@@ -10,8 +10,6 @@ import (
 	"unicode/utf8"
 )
 
-// ValidateResource enforces the shared opaque resource envelope without
-// assigning meaning to an identity or normalizing caller material.
 func ValidateResource(kind, value string, maximumCharacters int) error {
 	if err := ValidateText(value, maximumCharacters); err != nil {
 		return fmt.Errorf("%s identity %w", kind, err)
@@ -19,11 +17,6 @@ func ValidateResource(kind, value string, maximumCharacters int) error {
 	return nil
 }
 
-// ValidateText is what every exact identity must be, whatever it names: a
-// non-empty, valid UTF-8 string within its envelope, carrying no whitespace or
-// non-printing character. It reports the defect as a phrase, so each caller
-// keeps its own way of failing — naming the kind it validated, or carrying the
-// sentinel its callers branch on.
 func ValidateText(value string, maximumCharacters int) error {
 	if value == "" {
 		return errors.New("is empty")
@@ -42,16 +35,10 @@ func ValidateText(value string, maximumCharacters int) error {
 	return nil
 }
 
-// URISafeASCIIPattern preserves the executor's colon-delimited identities. The
-// protocol generator consumes this same envelope instead of redefining it.
 const URISafeASCIIPattern = `^[A-Za-z0-9._:-]+$`
 
 var uriSafeASCII = regexp.MustCompile(URISafeASCIIPattern)
 
-// ValidateURISafeASCII is the byte envelope shared by durable execution identities:
-// ASCII letters, digits, dot, underscore, colon, and hyphen, within maximumBytes.
-// Like ValidateText it reports the defect as a phrase, so each caller names the
-// kind it validated. A byte is a character here because the set is ASCII.
 func ValidateURISafeASCII(value string, maximumBytes int) error {
 	envelope := fmt.Errorf("must contain 1 to %d URI-safe ASCII bytes", maximumBytes)
 	if len(value) > maximumBytes || !uriSafeASCII.MatchString(value) {
@@ -60,10 +47,7 @@ func ValidateURISafeASCII(value string, maximumBytes int) error {
 	return nil
 }
 
-// ValidateLowercaseHex is the canonical spelling every hex-encoded identity
-// shares: exactly this many lowercase hexadecimal digits. hex.DecodeString
-// admits uppercase, so the case rule cannot be left to it. Like ValidateText it
-// reports the defect as a phrase the caller names its kind with.
+// hex.DecodeString admits uppercase, so the case rule cannot be left to it.
 func ValidateLowercaseHex(value string, characters int) error {
 	if len(value) == characters && value == strings.ToLower(value) {
 		if _, err := hex.DecodeString(value); err == nil {
@@ -73,9 +57,6 @@ func ValidateLowercaseHex(value string, characters int) error {
 	return fmt.Errorf("must contain exactly %d lowercase hexadecimal characters", characters)
 }
 
-// ValidateEventIdentity owns the whole replay-cursor identity: the EventPrefix a
-// transport frames an application cursor with, inside the envelope
-// MaximumEventCharacters sizes for exactly that framed shape.
 func ValidateEventIdentity(value string) error {
 	if err := ValidateResource("event", value, MaximumEventCharacters); err != nil {
 		return err

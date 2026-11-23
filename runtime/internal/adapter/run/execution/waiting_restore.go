@@ -9,9 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
-// RestoreWaitingExecution reconstructs an exact committed waiting tree without
-// claiming it for continuation. An existing owner is rejected: recovery must
-// first prove that the obsolete execution was released.
 func (i *InteractionExecutor) RestoreWaitingExecution(
 	ctx context.Context,
 	continuation runs.ExecutionContinuation,
@@ -119,9 +116,6 @@ func (i *InteractionExecutor) publishRestored(
 	return i.publishWaitingInteraction(ctx, session, checkpoint)
 }
 
-// loadCheckpointTree reopens a continuation's checkpoint with its committed
-// execution tree. Any gap means the executor state is lost, not merely
-// unavailable.
 func (i *InteractionExecutor) loadCheckpointTree(ctx context.Context, continuation runs.ExecutionContinuation) (interactionCheckpointState, error) {
 	checkpoint, err := decodeRunCheckpoint(continuation.Checkpoint, continuation.SessionID, continuation.RootRunID)
 	if err != nil {
@@ -142,7 +136,6 @@ func (i *InteractionExecutor) loadCheckpointTree(ctx context.Context, continuati
 	return checkpoint, nil
 }
 
-// requireWaitingBoundary proves the tree's root rests at a product wait.
 func requireWaitingBoundary(checkpoint interactionCheckpointState) error {
 	inspection, err := checkpoint.tree.Inspect()
 	if err != nil {
@@ -154,8 +147,6 @@ func requireWaitingBoundary(checkpoint interactionCheckpointState) error {
 	return nil
 }
 
-// publishWaitingInteraction restores a tree that waits for input. It must
-// still be waiting on something, or there is nothing a person can answer.
 func (i *InteractionExecutor) publishWaitingInteraction(ctx context.Context, session *interactionSession, checkpoint interactionCheckpointState) error {
 	if err := session.recoverInputHandoff(ctx); err != nil {
 		return err

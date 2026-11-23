@@ -17,7 +17,6 @@ import (
 	"github.com/samber/lo"
 )
 
-// Files owns root-scoped file browser operations.
 type Files struct {
 	scope *Scope
 	files fileBrowser
@@ -33,7 +32,6 @@ func NewFiles(scope *Scope, files fileBrowser) (*Files, error) {
 	return &Files{scope: scope, files: files}, nil
 }
 
-// FileEntryKind identifies a file-system entry in the workspace browser.
 type FileEntryKind string
 
 const (
@@ -42,7 +40,6 @@ const (
 	FileEntrySymlink FileEntryKind = "symlink"
 )
 
-// FileEntry is an inspected, root-relative workspace entry.
 type FileEntry struct {
 	Path       string
 	Name       string
@@ -52,7 +49,6 @@ type FileEntry struct {
 	orderKey   string
 }
 
-// OrderKey is the stable ordering and pagination identity for a listing.
 func (f FileEntry) OrderKey() string {
 	if f.orderKey != "" {
 		return f.orderKey
@@ -64,7 +60,6 @@ func (f FileEntry) OrderKey() string {
 	return class + ":" + f.Path
 }
 
-// FileListOptions controls one workspace file listing.
 type FileListOptions struct {
 	Path           string
 	Glob           string
@@ -73,7 +68,6 @@ type FileListOptions struct {
 	IncludeIgnored bool
 }
 
-// fileBrowser is the application-owned port for workspace file reads.
 type fileBrowser interface {
 	List(ctx context.Context, root string, options FileListOptions) ([]FileEntry, error)
 	ListDirectory(ctx context.Context, root string, plan DirectoryListPlan) (DirectoryPage, error)
@@ -81,7 +75,6 @@ type fileBrowser interface {
 	Grep(ctx context.Context, root string, input GrepPlan) (GrepResult, error)
 }
 
-// FileListInput is one paged workspace listing request.
 type FileListInput struct {
 	CWD string
 	FileListOptions
@@ -89,12 +82,12 @@ type FileListInput struct {
 	Limit  pagination.RequestedLimit
 }
 
-// FilePage is a stable cursor page of workspace entries.
 type FileListCoverage struct {
 	ScannedEntries  int
 	ExcludedEntries int
 	BudgetExhausted bool
 }
+
 type DirectoryListPlan struct {
 	Path           string
 	IncludeIgnored bool
@@ -102,6 +95,7 @@ type DirectoryListPlan struct {
 	Revision       string
 	Limit          int
 }
+
 type DirectoryPage struct {
 	Entries    []FileEntry
 	Revision   string
@@ -109,6 +103,7 @@ type DirectoryPage struct {
 	Complete   bool
 	FileListCoverage
 }
+
 type FilePage struct {
 	Complete bool
 	FileListCoverage
@@ -116,8 +111,6 @@ type FilePage struct {
 	NextCursor string
 }
 
-// FileReadInput specifies a root-relative complete-line read. FromEnd retains
-// the suffix of Range within ByteLimit, without reversing source order.
 type FileReadInput struct {
 	Path      string
 	Range     FileLineRange
@@ -125,8 +118,6 @@ type FileReadInput struct {
 	FromEnd   bool
 }
 
-// FileReadPlan is the fully normalized primitive filesystem-port request. Read
-// policy has already resolved default/clamp/presence before this value exists.
 type FileReadPlan struct {
 	Path      string
 	MaxBytes  int
@@ -135,16 +126,14 @@ type FileReadPlan struct {
 	FromEnd   bool
 }
 
-// FileReadResult is a file read with whole-file line information.
 type FileReadResult struct {
 	Content    string
 	TotalLines int
-	StartLine  int // zero-based
-	EndLine    int // one-based inclusive
+	StartLine  int
+	EndLine    int
 	Truncated  bool
 }
 
-// GrepInput specifies one root-scoped content search.
 type GrepInput struct {
 	Path    string
 	Query   string
@@ -152,9 +141,6 @@ type GrepInput struct {
 	ScanAll bool
 }
 
-// GrepPlan is the normalized, compiled search accepted by the filesystem port.
-// Keeping it separate from GrepInput prevents the filesystem port from
-// receiving raw, unbounded regular expressions or caller-owned result limits.
 type GrepPlan struct {
 	Path    string
 	Pattern *regexp.Regexp
@@ -162,24 +148,18 @@ type GrepPlan struct {
 	ScanAll bool
 }
 
-// GrepMatch is one content-search match.
 type GrepMatch struct {
 	Path       string
 	LineNumber int
 	Text       string
 }
 
-// GrepResult retains whole-line matches and the coverage that gives Total its
-// meaning. Total is an observed lower bound until Complete reports true.
 type GrepResult struct {
 	Matches  []GrepMatch
 	Total    int
 	Coverage GrepCoverage
 }
 
-// GrepCoverage counts the finite catalog entries actually admitted, excluded,
-// and left unread. SourceBytes charges all attempted text input, including a
-// file later excluded as binary or unpageable.
 type GrepCoverage struct {
 	ScannedFiles   int
 	SkippedFiles   int
@@ -195,10 +175,6 @@ const (
 	directoryPageNamespace   = "workspace.directory"
 )
 
-// Workspace file reads retain at most 1 MiB by default and 8 MiB when a
-// caller explicitly raises the budget. The full-file scan is admitted only up
-// to 64 MiB because TotalLines describes the complete source, while no single
-// editor-facing line may exceed the largest possible response.
 const (
 	DefaultFileReadBytes   = 1 << 20
 	maxFileReadBytes       = 8 << 20
@@ -206,10 +182,6 @@ const (
 	MaxFileReadLineBytes   = maxFileReadBytes
 )
 
-// Workspace search stops after the first complete file that satisfies its
-// retention budget unless ScanAll was explicitly requested. Source exhaustion
-// returns verified partial results; unsupported files remain visible in coverage.
-// Candidate admission, changed files, I/O failure and cancellation still fail.
 const (
 	DefaultGrepLimit         = 100
 	MaxGrepLimit             = 1000
@@ -220,8 +192,6 @@ const (
 	MaxGrepSourceBytes       = 512 << 20
 )
 
-// listDirectory pages one directory level natively; its cursor holds the
-// enumeration offset and the directory revision it is valid for.
 func (f *Files) listDirectory(ctx context.Context, root, path string, input FileListInput) (FilePage, error) {
 	size, err := input.Limit.Resolve(defaultFileListPageLimit)
 	if err != nil {
@@ -257,7 +227,6 @@ func (f *Files) listDirectory(ctx context.Context, root, path string, input File
 	return FilePage{Entries: page.Entries, NextCursor: next, Complete: page.Complete, FileListCoverage: page.FileListCoverage}, nil
 }
 
-// List returns one stable cursor page of entries below a workspace root.
 func (f *Files) List(ctx context.Context, input FileListInput) (FilePage, error) {
 	root, err := f.scope.ResolveRoot(input.CWD)
 	if err != nil {
@@ -307,8 +276,6 @@ func (f *Files) List(ctx context.Context, input FileListInput) (FilePage, error)
 	return FilePage{Entries: page, NextCursor: next, Complete: next == "", FileListCoverage: FileListCoverage{ScannedEntries: len(entries)}}, nil
 }
 
-// Read returns all or a one-based inclusive line window of a workspace
-// file. Its range and byte budget were settled when they were constructed.
 func (f *Files) Read(ctx context.Context, cwd string, input FileReadInput) (FileReadResult, error) {
 	if input.Path == "" {
 		return FileReadResult{}, ErrPathRequired
@@ -327,8 +294,6 @@ func (f *Files) Read(ctx context.Context, cwd string, input FileReadInput) (File
 	})
 }
 
-// Grep searches a workspace root or an existing subdirectory. Coverage separates
-// a partial observation from a complete count, independently of retained rows.
 func (f *Files) Grep(ctx context.Context, cwd string, input GrepInput) (GrepResult, error) {
 	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return GrepResult{}, cause
@@ -394,9 +359,6 @@ func pageFileEntries(entries []FileEntry, filters []string, cursor string, limit
 	return page, nextCursor, nil
 }
 
-// Suggestions rank filename matches before matches elsewhere in the path.
-// The cursor carries the same order key used to sort so it remains meaningful
-// if an earlier candidate disappears between pages.
 const maxNameQueryBytes = 4096
 
 func rankedFileNames(ctx context.Context, entries []FileEntry, raw string) ([]FileEntry, error) {
@@ -430,6 +392,7 @@ func rankedFileNames(ctx context.Context, entries []FileEntry, raw string) ([]Fi
 	}
 	return ranked, nil
 }
+
 func subsequenceScore(query []rune, name string) int {
 	var matched, score int
 	boundary, adjacent := true, false

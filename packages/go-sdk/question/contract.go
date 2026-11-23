@@ -1,5 +1,3 @@
-// Package question owns the Runtime's public ordered answer contract.
-// It does not accept answers into a conversation or own question lifecycle.
 package question
 
 import (
@@ -20,16 +18,12 @@ func (Kind) Values() []string { return []string{string(Text), string(Choice)} }
 
 func (k Kind) Valid() bool { return slices.Contains(k.Values(), string(k)) }
 
-// These bounds keep one complete interaction presentable. Custom input does not
-// consume an advertised option.
 const (
 	MaximumFields  = 4
 	MinimumOptions = 2
 	MaximumOptions = 4
 )
 
-// Field describes only answer semantics; prompt, header and previews have their
-// own presentation owners. New detaches each field's advertised option labels.
 type Field struct {
 	Kind        Kind
 	Options     []string
@@ -39,7 +33,6 @@ type Field struct {
 
 type Contract struct{ fields []Field }
 
-// FieldError identifies the same zero-based field at every contract consumer.
 type FieldError struct {
 	Index int
 	Cause error
@@ -48,7 +41,6 @@ type FieldError struct {
 func (e *FieldError) Error() string { return fmt.Sprintf("question field %d: %v", e.Index+1, e.Cause) }
 func (e *FieldError) Unwrap() error { return e.Cause }
 
-// ValidateFieldCount admits a definition before callers allocate its projections.
 func ValidateFieldCount(count int) error {
 	if count < 1 || count > MaximumFields {
 		return fmt.Errorf("question field count must be between 1 and %d, got %d", MaximumFields, count)
@@ -100,8 +92,6 @@ func validateField(field Field) error {
 	return nil
 }
 
-// Validate requires one answer per field. An empty inner slice explicitly skips
-// that field; an unanswered question is represented by its owner, not a candidate.
 func (c Contract) Validate(answers [][]string) error {
 	if err := ValidateFieldCount(len(c.fields)); err != nil {
 		return err

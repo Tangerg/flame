@@ -29,20 +29,25 @@ func workspaceRefFromPath(path string) *protocol.WorkspaceRef {
 	return &protocol.WorkspaceRef{Path: path}
 }
 
-// wireWorkspaceError is the sole translation from workspace use-case failures
-// to the JSON-RPC error vocabulary. The application never imports protocol.
 func wireWorkspaceError(err error) error {
+	if wired, ok := workspaceFailure(err); ok {
+		return wired
+	}
+	return err
+}
+
+func workspaceFailure(err error) (error, bool) {
 	switch {
 	case err == nil:
-		return nil
+		return nil, false
 	case errors.Is(err, workspaceapp.ErrPromptSourceTooLarge):
-		return protocol.NewFailure(protocol.ErrPromptSourceTooLarge, "AGENTS.md instructions exceed the supported document or complete guidance budget; shorten the source documents before retrying", err)
+		return protocol.NewFailure(protocol.ErrPromptSourceTooLarge, "AGENTS.md instructions exceed the supported document or complete guidance budget; shorten the source documents before retrying", err), true
 	case errors.Is(err, workspaceapp.ErrCWDUnavailable):
-		return protocol.NewFailure(protocol.ErrWorkspaceUnavailable, err.Error(), err)
+		return protocol.NewFailure(protocol.ErrWorkspaceUnavailable, err.Error(), err), true
 	case errors.Is(err, workspaceapp.ErrPathOutsideRoot):
-		return protocol.ErrPathOutsideRoot
+		return protocol.ErrPathOutsideRoot, true
 	case errors.Is(err, workspaceapp.ErrUnsupportedFile):
-		return protocol.NewFailure(protocol.ErrUnsupportedMime, err.Error(), err)
+		return protocol.NewFailure(protocol.ErrUnsupportedMime, err.Error(), err), true
 	case errors.Is(err, tool.ErrInvalidArguments),
 		errors.Is(err, workspaceapp.ErrPathRequired),
 		errors.Is(err, workspaceapp.ErrWatchLimit),
@@ -61,10 +66,10 @@ func wireWorkspaceError(err error) error {
 		errors.Is(err, workspaceapp.ErrPageCursor),
 		errors.Is(err, workspaceapp.ErrVCSResultTooLarge),
 		errors.Is(err, workspaceapp.ErrVCSBaseUnknown):
-		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
+		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err), true
 	case errors.Is(err, workspaceapp.ErrVCSUnavailable):
-		return protocol.ErrVcsUnavailable
+		return protocol.ErrVcsUnavailable, true
 	default:
-		return err
+		return nil, false
 	}
 }

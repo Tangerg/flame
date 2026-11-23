@@ -10,8 +10,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// ModelSelection is the complete identity chosen before provider construction.
-// Reasoning effort belongs to this exact provider/model, never to a later route.
 type ModelSelection struct {
 	Provider        string `json:"provider"`
 	Model           string `json:"model"`
@@ -26,8 +24,6 @@ func (s ModelSelection) Validate() error {
 	return selection.ValidateExact()
 }
 
-// ModelSelectionRequest offers the caller's proposal before its exact binding.
-// Request is absent when a use case captures its model before authoring input.
 type ModelSelectionRequest struct {
 	Context  model.SelectionContext `json:"context"`
 	Proposed ModelSelection         `json:"proposed"`
@@ -46,9 +42,11 @@ func (r ModelSelectionRequest) Validate() error {
 	}
 	return nil
 }
+
 func ModelSelectionMethod() (*pluginmcp.Method[ModelSelectionRequest, ModelSelection], error) {
 	return pluginmcp.NewMethod[ModelSelectionRequest, ModelSelection](frame.MethodConfig{Name: "flame.model-selection/select.v2", Kind: frame.Query, Target: extension.ScopeCall, Description: "Select the exact model using the actual calling use and captured limits before provider construction, request-capacity admission and metering."})
 }
+
 func ModelSelectionContract() (*plugincontract.Capability, error) {
 	method, err := ModelSelectionMethod()
 	if err != nil {

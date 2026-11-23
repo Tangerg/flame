@@ -6,7 +6,7 @@ import {
 } from "@/features/agent/public/messagePresentation";
 export type ToolGroupPinnedState = boolean | null;
 
-export interface ToolGroupModel {
+interface ToolGroupModel {
   summary: string;
   count: number;
   needsAttention: boolean;

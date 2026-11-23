@@ -11,9 +11,6 @@ import (
 
 type contributionPhaseKey struct{}
 
-// A fresh nested exchange cannot reenter a contributor still handling its
-// ancestor. Keep the active path immutable across concurrent callback requests;
-// rejecting a cycle does not skip a contributor or change the selected chain.
 func enterContributionPhase(ctx context.Context, binding plugins.ContributionBinding) (context.Context, error) {
 	active, _ := ctx.Value(contributionPhaseKey{}).([]plugins.ContributionBinding)
 	if slices.ContainsFunc(active, binding.SameContribution) {
@@ -22,8 +19,6 @@ func enterContributionPhase(ctx context.Context, binding plugins.ContributionBin
 	return context.WithValue(ctx, contributionPhaseKey{}, append(slices.Clone(active), binding)), nil
 }
 
-// RPC belongs to the receiving activation, but next keeps the original caller's
-// values and frozen chain. Its network request may cancel that original work.
 func modelContinuationContext(captured, request context.Context) (context.Context, func()) {
 	ctx, cancel := context.WithCancelCause(captured)
 	stop := context.AfterFunc(request, func() { cancel(context.Cause(request)) })

@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -18,19 +17,8 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// InterruptFunc is the consumer-owned capability a tool uses to park the
-// current execution on one application interrupt. On re-entry (Scope carries
-// the answer on the invocation) it returns the resolved decision; on a first
-// request it returns a Scope InputRequest the tool returns as
-// tool.Result{InputRequest}. Tool packages depend only on this contract and
-// never on execution internals.
 type InterruptFunc func(context.Context, toolcontract.Invocation, Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error)
 
-// ApprovalPrompt is the complete durable plan for one gated tool call.
-// Arguments are the effective arguments after PreToolUse rewriting, so a
-// continuation (including one restored after restart) can resume without
-// running the hook or policy decision a second time. Tool names the gated call;
-// its qualification belongs to the frozen deployment.
 type ApprovalPrompt struct {
 	Tool              tool.Ref
 	QualifiedName     bool
@@ -40,52 +28,22 @@ type ApprovalPrompt struct {
 	SafetyClass       tool.SafetyClass
 	Risk              tool.RiskLevel
 	Reason            string
-	// Rememberable persists whether the response may create a standing rule;
-	// restoration must not make a one-off decision eligible for reuse.
-	Rememberable bool
+	Rememberable      bool
 }
 
-// QuestionPrompt is the complete durable plan for a question-producing tool
-// call. ToolName and Arguments preserve the semantic input for restoring the
-// question-producing handler. Fields are the client-facing answer schema.
 type QuestionPrompt struct {
 	ToolName  string
 	Arguments string
-	Fields    []QuestionFieldSpec
+	Fields    []transcript.QuestionField
 }
 
-// QuestionFieldSpec is one ordered answer field. An empty Options slice means
-// free-text; otherwise 2-4 unique options are accepted. A response still carries
-// one entry per field, but an empty entry explicitly skips that field.
-type QuestionFieldSpec struct {
-	Prompt      string
-	Header      string
-	Options     []QuestionOptionSpec
-	Multiple    bool
-	AllowCustom bool
-}
-
-type QuestionOptionSpec struct {
-	Label       string
-	Description string
-}
-
-// Interrupt is the durable product request for external input: an
-// ApprovalPrompt or a QuestionPrompt, and the prompt alone decides its Kind.
-// Executor continuation data is deliberately absent.
 type Interrupt interface {
 	Type() run.InterruptType
-	// ToolCall returns the logical tool call that owns this interrupt.
 	ToolCall() (name, arguments string)
-	// Validate rejects a malformed prompt before it becomes a durable Pending
-	// aggregate or application event.
 	Validate() error
 	clone() Interrupt
 }
 
-// InterruptKey is the stable identity prompt is answered under. The kind is
-// part of it so an approval and a question over the same call never collide;
-// the hash keeps serialized keys compact for transport and durable stores.
 func InterruptKey(prompt Interrupt) string {
 	name, arguments := prompt.ToolCall()
 	h := fnv.New64a()
@@ -110,15 +68,13 @@ func (QuestionPrompt) Type() run.InterruptType { return run.InterruptQuestion }
 func (a ApprovalPrompt) ToolCall() (name, arguments string) {
 	return a.Tool.PublishedName(a.QualifiedName), a.Arguments
 }
+
 func (q QuestionPrompt) ToolCall() (name, arguments string) { return q.ToolName, q.Arguments }
 
 func (a ApprovalPrompt) clone() Interrupt { return a }
 
 func (q QuestionPrompt) clone() Interrupt {
-	q.Fields = slices.Clone(q.Fields)
-	for index := range q.Fields {
-		q.Fields[index].Options = slices.Clone(q.Fields[index].Options)
-	}
+	q.Fields = q.question().Fields
 	return q
 }
 
@@ -158,26 +114,9 @@ func (q QuestionPrompt) Validate() error {
 }
 
 func (q QuestionPrompt) question() transcript.Question {
-	fields := make([]transcript.QuestionField, len(q.Fields))
-	for index, spec := range q.Fields {
-		field := transcript.QuestionField{
-			Prompt: spec.Prompt,
-			Header: spec.Header,
-			Kind:   questioncontract.Text,
-		}
-		if len(spec.Options) > 0 {
-			field.Kind = questioncontract.Choice
-			field.Multiple = spec.Multiple
-			field.AllowCustom = spec.AllowCustom
-			field.Options = make([]transcript.QuestionOption, len(spec.Options))
-			for optionIndex, option := range spec.Options {
-				field.Options[optionIndex] = transcript.QuestionOption{
-					Label:       option.Label,
-					Description: option.Description,
-				}
-			}
-		}
-		fields[index] = field
+	fields := slices.Clone(q.Fields)
+	for index := range fields {
+		fields[index].Options = slices.Clone(fields[index].Options)
 	}
 	return transcript.Question{Fields: fields}
 }

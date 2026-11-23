@@ -1,6 +1,3 @@
-// Goal tools expose the root Agent's model-facing autonomous Goal
-// controls. The adapters depend only on narrow application use cases: they do
-// not know how Goals are persisted, scheduled, or joined to Run admission.
 package builtin
 
 import (
@@ -13,11 +10,11 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
-	goalstate "github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -59,20 +56,16 @@ type reportArgs struct {
 	Reason  *string       `json:"reason,omitzero" jsonschema_description:"Concrete blocker and what must change. Required when reporting a blocker; omit when reporting completion."`
 }
 
-// GoalReader is get_goal's complete consumer view.
 type GoalReader interface {
-	Current(ctx context.Context, sessionID identity.SessionID) (goalstate.Goal, bool, error)
+	Current(ctx context.Context, sessionID identity.SessionID) (goal.Goal, bool, error)
 }
 
-// GoalOutcomeReporter is report_goal_outcome's complete consumer view.
 type GoalOutcomeReporter interface {
 	Report(ctx context.Context, command goals.ReportCommand) (goals.ReportResult, error)
 }
 
-// goalStarter is the one lifecycle operation create_goal needs. The Driver owns
-// admission waiting and loop lifetime; the tool does not reproduce either.
 type goalStarter interface {
-	Start(ctx context.Context, sessionID identity.SessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goalstate.Goal, error)
+	Start(ctx context.Context, sessionID identity.SessionID, objective string, selection flamemodel.Selection, capabilities run.Capabilities) (goal.Goal, error)
 }
 
 type creator struct{ goals goalStarter }
@@ -84,16 +77,14 @@ type goalResult struct {
 	Message string    `json:"message,omitempty"`
 }
 
-// goalView deliberately excludes the Goal incarnation and persistence revision.
-// Those are ownership mechanics, not facts the model can act on.
 type goalView struct {
-	SessionID       string           `json:"session_id"`
-	Objective       string           `json:"objective"`
-	Status          goalstate.Status `json:"status"`
-	Reason          string           `json:"reason,omitempty"`
-	Provider        string           `json:"provider,omitempty"`
-	Model           string           `json:"model,omitempty"`
-	ReasoningEffort string           `json:"reasoning_effort,omitempty"`
+	SessionID       string      `json:"session_id"`
+	Objective       string      `json:"objective"`
+	Status          goal.Status `json:"status"`
+	Reason          string      `json:"reason,omitempty"`
+	Provider        string      `json:"provider,omitempty"`
+	Model           string      `json:"model,omitempty"`
+	ReasoningEffort string      `json:"reasoning_effort,omitempty"`
 
 	Usage     usageView `json:"usage"`
 	CreatedAt time.Time `json:"created_at"`
@@ -106,12 +97,11 @@ type usageView struct {
 	Steps   int      `json:"steps"`
 }
 
-// NewCreate builds create_goal. It is assembled after the Goal Driver because
-// starting a Goal consumes the Run coordinator that is built later than the
-// static tool environment.
+// Assembled after the Goal Driver because starting a Goal consumes the later-built
+// Run coordinator.
 func NewCreate(starter goalStarter) (toolcontract.Tool, error) {
 	if lo.IsNil(starter) {
-		return nil, errors.New("create_goal: Goal starter is required")
+		return nil, fmt.Errorf("%s: Goal starter is required", builtincontract.CreateGoal)
 	}
 	return toolcontract.NewFunc[createArgs, goalResult](
 		toolcontract.FuncConfig{Name: string(builtincontract.CreateGoal), Description: createDescription},
@@ -119,10 +109,9 @@ func NewCreate(starter goalStarter) (toolcontract.Tool, error) {
 	)
 }
 
-// NewGet builds get_goal over the read-only side of Goal state.
 func NewGet(reader GoalReader) (toolcontract.Tool, error) {
 	if lo.IsNil(reader) {
-		return nil, errors.New("get_goal: Goal reader is required")
+		return nil, fmt.Errorf("%s: Goal reader is required", builtincontract.GetGoal)
 	}
 	return toolcontract.NewFunc[getArgs, goalResult](
 		toolcontract.FuncConfig{Name: string(builtincontract.GetGoal), Description: getDescription},
@@ -130,10 +119,9 @@ func NewGet(reader GoalReader) (toolcontract.Tool, error) {
 	)
 }
 
-// NewReport builds report_goal_outcome, the active Goal loop's terminal signal.
 func NewReport(reporter GoalOutcomeReporter) (toolcontract.Tool, error) {
 	if lo.IsNil(reporter) {
-		return nil, errors.New("report_goal_outcome: Goal outcome reporter is required")
+		return nil, fmt.Errorf("%s: Goal outcome reporter is required", builtincontract.ReportGoalOutcome)
 	}
 	return toolcontract.NewFunc[reportArgs, string](
 		toolcontract.FuncConfig{Name: string(builtincontract.ReportGoalOutcome), Description: reportDescription},
@@ -152,7 +140,7 @@ func (c *creator) create(ctx context.Context, args createArgs) (goalResult, erro
 	capabilities, _ := executionctx.RunCapabilities(ctx)
 	// Nobody chose a model for this Goal, so its Runs follow the Session's
 	// selection rather than a copy of the model this Run happens to use.
-	g, err := c.goals.Start(ctx, sessionID, args.Objective, modelchoice.Selection{}, capabilities)
+	g, err := c.goals.Start(ctx, sessionID, args.Objective, flamemodel.Selection{}, capabilities)
 	if err != nil {
 		switch {
 		case errors.Is(err, goals.ErrGoalActive):
@@ -181,7 +169,7 @@ func (g *getter) get(ctx context.Context, _ getArgs) (goalResult, error) {
 	}
 	current, ok, err := g.goals.Current(ctx, sessionID)
 	if err != nil {
-		return goalResult{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("get_goal: %w", err))
+		return goalResult{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: %w", builtincontract.GetGoal, err))
 	}
 	if !ok {
 		return goalResult{Message: "No Goal exists for this session."}, nil
@@ -235,7 +223,7 @@ func (o *outcomeReporter) report(ctx context.Context, args reportArgs) (string, 
 	}
 }
 
-func viewOf(g goalstate.Goal) goalView {
+func viewOf(g goal.Goal) goalView {
 	selection, used := g.ModelSelection(), g.Used()
 	return goalView{
 		SessionID:       g.SessionID().String(),
@@ -255,26 +243,24 @@ func viewOf(g goalstate.Goal) goalView {
 	}
 }
 
-// reasonText is adapter-owned presentation. Keeping it here avoids making
-// application or domain packages depend on model-facing prose.
-func reasonText(reason goalstate.Reason) string {
+func reasonText(reason goal.Reason) string {
 	switch reason.Code() {
-	case goalstate.ReasonNone:
+	case goal.ReasonNone:
 		return ""
-	case goalstate.ReasonStoppedByUser:
+	case goal.ReasonStoppedByUser:
 		return "stopped by the user"
-	case goalstate.ReasonRuntimeRestarted:
+	case goal.ReasonRuntimeRestarted:
 		return "the service restarted; resume to continue"
-	case goalstate.ReasonRunStartFailed:
+	case goal.ReasonRunStartFailed:
 		return "could not start the next Run"
-	case goalstate.ReasonAwaitingInput:
+	case goal.ReasonAwaitingInput:
 		return "the Run is waiting for user input"
-	case goalstate.ReasonTerminalOutcomeMissing:
+	case goal.ReasonTerminalOutcomeMissing:
 		return "the Run ended without a terminal outcome"
-	case goalstate.ReasonRunNotCompleted:
+	case goal.ReasonRunNotCompleted:
 		outcome, _ := reason.RunOutcome()
 		return "the Run ended: " + string(outcome)
-	case goalstate.ReasonBlockedByModel:
+	case goal.ReasonBlockedByModel:
 		explanation, _ := reason.Explanation()
 		return explanation
 	default:

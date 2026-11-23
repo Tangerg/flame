@@ -61,7 +61,7 @@ func (p *protocolParams) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	if decoded.Protocol != plugincontract.Protocol {
-		return errors.New("plugin: current backend protocol is required")
+		return errBackendProtocolRequired
 	}
 	*p = protocolParams(decoded)
 	return nil
@@ -88,8 +88,6 @@ const (
 	backendClosed
 )
 
-// Backend owns declaration/code binding and publication. Setup is explicit;
-// after Publish no export can change. User code runs outside this owner's lock.
 type Backend struct {
 	server       *sdk.Server
 	mu           sync.RWMutex
@@ -132,8 +130,6 @@ func (b *Backend) invoke(ctx context.Context, session *sdk.ServerSession, params
 	return method.invoke(ctx, session, params)
 }
 
-// validateInput answers whether input would be admitted. A refusal is the
-// answer, not a failure of the call.
 func (b *Backend) validateInput(_ context.Context, _ *sdk.ServerSession, params *invokeParams) (*methodResult[string], error) {
 	method, err := b.resolveMethod(params)
 	if err != nil {
@@ -149,8 +145,8 @@ func (b *Backend) validateInput(_ context.Context, _ *sdk.ServerSession, params 
 }
 
 func (b *Backend) describe(_ context.Context, _ *sdk.ServerSession, params *protocolParams) (*methodResult[Description], error) {
-	if params == nil || params.Protocol != plugincontract.Protocol {
-		return nil, errors.New("plugin: current backend protocol is required")
+	if params == nil {
+		return nil, errBackendProtocolRequired
 	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
@@ -171,8 +167,8 @@ func (b *Backend) describe(_ context.Context, _ *sdk.ServerSession, params *prot
 }
 
 func (b *Backend) resolveMethod(params *invokeParams) (boundMethod, error) {
-	if params == nil || params.Protocol != plugincontract.Protocol {
-		return boundMethod{}, errors.New("plugin: current backend protocol is required")
+	if params == nil {
+		return boundMethod{}, errBackendProtocolRequired
 	}
 	b.mu.RLock()
 	defer b.mu.RUnlock()
@@ -221,7 +217,7 @@ func (b *Backend) register(method boundMethod) error {
 func Describe(ctx context.Context, session *sdk.ClientSession) (Description, error) {
 	var zero Description
 	if session == nil {
-		return zero, errors.New("plugin: client session is required")
+		return zero, errClientSessionRequired
 	}
 	result, err := sdk.CallCustomMethod[*protocolParams, *methodResult[Description]](ctx, session, DescribeMethod, &protocolParams{Protocol: plugincontract.Protocol})
 	if err != nil {

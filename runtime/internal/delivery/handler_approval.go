@@ -5,16 +5,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
-// GetApprovalMode returns the runtime's default tool-permission stance
-// (approval.getMode).
 func (s *Handler) GetApprovalMode(ctx context.Context) (*protocol.ApprovalModeResult, error) {
 	m, err := s.approvals.DefaultMode(ctx)
 	if err != nil {
@@ -27,7 +23,6 @@ func (s *Handler) GetApprovalMode(ctx context.Context) (*protocol.ApprovalModeRe
 	return &protocol.ApprovalModeResult{Mode: mode, Modes: presentApprovalModePolicies()}, nil
 }
 
-// SetApprovalMode sets the runtime's default tool-permission stance (approval.setMode).
 func (s *Handler) SetApprovalMode(ctx context.Context, in protocol.SetApprovalModeRequest) (*protocol.ApprovalModeResult, error) {
 	mode, ok := approvalModeFromWire(in.Mode)
 	if !ok {
@@ -39,12 +34,8 @@ func (s *Handler) SetApprovalMode(ctx context.Context, in protocol.SetApprovalMo
 	return &protocol.ApprovalModeResult{Mode: in.Mode, Modes: presentApprovalModePolicies()}, nil
 }
 
-// ListApprovalRules lists the persisted rules visible from a session
-// (approval.listRules) — its session rules, its project's rules, and all
-// global rules. Runtime resolves the session's project directory; an unknown
-// session degrades to session + global only.
 func (s *Handler) ListApprovalRules(ctx context.Context, in protocol.ListApprovalRulesRequest) (*protocol.ListApprovalRulesResult, error) {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := optionalSessionParameter(in.SessionID)
 	if parseErr != nil {
 		return nil, parseErr
 	}
@@ -63,21 +54,16 @@ func (s *Handler) ListApprovalRules(ctx context.Context, in protocol.ListApprova
 	return &protocol.ListApprovalRulesResult{Rules: out}, nil
 }
 
-// ForgetApprovalRule removes one persisted approval rule by id
-// (approval.forgetRule). A missing id is not an error.
 func (s *Handler) ForgetApprovalRule(ctx context.Context, in protocol.ForgetApprovalRuleRequest) error {
 	return s.approvals.ForgetRule(ctx, in.ID)
 }
 
-// presentApprovalRule maps a domain rule to its protocol shape. The project
-// directory is surfaced only for project-scoped rules (the UI shows where they
-// apply); session/global rules carry no dir.
 func presentApprovalRule(r approvals.RuleView) (protocol.ApprovalRule, error) {
-	scope, ok := presentApprovalScope(r.Scope)
+	scope, ok := approvalScopes.wire(r.Scope)
 	if !ok {
 		return protocol.ApprovalRule{}, fmt.Errorf("approval.listRules: unsupported scope %q", r.Scope)
 	}
-	decision, ok := presentApprovalDecision(r.Decision)
+	decision, ok := approvalDecisions.wire(r.Decision)
 	if !ok {
 		return protocol.ApprovalRule{}, fmt.Errorf("approval.listRules: unsupported decision %q", r.Decision)
 	}
@@ -90,38 +76,29 @@ func presentApprovalRule(r approvals.RuleView) (protocol.ApprovalRule, error) {
 		Scope: scope,
 		Tool:  ref, ModelName: r.Tool.ModelName(), Stale: r.Stale,
 		Dir:      r.ProjectDir,
-		Subject:  protocol.ApprovalSubject{Type: protocol.ApprovalSubjectType(r.Subject.Type), Value: r.Subject.Value},
+		Subject:  protocol.ApprovalSubject{Type: approvalSubjects.mustWire(r.Subject.Type), Value: r.Subject.Value},
 		Decision: decision,
 	}
 	return wire, nil
 }
 
-func presentApprovalScope(scope approval.Scope) (protocol.ApprovalRuleScope, bool) {
-	switch scope {
-	case approval.ScopeSession:
-		return protocol.ApprovalRuleScopeSession, true
-	case approval.ScopeProject:
-		return protocol.ApprovalRuleScopeProject, true
-	case approval.ScopeGlobal:
-		return protocol.ApprovalRuleScopeGlobal, true
-	default:
-		return "", false
-	}
+var approvalScopes = wireVocabulary[approval.Scope, protocol.ApprovalRuleScope]{
+	{approval.ScopeSession, protocol.ApprovalRuleScopeSession},
+	{approval.ScopeProject, protocol.ApprovalRuleScopeProject},
+	{approval.ScopeGlobal, protocol.ApprovalRuleScopeGlobal},
 }
 
-func presentApprovalDecision(decision approval.Decision) (protocol.ApprovalRuleDecision, bool) {
-	switch decision {
-	case approval.Allow:
-		return protocol.ApprovalRuleDecisionAllow, true
-	case approval.Deny:
-		return protocol.ApprovalRuleDecisionDeny, true
-	default:
-		return "", false
-	}
+var approvalDecisions = wireVocabulary[approval.Decision, protocol.ApprovalRuleDecision]{
+	{approval.Allow, protocol.ApprovalRuleDecisionAllow},
+	{approval.Deny, protocol.ApprovalRuleDecisionDeny},
 }
 
-// presentApprovalModePolicies publishes the gate matrix the domain applies, so
-// a client describes a mode from the policy rather than restating it.
+var approvalSubjects = wireVocabulary[approval.SubjectType, protocol.ApprovalSubjectType]{
+	{approval.SubjectAll, protocol.ApprovalSubjectAll},
+	{approval.SubjectExact, protocol.ApprovalSubjectExact},
+	{approval.SubjectGlob, protocol.ApprovalSubjectGlob},
+}
+
 func presentApprovalModePolicies() []protocol.ApprovalModePolicy {
 	modes := []approval.Mode{approval.ModeSafe, approval.ModeBalanced, approval.ModeYolo}
 	out := make([]protocol.ApprovalModePolicy, 0, len(modes))
@@ -153,8 +130,6 @@ func presentApprovalGate(gate approval.GateAction) protocol.ApprovalGate {
 	}
 }
 
-// presentApprovalMode maps the complete domain vocabulary to protocol names. An
-// unknown value is rejected rather than disguised as a valid stance.
 func presentApprovalMode(m approval.Mode) (protocol.ApprovalMode, bool) {
 	switch m {
 	case approval.ModeSafe:
@@ -168,10 +143,6 @@ func presentApprovalMode(m approval.Mode) (protocol.ApprovalMode, bool) {
 	}
 }
 
-// rememberScopeFromWire validates a wire remember scope; ok=false for an
-// unknown value (the caller raises invalid_params, like approvalModeFromWire).
-// The returned domain scope keeps the protocol vocabulary from leaking into
-// application commands while the boundary still rejects unknown wire values.
 func rememberScopeFromWire(s protocol.RememberScopeKind) (approval.Scope, bool) {
 	switch s {
 	case protocol.RememberSession:
@@ -184,8 +155,6 @@ func rememberScopeFromWire(s protocol.RememberScopeKind) (approval.Scope, bool) 
 	return "", false
 }
 
-// approvalModeFromWire maps a protocol stance to the domain stance; ok=false for an
-// unknown value (the caller raises invalid_params).
 func approvalModeFromWire(m protocol.ApprovalMode) (approval.Mode, bool) {
 	switch m {
 	case protocol.ApprovalModeSafe:
@@ -199,7 +168,7 @@ func approvalModeFromWire(m protocol.ApprovalMode) (approval.Mode, bool) {
 }
 
 func (s *Handler) SetApprovalRule(ctx context.Context, in protocol.SetApprovalRuleRequest) error {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := optionalSessionParameter(in.SessionID)
 	if parseErr != nil {
 		return parseErr
 	}
@@ -207,11 +176,13 @@ func (s *Handler) SetApprovalRule(ctx context.Context, in protocol.SetApprovalRu
 	if err != nil {
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error())
 	}
-	scope, decision := approval.Scope(in.Scope), approval.Decision(in.Decision)
-	if !scope.Valid() || !decision.Valid() {
+	scope, scopeKnown := approvalScopes.domain(in.Scope)
+	decision, decisionKnown := approvalDecisions.domain(in.Decision)
+	subject, subjectKnown := approvalSubjects.domain(in.Subject.Type)
+	if !scopeKnown || !decisionKnown || !subjectKnown {
 		return protocol.NewFailure(protocol.ErrInvalidParams, "invalid approval rule")
 	}
-	err = s.approvals.SetRule(ctx, approvals.RuleChange{Tool: ref, Scope: scope, SessionID: sessionID, Subject: approval.Subject{Type: approval.SubjectType(in.Subject.Type), Value: in.Subject.Value}, Decision: decision})
+	err = s.approvals.SetRule(ctx, approvals.RuleChange{Tool: ref, Scope: scope, SessionID: sessionID, Subject: approval.Subject{Type: subject, Value: in.Subject.Value}, Decision: decision})
 	if errors.Is(err, approval.ErrInvalidRule) {
 		return protocol.InvalidParameters(err)
 	}

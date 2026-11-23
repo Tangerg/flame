@@ -3,6 +3,7 @@ package pluginpackage
 import (
 	"context"
 	json "encoding/json/v2"
+	"errors"
 	"fmt"
 	"maps"
 	"os"
@@ -54,11 +55,6 @@ func componentModule(ctx context.Context, root *os.Root, component plugin.Client
 	return result, nil
 }
 
-// validate proves the compiled graph is the component's complete closure: its
-// entry exports the component, and every dependency outside it is a host
-// module the graph declares exactly once.
-// importedHostModules collects every non-local import, each of which must be a
-// module the host profile shares.
 func (g moduleGraph) importedHostModules(local map[string]moduleEntry) (map[string]bool, error) {
 	shared := make(map[string]bool)
 	for _, module := range g.Modules {
@@ -107,14 +103,12 @@ func (g moduleGraph) validate(component plugin.ClientComponent) error {
 	return nil
 }
 
-// ComponentModules supplies the exact native shared profile and complete local
-// module closure to Flame's browser bootstrap without forwarding private config.
-func (r *Releases) ComponentModules(ctx context.Context, release plugin.Release, id plugin.ContributionID) (*distribution.Module, error) {
+func (r *Releases) ComponentModules(ctx context.Context, release plugin.Release, id plugin.ContributionID) (_ *distribution.Module, returned error) {
 	lease, err := r.content.Acquire(ctx, release.Digest())
 	if err != nil {
 		return nil, err
 	}
-	defer lease.Close()
+	defer func() { returned = errors.Join(returned, lease.Close()) }()
 	for _, unit := range lease.Snapshot().Manifest.Units {
 		if unit.ID == plugins.ComponentUnit(id) && unit.Module != nil {
 			return unit.Module, nil

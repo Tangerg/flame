@@ -1,12 +1,12 @@
 import type { ComponentType } from "react";
 import { defineExtensionPoint } from "@/extensions/contracts";
 import { useExtensionPoint } from "@/extensions/selectors/extensions";
-export interface WorkIndexItemSpec {
+interface WorkIndexItemSpec {
   id: string;
   order?: number;
   component: ComponentType;
 }
-export const WORK_INDEX_ITEM = defineExtensionPoint<WorkIndexItemSpec>({
+const WORK_INDEX_ITEM = defineExtensionPoint<WorkIndexItemSpec>({
   id: "flame.workIndex.item",
   keying: "single",
 });

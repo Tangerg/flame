@@ -14,8 +14,6 @@ const (
 	ExpandedToolResults
 )
 
-// ExportSession keeps admission, hydration and terminal validation on the same
-// captured state. A presentation cannot rebuild or validate a competing archive.
 func (c *Coordinator) ExportSession(ctx context.Context, sessionID identity.SessionID, results ToolResultExport) (PortableSnapshot, error) {
 	if results != ReferencedToolResults && results != ExpandedToolResults {
 		return PortableSnapshot{}, fmt.Errorf("sessions: unsupported tool-result export %d", results)

@@ -187,7 +187,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 		if err != nil {
 			t.Fatal(err)
 		}
-		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "memory-provider", Contract: string(contracts.Identity().Bytes()), Method: memorycontract.ListV2Method, Input: string(input.Bytes()), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
+		request := protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "memory-provider", Contract: string(contracts.Identity().Bytes()), Method: memorycontract.ListV3Method, Input: string(input.Bytes()), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}}
 		result := r.must(delivery.PluginsCall, request, "").(*protocol.CallPluginResponse)
 		if result.Failure != nil {
 			t.Fatalf("installed list refusal: %+v", result.Failure)
@@ -197,7 +197,7 @@ func TestMemoryComponentUsesInstalledPublicOperationsAndPreservesPrivateFacts(t 
 			t.Fatal(err)
 		}
 		canonical := readMemoryPage(r, query)
-		if len(page.Rows) != 1 || len(canonical.Data) != 1 || page.Rows[0].ID != canonical.Data[0].ID || page.Rows[0].Content != canonical.Data[0].Content || page.NextCursor != canonical.NextCursor {
+		if len(page.Rows) != 1 || len(canonical.Data) != 1 || page.Rows[0].Id != canonical.Data[0].Id || page.Rows[0].Content != canonical.Data[0].Content || page.NextCursor != canonical.NextCursor {
 			t.Fatal("installed Memory operation differs from the private owner's canonical projection")
 		}
 		if page.NextCursor == "" {
@@ -249,7 +249,7 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		if err != nil {
 			t.Fatal(err)
 		}
-		installedReply := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV1Method, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}, Input: string(input)}, "").(*protocol.CallPluginResponse)
+		installedReply := r.must(delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV2Method, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}, Input: string(input)}, "").(*protocol.CallPluginResponse)
 		var page testsupport.SchedulesPage
 		if err := json.Unmarshal([]byte(installedReply.Output), &page); err != nil {
 			t.Fatal(err)
@@ -257,10 +257,10 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		if len(page.Rows) != 1 || page.Rows[0].Title != "Inspect" || page.Rows[0].Instructions != "Inspect current work" || generatedInteger(t, page.Rows[0].Revision) != 1 {
 			t.Fatal("installed schedule query lost accepted owner data")
 		}
-		if seen[page.Rows[0].ID] {
+		if seen[page.Rows[0].Id] {
 			t.Fatal("installed schedule page repeated an ID")
 		}
-		seen[page.Rows[0].ID] = true
+		seen[page.Rows[0].Id] = true
 		if page.NextCursor == "" {
 			break
 		}
@@ -281,7 +281,7 @@ func TestScheduleComponentUsesOwnBackendAndWithdrawalPreservesPrivateData(t *tes
 		t.Fatalf("disabled schedule page: %v", refused.Failure)
 	}
 	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-schedules")
-	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV1Method, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}, Input: `{"Cursor":""}`}, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
+	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, protocol.CallPluginRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest, Contribution: "schedules-provider", Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV2Method, Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installed.ID}, Input: `{"cursor":""}`}, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})
 	if !errors.Is(result.Failure, protocol.ErrPluginNotFound) {
 		t.Fatalf("uninstalled Schedule owner=%v", result.Failure)
 	}
@@ -358,7 +358,6 @@ func TestUsageComponentUsesCanonicalSummaryAndUninstallPreservesUsage(t *testing
 		if actual.ObservedAt.Before(recorded.ObservedAt) || actual.Since == nil || !actual.Since.Equal(actual.ObservedAt.AddDate(0, 0, -*read.SinceDays)) {
 			t.Fatalf("%s returned an invalid observation range: %+v", phase, actual)
 		}
-		// Query timestamps belong to each observation rather than retained accounting evidence.
 		retained := *actual
 		retained.ObservedAt, retained.Since = recorded.ObservedAt, recorded.Since
 		if !reflect.DeepEqual(retained, *recorded) {

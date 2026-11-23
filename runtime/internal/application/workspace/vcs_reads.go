@@ -20,7 +20,6 @@ const (
 	maxWorkspaceDiffBytes = 64 << 20
 )
 
-// VCS owns root-scoped Git status and diff operations.
 type VCS struct {
 	scope *Scope
 	git   gitReader
@@ -36,7 +35,6 @@ func NewVCS(scope *Scope, git gitReader) (*VCS, error) {
 	return &VCS{scope: scope, git: git}, nil
 }
 
-// FileStatus is the application vocabulary for a working-tree change.
 type FileStatus string
 
 const (
@@ -47,7 +45,6 @@ const (
 	FileStatusUntracked FileStatus = "untracked"
 )
 
-// FileChange is one working-tree change.
 type FileChange struct {
 	Path         string
 	Status       FileStatus
@@ -57,7 +54,6 @@ type FileChange struct {
 	Removed      int
 }
 
-// DiffRowType is the application vocabulary for a parsed unified-diff row.
 type DiffRowType string
 
 const (
@@ -67,7 +63,6 @@ const (
 	DiffRowDeleted DiffRowType = "deleted"
 )
 
-// DiffRow is one structured diff row.
 type DiffRow struct {
 	Type      DiffRowType
 	Text      string
@@ -77,7 +72,6 @@ type DiffRow struct {
 	NoNewline bool
 }
 
-// FileDiff is one file's structured diff.
 type FileDiff struct {
 	Path         string
 	Status       FileStatus
@@ -91,12 +85,11 @@ type FileDiff struct {
 type DiffBaselineType string
 
 const (
-	diffBaselineHead      DiffBaselineType = "head"
-	diffBaselineMergeBase DiffBaselineType = "mergeBase"
-	diffBaselineEmptyTree DiffBaselineType = "emptyTree"
+	DiffBaselineHead      DiffBaselineType = "head"
+	DiffBaselineMergeBase DiffBaselineType = "mergeBase"
+	DiffBaselineEmptyTree DiffBaselineType = "emptyTree"
 )
 
-// DiffBaseline identifies the immutable Git object used by the comparison.
 type DiffBaseline struct {
 	Type   DiffBaselineType
 	Commit string
@@ -104,11 +97,11 @@ type DiffBaseline struct {
 
 func (b DiffBaseline) Validate() error {
 	switch b.Type {
-	case diffBaselineEmptyTree:
+	case DiffBaselineEmptyTree:
 		if b.Commit == "" {
 			return nil
 		}
-	case diffBaselineHead, diffBaselineMergeBase:
+	case DiffBaselineHead, DiffBaselineMergeBase:
 		if len(b.Commit) == hex.EncodedLen(sha1.Size) || len(b.Commit) == hex.EncodedLen(sha256.Size) {
 			if _, err := hex.DecodeString(b.Commit); err == nil {
 				return nil
@@ -130,14 +123,9 @@ type RawDiffResult struct {
 	Patch    string
 }
 
-// gitReader is the application-owned port for working-tree status and diff
-// reads. Its error contract uses this package's VCS sentinels. Results transfer
-// ownership to the caller, including the rows within structured diffs.
-// StructuredDiff returns only whole files, at most maxFiles of them holding at
-// most maxRows rows altogether, and reports Truncated when it stopped early.
 type gitReader interface {
 	Changes(ctx context.Context, root string, maxChanges int) ([]FileChange, error)
-	StructuredDiff(ctx context.Context, root, path string, base bool, format DiffFormat, maxFiles, maxRows, maxBytes int) (StructuredDiffResult, error)
+	StructuredDiff(ctx context.Context, root, path string, base bool, format DiffFormat, budget DiffBudget) (StructuredDiffResult, error)
 	RawDiff(ctx context.Context, root, path string, base bool, maxBytes int) (RawDiffResult, error)
 }
 
@@ -155,7 +143,6 @@ type DiffBudget struct {
 	Bytes int
 }
 
-// DiffInput selects a working-tree or merge-base diff and its read projection.
 type DiffInput struct {
 	CWD      string
 	Path     string
@@ -164,15 +151,10 @@ type DiffInput struct {
 	RowLimit DiffRowLimit
 }
 
-// DiffRowLimit is the caller's structured-diff row budget. Zero is the named
-// default; the constructor admits only a positive row count. Complete raw
-// reads reject an explicit budget instead of silently ignoring it.
 type DiffRowLimit struct{ rows int }
 
-// DefaultDiffRowLimit asks the structured read to use its owned maximum.
 func DefaultDiffRowLimit() DiffRowLimit { return DiffRowLimit{} }
 
-// NewDiffRowLimit constructs an explicit positive structured-diff row budget.
 func NewDiffRowLimit(rows int) (DiffRowLimit, error) {
 	if rows <= 0 {
 		return DiffRowLimit{}, ErrPageLimit
@@ -180,7 +162,6 @@ func NewDiffRowLimit(rows int) (DiffRowLimit, error) {
 	return DiffRowLimit{rows: rows}, nil
 }
 
-// Rows resolves this request against the Application-owned maximum.
 func (l DiffRowLimit) Rows() int {
 	if l.rows == 0 {
 		return maxWorkspaceDiffRows
@@ -188,7 +169,6 @@ func (l DiffRowLimit) Rows() int {
 	return min(l.rows, maxWorkspaceDiffRows)
 }
 
-// Diff is a structured or raw workspace diff.
 type Diff struct {
 	Format    DiffFormat
 	Baseline  DiffBaseline
@@ -198,7 +178,6 @@ type Diff struct {
 	Budget    DiffBudget
 }
 
-// Changes reads the root's VCS status.
 func (v *VCS) Changes(ctx context.Context, cwd string) ([]FileChange, error) {
 	root, err := v.scope.ResolveRoot(cwd)
 	if err != nil {
@@ -222,10 +201,6 @@ func (v *VCS) Changes(ctx context.Context, cwd string) ([]FileChange, error) {
 	return changes, nil
 }
 
-// Diff reads a workspace VCS diff, keeping path confinement in the application
-// use case. This use case chooses the file, row and byte limits; the reader
-// owns cutting at a whole-file boundary within them, because only it can stop
-// before materializing what does not fit.
 func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 	format, err := input.format()
 	if err != nil {
@@ -248,8 +223,6 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 	return v.structuredDiff(ctx, root, path, input, format)
 }
 
-// format is the requested diff format, rows by default; a raw patch takes no
-// row budget.
 func (d DiffInput) format() (DiffFormat, error) {
 	format := d.Format
 	if format == "" {
@@ -282,8 +255,8 @@ func (v *VCS) rawDiff(ctx context.Context, root, path string, base bool) (Diff, 
 }
 
 func (v *VCS) structuredDiff(ctx context.Context, root, path string, input DiffInput, format DiffFormat) (Diff, error) {
-	rowLimit := input.RowLimit.Rows()
-	result, err := v.git.StructuredDiff(ctx, root, path, input.Base, format, maxWorkspaceDiffFiles, rowLimit, maxWorkspaceDiffBytes)
+	budget := DiffBudget{Files: maxWorkspaceDiffFiles, Rows: input.RowLimit.Rows(), Bytes: maxWorkspaceDiffBytes}
+	result, err := v.git.StructuredDiff(ctx, root, path, input.Base, format, budget)
 	if err != nil {
 		return Diff{}, err
 	}
@@ -303,6 +276,6 @@ func (v *VCS) structuredDiff(ctx context.Context, root, path string, input DiffI
 	return Diff{
 		Format: format, Baseline: result.Baseline, Files: result.Files,
 		Patch: result.Patch, Truncated: result.Truncated,
-		Budget: DiffBudget{Files: maxWorkspaceDiffFiles, Rows: rowLimit, Bytes: maxWorkspaceDiffBytes},
+		Budget: budget,
 	}, nil
 }

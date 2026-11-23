@@ -8,7 +8,7 @@ import (
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
-	storage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/skill"
 
 	framesqlite "github.com/Tangerg/frame/sqlite"
@@ -27,22 +27,16 @@ func registerDiscovery(server *pluginmcp.Backend, db framesqlite.Database) error
 	return errors.Join(discover.RegisterServer(server, nil, func(_ context.Context, _ *sdk.ServerSession, c pluginmcp.Command[skilllearning.Candidates]) (skilllearning.Catalog, error) {
 		return selectSources(c.Input), nil
 	}),
-		storage.RegisterCommand(server, db, capture, nil, func(_ context.Context, _ *sdk.ServerSession, c skilllearning.Candidates) (storage.CommandPlan[skilllearning.Catalog], error) {
-			return storage.NewCommandPlan(selectSources(c), nil)
+		pluginstorage.RegisterCommand(server, db, capture, nil, func(_ context.Context, _ *sdk.ServerSession, c skilllearning.Candidates) (pluginstorage.CommandPlan[skilllearning.Catalog], error) {
+			return pluginstorage.NewCommandPlan(selectSources(c), nil)
 		}))
 }
-func sourceRank(scope skill.Scope) int {
-	switch scope {
-	case skill.Project:
-		return 3
-	case skill.User:
-		return 2
-	case skill.Installation:
-		return 1
-	default:
-		return 0
-	}
-}
+
+// A later scope overrides an earlier one: project over user over installation.
+var sourcePrecedence = []skill.Scope{skill.Installation, skill.User, skill.Project}
+
+func sourceRank(scope skill.Scope) int { return slices.Index(sourcePrecedence, scope) + 1 }
+
 func selectSources(input skilllearning.Candidates) skilllearning.Catalog {
 	type preferred struct {
 		rank   int

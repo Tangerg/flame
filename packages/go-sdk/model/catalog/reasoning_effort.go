@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"slices"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
-// ErrUnsupportedReasoningEffort reports an explicit intensity absent from the
-// exact known model's advertised vocabulary.
 var ErrUnsupportedReasoningEffort = errors.New("model: unsupported reasoning effort")
 
 func (a Admission) admitReasoning() error {
@@ -24,7 +22,7 @@ func (a Admission) admitReasoning() error {
 	}
 	return fmt.Errorf(
 		"%w: %w: model %q/%q does not advertise %q (available: %v)",
-		modelchoice.ErrUnsupported,
+		flamemodel.ErrUnsupported,
 		ErrUnsupportedReasoningEffort,
 		selection.Provider(),
 		selection.Model(),

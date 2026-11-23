@@ -48,9 +48,6 @@ type Invocation struct {
 	ReplayPolicy mutation.ReplayPolicy
 }
 
-// Execute drives one stable Run across its interrupt boundaries. Acceptance
-// lookups retain the original identity; only command redelivery is bounded by
-// the Runtime's advertised replay retention.
 func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	if invocation.Runtime == nil {
 		return errors.New("one-shot run requires a runtime")
@@ -105,8 +102,6 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	if validateStartErr := opened.ValidateStart(); validateStartErr != nil {
 		return fmt.Errorf("start run: %w", validateStartErr)
 	}
-	// Only the identity is known here; the selected model and every other Run
-	// fact arrive from Runtime with segment.started.
 	run := conversation.Run{ID: opened.RunID, SessionID: invocation.Start.SessionID, Lineage: conversation.RootRunLineage()}
 	if beginErr := invocation.Renderer.Begin(run, invocation.Start.Options); beginErr != nil {
 		return beginErr
@@ -207,6 +202,7 @@ func (e *executionDriver) run(ctx context.Context) error {
 					return err
 				}
 				continue
+			case conversation.Running:
 			}
 		}
 		cause := followed.err
@@ -259,47 +255,47 @@ func (e *executionDriver) reconnect(ctx context.Context, cause error) (bool, err
 				return e.installRecovery(ctx, recovered)
 			}
 			e.failures++
-			if RecoveryRequired(err) {
-				if err := mutation.AcknowledgementBackoff().Wait(ctx, e.failures); err != nil {
-					return false, err
-				}
-			} else {
-				delay, shouldRetry, policyErr := retry.ReconnectDelay(e.failures, err)
-				if policyErr != nil {
-					return false, policyErr
-				}
-				if !shouldRetry {
-					return false, err
-				}
-				if err := retry.Wait(ctx, delay); err != nil {
-					return false, err
-				}
+			if err := e.waitBeforeRecovery(ctx, err); err != nil {
+				return false, err
 			}
 			continue
 		}
 		e.failures++
-		delay, shouldRetry, policyErr := retry.ReconnectDelay(e.failures, cause)
-		if policyErr != nil {
-			return false, policyErr
-		}
-		if !shouldRetry {
-			return false, cause
-		}
-		if err := retry.Wait(ctx, delay); err != nil {
+		if err := e.waitBeforeReconnect(ctx, cause); err != nil {
 			return false, err
 		}
 		rebound, err := e.invocation.Runtime.SubscribeRun(ctx, conversation.SubscribeRun{
 			RunID: e.current.RunID, SegmentID: e.current.SegmentID, AfterEventID: e.conversation.Checkpoint(),
 		})
-		if err == nil {
-			if validateSubscriptionErr := rebound.ValidateSubscription(); validateSubscriptionErr != nil {
-				return false, fmt.Errorf("subscribe run: %w", validateSubscriptionErr)
-			}
-			e.current = rebound
-			return true, nil
+		if err != nil {
+			cause = err
+			continue
 		}
-		cause = err
+		if err := rebound.ValidateSubscription(); err != nil {
+			return false, fmt.Errorf("subscribe run: %w", err)
+		}
+		e.current = rebound
+		return true, nil
 	}
+}
+
+// A cause the reconnect policy does not retry is returned unchanged.
+func (e *executionDriver) waitBeforeReconnect(ctx context.Context, cause error) error {
+	delay, shouldRetry, err := retry.ReconnectDelay(e.failures, cause)
+	if err != nil {
+		return err
+	}
+	if !shouldRetry {
+		return cause
+	}
+	return retry.Wait(ctx, delay)
+}
+
+func (e *executionDriver) waitBeforeRecovery(ctx context.Context, cause error) error {
+	if RecoveryRequired(cause) {
+		return mutation.AcknowledgementBackoff().Wait(ctx, e.failures)
+	}
+	return e.waitBeforeReconnect(ctx, cause)
 }
 
 func (e *executionDriver) installRecovery(ctx context.Context, recovered Recovery) (bool, error) {
@@ -359,8 +355,6 @@ func consume(stream conversation.EventStream, projection *conversation.Conversat
 			break
 		}
 		if _, finished := event.Event.(conversation.SegmentFinished); finished && event.RunID == projection.RunID() {
-			// The root boundary follows every member's terminal projection.
-			// Conversation now owns the complete outcome or pending set.
 			return followed
 		}
 	}
@@ -392,7 +386,7 @@ func unattendedAnswers(interrupts []conversation.Interrupt, approveAll bool, ses
 		case conversation.Question:
 			return nil, &interruptRequiredError{title: item.Title, sessionID: sessionID}
 		default:
-			return nil, errors.New("runtime returned an unknown interrupt")
+			return nil, fmt.Errorf("%w: %T", conversation.ErrUnsupportedInterrupt, interrupt)
 		}
 	}
 	return answers, nil

@@ -43,7 +43,7 @@ const (
 
 func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	fixture := newLiveDeepSeekFixture(t, 3*time.Minute)
-	creation := fixtureScheduleCreateRequest(t, fixture, testsupport.SchedulesDraft{Enabled: true, Title: "Live DeepSeek Schedule E2E", Instructions: "Reply exactly " + liveScheduleMarker + ". Do not call tools or ask the user anything.", CWD: fixture.workspace, ModelSelection: &testsupport.SchedulesCreateV1InputModelSelection{}, Cron: "0 0 1 1 *", TimeZone: "UTC"})
+	creation := fixtureScheduleCreateRequest(t, fixture, testsupport.SchedulesDraft{Enabled: true, Title: "Live DeepSeek Schedule E2E", Instructions: "Reply exactly " + liveScheduleMarker + ". Do not call tools or ask the user anything.", Cwd: fixture.workspace, ModelSelection: &testsupport.SchedulesCreateV2InputModelSelection{}, Cron: "0 0 1 1 *", TimeZone: "UTC"})
 	created, err := fixtureScheduleCreate(fixture, creation)
 	if err != nil {
 		t.Fatal(err)
@@ -52,7 +52,7 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 		t.Fatalf("created Schedule = %+v, want pristine revision one", created)
 	}
 
-	request := fixtureScheduleRunRequest(t, fixture, created.ID)
+	request := fixtureScheduleRunRequest(t, fixture, created.Id)
 	options := protocol.PluginCallOptions{IdempotencyKey: "live-deepseek-manual-schedule"}
 	started, err := fixtureScheduleRun(fixture, request, options)
 	if err != nil {
@@ -69,7 +69,7 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	var completed *protocol.RunRef
 	for completed == nil {
 		current, getErr := fixture.runtime.GetRun(
-			fixture.ctx, protocol.GetRunRequest{RunID: started.RunID}, protocol.CallOptions{},
+			fixture.ctx, protocol.GetRunRequest{RunID: started.RunId}, protocol.CallOptions{},
 		)
 		if getErr != nil {
 			t.Fatal(getErr)
@@ -92,15 +92,15 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 			}
 		}
 	}
-	if completed.SessionID != started.SessionID {
-		t.Fatalf("Run Session = %q, want %q", completed.SessionID, started.SessionID)
+	if completed.SessionID != started.SessionId {
+		t.Fatalf("Run Session = %q, want %q", completed.SessionID, started.SessionId)
 	}
 	assertDeepSeekRun(t, completed)
-	if answer := fixture.finalAnswer(t, started.RunID); strings.TrimSpace(answer) != liveScheduleMarker {
+	if answer := fixture.finalAnswer(t, started.RunId); strings.TrimSpace(answer) != liveScheduleMarker {
 		t.Fatalf("manual Schedule answer = %q, want %q", answer, liveScheduleMarker)
 	}
 	if _, err := fixture.runtime.GetSession(
-		fixture.ctx, protocol.GetSessionRequest{SessionID: started.SessionID}, protocol.CallOptions{},
+		fixture.ctx, protocol.GetSessionRequest{SessionID: started.SessionId}, protocol.CallOptions{},
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply, err := fixture.runtime.CallPlugin(fixture.ctx, protocol.CallPluginRequest{InstallationID: target.ID, Digest: target.Selected.Digest, Contribution: contribution, Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV1Method, Input: string(input), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: target.ID}}, protocol.PluginCallOptions{})
+	reply, err := fixture.runtime.CallPlugin(fixture.ctx, protocol.CallPluginRequest{InstallationID: target.ID, Digest: target.Selected.Digest, Contribution: contribution, Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesListV2Method, Input: string(input), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: target.ID}}, protocol.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("installed schedules: %+v, %v", reply, err)
 	}
@@ -146,7 +146,7 @@ func TestLiveDeepSeekManualScheduleRun(t *testing.T) {
 		t.Fatalf("Schedules: %+v", schedules)
 	}
 	current := schedules.Rows[0]
-	if current.ID != created.ID || liveScheduleRevision(t, current.Revision) != liveScheduleRevision(t, created.Revision)+1 || current.LastRunAt == nil {
+	if current.Id != created.Id || liveScheduleRevision(t, current.Revision) != liveScheduleRevision(t, created.Revision)+1 || current.LastRunAt == nil {
 		t.Fatalf("Schedule after manual Run: %+v", current)
 	}
 	if current.NextRunAt == nil || !liveScheduleTime(t, string(*current.NextRunAt)).Equal(liveScheduleTime(t, string(*created.NextRunAt))) {
@@ -339,11 +339,6 @@ func TestLiveDeepSeekQuestionSurvivesRuntimeRestart(t *testing.T) {
 	assertDeepSeekRun(t, run)
 }
 
-// TestLiveDeepSeekRecoversKilledLongRunningTool crosses the process boundary
-// that an in-process Close cannot model: the helper is killed after its shell
-// command has actually started, leaving a durable running Run and Tool
-// invocation behind. A fresh Runtime must recover that tree as lost and make
-// the Session immediately usable again.
 func TestLiveDeepSeekRecoversKilledLongRunningTool(t *testing.T) {
 	if os.Getenv(liveDeepSeekEnvironment) != "1" {
 		t.Skipf("set %s=1 to run paid live DeepSeek E2E", liveDeepSeekEnvironment)
@@ -433,9 +428,6 @@ func TestLiveDeepSeekRecoversKilledLongRunningTool(t *testing.T) {
 	assertDeepSeekRun(t, followUp.run)
 }
 
-// TestLiveDeepSeekCrashHelper is started only by the parent recovery test. It
-// intentionally never performs cleanup: the parent terminates this process
-// once the exact shell command has created its marker.
 func TestLiveDeepSeekCrashHelper(t *testing.T) {
 	if os.Getenv(liveCrashHelperEnvironment) != "1" {
 		t.Skip("live crash helper is subprocess-only")
@@ -836,7 +828,7 @@ func fixtureScheduleRunRequest(t *testing.T, fixture *liveDeepSeekFixture, id st
 	if err != nil {
 		t.Fatal(err)
 	}
-	input, err := json.Marshal(testsupport.SchedulesRunNowV1InputWireItemInput{ID: id})
+	input, err := json.Marshal(testsupport.SchedulesRunNowV2InputWireItemInput{Id: id})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -846,7 +838,7 @@ func fixtureScheduleRunRequest(t *testing.T, fixture *liveDeepSeekFixture, id st
 		}
 		for _, installation := range installations.Data {
 			if installation.ID == provider.InstallationID {
-				return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesRunNowV1Method, Input: string(input), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}}
+				return protocol.CallPluginRequest{InstallationID: installation.ID, Digest: installation.Selected.Digest, Contribution: provider.Contribution, Contract: string(contracts.Identity().Bytes()), Method: testsupport.SchedulesRunNowV2Method, Input: string(input), Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: installation.ID}}
 			}
 		}
 	}
@@ -876,10 +868,11 @@ func fixtureScheduleCreateRequest(t *testing.T, fixture *liveDeepSeekFixture, dr
 	if err != nil {
 		t.Fatal(err)
 	}
-	request.Method, request.Input = testsupport.SchedulesCreateV1Method, string(input)
+	request.Method, request.Input = testsupport.SchedulesCreateV2Method, string(input)
 	return request
 }
-func fixtureScheduleCreate(fixture *liveDeepSeekFixture, request protocol.CallPluginRequest) (*testsupport.SchedulesCreateV1OutputDomainSnapshot, error) {
+
+func fixtureScheduleCreate(fixture *liveDeepSeekFixture, request protocol.CallPluginRequest) (*testsupport.SchedulesCreateV2OutputScheduleSnapshot, error) {
 	reply, err := fixture.runtime.CallPlugin(fixture.ctx, request, protocol.PluginCallOptions{IdempotencyKey: "live-deepseek-create-schedule"})
 	if err != nil {
 		return nil, err
@@ -887,7 +880,7 @@ func fixtureScheduleCreate(fixture *liveDeepSeekFixture, request protocol.CallPl
 	if reply.Failure != nil {
 		return nil, &framecall.Refusal{Code: reply.Failure.Code, Message: reply.Failure.Message}
 	}
-	var value testsupport.SchedulesCreateV1OutputDomainSnapshot
+	var value testsupport.SchedulesCreateV2OutputScheduleSnapshot
 	if err := json.Unmarshal([]byte(reply.Output), &value, json.RejectUnknownMembers(true)); err != nil {
 		return nil, err
 	}

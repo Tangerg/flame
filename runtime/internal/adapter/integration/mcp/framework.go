@@ -18,8 +18,6 @@ import (
 
 var errBindingNotRetained = fmt.Errorf("mcp: original binding is no longer retained: %w", framehost.ErrUnavailable)
 
-// CatalogPermission authorizes reconstruction only from Flame's original
-// unsettled business owners. A serialized graph cannot grant itself permission.
 type CatalogPermission struct {
 	admission framehost.Admission
 	bindings  func(context.Context) ([]plugin.Activation, error)
@@ -78,8 +76,6 @@ func (p *CatalogPermission) Read(ctx context.Context, recordID string, grant fra
 	return framehost.BindingSnapshot{}, errBindingNotRetained
 }
 
-// Installed projects Frame instances into Flame's MCP catalog. Observations
-// retain no execution lease; each use rechecks its original plan or business row.
 type Installed struct {
 	host       framehost.Host
 	source     *ProcessSource
@@ -271,8 +267,6 @@ func (s *Installed) projectUse(ctx context.Context, id mcpserver.ID, use frameho
 	if value.session == nil {
 		return nil, framehost.ErrUnavailable
 	}
-	// Frame prevents a replacement of an occupied unit until the original
-	// instance and all accepted Uses release. This map is only its MCP view.
 	if err := s.host.ValidateUse(work.Context(), use); err != nil {
 		return nil, err
 	}
@@ -282,17 +276,22 @@ func (s *Installed) projectUse(ctx context.Context, id mcpserver.ID, use frameho
 func (s *installedSession) close() error {
 	return errors.Join(s.release(context.Background()), s.owner.retire(s.instanceID))
 }
+
 func (s *installedSession) activation() (plugin.Activation, error) {
 	return plugins.ProjectActivation(s.use.Binding())
 }
+
 func (s *installedSession) release(ctx context.Context) error { _, err := s.use.Close(ctx); return err }
 func (s *installedSession) actor() operation.Actor            { return s.projection.actor }
+
 func (s *installedSession) observe() *installedObservation {
 	return &installedObservation{owner: s.owner, id: s.id, binding: s.use.Binding(), plan: s.plan, recordID: s.recordID, instanceID: s.instanceID, session: s.session, projection: s.projection}
 }
+
 func (s *installedObservation) activation() (plugin.Activation, error) {
 	return plugins.ProjectActivation(s.binding)
 }
+
 func (s *installedObservation) retire() error { return s.owner.retire(s.instanceID) }
 
 func (s *Installed) retire(instanceID string) error {

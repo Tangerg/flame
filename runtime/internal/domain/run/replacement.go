@@ -8,16 +8,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 )
 
-// Replacement binds a decided Run state to the exact aggregate it was derived
-// from. It advances only through the Run's own named transitions, so its
-// legality is settled at construction; persistence fences the expected state
-// and writes the decided one without recomputing the transition.
 type Replacement struct {
 	expected Run
 	state    Run
 }
 
-// Replace starts a Replacement of r that has not moved yet.
 func (r Run) Replace() Replacement {
 	return Replacement{expected: r, state: r}
 }
@@ -53,7 +48,6 @@ func (r Replacement) WithMessageMark(messageMark int) (Replacement, error) {
 	return r.advance(r.state.WithMessageMark(messageMark))
 }
 
-// Validate rejects a Replacement that was never started from a Run.
 func (r Replacement) Validate() error {
 	if r.expected.ID().IsZero() {
 		return errors.New("run: replacement carries no Run")
@@ -61,8 +55,6 @@ func (r Replacement) Validate() error {
 	return nil
 }
 
-// Expected returns the complete aggregate the replacement was derived from.
 func (r Replacement) Expected() Run { return r.expected }
 
-// State returns the complete already-decided replacement aggregate.
 func (r Replacement) State() Run { return r.state }

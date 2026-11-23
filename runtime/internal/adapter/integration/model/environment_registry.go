@@ -14,17 +14,11 @@ import (
 
 var errRegistryIdentityMismatch = errors.New("model: stored provider identity does not match lookup identity")
 
-// environmentRegistry is the sole owner of the stored-over-environment
-// precedence rule. Environment credentials are an immutable startup snapshot
-// and can never cross the durable registry boundary.
 type environmentRegistry struct {
 	inner   models.ProviderRegistry
 	envKeys map[string]provider.APIKey
 }
 
-// WithEnvironmentKeys validates and snapshots environment credentials before
-// exposing the effective registry. Invalid host input fails composition instead
-// of becoming a partially configured provider later in a Run.
 func WithEnvironmentKeys(inner models.ProviderRegistry, envKeys map[string]string) (models.ProviderRegistry, error) {
 	if lo.IsNil(inner) {
 		return nil, errors.New("model: durable provider registry is required")
@@ -43,7 +37,6 @@ func WithEnvironmentKeys(inner models.ProviderRegistry, envKeys map[string]strin
 	return &environmentRegistry{inner: inner, envKeys: snapshot}, nil
 }
 
-// overlay adds the process environment credential beneath a stored Provider.
 func (e *environmentRegistry) overlay(entry provider.Provider) provider.Provider {
 	if key, found := e.envKeys[entry.ID()]; found {
 		return entry.WithEnvironmentFallback(key)
@@ -58,8 +51,6 @@ func (e *environmentRegistry) addressed(entry provider.Provider, id string) (pro
 	return e.overlay(entry), nil
 }
 
-// environmentOnly is the Provider an environment credential implies when no
-// stored configuration names it.
 func (e *environmentRegistry) environmentOnly(id string) (provider.Provider, bool, error) {
 	key, found := e.envKeys[id]
 	if !found {
@@ -109,8 +100,6 @@ func (e *environmentRegistry) List(ctx context.Context) ([]provider.Provider, er
 	return out, nil
 }
 
-// Update delegates the persisted mutation before applying the environment
-// overlay to its result. The overlay is never passed into the inner registry.
 func (e *environmentRegistry) Update(ctx context.Context, id string, patch provider.Patch) (provider.Provider, error) {
 	entry, err := e.inner.Update(ctx, id, patch)
 	if err != nil {

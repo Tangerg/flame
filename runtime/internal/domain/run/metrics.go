@@ -7,14 +7,11 @@ import (
 	"slices"
 	"time"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// Metrics is the cumulative consumption of one Run across all of its Segments.
-// Usage is absent until a provider reports it. ActiveDuration excludes time
-// spent waiting for a person.
 type Metrics struct {
 	usage            *accounting.Usage
 	unreportedModels []string
@@ -22,7 +19,6 @@ type Metrics struct {
 	activeDuration   time.Duration
 }
 
-// NewMetrics constructs a validated cumulative metrics value.
 func NewMetrics(usage *accounting.Usage, steps int, activeDuration time.Duration) (Metrics, error) {
 	metrics := Metrics{steps: steps, activeDuration: activeDuration}
 	if usage != nil {
@@ -35,16 +31,13 @@ func NewMetrics(usage *accounting.Usage, steps int, activeDuration time.Duration
 	return metrics, nil
 }
 
-// Before the first usage report, keep the identities of dispatched calls
-// without manufacturing a reported zero. The first real report absorbs
-// those identities into its per-model cost breakdown.
 func RestoreUnreportedMetrics(models []string, steps int, duration time.Duration) (Metrics, error) {
 	m := Metrics{unreportedModels: slices.Clone(models), steps: steps, activeDuration: duration}
 	if len(models) == 0 || len(models) > steps || !slices.IsSorted(models) {
 		return Metrics{}, errors.New("run: invalid unreported model identities")
 	}
 	for i, model := range models {
-		if _, err := modelchoice.NewModelIdentity(model); err != nil {
+		if _, err := flamemodel.NewModelIdentity(model); err != nil {
 			return Metrics{}, err
 		}
 		if i > 0 && models[i-1] == model {
@@ -56,7 +49,9 @@ func RestoreUnreportedMetrics(models []string, steps int, duration time.Duration
 	}
 	return m, nil
 }
+
 func (m Metrics) UnreportedModels() []string { return slices.Clone(m.unreportedModels) }
+
 func (m Metrics) WithActiveDuration(duration time.Duration) (Metrics, error) {
 	m.activeDuration = duration
 	if err := m.Validate(); err != nil {
@@ -65,7 +60,6 @@ func (m Metrics) WithActiveDuration(duration time.Duration) (Metrics, error) {
 	return m, nil
 }
 
-// Validate reports whether the cumulative values are internally consistent.
 func (m Metrics) Validate() error {
 	if m.steps < 0 || m.activeDuration < 0 {
 		return errors.New("run: metrics must not be negative")
@@ -73,10 +67,6 @@ func (m Metrics) Validate() error {
 	return nil
 }
 
-// ValidateAdvanceFrom proves that metrics is a monotonic continuation of the
-// previous committed value.
-// retainsUnreportedModels proves every model earlier metrics could not price
-// is still attributed, and still unpriced once usage is reported.
 func (m Metrics) retainsUnreportedModels(previous []string) error {
 	if len(previous) == 0 {
 		return nil
@@ -142,8 +132,8 @@ func (m Metrics) Usage() (accounting.Usage, bool) {
 	return *m.usage, true
 }
 
-// Cost is exact zero for a Run that dispatched no model call and unpriced for
-// one whose dispatched calls reported no usage: absence is never a zero price.
+// Absence is never a zero price: a Run with no model call costs exactly zero,
+// while dispatched calls without usage are unpriced.
 func (m Metrics) Cost() (accounting.Cost, error) {
 	if m.usage == nil {
 		if m.steps == 0 {
@@ -154,19 +144,15 @@ func (m Metrics) Cost() (accounting.Cost, error) {
 	return m.usage.Total().Cost, nil
 }
 
-// Steps counts physically dispatched model calls, including unknown outcomes.
 func (m Metrics) Steps() int { return m.steps }
 
-// ActiveDuration returns the cumulative time spent executing.
 func (m Metrics) ActiveDuration() time.Duration { return m.activeDuration }
 
-// AccrueModelCall adds one not-yet-committed provider call. The journal
-// transition and Run replacement commit together; a restarted pass cannot add it twice.
 func (m Metrics) AccrueModelCall(model string, reported *chat.Usage, cost accounting.Cost) (Metrics, error) {
 	if err := m.Validate(); err != nil {
 		return Metrics{}, err
 	}
-	if _, err := modelchoice.NewModelIdentity(model); err != nil {
+	if _, err := flamemodel.NewModelIdentity(model); err != nil {
 		return Metrics{}, err
 	}
 	if m.steps == math.MaxInt {

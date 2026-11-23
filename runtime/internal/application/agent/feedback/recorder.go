@@ -20,7 +20,6 @@ type ledger interface {
 	Append(context.Context, annotation.Entry) error
 }
 
-// Command is one feedback request whose subject was parsed where it entered.
 type Command struct {
 	Subject annotation.Subject
 	Source  *extension.ContributionSource
@@ -48,6 +47,7 @@ func NewRecorder(source preparer, annotations ledger, now func() time.Time) (*Re
 	}
 	return &Recorder{source: source, ledger: annotations, now: now}, nil
 }
+
 func (r *Recorder) Record(ctx context.Context, in Command) error {
 	write, err := r.Prepare(ctx, in)
 	if err != nil {

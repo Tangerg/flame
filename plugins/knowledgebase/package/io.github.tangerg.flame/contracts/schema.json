@@ -90,7 +90,7 @@
       "additionalProperties": false,
       "properties": {
         "document": {
-          "$ref": "#/$defs/ReadV1OutputDomainHeader"
+          "$ref": "#/$defs/ReadV1OutputKnowledgeHeader"
         },
         "text": {
           "type": "string"
@@ -129,9 +129,9 @@
       "$ref": "#/$defs/ImportInput"
     },
     "ImportV1Output": {
-      "$ref": "#/$defs/ImportV1OutputDomainHeader"
+      "$ref": "#/$defs/ImportV1OutputKnowledgeHeader"
     },
-    "ImportV1OutputDomainHeader": {
+    "ImportV1OutputKnowledgeHeader": {
       "additionalProperties": false,
       "properties": {
         "chunks": {
@@ -182,11 +182,11 @@
     },
     "ListV1Output": {
       "items": {
-        "$ref": "#/$defs/ListV1OutputDomainHeader"
+        "$ref": "#/$defs/ListV1OutputKnowledgeHeader"
       },
       "type": "array"
     },
-    "ListV1OutputDomainHeader": {
+    "ListV1OutputKnowledgeHeader": {
       "additionalProperties": false,
       "properties": {
         "chunks": {
@@ -243,7 +243,7 @@
           "type": "integer"
         },
         "document": {
-          "$ref": "#/$defs/SearchV1OutputDomainHeader"
+          "$ref": "#/$defs/SearchV1OutputKnowledgeHeader"
         },
         "score": {
           "$ref": "#/$defs/Number"
@@ -291,7 +291,7 @@
     "ReadV1Output": {
       "$ref": "#/$defs/DocumentRead"
     },
-    "ReadV1OutputDomainHeader": {
+    "ReadV1OutputKnowledgeHeader": {
       "additionalProperties": false,
       "properties": {
         "chunks": {
@@ -372,9 +372,9 @@
       "type": "object"
     },
     "ReindexV1Output": {
-      "$ref": "#/$defs/ReindexV1OutputDomainHeader"
+      "$ref": "#/$defs/ReindexV1OutputKnowledgeHeader"
     },
-    "ReindexV1OutputDomainHeader": {
+    "ReindexV1OutputKnowledgeHeader": {
       "additionalProperties": false,
       "properties": {
         "chunks": {
@@ -463,7 +463,7 @@
       },
       "type": "array"
     },
-    "SearchV1OutputDomainHeader": {
+    "SearchV1OutputKnowledgeHeader": {
       "additionalProperties": false,
       "properties": {
         "chunks": {

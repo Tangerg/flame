@@ -11,7 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -22,65 +22,29 @@ import (
 )
 
 var (
-	// ErrRunAdmissionBusy is the retryable subset of run.ErrSessionBusy: the
-	// admission gate observed a current Session or working-tree owner. A caller
-	// may wait on WaitSessionStartable and retry. Other busy
-	// outcomes (for example a durable conflict) are not implicitly retryable.
-	ErrRunAdmissionBusy = fmt.Errorf("%w: run admission busy", run.ErrSessionBusy)
-	// errIsolationUnavailable reports that an isolated session cannot run because
-	// isolation is not configured or the host has no sandbox backend. The run is
-	// refused rather than run unconfined (fail-closed).
-	errIsolationUnavailable = errors.New("runs: sandbox isolation unavailable")
-	// ErrRunNotFound reports that a cancel or steer target is neither live nor
-	// parked.
-	ErrRunNotFound = errors.New("runs: run not found")
-	// ErrChildRunNotAllowed reports that a caller addressed a child Run without
-	// the child-run capability.
-	ErrChildRunNotAllowed = errors.New("runs: child run control is not allowed")
-	// ErrRunWaiting and ErrRunFinished report a run that exists but is not
-	// executing. They are separate from ErrRunNotFound because the caller's next
-	// move differs and is knowable: a waiting run needs its interrupts answered, a
-	// finished one has nothing left but its transcript.
-	ErrRunWaiting  = errors.New("runs: run is waiting for a response")
-	ErrRunFinished = errors.New("runs: run has finished")
-	// ErrStaleSegment reports that the run is executing a segment other than the
-	// one the caller addressed. The caller is acting on an execution that has been
-	// replaced — steering it would inject into work the user never saw, and
-	// subscribing to it would fold a stream the client believes is a different one.
-	ErrStaleSegment = errors.New("runs: run is executing a different segment")
-	// ErrInstallationChanged reports that a plugin installation the execution
-	// depends on changed while the execution was being assembled. Nothing was
-	// started or claimed; a new attempt assembles against the committed
-	// installation. The caller decides whether to retry.
-	ErrInstallationChanged = errors.New("runs: installation changed during run assembly")
-	// ErrInterruptNotOpen reports that a resume target has no open interrupt.
-	ErrInterruptNotOpen = errors.New("runs: interrupt not open")
-	// ErrInvalidInterruptResponse reports a response set that does not exactly
-	// cover the open interrupt schema.
+	ErrRunAdmissionBusy         = fmt.Errorf("%w: run admission busy", run.ErrSessionBusy)
+	errIsolationUnavailable     = errors.New("runs: sandbox isolation unavailable")
+	ErrRunNotFound              = errors.New("runs: run not found")
+	ErrChildRunNotAllowed       = errors.New("runs: child run control is not allowed")
+	ErrRunWaiting               = errors.New("runs: run is waiting for a response")
+	ErrRunFinished              = errors.New("runs: run has finished")
+	ErrStaleSegment             = errors.New("runs: run is executing a different segment")
+	ErrInstallationChanged      = errors.New("runs: installation changed during run assembly")
+	ErrInterruptNotOpen         = errors.New("runs: interrupt not open")
 	ErrInvalidInterruptResponse = errors.New("runs: invalid interrupt response")
-	// ErrExecutionClaimed and ErrExecutorNotLive are executor ownership outcomes
-	// used by Resume to distinguish a concurrent claim from rehydration.
-	ErrExecutionClaimed = errors.New("runs: parked execution already claimed")
-	ErrExecutorNotLive  = errors.New("runs: executor not live")
-	// A live child control can defer to the parked cancellation path once the
-	// owning Segment proves that its input boundary committed.
-	ErrExecutorParking = errors.New("runs: executor is publishing a waiting boundary")
-	// ErrExecutorStateLost reports that a parked execution has no compatible
-	// durable executor checkpoint and the application Run must be recovered lost.
-	ErrExecutorStateLost = errors.New("runs: executor state lost")
+	ErrExecutionClaimed         = errors.New("runs: parked execution already claimed")
+	ErrExecutorNotLive          = errors.New("runs: executor not live")
+	ErrExecutorParking          = errors.New("runs: executor is publishing a waiting boundary")
+	ErrExecutorStateLost        = errors.New("runs: executor state lost")
 
 	ErrInputRequired             = errors.New("runs: input required")
 	ErrUnsupportedMedia          = errors.New("runs: unsupported media")
 	ErrUnsupportedModelSelection = errors.New("runs: unsupported model selection")
 	ErrInvalidRunOptions         = errors.New("runs: invalid run options")
-	// ErrInvalidCancellationReason reports a cancellation note that cannot be
-	// represented by the Runtime product contract.
 	ErrInvalidCancellationReason = errors.New("runs: invalid cancellation reason")
 	ErrInvalidStart              = errors.New("runs: invalid start")
 )
 
-// InputBlockError identifies one invalid field in canonical user content while
-// preserving the application error category callers branch on.
 type InputBlockError struct {
 	Index  int
 	Field  transcript.ContentField
@@ -94,8 +58,6 @@ func (i *InputBlockError) Error() string {
 
 func (i *InputBlockError) Unwrap() error { return i.Cause }
 
-// invalidInputContent addresses a block that breaks its content shape. Missing
-// text means no input was given; every other break is unsupported media.
 func invalidInputContent(index int, err error) error {
 	invalid, ok := errors.AsType[*transcript.ContentError](err)
 	if !ok {
@@ -108,35 +70,22 @@ func invalidInputContent(index int, err error) error {
 	return &InputBlockError{Index: index, Field: invalid.Field, Detail: invalid.Detail, Cause: cause}
 }
 
-// SessionOpening captures the new Session and Run created by one keyed opening.
 type SessionOpening struct {
 	SessionID  identity.SessionID
 	Title, CWD string
 	RunID      identity.RunID
 }
 
-// StartCommand addresses an existing Session or an atomic new Session opening.
 type StartCommand struct {
-	SessionID      identity.SessionID
-	NewSession     *SessionOpening
-	Actor          *operation.Actor
-	ModelSelection modelchoice.Selection
-	Options        *corechat.Options
-	// Capabilities is the optional behavior enabled for this Run, already resolved
-	// by the caller against what this build can execute. The use case freezes it at
-	// admission rather than deriving or renegotiating it later.
-	Capabilities run.Capabilities
-	Input        []transcript.ContentBlock
-	// GoalIncarnationID stamps a Goal-mode autonomous run with the goal incarnation
-	// that launched it, so the Run's reported outcome only affects that Goal
-	// (see the goals application store's incarnation-and-revision CAS). Empty for ordinary runs.
-	GoalIncarnationID string
-	// Acceptance is the external command reference bound by the delivery boundary
-	// before admission. When present, the opening commits its acceptance record in
-	// the same transaction and a retry with the same key returns the original
-	// opening. nil for application-authored starts (Goal), which carry
-	// their own acceptance owner.
-	Acceptance *CommandIdentity
+	SessionID         identity.SessionID
+	NewSession        *SessionOpening
+	Actor             *operation.Actor
+	ModelSelection    flamemodel.Selection
+	Options           *corechat.Options
+	Capabilities      run.Capabilities
+	Input             []transcript.ContentBlock
+	GoalIncarnationID goalref.IncarnationID
+	Acceptance        *CommandIdentity
 }
 
 func (s StartCommand) clone() StartCommand {
@@ -159,9 +108,6 @@ func (s StartCommand) clone() StartCommand {
 	return s
 }
 
-// MaterializeUserMessage converts canonical content blocks into the
-// provider-neutral chat message consumed by the executor. Start and steer share
-// this one conversion so image validation and block ordering cannot drift.
 func MaterializeUserMessage(input []transcript.ContentBlock) (corechat.Message, error) {
 	parts := make([]corechat.Part, 0, len(input))
 	for index, block := range input {
@@ -188,18 +134,11 @@ func MaterializeUserMessage(input []transcript.ContentBlock) (corechat.Message, 
 	return message, nil
 }
 
-// ResumeCommand is the complete input for resuming a waiting Run.
 type ResumeCommand struct {
-	RunID      identity.RunID
-	Responses  []ResumeResponse
-	Acceptance *CommandIdentity
-	// Input is optional user content whose transcript Item commits with the
-	// continuation opening. Its model-visible Conversation projection follows the
-	// answered Tool result at the first safe model boundary.
-	Input []transcript.ContentBlock
-	// CallerCapabilities is what this request can handle. A resume does not
-	// renegotiate the Run's frozen capabilities; a caller missing any of them is
-	// refused rather than served reduced behavior.
+	RunID              identity.RunID
+	Responses          []ResumeResponse
+	Acceptance         *CommandIdentity
+	Input              []transcript.ContentBlock
 	CallerCapabilities run.Capabilities
 }
 
@@ -226,17 +165,11 @@ func (r ResumeCommand) clone() ResumeCommand {
 	return r
 }
 
-// CommittedUserInput is optional follow-up content whose transcript Item has
-// already committed with a continuation opening. The executor must make it
-// visible at the first root model boundary after the answered Tool result,
-// append it to Conversation once, and never project a second transcript Item.
 type CommittedUserInput struct {
 	ItemID  identity.ItemID
 	Content []transcript.ContentBlock
 }
 
-// ResumeResponse is the answer to one durable interrupt item.
-// Exactly one payload must match Kind.
 type ResumeResponse struct {
 	ItemID   identity.ItemID
 	Kind     run.InterruptType
@@ -255,9 +188,6 @@ type QuestionResponse struct {
 	Answers [][]string
 }
 
-// QuestionAnswerError identifies the exact ordered answer that failed the
-// durable question schema. Index is -1 when the answer collection itself is
-// malformed.
 type QuestionAnswerError struct {
 	ItemID identity.ItemID
 	Index  int
@@ -273,36 +203,20 @@ func (q *QuestionAnswerError) Error() string {
 
 func (q *QuestionAnswerError) Unwrap() error { return ErrInvalidInterruptResponse }
 
-// CancelCommand abandons a live or parked run.
 type CancelCommand struct {
-	RunID  identity.RunID
-	Reason string
-	// AllowChildRun is the caller's already-negotiated authority to address a
-	// child directly. It is false for the minimal capability set and while the
-	// runtime has no child-run producer.
+	RunID         identity.RunID
+	Reason        string
 	AllowChildRun bool
-	// Receipt is nil when the command carries no idempotency key.
-	Receipt CancellationReceipt
+	Receipt       CancellationReceipt
 }
 
-// CancellationReceipt is the idempotent acknowledgement of one keyed
-// CancelRun. Its result commits in the Run's own transaction, so the key can
-// never acknowledge an outcome the Run did not commit.
 type CancellationReceipt interface {
-	// Key is the reservation the Run's terminal transaction keeps while it
-	// refuses every other cancellation linked to that Run.
 	Key() string
-	// ReserveForRun links the key to a live Run before its owner can settle it.
 	ReserveForRun(ctx context.Context, runID identity.RunID) error
-	// Refuse completes the key with a refusal that changed no Run.
 	Refuse(ctx context.Context, reason error) error
-	// Stage runs commit in the transaction ctx carries, opening one when it
-	// carries none, and stores the result as the key's settlement there.
 	Stage(ctx context.Context, ref ExecutorRef, commit func(context.Context) (CancelResult, error)) error
 }
 
-// StageCancellation commits a cancellation and, for a keyed command, its
-// receipt in the same transaction.
 func StageCancellation(
 	ctx context.Context,
 	receipt CancellationReceipt,
@@ -321,8 +235,6 @@ func StageCancellation(
 	return result, err
 }
 
-// CancellationKey is the reservation a committed cancellation keeps; an
-// unkeyed command keeps none.
 func CancellationKey(receipt CancellationReceipt) string {
 	if receipt == nil {
 		return ""
@@ -333,16 +245,9 @@ func CancellationKey(receipt CancellationReceipt) string {
 const (
 	defaultCancelReason = "user canceled the run"
 
-	// MaxCancellationReasonCharacters bounds the product-facing cancellation
-	// note stored in Run history. It is expressed in Unicode code points so the
-	// application and every generated wire binding apply the same user-visible
-	// rule independent of the caller's encoding.
 	MaxCancellationReasonCharacters = 1024
 )
 
-// normalizeReason normalizes the optional product-facing note once at the
-// application boundary. Every cancellation topology then records and forwards
-// the same non-empty reason, independent of which caller initiated it.
 func (c CancelCommand) normalizeReason() (CancelCommand, error) {
 	c.Reason = strings.TrimSpace(c.Reason)
 	if c.Reason == "" {
@@ -358,22 +263,14 @@ func (c CancelCommand) normalizeReason() (CancelCommand, error) {
 	return c, nil
 }
 
-// CancelResult is the exact durable terminal snapshot committed by Cancel.
-// RootRun is present only when the addressed Run is a child, so callers do not
-// have to query or reconstruct state after the command boundary.
 type CancelResult struct {
 	Run     run.Run
 	RootRun *run.Run
 }
 
-// SteerCommand injects structured user content into an actively executing run.
 type SteerCommand struct {
-	Identity *CommandIdentity
-	RunID    identity.RunID
-	// ExpectedSegmentID is the segment the caller believes is executing. It is
-	// required: without it "inject into whatever is running now" would deliver the
-	// user's instruction to a continuation they never saw — the run they meant
-	// could have parked and been resumed between typing and sending.
+	Identity          *CommandIdentity
+	RunID             identity.RunID
 	ExpectedSegmentID identity.SegmentID
 	Input             []transcript.ContentBlock
 }
@@ -386,18 +283,10 @@ func (s SteerCommand) clone() SteerCommand {
 	return s
 }
 
-// SubscribeRequest attaches a caller to a run's live segment.
 type SubscribeRequest struct {
-	RunID identity.RunID
-	// SegmentID is the segment the caller believes is executing, required for the
-	// same reason a steer needs it: a reconnect that says only "this run" would
-	// attach to a stream that is not the one it was folding.
-	SegmentID identity.SegmentID
-	// Cursor is the opaque position the caller last folded, empty for a fresh
-	// attach. Empty is tail-only — history comes from the transcript reads.
-	Cursor string
-	// CallerCapabilities is what this request can handle. It must cover the Run's
-	// frozen capabilities before the subscriber attaches to the stream.
+	RunID              identity.RunID
+	SegmentID          identity.SegmentID
+	Cursor             string
 	CallerCapabilities run.Capabilities
 }
 
@@ -406,44 +295,29 @@ func (s SubscribeRequest) clone() SubscribeRequest {
 	return s
 }
 
-// Subscription is an attached caller's view of a live segment.
 type Subscription struct {
-	Record Record
-	// HeadCursor is the stream's position when the subscription attached, empty
-	// when nothing had been published yet. The caller stores it verbatim and hands
-	// it back on the next reconnect; it is not orderable and must not be parsed.
+	Record     Record
 	HeadCursor string
 	Events     iter.Seq[Event]
 }
 
-// Opening says how a start or resume command reached its Segment.
 type Opening uint8
 
 const (
-	// OpeningAdmitted is a fresh admission whose Events stream live.
 	OpeningAdmitted Opening = iota
-	// OpeningReopened returns an accepted command's original opening. Its Events
-	// are absent; the caller re-attaches the live stream by identity.
 	OpeningReopened
-	// OpeningRetired reopens a command whose original material is gone, so
-	// nothing attaches to imported material that reuses its Run identity.
 	OpeningRetired
 )
 
-// StartResult identifies the admitted Segment and exposes its event stream.
 type StartResult struct {
-	RunID     identity.RunID
-	SegmentID identity.SegmentID
-	SessionID identity.SessionID
-	// UserItemID is absent for an autonomous Goal or a response-only Resume.
+	RunID      identity.RunID
+	SegmentID  identity.SegmentID
+	SessionID  identity.SessionID
 	UserItemID identity.ItemID
 	Events     iter.Seq[Event]
 	Opening    Opening
 }
 
-// Validate checks the semantic Run-opening invariants before any Session is
-// created or mutated. The Coordinator performs selected-model input admission
-// separately because external capability policy belongs behind its own port.
 func (r RootExecutionStart) Validate() error {
 	if len(r.WorkingContext) == 0 {
 		return ErrInputRequired
@@ -465,13 +339,9 @@ func (r RootExecutionStart) Validate() error {
 	}).Validate(); err != nil {
 		return fmt.Errorf("runs: capabilities: %w", err)
 	}
-	if _, _, err := goalref.ParseOptionalIncarnation(r.GoalIncarnationID); err != nil {
-		return fmt.Errorf("runs: %w", err)
-	}
 	return validateOptions(r.Options)
 }
 
-// Clone returns an ownership-independent executor staging input.
 func (r RootExecutionStart) Clone() RootExecutionStart {
 	if r.Options != nil {
 		options := r.Options.Clone()
@@ -502,14 +372,6 @@ func validateOptions(options *corechat.Options) error {
 	return nil
 }
 
-// ActiveRunConflictError reports that a Session already holds a non-terminal root Run,
-// so a new one cannot be admitted. It carries the Run because the caller's next move
-// depends on which one it is and what it is doing — steer it, answer it, or cancel it
-// — and because the runtime will not choose for them: an implicit cancel would throw
-// away work to serve a request that might have been meant as a steer.
-//
-// It is a typed error rather than a sentinel: the identity IS the information, and a
-// sentinel would leave the caller to go find out what blocked it.
 type ActiveRunConflictError struct {
 	RunID identity.RunID
 	State run.State
@@ -519,6 +381,4 @@ func (a *ActiveRunConflictError) Error() string {
 	return fmt.Sprintf("runs: session already has a %s run %q", a.State, a.RunID)
 }
 
-// Reopened reports that the command was accepted earlier and carries no live
-// Events of its own.
 func (r StartResult) Reopened() bool { return r.Opening != OpeningAdmitted }

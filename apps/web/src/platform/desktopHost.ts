@@ -10,7 +10,7 @@ import {
   NotificationTargetSchema,
 } from "@/platform/desktop.generated";
 
-export interface DesktopHostBinding {
+interface DesktopHostBinding {
   call(method: string, ...args: unknown[]): Promise<unknown>;
   on(event: string, listener: (data: unknown) => void): Promise<() => void>;
 }

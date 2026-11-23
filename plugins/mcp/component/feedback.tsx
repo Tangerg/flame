@@ -24,7 +24,6 @@ export function ReadStatus<T>({
   t: Translate;
   retry(): void;
 }) {
-  // Projects DOM focus so a focused action keeps its identity across read phases.
   const [focused, setFocused] = useState(false);
   const failure = read?.phase === "failed" ? read : undefined;
   const pending = !read || read.phase === "loading";
@@ -66,7 +65,6 @@ export function CommandFeedback({
   onSettled?(): void;
 }) {
   const state = useSyncExternalStore(settings.subscribe, settings.getSnapshot);
-  // Projects DOM focus so a focused recovery keeps its identity through settlement.
   const [focused, setFocused] = useState(false);
   const command = state.commands.get(resource);
   const unknown = command?.phase === "unknown" ? command : undefined;

@@ -11,9 +11,6 @@ import (
 	"github.com/samber/lo"
 )
 
-// Pricing returns a per-round cost calculator backed by the model
-// catalog. It prices the round's provider and served model, so every Run
-// reports CostUSD against the model that actually answered.
 func Pricing(providerID string, models []catalog.Model) accounting.Pricing {
 	owned := slices.Clone(models)
 	for index, model := range owned {
@@ -35,10 +32,6 @@ func Pricing(providerID string, models []catalog.Model) accounting.Pricing {
 	}
 }
 
-// catalogCost prices usage by the catalog rate card, or returns the zero Cost
-// when the price cannot be known. A missing cache breakdown could cover any
-// unallocated input tokens; the catalog owns rates and band selection, so the
-// endpoints of its linear formula are compared instead of copying it.
 func catalogCost(pricing catalog.PricingSchedule, usage chat.Usage) (accounting.Cost, error) {
 	cost, err := admittedCost(pricing, usage)
 	if errors.Is(err, catalog.ErrUnknownPricing) {

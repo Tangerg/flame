@@ -13,9 +13,6 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// parkedRunTerminalization derives the atomic Application write-set that ends
-// one waiting Run tree. It combines a coherent Session snapshot with the exact
-// Pending hand-off, but owns neither persistence nor executor cleanup.
 type parkedRunTerminalization struct {
 	sessionID            identity.SessionID
 	finishedAt           time.Time
@@ -164,7 +161,6 @@ func (p parkedRunTerminalization) terminalItems() ([]transcript.Replacement, err
 	return projection.items, nil
 }
 
-// parkedInterrupt is one open interrupt and the Run whose member it binds.
 type parkedInterrupt struct {
 	open  runs.OpenInterrupt
 	runID identity.RunID

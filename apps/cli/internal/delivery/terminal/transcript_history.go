@@ -6,9 +6,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-// transcriptHistory owns the retained transcript projection for each run and
-// the lineage needed to label that run. Keeping both facts together prevents
-// navigation and presentation from advancing independent run views.
 type transcriptHistory struct {
 	entries  map[string][]transcriptEntryID
 	lineages map[string]conversation.RunLineage
@@ -74,9 +71,9 @@ func (h *transcriptHistory) Speaker(block conversation.Block) string {
 		case conversation.BlockUser:
 			return selfSpeaker
 		case conversation.BlockReasoning:
-			return "thinking"
+			return reasoningSpeaker
 		default:
-			return "flame"
+			return assistantSpeaker
 		}
 	}
 	identity := shortIdentity(block.RunID)

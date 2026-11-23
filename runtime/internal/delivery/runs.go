@@ -32,11 +32,6 @@ func registerRuns(registry *Registry) {
 		return service.ListModelInvocations(ctx, request)
 	})
 
-	// runs.start opens a run and owns its acceptance: the opening transaction
-	// records the key→run binding, so a same-key retry lands back on THAT run even
-	// across a crash. runs.resume commits the same binding with its answers. Both re-attach the
-	// retry to the opened stream — a cached ack alone would give the client a runId
-	// with no stream behind it.
 	registry.runStreamOwnerCommand(MethodMeta{
 		Name: RunsStart, GoName: "StartRun",
 		Errors: pluginProviderErrors(protocol.ErrSessionNotFound.
@@ -58,7 +53,7 @@ func registerRuns(registry *Registry) {
 	registry.runStreamOwnerCommand(MethodMeta{
 		Name: RunsResume, GoName: "ResumeRun",
 		Acknowledgement: []AcknowledgementMatch{
-			{Request: "runId", Result: "runId", Compare: AcknowledgementEcho},
+			{Request: runIDField, Result: runIDField, Compare: AcknowledgementEcho},
 			{Request: "input", Result: "userItemId", Compare: AcknowledgementPresence},
 		},
 		Errors: []string{protocol.ErrRunNotFound.
@@ -74,18 +69,11 @@ func registerRuns(registry *Registry) {
 		return service.ResumeRun(ctx, request)
 	})
 
-	// runs.subscribe opens no run, so a retry is just another subscription.
-	//
-	// Its refusals are the vocabulary of addressing one live segment: the run is a
-	// child, is waiting, has finished, has moved on, or the caller's replay cursor
-	// cannot be served. Each is declared because each sends the client somewhere
-	// different — rootRunId, interrupt.list, items.list, runs.get, or a cursorless
-	// reattach — and one collapsed run_not_found would send it nowhere.
 	registry.runSubscription(MethodMeta{
 		Name: runsSubscribe, GoName: "SubscribeRun",
 		Acknowledgement: []AcknowledgementMatch{
-			{Request: "runId", Result: "runId", Compare: AcknowledgementEcho},
-			{Request: "segmentId", Result: "segmentId", Compare: AcknowledgementEcho},
+			{Request: runIDField, Result: runIDField, Compare: AcknowledgementEcho},
+			{Request: segmentIDField, Result: segmentIDField, Compare: AcknowledgementEcho},
 			{Request: "snapshot", Result: "snapshot", Compare: AcknowledgementPresence},
 		},
 		Errors: []string{protocol.ErrRunNotFound.
@@ -122,11 +110,6 @@ func registerRuns(registry *Registry) {
 		replayCancellation(context.Context, protocol.CancelRunRequest, keyedCall) protocol.OperationResult
 	}).replayCancellation)
 
-	// A steer addresses the same thing a subscribe does — one live segment — so it
-	// refuses with the same vocabulary. There is no best-effort injection: a run
-	// that has parked, finished or moved to another segment says so, and the client
-	// asks the user again rather than delivering an instruction to work they never
-	// saw.
 	registry.command(MethodMeta{
 		Name: RunsSteer, GoName: "SteerRun",
 		Idempotency: IdempotencyOwnerRun,
@@ -144,8 +127,6 @@ func registerRuns(registry *Registry) {
 		return service.SteerRun(ctx, request)
 	})
 
-	// runs.get answers "what is this run" for a runId a client already holds — from
-	// an event, a page, or a link — without it having to know the session first.
 	registry.query(MethodMeta{
 		Name: RunsGet, GoName: "GetRun",
 		Errors: []string{protocol.ErrRunNotFound.
@@ -166,17 +147,9 @@ func registerRuns(registry *Registry) {
 		return service.GetRunAcceptance(ctx, request)
 	})
 
-	// Only a request that asks for descendants needs features.childRuns; the
-	// default page of root runs is always available. The condition treats
-	// `includeDescendants: false` as "not asking", so an explicit false and an
-	// absent field behave alike — while an explicit true is refused rather than
-	// read as false, which would hand back a page that looks complete and is not.
 	registry.query(MethodMeta{
 		Name: RunsList, GoName: "ListRuns",
-		CapabilityRules: []CapabilityRule{{
-			When:     []FieldCondition{{Field: "includeDescendants", Operator: OperatorPresent}},
-			Requires: []string{protocol.FeatureChildRuns},
-		}},
+		CapabilityRules: descendantsRequireChildRuns(includeDescendantsParameter),
 	}, func(service interface {
 		ListRuns(context.Context, protocol.ListRunsRequest) (*protocol.Page[protocol.RunRef], error)
 	}, ctx context.Context, request protocol.ListRunsRequest,

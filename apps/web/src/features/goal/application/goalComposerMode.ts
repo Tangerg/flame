@@ -1,6 +1,6 @@
 type GoalComposerModePhase = "inactive" | "armed" | "confirming" | "starting";
 
-export interface GoalComposerModeSnapshot {
+interface GoalComposerModeSnapshot {
   readonly sessionId: string | null;
   readonly phase: GoalComposerModePhase;
   readonly replacedObjective: string | null;

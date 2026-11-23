@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -143,7 +144,7 @@ func TestModelAttemptWithoutEndpointRecoversAfterProcessExit(t *testing.T) {
 
 func readAbandonedModelAttempt(t *testing.T, ctx context.Context, home, sessionID string) (string, runs.ModelInvocationCommit) {
 	t.Helper()
-	stores, err := persistence.Open(ctx, persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(ctx, persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -6,11 +6,11 @@ import {
   type MethodInputs,
   type MethodOutputs,
 } from "../../../../plugins/memory/package/io.github.tangerg.flame/contracts/methods.generated";
-type MemoryScope = MethodInputs["flame.memory/list.v2"]["Scope"];
-type MemoryRecord = MethodOutputs["flame.memory/list.v2"]["Rows"][number];
-type MemoryOrigin = MemoryRecord["Origin"];
-type MemoryStatus = Exclude<MemoryRecord["Status"], "rejected">;
-type ReviewDecision = MethodInputs["flame.memory/review.v2"]["Decision"];
+type MemoryScope = MethodInputs["flame.memory/list.v3"]["scope"];
+type MemoryRecord = MethodOutputs["flame.memory/list.v3"]["rows"][number];
+type MemoryOrigin = MemoryRecord["origin"];
+type MemoryStatus = Exclude<MemoryRecord["status"], "rejected">;
+type ReviewDecision = MethodInputs["flame.memory/review.v3"]["decision"];
 
 interface MemoryAddInput {
   scope: MemoryScope;
@@ -32,7 +32,7 @@ interface MemoryItem {
   updatedAt: string;
 }
 
-type MemoryPage = MethodOutputs["flame.memory/list.v2"];
+type MemoryPage = MethodOutputs["flame.memory/list.v3"];
 
 export async function readInstalledMemory(
   client: FlameClient,
@@ -43,7 +43,7 @@ export async function readInstalledMemory(
   const binding = {
     ...(await selectMemoryBinding(client, signal)),
     contract: CAPABILITY_JSON,
-    method: "flame.memory/list.v2",
+    method: "flame.memory/list.v3",
   };
   const items: MemoryItem[] = [];
   const seen = new Set<string>();
@@ -55,7 +55,7 @@ export async function readInstalledMemory(
     const reply = await client.plugins.call(
       {
         ...binding,
-        input: stringifyJSON({ Scope: scope, CWD: cwd, Cursor: cursor }),
+        input: stringifyJSON({ scope: scope, cwd: cwd, cursor: cursor }),
       },
       { signal },
     );
@@ -63,54 +63,54 @@ export async function readInstalledMemory(
     const page = parseJSON(reply.output!) as MemoryPage;
     if (
       !page ||
-      (typeof page.Capacity !== "bigint" &&
-        (typeof page.Capacity !== "number" || !Number.isSafeInteger(page.Capacity)))
+      (typeof page.capacity !== "bigint" &&
+        (typeof page.capacity !== "number" || !Number.isSafeInteger(page.capacity)))
     )
       throw new Error("memory page has an invalid integer capacity");
-    const pageCapacity = BigInt(page.Capacity);
+    const pageCapacity = BigInt(page.capacity);
     if (
       !page ||
-      !Array.isArray(page.Rows) ||
-      typeof page.NextCursor !== "string" ||
+      !Array.isArray(page.rows) ||
+      typeof page.nextCursor !== "string" ||
       pageCapacity <= 0n ||
       (capacity !== undefined && capacity !== pageCapacity) ||
       BigInt(pageCount) >= pageCapacity ||
-      BigInt(items.length + page.Rows.length) > pageCapacity ||
-      (!page.Rows.length && page.NextCursor)
+      BigInt(items.length + page.rows.length) > pageCapacity ||
+      (!page.rows.length && page.nextCursor)
     )
       throw new Error("memory page exceeds its declared traversal bounds");
     capacity = pageCapacity;
-    for (const row of page.Rows) {
-      const revision = projectNumber(row.Revision);
+    for (const row of page.rows) {
+      const revision = projectNumber(row.revision);
       if (
-        row.Scope !== scope ||
-        seen.has(row.ID) ||
-        !row.ID ||
+        row.scope !== scope ||
+        seen.has(row.id) ||
+        !row.id ||
         !Number.isSafeInteger(revision) ||
         revision < 1 ||
-        !["active", "pending"].includes(row.Status) ||
-        !["auto", "user"].includes(row.Origin)
+        !["active", "pending"].includes(row.status) ||
+        !["auto", "user"].includes(row.origin)
       )
         throw new Error("memory page has an invalid or repeated item");
-      seen.add(row.ID);
+      seen.add(row.id);
       items.push({
-        id: row.ID,
+        id: row.id,
         revision,
         scope,
-        content: row.Content,
-        origin: row.Origin as MemoryItem["origin"],
-        status: row.Status as MemoryItem["status"],
-        pinned: row.Pinned,
-        sessionId: row.SessionID,
-        day: row.Day,
-        createdAt: row.CreatedAt,
-        updatedAt: row.UpdatedAt,
+        content: row.content,
+        origin: row.origin as MemoryItem["origin"],
+        status: row.status as MemoryItem["status"],
+        pinned: row.pinned,
+        sessionId: row.sessionId,
+        day: row.day,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
       });
     }
-    if (!page.NextCursor) return items;
-    if (cursors.has(page.NextCursor)) throw new Error("memory page repeats a cursor");
-    cursors.add(page.NextCursor);
-    cursor = page.NextCursor;
+    if (!page.nextCursor) return items;
+    if (cursors.has(page.nextCursor)) throw new Error("memory page repeats a cursor");
+    cursors.add(page.nextCursor);
+    cursor = page.nextCursor;
   }
 }
 
@@ -139,16 +139,16 @@ export async function deleteInstalledMemory(
   expectedRevision: number,
   signal?: AbortSignal,
 ): Promise<void> {
-  const input: MethodInputs["flame.memory/delete.v2"] = {
-    ID: id,
-    ExpectedRevision: expectedRevision,
+  const input: MethodInputs["flame.memory/delete.v3"] = {
+    id,
+    expectedRevision,
   };
   return client.plugins
     .command(
       `memory-delete:${id}`,
       {
         contract: CAPABILITY_JSON,
-        method: "flame.memory/delete.v2",
+        method: "flame.memory/delete.v3",
         input: stringifyJSON(input),
       },
       () => selectMemoryBinding(client, signal),
@@ -165,17 +165,17 @@ export function reviewInstalledMemory(
   decision: ReviewDecision,
   signal?: AbortSignal,
 ): Promise<void> {
-  const input: MethodInputs["flame.memory/review.v2"] = {
-    Decision: decision,
-    ID: id,
-    ExpectedRevision: expectedRevision,
+  const input: MethodInputs["flame.memory/review.v3"] = {
+    decision,
+    id,
+    expectedRevision,
   };
   return client.plugins
     .command(
       `memory-review:${id}`,
       {
         contract: CAPABILITY_JSON,
-        method: "flame.memory/review.v2",
+        method: "flame.memory/review.v3",
         input: stringifyJSON(input),
       },
       () => selectMemoryBinding(client, signal),
@@ -185,7 +185,7 @@ export function reviewInstalledMemory(
     .then(() => undefined);
 }
 
-function decodeMemoryAcknowledgement(output: unknown): MethodOutputs["flame.memory/delete.v2"] {
+function decodeMemoryAcknowledgement(output: unknown): MethodOutputs["flame.memory/delete.v3"] {
   if (
     !output ||
     typeof output !== "object" ||
@@ -193,33 +193,33 @@ function decodeMemoryAcknowledgement(output: unknown): MethodOutputs["flame.memo
     Object.keys(output).length !== 0
   )
     throw new Error("memory command acknowledgement is invalid");
-  return output as MethodOutputs["flame.memory/delete.v2"];
+  return output as MethodOutputs["flame.memory/delete.v3"];
 }
 
 export function updateInstalledMemory(
   client: FlameClient,
-  input: MethodInputs["flame.memory/update.v2"],
+  input: MethodInputs["flame.memory/update.v3"],
   signal?: AbortSignal,
 ): Promise<MemoryItem> {
-  const patch: MethodInputs["flame.memory/update.v2"] = {
-    ...(input.Content === undefined ? {} : { Content: input.Content }),
-    ID: input.ID,
-    ExpectedRevision: input.ExpectedRevision,
-    ...(input.Pinned === undefined ? {} : { Pinned: input.Pinned }),
+  const patch: MethodInputs["flame.memory/update.v3"] = {
+    ...(input.content === undefined ? {} : { content: input.content }),
+    id: input.id,
+    expectedRevision: input.expectedRevision,
+    ...(input.pinned === undefined ? {} : { pinned: input.pinned }),
   };
-  if (patch.Content === undefined && patch.Pinned === undefined)
+  if (patch.content === undefined && patch.pinned === undefined)
     return Promise.reject(new Error("memory update requires a change"));
   return client.plugins.command(
-    `memory-update:${patch.ID}`,
+    `memory-update:${patch.id}`,
     {
       contract: CAPABILITY_JSON,
-      method: "flame.memory/update.v2",
+      method: "flame.memory/update.v3",
       input: stringifyJSON(patch),
     },
     () => selectMemoryBinding(client, signal),
     (output) => {
       const item = decodeMemoryItem(output);
-      if (item.id !== patch.ID)
+      if (item.id !== patch.id)
         throw new Error("memory update acknowledgement changed item identity");
       return item;
     },
@@ -228,38 +228,38 @@ export function updateInstalledMemory(
 }
 
 function decodeMemoryItem(output: unknown): MemoryItem {
-  const row = output as MethodOutputs["flame.memory/update.v2"];
-  const revision = projectNumber(row?.Revision);
+  const row = output as MethodOutputs["flame.memory/update.v3"];
+  const revision = projectNumber(row?.revision);
   if (
     !row ||
-    !row.ID ||
+    !row.id ||
     !Number.isSafeInteger(revision) ||
     revision < 1 ||
-    typeof row.Content !== "string" ||
-    !row.Content.trim() ||
-    typeof row.Pinned !== "boolean" ||
-    typeof row.SessionID !== "string" ||
-    typeof row.Day !== "string" ||
-    !["project", "user"].includes(row.Scope) ||
-    !["active", "pending"].includes(row.Status) ||
-    !["auto", "user"].includes(row.Origin) ||
-    !Number.isFinite(Date.parse(row.CreatedAt)) ||
-    !Number.isFinite(Date.parse(row.UpdatedAt)) ||
-    Date.parse(row.UpdatedAt) < Date.parse(row.CreatedAt)
+    typeof row.content !== "string" ||
+    !row.content.trim() ||
+    typeof row.pinned !== "boolean" ||
+    typeof row.sessionId !== "string" ||
+    typeof row.day !== "string" ||
+    !["project", "user"].includes(row.scope) ||
+    !["active", "pending"].includes(row.status) ||
+    !["auto", "user"].includes(row.origin) ||
+    !Number.isFinite(Date.parse(row.createdAt)) ||
+    !Number.isFinite(Date.parse(row.updatedAt)) ||
+    Date.parse(row.updatedAt) < Date.parse(row.createdAt)
   )
     throw new Error("memory item acknowledgement is invalid");
   return {
-    id: row.ID,
+    id: row.id,
     revision,
-    scope: row.Scope as MemoryScope,
-    content: row.Content,
-    origin: row.Origin as MemoryOrigin,
-    status: row.Status as MemoryStatus,
-    pinned: row.Pinned,
-    sessionId: row.SessionID,
-    day: row.Day,
-    createdAt: row.CreatedAt,
-    updatedAt: row.UpdatedAt,
+    scope: row.scope as MemoryScope,
+    content: row.content,
+    origin: row.origin as MemoryOrigin,
+    status: row.status as MemoryStatus,
+    pinned: row.pinned,
+    sessionId: row.sessionId,
+    day: row.day,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }
 
@@ -270,25 +270,25 @@ export function addInstalledMemory(
 ): Promise<MemoryItem> {
   if (input.scope === "project" && !input.cwd)
     return Promise.reject(new Error("project memory addition requires a captured workspace"));
-  const request: MethodInputs["flame.memory/add.v2"] = {
-    CWD: input.scope === "project" ? input.cwd! : "",
-    Content: input.content,
-    Scope: input.scope,
+  const request: MethodInputs["flame.memory/add.v3"] = {
+    cwd: input.scope === "project" ? input.cwd! : "",
+    content: input.content,
+    scope: input.scope,
   };
   return client.plugins.command(
     "memory-add",
     {
       contract: CAPABILITY_JSON,
-      method: "flame.memory/add.v2",
+      method: "flame.memory/add.v3",
       input: stringifyJSON(request),
     },
     () => selectMemoryBinding(client, signal),
     (output) => {
-      const result = output as MethodOutputs["flame.memory/add.v2"];
-      if (!result || typeof result.Changed !== "boolean")
+      const result = output as MethodOutputs["flame.memory/add.v3"];
+      if (!result || typeof result.changed !== "boolean")
         throw new Error("memory addition acknowledgement is invalid");
-      const item = decodeMemoryItem(result.Item);
-      if (item.scope !== request.Scope)
+      const item = decodeMemoryItem(result.item);
+      if (item.scope !== request.scope)
         throw new Error("memory addition acknowledgement changed target scope");
       return item;
     },

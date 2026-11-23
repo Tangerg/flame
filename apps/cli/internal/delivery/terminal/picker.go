@@ -15,8 +15,8 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
-// picker is the common interrupt behind sessions, models, commands and other
-// searchable catalogs. Domain-specific dialogs supply only labels and actions.
+const pickerDetailGap = 3
+
 type picker[T any] struct {
 	theme  kit.Theme
 	glyphs kit.Glyphs
@@ -160,7 +160,6 @@ func (p *picker[T]) handleListMouse(mouse input.Mouse) bool {
 	}
 }
 
-// releaseListPress picks the item a left press began and ended on.
 func (p *picker[T]) releaseListPress(mouse input.Mouse) bool {
 	if _, held := p.press.pressed(); mouse.Button != input.ButtonLeft || !held {
 		p.press.cancel()
@@ -201,8 +200,8 @@ func (p *picker[T]) row(view grid.View, _ int, item T, _ fuzzy.Match, selected b
 	detailWidth := text.Width(detail)
 	prefixWidth := text.Width(prefix)
 	labelWidth := max(width-prefixWidth, 1)
-	if detail != "" && detailWidth+prefixWidth+3 < width {
-		labelWidth = width - detailWidth - prefixWidth - 3
+	if detail != "" && detailWidth+prefixWidth+pickerDetailGap < width {
+		labelWidth = width - detailWidth - prefixWidth - pickerDetailGap
 		view.Text(width-detailWidth, 0, detail, base.Merge(p.theme.Subtle))
 	}
 	shown := text.Of(label, base).Truncate(max(labelWidth, 1), p.glyphs.Ellipsis)

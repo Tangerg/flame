@@ -53,7 +53,7 @@ interface StoryDescription<V extends LabVariant> {
   readonly variants: readonly [V, ...V[]];
 }
 
-export interface ComponentStory extends StoryDescription<LabVariant> {
+interface ComponentStory extends StoryDescription<LabVariant> {
   readonly kind: "component";
   readonly load: () => Promise<{ default: ComponentType<LabExampleProps> }>;
 }
@@ -62,7 +62,7 @@ export interface FixtureVariant extends LabVariant {
   readonly target: LabFixtureTarget;
 }
 
-export interface FixtureStory extends StoryDescription<FixtureVariant> {
+interface FixtureStory extends StoryDescription<FixtureVariant> {
   readonly kind: "fixture";
 }
 

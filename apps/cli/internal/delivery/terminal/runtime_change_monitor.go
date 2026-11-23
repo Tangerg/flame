@@ -17,20 +17,13 @@ const workspaceWatchID = "flame-active-workspace"
 
 func (a *app) followRuntimeChanges() {
 	a.operations.Cancel(runtimeChangesOperation)
-	// The count describes the workspace the cancelled monitor watched; the new
-	// workspace has no count until its own monitor reads one, if it ever does.
 	a.header.SetWorkspaceChanges(0)
 	workspacePath := a.lifecycle.state.current.Workspace.Path
 	var repository WorkspaceChanges
 	if a.runtimeSupports(protocol.FeatureGit) {
 		repository = a.workspaces
 	}
-	if repository == nil && a.changes == nil {
-		return
-	}
 	a.operations.Go(runtimeChangesOperation, func(ctx context.Context, lease operationLease) {
-		// Every delivery lands only while this monitor still watches the
-		// session's current workspace.
 		deliver := func(apply func()) error {
 			return a.tasks.deliver(ctx, func() {
 				if a.operations.Current(lease) && !a.closed && a.lifecycle.state.current.Workspace.Path == workspacePath {
@@ -78,38 +71,32 @@ type runtimeChangeMonitor struct {
 	subscriptionLimits changefeed.SubscriptionLimits
 }
 
-// observedRuntimeTopics lists the resource topics this terminal presents, in
-// subscription order. MCP changes also move the approval projection.
 func (a *app) observedRuntimeTopics() []protocol.RuntimeTopic {
 	topics := []protocol.RuntimeTopic{protocol.TopicSessionsChanged, protocol.TopicRunsChanged}
 	if a.runtimeSupports(protocol.FeaturePlan) {
 		topics = append(topics, protocol.TopicPlanChanged)
 	}
 	topics = append(topics, protocol.TopicInterruptsChanged)
-	if a.screens.goals != nil && a.runtimeSupports(protocol.FeatureGoals) {
+	if a.runtimeSupports(protocol.FeatureGoals) {
 		topics = append(topics, protocol.TopicGoalsChanged)
 	}
-	if a.screens.skills != nil && a.runtimeSupports(protocol.FeatureSkills) {
+	if a.runtimeSupports(protocol.FeatureSkills) {
 		topics = append(topics, protocol.TopicSkillsChanged)
 	}
 	topics = append(topics, protocol.TopicMCPChanged)
-	if a.screens.plugins != nil && a.runtimeSupports(protocol.FeaturePlugins) {
+	if a.runtimeSupports(protocol.FeaturePlugins) {
 		topics = append(topics, protocol.TopicPluginsChanged, protocol.TopicPluginDataChanged)
 	}
-	if a.screens.hooks != nil {
-		topics = append(topics, protocol.TopicHooksChanged)
-	}
-	return append(topics, protocol.TopicModelsChanged, protocol.TopicApprovalsChanged)
+	return append(topics, protocol.TopicHooksChanged, protocol.TopicModelsChanged, protocol.TopicApprovalsChanged)
 }
 
 func (r runtimeChangeMonitor) observesWorkspace() bool {
-	// Hooks are authored in the workspace, so observing them watches its files.
 	return r.watchFiles && (r.repository != nil || slices.Contains(r.topics, protocol.TopicHooksChanged))
 }
 
 func (r runtimeChangeMonitor) run(ctx context.Context) error {
 	topics := r.supportedTopics()
-	if r.source == nil || len(topics) == 0 {
+	if len(topics) == 0 {
 		return r.runWithoutWatch(ctx)
 	}
 	requested := changefeed.Subscription{Topics: topics}
@@ -213,17 +200,15 @@ func (r runtimeChangeMonitor) openSubscriptionAttempt(
 	}
 	attempt.stream = stream
 
-	// Register before every authoritative cold refresh. Events racing the reads
-	// remain buffered and trigger a later replacement, closing read-then-subscribe
-	// gaps. File query and watch support are independent, so the owner also installs
-	// the file projection when files.changed itself was not negotiated.
+	// Register before every authoritative cold refresh so events racing the reads
+	// trigger a later replacement instead of falling into a read-then-subscribe gap.
 	if ownsFileProjection {
 		if err := r.refreshFiles(attemptContext); err != nil {
 			cancelAttempt()
 			return runtimeChangeAttempt{}, err
 		}
 	}
-	if err := r.resync(subscription.Topics); err != nil {
+	if err := r.applyResync(subscription.Topics); err != nil {
 		cancelAttempt()
 		return runtimeChangeAttempt{}, err
 	}
@@ -270,7 +255,7 @@ func (r runtimeChangeMonitor) consumeChangeEvent(
 				return false, err
 			}
 		}
-		if err := r.resync(topics); err != nil {
+		if err := r.applyResync(topics); err != nil {
 			return false, err
 		}
 		// The reads started after this frame was observed, so they include both
@@ -284,7 +269,7 @@ func (r runtimeChangeMonitor) consumeChangeEvent(
 		}
 	}
 	if event.Type != protocol.RuntimeFilesChanged {
-		if err := r.invalidate(event); err != nil {
+		if err := r.applyEvent(event); err != nil {
 			return false, err
 		}
 	}
@@ -324,9 +309,6 @@ func (r runtimeChangeMonitor) runWithoutWatch(ctx context.Context) error {
 }
 
 func (r runtimeChangeMonitor) supportedTopics() []protocol.RuntimeTopic {
-	if r.source == nil {
-		return nil
-	}
 	candidates := slices.Clone(r.topics)
 	if r.observesWorkspace() {
 		candidates = append([]protocol.RuntimeTopic{protocol.TopicFilesChanged}, candidates...)
@@ -341,7 +323,7 @@ func (r runtimeChangeMonitor) supportedTopics() []protocol.RuntimeTopic {
 }
 
 func (r runtimeChangeMonitor) refreshFiles(ctx context.Context) error {
-	if r.repository == nil || r.applyFiles == nil {
+	if r.repository == nil {
 		return nil
 	}
 	changes, err := r.repository.Changes(ctx, r.workspace)
@@ -356,20 +338,6 @@ func (r runtimeChangeMonitor) refreshFiles(ctx context.Context) error {
 	return r.applyFiles(changes)
 }
 
-func (r runtimeChangeMonitor) invalidate(event changefeed.Event) error {
-	if r.applyEvent == nil {
-		return nil
-	}
-	return r.applyEvent(event)
-}
-
-func (r runtimeChangeMonitor) resync(topics []protocol.RuntimeTopic) error {
-	if r.applyResync == nil {
-		return nil
-	}
-	return r.applyResync(topics)
-}
-
 func (r runtimeChangeMonitor) invalidatesFiles(event changefeed.Event) bool {
 	switch event.Type {
 	case protocol.RuntimeFilesChanged:
@@ -377,9 +345,6 @@ func (r runtimeChangeMonitor) invalidatesFiles(event changefeed.Event) bool {
 			return event.WatchID == workspaceWatchID &&
 				(event.Workspace == "" || event.Workspace == r.workspace)
 		}
-		// Agent tool writes are broad file invalidations. They carry the
-		// affected workspace but no client watch identity, and must refresh the
-		// same authoritative projection as a watch-produced signal.
 		return event.Workspace == "" || event.Workspace == r.workspace
 	case protocol.RuntimeResync:
 		return slices.Contains(event.Topics, protocol.TopicFilesChanged) || slices.Contains(event.WatchIDs, workspaceWatchID)

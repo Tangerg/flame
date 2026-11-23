@@ -4,62 +4,27 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
-
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/scope/core/chat"
-	"github.com/samber/lo"
 )
 
-type conversationHistory interface {
-	Count(ctx context.Context, sessionID identity.SessionID) (int, error)
-	Replace(ctx context.Context, sessionID identity.SessionID, messages ...chat.Message) error
-}
-
-type conversationRuns interface {
-	ListRuns(ctx context.Context, sessionID identity.SessionID) ([]run.Run, error)
-	RebaseMessageMark(ctx context.Context, replacement run.Replacement) error
-}
-
-// conversationCompactions applies an Application-decided conversation rewrite
-// and all of its Run-watermark replacements in one storage transaction.
-type conversationCompactions struct {
-	history conversationHistory
-	runs    conversationRuns
+type ConversationCompactions struct {
+	history *ConversationStore
+	runs    *RunStore
 	tx      Transactor
 }
 
-// NewConversationCompactions binds the compaction write-set to its stores. All
-// three are required: a rewrite and its Run watermark replacements commit
-// together or not at all.
-func NewConversationCompactions(
-	history conversationHistory,
-	runs conversationRuns,
-	tx Transactor,
-) (*conversationCompactions, error) {
-	for _, required := range []struct {
-		name  string
-		value any
-	}{
-		{name: "conversation history", value: history},
-		{name: "Run store", value: runs},
-		{name: "transactor", value: tx},
-	} {
-		if lo.IsNil(required.value) {
-			return nil, fmt.Errorf("persistence: conversation compaction %s is required", required.name)
-		}
-	}
-	return &conversationCompactions{history: history, runs: runs, tx: tx}, nil
+func (b *Bundle) ConversationCompactions() *ConversationCompactions {
+	return &ConversationCompactions{history: b.Conversations, runs: b.Runs, tx: b.Transactor}
 }
 
-var _ runsapp.ConversationCompactionStore = (*conversationCompactions)(nil)
+var _ runsapp.ConversationCompactionStore = (*ConversationCompactions)(nil)
 
-func (c *conversationCompactions) ApplyCompaction(ctx context.Context, plan runsapp.ConversationCompactionPlan) error {
+func (c *ConversationCompactions) ApplyCompaction(ctx context.Context, plan runsapp.ConversationCompactionPlan) error {
 	return c.tx(ctx, func(ctx context.Context) error { return c.applyCompaction(ctx, plan) })
 }
 
-func (c *conversationCompactions) applyCompaction(
+func (c *ConversationCompactions) applyCompaction(
 	ctx context.Context,
 	plan runsapp.ConversationCompactionPlan,
 ) error {

@@ -21,25 +21,17 @@ import (
 
 var ErrSkillUnavailable = errors.New("workspace: skill is unavailable")
 
-// SkillCatalog enumerates skills visible from a working directory. List
-// transfers ownership of the returned summaries to the caller.
 type SkillCatalog interface {
 	List(ctx context.Context, cwd string) (SkillDiscovery, error)
 	Get(ctx context.Context, cwd, name string) (SkillDetail, error)
 }
 
-// SkillCurator manages the one active or archived entry for each user-authored
-// Skill name. Mutation methods return the exact opaque file identities whose
-// public projection changed, including changes committed before a later error.
-// List transfers ownership of the returned entries to the caller.
 type SkillCurator interface {
 	List(ctx context.Context) ([]skills.Entry, error)
 	Archive(ctx context.Context, name string) ([]string, error)
 	Restore(ctx context.Context, name string) ([]string, error)
 }
 
-// The workflow owner returns file identities only when publication changed a
-// trusted library. Queue changes use the provider's own invalidations.
 type SkillProposals interface {
 	SubmitProposal(ctx context.Context, projectRoot string, proposal skills.Proposal) (skills.ProposalRef, error)
 	ListProposals(ctx context.Context, projectRoot string) ([]skills.ProposalReview, error)
@@ -47,7 +39,6 @@ type SkillProposals interface {
 	RejectProposal(ctx context.Context, projectRoot string, ref skills.ProposalRef) error
 }
 
-// Skills owns discovery, library curation, and proposal review.
 type Skills struct {
 	scope         *Scope
 	catalog       SkillCatalog
@@ -57,7 +48,6 @@ type Skills struct {
 	invalidations invalidation.Publish
 }
 
-// NewSkills builds interactive Skill discovery, curation, and review use cases.
 func NewSkills(scope *Scope, catalog SkillCatalog, curator SkillCurator, proposals SkillProposals, observations *AuthoredWatch, invalidations invalidation.Publish) (*Skills, error) {
 	for _, required := range []struct {
 		name  string
@@ -80,8 +70,6 @@ func NewSkills(scope *Scope, catalog SkillCatalog, curator SkillCurator, proposa
 	}, nil
 }
 
-// List enumerates the one precedence-resolved Skill per name visible from cwd,
-// ordered by name.
 func (s *Skills) List(ctx context.Context, cwd string) (SkillDiscovery, error) {
 	root, err := s.scope.ResolveRoot(cwd)
 	if err != nil {
@@ -123,8 +111,6 @@ func (s *Skills) Get(ctx context.Context, cwd, name string) (SkillDetail, error)
 	return detail, nil
 }
 
-// Managed returns active and archived user-authored Skills, active first and
-// then ordered by name within each lifecycle.
 func (s *Skills) Managed(ctx context.Context) ([]skills.Entry, error) {
 	entries, err := s.curator.List(ctx)
 	if err != nil {
@@ -154,7 +140,6 @@ func (s *Skills) Managed(ctx context.Context) ([]skills.Entry, error) {
 	return entries, nil
 }
 
-// Archive removes a Skill from active use without deleting it.
 func (s *Skills) Archive(ctx context.Context, name string) error {
 	if err := skills.ValidateName(name); err != nil {
 		return err
@@ -164,7 +149,6 @@ func (s *Skills) Archive(ctx context.Context, name string) error {
 	return err
 }
 
-// Restore returns an archived Skill to active use.
 func (s *Skills) Restore(ctx context.Context, name string) error {
 	if err := skills.ValidateName(name); err != nil {
 		return err
@@ -174,7 +158,6 @@ func (s *Skills) Restore(ctx context.Context, name string) error {
 	return err
 }
 
-// SubmitProposal submits immutable Skill content without activating it.
 func (s *Skills) SubmitProposal(ctx context.Context, cwd string, proposal skills.Proposal) (skills.ProposalRef, error) {
 	if err := proposal.Validate(); err != nil {
 		return skills.ProposalRef{}, err
@@ -186,8 +169,6 @@ func (s *Skills) SubmitProposal(ctx context.Context, cwd string, proposal skills
 	return s.proposals.SubmitProposal(ctx, root, proposal)
 }
 
-// Proposals returns the current immutable Skill proposals visible from cwd,
-// ordered by scope and name.
 func (s *Skills) Proposals(ctx context.Context, cwd string) ([]skills.ProposalReview, error) {
 	root, err := s.scope.ResolveRoot(cwd)
 	if err != nil {
@@ -230,7 +211,6 @@ func validateSkillSummary(summary SkillSummary) error {
 	}).Validate()
 }
 
-// ApproveProposal accepts a Skill proposal into its target library.
 func (s *Skills) ApproveProposal(ctx context.Context, cwd string, ref skills.ProposalRef) error {
 	if err := ref.Validate(); err != nil {
 		return err
@@ -244,7 +224,6 @@ func (s *Skills) ApproveProposal(ctx context.Context, cwd string, ref skills.Pro
 	return err
 }
 
-// RejectProposal removes a Skill proposal without activating it.
 func (s *Skills) RejectProposal(ctx context.Context, cwd string, ref skills.ProposalRef) error {
 	if err := ref.Validate(); err != nil {
 		return err

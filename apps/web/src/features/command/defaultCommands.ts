@@ -20,7 +20,7 @@ import { definePlugin } from "@/extensions/definePlugin";
 import { createNewSession } from "@/features/navigation/public/workIndex";
 type CommandRun = CommandSpec["run"];
 
-export interface DefaultCommandRuns {
+interface DefaultCommandRuns {
   toggleSidebar: CommandRun;
   toggleDock: CommandRun;
   toggleTheme: CommandRun;
@@ -32,7 +32,7 @@ export interface DefaultCommandRuns {
   nextSession: CommandRun;
 }
 
-export function defaultStaticCommands(runs: DefaultCommandRuns): CommandSpec[] {
+function defaultStaticCommands(runs: DefaultCommandRuns): CommandSpec[] {
   return [
     {
       id: "view.toggle-sidebar",

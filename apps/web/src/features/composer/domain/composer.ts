@@ -6,7 +6,7 @@ import {
   type PastedText,
 } from "@/features/composer/domain/draft";
 import { countLines } from "@/features/composer/domain/largePaste";
-export const SCRATCH_SESSION_ID = "";
+const SCRATCH_SESSION_ID = "";
 
 const HISTORY_CAP = 50;
 

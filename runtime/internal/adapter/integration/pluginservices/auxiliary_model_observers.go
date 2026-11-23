@@ -4,30 +4,28 @@ import (
 	"context"
 	"errors"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// Auxiliary freezes one selected model and its contributions for the use case.
-// Memory retains this capture across extraction and curation with its own envelope.
-func (o *CallComposition) Auxiliary(resolve models.AuxiliaryResolver) models.AuxiliaryResolver {
-	return func(ctx context.Context, budget models.AuxiliaryBudget) (models.SelectedChat, func() error, error) {
+func (o *CallComposition) Auxiliary(resolve modeladapter.AuxiliaryResolver) modeladapter.AuxiliaryResolver {
+	return func(ctx context.Context, budget modeladapter.AuxiliaryBudget) (modeladapter.SelectedChat, func() error, error) {
 		if err := budget.Validate(); err != nil {
-			return models.SelectedChat{}, nil, err
+			return modeladapter.SelectedChat{}, nil, err
 		}
 		if resolve == nil {
-			return models.SelectedChat{}, nil, errors.New("model composition: auxiliary resolver is required")
+			return modeladapter.SelectedChat{}, nil, errors.New("model composition: auxiliary resolver is required")
 		}
 		resolved, release, err := resolve(ctx, budget)
 		if err != nil {
-			return models.SelectedChat{}, nil, err
+			return modeladapter.SelectedChat{}, nil, err
 		}
-		return o.capture(ctx, resolved, modelchoice.Utility, release, func(request *chat.Request) error { return admitAuxiliary(budget, request) })
+		return o.capture(ctx, resolved, flamemodel.Utility, release, func(request *chat.Request) error { return admitAuxiliary(budget, request) })
 	}
 }
 
-func admitAuxiliary(budget models.AuxiliaryBudget, request *chat.Request) error {
+func admitAuxiliary(budget modeladapter.AuxiliaryBudget, request *chat.Request) error {
 	if err := request.Validate(); err != nil {
 		return err
 	}

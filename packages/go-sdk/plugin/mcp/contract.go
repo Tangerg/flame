@@ -20,9 +20,15 @@ type Method[P, R any] struct {
 	contract *frame.Method
 }
 
-// ImplementMethod binds local codecs to a published contract. Only the contract
-// owner defines wire identity; deriving schemas from these types would give a
-// relocated or independently written implementation a different authority.
+var (
+	errQueryCommandIdentity    = errors.New("plugin: query must not carry a command identity")
+	errClientSessionRequired   = errors.New("plugin: client session is required")
+	errBackendProtocolRequired = errors.New("plugin: current backend protocol is required")
+	errInvalidCallbackRef      = errors.New("plugin: callback reference is invalid")
+)
+
+// Only the contract owner defines wire identity; deriving schemas from these types
+// would give a relocated implementation a different authority.
 func ImplementMethod[P, R any](owner *plugincontract.Capability, name string) (*Method[P, R], error) {
 	if owner == nil {
 		return nil, errors.New("plugin: method contract is required")
@@ -40,9 +46,6 @@ func ImplementMethod[P, R any](owner *plugincontract.Capability, name string) (*
 	return &Method[P, R]{contract: method}, nil
 }
 
-// MethodSet binds one capability's published methods and reports every failed
-// binding together, so a plugin builds its whole contract surface before
-// deciding whether it can serve.
 type MethodSet struct {
 	owner *plugincontract.Capability
 	errs  []error
@@ -50,7 +53,6 @@ type MethodSet struct {
 
 func NewMethodSet(owner *plugincontract.Capability) *MethodSet { return &MethodSet{owner: owner} }
 
-// Implement binds one published method; its failure is reported by Err.
 func Implement[P, R any](set *MethodSet, name string) *Method[P, R] {
 	method, err := ImplementMethod[P, R](set.owner, name)
 	set.errs = append(set.errs, err)
@@ -128,8 +130,6 @@ func (m *Method[P, R]) bind(classify Classifier, handler func(context.Context, *
 	}}
 }
 
-// Typed decoders may enforce constraints Schema cannot express. Validation must
-// stay pure so a host can establish admission before retaining mutation work.
 func validateMethodInput[P any](contract *frame.Method) func(jsontext.Value) error {
 	return func(data jsontext.Value) error {
 		_, input, err := decodeMethodInput[P](data)
@@ -151,7 +151,7 @@ func (m *Method[P, R]) Call(ctx context.Context, session *sdk.ClientSession, inp
 func (m *Method[P, R]) CallCommand(ctx context.Context, session *sdk.ClientSession, id CommandID, input P) (R, error) {
 	var zero R
 	if m.contract.Kind() != frame.Command {
-		return zero, errors.New("plugin: query must not carry a command identity")
+		return zero, errQueryCommandIdentity
 	}
 	if err := id.Validate(); err != nil {
 		return zero, err
@@ -162,7 +162,7 @@ func (m *Method[P, R]) CallCommand(ctx context.Context, session *sdk.ClientSessi
 func (m *Method[P, R]) call(ctx context.Context, session *sdk.ClientSession, params *methodParams[P]) (R, error) {
 	var zero R
 	if session == nil {
-		return zero, errors.New("plugin: client session is required")
+		return zero, errClientSessionRequired
 	}
 	binding := &Binding{session: session, method: m.contract}
 	return m.callBinding(ctx, binding, params)
@@ -219,7 +219,7 @@ func (m *BoundMethod[P, R]) CallWithMetadata(ctx context.Context, input P, metad
 func (m *BoundMethod[P, R]) CallCommand(ctx context.Context, id CommandID, input P) (R, error) {
 	var zero R
 	if m.method.contract.Kind() != frame.Command {
-		return zero, errors.New("plugin: query must not carry a command identity")
+		return zero, errQueryCommandIdentity
 	}
 	if err := id.Validate(); err != nil {
 		return zero, err
@@ -261,10 +261,10 @@ func admitCommand[P any](ctx context.Context, contract *frame.Method, wire *invo
 		return ctx, Command[P]{}, errors.New("plugin: method input is required")
 	}
 	if contract.Kind() == frame.Query && params.CommandID != "" {
-		return ctx, Command[P]{}, errors.New("plugin: query must not carry a command identity")
+		return ctx, Command[P]{}, errQueryCommandIdentity
 	}
 	if contract.Kind() == frame.Command {
-		if err := CommandID(params.CommandID).Validate(); err != nil {
+		if err := params.CommandID.Validate(); err != nil {
 			return ctx, Command[P]{}, err
 		}
 	}

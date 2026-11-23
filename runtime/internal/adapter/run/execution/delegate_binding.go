@@ -17,8 +17,6 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// delegateCallIdentity mirrors Agent Framework's documented parent-scoped ChildKey
-// identity without copying any Framework tree wire into Runtime state.
 type delegateCallIdentity struct {
 	parentID scoperun.ProcessID
 	childKey scoperun.ChildKey
@@ -44,6 +42,19 @@ type managedDelegateCall struct {
 	segmentProjected   bool
 }
 
+func (m *managedDelegateCall) projected() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.segmentProjected
+}
+
+func (s *interactionState) projectedDelegate(processID scoperun.ProcessID) bool {
+	s.mu.Lock()
+	managed := s.delegateChildren[processID]
+	s.mu.Unlock()
+	return managed != nil && managed.projected()
+}
+
 func (m *managedDelegateCall) toolStart() runs.ToolCallStarted {
 	return runs.ToolCallStarted{
 		CallID: m.callID.String(), ModelCallSequence: m.modelCallSequence,
@@ -52,10 +63,8 @@ func (m *managedDelegateCall) toolStart() runs.ToolCallStarted {
 	}
 }
 
-// continuedDelegateTools reopens the parent Tool attempt in the new Segment.
-// Scope retains the admitted child, so continuation does not repeat admission
-// and cannot obtain this start from admitProcess again. A prepared cancellation
-// reopens only the parent attempts that survive its committed subtree change.
+// Scope retains the admitted child, so continuation cannot obtain this start from
+// admitProcess again.
 func (i *interactionSession) continuedDelegateTools() []runs.ExecutorEvent {
 	i.state.mu.Lock()
 	var canceled []scoperun.ProcessID
@@ -119,9 +128,6 @@ func (i *interactionSession) installDeployments(deployments *interactionDeployme
 	return nil
 }
 
-// registerDelegateCalls records only model calls whose exact Deployment has a
-// managed Delegate binding. Invalid delegate arguments never reach admission
-// and are therefore intentionally absent from this lifecycle correlation.
 func (i *interactionSession) registerDelegateCalls(
 	invocation modelCallSource,
 	message *corechat.Message,
@@ -129,11 +135,9 @@ func (i *interactionSession) registerDelegateCalls(
 	if !invocation.valid() || message == nil {
 		return errors.New("execution: cannot register unattributed Delegate calls")
 	}
-	i.state.mu.Lock()
-	deployments := i.state.deployments
-	i.state.mu.Unlock()
-	if deployments == nil {
-		return errors.New("execution: Interaction deployments are unavailable")
+	deployments, err := i.state.boundDeployments()
+	if err != nil {
+		return err
 	}
 	toolCallIndex := uint32(0)
 	for _, part := range message.Parts {
@@ -215,28 +219,13 @@ func (i *interactionSession) executorMember(processID scoperun.ProcessID) runs.E
 	return member
 }
 
-// The nearest managed task is the product owner. A delegated task's workflow
-// and inner Interaction share one Run, while nested tasks establish new owners.
-func (i *interactionSession) executorMemberByProcessID(processID scoperun.ProcessID) (runs.ExecutorMember, bool) {
-	if !processID.Valid() {
-		return runs.ExecutorMember{}, false
-	}
+func (i *interactionSession) memberOwner(processID scoperun.ProcessID) (scoperun.ProcessID, bool) {
 	for current := processID; current.Valid(); {
 		i.state.mu.Lock()
 		managed := i.state.delegateChildren[current]
 		i.state.mu.Unlock()
-		if managed != nil {
-			managed.mu.Lock()
-			parent, spawn := managed.parentRelation, managed.call.ID
-			managed.mu.Unlock()
-			parentMember, found := i.executorMemberByProcessID(parent)
-			if !found {
-				return runs.ExecutorMember{}, false
-			}
-			return runs.ExecutorMember{MemberID: current.String(), ParentID: parentMember.MemberID, SpawnCallID: spawn}, true
-		}
-		if current == i.rootID {
-			return runs.ExecutorMember{MemberID: i.rootID.String()}, true
+		if managed != nil || current == i.rootID {
+			return current, true
 		}
 		parent, child := current.Parent()
 		if !child {
@@ -244,28 +233,34 @@ func (i *interactionSession) executorMemberByProcessID(processID scoperun.Proces
 		}
 		current = parent
 	}
-	return runs.ExecutorMember{}, false
+	return scoperun.ProcessID{}, false
 }
 
-func (i *interactionSession) toolCallMember(processID scoperun.ProcessID) (runs.ExecutorMember, bool) {
-	member, found := i.executorMemberByProcessID(processID)
+func (i *interactionSession) executorMemberByProcessID(processID scoperun.ProcessID) (runs.ExecutorMember, bool) {
+	owner, found := i.memberOwner(processID)
 	if !found {
-		return member, false
-	}
-	owner, err := scoperun.ParseProcessID(member.MemberID)
-	if err != nil {
 		return runs.ExecutorMember{}, false
+	}
+	if owner == i.rootID {
+		return runs.ExecutorMember{MemberID: owner.String()}, true
 	}
 	i.state.mu.Lock()
 	managed := i.state.delegateChildren[owner]
 	i.state.mu.Unlock()
-	if managed != nil {
-		managed.mu.Lock()
-		retired := managed.segmentProjected
-		managed.mu.Unlock()
-		if retired {
-			return runs.ExecutorMember{}, false
-		}
+	managed.mu.Lock()
+	parent, spawn := managed.parentRelation, managed.call.ID
+	managed.mu.Unlock()
+	parentMember, found := i.executorMemberByProcessID(parent)
+	if !found {
+		return runs.ExecutorMember{}, false
 	}
-	return member, true
+	return runs.ExecutorMember{MemberID: owner.String(), ParentID: parentMember.MemberID, SpawnCallID: spawn}, true
+}
+
+func (i *interactionSession) toolCallMember(processID scoperun.ProcessID) (runs.ExecutorMember, bool) {
+	owner, found := i.memberOwner(processID)
+	if !found || i.state.projectedDelegate(owner) {
+		return runs.ExecutorMember{}, false
+	}
+	return i.executorMemberByProcessID(owner)
 }

@@ -1,7 +1,7 @@
 import { type AgentRunView } from "@/features/agent/public/sessionView";
 import { type RootRunSettlement } from "@/features/agent/application/run/rootAttention";
 import { terminalSettlementStatus } from "@/features/agent/application/run/rootAttention";
-export type RunAnnouncement = RootRunSettlement["status"] | "running" | null;
+type RunAnnouncement = RootRunSettlement["status"] | "running" | null;
 
 export function runAnnouncement(
   status: AgentRunView["status"] | "idle",

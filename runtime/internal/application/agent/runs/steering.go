@@ -10,8 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// PreparedSteer retains the authored input while Scope owns Signal admission.
-// The eventual command receipt derives its identity and content from this input.
 type PreparedSteer struct {
 	itemID  identity.ItemID
 	input   []transcript.ContentBlock
@@ -77,12 +75,6 @@ func (p PreparedSteer) Equal(other PreparedSteer) bool {
 	return leftBound == rightBound && left == right
 }
 
-// Steer addresses the Segment the command names through execution control.
-//
-// It resolves through the same authority a subscribe does
-// ([Coordinator.addressLiveSegment]), so "this run is waiting" or "that segment
-// has been replaced" is one answer with one spelling rather than two entry
-// points each guessing from the live registry.
 func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (identity.ItemID, error) {
 	cmd = cmd.clone()
 	if cmd.Identity != nil {
@@ -104,10 +96,6 @@ func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (identity.Ite
 	if err != nil {
 		return identity.ItemID{}, err
 	}
-	// A resumed Run is durably Running once its acceptance opening commits, before
-	// its executor activates. Wait on that Segment's activation gate so a steer into
-	// the window is not misread as a finished Run, then re-resolve the exact Segment
-	// and owner: activation may have terminalized the Run or replaced its Segment.
 	if err := live.owner.awaitActivation(ctx); err != nil {
 		return identity.ItemID{}, err
 	}
@@ -132,9 +120,6 @@ func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (identity.Ite
 	itemID, err := c.steering.SubmitSteer(ctx, ExecutorRef{SessionID: durable.SessionID(), ExecutorID: rec.ExecutorID}, prepared)
 	if err != nil {
 		if errors.Is(err, ErrExecutorNotLive) {
-			// Execution ended between resolving the record and delivering: the Run is
-			// finishing, which is the same thing the durable record would say a moment
-			// from now.
 			return identity.ItemID{}, fmt.Errorf("%w: %w", ErrRunFinished, err)
 		}
 		return identity.ItemID{}, err

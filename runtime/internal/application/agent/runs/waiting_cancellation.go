@@ -16,8 +16,6 @@ import (
 	"github.com/samber/lo"
 )
 
-// NewPreparedWaitingSubtreeCancellation captures one validated executor change
-// and ownership-independent projections of its resulting waiting tree.
 func NewPreparedWaitingSubtreeCancellation(
 	canceledMemberIDs []string,
 	pendingInterruptions []MemberInterruption,
@@ -36,22 +34,18 @@ func NewPreparedWaitingSubtreeCancellation(
 	return prepared, nil
 }
 
-// CanceledMemberIDs returns the exact canceled executor members.
 func (p PreparedWaitingSubtreeCancellation) CanceledMemberIDs() []string {
 	return slices.Clone(p.canceledMemberIDs)
 }
 
-// PendingInterruptions returns ownership-independent surviving input boundaries.
 func (p PreparedWaitingSubtreeCancellation) PendingInterruptions() []MemberInterruption {
 	return cloneMemberInterruptions(p.pendingInterruptions)
 }
 
-// Checkpoint returns an ownership-independent resulting executor snapshot.
 func (p PreparedWaitingSubtreeCancellation) Checkpoint() ExecutorCheckpoint {
 	return p.checkpoint.Clone()
 }
 
-// Apply installs the committed product disposition in the prepared executor tree.
 func (p PreparedWaitingSubtreeCancellation) Apply(disposition WaitingSubtreeDisposition) error {
 	if p.change == nil {
 		return errors.New("runs: apply malformed prepared waiting subtree cancellation")
@@ -59,7 +53,6 @@ func (p PreparedWaitingSubtreeCancellation) Apply(disposition WaitingSubtreeDisp
 	return p.change.Apply(disposition)
 }
 
-// Continue advances a prepared tree whose final waiting boundary was removed.
 func (p PreparedWaitingSubtreeCancellation) Continue(ctx context.Context) error {
 	if p.change == nil {
 		return errors.New("runs: continue malformed prepared waiting subtree cancellation")
@@ -67,7 +60,6 @@ func (p PreparedWaitingSubtreeCancellation) Continue(ctx context.Context) error 
 	return p.change.Continue(ctx)
 }
 
-// Discard releases a prepared executor change that was not applied.
 func (p PreparedWaitingSubtreeCancellation) Discard() error {
 	if p.change == nil {
 		return errors.New("runs: discard malformed prepared waiting subtree cancellation")
@@ -75,8 +67,6 @@ func (p PreparedWaitingSubtreeCancellation) Discard() error {
 	return p.change.Discard()
 }
 
-// validate verifies the Application projection and one-shot executor
-// capability without interpreting the opaque checkpoint payload.
 func (p PreparedWaitingSubtreeCancellation) validate() error {
 	if lo.IsNil(p.change) {
 		return errors.New("runs: prepared waiting subtree cancellation has no executor change")
@@ -139,10 +129,6 @@ type waitingCancellationTransformation struct {
 	canceledRunIDs []identity.RunID
 }
 
-// waitingCancellationBuilder owns the pure Application transformation from a
-// command-bound cancellation plan and an executor-prepared change to the one
-// durable write-set. It does not execute the one-shot change or interpret its
-// opaque checkpoint.
 type waitingCancellationBuilder struct {
 	plan       cancellationPlan
 	reason     string
@@ -284,10 +270,8 @@ func (w waitingCancellationBuilder) terminalProjection(
 func (w waitingCancellationBuilder) settleWaitingItems(
 	canceledMembers map[string]struct{},
 ) ([]transcript.Replacement, []Continuation, error) {
-	// The spawning Tool is deliberately left open. Its model-visible result
-	// belongs to the round the parent declared, and only the executor can place it
-	// there in that round's call order, so it stays a drained Tool until the
-	// resumed Segment settles it alongside its siblings.
+	// The spawning Tool is deliberately left open: only the executor can place its
+	// result in the parent's round call order.
 	parentItem := w.plan.spawningItem
 	terminalItems := make([]transcript.Replacement, 0, len(w.plan.targetInterruptItems)+len(w.plan.targetDrainedItems))
 	toolItems := slices.Clone(w.plan.targetDrainedItems)
@@ -344,8 +328,6 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 	return terminalItems, continuations, nil
 }
 
-// remainingInterruptions returns, in the surviving order, the index of every
-// kept interrupt in the expected Pending and its binding.
 func (w waitingCancellationBuilder) remainingInterruptions(
 	canceledMembers map[string]struct{},
 	continuations []Continuation,
@@ -478,10 +460,10 @@ func (w waitingCancellationTransformation) durableCommit(
 	if w.remaining == nil {
 		return WaitingSubtreeCancellationCommit{}, errors.New("runs: waiting cancellation has no reduced Pending")
 	}
-	return NewParkedSubtreeCancellationCommit(
-		commitID, w.targetRunID, w.parked, expected, *w.remaining,
-		w.checkpoint, w.terminalRuns, w.terminalItems,
-	)
+	state := w.commitState(expected, commitID)
+	remaining := *w.remaining
+	state.RemainingPending = &remaining
+	return newWaitingSubtreeCancellationCommit(state)
 }
 
 func (w waitingCancellationTransformation) resumedDurableCommit(
@@ -490,9 +472,16 @@ func (w waitingCancellationTransformation) resumedDurableCommit(
 	resume rundomain.TreeResumeDraft,
 	openingEvents []EventCommit,
 ) (WaitingSubtreeCancellationCommit, error) {
-	return NewResumingSubtreeCancellationCommit(
-		commitID, w.targetRunID, w.parked, expected, w.checkpoint,
-		w.terminalRuns, w.terminalItems,
-		resume, openingEvents,
-	)
+	state := w.commitState(expected, commitID)
+	state.Resume, state.OpeningEvents = &resume, openingEvents
+	return newWaitingSubtreeCancellationCommit(state)
+}
+
+func (w waitingCancellationTransformation) commitState(expected Pending, commitID CommitID) waitingSubtreeCancellationState {
+	return waitingSubtreeCancellationState{
+		CommitID: commitID, RootRunID: expected.RootRunID,
+		TargetRunID: w.targetRunID, SessionID: parkedTreeSessionID(w.parked, expected.RootRunID),
+		ParkedRuns: w.parked, ExpectedPending: expected, Checkpoint: w.checkpoint,
+		TerminalRuns: w.terminalRuns, TerminalItems: w.terminalItems,
+	}
 }

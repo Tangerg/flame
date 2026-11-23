@@ -10,8 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// A pending external dependency defers validation without granting resumption.
-// The zero value never preserves a waiting tree.
 type WaitingResumption struct {
 	state waitingResumptionState
 	loss  rundomain.LossReason
@@ -75,8 +73,6 @@ func recoverLostTree(
 	return lostRuns, replacements, nil
 }
 
-// recoverLostRun charges the lost Run every model call its executor reported
-// before ending it, so the recovered accounting matches what was consumed.
 func recoverLostRun(
 	active rundomain.Run,
 	models []ModelInvocationRecovery,

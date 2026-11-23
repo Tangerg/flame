@@ -67,7 +67,7 @@ func (m *modelConfigScreens) SetModelRole(kind models.RoleKind, argument string)
 		},
 	)
 	if !started {
-		return errors.New("another model configuration operation is running")
+		return modelConfigOperation.busy()
 	}
 	return nil
 }

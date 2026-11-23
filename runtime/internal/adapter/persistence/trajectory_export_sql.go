@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
@@ -11,15 +12,13 @@ const sessionAnnotationPredicate = `session_id = ?
 	OR run_id IN (SELECT run_id FROM runs WHERE session_id = ?)
 	OR item_id IN (SELECT item_id FROM history_items WHERE session_id = ?)`
 
-// TrajectoryExportSize counts stored source bytes before their JSON bodies are
-// decoded. Final wire encoding has a separate bound because escaping expands JSON.
 func (s *SessionStore) TrajectoryExportSize(ctx context.Context, sessionID identity.SessionID) (records, bytes int64, err error) {
 	return scopedPair(ctx, s.db.read, func(ctx context.Context) (records, bytes int64, err error) {
 		query := `SELECT COALESCE(SUM(records), 0), COALESCE(SUM(bytes), 0) FROM (
 		SELECT COUNT(*) records, SUM(length(CAST(title AS BLOB)) + length(CAST(workspace_path AS BLOB))
 			+ length(CAST(id AS BLOB)) + length(CAST(parent_id AS BLOB)) + length(CAST(reasoning_effort AS BLOB))
 			+ length(CAST(provider AS BLOB)) + length(CAST(model AS BLOB))) bytes FROM sessions WHERE id = ?
-		UNION ALL SELECT COUNT(*), SUM(length(CAST(message AS BLOB))) FROM messages WHERE conversation_id = ?
+		UNION ALL SELECT COUNT(*), SUM(length(CAST(message AS BLOB))) FROM messages WHERE session_id = ?
 		UNION ALL SELECT COUNT(*), SUM(length(CAST(payload AS BLOB)) + length(CAST(item_id AS BLOB))
 			+ length(CAST(run_id AS BLOB)) + length(CAST(session_id AS BLOB))) FROM history_items WHERE session_id = ?
 		UNION ALL SELECT COUNT(*), SUM(length(CAST(ending AS BLOB))
@@ -40,7 +39,7 @@ func (s *SessionStore) TrajectoryExportSize(ctx context.Context, sessionID ident
 			+ length(CAST(run_id AS BLOB)) + length(CAST(item_id AS BLOB)) + length(CAST(command_id AS BLOB))
 			+ length(installation)+length(release)+length(contribution)+length(contract)) FROM session_annotations WHERE ` + sessionAnnotationPredicate + `
 	)`
-		args := make([]any, 11)
+		args := make([]any, strings.Count(query, "?"))
 		for i := range args {
 			args[i] = sessionID
 		}

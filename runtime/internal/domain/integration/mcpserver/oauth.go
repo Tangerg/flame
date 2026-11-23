@@ -10,11 +10,8 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-var ErrOAuthSessionSuperseded = errors.New("mcp: oauth session superseded")
+var ErrOAuthSessionSuperseded = errors.New("mcpserver: oauth session superseded")
 
-// OAuthTarget identifies the configuration that requested a credential grant.
-// It is the only owner of credential validity: a grant is bound to its
-// target's fingerprint and is usable only by a configuration with the same one.
 type OAuthTarget struct {
 	Source  Source
 	Name    ServerName
@@ -24,12 +21,6 @@ type OAuthTarget struct {
 
 func (o OAuthTarget) ID() ID { return o.Source.ID(o.Name) }
 
-// Fingerprint binds a persisted grant to the identity that requested it and
-// the recipient its credential reaches. A user record's recipient is its
-// complete endpoint configuration, including headers. An installation record's
-// recipient is declared by its source, which excludes configured input values
-// and survives a release that keeps the endpoint, so an OAuth grant and a
-// static secret input follow the same rule.
 func (o OAuthTarget) Fingerprint() framevalue.Digest {
 	installation, installed := o.Source.Origin().Installation()
 	fields := []string{string(o.Source.Origin().Kind()), installation.String(), o.Name.String()}
@@ -43,9 +34,6 @@ func (o OAuthTarget) Fingerprint() framevalue.Digest {
 	return identity.DigestStrings(fields...)
 }
 
-// OAuthTarget is the credential target this record would request a grant for.
-// Only an HTTP connection without a static Authorization has one: the two
-// credentials are mutually exclusive.
 func (s Server) OAuthTarget() (OAuthTarget, bool) {
 	connection, ok := s.Connection.(HTTPConnection)
 	if !ok || connection.Authorization != "" {

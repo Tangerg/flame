@@ -7,13 +7,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// workspaceScreens inspects the current workspace: known workspaces, changes,
-// diffs, search, listings and files. changesView is the open changes read,
-// updated in place as changes arrive.
 type workspaceScreens struct {
 	screenHost
 	service     Workspaces
@@ -101,7 +99,7 @@ func (w *workspaceScreens) PreviewWorkspaceFile(argument string) error {
 			}
 			detail := fmt.Sprintf("%s · %s", request.Path, content.Window())
 			if content.Truncated {
-				detail += " · truncated"
+				detail += format.Separator + "truncated"
 			}
 			return fileDocument("File preview", detail, content.Content, request.Path), nil
 		})
@@ -129,7 +127,7 @@ func (w *workspaceScreens) SearchWorkspace(argument string) error {
 			}
 			detail := workspaceSearchSummary(result)
 			if request.Path != "" {
-				detail += " · " + request.Path
+				detail += format.Separator + request.Path
 			}
 			return paragraphDocument("Workspace search · "+request.Query, detail, lines), nil
 		})
@@ -174,7 +172,7 @@ func (w *workspaceScreens) BrowseWorkspace(argument string) error {
 					metadata = append(metadata, entry.ModifiedAt.Format(time.RFC3339Nano))
 				}
 				if len(metadata) > 0 {
-					line += "  · " + strings.Join(metadata, " · ")
+					line += "  · " + strings.Join(metadata, format.Separator)
 				}
 				lines = append(lines, line)
 			}
@@ -190,9 +188,9 @@ func (w *workspaceScreens) BrowseWorkspace(argument string) error {
 			}
 			title := "Workspace files"
 			if request.Path != "" {
-				title += " · " + request.Path
+				title += format.Separator + request.Path
 			}
-			return textDocument(title, strings.Join(details, " · "), strings.Join(lines, "\n")), nil
+			return textDocument(title, strings.Join(details, format.Separator), strings.Join(lines, "\n")), nil
 		})
 	return nil
 }
@@ -214,7 +212,7 @@ func (w *workspaceScreens) ReadWorkspaceFile(argument string) error {
 			}
 			detail := content.Window()
 			if content.Truncated {
-				detail += " · truncated"
+				detail += format.Separator + "truncated"
 			}
 			return fileDocument("Workspace file", detail, content.Content, request.Path), nil
 		})
@@ -235,13 +233,13 @@ func paragraphDocument(title, detail string, lines []string) readerDocument {
 
 func fileDocument(title, detail, content, path string) readerDocument {
 	return readerDocument{Title: title, Detail: detail, Sections: []toolSection{{
-		Title: "Content", Style: toolSectionCode, Language: languageForPath(path), Text: content, LineNumbers: true,
+		Title: contentSectionTitle, Style: toolSectionCode, Language: languageForPath(path), Text: content, LineNumbers: true,
 	}}}
 }
 
 func textDocument(title, detail, text string) readerDocument {
 	return readerDocument{Title: title, Detail: detail, Sections: []toolSection{{
-		Title: "Content", Style: toolSectionCode, Language: "text", Text: text,
+		Title: contentSectionTitle, Style: toolSectionCode, Language: codeLanguagePlain, Text: text,
 	}}}
 }
 
@@ -263,7 +261,6 @@ func workspaceChangesDocument(path string, changes []workspace.Change) readerDoc
 	return paragraphDocument("Workspace changes", fmt.Sprintf("%d files · %s", len(changes), path), lines)
 }
 
-// showChanges updates the open changes read with changes the monitor observed.
 func (w *workspaceScreens) showChanges(changes []workspace.Change) {
 	w.reader.update(w.changesView, workspaceChangesDocument(w.session.current.Workspace.Path, changes))
 }

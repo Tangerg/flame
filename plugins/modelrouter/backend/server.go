@@ -9,7 +9,7 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	rpc "github.com/Tangerg/flame/plugins/modelrouter/internal/contract"
-	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
+	"github.com/Tangerg/flame/plugins/modelrouter/internal/routing"
 	"github.com/Tangerg/flame/plugins/modelrouter/internal/wire"
 
 	sdk "github.com/Tangerg/go-sdk/mcp"

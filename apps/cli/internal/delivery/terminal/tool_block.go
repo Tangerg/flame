@@ -22,8 +22,6 @@ const (
 	toolContentInset   = 2
 )
 
-// toolDisclosure is the shared interrupt contract for an individual tool or
-// a semantic group of adjacent tools.
 type toolDisclosure interface {
 	base.Block
 	SetExpanded(bool)
@@ -32,9 +30,6 @@ type toolDisclosure interface {
 	ToggleExpanded() bool
 }
 
-// mutableToolBlock is the optional lifecycle a block presenter may implement to
-// update a running tool in place. It remains a terminal-only protocol; the
-// domain only knows ToolCall values.
 type mutableToolBlock interface {
 	toolDisclosure
 	Update(conversation.Block)
@@ -189,7 +184,7 @@ func (t *toolBlock) header() (toggle, label, status string, statusStyle grid.Sty
 	}
 	label = t.presentation.Label
 	if label == "" {
-		label = "tool"
+		label = genericToolLabel
 	}
 	statusStyle = t.theme.Muted
 	switch t.call.Status {
@@ -226,7 +221,7 @@ func (t *toolBlock) rebuild() {
 		}
 	}
 	t.presentation = presentation
-	t.body = renderToolSections(blockPresentation{Theme: t.theme, Glyphs: t.glyphs, Syntax: t.syntax}, presentation.Sections, true)
+	t.body = renderToolSections(blockPresentation{Theme: t.theme, Glyphs: t.glyphs, Syntax: t.syntax}, presentation.Sections, inlineToolDetail)
 	t.observers.notify(t.readerDocument())
 }
 
@@ -242,7 +237,15 @@ func (t *toolBlock) readerDocument() readerDocument {
 	return readerDocument{Title: t.presentation.Label, Detail: status, Sections: slices.Clone(t.presentation.Sections)}
 }
 
-func renderToolSections(p blockPresentation, sections []toolSection, truncate bool) []base.Block {
+// The transcript shows a bounded inline detail; the reader and approval dialog show all of it.
+type toolDetail int
+
+const (
+	fullToolDetail toolDetail = iota
+	inlineToolDetail
+)
+
+func renderToolSections(p blockPresentation, sections []toolSection, detail toolDetail) []base.Block {
 	blocks := make([]base.Block, 0, len(sections))
 	for _, section := range sections {
 		if section.Style == toolSectionDiffRows {
@@ -250,7 +253,7 @@ func renderToolSections(p blockPresentation, sections []toolSection, truncate bo
 			continue
 		}
 		value := section.Text
-		if truncate {
+		if detail == inlineToolDetail {
 			value = truncateToolDetail(value)
 		}
 		if strings.TrimSpace(value) == "" {
@@ -267,17 +270,15 @@ func renderToolSections(p blockPresentation, sections []toolSection, truncate bo
 				code.Gutter = kit.LineNumbers{Style: p.Theme.Subtle, Separator: p.Glyphs.Vertical.String()}
 			}
 			blocks = append(blocks, code)
+		case toolSectionDiffRows:
 		}
 	}
 	return blocks
 }
 
-// sectionLanguage resolves the highlighter language for a code section. An
-// unset language is plain text, so a section that carries none says nothing
-// rather than repeating this answer.
 func sectionLanguage(section toolSection) string {
 	if section.Language == "" {
-		return "text"
+		return codeLanguagePlain
 	}
 	return section.Language
 }
@@ -315,6 +316,6 @@ func languageForPath(path string) string {
 	case "go", "json", "yaml", "toml", "xml", "html", "css", "sql":
 		return ext
 	default:
-		return "text"
+		return codeLanguagePlain
 	}
 }

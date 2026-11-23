@@ -8,22 +8,38 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	app "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
-// The connector can nominate only a transport the user authorized for this exact installation and server.
-// Secrets and executable launch material never appear in connector requests or command receipts.
 type launchMaterial struct {
-	HTTP    *httpGrant                 `json:"http,omitzero"`
-	Process *mcpserver.StdioConnection `json:"process,omitzero"`
+	HTTP    *httpGrant  `json:"http,omitzero"`
+	Process *stdioGrant `json:"process,omitzero"`
 }
 
 // HTTP field values are octets. JSON strings cannot preserve every admitted credential.
 type httpGrant struct {
-	URL           string
-	Authorization []byte
-	Headers       map[string][]byte
+	URL           string            `json:"url"`
+	Authorization []byte            `json:"authorization"`
+	Headers       map[string][]byte `json:"headers"`
+}
+
+// A nil Env inherits the parent environment and an empty one supplies none, so the
+// encoding keeps null distinct from {}.
+type stdioGrant struct {
+	Command              string            `json:"command"`
+	ExecutionEnvironment string            `json:"executionEnvironment"`
+	Args                 []string          `json:"args"`
+	Env                  map[string]string `json:"env"`
+	Dir                  string            `json:"dir"`
+}
+
+func encodeStdioGrant(connection mcpserver.StdioConnection) *stdioGrant {
+	return &stdioGrant{Command: connection.Command, ExecutionEnvironment: connection.ExecutionEnvironment, Args: connection.Args, Env: connection.Env, Dir: connection.Dir}
+}
+
+func (g stdioGrant) connection() mcpserver.StdioConnection {
+	return mcpserver.StdioConnection{Command: g.Command, ExecutionEnvironment: g.ExecutionEnvironment, Args: g.Args, Env: g.Env, Dir: g.Dir}
 }
 
 func encodeHTTPGrant(connection mcpserver.HTTPConnection) *httpGrant {
@@ -36,6 +52,7 @@ func encodeHTTPGrant(connection mcpserver.HTTPConnection) *httpGrant {
 	}
 	return grant
 }
+
 func (g httpGrant) connection() mcpserver.HTTPConnection {
 	connection := mcpserver.HTTPConnection{URL: g.URL, Authorization: string(g.Authorization)}
 	if g.Headers != nil {
@@ -46,7 +63,8 @@ func (g httpGrant) connection() mcpserver.HTTPConnection {
 	}
 	return connection
 }
-func (m *MCPServerStore) PrepareGrant(ctx context.Context, owner identity.InstallationID, srv mcpserver.Server, proposal app.GrantProposal) (string, error) {
+
+func (m *MCPServerStore) PrepareGrant(ctx context.Context, owner identity.InstallationID, srv mcpserver.Server, proposal mcpapp.GrantProposal) (string, error) {
 	if proposal.Source.InstallationID != owner.String() || proposal.Change.Name != srv.Name.String() || proposal.Change.Replacement == nil || proposal.Change.Replacement.LaunchGrant != "" {
 		return "", errors.New("mcp: grant proposal does not match its original source")
 	}
@@ -62,6 +80,7 @@ func (m *MCPServerStore) PrepareGrant(ctx context.Context, owner identity.Instal
 	}
 	return m.storeGrant(ctx, owner, srv, data)
 }
+
 func (m *MCPServerStore) storeGrant(ctx context.Context, owner identity.InstallationID, srv mcpserver.Server, proposal []byte) (string, error) {
 	if err := owner.Validate(); err != nil {
 		return "", err
@@ -77,7 +96,7 @@ func (m *MCPServerStore) storeGrant(ctx context.Context, owner identity.Installa
 	case mcpserver.HTTPConnection:
 		material.HTTP = encodeHTTPGrant(c)
 	case mcpserver.StdioConnection:
-		material.Process = &c
+		material.Process = encodeStdioGrant(c)
 	default:
 		return "", errors.New("mcp: unsupported launch material")
 	}
@@ -103,6 +122,7 @@ func (m *MCPServerStore) storeGrant(ctx context.Context, owner identity.Installa
 	})
 	return grant, err
 }
+
 func (m *MCPServerStore) OpenGrant(ctx context.Context, owner identity.InstallationID, name mcpserver.ServerName, grant string) (mcpserver.Connection, bool, error) {
 	return scopedPair(ctx, m.db.read, func(ctx context.Context) (mcpserver.Connection, bool, error) {
 		var body []byte
@@ -125,32 +145,35 @@ func (m *MCPServerStore) OpenGrant(ctx context.Context, owner identity.Installat
 			}
 			return connection, true, nil
 		case material.Process != nil && material.HTTP == nil:
-			if err := (mcpserver.Server{Source: mcpserver.UserSource(), Name: name, Connection: *material.Process}).Validate(); err != nil {
+			connection := material.Process.connection()
+			if err := (mcpserver.Server{Source: mcpserver.UserSource(), Name: name, Connection: connection}).Validate(); err != nil {
 				return nil, false, err
 			}
-			return *material.Process, true, nil
+			return connection, true, nil
 		default:
 			return nil, false, errors.New("mcp: invalid stored launch grant")
 		}
 	})
 }
-func (m *MCPServerStore) PendingGrant(ctx context.Context, owner identity.InstallationID, name mcpserver.ServerName, grant string) (app.GrantProposal, bool, error) {
-	return scopedPair(ctx, m.db.read, func(ctx context.Context) (app.GrantProposal, bool, error) {
+
+func (m *MCPServerStore) PendingGrant(ctx context.Context, owner identity.InstallationID, name mcpserver.ServerName, grant string) (mcpapp.GrantProposal, bool, error) {
+	return scopedPair(ctx, m.db.read, func(ctx context.Context) (mcpapp.GrantProposal, bool, error) {
 		var raw []byte
 		err := m.db.connection(ctx).QueryRowContext(ctx, `SELECT proposal FROM mcp_launch_grants WHERE grant_id=? AND connector=? AND source_id=`+mcpSourceIDQuery+` AND proposal IS NOT NULL`, grant, owner.String(), string(mcpserver.OriginUser), nil, name.String()).Scan(&raw)
 		if errors.Is(err, sql.ErrNoRows) {
-			return app.GrantProposal{}, false, nil
+			return mcpapp.GrantProposal{}, false, nil
 		}
 		if err != nil {
-			return app.GrantProposal{}, false, err
+			return mcpapp.GrantProposal{}, false, err
 		}
-		var proposal app.GrantProposal
+		var proposal mcpapp.GrantProposal
 		if err := json.Unmarshal(raw, &proposal, json.RejectUnknownMembers(true)); err != nil {
-			return app.GrantProposal{}, false, err
+			return mcpapp.GrantProposal{}, false, err
 		}
 		return proposal, true, nil
 	})
 }
+
 func (m *MCPServerStore) RejectGrant(ctx context.Context, owner identity.InstallationID, name mcpserver.ServerName, grant string) error {
 	return m.db.write(ctx, func(ctx context.Context) error {
 		_, err := m.db.connection(ctx).ExecContext(ctx, `DELETE FROM mcp_launch_grants WHERE grant_id=? AND connector=? AND source_id=`+mcpSourceIDQuery+` AND proposal IS NOT NULL`, grant, owner.String(), string(mcpserver.OriginUser), nil, name.String())
@@ -182,6 +205,7 @@ func (m *MCPServerStore) ConfirmPendingGrant(ctx context.Context, owner identity
 		return err
 	})
 }
+
 func (m *MCPServerStore) RetireGrants(ctx context.Context, owner identity.InstallationID, name mcpserver.ServerName, active string) error {
 	return m.db.write(ctx, func(ctx context.Context) error {
 		db := m.db.connection(ctx)

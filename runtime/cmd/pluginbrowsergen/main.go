@@ -1,5 +1,3 @@
-// Command pluginbrowsergen projects Frame's compiled control vocabulary into
-// Flame's pure public protocol. It owns no independent control declarations.
 package main
 
 import (
@@ -13,17 +11,20 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	framebrowser "github.com/Tangerg/frame/browser"
 	framehost "github.com/Tangerg/frame/host"
 	framevalue "github.com/Tangerg/frame/value"
 )
+
+const jsonTagKey = "json"
 
 func main() {
 	output := flag.String("out", "../packages/go-sdk/protocol/plugin_browser.generated.go", "pure protocol output")
 	flag.Parse()
 	value, err := generate()
 	if err == nil {
-		err = os.WriteFile(*output, value, 0644)
+		err = os.WriteFile(*output, value, filesystem.SharedFileMode)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -49,8 +50,6 @@ func generate() ([]byte, error) {
 	return format.Source(out.Bytes())
 }
 
-// browserTypes are the named Frame control types the browser protocol
-// projects, keyed by their generated name.
 type browserTypes map[string]reflect.Type
 
 func (types browserTypes) walk(value reflect.Type) error {
@@ -64,7 +63,7 @@ func (types browserTypes) walk(value reflect.Type) error {
 	if value.Name() == "" || value.PkgPath() == "" {
 		return nil
 	}
-	name := "PluginBrowser" + value.Name()
+	name := browserTypeName(value)
 	if previous, found := types[name]; found {
 		if previous != value {
 			return fmt.Errorf("browser protocol name collision: %s and %s", previous, value)
@@ -87,8 +86,6 @@ func (types browserTypes) walk(value reflect.Type) error {
 	return nil
 }
 
-// writeBrowserType renders a text type (with its vocabulary, when it has
-// one) or a struct whose fields keep their exact JSON tags.
 func writeBrowserType(out *bytes.Buffer, name string, value reflect.Type) {
 	if value.Kind() == reflect.String || value == reflect.TypeFor[framevalue.Digest]() {
 		fmt.Fprintf(out, "type %s string\n\n", name)
@@ -121,7 +118,7 @@ func pureType(value reflect.Type) string {
 		return "[]" + pureType(value.Elem())
 	default:
 		if value.PkgPath() != "" {
-			return "PluginBrowser" + value.Name()
+			return browserTypeName(value)
 		}
 		return value.String()
 	}
@@ -132,7 +129,9 @@ func projectableField(field reflect.StructField) bool {
 		return false
 	}
 	if field.Anonymous {
-		return field.Type.Kind() == reflect.Struct && field.Tag.Get("json") == ""
+		return field.Type.Kind() == reflect.Struct && field.Tag.Get(jsonTagKey) == ""
 	}
-	return field.Tag.Get("json") != ""
+	return field.Tag.Get(jsonTagKey) != ""
 }
+
+func browserTypeName(value reflect.Type) string { return "PluginBrowser" + value.Name() }

@@ -8,10 +8,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// ListHooks reports the lifecycle hooks discovered for a cwd — global
-// (~/.flame) + the project's (.flame) — each marked active iff it currently runs
-// (global always; project only when the project is trusted). The client renders
-// this for review and a trust toggle.
 func (s *Handler) ListHooks(ctx context.Context, in protocol.ListHooksRequest) (*protocol.HooksListResult, error) {
 	insp, err := s.hooks.Inspect(ctx, in.Workspace.Path)
 	if err != nil {
@@ -82,9 +78,6 @@ func presentHookScope(scope hookdata.Scope) (protocol.HookScope, bool) {
 	}
 }
 
-// SetHookTrust trusts (or revokes) a project's hooks (hooks.
-// setTrust). The change takes effect on the next Run — the resolver re-reads
-// trust per Run.
 func (s *Handler) SetHookTrust(ctx context.Context, in protocol.SetHookTrustRequest) error {
 	return wireWorkspaceError(s.hooks.SetProjectTrust(ctx, in.ProjectRoot, in.Trusted))
 }

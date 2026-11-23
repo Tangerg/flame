@@ -33,8 +33,6 @@ func registerWorkspace(registry *Registry) {
 			return service.ListWorkspaces(ctx)
 		})
 
-	// Git reads require the advertised capability. Once negotiated, a path that is
-	// not a repository is the distinct vcs_unavailable domain answer.
 	registry.query(MethodMeta{
 		Name: workspaceChangesList, GoName: "ListWorkspaceFileChanges",
 		Errors: []string{protocol.ErrWorkspaceUnavailable.

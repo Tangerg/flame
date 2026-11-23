@@ -42,7 +42,7 @@ func (r *ReceiptRequest) UnmarshalJSON(data []byte) error {
 }
 
 func (r ReceiptRequest) Validate() error {
-	if err := CommandID(r.ID).Validate(); err != nil {
+	if err := r.ID.Validate(); err != nil {
 		return err
 	}
 	if !frame.ValidName(r.Method) {
@@ -59,8 +59,6 @@ type Receipt struct {
 	Reply jsontext.Value `json:"reply,omitzero"`
 }
 
-// Encoding seals a classified outcome before the business owner commits it.
-// An unclassified error remains uncertain and cannot become durable refusal evidence.
 func EncodeReply[T any](value T, err error, classify Classifier) (framevalue.JSON, error) {
 	outcome, err := reply(value, err, classify)
 	if err != nil {
@@ -82,36 +80,13 @@ func DecodeReply[T any](data []byte) (T, error) {
 	return result.value("plugin receipt")
 }
 
-// A missing receipt is only absence of evidence. It never authorizes a fresh
-// mutation or proves that the original command had no effect.
-func ReadReceipt[P, R any](ctx context.Context, session *sdk.ClientSession, id CommandID, method string, input P) (R, bool, error) {
-	var zero R
-	admitted, err := framevalue.EncodeJSON(input)
-	if err != nil {
-		return zero, false, err
-	}
-	binding, err := receiptBinding(session)
-	if err != nil {
-		return zero, false, err
-	}
-	value, found, err := readReceipt(ctx, binding, id, method, admitted)
-	if err != nil || !found {
-		return zero, found, err
-	}
-	var typed R
-	if err := json.Unmarshal(value, &typed, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
-		return zero, false, err
-	}
-	return typed, true, nil
-}
-
 func receiptBinding(session *sdk.ClientSession) (*Binding, error) {
 	method, err := ReceiptQuery()
 	if err != nil {
 		return nil, err
 	}
 	if session == nil {
-		return nil, errors.New("plugin: client session is required")
+		return nil, errClientSessionRequired
 	}
 	return &Binding{session: session, method: method.contract}, nil
 }

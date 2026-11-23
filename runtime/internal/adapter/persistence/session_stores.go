@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -14,12 +15,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/samber/lo"
 )
 
-// SessionStores is the SQLite-backed adapter for the session lifecycle's
-// snapshot and atomic write-set ports. Each operation applies the complete
-// application-decided mutation inside one storage transaction.
 type SessionStores struct {
 	commandAcceptances  *commandAcceptanceStore
 	resourceRetirements *ResourceRetirementStore
@@ -29,121 +26,37 @@ type SessionStores struct {
 	runs                *RunStore
 	executorCheckpoints *ExecutorCheckpointStore
 	history             *runsapp.ConversationHistory
-	plan                planProjection
-	approvalRules       sessionStateCleaner
-	planModes           sessionStateCleaner
+	plan                *PlanStore
+	approvalRules       *ApprovalRuleStore
+	modes               *ModeStore
 	toolResults         *ToolResultStore
-	childRunStarts      childRunStartReservationCleaner
-	goals               goalStore
+	childRunStarts      *ChildRunStartReservationStore
+	goals               *GoalStore
 	tx                  Transactor
 	readSnapshot        Transactor
 }
 
-// SessionStoresConfig is the durable collaborator set for SessionStores.
-type SessionStoresConfig struct {
-	CommandAcceptances  *commandAcceptanceStore
-	ResourceRetirements *ResourceRetirementStore
-	Sessions            *SessionStore
-	Transcript          *TranscriptStore
-	Interrupts          *InterruptStore
-	Runs                *RunStore
-	ExecutorCheckpoints *ExecutorCheckpointStore
-	History             *runsapp.ConversationHistory
-	Plan                planProjection
-	ApprovalRules       sessionStateCleaner
-	ApprovalModes       sessionStateCleaner
-	ToolResults         *ToolResultStore
-	ChildRunStarts      childRunStartReservationCleaner
-	Goals               goalStore
-	Tx                  Transactor
-	ReadSnapshot        Transactor
-}
-
-// Transactor settles the supplied read or write boundary as one transaction.
-type Transactor func(context.Context, func(context.Context) error) error
-
-// planProjection is the session-scoped Plan this write-set has to move with
-// the session through its whole lifecycle: read for an archive, replaced by a
-// restore, seeded into a fork, republished at a rollback boundary, dropped with
-// a delete. Save applies an application-decided aggregate transition with CAS;
-// this adapter assigns neither revision nor update time.
-type planProjection interface {
-	State(ctx context.Context, sessionID identity.SessionID) (plan.Current, error)
-	ListBoundaries(ctx context.Context, sessionID identity.SessionID) ([]sessions.RunPlanBoundary, error)
-	RestoreBoundaries(ctx context.Context, boundaries []sessions.RunPlanBoundary) error
-	Save(ctx context.Context, sessionID identity.SessionID, replacement plan.Replacement) error
-	DeleteSession(ctx context.Context, sessionID identity.SessionID) error
-}
-
-// sessionStateCleaner is the lifecycle port shared by projections whose rows
-// cannot outlive or leak across a complete Session replacement.
-type sessionStateCleaner interface {
-	DeleteSession(ctx context.Context, sessionID identity.SessionID) error
-}
-
-// childRunStartReservationCleaner is the Session-lifecycle slice of the
-// adapter-owned callback ledger. The Application supplies the exact Session
-// write-set; this persistence adapter removes its invisible technical rows
-// alongside the public state they cannot outlive.
-type childRunStartReservationCleaner interface {
-	DeleteSession(ctx context.Context, sessionID identity.SessionID) error
-}
-
-// goalStore also captures a terminal Goal-owned root Run inside the write-set
-// that ended the Run.
-type goalStore interface {
-	Get(ctx context.Context, sessionID identity.SessionID) (goal.Current, error)
-	Clear(ctx context.Context, sessionID identity.SessionID) error
-	CaptureGoalRun(ctx context.Context, value rundomain.Run) error
-}
-
-// NewSessionStores returns the SQLite adapter for session snapshots and
-// write-sets. Every store is required: a delete, fork, rollback or restore is
-// one complete mutation, and a missing collaborator would silently narrow it
-// rather than fail.
-func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
-	for _, required := range []struct {
-		name  string
-		value any
-	}{
-		{name: "session store", value: cfg.Sessions},
-		{name: "command acceptance store", value: cfg.CommandAcceptances},
-		{name: "session resource retirements", value: cfg.ResourceRetirements},
-		{name: "transcript store", value: cfg.Transcript},
-		{name: "interrupt store", value: cfg.Interrupts},
-		{name: "Run store", value: cfg.Runs},
-		{name: "executor checkpoint store", value: cfg.ExecutorCheckpoints},
-		{name: "conversation history", value: cfg.History},
-		{name: "Plan projection", value: cfg.Plan},
-		{name: "approval rule store", value: cfg.ApprovalRules},
-		{name: "permission mode store", value: cfg.ApprovalModes},
-		{name: "Tool result store", value: cfg.ToolResults},
-		{name: "child Run start reservation store", value: cfg.ChildRunStarts},
-		{name: "Goal store", value: cfg.Goals},
-		{name: "transactor", value: cfg.Tx},
-		{name: "read snapshot", value: cfg.ReadSnapshot},
-	} {
-		if lo.IsNil(required.value) {
-			return nil, fmt.Errorf("persistence: session %s is required", required.name)
-		}
+func (b *Bundle) SessionStores(history *runsapp.ConversationHistory) (*SessionStores, error) {
+	if history == nil {
+		return nil, errors.New("persistence: session conversation history is required")
 	}
 	return &SessionStores{
-		commandAcceptances:  cfg.CommandAcceptances,
-		resourceRetirements: cfg.ResourceRetirements,
-		sessions:            cfg.Sessions,
-		transcript:          cfg.Transcript,
-		interrupts:          cfg.Interrupts,
-		runs:                cfg.Runs,
-		executorCheckpoints: cfg.ExecutorCheckpoints,
-		history:             cfg.History,
-		plan:                cfg.Plan,
-		approvalRules:       cfg.ApprovalRules,
-		planModes:           cfg.ApprovalModes,
-		toolResults:         cfg.ToolResults,
-		childRunStarts:      cfg.ChildRunStarts,
-		goals:               cfg.Goals,
-		tx:                  cfg.Tx,
-		readSnapshot:        cfg.ReadSnapshot,
+		commandAcceptances:  b.CommandAcceptances,
+		resourceRetirements: b.ResourceRetirements,
+		sessions:            b.Sessions,
+		transcript:          b.Transcript,
+		interrupts:          b.Interrupts,
+		runs:                b.Runs,
+		executorCheckpoints: b.ExecutorCheckpoints,
+		history:             history,
+		plan:                b.Plan,
+		approvalRules:       b.ApprovalRules,
+		modes:               b.ApprovalModes,
+		toolResults:         b.ToolResults,
+		childRunStarts:      b.ChildRunStarts,
+		goals:               b.Goals,
+		tx:                  b.Transactor,
+		readSnapshot:        b.ReadSnapshot,
 	}, nil
 }
 
@@ -263,8 +176,6 @@ func (s *SessionStores) readHistory(ctx context.Context, sessionID identity.Sess
 	}, nil
 }
 
-// ApplyFork persists the Domain-derived child Session and the complete visible
-// history/Plan boundary in one transaction.
 func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) (session.Session, error) {
 	snapshot := fork.History()
 	child := snapshot.Session
@@ -297,7 +208,6 @@ func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) (
 	return child, nil
 }
 
-// ApplyRollback persists one resolved rollback plan atomically.
 func (s *SessionStores) ApplyRollback(ctx context.Context, rollback sessions.RollbackPlan) error {
 	sessionID := rollback.SessionID()
 	dropRunIDs := rollback.DropRunIDs()
@@ -322,8 +232,6 @@ func (s *SessionStores) ApplyRollback(ctx context.Context, rollback sessions.Rol
 }
 
 func (s *SessionStores) republishRollbackState(ctx context.Context, rollback sessions.RollbackPlan) error {
-	// The application has already decided whether this boundary was recorded and,
-	// if so, computed its new aggregate revision. The adapter only applies it.
 	sessionID := rollback.SessionID()
 	if err := s.savePlanReplacement(ctx, sessionID, rollback.PlanReplacement()); err != nil {
 		return err
@@ -342,8 +250,6 @@ func (s *SessionStores) deleteRolledBackRuns(ctx context.Context, sessionID iden
 		if err := s.transcript.DeleteRun(ctx, sessionID, runID); err != nil {
 			return err
 		}
-		// A rolled-back Run ceases to exist and therefore releases the Session's
-		// admission slot; no state remains to terminalize.
 		if err := s.runs.Delete(ctx, sessionID, runID); err != nil {
 			return err
 		}
@@ -354,8 +260,6 @@ func (s *SessionStores) deleteRolledBackRuns(ctx context.Context, sessionID iden
 	return nil
 }
 
-// ApplyRestore replaces every durable projection for a restored session in one
-// transaction.
 func (s *SessionStores) ApplyRestore(ctx context.Context, restore sessions.RestorePlan) error {
 	sessionReplacement := restore.SessionReplacement()
 	snapshot := restore.History()
@@ -369,7 +273,6 @@ func (s *SessionStores) ApplyRestore(ctx context.Context, restore sessions.Resto
 		if err := s.saveSessionReplacement(ctx, sessionReplacement); err != nil {
 			return err
 		}
-		// An absent archived Plan carries no authority to erase the destination's current version.
 		if err := s.clearSessionOwnedStateExceptPlan(ctx, sessionID); err != nil {
 			return err
 		}
@@ -427,7 +330,6 @@ func (s *SessionStores) restoreRuns(ctx context.Context, restored []rundomain.Ru
 	return nil
 }
 
-// ApplyDelete removes all durable state for the addressed session.
 func (s *SessionStores) ApplyDelete(ctx context.Context, deletion sessions.DeletePlan) error {
 	sessionID := deletion.SessionID()
 	return s.tx(ctx, func(ctx context.Context) error {
@@ -485,7 +387,7 @@ func (s *SessionStores) clearSessionOwnedStateExceptPlan(ctx context.Context, se
 	if err := s.approvalRules.DeleteSession(ctx, sessionID); err != nil {
 		return err
 	}
-	if err := s.planModes.DeleteSession(ctx, sessionID); err != nil {
+	if err := s.modes.DeleteSession(ctx, sessionID); err != nil {
 		return err
 	}
 	if err := s.goals.Clear(ctx, sessionID); err != nil {
@@ -497,8 +399,6 @@ func (s *SessionStores) clearSessionOwnedStateExceptPlan(ctx context.Context, se
 	return nil
 }
 
-// ApplyTerminal persists the terminal record for an abandoned parked run and
-// clears its executor checkpoint atomically.
 func (s *SessionStores) ApplyTerminal(ctx context.Context, terminal sessions.TerminalPlan, winningCancellationKey string) error {
 	root, _ := terminal.RootRun()
 	items := terminal.Items()
@@ -600,7 +500,7 @@ func (s *SessionStores) terminalizeParkedRuns(ctx context.Context, runs []rundom
 }
 
 func (s *SessionStores) recordGoalTerminalRun(ctx context.Context, root rundomain.Run) error {
-	if root.GoalIncarnationID() == "" {
+	if root.GoalIncarnationID().IsZero() {
 		return nil
 	}
 	if err := s.goals.CaptureGoalRun(ctx, root); err != nil {

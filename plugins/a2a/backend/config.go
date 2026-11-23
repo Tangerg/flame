@@ -18,8 +18,8 @@ import (
 
 type agentSpec struct {
 	Name              string   `json:"name"`
-	CardURL           string   `json:"cardURL"`
-	AllowedRPCOrigins []string `json:"allowedRPCOrigins,omitempty"`
+	CardURL           string   `json:"cardUrl"`
+	AllowedRPCOrigins []string `json:"allowedRpcOrigins,omitempty"`
 	Description       string   `json:"description,omitempty"`
 }
 
@@ -57,8 +57,6 @@ func configureAgents(specs []agentSpec) (map[string]agent, error) {
 	return agents, nil
 }
 
-// newAgent admits one agent: its card endpoint and the RPC origins it may
-// redirect to together form its authority.
 func newAgent(spec agentSpec) (agent, error) {
 	if !agentName.MatchString(spec.Name) || !utf8.ValidString(spec.Description) || len(spec.Description) > maxAgentDescriptionBytes {
 		return agent{}, errors.New("a2a: invalid agent name or description")

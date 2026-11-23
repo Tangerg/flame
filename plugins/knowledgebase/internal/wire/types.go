@@ -1,7 +1,7 @@
 package wire
 
 import (
-	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+	"github.com/Tangerg/flame/plugins/knowledgebase/internal/knowledge"
 
 	"github.com/Tangerg/scope/core/jsonschema"
 )

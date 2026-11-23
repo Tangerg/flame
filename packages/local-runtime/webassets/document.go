@@ -31,7 +31,7 @@ func (h *Handler) serveDocument(w http.ResponseWriter, r *http.Request, kind doc
 	}
 	w.Header().Set("Content-Security-Policy", strings.ReplaceAll(csp, h.policy.NoncePlaceholder, value))
 	w.Header().Set("X-Frame-Options", xfo)
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set(headerContentType, "text/html; charset=utf-8")
 	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 	// A fresh nonce cannot be paired with a cached body through a 304.
 	w.WriteHeader(http.StatusOK)

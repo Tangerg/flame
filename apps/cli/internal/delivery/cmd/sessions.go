@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/spf13/cobra"
@@ -45,24 +46,24 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			update := conversation.UpdateSession{SessionID: args[0], ExpectedRevision: revision}
-			if cmd.Flags().Changed("title") {
+			if cmd.Flags().Changed(titleFlag) {
 				update.Title = &title
 			}
-			if cmd.Flags().Changed("workspace") {
+			if cmd.Flags().Changed(workspaceFlag) {
 				resolved, err := provider.workspacePath(workspace)
 				if err != nil {
 					return err
 				}
 				update.Workspace = &resolved
 			}
-			if cmd.Flags().Changed("model") {
+			if cmd.Flags().Changed(modelFlag) {
 				ref, err := conversation.ParseModelRef(model)
 				if err != nil {
 					return err
 				}
 				update.Model = &ref
 			}
-			if cmd.Flags().Changed("favorite") {
+			if cmd.Flags().Changed(favoriteFlag) {
 				update.Favorite = &favorite
 			}
 			if err := update.Validate(); err != nil {
@@ -82,12 +83,11 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 			return writeSessionJSON(cmd.OutOrStdout(), updated)
 		},
 	}
-	cmd.Flags().StringVar(&title, "title", "", "Replace the session title")
-	cmd.Flags().StringVar(&workspace, "workspace", "", "Relocate the session to this workspace")
-	cmd.Flags().StringVar(&model, "model", "", "Set the session model in provider/model form")
-	cmd.Flags().BoolVar(&favorite, "favorite", false, "Set whether the session is a favorite")
-	cmd.Flags().Uint64Var(&revision, "revision", 0, "Revision previously read from sessions ls/show")
-	requireFlag(cmd, "revision")
+	cmd.Flags().StringVar(&title, titleFlag, "", "Replace the session title")
+	cmd.Flags().StringVar(&workspace, workspaceFlag, "", "Relocate the session to this workspace")
+	cmd.Flags().StringVar(&model, modelFlag, "", "Set the session model in provider/model form")
+	cmd.Flags().BoolVar(&favorite, favoriteFlag, false, "Set whether the session is a favorite")
+	addRevisionFlag(cmd, &revision)
 	cmd.ValidArgsFunction = completeFirstSessionArgument(provider)
 	return cmd
 }
@@ -105,7 +105,7 @@ func newSessionsListCommand(provider runtimeProvider) *cobra.Command {
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			pageSize, err := pageSizeFromFlag(cmd, "limit", limitRows)
+			pageSize, err := pageSizeFromFlag(cmd, limitRows)
 			if err != nil {
 				return err
 			}
@@ -147,17 +147,11 @@ func newSessionsListCommand(provider runtimeProvider) *cobra.Command {
 			return err
 		},
 	}
-	cmd.Flags().IntVarP(
-		&limitRows,
-		"limit",
-		"n",
-		conversation.DefaultPageRows,
-		fmt.Sprintf("Maximum sessions to return (up to %d)", conversation.MaximumPageRows),
-	)
-	cmd.Flags().StringVar(&query.Cursor, "cursor", "", "Opaque cursor returned by the previous page")
+	addPageSizeFlag(cmd, &limitRows, "sessions")
+	cmd.Flags().StringVar(&query.Cursor, cursorFlag, "", "Opaque cursor returned by the previous page")
 	cmd.Flags().StringVarP(&query.Search, "search", "q", "", "Search session titles and workspaces")
-	cmd.Flags().StringVar(&query.Workspace, "workspace", "", "Only sessions in this exact workspace")
-	cmd.Flags().BoolVar(&asJSON, "json", false, "Write the page as JSON")
+	cmd.Flags().StringVar(&query.Workspace, workspaceFlag, "", "Only sessions in this exact workspace")
+	cmd.Flags().BoolVar(&asJSON, jsonFlag, false, "Write the page as JSON")
 	return cmd
 }
 
@@ -190,7 +184,7 @@ func newSessionsShowCommand(provider runtimeProvider) *cobra.Command {
 			return writeSessionSnapshot(cmd, snapshot, asJSON)
 		},
 	}
-	cmd.Flags().BoolVar(&asJSON, "json", false, "Write the authoritative cold snapshot as JSON")
+	cmd.Flags().BoolVar(&asJSON, jsonFlag, false, "Write the authoritative cold snapshot as JSON")
 	cmd.ValidArgsFunction = completeSessionIDs(provider)
 	return cmd
 }
@@ -228,8 +222,7 @@ func newSessionsRenameCommand(provider runtimeProvider) *cobra.Command {
 			return err
 		},
 	}
-	cmd.Flags().Uint64Var(&revision, "revision", 0, "Revision previously read from sessions ls/show")
-	requireFlag(cmd, "revision")
+	addRevisionFlag(cmd, &revision)
 	cmd.ValidArgsFunction = completeFirstSessionArgument(provider)
 	return cmd
 }
@@ -258,7 +251,7 @@ func newSessionsForkCommand(provider runtimeProvider) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&fromRun, "from-run", "", "Fork through this root run (default: complete session)")
-	cmd.Flags().StringVar(&title, "title", "", "Title for the fork")
+	cmd.Flags().StringVar(&title, titleFlag, "", "Title for the fork")
 	cmd.ValidArgsFunction = completeSessionIDs(provider)
 	return cmd
 }
@@ -284,7 +277,7 @@ func newSessionsDeleteCommand(provider runtimeProvider) *cobra.Command {
 				return err
 			}
 			defer func() { runErr = errors.Join(runErr, authoring.Close()) }()
-			replayPolicy, err := mutation.PolicyFromProfile(profile, time.Now)
+			replayPolicy, err := mutation.NewReplayPolicy(profile.IdempotencyLimits(), time.Now)
 			if err != nil {
 				return fmt.Errorf("runtime command replay policy: %w", err)
 			}
@@ -315,7 +308,7 @@ func newSessionsDeleteCommand(provider runtimeProvider) *cobra.Command {
 			return err
 		},
 	}
-	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Confirm deletion")
+	cmd.Flags().BoolVarP(&yes, yesFlag, "y", false, "Confirm deletion")
 	cmd.ValidArgsFunction = completeSessionIDs(provider)
 	return cmd
 }
@@ -350,20 +343,13 @@ func completeSessionIDs(provider runtimeProvider) cobra.CompletionFunc {
 	}
 }
 
-// relativeAge phrases a timestamp the way a session list is read.
 func relativeAge(t time.Time) string {
 	if t.IsZero() {
 		return "-"
 	}
-	d := time.Since(t)
-	switch {
-	case d < time.Minute:
+	amount, unit, recent := format.Elapsed(time.Since(t))
+	if recent {
 		return "just now"
-	case d < time.Hour:
-		return strconv.Itoa(int(d.Minutes())) + "m ago"
-	case d < 24*time.Hour:
-		return strconv.Itoa(int(d.Hours())) + "h ago"
-	default:
-		return strconv.Itoa(int(d.Hours()/24)) + "d ago"
 	}
+	return strconv.Itoa(amount) + unit + " ago"
 }

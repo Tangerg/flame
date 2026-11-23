@@ -1,9 +1,3 @@
-// Package mock serves scripted conversations, so the CLI can be built, run and
-// tested before a real runtime is wired in.
-//
-// Everything it returns is obviously synthetic. That is a rule, not an accident:
-// a fixture that looks like real output invites someone to trust it. Paths,
-// diffs and numbers here are made up and should stay that way.
 package runtimefixture
 
 import (
@@ -19,10 +13,36 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// Step is one scripted action: wait, then emit an already committed event, ask
-// the mock Runtime to commit a Plan replacement, or finish the Run. Plan content
-// and the finish are separate actions because only the Runtime owns the Plan's
-// durable revision and the Run record a segment ends with.
+const (
+	interruptInputTokens     = 12_800
+	interruptOutputTokens    = 684
+	interruptCacheReadTokens = 9_600
+	interruptCostUSD         = 0.0264
+	interruptDuration        = 9 * time.Second
+
+	approvedInputTokens     = 18_422
+	approvedOutputTokens    = 1_163
+	approvedCacheReadTokens = 12_800
+	approvedCostUSD         = 0.0412
+	approvedDuration        = 21 * time.Second
+
+	deniedInputTokens     = 14_180
+	deniedOutputTokens    = 742
+	deniedCacheReadTokens = 12_800
+	deniedCostUSD         = 0.0291
+	deniedDuration        = 14 * time.Second
+
+	cacheSessionRevision   = 7
+	renameSessionRevision  = 3
+	releaseSessionRevision = 12
+)
+
+const (
+	scriptedRunID = "fixture"
+	demoSessionID = "ses_demo_1"
+	demoTestFile  = "internal/store/cache_test.go"
+)
+
 type Step struct {
 	Delay  time.Duration
 	Event  conversation.Event
@@ -30,8 +50,6 @@ type Step struct {
 	plan   *planReplacementAction
 }
 
-// Finish is a scripted terminal outcome and the metering the Run reached. The
-// mock Runtime publishes the finished Run record built from it.
 type Finish struct {
 	Outcome conversation.Outcome
 	Usage   conversation.Usage
@@ -42,19 +60,14 @@ type planReplacementAction struct {
 	err   error
 }
 
-func finishStep(delay time.Duration, finish Finish) Step {
-	return Step{Delay: delay, Finish: &finish}
+func finishStep(finish Finish) Step {
+	return Step{Delay: beat, Finish: &finish}
 }
 
-// Emit creates a scripted event action. PlanChanged is intentionally rejected:
-// use ReplacePlan so the mock Runtime, rather than the fixture, owns revisioning.
 func Emit(delay time.Duration, event conversation.Event) Step {
 	return Step{Delay: delay, Event: event}
 }
 
-// ReplacePlan creates a scripted whole-list Plan replacement without inventing
-// a revision. The mock Runtime assigns the next durable revision when it plays
-// the step.
 func ReplacePlan(delay time.Duration, steps []protocol.PlanStep) Step {
 	cloned := slices.Clone(steps)
 	var err error
@@ -67,8 +80,6 @@ func ReplacePlan(delay time.Duration, steps []protocol.PlanStep) Step {
 	return Step{Delay: delay, plan: &planReplacementAction{steps: cloned, err: err}}
 }
 
-// Script is one run's worth of events. Prelude plays first; Interrupts, when
-// non-empty, park the run as one atomic waiting set.
 type Script struct {
 	Prelude        []Step
 	Interrupts     []conversation.Interrupt
@@ -94,7 +105,7 @@ func (s Script) validate() error {
 	if interrupted {
 		interrupts := conversation.CloneInterrupts(s.Interrupts)
 		for i, interrupt := range interrupts {
-			interrupts[i] = bindInterruptToRun(interrupt, "fixture")
+			interrupts[i] = bindInterruptToRun(interrupt, scriptedRunID)
 		}
 		if err := conversation.ValidateInterrupts(interrupts); err != nil {
 			return err
@@ -136,8 +147,6 @@ func validateSteps(steps []Step, requireFinish bool) error {
 	return nil
 }
 
-// validate checks one step carries exactly one action; a finish must be the
-// last step, and an event is checked as the Runtime would publish it.
 func (s Step) validate(last bool) (bool, error) {
 	if s.Delay < 0 {
 		return false, errors.New("negative delay")
@@ -157,7 +166,7 @@ func (s Step) validate(last bool) (bool, error) {
 		case conversation.SegmentStarted, conversation.SegmentFinished, conversation.PlanChanged:
 			return false, errors.New("contains a runtime-owned event")
 		}
-		return false, conversation.ValidateEvent(ownedBlockEvent("fixture", s.Event))
+		return false, conversation.ValidateEvent(ownedBlockEvent(scriptedRunID, s.Event))
 	case s.Finish != nil:
 		if !last {
 			return false, errors.New("finishes before the script ends")
@@ -199,9 +208,6 @@ func cloneSteps(steps []Step) []Step {
 	return cloned
 }
 
-// namespaceScript turns reusable fixture-local identities into runtime-global
-// Item identities. Durable transcripts span Runs, so a second invocation must
-// never reuse the first invocation's block or pending-item IDs.
 func namespaceScript(script Script, runID string) Script {
 	originalContinue := script.Continue
 	script.Prelude = namespaceSteps(script.Prelude, runID)
@@ -270,14 +276,13 @@ func bindInterruptToRun(interrupt conversation.Interrupt, runID string) conversa
 func (s Script) interrupts() bool { return len(s.Interrupts) != 0 }
 
 const (
-	// tick paces one streamed word. Fast enough to feel live, slow enough that
-	// a renderer's incremental behavior is visible to the naked eye.
 	tick = 22 * time.Millisecond
 	beat = 260 * time.Millisecond
+
+	outputChunkDelay      = 3 * tick
+	silentCompletionDelay = 3 * beat
 )
 
-// DefaultScript is the default script: think, run a command, explain, ask to edit
-// a file, then either edit it or say why it did not.
 func DefaultScript(_ string) Script {
 	return newDefaultScenario().script()
 }
@@ -302,8 +307,8 @@ func newDefaultScenario() defaultScenario {
 		declined: "Left the file alone. If you would rather fix it differently, the janitor already exposes a channel that\n" +
 			"closes after each sweep — waiting on that is the smallest change that removes the timing assumption.\n",
 		patch: strings.Join([]string{
-			"--- a/internal/store/cache_test.go",
-			"+++ b/internal/store/cache_test.go",
+			"--- a/" + demoTestFile,
+			"+++ b/" + demoTestFile,
 			"@@ -18,8 +18,8 @@ func TestCacheExpiry(t *testing.T) {",
 			" \tc := New(WithTTL(10 * time.Millisecond))",
 			" \tc.Set(\"k\", \"v\")",
@@ -340,9 +345,9 @@ func (d defaultScenario) prelude() []Step {
 		{ID: "3", Description: "Replace the sleep and re-run", Status: protocol.PlanStatusPending},
 	}))
 	prelude = append(prelude, stream("rsn_1", conversation.BlockReasoning, d.reasoning)...)
-	prelude = append(prelude, tool("tool_1", builtin.CategoryShell, "shell",
+	prelude = append(prelude, shellTool("tool_1",
 		"go test ./internal/store -run TestCacheExpiry -count=5",
-		conversation.ToolOK, d.testOutput, 3*time.Second+412*time.Millisecond)...)
+		d.testOutput, 3*time.Second+412*time.Millisecond)...)
 	prelude = append(prelude, ReplacePlan(beat, []protocol.PlanStep{
 		{ID: "1", Description: "Reproduce the flake", Status: protocol.PlanStatusCompleted},
 		{ID: "2", Description: "Find what the test is really waiting for", Status: protocol.PlanStatusCompleted},
@@ -351,8 +356,6 @@ func (d defaultScenario) prelude() []Step {
 	return append(prelude, stream("msg_1", conversation.BlockAssistant, d.explanation)...)
 }
 
-// patchArguments carries the proposed change the way the apply_patch tool
-// receives it, so the approval shows what production would show.
 func (d defaultScenario) patchArguments() []byte {
 	encoded, err := json.Marshal(struct {
 		Patch string `json:"patch"`
@@ -364,15 +367,15 @@ func (d defaultScenario) patchArguments() []byte {
 }
 
 func (d defaultScenario) approved() []Step {
-	approved := tool("tool_3", builtin.CategoryShell, "shell",
+	approved := shellTool("tool_3",
 		"go test ./internal/store -run TestCacheExpiry -count=50",
-		conversation.ToolOK, "ok  \tgithub.com/example/store\t2.104s", 2*time.Second+104*time.Millisecond)
+		"ok  \tgithub.com/example/store\t2.104s", 2*time.Second+104*time.Millisecond)
 	approved = append(approved, stream("msg_2", conversation.BlockAssistant, d.summary)...)
-	approved = append(approved, finishStep(beat, Finish{
+	approved = append(approved, finishStep(Finish{
 		Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		Usage: conversation.Usage{
-			InputTokens: 18422, OutputTokens: 1163, CacheReadTokens: 12800,
-			CostUSD: new(0.0412), Duration: 21 * time.Second,
+			InputTokens: approvedInputTokens, OutputTokens: approvedOutputTokens, CacheReadTokens: approvedCacheReadTokens,
+			CostUSD: new(approvedCostUSD), Duration: approvedDuration,
 		},
 	}))
 	return approved
@@ -381,14 +384,14 @@ func (d defaultScenario) approved() []Step {
 func (d defaultScenario) denied() []Step {
 	denied := make([]Step, 0, 16)
 	denied = append(denied, Emit(beat, conversation.BlockCompleted{Block: conversation.Block{
-		ID: "note_1", Kind: conversation.BlockNotice, Text: "Edit declined — internal/store/cache_test.go left unchanged.",
+		ID: "note_1", Kind: conversation.BlockNotice, Text: "Edit declined — " + demoTestFile + " left unchanged.",
 	}}))
 	denied = append(denied, stream("msg_3", conversation.BlockAssistant, d.declined)...)
-	denied = append(denied, finishStep(beat, Finish{
+	denied = append(denied, finishStep(Finish{
 		Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		Usage: conversation.Usage{
-			InputTokens: 14180, OutputTokens: 742, CacheReadTokens: 12800,
-			CostUSD: new(0.0291), Duration: 14 * time.Second,
+			InputTokens: deniedInputTokens, OutputTokens: deniedOutputTokens, CacheReadTokens: deniedCacheReadTokens,
+			CostUSD: new(deniedCostUSD), Duration: deniedDuration,
 		},
 	}))
 	return denied
@@ -398,14 +401,14 @@ func (d defaultScenario) script() Script {
 	approved, denied := d.approved(), d.denied()
 	return Script{
 		Prelude:        d.prelude(),
-		InterruptUsage: conversation.Usage{InputTokens: 12_800, OutputTokens: 684, CacheReadTokens: 9_600, CostUSD: new(0.0264), Duration: 9 * time.Second},
+		InterruptUsage: conversation.Usage{InputTokens: interruptInputTokens, OutputTokens: interruptOutputTokens, CacheReadTokens: interruptCacheReadTokens, CostUSD: new(interruptCostUSD), Duration: interruptDuration},
 		Interrupts: []conversation.Interrupt{conversation.Approval{
 			ItemID: "tool_2",
-			Title:  "edit internal/store/cache_test.go",
+			Title:  "edit " + demoTestFile,
 			Detail: "Replace the fixed 50ms sleep with a wait on the janitor's sweep signal.",
 			Tool: &conversation.ToolCall{
-				Kind: builtin.CategoryEdit, Name: string(builtin.ApplyPatch), Summary: "internal/store/cache_test.go",
-				Status: conversation.ToolRunning, Path: "internal/store/cache_test.go", ArgumentsJSON: d.patchArguments(),
+				Kind: builtin.CategoryEdit, Name: string(builtin.ApplyPatch), Summary: demoTestFile,
+				Status: conversation.ToolRunning, Path: demoTestFile, ArgumentsJSON: d.patchArguments(),
 			},
 			Risk:         protocol.ApprovalRiskMedium,
 			Rememberable: true,
@@ -420,8 +423,6 @@ func (d defaultScenario) script() Script {
 	}
 }
 
-// stream renders one body as a started block, a delta per word, and a completed
-// block — the shape a real streaming item takes.
 func stream(id string, kind conversation.BlockKind, text string) []Step {
 	steps := []Step{Emit(beat, conversation.BlockStarted{Block: conversation.Block{ID: id, Kind: kind}})}
 	for _, w := range words(text) {
@@ -430,44 +431,28 @@ func stream(id string, kind conversation.BlockKind, text string) []Step {
 	return append(steps, Emit(0, conversation.BlockCompleted{Block: conversation.Block{ID: id, Kind: kind, Text: text}}))
 }
 
-// tool renders one call as running, then finished with its result.
-func tool(id string, kind builtin.ToolCategory, name, summary string, status conversation.ToolStatus, output string, d time.Duration) []Step {
+func shellTool(id, command, output string, d time.Duration) []Step {
 	running := conversation.Block{ID: id, Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
-		Kind: kind, Name: name, Summary: summary, Status: conversation.ToolRunning,
+		Kind: builtin.CategoryShell, Name: string(builtin.Shell), Summary: command, Command: command, Status: conversation.ToolRunning,
 	}}
+	exitCode := 0
 	done := conversation.Block{ID: id, Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
-		Kind: kind, Name: name, Summary: summary, Status: status, Output: output, Duration: d,
+		Kind: builtin.CategoryShell, Name: string(builtin.Shell), Summary: command, Command: command,
+		Status: conversation.ToolOK, Output: output, Duration: d, ExitCode: &exitCode,
 	}}
-	switch kind {
-	case builtin.CategoryShell:
-		running.Tool.Command, done.Tool.Command = summary, summary
-		code := 0
-		if status == conversation.ToolError {
-			code = 1
-		}
-		done.Tool.ExitCode = &code
-	case builtin.CategoryEdit, builtin.CategoryRead:
-		running.Tool.Path, done.Tool.Path = summary, summary
-	case builtin.CategorySearch:
-		running.Tool.Query, done.Tool.Query = summary, summary
-	case "", builtin.CategoryTask:
-		// These kinds do not project a specialized primary field.
-	default:
-	}
 	steps := []Step{Emit(beat, conversation.BlockStarted{Block: running})}
 	for _, chunk := range strings.SplitAfter(output, "\n") {
 		if chunk != "" {
-			steps = append(steps, Emit(3*tick, conversation.BlockDelta{BlockID: id, Text: chunk}))
+			steps = append(steps, Emit(outputChunkDelay, conversation.BlockDelta{BlockID: id, Text: chunk}))
 		}
 	}
-	completionDelay := 3 * beat
+	completionDelay := silentCompletionDelay
 	if output != "" {
 		completionDelay = beat
 	}
 	return append(steps, Emit(completionDelay, conversation.BlockCompleted{Block: done}))
 }
 
-// words splits text so that concatenating the pieces reproduces it exactly.
 func words(text string) []string {
 	var out []string
 	for len(text) > 0 {
@@ -481,12 +466,11 @@ func words(text string) []string {
 	return out
 }
 
-// demoSessions seeds the catalog with plainly fake history.
 func demoSessions() []conversation.Session {
 	now := time.Date(2026, 8, 4, 11, 30, 0, 0, time.UTC)
 	return []conversation.Session{
-		{ID: "ses_demo_1", Title: "Flaky cache expiry test", Status: protocol.SessionStatusIdle, Provider: defaultProvider, Model: defaultModel, Workspace: availableWorkspace("/tmp/demo/store"), UpdatedAt: now, Revision: 7},
-		{ID: "ses_demo_2", Title: "Rename the shell tool family", Status: protocol.SessionStatusIdle, Provider: defaultProvider, Model: defaultModel, Workspace: availableWorkspace("/tmp/demo/store"), UpdatedAt: now.Add(-90 * time.Minute), Revision: 3},
-		{ID: "ses_demo_3", Title: "Draft the release notes", Status: protocol.SessionStatusIdle, Provider: defaultProvider, Model: defaultModel, Workspace: availableWorkspace("/tmp/demo/docs"), UpdatedAt: now.Add(-26 * time.Hour), Revision: 12},
+		{ID: demoSessionID, Title: "Flaky cache expiry test", Status: protocol.SessionStatusIdle, Provider: defaultProvider, Model: defaultModel, Workspace: availableWorkspace("/tmp/demo/store"), UpdatedAt: now, Revision: cacheSessionRevision},
+		{ID: "ses_demo_2", Title: "Rename the shell tool family", Status: protocol.SessionStatusIdle, Provider: defaultProvider, Model: defaultModel, Workspace: availableWorkspace("/tmp/demo/store"), UpdatedAt: now.Add(-90 * time.Minute), Revision: renameSessionRevision},
+		{ID: "ses_demo_3", Title: "Draft the release notes", Status: protocol.SessionStatusIdle, Provider: defaultProvider, Model: defaultModel, Workspace: availableWorkspace("/tmp/demo/docs"), UpdatedAt: now.Add(-26 * time.Hour), Revision: releaseSessionRevision},
 	}
 }

@@ -13,9 +13,6 @@ import (
 	"github.com/Tangerg/scope/core/media"
 )
 
-// openText owns the identity and accumulated content of one live streaming
-// item. Reducer clones are speculative, so cloning must also detach the
-// mutable builder before a persistence batch can be attempted.
 type openText struct {
 	identity transcript.ItemIdentity
 	content  strings.Builder
@@ -51,9 +48,6 @@ func (r *reducer) itemIdentity(id flameidentity.ItemID, occurredAt time.Time) tr
 	}
 }
 
-// openTextStream returns the stream a delta extends, starting it when the
-// first delta arrives. A started stream announces its transcript Item, which
-// is the step both streaming kinds must take and neither may take twice.
 func (r *reducer) openTextStream(
 	current *openText,
 	kind transcript.ItemKind,
@@ -74,43 +68,34 @@ func (r *reducer) openTextStream(
 }
 
 func (r *reducer) appendText(text string) ([]ProjectionEvent, error) {
-	if text == "" {
-		return nil, nil
-	}
-	delta, err := newContentItemDelta(text)
-	if err != nil {
-		return nil, err
-	}
-	stream, out, err := r.openTextStream(r.text, transcript.AgentMessage)
-	if err != nil {
-		return nil, err
-	}
-	r.text = stream
-	r.text.append(text)
-	return append(out, ItemChanged{
-		ItemID: r.text.itemID(),
-		Delta:  delta,
-	}), nil
+	return appendStreamedText(r, &r.text, transcript.AgentMessage, newContentItemDelta, text)
 }
 
 func (r *reducer) appendReasoning(text string) ([]ProjectionEvent, error) {
+	return appendStreamedText(r, &r.reasoning, transcript.Reasoning, newReasoningItemDelta, text)
+}
+
+func appendStreamedText[D ItemDelta](
+	r *reducer,
+	slot **openText,
+	kind transcript.ItemKind,
+	newDelta func(string) (D, error),
+	text string,
+) ([]ProjectionEvent, error) {
 	if text == "" {
 		return nil, nil
 	}
-	delta, err := newReasoningItemDelta(text)
+	delta, err := newDelta(text)
 	if err != nil {
 		return nil, err
 	}
-	stream, out, err := r.openTextStream(r.reasoning, transcript.Reasoning)
+	stream, out, err := r.openTextStream(*slot, kind)
 	if err != nil {
 		return nil, err
 	}
-	r.reasoning = stream
-	r.reasoning.append(text)
-	return append(out, ItemChanged{
-		ItemID: r.reasoning.itemID(),
-		Delta:  delta,
-	}), nil
+	*slot = stream
+	stream.append(text)
+	return append(out, ItemChanged{ItemID: stream.itemID(), Delta: delta}), nil
 }
 
 func (r *reducer) retainIncompleteModelOutput(observation ModelObservation) ([]ProjectionEvent, error) {
@@ -124,7 +109,6 @@ func (r *reducer) retainIncompleteModelOutput(observation ModelObservation) ([]P
 		{observation.Reasoning, r.reasoning, transcript.Reasoning, transcript.NewIncompleteReasoning},
 		{observation.Text, r.text, transcript.AgentMessage, transcript.NewIncompleteAgentMessage},
 	} {
-		// An observed prefix may be longer than the deltas the preview kept.
 		if visible.text == "" && visible.stream != nil {
 			visible.text = visible.stream.text()
 		}
@@ -238,8 +222,6 @@ func (r *reducer) completeMessageContent(
 	return append(events, ItemCompleted{Item: item}), nil
 }
 
-// admitToolStart refuses a start the executor contract forbids: an unnamed or
-// unattributed call, or one whose identity or model position is already taken.
 func (r *reducer) admitToolStart(e ToolCallStarted) error {
 	if err := ValidateInvocation(e.CallID); err != nil {
 		return err
@@ -326,12 +308,6 @@ func (r *reducer) openToolItemID(callID string) (flameidentity.ItemID, bool) {
 	return ref.item.ID(), true
 }
 
-// spawningItem resolves the executor's immutable parent-call identity to the
-// canonical running Item that represents it. Only currently open calls are
-// eligible: a Delegate creates its child before that parent call can finish.
-// It returns the complete canonical Item because child admission must persist
-// that Item in the same transaction as the child's lineage edge. Ambiguity is
-// rejected rather than resolved by ordering.
 func (r *reducer) spawningItem(sourceCallID string) (transcript.Item, error) {
 	if sourceCallID == "" {
 		return transcript.Item{}, errors.New("source call id is required")
@@ -415,8 +391,6 @@ func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]ProjectionE
 	return append(out, settledItem(settlement, e.MutatedPaths)), nil
 }
 
-// The model completion supplies both durable consumption and its progress
-// projection. Segment termination cannot replace or erase that consumption.
 func (r *reducer) modelUsageProgress(e ModelCallCompleted) ([]ProjectionEvent, error) {
 	accrued, err := r.accrued.AccrueModelCall(e.Model, e.ReportedUsage, e.Cost)
 	if err != nil {
@@ -443,7 +417,6 @@ func (r *reducer) modelUsageProgress(e ModelCallCompleted) ([]ProjectionEvent, e
 }
 
 func (r *reducer) compaction(e CompactionBoundary) ([]ProjectionEvent, error) {
-	// A root Compaction Item is the evidence that the Session rewrite committed.
 	if durable := e.Rewrite != nil; durable != r.cfg.Opened.Lineage().IsRoot() {
 		return nil, fmt.Errorf("%w: compaction rewrite does not match the Run's lineage", errExecutorContract)
 	}
@@ -518,9 +491,6 @@ func (r *reducer) steerMessagesApplied(e SteerMessagesApplied) ([]ProjectionEven
 
 func (r *reducer) planSnapshot(e PlanUpdated) []ProjectionEvent {
 	snapshot := r.planState(e.State)
-	// Remembered so the segment can fence its final value: a client folding this
-	// stream must reach segment.finished holding the Plan the segment ended with,
-	// not the Plan as of whichever change happened to be published last.
 	r.plan = &snapshot
 	return []ProjectionEvent{snapshot}
 }

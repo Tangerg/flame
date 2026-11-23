@@ -3,13 +3,15 @@ package localruntime
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 )
 
+// ProductRootVariable relocates the product root. Only an empty value selects
+// the default beneath the user's home, so a configured root never needs one.
+const ProductRootVariable = "FLAME_HOME"
+
 const (
-	// productRootName is FLAME_HOME's default leaf under a user's home. Every
-	// local surface — the Runtime process, the CLI, a trusted desktop client —
-	// resolves the same root, so it is spelled once.
 	productRootName  = ".flame"
 	runtimeStateName = "runtime"
 	databaseFilename = "flame-frame.db"
@@ -18,9 +20,6 @@ const (
 
 var ErrInvalidDataDirectory = errors.New("invalid local Runtime data directory")
 
-// DataDirectory is the canonical local deployment root shared by the Runtime
-// process and trusted desktop clients. It owns the filenames that cross that
-// process boundary so consumers cannot construct competing layouts.
 type DataDirectory struct {
 	path string
 }
@@ -35,10 +34,8 @@ func DataDirectoryAt(path string) (DataDirectory, error) {
 	return DataDirectory{path: filepath.Clean(path)}, nil
 }
 
-// DataDirectoryUnder derives Runtime's durability root from a product root —
-// FLAME_HOME, however the caller resolved it. The segment beneath it belongs to
-// this package: a caller that appended its own would be publishing a second
-// layout, and a client reading the other one finds no database and no token.
+// The segment beneath the product root belongs to this package; a caller that
+// appended its own would publish a second layout.
 func DataDirectoryUnder(productRoot string) (DataDirectory, error) {
 	if productRoot == "" {
 		return DataDirectory{}, invalidDataDirectory("product root is required")
@@ -49,12 +46,23 @@ func DataDirectoryUnder(productRoot string) (DataDirectory, error) {
 	return DataDirectoryAt(filepath.Join(filepath.Clean(productRoot), runtimeStateName))
 }
 
-// ResolveProductRoot owns FLAME_HOME's selection and path validation. Paths keep
-// significant whitespace; only an empty configuration selects the default.
-func ResolveProductRoot(userHome, configuredRoot string) (string, error) {
+func ProductRoot() (string, error) {
+	configured := os.Getenv(ProductRootVariable)
+	var userHome string
+	if configured == "" {
+		var err error
+		userHome, err = os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("local product root: locate user home: %w", err)
+		}
+	}
+	return resolveProductRoot(userHome, configured)
+}
+
+func resolveProductRoot(userHome, configuredRoot string) (string, error) {
 	if configuredRoot != "" {
 		if !filepath.IsAbs(configuredRoot) {
-			return "", errors.New("local product root: configured path must be absolute")
+			return "", fmt.Errorf("local product root: %s must be absolute", ProductRootVariable)
 		}
 		return filepath.Clean(configuredRoot), nil
 	}
@@ -88,8 +96,6 @@ func invalidDataDirectory(reason string) error {
 	return fmt.Errorf("local Runtime data directory: %s: %w", reason, ErrInvalidDataDirectory)
 }
 
-// FirstPartyDirectory names the companion catalog shipped with a Runtime host.
-// The executable location, not cwd or a user's data root, owns this distribution.
 func FirstPartyDirectory(executable string) (string, error) {
 	if !filepath.IsAbs(executable) {
 		return "", errors.New("first-party distribution: executable must be absolute")
@@ -97,8 +103,6 @@ func FirstPartyDirectory(executable string) (string, error) {
 	return filepath.Join(filepath.Dir(executable), "plugins"), nil
 }
 
-// RunnerExecutable names the independently running Frame process authority in
-// the same distribution as the Runtime host.
 func RunnerExecutable(executable string) (string, error) {
 	if !filepath.IsAbs(executable) {
 		return "", errors.New("runner distribution: executable must be absolute")

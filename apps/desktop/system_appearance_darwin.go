@@ -16,11 +16,9 @@ static int systemIsDark(void) {
 */
 import "C"
 
-// systemPrefersDarkAppearance reports the OS appearance the window opens against.
-//
-// This is NOT the app's theme. The theme is a preference the WebView owns and Go cannot
-// read — but its default is "system", which resolves to exactly this, so reading the OS
-// answers correctly for every user who has not chosen otherwise.
+// Reads the OS appearance, not the app theme. The theme defaults to "system",
+// which resolves to exactly this, so it is correct for every user who has not
+// chosen otherwise.
 func systemPrefersDarkAppearance() bool {
 	return C.systemIsDark() != 0
 }

@@ -22,7 +22,7 @@ export const VIEWPORTS = [
   { id: "desktop", width: 1280 },
 ] as const;
 
-export type LabViewport = (typeof VIEWPORTS)[number]["id"];
+type LabViewport = (typeof VIEWPORTS)[number]["id"];
 type LabMode = "gallery" | "inspect";
 
 export interface LabSelection {
@@ -37,7 +37,7 @@ export interface LabSelection {
   readonly compare: boolean;
 }
 
-export type FailureSelection = Pick<LabSelection, "theme" | "locale" | "motion" | "fontSize">;
+type FailureSelection = Pick<LabSelection, "theme" | "locale" | "motion" | "fontSize">;
 
 export function fixtureTheme(value: string | null): LabTheme {
   return value === "dark" ? "dark" : "light";

@@ -10,25 +10,20 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/spf13/cobra"
 )
 
-// RuntimeProfile is the immutable negotiated view used for command admission
-// and runtime-info presentation. Runtime binding owns its construction.
 type RuntimeProfile interface {
-	mutation.ReplayProfile
+	IdempotencyLimits() protocol.IdempotencyLimits
 	Discovery() protocol.DiscoverResponse
 	ClientCapabilities() *protocol.ClientCapabilities
 	Supports(string) bool
 }
 
-// Runtime is the command delivery surface consumed across the Cobra tree.
-// Individual command implementations still accept narrower local interfaces
-// when they need only one operation.
 type Runtime interface {
 	PrepareInput(context.Context, authoring.Message) ([]protocol.ContentBlock, error)
 	ListSessions(context.Context, conversation.SessionQuery) (conversation.SessionPage, error)
@@ -78,7 +73,7 @@ func newRuntimeInfoCommand(provider runtimeProvider) *cobra.Command {
 			return writeRuntimeProfile(cmd.OutOrStdout(), profile)
 		},
 	}
-	command.Flags().BoolVar(&asJSON, "json", false, "Write the complete profile as JSON")
+	command.Flags().BoolVar(&asJSON, jsonFlag, false, "Write the complete profile as JSON")
 	return command
 }
 
@@ -117,7 +112,7 @@ func writeRuntimeProfile(output io.Writer, profile RuntimeProfile) error {
 		if profile.Supports(name) {
 			flags = append(flags, "available")
 		}
-		rows = append(rows, [2]string{"feature " + string(name), strings.Join(flags, " · ")})
+		rows = append(rows, [2]string{"feature " + name, strings.Join(flags, format.Separator)})
 	}
 	limits := capabilities.Limits
 	rows = append(rows,

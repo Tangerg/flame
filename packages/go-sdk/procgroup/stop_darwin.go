@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	processExiting = 0x00002000 // P_WEXIT from Darwin's public sys/proc.h.
-	processZombie  = 5          // SZOMB from Darwin's public sys/proc.h.
+	processExiting = 0x00002000
+	processZombie  = 5
 )
 
 func stopGroup(pid int) error {

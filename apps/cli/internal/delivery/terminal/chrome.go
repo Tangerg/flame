@@ -18,6 +18,16 @@ import (
 )
 
 const (
+	tokensPerThousand        = 1_000
+	tokensPerMillion         = 1_000_000
+	fractionalThousandsLimit = 10 * tokensPerThousand
+	narrowActivityWidth      = 60
+	narrowActivityMaxRows    = 4
+	activityGutter           = 2
+	activityLabelGap         = 2
+)
+
+const (
 	headerMinWidth   = 32
 	activityMinWidth = 28
 	activityMaxRows  = 6
@@ -106,6 +116,7 @@ func (s *sessionHeader) drawGoal(view grid.View) {
 		style = s.theme.Warning
 	case protocol.GoalBlocked:
 		style = s.theme.Danger
+	case protocol.GoalActive, protocol.GoalCompleting:
 	}
 	right := goalUsageLabel(s.goal.Used)
 	rightWidth := text.Width(right)
@@ -125,7 +136,7 @@ func (s *sessionHeader) drawGoal(view grid.View) {
 }
 
 func goalUsageLabel(used protocol.GoalUsage) string {
-	parts := make([]string, 0, 3)
+	var parts []string
 	if used.Runs > 0 {
 		parts = append(parts, countedNoun(used.Runs, "run"))
 	}
@@ -137,7 +148,7 @@ func goalUsageLabel(used protocol.GoalUsage) string {
 			parts = append(parts, format.USD(*used.CostUSD))
 		}
 	} else if used.Runs > 0 {
-		parts = append(parts, "cost unavailable")
+		parts = append(parts, costUnavailable)
 	}
 	return strings.Join(parts, "  ")
 }
@@ -177,14 +188,14 @@ func compactTokens(tokens int64) string {
 		magnitude = -magnitude
 	}
 	switch {
-	case magnitude < 1_000:
+	case magnitude < tokensPerThousand:
 		return strconv.FormatInt(tokens, 10)
-	case magnitude < 10_000:
-		return strconv.FormatFloat(float64(tokens)/1_000, 'f', 1, 64) + "k"
-	case magnitude < 1_000_000:
-		return strconv.FormatInt(tokens/1_000, 10) + "k"
+	case magnitude < fractionalThousandsLimit:
+		return strconv.FormatFloat(float64(tokens)/tokensPerThousand, 'f', 1, 64) + "k"
+	case magnitude < tokensPerMillion:
+		return strconv.FormatInt(tokens/tokensPerThousand, 10) + "k"
 	default:
-		return strconv.FormatFloat(float64(tokens)/1_000_000, 'f', 1, 64) + "m"
+		return strconv.FormatFloat(float64(tokens)/tokensPerMillion, 'f', 1, 64) + "m"
 	}
 }
 
@@ -212,8 +223,8 @@ func (a *activityView) HeightForWidth(width int) int {
 		return 0
 	}
 	maximum := activityMaxRows
-	if width < 60 {
-		maximum = 4
+	if width < narrowActivityWidth {
+		maximum = narrowActivityMaxRows
 	}
 	return min(len(a.items)+1, maximum)
 }
@@ -249,10 +260,10 @@ func (a *activityView) Draw(view grid.View) {
 		}
 		view.Text(0, row, a.glyphs.Vertical.String(), a.theme.Divider)
 		labelWidth := text.Width(label)
-		contentWidth := max(width-labelWidth-4, 1)
-		x := 2 + view.Text(2, row, mark+" ", style)
+		contentWidth := max(width-labelWidth-activityGutter-activityLabelGap, 1)
+		x := activityGutter + view.Text(activityGutter, row, mark+" ", style)
 		text.Of(item.Description, style).Truncate(contentWidth, a.glyphs.Ellipsis).Draw(view, x, row)
-		if labelWidth+4 < width {
+		if labelWidth+activityGutter+activityLabelGap < width {
 			view.Text(width-labelWidth, row, label, style)
 		}
 	}
@@ -266,6 +277,7 @@ func activityProgress(items []protocol.PlanStep) (done, active int) {
 			done++
 		case protocol.PlanStatusInProgress:
 			active = index
+		case protocol.PlanStatusPending:
 		}
 	}
 	return done, active
@@ -298,9 +310,6 @@ type statusView struct {
 	runningDescendants int
 }
 
-// statusPhase is the one lifecycle the status row draws. A local failure
-// observed while work continues stays active: the row keeps animating the
-// failure text rather than claiming the work stopped.
 type statusPhase uint8
 
 const (
@@ -309,13 +318,17 @@ const (
 	statusFailed
 )
 
+const (
+	idleActivity     = "ready"
+	canceledActivity = "canceled"
+)
+
 func newStatusView(theme kit.Theme, glyphs kit.Glyphs) *statusView {
-	return &statusView{theme: theme, glyphs: glyphs, doing: "ready"}
+	return &statusView{theme: theme, glyphs: glyphs, doing: idleActivity}
 }
 
 func (s *statusView) Reset() {
-	theme, glyphs, problem := s.theme, s.glyphs, s.problem
-	*s = statusView{theme: theme, glyphs: glyphs, doing: "ready", problem: problem}
+	*s = statusView{theme: s.theme, glyphs: s.glyphs, doing: idleActivity, problem: s.problem}
 }
 
 func (s *statusView) HeightForWidth(int) int { return 1 }
@@ -394,9 +407,6 @@ func joinStatusLabels(labels ...string) string {
 	return joined
 }
 
-// statusLineText projects arbitrary failure and progress text into the single
-// row the shell reserves. Collapsing logical whitespace before Printable drops
-// terminal controls without joining words that arrived on separate lines.
 func statusLineText(value string) string {
 	return text.Printable(strings.Join(strings.Fields(value), " "))
 }
@@ -419,9 +429,8 @@ func modelLabel(options authoring.RunOptions) string {
 	return "runtime default"
 }
 
-// displayRunOptions resolves an omitted CLI override only for presentation.
-// Commands retain the empty pair so Runtime can read the active Session's
-// durable selection instead of receiving a second client-owned default.
+// Commands retain the empty pair so Runtime reads the active Session's durable
+// selection instead of a second client-owned default.
 func displayRunOptions(options authoring.RunOptions, session conversation.Session) authoring.RunOptions {
 	if options.Provider == "" && options.Model == "" {
 		options.Provider, options.Model = session.Provider, session.Model
@@ -444,7 +453,7 @@ func (s *statusView) settled(run conversation.Run) {
 	case protocol.OutcomeCompleted:
 		s.doing = "complete"
 	case protocol.OutcomeCanceled:
-		s.doing = "canceled"
+		s.doing = canceledActivity
 	case protocol.OutcomeTimedOut:
 		s.doing = "timed out"
 	case protocol.OutcomeFailed:
@@ -452,7 +461,7 @@ func (s *statusView) settled(run conversation.Run) {
 	case protocol.OutcomeLost:
 		s.doing = "lost: " + run.Outcome.Explanation()
 	default:
-		s.doing = "ready"
+		s.doing = idleActivity
 	}
 }
 
@@ -485,11 +494,9 @@ func (s *statusView) progress(progress conversation.RunProgress) {
 	if progress.Step != nil {
 		parts = append(parts, "step "+strconv.Itoa(*progress.Step))
 	}
-	s.active(strings.Join(parts, " · "))
+	s.active(strings.Join(parts, format.Separator))
 }
 
-// activityLabel words what a running segment reports doing; the Runtime sends
-// only which activity it is.
 func activityLabel(activity *protocol.Activity) string {
 	if activity == nil {
 		return statusWorking

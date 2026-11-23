@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -48,7 +47,7 @@ func TestManagedNodeInstalledOperationAndOrdinaryToolUseTheirCallingHost(t *test
 	for name, body := range map[string]string{
 		"plugin.json":                              `{"$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json","name":"managed-probe","version":"1.0.0","extensions":{"io.github.tangerg.flame":{"declaration":"io.github.tangerg.flame/declaration.json"}}}`,
 		"io.github.tangerg.flame/contract.json":    string(descriptor),
-		"io.github.tangerg.flame/declaration.json": `{"protocol":"` + pluginsdk.DeclarationProtocol + `","managedBackends":[{"id":"managed","runtime":"node","entry":"start.mjs"}],"contributions":[{"id":"probe","server":"managed","export":"probe","contract":"io.github.tangerg.flame/contract.json"}]}`,
+		"io.github.tangerg.flame/declaration.json": `{"protocol":"` + plugincontract.Protocol + `","managedBackends":[{"id":"managed","runtime":"node","entry":"start.mjs"}],"contributions":[{"id":"probe","server":"managed","export":"probe","contract":"io.github.tangerg.flame/contract.json"}]}`,
 	} {
 		path := filepath.Join(source, name)
 		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {

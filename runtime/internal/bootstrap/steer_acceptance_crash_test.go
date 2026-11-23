@@ -8,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	runapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -26,7 +27,7 @@ func TestSteerAcceptanceCrashHelper(t *testing.T) {
 		return
 	}
 	home := os.Getenv("FLAME_HOME")
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +50,7 @@ func TestSteerAcceptanceCrashHelper(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if record.Use == runapp.CommandKeyAccepted {
+			if record.Use == runsapp.CommandKeyAccepted {
 				root := (scoperun.StartID{Scope: record.Acceptance.SessionID.String(), Key: record.Acceptance.RunID.String()}).Root()
 				checkpoint, err := stores.ExecutorCheckpoints.LoadCheckpoint(ctx, root.String())
 				if err != nil || len(checkpoint.Payload) == 0 {

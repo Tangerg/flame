@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	modernsqlite "modernc.org/sqlite"
 )
@@ -46,7 +47,7 @@ func TestRollbackAcknowledgementCrashHelper(t *testing.T) {
 	}
 	home := os.Getenv("FLAME_HOME")
 	restoreType := protocol.RestoreType(os.Getenv("FLAME_TEST_ROLLBACK_CRASH_SCOPE"))
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}

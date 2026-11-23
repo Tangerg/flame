@@ -48,7 +48,7 @@ export function UnresolvedRunEffects({ effects }: { effects?: AgentUnresolvedEff
               values={[
                 [t("agent.unresolved.processId"), effect.processId],
                 [t("agent.unresolved.effectId"), effect.effectId],
-                [t("agent.unresolved.cause"), effect.cause],
+                [t("agent.unresolved.cause"), t(`agent.unresolved.causes.${effect.cause}`)],
                 [t("agent.unresolved.reason"), effect.reason],
               ]}
             />

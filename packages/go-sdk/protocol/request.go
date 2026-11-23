@@ -6,8 +6,6 @@ import (
 	"reflect"
 )
 
-// DecodeRequest preserves authored presence, typed nulls, and exact numbers.
-// target must be a non-nil pointer; it changes only after complete validation.
 func DecodeRequest(encoded []byte, target any) error {
 	destination := reflect.ValueOf(target)
 	if !destination.IsValid() || destination.Kind() != reflect.Pointer || destination.IsNil() {

@@ -11,10 +11,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-// restoreSessionOutbox resumes durable runtime deliveries owned by the active
-// session. It belongs to projection installation rather than process startup:
-// every session can have an independent outbox, including one first visited
-// after this process began.
 func (r *runs) restoreSessionOutbox() {
 	r.restorePendingResume()
 	r.restorePendingRuns()
@@ -91,7 +87,7 @@ func (r *runs) reconcilePendingResume(pending workbench.PendingResume) {
 			}
 			_, accepted := conversation.AcceptedMutationReceipt(err)
 			if !accepted && !mutation.OutcomeUnknown(err) {
-				err = errors.Join(err, r.workbench.RejectPendingResume(r.session.current.ID, command.CommandID))
+				err = errors.Join(err, r.workbench.RetirePendingResume(r.session.current.ID, command.CommandID))
 			}
 			r.link.message("reconcile earlier interrupt delivery: " + err.Error())
 		})

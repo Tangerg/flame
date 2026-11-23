@@ -23,10 +23,6 @@ func (i *interactionSession) rememberModelFailure(source scoperun.ProcessID, cau
 	return nil
 }
 
-// interactionModelFailures owns the product classification of failed model
-// calls. Scope owns their definite failure or requested cancellation; Runtime
-// projects the cause for the member that observed it.
-// Terminal delivery retires the classification even when another cause wins.
 type interactionModelFailures struct {
 	mu        sync.Mutex
 	byProcess map[scoperun.ProcessID]run.Failure

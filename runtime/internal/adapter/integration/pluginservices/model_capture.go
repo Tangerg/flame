@@ -8,10 +8,10 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -19,17 +19,15 @@ import (
 	"github.com/samber/lo"
 )
 
-// capture retains the exact contributions until all provider work has joined.
-// Admission policy belongs to the calling use case, not to this lifetime owner.
-func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedChat, use modelchoice.Use, release func() error, admit func(*chat.Request) error) (models.SelectedChat, func() error, error) {
+func (o *CallComposition) capture(ctx context.Context, resolved modeladapter.SelectedChat, use flamemodel.Use, release func() error, admit func(*chat.Request) error) (modeladapter.SelectedChat, func() error, error) {
 	if release == nil {
-		return models.SelectedChat{}, nil, errors.New("model composition: model release is required")
+		return modeladapter.SelectedChat{}, nil, errors.New("model composition: model release is required")
 	}
 	if err := use.Validate(); err != nil {
-		return models.SelectedChat{}, nil, errors.Join(err, release())
+		return modeladapter.SelectedChat{}, nil, errors.Join(err, release())
 	}
 	if lo.IsNil(resolved.Model()) || admit == nil {
-		return models.SelectedChat{}, nil, errors.Join(errors.New("model composition: model and admission owner are required"), release())
+		return modeladapter.SelectedChat{}, nil, errors.Join(errors.New("model composition: model and admission owner are required"), release())
 	}
 	var capture *modelCapture
 	err := o.admission.Admit(ctx, func(ctx context.Context) error {
@@ -71,7 +69,7 @@ func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedC
 		return nil
 	})
 	if err != nil {
-		return models.SelectedChat{}, nil, errors.Join(err, release())
+		return modeladapter.SelectedChat{}, nil, errors.Join(err, release())
 	}
 	var model chat.Model = capture
 	if capture.stream != nil {
@@ -79,7 +77,7 @@ func (o *CallComposition) capture(ctx context.Context, resolved models.SelectedC
 	}
 	result, err := resolved.WithModel(model)
 	if err != nil {
-		return models.SelectedChat{}, nil, errors.Join(err, capture.close())
+		return modeladapter.SelectedChat{}, nil, errors.Join(err, capture.close())
 	}
 	return result, capture.close, nil
 }
@@ -125,8 +123,6 @@ func (o *CallComposition) activationsUnder(ctx context.Context, bindings []plugi
 	return activations, nil
 }
 
-// Recovery must not require a live session while its existing connection owner
-// is still admitting one. A blocked handshake cannot block Runtime management.
 func (o *CallComposition) Pending(bindings []plugins.ContributionBinding) bool {
 	for _, status := range o.calls.pool.Statuses() {
 		if status.State == mcpserver.ConnectionConnecting && slices.ContainsFunc(bindings, func(binding plugins.ContributionBinding) bool { return binding.ServerID == status.Server }) {
@@ -149,13 +145,13 @@ func (o *CallComposition) HeldDependencies() []plugin.Dependency {
 }
 
 type modelCapture struct {
-	use         modelchoice.Use
+	use         flamemodel.Use
 	activations []plugin.Activation
 	owner       *CallComposition
 	bindings    []plugins.ContributionBinding
 	contexts    []plugins.ContributionBinding
 	inputs      []plugins.ContributionBinding
-	resolved    models.SelectedChat
+	resolved    modeladapter.SelectedChat
 	admit       func(*chat.Request) error
 	model       chat.Model
 	stream      chat.Streamer
@@ -185,6 +181,7 @@ func (c *modelCapture) enter(ctx context.Context) (context.Context, func(), erro
 	stop := context.AfterFunc(c.lifetime, func() { cancel(context.Cause(c.lifetime)) })
 	return calling, func() { stop(); cancel(nil); c.active.Done() }, nil
 }
+
 func (c *modelCapture) prepare(ctx context.Context, request *chat.Request) (*chat.Request, error) {
 	activations, err := c.owner.Activations(ctx, modelCompositionBindings(c.resolved, c.bindings, c.contexts, c.inputs))
 	if err != nil {
@@ -300,7 +297,7 @@ func (c *modelCapture) close() error {
 	return c.err
 }
 
-func beginCapturedModelCall(ctx context.Context, selection modelchoice.Selection) (context.Context, func(context.Context, error) error, error) {
+func beginCapturedModelCall(ctx context.Context, selection flamemodel.Selection) (context.Context, func(context.Context, error) error, error) {
 	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -322,7 +319,7 @@ func beginCapturedModelCall(ctx context.Context, selection modelchoice.Selection
 	return executionctx.WithInvocationOwner(ctx, invocation.ID), finish, nil
 }
 
-func modelCompositionBindings(resolved models.SelectedChat, observers, contexts, inputs []plugins.ContributionBinding) []plugins.ContributionBinding {
+func modelCompositionBindings(resolved modeladapter.SelectedChat, observers, contexts, inputs []plugins.ContributionBinding) []plugins.ContributionBinding {
 	bindings := slices.Concat(observers, contexts, inputs)
 	if capture, found := resolved.Capture(); found {
 		bindings = append(bindings, capture.Binding)

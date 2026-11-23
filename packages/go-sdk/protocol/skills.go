@@ -2,8 +2,6 @@ package protocol
 
 import "github.com/Tangerg/flame/packages/go-sdk/skill"
 
-// SkillScope identifies the project or user library that owns a Skill.
-//
 //flame:enum
 type SkillScope string
 
@@ -13,9 +11,6 @@ const (
 	SkillScopeInstallation SkillScope = SkillScope(skill.Installation)
 )
 
-// Skill is one entry in skills.discovered.list. List results contain one entry
-// per Name, with project scope winning over user scope on collisions, and are
-// ordered by Name ascending.
 type SkillInstallation struct {
 	InstallationID string `json:"installationId"`
 	Digest         string `json:"digest"`
@@ -28,9 +23,6 @@ type Skill struct {
 	Scope        SkillScope         `json:"scope"`
 }
 
-// SkillLifecycle is a managed skill's curator state (skills.library.list):
-// active (loadable by the agent) or archived (preserved, not loaded).
-//
 //flame:enum
 type SkillLifecycle string
 
@@ -39,26 +31,16 @@ const (
 	SkillLifecycleArchived SkillLifecycle = "archived"
 )
 
-// ManagedSkill is one entry in the user-scoped self-authored Skill library
-// (skills.library.list), tagged with its curator lifecycle. Distinct from
-// [Skill] (the Agent's project+user discovery view): this is the management
-// surface, which also lists archived skills. List results contain one entry per
-// Name, ordered active first, then archived, and by Name within each lifecycle.
 type ManagedSkill struct {
 	Name        string         `json:"name"`
 	Description string         `json:"description,omitempty"`
 	Lifecycle   SkillLifecycle `json:"lifecycle"`
 }
 
-// SkillNameRequest names the skill a skills.library.archive / restore call
-// acts on. Archiving affects subsequent resolution; it cannot remove instructions
-// already injected into an existing model conversation.
 type SkillNameRequest struct {
 	Name string `json:"name"`
 }
 
-// SkillDiscovery is a bounded complete catalog, with local document failures
-// reported separately from usable entries. It is not a paginated collection.
 type SkillDiscovery struct {
 	Skills      []Skill           `json:"skills"`
 	Diagnostics []SkillDiagnostic `json:"diagnostics"`
@@ -74,8 +56,6 @@ type SkillDetailRequest struct {
 	Name      string       `json:"name"`
 }
 
-// SkillDetail identifies the current resolver-selected document. Revision is
-// the SHA-256 of its exact bytes; it is not a loaded-into-context receipt.
 type SkillDetail struct {
 	Skill
 	Path         string `json:"path"`

@@ -8,9 +8,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-// ProviderSelection owns a product composition choice. Availability and a
-// call's concrete release are separate projections; changing this choice cannot
-// alter an already captured command route or transfer private business data.
 type ProviderSelection struct{ record SelectionRecord }
 
 type SelectionRecord struct {
@@ -33,6 +30,7 @@ func NewProviderSelection(record SelectionRecord) (ProviderSelection, error) {
 }
 
 func (s ProviderSelection) Snapshot() SelectionRecord { return s.record }
+
 func (s ProviderSelection) Validate() error {
 	_, err := NewProviderSelection(s.record)
 	return err

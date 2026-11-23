@@ -1,3 +1,5 @@
+import { clamp } from "@/lib/clamp";
+
 export const NOTIFICATION_TOP_PROPERTY = "--notification-top";
 export const NOTIFICATION_BOTTOM_PROPERTY = "--notification-bottom";
 
@@ -9,10 +11,6 @@ interface VerticalSpan {
 interface NotificationInsets {
   top: number;
   bottom: number;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
 }
 
 /**

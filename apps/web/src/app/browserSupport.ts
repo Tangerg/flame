@@ -16,7 +16,7 @@ function supportsComposedSelectionRanges(): boolean {
   return readsOptions;
 }
 
-export function missingBrowserFeatures(): string[] {
+function missingBrowserFeatures(): string[] {
   const missing: string[] = [];
   if (typeof Promise.withResolvers !== "function") missing.push("Promise.withResolvers");
   if (typeof AbortSignal.any !== "function") missing.push("AbortSignal.any");

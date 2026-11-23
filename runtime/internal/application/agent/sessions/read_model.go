@@ -13,10 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// Activity is the resolved durable Run activity used by Session read consumers.
-// Running wins over Waiting when a Run tree contains both; Idle means the
-// Session has no non-terminal Run. Admission and terminal maintenance are
-// concurrency fences, not user-visible lifecycle facts.
 type Activity string
 
 const (
@@ -25,16 +21,12 @@ const (
 	activityIdle    Activity = "idle"
 )
 
-// WorkspaceView is the live filesystem projection of a Session's exact
-// Workspace identity.
 type WorkspaceView struct {
 	Path        string
 	ProjectRoot string
 	Missing     bool
 }
 
-// View is the complete application read model for a session. Live lineage and
-// other aggregate-only state stay inside the session domain.
 type View struct {
 	ID              identity.SessionID
 	Title           string
@@ -50,11 +42,8 @@ type View struct {
 	Revision        uint64
 }
 
-// Activities resolves activity for the requested sessions in one durable read.
-// Reading the Run projection instead of the process-local admission gate keeps
-// sessions.list linearized with the runs.changed/sessions.changed notifications:
-// once the terminal transaction publishes, a refetch cannot still report the
-// already-terminal Run as running while maintenance releases its admission.
+// Reading the durable Run projection rather than the admission gate keeps
+// sessions.list linearized with the change notifications.
 func (c *Coordinator) Activities(ctx context.Context, sessionIDs []identity.SessionID) (map[identity.SessionID]Activity, error) {
 	activities := make(map[identity.SessionID]Activity, len(sessionIDs))
 	if len(sessionIDs) == 0 {
@@ -85,8 +74,6 @@ func (c *Coordinator) Activities(ctx context.Context, sessionIDs []identity.Sess
 	return activities, nil
 }
 
-// with folds one Run into a Session's activity: a running Run dominates a
-// waiting one, and a finished Run leaves the activity as it was.
 func (a Activity) with(value run.Run) Activity {
 	switch value.State() {
 	case run.Running:
@@ -95,26 +82,27 @@ func (a Activity) with(value run.Run) Activity {
 		if a == activityIdle {
 			return ActivityWaiting
 		}
+	case run.Finished:
 	}
 	return a
 }
 
-// viewPageNamespace binds cursors to this session read independently of other
-// paged reads.
 const viewPageNamespace = "sessions"
 
-// viewPageLimit is the widest session page this read will serve.
 const viewPageLimit = 100
 
+const catalogAnchorFields = 3
+
 func catalogAnchorKey(value session.Session) []string {
-	return []string{strconv.FormatBool(value.Favorite()), strconv.FormatInt(value.UpdatedAt().UnixNano(), 10), value.ID().String()}
+	key := [catalogAnchorFields]string{strconv.FormatBool(value.Favorite()), strconv.FormatInt(value.UpdatedAt().UnixNano(), 10), value.ID().String()}
+	return key[:]
 }
 
 func parseCatalogAnchor(key []string) (*session.CatalogAnchor, error) {
 	if len(key) == 0 {
 		return nil, nil
 	}
-	if len(key) != 3 {
+	if len(key) != catalogAnchorFields {
 		return nil, pagination.ErrInvalidCursor
 	}
 	favorite, err := strconv.ParseBool(key[0])
@@ -136,9 +124,6 @@ func parseCatalogAnchor(key []string) (*session.CatalogAnchor, error) {
 	return &anchor, nil
 }
 
-// ListViewPage resolves one page of user-facing sessions, continuing after
-// cursor. The page is bounded by the query, so only the sessions being returned
-// are resolved against the filesystem and the live-run registry.
 func (c *Coordinator) ListViewPage(
 	ctx context.Context,
 	filter session.CatalogFilter,
@@ -180,7 +165,6 @@ func (c *Coordinator) ListViewPage(
 	return pagination.Page[View]{Rows: views, NextCursor: bounded.NextCursor}, nil
 }
 
-// View resolves one session's complete application read model.
 func (c *Coordinator) View(ctx context.Context, id identity.SessionID) (View, error) {
 	value, err := c.Get(ctx, id)
 	if err != nil {
@@ -189,7 +173,6 @@ func (c *Coordinator) View(ctx context.Context, id identity.SessionID) (View, er
 	return c.viewForSession(ctx, value)
 }
 
-// CreateView admits a fresh session and returns its fully resolved read model.
 func (c *Coordinator) CreateView(ctx context.Context, title, cwd string) (View, error) {
 	creation, err := c.PrepareCreate(ctx, title, cwd)
 	if err != nil {
@@ -207,8 +190,6 @@ func (c *Coordinator) viewForSession(ctx context.Context, value session.Session)
 	return c.view(value, activities[value.ID()])
 }
 
-// ForkView branches a session and returns the child session's fully resolved
-// read model.
 func (c *Coordinator) ForkView(ctx context.Context, spec ForkSpec) (View, error) {
 	creation, err := c.PrepareFork(ctx, spec)
 	if err != nil {

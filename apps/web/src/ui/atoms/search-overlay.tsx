@@ -42,7 +42,6 @@ const styles = stylex.create({
 
 interface SearchOption {
   key: string;
-  /** Runs after dismissal with the captured opener so the action can focus outside the modal. */
   onSelect: (origin?: HTMLElement) => void;
   children: ReactNode;
 }

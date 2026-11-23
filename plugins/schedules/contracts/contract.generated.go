@@ -6,137 +6,137 @@ import framevalue "github.com/Tangerg/frame/value"
 type Ack struct {
 }
 
-type CreateV1InputModelSelection struct {
+type CreateV2InputModelSelection struct {
 	Model           string `json:"model"`
 	Provider        string `json:"provider"`
 	ReasoningEffort string `json:"reasoningEffort"`
 }
 
-type CreateV1OutputDomainSnapshot struct {
-	CWD            string                          `json:"CWD"`
-	CreatedAt      CreateV1OutputInstantTimestamp  `json:"CreatedAt"`
-	Cron           string                          `json:"Cron"`
-	ID             string                          `json:"ID"`
-	Instructions   string                          `json:"Instructions"`
-	LastRunAt      *CreateV1OutputInstantTimestamp `json:"LastRunAt,omitzero"`
-	ModelSelection *CreateV1OutputModelSelection   `json:"ModelSelection"`
-	NextRunAt      *CreateV1OutputInstantTimestamp `json:"NextRunAt,omitzero"`
-	Revision       framevalue.Number               `json:"Revision"`
-	TimeZone       string                          `json:"TimeZone"`
-	Title          string                          `json:"Title"`
-}
+type CreateV2OutputInstantTimestamp string
 
-type CreateV1OutputInstantTimestamp string
-
-type CreateV1OutputModelSelection struct {
+type CreateV2OutputModelSelection struct {
 	Model           string `json:"model"`
 	Provider        string `json:"provider"`
 	ReasoningEffort string `json:"reasoningEffort"`
 }
 
-type DeleteV1InputWireItemInput struct {
-	ID string `json:"ID"`
+type CreateV2OutputScheduleSnapshot struct {
+	CreatedAt      CreateV2OutputInstantTimestamp  `json:"createdAt"`
+	Cron           string                          `json:"cron"`
+	Cwd            string                          `json:"cwd"`
+	Id             string                          `json:"id"`
+	Instructions   string                          `json:"instructions"`
+	LastRunAt      *CreateV2OutputInstantTimestamp `json:"lastRunAt,omitzero"`
+	ModelSelection *CreateV2OutputModelSelection   `json:"modelSelection"`
+	NextRunAt      *CreateV2OutputInstantTimestamp `json:"nextRunAt,omitzero"`
+	Revision       framevalue.Number               `json:"revision"`
+	TimeZone       string                          `json:"timeZone"`
+	Title          string                          `json:"title"`
+}
+
+type DeleteV2InputWireItemInput struct {
+	Id string `json:"id"`
 }
 
 type Draft struct {
-	CWD            string                       `json:"CWD"`
-	Cron           string                       `json:"Cron"`
-	Enabled        bool                         `json:"Enabled"`
-	Instructions   string                       `json:"Instructions"`
-	ModelSelection *CreateV1InputModelSelection `json:"ModelSelection"`
-	TimeZone       string                       `json:"TimeZone"`
-	Title          string                       `json:"Title"`
+	Cron           string                       `json:"cron"`
+	Cwd            string                       `json:"cwd"`
+	Enabled        bool                         `json:"enabled"`
+	Instructions   string                       `json:"instructions"`
+	ModelSelection *CreateV2InputModelSelection `json:"modelSelection"`
+	TimeZone       string                       `json:"timeZone"`
+	Title          string                       `json:"title"`
 }
 
 type ListInput struct {
-	Cursor string            `json:"Cursor"`
-	Limit  framevalue.Number `json:"Limit,omitzero"`
+	Cursor string            `json:"cursor"`
+	Limit  framevalue.Number `json:"limit,omitzero"`
 }
 
-type ListV1OutputDomainSnapshot struct {
-	CWD            string                        `json:"CWD"`
-	CreatedAt      ListV1OutputInstantTimestamp  `json:"CreatedAt"`
-	Cron           string                        `json:"Cron"`
-	ID             string                        `json:"ID"`
-	Instructions   string                        `json:"Instructions"`
-	LastRunAt      *ListV1OutputInstantTimestamp `json:"LastRunAt,omitzero"`
-	ModelSelection *ListV1OutputModelSelection   `json:"ModelSelection"`
-	NextRunAt      *ListV1OutputInstantTimestamp `json:"NextRunAt,omitzero"`
-	Revision       framevalue.Number             `json:"Revision"`
-	TimeZone       string                        `json:"TimeZone"`
-	Title          string                        `json:"Title"`
-}
+type ListV2OutputInstantTimestamp string
 
-type ListV1OutputInstantTimestamp string
-
-type ListV1OutputModelSelection struct {
+type ListV2OutputModelSelection struct {
 	Model           string `json:"model"`
 	Provider        string `json:"provider"`
 	ReasoningEffort string `json:"reasoningEffort"`
+}
+
+type ListV2OutputScheduleSnapshot struct {
+	CreatedAt      ListV2OutputInstantTimestamp  `json:"createdAt"`
+	Cron           string                        `json:"cron"`
+	Cwd            string                        `json:"cwd"`
+	Id             string                        `json:"id"`
+	Instructions   string                        `json:"instructions"`
+	LastRunAt      *ListV2OutputInstantTimestamp `json:"lastRunAt,omitzero"`
+	ModelSelection *ListV2OutputModelSelection   `json:"modelSelection"`
+	NextRunAt      *ListV2OutputInstantTimestamp `json:"nextRunAt,omitzero"`
+	Revision       framevalue.Number             `json:"revision"`
+	TimeZone       string                        `json:"timeZone"`
+	Title          string                        `json:"title"`
 }
 
 type ModelPatch struct {
-	Model           *string `json:"Model,omitzero"`
-	Provider        *string `json:"Provider,omitzero"`
-	ReasoningEffort *string `json:"ReasoningEffort,omitzero"`
+	Model           *string `json:"model,omitzero"`
+	Provider        *string `json:"provider,omitzero"`
+	ReasoningEffort *string `json:"reasoningEffort,omitzero"`
 }
 
 type Page struct {
-	NextCursor string                        `json:"NextCursor"`
-	Rows       []*ListV1OutputDomainSnapshot `json:"Rows"`
+	NextCursor string                          `json:"nextCursor"`
+	Rows       []*ListV2OutputScheduleSnapshot `json:"rows"`
 }
 
-type RunNowV1InputWireItemInput struct {
-	ID string `json:"ID"`
+type RunNowV2InputWireItemInput struct {
+	Id string `json:"id"`
 }
 
 type RunReference struct {
-	RunID     string `json:"RunID"`
-	SessionID string `json:"SessionID"`
+	RunId     string `json:"runId"`
+	SessionId string `json:"sessionId"`
 }
 
 type UpdateInput struct {
-	CWD              *string           `json:"CWD,omitzero"`
-	Cron             *string           `json:"Cron,omitzero"`
-	Enabled          *bool             `json:"Enabled,omitzero"`
-	ExpectedRevision framevalue.Number `json:"ExpectedRevision"`
-	ID               string            `json:"ID"`
-	Instructions     *string           `json:"Instructions,omitzero"`
-	ModelSelection   *ModelPatch       `json:"ModelSelection"`
-	TimeZone         *string           `json:"TimeZone,omitzero"`
-	Title            *string           `json:"Title,omitzero"`
+	Cron             *string           `json:"cron,omitzero"`
+	Cwd              *string           `json:"cwd,omitzero"`
+	Enabled          *bool             `json:"enabled,omitzero"`
+	ExpectedRevision framevalue.Number `json:"expectedRevision"`
+	Id               string            `json:"id"`
+	Instructions     *string           `json:"instructions,omitzero"`
+	ModelSelection   *ModelPatch       `json:"modelSelection"`
+	TimeZone         *string           `json:"timeZone,omitzero"`
+	Title            *string           `json:"title,omitzero"`
 }
 
-type UpdateV1OutputDomainSnapshot struct {
-	CWD            string                          `json:"CWD"`
-	CreatedAt      UpdateV1OutputInstantTimestamp  `json:"CreatedAt"`
-	Cron           string                          `json:"Cron"`
-	ID             string                          `json:"ID"`
-	Instructions   string                          `json:"Instructions"`
-	LastRunAt      *UpdateV1OutputInstantTimestamp `json:"LastRunAt,omitzero"`
-	ModelSelection *UpdateV1OutputModelSelection   `json:"ModelSelection"`
-	NextRunAt      *UpdateV1OutputInstantTimestamp `json:"NextRunAt,omitzero"`
-	Revision       framevalue.Number               `json:"Revision"`
-	TimeZone       string                          `json:"TimeZone"`
-	Title          string                          `json:"Title"`
-}
+type UpdateV2OutputInstantTimestamp string
 
-type UpdateV1OutputInstantTimestamp string
-
-type UpdateV1OutputModelSelection struct {
+type UpdateV2OutputModelSelection struct {
 	Model           string `json:"model"`
 	Provider        string `json:"provider"`
 	ReasoningEffort string `json:"reasoningEffort"`
 }
 
-const CapabilityJSON = "{\"composition\":\"selection\",\"methods\":[{\"description\":\"Create one schedule definition.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.RHJhZnQ\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"Enabled\":{\"type\":\"boolean\"},\"Instructions\":{\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"Enabled\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"Enabled\":{\"type\":\"boolean\"},\"Instructions\":{\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"Enabled\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/create.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Cron\":{\"type\":\"string\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"LastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"NextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"CreatedAt\",\"Revision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Cron\":{\"type\":\"string\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"LastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"NextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"CreatedAt\",\"Revision\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Delete one schedule definition.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.SXRlbUlucHV0\":{\"additionalProperties\":false,\"properties\":{\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/delete.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.QWNr\":{\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"List current schedule definitions and revisions.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TGlzdElucHV0\":{\"additionalProperties\":false,\"properties\":{\"Cursor\":{\"type\":\"string\"},\"Limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"Cursor\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"Cursor\":{\"type\":\"string\"},\"Limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"Cursor\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.schedules/list.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Cron\":{\"type\":\"string\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"LastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"NextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"CreatedAt\",\"Revision\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.UGFnZQ\":{\"additionalProperties\":false,\"properties\":{\"NextCursor\":{\"type\":\"string\"},\"Rows\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q\"},\"type\":\"array\"}},\"required\":[\"Rows\",\"NextCursor\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"NextCursor\":{\"type\":\"string\"},\"Rows\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q\"},\"type\":\"array\"}},\"required\":[\"Rows\",\"NextCursor\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Capture and reconcile one manual Run through its original Runtime acceptance.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.SXRlbUlucHV0\":{\"additionalProperties\":false,\"properties\":{\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/runNow.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2FwcGxpY2F0aW9u.UnVuUmVmZXJlbmNl\":{\"additionalProperties\":false,\"properties\":{\"RunID\":{\"type\":\"string\"},\"SessionID\":{\"type\":\"string\"}},\"required\":[\"SessionID\",\"RunID\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"RunID\":{\"type\":\"string\"},\"SessionID\":{\"type\":\"string\"}},\"required\":[\"SessionID\",\"RunID\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Change one schedule using its inspected revision.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA\":{\"additionalProperties\":false,\"properties\":{\"Model\":{\"type\":\"string\"},\"Provider\":{\"type\":\"string\"},\"ReasoningEffort\":{\"type\":\"string\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.VXBkYXRlSW5wdXQ\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"Enabled\":{\"type\":\"boolean\"},\"ExpectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"ExpectedRevision\",\"ModelSelection\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"Enabled\":{\"type\":\"boolean\"},\"ExpectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"ExpectedRevision\",\"ModelSelection\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/update.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Cron\":{\"type\":\"string\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"LastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"NextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"CreatedAt\",\"Revision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Cron\":{\"type\":\"string\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"LastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"NextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"CreatedAt\",\"Revision\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/plugin/1\",\"reference\":\"schedules\",\"scope\":\"installation\"}"
+type UpdateV2OutputScheduleSnapshot struct {
+	CreatedAt      UpdateV2OutputInstantTimestamp  `json:"createdAt"`
+	Cron           string                          `json:"cron"`
+	Cwd            string                          `json:"cwd"`
+	Id             string                          `json:"id"`
+	Instructions   string                          `json:"instructions"`
+	LastRunAt      *UpdateV2OutputInstantTimestamp `json:"lastRunAt,omitzero"`
+	ModelSelection *UpdateV2OutputModelSelection   `json:"modelSelection"`
+	NextRunAt      *UpdateV2OutputInstantTimestamp `json:"nextRunAt,omitzero"`
+	Revision       framevalue.Number               `json:"revision"`
+	TimeZone       string                          `json:"timeZone"`
+	Title          string                          `json:"title"`
+}
 
-const CreateV1Method = "flame.schedules/create.v1"
+const CapabilityJSON = "{\"composition\":\"selection\",\"methods\":[{\"description\":\"Create one schedule definition.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.RHJhZnQ\":{\"additionalProperties\":false,\"properties\":{\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"enabled\":{\"type\":\"boolean\"},\"instructions\":{\"type\":\"string\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"title\",\"instructions\",\"cwd\",\"modelSelection\",\"cron\",\"timeZone\",\"enabled\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"enabled\":{\"type\":\"boolean\"},\"instructions\":{\"type\":\"string\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"title\",\"instructions\",\"cwd\",\"modelSelection\",\"cron\",\"timeZone\",\"enabled\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/create.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.U25hcHNob3Q\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"lastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"nextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"instructions\",\"cwd\",\"modelSelection\",\"cron\",\"timeZone\",\"createdAt\",\"revision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"lastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"nextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"instructions\",\"cwd\",\"modelSelection\",\"cron\",\"timeZone\",\"createdAt\",\"revision\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Delete one schedule definition.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.SXRlbUlucHV0\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/delete.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.QWNr\":{\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"List current schedule definitions and revisions.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TGlzdElucHV0\":{\"additionalProperties\":false,\"properties\":{\"cursor\":{\"type\":\"string\"},\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"cursor\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"cursor\":{\"type\":\"string\"},\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"cursor\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.schedules/list.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.U25hcHNob3Q\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"lastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"nextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"instructions\",\"cwd\",\"modelSelection\",\"cron\",\"timeZone\",\"createdAt\",\"revision\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.UGFnZQ\":{\"additionalProperties\":false,\"properties\":{\"nextCursor\":{\"type\":\"string\"},\"rows\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.U25hcHNob3Q\"},\"type\":\"array\"}},\"required\":[\"rows\",\"nextCursor\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"nextCursor\":{\"type\":\"string\"},\"rows\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.U25hcHNob3Q\"},\"type\":\"array\"}},\"required\":[\"rows\",\"nextCursor\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Capture and reconcile one manual Run through its original Runtime acceptance.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.SXRlbUlucHV0\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/runNow.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxpbmc.UnVuUmVmZXJlbmNl\":{\"additionalProperties\":false,\"properties\":{\"runId\":{\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"}},\"required\":[\"sessionId\",\"runId\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"runId\":{\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"}},\"required\":[\"sessionId\",\"runId\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Change one schedule using its inspected revision.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.VXBkYXRlSW5wdXQ\":{\"additionalProperties\":false,\"properties\":{\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"enabled\":{\"type\":\"boolean\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\",\"modelSelection\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"enabled\":{\"type\":\"boolean\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\",\"modelSelection\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/update.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.U25hcHNob3Q\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"lastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"nextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"instructions\",\"cwd\",\"modelSelection\",\"cron\",\"timeZone\",\"createdAt\",\"revision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"lastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"nextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"instructions\",\"cwd\",\"modelSelection\",\"cron\",\"timeZone\",\"createdAt\",\"revision\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/plugin/1\",\"reference\":\"schedules\",\"scope\":\"installation\"}"
 
-const DeleteV1Method = "flame.schedules/delete.v1"
+const CreateV2Method = "flame.schedules/create.v2"
 
-const ListV1Method = "flame.schedules/list.v1"
+const DeleteV2Method = "flame.schedules/delete.v2"
 
-const RunNowV1Method = "flame.schedules/runNow.v1"
+const ListV2Method = "flame.schedules/list.v2"
 
-const UpdateV1Method = "flame.schedules/update.v1"
+const RunNowV2Method = "flame.schedules/runNow.v2"
+
+const UpdateV2Method = "flame.schedules/update.v2"

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/ui/core/input"
@@ -25,9 +26,6 @@ type attentionSignal struct {
 	supersedes   bool
 }
 
-// attentionCenter models whether an event is still unread by the terminal user.
-// It is deliberately independent of the transport used for window titles and
-// desktop notifications, which keeps focus policy deterministic and testable.
 type attentionCenter struct {
 	focused bool
 	unread  attentionSignal
@@ -37,9 +35,6 @@ func newAttentionCenter() attentionCenter {
 	return attentionCenter{focused: true}
 }
 
-// Observe records terminal focus intent. Oolong owns FocusIn in its event loop,
-// so any deliberate keyboard, paste, or mouse-down interrupt is also treated as
-// proof that the user has returned. FocusIn is still accepted for direct hosts.
 func (a *attentionCenter) Observe(event input.Event) bool {
 	switch event := event.(type) {
 	case input.FocusOut:
@@ -102,7 +97,7 @@ func (a *app) raiseAttention(signal attentionSignal) {
 func (a *app) setWindowTitle() {
 	title := "flame — " + displayTitle(a.lifecycle.state.current)
 	if marker := a.attention.Marker(); marker != "" {
-		title += " · " + marker
+		title += format.Separator + marker
 	}
 	if err := a.loop.Session().SetTitle(title); err != nil && !errors.Is(err, errors.ErrUnsupported) {
 		a.stopWithError(fmt.Errorf("terminal title: %w", err))

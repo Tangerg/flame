@@ -1,4 +1,3 @@
-// Package backend runs a package backend process under the Runtime's contract.
 package backend
 
 import (
@@ -14,9 +13,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/process"
 )
 
-// Main serves one backend until the Runtime stops it and exits non-zero on
-// failure. serve receives the private data directory under an exclusive lease,
-// so a second process of the same installation cannot share its state.
 func Main(name string, serve func(ctx context.Context, dataDirectory string) error) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	err := run(ctx, name, serve)

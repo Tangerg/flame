@@ -16,8 +16,6 @@ import (
 
 const ToolReceiptMethod = "io.github.tangerg.flame/tools.getResult"
 
-// ToolReceipt projects a private receipt through the original Tool's output
-// codec. The business owner retains its only durable result representation.
 type ToolReceipt struct {
 	Result *ToolResult `json:"result,omitzero"`
 }
@@ -31,7 +29,6 @@ func ToolReceiptQuery() (*pluginmcp.Method[pluginmcp.ReceiptRequest, ToolReceipt
 	return pluginmcp.NewMethod[pluginmcp.ReceiptRequest, ToolReceipt](frame.MethodConfig{Name: ToolReceiptMethod, Kind: frame.Query, Target: extension.ScopeInstallation, Description: ToolReceiptMethod})
 }
 
-// NewToolReceipt projects the output the original call returned.
 func NewToolReceipt(output tool.Output) (ToolReceipt, error) {
 	if err := output.Validate(); err != nil {
 		return ToolReceipt{}, err
@@ -39,7 +36,6 @@ func NewToolReceipt(output tool.Output) (ToolReceipt, error) {
 	return ToolReceipt{Result: &ToolResult{Output: output.Clone()}}, nil
 }
 
-// NewFailedToolReceipt projects the Tool failure the original call returned.
 func NewFailedToolReceipt(failure *tool.Failure) (ToolReceipt, error) {
 	if failure == nil {
 		return ToolReceipt{}, errors.New("plugin: Tool failure is required")
@@ -52,7 +48,6 @@ func NewFailedToolReceipt(failure *tool.Failure) (ToolReceipt, error) {
 	return receipt, nil
 }
 
-// NewJSONToolReceipt projects a result through the Tool's JSON output codec.
 func NewJSONToolReceipt[R any](result R) (ToolReceipt, error) {
 	encoded, err := json.Marshal(result)
 	if err != nil {
@@ -65,9 +60,6 @@ func NewJSONToolReceipt[R any](result R) (ToolReceipt, error) {
 	return NewToolReceipt(output)
 }
 
-// ToolReceiptFrom projects one decoded stored reply. A reply failure that
-// classify turns into a Tool failure becomes a failed receipt; any other
-// failure stays an error, and a result becomes its JSON output.
 func ToolReceiptFrom[R any](result R, err error, classify func(error) error) (ToolReceipt, error) {
 	if err == nil {
 		return NewJSONToolReceipt(result)
@@ -79,12 +71,7 @@ func ToolReceiptFrom[R any](result R, err error, classify func(error) error) (To
 	return NewFailedToolReceipt(failure)
 }
 
-// ReadToolReceipt binds the original remote Tool, logical call and admitted JSON.
-// A missing or unsupported read never permits another Tool invocation.
 func ReadToolReceipt(ctx context.Context, session *sdk.ClientSession, callID, remote string, admitted framevalue.JSON) (*tool.Output, error) {
-	if session == nil {
-		return nil, errors.New("plugin: client session is required")
-	}
 	if err := admitted.Validate(); err != nil {
 		return nil, err
 	}

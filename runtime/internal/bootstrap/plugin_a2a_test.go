@@ -32,7 +32,9 @@ func TestA2AInstalledConnectorOwnsConfigurationAndAvailability(t *testing.T) {
 	}
 	result := r.must(delivery.PluginsCall, call, "").(*protocol.CallPluginResponse)
 	var agents struct {
-		Agents []struct{ Name string } `json:"agents"`
+		Agents []struct {
+			Name string `json:"name"`
+		} `json:"agents"`
 	}
 	if result.Failure != nil || json.Unmarshal([]byte(result.Output), &agents) != nil || len(agents.Agents) != 0 {
 		t.Fatalf("parent configuration became installation authority: %+v", result)

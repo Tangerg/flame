@@ -8,7 +8,7 @@ import { cappedExponentialBackoffMs } from "@/lib/backoff";
 export type WorkspaceCwdResolution =
   { status: "resolved"; cwd?: string } | { status: "unavailable" };
 
-export interface WorkspaceEventSubscriptionPorts {
+interface WorkspaceEventSubscriptionPorts {
   canSubscribe: () => boolean;
   connectionGeneration: () => RuntimeConnectionGeneration | null;
   subscribeConnection: (onChange: () => void) => () => void;

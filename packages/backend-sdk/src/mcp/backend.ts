@@ -275,7 +275,7 @@ export class Backend {
         const context = this.#context(
           params,
           call,
-          bound.method.descriptor.name === wire.constants.ReceiptMethod!
+          bound.method.descriptor.name === wire.constants.receiptMethod!
             ? undefined
             : bound.method.descriptor.target,
         );
@@ -411,7 +411,7 @@ export class Backend {
         "plugin: capability export and identity are required together",
       );
     let member = bound.method.descriptor.name;
-    if (params.method === wire.constants.ReceiptMethod!) {
+    if (params.method === wire.constants.receiptMethod!) {
       exactFields(params.input, ["id", "method", "inputDigest"]);
       member = params.input.method as string;
     }
@@ -419,7 +419,7 @@ export class Backend {
       const capability = this.#capabilities.get(params.export as string);
       if (!capability || capability.identity !== params.capability)
         throw new Error("plugin: capability contract mismatch");
-      if (params.method === wire.constants.ReceiptMethod!)
+      if (params.method === wire.constants.receiptMethod!)
         capability.portable.method(member);
       else if (
         capability.portable.method(member).identity !== bound.method.identity
@@ -453,7 +453,7 @@ export class Backend {
     target?: string,
   ): CallContext {
     const meta = this.#metadata(params);
-    const invocation = meta[wire.constants.InvocationMetadataKey!] as
+    const invocation = meta[wire.constants.invocationMetadataKey!] as
       Invocation | undefined;
     if (invocation !== undefined) {
       exactFields(invocation, ["id", "origin", "target"], ["parent"]);

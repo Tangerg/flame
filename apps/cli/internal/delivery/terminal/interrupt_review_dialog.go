@@ -2,9 +2,11 @@ package terminal
 
 import (
 	"fmt"
-	"github.com/Tangerg/oolong/ui/core/scene"
 	"strings"
 
+	"github.com/Tangerg/oolong/ui/core/scene"
+
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/ui/base"
@@ -13,11 +15,15 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
+const (
+	reviewChoiceRows            = 3
+	interruptReviewDialogHeight = 22
+)
+
 type interruptSummaryPane = confirmationContentPane
 
-// interruptReviewCancellationReason is the reason a cancel decision carries,
-// not a fourth decision. It stays out of the block below: a spelled-out value
-// there reads as a member, and dropping the value would silently make it one.
+// The reason a cancel decision carries, not a fourth decision; inside the
+// decision block it would read as a member.
 const interruptReviewCancellationReason = "interrupts canceled during terminal review"
 
 type interruptReviewDecision uint8
@@ -48,7 +54,7 @@ func (p *interruptPrompts) openInterruptSummary() {
 	}
 	choice := base.NewSelect(base.SelectConfig[interruptReviewDecision]{
 		Same:  base.Equal[interruptReviewDecision],
-		Label: "Review complete", Initial: interruptReviewSubmit, Rows: 3,
+		Label: "Review complete", Initial: interruptReviewSubmit, Rows: reviewChoiceRows,
 	})
 	choice.SetOptions([]base.Option[interruptReviewDecision]{
 		{Label: "Submit all decisions", Value: interruptReviewSubmit},
@@ -78,15 +84,12 @@ func (p *interruptPrompts) openInterruptSummary() {
 		},
 		Theme:  p.theme,
 		Glyphs: p.glyphs,
-		Where:  layout.Placement{Width: standardDialogWidth, Height: 22},
+		Where:  layout.Placement{Width: standardDialogWidth, Height: interruptReviewDialogHeight},
 	})
 	p.reviewDialog = summary.dialog
 	summary.dialog.Show()
 }
 
-// interruptSummaryDialog settles a finished review exactly once: by the
-// chosen decision, or by leaving, which returns to the last interrupt or
-// cancels the Run.
 type interruptSummaryDialog struct {
 	prompts *interruptPrompts
 	review  *interruptReview
@@ -179,7 +182,7 @@ func summarizeInterrupt(item conversation.Interrupt, answer conversation.Answer)
 		for _, field := range provided.Values {
 			values = append(values, strings.Join(field, ", "))
 		}
-		return interrupt.Title + " — " + strings.Join(values, " · ")
+		return interrupt.Title + " — " + strings.Join(values, format.Separator)
 	default:
 		return "Unknown interrupt"
 	}

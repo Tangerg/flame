@@ -16,9 +16,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// Collaborator is an explicit absence or a fixed set of named consumer bindings.
-// It is prepared from declarations without starting a backend.
-
 type Collaborator struct {
 	ID       plugin.ContributionID
 	Bindings []ContributionBinding
@@ -95,8 +92,6 @@ func readRequirementCatalog(ctx context.Context, store Store, selections Selecti
 	return catalog, nil
 }
 
-// ProjectRequiredBindings projects already captured providers for the profile's
-// setup wire. It never consults a role selection or substitutes a provider.
 func ProjectRequiredBindings(ctx context.Context, store Store, root plugin.Snapshot, server mcpserver.ServerName, binding framehost.BindingSnapshot) (*plugin.RequiredBindings, error) {
 	snapshots, err := store.List(ctx)
 	if err != nil {
@@ -139,7 +134,6 @@ func (c requirementCatalog) binding(snapshot plugin.Snapshot, declaration plugin
 	return ContributionBinding{InstallationID: snapshot.Installation.ID(), ContributionID: declaration.ID, Digest: snapshot.Selected.Digest(), ServerID: id, ServerName: declaration.Server, Export: declaration.Export, Contract: declaration.Contract}, nil
 }
 
-// compareBindings orders bindings by installation, then contribution.
 func compareBindings(a, b ContributionBinding) int {
 	return cmp.Or(
 		strings.Compare(a.InstallationID.String(), b.InstallationID.String()),
@@ -176,8 +170,6 @@ func (c requirementCatalog) candidates(required plugin.Requirement) ([]Contribut
 	return bindings, nil
 }
 
-// implements reports whether an enabled contribution serves the contract; a
-// selection contract admits only the contribution the user selected.
 func (c requirementCatalog) implements(snapshot plugin.Snapshot, declaration plugin.Contribution, contract *plugincontract.Capability) bool {
 	if declaration.Contract != contract.Identity() || !snapshot.Installation.ServerEnabled(declaration.Server) {
 		return false
@@ -190,8 +182,6 @@ func (c requirementCatalog) implements(snapshot plugin.Snapshot, declaration plu
 	return found && choice.Installation == snapshot.Installation.ID() && choice.Contribution == declaration.ID
 }
 
-// decorators resolves a decoration contract through its explicit ordered
-// composition; decorators never apply by mere installation.
 func (c requirementCatalog) decorators(required plugin.Requirement, contract *plugincontract.Capability) ([]ContributionBinding, error) {
 	record, found := c.compositions[contract.Descriptor().Reference]
 	if !found {
@@ -240,8 +230,6 @@ func (c requirementCatalog) collaborators(root plugin.Snapshot, declaration plug
 	return resolved, nil
 }
 
-// capturedRequirement finds the import slot the captured binding resolved for
-// one requirement of the root's own backend unit.
 func capturedRequirement(root plugin.Snapshot, declaration plugin.Contribution, required plugin.Requirement, binding framehost.BindingSnapshot) (framehost.ImportBinding, bool) {
 	var chosen framehost.ImportBinding
 	found := false
@@ -259,8 +247,6 @@ func capturedRequirement(root plugin.Snapshot, declaration plugin.Contribution, 
 	return chosen, found
 }
 
-// capturedProvider rebinds a captured provider only while its installation
-// still selects the same release and contract.
 func (c requirementCatalog) capturedProvider(provider framehost.ExportRef, required plugin.Requirement) (ContributionBinding, error) {
 	id, err := identity.ParseHostInstallation(provider.InstallationID)
 	if err != nil {

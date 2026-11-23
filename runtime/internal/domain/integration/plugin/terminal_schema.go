@@ -15,8 +15,6 @@ import (
 
 const terminalSchemaResource = "urn:flame:terminal-schema"
 
-// Frame has already admitted the callable schema and bounded reference work.
-// Presentation reads its conjunctions without assigning precedence to any of them.
 type schemaNode struct {
 	parts []*jsonschema.Schema
 }
@@ -134,7 +132,6 @@ func (n schemaNode) types() []framevalue.SchemaType {
 	return types
 }
 
-// Entered values can choose the non-null alternative; observed values cannot.
 func (n schemaNode) inputTypes() []framevalue.SchemaType {
 	return slices.DeleteFunc(n.types(), func(kind framevalue.SchemaType) bool { return kind == framevalue.SchemaTypeNull })
 }
@@ -214,9 +211,6 @@ func (n schemaNode) required() []string {
 	return required
 }
 
-// requireBound reports a required property under prefix that no path binds,
-// descending into every object bound only through some of its members — a
-// partially built object must still be complete.
 func (n schemaNode) requireBound(prefix string, bound []string) error {
 	join := func(name string) string {
 		if prefix == "" {

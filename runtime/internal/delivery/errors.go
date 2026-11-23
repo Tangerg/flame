@@ -9,12 +9,10 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// CapabilityGapError carries every missing capability of one operation.
 type CapabilityGapError struct {
 	Requirements []protocol.CapabilityRequirement
 }
 
-// NewCapabilityGapError sorts and deduplicates capability requirements.
 func NewCapabilityGapError(requirements ...protocol.CapabilityRequirement) *CapabilityGapError {
 	slices.SortStableFunc(requirements, func(a, b protocol.CapabilityRequirement) int {
 		if a.Type != b.Type {
@@ -43,7 +41,6 @@ func (c *CapabilityGapError) Enrich(problem *protocol.ProblemData) {
 	problem.RequiredCapabilities = slices.Clone(c.Requirements)
 }
 
-// ActiveRunConflictError carries the non-terminal root that refused admission.
 type ActiveRunConflictError struct {
 	ActiveRun protocol.ActiveRunRef
 }

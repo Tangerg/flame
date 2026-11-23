@@ -94,7 +94,7 @@ export function callbackFetch(
       );
     const headers = new Headers(init.headers);
     headers.set("Authorization", ref.credential);
-    headers.set(wire.constants.CallHeader, ref.call);
+    headers.set(wire.constants.callHeader, ref.call);
     if (owner) {
       // Header bytes are ASCII; JSON escapes preserve the original Unicode
       // identity without changing admission, request bodies or receipt digests.
@@ -102,7 +102,7 @@ export function callbackFetch(
         /[\u007f-\uffff]/g,
         (unit) => "\\u" + unit.charCodeAt(0).toString(16).padStart(4, "0"),
       );
-      headers.set(wire.constants.InvocationHeader!, encoded);
+      headers.set(wire.constants.invocationHeader!, encoded);
     }
     return await new Promise<Response>((resolve, reject) => {
       const request = httpRequest(

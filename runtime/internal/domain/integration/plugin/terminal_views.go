@@ -14,12 +14,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// TerminalView is a management surface a package contributes to terminal
-// clients: a list read through one callable contribution and actions that call
-// its methods. Every input value is bound in the declaration, so a client
-// renders the view from the declaration and the contract alone, without
-// compiling in the package's types.
-
 type TerminalView struct {
 	ID           string
 	Title        string
@@ -28,8 +22,6 @@ type TerminalView struct {
 	Actions      []TerminalAction
 }
 
-// TerminalList reads the view's rows. Rows names the output property that holds
-// them and Key the row property that identifies one.
 type TerminalList struct {
 	Method  string
 	Input   []InputBinding
@@ -39,8 +31,6 @@ type TerminalList struct {
 	Columns []TerminalColumn
 }
 
-// TerminalPaging pages a list: the output property carries the next cursor and
-// the input property sends it back.
 type TerminalPaging struct {
 	Input  string
 	Output string
@@ -51,7 +41,6 @@ type TerminalColumn struct {
 	Field string
 }
 
-// TerminalAction calls one method, on the view or on a selected row.
 type TerminalAction struct {
 	ID      string
 	Title   string
@@ -61,16 +50,11 @@ type TerminalAction struct {
 	Input   []InputBinding
 }
 
-// InputBinding supplies the input property at Path, a '/'-separated walk
-// through nested objects.
 type InputBinding struct {
 	Path  string
 	Value Binding
 }
 
-// Binding is where one input value comes from: a literal, a field of the
-// selected row, a client context fact, or a form field the person fills. Exactly
-// the member Source names is set.
 type Binding struct {
 	Source  extension.TerminalBindingSource
 	Literal framevalue.JSON
@@ -79,9 +63,6 @@ type Binding struct {
 	Form    *FormField
 }
 
-// FormField asks the person for a value, starting from Default when set. Kind
-// and Options are read from the bound property's schema at admission, so a
-// client renders the field without interpreting the contract.
 type FormField struct {
 	Title   string
 	Default *Binding
@@ -202,8 +183,6 @@ func admitTerminalList(contract *plugincontract.Capability, list TerminalList) e
 	return admitBindings(input, list.Input, nil, bound)
 }
 
-// listRowSchema resolves the schema of one row, which row bindings, the key and
-// the columns read.
 func listRowSchema(contract *plugincontract.Capability, list TerminalList) (schemaNode, error) {
 	method, _ := contract.Method(list.Method)
 	output, err := newSchemaNode(method.Descriptor().Output)
@@ -278,9 +257,6 @@ func terminalMethod(contract *plugincontract.Capability, name string) (*frame.Me
 	return method, nil
 }
 
-// admitBindings checks that every binding names an input property, reads only
-// what its target can supply, and that every required property on each bound
-// object is bound. row is nil when no row is selected.
 func admitBindings(input schemaNode, bindings []InputBinding, row *schemaNode, alsoBound []string) error {
 	if !input.acceptsType(framevalue.SchemaTypeObject) {
 		return fmt.Errorf("terminal input must accept an object")
@@ -296,7 +272,7 @@ func admitBindings(input schemaNode, bindings []InputBinding, row *schemaNode, a
 		if !ok {
 			return fmt.Errorf("input %q is not an input property", binding.Path)
 		}
-		if err := admitBinding(binding.Value, property, row, true); err != nil {
+		if err := admitBinding(binding.Value, property, row, inputBinding); err != nil {
 			return fmt.Errorf("input %q: %w", binding.Path, err)
 		}
 		paths = append(paths, binding.Path)
@@ -304,7 +280,15 @@ func admitBindings(input schemaNode, bindings []InputBinding, row *schemaNode, a
 	return input.requireBound("", paths)
 }
 
-func admitBinding(value Binding, property schemaNode, row *schemaNode, formAllowed bool) error {
+// A form field's default is filled before the form opens, so it cannot itself be a form field.
+type bindingPosition int
+
+const (
+	inputBinding bindingPosition = iota
+	formDefaultBinding
+)
+
+func admitBinding(value Binding, property schemaNode, row *schemaNode, position bindingPosition) error {
 	switch value.Source {
 	case extension.TerminalBindingValue:
 		if err := property.validate(value.Literal.Bytes()); err != nil {
@@ -322,7 +306,7 @@ func admitBinding(value Binding, property schemaNode, row *schemaNode, formAllow
 			return fmt.Errorf("unknown context %q", value.Context)
 		}
 	case extension.TerminalBindingForm:
-		if !formAllowed || value.Form == nil {
+		if position == formDefaultBinding || value.Form == nil {
 			return fmt.Errorf("a form field cannot appear here")
 		}
 		if !validTerminalTitle(value.Form.Title) {
@@ -334,7 +318,7 @@ func admitBinding(value Binding, property schemaNode, row *schemaNode, formAllow
 		}
 		value.Form.Kind, value.Form.Options = kind, options
 		if value.Form.Default != nil {
-			if err := admitBinding(*value.Form.Default, property, row, false); err != nil {
+			if err := admitBinding(*value.Form.Default, property, row, formDefaultBinding); err != nil {
 				return fmt.Errorf("default: %w", err)
 			}
 		}
@@ -344,7 +328,6 @@ func admitBinding(value Binding, property schemaNode, row *schemaNode, formAllow
 	return nil
 }
 
-// TerminalViews returns owned copies of the release's terminal views.
 func (r Release) TerminalViews() []TerminalView {
 	views := slices.Clone(r.declaration.TerminalViews)
 	for i := range views {

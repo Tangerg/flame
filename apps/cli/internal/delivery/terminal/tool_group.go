@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 
@@ -15,9 +16,6 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
-// toolGroupBlock is one disclosure for adjacent resource-inspection calls.
-// Each child remains an ordinary toolBlock and therefore retains its own
-// lifecycle, presenter, output, reader sections, and failure status.
 type toolGroupBlock struct {
 	theme     kit.Theme
 	glyphs    kit.Glyphs
@@ -190,6 +188,7 @@ func (t *toolGroupBlock) header() (toggle, label, status string, style grid.Styl
 			failed++
 		case conversation.ToolCanceled:
 			canceled++
+		case conversation.ToolOK:
 		}
 	}
 	style = t.theme.Success
@@ -219,7 +218,7 @@ func (t *toolGroupBlock) readerDocument() readerDocument {
 			Title: prefix, Style: toolSectionParagraph, Text: child.Detail,
 		})
 		for _, section := range child.Sections {
-			section.Title = prefix + " · " + section.Title
+			section.Title = prefix + format.Separator + section.Title
 			document.Sections = append(document.Sections, section)
 		}
 	}

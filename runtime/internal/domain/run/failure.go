@@ -6,13 +6,8 @@ import (
 	"time"
 )
 
-// MaximumRetryAfter is the largest retry delay that survives the domain's
-// whole-second persistence and protocol representations without overflow.
 const MaximumRetryAfter = time.Duration((1<<63-1)/int64(time.Second)) * time.Second
 
-// FailureKind classifies a Run failure without depending on provider
-// error text. Integrations translate concrete failures at their boundary;
-// durable records and the protocol's problem types share these spellings.
 type FailureKind string
 
 const (
@@ -25,7 +20,6 @@ const (
 	FailureProviderRejected    FailureKind = "provider_rejected"
 )
 
-// Valid reports whether f is part of the durable provider-neutral taxonomy.
 func (f FailureKind) Valid() bool {
 	switch f {
 	case FailureInternal, FailureAgentStuck, FailureRateLimited,
@@ -37,8 +31,6 @@ func (f FailureKind) Valid() bool {
 	}
 }
 
-// AllowsRetryAfter reports whether waiting can plausibly clear this failure.
-// Other kinds require a different recovery action and cannot carry a delay.
 func (f FailureKind) AllowsRetryAfter() bool {
 	switch f {
 	case FailureRateLimited, FailureTimeout, FailureProviderUnavailable:
@@ -48,7 +40,6 @@ func (f FailureKind) AllowsRetryAfter() bool {
 	}
 }
 
-// Failure is the durable, provider-neutral explanation for a failed Run.
 type Failure struct {
 	Kind       FailureKind
 	Detail     string
@@ -56,8 +47,6 @@ type Failure struct {
 	RetryAfter time.Duration
 }
 
-// Validate reports whether the failure carries a known kind and a meaningful
-// retry delay only for retryable classifications.
 func (f Failure) Validate() error {
 	if !f.Kind.Valid() {
 		return fmt.Errorf("run: unknown failure kind %q", f.Kind)
@@ -74,11 +63,6 @@ func (f Failure) Validate() error {
 	return nil
 }
 
-// RetryAfterSeconds returns the shortest whole-second delay that does not
-// shorten the provider's retry hint. Durable and wire representations use
-// seconds, while provider protocols may supply finer-grained delays. Validate
-// bounds the delay to the representable whole-second range before a Failure can
-// reach a projection, so rounding up is all this owes its callers.
 func (f Failure) RetryAfterSeconds() int {
 	seconds := f.RetryAfter / time.Second
 	if f.RetryAfter%time.Second != 0 {
@@ -87,8 +71,6 @@ func (f Failure) RetryAfterSeconds() int {
 	return int(seconds)
 }
 
-// RetryAfterFromSeconds restores a whole-second retry delay without allowing
-// persistence or protocol input to overflow time.Duration.
 func RetryAfterFromSeconds(seconds int) (time.Duration, error) {
 	if seconds < 0 {
 		return 0, errors.New("run: retry-after seconds must not be negative")
@@ -99,9 +81,6 @@ func RetryAfterFromSeconds(seconds int) (time.Duration, error) {
 	return time.Duration(seconds) * time.Second, nil
 }
 
-// FailureError carries a typed Run classification while preserving the
-// original error chain for diagnostics. RetryAfter is meaningful only for
-// retryable kinds and may be zero when the provider supplied no hint.
 type FailureError struct {
 	Kind       FailureKind
 	RetryAfter time.Duration

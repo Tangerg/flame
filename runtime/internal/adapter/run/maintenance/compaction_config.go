@@ -8,39 +8,19 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// compactionDefaults govern model-context reduction. Tunable via
-// [CompactionPolicyValues]. The complete request's token footprint is the only
-// compaction trigger; protocol message count is not a measure of context
-// pressure.
 const (
 	percentageScale = 100
 
-	// defaultCompactMaxTokens is the estimated-token-footprint trigger used
-	// ONLY when the model's real context window is unknown (catalog miss). When
-	// the window is known the trigger is window-relative instead, capped by the
-	// provider's hard input envelope when one is known.
 	defaultCompactMaxTokens = 100_000
 
-	// windowTriggerPct is the share of the model's context window at which an
-	// estimated footprint triggers compaction — leaving headroom for the
-	// summary output + the next Run. A fixed number is wrong across the 32k…1M
-	// window range; a relative trigger tracks the actual model's context
-	// window rather than a fixed number that's wrong at either extreme.
+	// Relative because a fixed number is wrong across the 32k…1M window range.
 	windowTriggerPct = 80
 )
 
-// CompactionPolicyValues is the construction boundary for the auto-compaction
-// policy. Nil means "use the named product default"; a present numeric zero is
-// invalid and never doubles as absence.
-//
-// A sweep triggers only when the complete model request reaches MaxTokens.
 type CompactionPolicyValues struct {
-	MaxTokens *int // optional explicit token-footprint trigger; capped by the provider's hard input limit
+	MaxTokens *int
 }
 
-// compactionPolicy is the validated, immutable policy consumed by Compactor.
-// A zero maxTokens is the absent explicit trigger: construction refuses a
-// present value that is not positive.
 type compactionPolicy struct {
 	maxTokens int
 }
@@ -56,10 +36,6 @@ func newCompactionPolicy(values CompactionPolicyValues) (compactionPolicy, error
 	return policy, nil
 }
 
-// tokenTrigger resolves the token-footprint compaction threshold for a Run.
-// An explicit maximum wins; otherwise the threshold follows the selected
-// model's window or the coarse fixed fallback for an unknown model.
-// A provider's prompt envelope always remains the hard upper bound.
 func (p compactionPolicy) tokenTrigger(limits modelref.TokenLimits, options chat.Options) (int, error) {
 	reservation := modelref.OutputReservation{}
 	if options.MaxOutputTokens != nil {

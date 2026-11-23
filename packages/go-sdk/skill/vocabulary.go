@@ -15,5 +15,4 @@ const (
 	Mined     ProposalOrigin = "mined"
 )
 
-// A library's review queue is returned in one bounded read.
 const MaxPendingProposalsPerScope = 128

@@ -2,8 +2,6 @@ package runs
 
 import "github.com/google/uuid"
 
-// CancellationID correlates an executor control with one accepted request.
-// Different requests can carry the same user reason.
 type CancellationID uuid.UUID
 
 func newCancellationID() CancellationID { return CancellationID(uuid.New()) }

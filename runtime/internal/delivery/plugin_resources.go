@@ -18,8 +18,6 @@ type resourceLease struct {
 	request protocol.OpenPluginResourcesRequest
 }
 
-// Resource authority exists only for the live subscription. Its ephemeral
-// capability cannot become installation state or a retained execution dependency.
 type resourceLeases struct {
 	mu     sync.Mutex
 	values map[string]resourceLease
@@ -32,9 +30,9 @@ func (r *resourceLeases) open(ctx context.Context, request protocol.OpenPluginRe
 	r.mu.Lock()
 	r.values[token] = resourceLease{owner: ctx, request: request}
 	r.mu.Unlock()
-	close := func() { r.mu.Lock(); delete(r.values, token); r.mu.Unlock() }
-	stop := context.AfterFunc(ctx, close)
-	return token, func() { stop(); close() }
+	release := func() { r.mu.Lock(); delete(r.values, token); r.mu.Unlock() }
+	stop := context.AfterFunc(ctx, release)
+	return token, func() { stop(); release() }
 }
 
 func (s *Handler) resourceLease(token string) (resourceLease, bool) {
@@ -63,8 +61,8 @@ func (s *Handler) OpenPluginResources(ctx context.Context, in protocol.OpenPlugi
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
-	token, close := s.resources.open(ctx, in)
-	events := func(func(protocol.PluginResourceEvent, error) bool) { defer close(); <-ctx.Done() }
+	token, release := s.resources.open(ctx, in)
+	events := func(func(protocol.PluginResourceEvent, error) bool) { defer release(); <-ctx.Done() }
 	return &protocol.PluginResourceLease{Token: token, Entry: value.Entry}, events, nil
 }
 
@@ -100,8 +98,6 @@ func (s *Handler) ReadPluginLocale(ctx context.Context, in protocol.ReadPluginLo
 	return &protocol.PluginLocaleCatalog{Messages: messages}, nil
 }
 
-// LeasedPluginResource translates an asset request into the same public Core
-// query with its captured caller and subscription lifetime.
 func (e *Endpoint) LeasedPluginResource(ctx context.Context, token, resource string) (*protocol.PluginResource, error) {
 	owner, ok := e.target.(interface {
 		resourceLease(string) (resourceLease, bool)

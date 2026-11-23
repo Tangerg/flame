@@ -1,4 +1,3 @@
-// Plan tools expose the root Agent's Plan lifecycle.
 package builtin
 
 import (
@@ -13,51 +12,40 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// planStateReader supplies the canonical session Plan approved by exit_plan_mode.
 type planStateReader interface {
 	State(ctx context.Context, sessionID identity.SessionID) (plandomain.Current, error)
 	Review(context.Context, plandomain.State) (string, error)
 }
 
-// planReplacer executes the application use case behind set_plan.
 type planReplacer interface {
 	Replace(ctx context.Context, sessionID identity.SessionID, steps []plandomain.Step) (plandomain.State, error)
 }
 
-// PlanUseCases is the union of what this tool family consumes; each tool still
-// takes only the half it uses.
 type PlanUseCases interface {
 	planStateReader
 	planReplacer
 }
 
-// planEnterPolicy narrows one session into Plan mode.
 type planEnterPolicy interface {
 	EnterPlanMode(ctx context.Context, sessionID identity.SessionID) (changed bool, err error)
 }
 
-// planExitPolicy reads one session's permission mode and ends its Plan mode.
 type planExitPolicy interface {
 	Mode(ctx context.Context, sessionID identity.SessionID) (approval.Mode, error)
 	ExitPlanMode(ctx context.Context, sessionID identity.SessionID, revision uint64) (restored approval.Mode, changed bool, err error)
 }
 
-// PlanModePolicy owns both transitions of the same session Plan-mode lifecycle.
 type PlanModePolicy interface {
 	planEnterPolicy
 	planExitPolicy
 }
 
-// PlanTools contains the three tools that implement one Plan lifecycle.
 type PlanTools struct {
 	Enter toolcontract.Tool
 	Set   toolcontract.Tool
 	Exit  toolcontract.Tool
 }
 
-// BuildPlan constructs every available Plan tool while preserving the family
-// invariant that exit_plan_mode approves the same application state replaced by
-// set_plan.
 func BuildPlan(modes PlanModePolicy, plans PlanUseCases, available func(context.Context) (bool, error), interrupt runs.InterruptFunc) (PlanTools, error) {
 	enter, err := newEnter(modes, available)
 	if err != nil {

@@ -69,7 +69,7 @@ const readinessPollMilliseconds = 100;
 
 const unconfirmedModelOutcome = {
   type: "lost",
-  loss: expect.objectContaining({ reason: "unresolvedEffects", detail: expect.any(String) }),
+  loss: expect.objectContaining({ reason: "unresolvedEffects" }),
   unresolvedEffects: [
     expect.objectContaining({
       cause: "termination",
@@ -2302,10 +2302,10 @@ for await (const line of lines) {
 
       const updated = await callAfterCommitLoss("plugins.call", (faultClient) =>
         updateInstalledMemory(faultClient, {
-          ID: added.id,
-          ExpectedRevision: added.revision,
-          Content: "agent-memory replay cutpoint updated",
-          Pinned: true,
+          id: added.id,
+          expectedRevision: added.revision,
+          content: "agent-memory replay cutpoint updated",
+          pinned: true,
         }),
       );
       memoryRecord = updated;
@@ -4276,10 +4276,10 @@ for await (const line of lines) {
     });
 
     const updated = await updateInstalledMemory(client, {
-      ID: project.id,
-      ExpectedRevision: project.revision,
-      Content: "project memory marker updated",
-      Pinned: true,
+      id: project.id,
+      expectedRevision: project.revision,
+      content: "project memory marker updated",
+      pinned: true,
     });
     await expect(nextRuntimeEvent(runtimeEvents, "plugins.dataChanged")).resolves.toMatchObject({
       type: "plugins.dataChanged",

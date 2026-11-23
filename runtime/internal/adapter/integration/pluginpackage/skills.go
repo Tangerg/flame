@@ -14,9 +14,11 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
-	sdk "github.com/Tangerg/scope/skills"
+	skillspec "github.com/Tangerg/scope/skills"
 	"github.com/samber/lo"
 )
+
+const skillsDirectory = "skills"
 
 type skillInstallations interface {
 	List(context.Context) ([]plugin.Snapshot, error)
@@ -36,6 +38,7 @@ func NewSkills(releases *Releases, installations skillInstallations) (*Skills, e
 	}
 	return &Skills{releases: releases, installations: installations}, nil
 }
+
 func (s *Skills) SkillBundles(ctx context.Context, retained []plugin.Dependency) ([]promptsource.PackageSkillBundle, error) {
 	var installations []plugin.Snapshot
 	if retained == nil {
@@ -82,13 +85,13 @@ func (s *Skills) SkillBundles(ctx context.Context, retained []plugin.Dependency)
 		if err != nil {
 			return nil, err
 		}
-		bundles = append(bundles, promptsource.PackageSkillBundle{Root: filepath.Join(root, "skills"), Skills: enabled, Dependency: installation.Dependency()})
+		bundles = append(bundles, promptsource.PackageSkillBundle{Root: filepath.Join(root, skillsDirectory), Skills: enabled, Dependency: installation.Dependency()})
 	}
 	return bundles, nil
 }
 
 func (s *Skills) ReadSkillResource(ctx context.Context, dependency plugin.Dependency, name, resource string) ([]byte, error) {
-	if err := sdk.ValidateName(name); err != nil {
+	if err := skillspec.ValidateName(name); err != nil {
 		return nil, fmt.Errorf("%w: Skill name: %w", plugin.ErrInvalid, err)
 	}
 	if !fs.ValidPath(resource) || strings.ContainsRune(resource, '\\') {
@@ -113,7 +116,7 @@ func (s *Skills) ReadSkillResource(ctx context.Context, dependency plugin.Depend
 		return nil, workspaceapp.ErrSkillUnavailable
 	}
 	limit := int64(domainskills.MaxSkillResourceBytes)
-	if resource == sdk.SkillFile {
+	if resource == skillspec.SkillFile {
 		limit = domainskills.MaxAuthoredSkillDocumentBytes
 	}
 	content, err := s.releases.readResource(ctx, installation, "skills/"+name+"/"+resource, limit)
@@ -121,7 +124,7 @@ func (s *Skills) ReadSkillResource(ctx context.Context, dependency plugin.Depend
 		return nil, errors.Join(cause, err)
 	}
 	if errors.Is(err, errResourceLimit) {
-		if resource == sdk.SkillFile {
+		if resource == skillspec.SkillFile {
 			return nil, errors.Join(domainskills.ErrDocumentTooLarge, err)
 		}
 		return nil, errors.Join(domainskills.ErrResourceTooLarge, err)

@@ -10,8 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 )
 
-// EndpointPolicy describes the version boundary at a provider's gateway mount.
-// A version-appending SDK may deliberately sit behind a versioned proxy path.
 type EndpointPolicy struct {
 	Example        string `json:"example"`
 	AppendsPath    string `json:"appendsPath,omitzero"`
@@ -49,7 +47,7 @@ func (p EndpointPolicy) ValidateOverride(raw string) error {
 	return nil
 }
 
-// EffectivePath exposes only the route, so presenting a draft cannot echo URL credentials.
+// Only the route is exposed so presenting a draft cannot echo URL credentials.
 func (p EndpointPolicy) EffectivePath(raw string) string {
 	if raw == "" {
 		return ""

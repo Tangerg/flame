@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"slices"
 	"sync"
 	"sync/atomic"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
@@ -23,49 +24,24 @@ import (
 	"github.com/samber/lo"
 )
 
-// The per-Run application-context seam (cwd, session, isolation, goal incarnation)
-// lives in package executionctx — the resolver, per-tool packages, and prompt
-// composition all read it inward without coupling to each other.
-
-// Resolver is the engine-scope Tool Group resolver for root and delegated
-// execution groups. The working-directory-independent tools (online
-// providers, MCP servers, the `delegate_task` tool) are built once at
-// engine construction and captured here; filesystem and skill tools are
-// rebuilt per resolution, while shell tools read the resolving Run's
-// application context per call. Both paths fall back to the configured default
-// CWD. That is
-// what lets a single engine serve many sessions —
-// each running its tools in its own project directory — without a
-// per-session engine.
 type Resolver struct {
 	goalAvailable func(context.Context) (bool, error)
 	telemetry     oteltool.Middleware
 	skillSources  promptsource.SkillSources
-	skillsUserDir string                     // user-scope skills dir; merged under each Run's project skills
-	skillUsage    builtin.SkillUsageRecorder // records skill loads for the idle-lifecycle curator
-	codeIntel     CodeIntelligence           // backs post-patch diagnostics (rebuilt per resolution with the Run's cwd)
-	readTracker   *readTracker               // backs the read-before-patch and stale-read guards
-	pathLocker    *keylock.Set               // serializes same-path fs calls across every concurrent Run resolution
-	shell         []toolcontract.Tool        // shell tools (shell / read_shell_output / stop_shell) over the exec.Shells; cwd read per-call
+	skillsUserDir string
+	skillUsage    builtin.SkillUsageRecorder
+	codeIntel     CodeIntelligence
+	readTracker   *readTracker
+	pathLocker    *keylock.Set
+	shell         []toolcontract.Tool
 	planAvailable func(context.Context) (bool, error)
-	staticSpecs   []staticSpec // built-once capabilities with one group/placement policy for Run manifests
+	staticSpecs   []staticSpec
 
-	// createGoal is the root-only Goal entry tool, installed by
-	// UseCreateGoalTool once the Goal Driver exists over Runs. It is the only
-	// field written after construction, so lateMu guards it and nothing else —
-	// every field above is fixed by the constructor and read without locking.
 	lateMu     sync.RWMutex
 	createGoal toolcontract.Tool
 
-	// mcp is the working-directory-independent MCP tool set, held behind an
-	// atomic pointer so a reconnect (B3b-2) can hot-swap the live set without
-	// locking the per-Run resolution path: Tools() does one atomic load, the
-	// reconnect does one atomic store. The model therefore always sees the
-	// currently-connected servers' tools, even mid-session.
 	mcp atomic.Pointer[mcpCatalog]
 
-	// mcpToolDisabled reads the current domain policy per resolution so registry
-	// changes and live-tool reconnects remain independent hot swaps.
 	mcpToolDisabled func(domaintool.Ref) bool
 	restoreMCP      func(context.Context, []domaintool.Ref, []plugin.Activation) ([]toolcontract.Tool, func() error, error)
 }
@@ -89,9 +65,6 @@ const (
 	rootTail
 )
 
-// availability gates a static Tool on one per-Run fact beyond its audience.
-// Goal-only capabilities key off the immutable incarnation stamped at Run
-// admission, never mutable Goal state.
 type availability uint8
 
 const (
@@ -112,8 +85,6 @@ func (a availability) admits(ctx context.Context, planAvailable bool) bool {
 	}
 }
 
-// staticSpec is the policy record for one built-once per-Run capability. A Run
-// consumes entries in its placement and audience when their availability holds.
 type staticSpec struct {
 	tool         toolcontract.Tool
 	audience     audience
@@ -122,35 +93,27 @@ type staticSpec struct {
 	deferred     bool
 }
 
-// resolverDeps bundles the working-directory-independent inputs the resolver captures
-// at construction. Filesystem and skill tools are rebuilt per resolution;
-// shell tools are built once but read the Run's cwd per call. Selected code intelligence is borrowed only while a file mutation executes.
 type resolverDeps struct {
-	GoalAvailable func(context.Context) (bool, error)
-	PlanAvailable func(context.Context) (bool, error)
-	SkillSources  promptsource.SkillSources
-	SkillsUserDir string
-	SkillUsage    builtin.SkillUsageRecorder
-	Shell         []toolcontract.Tool
-	AskUser       toolcontract.Tool
-	EnterPlan     toolcontract.Tool
-	ExitPlan      toolcontract.Tool
-	Plan          toolcontract.Tool
-	ToolResult    toolcontract.Tool
-	GoalGet       toolcontract.Tool
-	GoalReport    toolcontract.Tool
-	ProposeSkill  toolcontract.Tool
-	CodeIntel     CodeIntelligence
-	ReadTracker   *readTracker
-	// MCPToolDisabled reports whether an identified MCP tool is hidden.
+	GoalAvailable   func(context.Context) (bool, error)
+	PlanAvailable   func(context.Context) (bool, error)
+	SkillSources    promptsource.SkillSources
+	SkillsUserDir   string
+	SkillUsage      builtin.SkillUsageRecorder
+	Shell           []toolcontract.Tool
+	AskUser         toolcontract.Tool
+	EnterPlan       toolcontract.Tool
+	ExitPlan        toolcontract.Tool
+	Plan            toolcontract.Tool
+	ToolResult      toolcontract.Tool
+	GoalGet         toolcontract.Tool
+	GoalReport      toolcontract.Tool
+	ProposeSkill    toolcontract.Tool
+	CodeIntel       CodeIntelligence
+	ReadTracker     *readTracker
 	MCPToolDisabled func(domaintool.Ref) bool
 	RestoreMCP      func(context.Context, []domaintool.Ref, []plugin.Activation) ([]toolcontract.Tool, func() error, error)
 }
 
-// newResolver builds the Runtime-scoped Tool resolver from its
-// working-directory-independent inputs. The create_goal entry Tool is injected
-// through an explicit seam after its cyclic application owner exists; the MCP
-// Tool set is seeded and hot-swapped via [Resolver.SetMCPTools].
 func newResolver(d resolverDeps) (*Resolver, error) {
 	for _, required := range []struct {
 		name  string
@@ -217,9 +180,6 @@ func (r *Resolver) appendStatic(
 	}
 }
 
-// UseCreateGoalTool installs the root-only autonomous Goal entry tool after
-// the Goal Driver has been constructed over Runs. This is a narrow
-// construction seam: the resolver still knows only a generic tool contract.
 func (r *Resolver) UseCreateGoalTool(tool toolcontract.Tool) {
 	r.lateMu.Lock()
 	defer r.lateMu.Unlock()
@@ -232,7 +192,6 @@ func (r *Resolver) createGoalTool() toolcontract.Tool {
 	return r.createGoal
 }
 
-// Tools and pending sources must describe the same connection publication.
 type mcpCatalog struct {
 	tools   []toolcontract.Tool
 	pending []mcpserver.ID
@@ -273,24 +232,24 @@ func (r *Resolver) mcpTools(ctx context.Context, retained *Retained) ([]toolcont
 	if len(installed) == 0 {
 		return current, pending, nil, nil
 	}
-	original, close, err := r.restoreMCP(ctx, installed, cloneManifestBindings(retained.Bindings))
+	original, release, err := r.restoreMCP(ctx, installed, cloneManifestBindings(retained.Bindings))
 	if err != nil {
-		if close != nil {
-			err = errors.Join(err, close())
+		if release != nil {
+			err = errors.Join(err, release())
 		}
 		return nil, nil, nil, err
 	}
-	if close == nil {
+	if release == nil {
 		return nil, nil, nil, errors.New("toolset: original MCP restoration requires resource ownership")
 	}
 	if err := validateRestoredMCP(original, installed, retained.Bindings); err != nil {
-		return nil, nil, nil, errors.Join(err, close())
+		return nil, nil, nil, errors.Join(err, release())
 	}
 	original, err = r.exposedMCPTools(original, installed)
 	if err != nil {
-		return nil, nil, nil, errors.Join(err, close())
+		return nil, nil, nil, errors.Join(err, release())
 	}
-	return append(slices.Clone(current), original...), pending, close, nil
+	return append(slices.Clone(current), original...), pending, release, nil
 }
 
 func validateRestoredMCP(values []toolcontract.Tool, references []domaintool.Ref, bindings []plugin.Activation) error {
@@ -338,10 +297,6 @@ func (r *Resolver) mcpSnapshot() []toolcontract.Tool {
 	return p.tools
 }
 
-// exposedMCPTools filters one snapshot by exposure. The disabled set is read
-// here, not at SetMCPTools, so it stays correct regardless of which hot-swap
-// fired last (a reconnect that swaps tools vs. a configure that swaps the
-// disabled set).
 func (r *Resolver) exposedMCPTools(values []toolcontract.Tool, capturedMCP []domaintool.Ref) ([]toolcontract.Tool, error) {
 	var out []toolcontract.Tool
 	for i, tool := range values {
@@ -368,22 +323,17 @@ func (r *Resolver) exposedMCPTools(values []toolcontract.Tool, capturedMCP []dom
 	return out, nil
 }
 
-// SetMCPTools swaps in a freshly-built MCP tool set (boot + each reconnect).
 func (r *Resolver) SetMCPTools(tools []toolcontract.Tool, pending []mcpserver.ID) {
 	r.mcp.Store(&mcpCatalog{tools: slices.Clone(tools), pending: slices.Clone(pending)})
 }
 
-// ForgetSessionContext drops file-read evidence derived from one Session's
-// model context. A replaced or compacted context must earn fresh read-before-
-// write authority; retaining the old stamps would let discarded context
-// authorize later filesystem mutations.
+// A replaced or compacted context must earn fresh read-before-write authority.
 func (r *Resolver) ForgetSessionContext(sessionID identity.SessionID) {
 	r.readTracker.forgetSession(sessionID)
 }
 
-// ForgetWorkspace drops file-read evidence for every Session below a restored
-// workspace root. Sessions may share a working tree, so invalidating only the
-// Session that requested rollback would leave sibling authority stale.
+// Sessions may share a working tree, so invalidating only the requesting Session
+// would leave sibling authority stale.
 func (r *Resolver) ForgetWorkspace(root string) {
 	r.readTracker.forgetWorkspace(root)
 }
@@ -392,12 +342,6 @@ func (r *Resolver) toolsForCWD(cwd string) (cwdTools, error) {
 	return openCWDTools(cwd, r.codeIntel, r.readTracker, r.pathLocker)
 }
 
-// Manifest resolves one Group's frozen, framework-neutral Tool visibility. It
-// is the integration surface for execution strategies that distinguish initial
-// visibility from deferred executable authority without importing this package
-// into their framework.
-// retained is nil for new execution. Restoration obtains installed Tools from
-// the original graphs before any current catalog can influence the manifest.
 func (r *Resolver) Manifest(ctx context.Context, group domaintool.Group, retained *Retained) (Manifest, error) {
 	if err := retained.validate(); err != nil {
 		return Manifest{}, err
@@ -428,10 +372,10 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 	if err != nil {
 		return manifestBuilder{}, err
 	}
-	close := localTools.close
+	release := localTools.close
 	defer func() {
 		if err != nil {
-			err = errors.Join(err, close())
+			err = errors.Join(err, release())
 		}
 	}()
 	tools := manifestBuilder{close: localTools.close}
@@ -443,8 +387,8 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 		return manifestBuilder{}, err
 	}
 	if closeMCP != nil {
-		close = sync.OnceValue(func() error { return errors.Join(closeMCP(), localTools.close()) })
-		tools.close = close
+		release = sync.OnceValue(func() error { return errors.Join(closeMCP(), localTools.close()) })
+		tools.close = release
 	}
 	tools.deferred = append(tools.deferred, mcpTools...)
 	tools.pendingMCP = pending
@@ -452,8 +396,6 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 	if err := r.resolveSkillTools(ctx, cwd, retained, &tools); err != nil {
 		return manifestBuilder{}, err
 	}
-	// Built-once, session-keyed helpers (plan/result/transcript search)
-	// are projected from the resolver's group and placement policy.
 	planAvailable := true
 	if group == domaintool.GroupRoot {
 		planAvailable, err = r.planAvailable(ctx)
@@ -462,9 +404,6 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 		}
 	}
 	r.appendStatic(ctx, &tools, afterSkill, group, planAvailable)
-	// Both groups can ask the user; Plan-mode controls in this placement remain
-	// root-only. A child question waits at the same durable tree boundary as a
-	// child approval.
 	r.appendStatic(ctx, &tools, interactionTail, group, planAvailable)
 	if group == domaintool.GroupRoot {
 		if err := r.appendRootTools(ctx, &tools, planAvailable); err != nil {
@@ -477,10 +416,6 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group, retained
 	return tools, nil
 }
 
-// appendRootTools adds the product-root operations a child never gets. Goal
-// lifecycle entry is late-bound because its application Driver owns Runs,
-// while the resolver itself was needed to build the Agent executor; only the
-// generic tool crosses this seam.
 func (r *Resolver) appendRootTools(ctx context.Context, tools *manifestBuilder, planAvailable bool) error {
 	if createGoal := r.createGoalTool(); createGoal != nil {
 		available, err := r.goalAvailable(ctx)
@@ -495,22 +430,19 @@ func (r *Resolver) appendRootTools(ctx context.Context, tools *manifestBuilder, 
 	return nil
 }
 
-// bindDiscovery makes search_tools the sole model-facing entry to every
-// capability withheld from the initial manifest. The tools remain in the same
-// Run registry, so promotion changes visibility rather than execution
-// authority.
 func (m *manifestBuilder) bindDiscovery(retained *Retained) error {
 	if err := m.bindModelNames(retained); err != nil {
 		return err
+	}
+	if len(m.deferred) == 0 {
+		return nil
 	}
 	search, err := NewDiscovery(m.deferred)
 	if err != nil {
 		return fmt.Errorf("toolset: resolve search_tools: %w", err)
 	}
-	if search != nil {
-		m.direct(search)
-		m.discovery = search
-	}
+	m.direct(search)
+	m.discovery = search
 	return nil
 }
 
@@ -529,8 +461,6 @@ func (r *Resolver) resolveSkillTools(ctx context.Context, cwd string, retained *
 	if err != nil {
 		return fmt.Errorf("toolset: resolve skill tools: %w", err)
 	}
-	// Skill reads mutate nothing, so a Skill the model named wrongly is a failed
-	// call, not an operation whose outcome the Host cannot prove.
 	for index, skillTool := range skillTools {
 		skillTools[index] = withDefiniteOutcome(skillTool)
 	}

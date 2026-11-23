@@ -12,15 +12,12 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	"github.com/Tangerg/go-sdk/jsonrpc"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 type rpcHandler struct{ router *dispatch.Router }
 
-// NewRPCHandler binds the existing RPC/SSE transport to one canonical Endpoint.
-// The enclosing listener owns authentication and request lifetime; this handler
-// owns no listener, independent registry or business policy.
 func NewRPCHandler(endpoint *delivery.Endpoint) (http.Handler, error) {
 	router, err := dispatch.New(endpoint)
 	if err != nil {
@@ -29,9 +26,6 @@ func NewRPCHandler(endpoint *delivery.Endpoint) (http.Handler, error) {
 	return &rpcHandler{router: router}, nil
 }
 
-// maxRPCBodyBytes caps the JSON-RPC request body to avoid trivial
-// DoS via a giant payload. 4 MB matches typical reasonable runs.start
-// histories without trimming.
 const maxRPCBodyBytes = 4 << 20
 
 func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -44,10 +38,6 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	lifetime, cancel := context.WithCancel(r.Context())
 	defer cancel()
 	r = r.WithContext(lifetime)
-	// Transport-layer preconditions: unsupported media
-	// type ⇒ 415, oversized body ⇒ 413 — both rejected before we spend
-	// effort decoding. Content-Type is only enforced when present (a
-	// minimal client may omit it); when set it must be application/json.
 	if ct := strings.TrimSpace(r.Header.Get(headerContentType)); ct != "" && !isJSONMediaType(ct) {
 		writeProblem(w, problemUnsupportedMediaType, "content-type must be application/json")
 		return
@@ -87,8 +77,6 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	result := s.router.Dispatch(r.Context(), message, options)
 	methodLabel := request.Method
 
-	// Client notifications are dispatched synchronously and acknowledged
-	// with 204 No Content because processing has already completed.
 	if result.Response == nil {
 		if methodLabel != "" {
 			w.Header().Set(headerMethod, methodLabel)
@@ -97,10 +85,6 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Streaming method (stream opened) → the POST response body IS the
-	// event stream. A pre-stream failure
-	// (session_not_found / invalid_params …) leaves EventStream nil and
-	// falls through to the single-shot application/json reply below.
 	if result.EventStream != nil {
 		serveStream(w, r, result.Response, result.EventStream, methodLabel, cancel)
 		return
@@ -109,13 +93,11 @@ func (s *rpcHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	writeRPCResponse(w, r, result.Response, methodLabel)
 }
 
-// A decoded JSON-RPC call always returns 200. Its result or error belongs to
-// the envelope; HTTP status is reserved for failures below this boundary.
 func writeRPCResponse(w http.ResponseWriter, r *http.Request, response *jsonrpc.Response, methodLabel string) {
 	responseBytes, err := jsonrpc.EncodeMessage(response)
 	if err != nil {
 		recordError(r.Context(), "rpc.encode-response", err,
-			attribute.String("rpc.method", methodLabel),
+			telemetry.RPCMethodKey.String(methodLabel),
 		)
 		writeProblem(w, problemResponseEncodingFailed, "the transport could not encode the RPC response")
 		return
@@ -127,19 +109,16 @@ func writeRPCResponse(w http.ResponseWriter, r *http.Request, response *jsonrpc.
 	w.WriteHeader(protocol.RPCCallStatus)
 	if _, err := w.Write(responseBytes); err != nil {
 		recordError(r.Context(), "rpc.write-response", err,
-			attribute.String("rpc.method", methodLabel),
+			telemetry.RPCMethodKey.String(methodLabel),
 		)
 	}
 }
 
 var errRPCBodyTooLarge = errors.New("request body exceeds limit")
 
-// readRPCBody reads one byte past the cap so a chunked or uncounted body that
-// overflows is refused rather than silently truncated.
 func readRPCBody(r *http.Request, methodHint string) ([]byte, error) {
 	limit := int64(maxRPCBodyBytes)
 	if methodHint == delivery.SessionsImport.String() {
-		// The ordinary envelope budget remains available for metadata around the artifact.
 		limit += protocol.MaximumSessionArtifactBytes
 	}
 	if r.ContentLength > limit {
@@ -152,8 +131,6 @@ func readRPCBody(r *http.Request, methodHint string) ([]byte, error) {
 	return body, err
 }
 
-// Problem is the application/problem+json body of a failure the transport
-// answers itself, below any operation.
 type Problem struct {
 	Type      string `json:"type"`
 	Title     string `json:"title"`
@@ -162,28 +139,15 @@ type Problem struct {
 	RequestID string `json:"requestId,omitempty"`
 }
 
-// transportProblemNamespace separates an envelope failure from an operation's.
-// A client matches the prefix to know the request never reached an operation,
-// or that its response never left, so the two vocabularies stay independent
-// even where they share a word.
 const transportProblemNamespace = "urn:flame:transport:"
 
-// problemKind is one problem the transport answers itself and the only status
-// it is sent with.
 type problemKind struct {
-	name   string
-	status int
-	// refusal marks a problem answered before its request reached an
-	// operation, so a command it answers was certainly not accepted.
+	name    string
+	status  int
 	refusal bool
-	// noStore keeps credential and origin refusals out of shared caches.
 	noStore bool
 }
 
-// The closed set of problems the transport answers with itself. invalid_request
-// and internal_error are protocol vocabulary rather than transport vocabulary —
-// a caller meets the same two symbols in an RPC error and a run outcome — so
-// they are taken from their owner instead of spelled again here.
 var (
 	problemUnsupportedMediaType   = problemKind{name: "unsupported_media_type", status: http.StatusUnsupportedMediaType, refusal: true}
 	problemRequestTooLarge        = problemKind{name: "request_too_large", status: http.StatusRequestEntityTooLarge, refusal: true}
@@ -223,9 +187,6 @@ func writeProblem(w http.ResponseWriter, kind problemKind, detail string) {
 	})
 }
 
-// isJSONMediaType reports whether a Content-Type header denotes JSON.
-// It tolerates parameters (e.g. "application/json; charset=utf-8") by
-// parsing off the media type before comparing.
 func isJSONMediaType(ct string) bool {
 	mt, _, err := mime.ParseMediaType(ct)
 	if err != nil {
@@ -234,7 +195,6 @@ func isJSONMediaType(ct string) bool {
 	return mt == protocol.RPCDocumentMediaType
 }
 
-// RefusalProblems projects only the closed pre-dispatch refusal pairs for clients.
 func RefusalProblems() map[string]int {
 	values := make(map[string]int)
 	for _, kind := range problemKinds {

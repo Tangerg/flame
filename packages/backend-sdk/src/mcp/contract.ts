@@ -29,7 +29,7 @@ export function validCommand(value: unknown): value is string {
     typeof value === "string" &&
     value.length > 0 &&
     !/\p{Surrogate}/u.test(value) &&
-    [...value].length <= wire.constants.maxCommandIDCharacters
+    [...value].length <= wire.limits.maxCommandIDCharacters
   );
 }
 

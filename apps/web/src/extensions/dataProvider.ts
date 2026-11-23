@@ -10,3 +10,12 @@ export const DATA_PROVIDER = defineExtensionPoint<DataProviderSpec>({
   keying: "single",
   keyOf: (s) => s.key,
 });
+
+export function requiredParams<P>(key: string, params: unknown): P {
+  if (params === undefined) throw new Error(`Data provider "${key}" requires parameters`);
+  return params as P;
+}
+
+export function pageData<T>(request: Promise<{ data: T[] }>): Promise<T[]> {
+  return request.then((page) => page.data);
+}

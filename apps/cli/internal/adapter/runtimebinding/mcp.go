@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// Calls borrow requests until return and transfer ownership of their results.
 type mcpBinding interface {
 	GetMCPToolExposure(context.Context, protocol.MCPServerRequest, protocol.CallOptions) (*protocol.MCPToolExposure, error)
 	SetMCPToolExposure(context.Context, protocol.SetMCPToolExposureRequest, protocol.CommandOptions) error
@@ -294,6 +293,7 @@ func (r *Connection) ToolExposure(ctx context.Context, server protocol.MCPServer
 	}
 	return *result, nil
 }
+
 func (r *Connection) SetToolExposure(ctx context.Context, request protocol.SetMCPToolExposureRequest) error {
 	if err := protocol.ValidateWireTree(request); err != nil {
 		return err

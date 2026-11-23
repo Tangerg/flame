@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -15,9 +16,10 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
-// runOptionScreens chooses the presented Session's model and shows the model
-// catalog and the Runtime's options. A chosen model becomes the Session's
-// own choice through the Session lifecycle.
+const noneLabel = "none"
+
+const runtimeOptionsDialogHeight = 14
+
 type runOptionScreens struct {
 	screenHost
 	service   Runtime
@@ -34,8 +36,8 @@ type runOptionScreens struct {
 
 func (o *runOptionScreens) buildModelPicker(theme kit.Theme, glyphs kit.Glyphs) {
 	o.models = newPickerDialog(pickerDialogConfig[protocol.Model]{
-		stack: o.stack, theme: theme, glyphs: glyphs, title: "Models", search: "search models",
-		where: layout.Placement{Width: standardDialogWidth, Height: 14},
+		stack: o.stack, theme: theme, glyphs: glyphs, title: modelsTitle, search: "search models",
+		where: layout.Placement{Width: standardDialogWidth, Height: runtimeOptionsDialogHeight},
 		label: func(model protocol.Model) string {
 			label := model.DisplayName
 			if label == "" {
@@ -135,7 +137,7 @@ func runtimeStatusText(profile RuntimeProfile, options authoring.RunOptions, mod
 	}
 	features := profile.AvailableFeatureNames()
 	if len(features) == 0 {
-		features = []string{"none"}
+		features = []string{noneLabel}
 	}
 	discovery := profile.Discovery()
 	capabilities := discovery.Capabilities
@@ -164,11 +166,12 @@ func runConcurrencyLabel(maximum *int) string {
 }
 
 func formatRuntimeSeconds(value int) string {
-	if value%3600 == 0 {
-		return fmt.Sprintf("%dh", value/3600)
+	d := time.Duration(value) * time.Second
+	if d%time.Hour == 0 {
+		return fmt.Sprintf("%dh", d/time.Hour)
 	}
-	if value%60 == 0 {
-		return fmt.Sprintf("%dm", value/60)
+	if d%time.Minute == 0 {
+		return fmt.Sprintf("%dm", d/time.Minute)
 	}
 	return fmt.Sprintf("%ds", value)
 }
@@ -228,8 +231,6 @@ func approvalModeTitle(mode protocol.ApprovalMode) string {
 	}
 }
 
-// approvalPolicyDetail describes a mode from the gates the Runtime publishes
-// for it, so the picker cannot drift from the policy it selects.
 func approvalPolicyDetail(policy protocol.ApprovalModePolicy) string {
 	return "write " + approvalGateText(policy.Write) +
 		" · exec " + approvalGateText(policy.Exec) +

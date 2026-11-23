@@ -14,7 +14,7 @@ import {
   type RuntimeEndpointConfiguration,
 } from "@/features/connection/application/runtimeEndpoint";
 import { RuntimeProvider, type RuntimeAccess } from "@/features/connection/public/runtime";
-import { createAgentFixture } from "@/test/agentFixture";
+import { composeAgent } from "@/features/agent/adapters/agent";
 import { useAgentDependencies } from "@/features/agent/application/agentContext";
 import { submitAgentInput } from "@/features/agent/application/input/submitAgentInput";
 import { type AgentInput } from "@/features/agent/public/input";
@@ -92,7 +92,7 @@ export function createVisualClient(runtimeClient: () => FlameClient, messages: N
     subscribeConnection: (listener: () => void) => projection.store.subscribe(listener),
     reportConnectionLoss: () => undefined,
   };
-  const agent = createAgentFixture(runtimeClient, navigation, runtime, stream, scope, messages);
+  const agent = composeAgent(runtimeClient, navigation, runtime, stream, scope, messages);
   agent.dependencies = {
     ...agent.dependencies,
     defaultSession: { useDefaultChatSession: useRecordedChatSession },

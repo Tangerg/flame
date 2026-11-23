@@ -10,7 +10,8 @@ import (
 	"testing"
 	"time"
 
-	runapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -27,7 +28,7 @@ func TestStartAcceptanceCrashHelper(t *testing.T) {
 		return
 	}
 	home := os.Getenv("FLAME_HOME")
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +42,7 @@ func TestStartAcceptanceCrashHelper(t *testing.T) {
 			if err != nil {
 				return err
 			}
-			if record.Use == runapp.CommandKeyAccepted {
+			if record.Use == runsapp.CommandKeyAccepted {
 				os.Exit(commandCrashExit)
 			}
 			return nil
@@ -104,12 +105,12 @@ func TestStartAcceptanceSurvivesCommitBeforeResponseCrash(t *testing.T) {
 	if err := invoke("commit"); !errors.As(err, &exit) || exit.ExitCode() != commandCrashExit {
 		t.Fatalf("start crash: %v", err)
 	}
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
 	record, err := stores.CommandAcceptances.Lookup(t.Context(), startCrashKey)
-	if err != nil || record.Use != runapp.CommandKeyAccepted || record.CurrentRun == nil {
+	if err != nil || record.Use != runsapp.CommandKeyAccepted || record.CurrentRun == nil {
 		t.Fatalf("committed opening: %+v,%v", record, err)
 	}
 	if err := stores.Close(); err != nil {

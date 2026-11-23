@@ -8,18 +8,10 @@ import (
 	framesqlite "github.com/Tangerg/frame/sqlite"
 )
 
-// RuntimeTargetSchema binds a managed plugin's private database to exactly one
-// Runtime store namespace through a singleton row, so durable state can never
-// serve a Runtime it was not captured for.
 const RuntimeTargetSchema = `CREATE TABLE IF NOT EXISTS runtime_target (id INTEGER PRIMARY KEY CHECK(id=1), namespace TEXT NOT NULL)`
 
-// ErrRuntimeTargetConflict reports private data already bound to a different
-// Runtime store namespace.
 var ErrRuntimeTargetConflict = errors.New("managed plugin: private data belongs to another Runtime store")
 
-// CheckRuntimeTarget accepts an unbound database or one already bound to
-// namespace; any other binding is ErrRuntimeTargetConflict. It reads through
-// the ambient transaction when one is open.
 func CheckRuntimeTarget(ctx context.Context, db framesqlite.Database, namespace string) error {
 	if namespace == "" {
 		return errors.New("managed plugin: Runtime store namespace is required")
@@ -40,8 +32,6 @@ func CheckRuntimeTarget(ctx context.Context, db framesqlite.Database, namespace 
 	return nil
 }
 
-// BindRuntimeTarget binds the database to namespace, idempotent for the same
-// namespace and ErrRuntimeTargetConflict for any other.
 func BindRuntimeTarget(ctx context.Context, db framesqlite.Database, namespace string) error {
 	return db.RunInTx(ctx, func(ctx context.Context) error {
 		if err := CheckRuntimeTarget(ctx, db, namespace); err != nil {

@@ -26,15 +26,9 @@ const (
 	maxRuntimeGlobPatternBytes   = 4 << 10
 	maxRuntimeSearchPathBytes    = 4 << 10
 	maxRuntimeSearchResultBytes  = 1 << 20
-	// Keys, punctuation, total, and truncated stay below this fixed reserve;
-	// every variable JSON string or row is charged exactly below.
-	runtimeSearchFramingBytes = 512
+	runtimeSearchFramingBytes    = 512
 )
 
-// Model search deliberately exposes only composable local primitives. Regex
-// flags belong in the RE2 pattern, content context comes from read, and glob is
-// the file-set primitive; process-specific rg modes therefore are not part of
-// this contract.
 type runtimeGrepRequest struct {
 	Pattern    string `json:"pattern" jsonschema:"minLength=1" jsonschema_description:"Go/RE2 regular expression matched independently against each complete text line. Use inline flags such as (?i) for case-insensitive matching. The Tool description states its UTF-8 byte budget."`
 	Path       string `json:"path,omitempty" jsonschema_description:"Workspace-relative file or directory to search. Defaults to the workspace root. The Tool description states its UTF-8 byte budget."`

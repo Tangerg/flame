@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-// resumeInterrupts stages and delivers a completed review.
 func (r *runs) resumeInterrupts(review *interruptReview) {
 	answers, err := review.Responses()
 	if err != nil {
@@ -123,9 +122,7 @@ func (r *runs) retireAcknowledgedResume(commandID authoring.CommandID) error {
 	if _, ok := r.workbench.PendingResume(r.session.current.ID); !ok {
 		return nil
 	}
-	// The store claims the identity under its own lock, so re-deciding it here
-	// would both restate the rule and read it a moment before the claim.
-	return r.workbench.AcknowledgePendingResume(r.session.current.ID, commandID)
+	return r.workbench.RetirePendingResume(r.session.current.ID, commandID)
 }
 
 func (r *runs) restoreRejectedInterruptReview(review *interruptReview, command conversation.ResumeRun, failure error) error {
@@ -135,7 +132,7 @@ func (r *runs) restoreRejectedInterruptReview(review *interruptReview, command c
 		return failure
 	}
 	if r.workbench != nil {
-		if err := r.workbench.RejectPendingResume(r.session.current.ID, command.CommandID); err != nil {
+		if err := r.workbench.RetirePendingResume(r.session.current.ID, command.CommandID); err != nil {
 			return errors.Join(failure, fmt.Errorf("release refused interrupt decisions: %w", err))
 		}
 	}
@@ -153,14 +150,12 @@ func (r *runs) restoreRejectedInterruptReview(review *interruptReview, command c
 	return nil
 }
 
-// abortRun cancels the waiting Run whose interrupts the user abandoned.
 func (r *runs) abortRun(reason string) {
 	if runID := r.execution.conversation.RunID(); runID != "" {
 		r.cancelRuntime(conversation.CancelRun{RunID: runID, Reason: reason})
 	}
 }
 
-// openInterrupts presents the interrupts a waiting Run raised.
 func (r *runs) openInterrupts(interrupts []conversation.Interrupt) {
 	if r.prompts.open(interrupts) {
 		r.link.raiseAttention(interruptAttention(interrupts))

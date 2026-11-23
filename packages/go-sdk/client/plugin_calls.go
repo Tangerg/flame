@@ -22,8 +22,6 @@ type PluginCaller interface {
 	CallPlugin(context.Context, protocol.CallPluginRequest, protocol.PluginCallOptions) (*protocol.CallPluginResponse, error)
 }
 
-// PluginBinding retains one concrete installation/release/contribution for a
-// consumer contract. Changing a selection does not change an existing binding.
 type PluginBinding struct {
 	InstallationID string
 	Digest         string
@@ -48,8 +46,6 @@ func BindPluginMethod[P, R any](caller PluginCaller, binding PluginBinding, meth
 	return &PluginMethod[P, R]{boundMethod: bound, caller: caller}, nil
 }
 
-// boundMethod is one admitted method of a captured plugin binding. Calls and
-// streams share its request admission and output decoding.
 type boundMethod struct {
 	binding PluginBinding
 	method  *frame.Method
@@ -83,7 +79,6 @@ func bindMethod(binding PluginBinding, descriptor frame.MethodDescriptor) (bound
 	return boundMethod{binding: binding, method: required}, nil
 }
 
-// request admits one invocation's input against the method contract.
 func (b boundMethod) request(input any, options protocol.PluginCallOptions) (protocol.CallPluginRequest, error) {
 	if b.method.Kind() == frame.Query && (options.IdempotencyKey != "" || options.IdempotencyNamespace != "") {
 		return protocol.CallPluginRequest{}, errors.New("runtime: plugin query cannot carry a command identity")
@@ -101,8 +96,8 @@ func (b boundMethod) request(input any, options protocol.PluginCallOptions) (pro
 	}, nil
 }
 
-// contractBreach is a response that broke the method contract. A command's
-// acknowledgement is then unknown, because its effect may already be durable.
+// A command's acknowledgement is then unknown because its effect may already be
+// durable.
 func (b boundMethod) contractBreach(err error) error {
 	err = errors.Join(protocol.ErrInvalidResponse, err)
 	if b.method.Kind() == frame.Command {
@@ -135,17 +130,17 @@ func (m *PluginMethod[P, R]) Call(ctx context.Context, input P, options protocol
 		return zero, err
 	}
 	if result == nil {
-		return zero, protocol.ErrInvalidResponse
+		return zero, m.contractBreach(errors.New("runtime: plugin call returned no response"))
 	}
 	if err := protocol.ValidateWireTree(*result); err != nil {
-		return zero, errors.Join(protocol.ErrInvalidResponse, err)
+		return zero, m.contractBreach(err)
 	}
 	if result.Failure != nil {
 		return zero, pluginRefusal(result.Failure)
 	}
 	value, err := decodeOutput[R](m.method.ValidateOutput, result.Output)
 	if err != nil {
-		return zero, fmt.Errorf("runtime: plugin output: %w", errors.Join(protocol.ErrInvalidResponse, err))
+		return zero, m.contractBreach(fmt.Errorf("runtime: plugin output: %w", err))
 	}
 	return value, nil
 }

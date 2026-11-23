@@ -7,16 +7,11 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// WaitingSubtreeCancellationRequest carries the complete durable waiting tree
-// and the addressed child cancellation into the execution port. Its implementation
-// may claim the live tree or restore this exact checkpoint, but cannot reread
-// Application persistence.
 type WaitingSubtreeCancellationRequest struct {
 	continuation   ExecutionContinuation
 	targetMemberID string
@@ -27,8 +22,6 @@ func (r WaitingSubtreeCancellationRequest) executorRef() ExecutorRef {
 	return ExecutorRef{SessionID: r.continuation.SessionID, ExecutorID: r.continuation.ExecutorID}
 }
 
-// NewWaitingSubtreeCancellationRequest captures one validated cancellation
-// request without retaining the caller's continuation slices.
 func NewWaitingSubtreeCancellationRequest(
 	continuation ExecutionContinuation,
 	targetMemberID string,
@@ -45,7 +38,6 @@ func NewWaitingSubtreeCancellationRequest(
 	return request, nil
 }
 
-// Continuation returns an ownership-independent waiting tree.
 func (w WaitingSubtreeCancellationRequest) Continuation() ExecutionContinuation {
 	return w.continuation.Clone()
 }
@@ -53,7 +45,6 @@ func (w WaitingSubtreeCancellationRequest) Continuation() ExecutionContinuation 
 func (w WaitingSubtreeCancellationRequest) TargetMemberID() string { return w.targetMemberID }
 func (w WaitingSubtreeCancellationRequest) Reason() string         { return w.reason }
 
-// NewExecutionContinuation freezes one complete product-to-executor handoff.
 func NewExecutionContinuation(draft ExecutionContinuation) (ExecutionContinuation, error) {
 	continuation := draft.Clone()
 	if err := continuation.Validate(); err != nil {
@@ -62,7 +53,6 @@ func NewExecutionContinuation(draft ExecutionContinuation) (ExecutionContinuatio
 	return continuation, nil
 }
 
-// Clone returns an ownership-independent execution handoff.
 func (w ExecutionContinuation) Clone() ExecutionContinuation {
 	w.Members = append([]ExecutionMember(nil), w.Members...)
 	for index := range w.Members {
@@ -73,8 +63,6 @@ func (w ExecutionContinuation) Clone() ExecutionContinuation {
 	return w
 }
 
-// validate verifies the Application-owned waiting subtree command without
-// interpreting the executor checkpoint payload.
 func (w WaitingSubtreeCancellationRequest) validate() error {
 	if err := w.continuation.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting subtree continuation: %w", err)
@@ -129,8 +117,6 @@ func waitingContinuationFromPending(
 	})
 }
 
-// waitingMembersFromPending reads the admission and lineage from each parked Run
-// so the hand-off cannot retarget a surviving member.
 func waitingMembersFromPending(pending Pending, parked []run.Run) ([]ExecutionMember, error) {
 	runs := parkedRunsByID(parked)
 	members := make([]ExecutionMember, len(pending.Continuations))
@@ -150,8 +136,6 @@ func waitingMembersFromPending(pending Pending, parked []run.Run) ([]ExecutionMe
 	return members, nil
 }
 
-// Validate verifies one surviving product member without interpreting executor
-// topology or checkpoint payload.
 func (w ExecutionMember) Validate() error {
 	if err := w.RunID.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting member: %w", err)
@@ -182,8 +166,6 @@ func (w ExecutionMember) Validate() error {
 	return nil
 }
 
-// Validate verifies the complete Application side of one executor continuation.
-// The opaque checkpoint payload remains the executor implementation's responsibility.
 func (w ExecutionContinuation) Validate() error {
 	if err := validateExecutionContinuationEnvelope(w); err != nil {
 		return err
@@ -216,9 +198,6 @@ func validateExecutionContinuationEnvelope(continuation ExecutionContinuation) e
 	}
 	if err := continuation.Capabilities.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting continuation capabilities: %w", err)
-	}
-	if _, _, err := goalref.ParseOptionalIncarnation(continuation.GoalIncarnationID); err != nil {
-		return fmt.Errorf("runs: waiting continuation: %w", err)
 	}
 	if strings.TrimSpace(continuation.Workspace) == "" || continuation.Workspace != strings.TrimSpace(continuation.Workspace) {
 		return errors.New("runs: waiting continuation workspace is required without surrounding whitespace")
@@ -290,13 +269,11 @@ func validateExecutionContinuationOrder(members []ExecutionMember, canonicalRunI
 	return nil
 }
 
-// RootModelSelection is the root Run's frozen model selection, which a restored
-// executor resumes with.
-func (w ExecutionContinuation) RootModelSelection() modelchoice.Selection {
+func (w ExecutionContinuation) RootModelSelection() flamemodel.Selection {
 	for _, member := range w.Members {
 		if member.RunID == w.RootRunID {
 			return member.ModelSelection
 		}
 	}
-	return modelchoice.Selection{}
+	return flamemodel.Selection{}
 }

@@ -3,18 +3,6 @@ package contracts
 
 import framevalue "github.com/Tangerg/frame/value"
 
-type GetPolicyV1OutputDomainRuleUse string
-
-const (
-	GetPolicyV1OutputDomainRuleUseInteraction GetPolicyV1OutputDomainRuleUse = "interaction"
-	GetPolicyV1OutputDomainRuleUseUtility     GetPolicyV1OutputDomainRuleUse = "utility"
-	GetPolicyV1OutputDomainRuleUseIndependent GetPolicyV1OutputDomainRuleUse = "independent"
-)
-
-func (GetPolicyV1OutputDomainRuleUse) JSONSchemaEnum() []string {
-	return []string{string(GetPolicyV1OutputDomainRuleUseInteraction), string(GetPolicyV1OutputDomainRuleUseUtility), string(GetPolicyV1OutputDomainRuleUseIndependent)}
-}
-
 type GetPolicyV1OutputModelSelectionLimitsInputKind string
 
 const (
@@ -26,16 +14,16 @@ func (GetPolicyV1OutputModelSelectionLimitsInputKind) JSONSchemaEnum() []string 
 	return []string{string(GetPolicyV1OutputModelSelectionLimitsInputKindText), string(GetPolicyV1OutputModelSelectionLimitsInputKindRequest)}
 }
 
-type ReplacePolicyV1InputDomainRuleUse string
+type GetPolicyV1OutputRoutingRuleUse string
 
 const (
-	ReplacePolicyV1InputDomainRuleUseInteraction ReplacePolicyV1InputDomainRuleUse = "interaction"
-	ReplacePolicyV1InputDomainRuleUseUtility     ReplacePolicyV1InputDomainRuleUse = "utility"
-	ReplacePolicyV1InputDomainRuleUseIndependent ReplacePolicyV1InputDomainRuleUse = "independent"
+	GetPolicyV1OutputRoutingRuleUseInteraction GetPolicyV1OutputRoutingRuleUse = "interaction"
+	GetPolicyV1OutputRoutingRuleUseUtility     GetPolicyV1OutputRoutingRuleUse = "utility"
+	GetPolicyV1OutputRoutingRuleUseIndependent GetPolicyV1OutputRoutingRuleUse = "independent"
 )
 
-func (ReplacePolicyV1InputDomainRuleUse) JSONSchemaEnum() []string {
-	return []string{string(ReplacePolicyV1InputDomainRuleUseInteraction), string(ReplacePolicyV1InputDomainRuleUseUtility), string(ReplacePolicyV1InputDomainRuleUseIndependent)}
+func (GetPolicyV1OutputRoutingRuleUse) JSONSchemaEnum() []string {
+	return []string{string(GetPolicyV1OutputRoutingRuleUseInteraction), string(GetPolicyV1OutputRoutingRuleUseUtility), string(GetPolicyV1OutputRoutingRuleUseIndependent)}
 }
 
 type ReplacePolicyV1InputModelSelectionLimitsInputKind string
@@ -49,16 +37,16 @@ func (ReplacePolicyV1InputModelSelectionLimitsInputKind) JSONSchemaEnum() []stri
 	return []string{string(ReplacePolicyV1InputModelSelectionLimitsInputKindText), string(ReplacePolicyV1InputModelSelectionLimitsInputKindRequest)}
 }
 
-type ReplacePolicyV1OutputDomainRuleUse string
+type ReplacePolicyV1InputRoutingRuleUse string
 
 const (
-	ReplacePolicyV1OutputDomainRuleUseInteraction ReplacePolicyV1OutputDomainRuleUse = "interaction"
-	ReplacePolicyV1OutputDomainRuleUseUtility     ReplacePolicyV1OutputDomainRuleUse = "utility"
-	ReplacePolicyV1OutputDomainRuleUseIndependent ReplacePolicyV1OutputDomainRuleUse = "independent"
+	ReplacePolicyV1InputRoutingRuleUseInteraction ReplacePolicyV1InputRoutingRuleUse = "interaction"
+	ReplacePolicyV1InputRoutingRuleUseUtility     ReplacePolicyV1InputRoutingRuleUse = "utility"
+	ReplacePolicyV1InputRoutingRuleUseIndependent ReplacePolicyV1InputRoutingRuleUse = "independent"
 )
 
-func (ReplacePolicyV1OutputDomainRuleUse) JSONSchemaEnum() []string {
-	return []string{string(ReplacePolicyV1OutputDomainRuleUseInteraction), string(ReplacePolicyV1OutputDomainRuleUseUtility), string(ReplacePolicyV1OutputDomainRuleUseIndependent)}
+func (ReplacePolicyV1InputRoutingRuleUse) JSONSchemaEnum() []string {
+	return []string{string(ReplacePolicyV1InputRoutingRuleUseInteraction), string(ReplacePolicyV1InputRoutingRuleUseUtility), string(ReplacePolicyV1InputRoutingRuleUseIndependent)}
 }
 
 type ReplacePolicyV1OutputModelSelectionLimitsInputKind string
@@ -72,18 +60,19 @@ func (ReplacePolicyV1OutputModelSelectionLimitsInputKind) JSONSchemaEnum() []str
 	return []string{string(ReplacePolicyV1OutputModelSelectionLimitsInputKindText), string(ReplacePolicyV1OutputModelSelectionLimitsInputKindRequest)}
 }
 
+type ReplacePolicyV1OutputRoutingRuleUse string
+
+const (
+	ReplacePolicyV1OutputRoutingRuleUseInteraction ReplacePolicyV1OutputRoutingRuleUse = "interaction"
+	ReplacePolicyV1OutputRoutingRuleUseUtility     ReplacePolicyV1OutputRoutingRuleUse = "utility"
+	ReplacePolicyV1OutputRoutingRuleUseIndependent ReplacePolicyV1OutputRoutingRuleUse = "independent"
+)
+
+func (ReplacePolicyV1OutputRoutingRuleUse) JSONSchemaEnum() []string {
+	return []string{string(ReplacePolicyV1OutputRoutingRuleUseInteraction), string(ReplacePolicyV1OutputRoutingRuleUseUtility), string(ReplacePolicyV1OutputRoutingRuleUseIndependent)}
+}
+
 type GetPolicyV1Input struct {
-}
-
-type GetPolicyV1OutputDomainRule struct {
-	Ceiling   *GetPolicyV1OutputModelSelectionLimits `json:"ceiling,omitzero"`
-	Selection *GetPolicyV1OutputModelSelection       `json:"selection"`
-	Use       GetPolicyV1OutputDomainRuleUse         `json:"use"`
-}
-
-type GetPolicyV1OutputDomainSnapshot struct {
-	Revision framevalue.Number              `json:"revision"`
-	Rules    []*GetPolicyV1OutputDomainRule `json:"rules"`
 }
 
 type GetPolicyV1OutputModelSelection struct {
@@ -98,15 +87,20 @@ type GetPolicyV1OutputModelSelectionLimits struct {
 	MaxOutputTokens framevalue.Number                              `json:"maxOutputTokens"`
 }
 
-type ReplaceInput struct {
-	ExpectedRevision framevalue.Number                 `json:"expectedRevision"`
-	Rules            []*ReplacePolicyV1InputDomainRule `json:"rules"`
+type GetPolicyV1OutputRoutingRule struct {
+	Ceiling   *GetPolicyV1OutputModelSelectionLimits `json:"ceiling,omitzero"`
+	Selection *GetPolicyV1OutputModelSelection       `json:"selection"`
+	Use       GetPolicyV1OutputRoutingRuleUse        `json:"use"`
 }
 
-type ReplacePolicyV1InputDomainRule struct {
-	Ceiling   *ReplacePolicyV1InputModelSelectionLimits `json:"ceiling,omitzero"`
-	Selection *ReplacePolicyV1InputModelSelection       `json:"selection"`
-	Use       ReplacePolicyV1InputDomainRuleUse         `json:"use"`
+type GetPolicyV1OutputRoutingSnapshot struct {
+	Revision framevalue.Number               `json:"revision"`
+	Rules    []*GetPolicyV1OutputRoutingRule `json:"rules"`
+}
+
+type ReplaceInput struct {
+	ExpectedRevision framevalue.Number                  `json:"expectedRevision"`
+	Rules            []*ReplacePolicyV1InputRoutingRule `json:"rules"`
 }
 
 type ReplacePolicyV1InputModelSelection struct {
@@ -121,15 +115,10 @@ type ReplacePolicyV1InputModelSelectionLimits struct {
 	MaxOutputTokens framevalue.Number                                 `json:"maxOutputTokens"`
 }
 
-type ReplacePolicyV1OutputDomainRule struct {
-	Ceiling   *ReplacePolicyV1OutputModelSelectionLimits `json:"ceiling,omitzero"`
-	Selection *ReplacePolicyV1OutputModelSelection       `json:"selection"`
-	Use       ReplacePolicyV1OutputDomainRuleUse         `json:"use"`
-}
-
-type ReplacePolicyV1OutputDomainSnapshot struct {
-	Revision framevalue.Number                  `json:"revision"`
-	Rules    []*ReplacePolicyV1OutputDomainRule `json:"rules"`
+type ReplacePolicyV1InputRoutingRule struct {
+	Ceiling   *ReplacePolicyV1InputModelSelectionLimits `json:"ceiling,omitzero"`
+	Selection *ReplacePolicyV1InputModelSelection       `json:"selection"`
+	Use       ReplacePolicyV1InputRoutingRuleUse        `json:"use"`
 }
 
 type ReplacePolicyV1OutputModelSelection struct {
@@ -144,7 +133,18 @@ type ReplacePolicyV1OutputModelSelectionLimits struct {
 	MaxOutputTokens framevalue.Number                                  `json:"maxOutputTokens"`
 }
 
-const CapabilityJSON = "{\"composition\":\"collection\",\"methods\":[{\"description\":\"Inspect the private routing policy and revision before editing.\",\"input\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.model-router/get-policy.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9uTGltaXRz\":{\"additionalProperties\":false,\"properties\":{\"inputKind\":{\"allOf\":[{\"enum\":[\"text\",\"request\"]}],\"type\":\"string\"},\"maxInputBytes\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"maxOutputTokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"inputKind\",\"maxInputBytes\",\"maxOutputTokens\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu.U25hcHNob3Q\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"rules\":{\"maxItems\":3}}}],\"properties\":{\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"rules\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu.UnVsZQ\"},\"type\":\"array\"}},\"required\":[\"revision\",\"rules\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu.UnVsZQ\":{\"additionalProperties\":false,\"properties\":{\"ceiling\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9uTGltaXRz\"},\"selection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"use\":{\"allOf\":[{\"enum\":[\"interaction\",\"utility\",\"independent\"]}],\"type\":\"string\"}},\"required\":[\"use\",\"selection\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"rules\":{\"maxItems\":3}}}],\"properties\":{\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"rules\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu.UnVsZQ\"},\"type\":\"array\"}},\"required\":[\"revision\",\"rules\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Replace the routing policy at the inspected revision. Each use has at most one exact target and an optional caller-envelope ceiling.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9uTGltaXRz\":{\"additionalProperties\":false,\"properties\":{\"inputKind\":{\"allOf\":[{\"enum\":[\"text\",\"request\"]}],\"type\":\"string\"},\"maxInputBytes\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"maxOutputTokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"inputKind\",\"maxInputBytes\",\"maxOutputTokens\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu.UnVsZQ\":{\"additionalProperties\":false,\"properties\":{\"ceiling\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9uTGltaXRz\"},\"selection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"use\":{\"allOf\":[{\"enum\":[\"interaction\",\"utility\",\"independent\"]}],\"type\":\"string\"}},\"required\":[\"use\",\"selection\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvd2lyZQ.UmVwbGFjZUlucHV0\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"rules\":{\"maxItems\":3}}}],\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"rules\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu.UnVsZQ\"},\"type\":\"array\"}},\"required\":[\"expectedRevision\",\"rules\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"rules\":{\"maxItems\":3}}}],\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"rules\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu.UnVsZQ\"},\"type\":\"array\"}},\"required\":[\"expectedRevision\",\"rules\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-router/replace-policy.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9uTGltaXRz\":{\"additionalProperties\":false,\"properties\":{\"inputKind\":{\"allOf\":[{\"enum\":[\"text\",\"request\"]}],\"type\":\"string\"},\"maxInputBytes\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"maxOutputTokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"inputKind\",\"maxInputBytes\",\"maxOutputTokens\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu.U25hcHNob3Q\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"rules\":{\"maxItems\":3}}}],\"properties\":{\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"rules\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu.UnVsZQ\"},\"type\":\"array\"}},\"required\":[\"revision\",\"rules\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu.UnVsZQ\":{\"additionalProperties\":false,\"properties\":{\"ceiling\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9uTGltaXRz\"},\"selection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"use\":{\"allOf\":[{\"enum\":[\"interaction\",\"utility\",\"independent\"]}],\"type\":\"string\"}},\"required\":[\"use\",\"selection\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"rules\":{\"maxItems\":3}}}],\"properties\":{\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"rules\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvZG9tYWlu.UnVsZQ\"},\"type\":\"array\"}},\"required\":[\"revision\",\"rules\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/plugin/1\",\"reference\":\"flame.model-router.v1\",\"scope\":\"installation\"}"
+type ReplacePolicyV1OutputRoutingRule struct {
+	Ceiling   *ReplacePolicyV1OutputModelSelectionLimits `json:"ceiling,omitzero"`
+	Selection *ReplacePolicyV1OutputModelSelection       `json:"selection"`
+	Use       ReplacePolicyV1OutputRoutingRuleUse        `json:"use"`
+}
+
+type ReplacePolicyV1OutputRoutingSnapshot struct {
+	Revision framevalue.Number                   `json:"revision"`
+	Rules    []*ReplacePolicyV1OutputRoutingRule `json:"rules"`
+}
+
+const CapabilityJSON = "{\"composition\":\"collection\",\"methods\":[{\"description\":\"Inspect the private routing policy and revision before editing.\",\"input\":{\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.model-router/get-policy.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9uTGltaXRz\":{\"additionalProperties\":false,\"properties\":{\"inputKind\":{\"allOf\":[{\"enum\":[\"text\",\"request\"]}],\"type\":\"string\"},\"maxInputBytes\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"maxOutputTokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"inputKind\",\"maxInputBytes\",\"maxOutputTokens\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvcm91dGluZw.U25hcHNob3Q\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"rules\":{\"maxItems\":3}}}],\"properties\":{\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"rules\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvcm91dGluZw.UnVsZQ\"},\"type\":\"array\"}},\"required\":[\"revision\",\"rules\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvcm91dGluZw.UnVsZQ\":{\"additionalProperties\":false,\"properties\":{\"ceiling\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9uTGltaXRz\"},\"selection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"use\":{\"allOf\":[{\"enum\":[\"interaction\",\"utility\",\"independent\"]}],\"type\":\"string\"}},\"required\":[\"use\",\"selection\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"rules\":{\"maxItems\":3}}}],\"properties\":{\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"rules\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvcm91dGluZw.UnVsZQ\"},\"type\":\"array\"}},\"required\":[\"revision\",\"rules\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"Replace the routing policy at the inspected revision. Each use has at most one exact target and an optional caller-envelope ceiling.\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9uTGltaXRz\":{\"additionalProperties\":false,\"properties\":{\"inputKind\":{\"allOf\":[{\"enum\":[\"text\",\"request\"]}],\"type\":\"string\"},\"maxInputBytes\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"maxOutputTokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"inputKind\",\"maxInputBytes\",\"maxOutputTokens\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvcm91dGluZw.UnVsZQ\":{\"additionalProperties\":false,\"properties\":{\"ceiling\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9uTGltaXRz\"},\"selection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"use\":{\"allOf\":[{\"enum\":[\"interaction\",\"utility\",\"independent\"]}],\"type\":\"string\"}},\"required\":[\"use\",\"selection\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvd2lyZQ.UmVwbGFjZUlucHV0\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"rules\":{\"maxItems\":3}}}],\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"rules\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvcm91dGluZw.UnVsZQ\"},\"type\":\"array\"}},\"required\":[\"expectedRevision\",\"rules\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"rules\":{\"maxItems\":3}}}],\"properties\":{\"expectedRevision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"rules\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvcm91dGluZw.UnVsZQ\"},\"type\":\"array\"}},\"required\":[\"expectedRevision\",\"rules\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.model-router/replace-policy.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9uTGltaXRz\":{\"additionalProperties\":false,\"properties\":{\"inputKind\":{\"allOf\":[{\"enum\":[\"text\",\"request\"]}],\"type\":\"string\"},\"maxInputBytes\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"maxOutputTokens\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"}},\"required\":[\"inputKind\",\"maxInputBytes\",\"maxOutputTokens\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvcm91dGluZw.U25hcHNob3Q\":{\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"rules\":{\"maxItems\":3}}}],\"properties\":{\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"rules\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvcm91dGluZw.UnVsZQ\"},\"type\":\"array\"}},\"required\":[\"revision\",\"rules\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvcm91dGluZw.UnVsZQ\":{\"additionalProperties\":false,\"properties\":{\"ceiling\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9uTGltaXRz\"},\"selection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"use\":{\"allOf\":[{\"enum\":[\"interaction\",\"utility\",\"independent\"]}],\"type\":\"string\"}},\"required\":[\"use\",\"selection\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"allOf\":[{\"properties\":{\"rules\":{\"maxItems\":3}}}],\"properties\":{\"revision\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"minimum\":1,\"type\":\"integer\"},\"rules\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbW9kZWxyb3V0ZXIvaW50ZXJuYWwvcm91dGluZw.UnVsZQ\"},\"type\":\"array\"}},\"required\":[\"revision\",\"rules\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/plugin/1\",\"reference\":\"flame.model-router.v1\",\"scope\":\"installation\"}"
 
 const GetPolicyV1Method = "flame.model-router/get-policy.v1"
 

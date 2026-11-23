@@ -153,7 +153,7 @@ function installedSnapshot(): ReadonlyArray<string> {
   return installations.names;
 }
 
-export function useInstalledPlugins(): ReadonlyArray<string> {
+export function useLoadedPluginNames(): ReadonlyArray<string> {
   return useSyncExternalStore(subscribe, installedSnapshot, () => EMPTY_NAMES);
 }
 

@@ -7,8 +7,6 @@ export interface SystemNotification {
   target: string;
 }
 
-// The platform's notification centre. `target` is opaque to it and comes back
-// through onOpened when the user clicks the notification.
 export interface NotificationCentre {
   authorization(): Promise<NotificationAuthorization>;
   requestAuthorization(): Promise<NotificationAuthorization>;

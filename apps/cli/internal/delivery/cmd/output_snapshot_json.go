@@ -101,8 +101,6 @@ func writeSessionPageJSON(w io.Writer, page conversation.SessionPage) error {
 	return writeJSONLine(w, record)
 }
 
-// Domain values intentionally carry no encoding tags, so this adapter owns the
-// external field names instead of leaking a delivery format into the core.
 func writeSessionSnapshotJSON(w io.Writer, snapshot conversation.SessionSnapshot) error {
 	if err := snapshot.Validate(); err != nil {
 		return fmt.Errorf("render session snapshot: %w", err)

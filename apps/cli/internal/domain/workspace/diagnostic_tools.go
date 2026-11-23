@@ -60,9 +60,6 @@ func (r DiagnosticToolResult) Clone() DiagnosticToolResult {
 	return DiagnosticToolResult{JSON: slices.Clone(r.JSON)}
 }
 
-// ParseDiagnosticToolArguments owns the direct-invocation JSON-object invariant without
-// requiring delivery code to manufacture a partial tool descriptor merely to
-// validate user input.
 func ParseDiagnosticToolArguments(value string) (jsontext.Value, error) {
 	arguments := jsontext.Value(strings.TrimSpace(value))
 	if len(arguments) == 0 {

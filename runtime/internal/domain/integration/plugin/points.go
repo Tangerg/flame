@@ -12,8 +12,6 @@ type Point struct {
 	Contract framevalue.JSON
 }
 
-// PointValue is consumer-defined data, independent of executable exports.
-// A value can name an operation; only that consumer interprets the reference.
 type PointValue struct {
 	ID       ContributionID
 	Contract framevalue.JSON

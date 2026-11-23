@@ -26,14 +26,42 @@ func presentPluginInput(v plugin.Input) (protocol.PluginInput, error) {
 	}
 	return result, nil
 }
+
+var pluginThemeSchemes = wireVocabulary[plugin.ThemeScheme, protocol.PluginThemeScheme]{
+	{plugin.ThemeDark, protocol.PluginThemeDark},
+	{plugin.ThemeLight, protocol.PluginThemeLight},
+}
+
+var pluginComponentKinds = wireVocabulary[plugin.ComponentKind, protocol.PluginComponentType]{
+	{plugin.ComponentManifestField, protocol.PluginComponentManifestField},
+	{plugin.ComponentFlameExtension, protocol.PluginComponentFlameExtension},
+	{plugin.ComponentExtensionField, protocol.PluginComponentExtensionField},
+	{plugin.ComponentContribution, protocol.PluginComponentContribution},
+	{plugin.ComponentMCP, protocol.PluginComponentMCP},
+	{plugin.ComponentMCPServer, protocol.PluginComponentMCPServer},
+	{plugin.ComponentSkills, protocol.PluginComponentSkills},
+	{plugin.ComponentSkill, protocol.PluginComponentSkill},
+}
+
+var pluginDiagnosticCodes = wireVocabulary[plugin.DiagnosticCode, protocol.PluginDiagnosticCode]{
+	{plugin.DiagnosticUnknownField, protocol.PluginDiagnosticUnknownField},
+	{plugin.DiagnosticInvalidDeclaration, protocol.PluginDiagnosticInvalidDeclaration},
+	{plugin.DiagnosticUnsupportedContribution, protocol.PluginDiagnosticUnsupportedContribution},
+	{plugin.DiagnosticComponentLimit, protocol.PluginDiagnosticComponentLimit},
+	{plugin.DiagnosticInvalidDependencies, protocol.PluginDiagnosticInvalidDependencies},
+	{plugin.DiagnosticUnavailableComponent, protocol.PluginDiagnosticUnavailableComponent},
+}
+
 func presentPluginTheme(v plugin.Theme) protocol.PluginTheme {
 	colors := protocol.PluginThemeColors{Background: v.Colors.Background, Foreground: v.Colors.Foreground, Accent: v.Colors.Accent, Muted: v.Colors.Muted, Border: v.Colors.Border}
-	return protocol.PluginTheme{ID: v.ID, Title: v.Title, Scheme: protocol.PluginThemeScheme(v.Scheme), Colors: colors}
+	return protocol.PluginTheme{ID: v.ID, Title: v.Title, Scheme: pluginThemeSchemes.mustWire(v.Scheme), Colors: colors}
 }
+
 func presentPluginSkill(v plugin.Skill) protocol.PluginSkill {
 	result := protocol.PluginSkill{Name: v.Name, Description: v.Description}
 	return result
 }
+
 func presentPluginServerDeclaration(v plugin.Server) (protocol.PluginServerDeclaration, error) {
 	result := protocol.PluginServerDeclaration{Name: v.Name.String()}
 	switch startup := v.Startup.(type) {
@@ -54,17 +82,19 @@ func presentPluginServerDeclaration(v plugin.Server) (protocol.PluginServerDecla
 	}
 	return result, nil
 }
+
 func presentPluginDiagnostic(v plugin.Diagnostic) (protocol.PluginDiagnostic, error) {
 	named, err := v.Component.Kind.Named()
 	if err != nil {
 		return protocol.PluginDiagnostic{}, err
 	}
-	component := protocol.PluginComponent{Type: protocol.PluginComponentType(v.Component.Kind)}
+	component := protocol.PluginComponent{Type: pluginComponentKinds.mustWire(v.Component.Kind)}
 	if named {
 		component.Name = new(v.Component.Name)
 	}
-	return protocol.PluginDiagnostic{Component: component, Code: protocol.PluginDiagnosticCode(v.Code)}, nil
+	return protocol.PluginDiagnostic{Component: component, Code: pluginDiagnosticCodes.mustWire(v.Code)}, nil
 }
+
 func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error) {
 	v := release.Declaration()
 	servers, err := presentAllOrError(v.Servers, presentPluginServerDeclaration)
@@ -101,8 +131,6 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 	}, nil
 }
 
-// presentAll projects every declared value; an empty declaration presents as
-// an empty list, never null.
 func presentAll[T, R any](values []T, present func(T) R) []R {
 	presented := make([]R, 0, len(values))
 	for _, value := range values {
@@ -138,6 +166,7 @@ func presentContribution(value plugin.Contribution) protocol.PluginContribution 
 	}
 	return presented
 }
+
 func presentInstallation(inspection plugins.Inspection) (*protocol.PluginInstallation, error) {
 	view := inspection.View
 	realization, err := presentPluginRealization(inspection.Realization)

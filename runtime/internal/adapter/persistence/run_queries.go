@@ -26,9 +26,6 @@ const runReadJoins = `LEFT JOIN interrupts AS i
 		        ELSE r.root_run_id
 		      END`
 
-// PageRuns returns one page of Runs a caller may browse, newest admission first,
-// scoped to sessionID and statuses when provided. Descendants are excluded unless
-// includeDescendants is true.
 func (r *RunStore) PageRuns(ctx context.Context, sessionID identity.SessionID, statuses []rundomain.State, includeDescendants bool, before *rundomain.PageAnchor, limit int) ([]rundomain.Run, error) {
 	return scopedValue(ctx, r.db.read, func(ctx context.Context) ([]rundomain.Run, error) {
 		query := `SELECT ` + runColumns + `
@@ -68,9 +65,7 @@ func (r *RunStore) PageRuns(ctx context.Context, sessionID identity.SessionID, s
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: page runs: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		var out []rundomain.Run
 		for rows.Next() {
 			run, err := scanRun(rows)
@@ -86,10 +81,6 @@ func (r *RunStore) PageRuns(ctx context.Context, sessionID identity.SessionID, s
 	})
 }
 
-// Run returns one Run by id alone, whatever state it is in.
-// readRun answers one Run row through the caller's scanner. Which row, what
-// its absence means and how a failure reads are the same for every reader;
-// only what a stored Run must satisfy to be decodable differs.
 func (r *RunStore) readRun(ctx context.Context, operation string, runID identity.RunID, scan func(scanRow) (rundomain.Run, error)) (rundomain.Run, bool, error) {
 	return scopedPair(ctx, r.db.read, func(ctx context.Context) (rundomain.Run, bool, error) {
 		if err := validateResource(operation, runID); err != nil {
@@ -109,12 +100,11 @@ func (r *RunStore) readRun(ctx context.Context, operation string, runID identity
 		return run, true, nil
 	})
 }
+
 func (r *RunStore) Run(ctx context.Context, runID identity.RunID) (rundomain.Run, bool, error) {
 	return r.readRun(ctx, "read Run", runID, scanRun)
 }
 
-// CompletedRunWork reads from one snapshot of a successfully completed root
-// Run. Attempts can span Segments, so each settled call counts once.
 func (r *RunStore) CompletedRunWork(ctx context.Context, sessionID identity.SessionID, rootRunID identity.RunID) (completedToolCalls int64, compacted bool, err error) {
 	const operation = "read completed Run work"
 	if err := validateResource(operation, sessionID); err != nil {
@@ -152,8 +142,6 @@ func (r *RunStore) CompletedRunWork(ctx context.Context, sessionID identity.Sess
 	})
 }
 
-// Tree resolves runID to its tree root and returns that root plus every
-// descendant in one SQLite read. Application code derives canonical order.
 func (r *RunStore) Tree(ctx context.Context, runID identity.RunID) ([]rundomain.Run, error) {
 	return scopedValue(ctx, r.db.read, func(ctx context.Context) ([]rundomain.Run, error) {
 		if err := validateResource("read Run tree", runID); err != nil {
@@ -172,9 +160,7 @@ func (r *RunStore) Tree(ctx context.Context, runID identity.RunID) ([]rundomain.
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: read tree containing run %q: %w", runID, err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		var runs []rundomain.Run
 		for rows.Next() {
 			run, err := scanRun(rows)
@@ -190,8 +176,6 @@ func (r *RunStore) Tree(ctx context.Context, runID identity.RunID) ([]rundomain.
 	})
 }
 
-// RunsWithAncestors returns the named Runs and the ancestors connecting them
-// to their roots without loading unrelated Runs from the Session.
 func (r *RunStore) RunsWithAncestors(ctx context.Context, runIDs []identity.RunID) ([]rundomain.Run, error) {
 	return scopedValue(ctx, r.db.read, func(ctx context.Context) ([]rundomain.Run, error) {
 		if len(runIDs) == 0 {
@@ -220,9 +204,7 @@ func (r *RunStore) RunsWithAncestors(ctx context.Context, runIDs []identity.RunI
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: read runs with ancestors: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		var out []rundomain.Run
 		for rows.Next() {
 			run, err := scanRun(rows)
@@ -238,7 +220,6 @@ func (r *RunStore) RunsWithAncestors(ctx context.Context, runIDs []identity.RunI
 	})
 }
 
-// ListRuns returns a session's complete Run aggregates in admission order.
 func (r *RunStore) ListRuns(ctx context.Context, sessionID identity.SessionID) ([]rundomain.Run, error) {
 	return scopedValue(ctx, r.db.read, func(ctx context.Context) ([]rundomain.Run, error) {
 		if err := validateResource("list Session Runs", sessionID); err != nil {
@@ -251,9 +232,7 @@ func (r *RunStore) ListRuns(ctx context.Context, sessionID identity.SessionID) (
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list runs: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		var out []rundomain.Run
 		for rows.Next() {
 			run, err := scanRun(rows)
@@ -268,6 +247,7 @@ func (r *RunStore) ListRuns(ctx context.Context, sessionID identity.SessionID) (
 		return out, nil
 	})
 }
+
 func stateColumns(statuses []rundomain.State) ([]any, error) {
 	out := make([]any, 0, len(statuses))
 	for _, status := range statuses {
@@ -278,6 +258,7 @@ func stateColumns(statuses []rundomain.State) ([]any, error) {
 	}
 	return out, nil
 }
+
 func placeholders(n int) string {
 	return strings.TrimSuffix(strings.Repeat("?, ", n), ", ")
 }

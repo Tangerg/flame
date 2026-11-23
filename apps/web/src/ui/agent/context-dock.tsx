@@ -101,7 +101,7 @@ export interface AgentDockTab {
   closeAllLabel?: string;
 }
 
-export interface AgentDockTabsProps {
+interface AgentDockTabsProps {
   tabs: AgentDockTab[];
   ariaLabel: string;
   fallbackFocus?: RefObject<HTMLElement | null>;

@@ -32,11 +32,8 @@ type interactionModelContextReducer struct {
 	session      *interactionSession
 	start        runs.RootExecutionStart
 	instructions []corechat.Message
-	// catalog is the layer's frozen deferred Tool catalog. With the current
-	// Session state it forms each call's tail, which the model boundary appends
-	// after reduction: measured with the request, never compacted or returned.
-	catalog []corechat.Message
-	counter modelContextInputTokenCounter
+	catalog      []corechat.Message
+	counter      modelContextInputTokenCounter
 }
 
 func newInteractionModelContextReducer(
@@ -59,30 +56,6 @@ func newInteractionModelContextReducer(
 	}
 }
 
-// PrepareContext returns only the authored context Scope may retain. The full
-// provider request is captured separately and commits with this preparation.
-// admitUncompacted prepares the context as it is when no compactor owns
-// folding it; plugin model inputs need its token estimate.
-func (i *interactionModelContextReducer) admitUncompacted(calling context.Context, invocation modelCallSource, contextView modelRequestContext, candidate []corechat.Message) ([]corechat.Message, error) {
-	validation, err := i.admitContext(calling, contextView, candidate)
-	if err != nil {
-		return nil, err
-	}
-	var estimate int
-	if len(i.session.modelInputs) > 0 {
-		estimate, err = model.EstimateRequestTokens(validation)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if err := i.session.material.prepare(invocation, validation, estimate); err != nil {
-		return nil, err
-	}
-	return contextView.canonical(candidate), nil
-}
-
-// PreparationTrigger selects every model call: each call reads the current
-// Session state and admits its own provider request.
 func (i *interactionModelContextReducer) PreparationTrigger() func(uint64, *corechat.Request) bool {
 	return func(uint64, *corechat.Request) bool { return true }
 }
@@ -130,22 +103,16 @@ func (i *interactionModelContextReducer) PrepareContext(
 	if err != nil {
 		return nil, err
 	}
-	if i.compactor == nil {
-		return i.admitUncompacted(calling, invocation, contextView, candidate)
-	}
 	return i.compactContext(calling, invocation, contextView, candidate, hasResumeInputs)
 }
 
 func (i *interactionModelContextReducer) validateContextSources(ctx context.Context, request *corechat.Request) error {
-	if i.session.callComposition != nil {
-		bindings := i.session.compositionBindings()
-		activations, err := i.session.callComposition.Activations(ctx, bindings)
-		if err != nil {
-			return err
-		}
-		if !slices.EqualFunc(activations, i.session.compositionActivations, plugin.Activation.Equal) {
-			return plugin.ErrStale
-		}
+	activations, err := i.session.callComposition.Activations(ctx, i.session.compositionBindings())
+	if err != nil {
+		return err
+	}
+	if !slices.EqualFunc(activations, i.session.compositionActivations, plugin.Activation.Equal) {
+		return plugin.ErrStale
 	}
 	prefixMatches, err := sameInteractionMessages(
 		request.Messages[:min(len(request.Messages), len(i.instructions))],
@@ -174,10 +141,6 @@ func (i *interactionModelContextReducer) prepareContextView(ctx context.Context,
 	if err != nil {
 		return nil, modelRequestContext{}, nil, false, err
 	}
-	// One attributed context binds this reduction's auxiliary model work to the
-	// executing member; context contribution, compaction, and input contribution
-	// all inherit it so every physical call they dispatch is owned by this Run,
-	// not re-derived (or dropped) per branch.
 	identity, err := modelInvocationID(invocation)
 	if err != nil {
 		return nil, modelRequestContext{}, nil, false, err
@@ -207,14 +170,7 @@ func (i *interactionModelContextReducer) prepareContextView(ctx context.Context,
 
 func (i *interactionModelContextReducer) compactContext(calling context.Context, invocation modelCallSource, contextView modelRequestContext, candidate []corechat.Message, hasResumeInputs bool) ([]corechat.Message, error) {
 	preCompact := func(ctx context.Context) (bool, error) {
-		if i.session.lifecycleHooks == nil {
-			return true, nil
-		}
-		return i.session.lifecycleHooks.BeforeCompaction(
-			ctx,
-			i.start.SessionID,
-			i.start.WorkspaceCWD,
-		)
+		return i.session.lifecycleHooks.BeforeCompaction(ctx, i.start.SessionID, i.start.WorkspaceCWD)
 	}
 	calibration := i.session.material.calibration(invocation.process)
 
@@ -232,9 +188,6 @@ func (i *interactionModelContextReducer) compactContext(calling context.Context,
 		Counter:      i.counter,
 		PreCompact:   preCompact,
 	}
-	// Canonical history is not the provider request when input transformation is
-	// selected. Its compaction uses the local projection; final counting follows
-	// transformation and owns the actual provider request.
 	if len(i.session.modelInputs) > 0 {
 		input.Counter = nil
 	} else {
@@ -345,20 +298,14 @@ func invocationCompaction(invocation modelCallSource, input ModelContextCompacti
 	return newTransientModelContextCompaction(input)
 }
 
-// tail composes this call's Runtime-authored tail: the current Session state,
-// read now from its owners, then the frozen deferred catalog. Neither is part
-// of the context Scope adopts, so a Plan or Goal change never rewrites an
+// The tail is not adopted context, so a Plan or Goal change never rewrites an
 // earlier message of the cached prefix.
 func (i *interactionModelContextReducer) tail(ctx context.Context) ([]corechat.Message, error) {
-	var tail []corechat.Message
-	if i.state != nil {
-		state, err := i.state.CurrentSessionState(ctx, i.start.SessionID)
-		if err != nil {
-			return nil, err
-		}
-		tail = append(tail, state...)
+	state, err := i.state.CurrentSessionState(ctx, i.start.SessionID)
+	if err != nil {
+		return nil, err
 	}
-	return append(tail, cloneChatMessages(i.catalog)...), nil
+	return slices.Concat(state, cloneChatMessages(i.catalog)), nil
 }
 
 func trailingUserMessageCount(messages []corechat.Message) int {
@@ -376,8 +323,6 @@ func sameInteractionMessages(left, right []corechat.Message) (bool, error) {
 	if len(left) != len(right) {
 		return false, nil
 	}
-	// Compare Scope's complete canonical values, including citations and future
-	// message fields, without making metadata whitespace part of identity.
 	effective, err := scoperun.EncodePayload(left)
 	if err != nil {
 		return false, fmt.Errorf("execution: effective instructions: %w", err)
@@ -400,7 +345,7 @@ func (i *interactionModelContextReducer) prepareInput(calling context.Context, r
 	}
 	transformed, err := i.session.callComposition.PrepareInput(calling, i.session.modelInputs, i.start.ModelSelection, request)
 	if err != nil {
-		if _, definite := err.(*framecall.Refusal); definite {
+		if _, definite := errors.AsType[*framecall.Refusal](err); definite {
 			return nil, &interaction.ContextFailure{Cause: err}
 		}
 		return nil, err
@@ -408,8 +353,6 @@ func (i *interactionModelContextReducer) prepareInput(calling context.Context, r
 	if err := pluginsdk.ValidateModelInput(request, transformed); err != nil {
 		return nil, &interaction.ContextFailure{Cause: err}
 	}
-	// Modality and request validation is local and proves refusal. The later
-	// provider capacity measurement can perform I/O and retains its own outcome.
 	if err := i.session.selectedChat.AdmitInput(transformed); err != nil {
 		return nil, &interaction.ContextFailure{Cause: err}
 	}

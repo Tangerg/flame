@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
-	storage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/skill"
 
 	framecall "github.com/Tangerg/frame/call"
@@ -52,7 +52,7 @@ func registerReviews(server *pluginmcp.Backend, db framesqlite.Database) error {
 	)
 }
 
-func reviewCommand[P, R any](server *pluginmcp.Backend, db framesqlite.Database, method *pluginmcp.Method[P, R], prepare func(context.Context, *sdk.ServerSession, P) (storage.CommandPlan[R], error)) error {
+func reviewCommand[P, R any](server *pluginmcp.Backend, db framesqlite.Database, method *pluginmcp.Method[P, R], prepare func(context.Context, *sdk.ServerSession, P) (pluginstorage.CommandPlan[R], error)) error {
 	return method.RegisterServer(server, nil, func(ctx context.Context, session *sdk.ServerSession, command pluginmcp.Command[P]) (R, error) {
 		var zero R
 		inv, err := pluginmcp.InvocationFromContext(ctx)
@@ -66,7 +66,7 @@ func reviewCommand[P, R any](server *pluginmcp.Backend, db framesqlite.Database,
 		if err != nil {
 			return zero, err
 		}
-		return storage.Command(ctx, db, method.Name(), inv.ID, input, nil, func(ctx context.Context, input P) (storage.CommandPlan[R], error) {
+		return pluginstorage.Command(ctx, db, method.Name(), inv.ID, input, nil, func(ctx context.Context, input P) (pluginstorage.CommandPlan[R], error) {
 			return prepare(ctx, session, input)
 		})
 	})
@@ -74,16 +74,16 @@ func reviewCommand[P, R any](server *pluginmcp.Backend, db framesqlite.Database,
 
 type reviewQueue struct{ db framesqlite.Database }
 
-func (r reviewQueue) stage(ctx context.Context, _ *sdk.ServerSession, draft skilllearning.Draft) (storage.CommandPlan[skilllearning.ReviewRef], error) {
+func (r reviewQueue) stage(ctx context.Context, _ *sdk.ServerSession, draft skilllearning.Draft) (pluginstorage.CommandPlan[skilllearning.ReviewRef], error) {
 	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
-		return storage.CommandPlan[skilllearning.ReviewRef]{}, err
+		return pluginstorage.CommandPlan[skilllearning.ReviewRef]{}, err
 	}
 	persist, err := r.prepareStage(ctx, invocation.ID, draft)
 	if err != nil {
-		return storage.CommandPlan[skilllearning.ReviewRef]{}, err
+		return pluginstorage.CommandPlan[skilllearning.ReviewRef]{}, err
 	}
-	return storage.NewCommandPlan(skilllearning.ReviewRef{Command: invocation.ID}, persist)
+	return pluginstorage.NewCommandPlan(skilllearning.ReviewRef{Command: invocation.ID}, persist)
 }
 
 func (r reviewQueue) prepareStage(ctx context.Context, command string, draft skilllearning.Draft) (func(context.Context) error, error) {
@@ -102,7 +102,6 @@ func (r reviewQueue) prepareStage(ctx context.Context, command string, draft ski
 	case err != nil:
 		return nil, err
 	case decision.Valid:
-		// An authorized publication keeps its slot until the filesystem owner settles it.
 		return nil, staleReview()
 	}
 	library, name := draft.Library, draft.Skill.Name
@@ -152,53 +151,53 @@ func (r reviewQueue) decision(ctx context.Context, proposal string) (sql.NullStr
 	return decision, err
 }
 
-func (r reviewQueue) authorize(ctx context.Context, _ *sdk.ServerSession, ref skilllearning.ReviewRef) (storage.CommandPlan[skilllearning.Permit], error) {
+func (r reviewQueue) authorize(ctx context.Context, _ *sdk.ServerSession, ref skilllearning.ReviewRef) (pluginstorage.CommandPlan[skilllearning.Permit], error) {
 	invocation, err := humanDecision(ctx)
 	if err != nil {
-		return storage.CommandPlan[skilllearning.Permit]{}, err
+		return pluginstorage.CommandPlan[skilllearning.Permit]{}, err
 	}
 	decision, err := r.decision(ctx, ref.Command)
 	if err != nil {
-		return storage.CommandPlan[skilllearning.Permit]{}, err
+		return pluginstorage.CommandPlan[skilllearning.Permit]{}, err
 	}
 	if decision.Valid {
-		return storage.NewCommandPlan(skilllearning.Permit{Decision: decision.String}, nil)
+		return pluginstorage.NewCommandPlan(skilllearning.Permit{Decision: decision.String}, nil)
 	}
-	return storage.NewCommandPlan(skilllearning.Permit{Decision: invocation.ID}, func(ctx context.Context) error {
+	return pluginstorage.NewCommandPlan(skilllearning.Permit{Decision: invocation.ID}, func(ctx context.Context) error {
 		_, err := r.db.Executor(ctx).ExecContext(ctx, `UPDATE reviews SET decision=? WHERE proposal=?`, invocation.ID, ref.Command)
 		return err
 	})
 }
 
-func (r reviewQueue) confirm(ctx context.Context, _ *sdk.ServerSession, publication skilllearning.Publication) (storage.CommandPlan[struct{}], error) {
+func (r reviewQueue) confirm(ctx context.Context, _ *sdk.ServerSession, publication skilllearning.Publication) (pluginstorage.CommandPlan[struct{}], error) {
 	if _, err := humanDecision(ctx); err != nil {
-		return storage.CommandPlan[struct{}]{}, err
+		return pluginstorage.CommandPlan[struct{}]{}, err
 	}
 	decision, err := r.decision(ctx, publication.Proposal.Command)
 	if err != nil {
-		return storage.CommandPlan[struct{}]{}, err
+		return pluginstorage.CommandPlan[struct{}]{}, err
 	}
 	if !decision.Valid || decision.String != publication.Permit.Decision {
-		return storage.CommandPlan[struct{}]{}, staleReview()
+		return pluginstorage.CommandPlan[struct{}]{}, staleReview()
 	}
-	return storage.NewCommandPlan(struct{}{}, func(ctx context.Context) error {
+	return pluginstorage.NewCommandPlan(struct{}{}, func(ctx context.Context) error {
 		_, err := r.db.Executor(ctx).ExecContext(ctx, `DELETE FROM reviews WHERE proposal=?`, publication.Proposal.Command)
 		return err
 	})
 }
 
-func (r reviewQueue) reject(ctx context.Context, _ *sdk.ServerSession, ref skilllearning.ReviewRef) (storage.CommandPlan[struct{}], error) {
+func (r reviewQueue) reject(ctx context.Context, _ *sdk.ServerSession, ref skilllearning.ReviewRef) (pluginstorage.CommandPlan[struct{}], error) {
 	if _, err := humanDecision(ctx); err != nil {
-		return storage.CommandPlan[struct{}]{}, err
+		return pluginstorage.CommandPlan[struct{}]{}, err
 	}
 	decision, err := r.decision(ctx, ref.Command)
 	if err != nil {
-		return storage.CommandPlan[struct{}]{}, err
+		return pluginstorage.CommandPlan[struct{}]{}, err
 	}
 	if decision.Valid {
-		return storage.CommandPlan[struct{}]{}, staleReview()
+		return pluginstorage.CommandPlan[struct{}]{}, staleReview()
 	}
-	return storage.NewCommandPlan(struct{}{}, func(ctx context.Context) error {
+	return pluginstorage.NewCommandPlan(struct{}{}, func(ctx context.Context) error {
 		_, err := r.db.Executor(ctx).ExecContext(ctx, `DELETE FROM reviews WHERE proposal=?`, ref.Command)
 		return err
 	})

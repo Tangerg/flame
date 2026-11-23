@@ -6,46 +6,27 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 )
 
-// ErrSessionBusy is the one category for a Session that cannot admit work now:
-// it already holds a non-terminal root tree, or a working-tree mutation or
-// resource retirement owns it. Descendant Runs share their tree's admission and
-// do not compete for a second Session slot.
 var ErrSessionBusy = errors.New("run: session busy")
 
-// Draft is the fresh root or child Run recorded as it enters [Running]. A
-// root claims the Session's one non-terminal tree slot; a child carries all
-// lineage edges and shares that claim. Streamed segments, usage, and terminal
-// Outcome accrue afterward. Executor recovery handles do not belong on the Run
-// row; a parked interrupt records its opaque executor member identity when known.
 type Draft struct {
-	RunID           identity.RunID
-	SessionID       identity.SessionID
-	SpawnedByItemID identity.ItemID
-	ParentRunID     identity.RunID
-	RootRunID       identity.RunID
-	// SegmentID is the first segment this Run opens with. Admission records it
-	// with the Run, because a Running Run without the segment driving it is a Run
-	// nothing can attach to.
-	SegmentID      identity.SegmentID
-	ModelSelection modelchoice.Selection
-	// GoalIncarnationID is the autonomous-goal incarnation that admitted this root
-	// Run. It is durable admission provenance so crash recovery can terminalize
-	// the Run and charge the exact incarnation in one transaction. Child Runs leave it
-	// empty because the root is the single Goal Run.
-	GoalIncarnationID string
-	// Capabilities is the optional behavior enabled for a root Run's whole tree.
-	// Admission is its only writer: no later transition mentions it, which is how
-	// "immutable for the Run's whole life" is kept by construction rather than by
-	// a check. Child Runs leave it empty because they follow their root.
+	RunID             identity.RunID
+	SessionID         identity.SessionID
+	SpawnedByItemID   identity.ItemID
+	ParentRunID       identity.RunID
+	RootRunID         identity.RunID
+	SegmentID         identity.SegmentID
+	ModelSelection    flamemodel.Selection
+	GoalIncarnationID goalref.IncarnationID
+	// Admission is its only writer, which keeps it immutable for the Run's life by
+	// construction.
 	Capabilities Capabilities
 	CreatedAt    time.Time
 }
 
-// Validate checks the complete fresh Run value before it enters the lifecycle.
 func (d Draft) Validate() error {
 	if err := d.RunID.Validate(); err != nil {
 		return fmt.Errorf("run: %w", err)
@@ -55,9 +36,6 @@ func (d Draft) Validate() error {
 	}
 	if d.SegmentID.IsZero() {
 		return errors.New("run: opening Segment is required")
-	}
-	if _, _, err := goalref.ParseOptionalIncarnation(d.GoalIncarnationID); err != nil {
-		return fmt.Errorf("run: %w", err)
 	}
 	switch {
 	case d.CreatedAt.IsZero():
@@ -73,7 +51,7 @@ func (d Draft) Validate() error {
 	if err := d.Capabilities.Validate(); err != nil {
 		return err
 	}
-	if lineage.IsChild() && d.GoalIncarnationID != "" {
+	if lineage.IsChild() && !d.GoalIncarnationID.IsZero() {
 		return errors.New("run: child carries a root Goal incarnation")
 	}
 	if lineage.IsChild() && !d.Capabilities.IsEmpty() {
@@ -82,8 +60,6 @@ func (d Draft) Validate() error {
 	return nil
 }
 
-// Lineage returns the draft's immutable root/child identity as one value for
-// validation and tree routing.
 func (d Draft) Lineage() Lineage {
 	return Lineage{
 		spawnedByItemID: d.SpawnedByItemID,

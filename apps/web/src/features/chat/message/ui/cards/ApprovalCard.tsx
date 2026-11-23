@@ -27,7 +27,6 @@ const ac = stylex.create({
 
 interface Props {
   sessionId: string;
-  /** The Run to resume; present only while this approval awaits an answer. */
   resumeRunId?: string;
   decision?: ApprovalDecision;
   toolName?: string;

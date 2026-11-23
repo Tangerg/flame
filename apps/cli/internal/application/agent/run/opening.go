@@ -28,8 +28,6 @@ func OpenPendingStart(ctx context.Context, source OpeningSource, store *workbenc
 	return openStartCommand(ctx, source, pending.Command, pending.Replay, policy, replayPending(ctx, store, pending.ReplayCommand, source.StartRun))
 }
 
-// replayPending dispatches a durable pending command only once its store
-// admits dispatch, rebuilding the command from the recorded replay.
 func replayPending[C any](ctx context.Context, store *workbench.Store, replay func() (C, error), send func(context.Context, C) (conversation.SegmentStream, error)) func() (conversation.SegmentStream, error) {
 	return func() (conversation.SegmentStream, error) {
 		if err := store.DispatchReady(); err != nil {
@@ -76,9 +74,6 @@ func openResumeCommand(ctx context.Context, source OpeningSource, command conver
 	}, dispatch)
 }
 
-// A receipt lookup never renews delivery admission. The original Segment is
-// historical identity; observation recovers current material through the
-// existing snapshot boundary rather than fabricating its lifecycle events.
 func openCommand(
 	ctx context.Context,
 	source OpeningSource,

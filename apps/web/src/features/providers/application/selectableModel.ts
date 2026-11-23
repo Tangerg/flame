@@ -1,4 +1,4 @@
-export class SelectableModelTokenLimits {
+class SelectableModelTokenLimits {
   readonly contextWindow?: number;
   readonly maxInputTokens?: number;
   readonly maxOutputTokens?: number;

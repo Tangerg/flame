@@ -7,17 +7,14 @@ import (
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
-	sdk "github.com/Tangerg/scope/skills"
+	skillspec "github.com/Tangerg/scope/skills"
 )
 
-// Skills lists project Skills layered over one configured user
-// directory.
 type Skills struct {
 	userDir  string
 	packages SkillSources
 }
 
-// NewSkills returns the workspace Skill-discovery adapter.
 func NewSkills(userDir string, packages SkillSources) (Skills, error) {
 	if err := packages.Validate(); err != nil {
 		return Skills{}, err
@@ -40,13 +37,13 @@ func (w Skills) Get(ctx context.Context, cwd, name string) (workspaceapp.SkillDe
 		return workspaceapp.SkillDetail{}, err
 	}
 	detail, err := selected.get(ctx, name)
-	if cancelErr := skillSourceContextError(ctx, "inspect"); cancelErr != nil {
+	if cancelErr := skillSourceContextError(ctx, skillSourceInspect); cancelErr != nil {
 		return workspaceapp.SkillDetail{}, errors.Join(err, cancelErr)
 	}
-	if errors.Is(err, sdk.ErrSkillNotFound) {
+	if errors.Is(err, skillspec.ErrSkillNotFound) {
 		return workspaceapp.SkillDetail{}, fmt.Errorf("%w: %w", domainskills.ErrNotFound, err)
 	}
-	if errors.Is(err, sdk.ErrInvalidSkill) || errors.Is(err, domainskills.ErrDocumentTooLarge) {
+	if errors.Is(err, skillspec.ErrInvalidSkill) || errors.Is(err, domainskills.ErrDocumentTooLarge) {
 		return workspaceapp.SkillDetail{}, fmt.Errorf("%w: %w", workspaceapp.ErrSkillUnavailable, err)
 	}
 	return detail, err

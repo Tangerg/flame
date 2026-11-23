@@ -14,8 +14,6 @@ import (
 
 const turnCleanupTimeout = 5 * time.Second
 
-// RunExecutionBinding identifies a parked executor that a Session mutation
-// must tear down after its durable write-set commits.
 type RunExecutionBinding struct {
 	RunID            identity.RunID
 	SessionID        identity.SessionID
@@ -27,12 +25,6 @@ func (r RunExecutionBinding) executorRef() runs.ExecutorRef {
 	return runs.ExecutorRef{SessionID: r.SessionID, ExecutorID: r.ExecutorID}
 }
 
-// ActiveRun returns the Session's non-terminal Run — the one the admission
-// invariant allows at most one of — reporting false when the Session holds none.
-//
-// It reads the durable record rather than a live registry: a Run parked on a person,
-// or admitted before a restart, is just as much "the Run this Session already has",
-// and the registry knows neither.
 func (c *Coordinator) ActiveRun(ctx context.Context, sessionID identity.SessionID) (rundomain.Run, bool, error) {
 	runs, err := c.runs.ListRuns(ctx, sessionID)
 	if err != nil {
@@ -46,15 +38,10 @@ func (c *Coordinator) ActiveRun(ctx context.Context, sessionID identity.SessionI
 	return rundomain.Run{}, false, nil
 }
 
-// LookupOpenInterrupt returns the parked run identified by runID without claiming
-// or consuming it. The run use case owns the subsequent admission ordering.
 func (c *Coordinator) LookupOpenInterrupt(ctx context.Context, runID identity.RunID) (runs.Pending, bool, error) {
 	return c.interrupts.Get(ctx, runID)
 }
 
-// ApplyRunCancel commits the atomic durable abandon write-set. Executor
-// teardown is owned by application/agent/runs for run commands; session rollback and
-// deletion continue to use the coordinator's narrow cleanup collaborator.
 func (c *Coordinator) ApplyRunCancel(ctx context.Context, ref runs.ExecutorRef, runID identity.RunID, reason string, finishedAt time.Time, receipt runs.CancellationReceipt) (rundomain.Run, error) {
 	pending, err := c.parkedRun(ctx, ref.SessionID, runID)
 	if err != nil {
@@ -66,9 +53,6 @@ func (c *Coordinator) ApplyRunCancel(ctx context.Context, ref runs.ExecutorRef, 
 	return c.terminalizePendingRun(ctx, ref.SessionID, pending, finishedAt, rundomain.OutcomeCanceled, reason, receipt)
 }
 
-// ApplyRunLost atomically ends a parked run whose executor checkpoint cannot be
-// restored. It uses the recovery transition because the waiting Run never
-// resumed into a normal executor terminal path.
 func (c *Coordinator) ApplyRunLost(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, finishedAt time.Time) error {
 	pending, err := c.parkedRun(ctx, sessionID, runID)
 	if err != nil {
@@ -125,10 +109,6 @@ func (c *Coordinator) terminalizePendingRun(
 	if err != nil {
 		return rundomain.Run{}, err
 	}
-	// One write-set ended the run and dropped the set it was parked on, so one place
-	// reports both — for a cancel and for a park declared unresumable alike. The run
-	// command layer deliberately does not publish this again: it would be a second
-	// author for the same commit, and only one of them would ever be updated.
 	terminalRuns := plan.Runs()
 	runIDs := make([]identity.RunID, len(terminalRuns))
 	for index, replacement := range terminalRuns {
@@ -139,7 +119,7 @@ func (c *Coordinator) terminalizePendingRun(
 		invalidation.InSession(invalidation.Interrupts, sessionID, pending.RootRunID),
 		invalidation.InSession(invalidation.Sessions, sessionID),
 	}
-	if rootRun.GoalIncarnationID() != "" {
+	if !rootRun.GoalIncarnationID().IsZero() {
 		notices = append(notices, invalidation.InSession(invalidation.Goals, sessionID))
 	}
 	c.invalidations.Notify(notices...)

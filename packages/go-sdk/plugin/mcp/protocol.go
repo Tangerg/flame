@@ -1,4 +1,3 @@
-// Package-level wire projections are generated from compiled protocol owners.
 package mcp
 
 import (
@@ -26,11 +25,10 @@ type ProtocolConstants struct {
 	CallbackEndpointPattern string `json:"callbackEndpointPattern"`
 	CallbackTokenCharacters int    `json:"callbackTokenCharacters"`
 	StreamMetadataKey       string `json:"streamMetadataKey"`
-	CallHeader              string `json:"CallHeader"`
-	InvocationHeader        string `json:"InvocationHeader"`
-	InvocationMetadataKey   string `json:"InvocationMetadataKey"`
-	ReceiptMethod           string `json:"ReceiptMethod"`
-	MaxCommandIDCharacters  int    `json:"maxCommandIDCharacters"`
+	CallHeader              string `json:"callHeader"`
+	InvocationHeader        string `json:"invocationHeader"`
+	InvocationMetadataKey   string `json:"invocationMetadataKey"`
+	ReceiptMethod           string `json:"receiptMethod"`
 }
 
 func ProtocolJSON() ([]byte, error) {
@@ -50,7 +48,6 @@ func ProtocolJSON() ([]byte, error) {
 		InvocationHeader:        InvocationHeader,
 		InvocationMetadataKey:   InvocationMetadataKey,
 		ReceiptMethod:           ReceiptMethod,
-		MaxCommandIDCharacters:  MaxCommandIDCharacters,
 	}
 	receipt, err := ReceiptQuery()
 	if err != nil {

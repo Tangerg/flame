@@ -1,5 +1,5 @@
 import { type ComposerModelPreference } from "@/features/composer/application/state";
-export interface ComposerModelOption {
+interface ComposerModelOption {
   id: string;
   provider: string;
   default: boolean;
@@ -12,7 +12,7 @@ export interface ComposerSessionModelSelection {
   reasoningEffort?: string;
 }
 
-export interface ResolvedComposerModelSelection<T extends ComposerModelOption> {
+interface ResolvedComposerModelSelection<T extends ComposerModelOption> {
   provider: string;
   modelId: string;
   model: T | undefined;

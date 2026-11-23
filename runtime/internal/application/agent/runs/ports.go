@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -16,52 +17,29 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// The ports this package consumes to run a Segment. They are defined here on the
-// consumer side and satisfied structurally by composition. No interface mirrors
-// an executor implementation: each one names the single application use case
-// that consumes it.
-
-// RootExecutionStarter stages the execution owned by the allocated Run. Model
-// and Tool dispatch must wait for BeginRoot after the opening commits.
 type RootExecutionStarter interface {
 	StageRoot(ctx context.Context, start RootExecutionStart) (ExecutorRef, error)
 	BeginRoot(ctx context.Context, ref ExecutorRef) error
 }
 
-// ExecutionObserver attaches the application Run pump to one ordered stream of
-// application-owned executor facts. Observation does not advance executor state.
 type ExecutionObserver interface {
 	Observe(ctx context.Context, ref ExecutorRef) (iter.Seq[ExecutorEvent], error)
 }
 
-// ExecutionReleaser tears down an unadmitted, terminal, lost, or otherwise
-// invalid executor tree. It is deliberately not called Cancel: the application
-// Cancel use case decides and durably records the product outcome; this port only
-// releases executor-owned resources after that decision or after failed staging.
 type ExecutionReleaser interface {
 	Release(ctx context.Context, ref ExecutorRef) error
 }
 
-// RunningRootCancellationRequester submits an accepted product cancellation
-// intent to the live executor. The caller's identifier ties a later exit to its
-// request. The executor acknowledges admission while in-flight effects can
-// still be settling.
 type RunningRootCancellationRequester interface {
 	RequestRootCancellation(ctx context.Context, ref ExecutorRef, cancellation CancellationID) error
 }
 
-// ConversationReader supplies the validated Host conversation used only to
-// seed a fresh executor working context. Once execution starts, restoration is
-// self-contained in the executor checkpoint and never re-reads Conversation.
 type ConversationReader interface {
 	Read(ctx context.Context, sessionID identity.SessionID) ([]corechat.Message, error)
 }
 
-// WorkingContextComposer turns one Host conversation seed into the complete,
-// provider-neutral context for a fresh root execution. It owns prompt-layer
-// reads and lifecycle-hook preparation but neither reads Conversation nor
-// starts an executor. Implementations must return a self-contained snapshot;
-// the executor never calls back into this port while running or restoring.
+// Implementations return a self-contained snapshot; the executor never calls back
+// into this port while running or restoring.
 type WorkingContextComposer interface {
 	ComposeWorkingContext(
 		ctx context.Context,
@@ -69,33 +47,18 @@ type WorkingContextComposer interface {
 	) ([]corechat.Message, error)
 }
 
-// modelAdmitter admits a model proposal before exact selection is frozen.
-// Authored input is structurally validated here; model-media admission belongs
-// to the complete transformed request at the physical execution boundary.
 type modelAdmitter interface {
-	AdmitSelection(ctx context.Context, selection modelchoice.Selection) error
+	AdmitSelection(ctx context.Context, selection flamemodel.Selection) error
 }
 
-// WorkingContextInput is the exact fresh-root context composition input. Seed
-// contains the canonical Host conversation followed by CurrentUserMessage.
-// PromptText is the user-authored text supplied to prompt hooks and relevance
-// recall; it is kept distinct from media and from the historical seed.
 type WorkingContextInput struct {
-	SessionID identity.SessionID
-	// CWD is where this Run's tools operate. WorkspaceCWD is the Session's
-	// project directory: what a trust grant was given to, and what durable
-	// project knowledge is addressed by. They differ for an isolated Run.
+	SessionID    identity.SessionID
 	CWD          string
 	WorkspaceCWD string
 	PromptText   string
 	Seed         []corechat.Message
 }
 
-// ExecutionContinuer checks immutable waiting facts before acceptance. Only the
-// accepted Run lifecycle may acquire a writer, attach an observer, and deliver
-// answers. The supplied checkpoint carries the frozen handoff; the execution
-// tree store owns its latest acknowledged state. Implementations never reread
-// Conversation or query application-owned persistence privately.
 type ExecutionContinuer interface {
 	PrepareContinuation(
 		ctx context.Context,
@@ -112,26 +75,16 @@ type ExecutionContinuer interface {
 	) error
 }
 
-// RememberedRuleCandidate is one accepted approval answer that requested a
-// standing rule. Request carries the authority skeleton the acceptance owner
-// assembled from the frozen interrupt binding and the chosen scope; Subject is
-// empty until the execution boundary derives it from the confirmed arguments.
-// CallID is the frozen executor call identity the arguments are validated under.
 type RememberedRuleCandidate struct {
 	Request            approval.RememberRequest
 	CallID             string
 	EffectiveArguments tool.Arguments
 }
 
-// approvalRulePreparer validates one remembered-rule request against the current
-// source authority and derives its durable rule without persisting it. The
-// acceptance transaction persists the returned rule; a changed authority rejects
-// the whole Resume.
 type approvalRulePreparer interface {
 	PrepareRule(ctx context.Context, request approval.RememberRequest) (approval.Rule, error)
 }
 
-// acceptedContinuationStore reads and retires the accepted answer handoff.
 type acceptedContinuationStore interface {
 	List(ctx context.Context) ([]AcceptedContinuation, error)
 	Delete(ctx context.Context, rootRunID identity.RunID) error
@@ -151,17 +104,10 @@ type RecoveredSubtreeCancellation interface {
 	Settle(context.Context) error
 }
 
-// RunningExecutionSteerer submits user content to the addressed live execution.
-// The implementation must consume it only at its documented safe boundary and
-// reject an execution that is already waiting or terminal.
 type RunningExecutionSteerer interface {
 	SubmitSteer(ctx context.Context, ref ExecutorRef, input PreparedSteer) (identity.ItemID, error)
 }
 
-// RunningSubtreeCanceler submits the Application's already-validated product
-// cancellation intent to one live child executor subtree. It does not decide or
-// persist the Run outcome; the ordered executor facts remain authoritative.
-// ErrExecutorParking reports a waiting boundary before the control was submitted.
 type RunningSubtreeCanceler interface {
 	CancelRunningSubtree(
 		ctx context.Context,
@@ -171,12 +117,6 @@ type RunningSubtreeCanceler interface {
 	) error
 }
 
-// WaitingSubtreeCancellationPreparer projects one exact waiting executor tree as
-// this cancellation would leave it and returns that projection plus a one-shot
-// change. Preparation only reads: the tree is already parked on an unanswered
-// external boundary, and the cancellation itself is submitted by Apply. The
-// implementation may use a matching live tree or restore only the supplied
-// opaque checkpoint; it never reads Application persistence.
 type WaitingSubtreeCancellationPreparer interface {
 	PrepareWaitingSubtreeCancellation(
 		ctx context.Context,
@@ -184,159 +124,89 @@ type WaitingSubtreeCancellationPreparer interface {
 	) (PreparedWaitingSubtreeCancellation, error)
 }
 
-// WaitingSubtreeDisposition is the application decision applied after a
-// prepared waiting-tree transaction commits. A surviving external boundary
-// keeps the executor parked; removing the final boundary immediately opens the
-// already-committed continuation Segment.
 type WaitingSubtreeDisposition string
 
 const (
-	// WaitingSubtreeStaysWaiting keeps the surviving external boundaries parked.
-	WaitingSubtreeStaysWaiting WaitingSubtreeDisposition = "waiting"
-	// WaitingSubtreeResumesRunning resumes the paused surviving executor members.
+	WaitingSubtreeStaysWaiting   WaitingSubtreeDisposition = "waiting"
 	WaitingSubtreeResumesRunning WaitingSubtreeDisposition = "running"
 )
 
-// Valid reports whether w is one supported post-commit action.
 func (w WaitingSubtreeDisposition) Valid() bool {
 	return w == WaitingSubtreeStaysWaiting || w == WaitingSubtreeResumesRunning
 }
 
-// waitingSubtreeChange is the one-shot executor capability attached to a
-// prepared cancellation. Apply submits the cancellation and installs the
-// committed tree disposition after the application transaction succeeds. Continue advances a disposition that
-// removed the final external boundary; it is a distinct activation phase so an
-// execution failure cannot be mistaken for a failed state installation.
-// Discard idempotently releases a change that was not applied.
 type waitingSubtreeChange interface {
 	Apply(disposition WaitingSubtreeDisposition) error
 	Continue(ctx context.Context) error
 	Discard() error
 }
 
-// PreparedWaitingSubtreeCancellation separates immutable application data from
-// the one-shot executor capability that can apply it. No persistence behavior
-// crosses the application boundary.
 type PreparedWaitingSubtreeCancellation struct {
-	// CanceledMemberIDs names the exact product members projected as canceled.
-	canceledMemberIDs []string
-	// PendingInterruptions contains the surviving external waiting boundaries.
+	canceledMemberIDs    []string
 	pendingInterruptions []MemberInterruption
-	// Checkpoint is the opaque complete-tree state that Change.Apply installs.
-	checkpoint ExecutorCheckpoint
-	// Change owns the frozen executor source until Apply or Discard resolves it.
-	change waitingSubtreeChange
+	checkpoint           ExecutorCheckpoint
+	change               waitingSubtreeChange
 }
 
-// sessionReader resolves the product Session a Run belongs to.
 type sessionReader interface {
 	Get(ctx context.Context, id identity.SessionID) (session.Session, error)
 }
 
-// sessionCreator owns the one Session creation path consumed by Run start: a
-// automation request whose Session may not exist yet. It returns the resolved
-// Session and, when that Session is not durable, the initial aggregate the
-// opening write-set inserts with the Run, so a retried occurrence reuses its
-// Session and an unaccepted one leaves none.
 type sessionCreator interface {
 	PrepareOpening(
 		ctx context.Context,
 		id identity.SessionID,
 		title, cwd string,
-		selection modelchoice.Selection,
+		selection flamemodel.Selection,
 	) (session.Session, *session.Session, error)
 }
 
-// activeRunReader reports the Session's current non-terminal Run for admission.
 type activeRunReader interface {
 	ActiveRun(ctx context.Context, sessionID identity.SessionID) (run.Run, bool, error)
 }
 
-// pendingInterruptReader returns the valid root-owned waiting boundary for an
-// addressed Run without exposing checkpoint storage. A found value belongs to
-// the requested root Run.
 type pendingInterruptReader interface {
 	LookupOpenInterrupt(ctx context.Context, runID identity.RunID) (Pending, bool, error)
 }
 
-// terminationCommitter owns the atomic application write-sets for canceling
-// a parked Run or declaring its executor state unrecoverable.
 type terminationCommitter interface {
 	ApplyRunCancel(ctx context.Context, ref ExecutorRef, runID identity.RunID, reason string, finishedAt time.Time, receipt CancellationReceipt) (run.Run, error)
 	ApplyRunLost(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, finishedAt time.Time) error
 }
 
-// Projection is the run use cases' durable Run read. Run answers point
-// identity; Tree resolves any root or child Run to its complete
-// root/descendant aggregate in one read, so a tree-scoped command does not first
-// race a target lookup against a second tree lookup. The projection returns
-// facts, not cancellation policy: application/domain code owns topology
-// validation and subtree meaning.
 type Projection interface {
 	ListRuns(context.Context, identity.SessionID) ([]run.Run, error)
 	Run(ctx context.Context, runID identity.RunID) (run.Run, bool, error)
 	Tree(ctx context.Context, runID identity.RunID) ([]run.Run, error)
 }
 
-// ItemProjection resolves the exact transcript Item a command plans to replace.
-// Waiting child cancellation uses it to freeze the parent spawning Item before
-// either executor or persistence side effects begin.
 type ItemProjection interface {
 	Item(ctx context.Context, itemID identity.ItemID) (transcript.Item, bool, error)
 }
 
-// RootExecutionStart carries a fresh root's input, frozen policy, and resolved
-// execution scope. During pre-admission validation the scope fields are empty;
-// the Application fills them before passing the value to StageRoot.
 type RootExecutionStart struct {
-	SessionID identity.SessionID
-	RunID     identity.RunID
-	// CWD is the execution directory — the sandbox copy for an isolated
-	// run, else the session's project directory. The durable run record keeps the
-	// project directory; only the executor sees the copy.
-	CWD string
-	// WorkspaceCWD is the persistent Session workspace. It differs from CWD only
-	// for an isolated Run and is used by product capabilities that must outlive
-	// the scratch copy.
-	WorkspaceCWD   string
-	Isolated       bool
-	ModelSelection modelchoice.Selection
-	Options        *corechat.Options
-	// WorkingContext is the complete provider-neutral context for a fresh
-	// execution, including the current user message as its final entry. It is a
-	// seed, not a reference back to mutable Conversation state.
-	WorkingContext []corechat.Message
-	InterruptTypes []run.InterruptType
-	// ChildRunAdmissionEnabled installs the executor-to-application admission
-	// handshake for Delegate children. It is deliberately explicit and defaults
-	// off; the Run's frozen application policy is its sole production source.
+	SessionID                identity.SessionID
+	RunID                    identity.RunID
+	CWD                      string
+	WorkspaceCWD             string
+	Isolated                 bool
+	ModelSelection           flamemodel.Selection
+	Options                  *corechat.Options
+	WorkingContext           []corechat.Message
+	InterruptTypes           []run.InterruptType
 	ChildRunAdmissionEnabled bool
-	// GoalIncarnationID stamps a Goal-mode autonomous run with its goal incarnation
-	// so a terminal outcome report only signals that Goal; empty for ordinary Runs.
-	GoalIncarnationID string
+	GoalIncarnationID        goalref.IncarnationID
 }
 
-// ExecutionMember is the minimum durable Application state an executor needs to
-// rebind one surviving member after restoring an opaque tree. Product lineage
-// remains independent of executor topology and is cross-checked at the executor
-// boundary.
 type ExecutionMember struct {
 	RunID           identity.RunID
 	MemberID        string
 	ParentRunID     identity.RunID
 	SpawnedByItemID identity.ItemID
-	ModelSelection  modelchoice.Selection
-	// DrainedTools distinguishes an unfinished parent Tool from a result already
-	// committed while the executor still retains the child in an active batch.
-	DrainedTools []DrainedTool
+	ModelSelection  flamemodel.Selection
+	DrainedTools    []DrainedTool
 }
 
-// ExecutionContinuation is the complete Application-owned input for staging one
-// retained tree. Checkpoint payload interpretation remains executor-private;
-// Members carries surviving product identities and unfinished Tools.
-// Capabilities and GoalIncarnationID are the root Run's, and Workspace and
-// Isolated the owning Session's: a restored executor reads its policy from
-// them, never from a copy inside the checkpoint.
 type ExecutionContinuation struct {
 	SessionID         identity.SessionID
 	ExecutorID        string
@@ -344,14 +214,11 @@ type ExecutionContinuation struct {
 	Members           []ExecutionMember
 	Checkpoint        ExecutorCheckpoint
 	Capabilities      run.Capabilities
-	GoalIncarnationID string
+	GoalIncarnationID goalref.IncarnationID
 	Workspace         string
 	Isolated          bool
 }
 
-// isolationProvider resolves the sandbox working-copy directory an isolated
-// session's Run executes in, creating it from the project directory on first
-// use. nil means isolation is unavailable and an isolated start is refused.
 type isolationProvider interface {
 	Workspace(ctx context.Context, sessionID identity.SessionID, projectRoot string) (string, error)
 }

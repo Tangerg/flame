@@ -11,8 +11,8 @@ import (
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
-	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/plugins/schedules/internal/schedule"
+	"github.com/Tangerg/flame/plugins/schedules/internal/scheduling"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 
 	framesqlite "github.com/Tangerg/frame/sqlite"
@@ -44,8 +44,6 @@ func toolReceipt(ctx context.Context, db framesqlite.Database, input pluginmcp.R
 	return pluginsdk.NewJSONToolReceipt(projection)
 }
 
-// toolCommandMethod names the private command each Tool records its receipt
-// under; other Tools keep no receipt here.
 func toolCommandMethod(tool string) (string, bool) {
 	switch tool {
 	case createScheduleTool:
@@ -79,7 +77,7 @@ func toolReceiptProjection(ctx context.Context, db framesqlite.Database, tool st
 		}
 		return deletedScheduleProjection(ctx, db, commandID)
 	case runScheduleTool:
-		reference, err := pluginmcp.DecodeReply[app.RunReference](reply)
+		reference, err := pluginmcp.DecodeReply[scheduling.RunReference](reply)
 		if err != nil {
 			return nil, err
 		}
@@ -92,8 +90,6 @@ func toolReceiptProjection(ctx context.Context, db framesqlite.Database, tool st
 	}
 }
 
-// deletedScheduleProjection answers from the original arguments, since a
-// deleted Schedule has nothing left to read.
 func deletedScheduleProjection(ctx context.Context, db framesqlite.Database, commandID pluginmcp.CommandID) (any, error) {
 	var original string
 	if err := db.Read(ctx, func(reader framesqlite.Reader) error {

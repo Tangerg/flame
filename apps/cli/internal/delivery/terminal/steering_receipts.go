@@ -7,6 +7,7 @@ import (
 
 	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -23,8 +24,7 @@ const (
 	steerUnconfirmed steerReceiptStatus = "unconfirmed"
 )
 
-// runFinishEvidence is how far this client has confirmed the steered Run's
-// end. A finish event alone cannot prove absence of the steer's Item; only an
+// A finish event alone cannot prove the steer's Item is absent; only an
 // authoritative read of the finished Run can.
 type runFinishEvidence uint8
 
@@ -35,16 +35,13 @@ const (
 	finishRead
 )
 
-// These are observations for one locally issued command, not execution state.
-// Item and terminal-read evidence may both arrive before the acknowledgement.
 type steerReceipt struct {
-	sessionID string
-	commandID authoring.CommandID
-	runID     string
-	receipt   protocol.SteerRunResponse
-	userItems map[string]struct{}
-	finish    runFinishEvidence
-	// readFailure explains finishReadFailed and is nil in every other state.
+	sessionID   string
+	commandID   authoring.CommandID
+	runID       string
+	receipt     protocol.SteerRunResponse
+	userItems   map[string]struct{}
+	finish      runFinishEvidence
 	readFailure error
 	presented   steerReceiptStatus
 }
@@ -75,6 +72,7 @@ func (s *steerReceipt) status() steerReceiptStatus {
 			return steerVerifying
 		case finishRead:
 			return steerNotApplied
+		case finishReadFailed:
 		}
 	}
 	if s.finish != finishUnseen {
@@ -232,18 +230,15 @@ func (s *steerDesk) presentSteerReceipts() {
 	status := selected.status()
 	label := steerReceiptLabel(status)
 	if selected.runID != s.runs.conversation().RunID() {
-		label += " · " + shortIdentity(selected.runID)
+		label += format.Separator + shortIdentity(selected.runID)
 	}
-	label += " · " + identity
+	label += format.Separator + identity
 	if selected.finish == finishReadFailed && status == steerUnconfirmed {
 		label += ": " + selected.readFailure.Error()
 	}
 	s.notify(label)
 }
 
-// receiptToPresent marks every newly settled receipt of this session as
-// presented and returns the most significant one, preferring the strongest
-// receipt of the same Run so one notice speaks for it.
 func (s *steerDesk) receiptToPresent() *steerReceipt {
 	var selected *steerReceipt
 	for _, entry := range s.receipts.entries {
@@ -289,15 +284,13 @@ func steerReceiptLabel(status steerReceiptStatus) string {
 	}
 }
 
+// A later group outranks an earlier one when several receipts describe one steer.
+var steerReceiptPrecedence = [][]steerReceiptStatus{
+	{steerApplied},
+	{steerAccepted, steerVerifying},
+	{steerNotApplied, steerUnconfirmed},
+}
+
 func steerReceiptPriority(status steerReceiptStatus) int {
-	switch status {
-	case steerNotApplied, steerUnconfirmed:
-		return 3
-	case steerAccepted, steerVerifying:
-		return 2
-	case steerApplied:
-		return 1
-	default:
-		return 0
-	}
+	return slices.IndexFunc(steerReceiptPrecedence, func(group []steerReceiptStatus) bool { return slices.Contains(group, status) }) + 1
 }

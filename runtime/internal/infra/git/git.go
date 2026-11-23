@@ -1,6 +1,3 @@
-// Package git exposes workspace version-control reads through the Git binary.
-// It returns transport-neutral values and classifies an unavailable binary and
-// a non-repository directory separately from a clean repository.
 package git
 
 import (
@@ -16,15 +13,16 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 )
 
-// ErrUnavailable means the git binary isn't on PATH. ErrNotRepo means the
-// directory (or its ancestors) isn't a git work tree.
 var (
 	ErrUnavailable    = errors.New("git: binary not available")
 	ErrNotRepo        = errors.New("git: not a repository")
 	ErrResultTooLarge = errors.New("git: result too large")
 )
 
-// Status is Git's normalized working-tree state for one file.
+// MetadataDirectory is where a working tree keeps repository state; a
+// submodule records it as a file instead of a directory.
+const MetadataDirectory = ".git"
+
 type Status string
 
 const (
@@ -35,13 +33,10 @@ const (
 	StatusUntracked Status = "untracked"
 )
 
-// FileChange is one entry of a working-tree scan. Added/Removed are the line
-// deltas; they are meaningless for a Binary file (the caller omits them when
-// Binary is true rather than reporting a fake 0).
 type FileChange struct {
 	Path         string
 	Status       Status
-	PreviousPath string // set only for renames
+	PreviousPath string
 	Added        int
 	Removed      int
 	Binary       bool
@@ -52,11 +47,8 @@ var availableOnce struct {
 	ok bool
 }
 
-// fatalExitCode is how git reports an unusable repository or invocation.
 const fatalExitCode = 128
 
-// Available reports whether the git binary is on PATH. Cached after the first
-// probe (PATH doesn't change mid-process).
 func Available() bool {
 	availableOnce.Do(func() {
 		_, err := exec.LookPath("git")
@@ -65,9 +57,6 @@ func Available() bool {
 	return availableOnce.ok
 }
 
-// IsRepo reports whether dir is inside a Git work tree. An unavailable binary
-// and request cancellation remain errors so callers can deliberately choose
-// fallback or termination instead of conflating both with a non-repository.
 func IsRepo(ctx context.Context, dir string) (bool, error) {
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return false, fmt.Errorf("git rev-parse --is-inside-work-tree: %w", err)
@@ -98,16 +87,10 @@ func isNotRepositoryDiagnostic(diagnostic string) bool {
 	return strings.HasPrefix(diagnostic, "fatal: not a git repository")
 }
 
-// run executes `git -C dir <args...>` without a pager, optional locks, or
-// inherited Git control variables and returns stdout. A non-zero exit is
-// returned as an error carrying bounded stderr.
 func run(ctx context.Context, dir string, args ...string) ([]byte, error) {
 	return runAllowingExitCode(ctx, dir, -1, args...)
 }
 
-// runAllowingExitCode executes Git like run and additionally treats one
-// documented nonzero status as success. Git uses status 1 for read-only
-// predicates and for `diff --no-index` when differences exist.
 func runAllowingExitCode(ctx context.Context, dir string, allowedExitCode int, args ...string) ([]byte, error) {
 	// Workspace VCS operations are observations. Suppress Git's optional index
 	// refreshes so commands such as status do not take index.lock merely to
@@ -143,11 +126,6 @@ func gitExitError(args []string, exitCode int, diagnostic string) error {
 	return fmt.Errorf("git %s: exit code %d", command, exitCode)
 }
 
-// ListChanges scans the working tree against HEAD: tracked changes (with line
-// counts + rename detection) plus untracked files. It rejects the complete
-// catalog before retaining more than maxChanges entries. Returns ErrNotRepo
-// when dir isn't a repo. Result order is Git's encounter order; the consuming
-// Application use case owns the public catalog order.
 func ListChanges(ctx context.Context, dir string, maxChanges int) ([]FileChange, error) {
 	repository, err := IsRepo(ctx, dir)
 	if err != nil {
@@ -162,9 +140,6 @@ func ListChanges(ctx context.Context, dir string, maxChanges int) ([]FileChange,
 	}
 	repositoryPrefix := strings.TrimRight(string(prefixOut), "\r\n")
 
-	// status --porcelain gives the status letter + path (+ rename source);
-	// -z NUL-delimits so paths with spaces/newlines stay intact. The explicit
-	// pathspec keeps a nested WorkspaceRef jailed to its own resource root.
 	statusOut, err := run(ctx, dir, "status", "--ignore-submodules=dirty", "--porcelain=v1", "-z", "--untracked-files=all", "--", ".")
 	if err != nil {
 		return nil, err
@@ -174,9 +149,6 @@ func ListChanges(ctx context.Context, dir string, maxChanges int) ([]FileChange,
 		return nil, err
 	}
 
-	// numstat gives added/removed (+ binary "-\t-") for tracked changes vs
-	// HEAD, with rename detection (-M). Untracked files aren't in HEAD, so
-	// they won't appear here — their counts are filled below.
 	head, err := runAllowingExitCode(ctx, dir, 1, "rev-parse", "--verify", "--quiet", "HEAD")
 	if err != nil {
 		return nil, err
@@ -209,8 +181,6 @@ func ListChanges(ctx context.Context, dir string, maxChanges int) ([]FileChange,
 	return out, nil
 }
 
-// workspaceChange rebases a repository change onto the workspace root. A rename
-// across the workspace boundary is the half that lands inside it.
 func workspaceChange(change FileChange, repositoryPrefix string) (FileChange, bool) {
 	path, pathInside := workspaceRelativeGitPath(change.Path, repositoryPrefix)
 	if change.Status != StatusRenamed {
@@ -231,9 +201,8 @@ func workspaceChange(change FileChange, repositoryPrefix string) (FileChange, bo
 	return change, true
 }
 
-// workspaceRelativeGitPath maps Git's repository-root-relative porcelain path
-// back into the WorkspaceRef root. Porcelain v1 with -z deliberately ignores
-// status.relativePaths, so this translation is part of the adapter boundary.
+// Porcelain v1 with -z ignores status.relativePaths, so paths are mapped back to
+// the WorkspaceRef root here.
 func workspaceRelativeGitPath(path, repositoryPrefix string) (string, bool) {
 	if path == "" {
 		return "", false
@@ -245,12 +214,6 @@ func workspaceRelativeGitPath(path, repositoryPrefix string) (string, bool) {
 	return relative, ok && relative != ""
 }
 
-// ListFiles lists the non-ignored files under dir, honoring .gitignore: tracked
-// files (--cached) plus untracked-but-not-ignored ones (--others
-// --exclude-standard). relPath selects a literal resource under dir.
-// Paths are relative to dir, recursive, slash-separated; -z keeps odd
-// names (spaces/newlines) intact. Returns ErrNotRepo when dir isn't a repo, so
-// the caller can fall back to a plain filesystem walk.
 func ListFiles(ctx context.Context, dir, relPath string, maxFiles int) ([]string, error) {
 	repository, err := IsRepo(ctx, dir)
 	if err != nil {
@@ -281,9 +244,9 @@ func ListFiles(ctx context.Context, dir, relPath string, maxFiles int) ([]string
 	return files, nil
 }
 
-// parseStatusZ parses `git status --porcelain=v1 -z`. Each record is "XY path"
-// (NUL-terminated); a rename adds a second NUL-terminated field (the original
-// path). Returns a path→change map plus the encounter order.
+// Porcelain v1 records read "XY PATH": two status letters, a space, then the path.
+const statusPathOffset = len("XY ")
+
 func parseStatusZ(out []byte, maxChanges int) (map[string]*FileChange, []string, error) {
 	changes := map[string]*FileChange{}
 	var order []string
@@ -306,16 +269,15 @@ func parseStatusZ(out []byte, maxChanges int) (map[string]*FileChange, []string,
 		if !ok {
 			break
 		}
-		if len(rec) < 3 {
-			continue
+		if len(rec) <= statusPathOffset || rec[statusPathOffset-1] != ' ' {
+			return nil, nil, fmt.Errorf("git: malformed status record %q", rec)
 		}
 		if maxChanges <= 0 || len(order) >= maxChanges {
 			return nil, nil, fmt.Errorf("%w: more than %d workspace changes", ErrResultTooLarge, maxChanges)
 		}
-		xy, path := string(rec[:2]), string(rec[3:])
+		xy, path := string(rec[:statusPathOffset-1]), string(rec[statusPathOffset:])
 		fc := &FileChange{Path: path, Status: statusFromXY(xy)}
 		if xy[0] == 'R' || xy[1] == 'R' {
-			// rename: the next NUL field is the original path
 			if previous, ok := next(); ok {
 				fc.PreviousPath = string(previous)
 			}
@@ -327,9 +289,6 @@ func parseStatusZ(out []byte, maxChanges int) (map[string]*FileChange, []string,
 	return changes, order, nil
 }
 
-// statusFromXY maps a porcelain XY code to a Status. Untracked is "??"; a
-// deletion in either column is deleted; an addition is added; otherwise
-// modified. (Rename is handled by the caller, which sees the R code.)
 func statusFromXY(xy string) Status {
 	switch {
 	case xy == "??":
@@ -343,10 +302,9 @@ func statusFromXY(xy string) Status {
 	}
 }
 
-// applyNumstatZ folds `git diff --numstat -z` output into the change map.
-// Each record is "added\tremoved\tpath"; a binary file reports "-\t-". With
-// -z, a rename emits the path as two extra NUL fields (old, new) after the
-// counts line instead of inline.
+// Numstat records are "ADDED\tDELETED\tPATH".
+const numstatFields = 3
+
 func applyNumstatZ(out []byte, changes map[string]*FileChange) error {
 	fields := bytes.Split(out, []byte{0})
 	for i := 0; i < len(fields); i++ {
@@ -354,15 +312,14 @@ func applyNumstatZ(out []byte, changes map[string]*FileChange) error {
 		if len(line) == 0 {
 			continue
 		}
-		parts := bytes.SplitN(line, []byte{'\t'}, 3)
-		if len(parts) < 3 {
+		parts := bytes.SplitN(line, []byte{'\t'}, numstatFields)
+		if len(parts) < numstatFields {
 			return fmt.Errorf("git: malformed numstat record %q", line)
 		}
 		addS, remS, path := string(parts[0]), string(parts[1]), string(parts[2])
 		if path == "" {
-			// rename under -z: path is empty here; old+new follow as NUL fields
 			if i+2 < len(fields) {
-				path = string(fields[i+2]) // new path
+				path = string(fields[i+2])
 				i += 2
 			} else {
 				return fmt.Errorf("git: malformed rename numstat record %q", line)

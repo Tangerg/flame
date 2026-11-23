@@ -1,7 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useRef } from "react";
 import { DropdownMenu } from "@/ui/index";
-import { Icon } from "@/ui/index";
 import { SelectTrigger } from "@/ui/index";
 import { SystemMessage } from "@/ui/index";
 import { vocab } from "@flame/ui";
@@ -59,9 +58,7 @@ export function LanguageSection() {
                 }}
               >
                 <span {...stylex.props(vocab.truncate)}>{l.label}</span>
-                <DropdownMenu.RadioItemIndicator>
-                  <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
-                </DropdownMenu.RadioItemIndicator>
+                <DropdownMenu.RadioCheck />
               </DropdownMenu.RadioItem>
             ))}
           </DropdownMenu.RadioGroup>

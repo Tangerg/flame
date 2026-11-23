@@ -12,16 +12,13 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// ToolCaller freezes the installed source admitted for one logical model call.
-// Its authority outlives execution checkpoints and contains no business outcome.
 type ToolCaller struct{ value ToolCallerSnapshot }
 
 type ToolCallerSnapshot struct {
 	Invocation framecall.Invocation
 	Tool       tool.Ref
 	Release    framevalue.Digest
-	// Actor authority comes from the admitted source, not its transport fingerprint.
-	Authority framevalue.Digest
+	Authority  framevalue.Digest
 }
 
 func NewToolCaller(value ToolCallerSnapshot) (ToolCaller, error) {

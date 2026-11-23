@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -18,40 +18,38 @@ import (
 	"github.com/google/uuid"
 )
 
-// SelectModel uses only the explicitly selected installed provider. An absent
-// choice preserves the caller's proposal; a withdrawn choice is a refusal.
-func (o *CallComposition) SelectModel(ctx context.Context, proposal models.SelectionInput) (modelchoice.Selection, error) {
+func (o *CallComposition) SelectModel(ctx context.Context, proposal models.SelectionInput) (flamemodel.Selection, error) {
 	if err := proposal.Context.Validate(); err != nil {
-		return modelchoice.Selection{}, err
+		return flamemodel.Selection{}, err
 	}
 	if err := proposal.Proposed.ValidateExact(); err != nil {
-		return modelchoice.Selection{}, err
+		return flamemodel.Selection{}, err
 	}
 	contract, err := pluginsdk.ModelSelectionContract()
 	if err != nil {
-		return modelchoice.Selection{}, err
+		return flamemodel.Selection{}, err
 	}
 	binding, chosen, err := o.selectedModelRoute(ctx, contract)
 	if err != nil {
-		return modelchoice.Selection{}, err
+		return flamemodel.Selection{}, err
 	}
 	if !chosen {
 		return proposal.Proposed, nil
 	}
 	live, err := o.calls.resolveContribution(ctx, plugins.CallRequest{Installation: binding.InstallationID, Digest: binding.Digest, Contribution: binding.ContributionID, Contract: contract})
 	if err != nil {
-		return modelchoice.Selection{}, err
+		return flamemodel.Selection{}, err
 	}
 	if !live.SameContribution(binding) {
-		return modelchoice.Selection{}, plugin.ErrStale
+		return flamemodel.Selection{}, plugin.ErrStale
 	}
 	ctx, err = pluginmcp.WithInvocation(ctx, selectionInvocation(ctx))
 	if err != nil {
-		return modelchoice.Selection{}, err
+		return flamemodel.Selection{}, err
 	}
 	method, err := pluginsdk.ModelSelectionMethod()
 	if err != nil {
-		return modelchoice.Selection{}, err
+		return flamemodel.Selection{}, err
 	}
 	input := pluginsdk.ModelSelectionRequest{
 		Context: proposal.Context,
@@ -67,21 +65,18 @@ func (o *CallComposition) SelectModel(ctx context.Context, proposal models.Selec
 	}
 	result, err := callContribution(ctx, o.calls.pool, binding, contract, method, input)
 	if err != nil {
-		return modelchoice.Selection{}, err
+		return flamemodel.Selection{}, err
 	}
 	if err := result.Validate(); err != nil {
-		return modelchoice.Selection{}, err
+		return flamemodel.Selection{}, err
 	}
-	selected, err := modelchoice.NewWithReasoningEffort(result.Provider, result.Model, result.ReasoningEffort)
+	selected, err := flamemodel.NewWithReasoningEffort(result.Provider, result.Model, result.ReasoningEffort)
 	if err != nil {
-		return modelchoice.Selection{}, errors.Join(err, errors.New("model selection: selected route is invalid"))
+		return flamemodel.Selection{}, errors.Join(err, errors.New("model selection: selected route is invalid"))
 	}
 	return selected, nil
 }
 
-// selectedModelRoute reads the explicit model-selection choice under
-// installation admission. No choice is not an error; a choice whose provider is
-// gone is.
 func (o *CallComposition) selectedModelRoute(ctx context.Context, contract *plugincontract.Capability) (plugins.ContributionBinding, bool, error) {
 	var binding plugins.ContributionBinding
 	chosen := false
@@ -99,8 +94,6 @@ func (o *CallComposition) selectedModelRoute(ctx context.Context, contract *plug
 	return binding, chosen, err
 }
 
-// selectionInvocation is the call-scoped invocation a selection runs under. It
-// inherits the origin and parent of the operation or plugin call it serves.
 func selectionInvocation(ctx context.Context) framecall.Invocation {
 	id := uuid.NewString()
 	target := framecall.Target{Scope: extension.ScopeCall, Reference: id}

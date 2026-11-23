@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
@@ -12,7 +11,6 @@ import (
 	"math"
 	"net"
 	"net/http"
-	"net/url"
 	"reflect"
 	"regexp"
 	"sync"
@@ -21,7 +19,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 
 	framecall "github.com/Tangerg/frame/call"
-	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -32,6 +29,9 @@ const CallbackMetadataKey = "io.github.tangerg.flame/callback.v1"
 
 const callbackScheme = "http"
 const callbackHost = "127.0.0.1"
+
+// A peer that never finishes its headers would otherwise hold a connection forever.
+const callbackReadHeaderTimeout = 10 * time.Second
 const callbackTokenBytes = 32
 
 var callbackEndpointSyntax = regexp.MustCompile("^" + callbackScheme + "://" + regexp.QuoteMeta(callbackHost) + ":[0-9]+/$")
@@ -72,8 +72,6 @@ func bindCallbackMetadata(ctx context.Context, metadata sdk.Meta) (context.Conte
 	return context.WithValue(ctx, callbackRefKey{}, ref), nil
 }
 
-// Callback is an immutable binding to an existing operation contract. The
-// handler owns its business behavior, effect identities and resource budget.
 type Callback struct{ method boundMethod }
 
 func NewCallback[P, R any](method *Method[P, R], classify Classifier, handler func(context.Context, Command[P]) (R, error)) (Callback, error) {
@@ -86,8 +84,7 @@ func NewCallback[P, R any](method *Method[P, R], classify Classifier, handler fu
 	return Callback{method: bound}, nil
 }
 
-// CallbackRef is an ephemeral projection of one activation and owning call.
-// It must not be logged, put in a package or reused after the call ends.
+// A CallbackRef must not be logged, packaged or reused after the call ends.
 type CallbackRef struct {
 	Endpoint         string `json:"endpoint"`
 	Credential       string `json:"credential"`
@@ -97,17 +94,17 @@ type CallbackRef struct {
 
 func (r CallbackRef) Validate() error {
 	if !callbackEndpointSyntax.MatchString(r.Endpoint) || r.MaxResponseBytes <= 0 || r.MaxResponseBytes == math.MaxInt64 {
-		return errors.New("plugin: callback reference is invalid")
+		return errInvalidCallbackRef
 	}
 	if _, err := httporigin.ParseEndpoint(r.Endpoint); err != nil {
-		return fmt.Errorf("plugin: callback reference is invalid: %w", err)
+		return fmt.Errorf("%w: %w", errInvalidCallbackRef, err)
 	}
 	for _, token := range []string{r.Credential, r.Call} {
 		if len(token) != hex.EncodedLen(callbackTokenBytes) {
-			return errors.New("plugin: callback reference is invalid")
+			return errInvalidCallbackRef
 		}
 		if _, err := hex.DecodeString(token); err != nil {
-			return errors.New("plugin: callback reference is invalid")
+			return errInvalidCallbackRef
 		}
 	}
 	return nil
@@ -118,8 +115,6 @@ type CallbackLimits struct {
 	MaxResponseBytes int64
 }
 
-// One Host's callback endpoint admits at most these sessions, live calls and
-// queued requests; beyond them a callback is refused rather than queued.
 const (
 	maxCallbackSessions        = 256
 	maxCallbackCalls           = 4096
@@ -145,8 +140,6 @@ type callbackCall struct {
 	retirement *callbackRetirement
 }
 
-// A terminal release handle keeps only the original join signal. Its live
-// operation is detached by the call owner, including session-wide revocation.
 type callbackRetirement struct {
 	mu     sync.Mutex
 	finish func()
@@ -170,9 +163,6 @@ func (r *callbackRetirement) detach() {
 	r.mu.Unlock()
 }
 
-// Callbacks owns one lazily opened loopback endpoint for its Host instance.
-// Connection retirement withdraws admission before canceling and joining user
-// code. No owner lock is held while a handler performs I/O or a nested call.
 type Callbacks struct {
 	mu          sync.Mutex
 	pending     int
@@ -255,10 +245,6 @@ func callbackMethods(callbacks []Callback) (map[string]boundMethod, error) {
 
 type callbackLimitsKey struct{}
 
-// PublishRPC publishes the canonical Runtime RPC transport once before any
-// backend can receive its reference. Publication owns the startup dependency
-// knot. Call-bound host collaborators share its endpoint; core business
-// operations retain the canonical RPC handler and its Delivery semantics.
 func (c *Callbacks) PublishRPC(handler http.Handler, callbacks ...Callback) error {
 	if handler == nil {
 		return errors.New("plugin: runtime RPC handler is required")
@@ -298,8 +284,6 @@ func (c *Callbacks) WaitRPC(ctx context.Context) error {
 	return nil
 }
 
-// OpenRPC captures one lifetime for canonical RPC, published host collaborators
-// and optional call-local continuations. A local binding cannot replace a method.
 func (c *Callbacks) OpenRPC(ctx context.Context, session *sdk.ClientSession, limits CallbackLimits, callbacks ...Callback) (CallbackRef, func(), error) {
 	handler, err := c.rpcHandler(callbacks)
 	if err != nil {
@@ -343,9 +327,6 @@ func (c *Callbacks) rpcHandler(callbacks []Callback) (http.Handler, error) {
 	}), nil
 }
 
-// OpenRPCWithInvocation binds backend-owned background work through an admission
-// projection. The authenticated activation owns the Actor; wire context cannot
-// replace it. The projection must validate retained calling-owner evidence.
 func (c *Callbacks) OpenRPCWithInvocation(ctx context.Context, session *sdk.ClientSession, limits CallbackLimits, project func(context.Context, framecall.Invocation) (context.Context, error)) (CallbackRef, func(), error) {
 	if project == nil {
 		return CallbackRef{}, nil, errors.New("plugin: background invocation projection is required")
@@ -387,7 +368,7 @@ func (c *Callbacks) open(ctx context.Context, session *sdk.ClientSession, limits
 	if err != nil {
 		return CallbackRef{}, nil, err
 	}
-	if err := c.serveLocked(); err != nil {
+	if err := c.serveLocked(ctx); err != nil {
 		return CallbackRef{}, nil, err
 	}
 	lifetime, cancel := context.WithCancelCause(ctx)
@@ -421,17 +402,15 @@ func (c *Callbacks) admitCallLocked(ctx context.Context, session *sdk.ClientSess
 	return activation, nil
 }
 
-// serveLocked opens the loopback endpoint on first use. A serving failure
-// cancels every admitted call, since none of them can be answered any more.
-func (c *Callbacks) serveLocked() error {
+func (c *Callbacks) serveLocked(ctx context.Context) error {
 	if c.server != nil {
 		return nil
 	}
-	listener, err := net.Listen("tcp", net.JoinHostPort(callbackHost, "0"))
+	listener, err := new(net.ListenConfig).Listen(ctx, "tcp", net.JoinHostPort(callbackHost, "0"))
 	if err != nil {
 		return fmt.Errorf("plugin: open callback endpoint: %w", err)
 	}
-	c.server = &http.Server{Handler: http.HandlerFunc(c.serve)}
+	c.server = &http.Server{Handler: http.HandlerFunc(c.serve), ReadHeaderTimeout: callbackReadHeaderTimeout}
 	c.endpoint = callbackScheme + "://" + listener.Addr().String() + "/"
 	c.served = make(chan struct{})
 	server, served := c.server, c.served
@@ -553,7 +532,7 @@ func (c *Callbacks) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c.mu.Lock()
-	activation := c.credentials[r.Header.Get("Authorization")]
+	activation := c.credentials[r.Header.Get(headerAuthorization)]
 	var call *callbackCall
 	if activation != nil {
 		call = activation.calls[r.Header.Get(CallHeader)]
@@ -595,8 +574,6 @@ func (c *Callbacks) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		cancel(nil)
 	}()
-	// The owner context supplies target, origin and parent projections. The
-	// network request can cancel them, but cannot replace them with input fields.
 	request := r.WithContext(context.WithValue(lifetime, callbackLimitsKey{}, call.limits))
 	request.Body = http.MaxBytesReader(w, body, call.limits.MaxRequestBytes)
 	call.handler.ServeHTTP(w, request)
@@ -618,7 +595,7 @@ func serveCallback(w http.ResponseWriter, r *http.Request, methods map[string]bo
 		return
 	}
 	if method.stream != nil {
-		if r.Header.Get("Accept") != eventStreamMediaType {
+		if r.Header.Get(headerAccept) != eventStreamMediaType {
 			http.Error(w, "callback requires streaming consumption", http.StatusNotAcceptable)
 			return
 		}
@@ -635,77 +612,6 @@ func serveCallback(w http.ResponseWriter, r *http.Request, methods map[string]bo
 		http.Error(w, "callback response capacity exceeded", http.StatusUnprocessableEntity)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(headerContentType, jsonMediaType)
 	_, _ = w.Write(encoded)
-}
-
-// callbackClient reuses one loopback connection pool across every host call; a
-// per-call transport opens and discards a connection per streamed chunk. Redirects
-// never follow: a callback endpoint answers in place or is unreachable.
-var callbackClient = &http.Client{
-	Transport:     &http.Transport{Proxy: nil},
-	CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-}
-
-func CallHost[P, R any](ctx context.Context, ref CallbackRef, method *Method[P, R], id CommandID, input P) (R, error) {
-	var zero R
-	if method == nil {
-		return zero, errors.New("plugin: callback method is required")
-	}
-	if err := validateHostCall(ref, method.contract, id); err != nil {
-		return zero, err
-	}
-	admitted, err := framevalue.EncodeJSON(input)
-	if err != nil {
-		return zero, err
-	}
-	request, err := newHostRequest(ctx, ref, method.contract, id, admitted)
-	if err != nil {
-		return zero, err
-	}
-	response, err := callbackClient.Do(request)
-	if err != nil {
-		if failure, ok := errors.AsType[*url.Error](err); ok {
-			return zero, fmt.Errorf("plugin: callback transport: %w", errors.Join(failure.Err, ctx.Err(), context.Cause(ctx)))
-		}
-		return zero, err
-	}
-	defer response.Body.Close()
-	body, err := readHostReply(response, ref.MaxResponseBytes)
-	if err != nil {
-		return zero, err
-	}
-	var result methodResult[jsontext.Value]
-	if err := json.Unmarshal(body, &result, json.RejectUnknownMembers(true)); err != nil {
-		return zero, err
-	}
-	if _, err := result.value(method.Name()); err != nil {
-		return zero, err
-	}
-	if err := method.contract.ValidateOutput(result.valueJSON); err != nil {
-		return zero, fmt.Errorf("plugin: callback output: %w", err)
-	}
-	typed, err := decodeBoundResult[R](&result)
-	if err != nil {
-		return zero, err
-	}
-	return typed.value(method.Name())
-}
-
-// Only activation-scoped RPC grants admit a projected background invocation.
-// Ordinary call/next grants keep their captured owner regardless of this header.
-func setCallbackInvocation(request *http.Request, ctx context.Context) error {
-	invocation, found := ctx.Value(invocationKey{}).(framecall.Invocation)
-	if !found {
-		return nil
-	}
-	if err := invocation.Validate(); err != nil {
-		return err
-	}
-	encoded, err := json.Marshal(invocation)
-	if err != nil {
-		return err
-	}
-	request.Header.Set(InvocationHeader, string(encoded))
-	return nil
 }

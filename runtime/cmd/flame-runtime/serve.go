@@ -13,7 +13,7 @@ import (
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/bootstrap"
 	"github.com/Tangerg/flame/runtime/internal/config"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 )
 
 const (
@@ -37,12 +37,12 @@ func run(ctx context.Context, errw io.Writer) (err error) {
 	}()
 	srv := cfg.Server
 	if len(srv.CORSOrigins) == 0 {
-		srv.CORSOrigins = flamehttp.DefaultCORSOrigins()
+		srv.CORSOrigins = runtimehttp.DefaultCORSOrigins()
 	}
 	if srv.Listen == "" {
 		return errors.New("server.listen is empty (set config server.listen or FLAME_SERVER_LISTEN)")
 	}
-	authentication := flamehttp.LoopbackOnlyAuthentication()
+	authentication := runtimehttp.LoopbackOnlyAuthentication()
 	var token *localruntime.Token
 	if !srv.NoLocalToken {
 		tokenPath := srv.LocalTokenPath
@@ -53,7 +53,7 @@ func run(ctx context.Context, errw io.Writer) (err error) {
 		if err != nil {
 			return err
 		}
-		authentication, err = flamehttp.LocalTokenAuthentication(token.Value())
+		authentication, err = runtimehttp.LocalTokenAuthentication(token.Value())
 		if err != nil {
 			return err
 		}
@@ -77,8 +77,7 @@ func closeRuntimeInstance(instance runtimeCloser) error {
 	return instance.Close()
 }
 
-// buildHTTPServer assembles the HTTP+SSE server from the resolved settings.
-func buildHTTPServer(instance *bootstrap.Instance, srv config.Server, authentication flamehttp.Authentication) (*flamehttp.Server, error) {
+func buildHTTPServer(instance *bootstrap.Instance, srv config.Server, authentication runtimehttp.Authentication) (*runtimehttp.Server, error) {
 	var web http.Handler
 	if srv.WebDirectory != "" {
 		assets, err := newWebAssets(srv.WebDirectory)
@@ -88,7 +87,7 @@ func buildHTTPServer(instance *bootstrap.Instance, srv config.Server, authentica
 		web = assets
 	}
 	info := instance.ServerInfo()
-	return flamehttp.NewServer(flamehttp.Config{
+	return runtimehttp.NewServer(runtimehttp.Config{
 		Endpoint:       instance.Endpoint(),
 		PluginControl:  instance.PluginControl(),
 		Addr:           srv.Listen,
@@ -96,31 +95,28 @@ func buildHTTPServer(instance *bootstrap.Instance, srv config.Server, authentica
 		Authentication: authentication,
 		CORSOrigins:    srv.CORSOrigins,
 		WebApplication: web,
-		HealthProbes:   []flamehttp.HealthProbe{storageHealthProbe(instance.CheckStorage), pluginHealthProbe(instance.CheckPlugins)},
+		HealthProbes:   []runtimehttp.HealthProbe{storageHealthProbe(instance.CheckStorage), pluginHealthProbe(instance.CheckPlugins)},
 	})
 }
 
-// storageHealthProbe reports the one readiness fact the runtime owns beyond
-// being reachable: whether its durable storage still answers. The instance
-// opens and recovers storage before this server ever listens, so a probe that
-// loses the race for the single pooled connection means busy, not broken — only
-// a real failure is unhealthy.
-func storageHealthProbe(check func(context.Context) error) flamehttp.HealthProbe {
-	return flamehttp.HealthProbe{
+// Storage opens before the server listens, so a probe that loses the race for the
+// single pooled connection means busy, not broken.
+func storageHealthProbe(check func(context.Context) error) runtimehttp.HealthProbe {
+	return runtimehttp.HealthProbe{
 		Name: "storage",
-		Probe: func(ctx context.Context) flamehttp.HealthCheck {
+		Probe: func(ctx context.Context) runtimehttp.HealthCheck {
 			err := check(ctx)
 			switch {
 			case err == nil:
-				return flamehttp.HealthCheck{Status: flamehttp.HealthOK}
+				return runtimehttp.HealthCheck{Status: runtimehttp.HealthOK}
 			case errors.Is(err, context.DeadlineExceeded), errors.Is(err, context.Canceled):
-				return flamehttp.HealthCheck{
-					Status: flamehttp.HealthDegraded,
+				return runtimehttp.HealthCheck{
+					Status: runtimehttp.HealthDegraded,
 					Detail: "storage did not answer within the health budget",
 				}
 			default:
-				return flamehttp.HealthCheck{
-					Status: flamehttp.HealthUnhealthy,
+				return runtimehttp.HealthCheck{
+					Status: runtimehttp.HealthUnhealthy,
 					Detail: err.Error(),
 				}
 			}
@@ -128,8 +124,6 @@ func storageHealthProbe(check func(context.Context) error) flamehttp.HealthProbe
 	}
 }
 
-// resolvedVersion keeps HTTP identity and telemetry resource metadata aligned:
-// an explicit link-time version wins over the module build version.
 func resolvedVersion() string {
 	if version != "" {
 		return version
@@ -143,8 +137,6 @@ type runtimeHTTPServer interface {
 	Close() error
 }
 
-// runServer launches the server, blocks until it returns or a shutdown signal
-// arrives, then drains with a 10s budget.
 func runServer(ctx context.Context, errw io.Writer, httpServer runtimeHTTPServer, addr string, token *localruntime.Token, instance runtimeCloser) error {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -152,25 +144,22 @@ func runServer(ctx context.Context, errw io.Writer, httpServer runtimeHTTPServer
 	errs := make(chan error, 1)
 	go func() {
 		_, _ = fmt.Fprintf(errw, "%s http listening on %s\n", runtimeLogPrefix, addr)
-		// The routes an operator is told about are the routes that were
-		// registered, but whether one is actually gated is this composition's
-		// fact, not the registry's: the registry declares the intent to gate and
-		// only a configured token supplies the gate. Reading the label off the
-		// declaration alone prints "token-gated" beside an open RPC endpoint.
-		for _, endpoint := range flamehttp.Contract().Endpoints {
+		// Whether a route is gated is this composition's fact; reading the label off the
+		// declaration would print "token-gated" beside an open endpoint.
+		for _, endpoint := range runtimehttp.Contract().Endpoints {
 			gate := "token-gated"
 			switch {
-			case endpoint.Authentication == flamehttp.EndpointAuthenticationNone:
+			case endpoint.Authentication == runtimehttp.EndpointAuthenticationNone:
 				gate = "no auth"
-			case endpoint.Authentication == flamehttp.EndpointAuthenticationRealm:
+			case endpoint.Authentication == runtimehttp.EndpointAuthenticationRealm:
 				gate = "realm-gated"
-			case endpoint.Authentication == flamehttp.EndpointAuthenticationResourceLease:
+			case endpoint.Authentication == runtimehttp.EndpointAuthenticationResourceLease:
 				gate = "lease-gated"
 			case token == nil:
 				gate = "UNGATED"
 			}
 			detail := ""
-			if endpoint.Kind == flamehttp.EndpointKindRPC {
+			if endpoint.Kind == runtimehttp.EndpointKindRPC {
 				detail = "  (streaming methods -> text/event-stream)"
 			}
 			_, _ = fmt.Fprintf(errw, "%s   %-4s %-20s %-9s %s%s\n",
@@ -215,11 +204,11 @@ func normalizeHTTPServerError(err error) error {
 	return err
 }
 
-func pluginHealthProbe(check func(context.Context) error) flamehttp.HealthProbe {
-	return flamehttp.HealthProbe{Name: "plugins", Probe: func(ctx context.Context) flamehttp.HealthCheck {
+func pluginHealthProbe(check func(context.Context) error) runtimehttp.HealthProbe {
+	return runtimehttp.HealthProbe{Name: "plugins", Probe: func(ctx context.Context) runtimehttp.HealthCheck {
 		if err := check(ctx); err != nil {
-			return flamehttp.HealthCheck{Status: flamehttp.HealthDegraded, Detail: "original plugin execution protection is awaiting recovery"}
+			return runtimehttp.HealthCheck{Status: runtimehttp.HealthDegraded, Detail: "original plugin execution protection is awaiting recovery"}
 		}
-		return flamehttp.HealthCheck{Status: flamehttp.HealthOK}
+		return runtimehttp.HealthCheck{Status: runtimehttp.HealthOK}
 	}}
 }

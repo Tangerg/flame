@@ -112,7 +112,7 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: scheduling.ID, Digest: scheduling.Selected.Digest, Contribution: "schedules-provider", Contract: string(contract.Identity().Bytes()), Method: SchedulesListV1Method, Input: string(input), Target: framecall.Target{Scope: "installation", Reference: scheduling.ID}}, protocol.PluginCallOptions{})
+	reply, err := current.CallPlugin(t.Context(), protocol.CallPluginRequest{InstallationID: scheduling.ID, Digest: scheduling.Selected.Digest, Contribution: "schedules-provider", Contract: string(contract.Identity().Bytes()), Method: SchedulesListV2Method, Input: string(input), Target: framecall.Target{Scope: "installation", Reference: scheduling.ID}}, protocol.PluginCallOptions{})
 	if err != nil || reply.Failure != nil {
 		t.Fatalf("default schedule backend: %+v, %v", reply, err)
 	}
@@ -154,7 +154,6 @@ func TestFirstPartyInitializationAndRestartPreserveUserDecisions(t *testing.T) {
 			t.Fatal("restart restored revoked trust")
 		}
 	}
-	// Destructive removal requires every backend's captured dependencies to retire.
 	for _, item := range restarted.Data {
 		disabled, err := current.SetPluginEnablement(t.Context(), protocol.SetPluginEnablementRequest{InstallationID: item.ID, Enabled: false}, protocol.CommandOptions{})
 		if err != nil || disabled.Enabled {

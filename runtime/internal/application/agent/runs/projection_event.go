@@ -15,15 +15,9 @@ import (
 
 type ProjectionEvent interface {
 	runEvent()
-	// validate makes publication safety a compile-time obligation of the closed
-	// event family. A new variant cannot enter projection without defining what a
-	// well-formed value means.
 	validate() error
 	Replayable() bool
 	Terminal() bool
-	// retainedBytes reports the approximate heap retained by this value. Keeping
-	// it on the closed event family makes retention accounting a compile-time
-	// obligation whenever a new event variant is introduced.
 	retainedBytes() int
 }
 
@@ -34,13 +28,6 @@ type SegmentFinished struct {
 	Interrupts []transcript.Interrupt
 }
 
-// ItemStart is the provisional stream projection emitted before a complete
-// transcript fact exists. It is deliberately an Application value: message and
-// reasoning deltas need a rendering anchor, but they are not running Domain
-// Items. Only a running ToolCall may carry a durable Item into a waiting
-// boundary.
-// ItemStart opens a streamed Item. A ToolCall start is its running durable
-// Item; a message or reasoning stream has only an identity until it completes.
 type ItemStart struct {
 	identity transcript.ItemIdentity
 	kind     transcript.ItemKind
@@ -50,7 +37,6 @@ type ItemStart struct {
 func (i ItemStart) Identity() transcript.ItemIdentity { return i.identity }
 func (i ItemStart) Kind() transcript.ItemKind         { return i.kind }
 
-// ToolCall returns the running invocation a ToolCall start opened.
 func (i ItemStart) ToolCall() (transcript.ToolCallBody, bool) {
 	if i.toolCall == nil {
 		return transcript.ToolCallBody{}, false
@@ -66,24 +52,15 @@ type ItemChanged struct {
 type ItemCompleted struct {
 	Item         transcript.Item
 	mutatedPaths []string
-	// settlement is present when Item settles a ToolCall the reducer opened.
-	settlement *transcript.Replacement
+	settlement   *transcript.Replacement
 }
 
 func settledItem(settlement transcript.Replacement, mutatedPaths []string) ItemCompleted {
 	return ItemCompleted{Item: settlement.State(), mutatedPaths: mutatedPaths, settlement: &settlement}
 }
 
-// QuestionAnswered publishes a Question Item whose answers a resume committed
-// before its continuation opened. The resume claim owns that write, so the
-// event carries no commit of its own; it exists so a follower learns the
-// answers from the stream instead of deriving them or re-reading the Session.
 type QuestionAnswered struct{ Item transcript.Item }
 
-// PlanSnapshot publishes a persisted latest-value projection the run changed. It
-// carries the projection's own revision, not just its contents: the list is
-// replaced wholesale, so a fold that only saw contents could not tell an older
-// snapshot from a newer one.
 type PlanSnapshot struct {
 	SessionID flameidentity.SessionID
 	Steps     []plan.Step
@@ -91,9 +68,6 @@ type PlanSnapshot struct {
 	UpdatedAt time.Time
 }
 
-// validate proves this is a Plan replacement that may be published. The zero
-// Plan state is useful to a cold query, but it is not a change and therefore is
-// never a plan.updated event.
 func (p PlanSnapshot) validate() error {
 	if err := p.SessionID.Validate(); err != nil {
 		return fmt.Errorf("runs: Plan snapshot: %w", err)
@@ -137,8 +111,6 @@ func (s SegmentStarted) validate() error {
 func (s SegmentProgressed) validate() error { return s.Progress.validate() }
 
 func (s SegmentFinished) validate() error {
-	// Unlike a started Segment, no state comparison below rejects a Run that was
-	// never attached: the zero value is simply "not running".
 	if s.Run.ID().IsZero() {
 		return errors.New("runs: finished Segment carries no Run")
 	}
@@ -163,10 +135,6 @@ func (s SegmentFinished) validate() error {
 
 func (i ItemStarted) validate() error { return i.Item.validate() }
 
-// A completed Item is legal by construction — the transcript constructors and
-// transitions close that question. What the event still owns is whether an Item
-// was attached at all: a private-field aggregate cannot be built invalid, but
-// its zero value is writable anywhere.
 func (i ItemCompleted) validate() error {
 	if i.Item.ID().IsZero() {
 		return errors.New("runs: completed Item event carries no Item")
@@ -201,6 +169,7 @@ func (PlanSnapshot) Terminal() bool      { return false }
 
 func (s SegmentStarted) retainedBytes() int  { return retainedRunBytes(s.Run) }
 func (SegmentProgressed) retainedBytes() int { return 0 }
+
 func (s SegmentFinished) retainedBytes() int {
 	bytes := retainedRunBytes(s.Run) + cap(s.Interrupts)*retainedInterruptBytes
 	for _, pending := range s.Interrupts {
@@ -208,12 +177,15 @@ func (s SegmentFinished) retainedBytes() int {
 	}
 	return bytes
 }
+
 func (i ItemStarted) retainedBytes() int   { return retainedItemStartBytes(i.Item) }
 func (ItemChanged) retainedBytes() int     { return 0 }
 func (i ItemCompleted) retainedBytes() int { return retainedItemBytes(i.Item) }
+
 func (q QuestionAnswered) retainedBytes() int {
 	return retainedItemBytes(q.Item)
 }
+
 func (p PlanSnapshot) retainedBytes() int { return retainedPlanSnapshotBytes(p) }
 
 type Progress struct {
@@ -223,8 +195,6 @@ type Progress struct {
 	Activity      Activity
 }
 
-// Activity is the closed set of things a running segment reports doing.
-// Clients word it; the Runtime owns only which one is happening.
 type Activity interface{ activity() }
 
 type CallingModelActivity struct{}
@@ -233,7 +203,6 @@ type FailedModelCallActivity struct{}
 
 type ApplyingUserInputActivity struct{}
 
-// ToolCallActivity names the running ToolCall Item and its tool.
 type ToolCallActivity struct {
 	ItemID flameidentity.ItemID
 	Tool   string
@@ -244,9 +213,6 @@ func (FailedModelCallActivity) activity()   {}
 func (ApplyingUserInputActivity) activity() {}
 func (ToolCallActivity) activity()          {}
 
-// validate proves a segment.progress event carries at least one real preview
-// fact. Its fields are independent because one executor report may advance
-// several at once; the value is not a bag of arbitrary metadata.
 func (p Progress) validate() error {
 	if p.Step == nil && p.Usage == nil && p.ContextTokens == nil && p.Activity == nil {
 		return errors.New("runs: progress carries no facts")
@@ -263,24 +229,17 @@ func (p Progress) validate() error {
 	return nil
 }
 
-// ItemDelta is the closed family of provisional Item changes. Each concrete
-// value owns exactly the payload its kind can carry, so Application code cannot
-// construct the impossible field combinations the flat wire union must use.
 type ItemDelta interface {
 	itemDelta()
 	validate() error
 }
 
-// ContentItemDelta appends text to one provisional AgentMessage.
 type ContentItemDelta struct{ text string }
 
-// ReasoningItemDelta appends text to one provisional Reasoning Item.
 type ReasoningItemDelta struct{ text string }
 
-// ToolArgumentsItemDelta appends partial JSON text to a ToolCall preview.
 type ToolArgumentsItemDelta struct{ text string }
 
-// ToolOutputItemDelta appends human-readable Tool output to a ToolCall preview.
 type ToolOutputItemDelta struct{ text string }
 
 func newContentItemDelta(text string) (ContentItemDelta, error) {
@@ -313,7 +272,7 @@ func (d ContentItemDelta) validate() error {
 }
 
 func (d ReasoningItemDelta) validate() error {
-	return validateItemDeltaText("reasoning", d.text)
+	return validateItemDeltaText(reasoningStream, d.text)
 }
 
 func (d ToolArgumentsItemDelta) validate() error {
@@ -363,7 +322,6 @@ func newToolItemStart(item transcript.Item) (ItemStart, error) {
 	return ItemStart{identity: item.Identity(), kind: item.Kind(), toolCall: &item}, nil
 }
 
-// Both constructors validate completely; a zero start never came from either.
 func (i ItemStart) validate() error {
 	if i.kind == "" {
 		return errors.New("runs: Item start was not constructed")

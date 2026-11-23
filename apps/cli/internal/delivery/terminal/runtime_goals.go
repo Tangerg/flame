@@ -2,7 +2,6 @@ package terminal
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/changefeed"
@@ -11,11 +10,9 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// goalScreens shows and changes the current session's autonomous goal.
 type goalScreens struct {
 	screenHost
 	service Goals
-	// options are the session's current run options a started goal runs with.
 	options *authoring.RunOptions
 	header  *sessionHeader
 }
@@ -41,7 +38,7 @@ func (g *goalScreens) goalReaderQuery() *readerQuery {
 
 func goalDocument(current protocol.Goal, exists bool) readerDocument {
 	if !exists {
-		return paragraphDocument("Session goal", "none", []string{"No autonomous goal is active or paused for this session."})
+		return paragraphDocument("Session goal", noneLabel, []string{"No autonomous goal is active or paused for this session."})
 	}
 	lines := []string{
 		"objective  " + current.Objective,
@@ -62,7 +59,7 @@ func goalDocument(current protocol.Goal, exists bool) readerDocument {
 			reason += " · run " + string(current.Reason.RunOutcome)
 		}
 		if current.Reason.Explanation != "" {
-			reason += " · " + current.Reason.Explanation
+			reason += format.Separator + current.Reason.Explanation
 		}
 		lines = append(lines, "reason     "+reason)
 	}
@@ -76,7 +73,7 @@ func goalCostLabel(used protocol.GoalUsage) string {
 	if used.Runs == 0 {
 		return "no cost yet"
 	}
-	return "cost unavailable"
+	return costUnavailable
 }
 
 func (g *goalScreens) StartGoal(objective string) error {
@@ -118,7 +115,7 @@ func (g *goalScreens) ClearGoal() error {
 		},
 	)
 	if !started {
-		return errors.New("another goal operation is running")
+		return goalOperation.busy()
 	}
 	return nil
 }
@@ -152,7 +149,7 @@ func (g *goalScreens) changeGoal(label string, change func(context.Context) (pro
 		g.status.note("goal · " + string(current.Status))
 	})
 	if !started {
-		return errors.New("another goal operation is running")
+		return goalOperation.busy()
 	}
 	return nil
 }

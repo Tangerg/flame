@@ -7,11 +7,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// Retention accounting bounds the variable heap held by the replay window. The
-// event count separately bounds fixed headers, while these conservative entry
-// charges cover slice and map backing storage even when their strings are empty.
-// Values are intentionally estimates: they describe retained memory, not any
-// durable or presentation encoding.
 const (
 	retainedEventHeaderBytes    = 128
 	retainedRunHeaderBytes      = 256
@@ -25,8 +20,6 @@ const (
 	retainedPlanEntryBytes      = 64
 )
 
-// retainedBytes is charged exactly once, when the event is published. Eviction
-// and replay reuse the charge stored beside the event.
 func retainedBytes(event Event) int {
 	if event.Payload == nil {
 		return retainedEventHeaderBytes + len(event.RunID.String()) + len(event.SegmentID.String()) + len(event.Cursor)
@@ -43,7 +36,7 @@ func retainedRunBytes(value run.Run) int {
 		snapshot.Lineage.SpawnedByItemID().String(),
 		snapshot.Lineage.ParentRunID().String(),
 		snapshot.Lineage.RootRunID().String(),
-		snapshot.GoalIncarnationID,
+		snapshot.GoalIncarnationID.String(),
 		snapshot.ActiveSegmentID.String(),
 		snapshot.ModelSelection.Provider(),
 		snapshot.ModelSelection.Model(),
@@ -61,7 +54,7 @@ func retainedRunBytes(value run.Run) int {
 	}
 	bytes += cap(snapshot.UnresolvedEffects) * retainedEffectHeaderBytes
 	for _, effect := range snapshot.UnresolvedEffects {
-		bytes += stringsBytes(effect.ProcessID(), effect.EffectID(), effect.Cause(), effect.Reason(), effect.Detail(), effect.Output())
+		bytes += stringsBytes(effect.ProcessID(), effect.EffectID(), effect.Reason(), effect.Detail(), effect.Output())
 	}
 	usage, _ := snapshot.Metrics.Usage()
 	bytes += retainedUsageBytes(&usage)

@@ -10,8 +10,6 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// Effect failures retain the first local cause before Scope classifies an
-// unsettled dispatch. They describe diagnostics, never proof of an outcome.
 type interactionEffectFailures struct {
 	mu     sync.Mutex
 	causes map[scoperun.EffectID]effectObservation

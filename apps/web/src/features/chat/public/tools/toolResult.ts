@@ -2,17 +2,17 @@ import { type CapturedToolResult, type RecordedFileChange } from "@flame/compone
 import { CHANGE_STATUSES } from "@/foundation/protocolValues.generated";
 import { isJSONNumber, parseJSON, projectNumber } from "@frame/sdk/json";
 
-export interface CommandResult {
+interface CommandResult {
   exitCode?: number;
   output?: string;
   page?: CapturedToolResult["outputPage"];
 }
 
-export interface PatchResult {
+interface PatchResult {
   changes: RecordedFileChange[];
 }
 
-export interface SearchResult {
+interface SearchResult {
   hits: unknown[];
 }
 

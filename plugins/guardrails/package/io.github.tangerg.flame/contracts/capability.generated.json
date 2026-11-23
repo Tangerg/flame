@@ -17,7 +17,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9pbnRlcm5hbC9kb21haW4.U3VtbWFyeQ": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9pbnRlcm5hbC9ndWFyZHJhaWw.U3VtbWFyeQ": {
             "additionalProperties": false,
             "allOf": [
               {
@@ -177,7 +177,7 @@
       },
       "output": {
         "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9pbnRlcm5hbC9kb21haW4.U3VtbWFyeQ": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvZ3VhcmRyYWlscy9pbnRlcm5hbC9ndWFyZHJhaWw.U3VtbWFyeQ": {
             "additionalProperties": false,
             "allOf": [
               {

@@ -5176,7 +5176,7 @@
             "settledAt",
             "response",
             "failure",
-            "costUSD"
+            "costUsd"
           ]
         },
         {
@@ -5223,7 +5223,7 @@
           ],
           "forbidden": [
             "response",
-            "costUSD"
+            "costUsd"
           ]
         }
       ]
@@ -5478,6 +5478,356 @@
       ]
     },
     {
+      "type": "StreamEvent",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "item.started"
+            }
+          ],
+          "allowedValues": [
+            {
+              "field": "item.type",
+              "values": [
+                "agentMessage",
+                "reasoning",
+                "toolCall"
+              ]
+            },
+            {
+              "field": "item.status",
+              "values": [
+                "running"
+              ]
+            }
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "item.completed"
+            }
+          ],
+          "allowedValues": [
+            {
+              "field": "item.status",
+              "values": [
+                "completed",
+                "incomplete"
+              ]
+            }
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "type",
+              "operator": "equals",
+              "value": "plan.updated"
+            }
+          ],
+          "required": [
+            "plan.state"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "StartRunRequest",
+      "rules": [
+        {
+          "requiredAny": [
+            "sessionId",
+            "newSession"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "newSession",
+              "operator": "present"
+            }
+          ],
+          "forbidden": [
+            "sessionId"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "provider",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "model"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "model",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "provider"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "reasoningEffort",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "provider",
+            "model"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "RunSummary",
+      "rules": [
+        {
+          "required": [
+            "provider",
+            "model",
+            "createdAt"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "finished"
+            }
+          ],
+          "required": [
+            "outcome",
+            "finishedAt"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "running"
+            }
+          ],
+          "forbidden": [
+            "outcome",
+            "finishedAt"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "waiting"
+            }
+          ],
+          "forbidden": [
+            "outcome",
+            "finishedAt"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "spawnedByItemId",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "parentRunId",
+            "rootRunId"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "parentRunId",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "spawnedByItemId",
+            "rootRunId"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "rootRunId",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "spawnedByItemId",
+            "parentRunId"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "RunRef",
+      "rules": [
+        {
+          "required": [
+            "provider",
+            "model",
+            "createdAt"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "finished"
+            }
+          ],
+          "required": [
+            "outcome",
+            "finishedAt"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "running"
+            }
+          ],
+          "forbidden": [
+            "outcome",
+            "finishedAt"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "waiting"
+            }
+          ],
+          "forbidden": [
+            "outcome",
+            "finishedAt"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "spawnedByItemId",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "parentRunId",
+            "rootRunId"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "parentRunId",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "spawnedByItemId",
+            "rootRunId"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "rootRunId",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "spawnedByItemId",
+            "parentRunId"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "running"
+            }
+          ],
+          "required": [
+            "activeSegmentId"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "waiting"
+            }
+          ],
+          "forbidden": [
+            "activeSegmentId"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "status",
+              "operator": "equals",
+              "value": "finished"
+            }
+          ],
+          "forbidden": [
+            "activeSegmentId"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "spawnedByItemId",
+              "operator": "present"
+            }
+          ],
+          "forbidden": [
+            "capabilities"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "PendingInterruptSet",
+      "rules": [
+        {
+          "required": [
+            "rootRunId",
+            "sessionId",
+            "interrupts",
+            "createdAt"
+          ]
+        }
+      ]
+    },
+    {
       "type": "Session",
       "rules": [
         {
@@ -5494,6 +5844,62 @@
         {
           "required": [
             "updatedAt"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "UpdateSessionRequest",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "provider",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "model"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "model",
+              "operator": "present"
+            }
+          ],
+          "required": [
+            "provider"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "RollbackSessionRequest",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "restoreType",
+              "operator": "equals",
+              "value": "files"
+            }
+          ],
+          "required": [
+            "toRunId"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "restoreType",
+              "operator": "equals",
+              "value": "both"
+            }
+          ],
+          "required": [
+            "toRunId"
           ]
         }
       ]
@@ -5962,122 +6368,6 @@
       ]
     },
     {
-      "type": "StreamEvent",
-      "rules": [
-        {
-          "when": [
-            {
-              "field": "type",
-              "operator": "equals",
-              "value": "item.started"
-            }
-          ],
-          "allowedValues": [
-            {
-              "field": "item.type",
-              "values": [
-                "agentMessage",
-                "reasoning",
-                "toolCall"
-              ]
-            },
-            {
-              "field": "item.status",
-              "values": [
-                "running"
-              ]
-            }
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "type",
-              "operator": "equals",
-              "value": "item.completed"
-            }
-          ],
-          "allowedValues": [
-            {
-              "field": "item.status",
-              "values": [
-                "completed",
-                "incomplete"
-              ]
-            }
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "type",
-              "operator": "equals",
-              "value": "plan.updated"
-            }
-          ],
-          "required": [
-            "plan.state"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "StartRunRequest",
-      "rules": [
-        {
-          "requiredAny": [
-            "sessionId",
-            "newSession"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "newSession",
-              "operator": "present"
-            }
-          ],
-          "forbidden": [
-            "sessionId"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "provider",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "model"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "model",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "provider"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "reasoningEffort",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "provider",
-            "model"
-          ]
-        }
-      ]
-    },
-    {
       "type": "StartGoalRequest",
       "rules": [
         {
@@ -6112,33 +6402,6 @@
           "required": [
             "provider",
             "model"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "UpdateSessionRequest",
-      "rules": [
-        {
-          "when": [
-            {
-              "field": "provider",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "model"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "model",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "provider"
           ]
         }
       ]
@@ -6526,35 +6789,6 @@
       ]
     },
     {
-      "type": "RollbackSessionRequest",
-      "rules": [
-        {
-          "when": [
-            {
-              "field": "restoreType",
-              "operator": "equals",
-              "value": "files"
-            }
-          ],
-          "required": [
-            "toRunId"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "restoreType",
-              "operator": "equals",
-              "value": "both"
-            }
-          ],
-          "required": [
-            "toRunId"
-          ]
-        }
-      ]
-    },
-    {
       "type": "MCPAuthorizationAttempt",
       "rules": [
         {
@@ -6620,240 +6854,6 @@
           ],
           "required": [
             "finishedAt"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "RunSummary",
-      "rules": [
-        {
-          "required": [
-            "provider",
-            "model",
-            "createdAt"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "status",
-              "operator": "equals",
-              "value": "finished"
-            }
-          ],
-          "required": [
-            "outcome",
-            "finishedAt"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "status",
-              "operator": "equals",
-              "value": "running"
-            }
-          ],
-          "forbidden": [
-            "outcome",
-            "finishedAt"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "status",
-              "operator": "equals",
-              "value": "waiting"
-            }
-          ],
-          "forbidden": [
-            "outcome",
-            "finishedAt"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "spawnedByItemId",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "parentRunId",
-            "rootRunId"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "parentRunId",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "spawnedByItemId",
-            "rootRunId"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "rootRunId",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "spawnedByItemId",
-            "parentRunId"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "RunRef",
-      "rules": [
-        {
-          "required": [
-            "provider",
-            "model",
-            "createdAt"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "status",
-              "operator": "equals",
-              "value": "finished"
-            }
-          ],
-          "required": [
-            "outcome",
-            "finishedAt"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "status",
-              "operator": "equals",
-              "value": "running"
-            }
-          ],
-          "forbidden": [
-            "outcome",
-            "finishedAt"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "status",
-              "operator": "equals",
-              "value": "waiting"
-            }
-          ],
-          "forbidden": [
-            "outcome",
-            "finishedAt"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "spawnedByItemId",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "parentRunId",
-            "rootRunId"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "parentRunId",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "spawnedByItemId",
-            "rootRunId"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "rootRunId",
-              "operator": "present"
-            }
-          ],
-          "required": [
-            "spawnedByItemId",
-            "parentRunId"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "status",
-              "operator": "equals",
-              "value": "running"
-            }
-          ],
-          "required": [
-            "activeSegmentId"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "status",
-              "operator": "equals",
-              "value": "waiting"
-            }
-          ],
-          "forbidden": [
-            "activeSegmentId"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "status",
-              "operator": "equals",
-              "value": "finished"
-            }
-          ],
-          "forbidden": [
-            "activeSegmentId"
-          ]
-        },
-        {
-          "when": [
-            {
-              "field": "spawnedByItemId",
-              "operator": "present"
-            }
-          ],
-          "forbidden": [
-            "capabilities"
-          ]
-        }
-      ]
-    },
-    {
-      "type": "PendingInterruptSet",
-      "rules": [
-        {
-          "required": [
-            "rootRunId",
-            "sessionId",
-            "interrupts",
-            "createdAt"
           ]
         }
       ]
@@ -8654,7 +8654,7 @@
           "constraint": "maxLength(256)"
         },
         {
-          "field": "costUSD",
+          "field": "costUsd",
           "constraint": "nonNegative"
         },
         {

@@ -18,7 +18,6 @@ const readBufferBytes = 64 << 10
 
 const maxUntrackedDiffPaths = 10_000
 
-// untrackedPaths lists untracked files (status ??), optionally under relPath.
 func untrackedPaths(ctx context.Context, dir, relPath string) ([]string, error) {
 	scopePath, err := workspacePathspec(dir, relPath)
 	if err != nil {
@@ -40,9 +39,6 @@ func untrackedPaths(ctx context.Context, dir, relPath string) ([]string, error) 
 	return paths, nil
 }
 
-// untrackedFileStat streams one untracked regular file for its Git-facing line
-// count and binary bit. A symbolic link is one link-target line; its referent is
-// never read as workspace material.
 func untrackedFileStat(ctx context.Context, dir, rel string) (lines int, binary bool, err error) {
 	path := filepath.Join(dir, rel)
 	info, err := os.Lstat(path)
@@ -80,8 +76,6 @@ func untrackedFileStat(ctx context.Context, dir, rel string) (lines int, binary 
 	return lines, false, nil
 }
 
-// countTextLines counts lines as git does, a final unterminated line
-// included; a NUL byte makes the content binary.
 func countTextLines(source io.Reader) (int, bool, error) {
 	buffer := make([]byte, readBufferBytes)
 	lines := 0

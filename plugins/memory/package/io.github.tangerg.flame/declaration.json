@@ -35,18 +35,18 @@
       "title": "Agent memory",
       "contribution": "memory-provider",
       "list": {
-        "method": "flame.memory/list.v2",
-        "rows": "Rows",
-        "key": "ID",
+        "method": "flame.memory/list.v3",
+        "rows": "rows",
+        "key": "id",
         "paging": {
-          "input": "Cursor",
-          "output": "NextCursor"
+          "input": "cursor",
+          "output": "nextCursor"
         },
         "input": {
-          "CWD": {
+          "cwd": {
             "context": "workspace"
           },
-          "Scope": {
+          "scope": {
             "form": {
               "title": "Scope",
               "default": {
@@ -58,23 +58,23 @@
         "columns": [
           {
             "title": "Status",
-            "field": "Status"
+            "field": "status"
           },
           {
             "title": "Pinned",
-            "field": "Pinned"
+            "field": "pinned"
           },
           {
             "title": "Origin",
-            "field": "Origin"
+            "field": "origin"
           },
           {
             "title": "Content",
-            "field": "Content"
+            "field": "content"
           },
           {
             "title": "Updated",
-            "field": "UpdatedAt"
+            "field": "updatedAt"
           }
         ]
       },
@@ -82,13 +82,13 @@
         {
           "id": "add",
           "title": "Add memory",
-          "method": "flame.memory/add.v2",
+          "method": "flame.memory/add.v3",
           "target": "view",
           "input": {
-            "CWD": {
+            "cwd": {
               "context": "workspace"
             },
-            "Scope": {
+            "scope": {
               "form": {
                 "title": "Scope",
                 "default": {
@@ -96,7 +96,7 @@
                 }
               }
             },
-            "Content": {
+            "content": {
               "form": {
                 "title": "Content"
               }
@@ -106,20 +106,20 @@
         {
           "id": "edit",
           "title": "Edit",
-          "method": "flame.memory/update.v2",
+          "method": "flame.memory/update.v3",
           "target": "row",
           "input": {
-            "ID": {
-              "row": "ID"
+            "id": {
+              "row": "id"
             },
-            "ExpectedRevision": {
-              "row": "Revision"
+            "expectedRevision": {
+              "row": "revision"
             },
-            "Content": {
+            "content": {
               "form": {
                 "title": "Content",
                 "default": {
-                  "row": "Content"
+                  "row": "content"
                 }
               }
             }
@@ -128,16 +128,16 @@
         {
           "id": "pin",
           "title": "Pin",
-          "method": "flame.memory/update.v2",
+          "method": "flame.memory/update.v3",
           "target": "row",
           "input": {
-            "ID": {
-              "row": "ID"
+            "id": {
+              "row": "id"
             },
-            "ExpectedRevision": {
-              "row": "Revision"
+            "expectedRevision": {
+              "row": "revision"
             },
-            "Pinned": {
+            "pinned": {
               "value": true
             }
           }
@@ -145,16 +145,16 @@
         {
           "id": "unpin",
           "title": "Unpin",
-          "method": "flame.memory/update.v2",
+          "method": "flame.memory/update.v3",
           "target": "row",
           "input": {
-            "ID": {
-              "row": "ID"
+            "id": {
+              "row": "id"
             },
-            "ExpectedRevision": {
-              "row": "Revision"
+            "expectedRevision": {
+              "row": "revision"
             },
-            "Pinned": {
+            "pinned": {
               "value": false
             }
           }
@@ -162,16 +162,16 @@
         {
           "id": "approve",
           "title": "Approve",
-          "method": "flame.memory/review.v2",
+          "method": "flame.memory/review.v3",
           "target": "row",
           "input": {
-            "ID": {
-              "row": "ID"
+            "id": {
+              "row": "id"
             },
-            "ExpectedRevision": {
-              "row": "Revision"
+            "expectedRevision": {
+              "row": "revision"
             },
-            "Decision": {
+            "decision": {
               "value": "approve"
             }
           }
@@ -179,16 +179,16 @@
         {
           "id": "reject",
           "title": "Reject",
-          "method": "flame.memory/review.v2",
+          "method": "flame.memory/review.v3",
           "target": "row",
           "input": {
-            "ID": {
-              "row": "ID"
+            "id": {
+              "row": "id"
             },
-            "ExpectedRevision": {
-              "row": "Revision"
+            "expectedRevision": {
+              "row": "revision"
             },
-            "Decision": {
+            "decision": {
               "value": "reject"
             }
           }
@@ -196,15 +196,15 @@
         {
           "id": "delete",
           "title": "Delete",
-          "method": "flame.memory/delete.v2",
+          "method": "flame.memory/delete.v3",
           "target": "row",
           "confirm": true,
           "input": {
-            "ID": {
-              "row": "ID"
+            "id": {
+              "row": "id"
             },
-            "ExpectedRevision": {
-              "row": "Revision"
+            "expectedRevision": {
+              "row": "revision"
             }
           }
         }

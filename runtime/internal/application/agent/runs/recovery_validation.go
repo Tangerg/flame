@@ -9,16 +9,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
-// validateRecoveryParkedTree checks the complete durable hand-off barrier before
-// boot keeps a Run tree resumable. Pending is root-owned, so its continuations
-// must cover every non-terminal member exactly once.
-//
-// An impossible partial application write is corruption and fails startup. A
-// missing or executor-incompatible checkpoint is an external-resource loss and
-// returns an unresumable verdict naming it, so recovery marks the whole tree
-// run_lost with that reason.
 func validateRecoveryParkedTree(
 	ctx context.Context,
 	tree recoveryRunTree,
@@ -37,9 +30,8 @@ func validateRecoveryParkedTree(
 	}
 
 	rootContinuation, _ := pending.RootContinuation()
-	// Isolated workspaces are process-local scratch copies and are deliberately
-	// never snapshotted. A host restart therefore destroys the world this tree
-	// was parked in even when its executor payload remains decodable.
+	// Isolated workspaces are never snapshotted, so a restart destroys the world the
+	// tree was parked in.
 	if sess.Isolated() {
 		return UnresumableWaiting(run.LossIsolatedWorkspace), nil
 	}
@@ -76,16 +68,15 @@ func validateRecoveryParkedTree(
 	return resumption, nil
 }
 
-// unresumableRecoveredTree loses a tree whose waiting state cannot be read
-// back. The lost Run carries only the Loss; the cause can name paths or payload
-// details, so it goes to the operator log, as the executor probe's does.
+// The cause can name paths or payload details, so it goes to the operator log
+// rather than the Loss.
 func unresumableRecoveredTree(ctx context.Context, tree recoveryRunTree, memberID string, cause error) WaitingResumption {
 	slog.WarnContext(ctx, "runs: waiting Run tree is not resumable",
-		"session.id", tree.root.SessionID(),
-		"run.id", tree.root.ID(),
-		"executor.member.id", memberID,
-		"loss", string(run.LossWaitingStateUnavailable),
-		"error", cause,
+		telemetry.SessionID(tree.root.SessionID()),
+		telemetry.RunID(tree.root.ID()),
+		slog.Any("executor.member.id", memberID),
+		telemetry.RunLoss(string(run.LossWaitingStateUnavailable)),
+		telemetry.Error(cause),
 	)
 	return UnresumableWaiting(run.LossWaitingStateUnavailable)
 }

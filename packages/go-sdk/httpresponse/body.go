@@ -1,5 +1,3 @@
-// Package httpresponse applies finite document and event admission to HTTP
-// response bodies before protocol SDKs decode server-controlled material.
 package httpresponse
 
 import (
@@ -16,10 +14,6 @@ const (
 	DocumentOrEvents
 )
 
-// LimitBody bounds one non-streaming response document or one SSE event. SSE
-// streams may carry arbitrarily many events; their budget resets only at a
-// blank-line event boundary. The caller owns the protocol-specific limit and
-// error vocabulary.
 func LimitBody(response *http.Response, mode BodyMode, maxFrameBytes int64, tooLarge error) {
 	validateFrameLimit(maxFrameBytes, tooLarge)
 	if response == nil || response.Body == nil {
@@ -43,8 +37,6 @@ func validateFrameLimit(maxFrameBytes int64, tooLarge error) {
 	}
 }
 
-// frameAdmission accepts the prefix of each read that fits its current frame.
-// Rejection is final: the body reports tooLarge for every later read.
 type frameAdmission interface {
 	admit(read []byte) (accepted int, ok bool)
 }
@@ -84,8 +76,6 @@ func (d *documentFrame) admit(read []byte) (int, bool) {
 	return len(read), true
 }
 
-// eventScan is the SSE line position. CR, LF and CRLF all terminate a line, so
-// a CR stays pending until the next byte shows whether an LF completes it.
 type eventScan uint8
 
 const (

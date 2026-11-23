@@ -9,20 +9,13 @@ import (
 const ItemsList Name = "items.list"
 
 func registerItems(registry *Registry) {
-	// Either scope can name something that does not exist, and the client's next move
-	// differs — find the session, or find the run — so both refusals are declared.
-	// Asking a run scope for its subtree needs features.childRuns; the scope itself
-	// does not, since a root run is a run.
 	registry.query(MethodMeta{
 		Name: ItemsList, GoName: "ListItems",
 		Errors: []string{protocol.ErrSessionNotFound.
 			Error(), protocol.ErrRunNotFound.
 			Error(),
 		},
-		CapabilityRules: []CapabilityRule{{
-			When:     []FieldCondition{{Field: "scope.includeDescendants", Operator: OperatorPresent}},
-			Requires: []string{protocol.FeatureChildRuns},
-		}},
+		CapabilityRules: descendantsRequireChildRuns("scope." + includeDescendantsParameter),
 	}, func(service interface {
 		ListItems(context.Context, protocol.ListItemsRequest) (*protocol.ListItemsResponse, error)
 	}, ctx context.Context, request protocol.ListItemsRequest) (*protocol.ListItemsResponse, error) {

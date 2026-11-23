@@ -38,8 +38,6 @@ type TrajectoryEvidence struct {
 	Annotations      []annotation.Entry
 }
 
-// ReadTrajectoryExport must read every collection in one transaction and reject
-// resource limits before materializing unbounded stored bodies.
 type trajectoryExportReader interface {
 	ReadTrajectoryExport(context.Context, identity.SessionID) (TrajectoryEvidence, error)
 }

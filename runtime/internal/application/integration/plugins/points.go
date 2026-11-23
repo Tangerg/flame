@@ -28,11 +28,8 @@ type PointBinding struct {
 	Value     framevalue.JSON
 }
 
-// pointSelectionRule names Flame's composition of point values in a Frame selection.
 const pointSelectionRule = "flame-point/1"
 
-// ResolvePoint admits consumer-owned values without executing a backend. Order
-// is an immutable projection supplied by the consuming composition owner.
 func ResolvePoint(ctx context.Context, host framehost.Host, store Store, contract *plugincontract.Point, target plugincontract.PointContext, order []PointReference) ([]PointBinding, error) {
 	if !host.Valid() || contract == nil {
 		return nil, plugin.ErrInvalid
@@ -71,8 +68,6 @@ func ResolvePoint(ctx context.Context, host framehost.Host, store Store, contrac
 	return result, nil
 }
 
-// capturePointComposition composes the point's candidates in the requested
-// order and captures that exact selection as a plan the admission can recheck.
 func capturePointComposition(ctx context.Context, host framehost.Host, contract *plugincontract.Point, order []PointReference) ([]PointBinding, framehost.BindingPlan, error) {
 	point, err := DataPoint(contract)
 	if err != nil {
@@ -116,8 +111,6 @@ func capturePointComposition(ctx context.Context, host framehost.Host, contract 
 	return result, plan, nil
 }
 
-// pointParticipants are the enabled installations that declare the point for
-// this target and the units that provide its values.
 type pointParticipants struct {
 	declarations []plugin.Dependency
 	providers    []framehost.UnitRef

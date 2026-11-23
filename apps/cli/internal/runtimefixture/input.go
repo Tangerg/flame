@@ -7,8 +7,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// PrepareInput supplies deterministic fixture content. Real filesystem bytes
-// and their restart behavior are exercised at the runtimebinding boundary.
 func (*Runtime) PrepareInput(ctx context.Context, message authoring.Message) ([]protocol.ContentBlock, error) {
 	if err := context.Cause(ctx); err != nil {
 		return nil, err

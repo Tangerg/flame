@@ -50,8 +50,6 @@ func (s *SkillGovernance) libraryID(ctx context.Context, root string, scope skil
 	if err != nil {
 		return "", err
 	}
-	// Release replacement may reopen the same installation-private database.
-	// Pending names from the earlier release must remain independently owned.
 	digest := sha256.Sum256([]byte(source.Digest.String() + "\x00" + source.ContributionID.String() + "\x00" + string(scope) + "\x00" + path))
 	return hex.EncodeToString(digest[:]), nil
 }
@@ -64,6 +62,7 @@ func (s *SkillGovernance) selected(ctx context.Context) (plugins.ContributionBin
 	}
 	return binding, err
 }
+
 func (s *SkillGovernance) SubmitProposal(ctx context.Context, root string, p skills.Proposal) (skills.ProposalRef, error) {
 	var zero skills.ProposalRef
 	if err := p.Validate(); err != nil {
@@ -160,6 +159,7 @@ func (s *SkillGovernance) document(ctx context.Context, root, id string) (review
 	doc.record = record
 	return doc, nil
 }
+
 func (s *SkillGovernance) retainedDraft(ctx context.Context, record plugin.CommandBinding) (skilllearning.Draft, error) {
 	var draft skilllearning.Draft
 	propose, e1 := skilllearning.ProposeMethod()
@@ -193,6 +193,7 @@ func (d reviewDocument) proposal() skills.Proposal {
 	v := d.draft
 	return skills.Proposal{Scope: skills.Scope(v.Scope), Name: v.Skill.Name, Description: v.Skill.Description, Instructions: v.Skill.Instructions, Origin: skills.ProposalOrigin(v.Origin), SourceSession: v.SourceSession, Revises: v.Revises}
 }
+
 func (d reviewDocument) review() skills.ProposalReview {
 	p := d.proposal()
 	return skills.ProposalReview{Ref: skills.CommandRef(p.Scope, p.Name, d.record.ID), Description: p.Description, Instructions: p.Instructions, Origin: p.Origin, SourceSession: p.SourceSession, Revises: p.Revises}
@@ -222,12 +223,13 @@ func (s *SkillGovernance) ListProposals(ctx context.Context, root string) ([]ski
 	}
 	return result, nil
 }
-func (s *SkillGovernance) list(ctx context.Context, root string, source plugins.ContributionBinding) ([]skills.ProposalReview, error) {
+
+func (s *SkillGovernance) list(ctx context.Context, root string, source plugins.ContributionBinding) (_ []skills.ProposalReview, returned error) {
 	borrowed, err := borrowContribution(ctx, s.calls.pool, source)
 	if err != nil {
 		return nil, err
 	}
-	defer borrowed.Close()
+	defer func() { returned = errors.Join(returned, borrowed.Close()) }()
 	method, err := skilllearning.QueueMethod()
 	if err != nil {
 		return nil, err
@@ -287,6 +289,7 @@ func reviewMutation[P, R any](ctx context.Context, s *SkillGovernance, doc revie
 	reply, err := invokeResolvedCommand[P, R](child, s.calls, method.Name(), input, nil, func(ctx context.Context) (plugins.ContributionBinding, error) { return doc.source, nil }, nil)
 	return reply.value, reviewError(err)
 }
+
 func (s *SkillGovernance) RejectProposal(ctx context.Context, root string, ref skills.ProposalRef) error {
 	doc, err := s.admitted(ctx, root, ref)
 	if err != nil {
@@ -302,6 +305,7 @@ func (s *SkillGovernance) RejectProposal(ctx context.Context, root string, ref s
 	}
 	return err
 }
+
 func (s *SkillGovernance) ApproveProposal(ctx context.Context, root string, ref skills.ProposalRef) ([]string, error) {
 	doc, err := s.admitted(ctx, root, ref)
 	if err != nil {
@@ -339,8 +343,6 @@ func (s *SkillGovernance) ApproveProposal(ctx context.Context, root string, ref 
 	return changed, errors.Join(publishErr, err)
 }
 
-// sameApproval proves the human approval names this exact review of this
-// proposal by its owner.
 func sameApproval(record plugin.CommandBinding, doc reviewDocument, method string, reference skilllearning.ReviewRef) error {
 	var original skilllearning.ReviewRef
 	if err := json.Unmarshal(record.Input.Bytes(), &original); err != nil {
@@ -352,8 +354,6 @@ func sameApproval(record plugin.CommandBinding, doc reviewDocument, method strin
 	return nil
 }
 
-// publishApproved writes the approved bytes while both the proposal and its
-// approval still hold dispatch admission.
 func (s *SkillGovernance) publishApproved(ctx context.Context, root string, doc reviewDocument, approval plugin.CommandBinding, decision string) ([]string, error) {
 	var changed []string
 	err := s.calls.framework.Admission().Admit(ctx, func(ctx context.Context) error {
@@ -370,14 +370,14 @@ func (s *SkillGovernance) publishApproved(ctx context.Context, root string, doc 
 	return changed, err
 }
 
-// publicationRefused names the outcomes a confirmation still records: the
-// library declined the bytes rather than failing to answer.
 func publicationRefused(err error) bool {
 	return errors.Is(err, skills.ErrProposalChanged) || errors.Is(err, skills.ErrConflict) || errors.Is(err, skills.ErrLibraryCapacity)
 }
+
 func (s *SkillGovernance) changed() {
 	s.calls.publish.Notify(invalidation.Notice{Resource: invalidation.Skills})
 }
+
 func reviewError(err error) error {
 	if refusal, ok := errors.AsType[*framecall.Refusal](err); ok && refusal.Code == skilllearning.StaleReview {
 		return errors.Join(skills.ErrProposalChanged, err)

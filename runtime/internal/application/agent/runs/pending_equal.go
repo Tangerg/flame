@@ -2,9 +2,6 @@ package runs
 
 import "slices"
 
-// Equal reports whether two Pending values describe the same durable tree
-// hand-off. Empty collections compare equal whatever their backing, and the
-// creation time compares by instant rather than location.
 func (p Pending) Equal(other Pending) bool {
 	return p.RootRunID == other.RootRunID &&
 		p.ExecutorID == other.ExecutorID &&

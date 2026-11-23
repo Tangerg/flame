@@ -2,6 +2,7 @@ package pluginservices
 
 import (
 	"context"
+	"encoding/json/jsontext"
 	"errors"
 	"iter"
 	"sync"
@@ -69,8 +70,6 @@ func (a *observedContinuation) finish(response *chat.Response, failure error) {
 	a.state = settledContinuation
 }
 
-// Inspect after the continuation grant joins. An observer's acknowledgement
-// can fail the composition but cannot change the model's execution evidence.
 func (a *observedContinuation) outcome(observerErr error) (*chat.Response, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -96,8 +95,6 @@ func (a *observedContinuation) outcome(observerErr error) (*chat.Response, error
 	}
 }
 
-// notExecuted reports a provider exchange refused before anything was sent, so
-// the call has no effect to reconcile.
 func notExecuted(cause error) error {
 	return &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: cause}
 }
@@ -135,8 +132,6 @@ func (a *observedContinuation) relay(ctx context.Context, stream iter.Seq2[*chat
 		if !yield(chunk.delta.Clone(), nil) {
 			return
 		}
-		// Writing to the observer's callback does not establish consumption
-		// by the waiting caller at the other end of the chain.
 		select {
 		case <-chunk.acknowledged:
 		case <-ctx.Done():
@@ -178,4 +173,25 @@ func (a *observedContinuation) acknowledgeChunk(chunk *observedChunk) {
 	defer a.mu.Unlock()
 	a.pending = nil
 	close(chunk.acknowledged)
+}
+
+func (a *observedContinuation) forward(values iter.Seq2[pluginmcp.StreamValue[jsontext.Value, jsontext.Value], error], yield func(*chat.ResponseDelta, error) bool) (consumed bool, err error) {
+	for value, err := range values {
+		if err != nil {
+			return true, err
+		}
+		encoded, isChunk := value.Chunk()
+		if !isChunk {
+			continue
+		}
+		chunk, err := a.matchChunk(encoded)
+		if err != nil {
+			return true, err
+		}
+		if !yield(chunk.delta.Clone(), nil) {
+			return false, nil
+		}
+		a.acknowledgeChunk(chunk)
+	}
+	return true, nil
 }

@@ -18,16 +18,11 @@ type deletionRuntime interface {
 	GetSession(context.Context, string) (conversation.SessionSnapshot, error)
 }
 
-// DeletionResult binds settlement to the exact durable runtime command.
 type DeletionResult struct {
 	Request conversation.DeleteSession
 	Outcome mutation.Outcome
 }
 
-// Delete stages or resumes one deletion intent, then converges its runtime
-// outcome without modifying local authoring state. The caller must apply the
-// returned result at its presentation boundary with ConfirmDeletion or
-// RejectDeletion.
 func Delete(
 	ctx context.Context,
 	runtime deletionRuntime,
@@ -43,7 +38,7 @@ func Delete(
 		return DeletionResult{}, err
 	}
 	pending, exists := authoring.PendingSessionDeletion(sessionID)
-	if exists && pending.Phase == workbench.SessionDeletionConfirmed {
+	if exists && pending.Phase == workbench.CommandConfirmed {
 		return DeletionResult{Request: pending.Request(), Outcome: mutation.Confirmed}, nil
 	}
 	request := pending.Request()
@@ -70,9 +65,6 @@ func Delete(
 	return DeletionResult{Request: request, Outcome: outcome}, err
 }
 
-// settleDeletion observes the authoritative runtime outcome. A successful
-// delete may still return a post-commit cleanup error, so an authoritative
-// not-found read confirms a missing acknowledgement.
 func settleDeletion(
 	ctx context.Context,
 	runtime deletionRuntime,
@@ -116,22 +108,18 @@ func settleDeletion(
 	return mutation.Rejected, err
 }
 
-// ConfirmDeletion upgrades a prepared command to a durable tombstone and retires all
-// local state. It is idempotent for an already-confirmed cleanup record.
 func ConfirmDeletion(authoring *workbench.Store, result DeletionResult) error {
 	pending, exists := authoring.PendingSessionDeletion(result.Request.SessionID)
-	if exists && pending.Phase == workbench.SessionDeletionPrepared {
+	if exists && pending.Phase == workbench.CommandPrepared {
 		return authoring.ConfirmSessionDeletion(result.Request.SessionID, result.Request.CommandID)
 	}
 	return authoring.RetireSessionState(result.Request.SessionID)
 }
 
-// RejectDeletion removes only the exact prepared intent after a definitive refusal.
 func RejectDeletion(authoring *workbench.Store, result DeletionResult) error {
 	return authoring.RejectSessionDeletion(result.Request.SessionID, result.Request.CommandID)
 }
 
-// RecoverDeletions settles every journal before any session draft is made visible.
 func RecoverDeletions(
 	ctx context.Context,
 	runtime deletionRuntime,
@@ -140,7 +128,7 @@ func RecoverDeletions(
 	backoff retry.Backoff,
 ) error {
 	for _, pending := range authoring.PendingSessionDeletions() {
-		if pending.Phase == workbench.SessionDeletionConfirmed {
+		if pending.Phase == workbench.CommandConfirmed {
 			if err := authoring.RetireSessionState(pending.SessionID); err != nil {
 				return err
 			}

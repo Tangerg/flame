@@ -21,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	plandomain "github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -95,7 +96,7 @@ func TestActiveGoalAndPlanStayCurrentAcrossLongRunCompaction(t *testing.T) {
 	}
 	if durableGoal.Objective() != goalAcrossCompactionObjective ||
 		string(durableGoal.Status()) != string(protocol.GoalActive) ||
-		durableGoal.IncarnationID() == "" {
+		durableGoal.IncarnationID().IsZero() {
 		t.Fatalf("durable active Goal = %+v", durableGoal)
 	}
 	settlementCtx, cancel := context.WithTimeout(ctx, lifecycleWaitBudget(t))
@@ -171,7 +172,7 @@ func newSessionStateE2ERuntime(
 	t.Helper()
 	home := testsupport.TempDirectory(t)
 	t.Setenv("FLAME_HOME", home)
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,8 +276,6 @@ func (g *goalAndPlanLongContextModel) Call(
 		g.summaryCalls++
 		g.summaryAtMainCalls = append(g.summaryAtMainCalls, g.mainCalls)
 		g.mu.Unlock()
-		// Deliberately omit Goal and Plan from the model-authored summary. Their
-		// exact current values must come from the replaceable Session-state owner.
 		return completedTextResponse("## Progress\nThe long autonomous Tool loop reached its context boundary."), nil
 	}
 	g.mainCalls++
@@ -445,9 +444,6 @@ func toolCallResponse(call chat.ToolCall, text ...string) *chat.Response {
 	}}
 }
 
-// A Plan change mid-Run must not rewrite any message a provider has already
-// cached: current Session state rides only each call's tail, after the
-// conversation, and the context before that tail only ever grows.
 func TestPlanChangeKeepsEveryEarlierMessageACachePrefix(t *testing.T) {
 	model := &prefixRecordingPlanModel{}
 	stores, api, ctx, home := newSessionStateE2ERuntime(t, model)
@@ -489,8 +485,6 @@ func TestPlanChangeKeepsEveryEarlierMessageACachePrefix(t *testing.T) {
 	}
 }
 
-// splitRuntimeTail separates the trailing Runtime-authored state and catalog
-// messages from the conversation they follow.
 func splitRuntimeTail(messages []chat.Message) (context, tail []chat.Message) {
 	end := len(messages)
 	for end > 0 {

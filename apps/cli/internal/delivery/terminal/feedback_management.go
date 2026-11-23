@@ -5,12 +5,11 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// feedbackScreens rates the latest assistant response through the Runtime's
-// feedback port.
 type feedbackScreens struct {
 	screenHost
 	service Feedback
@@ -47,10 +46,10 @@ func (f *feedbackScreens) RecordFeedback(argument string) error {
 			} else if recorded.RunID != "" {
 				target = "run " + shortIdentity(recorded.RunID)
 			}
-			f.message("feedback recorded · " + string(recorded.Rating) + " · " + target)
+			f.message("feedback recorded · " + string(recorded.Rating) + format.Separator + target)
 		},
 	) {
-		return errors.New("another feedback operation is running")
+		return feedbackOperation.busy()
 	}
 	return nil
 }

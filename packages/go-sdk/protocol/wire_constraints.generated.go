@@ -135,7 +135,7 @@ func (s StartRunRequest) validateWire() error {
 		maxLength("model", s.Model, 256),
 		identity("reasoningEffort", s.ReasoningEffort),
 		maxLength("reasoningEffort", s.ReasoningEffort, 32),
-		requiredAnyWhen(true, []string{"sessionId", "newSession"}, s),
+		requiredAny([]string{"sessionId", "newSession"}, s),
 		forbiddenWhen(wireFieldPresent(s, "newSession"), "sessionId", s),
 		requiredWhen(wireFieldPresent(s, "provider"), "model", s),
 		requiredWhen(wireFieldPresent(s, "model"), "provider", s),
@@ -617,7 +617,7 @@ func (f FeedbackRequest) validateWire() error {
 		maxLength("itemId", f.ItemID, 256),
 		optionalTextPattern("text", f.Text, "\\S"),
 		closedEnum("rating", string(f.Rating), []string{"positive", "negative"}, true),
-		requiredAnyWhen(true, []string{"rating", "text"}, f),
+		requiredAny([]string{"rating", "text"}, f),
 	)
 }
 
@@ -1846,7 +1846,7 @@ func (m ModelEndpointInvocation) validateWire() error {
 		maxLength("sessionId", m.SessionID, 256),
 		identity("runId", m.RunID),
 		maxLength("runId", m.RunID, 256),
-		optionalNonNegativeNumber("costUSD", m.CostUSD),
+		optionalNonNegativeNumber("costUsd", m.CostUSD),
 		identity("id", m.ID),
 		requiredText("id", m.ID),
 		requiredText("provider", m.Provider),
@@ -1858,7 +1858,7 @@ func (m ModelEndpointInvocation) validateWire() error {
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "settledAt", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "response", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "started"), "failure", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "started"), "costUSD", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "started"), "costUsd", m),
 		requiredWhen(wireFieldEquals(m, "state", "completed"), "settledAt", m),
 		requiredWhen(wireFieldEquals(m, "state", "completed"), "response", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "completed"), "failure", m),
@@ -1868,7 +1868,7 @@ func (m ModelEndpointInvocation) validateWire() error {
 		requiredWhen(wireFieldEquals(m, "state", "unknown"), "settledAt", m),
 		requiredWhen(wireFieldEquals(m, "state", "unknown"), "failure", m),
 		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "response", m),
-		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "costUSD", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "costUsd", m),
 	)
 }
 
@@ -1934,7 +1934,7 @@ func (m ModelTokenLimits) validateWire() error {
 		optionalPositiveNumber("contextWindow", m.ContextWindow),
 		optionalPositiveNumber("maxInputTokens", m.MaxInputTokens),
 		optionalPositiveNumber("maxOutputTokens", m.MaxOutputTokens),
-		requiredAnyWhen(true, []string{"contextWindow", "maxInputTokens", "maxOutputTokens"}, m),
+		requiredAny([]string{"contextWindow", "maxInputTokens", "maxOutputTokens"}, m),
 	)
 }
 
@@ -1942,7 +1942,7 @@ func (r RunProgress) validateWire() error {
 	return collectWireViolations("RunProgress",
 		optionalNonNegativeNumber("step", r.Step),
 		optionalNonNegativeNumber("contextTokens", r.ContextTokens),
-		requiredAnyWhen(true, []string{"step", "usage", "contextTokens", "activity"}, r),
+		requiredAny([]string{"step", "usage", "contextTokens", "activity"}, r),
 	)
 }
 
@@ -1957,7 +1957,112 @@ func (r RunEvent) validateWire() error {
 		identity("eventId", r.EventID),
 		requiredTextPrefix("eventId", r.EventID, "evt_"),
 		maxLength("eventId", r.EventID, 65540),
-		requiredWhen(true, "timestamp", r),
+		required("timestamp", r),
+	)
+}
+
+func (r RunSummary) validateWire() error {
+	return collectWireViolations("RunSummary",
+		requiredText("id", r.ID),
+		identity("id", r.ID),
+		maxLength("id", r.ID, 256),
+		requiredText("sessionId", r.SessionID),
+		identity("sessionId", r.SessionID),
+		maxLength("sessionId", r.SessionID, 256),
+		identity("spawnedByItemId", r.SpawnedByItemID),
+		maxLength("spawnedByItemId", r.SpawnedByItemID, 256),
+		identity("parentRunId", r.ParentRunID),
+		maxLength("parentRunId", r.ParentRunID, 256),
+		identity("rootRunId", r.RootRunID),
+		maxLength("rootRunId", r.RootRunID, 256),
+		requiredText("provider", r.Provider),
+		requiredText("model", r.Model),
+		identity("provider", r.Provider),
+		maxLength("provider", r.Provider, 64),
+		identity("model", r.Model),
+		maxLength("model", r.Model, 256),
+		identity("reasoningEffort", r.ReasoningEffort),
+		maxLength("reasoningEffort", r.ReasoningEffort, 32),
+		closedEnum("status", string(r.Status), []string{"running", "waiting", "finished"}, false),
+		required("provider", r),
+		required("model", r),
+		required("createdAt", r),
+		requiredWhen(wireFieldEquals(r, "status", "finished"), "outcome", r),
+		requiredWhen(wireFieldEquals(r, "status", "finished"), "finishedAt", r),
+		forbiddenWhen(wireFieldEquals(r, "status", "running"), "outcome", r),
+		forbiddenWhen(wireFieldEquals(r, "status", "running"), "finishedAt", r),
+		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "outcome", r),
+		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "finishedAt", r),
+		requiredWhen(wireFieldPresent(r, "spawnedByItemId"), "parentRunId", r),
+		requiredWhen(wireFieldPresent(r, "spawnedByItemId"), "rootRunId", r),
+		requiredWhen(wireFieldPresent(r, "parentRunId"), "spawnedByItemId", r),
+		requiredWhen(wireFieldPresent(r, "parentRunId"), "rootRunId", r),
+		requiredWhen(wireFieldPresent(r, "rootRunId"), "spawnedByItemId", r),
+		requiredWhen(wireFieldPresent(r, "rootRunId"), "parentRunId", r),
+	)
+}
+
+func (r RunRef) validateWire() error {
+	return collectWireViolations("RunRef",
+		identity("activeSegmentId", r.ActiveSegmentID),
+		maxLength("activeSegmentId", r.ActiveSegmentID, 256),
+		nonNegativeNumber("contextTokens", r.ContextTokens),
+		requiredText("id", r.ID),
+		identity("id", r.ID),
+		maxLength("id", r.ID, 256),
+		requiredText("sessionId", r.SessionID),
+		identity("sessionId", r.SessionID),
+		maxLength("sessionId", r.SessionID, 256),
+		identity("spawnedByItemId", r.SpawnedByItemID),
+		maxLength("spawnedByItemId", r.SpawnedByItemID, 256),
+		identity("parentRunId", r.ParentRunID),
+		maxLength("parentRunId", r.ParentRunID, 256),
+		identity("rootRunId", r.RootRunID),
+		maxLength("rootRunId", r.RootRunID, 256),
+		requiredText("provider", r.Provider),
+		requiredText("model", r.Model),
+		identity("provider", r.Provider),
+		maxLength("provider", r.Provider, 64),
+		identity("model", r.Model),
+		maxLength("model", r.Model, 256),
+		identity("reasoningEffort", r.ReasoningEffort),
+		maxLength("reasoningEffort", r.ReasoningEffort, 32),
+		closedEnum("status", string(r.Status), []string{"running", "waiting", "finished"}, false),
+		required("provider", r),
+		required("model", r),
+		required("createdAt", r),
+		requiredWhen(wireFieldEquals(r, "status", "finished"), "outcome", r),
+		requiredWhen(wireFieldEquals(r, "status", "finished"), "finishedAt", r),
+		forbiddenWhen(wireFieldEquals(r, "status", "running"), "outcome", r),
+		forbiddenWhen(wireFieldEquals(r, "status", "running"), "finishedAt", r),
+		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "outcome", r),
+		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "finishedAt", r),
+		requiredWhen(wireFieldPresent(r, "spawnedByItemId"), "parentRunId", r),
+		requiredWhen(wireFieldPresent(r, "spawnedByItemId"), "rootRunId", r),
+		requiredWhen(wireFieldPresent(r, "parentRunId"), "spawnedByItemId", r),
+		requiredWhen(wireFieldPresent(r, "parentRunId"), "rootRunId", r),
+		requiredWhen(wireFieldPresent(r, "rootRunId"), "spawnedByItemId", r),
+		requiredWhen(wireFieldPresent(r, "rootRunId"), "parentRunId", r),
+		requiredWhen(wireFieldEquals(r, "status", "running"), "activeSegmentId", r),
+		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "activeSegmentId", r),
+		forbiddenWhen(wireFieldEquals(r, "status", "finished"), "activeSegmentId", r),
+		forbiddenWhen(wireFieldPresent(r, "spawnedByItemId"), "capabilities", r),
+	)
+}
+
+func (p PendingInterruptSet) validateWire() error {
+	return collectWireViolations("PendingInterruptSet",
+		requiredText("rootRunId", p.RootRunID),
+		identity("rootRunId", p.RootRunID),
+		maxLength("rootRunId", p.RootRunID, 256),
+		requiredText("sessionId", p.SessionID),
+		identity("sessionId", p.SessionID),
+		maxLength("sessionId", p.SessionID, 256),
+		requiredItems("interrupts", p.Interrupts),
+		required("rootRunId", p),
+		required("sessionId", p),
+		required("interrupts", p),
+		required("createdAt", p),
 	)
 }
 
@@ -1977,8 +2082,8 @@ func (s Session) validateWire() error {
 		positiveNumber("revision", s.Revision),
 		maximumNumber("revision", s.Revision, 9007199254740991),
 		closedEnum("status", string(s.Status), []string{"running", "waiting", "idle"}, false),
-		requiredWhen(true, "createdAt", s),
-		requiredWhen(true, "updatedAt", s),
+		required("createdAt", s),
+		required("updatedAt", s),
 	)
 }
 
@@ -1986,7 +2091,7 @@ func (p PlanState) validateWire() error {
 	return collectWireViolations("PlanState",
 		positiveNumber("revision", p.Revision),
 		maximumNumber("revision", p.Revision, 9007199254740991),
-		requiredWhen(true, "updatedAt", p),
+		required("updatedAt", p),
 	)
 }
 
@@ -1998,7 +2103,7 @@ func (h HookInfo) validateWire() error {
 		closedEnum("event", string(h.Event), []string{"PreToolUse", "PostToolUse", "UserPromptSubmit", "SessionStart", "PreCompact", "Stop", "Notification"}, false),
 		closedEnum("failurePolicy", string(h.FailurePolicy), []string{"advisory", "required"}, true),
 		closedEnum("scope", string(h.Scope), []string{"global", "project"}, false),
-		requiredAnyWhen(true, []string{"command", "inject"}, h),
+		requiredAny([]string{"command", "inject"}, h),
 		requiredWhen(wireFieldPresent(h, "command"), "failurePolicy", h),
 		forbiddenWhen(wireFieldPresent(h, "command"), "inject", h),
 		forbiddenWhen(wireFieldPresent(h, "inject"), "command", h),
@@ -2113,8 +2218,8 @@ func (g Goal) validateWire() error {
 		identity("reasoningEffort", g.ReasoningEffort),
 		maxLength("reasoningEffort", g.ReasoningEffort, 32),
 		closedEnum("status", string(g.Status), []string{"active", "paused", "blocked", "completing"}, false),
-		requiredWhen(true, "createdAt", g),
-		requiredWhen(true, "updatedAt", g),
+		required("createdAt", g),
+		required("updatedAt", g),
 		forbiddenWhen(wireFieldEquals(g, "status", "active"), "reason", g),
 		forbiddenWhen(wireFieldEquals(g, "status", "completing"), "reason", g),
 		requiredWhen(wireFieldEquals(g, "status", "paused"), "reason", g),
@@ -2149,117 +2254,12 @@ func (g GoalReason) validateWire() error {
 func (m MCPAuthorizationAttempt) validateWire() error {
 	return collectWireViolations("MCPAuthorizationAttempt",
 		requiredTextPattern("id", m.ID, "^mcpauth_[A-Z2-7]{26,64}$"),
-		requiredWhen(true, "createdAt", m),
+		required("createdAt", m),
 		forbiddenWhen(wireFieldEquals(m, "status.type", "pending"), "finishedAt", m),
 		requiredWhen(wireFieldEquals(m, "status.type", "succeeded"), "finishedAt", m),
 		requiredWhen(wireFieldEquals(m, "status.type", "failed"), "finishedAt", m),
 		requiredWhen(wireFieldEquals(m, "status.type", "unconfirmed"), "finishedAt", m),
 		requiredWhen(wireFieldEquals(m, "status.type", "canceled"), "finishedAt", m),
-	)
-}
-
-func (r RunSummary) validateWire() error {
-	return collectWireViolations("RunSummary",
-		requiredText("id", r.ID),
-		identity("id", r.ID),
-		maxLength("id", r.ID, 256),
-		requiredText("sessionId", r.SessionID),
-		identity("sessionId", r.SessionID),
-		maxLength("sessionId", r.SessionID, 256),
-		identity("spawnedByItemId", r.SpawnedByItemID),
-		maxLength("spawnedByItemId", r.SpawnedByItemID, 256),
-		identity("parentRunId", r.ParentRunID),
-		maxLength("parentRunId", r.ParentRunID, 256),
-		identity("rootRunId", r.RootRunID),
-		maxLength("rootRunId", r.RootRunID, 256),
-		requiredText("provider", r.Provider),
-		requiredText("model", r.Model),
-		identity("provider", r.Provider),
-		maxLength("provider", r.Provider, 64),
-		identity("model", r.Model),
-		maxLength("model", r.Model, 256),
-		identity("reasoningEffort", r.ReasoningEffort),
-		maxLength("reasoningEffort", r.ReasoningEffort, 32),
-		closedEnum("status", string(r.Status), []string{"running", "waiting", "finished"}, false),
-		requiredWhen(true, "provider", r),
-		requiredWhen(true, "model", r),
-		requiredWhen(true, "createdAt", r),
-		requiredWhen(wireFieldEquals(r, "status", "finished"), "outcome", r),
-		requiredWhen(wireFieldEquals(r, "status", "finished"), "finishedAt", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "running"), "outcome", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "running"), "finishedAt", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "outcome", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "finishedAt", r),
-		requiredWhen(wireFieldPresent(r, "spawnedByItemId"), "parentRunId", r),
-		requiredWhen(wireFieldPresent(r, "spawnedByItemId"), "rootRunId", r),
-		requiredWhen(wireFieldPresent(r, "parentRunId"), "spawnedByItemId", r),
-		requiredWhen(wireFieldPresent(r, "parentRunId"), "rootRunId", r),
-		requiredWhen(wireFieldPresent(r, "rootRunId"), "spawnedByItemId", r),
-		requiredWhen(wireFieldPresent(r, "rootRunId"), "parentRunId", r),
-	)
-}
-
-func (r RunRef) validateWire() error {
-	return collectWireViolations("RunRef",
-		identity("activeSegmentId", r.ActiveSegmentID),
-		maxLength("activeSegmentId", r.ActiveSegmentID, 256),
-		nonNegativeNumber("contextTokens", r.ContextTokens),
-		requiredText("id", r.ID),
-		identity("id", r.ID),
-		maxLength("id", r.ID, 256),
-		requiredText("sessionId", r.SessionID),
-		identity("sessionId", r.SessionID),
-		maxLength("sessionId", r.SessionID, 256),
-		identity("spawnedByItemId", r.SpawnedByItemID),
-		maxLength("spawnedByItemId", r.SpawnedByItemID, 256),
-		identity("parentRunId", r.ParentRunID),
-		maxLength("parentRunId", r.ParentRunID, 256),
-		identity("rootRunId", r.RootRunID),
-		maxLength("rootRunId", r.RootRunID, 256),
-		requiredText("provider", r.Provider),
-		requiredText("model", r.Model),
-		identity("provider", r.Provider),
-		maxLength("provider", r.Provider, 64),
-		identity("model", r.Model),
-		maxLength("model", r.Model, 256),
-		identity("reasoningEffort", r.ReasoningEffort),
-		maxLength("reasoningEffort", r.ReasoningEffort, 32),
-		closedEnum("status", string(r.Status), []string{"running", "waiting", "finished"}, false),
-		requiredWhen(true, "provider", r),
-		requiredWhen(true, "model", r),
-		requiredWhen(true, "createdAt", r),
-		requiredWhen(wireFieldEquals(r, "status", "finished"), "outcome", r),
-		requiredWhen(wireFieldEquals(r, "status", "finished"), "finishedAt", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "running"), "outcome", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "running"), "finishedAt", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "outcome", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "finishedAt", r),
-		requiredWhen(wireFieldPresent(r, "spawnedByItemId"), "parentRunId", r),
-		requiredWhen(wireFieldPresent(r, "spawnedByItemId"), "rootRunId", r),
-		requiredWhen(wireFieldPresent(r, "parentRunId"), "spawnedByItemId", r),
-		requiredWhen(wireFieldPresent(r, "parentRunId"), "rootRunId", r),
-		requiredWhen(wireFieldPresent(r, "rootRunId"), "spawnedByItemId", r),
-		requiredWhen(wireFieldPresent(r, "rootRunId"), "parentRunId", r),
-		requiredWhen(wireFieldEquals(r, "status", "running"), "activeSegmentId", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "activeSegmentId", r),
-		forbiddenWhen(wireFieldEquals(r, "status", "finished"), "activeSegmentId", r),
-		forbiddenWhen(wireFieldPresent(r, "spawnedByItemId"), "capabilities", r),
-	)
-}
-
-func (p PendingInterruptSet) validateWire() error {
-	return collectWireViolations("PendingInterruptSet",
-		requiredText("rootRunId", p.RootRunID),
-		identity("rootRunId", p.RootRunID),
-		maxLength("rootRunId", p.RootRunID, 256),
-		requiredText("sessionId", p.SessionID),
-		identity("sessionId", p.SessionID),
-		maxLength("sessionId", p.SessionID, 256),
-		requiredItems("interrupts", p.Interrupts),
-		requiredWhen(true, "rootRunId", p),
-		requiredWhen(true, "sessionId", p),
-		requiredWhen(true, "interrupts", p),
-		requiredWhen(true, "createdAt", p),
 	)
 }
 
@@ -2286,9 +2286,9 @@ func (a ArtifactRun) validateWire() error {
 		identity("reasoningEffort", a.ReasoningEffort),
 		maxLength("reasoningEffort", a.ReasoningEffort, 32),
 		nonNegativeNumber("contextTokens", a.ContextTokens),
-		requiredWhen(true, "createdAt", a),
-		requiredWhen(true, "finishedAt", a),
-		requiredWhen(true, "updatedAt", a),
+		required("createdAt", a),
+		required("finishedAt", a),
+		required("updatedAt", a),
 		forbiddenWhen(wireFieldPresent(a, "spawnedByItemId"), "capabilities", a),
 		forbiddenWhen(wireFieldPresent(a, "spawnedByItemId"), "messageMark", a),
 		requiredWhen(wireFieldPresent(a, "spawnedByItemId"), "parentRunId", a),
@@ -2313,8 +2313,8 @@ func (a ArtifactSession) validateWire() error {
 		maxLength("model", a.Model, 256),
 		identity("reasoningEffort", a.ReasoningEffort),
 		maxLength("reasoningEffort", a.ReasoningEffort, 32),
-		requiredWhen(true, "createdAt", a),
-		requiredWhen(true, "updatedAt", a),
+		required("createdAt", a),
+		required("updatedAt", a),
 	)
 }
 
@@ -2325,7 +2325,7 @@ func (a ArtifactToolResult) validateWire() error {
 		requiredText("itemId", a.ItemID),
 		identity("itemId", a.ItemID),
 		maxLength("itemId", a.ItemID, 256),
-		requiredWhen(true, "createdAt", a),
+		required("createdAt", a),
 	)
 }
 
@@ -2347,7 +2347,7 @@ func (a ArtifactProblem) validateWire() error {
 
 func (c CallPluginResponse) validateWire() error {
 	return collectWireViolations("CallPluginResponse",
-		requiredAnyWhen(true, []string{"output", "failure"}, c),
+		requiredAny([]string{"output", "failure"}, c),
 		forbiddenWhen(wireFieldPresent(c, "failure"), "output", c),
 	)
 }
@@ -3149,5 +3149,11 @@ func (s SessionUsage) validateWire() error {
 func (t ToolSpec) validateWire() error {
 	return collectWireViolations("ToolSpec",
 		closedEnum("safetyClass", string(t.SafetyClass), []string{"safe", "write", "exec", "network"}, true),
+	)
+}
+
+func (u UnresolvedEffect) validateWire() error {
+	return collectWireViolations("UnresolvedEffect",
+		closedEnum("cause", string(u.Cause), []string{"termination", "runtimeFailure"}, false),
 	)
 }

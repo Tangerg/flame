@@ -3,17 +3,13 @@ package delivery
 import (
 	"context"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
-
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
 
-// SessionUsage projects the application-owned session usage report onto the
-// usage.session wire contract.
 func (s *Handler) SessionUsage(ctx context.Context, id string) (*protocol.SessionUsage, error) {
-	sessionID, err := wireIdentity("sessionId", id, identity.ParseSession)
+	sessionID, err := sessionParameter(id)
 	if err != nil {
 		return nil, err
 	}
@@ -24,8 +20,6 @@ func (s *Handler) SessionUsage(ctx context.Context, id string) (*protocol.Sessio
 	return presentSessionUsage(report), nil
 }
 
-// UsageSummary projects the application-owned aggregate usage report onto the
-// usage.summary wire contract.
 func (s *Handler) UsageSummary(ctx context.Context, in protocol.UsageSummaryRequest) (*protocol.UsageSummary, error) {
 	period := sessions.AllTimeUsage()
 	if in.SinceDays != nil {

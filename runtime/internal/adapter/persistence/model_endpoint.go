@@ -48,6 +48,7 @@ func storeEndpointInvocation(value modelref.EndpointInvocation) storedEndpointIn
 	}
 	return stored
 }
+
 func (s storedEndpointInvocation) invocation() (modelref.EndpointInvocation, error) {
 	value := modelref.EndpointInvocation{ID: s.ID, Caller: s.Caller, Provider: s.Provider, Model: s.Model, SessionID: s.SessionID, StartedAt: s.StartedAt}
 	switch {
@@ -60,6 +61,7 @@ func (s storedEndpointInvocation) invocation() (modelref.EndpointInvocation, err
 	}
 	return value, nil
 }
+
 func encodeEndpointInvocation(value modelref.EndpointInvocation) ([]byte, error) {
 	data, err := encodeStoredJSON(storeEndpointInvocation(value))
 	if err != nil {
@@ -71,6 +73,7 @@ func encodeEndpointInvocation(value modelref.EndpointInvocation) ([]byte, error)
 	}
 	return []byte(input.String()), nil
 }
+
 func encodeEndpointOutcome(outcome modelref.EndpointOutcome) (*string, error) {
 	var response any
 	switch known := outcome.Response.(type) {
@@ -92,8 +95,6 @@ func encodeEndpointOutcome(outcome modelref.EndpointOutcome) (*string, error) {
 	return new(value.String()), nil
 }
 
-// Caller IDs and wire parents describe ancestry, not execution authority. The
-// explicit logical owner supplies a frozen association; absence means no Run.
 func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation, ownerCallID string) error {
 	return m.db.write(ctx, func(ctx context.Context) error {
 		if err := invocation.Validate(); err != nil {
@@ -151,6 +152,7 @@ func (m *ModelInvocationStore) StartEndpointInvocation(ctx context.Context, invo
 		return nil
 	})
 }
+
 func (m *ModelInvocationStore) SettleEndpointInvocation(ctx context.Context, invocation modelref.EndpointInvocation, outcome modelref.EndpointOutcome) error {
 	return m.db.write(ctx, func(ctx context.Context) error {
 		state, err := outcome.State(invocation)
@@ -229,8 +231,6 @@ func (m *ModelInvocationStore) PageEndpointInvocations(ctx context.Context, pare
 	})
 }
 
-// storedEndpointRequest keeps the exact request bytes an invocation stored, so
-// the observation reproduces them without re-encoding.
 type storedEndpointRequest struct {
 	Request   jsontext.Value `json:"request"`
 	Embedding jsontext.Value `json:"embedding"`
@@ -255,7 +255,6 @@ func decodeEndpointInvocation(encoded []byte, value *modelref.EndpointRecord) er
 	if value.Invocation, err = admission.invocation(); err != nil {
 		return err
 	}
-	// The strict decode above owns the shape; this pass only keeps raw bytes.
 	var request storedEndpointRequest
 	if err := json.Unmarshal(encoded, &request); err != nil {
 		return err
@@ -303,6 +302,7 @@ func scanEndpointObservation(row scanRow) (modelref.EndpointObservation, error) 
 	}
 	return modelref.RestoreEndpointObservation(value)
 }
+
 func (m *ModelInvocationStore) ReconcileEndpointInvocations(ctx context.Context, settledAt time.Time) error {
 	return m.db.write(ctx, func(ctx context.Context) error {
 		if err := instant.Validate(settledAt); err != nil {
@@ -312,6 +312,7 @@ func (m *ModelInvocationStore) ReconcileEndpointInvocations(ctx context.Context,
 		return err
 	})
 }
+
 func (m *ModelInvocationStore) EndpointForCaller(ctx context.Context, caller string) (modelref.EndpointObservation, bool, error) {
 	return scopedPair(ctx, m.db.read, func(ctx context.Context) (modelref.EndpointObservation, bool, error) {
 		row := m.db.connection(ctx).QueryRowContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND json_extract(endpoint_json,'$.caller.id')=?`, caller)
@@ -323,8 +324,6 @@ func (m *ModelInvocationStore) EndpointForCaller(ctx context.Context, caller str
 	})
 }
 
-// ListSessionEndpoints materializes evidence after the export caller checks
-// source limits in the same transaction. Ordinary inspection uses bounded pages.
 func (m *ModelInvocationStore) ListSessionEndpoints(ctx context.Context, sessionID identity.SessionID) ([]modelref.EndpointObservation, error) {
 	return scopedValue(ctx, m.db.read, func(ctx context.Context) ([]modelref.EndpointObservation, error) {
 		if err := sessionID.Validate(); err != nil {
@@ -346,6 +345,7 @@ func (m *ModelInvocationStore) ListSessionEndpoints(ctx context.Context, session
 		return values, rows.Err()
 	})
 }
+
 func (m *ModelInvocationStore) trajectoryEndpoint(ctx context.Context, sessionID identity.SessionID, id string) (modelref.EndpointObservation, error) {
 	return scopedValue(ctx, m.db.read, func(ctx context.Context) (modelref.EndpointObservation, error) {
 		row := m.db.connection(ctx).QueryRowContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations WHERE endpoint_json IS NOT NULL AND session_id=? AND call_id=?`, sessionID, id)
@@ -353,9 +353,6 @@ func (m *ModelInvocationStore) trajectoryEndpoint(ctx context.Context, sessionID
 	})
 }
 
-// RecoverModelInvocation projects known physical evidence into a failed logical
-// attempt, or closes an unobserved attempt as unknown. The source CAS joins the
-// existing Run recovery transaction and never permits replay or continuation.
 func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, abandoned runs.ModelInvocationRecovery) error {
 	sessionID, runID, segmentID, callID := abandoned.SessionID, abandoned.RunID, abandoned.SegmentID, abandoned.CallID
 	startedAt, finishedAt, source := abandoned.StartedAt, abandoned.FinishedAt, abandoned.Endpoint
@@ -411,9 +408,6 @@ func (m *ModelInvocationStore) RecoverModelInvocation(ctx context.Context, aband
 	})
 }
 
-// VisitEndpointInvocations reads one coherent retained source snapshot with one
-// body materialized at a time. It includes Session-only and unattached calls;
-// aggregate consumers never fold the logical Run projections a second time.
 func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, sessionID identity.SessionID, since time.Time, yield func(modelref.EndpointObservation) error) error {
 	if yield == nil {
 		return errors.New("sqlite: endpoint usage consumer is required")
@@ -462,8 +456,6 @@ func (m *ModelInvocationStore) VisitEndpointInvocations(ctx context.Context, ses
 	})
 }
 
-// ListIndependentEndpoints returns retained descendant attempts not projected
-// through a logical Model receipt. Active Run recovery owns its one accrual.
 func (m *ModelInvocationStore) ListIndependentEndpoints(ctx context.Context) ([]modelref.EndpointObservation, error) {
 	return scopedValue(ctx, m.db.read, func(ctx context.Context) ([]modelref.EndpointObservation, error) {
 		rows, err := m.db.connection(ctx).QueryContext(ctx, `SELECT `+endpointObservationColumns+` FROM model_invocations
@@ -486,8 +478,6 @@ func (m *ModelInvocationStore) ListIndependentEndpoints(ctx context.Context) ([]
 	})
 }
 
-// ValidateIndependentEndpoint fences the recovery projection to the immutable
-// physical source in the same transaction as its Run/Goal replacement.
 func (m *ModelInvocationStore) validateEndpointProjection(ctx context.Context, expected modelref.EndpointObservation) error {
 	record := expected.Snapshot()
 	source, found, err := m.EndpointForCaller(ctx, record.Invocation.Caller.ID)
@@ -499,6 +489,7 @@ func (m *ModelInvocationStore) validateEndpointProjection(ctx context.Context, e
 	}
 	return nil
 }
+
 func (m *ModelInvocationStore) ValidateIndependentEndpoint(ctx context.Context, expected modelref.EndpointObservation) error {
 	return m.db.read(ctx, func(ctx context.Context) error {
 		if err := m.validateEndpointProjection(ctx, expected); err != nil {

@@ -8,9 +8,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// resolveSnapshotRun selects the already accepted run from a cold projection.
-// Falling back to the latest run is reserved for direct renderer use where no
-// Begin call established an identity.
 func resolveSnapshotRun(snapshot conversation.SessionSnapshot, runID string) (conversation.Run, error) {
 	if runID == "" {
 		latest, ok := snapshot.LatestRun()

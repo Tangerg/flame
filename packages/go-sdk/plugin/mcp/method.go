@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"unicode/utf8"
 
+	"github.com/Tangerg/frame"
 	framecall "github.com/Tangerg/frame/call"
-
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/jsonschema"
@@ -24,8 +24,6 @@ type methodParams[T any] struct {
 	inputJSON framevalue.JSON
 }
 
-// Command carries a caller's logical identity and input. Business admission and
-// the atomic mutation/receipt commit remain with the business owner.
 type Command[T any] struct {
 	ID        CommandID
 	Input     T
@@ -38,8 +36,6 @@ func (c Command[T]) RequestInput() (framevalue.JSON, error) {
 
 type requestInputKey struct{}
 
-// RequestInput projects the input received at this method or Tool boundary.
-// In particular, a typed numeric conversion cannot originate another identity.
 func RequestInput(ctx context.Context) (framevalue.JSON, error) {
 	value, _ := ctx.Value(requestInputKey{}).(framevalue.JSON)
 	return value, value.Validate()
@@ -71,7 +67,7 @@ func (p *methodParams[T]) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	if wire.CommandID != "" {
-		if err := CommandID(wire.CommandID).Validate(); err != nil {
+		if err := wire.CommandID.Validate(); err != nil {
 			return err
 		}
 	}
@@ -85,7 +81,7 @@ func (p *methodParams[T]) UnmarshalJSON(data []byte) error {
 
 func decodeMethodInput[T any](data jsontext.Value) (T, framevalue.JSON, error) {
 	var input T
-	if len(data) == 0 || string(data) == "null" {
+	if len(data) == 0 || string(data) == jsonNull {
 		return input, framevalue.JSON{}, errors.New("plugin: input is required")
 	}
 	admitted, err := framevalue.ParseJSON(data)
@@ -116,7 +112,7 @@ func (r *methodResult[T]) UnmarshalJSON(data []byte) error {
 	}
 	var value *T
 	if len(decoded.Value) != 0 {
-		if string(decoded.Value) == "null" {
+		if string(decoded.Value) == jsonNull {
 			switch reflect.TypeFor[T]().Kind() {
 			case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Interface:
 			default:
@@ -132,28 +128,23 @@ func (r *methodResult[T]) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Classifier names the business refusal err is. refused is false for every
-// error whose effect may have happened; a nil Classifier refuses nothing beyond
-// the invocation conflicts every method reports.
 type Classifier func(err error) (code string, refused bool)
 
 var ErrOutcomeUnconfirmed = errors.New("plugin: outcome is unconfirmed")
 
-// InvalidInputCode refuses a command whose input fails its method's own
-// validation, before any effect.
 const InvalidInputCode = "invalid_input"
 
-// Only an explicitly classified business refusal is a known outcome. Storage,
-// transport and unrecognized failures remain protocol errors; encoding them as
-// refusals would falsely claim that a possibly committed effect did not happen.
+// Only an explicitly classified business refusal is a known outcome; encoding
+// other failures as refusals would falsely claim that a possibly committed effect
+// did not happen.
 func reply[T any](value T, err error, classify Classifier) (*methodResult[T], error) {
 	if err != nil {
 		if errors.Is(err, ErrOutcomeUnconfirmed) {
 			return nil, err
 		}
 		if failure, ok := errors.AsType[*framecall.Refusal](err); ok && failure.Code != "" && utf8.ValidString(failure.Code) && utf8.ValidString(failure.Message) {
-			copy := *failure
-			return &methodResult[T]{Failure: &copy}, nil
+			cloned := *failure
+			return &methodResult[T]{Failure: &cloned}, nil
 		}
 		code, refused := framecall.ConflictCode, errors.Is(err, framecall.ErrConflict)
 		if !refused && classify != nil {
@@ -200,23 +191,17 @@ func RegisterClient(client *sdk.Client) error {
 	)
 }
 
-// CommandID is one logical command identity. Its bound counts Unicode code
-// points, as JSON Schema maxLength does, so the published schema admits exactly
-// the identities Validate admits.
 type CommandID string
 
-const MaxCommandIDCharacters = 256
-
-// NewCommandID allocates a fresh identity for a command that has no caller-owned one.
 func NewCommandID() CommandID { return CommandID(uuid.NewString()) }
 
 func (id CommandID) Validate() error {
-	if id == "" || !utf8.ValidString(string(id)) || utf8.RuneCountInString(string(id)) > MaxCommandIDCharacters {
+	if !frame.ValidCommandID(string(id)) {
 		return errors.New("plugin: bounded logical command identity is required")
 	}
 	return nil
 }
 
 func (CommandID) JSONSchemaConstraints() jsonschema.Constraints {
-	return jsonschema.Constraints{MinLength: new(uint64(1)), MaxLength: new(uint64(MaxCommandIDCharacters))}
+	return jsonschema.Constraints{MinLength: new(uint64(1)), MaxLength: new(uint64(frame.MaxCommandIDCharacters))}
 }

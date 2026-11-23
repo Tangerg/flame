@@ -11,16 +11,14 @@ import (
 	"github.com/samber/lo"
 )
 
-// compactionStore supplies the durable prefix used to compute a proposal.
 type compactionStore interface {
 	Read(context.Context, identity.SessionID) ([]chat.Message, error)
 }
 
-// Compactor reduces the exact context of an imminent model request.
 type Compactor struct {
 	store     compactionStore
 	client    modeladapter.AuxiliaryResolver
-	liveState LiveStateSnapshotter // nil = no post-compaction live-state reminder
+	liveState LiveStateSnapshotter
 	policy    compactionPolicy
 }
 
@@ -39,11 +37,6 @@ type compactionPlan struct {
 	estimatedTokens int
 }
 
-// NewCompactor requires a chat history store and per-call chat-client resolver.
-// liveState (nil to disable) snapshots a
-// session's still-active process state so an LLM summary rung can remind the
-// model of running shells the summary cannot reconstruct.
-// The Run fact owner commits the returned proposal before retiring derived authority.
 func NewCompactor(
 	store compactionStore,
 	client modeladapter.AuxiliaryResolver,
@@ -53,8 +46,8 @@ func NewCompactor(
 	if lo.IsNil(store) {
 		return nil, errors.New("compactor: conversation store is required")
 	}
-	if client == nil {
-		return nil, errors.New("compactor: utility model resolver is required")
+	if client == nil || liveState == nil {
+		return nil, errors.New("compactor: utility model resolver and live-state snapshotter are required")
 	}
 	policy, err := newCompactionPolicy(values)
 	if err != nil {
@@ -97,10 +90,8 @@ func (c *Compactor) planCompactionWithProtectedTail(
 	if cutoff == 0 {
 		return compactionPlan{}, errModelContextCannotFit
 	}
-	// The latest turn is not a license to preserve a suffix that is already over
-	// budget by itself. In that case a prefix summary cannot converge, so widen
-	// to the complete foldable history. Original arguments and output must reach
-	// the summarizer before any lossy reduction is proposed.
+	// A prefix summary cannot converge when the latest turn alone is over budget, so
+	// the whole foldable history is widened.
 	recentOverBudget, _, err := budget.exceeded(ctx, messages[cutoff:])
 	if err != nil {
 		return compactionPlan{}, err
@@ -117,11 +108,6 @@ func (c *Compactor) planCompactionWithProtectedTail(
 	}, nil
 }
 
-// summaryCutoffWithProtectedTail preserves the latest foldable user turn and
-// the caller-owned exact suffix. When one long turn alone fills the context,
-// the complete foldable turn is summarized so the next model request can fit.
-// A prior summary can already represent the user turn; its continuation remains
-// foldable even though no original User message survives.
 func summaryCutoffWithProtectedTail(
 	messages []chat.Message,
 	protectedTail int,

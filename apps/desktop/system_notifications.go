@@ -58,7 +58,7 @@ func (w wailsNotifications) send(notification bridge.DesktopNotification) error 
 		ID:    notification.ID,
 		Title: notification.Title,
 		Body:  notification.Body,
-		Data:  map[string]any{notificationTargetKey: notification.Target},
+		Data:  map[string]any{notificationTargetKey: string(notification.Target)},
 	})
 }
 

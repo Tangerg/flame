@@ -24,7 +24,7 @@ import (
 func TestRemoteConnectionRecoversLostDeletionAcknowledgement(t *testing.T) {
 	target, owner, connection, created, attempts := remoteDeletionConnection(t, false)
 	profile := connection.Profile()
-	policy, err := mutation.PolicyFromProfile(&profile, time.Now)
+	policy, err := mutation.NewReplayPolicy(profile.IdempotencyLimits(), time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,8 +52,6 @@ func TestRemoteConnectionRecoversLostDeletionAcknowledgement(t *testing.T) {
 	}
 }
 
-// The real Endpoint commits through the public embedded binding. The HTTP peer
-// then loses or corrupts that acknowledgement, independently of CLI recovery.
 func remoteDeletionConnection(t *testing.T, malformed bool) (
 	*flameruntime.Runtime, *Owner, *Connection, protocol.Session, func() []string,
 ) {
@@ -90,9 +88,6 @@ func remoteDeletionConnection(t *testing.T, malformed bool) (
 	return target, owner, connection, *created, remote.attemptKeys
 }
 
-// remoteDeletionServer serves the Runtime over JSON-RPC and loses the first
-// successful deletion reply (a dropped connection, or a malformed body), so
-// the client must retry with the same idempotency key.
 type remoteDeletionServer struct {
 	t         *testing.T
 	target    *flameruntime.Runtime
@@ -146,7 +141,6 @@ func (s *remoteDeletionServer) ServeHTTP(w http.ResponseWriter, request *http.Re
 	s.writeResult(w, envelope.ID, result)
 }
 
-// deleteSession reports whether it deliberately lost the reply.
 func (s *remoteDeletionServer) deleteSession(w http.ResponseWriter, request *http.Request, params jsontext.Value) (bool, error) {
 	var parameters protocol.DeleteSessionRequest
 	if err := json.Unmarshal(params, &parameters); err != nil {

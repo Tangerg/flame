@@ -124,7 +124,7 @@
               "taskId": {
                 "type": "string"
               },
-              "valueJSON": {
+              "valueJson": {
                 "type": "string"
               }
             },
@@ -132,7 +132,7 @@
               "requestId",
               "agent",
               "kind",
-              "valueJSON"
+              "valueJson"
             ],
             "type": "object"
           }
@@ -162,7 +162,7 @@
           "taskId": {
             "type": "string"
           },
-          "valueJSON": {
+          "valueJson": {
             "type": "string"
           }
         },
@@ -170,7 +170,7 @@
           "requestId",
           "agent",
           "kind",
-          "valueJSON"
+          "valueJson"
         ],
         "type": "object"
       }
@@ -242,7 +242,7 @@
               "taskId": {
                 "type": "string"
               },
-              "valueJSON": {
+              "valueJson": {
                 "type": "string"
               }
             },
@@ -250,7 +250,7 @@
               "requestId",
               "agent",
               "kind",
-              "valueJSON"
+              "valueJson"
             ],
             "type": "object"
           }
@@ -280,7 +280,7 @@
           "taskId": {
             "type": "string"
           },
-          "valueJSON": {
+          "valueJson": {
             "type": "string"
           }
         },
@@ -288,7 +288,7 @@
           "requestId",
           "agent",
           "kind",
-          "valueJSON"
+          "valueJson"
         ],
         "type": "object"
       }
@@ -352,7 +352,7 @@
               "taskId": {
                 "type": "string"
               },
-              "valueJSON": {
+              "valueJson": {
                 "type": "string"
               }
             },
@@ -360,7 +360,7 @@
               "requestId",
               "agent",
               "kind",
-              "valueJSON"
+              "valueJson"
             ],
             "type": "object"
           }
@@ -390,7 +390,7 @@
           "taskId": {
             "type": "string"
           },
-          "valueJSON": {
+          "valueJson": {
             "type": "string"
           }
         },
@@ -398,7 +398,7 @@
           "requestId",
           "agent",
           "kind",
-          "valueJSON"
+          "valueJson"
         ],
         "type": "object"
       }

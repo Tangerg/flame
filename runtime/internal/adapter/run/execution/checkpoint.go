@@ -2,6 +2,7 @@ package execution
 
 import (
 	"encoding/base64"
+	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
@@ -9,8 +10,6 @@ import (
 	"strings"
 
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-
-	"encoding/json/jsontext"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
@@ -25,59 +24,57 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// installationDependencyWire binds installation releases into a Deployment's
-// configuration identity.
 type installationDependencyWire struct {
 	InstallationID string `json:"installationId"`
 	Digest         string `json:"digest"`
 }
 
 type interactionCheckpointPayloadWire struct {
-	SkillDiscoveries    map[domaintool.Group]string    `json:"skill_discoveries,omitzero"`
-	ModelProvider       jsontext.Value                 `json:"model_provider"`
-	ToolProposals       *[]contributionBindingWire     `json:"tool_proposals"`
-	ModelInputs         *[]contributionBindingWire     `json:"model_inputs"`
-	ModelContexts       *[]contributionBindingWire     `json:"model_contexts"`
-	ModelObservers      *[]contributionBindingWire     `json:"model_observers"`
-	MCPManifests        *map[domaintool.Group][]string `json:"mcp_manifests"`
+	SkillDiscoveries    map[domaintool.Group]string    `json:"skillDiscoveries,omitzero"`
+	ModelProvider       jsontext.Value                 `json:"modelProvider"`
+	ToolProposals       *[]contributionBindingWire     `json:"toolProposals"`
+	ModelInputs         *[]contributionBindingWire     `json:"modelInputs"`
+	ModelContexts       *[]contributionBindingWire     `json:"modelContexts"`
+	ModelObservers      *[]contributionBindingWire     `json:"modelObservers"`
+	MCPManifests        *map[domaintool.Group][]string `json:"mcpManifests"`
 	Options             *corechat.Options              `json:"options"`
-	ToolCalls           []toolCallCaptureWire          `json:"tool_calls,omitempty"`
+	ToolCalls           []toolCallCaptureWire          `json:"toolCalls,omitempty"`
 	Handoff             *interactionHandoffWire        `json:"handoff"`
 	Instructions        *[]corechat.Message            `json:"instructions"`
 	Contexts            []interactionModelContextWire  `json:"contexts,omitempty"`
-	PendingSteers       []interactionPendingSteerWire  `json:"pending_steers,omitempty"`
-	PendingResumeInputs []interactionResumeInputWire   `json:"pending_resume_inputs,omitempty"`
+	PendingSteers       []interactionPendingSteerWire  `json:"pendingSteers,omitempty"`
+	PendingResumeInputs []interactionResumeInputWire   `json:"pendingResumeInputs,omitempty"`
 }
 
 type interactionModelContextWire struct {
-	ProcessID       string `json:"process_id"`
-	ReportedTokens  int64  `json:"reported_tokens"`
-	EstimatedTokens int    `json:"estimated_tokens"`
+	ProcessID       string `json:"processId"`
+	ReportedTokens  int64  `json:"reportedTokens"`
+	EstimatedTokens int    `json:"estimatedTokens"`
 }
 
 type interactionPendingSteerWire struct {
 	Command *interactionSteerCommandWire  `json:"command,omitzero"`
-	ItemID  identity.ItemID               `json:"item_id"`
+	ItemID  identity.ItemID               `json:"itemId"`
 	Content []interactionContentBlockWire `json:"content"`
 }
 
 type interactionSteerCommandWire struct {
 	Key         string             `json:"key"`
 	Fingerprint string             `json:"fingerprint"`
-	SessionID   identity.SessionID `json:"session_id"`
-	RunID       identity.RunID     `json:"run_id"`
-	SegmentID   identity.SegmentID `json:"segment_id"`
+	SessionID   identity.SessionID `json:"sessionId"`
+	RunID       identity.RunID     `json:"runId"`
+	SegmentID   identity.SegmentID `json:"segmentId"`
 }
 
 type interactionResumeInputWire struct {
-	ItemID  identity.ItemID               `json:"item_id"`
+	ItemID  identity.ItemID               `json:"itemId"`
 	Content []interactionContentBlockWire `json:"content"`
 }
 
 type interactionContentBlockWire struct {
 	Kind      transcript.ContentKind `json:"kind"`
 	Text      string                 `json:"text,omitempty"`
-	MediaType string                 `json:"media_type,omitempty"`
+	MediaType string                 `json:"mediaType,omitempty"`
 	Data      string                 `json:"data,omitempty"`
 }
 
@@ -140,58 +137,60 @@ func (i *interactionSession) executorCheckpoint(
 	return checkpoint, nil
 }
 
-func encodeInteractionCheckpointPayload(
-	tree scoperun.Log,
-	contextByProcess map[scoperun.ProcessID]ModelContextTokenCalibration,
-	instructions []corechat.Message,
-	pendingSteers map[scoperun.SignalID]runs.PreparedSteer,
-	pendingResumeInputs []runs.CommittedUserInput,
-	toolCalls []toolCallCaptureWire,
-	options corechat.Options,
-	mcpManifests map[domaintool.Group][]string,
-	skillDiscoveries map[domaintool.Group]string,
-	handoff *interactionHandoffWire,
-	observers []plugins.ContributionBinding,
-	contexts []plugins.ContributionBinding,
-	inputs []plugins.ContributionBinding,
-	toolProposals []plugins.ContributionBinding,
-	provider *modeladapter.ProviderCapture,
-) ([]byte, error) {
-	if err := tree.Validate(); err != nil {
+type interactionCheckpointCapture struct {
+	tree                scoperun.Log
+	contextByProcess    map[scoperun.ProcessID]ModelContextTokenCalibration
+	instructions        []corechat.Message
+	pendingSteers       map[scoperun.SignalID]runs.PreparedSteer
+	pendingResumeInputs []runs.CommittedUserInput
+	toolCalls           []toolCallCaptureWire
+	options             corechat.Options
+	mcpManifests        map[domaintool.Group][]string
+	skillDiscoveries    map[domaintool.Group]string
+	handoff             *interactionHandoffWire
+	modelObservers      []plugins.ContributionBinding
+	modelContexts       []plugins.ContributionBinding
+	modelInputs         []plugins.ContributionBinding
+	toolProposals       []plugins.ContributionBinding
+	provider            *modeladapter.ProviderCapture
+}
+
+func (c interactionCheckpointCapture) encode() ([]byte, error) {
+	if err := c.tree.Validate(); err != nil {
 		return nil, errors.New("execution: encode invalid Interaction tree checkpoint")
 	}
-	frozenInstructions := cloneChatMessages(instructions)
+	frozenInstructions := cloneChatMessages(c.instructions)
 	if frozenInstructions == nil {
 		frozenInstructions = []corechat.Message{}
 	}
 	wire := interactionCheckpointPayloadWire{
-		ToolProposals:    new(contributionBindingsWire(toolProposals)),
-		ModelObservers:   new(contributionBindingsWire(observers)),
-		ModelContexts:    new(contributionBindingsWire(contexts)),
-		ModelInputs:      new(contributionBindingsWire(inputs)),
-		MCPManifests:     new(mcpManifests),
-		SkillDiscoveries: skillDiscoveries,
-		ToolCalls:        toolCalls, Options: new(options.Clone()),
+		ToolProposals:    new(contributionBindingsWire(c.toolProposals)),
+		ModelObservers:   new(contributionBindingsWire(c.modelObservers)),
+		ModelContexts:    new(contributionBindingsWire(c.modelContexts)),
+		ModelInputs:      new(contributionBindingsWire(c.modelInputs)),
+		MCPManifests:     new(c.mcpManifests),
+		SkillDiscoveries: c.skillDiscoveries,
+		ToolCalls:        c.toolCalls, Options: new(c.options.Clone()),
 		Instructions: new(frozenInstructions),
 	}
-	providerJSON, err := encodeModelProvider(provider)
+	providerJSON, err := encodeModelProvider(c.provider)
 	if err != nil {
 		return nil, err
 	}
 	wire.ModelProvider = providerJSON
-	wire.Handoff = handoff
+	wire.Handoff = c.handoff
 	if _, err := interactionInstructionContext(*wire.Instructions); err != nil {
 		return nil, err
 	}
-	wire.Contexts, err = encodeInteractionModelContexts(contextByProcess, handoff.Processes)
+	wire.Contexts, err = encodeInteractionModelContexts(c.contextByProcess, c.handoff.Processes)
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode Interaction model contexts: %w", err)
 	}
-	wire.PendingSteers, err = encodeInteractionPendingSteers(pendingSteers)
+	wire.PendingSteers, err = encodeInteractionPendingSteers(c.pendingSteers)
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode pending Interaction steers: %w", err)
 	}
-	wire.PendingResumeInputs, err = encodeInteractionResumeInputs(pendingResumeInputs)
+	wire.PendingResumeInputs, err = encodeInteractionResumeInputs(c.pendingResumeInputs)
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode pending Resume inputs: %w", err)
 	}
@@ -266,7 +265,7 @@ func encodeInteractionResumeInputs(inputs []runs.CommittedUserInput) ([]interact
 	for index, input := range inputs {
 		content, err := encodeInteractionInputContent(input.Content)
 		if err != nil {
-			return nil, fmt.Errorf("Resume input %q: %w", input.ItemID, err)
+			return nil, fmt.Errorf("resume input %q: %w", input.ItemID, err)
 		}
 		values[index] = interactionResumeInputWire{ItemID: input.ItemID, Content: content}
 	}
@@ -356,8 +355,6 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	return state, nil
 }
 
-// decodeCheckpointContributions restores the model provider and the plugin
-// contributions frozen into the checkpoint, each bound to its contract.
 func decodeCheckpointContributions(wire interactionCheckpointPayloadWire) (interactionCheckpointState, error) {
 	provider, err := decodeModelProvider(wire.ModelProvider)
 	if err != nil {
@@ -382,9 +379,8 @@ func decodeCheckpointContributions(wire interactionCheckpointPayloadWire) (inter
 	return interactionCheckpointState{modelProvider: provider, toolProposals: proposals, modelObservers: observers, modelInputs: inputs, modelContexts: contexts}, nil
 }
 
-// decodeFrozenBindings restores the contributions a checkpoint froze for one
-// contract. An absent set is not an empty one: the checkpoint cannot prove
-// which contributions its execution observed.
+// An absent set is not an empty one: the checkpoint cannot prove which
+// contributions it observed.
 func decodeFrozenBindings(name string, frozen *[]contributionBindingWire, contract func() (*plugincontract.Capability, error)) ([]plugins.ContributionBinding, error) {
 	if frozen == nil {
 		return nil, fmt.Errorf("execution: checkpoint %s bindings are required", name)
@@ -496,7 +492,7 @@ func decodeInteractionResumeInputs(values []interactionResumeInputWire) ([]runs.
 	seen := make(map[identity.ItemID]struct{}, len(values))
 	for index, value := range values {
 		if err := value.ItemID.Validate(); err != nil {
-			return nil, fmt.Errorf("Resume input %d: %w", index, err)
+			return nil, fmt.Errorf("resume input %d: %w", index, err)
 		}
 		if _, duplicate := seen[value.ItemID]; duplicate {
 			return nil, fmt.Errorf("repeated Resume input %q", value.ItemID)
@@ -504,10 +500,10 @@ func decodeInteractionResumeInputs(values []interactionResumeInputWire) ([]runs.
 		seen[value.ItemID] = struct{}{}
 		content, err := decodeInteractionInputContent(value.Content)
 		if err != nil {
-			return nil, fmt.Errorf("Resume input %q: %w", value.ItemID, err)
+			return nil, fmt.Errorf("resume input %q: %w", value.ItemID, err)
 		}
 		if _, err := runs.MaterializeUserMessage(content); err != nil {
-			return nil, fmt.Errorf("Resume input %q: %w", value.ItemID, err)
+			return nil, fmt.Errorf("resume input %q: %w", value.ItemID, err)
 		}
 		inputs[index] = runs.CommittedUserInput{ItemID: value.ItemID, Content: content}
 	}

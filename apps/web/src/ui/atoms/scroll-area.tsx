@@ -20,8 +20,6 @@ interface Props {
   className?: string;
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;
-  // Set these to make a region whose content has no focusable elements
-  // keyboard-scrollable (WCAG 2.1.1) — e.g. a plain-text file viewer.
   tabIndex?: number;
   role?: string;
   "aria-label"?: string;

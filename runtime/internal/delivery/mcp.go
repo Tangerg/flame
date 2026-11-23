@@ -71,7 +71,6 @@ func registerMCP(registry *Registry) {
 		return service.DeleteMCPServer(ctx, request.Server)
 	})
 
-	// A connection probe persists nothing, so a retry is not a replay concern.
 	registry.query(MethodMeta{
 		Name: mcpServersTest, GoName: "TestMCPServer",
 		Errors:          []string{protocol.ErrPluginUnavailable.Error()},

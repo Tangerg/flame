@@ -1,8 +1,4 @@
 #!/usr/bin/env node
-// Plugin catalog guard — every migrated plugin carries every key in every
-// locale, with matching interpolation placeholders, and references only keys it
-// declares. Mirrors apps/web/scripts/check-locales.mjs for the plugin tree,
-// which that script never walks.
 import { parseSync } from "rolldown/utils";
 import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";

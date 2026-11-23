@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -17,19 +16,14 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	"github.com/fsnotify/fsnotify"
 )
 
-// GitWatcher adapts platform filesystem notifications to the workspace
-// application's Git-state observation port. It watches only .git signal
-// directories (never a project tree), keeping the descriptor cost fixed even
-// for large repositories. Its observation commands derive from the Runtime
-// lifetime supplied at construction.
 type GitWatcher struct {
 	lifetime context.Context
 }
 
-// newGitWatcher binds Git observation to the owning Runtime lifetime.
 func newGitWatcher(lifetime context.Context) GitWatcher {
 	return GitWatcher{lifetime: lifetime}
 }
@@ -38,12 +32,9 @@ const gitWatchDebounce = 200 * time.Millisecond
 
 const gitObservationTimeout = 10 * time.Second
 
-// Watch observes every distinct repository reached from roots. A
-// non-repository root is intentionally inert: its diff view is unavailable as
-// well, but the surrounding workspace subscription remains valid.
 func (g GitWatcher) Watch(roots []string, notify func([]string), report func(error)) (io.Closer, error) {
-	if g.lifetime == nil {
-		return nil, errors.New("workspace: Git watcher lifetime is required")
+	if g.lifetime == nil || notify == nil || report == nil {
+		return nil, errors.New("workspace: Git watcher lifetime, notifier and reporter are required")
 	}
 	lifetime, stop := context.WithCancel(g.lifetime)
 	repositories, err := watchedRepositories(lifetime, roots)
@@ -154,14 +145,11 @@ func gitDirectoriesOf(lifetime context.Context, root string) (gitDir, commonDir 
 	return gitDir, commonDir, true, nil
 }
 
-func addGitWatch(watcher *fsnotify.Watcher, added map[string]struct{}, directory string, optional bool) error {
+func addGitWatch(watcher *fsnotify.Watcher, added map[string]struct{}, directory string) error {
 	if _, exists := added[directory]; exists {
 		return nil
 	}
 	if err := watcher.Add(directory); err != nil {
-		if optional && errors.Is(err, os.ErrNotExist) {
-			return nil
-		}
 		return fmt.Errorf("watch git directory %q: %w", directory, err)
 	}
 	added[directory] = struct{}{}
@@ -185,7 +173,7 @@ func (g *gitWatch) run() {
 	defer close(g.exited)
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			slog.Error("workspace: git watch panicked", "panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+			slog.Error("workspace: git watch panicked", telemetry.Panic(recovered))
 			g.fail(errors.New("git observation stopped after a defect"))
 		}
 	}()
@@ -206,7 +194,7 @@ func (g *gitWatch) run() {
 				g.fail(errors.New("git observation channel closed"))
 				return
 			}
-			slog.ErrorContext(g.lifetime, "workspace: git watcher notification failed", "error", err)
+			slog.ErrorContext(g.lifetime, "workspace: git watcher notification failed", telemetry.Error(err))
 			// An overflow can lose the event that would have armed a resync.
 			debounce.arm()
 		case <-debounce.timer.C:
@@ -218,13 +206,11 @@ func (g *gitWatch) run() {
 	}
 }
 
-// readState publishes what changed since the last read. A failed read backs
-// off and retries; it reports false once observation has given up.
 func (g *gitWatch) readState(debounce *gitWatchDebouncer) bool {
 	changed, err := g.semanticStateChanged()
 	err = errors.Join(err, g.reconcileDirectories())
 	if err != nil && g.lifetime.Err() == nil {
-		slog.ErrorContext(g.lifetime, "workspace: read watched git state failed", "error", err)
+		slog.ErrorContext(g.lifetime, "workspace: read watched git state failed", telemetry.Error(err))
 		if !debounce.retry() {
 			g.fail(fmt.Errorf("git observation failed after retries: %w", err))
 			return false
@@ -232,17 +218,14 @@ func (g *gitWatch) readState(debounce *gitWatchDebouncer) bool {
 	} else {
 		debounce.failures = 0
 	}
-	if len(changed) > 0 && g.notify != nil {
+	if len(changed) > 0 {
 		g.notify(changed)
 	}
 	return true
 }
 
-// gitWatchMaxFailures is how many consecutive failed reads end observation.
 const gitWatchMaxFailures = 5
 
-// gitWatchDebouncer coalesces bursts of git notifications into one read and
-// spaces retries of a failing read exponentially.
 type gitWatchDebouncer struct {
 	timer    *time.Timer
 	armed    bool
@@ -272,8 +255,6 @@ func (d *gitWatchDebouncer) retry() bool {
 	return true
 }
 
-// The backend drops registrations when directories disappear. Reconcile its
-// current handles after sampling so a recreated Git directory remains observed.
 func (g *gitWatch) reconcileDirectories() error {
 	registered := make(map[string]struct{})
 	for _, directory := range g.fsw.WatchList() {
@@ -281,22 +262,22 @@ func (g *gitWatch) reconcileDirectories() error {
 	}
 	for _, repository := range g.repositories {
 		for _, directory := range []string{repository.gitDir, repository.commonDir} {
-			if err := addGitWatch(g.fsw, registered, directory, false); err != nil {
+			if err := addGitWatch(g.fsw, registered, directory); err != nil {
 				return err
 			}
 		}
-		if err := addGitWatch(g.fsw, registered, filepath.Join(repository.commonDir, "refs", "heads"), true); err != nil {
+		// A fresh repository has no branch directory until its first commit.
+		heads := filepath.Join(repository.commonDir, "refs", "heads")
+		if err := addGitWatch(g.fsw, registered, heads); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
 	}
 	return nil
 }
 
-// semanticStateChanged distinguishes Git state from Git's storage mechanics.
-// Commands such as diff may refresh stat data by replacing .git/index even when
-// HEAD and every staged entry are identical. Publishing that replacement as a
-// change lets a diff refetch wake its own watcher forever. The watcher therefore
-// compares the committed HEAD and stage entries that clients can actually read.
+// diff may replace .git/index without any semantic change; publishing that would
+// let a diff refetch wake its own watcher forever, so only HEAD and staged entries
+// are compared.
 func (g *gitWatch) semanticStateChanged() ([]string, error) {
 	var changed []string
 	var failures []error
@@ -349,8 +330,6 @@ func gitObservation(lifetime context.Context, root string, args ...string) ([]by
 	return result.Stdout, nil
 }
 
-// Close joins the callback goroutine before closing the underlying watcher, so
-// a caller can safely close its output channel immediately afterwards.
 func (g *gitWatch) Close() error {
 	g.closeOnce.Do(func() {
 		g.stop()
@@ -375,7 +354,7 @@ type nopWatch struct{}
 func (nopWatch) Close() error { return nil }
 
 func (g *gitWatch) fail(err error) {
-	if g.lifetime.Err() == nil && g.report != nil {
+	if g.lifetime.Err() == nil {
 		g.report(err)
 	}
 }

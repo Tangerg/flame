@@ -29,9 +29,6 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// toolEnvironment groups the tool resolver with the separately-owned MCP
-// connection adapter. Bootstrap is the composition root that joins them; the
-// generic toolset does not expose application integration ports.
 type toolEnvironment struct {
 	models                modelEnvironment
 	tools                 toolset.Built
@@ -49,9 +46,6 @@ type toolEnvironment struct {
 	validatePluginSources func(context.Context, []plugin.Activation, []plugin.Dependency) error
 }
 
-// toolEnvironmentDependencies is the complete construction contract for the
-// process-owned tool runtime. Keeping the contract as one value lets construction
-// transfer every acquisition to runtimeLifetime even when construction fails.
 type toolEnvironmentDependencies struct {
 	framework      frameworkComposition
 	callbacks      *pluginmcp.Callbacks
@@ -75,9 +69,6 @@ type toolEnvironmentDependencies struct {
 
 type toolEnvironmentBuilder func(context.Context, toolEnvironmentDependencies) (toolEnvironment, error)
 
-// composeModels resolves the model providers, roles and plugin model
-// callbacks. Installed providers join teardown only when this process opened
-// them.
 func (environment *toolEnvironment) composeModels(ctx context.Context, deps toolEnvironmentDependencies, commandCalls *pluginservices.CommandCalls) error {
 	cfg := deps.config
 	providerAdapters := cfg.modelProviders
@@ -118,8 +109,6 @@ func (environment *toolEnvironment) composeModels(ctx context.Context, deps tool
 	return nil
 }
 
-// composeSkills joins the user library, package Skills and their governing
-// provider into the catalog and the learning loop that proposes new Skills.
 func (environment *toolEnvironment) composeSkills(deps toolEnvironmentDependencies, commandCalls *pluginservices.CommandCalls) (promptsource.SkillSources, error) {
 	cfg := deps.config
 	skillSource, err := promptsource.NewSkillSource(cfg.skillsUserDir, cfg.skillsUserDir)
@@ -159,10 +148,9 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	}
 	environment := toolEnvironment{
 		mcp: mcpPool,
-		// The SDK consumes each ClientSession transport closer even when Close
-		// returns a diagnostic. Step owns the caller deadline; the action itself
-		// must outlive that deadline and return only when the pool generation has
-		// actually settled, so a timed-out Instance retains and later joins it.
+		// The SDK consumes each ClientSession transport closer even when Close returns a
+		// diagnostic, so the action must outlive the caller deadline until the pool
+		// generation settles.
 		closers: []*teardownStep{terminalStep(func(ctx context.Context) error {
 			return mcpPool.Shutdown(context.WithoutCancel(ctx))
 		})},
@@ -214,15 +202,13 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		RestoreMCP: func(ctx context.Context, refs []tool.Ref, activations []plugin.Activation) ([]toolcontract.Tool, func() error, error) {
 			return mcpPool.RestoreTools(ctx, refs, activations, prepareTool)
 		},
-		SkillProposals: environment.skills,
-		// Opt-in per-command OS isolation for the shell tools (off by default).
+		SkillProposals:       environment.skills,
 		SandboxShell:         cfg.sandboxShell,
 		SandboxReadOnlyPaths: cfg.sandboxReadOnlyPaths,
 	}
 	buildConfig.SkillUsage = deps.skillStore
 	buildConfig.PlanMode = deps.approvalPolicy
 	buildConfig.ToolResults = cfg.stores.ToolResults
-	// create_goal is injected after Runs and the Driver exist.
 	buildConfig.GoalReader = deps.goalReader
 	buildConfig.GoalReporter, err = goals.NewOutcomeReporter(deps.goalStore, commandCalls)
 	if err != nil {

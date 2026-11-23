@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"iter"
 	"log/slog"
 	"slices"
 	"sync"
@@ -15,17 +14,11 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
+	"github.com/Tangerg/flame/plugins/filewatch/internal/filewatch"
 
 	framecall "github.com/Tangerg/frame/call"
 	"github.com/google/uuid"
 )
-
-type host interface {
-	Watch(context.Context, string, filewatch.Trigger) (iter.Seq2[protocol.RuntimeEvent, error], error)
-	Admit(context.Context, string, filewatch.Observation) error
-	Notify(context.Context, string) error
-}
 
 type observationNotice struct {
 	event protocol.RuntimeEvent
@@ -40,7 +33,7 @@ type observationStream struct {
 
 const triggerAdmissionTimeout = 30 * time.Second
 
-func openStream(ctx context.Context, source host, generation string, trigger filewatch.Trigger) (*observationStream, error) {
+func openStream(ctx context.Context, source *runHost, generation string, trigger filewatch.Trigger) (*observationStream, error) {
 	lifetime, cancel := context.WithCancel(ctx)
 	events, err := source.Watch(lifetime, generation, trigger)
 	if err != nil {
@@ -79,19 +72,17 @@ func (s *observationStream) close() {
 	}
 }
 
-// watcher follows the configured trigger's Runtime file events from
-// activation until Close and admits each captured observation as a Run.
 type watcher struct {
 	mu           sync.Mutex
 	status       filewatch.Status
 	store        *store
-	host         host
+	host         *runHost
 	namespace    string
 	target       framecall.Target
 	contribution string
 }
 
-func newWatcher(store *store, host host, namespace string, target framecall.Target, contribution string) *watcher {
+func newWatcher(store *store, host *runHost, namespace string, target framecall.Target, contribution string) *watcher {
 	return &watcher{store: store, host: host, namespace: namespace, target: target, contribution: contribution, status: filewatch.Status{Phase: filewatch.Inactive}}
 }
 
@@ -155,9 +146,6 @@ func (w *watcher) run(ctx context.Context) {
 	}
 }
 
-// observationLoop is the watcher's single open stream and the configuration
-// revision it serves. A failure closes the stream until the next refresh opens
-// one for the current configuration.
 type observationLoop struct {
 	watcher    *watcher
 	stream     *observationStream
@@ -211,9 +199,6 @@ func (l *observationLoop) refresh(ctx context.Context) {
 	l.watcher.observationStatus(l.current.Revision(), filewatch.Watching, nil)
 }
 
-// observe records one stream notice. A stale configuration revision refreshes
-// instead of failing, since the configuration moved while the event was in
-// flight.
 func (l *observationLoop) observe(ctx context.Context, notice observationNotice) {
 	if notice.err != nil {
 		l.fail(notice.err)
@@ -265,8 +250,16 @@ func (w *watcher) captureNotice(configuration filewatch.Configuration, generatio
 	default:
 		return filewatch.Observation{}, false, nil
 	}
+	sessionID, err := identity.NewSession(uuid.NewString())
+	if err != nil {
+		return filewatch.Observation{}, false, err
+	}
+	runID, err := identity.NewRun(uuid.NewString())
+	if err != nil {
+		return filewatch.Observation{}, false, err
+	}
 	observation, err := filewatch.NewObservation(filewatch.Capture{Generation: generation, Sequence: event.Sequence, Revision: configuration.Revision(), Kind: kind, Paths: paths, ObservedAt: time.Now(), Trigger: draft,
-		SessionID: identity.SessionPrefix + uuid.NewString(), RunID: identity.RunPrefix + uuid.NewString(), Invocation: w.invocation()})
+		SessionID: sessionID, RunID: runID, Invocation: w.invocation()})
 	return observation, true, err
 }
 

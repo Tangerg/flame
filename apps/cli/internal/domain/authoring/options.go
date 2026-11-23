@@ -10,15 +10,12 @@ import (
 )
 
 type RunOptions struct {
-	Provider        string
-	Model           string
-	ReasoningEffort string
-	Generation      protocol.GenerationParams
+	Provider        string                    `json:"provider"`
+	Model           string                    `json:"model"`
+	ReasoningEffort string                    `json:"reasoningEffort"`
+	Generation      protocol.GenerationParams `json:"generation"`
 }
 
-// Validate checks authored run options before they reach the Runtime. These
-// values come from CLI flags, preferences and terminal forms, so they are the
-// untrusted input this boundary owns.
 func (r RunOptions) Validate() error {
 	var problems []error
 	if err := model.ValidateSelection(r.Provider, r.Model, r.ReasoningEffort); err != nil {
@@ -47,8 +44,6 @@ func (r RunOptions) Clone() RunOptions {
 	return r
 }
 
-// Equal reports whether two run starts would carry the same complete execution
-// configuration. Optional generation values retain nil-vs-zero semantics.
 func (r RunOptions) Equal(other RunOptions) bool {
 	return r.Provider == other.Provider && r.Model == other.Model && r.ReasoningEffort == other.ReasoningEffort &&
 		equalOptional(r.Generation.Temperature, other.Generation.Temperature) &&

@@ -39,8 +39,6 @@ type DiffRequest struct {
 	RowLimit  DiffRowLimit
 }
 
-// DiffRowLimit is an optional positive row budget. Zero leaves the default
-// with Runtime; construction validates an explicit request once.
 type DiffRowLimit struct{ rows int }
 
 func DefaultDiffRowLimit() DiffRowLimit { return DiffRowLimit{} }

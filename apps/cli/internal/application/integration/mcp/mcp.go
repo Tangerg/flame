@@ -1,5 +1,3 @@
-// Package mcp defines CLI-owned MCP authoring and acknowledgement checks.
-// Runtime protocol values carry server, tool, and authorization observations.
 package mcp
 
 import (
@@ -12,9 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// HandshakeTimeout is the CLI's MCP connection deadline policy. Its zero value
-// is explicitly unbounded; a bounded value can only be constructed with a
-// strictly positive number of seconds.
 type HandshakeTimeout struct {
 	bounded bool
 	seconds int
@@ -47,8 +42,6 @@ func (h HandshakeTimeout) Validate() error {
 	return nil
 }
 
-// Matches reports whether a server already carries this timeout, so an edit
-// form sends only what the operator changed.
 func (h HandshakeTimeout) Matches(other protocol.MCPHandshakeTimeout) bool {
 	if !h.bounded {
 		return other.Type == protocol.MCPHandshakeUnbounded && other.Seconds == nil
@@ -215,15 +208,10 @@ func (c Candidate) Clone() Candidate {
 	return c
 }
 
-// UserServer is the identity every CLI-authored candidate receives: the user's
-// registry owns it under the authored name.
 func UserServer(name string) protocol.MCPServerID {
 	return protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginUser}, Name: name}
 }
 
-// ParseServerReference reads the terminal's server argument: a user server by
-// name, or an installation server as "<installation>/<name>". The text is
-// command syntax only; every Runtime call carries the structured identity.
 func ParseServerReference(text string) (protocol.MCPServerID, error) {
 	text = strings.TrimSpace(text)
 	id := UserServer(text)
@@ -236,7 +224,6 @@ func ParseServerReference(text string) (protocol.MCPServerID, error) {
 	return id, nil
 }
 
-// ServerLabel renders an identity in the syntax ParseServerReference reads.
 func ServerLabel(id protocol.MCPServerID) string {
 	if id.Origin.Type == protocol.MCPOriginInstallation {
 		return id.Origin.InstallationID + "/" + id.Name
@@ -244,9 +231,6 @@ func ServerLabel(id protocol.MCPServerID) string {
 	return id.Name
 }
 
-// ToolLabel names a tool by its source, rendering an MCP server in the form
-// ServerLabel reads back. The wire contract, validated at the binding, makes
-// every other shape a contract violation rather than text to pass through.
 func ToolLabel(ref protocol.ToolRef) (string, error) {
 	switch ref.Type {
 	case protocol.ToolRefBuiltIn:
@@ -294,9 +278,8 @@ func (s ServerUpdate) HasChanges() bool {
 	return s.Enabled != nil || s.Description != nil || s.Connection != nil || s.HandshakeTimeout != nil
 }
 
-// AuthorizationReference is the stable identity used to observe an attempt.
-// Server is retained even though the runtime query is keyed by ID so adapters
-// can reject a response that silently crosses authorization ownership.
+// Server is retained although the query is keyed by ID so adapters can reject a
+// response that crosses authorization ownership.
 type AuthorizationReference struct {
 	ID     string
 	Server protocol.MCPServerID
@@ -316,10 +299,6 @@ func (a AuthorizationReference) Validate() error {
 	return nil
 }
 
-// ValidateAuthorizationAttempt covers the one thing the Runtime wire contract
-// cannot state about an attempt: two independent timestamps in the wrong order.
-// Field presence, closed status values, and identity syntax are the endpoint's
-// answer, already given before this value reached the CLI.
 func ValidateAuthorizationAttempt(attempt protocol.MCPAuthorizationAttempt) error {
 	if attempt.FinishedAt != nil && attempt.FinishedAt.Before(attempt.CreatedAt) {
 		return errors.New("MCP authorization finished before it started")
@@ -327,8 +306,6 @@ func ValidateAuthorizationAttempt(attempt protocol.MCPAuthorizationAttempt) erro
 	return nil
 }
 
-// AuthorizationReferenceFrom retains both identities needed to detect a poll
-// response that crosses server ownership.
 func AuthorizationReferenceFrom(attempt protocol.MCPAuthorizationAttempt) AuthorizationReference {
 	return AuthorizationReference{ID: attempt.ID, Server: attempt.Server}
 }

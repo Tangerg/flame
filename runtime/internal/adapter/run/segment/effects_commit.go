@@ -18,8 +18,6 @@ import (
 	framehost "github.com/Tangerg/frame/host"
 )
 
-// ReserveChildRunStart durably records one invisible child identity. It does
-// not admit a Run or append Transcript content.
 func (e *Effects) ReserveChildRunStart(
 	ctx context.Context,
 	reservation runs.ChildRunStartReservation,
@@ -56,7 +54,6 @@ func (e *Effects) applyStartedChildRun(ctx context.Context, started runs.Started
 	return errors.Join(errors.New("segment: child Run start was concluded by another opening write-set"), err)
 }
 
-// AbortChildRunStart consumes an invisible reservation without creating a Run.
 func (e *Effects) AbortChildRunStart(
 	ctx context.Context,
 	reservation runs.ChildRunStartReservation,
@@ -100,10 +97,6 @@ func childRunStartReservationRecord(
 	}, nil
 }
 
-// childRunStartReservationPayload is segment's canonical durable comparison
-// payload. MemberID, SessionID, and ReservedAt already have dedicated record
-// columns; the remaining reservation facts stay adapter-owned instead of making
-// an Application struct's Go layout an implicit storage wire.
 type childRunStartReservationPayload struct {
 	ExecutorID      string             `json:"executorId"`
 	ParentMemberID  string             `json:"parentMemberId"`
@@ -115,11 +108,6 @@ type childRunStartReservationPayload struct {
 	RootRunID       identity.RunID     `json:"rootRunId"`
 }
 
-// CommitOpening accepts one segment atomically. A fresh segment admits its Run;
-// a continuation consumes the waiting hand-off, settles its answered Items, and
-// resumes the existing Runs in this one transaction. The opening transcript
-// projections land in that same transaction, so Start cannot acknowledge a
-// segment whose durable opening is missing.
 func (e *Effects) CommitOpening(ctx context.Context, opening runs.OpeningCommit) error {
 	err := e.tx(ctx, func(ctx context.Context) error {
 		return e.commitOpening(ctx, opening)
@@ -134,9 +122,6 @@ func (e *Effects) CommitOpening(ctx context.Context, opening runs.OpeningCommit)
 	return errors.Join(err, settleErr)
 }
 
-// commitOpening assumes that the caller has validated opening and owns the
-// transaction boundary. Keeping the persistence body separate prevents
-// composite commits from depending on reentrant transaction implementations.
 func (e *Effects) commitOpening(ctx context.Context, opening runs.OpeningCommit) error {
 	_, admitting := opening.Admission()
 	resume, resuming := opening.Resume()
@@ -209,10 +194,8 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 	return nil
 }
 
-// CommitEvent applies one run event's durable parts atomically: the
-// transcript item/run projections and the run-state transition in one
-// transaction. A tree interruption is deliberately excluded: it must use
-// CommitTreeBarrier so no individual Run can publish a partial barrier.
+// A tree interruption must use CommitTreeBarrier so no individual Run can publish
+// a partial barrier.
 func (e *Effects) CommitEvent(ctx context.Context, commit runs.EventCommit) error {
 	if err := commit.Validate(); err != nil {
 		return fmt.Errorf("segment: invalid event commit: %w", err)
@@ -266,11 +249,9 @@ func (e *Effects) invalidateCompactedContext(commit runs.EventCommit) {
 
 const runCommitReconciliationTimeout = 5 * time.Second
 
-// reconcileEventCommit turns this write-set's exact durable marker into its
-// successful outcome. SQLite can report an error after COMMIT has crossed its
-// durable boundary, and blindly retrying model/tool state transitions is not
-// safe. The aggregate and journals alone are not evidence because they may have
-// been written by another Segment or immutable write attempt.
+// SQLite can report an error after COMMIT crossed its durable boundary, so the
+// exact marker decides the outcome; blindly retrying model/tool transitions is
+// unsafe.
 func (e *Effects) reconcileEventCommit(
 	ctx context.Context,
 	commit runs.EventCommit,
@@ -307,10 +288,6 @@ func (e *Effects) reconcileRunCommit(
 	return settled, nil
 }
 
-// CommitTreeBarrier atomically records one root-owned pending set and suspends
-// every active Run named by it. The caller supplies Runs in protocol publication
-// order; persistence preserves that order while the transaction makes it
-// invisible until complete.
 func (e *Effects) CommitTreeBarrier(ctx context.Context, barrier runs.TreeBarrierCommit) error {
 	pending := barrier.Pending()
 	checkpoint := barrier.Checkpoint()
@@ -404,8 +381,6 @@ func (e *Effects) resultPublicationApplied(ctx context.Context, commit runs.Even
 	return e.runState.ResultPublicationCommitted(ctx, commit.SessionID, commit.RunID, commit.SegmentID, publication.ID, publication.Digest)
 }
 
-// closeTerminalConversation appends the messages that close a terminal root
-// Run's conversation.
 func (e *Effects) closeTerminalConversation(ctx context.Context, commit runs.EventCommit) (runs.EventCommit, error) {
 	if commit.State != runs.StateTerminalize || !commit.Run.Lineage().IsRoot() {
 		return commit, nil
@@ -474,8 +449,6 @@ func (e *Effects) captureGoalRun(ctx context.Context, commit runs.EventCommit) e
 	return nil
 }
 
-// recordRunCommit receipts an event commit that leaves the Run's state as it
-// was; a state change is its own receipt.
 func (e *Effects) recordRunCommit(ctx context.Context, commit runs.EventCommit) error {
 	if commit.State != runs.StateUnchanged || commit.CommitID.IsZero() {
 		return nil
@@ -514,11 +487,6 @@ func (e *Effects) applyProgress(ctx context.Context, commit runs.EventCommit) er
 	return nil
 }
 
-// acceptResumeAnswers consumes the exact open interrupt set and settles its
-// answered Items in the opening transaction. The waiting checkpoint is retained:
-// it remains the accepted continuation's execution context until a terminal
-// write-set or the next barrier replaces it. A continuation opening without an
-// answer write-set resumes a tree whose answers were not re-settled here.
 func (e *Effects) acceptResumeAnswers(ctx context.Context, opening runs.OpeningCommit) error {
 	acceptance, present := opening.ResumeAcceptance()
 	if !present {
@@ -540,18 +508,11 @@ func (e *Effects) acceptResumeAnswers(ctx context.Context, opening runs.OpeningC
 			return fmt.Errorf("segment: record answered interrupt %q: %w", replacement.Expected().ID(), err)
 		}
 	}
-	// The standing rules are derived and authority-checked by the acceptance owner.
-	// Persisting them here binds them to the same transaction as the answers and
-	// consumed open set, so a rule never survives an acceptance that rolled back.
 	for _, rule := range acceptance.RememberedRules() {
 		if err := e.rememberedRules.Put(ctx, rule); err != nil {
 			return fmt.Errorf("segment: persist remembered approval rule %q: %w", rule.ID(), err)
 		}
 	}
-	// The accepted continuation binding commits with the answers it routes, so a
-	// crash before delivery completes leaves exactly one durable accepted-paused
-	// tree for boot revival. The next durable waiting/terminal boundary retires it;
-	// a local Resume acknowledgement alone cannot prove the head left this cut.
 	resume, _ := opening.Resume()
 	inputItemID, err := opening.UserInputItemID()
 	if err != nil {
@@ -604,8 +565,6 @@ func (e *Effects) applyState(ctx context.Context, commit runs.EventCommit) error
 	if commit.State == runs.StateUnchanged {
 		return nil
 	}
-	// EventCommit.Validate settles which states carry a Run record and what
-	// state that record must be in, so both arms below read one it admitted.
 	switch commit.State {
 	case runs.StateSuspend:
 		return e.runState.Suspend(ctx, *commit.Run, commit.SegmentID, commit.CommitID)
@@ -644,11 +603,6 @@ func (e *Effects) applyState(ctx context.Context, commit runs.EventCommit) error
 	}
 }
 
-// finishedRun completes the terminal Run record with the two facts the reducer
-// cannot know: the conversation watermark, resolved inside the caller's
-// transaction so it is consistent with the state it terminalizes (the message log
-// is in its terminal post-compaction shape by the time a terminal event arrives),
-// and the row's touch time.
 func (e *Effects) finishedRun(ctx context.Context, record run.Run) (run.Run, error) {
 	mark, needed, err := e.terminalMessageMark(ctx, record)
 	if err != nil || !needed {
@@ -661,7 +615,6 @@ func (e *Effects) finishedRun(ctx context.Context, record run.Run) (run.Run, err
 	return finalized, nil
 }
 
-// terminalMessageMark resolves the watermark a terminal root Run still lacks.
 func (e *Effects) terminalMessageMark(ctx context.Context, record run.Run) (int, bool, error) {
 	if _, known := record.MessageMark().Count(); !record.Lineage().IsRoot() || known {
 		return 0, false, nil

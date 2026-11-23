@@ -31,7 +31,7 @@ func (r *Runtime) SubscribeRun(ctx context.Context, in conversation.SubscribeRun
 	}
 
 	head := len(segment.events)
-	start := head // Empty checkpoint attaches at the current head.
+	start := head
 	if in.AfterEventID != "" {
 		at := replayIndex(segment.events, in.AfterEventID)
 		if at < 0 {

@@ -23,7 +23,7 @@ function goalMutationIdentity(
   return JSON.stringify([`goals.${method}`, input]);
 }
 
-export function toGoalReadModel(goal: Goal): GoalReadModel {
+function toGoalReadModel(goal: Goal): GoalReadModel {
   return {
     sessionId: goal.sessionId,
     ...(goal.author ? { author: goal.author } : {}),
@@ -39,11 +39,11 @@ export function toGoalReadModel(goal: Goal): GoalReadModel {
   };
 }
 
-export function toGoalCommandReceipt(goal: Pick<Goal, "sessionId">): GoalCommandReceipt {
+function toGoalCommandReceipt(goal: Pick<Goal, "sessionId">): GoalCommandReceipt {
   return { sessionId: goal.sessionId };
 }
 
-export function runtimeGoalMaterial(goal: Goal | undefined, available: boolean): GoalState {
+function runtimeGoalMaterial(goal: Goal | undefined, available: boolean): GoalState {
   return {
     available,
     goal: goal ? toGoalReadModel(goal) : null,
@@ -98,7 +98,7 @@ class RuntimeGoalCommandsGateway implements GoalCommandsGateway {
   }
 }
 
-export interface GoalRuntimeAdapter {
+interface GoalRuntimeAdapter {
   replaceRuntimeGeneration(): void;
   retireRuntimeGeneration(): void;
   dispose(): void;

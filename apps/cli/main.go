@@ -1,4 +1,3 @@
-// Command flame is the terminal front end for the flame agent runtime.
 package main
 
 import (
@@ -14,20 +13,20 @@ import (
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
 
+const signalExitBase = 128
+
 func main() {
 	os.Exit(run())
 }
 
 func run() int {
-	flameHome, err := flameHomeDirectory()
+	flameHome, err := localruntime.ProductRoot()
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "Error:", err)
-		return exitCode(err)
+		return reportFailure(err)
 	}
 	owner, err := newRuntimeOwnerAt(flameHome)
 	if err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "Error:", err)
-		return exitCode(err)
+		return reportFailure(err)
 	}
 	return runWithDependencies(runtimeDependencies(owner, filepath.Join(flameHome, "cli")), owner)
 }
@@ -36,18 +35,24 @@ func runWithDependencies(dependencies cmd.Dependencies, closer runtimeCloser) in
 	ctx, stop := processSignalContext(context.Background())
 	defer stop()
 
-	root := cmd.NewRoot(dependencies)
+	root, err := cmd.NewRoot(dependencies)
+	if err != nil {
+		return reportFailure(errors.Join(err, closeRuntimeOwner(closer)))
+	}
 	root.SetIn(os.Stdin)
 	root.SetOut(os.Stdout)
 	root.SetErr(os.Stderr)
-	err := root.ExecuteContext(ctx)
-	err = errors.Join(err, closeRuntimeOwner(closer))
+	err = errors.Join(root.ExecuteContext(ctx), closeRuntimeOwner(closer))
 	if cause := context.Cause(ctx); cause != nil {
 		err = errors.Join(cause, err)
 	}
 	if err == nil {
 		return 0
 	}
+	return reportFailure(err)
+}
+
+func reportFailure(err error) int {
 	_, _ = fmt.Fprintln(os.Stderr, "Error:", err)
 	return exitCode(err)
 }
@@ -66,23 +71,6 @@ func closeRuntimeOwner(owner runtimeCloser) error {
 	return nil
 }
 
-func flameHomeDirectory() (string, error) {
-	configuredRoot := os.Getenv("FLAME_HOME")
-	var userHome string
-	if configuredRoot == "" {
-		var err error
-		userHome, err = os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("resolve flame home: %w", err)
-		}
-	}
-	root, err := localruntime.ResolveProductRoot(userHome, configuredRoot)
-	if err != nil {
-		return "", fmt.Errorf("resolve flame home: %w", err)
-	}
-	return root, nil
-}
-
 type exitCoder interface {
 	error
 	ExitCode() int
@@ -93,10 +81,13 @@ func exitCode(err error) int {
 		return coded.ExitCode()
 	}
 	if errors.Is(err, context.Canceled) {
-		return 130
+		return signalExitCode(syscall.SIGINT)
 	}
 	return 1
 }
+
+// Shells report a process ended by signal N with exit status 128+N.
+func signalExitCode(signal syscall.Signal) int { return signalExitBase + int(signal) }
 
 type processSignalError struct{ signal os.Signal }
 
@@ -107,9 +98,9 @@ func (p processSignalError) Unwrap() error { return context.Canceled }
 func (p processSignalError) ExitCode() int {
 	switch p.signal {
 	case os.Interrupt:
-		return 130
+		return signalExitCode(syscall.SIGINT)
 	case syscall.SIGTERM:
-		return 143
+		return signalExitCode(syscall.SIGTERM)
 	default:
 		return 1
 	}

@@ -12,7 +12,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -23,7 +23,7 @@ func TestExecutableCLIPluginCommandCallsTheHostWithoutAPage(t *testing.T) {
 	server := &protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "schedules"}
 	r.poMCPTools(server, scheduleToolsReady)
 	discovery := r.must(delivery.RuntimeDiscover, struct{}{}, "").(*protocol.DiscoverResponse)
-	transport, err := flamehttp.NewServer(flamehttp.Config{Endpoint: r.endpoint, Addr: "127.0.0.1:0", ServerInfo: discovery.ServerInfo, Authentication: mustLocalToken(t, "cli-plugin-acceptance-token")})
+	transport, err := runtimehttp.NewServer(runtimehttp.Config{Endpoint: r.endpoint, PluginControl: r.host.PluginControl(), Addr: "127.0.0.1:0", ServerInfo: discovery.ServerInfo, Authentication: mustLocalToken(t, "cli-plugin-acceptance-token")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,30 +62,30 @@ func TestExecutableCLIPluginCommandCallsTheHostWithoutAPage(t *testing.T) {
 		}
 		return reply.Output
 	}
-	creation := call(scheduleCreateRequest(r, testsupport.SchedulesDraft{Title: "CLI callback", Instructions: "Complete the original captured work.", CWD: cfg.defaultWorkspacePath, Cron: "0 0 1 1 *", TimeZone: "UTC"}), "cli_"+strings.Repeat("8", 32))
-	var saved testsupport.SchedulesCreateV1OutputDomainSnapshot
-	if err := json.Unmarshal([]byte(creation), &saved); err != nil || saved.ID == "" {
+	creation := call(scheduleCreateRequest(r, testsupport.SchedulesDraft{Title: "CLI callback", Instructions: "Complete the original captured work.", Cwd: cfg.defaultWorkspacePath, Cron: "0 0 1 1 *", TimeZone: "UTC"}), "cli_"+strings.Repeat("8", 32))
+	var saved testsupport.SchedulesCreateV2OutputScheduleSnapshot
+	if err := json.Unmarshal([]byte(creation), &saved); err != nil || saved.Id == "" {
 		t.Fatalf("CLI did not create the private Schedule: %s, %v", creation, err)
 	}
-	request := scheduleRunRequest(r, saved.ID)
+	request := scheduleRunRequest(r, saved.Id)
 	key := "cli_" + strings.Repeat("9", 32)
 	original := call(request, key)
-	var handle struct{ SessionID, RunID string }
-	if err := json.Unmarshal([]byte(original), &handle, json.RejectUnknownMembers(true)); err != nil || handle.SessionID == "" || handle.RunID == "" {
+	var handle testsupport.SchedulesRunReference
+	if err := json.Unmarshal([]byte(original), &handle, json.RejectUnknownMembers(true)); err != nil || handle.SessionId == "" || handle.RunId == "" {
 		t.Fatalf("backend callback did not return an accepted Core Run: %s, %v", original, err)
 	}
 	if replay := call(request, key); replay != original {
 		t.Fatalf("CLI repeated the command with a new Run: original=%s replay=%s", original, replay)
 	}
-	accepted := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: handle.RunID}, "").(*protocol.RunRef)
-	if accepted.ID != handle.RunID || accepted.SessionID != handle.SessionID {
+	accepted := r.must(delivery.RunsGet, protocol.GetRunRequest{RunID: handle.RunId}, "").(*protocol.RunRef)
+	if accepted.ID != handle.RunId || accepted.SessionID != handle.SessionId {
 		t.Fatalf("private callback receipt differs from the Runtime owner: %+v", accepted)
 	}
 }
 
-func mustLocalToken(t testing.TB, token string) flamehttp.Authentication {
+func mustLocalToken(t testing.TB, token string) runtimehttp.Authentication {
 	t.Helper()
-	authentication, err := flamehttp.LocalTokenAuthentication(token)
+	authentication, err := runtimehttp.LocalTokenAuthentication(token)
 	if err != nil {
 		t.Fatal(err)
 	}

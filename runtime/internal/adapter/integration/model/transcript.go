@@ -9,28 +9,16 @@ import (
 )
 
 const (
-	mediaMarker = "[media content omitted]"
-	// maintenanceTranscriptBytes is the aggregate model-input allocation for
-	// one rendered conversation. It leaves capacity for fixed instructions while
-	// keeping the hard request cap in adapter/integration/model as the final guard.
+	mediaMarker                = "[media content omitted]"
 	maintenanceTranscriptBytes = 384 * 1024
-	// maintenanceMessageBytes prevents one message from consuming the whole
-	// transcript when only a few messages are present.
-	maintenanceMessageBytes = 24 * 1024
+	maintenanceMessageBytes    = 24 * 1024
 )
 
-// RenderTranscript flattens messages into a plain-text role-tagged transcript
-// a summariser or consolidator can read. It is lossy by design: the auxiliary
-// model needs the conversation's gist, not a second lossless journal.
-//
-// Every call is bounded as a whole and gives each message an equal allocation,
-// capped by maintenanceMessageBytes. Compaction uses RenderCompactionTranscript
-// and bounded successive requests instead of this intentionally lossy projection.
 func RenderTranscript(msgs []chat.Message) string {
 	if len(msgs) == 0 {
 		return ""
 	}
-	framingBytes := len(msgs) // one trailing newline per message
+	framingBytes := len(msgs)
 	messageBudget := max(1, (maintenanceTranscriptBytes-framingBytes)/len(msgs))
 	messageBudget = min(messageBudget, maintenanceMessageBytes)
 
@@ -42,10 +30,6 @@ func RenderTranscript(msgs []chat.Message) string {
 	return capText(transcript.String(), maintenanceTranscriptBytes)
 }
 
-// RenderCompactionTranscript preserves all model-visible text before a summary.
-// The compactor owns bounded dispatch and splits this projection without dropping
-// bytes. Media is explicitly marked, as in other text-only auxiliary requests;
-// it is not reconstructed or silently treated as text.
 func RenderCompactionTranscript(msgs []chat.Message) string {
 	var transcript strings.Builder
 	for _, message := range msgs {
@@ -82,12 +66,8 @@ func renderTranscriptMessage(msg chat.Message, budget int) string {
 	}
 }
 
-// renderToolResults keeps each result's identity and error status out of the
-// byte budget and spends what is left on output. Those are the facts a summary
-// may not lose, and they sit in the middle of the line: budgeting them together
-// with the body elides "error=true" before the output it describes, which is how
-// a failed operation reaches the summariser looking like a successful one. A
-// result whose header does not fit is counted, never half-written.
+// Identity and error status are budgeted apart from the body: budgeting them
+// together elides error=true before the output it describes.
 func renderToolResults(msg chat.Message, budget int) string {
 	const prefix = "[tool] "
 	var headers, outputs []string
@@ -139,10 +119,6 @@ func renderToolResults(msg chat.Message, budget int) string {
 	if kept < len(headers) {
 		fmt.Fprintf(&rendered, "(%d results elided)\n", len(headers)-kept)
 	}
-	// Keeping a header whole is the rule inside a budget that can hold one. A
-	// budget too small for even the first header keeps none, so the only thing
-	// left to bound is the note — and every message owes the transcript its
-	// equal share, or one of them silently spends a later message's.
 	return capText(rendered.String(), budget)
 }
 
@@ -177,11 +153,11 @@ func renderTranscriptParts(prefix string, values []string, budget int) string {
 	return capText(rendered.String(), budget)
 }
 
-// HeadTailCut splits a budget of kept bytes into a head (¾) and a tail (¼) of
-// s, snapping both cuts to rune boundaries so a multibyte rune is never split.
+const tailBudgetDivisor = 4
+
 func HeadTailCut(s string, kept int) (head, tailStart int) {
 	kept = min(max(kept, 0), len(s))
-	head, tailStart = kept*3/4, len(s)-kept/4
+	head, tailStart = kept*(tailBudgetDivisor-1)/tailBudgetDivisor, len(s)-kept/tailBudgetDivisor
 	for head > 0 && !utf8.RuneStart(s[head]) {
 		head--
 	}
@@ -191,10 +167,6 @@ func HeadTailCut(s string, kept int) (head, tailStart int) {
 	return head, max(head, tailStart)
 }
 
-// HeadTail reduces s to a head (¾) + tail (¼) preview when it exceeds limit,
-// including the elision marker inside that exact byte limit. Cuts snap to rune
-// boundaries so a multibyte rune is never split. Shared by transient model
-// rendering. It never rewrites the canonical conversation used for compaction.
 func HeadTail(s string, limit int, marker func(elided int) string) string {
 	if limit <= 0 || len(s) <= limit {
 		return s
@@ -217,7 +189,6 @@ func HeadTail(s string, limit int, marker func(elided int) string) string {
 	}
 }
 
-// capText bounds transient model input with a marked head+tail preview.
 func capText(s string, limit int) string {
 	return HeadTail(s, limit, func(elided int) string {
 		return fmt.Sprintf("\n…[%d bytes elided for auxiliary model input]…\n", elided)

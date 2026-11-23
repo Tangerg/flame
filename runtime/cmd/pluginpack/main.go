@@ -1,5 +1,3 @@
-// Command pluginpack builds a Flame consumer release through its original
-// metadata interpretation and Frame's neutral distribution contract.
 package main
 
 import (
@@ -12,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 )
 
@@ -31,7 +30,7 @@ func run(args []string, output io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	var writer io.Writer = io.Discard
+	writer := io.Discard
 	var out *archiveOutput
 	if *archive != "" {
 		out, err = createArchive(physicalSource, *archive)
@@ -61,6 +60,7 @@ func run(args []string, output io.Writer) (err error) {
 	_, err = output.Write(append(encoded, '\n'))
 	return err
 }
+
 func main() {
 	if err := run(os.Args[1:], os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -68,8 +68,6 @@ func main() {
 	}
 }
 
-// archiveOutput is a new ZIP that survives only a completed build; an
-// abandoned build removes it.
 type archiveOutput struct {
 	path     string
 	file     *os.File
@@ -88,7 +86,7 @@ func createArchive(physicalSource, path string) (*archiveOutput, error) {
 	if err != nil || filepath.IsLocal(relative) {
 		return nil, errors.New("pluginpack: archive must be outside source")
 	}
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, filesystem.PrivateFileMode)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -8,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -22,9 +23,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// endpointJournal commits observations without authorizing replay or continuation.
-// The owner is the host-captured logical Model/Tool call, not caller-supplied ancestry.
-// Its durable admission supplies the original Run/Segment before provider generation.
 type endpointJournal interface {
 	StartEndpointInvocation(context.Context, modelref.EndpointInvocation, string) error
 	SettleEndpointInvocation(context.Context, modelref.EndpointInvocation, modelref.EndpointOutcome) error
@@ -34,17 +32,16 @@ type endpointJournal interface {
 type ObservedResolver struct {
 	resolver ChatModelResolver
 	journal  endpointJournal
-	pricing  accounting.Pricing
 }
 
-func NewObservedResolver(resolver ChatModelResolver, journal endpointJournal, pricing accounting.Pricing) (*ObservedResolver, error) {
+func NewObservedResolver(resolver ChatModelResolver, journal endpointJournal) (*ObservedResolver, error) {
 	if lo.IsNil(resolver) || lo.IsNil(journal) {
 		return nil, errors.New("model: resolver and endpoint journal are required")
 	}
-	return &ObservedResolver{resolver: resolver, journal: journal, pricing: pricing}, nil
+	return &ObservedResolver{resolver: resolver, journal: journal}, nil
 }
 
-func (r *ObservedResolver) ResolveChat(ctx context.Context, selection modelchoice.Selection) (ResolvedChat, error) {
+func (r *ObservedResolver) ResolveChat(ctx context.Context, selection flamemodel.Selection) (ResolvedChat, error) {
 	resolved, err := r.resolver.ResolveChat(ctx, selection)
 	if err != nil {
 		return ResolvedChat{}, err
@@ -52,7 +49,7 @@ func (r *ObservedResolver) ResolveChat(ctx context.Context, selection modelchoic
 	return r.observe(selection, resolved)
 }
 
-func (r *ObservedResolver) RestoreChat(ctx context.Context, selection modelchoice.Selection, capture *ProviderCapture) (ResolvedChat, error) {
+func (r *ObservedResolver) RestoreChat(ctx context.Context, selection flamemodel.Selection, capture *ProviderCapture) (ResolvedChat, error) {
 	resolved, err := r.resolver.RestoreChat(ctx, selection, capture)
 	if err != nil {
 		return ResolvedChat{}, err
@@ -60,15 +57,11 @@ func (r *ObservedResolver) RestoreChat(ctx context.Context, selection modelchoic
 	return r.observe(selection, resolved)
 }
 
-func (r *ObservedResolver) observe(selection modelchoice.Selection, resolved ResolvedChat) (ResolvedChat, error) {
+func (r *ObservedResolver) observe(selection flamemodel.Selection, resolved ResolvedChat) (ResolvedChat, error) {
 	if lo.IsNil(resolved.Model()) {
 		return ResolvedChat{}, errors.New("model: resolver returned no endpoint model")
 	}
-	pricing := resolved.pricing
-	if r.pricing != nil {
-		pricing = r.pricing
-	}
-	model := &observedEndpoint{inner: resolved.Model(), journal: r.journal, selection: selection, pricing: pricing}
+	model := &observedEndpoint{inner: resolved.Model(), journal: r.journal, selection: selection, pricing: resolved.pricing}
 	var bound chat.Model = model
 	if stream, ok := resolved.Streamer(); ok {
 		bound = &streamedEndpoint{observedEndpoint: model, stream: stream}
@@ -76,22 +69,14 @@ func (r *ObservedResolver) observe(selection modelchoice.Selection, resolved Res
 	return resolved.WithModel(bound)
 }
 
-func (r *ObservedResolver) ValidateChatModel(ctx context.Context, provider, model string) error {
-	selection, err := modelchoice.New(provider, model)
-	if err != nil {
-		return err
-	}
-	resolved, err := r.ResolveChat(ctx, selection)
-	if err != nil {
-		return err
-	}
-	return resolved.Close(ctx)
+func (r *ObservedResolver) ValidateChatModel(ctx context.Context, providerID, model string) error {
+	return validateByOpening(ctx, providerID, model, r.ResolveChat)
 }
 
 type observedEndpoint struct {
 	inner     chat.Model
 	journal   endpointJournal
-	selection modelchoice.Selection
+	selection flamemodel.Selection
 	pricing   accounting.Pricing
 }
 
@@ -121,7 +106,7 @@ func (m *observedEndpoint) finish(ctx context.Context, invocation modelref.Endpo
 	logResponseDiagnostics(ctx, invocation, response)
 	var cost accounting.Cost
 	var pricingErr error
-	if response != nil && response.Metadata != nil && response.Metadata.Usage != nil && m.pricing != nil {
+	if response != nil && response.Metadata != nil && response.Metadata.Usage != nil {
 		served := response.Metadata.Model
 		if served == "" {
 			served = invocation.Model
@@ -135,8 +120,6 @@ func (m *observedEndpoint) finish(ctx context.Context, invocation modelref.Endpo
 	return recordEndpointOutcome(ctx, m.journal, invocation, outcome, cause, pricingErr)
 }
 
-// The start record fences a call before I/O. Only definite non-execution
-// can withdraw that record from physical accounting.
 func recordEndpointOutcome(ctx context.Context, journal endpointJournal, invocation modelref.EndpointInvocation, outcome modelref.EndpointOutcome, cause, pricingErr error) error {
 	commitCtx := context.WithoutCancel(ctx)
 	if outcome.Response == nil && coreinvocation.ClassifyFailure(cause) == coreinvocation.FailureNotExecuted {
@@ -192,12 +175,7 @@ func (m *streamedEndpoint) Stream(ctx context.Context, request *chat.Request) it
 		settled := false
 		defer func() {
 			if !settled {
-				// Stop returns no successful observation. Startup reconciles a
-				// failed publication as unknown without replaying this request.
-				response, _ := accumulated.Response()
-				if err := m.finish(ctx, invocation, response, errors.Join(ctx.Err(), context.Cause(ctx), errors.New("model: endpoint stream consumption stopped"))); err != nil {
-					trace.SpanFromContext(ctx).RecordError(err)
-				}
+				m.abandon(ctx, invocation, &accumulated)
 			}
 		}()
 		calling, err := endpointContext(ctx, invocation)
@@ -208,42 +186,58 @@ func (m *streamedEndpoint) Stream(ctx context.Context, request *chat.Request) it
 			yield(nil, errors.Join(refusal, publicationErr))
 			return
 		}
-		sequence := m.stream.Stream(calling, frozen.Clone())
-		if sequence == nil {
-			err = errors.New("model: endpoint returned no stream")
-		} else {
-			for delta, cause := range sequence {
-				if cause != nil {
-					err = cause
-					break
-				}
-				if cause := accumulated.Add(delta); cause != nil {
-					err = cause
-					break
-				}
-				if !yield(delta.Clone(), nil) {
-					return
-				}
-			}
+		consumed, err := m.relay(calling, frozen, &accumulated, yield)
+		if !consumed {
+			return
 		}
-		if accumulated.HasDeltas() && coreinvocation.ClassifyFailure(err) == coreinvocation.FailureNotExecuted {
-			err = &coreinvocation.Failure{
-				Kind: coreinvocation.FailureUnknown, Cause: fmt.Errorf("model: provider reported non-execution after emitting deltas: %w", err),
-			}
-		}
-		response, responseErr := accumulated.Response()
-		if responseErr != nil {
-			response = nil
-			if err == nil {
-				err = responseErr
-			}
-		}
+		response, err := settledResponse(&accumulated, err)
 		publicationErr := m.finish(ctx, invocation, response, err)
 		settled = true
 		if err = errors.Join(err, publicationErr); err != nil {
 			yield(nil, err)
 		}
 	}
+}
+
+func (m *streamedEndpoint) relay(calling context.Context, request *chat.Request, accumulated *chat.ResponseAccumulator, yield func(*chat.ResponseDelta, error) bool) (consumed bool, err error) {
+	sequence := m.stream.Stream(calling, request.Clone())
+	if sequence == nil {
+		return true, errors.New("model: endpoint returned no stream")
+	}
+	for delta, cause := range sequence {
+		if cause != nil {
+			return true, cause
+		}
+		if cause := accumulated.Add(delta); cause != nil {
+			return true, cause
+		}
+		if !yield(delta.Clone(), nil) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func (m *streamedEndpoint) abandon(ctx context.Context, invocation modelref.EndpointInvocation, accumulated *chat.ResponseAccumulator) {
+	response, _ := accumulated.Response()
+	cause := errors.Join(ctx.Err(), context.Cause(ctx), errors.New("model: endpoint stream consumption stopped"))
+	if err := m.finish(ctx, invocation, response, cause); err != nil {
+		trace.SpanFromContext(ctx).RecordError(err)
+	}
+}
+
+// Deltas already reached the caller, so a provider claiming non-execution is unknown.
+func settledResponse(accumulated *chat.ResponseAccumulator, err error) (*chat.Response, error) {
+	if accumulated.HasDeltas() && coreinvocation.ClassifyFailure(err) == coreinvocation.FailureNotExecuted {
+		err = &coreinvocation.Failure{
+			Kind: coreinvocation.FailureUnknown, Cause: fmt.Errorf("model: provider reported non-execution after emitting deltas: %w", err),
+		}
+	}
+	response, responseErr := accumulated.Response()
+	if responseErr != nil {
+		return nil, cmp.Or(err, responseErr)
+	}
+	return response, err
 }
 
 func endpointContext(ctx context.Context, invocation modelref.EndpointInvocation) (context.Context, error) {

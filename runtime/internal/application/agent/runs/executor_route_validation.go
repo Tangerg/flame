@@ -9,11 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// validateRouteReductionBatch proves that a reducer cannot write or publish
-// another route's facts. The reducer is application-owned, but this boundary is
-// where one root journal multiplexes many Run/Segment identities; checking the
-// complete batch before its first side effect keeps a future routing regression
-// from becoming cross-Run transcript corruption.
 func validateRouteReductionBatch(
 	route *executorRoute,
 	sessionID identity.SessionID,
@@ -72,7 +67,7 @@ func validateRoutedEvent(route *executorRoute, sessionID identity.SessionID, rou
 		return fmt.Errorf("%w: route %q carries a nil event", errReducerInvariant, route.runID)
 	}
 	if err := routed.validate(); err != nil {
-		return fmt.Errorf("%w: route %q event %T: %v", errReducerInvariant, route.runID, routed, err)
+		return fmt.Errorf("%w: route %q event %T: %w", errReducerInvariant, route.runID, routed, err)
 	}
 	switch event := routed.(type) {
 	case SegmentStarted:

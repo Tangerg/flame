@@ -22,8 +22,6 @@ import (
 	"golang.org/x/text/transform"
 )
 
-// TransportError is an HTTP-envelope failure. It says nothing about an
-// operation's outcome and is deliberately separate from protocol.ProblemError.
 type TransportError struct {
 	StatusCode int
 	Type       string
@@ -72,7 +70,7 @@ func (r *Client) invokeOperation(ctx context.Context, name string, parameters an
 	if err != nil {
 		return protocol.OperationResult{}, call.readError(err)
 	}
-	if err := call.attach(response.Body); err != nil {
+	if err := call.attach(response); err != nil {
 		return protocol.OperationResult{}, err
 	}
 	return r.readAcknowledgement(call, response, id, meta, parameters, operation)
@@ -91,8 +89,8 @@ func (r *Client) newRPCRequest(ctx context.Context, id jsonrpc.ID, name string, 
 	// belongs to the caller's retained command identity, never net/http replay.
 	request.GetBody = nil
 	request.Header.Set(headerMethod, name)
-	request.Header.Set("Content-Type", protocol.RPCDocumentMediaType)
-	request.Header.Set("Accept", protocol.RPCDocumentMediaType+", "+protocol.RPCStreamMediaType)
+	request.Header.Set(headerContentType, protocol.RPCDocumentMediaType)
+	request.Header.Set(headerAccept, protocol.RPCDocumentMediaType+", "+protocol.RPCStreamMediaType)
 	if r.callbackCall != "" {
 		request.Header.Set(headerAuthorization, r.token)
 		request.Header.Set(pluginmcp.CallHeader, r.callbackCall)
@@ -120,7 +118,7 @@ func (r *Client) newRPCRequest(ctx context.Context, id jsonrpc.ID, name string, 
 }
 
 func (r *Client) readAcknowledgement(call *remoteCall, response *http.Response, id jsonrpc.ID, meta methodMeta, parameters any, operation operation) (protocol.OperationResult, error) {
-	mediaType, _, err := mime.ParseMediaType(response.Header.Get("Content-Type"))
+	mediaType, _, err := mime.ParseMediaType(response.Header.Get(headerContentType))
 	if response.StatusCode != protocol.RPCCallStatus {
 		if r.callbackCall != "" && response.StatusCode == http.StatusGone {
 			return protocol.OperationResult{}, pluginmcp.ErrStaleCall
@@ -194,7 +192,7 @@ func encodeRemoteRequest(id jsonrpc.ID, name string, parameters any, metadata pr
 	if err != nil {
 		return nil, err
 	}
-	object["_meta"] = meta
+	object[protocol.RequestMetaMember] = meta
 	encoded, err = json.Marshal(object, json.Deterministic(true))
 	if err != nil {
 		return nil, err
@@ -243,6 +241,14 @@ func decodeRemoteValue(encoded []byte, valueType reflect.Type) (any, error) {
 		return nil, invalidRemote("invalid typed response")
 	}
 	return value.Elem().Interface(), nil
+}
+
+func decodeRemote[T any](encoded []byte) (T, error) {
+	var value T
+	if err := protocol.DecodeResponse(encoded, &value); err != nil {
+		return value, invalidRemote("invalid typed response")
+	}
+	return value, nil
 }
 
 func readRemoteMessage(reader io.Reader, limit int) ([]byte, error) {

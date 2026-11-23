@@ -2,7 +2,7 @@ package builtin
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -31,7 +31,7 @@ type enterer struct {
 
 func newEnter(modes planEnterPolicy, available func(context.Context) (bool, error)) (toolcontract.Tool, error) {
 	if lo.IsNil(modes) || available == nil {
-		return nil, errors.New("enter_plan_mode: Plan mode policy and availability are required")
+		return nil, fmt.Errorf("%s: Plan mode policy and availability are required", builtincontract.EnterPlanMode)
 	}
 	return toolcontract.NewFunc[enterArgs, string](
 		toolcontract.FuncConfig{Name: string(builtincontract.EnterPlanMode), Description: enterDescription},
@@ -42,7 +42,7 @@ func newEnter(modes planEnterPolicy, available func(context.Context) (bool, erro
 func (e *enterer) enter(ctx context.Context, _ enterArgs) (string, error) {
 	sessionID := executionctx.SessionID(ctx)
 	if sessionID.IsZero() {
-		return "", errors.New("enter_plan_mode: no active session")
+		return "", fmt.Errorf("%s: no active session", builtincontract.EnterPlanMode)
 	}
 	ready, err := e.available(ctx)
 	if err != nil {

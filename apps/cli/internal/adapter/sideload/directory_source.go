@@ -1,5 +1,3 @@
-// Package sideload discovers and adapts executable plugins installed outside
-// the CLI binary.
 package sideload
 
 import (
@@ -389,7 +387,7 @@ func validateExecutable(entry string, info os.FileInfo) error {
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("entry %q is not a regular file", entry)
 	}
-	if runtime.GOOS != "windows" && info.Mode().Perm()&0o111 == 0 {
+	if runtime.GOOS != "windows" && info.Mode().Perm()&filesystem.ExecutableBits == 0 {
 		return fmt.Errorf("entry %q is not executable", entry)
 	}
 	return nil
@@ -458,7 +456,6 @@ func compileCommand(
 	}, nil
 }
 
-// declaredNoArguments is the manifest's explicit spelling of an omitted mode.
 const declaredNoArguments = "none"
 
 func commandArgumentMode(name, declared string) (extensions.ArgumentMode, error) {

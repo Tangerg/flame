@@ -14,10 +14,8 @@ import (
 
 type eventAdvice struct{ hookdata.CommandDecision }
 
-// A stalled command must settle according to its captured failure policy.
 const defaultTimeout = 30 * time.Second
 
-// Exit 2 is the command protocol's explicit denial.
 const blockExitCode = 2
 
 type commandRunner interface {
@@ -26,21 +24,24 @@ type commandRunner interface {
 
 type policyEvaluator struct {
 	commands commandRunner
-	// onError, when set, is called for a hook that failed to run (spawn error,
-	// timeout, or a non-blocking non-zero exit). The caller owns diagnostics;
-	// lifecycle hooks can run without an active tracing span.
-	onError func(ctx context.Context, source string, err error)
+	onError  func(ctx context.Context, source string, err error)
 }
 
-func newPolicyEvaluator(commands commandRunner, onError func(ctx context.Context, source string, err error)) *policyEvaluator {
-	if lo.IsNil(commands) {
-		commands = nil
+func newPolicyEvaluator(commands commandRunner, onError func(ctx context.Context, source string, err error)) (*policyEvaluator, error) {
+	if lo.IsNil(commands) || onError == nil {
+		return nil, errors.New("hooks: command runner and diagnostic sink are required")
 	}
-	return &policyEvaluator{commands: commands, onError: onError}
+	return &policyEvaluator{commands: commands, onError: onError}, nil
 }
 
-// Preserve authored order: the first denial and first eligible rewrite describe
-// different user intent when competing rules both match.
+// An event whose input cannot be projected for a command may only be
+// decided by declarative rules.
+type declarativeOnly struct{}
+
+func (declarativeOnly) RunHookCommand(context.Context, commandRequest) commandResult {
+	return commandResult{Err: errors.New("hook command cannot run for a declarative-only event")}
+}
+
 func (r *policyEvaluator) Run(ctx context.Context, hooks []hookdata.Hook, in hookdata.Input) eventAdvice {
 	dec := eventAdvice{CommandDecision: hookdata.CommandDecision{Verdict: hookdata.CommandAllow}}
 	var commandInput hookdata.Input
@@ -68,10 +69,6 @@ func (r *policyEvaluator) Run(ctx context.Context, hooks []hookdata.Hook, in hoo
 }
 
 func (r *policyEvaluator) runOne(ctx context.Context, ordinal int, h hookdata.Hook, in hookdata.Input, dec *eventAdvice) {
-	if r.commands == nil {
-		r.fail(ctx, h, errors.New("hook command runner is not configured"), dec)
-		return
-	}
 	timeout := defaultTimeout
 	if h.TimeoutMillis > 0 {
 		timeout = time.Duration(h.TimeoutMillis) * time.Millisecond
@@ -115,9 +112,7 @@ func (r *policyEvaluator) runOne(ctx context.Context, ordinal int, h hookdata.Ho
 }
 
 func (r *policyEvaluator) fail(ctx context.Context, rule hookdata.Hook, err error, dec *eventAdvice) {
-	if r.onError != nil {
-		r.onError(ctx, rule.Source, err)
-	}
+	r.onError(ctx, rule.Source, err)
 	if rule.FailurePolicy.Effective() == hookdata.FailureRequired {
 		dec.Fold(hookdata.CommandDeny, "Required hook did not return a valid decision: "+rule.Source, "", "")
 	}
@@ -162,7 +157,7 @@ func matches(h hookdata.Hook, in hookdata.Input) bool {
 		return false
 	}
 	if in.Event != hookdata.PreToolUse && in.Event != hookdata.PostToolUse {
-		return true // non-tool events: matcher is irrelevant
+		return true
 	}
 	if h.Matcher == "" {
 		return true

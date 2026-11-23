@@ -7,15 +7,8 @@ import (
 	"strings"
 )
 
-// ErrInsufficientCapabilities reports that a caller cannot follow a Run because
-// it lacks one or more capabilities the Run may exercise. Resume, subscribe, and
-// pending-interrupt reads enforce the same refusal rather than silently reducing
-// the Run's behavior.
 var ErrInsufficientCapabilities = errors.New("run: caller capabilities are insufficient")
 
-// InsufficientCapabilitiesError names the complete capability set a caller is
-// missing to follow work frozen with more, whether a Run or a Goal incarnation.
-// Callers wrap it with the owner they refused.
 type InsufficientCapabilitiesError struct {
 	Missing Capabilities
 }
@@ -24,34 +17,20 @@ func (i *InsufficientCapabilitiesError) Error() string {
 	return fmt.Sprintf("%s: requires %s", ErrInsufficientCapabilities, i.Missing)
 }
 
-// Is lets callers branch on the category without discarding the missing set.
 func (i *InsufficientCapabilitiesError) Is(target error) bool {
 	return target == ErrInsufficientCapabilities
 }
 
-// Capabilities is the frozen set of optional behaviors a Run may exercise:
-// whether it may create child Runs and which durable human waits it may produce.
-//
-// Admission fixes these capabilities and every later segment obeys them.
-// A continuation answers an interrupt; it does not renegotiate
-// what the Run is allowed to do.
-//
-// Input boundaries translate negotiated caller capabilities into this value.
-// The empty value is a valid minimal capability set, not an unknown value.
 type Capabilities struct {
 	ChildRuns      bool
 	InterruptTypes []InterruptType
 }
 
-// Clone returns an ownership-isolated copy.
 func (c Capabilities) Clone() Capabilities {
 	c.InterruptTypes = slices.Clone(c.InterruptTypes)
 	return c
 }
 
-// Validate reports whether the capability set uses its one canonical
-// representation. Admission normalizes once; later boundaries can compare the
-// frozen value directly and fail closed on corruption.
 func (c Capabilities) Validate() error {
 	for index, kind := range c.InterruptTypes {
 		if !kind.Valid() {
@@ -64,19 +43,12 @@ func (c Capabilities) Validate() error {
 	return nil
 }
 
-// Equal reports semantic equality of two capability sets. It deliberately
-// ignores order and duplicate spelling so callers validating an external value
-// can explain a mismatch instead of accidentally comparing slice headers.
-// Persisted and admitted values should additionally pass [Validate].
 func (c Capabilities) Equal(other Capabilities) bool {
 	left := c.Normalized()
 	right := other.Normalized()
 	return left.ChildRuns == right.ChildRuns && slices.Equal(left.InterruptTypes, right.InterruptTypes)
 }
 
-// Normalized returns the interrupt policy as a canonical set: sorted and without
-// duplicates. Comparing or storing a set must not depend on how a caller happened
-// to order it.
 func (c Capabilities) Normalized() Capabilities {
 	kinds := slices.Clone(c.InterruptTypes)
 	slices.Sort(kinds)
@@ -86,12 +58,10 @@ func (c Capabilities) Normalized() Capabilities {
 	}
 }
 
-// IsEmpty reports that the Run has no optional behavior enabled.
 func (c Capabilities) IsEmpty() bool {
 	return !c.ChildRuns && len(c.InterruptTypes) == 0
 }
 
-// MissingFrom returns every capability in c that caller lacks.
 func (c Capabilities) MissingFrom(caller Capabilities) Capabilities {
 	var missing Capabilities
 	if c.ChildRuns && !caller.ChildRuns {
@@ -105,7 +75,6 @@ func (c Capabilities) MissingFrom(caller Capabilities) Capabilities {
 	return missing
 }
 
-// String names the enabled behaviors for an error explaining a refusal.
 func (c Capabilities) String() string {
 	parts := make([]string, 0, 1+len(c.InterruptTypes))
 	if c.ChildRuns {

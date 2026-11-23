@@ -55,7 +55,7 @@
           "type": "string"
         },
         "trigger": {
-          "$ref": "#/$defs/EventV1OutputDomainDraft"
+          "$ref": "#/$defs/EventV1OutputFilewatchDraft"
         }
       },
       "required": [
@@ -86,7 +86,7 @@
           "type": "integer"
         },
         "trigger": {
-          "$ref": "#/$defs/ConfigureV1InputDomainDraft"
+          "$ref": "#/$defs/ConfigureV1InputFilewatchDraft"
         }
       },
       "required": [
@@ -97,7 +97,7 @@
     "ConfigureV1Input": {
       "$ref": "#/$defs/ConfigureInput"
     },
-    "ConfigureV1InputDomainDraft": {
+    "ConfigureV1InputFilewatchDraft": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -161,9 +161,9 @@
       "type": "object"
     },
     "ConfigureV1Output": {
-      "$ref": "#/$defs/ConfigureV1OutputDomainSnapshot"
+      "$ref": "#/$defs/ConfigureV1OutputFilewatchSnapshot"
     },
-    "ConfigureV1OutputDomainDraft": {
+    "ConfigureV1OutputFilewatchDraft": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -226,7 +226,7 @@
       ],
       "type": "object"
     },
-    "ConfigureV1OutputDomainSnapshot": {
+    "ConfigureV1OutputFilewatchSnapshot": {
       "additionalProperties": false,
       "properties": {
         "revision": {
@@ -240,7 +240,7 @@
           "type": "integer"
         },
         "trigger": {
-          "$ref": "#/$defs/ConfigureV1OutputDomainDraft"
+          "$ref": "#/$defs/ConfigureV1OutputFilewatchDraft"
         }
       },
       "required": [
@@ -284,7 +284,7 @@
     "EventV1Output": {
       "$ref": "#/$defs/Event"
     },
-    "EventV1OutputDomainDraft": {
+    "EventV1OutputFilewatchDraft": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -370,9 +370,9 @@
       "type": "object"
     },
     "GetV1Output": {
-      "$ref": "#/$defs/GetV1OutputDomainSnapshot"
+      "$ref": "#/$defs/GetV1OutputFilewatchSnapshot"
     },
-    "GetV1OutputDomainDraft": {
+    "GetV1OutputFilewatchDraft": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -435,7 +435,7 @@
       ],
       "type": "object"
     },
-    "GetV1OutputDomainSnapshot": {
+    "GetV1OutputFilewatchSnapshot": {
       "additionalProperties": false,
       "properties": {
         "revision": {
@@ -449,7 +449,7 @@
           "type": "integer"
         },
         "trigger": {
-          "$ref": "#/$defs/GetV1OutputDomainDraft"
+          "$ref": "#/$defs/GetV1OutputFilewatchDraft"
         }
       },
       "required": [

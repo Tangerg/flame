@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
@@ -22,20 +22,13 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// StartRun translates runs.start into the in-process execution path. It returns
-// the runId synchronously; events flow
-// out via the returned sequence as RunEvents (wrapped by the transport
-// into notifications.run.event). The terminal segment.finished rides this
-// sequence — including outcome:interrupt when the run parks for HITL
-// approval, after which the run suspends and the client answers via
-// runs.resume.
 func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := optionalSessionParameter(in.SessionID)
 	if parseErr != nil {
 		return nil, nil, parseErr
 	}
 	options := generationOptionsFromWire(in.Params)
-	selection, err := modelchoice.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
+	selection, err := flamemodel.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
 		return nil, nil, wireRunStartErr(err)
 	}
@@ -43,9 +36,6 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 	if err != nil {
 		return nil, nil, err
 	}
-	// Negotiated before admission: the Run is created under this contract and keeps
-	// it for life, so a capability we cannot honor has to stop the call rather than
-	// be discovered halfway through its stream.
 	capabilities, err := s.negotiateCapabilities(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -80,8 +70,6 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 		events, err := s.acceptedRunEvents(ctx, result)
 		return &protocol.StartRunResponse{RunID: result.RunID.String(), SegmentID: result.SegmentID.String(), UserItemID: result.UserItemID.String()}, events, err
 	}
-	// Return the opening userMessage Item id so the client reconciles its
-	// optimistic bubble by exact id (same id the stream + items.list carry).
 	return &protocol.StartRunResponse{RunID: result.RunID.String(), SegmentID: result.SegmentID.String(), UserItemID: result.UserItemID.String()}, mapRunEvents(result.Events), nil
 }
 
@@ -93,11 +81,6 @@ func runCommandIdentity(ctx context.Context) *runs.CommandIdentity {
 	return &runs.CommandIdentity{Key: identity.key, Fingerprint: identity.fingerprint}
 }
 
-// acceptedRunEvents observes a command's original opening.
-// The acceptance owns the run identity; the live stream is re-attached by the same
-// path a reconnect uses, honoring any replay cursor the retry carried. A run that
-// is no longer attachable yields the identity with an empty stream so the client
-// re-reads durable state instead of failing the retry.
 func (s *Handler) acceptedRunEvents(ctx context.Context, accepted runs.StartResult) (iter.Seq2[protocol.RunEvent, error], error) {
 	if accepted.Opening == runs.OpeningRetired {
 		return emptyRunEventStream, nil
@@ -146,8 +129,6 @@ func invalidWireContentBlock(index int, field, detail string) error {
 }
 
 func wireRunStartErr(err error) error {
-	// A session that already has a run is refused WITH that run: the client offers
-	// steer / resume / cancel, and the runtime cancels nothing on its own.
 	if conflict, ok := errors.AsType[*runs.ActiveRunConflictError](err); ok {
 		return &ActiveRunConflictError{ActiveRun: protocol.ActiveRunRef{
 			RunID: conflict.RunID.String(), Status: presentRunStatus(conflict.State),
@@ -155,14 +136,12 @@ func wireRunStartErr(err error) error {
 	}
 	switch {
 	case errors.Is(err, runs.ErrCommandKeyConflict):
-		// A retried start whose key no longer pins the same request is the same
-		// refusal the generic replay store gives every other keyed command.
-		return protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation", err)
+		return protocol.NewFailure(protocol.ErrIdempotencyConflict, errIdempotencyRebound.Error(), err)
 	case errors.Is(err, workspaceapp.ErrPromptSourceTooLarge):
 		return wireWorkspaceError(err)
 	case errors.Is(err, runs.ErrInputRequired):
 		return protocol.NewFailure(protocol.ErrInvalidParams, "input must contain a user text or image block", err)
-	case modelchoice.IsInvalid(err):
+	case flamemodel.IsInvalid(err):
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	case errors.Is(err, runs.ErrInvalidRunOptions):
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)

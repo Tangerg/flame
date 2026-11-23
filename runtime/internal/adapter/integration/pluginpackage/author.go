@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"slices"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -28,8 +29,6 @@ type BuildTarget struct {
 	Arch string
 }
 
-// A packaged native backend runs only where Flame ships; this is the sole
-// statement of that set, and build scripts defer to it.
 var (
 	nativeOperatingSystems = []string{"darwin", "linux", "windows"}
 	nativeArchitectures    = []string{"amd64", "arm64"}
@@ -39,9 +38,6 @@ func (t BuildTarget) native() bool {
 	return slices.Contains(nativeOperatingSystems, t.OS) && slices.Contains(nativeArchitectures, t.Arch)
 }
 
-// BuildRelease is the author boundary shared by the repository builder and its
-// independent executable. It parses metadata without running package code and
-// uses the same declaration projection that Runtime installs.
 func BuildRelease(ctx context.Context, source string, target BuildTarget, archive io.Writer) (_ distribution.Release, err error) {
 	if !filepath.IsAbs(source) || archive == nil {
 		return distribution.Release{}, plugin.ErrInvalid
@@ -81,8 +77,8 @@ func BuildRelease(ctx context.Context, source string, target BuildTarget, archiv
 	return release, nil
 }
 
-// inventoryArtifacts lists every packaged file. A native variant entry must
-// already be executable, because the archive preserves the author's mode.
+// A native variant entry must already be executable because the archive preserves
+// the author's mode.
 func inventoryArtifacts(ctx context.Context, root *os.Root, manifest distribution.Manifest) ([]distribution.Artifact, error) {
 	nativeEntries := make(map[string]struct{})
 	for _, unit := range manifest.Units {
@@ -110,7 +106,7 @@ func inventoryArtifacts(ctx context.Context, root *os.Root, manifest distributio
 		if !info.Mode().IsRegular() {
 			return fmt.Errorf("%w: non-regular artifact %q", plugin.ErrInvalid, name)
 		}
-		executable := info.Mode().Perm()&0111 != 0
+		executable := info.Mode().Perm()&filesystem.ExecutableBits != 0
 		if _, native := nativeEntries[name]; native {
 			if !executable && runtime.GOOS != "windows" {
 				return fmt.Errorf("%w: native artifact %q must have executable permissions", plugin.ErrInvalid, name)
@@ -128,7 +124,7 @@ func writeRecord(root *os.Root, name string, record any) error {
 	if err != nil {
 		return err
 	}
-	return root.WriteFile(name, append(encoded, '\n'), 0600)
+	return root.WriteFile(name, append(encoded, '\n'), filesystem.PrivateFileMode)
 }
 
 func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Declaration, projection plugins.FrameworkDefinition, target BuildTarget) (distribution.Manifest, error) {
@@ -169,8 +165,6 @@ func authorManifest(ctx context.Context, root *os.Root, declaration plugin.Decla
 	return manifest, nil
 }
 
-// processVariants pins a managed backend to every shipped Node runtime, and a
-// native backend to the single target it was compiled for.
 func processVariants(declaration plugin.Declaration, unitID framehost.UnitID, target BuildTarget) ([]distribution.Variant, error) {
 	name, err := plugins.BackendServer(unitID)
 	if err != nil {
@@ -210,15 +204,13 @@ func processVariants(declaration plugin.Declaration, unitID framehost.UnitID, ta
 	return variants, nil
 }
 
-// pointContributions exports each point a unit implements. Only the point
-// values unit carries declared metadata; every other contribution's is null.
 func pointContributions(declaration plugin.Declaration, unit distribution.Unit) []distribution.Contribution {
 	var contributions []distribution.Contribution
 	for _, exported := range unit.Exports {
 		if exported.Contract.Kind != framehost.PointKind {
 			continue
 		}
-		metadata := []byte("null")
+		metadata := []byte(jsonNull)
 		if unit.ID == plugins.PointValuesUnit {
 			for _, value := range declaration.PointValues {
 				if value.ID.String() == exported.Name {
@@ -232,15 +224,11 @@ func pointContributions(declaration plugin.Declaration, unit distribution.Unit) 
 	return contributions
 }
 
-// validateProjection prevents consumer metadata from declaring a second set of
-// executable units. Runtime may apply Flame policy only to this original graph.
 func validateProjection(ctx context.Context, root *os.Root, release plugin.Release, manifest distribution.Manifest) error {
 	projection, err := plugins.ProjectFrameworkDeclaration(release.Declaration(), pluginmcp.ProcessProfile)
 	if err != nil {
 		return err
 	}
-	// A Flame native build targets one OS/architecture. This is an input to
-	// the sole author projection, not a second interpretation of unit entries.
 	var target BuildTarget
 	for _, unit := range manifest.Units {
 		if unit.Profile != pluginmcp.ProcessProfile {
@@ -264,9 +252,6 @@ func validateProjection(ctx context.Context, root *os.Root, release plugin.Relea
 	if err != nil {
 		return err
 	}
-	// Frame has already verified the original artifact inventory. Reuse those
-	// exact facts while comparing every declaration, entry, pin and contribution
-	// through Frame's canonical identity, including extension metadata.
 	expected.Artifacts = manifest.Artifacts
 	identity, err := expected.Identity()
 	if err != nil {

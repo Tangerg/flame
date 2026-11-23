@@ -32,7 +32,6 @@ func Open(ctx context.Context, path string) (sqlite.Database, error) {
 		)`, firstExactInteger, firstExactInteger, exactint.Maximum),
 		`CREATE INDEX IF NOT EXISTS idx_schedules_due
 			ON schedules(next_run_at)`,
-		// Accepted rows outlive Runtime Runs so acknowledgement replay cannot dispatch again.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS schedule_firings (
 			id          TEXT    PRIMARY KEY,
 			schedule_id TEXT    NOT NULL,

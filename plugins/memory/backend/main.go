@@ -23,4 +23,5 @@ func run(ctx context.Context, data string) (err error) {
 	}
 	return server.Run(ctx, &sdk.StdioTransport{})
 }
+
 func main() { backend.Main("memory", run) }

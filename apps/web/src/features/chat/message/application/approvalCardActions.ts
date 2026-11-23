@@ -2,18 +2,18 @@ import { useCallback, useEffect } from "react";
 import { useApprovalSubmit, type ApprovalSubmitOptions } from "@/features/agent/public/hitl";
 import { type RememberScope } from "@/features/agent/public/hitl";
 import { canSubmitApproval } from "@/features/agent/public/messagePresentation";
-export interface ApprovalArgsCommitter {
+interface ApprovalArgsCommitter {
   commit: () => Record<string, unknown> | undefined | null;
 }
 
-export interface ApprovalCardActionState {
+interface ApprovalCardActionState {
   disabled: boolean;
   argsReadOnly: boolean;
   approve: (rememberScope?: RememberScope) => void;
   decline: () => void;
 }
 
-export function approvalSubmitOptions({
+function approvalSubmitOptions({
   editedArgs,
   rememberScope,
 }: {
@@ -27,7 +27,7 @@ export function approvalSubmitOptions({
   };
 }
 
-export function canRegisterApprovalActions({
+function canRegisterApprovalActions({
   resumeRunId,
   itemId,
   runtimeAvailable = true,

@@ -2,7 +2,6 @@ package persistence
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
@@ -33,8 +32,6 @@ func (s *ExecutorCheckpointStore) replaceReferences(ctx context.Context, checkpo
 	})
 }
 
-// The dependency rows advance in the transaction that advances the payload, so
-// a checkpoint whose dependencies are unknown cannot exist.
 func (s *ExecutorCheckpointStore) replaceResourceReferences(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		if _, err := s.db.connection(ctx).ExecContext(ctx, `DELETE FROM executor_checkpoint_resources WHERE root_member_id = ?`, checkpoint.RootMemberID); err != nil {
@@ -48,6 +45,7 @@ func (s *ExecutorCheckpointStore) replaceResourceReferences(ctx context.Context,
 		return nil
 	})
 }
+
 func (s *ExecutorCheckpointStore) resourceReferences(ctx context.Context, rootID string) ([]plugin.Dependency, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]plugin.Dependency, error) {
 		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT installation_id, digest FROM executor_checkpoint_resources WHERE root_member_id = ? ORDER BY installation_id, digest`, rootID)
@@ -73,6 +71,7 @@ func (s *ExecutorCheckpointStore) resourceReferences(ctx context.Context, rootID
 		return dependencies, rows.Err()
 	})
 }
+
 func (s *ExecutorCheckpointStore) checkpointReferences(ctx context.Context, root string) ([]plugin.Activation, []plugin.Dependency, error) {
 	return scopedPair(ctx, s.db.read, func(ctx context.Context) ([]plugin.Activation, []plugin.Dependency, error) {
 		resources, err := s.resourceReferences(ctx, root)
@@ -100,8 +99,6 @@ func (s *ExecutorCheckpointStore) checkpointReferences(ctx context.Context, root
 	})
 }
 
-// PendingCheckpointDependencies reads retained execution graphs and immutable
-// content references, without interpreting the executor's continuation payload.
 func (s *ExecutorCheckpointStore) PendingCheckpointDependencies(ctx context.Context) ([]plugin.Dependency, error) {
 	var result []plugin.Dependency
 	err := s.db.read(ctx, func(ctx context.Context) error {
@@ -114,22 +111,23 @@ func (s *ExecutorCheckpointStore) PendingCheckpointDependencies(ctx context.Cont
 	})
 	return plugin.CompactDependencies(result), err
 }
+
 func (s *ExecutorCheckpointStore) pendingReferences(ctx context.Context) ([]plugin.Activation, []plugin.Dependency, error) {
 	return scopedPair(ctx, s.db.read, func(ctx context.Context) ([]plugin.Activation, []plugin.Dependency, error) {
 		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT root_member_id FROM executor_checkpoints checkpoint WHERE EXISTS (SELECT 1 FROM runs WHERE runs.session_id=checkpoint.session_id AND runs.state <> ?) ORDER BY root_member_id`, string(rundomain.Finished))
 		if err != nil {
 			return nil, nil, err
 		}
+		defer rows.Close()
 		var roots []string
 		for rows.Next() {
 			var root string
 			if err := rows.Scan(&root); err != nil {
-				_ = rows.Close()
 				return nil, nil, err
 			}
 			roots = append(roots, root)
 		}
-		if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		if err := rows.Err(); err != nil {
 			return nil, nil, err
 		}
 		var bindings []plugin.Activation

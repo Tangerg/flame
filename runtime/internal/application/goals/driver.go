@@ -1,15 +1,6 @@
-// Package goals owns autonomous Goal execution: given a
-// session's objective, it launches runs back-to-back until the model signals the
-// goal complete or blocked (through terminal outcome reporting), or the user
-// stops it. It is a Run-admission client with an
-// autonomous application component that drives the runs Coordinator — but is
-// event-driven per goal rather than cron-timed, and consumes each run's terminal
-// to decide whether to continue.
-//
-// Goal driving lives here, NOT in the run pump: the pump holds the session's single
-// admission slot across its teardown, so re-entering the coordinator from inside
-// it would deadlock. The Driver launches the next run only after the previous
-// run's stream has fully drained.
+// Goal driving lives outside the run pump: the pump holds the session's admission
+// slot across teardown, so re-entering the coordinator from inside it would
+// deadlock.
 package goals
 
 import (
@@ -19,9 +10,10 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
@@ -32,51 +24,27 @@ import (
 )
 
 var (
-	// ErrGoalActive reports a start attempt while the session already has an
-	// actively-driving goal.
-	ErrGoalActive = errors.New("goals: a goal is already active for this session")
-	// ErrNoGoal reports a resume or stop with no goal for the session.
-	ErrNoGoal = errors.New("goals: no goal for this session")
-	// ErrNoSession reports a start for a session that does not exist — a goal is
-	// session-owned, so it must never outlive (or precede) its session.
-	ErrNoSession = errors.New("goals: session does not exist")
-	// ErrGoalConflict reports that a concurrent lifecycle transition won the goal's
-	// compare-and-swap; the caller read a version that was already superseded.
+	ErrGoalActive   = errors.New("goals: a goal is already active for this session")
+	ErrNoGoal       = errors.New("goals: no goal for this session")
+	ErrNoSession    = errors.New("goals: session does not exist")
 	ErrGoalConflict = errors.New("goals: goal changed concurrently")
-	// ErrClosed reports a lifecycle command after the driver has stopped accepting
-	// work. A caller must never be told an active Goal was accepted when no drive
-	// can be attached to drive it.
-	ErrClosed = errors.New("goals: driver closed")
+	ErrClosed       = errors.New("goals: driver closed")
 )
 
-// AutonomousRuns is the Goal driver's narrow view of the Run entry point.
 type AutonomousRuns interface {
 	WaitSessionStartable(ctx context.Context, sessionID identity.SessionID) error
-	AdmitSelection(ctx context.Context, selection modelchoice.Selection) error
+	AdmitSelection(ctx context.Context, selection flamemodel.Selection) error
 	Start(ctx context.Context, cmd runs.StartCommand) (runs.StartResult, error)
 }
 
-// RunCancellations stops a Goal's autonomous Run when the drive is superseded.
 type RunCancellations interface {
-	// Cancel returns after the Run has reached its complete terminal boundary.
 	Cancel(ctx context.Context, cmd runs.CancelCommand) (runs.CancelResult, error)
 }
 
-// SessionExistence reports whether a Session exists. A Goal reads nothing else
-// from it: without its own override a Goal Run uses the Session's selection
-// when it starts.
 type SessionExistence interface {
 	Exists(ctx context.Context, sessionID identity.SessionID) (bool, error)
 }
 
-// Driver owns the per-session autonomous drives. Each active Goal has at most one
-// drive goroutine, spawned into a task group so shutdown cancels and joins them.
-//
-// Every durable goal write is a compare-and-swap on [goal.Version]. An opaque
-// incarnation distinguishes fresh objectives across clears, and the revision
-// protects mutations inside one incarnation. Per-session command locks serialize explicit
-// lifecycle commands with session write-sets without coupling unrelated
-// sessions; drive goroutines and reported outcomes use the store CAS.
 type Driver struct {
 	workflow       Workflow
 	settle         func(context.Context, identity.SessionID) error
@@ -86,13 +54,11 @@ type Driver struct {
 	sessions       SessionExistence
 	tasks          *taskgroup.Group
 	now            func() time.Time
-	newIncarnation func() string
+	newIncarnation func() (goalref.IncarnationID, error)
 
 	mutations *SessionMutations
 }
 
-// NewDriver builds a Driver sharing one session lifecycle
-// coordinator with the sessions use case.
 func NewDriver(
 	store Store,
 	autonomousRuns AutonomousRuns,
@@ -126,20 +92,15 @@ func NewDriver(
 		sessions:       sessions,
 		tasks:          &taskgroup.Group{},
 		now:            time.Now,
-		newIncarnation: uuid.NewString,
+		newIncarnation: func() (goalref.IncarnationID, error) { return goalref.ParseIncarnation(uuid.NewString()) },
 		mutations:      mutations,
 	}, nil
 }
 
-// Start opens a new goal for the session and begins driving it. It replaces a
-// paused or blocked goal (a fresh objective abandons the old one) but refuses to
-// clobber a goal that is already actively driving, and refuses a session that
-// does not exist. The new objective gets a fresh incarnation so a Run from any
-// previously-cleared Goal can no longer write it.
 func (d *Driver) Start(
 	ctx context.Context,
 	sessionID identity.SessionID, objective string,
-	selection modelchoice.Selection,
+	selection flamemodel.Selection,
 	capabilities run.Capabilities,
 ) (goal.Goal, error) {
 	release, err := d.mutations.acquire(ctx, sessionID)
@@ -184,18 +145,20 @@ func (d *Driver) Start(
 	return d.commitCommand(ctx, expected, g)
 }
 
-func (d *Driver) beginGoal(ctx context.Context, sessionID identity.SessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goal.Goal, error) {
+func (d *Driver) beginGoal(ctx context.Context, sessionID identity.SessionID, objective string, selection flamemodel.Selection, capabilities run.Capabilities) (goal.Goal, error) {
 	now := d.now()
 	state := goal.Snapshot{SessionID: sessionID, ModelSelection: selection, Capabilities: capabilities.Normalized(), CreatedAt: now}
-	g, changed, err := decideGoal(ctx, d.workflow, state, goalworkflow.Request{Signal: goalworkflow.Start, Objective: objective}, d.newIncarnation(), now)
+	incarnation, err := d.newIncarnation()
+	if err != nil {
+		return goal.Goal{}, err
+	}
+	g, changed, err := decideGoal(ctx, d.workflow, state, goalworkflow.Request{Signal: goalworkflow.Start, Objective: objective}, incarnation, now)
 	if err == nil && !changed {
 		return goal.Goal{}, errors.New("goals: workflow omitted its initial objective")
 	}
 	return g, err
 }
 
-// Resume preserves the objective incarnation so a parked Run can still settle
-// its original Goal. An already-active Goal can reattach its missing drive.
 func (d *Driver) Resume(ctx context.Context, sessionID identity.SessionID, caller run.Capabilities) (goal.Goal, error) {
 	release, err := d.mutations.acquire(ctx, sessionID)
 	if err != nil {
@@ -259,8 +222,6 @@ func (d *Driver) Stop(ctx context.Context, sessionID identity.SessionID) (goal.G
 			return goal.Goal{}, err
 		}
 	}
-	// The stop receipt includes usage from the original Run's terminal write.
-	// A disconnected caller cannot interrupt that observation after the pause.
 	settlement, cancel := context.WithTimeout(context.WithoutCancel(ctx), goalRunCleanupTimeout)
 	defer cancel()
 	if err := d.mutations.joinDrive(settlement, sessionID, d.mutations.quiesce(sessionID)); err != nil {
@@ -276,8 +237,8 @@ func (d *Driver) Stop(ctx context.Context, sessionID identity.SessionID) (goal.G
 	return settled, nil
 }
 
-// UpdateObjective opens a fresh incarnation so work admitted for the previous
-// objective cannot decide or charge the replacement.
+// A fresh incarnation so work admitted for the previous objective cannot decide or
+// charge the replacement.
 func (d *Driver) UpdateObjective(
 	ctx context.Context,
 	sessionID identity.SessionID, objective string,
@@ -306,15 +267,17 @@ func (d *Driver) UpdateObjective(
 			return goal.Goal{}, fmt.Errorf("goals: session %q: %w", sessionID, &run.InsufficientCapabilitiesError{Missing: missing})
 		}
 	}
-	replacement, err := transition(ctx, d.workflow, current, goalworkflow.Request{Signal: goalworkflow.Revise, Objective: objective}, d.newIncarnation(), d.now())
+	incarnation, err := d.newIncarnation()
+	if err != nil {
+		return goal.Goal{}, err
+	}
+	replacement, err := transition(ctx, d.workflow, current, goalworkflow.Request{Signal: goalworkflow.Revise, Objective: objective}, incarnation, d.now())
 	if err != nil {
 		return goal.Goal{}, err
 	}
 	return d.commitCommand(ctx, current.Version(), replacement)
 }
 
-// A superseded decision has no authority to cancel a drive. Only a committed
-// Goal authorizes replacing or retiring the process-local execution owner.
 func (d *Driver) commitCommand(ctx context.Context, expected goal.Version, replacement goal.Goal) (goal.Goal, error) {
 	if err := d.saveCommand(ctx, expected, replacement); err != nil {
 		return goal.Goal{}, err
@@ -345,8 +308,6 @@ func (d *Driver) saveCommand(ctx context.Context, expected goal.Version, replace
 	return nil
 }
 
-// Clear commits the Goal's removal before retiring its drive. An already-absent
-// Goal lets a clear converge with automatic completion.
 func (d *Driver) Clear(ctx context.Context, sessionID identity.SessionID) error {
 	release, err := d.mutations.acquire(ctx, sessionID)
 	if err != nil {
@@ -374,16 +335,10 @@ func (d *Driver) Clear(ctx context.Context, sessionID identity.SessionID) error 
 	return nil
 }
 
-// Current returns the session's Goal, or (zero, false, nil) when it has none.
 func (d *Driver) Current(ctx context.Context, sessionID identity.SessionID) (goal.Goal, bool, error) {
 	return loadGoal(ctx, d.goals, sessionID)
 }
 
-// Reconcile clears orphaned and completed Goals and pauses active Goals whose
-// drives ended. The shared Session command boundary excludes a concurrent
-// launch; the drive registry alone proves liveness inside Runtime's exclusive
-// data-directory lifetime. Every durable transition still uses the listed
-// version and fails closed on a CAS miss.
 func (d *Driver) Reconcile(ctx context.Context) error {
 	all, err := d.goals.List(ctx)
 	if err != nil {
@@ -436,8 +391,6 @@ func (d *Driver) reconcileGoal(ctx context.Context, g goal.Goal) error {
 	return ErrGoalConflict
 }
 
-// pauseAfterRestart pauses a Goal the previous process left active. A
-// workflow that is not available yet leaves it for the next reconciliation.
 func (d *Driver) pauseAfterRestart(ctx context.Context, g goal.Goal) (bool, error) {
 	replacement, err := transition(ctx, d.workflow, g, goalworkflow.Request{Signal: goalworkflow.Pause, Reason: goalworkflow.GoalReasonRuntimeRestarted}, g.IncarnationID(), d.now())
 	if errors.Is(err, plugin.ErrUnavailable) {
@@ -453,14 +406,12 @@ func (d *Driver) pauseAfterRestart(ctx context.Context, g goal.Goal) (bool, erro
 	return d.goals.Save(ctx, change)
 }
 
-// BeginShutdown cancels every running Goal drive.
 func (d *Driver) BeginShutdown() {
 	release := d.mutations.acquireAll()
 	defer release()
 	d.tasks.Cancel()
 }
 
-// AwaitShutdown joins every running Goal drive after [BeginShutdown].
 func (d *Driver) AwaitShutdown(ctx context.Context) error {
 	return d.tasks.Wait(ctx)
 }

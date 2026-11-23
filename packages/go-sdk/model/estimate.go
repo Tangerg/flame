@@ -1,6 +1,9 @@
 package model
 
-import "math"
+import (
+	"math"
+	"unicode/utf8"
+)
 
 const asciiBytesPerEstimatedToken = 4
 
@@ -8,7 +11,7 @@ func EstimateTextTokens(text string) int {
 	ascii := 0
 	tokens := 0
 	for _, value := range text {
-		if value <= 0x7f {
+		if value < utf8.RuneSelf {
 			ascii++
 		} else {
 			tokens++

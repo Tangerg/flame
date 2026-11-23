@@ -43,10 +43,7 @@ func (p *interruptPrompts) approvalPreviewSections() []toolSection {
 	if p.approvalOverride == nil {
 		return sections
 	}
-	return append(sections, toolSection{
-		Title: "Edited arguments · one-shot", Style: toolSectionCode,
-		Language: "json", Text: p.approvalArguments,
-	})
+	return append(sections, jsonSection("Edited arguments · one-shot", p.approvalArguments))
 }
 
 func (p *interruptPrompts) dismissApprovalEditor() {

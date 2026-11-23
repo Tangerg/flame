@@ -9,10 +9,12 @@ import (
 	"syscall"
 )
 
-const maxSymlinkDepth = 40
+const resolveOperation = "resolve"
 
-// absolute anchors a relative path under an explicit absolute root. Host cwd
-// and User Home discovery belong to process composition, never path identity.
+// MaxSymlinks matches Linux MAXSYMLINKS so in-process resolution refuses
+// exactly the chains the kernel would.
+const MaxSymlinks = 40
+
 func absolute(root, path string) (string, error) {
 	if filepath.IsAbs(path) {
 		return path, nil
@@ -33,8 +35,6 @@ func absolute(root, path string) (string, error) {
 	return root + string(filepath.Separator) + path, nil
 }
 
-// Path locks and security decisions must resolve aliases to the same resource,
-// including when a suffix has not been created yet.
 func ResolvePath(root, path string) (string, error) {
 	abs, err := absolute(root, path)
 	if err != nil {
@@ -42,7 +42,7 @@ func ResolvePath(root, path string) (string, error) {
 	}
 	resolved, err := resolve(abs, 0)
 	if err != nil {
-		return "", &os.PathError{Op: "resolve", Path: abs, Err: err}
+		return "", &os.PathError{Op: resolveOperation, Path: abs, Err: err}
 	}
 	return resolved, nil
 }
@@ -56,8 +56,6 @@ func ContainsPath(root, target string) (bool, error) {
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)), nil
 }
 
-// PathsOverlap compares physically resolved directory trees. Callers retain the
-// resolved identities so admission and recovery compare the same resources.
 func PathsOverlap(first, second string) (bool, error) {
 	if !filepath.IsAbs(first) || !filepath.IsAbs(second) {
 		return false, ErrAbsolutePathRequired
@@ -73,8 +71,8 @@ func PathsOverlap(first, second string) (bool, error) {
 }
 
 func resolve(abs string, depth int) (string, error) {
-	if depth > maxSymlinkDepth {
-		return "", errors.New("too many symbolic links")
+	if depth > MaxSymlinks {
+		return "", syscall.ELOOP
 	}
 	abs = filepath.FromSlash(abs)
 	volume := filepath.VolumeName(abs)
@@ -87,7 +85,7 @@ func resolve(abs string, depth int) (string, error) {
 	parts := strings.Split(abs[len(volume):], separator)
 	for index, name := range parts {
 		if info != nil && !info.IsDir() {
-			return "", &os.PathError{Op: "resolve", Path: abs, Err: syscall.ENOTDIR}
+			return "", &os.PathError{Op: resolveOperation, Path: abs, Err: syscall.ENOTDIR}
 		}
 		switch name {
 		case "", ".":
@@ -125,8 +123,6 @@ func resolve(abs string, depth int) (string, error) {
 	return current, nil
 }
 
-// symlinkTarget makes a link's target absolute against the directory that
-// holds the link, or against its volume for a rooted target.
 func symlinkTarget(link, directory, volume string) (string, error) {
 	target, err := os.Readlink(link)
 	if err != nil {

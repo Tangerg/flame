@@ -14,241 +14,228 @@ import { type MethodOutputs as MemoryOutputs } from "../../../../plugins/memory/
 import { type MethodOutputs as ScheduleOutputs } from "../../../../plugins/schedules/package/io.github.tangerg.flame/contracts/methods.generated";
 import { type MethodOutputs as UsageReportOutputs } from "../../../../plugins/usagereports/component/methods.generated";
 import { VISUAL_SESSION_ID } from "./agentSessionSnapshots";
-const visualMemory: MemoryOutputs["flame.memory/list.v2"]["Rows"] = [
+const visualMemory: MemoryOutputs["flame.memory/list.v3"]["rows"] = [
   {
-    Revision: 3,
-    ID: "mem_00000000000000000000000000000002",
-    Scope: "project",
-    Day: "",
-    Project: "",
-    Embedding: [],
-    EmbeddingSpace: "",
-    Content: "Prefers the diff read worst-risk-first.",
-    Origin: "auto",
-    Status: "pending",
-    Pinned: false,
-    SessionID: VISUAL_SESSION_ID,
-    CreatedAt: "2026-07-30T16:20:00Z",
-    UpdatedAt: "2026-07-30T16:20:00Z",
+    revision: 3,
+    id: "mem_00000000000000000000000000000002",
+    scope: "project",
+    day: "",
+    project: "",
+    content: "Prefers the diff read worst-risk-first.",
+    origin: "auto",
+    status: "pending",
+    pinned: false,
+    sessionId: VISUAL_SESSION_ID,
+    createdAt: "2026-07-30T16:20:00Z",
+    updatedAt: "2026-07-30T16:20:00Z",
   },
   {
-    Revision: 7,
-    ID: "mem_00000000000000000000000000000001",
-    Scope: "project",
-    Day: "",
-    Project: "",
-    Embedding: [],
-    EmbeddingSpace: "",
-    Content: "The compaction cutpoint is chosen by the Runtime, never by the client.",
-    Origin: "auto",
-    Status: "active",
-    Pinned: true,
-    SessionID: VISUAL_SESSION_ID,
-    CreatedAt: "2026-07-31T10:00:00Z",
-    UpdatedAt: "2026-07-31T10:00:00Z",
+    revision: 7,
+    id: "mem_00000000000000000000000000000001",
+    scope: "project",
+    day: "",
+    project: "",
+    content: "The compaction cutpoint is chosen by the Runtime, never by the client.",
+    origin: "auto",
+    status: "active",
+    pinned: true,
+    sessionId: VISUAL_SESSION_ID,
+    createdAt: "2026-07-31T10:00:00Z",
+    updatedAt: "2026-07-31T10:00:00Z",
   },
 ];
 
-export const VISUAL_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v2"] = {
-  Rows: visualMemory,
-  NextCursor: "",
-  Capacity: 512,
+export const VISUAL_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v3"] = {
+  rows: visualMemory,
+  nextCursor: "",
+  capacity: 512,
 };
 
-export const VISUAL_USER_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v2"] = {
+export const VISUAL_USER_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v3"] = {
   ...VISUAL_MEMORY_PAGE,
-  Rows: [
+  rows: [
     {
-      Revision: 2,
-      ID: "mem_00000000000000000000000000000003",
-      Scope: "user",
-      Day: "",
-      Project: "",
-      Embedding: [],
-      EmbeddingSpace: "",
-      Content: "Prefers concise summaries with source paths and concrete next steps.",
-      Origin: "user",
-      Status: "active",
-      Pinned: false,
-      SessionID: "",
-      CreatedAt: "2026-07-31T10:00:00Z",
-      UpdatedAt: "2026-07-31T10:00:00Z",
+      revision: 2,
+      id: "mem_00000000000000000000000000000003",
+      scope: "user",
+      day: "",
+      project: "",
+      content: "Prefers concise summaries with source paths and concrete next steps.",
+      origin: "user",
+      status: "active",
+      pinned: false,
+      sessionId: "",
+      createdAt: "2026-07-31T10:00:00Z",
+      updatedAt: "2026-07-31T10:00:00Z",
     },
   ],
 };
 
-type VisualMemoryRow = MemoryOutputs["flame.memory/list.v2"]["Rows"][number];
+type VisualMemoryRow = MemoryOutputs["flame.memory/list.v3"]["rows"][number];
 
-const projectMemoryRecord: Pick<
-  VisualMemoryRow,
-  "Scope" | "Day" | "Project" | "Embedding" | "EmbeddingSpace"
-> = {
-  Scope: "project",
-  Day: "",
-  Project: "",
-  Embedding: [],
-  EmbeddingSpace: "",
+const projectMemoryRecord: Pick<VisualMemoryRow, "scope" | "day" | "project"> = {
+  scope: "project",
+  day: "",
+  project: "",
 };
 
-export const VISUAL_LONG_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v2"] = {
+export const VISUAL_LONG_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v3"] = {
   ...VISUAL_MEMORY_PAGE,
-  Rows: [
+  rows: [
     {
       ...projectMemoryRecord,
-      Revision: 1,
-      ID: "mem_00000000000000000000000000000010",
-      Content: [
+      revision: 1,
+      id: "mem_00000000000000000000000000000010",
+      content: [
         "Review findings are reported by risk, then grouped by file.",
         "",
         "Each finding cites the changed line range and the exact command output that supports it; a summary never replaces the recorded evidence.",
       ].join("\n"),
-      Origin: "auto",
-      Status: "pending",
-      Pinned: false,
-      SessionID: VISUAL_SESSION_ID,
-      CreatedAt: "2026-07-31T09:12:00Z",
-      UpdatedAt: "2026-07-31T09:12:00Z",
+      origin: "auto",
+      status: "pending",
+      pinned: false,
+      sessionId: VISUAL_SESSION_ID,
+      createdAt: "2026-07-31T09:12:00Z",
+      updatedAt: "2026-07-31T09:12:00Z",
     },
     {
       ...projectMemoryRecord,
-      Revision: 4,
-      ID: "mem_00000000000000000000000000000011",
-      Content: [
+      revision: 4,
+      id: "mem_00000000000000000000000000000011",
+      content: [
         "工作区的格式检查统一使用仓库根目录的配置，不要在子包内另行添加格式化规则。",
         "",
         "",
         "检查失败时先保留原始输出，再说明受影响的文件和行号；不要只给出“已修复”之类的结论。",
       ].join("\n"),
-      Origin: "auto",
-      Status: "active",
-      Pinned: true,
-      SessionID: VISUAL_SESSION_ID,
-      CreatedAt: "2026-07-29T15:40:00Z",
-      UpdatedAt: "2026-07-30T08:05:00Z",
+      origin: "auto",
+      status: "active",
+      pinned: true,
+      sessionId: VISUAL_SESSION_ID,
+      createdAt: "2026-07-29T15:40:00Z",
+      updatedAt: "2026-07-30T08:05:00Z",
     },
     {
       ...projectMemoryRecord,
-      Revision: 1,
-      ID: "mem_00000000000000000000000000000012",
-      Content: [
+      revision: 1,
+      id: "mem_00000000000000000000000000000012",
+      content: [
         "The failing fixture output from the last compaction review is retained at:",
         "",
         `${VISUAL_WORKSPACE_PATH}/.flame/evidence/${"recorded-compaction-boundary-".repeat(6)}trajectory.jsonl`,
         "",
         "Re-read that file before proposing a fix.",
       ].join("\n"),
-      Origin: "auto",
-      Status: "pending",
-      Pinned: false,
-      SessionID: VISUAL_SESSION_ID,
-      CreatedAt: "2026-07-31T11:48:00Z",
-      UpdatedAt: "2026-07-31T11:48:00Z",
+      origin: "auto",
+      status: "pending",
+      pinned: false,
+      sessionId: VISUAL_SESSION_ID,
+      createdAt: "2026-07-31T11:48:00Z",
+      updatedAt: "2026-07-31T11:48:00Z",
     },
     {
       ...projectMemoryRecord,
-      Revision: 3,
-      ID: "mem_00000000000000000000000000000013",
-      Content: [
+      revision: 3,
+      id: "mem_00000000000000000000000000000013",
+      content: [
         "Release notes for this workspace are written in English and Chinese.",
         "",
         "Keep both versions in the same entry so reviewers can compare the wording line by line. 中英文版本放在同一条目中，便于逐行对照。",
       ].join("\n"),
-      Origin: "user",
-      Status: "active",
-      Pinned: true,
-      SessionID: "",
-      CreatedAt: "2026-07-29T10:00:00Z",
-      UpdatedAt: "2026-07-30T17:25:00Z",
+      origin: "user",
+      status: "active",
+      pinned: true,
+      sessionId: "",
+      createdAt: "2026-07-29T10:00:00Z",
+      updatedAt: "2026-07-30T17:25:00Z",
     },
     {
       ...projectMemoryRecord,
-      Revision: 5,
-      ID: "mem_00000000000000000000000000000016",
-      Content:
+      revision: 5,
+      id: "mem_00000000000000000000000000000016",
+      content:
         "Diff review reads the worktree comparison first and the branch comparison only when the user asks for it. Renamed files are reviewed under their new path, with the previous path kept beside the heading so earlier comments still resolve. Generated resources, lockfiles and snapshots are listed but not reviewed line by line unless their change is unexpected for the task; when that happens the review states which source change should have produced them and whether it is present in the same diff.",
-      Origin: "auto",
-      Status: "active",
-      Pinned: false,
-      SessionID: VISUAL_SESSION_ID,
-      CreatedAt: "2026-07-29T16:20:00Z",
-      UpdatedAt: "2026-07-31T09:40:00Z",
+      origin: "auto",
+      status: "active",
+      pinned: false,
+      sessionId: VISUAL_SESSION_ID,
+      createdAt: "2026-07-29T16:20:00Z",
+      updatedAt: "2026-07-31T09:40:00Z",
     },
-    ...VISUAL_MEMORY_PAGE.Rows,
+    ...VISUAL_MEMORY_PAGE.rows,
   ],
 };
 
 const userMemoryRecord: Pick<
   VisualMemoryRow,
-  "Scope" | "Day" | "Project" | "Embedding" | "EmbeddingSpace" | "Origin" | "Status" | "SessionID"
+  "scope" | "day" | "project" | "origin" | "status" | "sessionId"
 > = {
-  Scope: "user",
-  Day: "",
-  Project: "",
-  Embedding: [],
-  EmbeddingSpace: "",
-  Origin: "user",
-  Status: "active",
-  SessionID: "",
+  scope: "user",
+  day: "",
+  project: "",
+  origin: "user",
+  status: "active",
+  sessionId: "",
 };
 
-export const VISUAL_LONG_USER_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v2"] = {
+export const VISUAL_LONG_USER_MEMORY_PAGE: MemoryOutputs["flame.memory/list.v3"] = {
   ...VISUAL_USER_MEMORY_PAGE,
-  Rows: [
+  rows: [
     {
       ...userMemoryRecord,
-      Revision: 3,
-      ID: "mem_00000000000000000000000000000020",
-      Content: [
+      revision: 3,
+      id: "mem_00000000000000000000000000000020",
+      content: [
         "Answer in the language of the question.",
         "",
         "When a question mixes English and Chinese, reply in Chinese and keep code identifiers, paths and commands in their original form.",
       ].join("\n"),
-      Pinned: true,
-      CreatedAt: "2026-07-28T09:00:00Z",
-      UpdatedAt: "2026-07-30T11:15:00Z",
+      pinned: true,
+      createdAt: "2026-07-28T09:00:00Z",
+      updatedAt: "2026-07-30T11:15:00Z",
     },
     {
       ...userMemoryRecord,
-      Revision: 1,
-      ID: "mem_00000000000000000000000000000021",
-      Content: [
+      revision: 1,
+      id: "mem_00000000000000000000000000000021",
+      content: [
         "回答时先给结论，再列出依据。",
         "",
         "涉及文件时写出完整路径；涉及命令时给出可以直接复制的形式，并说明预期输出。",
       ].join("\n"),
-      Pinned: false,
-      CreatedAt: "2026-07-29T08:30:00Z",
-      UpdatedAt: "2026-07-29T08:30:00Z",
+      pinned: false,
+      createdAt: "2026-07-29T08:30:00Z",
+      updatedAt: "2026-07-29T08:30:00Z",
     },
     {
       ...userMemoryRecord,
-      Revision: 4,
-      ID: "mem_00000000000000000000000000000023",
-      Content:
+      revision: 4,
+      id: "mem_00000000000000000000000000000023",
+      content:
         "Never report a task as finished while a check is failing or was skipped. State which checks ran, which were not run and why, and paste the relevant failing output verbatim instead of paraphrasing it. If a failure predates the change, say so and show how that was established, for example by running the same check on the unchanged revision.",
-      Pinned: true,
-      CreatedAt: "2026-07-28T17:45:00Z",
-      UpdatedAt: "2026-07-31T08:20:00Z",
+      pinned: true,
+      createdAt: "2026-07-28T17:45:00Z",
+      updatedAt: "2026-07-31T08:20:00Z",
     },
     {
       ...userMemoryRecord,
-      Revision: 1,
-      ID: "mem_00000000000000000000000000000024",
-      Content: [
+      revision: 1,
+      id: "mem_00000000000000000000000000000024",
+      content: [
         "提交说明使用英文，第一行不超过七十二个字符。",
         "",
         "",
         "正文说明改动原因而不是复述差异；如果改动涉及界面，附上前后对比的截图路径。",
       ].join("\n"),
-      Pinned: false,
-      CreatedAt: "2026-07-30T15:00:00Z",
-      UpdatedAt: "2026-07-30T15:00:00Z",
+      pinned: false,
+      createdAt: "2026-07-30T15:00:00Z",
+      updatedAt: "2026-07-30T15:00:00Z",
     },
-    ...VISUAL_USER_MEMORY_PAGE.Rows,
+    ...VISUAL_USER_MEMORY_PAGE.rows,
   ],
 };
 
-export const VISUAL_SCHEDULE_INSTRUCTION_LINES = [
+const VISUAL_SCHEDULE_INSTRUCTION_LINES = [
   "Inspect workspace dependencies.",
   "Run accepted checks.",
   "",
@@ -259,34 +246,34 @@ export const VISUAL_SCHEDULE_INSTRUCTION_LINES = [
   `/Users/visual/${"retained-evidence-".repeat(8)}request.json`,
 ] as const;
 
-export const VISUAL_SCHEDULES_PAGE: ScheduleOutputs["flame.schedules/list.v1"] = {
-  Rows: [
+export const VISUAL_SCHEDULES_PAGE: ScheduleOutputs["flame.schedules/list.v2"] = {
+  rows: [
     {
-      ID: "sch_nightly",
-      Revision: 1,
-      Title: "Nightly dependency audit",
-      Instructions: VISUAL_SCHEDULE_INSTRUCTION_LINES.join("\n"),
-      Cron: "0 2 * * *",
-      TimeZone: "UTC",
-      CWD: "/Users/visual/scope",
-      ModelSelection: { provider: "openai", model: "gpt-5.6-sol", reasoningEffort: "medium" },
-      CreatedAt: "2026-07-29T08:00:00Z",
-      LastRunAt: "2026-07-31T02:00:00Z",
-      NextRunAt: "2026-08-01T02:00:00Z",
+      id: "sch_nightly",
+      revision: 1,
+      title: "Nightly dependency audit",
+      instructions: VISUAL_SCHEDULE_INSTRUCTION_LINES.join("\n"),
+      cron: "0 2 * * *",
+      timeZone: "UTC",
+      cwd: "/Users/visual/scope",
+      modelSelection: { provider: "openai", model: "gpt-5.6-sol", reasoningEffort: "medium" },
+      createdAt: "2026-07-29T08:00:00Z",
+      lastRunAt: "2026-07-31T02:00:00Z",
+      nextRunAt: "2026-08-01T02:00:00Z",
     },
     {
-      ID: "sch_weekly",
-      Revision: 3,
-      Title: "Weekly maintenance notes",
-      Instructions: "Summarize maintenance work and open questions.",
-      Cron: "0 9 * * 1",
-      TimeZone: "UTC",
-      CWD: "/Users/visual/scope",
-      ModelSelection: { provider: "", model: "", reasoningEffort: "" },
-      CreatedAt: "2026-07-28T08:00:00Z",
+      id: "sch_weekly",
+      revision: 3,
+      title: "Weekly maintenance notes",
+      instructions: "Summarize maintenance work and open questions.",
+      cron: "0 9 * * 1",
+      timeZone: "UTC",
+      cwd: "/Users/visual/scope",
+      modelSelection: { provider: "", model: "", reasoningEffort: "" },
+      createdAt: "2026-07-28T08:00:00Z",
     },
   ],
-  NextCursor: "",
+  nextCursor: "",
 };
 
 export const VISUAL_MEMORY_BINDING: PluginOperationBinding = {

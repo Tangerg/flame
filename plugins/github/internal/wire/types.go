@@ -15,7 +15,6 @@ func (State) JSONSchemaEnum() []string { return []string{string(Open), string(Cl
 
 func (s State) Valid() bool { return s == Open || s == Closed }
 
-// Filter selects listed issues by State; GitHub spells "either state" all.
 type Filter string
 
 const (

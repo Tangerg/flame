@@ -47,7 +47,6 @@ export function CommandFeedback({
   feedback?: Feedback;
   t: Translate;
 }) {
-  // Projects DOM focus so a focused recovery keeps its identity through settlement.
   const [focused, setFocused] = useState(false);
   const unknown = command?.phase === "unknown" ? command : undefined;
   const message = feedback && feedbackMessage(feedback, t);

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/frame/process/runner"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -28,7 +29,7 @@ const externalAuthorizationCrashEndpoint = "FLAME_TEST_MCP_AUTH_CRASH_ENDPOINT"
 func externalAuthorizationConfig(t *testing.T, data, runnerDir string) assemblyConfig {
 	t.Helper()
 	cfg := poMCPConfig(t)
-	store, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: data})
+	store, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: data, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +145,9 @@ func TestCrashDuringExternalAuthorizationRestoresUnconfirmedReceipt(t *testing.T
 	}))
 	defer func() { close(release); remote.Close() }()
 	child := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestExternalAuthorizationCrashChild$", "-test.timeout=30s")
-	child.Env = append(os.Environ(), externalAuthorizationCrashHome+"="+data, externalAuthorizationCrashEndpoint+"="+remote.URL, externalAuthorizationCrashRunner+"="+runnerDir)
+	// The child is killed mid-run, so its own t.TempDir cleanup never runs;
+	// the parent owns every directory the child creates.
+	child.Env = append(os.Environ(), "TMPDIR="+testsupport.TempDirectory(t), externalAuthorizationCrashHome+"="+data, externalAuthorizationCrashEndpoint+"="+remote.URL, externalAuthorizationCrashRunner+"="+runnerDir)
 	child.WaitDelay = 3 * time.Second
 	log, err := child.CombinedOutput()
 	var exit *exec.ExitError

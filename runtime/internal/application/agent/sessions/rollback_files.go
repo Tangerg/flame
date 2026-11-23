@@ -20,14 +20,8 @@ var (
 
 const mutationCleanupTimeout = 5 * time.Second
 
-// RollbackReceiptEncoder renders a file rollback's stored reply. Recovery
-// settles a retained intent without its original request, so the encoding
-// depends only on the outcome.
 type RollbackReceiptEncoder func(sessionID identity.SessionID, result RollbackResult, cause error) ([]byte, error)
 
-// rollbackAttempt says whether this attempt recorded the intent. Only the
-// recording attempt can prove no checkout has started, so only it may settle a
-// refusal and release the intent.
 type rollbackAttempt uint8
 
 const (
@@ -92,8 +86,6 @@ func (c *Coordinator) resolveWorkspaceRollbackBoundary(ctx context.Context, spec
 	return boundary.keepingHistory(), nil
 }
 
-// restoreWorkspace always renders the reply; the intent's store keeps it only
-// when the request carried an idempotency key.
 func (c *Coordinator) restoreWorkspace(ctx context.Context, m WorkspaceMutation, boundary resolvedRollbackBoundary, attempt rollbackAttempt) (RollbackResult, error) {
 	if err := c.quiesceRollbackWorkspace(m.SessionID, m.CWD); err != nil {
 		return RollbackResult{}, c.refuseWorkspaceRollback(ctx, m, attempt, err)
@@ -155,8 +147,6 @@ func (c *Coordinator) refuseWorkspaceRollback(ctx context.Context, m WorkspaceMu
 	return cause
 }
 
-// Recovery runs before any new command can take the Session or tree. The
-// retained intent alone authorizes another checkout of this exact boundary.
 func (c *Coordinator) RecoverWorkspaceMutations(ctx context.Context) error {
 	pending, err := c.mutations.ListPending(ctx)
 	if err != nil {

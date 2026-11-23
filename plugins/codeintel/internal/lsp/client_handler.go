@@ -28,8 +28,7 @@ func (c *client) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 		if req.Notif {
 			return
 		}
-		// Reply one null per requested item — we expose no settings, and gopls
-		// treats null as "use defaults".
+		// gopls treats null as "use defaults".
 		itemCount, err := decodeConfigurationItemCount(req.Params)
 		if err != nil {
 			replyInvalidParams(ctx, conn, req, err)
@@ -90,10 +89,8 @@ func replyInvalidParams(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.
 
 func (c *client) storeDiagnostics(p publishDiagnosticsParams) {
 	c.mu.Lock()
-	// A server may publish for a document this client has closed, including the
-	// empty list that clears it. Retaining diagnostics for a document we no
-	// longer synchronize would keep a claim nothing can refresh, and would
-	// reintroduce the growth closing the document was meant to bound.
+	// Diagnostics for a closed document would be a claim nothing can refresh and would
+	// regrow what closing the document bounded.
 	if doc, isOpen := c.open[p.URI]; isOpen {
 		if p.Version > doc.version {
 			c.diags[p.URI] = diagSet{protocolErr: fmt.Errorf("diagnostics version %d exceeds synchronized version %d", p.Version, doc.version)}

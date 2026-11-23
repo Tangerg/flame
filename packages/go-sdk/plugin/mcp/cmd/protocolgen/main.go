@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 )
 
@@ -18,10 +19,10 @@ func main() {
 	}
 	data, err := mcp.ProtocolJSON()
 	if err == nil {
-		err = os.MkdirAll(filepath.Dir(*output), 0755)
+		err = os.MkdirAll(filepath.Dir(*output), filesystem.SharedDirectoryMode)
 	}
 	if err == nil {
-		err = os.WriteFile(*output, data, 0644)
+		err = os.WriteFile(*output, data, filesystem.SharedFileMode)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "protocolgen:", err)

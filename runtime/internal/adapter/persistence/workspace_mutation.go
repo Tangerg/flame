@@ -133,7 +133,7 @@ func (s *WorkspaceMutationStore) ListPending(ctx context.Context) ([]sessions.Wo
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list pending workspace mutations: %w", err)
 		}
-		defer func() { _ = rows.Close() }()
+		defer rows.Close()
 		var pending []sessions.WorkspaceMutation
 		for rows.Next() {
 			var m sessions.WorkspaceMutation

@@ -12,9 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
-// DeleteSession commits history deletion and its resource retirement together.
-// Only the committed responsibility authorizes destruction; failed cleanup
-// retains a durable admission fence for recovery rather than undoing deletion.
 func (c *Coordinator) DeleteSession(ctx context.Context, sessionID identity.SessionID, complete operation.Reply[struct{}]) error {
 	deletion, err := NewDeletePlan(sessionID)
 	if err != nil {
@@ -47,9 +44,6 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID identity.Sess
 			})
 		},
 		func(ctx context.Context) error {
-			// The durable cascade is gone as of here, so the signal cannot outrun it.
-			// Executor release is independent of durable resource retirement;
-			// a refusal must not suppress either cleanup responsibility.
 			c.publishAggregateMoved([]identity.SessionID{sessionID}, nil)
 			cleanupErrs := []error{c.retirer.complete(ctx, deletion.Retirement())}
 			for _, item := range pending {
@@ -117,8 +111,6 @@ func (c *Coordinator) RestorePortableSession(ctx context.Context, portable Porta
 			})
 		},
 		func(ctx context.Context) error {
-			// Restore replaced the whole history, so process-local read evidence
-			// from before the restore is stale.
 			c.transientState.ForgetSessionContext(sessionID)
 			c.publishAggregateMoved([]identity.SessionID{sessionID}, nil)
 			if retirement, replaced := restore.Retirement(); replaced {

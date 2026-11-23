@@ -22,8 +22,6 @@ const (
 	cancellationUnconfirmed    cancellationRefusal = "unconfirmed"
 )
 
-// cause is the Run outcome a stored refusal reports. The schema admits no
-// value outside these constants, and an unconfirmed outcome is the safe reading.
 func (r cancellationRefusal) cause() error {
 	switch r {
 	case cancellationTargetFinished:
@@ -35,8 +33,6 @@ func (r cancellationRefusal) cause() error {
 	}
 }
 
-// A Run can finish after the cancellation plan reads its active snapshot. The
-// reservation must see terminal state through the same writer as Run settlement.
 func (i *idempotencyStore) refuseLateCancellation(ctx context.Context, runID identity.RunID) (cancellationRefusal, error) {
 	if runID.IsZero() {
 		return "", nil

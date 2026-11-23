@@ -5,98 +5,95 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/application/goals"
+	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/pluginbrowser"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
 
-// HandlerConfig declares the application use cases, notification sources, and
-// contract facts required to construct a Handler.
 type HandlerConfig struct {
-	Sessions           sessionUseCases
-	MCP                mcpUseCases
-	Plugins            pluginUseCases
-	PluginSelections   selectionUseCases
-	PluginCompositions compositionUseCases
+	Sessions           *sessions.Coordinator
+	MCP                *mcpapp.Coordinator
+	Plugins            *plugins.Coordinator
+	PluginSelections   *plugins.Selections
+	PluginCompositions *plugins.Compositions
 	PluginCalls        pluginCallUseCases
 	PluginBrowser      pluginbrowser.Service
-	Approvals          approvalUseCases
-	Models             modelUseCases
-	ModelEndpoints     endpointObservationUseCases
-	Tools              toolUseCases
-	Runs               runUseCases
-	RunOpenings        runOpeningUseCases
-	RunCancellations   runCancellationUseCases
-	RunStreams         runStreamUseCases
-	Queries            queryUseCases
-	Usage              usageUseCases
-	Feedback           feedbackUseCases
-	TrajectoryExports  trajectoryExportUseCases
+	Approvals          *approvals.RuntimePolicy
+	Models             *modelapp.Coordinator
+	ModelEndpoints     *modelapp.EndpointObservations
+	Tools              *workspaceapp.DiagnosticTools
+	Runs               *runs.Coordinator
+	RunOpenings        *runs.Openings
+	RunCancellations   *runs.Cancellations
+	RunStreams         *runs.Segments
+	Queries            *sessions.QueryCoordinator
+	Usage              *sessions.UsageReporter
+	Feedback           *feedback.Recorder
+	TrajectoryExports  *sessions.TrajectoryExporter
 
 	FileChanges func(func(workspaceapp.FileChangeNotice))
 
-	// ServerInfo identifies this runtime on the wire. Name and Version receive
-	// development defaults when absent.
-	ServerInfo protocol.ServerInfo
-	// IdempotencyLimits is the replay window enforced for command retries.
+	ServerInfo        protocol.ServerInfo
 	IdempotencyLimits protocol.IdempotencyLimits
 
 	Invalidations func(func(invalidation.Notice))
 
-	// Goals exposes the autonomous Goal use cases.
-	Goals goalUseCases
+	Goals *goals.Driver
 
-	WorkspaceFiles         workspaceFileUseCases
-	WorkspaceVCS           workspaceVCSUseCases
-	WorkspaceDiscovery     workspaceDiscoveryUseCases
-	WorkspaceSkills        workspaceSkillUseCases
-	Hooks                  hookUseCases
-	WorkspaceWatch         workspaceWatchUseCases
-	WorkspaceAuthoredWatch workspaceAuthoredWatchUseCases
+	WorkspaceFiles         *workspaceapp.Files
+	WorkspaceVCS           *workspaceapp.VCS
+	WorkspaceDiscovery     *workspaceapp.Discovery
+	WorkspaceSkills        *workspaceapp.Skills
+	Hooks                  *apphooks.Catalog
+	WorkspaceWatch         *workspaceapp.Watch
+	WorkspaceAuthoredWatch *workspaceapp.AuthoredWatch
 
-	GitAvailable bool
-	// IsolationAvailable reports whether this host can jail an isolated
-	// Session's shell commands.
+	GitAvailable       bool
 	IsolationAvailable bool
 }
 
-// Handler is the complete protocol-to-application translation target used by
-// [Endpoint]. It is not an entrypoint or lifecycle owner: every production
-// call and shutdown transition goes through the Endpoint.
 type Handler struct {
 	serverInfo protocol.ServerInfo
 
-	sessions           sessionUseCases
-	mcp                mcpUseCases
-	plugins            pluginUseCases
-	pluginSelections   selectionUseCases
-	pluginCompositions compositionUseCases
+	sessions           *sessions.Coordinator
+	mcp                *mcpapp.Coordinator
+	plugins            *plugins.Coordinator
+	pluginSelections   *plugins.Selections
+	pluginCompositions *plugins.Compositions
 	pluginCalls        pluginCallUseCases
 	pluginBrowser      pluginbrowser.Service
-	approvals          approvalUseCases
-	models             modelUseCases
-	modelEndpoints     endpointObservationUseCases
-	tools              toolUseCases
-	runs               runUseCases
-	runOpenings        runOpeningUseCases
-	runCancellations   runCancellationUseCases
-	runStreams         runStreamUseCases
-	queries            queryUseCases
-	usage              usageUseCases
-	feedback           feedbackUseCases
-	trajectoryExports  trajectoryExportUseCases
+	approvals          *approvals.RuntimePolicy
+	models             *modelapp.Coordinator
+	modelEndpoints     *modelapp.EndpointObservations
+	tools              *workspaceapp.DiagnosticTools
+	runs               *runs.Coordinator
+	runOpenings        *runs.Openings
+	runCancellations   *runs.Cancellations
+	runStreams         *runs.Segments
+	queries            *sessions.QueryCoordinator
+	usage              *sessions.UsageReporter
+	feedback           *feedback.Recorder
+	trajectoryExports  *sessions.TrajectoryExporter
 
-	goals goalUseCases
+	goals *goals.Driver
 
-	workspaceFiles         workspaceFileUseCases
-	workspaceVCS           workspaceVCSUseCases
-	workspaceDiscovery     workspaceDiscoveryUseCases
-	workspaceSkills        workspaceSkillUseCases
-	hooks                  hookUseCases
-	workspaceWatch         workspaceWatchUseCases
-	workspaceAuthoredWatch workspaceAuthoredWatchUseCases
+	workspaceFiles         *workspaceapp.Files
+	workspaceVCS           *workspaceapp.VCS
+	workspaceDiscovery     *workspaceapp.Discovery
+	workspaceSkills        *workspaceapp.Skills
+	hooks                  *apphooks.Catalog
+	workspaceWatch         *workspaceapp.Watch
+	workspaceAuthoredWatch *workspaceapp.AuthoredWatch
 
 	features featureAvailability
 
@@ -104,27 +101,19 @@ type Handler struct {
 	idempotency              protocol.IdempotencyLimits
 	mcpAuthorizationAttempts protocol.MCPAuthorizationAttemptLimits
 
-	// runtimeEvents fans non-run change signals out to
-	// runtime.subscribe streams. It is ephemeral, lossy, and scoped
-	// to this process; run streams have their own durable replay contract.
 	runtimeEvents *runtimeEventHub
 	resources     *resourceLeases
 }
 
-// featureAvailability is the small closed set of optional runtime facts that
-// shape both capability discovery and delivery gates. Construction derives it
-// once; handlers do not rediscover availability by attempting a call.
 type featureAvailability struct {
 	git       bool
 	isolation bool
 }
 
-// beginShutdown rejects new runtime subscriptions. Endpoint is its sole caller.
 func (s *Handler) beginShutdown() {
 	s.runtimeEvents.closeAdmissions()
 }
 
-// NewHandler builds the protocol handler set from its required application use cases.
 func NewHandler(cfg HandlerConfig) (*Handler, error) {
 	if err := cfg.validate(); err != nil {
 		return nil, err
@@ -271,21 +260,10 @@ func (s *Handler) observeNotificationSources(cfg HandlerConfig) {
 	s.observeInvalidations(cfg.Invalidations)
 }
 
-// capabilities returns this Handler's capability snapshot. Its
-// optional keys come from the same immutable composition facts that handlers
-// use for their capability gates.
 func (s *Handler) capabilities() protocol.ServerCapabilities {
 	return capabilitiesFor(s.features, s.replay, s.idempotency, s.mcpAuthorizationAttempts)
 }
 
-// replayLimitsFrom captures the replay window the Runs use case enforces.
-//
-// The scope is named here because "which buffer a cursor can reach into" is wire
-// vocabulary, and it holds by construction rather than by convention: a Journal
-// is created per segment, and every cursor it mints carries that segment and this
-// process — so a cursor from another segment is refused as invalid and one from
-// another process as unavailable. Making those two refusals happen is what checks
-// this claim.
 func replayLimitsFrom(retention runs.Retention) protocol.RunReplayLimits {
 	return protocol.RunReplayLimits{
 		Scope:     protocol.ReplayScopeRuntimeInstanceRootSegment,
@@ -294,10 +272,6 @@ func replayLimitsFrom(retention runs.Retention) protocol.RunReplayLimits {
 	}
 }
 
-// capabilitiesFor builds the advertised contract from actual composition. A
-// capability is never inferred from an RPC error; discovery and gating share
-// the same facts so an advertised feature is callable and a disabled feature
-// is absent before the client issues a request.
 func capabilitiesFor(
 	features featureAvailability,
 	replay protocol.RunReplayLimits,
@@ -306,17 +280,10 @@ func capabilitiesFor(
 ) protocol.ServerCapabilities {
 	runEvents := []protocol.StreamEventType{protocol.StreamSegmentStarted, protocol.StreamSegmentProgress, protocol.StreamSegmentFinished, protocol.StreamItemStarted, protocol.StreamItemDelta, protocol.StreamItemCompleted, protocol.StreamPlanUpdated}
 	return protocol.ServerCapabilities{
-		RunEvents: runEvents,
-		// The subscribable topics, read from the one closed list the subscribe request
-		// is validated against. A second list here is how discovery comes to offer a
-		// topic the runtime then refuses.
+		RunEvents:     runEvents,
 		RuntimeTopics: protocol.RuntimeTopics(),
-		// The two bounds a client cannot discover by trying: what a reconnect can expect
-		// to get back, and how wide one subscription may be.
 		Limits: protocol.RuntimeLimits{
-			Idempotency: idempotency,
-			// No process-wide run cap is enforced, so maxConcurrentRuns stays absent
-			// rather than advertising a limit the admission layer does not own.
+			Idempotency:              idempotency,
 			RunReplay:                replay,
 			MCPAuthorizationAttempts: mcpAuthorizationAttempts,
 			RuntimeSubscription: protocol.SubscriptionLimits{
@@ -324,36 +291,19 @@ func capabilitiesFor(
 				MaxPaths: workspaceapp.MaxWatchPaths, MaxDirectoryEntries: workspaceapp.MaxWatchDirectoryEntries, MaxFileBytes: workspaceapp.MaxWatchFileBytes,
 			},
 		},
-		// The streaming methods, read from the registry that routes them. A
-		// hand-kept list here would be a second author of "which calls stream" —
-		// and the one clients trust, since this is what discovery advertises.
 		StreamingMethods: Contract().StreamMethods(),
-		// Open features map: a client treats an absent key as off. This is the
-		// one composition fact per key — whether THIS build offers it — joined with
-		// the feature's own published facts (opt-in and whether it reshapes
-		// the run protocol), which come from protocol's registry. Advertising them
-		// here by hand would let discovery promise a negotiation the runtime does
-		// not perform.
 		Features: advertisedFeatures(map[string]bool{
 			protocol.FeatureReasoning: true, protocol.FeatureMCP: true, protocol.FeaturePlugins: true,
 			protocol.FeatureSkills: true, protocol.FeatureFileWatch: true, protocol.FeatureSessionExport: true,
 			protocol.FeatureMultimodal: true, protocol.FeatureRelocate: true, protocol.FeaturePlan: true,
 			protocol.FeatureCompaction: true, protocol.FeatureGoals: true, protocol.FeatureChildRuns: true,
-			protocol.FeatureGit: features.git,
-			// File checkpoints ride the shadow-git store, which needs the git binary.
+			protocol.FeatureGit:         features.git,
 			protocol.FeatureCheckpoints: features.git,
-			// An isolated Session jails its shells; without a jail backend the
-			// policy cannot be honored, so the surface is not offered.
-			protocol.FeatureIsolation: features.isolation,
+			protocol.FeatureIsolation:   features.isolation,
 		}),
 	}
 }
 
-// advertisedFeatures joins each published feature with this composition's answer
-// to "do we offer it". Every key in the vocabulary is advertised — a client reads
-// `enabled:false` and hides the surface, which is more useful than an absent key it
-// has to guess about — and a build fact for a key no vocabulary defines is a
-// programming error, since a client could never ask about it.
 func advertisedFeatures(enabled map[string]bool) map[string]protocol.FeatureCapability {
 	for key := range enabled {
 		if _, published := protocol.LookupFeature(key); !published {

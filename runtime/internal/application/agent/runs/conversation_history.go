@@ -13,34 +13,20 @@ import (
 
 var errConversationSessionIDRequired = errors.New("runs: conversation session ID is required")
 
-// conversationStore is the exact persistence capability consumed by conversation
-// use cases, addressed by the Session that owns the conversation. Read transfers
-// ownership of decoded messages to the caller. Write and Replace borrow messages
-// only until return; retained values must be copied. Replace must atomically
-// install the complete sequence.
-//
-// Write reports a batch whose effect the store could not observe by joining
-// [ErrConversationWriteUncertain]: such a write must not be retried as though it
-// had definitely been rejected.
+// Write and Replace borrow messages only until return. A batch whose effect the
+// store could not observe joins ErrConversationWriteUncertain and must not be
+// retried as if rejected.
 type conversationStore interface {
 	Read(ctx context.Context, sessionID identity.SessionID) ([]chat.Message, error)
 	Write(ctx context.Context, sessionID identity.SessionID, messages ...chat.Message) error
 	Count(ctx context.Context, sessionID identity.SessionID) (int, error)
 	Replace(ctx context.Context, sessionID identity.SessionID, messages ...chat.Message) error
-	// Truncate keeps the first keepN messages and removes the rest as one
-	// durable step, so retention neither reads the history back nor needs the
-	// caller to hold a transaction for the two halves to agree.
 	Truncate(ctx context.Context, sessionID identity.SessionID, keepN int) error
 	Clear(ctx context.Context, sessionID identity.SessionID) error
 }
 
-// ErrConversationWriteUncertain marks an append whose durable effect is unknown.
-// A caller that retries it may duplicate the batch, so it is a distinct fact
-// from a write the store proved it rejected.
 var ErrConversationWriteUncertain = errors.New("runs: conversation write outcome is unknown")
 
-// ConversationHistory coordinates durable conversation operations while the
-// domain value owns sequence validation and transformations.
 type ConversationHistory struct{ store conversationStore }
 
 func NewConversationHistory(store conversationStore) (*ConversationHistory, error) {
@@ -50,7 +36,6 @@ func NewConversationHistory(store conversationStore) (*ConversationHistory, erro
 	return &ConversationHistory{store: store}, nil
 }
 
-// Read returns the validated durable conversation snapshot.
 func (m *ConversationHistory) Read(ctx context.Context, sessionID identity.SessionID) ([]chat.Message, error) {
 	if err := validateConversationSessionIdentity(sessionID); err != nil {
 		return nil, err
@@ -62,8 +47,6 @@ func (m *ConversationHistory) Read(ctx context.Context, sessionID identity.Sessi
 	return messages, nil
 }
 
-// Seed installs a prefix into a fresh conversation. Existing history is never
-// silently appended to or replaced by a fork/import operation.
 func (m *ConversationHistory) Seed(ctx context.Context, sessionID identity.SessionID, messages []chat.Message) error {
 	if err := validateConversationSessionIdentity(sessionID); err != nil {
 		return err
@@ -87,7 +70,6 @@ func (m *ConversationHistory) Seed(ctx context.Context, sessionID identity.Sessi
 	return nil
 }
 
-// Append extends an existing conversation with validated model-context messages.
 func (m *ConversationHistory) Append(ctx context.Context, sessionID identity.SessionID, messages ...chat.Message) error {
 	if err := validateConversationSessionIdentity(sessionID); err != nil {
 		return err
@@ -104,7 +86,6 @@ func (m *ConversationHistory) Append(ctx context.Context, sessionID identity.Ses
 	return nil
 }
 
-// Count returns the durable message watermark.
 func (m *ConversationHistory) Count(ctx context.Context, sessionID identity.SessionID) (int, error) {
 	if err := validateConversationSessionIdentity(sessionID); err != nil {
 		return 0, err
@@ -116,10 +97,6 @@ func (m *ConversationHistory) Count(ctx context.Context, sessionID identity.Sess
 	return count, nil
 }
 
-// Truncate atomically keeps the first keepN messages. The store removes the
-// tail in place: reading the history back to re-install a prefix would decode
-// and rewrite every kept message, and would lose anything appended between the
-// two halves unless a caller happened to hold a transaction around them.
 func (m *ConversationHistory) Truncate(ctx context.Context, sessionID identity.SessionID, keepN int) error {
 	if err := validateConversationSessionIdentity(sessionID); err != nil {
 		return err
@@ -131,7 +108,6 @@ func (m *ConversationHistory) Truncate(ctx context.Context, sessionID identity.S
 	return nil
 }
 
-// Clear atomically removes every message without first decoding stored rows.
 func (m *ConversationHistory) Clear(ctx context.Context, sessionID identity.SessionID) error {
 	if err := validateConversationSessionIdentity(sessionID); err != nil {
 		return err
@@ -144,7 +120,7 @@ func (m *ConversationHistory) Clear(ctx context.Context, sessionID identity.Sess
 
 func validateConversationSessionIdentity(sessionID identity.SessionID) error {
 	if err := sessionID.Validate(); err != nil {
-		return fmt.Errorf("%w: %v", errConversationSessionIDRequired, err)
+		return fmt.Errorf("%w: %w", errConversationSessionIDRequired, err)
 	}
 	return nil
 }

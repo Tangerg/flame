@@ -9,8 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// ResumeAcceptance carries the decided answer transitions. The same Item
-// values supply executor input and the opening's transcript compare-and-swap.
 type ResumeAcceptance struct {
 	sessionID       identity.SessionID
 	expected        Pending

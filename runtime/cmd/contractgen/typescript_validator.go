@@ -14,32 +14,13 @@ import (
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 )
 
-// The TypeScript validator is COMPILED FROM THE SCHEMA TREE, for the same reason
-// the TypeScript types are: two independent walks of the Go types would be two
-// authors of one rule. All three representations of a constraint must agree.
-// Deriving one from the other makes agreement structural —
-// there is no path by which the schema states `minLength` and the validator forgets
-// it.
-//
-// Validation follows the receiving boundary. The runtime receives
-// requests, and Go's typed decode already fixes their structure, so the generated
-// Go validator enforces the registered value, enum, union and conditional rules. A
-// client receives results, events, and stored prepared requests with no typing
-// left at runtime, so this one additionally carries the whole structural tree:
-// type keywords, nested shapes, required members and union exclusivity.
-//
-// Nothing here decides what a keyword means; `wireCheck.ts` does, once. This file
-// only states which keyword applies where — the same division as the generated Go
-// validator and its hand-written `required` / `positive` helpers.
+const unconstrainedCheck = "anything"
 
-// tsValidatorFileName is the second module in the published TypeScript binding.
 const tsValidatorFileName = "wire.validate.generated.ts"
 
 type checkEmitter struct {
 	set *schemaSet
 
-	// used records the primitives the body actually calls, so the import list names
-	// exactly those — the binding compiles with noUnusedLocals.
 	used map[string]bool
 }
 
@@ -47,14 +28,12 @@ func newWireChecks(registry *delivery.Registry, shapes *dispatch.Shapes, set *sc
 	emitter := &checkEmitter{set: set, used: make(map[string]bool)}
 	names := slices.Sorted(maps.Keys(set.defs))
 
-	// The body is rendered first: it is what decides the import list.
 	var body strings.Builder
 	body.WriteString("const CHECKS: Record<WireTypeName, WireCheck> = {\n")
 	for _, name := range names {
 		fmt.Fprintf(&body, "  %s: %s,\n", name, indent(emitter.compile(set.defs[name])))
 	}
 	body.WriteString("};\n")
-	// Rendered before the import list, because these are what decide it.
 	methodParams := emitter.methodParams(registry)
 	methodResults := emitter.methodResults(registry)
 	httpResponses := emitter.httpResponses()
@@ -62,8 +41,6 @@ func newWireChecks(registry *delivery.Registry, shapes *dispatch.Shapes, set *sc
 
 	var out strings.Builder
 	out.WriteString(checksHeader)
-	// `distinctViolations` is not a schema keyword, so it never lands in `used`.
-	// Every entry point below returns through it, so it is always imported.
 	imports := slices.Sorted(maps.Keys(emitter.used))
 	imports = append(imports, "distinctViolations", "projectWireValue")
 	slices.Sort(imports)
@@ -87,8 +64,6 @@ func newWireChecks(registry *delivery.Registry, shapes *dispatch.Shapes, set *sc
 	return out.String()
 }
 
-// httpResponses binds each sidecar name to its Delivery-declared response type.
-// It is the flat-JSON equivalent of METHOD_RESULTS.
 func (c *checkEmitter) httpResponses() string {
 	var out strings.Builder
 	out.WriteString("\nconst HTTP_RESPONSES: Record<Wire.HTTPSidecarEndpointName, WireCheck> = {\n")
@@ -149,8 +124,6 @@ export function projectWire(type: WireTypeName, value: unknown): unknown {
 }
 `
 
-// A durable client receives its prepared commands from storage. Bind their
-// admission to the same registry as delivery instead of a client-owned shape map.
 func (c *checkEmitter) methodParams(registry *delivery.Registry) string {
 	var out strings.Builder
 	out.WriteString("\nconst METHOD_PARAMS: Record<WireMethodName, WireCheck> = {\n")
@@ -169,9 +142,6 @@ export function validateMethodParams(method: WireMethodName, value: unknown): Wi
 	return out.String()
 }
 
-// methodResults emits the terminal result check for every callable method. Ack-only
-// methods still have one wire result — the empty success object — so every entry is
-// total and a client never needs a "validator missing" fallback.
 func (c *checkEmitter) methodResults(registry *delivery.Registry) string {
 	var out strings.Builder
 	out.WriteString("\nconst METHOD_RESULTS: Record<WireMethodName, WireCheck> = {\n")
@@ -202,9 +172,6 @@ export function projectMethodResult(method: WireMethodName, value: unknown): unk
 	return out.String()
 }
 
-// notifications emits the closed downstream method set and each method's params
-// check. Both come from NotificationSpec, so dispatch, generated names and runtime
-// validation cannot disagree about what one notification carries.
 func (c *checkEmitter) notifications(shapes *dispatch.Shapes) string {
 	notifications := shapes.Notifications()
 	var out strings.Builder
@@ -259,20 +226,12 @@ export function projectNotificationParams(method: WireNotificationName, value: u
 	return out.String()
 }
 
-// compile renders one schema node as a check expression, rendered as if it began at
-// column zero — a container re-indents what it embeds.
 func (c *checkEmitter) compile(node *wiregen.Schema) string {
 	if node.Ref != "" {
 		name, _ := strings.CutPrefix(node.Ref, wiregen.RefPrefix)
 		return c.call("ref", "() => CHECKS."+name)
 	}
 
-	// A node is the conjunction of its keywords, so each keyword contributes one
-	// check and more than one is an allOf. The value set of an `enum` is the
-	// exception, because it implies the `type: string` beside it and never appears
-	// without one — whereas a value constraint appears BOTH beside a type keyword and
-	// alone in the branch that narrows a field of a shared shape, so it stays its own
-	// call and one rule has one spelling.
 	var parts []string
 	if part := c.baseCheck(node); part != "" {
 		parts = append(parts, part)
@@ -356,8 +315,6 @@ func (c *checkEmitter) compositionChecks(node *wiregen.Schema) []string {
 		checks = append(checks, c.compile(member))
 	}
 	if node.If != nil {
-		// Both halves of a conditional rule are objects in their own right, so they get a
-		// line each rather than running together inside one argument list.
 		checks = append(checks, c.callBlock("ifThen", c.compile(node.If), c.compile(node.Then)))
 	}
 	return checks
@@ -366,7 +323,7 @@ func (c *checkEmitter) compositionChecks(node *wiregen.Schema) []string {
 func (c *checkEmitter) conjunction(parts []string) string {
 	switch len(parts) {
 	case 0:
-		return c.call("anything")
+		return c.call(unconstrainedCheck)
 	case 1:
 		return parts[0]
 	default:
@@ -374,7 +331,6 @@ func (c *checkEmitter) conjunction(parts []string) string {
 	}
 }
 
-// value renders the `type` keyword and the constraints that ride on it.
 func (c *checkEmitter) value(node *wiregen.Schema) string {
 	keyword := node.Type
 	switch keyword {
@@ -398,8 +354,6 @@ func (c *checkEmitter) value(node *wiregen.Schema) string {
 	case wiregen.SchemaTypeBoolean:
 		return c.call("flag")
 	case "":
-		// A union branch and a conditional rule state fields with no type keyword: the
-		// definition they sit inside already asserted the object.
 		if len(node.Properties) > 0 || len(node.Required) > 0 {
 			return c.call("fields", c.properties(node), values(node.Required))
 		}
@@ -429,7 +383,7 @@ func (c *checkEmitter) property(node any) string {
 		return c.compile(typed)
 	case bool:
 		if typed {
-			return c.call("anything")
+			return c.call(unconstrainedCheck)
 		}
 		return c.call("absent")
 	default:
@@ -437,8 +391,6 @@ func (c *checkEmitter) property(node any) string {
 	}
 }
 
-// list renders sibling schemas one per line, which keeps a union's diff readable:
-// adding a variant touches one line.
 func (c *checkEmitter) list(nodes []*wiregen.Schema) string {
 	rendered := make([]string, 0, len(nodes))
 	for _, node := range nodes {
@@ -452,7 +404,6 @@ func (c *checkEmitter) call(name string, arguments ...string) string {
 	return name + "(" + strings.Join(arguments, ", ") + ")"
 }
 
-// callBlock renders a call with one argument per line.
 func (c *checkEmitter) callBlock(name string, arguments ...string) string {
 	c.used[name] = true
 	var out strings.Builder
@@ -464,9 +415,6 @@ func (c *checkEmitter) callBlock(name string, arguments ...string) string {
 	return out.String()
 }
 
-// block renders sibling checks one per line, so adding a variant or a constraint
-// touches one line of the diff — unless every sibling is a leaf, in which case a
-// line each is noise and they go inline.
 func block(items []string) string {
 	if !slices.ContainsFunc(items, func(item string) bool { return strings.Contains(item, "\n") }) {
 		return "[" + strings.Join(items, ", ") + "]"
@@ -484,7 +432,6 @@ func values(items []string) string {
 	return "[" + strings.Join(wiregen.QuoteAll(items), ", ") + "]"
 }
 
-// indent moves an already-rendered expression one level into its container.
 func indent(rendered string) string {
 	return strings.ReplaceAll(rendered, "\n", "\n  ")
 }

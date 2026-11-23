@@ -13,21 +13,15 @@ import (
 	framehost "github.com/Tangerg/frame/host"
 )
 
-// ExecutorCheckpointStore persists one opaque checkpoint aggregate per
-// executor tree root.
-// Payload interpretation and all executor-member topology belong exclusively to
-// the execution adapter.
 type ExecutorCheckpointStore struct {
 	db        *database
 	admission framehost.Admission
 }
 
-func newExecutorCheckpointStore(db *database) *ExecutorCheckpointStore {
-	return &ExecutorCheckpointStore{db: db}
+func newExecutorCheckpointStore(db *database, admission framehost.Admission) *ExecutorCheckpointStore {
+	return &ExecutorCheckpointStore{db: db, admission: admission}
 }
 
-// Replacing a payload cannot transfer its Session or build authority.
-// The complete admitted write-set must match even when it removes its last binding.
 func (s *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint runs.ExecutorCheckpoint) error {
 	if err := checkpoint.Validate(); err != nil {
 		return fmt.Errorf("sqlite: save executor checkpoint: %w", err)
@@ -72,8 +66,6 @@ func (s *ExecutorCheckpointStore) insertCheckpoint(ctx context.Context, checkpoi
 	return nil
 }
 
-// advanceCheckpoint replaces only the payload; the owning Session and build
-// are immutable for a root member.
 func (s *ExecutorCheckpointStore) advanceCheckpoint(ctx context.Context, checkpoint runs.ExecutorCheckpoint, owner identity.SessionID, buildID string) error {
 	switch {
 	case owner != checkpoint.SessionID:
@@ -97,7 +89,6 @@ func (s *ExecutorCheckpointStore) advanceCheckpoint(ctx context.Context, checkpo
 	return nil
 }
 
-// The payload and its executable and resource bindings share a snapshot.
 func (s *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMemberID string) (runs.ExecutorCheckpoint, error) {
 	if err := runs.ValidateMember(rootMemberID); err != nil {
 		return runs.ExecutorCheckpoint{}, fmt.Errorf("sqlite: load executor checkpoint: %w", err)
@@ -127,10 +118,6 @@ func (s *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 	})
 }
 
-// DeleteCheckpoints removes complete root-owned checkpoint aggregates in one
-// transaction, but only when they belong to sessionID. Unknown roots are
-// already absent and therefore succeed; a root owned by another Session is
-// rejected as corruption rather than deleted.
 func (s *ExecutorCheckpointStore) DeleteCheckpoints(ctx context.Context, sessionID identity.SessionID, rootIDs []string) error {
 	if err := validateResource("delete executor checkpoints", sessionID); err != nil {
 		return err
@@ -158,8 +145,6 @@ func (s *ExecutorCheckpointStore) DeleteCheckpoints(ctx context.Context, session
 	})
 }
 
-// DeleteSessionCheckpoints removes every checkpoint aggregate owned by
-// sessionID.
 func (s *ExecutorCheckpointStore) DeleteSessionCheckpoints(ctx context.Context, sessionID identity.SessionID) error {
 	if err := validateResource("delete session executor checkpoints", sessionID); err != nil {
 		return err
@@ -178,31 +163,29 @@ func (s *ExecutorCheckpointStore) DeleteSessionCheckpoints(ctx context.Context, 
 		return err
 	})
 }
+
 func (s *ExecutorCheckpointStore) sessionCheckpointRootIDs(ctx context.Context, sessionID identity.SessionID) ([]string, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]string, error) {
 		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT root_member_id FROM executor_checkpoints WHERE session_id = ? ORDER BY root_member_id`, sessionID)
 		if err != nil {
 			return nil, err
 		}
+		defer rows.Close()
 		var rootIDs []string
 		for rows.Next() {
 			var rootID string
 			if err := rows.Scan(&rootID); err != nil {
-				_ = rows.Close()
 				return nil, fmt.Errorf("scan executor checkpoint root: %w", err)
 			}
 			rootIDs = append(rootIDs, rootID)
 		}
 		if err := rows.Err(); err != nil {
-			_ = rows.Close()
 			return nil, err
-		}
-		if err := rows.Close(); err != nil {
-			return nil, fmt.Errorf("close executor checkpoint roots: %w", err)
 		}
 		return rootIDs, nil
 	})
 }
+
 func (s *ExecutorCheckpointStore) deleteOwnedCheckpoint(ctx context.Context, sessionID identity.SessionID, rootMemberID string) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		result, err := s.db.connection(ctx).ExecContext(ctx, `DELETE FROM executor_checkpoints WHERE root_member_id = ? AND session_id = ?`, rootMemberID, sessionID)

@@ -18,9 +18,6 @@ import (
 
 const scopeDefinitionPrefix = "go_"
 
-// Scope's encoded Go identity is a JSON Pointer token, not a display name.
-// Only the temporary consumer projection changes these tokens; the published
-// descriptor remains the callable authority and is embedded unchanged.
 func projectFeatureNames(descriptor frame.CapabilityDescriptor) (frame.CapabilityDescriptor, error) {
 	descriptor.Methods = slices.Clone(descriptor.Methods)
 	for index := range descriptor.Methods {
@@ -149,8 +146,6 @@ func readableDefinitionNames(definitions map[string]jsontext.Value) map[string]s
 	return names
 }
 
-// The portable dialect owns schema traversal. Application data inside const,
-// defaults and annotations may contain identical member names and references.
 type definitionReferences struct {
 	names   map[string]string
 	profile framevalue.SchemaProfile

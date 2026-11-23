@@ -7,11 +7,8 @@ import (
 	"github.com/Tangerg/oolong/ui/core/scene"
 )
 
-// workbenchSceneKey keeps the workbench beneath every dialog layered over it.
 const workbenchSceneKey = "workspace"
 
-// workspaceScene composes the workbench and its currently presented dialogs.
-// Attachment, focus restoration and historical input remain owned by scene.
 type workspaceScene struct {
 	group   *scene.Group
 	preview func(scene.Event) scene.EventResult

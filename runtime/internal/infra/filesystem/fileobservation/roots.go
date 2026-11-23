@@ -11,10 +11,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
-// observationRoots pins every configured physical boundary for one observer.
-// Absolute paths retain their projection identity, while all confined I/O is
-// addressed relative to the pinned root so a later symlink replacement cannot
-// redirect a read outside that boundary.
 type observationRoots struct {
 	byBoundary map[string]*os.Root
 	closeOnce  sync.Once
@@ -41,9 +37,6 @@ func openObservationRoots(boundaries []string) (_ *observationRoots, err error) 
 	return roots, nil
 }
 
-// observedName addresses one path for observation I/O. Under a pinned
-// boundary every operation resolves name inside root, so a later symlink swap
-// cannot redirect it; an unbounded target has no root and an absolute name.
 type observedName struct {
 	root *os.Root
 	name string
@@ -124,8 +117,6 @@ func (r *observationRoots) access(boundary, physical string) (observedName, bool
 		}
 	}
 	if root == nil {
-		// A catalog may not exist until its first authored file. Pin its boundary
-		// when it appears; until then the observer watches the existing ancestor.
 		root, err = os.OpenRoot(boundary)
 		if errors.Is(err, os.ErrNotExist) {
 			return observedName{}, false, nil

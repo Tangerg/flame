@@ -14,16 +14,10 @@ import (
 
 type ruleSet []Rule
 
-// Decide evaluates visible rules against q using the domain's specificity and
-// deny-on-conflict policy.
 func Decide(rules []Rule, q Query) (Decision, bool, error) {
 	return ruleSet(rules).decide(q)
 }
 
-// ValidateVisibleRules verifies that rules is one complete relation visible
-// from the requested session and project. Stores filter this relation for
-// efficiency; Domain rechecks scope membership and identity uniqueness before
-// the relation can affect authorization or escape through a read model.
 func ValidateVisibleRules(rules []Rule, sessionID identity.SessionID, projectDir string) error {
 	if len(rules) > MaximumVisibleRules {
 		return fmt.Errorf(
@@ -55,8 +49,6 @@ func ValidateVisibleRules(rules []Rule, sessionID identity.SessionID, projectDir
 	return nil
 }
 
-// RuleScope is where a remembered rule applies: a session rule names its
-// Session, a project rule its directory, and a global rule nothing.
 type RuleScope struct {
 	kind Scope
 	key  string
@@ -66,7 +58,7 @@ func GlobalScope() RuleScope { return RuleScope{kind: ScopeGlobal} }
 
 func SessionScope(sessionID identity.SessionID) (RuleScope, error) {
 	if err := sessionID.Validate(); err != nil {
-		return RuleScope{}, fmt.Errorf("%w: session scope: %v", ErrInvalidRule, err)
+		return RuleScope{}, fmt.Errorf("%w: session scope: %w", ErrInvalidRule, err)
 	}
 	return RuleScope{kind: ScopeSession, key: sessionID.String()}, nil
 }
@@ -78,13 +70,12 @@ func ProjectScope(dir string) (RuleScope, error) {
 	return RuleScope{kind: ScopeProject, key: dir}, nil
 }
 
-// RestoreRuleScope reads a stored kind and key back through its constructor.
 func RestoreRuleScope(kind Scope, key string) (RuleScope, error) {
 	switch kind {
 	case ScopeSession:
 		sessionID, err := identity.ParseSession(key)
 		if err != nil {
-			return RuleScope{}, fmt.Errorf("%w: session scope: %v", ErrInvalidRule, err)
+			return RuleScope{}, fmt.Errorf("%w: session scope: %w", ErrInvalidRule, err)
 		}
 		return SessionScope(sessionID)
 	case ScopeProject:
@@ -101,12 +92,9 @@ func RestoreRuleScope(kind Scope, key string) (RuleScope, error) {
 
 func (s RuleScope) Kind() Scope { return s.kind }
 
-// Key is the Session identity or project directory the scope names; it is
-// empty only for the global scope.
 func (s RuleScope) Key() string { return s.key }
 
-// visibleFrom refuses empty session and project keys so rules cannot leak
-// across scopes.
+// Empty session and project keys are refused so rules cannot leak across scopes.
 func (s RuleScope) visibleFrom(sessionID identity.SessionID, projectDir string) bool {
 	switch s.kind {
 	case ScopeSession:
@@ -118,7 +106,6 @@ func (s RuleScope) visibleFrom(sessionID identity.SessionID, projectDir string) 
 	}
 }
 
-// NewRule constructs one durable rule; its identity is derived, never chosen.
 func NewRule(scope RuleScope, ref tool.Ref, source framevalue.Digest, subject Subject, decision Decision) (Rule, error) {
 	if !scope.kind.Valid() {
 		return Rule{}, fmt.Errorf("%w: scope is required", ErrInvalidRule)
@@ -135,11 +122,6 @@ func NewRule(scope RuleScope, ref tool.Ref, source framevalue.Digest, subject Su
 	return Rule{scope: scope, tool: ref, source: source, subject: subject, decision: decision}, nil
 }
 
-// specificity encodes the conflict policy: narrower scope beats wider scope,
-// then exact subject beats glob, and glob beats whole-tool.
-// specificity ranks a rule by scope first and subject second: any narrower
-// scope outranks any broader one, and within a scope an exact subject outranks
-// a glob, which outranks matching every invocation.
 func (r Rule) specificity() [2]int {
 	rank := func(order []string, value string) int { return slices.Index(order, value) + 1 }
 	return [2]int{
@@ -148,7 +130,6 @@ func (r Rule) specificity() [2]int {
 	}
 }
 
-// Validate verifies the complete identity of one tool-call policy query.
 func (q Query) Validate() error {
 	if err := q.Tool.ValidateFingerprint(q.SourceFingerprint); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidQuery, err)
@@ -156,8 +137,8 @@ func (q Query) Validate() error {
 	return nil
 }
 
-// decide picks the strongest visible rule; equally specific disagreements
-// resolve to Deny so a remembered deny cannot be canceled by a peer allow.
+// Equally specific disagreements resolve to Deny so a remembered deny cannot be
+// canceled by a peer allow.
 func (r ruleSet) decide(q Query) (Decision, bool, error) {
 	if err := q.Validate(); err != nil {
 		return "", false, err
@@ -188,8 +169,6 @@ func (r ruleSet) decide(q Query) (Decision, bool, error) {
 	return verdict, true, nil
 }
 
-// Rule derives the durable rule represented by r; the scope requested names
-// which of the Session or project keys the rule is stored under.
 func (r RememberRequest) Rule() (Rule, error) {
 	var scope RuleScope
 	var err error
@@ -209,8 +188,6 @@ func (r RememberRequest) Rule() (Rule, error) {
 	return NewRule(scope, r.Tool, r.SourceFingerprint, r.Subject, r.Decision)
 }
 
-// ID is derived from the rule's scope, tool and subject, so re-remembering the
-// same rule is an upsert and the identity is a durable handle for forgetting it.
 func (r Rule) ID() string {
 	return "rule_" + identity.DigestStrings(string(r.scope.kind), r.scope.key, r.tool.String(), string(r.subject.Type), r.subject.Value).String()
 }

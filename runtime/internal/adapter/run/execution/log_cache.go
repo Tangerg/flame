@@ -11,9 +11,6 @@ import (
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
-// A cache borrows only an immutable, acknowledged log. Every read still checks
-// the durable head; it cannot grant a writer or advance an execution. Public
-// Store reads clone records so a consumer cannot mutate the cached owner.
 type executionLogCache struct {
 	mu          sync.Mutex
 	digest      string
@@ -70,8 +67,6 @@ func (i *interactionSession) inspectCommittedTree(ctx context.Context) (scoperun
 	return i.logCache.inspect(history)
 }
 
-// All callers borrow this read-only projection of one acknowledged log cut.
-// Reconciliation may inspect the same cut repeatedly while callbacks run.
 func (c *executionLogCache) inspect(history scoperun.Log) (scoperun.TreeInspection, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

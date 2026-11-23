@@ -11,8 +11,8 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
-	chathistory "github.com/Tangerg/scope/core/history"
 )
 
 func TestRuntimeMutationRequiresNewReadEvidenceAndKeepsRefusalDurable(t *testing.T) {
@@ -89,7 +89,7 @@ func TestRuntimeMutationRequiresNewReadEvidenceAndKeepsRefusalDurable(t *testing
 	if content, err := os.ReadFile(path); err != nil || string(content) != "finished\n" {
 		t.Fatalf("workspace content = %q, %v", content, err)
 	}
-	history, err := stores.ChatHistory.Read(ctx, chathistory.ConversationID(session.ID))
+	history, err := stores.Conversations.Read(ctx, testsupport.MustSessionID(session.ID))
 	if err != nil {
 		t.Fatal(err)
 	}

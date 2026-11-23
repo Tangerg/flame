@@ -12,10 +12,6 @@ import (
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
-// PrepareWaitingSubtreeCancellation projects one exact waiting Interaction tree
-// as this cancellation would leave it, and claims the tree's boundary until the
-// returned Application capability is applied or discarded. It changes nothing:
-// the cancellation is submitted by Apply, once the Application has committed it.
 func (i *InteractionExecutor) PrepareWaitingSubtreeCancellation(
 	ctx context.Context,
 	request runs.WaitingSubtreeCancellationRequest,
@@ -80,24 +76,18 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 		if err == nil {
 			return
 		}
-		// Every failure gives the waiting cut back. Discard is detached because
-		// the request may already be canceled, and bounded because its only way
-		// out of an in-flight preparation is its context.
 		i.failSubtreePreparation(preparedSignal)
 		discardCtx, cancelDiscard := context.WithTimeout(context.WithoutCancel(ctx), executionCleanupTimeout)
 		_ = i.discardPreparedSubtree(discardCtx)
 		cancelDiscard()
 	}()
 
-	// A requested cancellation is committed the moment it is submitted and drains
-	// from there, so the executor cannot hold a tree that has already been asked
-	// to cancel. Preparation therefore decides against the cut this tree is
-	// already parked on, which nothing can advance while its input stays
-	// unanswered, and leaves the submission itself to Apply.
+	// A requested cancellation commits the moment it is submitted, so preparation
+	// decides against the parked cut and leaves submission to Apply.
 	if _, found := i.engine.Process(targetID); !found {
 		return runs.PreparedWaitingSubtreeCancellation{}, errors.New("execution: waiting subtree target is unavailable")
 	}
-	stagedTree, err := i.stagedTree()
+	stagedTree, err := i.stagedTree(ctx)
 	if err != nil {
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
@@ -121,10 +111,6 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 	if err != nil {
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
-	// The cut still shows the target's own input wait, because the accepted
-	// cancellation is draining rather than finished. An Interrupt owned by a
-	// member this preparation ends is no longer pending: it dies with the member,
-	// and only the surviving members still await an answer.
 	interruptions = slices.DeleteFunc(interruptions, func(interruption runs.MemberInterruption) bool {
 		return slices.Contains(canceledMembers, interruption.MemberID)
 	})
@@ -144,8 +130,6 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 	return prepared, nil
 }
 
-// claimSubtreePreparation moves the waiting tree that the request addressed
-// into preparation, so no other boundary can cross it meanwhile.
 func (i *interactionSession) claimSubtreePreparation(
 	expectedCheckpoint runs.ExecutorCheckpoint,
 	targetID scoperun.ProcessID,
@@ -222,9 +206,6 @@ func (i *interactionSession) completeSubtreePreparation(
 	return nil
 }
 
-// The waiting cut precedes cancellation. Terminal processes are historical
-// evidence, not members that this cancellation can end or resume. Each task's
-// inner Interaction travels with its owning product member.
 func (i *interactionSession) canceledSubtree(
 	tree scoperun.Log,
 	targetID scoperun.ProcessID,

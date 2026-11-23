@@ -616,7 +616,7 @@ Install from an absolute directory or ZIP path on the Runtime machine. Each
 release must contain Frame's `manifest.json` and exactly its listed artifacts. The neutral manifest supplies the sole immutable release
 identity. `plugin.json` remains Flame product metadata using Agent Plugins 1.0.
 Its `io.github.tangerg.flame` namespace names one local declaration document with
-`plugin.DeclarationProtocol`, independently of `frame.CapabilityProtocol` used by
+`plugincontract.Protocol`, independently of `frame.CapabilityProtocol` used by
 callable contracts. Raw legacy source trees without the neutral manifest are
 refused.
 
@@ -1074,7 +1074,7 @@ if err != nil {
 }
 ```
 
-Hosts must close each Runtime they open. Protocol errors support `errors.Is` against public sentinel errors and `errors.As` to `protocol.ProblemError` for structured recovery information.
+Hosts must close each Runtime they open. Protocol errors support `errors.Is` against public sentinel errors and `errors.As` to `*protocol.Failure` for structured recovery information.
 
 Repeated `Close` calls join or resume an incomplete shutdown. Once terminal
 resource teardown finishes, every call returns its retained diagnostic without
@@ -1157,7 +1157,7 @@ Flame's local product root. Only an empty value selects `~/.flame`; an explicit 
 must be absolute and keeps significant whitespace. Runtime-owned state lives under
 `$FLAME_HOME/runtime`. Desktop reads the local token only from that selected deployment;
 a missing or invalid configured token never redirects it to the default directory.
-Go consumers use `ResolveProductRoot` followed by `DataDirectoryUnder`; the former
+Go consumers use `ProductRoot` followed by `DataDirectoryUnder`; the former
 `DefaultDataDirectory` API has been removed. Existing data directories need no migration.
 
 ## Develop

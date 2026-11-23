@@ -6,9 +6,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-// indexRecoveryPending admits the complete claimed barrier catalog before any
-// row can influence boot recovery. The returned map is the sole lookup used by
-// tree planning.
 func indexRecoveryPending(values []Pending, activeRootSessions map[identity.RunID]identity.SessionID) (map[identity.RunID]Pending, error) {
 	byRoot := make(map[identity.RunID]Pending, len(values))
 	checkpointOwners := make(map[string]identity.RunID, len(values))

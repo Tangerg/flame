@@ -13,7 +13,7 @@ import {
   lookupExtensionPoint,
 } from "@/extensions/selectors/extensions";
 import { reportPluginError } from "@/extensions/errors";
-export interface SubmitDeps {
+interface SubmitDeps {
   draft: ComposerSubmission;
   sendInput: (input: AgentInput) => boolean;
   canSend: () => boolean;

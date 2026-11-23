@@ -10,8 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 )
 
-// NewPluginResourceHandler projects a subscription-lived Core query as an
-// ordinary module/asset URL. No persistent bearer credential appears in it.
 func NewPluginResourceHandler(endpoint *delivery.Endpoint) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set(headerCacheControl, cacheNoStore)
@@ -36,7 +34,7 @@ func NewPluginResourceHandler(endpoint *delivery.Endpoint) http.Handler {
 			http.Error(w, "plugin resource could not be decoded", http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Content-Type", value.MediaType)
+		w.Header().Set(headerContentType, value.MediaType)
 		_, _ = w.Write(body)
 	})
 }

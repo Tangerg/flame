@@ -12,11 +12,9 @@ import (
 )
 
 func (i *interactionSession) checkpointMCPManifests() (map[domaintool.Group][]string, error) {
-	i.state.mu.Lock()
-	deployments := i.state.deployments
-	i.state.mu.Unlock()
-	if deployments == nil {
-		return nil, errors.New("execution: checkpoint Tool manifests are unavailable")
+	deployments, err := i.state.boundDeployments()
+	if err != nil {
+		return nil, err
 	}
 	manifests := make(map[domaintool.Group][]string, len(deployments.toolGroups))
 	for group, tools := range deployments.toolGroups {

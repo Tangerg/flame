@@ -6,17 +6,17 @@ import (
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/plugins/schedules/internal/schedule"
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 )
 
 type remoteRuns struct{ client *runtimeclient.Client }
 
-func connectRunHost(ctx context.Context, ref pluginmcp.CallbackRef) (runHost, func() error, error) {
+func connectRunHost(ctx context.Context, ref pluginmcp.CallbackRef) (remoteRuns, func() error, error) {
 	client, err := runtimeclient.ConnectCallback(ctx, ref)
 	if err != nil {
-		return nil, nil, err
+		return remoteRuns{}, nil, err
 	}
 	return remoteRuns{client: client}, client.Close, nil
 }
@@ -33,14 +33,14 @@ func (h remoteRuns) Admit(ctx context.Context, request schedule.RunRequest) erro
 	execution := request.Execution()
 	selection := execution.ModelSelection()
 	start := protocol.StartRunRequest{
-		NewSession: &protocol.RunSessionOpening{SessionID: request.SessionID(), RunID: request.RunID(), Title: execution.Title()},
+		NewSession: &protocol.RunSessionOpening{SessionID: request.SessionID().String(), RunID: request.RunID().String(), Title: execution.Title()},
 		Input:      []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: execution.Instructions()}},
 		Provider:   selection.Provider(), Model: selection.Model(), ReasoningEffort: selection.ReasoningEffort(),
 	}
 	if execution.CWD() != "" {
 		start.NewSession.Workspace = &protocol.WorkspaceRef{Path: execution.CWD()}
 	}
-	key := "schedules:run:" + request.RunID()
+	key := "schedules:run:" + request.RunID().String()
 	namespace, err := h.Namespace(ctx)
 	if err != nil {
 		return err
@@ -51,7 +51,7 @@ func (h remoteRuns) Admit(ctx context.Context, request schedule.RunRequest) erro
 	}
 	switch acceptance.Type {
 	case protocol.RunAcceptanceAccepted, protocol.RunAcceptanceRetired:
-		if acceptance.SessionID != request.SessionID() || acceptance.RunID != request.RunID() {
+		if acceptance.SessionID != request.SessionID().String() || acceptance.RunID != request.RunID().String() {
 			return errors.New("schedules: Runtime acceptance differs from captured dispatch")
 		}
 		return nil
@@ -65,7 +65,7 @@ func (h remoteRuns) Admit(ctx context.Context, request schedule.RunRequest) erro
 	if err != nil {
 		return err
 	}
-	if ack.RunID != request.RunID() {
+	if ack.RunID != request.RunID().String() {
 		return protocol.ErrInvalidResponse
 	}
 	return nil

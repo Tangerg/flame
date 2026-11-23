@@ -9,34 +9,30 @@ import (
 	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
-const requestMetaField = "_meta"
-
-// extractRequestMeta removes the JSON-RPC-only _meta member and returns its
-// binding-neutral protocol value. Semantic validation belongs to operation.
 func extractRequestMeta(request *jsonrpc.Request) (protocol.RequestMeta, *jsonrpc.Error) {
-	if request == nil || len(request.Params) == 0 {
+	if request == nil || request.Params.Kind() != jsontext.KindBeginObject {
 		return protocol.RequestMeta{}, nil
 	}
 	var parameters map[string]jsontext.Value
 	if err := json.Unmarshal(request.Params, &parameters); err != nil {
-		return protocol.RequestMeta{}, nil
+		return protocol.RequestMeta{}, invalidParams(err.Error())
 	}
-	encoded, ok := parameters[requestMetaField]
+	encoded, ok := parameters[protocol.RequestMetaMember]
 	if !ok {
 		return protocol.RequestMeta{}, nil
 	}
 	var metadata protocol.RequestMeta
 	if err := decodeParams(encoded, &metadata); err != nil {
-		return protocol.RequestMeta{}, errorToRPC(fmt.Errorf("%s: %w", requestMetaField, err))
+		return protocol.RequestMeta{}, errorToRPC(fmt.Errorf("%s: %w", protocol.RequestMetaMember, err))
 	}
-	delete(parameters, requestMetaField)
+	delete(parameters, protocol.RequestMetaMember)
 	if len(parameters) == 0 {
 		request.Params = nil
 		return metadata, nil
 	}
 	encodedParameters, err := json.Marshal(parameters, json.Deterministic(true))
 	if err != nil {
-		return protocol.RequestMeta{}, invalidParams(requestMetaField + ": " + err.Error())
+		return protocol.RequestMeta{}, invalidParams(protocol.RequestMetaMember + ": " + err.Error())
 	}
 	request.Params = encodedParameters
 	return metadata, nil

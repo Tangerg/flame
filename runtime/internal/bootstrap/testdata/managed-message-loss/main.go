@@ -59,7 +59,6 @@ func run() (err error) {
 	forwarded := make(chan error, 1)
 	go func() {
 		scanner := bufio.NewScanner(os.Stdin)
-		// A loss probe must not reject frames that its MCP peers admit.
 		scanner.Buffer(nil, sdk.DefaultMaxLineLength)
 		for scanner.Scan() {
 			line := append([]byte(nil), scanner.Bytes()...)
@@ -221,8 +220,6 @@ func withhold(request, response jsontext.Value) (bool, error) {
 	return true, errors.Join(writeErr, file.Close())
 }
 
-// Faults alter the receipt observation only. The backend's committed state stays
-// owned by its real process, so an inconclusive response cannot hide a replay.
 func receiptFault(stage string, response []byte) ([]byte, error) {
 	var result jsontext.Value
 	switch stage {

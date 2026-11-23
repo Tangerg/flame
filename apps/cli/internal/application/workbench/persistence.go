@@ -9,9 +9,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem/commit"
 )
 
-// WriteError retains the outcome of this write attempt. A later write refused
-// by an existing barrier is uncommitted even when its cause contains an earlier
-// committed failure.
 type WriteError struct {
 	Record string
 	Result commit.Result
@@ -31,9 +28,6 @@ func writeCommitted(err error) bool {
 	return ok && write.Result.Committed()
 }
 
-// Persistence is the filesystem-neutral port used by Store. Workbench owns
-// record names, formats, and recovery semantics; an external adapter owns the
-// physical root and atomic file operations.
 type Persistence interface {
 	Read(name string, maximumBytes int64) ([]byte, error)
 	ListFiles(directory, extension string) ([]string, error)

@@ -11,9 +11,8 @@ import (
 	"github.com/Tangerg/oolong/ui/core/layout"
 )
 
-// approvalScreens chooses the Runtime approval mode and manages remembered
-// approval rules; observing reports whether a Run is being followed, during
-// which the mode cannot change.
+const approvalPolicyDialogHeight = 9
+
 type approvalScreens struct {
 	screenHost
 	service   ApprovalPolicy
@@ -25,7 +24,7 @@ func newApprovalScreens(host screenHost, service ApprovalPolicy, observing func(
 	p := &approvalScreens{screenHost: host, service: service, observing: observing}
 	p.modes = newPickerDialog(pickerDialogConfig[protocol.ApprovalModePolicy]{
 		stack: host.stack, theme: host.theme, glyphs: host.glyphs, title: "Runtime approval mode", search: "search approval modes",
-		where:  layout.Placement{Width: standardDialogWidth, Height: 9},
+		where:  layout.Placement{Width: standardDialogWidth, Height: approvalPolicyDialogHeight},
 		label:  func(policy protocol.ApprovalModePolicy) string { return approvalModeTitle(policy.Mode) },
 		detail: approvalPolicyDetail,
 		choose: func(policy protocol.ApprovalModePolicy) { p.setApprovalMode(policy.Mode) },
@@ -114,7 +113,7 @@ func (p *approvalScreens) PrepareDeleteApprovalRule(identity string) error {
 			)
 		},
 	) {
-		return errors.New("another approval operation is running")
+		return approvalRuleOperation.busy()
 	}
 	return nil
 }
@@ -145,7 +144,7 @@ func (p *approvalScreens) deleteApprovalRule(sessionID, id string) {
 			}
 		},
 	) {
-		p.message("another approval operation is running")
+		p.message(approvalRuleOperation.busy().Error())
 	}
 }
 
@@ -168,7 +167,7 @@ func (p *approvalScreens) setApprovalRule(request protocol.SetApprovalRuleReques
 			p.message(label + " accepted")
 		},
 	) {
-		return errors.New("another approval operation is running")
+		return approvalRuleOperation.busy()
 	}
 	return nil
 }

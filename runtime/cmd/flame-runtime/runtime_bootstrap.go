@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,12 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/config"
 )
 
-const flameHomeEnvironment = "FLAME_HOME"
-
-// runtimePaths is the executable's single snapshot of host paths. User Home,
-// default workspace, durable data, and launch directory are distinct facts even
-// when defaults make some of them descendants or aliases; inner runtime rings
-// consume these values and never rediscover them.
 type runtimePaths struct {
 	userHome             string
 	defaultWorkspacePath string
@@ -34,27 +27,17 @@ func resolveRuntimePaths() (runtimePaths, error) {
 	if err != nil {
 		return runtimePaths{}, fmt.Errorf("runtime: locate user home: %w", err)
 	}
-	if userHome == "" {
-		return runtimePaths{}, errors.New("runtime: user home is unavailable")
-	}
-	if !filepath.IsAbs(userHome) {
-		return runtimePaths{}, errors.New("runtime: user home must be absolute")
-	}
-	userHome = filepath.Clean(userHome)
 	launchDirectory, err := os.Getwd()
 	if err != nil {
 		return runtimePaths{}, fmt.Errorf("runtime: locate launch directory: %w", err)
 	}
-	if !filepath.IsAbs(launchDirectory) {
-		return runtimePaths{}, errors.New("runtime: launch directory must be absolute")
-	}
-	productRoot, err := localruntime.ResolveProductRoot(userHome, os.Getenv(flameHomeEnvironment))
+	productRoot, err := localruntime.ProductRoot()
 	if err != nil {
-		return runtimePaths{}, fmt.Errorf("runtime: resolve %s: %w", flameHomeEnvironment, err)
+		return runtimePaths{}, fmt.Errorf("runtime: %w", err)
 	}
 	dataDirectory, err := localruntime.DataDirectoryUnder(productRoot)
 	if err != nil {
-		return runtimePaths{}, fmt.Errorf("runtime: resolve %s: %w", flameHomeEnvironment, err)
+		return runtimePaths{}, fmt.Errorf("runtime: %w", err)
 	}
 	executable, err := os.Executable()
 	if err != nil {
@@ -74,7 +57,7 @@ func resolveRuntimePaths() (runtimePaths, error) {
 		userHome:             userHome,
 		defaultWorkspacePath: userHome,
 		dataDirectory:        dataDirectory,
-		launchDirectory:      filepath.Clean(launchDirectory),
+		launchDirectory:      launchDirectory,
 	}, nil
 }
 

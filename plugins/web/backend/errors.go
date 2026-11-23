@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 
-	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
+	"github.com/Tangerg/flame/plugins/web/internal/capture"
 	"github.com/Tangerg/scope/tools/web"
 )
 

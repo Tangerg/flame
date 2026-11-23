@@ -11,37 +11,23 @@ import (
 	"strings"
 )
 
-// This file holds the minimal slice of the Language Server Protocol wire
-// shapes flame consumes — definition / references / hover / symbols /
-// diagnostics, plus the document-sync notifications a server needs before it
-// will answer. It is deliberately NOT the full protocol: we type only what we
-// read, and let the rest pass through as jsontext.Value. LSP positions are
-// 0-based lines and UTF-16 code-unit offsets; the tool layer converts both
-// coordinates to/from 1-based.
-
-// Position is a 0-based (line, UTF-16 code-unit offset) cursor in a document.
 type Position struct {
 	Line      int `json:"line"`
 	Character int `json:"character"`
 }
 
-// Range is a half-open [Start, End) span.
 type Range struct {
 	Start Position `json:"start"`
 	End   Position `json:"end"`
 }
 
-// Location is a span within a document, addressed by URI.
 type Location struct {
 	URI   string `json:"uri"`
 	Range Range  `json:"range"`
 }
 
-// Path returns the location's native filesystem path (the inverse of the
-// file:// URI), for rendering results back to the caller.
 func (l Location) Path() string { return uriToPath(l.URI) }
 
-// DiagnosticSeverity is the closed LSP diagnostic-severity vocabulary.
 type DiagnosticSeverity uint8
 
 const (
@@ -52,8 +38,6 @@ const (
 	diagnosticSeverityHint
 )
 
-// IsProblem reports whether the severity belongs in the post-mutation problem
-// summary. LSP treats an omitted severity as an error for this purpose.
 func (d DiagnosticSeverity) IsProblem() bool {
 	return d <= diagnosticSeverityWarning
 }
@@ -73,8 +57,6 @@ func (d DiagnosticSeverity) name() string {
 	}
 }
 
-// Diagnostic is one problem a server reports for a document (a compile error,
-// a vet warning).
 type Diagnostic struct {
 	Range    Range              `json:"range"`
 	Severity DiagnosticSeverity `json:"severity"`
@@ -83,24 +65,67 @@ type Diagnostic struct {
 	Message  string             `json:"message"`
 }
 
-// SeverityName renders a Diagnostic.Severity as a word (empty when unset).
 func (d Diagnostic) SeverityName() string {
 	return d.Severity.name()
 }
 
-// Symbol is the normalized form of both LSP symbol shapes
-// (SymbolInformation, hierarchical DocumentSymbol) the server set returns to the
-// tool layer. Kind is the raw LSP SymbolKind number; Container is the
-// enclosing scope when the server reports one.
+// Values follow the LSP SymbolKind enumeration, which numbers kinds from 1.
+type SymbolKind int
+
+const (
+	symbolFile SymbolKind = iota + 1
+	symbolModule
+	symbolNamespace
+	symbolPackage
+	symbolClass
+	symbolMethod
+	symbolProperty
+	symbolField
+	symbolConstructor
+	symbolEnum
+	symbolInterface
+	symbolFunction
+	symbolVariable
+	symbolConstant
+	symbolString
+	symbolNumber
+	symbolBoolean
+	symbolArray
+	symbolObject
+	symbolKey
+	symbolNull
+	symbolEnumMember
+	symbolStruct
+	symbolEvent
+	symbolOperator
+	symbolTypeParameter
+)
+
+var symbolKindNames = [...]string{
+	symbolFile: "file", symbolModule: "module", symbolNamespace: "namespace", symbolPackage: "package",
+	symbolClass: "class", symbolMethod: "method", symbolProperty: "property", symbolField: "field",
+	symbolConstructor: "constructor", symbolEnum: "enum", symbolInterface: "interface", symbolFunction: "function",
+	symbolVariable: "variable", symbolConstant: "constant", symbolString: "string", symbolNumber: "number",
+	symbolBoolean: "boolean", symbolArray: "array", symbolObject: "object", symbolKey: "key", symbolNull: "null",
+	symbolEnumMember: "enum-member", symbolStruct: "struct", symbolEvent: "event", symbolOperator: "operator",
+	symbolTypeParameter: "type-parameter",
+}
+
+// Servers may report kinds newer than this enumeration; they render generically.
+func (k SymbolKind) String() string {
+	if k < symbolFile || int(k) >= len(symbolKindNames) {
+		return "symbol"
+	}
+	return symbolKindNames[k]
+}
+
 type Symbol struct {
 	Name      string
-	Kind      int
+	Kind      SymbolKind
 	Location  Location
 	Container string
 	Detail    string
 }
-
-// --- params (unexported: only marshaled outward) ---
 
 type initializeParams struct {
 	ProcessID        int                `json:"processId"`
@@ -211,7 +236,6 @@ func negotiatedSave(sync jsontext.Value) (saveSynchronization, error) {
 	var options struct {
 		Save jsontext.Value `json:"save"`
 	}
-	// The legacy numeric form only specifies the change synchronization kind.
 	if len(sync) == 0 || sync.Kind() != '{' {
 		return saveSynchronization{}, nil
 	}
@@ -247,30 +271,21 @@ type workspaceSymbolParams struct {
 	Query string `json:"query"`
 }
 
-// configurationItem is the server's request for one settings scope. Scope has
-// no LSP-specific settings, but decoding the shape still prevents malformed
-// requests from being acknowledged as valid configuration queries.
 type configurationItem struct {
 	ScopeURI string `json:"scopeUri,omitempty"`
 	Section  string `json:"section,omitempty"`
 }
 
-// callHierarchyItem is one node in the call graph (a function/method), returned
-// by prepareCallHierarchy and carried back into incoming/outgoingCalls. We type
-// the fields the tool layer renders; the server round-trips the rest opaquely
-// via [jsontext.Value] so an item is handed back byte-for-byte.
 type callHierarchyItem struct {
 	Name           string         `json:"name"`
-	Kind           int            `json:"kind"`
+	Kind           SymbolKind     `json:"kind"`
 	URI            string         `json:"uri"`
 	Range          Range          `json:"range"`
 	SelectionRange Range          `json:"selectionRange"`
 	Detail         string         `json:"detail,omitempty"`
-	Data           jsontext.Value `json:"data,omitzero"` // server-private; preserved across the round trip
+	Data           jsontext.Value `json:"data,omitzero"`
 }
 
-// symbol maps a call-hierarchy node onto the normalized [Symbol] the tool layer
-// formats — its selection range is the precise name span.
 func (c callHierarchyItem) symbol() Symbol {
 	return Symbol{
 		Name:     c.Name,
@@ -284,9 +299,6 @@ type callHierarchyItemParams struct {
 	Item jsontext.Value `json:"item"`
 }
 
-// callHierarchyIncomingCall is one caller (`from`) of the queried symbol;
-// outgoing is one callee (`to`). fromRanges (the exact call sites) are not
-// rendered — the caller/callee location suffices for navigation.
 type callHierarchyIncomingCall struct {
 	From callHierarchyItem `json:"from"`
 }
@@ -295,9 +307,6 @@ type callHierarchyOutgoingCall struct {
 	To callHierarchyItem `json:"to"`
 }
 
-// publishDiagnosticsParams is the server→client push we cache. Version echoes
-// the document version the server diagnosed, so a post-mutation wait can tell
-// fresh diagnostics from stale ones.
 type publishDiagnosticsParams struct {
 	URI         string       `json:"uri"`
 	Version     int          `json:"version"`
@@ -355,18 +364,13 @@ func (p Position) validate() error {
 	return nil
 }
 
-// --- response shapes we parse flexibly ---
-
 type symbolInformation struct {
-	Name          string    `json:"name"`
-	Kind          int       `json:"kind"`
-	Location      *Location `json:"location"`
-	ContainerName string    `json:"containerName"`
+	Name          string     `json:"name"`
+	Kind          SymbolKind `json:"kind"`
+	Location      *Location  `json:"location"`
+	ContainerName string     `json:"containerName"`
 }
 
-// locationLink is the alternate definition/implementation result shape. The
-// target selection range is the most precise navigation span; targetRange is
-// retained only because it is required on the wire.
 type locationLink struct {
 	TargetURI            *string `json:"targetUri"`
 	TargetRange          *Range  `json:"targetRange"`
@@ -376,7 +380,7 @@ type locationLink struct {
 type documentSymbol struct {
 	Name           string           `json:"name"`
 	Detail         string           `json:"detail"`
-	Kind           int              `json:"kind"`
+	Kind           SymbolKind       `json:"kind"`
 	Range          *Range           `json:"range"`
 	SelectionRange *Range           `json:"selectionRange"`
 	Children       []documentSymbol `json:"children"`
@@ -389,8 +393,6 @@ const (
 	markupPlaintext markupKind = "plaintext"
 )
 
-// supportedCapability emits an explicit empty object for one LSP capability
-// whose optional subfeatures Flame does not advertise.
 type supportedCapability struct{}
 
 type diagnosticClientCapabilities struct {
@@ -439,12 +441,10 @@ type workspaceClientCapabilities struct {
 	WorkspaceFolders bool                `json:"workspaceFolders"`
 }
 
-// defaultCapabilities is the exact minimal capability set Flame advertises.
-// HierarchicalDocumentSymbolSupport stays false so documentSymbol comes back
-// as flat SymbolInformation carrying the Location consumed by the tool layer.
-// DidSave is true because diagnostics sends textDocument/didSave; a server that
-// registers handlers from client capabilities drops a notification the client
-// never claimed to send.
+// HierarchicalDocumentSymbolSupport stays false so documentSymbol returns flat
+// SymbolInformation with locations. DidSave is true because a server that
+// registers handlers from client capabilities drops notifications the client never
+// claimed to send.
 func defaultCapabilities() clientCapabilities {
 	return clientCapabilities{
 		TextDocument: textDocumentClientCapabilities{
@@ -462,15 +462,12 @@ func defaultCapabilities() clientCapabilities {
 	}
 }
 
-// parseLocations normalizes textDocument/definition|references results, which
-// may be null, a Location, Location[], or LocationLink[]. Unknown and malformed
-// shapes are errors rather than false "no result" responses.
 func parseLocations(raw jsontext.Value) ([]Location, error) {
 	value := normalizedJSON(raw)
 	if len(value) == 0 {
 		return nil, errors.New("decode locations: response is empty")
 	}
-	if bytes.Equal(value, []byte("null")) {
+	if isJSONNull(value) {
 		return nil, nil
 	}
 	switch value[0] {
@@ -561,16 +558,12 @@ func validateLocation(location Location) error {
 	return nil
 }
 
-// parseSymbols normalizes textDocument/documentSymbol, which is either a flat
-// []SymbolInformation (each with a Location) or a hierarchical
-// []DocumentSymbol (ranges only — fileURI supplies the location). docURI is
-// used to locate hierarchical symbols.
 func parseSymbols(raw jsontext.Value, docURI string) ([]Symbol, error) {
 	value := normalizedJSON(raw)
 	if len(value) == 0 {
 		return nil, errors.New("decode symbols: response is empty")
 	}
-	if bytes.Equal(value, []byte("null")) {
+	if isJSONNull(value) {
 		return nil, nil
 	}
 	if value[0] != '[' {
@@ -606,8 +599,6 @@ func parseSymbols(raw jsontext.Value, docURI string) ([]Symbol, error) {
 	return out, nil
 }
 
-// parseSymbolInformation reads the flat, located symbol form; a server sends it
-// instead of the DocumentSymbol tree when the first item carries a location.
 func parseSymbolInformation(value jsontext.Value) ([]Symbol, error) {
 	var infos []symbolInformation
 	if err := json.Unmarshal(value, &infos); err != nil {
@@ -654,14 +645,12 @@ func appendDocumentSymbols(out *[]Symbol, parent, docURI string, symbols []docum
 	return nil
 }
 
-// hoverText flattens a Hover.contents payload — MarkupContent {kind, value},
-// a bare MarkedString, or an array of either — into plain text.
 func parseHover(raw jsontext.Value) (string, error) {
 	value := normalizedJSON(raw)
 	if len(value) == 0 {
 		return "", errors.New("decode hover: response is empty")
 	}
-	if bytes.Equal(value, []byte("null")) {
+	if isJSONNull(value) {
 		return "", nil
 	}
 	if value[0] != '{' {
@@ -749,20 +738,15 @@ func jsonKind(value []byte) string {
 	}
 }
 
-// pathToURI converts an absolute filesystem path to a file:// URI, portable
-// across OSes (a Windows C:\a\b becomes file:///C:/a/b). url.URL handles the
-// escaping so paths with spaces survive the round trip.
 func pathToURI(p string) string {
 	p = filepath.ToSlash(p)
 	if !strings.HasPrefix(p, "/") {
-		p = "/" + p // drive-letter (Windows) or relative → leading slash
+		p = "/" + p
 	}
 	u := url.URL{Scheme: "file", Path: p}
 	return u.String()
 }
 
-// uriToPath is the inverse of pathToURI, used to render results back as
-// native filesystem paths.
 func uriToPath(uri string) string {
 	u, err := url.Parse(uri)
 	if err != nil {
@@ -770,7 +754,9 @@ func uriToPath(uri string) string {
 	}
 	p := u.Path
 	if len(p) >= 3 && p[0] == '/' && p[2] == ':' {
-		p = p[1:] // /C:/a → C:/a (Windows)
+		p = p[1:]
 	}
 	return filepath.FromSlash(p)
 }
+
+func isJSONNull(value []byte) bool { return bytes.Equal(value, []byte("null")) }

@@ -13,9 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
-// CancelRun hard-stops a running run with a canceled outcome.
-// A parked Run is also abandoned — its live parked execution is torn down
-// and its open interrupt dropped so it stops surfacing as resumable.
 func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (*protocol.CancelRunResponse, error) {
 	result, err := s.cancelRun(ctx, in, nil)
 	if err != nil {
@@ -25,10 +22,7 @@ func (s *Handler) CancelRun(ctx context.Context, in protocol.CancelRunRequest) (
 }
 
 func (s *Handler) cancelRun(ctx context.Context, in protocol.CancelRunRequest, receipt runs.CancellationReceipt) (runs.CancelResult, error) {
-	// Root cancel is the emergency stop and is always allowed. Whether the target
-	// is a child is durable state resolved by the application, so do not reject
-	// unsupported client preferences before that identity is known.
-	runID, err := wireIdentity("runId", in.RunID, identity.ParseRun)
+	runID, err := runParameter(in.RunID)
 	if err != nil {
 		return runs.CancelResult{}, err
 	}
@@ -64,24 +58,16 @@ func wireCancellationError(err error) error {
 	}
 }
 
-// SteerRun injects a user message into the segment the request names so the model
-// reads it on its next tool round.
-//
-// Only the addressed segment is steerable, and every other position says so by
-// name: a waiting run is answered via runs.resume, a finished one cannot be
-// steered at all, and a run that has moved to a different segment refuses rather
-// than delivering the instruction to work the user never saw. The refusals are
-// the same set a subscribe gets, because both are addressing one live segment.
 func (s *Handler) SteerRun(ctx context.Context, in protocol.SteerRunRequest) (*protocol.SteerRunResponse, error) {
 	input, err := decodeRunInput(in.Input)
 	if err != nil {
 		return nil, err
 	}
-	expected, err := wireIdentity("expectedSegmentId", in.ExpectedSegmentID, identity.ParseOptionalSegment)
+	expected, err := wireIdentity("expectedSegmentId", in.ExpectedSegmentID, identity.ParseSegment)
 	if err != nil {
 		return nil, err
 	}
-	runID, err := wireIdentity("runId", in.RunID, identity.ParseRun)
+	runID, err := runParameter(in.RunID)
 	if err != nil {
 		return nil, err
 	}
@@ -99,11 +85,7 @@ func wireSteerError(err error) error {
 		return protocol.ErrIdempotencyConflict
 	}
 	if input, ok := errors.AsType[*runs.InputBlockError](err); ok {
-		constraint := &protocol.ConstraintError{Shape: "RunInput", Fields: []protocol.FieldError{{
-			Field:  fmt.Sprintf("input[%d].%s", input.Index, wireContentField(input.Field)),
-			Detail: input.Detail,
-		}}}
-		return protocol.NewFailure(protocol.ErrInvalidParams, constraint.Error(), constraint)
+		return invalidWireContentBlock(input.Index, wireContentField(input.Field), input.Detail)
 	}
 	if errors.Is(err, runs.ErrInputRequired) || errors.Is(err, runs.ErrUnsupportedMedia) {
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
@@ -111,8 +93,28 @@ func wireSteerError(err error) error {
 	return wireLiveSegmentError(err)
 }
 
-// wireIdentity parses an identity a request addressed; a malformed one is an
-// invalid parameter.
+const (
+	sessionIDField = "sessionId"
+	runIDField     = "runId"
+	segmentIDField = "segmentId"
+)
+
+func sessionParameter(text string) (identity.SessionID, error) {
+	return wireIdentity(sessionIDField, text, identity.ParseSession)
+}
+
+func optionalSessionParameter(text string) (identity.SessionID, error) {
+	return wireIdentity(sessionIDField, text, identity.ParseOptionalSession)
+}
+
+func runParameter(text string) (identity.RunID, error) {
+	return wireIdentity(runIDField, text, identity.ParseRun)
+}
+
+func optionalRunParameter(text string) (identity.RunID, error) {
+	return wireIdentity(runIDField, text, identity.ParseOptionalRun)
+}
+
 func wireIdentity[ID any](field, text string, parse func(string) (ID, error)) (ID, error) {
 	id, err := parse(text)
 	if err != nil {

@@ -7,9 +7,9 @@ import (
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/plugins/filewatch/internal/filewatch"
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
 )
 
 type runHost struct{ client *runtimeclient.Client }
@@ -53,18 +53,18 @@ func (h *runHost) Admit(ctx context.Context, namespace string, observation filew
 		return err
 	}
 	start := protocol.StartRunRequest{
-		NewSession: &protocol.RunSessionOpening{SessionID: capture.SessionID, RunID: capture.RunID, Title: capture.Trigger.Title, Workspace: &protocol.WorkspaceRef{Path: capture.Trigger.Workspace}},
+		NewSession: &protocol.RunSessionOpening{SessionID: capture.SessionID.String(), RunID: capture.RunID.String(), Title: capture.Trigger.Title, Workspace: &protocol.WorkspaceRef{Path: capture.Trigger.Workspace}},
 		Input:      []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: input}},
 		Provider:   capture.Trigger.Provider, Model: capture.Trigger.Model, ReasoningEffort: capture.Trigger.ReasoningEffort,
 	}
-	key := "filewatch:run:" + capture.RunID
+	key := "filewatch:run:" + capture.RunID.String()
 	acceptance, err := h.client.GetRunAcceptance(ctx, protocol.GetRunAcceptanceRequest{Namespace: namespace, Key: key, Operation: protocol.RunCommandStart, Request: &start}, protocol.CallOptions{})
 	if err != nil {
 		return err
 	}
 	switch acceptance.Type {
 	case protocol.RunAcceptanceAccepted, protocol.RunAcceptanceRetired:
-		if acceptance.SessionID != capture.SessionID || acceptance.RunID != capture.RunID {
+		if acceptance.SessionID != capture.SessionID.String() || acceptance.RunID != capture.RunID.String() {
 			return errors.New("filewatch: Runtime acceptance differs from captured intent")
 		}
 		return nil
@@ -76,7 +76,7 @@ func (h *runHost) Admit(ctx context.Context, namespace string, observation filew
 	if err != nil {
 		return err
 	}
-	if ack.RunID != capture.RunID {
+	if ack.RunID != capture.RunID.String() {
 		return protocol.ErrInvalidResponse
 	}
 	return nil

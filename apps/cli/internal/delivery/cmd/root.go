@@ -1,9 +1,3 @@
-// Package cmd is the CLI's command tree.
-//
-// Commands are built by constructors rather than declared as package variables,
-// so a test can build a fresh tree with its own runtime and its own output
-// buffers. Flag state does not survive between trees, which is what makes the
-// commands testable in-memory.
 package cmd
 
 import (
@@ -21,14 +15,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-// developmentVersion identifies a build without a release version.
 const developmentVersion = "dev"
 
-// version is overridden at link time via -ldflags "-X ...cmd.version=...".
 var version = developmentVersion
 
-// Version is the one spelling of the build identity shown to people and
-// advertised to runtime discovery. A link-time value may omit the leading "v".
 func Version() string {
 	switch {
 	case version == "" || version == developmentVersion:
@@ -40,20 +30,17 @@ func Version() string {
 	}
 }
 
-const configIndependentAnnotation = "flame/config-independent"
+const (
+	configIndependentAnnotation = "flame/config-independent"
+	annotationSet               = "true"
+)
 
-// Dependencies are the outer implementations available to the command tree.
-// Runtime construction stays lazy so help and completion-script generation do
-// not open sockets, databases, or other process-owned resources. Dynamic value
-// completion may resolve the Runtime when it needs authoritative catalog data.
 type Dependencies struct {
 	OpenRuntime   func(context.Context, settings.Runtime) (Runtime, RuntimeProfile, error)
 	StartTerminal func(context.Context, TerminalRequest) error
 	OpenWorkbench func(string) (*workbench.Store, error)
 }
 
-// TerminalRequest is the command-owned input needed to start one interactive
-// delivery. Concrete Runtime adapters and terminal dependencies stay in main.
 type TerminalRequest struct {
 	SessionID      string
 	Workspace      string
@@ -62,8 +49,6 @@ type TerminalRequest struct {
 	Settings       settings.Config
 }
 
-// runtimeProvider delays construction until a command needs the runtime. It
-// owns delivery-only diagnostics so factories remain independent of Cobra.
 type runtimeProvider struct {
 	open          func(context.Context) (Runtime, RuntimeProfile, error)
 	openWorkbench func(string) (*workbench.Store, error)
@@ -78,13 +63,8 @@ func (r runtimeProvider) Runtime(cmd *cobra.Command) (Runtime, error) {
 
 func (r runtimeProvider) Open(cmd *cobra.Command) (Runtime, RuntimeProfile, error) {
 	ctx := cmd.Context()
-	if r.prepare != nil {
-		if err := r.prepare(cmd); err != nil {
-			return nil, nil, err
-		}
-	}
-	if r.open == nil {
-		return nil, nil, errors.New("runtime factory is required")
+	if err := r.prepare(cmd); err != nil {
+		return nil, nil, err
 	}
 	runtime, profile, err := r.open(ctx)
 	if err != nil {
@@ -96,14 +76,19 @@ func (r runtimeProvider) Open(cmd *cobra.Command) (Runtime, RuntimeProfile, erro
 	if profile == nil {
 		return nil, nil, errors.New("runtime factory returned no negotiated profile")
 	}
-	if err := profile.Validate(); err != nil {
-		return nil, nil, err
-	}
 	return runtime, profile, nil
 }
 
-// NewRoot builds an isolated command tree from process-owned dependencies.
-func NewRoot(dependencies Dependencies) *cobra.Command {
+const (
+	groupWork   = "work"
+	groupManage = "manage"
+	groupSetup  = "setup"
+)
+
+func NewRoot(dependencies Dependencies) (*cobra.Command, error) {
+	if dependencies.OpenRuntime == nil || dependencies.StartTerminal == nil || dependencies.OpenWorkbench == nil {
+		return nil, errors.New("cli: runtime, terminal and workbench factories are required")
+	}
 	v := viper.New()
 	loaded := false
 	prepare := func(command *cobra.Command) error {
@@ -116,29 +101,28 @@ func NewRoot(dependencies Dependencies) *cobra.Command {
 		loaded = true
 		return nil
 	}
-	provider := runtimeProvider{configuration: v, prepare: prepare, openWorkbench: dependencies.OpenWorkbench}
-	if dependencies.OpenRuntime != nil {
-		provider.open = func(ctx context.Context) (Runtime, RuntimeProfile, error) {
+	provider := runtimeProvider{configuration: v, prepare: prepare, openWorkbench: dependencies.OpenWorkbench,
+		open: func(ctx context.Context) (Runtime, RuntimeProfile, error) {
 			configured, err := readSettings(v)
 			if err != nil {
 				return nil, nil, err
 			}
 			return dependencies.OpenRuntime(ctx, configured.Runtime)
-		}
+		},
 	}
 	root := newRootCommand(v, dependencies.StartTerminal, prepare)
 	configureRoot(v, root)
-	root.Flags().StringP("session", "s", "", "Open an existing session instead of a new one")
-	root.PersistentFlags().StringP("cwd", "C", "", "Local directory for CLI configuration and attachments; also the embedded Runtime workspace")
-	root.Flags().String("workspace", "", "Workspace path on the selected Runtime (default: local directory when embedded, Runtime default when remote)")
-	root.MarkFlagsMutuallyExclusive("session", "workspace")
+	root.Flags().StringP(sessionFlag, "s", "", "Open an existing session instead of a new one")
+	root.PersistentFlags().StringP(cwdFlag, "C", "", "Local directory for CLI configuration and attachments; also the embedded Runtime workspace")
+	root.Flags().String(workspaceFlag, "", "Workspace path on the selected Runtime (default: local directory when embedded, Runtime default when remote)")
+	root.MarkFlagsMutuallyExclusive(sessionFlag, workspaceFlag)
 	root.AddGroup(
-		&cobra.Group{ID: "work", Title: "Work:"},
-		&cobra.Group{ID: "manage", Title: "Manage:"},
-		&cobra.Group{ID: "setup", Title: "Setup:"},
+		&cobra.Group{ID: groupWork, Title: "Work:"},
+		&cobra.Group{ID: groupManage, Title: "Manage:"},
+		&cobra.Group{ID: groupSetup, Title: "Setup:"},
 	)
 	addRootCommands(root, provider, v)
-	return root
+	return root, nil
 }
 
 func newRootCommand(
@@ -184,44 +168,35 @@ func newRootCommand(
 }
 
 func configIndependent(cmd *cobra.Command) bool {
-	return cmd.Annotations[configIndependentAnnotation] == "true" || cmd.Name() == cobra.ShellCompRequestCmd
+	return cmd.Annotations[configIndependentAnnotation] == annotationSet || cmd.Name() == cobra.ShellCompRequestCmd
 }
 
 func addRootCommands(root *cobra.Command, provider runtimeProvider, v *viper.Viper) {
 	run := newRunCommand(provider, v)
-	run.GroupID = "work"
+	run.GroupID = groupWork
 	sessions := newSessionsCommand(provider)
-	sessions.GroupID = "manage"
+	sessions.GroupID = groupManage
 	runs := newRunsCommand(provider)
-	runs.GroupID = "manage"
+	runs.GroupID = groupManage
 	approvals := newApprovalsCommand(provider)
-	approvals.GroupID = "manage"
+	approvals.GroupID = groupManage
 	runtimeCommand := newRuntimeCommand(provider)
-	runtimeCommand.GroupID = "manage"
+	runtimeCommand.GroupID = groupManage
 	config := newConfigCommand(v)
-	config.GroupID = "setup"
+	config.GroupID = groupSetup
 	completion := newCompletionCommand(root)
-	completion.GroupID = "setup"
+	completion.GroupID = groupSetup
 	plugins := newPluginsCommand(provider)
-	plugins.GroupID = "manage"
+	plugins.GroupID = groupManage
 	root.AddCommand(run, sessions, runs, approvals, plugins, runtimeCommand, config, completion)
 }
 
-// runInteractive opens the terminal interface, seeding the field with whatever was typed
-// on the command line.
-//
-// With no terminal to take over it says so and points at the command that does not
-// need one, rather than failing with something about file descriptors: a program whose
-// output is being piped wants text, not frames.
 func runInteractive(
 	cmd *cobra.Command,
 	args []string,
 	startTerminal func(context.Context, TerminalRequest) error,
 	config settings.Config,
 ) error {
-	if startTerminal == nil {
-		return errors.New("terminal starter is required")
-	}
 	workspacePath, err := resolveWorkspace(cmd, config)
 	if err != nil {
 		return err
@@ -230,9 +205,7 @@ func runInteractive(
 	if err != nil {
 		return err
 	}
-	// Named for the flag rather than for the package it is handed to, so the package
-	// stays reachable by its own name.
-	sessionID, _ := cmd.Flags().GetString("session")
+	sessionID, _ := cmd.Flags().GetString(sessionFlag)
 
 	err = startTerminal(cmd.Context(), TerminalRequest{
 		SessionID:      sessionID,
@@ -251,9 +224,8 @@ func runInteractive(
 	return err
 }
 
-// resolveWorkspace leaves remote filesystem interpretation with Runtime.
 func resolveWorkspace(cmd *cobra.Command, config settings.Config) (string, error) {
-	workspace, _ := cmd.Flags().GetString("workspace")
+	workspace, _ := cmd.Flags().GetString(workspaceFlag)
 	if config.Runtime.Mode == settings.RuntimeRemote {
 		return workspace, nil
 	}
@@ -264,7 +236,7 @@ func resolveWorkspace(cmd *cobra.Command, config settings.Config) (string, error
 }
 
 func resolveLocalDirectory(cmd *cobra.Command) (string, error) {
-	cwd, _ := cmd.Flags().GetString("cwd")
+	cwd, _ := cmd.Flags().GetString(cwdFlag)
 	if cwd == "" {
 		var err error
 		cwd, err = os.Getwd()
@@ -287,9 +259,6 @@ func (r runtimeProvider) workspacePath(path string) (string, error) {
 }
 
 func (r runtimeProvider) workbench() (*workbench.Store, error) {
-	if r.openWorkbench == nil {
-		return nil, errors.New("workbench factory is required")
-	}
 	configured, err := readSettings(r.configuration)
 	if err != nil {
 		return nil, err

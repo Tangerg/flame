@@ -9,8 +9,6 @@ import (
 	coreinvocation "github.com/Tangerg/scope/core/invocation"
 )
 
-// StreamReceipt binds completion to the response assembled from the original
-// acknowledged deltas. Reading a receipt alone cannot recover that delivery.
 type StreamReceipt struct {
 	ResponseDigest framevalue.Digest `json:"responseDigest,omitzero"`
 	Failure        *Failure          `json:"failure,omitzero"`

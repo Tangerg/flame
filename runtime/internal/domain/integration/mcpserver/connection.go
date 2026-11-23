@@ -1,6 +1,7 @@
 package mcpserver
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -9,42 +10,28 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
 )
 
-// Connection is the closed set of ways to reach an MCP server. The variant is
-// the transport, so a descriptor cannot carry another transport's fields.
 type Connection interface {
 	Transport() Transport
 	validate() error
 	clone() Connection
-	// authorityFields frames everything except credentials: a token rotation
-	// does not grant authority to a different endpoint.
 	authorityFields() []string
 	sameAs(Connection) bool
 }
 
-// StdioConnection spawns the server as a local subprocess.
 type StdioConnection struct {
-	Command string
-	// ExecutionEnvironment captures a distribution-selected interpreter and
-	// launch policy independently of plugin bytes and business command identity.
+	Command              string
 	ExecutionEnvironment string
 	Args                 []string
-	// Env replaces the subprocess environment. nil inherits the parent; an
-	// empty map supplies no environment. Values are sensitive and must never
-	// be logged or exposed without masking.
+	// nil inherits the parent environment; an empty map supplies none. Values are
+	// sensitive.
 	Env map[string]string
-	// Dir sets the working directory; empty inherits the parent's.
 	Dir string
 }
 
-// HTTPConnection reaches the server over Streamable HTTP.
 type HTTPConnection struct {
-	URL string
-	// Authorization, when set, is sent as the HTTP Authorization header. It is
-	// sensitive and Headers cannot carry a second representation of it.
+	URL           string
 	Authorization string
-	// Headers are extra static request headers. Values are sensitive because
-	// arbitrary headers may carry credentials.
-	Headers map[string]string
+	Headers       map[string]string
 }
 
 func (StdioConnection) Transport() Transport { return TransportStdio }
@@ -52,7 +39,7 @@ func (HTTPConnection) Transport() Transport  { return TransportStreamableHTTP }
 
 func (c StdioConnection) validate() error {
 	if c.Command == "" {
-		return fmt.Errorf("Command is required for stdio transport")
+		return errors.New("command is required for stdio transport")
 	}
 	return validateProcessConfiguration(c.Command, c.Args, c.Env, c.Dir)
 }
@@ -78,7 +65,6 @@ func (c HTTPConnection) clone() Connection {
 	return c
 }
 
-// Args are variable-length, so they come last behind their count.
 func (c StdioConnection) authorityFields() []string {
 	fields := []string{c.Command, c.Dir, c.ExecutionEnvironment, strconv.Itoa(len(c.Args))}
 	return append(fields, c.Args...)

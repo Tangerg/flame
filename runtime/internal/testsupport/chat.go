@@ -8,10 +8,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// responseDelta projects a complete fixture response into one terminal stream
-// increment. Production providers build their own transport deltas; this helper
-// keeps Runtime tests on the same accumulator contract without duplicating a
-// synthetic provider in every package.
 func responseDelta(response *chat.Response) (*chat.ResponseDelta, error) {
 	if response == nil {
 		return nil, errors.New("testsupport: nil chat response")
@@ -58,8 +54,6 @@ func responseDelta(response *chat.Response) (*chat.ResponseDelta, error) {
 	return delta, nil
 }
 
-// StreamResponse converts one complete fixture result into one lazy terminal
-// delta or one terminal error.
 func StreamResponse(response *chat.Response, responseErr error) iter.Seq2[*chat.ResponseDelta, error] {
 	return func(yield func(*chat.ResponseDelta, error) bool) {
 		if responseErr != nil {

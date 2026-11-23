@@ -40,8 +40,8 @@ func newPromptView(
 		theme: theme, composer: composer,
 		box:  kit.Box{Theme: theme, Glyphs: glyphs, Padding: layout.Symmetric(0, 1), FooterAlign: layout.End},
 		help: kit.Help{Theme: theme, Keys: keys, Separator: "  " + glyphs.Vertical.String() + "  "},
-		keys: keys, busyKeys: remapHelpAction(keys, sendPrompt, queueFollowUp),
-		busyQueuedKeys: remapHelpAction(keys, sendPrompt, queueOrSendNext),
+		keys: keys, busyKeys: remapSendPrompt(keys, queueFollowUp),
+		busyQueuedKeys: remapSendPrompt(keys, queueOrSendNext),
 	}
 	help := scene.NewElement(scene.ElementConfig{Paint: func(frame scene.Frame) { p.help.Draw(frame.View) }})
 	p.rows = scene.NewGroup(scene.GroupConfig{
@@ -155,6 +155,7 @@ func (p *promptView) showTranscriptHelp() {
 		p.help.Show = append(p.help.Show, base.Expand, toggleDetails)
 	case disclosureExpanded:
 		p.help.Show = append(p.help.Show, base.Collapse, toggleDetails)
+	case disclosureFixed:
 	}
 	if p.selection.readable {
 		p.help.Show = append(p.help.Show, openReader)
@@ -172,11 +173,11 @@ func (p *promptView) showBusyHelp() {
 	p.help.Show = []keymap.Action{queueOrSendNext, cancelRun, insertNewline, manageQueue, toggleDetails}
 }
 
-func remapHelpAction(keys *keymap.Map, from, to keymap.Action) *keymap.Map {
+func remapSendPrompt(keys *keymap.Map, to keymap.Action) *keymap.Map {
 	remapped := &keymap.Map{}
 	for _, binding := range keys.Bindings() {
 		action := binding.Action
-		if action == from {
+		if action == sendPrompt {
 			action = to
 		}
 		remapped.Bind(action, binding.Keys...)

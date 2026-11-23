@@ -7,7 +7,11 @@ import (
 	"golang.org/x/net/http/httpguts"
 )
 
-const headerAuthorization = "Authorization"
+const (
+	headerAuthorization = "Authorization"
+	headerContentType   = "Content-Type"
+	headerAccept        = "Accept"
+)
 
 func validateHeaderValue(name, value string) error {
 	if !httpguts.ValidHeaderFieldValue(value) || strings.Trim(value, " \t") != value {

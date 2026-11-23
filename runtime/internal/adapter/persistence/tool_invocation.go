@@ -13,16 +13,12 @@ import (
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// Arguments and results stay in the canonical Transcript Item. Each retained
-// attempt records one Segment's observation, not the Tool's external outcome.
 type ToolInvocationStore struct{ db *database }
 
 func newToolInvocationStore(db *database) *ToolInvocationStore {
 	return &ToolInvocationStore{db: db}
 }
 
-// ListOpenToolInvocations returns every Tool attempt still owned by a
-// pre-crash process.
 func (t *ToolInvocationStore) ListOpenToolInvocations(ctx context.Context) ([]runs.OpenToolInvocation, error) {
 	return scopedValue(ctx, t.db.read, func(ctx context.Context) ([]runs.OpenToolInvocation, error) {
 		rows, err := t.db.connection(ctx).QueryContext(ctx, `
@@ -34,9 +30,7 @@ func (t *ToolInvocationStore) ListOpenToolInvocations(ctx context.Context) ([]ru
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list started Tool invocations: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		var open []runs.OpenToolInvocation
 		for rows.Next() {
 			var invocation runs.OpenToolInvocation
@@ -57,8 +51,6 @@ func (t *ToolInvocationStore) ListOpenToolInvocations(ctx context.Context) ([]ru
 	})
 }
 
-// RecordToolInvocation applies one journal transition committed with its Run
-// event or with boot recovery.
 func (t *ToolInvocationStore) RecordToolInvocation(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, invocation runs.ToolInvocationCommit) error {
 	if err := invocation.Validate(); err != nil {
 		return err
@@ -178,8 +170,6 @@ type toolInvocationRecord struct {
 	FinishedAt time.Time
 }
 
-// The export reader bounds the complete Session's stored bytes and record count
-// in its transaction before reading this untruncated evidence collection.
 func (t *ToolInvocationStore) ListSession(ctx context.Context, sessionID identity.SessionID) ([]toolInvocationRecord, error) {
 	return scopedValue(ctx, t.db.read, func(ctx context.Context) ([]toolInvocationRecord, error) {
 		if err := validateResource("tool invocation", sessionID); err != nil {
@@ -193,9 +183,7 @@ func (t *ToolInvocationStore) ListSession(ctx context.Context, sessionID identit
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list session tool invocations: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		var records []toolInvocationRecord
 		for rows.Next() {
 			var record toolInvocationRecord

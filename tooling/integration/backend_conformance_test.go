@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	plugin "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/packages/go-sdk/plugin"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
@@ -49,6 +49,7 @@ func (d *typescriptDiagnostics) Write(value []byte) (int, error) {
 	defer d.Unlock()
 	return d.text.Write(value)
 }
+
 func (d *typescriptDiagnostics) String() string { d.Lock(); defer d.Unlock(); return d.text.String() }
 
 func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
@@ -256,16 +257,16 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 				failures++
 				continue
 			}
-			if frame.Chunk != nil {
+			if chunk, ok := frame.Chunk(); ok {
 				chunks++
-				if string(*frame.Chunk) != string(input.Value) {
-					t.Fatalf("stream rounded exact chunk: %s", *frame.Chunk)
+				if string(chunk) != string(input.Value) {
+					t.Fatalf("stream rounded exact chunk: %s", chunk)
 				}
 			}
-			if frame.Result != nil {
+			if result, ok := frame.Result(); ok {
 				finals++
-				if frame.Result.Source != original.String() {
-					t.Fatalf("stream %s changed its admitted final result: %+v", mode, frame.Result)
+				if result.Source != original.String() {
+					t.Fatalf("stream %s changed its admitted final result: %+v", mode, result)
 				}
 			}
 		}
@@ -297,7 +298,7 @@ func TestTypeScriptBackendImplementsPublishedGoContract(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if frame.Chunk != nil {
+		if _, ok := frame.Chunk(); ok {
 			break
 		}
 	}

@@ -22,16 +22,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	"github.com/Tangerg/scope/core/invocation"
 )
 
-// TestProtocolLifecycleSurvivesColdRestart is the protocol conformance smoke
-// test over the real composition root and a fresh SQLite store. It deliberately
-// crosses every control boundary that is easy to make locally correct while
-// breaking as a whole: start, structured steer, wait, resume, cancel, runtime
-// shutdown, startup recovery, and cold reads.
 func TestProtocolLifecycleSurvivesColdRestart(t *testing.T) {
 	fixture := newProtocolLifecycleFixture(t)
 	defer fixture.closeFirstRuntime()
@@ -50,10 +46,7 @@ func TestAssemblyPreservesParkedQuestionAcrossCrashLikeRestart(t *testing.T) {
 	t.Setenv("FLAME_HOME", home)
 	parked := crashParkedProtocolRuntime(t)
 
-	// SQLite, the content authority and the Runtime are opened only after the
-	// previous operating-system process has exited. No shutdown hook settles its
-	// parked run or fabricates an execution exit before this cold recovery.
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatalf("open persistence: %v", err)
 	}
@@ -85,8 +78,8 @@ func TestAssemblyPreservesParkedQuestionAcrossCrashLikeRestart(t *testing.T) {
 }
 
 type parkedProtocolMarker struct {
-	SessionID string
-	Started   *protocol.StartRunResponse
+	SessionID string                     `json:"sessionId"`
+	Started   *protocol.StartRunResponse `json:"started"`
 }
 
 const parkedProtocolPrefix = "FLAME_PROTOCOL_PARKED "
@@ -96,7 +89,7 @@ func TestParkedProtocolCrashProcess(t *testing.T) {
 		return
 	}
 	home := os.Getenv("FLAME_HOME")
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,8 +108,6 @@ func TestParkedProtocolCrashProcess(t *testing.T) {
 	if _, err := fmt.Fprintln(os.Stdout, parkedProtocolPrefix+string(marker)); err != nil {
 		t.Fatal(err)
 	}
-	// The parent must kill and join this process, without sending normal shutdown
-	// input. Keeping stdin open gives it a deterministic actual parked boundary.
 	_, err = bufio.NewReader(os.Stdin).ReadByte()
 	t.Fatalf("crash fixture returned before the parent killed it: %v", err)
 }
@@ -207,7 +198,7 @@ func newProtocolLifecycleFixture(t *testing.T) *protocolLifecycleFixture {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	model := newLifecycleModel()
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatalf("open persistence: %v", err)
 	}
@@ -519,8 +510,6 @@ func (l *lifecycleModel) Call(ctx context.Context, _ *chat.Request) (*chat.Respo
 			message := chat.NewAssistantMessage(chat.NewTextPart("settled before cancellation"))
 			return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}})
 		case <-ctx.Done():
-			// This fixture has produced no response or external effect before
-			// release. Its definite refusal permits a known canceled outcome.
 			return nil, &invocation.Failure{Kind: invocation.FailureNotExecuted, Cause: ctx.Err()}
 		}
 	}
@@ -542,7 +531,7 @@ func (noMaintenance) Maintain(
 func openProtocolRuntime(t *testing.T, model chat.Model) (*Instance, *delivery.Handler) {
 	t.Helper()
 	dataDirectory := os.Getenv("FLAME_HOME")
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: dataDirectory})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: dataDirectory, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatalf("open persistence: %v", err)
 	}
@@ -609,7 +598,6 @@ func startTestRuntimeWithReplayStore(t *testing.T, host *Instance, api *delivery
 	if err := host.application.publishCallbacks(endpoint); err != nil {
 		t.Fatalf("publish Runtime callbacks: %v; close: %v", err, host.Close())
 	}
-	// Accepted work can resume only after its original callback RPC is available.
 	return host.application.recoverUncertainExecutions(t.Context())
 }
 

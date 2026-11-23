@@ -9,8 +9,6 @@ import (
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 )
 
-// bundle publishes the reusable wire graph. OpenRPC derives closed request
-// projections from this graph; results retain its open object definitions.
 type bundle struct {
 	Schema  string                     `json:"$schema"`
 	Title   string                     `json:"title"`
@@ -18,11 +16,7 @@ type bundle struct {
 	Defs    map[string]*wiregen.Schema `json:"$defs"`
 }
 
-// walkWireTypes walks every type a client can send or receive: each method's
-// params, its result, and — for a streaming method — its events. Downstream
-// notification params are registered separately because they are not callable
-// methods, but are equally part of the wire surface.
-func walkWireTypes(registry *delivery.Registry, shapes *dispatch.Shapes) (*schemaSet, error) {
+func walkWireTypes(registry *delivery.Registry, shapes *dispatch.Shapes) *schemaSet {
 	contracts := toolset.PresentationContracts()
 	set := newSchemaSet(shapes)
 	httpContract := runtimehttp.Contract()
@@ -52,23 +46,18 @@ func walkWireTypes(registry *delivery.Registry, shapes *dispatch.Shapes) (*schem
 	for _, notification := range shapes.Notifications() {
 		set.walk(notification.ParamsType)
 	}
-	// The union and constraint specs are registered against types the methods above
-	// already reach; walking them again would be a no-op. Walk them anyway so a spec
-	// for an unreachable type fails loudly here instead of silently describing
-	// nothing.
+	// Walked again so a spec for an unreachable type fails loudly instead of silently
+	// describing nothing.
 	for _, union := range shapes.Unions() {
 		set.walk(union.GoType)
 	}
 	for _, constraint := range shapes.Constraints() {
 		set.walk(constraint.GoType)
 	}
-	// Carried shapes, by contrast, are reachable from nothing else because they ride
-	// outside typed params. Concrete tool results are walked from toolset's own
-	// presentation contracts above.
 	for _, carried := range shapes.Carried() {
 		set.walk(carried.GoType)
 	}
-	return set, nil
+	return set
 }
 
 func newBundle(set *schemaSet) bundle {

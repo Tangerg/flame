@@ -24,8 +24,6 @@ func TestCompiledBackendProjectionDoesNotRequireSDKSources(t *testing.T) {
 		name += ".exe"
 	}
 	executable := filepath.Join(directory, name)
-	// Trimming source paths and running outside the checkout prevents a compiled
-	// tool from substituting files on disk for its own protocol version.
 	build := exec.CommandContext(t.Context(), "go", "build", "-buildvcs=false", "-trimpath", "-o", executable, ".")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build standalone protocol tool: %v\n%s", err, output)

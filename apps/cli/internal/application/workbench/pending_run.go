@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-// PendingRunState is the durable delivery phase of one start command.
 type PendingRunState string
 
 const (
@@ -19,8 +18,6 @@ const (
 	PendingRunCanceling   PendingRunState = "canceling"
 )
 
-// PendingRun is one durable runtime outbox entry. State distinguishes intent
-// that has never left the queue from an ambiguous command handshake.
 type PendingRun struct {
 	InputDigest     inputDigest `json:"inputDigest,omitzero"`
 	inputFailure    error
@@ -31,11 +28,6 @@ type PendingRun struct {
 	CancelReplay    authoring.ReplayGuard `json:"cancelReplay"`
 }
 
-// PendingResume is a HITL decision whose command may already have reached the
-// runtime. It remains durable until the runtime either acknowledges the exact
-// command identity or definitively rejects it. Command addresses the root;
-// Interrupts retain the members from the authoritative waiting set reviewed
-// by the terminal before staging.
 type PendingResume struct {
 	InputDigest  inputDigest `json:"inputDigest,omitzero"`
 	inputFailure error
@@ -123,7 +115,7 @@ func newPendingInterruptJSON(
 			Type: pendingQuestionInterrupt, Question: &cloned, QuestionAnswer: &response,
 		}, nil
 	default:
-		return pendingInterruptJSON{}, fmt.Errorf("pending resume has unknown interrupt %T", interrupt)
+		return pendingInterruptJSON{}, fmt.Errorf("pending resume: %w: %T", conversation.ErrUnsupportedInterrupt, interrupt)
 	}
 }
 
@@ -179,8 +171,6 @@ func (p PendingResume) MarshalJSON() ([]byte, error) {
 		}
 		wire.Interrupts[index] = encoded
 	}
-	// The record travels inside a state file, so it is encoded under the same
-	// options: the store owns the durable representations, not this type.
 	return json.Marshal(wire, stateJSONOptions)
 }
 
@@ -213,9 +203,6 @@ func (p *PendingResume) UnmarshalJSON(encoded []byte) error {
 	return nil
 }
 
-// validateStateFacts holds each state to the facts it may carry: only a
-// canceling run names a cancel command, and a queued run has prepared nothing
-// the Runtime could replay.
 func (p PendingRun) validateStateFacts() error {
 	switch p.State {
 	case PendingRunCanceling:
@@ -267,58 +254,54 @@ func (p PendingRun) validate(sessionID string) error {
 	return nil
 }
 
-func (p *PendingRun) beginDispatch(replayGuard authoring.ReplayGuard) error {
+func (p PendingRun) beginDispatch(replayGuard authoring.ReplayGuard) (PendingRun, error) {
 	if err := replayGuard.Validate(); err != nil {
-		return err
+		return PendingRun{}, err
 	}
 	switch p.State {
 	case PendingRunQueued:
 		p.State = PendingRunDispatching
 		p.Replay = replayGuard
-		return nil
+		return p, nil
 	case PendingRunDispatching, PendingRunCanceling:
-		return nil
+		return p, nil
 	default:
-		return fmt.Errorf("pending run cannot begin dispatch from %q", p.State)
+		return PendingRun{}, fmt.Errorf("pending run cannot begin dispatch from %q", p.State)
 	}
 }
 
-func (p *PendingRun) beginCancellation(
-	replayGuard authoring.ReplayGuard,
-) (authoring.CommandID, error) {
+func (p PendingRun) beginCancellation(replayGuard authoring.ReplayGuard) (PendingRun, error) {
 	if err := replayGuard.Validate(); err != nil {
-		return "", err
+		return PendingRun{}, err
 	}
 	switch p.State {
 	case PendingRunDispatching:
-		cancelCommandID := mutation.NewCommandID()
 		p.State = PendingRunCanceling
-		p.CancelCommandID = cancelCommandID
+		p.CancelCommandID = mutation.NewCommandID()
 		p.CancelReplay = replayGuard
-		return cancelCommandID, nil
+		return p, nil
 	case PendingRunCanceling:
-		return p.CancelCommandID, nil
+		return p, nil
 	default:
-		return "", fmt.Errorf("pending run cannot begin cancellation from %q", p.State)
+		return PendingRun{}, fmt.Errorf("pending run cannot begin cancellation from %q", p.State)
 	}
 }
 
-func (p *PendingRun) requeue() (authoring.CommandID, error) {
+func (p PendingRun) requeue() (PendingRun, error) {
 	if p.State != PendingRunDispatching {
-		return "", fmt.Errorf("pending run cannot be requeued from %q", p.State)
+		return PendingRun{}, fmt.Errorf("pending run cannot be requeued from %q", p.State)
 	}
 	if _, err := p.ReplayCommand(); err != nil {
-		return "", err
+		return PendingRun{}, err
 	}
-	replacement := mutation.NewCommandID()
 	p.State = PendingRunQueued
-	p.Command.CommandID = replacement
+	p.Command.CommandID = mutation.NewCommandID()
 	p.Command.Input = nil
 	p.InputDigest = ""
 	p.CancelCommandID = ""
 	p.Replay = authoring.UnprotectedGuard()
 	p.CancelReplay = authoring.UnprotectedGuard()
-	return replacement, nil
+	return p, nil
 }
 
 func (p PendingRun) acknowledgeable() error {

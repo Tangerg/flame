@@ -1,7 +1,5 @@
 package protocol
 
-// OpenPluginBrowserRealmRequest preserves one bootstrap operation and its caller
-// generated recovery secret. Resume names the original actual JavaScript Realm.
 type OpenPluginBrowserRealmRequest struct {
 	OperationID string              `json:"operationId"`
 	ResumeToken string              `json:"resumeToken"`

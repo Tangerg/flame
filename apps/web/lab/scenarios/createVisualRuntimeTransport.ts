@@ -51,16 +51,16 @@ import {
 export const VISUAL_REMOVE_SCHEDULE_EVENT = "flame:visual-remove-schedule";
 
 type VisualMemoryPages = Readonly<
-  Record<MemoryInputs["flame.memory/list.v2"]["Scope"], MemoryOutputs["flame.memory/list.v2"]>
+  Record<MemoryInputs["flame.memory/list.v3"]["scope"], MemoryOutputs["flame.memory/list.v3"]>
 >;
 
 function pluginCallResult(call: CallPluginRequest, memoryPages: VisualMemoryPages) {
   switch (call.method) {
-    case "flame.memory/list.v2": {
+    case "flame.memory/list.v3": {
       const input = JSON.parse(call.input ?? "") as Partial<
-        MemoryInputs["flame.memory/list.v2"]
+        MemoryInputs["flame.memory/list.v3"]
       > | null;
-      const scope = input?.Scope;
+      const scope = input?.scope;
       if (scope === "project") return { output: JSON.stringify(memoryPages.project) };
       if (scope === "user") return { output: JSON.stringify(memoryPages.user) };
       throw new Error(`Visual memory has no page for scope "${String(scope)}"`);
@@ -246,9 +246,9 @@ export function createVisualRuntimeTransport(
       publish("files.changed");
     },
     removeSchedule(id) {
-      const index = schedules.Rows.findIndex((row) => row.ID === id);
+      const index = schedules.rows.findIndex((row) => row.id === id);
       if (index < 0) throw new Error(`visual schedules has no record named "${id}"`);
-      schedules.Rows.splice(index, 1);
+      schedules.rows.splice(index, 1);
       publish("plugins.dataChanged");
     },
     async send(request, signal, options) {
@@ -281,7 +281,7 @@ export function createVisualRuntimeTransport(
       let result: unknown;
       if (
         request.method === "plugins.call" &&
-        (request.params as CallPluginRequest).method === "flame.schedules/list.v1"
+        (request.params as CallPluginRequest).method === "flame.schedules/list.v2"
       ) {
         result = { output: JSON.stringify(schedules) };
       } else if (request.method === "skills.proposals.list") {

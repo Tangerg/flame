@@ -3,13 +3,14 @@ package terminal
 import (
 	"context"
 	"errors"
-	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/keymap"
@@ -19,9 +20,11 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
-// sessionBrowser is the Session center: it lists, favorites, renames and
-// deletes Sessions and hands the chosen one to switchTo. It changes the
-// presented Session only through adoptCurrent.
+const (
+	renameSessionDialogHeight = 11
+	deleteSessionDialogHeight = 8
+)
+
 type sessionBrowser struct {
 	pane         *sessionCenterPane
 	dialog       *presentationDialog
@@ -68,7 +71,7 @@ func newSessionBrowser(cfg sessionBrowserConfig) *sessionBrowser {
 		},
 		Theme:  b.theme,
 		Glyphs: b.glyphs,
-		Where:  layout.Placement{Width: wideDialogWidth, Height: 24},
+		Where:  layout.Placement{Width: wideDialogWidth, Height: tallDialogHeight},
 	})
 	b.pane.picker.cancel = func() {
 		b.tasks.operations.Cancel(pickerCatalogOperation)
@@ -77,7 +80,6 @@ func newSessionBrowser(cfg sessionBrowserConfig) *sessionBrowser {
 	return b
 }
 
-// dismiss closes the center and any rename or delete it opened.
 func (b *sessionBrowser) dismiss() {
 	b.dialog.Dismiss()
 	if b.renameDialog != nil {
@@ -203,7 +205,7 @@ func (b *sessionBrowser) openSessionRename(session conversation.Session) {
 		},
 		Theme:  b.theme,
 		Glyphs: b.glyphs,
-		Where:  layout.Placement{Width: compactDialogWidth, Height: 11},
+		Where:  layout.Placement{Width: compactDialogWidth, Height: renameSessionDialogHeight},
 	})
 	b.renameDialog = dialog
 	dialog.Show()
@@ -216,7 +218,7 @@ func (b *sessionBrowser) openSessionDelete(session conversation.Session) {
 	}
 	confirmed := false
 	choice := base.NewSelect(base.SelectConfig[bool]{Same: base.Equal[bool], Label: "Delete " + displayTitle(session) + "?", Initial: confirmed, Rows: 2})
-	choice.SetOptions([]base.Option[bool]{{Label: "Cancel", Value: false}, {Label: "Delete permanently", Value: true}})
+	choice.SetOptions([]base.Option[bool]{{Label: cancelLabel, Value: false}, {Label: "Delete permanently", Value: true}})
 	form := kit.FormConfig{
 		Behavior: base.FormConfig{
 			Fields: []base.Field{choice},
@@ -252,7 +254,7 @@ func (b *sessionBrowser) openSessionDelete(session conversation.Session) {
 		},
 		Theme:  b.theme,
 		Glyphs: b.glyphs,
-		Where:  layout.Placement{Width: compactDialogWidth, Height: 8},
+		Where:  layout.Placement{Width: compactDialogWidth, Height: deleteSessionDialogHeight},
 	})
 	b.deleteDialog = dialog
 	dialog.Show()
@@ -283,7 +285,7 @@ func (b *sessionBrowser) updateSessionFromCenter(request conversation.UpdateSess
 		},
 	)
 	if !started {
-		b.notify("wait for the current session action to finish")
+		b.notify(sessionCenterOperation.busy().Error())
 	}
 	return started
 }
@@ -331,7 +333,7 @@ func (b *sessionBrowser) deleteSessionFromCenter(id string) {
 		},
 	)
 	if !started {
-		b.notify("wait for the current session action to finish")
+		b.notify(sessionCenterOperation.busy().Error())
 	}
 }
 
@@ -339,15 +341,9 @@ func compactRelativeAge(at time.Time) string {
 	if at.IsZero() {
 		return "never"
 	}
-	duration := time.Since(at)
-	switch {
-	case duration < time.Minute:
+	amount, unit, recent := format.Elapsed(time.Since(at))
+	if recent {
 		return "now"
-	case duration < time.Hour:
-		return fmt.Sprintf("%dm", int(duration.Minutes()))
-	case duration < 24*time.Hour:
-		return fmt.Sprintf("%dh", int(duration.Hours()))
-	default:
-		return fmt.Sprintf("%dd", int(duration.Hours()/24))
 	}
+	return strconv.Itoa(amount) + unit
 }

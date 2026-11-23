@@ -24,17 +24,12 @@ const (
 	idempotencyCancellationRefusal = "cancellation_refusal"
 )
 
-// idempotencyStore persists replay records across runtime restarts.
 type idempotencyStore struct{ db *database }
 
-// newIdempotencyStore returns a replay store backed by db.
 func newIdempotencyStore(db *database) *idempotencyStore {
 	return &idempotencyStore{db: db}
 }
 
-// idempotencyNamespace returns the opaque identity of db's durable replay
-// store. It is published as a transport capability so a client never replays a
-// persisted key into a different store that happens to occupy the same URL.
 func idempotencyNamespace(ctx context.Context, db *database) (operation.ReplayNamespace, error) {
 	return scopedValue(ctx, db.read, func(ctx context.Context) (operation.ReplayNamespace, error) {
 		var namespace string
@@ -53,8 +48,6 @@ func (i *idempotencyStore) Transact(ctx context.Context, write func(context.Cont
 	return i.db.write(ctx, write)
 }
 
-// Response records expire with their retention window; a pending response and
-// a Run acceptance stay until their owner settles them.
 var (
 	expiringRecordKinds = []any{idempotencyResponse, idempotencyCancellationRefusal}
 	durableRecordKinds  = []any{idempotencyPendingResponse, idempotencyRunAcceptance}
@@ -91,22 +84,16 @@ func readReplayRecord(row *framesqlite.Row, key, fingerprint string) (operation.
 	case idempotencyCancellationRefusal:
 		record.Refusal = cancellationRefusal(payload).cause()
 	case idempotencyRunAcceptance:
-		// The Run command store alone can read an opening or input receipt.
 	default:
 		return operation.ReplayRecord{}, false, fmt.Errorf("sqlite: unknown idempotency record kind %q", kind)
 	}
 	return record, true, nil
 }
 
-// Route the claim's prune+insert+lookup through the shared tx seam rather than a
-// bare i.db.BeginTx: the pool runs at MaxOpenConns(1), so opening an independent
-// transaction while a caller's cross-store transaction is live would deadlock.
-// Standalone it still runs atomically (RunInTx begins its own).
-// Only completed responses expire. A pending_response reservation is an
-// unresolved claim: releasing it on elapsed wall time would let the same key
-// execute its business mutation again after a process crash, even though
-// the first mutation may already have committed. A run_acceptance acceptance has
-// no wall-clock expiry at all and is never pruned here.
+// The pool runs at MaxOpenConns(1), so opening an independent transaction while a
+// caller's transaction is live would deadlock. A pending reservation never expires
+// on wall time: releasing it could re-execute a mutation that committed before a
+// crash.
 func (i *idempotencyStore) Claim(ctx context.Context, claim operation.ReplayClaim) (record operation.ReplayRecord, claimed bool, err error) {
 	now := time.Now().Unix()
 	err = i.db.write(ctx, func(ctx context.Context) error {
@@ -178,11 +165,6 @@ func (i *idempotencyStore) StageSettlement(ctx context.Context, record operation
 	})
 }
 
-// The pending reservation is gone. An exact already-committed response is an
-// idempotent success; a different owner or outcome is a conflict; anything
-// else means the claim was lost. A run_acceptance never answers here: it is not a
-// generic response and cannot share this owner's fingerprint. A refusal filed
-// by the Run's terminal transaction is returned as the authoritative receipt.
 func (i *idempotencyStore) Complete(ctx context.Context, record operation.ReplayRecord) (operation.ReplayRecord, error) {
 	if len(record.Payload) == 0 || record.Refusal != nil {
 		return operation.ReplayRecord{}, errors.New("sqlite: an idempotency completion requires its encoded outcome")

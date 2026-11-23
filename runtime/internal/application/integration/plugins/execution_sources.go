@@ -9,9 +9,6 @@ import (
 	framehost "github.com/Tangerg/frame/host"
 )
 
-// ValidateExecutionSourcesUnder admits an already assembled execution. Backend
-// bindings retain their original plan or business owner; immutable package
-// resources retain their exact release. No source is selected in this boundary.
 func ValidateExecutionSourcesUnder(
 	ctx context.Context,
 	host framehost.Host,

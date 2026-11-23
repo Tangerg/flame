@@ -10,6 +10,8 @@ import (
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 )
 
+var ErrUnsupportedInterrupt = errors.New("interrupt is unsupported")
+
 func InterruptItemID(interrupt Interrupt) string {
 	switch item := interrupt.(type) {
 	case Approval:
@@ -44,7 +46,7 @@ func validateInterrupt(interrupt Interrupt) error {
 	case nil:
 		return errors.New("interrupt is nil")
 	default:
-		return fmt.Errorf("interrupt %T is unsupported", interrupt)
+		return fmt.Errorf("%w: %T", ErrUnsupportedInterrupt, interrupt)
 	}
 }
 
@@ -96,7 +98,6 @@ func (a Approval) Validate() error {
 	return nil
 }
 
-// Clone returns an approval with no mutable tool projection shared with the caller.
 func (a Approval) Clone() Approval {
 	if a.Tool != nil {
 		tool := a.Tool.Clone()
@@ -105,8 +106,6 @@ func (a Approval) Clone() Approval {
 	return a
 }
 
-// Equal reports whether two approvals ask for the same decision about the same
-// projected tool invocation.
 func (a Approval) Equal(other Approval) bool {
 	if a.RunID != other.RunID || a.ItemID != other.ItemID || a.Title != other.Title || a.Detail != other.Detail ||
 		a.Risk != other.Risk ||
@@ -153,15 +152,10 @@ func (q Question) Validate() error {
 	return nil
 }
 
-// Answered reports whether this question is an authoritative completed
-// transcript fact rather than a pending interrupt.
 func (q Question) Answered() bool { return q.Answers != nil }
 
-// Clone returns a question with no mutable field or option storage shared with the caller.
 func (q Question) Clone() Question { return cloneQuestion(q) }
 
-// Equal reports whether two questions present the same ordered fields. Field
-// order is semantic because QuestionAnswer uses the same order on the wire.
 func (q Question) Equal(other Question) bool {
 	return q.RunID == other.RunID && q.ItemID == other.ItemID && q.Title == other.Title &&
 		q.Answered() == other.Answered() &&
@@ -199,7 +193,6 @@ func (q QuestionField) wire() (protocol.QuestionField, error) {
 	return wire, nil
 }
 
-// Equal reports whether two fields accept and present the same answer space.
 func (q QuestionField) Equal(other QuestionField) bool {
 	return q.Prompt == other.Prompt && q.Header == other.Header && q.Kind == other.Kind &&
 		q.AllowCustom == other.AllowCustom && slices.Equal(q.Options, other.Options)
@@ -226,7 +219,7 @@ func ValidateAnswer(interrupt Interrupt, answer Answer) error {
 		}
 		return validateQuestionAnswer(item, provided)
 	default:
-		return fmt.Errorf("interrupt %T is unsupported", interrupt)
+		return fmt.Errorf("%w: %T", ErrUnsupportedInterrupt, interrupt)
 	}
 }
 
@@ -299,10 +292,6 @@ func cloneQuestion(question Question) Question {
 	return question
 }
 
-// CloneAnswers isolates a Question's answer values. Answers cross the wire, the
-// binding, and the renderer as a bare [][]string, so every boundary that builds
-// or forwards one needs the same isolation; the Question owns what that means,
-// and Clone uses this too.
 func CloneAnswers(values [][]string) [][]string {
 	if values == nil {
 		return nil
@@ -342,8 +331,6 @@ func CloneAnswer(answer Answer) Answer {
 	}
 }
 
-// answerEqual reports whether two interrupt answers carry the same complete
-// decision value, including edited tool arguments and ordered question values.
 func answerEqual(left, right Answer) bool {
 	switch typed := left.(type) {
 	case ApprovalAnswer:
@@ -358,8 +345,6 @@ func answerEqual(left, right Answer) bool {
 	}
 }
 
-// InterruptsEqual reports whether two ordered pending interrupt sets are
-// the same runtime decision surface.
 func InterruptsEqual(left, right []Interrupt) bool {
 	return slices.EqualFunc(left, right, func(left, right Interrupt) bool {
 		switch typed := left.(type) {

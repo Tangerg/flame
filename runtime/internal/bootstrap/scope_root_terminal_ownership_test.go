@@ -19,6 +19,7 @@ import (
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 	modernsqlite "modernc.org/sqlite"
@@ -148,7 +149,7 @@ func TestScopeRootCancellationSettlesItsOriginalKeyAfterProcessExit(t *testing.T
 
 func assertAbandonedCancellationRollsBackOnReceiptRefusal(t *testing.T, home string, request protocol.CancelRunRequest, model chat.Model) {
 	t.Helper()
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}

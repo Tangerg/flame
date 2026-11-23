@@ -1,4 +1,3 @@
-// Package conversation folds Runtime facts into CLI-owned transcript and interrupt projections.
 package conversation
 
 import (
@@ -24,31 +23,24 @@ const (
 	Waiting Phase = "waiting"
 )
 
-// Valid reports whether c belongs to the live conversation lifecycle.
 func (c Phase) Valid() bool {
 	return c == Idle || c == Running || c == Waiting
 }
 
-// Conversation is the terminal-facing aggregate. Durable history is restored
-// from Items; live state is folded from one exact segment stream at a time.
 type Conversation struct {
 	blocks     []Block
 	plan       *protocol.Plan
 	interrupts []Interrupt
 
-	// starting keeps the terminal busy before Runtime names the requested Run.
-	// Ending this local wait cannot determine the Runtime's execution outcome.
-	starting    bool
-	runID       string
-	segmentID   string
-	checkpoint  string
-	seen        map[string]RunEvent
-	runs        map[string]Run
-	runOrder    []string
-	index       map[string]int
-	textStreams map[string]StreamedText
-	// The snapshot's running Segments may have previews that started before
-	// the cut and therefore have no opening event in the successor tail.
+	starting              bool
+	runID                 string
+	segmentID             string
+	checkpoint            string
+	seen                  map[string]RunEvent
+	runs                  map[string]Run
+	runOrder              []string
+	index                 map[string]int
+	textStreams           map[string]StreamedText
 	snapshotSegmentsByRun map[string]string
 }
 
@@ -61,8 +53,6 @@ func New() *Conversation {
 	}
 }
 
-// ValidateInterruptReview checks a frozen review against the current root's
-// complete waiting set. Each interrupt retains its owning member Run ID.
 func (c *Conversation) ValidateInterruptReview(rootRunID string, interrupts []Interrupt) error {
 	if c.Phase() != Waiting || c.runID != rootRunID || !InterruptsEqual(c.interrupts, interrupts) {
 		return errors.New("interrupt review no longer matches the waiting root")
@@ -122,8 +112,6 @@ func (c *Conversation) Checkpoint() string { return c.checkpoint }
 
 func (c *Conversation) Busy() bool { return c.Phase() != Idle }
 
-// CurrentRun returns the root Run whose lifecycle the conversation projects.
-// Descendant activity never replaces this root identity.
 func (c *Conversation) CurrentRun() (Run, bool) {
 	if c == nil || c.runID == "" {
 		return Run{}, false
@@ -132,10 +120,6 @@ func (c *Conversation) CurrentRun() (Run, bool) {
 	return run.Clone(), exists
 }
 
-// RunningDescendants reports how much delegated work is live beneath the
-// current root run. The aggregate owns this derivation so presentation layers
-// never infer lifecycle state from transcript blocks or copy the run-tree
-// invariants maintained here.
 func (c *Conversation) RunningDescendants() int {
 	if c.runID == "" {
 		return 0
@@ -149,9 +133,6 @@ func (c *Conversation) RunningDescendants() int {
 	return running
 }
 
-// Runs returns the session run catalog in creation order. The conversation
-// retains ordering as part of the aggregate instead of exposing its internal
-// identity map and asking consumers to reconstruct chronology.
 func (c *Conversation) Runs() []Run {
 	runs := make([]Run, 0, len(c.runOrder))
 	for _, id := range c.runOrder {
@@ -162,9 +143,6 @@ func (c *Conversation) Runs() []Run {
 	return runs
 }
 
-// MatchesSnapshot reports whether a cold projection carries the same
-// conversation state currently folded by this aggregate. Session metadata and
-// historical run catalogs are deliberately outside this comparison.
 func (c *Conversation) MatchesSnapshot(snapshot SessionSnapshot) bool {
 	expected := New()
 	if err := expected.RestoreSnapshot(snapshot); err != nil {
@@ -230,7 +208,6 @@ func (c *Conversation) startBlock(block Block) error {
 	return nil
 }
 
-// completeBlock also accepts a block whose start was never observed.
 func (c *Conversation) completeBlock(block Block) error {
 	c.ensureStorage()
 	key := BlockKey(block.RunID, block.ID)

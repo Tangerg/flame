@@ -46,8 +46,6 @@ func validateRuleFields(owner string, shape reflect.Type, rule ConditionalRule) 
 	return validateAllowedValueSets(owner, shape, rule.AllowedValues, rule.Forbidden)
 }
 
-// validateFieldRoles gives each field at most one role: required,
-// required-any or forbidden, each declared once.
 func validateFieldRoles(owner string, rule ConditionalRule) error {
 	for fieldIndex, field := range rule.Required {
 		if slices.Contains(rule.Required[:fieldIndex], field) {
@@ -191,4 +189,12 @@ func validateVariantAllowedValueSets(owner string, shape reflect.Type, variant V
 
 func fieldPathAtOrBelow(path, ancestor string) bool {
 	return path == ancestor || strings.HasPrefix(path, ancestor+".")
+}
+
+func whenEquals(field, value string) []delivery.FieldCondition {
+	return []delivery.FieldCondition{{Field: field, Operator: delivery.OperatorEquals, Value: value}}
+}
+
+func whenPresent(field string) []delivery.FieldCondition {
+	return []delivery.FieldCondition{{Field: field, Operator: delivery.OperatorPresent}}
 }

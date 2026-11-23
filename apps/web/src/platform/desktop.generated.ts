@@ -15,7 +15,7 @@ interface DesktopBootstrap {
 interface DesktopNotification {
   body?: string;
   id: string;
-  target?: string;
+  target?: NotificationTarget;
   title: string;
 }
 
@@ -39,7 +39,7 @@ const DesktopBootstrapSchema: z.ZodType<DesktopBootstrap> = z.object({
 const DesktopNotificationSchema: z.ZodType<DesktopNotification> = z.object({
   body: z.string().optional(),
   id: z.string().min(1),
-  target: z.string().optional(),
+  target: z.lazy(() => NotificationTargetSchema).optional(),
   title: z.string().min(1),
 });
 

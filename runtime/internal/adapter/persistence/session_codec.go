@@ -4,15 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
 const sessionColumns = `id, title, title_search, workspace_path, workspace_search, parent_id, created_at, updated_at, provider, model, reasoning_effort, favorite, isolated, revision`
 
-// rowToSession decodes one DB row into a product session.Session. Execution
-// continuation state deliberately lives in its dedicated sidecar table, never
-// in this session projection.
 func rowToSession(scanner interface {
 	Scan(dest ...any) error
 }) (session.Session, error) {
@@ -59,7 +56,7 @@ func rowToSession(scanner interface {
 		return session.Session{}, err
 	}
 	snapshot.Workspace = workspace
-	selection, err := modelchoice.NewWithReasoningEffort(provider, model, reasoningEffort)
+	selection, err := flamemodel.NewWithReasoningEffort(provider, model, reasoningEffort)
 	if err != nil {
 		return session.Session{}, err
 	}

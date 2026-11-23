@@ -7,13 +7,10 @@ import (
 
 type eventStreamKey struct{}
 
-// WithEventStream admits bounded events only for a call whose decoder consumes a stream.
 func WithEventStream(ctx context.Context) context.Context {
 	return context.WithValue(ctx, eventStreamKey{}, DocumentOrEvents)
 }
 
-// NewClient returns an independent client that admits response bodies through
-// one bounded document-or-event stream before the caller's protocol decoder.
 func NewClient(maxFrameBytes int64, tooLarge error) *http.Client {
 	validateFrameLimit(maxFrameBytes, tooLarge)
 	client := *http.DefaultClient

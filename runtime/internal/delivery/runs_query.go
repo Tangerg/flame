@@ -18,12 +18,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// GetRun returns one run by id, in whatever state the durable record has it. The
-// caller supplies no session: a runId already identifies one run, and requiring
-// the session would mean knowing where a run lives before being able to ask what
-// it is.
 func (s *Handler) GetRun(ctx context.Context, in protocol.GetRunRequest) (*protocol.RunRef, error) {
-	runID, err := wireIdentity("runId", in.RunID, identity.ParseRun)
+	runID, err := runParameter(in.RunID)
 	if err != nil {
 		return nil, err
 	}
@@ -43,8 +39,32 @@ func (s *Handler) GetRun(ctx context.Context, in protocol.GetRunRequest) (*proto
 	return &ref, nil
 }
 
-// GetRunAcceptance reads the original command and its current material in one
-// snapshot. It never redelivers a command or fills a retired material reference.
+var runCommandOperations = wireVocabulary[runs.CommandOperation, protocol.RunCommandOperation]{
+	{runs.CommandStartOpening, protocol.RunCommandStart},
+	{runs.CommandResumeOpening, protocol.RunCommandResume},
+	{runs.CommandSteerInput, protocol.RunCommandSteer},
+}
+
+// A start lookup that carries its request must match the accepted request
+// exactly; a different request under the same key is a conflict.
+func checkStartAcceptanceReplay(ctx context.Context, in protocol.GetRunAcceptanceRequest, record runs.CommandAcceptanceRecord) error {
+	if in.Operation != protocol.RunCommandStart {
+		return protocol.ErrInvalidParams
+	}
+	if record.Use != runs.CommandKeyAccepted {
+		return nil
+	}
+	capabilities, _ := clientCapabilitiesFrom(ctx)
+	fingerprint, err := runCommandFingerprint(RunsStart, *in.Request, capabilities)
+	if err != nil {
+		return err
+	}
+	if record.Acceptance.Fingerprint != fingerprint {
+		return protocol.ErrIdempotencyConflict
+	}
+	return nil
+}
+
 func (s *Handler) GetRunAcceptance(ctx context.Context, in protocol.GetRunAcceptanceRequest) (*protocol.RunAcceptance, error) {
 	if in.Namespace != s.idempotency.Namespace {
 		return nil, protocol.ErrIdempotencyStoreMismatch
@@ -54,22 +74,16 @@ func (s *Handler) GetRunAcceptance(ctx context.Context, in protocol.GetRunAccept
 	if err != nil {
 		return nil, err
 	}
-	if record.Use == runs.CommandKeyForeign || (record.Use == runs.CommandKeyAccepted && string(record.Acceptance.Operation) != string(in.Operation)) {
+	operation, known := runCommandOperations.domain(in.Operation)
+	if !known {
+		return nil, protocol.ErrInvalidParams
+	}
+	if record.Use == runs.CommandKeyForeign || (record.Use == runs.CommandKeyAccepted && record.Acceptance.Operation != operation) {
 		return nil, protocol.ErrIdempotencyConflict
 	}
 	if in.Request != nil {
-		if in.Operation != protocol.RunCommandStart {
-			return nil, protocol.ErrInvalidParams
-		}
-		if record.Use == runs.CommandKeyAccepted {
-			capabilities, _ := clientCapabilitiesFrom(ctx)
-			fingerprint, err := runCommandFingerprint(RunsStart, *in.Request, capabilities)
-			if err != nil {
-				return nil, err
-			}
-			if record.Acceptance.Fingerprint != fingerprint {
-				return nil, protocol.ErrIdempotencyConflict
-			}
+		if err := checkStartAcceptanceReplay(ctx, in, record); err != nil {
+			return nil, err
 		}
 	}
 	response := presentRunAcceptance(record)
@@ -102,14 +116,8 @@ func presentRunAcceptance(record runs.CommandAcceptanceRecord) *protocol.RunAcce
 	return response
 }
 
-// ListRuns pages the durable run history as a cursor Page. The set and the scope
-// come from the durable admission record, not from this process's live registry:
-// the registry sees only the segments it is streaming, so it lost every run whose
-// process restarted and never held the ones a person is being asked to approve.
-// The registered capability rule decides whether a caller may ask for descendants;
-// this handler preserves the accepted filter all the way to the durable read.
 func (s *Handler) ListRuns(ctx context.Context, in protocol.ListRunsRequest) (*protocol.Page[protocol.RunRef], error) {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := optionalSessionParameter(in.SessionID)
 	if parseErr != nil {
 		return nil, parseErr
 	}
@@ -136,11 +144,8 @@ func (s *Handler) ListRuns(ctx context.Context, in protocol.ListRunsRequest) (*p
 	return protocol.NewPageWithCursor(out, page.NextCursor), nil
 }
 
-// runStatusesFromWire reads a status filter into the lifecycle positions the
-// durable record is keyed by. It is total over what the wire can carry: Go's
-// decoder puts any string into a named string type, so a value outside the enum
-// arrives here and must be refused rather than dropped — a dropped filter value
-// silently widens the page.
+// Go's decoder puts any string into a named string type, so an unknown value must
+// be refused rather than dropped, which would silently widen the page.
 func runStatusesFromWire(statuses []protocol.RunStatus) ([]run.State, error) {
 	out := make([]run.State, 0, len(statuses))
 	for _, status := range statuses {
@@ -158,15 +163,8 @@ func runStatusesFromWire(statuses []protocol.RunStatus) ([]run.State, error) {
 	return out, nil
 }
 
-// ListInterrupts pages the durable waiting sets — what a person still has to
-// answer — longest wait first.
-//
-// The caller's declared capabilities are part of the read: a set belonging to a run
-// that publishes more than this caller can follow is refused, never trimmed. A
-// trimmed set would be answered, consumed as if complete, and leave the run waiting
-// on interrupts the client believes it resolved.
 func (s *Handler) ListInterrupts(ctx context.Context, in protocol.ListInterruptsRequest) (*protocol.Page[protocol.PendingInterruptSet], error) {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := optionalSessionParameter(in.SessionID)
 	if parseErr != nil {
 		return nil, parseErr
 	}
@@ -202,8 +200,6 @@ func (s *Handler) ListInterrupts(ctx context.Context, in protocol.ListInterrupts
 	return protocol.NewPageWithCursor(out, page.NextCursor), nil
 }
 
-// wireInterruptPageError maps the read's two refusals. Both name something the
-// caller can act on: declare the capabilities, or ask under the root.
 func wireInterruptPageError(err error) error {
 	if uncovered, ok := errors.AsType[*run.InsufficientCapabilitiesError](err); ok {
 		return capabilityGap(uncovered.Missing)
@@ -216,32 +212,22 @@ func wireInterruptPageError(err error) error {
 	}
 }
 
-// SubscribeRun opens a fresh event stream onto the root segment the request
-// names for reconnect or crash recovery and subscribes the whole run tree.
-//
-// With a Last-Event-Id carried in call metadata, it replays
-// the retained events after that position and then tails live; without one it
-// attaches at the current head and returns it, so a client can read the durable
-// state afterwards and fold this stream on top without a gap. History is NOT
-// replayed for a cursorless subscribe — that is what items.list answers.
 func (s *Handler) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequest) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 	caller, err := s.negotiateCapabilities(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
-	segmentID, err := wireIdentity("segmentId", in.SegmentID, identity.ParseOptionalSegment)
+	segmentID, err := wireIdentity(segmentIDField, in.SegmentID, identity.ParseSegment)
 	if err != nil {
 		return nil, nil, err
 	}
-	runID, err := wireIdentity("runId", in.RunID, identity.ParseRun)
+	runID, err := runParameter(in.RunID)
 	if err != nil {
 		return nil, nil, err
 	}
 	request := runs.SubscribeRequest{
-		RunID:     runID,
-		SegmentID: segmentID,
-		// The application's cursor is prefix-free; the evt_ framing is this layer's.
-		// TrimPrefix leaves an absent id untouched, which is the tail-only case.
+		RunID:              runID,
+		SegmentID:          segmentID,
 		Cursor:             strings.TrimPrefix(AfterEventIDFrom(ctx), protocol.IDPrefixEvent),
 		CallerCapabilities: caller,
 	}
@@ -273,10 +259,6 @@ func (s *Handler) SubscribeRun(ctx context.Context, in protocol.SubscribeRunRequ
 	}, mapRunEvents(attached.Events), nil
 }
 
-// wireLiveSegmentError maps the refusals of addressing a live segment. Each one
-// names something the caller can do instead, which is why they are not collapsed
-// into run_not_found: "the run is waiting", "the run finished", "you are holding
-// the wrong segment" and "your cursor is too old" have four different remedies.
 func wireLiveSegmentError(err error) error {
 	if uncovered, ok := errors.AsType[*run.InsufficientCapabilitiesError](err); ok {
 		return capabilityGap(uncovered.Missing)

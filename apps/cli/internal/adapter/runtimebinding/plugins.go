@@ -31,7 +31,6 @@ type pluginBinding interface {
 	UninstallPlugin(context.Context, protocol.PluginRequest, protocol.CommandOptions) error
 }
 
-// Retained input remains evidence after producer withdrawal; inspection cannot re-admit or route it.
 func (r *Connection) GetPluginCommand(ctx context.Context, request protocol.PluginCommandRequest) (*protocol.CallPluginRequest, error) {
 	value, err := r.plugins.GetPluginCommand(ctx, request, r.callOptions())
 	if err != nil {
@@ -199,6 +198,7 @@ func (r *Connection) ListPlugins(ctx context.Context) ([]protocol.PluginInstalla
 	}
 	return installations, nil
 }
+
 func (r *Connection) InstallPlugin(ctx context.Context, request protocol.InstallPluginRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
@@ -207,6 +207,7 @@ func (r *Connection) InstallPlugin(ctx context.Context, request protocol.Install
 	value, err := r.plugins.InstallPlugin(ctx, request, options)
 	return pluginResult("install plugin", "", value, err)
 }
+
 func (r *Connection) StagePlugin(ctx context.Context, request protocol.StagePluginRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
@@ -215,6 +216,7 @@ func (r *Connection) StagePlugin(ctx context.Context, request protocol.StagePlug
 	value, err := r.plugins.StagePlugin(ctx, request, options)
 	return pluginResult("stage plugin", request.InstallationID, value, err)
 }
+
 func (r *Connection) SelectPlugin(ctx context.Context, request protocol.PluginReleaseRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
@@ -223,6 +225,7 @@ func (r *Connection) SelectPlugin(ctx context.Context, request protocol.PluginRe
 	value, err := r.plugins.SelectPlugin(ctx, request, options)
 	return pluginResult("select plugin", request.InstallationID, value, err)
 }
+
 func (r *Connection) ConfigurePlugin(ctx context.Context, request protocol.ConfigurePluginRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
@@ -231,6 +234,7 @@ func (r *Connection) ConfigurePlugin(ctx context.Context, request protocol.Confi
 	value, err := r.plugins.ConfigurePlugin(ctx, request, options)
 	return pluginResult("configure plugin", request.InstallationID, value, err)
 }
+
 func (r *Connection) SetPluginEnablement(ctx context.Context, request protocol.SetPluginEnablementRequest, commandID authoring.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
@@ -239,6 +243,7 @@ func (r *Connection) SetPluginEnablement(ctx context.Context, request protocol.S
 	value, err := r.plugins.SetPluginEnablement(ctx, request, options)
 	return pluginResult("set plugin enablement", request.InstallationID, value, err)
 }
+
 func (r *Connection) UninstallPlugin(ctx context.Context, request protocol.PluginRequest, commandID authoring.CommandID) error {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
@@ -247,8 +252,6 @@ func (r *Connection) UninstallPlugin(ctx context.Context, request protocol.Plugi
 	return classifyError(r.plugins.UninstallPlugin(ctx, request, options))
 }
 
-// pluginResult binds a mutation's reported installation to the one the request
-// named, so a command never prints another installation's state as its own.
 func pluginResult(
 	operation, expectedID string,
 	result *protocol.PluginInstallation,

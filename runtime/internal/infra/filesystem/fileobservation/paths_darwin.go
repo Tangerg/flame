@@ -12,7 +12,6 @@ import (
 
 const shutdownHint = 1
 
-// Queued events retain this pinned registration identity across descriptor reuse.
 type pathBinding struct {
 	fd       int
 	identity *byte
@@ -25,9 +24,6 @@ func (b *pathBinding) close() error {
 	return err
 }
 
-// fsnotify's kqueue backend infers directory changes from child names, losing
-// same-name symlink replacements. The content scanner supplies exact admitted
-// files and parents; raw vnode hints wake its single fingerprint baseline.
 type pathHints struct {
 	mu        sync.Mutex
 	queue     int
@@ -84,7 +80,6 @@ func (d *pathHints) Add(path string) error {
 	return nil
 }
 
-// Vnode hints need the entry's inode; Add binds symlinks without following them.
 func metadataWatchPath(path string, _ os.FileMode) string { return path }
 
 func (d *pathHints) Remove(path string) error {
@@ -130,8 +125,6 @@ func (d *pathHints) run() {
 	}
 }
 
-// handle forwards one kernel event as a change hint, retiring the watch of a
-// path that was deleted, renamed or revoked. It reports whether to continue.
 func (d *pathHints) handle(event unix.Kevent_t) bool {
 	select {
 	case <-d.done:
@@ -158,7 +151,6 @@ func (d *pathHints) handle(event unix.Kevent_t) bool {
 	}
 }
 
-// forget closes the watch whose kernel identity the event names.
 func (d *pathHints) forget(identity *byte) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -171,8 +163,6 @@ func (d *pathHints) forget(identity *byte) error {
 	return nil
 }
 
-// report delivers an error unless the watcher is closing; it reports whether
-// the error was delivered.
 func (d *pathHints) report(err error) bool {
 	select {
 	case d.errors <- err:
@@ -182,7 +172,6 @@ func (d *pathHints) report(err error) bool {
 	}
 }
 
-// wake interrupts a blocked Kevent so run observes shutdown.
 func (d *pathHints) wake() error {
 	for {
 		_, err := unix.Kevent(d.queue, []unix.Kevent_t{{Ident: shutdownHint, Filter: unix.EVFILT_USER, Fflags: unix.NOTE_TRIGGER}}, nil, nil)

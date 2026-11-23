@@ -16,14 +16,6 @@ import (
 	oteltool "github.com/Tangerg/scope/otel/tool"
 )
 
-// Manifest is one Run's frozen, framework-neutral model Tool surface. Visible
-// Tools enter the initial model manifest. Deferred Tools are already executable
-// authority but remain hidden until the discovery Tool advertises their exact
-// names. The slices never overlap. Its caller owns Close after all Tool calls
-// have drained; copied manifests share the same resource lifetime.
-// Installations is the canonical set of installation releases the surface
-// depends on, from both package Skills and installation MCP tools; it is the
-// only representation installation admission consults.
 type Manifest struct {
 	SkillDiscovery string
 	Installations  []plugin.Dependency
@@ -36,8 +28,6 @@ type Manifest struct {
 	close          func() error
 }
 
-// Clone isolates the slices while retaining the same executable capabilities
-// and resource lifetime. It does not grant an independent Close obligation.
 func (m Manifest) Clone() Manifest {
 	return Manifest{SkillDiscovery: m.SkillDiscovery,
 		Installations: slices.Clone(m.Installations), Visible: slices.Clone(m.Visible),
@@ -49,15 +39,13 @@ func (m Manifest) Clone() Manifest {
 	}
 }
 
-// DeferredCatalog renders the frozen deferred set for the model, or "" when
-// nothing is deferred. The Run's Discovery is its only owner; callers project
-// the text into each model request rather than storing it.
 func (m Manifest) DeferredCatalog() string {
+	if m.discovery == nil {
+		return ""
+	}
 	return m.discovery.Catalog()
 }
 
-// Close releases the manifest's filesystem authority once. It is safe to call
-// again, including through a clone, after the execution owner has drained calls.
 func (m Manifest) Close() error {
 	if m.close == nil {
 		return nil
@@ -65,10 +53,6 @@ func (m Manifest) Close() error {
 	return m.close()
 }
 
-// manifestBuilder owns the one real visibility decision made while assembling a
-// Run: direct tools enter the initial model manifest, while deferred tools stay
-// executable but are loaded through search_tools. Unavailable tools are simply
-// never added; there is no synthetic visibility state for them.
 type manifestBuilder struct {
 	skillDiscovery promptsource.SkillCapture
 	pendingMCP     []mcpserver.ID
@@ -96,11 +80,7 @@ func (m *manifestBuilder) deferTools(tools ...toolcontract.Tool) {
 	}
 }
 
-// manifest freezes the surface and instruments every Tool on it. Scope's Tool
-// telemetry owns the call boundary's span and duration without recording model
-// arguments or results. Decorators unwrap to their source, so tool.As still
-// reads every source declaration.
-func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, error) {
+func (m *manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, error) {
 	if m.err != nil {
 		return Manifest{}, m.err
 	}
@@ -175,8 +155,6 @@ func (t namedRemoteTool) Definition() toolcontract.Definition {
 
 func (t namedRemoteTool) Unwrap() toolcontract.Tool { return t.Tool }
 
-// A recovering Run keeps the original competition even after one source
-// becomes unavailable. Revocation removes authority without renaming its peers.
 func (m *manifestBuilder) bindModelNames(retained *Retained) error {
 	if m.err != nil {
 		return m.err
@@ -215,12 +193,6 @@ func (m *manifestBuilder) bindModelNames(retained *Retained) error {
 	return nil
 }
 
-// MCPTools projects the live MCP catalog from the single snapshot each Run
-// manifest freezes: every advertised tool, exposure-disabled ones included so
-// a client can enable them again, scoped to server when non-nil, and the
-// name conflicts the manifest naming rule derives from the exposed tools.
-// One atomic load supplies both, so the read model can never
-// pair one catalog's tools with another catalog's conflicts.
 func (r *Resolver) MCPTools(server *mcpserver.ID) ([]mcpserver.AdvertisedTool, map[tool.Ref][]tool.Ref, error) {
 	snapshot := r.mcpSnapshot()
 	exposed, err := r.exposedMCPTools(snapshot, nil)

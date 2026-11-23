@@ -1,6 +1,3 @@
-// Package hook defines portable lifecycle rules and bounded event material.
-// Configuration discovery, command execution, trust and final decisions belong
-// to their explicit backend and Runtime owners.
 package hook
 
 import (
@@ -14,66 +11,36 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
+// ConfigurationPath is relative to the home or project directory whose hooks it declares.
+const ConfigurationPath = identity.AuthoredDirectory + "/hooks.json"
+
 const (
-	// MaxConfigurationFileBytes bounds one complete authored hooks.json file
-	// before JSON decoding or management projection.
 	MaxConfigurationFileBytes int64 = 256 << 10
-	// maxHooksPerFile bounds one authored policy document.
-	maxHooksPerFile = 128
-	// MaxHooksPerCascade bounds the complete global + project policy resolved
-	// for one workspace.
-	MaxHooksPerCascade = 256
-	// maxMatcherBytes bounds one tool-name glob.
-	maxMatcherBytes = 256
-	// maxActionBytes bounds one shell command or declarative injection.
-	maxActionBytes = 8 << 10
-	// MaxPromptBytes bounds user and sub-agent prompt material presented to one
-	// command hook. Longer prompt material is projected as a marked prefix.
-	MaxPromptBytes = 256 << 10
-	// MaxArgumentsBytes is the lossless ceiling for canonical Tool arguments.
+	maxHooksPerFile                 = 128
+	MaxHooksPerCascade              = 256
+	maxMatcherBytes                 = 256
+	maxActionBytes                  = 8 << 10
+	MaxPromptBytes                  = 256 << 10
 	// Arguments are policy input, so an oversized object is rejected rather than
 	// truncated into a different action.
 	MaxArgumentsBytes = 256 << 10
-	// maxResultBytes bounds Tool and sub-agent result material presented to one
-	// command hook. The original result remains owned by its normal consumer.
-	maxResultBytes = 128 << 10
-	// maxReasonBytes bounds failure, terminal, and descriptive material exposed
-	// to one command hook.
-	maxReasonBytes = 8 << 10
-	// MaxTimeoutMillis prevents authored policy from replacing the Runtime's
-	// bounded command lifecycle with an arbitrarily long wait.
-	MaxTimeoutMillis = 5 * 60 * 1_000
+	maxResultBytes    = 128 << 10
+	maxReasonBytes    = 8 << 10
+	MaxTimeoutMillis  = 5 * 60 * 1_000
 )
 
-// Event is a lifecycle point a hook can fire on.
 type Event string
 
 const (
-	// PreToolUse fires before a tool runs — a hook may deny, force an approval
-	// prompt, or rewrite the tool's arguments. Matched by tool name.
-	PreToolUse Event = "PreToolUse"
-	// PostToolUse fires after a tool produced its result — a hook may inject
-	// context for the model (e.g. lint output). Matched by tool name.
-	PostToolUse Event = "PostToolUse"
-	// UserPromptSubmit fires when a user message opens a Run — a hook may
-	// inject context or block the prompt.
+	PreToolUse       Event = "PreToolUse"
+	PostToolUse      Event = "PostToolUse"
 	UserPromptSubmit Event = "UserPromptSubmit"
-	// SessionStart fires on the first Run of a Session — a hook may inject
-	// session-scoped context.
-	SessionStart Event = "SessionStart"
-	// PreCompact fires before model-call or Run-boundary compaction — a hook may inject
-	// guidance or veto the compaction.
-	PreCompact Event = "PreCompact"
-	// Stop fires at Run end (any terminal) — observe-only (notify / chain).
-	Stop Event = "Stop"
-	// Notification fires when a run parks waiting on the user (HITL interrupt)
-	// — observe-only (route to an external sink).
-	Notification Event = "Notification"
+	SessionStart     Event = "SessionStart"
+	PreCompact       Event = "PreCompact"
+	Stop             Event = "Stop"
+	Notification     Event = "Notification"
 )
 
-// Scope is where a hook came from — set by the loader, not the JSON. It gates
-// trust: global hooks (the user's own ~/.flame) always run; project hooks (a
-// repo's .flame, which a `git clone` could carry) run only for a trusted project.
 type Scope string
 
 const (
@@ -81,9 +48,6 @@ const (
 	ScopeProject Scope = "project"
 )
 
-// FailurePolicy decides whether an unavailable command decision may release the
-// action it gates. Required hooks fail closed; advisory hooks retain diagnostics.
-// An omitted policy is advisory. Explicit deny/ask decisions apply in either mode.
 type FailurePolicy string
 
 const (
@@ -97,7 +61,6 @@ func (FailurePolicy) Values() []string {
 
 func (p FailurePolicy) JSONSchemaEnum() []string { return p.Values() }
 
-// Effective resolves the optional authored policy once for execution and review.
 func (p FailurePolicy) Effective() FailurePolicy {
 	if p == "" {
 		return FailureAdvisory
@@ -121,14 +84,8 @@ func (p FailurePolicy) validate(event Event, hasCommand bool) error {
 	return nil
 }
 
-// RequiredFailureEvents owns the lifecycle points whose pending action can be
-// denied by a failed required hook. Observers cannot undo a committed effect.
 func RequiredFailureEvents() []Event { return []Event{PreToolUse, UserPromptSubmit, PreCompact} }
 
-// Hook is one configured hook entry. Command and Inject are alternatives: a
-// Command is exec'd (real logic); an Inject is a literal context string added
-// with no process spawn (the declarative fast path). A Matcher (tool-name glob)
-// applies only to tool events; configuration rejects it for other events.
 type Hook struct {
 	Event         Event         `json:"event"`
 	Matcher       string        `json:"matcher,omitempty"`
@@ -137,30 +94,18 @@ type Hook struct {
 	TimeoutMillis int           `json:"timeoutMillis,omitzero"`
 	FailurePolicy FailurePolicy `json:"failurePolicy,omitempty"`
 
-	// Scope + Source are stamped by the loader (provenance + trust gating), not
-	// parsed from the file.
 	Scope  Scope  `json:"scope"`
 	Source string `json:"source"`
 }
 
-// ErrInvalidHook reports a malformed hook configuration. Invalid policy hooks
-// must fail discovery instead of silently becoming no-ops.
 var ErrInvalidHook = errors.New("hooks: invalid hook")
 
-// ErrConfigurationTooLarge reports a hooks.json document or resolved cascade
-// that cannot enter the complete management and execution projections.
 var ErrConfigurationTooLarge = errors.New("hooks: configuration too large")
 
-// errCommandInputTooLarge reports semantic invocation material that cannot be
-// projected into the private command contract without changing policy input.
 var errCommandInputTooLarge = errors.New("hooks: command input too large")
 
-// errInvalidCommandInput reports command material that cannot enter the
-// private JSON contract without silent text replacement.
 var errInvalidCommandInput = errors.New("hooks: invalid command input")
 
-// ValidateConfigurationFileSize checks the encoded envelope before a loader
-// allocates or decodes one authored policy document.
 func ValidateConfigurationFileSize(size int64) error {
 	if size < 0 || size > MaxConfigurationFileBytes {
 		return fmt.Errorf(
@@ -173,7 +118,6 @@ func ValidateConfigurationFileSize(size int64) error {
 	return nil
 }
 
-// ValidateHooksPerFile checks the complete entry count of one hooks.json.
 func ValidateHooksPerFile(count int) error {
 	if count < 0 || count > maxHooksPerFile {
 		return fmt.Errorf(
@@ -186,7 +130,6 @@ func ValidateHooksPerFile(count int) error {
 	return nil
 }
 
-// ValidateHookCascade checks the complete global + project policy set.
 func ValidateHookCascade(count int) error {
 	if count < 0 || count > MaxHooksPerCascade {
 		return fmt.Errorf(
@@ -199,10 +142,6 @@ func ValidateHookCascade(count int) error {
 	return nil
 }
 
-// Validate checks the declarative hook contract before a resolved set can be
-// installed. A hook has one known lifecycle event and exactly one action;
-// malformed matchers and negative timeouts are configuration errors rather
-// than policies that quietly never run.
 func (h Hook) Validate() error {
 	if !h.Event.Valid() {
 		return fmt.Errorf("%w: unsupported event %q", ErrInvalidHook, h.Event)
@@ -257,7 +196,6 @@ func (h Hook) validateMatcher() error {
 	return nil
 }
 
-// Input is the semantic lifecycle payload passed to a hook runner.
 type Input struct {
 	Event           Event      `json:"event"`
 	SessionID       string     `json:"sessionId,omitempty"`
@@ -265,23 +203,18 @@ type Input struct {
 	Tool            *ToolInput `json:"tool,omitzero"`
 	Prompt          string     `json:"prompt,omitempty"`
 	PromptTruncated bool       `json:"promptTruncated,omitzero"`
-	// Reason carries a human-readable note for the observe-only events (the Stop
-	// terminal detail, the Notification reason).
-	Reason string `json:"reason,omitempty"`
+	Reason          string     `json:"reason,omitempty"`
 }
 
-// ToolInput is the tool slice of an Input for the tool events.
 type ToolInput struct {
 	Name            string `json:"name"`
-	Arguments       string `json:"arguments,omitempty"` // canonical JSON args (Pre/PostToolUse)
-	Result          string `json:"result,omitempty"`    // tool output (PostToolUse)
+	Arguments       string `json:"arguments,omitempty"`
+	Result          string `json:"result,omitempty"`
 	ResultTruncated bool   `json:"resultTruncated,omitzero"`
 }
 
-// CommandProjection returns an ownership-isolated, bounded view for external
-// command hooks. Human-readable prompt/result material may use an explicit
-// marked prefix; canonical Tool arguments never truncate because doing so would
-// describe a different effect to policy code.
+// Canonical Tool arguments never truncate: a truncated object would describe a
+// different effect to policy code.
 func (i Input) CommandProjection() (Input, error) {
 	out := i
 	out.Prompt, out.PromptTruncated = boundedCommandText(i.Prompt, MaxPromptBytes, i.PromptTruncated)
@@ -309,9 +242,6 @@ func (i Input) CommandProjection() (Input, error) {
 	return out, nil
 }
 
-// ValidateCommandMaterial is the process-boundary backstop for callers that
-// bypass CommandProjection. It rejects lossy or oversized semantic input before
-// JSON encoding and process creation.
 func (i Input) ValidateCommandMaterial() error {
 	if len(i.Prompt) > MaxPromptBytes || len(i.Reason) > maxReasonBytes {
 		return errCommandInputTooLarge
@@ -325,7 +255,7 @@ func (i Input) ValidateCommandMaterial() error {
 	}
 	if i.SessionID != "" {
 		if err := identity.ValidateSession(i.SessionID); err != nil {
-			return fmt.Errorf("%w: %v", errInvalidCommandInput, err)
+			return fmt.Errorf("%w: %w", errInvalidCommandInput, err)
 		}
 	}
 	for _, value := range values {
@@ -377,6 +307,7 @@ const (
 func (CommandVerdict) JSONSchemaEnum() []string {
 	return []string{string(CommandAllow), string(CommandDeny), string(CommandAsk)}
 }
+
 func (v CommandVerdict) Valid() bool { return slices.Contains(v.JSONSchemaEnum(), string(v)) }
 
 type CommandDecision struct {

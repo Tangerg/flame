@@ -94,7 +94,7 @@ const MERGE_BASE: VisualRead["baseline"] = {
   commit: "abcdef1234567890abcdef1234567890abcdef12",
 };
 
-export function visualRead(
+function visualRead(
   files: readonly CapturedFile[],
   baseline: VisualRead["baseline"],
   path?: string,

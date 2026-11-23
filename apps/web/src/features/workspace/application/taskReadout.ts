@@ -1,7 +1,7 @@
 import { clamp01 } from "@/lib/clamp";
 import { type Translate } from "@/lib/i18n/index";
 import { type TaskEntry } from "@/extensions/tasksStore";
-export interface TaskReadout {
+interface TaskReadout {
   tasks: TaskEntry[];
   runningCount: number;
   head: TaskEntry;

@@ -14,6 +14,8 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
+const findPlaceholder = "text"
+
 type transcriptSearch struct {
 	worker   *readingSearch
 	query    string
@@ -214,9 +216,6 @@ func (t *transcriptView) entryAtRow(row int) (transcriptEntryID, int, bool) {
 	return 0, 0, false
 }
 
-// liveSearch finds text in the live transcript: it asks for the query,
-// follows the transcript's background search results and steps between
-// matches. transcript is the transcript presented now.
 type liveSearch struct {
 	dialog     *presentationDialog
 	field      *base.Text
@@ -227,7 +226,7 @@ type liveSearch struct {
 
 func newLiveSearch(stack *workspaceScene, theme kit.Theme, glyphs kit.Glyphs, tasks taskRunner, transcript func() *transcriptView, notify func(string)) *liveSearch {
 	p := &liveSearch{transcript: transcript, tasks: tasks, notify: notify}
-	field := base.NewText(base.TextConfig{Label: "Find in the live transcript", Placeholder: "text", Initial: "", Check: requiredText})
+	field := base.NewText(base.TextConfig{Label: "Find in the live transcript", Placeholder: findPlaceholder, Initial: "", Check: requiredText})
 	p.field = field
 	form := kit.FormConfig{
 		Behavior: base.FormConfig{
@@ -255,7 +254,7 @@ func newLiveSearch(stack *workspaceScene, theme kit.Theme, glyphs kit.Glyphs, ta
 		},
 		Theme:  theme,
 		Glyphs: glyphs,
-		Where:  layout.Placement{Width: compactDialogWidth, Height: 7},
+		Where:  layout.Placement{Width: compactDialogWidth, Height: findDialogHeight},
 	})
 	return p
 }
@@ -276,8 +275,6 @@ func (p *liveSearch) step(delta int) {
 	}
 }
 
-// listen follows the search results of the presented transcript, replacing
-// the subscription to a transcript no longer presented.
 func (p *liveSearch) listen() {
 	results := p.transcript().SearchResults()
 	operations := p.tasks.operations

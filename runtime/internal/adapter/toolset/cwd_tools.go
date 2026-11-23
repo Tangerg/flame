@@ -9,24 +9,6 @@ import (
 	"github.com/Tangerg/scope/tools/fs"
 )
 
-// openCWDTools acquires the working-directory-bound filesystem capabilities,
-// all anchored at cwd. Each resolution owns a Scope directory authority until
-// its manifest closes after execution drains. The filesystem tools need no
-// credentials. The shell family is built over shared exec.Shells in shell.Build
-// and reads cwd per call.
-//
-// Every mutation is wrapped so a successful change is type-checked by the
-// code-intelligence analyzer and any new problems are folded into the tool
-// result.
-// locker is owner-scoped: resolver-owned builds reuse one locker so
-// read/check/mutate stays atomic across concurrent Runs, not merely across the
-// tools resolved for one Run.
-//
-// edit and apply_patch are one mutation vocabulary under one guard stack. They
-// differ only in how a call names what it changes: edit carries the path as an
-// argument, while a patch has to be parsed to learn it. Both end at the same
-// read-before-write stamp, path lock, protected-directory refusal, formatter,
-// and diagnostics.
 type cwdTools struct {
 	readSearch []toolcontract.Tool
 	edit       toolcontract.Tool
@@ -35,13 +17,13 @@ type cwdTools struct {
 }
 
 func openCWDTools(cwd string, ci CodeIntelligence, tracker *readTracker, locker *keylock.Set) (_ cwdTools, err error) {
-	root, fsExec, close, err := openFilesystem(cwd)
+	root, fsExec, release, err := openFilesystem(cwd)
 	if err != nil {
 		return cwdTools{}, fmt.Errorf("toolset: construct filesystem executor: %w", err)
 	}
 	defer func() {
 		if err != nil {
-			err = errors.Join(err, close())
+			err = errors.Join(err, release())
 		}
 	}()
 	searchTools := newRuntimeSearchTools(cwd)
@@ -59,12 +41,8 @@ func openCWDTools(cwd string, ci CodeIntelligence, tracker *readTracker, locker 
 		return cwdTools{}, fmt.Errorf("toolset: construct edit tool: %w", err)
 	}
 
-	// Guard stack, innermost → outermost: auto-format the applied
-	// change; diagnostics type-check it; read/staleness guard gates before the
-	// change and consumes its read evidence; per-path lock serializes
-	// concurrent mutations to the same file; path guard refuses protected dirs.
-	// apply_patch declares its own paths because they are inside the patch text;
-	// edit needs no declaration, since the guards read its path argument.
+	// Guard order matters, innermost to outermost: format, diagnostics,
+	// read/staleness, per-path lock, path guard.
 	applyPatch := guardedMutation(applyPatchTool, ci, tracker, locker, root, fsExec)
 	edit := guardedMutation(editTool, ci, tracker, locker, root, fsExec)
 
@@ -76,7 +54,7 @@ func openCWDTools(cwd string, ci CodeIntelligence, tracker *readTracker, locker 
 		},
 		edit:       edit,
 		applyPatch: applyPatch,
-		close:      close,
+		close:      release,
 	}
 	return families, nil
 }

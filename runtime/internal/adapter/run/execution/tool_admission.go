@@ -11,8 +11,6 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// Tool admission owns hook rewrites, schema validation and the policy request.
-// Run input and human commands retain their separate response lifecycles.
 type toolAdmission struct {
 	binding     toolcontract.Binding
 	executable  toolcontract.Tool
@@ -26,20 +24,17 @@ type toolAdmission struct {
 
 func (a toolAdmission) prepare(ctx context.Context, callID string) (ToolAuthorizationRequest, ToolAuthorizationDecision, error) {
 	arguments := a.input.Arguments
-	forceApproval := false
-	if a.hooks != nil {
-		decision, err := a.hooks.BeforeToolUse(ctx, a.input)
-		if err != nil {
-			return ToolAuthorizationRequest{}, ToolAuthorizationDecision{}, fmt.Errorf("execution: run pre-Tool hook: %w", err)
-		}
-		if rewritten, changed := decision.EffectiveArguments(); changed {
-			arguments = rewritten
-		}
-		if reason, denied := decision.Denied(); denied {
-			return ToolAuthorizationRequest{Arguments: arguments}, denyTool(reason), nil
-		}
-		forceApproval = decision.RequiresApproval()
+	hooked, err := a.hooks.BeforeToolUse(ctx, a.input)
+	if err != nil {
+		return ToolAuthorizationRequest{}, ToolAuthorizationDecision{}, fmt.Errorf("execution: run pre-Tool hook: %w", err)
 	}
+	if rewritten, changed := hooked.EffectiveArguments(); changed {
+		arguments = rewritten
+	}
+	if reason, denied := hooked.Denied(); denied {
+		return ToolAuthorizationRequest{Arguments: arguments}, denyTool(reason), nil
+	}
+	forceApproval := hooked.RequiresApproval()
 	request := ToolAuthorizationRequest{SessionID: a.input.SessionID, WorkspaceCWD: a.input.WorkspaceCWD, CallID: callID, Tool: a.ref, QualifiedName: a.binding.Contract().Definition().Name != a.ref.ModelName(), SourceFingerprint: a.fingerprint, Arguments: arguments,
 		SafetyClass: a.interpreter.SafetyClass(a.ref), FileMutation: fileMutationScope(a.executable, arguments, a.input.CWD), ShellCommand: a.interpreter.ShellCommand(a.ref, arguments.Canonical()), RequireApproval: forceApproval}
 	if _, err := a.binding.Contract().Prepare(toolcontract.Request{Name: request.Tool.PublishedName(request.QualifiedName), Arguments: arguments.Canonical()}, toolcontract.Admission{}); err != nil {

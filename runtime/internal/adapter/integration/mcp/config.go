@@ -18,14 +18,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/secret"
 	"github.com/Tangerg/go-sdk/auth"
-	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/samber/lo"
 	"golang.org/x/oauth2"
 )
 
-// ServerConfig combines an owned domain descriptor with live OAuth state.
-// The descriptor alone owns connection invariants, identity and authority;
-// OAuth refresh cannot create another representation of those facts.
 type ServerConfig struct {
 	mcpserver.Server
 	OAuthHandler auth.OAuthHandler
@@ -59,8 +56,6 @@ func (s ServerConfig) Validate() error {
 	return nil
 }
 
-// Process environment encoding belongs at the exec boundary. Preserve nil:
-// exec.Cmd inherits the parent only when Env is absent, not when it is empty.
 func processEnvironment(values map[string]string) []string {
 	if values == nil {
 		return nil
@@ -76,9 +71,9 @@ func processEnvironment(values map[string]string) []string {
 func dial(
 	ctx context.Context,
 	lifetime context.Context,
-	client *sdkmcp.Client,
+	client *sdk.Client,
 	input *launch,
-) (_ *sdkmcp.ClientSession, _ sessionCleanup, err error) {
+) (_ *sdk.ClientSession, _ sessionCleanup, err error) {
 	defer func() {
 		if err != nil {
 			err = errors.Join(err, input.close())
@@ -102,15 +97,13 @@ func dial(
 	return session, cleanup, nil
 }
 
-// dialedConnection remembers the stdio process its connect started, so cleanup
-// stops that same process group.
 type dialedConnection struct {
-	client  *sdkmcp.Client
+	client  *sdk.Client
 	input   *launch
 	command *exec.Cmd
 }
 
-func (d *dialedConnection) connect(ctx context.Context) (*sdkmcp.ClientSession, error) {
+func (d *dialedConnection) connect(ctx context.Context) (*sdk.ClientSession, error) {
 	cfg := d.input.config
 	switch connection := cfg.Connection.(type) {
 	case mcpserver.HTTPConnection:
@@ -118,7 +111,7 @@ func (d *dialedConnection) connect(ctx context.Context) (*sdkmcp.ClientSession, 
 		if err != nil {
 			return nil, fmt.Errorf("mcp server %q: build HTTP client: %w", cfg.ID(), err)
 		}
-		transport := &sdkmcp.StreamableClientTransport{
+		transport := &sdk.StreamableClientTransport{
 			Endpoint:     connection.URL,
 			HTTPClient:   httpClient,
 			OAuthHandler: authorizationChallenge{oauth: cfg.OAuthHandler},
@@ -135,7 +128,7 @@ func (d *dialedConnection) connect(ctx context.Context) (*sdkmcp.ClientSession, 
 		procgroup.Prepare(cmd)
 		cmd.Cancel = func() error { return procgroup.Stop(cmd) }
 		d.command = cmd
-		return d.client.Connect(ctx, &sdkmcp.CommandTransport{Command: cmd}, nil)
+		return d.client.Connect(ctx, &sdk.CommandTransport{Command: cmd}, nil)
 	default:
 		return nil, fmt.Errorf("mcp: unknown transport %q", cfg.Transport())
 	}
@@ -165,19 +158,12 @@ func (d *dialedConnection) cleanup(retire sessionCleanup, cancelLifetime context
 
 type sessionCleanup func() error
 
-// connectSession gives an MCP session a lifecycle distinct from the operation
-// that establishes it. Parent cancellation and the configured timeout still
-// abort the handshake, but after Connect succeeds the session remains alive
-// until its owner explicitly cancels it during detach, replacement, or
-// shutdown. Binding the session directly to a short-lived command context
-// makes a successful connection look connected while its transport is
-// already being torn down.
 func connectSession(
 	parent context.Context,
 	lifetime context.Context,
 	timeout *time.Duration,
-	connect func(context.Context) (*sdkmcp.ClientSession, error),
-) (_ *sdkmcp.ClientSession, release context.CancelFunc, _ error) {
+	connect func(context.Context) (*sdk.ClientSession, error),
+) (_ *sdk.ClientSession, release context.CancelFunc, _ error) {
 	if parent == nil {
 		return nil, nil, errors.New("mcp: handshake context is required")
 	}
@@ -234,8 +220,6 @@ func endpointHTTPClient(endpoint, authorization string, headers map[string]strin
 		base:                  http.DefaultTransport,
 		maxResponseFrameBytes: maxMCPResponseFrameBytes,
 	}
-	// The transport pins every request, including the first, to the configured
-	// origin, so the shared same-origin redirect policy keeps the chain there.
 	return &http.Client{Transport: transport, CheckRedirect: checkRedirect}, nil
 }
 
@@ -265,12 +249,10 @@ func (h *headerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 	return response, err
 }
 
-// authorizationChallenge is installed on every Streamable HTTP transport
-// because the SDK hands Authorize the exact refused request and response; its
-// own status error carries only text. A 401 therefore marks the failure of the
-// request it answered, never a concurrent or later request's outcome. Without
-// an OAuth handler the challenge cannot be answered here, so it fails the
-// request instead of letting the SDK retry.
+// The SDK hands Authorize the exact refused request and response while its own
+// status error carries only text, so a 401 marks only the request it answered.
+// Without an OAuth handler the challenge fails the request instead of letting the
+// SDK retry.
 type authorizationChallenge struct {
 	oauth auth.OAuthHandler
 }
@@ -298,7 +280,7 @@ func (a authorizationChallenge) Authorize(ctx context.Context, request *http.Req
 func (h *headerRoundTripper) validateTarget(target *url.URL) error {
 	origin, err := httporigin.FromURL(target)
 	if err != nil {
-		return fmt.Errorf("%w: %v", errCrossOrigin, err)
+		return fmt.Errorf("%w: %w", errCrossOrigin, err)
 	}
 	if origin != h.origin {
 		return fmt.Errorf("%w: target origin %s differs from configured origin %s",

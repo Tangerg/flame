@@ -27,7 +27,7 @@ func (s *storedTranscriptRow) fields() []any {
 	return []any{&s.sessionID, &s.runID, &s.itemID, &s.occurredAt, &s.payload, &s.offloadID, &s.modelOnly}
 }
 
-func (s storedTranscriptRow) snapshot() (transcript.ItemSnapshot, error) {
+func (s *storedTranscriptRow) snapshot() (transcript.ItemSnapshot, error) {
 	snapshot, err := decodeTranscriptItem([]byte(s.payload))
 	if err != nil {
 		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: decode history item %q: %w", s.itemID, err)
@@ -49,7 +49,7 @@ func (s storedTranscriptRow) snapshot() (transcript.ItemSnapshot, error) {
 	return snapshot, nil
 }
 
-func (s storedTranscriptRow) materialize(offloaded sql.NullString) (transcript.Item, error) {
+func (s *storedTranscriptRow) materialize(offloaded sql.NullString) (transcript.Item, error) {
 	snapshot, err := s.snapshot()
 	if err != nil {
 		return transcript.Item{}, err

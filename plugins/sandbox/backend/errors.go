@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	processsandbox "github.com/Tangerg/flame/packages/go-sdk/sandbox"
-	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
+	"github.com/Tangerg/flame/plugins/sandbox/internal/sandbox"
 )
 
 func classify(err error) (string, bool) {

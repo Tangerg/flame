@@ -14,10 +14,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-// steerDesk injects instructions into the observed Run segment and reports
-// whether each was applied. It owns the steer receipts and reaches the
-// composer, the outbox and Run admission through the collaborators it is built
-// with.
 type steerDesk struct {
 	receipts     steerReceipts
 	runtime      Runtime
@@ -34,8 +30,6 @@ type steerDesk struct {
 	readSession func(context.Context, string) (conversation.SessionSnapshot, error)
 }
 
-// steerRequest addresses the observed running segment with the instruction
-// and the draft's attachments.
 func (s *steerDesk) steerRequest(instruction string) (authoring.SteerRun, authoring.Message, error) {
 	if instruction == "" {
 		return authoring.SteerRun{}, authoring.Message{}, errors.New("/steer needs a non-empty instruction")
@@ -66,10 +60,6 @@ func (s *steerDesk) steerRun(instruction string) error {
 	if err != nil {
 		return err
 	}
-	// Reconstruct the parsed command as a durable ownership precondition. If the
-	// process stops before staging, restart restores the command for retry. The
-	// following aggregate replacement then transfers it and its attachments into
-	// the steer journal atomically.
 	sourceDraft := authoring.Message{Text: workbench.SteerSourcePrefix + instruction, Attachments: slices.Clone(draft.Attachments)}
 	if err := s.composer.saveDraft(sourceDraft); err != nil {
 		s.report(workbenchDraft, err)
@@ -78,8 +68,10 @@ func (s *steerDesk) steerRun(instruction string) error {
 	s.report(workbenchDraft, nil)
 	s.composer.restoreComposer(sourceDraft)
 	s.composer.drafts.adopt(s.session.current.ID, sourceDraft)
-	if s.tasks.operations.Active(inputPreparationOperation) || s.tasks.operations.Active(steerRunOperation) {
-		return errors.New("another input or steer operation is already running")
+	for _, slot := range []operationSlot{inputPreparationOperation, steerRunOperation} {
+		if s.tasks.operations.Active(slot) {
+			return slot.busy()
+		}
 	}
 	started := s.tasks.sessionFence(inputPreparationOperation,
 		func(ctx context.Context) (*workbench.PreparedInput, error) {
@@ -140,11 +132,11 @@ func (s *steerDesk) deliverPreparedSteer(request authoring.SteerRun, sourceDraft
 		recovered, err := s.rejectSteer(pending)
 		if err != nil {
 			s.restoreSteerAttachments(request.Message.Attachments)
-			return fmt.Errorf("another steer operation is already running; restore attachments: %w", err)
+			return fmt.Errorf("%w; restore attachments: %w", steerRunOperation.busy(), err)
 		}
 		s.composer.restoreComposer(recovered)
 		s.composer.drafts.adopt(s.session.current.ID, recovered)
-		return errors.New("another steer operation is already running")
+		return steerRunOperation.busy()
 	}
 	return nil
 }
@@ -218,9 +210,6 @@ func (s *steerDesk) rejectSteer(pending workbench.PendingSteer) (authoring.Messa
 	return recovered, nil
 }
 
-// restoreSteerAttachments returns a rejected steer's attachments to the
-// composer. A draft that cannot be read is left as the user wrote it and the
-// attachments are inserted into it, rather than replaced by them.
 func (s *steerDesk) restoreSteerAttachments(rejected []authoring.Attachment) {
 	current, _, err := s.composer.draft()
 	if err != nil {

@@ -10,7 +10,7 @@ import (
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
-	storage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 
 	framevalue "github.com/Tangerg/frame/value"
 )
@@ -36,16 +36,16 @@ func TestMiningCrashAtomicallyPreservesProposalAndOriginalReceipt(t *testing.T) 
 		if err != nil {
 			t.Fatal(err)
 		}
-		cmd, _, err := storage.AdmitCommand(t.Context(), l.db, method.Name(), id, input, nil)
+		cmd, _, err := pluginstorage.AdmitCommand(t.Context(), l.db, method.Name(), id, input, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = storage.CompleteExternalCommand(t.Context(), cmd, nil, func(ctx context.Context) (storage.CommandPlan[skilllearning.MineResult], error) {
+		_, err = pluginstorage.CompleteExternalCommand(t.Context(), cmd, nil, func(ctx context.Context) (pluginstorage.CommandPlan[skilllearning.MineResult], error) {
 			persist, err := l.prepareMined(ctx, id, run, result)
 			if err != nil {
-				return storage.CommandPlan[skilllearning.MineResult]{}, err
+				return pluginstorage.CommandPlan[skilllearning.MineResult]{}, err
 			}
-			return storage.NewCommandPlan(result, func(ctx context.Context) error {
+			return pluginstorage.NewCommandPlan(result, func(ctx context.Context) error {
 				if err := persist(ctx); err != nil {
 					return err
 				}
@@ -58,7 +58,6 @@ func TestMiningCrashAtomicallyPreservesProposalAndOriginalReceipt(t *testing.T) 
 		if err != nil {
 			t.Fatal(err)
 		}
-		// Exit before a transport can acknowledge the locally committed command.
 		os.Exit(miningCrashExit)
 	}
 	for _, phase := range []string{"before-commit", "after-commit"} {
@@ -80,7 +79,7 @@ func TestMiningCrashAtomicallyPreservesProposalAndOriginalReceipt(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			command, reply, err := storage.AdmitCommand(t.Context(), l.db, method.Name(), id, input, func(context.Context) error { t.Fatal("recovery repeated mining admission"); return nil })
+			command, reply, err := pluginstorage.AdmitCommand(t.Context(), l.db, method.Name(), id, input, func(context.Context) error { t.Fatal("recovery repeated mining admission"); return nil })
 			if err != nil {
 				t.Fatal(err)
 			}

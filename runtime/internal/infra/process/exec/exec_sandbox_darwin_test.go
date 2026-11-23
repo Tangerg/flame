@@ -12,8 +12,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 )
 
-// TestLaunchSandboxConfinesWrites proves the opt-in jail is actually wired onto
-// the live shell: a sandboxed Launch confines a command's writes to its cwd.
 func TestLaunchSandboxConfinesWrites(t *testing.T) {
 	workspace := t.TempDir()
 	outside := filepath.Join(t.TempDir(), "outside.txt")

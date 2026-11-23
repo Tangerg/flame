@@ -15,9 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
-// ErrIdentityConflict reports an attempt to reuse a durable transcript identity
-// for a different owner. Item ids are bound to one Session+Run and Run ids to
-// one Session for their entire lifetime; persistence must never re-parent them.
 var ErrIdentityConflict = errors.New("transcript: identity conflict")
 
 type ItemStatus string
@@ -28,7 +25,6 @@ const (
 	ItemIncomplete ItemStatus = "incomplete"
 )
 
-// Valid reports whether i belongs to the durable Item lifecycle vocabulary.
 func (i ItemStatus) Valid() bool {
 	return i == ItemRunning || i == ItemCompleted || i == ItemIncomplete
 }
@@ -49,10 +45,6 @@ func (i ItemKind) Valid() bool {
 		i == QuestionItem || i == ToolCall || i == Compaction
 }
 
-// MessagePhase names the semantic role of one AgentMessage in a model turn.
-// Commentary is progress or a preamble before more work; FinalAnswer is the
-// terminal response a completed Run leaves with the user. The phase is authored
-// at the model-call boundary and survives every transcript representation.
 type MessagePhase string
 
 const (
@@ -61,47 +53,29 @@ const (
 	MessageFinalAnswer MessagePhase = "finalAnswer"
 )
 
-// Valid reports whether m is one of the two authored AgentMessage roles.
 func (m MessagePhase) Valid() bool {
 	return m == MessageCommentary || m == MessageFinalAnswer
 }
 
-// SequencedItem pairs a history Item with its position in the session's durable
-// append order — the total order a paged read continues along, and the only one
-// that is exact: occurrence timestamps tie, and an imported transcript can carry
-// backdated ones.
-//
-// The position sits beside the Item rather than inside it because the store
-// assigns it when the Item lands: an Item on its way to being appended has no
-// position, so a field for one inside the aggregate would be a zero every writer
-// had to remember to ignore.
+// The store assigns the position when the Item lands, so it sits beside the Item
+// rather than as a zero every writer must ignore; occurrence timestamps tie and
+// imports can backdate them.
 type SequencedItem struct {
 	Sequence int64
 	Item     Item
 }
 
-// SequenceOrder is the direction a paged read walks the durable sequence. Both
-// directions are the SAME total order read from opposite ends — never a different
-// sort — so a page is exact either way and the two cannot disagree about which item
-// comes first.
 type SequenceOrder string
 
 const (
-	// OldestFirst replays the session the way it happened, which is what folding it
-	// back into state requires.
 	OldestFirst SequenceOrder = "oldest"
-	// NewestFirst reaches the tail without walking everything before it, which is
-	// what showing a long session's last screen requires.
 	NewestFirst SequenceOrder = "newest"
 )
 
-// Valid reports whether s names one of the two directions through the durable
-// transcript sequence.
 func (s SequenceOrder) Valid() bool {
 	return s == OldestFirst || s == NewestFirst
 }
 
-// Validate rejects a direction that cannot define cursor and SQL ordering.
 func (s SequenceOrder) Validate() error {
 	if !s.Valid() {
 		return fmt.Errorf("transcript: invalid sequence order %q", s)
@@ -125,7 +99,6 @@ type ContentBlock struct {
 	Bytes     []byte
 }
 
-// Equal compares content values, including their bytes.
 func (c ContentBlock) Equal(other ContentBlock) bool {
 	return c.Kind == other.Kind && c.Text == other.Text && c.MediaType == other.MediaType && bytes.Equal(c.Bytes, other.Bytes)
 }
@@ -135,7 +108,6 @@ func (c ContentBlock) Clone() ContentBlock {
 	return c
 }
 
-// CloneContent returns an ownership-isolated sequence of content blocks.
 func CloneContent(blocks []ContentBlock) []ContentBlock {
 	cloned := make([]ContentBlock, len(blocks))
 	for index, block := range blocks {
@@ -145,14 +117,10 @@ func CloneContent(blocks []ContentBlock) []ContentBlock {
 }
 
 type Question struct {
-	Fields []QuestionField
-	// Answers is the ordered response accepted by the Runtime, when one exists.
-	// A nil value means no response was accepted; the root-owned Pending set is
-	// still the sole authority on whether the question is currently open.
+	Fields  []QuestionField
 	Answers [][]string
 }
 
-// Headers are compact presentation chips; Prompt retains the complete question.
 const MaximumQuestionHeaderCharacters = 12
 
 type QuestionField struct {
@@ -178,8 +146,6 @@ type ToolInvocation struct {
 	Offload *ToolResultRef
 }
 
-// ToolInput is what a ToolCall was asked with: admitted arguments, or the
-// verbatim text of input rejected before it could become arguments.
 type ToolInput struct {
 	arguments tool.Arguments
 	rejected  string
@@ -187,24 +153,16 @@ type ToolInput struct {
 
 func AdmittedInput(arguments tool.Arguments) ToolInput { return ToolInput{arguments: arguments} }
 
-// RejectedInput keeps unexecuted input verbatim. Empty text carries nothing to
-// keep, so it is the empty admitted input.
 func RejectedInput(text string) ToolInput { return ToolInput{rejected: text} }
 
-// Arguments returns the admitted arguments; rejected input has none.
 func (i ToolInput) Arguments() tool.Arguments { return i.arguments }
 
-// Rejected returns the verbatim text of rejected input.
 func (i ToolInput) Rejected() (string, bool) { return i.rejected, i.rejected != "" }
 
 func (i ToolInput) Equal(other ToolInput) bool {
 	return i.rejected == other.rejected && i.arguments.Equal(other.arguments)
 }
 
-// Equal compares the semantic Tool invocation value without exposing the
-// canonical storage representation of arguments or results to callers.
-// Earlier Items may lack captured provenance. Only two explicit and different
-// sources contradict the same published call identity.
 func (t ToolInvocation) MatchesSource(name string, source tool.Ref) bool {
 	return t.Name == name && (t.Source == (tool.Ref{}) || source == (tool.Ref{}) || t.Source == source)
 }
@@ -225,28 +183,15 @@ func (t ToolInvocation) Equal(other ToolInvocation) bool {
 	return t.Offload == nil || *t.Offload == *other.Offload
 }
 
-// Interrupt is one thing a person has to answer before execution continues.
 type Interrupt struct {
-	ItemID identity.ItemID
-	// ItemOccurredAt preserves the identity timestamp of the Item this interrupt
-	// references. An approval eventually settles that same ToolCall; a Question is
-	// already a complete prompt fact. Neither path may manufacture a new occurrence
-	// when the Run resumes.
+	ItemID         identity.ItemID
 	ItemOccurredAt time.Time
-	// RunID is the Run that RAISED this interrupt — not the Run that owns the set
-	// it belongs to. The two are the same only while a tree is a single Run: a set
-	// is owned by the root and consumed as a whole, while each interrupt was raised
-	// somewhere in that tree and is answered in the context of the Run that asked.
-	//
-	// It is recorded rather than derived, because the derivation stops working
-	// exactly when it starts to matter.
-	RunID identity.RunID
-	// Prompt is the Approval or Question a person must answer; it alone
-	// decides the interrupt's Kind.
+	// The Run that raised this interrupt, not the set's owner: recorded rather than
+	// derived because the derivation fails exactly when a tree has several Runs.
+	RunID  identity.RunID
 	Prompt Prompt
 }
 
-// Prompt is the closed set of things an interrupt can ask.
 type Prompt interface {
 	Type() run.InterruptType
 	prompt()
@@ -258,12 +203,8 @@ func (Question) Type() run.InterruptType { return run.InterruptQuestion }
 func (Approval) prompt() {}
 func (Question) prompt() {}
 
-// Kind reports what the interrupt asks.
 func (i Interrupt) Type() run.InterruptType { return i.Prompt.Type() }
 
-// Validate reports whether an interrupt carries one valid prompt with a valid
-// item and run identity. An open question that already holds an accepted
-// answer is no longer open, so it is rejected here rather than resumed.
 func (i Interrupt) Validate() error {
 	if err := i.ItemID.Validate(); err != nil {
 		return fmt.Errorf("pending interrupt: %w", err)
@@ -297,9 +238,6 @@ type Approval struct {
 	Rememberable bool
 }
 
-// Validate reports whether an approval describes one pending tool invocation.
-// A result or offload reference would mean the invocation already ran, while a
-// missing risk cannot support an informed decision.
 func (a Approval) Validate() error {
 	switch {
 	case strings.TrimSpace(a.Tool.Name) == "":
@@ -316,11 +254,8 @@ func (a Approval) Validate() error {
 	return nil
 }
 
-// imageMediaTypePrefix is the media type family image content must belong to.
 const imageMediaTypePrefix = "image/"
 
-// ContentField names the part of a content block that breaks its kind's shape,
-// so each boundary can address the error in its own vocabulary.
 type ContentField uint8
 
 const (
@@ -330,7 +265,6 @@ const (
 	ContentBytesField
 )
 
-// ContentError reports which field of a content block breaks its shape.
 type ContentError struct {
 	Field  ContentField
 	Detail string
@@ -338,7 +272,6 @@ type ContentError struct {
 
 func (e *ContentError) Error() string { return "transcript: content " + e.Detail }
 
-// Validate reports whether the content block has the shape required by its kind.
 func (c ContentBlock) Validate() error {
 	switch c.Kind {
 	case TextContent:
@@ -364,7 +297,6 @@ func (c ContentBlock) Validate() error {
 	return nil
 }
 
-// Validate reports whether the question can be rendered and answered unambiguously.
 func (q Question) Validate() error {
 	contract, err := q.AnswerContract()
 	if err != nil {
@@ -376,8 +308,6 @@ func (q Question) Validate() error {
 	return nil
 }
 
-// AnswerContract projects this question's admitted definition into the shared
-// Runtime contract without carrying its presentation or accepted-answer state.
 func (q Question) AnswerContract() (questioncontract.Contract, error) {
 	if err := questioncontract.ValidateFieldCount(len(q.Fields)); err != nil {
 		return questioncontract.Contract{}, err
@@ -396,14 +326,8 @@ func (q Question) AnswerContract() (questioncontract.Contract, error) {
 	return questioncontract.New(fields)
 }
 
-// Answered reports whether the Runtime accepted an answer for this question.
-// It does not claim that an unanswered question is still open; Pending owns
-// that separate lifecycle fact.
 func (q Question) Answered() bool { return q.Answers != nil }
 
-// Equal compares the semantic question value. Empty option or answer slices
-// are equivalent regardless of backing representation; the top-level nil
-// Answers value remains distinct because it means no response was accepted.
 func (q Question) Equal(other Question) bool {
 	if len(q.Fields) != len(other.Fields) || q.Answered() != other.Answered() {
 		return false

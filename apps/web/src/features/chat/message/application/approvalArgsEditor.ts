@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { equalJSON, isJSONNumber, parseJSON } from "@frame/sdk/json";
-export interface ApprovalArgsEditor {
+interface ApprovalArgsEditor {
   editing: boolean;
   startEditing: () => void;
   cancelEditing: () => void;
@@ -10,7 +10,7 @@ export interface ApprovalArgsEditor {
   commit: () => Record<string, unknown> | undefined | null;
 }
 
-export function commitApprovalArgs(
+function commitApprovalArgs(
   originalArgs: string,
   argsText: string,
 ): Record<string, unknown> | undefined | null {

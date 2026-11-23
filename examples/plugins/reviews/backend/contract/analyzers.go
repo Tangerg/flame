@@ -17,8 +17,6 @@ type Analysis struct {
 	Findings []Finding `json:"findings"`
 }
 
-// Analyzer names a callable contribution in the same installed release as the
-// point value. Reviews interprets this reference; the loader has no business enum.
 type Analyzer struct {
 	Title        string `json:"title"`
 	Contribution string `json:"contribution"`
@@ -55,7 +53,7 @@ func NewAnalyzerContracts() (AnalyzerContracts, error) {
 	if err != nil {
 		return AnalyzerContracts{}, err
 	}
-	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "io.github.tangerg.flame.examples/reviews.analyzer", Composition: plugincontract.Collection, Scope: "installation"}, method.Descriptor())
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "io.github.tangerg.flame.examples/reviews.analyzer", Composition: plugincontract.Collection, Scope: extension.ScopeInstallation}, method.Descriptor())
 	if err != nil {
 		return AnalyzerContracts{}, err
 	}
@@ -77,5 +75,5 @@ func NewAnalyzerPoint() (*plugincontract.Point, error) {
 	if err != nil {
 		return nil, err
 	}
-	return plugincontract.AdmitPoint(plugincontract.PointDescriptor{Protocol: plugincontract.Protocol, Reference: "io.github.tangerg.flame.examples/reviews.analyzers", Composition: plugincontract.Collection, Scope: "installation", Optional: true, Ordering: plugincontract.CanonicalKeys, Value: schema, Applicability: applicability.Bytes()})
+	return plugincontract.AdmitPoint(plugincontract.PointDescriptor{Protocol: plugincontract.Protocol, Reference: "io.github.tangerg.flame.examples/reviews.analyzers", Composition: plugincontract.Collection, Scope: extension.ScopeInstallation, Optional: true, Ordering: plugincontract.CanonicalKeys, Value: schema, Applicability: applicability.Bytes()})
 }

@@ -9,23 +9,19 @@ import (
 	"github.com/samber/lo"
 )
 
-// roots resolves the existing workspace identity before inspection or trust changes.
 type roots interface {
 	ResolveRoot(cwd string) (string, error)
 }
 
-// Inspector resolves lifecycle hooks and project trust for a working directory.
 type Inspector interface {
 	Inspect(ctx context.Context, cwd string) (Inspection, error)
 }
 
-// TrustStore durably mutates project hook trust.
 type TrustStore interface {
 	Trust(ctx context.Context, projectRoot string) error
 	Untrust(ctx context.Context, projectRoot string) error
 }
 
-// Catalog owns lifecycle-hook inspection and trust decisions.
 type Catalog struct {
 	roots         roots
 	inspector     Inspector
@@ -33,7 +29,6 @@ type Catalog struct {
 	invalidations invalidation.Publish
 }
 
-// CatalogView is the resolved hook view after applying trust policy.
 type CatalogView struct {
 	ProjectRoot    string
 	ProjectTrusted bool
@@ -62,7 +57,6 @@ func NewCatalog(roots roots, inspector Inspector, trust TrustStore, invalidation
 	return &Catalog{roots: roots, inspector: inspector, trust: trust, invalidations: invalidations}, nil
 }
 
-// Inspect returns lifecycle hooks and their effective activation state.
 func (h *Catalog) Inspect(ctx context.Context, cwd string) (CatalogView, error) {
 	root, err := h.roots.ResolveRoot(cwd)
 	if err != nil {
@@ -87,7 +81,6 @@ func (h *Catalog) Inspect(ctx context.Context, cwd string) (CatalogView, error) 
 	return resolved, nil
 }
 
-// SetProjectTrust changes whether project hooks may run.
 func (h *Catalog) SetProjectTrust(ctx context.Context, projectRoot string, trusted bool) error {
 	root, err := h.roots.ResolveRoot(projectRoot)
 	if err != nil {

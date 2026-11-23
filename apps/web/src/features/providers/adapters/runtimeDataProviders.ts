@@ -1,12 +1,8 @@
 import { type Contributor } from "@/extensions/definePlugin";
-import { DATA_PROVIDER } from "@/extensions/dataProvider";
+import { DATA_PROVIDER, pageData } from "@/extensions/dataProvider";
 import { type FlameClient } from "@flame/runtime-client";
 import { MODELS_KEY, PROVIDERS_KEY } from "@/features/providers/application/providerQueries";
 import { SelectableModel } from "@/features/providers/application/selectableModel";
-function pageData<T>(request: Promise<{ data: T[] }>): Promise<T[]> {
-  return request.then((page) => page.data);
-}
-
 export function registerProviderDataProviders(
   ctx: Contributor,
   runtimeClient: () => FlameClient,

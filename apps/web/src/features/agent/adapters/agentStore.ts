@@ -4,6 +4,7 @@ import {
 } from "@/features/agent/application/run/rootAttention";
 import { type CancelRunResponse, type RunEvent, type RunRef } from "@flame/runtime-client";
 import {
+  type AgentSessionViewEntry,
   type AgentViewRefreshToken,
   type CancelRunAction,
   type ResumeRunAction,
@@ -42,22 +43,11 @@ import {
   runtimeRunFact,
 } from "@/features/agent/adapters/runtimeAgentFacts";
 import { type AgentOpeningCommand } from "@/features/agent/application/runtimeGateway";
-interface SessionEntry {
-  view: AgentSessionView;
+interface SessionEntry extends AgentSessionViewEntry {
   // problem is presentation the user and local commands own; an authoritative
   // refresh replaces view but never this.
   problem: ProblemPresentation;
-  viewEpoch: bigint;
-  viewRevision: bigint;
-  authoritativeRevision: bigint;
   refreshSequence: bigint;
-  stop: StopCurrentRootRunAction | null;
-  send: SendAgentInputAction | null;
-  resume: ResumeRunAction | null;
-  synchronize: SynchronizeSessionAction | null;
-  cancelRun: CancelRunAction | null;
-  openingCommands: readonly AgentOpeningCommand[];
-  retryOpening: RetryOpeningAction | null;
 }
 
 interface AgentStore {

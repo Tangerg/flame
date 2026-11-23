@@ -24,11 +24,8 @@ const (
 	hookProcessWaitDelay      = 2 * time.Second
 )
 
-// Shell executes hook commands with the host shell.
 type Shell struct{}
 
-// RunHookCommand runs req.Command via the host shell, encoding the typed domain
-// input into the external hook JSON contract at this adapter boundary.
 func (Shell) RunHookCommand(ctx context.Context, req commandRequest) commandResult {
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return commandResult{

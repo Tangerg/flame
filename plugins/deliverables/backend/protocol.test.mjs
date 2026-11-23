@@ -165,7 +165,7 @@ async function connect(dataDirectory) {
     response,
   );
   const meta = (id, origin) => ({
-    [mcpProtocol.constants.InvocationMetadataKey]: {
+    [mcpProtocol.constants.invocationMetadataKey]: {
       id,
       origin,
       target: {
@@ -178,7 +178,7 @@ async function connect(dataDirectory) {
     const method = methods.get(name);
     const member =
       descriptor.methods.some((entry) => entry.name === name) ||
-      name === mcpProtocol.constants.ReceiptMethod;
+      name === mcpProtocol.constants.receiptMethod;
     return decodeReply(
       await client.request(
         {
@@ -316,7 +316,7 @@ it(
     const next = await connect(first.dataDirectory);
     expect(await next.invoke(METHODS.create, input, original)).toEqual(created);
     expect(
-      await next.invoke(mcpProtocol.constants.ReceiptMethod, {
+      await next.invoke(mcpProtocol.constants.receiptMethod, {
         id: "edit-report",
         method: METHODS.edit,
         inputDigest: digestJSON(edit),

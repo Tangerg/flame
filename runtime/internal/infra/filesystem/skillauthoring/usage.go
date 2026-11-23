@@ -19,26 +19,16 @@ import (
 	skillspec "github.com/Tangerg/scope/skills"
 )
 
-// usageFile is the store-root sidecar holding per-skill usage. Its dot-prefixed
-// name is not a valid skill name, so the read-only loader and List skip it. One
-// central file (not per-skill dotfiles) keeps writes serialized under the store
-// mutex and reads cheap for the curator sweep.
 const (
 	usageFile             = ".usage.json"
 	maxUsageMetadataBytes = 64 << 10
 )
 
-// usageRecord tracks one skill's activity for the idle-lifecycle curator.
-// FirstSeen anchors the grace floor for a never-used skill; LastUsed drives the
-// archive threshold. The observed instant is preserved across archive decisions.
 type usageRecord struct {
 	FirstSeen time.Time `json:"firstSeen"`
 	LastUsed  time.Time `json:"lastUsed,omitzero"`
 }
 
-// lastActivity is the most recent signal of relevance — a load if the skill has
-// been used, else when the store first saw it (so a brand-new, never-used skill
-// gets the grace floor before it can be judged idle).
 func (u usageRecord) lastActivity() time.Time {
 	if u.LastUsed.After(u.FirstSeen) {
 		return u.LastUsed
@@ -46,9 +36,6 @@ func (u usageRecord) lastActivity() time.Time {
 	return u.FirstSeen
 }
 
-// RecordUse marks a skill loaded at now: it updates the last-used time (seeding
-// FirstSeen on first sighting), so the curator can tell an actively-used skill
-// from an idle one. Best-effort from the caller's side.
 func (s *Store) RecordUse(ctx context.Context, name string, now time.Time) error {
 	if err := contextError(ctx, "record skill use"); err != nil {
 		return err
@@ -74,22 +61,12 @@ func (s *Store) RecordUse(ctx context.Context, name string, now time.Time) error
 		record.FirstSeen = ts
 		record.LastUsed = ts
 	} else if ts.After(record.LastUsed) {
-		// Observation time is sampled before acquiring the library lease.
 		record.LastUsed = ts
 	}
 	usage[name] = record
 	return writeUsage(ctx, root, usage)
 }
 
-// SweepIdle archives Agent-authored skills idle at or before the advised cutoff, returning the
-// names it archived and every public file identity it changed. A valid proposal origin is the provenance gate; a
-// human-authored Skill has none and is never auto-curated. Archiving moves the
-// Skill to _archive (never deletes)
-// and drops its usage record, so a later restore starts with a fresh grace floor
-// rather than being re-archived on the next sweep. A skill with no record yet is
-// seeded at now (persisted), giving it the full inactivity grace anchored from
-// its first sweep before it can be judged idle. now is explicit so the policy
-// stays testable.
 func (s *Store) SweepIdle(ctx context.Context, now time.Time, inactiveSince time.Time) ([]string, []string, error) {
 	if err := contextError(ctx, "sweep skills"); err != nil {
 		return nil, nil, err
@@ -128,7 +105,7 @@ func (s *Store) SweepIdle(ctx context.Context, now time.Time, inactiveSince time
 			return archived, identities, fmt.Errorf("skillauthoring: load idle skill %q: %w", name, err)
 		}
 		if skills.ProposalOrigin(skill.Metadata[metadataOrigin]).Validate() != nil {
-			continue // provenance gate: only agent-authored skills auto-curate
+			continue
 		}
 		record := usage[name]
 		if record.FirstSeen.IsZero() {
@@ -144,8 +121,6 @@ func (s *Store) SweepIdle(ctx context.Context, now time.Time, inactiveSince time
 			archived = append(archived, name)
 			continue
 		}
-		// Persist the (possibly just-seeded) FirstSeen so a never-used skill's
-		// grace is anchored to its first sweep, not re-seeded to now every pass.
 		usage[name] = record
 	}
 	if err := writeUsage(ctx, root, usage); err != nil {
@@ -154,9 +129,6 @@ func (s *Store) SweepIdle(ctx context.Context, now time.Time, inactiveSince time
 	return archived, distinctPaths(identities), nil
 }
 
-// activeSkillNames lists the active skill directories directly under the store
-// root — every directory that isn't the archive area or a
-// dotfile.
 func activeSkillNames(ctx context.Context, root *os.Root) ([]string, error) {
 	if err := contextError(ctx, "list active skills"); err != nil {
 		return nil, err
@@ -165,8 +137,6 @@ func activeSkillNames(ctx context.Context, root *os.Root) ([]string, error) {
 	return active, err
 }
 
-// readUsageFile reads the bounded usage metadata, refusing a file that changed
-// while it was read; an absent file is not present.
 func readUsageFile(ctx context.Context, root *os.Root) ([]byte, bool, error) {
 	file, opened, err := filesystem.OpenFileAt(root, usageFile, maxUsageMetadataBytes)
 	switch {

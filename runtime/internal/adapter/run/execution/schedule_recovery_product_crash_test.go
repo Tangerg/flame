@@ -22,6 +22,7 @@ import (
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -29,6 +30,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/frame/process/runner"
@@ -72,8 +74,6 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			// The independent runner is owned outside the Host processes being
-			// killed. Every later Host must reconnect to this original authority.
 			t.Cleanup(func() {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
@@ -102,7 +102,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				ctx, cancel := context.WithTimeout(t.Context(), 40*time.Second)
 				defer cancel()
 				command := exec.CommandContext(ctx, binary, "-test.run=^TestScheduleRecoveryCrashHelper$", "-test.timeout=35s")
-				command.Env = append(os.Environ(), "FLAME_HOME="+home, "FLAME_TEST_SCHEDULE_CRASH="+phase, "FLAME_TEST_SCHEDULE_SOURCE="+source, "FLAME_TEST_SCHEDULE_EVIDENCE="+evidence, "FLAME_TEST_FIRST_PARTY_DIRECTORY="+packages)
+				command.Env = append(os.Environ(), localruntime.ProductRootVariable+"="+home, "FLAME_TEST_SCHEDULE_CRASH="+phase, "FLAME_TEST_SCHEDULE_SOURCE="+source, "FLAME_TEST_SCHEDULE_EVIDENCE="+evidence, "FLAME_TEST_FIRST_PARTY_DIRECTORY="+packages)
 				if cut == "edited" {
 					command.Env = append(command.Env, "FLAME_TEST_SCHEDULE_EDITED=1")
 				}
@@ -155,7 +155,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				initial = "edited"
 			}
 			invoke(initial, true)
-			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -241,7 +241,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 				phase = cut
 			}
 			invoke(phase, false)
-			stores, err = persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+			stores, err = persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -386,7 +386,7 @@ func TestScheduleCreateRecoversAcrossSIGKILLCuts(t *testing.T) {
 
 func assertScheduleResolutionCommitted(t *testing.T, home, sessionID, rootID string, original scoperun.EffectID) {
 	t.Helper()
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -437,8 +437,6 @@ func scheduleLossPackage(t *testing.T, module, packages string) (string, string)
 	return source, evidence
 }
 
-// Inspect a stopped release through the public backend contract. The crash
-// driver never reads or edits the plugin's private schema or ledger.
 func readScheduleOwner(t *testing.T, packages, dataDirectory string, original sdk.CallToolParamsRaw) string {
 	t.Helper()
 	command := exec.CommandContext(t.Context(), filepath.Join(packages, "schedules", "bin", "schedules"))
@@ -462,7 +460,7 @@ func readScheduleOwner(t *testing.T, packages, dataDirectory string, original sd
 	if err != nil {
 		t.Fatal(err)
 	}
-	page, err := testsupport.CallCapability[testsupport.SchedulesListInput, testsupport.SchedulesPage](t.Context(), session, contract, "schedules", testsupport.SchedulesListV1Method, "", testsupport.SchedulesListInput{}, sdk.ParamsBase{})
+	page, err := testsupport.CallCapability[testsupport.SchedulesListInput, testsupport.SchedulesPage](t.Context(), session, contract, "schedules", testsupport.SchedulesListV2Method, "", testsupport.SchedulesListInput{}, sdk.ParamsBase{})
 	if err != nil || len(page.Rows) != 1 || page.NextCursor != "" {
 		t.Fatalf("original backend creation: %+v, %v", page, err)
 	}
@@ -491,10 +489,10 @@ func readScheduleOwner(t *testing.T, packages, dataDirectory string, original sd
 			ID string `json:"schedule_id"`
 		} `json:"schedule"`
 	}
-	if err := json.Unmarshal(encoded, &output); err != nil || output.Schedule.ID != page.Rows[0].ID {
+	if err := json.Unmarshal(encoded, &output); err != nil || output.Schedule.ID != page.Rows[0].Id {
 		t.Fatalf("receipt differs from original creation: %s, %v", encoded, err)
 	}
-	return page.Rows[0].ID
+	return page.Rows[0].Id
 }
 
 func storedScopeLog(payload []byte) (scoperun.Log, error) {

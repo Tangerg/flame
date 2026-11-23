@@ -12,17 +12,16 @@ import (
 type Provider string
 
 const (
-	// Named vendors with a model catalog. Each routes through its own adapter,
-	// which encodes the vendor endpoint. IAM-only vendors (amazonbedrock, vertexai) are
-	// intentionally absent — they don't fit the "paste an API key" model.
+	// IAM-only vendors (amazonbedrock, vertexai) are intentionally absent: they do not
+	// fit the API-key model.
 	providerAnthropic   Provider = "anthropic"
 	providerOpenAI      Provider = "openai"
-	providerMoonshot    Provider = "moonshot" // Kimi (OpenAI-compatible)
-	providerDeepSeek    Provider = "deepseek" // DeepSeek (OpenAI-compatible)
-	providerAlibaba     Provider = "alibaba"  // Qwen
+	providerMoonshot    Provider = "moonshot"
+	providerDeepSeek    Provider = "deepseek"
+	providerAlibaba     Provider = "alibaba"
 	providerAzureOpenAI Provider = "azureopenai"
 	providerFireworks   Provider = "fireworks"
-	providerGoogle      Provider = "google" // Gemini
+	providerGoogle      Provider = "google"
 	providerGroq        Provider = "groq"
 	providerHuggingface Provider = "huggingface"
 	providerMinimax     Provider = "minimax"
@@ -30,14 +29,10 @@ const (
 	providerOpenRouter  Provider = "openrouter"
 	providerPerplexity  Provider = "perplexity"
 	providerTogether    Provider = "together"
-	providerXAI         Provider = "xai" // Grok
+	providerXAI         Provider = "xai"
 	providerXiaomi      Provider = "xiaomi"
-	providerZhipu       Provider = "zhipu" // GLM
+	providerZhipu       Provider = "zhipu"
 
-	// Generic "bring-your-own-endpoint" providers: the user supplies the base
-	// URL + key + model id, and the Run executes through the OpenAI- / Anthropic-
-	// wire adapter. They cover any compatible gateway not named above (and have
-	// no catalog — the model id is user-supplied).
 	providerOpenAICompatible    Provider = "openai-compatible"
 	providerAnthropicCompatible Provider = "anthropic-compatible"
 )
@@ -52,8 +47,6 @@ func bundledProvider(id Provider, endpoint flamemodel.EndpointPolicy, defaultMod
 	return providerProfile{profile: modelprovider.Profile{ID: string(id), Endpoint: endpoint, Authentication: modelprovider.KeyRequired, ModelSource: modelprovider.BundledModels, DefaultModel: defaultModel, Models: catalog.Models(string(id))}, chatBuilder: builder}
 }
 
-// endpointSupply says who provides the endpoint an endpoint-listed provider
-// reads its models from.
 type endpointSupply uint8
 
 const (
@@ -64,6 +57,7 @@ const (
 func endpointProvider(id Provider, endpoint flamemodel.EndpointPolicy, supply endpointSupply, builder buildFunc) providerProfile {
 	return providerProfile{profile: modelprovider.Profile{ID: string(id), Endpoint: endpoint, Authentication: modelprovider.KeyRequired, EndpointRequired: supply == userEndpoint, ModelSource: modelprovider.EndpointModels, Models: []catalog.Model{}}, chatBuilder: builder}
 }
+
 func (p providerProfile) withEmbedding(defaultModel string, builder embeddingBuildFunc) providerProfile {
 	p.profile.Embedding = &modelprovider.EmbeddingProfile{DefaultModel: defaultModel}
 	p.embeddingBuilder = builder
@@ -85,6 +79,7 @@ func mustProviderCatalog(profiles ...providerProfile) providerCatalog {
 	}
 	return providerCatalog{profiles: profiles}
 }
+
 func (c providerCatalog) lookup(id Provider) (providerProfile, bool) {
 	i := slices.IndexFunc(c.profiles, func(p providerProfile) bool { return p.profile.ID == string(id) })
 	if i < 0 {
@@ -92,6 +87,7 @@ func (c providerCatalog) lookup(id Provider) (providerProfile, bool) {
 	}
 	return c.profiles[i], true
 }
+
 func (c providerCatalog) published() []modelprovider.Profile {
 	result := make([]modelprovider.Profile, 0, len(c.profiles))
 	for _, p := range c.profiles {

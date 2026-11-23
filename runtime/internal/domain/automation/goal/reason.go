@@ -39,9 +39,6 @@ func (r ReasonCode) Valid() bool {
 	}
 }
 
-// Reason is immutable stopping context. A runNotCompleted pause carries the
-// ending of the Run that caused it and a blockedByModel block carries the
-// model's explanation; every other reason is its code alone.
 type Reason struct {
 	code        ReasonCode
 	runOutcome  run.Outcome
@@ -51,12 +48,10 @@ type Reason struct {
 func (r Reason) Code() ReasonCode { return r.code }
 func (r Reason) IsNone() bool     { return r.code == ReasonNone }
 
-// RunOutcome reports the ending of the Run that paused a runNotCompleted Goal.
 func (r Reason) RunOutcome() (run.Outcome, bool) {
 	return r.runOutcome, r.code == ReasonRunNotCompleted
 }
 
-// Explanation reports the model's words for a blockedByModel Goal.
 func (r Reason) Explanation() (string, bool) {
 	return r.explanation, r.code == ReasonBlockedByModel
 }
@@ -122,8 +117,11 @@ func (r Reason) validateFor(status Status) error {
 		}
 	case StatusPaused, StatusBlocked:
 		validated, err := newReason(status, r.code, r.runOutcome, r.explanation)
-		if err != nil || validated != r {
-			return fmt.Errorf("%w: invalid %s reason: %v", ErrInvalid, status, err)
+		if err != nil {
+			return fmt.Errorf("%w: invalid %s reason: %w", ErrInvalid, status, err)
+		}
+		if validated != r {
+			return fmt.Errorf("%w: %s reason is not in canonical form", ErrInvalid, status)
 		}
 	}
 	return nil

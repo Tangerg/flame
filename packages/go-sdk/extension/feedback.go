@@ -1,6 +1,5 @@
 package extension
 
-// FeedbackDraft ties the authored signal to the same target through command recovery.
 type FeedbackDraft struct {
 	Source    *ContributionSource `json:"source,omitempty"`
 	SessionID string              `json:"sessionId,omitempty"`

@@ -15,8 +15,6 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// A checkpoint retains call attribution and receipt authority across waits.
-// A completed outcome is durable only with its Scope settlement and Item.
 type toolCallCapture struct {
 	Receipt   *toolReceiptEvidence
 	MemberID  string
@@ -24,20 +22,18 @@ type toolCallCapture struct {
 	Start     runs.ToolCallStarted
 }
 
-// toolCallCaptureWire stores admitted arguments only: a capture exists to
-// recover a call that reached its Tool, and rejected input never does.
 type toolCallCaptureWire struct {
 	Receipt           *toolReceiptEvidence `json:"receipt,omitzero"`
-	MemberID          string               `json:"member_id"`
-	ProcessID         scoperun.ProcessID   `json:"process_id"`
-	CallID            string               `json:"call_id"`
-	ModelCallSequence uint64               `json:"model_call_sequence"`
-	ToolCallIndex     uint32               `json:"tool_call_index"`
-	SourceCallID      string               `json:"source_call_id"`
+	MemberID          string               `json:"memberId"`
+	ProcessID         scoperun.ProcessID   `json:"processId"`
+	CallID            string               `json:"callId"`
+	ModelCallSequence uint64               `json:"modelCallSequence"`
+	ToolCallIndex     uint32               `json:"toolCallIndex"`
+	SourceCallID      string               `json:"sourceCallId"`
 	Source            tool.Ref             `json:"source,omitzero"`
-	ToolName          string               `json:"tool_name"`
+	ToolName          string               `json:"toolName"`
 	Arguments         tool.Arguments       `json:"arguments"`
-	SafetyClass       tool.SafetyClass     `json:"safety_class"`
+	SafetyClass       tool.SafetyClass     `json:"safetyClass"`
 }
 
 func (t toolCallCapture) wire() toolCallCaptureWire {
@@ -75,7 +71,7 @@ type toolResultPresentation struct {
 }
 
 type toolReceiptEvidence struct {
-	EffectID  scoperun.EffectID `json:"effect_id"`
+	EffectID  scoperun.EffectID `json:"effectId"`
 	Release   framevalue.Digest `json:"release"`
 	Authority framevalue.Digest `json:"authority"`
 }
@@ -140,15 +136,24 @@ func (i *interactionSession) rememberToolMetadata(metadata toolCallMetadata) err
 	return nil
 }
 
-func (i *interactionSession) toolResultProjection(relation scoperun.ProcessID, sequence uint64, entry interaction.ResultEntry) (runs.ExecutorEvent, error) {
+type toolResultFact struct {
+	member    runs.ExecutorMember
+	committed runs.ToolResultsCommitted
+}
+
+func (f toolResultFact) event() runs.ExecutorEvent {
+	return runs.ExecutorEvent{Member: f.member, Payload: f.committed}
+}
+
+func (i *interactionSession) toolResultProjection(relation scoperun.ProcessID, sequence uint64, entry interaction.ResultEntry) (toolResultFact, error) {
 	member := i.executorMember(relation)
 	identity, err := logicalToolCallID(relation, sequence, entry.ToolCallIndex, entry.Call.ID, entry.Call.Name)
 	if err != nil {
-		return runs.ExecutorEvent{}, err
+		return toolResultFact{}, err
 	}
 	publication, err := resultPublication(identity, entry)
 	if err != nil {
-		return runs.ExecutorEvent{}, err
+		return toolResultFact{}, err
 	}
 	fact := runs.ToolResultsCommitted{Publication: publication}
 	i.state.mu.Lock()
@@ -161,22 +166,22 @@ func (i *interactionSession) toolResultProjection(relation scoperun.ProcessID, s
 	end := runs.ToolCallFinished{CallID: identity.String(), ModelResult: new(entry.Result.Clone())}
 	if prepared {
 		if metadata.MemberID != member.MemberID || metadata.ProcessID != relation {
-			return runs.ExecutorEvent{}, errors.New("execution: result metadata belongs to another member")
+			return toolResultFact{}, errors.New("execution: result metadata belongs to another member")
 		}
 		start = metadata.Start
 		if presentation := metadata.presentation; presentation != nil {
 			end.Result, end.Offload = presentation.result, presentation.offload
 			end.OutputText, end.MutatedPaths, end.Failure = presentation.outputText, presentation.mutatedPaths, presentation.failure
 		} else if metadata.Receipt != nil {
-			return runs.ExecutorEvent{}, errors.New("execution: captured Tool settled without its presentation")
+			return toolResultFact{}, errors.New("execution: captured Tool settled without its presentation")
 		}
 	} else if entry.Disposition != interaction.ResultRejected {
-		return runs.ExecutorEvent{}, fmt.Errorf("execution: known Tool result %q lost its product metadata", entry.Call.ID)
+		return toolResultFact{}, fmt.Errorf("execution: known Tool result %q lost its product metadata", entry.Call.ID)
 	}
 	if end.Result == nil {
 		result, present, err := runtimeToolResult(entry.Result.Output)
 		if err != nil {
-			return runs.ExecutorEvent{}, err
+			return toolResultFact{}, err
 		}
 		if present {
 			end.Result = &result
@@ -188,7 +193,7 @@ func (i *interactionSession) toolResultProjection(relation scoperun.ProcessID, s
 	}
 	fact.Starts = append(fact.Starts, start)
 	fact.Results = append(fact.Results, end)
-	return runs.ExecutorEvent{Member: member, Payload: fact}, nil
+	return toolResultFact{member: member, committed: fact}, nil
 }
 
 func (i *interactionSession) retirePublishedToolMetadata(identities []runs.InvocationID) {
@@ -217,8 +222,6 @@ func (i *interactionSession) retirePublishedToolMetadata(identities []runs.Invoc
 	}
 }
 
-// The next model dispatch closes this member's investigated Tool prefix.
-// Historical Tool metadata cannot turn a later model crash into that class.
 func (i *interactionSession) retireToolReceiptPrefix(memberID string) {
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
@@ -251,8 +254,6 @@ func decodeToolCalls(values []toolCallCaptureWire, processes map[scoperun.Proces
 }
 
 func resultPublication(identity runs.InvocationID, entry interaction.ResultEntry) (runs.ResultPublication, error) {
-	// A locally rejected proposal has no Scope Effect. Its product receipt still
-	// binds the exact model-visible result to the original call coordinates.
 	data, err := json.Marshal(struct {
 		Reference   string                        `json:"reference,omitempty"`
 		Index       uint32                        `json:"index"`

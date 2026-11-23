@@ -14,9 +14,6 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-// BorrowedSession holds one call in the original Use. Context propagates
-// withdrawal to the call; Close joins its work without closing the process.
-
 type BorrowedSession struct {
 	ctx     context.Context
 	session *sdk.ClientSession
@@ -29,6 +26,7 @@ type BorrowedSession struct {
 
 func (b *BorrowedSession) Context() context.Context    { return b.ctx }
 func (b *BorrowedSession) Session() *sdk.ClientSession { return b.session }
+
 func (b *BorrowedSession) Close() error {
 	b.once.Do(func() {
 		if b.work.Valid() {
@@ -74,8 +72,6 @@ func (c *connections) borrowSession(ctx context.Context, session *sdk.ClientSess
 
 type borrowContextKey struct{}
 
-// BorrowActivation restores only the original approved graph. The catalog's
-// current role choices cannot retarget a durable command or waiting Run.
 func (p *Pool) BorrowActivation(ctx context.Context, id mcpserver.ID, activation plugin.Activation) (_ *BorrowedSession, err error) {
 	defer func() { err = connectionError(id, err) }()
 	p.inner.mu.Lock()
@@ -140,9 +136,6 @@ func (b *BorrowedSession) Activation() (plugin.Activation, error) {
 	return b.managed.activation()
 }
 
-// SourceFingerprint describes the exact server realized during this Use's
-// setup. Actor authority names its installation grant; it does not include
-// the transport and executable configuration captured by a tool manifest.
 func (b *BorrowedSession) SourceFingerprint() (framevalue.Digest, error) {
 	if b.managed == nil || b.ctx.Err() != nil {
 		return framevalue.Digest{}, ErrUnavailable

@@ -9,8 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 )
 
-// The protected-directory barrier is the one invariant that does not depend on
-// approval mode, so a second mutation vocabulary must not open a way around it.
 func TestEditRefusesProtectedDirectories(t *testing.T) {
 	root := t.TempDir()
 	config := filepath.Join(root, ".git", "config")

@@ -11,11 +11,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
-// ReviveAcceptedContinuations runs before abandoned ownership is classified.
-// An inconclusive read/restore stops startup and retains the handoff; only a
-// proven incompatible boundary yields to the existing active-Run loss policy.
 func (c *Coordinator) ReviveAcceptedContinuations(ctx context.Context) error {
 	accepted, err := c.acceptedContinuations.List(ctx)
 	if err != nil {
@@ -79,9 +77,6 @@ func (c *Coordinator) reviveAcceptedContinuation(ctx context.Context, accepted A
 	return err
 }
 
-// unrestorableError proves an accepted handoff can never resume against the
-// durable state it names. Every other failure is inconclusive and keeps the
-// handoff for the next startup.
 type unrestorableError struct{ cause error }
 
 func (e unrestorableError) Error() string { return e.cause.Error() }
@@ -136,8 +131,6 @@ func (c *Coordinator) restoreAccepted(ctx context.Context, accepted AcceptedCont
 	return acceptedResumption{answers: answers, input: input, waiting: waiting, continuation: continuation}, nil
 }
 
-// acceptedInput reads the user message the handoff added, which must still be
-// the root Run's own User Item.
 func (c *Coordinator) acceptedInput(ctx context.Context, accepted AcceptedContinuation, rootRunID identity.RunID) (*CommittedUserInput, error) {
 	if accepted.InputItemID.IsZero() {
 		return nil, nil
@@ -157,7 +150,7 @@ func (c *Coordinator) acceptedInput(ctx context.Context, accepted AcceptedContin
 }
 
 func (c *Coordinator) retireUnrestorableAccepted(ctx context.Context, accepted AcceptedContinuation, cause error) error {
-	slog.WarnContext(ctx, "runs: accepted continuation is not restorable", "run.id", accepted.RootRunID(), "error", cause)
+	slog.WarnContext(ctx, "runs: accepted continuation is not restorable", telemetry.RunID(accepted.RootRunID()), telemetry.Error(cause))
 	return c.acceptedContinuations.Delete(ctx, accepted.RootRunID())
 }
 

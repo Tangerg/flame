@@ -5,7 +5,6 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
-	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 
 	"github.com/Tangerg/frame"
 )
@@ -23,7 +22,7 @@ func define() (*plugincontract.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	contracts.Update, err = pluginmcp.NewMethod[rpc.UpdateInput, memory.ItemSnapshot](frame.MethodConfig{Name: rpc.Update, Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Edit the current content or pin state of a memory item."})
+	contracts.Update, err = pluginmcp.NewMethod[rpc.UpdateInput, rpc.Item](frame.MethodConfig{Name: rpc.Update, Kind: frame.Command, Target: extension.ScopeInstallation, Description: "Edit the current content or pin state of a memory item."})
 	if err != nil {
 		return nil, err
 	}
@@ -35,11 +34,11 @@ func define() (*plugincontract.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	contracts.Items, err = pluginmcp.NewMethod[rpc.ItemsInput, []memory.ItemSnapshot](frame.MethodConfig{Name: rpc.Items, Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read active memory items that can inform a Run."})
+	contracts.Items, err = pluginmcp.NewMethod[rpc.ItemsInput, []rpc.Item](frame.MethodConfig{Name: rpc.Items, Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Read active memory items that can inform a Run."})
 	if err != nil {
 		return nil, err
 	}
-	contracts.Search, err = pluginmcp.NewMethod[rpc.SearchInput, []memory.ItemSnapshot](frame.MethodConfig{Name: rpc.Search, Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Rank active memories for the supplied project and query."})
+	contracts.Search, err = pluginmcp.NewMethod[rpc.SearchInput, []rpc.Item](frame.MethodConfig{Name: rpc.Search, Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Rank active memories for the supplied project and query."})
 	if err != nil {
 		return nil, err
 	}

@@ -7,7 +7,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-// MaximumIdentityBytes bounds a flat identity or one member path component.
 const MaximumIdentityBytes = 256
 
 type executorIdentityValue struct {
@@ -28,9 +27,6 @@ func parseExecutionIdentity(kind, text string) (executorIdentityValue, error) {
 	return executorIdentityValue{text: text}, nil
 }
 
-// requireConstructedExecutionIdentity reports whether an identity came from [parseExecutionIdentity]. Its exact
-// byte envelope is established there, so the only identity that can reach a
-// caller without it is the zero one.
 func requireConstructedExecutionIdentity(kind, text string) error {
 	if text != "" {
 		return nil
@@ -38,9 +34,6 @@ func requireConstructedExecutionIdentity(kind, text string) error {
 	return validateExecutionIdentity(kind, text)
 }
 
-// Executor identities travel as fields of the Run facts, checkpoints and
-// bindings that carry them, so most callers need the rule rather than an opaque value.
-// The Parse constructors below exist for the two that hold the identity itself.
 func ValidateExecutor(text string) error { return validateExecutionIdentity("executor identity", text) }
 
 func ValidateMember(text string) error {
@@ -60,9 +53,6 @@ func ValidateInvocation(text string) error {
 	return validateExecutionIdentity("invocation identity", text)
 }
 
-// validateOptionalMember accepts an absent identity.
-// A caller that must tell absent from malformed compares against "" itself; no
-// caller has ever needed the distinction returned to it.
 func validateOptionalMember(text string) error {
 	if text == "" {
 		return nil
@@ -70,8 +60,6 @@ func validateOptionalMember(text string) error {
 	return ValidateMember(text)
 }
 
-// MemberID carries an executor-owned process path. The executor owns its ancestry;
-// the port preserves every component instead of imposing a flat identity limit.
 type MemberID struct{ executorIdentityValue }
 
 func ParseMember(text string) (MemberID, error) {
@@ -82,6 +70,7 @@ func ParseMember(text string) (MemberID, error) {
 }
 
 func (i MemberID) String() string { return i.text }
+
 func (i MemberID) Validate() error {
 	if i.text == "" {
 		return ValidateMember(i.text)
@@ -89,8 +78,6 @@ func (i MemberID) Validate() error {
 	return nil
 }
 
-// InvocationID identifies a logical model or Tool call within a Runtime execution.
-// Scope retains its separate Effect identity; the adapter binds that Effect to this call.
 type InvocationID struct{ executorIdentityValue }
 
 func ParseInvocation(text string) (InvocationID, error) {
@@ -99,6 +86,7 @@ func ParseInvocation(text string) (InvocationID, error) {
 }
 
 func (i InvocationID) String() string { return i.text }
+
 func (i InvocationID) Validate() error {
 	return requireConstructedExecutionIdentity("invocation identity", i.text)
 }

@@ -4,7 +4,7 @@ export type VisualWorkIndexState = (typeof VISUAL_WORK_INDEX_STATES)[number];
 
 export type VisualShellTheme = "light" | "dark";
 
-export const VISUAL_SHELL_OVERLAYS = ["finder", "commands"] as const;
+const VISUAL_SHELL_OVERLAYS = ["finder", "commands"] as const;
 
 export type VisualShellOverlay = (typeof VISUAL_SHELL_OVERLAYS)[number];
 

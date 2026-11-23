@@ -7,6 +7,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
@@ -27,8 +28,8 @@ func newApprovalsCommand(provider runtimeProvider) *cobra.Command {
 			return listApprovalRules(cmd, provider, listSession, asJSON)
 		},
 	}
-	list.Flags().StringVarP(&listSession, "session", "s", "", "Include rules visible from this session")
-	list.Flags().BoolVar(&asJSON, "json", false, "Write approval rules as JSON")
+	list.Flags().StringVarP(&listSession, sessionFlag, "s", "", "Include rules visible from this session")
+	list.Flags().BoolVar(&asJSON, jsonFlag, false, "Write approval rules as JSON")
 	command.AddCommand(list)
 
 	var yes bool
@@ -50,8 +51,8 @@ func newApprovalsCommand(provider runtimeProvider) *cobra.Command {
 			return err
 		},
 	}
-	remove.Flags().BoolVarP(&yes, "yes", "y", false, "Confirm forgetting the rule")
-	remove.Flags().StringVarP(&deleteSession, "session", "s", "", "Session used to complete visible rule IDs")
+	remove.Flags().BoolVarP(&yes, yesFlag, "y", false, "Confirm forgetting the rule")
+	remove.Flags().StringVarP(&deleteSession, sessionFlag, "s", "", "Session used to complete visible rule IDs")
 	remove.ValidArgsFunction = completeApprovalRuleIDs(provider, &deleteSession)
 	command.AddCommand(remove)
 	return command
@@ -77,7 +78,7 @@ func completeApprovalRuleIDs(provider runtimeProvider, sessionID *string) cobra.
 			if needle != "" && !strings.HasPrefix(rule.ID, toComplete) && !strings.Contains(strings.ToLower(label), needle) {
 				continue
 			}
-			items = append(items, rule.ID+"\t"+string(rule.Scope)+" · "+label)
+			items = append(items, rule.ID+"\t"+string(rule.Scope)+format.Separator+label)
 		}
 		return items, cobra.ShellCompDirectiveNoFileComp
 	}

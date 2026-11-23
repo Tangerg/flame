@@ -1,6 +1,6 @@
 import { type Message } from "@/features/agent/public/sessionView";
 import { flattenMarkdown, flattenText } from "@/features/agent/public/messageContent";
-export interface MessageCopyPayloads {
+interface MessageCopyPayloads {
   markdown: string;
   plain: string;
   canCopy: boolean;

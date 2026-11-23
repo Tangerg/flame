@@ -9,29 +9,26 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
 const recoveryInterval = time.Second
 
-// RunRecovery reconciles abandoned Run trees and their Goal accounting.
 type RunRecovery interface {
 	Reconcile(ctx context.Context) (int, error)
 }
 
-// GoalRecovery reconciles Goal lifecycle after Run terminal accounting has settled.
 type GoalRecovery interface {
 	Reconcile(ctx context.Context) error
 }
 
-// RecoveryCoordinator is the single ordered recovery entry point shared by startup and
-// periodic sweeps. Each admitted sweep reconciles Runs before Goals.
 type RecoveryCoordinator struct {
 	runs      RunRecovery
 	goals     GoalRecovery
 	sweepSlot chan struct{}
 }
 
-// NewRecovery constructs the single ordered recovery owner for one Runtime.
 func NewRecovery(runs RunRecovery, goals GoalRecovery) (*RecoveryCoordinator, error) {
 	if lo.IsNil(runs) {
 		return nil, errors.New("ownership recovery: Run reconciler is required")
@@ -42,9 +39,6 @@ func NewRecovery(runs RunRecovery, goals GoalRecovery) (*RecoveryCoordinator, er
 	return &RecoveryCoordinator{runs: runs, goals: goals, sweepSlot: make(chan struct{}, 1)}, nil
 }
 
-// Reconcile performs one non-blocking recovery sweep. acquired is false when
-// another sweep already holds ownership and is responsible for the
-// current pass.
 func (c *RecoveryCoordinator) Reconcile(ctx context.Context) (acquired bool, err error) {
 	if err := recoveryContextError(ctx); err != nil {
 		return false, err
@@ -58,8 +52,6 @@ func (c *RecoveryCoordinator) Reconcile(ctx context.Context) (acquired bool, err
 	return true, c.reconcileOwned(ctx)
 }
 
-// ReconcileStartup joins any current recovery sweep, then reconciles Runs before
-// Goals before Runtime begins serving requests.
 func (c *RecoveryCoordinator) ReconcileStartup(ctx context.Context) error {
 	if err := recoveryContextError(ctx); err != nil {
 		return err
@@ -73,8 +65,6 @@ func (c *RecoveryCoordinator) ReconcileStartup(ctx context.Context) error {
 	return c.reconcileOwned(ctx)
 }
 
-// RunWorker reconciles state abandoned by the actual Run and Goal owners.
-// A failed sweep remains observable and is retried at the next interval.
 func (c *RecoveryCoordinator) RunWorker(ctx context.Context) {
 	ticker := time.NewTicker(recoveryInterval)
 	defer ticker.Stop()
@@ -88,19 +78,13 @@ func (c *RecoveryCoordinator) RunWorker(ctx context.Context) {
 			if err == nil {
 				failed = false
 			} else if !failed && ctx.Err() == nil {
-				// Persistent storage failures must remain visible without emitting
-				// the same outage on every one-second retry.
-				slog.ErrorContext(ctx, "ownership recovery: sweep failed", "error", err)
+				slog.ErrorContext(ctx, "ownership recovery: sweep failed", telemetry.Error(err))
 				failed = true
 			}
 		}
 	}
 }
 
-// sweep bounds one reconciliation. A defect in a sweep is that sweep's failure,
-// carrying its stack so the worker's own outage reporting decides how loudly to
-// repeat it; a panic leaving this goroutine would end the process and every
-// Session in it.
 func (c *RecoveryCoordinator) sweep(ctx context.Context) (err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {

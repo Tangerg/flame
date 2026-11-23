@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"iter"
 	"log/slog"
-	"runtime/debug"
 	"strconv"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
 func presentRunEvent(event runs.ProjectionEvent) protocol.StreamEvent {
@@ -48,8 +48,6 @@ func presentRunEvent(event runs.ProjectionEvent) protocol.StreamEvent {
 	}
 }
 
-// presentPlan publishes what a root Run changed. The stream and plan.get go through
-// one shape, so live following and cold recovery cannot disagree about the Plan.
 func presentPlan(event runs.PlanSnapshot) protocol.Plan {
 	state := presentPlanState(event.Revision, event.UpdatedAt, event.Steps)
 	return protocol.Plan{SessionID: event.SessionID.String(), State: &state}
@@ -71,8 +69,6 @@ func presentPlanStepList(steps []plan.Step) []protocol.PlanStep {
 	return presented
 }
 
-// presentStoredPlan is the same projection read cold. It goes through the run-event
-// shape so the two cannot describe the list differently: one presenter, one answer.
 func presentStoredPlan(sessionID identity.SessionID, current plan.Current) protocol.Plan {
 	out := protocol.Plan{SessionID: sessionID.String()}
 	state, committed := current.State()
@@ -97,10 +93,6 @@ func presentPlanStatus(status plan.Status) protocol.PlanStatus {
 	}
 }
 
-// mapRunEvents publishes the application's run events. A presenter defect ends
-// the stream with its cause rather than with a clean close: a consumer must be
-// able to tell "this run stopped producing events" from "this runtime could not
-// describe one".
 func mapRunEvents(in iter.Seq[runs.Event]) iter.Seq2[protocol.RunEvent, error] {
 	return func(yield func(protocol.RunEvent, error) bool) {
 		for event := range in {
@@ -121,17 +113,12 @@ func mapRunEvents(in iter.Seq[runs.Event]) iter.Seq2[protocol.RunEvent, error] {
 	}
 }
 
-// presentedRunEvent contains a presenter defect and reports it as the stream's
-// failure. It wraps only the presenter call: a panic raised by the downstream
-// range body travels through yield and must keep travelling.
 func presentedRunEvent(event runs.ProjectionEvent) (presented protocol.StreamEvent, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			presented = protocol.StreamEvent{}
-			// The client learns its stream failed; only the stack says which
-			// projection shape the presenter could not read.
 			slog.Error("delivery: run event presenter panicked",
-				"panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+				telemetry.Panic(recovered))
 			err = protocol.NewFailure(protocol.ErrInternalError, fmt.Sprintf("the runtime could not present a run event: %v", recovered))
 		}
 	}()

@@ -9,13 +9,11 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 )
 
-// ResourceRetirement names the resource generation retired by one committed
-// Session write-set. Only that transaction may persist its cleanup authority;
-// constructing this value never authorizes filesystem deletion.
 type ResourceRetirement struct {
 	id        uuid.UUID
 	sessionID identity.SessionID
@@ -47,17 +45,11 @@ func (r ResourceRetirement) Validate() error {
 	return err
 }
 
-// Cleanup removes one family of resources a retired Session generation
-// owned. Retire must be idempotent: a failed cleanup keeps the retirement
-// pending and is attempted again.
 type Cleanup struct {
 	Resource string
 	Retire   func(context.Context, identity.SessionID) error
 }
 
-// ResourceRetirer alone completes committed resource retirements. Until every
-// cleanup succeeds the durable record keeps the Session fenced; the next
-// exclusive admission of that Session retries instead of waiting for a restart.
 type ResourceRetirer struct {
 	retirements resourceRetirements
 	cleanups    []Cleanup
@@ -75,9 +67,6 @@ func NewResourceRetirer(retirements resourceRetirements, cleanups ...Cleanup) (*
 	return &ResourceRetirer{retirements: retirements, cleanups: slices.Clone(cleanups)}, nil
 }
 
-// Settle completes sessionID's committed retirement, if any, under the caller's
-// exclusive admission. It reports false while a cleanup still fails; the cause
-// is logged because the caller can only answer that the Session is busy.
 func (r *ResourceRetirer) Settle(ctx context.Context, sessionID identity.SessionID) (bool, error) {
 	retirement, found, err := r.retirements.Lookup(ctx, sessionID)
 	if err != nil || !found {
@@ -85,7 +74,7 @@ func (r *ResourceRetirer) Settle(ctx context.Context, sessionID identity.Session
 	}
 	if err := r.complete(ctx, retirement); err != nil {
 		slog.ErrorContext(ctx, "sessions: committed resource retirement is still pending",
-			"session.id", sessionID, "error", err)
+			telemetry.SessionID(sessionID), telemetry.Error(err))
 		return false, nil
 	}
 	return true, nil
@@ -111,9 +100,6 @@ func (r *ResourceRetirer) complete(ctx context.Context, retirement ResourceRetir
 	return r.retirements.Complete(ctx, retirement)
 }
 
-// RecoverPending settles every retirement left by an earlier process. One
-// Session's failing cleanup keeps only that Session fenced; it never prevents
-// the Runtime from serving the others.
 func (r *ResourceRetirer) RecoverPending(ctx context.Context, admissions recoveryClaims) error {
 	pending, err := r.retirements.ListPending(ctx)
 	if err != nil {
@@ -131,7 +117,7 @@ func (r *ResourceRetirer) RecoverPending(ctx context.Context, admissions recover
 		release()
 		if err != nil {
 			slog.ErrorContext(ctx, "sessions: committed resource retirement is still pending",
-				"session.id", retirement.SessionID(), "error", err)
+				telemetry.SessionID(retirement.SessionID()), telemetry.Error(err))
 		}
 	}
 	return nil

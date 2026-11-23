@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/scope/core/embedding"
 	"github.com/Tangerg/scope/models/alibaba"
 	"github.com/Tangerg/scope/models/azureopenai"
@@ -20,7 +20,7 @@ const defaultOpenAIEmbeddingModel = "text-embedding-3-small"
 type embeddingBuildFunc func(context.Context, clientSpec, embedding.Options) (embedding.Model, error)
 
 func buildEmbeddingModel(ctx context.Context, spec clientSpec, modelID string) (embedding.Model, error) {
-	identity, err := modelchoice.NewModelIdentity(modelID)
+	identity, err := flamemodel.NewModelIdentity(modelID)
 	if err != nil {
 		return nil, fmt.Errorf("model provider: embedding identity: %w", err)
 	}

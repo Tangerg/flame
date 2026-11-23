@@ -12,8 +12,6 @@ import (
 
 const ToolContextMetadataKey = "io.github.tangerg.flame/tool-context.v1"
 
-// ToolContext projects the invoking owner's workspace and optional captured
-// vector space. Callback authority travels only in the existing callback metadata.
 type ToolContext struct {
 	CWD            string `json:"cwd"`
 	EmbeddingSpace string `json:"embeddingSpace,omitzero"`
@@ -43,8 +41,6 @@ func ToolContextFromContext(ctx context.Context) (ToolContext, error) {
 
 type toolContextKey struct{}
 
-// toolContextFromMetadata admits the closed workspace projection at the MCP
-// boundary. Other request metadata cannot become workspace or callback authority.
 func toolContextFromMetadata(metadata sdk.Meta) (ToolContext, error) {
 	encoded := metadata[ToolContextMetadataKey]
 	var captured ToolContext

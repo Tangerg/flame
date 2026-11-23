@@ -11,7 +11,7 @@ import (
 	memorycontract "github.com/Tangerg/flame/packages/go-sdk/plugin/memory"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp"
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -25,7 +25,7 @@ import (
 type ToolPreparationConfig struct {
 	Installations plugins.Store
 	Callbacks     *pluginmcp.Callbacks
-	Embeddings    func(context.Context) (models.TextEmbedder, error)
+	Embeddings    func(context.Context) (*modeladapter.Embedder, bool, error)
 	Invalidations invalidation.Publish
 }
 
@@ -55,8 +55,6 @@ func NewToolPreparation(config ToolPreparationConfig) (mcp.ToolPreparation, erro
 	}, nil
 }
 
-// installed is false only for a non-plugin MCP server, which carries no Flame host
-// grant; a plugin source whose selected release changed since publication is refused.
 func admitInstalledSource(ctx context.Context, store plugins.Store, source mcpserver.Server) (plugin.Snapshot, bool, error) {
 	id, ok := source.Source.Origin().Installation()
 	if !ok {
@@ -94,8 +92,7 @@ func installedToolCall(ctx context.Context, executable mcp.Executable, invalidat
 	}
 }
 
-// Only the publisher's search Tool receives Memory's narrow embedding grant.
-func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pluginmcp.Callbacks, embeddings func(context.Context) (models.TextEmbedder, error), invalidations invalidation.Publish) (mcp.ToolCall, func() error, error) {
+func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pluginmcp.Callbacks, embeddings func(context.Context) (*modeladapter.Embedder, bool, error), invalidations invalidation.Publish) (mcp.ToolCall, func() error, error) {
 	cwd, attached := executionctx.WorkspaceCWD(ctx)
 	if !attached {
 		return nil, nil, errors.New("memory: Run workspace is required")
@@ -115,12 +112,12 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pl
 		}
 		return installedToolCall(ctx, source.WithCallMetadata(metadata), invalidations), func() error { return nil }, nil
 	}
-	embedder, err := embeddings(ctx)
+	embedder, embeds, err := embeddings(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 	closeEmbedder := func() error {
-		if embedder != nil {
+		if embeds {
 			return embedder.Close(context.WithoutCancel(ctx))
 		}
 		return nil
@@ -136,7 +133,7 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pl
 	}
 	release := func() error { revoke(); return errors.Join(borrowed.Close(), closeEmbedder()) }
 	space := ""
-	if embedder != nil {
+	if embeds {
 		space = embedder.ID()
 	}
 	metadata, err := pluginmcp.CallbackMetadata(grant)

@@ -15,6 +15,8 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
+const queueEditorMaxRows = 4
+
 const queueDrawerVisibleRows = 3
 
 type queueTargetKind uint8
@@ -51,9 +53,6 @@ type queueDrawerActions struct {
 	Dismiss    func()
 }
 
-// queueDrawer owns only the transient state of the bottom queue drawer. Queue
-// entries and ordering remain in the application store, and every mutation is
-// delegated to the app so runtime lifecycle rules stay outside the terminal view.
 type queueDrawer struct {
 	theme   kit.Theme
 	glyphs  kit.Glyphs
@@ -76,11 +75,11 @@ type queueDrawer struct {
 	group        *scene.Group
 }
 
-func newQueueDrawer(theme kit.Theme, glyphs kit.Glyphs, keys *keymap.Map, clipboard base.Clipboard) *queueDrawer {
-	drawer := &queueDrawer{theme: theme, glyphs: glyphs, keys: keys}
+func newQueueDrawer(theme kit.Theme, glyphs kit.Glyphs, keys *keymap.Map, clipboard base.Clipboard, actions queueDrawerActions) *queueDrawer {
+	drawer := &queueDrawer{theme: theme, glyphs: glyphs, keys: keys, actions: actions}
 	drawer.editor = kit.NewEditor(kit.EditorConfig{
 		Behavior: base.EditorConfig{
-			MaxRows: 4,
+			MaxRows: queueEditorMaxRows,
 		},
 		Theme:  theme,
 		Glyphs: glyphs,
@@ -137,6 +136,7 @@ func (q *queueDrawer) Element() scene.Element {
 	}
 	return q.group.Element()
 }
+
 func (q *queueDrawer) syncElements() {
 	if q.group == nil {
 		return
@@ -149,8 +149,6 @@ func (q *queueDrawer) syncElements() {
 		panic(err)
 	}
 }
-
-func (q *queueDrawer) SetActions(actions queueDrawerActions) { q.actions = actions }
 
 func (q *queueDrawer) Set(snapshot authoring.QueueSnapshot) {
 	q.hovered = queueTarget{}
@@ -166,7 +164,6 @@ func (q *queueDrawer) Set(snapshot authoring.QueueSnapshot) {
 	}
 	retainsEditor := editingIndex >= 0 && entries[editingIndex].Held &&
 		entries[editingIndex].CommandID == q.editingEntry.CommandID
-	// A sibling's transition does not replace the held editor or its input lease.
 	if !retainsEditor {
 		q.Element().Invalidate()
 	}
@@ -317,8 +314,6 @@ func (q *queueDrawer) handleMouse(mouse input.Mouse) bool {
 	return q.handlePointer(mouse, q.hitAt(mouse.Pos))
 }
 
-// handlePointer tracks one left-button press: a release over the target it
-// began on activates it; any other button or a drag away cancels it.
 func (q *queueDrawer) handlePointer(mouse input.Mouse, target queueTarget) bool {
 	switch mouse.Action {
 	case input.MouseMove:
@@ -384,11 +379,9 @@ func (q *queueDrawer) beginEdit() {
 	if !ok {
 		return
 	}
-	if q.actions.BeginEdit != nil {
-		if err := q.actions.BeginEdit(entry); err != nil {
-			q.notice = err.Error()
-			return
-		}
+	if err := q.actions.BeginEdit(entry); err != nil {
+		q.notice = err.Error()
+		return
 	}
 	q.editingEntry = new(entry)
 	q.editingMessage = entry.Message.Clone()
@@ -412,9 +405,6 @@ func (q *queueDrawer) releaseEdit() error {
 	}
 	entry := *q.editingEntry
 	q.cancelEditState()
-	if q.actions.CancelEdit == nil {
-		return nil
-	}
 	return q.actions.CancelEdit(entry)
 }
 
@@ -426,7 +416,6 @@ func (q *queueDrawer) cancelEditState() {
 	_ = q.Element().RequestFocus()
 }
 
-// queuedEditDisposition is where an edited queued prompt goes once saved.
 type queuedEditDisposition uint8
 
 const (
@@ -442,7 +431,7 @@ func (d queuedEditDisposition) notice() string {
 }
 
 func (q *queueDrawer) saveEdit(disposition queuedEditDisposition) {
-	if !q.Editing() || q.actions.SaveEdit == nil {
+	if !q.Editing() {
 		return
 	}
 	entry := *q.editingEntry
@@ -458,7 +447,7 @@ func (q *queueDrawer) saveEdit(disposition queuedEditDisposition) {
 
 func (q *queueDrawer) removeSelected() {
 	entry, ok := q.selectedEntry()
-	if !ok || q.actions.Remove == nil {
+	if !ok {
 		return
 	}
 	if err := q.actions.Remove(entry.ID); err != nil {
@@ -470,7 +459,7 @@ func (q *queueDrawer) removeSelected() {
 
 func (q *queueDrawer) moveSelected(offset int) {
 	entry, ok := q.selectedEntry()
-	if !ok || q.actions.Move == nil {
+	if !ok {
 		return
 	}
 	if err := q.actions.Move(entry.ID, offset); err != nil {
@@ -490,9 +479,6 @@ func (q *queueDrawer) sendSelected() {
 }
 
 func (q *queueDrawer) send(id authoring.QueueEntryID) {
-	if q.actions.SendNow == nil {
-		return
-	}
 	if err := q.actions.SendNow(id); err != nil {
 		q.notice = err.Error()
 		return
@@ -500,11 +486,7 @@ func (q *queueDrawer) send(id authoring.QueueEntryID) {
 	q.notice = "queued prompt promoted for immediate send"
 }
 
-func (q *queueDrawer) dismiss() {
-	if q.actions.Dismiss != nil {
-		q.actions.Dismiss()
-	}
-}
+func (q *queueDrawer) dismiss() { q.actions.Dismiss() }
 
 func (q *queueDrawer) activate(target queueTarget) {
 	if queueEntryIndex(q.entries, target.id) < 0 {
@@ -519,6 +501,7 @@ func (q *queueDrawer) activate(target queueTarget) {
 		q.beginEdit()
 	case queueTargetRemove:
 		q.removeSelected()
+	case queueTargetNone:
 	}
 }
 

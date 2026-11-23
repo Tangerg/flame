@@ -1,8 +1,5 @@
 package builtin
 
-// ShellAutoBackgroundSeconds is the foreground budget an omitted
-// auto_background_after_seconds selects. The field description states it to
-// the model; the contract test keeps that sentence and this value together.
 const ShellAutoBackgroundSeconds = 60
 
 type ShellArguments struct {

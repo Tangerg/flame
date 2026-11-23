@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 
 	scoperun "github.com/Tangerg/scope/agent/run"
 	otelagent "github.com/Tangerg/scope/otel/agent"
@@ -55,46 +55,49 @@ type interactionSession struct {
 	callComposition        interactionCallComposition
 	effectFailures         interactionEffectFailures
 	segmentClock           interactionSegmentClock
-	// telemetry observes Framework facts only. It owns Process, Step, and
-	// Effect spans plus the commit instruments, and must outlive the Engine it
-	// observes, so it closes after the Engine has drained.
-	telemetry *otelagent.Observer
+	telemetry              *otelagent.Observer
 }
 
-// interactionState owns the one lock domain whose facts must move atomically:
-// the live Process, its observation/waiting boundary, exact pending steers,
-// and Delegate topology. Request material and Segment timing have independent
-// invariants and do not belong under this lock.
 type interactionState struct {
-	restoreTree   scoperun.Log
-	toolMetadata  map[string]toolCallMetadata
-	mu            sync.Mutex
-	pendingSteers map[scoperun.SignalID]runs.PreparedSteer
-	// Resume Items are already committed, but the root model can still be
-	// waiting for delegated work across several successive input barriers.
+	restoreTree         scoperun.Log
+	toolMetadata        map[string]toolCallMetadata
+	mu                  sync.Mutex
+	pendingSteers       map[scoperun.SignalID]runs.PreparedSteer
 	pendingResumeInputs []runs.CommittedUserInput
 	process             *scoperun.Handle[scoperun.Payload]
 	observer            context.Context
 	phase               interactionPhase
 	workersStarted      bool
 	boundary            interactionBoundary
-	// Each gate holds model dispatch for one owner and is released only by it:
-	// a crossed boundary until its replacement Segment owns projection, and a
-	// receipt investigation until its result projection completes. The two run
-	// on different goroutines, so one gate cannot stand in for the other.
+	// The two gates are released on different goroutines, so one cannot stand in for
+	// the other.
 	boundaryGate      chan struct{}
 	investigationGate chan struct{}
 	waitingCheckpoint runs.ExecutorCheckpoint
-	subtreeChange     *interactionWaitingSubtreeChange
-	subtreePrepared   chan struct{}
-	unknownReported   bool
-	deployments       *interactionDeploymentSet
-	delegateCalls     map[delegateCallIdentity]*managedDelegateCall
-	delegateChildren  map[scoperun.ProcessID]*managedDelegateCall
+	// A barrier capture and a running-subtree cancellation submission must not
+	// overlap: a cut taken around a submitted cancellation would publish a member
+	// as waiting after its cancellation already committed.
+	barrierCapture        chan struct{}
+	cancellationsInFlight int
+	subtreeChange         *interactionWaitingSubtreeChange
+	subtreePrepared       chan struct{}
+	unknownReported       bool
+	deployments           *interactionDeploymentSet
+	delegateCalls         map[delegateCallIdentity]*managedDelegateCall
+	delegateChildren      map[scoperun.ProcessID]*managedDelegateCall
 }
 
-// interactionPhase orders one session's claim: a Process is begun at most once,
-// and a finished session never begins.
+var errDeploymentsUnbound = errors.New("execution: Interaction deployments are unavailable")
+
+func (s *interactionState) boundDeployments() (*interactionDeploymentSet, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.deployments == nil {
+		return nil, errDeploymentsUnbound
+	}
+	return s.deployments, nil
+}
+
 type interactionPhase uint8
 
 const (
@@ -234,8 +237,6 @@ func (i *interactionSession) startWorkers() {
 	i.lifetime.start(i.awaitGuarded, i.reconcileUnknownEffectsGuarded, i.reconcileExecutionStateGuarded, i.consumeDeltas, i.consumeTelemetry, i.followOwnerLifetime)
 }
 
-// Scope detaches admitted work from the Start caller. The session's process
-// owner therefore stops the writer explicitly, and Close joins its callbacks.
 func (i *interactionSession) followOwnerLifetime() {
 	select {
 	case <-i.lifetime.done:
@@ -245,13 +246,10 @@ func (i *interactionSession) followOwnerLifetime() {
 	ctx, cancel := i.lifetime.publicationContext(context.Background())
 	defer cancel()
 	if err := i.engine.Close(ctx); err != nil && !releasedDuringProjection(err) {
-		slog.ErrorContext(ctx, "execution: close Runtime after owner stopped", "error", err)
+		slog.ErrorContext(ctx, "execution: close Runtime after owner stopped", telemetry.Error(err))
 	}
 }
 
-// The session already owns "this projection cannot continue", so a defect in one
-// execution fails that Run through the same boundary an unrecoverable projection
-// error uses instead of unwinding out of a goroutine nothing can recover from.
 // Only the awaiting worker may finish the session: a reconciler that tried would
 // join itself.
 func (i *interactionSession) awaitGuarded() {
@@ -259,8 +257,6 @@ func (i *interactionSession) awaitGuarded() {
 	i.await()
 }
 
-// finishOnExecutionDefect and reportExecutionDefect must be deferred directly so
-// recover() sees the panic.
 func (i *interactionSession) finishOnExecutionDefect() {
 	if i.recordExecutionDefect(recover()) {
 		i.finish()
@@ -275,11 +271,8 @@ func (i *interactionSession) recordExecutionDefect(recovered any) bool {
 	if recovered == nil {
 		return false
 	}
-	// The stack cannot travel in the Run's failure and is the only thing that
-	// fixes the defect, so it goes to the operator here.
 	slog.ErrorContext(i.lifetime.execution, "execution: execution projection panicked",
-		"session.id", i.start.SessionID, "panic", fmt.Sprint(recovered),
-		"stack", string(debug.Stack()))
+		telemetry.SessionID(i.start.SessionID), telemetry.Panic(recovered))
 	i.publishProjectionFailure(fmt.Errorf("execution: execution projection panicked: %v", recovered))
 	return true
 }
@@ -305,8 +298,6 @@ func (i *interactionSession) commitFact(
 	member runs.ExecutorMember,
 	fact runs.ExecutionFact,
 ) error {
-	// New work follows execution cancellation. Settled outcomes survive it until
-	// the product owner releases the session and stops consuming publication.
 	owner := i.lifetime.execution
 	switch fact.(type) {
 	case runs.ModelCallCompleted, runs.ModelCallFailed, runs.ToolResultsCommitted, runs.ExecutionTreeSettled,
@@ -319,8 +310,6 @@ func (i *interactionSession) commitFact(
 	if err := owner.Err(); err != nil {
 		return err
 	}
-	// A receipt belongs to its consuming Segment observer. Once that observer
-	// retires, activation must stop waiting before the pump joins activation.
 	observer := i.state.observationContext()
 	if observer == nil {
 		return errInteractionReleased
@@ -352,8 +341,6 @@ func (i *interactionSession) await() {
 	joinCtx, cancelJoin := i.lifetime.publicationContext(i.lifetime.execution)
 	defer cancelJoin()
 	result, err := i.state.process.Await(joinCtx)
-	// A successful Await follows the joint Exit and Run commit. Close joins
-	// local dispatch work when no Exit could be acknowledged.
 	if err != nil {
 		err = errors.Join(err, i.engine.Close(joinCtx))
 	}
@@ -366,7 +353,7 @@ func (i *interactionSession) await() {
 		}
 		i.notifyStopped(ending.Outcome())
 		if err := i.closeExecution(joinCtx); err != nil {
-			slog.ErrorContext(joinCtx, "execution: close settled Interaction", "error", err)
+			slog.ErrorContext(joinCtx, "execution: close settled Interaction", telemetry.Error(err))
 		}
 	} else {
 		i.publishProjectionFailure(err)
@@ -375,21 +362,17 @@ func (i *interactionSession) await() {
 }
 
 func (i *interactionSession) notifyStopped(outcome run.Outcome) {
-	if i.lifecycleHooks != nil {
-		ctx, cancel := context.WithTimeout(context.WithoutCancel(i.lifetime.execution), auxiliaryOperationTimeout)
-		defer cancel()
-		if err := i.lifecycleHooks.NotifyStopped(
-			ctx, i.start.SessionID, i.start.WorkspaceCWD, string(outcome),
-		); err != nil {
-			slog.ErrorContext(i.lifetime.execution, "execution: notify stopped",
-				"session.id", i.start.SessionID, "error", err,
-			)
-		}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(i.lifetime.execution), auxiliaryOperationTimeout)
+	defer cancel()
+	if err := i.lifecycleHooks.NotifyStopped(
+		ctx, i.start.SessionID, i.start.WorkspaceCWD, string(outcome),
+	); err != nil {
+		slog.ErrorContext(i.lifetime.execution, "execution: notify stopped",
+			telemetry.SessionID(i.start.SessionID), telemetry.Error(err),
+		)
 	}
 }
 
-// reportProjectionFailure publishes a failure unless the session was released
-// meanwhile; a release ends reconciliation without a fault.
 func (i *interactionSession) reportProjectionFailure(err error) {
 	if !releasedDuringProjection(err) {
 		i.publishProjectionFailure(err)
@@ -445,8 +428,6 @@ func (i *interactionSession) release(ctx context.Context) error {
 	return i.closeExecution(ctx)
 }
 
-// Scope must drain the Engine before the host revokes its Tool capabilities.
-// An interrupted close retains those resources for the next release attempt.
 func (i *interactionSession) closeExecution(ctx context.Context) error {
 	if i.engine != nil {
 		if err := i.engine.Close(ctx); err != nil {
@@ -462,8 +443,6 @@ func (i *interactionSession) closeExecution(ctx context.Context) error {
 	return errors.Join(deployments.close(), i.selectedChat.Close(context.WithoutCancel(ctx)))
 }
 
-// closeTelemetry ends any span the Engine left open. It is idempotent so the
-// discard path can release an assembly that never reached closeExecution.
 func (i *interactionSession) closeTelemetry(ctx context.Context) error {
 	if i.telemetry != nil {
 		return i.telemetry.Close(ctx)

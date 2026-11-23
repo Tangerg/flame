@@ -12,7 +12,6 @@ import (
 	"github.com/samber/lo"
 )
 
-// Discovery owns workspace and instruction-document discovery.
 type Discovery struct {
 	scope      *Scope
 	workspaces catalog
@@ -35,14 +34,12 @@ func NewDiscovery(scope *Scope, workspaces catalog, agentDocs agentDocFinder) (*
 	return &Discovery{scope: scope, workspaces: workspaces, agentDocs: agentDocs}, nil
 }
 
-// Resolved is the current filesystem identity of one workspace ref.
 type Resolved struct {
 	Path        string
 	ProjectRoot string
 	Missing     bool
 }
 
-// Summary is a distinct workspace identity derived from user-facing sessions.
 type Summary struct {
 	Name         string
 	Path         string
@@ -52,15 +49,11 @@ type Summary struct {
 	LastActiveAt time.Time
 }
 
-// catalog supplies the user-facing sessions and their current workspace
-// identities. The session coordinator is the production implementation.
 type catalog interface {
 	List(ctx context.Context) ([]session.Session, error)
 	InspectWorkspace(cwd string) (Resolved, error)
 }
 
-// Resolve returns the canonical live workspace identity for path, using the
-// host-provided default when path is empty.
 func (d *Discovery) Resolve(path string) (Resolved, error) {
 	if path == "" {
 		path = d.scope.defaultWorkspacePath
@@ -68,8 +61,6 @@ func (d *Discovery) Resolve(path string) (Resolved, error) {
 	return d.workspaces.InspectWorkspace(path)
 }
 
-// Workspaces returns each non-empty session workspace once, newest-active first
-// with canonical path ascending as the stable tie-breaker.
 func (d *Discovery) Workspaces(ctx context.Context) ([]Summary, error) {
 	sessions, err := d.workspaces.List(ctx)
 	if err != nil {
@@ -130,20 +121,15 @@ func compareWorkspaceSummaries(a, b Summary) int {
 	return cmp.Compare(a.Path, b.Path)
 }
 
-// AgentDoc is one discovered instruction document with its cascade scope.
 type AgentDoc struct {
 	Path  string
 	Scope AgentDocScope
 }
 
-// agentDocFinder discovers the workspace instruction-document cascade in render
-// order. Application validates unique source identity and phase order.
 type agentDocFinder interface {
 	Find(ctx context.Context, cwd, home string) ([]AgentDocFile, error)
 }
 
-// AgentDocs returns the unique instruction-document cascade for one workspace in
-// home, project-root, and cwd render phases.
 func (d *Discovery) AgentDocs(ctx context.Context, cwd string) ([]AgentDoc, error) {
 	root, err := d.scope.ResolveRoot(cwd)
 	if err != nil {

@@ -17,9 +17,6 @@ func unconfinedShells(t *testing.T) *Shells {
 	return shells
 }
 
-// TestLaunchIsolatedWithoutConfinerFailsClosed proves an isolated-session
-// command without a confiner is refused rather than run unconfined, and that the
-// refusal names why the confiner could not be built.
 func TestLaunchIsolatedWithoutConfinerFailsClosed(t *testing.T) {
 	cause := errors.New("sandbox: read-only path must be absolute")
 	shells, err := NewShells(nil, cause, false)
@@ -30,7 +27,6 @@ func TestLaunchIsolatedWithoutConfinerFailsClosed(t *testing.T) {
 	if _, err := shells.Launch(t.Context(), "", t.TempDir(), "true", Timeout{}, true); !errors.Is(err, cause) {
 		t.Fatalf("isolated launch error = %v, want the confiner's cause", err)
 	}
-	// A non-isolated command on the same set still runs (unconfined).
 	if _, err := shells.Launch(t.Context(), "", t.TempDir(), "true", Timeout{}, false); err != nil {
 		t.Fatalf("non-isolated launch should succeed: %v", err)
 	}

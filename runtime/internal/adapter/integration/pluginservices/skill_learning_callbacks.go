@@ -12,7 +12,7 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 
 	framecall "github.com/Tangerg/frame/call"
@@ -33,7 +33,6 @@ type learningAdmission struct {
 	failure                     error
 }
 
-// Each learning source may be read once per admission.
 func (a *learningAdmission) readConversation() error { return a.consumeRead(&a.conversationRead) }
 
 func (a *learningAdmission) readSkill() error { return a.consumeRead(&a.skillRead) }
@@ -126,7 +125,7 @@ func (s *SkillLearning) conversationCallback(sessionID identity.SessionID, state
 		if err != nil {
 			return result, err
 		}
-		result = skilllearning.Conversation{MessageCount: int64(len(messages)), Transcript: models.RenderTranscript(messages)}
+		result = skilllearning.Conversation{MessageCount: int64(len(messages)), Transcript: modeladapter.RenderTranscript(messages)}
 		if len(result.Transcript) > skilllearning.MaxTranscriptBytes {
 			return skilllearning.Conversation{}, errors.New("skill learning: conversation exceeds transcript limit")
 		}
@@ -147,7 +146,7 @@ func (s *SkillLearning) modelCallback(state *learningAdmission) (pluginmcp.Callb
 		if err := state.models.admit(string(command.ID), externalModelCall, input); err != nil {
 			return nil, err
 		}
-		captured, release, err := s.utility(ctx, models.AuxiliaryBudget{MaxInputBytes: skilllearning.MaxModelInputBytes, MaxOutputTokens: skilllearning.MaxModelOutputTokens})
+		captured, release, err := s.utility(ctx, modeladapter.AuxiliaryBudget{MaxInputBytes: skilllearning.MaxModelInputBytes, MaxOutputTokens: skilllearning.MaxModelOutputTokens})
 		if err != nil {
 			return nil, err
 		}

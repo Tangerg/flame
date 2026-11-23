@@ -9,7 +9,6 @@ export interface CommandSpec {
   label: string;
   combo?: string;
   run: (...args: unknown[]) => void | Promise<void>;
-  /** Captures an action before menu focus moves. Null omits it for this opening. */
   prepareForMenu?: () => CommandMenuAction | null;
 }
 
@@ -22,7 +21,7 @@ export interface ShortcutSpec {
   allowInInputs?: boolean;
 }
 
-export interface CommandsService {
+interface CommandsService {
   execute(id: string, ...args: unknown[]): Promise<void>;
 }
 

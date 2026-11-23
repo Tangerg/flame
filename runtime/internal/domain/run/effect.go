@@ -1,43 +1,53 @@
 package run
 
 import (
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// UnresolvedEffect is evidence of an external operation, never an execution
-// plan. Its owning Run may be canceled or timed out without resolving it.
 type UnresolvedEffect struct {
 	processID string
 	effectID  string
-	cause     string
+	cause     UnresolvedCause
 	reason    string
 	detail    string
 	output    string
 }
 
-// maximumEffectIdentityBytes bounds the process, effect and cause names an
-// unresolved effect records.
+type UnresolvedCause string
+
+const (
+	UnresolvedAtTermination    UnresolvedCause = "termination"
+	UnresolvedAtRuntimeFailure UnresolvedCause = "runtimeFailure"
+)
+
+func (c UnresolvedCause) Valid() bool {
+	return c == UnresolvedAtTermination || c == UnresolvedAtRuntimeFailure
+}
+
 const maximumEffectIdentityBytes = 512
 
 type UnresolvedEffectConfig struct {
 	ProcessID string
 	EffectID  string
-	Cause     string
+	Cause     UnresolvedCause
 	Reason    string
 	Detail    string
 	Output    *toolcontract.Output
 }
 
 func NewUnresolvedEffect(config UnresolvedEffectConfig) (UnresolvedEffect, error) {
-	for _, identity := range []string{config.ProcessID, config.EffectID, config.Cause} {
+	for _, identity := range []string{config.ProcessID, config.EffectID} {
 		if strings.TrimSpace(identity) != identity || identity == "" || len(identity) > maximumEffectIdentityBytes {
-			return UnresolvedEffect{}, errors.New("run: invalid unresolved effect identity or cause")
+			return UnresolvedEffect{}, errors.New("run: invalid unresolved effect identity")
 		}
+	}
+	if !config.Cause.Valid() {
+		return UnresolvedEffect{}, fmt.Errorf("run: unknown unresolved effect cause %q", config.Cause)
 	}
 	if len(config.Reason) > maximumDiagnosticBytes || len(config.Detail) > maximumDiagnosticBytes {
 		return UnresolvedEffect{}, errors.New("run: unresolved effect diagnostic exceeds limit")
@@ -52,14 +62,13 @@ func NewUnresolvedEffect(config UnresolvedEffectConfig) (UnresolvedEffect, error
 	}
 	return UnresolvedEffect{processID: config.ProcessID, effectID: config.EffectID, cause: config.Cause, reason: config.Reason, detail: config.Detail, output: output}, nil
 }
-func (e UnresolvedEffect) ProcessID() string { return e.processID }
-func (e UnresolvedEffect) EffectID() string  { return e.effectID }
-func (e UnresolvedEffect) Cause() string     { return e.cause }
-func (e UnresolvedEffect) Reason() string    { return e.reason }
-func (e UnresolvedEffect) Detail() string    { return e.detail }
 
-// The immutable Scope encoding isolates Run snapshots and equality from mutable
-// content, media and metadata. Output remains evidence, never a settled result.
+func (e UnresolvedEffect) ProcessID() string      { return e.processID }
+func (e UnresolvedEffect) EffectID() string       { return e.effectID }
+func (e UnresolvedEffect) Cause() UnresolvedCause { return e.cause }
+func (e UnresolvedEffect) Reason() string         { return e.reason }
+func (e UnresolvedEffect) Detail() string         { return e.detail }
+
 func (e UnresolvedEffect) Output() string { return e.output }
 
 func validateUnresolvedEffects(effects []UnresolvedEffect) error {

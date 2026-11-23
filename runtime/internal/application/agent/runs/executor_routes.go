@@ -11,20 +11,14 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// executorRoute is the pump-local binding from one immutable executor member
-// identity to its application Run. A child route is installed only after its
-// opening transaction commits; every installed route owns one independent
-// Segment reducer.
 type executorRoute struct {
-	member      ExecutorMember
-	memberBound bool
-	runID       identity.RunID
-	segmentID   identity.SegmentID
-	rootRunID   identity.RunID
-	lineage     rundomain.Lineage
-	reducer     *reducer
-	// resumed is the Replacement that reopens this parked Run; nil for a Run
-	// admitted by this tree's opening.
+	member           ExecutorMember
+	memberBound      bool
+	runID            identity.RunID
+	segmentID        identity.SegmentID
+	rootRunID        identity.RunID
+	lineage          rundomain.Lineage
+	reducer          *reducer
 	resumed          *rundomain.Replacement
 	segmentStartedAt time.Time
 	boundary         segmentBoundary
@@ -49,7 +43,7 @@ func (c *Segments) openingRoutes(spec segmentSpec) (*executorRoutes, error) {
 }
 
 func (c *Segments) rootExecutorRoutes(spec segmentSpec, opening rootOpening) (*executorRoutes, error) {
-	if opening.ModelOnlyInput && opening.GoalIncarnationID == "" {
+	if opening.ModelOnlyInput && opening.GoalIncarnationID.IsZero() {
 		return nil, errors.New("runs: model-only opening input requires a Goal root")
 	}
 	if len(opening.Input) > 0 && (opening.ConversationInput == nil ||
@@ -78,8 +72,6 @@ func (c *Segments) rootExecutorRoutes(spec segmentSpec, opening rootOpening) (*e
 	}, nil
 }
 
-// unfinishedInPostorder returns the active tree in contract publication order:
-// descendants before ancestors, siblings by Run ID, root last.
 func (e *executorRoutes) unfinishedInPostorder() ([]*executorRoute, error) {
 	if e == nil || e.root == nil {
 		return nil, errors.New("runs: executor routes have no root")
@@ -147,64 +139,77 @@ func (e *executorRoute) activeDuration(boundary time.Time) time.Duration {
 	return boundary.Sub(e.segmentStartedAt)
 }
 
-// resolve binds the first root member and then requires exact member stability.
-// Child sources are never inferred from lineage alone: they become routable only
-// after a conclusive child-start commit installs their exact identity.
 func (e *executorRoutes) resolve(member ExecutorMember) (*executorRoute, error) {
 	if member.Child() {
-		if member.SpawnCallID == "" {
-			return nil, fmt.Errorf("runs: child executor member %q has no spawn-call identity", member.MemberID)
-		}
-		route := e.byMember[member.MemberID]
-		if route == nil {
-			return nil, fmt.Errorf("runs: child executor member %q has no admitted child run", member.MemberID)
-		}
-		if !route.lineage.IsChild() {
-			return nil, fmt.Errorf("runs: root Run %q emitted a child executor member", route.runID)
-		}
-		if !route.memberBound {
-			parent := e.byRunID[route.lineage.ParentRunID()]
-			if parent == nil || parent.member.MemberID == "" {
-				return nil, fmt.Errorf(
-					"runs: resumed child Run %q has no bound parent Run %q",
-					route.runID,
-					route.lineage.ParentRunID(),
-				)
-			}
-			if member.ParentID != parent.member.MemberID {
-				return nil, fmt.Errorf(
-					"runs: resumed child executor member %q names parent %q, want Run %q member %q",
-					member.MemberID,
-					member.ParentID,
-					parent.runID,
-					parent.member.MemberID,
-				)
-			}
-			route.member = member
-			route.memberBound = true
-		} else if route.member != member {
-			return nil, fmt.Errorf("runs: child executor member %q changed immutable lineage", member.MemberID)
-		}
-		if route.boundary.finished() {
-			return nil, fmt.Errorf("runs: child executor member %q published after its segment finished", member.MemberID)
-		}
-		return route, nil
+		return e.resolveChild(member)
 	}
+	return e.resolveRoot(member)
+}
 
-	if !e.root.memberBound {
-		e.root.member = member
-		e.root.memberBound = true
-		if member.MemberID != "" {
-			e.byMember[member.MemberID] = e.root
+func (e *executorRoutes) resolveChild(member ExecutorMember) (*executorRoute, error) {
+	if member.SpawnCallID == "" {
+		return nil, fmt.Errorf("runs: child executor member %q has no spawn-call identity", member.MemberID)
+	}
+	route := e.byMember[member.MemberID]
+	if route == nil {
+		return nil, fmt.Errorf("runs: child executor member %q has no admitted child run", member.MemberID)
+	}
+	if !route.lineage.IsChild() {
+		return nil, fmt.Errorf("runs: root Run %q emitted a child executor member", route.runID)
+	}
+	if err := e.bindChildMember(route, member); err != nil {
+		return nil, err
+	}
+	if route.boundary.finished() {
+		return nil, fmt.Errorf("runs: child executor member %q published after its segment finished", member.MemberID)
+	}
+	return route, nil
+}
+
+// A resumed child learns its executor member from its first publication; from
+// then on the member is immutable lineage.
+func (e *executorRoutes) bindChildMember(route *executorRoute, member ExecutorMember) error {
+	if route.memberBound {
+		if route.member != member {
+			return fmt.Errorf("runs: child executor member %q changed immutable lineage", member.MemberID)
+		}
+		return nil
+	}
+	parent := e.byRunID[route.lineage.ParentRunID()]
+	if parent == nil || parent.member.MemberID == "" {
+		return fmt.Errorf(
+			"runs: resumed child Run %q has no bound parent Run %q",
+			route.runID,
+			route.lineage.ParentRunID(),
+		)
+	}
+	if member.ParentID != parent.member.MemberID {
+		return fmt.Errorf(
+			"runs: resumed child executor member %q names parent %q, want Run %q member %q",
+			member.MemberID,
+			member.ParentID,
+			parent.runID,
+			parent.member.MemberID,
+		)
+	}
+	route.member, route.memberBound = member, true
+	return nil
+}
+
+func (e *executorRoutes) resolveRoot(member ExecutorMember) (*executorRoute, error) {
+	if e.root.memberBound {
+		if e.root.member != member {
+			return nil, fmt.Errorf(
+				"runs: root executor member changed from %q to %q",
+				e.root.member.MemberID,
+				member.MemberID,
+			)
 		}
 		return e.root, nil
 	}
-	if e.root.member != member {
-		return nil, fmt.Errorf(
-			"runs: root executor member changed from %q to %q",
-			e.root.member.MemberID,
-			member.MemberID,
-		)
+	e.root.member, e.root.memberBound = member, true
+	if member.MemberID != "" {
+		e.byMember[member.MemberID] = e.root
 	}
 	return e.root, nil
 }

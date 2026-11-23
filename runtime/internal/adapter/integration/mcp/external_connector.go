@@ -15,7 +15,7 @@ import (
 	wire "github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	connectormcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcpconnector/mcp"
-	app "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -29,8 +29,8 @@ import (
 )
 
 type grantVault interface {
-	PrepareGrant(context.Context, identity.InstallationID, mcpserver.Server, app.GrantProposal) (string, error)
-	PendingGrant(context.Context, identity.InstallationID, mcpserver.ServerName, string) (app.GrantProposal, bool, error)
+	PrepareGrant(context.Context, identity.InstallationID, mcpserver.Server, mcpapp.GrantProposal) (string, error)
+	PendingGrant(context.Context, identity.InstallationID, mcpserver.ServerName, string) (mcpapp.GrantProposal, bool, error)
 	RejectGrant(context.Context, identity.InstallationID, mcpserver.ServerName, string) error
 	OpenGrant(context.Context, identity.InstallationID, mcpserver.ServerName, string) (mcpserver.Connection, bool, error)
 	ConfirmPendingGrant(context.Context, identity.InstallationID, mcpserver.ServerName, string) error
@@ -80,7 +80,7 @@ func (c *ExternalConnector) acquire(ctx context.Context) (*connectorUse, error) 
 		return nil, err
 	}
 	fail := func(err error) (*connectorUse, error) {
-		return nil, errors.Join(err, session.release(context.Background()))
+		return nil, errors.Join(err, session.release(context.WithoutCancel(ctx)))
 	}
 	activation, err := session.activation()
 	if err != nil {
@@ -99,6 +99,7 @@ func (c *ExternalConnector) acquire(ctx context.Context) (*connectorUse, error) 
 	}
 	return u, nil
 }
+
 func connectorCall[P, R any](ctx context.Context, u *connectorUse, m *pluginmcp.Method[P, R], input P) (R, error) {
 	var zero R
 	method, err := m.Bind(u.capability)
@@ -121,6 +122,7 @@ func connectorCall[P, R any](ctx context.Context, u *connectorUse, m *pluginmcp.
 	}
 	return method.CallCommand(ctx, pluginmcp.CommandID(operation.Identity(ctx)), input)
 }
+
 func (c *ExternalConnector) entries(ctx context.Context, u *connectorUse, name string) (wire.Directory, error) {
 	directory, err := connectorCall(ctx, u, c.methods.List, wire.Selector{Name: name})
 	if err != nil {
@@ -130,18 +132,19 @@ func (c *ExternalConnector) entries(ctx context.Context, u *connectorUse, name s
 	for _, entry := range directory.Entries {
 		identity, err := mcpserver.ParseServerName(entry.Name)
 		if err != nil {
-			return wire.Directory{}, errors.Join(app.ErrInvalidServerConfiguration, err)
+			return wire.Directory{}, errors.Join(mcpapp.ErrInvalidServerConfiguration, err)
 		}
 		if entry.Revision == "" || entry.LaunchGrant == "" || name != "" && entry.Name != name {
-			return wire.Directory{}, app.ErrInvalidServerConfiguration
+			return wire.Directory{}, mcpapp.ErrInvalidServerConfiguration
 		}
 		if _, duplicate := seen[identity]; duplicate {
-			return wire.Directory{}, app.ErrInvalidServerConfiguration
+			return wire.Directory{}, mcpapp.ErrInvalidServerConfiguration
 		}
 		seen[identity] = struct{}{}
 	}
 	return directory, nil
 }
+
 func (c *ExternalConnector) materialize(ctx context.Context, u *connectorUse, e wire.Entry) (mcpserver.Server, error) {
 	name, err := mcpserver.ParseServerName(e.Name)
 	if err != nil {
@@ -160,7 +163,7 @@ func (c *ExternalConnector) materialize(ctx context.Context, u *connectorUse, e 
 			return mcpserver.Server{}, err
 		}
 		if !found {
-			return mcpserver.Server{}, fmt.Errorf("%w: external transport grant is unavailable", app.ErrInvalidServerConfiguration)
+			return mcpserver.Server{}, fmt.Errorf("%w: external transport grant is unavailable", mcpapp.ErrInvalidServerConfiguration)
 		}
 	}
 	source, err := mcpserver.ConnectorSource(u.source.InstallationID)
@@ -170,7 +173,7 @@ func (c *ExternalConnector) materialize(ctx context.Context, u *connectorUse, e 
 	s := mcpserver.Server{DirectoryRevision: e.Revision, Name: name, Source: source, Connection: connection, Enabled: e.Enabled, Description: e.Description}
 	if e.HandshakeSeconds != 0 {
 		if e.HandshakeSeconds < 0 || e.HandshakeSeconds > int64(math.MaxInt64/time.Second) {
-			return s, app.ErrInvalidServerConfiguration
+			return s, mcpapp.ErrInvalidServerConfiguration
 		}
 		s.HandshakeTimeout, err = mcpserver.NewHandshakeTimeout(time.Duration(e.HandshakeSeconds) * time.Second)
 		if err != nil {
@@ -179,39 +182,55 @@ func (c *ExternalConnector) materialize(ctx context.Context, u *connectorUse, e 
 	}
 	return s, s.Validate()
 }
-func (c *ExternalConnector) List(ctx context.Context) ([]mcpserver.Server, error) {
+
+// A failed release is reported with the operation's own result. selected
+// is false when no connector contribution is selected.
+func (c *ExternalConnector) use(ctx context.Context, operate func(*connectorUse) error) (selected bool, err error) {
 	u, err := c.acquire(ctx)
 	if err != nil || u == nil {
-		return nil, err
+		return false, err
 	}
-	defer u.session.release(context.Background())
-	d, err := c.entries(ctx, u, "")
-	if err != nil {
-		return nil, err
-	}
-	servers := make([]mcpserver.Server, 0, len(d.Entries))
-	for _, e := range d.Entries {
-		s, err := c.materialize(ctx, u, e)
+	defer func() { err = errors.Join(err, u.session.release(context.WithoutCancel(ctx))) }()
+	return true, operate(u)
+}
+
+func (c *ExternalConnector) List(ctx context.Context) ([]mcpserver.Server, error) {
+	var servers []mcpserver.Server
+	if _, err := c.use(ctx, func(u *connectorUse) error {
+		d, err := c.entries(ctx, u, "")
 		if err != nil {
-			return nil, err
+			return err
 		}
-		servers = append(servers, s)
+		servers = make([]mcpserver.Server, 0, len(d.Entries))
+		for _, e := range d.Entries {
+			s, err := c.materialize(ctx, u, e)
+			if err != nil {
+				return err
+			}
+			servers = append(servers, s)
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 	return servers, nil
 }
+
 func (c *ExternalConnector) Get(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {
-	u, err := c.acquire(ctx)
-	if err != nil || u == nil {
-		return mcpserver.Server{}, false, err
-	}
-	defer u.session.release(context.Background())
-	e, ok, err := c.find(ctx, u, name)
-	if err != nil || !ok {
-		return mcpserver.Server{}, false, err
-	}
-	s, err := c.materialize(ctx, u, e)
-	return s, err == nil, err
+	var server mcpserver.Server
+	found := false
+	_, err := c.use(ctx, func(u *connectorUse) error {
+		e, ok, err := c.find(ctx, u, name)
+		if err != nil || !ok {
+			return err
+		}
+		server, err = c.materialize(ctx, u, e)
+		found = err == nil
+		return err
+	})
+	return server, found && err == nil, err
 }
+
 func (c *ExternalConnector) find(ctx context.Context, u *connectorUse, name mcpserver.ServerName) (wire.Entry, bool, error) {
 	d, err := c.entries(ctx, u, name.String())
 	if err != nil || len(d.Entries) == 0 {
@@ -219,22 +238,25 @@ func (c *ExternalConnector) find(ctx context.Context, u *connectorUse, name mcps
 	}
 	return d.Entries[0], true, nil
 }
+
 func (c *ExternalConnector) Save(ctx context.Context, s mcpserver.Server) error {
 	return c.change(ctx, s, &s)
 }
+
 func (c *ExternalConnector) Remove(ctx context.Context, current mcpserver.Server) error {
 	return c.change(ctx, current, nil)
 }
+
 func (c *ExternalConnector) change(ctx context.Context, current mcpserver.Server, s *mcpserver.Server) error {
-	name := current.Name
-	u, err := c.acquire(ctx)
-	if err != nil {
-		return err
-	}
-	if u == nil {
+	selected, err := c.use(ctx, func(u *connectorUse) error { return c.applyChange(ctx, u, current, s) })
+	if err == nil && !selected {
 		return plugin.ErrUnavailable
 	}
-	defer u.session.release(context.Background())
+	return err
+}
+
+func (c *ExternalConnector) applyChange(ctx context.Context, u *connectorUse, current mcpserver.Server, s *mcpserver.Server) error {
+	name := current.Name
 	if current.DirectoryRevision != "" {
 		expected, err := mcpserver.ConnectorSource(u.source.InstallationID)
 		if err != nil || expected != current.Source {
@@ -253,7 +275,7 @@ func (c *ExternalConnector) change(ctx context.Context, current mcpserver.Server
 		}
 		timeout, _ := s.HandshakeTimeout.Duration()
 		change.Replacement = &wire.Entry{Name: name.String(), Description: s.Description, Enabled: s.Enabled, HandshakeSeconds: int64(timeout / time.Second)}
-		proposal := app.GrantProposal{Source: u.source.ContributionSource(), Invocation: invocation, Change: change}
+		proposal := mcpapp.GrantProposal{Source: u.source.ContributionSource(), Invocation: invocation, Change: change}
 		grant, err = c.vault.PrepareGrant(ctx, u.source.InstallationID, *s, proposal)
 		if err != nil {
 			return err
@@ -267,7 +289,7 @@ func (c *ExternalConnector) change(ctx context.Context, current mcpserver.Server
 	if decision != wire.Applied {
 		refusal := plugin.ErrStale
 		if current.DirectoryRevision == "" {
-			refusal = app.ErrServerAlreadyExists
+			refusal = mcpapp.ErrServerAlreadyExists
 		}
 		if grant != "" && decision == wire.Conflict {
 			return errors.Join(refusal, c.vault.RejectGrant(context.WithoutCancel(ctx), u.source.InstallationID, name, grant))
@@ -277,8 +299,6 @@ func (c *ExternalConnector) change(ctx context.Context, current mcpserver.Server
 	return c.vault.RetireGrants(context.WithoutCancel(ctx), u.source.InstallationID, name, grant)
 }
 
-// A directory listing can nominate a token but cannot activate a prepared
-// grant. Only the original connector's receipt permits the host to open it.
 func (c *ExternalConnector) reconcileGrant(ctx context.Context, u *connectorUse, name mcpserver.ServerName, token string) error {
 	proposal, pending, err := c.vault.PendingGrant(ctx, u.source.InstallationID, name, token)
 	if err != nil {
@@ -312,13 +332,14 @@ func (c *ExternalConnector) reconcileGrant(ctx context.Context, u *connectorUse,
 	case wire.Conflict:
 		return errors.Join(plugin.ErrStale, c.vault.RejectGrant(ctx, u.source.InstallationID, name, token))
 	default:
-		return app.ErrInvalidServerConfiguration
+		return mcpapp.ErrInvalidServerConfiguration
 	}
 }
 
 func (c *ExternalConnector) ListExposure(ctx context.Context) ([]tool.Ref, error) {
 	return c.vault.ListExposure(ctx)
 }
+
 func (c *ExternalConnector) SetToolExposure(ctx context.Context, ref tool.Ref, disabled bool) error {
 	return c.vault.SetToolExposure(ctx, ref, disabled)
 }
@@ -354,7 +375,7 @@ func (c *ExternalConnector) recover(ctx context.Context, u *connectorUse) error 
 		return err
 	}
 	if decision != wire.Applied {
-		return app.ErrInvalidServerConfiguration
+		return mcpapp.ErrInvalidServerConfiguration
 	}
 	c.recovered[id] = u.epoch
 	return nil

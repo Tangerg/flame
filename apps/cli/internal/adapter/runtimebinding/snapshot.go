@@ -23,8 +23,6 @@ type coldRead struct {
 	interrupts []protocol.PendingInterruptSet
 }
 
-// GetSession reads one Session and its material from a single Runtime
-// snapshot, which carries the Session it was read from.
 func (r *Connection) GetSession(ctx context.Context, sessionID string) (conversation.SessionSnapshot, error) {
 	request := protocol.GetSessionSnapshotRequest{
 		SessionID: sessionID, IncludeDescendants: r.profile.Supports(protocol.FeatureChildRuns),

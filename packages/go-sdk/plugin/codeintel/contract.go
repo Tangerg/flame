@@ -1,5 +1,3 @@
-// Package codeintel publishes the optional workspace analysis consumer contract.
-// Publishers compute results; only the caller may commit a file change.
 package codeintel
 
 import (
@@ -12,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
@@ -70,8 +69,6 @@ func (t Transformation) Validate(source Document) error {
 	return nil
 }
 
-// Baseline contains opaque, position-independent problem identities. Repeated
-// identities preserve multiplicity; the publisher owns comparison and rendering.
 type Inspection struct {
 	Document Document `json:"document"`
 	Baseline []string `json:"baseline"`
@@ -114,7 +111,7 @@ func validText(value string) bool { return utf8.ValidString(value) && !strings.C
 
 func validateContent(value string) error {
 	if len(value) > MaxDocumentBytes {
-		return fmt.Errorf("code intelligence: document exceeds the %d MiB limit", MaxDocumentBytes>>20)
+		return fmt.Errorf("code intelligence: document exceeds the %d MiB limit", MaxDocumentBytes/filesystem.MiB)
 	}
 	if !validText(value) {
 		return errors.New("code intelligence: document must contain UTF-8 text without NUL")

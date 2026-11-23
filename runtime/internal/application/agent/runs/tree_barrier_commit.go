@@ -9,10 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// TreeBarrierCommit is the one durable write-set produced when any executor
-// interruption stops a Run tree. Pending owns the complete continuation hand-off;
-// Runs contains one StateSuspend commit for every active Run in deterministic
-// postorder. No individual Run commit may write or consume the root-owned set.
 type TreeBarrierCommit struct {
 	commitID   CommitID
 	pending    Pending
@@ -20,8 +16,6 @@ type TreeBarrierCommit struct {
 	checkpoint ExecutorCheckpoint
 }
 
-// NewTreeBarrierCommit binds the root-owned waiting hand-off, opaque executor
-// checkpoint, and every Run suspension into one immutable transaction.
 func NewTreeBarrierCommit(
 	commitID CommitID,
 	pending Pending,
@@ -46,9 +40,6 @@ func cloneEventCommits(commits []EventCommit) []EventCommit {
 	return owned
 }
 
-// Validate proves that the barrier is the complete interruption projection for
-// the pending continuation tree and that its checkpoint belongs to the same
-// run. The Effects port only persists this already-defined write-set.
 func (t TreeBarrierCommit) Validate() error {
 	if err := t.commitID.Validate(); err != nil {
 		return fmt.Errorf("runs: tree barrier: %w", err)
@@ -74,19 +65,14 @@ func (t TreeBarrierCommit) Validate() error {
 	return validator.validateRuns()
 }
 
-// CommitID returns the stable tree-barrier transaction identity.
 func (t TreeBarrierCommit) CommitID() CommitID { return t.commitID }
 
-// Pending returns an isolated snapshot of the complete waiting hand-off.
 func (t TreeBarrierCommit) Pending() Pending { return t.pending.Clone() }
 
-// Runs returns isolated nested Run commits in canonical tree postorder.
 func (t TreeBarrierCommit) Runs() []EventCommit { return cloneEventCommits(t.runs) }
 
-// Checkpoint returns an isolated copy of the opaque executor continuation.
 func (t TreeBarrierCommit) Checkpoint() ExecutorCheckpoint { return t.checkpoint.Clone() }
 
-// SessionID is the Session of the tree's root Run, which owns it.
 func (t TreeBarrierCommit) SessionID() identity.SessionID {
 	for _, commit := range t.runs {
 		if commit.RunID == t.pending.RootRunID && commit.Run != nil {

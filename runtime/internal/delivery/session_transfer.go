@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
-
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -17,12 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// ExportSession serializes a session to a portable artifact.
-// format=json (default) produces a round-trippable SessionArtifact —
-// session identity + chat history + canonical items + runs + portable offloaded tool
-// bodies — that ImportSession restores. format=md produces a human-readable
-// transcript (not re-importable).
-// Portable JSON uses the same encoded document budget on import and export.
 func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSessionRequest) (*protocol.ExportSessionResponse, error) {
 	format := request.Format
 	if format == "" {
@@ -36,7 +28,7 @@ func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSess
 	if format == protocol.ExportFormatMarkdown {
 		results = sessions.ExpandedToolResults
 	}
-	sessionID, err := wireIdentity("sessionId", request.SessionID, identity.ParseSession)
+	sessionID, err := sessionParameter(request.SessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -53,8 +45,6 @@ func (s *Handler) ExportSession(ctx context.Context, request protocol.ExportSess
 	}
 
 	if format == protocol.ExportFormatMarkdown {
-		// Ordinary text is already expanded in its Item. Model-only bodies may
-		// contain evidence absent from the structured result and must survive.
 		artifact.ToolResults = slices.DeleteFunc(artifact.ToolResults, func(body protocol.ArtifactToolResult) bool {
 			return !body.ModelOnly
 		})

@@ -1,50 +1,52 @@
 package wire
 
 import (
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
-	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
+	"github.com/Tangerg/flame/plugins/schedules/internal/schedule"
 )
 
 const (
-	List   = "flame.schedules/list.v1"
-	Create = "flame.schedules/create.v1"
-	Update = "flame.schedules/update.v1"
-	Delete = "flame.schedules/delete.v1"
-	RunNow = "flame.schedules/runNow.v1"
+	List   = "flame.schedules/list.v2"
+	Create = "flame.schedules/create.v2"
+	Update = "flame.schedules/update.v2"
+	Delete = "flame.schedules/delete.v2"
+	RunNow = "flame.schedules/runNow.v2"
 )
 
 type UpdateInput struct {
-	ID               string
-	ExpectedRevision uint64
-	Title            *string `json:"Title,omitzero"`
-	Instructions     *string `json:"Instructions,omitzero"`
-	CWD              *string `json:"CWD,omitzero"`
-	Cron             *string `json:"Cron,omitzero"`
-	TimeZone         *string `json:"TimeZone,omitzero"`
-	Enabled          *bool   `json:"Enabled,omitzero"`
-	ModelSelection   ModelPatch
+	ID               string     `json:"id"`
+	ExpectedRevision uint64     `json:"expectedRevision"`
+	Title            *string    `json:"title,omitzero"`
+	Instructions     *string    `json:"instructions,omitzero"`
+	CWD              *string    `json:"cwd,omitzero"`
+	Cron             *string    `json:"cron,omitzero"`
+	TimeZone         *string    `json:"timeZone,omitzero"`
+	Enabled          *bool      `json:"enabled,omitzero"`
+	ModelSelection   ModelPatch `json:"modelSelection"`
 }
 
 type ListInput struct {
-	Cursor string
-	Limit  *int `json:"Limit,omitzero"`
+	Cursor string `json:"cursor"`
+	Limit  *int   `json:"limit,omitzero"`
 }
 
 type Page struct {
-	Rows       []schedule.Snapshot
-	NextCursor string
+	Rows       []schedule.Snapshot `json:"rows"`
+	NextCursor string              `json:"nextCursor"`
 }
 
-type ItemInput struct{ ID string }
+type ItemInput struct {
+	ID string `json:"id"`
+}
 
 type Ack struct{}
 
 type ModelPatch struct {
-	Provider        *string `json:"Provider,omitzero"`
-	Model           *string `json:"Model,omitzero"`
-	ReasoningEffort *string `json:"ReasoningEffort,omitzero"`
+	Provider        *string `json:"provider,omitzero"`
+	Model           *string `json:"model,omitzero"`
+	ReasoningEffort *string `json:"reasoningEffort,omitzero"`
 }
 
-func (p ModelPatch) Patch() modelchoice.Patch {
-	return modelchoice.Patch{Provider: p.Provider, Model: p.Model, ReasoningEffort: p.ReasoningEffort}
+func (p ModelPatch) Patch() flamemodel.Patch {
+	return flamemodel.Patch{Provider: p.Provider, Model: p.Model, ReasoningEffort: p.ReasoningEffort}
 }

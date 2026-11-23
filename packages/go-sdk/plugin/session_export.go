@@ -16,8 +16,6 @@ import (
 const SessionMarkdownReference = "flame.session-markdown.v1"
 const SessionDocumentChunkBytes = 64 << 10
 
-// DocumentIdentity binds every range to the same bytes. The serving callback is
-// call-scoped, so the reader cannot choose a different Session or revision.
 type DocumentIdentity struct {
 	Digest string `json:"digest"`
 	Bytes  int64  `json:"bytes"`
@@ -65,7 +63,6 @@ func SessionMarkdownContract() (*plugincontract.Capability, error) {
 	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: SessionMarkdownReference, Composition: plugincontract.Selection, Scope: string(extension.ComponentScopeSession)}, method.Descriptor())
 }
 
-// Both ends reject empty frames; the aggregate bound also applies to an arbitrarily long stream of valid short frames.
 func ValidateRenderedChunk(previous, size int) error {
 	if previous < 0 || size <= 0 || size > SessionDocumentChunkBytes || size > protocol.MaximumSessionArtifactBytes-previous {
 		return errors.New("session export: invalid rendered chunk")

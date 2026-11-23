@@ -10,8 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// RollbackSession keeps ToRunID and every earlier root run. An empty ToRunID
-// clears all history; file restoration therefore requires a concrete boundary.
 type RollbackSession struct {
 	CommandID authoring.CommandID
 	SessionID string
@@ -47,8 +45,6 @@ func (r RollbackSession) HistoryOnly() bool {
 	return r.Scope == "" || r.Scope == protocol.RestoreHistory
 }
 
-// InputContent preserves a dropped run's opening input without pretending an
-// inline runtime image is already a local authoring attachment.
 type InputContent struct {
 	Kind     protocol.ContentBlockType
 	Text     string
@@ -105,9 +101,6 @@ func (d DroppedRun) Validate() error {
 	return nil
 }
 
-// OpeningText joins the first dropped root input's text blocks for restoring
-// the composer. It also reports inline images that still require attachment
-// materialization by the delivery layer.
 func (d DroppedRun) OpeningText() (string, int) {
 	parts := make([]string, 0, len(d.Input))
 	images := 0
@@ -141,8 +134,6 @@ func (r RollbackResult) Validate() error {
 	return nil
 }
 
-// FirstOpeningInput returns the earliest dropped root input. Child and
-// continuation runs carry no opening input and are skipped.
 func (r RollbackResult) FirstOpeningInput() (DroppedRun, bool) {
 	for _, run := range r.Dropped {
 		if len(run.Input) != 0 {

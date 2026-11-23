@@ -9,8 +9,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// Status labels every projection shows for the same Run activity, so a state
-// reads the same wherever it surfaces.
 const (
 	statusWorking           = "working"
 	statusCanceling         = "canceling"
@@ -91,10 +89,8 @@ func (a *app) newTranscript() *transcriptView {
 	return transcript
 }
 
-// reconcileRunSnapshot atomically replaces the in-memory projection after a
-// segment can no longer be replayed. It deliberately keeps the current stream
-// operation alive: run recovery already attached the replacement stream before
-// taking this snapshot, so canceling that operation here would reopen a gap.
+// The current stream operation stays alive: recovery attached the replacement
+// stream before taking this snapshot, so canceling it here would reopen a gap.
 func (l *sessionLifecycle) reconcileRunSnapshot(snapshot conversation.SessionSnapshot, stream conversation.SegmentStream) error {
 	if snapshot.Session.ID != l.state.current.ID {
 		return fmt.Errorf("reconcile run snapshot: session %s does not match %s", snapshot.Session.ID, l.state.current.ID)
@@ -161,7 +157,6 @@ func (l *sessionLifecycle) setActiveSession(session conversation.Session) {
 	l.root.presentSession(session)
 }
 
-// presentSession shows session in the header, banner, prompt and title.
 func (a *app) presentSession(session conversation.Session) {
 	a.header.SetSession(session)
 	a.brand.SetSession(session)

@@ -12,7 +12,7 @@ import { type AgentSessionStatePort } from "@/features/agent/application/session
 import { type AgentSessionViewPort } from "@/features/agent/application/session/sessionAccess";
 import { reportSessionError } from "@/features/agent/application/session/reportSessionError";
 import { type AgentCommandOwner } from "@/features/agent/application/agentCommandOwner";
-export interface CreateSessionOptions {
+interface CreateSessionOptions {
   cwd: string;
   reuseEmptySession?: boolean;
 }

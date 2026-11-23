@@ -4,7 +4,6 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	"net/url"
 	"strconv"
 
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
@@ -97,7 +96,7 @@ func (c *connector) listPulls(ctx context.Context, input contractwire.PullListIn
 	if err != nil {
 		return contractwire.PullPage{}, err
 	}
-	filters := url.Values{"state": {string(input.State)}, "sort": {"updated"}, "direction": {"desc"}}
+	filters := recentlyUpdated(input.State)
 	if input.Base != nil {
 		filters.Set("base", *input.Base)
 	}

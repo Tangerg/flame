@@ -13,10 +13,6 @@ const (
 	defaultInteractionConcurrentToolCalls = 8
 )
 
-// interactionExecutionPolicy is the validated, immutable execution policy
-// shared by every Session and Deployment owned by one InteractionExecutor.
-// Construction values may be absent, but consumers never receive sentinel
-// zeroes or defer defaults to the Agent Framework.
 type interactionExecutionPolicy struct {
 	deltaBufferCapacity       int
 	maxConcurrentToolCalls    int

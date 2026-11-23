@@ -13,7 +13,7 @@ import (
 
 	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
-	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -23,9 +23,6 @@ type sourceRegistry interface {
 	Connection(context.Context, mcpserver.ID) (mcpapp.Launch, error)
 }
 
-// Captured tools cannot retain authority after their source or session is
-// withdrawn. The source stays unexported so its session-borrowing methods are
-// reachable only through the admission below.
 type authorizedTool struct {
 	source   Executable
 	registry sourceRegistry
@@ -37,12 +34,15 @@ func (t authorizedTool) Definition() toolcontract.Definition  { return t.source.
 func (t authorizedTool) MCPSource() (CapturedSource, bool)    { return t.source.MCPSource() }
 func (t authorizedTool) SourceFingerprint() framevalue.Digest { return t.source.SourceFingerprint() }
 func (t authorizedTool) SourceConfig() ServerConfig           { return t.source.SourceConfig() }
+
 func (t authorizedTool) InstallationActivation() (plugin.Activation, error) {
 	return t.source.InstallationActivation()
 }
+
 func (t authorizedTool) ConcurrencyPolicy() func(toolcontract.Invocation) (string, bool) {
 	return t.source.ConcurrencyPolicy()
 }
+
 func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invocation) (_ toolcontract.Result, returned error) {
 	if err := t.admit(ctx); err != nil {
 		return toolcontract.Result{}, err
@@ -52,7 +52,7 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 		if err != nil {
 			return toolcontract.Result{}, err
 		}
-		metadata := sdkmcp.ParamsBase{}
+		metadata := sdk.ParamsBase{}
 		if err := metadata.Set(pluginmcp.InvocationMetadataKey, captured); err != nil {
 			return toolcontract.Result{}, err
 		}
@@ -104,7 +104,7 @@ func (t authorizedTool) admit(ctx context.Context) error {
 		}
 		return failure
 	}
-	if !t.source.config.Server.SameConnection(current) {
+	if !t.source.config.SameConnection(current) {
 		return rejected("source configuration is no longer current")
 	}
 	if !t.source.Current() {
@@ -113,8 +113,6 @@ func (t authorizedTool) admit(ctx context.Context) error {
 	return nil
 }
 
-// rejected is the definite refusal of a call whose admitted authority or
-// connection was withdrawn; nothing reached the remote server.
 func rejected(reason string) error {
 	failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindRejected, Output: toolcontract.NewTextOutput(reason)})
 	if err != nil {
@@ -131,8 +129,6 @@ func (p *Pool) authorizedTools(catalog []Executable, prepare ToolPreparation) []
 	return result
 }
 
-// CallActivation preserves both the frozen Frame graph and Flame's per-call
-// authority and callback preparation. It never borrows today's catalog graph.
 func (t authorizedTool) CallActivation(ctx context.Context, activation plugin.Activation, invocation toolcontract.Invocation) (result toolcontract.Result, err error) {
 	borrowed, err := t.pool.BorrowActivation(ctx, t.source.config.ID(), activation)
 	if err != nil {

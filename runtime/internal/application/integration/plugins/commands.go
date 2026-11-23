@@ -15,15 +15,11 @@ import (
 	"github.com/samber/lo"
 )
 
-// Get returns a caller-owned aggregate; only Save advances durable routing.
-
 type CommandStore interface {
 	Get(context.Context, string) (*plugin.Command, bool, error)
 	Save(context.Context, *plugin.Command) error
 }
 
-// Commands serializes original binding and dispatch admission with installation
-// replacement. All network I/O happens after this boundary has been released.
 type Commands struct {
 	store     CommandStore
 	admission framehost.Admission
@@ -46,6 +42,7 @@ func (c *Commands) Get(ctx context.Context, id string) (*plugin.Command, error) 
 		return nil, plugin.ErrCommandUnconfirmed
 	case plugin.CommandRetired:
 		return nil, plugin.ErrCommandRetired
+	case plugin.CommandDispatched, plugin.CommandObserved:
 	}
 	return command, nil
 }
@@ -65,8 +62,6 @@ func (c *Commands) authorized(ctx context.Context, id string) (*plugin.Command, 
 	return command, nil
 }
 
-// Retirement and dispatch compete under the same admission boundary. The retained
-// route prevents a retired identity from ever being admitted as new work.
 func (c *Commands) Retire(ctx context.Context, id string) error {
 	return c.admission.Admit(ctx, func(ctx context.Context) error {
 		command, err := c.authorized(ctx, id)
@@ -80,9 +75,6 @@ func (c *Commands) Retire(ctx context.Context, id string) error {
 	})
 }
 
-// RestoreInvocation validates a private owner's retained caller against original
-// host routing, including the resource owner's original target. Only a fresh
-// automatic trigger needs the background contribution's own installation target.
 func (c *Commands) RestoreInvocation(ctx context.Context, invocation framecall.Invocation) (context.Context, error) {
 	if err := extension.ValidateInvocation(invocation); err != nil {
 		return nil, err
@@ -106,9 +98,6 @@ func (c *Commands) RestoreInvocation(ctx context.Context, invocation framecall.I
 	return operation.Adopt(ctx, invocation.ID, invocation.Origin, invocation.Parent), nil
 }
 
-// Find projects an original binding before new-call discovery does network I/O.
-// Bind rereads under admission before persisting, so this read cannot admit a
-// competing route or race installation replacement.
 func (c *Commands) Find(ctx context.Context, id, method string, input framevalue.JSON) (*plugin.Command, bool, error) {
 	command, found, err := c.store.Get(ctx, id)
 	if err == nil && found && !command.Matches(method, input) {
@@ -117,8 +106,6 @@ func (c *Commands) Find(ctx context.Context, id, method string, input framevalue
 	return command, found, err
 }
 
-// CommandAdmission captures routing and its actual activation dependencies at the
-// same serialization point. It carries no private business settlement.
 type CommandAdmission struct {
 	Binding    ContributionBinding
 	Activation plugin.Activation

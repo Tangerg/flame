@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/oolong/ui/base"
 )
 
@@ -137,9 +136,7 @@ func (a *app) registerCommands() {
 		}
 		return a.commands.add(owner, descriptor, run, evaluate)
 	})
-	if a.screens.plugins != nil {
-		a.screens.plugins.registerViewCommands(&a.commands)
-	}
+	a.screens.plugins.registerViewCommands(&a.commands)
 }
 
 type commandOperation struct {
@@ -149,7 +146,6 @@ type commandOperation struct {
 
 const pluginCommandOperationSlotPrefix = "command:"
 
-// allArgument selects every candidate of a command that otherwise takes one.
 const allArgument = "all"
 
 func isAllArgument(argument string) bool { return strings.EqualFold(argument, allArgument) }
@@ -284,7 +280,7 @@ func runLocalCommandSafely(command localCommand, host *app, argument string) (er
 
 func (a *app) runCommand(name, argument string, accept func()) {
 	command, registration, ok := a.commands.index.Lookup(name)
-	if !ok || registration.run == nil {
+	if !ok {
 		a.message("unknown command: /" + name)
 		return
 	}
@@ -301,14 +297,13 @@ func (a *app) runCommand(name, argument string, accept func()) {
 	registration.run(argument, accept)
 }
 
-func (a *app) commandDraft() (authoring.Message, bool, error) {
+func (a *app) pendingDraft() (bool, error) {
 	message, _, err := a.composer.draft()
 	if err != nil {
-		return authoring.Message{}, false, err
+		return false, err
 	}
-	// Command text is the invocation, while attachments remain staged prompt context.
 	if _, _, command := parseSlashCommand(strings.TrimSpace(message.Text)); command {
 		message.Text = ""
 	}
-	return message, !message.IsEmpty(), nil
+	return !message.IsEmpty(), nil
 }

@@ -2,7 +2,7 @@
 // how much is left.
 const HALFWAY_PERCENT = 50;
 
-export interface ContextUsageReadout {
+interface ContextUsageReadout {
   ratio: number;
   percent: number;
   remainingPercent: number;

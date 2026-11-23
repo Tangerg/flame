@@ -15,10 +15,12 @@ type chatRequestProjection struct {
 }
 
 func (ChatRequest) JSONSchemaModel() any { return chatRequestProjection{} }
+
 func (r ChatRequest) MarshalJSON() ([]byte, error) {
 	type native ChatRequest
 	return json.Marshal(native(r))
 }
+
 func (r *ChatRequest) UnmarshalJSON(data []byte) error {
 	var encoded chatRequestProjection
 	if err := value.DecodeValue(data, &encoded, "provider chat request"); err != nil {
@@ -34,10 +36,12 @@ type chatResultProjection struct {
 }
 
 func (ChatResult) JSONSchemaModel() any { return chatResultProjection{} }
+
 func (r ChatResult) MarshalJSON() ([]byte, error) {
 	type native ChatResult
 	return json.Marshal(native(r))
 }
+
 func (r *ChatResult) UnmarshalJSON(data []byte) error {
 	var encoded chatResultProjection
 	if err := value.DecodeValue(data, &encoded, "provider chat result"); err != nil {

@@ -1,4 +1,3 @@
-// Skill readers provide model-facing Skill discovery and resource access.
 package builtin
 
 import (
@@ -10,35 +9,21 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	skillspec "github.com/Tangerg/scope/skills"
 	skillstool "github.com/Tangerg/scope/tools/skills"
 	"github.com/samber/lo"
 )
 
-// SkillUsageRecorder records that a skill was loaded, feeding the idle-lifecycle
-// curator's last-used signal.
 type SkillUsageRecorder interface {
 	RecordUse(ctx context.Context, name string, now time.Time) error
 }
 
-// BuildReaders assembles the working-directory-scoped reading tools over the
-// merged skill source (project <cwd>/.flame/skills layered over the user dir,
-// project winning). It returns nil when neither directory exists, so a session
-// that ships no skills gets no skill tools at all. When recorder is non-nil,
-// loading a skill records a use so the curator can tell active skills from idle
-// ones.
-//
-// Rebuilt per resolution because both the project directory and admitted source
-// selection belong to that execution. Existing tools never change libraries.
 func BuildReaders(ctx context.Context, cwd, userDir string, recorder SkillUsageRecorder, packages promptsource.SkillSources, retained []plugin.Dependency) ([]toolcontract.Tool, []plugin.Dependency, error) {
 	if lo.IsNil(recorder) {
 		return nil, nil, errors.New("skill: usage recorder is required")
 	}
-	// Wrap only the user source: the curator governs the user library, and
-	// merge resolves a shadowed name to the project copy, so this records
-	// exactly the user-resolved loads (a project skill never touches the
-	// user-library usage record).
 	decorateUser := func(user skillspec.ResourceSource) skillspec.ResourceSource {
 		return recordingSource{ResourceSource: user, recorder: recorder}
 	}
@@ -56,8 +41,6 @@ func BuildReaders(ctx context.Context, cwd, userDir string, recorder SkillUsageR
 	return tools, dependencies, nil
 }
 
-// recordingSource records successful user-library Skill loads. A usage-write
-// failure emits a diagnostic without changing the loaded Skill.
 type recordingSource struct {
 	skillspec.ResourceSource
 	recorder SkillUsageRecorder
@@ -67,7 +50,7 @@ func (r recordingSource) Load(ctx context.Context, name string) (*skillspec.Skil
 	skill, err := r.ResourceSource.Load(ctx, name)
 	if err == nil {
 		if usageErr := r.recorder.RecordUse(ctx, name, time.Now()); usageErr != nil {
-			slog.ErrorContext(ctx, "skill: record usage failed", "skill.name", name, "error", usageErr)
+			slog.ErrorContext(ctx, "skill: record usage failed", slog.Any("skill.name", name), telemetry.Error(usageErr))
 		}
 	}
 	return skill, err

@@ -8,8 +8,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// Length framing preserves field boundaries, including empty fields and UTF-8 bytes.
-// Callers own field selection and order; this package owns only their encoding.
 func DigestStrings(fields ...string) framevalue.Digest {
 	h := sha256.New()
 	for _, field := range fields {

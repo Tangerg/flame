@@ -2,7 +2,7 @@ package wire
 
 import (
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
+	"github.com/Tangerg/flame/plugins/web/internal/capture"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
@@ -32,7 +32,6 @@ func (BrowseInput) JSONSchemaConstraints() jsonschema.Constraints {
 	}}
 }
 
-// HTTPResponse projects Scope's byte-preserving HTTP result into the published contract.
 type HTTPResponse struct {
 	Status    int                      `json:"status"`
 	Headers   map[string][]HTTPContent `json:"headers,omitempty"`

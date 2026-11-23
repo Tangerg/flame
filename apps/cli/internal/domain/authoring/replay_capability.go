@@ -1,5 +1,3 @@
-// ReplayCapability owns the CLI's model of one Runtime command replay
-// store and the finite interval it promises for stable command identities.
 package authoring
 
 import (
@@ -10,8 +8,6 @@ import (
 	"time"
 )
 
-// Capability is the immutable replay promise published by one Runtime. Its
-// zero value is invalid: store identity and retention are one indivisible fact.
 type ReplayCapability struct {
 	namespace string
 	retention time.Duration

@@ -5772,7 +5772,7 @@
         "caller": {
           "$ref": "#/$defs/Invocation"
         },
-        "costUSD": {
+        "costUsd": {
           "type": "number",
           "minimum": 0
         },
@@ -5863,7 +5863,7 @@
           },
           "then": {
             "properties": {
-              "costUSD": false,
+              "costUsd": false,
               "failure": false,
               "response": false,
               "settledAt": false
@@ -5923,7 +5923,7 @@
           },
           "then": {
             "properties": {
-              "costUSD": false,
+              "costUsd": false,
               "response": false
             },
             "required": [
@@ -13380,7 +13380,7 @@
       "type": "object",
       "properties": {
         "cause": {
-          "type": "string"
+          "$ref": "#/$defs/UnresolvedEffectCause"
         },
         "detail": {
           "type": "string"
@@ -13402,6 +13402,13 @@
         "cause",
         "effectId",
         "processId"
+      ]
+    },
+    "UnresolvedEffectCause": {
+      "type": "string",
+      "enum": [
+        "termination",
+        "runtimeFailure"
       ]
     },
     "UpdateGoalRequest": {

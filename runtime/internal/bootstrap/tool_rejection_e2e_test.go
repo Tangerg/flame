@@ -1,8 +1,6 @@
 package bootstrap
 
 import (
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"context"
 	"fmt"
 	"os"
@@ -10,12 +8,13 @@ import (
 	"reflect"
 	"testing"
 
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/scope/core/chat"
-	chathistory "github.com/Tangerg/scope/core/history"
 )
 
 func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) {
@@ -107,7 +106,7 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 				}
 			}
 			readHistory = func(ctx context.Context) ([]chat.Message, error) {
-				return stores.ChatHistory.Read(ctx, chathistory.ConversationID(session.ID))
+				return stores.Conversations.Read(ctx, testsupport.MustSessionID(session.ID))
 			}
 			for range 2 {
 				started, events, err := api.StartRun(ctx, protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "continue"}}})

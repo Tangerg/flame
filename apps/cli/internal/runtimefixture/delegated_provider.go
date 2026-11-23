@@ -9,8 +9,11 @@ import (
 	"strings"
 )
 
-// ServeDelegatedApproval exercises a root delegation and a child shell approval
-// using the OpenAI-compatible provider surface.
+const (
+	probePromptTokens     = 4
+	probeCompletionTokens = 2
+)
+
 func ServeDelegatedApproval(w http.ResponseWriter, r *http.Request) {
 	var request delegatedRequest
 	if err := json.UnmarshalRead(r.Body, &request); err != nil {
@@ -24,7 +27,7 @@ func ServeDelegatedApproval(w http.ResponseWriter, r *http.Request) {
 	}
 	response := turn.response(request.Stream)
 	if !request.Stream {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set(headerContentType, "application/json")
 		_ = json.MarshalWrite(w, response)
 		return
 	}
@@ -33,7 +36,7 @@ func ServeDelegatedApproval(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set(headerContentType, "text/event-stream")
 	_, _ = fmt.Fprintf(w, "data: %s\n\ndata: [DONE]\n\n", data)
 }
 
@@ -47,9 +50,8 @@ type delegatedRequest struct {
 	Tools []jsontext.Value `json:"tools"`
 }
 
-// The script's user-facing probes: a Run started with DelegateApprovalProbe
-// delegates a child whose instructions are ChildApprovalProbe, and that child
-// asks for an approved shell call.
+const headerContentType = "Content-Type"
+
 const (
 	DelegateApprovalProbe = "delegate approval probe"
 	ChildApprovalProbe    = "child approval probe"
@@ -57,7 +59,6 @@ const (
 	childShellCallID      = "child_shell"
 )
 
-// OpenAI chat-completions wire vocabulary the scripted provider speaks.
 const (
 	wireRoleUser          = "user"
 	wireRoleTool          = "tool"
@@ -69,14 +70,11 @@ const (
 	objectCompletionChunk = "chat.completion.chunk"
 )
 
-// delegatedTurn is one scripted model reply: text, or a single tool call.
 type delegatedTurn struct {
 	content                 string
 	callID, name, arguments string
 }
 
-// turn answers from the latest message the script recognizes: a probe asks
-// for a delegation or a shell call, and each tool result completes its Run.
 func (r delegatedRequest) turn() (delegatedTurn, bool) {
 	if len(r.Tools) == 0 {
 		return delegatedTurn{content: "maintenance complete"}, true
@@ -149,6 +147,6 @@ func (t delegatedTurn) response(stream bool) completionResponse {
 	}
 	return completionResponse{
 		ID: "chatcmpl_probe", Object: object, Created: 1, Model: "deepseek-chat",
-		Choices: []completionChoice{choice}, Usage: completionUsage{PromptTokens: 4, CompletionTokens: 2, TotalTokens: 6},
+		Choices: []completionChoice{choice}, Usage: completionUsage{PromptTokens: probePromptTokens, CompletionTokens: probeCompletionTokens, TotalTokens: probePromptTokens + probeCompletionTokens},
 	}
 }

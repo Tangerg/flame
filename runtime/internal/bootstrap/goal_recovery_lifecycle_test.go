@@ -8,8 +8,9 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -17,25 +18,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-// TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser walks the
-// product lifecycle the unit tests only cover in halves: a Goal was driving a
-// Run when the process died.
-//
-// Startup owes the user three things here, and they belong to three different
-// owners. Run recovery must terminalize the abandoned Run as lost. The Goal
-// ledger must record that Run exactly once to preserve accurate usage. The
-// Goal must end in a state the user can act on rather than active with a Run
-// that no longer exists.
-//
-// The pause here is the accounting's, not the driver's: a charged Run that did
-// not complete pauses its Goal and names the outcome, so the user is told the
-// Run was lost rather than merely that the process restarted. The driver's own
-// runtimeRestarted pause is for the Goal that had no Run to charge, which
-// TestActiveGoalWithNoRunInFlightPausesAsRestarted covers.
-//
-// Ordering is the part no single-owner test can see: the Goal charge reads the
-// durable Run row the recovery commit has just written, and the driver's sweep
-// then compare-and-swaps against the revision that charge moved.
 func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing.T) {
 	cfg := runtimeConfigWithRequiredDeps(t)
 	ctx := t.Context()
@@ -45,12 +27,10 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 		incarnationID = "incarnation_goal_lost"
 	)
 	createdAt := time.Date(2026, 9, 2, 9, 0, 0, 0, time.UTC)
-	selection, err := modelchoice.New("anthropic", "claude-test")
+	selection, err := flamemodel.New("anthropic", "claude-test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The driver clears a Goal whose Session lost its model selection, so the
-	// Session must carry one for this to reach the pause it is meant to prove.
 	if insertErr := cfg.stores.Sessions.Insert(ctx, testsupport.MustRestoreSession(session.Snapshot{
 		ID: testsupport.MustSessionID(sessionID), Workspace: testsupport.MustWorkspace(t.TempDir()),
 		Selection: selection, CreatedAt: createdAt, UpdatedAt: createdAt,
@@ -65,7 +45,7 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 	if err != nil || decision.Next == nil {
 		t.Fatalf("original author did not issue the objective: %v", err)
 	}
-	active, err := (goal.Snapshot{SessionID: testsupport.MustSessionID(sessionID), CreatedAt: createdAt, ModelSelection: selection}).Publish(*decision.Next, decision.Source, incarnationID, createdAt)
+	active, err := (goal.Snapshot{SessionID: testsupport.MustSessionID(sessionID), CreatedAt: createdAt, ModelSelection: selection}).Publish(*decision.Next, decision.Source, testsupport.MustIncarnation(incarnationID), createdAt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,19 +61,15 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 		t.Fatalf("save opening Goal = (%t, %v)", applied, saveErr)
 	}
 
-	// The crash window: admitted under the Goal's incarnation, never terminalized.
 	if admitErr := cfg.stores.Runs.Admit(ctx, run.Draft{
 		RunID: testsupport.MustRunID(runID), SessionID: testsupport.MustSessionID(sessionID), SegmentID: testsupport.MustSegmentID("seg_goal_lost"),
-		ModelSelection: selection, GoalIncarnationID: incarnationID, CreatedAt: createdAt,
+		ModelSelection: selection, GoalIncarnationID: testsupport.MustIncarnation(incarnationID), CreatedAt: createdAt,
 	}); admitErr != nil {
 		t.Fatalf("admit Goal-owned Run: %v", admitErr)
 	}
 
 	host := reopenPluginRuntime(t, producer, &cfg).host
 
-	// Revival is the post-callback-RPC recovery phase; production runs it after
-	// publishing delivery. This lost Run has no plugin-backed effect, so it revives
-	// without a live plugin session.
 	if err := host.application.recoverUncertainExecutions(ctx); err != nil {
 		t.Fatalf("recover uncertain executions: %v", err)
 	}
@@ -120,15 +96,13 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 			recovered.Status(), recovered.Reason())
 	}
 
-	// Repeated recovery must not count the same Run twice. A second startup
-	// finds no unfinished Run and preserves the recorded usage.
 	if closeErr := host.Close(); closeErr != nil {
 		t.Fatalf("close first Runtime: %v", closeErr)
 	}
 	if err := cfg.stores.Close(); err != nil {
 		t.Fatalf("close first storage owner: %v", err)
 	}
-	cfg.stores, err = persistence.Open(ctx, persistence.Config{DataDirectory: cfg.stores.DataDirectory})
+	cfg.stores, err = persistence.Open(ctx, persistence.Config{DataDirectory: cfg.stores.DataDirectory, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatalf("reopen storage: %v", err)
 	}
@@ -161,7 +135,6 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 			rebooted.Status(), rebooted.Reason().Code())
 	}
 
-	// The Session is the user's again: nothing holds its single-writer slot.
 	if admitErr := cfg.stores.Runs.Admit(ctx, run.Draft{
 		RunID: testsupport.MustRunID("run_after_recovery"), SessionID: testsupport.MustSessionID(sessionID), SegmentID: testsupport.MustSegmentID("seg_after_recovery"),
 		ModelSelection: selection, CreatedAt: createdAt.Add(time.Hour),
@@ -170,10 +143,6 @@ func TestGoalOwnedRunLostOnRestartIsChargedOnceAndHandedBackToTheUser(t *testing
 	}
 }
 
-// TestActiveGoalWithNoRunInFlightPausesAsRestarted is the other half of the
-// distinction. A Goal that died between Runs has nothing to charge, so the
-// accounting never speaks and the driver's own sweep owns the pause. Naming the
-// restart rather than a Run outcome is the whole point: no Run failed here.
 func TestActiveGoalWithNoRunInFlightPausesAsRestarted(t *testing.T) {
 	cfg := runtimeConfigWithRequiredDeps(t)
 	ctx := t.Context()
@@ -182,7 +151,7 @@ func TestActiveGoalWithNoRunInFlightPausesAsRestarted(t *testing.T) {
 		incarnationID = "incarnation_goal_idle"
 	)
 	createdAt := time.Date(2026, 9, 2, 10, 0, 0, 0, time.UTC)
-	selection, err := modelchoice.New("anthropic", "claude-test")
+	selection, err := flamemodel.New("anthropic", "claude-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +168,7 @@ func TestActiveGoalWithNoRunInFlightPausesAsRestarted(t *testing.T) {
 	if err != nil || decision.Next == nil {
 		t.Fatalf("original author did not issue the objective: %v", err)
 	}
-	active, err := (goal.Snapshot{SessionID: testsupport.MustSessionID(sessionID), CreatedAt: createdAt, ModelSelection: selection}).Publish(*decision.Next, decision.Source, incarnationID, createdAt)
+	active, err := (goal.Snapshot{SessionID: testsupport.MustSessionID(sessionID), CreatedAt: createdAt, ModelSelection: selection}).Publish(*decision.Next, decision.Source, testsupport.MustIncarnation(incarnationID), createdAt)
 	if err != nil {
 		t.Fatal(err)
 	}

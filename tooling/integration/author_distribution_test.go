@@ -149,8 +149,8 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 			t.Fatalf("select independent Memory: %+v, %v", selected, err)
 		}
 		request.Contribution = "memory-provider"
-		request.Method = memorycontract.AddV2Method
-		request.Input = `{"Scope":"user","CWD":"","Content":"independent author fact"}`
+		request.Method = memorycontract.AddV3Method
+		request.Input = `{"scope":"user","cwd":"","content":"independent author fact"}`
 	}
 	if name == "usagereports" {
 		published, err := plugincontract.ParseCapability([]byte(UsageReportsCapabilityJSON))
@@ -193,8 +193,8 @@ func verifyStandalonePlugin(t *testing.T, name string) {
 		if !selected {
 			t.Fatal("restart replaced the selected independent provider")
 		}
-		request.Method = memorycontract.ListV2Method
-		request.Input = `{"Scope":"user","CWD":"","Cursor":""}`
+		request.Method = memorycontract.ListV3Method
+		request.Input = `{"scope":"user","cwd":"","cursor":""}`
 		reply, err := host.CallPlugin(t.Context(), request, protocol.PluginCallOptions{})
 		if err != nil || reply.Failure != nil {
 			t.Fatalf("read independent Memory: %+v, %v", reply, err)

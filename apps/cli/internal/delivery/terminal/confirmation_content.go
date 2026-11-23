@@ -8,8 +8,8 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
-// confirmationContentPane keeps the complete reviewed content scrollable while
-// the decision remains visible. Arrow keys choose; page keys and the wheel read.
+const confirmationFormMaxRows = 7
+
 type confirmationContentPane struct {
 	viewport *base.Viewport
 	form     *kit.Form
@@ -18,12 +18,10 @@ type confirmationContentPane struct {
 
 func (p *confirmationContentPane) Element() scene.Element {
 	if p.group == nil {
-		// Decisions own arrow-key focus; the reviewed document remains readable
-		// through the wheel and the pane's page-key actions.
 		p.viewport.Element().SetFocusable(func() bool { return false })
 		p.group = scene.NewGroup(scene.GroupConfig{
 			Axis:  layout.Down,
-			Items: []scene.Item{{Element: p.viewport.Element(), Size: layout.Flex(1)}, {Element: p.form.Element(), Size: layout.Measured(0, 7)}},
+			Items: []scene.Item{{Element: p.viewport.Element(), Size: layout.Flex(1)}, {Element: p.form.Element(), Size: layout.Measured(0, confirmationFormMaxRows)}},
 			Element: scene.ElementConfig{Preview: func(event scene.Event) scene.EventResult {
 				key, ok := event.Input().(input.Key)
 				if !ok || !key.Down() {

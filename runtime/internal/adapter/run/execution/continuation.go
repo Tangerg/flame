@@ -19,10 +19,8 @@ import (
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
-// BeginContinuation converts every validated application answer into an
-// Interaction response Signal. It is called only after the fresh Segment
-// opening commits, so accepting the Signal cannot start model/tool work ahead
-// of the product's durable lifecycle boundary.
+// Called only after the fresh Segment opening commits, so accepting the Signal
+// cannot start work ahead of the durable lifecycle boundary.
 func (i *InteractionExecutor) BeginContinuation(
 	ctx context.Context,
 	ref runs.ExecutorRef,
@@ -45,15 +43,12 @@ func (i *InteractionExecutor) BeginContinuation(
 	if err != nil {
 		return err
 	}
-	// The previous Process lifetime includes the human wait.
 	session.segmentClock.start()
 	if restore {
 		if err := session.recoverInputHandoff(ctx); err != nil {
 			return err
 		}
 	}
-	// Scope's Signal receipts must cover the whole handoff before dispatch.
-	// The release plan already excludes acknowledged Resume controls.
 	if err := session.deliverContinuationAnswers(ctx, release.answers); err != nil {
 		return err
 	}
@@ -159,8 +154,6 @@ func continuationAnswerPlans(cut interactionHandoff, head scoperun.Log, inspecti
 	return plans, nil
 }
 
-// acceptedWaits proves every wait still open in the tree is one the accepted
-// handoff targets, and indexes them by address.
 func acceptedWaits(inspection scoperun.TreeInspection, retired map[scoperun.ProcessID]bool, targets map[string]interactionInputTarget) (map[inputAddress]scoperun.Wait, error) {
 	waits := make(map[inputAddress]scoperun.Wait)
 	for _, process := range inspection.Processes {
@@ -178,8 +171,6 @@ func acceptedWaits(inspection scoperun.TreeInspection, retired map[scoperun.Proc
 	return waits, nil
 }
 
-// planAnswer derives the answer Signal. One Scope already admitted needs no
-// delivery; any other must still match its open wait, before release starts.
 func planAnswer(head scoperun.Log, waits map[inputAddress]scoperun.Wait, target interactionInputTarget, answer runs.InterruptAnswer, releaseStarted bool) (interactionAnswerPlan, error) {
 	response, err := runinput.EncodeResolution(answer.Resolution)
 	if err != nil {
@@ -287,9 +278,6 @@ func captureCommittedResumeInput(input *runs.CommittedUserInput) (*runs.Committe
 	}, nil
 }
 
-// SubmitSteer queues one user message for the next Interaction safe boundary.
-// Agent Framework rejects it while the Process is waiting; accepted content is
-// projected immediately before the model request that can first observe it.
 func (i *InteractionExecutor) SubmitSteer(
 	ctx context.Context,
 	ref runs.ExecutorRef,

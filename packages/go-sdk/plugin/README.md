@@ -119,7 +119,7 @@ Original-command recovery does not run new admission: it only queries the captur
 owner's receipt. The compiled `frame.CapabilityProtocol` requires this validation
 operation. Rebuild contracts, backend and consumers together. Older backend
 protocols are refused without negotiation or a fallback. Flame's package metadata
-uses the separate `plugin.DeclarationProtocol`. Keep old data separately and
+uses Flame's `plugincontract.Protocol`. Keep old data separately and
 complete old waiting work with its original binary.
 
 `github.com/Tangerg/frame` owns immutable callable contracts
@@ -184,6 +184,8 @@ and transitive release dependencies.
 `runtimeclient.BindPluginStreamingMethod` admits a typed query or mutation stream from the same
 immutable binding used by unary calls. Its Stream freezes input/options before lazy
 delivery and returns one consumable sequence of `pluginmcp.StreamValue` chunks/final result.
+A value is built only with `pluginmcp.StreamChunk` or `pluginmcp.StreamResult` and read with
+`Chunk()` / `Result()`, so a value that is both cannot be constructed.
 Chunk/output schemas and strict decoding precede delivery; final publication follows
 source completion. Missing/invalid final evidence stays unconfirmed. Transport-owned
 refusal/uncertainty classification is preserved instead of reconstructed here.
@@ -230,8 +232,7 @@ unknown envelope/input/result members and malformed command
 identities are refused. A reply contains exactly one value or business refusal;
 an explicitly nullable value remains distinct from a missing reply.
 
-`pluginmcp.Resolve` discovers a method for a new call and returns a `pluginmcp.Binding` against that
-concrete session. `pluginmcp.NewBinding` restores an already captured descriptor without
+`pluginmcp.NewBinding` binds an already captured descriptor to one concrete session without
 discovering another implementation. The binding validates raw input, reply and
 original receipt before typed decoding. Its immutable `Contract` includes the
 semantic name, query/command kind, target meaning and exact input/output schemas;
@@ -277,7 +278,7 @@ conversion; retain the old directory and use a fresh Runtime data directory.
 An empty acknowledgement and other zero values remain present successes.
 
 `pluginmcp.ReceiptMethod`, `pluginmcp.ReceiptRequest` and `pluginmcp.Receipt` define a read-only lookup by
-original command identity, method and input digest. `pluginmcp.ReadReceipt` never dispatches
+original command identity, method and input digest. `BoundMethod.ReadReceipt` never dispatches
 the mutation. Missing, malformed or unreachable evidence remains unconfirmed;
 only a valid original response supplies a known outcome. A private backend must
 implement this lookup against its own receipt store and commit known refusals as

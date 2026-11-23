@@ -23,6 +23,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	"github.com/Tangerg/frame"
 	framecall "github.com/Tangerg/frame/call"
@@ -90,8 +91,6 @@ func TestReviewCommandWithoutRunRecoversItsOriginalOwnerAcrossReplacementAndRest
 	if err != nil {
 		t.Fatal(err)
 	}
-	// A redispatched mutation would recreate this evidence and lose its reply,
-	// so backend idempotency cannot hide an incorrect host replay.
 	if err := os.Remove(evidence); err != nil {
 		t.Fatal(err)
 	}
@@ -568,7 +567,7 @@ func TestReviewBackendCommittedResponseLossPreservesUnknownRunAndReceipt(t *test
 	if err := backend.Close(); err != nil {
 		t.Fatal(err)
 	}
-	cfg.stores, err = persistence.Open(t.Context(), persistence.Config{DataDirectory: cfg.stores.DataDirectory})
+	cfg.stores, err = persistence.Open(t.Context(), persistence.Config{DataDirectory: cfg.stores.DataDirectory, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}

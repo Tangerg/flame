@@ -40,10 +40,6 @@ export type DraftSegment =
   | { readonly kind: "text"; readonly text: string }
   | { readonly kind: "file"; readonly path: string };
 
-/**
- * The draft document: text plus file references accepted from candidates. Typed
- * `@path` text stays text. The prompt text is a projection; Runtime input is text.
- */
 export class DraftContent {
   private static readonly EMPTY = new DraftContent([]);
 
@@ -104,12 +100,10 @@ export class DraftContent {
     return base.isEmpty ? DraftContent.fromText(text) : base.concat(`\n\n${text}`);
   }
 
-  // A trailing "@" token opens file candidates; accepting one replaces it with a reference.
   startFileReference(): DraftContent {
     return this.isEmpty ? DraftContent.fromText("@") : this.trimEnd().concat(" @");
   }
 
-  // A command must open the message, so only a blank draft can start one.
   startSlashCommand(): DraftContent {
     if (this.text.trim()) throw new Error("a slash command must start a blank draft");
     return DraftContent.fromText("/");

@@ -12,20 +12,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// List returns user-facing sessions (roots and forks), newest-updated first.
 func (s *SessionStore) List(ctx context.Context) ([]session.Session, error) {
 	return s.list(ctx, session.AllCatalogEntries(), nil, 0)
 }
 
-// ListPage returns user-facing sessions in list order, bounded by the query. The
-// anchor is the full sort key a previous page ended at — pinned state, then
-// update time, then id — because the earlier components tie freely and a partial
-// bound would drop or repeat rows at a page boundary.
-//
-// Paging here rather than after the fact matters more than for most reads: each
-// session's view is resolved against the filesystem and the live-run registry, so
-// slicing a fully-resolved list did that work for every session to return one
-// page of them.
+// The anchor is the full sort key (pinned, update time, id) because earlier
+// components tie freely; a partial bound would drop or repeat rows.
 func (s *SessionStore) ListPage(ctx context.Context, read session.CatalogRead) ([]session.Session, error) {
 	if err := read.Validate(); err != nil {
 		return nil, fmt.Errorf("sqlite: list sessions: %w", err)
@@ -36,6 +28,7 @@ func (s *SessionStore) ListPage(ctx context.Context, read session.CatalogRead) (
 	}
 	return s.list(ctx, read.Filter(), after, read.Limit())
 }
+
 func (s *SessionStore) list(ctx context.Context, filter session.CatalogFilter, after *session.CatalogAnchor, limit int) ([]session.Session, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]session.Session, error) {
 		query := `SELECT ` + sessionColumns + ` FROM sessions`
@@ -70,9 +63,7 @@ func (s *SessionStore) list(ctx context.Context, filter session.CatalogFilter, a
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list sessions: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		out := make([]session.Session, 0)
 		for rows.Next() {
 			sess, err := rowToSession(rows)
@@ -87,13 +78,11 @@ func (s *SessionStore) list(ctx context.Context, filter session.CatalogFilter, a
 		return out, nil
 	})
 }
+
 func escapeSessionLikePattern(value string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(value)
 }
 
-// Exists reports whether a session row exists — the cheap existence check the
-// goal driver uses to refuse a goal for a missing session and to sweep orphaned
-// goals at boot, without decoding the whole aggregate.
 func (s *SessionStore) Exists(ctx context.Context, id identity.SessionID) (bool, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) (bool, error) {
 		if err := validateResource("check Session existence", id); err != nil {
@@ -106,6 +95,7 @@ func (s *SessionStore) Exists(ctx context.Context, id identity.SessionID) (bool,
 		return exists, nil
 	})
 }
+
 func (s *SessionStore) Get(ctx context.Context, id identity.SessionID) (session.Session, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) (session.Session, error) {
 		if err := validateResource("read Session", id); err != nil {

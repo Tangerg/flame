@@ -17,50 +17,25 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 )
 
-// The schema walker turns the registered wire types into JSON Schema.
-//
-// Reflection alone would produce a schema that says `type: object` for a closed
-// union and `type: string` for a three-word enum — technically true, useless as a
-// contract, and laxer than the runtime. So the walk reads the SPECS for everything
-// reflection cannot see (discriminators, variant field/value sets, conditional rules,
-// enum value sets) and reads the Go types for everything it can (field names,
-// optionality, nesting). Neither half guesses at the other's job.
-//
-// What it deliberately does NOT emit on SHARED DEFINITIONS is
-// `additionalProperties: false`. A result may grow optional fields and an older
-// client must keep accepting it. Requests are different: dispatch strictly
-// decodes their DTOs, so OpenRPC closes typed objects throughout each request
-// projection while leaving maps, opaque values and reusable result shapes open.
-//
-// Nor does it widen a required field to accept null. A nil Go slice or map DOES
-// marshal to null, so a mechanical reading would publish `T[] | null` on most list
-// fields — but `required` already states the contract: the field is there, with a
-// value of that type. Publishing the null would push a runtime defect onto every
-// client as defensive code, forever. The validator rejects it instead, which is
-// where a broken frame should surface.
+// Shared definitions deliberately omit additionalProperties: false so a result may
+// grow optional fields an older client still accepts. Required fields are never
+// widened to accept null: a nil slice marshals to null, but required already
+// states the contract and the validator rejects that defect.
 
 var (
 	timeType       = reflect.TypeFor[time.Time]()
 	rawMessageType = reflect.TypeFor[jsontext.Value]()
 )
 
-// schemaSet is the walked type graph: one definition per named wire type, plus
-// the specs that tell the walk what reflection cannot see.
 type schemaSet struct {
 	walked map[reflect.Type]*wiregen.Schema
 	defs   map[string]*wiregen.Schema
 	origin map[string]reflect.Type
 	enums  map[reflect.Type][]string
 
-	// embedded names every definition reached by being embedded into another
-	// struct; referenced names every definition reached by a standalone $ref — a
-	// field, element, variant, result, or request shape. encoding/json inlines an
-	// embedded owner's fields into its carrier, so an owner reached ONLY through
-	// embedding is never a standalone JSON frame and no document cites it; a type
-	// that is also referenced standalone (ModelUsage behind a map, a request a
-	// composing request embeds) still is. The walk defines both so carriers inherit
-	// field constraints and the Go validator is generated from one graph, but
-	// Definitions withholds the embedded-only owners from the published bundle.
+	// encoding/json inlines an embedded owner's fields into its carrier, so an owner
+	// reached only through embedding is never a standalone frame and is withheld from
+	// the published bundle.
 	embedded   map[string]bool
 	referenced map[string]bool
 
@@ -92,10 +67,6 @@ func newSchemaSet(shapes *dispatch.Shapes) *schemaSet {
 	return set
 }
 
-// Definitions returns the definitions the bundle publishes, keyed by name: every
-// walked definition except the embedded owners, whose fields are inlined into
-// their carriers and which therefore name no standalone JSON frame. Names are
-// sorted by the JSON encoder, so the bundle's diff is stable across runs.
 func (s *schemaSet) Definitions() map[string]*wiregen.Schema {
 	out := make(map[string]*wiregen.Schema, len(s.defs))
 	for name, def := range s.defs {
@@ -117,8 +88,6 @@ func (s *schemaSet) registerEnum(t reflect.Type, values []string) {
 	s.enums[t] = slices.Clone(values)
 }
 
-// walk returns the schema for a Go type, defining it in the bundle if it is a
-// named type worth referencing.
 func (s *schemaSet) walk(t reflect.Type) (node *wiregen.Schema) {
 	if _, walked := s.walked[t]; !walked {
 		if err := protocol.ValidateWireType(t); err != nil {
@@ -128,7 +97,6 @@ func (s *schemaSet) walk(t reflect.Type) (node *wiregen.Schema) {
 	return s.walkAdmitted(t, nil)
 }
 
-// base64ContentEncoding is how encoding/json carries a []byte.
 const base64ContentEncoding = "base64"
 
 func (s *schemaSet) stringSchema(t reflect.Type) *wiregen.Schema {
@@ -183,9 +151,6 @@ func (s *schemaSet) walkAdmitted(t reflect.Type, collections map[reflect.Type]bo
 	}
 }
 
-// enterCollection guards one level of collection descent. Only named objects
-// reserve references before descending, so a collection-only cycle has no
-// definition that could stop its expansion.
 func enterCollection(t reflect.Type, collections map[reflect.Type]bool) (map[reflect.Type]bool, func()) {
 	switch t.Kind() {
 	case reflect.Pointer, reflect.Slice, reflect.Array, reflect.Map:
@@ -202,15 +167,11 @@ func enterCollection(t reflect.Type, collections map[reflect.Type]bool) (map[ref
 	return collections, func() { delete(collections, t) }
 }
 
-// specialSchema names the types whose JSON encoding is not their Go shape.
 func specialSchema(t reflect.Type) (*wiregen.Schema, bool) {
 	switch t {
 	case timeType:
-		// RFC 3339 in, RFC 3339 out — time.Time's own JSON encoding.
 		return &wiregen.Schema{Type: wiregen.SchemaTypeString, Format: "date-time"}, true
 	case rawMessageType:
-		// An opaque passthrough: any JSON value, by design. Naming a shape here
-		// would be inventing one the runtime does not enforce.
 		return &wiregen.Schema{}, true
 	default:
 		return nil, false
@@ -232,14 +193,10 @@ func scalarSchema(kind reflect.Kind) (*wiregen.Schema, bool) {
 	}
 }
 
-// define reserves a definition name, then fills it. The name is reserved BEFORE
-// the body is walked so a type that reaches itself resolves to a reference
-// instead of recursing forever.
+// The name is reserved before the body is walked so a type that reaches itself
+// resolves to a reference instead of recursing forever.
 func (s *schemaSet) define(t reflect.Type, body *wiregen.Schema) *wiregen.Schema {
 	name := defName(t)
-	// define is the standalone-reference path: a $ref to this name is being placed
-	// into a shape, which keeps the definition in the published bundle even if the
-	// same type is also embedded elsewhere.
 	s.referenced[name] = true
 	if existing, ok := s.origin[name]; ok {
 		if existing != t {
@@ -251,9 +208,6 @@ func (s *schemaSet) define(t reflect.Type, body *wiregen.Schema) *wiregen.Schema
 	return &wiregen.Schema{Ref: wiregen.RefPrefix + name}
 }
 
-// defineEmbedded records that an owner is flattened into a carrier and walks it so
-// its field types and Go validator are reached, WITHOUT recording a standalone
-// reference: JSON inlines the owner's fields, so no frame $refs the owner itself.
 func (s *schemaSet) defineEmbedded(t reflect.Type) {
 	s.embedded[defName(t)] = true
 	if _, ok := s.origin[defName(t)]; ok {
@@ -262,8 +216,6 @@ func (s *schemaSet) defineEmbedded(t reflect.Type) {
 	s.reserve(t, nil)
 }
 
-// reserve fills a definition, reserving its name before the body is walked so a
-// type that reaches itself resolves to a reference instead of recursing forever.
 func (s *schemaSet) reserve(t reflect.Type, body *wiregen.Schema) {
 	s.origin[defName(t)] = t
 	if body == nil {
@@ -272,16 +224,11 @@ func (s *schemaSet) reserve(t reflect.Type, body *wiregen.Schema) {
 	s.defs[defName(t)] = body
 }
 
-// object walks a struct's fields. Optionality starts with the json tag, then an
-// unconditional requirement may narrow an omittable field into a required wire
-// fact.
 func (s *schemaSet) object(t reflect.Type, collections map[reflect.Type]bool) *wiregen.Schema {
 	out := &wiregen.Schema{Type: wiregen.SchemaTypeObject, Properties: make(map[string]any)}
 	s.defineEmbeddedOwners(t)
 	for _, field := range protocol.WireFields(t) {
 		node := s.walkAdmitted(field.Type, collections)
-		// A value constraint on a directly-owned field narrows it in place; the
-		// declared constraint and the generated Go check read the same statement.
 		if node.Ref == "" {
 			applyValueConstraints(node, s.valueConstraintsFor(t, field.Name))
 		}
@@ -292,17 +239,13 @@ func (s *schemaSet) object(t reflect.Type, collections map[reflect.Type]bool) *w
 	}
 	out.AllOf = append(out.AllOf, s.nestedConstraintBranches(t)...)
 	if union, ok := s.unions[t]; ok {
-		// A variant states the whole frame it permits, which is stricter and more
-		// precise than the encoder's per-field view — so the branches own `required`
-		// and the base states none.
 		out.Required = nil
 		out.OneOf = s.variants(t, union)
 	}
 	for _, rule := range s.constraints[t] {
 		if len(rule.When) == 0 && len(rule.RequiredAny) == 0 &&
 			len(rule.Forbidden) == 0 && len(rule.AllowedValues) == 0 {
-			// A bare requirement is part of the object's base shape. Keeping it in
-			// allOf is schema-equivalent, but hides requiredness from generated
+			// Keeping a bare requirement in allOf would hide requiredness from generated
 			// structural clients such as TypeScript interfaces.
 			constrain(out, t, rule.Required, nil)
 			continue
@@ -313,9 +256,6 @@ func (s *schemaSet) object(t reflect.Type, collections map[reflect.Type]bool) *w
 	return out
 }
 
-// defineEmbeddedOwners defines each exported embedded struct of the same
-// package: flattened fields still have a public named owner and its wire
-// validator.
 func (s *schemaSet) defineEmbeddedOwners(t reflect.Type) {
 	for i := range t.NumField() {
 		field := t.Field(i)
@@ -332,10 +272,6 @@ func (s *schemaSet) defineEmbeddedOwners(t reflect.Type) {
 	}
 }
 
-// nestedConstraintBranches carries each constraint on a nested field as an
-// allOf branch: it cannot narrow the shared definition the field lives in,
-// because the rule belongs to this enclosing shape, not to every carrier of
-// that type.
 func (s *schemaSet) nestedConstraintBranches(t reflect.Type) []*wiregen.Schema {
 	var branches []*wiregen.Schema
 	for _, constraint := range s.values[t] {
@@ -343,7 +279,7 @@ func (s *schemaSet) nestedConstraintBranches(t reflect.Type) []*wiregen.Schema {
 			continue
 		}
 		branch := &wiregen.Schema{}
-		parent, leaf := descend(branch, t, constraint.Field, false)
+		parent, leaf := descend(branch, t, constraint.Field, pathMayBeAbsent)
 		if parent.Properties == nil {
 			parent.Properties = make(map[string]any)
 		}
@@ -355,11 +291,8 @@ func (s *schemaSet) nestedConstraintBranches(t reflect.Type) []*wiregen.Schema {
 	return branches
 }
 
-// variants renders a discriminated union as `oneOf`: each branch pins or narrows
-// the discriminator, requires that branch's fields, and forbids every field
-// belonging to another branch.
 func (s *schemaSet) variants(t reflect.Type, union dispatch.UnionSpec) []*wiregen.Schema {
-	tagValues := s.discriminatorValues(t, union)
+	tagValues := discriminatorValues(t)
 	roots := protocol.WireFieldNames(t)
 
 	out := make([]*wiregen.Schema, 0, len(union.Variants)+1)
@@ -372,7 +305,7 @@ func (s *schemaSet) variants(t reflect.Type, union dispatch.UnionSpec) []*wirege
 			Properties: map[string]any{dispatch.UnionDiscriminator: &wiregen.Schema{Const: variant.Tag}},
 			Required:   []string{dispatch.UnionDiscriminator},
 		}
-		forbiddenFields := append(forbidden(t, dispatch.UnionDiscriminator, roots, claimed), union.Forbidden...)
+		forbiddenFields := append(forbidden(t, roots, claimed), union.Forbidden...)
 		constrain(branch, t, variant.Required, forbiddenFields)
 		restrictAllowedValues(branch, t, variant.AllowedValues)
 		normalize(branch)
@@ -387,7 +320,7 @@ func (s *schemaSet) variants(t reflect.Type, union dispatch.UnionSpec) []*wirege
 			}},
 			Required: []string{dispatch.UnionDiscriminator},
 		}
-		forbiddenFields := append(forbidden(t, dispatch.UnionDiscriminator, roots, claimed), union.Forbidden...)
+		forbiddenFields := append(forbidden(t, roots, claimed), union.Forbidden...)
 		constrain(branch, t, pattern.Required, forbiddenFields)
 		normalize(branch)
 		out = append(out, branch)
@@ -395,10 +328,7 @@ func (s *schemaSet) variants(t reflect.Type, union dispatch.UnionSpec) []*wirege
 	return out
 }
 
-// discriminatorValues returns the closed value set of the discriminator's own Go
-// type, so a variant tag that is not one of them fails generation rather than
-// producing a branch nothing can satisfy.
-func (s *schemaSet) discriminatorValues(t reflect.Type, union dispatch.UnionSpec) []string {
+func discriminatorValues(t reflect.Type) []string {
 	field, ok := protocol.WireFieldNamed(t, dispatch.UnionDiscriminator)
 	if !ok {
 		return nil
@@ -410,11 +340,8 @@ func (s *schemaSet) discriminatorValues(t reflect.Type, union dispatch.UnionSpec
 	return values
 }
 
-// forbidden lists the JSON paths a variant must NOT carry: every root field no
-// claim mentions, plus — inside a partially claimed nested frame — every field of
-// that frame this variant does not claim.
-func forbidden(t reflect.Type, discriminator string, roots, claimed []string) []string {
-	claimedRoots := []string{discriminator}
+func forbidden(t reflect.Type, roots, claimed []string) []string {
+	claimedRoots := []string{dispatch.UnionDiscriminator}
 	nested := make(map[string][]string)
 	for _, path := range claimed {
 		root, rest, dotted := strings.Cut(path, ".")
@@ -445,8 +372,6 @@ func forbidden(t reflect.Type, discriminator string, roots, claimed []string) []
 	return out
 }
 
-// presence renders one cross-field rule as `if/then`, or as a bare requirement
-// when the rule is unconditional.
 func (s *schemaSet) conditional(t reflect.Type, rule dispatch.ConditionalRule) *wiregen.Schema {
 	then := &wiregen.Schema{}
 	constrain(then, t, rule.Required, rule.Forbidden)
@@ -462,12 +387,10 @@ func (s *schemaSet) conditional(t reflect.Type, rule dispatch.ConditionalRule) *
 	}
 	condition := &wiregen.Schema{}
 	for _, when := range rule.When {
-		parent, leaf := descend(condition, t, when.Field, true)
+		parent, leaf := descend(condition, t, when.Field, pathMustExist)
 		if parent.Properties == nil {
 			parent.Properties = make(map[string]any)
 		}
-		// An equals condition pins the value; a presence condition only asks that
-		// the field be there, which `required` already says.
 		switch when.Operator {
 		case delivery.OperatorEquals:
 			parent.Properties[leaf] = &wiregen.Schema{Const: when.Value}
@@ -498,7 +421,7 @@ func restrictAllowedValueSet(node *wiregen.Schema, owner reflect.Type, set dispa
 		panic(fmt.Sprintf("contractgen: %s has no field %q", owner.Name(), set.Field))
 	}
 	checkAllowedEnumSubset(owner, set, protocol.WireBaseType(leaf.Type))
-	parent, name := descend(node, owner, set.Field, false)
+	parent, name := descend(node, owner, set.Field, pathMayBeAbsent)
 	setAllowedValues(parent, name, owner, set)
 }
 
@@ -533,17 +456,13 @@ func setAllowedValues(parent *wiregen.Schema, name string, owner reflect.Type, s
 	narrowed.Enum = slices.Clone(set.Values)
 }
 
-// constrain applies required and forbidden JSON paths to a sub-schema, descending
-// into nested frames for a dotted path.
 func constrain(node *wiregen.Schema, owner reflect.Type, required, forbid []string) {
 	for _, path := range required {
-		// A frame that must contain something must itself be present.
-		parent, leaf := descend(node, owner, path, true)
+		parent, leaf := descend(node, owner, path, pathMustExist)
 		parent.Required = append(parent.Required, leaf)
 	}
 	for _, path := range forbid {
-		// Forbidding a nested field says nothing about whether the frame is there.
-		parent, leaf := descend(node, owner, path, false)
+		parent, leaf := descend(node, owner, path, pathMayBeAbsent)
 		if parent.Properties == nil {
 			parent.Properties = make(map[string]any)
 		}
@@ -551,9 +470,15 @@ func constrain(node *wiregen.Schema, owner reflect.Type, required, forbid []stri
 	}
 }
 
-// descend walks a dotted path, creating the nested sub-schemas it passes through,
-// and returns the sub-schema owning the last segment plus that segment's name.
-func descend(node *wiregen.Schema, owner reflect.Type, path string, markIntermediate bool) (*wiregen.Schema, string) {
+// A path that must be present requires every intermediate object as well.
+type pathPresence int
+
+const (
+	pathMayBeAbsent pathPresence = iota
+	pathMustExist
+)
+
+func descend(node *wiregen.Schema, owner reflect.Type, path string, presence pathPresence) (*wiregen.Schema, string) {
 	segments := strings.Split(path, ".")
 	current := node
 	for _, segment := range segments[:len(segments)-1] {
@@ -570,7 +495,7 @@ func descend(node *wiregen.Schema, owner reflect.Type, path string, markIntermed
 			child = &wiregen.Schema{}
 			current.Properties[segment] = child
 		}
-		if markIntermediate {
+		if presence == pathMustExist {
 			current.Required = append(current.Required, segment)
 		}
 		current = child
@@ -578,9 +503,6 @@ func descend(node *wiregen.Schema, owner reflect.Type, path string, markIntermed
 	return current, segments[len(segments)-1]
 }
 
-// normalize sorts and dedupes every `required` list in a subtree so the emitted
-// artifact is byte-stable — the drift gate compares bytes, so an unstable
-// generator would report drift on every run.
 func normalize(node *wiregen.Schema) {
 	if node == nil {
 		return
@@ -600,9 +522,6 @@ func normalize(node *wiregen.Schema) {
 	normalize(node.Then)
 }
 
-// defName is the published name of a Go type. A generic instantiation's
-// reflect name carries the full import path of its arguments, which is neither
-// readable nor a legal JSON pointer segment, so it becomes `PageOfSession`.
 func defName(t reflect.Type) string {
 	genericName, arguments, generic := strings.Cut(t.Name(), "[")
 	if !generic {
@@ -621,8 +540,6 @@ func defName(t reflect.Type) string {
 	return out.String()
 }
 
-// applyValueConstraints states a declared value constraint in JSON Schema terms, so
-// the schema and the generated validators refuse the same frames.
 func applyValueConstraints(node *wiregen.Schema, constraints []dispatch.FieldConstraint) {
 	for _, constraint := range constraints {
 		if target, kind, textual := stringConstraintTarget(node, constraint.Kind); textual {
@@ -633,9 +550,6 @@ func applyValueConstraints(node *wiregen.Schema, constraints []dispatch.FieldCon
 	}
 }
 
-// stringConstraintTarget resolves a string constraint to the schema it binds:
-// the value itself, each array item, or each property name. Item and key
-// constraints are the plain string constraint applied one level down.
 func stringConstraintTarget(node *wiregen.Schema, kind dispatch.ConstraintKind) (*wiregen.Schema, dispatch.ConstraintKind, bool) {
 	switch kind {
 	case dispatch.ConstraintNonEmpty, dispatch.ConstraintMaxLength, dispatch.ConstraintIdentity, dispatch.ConstraintPrefix, dispatch.ConstraintPattern:
@@ -644,8 +558,6 @@ func stringConstraintTarget(node *wiregen.Schema, kind dispatch.ConstraintKind) 
 		return node.Items, dispatch.ConstraintMaxLength, true
 	case dispatch.ConstraintIdentityItems:
 		return node.Items, dispatch.ConstraintIdentity, true
-	case dispatch.ConstraintPrefixItems:
-		return node.Items, dispatch.ConstraintPrefix, true
 	case dispatch.ConstraintPatternItems:
 		return node.Items, dispatch.ConstraintPattern, true
 	case dispatch.ConstraintMaxPropertyNameLength:
@@ -669,6 +581,7 @@ func applyStringConstraint(target *wiregen.Schema, kind dispatch.ConstraintKind,
 		addPattern(target, "^"+regexp.QuoteMeta(constraint.Value))
 	case dispatch.ConstraintPattern:
 		addPattern(target, constraint.Value)
+	case dispatch.ConstraintPositive, dispatch.ConstraintNonNegative, dispatch.ConstraintNonEmptyItems, dispatch.ConstraintNonEmptyProperties, dispatch.ConstraintUniqueItems, dispatch.ConstraintMinItems, dispatch.ConstraintMaxItems, dispatch.ConstraintMaxItemLength, dispatch.ConstraintIdentityItems, dispatch.ConstraintMaxPropertyNameLength, dispatch.ConstraintIdentityPropertyNames, dispatch.ConstraintPatternItems, dispatch.ConstraintMinimum, dispatch.ConstraintMaximum:
 	}
 }
 
@@ -701,11 +614,8 @@ func applyShapeConstraint(node *wiregen.Schema, constraint dispatch.FieldConstra
 	}
 }
 
-// addPattern preserves every independently declared string predicate. JSON
-// Schema has a single pattern keyword, so a second predicate must become an
-// allOf member rather than silently replacing the first one. This matters for
-// framed identities: their prefix and printable identity alphabet are separate
-// public promises and both must survive into every generated artifact.
+// JSON Schema has a single pattern keyword, so a second predicate becomes an allOf
+// member rather than silently replacing the first.
 func addPattern(node *wiregen.Schema, pattern string) {
 	if node.Pattern == "" {
 		node.Pattern = pattern

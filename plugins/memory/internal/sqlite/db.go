@@ -6,14 +6,13 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	"github.com/Tangerg/flame/plugins/memory/internal/agentmemory"
 
 	"github.com/Tangerg/frame/sqlite"
 )
 
 func Open(ctx context.Context, path string) (sqlite.Database, error) {
 	return sqlite.OpenSchema(ctx, path, []string{pluginstorage.CommandsSchema,
-		// Digest uniqueness is independent of batch membership so re-extracting old facts cannot discard new ones.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS agent_memory_ledger (
 			seq         INTEGER PRIMARY KEY AUTOINCREMENT,
 			project     TEXT    NOT NULL,
@@ -26,7 +25,6 @@ func Open(ctx context.Context, path string) (sqlite.Database, error) {
 		)`, agentmemory.MaxContentCharacters),
 		`CREATE INDEX IF NOT EXISTS idx_agent_memory_ledger_project
 			ON agent_memory_ledger(project, seq)`,
-		// Human review and edits outlive extraction; digest uniqueness prevents competing identities for the same fact.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS agent_memory_items (
 			id         TEXT    PRIMARY KEY CHECK (
 				length(id) = %[1]d AND
@@ -73,7 +71,6 @@ func Open(ctx context.Context, path string) (sqlite.Database, error) {
 		),
 		`CREATE INDEX IF NOT EXISTS idx_agent_memory_items_scope
 			ON agent_memory_items(scope, project)`,
-		// A separate watermark lets publication advance the complete generation with one compare-and-swap.
 		`CREATE TABLE IF NOT EXISTS agent_memory_state (
 			project    TEXT    PRIMARY KEY,
 			watermark  INTEGER NOT NULL DEFAULT 0,

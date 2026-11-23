@@ -15,10 +15,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// recoveryPlanner owns one ownership-scoped reconciliation snapshot and the caches needed
-// to derive its atomic write-set. It is intentionally Application-private:
-// deciding whether an opaque checkpoint preserves a product Run is a recovery
-// policy, not a Run aggregate or executor concern.
 type recoveryPlanner struct {
 	independent   []modelref.EndpointObservation
 	ctx           context.Context
@@ -35,8 +31,6 @@ type recoveryPlanner struct {
 	finishedAt    time.Time
 }
 
-// recoverySnapshot is the durable state recovery closes, narrowed to the
-// Sessions this boot claimed.
 type recoverySnapshot struct {
 	pending          []Pending
 	modelInvocations []OpenModelInvocation
@@ -133,10 +127,8 @@ func newRecoveryPlanner(ctx context.Context, recovery *Recovery, claims *recover
 	return planner, nil
 }
 
-// observeSnapshot advances the recovery timestamp past every fact it closes.
-// Wall time can move backward across a reboot, so the observation derives from
-// the complete boot snapshot instead of letting a regressed clock make
-// otherwise-recoverable state permanently invalid.
+// Wall time can move backward across a reboot, so the recovery timestamp derives
+// from the boot snapshot.
 func (r *recoveryPlanner) observeSnapshot(active []rundomain.Run, snapshot recoverySnapshot) error {
 	for _, value := range active {
 		r.observeTime(value.UpdatedAt())
@@ -197,11 +189,11 @@ func (r *recoveryPlanner) plan() (RecoveryCommit, int, error) {
 }
 
 func compareModelInvocationRecoveries(left, right ModelInvocationRecovery) int {
-	return left.InvocationAttempt.compare(right.InvocationAttempt)
+	return compareInvocationAttempts(left.InvocationAttempt, right.InvocationAttempt)
 }
 
 func compareToolInvocationRecoveries(left, right ToolInvocationRecovery) int {
-	return cmp.Or(left.InvocationAttempt.compare(right.InvocationAttempt), left.ItemID.Compare(right.ItemID))
+	return cmp.Or(compareInvocationAttempts(left.InvocationAttempt, right.InvocationAttempt), left.ItemID.Compare(right.ItemID))
 }
 
 func (r *recoveryPlanner) planTree(rootRunID identity.RunID) error {

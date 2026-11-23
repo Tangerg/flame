@@ -10,9 +10,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// Dependency names the exact release an execution admitted from one
-// installation. Execution owns which dependencies it holds; the installation
-// owner only asks whether any execution holds one before an unsafe change.
 type Dependency struct {
 	InstallationID identity.InstallationID
 	Digest         framevalue.Digest
@@ -28,8 +25,6 @@ func (d Dependency) Validate() error {
 	return nil
 }
 
-// CompactDependencies returns the canonical set: sorted, without duplicates.
-// Equal sets must encode identically wherever they bind a deployment identity.
 func CompactDependencies(dependencies []Dependency) []Dependency {
 	result := slices.Clone(dependencies)
 	slices.SortFunc(result, func(left, right Dependency) int {
@@ -38,8 +33,6 @@ func CompactDependencies(dependencies []Dependency) []Dependency {
 	return slices.Compact(result)
 }
 
-// ValidateDependencies requires a valid canonical set, so a stored projection
-// has exactly one spelling.
 func ValidateDependencies(dependencies []Dependency) error {
 	for _, dependency := range dependencies {
 		if err := dependency.Validate(); err != nil {

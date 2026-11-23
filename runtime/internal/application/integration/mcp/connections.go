@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
 func (c *Coordinator) ReconnectServer(ctx context.Context, name mcpserver.ID) error {
@@ -55,9 +56,6 @@ const (
 	connectionCanceled
 )
 
-// dispatchConnection admits under mutationMu, then waits for the caller to
-// publish admission before external I/O. The connection owner alone fences stale
-// completions; notifications carry identity and cannot advance connection state.
 func (c *Coordinator) dispatchConnection(
 	ctx context.Context,
 	name mcpserver.ID,
@@ -98,7 +96,7 @@ func (c *Coordinator) dispatchConnection(
 			outcome = connectionCanceled
 		default:
 			outcome = connectionFailed
-			slog.ErrorContext(ctx, "mcp: connection operation failed", "server.name", name.String(), "error", err)
+			slog.ErrorContext(ctx, "mcp: connection operation failed", telemetry.MCPServer(name.String()), telemetry.Error(err))
 		}
 		c.mutationMu.Lock()
 		event := c.statusQueue.prepare(name)
@@ -132,9 +130,6 @@ func newStatusQueue(sink func(mcpserver.ID)) *statusQueue {
 
 func (s *statusQueue) prepare(name mcpserver.ID) *statusEvent {
 	event := &statusEvent{name: name}
-	if s == nil || s.sink == nil {
-		return event
-	}
 	s.mu.Lock()
 	if s.tail == nil {
 		s.head = event
@@ -146,10 +141,8 @@ func (s *statusQueue) prepare(name mcpserver.ID) *statusEvent {
 	return event
 }
 
+// The caller's start gate guarantees prepare assigned event before publish runs.
 func (s *statusQueue) publish(event *statusEvent) {
-	if s == nil || s.sink == nil || event == nil {
-		return
-	}
 	s.mu.Lock()
 	event.ready = true
 	if s.draining {

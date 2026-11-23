@@ -12,7 +12,7 @@ func (c *client) definition(ctx context.Context, abs string, pos Position) ([]Lo
 }
 
 func (c *client) references(ctx context.Context, abs string, pos Position) ([]Location, error) {
-	if _, err := c.ensureOpen(ctx, abs); err != nil {
+	if err := c.ensureOpen(ctx, abs); err != nil {
 		return nil, err
 	}
 	var raw jsontext.Value
@@ -34,11 +34,8 @@ func (c *client) implementation(ctx context.Context, abs string, pos Position) (
 	return c.positionLocations(ctx, abs, pos, "textDocument/implementation", "implementation")
 }
 
-// positionLocations executes an LSP position request whose response is a
-// definition-shaped location payload. Definition and implementation differ
-// only in the protocol method and diagnostic operation name.
 func (c *client) positionLocations(ctx context.Context, abs string, pos Position, method, operation string) ([]Location, error) {
-	if _, err := c.ensureOpen(ctx, abs); err != nil {
+	if err := c.ensureOpen(ctx, abs); err != nil {
 		return nil, err
 	}
 	var raw jsontext.Value
@@ -55,13 +52,10 @@ func (c *client) positionLocations(ctx context.Context, abs string, pos Position
 	return locations, nil
 }
 
-// callHierarchy resolves the symbol at pos to a call-hierarchy item, then
-// queries its callers (incoming) or callees (outgoing) in one shot — the LSP
-// two-step (prepareCallHierarchy → incoming/outgoingCalls) is hidden from the
-// caller. The callers/callees come back as symbols; empty when pos isn't a
-// callable symbol (prepare returns nothing).
-func (c *client) callHierarchy(ctx context.Context, abs string, pos Position, outgoing bool) ([]Symbol, error) {
-	if _, err := c.ensureOpen(ctx, abs); err != nil {
+type callRelation func(*client, context.Context, callHierarchyItemParams) ([]Symbol, error)
+
+func (c *client) callHierarchy(ctx context.Context, abs string, pos Position, related callRelation) ([]Symbol, error) {
+	if err := c.ensureOpen(ctx, abs); err != nil {
 		return nil, err
 	}
 	var items []jsontext.Value
@@ -77,11 +71,11 @@ func (c *client) callHierarchy(ctx context.Context, abs string, pos Position, ou
 		if item.Kind() != '{' {
 			return nil, fmt.Errorf("lsp: prepareCallHierarchy returned a non-object root")
 		}
-		related, err := c.relatedCalls(ctx, callHierarchyItemParams{Item: item}, outgoing)
+		calls, err := related(c, ctx, callHierarchyItemParams{Item: item})
 		if err != nil {
 			return nil, err
 		}
-		for _, symbol := range related {
+		for _, symbol := range calls {
 			if !seen[symbol] {
 				seen[symbol] = true
 				symbols = append(symbols, symbol)
@@ -91,18 +85,19 @@ func (c *client) callHierarchy(ctx context.Context, abs string, pos Position, ou
 	return symbols, nil
 }
 
-func (c *client) relatedCalls(ctx context.Context, params callHierarchyItemParams, outgoing bool) ([]Symbol, error) {
-	if outgoing {
-		var calls []callHierarchyOutgoingCall
-		if err := c.call(ctx, "callHierarchy/outgoingCalls", params, &calls); err != nil {
-			return nil, fmt.Errorf("lsp: outgoingCalls: %w", err)
-		}
-		out := make([]Symbol, 0, len(calls))
-		for _, call := range calls {
-			out = append(out, call.To.symbol())
-		}
-		return out, nil
+func (c *client) outgoingCalls(ctx context.Context, params callHierarchyItemParams) ([]Symbol, error) {
+	var calls []callHierarchyOutgoingCall
+	if err := c.call(ctx, "callHierarchy/outgoingCalls", params, &calls); err != nil {
+		return nil, fmt.Errorf("lsp: outgoingCalls: %w", err)
 	}
+	out := make([]Symbol, 0, len(calls))
+	for _, call := range calls {
+		out = append(out, call.To.symbol())
+	}
+	return out, nil
+}
+
+func (c *client) incomingCalls(ctx context.Context, params callHierarchyItemParams) ([]Symbol, error) {
 	var calls []callHierarchyIncomingCall
 	if err := c.call(ctx, "callHierarchy/incomingCalls", params, &calls); err != nil {
 		return nil, fmt.Errorf("lsp: incomingCalls: %w", err)
@@ -115,7 +110,7 @@ func (c *client) relatedCalls(ctx context.Context, params callHierarchyItemParam
 }
 
 func (c *client) hover(ctx context.Context, abs string, pos Position) (string, error) {
-	if _, err := c.ensureOpen(ctx, abs); err != nil {
+	if err := c.ensureOpen(ctx, abs); err != nil {
 		return "", err
 	}
 	var raw jsontext.Value
@@ -133,7 +128,7 @@ func (c *client) hover(ctx context.Context, abs string, pos Position) (string, e
 }
 
 func (c *client) documentSymbols(ctx context.Context, abs string) ([]Symbol, error) {
-	if _, err := c.ensureOpen(ctx, abs); err != nil {
+	if err := c.ensureOpen(ctx, abs); err != nil {
 		return nil, err
 	}
 	uri := pathToURI(abs)

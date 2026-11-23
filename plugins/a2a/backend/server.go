@@ -18,8 +18,6 @@ import (
 	"github.com/Tangerg/scope/core/tool"
 )
 
-// Command tools record receipts under their contract method; a receipt query
-// arrives under the model-facing tool name.
 const (
 	agentsTool = "a2a_agents"
 	statusTool = "a2a_status"
@@ -78,8 +76,6 @@ func (c *connector) tools(contracts rpc.Contracts) ([]tool.Tool, error) {
 	return []tool.Tool{agents, send, status, cancel}, nil
 }
 
-// statusTool reports a refused or failed status read to the model as a Tool
-// failure; only cancellation stays a call error.
 func (c *connector) statusTool(ctx context.Context, input wire.TaskRequest) (wire.Result, error) {
 	result, err := c.status(ctx, input)
 	if err == nil {

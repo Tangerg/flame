@@ -5,18 +5,12 @@ import (
 	"errors"
 )
 
-// BackgroundConfig describes one installation's background loop.
 type BackgroundConfig struct {
-	// Prepare runs on activation before the loop; its error refuses activation.
 	Prepare func(context.Context) error
 	Run     func(context.Context)
-	// Release frees what the loop used, after it has returned.
 	Release func() error
 }
 
-// Background is an ActivationResource that runs one loop from activation
-// until Close. It relies on the Backend's lifecycle guarantee and keeps no
-// state beyond whether its loop was started.
 type Background struct {
 	lifetime context.Context
 	cancel   context.CancelFunc

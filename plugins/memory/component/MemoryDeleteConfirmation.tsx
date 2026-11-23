@@ -46,10 +46,10 @@ export function MemoryDeleteConfirmation({
       <RecordGroup>
         <RecordTitle>{t("delete.title")}</RecordTitle>
         <RecordMeta>
-          <span>{t(`scope.${item.Scope}`)}</span>
-          <span>{item.ID}</span>
+          <span>{t(`scope.${item.scope}`)}</span>
+          <span>{item.id}</span>
         </RecordMeta>
-        <RecordBody>{item.Content}</RecordBody>
+        <RecordBody>{item.content}</RecordBody>
         <Metadata>{t("delete.notice")}</Metadata>
       </RecordGroup>
       <FormActions label={t("delete.actions.label")} feedback={feedback}>

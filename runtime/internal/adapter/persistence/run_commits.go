@@ -13,9 +13,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// RecordRunCommit stamps one exact active Segment's latest immutable
-// Application write-set identity into the Run row. Callers invoke it only at
-// the end of the command transaction, after every projection has succeeded.
 func (r *RunStore) RecordRunCommit(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, commitID runs.CommitID) error {
 	return r.db.write(ctx, func(ctx context.Context) error {
 		if err := validateRunCommitIdentity(sessionID, runID, segmentID, commitID); err != nil {
@@ -37,9 +34,6 @@ func (r *RunStore) RecordRunCommit(ctx context.Context, sessionID identity.Sessi
 	})
 }
 
-// RecordWaitingRunCommit stamps a command that transforms an already-waiting
-// tree without opening a new Segment. The empty Segment is deliberate: the
-// unique command identity and Waiting root own this boundary.
 func (r *RunStore) RecordWaitingRunCommit(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, commitID runs.CommitID) error {
 	return r.db.write(ctx, func(ctx context.Context) error {
 		if err := validateWaitingRunCommitIdentity(sessionID, runID, commitID); err != nil {
@@ -61,11 +55,6 @@ func (r *RunStore) RecordWaitingRunCommit(ctx context.Context, sessionID identit
 	})
 }
 
-// runCommitMarker is the optional durable fence attached to one Application
-// write-set. A non-nil marker always carries both coordinates because callers
-// can only construct it through newRunCommitMarker; nil means the lifecycle
-// transition carries no individual receipt, as with a child in a root-owned
-// tree barrier.
 type runCommitMarker struct {
 	segmentID identity.SegmentID
 	commitID  runs.CommitID
@@ -77,6 +66,7 @@ func newRunCommitMarker(sessionID identity.SessionID, runID identity.RunID, segm
 	}
 	return &runCommitMarker{segmentID: segmentID, commitID: commitID}, nil
 }
+
 func (r *runCommitMarker) databaseValues() (string, string) {
 	if r == nil {
 		return "", ""
@@ -84,12 +74,6 @@ func (r *runCommitMarker) databaseValues() (string, string) {
 	return r.segmentID.String(), r.commitID.String()
 }
 
-// RunCommitCommitted proves that this exact immutable Application Run write-set crossed
-// the durable boundary. It does not infer success from the coarse Run state:
-// another Segment, restored/resumed Run, or later write attempt has a different
-// or absent marker. Running markers require the same active Segment; waiting
-// barriers and terminal boundaries retain the Segment that produced them.
-// A command that starts and ends while already Waiting uses an empty Segment.
 func (r *RunStore) RunCommitCommitted(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, commitID runs.CommitID) (bool, error) {
 	return scopedValue(ctx, r.db.read, func(ctx context.Context) (bool, error) {
 		if segmentID.IsZero() {
@@ -111,6 +95,7 @@ func (r *RunStore) RunCommitCommitted(ctx context.Context, sessionID identity.Se
 		return found == 1, nil
 	})
 }
+
 func validateRunCommitIdentity(sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, commitID runs.CommitID) error {
 	if err := validateRunCoordinates("verify Run commit", sessionID, runID, segmentID); err != nil {
 		return err
@@ -120,6 +105,7 @@ func validateRunCommitIdentity(sessionID identity.SessionID, runID identity.RunI
 	}
 	return nil
 }
+
 func validateRunCoordinates(operation string, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID) error {
 	if err := validateResource(operation, sessionID); err != nil {
 		return err
@@ -132,6 +118,7 @@ func validateRunCoordinates(operation string, sessionID identity.SessionID, runI
 	}
 	return nil
 }
+
 func validateWaitingRunCommitIdentity(sessionID identity.SessionID, runID identity.RunID, commitID runs.CommitID) error {
 	if err := validateResource("verify waiting Run commit", sessionID); err != nil {
 		return err
@@ -145,8 +132,6 @@ func validateWaitingRunCommitIdentity(sessionID identity.SessionID, runID identi
 	return nil
 }
 
-// ResultPublicationCommitted proves exact content under the currently active
-// Segment. A stale writer cannot adopt a receipt from a replaced Segment.
 func (r *RunStore) ResultPublicationCommitted(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, publicationID, digest string) (bool, error) {
 	return scopedValue(ctx, r.db.read, func(ctx context.Context) (bool, error) {
 		if err := r.RequireActiveSegment(ctx, sessionID, runID, segmentID); err != nil {
@@ -169,7 +154,6 @@ func (r *RunStore) ResultPublicationCommitted(ctx context.Context, sessionID ide
 	})
 }
 
-// RecordResultPublication participates in the transaction owning its results.
 func (r *RunStore) RecordResultPublication(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, publicationID, digest string, results []chat.ToolResult) error {
 	return r.db.write(ctx, func(ctx context.Context) error {
 		if err := r.RequireActiveSegment(ctx, sessionID, runID, segmentID); err != nil {
@@ -191,24 +175,23 @@ func (r *RunStore) RecordResultPublication(ctx context.Context, sessionID identi
 			return fmt.Errorf("sqlite: encode exact tool results: %w", err)
 		}
 		_, err = r.db.connection(ctx).ExecContext(ctx, `INSERT INTO result_publications(publication_id, digest, session_id, run_id, segment_id, source_message_seq, model_results)
- VALUES (?, ?, ?, ?, ?, (SELECT max(seq) FROM messages WHERE conversation_id = ?), ?)`, publicationID, digest, sessionID, runID, segmentID, sessionID, string(encoded))
+ VALUES (?, ?, ?, ?, ?, (SELECT max(seq) FROM messages WHERE session_id = ?), ?)`, publicationID, digest, sessionID, runID, segmentID, sessionID, string(encoded))
 		if err != nil {
 			return fmt.Errorf("sqlite: record result publication: %w", err)
 		}
 		return nil
 	})
 }
+
 func (r *RunStore) UnpublishedToolResults(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) ([]chat.ToolResult, error) {
 	return scopedValue(ctx, r.db.read, func(ctx context.Context) ([]chat.ToolResult, error) {
 		rows, err := r.db.connection(ctx).QueryContext(ctx, `SELECT model_results FROM result_publications
- WHERE session_id = ? AND run_id = ? AND (model_results IS NULL OR source_message_seq = (SELECT max(seq) FROM messages WHERE conversation_id = ?))
+ WHERE session_id = ? AND run_id = ? AND (model_results IS NULL OR source_message_seq = (SELECT max(seq) FROM messages WHERE session_id = ?))
  ORDER BY publication_id`, sessionID, runID, sessionID)
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: read unpublished tool results: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		var results []chat.ToolResult
 		for rows.Next() {
 			var encoded sql.NullString

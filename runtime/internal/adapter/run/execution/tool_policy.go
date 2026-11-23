@@ -18,18 +18,11 @@ import (
 	"github.com/samber/lo"
 )
 
-// interactionApprovalPolicy is the exact product policy view required at the
-// Interaction Tool boundary. Remembering a decision is not here: a standing rule
-// is derived and persisted by the acceptance owner, in the transaction that
-// accepts the answer, never by a Tool replay.
 type interactionApprovalPolicy interface {
 	Mode(ctx context.Context, sessionID identity.SessionID) (approval.Mode, error)
 	Decide(ctx context.Context, query approval.Query) (approval.Decision, bool, error)
 }
 
-// ToolAuthorizer evaluates Runtime approval policy independently of Agent Framework.
-// It returns a durable product prompt when a person is required; the executor
-// ACL alone maps that prompt to an Interaction wait and response Signal.
 type ToolAuthorizer struct {
 	policy   interactionApprovalPolicy
 	subjects approvalSubjectInterpreter
@@ -39,7 +32,6 @@ type approvalSubjectInterpreter interface {
 	ApprovalSubject(tool.Ref, tool.Arguments) (string, error)
 }
 
-// NewToolAuthorizer binds the product approval policy.
 func NewToolAuthorizer(policy interactionApprovalPolicy, subjects approvalSubjectInterpreter) (*ToolAuthorizer, error) {
 	if lo.IsNil(policy) {
 		return nil, errors.New("execution: Tool approval policy is required")
@@ -131,7 +123,7 @@ func (t *ToolAuthorizer) ResolveToolApproval(
 			return ToolAuthorizationDecision{}, fmt.Errorf("execution: parse approved Tool arguments: %w", err)
 		}
 	}
-	if !(verdict.Decision == approval.Allow) {
+	if verdict.Decision != approval.Allow {
 		return denyTool(refusalReason(verdict.Reason, userRefusal)), nil
 	}
 	if arguments.Canonical() == request.Arguments.Canonical() {

@@ -10,25 +10,12 @@ import (
 	"unicode"
 )
 
-// ServerSpec describes how to launch and address one language server.
-//
-// Adding support for a new language is exactly this: append one ServerSpec to
-// the table — no other code changes. The client, server set, and tools are all
-// language-agnostic; they drive whatever specs they're handed.
 type ServerSpec struct {
-	// Name identifies the server (gopls, typescript-language-server). It keys
-	// the per-(workspace-root, server) client, so it must be unique.
-	Name string `json:"name"`
-	// Command and Args launch the server, which must speak LSP over stdio.
-	Command string   `json:"command"`
-	Args    []string `json:"args"`
-	// Language identity belongs to the document route: one server may handle
-	// several syntax variants in the same workspace process.
-	Languages map[string]string `json:"languages"`
-	// RootMarkers are filenames whose presence at a workspace root signals this
-	// language applies there (go.mod, package.json). They route workspace-wide
-	// operations (workspace symbol) that aren't anchored to a single file.
-	RootMarkers []string `json:"rootMarkers"`
+	Name        string            `json:"name"`
+	Command     string            `json:"command"`
+	Args        []string          `json:"args"`
+	Languages   map[string]string `json:"languages"`
+	RootMarkers []string          `json:"rootMarkers"`
 }
 
 func validateLanguageRoute(extension, language string) error {
@@ -73,11 +60,6 @@ func validServerField(value string) bool {
 	return value != "" && strings.TrimSpace(value) == value && strings.IndexFunc(value, unicode.IsControl) < 0
 }
 
-// DefaultServers is the built-in server table — the languages flame supports
-// out of the box. Every entry is self-contained, so adding a language is a
-// single literal here (or the installation's lsp-servers input).
-// A server whose Command isn't installed simply stays unavailable: its files
-// resolve no server and the tools report that, nothing crashes.
 func DefaultServers() []ServerSpec {
 	return []ServerSpec{
 		{
@@ -96,8 +78,6 @@ func DefaultServers() []ServerSpec {
 	}
 }
 
-// serverTable indexes a set of specs for the two routing questions the server set
-// asks: which server handles this file, and which servers apply to this root.
 type serverTable struct {
 	specs []ServerSpec
 	byExt map[string]ServerSpec
@@ -136,14 +116,11 @@ func newServerTable(specs []ServerSpec) (*serverTable, error) {
 	return &serverTable{specs: specs, byExt: byExt}, nil
 }
 
-// forFile returns the server that handles path's extension.
 func (s *serverTable) forFile(path string) (ServerSpec, bool) {
 	spec, ok := s.byExt[strings.ToLower(filepath.Ext(path))]
 	return spec, ok
 }
 
-// forRoot returns the servers whose root markers exist directly under root —
-// the languages that apply to this workspace.
 func (s *serverTable) forRoot(root string) []ServerSpec {
 	var out []ServerSpec
 	for _, spec := range s.specs {

@@ -11,10 +11,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// Request headers a client may send to this transport. The reader and the CORS
-// allowlist below take the same names: a header read by a handler but missing
-// from the allowlist fails a browser client's preflight, and the failure is a
-// rejected request rather than anything the handler can report.
+// A header read by a handler but missing from the CORS allowlist fails a browser
+// preflight before the handler can report anything.
 const (
 	headerAuthorization        = "Authorization"
 	headerContentType          = "Content-Type"
@@ -28,12 +26,14 @@ const (
 
 const (
 	headerCacheControl = "Cache-Control"
+	jsonUTF8MediaType  = "application/json; charset=utf-8"
+	bearerScheme       = "Bearer"
 	cacheNoStore       = "no-store"
 	cacheEventStream   = "no-cache, no-store, must-revalidate"
 )
 
-// Browser preflight and scalar admission share this catalog. Selecting the
-// first repeated value would let transport order choose command authority.
+// Selecting the first repeated value would let transport order choose command
+// authority.
 func requestHeaders() []string {
 	return []string{
 		headerAuthorization,
@@ -45,9 +45,6 @@ func requestHeaders() []string {
 	}
 }
 
-// EndpointKind separates the JSON-RPC binding from typed operational sidecars.
-// It is a transport fact: neither Application nor the protocol method registry
-// needs to know which HTTP path carries an operation.
 type EndpointKind string
 
 const (
@@ -57,7 +54,6 @@ const (
 	endpointKindControl  EndpointKind = "pluginControl"
 )
 
-// EndpointAuthentication states the HTTP-layer gate applied before a handler.
 type EndpointAuthentication string
 
 const (
@@ -80,9 +76,6 @@ const pluginResourcePrefix = endpointPrefix + "/plugin-resources/"
 
 const PluginControlPath = endpointPrefix + "/frame"
 
-// EndpointSpec is one implemented HTTP entrypoint. ResponseType is nil for the
-// JSON-RPC binding because its typed method results live in operation.Contract;
-// sidecars name their exact flat-JSON response type here.
 type EndpointSpec struct {
 	Name             string
 	Kind             EndpointKind
@@ -99,15 +92,11 @@ type endpointRegistration struct {
 	handler func(*Server, http.ResponseWriter, *http.Request)
 }
 
-// EnumSpec supplies the closed string sets used only by sidecar response DTOs.
-// The JSON-RPC registry owns its own enums through contractcatalog.
 type EnumSpec struct {
 	Type   reflect.Type
 	Values []string
 }
 
-// Clients derive header names from this contract so transport and browser
-// preflight rules cannot evolve under separate owners.
 type HeaderSpec struct {
 	Authorization        string
 	ContentType          string
@@ -119,7 +108,6 @@ type HeaderSpec struct {
 	Method               string
 }
 
-// Routing and generated clients consume the same delivery-owned declaration.
 type ContractSpec struct {
 	Headers   HeaderSpec
 	Endpoints []EndpointSpec
@@ -134,10 +122,6 @@ var endpointRegistry = struct {
 		{
 			EndpointSpec: EndpointSpec{Name: "pluginControl", Kind: endpointKindControl, Method: http.MethodPost, Path: PluginControlPath, Authentication: EndpointAuthenticationRealm, ResponseStatuses: []int{http.StatusOK, http.StatusUnauthorized, http.StatusConflict, http.StatusServiceUnavailable}},
 			handler: func(server *Server, w http.ResponseWriter, r *http.Request) {
-				if server.pluginControl == nil {
-					http.Error(w, "plugin control is unavailable", http.StatusServiceUnavailable)
-					return
-				}
 				server.pluginControl.ServeHTTP(w, r)
 			},
 		},
@@ -200,8 +184,6 @@ var endpointRegistry = struct {
 	},
 }
 
-// Contract returns an isolated snapshot so generators and tests cannot mutate
-// the process's routing authority.
 func Contract() ContractSpec {
 	contract := ContractSpec{
 		Headers: HeaderSpec{
@@ -238,8 +220,6 @@ func endpointPath(name string) string {
 	return endpointNamed(name).Path
 }
 
-// RegisterCallbackEndpoints binds only the Runtime operations Realm callbacks
-// are authorized to reach. The enclosing Realm transport authenticates actors.
 func RegisterCallbackEndpoints(mux *http.ServeMux, rpc, resources http.Handler) {
 	for _, route := range endpointRegistry.Endpoints {
 		switch route.Kind {
@@ -247,6 +227,7 @@ func RegisterCallbackEndpoints(mux *http.ServeMux, rpc, resources http.Handler) 
 			mux.Handle(route.Method+" "+route.Path, rpc)
 		case endpointKindResource:
 			mux.Handle(route.Method+" "+strings.Replace(route.Path, "/*", "/{resource...}", 1), resources)
+		case EndpointKindSidecar, endpointKindControl:
 		}
 	}
 }
@@ -261,7 +242,6 @@ func registerEndpoints(router *chi.Mux, server *Server) {
 		case EndpointAuthenticationLocalToken:
 			routed = server.protectRPC(routed)
 		case EndpointAuthenticationNone, EndpointAuthenticationResourceLease, EndpointAuthenticationRealm:
-			// Lease and Realm authentication belong to their endpoint handlers.
 		default:
 			panic("http: endpoint has invalid authentication policy")
 		}

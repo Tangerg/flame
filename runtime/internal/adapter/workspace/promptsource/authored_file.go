@@ -44,7 +44,6 @@ func readAuthoredPromptFile(ctx context.Context, root *os.Root, path string) ([]
 	if readErr == nil {
 		admissionErr = workspaceapp.ValidateAuthoredPromptDocument(document)
 	} else {
-		// A failed read establishes size, but cannot establish text validity.
 		admissionErr = workspaceapp.ValidateAuthoredPromptDocumentSize(int64(len(document)))
 	}
 	if err := errors.Join(readErr, admissionErr, verifyErr, closeErr, errors.Join(ctx.Err(), context.Cause(ctx))); err != nil {

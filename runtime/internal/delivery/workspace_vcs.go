@@ -8,7 +8,18 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
 
-// ListWorkspaceFileChanges projects application VCS status onto the wire.
+var diffFormats = wireVocabulary[workspaceapp.DiffFormat, protocol.DiffFormat]{
+	{workspaceapp.DiffFormatRows, protocol.DiffFormatRows},
+	{workspaceapp.DiffFormatRaw, protocol.DiffFormatRaw},
+	{workspaceapp.DiffFormatVisual, protocol.DiffFormatVisual},
+}
+
+var diffBaselines = wireVocabulary[workspaceapp.DiffBaselineType, protocol.DiffBaselineType]{
+	{workspaceapp.DiffBaselineHead, protocol.DiffBaselineHead},
+	{workspaceapp.DiffBaselineMergeBase, protocol.DiffBaselineMergeBase},
+	{workspaceapp.DiffBaselineEmptyTree, protocol.DiffBaselineEmptyTree},
+}
+
 func (s *Handler) ListWorkspaceFileChanges(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.WorkspaceFileChange], error) {
 	changes, err := s.workspaceVCS.Changes(ctx, in.Workspace.Path)
 	if err != nil {
@@ -32,8 +43,6 @@ func (s *Handler) ListWorkspaceFileChanges(ctx context.Context, in protocol.Work
 	return protocol.NewPage(out), nil
 }
 
-// GetWorkspaceDiff validates wire-specific mode values then projects the
-// application-owned diff onto the wire shape.
 func (s *Handler) GetWorkspaceDiff(ctx context.Context, in protocol.GetDiffRequest) (*protocol.Diff, error) {
 	switch in.Format {
 	case "", protocol.DiffFormatRows, protocol.DiffFormatRaw, protocol.DiffFormatVisual:
@@ -59,13 +68,17 @@ func (s *Handler) GetWorkspaceDiff(ctx context.Context, in protocol.GetDiffReque
 		}
 		rowLimit = explicit
 	}
+	format, known := diffFormats.domain(in.Format)
+	if !known && in.Format != "" {
+		return nil, protocol.NewFailure(protocol.ErrInvalidParams, "unknown diff format")
+	}
 	diff, err := s.workspaceVCS.Diff(ctx, workspaceapp.DiffInput{
-		CWD: in.Workspace.Path, Path: in.Path, Base: base, Format: workspaceapp.DiffFormat(in.Format), RowLimit: rowLimit,
+		CWD: in.Workspace.Path, Path: in.Path, Base: base, Format: format, RowLimit: rowLimit,
 	})
 	if err != nil {
 		return nil, wireWorkspaceError(err)
 	}
-	baseline := protocol.DiffBaseline{Type: protocol.DiffBaselineType(diff.Baseline.Type), Commit: diff.Baseline.Commit}
+	baseline := protocol.DiffBaseline{Type: diffBaselines.mustWire(diff.Baseline.Type), Commit: diff.Baseline.Commit}
 	if diff.Format == workspaceapp.DiffFormatRaw {
 		return &protocol.Diff{Type: protocol.DiffFormatRaw, Baseline: baseline, Patch: &diff.Patch}, nil
 	}

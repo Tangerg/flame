@@ -1,5 +1,3 @@
-// Package planpresentation renders Plan domain values for model-facing prompt
-// and tool responses.
 package planpresentation
 
 import (
@@ -8,8 +6,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
-// Render formats an ordered Plan for Agent consumption. An empty Plan renders
-// as an empty string.
 func Render(steps []plan.Step) string {
 	var text strings.Builder
 	for _, step := range steps {

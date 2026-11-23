@@ -31,7 +31,7 @@ func StreamModel(ctx context.Context, ref pluginmcp.CallbackRef, id pluginmcp.Co
 			yield(pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult]{}, err)
 		}
 	}
-	return pluginmcp.StreamHost(ctx, ref, method, pluginmcp.CommandID(id), scopewire.Request(*request.Clone()))
+	return pluginmcp.StreamHost(ctx, ref, method, id, scopewire.Request(*request.Clone()))
 }
 
 func NewModelStreamCallback(stream func(context.Context, pluginmcp.Command[scopewire.Request]) iter.Seq2[*chat.ResponseDelta, error]) (pluginmcp.Callback, error) {
@@ -84,7 +84,7 @@ func modelStreamResult(ctx context.Context, source func() iter.Seq2[*chat.Respon
 				failure = err
 				break
 			}
-			if !yield(pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult]{Chunk: (*scopewire.ResponseDelta)(delta.Clone())}, nil) {
+			if !yield(pluginmcp.StreamChunk[ModelResult](scopewire.ResponseDelta(*delta.Clone())), nil) {
 				return
 			}
 		}
@@ -97,6 +97,6 @@ func modelStreamResult(ctx context.Context, source func() iter.Seq2[*chat.Respon
 			yield(pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult]{}, err)
 			return
 		}
-		yield(pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult]{Result: &result}, nil)
+		yield(pluginmcp.StreamResult[scopewire.ResponseDelta](result), nil)
 	}
 }

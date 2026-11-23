@@ -13,9 +13,6 @@ import (
 	framehost "github.com/Tangerg/frame/host"
 )
 
-// CommitWaitingSubtreeCancellation claims the prepared Pending snapshot and
-// persists the application-defined replacement atomically. It does not decide
-// which Runs survive or how their transcript and continuation facts change.
 func (e *Effects) CommitWaitingSubtreeCancellation(
 	ctx context.Context,
 	commit runs.WaitingSubtreeCancellationCommit,

@@ -7,8 +7,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// RunEvent is one projected runtime event. EventID is an opaque replay token
-// scoped to the root StreamSegmentID; SegmentID identifies the producing run.
 type RunEvent struct {
 	EventID         string
 	RunID           string
@@ -18,9 +16,6 @@ type RunEvent struct {
 	Event           Event
 }
 
-// StreamSegment returns the root segment whose journal owns this event. A
-// root-only producer may omit StreamSegmentID because its producer segment is
-// also the stream segment; tree adapters set it explicitly for every event.
 func (r RunEvent) StreamSegment() string {
 	if r.StreamSegmentID != "" {
 		return r.StreamSegmentID
@@ -28,10 +23,6 @@ func (r RunEvent) StreamSegment() string {
 	return r.SegmentID
 }
 
-// Validate enforces the CLI-owned event envelope. Runtime owns the wire
-// identities and the relationship between an envelope and its payload; what
-// remains here is the stream segment this package assigns and the projected
-// payload the conversation is about to fold.
 func (r RunEvent) Validate() error {
 	if err := protocol.ValidateSegmentID(r.StreamSegment()); err != nil {
 		return fmt.Errorf("run event stream: %w", err)
@@ -47,9 +38,8 @@ func (r RunEvent) Clone() RunEvent {
 	return r
 }
 
-// Equal reports whether two envelopes contain the same durable event fact.
-// Timestamp equality is based on the instant, not time.Location pointer or a
-// process-local monotonic reading that cannot survive persistence.
+// Timestamps compare by instant: Location pointers and monotonic readings do not
+// survive persistence.
 func (r RunEvent) Equal(other RunEvent) bool {
 	return r.EventID == other.EventID && r.RunID == other.RunID && r.SegmentID == other.SegmentID &&
 		r.StreamSegment() == other.StreamSegment() && r.At.Equal(other.At) && equalEvent(r.Event, other.Event)
@@ -60,8 +50,6 @@ type Event interface {
 	equal(Event) bool
 }
 
-// SegmentStarted is the authoritative opening fact of every initial or resumed
-// run segment.
 type SegmentStarted struct{ Run Run }
 
 type BlockStarted struct{ Block Block }
@@ -71,18 +59,11 @@ type BlockDelta struct {
 	Text    string
 }
 
-// ToolArgumentsDelta carries the provisional JSON text used to assemble a
-// tool invocation. The completed tool block remains authoritative; preserving
-// this preview lets streaming clients expose it without teaching the
-// conversation aggregate how to repair partial JSON.
 type ToolArgumentsDelta struct {
 	BlockID string
 	Text    string
 }
 
-// RunProgress is a non-replayable preview of a running segment. Usage is
-// run-cumulative when present; ContextTokens is the current context-window
-// occupancy and may decrease after compaction.
 type RunProgress struct {
 	Step          *int
 	Usage         *Usage
@@ -96,17 +77,11 @@ type PlanChanged struct {
 	Plan protocol.Plan
 }
 
-// SegmentFinished closes a segment with the Run record Runtime committed at
-// that boundary: waiting, or finished with its outcome, usage and context
-// footprint. Interrupts is the pending set this Run raised itself; a waiting
-// Run without them was suspended because another Run in its tree raised them.
 type SegmentFinished struct {
 	Run        Run
 	Interrupts []Interrupt
 }
 
-// Suspended reports whether the Run is waiting on interrupts another Run in
-// its tree raised.
 func (e SegmentFinished) Suspended() bool {
 	return e.Run.Status == protocol.RunStatusWaiting && len(e.Interrupts) == 0
 }
@@ -168,8 +143,6 @@ func (item SegmentFinished) equal(event Event) bool {
 	return ok && item.Run.Equal(other.Run) && InterruptsEqual(item.Interrupts, other.Interrupts)
 }
 
-// ReplayableEvent reports whether the underlying runtime retains this event in
-// its segment journal. Deltas are deliberately ephemeral.
 func ReplayableEvent(event Event) bool {
 	switch event.(type) {
 	case SegmentStarted, BlockStarted, BlockCompleted, PlanChanged, SegmentFinished:
@@ -232,7 +205,6 @@ func equalOptional[T comparable](left, right *T) bool {
 	return (left == nil) == (right == nil) && (left == nil || *left == *right)
 }
 
-// equalOptionalValue is equalOptional for values that define their own Equal.
 func equalOptionalValue[T interface{ Equal(T) bool }](left, right *T) bool {
 	return (left == nil) == (right == nil) && (left == nil || (*left).Equal(*right))
 }

@@ -1,7 +1,7 @@
 import { type ComposerKeyBindingSpec } from "@/features/composer/public/types";
 type ComposerKeyHandler = ComposerKeyBindingSpec["handler"];
 
-export interface ComposerKeyHandlers {
+interface ComposerKeyHandlers {
   send: ComposerKeyHandler;
   declineApproval: ComposerKeyHandler;
   stopRun: ComposerKeyHandler;

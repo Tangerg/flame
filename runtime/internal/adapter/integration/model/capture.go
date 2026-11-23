@@ -5,15 +5,13 @@ import (
 	"errors"
 	"slices"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// ProviderCapture is the checkpoint projection of one admitted construction.
-// The original open receipt owns its private credentials and reconstruction.
 type ProviderCapture struct {
 	Binding plugins.ContributionBinding `json:"binding"`
 	Profile modelprovider.Profile       `json:"profile"`
@@ -38,7 +36,7 @@ func (c ProviderCapture) Validate() error {
 	return err
 }
 
-func (c ProviderCapture) ValidateSelection(selection modelchoice.Selection) error {
+func (c ProviderCapture) ValidateSelection(selection flamemodel.Selection) error {
 	if err := selection.ValidateExact(); err != nil {
 		return err
 	}
@@ -57,12 +55,12 @@ func (c ProviderCapture) Clone() ProviderCapture {
 		c.Profile.Models[index] = model.Clone()
 	}
 	if c.Profile.Embedding != nil {
-		copy := *c.Profile.Embedding
-		c.Profile.Embedding = &copy
+		cloned := *c.Profile.Embedding
+		c.Profile.Embedding = &cloned
 	}
 	if c.Chat.Metadata != nil {
-		copy := c.Chat.Metadata.Clone()
-		c.Chat.Metadata = &copy
+		cloned := c.Chat.Metadata.Clone()
+		c.Chat.Metadata = &cloned
 	}
 	if c.Binding.Activation != nil {
 		activation := c.Binding.Activation.Clone()
@@ -71,25 +69,22 @@ func (c ProviderCapture) Clone() ProviderCapture {
 	return c
 }
 
-func NewCapturedChat(selection modelchoice.Selection, capture ProviderCapture, model chat.Model, counter InputTokenCounter, close func(context.Context) error, fits func(context.Context, *chat.Request) (bool, error)) (ResolvedChat, error) {
+func NewCapturedChat(selection flamemodel.Selection, capture ProviderCapture, model chat.Model, counter InputTokenCounter, release func(context.Context) error, fits func(context.Context, *chat.Request) (bool, error)) (ResolvedChat, error) {
 	if err := capture.ValidateSelection(selection); err != nil {
 		return ResolvedChat{}, err
 	}
-	if close == nil || fits == nil || capture.Chat.TokenCounting != (counter != nil) {
+	if release == nil || fits == nil || capture.Chat.TokenCounting != (counter != nil) {
 		return ResolvedChat{}, errors.New("model: captured provider lifetime and exact capabilities are required")
 	}
 	_, streaming := model.(chat.Streamer)
 	if capture.Chat.Streaming != streaming {
 		return ResolvedChat{}, errors.New("model: captured provider streaming capability changed")
 	}
-	resolved, err := NewResolvedChat(model, counter, capture.Chat.Metadata)
+	resolved, err := NewResolvedChat(model, counter, capture.Chat.Metadata, Pricing(capture.Profile.ID, capture.Profile.Models), release, fits)
 	if err != nil {
 		return ResolvedChat{}, err
 	}
 	owned := capture.Clone()
 	resolved.capture = &owned
-	resolved.close = close
-	resolved.fits = fits
-	resolved.pricing = Pricing(capture.Profile.ID, capture.Profile.Models)
 	return resolved, nil
 }

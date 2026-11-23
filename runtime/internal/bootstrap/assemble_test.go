@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	"github.com/Tangerg/frame/process/runner"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -29,7 +30,7 @@ func runtimeConfigWithRequiredDeps(t *testing.T) assemblyConfig {
 	}
 
 	workspace := t.TempDir()
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: testsupport.TempDirectory(t)})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: testsupport.TempDirectory(t), ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,9 +109,6 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = host.Close() })
 
-	// Uncertain-execution revival is the post-callback-RPC recovery phase; the
-	// production owner runs it after publishing delivery. This parked Run has no
-	// plugin-backed effect, so it revives without a live plugin session.
 	if err := host.application.recoverUncertainExecutions(ctx); err != nil {
 		t.Fatalf("recover uncertain executions: %v", err)
 	}
@@ -133,7 +131,6 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 
 func testProcessRunner(t *testing.T) *runner.Daemon {
 	t.Helper()
-	// The operating system limits Unix socket paths independently of test names.
 	directory, err := os.MkdirTemp("", "flame-runner-")
 	if err != nil {
 		t.Fatal(err)

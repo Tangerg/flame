@@ -53,6 +53,7 @@ func (i interactionWaitingSubtreeChangeState) String() string {
 		return fmt.Sprintf("unknown(%d)", i)
 	}
 }
+
 func (i *interactionWaitingSubtreeChange) Apply(
 	disposition runs.WaitingSubtreeDisposition,
 ) error {
@@ -71,18 +72,14 @@ func (i *interactionWaitingSubtreeChange) Apply(
 	i.session.childProjection.lock()
 	err := i.session.beginSubtreeApplication(i)
 	if err == nil {
-		// The product cancellation already committed. Retire its projection
-		// before Scope acknowledges control through the same Store callback.
 		i.session.commitSubtreeApplication(i)
 	}
 	i.session.childProjection.unlock()
 	if err != nil {
 		return err
 	}
-	// The Application has durably committed this cancellation, so submitting it
-	// to the executor happens here rather than during preparation: a requested
-	// cancellation is accepted immediately and cannot be revoked, and preparation
-	// must stay abandonable.
+	// A requested cancellation is accepted immediately and cannot be revoked, so it is
+	// submitted only after the Application commits; preparation must stay abandonable.
 	err = i.session.settleWaitingSubtree(i.session.lifetime.execution, i.targetID, i.reason)
 	switch {
 	case err != nil:
@@ -112,14 +109,8 @@ func (i *interactionWaitingSubtreeChange) Continue(ctx context.Context) error {
 		)
 	}
 	i.state = interactionWaitingSubtreeChangeContinued
-	// Continue is the first operation that can advance the Process tree after the
-	// Application durably opened the replacement product Segment.
 	i.session.segmentClock.start()
-	// Which members survive this cancellation is a product fact the preparation
-	// already projected. Which Processes the boundary actually holds is an
-	// execution fact the installed cut owns, and only those need resuming: a
-	// surviving member may have been waiting rather than paused.
-	paused, err := i.session.pausedProcessIDs()
+	paused, err := i.session.pausedProcessIDs(ctx)
 	if err != nil {
 		return fmt.Errorf("execution: inspect applied waiting Interaction subtree: %w", err)
 	}
@@ -139,9 +130,6 @@ func (i *interactionWaitingSubtreeChange) Discard() error {
 		return nil
 	}
 	i.stopExpirationLocked()
-	// Preparation only read the tree, so releasing this boundary is the whole
-	// rollback: an abandoned command leaves the Interaction exactly as parked as
-	// it was, with the target still waiting for its answer.
 	i.state = interactionWaitingSubtreeChangeDiscarded
 	i.session.finishSubtreeDiscard(i)
 	return nil
@@ -158,7 +146,6 @@ func (i *interactionWaitingSubtreeChange) armExpiration(ctx context.Context) {
 	})
 }
 
-// stopExpirationLocked disarms the preparation lease while i.mu is held.
 func (i *interactionWaitingSubtreeChange) stopExpirationLocked() {
 	if i.stopExpiry != nil {
 		i.stopExpiry()
@@ -192,8 +179,6 @@ func (i *interactionSession) beginSubtreeApplication(
 	return nil
 }
 
-// Scope may already have accepted the original control when a restored owner
-// reaches it. The original log decides whether to submit it or join its Exit.
 func (i *interactionSession) settleWaitingSubtree(ctx context.Context, targetID scoperun.ProcessID, reason string) error {
 	ctx, cancel := i.lifetime.publicationContext(ctx)
 	defer cancel()
@@ -224,7 +209,6 @@ func (i *interactionSession) settleWaitingSubtree(ctx context.Context, targetID 
 	return confirmWaitingSubtreeCancellation(targetID, reason, result.Termination())
 }
 
-// A non-nil suffix proves the exact Exit, including at the end of the log.
 func recordedWaitingSubtreeCancellation(tree scoperun.Log, targetID scoperun.ProcessID, reason string) (admitted bool, afterExit []scoperun.Entry, err error) {
 	for index, entry := range tree.Entries {
 		switch record := entry.Record.(type) {
@@ -258,12 +242,6 @@ func confirmWaitingSubtreeCancellation(targetID scoperun.ProcessID, reason strin
 func (i *interactionSession) commitSubtreeApplication(
 	change *interactionWaitingSubtreeChange,
 ) {
-	// The Application durably settled the canceled child's own Run, so its Segment
-	// and answer must not be projected again. Its spawning Tool result is a
-	// different fact with a different owner: it belongs to the model round the
-	// parent declared, and only the ordinary reconciliation can place it there in
-	// the order that round was declared in. The binding therefore survives until
-	// that result is projected.
 	for _, managed := range change.retired {
 		managed.mu.Lock()
 		managed.segmentProjected = true
@@ -297,9 +275,8 @@ func (i *interactionSession) finishSubtreeApplication(
 	i.state.boundary = interactionBoundarySubtreeApplied
 }
 
-// acceptSubtreeContinuation opens projection before resuming Scope. The next
-// model request can already contain child results and must commit them against
-// the replacement Segment even if Resume has not returned yet.
+// Projection opens before Scope resumes: the next model request can already
+// contain child results that must commit against the replacement Segment.
 func (i *interactionSession) acceptSubtreeContinuation(change *interactionWaitingSubtreeChange) error {
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()

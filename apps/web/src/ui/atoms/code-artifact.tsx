@@ -34,13 +34,8 @@ const styles = stylex.create({
     borderColor: "transparent",
     padding: `calc(${space.s3} - var(--focus-inset-edge))`,
     [previewFocus]: {
-      outlineStyle: "solid",
-      outlineWidth: "1.5px",
-      outlineColor: {
-        default: "var(--color-focus-ring)",
-        "@media (forced-colors: active)": "Highlight",
-      },
-      outlineOffset: "calc(-1 * var(--focus-inset-edge))",
+      outline: "var(--focus-ring)",
+      outlineOffset: "var(--focus-inset-offset)",
     },
     [`${previewFocus} > ${previewButtonFocus}`]: { outline: "none" },
   },

@@ -29,7 +29,7 @@ func newServer(store *store, deployments azureDeployments) (*sdk.Server, error) 
 	openChat := lookupMethod(modelprovider.OpenChatMethod, &errs)
 	openEmbedding := lookupMethod(modelprovider.OpenEmbeddingMethod, &errs)
 	reopen := lookupMethod(modelprovider.ReopenChatMethod, &errs)
-	close := lookupMethod(modelprovider.CloseMethod, &errs)
+	release := lookupMethod(modelprovider.CloseMethod, &errs)
 	call := lookupMethod(modelprovider.CallMethod, &errs)
 	count := lookupMethod(modelprovider.CountMethod, &errs)
 	embed := lookupMethod(modelprovider.EmbedMethod, &errs)
@@ -62,8 +62,8 @@ func newServer(store *store, deployments azureDeployments) (*sdk.Server, error) 
 				return modelprovider.Embedder{Handle: handle, Provider: input.Connection.Provider, Model: input.Model, Space: embeddingSpaceID(input.Connection.Provider, input.Model, input.Connection.BaseURL)}
 			})
 		}),
-		close.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[modelprovider.Handle]) (struct{}, error) {
-			return execute(ctx, store, close.Name(), command, modelprovider.Handle.Validate, func(ctx context.Context, input modelprovider.Handle) (struct{}, func(), error) {
+		release.RegisterServer(backend, nil, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[modelprovider.Handle]) (struct{}, error) {
+			return execute(ctx, store, release.Name(), command, modelprovider.Handle.Validate, func(ctx context.Context, input modelprovider.Handle) (struct{}, func(), error) {
 				return struct{}{}, nil, store.closeClient(ctx, input)
 			})
 		}),
@@ -89,8 +89,6 @@ func newServer(store *store, deployments azureDeployments) (*sdk.Server, error) 
 	return server, nil
 }
 
-// lookupMethod resolves one published method, collecting a failure so every
-// method can be declared before checking once.
 func lookupMethod[M any](resolve func() (M, error), errs *[]error) M {
 	method, err := resolve()
 	if err != nil {
@@ -99,7 +97,6 @@ func lookupMethod[M any](resolve func() (M, error), errs *[]error) M {
 	return method
 }
 
-// discovery answers connection checks without opening a client handle.
 type discovery struct{ deployments azureDeployments }
 
 func (d discovery) remoteModels(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[modelprovider.Connection]) ([]string, error) {

@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 )
 
-// diagnosticScreens lists and invokes direct read-only diagnostic tools.
 type diagnosticScreens struct {
 	screenHost
 	service DiagnosticTools
@@ -38,7 +37,7 @@ func diagnosticToolsDocument(tools []workspace.DiagnosticToolDescriptor) readerD
 		}
 		sections = append(sections,
 			toolSection{Title: tool.Name + " · safe", Style: toolSectionParagraph, Text: description},
-			toolSection{Title: "Arguments", Style: toolSectionCode, Language: "json", Text: prettyJSON(tool.Schema)},
+			jsonSection(argumentsSection, prettyJSON(tool.Schema)),
 		)
 	}
 	return readerDocument{Title: "Diagnostic tools", Detail: fmt.Sprintf("%d read-only tools", len(tools)), Sections: sections}
@@ -73,13 +72,13 @@ func (d *diagnosticScreens) InvokeDiagnosticTool(argument string) error {
 			}
 			d.reader.open(nil, readerDocument{
 				Title: "Diagnostic · " + invocation.tool.Name, Detail: workspacePath,
-				Sections: []toolSection{{Title: "Result", Style: toolSectionCode, Language: "json", Text: prettyJSON(invocation.result.JSON)}},
+				Sections: []toolSection{jsonSection(resultSection, prettyJSON(invocation.result.JSON))},
 			})
 			d.status.note("diagnostic complete · " + invocation.tool.Name)
 		},
 	)
 	if !started {
-		return errors.New("another diagnostic tool operation is running")
+		return diagnosticToolOperation.busy()
 	}
 	return nil
 }

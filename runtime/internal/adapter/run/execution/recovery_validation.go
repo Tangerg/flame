@@ -11,9 +11,6 @@ import (
 
 var errRecoveryValidated = errors.New("execution: recovery validated before writer activation")
 
-// Recover validates strategy restoration and deterministic replay before it
-// acquires a writer. This read-only store stops at that public boundary; a
-// probe never publishes a Process, dispatches an Effect, or changes storage.
 func validateRecovery(ctx context.Context, program scoperun.Program[scoperun.Payload, scoperun.Payload], history scoperun.Log) (resultErr error) {
 	owned, err := history.Clone()
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 
 	framehost "github.com/Tangerg/frame/host"
 	framevalue "github.com/Tangerg/frame/value"
@@ -18,15 +19,10 @@ import (
 	"github.com/samber/lo"
 )
 
-// catalog is the admitted release catalog, the only owner of release content.
-// Installations name releases by digest and read them here when needed.
-
 type catalog interface {
 	Get(context.Context, framevalue.Digest) (plugin.Release, error)
 }
 
-// packages owns release bytes: it admits a package as a candidate, publishes
-// and reclaims releases, prepares backends and observes realization.
 type packages interface {
 	Project(plugin.Release) (FrameworkRelease, error)
 	Materialize(context.Context, string) (Candidate, error)
@@ -37,19 +33,12 @@ type packages interface {
 	ReadLocale(context.Context, plugin.Installation, plugin.Locale) (map[string]string, error)
 }
 
-// Candidate is one package's admitted bytes awaiting publication. Only an
-// installation change publishes it, at the admission point, so a release
-// becomes visible only where it can also be reclaimed. Discard removes bytes
-// that were never published and is always called once.
 type Candidate interface {
 	Release() plugin.Release
 	Publish(context.Context) (plugin.Release, error)
 	Discard() error
 }
 
-// connections realizes installation sources in the MCP supervisor.
-// Withdrawal follows Frame's committed authority transition without connection
-// I/O. ReconcileInstallation then realizes the current sources.
 type connections interface {
 	WithdrawInstallation(context.Context, []mcpserver.ID) error
 	ReconcileInstallation(context.Context, []mcpserver.ID) error
@@ -87,7 +76,6 @@ func New(lifetime context.Context, host framehost.Host, store Store, catalog cat
 	return &Coordinator{lifetime: lifetime, framework: host, store: store, catalog: catalog, packages: packages, connections: connections, transact: transact, publish: publish}, nil
 }
 
-// Inspection projects an installation beside the catalog releases it names.
 type Inspection struct {
 	View         plugin.View
 	Selected     plugin.Release
@@ -107,9 +95,6 @@ func (c *Coordinator) installationSnapshot(ctx context.Context, id identity.Inst
 	return snapshot, nil
 }
 
-// Presentation is whether the selected release's declarative presentation
-// contributions, such as themes, may be shown now. Runtime alone decides it, so
-// a client never rebuilds activation from desired state and observed bytes.
 type Presentation string
 
 const (
@@ -117,10 +102,6 @@ const (
 	PresentationWithheld Presentation = "withheld"
 )
 
-// Realization observes release bytes and backend availability. It is not retained,
-// so loss or repair is reflected by the next inspection. An unavailable release
-// has no backend observations. Desired definitions and live connections have
-// independent owners.
 type Realization struct {
 	Release             ReleaseState
 	UnavailableBackends []mcpserver.ServerName
@@ -166,8 +147,6 @@ func (c *Coordinator) inspect(ctx context.Context, snapshot plugin.Snapshot) (In
 	return inspection, nil
 }
 
-// named reads a release a client named by digest. A digest the catalog has
-// never admitted cannot be the installation's release, so it is stale.
 func (c *Coordinator) named(ctx context.Context, digest framevalue.Digest) (plugin.Release, error) {
 	release, err := c.catalog.Get(ctx, digest)
 	if errors.Is(err, plugin.ErrNotFound) {
@@ -253,8 +232,6 @@ func (c *Coordinator) Stage(ctx context.Context, id identity.InstallationID, sou
 	return inspection, errors.Join(err, c.Reclaim(ctx))
 }
 
-// Reclaim removes every release nothing references, such as one whose change
-// failed after publication when the Runtime stopped before reclaiming it.
 func (c *Coordinator) Reclaim(ctx context.Context) error {
 	if err := c.packages.Reclaim(ctx); err != nil {
 		return fmt.Errorf("plugins: reclaim releases: %w", err)
@@ -272,20 +249,18 @@ func (c *Coordinator) Select(ctx context.Context, id identity.InstallationID, di
 	})
 }
 
-// Restoring availability of the same selected code does not replace a held
-// execution dependency. Selection and configuration still require quiescence.
 func (c *Coordinator) Enable(ctx context.Context, id identity.InstallationID) (Inspection, error) {
 	return c.change(ctx, id, func(_ context.Context, i plugin.Installation, selected plugin.Release) (plugin.Installation, error) {
 		return i.Enable(selected)
 	})
 }
 
-// Disable withdraws future dispatch and remains available while in use.
 func (c *Coordinator) Disable(ctx context.Context, id identity.InstallationID) (Inspection, error) {
 	return c.change(ctx, id, func(_ context.Context, i plugin.Installation, _ plugin.Release) (plugin.Installation, error) {
 		return i.Disable(), nil
 	})
 }
+
 func (c *Coordinator) Configure(ctx context.Context, id identity.InstallationID, digest framevalue.Digest, configuration plugin.Configuration) (Inspection, error) {
 	return c.change(ctx, id, func(ctx context.Context, i plugin.Installation, _ plugin.Release) (plugin.Installation, error) {
 		release, err := c.named(ctx, digest)
@@ -296,9 +271,6 @@ func (c *Coordinator) Configure(ctx context.Context, id identity.InstallationID,
 	})
 }
 
-// currentFrameworkInstallation returns the framework's record of an
-// installation, refusing a change whose stored state the framework no longer
-// mirrors.
 func (c *Coordinator) currentFrameworkInstallation(snapshot plugin.Snapshot) (framehost.InstallationRecord, error) {
 	expected, found := c.framework.Installation(snapshot.Installation.ID().Host())
 	if !found {
@@ -314,7 +286,6 @@ func (c *Coordinator) currentFrameworkInstallation(snapshot plugin.Snapshot) (fr
 	return expected, nil
 }
 
-// changedServerIDs names the servers a change touched, which must reconnect.
 func changedServerIDs(installation plugin.Installation, before plugin.Snapshot, after plugin.Release) ([]mcpserver.ID, error) {
 	changed, err := installation.ChangedServers(before.Installation, before.Selected, after)
 	if err != nil {
@@ -379,10 +350,10 @@ func (c *Coordinator) change(ctx context.Context, id identity.InstallationID, tr
 	defer finish()
 	if len(reconcile) > 0 {
 		if err := c.packages.Prepare(realizationCtx, committed.Installation, committed.Selected); err != nil {
-			slog.WarnContext(ctx, "committed plugin preparation failed", "installation", id, "error", err)
+			slog.WarnContext(ctx, "committed plugin preparation failed", telemetry.InstallationID(id), telemetry.Error(err))
 		}
 		if err := c.connections.ReconcileInstallation(realizationCtx, reconcile); err != nil {
-			slog.WarnContext(ctx, "committed plugin reconciliation failed", "installation", id, "error", err)
+			slog.WarnContext(ctx, "committed plugin reconciliation failed", telemetry.InstallationID(id), telemetry.Error(err))
 		}
 	}
 	inspection, err := c.inspect(realizationCtx, committed)
@@ -406,14 +377,13 @@ func (c *Coordinator) Uninstall(ctx context.Context, id identity.InstallationID)
 	realizationCtx, finish := c.realizationContext(ctx)
 	defer finish()
 	if err := c.connections.ReconcileInstallation(realizationCtx, servers); err != nil {
-		slog.WarnContext(ctx, "removed plugin reconciliation failed", "installation", id, "error", err)
+		slog.WarnContext(ctx, "removed plugin reconciliation failed", telemetry.InstallationID(id), telemetry.Error(err))
 	}
 	return errors.Join(withdrawErr, c.Reclaim(realizationCtx))
 }
 
-// A committed change must survive request cancellation. It remains inside the
-// Endpoint invocation, which joins it before dependencies close, and follows
-// the Runtime's cancellation root so that shutdown can retire its I/O.
+// A committed change must survive request cancellation; shutdown retires its I/O
+// through the Runtime's cancellation root.
 func (c *Coordinator) realizationContext(request context.Context) (context.Context, func()) {
 	ctx, cancel := context.WithCancelCause(context.WithoutCancel(request))
 	stop := context.AfterFunc(c.lifetime, func() { cancel(context.Cause(c.lifetime)) })

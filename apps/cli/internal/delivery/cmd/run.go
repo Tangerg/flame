@@ -40,8 +40,8 @@ func newRunCommand(provider runtimeProvider, v *viper.Viper) *cobra.Command {
 		},
 	}
 	flags.register(cmd)
-	completeFlag(cmd, "file", completeRunFile(provider))
-	completeFlag(cmd, "output-format", completeOutputFormat)
+	completeFlag(cmd, fileFlag, completeRunFile(provider))
+	completeFlag(cmd, outputFormatFlag, completeOutputFormat)
 	return cmd
 }
 
@@ -54,13 +54,13 @@ type runFlags struct {
 }
 
 func (r *runFlags) register(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&r.output, "output-format", "text", "Output format: text, json, or streaming-json")
-	cmd.Flags().BoolVar(&r.asJSON, "json", false, "Shorthand for --output-format json")
+	cmd.Flags().StringVar(&r.output, outputFormatFlag, "text", "Output format: text, json, or streaming-json")
+	cmd.Flags().BoolVar(&r.asJSON, jsonFlag, false, "Shorthand for --output-format json")
 	cmd.Flags().BoolVar(&r.approveAll, "approve-all", false, "Approve every request the run makes")
-	cmd.Flags().StringVarP(&r.sessionID, "session", "s", "", "Run inside an existing session instead of a new one")
-	cmd.Flags().StringArrayVarP(&r.files, "file", "f", nil, "Attach a local file (repeatable)")
-	cmd.Flags().String("workspace", "", "Workspace path on the selected Runtime (default: local directory when embedded, Runtime default when remote)")
-	cmd.MarkFlagsMutuallyExclusive("session", "workspace")
+	cmd.Flags().StringVarP(&r.sessionID, sessionFlag, "s", "", "Run inside an existing session instead of a new one")
+	cmd.Flags().StringArrayVarP(&r.files, fileFlag, "f", nil, "Attach a local file (repeatable)")
+	cmd.Flags().String(workspaceFlag, "", "Workspace path on the selected Runtime (default: local directory when embedded, Runtime default when remote)")
+	cmd.MarkFlagsMutuallyExclusive(sessionFlag, workspaceFlag)
 }
 
 func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimeProvider, v *viper.Viper) error {
@@ -85,7 +85,7 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 	if err != nil {
 		return err
 	}
-	replayPolicy, err := mutation.PolicyFromProfile(profile, time.Now)
+	replayPolicy, err := mutation.NewReplayPolicy(profile.IdempotencyLimits(), time.Now)
 	if err != nil {
 		return fmt.Errorf("runtime command replay policy: %w", err)
 	}
@@ -102,9 +102,6 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 	})
 }
 
-// openTarget opens the Session the run addresses and authors its message. A
-// new Session resolves attachments before connecting; an existing one must be
-// read first, since its workspace roots the attachments.
 func (r *runFlags) openTarget(cmd *cobra.Command, provider runtimeProvider, config settings.Config, messageText string) (Runtime, RuntimeProfile, conversation.SessionSnapshot, authoring.Message, error) {
 	if r.sessionID == "" {
 		workspacePath, err := resolveWorkspace(cmd, config)
@@ -134,8 +131,6 @@ func (r *runFlags) openTarget(cmd *cobra.Command, provider runtimeProvider, conf
 	return runtime, profile, opened, message, err
 }
 
-// messageFrom authors the message with attachments rooted at the workspace,
-// or at the local directory when the Runtime is remote and cannot read ours.
 func (r *runFlags) messageFrom(cmd *cobra.Command, config settings.Config, messageText, workspacePath string) (authoring.Message, error) {
 	attachmentRoot := workspacePath
 	if config.Runtime.Mode == settings.RuntimeRemote {
@@ -159,7 +154,7 @@ const (
 func (r *runFlags) selectedOutputFormat(cmd *cobra.Command) (outputFormat, error) {
 	selected := outputFormat(r.output)
 	if r.asJSON {
-		if cmd.Flags().Changed("output-format") && selected != outputJSON {
+		if cmd.Flags().Changed(outputFormatFlag) && selected != outputJSON {
 			return "", errors.New("--json conflicts with a non-JSON --output-format")
 		}
 		selected = outputJSON
@@ -241,7 +236,7 @@ func runFileCompletionWorkspace(cmd *cobra.Command, provider runtimeProvider) (s
 	if config.Runtime.Mode == settings.RuntimeRemote {
 		return resolveLocalDirectory(cmd)
 	}
-	sessionID, err := cmd.Flags().GetString("session")
+	sessionID, err := cmd.Flags().GetString(sessionFlag)
 	if err != nil {
 		return "", err
 	}
@@ -286,7 +281,6 @@ func resolveAttachments(ctx context.Context, workspace string, paths []string) (
 	return out, nil
 }
 
-// readPrompt assembles the prompt from arguments and anything piped in.
 func readPrompt(cmd *cobra.Command, args []string) (string, error) {
 	parts := make([]string, 0, 2)
 	if given := strings.TrimSpace(strings.Join(args, " ")); given != "" {
@@ -312,8 +306,6 @@ func readPrompt(cmd *cobra.Command, args []string) (string, error) {
 	return authoredPrompt, nil
 }
 
-// readPipedPrompt reads stdin when it is not a terminal. A terminal is left alone: a
-// prompt-less `flame run` should say so, not sit there looking hung.
 func readPipedPrompt(ctx context.Context, in io.Reader) (_ string, err error) {
 	source, piped, err := pipedPromptSource(ctx, in)
 	if err != nil || !piped {

@@ -11,10 +11,6 @@ import (
 	"github.com/Tangerg/scope/tools/fs"
 )
 
-// summarizeToolArguments derives an optional typed summary for a built-in tool.
-// The Runtime already admitted the Item, so material that does not fit the
-// executable shape (a failed call's observed arguments) keeps its complete
-// ArgumentsJSON and simply has no typed summary.
 func summarizeToolArguments(call *conversation.ToolCall) {
 	if call.Kind == "" || call.ArgumentsText != "" {
 		return
@@ -51,14 +47,13 @@ func summarizeToolArguments(call *conversation.ToolCall) {
 			return
 		}
 		call.Query, call.Path, summary = input.Pattern, input.Path, input.Pattern
+	default:
 	}
 	if summary != "" {
 		call.Summary = truncateRunes(summary, toolSummaryRuneLimit)
 	}
 }
 
-// projectToolResult always keeps the complete formatted result; a built-in
-// result that does not fit its typed shape only lacks the typed fields.
 func projectToolResult(call *conversation.ToolCall) error {
 	output, err := formattedJSON(call.ResultJSON)
 	if err != nil {
@@ -70,15 +65,15 @@ func projectToolResult(call *conversation.ToolCall) error {
 	}
 	switch builtin.Name(call.Name) {
 	case builtin.Shell, builtin.ReadShellOutput:
-		var result builtin.CommandResult
-		if json.Unmarshal(call.ResultJSON, &result) != nil {
+		result, ok := decodeBuiltinResult[builtin.CommandResult](call.ResultJSON)
+		if !ok {
 			return nil
 		}
 		call.Output, call.ExitCode = result.Output, result.ExitCode
 		call.OutputPage = result.Page
 	case builtin.ApplyPatch:
-		var result builtin.PatchResult
-		if json.Unmarshal(call.ResultJSON, &result) != nil {
+		result, ok := decodeBuiltinResult[builtin.PatchResult](call.ResultJSON)
+		if !ok {
 			return nil
 		}
 		paths := make([]string, len(result.Changes))
@@ -88,11 +83,17 @@ func projectToolResult(call *conversation.ToolCall) error {
 		if len(paths) != 0 {
 			call.Path, call.Output = paths[0], strings.Join(paths, "\n")
 		}
+	default:
 	}
 	return nil
 }
 
-// JSON material remains exact and complete when no declared projection owns it.
+// A builtin result that does not match its typed shape keeps the formatted raw JSON as its presentation.
+func decodeBuiltinResult[T any](encoded []byte) (T, bool) {
+	var result T
+	return result, json.Unmarshal(encoded, &result) == nil
+}
+
 func formattedJSON(encoded []byte) (string, error) {
 	formatted := jsontext.Value(bytes.Clone(encoded))
 	if err := formatted.Indent(jsontext.WithIndent("  ")); err != nil {

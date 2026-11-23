@@ -7,12 +7,13 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"runtime/debug"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
 const debounce = 100 * time.Millisecond
@@ -36,8 +37,6 @@ type pathObservation struct {
 	errors   <-chan error
 }
 
-// observerLifecycle owns notification resources and the reconciliation loop
-// shared by exact-file and bounded child-file policies.
 type observerLifecycle struct {
 	label     string
 	fsw       pathObservation
@@ -51,8 +50,6 @@ type observerLifecycle struct {
 }
 
 func newObserverLifecycle(label string, report func(error)) (*observerLifecycle, error) {
-	// The background loop is the only place a reconciliation outage is
-	// observable at all, so an observer without a reporter watches silently.
 	if report == nil {
 		return nil, fmt.Errorf("%s: outage reporter is required", label)
 	}
@@ -78,7 +75,7 @@ func (o *observerLifecycle) run() {
 	defer close(o.exited)
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			slog.Error("fileobservation: observer panicked", "panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+			slog.Error("fileobservation: observer panicked", telemetry.Panic(recovered))
 			o.report(errors.New("filesystem observation stopped after a defect"))
 		}
 	}()
@@ -119,8 +116,6 @@ func (o *observerLifecycle) run() {
 	}
 }
 
-// reconcileQuiet reconciles after a quiet period and reports whether it
-// failed; an outage is reported once, when it begins.
 func (o *observerLifecycle) reconcileQuiet(failing bool) bool {
 	err := o.reconcile(acceptance{})
 	if err != nil && !failing {
@@ -169,12 +164,8 @@ func (o *observerLifecycle) replacePaths(next map[string]struct{}) error {
 		if _, keep := next[directory]; keep {
 			continue
 		}
-		// Linux may retire the kernel watch before fsnotify observes its deletion,
-		// so Remove returns EINVAL for that absent watch. stateMu keeps this
-		// watcher's descriptor alive until reconciliation has finished.
-		if err := o.fsw.registry.Remove(directory); err != nil &&
-			!errors.Is(err, fsnotify.ErrNonExistentWatch) && !errors.Is(err, os.ErrNotExist) &&
-			!(runtime.GOOS == "linux" && errors.Is(err, syscall.EINVAL)) {
+		// stateMu keeps this watcher's descriptor alive until reconciliation has finished.
+		if err := o.fsw.registry.Remove(directory); err != nil && !retiredWatch(err) {
 			return fmt.Errorf("%s: unwatch path %q: %w", o.label, directory, err)
 		}
 	}
@@ -188,8 +179,6 @@ func (o *observerLifecycle) abort(cause error) error {
 	return cause
 }
 
-// closedLocked reports whether Close has begun. Close signals done under
-// stateMu, so a reconciliation that takes the lock afterwards always sees it.
 func (o *observerLifecycle) closedLocked() bool {
 	select {
 	case <-o.done:
@@ -210,4 +199,11 @@ func (o *observerLifecycle) Close() error {
 		}
 	})
 	return o.closeErr
+}
+
+// Linux may retire the kernel watch before fsnotify observes its deletion, so
+// Remove reports EINVAL for a watch that is already gone.
+func retiredWatch(err error) bool {
+	return errors.Is(err, fsnotify.ErrNonExistentWatch) || errors.Is(err, os.ErrNotExist) ||
+		runtime.GOOS == "linux" && errors.Is(err, syscall.EINVAL)
 }

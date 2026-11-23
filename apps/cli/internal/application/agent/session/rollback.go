@@ -21,8 +21,6 @@ type rollbackRuntime interface {
 	GetSession(context.Context, string) (conversation.SessionSnapshot, error)
 }
 
-// RollbackPreview is the exact authoritatively-read before/after projection authorized
-// by one rollback confirmation.
 type RollbackPreview struct {
 	request        conversation.RollbackSession
 	beforeRevision uint64
@@ -32,8 +30,6 @@ type RollbackPreview struct {
 	openingImages  int
 }
 
-// PreviewRollback derives a rollback proof and recoverable opening input from
-// one authoritative session snapshot.
 func PreviewRollback(snapshot conversation.SessionSnapshot, request conversation.RollbackSession) (RollbackPreview, error) {
 	if err := request.Validate(); err != nil {
 		return RollbackPreview{}, err
@@ -119,7 +115,7 @@ func (p RollbackPreview) journal(
 	stagedAt time.Time,
 ) workbench.PendingSessionRollback {
 	pending := workbench.PendingSessionRollback{
-		Phase: workbench.SessionRollbackPrepared, CommandID: commandID,
+		Phase: workbench.CommandPrepared, CommandID: commandID,
 		SessionID: p.request.SessionID, ToRunID: p.request.ToRunID, Scope: p.request.Scope,
 		BeforeRevision: p.beforeRevision, BeforeRunIDs: slices.Clone(p.beforeRunIDs),
 		AfterRunIDs: slices.Clone(p.afterRunIDs), OpeningText: p.openingText,
@@ -128,16 +124,12 @@ func (p RollbackPreview) journal(
 	return pending
 }
 
-// RollbackResult binds settlement to the exact durable command and authoritative
-// session projection.
 type RollbackResult struct {
 	Pending  workbench.PendingSessionRollback
 	Outcome  mutation.Outcome
 	Snapshot conversation.SessionSnapshot
 }
 
-// Rollback verifies an unchanged preview, stages one command identity, then
-// settles its runtime outcome without consuming the local recovery record.
 func Rollback(
 	ctx context.Context,
 	runtime rollbackRuntime,
@@ -172,9 +164,6 @@ func Rollback(
 	return settleRollback(ctx, runtime, authoring, pending, policy, backoff)
 }
 
-// settleRollback observes or replays one prepared command. History projections can
-// prove both before and after states. File-affecting commands are replayed only
-// while the same runtime idempotency store still guarantees their response.
 func settleRollback(
 	ctx context.Context,
 	runtime rollbackRuntime,
@@ -231,9 +220,6 @@ func executeRollback(
 	backoff retry.Backoff,
 ) (conversation.RollbackResult, error) {
 	if pending.Request().HistoryOnly() {
-		// History rollback has an authoritative before/after projection. One call
-		// followed by another read converges an uncertain acknowledgement without
-		// blindly replaying beyond an unrecorded command-store deadline.
 		if err := store.DispatchReady(); err != nil {
 			return conversation.RollbackResult{}, err
 		}
@@ -281,14 +267,13 @@ func reconcileRollback(
 }
 
 func fileRollbackRefused(err error) bool {
-	// The public problem type is the Runtime's settlement fact. Its cause chain
-	// can still include a checkpoint error when clearing the durable intent
+	// The cause chain can include a checkpoint error when clearing the durable intent
 	// failed; that internal_error must remain unknown to this journal.
-	if problem, ok := errors.AsType[protocol.ProblemError](err); ok {
+	if problem, ok := errors.AsType[*protocol.Failure](err); ok {
 		kind := problem.Problem().Type
 		return kind == protocol.ErrCheckpointUnavailable.Error() || kind == protocol.ErrCheckpointConflict.Error()
 	}
-	return err == protocol.ErrCheckpointUnavailable || err == protocol.ErrCheckpointConflict
+	return errors.Is(err, protocol.ErrCheckpointUnavailable) || errors.Is(err, protocol.ErrCheckpointConflict)
 }
 
 func validateBefore(pending workbench.PendingSessionRollback, snapshot conversation.SessionSnapshot) error {
@@ -363,20 +348,14 @@ func runIDs(snapshot conversation.SessionSnapshot) []string {
 	return ids
 }
 
-// ConfirmRollback upgrades the exact prepared journal after its result reaches the
-// caller's presentation boundary.
 func ConfirmRollback(authoring *workbench.Store, result RollbackResult) error {
 	return authoring.ConfirmSessionRollback(result.Pending.SessionID, result.Pending.CommandID)
 }
 
-// RejectRollback retires only the exact prepared journal after a definitive refusal.
 func RejectRollback(authoring *workbench.Store, result RollbackResult) error {
 	return authoring.RejectSessionRollback(result.Pending.SessionID, result.Pending.CommandID)
 }
 
-// RecoverRollbacks settles every prepared rollback before sessions or drafts become
-// visible. Confirmed records remain session-owned until activation consumes
-// their opening input.
 func RecoverRollbacks(
 	ctx context.Context,
 	runtime rollbackRuntime,
@@ -385,7 +364,7 @@ func RecoverRollbacks(
 	backoff retry.Backoff,
 ) error {
 	for _, pending := range authoring.PendingSessionRollbacks() {
-		if pending.Phase == workbench.SessionRollbackConfirmed {
+		if pending.Phase == workbench.CommandConfirmed {
 			continue
 		}
 		result, err := settleRollback(ctx, runtime, authoring, pending, policy, backoff)

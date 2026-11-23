@@ -19,8 +19,6 @@ const (
 	steerMetadataKey       = "flame.execution.steer"
 )
 
-// These coordinates project committed Scope operations into Flame's call
-// accounting. Preparation and model dispatch have distinct effect identities.
 type modelCallSource struct {
 	process  scoperun.ProcessID
 	effect   scoperun.EffectID
@@ -39,8 +37,6 @@ type preparedModelReference struct {
 	Sequence uint64             `json:"sequence"`
 }
 
-// Frame's caller identity is flat and bounded, while a Scope Effect contains an
-// arbitrarily nested process path. The exact original remains in Scope's log.
 func effectInvocationParent(effect scoperun.EffectID) string {
 	return "effect:" + scoperun.ComputeDigest([]byte(effect.String())).String()
 }
@@ -177,8 +173,6 @@ type toolCallSource struct {
 	index    uint32
 }
 
-// Scope admits an explicit idempotency key to each Tool. The canonical pending
-// request owns its coordinates; the committed model response owns its ordinal.
 func (i *interactionSession) toolSource(ctx context.Context, bound toolcontract.Invocation) (interaction.ToolInvocation, toolCallSource, error) {
 	history, err := i.committedTree(ctx, i.rootID)
 	if err != nil {
@@ -221,39 +215,59 @@ func (i *interactionSession) toolSource(ctx context.Context, bound toolcontract.
 }
 
 func toolProposalSource(history scoperun.Log, reference scoperun.EffectID, call corechat.ToolCall) (toolCallSource, error) {
-	var foundReference bool
-	settlements := make(map[scoperun.EffectID]scoperun.EffectSettled)
+	scan := proposalScan{reference: reference, settlements: make(map[scoperun.EffectID]scoperun.EffectSettled)}
 	for _, entry := range slices.Backward(history.Entries) {
 		switch record := entry.Record.(type) {
 		case scoperun.EffectSettled:
-			if foundReference && record.ID.Process == reference.Process {
-				settlements[record.ID] = record
-			}
+			scan.observeSettlement(record)
 		case scoperun.Stepped:
-			for _, declared := range slices.Backward(record.Intents()) {
-				if declared.ID == reference {
-					foundReference = true
-					continue
-				}
-				if !foundReference || declared.ID.Process != reference.Process {
-					continue
-				}
-				intent, model, err := interaction.ModelCallFromEffect(declared.Effect)
-				if err != nil {
-					return toolCallSource{}, err
-				}
-				if !model {
-					continue
-				}
-				settled, err := interaction.ModelSettlementFromRecord(settlements[declared.ID])
-				if err != nil {
-					return toolCallSource{}, err
-				}
-				return proposalCallSource(reference.Process, intent.Sequence, settled.Response, call)
+			source, found, err := scan.proposal(record, call)
+			if err != nil || found {
+				return source, err
 			}
 		}
 	}
 	return toolCallSource{}, fmt.Errorf("execution: missing original Tool effect %s", reference)
+}
+
+// The scan walks history backwards: settlements are seen before the Step that
+// declared them, and only the model call preceding the Tool effect proposed it.
+type proposalScan struct {
+	reference      scoperun.EffectID
+	foundReference bool
+	settlements    map[scoperun.EffectID]scoperun.EffectSettled
+}
+
+func (s *proposalScan) observeSettlement(record scoperun.EffectSettled) {
+	if s.foundReference && record.ID.Process == s.reference.Process {
+		s.settlements[record.ID] = record
+	}
+}
+
+func (s *proposalScan) proposal(record scoperun.Stepped, call corechat.ToolCall) (toolCallSource, bool, error) {
+	for _, declared := range slices.Backward(record.Intents()) {
+		if declared.ID == s.reference {
+			s.foundReference = true
+			continue
+		}
+		if !s.foundReference || declared.ID.Process != s.reference.Process {
+			continue
+		}
+		intent, model, err := interaction.ModelCallFromEffect(declared.Effect)
+		if err != nil {
+			return toolCallSource{}, false, err
+		}
+		if !model {
+			continue
+		}
+		settled, err := interaction.ModelSettlementFromRecord(s.settlements[declared.ID])
+		if err != nil {
+			return toolCallSource{}, false, err
+		}
+		source, err := proposalCallSource(s.reference.Process, intent.Sequence, settled.Response, call)
+		return source, true, err
+	}
+	return toolCallSource{}, false, nil
 }
 
 func proposalCallSource(process scoperun.ProcessID, sequence uint64, response *corechat.Response, call corechat.ToolCall) (toolCallSource, error) {

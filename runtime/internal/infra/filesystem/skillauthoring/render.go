@@ -9,9 +9,6 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-// renderProposal encodes a domain proposal into the SKILL.md storage format. The
-// YAML framing belongs beside the file store; the domain only owns the proposal
-// values and lifecycle rules.
 func renderProposal(proposal skills.Proposal) ([]byte, error) {
 	frontmatter, err := yaml.Marshal(skillspec.Frontmatter{
 		Name:        proposal.Name,

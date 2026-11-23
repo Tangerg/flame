@@ -6,8 +6,6 @@ import (
 	"strconv"
 )
 
-// IgnoredPaths asks Git about this directory page, without enumerating descendants.
-// Git's index still exempts tracked paths from ignore rules.
 func IgnoredPaths(ctx context.Context, root string, paths []string) (map[string]bool, error) {
 	repository, err := IsRepo(ctx, root)
 	if err != nil {
@@ -17,7 +15,6 @@ func IgnoredPaths(ctx context.Context, root string, paths []string) (map[string]
 		return nil, ErrNotRepo
 	}
 	ignored := make(map[string]bool)
-	// Batches keep each check-ignore argument list well under the OS limit.
 	const batch = 128
 	for start := 0; start < len(paths); start += batch {
 		args := append([]string{"check-ignore", "--"}, paths[start:min(start+batch, len(paths))]...)

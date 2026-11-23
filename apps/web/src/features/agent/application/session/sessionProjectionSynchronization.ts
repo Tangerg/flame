@@ -1,5 +1,5 @@
 import { ASYNC_OWNERSHIP_RETIRED as ABORTED, settleBeforeAbort } from "@/lib/asyncOwnership";
-export interface SessionProjectionSynchronization {
+interface SessionProjectionSynchronization {
   request(): Promise<boolean>;
   replace(): Promise<boolean>;
   retire(): void;

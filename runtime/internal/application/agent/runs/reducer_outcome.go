@@ -42,9 +42,6 @@ func (r *reducer) runRecord(state run.State) (run.Run, error) {
 	return current, nil
 }
 
-// progressedRun is the opened Run advanced to everything this segment has
-// reported by updatedAt. Every Run record the segment commits, whether a
-// model-response boundary or its park, is derived here from the opening record.
 func (r *reducer) progressedRun(updatedAt time.Time) (run.Run, error) {
 	metrics, err := r.metrics()
 	if err != nil {
@@ -53,8 +50,6 @@ func (r *reducer) progressedRun(updatedAt time.Time) (run.Run, error) {
 	return r.cfg.Opened.AdvanceProgress(metrics, r.contextTokens, updatedAt)
 }
 
-// metrics projects consumption accrued from individual calls onto the opened Run.
-// Active duration joins it only at the segment boundary.
 func (r *reducer) metrics() (run.Metrics, error) {
 	activeDuration := r.cfg.Opened.Metrics().ActiveDuration()
 	if r.segmentDuration < 0 || (r.segmentDuration > 0 && activeDuration > time.Duration(math.MaxInt64)-r.segmentDuration) {

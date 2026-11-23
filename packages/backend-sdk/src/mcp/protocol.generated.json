@@ -11,11 +11,10 @@
     "callbackEndpointPattern": "^http://127\\.0\\.0\\.1:[0-9]+/$",
     "callbackTokenCharacters": 64,
     "streamMetadataKey": "io.github.tangerg.flame/stream.v1",
-    "CallHeader": "Flame-Call",
-    "InvocationHeader": "Flame-Invocation",
-    "InvocationMetadataKey": "io.github.tangerg.flame/invocation",
-    "ReceiptMethod": "io.github.tangerg.flame/commands.get",
-    "maxCommandIDCharacters": 256
+    "callHeader": "Flame-Call",
+    "invocationHeader": "Flame-Invocation",
+    "invocationMetadataKey": "io.github.tangerg.flame/invocation",
+    "receiptMethod": "io.github.tangerg.flame/commands.get"
   },
   "limits": {
     "maxDescriptorBytes": 1048576,

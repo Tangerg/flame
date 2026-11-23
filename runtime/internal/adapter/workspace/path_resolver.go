@@ -13,9 +13,6 @@ import (
 
 type Resolver struct{ filesystem.DirectoryResolver }
 
-// ResolveInRoot lexically confines a client path to root and returns its
-// root-relative form. The workspace application owns the input-policy errors;
-// this adapter owns filesystem path spelling and cleaning.
 func (Resolver) ResolveInRoot(root, path string) (string, error) {
 	if !filepath.IsAbs(root) {
 		return "", filesystem.ErrAbsolutePathRequired
@@ -35,9 +32,6 @@ func (Resolver) ResolveInRoot(root, path string) (string, error) {
 	return rel, nil
 }
 
-// ResolveExistingInRoot also resolves existing symlinks before returning a
-// root-relative path, preventing a file read from escaping through an in-root
-// symlink. Missing targets are left for the consuming file adapter to report.
 func (r Resolver) ResolveExistingInRoot(root, path string) (string, error) {
 	rel, err := r.ResolveInRoot(root, path)
 	if err != nil {
@@ -61,9 +55,6 @@ func (r Resolver) ResolveExistingInRoot(root, path string) (string, error) {
 	return rel, nil
 }
 
-// Inspect derives the live workspace projection for an already-admitted cwd.
-// A path that disappeared (or was replaced by a non-directory) is a normal
-// workspace projection, not an error. Other filesystem failures remain explicit.
 func (Resolver) Inspect(path string) (workspaceapp.Resolved, error) {
 	cwd, err := filesystem.CanonicalPath(path)
 	if err != nil {

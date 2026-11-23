@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/oolong/ui/core/text"
@@ -11,12 +12,12 @@ import (
 )
 
 func workspaceDiffDocument(request workspace.DiffRequest, diff workspace.Diff) readerDocument {
-	detail := string(request.Mode) + " · " + string(request.Format)
+	detail := string(request.Mode) + format.Separator + string(request.Format)
 	if request.Path != "" {
-		detail += " · " + request.Path
+		detail += format.Separator + request.Path
 	}
 	if diff.Truncated {
-		detail += " · truncated"
+		detail += format.Separator + "truncated"
 	}
 	var baseline string
 	switch diff.Baseline.Type {
@@ -30,26 +31,11 @@ func workspaceDiffDocument(request workspace.DiffRequest, diff workspace.Diff) r
 	document := readerDocument{Title: "Workspace diff", Detail: detail, Sections: []toolSection{{Title: "Comparison", Style: toolSectionParagraph, Text: baseline}}}
 	if request.Format == protocol.DiffFormatRaw {
 		if diff.Patch != "" {
-			document.Sections = append(document.Sections, toolSection{Title: "Changes", Style: toolSectionCode, Language: "diff", Text: diff.Patch})
+			document.Sections = append(document.Sections, toolSection{Title: "Changes", Style: toolSectionCode, Language: codeLanguageDiff, Text: diff.Patch})
 		}
 	} else {
 		for _, file := range diff.Files {
-			title := strconv.Quote(file.Path)
-			if file.PreviousPath != "" {
-				title = strconv.Quote(file.PreviousPath) + " → " + title
-			}
-			title += " · " + string(file.Status)
-			if stat := file.Stat(); stat != "" {
-				title += " · " + stat
-			}
-			section := toolSection{Title: title, Style: toolSectionDiffRows, Rows: file.Rows}
-			if len(file.Rows) == 0 {
-				section.Style, section.Text = toolSectionParagraph, "No text changes."
-				if file.Binary {
-					section.Text = "Binary file."
-				}
-			}
-			document.Sections = append(document.Sections, section)
+			document.Sections = append(document.Sections, fileDiffSection(file))
 		}
 	}
 	if len(document.Sections) == 1 {
@@ -85,6 +71,7 @@ func renderDiffRows(theme kit.Theme, rows []protocol.DiffRow) *kit.Code {
 			marker, style = "+", theme.Added
 		case protocol.DiffRowDeleted:
 			marker, style = "-", theme.Removed
+		case protocol.DiffRowHunk, protocol.DiffRowContext:
 		}
 		lines = append(lines, text.Line{
 			{Text: fmt.Sprintf("%*s %*s ", width, lineNumber(row.LeftLine), width, lineNumber(row.RightLine)), Style: theme.Subtle},
@@ -95,4 +82,23 @@ func renderDiffRows(theme kit.Theme, rows []protocol.DiffRow) *kit.Code {
 		}
 	}
 	return kit.NewCode(lines)
+}
+
+func fileDiffSection(file workspace.FileDiff) toolSection {
+	title := strconv.Quote(file.Path)
+	if file.PreviousPath != "" {
+		title = strconv.Quote(file.PreviousPath) + " → " + title
+	}
+	title += format.Separator + string(file.Status)
+	if stat := file.Stat(); stat != "" {
+		title += format.Separator + stat
+	}
+	if len(file.Rows) > 0 {
+		return toolSection{Title: title, Style: toolSectionDiffRows, Rows: file.Rows}
+	}
+	text := "No text changes."
+	if file.Binary {
+		text = "Binary file."
+	}
+	return toolSection{Title: title, Style: toolSectionParagraph, Text: text}
 }

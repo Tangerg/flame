@@ -6,7 +6,6 @@ import (
 	"iter"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -26,7 +25,7 @@ type pluginCallUseCases interface {
 	NotifyChange(context.Context, plugin.ContributionID) error
 	Prepare(context.Context, plugins.CallRequest) (plugins.Call, error)
 	PrepareStream(context.Context, plugins.CallRequest) (plugins.StreamCall, error)
-	Resolve(context.Context, flameidentity.InstallationID, framevalue.Digest, plugin.ContributionID) ([]plugins.Collaborator, error)
+	Resolve(context.Context, identity.InstallationID, framevalue.Digest, plugin.ContributionID) ([]plugins.Collaborator, error)
 	ResolvePoint(context.Context, *plugincontract.Point, plugincontract.PointContext, []plugins.PointReference) ([]plugins.PointBinding, error)
 }
 
@@ -62,7 +61,7 @@ func (s *Handler) ResolvePluginPoint(ctx context.Context, in protocol.ResolvePlu
 	}
 	order := make([]plugins.PointReference, 0, len(in.Order))
 	for _, value := range in.Order {
-		installation, err := flameidentity.ParseInstallation(value.InstallationID)
+		installation, err := identity.ParseInstallation(value.InstallationID)
 		if err != nil {
 			return nil, protocol.InvalidParameters(err)
 		}

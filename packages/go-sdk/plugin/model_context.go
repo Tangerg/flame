@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
@@ -13,20 +13,14 @@ import (
 	"github.com/Tangerg/scope/core/content"
 )
 
-// ModelContextRequest describes the captured model and current request before
-// context capacity admission. It does not authorize model execution or routing.
 type ModelContextRequest struct {
-	Use      modelchoice.Use `json:"use"`
-	Provider string          `json:"provider"`
-	Model    string          `json:"model"`
-	Request  chat.Request    `json:"request"`
-	// Host-authored user-role trailers cannot identify the original caller input.
-	UserMessage *chat.Message `json:"userMessage,omitzero"`
+	Use         flamemodel.Use `json:"use"`
+	Provider    string         `json:"provider"`
+	Model       string         `json:"model"`
+	Request     chat.Request   `json:"request"`
+	UserMessage *chat.Message  `json:"userMessage,omitzero"`
 }
 
-// ModelContextResult supplies reference data, never message roles or instructions.
-// Runtime frames it as untrusted material at the request tail, outside authored
-// conversation. Contributors choose applicability from the captured Use.
 type ModelContextResult struct {
 	Content []content.Block `json:"content"`
 }
@@ -35,12 +29,8 @@ func ModelContextMethod() (*pluginmcp.Method[ModelContextRequest, ModelContextRe
 	return pluginmcp.NewMethod[ModelContextRequest, ModelContextResult](frame.MethodConfig{Name: "flame.model-context/contribute.v3", Kind: frame.Query, Target: extension.ScopeCall, Description: "Contribute untrusted reference data for the captured model use and original user input before capacity admission."})
 }
 
-// ModelContextContract orders independent context contributions before the final
-// request is admitted. It grants no next proxy, model call or route replacement.
 func ModelContextContract() (*plugincontract.Capability, error) { return modelContextContract() }
 
-// The published contract is immutable. Checkpoint validation shares its compiled
-// schemas instead of repeating admission on every durable tree commit.
 var modelContextContract = publishedCapability(func() (*plugincontract.Capability, error) {
 	method, err := ModelContextMethod()
 	if err != nil {

@@ -73,7 +73,6 @@ type OpenedReport = {
   error?: string;
 };
 type ArchiveReturn = { opener?: HTMLElement; scroll: ScrollPosition[] };
-// The one waiting archive action; recovery actions name their original command.
 type Action =
   { kind: "capture" | "removal" } | { kind: "check" | "retire"; key: string };
 type Outcome =

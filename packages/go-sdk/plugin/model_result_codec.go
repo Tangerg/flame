@@ -16,10 +16,12 @@ type modelResultProjection struct {
 }
 
 func (ModelResult) JSONSchemaModel() any { return modelResultProjection{} }
+
 func (r ModelResult) MarshalJSON() ([]byte, error) {
 	type native ModelResult
 	return json.Marshal(native(r))
 }
+
 func (r *ModelResult) UnmarshalJSON(data []byte) error {
 	var encoded modelResultProjection
 	if err := value.DecodeValue(data, &encoded, "model result"); err != nil {
@@ -34,10 +36,12 @@ type modelContextResultProjection struct {
 }
 
 func (ModelContextResult) JSONSchemaModel() any { return modelContextResultProjection{} }
+
 func (r ModelContextResult) MarshalJSON() ([]byte, error) {
 	type native ModelContextResult
 	return json.Marshal(native(r))
 }
+
 func (r *ModelContextResult) UnmarshalJSON(data []byte) error {
 	var encoded modelContextResultProjection
 	if err := value.DecodeValue(data, &encoded, "model context result"); err != nil {

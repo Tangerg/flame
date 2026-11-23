@@ -4,13 +4,13 @@
     "AddInput": {
       "additionalProperties": false,
       "properties": {
-        "CWD": {
+        "content": {
           "type": "string"
         },
-        "Content": {
+        "cwd": {
           "type": "string"
         },
-        "Scope": {
+        "scope": {
           "allOf": [
             {
               "enum": [
@@ -23,35 +23,35 @@
         }
       },
       "required": [
-        "Scope",
-        "CWD",
-        "Content"
+        "scope",
+        "cwd",
+        "content"
       ],
       "type": "object"
     },
     "AddResult": {
       "additionalProperties": false,
       "properties": {
-        "Changed": {
+        "changed": {
           "type": "boolean"
         },
-        "Item": {
-          "$ref": "#/$defs/AddV2OutputDomainItemSnapshot"
+        "item": {
+          "$ref": "#/$defs/AddV3OutputContractItem"
         }
       },
       "required": [
-        "Item",
-        "Changed"
+        "item",
+        "changed"
       ],
       "type": "object"
     },
-    "AddV2Input": {
+    "AddV3Input": {
       "$ref": "#/$defs/AddInput"
     },
-    "AddV2Output": {
+    "AddV3Output": {
       "$ref": "#/$defs/AddResult"
     },
-    "AddV2OutputDomainItemID": {
+    "AddV3OutputAgentmemoryItemID": {
       "allOf": [
         {
           "pattern": "^mem_[0-9a-f]{32}$"
@@ -59,44 +59,35 @@
       ],
       "type": "string"
     },
-    "AddV2OutputDomainItemSnapshot": {
+    "AddV3OutputContractItem": {
       "additionalProperties": false,
       "allOf": [
         {
           "properties": {
-            "Content": {
+            "content": {
               "maxLength": 4096
             },
-            "Revision": {
+            "revision": {
               "maximum": 9.007199254740991e+15
             }
           }
         }
       ],
       "properties": {
-        "Content": {
+        "content": {
           "pattern": "\\S",
           "type": "string"
         },
-        "CreatedAt": {
-          "$ref": "#/$defs/AddV2OutputInstantTimestamp"
+        "createdAt": {
+          "$ref": "#/$defs/AddV3OutputInstantTimestamp"
         },
-        "Day": {
+        "day": {
           "type": "string"
         },
-        "Embedding": {
-          "items": {
-            "$ref": "#/$defs/AddV2OutputValueNumber"
-          },
-          "type": "array"
+        "id": {
+          "$ref": "#/$defs/AddV3OutputAgentmemoryItemID"
         },
-        "EmbeddingSpace": {
-          "type": "string"
-        },
-        "ID": {
-          "$ref": "#/$defs/AddV2OutputDomainItemID"
-        },
-        "Origin": {
+        "origin": {
           "allOf": [
             {
               "enum": [
@@ -107,13 +98,13 @@
           ],
           "type": "string"
         },
-        "Pinned": {
+        "pinned": {
           "type": "boolean"
         },
-        "Project": {
+        "project": {
           "type": "string"
         },
-        "Revision": {
+        "revision": {
           "allOf": [
             {
               "maximum": 18446744073709551615,
@@ -123,7 +114,7 @@
           "minimum": 1,
           "type": "integer"
         },
-        "Scope": {
+        "scope": {
           "allOf": [
             {
               "enum": [
@@ -134,10 +125,10 @@
           ],
           "type": "string"
         },
-        "SessionID": {
+        "sessionId": {
           "type": "string"
         },
-        "Status": {
+        "status": {
           "allOf": [
             {
               "enum": [
@@ -149,38 +140,33 @@
           ],
           "type": "string"
         },
-        "UpdatedAt": {
-          "$ref": "#/$defs/AddV2OutputInstantTimestamp"
+        "updatedAt": {
+          "$ref": "#/$defs/AddV3OutputInstantTimestamp"
         }
       },
       "required": [
-        "ID",
-        "Revision",
-        "Scope",
-        "Project",
-        "Content",
-        "Origin",
-        "Status",
-        "Pinned",
-        "SessionID",
-        "Day",
-        "CreatedAt",
-        "UpdatedAt",
-        "EmbeddingSpace",
-        "Embedding"
+        "id",
+        "revision",
+        "scope",
+        "project",
+        "content",
+        "origin",
+        "status",
+        "pinned",
+        "sessionId",
+        "day",
+        "createdAt",
+        "updatedAt"
       ],
       "type": "object"
     },
-    "AddV2OutputInstantTimestamp": {
+    "AddV3OutputInstantTimestamp": {
       "type": "string"
-    },
-    "AddV2OutputValueNumber": {
-      "type": "number"
     },
     "Conversation": {
       "additionalProperties": false,
       "properties": {
-        "MessageCount": {
+        "messageCount": {
           "allOf": [
             {
               "maximum": 9223372036854775807,
@@ -189,23 +175,23 @@
           ],
           "type": "integer"
         },
-        "Transcript": {
+        "transcript": {
           "type": "string"
         }
       },
       "required": [
-        "MessageCount",
-        "Transcript"
+        "messageCount",
+        "transcript"
       ],
       "type": "object"
     },
-    "DeleteV2Input": {
+    "DeleteV3Input": {
       "$ref": "#/$defs/ItemInput"
     },
-    "DeleteV2Output": {
-      "$ref": "#/$defs/DeleteV2OutputContractAck"
+    "DeleteV3Output": {
+      "$ref": "#/$defs/DeleteV3OutputContractAck"
     },
-    "DeleteV2OutputContractAck": {
+    "DeleteV3OutputContractAck": {
       "additionalProperties": false,
       "properties": {},
       "type": "object"
@@ -215,14 +201,14 @@
       "allOf": [
         {
           "properties": {
-            "ExpectedRevision": {
+            "expectedRevision": {
               "maximum": 9.007199254740991e+15
             }
           }
         }
       ],
       "properties": {
-        "ExpectedRevision": {
+        "expectedRevision": {
           "allOf": [
             {
               "maximum": 18446744073709551615,
@@ -232,23 +218,23 @@
           "minimum": 1,
           "type": "integer"
         },
-        "ID": {
+        "id": {
           "type": "string"
         }
       },
       "required": [
-        "ID",
-        "ExpectedRevision"
+        "id",
+        "expectedRevision"
       ],
       "type": "object"
     },
     "ItemsInput": {
       "additionalProperties": false,
       "properties": {
-        "Project": {
+        "project": {
           "type": "string"
         },
-        "Scope": {
+        "scope": {
           "allOf": [
             {
               "enum": [
@@ -261,21 +247,21 @@
         }
       },
       "required": [
-        "Scope",
-        "Project"
+        "scope",
+        "project"
       ],
       "type": "object"
     },
-    "ItemsV2Input": {
+    "ItemsV3Input": {
       "$ref": "#/$defs/ItemsInput"
     },
-    "ItemsV2Output": {
+    "ItemsV3Output": {
       "items": {
-        "$ref": "#/$defs/ItemsV2OutputDomainItemSnapshot"
+        "$ref": "#/$defs/ItemsV3OutputContractItem"
       },
       "type": "array"
     },
-    "ItemsV2OutputDomainItemID": {
+    "ItemsV3OutputAgentmemoryItemID": {
       "allOf": [
         {
           "pattern": "^mem_[0-9a-f]{32}$"
@@ -283,44 +269,35 @@
       ],
       "type": "string"
     },
-    "ItemsV2OutputDomainItemSnapshot": {
+    "ItemsV3OutputContractItem": {
       "additionalProperties": false,
       "allOf": [
         {
           "properties": {
-            "Content": {
+            "content": {
               "maxLength": 4096
             },
-            "Revision": {
+            "revision": {
               "maximum": 9.007199254740991e+15
             }
           }
         }
       ],
       "properties": {
-        "Content": {
+        "content": {
           "pattern": "\\S",
           "type": "string"
         },
-        "CreatedAt": {
-          "$ref": "#/$defs/ItemsV2OutputInstantTimestamp"
+        "createdAt": {
+          "$ref": "#/$defs/ItemsV3OutputInstantTimestamp"
         },
-        "Day": {
+        "day": {
           "type": "string"
         },
-        "Embedding": {
-          "items": {
-            "$ref": "#/$defs/ItemsV2OutputValueNumber"
-          },
-          "type": "array"
+        "id": {
+          "$ref": "#/$defs/ItemsV3OutputAgentmemoryItemID"
         },
-        "EmbeddingSpace": {
-          "type": "string"
-        },
-        "ID": {
-          "$ref": "#/$defs/ItemsV2OutputDomainItemID"
-        },
-        "Origin": {
+        "origin": {
           "allOf": [
             {
               "enum": [
@@ -331,13 +308,13 @@
           ],
           "type": "string"
         },
-        "Pinned": {
+        "pinned": {
           "type": "boolean"
         },
-        "Project": {
+        "project": {
           "type": "string"
         },
-        "Revision": {
+        "revision": {
           "allOf": [
             {
               "maximum": 18446744073709551615,
@@ -347,7 +324,7 @@
           "minimum": 1,
           "type": "integer"
         },
-        "Scope": {
+        "scope": {
           "allOf": [
             {
               "enum": [
@@ -358,10 +335,10 @@
           ],
           "type": "string"
         },
-        "SessionID": {
+        "sessionId": {
           "type": "string"
         },
-        "Status": {
+        "status": {
           "allOf": [
             {
               "enum": [
@@ -373,40 +350,35 @@
           ],
           "type": "string"
         },
-        "UpdatedAt": {
-          "$ref": "#/$defs/ItemsV2OutputInstantTimestamp"
+        "updatedAt": {
+          "$ref": "#/$defs/ItemsV3OutputInstantTimestamp"
         }
       },
       "required": [
-        "ID",
-        "Revision",
-        "Scope",
-        "Project",
-        "Content",
-        "Origin",
-        "Status",
-        "Pinned",
-        "SessionID",
-        "Day",
-        "CreatedAt",
-        "UpdatedAt",
-        "EmbeddingSpace",
-        "Embedding"
+        "id",
+        "revision",
+        "scope",
+        "project",
+        "content",
+        "origin",
+        "status",
+        "pinned",
+        "sessionId",
+        "day",
+        "createdAt",
+        "updatedAt"
       ],
       "type": "object"
     },
-    "ItemsV2OutputInstantTimestamp": {
+    "ItemsV3OutputInstantTimestamp": {
       "type": "string"
-    },
-    "ItemsV2OutputValueNumber": {
-      "type": "number"
     },
     "ListInput": {
       "additionalProperties": false,
       "allOf": [
         {
           "properties": {
-            "Limit": {
+            "limit": {
               "maximum": 100,
               "minimum": 1
             }
@@ -414,13 +386,13 @@
         }
       ],
       "properties": {
-        "CWD": {
+        "cursor": {
           "type": "string"
         },
-        "Cursor": {
+        "cwd": {
           "type": "string"
         },
-        "Limit": {
+        "limit": {
           "allOf": [
             {
               "maximum": 9223372036854775807,
@@ -429,7 +401,7 @@
           ],
           "type": "integer"
         },
-        "Scope": {
+        "scope": {
           "allOf": [
             {
               "enum": [
@@ -442,19 +414,19 @@
         }
       },
       "required": [
-        "Scope",
-        "CWD",
-        "Cursor"
+        "scope",
+        "cwd",
+        "cursor"
       ],
       "type": "object"
     },
-    "ListV2Input": {
+    "ListV3Input": {
       "$ref": "#/$defs/ListInput"
     },
-    "ListV2Output": {
+    "ListV3Output": {
       "$ref": "#/$defs/Page"
     },
-    "ListV2OutputDomainItemID": {
+    "ListV3OutputAgentmemoryItemID": {
       "allOf": [
         {
           "pattern": "^mem_[0-9a-f]{32}$"
@@ -462,44 +434,35 @@
       ],
       "type": "string"
     },
-    "ListV2OutputDomainItemSnapshot": {
+    "ListV3OutputContractItem": {
       "additionalProperties": false,
       "allOf": [
         {
           "properties": {
-            "Content": {
+            "content": {
               "maxLength": 4096
             },
-            "Revision": {
+            "revision": {
               "maximum": 9.007199254740991e+15
             }
           }
         }
       ],
       "properties": {
-        "Content": {
+        "content": {
           "pattern": "\\S",
           "type": "string"
         },
-        "CreatedAt": {
-          "$ref": "#/$defs/ListV2OutputInstantTimestamp"
+        "createdAt": {
+          "$ref": "#/$defs/ListV3OutputInstantTimestamp"
         },
-        "Day": {
+        "day": {
           "type": "string"
         },
-        "Embedding": {
-          "items": {
-            "$ref": "#/$defs/ListV2OutputValueNumber"
-          },
-          "type": "array"
+        "id": {
+          "$ref": "#/$defs/ListV3OutputAgentmemoryItemID"
         },
-        "EmbeddingSpace": {
-          "type": "string"
-        },
-        "ID": {
-          "$ref": "#/$defs/ListV2OutputDomainItemID"
-        },
-        "Origin": {
+        "origin": {
           "allOf": [
             {
               "enum": [
@@ -510,13 +473,13 @@
           ],
           "type": "string"
         },
-        "Pinned": {
+        "pinned": {
           "type": "boolean"
         },
-        "Project": {
+        "project": {
           "type": "string"
         },
-        "Revision": {
+        "revision": {
           "allOf": [
             {
               "maximum": 18446744073709551615,
@@ -526,7 +489,7 @@
           "minimum": 1,
           "type": "integer"
         },
-        "Scope": {
+        "scope": {
           "allOf": [
             {
               "enum": [
@@ -537,10 +500,10 @@
           ],
           "type": "string"
         },
-        "SessionID": {
+        "sessionId": {
           "type": "string"
         },
-        "Status": {
+        "status": {
           "allOf": [
             {
               "enum": [
@@ -552,73 +515,68 @@
           ],
           "type": "string"
         },
-        "UpdatedAt": {
-          "$ref": "#/$defs/ListV2OutputInstantTimestamp"
+        "updatedAt": {
+          "$ref": "#/$defs/ListV3OutputInstantTimestamp"
         }
       },
       "required": [
-        "ID",
-        "Revision",
-        "Scope",
-        "Project",
-        "Content",
-        "Origin",
-        "Status",
-        "Pinned",
-        "SessionID",
-        "Day",
-        "CreatedAt",
-        "UpdatedAt",
-        "EmbeddingSpace",
-        "Embedding"
+        "id",
+        "revision",
+        "scope",
+        "project",
+        "content",
+        "origin",
+        "status",
+        "pinned",
+        "sessionId",
+        "day",
+        "createdAt",
+        "updatedAt"
       ],
       "type": "object"
     },
-    "ListV2OutputInstantTimestamp": {
+    "ListV3OutputInstantTimestamp": {
       "type": "string"
     },
-    "ListV2OutputValueNumber": {
-      "type": "number"
-    },
-    "MaintainV1Input": {
+    "MaintainV2Input": {
       "$ref": "#/$defs/MaintenanceInput"
     },
-    "MaintainV1Output": {
+    "MaintainV2Output": {
       "$ref": "#/$defs/MaintenanceResult"
     },
     "MaintenanceInput": {
       "additionalProperties": false,
       "properties": {
-        "Compacted": {
+        "compacted": {
           "type": "boolean"
         },
-        "Conversation": {
+        "conversation": {
           "$ref": "#/$defs/Conversation"
         },
-        "Project": {
+        "project": {
           "type": "string"
         },
-        "SessionID": {
+        "sessionId": {
           "type": "string"
         }
       },
       "required": [
-        "SessionID",
-        "Project",
-        "Compacted",
-        "Conversation"
+        "sessionId",
+        "project",
+        "compacted",
+        "conversation"
       ],
       "type": "object"
     },
     "MaintenanceResult": {
       "additionalProperties": false,
       "properties": {
-        "Published": {
+        "published": {
           "type": "boolean"
         }
       },
       "required": [
-        "Published"
+        "published"
       ],
       "type": "object"
     },
@@ -627,18 +585,18 @@
       "allOf": [
         {
           "properties": {
-            "Capacity": {
+            "capacity": {
               "maximum": 512,
               "minimum": 512
             },
-            "Rows": {
+            "rows": {
               "maxItems": 100
             }
           }
         }
       ],
       "properties": {
-        "Capacity": {
+        "capacity": {
           "allOf": [
             {
               "maximum": 9223372036854775807,
@@ -647,20 +605,20 @@
           ],
           "type": "integer"
         },
-        "NextCursor": {
+        "nextCursor": {
           "type": "string"
         },
-        "Rows": {
+        "rows": {
           "items": {
-            "$ref": "#/$defs/ListV2OutputDomainItemSnapshot"
+            "$ref": "#/$defs/ListV3OutputContractItem"
           },
           "type": "array"
         }
       },
       "required": [
-        "Rows",
-        "NextCursor",
-        "Capacity"
+        "rows",
+        "nextCursor",
+        "capacity"
       ],
       "type": "object"
     },
@@ -669,14 +627,14 @@
       "allOf": [
         {
           "properties": {
-            "ExpectedRevision": {
+            "expectedRevision": {
               "maximum": 9.007199254740991e+15
             }
           }
         }
       ],
       "properties": {
-        "Decision": {
+        "decision": {
           "allOf": [
             {
               "enum": [
@@ -687,7 +645,7 @@
           ],
           "type": "string"
         },
-        "ExpectedRevision": {
+        "expectedRevision": {
           "allOf": [
             {
               "maximum": 18446744073709551615,
@@ -697,24 +655,24 @@
           "minimum": 1,
           "type": "integer"
         },
-        "ID": {
+        "id": {
           "type": "string"
         }
       },
       "required": [
-        "ID",
-        "ExpectedRevision",
-        "Decision"
+        "id",
+        "expectedRevision",
+        "decision"
       ],
       "type": "object"
     },
-    "ReviewV2Input": {
+    "ReviewV3Input": {
       "$ref": "#/$defs/ReviewInput"
     },
-    "ReviewV2Output": {
-      "$ref": "#/$defs/ReviewV2OutputContractAck"
+    "ReviewV3Output": {
+      "$ref": "#/$defs/ReviewV3OutputContractAck"
     },
-    "ReviewV2OutputContractAck": {
+    "ReviewV3OutputContractAck": {
       "additionalProperties": false,
       "properties": {},
       "type": "object"
@@ -722,16 +680,16 @@
     "SearchInput": {
       "additionalProperties": false,
       "properties": {
-        "EmbeddingSpace": {
+        "embeddingSpace": {
           "type": "string"
         },
-        "Project": {
+        "project": {
           "type": "string"
         },
-        "Query": {
+        "query": {
           "type": "string"
         },
-        "TopK": {
+        "topK": {
           "allOf": [
             {
               "maximum": 9223372036854775807,
@@ -742,23 +700,23 @@
         }
       },
       "required": [
-        "Project",
-        "Query",
-        "TopK",
-        "EmbeddingSpace"
+        "project",
+        "query",
+        "topK",
+        "embeddingSpace"
       ],
       "type": "object"
     },
-    "SearchV2Input": {
+    "SearchV3Input": {
       "$ref": "#/$defs/SearchInput"
     },
-    "SearchV2Output": {
+    "SearchV3Output": {
       "items": {
-        "$ref": "#/$defs/SearchV2OutputDomainItemSnapshot"
+        "$ref": "#/$defs/SearchV3OutputContractItem"
       },
       "type": "array"
     },
-    "SearchV2OutputDomainItemID": {
+    "SearchV3OutputAgentmemoryItemID": {
       "allOf": [
         {
           "pattern": "^mem_[0-9a-f]{32}$"
@@ -766,44 +724,35 @@
       ],
       "type": "string"
     },
-    "SearchV2OutputDomainItemSnapshot": {
+    "SearchV3OutputContractItem": {
       "additionalProperties": false,
       "allOf": [
         {
           "properties": {
-            "Content": {
+            "content": {
               "maxLength": 4096
             },
-            "Revision": {
+            "revision": {
               "maximum": 9.007199254740991e+15
             }
           }
         }
       ],
       "properties": {
-        "Content": {
+        "content": {
           "pattern": "\\S",
           "type": "string"
         },
-        "CreatedAt": {
-          "$ref": "#/$defs/SearchV2OutputInstantTimestamp"
+        "createdAt": {
+          "$ref": "#/$defs/SearchV3OutputInstantTimestamp"
         },
-        "Day": {
+        "day": {
           "type": "string"
         },
-        "Embedding": {
-          "items": {
-            "$ref": "#/$defs/SearchV2OutputValueNumber"
-          },
-          "type": "array"
+        "id": {
+          "$ref": "#/$defs/SearchV3OutputAgentmemoryItemID"
         },
-        "EmbeddingSpace": {
-          "type": "string"
-        },
-        "ID": {
-          "$ref": "#/$defs/SearchV2OutputDomainItemID"
-        },
-        "Origin": {
+        "origin": {
           "allOf": [
             {
               "enum": [
@@ -814,13 +763,13 @@
           ],
           "type": "string"
         },
-        "Pinned": {
+        "pinned": {
           "type": "boolean"
         },
-        "Project": {
+        "project": {
           "type": "string"
         },
-        "Revision": {
+        "revision": {
           "allOf": [
             {
               "maximum": 18446744073709551615,
@@ -830,7 +779,7 @@
           "minimum": 1,
           "type": "integer"
         },
-        "Scope": {
+        "scope": {
           "allOf": [
             {
               "enum": [
@@ -841,10 +790,10 @@
           ],
           "type": "string"
         },
-        "SessionID": {
+        "sessionId": {
           "type": "string"
         },
-        "Status": {
+        "status": {
           "allOf": [
             {
               "enum": [
@@ -856,50 +805,45 @@
           ],
           "type": "string"
         },
-        "UpdatedAt": {
-          "$ref": "#/$defs/SearchV2OutputInstantTimestamp"
+        "updatedAt": {
+          "$ref": "#/$defs/SearchV3OutputInstantTimestamp"
         }
       },
       "required": [
-        "ID",
-        "Revision",
-        "Scope",
-        "Project",
-        "Content",
-        "Origin",
-        "Status",
-        "Pinned",
-        "SessionID",
-        "Day",
-        "CreatedAt",
-        "UpdatedAt",
-        "EmbeddingSpace",
-        "Embedding"
+        "id",
+        "revision",
+        "scope",
+        "project",
+        "content",
+        "origin",
+        "status",
+        "pinned",
+        "sessionId",
+        "day",
+        "createdAt",
+        "updatedAt"
       ],
       "type": "object"
     },
-    "SearchV2OutputInstantTimestamp": {
+    "SearchV3OutputInstantTimestamp": {
       "type": "string"
-    },
-    "SearchV2OutputValueNumber": {
-      "type": "number"
     },
     "UpdateInput": {
       "additionalProperties": false,
       "allOf": [
         {
           "properties": {
-            "ExpectedRevision": {
+            "expectedRevision": {
               "maximum": 9.007199254740991e+15
             }
           }
         }
       ],
       "properties": {
-        "Content": {
+        "content": {
           "type": "string"
         },
-        "ExpectedRevision": {
+        "expectedRevision": {
           "allOf": [
             {
               "maximum": 18446744073709551615,
@@ -909,26 +853,26 @@
           "minimum": 1,
           "type": "integer"
         },
-        "ID": {
+        "id": {
           "type": "string"
         },
-        "Pinned": {
+        "pinned": {
           "type": "boolean"
         }
       },
       "required": [
-        "ID",
-        "ExpectedRevision"
+        "id",
+        "expectedRevision"
       ],
       "type": "object"
     },
-    "UpdateV2Input": {
+    "UpdateV3Input": {
       "$ref": "#/$defs/UpdateInput"
     },
-    "UpdateV2Output": {
-      "$ref": "#/$defs/UpdateV2OutputDomainItemSnapshot"
+    "UpdateV3Output": {
+      "$ref": "#/$defs/UpdateV3OutputContractItem"
     },
-    "UpdateV2OutputDomainItemID": {
+    "UpdateV3OutputAgentmemoryItemID": {
       "allOf": [
         {
           "pattern": "^mem_[0-9a-f]{32}$"
@@ -936,44 +880,35 @@
       ],
       "type": "string"
     },
-    "UpdateV2OutputDomainItemSnapshot": {
+    "UpdateV3OutputContractItem": {
       "additionalProperties": false,
       "allOf": [
         {
           "properties": {
-            "Content": {
+            "content": {
               "maxLength": 4096
             },
-            "Revision": {
+            "revision": {
               "maximum": 9.007199254740991e+15
             }
           }
         }
       ],
       "properties": {
-        "Content": {
+        "content": {
           "pattern": "\\S",
           "type": "string"
         },
-        "CreatedAt": {
-          "$ref": "#/$defs/UpdateV2OutputInstantTimestamp"
+        "createdAt": {
+          "$ref": "#/$defs/UpdateV3OutputInstantTimestamp"
         },
-        "Day": {
+        "day": {
           "type": "string"
         },
-        "Embedding": {
-          "items": {
-            "$ref": "#/$defs/UpdateV2OutputValueNumber"
-          },
-          "type": "array"
+        "id": {
+          "$ref": "#/$defs/UpdateV3OutputAgentmemoryItemID"
         },
-        "EmbeddingSpace": {
-          "type": "string"
-        },
-        "ID": {
-          "$ref": "#/$defs/UpdateV2OutputDomainItemID"
-        },
-        "Origin": {
+        "origin": {
           "allOf": [
             {
               "enum": [
@@ -984,13 +919,13 @@
           ],
           "type": "string"
         },
-        "Pinned": {
+        "pinned": {
           "type": "boolean"
         },
-        "Project": {
+        "project": {
           "type": "string"
         },
-        "Revision": {
+        "revision": {
           "allOf": [
             {
               "maximum": 18446744073709551615,
@@ -1000,7 +935,7 @@
           "minimum": 1,
           "type": "integer"
         },
-        "Scope": {
+        "scope": {
           "allOf": [
             {
               "enum": [
@@ -1011,10 +946,10 @@
           ],
           "type": "string"
         },
-        "SessionID": {
+        "sessionId": {
           "type": "string"
         },
-        "Status": {
+        "status": {
           "allOf": [
             {
               "enum": [
@@ -1026,33 +961,28 @@
           ],
           "type": "string"
         },
-        "UpdatedAt": {
-          "$ref": "#/$defs/UpdateV2OutputInstantTimestamp"
+        "updatedAt": {
+          "$ref": "#/$defs/UpdateV3OutputInstantTimestamp"
         }
       },
       "required": [
-        "ID",
-        "Revision",
-        "Scope",
-        "Project",
-        "Content",
-        "Origin",
-        "Status",
-        "Pinned",
-        "SessionID",
-        "Day",
-        "CreatedAt",
-        "UpdatedAt",
-        "EmbeddingSpace",
-        "Embedding"
+        "id",
+        "revision",
+        "scope",
+        "project",
+        "content",
+        "origin",
+        "status",
+        "pinned",
+        "sessionId",
+        "day",
+        "createdAt",
+        "updatedAt"
       ],
       "type": "object"
     },
-    "UpdateV2OutputInstantTimestamp": {
+    "UpdateV3OutputInstantTimestamp": {
       "type": "string"
-    },
-    "UpdateV2OutputValueNumber": {
-      "type": "number"
     }
   }
 }

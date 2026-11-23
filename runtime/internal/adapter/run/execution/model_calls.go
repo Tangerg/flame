@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -21,7 +21,7 @@ func (i *interactionSession) modelCallContext(ctx context.Context, member runs.E
 	return executionctx.WithModelCalls(ctx, modelCalls{session: i, member: member})
 }
 
-func (m modelCalls) Start(ctx context.Context, id string, selection modelchoice.Selection) (func(context.Context, error) error, error) {
+func (m modelCalls) Start(ctx context.Context, id string, selection flamemodel.Selection) (func(context.Context, error) error, error) {
 	if err := selection.ValidateExact(); err != nil {
 		return nil, err
 	}

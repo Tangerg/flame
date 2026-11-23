@@ -11,10 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-// mcp.* is runtime-global, so these methods take no workspace reference.
-
-// ListMCPServers returns the single authoritative MCP resource collection in
-// name order: durable configuration enriched with current live state.
 func (s *Handler) ListMCPServers(ctx context.Context) (*protocol.Page[protocol.MCPServer], error) {
 	servers, err := s.mcp.Servers(ctx)
 	if err != nil {
@@ -31,7 +27,6 @@ func (s *Handler) ListMCPServers(ctx context.Context) (*protocol.Page[protocol.M
 	return protocol.NewPage(out), nil
 }
 
-// CreateMCPServer creates and returns one unified MCP server resource.
 func (s *Handler) CreateMCPServer(ctx context.Context, in protocol.MCPServerCandidate) (*protocol.MCPServer, error) {
 	input, err := mcpServerInputFromCandidate(in)
 	if err != nil {
@@ -48,8 +43,6 @@ func (s *Handler) CreateMCPServer(ctx context.Context, in protocol.MCPServerCand
 	return &out, nil
 }
 
-// UpdateMCPServer applies an explicit partial update and returns the resulting
-// unified resource.
 func (s *Handler) UpdateMCPServer(ctx context.Context, in protocol.UpdateMCPServerRequest) (*protocol.MCPServer, error) {
 	name, err := mcpServerIDFromWire(in.Server)
 	if err != nil {
@@ -70,7 +63,6 @@ func (s *Handler) UpdateMCPServer(ctx context.Context, in protocol.UpdateMCPServ
 	return &out, nil
 }
 
-// DeleteMCPServer deletes one configured server and its live projection.
 func (s *Handler) DeleteMCPServer(ctx context.Context, server protocol.MCPServerID) error {
 	name, err := mcpServerIDFromWire(server)
 	if err != nil {
@@ -79,7 +71,6 @@ func (s *Handler) DeleteMCPServer(ctx context.Context, server protocol.MCPServer
 	return wireMCPError(s.mcp.DeleteServer(ctx, name))
 }
 
-// TestMCPServer probes a complete candidate without persisting it.
 func (s *Handler) TestMCPServer(ctx context.Context, in protocol.MCPServerCandidate) (*protocol.MCPTestResult, error) {
 	input, err := mcpServerInputFromCandidate(in)
 	if err != nil {
@@ -103,8 +94,6 @@ func (s *Handler) TestMCPServer(ctx context.Context, in protocol.MCPServerCandid
 	}
 }
 
-// ListMCPTools lists tools advertised by connected MCP servers in server/name
-// order, optionally narrowed to one server.
 func (s *Handler) ListMCPTools(ctx context.Context, in protocol.MCPListToolsRequest) (*protocol.Page[protocol.MCPTool], error) {
 	var name *mcpserver.ID
 	if in.Server != nil {
@@ -129,8 +118,6 @@ func (s *Handler) ListMCPTools(ctx context.Context, in protocol.MCPListToolsRequ
 	return protocol.NewPage(out), nil
 }
 
-// ReconnectMCPServer starts a new live dial. Its state transitions invalidate
-// the server resource through runtime.event.
 func (s *Handler) ReconnectMCPServer(ctx context.Context, server protocol.MCPServerID) error {
 	name, err := mcpServerIDFromWire(server)
 	if err != nil {
@@ -139,8 +126,6 @@ func (s *Handler) ReconnectMCPServer(ctx context.Context, server protocol.MCPSer
 	return wireMCPError(s.mcp.ReconnectServer(ctx, name))
 }
 
-// CreateMCPAuthorizationAttempt starts interactive OAuth and returns its
-// observable asynchronous resource immediately.
 func (s *Handler) CreateMCPAuthorizationAttempt(ctx context.Context, server protocol.MCPServerID) (*protocol.MCPAuthorizationAttempt, error) {
 	name, err := mcpServerIDFromWire(server)
 	if err != nil {
@@ -157,7 +142,6 @@ func (s *Handler) CreateMCPAuthorizationAttempt(ctx context.Context, server prot
 	return &out, nil
 }
 
-// GetMCPAuthorizationAttempt returns a pending or retained terminal OAuth flow.
 func (s *Handler) GetMCPAuthorizationAttempt(ctx context.Context, attemptID string) (*protocol.MCPAuthorizationAttempt, error) {
 	attempt, err := s.mcp.AuthorizationAttempt(ctx, attemptID)
 	if err != nil {
@@ -208,6 +192,7 @@ func (s *Handler) GetMCPToolExposure(ctx context.Context, in protocol.MCPServerR
 	}
 	return out, nil
 }
+
 func (s *Handler) SetMCPToolExposure(ctx context.Context, in protocol.SetMCPToolExposureRequest) error {
 	ref, err := toolRefFromWire(protocol.ToolRef{Type: protocol.ToolRefMCP, Server: &in.Server, Name: in.Name})
 	if err != nil {

@@ -33,8 +33,6 @@ import (
 	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
-// poMCPRuntime is one Runtime instance reached through the delivery endpoint,
-// the same entry both the Go binding and the Runtime Protocol use.
 type poMCPRuntime struct {
 	t        *testing.T
 	host     *Instance
@@ -64,8 +62,6 @@ func buildPluginProtocolRuntime(t *testing.T, cfg assemblyConfig) (*Instance, *d
 }
 
 func pluginProtocolHandler(host *Instance, cfg assemblyConfig) (*delivery.Handler, error) {
-	// Plugin callbacks retain Core identity across restart. Discovery and the
-	// Endpoint must use the store's namespace, including in custom loss fixtures.
 	return host.application.newDeliveryHandler(protocol.ServerInfo{
 		Name: "plugin-acceptance-test", Version: "0.0.0-test", InstanceID: testsupport.RuntimeInstanceID,
 		DefaultWorkspace: protocol.WorkspaceRef{Path: cfg.defaultWorkspacePath}, Home: cfg.userHome,
@@ -92,8 +88,6 @@ func (r *poMCPRuntime) must(method delivery.Name, input any, key string) any {
 	return result.Value
 }
 
-// poMCPTools waits until the listing satisfies ready; connections settle in the
-// background after a command commits.
 func (r *poMCPRuntime) poMCPTools(server *protocol.MCPServerID, ready func([]protocol.MCPTool) bool) []protocol.MCPTool {
 	r.t.Helper()
 	deadline := time.Now().Add(10 * time.Second)
@@ -108,8 +102,6 @@ func (r *poMCPRuntime) poMCPTools(server *protocol.MCPServerID, ready func([]pro
 				status, err := json.Marshal(value.Status)
 				r.t.Logf("MCP discovery deadline: server=%s status=%s encoding_error=%v", value.ID.Name, status, err)
 			}
-			// A connecting projection omits the blocked handshake phase. Capture its
-			// live owner before test cleanup cancels and joins that evidence.
 			stack := make([]byte, 1<<20)
 			r.t.Logf("MCP discovery deadline goroutines:\n%s", stack[:goruntime.Stack(stack, true)])
 			r.t.Fatalf("MCP tools never settled: %+v; servers: %+v", tools.Data, servers.Data)

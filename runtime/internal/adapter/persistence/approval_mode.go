@@ -11,18 +11,14 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 )
 
-// ModeStore records the Runtime's permission modes: the default a user chose
-// and which Sessions are in Plan mode. A Session without a row follows the
-// Runtime default, so leaving Plan mode removes the row instead of pinning a
-// copy of that default to the Session.
+// Leaving Plan mode removes the row instead of pinning a copy of the Runtime
+// default to the Session.
 type ModeStore struct{ db *database }
 
 func newModeStore(db *database) *ModeStore {
 	return &ModeStore{db: db}
 }
 
-// approvalDefaultModeSchema holds the one Runtime default a user chose. Its
-// values are the domain's default vocabulary; Plan is session-only.
 func approvalDefaultModeSchema() string {
 	return fmt.Sprintf(`CREATE TABLE IF NOT EXISTS approval_default_mode (
 			id   INTEGER PRIMARY KEY CHECK (id = 1),
@@ -30,8 +26,6 @@ func approvalDefaultModeSchema() string {
 		)`, approval.ModeSafe, approval.ModeBalanced, approval.ModeYolo)
 }
 
-// DefaultMode returns the chosen Runtime default; found is false until one is
-// chosen.
 func (p *ModeStore) DefaultMode(ctx context.Context) (approval.Mode, bool, error) {
 	return scopedPair(ctx, p.db.read, func(ctx context.Context) (approval.Mode, bool, error) {
 		var stored string
@@ -50,7 +44,6 @@ func (p *ModeStore) DefaultMode(ctx context.Context) (approval.Mode, bool, error
 	})
 }
 
-// SetDefaultMode records the Runtime default a user chose.
 func (p *ModeStore) SetDefaultMode(ctx context.Context, mode approval.Mode) error {
 	return p.db.write(ctx, func(ctx context.Context) error {
 		if _, err := p.db.connection(ctx).ExecContext(ctx, `INSERT INTO approval_default_mode(id, mode) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET mode = excluded.mode`, string(mode)); err != nil {
@@ -59,6 +52,7 @@ func (p *ModeStore) SetDefaultMode(ctx context.Context, mode approval.Mode) erro
 		return nil
 	})
 }
+
 func (p *ModeStore) PlanModeActive(ctx context.Context, sessionID identity.SessionID) (bool, error) {
 	return scopedValue(ctx, p.db.read, func(ctx context.Context) (bool, error) {
 		if err := validateResource("read Session Plan mode", sessionID); err != nil {
@@ -72,7 +66,6 @@ func (p *ModeStore) PlanModeActive(ctx context.Context, sessionID identity.Sessi
 	})
 }
 
-// StartPlanMode reports whether the Session entered Plan mode now.
 func (p *ModeStore) StartPlanMode(ctx context.Context, sessionID identity.SessionID) (bool, error) {
 	return scopedValue(ctx, p.db.write, func(ctx context.Context) (bool, error) {
 		if err := validateResource("enter Session Plan mode", sessionID); err != nil {
@@ -86,7 +79,6 @@ func (p *ModeStore) StartPlanMode(ctx context.Context, sessionID identity.Sessio
 	})
 }
 
-// EndPlanMode reports whether the Session left Plan mode now.
 func (p *ModeStore) EndPlanMode(ctx context.Context, sessionID identity.SessionID, revision uint64) (bool, error) {
 	return scopedValue(ctx, p.db.write, func(ctx context.Context) (bool, error) {
 		if err := validateResource("leave Session Plan mode", sessionID); err != nil {
@@ -102,10 +94,6 @@ func (p *ModeStore) EndPlanMode(ctx context.Context, sessionID identity.SessionI
 	})
 }
 
-// DeleteSession removes the Plan mode owned by one Session. Session restore
-// uses this before reseeding portable material: permission policy is local
-// Runtime state and is deliberately not inherited from the Session that an
-// imported archive replaces.
 func (p *ModeStore) DeleteSession(ctx context.Context, sessionID identity.SessionID) error {
 	return p.db.write(ctx, func(ctx context.Context) error {
 		if err := validateResource("delete Session Plan mode", sessionID); err != nil {
@@ -115,6 +103,7 @@ func (p *ModeStore) DeleteSession(ctx context.Context, sessionID identity.Sessio
 		return err
 	})
 }
+
 func rowChanged(result sql.Result, operation string) (bool, error) {
 	changed, err := result.RowsAffected()
 	if err != nil {

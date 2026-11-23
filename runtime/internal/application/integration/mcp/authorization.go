@@ -10,16 +10,13 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
 const (
 	authorizationAttemptRetention = mcpconnector.AttemptRetentionSeconds * time.Second
 )
 
-// AuthorizationAttemptStatus is the lifecycle of one interactive MCP OAuth
-// flow. A terminal attempt remains readable for the retention published by
-// [Coordinator.AuthorizationAttemptRetention] so clients can recover after a
-// transient transport interruption.
 type AuthorizationAttemptStatus string
 
 const (
@@ -35,9 +32,6 @@ func (a AuthorizationAttemptStatus) Valid() bool {
 		a == AuthorizationAttemptFailed || a == AuthorizationAttemptCanceled || a == AuthorizationAttemptUnconfirmed
 }
 
-// AuthorizationAttempt is the application read model for one interactive
-// OAuth flow. Failure details remain in telemetry; callers receive only the
-// stable status.
 type AuthorizationAttempt struct {
 	ID         AuthorizationAttemptID
 	Server     mcpserver.ID
@@ -46,15 +40,10 @@ type AuthorizationAttempt struct {
 	FinishedAt *time.Time
 }
 
-// AuthorizationAttemptRetention is the terminal-result window this
-// Coordinator enforces and reports to callers.
 func (c *Coordinator) AuthorizationAttemptRetention() time.Duration {
 	return c.installedAuthorizations.retention
 }
 
-// CreateAuthorizationAttempt validates a configured server and starts one
-// component-owned interactive OAuth flow. A newer operation for the same server
-// cancels this attempt; operations for other servers remain independent.
 func (c *Coordinator) CreateAuthorizationAttempt(ctx context.Context, server mcpserver.ID) (AuthorizationAttempt, error) {
 	write, err := c.beginMutation(ctx)
 	if err != nil {
@@ -69,52 +58,63 @@ func (c *Coordinator) CreateAuthorizationAttempt(ctx context.Context, server mcp
 		return AuthorizationAttempt{}, ErrAuthorizationUnsupported
 	}
 	var attempt AuthorizationAttempt
-	var settle func(context.Context, AuthorizationAttemptStatus) error
+	var settlement authorizationSettlement
 	if server.Origin().Kind() == mcpserver.OriginUser {
-		attempt, settle, err = c.external.StartAuthorization(write.requestCtx, target, newAuthorizationAttemptID())
+		var send func(context.Context, AuthorizationAttemptStatus) error
+		attempt, send, err = c.external.StartAuthorization(write.requestCtx, target, newAuthorizationAttemptID())
 		if err != nil {
 			return AuthorizationAttempt{}, err
 		}
+		c.authorizationDeliveries.forgetServer(server)
+		settlement = externalSettlement{coordinator: c, server: server, attempt: attempt.ID, send: send}
 	} else {
 		attempt = c.installedAuthorizations.create(server)
-		settle = func(_ context.Context, status AuthorizationAttemptStatus) error {
-			c.installedAuthorizations.settle(attempt.ID, status)
-			return nil
-		}
-	}
-	if server.Origin().Kind() == mcpserver.OriginUser {
-		// Starting a new attempt supersedes this server's former pending work in
-		// the connector. The new operation never inherits its completion.
-		c.authorizationDeliveries.Range(func(key, value any) bool {
-			if value.(*authorizationDelivery).server == server {
-				c.authorizationDeliveries.CompareAndDelete(key, value)
-			}
-			return true
-		})
-		original := settle
-		settle = func(ctx context.Context, status AuthorizationAttemptStatus) error {
-			delivery := &authorizationDelivery{server: server, status: status, send: original}
-			c.authorizationDeliveries.Store(attempt.ID, delivery)
-			return c.deliverAuthorization(ctx, attempt.ID, delivery)
-		}
+		settlement = installedSettlement{store: c.installedAuthorizations, attempt: attempt.ID}
 	}
 	start := make(chan struct{})
 	defer close(start)
 	var event *statusEvent
 	err = c.dispatchConnection(write.ownerCtx, server, c.connections.BeginAuthorize, start, func() { c.statusQueue.publish(event) }, func(outcome connectionOutcome) {
-		if err := settle(context.WithoutCancel(write.ownerCtx), authorizationAttemptStatus(outcome)); err != nil {
-			slog.WarnContext(write.ownerCtx, "mcp: authorization completion awaits confirmation", "attempt", attempt.ID.String(), "error", err)
+		if err := settlement.settle(context.WithoutCancel(write.ownerCtx), authorizationAttemptStatus(outcome)); err != nil {
+			slog.WarnContext(write.ownerCtx, "mcp: authorization completion awaits confirmation", slog.Any("attempt", attempt.ID.String()), telemetry.Error(err))
 		}
 	})
 	if err != nil {
-		return AuthorizationAttempt{}, errors.Join(err, settle(context.WithoutCancel(write.ownerCtx), AuthorizationAttemptFailed))
+		return AuthorizationAttempt{}, errors.Join(err, settlement.settle(context.WithoutCancel(write.ownerCtx), AuthorizationAttemptFailed))
 	}
 	event = c.statusQueue.prepare(server)
 	write.unlock()
 	return attempt, nil
 }
 
-// AuthorizationAttempt returns one live or retained terminal attempt.
+// A user server's outcome is owned by the external connector; an installed server's by the Runtime store.
+type authorizationSettlement interface {
+	settle(ctx context.Context, status AuthorizationAttemptStatus) error
+}
+
+type externalSettlement struct {
+	coordinator *Coordinator
+	server      mcpserver.ID
+	attempt     AuthorizationAttemptID
+	send        func(context.Context, AuthorizationAttemptStatus) error
+}
+
+func (e externalSettlement) settle(ctx context.Context, status AuthorizationAttemptStatus) error {
+	delivery := &authorizationDelivery{server: e.server, status: status, send: e.send}
+	e.coordinator.authorizationDeliveries.record(e.attempt, delivery)
+	return e.coordinator.deliverAuthorization(ctx, e.attempt, delivery)
+}
+
+type installedSettlement struct {
+	store   *authorizationAttemptStore
+	attempt AuthorizationAttemptID
+}
+
+func (i installedSettlement) settle(_ context.Context, status AuthorizationAttemptStatus) error {
+	i.store.settle(i.attempt, status)
+	return nil
+}
+
 func (c *Coordinator) AuthorizationAttempt(ctx context.Context, id string) (AuthorizationAttempt, error) {
 	parsed, err := ParseAuthorizationAttemptID(id)
 	if err != nil {
@@ -126,15 +126,15 @@ func (c *Coordinator) AuthorizationAttempt(ctx context.Context, id string) (Auth
 		if err != nil {
 			return AuthorizationAttempt{}, err
 		}
-		value, failed := c.authorizationDeliveries.Load(parsed)
-		if !failed {
+		delivery, undelivered := c.authorizationDeliveries.pending(parsed)
+		if !undelivered {
 			return observed, nil
 		}
 		if observed.Status != AuthorizationAttemptPending {
-			c.authorizationDeliveries.CompareAndDelete(parsed, value)
+			c.authorizationDeliveries.retire(parsed, delivery)
 			return observed, nil
 		}
-		if err := c.deliverAuthorization(ctx, parsed, value.(*authorizationDelivery)); err != nil {
+		if err := c.deliverAuthorization(ctx, parsed, delivery); err != nil {
 			return AuthorizationAttempt{}, err
 		}
 		return c.external.ReadAuthorization(ctx, parsed)
@@ -152,8 +152,48 @@ func (c *Coordinator) deliverAuthorization(ctx context.Context, id Authorization
 	if err := d.send(ctx, d.status); err != nil {
 		return err
 	}
-	c.authorizationDeliveries.CompareAndDelete(id, d)
+	c.authorizationDeliveries.retire(id, d)
 	return nil
+}
+
+// An external outcome stays pending until the connector confirms it, so a later read can retry delivery.
+type pendingDeliveries struct {
+	mu        sync.Mutex
+	byAttempt map[AuthorizationAttemptID]*authorizationDelivery
+}
+
+func (p *pendingDeliveries) forgetServer(server mcpserver.ID) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	for id, delivery := range p.byAttempt {
+		if delivery.server == server {
+			delete(p.byAttempt, id)
+		}
+	}
+}
+
+func (p *pendingDeliveries) record(id AuthorizationAttemptID, delivery *authorizationDelivery) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.byAttempt == nil {
+		p.byAttempt = make(map[AuthorizationAttemptID]*authorizationDelivery)
+	}
+	p.byAttempt[id] = delivery
+}
+
+func (p *pendingDeliveries) pending(id AuthorizationAttemptID) (*authorizationDelivery, bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	delivery, ok := p.byAttempt[id]
+	return delivery, ok
+}
+
+func (p *pendingDeliveries) retire(id AuthorizationAttemptID, delivery *authorizationDelivery) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.byAttempt[id] == delivery {
+		delete(p.byAttempt, id)
+	}
 }
 
 func authorizationAttemptStatus(outcome connectionOutcome) AuthorizationAttemptStatus {

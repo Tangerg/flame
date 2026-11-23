@@ -13,24 +13,14 @@ import (
 	workspacegit "github.com/Tangerg/flame/runtime/internal/infra/git"
 )
 
-// maxCheckpointFileSize caps a single file the checkpoint will stage (2 MiB
-// guard). A large unignored binary — a dataset, a built artifact a project
-// forgot to .gitignore — would otherwise bloat every snapshot and the shadow
-// repo. Oversize files are left out; restore refuses a target that would
-// overwrite their current material.
 const maxCheckpointFileSize = 2 << 20
 
 const (
 	maxCheckpointPaths     = 20_000
 	maxCheckpointBytes     = 512 << 20
-	gitPathRecordSeparator = "\x00" // Git's -z output protocol.
+	gitPathRecordSeparator = "\x00"
 )
 
-// Snapshot anchors the current state of cwd at the runID boundary: it stages
-// the run's changed files (honoring .gitignore + a backstop exclude list +
-// the size cap) and tags the boundary by run id. A run that changed nothing
-// re-tags the existing HEAD instead of minting an empty commit, so a no-change
-// Run costs one ref and zero objects. Idempotent per Run (the tag is moved).
 func (s *Store) Snapshot(ctx context.Context, sessionID, cwd, runID string) error {
 	if err := s.checkStorageBoundary(ctx, cwd); err != nil {
 		return err
@@ -44,22 +34,18 @@ func (s *Store) Snapshot(ctx context.Context, sessionID, cwd, runID string) erro
 	if err != nil {
 		return err
 	}
-	// A no-change run re-points its tag at HEAD, adding a ref but no commit.
 	if err := s.archiveWorkspace(ctx, gitDir, cwd, "run "+runID); err != nil {
 		return err
 	}
 	if err := s.materializeAlternates(ctx, gitDir); err != nil {
 		return err
 	}
-	if _, err := s.git(ctx, gitDir, cwd, "tag", "-f", tagFor(runID)); err != nil {
+	if err := s.git(ctx, gitDir, cwd, "tag", "-f", tagFor(runID)); err != nil {
 		return err
 	}
 	return nil
 }
 
-// archiveWorkspace stages the admitted workspace and commits it only when the
-// staged tree differs from HEAD or there is no HEAD yet; the baseline of an
-// empty workspace is an empty commit.
 func (s *Store) archiveWorkspace(ctx context.Context, gitDir, cwd, message string) error {
 	if err := s.stageChanges(ctx, gitDir, cwd); err != nil {
 		return err
@@ -68,26 +54,22 @@ func (s *Store) archiveWorkspace(ctx context.Context, gitDir, cwd, message strin
 	if err != nil || !shouldCommit {
 		return err
 	}
-	_, err = s.git(ctx, gitDir, cwd, "commit", "-q", "--allow-empty", "-m", message)
+	err = s.git(ctx, gitDir, cwd, "commit", "-q", "--allow-empty", "-m", message)
 	return err
 }
 
-// shouldCommit reports whether the staged index warrants a new commit. The
-// first snapshot (no HEAD yet) always commits the baseline; afterwards a commit
-// is made only when the staged tree differs from HEAD — so a no-change run
-// re-tags the existing HEAD rather than minting an empty commit.
 func (s *Store) shouldCommit(ctx context.Context, gitDir, cwd string) (bool, error) {
 	hasHead, err := s.hasHead(ctx, gitDir)
 	if err != nil {
 		return false, err
 	}
 	if !hasHead {
-		return true, nil // no HEAD → the baseline commit
+		return true, nil
 	}
 	// `diff --cached --quiet HEAD` exits non-zero exactly when the staged tree
 	// differs from HEAD. Exit 1 means a diff; every other failure is operational
 	// and must be reported rather than disguised as a change.
-	_, err = s.git(ctx, gitDir, cwd, "diff", "--cached", "--quiet", "HEAD")
+	err = s.git(ctx, gitDir, cwd, "diff", "--cached", "--quiet", "HEAD")
 	if err == nil {
 		return false, nil
 	}
@@ -98,7 +80,7 @@ func (s *Store) shouldCommit(ctx context.Context, gitDir, cwd string) (bool, err
 }
 
 func (s *Store) hasHead(ctx context.Context, gitDir string) (bool, error) {
-	_, err := s.git(ctx, gitDir, "", "rev-parse", "-q", "--verify", "HEAD")
+	err := s.git(ctx, gitDir, "", "rev-parse", "-q", "--verify", "HEAD")
 	if err == nil {
 		return true, nil
 	}
@@ -108,9 +90,6 @@ func (s *Store) hasHead(ctx context.Context, gitDir string) (bool, error) {
 	return false, err
 }
 
-// The source repository owns tracked/ignored admission. The shadow index holds
-// only its workspace-relative projection; it cannot keep owning a path that the
-// source now excludes. Force-add applies only to the admitted material.
 func (s *Store) stageChanges(ctx context.Context, gitDir, cwd string) error {
 	output, err := s.snapshotCandidates(ctx, gitDir, cwd)
 	if err != nil {
@@ -207,10 +186,6 @@ func checkpointCandidates(ctx context.Context, cwd string, output []byte) ([]str
 	return stage, nil
 }
 
-// candidateSize admits a present regular file or symlink within the file cap.
-// Missing paths leave the projection; only previously captured entries need
-// index removal. Other inspection failures cannot imply absence. Crossing the
-// cap retires snapshot ownership without changing the file.
 func candidateSize(cwd, path string) (int64, bool, error) {
 	info, err := os.Lstat(filepath.Join(cwd, path))
 	if err != nil {
@@ -233,7 +208,7 @@ func (s *Store) updateIndex(ctx context.Context, gitDir, cwd string, prefix, pat
 	const chunk = 256
 	for i := 0; i < len(paths); i += chunk {
 		args := append(slices.Clone(prefix), paths[i:min(i+chunk, len(paths))]...)
-		if _, err := s.git(ctx, gitDir, cwd, args...); err != nil {
+		if err := s.git(ctx, gitDir, cwd, args...); err != nil {
 			return err
 		}
 	}

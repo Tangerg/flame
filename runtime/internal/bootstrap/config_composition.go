@@ -9,8 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 )
 
-// composeConfig translates process settings and already-opened adapters into
-// the construction input consumed by assembly.
 func composeConfig(cfg config.Settings, stores *persistence.Bundle, providers models.ProviderRegistry, buildID string) assemblyConfig {
 	return assemblyConfig{
 		stores:                     stores,

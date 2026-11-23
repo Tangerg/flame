@@ -1,7 +1,3 @@
-// Package input translates product Interrupt values to Scope's Tool input
-// contract. Scope owns the suspension, wait, and re-entry; this package owns
-// only the anti-corruption boundary between a product Interrupt and Scope's
-// InputRequest and Continuation.
 package input
 
 import (
@@ -21,10 +17,6 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// resolutionSchema derives the response contract from the payload type this
-// package decodes, so the shape Scope enforces at the wait boundary cannot
-// drift from the shape that is read back. Which remember scopes exist stays
-// with approval.Scope, which rejects an unknown one at decode.
 var resolutionSchema = sync.OnceValues(func() (jsonschema.Schema, error) {
 	schema, err := jsonschema.For[resolutionPayload]()
 	if err != nil {
@@ -39,8 +31,6 @@ type capabilityPolicy struct {
 	allowed []run.InterruptType
 }
 
-// WithCapabilities freezes the product input kinds an Interaction Tool may
-// request. Require fails closed when a Tool asks for an unadmitted kind.
 func WithCapabilities(ctx context.Context, allowed []run.InterruptType) context.Context {
 	return context.WithValue(ctx, capabilityContextKey{}, capabilityPolicy{
 		allowed: slices.Clone(allowed),
@@ -49,20 +39,16 @@ func WithCapabilities(ctx context.Context, allowed []run.InterruptType) context.
 
 type continuationWire struct {
 	Key          string         `json:"key"`
-	PromptDigest string         `json:"prompt_digest"`
+	PromptDigest string         `json:"promptDigest"`
 	Prompt       jsontext.Value `json:"prompt"`
 }
 
-// Continuation is the validated product input Scope restored while re-entering
-// the Tool invocation that requested it.
 type Continuation struct {
 	Key        string
 	Interrupt  runs.Interrupt
 	Resolution run.InterruptResolution
 }
 
-// Restore decodes Scope's re-entry continuation into the exact prompt and
-// validated resolution it froze. found=false identifies an initial invocation.
 func Restore(invocation toolcontract.Invocation) (Continuation, bool, error) {
 	continuation, found := invocation.Continuation()
 	if !found {
@@ -72,7 +58,7 @@ func Restore(invocation toolcontract.Invocation) (Continuation, bool, error) {
 	if err != nil {
 		return Continuation{}, true, fmt.Errorf("run input: decode continuation: %w", err)
 	}
-	if state.Key == "" || !jsontext.Value(state.Prompt).IsValid() {
+	if state.Key == "" || !state.Prompt.IsValid() {
 		return Continuation{}, true, errors.New("run input: invalid continuation identity or prompt")
 	}
 	prompt, err := DecodePrompt(state.Prompt)
@@ -96,9 +82,6 @@ func Restore(invocation toolcontract.Invocation) (Continuation, bool, error) {
 	return Continuation{Key: state.Key, Interrupt: prompt, Resolution: resolution}, true, nil
 }
 
-// Require returns a restored decision for an already-answered request, or a
-// Scope InputRequest the Tool returns as tool.Result{InputRequest} to park on
-// new input. Scope owns the suspension, wait identity, and re-entry.
 func Require(ctx context.Context, invocation toolcontract.Invocation, prompt runs.Interrupt) (run.InterruptResolution, *toolcontract.InputRequest, error) {
 	key := runs.InterruptKey(prompt)
 	promptJSON, err := admitRequirement(ctx, prompt)
@@ -174,7 +157,7 @@ func encodeRequirementState(key string, promptJSON jsontext.Value) (jsontext.Val
 	if err != nil {
 		return nil, fmt.Errorf("run input: encode continuation: %w", err)
 	}
-	return jsontext.Value(stateJSON.JSON()), nil
+	return stateJSON.JSON(), nil
 }
 
 func capabilityPolicyFrom(ctx context.Context) (capabilityPolicy, bool) {

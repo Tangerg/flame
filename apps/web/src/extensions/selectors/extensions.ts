@@ -23,7 +23,7 @@ function normalized<T>(point: ExtensionPoint<T>, key: string): string {
   return point.normalizeKey ? point.normalizeKey(key) : key;
 }
 
-export interface ExtensionEntry<T> {
+interface ExtensionEntry<T> {
   key: string;
   item: T;
 }

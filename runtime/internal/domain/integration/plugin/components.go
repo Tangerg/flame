@@ -17,8 +17,6 @@ import (
 
 var componentExport = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]{0,63}$`)
 
-// ClientComponent describes a public rendering entry with an optional own
-// callable contribution. It owns no business state or backend activation policy.
 type ClientComponent struct {
 	ToolCategory builtin.ToolCategory
 	TargetView   string
@@ -36,9 +34,6 @@ type ClientComponent struct {
 	SettingsIntent  string
 }
 
-// componentPlacement is what one host placement admits: the contexts it renders
-// in (nil admits any), the renderer selector kinds it targets (none forbids a
-// selector), and whether it may carry view material.
 type componentPlacement struct {
 	scopes    []extension.ComponentScope
 	selectors []extension.RendererSelectorKind
@@ -101,8 +96,6 @@ func (p componentPlacement) admits(value ClientComponent) bool {
 	return slices.Contains(p.selectors, value.Selector.Kind) && value.Selector.exact()
 }
 
-// validate checks what the component declares about itself; the builder checks
-// it against the rest of the declaration.
 func (c ClientComponent) validate() error {
 	if err := c.ID.Validate(); err != nil {
 		return err
@@ -182,8 +175,6 @@ func (c ClientComponent) validatePresentation() error {
 	return c.validatePlacementFields()
 }
 
-// validatePlacementFields admits each placement-specific field only on the
-// placement that reads it.
 func (c ClientComponent) validatePlacementFields() error {
 	if c.SettingsIntent != "" && (c.Placement != extension.ComponentPlacementSettingsPane || !identity.ValidDeclarationID(c.SettingsIntent)) {
 		return refuse(DiagnosticInvalidDeclaration, "invalid settings intent for component %q", c.ID)

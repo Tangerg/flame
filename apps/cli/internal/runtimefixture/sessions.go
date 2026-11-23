@@ -17,6 +17,13 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
+const (
+	historyInputTokens     = 820
+	historyOutputTokens    = 94
+	historyCacheReadTokens = 512
+	historyDuration        = 3 * time.Second
+)
+
 var errSessionRevisionExhausted = errors.New("mock: session revision is exhausted")
 
 type sessionRevisionChanges uint64
@@ -358,8 +365,6 @@ func (r *Runtime) RollbackSession(ctx context.Context, in conversation.RollbackS
 	return result, nil
 }
 
-// droppedRun returns a rolled-back Run with the first user text it carried,
-// so a client can offer it back for editing.
 func (s *sessionState) droppedRun(runID string) conversation.DroppedRun {
 	dropped := conversation.DroppedRun{RunID: runID}
 	for _, item := range s.items {
@@ -375,9 +380,6 @@ type forkBoundary struct {
 	plan *protocol.Plan
 }
 
-// resolveForkBoundary mirrors the runtime's durable boundary rule: an explicit
-// target must be terminal, while an implicit fork stops at the newest terminal
-// root and excludes every running or waiting tail.
 func (r *Runtime) resolveForkBoundary(source *sessionState, fromRunID string) (forkBoundary, error) {
 	boundaryIndex := -1
 	if fromRunID != "" {
@@ -422,16 +424,16 @@ func (r *Runtime) DeleteSession(ctx context.Context, in conversation.DeleteSessi
 }
 
 func (r *Runtime) seedHistory() {
-	state := r.sessions["ses_demo_1"]
+	state := r.sessions[demoSessionID]
 	if state == nil {
 		return
 	}
 	run := &runState{
-		id: "run_demo_history", sessionID: state.meta.ID, provider: "mock", model: "balanced",
+		id: "run_demo_history", sessionID: state.meta.ID, provider: defaultProvider, model: defaultModel,
 		lineage: conversation.RootRunLineage(),
 		status:  protocol.RunStatusFinished, segments: make(map[string]*segmentState),
 		outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
-		usage:   conversation.Usage{InputTokens: 820, OutputTokens: 94, CacheReadTokens: 512, Duration: 3 * time.Second},
+		usage:   conversation.Usage{InputTokens: historyInputTokens, OutputTokens: historyOutputTokens, CacheReadTokens: historyCacheReadTokens, Duration: historyDuration},
 	}
 	r.runs[run.id] = run
 	r.runOrder = append(r.runOrder, run.id)

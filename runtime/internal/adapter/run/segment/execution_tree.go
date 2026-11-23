@@ -121,7 +121,6 @@ func (e *Effects) reconcileExecutionTreeEvents(readCtx context.Context, commits 
 		var confirmed bool
 		var lookupErr error
 		if last[commit.RunID].State == runs.StateTerminalize {
-			// The exact terminal receipt above fences this now-closed Segment.
 			confirmed, lookupErr = e.executionTrees.ExecutionResultCommitted(readCtx, commit.SessionID, *commit.ResultPublication)
 		} else {
 			confirmed, lookupErr = e.runState.ResultPublicationCommitted(readCtx, commit.SessionID, commit.RunID, commit.SegmentID, commit.ResultPublication.ID, commit.ResultPublication.Digest)

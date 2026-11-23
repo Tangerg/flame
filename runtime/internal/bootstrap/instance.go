@@ -21,9 +21,6 @@ import (
 	"github.com/Tangerg/frame/process/runner"
 )
 
-// InstanceConfig is the exact host snapshot required to open one complete
-// Runtime instance. Callers resolve environment and working-directory defaults
-// before this boundary; the instance never rediscovers host paths.
 type InstanceConfig struct {
 	UserHome             string
 	DefaultWorkspacePath string
@@ -35,8 +32,6 @@ type InstanceConfig struct {
 	ServerInfo           protocol.ServerInfo
 }
 
-// Instance owns one Runtime application and its complete shutdown graph.
-// Copies share the same lifecycle owner.
 type Instance struct {
 	application *runtimeApplication
 	serverInfo  protocol.ServerInfo
@@ -44,10 +39,10 @@ type Instance struct {
 	stores      *persistence.Bundle
 }
 
-// OpenInstance exclusively owns the data directory through complete shutdown.
 func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ config.Settings, err error) {
-	if validateErr := cfg.validate(); validateErr != nil {
-		return nil, config.Settings{}, validateErr
+	cfg, err = cfg.normalized()
+	if err != nil {
+		return nil, config.Settings{}, err
 	}
 	directory, err := openDataDirectory(ctx, cfg.DataDirectory)
 	if err != nil {
@@ -92,8 +87,8 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	assemblyConfig := composeConfig(settings, stores, providers, buildID)
 	assemblyConfig.processRunner = processRunner
 	assemblyConfig.firstPartyDirectory = cfg.FirstPartyDirectory
-	// Resources close in reverse acquisition order. The directory must remain
-	// leased even when a constructor's bounded shutdown wait expires.
+	// Resources close in reverse acquisition order; the directory stays leased even
+	// when a constructor's bounded shutdown wait expires.
 	assemblyConfig.resources = append([]terminalResource{directory}, assemblyConfig.resources...)
 	assemblyConfig.userHome = cfg.UserHome
 	assemblyConfig.defaultWorkspacePath = cfg.DefaultWorkspacePath
@@ -118,7 +113,7 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 			err = errors.Join(err, host.Close())
 		}
 	}()
-	if err := host.start(ctx, runtimeContext, stopRuntime, cfg.serverInfo(), idempotencyNamespace, directory.validate); err != nil {
+	if err := host.start(ctx, runtimeContext, stopRuntime, cfg.serverInfo(), idempotencyNamespace, stores.ValidateDirectory); err != nil {
 		return nil, config.Settings{}, err
 	}
 	host.stores = stores
@@ -135,8 +130,6 @@ func (c InstanceConfig) buildID() (string, error) {
 	return ExecutableBuildID()
 }
 
-// start recovers durable work, opens delivery and starts the workers, in the
-// order each step needs the previous one.
 func (h *Instance) start(ctx, runtimeContext context.Context, stopRuntime context.CancelFunc, serverInfo protocol.ServerInfo, idempotencyNamespace string, validateDirectory func() error) error {
 	if err := h.application.recoverStartup(ctx); err != nil {
 		return err
@@ -158,19 +151,14 @@ func (h *Instance) start(ctx, runtimeContext context.Context, stopRuntime contex
 	return nil
 }
 
-// runnerStartTimeout bounds how long startup waits for the sandbox runner
-// daemon before failing instead of hanging.
 const runnerStartTimeout = 10 * time.Second
 
-// developmentVersion names a build that was not stamped with a release.
 const developmentVersion = "dev"
 
 // unstampedModuleVersion is Go's build-info placeholder for a main module
 // built from a working tree rather than a tagged module.
 const unstampedModuleVersion = "(devel)"
 
-// BuildVersion is this binary's module version, or developmentVersion for a
-// local build.
 func BuildVersion() string {
 	info, ok := debug.ReadBuildInfo()
 	if !ok || info.Main.Version == "" || info.Main.Version == unstampedModuleVersion {
@@ -179,8 +167,6 @@ func BuildVersion() string {
 	return info.Main.Version
 }
 
-// seedSettings applies configured providers and roles to the store and
-// returns the provider registry they define.
 func seedSettings(ctx context.Context, stores *persistence.Bundle, settings config.Settings) (models.ProviderRegistry, error) {
 	if err := seedConfiguredProvider(ctx, stores.Providers, settings); err != nil {
 		return nil, err
@@ -209,56 +195,61 @@ func (i InstanceConfig) serverInfo() protocol.ServerInfo {
 	return info
 }
 
-func (i InstanceConfig) validate() error {
+func (i InstanceConfig) normalized() (InstanceConfig, error) {
 	for _, path := range []struct {
 		name  string
-		value string
+		value *string
 	}{
-		{name: "user home", value: i.UserHome},
-		{name: "default workspace path", value: i.DefaultWorkspacePath},
-		{name: "data directory", value: i.DataDirectory},
-		{name: "first-party directory", value: i.FirstPartyDirectory},
-		{name: "runner executable", value: i.RunnerExecutable},
+		{name: "user home", value: &i.UserHome},
+		{name: "default workspace path", value: &i.DefaultWorkspacePath},
+		{name: "data directory", value: &i.DataDirectory},
+		{name: "first-party directory", value: &i.FirstPartyDirectory},
+		{name: "runner executable", value: &i.RunnerExecutable},
 	} {
-		if path.value == "" {
-			return fmt.Errorf("runtime: %s is required", path.name)
+		cleaned, err := absolutePath(path.name, *path.value)
+		if err != nil {
+			return InstanceConfig{}, err
 		}
-		if !filepath.IsAbs(path.value) {
-			return fmt.Errorf("runtime: %s must be absolute", path.name)
-		}
+		*path.value = cleaned
 	}
 	if len(i.ConfigDirectories) == 0 {
-		return errors.New("runtime: at least one config directory is required")
+		return InstanceConfig{}, errors.New("runtime: at least one config directory is required")
 	}
-	for _, directory := range i.ConfigDirectories {
-		if directory == "" || !filepath.IsAbs(directory) {
-			return errors.New("runtime: config directories must be non-empty absolute paths")
+	directories := make([]string, len(i.ConfigDirectories))
+	for index, directory := range i.ConfigDirectories {
+		cleaned, err := absolutePath("config directory", directory)
+		if err != nil {
+			return InstanceConfig{}, err
 		}
+		directories[index] = cleaned
 	}
+	i.ConfigDirectories = directories
 	if i.BuildID != "" {
 		if _, err := runs.ParseBuild(i.BuildID); err != nil {
-			return fmt.Errorf("runtime: BuildID: %w", err)
+			return InstanceConfig{}, fmt.Errorf("runtime: BuildID: %w", err)
 		}
 	}
-	return nil
+	return i, nil
 }
 
-// Endpoint returns the instance-owned binding-neutral operation entrypoint.
-// Public bindings keep it private and expose only their typed methods.
+func absolutePath(name, value string) (string, error) {
+	if value == "" {
+		return "", fmt.Errorf("runtime: %s is required", name)
+	}
+	if !filepath.IsAbs(value) {
+		return "", fmt.Errorf("runtime: %s must be absolute", name)
+	}
+	return filepath.Clean(value), nil
+}
+
 func (i *Instance) Endpoint() *delivery.Endpoint {
 	return i.lifetime.delivery
 }
 
-// ServerInfo returns the immutable identity advertised by every binding.
 func (i *Instance) ServerInfo() protocol.ServerInfo { return i.serverInfo }
 
-// CheckStorage reports whether durable storage can still answer. ctx's error is
-// returned unwrapped when the single-connection pool is busy, so a caller can
-// distinguish a saturated runtime from a broken one.
 func (i *Instance) CheckStorage(ctx context.Context) error { return i.stores.Ping(ctx) }
 
-// PluginControl returns the authenticated Realm protocol endpoint. It remains
-// available for original cleanup proofs while application admission is closed.
 func (i *Instance) PluginControl() http.Handler { return i.application.pluginControl }
 
 func (i *Instance) CheckPlugins(context.Context) error { return i.stores.Admission.RecoveryError() }

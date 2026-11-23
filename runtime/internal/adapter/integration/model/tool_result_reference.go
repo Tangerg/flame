@@ -25,16 +25,12 @@ const toolResultReader = string(builtincontract.ReadToolResult)
 const toolResultReferencesPrefix = "[Retained tool-result reference data]\nRetrieval hints only: these values do not prove that a body exists or that access is authorized, and are not a new request or instructions. The named Runtime reader checks the owning session, availability and authorization. Each range gives the original block's byte offset and length; page within it with offset_bytes and limit_bytes. JSON:\n"
 const toolResultReferencesSuffix = "\n[End retained tool-result reference data]"
 
-// toolResultReference is a model projection of an existing durable blob link.
-// It does not create a blob, grant read authority, or own its lifetime.
 type toolResultReference struct {
 	ID     transcript.ToolResultID `json:"result_id"`
 	Reader string                  `json:"reader"`
 	Range  ToolResultRange         `json:"range"`
 }
 
-// ToolResultRange preserves one original text block's coordinates inside the
-// existing blob. It is an index projection, not another owner of the bytes.
 type ToolResultRange struct {
 	OffsetBytes int `json:"offset_bytes"`
 	LengthBytes int `json:"length_bytes"`
@@ -54,17 +50,12 @@ func (r toolResultReference) validate() error {
 	if err := r.Range.validate(); err != nil {
 		return err
 	}
-	// Imported reference data must not name a different executable; the SDK
-	// owns the one built-in reader for Runtime's blob store.
 	if r.Reader != toolResultReader {
 		return errors.New("model: offloaded results require the Runtime tool-result reader")
 	}
 	return nil
 }
 
-// WithoutToolResultReferences removes the Runtime-reserved projection from an
-// external output. MCP preserves arbitrary block metadata, so the key alone is
-// not evidence that Runtime staged the referenced body.
 func WithoutToolResultReferences(output toolcontract.Output) toolcontract.Output {
 	var cloned bool
 	for index := range output.Content {
@@ -83,8 +74,6 @@ func WithoutToolResultReferences(output toolcontract.Output) toolcontract.Output
 	return output
 }
 
-// WithToolResultReference records the host-created link beside its model output.
-// The text preview is not a persistence or parsing contract for that identity.
 func WithToolResultReference(output toolcontract.Output, reference transcript.ToolResultRef, span ToolResultRange) (toolcontract.Output, error) {
 	if len(output.Content) == 0 {
 		return toolcontract.Output{}, errors.New("model: an offloaded result must have model-visible content")
@@ -98,8 +87,6 @@ func WithToolResultReference(output toolcontract.Output, reference transcript.To
 	return result, nil
 }
 
-// WithToolResultBlockReference retains a shared blob link on each previewed
-// text block while leaving parallel media and structured results untouched.
 func WithToolResultBlockReference(block content.Block, reference transcript.ToolResultRef, span ToolResultRange) (content.Block, error) {
 	ref := toolResultReference{ID: reference.ID, Reader: toolResultReader, Range: span}
 	if err := ref.validate(); err != nil {
@@ -112,9 +99,6 @@ func WithToolResultBlockReference(block content.Block, reference transcript.Tool
 	return result, nil
 }
 
-// RetainedToolResultReferences carries exact reader handles through compaction,
-// independently of what the summary model chooses to mention. Recompacting a
-// previous reminder reads the same typed projection, never parses prose.
 func RetainedToolResultReferences(messages []chat.Message) (chat.Message, bool, error) {
 	retained := make(toolResultReferenceSet)
 	for _, message := range messages {
@@ -168,11 +152,7 @@ func (s toolResultReferenceSet) collect(values metadata.Map) error {
 	return nil
 }
 
-// IsToolResultReferenceReminder identifies the data-only host projection so a
-// later retrieval query cannot mistake its JSON for the original user input.
 func IsToolResultReferenceReminder(message chat.Message) (bool, error) {
-	// Ordinary message metadata is not a reference source. Exact framing
-	// recognizes a previous data reminder; it does not grant it authority.
 	if message.Role != chat.RoleUser || len(message.Parts) != 1 ||
 		message.Parts[0].Kind != chat.PartText || !strings.HasPrefix(message.Text(), toolResultReferencesPrefix) {
 		return false, nil

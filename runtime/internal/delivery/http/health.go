@@ -2,15 +2,13 @@ package http
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
-	"runtime/debug"
 	"sync"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
-// HealthStatus is the per-check / aggregate status:
-// `"ok"` maps to HTTP 200; everything else maps to 503.
 type HealthStatus string
 
 const (
@@ -19,31 +17,20 @@ const (
 	HealthUnhealthy HealthStatus = "unhealthy"
 )
 
-// HealthCheck is one probe's result. Detail is optional human-readable
-// context for ops. It deliberately never lands in the response body — an
-// unauthenticated readiness caller learns the status keyword and nothing about
-// the inside of the process — so a probe that is not OK reports it to the
-// operator log instead, which is the only place it can be read.
+// Detail never lands in the response body: an unauthenticated readiness caller
+// learns only the status keyword.
 type HealthCheck struct {
 	Status HealthStatus
 	Detail string
 }
 
-// HealthProbe lets the runtime contribute a labeled readiness check.
-// Name is the key under `checks` in the response and should be short
-// + stable ("runtime", "storage", "providers").
-//
-// Probe should honor ctx. The transport still limits each configured probe to
-// one in-flight invocation, so an implementation that ignores cancellation can
-// strand at most one goroutine instead of one goroutine per health request.
+// Each probe runs at most one invocation at a time, so one that ignores
+// cancellation strands one goroutine rather than one per request.
 type HealthProbe struct {
 	Name  string
 	Probe func(ctx context.Context) HealthCheck
 }
 
-// healthProbeRunner owns the one in-flight invocation allowed for a configured
-// probe. Concurrent health requests share that invocation and independently
-// stop waiting when their own request budget expires.
 type healthProbeRunner struct {
 	name  string
 	probe func(context.Context) HealthCheck
@@ -73,8 +60,6 @@ func (h *healthProbeRunner) start(ctx context.Context, budget time.Duration) *he
 	}
 	invocation := &healthProbeInvocation{done: make(chan struct{})}
 	h.current = invocation
-	// The caller owns only its wait. The runner owns the shared invocation and
-	// gives it an independent budget while preserving request-scoped values.
 	probeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), budget)
 	go h.invoke(probeCtx, cancel, invocation)
 	return invocation
@@ -89,12 +74,8 @@ func (h *healthProbeRunner) invoke(
 	result := HealthCheck{}
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			// Readiness answers a client that can only act on the status. The
-			// probe that panicked, what it panicked with and where, exist
-			// nowhere else once this frame unwinds.
 			slog.ErrorContext(ctx, "http: health probe panicked",
-				"probe", h.name, "panic", fmt.Sprint(recovered),
-				"stack", string(debug.Stack()))
+				telemetry.HealthProbe(h.name), telemetry.Panic(recovered))
 			result = HealthCheck{Status: HealthUnhealthy, Detail: "probe panic"}
 		}
 		invocation.check = result
@@ -108,14 +89,8 @@ func (h *healthProbeRunner) invoke(
 	result = h.probe(ctx)
 }
 
-// healthBudget caps how long readiness waits for probes. Probes
-// share the budget — a slow downstream doesn't penalize the others.
-// 2s matches the typical Kubernetes probe timeout budget.
 const healthBudget = 2 * time.Second
 
-// runHealthProbes runs every probe in parallel under a shared
-// timeout and aggregates worst-of. Panics inside a probe map to
-// unhealthy so a misbehaving probe can't crash the readiness endpoint.
 func runHealthProbes(ctx context.Context, probes []*healthProbeRunner) (HealthStatus, map[string]HealthStatus) {
 	return runHealthProbesWithBudget(ctx, probes, healthBudget)
 }
@@ -137,9 +112,6 @@ func runHealthProbesWithBudget(
 		check HealthCheck
 	}
 	completed := make(chan probeResult, len(probes))
-	// A probe that never reports is a probe that outlived the budget. Seeding the
-	// result says so, instead of leaving an empty unhealthy that reads the same as
-	// a probe which answered without explaining itself.
 	results := make([]HealthCheck, len(probes))
 	for index := range results {
 		results[index] = HealthCheck{
@@ -175,7 +147,7 @@ aggregate:
 		overall = worseHealth(overall, status)
 		if status != HealthOK {
 			slog.ErrorContext(ctx, "http: health probe is not ok",
-				"probe", probes[i].name, "status", string(status), "detail", r.Detail,
+				telemetry.HealthProbe(probes[i].name), slog.Any("status", string(status)), slog.Any("detail", r.Detail),
 			)
 		}
 	}
@@ -191,7 +163,6 @@ func normalizedHealth(status HealthStatus) HealthStatus {
 	}
 }
 
-// worseHealth picks the worst of two statuses: ok < degraded < unhealthy.
 func worseHealth(a, b HealthStatus) HealthStatus {
 	if b.rank() > a.rank() {
 		return b

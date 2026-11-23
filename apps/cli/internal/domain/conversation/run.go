@@ -13,8 +13,6 @@ type RunReference struct {
 	RunID     string
 }
 
-// Run is the lifecycle projection needed by the CLI. ActiveSegmentID exists
-// exactly while Status is [protocol.RunStatusRunning].
 type Run struct {
 	ID              string
 	SessionID       string
@@ -39,8 +37,6 @@ const (
 	childRunLineage
 )
 
-// RunLineage explicitly identifies either a root run or a child beneath the
-// tool block that spawned it. Its zero value is invalid.
 type RunLineage struct {
 	kind             runLineageKind
 	spawnedByBlockID string
@@ -48,10 +44,8 @@ type RunLineage struct {
 	rootRunID        string
 }
 
-// RootRunLineage constructs explicit root-run lineage.
 func RootRunLineage() RunLineage { return RunLineage{kind: rootRunLineage} }
 
-// NewChildRunLineage constructs and validates a child-run identity tuple.
 func NewChildRunLineage(runID, spawnedByBlockID, parentRunID, rootRunID string) (RunLineage, error) {
 	lineage := RunLineage{
 		kind: childRunLineage, spawnedByBlockID: spawnedByBlockID,
@@ -80,7 +74,6 @@ func (r Run) Clone() Run {
 	return r
 }
 
-// Equal reports whether two run projections carry the same lifecycle fact.
 func (r Run) Equal(other Run) bool {
 	return r.ID == other.ID && r.SessionID == other.SessionID && r.Lineage == other.Lineage && r.Provider == other.Provider &&
 		r.Model == other.Model && r.ReasoningEffort == other.ReasoningEffort &&
@@ -109,31 +102,26 @@ func equalRunCapabilitiess(left, right *protocol.RunCapabilities) bool {
 		slices.Equal(left.InterruptTypes, right.InterruptTypes)
 }
 
-// ErrSteerReceiptUnavailable marks a successful Runtime call whose acceptance
-// receipt is missing. It does not authorize restoring or resending the input.
 var ErrSteerReceiptUnavailable = errors.New("steer acceptance receipt is unavailable")
 
-// Interrupt is a closed interrupt payload.
 type Interrupt interface{ isInterrupt() }
 
 type Approval struct {
-	RunID        string
-	ItemID       string
-	Title        string
-	Detail       string
-	Tool         *ToolCall
-	Risk         protocol.ApprovalRisk
-	Rememberable bool
+	RunID        string                `json:"runId"`
+	ItemID       string                `json:"itemId"`
+	Title        string                `json:"title"`
+	Detail       string                `json:"detail"`
+	Tool         *ToolCall             `json:"tool"`
+	Risk         protocol.ApprovalRisk `json:"risk"`
+	Rememberable bool                  `json:"rememberable"`
 }
 
 type Question struct {
-	RunID  string
-	ItemID string
-	Title  string
-	Fields []QuestionField
-	// Answers is nil while the question is pending. Once the runtime accepts a
-	// response, it preserves one values slice per field as a transcript fact.
-	Answers [][]string
+	RunID   string          `json:"runId"`
+	ItemID  string          `json:"itemId"`
+	Title   string          `json:"title"`
+	Fields  []QuestionField `json:"fields"`
+	Answers [][]string      `json:"answers"`
 }
 
 type QuestionKind string
@@ -145,11 +133,11 @@ const (
 )
 
 type QuestionField struct {
-	Prompt      string
-	Header      string
-	Kind        QuestionKind
-	AllowCustom bool
-	Options     []protocol.QuestionOption
+	Prompt      string                    `json:"prompt"`
+	Header      string                    `json:"header"`
+	Kind        QuestionKind              `json:"kind"`
+	AllowCustom bool                      `json:"allowCustom"`
+	Options     []protocol.QuestionOption `json:"options"`
 }
 
 func (Approval) isInterrupt() {}
@@ -159,16 +147,14 @@ func (Question) isInterrupt() {}
 type Answer interface{ isAnswer() }
 
 type ApprovalAnswer struct {
-	Decision         protocol.ApprovalDecision
-	Remember         protocol.RememberScopeKind
-	Reason           string
-	ArgumentOverride *ToolArgumentOverride
+	Decision         protocol.ApprovalDecision  `json:"decision"`
+	Remember         protocol.RememberScopeKind `json:"remember"`
+	Reason           string                     `json:"reason"`
+	ArgumentOverride *ToolArgumentOverride      `json:"argumentOverride"`
 }
 
-// QuestionAnswer preserves the field order from Question.Fields, matching the
-// runtime's ordered answer matrix.
 type QuestionAnswer struct {
-	Values [][]string
+	Values [][]string `json:"values"`
 }
 
 func (ApprovalAnswer) isAnswer() {}
@@ -181,14 +167,11 @@ type Usage struct {
 	CacheReadTokens  int64
 	CacheWriteTokens int64
 	ReasoningTokens  int64
-	// CostUSD is nil when the runtime cannot price the usage. A present zero is
-	// distinct: it is known, priced usage whose current cost is zero.
-	CostUSD *float64
-	// ByModel retains the runtime's cumulative attribution without coupling the
-	// conversation domain to provider-specific model registries.
-	ByModel map[string]protocol.ModelUsage
-	Steps   int
-	// Duration is active execution time; human-interrupt waiting is excluded.
+	// Nil means the runtime cannot price the usage; a present zero is known, priced
+	// usage.
+	CostUSD  *float64
+	ByModel  map[string]protocol.ModelUsage
+	Steps    int
 	Duration time.Duration
 }
 
@@ -206,7 +189,6 @@ func (u Usage) Clone() Usage {
 	return u
 }
 
-// Equal preserves the distinction between unknown cost and a known zero cost.
 func (u Usage) Equal(other Usage) bool {
 	if u.InputTokens != other.InputTokens || u.OutputTokens != other.OutputTokens ||
 		u.CacheReadTokens != other.CacheReadTokens || u.CacheWriteTokens != other.CacheWriteTokens ||
@@ -229,7 +211,6 @@ func (u Usage) Equal(other Usage) bool {
 	return true
 }
 
-// Empty reports whether the usage projection carries no metering fact.
 func (u Usage) Empty() bool {
 	return u.InputTokens == 0 && u.OutputTokens == 0 && u.CacheReadTokens == 0 &&
 		u.CacheWriteTokens == 0 && u.ReasoningTokens == 0 && u.CostUSD == nil &&

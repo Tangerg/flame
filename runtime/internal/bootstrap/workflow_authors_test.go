@@ -100,7 +100,7 @@ func TestExistingWorkflowsRetainTheirOriginalAuthors(t *testing.T) {
 			t.Fatal(err)
 		}
 		now := time.Now().UTC()
-		original, err := (goal.Snapshot{SessionID: testsupport.MustSessionID(session.ID), CreatedAt: now}).Publish(*issued.Next, issued.Source, "original-goal", now)
+		original, err := (goal.Snapshot{SessionID: testsupport.MustSessionID(session.ID), CreatedAt: now}).Publish(*issued.Next, issued.Source, testsupport.MustIncarnation("original-goal"), now)
 		if err != nil {
 			t.Fatal(err)
 		}

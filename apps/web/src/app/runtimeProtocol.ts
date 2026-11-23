@@ -1,7 +1,7 @@
 import { CLIENT_VERSION, PRODUCT_SLUG } from "@/app/product";
 import { PROTOCOL_VERSION } from "@flame/runtime-client";
 import { type ClientCapabilities, type RequestMeta } from "@flame/runtime-client";
-export const CLIENT_CAPABILITIES: ClientCapabilities = {
+const CLIENT_CAPABILITIES: ClientCapabilities = {
   features: {
     multimodal: { enabled: true },
     childRuns: { enabled: true },

@@ -9,9 +9,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// ResultPublication binds an executor publication to its immutable content.
-// Persistence records it atomically with every result; Segment ownership fences
-// the writer independently of this stable identity.
 type ResultPublication struct {
 	ID     string
 	Digest string
@@ -27,20 +24,14 @@ func (r ResultPublication) Validate() error {
 	return nil
 }
 
-// ToolResultsCommitted carries settled calls with their original round indexes.
-// Starts include calls rejected before execution. Existing starts are checked,
-// missing starts are projected, and all results enter one transaction.
 type ToolResultsCommitted struct {
 	executionFactBase
-	Publication ResultPublication
-	Starts      []ToolCallStarted
-	Results     []ToolCallFinished
-	// ModelResults is present only when the whole round is known, in declared order.
+	Publication  ResultPublication
+	Starts       []ToolCallStarted
+	Results      []ToolCallFinished
 	ModelResults []chat.ToolResult
 }
 
-// validate checks the batch is one model call's complete result set in its
-// declared call order.
 func (b ToolResultsCommitted) validate() error {
 	if err := b.Publication.Validate(); err != nil {
 		return err

@@ -55,8 +55,6 @@ func workflowSession(ctx context.Context, c *CommandCalls, contract *plugincontr
 	return awaitContributionSession(ctx, c.pool, binding)
 }
 
-// Declarations precede asynchronous backend startup. Join the selected source's
-// owned attempt outside Host admission before borrowing its original activation.
 func awaitContributionSession(ctx context.Context, pool *mcp.Pool, binding plugins.ContributionBinding) (plugins.ContributionBinding, *mcp.BorrowedSession, error) {
 	activation, err := pool.AwaitInstallationActivation(ctx, binding.ServerID)
 	if err != nil {
@@ -107,8 +105,6 @@ func query[P, R any](ctx context.Context, location plugins.ContributionBinding, 
 	return value, nil
 }
 
-// Collaborators must inherit the same admitted query as its backend invocation.
-// Capturing after a grant opens would detach model origin and parent evidence.
 func queryContext(ctx context.Context, location plugins.ContributionBinding) (context.Context, error) {
 	if operation.Identity(ctx) == "" {
 		ctx = operation.Bind(ctx, "plugins.query", "")
@@ -120,11 +116,7 @@ func queryContext(ctx context.Context, location plugins.ContributionBinding) (co
 	return pluginmcp.WithInvocation(ctx, invocation)
 }
 
-// callContribution calls one composition member's typed method on a borrowed
-// session of its contribution and returns the session before the next member.
-// The connection owner verified the session's exports when it admitted the
-// connection, so the captured contract binds without rediscovery.
-func callContribution[P, R any](ctx context.Context, pool *mcp.Pool, binding plugins.ContributionBinding, contract *plugincontract.Capability, method *pluginmcp.Method[P, R], input P) (R, error) {
+func callContribution[P, R any](ctx context.Context, pool *mcp.Pool, binding plugins.ContributionBinding, contract *plugincontract.Capability, method *pluginmcp.Method[P, R], input P) (_ R, returned error) {
 	var zero R
 	calling, err := enterContributionPhase(ctx, binding)
 	if err != nil {
@@ -134,7 +126,7 @@ func callContribution[P, R any](ctx context.Context, pool *mcp.Pool, binding plu
 	if err != nil {
 		return zero, err
 	}
-	defer borrowed.Close()
+	defer func() { returned = errors.Join(returned, borrowed.Close()) }()
 	calling = borrowed.Context()
 	session := borrowed.Session()
 	if _, err := pool.SessionActor(calling, binding.ServerID, session); err != nil {

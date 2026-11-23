@@ -20,13 +20,11 @@ import (
 	"github.com/Tangerg/scope/core/tool"
 )
 
-// These names match the package declaration's export and its dependency id.
 const (
 	capabilityExport    = "reviews"
 	analyzersDependency = "analyzers"
 )
 
-// The Tool names the model sees.
 const (
 	listReviewsTool   = "list_reviews"
 	updateReviewTool  = "update_review"
@@ -69,8 +67,6 @@ func newServer(store *store) (*sdk.Server, error) {
 	return server, nil
 }
 
-// reviewService is the plugin's business, reached identically through its
-// typed queries and its model Tools.
 type reviewService struct {
 	store     *store
 	contracts reviews.Contracts
@@ -81,7 +77,6 @@ func (s reviewService) read(ctx context.Context) (reviews.ListResult, error) {
 	return reviews.ListResult{Reviews: snapshots}, err
 }
 
-// analyze calls the declared analyzer dependency, with Runtime as the host.
 func (s reviewService) analyze(ctx context.Context) (result reviews.Analysis, resultErr error) {
 	current, err := s.store.list(ctx)
 	if err != nil {
@@ -106,8 +101,6 @@ func (s reviewService) analyze(ctx context.Context) (result reviews.Analysis, re
 	return analyzeReview(ctx, client, invocation.Target, current[0])
 }
 
-// updateFromModel applies a model's edit under Runtime's invocation identity.
-// A refused edit is reported as the Tool's own failure, carrying the result.
 func (s reviewService) updateFromModel(ctx context.Context, _ reviews.Update) (reviews.UpdateResult, error) {
 	id, err := pluginsdk.InvocationID(ctx)
 	if err != nil {
@@ -182,13 +175,8 @@ func (s reviewService) register(backend *pluginmcp.Backend) error {
 	)
 }
 
-// admitSetup refuses an activation whose analyzer dependency is not the named
-// optional contract this consumer was built against.
 func admitSetup(_ context.Context, setup pluginmcp.Setup) (io.Closer, error) {
-	values, err := setup.Contributions()
-	if err != nil {
-		return nil, err
-	}
+	values := setup.Contributions()
 	required, err := reviews.NewAnalyzerContracts()
 	if err != nil {
 		return nil, err

@@ -9,11 +9,16 @@ import (
 	goruntime "runtime"
 	"testing"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
 
-// RunWithFirstPartyPackages gives the test executable the same companion
-// distribution as a shipping Runtime, without consulting a user's deployment.
+const (
+	firstPartyDirectoryVariable = "FLAME_TEST_FIRST_PARTY_DIRECTORY"
+	managedRuntimesDirectory    = "runtimes"
+	nodeExecutable              = "node"
+)
+
 func RunWithFirstPartyPackages(tests *testing.M) int {
 	executable, err := os.Executable()
 	if err != nil {
@@ -21,7 +26,7 @@ func RunWithFirstPartyPackages(tests *testing.M) int {
 		return 1
 	}
 	directory := filepath.Join(filepath.Dir(executable), "plugins")
-	if os.Getenv("FLAME_TEST_FIRST_PARTY_DIRECTORY") == directory {
+	if os.Getenv(firstPartyDirectoryVariable) == directory {
 		return tests.Run()
 	}
 	if err := PrepareRuntimeCompanions(executable); err != nil {
@@ -34,13 +39,13 @@ func RunWithFirstPartyPackages(tests *testing.M) int {
 		return 1
 	}
 	script := filepath.Join(filepath.Dir(file), "../../..", "plugins", "scripts", "build-packages.mjs")
-	command := exec.Command("node", script, "--os", goruntime.GOOS, "--arch", goruntime.GOARCH, "--output", directory)
+	command := exec.Command(nodeExecutable, script, "--os", goruntime.GOOS, "--arch", goruntime.GOARCH, "--output", directory)
 	command.Stdout, command.Stderr = os.Stdout, os.Stderr
 	status := 1
 	if err := command.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	} else {
-		if err := os.Setenv("FLAME_TEST_FIRST_PARTY_DIRECTORY", directory); err != nil {
+		if err := os.Setenv(firstPartyDirectoryVariable, directory); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		} else {
 			status = tests.Run()
@@ -50,7 +55,7 @@ func RunWithFirstPartyPackages(tests *testing.M) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	if err := os.RemoveAll(filepath.Join(filepath.Dir(executable), "runtimes")); err != nil {
+	if err := os.RemoveAll(filepath.Join(filepath.Dir(executable), managedRuntimesDirectory)); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
@@ -61,8 +66,6 @@ func RunWithFirstPartyPackages(tests *testing.M) int {
 	return status
 }
 
-// PrepareRuntimeCompanions equips a separately built Runtime test executable
-// with the same process runner and pinned interpreter as its real deployment.
 func PrepareRuntimeCompanions(executable string) error {
 	if err := prepareRunner(executable); err != nil {
 		return err
@@ -81,7 +84,7 @@ func RunWithNode(tests *testing.M) int {
 		return 1
 	}
 	status := tests.Run()
-	if err := os.RemoveAll(filepath.Join(filepath.Dir(executable), "runtimes")); err != nil {
+	if err := os.RemoveAll(filepath.Join(filepath.Dir(executable), managedRuntimesDirectory)); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
@@ -94,13 +97,11 @@ func prepareNode(executable string) error {
 		return fmt.Errorf("locate node companion test preparation")
 	}
 	script := filepath.Join(filepath.Dir(file), "../../..", "tooling", "node-companion.mjs")
-	command := exec.Command("node", script, "--os", goruntime.GOOS, "--arch", goruntime.GOARCH, "--output", filepath.Dir(executable), "--offline")
+	command := exec.Command(nodeExecutable, script, "--os", goruntime.GOOS, "--arch", goruntime.GOARCH, "--output", filepath.Dir(executable), "--offline")
 	command.Stdout, command.Stderr = os.Stdout, os.Stderr
 	return command.Run()
 }
 
-// TempDirectory joins immutable-release cleanup after the Runtime has closed.
-// Runtime durability stays sealed in production; the test owns this entire root.
 func TempDirectory(t testing.TB) string {
 	t.Helper()
 	// Runtime companions use Unix sockets whose sockaddr capacity includes
@@ -115,7 +116,7 @@ func TempDirectory(t testing.TB) string {
 				return err
 			}
 			if entry.IsDir() {
-				return os.Chmod(path, 0700)
+				return os.Chmod(path, filesystem.PrivateDirectoryMode)
 			}
 			return nil
 		}); err != nil {
@@ -137,7 +138,7 @@ func prepareRunner(executable string) error {
 	if err != nil {
 		return err
 	}
-	command := exec.Command(filepath.Join(goruntime.GOROOT(), "bin", "go"), "build", "-mod=readonly", "-o", runner, "github.com/Tangerg/frame/cmd/frame-runner")
+	command := exec.Command("go", "build", "-mod=readonly", "-o", runner, "github.com/Tangerg/frame/cmd/frame-runner")
 	command.Dir = filepath.Join(filepath.Dir(file), "../..")
 	command.Stdout, command.Stderr = os.Stdout, os.Stderr
 	return command.Run()

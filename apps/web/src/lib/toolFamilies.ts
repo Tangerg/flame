@@ -9,7 +9,7 @@ interface ToolFamily {
   tools: readonly { name: BuiltinToolName; icon: string }[];
 }
 
-export const TOOL_FAMILIES = [
+const TOOL_FAMILIES = [
   {
     id: "shell",
     tools: [

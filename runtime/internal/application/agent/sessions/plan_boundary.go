@@ -8,17 +8,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
-// PlanServices supplies boundary reads and aggregate replacement decisions.
 type PlanServices struct {
 	Boundaries   planBoundaries
 	Replacements *PlanCoordinator
 }
 
-// boundaryPlanReplacement restores the Plan the boundary at runID held. An
-// empty runID keeps no Run: it predates every list this Session wrote, so its
-// Plan is the empty list, known rather than unknown. A boundary that recorded no
-// Plan (an imported Run's boundaries were never captured) leaves the live list
-// untouched instead of clearing it.
 func (c *Coordinator) boundaryPlanReplacement(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) (*plan.Replacement, error) {
 	doc := plan.Document{Steps: []plan.Step{}}
 	if !runID.IsZero() {

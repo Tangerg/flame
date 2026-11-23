@@ -10,8 +10,6 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-// DiagnosticsPendingError means the current document version has no completed
-// analysis. An observed empty set succeeds only for that exact version.
 type DiagnosticsPendingError struct {
 	Version         int
 	ObservedVersion *int
@@ -24,7 +22,6 @@ func (e *DiagnosticsPendingError) Error() string {
 	return fmt.Sprintf("lsp: diagnostics pending for document version %d; last observed version %d", e.Version, *e.ObservedVersion)
 }
 
-// diagnostics returns only a completed analysis of the version it synchronized.
 func (c *client) diagnostics(ctx context.Context, abs string, settle time.Duration) ([]Diagnostic, error) {
 	content, err := readDocument(ctx, c.workspace, abs)
 	if err != nil {

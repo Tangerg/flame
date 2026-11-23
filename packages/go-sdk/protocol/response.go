@@ -8,8 +8,6 @@ import (
 
 var ErrInvalidResponse = errors.New("runtime: invalid response")
 
-// DecodeResponse preserves required fields, typed nulls and exact numbers before
-// assigning a validated value. Nullable root results are admitted by method metadata.
 func DecodeResponse(encoded []byte, target any) error {
 	destination := reflect.ValueOf(target)
 	if !destination.IsValid() || destination.Kind() != reflect.Pointer || destination.IsNil() {

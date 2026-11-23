@@ -8,13 +8,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-// ErrInvalidTree reports a set of Run identities that cannot form one
-// complete tree under the declared root.
 var ErrInvalidTree = errors.New("run: invalid tree")
 
-// TreeMember is the identity-only input used to assemble a Tree. Host
-// state, persistence records, executor state, and presentation values do not
-// belong here: topology is the one fact shared by all of those representations.
 type TreeMember struct {
 	RunID   identity.RunID
 	Lineage Lineage
@@ -39,20 +34,14 @@ type runTreeBuilder struct {
 	tree      Tree
 }
 
-// Tree is an immutable, validated Run topology. Its canonical order is
-// postorder: descendants before ancestors, siblings ordered lexically by Run
-// ID, and the root last.
 type Tree struct {
 	postorder []identity.RunID
 	intervals map[identity.RunID]runTreeInterval
 }
 
-// NewTree assembles one complete tree under rootRunID. Every member must be
-// present exactly once, every child must name the same root and an existing
-// parent, and no disconnected component or cycle is accepted.
 func NewTree(rootRunID identity.RunID, members []TreeMember) (Tree, error) {
 	if err := rootRunID.Validate(); err != nil {
-		return Tree{}, fmt.Errorf("%w: root %v", ErrInvalidTree, err)
+		return Tree{}, fmt.Errorf("%w: root %w", ErrInvalidTree, err)
 	}
 	if len(members) == 0 {
 		return Tree{}, fmt.Errorf("%w: tree has no members", ErrInvalidTree)
@@ -200,13 +189,10 @@ func (r *runTreeBuilder) visit(runID identity.RunID) error {
 	return nil
 }
 
-// Postorder returns a defensive copy of the complete canonical Run order.
 func (t Tree) Postorder() []identity.RunID {
 	return slices.Clone(t.postorder)
 }
 
-// SubtreePostorder returns a defensive copy of runID and all its descendants in
-// canonical postorder. The boolean is false when runID is not a tree member.
 func (t Tree) SubtreePostorder(runID identity.RunID) ([]identity.RunID, bool) {
 	interval, exists := t.intervals[runID]
 	if !exists {
@@ -215,8 +201,6 @@ func (t Tree) SubtreePostorder(runID identity.RunID) ([]identity.RunID, bool) {
 	return slices.Clone(t.postorder[interval.start:interval.end]), true
 }
 
-// CheckCancellation admits a snapshot only while every open member belongs to
-// the same execution phase as its root. Executor bindings are acquired later.
 func (t Tree) CheckCancellation(targetID identity.RunID, members map[identity.RunID]Run) error {
 	if len(t.postorder) == 0 || len(t.postorder) != len(members) {
 		return fmt.Errorf("%w: incomplete cancellation tree", ErrInvalidTree)

@@ -15,28 +15,19 @@ import (
 	"github.com/Tangerg/scope/tools/textread"
 )
 
-// FileBrowser adapts local filesystem browsing and content search to the workspace
-// application ports.
 type FileBrowser struct{}
 
 func (FileBrowser) List(ctx context.Context, root string, options workspaceapp.FileListOptions) ([]workspaceapp.FileEntry, error) {
-	entries, err := listFiles(ctx, root, options)
+	scope, err := resolveFileSelection(root, options.Path)
 	if err != nil {
-		switch {
-		case errors.Is(err, errListingTooLarge):
-			return nil, errors.Join(workspaceapp.ErrFileListTooLarge, err)
-		case errors.Is(err, errInvalidGlob):
-			return nil, errors.Join(workspaceapp.ErrInvalidFileGlob, err)
-		case errors.Is(err, errInvalidListPath):
-			return nil, errors.Join(workspaceapp.ErrInvalidFileListPath, err)
-		default:
-			return nil, err
-		}
+		return nil, err
 	}
-	return entries, nil
+	if !scope.directory {
+		return nil, fmt.Errorf("%w: %q is not a directory", workspaceapp.ErrInvalidFileListPath, options.Path)
+	}
+	return scope.list(ctx, options)
 }
 
-// openFailure names why a path cannot be read as a file.
 func openFailure(path string, err error) error {
 	switch {
 	case errors.Is(err, filesystem.ErrNotRegular):
@@ -48,14 +39,13 @@ func openFailure(path string, err error) error {
 	}
 }
 
-// scanFailure names why an opened file's text cannot be read.
 func scanFailure(path string, err error) error {
 	switch {
 	case errors.Is(err, textread.ErrInputTooLarge):
 		return fmt.Errorf("%w: %s grew while reading: %w", workspaceapp.ErrFileReadTooLarge, path, err)
 	case errors.Is(err, textread.ErrLineTooLarge):
 		return fmt.Errorf("%w: %s line %d exceeds the %d MiB limit: %w",
-			workspaceapp.ErrFileReadTooLarge, path, textread.LineNumber(err), workspaceapp.MaxFileReadLineBytes>>20, err)
+			workspaceapp.ErrFileReadTooLarge, path, textread.LineNumber(err), workspaceapp.MaxFileReadLineBytes/filesystem.MiB, err)
 	case errors.Is(err, textread.ErrInvalidText):
 		return fmt.Errorf("%w: %s: %w", workspaceapp.ErrUnsupportedFile, path, err)
 	default:
@@ -145,7 +135,6 @@ func scanFileWindow(ctx context.Context, source io.Reader, input workspaceapp.Fi
 			result.Offset, result.Lines = number-1, 0
 			return nil
 		}
-		// Retire whole leading rows so the requested end remains reachable at the byte cap.
 		for result.Lines > 0 && content.Len()+1+len(line) > input.MaxBytes {
 			if result.Lines == 1 {
 				content.Reset()

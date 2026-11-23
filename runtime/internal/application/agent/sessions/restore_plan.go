@@ -9,8 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
-// RestorePlan is the atomic durable command for replacing one Session and all
-// of its Session-owned durable projections.
 type RestorePlan struct {
 	sessionReplacement session.Replacement
 	history            HistorySnapshot
@@ -18,8 +16,6 @@ type RestorePlan struct {
 	retirement         *ResourceRetirement
 }
 
-// NewRestorePlan binds an already-decided Session replacement to one normalized
-// restored projection and the exact Plan transition that publishes its steps.
 func NewRestorePlan(
 	snapshot Snapshot,
 	sessionReplacement session.Replacement,
@@ -91,12 +87,10 @@ func validateRestorePlanReplacement(steps []plan.Step, replacement *plan.Replace
 	return nil
 }
 
-// SessionReplacement returns the exact initial insert or monotonic replacement.
 func (r RestorePlan) SessionReplacement() session.Replacement { return r.sessionReplacement }
 
 func (r RestorePlan) History() HistorySnapshot { return r.history.clone() }
 
-// PlanReplacement returns an isolated copy of the restored Plan transition.
 func (r RestorePlan) PlanReplacement() *plan.Replacement {
 	clonedPlanReplacement := r.planReplacement
 	if clonedPlanReplacement != nil {

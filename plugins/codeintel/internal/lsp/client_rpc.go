@@ -28,9 +28,9 @@ func (c *client) notify(ctx context.Context, method string, params any) error {
 	return c.send(ctx, func() error { return c.conn.Notify(ctx, method, params) })
 }
 
-// jsonrpc2 does not observe context while writing. An interrupted frame cannot
-// be reused; close its connection and join cleanup before returning its cause.
-// The guard ends at dispatch, so canceling a response wait keeps a healthy server.
+// jsonrpc2 does not observe context while writing, and an interrupted frame cannot
+// be reused. The guard ends at dispatch, so canceling a response wait keeps a
+// healthy server.
 func (c *client) send(ctx context.Context, send func() error) error {
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return err

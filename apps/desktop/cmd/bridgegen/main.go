@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/Tangerg/flame/apps/desktop/internal/bridge"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -28,10 +29,10 @@ func main() {
 		fail(err)
 	}
 	for path, body := range map[string][]byte{*output: desktop, *foundation: neutral} {
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(path), filesystem.SharedDirectoryMode); err != nil {
 			fail(err)
 		}
-		if err := os.WriteFile(path, body, 0o644); err != nil {
+		if err := os.WriteFile(path, body, filesystem.SharedFileMode); err != nil {
 			fail(err)
 		}
 	}

@@ -21,8 +21,7 @@ const CommandsSchema = `CREATE TABLE IF NOT EXISTS commands (id TEXT PRIMARY KEY
 
 var ErrCommandUnconfirmed = errors.New("managed plugin: command outcome is unconfirmed")
 
-// CommandPlan captures the admitted reply before any mutation can begin. Its
-// callback only persists that decision; a write error cannot become a refusal.
+// The callback only persists the decision; a write error cannot become a refusal.
 type CommandPlan[R any] struct {
 	reply framevalue.JSON
 	apply func(context.Context) error
@@ -61,14 +60,14 @@ func Command[P, R any](ctx context.Context, db framesqlite.Database, method, id 
 	var reply []byte
 	err := db.RunIndependentTx(ctx, func(ctx context.Context) error {
 		connection := db.Executor(ctx)
-		var previousMethod, previousInput string
-		err := connection.QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, id).Scan(&previousMethod, &previousInput, &reply)
+		stored, err := readStoredCommand(ctx, connection, id)
 		if err == nil {
-			if previousMethod != method || previousInput != admitted.String() {
+			if !stored.admits(method, admitted) {
 				conflict, err := pluginmcp.EncodeReply(zero, framecall.ErrConflict, nil)
 				reply = conflict.Bytes()
 				return err
 			}
+			reply = stored.reply
 			if len(reply) == 0 {
 				return ErrCommandUnconfirmed
 			}
@@ -77,8 +76,8 @@ func Command[P, R any](ctx context.Context, db framesqlite.Database, method, id 
 		if !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
-		// The retained request is the only input authority; accepting a separate
-		// typed argument would allow effects that disagree with their receipt.
+		// The retained request is the only input authority; a separate typed argument
+		// would allow effects that disagree with their receipt.
 		var input P
 		if err := admitted.Decode(&input); err != nil {
 			return err
@@ -180,7 +179,6 @@ func RegisterReceipts(server *pluginmcp.Backend, db framesqlite.Database) error 
 	})
 }
 
-// ReadReceipt only projects the private owner's original method/input evidence.
 func ReadReceipt(ctx context.Context, db framesqlite.Database, input pluginmcp.ReceiptRequest) (pluginmcp.Receipt, error) {
 	if !db.Valid() {
 		return pluginmcp.Receipt{}, errors.New("managed plugin: database is required")
@@ -188,10 +186,11 @@ func ReadReceipt(ctx context.Context, db framesqlite.Database, input pluginmcp.R
 	if err := input.Validate(); err != nil {
 		return pluginmcp.Receipt{}, err
 	}
-	var method, encoded string
-	var reply []byte
+	var stored storedCommand
 	err := db.Read(ctx, func(reader framesqlite.Reader) error {
-		return reader.QueryRowContext(ctx, `SELECT method,business_input_json,reply FROM commands WHERE id=?`, input.ID).Scan(&method, &encoded, &reply)
+		var err error
+		stored, err = readStoredCommand(ctx, reader, string(input.ID))
+		return err
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return pluginmcp.Receipt{}, nil
@@ -199,12 +198,12 @@ func ReadReceipt(ctx context.Context, db framesqlite.Database, input pluginmcp.R
 	if err != nil {
 		return pluginmcp.Receipt{}, err
 	}
-	admitted, err := framevalue.ParseJSON([]byte(encoded))
+	admitted, err := framevalue.ParseJSON([]byte(stored.input))
 	if err != nil {
 		return pluginmcp.Receipt{}, err
 	}
-	if method != input.Method || admitted.Digest() != input.InputDigest {
+	if stored.method != input.Method || admitted.Digest() != input.InputDigest {
 		return pluginmcp.Receipt{}, framecall.ErrConflict
 	}
-	return pluginmcp.Receipt{Found: len(reply) != 0, Reply: reply}, nil
+	return pluginmcp.Receipt{Found: len(stored.reply) != 0, Reply: stored.reply}, nil
 }

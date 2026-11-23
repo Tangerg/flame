@@ -31,8 +31,6 @@ const (
 	componentUnitPrefix = "component/"
 )
 
-// FrameworkConfiguration contains only Flame-owned configuration. Installation
-// identity, selected release and desired enablement belong to Frame's record.
 // Values may contain credentials and must not be forwarded to a browser realm.
 type FrameworkConfiguration struct {
 	Source          string                 `json:"source"`
@@ -130,8 +128,6 @@ type ComponentSelector struct {
 	Name string                         `json:"name"`
 }
 
-// PublicComponentConfiguration is the complete browser setup projection. It
-// reads immutable release declarations, never private installation Values.
 func PublicComponentConfiguration(release plugin.Release, id plugin.ContributionID) ([]byte, error) {
 	for _, component := range release.Declaration().Components {
 		if component.ID != id {
@@ -157,9 +153,6 @@ func capabilityContract(contract *plugincontract.Capability) (framehost.Contract
 	return framehost.NewPortableContract[any]("1", contract.Service())
 }
 
-// CapabilityPoint is Flame's collection of implementations of a portable
-// callable contract. Selection and decoration order are consumer policies;
-// membership and callable value have separate original descriptors.
 func CapabilityPoint(contract *plugincontract.Capability) (framehost.Point[framevalue.JSON, any], error) {
 	value, err := capabilityContract(contract)
 	if err != nil {
@@ -179,9 +172,6 @@ func DataPoint(contract *plugincontract.Point) (framehost.Point[framevalue.JSON,
 	return framehost.NewPortablePoint[framevalue.JSON](contract.Definition().Reference, "1", contract.Definition().Value, value)
 }
 
-// FrameworkDefinition is the one Flame-to-Frame declaration projection shared
-// by author tooling and Runtime. Typed declarations retain the local Go binding;
-// a descriptor alone cannot admit an in-process implementation.
 type FrameworkDefinition struct {
 	Units     []framehost.Unit
 	Contracts []framehost.Declaration
@@ -231,7 +221,6 @@ func ProjectFrameworkDeclaration(declaration plugin.Declaration, backendProfile 
 	return FrameworkDefinition{Units: units, Contracts: projection.sortedContracts()}, nil
 }
 
-// frameworkProjection collects each contract once, however many units name it.
 type frameworkProjection struct {
 	contracts map[framehost.ContractRef]framehost.Declaration
 }
@@ -350,8 +339,6 @@ func ContributionSource(binding ContributionBinding) (framehost.ExportRef, error
 	return framehost.ExportRef{InstallationID: binding.InstallationID.Host(), Release: binding.Digest, UnitID: BackendUnit(binding.ServerName), Export: binding.ContributionID.String(), Contract: point.Ref()}, nil
 }
 
-// FrameworkError gives Core failures one Flame category without losing their
-// original cause at installation, binding, or execution boundaries.
 func FrameworkError(err error) error {
 	switch {
 	case errors.Is(err, framehost.ErrDependencyCycle), errors.Is(err, frame.ErrInvalid), errors.Is(err, frame.ErrContractMismatch):

@@ -11,9 +11,6 @@ import (
 
 const sessionDraftTransferName = "session-draft-transfer.json"
 
-// DraftTransfer is the durable ownership change for composer state that spans
-// two session aggregates. Before values fence stale recovery; after values let
-// Open finish either half of an interrupted transfer without guessing.
 type DraftTransfer struct {
 	SourceSessionID      string            `json:"sourceSessionId"`
 	DestinationSessionID string            `json:"destinationSessionId"`
@@ -22,6 +19,8 @@ type DraftTransfer struct {
 	DestinationBefore    authoring.Message `json:"destinationBefore"`
 	DestinationAfter     authoring.Message `json:"destinationAfter"`
 }
+
+var errDraftTransferRecovery = errors.New("session draft transfer requires recovery")
 
 func (d DraftTransfer) clone() DraftTransfer {
 	d.SourceBefore = d.SourceBefore.Clone()
@@ -78,11 +77,6 @@ func (d DraftTransfer) blocks(sessionID string) bool {
 	return sessionID == d.SourceSessionID || sessionID == d.DestinationSessionID
 }
 
-// MergeSessionDraft combines authoring values when input written during a
-// Session transition follows the user into a destination that already owns a
-// draft. Existing destination text comes first; incoming text follows as a new
-// paragraph. Exact attachment identities are kept once, while conflicting
-// identities fail closed instead of silently choosing one user's file value.
 func MergeSessionDraft(existing, incoming authoring.Message) (authoring.Message, error) {
 	values := []struct {
 		label   string
@@ -143,9 +137,6 @@ func MergeSessionDraft(existing, incoming authoring.Message) (authoring.Message,
 	return merged, nil
 }
 
-// ApplyDraftTransfer changes both session drafts under one restart-safe
-// journal. If a filesystem failure leaves only one side committed, subsequent
-// mutations of either aggregate fail closed until Open completes the journal.
 func (s *Store) ApplyDraftTransfer(transfer DraftTransfer) error {
 	transfer = transfer.clone()
 	if err := transfer.validate(); err != nil {
@@ -156,7 +147,7 @@ func (s *Store) ApplyDraftTransfer(transfer DraftTransfer) error {
 	defer s.mu.Unlock()
 	if s.draftTransfer != nil {
 		if !s.draftTransfer.equal(transfer) {
-			return errors.New("another session draft transfer requires recovery")
+			return fmt.Errorf("another %w", errDraftTransferRecovery)
 		}
 		return s.completeDraftTransferLocked()
 	}

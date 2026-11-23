@@ -20,8 +20,6 @@ type FileListing struct {
 	Entries []FileEntry
 }
 
-// Validate rejects a listing whose entries would collapse in the CLI. Every
-// other entry rule belongs to the Runtime wire contract.
 func (f FileListing) Validate() error {
 	paths := make(map[string]struct{}, len(f.Entries))
 	for index, entry := range f.Entries {
@@ -74,8 +72,6 @@ type FileContent struct {
 	EndLine    int
 }
 
-// Wire admission owns individual field bounds. A missing served window means
-// no retained material; an empty file still serves its first empty line.
 func (f FileContent) Validate() error {
 	switch {
 	case (f.StartLine == 0) != (f.EndLine == 0):

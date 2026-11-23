@@ -10,8 +10,6 @@ import (
 	"github.com/samber/lo"
 )
 
-// RunActorAdmission reads installation authority inside the Run opening
-// transaction. A concurrent disable commits either before acceptance or after it.
 type RunActorAdmission struct{ store Store }
 
 func NewRunActorAdmission(store Store) (*RunActorAdmission, error) {
@@ -20,6 +18,7 @@ func NewRunActorAdmission(store Store) (*RunActorAdmission, error) {
 	}
 	return &RunActorAdmission{store: store}, nil
 }
+
 func (a *RunActorAdmission) Admit(ctx context.Context, actor operation.Actor) error {
 	snapshot, found, err := a.store.Get(ctx, actor.InstallationID())
 	if err != nil {

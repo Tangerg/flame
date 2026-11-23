@@ -5,17 +5,19 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// ReplayPolicy joins the connected Runtime's replay capability with the clock
-// used to evaluate it. Discovery always advertises a replay store, so a command
-// is admitted only while that store still promises its outcome.
 type ReplayPolicy struct {
 	capability authoring.ReplayCapability
 	now        func() time.Time
 }
 
-func newReplayPolicy(capability authoring.ReplayCapability, now func() time.Time) (ReplayPolicy, error) {
+func NewReplayPolicy(limits protocol.IdempotencyLimits, now func() time.Time) (ReplayPolicy, error) {
+	capability, err := authoring.NewReplayCapability(limits.Namespace, time.Duration(limits.RetentionSeconds)*time.Second)
+	if err != nil {
+		return ReplayPolicy{}, err
+	}
 	policy := ReplayPolicy{capability: capability, now: now}
 	if err := policy.validate(); err != nil {
 		return ReplayPolicy{}, err

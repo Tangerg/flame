@@ -1,6 +1,3 @@
-// Package persistence assembles Flame's durable storage adapters into one
-// process-lifetime bundle. It is the storage-side capability adapter: [Open]
-// returns a bundle while its consumers decide how to use each store.
 package persistence
 
 import (
@@ -10,6 +7,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 
@@ -17,8 +15,6 @@ import (
 	"github.com/Tangerg/frame/sqlite"
 )
 
-// Bundle holds Runtime's host stores in one SQLite database under DataDirectory.
-// Managed plugin processes open their private stores separately.
 type Bundle struct {
 	db                *database
 	Frame             sqlite.Store
@@ -28,12 +24,10 @@ type Bundle struct {
 	closeErr          error
 	validateDirectory func() error
 
-	DataDirectory string
-	// IdempotencyNamespace identifies the exact durable replay store without
-	// exposing its database path or contents.
+	DataDirectory          string
 	IdempotencyNamespace   operation.ReplayNamespace
-	Transactor             func(context.Context, func(context.Context) error) error
-	ReadSnapshot           func(context.Context, func(context.Context) error) error
+	Transactor             Transactor
+	ReadSnapshot           Transactor
 	CommitPluginReferences PluginReferenceTransactor
 
 	Sessions              *SessionStore
@@ -52,7 +46,7 @@ type Bundle struct {
 	PluginCommands        *pluginCommandStore
 	ProviderSelections    *providerSelectionStore
 	PluginCompositions    *compositionStore
-	ChatHistory           *MessageStore
+	Conversations         *ConversationStore
 	Trajectory            *trajectoryStore
 	ModelInvocations      *ModelInvocationStore
 	ToolInvocations       *ToolInvocationStore
@@ -69,30 +63,29 @@ type Bundle struct {
 	AcceptedContinuations *acceptedContinuationStore
 }
 
-// Config is the process-owned filesystem snapshot persistence consumes. It has
-// no environment or working-directory fallback: startup supplies every path.
+type Transactor func(context.Context, func(context.Context) error) error
+
 type Config struct {
 	DataDirectory     string
 	ValidateDirectory func() error
 }
 
-// Open wires the persistence backends. The returned bundle owns the shared
-// SQLite handle and must be closed when the runtime process stops.
 func Open(ctx context.Context, config Config) (*Bundle, error) {
-	if config.ValidateDirectory != nil {
-		if err := config.ValidateDirectory(); err != nil {
-			return nil, err
-		}
+	if config.ValidateDirectory == nil {
+		return nil, errors.New("persistence: data directory ownership check is required")
+	}
+	if err := config.ValidateDirectory(); err != nil {
+		return nil, err
 	}
 	dataDirectory, directoryErr := localruntime.DataDirectoryAt(config.DataDirectory)
 	if directoryErr != nil {
 		return nil, fmt.Errorf("persistence: data directory: %w", directoryErr)
 	}
 	config.DataDirectory = dataDirectory.Path()
-	if mkdirErr := os.MkdirAll(config.DataDirectory, 0o700); mkdirErr != nil {
+	if mkdirErr := os.MkdirAll(config.DataDirectory, filesystem.PrivateDirectoryMode); mkdirErr != nil {
 		return nil, fmt.Errorf("persistence: create data directory %q: %w", config.DataDirectory, mkdirErr)
 	}
-	if chmodErr := os.Chmod(config.DataDirectory, 0o700); chmodErr != nil {
+	if chmodErr := os.Chmod(config.DataDirectory, filesystem.PrivateDirectoryMode); chmodErr != nil {
 		return nil, fmt.Errorf("persistence: protect data directory %q: %w", config.DataDirectory, chmodErr)
 	}
 	store, admission, installations, err := openFrameworkDatabase(ctx, dataDirectory.DatabasePath())
@@ -116,10 +109,8 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		DataDirectory:        config.DataDirectory,
 		IdempotencyNamespace: idempotencyNamespace,
 		Transactor: func(ctx context.Context, fn func(context.Context) error) error {
-			if config.ValidateDirectory != nil {
-				if err := config.ValidateDirectory(); err != nil {
-					return err
-				}
+			if err := config.ValidateDirectory(); err != nil {
+				return err
 			}
 			return db.write(ctx, fn)
 		},
@@ -131,7 +122,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		CommandAcceptances:    newCommandAcceptanceStore(db),
 		WorkspaceMutations:    &WorkspaceMutationStore{db: db, receipts: receipts},
 		ResourceRetirements:   newResourceRetirementStore(db),
-		ExecutorCheckpoints:   newExecutorCheckpointStore(db),
+		ExecutorCheckpoints:   newExecutorCheckpointStore(db, admission),
 		Interrupts:            newInterruptStore(db),
 		Transcript:            newTranscriptStore(db),
 		Annotations:           &annotationStore{db: db},
@@ -139,10 +130,9 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		MCPServers:            newMCPServerStore(db),
 		Installations:         installations,
 		PluginReleases:        installations.releases,
-		PluginCommands:        newPluginCommandStore(db, nil),
 		ProviderSelections:    newProviderSelectionStore(db),
 		PluginCompositions:    newCompositionStore(db),
-		ChatHistory:           newMessageStore(db),
+		Conversations:         newConversationStore(db),
 		Trajectory:            newTrajectoryStore(db),
 		ModelInvocations:      newModelInvocationStore(db),
 		ToolInvocations:       newToolInvocationStore(db),
@@ -158,16 +148,13 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		Idempotency:           receipts,
 		AcceptedContinuations: newAcceptedContinuationStore(db),
 	}
-	bundle.PluginCommands.commit = bundle.commitPluginWrite
+	bundle.PluginCommands = newPluginCommandStore(db, bundle.commitPluginWrite)
 	bundle.CommitPluginReferences = bundle.commitPluginReferences
-	bundle.ExecutorCheckpoints.admission = admission
 	return bundle, nil
 }
 
-// Ping reports whether the shared SQLite handle can still serve a statement.
-// The pool serializes on one connection, so a bundle busy with live work
-// returns ctx's error rather than a storage failure; callers that report health
-// must keep the two apart.
+// The pool serializes on one connection, so a busy bundle returns ctx's error
+// rather than a storage failure.
 func (b *Bundle) Ping(ctx context.Context) error {
 	if b == nil || b.db == nil {
 		return errors.New("persistence: storage is closed")
@@ -181,14 +168,8 @@ func (b *Bundle) Ping(ctx context.Context) error {
 	})
 }
 
-func (b *Bundle) ValidateDirectory() error {
-	if b.validateDirectory != nil {
-		return b.validateDirectory()
-	}
-	return nil
-}
+func (b *Bundle) ValidateDirectory() error { return b.validateDirectory() }
 
-// Close releases the shared SQLite handle. It is safe to call repeatedly.
 func (b *Bundle) Close() error {
 	if b == nil {
 		return nil

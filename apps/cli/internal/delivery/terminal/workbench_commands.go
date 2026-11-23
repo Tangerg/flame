@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 )
 
@@ -114,7 +115,7 @@ func promptSummary(stash workbench.Stash) string {
 		text = "empty prompt"
 	}
 	if len(stash.Message.Attachments) > 0 {
-		text += " · " + countedNoun(len(stash.Message.Attachments), "attachment")
+		text += format.Separator + countedNoun(len(stash.Message.Attachments), attachmentNoun)
 	}
 	return text
 }

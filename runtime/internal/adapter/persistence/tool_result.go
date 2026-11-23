@@ -11,17 +11,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// ToolResultStore reads the full bodies committed by TranscriptStore.
 type ToolResultStore struct{ db *database }
 
 func newToolResultStore(db *database) *ToolResultStore {
 	return &ToolResultStore{db: db}
 }
 
-// Fetch returns the full offloaded body for (sessionID, id). found is false —
-// with a nil error — when no such row exists (an unknown id is a recoverable
-// miss the caller surfaces to the model, not a failure). Scoping the read by
-// session id keeps one session from reading another's offloaded output.
 func (t *ToolResultStore) Fetch(ctx context.Context, sessionID identity.SessionID, id transcript.ToolResultID) (body string, found bool, err error) {
 	return scopedPair(ctx, t.db.read, func(ctx context.Context) (body string, found bool, err error) {
 		if validateErr := sessionID.Validate(); validateErr != nil {
@@ -41,7 +36,6 @@ func (t *ToolResultStore) Fetch(ctx context.Context, sessionID identity.SessionI
 	})
 }
 
-// List returns every transcript-bound blob owned by sessionID in stable order.
 func (t *ToolResultStore) List(ctx context.Context, sessionID identity.SessionID) ([]transcript.ToolResultBlob, error) {
 	return scopedValue(ctx, t.db.read, func(ctx context.Context) ([]transcript.ToolResultBlob, error) {
 		if err := sessionID.Validate(); err != nil {
@@ -54,9 +48,7 @@ func (t *ToolResultStore) List(ctx context.Context, sessionID identity.SessionID
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list tool results: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		var blobs []transcript.ToolResultBlob
 		for rows.Next() {
 			var blob transcript.ToolResultBlob

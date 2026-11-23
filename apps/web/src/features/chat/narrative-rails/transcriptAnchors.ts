@@ -20,7 +20,7 @@ export function foldExchanges<T extends { id: string; role: string | null }>(
   return exchanges;
 }
 
-export interface TranscriptMap {
+interface TranscriptMap {
   visibleTurnId: string | null;
   turns: TurnExtent[];
 }

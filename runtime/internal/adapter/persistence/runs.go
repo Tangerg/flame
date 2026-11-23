@@ -14,9 +14,6 @@ import (
 	sqlite3lib "modernc.org/sqlite/lib"
 )
 
-// parseRunState admits a stored lifecycle position. runs.state stores the
-// domain's own spelling; the partial unique index keys on non-finished root rows,
-// and the fine [rundomain.Outcome] is stored separately in runs.outcome.
 func parseRunState(raw string) (rundomain.State, error) {
 	state := rundomain.State(raw)
 	if !state.Valid() {
@@ -25,37 +22,16 @@ func parseRunState(raw string) (rundomain.State, error) {
 	return state, nil
 }
 
-// RunStore is the SQLite-backed Run table: one row per root or child Run,
-// holding its durable projection. Its immutable lineage columns identify the
-// tree without reconstructing it from transcript Items. A partial unique index
-// guarantees at most one non-terminal root per Session across restarts; child
-// rows share that root's admission.
-//
-// One table, one owner: the accrued facts are written only by the lifecycle
-// transition that makes them true, so "where is this Run" and "how did it end"
-// cannot disagree. A Run's open interrupts are the one part kept elsewhere: the
-// interrupts table owns them and reads compose them.
 type RunStore struct{ db *database }
 
-// newRunStore binds the Run table to db. db must have been opened via [Open] so
-// the current schema was installed.
 func newRunStore(db *database) *RunStore {
 	return &RunStore{db: db}
 }
 
-// Admit records draft as the session's active (running) Run. It returns
-// [rundomain.ErrSessionBusy] when the partial unique index rejects the INSERT —
-// the session already has a non-terminal Run — or when an unfinished workspace
-// rollback owns this Session or its working tree, and
-// [rundomain.ErrIdentityConflict] when the Run ID is already taken, since the
-// caller may supply one.
-// This is the capability set's only writer, here and in Restore. Suspend,
-// resume, and finish deliberately do not name the column: the value cannot change
-// after admission, and the way to guarantee that is to have nothing able to
-// change it.
-// Two constraints can reject this INSERT and they mean opposite things: the
-// primary key says the id is spoken for, the partial index says the Session
-// already owns another root tree.
+// Two constraints can reject this INSERT with opposite meanings: the primary key
+// says the id is taken, the partial index says the Session already owns another
+// root tree. Besides Restore this is the capabilities column's only writer, which
+// keeps it frozen by construction.
 func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 	admitted, err := rundomain.Admit(draft)
 	if err != nil {
@@ -80,7 +56,7 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 			   run_id, session_id, spawned_by_item_id, parent_run_id, root_run_id,
 			   state, active_segment_id, provider, model, reasoning_effort, goal_incarnation_id,
 			   capabilities, message_mark, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, admitted.ID(), admitted.SessionID(), lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID(), string(rundomain.Running), admitted.ActiveSegmentID(), admitted.ModelSelection().Provider(), admitted.ModelSelection().Model(), admitted.ModelSelection().ReasoningEffort(), admitted.GoalIncarnationID(), capabilities, nil, now, now)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, admitted.ID(), admitted.SessionID(), lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID(), string(rundomain.Running), admitted.ActiveSegmentID(), admitted.ModelSelection().Provider(), admitted.ModelSelection().Model(), admitted.ModelSelection().ReasoningEffort(), admitted.GoalIncarnationID().String(), capabilities, nil, now, now)
 		switch {
 		case isPrimaryKeyViolation(err):
 			return fmt.Errorf("%w: run %q already exists", rundomain.ErrIdentityConflict, draft.RunID)
@@ -93,10 +69,6 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 	})
 }
 
-// An unfinished destructive mutation retains its physical range, including
-// through a refused live operation and across restart.
-// The check shares the admission transaction, so completing an intent and
-// admitting the next Run have one serial order across Runtime processes.
 func (r *RunStore) requireWorkspaceAdmission(ctx context.Context, sessionID identity.SessionID) error {
 	return r.db.read(ctx, func(ctx context.Context) error {
 		connection := r.db.connection(ctx)
@@ -117,9 +89,7 @@ func (r *RunStore) requireWorkspaceAdmission(ctx context.Context, sessionID iden
 		if err != nil {
 			return fmt.Errorf("sqlite: inspect pending workspace mutations: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		for rows.Next() {
 			var pendingSessionID identity.SessionID
 			var pendingCWD string
@@ -141,8 +111,6 @@ func (r *RunStore) requireWorkspaceAdmission(ctx context.Context, sessionID iden
 	})
 }
 
-// childPlacement is how a child row enters storage. Only admission adds a live
-// child, so only admission requires its parent and root to be open.
 type childPlacement string
 
 const (
@@ -152,9 +120,6 @@ const (
 
 func (p childPlacement) requiresOpenTree() bool { return p == admitChild }
 
-// validateChildPlacement proves immutable Run-to-Run topology before inserting
-// a child. The spawning Item is validated by the application write-set that
-// owns Item creation and child admission/restore together.
 func (r *RunStore) validateChildPlacement(ctx context.Context, operation childPlacement, runID identity.RunID, sessionID identity.SessionID, parentRunID identity.RunID, rootRunID identity.RunID) error {
 	return r.db.read(ctx, func(ctx context.Context) error {
 		var (
@@ -206,12 +171,6 @@ func (r *RunStore) validateChildPlacement(ctx context.Context, operation childPl
 	})
 }
 
-// Suspend writes the domain-decided park of the exact active Segment, recording
-// what the Run had consumed up to the park. Every tree member is fenced by
-// segmentID on a running row; the root additionally supplies commitID so the
-// complete barrier can be reconciled after an ambiguous transaction result.
-// The segment identity is cleared in the same statement that parks the Run:
-// a Run waiting on a person has no segment to attach to.
 func (r *RunStore) Suspend(ctx context.Context, value rundomain.Run, segmentID identity.SegmentID, commitID runs.CommitID) error {
 	if err := validateRunCoordinates("suspend Run", value.SessionID(), value.ID(), segmentID); err != nil {
 		return err
@@ -250,10 +209,6 @@ func (r *RunStore) Suspend(ctx context.Context, value rundomain.Run, segmentID i
 	})
 }
 
-// Resume writes the exact parked Run's decided continuation. Unlike cleanup
-// transitions it is strict: a row that is no longer the parked Run the
-// replacement was derived from means the continuation opening does not own the
-// durable Run and must roll back.
 func (r *RunStore) Resume(ctx context.Context, replacement rundomain.Replacement) error {
 	if err := replacement.Validate(); err != nil {
 		return fmt.Errorf("sqlite: resume run: %w", err)
@@ -287,10 +242,6 @@ func (r *RunStore) Resume(ctx context.Context, replacement rundomain.Replacement
 	})
 }
 
-// RequireActiveSegment proves that an event transaction still belongs to the
-// exact running Segment that produced it. Callers execute this read through the
-// transaction-bound connection before any projection write; a replacement,
-// park, or terminal transition therefore rejects the complete stale write-set.
 func (r *RunStore) RequireActiveSegment(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID) error {
 	return r.db.read(ctx, func(ctx context.Context) error {
 		if err := validateRunCoordinates("require active Run Segment", sessionID, runID, segmentID); err != nil {
@@ -317,10 +268,6 @@ func (r *RunStore) RequireActiveSegment(ctx context.Context, sessionID identity.
 	})
 }
 
-// UpdateProgress writes the Run the domain advanced at one model-call boundary:
-// its cumulative accounting, latest prompt footprint and update time. The write
-// is fenced to the running Segment the Run names, so a stale continuation cannot
-// overwrite a newer Run; it never moves lifecycle state.
 func (r *RunStore) UpdateProgress(ctx context.Context, progressed rundomain.Run) error {
 	if err := validateRunCoordinates("update Run progress", progressed.SessionID(), progressed.ID(), progressed.ActiveSegmentID()); err != nil {
 		return err
@@ -349,32 +296,27 @@ func (r *RunStore) UpdateProgress(ctx context.Context, progressed rundomain.Run)
 	})
 }
 
-// Terminalize ends the exact non-terminal Run snapshot that replacement names,
-// recording the outcome the application reached and the result that explains it.
+const terminalizeOperation = "terminalize"
+
 func (r *RunStore) Terminalize(ctx context.Context, replacement rundomain.Replacement, winningCancellationKey string) error {
-	return r.replace(ctx, "terminalize", replacement, winningCancellationKey)
+	return r.replace(ctx, terminalizeOperation, replacement, winningCancellationKey)
 }
 
-// TerminalizeEvent ends one exact active Segment and stamps the immutable
-// Application EventCommit write-set identity into the Run row. The stamp shares
-// the caller's transaction with every projection in that EventCommit.
 func (r *RunStore) TerminalizeEvent(ctx context.Context, value rundomain.Run, segmentID identity.SegmentID, commitID runs.CommitID, winningCancellationKey string) error {
 	marker, err := newRunCommitMarker(value.SessionID(), value.ID(), segmentID, commitID)
 	if err != nil {
 		return err
 	}
 	return r.db.write(ctx, func(ctx context.Context) error {
-		if err := r.requireAdvance(ctx, "terminalize", value); err != nil {
+		if err := r.requireAdvance(ctx, terminalizeOperation, value); err != nil {
 			return err
 		}
-		return r.finish(ctx, "terminalize", value, marker, winningCancellationKey, `state = ? AND active_segment_id = ?`, string(rundomain.Running), segmentID)
+		return r.finish(ctx, terminalizeOperation, value, marker, winningCancellationKey, `state = ? AND active_segment_id = ?`, string(rundomain.Running), segmentID)
 	})
 }
 
-// RebaseMessageMark writes the watermark of an Application-decided
-// Run.WithMessageMark replacement, fenced on the terminal row it was derived
-// from. Compaction does not change when the Run happened or any of its
-// lifecycle facts, so updated_at deliberately remains untouched.
+// updated_at deliberately stays untouched: compaction does not change when the Run
+// happened.
 func (r *RunStore) RebaseMessageMark(ctx context.Context, change rundomain.Replacement) error {
 	if err := change.Validate(); err != nil {
 		return fmt.Errorf("sqlite: rebase Run message watermark: %w", err)
@@ -404,17 +346,10 @@ func (r *RunStore) RebaseMessageMark(ctx context.Context, change rundomain.Repla
 	})
 }
 
-// RecoverLost ends the exact non-terminal Run snapshot whose executor state is
-// no longer resumable. Unlike Terminalize, this recovery transition is legal
-// from either Running or Waiting, because it describes a Run nobody is driving
-// rather than one the executor finished.
 func (r *RunStore) RecoverLost(ctx context.Context, replacement rundomain.Replacement) error {
 	return r.replace(ctx, "recover lost", replacement, "")
 }
 
-// replace writes a Replacement's decided terminal state. Its legality was
-// settled when the Replacement was derived; the write fences the exact
-// aggregate it was derived from.
 func (r *RunStore) replace(ctx context.Context, op string, replacement rundomain.Replacement, winningCancellationKey string) error {
 	if err := replacement.Validate(); err != nil {
 		return fmt.Errorf("sqlite: %s run: %w", op, err)
@@ -428,9 +363,6 @@ func (r *RunStore) replace(ctx context.Context, op string, replacement rundomain
 	})
 }
 
-// Write transactions may consume the Pending set before replacing its Runs.
-// Decode the complete Run facts without requiring that transient relation;
-// the enclosing application transaction owns the hand-off's integrity.
 func (r *RunStore) requireExpected(ctx context.Context, operation string, expected rundomain.Run) error {
 	current, found, err := r.readRun(ctx, operation, expected.ID(), scanRunForRecovery)
 	if err != nil {
@@ -442,9 +374,6 @@ func (r *RunStore) requireExpected(ctx context.Context, operation string, expect
 	return nil
 }
 
-// requireAdvance fences a Segment write on the progress the row already
-// holds. The Segment fence alone admits a stale snapshot of the same Segment;
-// the Run's cumulative accounting only advances, so such a snapshot is refused.
 func (r *RunStore) requireAdvance(ctx context.Context, operation string, state rundomain.Run) error {
 	current, found, err := r.readRun(ctx, operation, state.ID(), scanRunForRecovery)
 	if err != nil {
@@ -462,20 +391,8 @@ func (r *RunStore) requireAdvance(ctx context.Context, operation string, state r
 	return nil
 }
 
-// finish ends a non-terminal Run, writing the terminal state, its reason, and the
-// facts that explain it in ONE statement — a row can never claim a terminal
-// state without the result behind it, nor hold a result while still running.
-// The terminal state was decided by the aggregate's transition before it got
-// here and is not re-derived. fence names the committed source row: a
-// Replacement fences the exact aggregate it was derived from, and an event
-// commit fences its active Segment. Either way the UPDATE is a CAS, so a row
-// that moved under the transaction fails instead of being overwritten.
-// A root Run's end is also a boundary of the session's Plan, and this CAS is
-// the only place a Run can reach terminal — so the boundary is stamped here
-// rather than by each caller that ends a Run, which is how "no terminal root
-// without a recorded boundary" holds by construction. A child ends inside its
-// root's tree, which is never cut before the root ends. Restored Runs already
-// finished, so they cannot capture a new boundary from their destination Plan.
+// This CAS is the only place a Run reaches terminal, so the root's Plan boundary
+// is stamped here; that is how no terminal root lacks a recorded boundary.
 func (r *RunStore) finish(ctx context.Context, op string, value rundomain.Run, marker *runCommitMarker, winningCancellationKey string, fence string, fenceArgs ...any) error {
 	if winningCancellationKey != "" && !value.Canceled() {
 		return errors.New("sqlite: a winning cancellation key requires a canceled Run")
@@ -523,14 +440,8 @@ func (r *RunStore) finish(ctx context.Context, op string, value rundomain.Run, m
 	})
 }
 
-// Restore inserts a complete terminal Run row for a session being imported or
-// restored. It is not an admission: an imported Run has already finished, so it
-// never claims the session's non-terminal slot and never passes through the
-// state machine. A non-terminal Run is refused — restoring one would hand the
-// session's admission slot to an executor that is not running.
-// A Run id belongs to one Session for its whole lifetime. An import that
-// would re-parent an existing Run is refused rather than silently taking it
-// over, which is what an upsert here would do.
+// An upsert would silently re-parent an existing Run, so an import that would do
+// so is refused.
 func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 	return r.db.write(ctx, func(ctx context.Context) error {
 		if !value.State().IsTerminal() {
@@ -565,7 +476,7 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 		   state, outcome, provider, model, reasoning_effort, goal_incarnation_id,
 		   ending, steps, active_duration_ns, usage, context_tokens, unresolved_effects,
 		   capabilities, message_mark, created_at, finished_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, value.ID(), value.SessionID(), lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID(), string(value.State()), outcome, selection.Provider(), selection.Model(), selection.ReasoningEffort(), value.GoalIncarnationID(), encodedEnding, metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedEffects, capabilities, messageMarkValue(value.MessageMark()), value.CreatedAt().UTC().UnixNano(), value.FinishedAt().UTC().UnixNano(), value.UpdatedAt().UTC().UnixNano())
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, value.ID(), value.SessionID(), lineage.SpawnedByItemID(), lineage.ParentRunID(), lineage.RootRunID(), string(value.State()), outcome, selection.Provider(), selection.Model(), selection.ReasoningEffort(), value.GoalIncarnationID().String(), encodedEnding, metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedEffects, capabilities, messageMarkValue(value.MessageMark()), value.CreatedAt().UTC().UnixNano(), value.FinishedAt().UTC().UnixNano(), value.UpdatedAt().UTC().UnixNano())
 		if isPrimaryKeyViolation(err) {
 			return fmt.Errorf("%w: run %q already exists", rundomain.ErrIdentityConflict, value.ID())
 		}
@@ -576,9 +487,6 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 	})
 }
 
-// Delete drops one Run's row. The rollback boundary uses it: a Run being dropped
-// wholesale frees the session's admission slot by ceasing to exist, so there is
-// nothing left to terminalize.
 func (r *RunStore) Delete(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) error {
 	return r.db.write(ctx, func(ctx context.Context) error {
 		if err := validateResource("delete Run", sessionID); err != nil {
@@ -594,11 +502,6 @@ func (r *RunStore) Delete(ctx context.Context, sessionID identity.SessionID, run
 	})
 }
 
-// DeleteForSession drops every Run row of a session whose durable state is being
-// removed or replaced wholesale — the session-delete cascade, the import/restore
-// replace, and the child-Run subtree purge. Freeing the admission slot by deletion
-// (not terminalization) keeps the runs table from accumulating dead rows for
-// sessions that no longer exist. Joins the caller's transaction via the context.
 func (r *RunStore) DeleteForSession(ctx context.Context, sessionID identity.SessionID) error {
 	return r.db.write(ctx, func(ctx context.Context) error {
 		if err := validateResource("delete Session Runs", sessionID); err != nil {
@@ -612,19 +515,11 @@ func (r *RunStore) DeleteForSession(ctx context.Context, sessionID identity.Sess
 	})
 }
 
-// isUniqueViolation reports whether err is a SQLite UNIQUE-index failure — for
-// this table, the partial-unique-index rejection that means the session already
-// holds a non-terminal run. A primary-key collision has its OWN extended code and
-// does NOT appear here, which is what lets an id clash be told apart from a busy
-// session. modernc.org/sqlite surfaces both as a typed *sqlite.Error carrying the
-// extended result code.
 func isUniqueViolation(err error) bool {
 	se, ok := errors.AsType[*sqlite3.Error](err)
 	return ok && se.Code() == sqlite3lib.SQLITE_CONSTRAINT_UNIQUE
 }
 
-// isPrimaryKeyViolation reports whether err is a SQLite PRIMARY KEY collision —
-// here, a run id that already belongs to a Run.
 func isPrimaryKeyViolation(err error) bool {
 	se, ok := errors.AsType[*sqlite3.Error](err)
 	return ok && se.Code() == sqlite3lib.SQLITE_CONSTRAINT_PRIMARYKEY

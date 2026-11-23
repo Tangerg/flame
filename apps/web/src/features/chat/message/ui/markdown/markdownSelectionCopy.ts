@@ -22,7 +22,7 @@ const BLOCK_ELEMENTS = new Set([
   "PRE",
 ]);
 
-export interface MarkdownClipboardPayload {
+interface MarkdownClipboardPayload {
   plainText: string;
   htmlText: string;
 }
@@ -63,7 +63,7 @@ function sanitizeFragment(fragment: DocumentFragment): DocumentFragment {
   return fragment;
 }
 
-export function markdownSelectionPayload(
+function markdownSelectionPayload(
   root: HTMLElement,
   selection: Selection | null = root.ownerDocument.getSelection(),
 ): MarkdownClipboardPayload | null {

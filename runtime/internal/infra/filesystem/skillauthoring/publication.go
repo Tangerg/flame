@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
@@ -27,11 +28,11 @@ func (s *Store) Publish(ctx context.Context, proposal skills.Proposal, previous,
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	root, close, err := s.openLeasedRoot(ctx, "publish approved bytes")
+	root, release, err := s.openLeasedRoot(ctx, "publish approved bytes")
 	if err != nil {
 		return nil, err
 	}
-	defer close()
+	defer release()
 	p := publication{store: s, root: root, name: proposal.Name, content: content, previous: previous}
 	return p.commit(ctx, journal, permit)
 }
@@ -47,7 +48,7 @@ func (p publication) commit(ctx context.Context, journal, permit string) ([]stri
 	if !filepath.IsAbs(journal) {
 		return nil, errors.New("skill publication: private journal is required")
 	}
-	if err := os.MkdirAll(journal, 0700); err != nil {
+	if err := os.MkdirAll(journal, filesystem.PrivateDirectoryMode); err != nil {
 		return nil, err
 	}
 	records, err := os.OpenRoot(journal)
@@ -75,9 +76,6 @@ func (p publication) commit(ctx context.Context, journal, permit string) ([]stri
 	return nil, receipt.settle(p.reconcile())
 }
 
-// A workspace can remove or forge its own files. Recovery only settles a
-// pending host intent from the exact approved bytes. A later user edit leaves
-// the outcome uncertain and never authorizes another write.
 func (p publication) reconcile() error {
 	active, exists, err := readSkill(p.root, p.name)
 	if err != nil {

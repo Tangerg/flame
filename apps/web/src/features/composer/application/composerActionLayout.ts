@@ -1,4 +1,4 @@
-export interface ComposerActionLayout {
+interface ComposerActionLayout {
   submit: "send" | "steer" | null;
   stop: "emphasized" | "quiet" | null;
 }

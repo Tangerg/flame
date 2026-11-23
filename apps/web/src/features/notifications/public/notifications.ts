@@ -17,7 +17,7 @@ export type NotifySource =
   | "setup"
   | "skills";
 
-export interface NotificationPresentation {
+interface NotificationPresentation {
   level: NotificationLevel | "success";
   message: string;
   description?: string;

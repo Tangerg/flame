@@ -14,8 +14,6 @@ import (
 
 const ToolCommandPrefix = "tool:"
 
-// RegisterTools retains Scope's frozen Tool contracts and failure semantics.
-// MCP metadata carries Runtime's logical identity; model arguments never own it.
 func RegisterTools(server *sdk.Server, tools ...tool.Tool) error {
 	if server == nil {
 		return errors.New("plugin: server is required")
@@ -31,28 +29,11 @@ func RegisterTools(server *sdk.Server, tools ...tool.Tool) error {
 	server.AddReceivingMiddleware(func(next sdk.MethodHandler) sdk.MethodHandler {
 		return func(ctx context.Context, method string, request sdk.Request) (sdk.Result, error) {
 			if call, ok := request.(*sdk.CallToolRequest); ok && call.Params != nil {
-				arguments := call.Params.Arguments
-				if len(arguments) == 0 {
-					arguments = []byte("{}")
-				}
-				input, err := framevalue.ParseJSON(arguments)
+				admitted, err := admitToolCall(ctx, call.Params)
 				if err != nil {
 					return nil, err
 				}
-				ctx, err = pluginmcp.AdmitRequest(ctx, input, call.Params.Meta)
-				if err != nil {
-					return nil, err
-				}
-				if _, attached := call.Params.Meta[ToolContextMetadataKey]; attached {
-					captured, err := toolContextFromMetadata(call.Params.Meta)
-					if err != nil {
-						return nil, err
-					}
-					ctx, err = WithToolContext(ctx, captured)
-					if err != nil {
-						return nil, err
-					}
-				}
+				ctx = admitted
 			}
 			return next(ctx, method, request)
 		}
@@ -60,13 +41,34 @@ func RegisterTools(server *sdk.Server, tools ...tool.Tool) error {
 	return scopemcp.Register(server, bindings...)
 }
 
+func admitToolCall(ctx context.Context, params *sdk.CallToolParamsRaw) (context.Context, error) {
+	arguments := params.Arguments
+	if len(arguments) == 0 {
+		arguments = []byte("{}")
+	}
+	input, err := framevalue.ParseJSON(arguments)
+	if err != nil {
+		return nil, err
+	}
+	ctx, err = pluginmcp.AdmitRequest(ctx, input, params.Meta)
+	if err != nil {
+		return nil, err
+	}
+	if _, attached := params.Meta[ToolContextMetadataKey]; !attached {
+		return ctx, nil
+	}
+	captured, err := toolContextFromMetadata(params.Meta)
+	if err != nil {
+		return nil, err
+	}
+	return WithToolContext(ctx, captured)
+}
+
 func InvocationID(ctx context.Context) (string, error) {
 	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	return invocation.ID, err
 }
 
-// ToolCommandID separates model Tool receipt identities from human command keys
-// while preserving the exact logical identity throughout transport retries.
 func ToolCommandID(ctx context.Context) (string, error) {
 	id, err := InvocationID(ctx)
 	if err != nil {

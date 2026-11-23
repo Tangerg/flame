@@ -9,31 +9,24 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 )
 
-// ErrIdentityConflict reports an attempt to reuse a durable Run identity for a
-// different Session.
 var ErrIdentityConflict = errors.New("run: identity conflict")
 
-// MessageMark is the conversation length where a whole Run tree ended. Only a
-// terminal root records one; a child, and a Run whose final count is not
-// known yet, carries none. The zero value is that absence, so it cannot be
-// confused with a real count, including zero.
+// The zero value is absence, so it cannot be confused with a real count, including
+// zero.
 type MessageMark struct {
 	count int
 	known bool
 }
 
-// UnknownMessageMark() names the absent watermark.
 func UnknownMessageMark() MessageMark { return MessageMark{} }
 
-// MessageMarkAt records a known conversation length.
 func MessageMarkAt(count int) MessageMark { return MessageMark{count: count, known: true} }
 
-// Count returns the recorded conversation length, if one is known.
 func (m MessageMark) Count() (int, bool) { return m.count, m.known }
 
 func (m MessageMark) String() string {
@@ -43,14 +36,11 @@ func (m MessageMark) String() string {
 	return strconv.Itoa(m.count)
 }
 
-// Run is one logical unit of agent work from admission through any waiting and
-// resume boundaries to exactly one terminal outcome. Its fields are private so
-// every lifecycle and accounting change crosses a validated domain behavior.
 type Run struct {
 	sessionID         identity.SessionID
 	id                identity.RunID
 	lineage           Lineage
-	modelSelection    modelchoice.Selection
+	modelSelection    flamemodel.Selection
 	goalIncarnationID goalref.IncarnationID
 	state             State
 	activeSegmentID   identity.SegmentID
@@ -65,31 +55,25 @@ type Run struct {
 	messageMark       MessageMark
 }
 
-// Snapshot is the complete immutable value needed to restore or persist a Run.
-// Restore validates every field; it is not a second mutation surface.
 type Snapshot struct {
 	SessionID         identity.SessionID
 	ID                identity.RunID
 	Lineage           Lineage
-	ModelSelection    modelchoice.Selection
-	GoalIncarnationID string
+	ModelSelection    flamemodel.Selection
+	GoalIncarnationID goalref.IncarnationID
 	State             State
 	ActiveSegmentID   identity.SegmentID
-	// Ending is present exactly when State is Finished.
 	Ending            Ending
 	UnresolvedEffects []UnresolvedEffect
 	Metrics           Metrics
-	// ContextTokens is the latest completed model request's prompt footprint.
-	// Zero means no authoritative footprint has been observed yet.
-	ContextTokens int64
-	Capabilities  Capabilities
-	CreatedAt     time.Time
-	FinishedAt    time.Time
-	UpdatedAt     time.Time
-	MessageMark   MessageMark
+	ContextTokens     int64
+	Capabilities      Capabilities
+	CreatedAt         time.Time
+	FinishedAt        time.Time
+	UpdatedAt         time.Time
+	MessageMark       MessageMark
 }
 
-// Admit creates the authoritative aggregate for a fresh root or child Run.
 func Admit(draft Draft) (Run, error) {
 	if err := draft.Validate(); err != nil {
 		return Run{}, err
@@ -103,15 +87,10 @@ func Admit(draft Draft) (Run, error) {
 	})
 }
 
-// Restore rebuilds a Run from durable values and rejects an invalid snapshot.
 func Restore(snapshot Snapshot) (Run, error) {
-	goalIncarnationID, _, err := goalref.ParseOptionalIncarnation(snapshot.GoalIncarnationID)
-	if err != nil {
-		return Run{}, fmt.Errorf("run: %w", err)
-	}
 	run := Run{
 		sessionID: snapshot.SessionID, id: snapshot.ID, lineage: snapshot.Lineage,
-		modelSelection: snapshot.ModelSelection, goalIncarnationID: goalIncarnationID,
+		modelSelection: snapshot.ModelSelection, goalIncarnationID: snapshot.GoalIncarnationID,
 		state: snapshot.State, activeSegmentID: snapshot.ActiveSegmentID,
 		ending: snapshot.Ending, unresolvedEffects: slices.Clone(snapshot.UnresolvedEffects), metrics: snapshot.Metrics,
 		contextTokens: snapshot.ContextTokens,
@@ -125,11 +104,10 @@ func Restore(snapshot Snapshot) (Run, error) {
 	return run, nil
 }
 
-// Snapshot returns a complete ownership-isolated value.
 func (r Run) Snapshot() Snapshot {
 	return Snapshot{
 		SessionID: r.sessionID, ID: r.id, Lineage: r.lineage,
-		ModelSelection: r.modelSelection, GoalIncarnationID: r.goalIncarnationID.String(),
+		ModelSelection: r.modelSelection, GoalIncarnationID: r.goalIncarnationID,
 		State: r.state, ActiveSegmentID: r.activeSegmentID,
 		Ending: r.ending, UnresolvedEffects: slices.Clone(r.unresolvedEffects), Metrics: r.metrics,
 		ContextTokens: r.contextTokens,
@@ -139,10 +117,6 @@ func (r Run) Snapshot() Snapshot {
 	}
 }
 
-// Fork derives a terminal historical Run for a child Session under fresh
-// identities. It preserves the completed work facts, replaces root/child
-// lineage with the caller-resolved equivalent, and clears Goal attribution
-// because a Session branch does not inherit the parent's Goal incarnation.
 func (r Run) Fork(sessionID identity.SessionID, id identity.RunID, lineage Lineage) (Run, error) {
 	if !r.state.IsTerminal() {
 		return Run{}, errors.New("run: only a terminal Run can be forked")
@@ -154,13 +128,10 @@ func (r Run) Fork(sessionID identity.SessionID, id identity.RunID, lineage Linea
 	snapshot.SessionID = sessionID
 	snapshot.ID = id
 	snapshot.Lineage = lineage
-	snapshot.GoalIncarnationID = ""
+	snapshot.GoalIncarnationID = goalref.IncarnationID{}
 	return Restore(snapshot)
 }
 
-// Equal reports whether two values contain the same authoritative Run facts.
-// It is useful at persistence and hand-off boundaries that must prove a
-// proposed transition was derived from the currently committed aggregate.
 func (r Run) Equal(other Run) bool {
 	return r.sameIdentity(other) && r.sameProgress(other) &&
 		r.createdAt.Equal(other.createdAt) && r.finishedAt.Equal(other.finishedAt) && r.updatedAt.Equal(other.updatedAt)
@@ -240,14 +211,12 @@ func (r Run) validateAccrual() error {
 	return r.capabilities.Validate()
 }
 
-// validateRootOwnership keeps facts a tree's root owns off its children: the
-// Goal incarnation, the capabilities and the conversation watermark.
 func (r Run) validateRootOwnership() error {
 	if r.lineage.IsRoot() {
 		return nil
 	}
 	switch {
-	case r.goalIncarnationID.String() != "":
+	case !r.goalIncarnationID.IsZero():
 		return errors.New("run: child carries a root Goal incarnation")
 	case !r.capabilities.IsEmpty():
 		return errors.New("run: child carries capabilities its root owns")
@@ -286,10 +255,6 @@ func (r Run) validateTerminal() error {
 	return nil
 }
 
-// AdvanceProgress returns a Run with one model-response boundary committed.
-// Metrics are cumulative and must remain monotonic. contextTokens is a latest
-// point-in-time prompt footprint and may decrease after compaction; zero means
-// the provider supplied no authoritative footprint, so the prior value remains.
 func (r Run) AdvanceProgress(metrics Metrics, contextTokens int64, updatedAt time.Time) (Run, error) {
 	if !r.state.AdvanceProgress() {
 		return Run{}, fmt.Errorf("run: cannot advance progress from state %q", r.state)
@@ -311,7 +276,6 @@ func (r Run) AdvanceProgress(metrics Metrics, contextTokens int64, updatedAt tim
 	return r, nil
 }
 
-// Suspend parks a Running Run and clears its active Segment.
 func (r Run) Suspend(updatedAt time.Time) (Run, error) {
 	next, ok := r.state.Suspend()
 	if !ok {
@@ -324,7 +288,6 @@ func (r Run) Suspend(updatedAt time.Time) (Run, error) {
 	return r, nil
 }
 
-// Resume opens a fresh Segment for a Waiting Run.
 func (r Run) Resume(segmentID identity.SegmentID, resumedAt time.Time) (Run, error) {
 	next, ok := r.state.Resume()
 	if !ok {
@@ -340,7 +303,6 @@ func (r Run) Resume(segmentID identity.SegmentID, resumedAt time.Time) (Run, err
 	return r, nil
 }
 
-// Termination is the complete fact set required to finish a Run.
 type Termination struct {
 	Ending            Ending
 	UnresolvedEffects []UnresolvedEffect
@@ -348,7 +310,6 @@ type Termination struct {
 	MessageMark       MessageMark
 }
 
-// Terminate finishes a Running Run with one coherent terminal fact set.
 func (r Run) Terminate(termination Termination) (Run, error) {
 	if err := ValidateEnding(termination.Ending); err != nil {
 		return Run{}, err
@@ -360,7 +321,6 @@ func (r Run) Terminate(termination Termination) (Run, error) {
 	return r.finish(next, termination)
 }
 
-// CancelWaiting finishes a Waiting Run as canceled.
 func (r Run) CancelWaiting(detail string, finishedAt time.Time, messageMark MessageMark) (Run, error) {
 	if r.state != Waiting {
 		return Run{}, fmt.Errorf("run: cannot cancel %s Run as waiting", r.state)
@@ -368,7 +328,6 @@ func (r Run) CancelWaiting(detail string, finishedAt time.Time, messageMark Mess
 	return r.finish(Finished, Termination{Ending: Canceled{Detail: detail}, FinishedAt: finishedAt, MessageMark: messageMark})
 }
 
-// RecoverLost finishes a non-terminal Run whose executor state cannot be recovered.
 func (r Run) RecoverLost(loss Loss, finishedAt time.Time, messageMark MessageMark) (Run, error) {
 	next, ok := r.state.RecoverLost()
 	if !ok {
@@ -392,10 +351,6 @@ func (r Run) finish(state State, termination Termination) (Run, error) {
 	return r, nil
 }
 
-// RebaseConversation carries r across a conversation compaction. Only a
-// terminal root owns a watermark into the Session conversation, so every other
-// Run is unaffected; a terminal root without one cannot be placed in the
-// rewritten history.
 func (r Run) RebaseConversation(compaction conversation.Compaction) (Run, error) {
 	if !r.state.IsTerminal() || r.lineage.IsChild() {
 		return r, nil
@@ -411,8 +366,6 @@ func (r Run) RebaseConversation(compaction conversation.Compaction) (Run, error)
 	return r.WithMessageMark(mark)
 }
 
-// WithMessageMark replaces a terminal Run's conversation coordinate without
-// changing any other fact.
 func (r Run) WithMessageMark(messageMark int) (Run, error) {
 	if r.lineage.IsChild() {
 		return Run{}, errors.New("run: a child Run has no conversation watermark of its own")
@@ -444,19 +397,18 @@ func (r Run) validateTransitionTime(at time.Time) error {
 	return nil
 }
 
-func (r Run) ID() identity.RunID                    { return r.id }
-func (r Run) SessionID() identity.SessionID         { return r.sessionID }
-func (r Run) Lineage() Lineage                      { return r.lineage }
-func (r Run) ModelSelection() modelchoice.Selection { return r.modelSelection }
-func (r Run) GoalIncarnationID() string             { return r.goalIncarnationID.String() }
-func (r Run) State() State                          { return r.state }
-func (r Run) ActiveSegmentID() identity.SegmentID   { return r.activeSegmentID }
+func (r Run) ID() identity.RunID                       { return r.id }
+func (r Run) SessionID() identity.SessionID            { return r.sessionID }
+func (r Run) Lineage() Lineage                         { return r.lineage }
+func (r Run) ModelSelection() flamemodel.Selection     { return r.modelSelection }
+func (r Run) GoalIncarnationID() goalref.IncarnationID { return r.goalIncarnationID }
+func (r Run) State() State                             { return r.state }
+func (r Run) ActiveSegmentID() identity.SegmentID      { return r.activeSegmentID }
 
-// Executes reports whether r is Running segmentID; only a Running Run has an
-// active Segment.
 func (r Run) Executes(segmentID identity.SegmentID) bool {
 	return !segmentID.IsZero() && r.activeSegmentID == segmentID
 }
+
 func (r Run) Outcome() (Outcome, bool) {
 	if r.ending == nil {
 		return "", false
@@ -464,28 +416,23 @@ func (r Run) Outcome() (Outcome, bool) {
 	return r.ending.Outcome(), true
 }
 
-// Ending returns how a finished Run ended.
 func (r Run) Ending() (Ending, bool) { return r.ending, r.ending != nil }
 
-// Detail returns a canceled Run's stated reason.
 func (r Run) Detail() string {
 	canceled, _ := r.ending.(Canceled)
 	return canceled.Detail
 }
 
-// Canceled reports whether the Run finished because it was canceled.
 func (r Run) Canceled() bool {
 	_, canceled := r.ending.(Canceled)
 	return canceled
 }
 
-// Failure returns a failed Run's classified failure.
 func (r Run) Failure() (Failure, bool) {
 	failed, ok := r.ending.(Failed)
 	return failed.Failure, ok
 }
 
-// Loss returns why a lost Run's outcome cannot be established.
 func (r Run) Loss() (Loss, bool) {
 	lost, ok := r.ending.(Lost)
 	return lost.Loss, ok
@@ -494,8 +441,6 @@ func (r Run) Loss() (Loss, bool) {
 func (r Run) Metrics() Metrics     { return r.metrics }
 func (r Run) ContextTokens() int64 { return r.contextTokens }
 
-// Capabilities is a root Run's frozen optional behavior. A child carries none:
-// it follows its root's.
 func (r Run) Capabilities() Capabilities { return r.capabilities.Clone() }
 func (r Run) CreatedAt() time.Time       { return r.createdAt }
 func (r Run) FinishedAt() time.Time      { return r.finishedAt }
@@ -504,8 +449,6 @@ func (r Run) MessageMark() MessageMark   { return r.messageMark }
 
 func (r Run) UnresolvedEffects() []UnresolvedEffect { return slices.Clone(r.unresolvedEffects) }
 
-// CheckResumeCapabilities requires the caller to handle every interruption the
-// already-opened tree can still emit.
 func (r Run) CheckResumeCapabilities(caller Capabilities) error {
 	if gap := r.capabilities.MissingFrom(caller); !gap.IsEmpty() {
 		return &InsufficientCapabilitiesError{Missing: gap}

@@ -9,9 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-// RoleStore persists one model role as a single row. A present zero role
-// records an explicit choice of the Runtime default; absence permits
-// first-run configuration seeding.
 type RoleStore struct {
 	db    *database
 	table string

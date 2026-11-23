@@ -6,7 +6,7 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	published "github.com/Tangerg/flame/plugins/filewatch/contracts"
-	filewatch "github.com/Tangerg/flame/plugins/filewatch/internal/domain"
+	"github.com/Tangerg/flame/plugins/filewatch/internal/filewatch"
 	"github.com/Tangerg/flame/plugins/filewatch/internal/wire"
 )
 

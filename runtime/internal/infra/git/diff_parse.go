@@ -8,12 +8,6 @@ import (
 	"strings"
 )
 
-// SummarizePatch parses a git-compatible unified diff into per-file summaries
-// (path, status, previous path, and added/removed line counts) without
-// retaining rows or applying a materialization budget. It owns the one patch
-// grammar every client reads from, so a tool projection can report what a
-// model-authored patch proposes without each consumer re-implementing the
-// parser. The input is a bounded tool-call argument, so no row budget applies.
 func SummarizePatch(patch []byte) ([]DiffFile, error) {
 	parsed, err := parseUnifiedDiff(patch, math.MaxInt, math.MaxInt, false)
 	return parsed.files, err
@@ -25,8 +19,6 @@ type parsedDiff struct {
 	truncated bool
 }
 
-// parseUnifiedDiff selects whole files from one bounded capture. The same grammar
-// owns metadata and counts; only the rows projection materializes source strings.
 func parseUnifiedDiff(patch []byte, maxFiles, maxRows int, retainRows bool) (parsedDiff, error) {
 	if maxFiles <= 0 || maxRows <= 0 {
 		return parsedDiff{}, fmt.Errorf("%w: diff projection requires positive limits", ErrResultTooLarge)
@@ -223,6 +215,7 @@ func (parser *unifiedDiffParser) appendRow(line []byte) (bool, error) {
 		parser.current.Added++
 	case RowDeleted:
 		parser.current.Removed++
+	case RowHunk, RowContext:
 	}
 	if left {
 		row.LeftLine = parser.left.advance()
@@ -234,8 +227,6 @@ func (parser *unifiedDiffParser) appendRow(line []byte) (bool, error) {
 	return false, nil
 }
 
-// codeRowSides reports which hunk sides a code row advances; an unknown marker
-// advances neither.
 func codeRowSides(marker byte) (rowType RowType, left, right bool) {
 	switch marker {
 	case addedRowMarker:
@@ -256,7 +247,6 @@ func (parser *unifiedDiffParser) recordRow(row Row) {
 		parser.lastRow = &parser.current.Rows[len(parser.current.Rows)-1]
 		return
 	}
-	// Summary and visual reads need only the last row to validate an EOF marker.
 	parser.scratch = row
 	parser.lastRow = &parser.scratch
 }
@@ -325,7 +315,6 @@ type hunkRange struct {
 	remaining int
 }
 
-// advance consumes one line of the range and returns its number.
 func (r *hunkRange) advance() int {
 	line := r.line
 	r.line++

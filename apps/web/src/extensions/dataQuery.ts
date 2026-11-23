@@ -130,7 +130,7 @@ export function createDataQuery<T>(key: string): () => UseQueryResult<T> {
     });
 }
 
-export interface ParameterizedQueryOptions<P, T> {
+interface ParameterizedQueryOptions<P, T> {
   refetchInterval?: (data: T | undefined) => number | false;
   // Keep the prior value across a key change the predicate deems continuous (a
   // widened window of the same file), so the view holds its content and scroll
@@ -138,7 +138,7 @@ export interface ParameterizedQueryOptions<P, T> {
   keepWhenContinuous?: (previous: P, next: P) => boolean;
 }
 
-export function parameterizedQuery<P, T>(key: string, params: P | undefined) {
+function parameterizedQuery<P, T>(key: string, params: P | undefined) {
   return queryOptions({
     queryKey: [key, params],
     queryFn: ({ signal }) => dataQueryOwner.load<T, P>(key, params, signal),

@@ -13,11 +13,15 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 )
 
+const (
+	completionBoxChromeColumns = 4
+	completionBoxChromeRows    = 2
+	completionBoxMinWidth      = 32
+	completionBoxInset         = 1
+)
+
 const attachmentCompletionPrefix = "@"
 
-// completionGate remembers a token whose popup was explicitly closed. A key-up
-// event, repaint, rejected candidate, or late async result must not immediately
-// reopen it; editing the token or leaving it explicitly starts a new query.
 type completionGate struct {
 	suppressed *base.Token
 }
@@ -41,9 +45,6 @@ func (c *completionGate) Reset() {
 	c.suppressed = nil
 }
 
-// promptCompletion offers command names and workspace files for the token
-// under the prompt's cursor. gate keeps an explicitly closed offer closed until
-// its token changes.
 type promptCompletion struct {
 	popup    *base.Completion
 	group    *scene.Group
@@ -150,8 +151,6 @@ func (c *promptCompletion) handleCompletion(event input.Event) bool {
 }
 
 func (c *promptCompletion) completeFiles(query base.Token) {
-	// The previous offer carries its query's replacement range and must stop
-	// accepting input before the next asynchronous lookup can publish a result.
 	if !c.popup.Dismiss() {
 		return
 	}
@@ -230,6 +229,6 @@ func (c *promptCompletion) placement(space image.Point) (kit.Box, image.Rectangl
 		footer = "enter run"
 	}
 	box := kit.Box{Theme: c.theme, Glyphs: c.glyphs, Padding: layout.Symmetric(0, 1), Title: title, Footer: footer, FooterAlign: layout.End}
-	area := (layout.Placement{Anchor: layout.BottomLeft, Width: max(c.popup.Width()+4, 32), Height: rows + 2}).In(image.Pt(width-2, availableHeight))
-	return box, area.Add(image.Pt(1, 0))
+	area := (layout.Placement{Anchor: layout.BottomLeft, Width: max(c.popup.Width()+completionBoxChromeColumns, completionBoxMinWidth), Height: rows + completionBoxChromeRows}).In(image.Pt(width-2*completionBoxInset, availableHeight))
+	return box, area.Add(image.Pt(completionBoxInset, 0))
 }

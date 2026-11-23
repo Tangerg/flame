@@ -6,8 +6,6 @@ type sequence struct {
 	value uint64
 }
 
-// SequenceDisposition describes how one validated frame relates to the
-// monotonic watermark owned by a subscription consumer.
 type SequenceDisposition uint8
 
 const (
@@ -16,9 +14,6 @@ const (
 	SequenceStale
 )
 
-// SequenceTracker owns the optional monotonic watermark for one subscription.
-// Stale/duplicate frames never move it backwards; gaps advance it only to the
-// newest observed frame. A new subscription receives a new tracker.
 type SequenceTracker struct {
 	last *sequence
 }

@@ -14,14 +14,14 @@ import {
   type QuestionAnswers,
   type QuestionDraft,
 } from "@/features/agent/public/messagePresentation";
-export interface QuestionCardSettledView {
+interface QuestionCardSettledView {
   settled: boolean;
   answers?: QuestionAnswers;
 }
 
 type QuestionBlock = Extract<ContentBlock, { kind: "question" }>;
 
-export interface PendingQuestionRequest {
+interface PendingQuestionRequest {
   block: QuestionBlock;
   resumeRunId: string;
   itemId: string;
@@ -64,7 +64,7 @@ export function questionCardSettledView({
   return { settled: true, answers };
 }
 
-export function canSubmitQuestionCard({
+function canSubmitQuestionCard({
   resumeRunId,
   itemId,
   pending,

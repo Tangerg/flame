@@ -19,11 +19,12 @@ func run(ctx context.Context, data string) (err error) {
 	}
 	defer func() { err = errors.Join(err, db.Close()) }()
 	server := sdk.NewServer(&sdk.Implementation{Name: "flame.schedules", Version: "3.0.0"}, nil)
-	backend, err := registerServer(server, db, sqlite.NewScheduleStore(db), filesystem.DirectoryResolver{}, connectRunHost)
+	backend, err := registerServer(server, db, sqlite.NewScheduleStore(db), filesystem.DirectoryResolver{})
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, backend.Close()) }()
 	return server.Run(ctx, &sdk.StdioTransport{})
 }
+
 func main() { backend.Main("schedules", run) }

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
 
@@ -23,12 +24,13 @@ type publicationReceipt struct {
 }
 
 func (r publicationReceipt) mark(marker string) error {
-	err := r.root.Mkdir(filepath.Join(r.permit, marker), 0700)
+	err := r.root.Mkdir(filepath.Join(r.permit, marker), filesystem.PrivateDirectoryMode)
 	if errors.Is(err, fs.ErrExist) {
 		return nil
 	}
 	return err
 }
+
 func (r publicationReceipt) has(marker string) (bool, error) {
 	_, err := r.root.Stat(filepath.Join(r.permit, marker))
 	if errors.Is(err, fs.ErrNotExist) {
@@ -37,8 +39,6 @@ func (r publicationReceipt) has(marker string) (bool, error) {
 	return err == nil, err
 }
 
-// The journal lives in host-private runtime storage. An atomic directory
-// installation binds the permit to the original path, preimage and bytes.
 func (r publicationReceipt) claim(p publication) (bool, error) {
 	hash := sha256.New()
 	for _, part := range []string{p.store.root, p.name, p.previous} {
@@ -56,11 +56,11 @@ func (r publicationReceipt) claim(p publication) (bool, error) {
 		return false, err
 	}
 	tmp := ".claim-" + rand.Text()
-	if err := r.root.Mkdir(tmp, 0700); err != nil {
+	if err := r.root.Mkdir(tmp, filesystem.PrivateDirectoryMode); err != nil {
 		return false, err
 	}
 	defer r.root.RemoveAll(tmp)
-	if err := r.root.Mkdir(filepath.Join(tmp, fingerprint), 0700); err != nil {
+	if err := r.root.Mkdir(filepath.Join(tmp, fingerprint), filesystem.PrivateDirectoryMode); err != nil {
 		return false, err
 	}
 	if err := r.root.Rename(tmp, r.permit); err != nil {

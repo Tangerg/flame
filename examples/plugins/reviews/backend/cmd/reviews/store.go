@@ -12,6 +12,7 @@ import (
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 
 	"github.com/Tangerg/frame/sqlite"
@@ -19,8 +20,6 @@ import (
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
-// store owns this backend's business transitions and immutable invocation
-// receipts. The review and its receipt commit together in the private database.
 type store struct {
 	db          sqlite.Database
 	inputSchema jsonschema.Schema
@@ -43,7 +42,7 @@ func openStore(ctx context.Context, directory string) (_ *store, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("reviews: input schema: %w", err)
 	}
-	if err := os.MkdirAll(directory, 0700); err != nil {
+	if err := os.MkdirAll(directory, filesystem.PrivateDirectoryMode); err != nil {
 		return nil, err
 	}
 	statements := []string{fmt.Sprintf(`CREATE TABLE IF NOT EXISTS reviews (
@@ -79,8 +78,6 @@ func (s *store) list(ctx context.Context) ([]reviews.Snapshot, error) {
 	return []reviews.Snapshot{review.snapshot()}, nil
 }
 
-// receipt reads the original owner result without entering Update. Method and
-// input binding remain required even after the review has advanced again.
 func (s *store) receipt(ctx context.Context, request pluginmcp.ReceiptRequest, updateMethod string) (pluginmcp.Receipt, error) {
 	if err := validateInvocationID(string(request.ID)); err != nil {
 		return pluginmcp.Receipt{}, err
@@ -187,7 +184,7 @@ func (s *store) update(ctx context.Context, invocationID string, admitted framev
 }
 
 func decideUpdate(ctx context.Context, reader sqlite.Reader, input reviews.Update) (reviews.UpdateResult, error) {
-	if input.ValidateChange() != nil {
+	if !input.ValidChange() {
 		return reviews.UpdateResult{Type: reviews.Invalid}, nil
 	}
 	var snapshot reviews.Snapshot

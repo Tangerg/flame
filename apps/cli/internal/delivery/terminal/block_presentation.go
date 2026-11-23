@@ -8,7 +8,6 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
-// blockPresentation carries the terminal context for built-in transcript rendering.
 type blockPresentation struct {
 	Theme   kit.Theme
 	Glyphs  kit.Glyphs

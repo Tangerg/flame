@@ -87,8 +87,6 @@ func TestProtocolPreservesToolPreparationFailuresAcrossRestart(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(home, ".flame"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	// The hook returns a valid decision containing an invalid argument rewrite.
-	// Runtime rejects it before invoking the shell, after Scope admits the call.
 	hooks := `{"hooks":[{"event":"PreToolUse","matcher":"shell","command":"printf '%s' '{\"decision\":\"allow\",\"rewriteArguments\":\"[]\"}'"}]}`
 	if err := os.WriteFile(filepath.Join(home, ".flame", "hooks.json"), []byte(hooks), 0o600); err != nil {
 		t.Fatal(err)

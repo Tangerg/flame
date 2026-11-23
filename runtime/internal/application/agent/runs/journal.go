@@ -10,53 +10,27 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-// liveHeadroom bounds queued live-only events per subscriber. Replayable events
-// are never subject to this budget — they are bounded by [Retention]
-// instead, and a subscriber that exceeds THAT is disconnected rather than
-// quietly served an incomplete stream.
 const liveHeadroom = 256
 
-// Retention is the replay window one live segment keeps for reconnecting
-// subscribers. Replay is not a second persistent event store: history belongs to
-// the transcript reads, and this window only covers the gap a reconnect opens.
-//
-// Both budgets are enforced, and both are needed. The count bounds how far back
-// a cursor can reach; the byte budget bounds what that costs, because a single
-// segment can carry a handful of events that each hold a multi-megabyte tool
-// result or image. Whichever is reached first evicts from the oldest event
-// forward.
-//
-// The values are discoverable so a caller can choose replay or a cold read
-// knowingly. Tuning their size does not change cursor ownership or semantics.
 type Retention struct {
 	MaxEvents int
 	MaxBytes  int
 }
 
-// DefaultRetention returns the window this runtime enforces and advertises.
-func DefaultRetention() Retention {
-	return Retention{MaxEvents: 2048, MaxBytes: 16 << 20}
-}
-
-// Replay refusals. They are two rather than one because the client's next move
-// differs: an invalid cursor is a cursor that never addressed this stream, so
-// carrying it forward would keep failing, while an unavailable one addressed a
-// stream this process can no longer produce, so the remedy is to rebuild from
-// the persisted read models.
-var (
-	// ErrReplayCursorInvalid: the cursor cannot be read, names another stream, or
-	// names a position this stream never reached. All three mean the client is
-	// holding something it should not act on.
-	ErrReplayCursorInvalid = errors.New("runs: replay cursor does not address this stream")
-	// ErrReplayUnavailable: the cursor was legitimate, and what it pointed at is
-	// gone — a previous process's stream, or a position the window has evicted.
-	ErrReplayUnavailable = errors.New("runs: replay window no longer reaches this cursor")
+const (
+	defaultRetainedEvents = 2048
+	defaultRetainedBytes  = 16 << 20
 )
 
-// streamScope is what one journal's positions are minted for: the process that
-// owns the buffer, and the run and segment whose stream it is. A cursor carries
-// the same three, so one from another process or another segment is refused
-// instead of resolving against a stream that never issued it.
+func DefaultRetention() Retention {
+	return Retention{MaxEvents: defaultRetainedEvents, MaxBytes: defaultRetainedBytes}
+}
+
+var (
+	ErrReplayCursorInvalid = errors.New("runs: replay cursor does not address this stream")
+	ErrReplayUnavailable   = errors.New("runs: replay window no longer reaches this cursor")
+)
+
 type streamScope struct {
 	Epoch     replayEpoch
 	RunID     identity.RunID
@@ -78,55 +52,26 @@ func newStreamScope(epoch replayEpoch, runID identity.RunID, segmentID identity.
 	return streamScope{Epoch: epoch, RunID: parsedRunID, SegmentID: parsedSegmentID}, nil
 }
 
-// subscription is one attached consumer of a journal.
 type subscription struct {
-	Events iter.Seq[Event]
-	// Cancel detaches idempotently. Stopping an active range detaches too;
-	// Cancel remains necessary to interrupt a range blocked waiting for its next
-	// event, so callers wire it to the consumer's lifetime as well.
-	Cancel func()
-	// HeadCursor is the last position already published when this subscription
-	// attached, or "" when the stream had published nothing yet. A client stores
-	// it verbatim and hands it back on reconnect; it is not a watermark and
-	// nothing may order or parse it.
+	Events     iter.Seq[Event]
+	Cancel     func()
 	HeadCursor string
 }
 
-// journal is one live segment's event stream: the position authority, the replay
-// window, and the fan-out. Each subscriber drains a cond-guarded queue on its own
-// goroutine and Append only enqueues, so a slow consumer cannot stall the run.
-//
-// It is created per segment and released with it, which is what makes the
-// advertised replay scope true: a resumed run gets a new journal, so a cursor
-// from the previous segment is refused by scope rather than silently continued
-// against a different stream.
 type journal struct {
-	mu        sync.Mutex
-	scope     streamScope
-	retention Retention
-	// head is the last sequence assigned. Zero means nothing has been published,
-	// which is why a cursor's sequence starts at 1.
-	head       uint64
-	headCursor string
-	// retained is the replay window: replayable events, oldest first, each
-	// carrying what it was charged.
-	retained      []chargedEvent
-	retainedBytes int
-	// evictedThrough is the highest sequence dropped from the window. A cursor
-	// before it has lost at least one replayable event, which is the difference
-	// between "replay this" and "you must recover from the reads".
+	mu             sync.Mutex
+	scope          streamScope
+	retention      Retention
+	head           uint64
+	headCursor     string
+	retained       []chargedEvent
+	retainedBytes  int
 	evictedThrough uint64
 	subs           map[*journalSubscriber]struct{}
-	// closeEvent is the root segment.finished event. Its durable facts may commit
-	// before terminal maintenance, but clients treat receiving it as permission to
-	// start the next operation, so fan-out waits until close releases admission.
-	closeEvent *chargedEvent
-	closed     bool
+	closeEvent     *chargedEvent
+	closed         bool
 }
 
-// newJournal builds the stream for one segment. scope binds every position it
-// mints; retention bounds both the replay window and any one subscriber's
-// replayable backlog.
 func newJournal(scope streamScope, retention Retention) (*journal, error) {
 	if retention.MaxEvents <= 0 || retention.MaxBytes <= 0 {
 		return nil, errors.New("runs: journal retention budgets must be positive")
@@ -137,12 +82,8 @@ func newJournal(scope streamScope, retention Retention) (*journal, error) {
 	return &journal{scope: scope, retention: retention, subs: map[*journalSubscriber]struct{}{}}, nil
 }
 
-// append assigns ev its position in this stream, retains it if it is
-// replayable, and enqueues it for every live subscriber.
-//
-// The position is assigned HERE, under the same lock as the fan-out, so
-// sequence order, publication order and replay order are one order rather than
-// three that agree by convention.
+// The position is assigned under the fan-out lock so sequence, publication and
+// replay order are one order.
 func (j *journal) append(ev Event) error {
 	charged := chargeJournalEvent(ev)
 	j.mu.Lock()
@@ -153,9 +94,6 @@ func (j *journal) append(ev Event) error {
 	return j.appendLocked(charged)
 }
 
-// deferCloseEvent retains the root terminal signal until close. Exactly one
-// root segment boundary can close a journal; a duplicate is an internal
-// lifecycle violation rather than a second client completion boundary.
 func (j *journal) deferCloseEvent(ev Event) {
 	charged := chargeJournalEvent(ev)
 	j.mu.Lock()
@@ -177,8 +115,6 @@ func chargeJournalEvent(ev Event) chargedEvent {
 	return chargedEvent{event: ev, bytes: size}
 }
 
-// appendLocked assigns the next stream position and fans out one pre-charged
-// event. The caller holds j.mu and has proved the journal is open.
 func (j *journal) appendLocked(charged chargedEvent) error {
 	if j.head == math.MaxUint64 {
 		return errReplaySequenceExhausted
@@ -196,7 +132,6 @@ func (j *journal) appendLocked(charged chargedEvent) error {
 	j.headCursor = nextCursor
 	ev.Sequence = nextSequence
 	if ev.Replayable() {
-		// The journal's position is assigned after payload precharge.
 		charged.bytes += len(nextCursor) - len(ev.Cursor)
 	}
 	ev.Cursor = nextCursor
@@ -217,9 +152,6 @@ func (j *journal) appendLocked(charged chargedEvent) error {
 	return nil
 }
 
-// evictLocked drops the oldest replayable events until the window fits both
-// budgets, recording how far the eviction reached so a cursor behind it can be
-// told the difference between "nothing new" and "you missed something".
 func (j *journal) evictLocked() {
 	for len(j.retained) > 0 &&
 		(len(j.retained) > j.retention.MaxEvents || j.retainedBytes > j.retention.MaxBytes) {
@@ -231,10 +163,6 @@ func (j *journal) evictLocked() {
 	}
 }
 
-// close ends the run's stream. Each subscriber drains its already-enqueued
-// events in order and then its sequence returns. Close does not wait, which lets
-// a stream opened by a fast run return to its caller before that caller starts
-// draining.
 func (j *journal) close() error {
 	j.mu.Lock()
 	if j.closed {
@@ -260,28 +188,14 @@ func (j *journal) close() error {
 	return closeErr
 }
 
-// tail attaches from the current head: the subscriber receives only what is
-// appended after this call, and HeadCursor names the position it starts after.
-//
-// This is what "no cursor" means. Replaying the whole segment instead would hand
-// back a stream whose beginning the client must reconcile against the transcript
-// reads anyway — and doing both is how an event is folded twice. Capturing the
-// head and attaching happen under one lock, so nothing is published in between:
-// a client can read the persisted state afterwards and fold this stream on top
-// without a gap.
+// Capturing the head and attaching happen under one lock so nothing is published
+// in between.
 func (j *journal) tail() subscription {
 	j.mu.Lock()
 	head := j.headCursorLocked()
 	return j.attachLocked(nil, head)
 }
 
-// attach subscribes from the position token names, or from the current head when
-// token is empty.
-//
-// An empty cursor is tail-only. It is the one place that decision is made,
-// because the alternative reading — "no cursor means replay everything" — is a
-// stream whose start the client must reconcile against the transcript reads it
-// is already making, and folding both is how one event is applied twice.
 func (j *journal) attach(token string) (subscription, error) {
 	if token == "" {
 		return j.tail(), nil
@@ -289,22 +203,12 @@ func (j *journal) attach(token string) (subscription, error) {
 	return j.replay(token)
 }
 
-// replay attaches after the position token names, delivering the retained events
-// beyond it before the live tail.
-//
-// It reports [ErrReplayCursorInvalid] when the token cannot be read, was minted
-// for another stream, or names a position past this stream's head, and
-// [ErrReplayUnavailable] when it came from a previous process or has been
-// evicted from the window.
 func (j *journal) replay(token string) (subscription, error) {
 	from, err := decodeReplayCursor(token)
 	if err != nil {
 		return subscription{}, fmt.Errorf("%w: %w", ErrReplayCursorInvalid, err)
 	}
 	j.mu.Lock()
-	// Epoch before scope: a cursor from a previous process cannot be expected to
-	// name a run this process knows, so blaming its scope would report the client's
-	// second problem instead of its first.
 	if from.epoch != j.scope.Epoch {
 		j.mu.Unlock()
 		return subscription{}, fmt.Errorf("%w: cursor was minted by another runtime process", ErrReplayUnavailable)
@@ -331,20 +235,15 @@ func (j *journal) replay(token string) (subscription, error) {
 	return j.attachLocked(backlog, j.headCursorLocked()), nil
 }
 
-// headCursorLocked is the cursor for the last published position, or "" when the
-// stream has published nothing.
 func (j *journal) headCursorLocked() string {
 	return j.headCursor
 }
 
-// attachLocked registers a subscriber primed with backlog and releases the lock.
-// Attaching under the same lock as Append is what makes replay and the first live
-// event one ordered stream.
 func (j *journal) attachLocked(backlog []chargedEvent, head string) subscription {
 	if j.closed {
 		j.mu.Unlock()
 		subscriber := newJournalSubscriber(backlog, j.retention)
-		subscriber.finish() // no live tail: drain the backlog, then end
+		subscriber.finish()
 		return subscription{Events: subscriber.events(), Cancel: func() {}, HeadCursor: head}
 	}
 
@@ -372,31 +271,23 @@ func (j *journal) attachLocked(backlog []chargedEvent, head string) subscription
 	}
 }
 
-// chargedEvent is an event together with what the byte budget charged for it.
-// The window, its eviction and every replaying subscriber read that one number
-// rather than re-deriving it from the payload.
 type chargedEvent struct {
 	event Event
 	bytes int
 }
 
 type journalSubscriber struct {
-	mu        sync.Mutex
-	ready     *sync.Cond
-	retention Retention
-	queue     []chargedEvent
-	head      int
-	// queuedLive counts non-replayable events awaiting publication;
-	// queuedReplayable and queuedBytes count the replay backlog, which cannot be dropped and
-	// therefore ends the subscription instead when it exceeds the window.
+	mu               sync.Mutex
+	ready            *sync.Cond
+	retention        Retention
+	queue            []chargedEvent
+	head             int
 	queuedLive       int
 	queuedReplayable int
 	queuedBytes      int
 	phase            subscriberPhase
 }
 
-// subscriberPhase orders a subscription's end: finishing drains the queue,
-// aborting abandons it and overrides a pending finish.
 type subscriberPhase uint8
 
 const (
@@ -405,10 +296,6 @@ const (
 	subscriberAborted
 )
 
-// newJournalSubscriber primes a subscriber with a replay backlog. The backlog
-// arrives already charged — dequeuing then releases exactly what the window
-// charged at publication, and an attach costs a slice copy rather than a
-// re-serialization of everything the window holds.
 func newJournalSubscriber(backlog []chargedEvent, retention Retention) *journalSubscriber {
 	subscriber := &journalSubscriber{
 		retention: retention,
@@ -422,16 +309,8 @@ func newJournalSubscriber(backlog []chargedEvent, retention Retention) *journalS
 	return subscriber
 }
 
-// enqueue queues one event, or drops it when it is non-replayable and the consumer
-// is behind. size is what the journal charged for it, zero for non-replayable
-// events. It reports whether the journal should retain this subscription:
-// lossy live-only overflow stays attached, while authoritative overflow aborts
-// and retires it.
-//
-// A replayable event is never dropped: a stream missing one is a stream the
-// client would fold into a wrong state without being able to tell. So a consumer
-// that lets the replay backlog reach the retention window is disconnected
-// instead, and reads the abnormal end of stream as "reconnect and recover".
+// A replayable event is never dropped: a stream missing one would fold into a
+// wrong state undetectably, so authoritative overflow disconnects instead.
 func (j *journalSubscriber) enqueue(ev Event, size int) bool {
 	j.mu.Lock()
 	if j.phase != subscriberOpen {
@@ -465,8 +344,6 @@ func (j *journalSubscriber) enqueue(ev Event, size int) bool {
 	return true
 }
 
-// finish marks the stream complete: the subscriber drains its remaining queue in
-// order, then its sequence ends.
 func (j *journalSubscriber) finish() {
 	j.mu.Lock()
 	if j.phase == subscriberOpen {
@@ -476,8 +353,6 @@ func (j *journalSubscriber) finish() {
 	j.mu.Unlock()
 }
 
-// abort ends the subscription immediately, abandoning any queued events, and
-// wakes a consumer blocked waiting for the next event.
 func (j *journalSubscriber) abort() {
 	j.mu.Lock()
 	j.phase = subscriberAborted
@@ -491,9 +366,6 @@ func (j *journalSubscriber) abort() {
 	j.mu.Unlock()
 }
 
-// events yields queued events until the subscription drains to a finish or is
-// aborted. It runs on the consumer's goroutine; next blocks in the cond, so
-// finish or abort must wake a consumer that is waiting between events.
 func (j *journalSubscriber) events() iter.Seq[Event] {
 	return func(yield func(Event) bool) {
 		for {
@@ -521,7 +393,6 @@ func (j *journalSubscriber) next() (Event, bool) {
 	j.queue[j.head] = chargedEvent{}
 	j.head++
 	if j.head == len(j.queue) {
-		// Reuse the routine live-event buffer, but do not retain a replay burst.
 		if cap(j.queue) > liveHeadroom {
 			j.queue = nil
 		} else {

@@ -22,7 +22,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
-	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
 )
@@ -48,7 +47,7 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 	}
 	submit := func(key string, p skills.Proposal) skills.ProposalRef {
 		t.Helper()
-		app := r.host.application.delivery.WorkspaceSkills.(*workspace.Skills)
+		app := r.host.application.delivery.WorkspaceSkills
 		executable, err := builtin.NewProposal(app)
 		if err != nil {
 			t.Fatal(err)
@@ -79,10 +78,15 @@ func TestSkillsComponentUsesCanonicalOwnersAndWithdrawalPreservesCuration(t *tes
 		if !ok {
 			t.Fatal("agent received no pending reference")
 		}
-		var ref skills.ProposalRef
-		if err := json.Unmarshal([]byte(text), &ref, json.MatchCaseInsensitiveNames(true)); err != nil {
+		var pending struct {
+			Name     string       `json:"name"`
+			Revision string       `json:"revision"`
+			Scope    skills.Scope `json:"scope"`
+		}
+		if err := json.Unmarshal([]byte(text), &pending); err != nil {
 			t.Fatal(err)
 		}
+		ref := skills.ProposalRef{Scope: pending.Scope, Name: pending.Name, Revision: pending.Revision}
 		if err := ref.Validate(); err != nil {
 			t.Fatal(err)
 		}

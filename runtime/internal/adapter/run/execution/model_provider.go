@@ -11,6 +11,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 )
 
+const jsonNull = "null"
+
 type modelProviderWire struct {
 	Binding contributionBindingWire `json:"binding"`
 	Profile modelprovider.Profile   `json:"profile"`
@@ -19,7 +21,7 @@ type modelProviderWire struct {
 
 func encodeModelProvider(capture *modeladapter.ProviderCapture) (jsontext.Value, error) {
 	if capture == nil {
-		return jsontext.Value("null"), nil
+		return jsontext.Value(jsonNull), nil
 	}
 	if err := capture.Validate(); err != nil {
 		return nil, err
@@ -31,7 +33,7 @@ func decodeModelProvider(value jsontext.Value) (*modeladapter.ProviderCapture, e
 	if len(value) == 0 {
 		return nil, errors.New("execution: frozen model provider is required")
 	}
-	if bytes.Equal(value, []byte("null")) {
+	if bytes.Equal(value, []byte(jsonNull)) {
 		return nil, nil
 	}
 	var wire modelProviderWire

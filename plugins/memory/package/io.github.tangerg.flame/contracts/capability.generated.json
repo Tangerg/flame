@@ -5,7 +5,7 @@
   "scope": "installation",
   "methods": [
     {
-      "name": "flame.memory/add.v2",
+      "name": "flame.memory/add.v3",
       "kind": "command",
       "target": "installation",
       "description": "Add a human-authored memory item in the requested scope.",
@@ -14,13 +14,13 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkSW5wdXQ": {
             "additionalProperties": false,
             "properties": {
-              "CWD": {
+              "content": {
                 "type": "string"
               },
-              "Content": {
+              "cwd": {
                 "type": "string"
               },
-              "Scope": {
+              "scope": {
                 "allOf": [
                   {
                     "enum": [
@@ -33,9 +33,9 @@
               }
             },
             "required": [
-              "Scope",
-              "CWD",
-              "Content"
+              "scope",
+              "cwd",
+              "content"
             ],
             "type": "object"
           }
@@ -43,13 +43,13 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "CWD": {
+          "content": {
             "type": "string"
           },
-          "Content": {
+          "cwd": {
             "type": "string"
           },
-          "Scope": {
+          "scope": {
             "allOf": [
               {
                 "enum": [
@@ -62,9 +62,9 @@
           }
         },
         "required": [
-          "Scope",
-          "CWD",
-          "Content"
+          "scope",
+          "cwd",
+          "content"
         ],
         "type": "object"
       },
@@ -73,23 +73,7 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
             "type": "string"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkUmVzdWx0": {
-            "additionalProperties": false,
-            "properties": {
-              "Changed": {
-                "type": "boolean"
-              },
-              "Item": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90"
-              }
-            },
-            "required": [
-              "Item",
-              "Changed"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE": {
             "allOf": [
               {
                 "pattern": "^mem_[0-9a-f]{32}$"
@@ -97,47 +81,51 @@
             ],
             "type": "string"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24"
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkUmVzdWx0": {
+            "additionalProperties": false,
+            "properties": {
+              "changed": {
+                "type": "boolean"
+              },
+              "item": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ"
+              }
+            },
+            "required": [
+              "item",
+              "changed"
+            ],
+            "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ": {
             "additionalProperties": false,
             "allOf": [
               {
                 "properties": {
-                  "Content": {
+                  "content": {
                     "maxLength": 4096
                   },
-                  "Revision": {
+                  "revision": {
                     "maximum": 9.007199254740991e+15
                   }
                 }
               }
             ],
             "properties": {
-              "Content": {
+              "content": {
                 "pattern": "\\S",
                 "type": "string"
               },
-              "CreatedAt": {
+              "createdAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
-              "Day": {
+              "day": {
                 "type": "string"
               },
-              "Embedding": {
-                "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy"
-                },
-                "type": "array"
+              "id": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE"
               },
-              "EmbeddingSpace": {
-                "type": "string"
-              },
-              "ID": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE"
-              },
-              "Origin": {
+              "origin": {
                 "allOf": [
                   {
                     "enum": [
@@ -148,13 +136,13 @@
                 ],
                 "type": "string"
               },
-              "Pinned": {
+              "pinned": {
                 "type": "boolean"
               },
-              "Project": {
+              "project": {
                 "type": "string"
               },
-              "Revision": {
+              "revision": {
                 "allOf": [
                   {
                     "maximum": 18446744073709551615,
@@ -164,7 +152,7 @@
                 "minimum": 1,
                 "type": "integer"
               },
-              "Scope": {
+              "scope": {
                 "allOf": [
                   {
                     "enum": [
@@ -175,10 +163,10 @@
                 ],
                 "type": "string"
               },
-              "SessionID": {
+              "sessionId": {
                 "type": "string"
               },
-              "Status": {
+              "status": {
                 "allOf": [
                   {
                     "enum": [
@@ -190,51 +178,46 @@
                 ],
                 "type": "string"
               },
-              "UpdatedAt": {
+              "updatedAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               }
             },
             "required": [
-              "ID",
-              "Revision",
-              "Scope",
-              "Project",
-              "Content",
-              "Origin",
-              "Status",
-              "Pinned",
-              "SessionID",
-              "Day",
-              "CreatedAt",
-              "UpdatedAt",
-              "EmbeddingSpace",
-              "Embedding"
+              "id",
+              "revision",
+              "scope",
+              "project",
+              "content",
+              "origin",
+              "status",
+              "pinned",
+              "sessionId",
+              "day",
+              "createdAt",
+              "updatedAt"
             ],
             "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy": {
-            "type": "number"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "Changed": {
+          "changed": {
             "type": "boolean"
           },
-          "Item": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90"
+          "item": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ"
           }
         },
         "required": [
-          "Item",
-          "Changed"
+          "item",
+          "changed"
         ],
         "type": "object"
       }
     },
     {
-      "name": "flame.memory/delete.v2",
+      "name": "flame.memory/delete.v3",
       "kind": "command",
       "target": "installation",
       "description": "Delete one memory item through its private owner.",
@@ -245,14 +228,14 @@
             "allOf": [
               {
                 "properties": {
-                  "ExpectedRevision": {
+                  "expectedRevision": {
                     "maximum": 9.007199254740991e+15
                   }
                 }
               }
             ],
             "properties": {
-              "ExpectedRevision": {
+              "expectedRevision": {
                 "allOf": [
                   {
                     "maximum": 18446744073709551615,
@@ -262,13 +245,13 @@
                 "minimum": 1,
                 "type": "integer"
               },
-              "ID": {
+              "id": {
                 "type": "string"
               }
             },
             "required": [
-              "ID",
-              "ExpectedRevision"
+              "id",
+              "expectedRevision"
             ],
             "type": "object"
           }
@@ -278,14 +261,14 @@
         "allOf": [
           {
             "properties": {
-              "ExpectedRevision": {
+              "expectedRevision": {
                 "maximum": 9.007199254740991e+15
               }
             }
           }
         ],
         "properties": {
-          "ExpectedRevision": {
+          "expectedRevision": {
             "allOf": [
               {
                 "maximum": 18446744073709551615,
@@ -295,13 +278,13 @@
             "minimum": 1,
             "type": "integer"
           },
-          "ID": {
+          "id": {
             "type": "string"
           }
         },
         "required": [
-          "ID",
-          "ExpectedRevision"
+          "id",
+          "expectedRevision"
         ],
         "type": "object"
       },
@@ -320,7 +303,7 @@
       }
     },
     {
-      "name": "flame.memory/items.v2",
+      "name": "flame.memory/items.v3",
       "kind": "query",
       "target": "installation",
       "description": "Read active memory items that can inform a Run.",
@@ -329,10 +312,10 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbXNJbnB1dA": {
             "additionalProperties": false,
             "properties": {
-              "Project": {
+              "project": {
                 "type": "string"
               },
-              "Scope": {
+              "scope": {
                 "allOf": [
                   {
                     "enum": [
@@ -345,8 +328,8 @@
               }
             },
             "required": [
-              "Scope",
-              "Project"
+              "scope",
+              "project"
             ],
             "type": "object"
           }
@@ -354,10 +337,10 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "Project": {
+          "project": {
             "type": "string"
           },
-          "Scope": {
+          "scope": {
             "allOf": [
               {
                 "enum": [
@@ -370,8 +353,8 @@
           }
         },
         "required": [
-          "Scope",
-          "Project"
+          "scope",
+          "project"
         ],
         "type": "object"
       },
@@ -380,7 +363,7 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
             "type": "string"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE": {
             "allOf": [
               {
                 "pattern": "^mem_[0-9a-f]{32}$"
@@ -388,47 +371,35 @@
             ],
             "type": "string"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ": {
             "additionalProperties": false,
             "allOf": [
               {
                 "properties": {
-                  "Content": {
+                  "content": {
                     "maxLength": 4096
                   },
-                  "Revision": {
+                  "revision": {
                     "maximum": 9.007199254740991e+15
                   }
                 }
               }
             ],
             "properties": {
-              "Content": {
+              "content": {
                 "pattern": "\\S",
                 "type": "string"
               },
-              "CreatedAt": {
+              "createdAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
-              "Day": {
+              "day": {
                 "type": "string"
               },
-              "Embedding": {
-                "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy"
-                },
-                "type": "array"
+              "id": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE"
               },
-              "EmbeddingSpace": {
-                "type": "string"
-              },
-              "ID": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE"
-              },
-              "Origin": {
+              "origin": {
                 "allOf": [
                   {
                     "enum": [
@@ -439,13 +410,13 @@
                 ],
                 "type": "string"
               },
-              "Pinned": {
+              "pinned": {
                 "type": "boolean"
               },
-              "Project": {
+              "project": {
                 "type": "string"
               },
-              "Revision": {
+              "revision": {
                 "allOf": [
                   {
                     "maximum": 18446744073709551615,
@@ -455,7 +426,7 @@
                 "minimum": 1,
                 "type": "integer"
               },
-              "Scope": {
+              "scope": {
                 "allOf": [
                   {
                     "enum": [
@@ -466,10 +437,10 @@
                 ],
                 "type": "string"
               },
-              "SessionID": {
+              "sessionId": {
                 "type": "string"
               },
-              "Status": {
+              "status": {
                 "allOf": [
                   {
                     "enum": [
@@ -481,41 +452,36 @@
                 ],
                 "type": "string"
               },
-              "UpdatedAt": {
+              "updatedAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               }
             },
             "required": [
-              "ID",
-              "Revision",
-              "Scope",
-              "Project",
-              "Content",
-              "Origin",
-              "Status",
-              "Pinned",
-              "SessionID",
-              "Day",
-              "CreatedAt",
-              "UpdatedAt",
-              "EmbeddingSpace",
-              "Embedding"
+              "id",
+              "revision",
+              "scope",
+              "project",
+              "content",
+              "origin",
+              "status",
+              "pinned",
+              "sessionId",
+              "day",
+              "createdAt",
+              "updatedAt"
             ],
             "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy": {
-            "type": "number"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90"
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ"
         },
         "type": "array"
       }
     },
     {
-      "name": "flame.memory/list.v2",
+      "name": "flame.memory/list.v3",
       "kind": "query",
       "target": "installation",
       "description": "List memory items visible in the requested scope.",
@@ -526,7 +492,7 @@
             "allOf": [
               {
                 "properties": {
-                  "Limit": {
+                  "limit": {
                     "maximum": 100,
                     "minimum": 1
                   }
@@ -534,13 +500,13 @@
               }
             ],
             "properties": {
-              "CWD": {
+              "cursor": {
                 "type": "string"
               },
-              "Cursor": {
+              "cwd": {
                 "type": "string"
               },
-              "Limit": {
+              "limit": {
                 "allOf": [
                   {
                     "maximum": 9223372036854775807,
@@ -549,7 +515,7 @@
                 ],
                 "type": "integer"
               },
-              "Scope": {
+              "scope": {
                 "allOf": [
                   {
                     "enum": [
@@ -562,9 +528,9 @@
               }
             },
             "required": [
-              "Scope",
-              "CWD",
-              "Cursor"
+              "scope",
+              "cwd",
+              "cursor"
             ],
             "type": "object"
           }
@@ -574,7 +540,7 @@
         "allOf": [
           {
             "properties": {
-              "Limit": {
+              "limit": {
                 "maximum": 100,
                 "minimum": 1
               }
@@ -582,13 +548,13 @@
           }
         ],
         "properties": {
-          "CWD": {
+          "cursor": {
             "type": "string"
           },
-          "Cursor": {
+          "cwd": {
             "type": "string"
           },
-          "Limit": {
+          "limit": {
             "allOf": [
               {
                 "maximum": 9223372036854775807,
@@ -597,7 +563,7 @@
             ],
             "type": "integer"
           },
-          "Scope": {
+          "scope": {
             "allOf": [
               {
                 "enum": [
@@ -610,9 +576,9 @@
           }
         },
         "required": [
-          "Scope",
-          "CWD",
-          "Cursor"
+          "scope",
+          "cwd",
+          "cursor"
         ],
         "type": "object"
       },
@@ -621,49 +587,7 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
             "type": "string"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UGFnZQ": {
-            "additionalProperties": false,
-            "allOf": [
-              {
-                "properties": {
-                  "Capacity": {
-                    "maximum": 512,
-                    "minimum": 512
-                  },
-                  "Rows": {
-                    "maxItems": 100
-                  }
-                }
-              }
-            ],
-            "properties": {
-              "Capacity": {
-                "allOf": [
-                  {
-                    "maximum": 9223372036854775807,
-                    "minimum": -9223372036854775808
-                  }
-                ],
-                "type": "integer"
-              },
-              "NextCursor": {
-                "type": "string"
-              },
-              "Rows": {
-                "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90"
-                },
-                "type": "array"
-              }
-            },
-            "required": [
-              "Rows",
-              "NextCursor",
-              "Capacity"
-            ],
-            "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE": {
             "allOf": [
               {
                 "pattern": "^mem_[0-9a-f]{32}$"
@@ -671,47 +595,35 @@
             ],
             "type": "string"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ": {
             "additionalProperties": false,
             "allOf": [
               {
                 "properties": {
-                  "Content": {
+                  "content": {
                     "maxLength": 4096
                   },
-                  "Revision": {
+                  "revision": {
                     "maximum": 9.007199254740991e+15
                   }
                 }
               }
             ],
             "properties": {
-              "Content": {
+              "content": {
                 "pattern": "\\S",
                 "type": "string"
               },
-              "CreatedAt": {
+              "createdAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
-              "Day": {
+              "day": {
                 "type": "string"
               },
-              "Embedding": {
-                "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy"
-                },
-                "type": "array"
+              "id": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE"
               },
-              "EmbeddingSpace": {
-                "type": "string"
-              },
-              "ID": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE"
-              },
-              "Origin": {
+              "origin": {
                 "allOf": [
                   {
                     "enum": [
@@ -722,13 +634,13 @@
                 ],
                 "type": "string"
               },
-              "Pinned": {
+              "pinned": {
                 "type": "boolean"
               },
-              "Project": {
+              "project": {
                 "type": "string"
               },
-              "Revision": {
+              "revision": {
                 "allOf": [
                   {
                     "maximum": 18446744073709551615,
@@ -738,7 +650,7 @@
                 "minimum": 1,
                 "type": "integer"
               },
-              "Scope": {
+              "scope": {
                 "allOf": [
                   {
                     "enum": [
@@ -749,10 +661,10 @@
                 ],
                 "type": "string"
               },
-              "SessionID": {
+              "sessionId": {
                 "type": "string"
               },
-              "Status": {
+              "status": {
                 "allOf": [
                   {
                     "enum": [
@@ -764,86 +676,43 @@
                 ],
                 "type": "string"
               },
-              "UpdatedAt": {
+              "updatedAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               }
             },
             "required": [
-              "ID",
-              "Revision",
-              "Scope",
-              "Project",
-              "Content",
-              "Origin",
-              "Status",
-              "Pinned",
-              "SessionID",
-              "Day",
-              "CreatedAt",
-              "UpdatedAt",
-              "EmbeddingSpace",
-              "Embedding"
+              "id",
+              "revision",
+              "scope",
+              "project",
+              "content",
+              "origin",
+              "status",
+              "pinned",
+              "sessionId",
+              "day",
+              "createdAt",
+              "updatedAt"
             ],
             "type": "object"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy": {
-            "type": "number"
-          }
-        },
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false,
-        "allOf": [
-          {
-            "properties": {
-              "Capacity": {
-                "maximum": 512,
-                "minimum": 512
-              },
-              "Rows": {
-                "maxItems": 100
-              }
-            }
-          }
-        ],
-        "properties": {
-          "Capacity": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UGFnZQ": {
+            "additionalProperties": false,
             "allOf": [
               {
-                "maximum": 9223372036854775807,
-                "minimum": -9223372036854775808
+                "properties": {
+                  "capacity": {
+                    "maximum": 512,
+                    "minimum": 512
+                  },
+                  "rows": {
+                    "maxItems": 100
+                  }
+                }
               }
             ],
-            "type": "integer"
-          },
-          "NextCursor": {
-            "type": "string"
-          },
-          "Rows": {
-            "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "Rows",
-          "NextCursor",
-          "Capacity"
-        ],
-        "type": "object"
-      }
-    },
-    {
-      "name": "flame.memory/maintain.v1",
-      "kind": "command",
-      "target": "installation",
-      "description": "Extract and curate captured conversation under the private ledger and watermark.",
-      "input": {
-        "$defs": {
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u": {
-            "additionalProperties": false,
             "properties": {
-              "MessageCount": {
+              "capacity": {
                 "allOf": [
                   {
                     "maximum": 9223372036854775807,
@@ -852,37 +721,117 @@
                 ],
                 "type": "integer"
               },
-              "Transcript": {
+              "nextCursor": {
+                "type": "string"
+              },
+              "rows": {
+                "items": {
+                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ"
+                },
+                "type": "array"
+              }
+            },
+            "required": [
+              "rows",
+              "nextCursor",
+              "capacity"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "properties": {
+              "capacity": {
+                "maximum": 512,
+                "minimum": 512
+              },
+              "rows": {
+                "maxItems": 100
+              }
+            }
+          }
+        ],
+        "properties": {
+          "capacity": {
+            "allOf": [
+              {
+                "maximum": 9223372036854775807,
+                "minimum": -9223372036854775808
+              }
+            ],
+            "type": "integer"
+          },
+          "nextCursor": {
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows",
+          "nextCursor",
+          "capacity"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "name": "flame.memory/maintain.v2",
+      "kind": "command",
+      "target": "installation",
+      "description": "Extract and curate captured conversation under the private ledger and watermark.",
+      "input": {
+        "$defs": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u": {
+            "additionalProperties": false,
+            "properties": {
+              "messageCount": {
+                "allOf": [
+                  {
+                    "maximum": 9223372036854775807,
+                    "minimum": -9223372036854775808
+                  }
+                ],
+                "type": "integer"
+              },
+              "transcript": {
                 "type": "string"
               }
             },
             "required": [
-              "MessageCount",
-              "Transcript"
+              "messageCount",
+              "transcript"
             ],
             "type": "object"
           },
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VJbnB1dA": {
             "additionalProperties": false,
             "properties": {
-              "Compacted": {
+              "compacted": {
                 "type": "boolean"
               },
-              "Conversation": {
+              "conversation": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u"
               },
-              "Project": {
+              "project": {
                 "type": "string"
               },
-              "SessionID": {
+              "sessionId": {
                 "type": "string"
               }
             },
             "required": [
-              "SessionID",
-              "Project",
-              "Compacted",
-              "Conversation"
+              "sessionId",
+              "project",
+              "compacted",
+              "conversation"
             ],
             "type": "object"
           }
@@ -890,24 +839,24 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "Compacted": {
+          "compacted": {
             "type": "boolean"
           },
-          "Conversation": {
+          "conversation": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u"
           },
-          "Project": {
+          "project": {
             "type": "string"
           },
-          "SessionID": {
+          "sessionId": {
             "type": "string"
           }
         },
         "required": [
-          "SessionID",
-          "Project",
-          "Compacted",
-          "Conversation"
+          "sessionId",
+          "project",
+          "compacted",
+          "conversation"
         ],
         "type": "object"
       },
@@ -916,12 +865,12 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VSZXN1bHQ": {
             "additionalProperties": false,
             "properties": {
-              "Published": {
+              "published": {
                 "type": "boolean"
               }
             },
             "required": [
-              "Published"
+              "published"
             ],
             "type": "object"
           }
@@ -929,18 +878,18 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "Published": {
+          "published": {
             "type": "boolean"
           }
         },
         "required": [
-          "Published"
+          "published"
         ],
         "type": "object"
       }
     },
     {
-      "name": "flame.memory/review.v2",
+      "name": "flame.memory/review.v3",
       "kind": "command",
       "target": "installation",
       "description": "Apply a human review decision to a pending memory item.",
@@ -951,14 +900,14 @@
             "allOf": [
               {
                 "properties": {
-                  "ExpectedRevision": {
+                  "expectedRevision": {
                     "maximum": 9.007199254740991e+15
                   }
                 }
               }
             ],
             "properties": {
-              "Decision": {
+              "decision": {
                 "allOf": [
                   {
                     "enum": [
@@ -969,7 +918,7 @@
                 ],
                 "type": "string"
               },
-              "ExpectedRevision": {
+              "expectedRevision": {
                 "allOf": [
                   {
                     "maximum": 18446744073709551615,
@@ -979,14 +928,14 @@
                 "minimum": 1,
                 "type": "integer"
               },
-              "ID": {
+              "id": {
                 "type": "string"
               }
             },
             "required": [
-              "ID",
-              "ExpectedRevision",
-              "Decision"
+              "id",
+              "expectedRevision",
+              "decision"
             ],
             "type": "object"
           }
@@ -996,14 +945,14 @@
         "allOf": [
           {
             "properties": {
-              "ExpectedRevision": {
+              "expectedRevision": {
                 "maximum": 9.007199254740991e+15
               }
             }
           }
         ],
         "properties": {
-          "Decision": {
+          "decision": {
             "allOf": [
               {
                 "enum": [
@@ -1014,7 +963,7 @@
             ],
             "type": "string"
           },
-          "ExpectedRevision": {
+          "expectedRevision": {
             "allOf": [
               {
                 "maximum": 18446744073709551615,
@@ -1024,14 +973,14 @@
             "minimum": 1,
             "type": "integer"
           },
-          "ID": {
+          "id": {
             "type": "string"
           }
         },
         "required": [
-          "ID",
-          "ExpectedRevision",
-          "Decision"
+          "id",
+          "expectedRevision",
+          "decision"
         ],
         "type": "object"
       },
@@ -1050,7 +999,7 @@
       }
     },
     {
-      "name": "flame.memory/search.v2",
+      "name": "flame.memory/search.v3",
       "kind": "query",
       "target": "installation",
       "description": "Rank active memories for the supplied project and query.",
@@ -1059,16 +1008,16 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.U2VhcmNoSW5wdXQ": {
             "additionalProperties": false,
             "properties": {
-              "EmbeddingSpace": {
+              "embeddingSpace": {
                 "type": "string"
               },
-              "Project": {
+              "project": {
                 "type": "string"
               },
-              "Query": {
+              "query": {
                 "type": "string"
               },
-              "TopK": {
+              "topK": {
                 "allOf": [
                   {
                     "maximum": 9223372036854775807,
@@ -1079,10 +1028,10 @@
               }
             },
             "required": [
-              "Project",
-              "Query",
-              "TopK",
-              "EmbeddingSpace"
+              "project",
+              "query",
+              "topK",
+              "embeddingSpace"
             ],
             "type": "object"
           }
@@ -1090,16 +1039,16 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false,
         "properties": {
-          "EmbeddingSpace": {
+          "embeddingSpace": {
             "type": "string"
           },
-          "Project": {
+          "project": {
             "type": "string"
           },
-          "Query": {
+          "query": {
             "type": "string"
           },
-          "TopK": {
+          "topK": {
             "allOf": [
               {
                 "maximum": 9223372036854775807,
@@ -1110,10 +1059,10 @@
           }
         },
         "required": [
-          "Project",
-          "Query",
-          "TopK",
-          "EmbeddingSpace"
+          "project",
+          "query",
+          "topK",
+          "embeddingSpace"
         ],
         "type": "object"
       },
@@ -1122,7 +1071,7 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
             "type": "string"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE": {
             "allOf": [
               {
                 "pattern": "^mem_[0-9a-f]{32}$"
@@ -1130,47 +1079,35 @@
             ],
             "type": "string"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ": {
             "additionalProperties": false,
             "allOf": [
               {
                 "properties": {
-                  "Content": {
+                  "content": {
                     "maxLength": 4096
                   },
-                  "Revision": {
+                  "revision": {
                     "maximum": 9.007199254740991e+15
                   }
                 }
               }
             ],
             "properties": {
-              "Content": {
+              "content": {
                 "pattern": "\\S",
                 "type": "string"
               },
-              "CreatedAt": {
+              "createdAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
-              "Day": {
+              "day": {
                 "type": "string"
               },
-              "Embedding": {
-                "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy"
-                },
-                "type": "array"
+              "id": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE"
               },
-              "EmbeddingSpace": {
-                "type": "string"
-              },
-              "ID": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE"
-              },
-              "Origin": {
+              "origin": {
                 "allOf": [
                   {
                     "enum": [
@@ -1181,13 +1118,13 @@
                 ],
                 "type": "string"
               },
-              "Pinned": {
+              "pinned": {
                 "type": "boolean"
               },
-              "Project": {
+              "project": {
                 "type": "string"
               },
-              "Revision": {
+              "revision": {
                 "allOf": [
                   {
                     "maximum": 18446744073709551615,
@@ -1197,7 +1134,7 @@
                 "minimum": 1,
                 "type": "integer"
               },
-              "Scope": {
+              "scope": {
                 "allOf": [
                   {
                     "enum": [
@@ -1208,10 +1145,10 @@
                 ],
                 "type": "string"
               },
-              "SessionID": {
+              "sessionId": {
                 "type": "string"
               },
-              "Status": {
+              "status": {
                 "allOf": [
                   {
                     "enum": [
@@ -1223,41 +1160,36 @@
                 ],
                 "type": "string"
               },
-              "UpdatedAt": {
+              "updatedAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               }
             },
             "required": [
-              "ID",
-              "Revision",
-              "Scope",
-              "Project",
-              "Content",
-              "Origin",
-              "Status",
-              "Pinned",
-              "SessionID",
-              "Day",
-              "CreatedAt",
-              "UpdatedAt",
-              "EmbeddingSpace",
-              "Embedding"
+              "id",
+              "revision",
+              "scope",
+              "project",
+              "content",
+              "origin",
+              "status",
+              "pinned",
+              "sessionId",
+              "day",
+              "createdAt",
+              "updatedAt"
             ],
             "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy": {
-            "type": "number"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "items": {
-          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90"
+          "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ"
         },
         "type": "array"
       }
     },
     {
-      "name": "flame.memory/update.v2",
+      "name": "flame.memory/update.v3",
       "kind": "command",
       "target": "installation",
       "description": "Edit the current content or pin state of a memory item.",
@@ -1268,17 +1200,17 @@
             "allOf": [
               {
                 "properties": {
-                  "ExpectedRevision": {
+                  "expectedRevision": {
                     "maximum": 9.007199254740991e+15
                   }
                 }
               }
             ],
             "properties": {
-              "Content": {
+              "content": {
                 "type": "string"
               },
-              "ExpectedRevision": {
+              "expectedRevision": {
                 "allOf": [
                   {
                     "maximum": 18446744073709551615,
@@ -1288,16 +1220,16 @@
                 "minimum": 1,
                 "type": "integer"
               },
-              "ID": {
+              "id": {
                 "type": "string"
               },
-              "Pinned": {
+              "pinned": {
                 "type": "boolean"
               }
             },
             "required": [
-              "ID",
-              "ExpectedRevision"
+              "id",
+              "expectedRevision"
             ],
             "type": "object"
           }
@@ -1307,17 +1239,17 @@
         "allOf": [
           {
             "properties": {
-              "ExpectedRevision": {
+              "expectedRevision": {
                 "maximum": 9.007199254740991e+15
               }
             }
           }
         ],
         "properties": {
-          "Content": {
+          "content": {
             "type": "string"
           },
-          "ExpectedRevision": {
+          "expectedRevision": {
             "allOf": [
               {
                 "maximum": 18446744073709551615,
@@ -1327,16 +1259,16 @@
             "minimum": 1,
             "type": "integer"
           },
-          "ID": {
+          "id": {
             "type": "string"
           },
-          "Pinned": {
+          "pinned": {
             "type": "boolean"
           }
         },
         "required": [
-          "ID",
-          "ExpectedRevision"
+          "id",
+          "expectedRevision"
         ],
         "type": "object"
       },
@@ -1345,7 +1277,7 @@
           "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w": {
             "type": "string"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE": {
             "allOf": [
               {
                 "pattern": "^mem_[0-9a-f]{32}$"
@@ -1353,47 +1285,35 @@
             ],
             "type": "string"
           },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24": {
+          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ": {
             "additionalProperties": false,
             "allOf": [
               {
                 "properties": {
-                  "Content": {
+                  "content": {
                     "maxLength": 4096
                   },
-                  "Revision": {
+                  "revision": {
                     "maximum": 9.007199254740991e+15
                   }
                 }
               }
             ],
             "properties": {
-              "Content": {
+              "content": {
                 "pattern": "\\S",
                 "type": "string"
               },
-              "CreatedAt": {
+              "createdAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               },
-              "Day": {
+              "day": {
                 "type": "string"
               },
-              "Embedding": {
-                "items": {
-                  "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy"
-                },
-                "type": "array"
+              "id": {
+                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE"
               },
-              "EmbeddingSpace": {
-                "type": "string"
-              },
-              "ID": {
-                "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE"
-              },
-              "Origin": {
+              "origin": {
                 "allOf": [
                   {
                     "enum": [
@@ -1404,13 +1324,13 @@
                 ],
                 "type": "string"
               },
-              "Pinned": {
+              "pinned": {
                 "type": "boolean"
               },
-              "Project": {
+              "project": {
                 "type": "string"
               },
-              "Revision": {
+              "revision": {
                 "allOf": [
                   {
                     "maximum": 18446744073709551615,
@@ -1420,7 +1340,7 @@
                 "minimum": 1,
                 "type": "integer"
               },
-              "Scope": {
+              "scope": {
                 "allOf": [
                   {
                     "enum": [
@@ -1431,10 +1351,10 @@
                 ],
                 "type": "string"
               },
-              "SessionID": {
+              "sessionId": {
                 "type": "string"
               },
-              "Status": {
+              "status": {
                 "allOf": [
                   {
                     "enum": [
@@ -1446,30 +1366,25 @@
                 ],
                 "type": "string"
               },
-              "UpdatedAt": {
+              "updatedAt": {
                 "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
               }
             },
             "required": [
-              "ID",
-              "Revision",
-              "Scope",
-              "Project",
-              "Content",
-              "Origin",
-              "Status",
-              "Pinned",
-              "SessionID",
-              "Day",
-              "CreatedAt",
-              "UpdatedAt",
-              "EmbeddingSpace",
-              "Embedding"
+              "id",
+              "revision",
+              "scope",
+              "project",
+              "content",
+              "origin",
+              "status",
+              "pinned",
+              "sessionId",
+              "day",
+              "createdAt",
+              "updatedAt"
             ],
             "type": "object"
-          },
-          "go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy": {
-            "type": "number"
           }
         },
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -1477,39 +1392,30 @@
         "allOf": [
           {
             "properties": {
-              "Content": {
+              "content": {
                 "maxLength": 4096
               },
-              "Revision": {
+              "revision": {
                 "maximum": 9.007199254740991e+15
               }
             }
           }
         ],
         "properties": {
-          "Content": {
+          "content": {
             "pattern": "\\S",
             "type": "string"
           },
-          "CreatedAt": {
+          "createdAt": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
           },
-          "Day": {
+          "day": {
             "type": "string"
           },
-          "Embedding": {
-            "items": {
-              "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy"
-            },
-            "type": "array"
+          "id": {
+            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE"
           },
-          "EmbeddingSpace": {
-            "type": "string"
-          },
-          "ID": {
-            "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE"
-          },
-          "Origin": {
+          "origin": {
             "allOf": [
               {
                 "enum": [
@@ -1520,13 +1426,13 @@
             ],
             "type": "string"
           },
-          "Pinned": {
+          "pinned": {
             "type": "boolean"
           },
-          "Project": {
+          "project": {
             "type": "string"
           },
-          "Revision": {
+          "revision": {
             "allOf": [
               {
                 "maximum": 18446744073709551615,
@@ -1536,7 +1442,7 @@
             "minimum": 1,
             "type": "integer"
           },
-          "Scope": {
+          "scope": {
             "allOf": [
               {
                 "enum": [
@@ -1547,10 +1453,10 @@
             ],
             "type": "string"
           },
-          "SessionID": {
+          "sessionId": {
             "type": "string"
           },
-          "Status": {
+          "status": {
             "allOf": [
               {
                 "enum": [
@@ -1562,25 +1468,23 @@
             ],
             "type": "string"
           },
-          "UpdatedAt": {
+          "updatedAt": {
             "$ref": "#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w"
           }
         },
         "required": [
-          "ID",
-          "Revision",
-          "Scope",
-          "Project",
-          "Content",
-          "Origin",
-          "Status",
-          "Pinned",
-          "SessionID",
-          "Day",
-          "CreatedAt",
-          "UpdatedAt",
-          "EmbeddingSpace",
-          "Embedding"
+          "id",
+          "revision",
+          "scope",
+          "project",
+          "content",
+          "origin",
+          "status",
+          "pinned",
+          "sessionId",
+          "day",
+          "createdAt",
+          "updatedAt"
         ],
         "type": "object"
       }

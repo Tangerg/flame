@@ -1,4 +1,4 @@
-export type AgentSessionSharedMaterialContributor<T> = (sessionId: string, material: T) => unknown;
+type AgentSessionSharedMaterialContributor<T> = (sessionId: string, material: T) => unknown;
 
 interface RegisteredContributor {
   active: boolean;

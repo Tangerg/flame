@@ -27,17 +27,14 @@ type activeDurationClock struct {
 	segmentStartedAt time.Time
 }
 
-// startRunCallError identifies an error returned by Lifecycle.StartRun
-// itself. Protocol validation failures after a successful call are deliberately
-// excluded: the runtime already acknowledged the command, so replaying the
-// mutation cannot repair its malformed receipt.
+// Protocol validation failures after a successful call are excluded: the Runtime
+// already acknowledged the command, so replaying cannot repair its malformed
+// receipt.
 type startRunCallError struct{ err error }
 
 func (s *startRunCallError) Error() string { return s.err.Error() }
 func (s *startRunCallError) Unwrap() error { return s.err }
 
-// resumeRunCallError has the same acknowledgement semantics as
-// startRunCallError, but its recovery owner is the still-open HITL review.
 type resumeRunCallError struct{ err error }
 
 func (r *resumeRunCallError) Error() string { return r.err.Error() }
@@ -69,9 +66,6 @@ func (r *runs) startRun(commandID authoring.CommandID, message authoring.Message
 	if pending.State != workbench.PendingRunQueued {
 		return r.startPreparedRun(input, nil, status)
 	}
-	// The queue reservation owns this candidate while the existing operation
-	// owner reads and saves its bytes. Only the UI callback can publish dispatch:
-	// canceling preparation therefore leaves an ordinary editable queue entry.
 	started := r.tasks.sessionFence(inputPreparationOperation,
 		func(ctx context.Context) (*workbench.PreparedInput, error) {
 			blocks, err := r.runtime.PrepareInput(ctx, pending.Command.Message)
@@ -231,14 +225,8 @@ const (
 )
 
 type streamOpeningObserver struct {
-	// accepted owns the linearization boundary between command acknowledgement
-	// and stream consumption. It may reject a valid runtime stream when the local
-	// projection cannot safely install the acknowledged state.
-	accepted func(conversation.SegmentStream) streamOpeningDisposition
-	rejected func(error) error
-	// persistent makes retryable opening failures wait for either an
-	// acknowledgement or owner cancellation. It is reserved for idempotent
-	// mutations whose delivery outcome is ambiguous after a disconnect.
+	accepted   func(conversation.SegmentStream) streamOpeningDisposition
+	rejected   func(error) error
 	persistent bool
 }
 
@@ -320,8 +308,6 @@ func (r *runs) noteRootSegmentStarted(event conversation.SegmentStarted) {
 	r.execution.clock.start(event.Run.Usage.Duration, time.Now())
 }
 
-// noteProgress shows the current Run's own progress; a descendant reports
-// only what it is doing.
 func (r *runs) noteProgress(runID string, event conversation.RunProgress) {
 	if runID == r.execution.conversation.RunID() {
 		r.header.SetUsage(r.execution.conversation.Usage())

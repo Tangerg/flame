@@ -30,7 +30,7 @@ function reportRollbackError(notifications: NotificationFeed, err: unknown): voi
   notifications.notify("error", copy ?? t("session.error.rollback"), { source: "session" });
 }
 
-export interface RollbackActionOptions {
+interface RollbackActionOptions {
   restoreFiles?: boolean;
 }
 

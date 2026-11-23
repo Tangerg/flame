@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	runapplication "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
+	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/runtimefixture"
@@ -75,7 +75,7 @@ func TestRecoveredChildPreviewSurvivesAnUnrelatedChildStart(t *testing.T) {
 	if previewRun == "" || previewRun == opened.RunID {
 		t.Fatalf("fixture did not open a transient child preview: %q / %q", previewRun, previewBlock)
 	}
-	recovered, err := runapplication.RecoverSegment(ctx, connection, session.ID, opened.RunID)
+	recovered, err := runworkflow.RecoverSegment(ctx, connection, session.ID, opened.RunID)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -101,7 +101,6 @@ func (c contextReader) Read(buffer []byte) (int, error) {
 	return c.Reader.Read(buffer)
 }
 
-// PrepareInput materializes files before a workflow binds content to a command.
 func (r *Connection) PrepareInput(ctx context.Context, message authoring.Message) ([]protocol.ContentBlock, error) {
 	if err := message.Validate(); err != nil {
 		return nil, err

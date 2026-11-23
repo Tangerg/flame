@@ -14,12 +14,9 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// Depth changes a Program, not its group's captured Tool authority. Sharing this
-// frozen binding also keeps receipt capability and schemas fixed across depths.
 type interactionToolGroup struct {
-	manifest toolset.Manifest
-	tools    interaction.ToolSet
-	// authority digests the group's Tool sources; the Interaction revision binds it.
+	manifest  toolset.Manifest
+	tools     interaction.ToolSet
 	authority string
 	contracts map[domaintool.Ref]toolcontract.Contract
 	observed  map[domaintool.Ref]*observedInteractionTool

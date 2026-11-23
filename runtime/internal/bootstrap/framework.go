@@ -16,7 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 
 	"github.com/Tangerg/frame"
 	framebrowser "github.com/Tangerg/frame/browser"
@@ -27,8 +27,6 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-// Framework capacities: how many installations the host admits, how long a
-// plugin process may take to stop, and what the browser bridge holds at once.
 const (
 	maxInstallations          = 128
 	pluginProcessCloseTimeout = 10 * time.Second
@@ -53,12 +51,11 @@ type frameworkComposition struct {
 }
 
 func buildPluginPackages(cfg assemblyConfig, lifetime *runtimeLifetime) (*pluginpackage.Releases, error) {
+	pluginsDirectory := filepath.Join(cfg.stores.DataDirectory, "plugins")
 	content, err := distribution.Open(distribution.Config{
-		Directory: filepath.Join(cfg.stores.DataDirectory, "plugins", "frame"),
+		Directory: filepath.Join(pluginsDirectory, "frame"),
 		Admission: cfg.stores.Admission,
 		Trust: func(_ context.Context, source distribution.Source, _ distribution.Release) error {
-			// Flame installs explicitly selected local packages. Remote download
-			// and publisher authentication require a distinct product policy.
 			if !filepath.IsAbs(source.Location) {
 				return errors.New("plugins: an explicitly selected local package is required")
 			}
@@ -72,11 +69,9 @@ func buildPluginPackages(cfg assemblyConfig, lifetime *runtimeLifetime) (*plugin
 		return nil, err
 	}
 	lifetime.toolResources = append(lifetime.toolResources, terminalStep(content.Close))
-	return pluginpackage.New(content, filepath.Join(cfg.stores.DataDirectory, "plugins", "data"), cfg.stores.PluginReleases)
+	return pluginpackage.New(content, filepath.Join(pluginsDirectory, "data"), cfg.stores.PluginReleases)
 }
 
-// Remove invokes this reader while holding the same admission as every writer
-// that can add a reference. The original business rows remain the authority.
 func retainedPluginContent(ctx context.Context, stores *persistence.Bundle, digest framevalue.Digest) (bool, error) {
 	installations, err := stores.Installations.List(ctx)
 	if err != nil {
@@ -113,8 +108,6 @@ func retainedPluginContent(ctx context.Context, stores *persistence.Bundle, dige
 	return false, nil
 }
 
-// buildBrowser registers the browser bridge as a host driver and the plugin
-// browser that issues realms through it.
 func buildBrowser(host framehost.Host, stores *persistence.Bundle, packages *pluginpackage.Releases, registry *plugins.Registry) (*framebrowser.Bridge, *browseradapter.Service, error) {
 	source, err := browseradapter.NewSource(stores.Installations, packages)
 	if err != nil {
@@ -127,15 +120,13 @@ func buildBrowser(host framehost.Host, stores *persistence.Bundle, packages *plu
 	if err := host.RegisterDriver(bridge); err != nil {
 		return nil, nil, err
 	}
-	browser, err := browseradapter.New(browseradapter.Config{Bridge: bridge, Registry: registry, ControlEndpoint: flamehttp.PluginControlPath, ProofCapacity: browserProofCapacity, PreparationCapacity: browserPendingCapacity, PollInterval: browserPollInterval})
+	browser, err := browseradapter.New(browseradapter.Config{Bridge: bridge, Registry: registry, ControlEndpoint: runtimehttp.PluginControlPath, ProofCapacity: browserProofCapacity, PreparationCapacity: browserPendingCapacity, PollInterval: browserPollInterval})
 	if err != nil {
 		return nil, nil, err
 	}
 	return bridge, browser, nil
 }
 
-// startFrameworkHost starts the plugin host under owner and registers its
-// teardown with the tool resources.
 func startFrameworkHost(ctx context.Context, stores *persistence.Bundle, lifetime *runtimeLifetime, owner frame.Lifetime, permission *mcpadapter.CatalogPermission, profile *process.Driver) (framehost.Host, error) {
 	lifetime.frameworkCauses = owner.ObserveCloseCauses()
 	host, err := framehost.New(ctx, framehost.Config{ReadAcceptedBinding: permission.Read, Authority: stores.Frame, Lifetime: owner, Limits: framehost.Limits{MaxInstallations: maxInstallations}, Drivers: []framehost.Driver{profile}})
@@ -144,16 +135,12 @@ func startFrameworkHost(ctx context.Context, stores *persistence.Bundle, lifetim
 	}
 	lifetime.toolResources = append(lifetime.toolResources, terminalStep(func(ctx context.Context) error {
 		_, diagnostic := host.Close(ctx)
-		// An unconfirmed resource must keep the SQLite authority and content
-		// protected. Caller deadlines only stop their wait for this generation.
 		_, releaseErr := owner.BeginClose(frame.ErrClosed).WaitReleased(ctx)
 		return errors.Join(diagnostic, releaseErr)
 	}))
 	return host, nil
 }
 
-// buildMCPConnectors builds the installed-plugin connector and the external
-// connector that shares its catalog.
 func buildMCPConnectors(stores *persistence.Bundle, config mcpadapter.InstalledConfig) (*mcpadapter.Installed, *mcpadapter.ExternalConnector, error) {
 	installed, err := mcpadapter.NewInstalled(config)
 	if err != nil {
@@ -221,8 +208,6 @@ func buildFramework(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLi
 	}
 	control := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		bridge.Handler().ServeHTTP(writer, request)
-		// Original cleanup proofs can arrive while recovery admission is shut.
-		// Only complete reconstruction of every retained owner opens it again.
 		_ = recovery.restore(request.Context())
 	})
 	return frameworkComposition{host: host, process: profile, registry: registry, external: external, installed: installed, browser: browser, control: control, commands: commands, callers: callers, ready: recovery.ready}, nil

@@ -5,19 +5,17 @@ import (
 	"errors"
 	"iter"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/samber/lo"
 )
 
-// ModelCallbacks uses the existing observed provider resolver and retained chain.
-// Each request is independent; a continuation still refers to its frozen endpoint.
-func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]pluginmcp.Callback, error) {
+func (o *CallComposition) ModelCallbacks(resolve modeladapter.ChatModelResolver) ([]pluginmcp.Callback, error) {
 	if lo.IsNil(resolve) {
 		return nil, errors.New("model composition: selected model resolver is required")
 	}
@@ -60,45 +58,43 @@ func (o *CallComposition) ModelCallbacks(resolve models.ChatModelResolver) ([]pl
 	return []pluginmcp.Callback{call, stream}, nil
 }
 
-// captureIndependent selects and captures the model an independent plugin
-// call asked for, under the call's own budget and invocation identity.
-func (o *CallComposition) captureIndependent(ctx context.Context, resolve models.ChatModelResolver, input pluginsdk.ModelCallRequest) (models.SelectedChat, *chat.Request, func() error, error) {
+func (o *CallComposition) captureIndependent(ctx context.Context, resolve modeladapter.ChatModelResolver, input pluginsdk.ModelCallRequest) (modeladapter.SelectedChat, *chat.Request, func() error, error) {
 	if err := input.Validate(); err != nil {
-		return models.SelectedChat{}, nil, nil, err
+		return modeladapter.SelectedChat{}, nil, nil, err
 	}
 	invocation, err := pluginmcp.InvocationFromContext(ctx)
 	if err != nil {
-		return models.SelectedChat{}, nil, nil, err
+		return modeladapter.SelectedChat{}, nil, nil, err
 	}
 	if invocation.ID == executionctx.InvocationOwner(ctx) {
-		return models.SelectedChat{}, nil, nil, errors.New("model call: independent invocation cannot claim its executing owner identity")
+		return modeladapter.SelectedChat{}, nil, nil, errors.New("model call: independent invocation cannot claim its executing owner identity")
 	}
 
-	selection, err := modelchoice.NewWithReasoningEffort(input.Selection.Provider, input.Selection.Model, input.Selection.ReasoningEffort)
+	selection, err := flamemodel.NewWithReasoningEffort(input.Selection.Provider, input.Selection.Model, input.Selection.ReasoningEffort)
 	if err != nil {
-		return models.SelectedChat{}, nil, nil, err
+		return modeladapter.SelectedChat{}, nil, nil, err
 	}
 	selection, err = o.SelectModel(ctx, modelapp.SelectionInput{
-		Context: modelchoice.SelectionContext{Use: modelchoice.Independent, Limits: &modelchoice.SelectionLimits{
-			InputKind: modelchoice.RequestBytes, MaxInputBytes: input.Budget.MaxRequestBytes, MaxOutputTokens: input.Budget.MaxOutputTokens,
+		Context: flamemodel.SelectionContext{Use: flamemodel.Independent, Limits: &flamemodel.SelectionLimits{
+			InputKind: flamemodel.RequestBytes, MaxInputBytes: input.Budget.MaxRequestBytes, MaxOutputTokens: input.Budget.MaxOutputTokens,
 		}},
 		Proposed: selection,
 		Request:  &input.Request,
 	})
 	if err != nil {
-		return models.SelectedChat{}, nil, nil, err
+		return modeladapter.SelectedChat{}, nil, nil, err
 	}
 	resolved, err := resolve.ResolveChat(ctx, selection)
 	if err != nil {
-		return models.SelectedChat{}, nil, nil, err
+		return modeladapter.SelectedChat{}, nil, nil, err
 	}
-	selected, err := models.NewSelectedChat(selection, resolved)
+	selected, err := modeladapter.NewSelectedChat(selection, resolved)
 	if err != nil {
-		return models.SelectedChat{}, nil, nil, errors.Join(err, resolved.Close(context.WithoutCancel(ctx)))
+		return modeladapter.SelectedChat{}, nil, nil, errors.Join(err, resolved.Close(context.WithoutCancel(ctx)))
 	}
-	captured, release, err := o.capture(ctx, selected, modelchoice.Independent, func() error { return resolved.Close(context.WithoutCancel(ctx)) }, input.Budget.Admit)
+	captured, release, err := o.capture(ctx, selected, flamemodel.Independent, func() error { return resolved.Close(context.WithoutCancel(ctx)) }, input.Budget.Admit)
 	if err != nil {
-		return models.SelectedChat{}, nil, nil, err
+		return modeladapter.SelectedChat{}, nil, nil, err
 	}
 	request := input.Request.Clone()
 	request.Options.Model = selection.Model()

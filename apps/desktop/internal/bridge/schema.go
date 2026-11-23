@@ -15,8 +15,6 @@ const (
 	URL         RuleKind = "url"
 )
 
-// Rule refines an actual Go wire field. The generator refuses a missing field;
-// native checks and generated client checks consume these same requirements.
 type Rule struct {
 	Type  string
 	Field string
@@ -24,16 +22,19 @@ type Rule struct {
 }
 
 func Rules() []Rule {
+	chrome, connection, notification := typeName[WindowChrome](), typeName[LocalRuntimeConnection](), typeName[DesktopNotification]()
 	return []Rule{
-		{Type: "WindowChrome", Field: "ControlsCentreY", Kind: Nonnegative},
-		{Type: "WindowChrome", Field: "ControlsInlineEnd", Kind: Nonnegative},
-		{Type: "LocalRuntimeConnection", Field: "Endpoint", Kind: URL},
-		{Type: "LocalRuntimeConnection", Field: "LocalToken", Kind: Nonempty},
-		{Type: "DesktopNotification", Field: "ID", Kind: Nonempty},
-		{Type: "DesktopNotification", Field: "Title", Kind: Nonempty},
-		{Type: "NotificationTarget", Kind: Nonempty},
+		{Type: chrome, Field: "ControlsCentreY", Kind: Nonnegative},
+		{Type: chrome, Field: "ControlsInlineEnd", Kind: Nonnegative},
+		{Type: connection, Field: "Endpoint", Kind: URL},
+		{Type: connection, Field: "LocalToken", Kind: Nonempty},
+		{Type: notification, Field: "ID", Kind: Nonempty},
+		{Type: notification, Field: "Title", Kind: Nonempty},
+		{Type: typeName[NotificationTarget](), Kind: Nonempty},
 	}
 }
+
+func typeName[T any]() string { return reflect.TypeFor[T]().Name() }
 
 func validate(value any) error {
 	root := reflect.ValueOf(value)

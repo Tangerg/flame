@@ -29,7 +29,6 @@ type Session struct {
 	Revision        uint64
 }
 
-// Equal reports whether two session projections carry the same durable state.
 func (s Session) Equal(other Session) bool {
 	return s.ID == other.ID && s.Title == other.Title && s.Status == other.Status &&
 		s.Provider == other.Provider && s.Model == other.Model && s.ReasoningEffort == other.ReasoningEffort &&
@@ -49,9 +48,6 @@ func validateCommittedRevision(owner string, value uint64) error {
 	return nil
 }
 
-// ModelRef is one complete provider/model identity. Provider and model always
-// move together so callers cannot create a session update that the Runtime has
-// to guess how to complete.
 type ModelRef struct {
 	Provider string
 	Model    string
@@ -94,9 +90,6 @@ type SessionQuery struct {
 	Workspace string
 }
 
-// Normalize returns one exact session-catalog query. Search text and workspace
-// input are presentation values; Runtime owns workspace path interpretation
-// and binds the exact reference into the authoritative cursor query.
 func (s SessionQuery) Normalize() (SessionQuery, error) {
 	if _, err := s.PageSize.Rows(); err != nil {
 		return SessionQuery{}, fmt.Errorf("session query: %w", err)
@@ -123,9 +116,6 @@ type SessionPage struct {
 	NextCursor string
 }
 
-// SessionSnapshot is the cold-read projection the CLI restores. Transcript,
-// Runs, Plan, and Goal are durable values, never reconstructed from a historical
-// event stream. Runs contains roots and descendants in creation order.
 type SessionSnapshot struct {
 	Session    Session
 	Transcript []Block
@@ -135,7 +125,6 @@ type SessionSnapshot struct {
 	Interrupts []Interrupt
 }
 
-// LatestRun returns the most recently created root run.
 func (s SessionSnapshot) LatestRun() (Run, bool) {
 	for _, run := range slices.Backward(s.Runs) {
 		if run.Lineage.IsRoot() {
@@ -145,7 +134,6 @@ func (s SessionSnapshot) LatestRun() (Run, bool) {
 	return Run{}, false
 }
 
-// ActiveRun returns the sole running or waiting root run, when one exists.
 func (s SessionSnapshot) ActiveRun() (Run, bool) {
 	for _, run := range slices.Backward(s.Runs) {
 		if run.Lineage.IsRoot() && run.Status != protocol.RunStatusFinished {
@@ -164,7 +152,6 @@ func (s SessionSnapshot) RunByID(id string) (Run, bool) {
 	return Run{}, false
 }
 
-// LastAssistantText returns the latest durable non-empty assistant response.
 func (s SessionSnapshot) LastAssistantText() (string, error) {
 	for _, block := range slices.Backward(s.Transcript) {
 		if block.Kind == BlockAssistant && strings.TrimSpace(block.Text) != "" {
@@ -186,9 +173,6 @@ func (s SessionSnapshot) Validate() error {
 	if err := s.validateReferences(transcript, runs); err != nil {
 		return err
 	}
-	// The endpoint validated every Plan and Goal field before this snapshot
-	// reached the CLI. What it cannot answer is whether the two independently
-	// read projections belong to the Session this snapshot is about.
 	if s.Plan != nil {
 		if _, err := committedPlanState(s.Plan); err != nil {
 			return fmt.Errorf("session snapshot: %w", err)
@@ -288,7 +272,7 @@ func (s *snapshotRuns) index(sessionID string, runs []Run) (int, error) {
 	return lastRootIndex, nil
 }
 
-func (s snapshotRuns) validateChildLineages(runs []Run) error {
+func (s *snapshotRuns) validateChildLineages(runs []Run) error {
 	for i, run := range runs {
 		if run.Lineage.IsRoot() {
 			continue
@@ -300,7 +284,7 @@ func (s snapshotRuns) validateChildLineages(runs []Run) error {
 	return nil
 }
 
-func (s snapshotRuns) validateChildLineage(run Run, position int) error {
+func (s *snapshotRuns) validateChildLineage(run Run, position int) error {
 	parent, parentExists := s.byID[run.Lineage.ParentRunID()]
 	root, rootExists := s.byID[run.Lineage.RootRunID()]
 	if !parentExists || !rootExists || !root.Lineage.IsRoot() {
@@ -366,6 +350,7 @@ func (s SessionSnapshot) validateLifecycle(transcript snapshotTranscript, runs s
 		}
 	case protocol.RunStatusWaiting:
 		return s.validateWaitingLifecycle(active, transcript, runs)
+	case protocol.RunStatusFinished:
 	}
 	return nil
 }
@@ -440,10 +425,6 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 	return nil
 }
 
-// RestoreAttachedSnapshot restores a coherent projection and successor tail
-// returned by one Runtime subscription. HeadEventID is the exact journal
-// position preceding that stream; retaining it closes a second-disconnect gap
-// before the first replayable event arrives.
 func (c *Conversation) RestoreAttachedSnapshot(snapshot SessionSnapshot, stream SegmentStream) error {
 	if err := stream.ValidateSubscription(); err != nil {
 		return fmt.Errorf("restore attached snapshot: %w", err)
@@ -530,9 +511,6 @@ func (f ForkSession) Validate() error {
 	return nil
 }
 
-// DeleteSession identifies one idempotent session-deletion intent. CommandID
-// is optional for one-shot callers; durable clients set it so an interrupted
-// acknowledgement can be recovered without issuing a second mutation.
 type DeleteSession struct {
 	CommandID authoring.CommandID
 	SessionID string

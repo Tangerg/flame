@@ -2,7 +2,6 @@ import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n/index";
 import { reasoningEffortLabel } from "@/features/providers/public/reasoningEffort";
 import { DropdownMenu } from "@/ui/index";
-import { Icon } from "@/ui/index";
 import { vocab } from "@flame/ui";
 import { AgentComposerChip } from "@/ui/agent/index";
 import { corner, space, type as typeStep } from "@flame/ui/tokens.stylex";
@@ -97,9 +96,7 @@ export function ReasoningEffortPill() {
               <span {...stylex.props(vocab.fill, vocab.truncate, typeStep.uiMd)}>
                 {reasoningEffortLabel(effort, t)}
               </span>
-              <DropdownMenu.RadioItemIndicator>
-                <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
-              </DropdownMenu.RadioItemIndicator>
+              <DropdownMenu.RadioCheck />
             </DropdownMenu.RadioItem>
           ))}
         </DropdownMenu.RadioGroup>

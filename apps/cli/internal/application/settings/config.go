@@ -1,48 +1,47 @@
-// Package settings owns the CLI's typed, validated user preferences. It knows
-// nothing about Viper, files, environment variables, Cobra, or oolong; those
-// adapters translate into this product model at their respective boundaries.
 package settings
 
 import (
 	"errors"
 	"fmt"
 	"maps"
+	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
 )
 
-// Action names one rebindable terminal command in the keys configuration.
+const defaultTranscriptRetain = 24
+
 type Action string
 
 const (
 	ActionSend            Action = "send"
-	ActionNewline                = "newline"
-	ActionCancelRun              = "cancel-run"
-	ActionQuit                   = "quit"
-	ActionCommandPalette         = "command-palette"
-	ActionShortcuts              = "shortcuts"
-	ActionSessions               = "sessions"
-	ActionTimeline               = "timeline"
-	ActionSearch                 = "search"
-	ActionManageQueue            = "manage-queue"
-	ActionChooseModel            = "choose-model"
-	ActionToggleDetails          = "toggle-details"
-	ActionHistoryPrevious        = "history-previous"
-	ActionHistoryNext            = "history-next"
-	ActionNextMatch              = "next-match"
-	ActionPreviousMatch          = "previous-match"
-	ActionScrollPageUp           = "scroll-page-up"
-	ActionScrollPageDown         = "scroll-page-down"
-	ActionScrollTop              = "scroll-top"
-	ActionScrollBottom           = "scroll-bottom"
-	ActionExternalEditor         = "external-editor"
+	ActionNewline         Action = "newline"
+	ActionCancelRun       Action = "cancel-run"
+	ActionQuit            Action = "quit"
+	ActionCommandPalette  Action = "command-palette"
+	ActionShortcuts       Action = "shortcuts"
+	ActionSessions        Action = "sessions"
+	ActionTimeline        Action = "timeline"
+	ActionSearch          Action = "search"
+	ActionManageQueue     Action = "manage-queue"
+	ActionChooseModel     Action = "choose-model"
+	ActionToggleDetails   Action = "toggle-details"
+	ActionHistoryPrevious Action = "history-previous"
+	ActionHistoryNext     Action = "history-next"
+	ActionNextMatch       Action = "next-match"
+	ActionPreviousMatch   Action = "previous-match"
+	ActionScrollPageUp    Action = "scroll-page-up"
+	ActionScrollPageDown  Action = "scroll-page-down"
+	ActionScrollTop       Action = "scroll-top"
+	ActionScrollBottom    Action = "scroll-bottom"
+	ActionExternalEditor  Action = "external-editor"
 )
 
-// AuthoringPartition preserves the local outbox identity across reconnects.
 func (r Runtime) AuthoringPartition() (string, error) {
 	if err := r.Validate(); err != nil {
 		return "", err
@@ -67,8 +66,6 @@ type Config struct {
 	Keys     map[Action][]string `json:"keys"     mapstructure:"keys"`
 }
 
-// Runtime selects the process-owned embedded Runtime or an existing endpoint.
-// Credentials are process input and never part of printable CLI preferences.
 type Runtime struct {
 	Mode     RuntimeMode `json:"mode" mapstructure:"mode"`
 	Endpoint string      `json:"endpoint" mapstructure:"endpoint"`
@@ -99,7 +96,6 @@ type Approval struct {
 	Remember RememberPreference `json:"remember" mapstructure:"remember"`
 }
 
-// RememberPreference selects the approval choice the terminal offers first.
 type RememberPreference string
 
 const (
@@ -120,11 +116,17 @@ type Plugins struct {
 	Directories []string `json:"directories" mapstructure:"directories"`
 }
 
+// User-sideloaded plugins live in the home authored directory, which does not move
+// with a relocated product root.
+func DefaultPluginDirectory(home string) string {
+	return filepath.Join(home, identity.AuthoredDirectory, "plugins")
+}
+
 func Default() Config {
 	return Config{
 		Runtime:  Runtime{Mode: RuntimeRemote, Endpoint: localruntime.DefaultOrigin},
 		Approval: Approval{Remember: RememberNone},
-		UI:       UI{Mouse: true, Notifications: true, ToolDetails: false, TranscriptRetain: 24},
+		UI:       UI{Mouse: true, Notifications: true, ToolDetails: false, TranscriptRetain: defaultTranscriptRetain},
 		Keys: map[Action][]string{
 			ActionSend:            {"enter"},
 			ActionNewline:         {"shift+enter", "alt+enter"},

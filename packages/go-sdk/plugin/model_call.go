@@ -16,8 +16,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// ModelCallBudget bounds the complete request, including context, Tools and media.
-// Estimates are admission evidence; they never become reported usage or cost.
 type ModelCallBudget struct {
 	MaxRequestBytes int64 `json:"maxRequestBytes" jsonschema:"minimum=1"`
 	MaxOutputTokens int64 `json:"maxOutputTokens" jsonschema:"minimum=1"`
@@ -68,9 +66,11 @@ func (r ModelCallRequest) Validate() error {
 func SelectedModelMethod() (*pluginmcp.Method[ModelCallRequest, ModelResult], error) {
 	return pluginmcp.NewMethod[ModelCallRequest, ModelResult](frame.MethodConfig{Name: "flame.model/selected-call.v1", Kind: frame.Command, Target: extension.ScopeCall, Description: "Perform one independently selected, budgeted and observed model exchange."})
 }
+
 func SelectedModelStreamMethod() (*pluginmcp.StreamingMethod[ModelCallRequest, scopewire.ResponseDelta, ModelResult], error) {
 	return pluginmcp.NewStreamingMethod[ModelCallRequest, scopewire.ResponseDelta, ModelResult](frame.MethodConfig{Name: "flame.model/selected-stream.v1", Kind: frame.Command, Target: extension.ScopeCall, Description: "Consume one independently selected, budgeted and observed model stream."})
 }
+
 func CallSelectedModel(ctx context.Context, ref pluginmcp.CallbackRef, id pluginmcp.CommandID, input ModelCallRequest) (*chat.Response, error) {
 	if err := input.Validate(); err != nil {
 		return nil, err
@@ -80,12 +80,13 @@ func CallSelectedModel(ctx context.Context, ref pluginmcp.CallbackRef, id plugin
 	if err != nil {
 		return nil, err
 	}
-	result, err := pluginmcp.CallHost(ctx, ref, method, pluginmcp.CommandID(id), input)
+	result, err := pluginmcp.CallHost(ctx, ref, method, id, input)
 	if err != nil {
 		return nil, err
 	}
 	return modelOutcome(result)
 }
+
 func StreamSelectedModel(ctx context.Context, ref pluginmcp.CallbackRef, id pluginmcp.CommandID, input ModelCallRequest) iter.Seq2[pluginmcp.StreamValue[scopewire.ResponseDelta, ModelResult], error] {
 	method, err := SelectedModelStreamMethod()
 	if err == nil {
@@ -97,8 +98,9 @@ func StreamSelectedModel(ctx context.Context, ref pluginmcp.CallbackRef, id plug
 		}
 	}
 	input.Request = *input.Request.Clone()
-	return pluginmcp.StreamHost(ctx, ref, method, pluginmcp.CommandID(id), input)
+	return pluginmcp.StreamHost(ctx, ref, method, id, input)
 }
+
 func NewSelectedModelCallback(call func(context.Context, pluginmcp.Command[ModelCallRequest]) (*chat.Response, error)) (pluginmcp.Callback, error) {
 	if call == nil {
 		return pluginmcp.Callback{}, errors.New("plugin: selected model call owner is required")
@@ -123,6 +125,7 @@ func NewSelectedModelCallback(call func(context.Context, pluginmcp.Command[Model
 		return modelResult(response, err)
 	})
 }
+
 func NewSelectedModelStreamCallback(stream func(context.Context, pluginmcp.Command[ModelCallRequest]) iter.Seq2[*chat.ResponseDelta, error]) (pluginmcp.Callback, error) {
 	if stream == nil {
 		return pluginmcp.Callback{}, errors.New("plugin: selected model stream owner is required")

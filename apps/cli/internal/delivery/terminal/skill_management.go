@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// skillScreens shows discovered and managed Skills and decides proposals
-// through the Runtime's Skills port.
+const instructionsSectionTitle = "Instructions"
+
 type skillScreens struct {
 	screenHost
 	service Skills
@@ -32,9 +33,9 @@ func (s *skillScreens) skillDetailReaderQuery(name string) *readerQuery {
 		if err != nil {
 			return readerDocument{}, err
 		}
-		return readerDocument{Title: detail.Name, Detail: string(detail.Scope) + " · " + detail.Revision, Sections: []toolSection{
+		return readerDocument{Title: detail.Name, Detail: string(detail.Scope) + format.Separator + detail.Revision, Sections: []toolSection{
 			{Title: "Source", Style: toolSectionParagraph, Text: detail.Path},
-			{Title: "Instructions", Style: toolSectionParagraph, Text: detail.Instructions},
+			{Title: instructionsSectionTitle, Style: toolSectionParagraph, Text: detail.Instructions},
 		}}, nil
 	}}
 }
@@ -140,7 +141,7 @@ func skillProposalsDocument(proposals []workspace.SkillProposal) readerDocument 
 		}
 		sections = append(sections,
 			toolSection{Title: proposal.Key(), Style: toolSectionParagraph, Text: proposal.Description + "\n" + provenance},
-			toolSection{Title: "Instructions", Style: toolSectionParagraph, Text: proposal.Instructions, Links: true},
+			toolSection{Title: instructionsSectionTitle, Style: toolSectionParagraph, Text: proposal.Instructions, Links: true},
 		)
 	}
 	return readerDocument{Title: "Skill proposals", Detail: fmt.Sprintf("%d awaiting review", len(proposals)), Sections: sections}
@@ -176,7 +177,7 @@ func (s *skillScreens) changeSkillLifecycle(
 		},
 	)
 	if !started {
-		return errors.New("another skill operation is running")
+		return skillOperation.busy()
 	}
 	return nil
 }
@@ -186,7 +187,6 @@ type skillProposalDecision struct {
 	reference workspace.SkillProposalReference
 }
 
-// skillProposalVerdict is the reviewer's decision on one exact proposal revision.
 type skillProposalVerdict uint8
 
 const (
@@ -251,7 +251,7 @@ func (s *skillScreens) PrepareSkillProposalDecision(identity string, verdict ski
 		},
 	)
 	if !started {
-		return errors.New("another skill operation is running")
+		return skillOperation.busy()
 	}
 	return nil
 }
@@ -301,6 +301,6 @@ func (s *skillScreens) decideSkillProposal(reference workspace.SkillProposalRefe
 		},
 	)
 	if !started {
-		s.message("another skill operation is running")
+		s.message(skillOperation.busy().Error())
 	}
 }

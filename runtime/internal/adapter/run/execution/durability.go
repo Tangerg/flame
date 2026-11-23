@@ -62,8 +62,6 @@ func (i *interactionSession) Append(ctx context.Context, batch scoperun.Batch) e
 	return nil
 }
 
-// appendedHistory extends the stored log with the admitted batch, reusing the
-// cached encoding of the prior entries.
 func (i *interactionSession) appendedHistory(head runs.ExecutionTreeHead, found bool, history scoperun.Log, batch scoperun.Batch) (scoperun.Log, string, error) {
 	entryJSON, err := json.Marshal(batch.Entries(), json.Deterministic(true))
 	if err != nil {
@@ -84,9 +82,6 @@ func (i *interactionSession) appendedHistory(head runs.ExecutionTreeHead, found 
 	return history, appendEntryJSON(priorJSON, entryJSON), nil
 }
 
-// treeUpdate is the compare-and-swap that commits history. Batch.Admit owns
-// the Store's append decision; the runtime validates the transition rather
-// than replaying the computation.
 func (i *interactionSession) treeUpdate(head runs.ExecutionTreeHead, found bool, history scoperun.Log, batch scoperun.Batch, entriesJSON string) (runs.ExecutionTreeUpdate, error) {
 	material, err := i.material.snapshot(history)
 	if err != nil {
@@ -207,7 +202,7 @@ func (i *interactionSession) commitTree(ctx context.Context, tree scoperun.Log, 
 	}
 	i.state.mu.Lock()
 	hasChildren := len(i.state.delegateChildren) > 0
-	contextAdvances := (len(i.state.pendingSteers) > 0 || i.toolResults != nil && i.state.deployments.hasToolReceipts()) && i.state.boundary != interactionBoundaryAccepted
+	contextAdvances := (len(i.state.pendingSteers) > 0 || i.state.deployments.hasToolReceipts()) && i.state.boundary != interactionBoundaryAccepted
 	i.state.mu.Unlock()
 	acceptances, err := i.admittedSteers(tree.Root, records)
 	if err != nil {
@@ -238,9 +233,7 @@ func (i *interactionSession) commitTree(ctx context.Context, tree scoperun.Log, 
 	return nil
 }
 
-// persistSettledTree saves a head-only advance directly and hands any other
-// settlement to the product owner, which owns the transaction after handoff:
-// a storage deadline must not abandon its receipt while it can still commit.
+// A storage deadline must not abandon a receipt that can still commit.
 func (i *interactionSession) persistSettledTree(ctx context.Context, root scoperun.ProcessID, update runs.ExecutionTreeUpdate, fact runs.ExecutionTreeSettled) error {
 	if fact.AdvancesHeadOnly() {
 		return i.saveExecutionTree(ctx, update)
@@ -250,8 +243,6 @@ func (i *interactionSession) persistSettledTree(ctx context.Context, root scoper
 	return i.commitFact(publication, runs.ExecutorMember{MemberID: root.String()}, fact)
 }
 
-// settledTree is one executor cut projected to product facts, with the
-// process-local state to release once the cut commits.
 type settledTree struct {
 	fact             runs.ExecutionTreeSettled
 	terminalChildren []*managedDelegateCall
@@ -281,8 +272,6 @@ func (i *interactionSession) observeSettlement(ctx context.Context, tree scoperu
 	return nil
 }
 
-// scopeCommitConflict tells Scope which of its own conflicts a product commit
-// refusal means, so the engine retries or fences exactly as it would locally.
 func scopeCommitConflict(err error) error {
 	switch {
 	case errors.Is(err, runs.ErrExecutionTreeCommitConflict):
@@ -321,49 +310,60 @@ func containsProcessExit(records []scoperun.Record) bool {
 func (i *interactionSession) projectSettledToolResults(ctx context.Context, tree scoperun.Log, rounds []interaction.RoundResults, fact *runs.ExecutionTreeSettled) ([]runs.InvocationID, error) {
 	var retired []runs.InvocationID
 	for _, round := range rounds {
-		roundStart := len(fact.Facts)
-		for _, entry := range round.Entries() {
-			identity, err := logicalToolCallID(round.ProcessID(), round.ModelCallSequence(), entry.ToolCallIndex, entry.Call.ID, entry.Call.Name)
-			if err != nil {
-				return nil, err
-			}
-			// Durable receipts precede metadata lookup: overlapping cuts may
-			// contain results whose presentation data was already retired.
-			publication, err := resultPublication(identity, entry)
-			if err != nil {
-				return nil, err
-			}
-			committed, err := i.executionTrees.ExecutionResultCommitted(ctx, i.start.SessionID, publication)
-			if err != nil {
-				return nil, err
-			}
-			retired = append(retired, identity)
-			if committed {
-				continue
-			}
-			failedChild, failed, err := i.failedChildPublication(tree, round.ProcessID(), round.ModelCallSequence(), entry.Call)
-			if err != nil {
-				return nil, err
-			}
-			if failed {
-				fact.Children = append(fact.Children, failedChild)
-			}
-			projection, err := i.toolResultProjection(round.ProcessID(), round.ModelCallSequence(), entry)
-			if err != nil {
-				return nil, err
-			}
-			fact.Facts = append(fact.Facts, projection)
+		projections, roundRetired, err := i.projectSettledRound(ctx, tree, round, fact)
+		if err != nil {
+			return nil, err
 		}
-		if round.Complete() && len(fact.Facts) > roundStart {
-			index := len(fact.Facts) - 1
-			completed := fact.Facts[index].Payload.(runs.ToolResultsCommitted)
+		retired = append(retired, roundRetired...)
+		if len(projections) > 0 && round.Complete() {
+			last := &projections[len(projections)-1]
 			for _, entry := range round.Entries() {
-				completed.ModelResults = append(completed.ModelResults, entry.Result.Clone())
+				last.committed.ModelResults = append(last.committed.ModelResults, entry.Result.Clone())
 			}
-			fact.Facts[index].Payload = completed
+		}
+		for _, projection := range projections {
+			fact.Facts = append(fact.Facts, projection.event())
 		}
 	}
 	return retired, nil
+}
+
+func (i *interactionSession) projectSettledRound(ctx context.Context, tree scoperun.Log, round interaction.RoundResults, fact *runs.ExecutionTreeSettled) ([]toolResultFact, []runs.InvocationID, error) {
+	var projections []toolResultFact
+	var retired []runs.InvocationID
+	for _, entry := range round.Entries() {
+		identity, err := logicalToolCallID(round.ProcessID(), round.ModelCallSequence(), entry.ToolCallIndex, entry.Call.ID, entry.Call.Name)
+		if err != nil {
+			return nil, nil, err
+		}
+		// Durable receipts precede metadata lookup: overlapping cuts may
+		// contain results whose presentation data was already retired.
+		publication, err := resultPublication(identity, entry)
+		if err != nil {
+			return nil, nil, err
+		}
+		committed, err := i.executionTrees.ExecutionResultCommitted(ctx, i.start.SessionID, publication)
+		if err != nil {
+			return nil, nil, err
+		}
+		retired = append(retired, identity)
+		if committed {
+			continue
+		}
+		failedChild, failed, err := i.failedChildPublication(tree, round.ProcessID(), round.ModelCallSequence(), entry.Call)
+		if err != nil {
+			return nil, nil, err
+		}
+		if failed {
+			fact.Children = append(fact.Children, failedChild)
+		}
+		projection, err := i.toolResultProjection(round.ProcessID(), round.ModelCallSequence(), entry)
+		if err != nil {
+			return nil, nil, err
+		}
+		projections = append(projections, projection)
+	}
+	return projections, retired, nil
 }
 
 func orderExecutionFacts(tree scoperun.Log, facts []runs.ExecutorEvent) {
@@ -393,8 +393,6 @@ func orderExecutionFacts(tree scoperun.Log, facts []runs.ExecutorEvent) {
 	})
 }
 
-// Scope's history projection decodes complete model requests. Only a Tool
-// settlement or child Exit can add a result; unrelated log records cannot.
 func (i *interactionSession) toolResultsChanged(history scoperun.Log, records []scoperun.Record) (bool, error) {
 	for _, record := range records {
 		switch record := record.(type) {
@@ -408,7 +406,6 @@ func (i *interactionSession) toolResultsChanged(history scoperun.Log, records []
 			if !found {
 				continue
 			}
-			// A refused child start is itself a settled delegate result.
 			if intent.Effect.Target() != scoperun.EffectTargetDispatcher {
 				return true, nil
 			}
@@ -425,7 +422,6 @@ func (i *interactionSession) toolResultsChanged(history scoperun.Log, records []
 	return false, nil
 }
 
-// declaredIntent finds the Effect a committed Step declared under id.
 func declaredIntent(history scoperun.Log, id scoperun.EffectID) (scoperun.EffectIntent, bool) {
 	for _, entry := range slices.Backward(history.Entries) {
 		stepped, found := entry.Record.(scoperun.Stepped)
@@ -485,7 +481,6 @@ func decodeExecutionTree(head runs.ExecutionTreeHead, rootID scoperun.ProcessID)
 	return history, nil
 }
 
-// changedToolResults reads settled rounds only when records changed them.
 func (i *interactionSession) changedToolResults(tree scoperun.Log, records []scoperun.Record) ([]interaction.RoundResults, error) {
 	changed, err := i.toolResultsChanged(tree, records)
 	if err != nil || !changed {
@@ -521,8 +516,6 @@ func (i *interactionSession) settledToolResults(history scoperun.Log) ([]interac
 	return results, nil
 }
 
-// Scope owns the log; Flame owns the prepared provider inputs. The opaque
-// application payload commits both facts under the same compare-and-swap head.
 type executionLogWire struct {
 	Log              scoperun.Log          `json:"log"`
 	PreparedRequests []preparedRequestWire `json:"preparedRequests,omitempty"`

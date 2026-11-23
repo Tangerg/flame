@@ -4,7 +4,6 @@ import { type ReactNode } from "react";
 import { type Scheme } from "@/lib/appearance";
 import { type ColorThemeSpec } from "@/features/theme/public/types";
 import { DropdownMenu } from "@/ui/index";
-import { Icon } from "@/ui/index";
 import { SelectTrigger } from "@/ui/index";
 import { vocab } from "@flame/ui";
 import { useT } from "@/lib/i18n/index";
@@ -91,9 +90,7 @@ function ThemeItem({ swatch, label, value }: { swatch: ReactNode; label: string;
     <DropdownMenu.RadioItem value={value} label={label} layout="pickWide">
       {swatch}
       <span {...stylex.props(th.name, vocab.truncate, typeStep.uiMd)}>{label}</span>
-      <DropdownMenu.RadioItemIndicator>
-        <Icon name="check" size="sm" className={stylex.props(vocab.accent).className} />
-      </DropdownMenu.RadioItemIndicator>
+      <DropdownMenu.RadioCheck size="sm" />
     </DropdownMenu.RadioItem>
   );
 }

@@ -1,7 +1,3 @@
-// Package session owns Flame's conversation identity and the behavior of one
-// Session aggregate. Every multi-Run interaction lives under one Session.
-// Persistence, clocks, identity generation, filesystem admission, and
-// cross-aggregate orchestration remain consumer concerns.
 package session
 
 import (
@@ -13,57 +9,41 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
-// IDPrefix is the type prefix assigned when a Runtime generates a Session ID.
-const IDPrefix = identity.SessionPrefix
-
 var (
-	// ErrNotFound reports that no Session exists for an addressed identity.
-	ErrNotFound = errors.New("session: not found")
-	// ErrInvalid marks Session state or a requested edit that violates an
-	// aggregate invariant.
-	ErrInvalid = errors.New("session: invalid session")
-	// ErrTitleRequired reports a Session edit with an empty title.
-	ErrTitleRequired = errors.New("session: title required")
-	// ErrRevisionConflict reports a stale optimistic-concurrency precondition.
+	ErrNotFound         = errors.New("session: not found")
+	ErrInvalid          = errors.New("session: invalid session")
+	ErrTitleRequired    = errors.New("session: title required")
 	ErrRevisionConflict = errors.New("session: revision conflict")
 )
 
-// Draft contains the caller-decided identity and admitted values needed to
-// start a root Session. ID generation, workspace resolution, and time acquisition
-// occur before this value reaches the aggregate.
 type Draft struct {
 	ID        identity.SessionID
 	Title     string
 	Workspace Workspace
-	Selection modelchoice.Selection
+	Selection flamemodel.Selection
 	CreatedAt time.Time
 }
 
-// Patch is the editable surface of a user-facing Session. Nil fields are left
-// unchanged.
 type Patch struct {
 	Title     *string
-	Selection *modelchoice.Selection
+	Selection *flamemodel.Selection
 	Workspace *Workspace
 	Favorite  *bool
 	Isolated  *bool
 }
 
-// Empty reports whether p requests no field change.
 func (p Patch) Empty() bool {
 	return p.Title == nil && p.Selection == nil && p.Workspace == nil && p.Favorite == nil && p.Isolated == nil
 }
 
-// Snapshot is the complete technical representation used only to reconstruct
-// or persist a Session. It is not a mutation API.
 type Snapshot struct {
 	ID        identity.SessionID
 	Title     string
 	Workspace Workspace
-	Selection modelchoice.Selection
+	Selection flamemodel.Selection
 	ParentID  identity.SessionID
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -72,14 +52,11 @@ type Snapshot struct {
 	Revision  uint64
 }
 
-// Session is one durable conversation aggregate. Its identity, lineage, and
-// start time are immutable during ordinary edits; every mutable value changes
-// through aggregate behavior and advances one monotonic revision.
 type Session struct {
 	id        identity.SessionID
 	title     string
 	workspace Workspace
-	selection modelchoice.Selection
+	selection flamemodel.Selection
 	parentID  identity.SessionID
 	createdAt time.Time
 	updatedAt time.Time
@@ -88,9 +65,6 @@ type Session struct {
 	revision  exactint.Counter
 }
 
-// New starts a root Session from caller-admitted values at revision one.
-// Fresh interactive creation and scheduled creation share this same domain
-// meaning; only the caller's source of their identity differs.
 func New(draft Draft) (Session, error) {
 	createdAt := draft.CreatedAt.UTC()
 	snapshot := Snapshot{
@@ -101,12 +75,10 @@ func New(draft Draft) (Session, error) {
 	return Restore(snapshot)
 }
 
-// Restore reconstructs a Session from its complete technical representation
-// while rechecking every aggregate invariant.
 func Restore(snapshot Snapshot) (Session, error) {
 	revision, err := exactint.Restore(snapshot.Revision)
 	if err != nil {
-		return Session{}, fmt.Errorf("%w: revision: %v", ErrInvalid, err)
+		return Session{}, fmt.Errorf("%w: revision: %w", ErrInvalid, err)
 	}
 	value := Session{
 		id: snapshot.ID, title: snapshot.Title, workspace: snapshot.Workspace,
@@ -122,8 +94,6 @@ func Restore(snapshot Snapshot) (Session, error) {
 	return value, nil
 }
 
-// Edit applies a person's patch to the revision they inspected; any other
-// revision, including none, conflicts.
 func (s Session) Edit(expectedRevision uint64, patch Patch, updatedAt time.Time) (Session, bool, error) {
 	if !s.id.IsZero() && expectedRevision != s.revision.Value() {
 		return Session{}, false, ErrRevisionConflict
@@ -131,10 +101,6 @@ func (s Session) Edit(expectedRevision uint64, patch Patch, updatedAt time.Time)
 	return s.Apply(patch, updatedAt)
 }
 
-// Apply returns the Session produced by one Runtime-owned edit. Text normalization and all
-// preconditions are enforced on this single path, so callers cannot normalize a
-// command and then bypass its aggregate checks. A semantic no-op returns s and
-// changed=false without advancing revision or time.
 func (s Session) Apply(patch Patch, updatedAt time.Time) (next Session, changed bool, err error) {
 	if s.id.IsZero() {
 		return Session{}, false, fmt.Errorf("%w: current state was never constructed", ErrInvalid)
@@ -169,15 +135,13 @@ func (s Session) Apply(patch Patch, updatedAt time.Time) (next Session, changed 
 	if next.sameValue(s) {
 		return s, false, nil
 	}
-	if err := next.advance(s, updatedAt); err != nil {
+	advanced, err := next.advanced(s, updatedAt)
+	if err != nil {
 		return Session{}, false, err
 	}
-	return next, true, nil
+	return advanced, true, nil
 }
 
-// NameIfUntitled installs a generated initial title only while the Session is
-// still untitled. A user title always wins. The returned bool reports whether a
-// replacement was produced.
 func (s Session) NameIfUntitled(title string, updatedAt time.Time) (Session, bool, error) {
 	if strings.TrimSpace(s.title) != "" {
 		return s, false, nil
@@ -185,10 +149,6 @@ func (s Session) NameIfUntitled(title string, updatedAt time.Time) (Session, boo
 	return s.Apply(Patch{Title: &title}, updatedAt)
 }
 
-// Fork derives a new child Session. It inherits the admitted workspace and
-// isolation choice and exact model selection, starts a fresh conversation with
-// no favorite flag, and records immutable lineage back to s. An empty title keeps
-// the parent's own title; wording a fork in a person's language is the client's.
 func (s Session) Fork(id identity.SessionID, title string, createdAt time.Time) (Session, error) {
 	if s.id.IsZero() {
 		return Session{}, fmt.Errorf("%w: parent was never constructed", ErrInvalid)
@@ -205,9 +165,6 @@ func (s Session) Fork(id identity.SessionID, title string, createdAt time.Time) 
 	})
 }
 
-// InstallRestoredWorkspace replaces an archive's workspace spelling with the
-// canonical identity admitted before reconstruction. It is not an
-// edit: revision and timestamps remain the archive's facts.
 func (s Session) InstallRestoredWorkspace(workspace Workspace) (Session, error) {
 	if s.id.IsZero() {
 		return Session{}, fmt.Errorf("%w: value was never constructed", ErrInvalid)
@@ -219,10 +176,6 @@ func (s Session) InstallRestoredWorkspace(workspace Workspace) (Session, error) 
 	return s, s.validate()
 }
 
-// ReplaceWithRestore returns a replacement aggregate for an archive restored
-// over an existing Session identity. The archive supplies the restored product
-// values and immutable origin facts; the target aggregate owns the next
-// revision and the caller supplies when the replacement occurred.
 func (s Session) ReplaceWithRestore(restored Session, updatedAt time.Time) (Session, error) {
 	if s.id.IsZero() || restored.id.IsZero() {
 		return Session{}, fmt.Errorf("%w: replacement needs a constructed current and restored Session", ErrInvalid)
@@ -230,36 +183,32 @@ func (s Session) ReplaceWithRestore(restored Session, updatedAt time.Time) (Sess
 	if s.id != restored.id {
 		return Session{}, fmt.Errorf("%w: restored identity %q differs from current identity %q", ErrInvalid, restored.id, s.id)
 	}
-	next := restored
-	if err := next.advance(s, updatedAt); err != nil {
-		return Session{}, err
-	}
-	return next, nil
+	return restored.advanced(s, updatedAt)
 }
 
-func (s *Session) advance(previous Session, updatedAt time.Time) error {
+func (s Session) advanced(previous Session, updatedAt time.Time) (Session, error) {
 	updatedAt = updatedAt.UTC()
 	if updatedAt.IsZero() {
-		return fmt.Errorf("%w: update time is required", ErrInvalid)
+		return Session{}, fmt.Errorf("%w: update time is required", ErrInvalid)
 	}
 	if updatedAt.Before(previous.updatedAt) || updatedAt.Before(s.createdAt) {
-		return fmt.Errorf("%w: update time precedes Session history", ErrInvalid)
+		return Session{}, fmt.Errorf("%w: update time precedes Session history", ErrInvalid)
 	}
 	revision, err := previous.revision.Next()
 	if err != nil {
-		return fmt.Errorf("%w: revision: %v", ErrInvalid, err)
+		return Session{}, fmt.Errorf("%w: revision: %w", ErrInvalid, err)
 	}
 	s.revision = revision
 	s.updatedAt = updatedAt
-	return s.validate()
+	if err := s.validate(); err != nil {
+		return Session{}, err
+	}
+	return s, nil
 }
 
-// validate verifies identity, lineage, admitted values, time, and revision.
-// Every constructor and every transition closes here, so a Session that exists
-// is already legal and no reader has to ask again.
 func (s Session) validate() error {
 	if err := s.id.Validate(); err != nil {
-		return fmt.Errorf("%w: id: %v", ErrInvalid, err)
+		return fmt.Errorf("%w: id: %w", ErrInvalid, err)
 	}
 	if err := s.workspace.Validate(); err != nil {
 		return err
@@ -268,7 +217,7 @@ func (s Session) validate() error {
 		return fmt.Errorf("%w: title must not contain surrounding whitespace", ErrInvalid)
 	}
 	if err := s.selection.ValidateExact(); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalid, err)
+		return fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	if s.parentID == s.id {
 		return fmt.Errorf("%w: invalid parent identity", ErrInvalid)
@@ -288,7 +237,6 @@ func (s Session) validate() error {
 	return nil
 }
 
-// Snapshot returns the complete technical representation of s.
 func (s Session) Snapshot() Snapshot {
 	return Snapshot{
 		ID: s.id, Title: s.title, Workspace: s.workspace, Selection: s.selection,
@@ -297,34 +245,24 @@ func (s Session) Snapshot() Snapshot {
 	}
 }
 
-// ID returns the immutable Session identity.
 func (s Session) ID() identity.SessionID { return s.id }
 
-// Title returns the user-facing title, which may be empty before generation.
 func (s Session) Title() string { return s.title }
 
-// Workspace returns the admitted exact workspace identity.
 func (s Session) Workspace() Workspace { return s.workspace }
 
-// Selection returns the exact provider/model pair owned by the Session.
-func (s Session) Selection() modelchoice.Selection { return s.selection }
+func (s Session) Selection() flamemodel.Selection { return s.selection }
 
-// ParentID returns the immutable parent Session identity, or empty for a root.
 func (s Session) ParentID() identity.SessionID { return s.parentID }
 
-// CreatedAt returns when the Session aggregate originated.
 func (s Session) CreatedAt() time.Time { return s.createdAt }
 
-// UpdatedAt returns the time of the most recent aggregate replacement.
 func (s Session) UpdatedAt() time.Time { return s.updatedAt }
 
-// Favorite reports whether the user pinned the Session.
 func (s Session) Favorite() bool { return s.favorite }
 
-// Isolated reports whether Runs use a sandbox copy of the workspace.
 func (s Session) Isolated() bool { return s.isolated }
 
-// Revision returns the monotonic aggregate revision.
 func (s Session) Revision() uint64 { return s.revision.Value() }
 
 func (s Session) sameValue(other Session) bool {

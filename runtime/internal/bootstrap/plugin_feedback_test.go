@@ -34,7 +34,6 @@ func TestFeedbackReceiptAndOriginalAnnotationSurviveWithdrawalAndRestart(t *test
 	if result := r.endpoint.Invoke(t.Context(), "feedback.create", in, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}, IdempotencyKey: "second-vote"}); result.Failure == nil {
 		t.Fatal("withdrawn provider admitted a new annotation")
 	}
-	// A fresh read cut still contains the evidence, even though its original author cannot run.
 	exported, err := r.api.ExportTrajectory(t.Context(), protocol.ExportTrajectoryRequest{SessionID: session.ID})
 	if err != nil {
 		t.Fatal(err)

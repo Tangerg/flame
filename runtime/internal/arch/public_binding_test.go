@@ -9,8 +9,6 @@ import (
 	"testing"
 )
 
-// TestPublicBindingsCompileForAnExternalModule proves the public Go bindings
-// are usable without the Runtime module's internal-package privilege.
 func TestPublicBindingsCompileForAnExternalModule(t *testing.T) {
 	directory, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
@@ -37,7 +35,7 @@ runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 
 
 "github.com/Tangerg/flame/packages/local-runtime"
-modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
@@ -59,7 +57,7 @@ var _ runtimeclient.PluginStreamer = (*runtimeclient.Client)(nil)
 var _ runtimeclient.PluginStreamer = (*runtimeclient.PluginCallbackCaller)(nil)
 var _ *flameruntime.Runtime
 var _ = localruntime.ReadToken
-var _ = modelchoice.NewWithReasoningEffort
+var _ = flamemodel.NewWithReasoningEffort
 var _ = catalog.NewAdmission
 var _ protocol.RunEvent
 var _ = protocol.DecodeRequest
@@ -73,7 +71,6 @@ var _ = pluginmcp.NewMethod[struct{}, string]
 var _ = pluginmcp.NewStreamingMethod[struct{}, uint64, bool]
 var _ frame.MethodDescriptor
 var _ = pluginmcp.NewBinding
-var _ = pluginmcp.Resolve
 var _ *pluginmcp.Binding
 var _ = framevalue.EncodeJSON[struct{}]
 var _ = pluginsdk.ReadToolReceipt
@@ -208,8 +205,6 @@ func writeConsumerFile(t *testing.T, path, content string) {
 
 const runtimeModulePath = "github.com/Tangerg/flame/runtime"
 
-// moduleRoot walks up from the test's working directory to the directory
-// holding the Runtime go.mod, independently of the surrounding checkout.
 func moduleRoot(t *testing.T) string {
 	t.Helper()
 	directory, err := os.Getwd()

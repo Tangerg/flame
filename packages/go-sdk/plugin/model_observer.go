@@ -9,8 +9,6 @@ import (
 	"github.com/Tangerg/frame"
 )
 
-// ModelObserverContract requires transparent Call/Stream observation of the
-// exact remaining chain. Only the captured continuation owns the model outcome.
 func ModelObserverContract() (*plugincontract.Capability, error) { return modelObserverContract() }
 
 func ModelObserverCallMethod() (*pluginmcp.Method[scopewire.Request, struct{}], error) {
@@ -27,8 +25,6 @@ func ModelObserverStreamMethod() (*pluginmcp.StreamingMethod[scopewire.Request, 
 	})
 }
 
-// The published contract is immutable. Checkpoint validation shares its compiled
-// schemas instead of repeating admission on every durable tree commit.
 var modelObserverContract = publishedCapability(func() (*plugincontract.Capability, error) {
 	call, err := ModelObserverCallMethod()
 	if err != nil {

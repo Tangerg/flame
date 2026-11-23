@@ -6,9 +6,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// modelStreamSender retains the terminal outcome until deferred settlement and
-// release have joined. Chunks remain synchronous; a stopped or panicking
-// consumer cannot receive another yield from cleanup.
 type modelStreamSender struct {
 	yield    func(*chat.ResponseDelta, error) bool
 	stopped  bool

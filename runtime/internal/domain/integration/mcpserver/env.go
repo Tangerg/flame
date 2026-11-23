@@ -6,16 +6,9 @@ import (
 	"strings"
 )
 
-// injectionEnvKeys are environment variables that hijack the dynamic linker or a
-// language runtime of a spawned process. They have no legitimate use in an MCP
-// server's stdio env and are a code-injection vector: a workspace-supplied
-// config that set one of these would load attacker code into the server
-// subprocess. Matched case-insensitively — the canonical form is upper-case, but
-// a case variant is still honored by some loaders / on case-insensitive OSes.
-//
-// Deliberately narrow: only the no-legitimate-use linker/loader keys. PATH,
-// NODE_OPTIONS, PYTHONPATH and friends are NOT here — a server config may set
-// them for benign reasons, and dropping them would break legitimate servers.
+// Linker/loader hijack keys are a code-injection vector with no legitimate MCP
+// use, matched case-insensitively because some loaders honor variants. PATH,
+// NODE_OPTIONS and PYTHONPATH stay allowed for legitimate servers.
 var injectionEnvKeys = map[string]struct{}{
 	"LD_PRELOAD":            {},
 	"LD_LIBRARY_PATH":       {},

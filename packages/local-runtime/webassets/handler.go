@@ -1,4 +1,3 @@
-// Package webassets delivers one built Web distribution to HTTP and native hosts.
 package webassets
 
 import (
@@ -18,8 +17,6 @@ type Handler struct {
 	policy policy
 }
 
-// New captures the build's policy. Each response verifies the bytes it serves;
-// a mutable directory never turns a stale manifest into an immutable response.
 func New(open func(string) (fs.File, error)) (*Handler, error) {
 	if open == nil {
 		return nil, errors.New("webassets: missing artifact source")
@@ -88,7 +85,7 @@ func (h *Handler) read(name string) ([]byte, fs.FileInfo, error) {
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Cache-Control", cacheNever)
+	w.Header().Set(headerCacheControl, cacheNever)
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -102,7 +99,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	name, data, info, err := h.readRequested(name, r.Header.Get("Accept"))
+	name, data, info, err := h.readRequested(name, r.Header.Get(headerAccept))
 	identity, known := h.policy.Files[name]
 	if err != nil {
 		// Unpublished lookups must not reveal a refused source's existence.
@@ -129,16 +126,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, name, info.ModTime(), bytes.NewReader(data))
 }
 
-// A fingerprinted asset's name changes with its bytes, so it may be kept for
-// a year; everything else is revalidated, and documents are never stored.
 const (
+	headerAccept       = "Accept"
+	headerCacheControl = "Cache-Control"
+	headerContentType  = "Content-Type"
+	headerETag         = "ETag"
+
 	cacheNever      = "no-store"
 	cacheRevalidate = "no-cache"
 	cacheImmutable  = "public, max-age=31536000, immutable"
 )
 
-// readRequested falls back to the entry document for a client route: an
-// extensionless path the browser asked for as HTML.
 func (h *Handler) readRequested(name, accept string) (string, []byte, fs.FileInfo, error) {
 	data, info, err := h.read(name)
 	if errors.Is(err, fs.ErrNotExist) && path.Ext(name) == "" && strings.Contains(accept, "text/html") {
@@ -149,12 +147,12 @@ func (h *Handler) readRequested(name, accept string) (string, []byte, fs.FileInf
 }
 
 func setAssetHeaders(header http.Header, name string, identity artifact, known bool) {
-	header.Set("Cache-Control", cacheRevalidate)
+	header.Set(headerCacheControl, cacheRevalidate)
 	if known && identity.Fingerprint != "" {
-		header.Set("Cache-Control", cacheImmutable)
-		header.Set("ETag", `"`+identity.SHA256+`"`)
+		header.Set(headerCacheControl, cacheImmutable)
+		header.Set(headerETag, `"`+identity.SHA256+`"`)
 	}
 	if contentType := mime.TypeByExtension(path.Ext(name)); contentType != "" {
-		header.Set("Content-Type", contentType)
+		header.Set(headerContentType, contentType)
 	}
 }

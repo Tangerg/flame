@@ -12,28 +12,18 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// planReader is the prompt composer's read-only view of the current Session
-// Plan.
 type planReader interface {
 	List(ctx context.Context, sessionID identity.SessionID) ([]plan.Step, error)
 }
 
-// goalReader is the working-context adapter's read-only view of the current
-// autonomous Goal aggregate. A found Goal is valid and belongs to the requested
-// Session.
 type goalReader interface {
 	Current(ctx context.Context, sessionID identity.SessionID) (goal.Goal, bool, error)
 }
 
-// interactionModelContextState supplies model-facing Session state whose value
-// may change while an Interaction is running. It is deliberately separate from
-// the frozen deployment instruction snapshot.
 type interactionModelContextState interface {
 	CurrentSessionState(ctx context.Context, sessionID identity.SessionID) ([]corechat.Message, error)
 }
 
-// MemoryPromptItem contains only published values consumed by prompt composition.
-// Feature lifecycle and business validation stay with the private backend.
 type MemoryPromptItem struct {
 	ID        string
 	Content   string
@@ -41,12 +31,10 @@ type MemoryPromptItem struct {
 	UpdatedAt time.Time
 }
 
-// agentMemoryReader supplies the pinned memory included in every fresh root.
 type agentMemoryReader interface {
 	Items(ctx context.Context, scope memorycontract.ItemsInputScope, project string) ([]MemoryPromptItem, error)
 }
 
-// agentMemorySearcher supplies prompt-relevant non-pinned memory.
 type agentMemorySearcher interface {
 	Search(ctx context.Context, project, query string, topK int) ([]MemoryPromptItem, error)
 }

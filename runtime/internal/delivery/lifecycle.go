@@ -9,8 +9,6 @@ import (
 const RuntimeDiscover Name = "runtime.discover"
 
 func registerLifecycle(registry *Registry) {
-	// runtime.discover takes no params; struct{} makes an unexpected field a
-	// decode failure rather than something silently ignored.
 	registry.query(MethodMeta{Name: RuntimeDiscover, GoName: "Discover"},
 		func(service interface {
 			Discover(context.Context) (*protocol.DiscoverResponse, error)

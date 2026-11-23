@@ -10,8 +10,6 @@ import (
 	"github.com/samber/lo"
 )
 
-// MemoryMaintenance runs after the successful Run commits. The selected Memory
-// backend owns its extraction and curation decisions.
 type MemoryMaintenance interface {
 	MaintainMemory(ctx context.Context, input executionadapter.RunMaintenanceInput, compacted bool) error
 }
@@ -37,10 +35,6 @@ func NewPipeline(work runWorkReader, memory MemoryMaintenance, skills SkillsMain
 	return &Pipeline{work: work, memory: memory, skills: skills}, nil
 }
 
-// Maintain completes one best-effort maintenance pass. Memory consolidation is
-// cost-amortized behind a durable summary already produced by the exact
-// model-request compaction path; this pipeline never makes a second context
-// reduction decision from a partial request projection.
 func (p *Pipeline) Maintain(ctx context.Context, input executionadapter.RunMaintenanceInput) executionadapter.RunMaintenanceResult {
 	completedTools, compacted, err := p.work.CompletedRunWork(ctx, input.SessionID, input.RootRunID)
 	if err != nil {

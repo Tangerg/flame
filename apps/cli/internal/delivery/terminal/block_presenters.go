@@ -3,6 +3,7 @@ package terminal
 import (
 	"strings"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/kit"
@@ -13,7 +14,7 @@ func presentUser(p blockPresentation, block conversation.Block) []base.Block {
 	if len(block.Attachments) > 0 {
 		lines := make([]string, 0, len(block.Attachments))
 		for _, item := range block.Attachments {
-			lines = append(lines, "@"+item.Name+" · "+item.MimeType)
+			lines = append(lines, "@"+item.Name+format.Separator+item.MimeType)
 		}
 		if body != "" {
 			body += "\n\n"

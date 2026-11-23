@@ -9,8 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// ValidateToolResults verifies that every typed transcript offload names
-// exactly one blob of this Session and that every blob is named by one Item.
 func (s HistorySnapshot) ValidateToolResults() error {
 	owners := make(map[transcript.ToolResultID]identity.ItemID, len(s.ToolResults))
 	for index, blob := range s.ToolResults {
@@ -52,8 +50,6 @@ func (s HistorySnapshot) ValidateToolResults() error {
 	return nil
 }
 
-// HydratedItems returns the Items with each offloaded result replaced by its
-// body, the form transcript reads present. The snapshot is not mutated.
 func (s HistorySnapshot) HydratedItems() ([]transcript.Item, error) {
 	bodies := make(map[transcript.ToolResultID]string, len(s.ToolResults))
 	for _, blob := range s.ToolResults {

@@ -23,9 +23,6 @@ type approvalBinding interface {
 	ForgetApprovalRule(context.Context, protocol.ForgetApprovalRuleRequest, protocol.CommandOptions) error
 }
 
-// ListModels returns every successfully discovered provider catalog together
-// with provider-qualified discovery errors. Cancellation, a closed Runtime, or
-// a protocol violation invalidates the whole read and returns no models.
 func (r *Connection) ListModels(ctx context.Context) ([]protocol.Model, error) {
 	providers, err := r.modelCatalog.ListProviders(ctx, r.callOptions())
 	if err != nil {

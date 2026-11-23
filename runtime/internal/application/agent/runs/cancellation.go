@@ -13,8 +13,6 @@ import (
 	"github.com/samber/lo"
 )
 
-// CancellationSettlementError means the Run owner could not join its complete
-// cleanup boundary. A committed terminal Run cannot turn it into a benign refusal.
 type CancellationSettlementError struct{ Cause error }
 
 func (e *CancellationSettlementError) Error() string {
@@ -26,8 +24,6 @@ func (e *CancellationSettlementError) Error() string {
 
 func (e *CancellationSettlementError) Unwrap() error { return e.Cause }
 
-// Cancellations owns Run cancellation: a live root or child, a waiting child and
-// a parked Run, including recovery of a committed waiting-child cancellation.
 type Cancellations struct {
 	rootCancellation                   RunningRootCancellationRequester
 	runningSubtreeCanceler             RunningSubtreeCanceler
@@ -46,7 +42,6 @@ type Cancellations struct {
 	admission                          *ownership.Gate
 }
 
-// CancellationDependencies are the collaborators Run cancellation requires.
 type CancellationDependencies struct {
 	RootCancellation                   RunningRootCancellationRequester
 	RunningSubtreeCanceler             RunningSubtreeCanceler
@@ -110,11 +105,6 @@ func NewCancellations(deps CancellationDependencies) (*Cancellations, error) {
 	}, nil
 }
 
-// Cancel handles both live and parked runs under the same run/session admission
-// rules and returns the exact terminal Run committed by the winning write-set.
-// The durable abandon write-set is authoritative and commits before a parked
-// executor is torn down. Cleanup errors are returned unless the executor already
-// disappeared, which is the idempotent completion race.
 func (c *Cancellations) Cancel(ctx context.Context, cmd CancelCommand) (CancelResult, error) {
 	var err error
 	cmd, err = cmd.normalizeReason()
@@ -163,8 +153,6 @@ type liveCancellationResult struct {
 	err    error
 }
 
-// The Run task retains the request through control admission and settlement.
-// A timeout can end the caller's wait while Scope still owns the control.
 func (c *Cancellations) awaitLiveCancellation(
 	owner *runTreeOwner,
 	receipt CancellationReceipt,
@@ -210,14 +198,10 @@ func finishLiveCancellation(ctx context.Context, receipt CancellationReceipt, er
 	}
 }
 
-// A terminal refusal already belongs to the Run's commit. The cleanup waiter
-// may observe it after the requester or its process has stopped.
 type terminalCancellationRefusal struct{ error }
 
 func (e terminalCancellationRefusal) Unwrap() error { return e.error }
 
-// TerminalCancellationRefusal applies to linked cancellations that have no
-// staged result and did not win the terminal transition.
 func TerminalCancellationRefusal(value rundomain.Run) error {
 	outcome, finished := value.Outcome()
 	if !finished {
@@ -280,25 +264,11 @@ func (c *Cancellations) settleLiveChildCancellation(
 	return result, err
 }
 
-// cancelWaitingChild removes one complete child subtree from an executor tree
-// parked at a human boundary. It first reserves the Session + working tree,
-// claims the execution lifecycle, and prepares one exact executor change that
-// keeps its source tree frozen. The application projections and replacement
-// executor checkpoint commit in one transaction; only after that durable
-// boundary may the prepared change be applied.
-//
-// When another external boundary survives, the tree stays Waiting. Removing
-// the final boundary instead opens continuation Segments in the same transaction
-// and immediately continues the already-settled runtime tree—there is no
-// synthetic human answer and no transient Running row without an owner.
 func (c *Cancellations) cancelWaitingChild(
 	ctx context.Context,
 	cmd CancelCommand,
 	initial cancellationPlan,
 ) (result CancelResult, err error) {
-	// The open interrupt this cancellation settles refuses a relocation for as
-	// long as it exists, so the Session read before the claim still names the tree
-	// the claim reserves.
 	sess, err := c.sessionReader.Get(ctx, initial.root.run.SessionID())
 	if err != nil {
 		return CancelResult{}, err
@@ -381,9 +351,8 @@ func (c *Cancellations) resolveClaimedWaitingChildCancellation(
 	ctx context.Context,
 	cmd CancelCommand,
 ) (cancellationPlan, error) {
-	// The first plan only found the Session to reserve. Resolve it again under
-	// admission so Resume or a sibling mutation cannot leave this command acting
-	// on stale Pending or Item facts.
+	// Resolved again under admission so Resume or a sibling mutation cannot leave this
+	// command acting on stale Pending or Item facts.
 	plan, entry, live, err := c.cancellationPlanFor(ctx, cmd)
 	if err != nil {
 		return cancellationPlan{}, err

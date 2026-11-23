@@ -44,13 +44,13 @@ func connectProvider(t *testing.T, binary, data string) (*sdk.ClientSession, fun
 	if err != nil {
 		t.Fatal(err)
 	}
-	close := sync.OnceFunc(func() {
+	release := sync.OnceFunc(func() {
 		if err := session.Close(); err != nil {
 			t.Error(err)
 		}
 	})
-	t.Cleanup(close)
-	return session, close
+	t.Cleanup(release)
+	return session, release
 }
 
 func providerContext(t *testing.T) context.Context {

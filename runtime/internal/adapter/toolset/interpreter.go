@@ -4,17 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"strings"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	"github.com/samber/lo"
 )
 
-// Interpreter interprets concrete built-in calls for runtime policy. Unknown
-// tools are treated as arbitrary execution and carry no remembered-rule subject.
+const shellCommandField = "command"
+
 type Interpreter struct {
 	plans planStateReader
 }
@@ -23,15 +25,15 @@ type planStateReader interface {
 	State(ctx context.Context, sessionID identity.SessionID) (plan.Current, error)
 }
 
-// NewInterpreter binds projections that require canonical application state. A
-// nil Plan reader disables only the successful Plan replacement projection;
-// safety, approval, and hook policy remain available.
-func NewInterpreter(plans planStateReader) Interpreter {
-	return Interpreter{plans: plans}
+func NewInterpreter(plans planStateReader) (Interpreter, error) {
+	if lo.IsNil(plans) {
+		return Interpreter{}, errors.New("toolset: Plan state reader is required")
+	}
+	return Interpreter{plans: plans}, nil
 }
 
-// SafetyClass returns the call's side-effect class. Unknown tools fail closed
-// because an extension can execute arbitrary work even when its name suggests a read.
+// Unknown tools fail closed: an extension can execute arbitrary work even when its
+// name suggests a read.
 func (Interpreter) SafetyClass(ref tool.Ref) tool.SafetyClass {
 	if descriptor, ok := descriptorFor(ref); ok {
 		return descriptor.safety
@@ -39,18 +41,11 @@ func (Interpreter) SafetyClass(ref tool.Ref) tool.SafetyClass {
 	return tool.SafetyClassExec
 }
 
-// UsesStandardPolicy reports whether a call enters the ordinary approval and
-// PreToolUse/PostToolUse pipeline. Delegation is orchestration: every child
-// tool is independently evaluated, while the parent call is represented by
-// child lifecycle events and cannot be replayed as an ordinary tool gate.
 func (Interpreter) UsesStandardPolicy(ref tool.Ref) bool {
 	descriptor, ok := descriptorFor(ref)
 	return !ok || !descriptor.orchestration
 }
 
-// ApprovalSubject returns the stable identity used by remembered approval
-// rules. Tools without a finer-grained identity deliberately return an empty
-// subject, which means the rule covers the whole tool.
 func (Interpreter) ApprovalSubject(ref tool.Ref, arguments tool.Arguments) (string, error) {
 	var field string
 	name, ok := ref.BuiltIn()
@@ -59,7 +54,7 @@ func (Interpreter) ApprovalSubject(ref tool.Ref, arguments tool.Arguments) (stri
 	}
 	switch name {
 	case builtincontract.Shell:
-		field = "command"
+		field = shellCommandField
 	case builtincontract.Read, builtincontract.Edit:
 		field = "path"
 	default:
@@ -72,9 +67,6 @@ func (Interpreter) ApprovalSubject(ref tool.Ref, arguments tool.Arguments) (stri
 	return subject, nil
 }
 
-// ShellCommand returns the command text used by catastrophic-command policy.
-// Malformed arguments return an empty command and remain gated by the tool's
-// execution safety class.
 func (Interpreter) ShellCommand(ref tool.Ref, rawArguments string) string {
 	if !ref.IsBuiltIn(builtincontract.Shell) {
 		return ""
@@ -83,20 +75,17 @@ func (Interpreter) ShellCommand(ref tool.Ref, rawArguments string) string {
 	if err != nil {
 		return ""
 	}
-	command, _ := arguments.StringField("command")
+	command, _ := arguments.StringField(shellCommandField)
 	return command
 }
 
-// ProjectOutcome returns the application fact implied by a completed tool
-// call. It reads canonical state rather than decoding a private tool result, so
-// the published fact cannot drift from the state the tool actually wrote.
 func (i Interpreter) ProjectOutcome(
 	ctx context.Context,
 	sessionID identity.SessionID, ref tool.Ref,
 	succeeded bool,
 ) (runs.ExecutionFact, error) {
 	descriptor, known := descriptorFor(ref)
-	if !succeeded || !known || descriptor.outcome != planOutcomeProjection || i.plans == nil {
+	if !succeeded || !known || descriptor.outcome != planOutcomeProjection {
 		return nil, nil
 	}
 	current, err := i.plans.State(ctx, sessionID)

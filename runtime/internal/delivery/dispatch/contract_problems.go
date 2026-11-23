@@ -10,10 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// ProblemChannel names where a first-party ProblemData type may ride. RPC
-// problems have a numeric JSON-RPC code; execution problems ride run/item/tool
-// outcomes. MCP connection status is not a ProblemData carrier: its closed
-// vocabulary is protocol.MCPStatusProblemType.
 type ProblemChannel string
 
 const (
@@ -21,28 +17,18 @@ const (
 	ProblemChannelExecution ProblemChannel = "execution"
 )
 
-// ProblemContract is the single first-party error catalog. Required and Optional
-// describe the complete ProblemData frame for Type; Channels describe its legal
-// carriers. The union generator and manifest consume the same rows, so adding a
-// problem cannot update validation while silently omitting discovery metadata.
 type ProblemContract struct {
-	Type     string
-	Channels []ProblemChannel
-	Required []string
-	Optional []string
-	// ExecutionRecovery is the default next move when this type ends a Run,
-	// tool call or Item. It is separate from the RPC recovery a failed request
-	// carries: resending a prompt can clear an internal error that a repeated
-	// request cannot.
+	Type              string
+	Channels          []ProblemChannel
+	Required          []string
+	Optional          []string
 	ExecutionRecovery protocol.RecoveryAction
 }
 
-// executionRecovery owns the default next move for every execution problem.
 var executionRecovery = map[string]protocol.RecoveryAction{protocol.ProblemInternalError: protocol.RecoveryPromptUser, protocol.ProblemAgentStuck: protocol.RecoveryPromptUser, protocol.ProblemRateLimited: protocol.RecoveryWaitRetryAfter, protocol.ProblemInvalidCredentials: protocol.RecoveryReauthenticate, protocol.ProblemTimeout: protocol.RecoveryPromptUser, protocol.ProblemProviderUnavailable: protocol.RecoveryWaitRetryAfter, protocol.ProblemProviderRejected: protocol.RecoveryStop, protocol.ProblemDeniedByUser: protocol.RecoveryStop, protocol.ProblemToolFailed: protocol.RecoveryPromptUser, protocol.ProblemToolCanceled: protocol.RecoveryStop, protocol.ProblemChildRunCanceled: protocol.RecoveryStop}
 
 var problemContracts = mustProblemContracts()
 
-// ProblemContracts returns a snapshot of the first-party error catalog.
 func ProblemContracts() []ProblemContract {
 	out := slices.Clone(problemContracts)
 	for index := range out {

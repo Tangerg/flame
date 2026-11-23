@@ -10,8 +10,6 @@ import (
 
 const executableName = identity.ProductName
 
-// version is stamped at link time via -ldflags "-X main.version=..."; empty
-// means an unstamped build, whose version bootstrap derives.
 var version string
 
 func main() {

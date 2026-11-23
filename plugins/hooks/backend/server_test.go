@@ -44,15 +44,15 @@ func connectHooks(t *testing.T, path string) (sqlite.Database, *sdk.ClientSessio
 		t.Fatal(err)
 	}
 	var once sync.Once
-	close := func() {
+	release := func() {
 		once.Do(func() {
 			if err := errors.Join(session.Close(), connection.Close(), db.Close()); err != nil {
 				t.Error(err)
 			}
 		})
 	}
-	t.Cleanup(close)
-	return db, session, close
+	t.Cleanup(release)
+	return db, session, release
 }
 
 func hookContext(t *testing.T) context.Context {
@@ -84,7 +84,7 @@ func hookMethod[P, R any](t *testing.T, session *sdk.ClientSession, method *plug
 func TestOriginalHookCommandReceiptSurvivesRestartWithoutRepeatingItsEffect(t *testing.T) {
 	cwd := t.TempDir()
 	path := filepath.Join(t.TempDir(), "hooks.db")
-	db, session, close := connectHooks(t, path)
+	db, session, release := connectHooks(t, path)
 	method, err := hookmcp.EvaluateMethod()
 	if err != nil {
 		t.Fatal(err)
@@ -94,7 +94,6 @@ func TestOriginalHookCommandReceiptSurvivesRestartWithoutRepeatingItsEffect(t *t
 	if err != nil || first.Decision.Verdict != hook.CommandDeny {
 		t.Fatalf("original=%+v, %v", first, err)
 	}
-	// Model a crash after the shell receipt commits but before the enclosing event reply.
 	if err := db.RunInTx(t.Context(), func(ctx context.Context) error {
 		_, err := db.Executor(ctx).ExecContext(ctx, "UPDATE commands SET reply=NULL WHERE id=?", "original")
 		return err
@@ -102,7 +101,7 @@ func TestOriginalHookCommandReceiptSurvivesRestartWithoutRepeatingItsEffect(t *t
 		t.Fatal(err)
 	}
 
-	close()
+	release()
 	_, session, _ = connectHooks(t, path)
 	replayed, err := hookMethod(t, session, method).CallCommand(hookContext(t), "original", request)
 	if err != nil || replayed.Decision.Reason != "policy" {

@@ -14,8 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// uncertainRevivalSource is the durable evidence revival reads: the open Runs,
-// their Transcript, and the Tool attempts that never settled.
 type uncertainRevivalSource interface {
 	ListNonTerminalRuns(context.Context) ([]run.Run, error)
 	ListTranscript(ctx context.Context, sessionID identity.SessionID) ([]transcript.Item, error)
@@ -56,14 +54,10 @@ type RecoveredTool struct {
 
 var ErrOriginalSourcePending = errors.New("runs: original source is still connecting")
 
-// A deferred root retains its admission so the sweep can recover other Sessions
-// without closing this Run as lost while its original source connects.
 type UncertainRevival struct {
 	deferred map[identity.RunID]ownership.RunAdmission
 }
 
-// The coordinator reinstalls the original writer lease and Segment pump before
-// the executor restores Scope or publishes a verified external result.
 func (r *UncertainRevival) Reconcile(ctx context.Context, c *Coordinator, source uncertainRevivalSource, executor uncertainExecutionRecovery) error {
 	values, err := source.ListNonTerminalRuns(ctx)
 	if err != nil {
@@ -110,8 +104,6 @@ func (r *UncertainRevival) reviveRoot(ctx context.Context, c *Coordinator, sourc
 	if err != nil {
 		return err
 	}
-	// Receipt recovery only proves the original root and its Tool effects.
-	// Delegated Runs require a separate proof of their product handoff.
 	if len(values) != 1 || values[0].State() != run.Running {
 		return nil
 	}

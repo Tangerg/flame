@@ -11,8 +11,6 @@ import (
 
 const maxSkillDiagnosticDetailBytes = 512
 
-// Discovery and execution share these limits after source precedence is resolved.
-// A diagnostic may describe an override of an otherwise available Skill.
 func (d SkillDiscovery) Validate() error {
 	if len(d.Skills) > (plugin.MaxInstallations+2)*skills.MaxSkillsPerSource {
 		return fmt.Errorf("%w: discovered catalog exceeds source capacity", skills.ErrLibraryCapacity)

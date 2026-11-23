@@ -17,10 +17,6 @@ import (
 	framehost "github.com/Tangerg/frame/host"
 )
 
-// ResumeRun answers an open interrupt by opening a NEW segment of the SAME run
-// in the Run model. in.RunID is the stable run to continue; the response
-// decision is delivered to the live executor tree, and the continuation streams
-// under the same runId with a fresh segmentId.
 func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 	input, err := decodeRunInput(in.Input)
 	if err != nil {
@@ -36,19 +32,15 @@ func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (
 	if err != nil {
 		return nil, nil, err
 	}
-	runID, err := wireIdentity("runId", in.RunID, identity.ParseRun)
+	runID, err := runParameter(in.RunID)
 	if err != nil {
 		return nil, nil, err
 	}
 	result, err := s.runs.Resume(ctx, runs.ResumeCommand{
-		RunID:      runID,
-		Responses:  responses,
-		Acceptance: runCommandIdentity(ctx),
-		// Added user input goes through the same decoder as a fresh Run: one
-		// reading of what a content block means.
-		Input: input,
-		// The run keeps the profile it was created with; this only says whether the
-		// caller can still follow it.
+		RunID:              runID,
+		Responses:          responses,
+		Acceptance:         runCommandIdentity(ctx),
+		Input:              input,
 		CallerCapabilities: caller,
 	})
 	if uncovered, ok := errors.AsType[*run.InsufficientCapabilitiesError](err); ok {
@@ -77,7 +69,7 @@ func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (
 func wireRunResumeErr(err error) error {
 	switch {
 	case errors.Is(err, runs.ErrCommandKeyConflict):
-		return protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation", err)
+		return protocol.NewFailure(protocol.ErrIdempotencyConflict, errIdempotencyRebound.Error(), err)
 	case errors.Is(err, runs.ErrInterruptNotOpen):
 		return protocol.ErrInterruptNotOpen
 	case errors.Is(err, runs.ErrInvalidInterruptResponse):
@@ -93,10 +85,6 @@ func wireRunResumeErr(err error) error {
 	}
 }
 
-// decodeResumeResponses maps transport DTOs into the application-owned
-// response union without looking up durable state. Exact item coverage,
-// interrupt-kind matching, and question-schema validation belong to
-// application/agent/runs, where the open interrupt is available.
 func decodeResumeResponses(responses []protocol.InterruptResponse) ([]runs.ResumeResponse, error) {
 	out := make([]runs.ResumeResponse, 0, len(responses))
 	for _, wire := range responses {
@@ -140,8 +128,6 @@ func decodeApprovalResponse(wire protocol.InterruptResponseValue) (*runs.Approva
 	if wire.Answers != nil {
 		return nil, protocol.NewFailure(protocol.ErrInvalidParams, "approval response contains fields for another response type")
 	}
-	// remember{scope} persists this decision as a rule at the chosen scope.
-	// Empty means the one-shot decision is not remembered.
 	approval := &runs.ApprovalResponse{Reason: wire.Reason}
 	if wire.Remember != nil {
 		scope, ok := rememberScopeFromWire(wire.Remember.Scope)
@@ -172,8 +158,6 @@ func decodeQuestionResponse(wire protocol.InterruptResponseValue) (*runs.Questio
 	if wire.Decision != "" || wire.Remember != nil || wire.EditedArgs != nil || wire.Reason != "" {
 		return nil, protocol.NewFailure(protocol.ErrInvalidParams, "answer response contains fields for another response type")
 	}
-	// The ordered answer list is the complete question resolution. The
-	// application later validates it against the stored question's field schema.
 	return &runs.QuestionResponse{Answers: transcript.CloneAnswers(wire.Answers)}, nil
 }
 

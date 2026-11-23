@@ -1,9 +1,7 @@
-// Package builtin declares Runtime-owned built-in tool identities and value contracts.
 package builtin
 
 import "slices"
 
-// Name identifies a current Runtime-owned tool.
 type Name string
 
 const (
@@ -31,7 +29,6 @@ const (
 	StopShell         Name = "stop_shell"
 )
 
-// names is the set's only enumeration.
 var names = []Name{
 	ApplyPatch, AskUser, CreateGoal, DelegateTask, Edit,
 	EnterPlanMode, ExitPlanMode, GetGoal, Glob, Grep, ListSkills,

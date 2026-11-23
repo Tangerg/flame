@@ -1,66 +1,66 @@
 [
   {
-    "name": "flame.memory/add.v2",
+    "name": "flame.memory/add.v3",
     "kind": "command",
     "target": "installation",
     "description": "Add a human-authored memory item in the requested scope.",
-    "input": "schema.json#/$defs/AddV2Input",
-    "output": "schema.json#/$defs/AddV2Output"
+    "input": "schema.json#/$defs/AddV3Input",
+    "output": "schema.json#/$defs/AddV3Output"
   },
   {
-    "name": "flame.memory/delete.v2",
+    "name": "flame.memory/delete.v3",
     "kind": "command",
     "target": "installation",
     "description": "Delete one memory item through its private owner.",
-    "input": "schema.json#/$defs/DeleteV2Input",
-    "output": "schema.json#/$defs/DeleteV2Output"
+    "input": "schema.json#/$defs/DeleteV3Input",
+    "output": "schema.json#/$defs/DeleteV3Output"
   },
   {
-    "name": "flame.memory/items.v2",
+    "name": "flame.memory/items.v3",
     "kind": "query",
     "target": "installation",
     "description": "Read active memory items that can inform a Run.",
-    "input": "schema.json#/$defs/ItemsV2Input",
-    "output": "schema.json#/$defs/ItemsV2Output"
+    "input": "schema.json#/$defs/ItemsV3Input",
+    "output": "schema.json#/$defs/ItemsV3Output"
   },
   {
-    "name": "flame.memory/list.v2",
+    "name": "flame.memory/list.v3",
     "kind": "query",
     "target": "installation",
     "description": "List memory items visible in the requested scope.",
-    "input": "schema.json#/$defs/ListV2Input",
-    "output": "schema.json#/$defs/ListV2Output"
+    "input": "schema.json#/$defs/ListV3Input",
+    "output": "schema.json#/$defs/ListV3Output"
   },
   {
-    "name": "flame.memory/maintain.v1",
+    "name": "flame.memory/maintain.v2",
     "kind": "command",
     "target": "installation",
     "description": "Extract and curate captured conversation under the private ledger and watermark.",
-    "input": "schema.json#/$defs/MaintainV1Input",
-    "output": "schema.json#/$defs/MaintainV1Output"
+    "input": "schema.json#/$defs/MaintainV2Input",
+    "output": "schema.json#/$defs/MaintainV2Output"
   },
   {
-    "name": "flame.memory/review.v2",
+    "name": "flame.memory/review.v3",
     "kind": "command",
     "target": "installation",
     "description": "Apply a human review decision to a pending memory item.",
-    "input": "schema.json#/$defs/ReviewV2Input",
-    "output": "schema.json#/$defs/ReviewV2Output"
+    "input": "schema.json#/$defs/ReviewV3Input",
+    "output": "schema.json#/$defs/ReviewV3Output"
   },
   {
-    "name": "flame.memory/search.v2",
+    "name": "flame.memory/search.v3",
     "kind": "query",
     "target": "installation",
     "description": "Rank active memories for the supplied project and query.",
-    "input": "schema.json#/$defs/SearchV2Input",
-    "output": "schema.json#/$defs/SearchV2Output"
+    "input": "schema.json#/$defs/SearchV3Input",
+    "output": "schema.json#/$defs/SearchV3Output"
   },
   {
-    "name": "flame.memory/update.v2",
+    "name": "flame.memory/update.v3",
     "kind": "command",
     "target": "installation",
     "description": "Edit the current content or pin state of a memory item.",
-    "input": "schema.json#/$defs/UpdateV2Input",
-    "output": "schema.json#/$defs/UpdateV2Output"
+    "input": "schema.json#/$defs/UpdateV3Input",
+    "output": "schema.json#/$defs/UpdateV3Output"
   }
 ]

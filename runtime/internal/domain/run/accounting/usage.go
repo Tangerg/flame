@@ -1,5 +1,3 @@
-// Package accounting holds token and cost accounting value objects for model
-// execution and pricing.
 package accounting
 
 import (
@@ -9,23 +7,15 @@ import (
 	"math"
 	"slices"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// Totals is the cumulative token and cost fact reported for one scope.
 type Totals struct {
 	Tokens
 	Cost Cost
 }
 
-// Validate reports whether the cumulative counters are internally consistent.
-func (t Totals) Validate() error {
-	return t.Tokens.Validate()
-}
-
-// ValidateAdvanceFrom proves that t has not erased previously committed
-// cumulative accounting.
 func (t Totals) ValidateAdvanceFrom(previous Totals) error {
 	if err := previous.Validate(); err != nil {
 		return fmt.Errorf("previous totals: %w", err)
@@ -41,8 +31,6 @@ func (t Totals) ValidateAdvanceFrom(previous Totals) error {
 	return t.Cost.ValidateAdvanceFrom(previous.Cost)
 }
 
-// Equal reports semantic equality, preserving the distinction between absent
-// and reported-zero pricing.
 func (t Totals) Equal(other Totals) bool {
 	if t.InputTokens != other.InputTokens || t.OutputTokens != other.OutputTokens ||
 		t.CacheReadTokens != other.CacheReadTokens || t.CacheWriteTokens != other.CacheWriteTokens ||
@@ -70,8 +58,6 @@ func (t Totals) Add(other Totals) (Totals, error) {
 	return Totals{Tokens: tokens, Cost: cost}, nil
 }
 
-// Usage is immutable. Model subtotals own attributed spending; their cached
-// total is created with them and cannot originate a separate transition.
 type Usage struct {
 	total   Totals
 	byModel map[string]Totals
@@ -104,7 +90,7 @@ func modelTotal(parts map[string]Totals) (Totals, error) {
 	}
 	total := Totals{Cost: Cost{available: true}}
 	for _, model := range slices.Sorted(maps.Keys(parts)) {
-		if _, err := modelchoice.NewModelIdentity(model); err != nil {
+		if _, err := flamemodel.NewModelIdentity(model); err != nil {
 			return Totals{}, fmt.Errorf("accounting: model identity: %w", err)
 		}
 		next, err := total.Add(parts[model])
@@ -148,8 +134,6 @@ func (u Usage) Accrue(model string, delta Totals) (Usage, error) {
 	return newAttributedUsage(parts)
 }
 
-// ValidateAdvanceFrom proves that u is a cumulative continuation of
-// previous. Once a provider reports usage or a per-model key, it cannot vanish.
 func (u Usage) ValidateAdvanceFrom(previous Usage) error {
 	if err := u.total.ValidateAdvanceFrom(previous.total); err != nil {
 		return err
@@ -166,7 +150,6 @@ func (u Usage) ValidateAdvanceFrom(previous Usage) error {
 	return nil
 }
 
-// Equal reports whether two snapshots contain the same cumulative fact.
 func (u Usage) Equal(other Usage) bool {
 	if !u.total.Equal(other.total) || len(u.byModel) != len(other.byModel) {
 		return false
@@ -179,11 +162,6 @@ func (u Usage) Equal(other Usage) bool {
 	return true
 }
 
-// Tokens is Runtime's cumulative token counter. It keeps [chat.Usage]'s
-// vocabulary so one spelling survives from the provider report through storage
-// to the protocol: ReasoningTokens is the subset of OutputTokens, and the two
-// cache counters are subsets of InputTokens, so a total counts only input plus
-// output.
 type Tokens struct {
 	InputTokens      int64
 	OutputTokens     int64
@@ -192,8 +170,6 @@ type Tokens struct {
 	CacheWriteTokens int64
 }
 
-// Validate reports whether the token relationships can represent one model's
-// cumulative usage.
 func (t Tokens) Validate() error {
 	if t.InputTokens < 0 || t.OutputTokens < 0 || t.ReasoningTokens < 0 ||
 		t.CacheReadTokens < 0 || t.CacheWriteTokens < 0 {
@@ -208,7 +184,6 @@ func (t Tokens) Validate() error {
 	return nil
 }
 
-// Total returns input plus output tokens.
 func (t Tokens) Total() (int64, error) {
 	if err := t.Validate(); err != nil {
 		return 0, err
@@ -220,7 +195,6 @@ func (t Tokens) Total() (int64, error) {
 	return total, nil
 }
 
-// Add returns the checked sum of two independently valid counters.
 func (t Tokens) Add(other Tokens) (Tokens, error) {
 	if err := t.Validate(); err != nil {
 		return Tokens{}, fmt.Errorf("left token usage: %w", err)
@@ -250,11 +224,6 @@ func (t Tokens) Add(other Tokens) (Tokens, error) {
 	return next, nil
 }
 
-// Cost is one explicit pricing fact, held as an exact count of nano-dollars so
-// aggregates sum without floating-point drift; a single call can cost less than
-// a micro-dollar. Its zero value means pricing was unavailable; a priced zero is
-// constructed explicitly and remains distinct. This prevents an unknown catalog
-// entry from silently becoming a free model.
 type Cost struct {
 	nanoUSD   int64
 	available bool
@@ -262,8 +231,6 @@ type Cost struct {
 
 const nanoPerUSD = 1e9
 
-// NewCost prices usd, the dollar amount a catalog or provider computed, to the
-// nearest nano-dollar.
 func NewCost(usd float64) (Cost, error) {
 	if usd < 0 || math.IsNaN(usd) || math.IsInf(usd, 0) {
 		return Cost{}, errors.New("accounting: cost must be finite and non-negative")
@@ -275,7 +242,6 @@ func NewCost(usd float64) (Cost, error) {
 	return Cost{nanoUSD: int64(nano), available: true}, nil
 }
 
-// CostFromNanoUSD restores an exact recorded amount.
 func CostFromNanoUSD(nanoUSD int64) (Cost, error) {
 	if nanoUSD < 0 {
 		return Cost{}, errors.New("accounting: cost must be non-negative")
@@ -283,8 +249,6 @@ func CostFromNanoUSD(nanoUSD int64) (Cost, error) {
 	return Cost{nanoUSD: nanoUSD, available: true}, nil
 }
 
-// CostFromOptionalNanoUSD restores the exact absent-versus-priced-zero
-// distinction durable records keep.
 func CostFromOptionalNanoUSD(nanoUSD *int64) (Cost, error) {
 	if nanoUSD == nil {
 		return Cost{}, nil
@@ -292,8 +256,6 @@ func CostFromOptionalNanoUSD(nanoUSD *int64) (Cost, error) {
 	return CostFromNanoUSD(*nanoUSD)
 }
 
-// CostFromOptional admits a dollar amount from the wire, where absence means
-// unpriced.
 func CostFromOptional(usd *float64) (Cost, error) {
 	if usd == nil {
 		return Cost{}, nil
@@ -301,11 +263,8 @@ func CostFromOptional(usd *float64) (Cost, error) {
 	return NewCost(*usd)
 }
 
-// NanoUSD returns the exact amount only when the model call was priced.
 func (c Cost) NanoUSD() (int64, bool) { return c.nanoUSD, c.available }
 
-// OptionalNanoUSD projects this value to the pointer vocabulary durable records
-// use. The returned pointer owns an independent value.
 func (c Cost) OptionalNanoUSD() *int64 {
 	if !c.available {
 		return nil
@@ -314,10 +273,8 @@ func (c Cost) OptionalNanoUSD() *int64 {
 	return &value
 }
 
-// USD presents the amount in dollars for display and the wire.
 func (c Cost) USD() (float64, bool) { return float64(c.nanoUSD) / nanoPerUSD, c.available }
 
-// OptionalUSD presents the amount in dollars, absent when unpriced.
 func (c Cost) OptionalUSD() *float64 {
 	if !c.available {
 		return nil
@@ -326,8 +283,8 @@ func (c Cost) OptionalUSD() *float64 {
 	return &value
 }
 
-// Add combines independently priced calls. One unavailable component makes
-// the aggregate unavailable because a known partial sum is not a total cost.
+// One unpriced component makes the aggregate unavailable because a partial sum is
+// not a total cost.
 func (c Cost) Add(other Cost) (Cost, error) {
 	if !c.available || !other.available {
 		return Cost{}, nil
@@ -338,93 +295,16 @@ func (c Cost) Add(other Cost) (Cost, error) {
 	return Cost{nanoUSD: c.nanoUSD + other.nanoUSD, available: true}, nil
 }
 
-// Equal preserves availability as part of the accounting fact.
 func (c Cost) Equal(other Cost) bool {
 	return c.available == other.available && c.nanoUSD == other.nanoUSD
 }
 
-// ValidateAdvanceFrom proves that c can be the cumulative result after
-// previous. Pricing may become unavailable when a later component is
-// unpriced, but an unavailable aggregate can never become exact again.
 func (c Cost) ValidateAdvanceFrom(previous Cost) error {
 	if (!previous.available && c.available) ||
 		(previous.available && c.available && c.nanoUSD < previous.nanoUSD) {
 		return errors.New("accounting: cumulative cost regressed")
 	}
 	return nil
-}
-
-// ModelUsage is one model's slice of an execution's tokens and cost. Usage is
-// the provider-reported fact itself, so an unsupported breakdown stays absent
-// instead of becoming a reported zero.
-type ModelUsage struct {
-	Model string
-	Tokens
-	Cost  Cost
-	Calls int
-}
-
-// Add returns the checked cumulative usage for the same served model.
-func (m ModelUsage) Add(other ModelUsage) (ModelUsage, error) {
-	if err := m.Validate(); err != nil {
-		return ModelUsage{}, fmt.Errorf("left model usage: %w", err)
-	}
-	if err := other.Validate(); err != nil {
-		return ModelUsage{}, fmt.Errorf("right model usage: %w", err)
-	}
-	if m.Model != other.Model {
-		return ModelUsage{}, fmt.Errorf("accounting: cannot combine models %q and %q", m.Model, other.Model)
-	}
-	tokens, err := m.Tokens.Add(other.Tokens)
-	if err != nil {
-		return ModelUsage{}, err
-	}
-	cost, err := m.Cost.Add(other.Cost)
-	if err != nil {
-		return ModelUsage{}, err
-	}
-	if other.Calls > math.MaxInt-m.Calls {
-		return ModelUsage{}, errors.New("accounting: model call count overflows")
-	}
-	return ModelUsage{Model: m.Model, Tokens: tokens, Cost: cost, Calls: m.Calls + other.Calls}, nil
-}
-
-// Snapshot is a per-model usage set. Models are unique and sorted by model ID
-// so concurrent execution cannot make output ordering nondeterministic.
-type Snapshot struct {
-	Models []ModelUsage
-}
-
-// Total returns the checked aggregate of every model in the snapshot. The
-// result intentionally has an empty Model because it represents the whole
-// execution subtree rather than another served model.
-func (s Snapshot) Total() (ModelUsage, error) {
-	if err := s.Validate(); err != nil {
-		return ModelUsage{}, err
-	}
-	total := ModelUsage{}
-	if len(s.Models) > 0 {
-		// The additive identity is priced only when there are actual model facts
-		// to aggregate. An empty snapshot has no pricing fact at all.
-		total.Cost = Cost{available: true}
-	}
-	for index, model := range s.Models {
-		tokens, err := total.Tokens.Add(model.Tokens)
-		if err != nil {
-			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] token aggregate: %w", index, err)
-		}
-		total.Tokens = tokens
-		nextCost, err := total.Cost.Add(model.Cost)
-		if err != nil {
-			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] cost aggregate: %w", index, err)
-		}
-		total.Cost = nextCost
-		if model.Calls > math.MaxInt-total.Calls {
-			return ModelUsage{}, fmt.Errorf("accounting snapshot: models[%d] call aggregate overflows", index)
-		}
-		total.Calls += model.Calls
-	}
-	return total, nil
 }
 
 func checkedAddInt64(left, right int64) (int64, bool) {
@@ -434,39 +314,4 @@ func checkedAddInt64(left, right int64) (int64, bool) {
 	return left + right, true
 }
 
-// Validate checks that a persisted usage projection is canonical and safe to
-// aggregate.
-func (s Snapshot) Validate() error {
-	var previous string
-	for index, model := range s.Models {
-		if _, err := modelchoice.NewModelIdentity(model.Model); err != nil {
-			return fmt.Errorf("accounting snapshot: models[%d]: %w", index, err)
-		}
-		if index > 0 && model.Model <= previous {
-			return errors.New("accounting snapshot: models must be unique and sorted by model ID")
-		}
-		previous = model.Model
-		if err := model.Validate(); err != nil {
-			return fmt.Errorf("accounting snapshot: models[%d]: %w", index, err)
-		}
-	}
-	return nil
-}
-
-// Validate checks one model's token and cost counters.
-func (m ModelUsage) Validate() error {
-	if _, err := modelchoice.NewModelIdentity(m.Model); err != nil {
-		return fmt.Errorf("model usage: %w", err)
-	}
-	if err := m.Tokens.Validate(); err != nil {
-		return fmt.Errorf("model usage: %w", err)
-	}
-	if m.Calls <= 0 {
-		return errors.New("model usage calls must be positive")
-	}
-	return nil
-}
-
-// Pricing computes the USD cost of one LLM round from the provider, served
-// model, and full token usage.
 type Pricing func(provider, model string, usage *chat.Usage) (Cost, error)

@@ -9,11 +9,10 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	otelslog "github.com/Tangerg/scope/otel/slog"
 	slogbridge "go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	logglobal "go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -22,50 +21,23 @@ import (
 )
 
 const (
-	// scopeName names the slog→OTel logs bridge's instrumentation scope.
 	scopeName               = identity.ProductName
 	logLevelEnvironment     = "FLAME_LOG_LEVEL"
 	providerShutdownTimeout = 5 * time.Second
 )
 
-// telemetryShutdown releases the configured telemetry providers.
 type telemetryShutdown func(context.Context) error
 
-// configureTelemetry wires all three OpenTelemetry signals — Traces,
-// Metrics, Logs — through the global OTel providers onto one dev slog sink.
-// It is the one place providers are set; everything else just uses the
-// package-static otel.Tracer / otel.Meter / slog accessors, no injection.
-//
-//   - Traces:  TracerProvider, synchronous slog span exporter, AlwaysSample.
-//   - Metrics: MeterProvider, PeriodicReader → slog metric exporter.
-//   - Logs:    LoggerProvider → slog log exporter; slog.Default() is the
-//     contrib otelslog bridge feeding that provider, so business
-//     code calls slog.InfoContext and the records flow AS OTel log
-//     records (trace_id / span_id filled natively from the active
-//     span). Routing logs through OTel — rather than writing slog
-//     directly — is what makes them backend-swappable: a production
-//     build swaps every exporter for OTLP (→ Datadog / Cloud
-//     Logging / ...) with zero business-code change.
-//   - Context: W3C trace-context + baggage propagator, so an inbound traceparent
-//     continues through the runtime.
-//
-// Level comes from FLAME_LOG_LEVEL (debug|info|warn|error, default info) and
-// is gated before the bridge (the bridge itself does no level filtering).
-//
-// Returns a shutdown func that flushes + tears down the providers; call it
-// on process exit.
 func configureTelemetry(serviceVersion string) telemetryShutdown {
 	level := parseLogLevel(os.Getenv(logLevelEnvironment))
 
-	// The base logger is the actual stderr sink every signal renders into;
-	// the three OTel exporters write here. Its level gates the rendered
-	// output. slog.Default() (set below) is a DIFFERENT logger — the bridge —
-	// so there's no loop: app logs go default→bridge→OTel→LogExporter→base.
+	// slog.Default() is the bridge, not this base logger, so there is no loop: default
+	// → bridge → OTel → exporter → base.
 	base := stdslog.New(stdslog.NewTextHandler(os.Stderr, &stdslog.HandlerOptions{Level: level}))
 
-	res := resource.NewSchemaless(
-		attribute.String("service.name", scopeName),
-		attribute.String("service.version", serviceVersion),
+	res := resource.NewWithAttributes(telemetry.SchemaURL,
+		telemetry.ServiceNameKey.String(scopeName),
+		telemetry.ServiceVersionKey.String(serviceVersion),
 	)
 
 	tp := sdktrace.NewTracerProvider(
@@ -86,8 +58,7 @@ func configureTelemetry(serviceVersion string) telemetryShutdown {
 		sdklog.WithResource(res),
 		sdklog.WithProcessor(sdklog.NewSimpleProcessor(otelslog.NewLogExporter(base))),
 	)
-	logglobal.SetLoggerProvider(lp)
-	// slog.Default() = level gate → otelslog bridge → the LoggerProvider above.
+	otel.SetLoggerProvider(lp)
 	stdslog.SetDefault(stdslog.New(minLevelHandler{
 		level: level,
 		inner: slogbridge.NewHandler(scopeName, slogbridge.WithLoggerProvider(lp)),
@@ -109,28 +80,27 @@ func configureTelemetry(serviceVersion string) telemetryShutdown {
 	}
 }
 
-// minLevelHandler drops records below level before they reach the OTel logs
-// bridge — the bridge does no level filtering, so without this gate
-// FLAME_LOG_LEVEL would be ignored. It only adds the Enabled check; Handle /
-// WithAttrs / WithGroup delegate straight through.
+// The OTel logs bridge does no level filtering, so without this gate
+// FLAME_LOG_LEVEL would be ignored.
 type minLevelHandler struct {
 	level stdslog.Level
 	inner stdslog.Handler
 }
 
 func (m minLevelHandler) Enabled(_ context.Context, l stdslog.Level) bool { return l >= m.level }
+
 func (m minLevelHandler) Handle(ctx context.Context, r stdslog.Record) error {
 	return m.inner.Handle(ctx, r)
 }
+
 func (m minLevelHandler) WithAttrs(a []stdslog.Attr) stdslog.Handler {
 	return minLevelHandler{level: m.level, inner: m.inner.WithAttrs(a)}
 }
+
 func (m minLevelHandler) WithGroup(name string) stdslog.Handler {
 	return minLevelHandler{level: m.level, inner: m.inner.WithGroup(name)}
 }
 
-// parseLogLevel reads FLAME_LOG_LEVEL in slog's own level syntax; empty or
-// unrecognized input keeps Info.
 func parseLogLevel(s string) stdslog.Level {
 	var level stdslog.Level
 	if err := level.UnmarshalText([]byte(strings.TrimSpace(s))); err != nil {

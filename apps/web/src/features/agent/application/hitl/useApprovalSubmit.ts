@@ -10,7 +10,7 @@ export interface ApprovalSubmitOptions {
   rememberScope?: RememberScope;
 }
 
-export interface ApprovalActions {
+interface ApprovalActions {
   approve: () => void;
   decline: () => void;
 }
@@ -43,7 +43,7 @@ class ApprovalActionRegistry {
 
 const approvalActionRegistry = new ApprovalActionRegistry();
 
-export function registerApprovalActions(ref: InterruptRef, actions: ApprovalActions): () => void {
+function registerApprovalActions(ref: InterruptRef, actions: ApprovalActions): () => void {
   return approvalActionRegistry.register(ref, actions);
 }
 
@@ -51,7 +51,7 @@ export function getApprovalActions(ref: InterruptRef): ApprovalActions | undefin
   return approvalActionRegistry.find(ref);
 }
 
-export interface ApprovalSubmit {
+interface ApprovalSubmit {
   submit: (decision: ApprovalDecision, opts?: ApprovalSubmitOptions) => void;
   pending: ApprovalDecision | null;
   submitted: boolean;

@@ -1,6 +1,3 @@
-// Package goal owns the durable autonomous-objective aggregate. A Goal spans
-// every Run launched for one objective incarnation; the owning use case drives the
-// loop, while this package owns lifecycle, accounting, time, and version rules.
 package goal
 
 import (
@@ -11,23 +8,22 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// Status is one Goal's durable lifecycle state.
-//
-// StatusComplete is a transient committed state: the owning drive observes it,
-// publishes completion, settles the terminal Run, and conditionally clears it.
 type Status string
 
 const (
-	StatusActive   Status = "active"
-	StatusPaused   Status = "paused"
-	StatusBlocked  Status = "blocked"
+	StatusActive  Status = Status(goalworkflow.GoalActive)
+	StatusPaused  Status = Status(goalworkflow.GoalPaused)
+	StatusBlocked Status = Status(goalworkflow.GoalBlocked)
+	// The workflow reports a finishing Goal as completing; the Runtime records
+	// the settled terminal state.
 	StatusComplete Status = "complete"
 )
 
@@ -40,35 +36,30 @@ func (s Status) Valid() bool {
 	}
 }
 
-// Snapshot is the technical reconstruction boundary, not a mutation surface.
 type Snapshot struct {
-	Author     extension.ContributionSource
-	SessionID  identity.SessionID
-	Objective  string
-	Status     Status
-	ReasonCode ReasonCode
-	// ReasonRunOutcome belongs to runNotCompleted and ReasonExplanation to
-	// blockedByModel; both are empty for every other reason.
+	Author            extension.ContributionSource
+	SessionID         identity.SessionID
+	Objective         string
+	Status            Status
+	ReasonCode        ReasonCode
 	ReasonRunOutcome  run.Outcome
 	ReasonExplanation string
-	ModelSelection    modelchoice.Selection
+	ModelSelection    flamemodel.Selection
 	Capabilities      run.Capabilities
 	Used              Usage
-	IncarnationID     string
+	IncarnationID     goalref.IncarnationID
 	Revision          uint64
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 }
 
-// Goal is one committed autonomous objective. Private fields make every next
-// committed value pass through a domain transition.
 type Goal struct {
 	author        extension.ContributionSource
 	sessionID     identity.SessionID
 	objective     string
 	status        Status
 	reason        Reason
-	selection     modelchoice.Selection
+	selection     flamemodel.Selection
 	capabilities  run.Capabilities
 	used          Usage
 	incarnationID goalref.IncarnationID
@@ -77,15 +68,11 @@ type Goal struct {
 	updatedAt     time.Time
 }
 
-// Current is the explicit optional Goal value for one Session. Its zero value
-// is invalid rather than ambiguously meaning "not found"; use [Unwritten].
 type Current struct {
 	sessionID identity.SessionID
 	goal      *Goal
 }
 
-// Version is the typed CAS identity of a Current Goal. Presence is explicit;
-// revision zero and an empty incarnation are not absence sentinels.
 type Version struct {
 	author        extension.ContributionSource
 	sessionID     identity.SessionID
@@ -95,18 +82,15 @@ type Version struct {
 }
 
 var (
-	errSessionRequired     = errors.New("goal: session ID is required")
-	errObjectiveRequired   = errors.New("goal: objective is required")
-	ErrInvalid             = errors.New("goal: invalid Goal")
-	ErrNotResumable        = errors.New("goal: status is not resumable")
-	ErrNotEditable         = errors.New("goal: status is not editable")
-	errRunIdentityConflict = errors.New("goal: Run identity conflict")
-	// ErrBlockExplanationRequired is the recoverable refusal of a model block
-	// that says nothing about what the user must do.
+	errSessionRequired          = errors.New("goal: session ID is required")
+	errObjectiveRequired        = errors.New("goal: objective is required")
+	ErrInvalid                  = errors.New("goal: invalid Goal")
+	ErrNotResumable             = errors.New("goal: status is not resumable")
+	ErrNotEditable              = errors.New("goal: status is not editable")
+	errRunIdentityConflict      = errors.New("goal: Run identity conflict")
 	ErrBlockExplanationRequired = fmt.Errorf("%w: model block requires an explanation", ErrInvalid)
 )
 
-// Unwritten constructs the explicit absent Goal value for sessionID.
 func Unwritten(sessionID identity.SessionID) (Current, error) {
 	if err := validateSessionIdentity(sessionID); err != nil {
 		return Current{}, err
@@ -114,7 +98,6 @@ func Unwritten(sessionID identity.SessionID) (Current, error) {
 	return Current{sessionID: sessionID}, nil
 }
 
-// CurrentOf owns one validated committed Goal as its Session's latest value.
 func CurrentOf(value Goal) (Current, error) {
 	if err := value.validate(); err != nil {
 		return Current{}, err
@@ -137,12 +120,7 @@ func (c Current) Version() Version {
 	return c.goal.Version()
 }
 
-// Restore reconstructs one committed Goal from a technical snapshot.
 func Restore(snapshot Snapshot) (Goal, error) {
-	incarnationID, err := goalref.ParseIncarnation(snapshot.IncarnationID)
-	if err != nil {
-		return Goal{}, fmt.Errorf("%w: %w", ErrInvalid, err)
-	}
 	revision, err := exactint.Restore(snapshot.Revision)
 	if err != nil {
 		return Goal{}, fmt.Errorf("%w: revision: %w", ErrInvalid, err)
@@ -163,7 +141,7 @@ func Restore(snapshot Snapshot) (Goal, error) {
 		selection:     snapshot.ModelSelection,
 		capabilities:  snapshot.Capabilities.Clone(),
 		used:          snapshot.Used,
-		incarnationID: incarnationID,
+		incarnationID: snapshot.IncarnationID,
 		revision:      revision,
 		createdAt:     snapshot.CreatedAt.UTC(),
 		updatedAt:     snapshot.UpdatedAt.UTC(),
@@ -241,7 +219,7 @@ func (g Goal) Snapshot() Snapshot {
 		SessionID: g.sessionID, Objective: g.objective, Status: g.status,
 		ReasonCode: g.reason.code, ReasonRunOutcome: g.reason.runOutcome, ReasonExplanation: g.reason.explanation,
 		ModelSelection: g.selection, Capabilities: g.capabilities.Clone(),
-		Used: g.used, IncarnationID: g.incarnationID.String(),
+		Used: g.used, IncarnationID: g.incarnationID,
 		Revision: g.revision.Value(), CreatedAt: g.createdAt, UpdatedAt: g.updatedAt,
 	}
 }
@@ -256,32 +234,29 @@ func (g Goal) Objective() string             { return g.objective }
 func (g Goal) Status() Status                { return g.status }
 func (g Goal) Reason() Reason                { return g.reason }
 
-// ModelSelection is the Goal's own model override. Without one, each Goal Run
-// runs on the Session's selection at the time it starts, never a copy taken
-// when the Goal began.
-func (g Goal) ModelSelection() modelchoice.Selection { return g.selection }
-func (g Goal) Capabilities() run.Capabilities        { return g.capabilities.Clone() }
-func (g Goal) Used() Usage                           { return g.used }
-func (g Goal) IncarnationID() string                 { return g.incarnationID.String() }
-func (g Goal) Revision() uint64                      { return g.revision.Value() }
-func (g Goal) CreatedAt() time.Time                  { return g.createdAt }
-func (g Goal) UpdatedAt() time.Time                  { return g.updatedAt }
+func (g Goal) ModelSelection() flamemodel.Selection { return g.selection }
+func (g Goal) Capabilities() run.Capabilities       { return g.capabilities.Clone() }
+func (g Goal) Used() Usage                          { return g.used }
+func (g Goal) IncarnationID() goalref.IncarnationID { return g.incarnationID }
+func (g Goal) Revision() uint64                     { return g.revision.Value() }
+func (g Goal) CreatedAt() time.Time                 { return g.createdAt }
+func (g Goal) UpdatedAt() time.Time                 { return g.updatedAt }
 
 func (g Goal) Version() Version {
 	return Version{author: g.author, sessionID: g.sessionID, incarnationID: g.incarnationID, revision: g.revision, committed: true}
 }
 
-func (v Version) IsUnwritten() bool             { return !v.committed }
-func (v Version) SessionID() identity.SessionID { return v.sessionID }
-func (v Version) IncarnationID() (string, bool) { return v.incarnationID.String(), v.committed }
-func (v Version) Revision() (uint64, bool)      { return v.revision.Value(), v.committed }
+func (v Version) IsUnwritten() bool                            { return !v.committed }
+func (v Version) SessionID() identity.SessionID                { return v.sessionID }
+func (v Version) IncarnationID() (goalref.IncarnationID, bool) { return v.incarnationID, v.committed }
+func (v Version) Revision() (uint64, bool)                     { return v.revision.Value(), v.committed }
 
 func (v Version) Validate() error {
 	if err := validateSessionIdentity(v.sessionID); err != nil {
 		return err
 	}
 	if !v.committed {
-		if v.incarnationID.String() != "" || !v.revision.IsZero() {
+		if !v.incarnationID.IsZero() || !v.revision.IsZero() {
 			return fmt.Errorf("%w: unwritten Version carries committed identity", ErrInvalid)
 		}
 		return nil
@@ -295,8 +270,6 @@ func (v Version) Validate() error {
 	return nil
 }
 
-// AdvancesTo accepts revision one for a fresh incarnation and exactly one
-// revision of advancement inside an existing incarnation.
 func (v Version) AdvancesTo(next Goal) error {
 	if err := v.Validate(); err != nil {
 		return err

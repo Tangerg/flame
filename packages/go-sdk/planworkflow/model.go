@@ -39,8 +39,6 @@ type Proposal struct {
 	Steps []Step `json:"steps"`
 }
 
-// A digest identifies the immutable checklist across Sessions and Run boundaries.
-// Local revision numbers order the references made by one Session.
 type Document struct {
 	Proposal
 	Digest framevalue.Digest `json:"digest"`
@@ -68,7 +66,6 @@ func (d Document) Verify() error {
 	return nil
 }
 
-// A refusal is an authored decision. A lost transport response has no such evidence.
 type Decision struct {
 	Document *Document `json:"document,omitzero"`
 	Refusal  string    `json:"refusal,omitzero"`

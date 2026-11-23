@@ -1,7 +1,5 @@
 package protocol
 
-// AgentDocScope is where an AGENTS.md was discovered in the cwd→home hierarchy.
-//
 //flame:enum
 type AgentDocScope string
 
@@ -11,9 +9,7 @@ const (
 	AgentDocScopeHome        AgentDocScope = "home"
 )
 
-// AgentDoc is one AGENTS.md in the unique effective cascade. agentDocs.list
-// returns documents in prompt render order: home, project-root tree, then cwd.
 type AgentDoc struct {
 	Path  string        `json:"path"`
-	Scope AgentDocScope `json:"scope"` // see AgentDocScope
+	Scope AgentDocScope `json:"scope"`
 }

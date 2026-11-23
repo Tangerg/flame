@@ -14,7 +14,7 @@ import (
 	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	scopemetadata "github.com/Tangerg/scope/core/metadata"
+	coremetadata "github.com/Tangerg/scope/core/metadata"
 )
 
 // A cooperative backend can settle its original outcome after a negative chunk
@@ -33,8 +33,6 @@ func chunkDeliveryMethod() (*Method[deliveredChunk, bool], error) {
 	return NewMethod[deliveredChunk, bool](frame.MethodConfig{Name: "flame.stream/deliver.v1", Kind: frame.Command, Target: "call", Description: "Deliver one ordered chunk to its captured stream consumer."})
 }
 
-// streamDeliveryContract projects the existing acknowledged chunk callback for
-// independent language bindings. Its schema identity remains owned here.
 func streamDeliveryContract() (frame.MethodDescriptor, error) {
 	method, err := chunkDeliveryMethod()
 	if err != nil {
@@ -97,8 +95,6 @@ type pendingChunk struct {
 	acknowledged chan bool
 }
 
-// A negative acknowledgement must reach the producer before cancellation so
-// that its iterator can finish cleanup and publish the original receipt.
 func (chunk pendingChunk) acknowledge(ctx context.Context, consumed bool, invocationDone <-chan struct{}) bool {
 	chunk.acknowledged <- consumed
 	if consumed {
@@ -171,13 +167,11 @@ func (b *Binding) streamReceiver(call context.Context, chunks chan<- pendingChun
 	})
 }
 
-// StreamWithMetadata retains the original MCP invocation while acknowledged
-// callback delivery keeps production behind actual consumer demand.
 func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, limits CallbackLimits, id CommandID, input framevalue.JSON, metadata sdk.ParamsBase) iter.Seq2[StreamValue[jsontext.Value, jsontext.Value], error] {
 	if b != nil {
 		b = new(*b)
 	}
-	frozen := scopemetadata.Map(metadata.Meta).Clone()
+	frozen := coremetadata.Map(metadata.Meta).Clone()
 	_, metadataErr := json.Marshal(sdk.ParamsBase{Meta: sdk.Meta(frozen)})
 	return func(yield func(StreamValue[jsontext.Value, jsontext.Value], error) bool) {
 		fail := func(err error) {
@@ -209,7 +203,7 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 		for {
 			select {
 			case chunk := <-chunks:
-				consumed := yield(StreamValue[jsontext.Value, jsontext.Value]{Chunk: new(chunk.value)}, nil)
+				consumed := yield(StreamValue[jsontext.Value, jsontext.Value]{chunk: new(chunk.value)}, nil)
 				if !chunk.acknowledge(call, consumed, done) {
 					return
 				}
@@ -218,7 +212,7 @@ func (b *Binding) StreamWithMetadata(ctx context.Context, callbacks *Callbacks, 
 				refusal, refused := errors.AsType[*framecall.Refusal](err)
 				switch {
 				case err == nil:
-					yield(StreamValue[jsontext.Value, jsontext.Value]{Result: new(result)}, nil)
+					yield(StreamValue[jsontext.Value, jsontext.Value]{result: new(result)}, nil)
 				case refused:
 					yield(StreamValue[jsontext.Value, jsontext.Value]{}, refusal)
 				default:
@@ -240,8 +234,6 @@ func (b *Binding) validateStream(callbacks *Callbacks, input framevalue.JSON) er
 	return b.method.ValidateInput(input)
 }
 
-// openStreamCallback opens the callback that receives chunks and names it in
-// the command metadata, so the backend streams to this call alone.
 func (b *Binding) openStreamCallback(call context.Context, callbacks *Callbacks, limits CallbackLimits, chunks chan pendingChunk, metadata *sdk.ParamsBase) (func(), error) {
 	receiver, err := b.streamReceiver(call, chunks, limits)
 	if err != nil {
@@ -273,12 +265,12 @@ func (m *StreamingMethod[P, C, R]) StreamWithMetadata(ctx context.Context, bindi
 				return
 			}
 			var value StreamValue[C, R]
-			if raw.Chunk != nil {
-				value.Chunk = new(C)
-				err = json.Unmarshal(*raw.Chunk, value.Chunk, json.RejectUnknownMembers(true), framevalue.Numbers())
+			if raw.chunk != nil {
+				value.chunk = new(C)
+				err = json.Unmarshal(*raw.chunk, value.chunk, json.RejectUnknownMembers(true), framevalue.Numbers())
 			} else {
-				value.Result = new(R)
-				err = json.Unmarshal(*raw.Result, value.Result, json.RejectUnknownMembers(true), framevalue.Numbers())
+				value.result = new(R)
+				err = json.Unmarshal(*raw.result, value.result, json.RejectUnknownMembers(true), framevalue.Numbers())
 			}
 			if err != nil {
 				yield(StreamValue[C, R]{}, errors.Join(ErrStreamUnconfirmed, err))

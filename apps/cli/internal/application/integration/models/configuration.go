@@ -1,5 +1,3 @@
-// Package models defines provider and auxiliary-model configuration as
-// consumer-owned values. Secrets remain write-only and never enter Provider.
 package models
 
 import (
@@ -141,9 +139,11 @@ func (c Credential) Validate() error {
 }
 
 func (c Credential) Masked() string { return c.masked }
+
 func (c Credential) FromEnvironment() bool {
 	return c.source == protocol.ProviderKeySourceEnv
 }
+
 func (c Credential) Stored() bool { return c.source == protocol.ProviderKeySourceStored }
 
 type ProviderSpec struct {
@@ -203,9 +203,6 @@ func (p Provider) Validate() error {
 
 func (p Provider) ID() string { return p.id }
 
-// Configured is Runtime's readiness verdict. Runtime alone knows every input
-// to it, so the CLI reports the verdict instead of re-deriving it from the
-// credential and endpoint it happens to see.
 func (p Provider) Configured() bool { return p.configured }
 
 func (p Provider) Endpoint() flamemodel.EndpointPolicy { return p.endpoint }

@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"iter"
 	"log/slog"
-	"runtime/debug"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -20,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
@@ -31,10 +33,8 @@ const (
 	goalRunCleanupTimeout = 5 * time.Second
 )
 
-// goalDrive owns one active Goal incarnation's goroutine, cancellation and
-// completion. The durable Goal remains authoritative for product state.
 type goalDrive struct {
-	incarnationID string
+	incarnationID goalref.IncarnationID
 	cancel        context.CancelFunc
 	done          chan struct{}
 	err           error
@@ -60,13 +60,9 @@ func (g *goalDrive) quiesce() {
 	g.cancel()
 }
 
-// launchLocked attaches exactly one drive to an already-accepted active Goal.
-// Callers hold this session's mutation lock; BeginShutdown holds the admission
-// write lock, which linearizes the durable active transition with task-group
-// admission.
 func (d *Driver) launchLocked(
 	parent context.Context,
-	sessionID identity.SessionID, incarnationID string,
+	sessionID identity.SessionID, incarnationID goalref.IncarnationID,
 ) error {
 	owner, release, ok := d.tasks.Attach(parent)
 	if !ok {
@@ -93,13 +89,9 @@ func (d *Driver) launchLocked(
 			}
 		}()
 		defer func() {
-			// A defect in one Goal's drive is that Goal's failure: it lands in the
-			// error the cleanup above already reads, which keeps the drive joinable
-			// instead of unwinding out of a goroutine nothing can recover.
 			if recovered := recover(); recovered != nil {
 				slog.ErrorContext(ctx, "goals: Goal drive panicked",
-					"session.id", sessionID, "panic", fmt.Sprint(recovered),
-					"stack", string(debug.Stack()))
+					telemetry.SessionID(sessionID), telemetry.Panic(recovered))
 				drive.err = fmt.Errorf("goals: Goal drive for Session %q panicked: %v", sessionID, recovered)
 			}
 		}()
@@ -111,7 +103,7 @@ func (d *Driver) launchLocked(
 		drive.err = d.drive(ctx, sessionID, incarnationID)
 		if drive.err != nil {
 			slog.ErrorContext(ctx, "goal: drive failed",
-				"session.id", sessionID, "goal.incarnation.id", incarnationID, "error", drive.err)
+				telemetry.SessionID(sessionID), telemetry.GoalIncarnationID(incarnationID.String()), telemetry.Error(drive.err))
 		}
 	}()
 	d.joinRetiredDrive(parent, sessionID, previous)
@@ -125,15 +117,11 @@ func (d *Driver) retireDrive(ctx context.Context, sessionID identity.SessionID) 
 func (d *Driver) joinRetiredDrive(ctx context.Context, sessionID identity.SessionID, drive *goalDrive) {
 	if err := d.mutations.joinDrive(ctx, sessionID, drive); err != nil {
 		trace.SpanFromContext(ctx).RecordError(err)
-		slog.ErrorContext(ctx, "goals: committed Goal drive retirement did not settle", "session.id", sessionID, "error", err)
+		slog.ErrorContext(ctx, "goals: committed Goal drive retirement did not settle", telemetry.SessionID(sessionID), telemetry.Error(err))
 	}
 }
 
-// ensureDriveLocked restores the in-process side of an authoritative active
-// goal after a command discovers an active row. A failed owner remains
-// registered and its error is returned until an explicit lifecycle command
-// quiesces it. The caller holds this session's mutation lock.
-func (d *Driver) ensureDriveLocked(ctx context.Context, sessionID identity.SessionID, incarnationID string) error {
+func (d *Driver) ensureDriveLocked(ctx context.Context, sessionID identity.SessionID, incarnationID goalref.IncarnationID) error {
 	if d.tasks.Closed() {
 		return ErrClosed
 	}
@@ -152,23 +140,12 @@ func (d *Driver) ensureDriveLocked(ctx context.Context, sessionID identity.Sessi
 	return d.launchLocked(ctx, sessionID, incarnationID)
 }
 
-// Startup reconciles Goals left active at shutdown so this loop consumes
-// resources only after an explicit resume.
-func (d *Driver) drive(ctx context.Context, sessionID identity.SessionID, incarnationID string) error {
-	for {
-		if ctx.Err() != nil {
-			return nil
-		}
+func (d *Driver) drive(ctx context.Context, sessionID identity.SessionID, incarnationID goalref.IncarnationID) error {
+	for ctx.Err() == nil {
 		g, ok, err := loadGoal(ctx, d.goals, sessionID)
 		if err != nil {
 			return driveFailure(ctx, err)
 		}
-		// Stop when the goal is gone or no longer active. The incarnation check is a
-		// cheap backstop — a supersession (Stop/Start/Resume) is already caught above
-		// by ctx cancellation or by the status leaving active — that guards a future
-		// regression where a transition stops canceling the drive. The load-bearing
-		// incarnation guard is the re-read in driveRun: it prevents adopting and
-		// clobbering a foreign incarnation mid-Run.
 		if !ok || g.Status() != goal.StatusActive || g.IncarnationID() != incarnationID {
 			return nil
 		}
@@ -180,21 +157,15 @@ func (d *Driver) drive(ctx context.Context, sessionID identity.SessionID, incarn
 			return nil
 		}
 	}
+	return nil
 }
 
-// driveRun launches one autonomous run, waits for it to finish, folds its usage
-// in, and decides what to do next — all under a goal.run span. The returned
-// settlement is unsettled when a cancellation or vanished goal means no Run
-// completed, so nothing is metered.
 func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (settlement runSettlement, err error) {
 	ctx, span := driverTracer.Start(ctx, "goal.run", trace.WithAttributes(
-		attribute.String("goal.session", g.SessionID().String()),
+		telemetry.SessionIDKey.String(g.SessionID().String()),
 		attribute.Int("goal.run_ordinal", g.Used().Runs+1),
 	))
 	defer span.End()
-	// Meter each Run under its own span (this defer runs before span.End) so the
-	// exemplar links to the Run; an unsettled drive (canceled / vanished goal)
-	// is not a completed Run and is not counted.
 	defer func() {
 		if settlement.settled {
 			recordGoalRun(ctx, settlement.status)
@@ -231,23 +202,17 @@ func (d *Driver) driveRun(ctx context.Context, g *goal.Goal) (settlement runSett
 	return d.resolveTerminalRun(ctx, g, span, finished)
 }
 
-// startGoalRun admits the Goal's next Run, re-reading the Goal at every
-// admission boundary. Without a started Run the returned settlement is final.
 func (d *Driver) startGoalRun(ctx context.Context, g *goal.Goal, span trace.Span) (runs.StartResult, runSettlement, bool, error) {
 	for {
 		if err := d.runs.WaitSessionStartable(ctx, g.SessionID()); err != nil {
 			settlement, err := d.resolveGoalRunStartError(ctx, g, span, err)
 			return runs.StartResult{}, settlement, false, err
 		}
-		// Waiting is an observation boundary, not a reservation. The Run that
-		// released the Session may have charged this same Goal incarnation or
-		// reported its terminal outcome. Re-read before every admission attempt so
-		// a resumed HITL Run can block/complete the Goal without an extra Run being
-		// launched from the pre-wait snapshot.
+		// Waiting is an observation, not a reservation: the Run that released the Session
+		// may have charged or decided this incarnation, so the Goal is re-read before
+		// every admission.
 		current, owned, err := d.observeOwned(ctx, g, span)
 		if err != nil || !owned || !current.continues() {
-			// This drive did not launch a Run, so it settles none. The Run that
-			// changed the Goal owns its own observation.
 			return runs.StartResult{}, runSettlement{}, false, err
 		}
 		command, err := d.command(ctx, *g)
@@ -262,14 +227,9 @@ func (d *Driver) startGoalRun(ctx context.Context, g *goal.Goal, span trace.Span
 			settlement, err := d.resolveGoalRunStartError(ctx, g, span, err)
 			return runs.StartResult{}, settlement, false, err
 		}
-		// Another Run or working-tree mutation won after the observation. Retry
-		// from the real boundary and re-read the Goal again before attempting
-		// admission.
 	}
 }
 
-// observeOwned re-reads the Goal and settles whatever its latest durable state
-// decides, provided this Driver still owns it.
 func (d *Driver) observeOwned(ctx context.Context, g *goal.Goal, span trace.Span) (runSettlement, bool, error) {
 	owned, err := d.refreshOwnedGoal(ctx, g)
 	if err != nil {
@@ -298,10 +258,7 @@ func (d *Driver) resolveGoalRunStartError(
 	span.RecordError(startErr)
 	span.SetStatus(codes.Error, "start run")
 	slog.ErrorContext(ctx, "goal: run start failed",
-		"session.id", g.SessionID(), "goal.incarnation.id", g.IncarnationID(), "error", startErr)
-	// A start failure is an operational fact already reported in diagnostics.
-	// Persist only its stable cause so Goal status never stores diagnostic
-	// details that cannot be recovered consistently.
+		telemetry.SessionID(g.SessionID()), telemetry.GoalIncarnationID(g.IncarnationID().String()), telemetry.Error(startErr))
 	settlement, err := d.pauseOwned(ctx, g, goal.ReasonRunStartFailed)
 	if err != nil && ctx.Err() != nil {
 		return runSettlement{}, driveFailure(ctx, errors.Join(startErr, err))
@@ -309,33 +266,23 @@ func (d *Driver) resolveGoalRunStartError(
 	return settlement, err
 }
 
-// Quiescence can race an independent failure. Only a complete cancellation
-// error tree establishes that the drive stopped without losing another cause.
 func driveFailure(ctx context.Context, err error) error {
-	if ctx.Err() == context.Canceled && onlyCancellation(err) {
+	if errors.Is(ctx.Err(), context.Canceled) && onlyCancellation(err) {
 		return nil
 	}
 	return err
 }
 
+// Every leaf must be a cancellation: errors.Is would also accept a tree that merely contains one.
 func onlyCancellation(err error) bool {
-	if err == context.Canceled {
-		return true
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		causes := joined.Unwrap()
+		return len(causes) > 0 && !slices.ContainsFunc(causes, func(cause error) bool { return !onlyCancellation(cause) })
 	}
-	switch cause := err.(type) {
-	case interface{ Unwrap() error }:
-		return onlyCancellation(cause.Unwrap())
-	case interface{ Unwrap() []error }:
-		causes := cause.Unwrap()
-		for _, child := range causes {
-			if !onlyCancellation(child) {
-				return false
-			}
-		}
-		return len(causes) > 0
-	default:
-		return false
+	if cause := errors.Unwrap(err); cause != nil {
+		return onlyCancellation(cause)
 	}
+	return errors.Is(err, context.Canceled)
 }
 
 func recordTerminalRunAttributes(span trace.Span, finished *run.Run) {
@@ -378,10 +325,8 @@ func (d *Driver) resolveTerminalRun(
 	finished *run.Run,
 ) (runSettlement, error) {
 	if finished == nil {
-		// A segment stream must end with its root boundary. Absence cannot prove
-		// HITL: child boundaries may have been present and a broken stream may end
-		// without any boundary at all. Preserve that distinction as a contract
-		// failure instead of inventing a waiting Run.
+		// Absence of a root boundary cannot prove HITL, so it is a contract failure rather
+		// than an invented waiting Run.
 		settlement, err := d.pauseOwned(ctx, g, goal.ReasonTerminalOutcomeMissing)
 		if err != nil {
 			return runSettlement{}, driveFailure(ctx, errors.Join(errTerminalOutcomeMissing, err))
@@ -389,9 +334,6 @@ func (d *Driver) resolveTerminalRun(
 		return settlement, nil
 	}
 	if finished.State() == run.Waiting {
-		// Waiting is a first-class root boundary. The user may resume the Goal
-		// drive while resolving the durable interrupt; WaitSessionStartable keeps
-		// that drive behind the same parked Run until it terminalizes.
 		settlement, err := d.pauseOwned(ctx, g, goal.ReasonAwaitingInput)
 		if err != nil {
 			return runSettlement{}, driveFailure(ctx, err)
@@ -415,9 +357,6 @@ func (d *Driver) resolveTerminalRun(
 	return settledAs(goal.StatusActive), nil
 }
 
-// command builds the next autonomous Run under the exact client contract frozen
-// on the Goal incarnation. Waiting is therefore a first-class Goal boundary: a
-// capable client may answer it and resume the same Goal provenance.
 func (d *Driver) command(ctx context.Context, g goal.Goal) (runs.StartCommand, error) {
 	state := g.Snapshot()
 	current := state.WorkflowValue()
@@ -436,11 +375,6 @@ func (d *Driver) command(ctx context.Context, g goal.Goal) (runs.StartCommand, e
 	}, nil
 }
 
-// drainRootBoundary consumes a root run's whole-tree stream to its close and
-// returns only that root's final segment boundary. Child SegmentFinished frames
-// are valid members of the stream but cannot decide the owning Goal's lifecycle.
-// Nil means the stream violated its root-boundary contract; waiting is expressed
-// by a non-nil Run whose authoritative state is [run.Waiting].
 func drainRootBoundary(events iter.Seq[runs.Event], rootRunID identity.RunID) *run.Run {
 	var finished *run.Run
 	for ev := range events {
@@ -452,8 +386,6 @@ func drainRootBoundary(events iter.Seq[runs.Event], rootRunID identity.RunID) *r
 	return finished
 }
 
-// outcomeOf reads a terminal run's outcome. A SegmentFinished without one
-// violates the Run contract and must not be treated as a successful Run.
 func outcomeOf(run *run.Run) (run.Outcome, error) {
 	outcome, terminal := run.Outcome()
 	if !terminal {
@@ -472,10 +404,6 @@ func runCost(run *run.Run) (float64, bool) {
 
 func runSteps(run *run.Run) int { return run.Metrics().Steps() }
 
-// pauseOwned persists a drive-originated pause against the newest revision of
-// the incarnation it owns. A CAS miss is resolved from the authoritative row: a
-// concurrent complete/blocked transition determines the Run settlement
-// instead of being mislabeled as paused.
 func (d *Driver) pauseOwned(
 	ctx context.Context,
 	current *goal.Goal,
@@ -511,9 +439,6 @@ func (d *Driver) pauseOwned(
 	return d.settleOwned(ctx, current)
 }
 
-// settleOwned maps the authoritative state of the current incarnation to the drive
-// outcome. Complete is transient, so this method also owns its conditional
-// clear and resolves any CAS miss before returning.
 func (d *Driver) settleOwned(ctx context.Context, current *goal.Goal) (runSettlement, error) {
 	for {
 		switch current.Status() {
@@ -555,12 +480,6 @@ func (d *Driver) cancelRun(ctx context.Context, runID identity.RunID) error {
 		RunID:  runID,
 		Reason: "autonomous goal stopped",
 	})
-	// Cancellation is cleanup, not a second lifecycle intent. A terminal Run may
-	// commit before its root-boundary event reaches this drive; a concurrent Goal
-	// command then cancels the stream and the Run owner correctly reports
-	// ErrRunFinished. The durable terminal transaction (including Goal accounting)
-	// is already authoritative, so both absent and finished mean there is nothing
-	// left for this cleanup owner to cancel.
 	if errors.Is(err, runs.ErrRunNotFound) || errors.Is(err, runs.ErrRunFinished) {
 		return nil
 	}

@@ -44,8 +44,8 @@ func mutate[P, R any](ctx context.Context, c *connector, method *frame.Method, i
 		if err := admitted.Decode(&input); err != nil {
 			return err
 		}
-		// Any dispatched write can affect several query pages. Invalidation joins
-		// admission so a lost acknowledgement cannot preserve a pre-write cache.
+		// Invalidation joins admission so a lost acknowledgement cannot preserve a
+		// pre-write cache.
 		_, err := c.store.db.Executor(ctx).ExecContext(ctx, `DELETE FROM responses`)
 		return err
 	})
@@ -172,8 +172,6 @@ func (c *connector) sendWrite(ctx context.Context, method, path string, payload 
 	return body, nil
 }
 
-// writeRefusal explains an unexpected write status. Only statuses GitHub
-// documents as refusals are definite; any other leaves the write unconfirmed.
 func writeRefusal(upstream *http.Response) error {
 	switch upstream.StatusCode {
 	case http.StatusUnauthorized:

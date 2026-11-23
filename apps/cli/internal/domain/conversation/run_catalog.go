@@ -7,9 +7,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// RunQuery selects one cursor page in runtime order, newest first. An empty
-// status set means all lifecycle states; descendants remain opt-in because
-// their presence changes both topology and pagination.
 type RunQuery struct {
 	SessionID          string
 	Statuses           []protocol.RunStatus
@@ -56,10 +53,6 @@ func (r RunPage) Validate() error {
 	return nil
 }
 
-// RunCancellation is the atomic result of canceling one run-tree member.
-// Canceled is always the addressed terminal run. Root is the authoritative
-// root snapshot after that cancellation, which may still be active when only a
-// child was canceled.
 type RunCancellation struct {
 	Canceled Run
 	Root     Run

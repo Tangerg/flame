@@ -13,12 +13,10 @@ export interface CodeSourceProps {
   source: string;
   language: string;
   wrapped?: boolean;
-  // The renderer publishes its live selection boundary, including inside a shadow root.
   selectionContentRef?: RefObject<Element | null>;
 }
 
 export interface DiffSourceProps {
-  // One complete Git file patch, presented as one scrollable reader.
   patch: string;
   layout: "unified" | "split";
   label: string;

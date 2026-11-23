@@ -1,9 +1,6 @@
 package bootstrap
 
 import (
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -13,6 +10,10 @@ import (
 	"reflect"
 	"sync/atomic"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -82,7 +83,7 @@ func TestProtocolPreservesUnsuccessfulApprovalResultsAcrossRestart(t *testing.T)
 					Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1},
 				})
 			})}
-			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 
 	framecall "github.com/Tangerg/frame/call"
 	framevalue "github.com/Tangerg/frame/value"
@@ -24,7 +25,6 @@ import (
 	scoperun "github.com/Tangerg/scope/agent/run"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
-	"github.com/samber/lo"
 )
 
 type observedInteractionTool struct {
@@ -55,12 +55,8 @@ func (o *observedInteractionTool) InputValidator() func([]byte) error {
 	}
 }
 
-// Unwrap leaves the source declarations this owner does not restate, such as
-// direct results and deferred advertisement, discoverable through As.
 func (o *observedInteractionTool) Unwrap() toolcontract.Tool { return o.inner }
 
-// Arguments rewritten after admission cannot retain an inner resource key.
-// Scope schedules these calls exclusively; immutable calls keep the declaration.
 func (o *observedInteractionTool) ConcurrencyPolicy() func(toolcontract.Invocation) (string, bool) {
 	return o.concurrent
 }
@@ -130,8 +126,6 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	return toolcontract.Result{Output: projection.output}, projection.outcome
 }
 
-// recordUnknownEffect keeps a failure the Tool could not classify: its effect
-// may have happened, so the Run must reconcile it rather than report it.
 func (o *observedInteractionTool) recordUnknownEffect(invocation interaction.ToolInvocation, err error) {
 	if err == nil {
 		return
@@ -143,8 +137,6 @@ func (o *observedInteractionTool) recordUnknownEffect(invocation interaction.Too
 	o.session.lifetime.wakeUnknown()
 }
 
-// commitStart makes the call's start durable before it runs. A Tool with a
-// receipt contract captures its prepared receipt in the same fact.
 func (o *observedInteractionTool) commitStart(ctx context.Context, invocation interaction.ToolInvocation, member runs.ExecutorMember, start runs.ToolCallStarted, captures bool) error {
 	var started runs.ExecutionFact = start
 	if o.receiptRelease != nil && captures {
@@ -160,7 +152,6 @@ func (o *observedInteractionTool) commitStart(ctx context.Context, invocation in
 	return nil
 }
 
-// run invokes the underlying Tool, recording every workspace path it mutates.
 func (o *observedInteractionTool) run(ctx context.Context, bound toolcontract.Invocation, call corechat.ToolCall, arguments tool.Arguments, continuation *toolcontract.Continuation) (toolcontract.Result, []string, error) {
 	var mutatedPaths []string
 	ctx = toolset.WithMutationRecorder(ctx, func(paths []string) {
@@ -172,8 +163,6 @@ func (o *observedInteractionTool) run(ctx context.Context, bound toolcontract.In
 	return result, mutatedPaths, err
 }
 
-// settle records the call's presentation and tells observers how it ended. A
-// denied call never reached its Tool, so it has no outcome to report.
 func (o *observedInteractionTool) settle(ctx context.Context, member runs.ExecutorMember, processID scoperun.ProcessID, start runs.ToolCallStarted, arguments tool.Arguments, projection projectedToolResult, callErr error) error {
 	metadata := toolCallMetadata{
 		toolCallCapture: toolCallCapture{MemberID: member.MemberID, ProcessID: processID, Start: start},
@@ -198,8 +187,6 @@ func restoreToolInput(bound toolcontract.Invocation) (*runinput.Continuation, *t
 		return nil, nil, err
 	}
 	var continuation *toolcontract.Continuation
-	// Flame consumes its approval; a question's answer still belongs to
-	// the underlying Tool that requested it.
 	if _, question := continued.Interrupt.(runs.QuestionPrompt); question {
 		restored, _ := bound.Continuation()
 		continuation = &restored
@@ -236,8 +223,6 @@ func (o *observedInteractionTool) capturePreparedTool(ctx context.Context, invoc
 	return runs.ToolCallPrepared{Start: start, Context: checkpoint, Caller: caller}, nil
 }
 
-// projectedToolResult binds the model outcome and durable result to the same
-// admitted external output, including failures recovered from a Tool receipt.
 type projectedToolResult struct {
 	output       toolcontract.Output
 	presentation toolResultPresentation
@@ -258,9 +243,6 @@ func (o *observedInteractionTool) projectToolResult(toolName string, arguments t
 	output = modeladapter.WithoutToolResultReferences(output)
 	modelOutput := output
 	presentation := toolResultPresentation{mutatedPaths: normalizeMutationPaths(mutatedPaths)}
-	// A definite failed result is model-visible evidence just like success.
-	// Rejection reasons remain intact; unknown outcomes returned above cannot
-	// acquire a completed result merely because they carry observed evidence.
 	if failure == nil || failure.Kind() == toolcontract.FailureKindFailed {
 		var err error
 		modelOutput, presentation.offload, err = o.offloadPolicy.project(toolName, output)
@@ -277,9 +259,7 @@ func (o *observedInteractionTool) projectToolResult(toolName string, arguments t
 		return projectedToolResult{}, err
 	}
 	if present {
-		if o.presenter != nil {
-			parsed, presentation.outputText = o.presenter.Present(o.ref, arguments, parsed)
-		}
+		parsed, presentation.outputText = o.presenter.Present(o.ref, arguments, parsed)
 		presentation.result = &parsed
 	}
 	var outcome error
@@ -302,10 +282,6 @@ func (o *observedInteractionTool) projectToolResult(toolName string, arguments t
 	return projectedToolResult{output: modelOutput, presentation: presentation, outcome: outcome}, nil
 }
 
-// invoke validates the effective arguments before entering the external Tool.
-// This boundary can prove that an invalid edit never entered the executable.
-// continuation forwards Scope's re-entry answer so an inner input-requesting
-// Tool reads it from its own invocation.
 func (o *observedInteractionTool) invoke(
 	ctx context.Context,
 	call corechat.ToolCall,
@@ -319,7 +295,6 @@ func (o *observedInteractionTool) invoke(
 	return o.binding.Call(ctx, bound)
 }
 
-// Approval persistence and execution share the frozen Scope input contract.
 func (o *observedInteractionTool) prepareInvocation(call corechat.ToolCall, arguments tool.Arguments, admission toolcontract.Admission) (toolcontract.Invocation, error) {
 	bound, err := o.binding.Contract().Prepare(call.Request(), admission)
 	if err != nil {
@@ -341,10 +316,6 @@ func (o *observedInteractionTool) prepareInvocation(call corechat.ToolCall, argu
 	return bound, nil
 }
 
-// projectionFailure refuses to produce a Tool result the Host could not record.
-// Unlike a model call, a Tool has no definite host-failure settlement: its
-// Effect stays unknown until the Host resolves it, so every refusal here leaves
-// the Run for the unknown reporter to settle and wakes it directly.
 func (o *observedInteractionTool) projectionFailure(cause error) error {
 	o.session.lifetime.wakeUnknown()
 	return hostFailure(cause)
@@ -378,14 +349,11 @@ func (o *observedInteractionTool) projectToolOutcome(
 	projected, err := o.interpreter.ProjectOutcome(ctx, o.start.SessionID, o.ref, succeeded)
 	if err != nil {
 		slog.ErrorContext(ctx, "execution: project tool outcome failed",
-			"session.id", o.start.SessionID, "tool.name", name, "error", err,
+			telemetry.SessionID(o.start.SessionID), telemetry.ToolName(name), telemetry.Error(err),
 		)
 		return
 	}
 	if projected != nil {
-		// Tool outcome projection is a refetchable live hint (for example a Plan
-		// snapshot). Scope separately owns publication of the canonical result;
-		// losing this hint cannot change its execution outcome.
 		o.session.lifetime.send(runs.ExecutorEvent{Member: member, Payload: projected})
 	}
 }
@@ -398,9 +366,6 @@ func (o *observedInteractionTool) runAfterToolUseHook(
 	output toolcontract.Output,
 	callErr error,
 ) {
-	if o.hooks == nil {
-		return
-	}
 	hookCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), auxiliaryOperationTimeout)
 	defer cancel()
 	result, err := hookToolOutput(output)
@@ -412,7 +377,7 @@ func (o *observedInteractionTool) runAfterToolUseHook(
 	}
 	if err != nil {
 		slog.ErrorContext(hookCtx, "execution: post-tool hook failed",
-			"session.id", o.start.SessionID, "tool.name", name, "call.id", callID, "error", err,
+			telemetry.SessionID(o.start.SessionID), telemetry.ToolName(name), telemetry.ToolCallID(callID), telemetry.Error(err),
 		)
 	}
 }
@@ -462,14 +427,6 @@ func wrapInteractionTools(
 	offloadPolicy toolResultOffloadPolicy,
 	start runs.RootExecutionStart,
 ) (visible []toolcontract.Tool, deferred []toolcontract.Tool, contracts map[tool.Ref]toolcontract.Contract, owners map[tool.Ref]*observedInteractionTool, err error) {
-	if len(manifest.Visible)+len(manifest.Deferred) > 0 {
-		if lo.IsNil(config.ToolInterpreter) {
-			return nil, nil, nil, nil, errors.New("execution: Interaction Tools require a Tool interpreter")
-		}
-		if lo.IsNil(config.ToolAuthorizer) {
-			return nil, nil, nil, nil, errors.New("execution: Interaction Tools require a Tool authorizer")
-		}
-	}
 	wrapping := toolWrapping{
 		session: session, config: config, offloadPolicy: offloadPolicy, start: start,
 		contracts: make(map[tool.Ref]toolcontract.Contract), owners: make(map[tool.Ref]*observedInteractionTool),
@@ -482,8 +439,6 @@ func wrapInteractionTools(
 	return visible, deferred, wrapping.contracts, wrapping.owners, err
 }
 
-// toolWrapping observes each Tool of one Interaction and indexes it by its
-// source reference.
 type toolWrapping struct {
 	session       *interactionSession
 	config        InteractionExecutorConfig
@@ -532,15 +487,28 @@ func (w toolWrapping) observe(ctx context.Context, executable toolcontract.Tool)
 	if err := observed.captureReceiptSource(ctx, w.config.OriginalToolResults); err != nil {
 		return nil, err
 	}
-	// Concurrent execution is safe only when nothing can pause or rewrite a
-	// call: no hooks, proposals, policy prompts or approval interrupts.
-	if w.config.ToolHooks == nil && len(w.session.toolProposals) == 0 && !w.config.ToolInterpreter.UsesStandardPolicy(ref) &&
+	// Proposals, policy prompts and approval interrupts can pause or reshape a
+	// call, so they rule out concurrency.
+	if len(w.session.toolProposals) == 0 && !w.config.ToolInterpreter.UsesStandardPolicy(ref) &&
 		!slices.Contains(w.start.InterruptTypes, run.InterruptApproval) {
 		if concurrent, found := toolcontract.As[interaction.ConcurrentTool](executable); found {
-			observed.concurrent = concurrent.ConcurrencyPolicy()
+			observed.concurrent = keyFreeConcurrency(concurrent.ConcurrencyPolicy())
 		}
 	}
 	return observed, nil
+}
+
+// Lifecycle hooks are live configuration that may rewrite arguments after Scope
+// classifies a call, so a resource key derived from the original arguments
+// cannot be trusted; only key-free classifications stay concurrent.
+func keyFreeConcurrency(classify func(toolcontract.Invocation) (string, bool)) func(toolcontract.Invocation) (string, bool) {
+	if classify == nil {
+		return nil
+	}
+	return func(invocation toolcontract.Invocation) (string, bool) {
+		key, concurrent := classify(invocation)
+		return "", concurrent && key == ""
+	}
 }
 
 func (o *observedInteractionTool) captureReceiptSource(ctx context.Context, results originalToolResults) error {

@@ -77,13 +77,13 @@ export class Office {
       const manifest = await readFile(manifestPath, { signal });
       if (
         createHash("sha256").update(manifest).digest("hex") !==
-        target.manifestSHA256
+        target.manifestSha256
       )
         throw new Error("release manifest mismatch");
       const hash = createHash("sha256");
       for await (const chunk of createReadStream(executable, { signal }))
         hash.update(chunk);
-      if (hash.digest("hex") !== target.executableSHA256)
+      if (hash.digest("hex") !== target.executableSha256)
         throw new Error("release executable mismatch");
     } catch {
       signal.throwIfAborted();

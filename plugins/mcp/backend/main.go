@@ -10,14 +10,14 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/backend"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	connectormcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcpconnector/mcp"
-	receipts "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 
 	"github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 func run(ctx context.Context, data string) (returned error) {
-	db, err := sqlite.OpenSchema(ctx, filepath.Join(data, "external-servers.db"), []string{entriesSchema, attemptsSchema, receipts.CommandsSchema})
+	db, err := sqlite.OpenSchema(ctx, filepath.Join(data, "external-servers.db"), []string{entriesSchema, attemptsSchema, pluginstorage.CommandsSchema})
 	if err != nil {
 		return errors.Join(err, db.Close())
 	}
@@ -33,6 +33,7 @@ func run(ctx context.Context, data string) (returned error) {
 	}
 	return server.Run(ctx, &sdk.StdioTransport{})
 }
+
 func register(bound *pluginmcp.Backend, db sqlite.Database) error {
 	m, err := connectormcp.NewMethods()
 	if err != nil {
@@ -44,16 +45,16 @@ func register(bound *pluginmcp.Backend, db sqlite.Database) error {
 	}); err != nil {
 		return err
 	}
-	if err := receipts.RegisterCommand(bound, db, m.Recover, nil, c.prepareRecovery); err != nil {
+	if err := pluginstorage.RegisterCommand(bound, db, m.Recover, nil, c.prepareRecovery); err != nil {
 		return err
 	}
-	if err := receipts.RegisterCommand(bound, db, m.Change, nil, c.prepareChange); err != nil {
+	if err := pluginstorage.RegisterCommand(bound, db, m.Change, nil, c.prepareChange); err != nil {
 		return err
 	}
-	if err := receipts.RegisterCommand(bound, db, m.Start, nil, c.prepareStart); err != nil {
+	if err := pluginstorage.RegisterCommand(bound, db, m.Start, nil, c.prepareStart); err != nil {
 		return err
 	}
-	if err := receipts.RegisterCommand(bound, db, m.Finish, nil, c.prepareFinish); err != nil {
+	if err := pluginstorage.RegisterCommand(bound, db, m.Finish, nil, c.prepareFinish); err != nil {
 		return err
 	}
 	if err := m.Get.RegisterServer(bound, nil, func(ctx context.Context, _ *sdk.ServerSession, cmd pluginmcp.Command[wire.Request]) (wire.AttemptResult, error) {
@@ -66,4 +67,5 @@ func register(bound *pluginmcp.Backend, db sqlite.Database) error {
 	}
 	return bound.Publish()
 }
+
 func main() { backend.Main("external MCP connector", run) }

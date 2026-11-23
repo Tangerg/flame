@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"runtime/debug"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -14,35 +13,21 @@ import (
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
-// instrumentRequests wraps the mux with the entry-point tracing layer — the
-// root of full-link tracing:
-//
-//   - extract any W3C traceparent the client sent, then open one server span per
-//     request. Downstream work inherits it through r.Context(), so a single
-//     trace covers the whole request. The span carries HTTP attributes,
-//     duration, and body size, and is marked Error on 5xx.
-//   - panic recovery so the runtime survives a misbehaving handler; the panic
-//     is reported on the logging channel with its stack and recorded onto the
-//     request span, and an uncommitted response becomes a flat 500 envelope
-//     without corrupting an already-started stream.
-//
-// All observability flows through OTel; the process composition root installs
-// the global TracerProvider and propagator.
 func (s *Server) instrumentRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		w.Header().Set(headerRequestID, newRequestID())
 		w.Header().Set(headerServer, s.serverID)
 
-		// Continue the client's trace when it sent one, else start fresh —
-		// this is where the request's trace_id comes into being.
 		ctx := otel.GetTextMapPropagator().Extract(r.Context(), propagation.HeaderCarrier(r.Header))
 		ctx, span := tracer.Start(ctx, r.Method,
 			trace.WithSpanKind(trace.SpanKindServer),
 			trace.WithAttributes(
-				attribute.String("http.request.method", r.Method),
+				telemetry.HTTPRequestMethodKey.String(r.Method),
 			),
 		)
 		r = r.WithContext(ctx)
@@ -52,10 +37,10 @@ func (s *Server) instrumentRequests(next http.Handler) http.Handler {
 			route := httpRoute(r)
 			span.SetName(r.Method + " " + route)
 			span.SetAttributes(
-				attribute.String("http.route", route),
-				attribute.Int("http.response.status_code", response.status),
+				telemetry.HTTPRouteKey.String(route),
+				telemetry.HTTPResponseStatusCodeKey.Int(response.status),
 				attribute.Int64("duration_ms", time.Since(start).Milliseconds()),
-				attribute.Int("http.response.body.size", response.bytes),
+				telemetry.HTTPResponseBodySizeKey.Int(response.bytes),
 			)
 			if response.status >= http.StatusInternalServerError {
 				span.SetStatus(codes.Error, http.StatusText(response.status))
@@ -66,12 +51,9 @@ func (s *Server) instrumentRequests(next http.Handler) http.Handler {
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				err := handlerPanicError(recovered)
-				// The span carries this only where the host configured tracing,
-				// and the client is told nothing beyond "internal error". Without
-				// the stack here a handler defect leaves nothing to act on.
 				slog.ErrorContext(ctx, "http: handler panicked",
-					"http.request.method", r.Method, "http.route", httpRoute(r),
-					"error", err, "stack", string(debug.Stack()))
+					telemetry.HTTPRequestMethod(r.Method), telemetry.HTTPRoute(httpRoute(r)),
+					telemetry.Panic(recovered))
 				span.RecordError(err)
 				span.SetStatus(codes.Error, err.Error())
 				if !response.wroteHeader {
@@ -84,8 +66,6 @@ func (s *Server) instrumentRequests(next http.Handler) http.Handler {
 	})
 }
 
-// A resource lease is a credential embedded in a path segment. Only the
-// registered template may cross a telemetry boundary, including on failure.
 func httpRoute(request *http.Request) string {
 	if rc := chi.RouteContext(request.Context()); rc != nil {
 		if pattern := rc.RoutePattern(); pattern != "" {
@@ -99,9 +79,6 @@ const requestIDPrefix = "req_"
 
 func newRequestID() string { return requestIDPrefix + rand.Text() }
 
-// recordingResponseWriter is a tiny wrapper that captures status +
-// bytes so the response span can include them. Stays minimal —
-// the body itself stays out of memory.
 type recordingResponseWriter struct {
 	http.ResponseWriter
 	status      int
@@ -143,9 +120,6 @@ func (r *recordingResponseWriter) FlushError() error {
 	return http.NewResponseController(r.ResponseWriter).Flush()
 }
 
-// Unwrap exposes the wrapped writer so http.ResponseController can reach the
-// underlying connection — notably for the per-frame write deadline the SSE stream
-// relies on to bound a blocked write (see serveStream).
 func (r *recordingResponseWriter) Unwrap() http.ResponseWriter {
 	return r.ResponseWriter
 }

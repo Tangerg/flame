@@ -17,21 +17,10 @@ import (
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 )
 
-// The TypeScript wire types are emitted from the SCHEMA tree, not from a second
-// walk of the Go types.
-//
-// That is the whole design: two independent walks would be two authors of the same
-// shape. The schema and TypeScript types must agree.
-// Deriving one from the other makes agreement structural — there is no path by
-// which a variant can be forbidden in the schema and allowed in TypeScript.
-//
-// What TypeScript cannot express is left out on purpose: a conditional rule
-// (`if/then`) is a runtime check, not a type, and the generated validator is where
-// it lands. A type system that silently drops half a constraint is worse than one
-// that says which half it holds.
+// TypeScript types are emitted from the schema tree rather than a second walk of
+// the Go types, so the two cannot disagree; conditional rules are left to the
+// generated validator.
 
-// tsFileName is the generated shape module. Its name makes generated ownership
-// explicit to every consumer that vendors the binding.
 const tsFileName = "wire.generated.ts"
 
 type tsEmitter struct {
@@ -39,10 +28,6 @@ type tsEmitter struct {
 	out strings.Builder
 }
 
-// tsTypes answers "how does TypeScript spell this?" for a schema node or a Go
-// type. Both generated modules ask it — the shapes module to declare a type, the
-// methods module to name a method's frames — and two answers to that question
-// would be two spellings of one shape.
 type tsTypes struct {
 	*wiregen.TypeScript
 	set *schemaSet
@@ -131,8 +116,6 @@ func (t *tsEmitter) httpHeaders() {
 	t.line("")
 }
 
-// httpEndpoints publishes transport locations from the same Delivery registry
-// the HTTP router uses. A vendored client never has to restate /v2 paths.
 func (t *tsEmitter) httpEndpoints() {
 	t.line("export const RPC_HTTP = {")
 	t.line("  callStatus: %d,", protocol.RPCCallStatus)
@@ -177,12 +160,6 @@ func (t *tsEmitter) httpEndpoints() {
 	t.line("")
 }
 
-// notifications emits the downstream method names.
-//
-// A client subscribes to these by name — nothing inbound routes to them — so the
-// name is the whole contract, and a client that spells it itself is a second author
-// of the method surface. The constant name is derived mechanically so no naming
-// scheme has to be invented per notification.
 func (t *tsEmitter) notifications(methods []string) {
 	t.line("// The methods the runtime sends downstream. A client only ever subscribes.")
 	for _, method := range methods {
@@ -191,8 +168,6 @@ func (t *tsEmitter) notifications(methods []string) {
 	t.line("")
 }
 
-// screamingSnake turns a dotted method name into a TypeScript constant name:
-// notifications.run.event becomes NOTIFICATIONS_RUN_EVENT.
 func screamingSnake(name string) string {
 	var out strings.Builder
 	for index, letter := range name {
@@ -216,13 +191,6 @@ func lowerToUpper(letter rune) rune {
 	return 0
 }
 
-// enumValues emits the runtime face of the enums.
-//
-// A TypeScript union type does not exist at runtime, so a client that has to
-// ITERATE a closed value set — check its sample coverage, validate an incoming
-// tag — cannot get one from the types alone. One record keyed by type name avoids
-// inventing a naming scheme for fifty-one separate constants, and `as const` keeps
-// each list narrowed to its own literals.
 func (t *tsEmitter) enumValues(names []string) {
 	t.line("// The closed value sets, as data: a union type does not exist at runtime.")
 	t.line("export const WIRE_ENUMS = {")
@@ -286,12 +254,6 @@ func (t *tsEmitter) header() {
 	t.line("")
 }
 
-// protocolVersion emits the version the client states in request metadata.
-//
-// The runtime refuses a request naming a version outside the range it serves, so a
-// client that spells the date itself is a second author of the negotiation — and
-// the failure is a rejected handshake, not a type error. Projecting the constant
-// makes "the client sends what this build serves" true by construction.
 func (t *tsEmitter) protocolVersion() {
 	t.line("// The wire version this runtime serves; a client states it in request metadata.")
 	t.line("export const PROTOCOL_VERSION = %s;", wiregen.StringLiteral(protocol.Version))
@@ -323,14 +285,8 @@ func (t *tsEmitter) protocolVersion() {
 	t.line("")
 }
 
-// generic reconstructs a Go generic as a TypeScript generic.
-//
-// The walk sees only instantiations — `Page[Session]`, `Page[Model]` — because Go
-// reflection has no view of an uninstantiated type. Emitting one interface per
-// instantiation would publish nineteen copies of the same two fields and break
-// generic helpers in consuming clients, so the shape is recovered by substituting
-// the type argument out of one instantiation, and every OTHER instantiation must
-// reproduce it exactly or generation fails.
+// Go reflection sees only instantiations, so the generic shape is recovered from
+// one instantiation and every other must reproduce it exactly.
 func (t *tsEmitter) generic(genericName string, instantiations []string) {
 	var body, source string
 	for _, name := range instantiations {
@@ -359,7 +315,6 @@ func (t *tsEmitter) alias(name string, shape reflect.Type) {
 	t.line("")
 }
 
-// typeName is the published name of a Go type, as TypeScript spells it.
 func (t tsTypes) typeName(shape reflect.Type) string {
 	if shape == nil {
 		return "unknown"
@@ -378,7 +333,6 @@ func (t *tsEmitter) line(format string, arguments ...any) {
 	fmt.Fprintf(&t.out, format+"\n", arguments...)
 }
 
-// genericBases groups the instantiations of each generic Go type by generic name.
 func genericBases(set *schemaSet) map[string][]string {
 	out := make(map[string][]string)
 	for name, t := range set.origin {
@@ -406,9 +360,6 @@ func genericBaseOf(t reflect.Type) string {
 	return genericName
 }
 
-// typeArgumentOf returns the single type argument of a generic instantiation, found
-// by matching the argument's own name against the struct's fields — reflection
-// hands back instantiated field types, so the argument is recovered from them.
 func typeArgumentOf(t reflect.Type) reflect.Type {
 	_, arguments, generic := strings.Cut(t.Name(), "[")
 	if !generic {

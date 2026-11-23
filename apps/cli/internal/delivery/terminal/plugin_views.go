@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/apps/cli/internal/application/pluginview"
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/packages/go-sdk/timezone"
@@ -19,18 +20,14 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
-// maxPluginViewPages bounds one list read; a view is a management surface, not
-// an export.
+const pluginChoiceRows = 6
+
 const maxPluginViewPages = 50
 
-// pluginScreens shows installed plugins and the terminal views their releases
-// declare. Each view becomes a slash command; open and form name the listed
-// view and its form, so an action finds its row among the rows shown.
 type pluginScreens struct {
 	screenHost
-	service   Plugins
-	workbench *workbench.Store
-	// viewsChanged rebuilds the command catalog after the views change.
+	service      Plugins
+	workbench    *workbench.Store
 	viewsChanged func()
 	views        []pluginview.View
 	open         string
@@ -76,7 +73,7 @@ func (p *pluginScreens) registerViewCommands(catalog *commandCatalog) {
 		names[view.ID]++
 	}
 	for _, view := range p.views {
-		descriptor := extensions.CommandDescriptor{Name: viewCommandName(view), Title: view.Title + " · " + pluginViewUsage(view), Category: commandCategoryExtensions, Arguments: extensions.OptionalArguments}
+		descriptor := extensions.CommandDescriptor{Name: viewCommandName(view), Title: view.Title + format.Separator + pluginViewUsage(view), Category: commandCategoryExtensions, Arguments: extensions.OptionalArguments}
 		if _, taken := catalog.lookup(view.ID); !taken && names[view.ID] == 1 {
 			descriptor.Aliases = []string{view.ID}
 		}
@@ -100,7 +97,7 @@ func pluginViewUsage(view pluginview.View) string {
 		}
 		actions = append(actions, usage)
 	}
-	return strings.Join(actions, " · ")
+	return strings.Join(actions, format.Separator)
 }
 
 func (p *pluginScreens) pluginViewContext() pluginview.Context {
@@ -108,8 +105,6 @@ func (p *pluginScreens) pluginViewContext() pluginview.Context {
 	return pluginview.Context{Workspace: p.session.current.Workspace.Path, TimeZone: zone}
 }
 
-// runPluginView lists the view, or runs the action the argument names first.
-// Remaining words fill the list's form fields in order, or name the row.
 func (p *pluginScreens) runPluginView(view pluginview.View, argument string) error {
 	words := strings.Fields(argument)
 	if len(words) > 0 {
@@ -204,8 +199,6 @@ func pluginViewDocument(view pluginview.View, rows []pluginview.Row) readerDocum
 	return readerDocument{Title: view.Title, Detail: detail, Sections: sections}
 }
 
-// startPluginViewAction resolves the selected row, asks for the action's form
-// fields, confirms when declared, and then runs it.
 func (p *pluginScreens) startPluginViewAction(view pluginview.View, action protocol.PluginTerminalAction, key string) error {
 	key = strings.TrimSpace(key)
 	if action.Target == extension.TerminalActionView {
@@ -253,8 +246,6 @@ func (p *pluginScreens) startPluginViewAction(view pluginview.View, action proto
 	return nil
 }
 
-// selectPluginViewRow finds the row whose key is key, or the one row whose key
-// begins with it.
 func selectPluginViewRow(view pluginview.View, rows []pluginview.Row, key string) (pluginview.Row, error) {
 	var exact, prefixed []pluginview.Row
 	for _, row := range rows {
@@ -308,9 +299,6 @@ func pluginViewIntent(view pluginview.View, action protocol.PluginTerminalAction
 	return "plugin-view:" + view.InstallationID + "/" + view.ID + "/" + action.ID + "/" + key
 }
 
-// runPluginViewAction calls the action's method. A mutation is staged durably
-// first, so a lost acknowledgement resumes the original call; row is nil when
-// that staged call is being reconciled.
 func (p *pluginScreens) runPluginViewAction(view pluginview.View, action protocol.PluginTerminalAction, row pluginview.Row, key string, form map[string]string) {
 	here := p.pluginViewContext()
 	intent := pluginViewIntent(view, action, key)
@@ -320,7 +308,7 @@ func (p *pluginScreens) runPluginViewAction(view pluginview.View, action protoco
 		}
 		return view.ActionRequest(action, here, row, form)
 	}
-	p.status.note(strings.ToLower(action.Title) + " · " + view.Title)
+	p.status.note(strings.ToLower(action.Title) + format.Separator + view.Title)
 	started := p.tasks.application(pluginViewOperation,
 		func(ctx context.Context) (struct{}, error) {
 			if view.Mutates(action) {
@@ -347,7 +335,7 @@ func (p *pluginScreens) runPluginViewAction(view pluginview.View, action protoco
 				p.message(message)
 				return
 			}
-			p.message(view.Title + " · " + strings.ToLower(action.Title) + " done")
+			p.message(view.Title + format.Separator + strings.ToLower(action.Title) + " done")
 			p.reader.reload()
 		},
 	)
@@ -371,7 +359,7 @@ func (p *pluginScreens) openPluginViewForm(view pluginview.View, action protocol
 			if field.Kind == extension.TerminalFormBoolean {
 				options = []string{"true", "false"}
 			}
-			choice := base.NewSelect(base.SelectConfig[string]{Same: base.Equal[string], Label: field.Title, Initial: field.Initial, Rows: min(len(options), 6)})
+			choice := base.NewSelect(base.SelectConfig[string]{Same: base.Equal[string], Label: field.Title, Initial: field.Initial, Rows: min(len(options), pluginChoiceRows)})
 			entries := make([]base.Option[string], 0, len(options))
 			for _, option := range options {
 				entries = append(entries, base.Option[string]{Label: option, Value: option})
@@ -423,9 +411,9 @@ func (p *pluginScreens) openPluginViewForm(view pluginview.View, action protocol
 	}
 
 	body := kit.NewForm(form)
-	title := action.Title + " · " + view.Title
+	title := action.Title + format.Separator + view.Title
 	if key != "" {
-		title += " · " + key
+		title += format.Separator + key
 	}
 	dialog = newPresentationDialog(p.stack, kit.DialogConfig{
 		Behavior: base.DialogConfig{
@@ -434,7 +422,7 @@ func (p *pluginScreens) openPluginViewForm(view pluginview.View, action protocol
 		},
 		Theme:  p.theme,
 		Glyphs: p.glyphs,
-		Where:  formDialogPlacement(standardDialogWidth, len(controls), 24, body),
+		Where:  formDialogPlacement(standardDialogWidth, len(controls), tallDialogHeight, body),
 	})
 	p.dialog = dialog
 	dialog.Show()

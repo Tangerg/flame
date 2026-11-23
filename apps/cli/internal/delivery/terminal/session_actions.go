@@ -20,9 +20,6 @@ type sessionImport struct {
 }
 
 func (l *sessionLifecycle) prepareSessionImport(path string) error {
-	if l.transfers == nil {
-		return errors.New("this runtime composition has no session transfer service")
-	}
 	if err := l.root.requireRuntimeFeature(protocol.FeatureSessionExport); err != nil {
 		return err
 	}
@@ -48,7 +45,7 @@ func (l *sessionLifecycle) prepareSessionImport(path string) error {
 		},
 	)
 	if !started {
-		return errors.New("another session output operation is already running")
+		return sessionOutputOperation.busy()
 	}
 	return nil
 }
@@ -106,7 +103,7 @@ func (l *sessionLifecycle) prepareSessionRollback(argument string) error {
 		},
 	)
 	if !started {
-		return errors.New("another session output operation is already running")
+		return sessionOutputOperation.busy()
 	}
 	return nil
 }
@@ -125,9 +122,6 @@ func (r rollbackPreview) ValidateCommit(snapshot conversation.SessionSnapshot) e
 	return r.settlement.ValidateCommit(snapshot)
 }
 
-// ValidateApplied proves a history rollback committed when its command result
-// was lost behind a post-commit cleanup error. Files-only rollback has no
-// observable session projection change and therefore cannot use this proof.
 func (r rollbackPreview) ValidateApplied(snapshot conversation.SessionSnapshot) error {
 	return r.settlement.ValidateApplied(snapshot)
 }

@@ -41,6 +41,8 @@ export type SessionStatus = "running" | "waiting" | "idle";
 
 export type ToolCategory = "shell" | "edit" | "read" | "search" | "task";
 
+export type UnresolvedEffectCause = "termination" | "runtimeFailure";
+
 export type WorkspaceAvailability = "available" | "missing";
 
 export const BUILTIN_TOOL_NAMES = [

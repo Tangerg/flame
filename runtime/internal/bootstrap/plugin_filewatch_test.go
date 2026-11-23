@@ -130,7 +130,7 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 	if err := os.WriteFile(path, []byte("initial baseline"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	draft := testsupport.FilewatchConfigureV1InputDomainDraft{}
+	draft := testsupport.FilewatchConfigureV1InputFilewatchDraft{}
 	draft.Title, draft.Workspace, draft.Paths = "Original file trigger", workspace.Ref.Path, []string{"source.txt"}
 	draft.Instructions, draft.Provider, draft.Model = "Inspect the original observed source.", cfg.defaultSelection.Provider(), cfg.defaultSelection.Model()
 	configured := call(testsupport.FilewatchConfigureV1Method, testsupport.FilewatchConfigureInput{ExpectedRevision: generatedNumber(t, "1"), Trigger: &draft}, "configure-source")
@@ -181,7 +181,7 @@ func TestFilewatchInstalledIngressReconcilesLostOpeningAcrossDisableAndRestart(t
 		t.Fatal("configure replay replaced the disabled rule")
 	}
 	wait(func() bool { return status(testsupport.FilewatchStatusPhaseDisabled, 3) })
-	var disabled testsupport.FilewatchGetV1OutputDomainSnapshot
+	var disabled testsupport.FilewatchGetV1OutputFilewatchSnapshot
 	if err := json.Unmarshal([]byte(call(testsupport.FilewatchGetV1Method, struct{}{}, "")), &disabled); err != nil || generatedInteger(t, disabled.Revision) != 3 || disabled.Trigger != nil {
 		t.Fatalf("disabled rule changed after receipt replay: %+v %v", disabled, err)
 	}

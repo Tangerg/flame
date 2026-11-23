@@ -20,17 +20,12 @@ import (
 	"github.com/samber/lo"
 )
 
-// observedInteractionModel projects one resolved provider instance as the
-// Interaction model boundary. Call and Stream are separate capabilities of that
-// instance, so a provider without streaming simply has no streamer here.
 type observedInteractionModel struct {
 	model    corechat.Model
 	streamer corechat.Streamer
 	session  *interactionSession
 }
 
-// request attaches exactly the ephemeral material measured by the reducer after
-// Scope has adopted the authored conversation it will retain.
 func (o *observedInteractionModel) request(invocation modelCallSource, request *corechat.Request) (*corechat.Request, error) {
 	sent, err := o.session.material.providerRequest(invocation)
 	if err != nil {
@@ -87,13 +82,14 @@ func (o *observedInteractionModel) Stream(
 	request *corechat.Request,
 ) iter.Seq2[*corechat.ResponseDelta, error] {
 	return func(yield func(*corechat.ResponseDelta, error) bool) {
-		invocation, callID, err := o.begin(ctx, request)
+		callCtx := ctx
+		invocation, callID, err := o.begin(callCtx, request)
 		if err != nil {
 			yield(nil, err)
 			return
 		}
 		notExecuted := func(cause error) error {
-			return o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: cause})
+			return o.finishFailedCall(callCtx, invocation, callID, runs.ModelObservation{}, nil, &coreinvocation.Failure{Kind: coreinvocation.FailureNotExecuted, Cause: cause})
 		}
 		sent, err := o.request(invocation, request)
 		if err != nil {
@@ -101,15 +97,15 @@ func (o *observedInteractionModel) Stream(
 			return
 		}
 		streamed := streamedResponse{dispatchedAt: time.Now()}
-		ctx = o.session.modelCallContext(ctx, o.session.executorMember(invocation.process), callID)
-		ctx, err = pluginmcp.WithInvocation(ctx, framecall.Invocation{ID: callID, Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: framecall.Target{Scope: extension.ScopeCall, Reference: callID}})
+		callCtx = o.session.modelCallContext(callCtx, o.session.executorMember(invocation.process), callID)
+		callCtx, err = pluginmcp.WithInvocation(callCtx, framecall.Invocation{ID: callID, Origin: extension.Automatic, Parent: effectInvocationParent(invocation.effect), Target: framecall.Target{Scope: extension.ScopeCall, Reference: callID}})
 		if err != nil {
 			yield(nil, notExecuted(err))
 			return
 		}
-		sequence := o.streamer.Stream(ctx, sent)
+		sequence := o.streamer.Stream(callCtx, sent)
 		if sequence == nil {
-			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil,
+			yield(nil, o.finishFailedCall(callCtx, invocation, callID, runs.ModelObservation{}, nil,
 				errors.New("execution: model streamer returned a nil sequence")))
 			return
 		}
@@ -131,11 +127,11 @@ func (o *observedInteractionModel) Stream(
 		// Every early exit must unwind the physical stream before reading its
 		// settled evidence, including errors raised by an outer observer.
 		if failure != nil {
-			yield(nil, o.finishFailedCall(ctx, invocation, callID, streamed.observation(), streamed.firstOutputLatencyMillis, failure))
+			yield(nil, o.finishFailedCall(callCtx, invocation, callID, streamed.observation(), streamed.firstOutputLatencyMillis, failure))
 			return
 		}
 		if stopped {
-			if err := o.settleFailedCall(ctx, invocation, callID, streamed.observation(), streamed.firstOutputLatencyMillis); err != nil {
+			if err := o.settleFailedCall(callCtx, invocation, callID, streamed.observation(), streamed.firstOutputLatencyMillis); err != nil {
 				// Preserve the settlement failure locally; yielding again violates the stream.
 				o.session.effectFailures.record(invocation.effect, err)
 			}
@@ -143,17 +139,15 @@ func (o *observedInteractionModel) Stream(
 		}
 		response, err := streamed.accumulated.Response()
 		if err != nil {
-			yield(nil, o.finishFailedCall(ctx, invocation, callID, streamed.observation(), streamed.firstOutputLatencyMillis, err))
+			yield(nil, o.finishFailedCall(callCtx, invocation, callID, streamed.observation(), streamed.firstOutputLatencyMillis, err))
 			return
 		}
-		if err := o.complete(ctx, invocation, callID, response, streamed.firstOutputLatencyMillis); err != nil {
+		if err := o.complete(callCtx, invocation, callID, response, streamed.firstOutputLatencyMillis); err != nil {
 			yield(nil, err)
 		}
 	}
 }
 
-// streamedResponse is what one model stream has delivered so far: the response
-// it accumulates and the partial output a failed call still reports.
 type streamedResponse struct {
 	accumulated              corechat.ResponseAccumulator
 	text, reasoning          strings.Builder
@@ -235,8 +229,6 @@ func (o *observedInteractionModel) stopFailedCall(ctx context.Context, invocatio
 	return errors.Join(cause, projectionErr)
 }
 
-// Settlement uses dispatch evidence even when no response survived. Scope owns
-// the process outcome, including a consumer's capacity stop.
 func (o *observedInteractionModel) settleFailedCall(ctx context.Context, invocation modelCallSource, callID string, observation runs.ModelObservation, latency *int64) error {
 	projectionCtx, cancel := o.session.lifetime.publicationContext(ctx)
 	defer cancel()
@@ -358,9 +350,6 @@ func (o *observedInteractionModel) complete(
 	return nil
 }
 
-// newObservedInteractionModel wraps the resolved provider so every model call
-// is attributed before it leaves the Runtime. Streaming is offered only when the
-// provider itself streams; the Dispatcher takes exactly one of the two.
 func newObservedInteractionModel(
 	model corechat.Model,
 	streamer corechat.Streamer,
@@ -372,12 +361,8 @@ func newObservedInteractionModel(
 	return &observedInteractionModel{model: model, streamer: streamer, session: session}, nil
 }
 
-// Streams reports whether this boundary can serve the Dispatcher's streaming
-// capability.
 func (o *observedInteractionModel) Streams() bool { return !lo.IsNil(o.streamer) }
 
-// Called only after accumulator validation. Opaque reasoning state and citation
-// attachments are replay/annotation data, not the first generated output.
 func hasModelOutput(delta *corechat.ResponseDelta) bool {
 	for _, part := range delta.Parts {
 		switch part.Kind {

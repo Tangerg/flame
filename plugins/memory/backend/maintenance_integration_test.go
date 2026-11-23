@@ -15,8 +15,8 @@ import (
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
+	"github.com/Tangerg/flame/plugins/memory/internal/agentmemory"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
-	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -87,12 +87,12 @@ func TestBackendMinesAndPublishesOnlyItsPrivateMemoryThroughCapturedModels(t *te
 	if err != nil || state.Watermark != 2 {
 		t.Fatalf("private generation=%+v %v", state, err)
 	}
-	page, err := callMemoryCapability[rpc.ListInput, rpc.Page](t.Context(), session, memoryContract(t), "memory", rpc.List, "", rpc.ListInput{Scope: memory.ScopeProject, CWD: project}, sdk.ParamsBase{})
+	page, err := callMemoryCapability[rpc.ListInput, rpc.Page](t.Context(), session, memoryContract(t), "memory", rpc.List, "", rpc.ListInput{Scope: agentmemory.ScopeProject, CWD: project}, sdk.ParamsBase{})
 	if err != nil || len(page.Rows) != 2 {
 		t.Fatalf("published proposals=%+v %v", page, err)
 	}
 	for _, item := range page.Rows {
-		if item.Status != memory.StatusPending || item.Origin != memory.OriginAuto {
+		if item.Status != agentmemory.StatusPending || item.Origin != agentmemory.OriginAuto {
 			t.Fatalf("proposal skipped human review=%+v", item)
 		}
 	}
@@ -156,12 +156,12 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
-	added, err := callMemoryCapability[rpc.AddInput, rpc.AddResult](ctx, session, memoryContract(t), "memory", rpc.Add, "human-add", rpc.AddInput{Scope: memory.ScopeProject, CWD: project, Content: "human fact"}, sdk.ParamsBase{})
+	added, err := callMemoryCapability[rpc.AddInput, rpc.AddResult](ctx, session, memoryContract(t), "memory", rpc.Add, "human-add", rpc.AddInput{Scope: agentmemory.ScopeProject, CWD: project, Content: "human fact"}, sdk.ParamsBase{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	content, pinned := "human edit during curation", true
-	human, err := callMemoryCapability[rpc.UpdateInput, memory.ItemSnapshot](ctx, session, memoryContract(t), "memory", rpc.Update, "human-edit", rpc.UpdateInput{ID: added.Item.ID.String(), ExpectedRevision: added.Item.Revision, Content: &content, Pinned: &pinned}, sdk.ParamsBase{})
+	human, err := callMemoryCapability[rpc.UpdateInput, rpc.Item](ctx, session, memoryContract(t), "memory", rpc.Update, "human-edit", rpc.UpdateInput{ID: added.Item.ID.String(), ExpectedRevision: added.Item.Revision, Content: &content, Pinned: &pinned}, sdk.ParamsBase{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	if err != nil || state.Watermark != 0 {
 		t.Fatalf("revoked generation=%+v err=%v", state, err)
 	}
-	pending, err := store.PendingLedger(ctx, project, state.Watermark, memory.MaxLedgerFoldFacts)
+	pending, err := store.PendingLedger(ctx, project, state.Watermark, agentmemory.MaxLedgerFoldFacts)
 	if err != nil || len(pending) != 1 {
 		t.Fatalf("revocation lost committed extraction: %+v %v", pending, err)
 	}
@@ -226,16 +226,16 @@ func TestRevokedCurationJoinsModelsAndRestoresPendingLedgerWithoutOverwritingHum
 	if err != nil || recovered.Watermark != pending[0].Sequence {
 		t.Fatalf("recovery watermark=%+v %v", recovered, err)
 	}
-	page, err := callMemoryCapability[rpc.ListInput, rpc.Page](ctx, session, memoryContract(t), "memory", rpc.List, "", rpc.ListInput{Scope: memory.ScopeProject, CWD: project}, sdk.ParamsBase{})
+	page, err := callMemoryCapability[rpc.ListInput, rpc.Page](ctx, session, memoryContract(t), "memory", rpc.List, "", rpc.ListInput{Scope: agentmemory.ScopeProject, CWD: project}, sdk.ParamsBase{})
 	if err != nil || len(page.Rows) != 2 {
 		t.Fatalf("recovered private facts=%+v %v", page, err)
 	}
 	foundHuman, foundProposal := false, false
 	for _, item := range page.Rows {
 		if item.ID == human.ID {
-			foundHuman = item.Content == human.Content && item.Pinned && item.Origin == memory.OriginUser && item.Status == memory.StatusActive
+			foundHuman = item.Content == human.Content && item.Pinned && item.Origin == agentmemory.OriginUser && item.Status == agentmemory.StatusActive
 		} else {
-			foundProposal = item.Content == "automatic proposal" && item.Status == memory.StatusPending && item.Origin == memory.OriginAuto
+			foundProposal = item.Content == "automatic proposal" && item.Status == agentmemory.StatusPending && item.Origin == agentmemory.OriginAuto
 		}
 	}
 	if !foundHuman || !foundProposal {
@@ -292,8 +292,6 @@ func memoryContract(t *testing.T) *plugincontract.Capability {
 	return contracts.Capability
 }
 
-// The callback fixture supplies the public model exchange. Runtime owns admission
-// and provider budgets; these tests assert Memory's private publication lifetime.
 func openTestModel(ctx context.Context, callbacks *pluginmcp.Callbacks, session *sdk.ClientSession, model chat.Model) (pluginmcp.CallbackRef, func(), error) {
 	completion, err := pluginsdk.NewModelCallback(func(ctx context.Context, command pluginmcp.Command[scopewire.Request]) (*chat.Response, error) {
 		return model.Call(ctx, (*chat.Request)(&command.Input).Clone())

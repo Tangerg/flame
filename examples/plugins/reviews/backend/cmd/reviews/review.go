@@ -9,6 +9,7 @@ import (
 )
 
 var (
+	errInvalidUpdate     = errors.New("reviews: invalid update")
 	errConflict          = errors.New("reviews: revision conflict")
 	errRevisionExhausted = errors.New("reviews: revision exhausted")
 )
@@ -32,8 +33,8 @@ func (r review) snapshot() reviews.Snapshot {
 }
 
 func (r review) change(expectedRevision int64, status reviews.Status) (review, error) {
-	if err := (reviews.Update{ID: r.id, ExpectedRevision: expectedRevision, Status: status}).ValidateChange(); err != nil {
-		return review{}, err
+	if !(reviews.Update{ID: r.id, ExpectedRevision: expectedRevision, Status: status}).ValidChange() {
+		return review{}, errInvalidUpdate
 	}
 	if expectedRevision != r.revision {
 		return review{}, errConflict

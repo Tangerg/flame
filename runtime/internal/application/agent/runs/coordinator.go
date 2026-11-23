@@ -15,13 +15,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// errClosed refuses a new segment once Segments is shutting down.
 var errClosed = errors.New("runs: coordinator closed")
 
-// Coordinator continues existing Runs: it resumes a waiting Run with its
-// answers, revives accepted and uncertain continuations after a restart, steers
-// a running Run and reports a command's prior acceptance. [Openings] starts
-// Runs, [Cancellations] stops them and [Segments] runs every segment they open.
 type Coordinator struct {
 	commandAcceptances    commandAcceptanceReader
 	continuation          ExecutionContinuer
@@ -31,19 +26,13 @@ type Coordinator struct {
 	sessionReader         sessionReader
 	interrupts            pendingInterruptReader
 	checkpoints           WaitingCheckpointReader
-	// runs reads the durable run record. A subscribe or a steer that cannot be
-	// served has to say WHY — waiting, finished, a child, or a segment that has
-	// been replaced — and only the durable projection knows: the live registry
-	// holds running segments, so every one of those looks identical there.
-	runs Projection
-	// items reads the Items a waiting hand-off names.
-	items     ItemProjection
-	admission *ownership.Gate
-	segments  *Segments
-	newItemID func() identity.ItemID
+	runs                  Projection
+	items                 ItemProjection
+	admission             *ownership.Gate
+	segments              *Segments
+	newItemID             func() identity.ItemID
 }
 
-// Dependencies are the collaborators continuing an existing Run requires.
 type Dependencies struct {
 	CommandAcceptances    commandAcceptanceReader
 	Continuation          ExecutionContinuer
@@ -53,15 +42,13 @@ type Dependencies struct {
 	Sessions              sessionReader
 	Interrupts            pendingInterruptReader
 	Checkpoints           WaitingCheckpointReader
-	// Segments runs every segment these use cases open.
-	Segments   *Segments
-	Runs       Projection
-	Items      ItemProjection
-	Admissions *ownership.Gate
-	NewItemID  func() identity.ItemID
+	Segments              *Segments
+	Runs                  Projection
+	Items                 ItemProjection
+	Admissions            *ownership.Gate
+	NewItemID             func() identity.ItemID
 }
 
-// NewCoordinator builds the run use cases over the segment supervisor that runs them.
 func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 	required := []struct {
 		name  string
@@ -103,17 +90,8 @@ func NewCoordinator(deps Dependencies) (*Coordinator, error) {
 	}, nil
 }
 
-// ReplayRetention is the window this Coordinator enforces. Discovery publishes
-// it from here rather than from a constant of its own: a number the client is
-// told and a number the runtime evicts by must be the same number.
 func (c *Segments) ReplayRetention() Retention { return c.retention }
 
-// openSegment attaches an already-staged executor stream, atomically commits
-// admission/resume plus opening projections, registers the live owner, then
-// activates and pumps according to the command's explicit settlement boundary.
-// A staged executor carries its release right until registration succeeds.
-// The Run lifetime is detached from the request without losing its trace;
-// request cancellation drops only that subscriber.
 func (c *Segments) openSegment(reqCtx context.Context, spec segmentSpec) (iter.Seq[Event], error) {
 	startup, err := c.prepareSegmentStartup(reqCtx, spec)
 	if err != nil {
@@ -122,9 +100,6 @@ func (c *Segments) openSegment(reqCtx context.Context, spec segmentSpec) (iter.S
 	return startup.activate(reqCtx)
 }
 
-// segmentStartup owns the reversible process-local resources between executor
-// staging and durable Run opening. After registration, the lifecycle task owns
-// activation, pumping, executor cleanup and task release.
 type segmentStartup struct {
 	segments         *Segments
 	spec             segmentSpec
@@ -143,6 +118,9 @@ func (c *Segments) prepareSegmentStartup(
 	requestContext context.Context,
 	spec segmentSpec,
 ) (*segmentStartup, error) {
+	if spec.BeginExecution == nil {
+		return nil, errors.New("runs: Segment startup requires an execution start")
+	}
 	if resumption, ok := spec.Opening.(treeResumption); ok && resumption.restoresSegments(spec.RunID) {
 		attempts, err := c.toolAttempts.ListOpenToolInvocations(requestContext)
 		if err != nil {
@@ -340,11 +318,7 @@ func (s *segmentStartup) activateExecutor(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		// The pump must consume while BeginExecution awaits durable fact receipts.
 		s.observationReady <- events
-	}
-	if s.spec.BeginExecution == nil {
-		return nil
 	}
 	return s.spec.BeginExecution(ctx)
 }
@@ -356,8 +330,6 @@ type routeOpening struct {
 
 func (c *Segments) commitOpening(ctx context.Context, spec segmentSpec, routes *executorRoutes) ([]routeOpening, error) {
 	if spec.restoresSegments() {
-		// Acceptance already committed these exact Segments and Items. Revival
-		// installs their process-local owners without replaying an opening write.
 		return nil, nil
 	}
 	ordered, err := routes.unfinishedInPostorder()
@@ -388,9 +360,6 @@ func (c *Segments) commitOpening(ctx context.Context, spec segmentSpec, routes *
 	return openings, nil
 }
 
-// reduceOpenings opens every unfinished route's reducer. An opening may carry
-// no item commits at all: a resumed segment that only delivers an approval is
-// made durable by its admission or resume alone.
 func reduceOpenings(sessionID identity.SessionID, ordered []*executorRoute) ([]routeOpening, []EventCommit, error) {
 	openings := make([]routeOpening, 0, len(ordered))
 	events := make([]EventCommit, 0, len(ordered))
@@ -421,8 +390,6 @@ func reduceOpenings(sessionID identity.SessionID, ordered []*executorRoute) ([]r
 	return openings, events, nil
 }
 
-// openingCommit builds the durable write that makes the tree exist, with the
-// transaction that owns it.
 func (c *Segments) openingCommit(spec segmentSpec, ordered []*executorRoute, events []EventCommit) (OpeningCommit, func(context.Context, OpeningCommit) error, error) {
 	commitID := newRunCommitID()
 	switch value := spec.Opening.(type) {
@@ -453,17 +420,6 @@ func (c *Segments) openingCommit(spec segmentSpec, ordered []*executorRoute, eve
 	}
 }
 
-// Subscribe attaches to the Segment the request names. The record and journal
-// are captured from the same registry entry, so a caller cannot receive a
-// Segment id from one entry and subscribe to a replacement or removed entry. The
-// subscription is dropped when ctx ends or the consumer stops ranging.
-//
-// Refusals name what the caller should do instead: [ErrRunNotFound],
-// [transcript.ErrNotRoot], [ErrRunWaiting], [ErrRunFinished],
-// [ErrStaleSegment], [ErrReplayCursorInvalid], [ErrReplayUnavailable], and
-// [rundomain.InsufficientCapabilitiesError] when the caller could not follow what this run
-// publishes — the same rule a resume applies, kept here rather than at each
-// caller so the two entry points into an existing Run cannot disagree about it.
 func (c *Segments) Subscribe(ctx context.Context, req SubscribeRequest) (Subscription, error) {
 	req = req.clone()
 	live, err := c.addressSubscription(ctx, req)
@@ -473,9 +429,6 @@ func (c *Segments) Subscribe(ctx context.Context, req SubscribeRequest) (Subscri
 	return subscribeLiveSegment(ctx, live, req)
 }
 
-// SubscribeSnapshot reads durable material and establishes its successor tail
-// while the addressed tree cannot commit or publish. The reader stays with its
-// own use case; this boundary owns continuity with the executing Run.
 func (c *Segments) SubscribeSnapshot(ctx context.Context, req SubscribeRequest, read func(context.Context, identity.SessionID) error) (Subscription, error) {
 	req = req.clone()
 	if req.Cursor != "" {
@@ -528,18 +481,27 @@ func (c *Segments) addressSubscription(ctx context.Context, req SubscribeRequest
 	return live, nil
 }
 
-// addressLiveSegment resolves the run and segment a control command addresses,
-// refusing with the reason the caller can act on. It returns the durable Run,
-// which owns every fact about the Run beyond its live Segment.
-//
-// The durable record is the authority for the refusal, not the live registry:
-// the registry holds only running segments, so a run that is waiting, finished,
-// or a child all look the same there — one indistinguishable "not found" for
-// three situations whose remedies are answering an interrupt, reading the
-// transcript, and following rootRunId.
-//
-// Both entry points into an executing run (subscribe and steer) resolve here, so
-// they cannot come to different conclusions about the same run.
+// Live addressing and the durable recording of a steer both ask the Run the
+// same question, so they share one answer.
+func RequireRunningSegment(current rundomain.Run, segmentID identity.SegmentID) error {
+	if current.Lineage().IsChild() {
+		return fmt.Errorf("%w: %q", transcript.ErrNotRoot, current.ID())
+	}
+	switch status := current.State(); status {
+	case rundomain.Waiting:
+		return fmt.Errorf("%w: %q", ErrRunWaiting, current.ID())
+	case rundomain.Finished:
+		return fmt.Errorf("%w: %q", ErrRunFinished, current.ID())
+	case rundomain.Running:
+	default:
+		return fmt.Errorf("runs: run %q has unknown status %q", current.ID(), status)
+	}
+	if current.ActiveSegmentID() != segmentID {
+		return fmt.Errorf("%w: run %q is executing %q", ErrStaleSegment, current.ID(), current.ActiveSegmentID())
+	}
+	return nil
+}
+
 func (c *Segments) addressLiveSegment(ctx context.Context, runID identity.RunID, segmentID identity.SegmentID) (liveSegment, rundomain.Run, error) {
 	// Capture the owner before reading its durable state. Retirement may remove
 	// that entry after the read, but cannot invalidate the captured journal.
@@ -555,31 +517,13 @@ func (c *Segments) addressLiveSegment(ctx context.Context, runID identity.RunID,
 	if !ok {
 		return liveSegment{}, rundomain.Run{}, ErrRunNotFound
 	}
-	if run.Lineage().IsChild() {
-		return liveSegment{}, rundomain.Run{}, fmt.Errorf("%w: %q", transcript.ErrNotRoot, runID)
-	}
-	switch status := run.State(); status {
-	case rundomain.Waiting:
-		return liveSegment{}, rundomain.Run{}, fmt.Errorf("%w: %q", ErrRunWaiting, runID)
-	case rundomain.Finished:
-		return liveSegment{}, rundomain.Run{}, fmt.Errorf("%w: %q", ErrRunFinished, runID)
-	case rundomain.Running:
-	default:
-		return liveSegment{}, rundomain.Run{}, fmt.Errorf("runs: run %q has unknown status %q", runID, status)
-	}
-	if run.ActiveSegmentID() != segmentID {
-		return liveSegment{}, rundomain.Run{}, fmt.Errorf("%w: run %q is executing %q", ErrStaleSegment, runID, run.ActiveSegmentID())
+	if err := RequireRunningSegment(run, segmentID); err != nil {
+		return liveSegment{}, rundomain.Run{}, err
 	}
 	if !liveFound {
-		// A Running record whose segment this process does not own. Restart recovery
-		// terminalizes orphans before the runtime serves, so this is a broken
-		// invariant rather than a state a client can act on — reporting it as one
-		// would teach the client a lie about the run.
 		return liveSegment{}, rundomain.Run{}, fmt.Errorf("runs: run %q is running segment %q with no live stream", runID, segmentID)
 	}
 	if live.record.SegmentID != segmentID {
-		// Opening and owner publication share the fence above; a disagreement is
-		// an ownership fault, not a reason to retarget the caller's Segment.
 		return liveSegment{}, rundomain.Run{}, fmt.Errorf(
 			"runs: run %q is executing segment %q but its live owner names %q",
 			runID,
@@ -590,10 +534,8 @@ func (c *Segments) addressLiveSegment(ctx context.Context, runID identity.RunID,
 	return live, run, nil
 }
 
-// BeginShutdown prevents new runs and cancels every in-flight pump.
 func (c *Segments) BeginShutdown() { c.tasks.Cancel() }
 
-// AwaitShutdown joins every in-flight pump after [BeginShutdown].
 func (c *Segments) AwaitShutdown(ctx context.Context) error {
 	return c.tasks.Wait(ctx)
 }

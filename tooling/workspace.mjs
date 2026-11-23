@@ -88,17 +88,17 @@ async function declarationFiles(directory) {
   return found;
 }
 
-// The consumer declaration version has one owner, plugin.DeclarationProtocol. Stamp it
+// The plugin protocol identity has one owner, plugincontract.Protocol. Stamp it
 // into every first-party package declaration so a bump needs no hand-edited
 // manifest; checkGenerated then enforces the projection stays current.
 async function stampDeclarations(repository) {
   const method = await readFile(
-    join(repository, "packages/go-sdk/plugin/declaration.go"),
+    join(repository, "packages/go-sdk/plugin/contract/capability.go"),
     "utf8",
   );
-  const owner = method.match(/\bconst DeclarationProtocol = "([^"]+)"/);
+  const owner = method.match(/\bconst Protocol = "([^"]+)"/);
   if (!owner)
-    throw new Error("plugin.DeclarationProtocol not found in declaration.go");
+    throw new Error("plugincontract.Protocol not found in capability.go");
   const protocol = JSON.stringify(owner[1]);
   for (const base of ["plugins", "examples/plugins"])
     for (const file of await declarationFiles(join(repository, base))) {

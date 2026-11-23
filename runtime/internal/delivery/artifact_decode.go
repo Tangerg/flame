@@ -1,18 +1,18 @@
 package delivery
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"bytes"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -25,18 +25,11 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// invalidArtifact is the protocol adapter's structural-document error. Semantic
-// aggregate validation is deliberately performed by sessions.RestorePortableSession.
 func invalidArtifact(path, format string, args ...any) error {
 	detail := fmt.Sprintf(format, args...)
 	return protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("%s: %s", path, detail))
 }
 
-// portableArtifactFromWire performs only protocol decoding and enum mapping.
-// Aggregate ownership, union rules, references, terminal boundaries, and tool
-// result bindings are validated by sessions.RestorePortableSession.
-// decodeIndexed decodes each element at its artifact path, so a refusal names
-// the exact element.
 func decodeIndexed[W, T any](prefix string, encoded []W, decode func(path string, value W) (T, error)) ([]T, error) {
 	values := make([]T, 0, len(encoded))
 	for index, value := range encoded {
@@ -72,7 +65,7 @@ func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSn
 	if err != nil {
 		return sessions.PortableSnapshot{}, invalidArtifact("artifact.session.id", "%v", err)
 	}
-	selection, err := modelchoice.NewWithReasoningEffort(art.Session.Provider, art.Session.Model, art.Session.ReasoningEffort)
+	selection, err := flamemodel.NewWithReasoningEffort(art.Session.Provider, art.Session.Model, art.Session.ReasoningEffort)
 	if err == nil {
 		err = selection.ValidateExact()
 	}
@@ -121,14 +114,9 @@ func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSn
 	}, nil
 }
 
-// portableMessageFromArtifact accepts only the exact current Scope message
-// document. SessionArtifact.Messages uses RawMessage to keep the public
-// protocol independent of Scope types, so the outer strict request decoder
-// cannot see fields that Scope's custom JSON codecs would ignore. Comparing
-// canonical JSON before and after the typed decode closes that escape hatch
-// without treating object order, whitespace, or equivalent number spellings as
-// contract differences. Open metadata and tool-result details survive the
-// round trip and therefore remain valid.
+// Messages ride RawMessage, so the strict request decoder cannot see fields
+// Scope's custom codecs would ignore; comparing canonical JSON before and after
+// the typed decode closes that hole.
 func portableMessageFromArtifact(path string, encoded jsontext.Value) (chat.Message, error) {
 	var message chat.Message
 	if err := json.Unmarshal(encoded, &message); err != nil {
@@ -152,8 +140,6 @@ func portableMessageFromArtifact(path string, encoded jsontext.Value) (chat.Mess
 	return message, nil
 }
 
-// portablePlanFromArtifact reads the archived Plan. The artifact carries the one
-// product value directly, so there is no key union or duplicate-key precedence rule.
 func portablePlanFromArtifact(entries []protocol.PlanStep) ([]plan.Step, error) {
 	if entries == nil {
 		return nil, nil
@@ -172,9 +158,6 @@ func portablePlanFromArtifact(entries []protocol.PlanStep) ([]plan.Step, error) 
 	return steps, nil
 }
 
-// planStatusFromWire maps the archived status back. It is total over the wire enum
-// so an unknown value is refused instead of silently importing as pending — a task
-// list whose statuses changed on import is a different plan.
 func planStatusFromWire(status protocol.PlanStatus) (plan.Status, bool) {
 	switch status {
 	case protocol.PlanStatusPending:
@@ -205,7 +188,7 @@ func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessio
 	if err != nil {
 		return sessions.PortableRun{}, err
 	}
-	selection, err := modelchoice.NewWithReasoningEffort(artifact.Provider, artifact.Model, artifact.ReasoningEffort)
+	selection, err := flamemodel.NewWithReasoningEffort(artifact.Provider, artifact.Model, artifact.ReasoningEffort)
 	if err != nil {
 		return sessions.PortableRun{}, invalidArtifact(path, "invalid model selection: %v", err)
 	}
@@ -252,8 +235,12 @@ func portableUnresolvedEffectsFromArtifact(path string, values []protocol.Unreso
 				return nil, invalidArtifact(fmt.Sprintf("%s[%d].output", path, index), "%v", err)
 			}
 		}
+		cause, known := unresolvedCauses.domain(value.Cause)
+		if !known {
+			return nil, invalidArtifact(fmt.Sprintf("%s[%d].cause", path, index), "unknown value %q", value.Cause)
+		}
 		effect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{
-			ProcessID: value.ProcessID, EffectID: value.EffectID, Cause: value.Cause, Reason: value.Reason, Detail: value.Detail, Output: output,
+			ProcessID: value.ProcessID, EffectID: value.EffectID, Cause: cause, Reason: value.Reason, Detail: value.Detail, Output: output,
 		})
 		if err != nil {
 			return nil, invalidArtifact(fmt.Sprintf("%s[%d]", path, index), "%v", err)
@@ -263,11 +250,6 @@ func portableUnresolvedEffectsFromArtifact(path string, values []protocol.Unreso
 	return effects, nil
 }
 
-// portableCapabilitiesFromArtifact restores the run's frozen contract, or nothing when
-// the archive carried none — which only a child may do, and the aggregate check
-// enforces. An interrupt type this runtime cannot raise is refused rather than
-// dropped: importing the run without it would silently rewrite the contract the
-// archive recorded.
 func portableCapabilitiesFromArtifact(path string, wire *protocol.RunCapabilities) (*run.Capabilities, error) {
 	if wire == nil {
 		return nil, nil
@@ -316,7 +298,11 @@ func portableEndingFromArtifact(path string, outcome protocol.ArtifactOutcome) (
 		if outcome.Loss == nil {
 			return nil, invalidArtifact(path+".loss", "is required")
 		}
-		return run.Lost{Loss: run.Loss{Reason: run.LossReason(outcome.Loss.Reason), Detail: outcome.Loss.Detail}}, nil
+		reason, known := lossReasons.domain(outcome.Loss.Reason)
+		if !known {
+			return nil, invalidArtifact(path+".loss.reason", "unknown value %q", outcome.Loss.Reason)
+		}
+		return run.Lost{Loss: run.Loss{Reason: reason, Detail: outcome.Loss.Detail}}, nil
 	default:
 		return nil, invalidArtifact(path+".type", "unknown value %q", outcome.Type)
 	}
@@ -412,8 +398,6 @@ func portableItemFromArtifact(sessionID identity.SessionID, path string, artifac
 	return item, nil
 }
 
-// portableItemBody decodes the body the item's kind carries; a ToolCall is
-// dated by when it started rather than when it was created.
 func portableItemBody(kind transcript.ItemKind, status transcript.ItemStatus, path string, artifact protocol.ArtifactItem) (transcript.Body, error) {
 	var content []transcript.ContentBlock
 	for index, block := range artifact.Content {
@@ -513,8 +497,8 @@ func portableItemStatus(path string, value protocol.ItemStatus) (transcript.Item
 }
 
 func portableItemKind(path string, value protocol.ItemType) (transcript.ItemKind, error) {
-	kind := transcript.ItemKind(value)
-	if !kind.Valid() {
+	kind, known := itemKinds.domain(value)
+	if !known {
 		return "", invalidArtifact(path, "unknown value %q", value)
 	}
 	return kind, nil
@@ -617,8 +601,8 @@ func portableRunFailureFromArtifact(path string, artifact *protocol.ArtifactProb
 	if artifact == nil {
 		return nil, nil
 	}
-	kind := run.FailureKind(artifact.Type)
-	if !kind.Valid() {
+	kind, known := runFailureKinds.domain(artifact.Type)
+	if !known {
 		return nil, invalidArtifact(path+".type", "unknown value %q", artifact.Type)
 	}
 	retryAfter, err := run.RetryAfterFromSeconds(artifact.RetryAfterSeconds)
@@ -635,8 +619,8 @@ func portableToolFailureFromArtifact(path string, artifact *protocol.ArtifactPro
 	if artifact == nil {
 		return nil, nil
 	}
-	kind := tool.FailureKind(artifact.Type)
-	if !kind.Valid() {
+	kind, known := toolFailureKinds.domain(artifact.Type)
+	if !known {
 		return nil, invalidArtifact(path+".type", "unknown value %q", artifact.Type)
 	}
 	return &tool.Failure{

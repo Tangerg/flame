@@ -15,14 +15,6 @@ import (
 	skillspec "github.com/Tangerg/scope/skills"
 )
 
-const (
-	authoredHooksKey  = "hooks"
-	authoredSkillsKey = "skills"
-)
-
-// AuthoredWatcher maps the Hooks and Skills filesystem layouts onto the
-// workspace application's semantic observation port. Global roots are fixed at
-// process composition; request-owned workspace roots arrive from Application.
 type AuthoredWatcher struct {
 	hooksHome  string
 	skillsHome string
@@ -30,9 +22,6 @@ type AuthoredWatcher struct {
 
 var _ workspaceapp.AuthoredResourceWatcher = AuthoredWatcher{}
 
-// NewAuthoredWatcher binds the global Hooks and Skills roots
-// explicitly. An empty Skills root disables its global observation;
-// project sources remain observable from request scopes.
 func NewAuthoredWatcher(hooksHome, skillsHome string) (AuthoredWatcher, error) {
 	if hooksHome == "" || !filepath.IsAbs(hooksHome) {
 		return AuthoredWatcher{}, errors.New("workspace authored watcher: hooks home must be absolute")
@@ -46,8 +35,6 @@ func NewAuthoredWatcher(hooksHome, skillsHome string) (AuthoredWatcher, error) {
 	}, nil
 }
 
-// Watch observes only the selected resources. Filenames and cascade expansion
-// belong to this filesystem translation; consumers see semantic resources.
 func (a AuthoredWatcher) Watch(
 	scopes []workspaceapp.AuthoredScope,
 	resources []workspaceapp.AuthoredResource,
@@ -57,7 +44,7 @@ func (a AuthoredWatcher) Watch(
 	targets := make([]fileobservation.Target, 0, 1+len(scopes)*2)
 	if slices.Contains(resources, workspaceapp.AuthoredHooks) {
 		targets = append(targets, fileobservation.Target{
-			Key: authoredHooksKey, Path: filepath.Join(a.hooksHome, ".flame", "hooks.json"),
+			Key: string(workspaceapp.AuthoredHooks), Path: filepath.Join(a.hooksHome, hookdata.ConfigurationPath),
 			MaxBytes: hookdata.MaxConfigurationFileBytes,
 		})
 		for _, scope := range scopes {
@@ -67,31 +54,24 @@ func (a AuthoredWatcher) Watch(
 			}
 			for _, directory := range directories {
 				targets = append(targets, fileobservation.Target{
-					Key: authoredHooksKey, Path: filepath.Join(directory, ".flame", "hooks.json"),
+					Key: string(workspaceapp.AuthoredHooks), Path: filepath.Join(directory, hookdata.ConfigurationPath),
 					MaxBytes: hookdata.MaxConfigurationFileBytes,
 				})
 			}
 		}
 	}
-	files, err := fileobservation.Watch(targets, func(keys []string) {
+	notifyKeys := func(keys []string) {
 		for _, key := range keys {
-			switch key {
-			case authoredHooksKey:
-				notify(workspaceapp.AuthoredHooks)
-			}
-		}
-	}, report)
-	if err != nil {
-		return nil, err
-	}
-	directoryFiles, err := fileobservation.WatchChildFiles(a.directoryFileTargets(scopes, resources), func(keys []string) {
-		for _, key := range keys {
-			resource := workspaceapp.AuthoredResource(key)
-			if resource.Valid() {
+			if resource := workspaceapp.AuthoredResource(key); resource.Valid() {
 				notify(resource)
 			}
 		}
-	}, report)
+	}
+	files, err := fileobservation.Watch(targets, notifyKeys, report)
+	if err != nil {
+		return nil, err
+	}
+	directoryFiles, err := fileobservation.WatchChildFiles(a.directoryFileTargets(scopes, resources), notifyKeys, report)
 	if err != nil {
 		return nil, errors.Join(err, files.Close())
 	}
@@ -114,11 +94,8 @@ func (a *authoredObservation) Accept(changes []workspaceapp.AuthoredChange) erro
 	keys := make([]string, 0, len(changes))
 	identities := make([]string, 0, len(changes))
 	for _, change := range changes {
-		switch change.Resource {
-		case workspaceapp.AuthoredHooks:
-			keys = append(keys, authoredHooksKey)
-		case workspaceapp.AuthoredSkills:
-			keys = append(keys, authoredSkillsKey)
+		if change.Resource.Valid() {
+			keys = append(keys, string(change.Resource))
 		}
 		identities = append(identities, change.Identities...)
 	}
@@ -139,14 +116,14 @@ func (a AuthoredWatcher) directoryFileTargets(
 	}
 	if a.skillsHome != "" {
 		targets = append(targets, fileobservation.ChildFileTarget{
-			Key: authoredSkillsKey, Path: a.skillsHome, Boundary: a.skillsHome, FileName: skillspec.SkillFile,
+			Key: string(workspaceapp.AuthoredSkills), Path: a.skillsHome, Boundary: a.skillsHome, FileName: skillspec.SkillFile,
 			MaxEntries: domainskills.MaxSkillDirectoryEntries,
 			MaxBytes:   domainskills.MaxAuthoredSkillDocumentBytes,
 		})
 	}
 	for _, scope := range scopes {
 		targets = append(targets, fileobservation.ChildFileTarget{
-			Key:  authoredSkillsKey,
+			Key:  string(workspaceapp.AuthoredSkills),
 			Path: promptsource.ProjectSkillDir(scope.Workspace), Boundary: scope.Workspace,
 			FileName: skillspec.SkillFile, MaxEntries: domainskills.MaxSkillDirectoryEntries,
 			MaxBytes: domainskills.MaxAuthoredSkillDocumentBytes,

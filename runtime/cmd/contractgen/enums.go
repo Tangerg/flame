@@ -6,6 +6,7 @@ import (
 	"go/constant"
 	"go/token"
 	"go/types"
+	"iter"
 	"reflect"
 	"slices"
 	"strings"
@@ -39,8 +40,6 @@ var closedVocabulary = sync.OnceValue(func() map[string][]string {
 })
 
 func enumValues(t reflect.Type) ([]string, bool) {
-	// An external protocol vocabulary publishes its own closed values. Reuse
-	// that declaration instead of introducing Flame-specific enum annotations.
 	if values, ok := reflect.Zero(t).Interface().(interface{ Values() []string }); ok {
 		return slices.Clone(values.Values()), true
 	}
@@ -59,16 +58,13 @@ func enumValues(t reflect.Type) ([]string, bool) {
 	return slices.Clone(values), ok
 }
 
-// A marker closes the type; Go's type checker owns values and conversions.
-// markEnums records each enum-marked type of one declaration group; a marker
-// on the group itself must name exactly one type.
 func markEnums(pkg *packages.Package, group *ast.GenDecl, marked map[string]bool) error {
 	if enumMarker(group.Doc) && len(group.Specs) != 1 {
 		return fmt.Errorf("enum marker requires one named type")
 	}
 	for _, item := range group.Specs {
-		spec := item.(*ast.TypeSpec)
-		if !enumMarker(spec.Doc) && !enumMarker(group.Doc) {
+		spec, ok := item.(*ast.TypeSpec)
+		if !ok || (!enumMarker(spec.Doc) && !enumMarker(group.Doc)) {
 			continue
 		}
 		object, ok := pkg.TypesInfo.Defs[spec.Name].(*types.TypeName)
@@ -127,31 +123,48 @@ func enumConstants(pkg *packages.Package) map[string][]string {
 	})
 	values := map[string][]string{}
 	for _, file := range files {
+		for name := range constantNames(file) {
+			key, text, ok := localStringConstant(pkg, name)
+			if ok && !slices.Contains(values[key], text) {
+				values[key] = append(values[key], text)
+			}
+		}
+	}
+	return values
+}
+
+func constantNames(file *ast.File) iter.Seq[*ast.Ident] {
+	return func(yield func(*ast.Ident) bool) {
 		for _, declaration := range file.Decls {
 			group, ok := declaration.(*ast.GenDecl)
 			if !ok || group.Tok != token.CONST {
 				continue
 			}
 			for _, item := range group.Specs {
-				for _, name := range item.(*ast.ValueSpec).Names {
-					value, ok := pkg.TypesInfo.Defs[name].(*types.Const)
-					if !ok || value.Val().Kind() != constant.String {
-						continue
-					}
-					named, ok := types.Unalias(value.Type()).(*types.Named)
-					if !ok || named.Obj().Pkg() != pkg.Types {
-						continue
-					}
-					key := named.Obj().Name()
-					text := constant.StringVal(value.Val())
-					if !slices.Contains(values[key], text) {
-						values[key] = append(values[key], text)
+				spec, ok := item.(*ast.ValueSpec)
+				if !ok {
+					continue
+				}
+				for _, name := range spec.Names {
+					if !yield(name) {
+						return
 					}
 				}
 			}
 		}
 	}
-	return values
+}
+
+func localStringConstant(pkg *packages.Package, name *ast.Ident) (string, string, bool) {
+	value, ok := pkg.TypesInfo.Defs[name].(*types.Const)
+	if !ok || value.Val().Kind() != constant.String {
+		return "", "", false
+	}
+	named, ok := types.Unalias(value.Type()).(*types.Named)
+	if !ok || named.Obj().Pkg() != pkg.Types {
+		return "", "", false
+	}
+	return named.Obj().Name(), constant.StringVal(value.Val()), true
 }
 
 func runProtocolFeatureValues() []string {
@@ -164,9 +177,6 @@ func runProtocolFeatureValues() []string {
 	return values
 }
 
-// runtimeEventValues is the event vocabulary: every topic, plus resync. Derived from
-// the topic list rather than written twice — that duplication is exactly what having
-// one set of strings prevents.
 func runtimeEventValues() []string {
 	out := make([]string, 0, len(protocol.RuntimeTopics())+1)
 	out = append(out, runtimeTopicValues()...)

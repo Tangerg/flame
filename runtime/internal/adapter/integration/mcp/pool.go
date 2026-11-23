@@ -22,11 +22,10 @@ import (
 	"github.com/samber/lo"
 )
 
-// callbackPayloadLimits caps a plugin callback's request and response bodies at 4 MiB.
-var callbackPayloadLimits = pluginmcp.CallbackLimits{MaxRequestBytes: 4 << 20, MaxResponseBytes: 4 << 20}
+const callbackPayloadBytes = 4 << 20
 
-// Pool owns connection lifetime. Every new connection obtains its configuration
-// from the source owner; retained configurations describe only existing sessions.
+var callbackPayloadLimits = pluginmcp.CallbackLimits{MaxRequestBytes: callbackPayloadBytes, MaxResponseBytes: callbackPayloadBytes}
+
 type Pool struct {
 	commands  invocationRestorer
 	registry  sourceRegistry
@@ -43,7 +42,6 @@ type invocationRestorer interface {
 
 var _ mcpapp.Connections = (*Pool)(nil)
 
-// Startup connection waits belong to the pool, so one optional source cannot block Runtime management.
 func Open(
 	ctx context.Context,
 	lifetime context.Context,
@@ -162,8 +160,6 @@ func (p *Pool) Detach(name mcpserver.ID) error {
 	return p.inner.detach(name)
 }
 
-// setToolSink publishes the initial catalog and live connection changes to the
-// resolver through the connection owner's publication boundary.
 func (p *Pool) SetToolSink(sink func([]toolcontract.Tool, []mcpserver.ID), prepare ToolPreparation) error {
 	if sink == nil || prepare == nil {
 		return errors.New("mcp: tool sink and preparation are required")
@@ -177,7 +173,6 @@ func (p *Pool) SetToolSink(sink func([]toolcontract.Tool, []mcpserver.ID), prepa
 	return nil
 }
 
-// Shutdown releases every live connection under the caller's shutdown budget.
 func (p *Pool) Shutdown(ctx context.Context) error {
 	return p.inner.shutdown(ctx)
 }
@@ -189,7 +184,6 @@ func connectionError(id mcpserver.ID, err error) error {
 	return err
 }
 
-// available admits one looked-up server; an absent or disabled server is unavailable.
 func available(server mcpserver.Server, found bool, err error) (mcpserver.Server, error) {
 	if err == nil && (!found || !server.Enabled) {
 		err = ErrUnavailable
@@ -220,15 +214,9 @@ func (p *Pool) InstallationActivation(ctx context.Context, id mcpserver.ID) (_ p
 	if err != nil {
 		return plugin.Activation{}, err
 	}
-	// Capturing a graph is a read of the catalog's original observation. Its
-	// new business owner validates and retains it under the shared admission;
-	// this projection must not acquire a nested execution Use.
 	return p.inner.activation(session)
 }
 
-// AwaitInstallationActivation joins the source's already owned connection
-// attempt. Callers wait outside Host admission, then retain and validate this
-// exact projection under admission; waiting never starts a replacement attempt.
 func (p *Pool) AwaitInstallationActivation(ctx context.Context, id mcpserver.ID) (_ plugin.Activation, err error) {
 	defer func() { err = connectionError(id, err) }()
 	descriptor, err := available(p.registry.Definition(ctx, id))
@@ -258,8 +246,6 @@ func (p *Pool) BorrowBoundSession(ctx context.Context, id mcpserver.ID, authorit
 	return p.inner.borrowSession(ctx, session)
 }
 
-// SessionActor captures only the registry source realized by this exact live
-// session. The Run transaction rechecks its immutable authority before commit.
 func (p *Pool) SessionActor(ctx context.Context, id mcpserver.ID, expected *sdk.ClientSession) (_ operation.Actor, err error) {
 	defer func() { err = connectionError(id, err) }()
 	borrowed, _ := ctx.Value(borrowContextKey{}).(*BorrowedSession)
@@ -274,8 +260,6 @@ func (p *Pool) SessionActor(ctx context.Context, id mcpserver.ID, expected *sdk.
 	return actor, nil
 }
 
-// OpenRPC preserves the invoking call while applying this backend's frozen
-// dependency authority. Retirement is owned by the same session ledger.
 func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, callbacks ...pluginmcp.Callback) (sdk.ParamsBase, func(), error) {
 	actor, err := p.SessionActor(ctx, id, session)
 	if err != nil {
@@ -293,8 +277,6 @@ func (p *Pool) OpenRPC(ctx context.Context, id mcpserver.ID, session *sdk.Client
 	return metadata, release, nil
 }
 
-// toolHost grants through the session that admitted the tool, so a replaced
-// connection generation is refused rather than handed a stale backend's authority.
 func (p *Pool) toolHost(executable Executable) ToolHost {
 	return func(ctx context.Context) (sdk.ParamsBase, func() error, error) {
 		borrowed, err := executable.BorrowSession(ctx)
@@ -325,20 +307,12 @@ func (p *Pool) Stream(ctx context.Context, id mcpserver.ID, session *sdk.ClientS
 
 type ToolCall func(toolcontract.Invocation) (toolcontract.Result, error)
 
-// ToolHost opens one installed tool call's canonical host grant through Pool.OpenRPC,
-// its single owner, so a model Tool reaches the same host capability and frozen
-// dependency authority as the backend's plugins.call entry. The caller owns release.
 type ToolHost func(context.Context) (sdk.ParamsBase, func() error, error)
 
-// ToolPreparation captures call collaborators for this exact executable. On
-// success the caller owns release, even if final authority admission refuses
-// dispatch. The prepared call owns work and any dispatch-dependent observation.
-// On failure preparation must release any resources it acquired. host opens the
-// canonical installed grant when the preparation wants it.
+// On success the caller owns release even if final authority admission refuses
+// dispatch; on failure preparation releases what it acquired.
 type ToolPreparation func(context.Context, Executable, ToolHost) (ToolCall, func() error, error)
 
-// A projection receives only the named callbacks on its original borrowed
-// session. This grant never exposes the Runtime's general RPC surface.
 func (p *Pool) OpenCallbacks(ctx context.Context, id mcpserver.ID, session *sdk.ClientSession, callbacks ...pluginmcp.Callback) (sdk.ParamsBase, func(), error) {
 	if _, err := p.SessionActor(ctx, id, session); err != nil {
 		return sdk.ParamsBase{}, nil, err

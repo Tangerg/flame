@@ -9,7 +9,7 @@ import (
 
 	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
-	scopemetadata "github.com/Tangerg/scope/core/metadata"
+	coremetadata "github.com/Tangerg/scope/core/metadata"
 )
 
 const InvocationMetadataKey = "io.github.tangerg.flame/invocation"
@@ -42,7 +42,7 @@ func invocationMetadata(ctx context.Context, metadata sdk.ParamsBase) (sdk.Param
 			return sdk.ParamsBase{}, errors.New("plugin: metadata cannot replace its calling-owner context")
 		}
 	}
-	metadata.Meta = sdk.Meta(scopemetadata.Map(metadata.Meta).Clone())
+	metadata.Meta = sdk.Meta(coremetadata.Map(metadata.Meta).Clone())
 	if err := metadata.Set(InvocationMetadataKey, invocation); err != nil {
 		return sdk.ParamsBase{}, err
 	}

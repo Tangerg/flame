@@ -9,24 +9,17 @@ import (
 	framesqlite "github.com/Tangerg/frame/sqlite"
 )
 
-// ErrStoredSnapshot reports a stored snapshot its owner can no longer decode.
 var ErrStoredSnapshot = errors.New("managed plugin: invalid stored snapshot")
 
-// Snapshot is a plugin's single durable JSON value, such as a revisioned
-// policy. Its domain value owns the revision and validation; the row stores
-// only the snapshot that restores it.
 type Snapshot[S any] struct {
 	db    framesqlite.Database
 	table string
 }
 
-// SnapshotSchema declares the single-row table of a Snapshot.
 func SnapshotSchema(table string) string {
 	return `CREATE TABLE IF NOT EXISTS ` + table + ` (id INTEGER PRIMARY KEY CHECK(id=1), snapshot TEXT NOT NULL CHECK(json_valid(snapshot)))`
 }
 
-// OpenSnapshot seeds an empty table with initial and keeps any stored value,
-// which must still decode.
 func OpenSnapshot[S any](ctx context.Context, db framesqlite.Database, table string, initial S) (*Snapshot[S], error) {
 	encoded, err := json.Marshal(initial, json.Deterministic(true))
 	if err != nil {
@@ -46,7 +39,6 @@ func OpenSnapshot[S any](ctx context.Context, db framesqlite.Database, table str
 	return snapshot, nil
 }
 
-// Read decodes the stored value, rejecting members its type no longer declares.
 func (s *Snapshot[S]) Read(ctx context.Context) (S, error) {
 	var encoded string
 	var value S
@@ -61,7 +53,6 @@ func (s *Snapshot[S]) Read(ctx context.Context) (S, error) {
 	return value, nil
 }
 
-// Replace plans storing next as the command's durable effect.
 func Replace[S, R any](s *Snapshot[S], result R, next S) (CommandPlan[R], error) {
 	encoded, err := json.Marshal(next, json.Deterministic(true))
 	if err != nil {

@@ -155,7 +155,7 @@ export interface AgentPendingInterruptSet {
   sessionId: string;
 }
 
-export type AgentStreamEvent =
+type AgentStreamEvent =
   | { type: "segment.started"; run: AgentRunFact }
   | { type: "segment.progress"; progress: AgentRunProgress }
   | { type: "segment.finished"; interrupts: AgentInterrupt[]; run: AgentRunFact }

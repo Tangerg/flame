@@ -12,6 +12,7 @@ import (
 func DecideMethod() (*pluginmcp.Method[goalworkflow.Request, goalworkflow.Decision], error) {
 	return pluginmcp.NewMethod[goalworkflow.Request, goalworkflow.Decision](frame.MethodConfig{Name: "flame.goal-workflow/decide.v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: "Decide a lifecycle transition for the captured objective or retain its current state."})
 }
+
 func Contract() (*plugincontract.Capability, error) {
 	m, err := DecideMethod()
 	if err != nil {

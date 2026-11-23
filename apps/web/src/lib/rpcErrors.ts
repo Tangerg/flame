@@ -1,6 +1,7 @@
+import { failureText as untranslatedFailureText } from "@flame/component-sdk";
 import { isErrorType, RpcError } from "@flame/runtime-client";
 import { t } from "@/lib/i18n/index";
-export const MAPPED_TYPES: readonly string[] = [
+const MAPPED_TYPES: readonly string[] = [
   "session_busy",
   "session_has_active_run",
   "run_not_root",
@@ -73,7 +74,7 @@ export function rpcErrorText(err: unknown): string | undefined {
 }
 
 export function failureText(err: unknown, fallback: string): string {
-  return rpcErrorText(err) ?? (err instanceof Error ? err.message : fallback);
+  return describeRpcError(err) ?? untranslatedFailureText(err, fallback);
 }
 
 export function isUnsupportedMethod(err: unknown): boolean {

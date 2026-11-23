@@ -35,8 +35,6 @@ const (
 	PluginsUninstall           Name = "plugins.uninstall"
 )
 
-// pluginErrors is every problem wirePluginError can raise. Each plugins method
-// reaches the plugin owner through that one projection, so they share the set.
 func pluginErrors() []string {
 	return []string{protocol.ErrPluginUnavailable.
 		Error(), protocol.ErrPluginNotFound.
@@ -49,8 +47,6 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
-	// Browser lifecycle retries re-enter Frame's original operation owner. Generic
-	// response replay must not retain Realm credentials or mint competing Uses.
 	r.command(MethodMeta{Name: PluginsOpenBrowserRealm, GoName: "OpenPluginBrowserRealm", CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors(), Idempotency: idempotencyOwnerResponse}, func(s interface {
 		OpenPluginBrowserRealm(context.Context, protocol.OpenPluginBrowserRealmRequest) (*protocol.PluginBrowserSession, error)
 	}, ctx context.Context, in protocol.OpenPluginBrowserRealmRequest) (*protocol.PluginBrowserSession, error) {

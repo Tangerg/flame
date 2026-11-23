@@ -20,39 +20,18 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// OAuth for remote (HTTP) MCP servers. A server that
-// needs OAuth surfaces as needsAuth (a 401 on dial maps there via failedStatus),
-// which is the cue to sign in. [connections.Authorize] then runs the
-// authorization-code flow: open the system browser to the authorization URL,
-// catch the redirect on a loopback callback server, exchange the code — all
-// driven by the go-sdk's AuthorizationCodeHandler (discovery + Dynamic Client
-// Registration + PKCE + refresh). The resulting OAuth config and token are
-// persisted through [OAuthSessionStore]; restarts restore a refreshing token
-// source without opening a browser. Credentials are bound to the server name
-// and normalized endpoint origin, and a rejected credential is deleted before
-// the server returns to needsAuth.
-
 const (
-	// oauthCallbackPath is the loopback redirect path the authorization server sends
-	// the code back to.
-	oauthCallbackPath = "/callback"
-	// oauthFlowTimeout bounds one interactive sign-in — discovery plus the human
-	// completing the browser flow. Generous, because a person is in the loop.
+	oauthCallbackPath            = "/callback"
 	oauthFlowTimeout             = 5 * time.Minute
 	oauthServerReadHeaderTimeout = 5 * time.Second
 	oauthServerShutdownTimeout   = time.Second
 )
 
-// oauthCallback is the authorization-server redirect outcome.
 type oauthCallback struct {
 	response auth.AuthorizationResult
 	err      error
 }
 
-// oauthFlow is one interactive authorization: a loopback HTTP server on an
-// ephemeral port catching the redirect, plus the browser-open + wait the
-// go-sdk's [auth.AuthorizationCodeFetcher] drives. The redirect URI (known only
-// after binding) is registered via Dynamic Client Registration.
 type oauthFlow struct {
 	redirectURI string
 	server      *http.Server
@@ -62,8 +41,13 @@ type oauthFlow struct {
 	serveDone   chan error
 }
 
-// newOAuthFlow binds a loopback callback server on an ephemeral port and starts
-// serving. The caller closes it once the flow settles.
+const (
+	oauthCodeParameter   = "code"
+	oauthStateParameter  = "state"
+	oauthIssuerParameter = "iss"
+	oauthErrorParameter  = "error"
+)
+
 func newOAuthFlow(ctx context.Context) (*oauthFlow, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -123,10 +107,10 @@ func parseAuthorizationResponse(rawQuery string) (oauthCallback, error) {
 		}
 	}
 	cb := oauthCallback{response: auth.AuthorizationResult{
-		Code: q.Get("code"), State: q.Get("state"), Iss: q.Get("iss"),
+		Code: q.Get(oauthCodeParameter), State: q.Get(oauthStateParameter), Iss: q.Get(oauthIssuerParameter),
 	}}
-	denied := q.Get("error")
-	if len(q["state"]) != 1 || len(q["code"]) > 1 || len(q["error"]) > 1 || len(q["iss"]) > 1 || (denied == "") == (cb.response.Code == "") {
+	denied := q.Get(oauthErrorParameter)
+	if len(q[oauthStateParameter]) != 1 || len(q[oauthCodeParameter]) > 1 || len(q[oauthErrorParameter]) > 1 || len(q[oauthIssuerParameter]) > 1 || (denied == "") == (cb.response.Code == "") {
 		return oauthCallback{}, errors.New("mcp oauth: invalid authorization response")
 	}
 	if denied != "" {
@@ -144,7 +128,7 @@ func (o *oauthFlow) waitForCallback(ctx context.Context, authorizationURL string
 	if err != nil {
 		return nil, err
 	}
-	state := endpoint.Query().Get("state")
+	state := endpoint.Query().Get(oauthStateParameter)
 	if state == "" {
 		return nil, errors.New("mcp oauth: authorization URL lacks state")
 	}
@@ -166,9 +150,6 @@ func (o *oauthFlow) waitForCallback(ctx context.Context, authorizationURL string
 	}
 }
 
-// close owns callback-server settlement even after the authorization is
-// canceled. Its independent deadline bounds graceful shutdown before a forced
-// close, and its caller owns reporting any cleanup failure.
 func (o *oauthFlow) close(ctx context.Context) error {
 	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), oauthServerShutdownTimeout)
 	defer cancel()
@@ -187,9 +168,6 @@ func (o *oauthFlow) close(ctx context.Context) error {
 	return nil
 }
 
-// newOAuthHandler builds the interactive authorization-code handler for one
-// sign-in, registering the flow's loopback redirect via Dynamic Client
-// Registration so no client id need be preconfigured.
 func newOAuthHandler(
 	ctx context.Context,
 	flow *oauthFlow,
@@ -243,8 +221,7 @@ func newOAuthHandler(
 	return auth.NewAuthorizationCodeHandler(config)
 }
 
-// The issuer can differ from the MCP resource. Each OAuth request starts at
-// its own discovered endpoint, but its form credentials cannot follow a
+// The issuer can differ from the MCP resource; form credentials must not follow a
 // redirect to another origin.
 func oauthHTTPClient() *http.Client { return &http.Client{CheckRedirect: checkRedirect} }
 

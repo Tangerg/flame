@@ -36,7 +36,7 @@ export const VISUAL_MODELS: Model[] = [
   },
 ];
 
-export const VISUAL_PROVIDERS: Provider[] = [
+const VISUAL_PROVIDERS: Provider[] = [
   {
     id: "openai",
     baseUrl: "https://api.openai.com/v1",
@@ -82,9 +82,8 @@ export const SCROLLING_MODEL_FACTS: VisualModelFacts = {
   ],
 };
 
-export const LONG_MODEL_NAME =
-  "Research model for detailed workspace analysis with extended context";
-export const LONG_MODEL_ID = "workspace-analysis-2026-10-extended-context";
+const LONG_MODEL_NAME = "Research model for detailed workspace analysis with extended context";
+const LONG_MODEL_ID = "workspace-analysis-2026-10-extended-context";
 export const LONG_MODEL_FACTS: VisualModelFacts = {
   providers: VISUAL_PROVIDERS.map((provider) => ({
     ...provider,

@@ -1,6 +1,6 @@
 import { normalizeHotkey, parseKeyboardEvent } from "@tanstack/hotkeys";
 import { isLargePaste } from "@/features/composer/domain/largePaste";
-export type ComposerPasteIntent =
+type ComposerPasteIntent =
   | { kind: "images"; files: File[] }
   | { kind: "large-text"; text: string }
   | { kind: "native" }

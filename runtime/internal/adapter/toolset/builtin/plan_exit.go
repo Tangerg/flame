@@ -2,15 +2,16 @@ package builtin
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	builtincontract "github.com/Tangerg/flame/packages/go-sdk/builtin"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/samber/lo"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -39,7 +40,7 @@ type exiter struct {
 
 func newExit(modes planExitPolicy, plan planStateReader, interrupt runs.InterruptFunc) (toolcontract.Tool, error) {
 	if lo.IsNil(modes) || lo.IsNil(plan) {
-		return nil, errors.New("exit_plan_mode: Plan mode policy and Plan state are required")
+		return nil, fmt.Errorf("%s: Plan mode policy and Plan state are required", builtincontract.ExitPlanMode)
 	}
 	e := &exiter{modes: modes, plan: plan}
 	return newInterruptTool[exitArgs](
@@ -53,30 +54,27 @@ func newExit(modes planExitPolicy, plan planStateReader, interrupt runs.Interrup
 func (e *exiter) request(ctx context.Context, args exitArgs) (runs.Interrupt, error) {
 	sessionID := executionctx.SessionID(ctx)
 	if sessionID.IsZero() {
-		return nil, errors.New("exit_plan_mode: no active session")
+		return nil, fmt.Errorf("%s: no active session", builtincontract.ExitPlanMode)
 	}
 	mode, err := e.modes.Mode(ctx, sessionID)
 	if err != nil {
-		return nil, pluginsdk.DefiniteToolFailure(fmt.Errorf("exit_plan_mode: %w", err))
+		return nil, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: %w", builtincontract.ExitPlanMode, err))
 	}
-	// Calling this outside Plan mode, or with nothing planned, is the model
-	// mis-sequencing its own tools. Both messages are written for it, so they have
-	// to arrive as this call's outcome rather than end the Run.
 	if mode != approval.ModePlan {
-		return nil, pluginsdk.DefiniteToolFailure(errors.New("exit_plan_mode: current session is not in Plan mode"))
+		return nil, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: current session is not in Plan mode", builtincontract.ExitPlanMode))
 	}
 	state, err := e.plan.State(ctx, sessionID)
 	if err != nil {
-		return nil, pluginsdk.DefiniteToolFailure(fmt.Errorf("exit_plan_mode: %w", err))
+		return nil, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: %w", builtincontract.ExitPlanMode, err))
 	}
 	steps := state.Steps()
 	if len(steps) == 0 {
-		return nil, pluginsdk.DefiniteToolFailure(errors.New("exit_plan_mode: current Plan is empty; call set_plan before requesting approval"))
+		return nil, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: current Plan is empty; call set_plan before requesting approval", builtincontract.ExitPlanMode))
 	}
 
 	committed, ok := state.State()
 	if !ok || committed.Revision() != args.Revision {
-		return nil, pluginsdk.DefiniteToolFailure(errors.New("exit_plan_mode: proposed revision is no longer current"))
+		return nil, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: proposed revision is no longer current", builtincontract.ExitPlanMode))
 	}
 	prompt, err := e.plan.Review(ctx, committed)
 	if err != nil {
@@ -86,17 +84,18 @@ func (e *exiter) request(ctx context.Context, args exitArgs) (runs.Interrupt, er
 	pending := runs.QuestionPrompt{
 		ToolName:  string(builtincontract.ExitPlanMode),
 		Arguments: arguments,
-		Fields: []runs.QuestionFieldSpec{{
+		Fields: []transcript.QuestionField{{
 			Prompt: prompt,
 			Header: "Plan",
-			Options: []runs.QuestionOptionSpec{
+			Kind:   questioncontract.Choice,
+			Options: []transcript.QuestionOption{
 				{Label: approveLabel, Description: "Approve this Plan and allow execution"},
 				{Label: rejectLabel, Description: "Keep Plan mode and revise the Plan"},
 			},
 		}},
 	}
 	if validateErr := pending.Validate(); validateErr != nil {
-		return nil, fmt.Errorf("exit_plan_mode: %w", validateErr)
+		return nil, fmt.Errorf("%s: %w", builtincontract.ExitPlanMode, validateErr)
 	}
 	return pending, nil
 }
@@ -107,14 +106,14 @@ func (e *exiter) render(ctx context.Context, args exitArgs, resolution run.Inter
 	}
 	sessionID := executionctx.SessionID(ctx)
 	if sessionID.IsZero() {
-		return "", errors.New("exit_plan_mode: no active session")
+		return "", fmt.Errorf("%s: no active session", builtincontract.ExitPlanMode)
 	}
 	restored, changed, err := e.modes.ExitPlanMode(ctx, sessionID, args.Revision)
 	if err != nil {
 		return "", err
 	}
 	if !changed {
-		return "", pluginsdk.DefiniteToolFailure(errors.New("exit_plan_mode: the approved version or Plan mode is no longer current"))
+		return "", pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: the approved version or Plan mode is no longer current", builtincontract.ExitPlanMode))
 	}
 	return fmt.Sprintf("Plan approved. Plan mode exited; the session follows the default permission mode %s. Execute the Plan.", modeName(restored)), nil
 }

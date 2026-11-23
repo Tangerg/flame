@@ -1,5 +1,3 @@
-// Package session owns CLI application use cases and consumer contracts around
-// durable Runtime Sessions.
 package session
 
 import (
@@ -14,7 +12,6 @@ type runtime interface {
 	GetSession(context.Context, string) (conversation.SessionSnapshot, error)
 }
 
-// Open restores the selected session or creates a new one in workspace.
 func Open(ctx context.Context, rt runtime, id, workspace string) (conversation.SessionSnapshot, error) {
 	if id != "" {
 		snapshot, err := rt.GetSession(ctx, id)

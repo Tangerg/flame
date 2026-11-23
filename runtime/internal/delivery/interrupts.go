@@ -9,12 +9,6 @@ import (
 const InterruptsList Name = "interrupts.list"
 
 func registerInterrupts(registry *Registry) {
-	// interrupts.list is its own root because a waiting set belongs to a run TREE,
-	// not to one run: it was runs.listOpenInterrupts, which read as "one run's
-	// interrupts" and made the aggregate look like a per-run detail.
-	//
-	// run_not_root is declared because the filter can name a child, and that is a
-	// different answer from "nothing is waiting".
 	registry.query(MethodMeta{
 		Name: InterruptsList, GoName: "ListInterrupts",
 		Errors: []string{protocol.ErrRunNotRoot.

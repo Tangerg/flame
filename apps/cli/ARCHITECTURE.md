@@ -43,7 +43,7 @@ The CLI uses four responsibility rings:
 | Adapter     | Translation to Runtime and filesystem boundaries     |
 | Delivery    | Cobra routing, terminal interaction, and rendering   |
 
-Application depends on Domain. Adapters and Delivery depend inward on the consumer contracts they satisfy. Cobra and Viper remain in command delivery; Oolong remains in terminal delivery. The concrete Runtime binding remains in `adapter/runtimebinding`; public Protocol values may cross consumer ports directly so CLI does not create synonymous DTOs.
+Application depends on Domain. Adapters and Delivery depend inward on the consumer contracts they satisfy. Cobra and Viper remain in command delivery; Oolong rendering and interaction remain in terminal delivery. Oolong also owns key-sequence syntax and fuzzy-match ranking with its highlight offsets, which command delivery needs as well: `adapter/keybinding` and `adapter/filesystem/attachment` are their only translation points, so configuration validation, shell completion and the terminal agree. The concrete Runtime binding remains in `adapter/runtimebinding`; public Protocol values may cross consumer ports directly so CLI does not create synonymous DTOs.
 
 The separate `localruntime` module owns the default local endpoint, product-root
 resolution and local deployment handoff paths. Settings reads its default HTTP

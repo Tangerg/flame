@@ -1045,7 +1045,7 @@ const LONG_CONVERSATION = Array.from({ length: 40 }, (_, index) => {
   ];
 }).flat();
 
-export const CODE_READING_SOURCE = Array.from(
+const CODE_READING_SOURCE = Array.from(
   { length: 48 },
   (_, index) =>
     `const observation${String(index + 1).padStart(2, "0")} = { owner: "Runtime", accepted: true };`,
@@ -2239,7 +2239,7 @@ export function projectRuntimeAgentSnapshot(
   };
 }
 
-export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState, TailFrame[]>> = {
+const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState, TailFrame[]>> = {
   empty: [],
   "runtime-down": [],
   idle: [],

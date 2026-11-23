@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { color, motion, type, weight } from "@flame/ui/tokens.stylex";
-export interface LoaderProps {
+interface LoaderProps {
   text: string;
 }
 

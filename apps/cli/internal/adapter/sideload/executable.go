@@ -52,7 +52,7 @@ func (s executableSource) stage(directory string) (string, error) {
 	}
 	defer func() { _ = source.Close() }()
 	path := filepath.Join(directory, filepath.Base(s.path))
-	target, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0700)
+	target, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, filesystem.PrivateExecutableMode)
 	if err != nil {
 		return "", err
 	}

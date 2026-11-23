@@ -16,8 +16,6 @@ type exposureSnapshot struct {
 	disabled map[tool.Ref]bool
 }
 
-// ExposureState is a read-only projection of enabled sources and their separate
-// exposure relation. Only MCP application mutations publish replacements.
 type ExposureState struct {
 	snapshot atomic.Pointer[exposureSnapshot]
 }
@@ -34,13 +32,13 @@ func NewExposureState(servers []mcpserver.Server, disabled []tool.Ref) *Exposure
 	state.snapshot.Store(snapshot)
 	return state
 }
+
 func (s *ExposureState) ToolDisabled(ref tool.Ref) bool {
 	snapshot := s.snapshot.Load()
 	server, _, ok := ref.MCP()
 	return snapshot == nil || !ok || !snapshot.enabled[server] || snapshot.disabled[ref]
 }
 
-// The coordinator serializes these projection updates with durable writes.
 func (s *ExposureState) next() *exposureSnapshot {
 	prior := s.snapshot.Load()
 	return &exposureSnapshot{enabled: maps.Clone(prior.enabled), disabled: maps.Clone(prior.disabled)}

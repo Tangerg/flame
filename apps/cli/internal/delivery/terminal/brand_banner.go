@@ -1,6 +1,9 @@
 package terminal
 
 import (
+	"math"
+	"strings"
+
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 
@@ -9,28 +12,22 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
-const brandMarkMinWidth = 40
+const brandTopMarginDivisor = 3
 
-var (
-	unicodeBrandMark = []string{
-		"█████ █      ███  █   █ █████",
-		"█     █     █   █ ██ ██ █    ",
-		"████  █     █████ █ █ █ ████ ",
-		"█     █     █   █ █   █ █    ",
-		"█     █████ █   █ █   █ █████",
-	}
-	asciiBrandMark = []string{
-		"FFFFF L      AAA  M   M EEEEE",
-		"F     L     A   A MM MM E    ",
-		"FFFF  L     AAAAA M M M EEEE ",
-		"F     L     A   A M   M E    ",
-		"F     LLLLL A   A M   M EEEEE",
-	}
+const (
+	brandName         = "FLAME"
+	brandMarkMinWidth = 40
 )
 
-// brandBanner is the initial entrance projection. It is intentionally outside
-// the transcript model so identity chrome never becomes searchable conversation
-// data or reappears in later empty sessions.
+// The mask marks filled cells; the active glyph set decides how a filled cell is drawn.
+var brandMark = []string{
+	"█████ █      ███  █   █ █████",
+	"█     █     █   █ ██ ██ █    ",
+	"████  █     █████ █ █ █ ████ ",
+	"█     █     █   █ █   █ █    ",
+	"█     █████ █   █ █   █ █████",
+}
+
 type brandBanner struct {
 	theme     kit.Theme
 	glyphs    kit.Glyphs
@@ -75,7 +72,7 @@ func (b *brandBanner) HeightForWidth(width int) int {
 	if b == nil || width <= 0 {
 		return 0
 	}
-	return len(b.lines(width, len(unicodeBrandMark)+4))
+	return len(b.lines(width, math.MaxInt))
 }
 
 func (b *brandBanner) Draw(view grid.View) {
@@ -87,7 +84,7 @@ func (b *brandBanner) Draw(view grid.View) {
 		return
 	}
 	lines := b.lines(width, height)
-	top := max((height-len(lines))/3, 0)
+	top := max((height-len(lines))/brandTopMarginDivisor, 0)
 	for row, line := range lines {
 		value := text.Of(line.text, line.style).Truncate(width, b.glyphs.Ellipsis)
 		x := max((width-value.Width())/2, 0)
@@ -99,17 +96,13 @@ func (b *brandBanner) lines(width, height int) []brandLine {
 	if width <= 0 || height <= 0 {
 		return nil
 	}
-	if width < brandMarkMinWidth || height < len(asciiBrandMark)+1 {
+	if width < brandMarkMinWidth || height < len(brandMark)+1 {
 		return b.compactLines(height)
 	}
 
-	mark := unicodeBrandMark
-	if b.glyphs.Horizontal.String() == "-" {
-		mark = asciiBrandMark
-	}
-	lines := make([]brandLine, 0, len(mark)+4)
-	for _, line := range mark {
-		lines = append(lines, brandLine{text: line, style: b.theme.Accent})
+	lines := make([]brandLine, 0, len(brandMark))
+	for _, row := range brandMark {
+		lines = append(lines, brandLine{text: strings.ReplaceAll(row, "█", b.glyphs.BarFull.String()), style: b.theme.Accent})
 	}
 	if len(lines) < height-2 {
 		lines = append(lines, brandLine{})
@@ -118,7 +111,7 @@ func (b *brandBanner) lines(width, height int) []brandLine {
 }
 
 func (b *brandBanner) compactLines(height int) []brandLine {
-	lines := []brandLine{{text: "FLAME", style: b.theme.Accent}}
+	lines := []brandLine{{text: brandName, style: b.theme.Accent}}
 	return append(lines, b.detailLines(height-len(lines))...)
 }
 

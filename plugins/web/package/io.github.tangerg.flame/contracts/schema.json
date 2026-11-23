@@ -50,9 +50,9 @@
       "$ref": "#/$defs/BrowseInput"
     },
     "BrowseV1Output": {
-      "$ref": "#/$defs/BrowseV1OutputDomainPage"
+      "$ref": "#/$defs/BrowseV1OutputCapturePage"
     },
-    "BrowseV1OutputDomainPage": {
+    "BrowseV1OutputCapturePage": {
       "additionalProperties": false,
       "properties": {
         "content": {
@@ -145,9 +145,9 @@
       "$ref": "#/$defs/FetchRequest"
     },
     "FetchV1Output": {
-      "$ref": "#/$defs/FetchV1OutputDomainPage"
+      "$ref": "#/$defs/FetchV1OutputCapturePage"
     },
-    "FetchV1OutputDomainPage": {
+    "FetchV1OutputCapturePage": {
       "additionalProperties": false,
       "properties": {
         "content": {

@@ -96,8 +96,6 @@ func (v wireInput) domain() plugin.Input {
 	return plugin.Input{ID: v.ID, Secret: v.Secret, Required: v.Required, Server: v.Server, Target: plugin.InputTarget(v.Target), Key: v.Key}
 }
 
-// domain refuses an authored empty color: an absent member is the only
-// spelling of a color the theme does not override.
 func (v wireTheme) domain() (plugin.Theme, error) {
 	var colors plugin.ThemeColors
 	for _, member := range []struct {
@@ -120,6 +118,3 @@ func (v wireTheme) domain() (plugin.Theme, error) {
 	}
 	return plugin.Theme{ID: v.ID, Title: v.Title, Scheme: plugin.ThemeScheme(v.Scheme), Colors: colors}, nil
 }
-
-var declarationFields = []string{"protocol", "managedBackends", "inputs", "contributions", "contributes", "points", "pointValues", "components", "terminalViews"}
-var presentationFields = []string{"themes", "locales"}

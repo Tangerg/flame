@@ -8,8 +8,6 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 )
 
-// ListAgentDocs maps the application-owned unique, render-ordered instruction
-// document cascade onto the protocol shape.
 func (s *Handler) ListAgentDocs(ctx context.Context, in protocol.WorkspaceQuery) (*protocol.Page[protocol.AgentDoc], error) {
 	docs, err := s.workspaceDiscovery.AgentDocs(ctx, in.Workspace.Path)
 	if err != nil {

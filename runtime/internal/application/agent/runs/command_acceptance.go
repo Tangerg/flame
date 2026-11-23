@@ -9,54 +9,44 @@ import (
 	"strings"
 
 	flameidentity "github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// ErrCommandKeyConflict reports that a command's idempotency key is already
-// bound to a different request or to another operation entirely.
 var ErrCommandKeyConflict = errors.New("runs: idempotency key is already bound to another command")
 
 const goalRoundKeyPrefix = "flame.goal-round/"
 
 func ReservedCommandKey(key string) bool { return strings.HasPrefix(key, goalRoundKeyPrefix) }
 
-func GoalRoundIdentity(sessionID flameidentity.SessionID, incarnation string, ordinal uint64, instructions string) *CommandIdentity {
-	scope := sessionID.String() + "\x00" + incarnation + "\x00" + strconv.FormatUint(ordinal, 10)
+func GoalRoundIdentity(sessionID flameidentity.SessionID, incarnation goalref.IncarnationID, ordinal uint64, instructions string) *CommandIdentity {
+	scope := sessionID.String() + "\x00" + incarnation.String() + "\x00" + strconv.FormatUint(ordinal, 10)
 	return &CommandIdentity{Key: goalRoundKeyPrefix + framevalue.Hash([]byte(scope)).String(), Fingerprint: framevalue.Hash([]byte(scope + "\x00" + instructions)).String()}
 }
 
-func startOperation(key, goalIncarnation string) CommandOperation {
-	if ReservedCommandKey(key) && goalIncarnation != "" {
+func startOperation(key string, goalIncarnation goalref.IncarnationID) CommandOperation {
+	if ReservedCommandKey(key) && !goalIncarnation.IsZero() {
 		return CommandGoalRoundOpening
 	}
 	return CommandStartOpening
 }
 
-// CommandOperation names a Run-owned external command whose acceptance commits
-// with its opening or input-admission boundary.
 type CommandOperation string
 
 const (
-	// CommandStartOpening is a fresh root admission accepted by runs.start.
 	CommandStartOpening     CommandOperation = "start"
 	CommandGoalRoundOpening CommandOperation = "goalRound"
 	CommandResumeOpening    CommandOperation = "resume"
 	CommandSteerInput       CommandOperation = "steer"
 )
 
-// Valid reports whether o is an operation whose acceptance this build records.
 func (o CommandOperation) Valid() bool {
 	return o == CommandStartOpening || o == CommandGoalRoundOpening || o == CommandResumeOpening || o == CommandSteerInput
 }
 
-// CommandAcceptance binds one external command to its original product references.
-// Start and Resume commit it with their opening; Steer commits it with the Scope
-// Signal head and pending input context. SteerInput is immutable authored content,
-// not an application status. Only the exact completed User Item proves application.
-// The store owns the namespace and one global key; Fingerprint pins request semantics.
 type CommandAcceptance struct {
 	Key         string
 	Fingerprint string
@@ -68,9 +58,6 @@ type CommandAcceptance struct {
 	SteerInput  []transcript.ContentBlock
 }
 
-// Validate proves the acceptance names a legal operation and complete command
-// identity. It does not reach storage: the record's primary key enforces the one
-// global key constraint, and the material reference is a storage-boundary fact.
 func (a CommandAcceptance) Validate() error {
 	if a.Key == "" {
 		return errors.New("runs: command acceptance has no idempotency key")
@@ -114,16 +101,11 @@ func (a CommandAcceptance) Equal(b CommandAcceptance) bool {
 	return a.Key == b.Key && a.Fingerprint == b.Fingerprint && a.Operation == b.Operation && a.SessionID == b.SessionID && a.RunID == b.RunID && a.SegmentID == b.SegmentID && a.UserItemID == b.UserItemID && slices.EqualFunc(a.SteerInput, b.SteerInput, transcript.ContentBlock.Equal)
 }
 
-// CommandIdentity is the external command reference the delivery boundary binds
-// to a Run command before admission: the global idempotency key and the request
-// fingerprint that pins the exact accepted request. The namespace is the store's
-// own identity, validated at the delivery boundary.
 type CommandIdentity struct {
 	Key         string
 	Fingerprint string
 }
 
-// Validate reports whether the identity can address and pin one command.
 func (c CommandIdentity) Validate() error {
 	if c.Key == "" {
 		return errors.New("runs: command identity has no idempotency key")
@@ -134,22 +116,14 @@ func (c CommandIdentity) Validate() error {
 	return nil
 }
 
-// CommandKeyUse is what one key holds in the shared command idempotency space.
 type CommandKeyUse uint8
 
 const (
 	CommandKeyUnused CommandKeyUse = iota
-	// CommandKeyAccepted holds a Run command acceptance.
 	CommandKeyAccepted
-	// CommandKeyForeign is claimed by another kind of command, so no Run
-	// command may reuse it.
 	CommandKeyForeign
 )
 
-// CommandAcceptanceRecord is the read-only projection of a command-record lookup
-// by key; Acceptance and its material exist only for an accepted key. CurrentRun
-// is read consistently through the original material reference; deleting and
-// importing the same Run ID cannot restore that reference.
 type CommandAcceptanceRecord struct {
 	Use         CommandKeyUse
 	Acceptance  CommandAcceptance
@@ -157,8 +131,6 @@ type CommandAcceptanceRecord struct {
 	AppliedItem *transcript.Item
 }
 
-// Conflicts reports whether the key cannot carry this command: another kind of
-// command claimed it, or it accepted a different Run command.
 func (r CommandAcceptanceRecord) Conflicts(operation CommandOperation, fingerprint string) bool {
 	switch r.Use {
 	case CommandKeyForeign:
@@ -170,14 +142,10 @@ func (r CommandAcceptanceRecord) Conflicts(operation CommandOperation, fingerpri
 	}
 }
 
-// commandAcceptanceReader observes original command facts without admitting,
-// completing, or repairing a record.
 type commandAcceptanceReader interface {
 	Lookup(ctx context.Context, key string) (CommandAcceptanceRecord, error)
 }
 
-// LookupCommandAcceptance reads the immutable acceptance and original material.
-// An absent key is a not-recorded observation, not a failure or dispatch authority.
 func (c *Coordinator) LookupCommandAcceptance(ctx context.Context, key string) (CommandAcceptanceRecord, error) {
 	if key == "" {
 		return CommandAcceptanceRecord{}, nil
@@ -185,8 +153,6 @@ func (c *Coordinator) LookupCommandAcceptance(ctx context.Context, key string) (
 	return c.commandAcceptances.Lookup(ctx, key)
 }
 
-// AcceptCommand derives the acceptance for key and fingerprint from the opening
-// that an admission produced, so the two cannot describe different Runs.
 func AcceptCommand(key, requestFingerprint string, opening OpeningCommit) (CommandAcceptance, error) {
 	acceptance := CommandAcceptance{
 		Key:         key,

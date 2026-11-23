@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -14,15 +14,10 @@ import (
 	"github.com/samber/lo"
 )
 
-// InputTokenCounter is the narrow optional provider capability consumed by
-// model-context budgeting and discovered alongside ordinary chat resolution.
 type InputTokenCounter interface {
 	CountInputTokens(context.Context, *corechat.Request) (int64, error)
 }
 
-// ResolvedChat is one immutable provider-model construction projected through
-// the capabilities Runtime consumes. Its model and optional token counter
-// always share the same underlying model and credential snapshot.
 type ResolvedChat struct {
 	model             corechat.Model
 	inputTokenCounter InputTokenCounter
@@ -33,9 +28,18 @@ type ResolvedChat struct {
 	fits              func(context.Context, *corechat.Request) (bool, error)
 }
 
-func NewResolvedChat(model corechat.Model, counter InputTokenCounter, metadata *catalog.Model) (ResolvedChat, error) {
-	if lo.IsNil(model) {
-		return ResolvedChat{}, errors.New("model: resolved chat model is nil")
+// The provider owns pricing, release and the request-fit check; a token
+// counter and catalog metadata are capabilities a provider may lack.
+func NewResolvedChat(
+	model corechat.Model,
+	counter InputTokenCounter,
+	metadata *catalog.Model,
+	pricing accounting.Pricing,
+	release func(context.Context) error,
+	fits func(context.Context, *corechat.Request) (bool, error),
+) (ResolvedChat, error) {
+	if lo.IsNil(model) || pricing == nil || release == nil || fits == nil {
+		return ResolvedChat{}, errors.New("model: resolved chat requires a model, pricing, release and request-fit check")
 	}
 	if counter != nil && lo.IsNil(counter) {
 		return ResolvedChat{}, errors.New("model: resolved chat input token counter is nil")
@@ -44,10 +48,10 @@ func NewResolvedChat(model corechat.Model, counter InputTokenCounter, metadata *
 		if err := metadata.Validate(); err != nil {
 			return ResolvedChat{}, err
 		}
-		copy := metadata.Clone()
-		metadata = &copy
+		cloned := metadata.Clone()
+		metadata = &cloned
 	}
-	return ResolvedChat{model: model, inputTokenCounter: counter, metadata: metadata}, nil
+	return ResolvedChat{model: model, inputTokenCounter: counter, metadata: metadata, pricing: pricing, close: release, fits: fits}, nil
 }
 
 func (r ResolvedChat) Capture() (ProviderCapture, bool) {
@@ -57,12 +61,7 @@ func (r ResolvedChat) Capture() (ProviderCapture, bool) {
 	return r.capture.Clone(), true
 }
 
-func (r ResolvedChat) Close(ctx context.Context) error {
-	if r.close != nil {
-		return r.close(ctx)
-	}
-	return nil
-}
+func (r ResolvedChat) Close(ctx context.Context) error { return r.close(ctx) }
 
 func (r ResolvedChat) WithModel(model corechat.Model) (ResolvedChat, error) {
 	if lo.IsNil(model) {
@@ -72,9 +71,6 @@ func (r ResolvedChat) WithModel(model corechat.Model) (ResolvedChat, error) {
 	return r, nil
 }
 
-// Model returns the exact provider instance every other projection is taken
-// from. Streaming and token counting are optional capabilities of that one
-// instance, so a caller that needs them asks it rather than a second build.
 func (r ResolvedChat) Model() corechat.Model { return r.model }
 
 func (r ResolvedChat) Streamer() (corechat.Streamer, bool) {
@@ -86,29 +82,20 @@ func (r ResolvedChat) InputTokenCounter() (InputTokenCounter, bool) {
 	return r.inputTokenCounter, r.inputTokenCounter != nil
 }
 
-// credentialLookup is the model-client construction view of the provider
-// registry: resolving a chat or embedding client needs only one provider's
-// credentials, not list/configure capabilities.
 type credentialLookup interface {
 	Get(ctx context.Context, id string) (provider.Provider, bool, error)
 }
 
-// ChatResolver resolves a per-Run provider model for an explicit model
-// selection. The provider is taken as given by the selection and is never
-// inferred from the model id; the resolver pulls the provider's current
-// configuration from the registry and builds an immutable model. It does not
-// retain prior credential generations in a process-lifetime cache.
 type ChatResolver struct {
 	providers credentialLookup
 	clients   chatFactory
 }
 
 type chatFactory interface {
-	OpenChat(context.Context, modelchoice.Selection, modelprovider.Connection) (ResolvedChat, error)
-	RestoreChat(context.Context, modelchoice.Selection, *ProviderCapture) (ResolvedChat, error)
+	OpenChat(context.Context, flamemodel.Selection, modelprovider.Connection) (ResolvedChat, error)
+	RestoreChat(context.Context, flamemodel.Selection, *ProviderCapture) (ResolvedChat, error)
 }
 
-// NewChatResolver returns a complete resolver over the provider configuration lookup.
 func NewChatResolver(providers credentialLookup, clients chatFactory) (*ChatResolver, error) {
 	if lo.IsNil(providers) || lo.IsNil(clients) {
 		return nil, errors.New("model: chat provider credentials and installed adapter are required")
@@ -116,14 +103,7 @@ func NewChatResolver(providers credentialLookup, clients chatFactory) (*ChatReso
 	return &ChatResolver{providers: providers, clients: clients}, nil
 }
 
-// ResolveChat builds one provider model from the registry configuration and
-// returns all capabilities Runtime consumes from that exact instance. Required
-// authentication fails as invalid credentials; optional-key providers may
-// resolve without a registry row.
-func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelchoice.Selection) (ResolvedChat, error) {
-	if c == nil || lo.IsNil(c.providers) {
-		return ResolvedChat{}, errors.New("model: chat resolver is not configured")
-	}
+func (c *ChatResolver) ResolveChat(ctx context.Context, selection flamemodel.Selection) (ResolvedChat, error) {
 	connection, err := resolveConnection(ctx, c.providers, selection)
 	if err != nil {
 		return ResolvedChat{}, err
@@ -131,14 +111,14 @@ func (c *ChatResolver) ResolveChat(ctx context.Context, selection modelchoice.Se
 	return c.clients.OpenChat(ctx, selection, connection)
 }
 
-func (c *ChatResolver) RestoreChat(ctx context.Context, selection modelchoice.Selection, capture *ProviderCapture) (ResolvedChat, error) {
+func (c *ChatResolver) RestoreChat(ctx context.Context, selection flamemodel.Selection, capture *ProviderCapture) (ResolvedChat, error) {
 	if err := selection.ValidateExact(); err != nil {
 		return ResolvedChat{}, err
 	}
 	return c.clients.RestoreChat(ctx, selection, capture)
 }
 
-func resolveConnection(ctx context.Context, providers credentialLookup, selection modelchoice.Selection) (modelprovider.Connection, error) {
+func resolveConnection(ctx context.Context, providers credentialLookup, selection flamemodel.Selection) (modelprovider.Connection, error) {
 	if err := selection.ValidateExact(); err != nil {
 		return modelprovider.Connection{}, fmt.Errorf("model: selection: %w", err)
 	}
@@ -171,14 +151,21 @@ func connectionFromProvider(providerID string, entry provider.Provider) (modelpr
 	return connection, connection.Validate()
 }
 
-// ValidateChatModel implements the application model-role validation port
-// without leaking the concrete chat client into the use-case layer.
 func (c *ChatResolver) ValidateChatModel(ctx context.Context, providerID, model string) error {
-	selection, err := modelchoice.New(providerID, model)
+	return validateByOpening(ctx, providerID, model, c.ResolveChat)
+}
+
+// A model is valid when its provider can open it; the handle is released at once.
+func validateByOpening[M interface{ Close(context.Context) error }](
+	ctx context.Context,
+	providerID, model string,
+	open func(context.Context, flamemodel.Selection) (M, error),
+) error {
+	selection, err := flamemodel.New(providerID, model)
 	if err != nil {
 		return err
 	}
-	resolved, err := c.ResolveChat(ctx, selection)
+	resolved, err := open(ctx, selection)
 	if err != nil {
 		return err
 	}

@@ -32,11 +32,11 @@ func (s *Handler) commitFeedback(ctx context.Context, in protocol.FeedbackReques
 }
 
 func feedbackCommand(in protocol.FeedbackRequest) (feedback.Command, error) {
-	sessionID, err := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, err := optionalSessionParameter(in.SessionID)
 	if err != nil {
 		return feedback.Command{}, err
 	}
-	runID, err := wireIdentity("runId", in.RunID, identity.ParseOptionalRun)
+	runID, err := optionalRunParameter(in.RunID)
 	if err != nil {
 		return feedback.Command{}, err
 	}

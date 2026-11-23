@@ -73,7 +73,7 @@ func TestAcceptedQuestionReceiptCrashHelper(t *testing.T) {
 		t.Fatal(err)
 	}
 	home := os.Getenv("FLAME_HOME")
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +160,7 @@ func TestAcceptedQuestionSurvivesAcceptanceAndAnswerReceiptCrash(t *testing.T) {
 			if count == 1 {
 				questionCrashDatabase(t, home, `DROP TRIGGER question_receipt_crash`)
 			}
-			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 			if err != nil {
 				t.Fatal(err)
 			}

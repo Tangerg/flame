@@ -10,27 +10,17 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// reduction is one canonical output plus the persisted fact and live nudge that
-// arise from the same ExecutionFact decision. The pump commits it before placing
-// Event on the journal.
 type reduction struct {
 	Event  ProjectionEvent
 	Commit *EventCommit
 	Nudge  *Nudge
 }
 
-// reductionBatch is the complete publication unit for one executor event. A
-// normal batch commits individual event projections in order. A park batch owns
-// one explicit write-set that must commit before any of its events become
-// visible; keeping that boundary on the batch avoids encoding it as a boolean
-// or a privileged first element in the event slice.
 type reductionBatch struct {
 	events     []reduction
 	parkCommit *EventCommit
 }
 
-// factReduction is the complete in-memory consequence of one executor fact
-// before Run events are projected into their durable publication shape.
 type factReduction struct {
 	executionContext     *ExecutorCheckpoint
 	resultPublication    *ResultPublication
@@ -165,11 +155,9 @@ func (r *reducer) project(events []ProjectionEvent) (reductionBatch, error) {
 		reductions = append(reductions, reduced)
 	}
 
-	// A park is one persistence boundary: any drained/closed items, its running
-	// approval/question items, open interrupt record, waiting transcript Run,
-	// and admission transition must commit together before ANY event in this
-	// batch is published. Build an explicit batch-owned write-set instead of
-	// moving it onto a privileged event position.
+	// A park is one persistence boundary: its items, open interrupt record, waiting
+	// Run and admission transition commit together before any event in the batch is
+	// published.
 	parkBoundary, err := parkBoundaryIndex(reductions)
 	if err != nil {
 		return reductionBatch{}, err
@@ -218,22 +206,10 @@ func parkReductionBatch(reductions []reduction, parkBoundary int) (reductionBatc
 	return reductionBatch{events: reductions, parkCommit: parkCommit}, nil
 }
 
-// fenceFinalPlan republishes the segment's last Plan immediately before the
-// segment finishes when that segment changed it.
-//
-// Without it, a client only holds the Plan if it received the change event itself.
-// A subscriber that attached later — or replayed from a cursor past that event —
-// reaches segment.finished having never seen a snapshot, and renders a stale panel
-// until something makes it refetch. The fence makes the guarantee positional:
-// whoever receives the finish has received the final value, because it is the
-// replayable event immediately before it.
-//
-// The repeat is the point, not waste: a latest-value projection carries its own
-// revision, so folding it twice is folding it once.
-//
-// It belongs to the batch rather than to either finish path: a park and a terminal
-// are two reasons for one boundary, and a rule stated in both places is a rule that
-// drifts in one of them.
+// A subscriber that attached late or replayed past the change event would
+// otherwise reach segment.finished without the Plan; republishing places the final
+// value just before the finish, and folding a revisioned value twice is folding it
+// once.
 func (r *reducer) fenceFinalPlan(events []ProjectionEvent) []ProjectionEvent {
 	if r.plan == nil {
 		return events
@@ -243,8 +219,6 @@ func (r *reducer) fenceFinalPlan(events []ProjectionEvent) []ProjectionEvent {
 			continue
 		}
 		fence := r.plan.clone()
-		// One fence per segment: a resumed segment fences again only if it changes
-		// the projection again.
 		r.plan = nil
 		return slices.Insert(events, i, ProjectionEvent(fence))
 	}
@@ -256,7 +230,7 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 		return reduction{}, fmt.Errorf("%w: nil run event", errReducerInvariant)
 	}
 	if err := event.validate(); err != nil {
-		return reduction{}, fmt.Errorf("%w: %T: %v", errReducerInvariant, event, err)
+		return reduction{}, fmt.Errorf("%w: %T: %w", errReducerInvariant, event, err)
 	}
 	commit := r.newEventCommit()
 	var nudge *Nudge
@@ -267,11 +241,8 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 		} else {
 			commit.Items = NewItemWrites(e.Item)
 		}
-		// An isolated Run's tools write into a scratch copy, so the Session's
-		// workspace files are exactly as the client last read them. Announcing
-		// them would send every subscriber to re-read an unchanged tree, and
-		// naming the copy instead would publish a process-local path as a
-		// workspace nobody can open.
+		// An isolated Run's tools write into a scratch copy, so the workspace is
+		// unchanged; announcing it would send subscribers to re-read an unchanged tree.
 		if len(e.mutatedPaths) > 0 && !r.cfg.Isolated {
 			nudge = &Nudge{WorkspaceCWD: r.cfg.WorkspaceCWD, Paths: slices.Clone(e.mutatedPaths)}
 		}
@@ -284,12 +255,8 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 		commit.State = StateTerminalize
 		commit.CommitID = newRunCommitID()
 	case ItemStarted, ItemChanged, SegmentProgressed, PlanSnapshot, SegmentStarted, QuestionAnswered:
-		// These events have no standalone EventCommit. SegmentStarted carries a Run
-		// for the stream, but the Run's durable opening IS its admission (or its
-		// resume) — recording it a second time here would be a second writer of
-		// facts admission already owns. QuestionAnswered is the same for the answers
-		// the resume claim committed. Interrupt starts are folded into the atomic
-		// park write-set by project.
+		// These events have no standalone EventCommit: the Run's durable opening is its
+		// admission, and recording it here would be a second writer.
 	default:
 		return reduction{}, fmt.Errorf("%w: unhandled run event %T", errReducerInvariant, event)
 	}

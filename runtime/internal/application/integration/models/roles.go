@@ -8,17 +8,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-// UtilityRole returns the live utility-model role; both empty when unset
-// (maintenance uses the Runtime composition's default selection).
 func (c *Coordinator) UtilityRole() modelref.Role { return c.utilityRoleState.Role() }
 
-// SetUtilityRole repoints the maintenance services at (provider, model), persists
-// it, and swaps the live cell so the next utility invocation sees the change,
-// even during an existing Run. In-flight calls retain their resolved model.
-// An empty model clears the role back to the Runtime composition's default. A
-// non-empty model is validated before persistence — an unsupported or
-// unconfigured provider fails here rather than silently degrading at the next
-// compaction.
 func (c *Coordinator) SetUtilityRole(ctx context.Context, provider, model string) (modelref.Role, error) {
 	c.utilityMu.Lock()
 	defer c.utilityMu.Unlock()
@@ -43,15 +34,8 @@ func (c *Coordinator) SetUtilityRole(ctx context.Context, provider, model string
 	return role, nil
 }
 
-// EmbeddingRole returns the live embedding role; both empty when unset. Backs
-// current embedding role.
 func (c *Coordinator) EmbeddingRole() modelref.Role { return c.embeddingRoleState.Role() }
 
-// SetEmbeddingRole repoints Agent Memory semantic search at (provider, model),
-// persists it, and swaps the live cell. An empty model disables the semantic
-// signal. A non-empty model is validated by building its embedding client, so
-// an unsupported, unconfigured, or unbuildable role fails here rather than at
-// the next search.
 func (c *Coordinator) SetEmbeddingRole(ctx context.Context, providerID, model string) (modelref.Role, error) {
 	c.embeddingMu.Lock()
 	defer c.embeddingMu.Unlock()

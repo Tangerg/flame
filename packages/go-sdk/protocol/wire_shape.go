@@ -17,9 +17,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// WireField projects a Runtime DTO declaration. Runtime's protocol includes
-// timestamps and finite floating point measurements; portable plugin schemas
-// are independently owned by Frame and have a different numeric profile.
 type WireField struct {
 	Name     string
 	Type     reflect.Type
@@ -106,8 +103,6 @@ func ValidateWireType(owner reflect.Type) error {
 	return validateWireType(owner, make(map[reflect.Type]bool))
 }
 
-// wireReferent is the type a pointer chain finally refers to; a cyclic chain
-// has no wire shape at all.
 func wireReferent(owner reflect.Type) (reflect.Type, error) {
 	pointers := make(map[reflect.Type]bool)
 	for owner.Kind() == reflect.Pointer {
@@ -270,8 +265,6 @@ func validateWireOptions(owner reflect.Type, field, options string, present, inl
 	return nil
 }
 
-// DecodeWire applies the Runtime declaration's presence rules before publishing
-// a typed value. Opaque provider payloads keep Frame's exact JSON numbers.
 func DecodeWire(encoded []byte, target any) error {
 	destination := reflect.ValueOf(target)
 	if !destination.IsValid() || destination.Kind() != reflect.Pointer || destination.IsNil() {

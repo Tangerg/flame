@@ -1,5 +1,3 @@
-// Command nodequalification exercises a built distribution without a source
-// checkout, compiler, system Node or provider request.
 package main
 
 import (
@@ -18,6 +16,7 @@ import (
 
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
@@ -25,10 +24,18 @@ import (
 	framecall "github.com/Tangerg/frame/call"
 )
 
+const (
+	runtimeExecutable   = "flame-runtime"
+	configFile          = "config.yaml"
+	originalSaveCommand = "original-save"
+)
+
+const qualificationTimeout = 90 * time.Second
+
 func main() {
 	distribution := flag.String("distribution", "", "absolute built Runtime/CLI distribution")
 	flag.Parse()
-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), qualificationTimeout)
 	defer cancel()
 	if err := qualify(ctx, *distribution); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -53,7 +60,7 @@ func qualify(ctx context.Context, directory string) (err error) {
 	if !filepath.IsAbs(directory) {
 		return errors.New("qualification: distribution must be absolute")
 	}
-	node, err := localruntime.NodeForExecutable(filepath.Join(directory, "flame-runtime"))
+	node, err := localruntime.NodeForExecutable(filepath.Join(directory, runtimeExecutable))
 	if err != nil {
 		return err
 	}
@@ -82,7 +89,7 @@ func removeState(state string) error {
 			return err
 		}
 		if entry.IsDir() {
-			return os.Chmod(path, 0700)
+			return os.Chmod(path, filesystem.PrivateDirectoryMode)
 		}
 		return nil
 	})
@@ -98,18 +105,18 @@ func newDistribution(directory, state string) (*distribution, error) {
 	if err := listener.Close(); err != nil {
 		return nil, err
 	}
-	env := []string{"PATH=", "FLAME_HOME=" + filepath.Join(state, "home"), "FLAME_PROVIDER=anthropic", "FLAME_MODEL=claude-opus-5", "FLAME_APIKEY=qualification-key", "FLAME_SERVER_LISTEN=" + address, "FLAME_SERVER_NOLOCALTOKEN=true"}
+	env := []string{"PATH=", localruntime.ProductRootVariable + "=" + filepath.Join(state, "home"), "FLAME_PROVIDER=anthropic", "FLAME_MODEL=claude-opus-5", "FLAME_APIKEY=qualification-key", "FLAME_SERVER_LISTEN=" + address, "FLAME_SERVER_NOLOCALTOKEN=true"}
 	if home, ok := os.LookupEnv("HOME"); ok {
 		env = append(env, "HOME="+home)
 	}
-	if err := os.WriteFile(filepath.Join(state, "config.yaml"), []byte("{}\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(state, configFile), []byte("{}\n"), filesystem.PrivateFileMode); err != nil {
 		return nil, err
 	}
 	return &distribution{binaryDir: directory, stateDir: state, endpoint: "http://" + address, env: env}, nil
 }
 
 func (d *distribution) start(ctx context.Context) error {
-	cmd := exec.CommandContext(ctx, filepath.Join(d.binaryDir, "flame-runtime"))
+	cmd := exec.CommandContext(ctx, filepath.Join(d.binaryDir, runtimeExecutable))
 	cmd.Dir, cmd.Env, cmd.Stderr = d.stateDir, d.env, os.Stderr
 	if err := cmd.Start(); err != nil {
 		return err
@@ -187,6 +194,7 @@ func (d *distribution) waitBackend(ctx context.Context, id string) error {
 				return nil
 			case protocol.MCPServerFailed:
 				return errors.New("qualification: managed backend activation failed")
+			case protocol.MCPServerDisabled, protocol.MCPServerDisconnected, protocol.MCPServerConnecting, protocol.MCPServerNeedsAuth:
 			}
 		}
 		select {
@@ -238,7 +246,7 @@ func (d *distribution) captureWithCLI(ctx context.Context, request protocol.Call
 	if err != nil {
 		return err
 	}
-	cli := exec.CommandContext(ctx, filepath.Join(d.binaryDir, "flame"), "--config", filepath.Join(d.stateDir, "config.yaml"), "--runtime-url", d.endpoint, "plugins", "call", "--request", string(input), "--command-id", "cli_0123456789abcdef0123456789abcdef")
+	cli := exec.CommandContext(ctx, filepath.Join(d.binaryDir, "flame"), "--config", filepath.Join(d.stateDir, configFile), "--runtime-url", d.endpoint, "plugins", "call", "--request", string(input), "--command-id", "cli_0123456789abcdef0123456789abcdef")
 	cli.Dir, cli.Env, cli.Stderr = d.stateDir, d.env, os.Stderr
 	output, err := cli.Output()
 	if err != nil {
@@ -251,8 +259,6 @@ func (d *distribution) captureWithCLI(ctx context.Context, request protocol.Call
 	return nil
 }
 
-// checkReports proves a plugin's keyed receipts survive a Runtime restart and
-// are replayed, not re-executed, by the original command key.
 func (d *distribution) checkReports(ctx context.Context) error {
 	request, err := d.captureRequest(ctx)
 	if err != nil {
@@ -261,7 +267,7 @@ func (d *distribution) checkReports(ctx context.Context) error {
 	if err := d.waitBackend(ctx, request.InstallationID); err != nil {
 		return err
 	}
-	original, err := d.call(ctx, request, "original-save")
+	original, err := d.call(ctx, request, originalSaveCommand)
 	if err != nil {
 		return err
 	}
@@ -285,7 +291,7 @@ func (d *distribution) checkReports(ctx context.Context) error {
 	}
 	if err := errors.Join(
 		d.verifyOriginal(ctx, read, "", saved.Output),
-		d.verifyOriginal(ctx, request, "original-save", original.Output),
+		d.verifyOriginal(ctx, request, originalSaveCommand, original.Output),
 	); err != nil {
 		return err
 	}
@@ -296,7 +302,7 @@ func (d *distribution) checkReports(ctx context.Context) error {
 	if _, err := d.call(ctx, remove, "original-remove"); err != nil {
 		return err
 	}
-	if err := d.verifyOriginal(ctx, request, "original-save", original.Output); err != nil {
+	if err := d.verifyOriginal(ctx, request, originalSaveCommand, original.Output); err != nil {
 		return err
 	}
 	_, err = d.client.SetPluginEnablement(ctx, protocol.SetPluginEnablementRequest{InstallationID: request.InstallationID, Enabled: false}, protocol.CommandOptions{})

@@ -10,11 +10,9 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// canonicalJSON is the spelling every stored Arguments and Result already
-// carries. Deterministic fixes member order; the escape options reproduce the
-// escaping encoding/json applied when these rows were written. The bytes are the
-// identity — resume and cache lookups compare them — so a value re-encoded under
-// a different spelling would stop matching the one persisted for it.
+// The bytes are the identity resume and cache lookups compare, so the escape
+// options reproduce what encoding/json wrote; a different spelling would stop
+// matching.
 var canonicalJSON = json.JoinOptions(
 	json.Deterministic(true),
 	jsontext.EscapeForHTML(true),
@@ -22,27 +20,16 @@ var canonicalJSON = json.JoinOptions(
 )
 
 var (
-	// ErrInvalidArguments reports malformed arguments or a violated Tool input contract.
 	ErrInvalidArguments = errors.New("tool: invalid arguments")
-	// ErrInvalidResult reports a tool result that cannot be represented as one
-	// complete JSON value without losing information.
-	ErrInvalidResult = errors.New("tool: invalid result")
+	ErrInvalidResult    = errors.New("tool: invalid result")
 )
 
-// Arguments is an immutable, canonical tool argument object. Its zero value is
-// an empty object. Keeping ownership and canonicalization here gives resume,
-// deduplication, and cache identity one stable representation without exposing
-// a mutable map to execution records.
 type Arguments struct {
 	raw string
 }
 
-// emptyArguments is the canonical spelling of the zero value.
 const emptyArguments = "{}"
 
-// ParseArguments validates and canonicalizes a provider argument document.
-// Empty input is the ergonomic no-arguments form; explicit null and all
-// non-object values are rejected.
 func ParseArguments(raw string) (Arguments, error) {
 	if len(bytes.TrimSpace([]byte(raw))) == 0 {
 		return Arguments{}, nil
@@ -57,7 +44,6 @@ func ParseArguments(raw string) (Arguments, error) {
 	return ArgumentsFromMap(value)
 }
 
-// ArgumentsFromMap takes an ownership-isolated snapshot of an argument object.
 func ArgumentsFromMap(value map[string]any) (Arguments, error) {
 	if value == nil {
 		return Arguments{}, fmt.Errorf("%w: expected an object", ErrInvalidArguments)
@@ -72,7 +58,6 @@ func ArgumentsFromMap(value map[string]any) (Arguments, error) {
 	return Arguments{raw: string(encoded)}, nil
 }
 
-// Canonical returns the stable spelling used for resume and cache identity.
 func (a Arguments) Canonical() string {
 	if a.raw == "" {
 		return emptyArguments
@@ -80,10 +65,8 @@ func (a Arguments) Canonical() string {
 	return a.raw
 }
 
-// Equal reports whether both values name the same canonical argument object.
 func (a Arguments) Equal(other Arguments) bool { return a.Canonical() == other.Canonical() }
 
-// Map returns a recursively ownership-isolated object projection.
 func (a Arguments) Map() map[string]any {
 	var value map[string]any
 	if err := decodeValue([]byte(a.Canonical()), &value); err != nil {
@@ -92,8 +75,6 @@ func (a Arguments) Map() map[string]any {
 	return value
 }
 
-// StringField returns one textual argument without exposing the mutable object
-// projection. Domain policies use this to derive stable command/path subjects.
 func (a Arguments) StringField(name string) (string, bool) {
 	value, exists := a.Map()[name]
 	if !exists {
@@ -114,14 +95,10 @@ func (a *Arguments) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// Result is an immutable, canonical value returned by a tool. A
-// ToolInvocation uses *Result so nil means "not returned yet", while a present
-// result may legitimately contain null.
 type Result struct {
 	raw string
 }
 
-// NewResult snapshots and validates an arbitrary JSON-compatible value.
 func NewResult(value any) (Result, error) {
 	encoded, err := json.Marshal(value, canonicalJSON)
 	if err != nil {
@@ -130,7 +107,6 @@ func NewResult(value any) (Result, error) {
 	return ParseResult(encoded)
 }
 
-// ParseResult validates and canonicalizes one complete result document.
 func ParseResult(data []byte) (Result, error) {
 	if len(bytes.TrimSpace(data)) == 0 {
 		return Result{}, fmt.Errorf("%w: empty JSON document", ErrInvalidResult)
@@ -146,7 +122,6 @@ func ParseResult(data []byte) (Result, error) {
 	return Result{raw: string(encoded)}, nil
 }
 
-// Any returns a recursively ownership-isolated value.
 func (r Result) Any() any {
 	var value any
 	if err := decodeValue([]byte(r.Canonical()), &value); err != nil {
@@ -155,7 +130,6 @@ func (r Result) Any() any {
 	return value
 }
 
-// String returns the contained string and whether this result is textual.
 func (r Result) String() (string, bool) {
 	if r.Canonical()[0] != '"' {
 		return "", false
@@ -167,7 +141,6 @@ func (r Result) String() (string, bool) {
 	return value, true
 }
 
-// Canonical returns the stable JSON spelling used for persistence and cache identity.
 func (r Result) Canonical() string {
 	if r.raw == "" {
 		return "null"
@@ -175,7 +148,6 @@ func (r Result) Canonical() string {
 	return r.raw
 }
 
-// Equal reports whether both values contain the same canonical result.
 func (r Result) Equal(other Result) bool { return r.Canonical() == other.Canonical() }
 
 func (r Result) MarshalJSON() ([]byte, error) { return []byte(r.Canonical()), nil }
@@ -189,12 +161,9 @@ func (r *Result) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// decodeValue reads one complete tool document. Arguments carry identifiers past
-// IEEE-754's exact integer range, so [framevalue.Numbers] keeps every literal;
-// rounding one would change cache identity and exported transcripts. A trailing
-// second value and a repeated member are both refused by the decoder itself —
-// the repeat matters here because these documents come from a provider, and
-// deciding it by position would let the same call mean two things.
+// framevalue.Numbers keeps identifiers past IEEE-754's exact range; repeated
+// members are refused because a provider document must not mean two things by
+// position.
 func decodeValue(data []byte, destination any) error {
 	return json.Unmarshal(data, destination, framevalue.Numbers())
 }

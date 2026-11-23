@@ -15,17 +15,12 @@ import (
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// ModelInvocationStore records logical Interaction observations and distinct
-// physical provider endpoints. Semantic continuation and aggregate accounting remain
-// with history_items and runs; these observations never authorize provider replay.
 type ModelInvocationStore struct{ db *database }
 
 func newModelInvocationStore(db *database) *ModelInvocationStore {
 	return &ModelInvocationStore{db: db}
 }
 
-// ListOpenModelInvocations returns every provider attempt still owned by a
-// pre-crash process, with the physical endpoint it reached when one was observed.
 func (m *ModelInvocationStore) ListOpenModelInvocations(ctx context.Context) ([]runs.OpenModelInvocation, error) {
 	return scopedValue(ctx, m.db.read, func(ctx context.Context) ([]runs.OpenModelInvocation, error) {
 		rows, err := m.db.connection(ctx).QueryContext(ctx, `
@@ -37,9 +32,7 @@ func (m *ModelInvocationStore) ListOpenModelInvocations(ctx context.Context) ([]
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list started model invocations: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		var open []runs.OpenModelInvocation
 		for rows.Next() {
 			var invocation runs.OpenModelInvocation
@@ -73,7 +66,6 @@ func (m *ModelInvocationStore) ListOpenModelInvocations(ctx context.Context) ([]
 	})
 }
 
-// RecordModelInvocation applies one journal transition committed with its Run event.
 func (m *ModelInvocationStore) RecordModelInvocation(ctx context.Context, sessionID identity.SessionID, runID identity.RunID, invocation runs.ModelInvocationCommit) error {
 	if err := invocation.Validate(); err != nil {
 		return err
@@ -146,11 +138,8 @@ func (m *ModelInvocationStore) finish(ctx context.Context, sessionID identity.Se
 	})
 }
 
-// modelInvocationColumns is the logical journal projection scanModelInvocation decodes.
 const modelInvocationColumns = `call_id, segment_id, logical_purpose, state, started_at, finished_at, usage, first_output_latency_millis, known_response`
 
-// PageModelInvocations seeks newest-first within one Run. State updates do not
-// move an attempt between pages because its start identity is immutable.
 func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID identity.RunID, beforeStartedAt int64, beforeCallID string, limit int) ([]runs.ModelInvocationCommit, error) {
 	return scopedValue(ctx, m.db.read, func(ctx context.Context) ([]runs.ModelInvocationCommit, error) {
 		query := `SELECT ` + modelInvocationColumns + ` FROM model_invocations WHERE run_id = ? AND endpoint_json IS NULL`
@@ -165,9 +154,7 @@ func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID i
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: page model invocations: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		var records []runs.ModelInvocationCommit
 		for rows.Next() {
 			record, err := scanModelInvocation(rows)
@@ -182,6 +169,7 @@ func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID i
 		return records, nil
 	})
 }
+
 func scanModelInvocation(row scanRow) (runs.ModelInvocationCommit, error) {
 	var record runs.ModelInvocationCommit
 	var purpose, state string

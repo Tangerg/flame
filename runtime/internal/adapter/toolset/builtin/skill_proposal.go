@@ -2,7 +2,6 @@ package builtin
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -43,7 +42,6 @@ type proposalResult struct {
 	Scope    skills.Scope   `json:"scope"`
 }
 
-// SkillProposalSubmitter is the only Skill-authoring operation this capability consumes.
 type SkillProposalSubmitter interface {
 	SubmitProposal(ctx context.Context, cwd string, proposal skills.Proposal) (skills.ProposalRef, error)
 }
@@ -52,10 +50,9 @@ type proposer struct {
 	proposals SkillProposalSubmitter
 }
 
-// NewProposal builds propose_skill. A nil submitter omits the capability.
 func NewProposal(proposals SkillProposalSubmitter) (toolcontract.Tool, error) {
 	if lo.IsNil(proposals) {
-		return nil, errors.New("propose_skill: Skill proposal submitter is required")
+		return nil, fmt.Errorf("%s: Skill proposal submitter is required", builtincontract.ProposeSkill)
 	}
 	return toolcontract.NewFunc[proposalArgs, proposalResult](
 		toolcontract.FuncConfig{Name: string(builtincontract.ProposeSkill), Description: proposalDescription},
@@ -66,17 +63,17 @@ func NewProposal(proposals SkillProposalSubmitter) (toolcontract.Tool, error) {
 func (p *proposer) run(ctx context.Context, input proposalArgs) (proposalResult, error) {
 	sessionID := executionctx.SessionID(ctx)
 	if sessionID.IsZero() {
-		return proposalResult{}, errors.New("propose_skill: no active session")
+		return proposalResult{}, fmt.Errorf("%s: no active session", builtincontract.ProposeSkill)
 	}
 	if err := sessionID.Validate(); err != nil {
-		return proposalResult{}, fmt.Errorf("propose_skill: active %w", err)
+		return proposalResult{}, fmt.Errorf("%s: active %w", builtincontract.ProposeSkill, err)
 	}
 	cwd, attached := executionctx.WorkspaceCWD(ctx)
 	if !attached {
-		return proposalResult{}, errors.New("propose_skill: no attached Run workspace")
+		return proposalResult{}, fmt.Errorf("%s: no attached Run workspace", builtincontract.ProposeSkill)
 	}
 	if err := input.Scope.Validate(); err != nil {
-		return proposalResult{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("propose_skill: scope must be project or user: %w", err))
+		return proposalResult{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: scope must be project or user: %w", builtincontract.ProposeSkill, err))
 	}
 	proposal := skills.Proposal{
 		Scope:         input.Scope,
@@ -87,11 +84,11 @@ func (p *proposer) run(ctx context.Context, input proposalArgs) (proposalResult,
 		SourceSession: sessionID.String(),
 	}
 	if validateErr := proposal.Validate(); validateErr != nil {
-		return proposalResult{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("propose_skill: invalid proposal: %w", validateErr))
+		return proposalResult{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: invalid proposal: %w", builtincontract.ProposeSkill, validateErr))
 	}
 	ref, err := p.proposals.SubmitProposal(ctx, cwd, proposal)
 	if err != nil {
-		return proposalResult{}, fmt.Errorf("propose_skill: submit proposal: %w", err)
+		return proposalResult{}, fmt.Errorf("%s: submit proposal: %w", builtincontract.ProposeSkill, err)
 	}
 	return proposalResult{
 		Status:   proposalStatusPendingReview,

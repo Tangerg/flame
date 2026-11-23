@@ -19,7 +19,7 @@ const styles = stylex.create({
 
 const CAP = { none: null, sm: styles.capSm, md: styles.capMd, lg: styles.capLg } as const;
 
-export type WellProps = {
+type WellProps = {
   ink?: "soft" | "strong";
   wrap?: "wrap" | "anywhere" | "pre";
   cap?: keyof typeof CAP;

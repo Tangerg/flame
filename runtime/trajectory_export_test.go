@@ -21,7 +21,6 @@ import (
 
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/history"
 )
 
 func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
@@ -91,7 +90,7 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := db.ChatHistory.Write(t.Context(), history.ConversationID(ses.ID),
+	if err := db.Conversations.Write(t.Context(), testsupport.MustSessionID(ses.ID),
 		chat.NewUserMessage(chat.NewTextPart("retained question")),
 	); err != nil {
 		t.Fatal(err)

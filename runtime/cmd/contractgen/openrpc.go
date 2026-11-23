@@ -12,17 +12,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 )
 
-// The OpenRPC document is the method surface: what a client may call, what it
-// passes, what comes back, and which errors are in scope. Result references point
-// into schema.json; request components close the same generated type graph at the
-// receiving boundary without closing reusable result shapes.
-
-// openrpcVersion is the spec revision this document conforms to.
 const openrpcVersion = "1.3.2"
 
-// bundleRef is the sibling document holding the shapes. A relative reference
-// resolves against this file's own location, which is why the bundle carries no
-// $id to redirect the base.
 const bundleRef = "schema.json"
 
 type openrpcDocument struct {
@@ -51,17 +42,11 @@ type openrpcInfo struct {
 type openrpcMethod struct {
 	Name string `json:"name"`
 
-	// ParamStructure is by-name for every method: the wire passes one JSON object
-	// whose keys are the request's own fields, so each field is a
-	// named param rather than a positional one.
 	ParamStructure string         `json:"paramStructure"`
 	Params         []openrpcParam `json:"params"`
 	Result         *openrpcResult `json:"result,omitzero"`
 	Errors         []openrpcError `json:"errors,omitempty"`
 
-	// The x-flame extensions carry what OpenRPC has no vocabulary for: retry
-	// semantics, cursor pagination, capability gating, and the event stream a
-	// streaming method's response body becomes.
 	Kind         string          `json:"x-flame-kind"`
 	Operation    string          `json:"x-flame-operation"`
 	Idempotency  string          `json:"x-flame-idempotency"`
@@ -71,9 +56,6 @@ type openrpcMethod struct {
 	Capabilities []capabilityRow `json:"x-flame-capabilityRules,omitempty"`
 	StreamEvent  *wiregen.Schema `json:"x-flame-streamEvent,omitzero"`
 
-	// RequestFrame references the whole params object. By-name params describe the
-	// fields one at a time and so cannot express a cross-field rule; the frame
-	// schema is where those live, and pointing at it beats restating them.
 	RequestFrame *wiregen.Schema `json:"x-flame-requestFrame"`
 }
 
@@ -88,9 +70,6 @@ type openrpcResult struct {
 	Schema *wiregen.Schema `json:"schema"`
 }
 
-// openrpcError pairs the symbolic problem type a client branches on with the
-// numeric code the envelope carries. Both come from the error registry, so a
-// method cannot document an error the runtime has no code for.
 type openrpcError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -144,7 +123,7 @@ func openrpcMethodFor(meta delivery.MethodMeta, requests *requestSchemas, codes 
 		})
 	}
 	method.Params = append(method.Params, openrpcParam{
-		Name:   requestMetaField,
+		Name:   protocol.RequestMetaMember,
 		Schema: requests.project(set.walk(reflect.TypeFor[protocol.RequestMeta]())),
 	})
 	result := &wiregen.Schema{Type: wiregen.SchemaTypeObject}
@@ -168,8 +147,6 @@ func openrpcMethodFor(meta delivery.MethodMeta, requests *requestSchemas, codes 
 	return method
 }
 
-const requestMetaField = "_meta"
-
 type requestSchemas struct {
 	set         *schemaSet
 	definitions map[string]*wiregen.Schema
@@ -186,7 +163,7 @@ func (r *requestSchemas) frame(business *wiregen.Schema) *wiregen.Schema {
 	if frame.Properties == nil {
 		frame.Properties = make(map[string]any)
 	}
-	frame.Properties[requestMetaField] = r.project(r.set.walk(reflect.TypeFor[protocol.RequestMeta]()))
+	frame.Properties[protocol.RequestMetaMember] = r.project(r.set.walk(reflect.TypeFor[protocol.RequestMeta]()))
 	return frame
 }
 
@@ -217,8 +194,6 @@ func (r *requestSchemas) project(node *wiregen.Schema) *wiregen.Schema {
 	return projection
 }
 
-// closure projects only request structure. Value and cross-field constraints
-// remain references to the reusable schema rather than a second published copy.
 func (r *requestSchemas) closure(node *wiregen.Schema) *wiregen.Schema {
 	if node.Ref != "" {
 		name, _ := strings.CutPrefix(node.Ref, wiregen.RefPrefix)
@@ -250,11 +225,6 @@ func (r *requestSchemas) closure(node *wiregen.Schema) *wiregen.Schema {
 	}
 }
 
-// requestPropertySchema returns a by-name OpenRPC parameter from the whole
-// request frame, not by walking the field's Go type again. Value constraints
-// belong to the field in its owner (for example expectedRevision >= 1); a fresh
-// type walk would lose that owner context and publish a weaker parameter than
-// both the runtime validator and x-flame-requestFrame.
 func requestPropertySchema(set *schemaSet, frame *wiregen.Schema, owner reflect.Type, field string) *wiregen.Schema {
 	body := frame
 	if name, ok := strings.CutPrefix(frame.Ref, wiregen.RefPrefix); ok {
@@ -285,12 +255,8 @@ func capabilityRowsFor(meta delivery.MethodMeta) []capabilityRow {
 	return rows
 }
 
-// external re-points every reference in a walked schema at the shape bundle.
-//
-// It has to be a deep copy, not a rewrite: a reference can be nested — a param of
-// type []ContentBlock walks to an array whose items reference the bundle — and the
-// two documents must stay independent, so rendering one can never leave a
-// bundle-local reference in the other or a foreign one in the bundle.
+// A deep copy, not a rewrite: references can be nested, and the two documents must
+// stay independent.
 func external(node *wiregen.Schema) *wiregen.Schema {
 	if node == nil {
 		return nil
@@ -313,7 +279,6 @@ func external(node *wiregen.Schema) *wiregen.Schema {
 				out.Properties[name] = external(child)
 				continue
 			}
-			// A forbidden field is the boolean schema `false`; it holds no reference.
 			out.Properties[name] = value
 		}
 	}

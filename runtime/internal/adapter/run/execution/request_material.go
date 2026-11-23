@@ -15,9 +15,6 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// Flame persists the exact provider input and its estimate beside Scope's log.
-// Context calibration uses that estimate so unrelated calls cannot change the
-// token budget of this process's next request.
 type requestMaterial struct {
 	mu           sync.Mutex
 	byProcess    map[scoperun.ProcessID]preparedRequestMaterial
@@ -69,8 +66,8 @@ func (t *requestMaterial) prepare(source modelCallSource, request *corechat.Requ
 	return nil
 }
 
-// Reading never retires a request. A crash after dispatch can leave the model
-// effect Unknown, and explicit replay still needs the original prepared input.
+// Reading never retires a request: explicit replay still needs the original
+// prepared input.
 func (t *requestMaterial) providerRequest(source modelCallSource) (*corechat.Request, error) {
 	if !source.valid() {
 		return nil, errors.New("execution: model request requires valid attribution")
@@ -182,6 +179,30 @@ func (t *requestMaterial) restore(records []preparedRequestWire) error {
 	return nil
 }
 
+func collectPreparedModels(record scoperun.Stepped, preparation preparedRequestMaterial, models map[scoperun.EffectID]preparedModelReference) error {
+	for _, declared := range record.Intents() {
+		if !preparation.effectID.Precedes(declared.ID) {
+			continue
+		}
+		intent, model, err := interaction.ModelCallFromEffect(declared.Effect)
+		if err != nil {
+			return err
+		}
+		if !model {
+			continue
+		}
+		reference, _, err := modelPreparationReference(intent.Request.Messages)
+		if err != nil {
+			return err
+		}
+		if reference.Sequence != intent.Sequence {
+			return errors.New("execution: settled model differs from its preparation sequence")
+		}
+		models[declared.ID] = reference
+	}
+	return nil
+}
+
 func settledPreparations(history scoperun.Log, prepared map[scoperun.ProcessID]preparedRequestMaterial) (map[scoperun.EffectID]struct{}, error) {
 	if len(prepared) == 0 {
 		return nil, nil
@@ -195,25 +216,8 @@ func settledPreparations(history scoperun.Log, prepared map[scoperun.ProcessID]p
 			if !owned {
 				continue
 			}
-			for _, declared := range record.Intents() {
-				if !preparation.effectID.Precedes(declared.ID) {
-					continue
-				}
-				intent, model, err := interaction.ModelCallFromEffect(declared.Effect)
-				if err != nil {
-					return nil, err
-				}
-				if !model {
-					continue
-				}
-				reference, _, err := modelPreparationReference(intent.Request.Messages)
-				if err != nil {
-					return nil, err
-				}
-				if reference.Sequence != intent.Sequence {
-					return nil, errors.New("execution: settled model differs from its preparation sequence")
-				}
-				models[declared.ID] = reference
+			if err := collectPreparedModels(record, preparation, models); err != nil {
+				return nil, err
 			}
 		case scoperun.EffectSettled:
 			if ref, model := models[record.ID]; model && record.Outcome.Status() != scoperun.SettlementStatusUnknown {

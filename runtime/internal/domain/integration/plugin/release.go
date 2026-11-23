@@ -37,29 +37,21 @@ const (
 	maxDiagnostics = 1024
 )
 
-// Server is a package-declared MCP server in the MCP registry's transport
-// vocabulary. Command and Dir keep the package-relative spelling; the package
-// adapter resolves them against the release directory at realization.
 type Server struct {
 	Name    mcpserver.ServerName
 	Startup ServerStartup
 }
 
-// ServerStartup is how a package starts or reaches one server: a backend the
-// Runtime launches with its pinned interpreter, or a connection the package
-// declares itself.
 type ServerStartup interface {
 	Transport() mcpserver.Transport
 	clone() ServerStartup
 }
 
-// ManagedBackend is a Node ESM entry the Runtime starts over stdio.
 type ManagedBackend struct {
 	Runtime ManagedRuntime
 	Entry   string
 }
 
-// DeclaredConnection is an MCP connection written in the package itself.
 type DeclaredConnection struct{ mcpserver.Connection }
 
 func (ManagedBackend) Transport() mcpserver.Transport { return mcpserver.TransportStdio }
@@ -72,17 +64,12 @@ func (d DeclaredConnection) clone() ServerStartup {
 
 func (s Server) Transport() mcpserver.Transport { return s.Startup.Transport() }
 
-// stdio reports the package-written process connection, when there is one.
-func (s Server) stdio() (mcpserver.StdioConnection, bool) {
-	declared, ok := s.Startup.(DeclaredConnection)
-	if !ok {
-		return mcpserver.StdioConnection{}, false
-	}
-	connection, ok := declared.Connection.(mcpserver.StdioConnection)
-	return connection, ok
+func (s Server) stdio() mcpserver.StdioConnection {
+	declared, _ := s.Startup.(DeclaredConnection)
+	connection, _ := declared.Connection.(mcpserver.StdioConnection)
+	return connection
 }
 
-// http reports the package-written HTTP connection, when there is one.
 func (s Server) http() (mcpserver.HTTPConnection, bool) {
 	declared, ok := s.Startup.(DeclaredConnection)
 	if !ok {
@@ -96,9 +83,6 @@ type ManagedRuntime string
 
 const node ManagedRuntime = "node"
 
-// Input is a value the user supplies for one server. Secrecy is declared, but
-// a header or authorization input is admitted only as a secret: anything sent
-// to an endpoint as a header is treated as a credential.
 type Input struct {
 	ID       string
 	Secret   bool
@@ -115,8 +99,6 @@ type Theme struct {
 	Colors ThemeColors
 }
 
-// ThemeColors names the closed set of colors a theme may override. An empty
-// color is not overridden.
 type ThemeColors struct {
 	Background string
 	Foreground string
@@ -142,8 +124,6 @@ type Skill struct {
 	Description string
 }
 
-// Declaration is the plain data a package declares. It carries no trust of its
-// own: only [NewRelease] or a [Builder] admits it into a [Release].
 type Declaration struct {
 	Name          string
 	Version       string
@@ -195,15 +175,11 @@ func (s Server) clone() Server {
 	return s
 }
 
-// Release is an admitted, immutable declaration of exact package bytes. It is
-// validated once on construction; persistence, installations and projections
-// trust it afterwards and read it only through copies.
 type Release struct {
 	digest      framevalue.Digest
 	declaration Declaration
 }
 
-// NewRelease admits a complete declaration, each member exactly once.
 func admitEach[T any](values []T, admit func(T) error) error {
 	for _, value := range values {
 		if err := admit(value); err != nil {
@@ -245,7 +221,6 @@ func NewRelease(digest framevalue.Digest, declaration Declaration) (Release, err
 func (r Release) Digest() framevalue.Digest { return r.digest }
 func (r Release) Name() string              { return r.declaration.Name }
 
-// Declaration returns an owned copy; no reader can advance the release.
 func (r Release) Declaration() Declaration { return r.declaration.clone() }
 
 func (r Release) server(name mcpserver.ServerName) (Server, bool) {
@@ -264,12 +239,6 @@ func (r Release) input(id string) (Input, bool) {
 	return r.declaration.Inputs[index], true
 }
 
-// recipient names who receives a credential configured for a server. For an
-// endpoint it is the declared transport, URL and static headers: a credential
-// keeps reaching the same service while they are unchanged, whatever else the
-// release changes. For a process it is the executable itself, which only the
-// exact release bytes and the server's name within them identify. Static
-// secret inputs and OAuth grants both follow this one rule.
 func (r Release) recipient(name mcpserver.ServerName) (framevalue.Digest, bool) {
 	server, found := r.server(name)
 	if !found {
@@ -294,9 +263,6 @@ func (r Release) declaresSkill(name string) bool {
 	return slices.ContainsFunc(r.declaration.Skills, func(skill Skill) bool { return skill.Name == name })
 }
 
-// Builder admits a declaration one contribution at a time. Each contribution is
-// validated once against what was already admitted, so a package adapter can
-// isolate an invalid member without revalidating the members before it.
 type Builder struct {
 	declaration Declaration
 	bindings    map[inputSlot]bool
@@ -309,8 +275,6 @@ func NewBuilder(name, version, description string) (*Builder, error) {
 	return &Builder{declaration: Declaration{Name: name, Version: version, Description: description}, bindings: map[inputSlot]bool{}}, nil
 }
 
-// Report records an admission finding. Findings are validated with the
-// release, because a finding never decides whether a member is admitted.
 func (b *Builder) Report(diagnostic Diagnostic) {
 	b.declaration.Diagnostics = append(b.declaration.Diagnostics, diagnostic)
 }
@@ -364,7 +328,7 @@ func (b *Builder) AdmitTheme(theme Theme) error {
 	if theme.Title == "" || len(theme.Title) > MaxPresentationTitleBytes || !utf8.ValidString(theme.Title) {
 		return refuse(DiagnosticInvalidDeclaration, "theme %q title", theme.ID)
 	}
-	if theme.Scheme != dark && theme.Scheme != light {
+	if theme.Scheme != ThemeDark && theme.Scheme != ThemeLight {
 		return refuse(DiagnosticInvalidDeclaration, "theme %q scheme", theme.ID)
 	}
 	if err := theme.Colors.validate(); err != nil {
@@ -388,7 +352,6 @@ func (b *Builder) AdmitSkill(skill Skill) error {
 	return nil
 }
 
-// Release binds the admitted declaration to the digest of its exact bytes.
 func (b *Builder) Release(digest framevalue.Digest) (Release, error) {
 	if err := digest.Validate(); err != nil {
 		return Release{}, fmt.Errorf("%w: release digest: %w", ErrInvalid, err)
@@ -400,8 +363,6 @@ func (b *Builder) Release(digest framevalue.Digest) (Release, error) {
 	return Release{digest: digest, declaration: declaration}, nil
 }
 
-// Declaration finishes metadata admission without inventing a release identity.
-// Author tooling binds the result only after Frame has computed the manifest.
 func (b *Builder) Declaration() (Declaration, error) {
 	if len(b.declaration.Diagnostics) > maxDiagnostics {
 		return Declaration{}, fmt.Errorf("%w: diagnostic capacity", ErrInvalid)
@@ -423,19 +384,14 @@ func (b *Builder) Declaration() (Declaration, error) {
 
 func (b *Builder) release() Release { return Release{declaration: b.declaration} }
 
-// managedNodeLaunchVariables steer how Node loads code; a managed backend's
-// launch policy owns them, so a user input may not supply them.
 var managedNodeLaunchVariables = []string{"NODE_OPTIONS", "NODE_PATH", "NODE_REPL_EXTERNAL_MODULE"}
 
-// inputSlot is the configuration slot an input fills on its server.
 type inputSlot struct {
 	server mcpserver.ServerName
 	target InputTarget
 	key    string
 }
 
-// binding names the configuration slot an input fills on its server, in the
-// canonical case of the target, so two spellings cannot fill one slot.
 func (i Input) binding(server Server) (inputSlot, error) {
 	var key string
 	var err error
@@ -455,8 +411,6 @@ func (i Input) binding(server Server) (inputSlot, error) {
 	return inputSlot{server: i.Server, target: i.Target, key: key}, nil
 }
 
-// environmentKey admits a variable of a stdio server that neither replaces
-// managed launch policy nor shadows static configuration.
 func (i Input) environmentKey(server Server) (string, error) {
 	if server.Transport() != mcpserver.TransportStdio {
 		return "", refuse(DiagnosticInvalidDependencies, "input %q binds an environment variable of a non-stdio server", i.ID)
@@ -469,7 +423,7 @@ func (i Input) environmentKey(server Server) (string, error) {
 		return "", &Refusal{Code: DiagnosticInvalidDeclaration, cause: fmt.Errorf("input %q: %w", i.ID, err)}
 	}
 	key := strings.ToUpper(i.Key)
-	stdio, _ := server.stdio()
+	stdio := server.stdio()
 	for static := range stdio.Env {
 		if strings.EqualFold(static, key) {
 			return "", refuse(DiagnosticInvalidDependencies, "input %q duplicates static environment configuration", i.ID)
@@ -478,8 +432,6 @@ func (i Input) environmentKey(server Server) (string, error) {
 	return key, nil
 }
 
-// headerKey admits a secret header of an HTTP server that does not shadow
-// static configuration.
 func (i Input) headerKey(server Server) (string, error) {
 	if server.Transport() != mcpserver.TransportStreamableHTTP {
 		return "", refuse(DiagnosticInvalidDependencies, "input %q binds a header of a non-HTTP server", i.ID)
@@ -510,8 +462,6 @@ func (i Input) validateAuthorization(server Server) error {
 	return nil
 }
 
-// validate checks the connection rules the MCP registry owns, then the few
-// rules that exist only because the declaration comes from a portable package.
 func (s Server) validate() error {
 	if err := s.Name.Validate(); err != nil {
 		return fmt.Errorf("%w: local server identity: %w", ErrInvalid, err)
@@ -543,8 +493,6 @@ func (s Server) validate() error {
 	return fmt.Errorf("%w: server %q has no startup", ErrInvalid, s.Name)
 }
 
-// validatePackageEnvironment reserves the variables only the Runtime binds and
-// refuses names that collide on case-insensitive platforms.
 func validatePackageEnvironment(environment map[string]string) error {
 	if err := mcpserver.ValidateEnvironment(environment); err != nil {
 		return fmt.Errorf("%w: package environment: %w", ErrInvalid, err)
@@ -563,8 +511,6 @@ func validatePackageEnvironment(environment map[string]string) error {
 	return nil
 }
 
-// validatePackageCommand admits a file inside the package or a bare command
-// name resolved from PATH; a package cannot name a host path.
 func validatePackageCommand(command string) error {
 	if packaged, found := strings.CutPrefix(command, "./"); found {
 		if !ValidResourcePath(packaged) {
@@ -578,10 +524,8 @@ func validatePackageCommand(command string) error {
 	return nil
 }
 
-// validatePackageEndpoint refuses URL user information, which is structurally
-// a credential, and plaintext transport beyond the local machine. Package
-// bytes are public content: other static values, such as headers, are never
-// treated as secrets, and a credential reaches a server only through an input.
+// URL user information is structurally a credential, and package bytes are public,
+// so a credential reaches a server only through an input.
 func validatePackageEndpoint(raw string) error {
 	endpoint, err := httporigin.ParseEndpoint(raw)
 	if err != nil {

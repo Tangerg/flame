@@ -25,8 +25,6 @@ var toolProposalContract = publishedCapability(func() (*plugincontract.Capabilit
 	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "flame.tool-proposal.v1", Composition: plugincontract.Decoration, Scope: extension.ScopeCall}, method.Descriptor())
 })
 
-// Identity and Tool authority belong to execution. Only the final Tool owner can
-// admit argument structure; the contributor cannot replace that contract.
 func ValidateToolProposal(original, transformed chat.ToolCall) error {
 	if err := original.Validate(); err != nil {
 		return err

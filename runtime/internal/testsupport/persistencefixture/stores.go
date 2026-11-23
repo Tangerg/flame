@@ -1,5 +1,3 @@
-// Package persistencefixture owns product stores and raw SQL observations for
-// cross-package integration tests. Persistence white-box tests use their owner directly.
 package persistencefixture
 
 import (
@@ -13,8 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 )
 
-// Stores keeps the product write-set on Bundle. The separate SQL connection is
-// only for deliberate corruption injection and raw evidence assertions.
 type Stores struct {
 	*persistence.Bundle
 	*sql.DB
@@ -22,7 +18,7 @@ type Stores struct {
 
 func Open(tb testing.TB, ctx context.Context, dataDirectory string) (*Stores, error) {
 	tb.Helper()
-	bundle, err := persistence.Open(ctx, persistence.Config{DataDirectory: dataDirectory})
+	bundle, err := persistence.Open(ctx, persistence.Config{DataDirectory: dataDirectory, ValidateDirectory: UnleasedDirectory})
 	if err != nil {
 		return nil, err
 	}
@@ -47,3 +43,7 @@ func OpenRawSQL(dataDirectory string) (*sql.DB, error) {
 }
 
 func (s *Stores) Close() error { return errors.Join(s.Bundle.Close(), s.DB.Close()) }
+
+// A test that opens a data directory without holding the Runtime lease
+// has no ownership to verify.
+func UnleasedDirectory() error { return nil }

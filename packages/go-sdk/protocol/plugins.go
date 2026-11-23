@@ -7,16 +7,13 @@ import (
 	framecall "github.com/Tangerg/frame/call"
 )
 
-// PluginCommandRequest addresses original routing without another copy of input.
 type PluginCommandRequest struct {
 	Namespace string `json:"namespace"`
 	Key       string `json:"key"`
 }
 
-// CallPluginRequest binds an installed contribution to the consumer's complete
-// required contract. The implementation determines operation semantics.
 // Contracts and feature values cross Core as JSON text because their numeric
-// ranges and original receipt lexemes belong to the feature, not a JS number.
+// ranges and receipt lexemes belong to the feature, not to a JS number.
 type CallPluginRequest struct {
 	InstallationID string           `json:"installationId"`
 	Digest         string           `json:"digest"`
@@ -31,6 +28,8 @@ type CallPluginResponse struct {
 	Output  string             `json:"output,omitzero"`
 	Failure *PluginCallFailure `json:"failure,omitzero"`
 }
+
+const MaximumPluginFailureCodeCharacters = 256
 
 type PluginCallFailure struct {
 	Code    string `json:"code"`
@@ -58,8 +57,6 @@ type PluginProviderSelection struct {
 	Contribution   string `json:"contribution"`
 }
 
-// PluginComposition freezes consumer-selected outer-to-inner member order.
-// Concrete releases are captured when an execution binds this choice.
 type PluginComposition struct {
 	Contract string                    `json:"contract"`
 	Members  []PluginCompositionMember `json:"members"`
@@ -85,8 +82,6 @@ type SelectPluginProviderRequest struct {
 	Contribution   string `json:"contribution"`
 }
 
-// PluginInstallation projects durable admission beside the realization the
-// Runtime observes for it now.
 type PluginInstallation struct {
 	Realization     PluginRealization           `json:"realization"`
 	Presentation    PluginPresentation          `json:"presentation"`
@@ -100,10 +95,6 @@ type PluginInstallation struct {
 	DisabledSkills  []string                    `json:"disabledSkills"`
 }
 
-// PluginPresentation is the Runtime's decision whether the selected release's
-// declarative presentation contributions, such as themes, are admitted now.
-// Clients present exactly the admitted ones and never derive it themselves.
-//
 //flame:enum
 type PluginPresentation string
 
@@ -112,9 +103,6 @@ const (
 	PluginPresentationWithheld PluginPresentation = "withheld"
 )
 
-// PluginRealizationType is a closed union. It is observed from the selected
-// release bytes and backend directories on every read and is never stored.
-//
 //flame:enum
 type PluginRealizationType string
 
@@ -123,17 +111,11 @@ const (
 	PluginRealizationReleaseUnavailable PluginRealizationType = "releaseUnavailable"
 )
 
-// PluginRealization lists, only when the release is available, the declared
-// servers whose backend cannot be realized now; empty means every backend is.
 type PluginRealization struct {
 	Type                PluginRealizationType `json:"type"`
 	UnavailableBackends []string              `json:"unavailableBackends,omitzero"`
 }
 
-// PluginInputStateType is a closed union over every declared input of the
-// selected release. A configured secret is reported as configured; its value
-// never leaves the Runtime.
-//
 //flame:enum
 type PluginInputStateType string
 
@@ -165,7 +147,6 @@ type PluginRelease struct {
 	Diagnostics   []PluginDiagnostic        `json:"diagnostics"`
 }
 
-// A renderer selector selects display only. It never resolves execution authority.
 type PluginRendererSelector struct {
 	Type  extension.RendererSelectorKind `json:"type"`
 	Name  string                         `json:"name,omitempty"`
@@ -181,8 +162,6 @@ const (
 	PluginServerNode  PluginServerType = "managedNode"
 )
 
-// PluginServerDeclaration projects one authored startup source. Managed Node
-// entries carry no command, interpreter path or package-specific launch flags.
 type PluginServerDeclaration struct {
 	Name    string            `json:"name"`
 	Type    PluginServerType  `json:"type"`
@@ -195,8 +174,6 @@ type PluginServerDeclaration struct {
 	Headers map[string]string `json:"headers,omitempty"`
 }
 
-// PluginInput is one value the user supplies for a declared server. env and
-// header inputs name their key; authorization carries none.
 type PluginInput struct {
 	ID       string            `json:"id"`
 	Secret   bool              `json:"secret"`
@@ -236,8 +213,6 @@ type PluginLocaleCatalog struct {
 	Messages map[string]string `json:"messages"`
 }
 
-// PluginThemeColors is the closed set of colors a theme may override; an
-// absent color is not overridden.
 type PluginThemeColors struct {
 	Background string `json:"background,omitempty"`
 	Foreground string `json:"foreground,omitempty"`
@@ -259,7 +234,6 @@ type PluginSkill struct {
 	Description string `json:"description"`
 }
 
-// PluginDiagnostic is one admission finding about the release bytes.
 type PluginDiagnostic struct {
 	Component PluginComponent      `json:"component"`
 	Code      PluginDiagnosticCode `json:"code"`
@@ -277,9 +251,6 @@ const (
 	PluginDiagnosticUnavailableComponent    PluginDiagnosticCode = "unavailableComponent"
 )
 
-// PluginComponentType is a closed union. Kinds that address an authored
-// member carry its exact authored name; the others carry none.
-//
 //flame:enum
 type PluginComponentType string
 
@@ -317,8 +288,6 @@ type SetPluginEnablementRequest struct {
 	Enabled        bool   `json:"enabled"`
 }
 
-// ConfigurePluginRequest is a delta: inputs and components it does not name
-// keep their current value or enablement.
 type ConfigurePluginRequest struct {
 	InstallationID string                           `json:"installationId"`
 	Digest         string                           `json:"digest"`
@@ -375,8 +344,6 @@ type PluginCollaborator struct {
 	Bindings []PluginOperationBinding `json:"bindings"`
 }
 
-// PluginOperationBinding is immutable public routing evidence without a private
-// backend port or a connection-generation identity.
 type PluginOperationBinding struct {
 	InstallationID string `json:"installationId"`
 	Digest         string `json:"digest"`
@@ -431,10 +398,6 @@ type PluginClientComponent struct {
 	SettingsIntent  string                       `json:"settingsIntent,omitzero"`
 }
 
-// PluginTerminalView is a management surface a release contributes to terminal
-// clients: a list read through one callable contribution and actions that call
-// its methods. Every input value is bound here and every form field carries its
-// kind, so a client renders it without the package's types or schemas.
 type PluginTerminalView struct {
 	ID           string                 `json:"id"`
 	Title        string                 `json:"title"`
@@ -443,8 +406,6 @@ type PluginTerminalView struct {
 	Actions      []PluginTerminalAction `json:"actions"`
 }
 
-// PluginTerminalList reads a view's rows. Rows names the output property that
-// holds them and Key the row property that identifies one.
 type PluginTerminalList struct {
 	Method  string                 `json:"method"`
 	Input   []PluginTerminalInput  `json:"input"`
@@ -454,8 +415,6 @@ type PluginTerminalList struct {
 	Columns []PluginTerminalColumn `json:"columns"`
 }
 
-// PluginTerminalPaging pages a list: Output carries the next cursor and Input
-// sends it back.
 type PluginTerminalPaging struct {
 	Input  string `json:"input"`
 	Output string `json:"output"`
@@ -475,15 +434,11 @@ type PluginTerminalAction struct {
 	Input   []PluginTerminalInput          `json:"input"`
 }
 
-// PluginTerminalInput supplies the input property at Path, a '/'-separated walk
-// through nested objects.
 type PluginTerminalInput struct {
 	Path  string                `json:"path"`
 	Value PluginTerminalBinding `json:"value"`
 }
 
-// PluginTerminalBinding is where one input value comes from. Value is the JSON
-// literal of a value binding, Field the row property of a row binding.
 type PluginTerminalBinding struct {
 	Source  extension.TerminalBindingSource `json:"source"`
 	Value   string                          `json:"value,omitempty"`
@@ -521,7 +476,6 @@ type PluginResource struct {
 	MediaType string `json:"mediaType"`
 }
 
-// PluginChangeNotice carries no business outcome; readers must reread the owner.
 type PluginChangeNotice struct {
 	Contribution string `json:"contribution"`
 }

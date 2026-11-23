@@ -8,6 +8,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"github.com/Tangerg/flame/packages/go-sdk/runoutcome"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
@@ -19,9 +20,7 @@ func (state Snapshot) WorkflowValue() goalworkflow.Value {
 	return goalworkflow.Value{Objective: state.Objective, Status: status, Reason: goalworkflow.GoalReasonCode(state.ReasonCode), Outcome: runoutcome.Kind(state.ReasonRunOutcome), Explanation: state.ReasonExplanation}
 }
 
-// Publish advances only the storage envelope. Workflow actions and their
-// admissible successors belong to the captured author.
-func (state Snapshot) Publish(value goalworkflow.Value, author extension.ContributionSource, incarnation string, now time.Time) (Goal, error) {
+func (state Snapshot) Publish(value goalworkflow.Value, author extension.ContributionSource, incarnation goalref.IncarnationID, now time.Time) (Goal, error) {
 	if state.Author != (extension.ContributionSource{}) && state.Author != author {
 		return Goal{}, errors.New("goal: author differs from captured incarnation")
 	}
@@ -30,7 +29,7 @@ func (state Snapshot) Publish(value goalworkflow.Value, author extension.Contrib
 	}
 	state.Author = author
 	if now.Before(state.UpdatedAt) {
-		return Goal{}, errors.New("goals: decision predates captured state")
+		return Goal{}, errors.New("goal: decision predates captured state")
 	}
 	state.UpdatedAt = now
 

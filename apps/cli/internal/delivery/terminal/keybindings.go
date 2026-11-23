@@ -1,9 +1,11 @@
 package terminal
 
 import (
-	"github.com/Tangerg/flame/apps/cli/internal/adapter/keybinding"
 	"slices"
 	"strings"
+
+	"github.com/Tangerg/flame/apps/cli/internal/adapter/keybinding"
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/input"
@@ -53,9 +55,6 @@ func (k keyBindings) setResolver(resolve keymap.Resolver) {
 	}
 }
 
-// keyRouter matches key sequences against the application bindings, or only
-// the global ones while a modal is open. Each map keeps its own partial
-// sequence, so an application prefix cannot swallow form input.
 type keyRouter struct {
 	application        *keymap.Map
 	global             *keymap.Map
@@ -63,8 +62,6 @@ type keyRouter struct {
 	globalPending      keymap.Matcher
 }
 
-// route returns the hint for an application sequence still in progress; it is
-// empty while a modal is open.
 func (k *keyRouter) route(key input.Key, modal bool, current func() bool, handle func(keymap.Action) bool) (matched, handled bool, pending string) {
 	if modal {
 		k.applicationPending.Clear()
@@ -100,5 +97,5 @@ func pendingKeySequenceHint(keys *keymap.Map, prefix input.Keys) string {
 	if len(continuations) == 0 {
 		return ""
 	}
-	return prefix.String() + " → " + strings.Join(continuations, " · ")
+	return prefix.String() + " → " + strings.Join(continuations, format.Separator)
 }

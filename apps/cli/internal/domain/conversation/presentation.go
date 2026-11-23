@@ -17,23 +17,17 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// Errors a Runtime binding reports by identity rather than by message, mirroring the
-// symbolic names the runtime protocol uses for the same conditions. Commands
-// branch on these; nothing branches on error text.
 var (
-	ErrSessionNotFound     = errors.New("session not found")
-	ErrRunNotFound         = errors.New("run not found")
-	ErrInterruptNotOpen    = errors.New("interrupt not open")
-	ErrStaleSegment        = errors.New("stale segment")
-	ErrRunWaiting          = errors.New("run is waiting")
-	ErrRunFinished         = errors.New("run is finished")
-	ErrReplayCursorInvalid = errors.New("event replay cursor is invalid")
-	ErrReplayUnavailable   = errors.New("event replay unavailable")
-	ErrSessionHasActiveRun = errors.New("session has an active run")
-	ErrSessionBusy         = errors.New("session is busy")
-	// ErrPluginChanged refuses a start or resume whose plugin installation
-	// changed while the Runtime prepared it. Nothing started; the user may
-	// send the same prompt again.
+	ErrSessionNotFound      = errors.New("session not found")
+	ErrRunNotFound          = errors.New("run not found")
+	ErrInterruptNotOpen     = errors.New("interrupt not open")
+	ErrStaleSegment         = errors.New("stale segment")
+	ErrRunWaiting           = errors.New("run is waiting")
+	ErrRunFinished          = errors.New("run is finished")
+	ErrReplayCursorInvalid  = errors.New("event replay cursor is invalid")
+	ErrReplayUnavailable    = errors.New("event replay unavailable")
+	ErrSessionHasActiveRun  = errors.New("session has an active run")
+	ErrSessionBusy          = errors.New("session is busy")
 	ErrPluginChanged        = errors.New("plugin changed while the run was being prepared")
 	ErrRevisionConflict     = errors.New("revision conflict")
 	ErrEventConflict        = errors.New("event identity conflict")
@@ -44,9 +38,6 @@ var (
 	ErrIncompatibleRuntime  = errors.New("runtime protocol is incompatible")
 )
 
-// BlockKind names what a transcript block is. The set is closed: an item a
-// Runtime binding cannot classify becomes a [BlockNotice], never a new
-// kind invented at the render site.
 type BlockKind string
 
 const (
@@ -59,45 +50,31 @@ const (
 	BlockError     BlockKind = "error"
 )
 
-// BlockStatus is the durable lifecycle of a transcript item. Incomplete is a
-// terminal item-level failure; it does not imply that the owning Run failed.
 type BlockStatus string
 
 const (
-	BlockStatusRunning    BlockStatus = "running"
-	BlockStatusCompleted  BlockStatus = "completed"
-	BlockStatusIncomplete BlockStatus = "incomplete"
+	BlockStatusRunning    BlockStatus = BlockStatus(protocol.ItemStatusRunning)
+	BlockStatusCompleted  BlockStatus = BlockStatus(protocol.ItemStatusCompleted)
+	BlockStatusIncomplete BlockStatus = BlockStatus(protocol.ItemStatusIncomplete)
 )
 
-// Block is one renderable unit of a transcript. RunID preserves the durable
-// item's provenance across cold reads; ID identifies the item within that Run.
 type Block struct {
-	ID        string
-	RunID     string
-	Status    BlockStatus
-	Kind      BlockKind
-	CreatedAt time.Time
-	Redacted  bool
-	// DroppedMessages is meaningful only for a compaction notice.
+	ID              string
+	RunID           string
+	Status          BlockStatus
+	Kind            BlockKind
+	CreatedAt       time.Time
+	Redacted        bool
 	DroppedMessages int
 	Attachments     []authoring.Attachment
 	Images          []InlineImage
-	// Text is the block's body. Assistant and reasoning bodies are markdown and
-	// arrive in pieces (see [BlockDelta]). Tool deltas append to Tool.Output;
-	// the remaining block kinds arrive whole.
-	Text string
-	// Question carries the durable prompt when Kind is [BlockQuestion]. Its
-	// ItemID is the same identity as this block's ID.
-	Question *Question
-	// Tool carries the call's projection when Kind is [BlockTool].
-	Tool *ToolCall
+	Text            string
+	Question        *Question
+	Tool            *ToolCall
 }
 
 const blockKeyLengthSeparator byte = ':'
 
-// BlockKey names one presentation block within its owning Run as the string
-// key terminal frameworks require. Block IDs are only run-local, so the key
-// keeps both; length framing keeps arbitrary IDs collision-free.
 func BlockKey(runID, blockID string) string {
 	var encoded strings.Builder
 	encoded.Grow(len(runID) + len(blockID) + 2*4)
@@ -112,7 +89,6 @@ func writeBlockKeyField(encoded *strings.Builder, value string) {
 	encoded.WriteString(value)
 }
 
-// Clone returns a block with no mutable storage shared with the caller.
 func (b Block) Clone() Block {
 	b.Attachments = slices.Clone(b.Attachments)
 	b.Images = cloneInlineImages(b.Images)
@@ -127,9 +103,6 @@ func (b Block) Clone() Block {
 	return b
 }
 
-// Equal reports whether two blocks carry the same complete presentation fact.
-// It deliberately compares nested projections by value so replay consistency
-// does not depend on pointer identity or on a reflection-based struct layout.
 func (b Block) Equal(other Block) bool {
 	if b.ID != other.ID || b.RunID != other.RunID || b.Status != other.Status || b.Kind != other.Kind ||
 		!b.CreatedAt.Equal(other.CreatedAt) || b.Redacted != other.Redacted || b.DroppedMessages != other.DroppedMessages ||
@@ -139,10 +112,6 @@ func (b Block) Equal(other Block) bool {
 	return equalOptionalValue(b.Question, other.Question) && equalOptionalValue(b.Tool, other.Tool)
 }
 
-// InlineImage is model-produced media embedded in an assistant message. It is
-// deliberately separate from Attachment: attachments are workspace-backed
-// authoring inputs, while an inline image is immutable output owned by the
-// transcript itself.
 type InlineImage struct {
 	ID       string
 	Name     string
@@ -175,7 +144,6 @@ func equalInlineImages(left, right []InlineImage) bool {
 	return slices.EqualFunc(left, right, func(left, right InlineImage) bool { return left.Equal(right) })
 }
 
-// ToolStatus is where a tool call is in its life.
 type ToolStatus string
 
 const (
@@ -189,44 +157,27 @@ func (s ToolStatus) valid() bool {
 	return s == ToolRunning || s == ToolOK || s.Failed()
 }
 
-// Failed reports whether the call ended without its result.
 func (s ToolStatus) Failed() bool { return s == ToolError || s == ToolCanceled }
 
-// ToolCall is a tool invocation as the Runtime binding chose to present it.
-//
-// Every field is a projection the adapter already computed. Name preserves the
-// provider-facing label for diagnostics; Kind and the structured fields below
-// are the stable vocabulary renderers use. This keeps provider tool semantics in
-// one adapter rather than rediscovering them in every UI.
 type ToolCall struct {
-	Kind       builtin.ToolCategory
-	Name       string
-	Summary    string
-	Status     ToolStatus
-	Safety     protocol.SafetyClass
-	StartedAt  time.Time
-	FinishedAt time.Time
-	Command    string
-	Path       string
-	Query      string
-	Output     string
-	// ArgumentsJSON and ResultJSON preserve the complete, normalized JSON
-	// values for generic presenters and machine consumers. Semantic fields such
-	// as Command and Path remain the high-quality projection for known tools.
-	ArgumentsJSON []byte
-	// ArgumentsText preserves the original input of a rejected call.
-	ArgumentsText string
-	ResultJSON    []byte
-	// Problem retains the structured tool-level failure, including documentation,
-	// retry guidance, and capability or field-level details.
-	Problem *protocol.ProblemData
-	// ExitCode is set for completed process-like tools. Nil distinguishes an
-	// absent code from a successful zero.
-	ExitCode *int
-	// OutputPage preserves the original shell's retained-log coordinates.
-	OutputPage *builtin.CommandOutputPage
-	// Duration is how long the call took, once it has finished.
-	Duration time.Duration
+	Kind          builtin.ToolCategory       `json:"kind"`
+	Name          string                     `json:"name"`
+	Summary       string                     `json:"summary"`
+	Status        ToolStatus                 `json:"status"`
+	Safety        protocol.SafetyClass       `json:"safety"`
+	StartedAt     time.Time                  `json:"startedAt"`
+	FinishedAt    time.Time                  `json:"finishedAt"`
+	Command       string                     `json:"command"`
+	Path          string                     `json:"path"`
+	Query         string                     `json:"query"`
+	Output        string                     `json:"output"`
+	ArgumentsJSON []byte                     `json:"argumentsJson"`
+	ArgumentsText string                     `json:"argumentsText"`
+	ResultJSON    []byte                     `json:"resultJson"`
+	Problem       *protocol.ProblemData      `json:"problem"`
+	ExitCode      *int                       `json:"exitCode"`
+	OutputPage    *builtin.CommandOutputPage `json:"outputPage"`
+	Duration      time.Duration              `json:"duration"`
 }
 
 func (t ToolCall) Clone() ToolCall {
@@ -242,8 +193,6 @@ func (t ToolCall) Clone() ToolCall {
 	return t
 }
 
-// Equal reports whether two tool projections describe the same invocation
-// state. An absent exit code remains distinct from an explicit successful zero.
 func (t ToolCall) Equal(other ToolCall) bool {
 	if !t.sameInvocation(other) || t.Status != other.Status || t.Safety != other.Safety ||
 		!t.StartedAt.Equal(other.StartedAt) || !t.FinishedAt.Equal(other.FinishedAt) ||
@@ -255,9 +204,6 @@ func (t ToolCall) Equal(other ToolCall) bool {
 	return equalOptional(t.ExitCode, other.ExitCode) && equalOptional(t.OutputPage, other.OutputPage)
 }
 
-// sameInvocation compares the provider-visible call while deliberately
-// excluding Item-owned lifecycle and result fields. Approval interrupts repeat
-// the invocation, not the surrounding ToolCall Item's safety or timestamps.
 func (t ToolCall) sameInvocation(other ToolCall) bool {
 	return t.Kind == other.Kind && t.Name == other.Name && t.Summary == other.Summary &&
 		t.Command == other.Command && t.Path == other.Path && t.Query == other.Query &&
@@ -293,8 +239,6 @@ func (t ToolCall) validateVocabulary() error {
 	return errors.Join(problems...)
 }
 
-// validateTiming checks that only a finished call has an exit code, a duration
-// and a finish time, and that its times are ordered.
 func (t ToolCall) validateTiming() error {
 	var problems []error
 	if t.Duration < 0 {
@@ -323,16 +267,11 @@ func (t ToolCall) validatePayloads() error {
 	return errors.Join(problems...)
 }
 
-// Outcome is a finished run's verdict.
 type Outcome struct {
-	Status protocol.RunOutcomeType
-	// Problem is the single source of failure classification, display text, and
-	// recovery metadata for failed, timed-out, and lost outcomes.
+	Status  protocol.RunOutcomeType
 	Problem *protocol.ProblemData
-	// Detail carries the canceled outcome's stated reason.
-	Detail string
-	// Loss explains a lost outcome.
-	Loss *protocol.RunLoss
+	Detail  string
+	Loss    *protocol.RunLoss
 }
 
 func (o Outcome) Clone() Outcome {
@@ -348,7 +287,6 @@ func (o Outcome) Equal(other Outcome) bool {
 		(o.Loss == nil) == (other.Loss == nil) && (o.Loss == nil || *o.Loss == *other.Loss)
 }
 
-// Description returns the concise explanation appropriate for status lines.
 func (o Outcome) Description() string {
 	if o.Problem != nil {
 		return failure.Message(o.Problem, "")
@@ -359,8 +297,6 @@ func (o Outcome) Description() string {
 	return strings.TrimSpace(o.Detail)
 }
 
-// Explanation returns the complete single-line human projection, including
-// recovery metadata carried by a structured failure.
 func (o Outcome) Explanation() string {
 	if o.Problem != nil {
 		return failure.String(o.Problem)

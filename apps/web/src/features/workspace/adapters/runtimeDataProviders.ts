@@ -1,5 +1,5 @@
 import { type Contributor } from "@/extensions/definePlugin";
-import { DATA_PROVIDER } from "@/extensions/dataProvider";
+import { DATA_PROVIDER, requiredParams, pageData } from "@/extensions/dataProvider";
 import {
   type FlameClient,
   type WorkspaceFileChange as RpcFileChange,
@@ -16,15 +16,6 @@ import {
   type WorkspaceFileChange as WorkspaceFileChangeSummary,
   type WorkspaceProjectSummary,
 } from "@/features/workspace/application/workspaceQueries";
-function requiredParams<P>(key: string, params: unknown): P {
-  if (params === undefined) throw new Error(`Data provider "${key}" requires parameters`);
-  return params as P;
-}
-
-function pageData<T>(request: Promise<{ data: T[] }>): Promise<T[]> {
-  return request.then((page) => page.data);
-}
-
 export function registerWorkspaceDataProviders(
   ctx: Contributor,
   runtimeClient: () => FlameClient,

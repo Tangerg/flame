@@ -12,7 +12,6 @@ import (
 
 type annotationStore struct{ db *database }
 
-// An identical retry keeps the original timestamp, including after a lost commit acknowledgement.
 func (s *annotationStore) Append(ctx context.Context, e annotation.Entry) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		if err := e.Validate(); err != nil {
@@ -34,6 +33,7 @@ func (s *annotationStore) Append(ctx context.Context, e annotation.Entry) error 
 		return err
 	})
 }
+
 func (s *annotationStore) ListSession(ctx context.Context, sessionID identity.SessionID) ([]annotation.Entry, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]annotation.Entry, error) {
 		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT command_id,installation,release,contribution,contract,

@@ -8,9 +8,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-// interruptReview owns the terminal-side draft of a runtime interrupt
-// batch. Runtime interrupts remain immutable; only the answers and cursor
-// change until the user commits the complete batch once.
 type interruptReview struct {
 	items             []conversation.Interrupt
 	answers           []conversation.Answer

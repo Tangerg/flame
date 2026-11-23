@@ -6,7 +6,7 @@ export interface AgentRunStartOptions {
   reasoningEffort?: string;
 }
 
-export interface AgentRunOptionsProviderSpec {
+interface AgentRunOptionsProviderSpec {
   id: string;
   priority?: number;
   resolve: () => AgentRunStartOptions;

@@ -7,15 +7,12 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	flameruns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// sortRunsParentFirst gives persistence a creation-safe tree order while
-// preserving the archive's order among peers. Snapshot validation has already
-// proved that every parent exists and the graph is acyclic.
 func sortRunsParentFirst(runs []rundomain.Run) {
 	byID := make(map[identity.RunID]rundomain.Run, len(runs))
 	for _, run := range runs {
@@ -40,32 +37,20 @@ func sortRunsParentFirst(runs []rundomain.Run) {
 	})
 }
 
-// TerminalPlan is the complete durable projection for ending a parked Run tree
-// by cancellation or executor-state loss. Runs retains each exact waiting
-// aggregate and its replacement in canonical postorder so every descendant
-// terminalizes before its parent; the root is last. The Runs, interrupt Items,
-// root-owned Pending, executor checkpoint, admission, and optional Goal charge
-// all move in one transaction.
 type TerminalPlan struct {
-	runs  []rundomain.Replacement
-	items []transcript.Replacement
-	// Messages close model-context Tool calls that cannot receive their ordinary
-	// result because the parked tree is being abandoned. They are appended in
-	// the same transaction before the terminal Run watermark is committed.
+	runs             []rundomain.Replacement
+	items            []transcript.Replacement
 	messages         []chat.Message
-	checkpointRootID flameruns.MemberID
+	checkpointRootID runsapp.MemberID
 }
 
-// NewTerminalPlan owns the complete durable projection for a parked Run
-// termination. A Goal-owned root Run is applied to its Goal by the same
-// transaction, read from the root Run itself.
 func NewTerminalPlan(
 	runs []rundomain.Replacement,
 	items []transcript.Replacement,
 	messages []chat.Message,
 	checkpointRootID string,
 ) (TerminalPlan, error) {
-	checkpointRoot, err := flameruns.ParseMember(checkpointRootID)
+	checkpointRoot, err := runsapp.ParseMember(checkpointRootID)
 	if err != nil {
 		return TerminalPlan{}, fmt.Errorf("sessions: terminal plan checkpoint root: %w", err)
 	}
@@ -81,7 +66,6 @@ func NewTerminalPlan(
 	return terminal, nil
 }
 
-// RootRun returns the root terminal projection. A valid plan always has one.
 func (t TerminalPlan) RootRun() (rundomain.Run, bool) {
 	if len(t.runs) == 0 {
 		return rundomain.Run{}, false
@@ -90,21 +74,14 @@ func (t TerminalPlan) RootRun() (rundomain.Run, bool) {
 	return root, root.Lineage().IsRoot()
 }
 
-// Runs returns an isolated canonical postorder of exact Run replacements.
 func (t TerminalPlan) Runs() []rundomain.Replacement { return slices.Clone(t.runs) }
 
-// Items returns the isolated transcript settlements committed with the Runs.
 func (t TerminalPlan) Items() []transcript.Replacement { return slices.Clone(t.items) }
 
-// Messages returns isolated model-context closures committed with the Runs.
 func (t TerminalPlan) Messages() []chat.Message { return cloneSnapshotMessages(t.messages) }
 
-// CheckpointRootID returns the canonical executor checkpoint root consumed by the plan.
 func (t TerminalPlan) CheckpointRootID() string { return t.checkpointRootID.String() }
 
-// validate proves that the parked-tree terminal write-set is complete,
-// canonical, owner-bound, and carries exactly the Goal accounting fact implied
-// by its root terminal Run.
 func (t TerminalPlan) validate() error {
 	root, ok := t.RootRun()
 	if !ok {
@@ -134,8 +111,6 @@ func (t TerminalPlan) validate() error {
 	return nil
 }
 
-// validateRuns proves the plan ends one Run tree in canonical postorder, every
-// Run with the root's terminal outcome, and returns the Runs it owns.
 func (t TerminalPlan) validateRuns(root rundomain.Run) (map[identity.RunID]struct{}, error) {
 	rootOutcome, rootTerminal := root.Outcome()
 	members := make([]rundomain.TreeMember, 0, len(t.runs))

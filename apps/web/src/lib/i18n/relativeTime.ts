@@ -1,5 +1,5 @@
 import { activeLocale, localeToBcp47 } from "@/lib/i18n/index";
-export function bcp47(): string {
+function bcp47(): string {
   return localeToBcp47(activeLocale());
 }
 
@@ -38,7 +38,7 @@ function parse(input: string | number | Date | undefined | null): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-export type ClockPrecision = "minute" | "second";
+type ClockPrecision = "minute" | "second";
 
 export function formatClock(
   input: string | number | Date | undefined | null,

@@ -77,8 +77,6 @@ func (c *connector) submitReview(ctx context.Context, input contractwire.SubmitR
 	})
 }
 
-// submittedReviewState is the state GitHub reports for a review submitted
-// with event; a pending review is not submittable.
 func submittedReviewState(event contractwire.ReviewEvent) (string, bool) {
 	switch event {
 	case contractwire.Approve:

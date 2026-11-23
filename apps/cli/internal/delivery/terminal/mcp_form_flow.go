@@ -38,8 +38,8 @@ type mcpFormResult struct {
 
 type mcpFormSubmission struct {
 	label string
-	// The admitted snapshot outlives UI cleanup. Retrying it must never read the
-	// live draft or allocate another command identity.
+	// The admitted snapshot outlives UI cleanup; a retry must never read the live
+	// draft or allocate another command identity.
 	work func(context.Context) (mcpFormResult, error)
 }
 
@@ -55,7 +55,6 @@ type mcpFormFlow struct {
 	view         *kit.Form
 }
 
-// newMCPFormFlow takes ownership of the fresh Runtime result selected for editing.
 func newMCPFormFlow(mode mcpFormMode, server protocol.MCPServer) *mcpFormFlow {
 	return &mcpFormFlow{
 		mode: mode, server: server, draft: newMCPFormDraft(mode, server), step: mcpFormGeneral, state: mcpFormEditing,

@@ -6,22 +6,20 @@ import (
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	app "github.com/Tangerg/flame/plugins/memory/internal/application"
+	"github.com/Tangerg/flame/plugins/memory/internal/agentmemory"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
-	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	"github.com/Tangerg/flame/plugins/memory/internal/coordination"
 
 	framesqlite "github.com/Tangerg/frame/sqlite"
 )
 
-// Only publication is transactional here. Ledger facts survive failed model
-// work; human edits remain possible while an external model call is pending.
 type maintenancePublication struct {
-	app.CurationStore
+	coordination.CurationStore
 	db      framesqlite.Database
 	command *pluginstorage.PreparedCommand
 }
 
-func (s maintenancePublication) Reconcile(ctx context.Context, publication memory.Publication) (bool, error) {
+func (s maintenancePublication) Reconcile(ctx context.Context, publication agentmemory.Publication) (bool, error) {
 	var published bool
 	err := s.db.RunInTx(ctx, func(ctx context.Context) error {
 		var err error

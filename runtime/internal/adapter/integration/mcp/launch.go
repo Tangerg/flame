@@ -14,10 +14,6 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-// launchPermit transfers a fresh configuration and its execution resource exactly
-// once. SourceConfig snapshots carry neither this claim nor relocated paths.
-// A rejected attempt retires its claim; a successful dial transfers it into
-// the existing session ownership ledger until process teardown completes.
 type launchPermit struct{ claim *launchClaim }
 
 type launchClaim struct {

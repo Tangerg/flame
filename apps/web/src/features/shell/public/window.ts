@@ -1,6 +1,6 @@
 import { service } from "dougong";
 
-export interface WindowService {
+interface WindowService {
   setTitle(text: string): void;
   setBadge(n?: number): void;
   setWorking(on: boolean): void;

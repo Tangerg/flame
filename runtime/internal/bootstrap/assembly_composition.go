@@ -9,7 +9,6 @@ import (
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
@@ -24,8 +23,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
 
-// policyComposition contains the application policies that share the same
-// process-local invalidation vocabulary. It owns no background task or closer.
 type policyComposition struct {
 	framework     frameworkComposition
 	packages      *pluginpackage.Releases
@@ -86,8 +83,6 @@ func buildPolicyComposition(ctx context.Context, cfg assemblyConfig, lifetime *r
 	}, nil
 }
 
-// workspaceComposition is the complete authored-workspace capability. All
-// members share one resolved scope and one authored-resource observer.
 type workspaceComposition struct {
 	scope            *workspace.Scope
 	authoredWatch    *workspace.AuthoredWatch
@@ -135,15 +130,11 @@ func buildWorkspaceComposition(
 	}, nil
 }
 
-// workspaceIsolation is either a sandbox Isolator or NoIsolation; both the
-// Session and Run use cases take whichever the configuration chose.
 type workspaceIsolation interface {
 	Workspace(ctx context.Context, sessionID identity.SessionID, projectRoot string) (string, error)
 	Discard(sessionID identity.SessionID) error
 }
 
-// executionComposition owns the model/tool execution graph. Every acquired
-// closer is transferred to runtimeLifetime before an error can escape.
 type executionComposition struct {
 	hooks             *apphooks.Catalog
 	conversation      conversationEnvironment
@@ -156,9 +147,6 @@ type executionComposition struct {
 	toolRegistry      toolset.DiagnosticRegistry
 }
 
-// buildWorkspaceIsolation acquires isolated working copies before the shell set
-// that can run in them, so the Instance's reverse teardown stops every detached
-// shell before it destroys the directories those processes use.
 func buildWorkspaceIsolation(cfg assemblyConfig, lifetime *runtimeLifetime) (workspaceIsolation, error) {
 	if cfg.sandboxDir == "" {
 		return workspaceadapter.NoIsolation{}, nil
@@ -182,19 +170,7 @@ func buildExecutionComposition(
 	policy policyComposition,
 	workspaceServices workspaceComposition,
 ) (executionComposition, error) {
-	conversationStore, err := persistence.NewConversationStore(cfg.stores.ChatHistory)
-	if err != nil {
-		return executionComposition{}, err
-	}
-	compactions, err := persistence.NewConversationCompactions(
-		conversationStore,
-		cfg.stores.Runs,
-		persistence.Transactor(cfg.stores.Transactor),
-	)
-	if err != nil {
-		return executionComposition{}, err
-	}
-	conversation, err := buildConversationEnvironment(conversationStore, compactions)
+	conversation, err := buildConversationEnvironment(cfg.stores.Conversations, cfg.stores.ConversationCompactions())
 	if err != nil {
 		return executionComposition{}, err
 	}
@@ -250,7 +226,10 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: build transient Session state: %w", err)
 	}
-	toolInterpreter := toolset.NewInterpreter(toolRuntime.plans)
+	toolInterpreter, err := toolset.NewInterpreter(toolRuntime.plans)
+	if err != nil {
+		return executionComposition{}, err
+	}
 	toolAuthorizer, err := executionadapter.NewToolAuthorizer(policy.approvals, toolInterpreter)
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: Tool authorizer: %w", err)

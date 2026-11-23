@@ -13,10 +13,6 @@ import (
 	"time"
 )
 
-// TestStopReachesWhatTheChildSpawned is the guarantee the negative pid exists
-// for. The shell exits immediately; the process it left behind is what a plain
-// Process.Kill would strand, and it is the shape every consumer here has —
-// an MCP server behind a package runner, a hook behind a shell.
 func TestStopReachesWhatTheChildSpawned(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "grandchild.pid")
 	command := exec.Command("/bin/sh", "-c",

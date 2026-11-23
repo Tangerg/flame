@@ -58,11 +58,8 @@ func readBoundedFile(root *os.Root, path string) ([]byte, bool, error) {
 	return content, true, nil
 }
 
-// writeFile creates path (which must not exist) and writes+fsyncs content. It
-// backs both proposal staging and the usage sidecar, so its messages name the
-// operation neutrally; callers add the proposal/usage context.
 func writeFile(root *os.Root, path string, content []byte) (err error) {
-	file, err := root.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	file, err := root.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, filesystem.SharedFileMode)
 	if err != nil {
 		return fmt.Errorf("skillauthoring: create %q: %w", path, err)
 	}
@@ -78,7 +75,7 @@ func writeFile(root *os.Root, path string, content []byte) (err error) {
 
 func stageSkill(ctx context.Context, root *os.Root, destination string, content []byte) (err error) {
 	temporary := ".skill-stage-" + rand.Text()
-	if mkdirErr := root.Mkdir(temporary, 0o755); mkdirErr != nil {
+	if mkdirErr := root.Mkdir(temporary, filesystem.SharedDirectoryMode); mkdirErr != nil {
 		return fmt.Errorf("skillauthoring: create skill staging directory: %w", mkdirErr)
 	}
 	defer func() {

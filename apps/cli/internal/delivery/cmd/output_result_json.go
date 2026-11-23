@@ -11,8 +11,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// resultPhase orders the one result object: it has nothing to emit until a
-// run starts, and nothing more to fold once closed.
 type resultPhase uint8
 
 const (
@@ -21,8 +19,6 @@ const (
 	resultClosed
 )
 
-// The final object retains assistant output and terminal metadata rather than
-// the full event stream exposed by [ndjsonRenderer].
 type resultJSONRenderer struct {
 	out   io.Writer
 	err   error
@@ -62,7 +58,12 @@ func (a *assistantProse) delta(delta conversation.BlockDelta) error {
 	if !exists {
 		return nil
 	}
-	return a.blocks[at].text.Apply(delta)
+	text, err := a.blocks[at].text.Append(delta)
+	if err != nil {
+		return err
+	}
+	a.blocks[at].text = text
+	return nil
 }
 
 func (a *assistantProse) complete(block conversation.Block) {
@@ -109,8 +110,6 @@ func newResultJSONRenderer(w io.Writer) *resultJSONRenderer {
 	return &resultJSONRenderer{out: w}
 }
 
-// Begin records the accepted run before its first subscription opens, so a
-// transport failure can still produce a useful incomplete result.
 func (r *resultJSONRenderer) Begin(run conversation.Run, options authoring.RunOptions) error {
 	if r.err != nil {
 		return r.err
@@ -135,7 +134,6 @@ func (r *resultJSONRenderer) Begin(run conversation.Run, options authoring.RunOp
 	return nil
 }
 
-// Render folds one validated event into the final result.
 func (r *resultJSONRenderer) Render(envelope conversation.RunEvent) error {
 	if r.err != nil {
 		return r.err
@@ -159,8 +157,6 @@ func (r *resultJSONRenderer) Render(envelope conversation.RunEvent) error {
 	return r.err
 }
 
-// Reconcile replaces the folded result with durable cold-read values after the
-// runtime reports that the live segment can no longer be replayed.
 func (r *resultJSONRenderer) Reconcile(snapshot conversation.SessionSnapshot) error {
 	if r.err != nil {
 		return r.err
@@ -238,7 +234,6 @@ func (r *resultJSONRenderer) fold(envelope conversation.RunEvent) {
 	case conversation.SegmentFinished:
 		r.finishSegment(envelope.RunID, event)
 	case conversation.PlanChanged, conversation.ToolArgumentsDelta:
-		// A final result intentionally omits incremental plan state.
 	}
 }
 
@@ -252,8 +247,6 @@ func (r *resultJSONRenderer) startSegment(run conversation.Run) {
 	r.frame.Interrupts = nil
 }
 
-// finishSegment collects interrupts from the whole tree, but only the root's
-// segment settles the result's status, usage and outcome.
 func (r *resultJSONRenderer) finishSegment(runID string, event conversation.SegmentFinished) {
 	r.frame.Interrupts = append(r.frame.Interrupts, encodeInterrupts(event.Interrupts)...)
 	if !r.scope.isRoot(runID) {
@@ -291,8 +284,6 @@ func (r *resultJSONRenderer) appendImages(images []conversation.InlineImage) {
 	}
 }
 
-// Close emits one object after at least a run.started event. It is idempotent;
-// failures before a run starts leave stdout empty.
 func (r *resultJSONRenderer) Close() error {
 	if r.phase == resultClosed {
 		return r.err

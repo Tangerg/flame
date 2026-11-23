@@ -10,7 +10,7 @@ import (
 
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -18,8 +18,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// wireSessionErr maps the session domain's not-found sentinel onto the wire
-// sentinel, passing every other error through unchanged.
 func wireSessionErr(err error) error {
 	if errors.Is(err, session.ErrNotFound) {
 		return protocol.ErrSessionNotFound
@@ -27,27 +25,21 @@ func wireSessionErr(err error) error {
 	if errors.Is(err, session.ErrTitleRequired) {
 		return protocol.NewFailure(protocol.ErrInvalidParams, "title must not be empty", err)
 	}
-	// A Session carries a workspace, so any workspace failure can surface here.
-	// wireWorkspaceError owns that whole vocabulary and returns anything outside
-	// it unchanged, which leaves the Session cases below intact.
-	if wired := wireWorkspaceError(err); wired != err {
+	if wired, ok := workspaceFailure(err); ok {
 		return wired
 	}
 	if errors.Is(err, session.ErrRevisionConflict) {
 		return protocol.NewFailure(protocol.ErrRevisionConflict, "the session changed after it was read", err)
 	}
-	if modelchoice.IsInvalid(err) {
+	if flamemodel.IsInvalid(err) {
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	}
-	if errors.Is(err, modelchoice.ErrUnsupported) {
+	if errors.Is(err, flamemodel.ErrUnsupported) {
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	}
 	return wirePluginError(err)
 }
 
-// ListSessions returns one page of the session list (sessions.list). A non-empty
-// NextCursor is the "has more" signal — never a silent truncation. The page is
-// cut by the read, so only the sessions on it are resolved.
 func (s *Handler) ListSessions(ctx context.Context, q protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
 	limit, err := pagination.ParseLimit(q.Limit)
 	if err != nil {
@@ -80,7 +72,7 @@ func (s *Handler) ListSessions(ctx context.Context, q protocol.ListSessionsReque
 }
 
 func (s *Handler) GetSession(ctx context.Context, id string) (*protocol.Session, error) {
-	sessionID, err := wireIdentity("sessionId", id, identity.ParseSession)
+	sessionID, err := sessionParameter(id)
 	if err != nil {
 		return nil, err
 	}
@@ -92,12 +84,6 @@ func (s *Handler) GetSession(ctx context.Context, id string) (*protocol.Session,
 	return &out, nil
 }
 
-// GetSessionSnapshot projects one Application-owned storage snapshot into the
-// complete material read used by mounted clients. Capability checks apply to
-// the snapshot as a whole, so no response can silently trim a waiting set or a
-// child Run that the caller could not fold.
-// requireAnswerableInterrupts refuses a snapshot whose open interrupts demand
-// capabilities this caller did not negotiate.
 func requireAnswerableInterrupts(snapshot sessions.MaterialSnapshot, caller rundomain.Capabilities) error {
 	for _, pending := range snapshot.Interrupts {
 		root, found := snapshot.Run(pending.RootRunID)
@@ -120,7 +106,7 @@ func presentSteerInput(accepted runs.CommandAcceptance) protocol.SteerInput {
 }
 
 func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSessionSnapshotRequest) (*protocol.SessionSnapshot, error) {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return nil, parseErr
 	}
@@ -192,7 +178,7 @@ func (s *Handler) DeleteSession(ctx context.Context, id string) error {
 }
 
 func (s *Handler) deleteSession(ctx context.Context, id string, complete operation.Reply[struct{}]) error {
-	sessionID, err := wireIdentity("sessionId", id, identity.ParseSession)
+	sessionID, err := sessionParameter(id)
 	if err != nil {
 		return err
 	}
@@ -215,7 +201,7 @@ func (s *Handler) commitUpdateSession(ctx context.Context, in protocol.UpdateSes
 }
 
 func (s *Handler) updateSession(ctx context.Context, in protocol.UpdateSessionRequest, complete operation.Reply[sessions.View]) error {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return parseErr
 	}
@@ -226,7 +212,7 @@ func (s *Handler) updateSession(ctx context.Context, in protocol.UpdateSessionRe
 	}
 	err := s.sessions.Update(ctx, sessionID, sessions.Patch{
 		Title: in.Title,
-		ModelSelection: modelchoice.Patch{
+		ModelSelection: flamemodel.Patch{
 			Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort,
 		},
 		WorkspacePath:    cwd,
@@ -256,16 +242,6 @@ func wireSessionMutationErr(err error, sessionID identity.SessionID) error {
 	return wireSessionErr(err)
 }
 
-// ForkSession branches a session into a fresh child that continues from the
-// parent's conversation: the child inherits the
-// parent's cwd and a copy of its chat history, then diverges. An optional title
-// overrides the parent's title, which the child otherwise keeps.
-//
-// FromRunID (run-boundary fork — "branch from this run", B4) truncate-copies
-// history up to and including that Run; omit it for a whole-conversation
-// fork. Snapshot semantics: only terminal runs are copied; an in-flight run and
-// all of its mutable history tail are excluded. Forking deletes nothing, so
-// unlike rollback it needs no session_busy guard.
 func (s *Handler) ForkSession(ctx context.Context, in protocol.ForkSessionRequest) (*protocol.Session, error) {
 	plan, err := s.prepareFork(ctx, in)
 	return applySessionCreation(ctx, plan, err)
@@ -281,7 +257,7 @@ func (s *Handler) prepareCreate(ctx context.Context, in protocol.CreateSessionRe
 }
 
 func (s *Handler) prepareFork(ctx context.Context, in protocol.ForkSessionRequest) (sessions.Creation, error) {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return sessions.Creation{}, parseErr
 	}
@@ -311,9 +287,6 @@ func applySessionCreation(ctx context.Context, creation sessions.Creation, err e
 	return &view, nil
 }
 
-// presentSession projects the complete Application read model into the
-// selected protocol shape. It intentionally performs no filesystem, live-run,
-// or model-default lookup.
 func presentSession(view sessions.View) protocol.Session {
 	return protocol.Session{
 		ID:              view.ID.String(),
@@ -331,8 +304,6 @@ func presentSession(view sessions.View) protocol.Session {
 	}
 }
 
-// presentSessionStatus projects the application-resolved activity without
-// reproducing its running/waiting precedence in Delivery.
 func presentSessionStatus(activity sessions.Activity) protocol.SessionStatus {
 	switch activity {
 	case sessions.ActivityRunning:

@@ -103,6 +103,7 @@ func AdmitPoint(descriptor PointDescriptor) (*Point, error) {
 
 func (c *Point) Definition() PointDescriptor { return c.descriptor.clone() }
 func (c *Point) Identity() framevalue.JSON   { return c.identity }
+
 func (c *Point) ValidateValue(value framevalue.JSON) error {
 	if err := value.Validate(); err != nil {
 		return err
@@ -110,8 +111,6 @@ func (c *Point) ValidateValue(value framevalue.JSON) error {
 	return c.value.Validate(value.Bytes())
 }
 
-// Applicability uses a frozen caller projection so it cannot discover or mutate
-// a screen, workspace or business owner while resolving contributions.
 type PointContext struct {
 	Target     framecall.Target `json:"target"`
 	Attributes jsontext.Value   `json:"attributes"`
@@ -149,8 +148,6 @@ type PointValue struct {
 	Data framevalue.JSON
 }
 
-// Compose returns a detached, frozen value projection. Explicit decoration
-// order is outermost first; it never implies that wrappers have executed.
 func (c *Point) Compose(values []PointValue, order []string) ([]PointValue, error) {
 	byKey, err := c.indexValues(values)
 	if err != nil {

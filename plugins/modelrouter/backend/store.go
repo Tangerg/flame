@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
+	"github.com/Tangerg/flame/plugins/modelrouter/internal/routing"
 
 	"github.com/Tangerg/frame/sqlite"
 )

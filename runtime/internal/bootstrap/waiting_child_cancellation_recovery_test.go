@@ -35,10 +35,10 @@ const (
 )
 
 type waitingChildCancellationMarker struct {
-	RootID      string
-	ChildID     string
-	SegmentID   string
-	ChildMember string
+	RootID      string `json:"rootId"`
+	ChildID     string `json:"childId"`
+	SegmentID   string `json:"segmentId"`
+	ChildMember string `json:"childMember"`
 }
 
 func waitingChildCancellationMeta() protocol.RequestMeta {

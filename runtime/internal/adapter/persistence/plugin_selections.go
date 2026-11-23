@@ -14,6 +14,7 @@ type providerSelectionStore struct{ db *database }
 func newProviderSelectionStore(db *database) *providerSelectionStore {
 	return &providerSelectionStore{db: db}
 }
+
 func (s *providerSelectionStore) Get(ctx context.Context, role string) (plugin.ProviderSelection, bool, error) {
 	return scopedPair(ctx, s.db.read, func(ctx context.Context) (plugin.ProviderSelection, bool, error) {
 		var installation, contribution string
@@ -28,6 +29,7 @@ func (s *providerSelectionStore) Get(ctx context.Context, role string) (plugin.P
 		return value, err == nil, err
 	})
 }
+
 func (s *providerSelectionStore) List(ctx context.Context) ([]plugin.ProviderSelection, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]plugin.ProviderSelection, error) {
 		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT role,installation_id,contribution_id FROM plugin_provider_selections ORDER BY role`)
@@ -50,6 +52,7 @@ func (s *providerSelectionStore) List(ctx context.Context) ([]plugin.ProviderSel
 		return result, rows.Err()
 	})
 }
+
 func restoreProviderSelection(role string, installation string, contribution string) (plugin.ProviderSelection, error) {
 	id, err := identity.ParseInstallation(installation)
 	if err != nil {
@@ -61,6 +64,7 @@ func restoreProviderSelection(role string, installation string, contribution str
 	}
 	return plugin.NewProviderSelection(plugin.SelectionRecord{Role: role, Installation: id, Contribution: name})
 }
+
 func (s *providerSelectionStore) Save(ctx context.Context, selection plugin.ProviderSelection) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		if err := selection.Validate(); err != nil {

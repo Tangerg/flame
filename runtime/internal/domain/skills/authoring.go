@@ -1,7 +1,3 @@
-// Package skills owns the managed Skill library vocabulary: proposal identity,
-// review provenance, lifecycle state, and content safety classification. Skill
-// discovery, filesystem layout, rendering, and publication remain outside this
-// package.
 package skills
 
 import (
@@ -37,34 +33,19 @@ func ValidateName(name string) error {
 }
 
 const (
-	// MaxAuthoredSkillDocumentBytes bounds the complete rendered SKILL.md
-	// accepted by the governed authoring lifecycle. Bundled resources remain
-	// separate and are disclosed on demand.
 	MaxAuthoredSkillDocumentBytes = 1 << 20
 
-	// MaxSkillsPerSource bounds one complete, non-paginated Skill source. It is
-	// shared by project/user discovery and the active+archived managed library,
-	// so model, UI, and curator consumers cannot disagree about admissible size.
 	MaxSkillsPerSource = 256
 
-	// MaxSkillDirectoryEntries bounds the raw top-level directory snapshot used
-	// to discover MaxSkillsPerSource valid Skills. The small allowance covers
-	// reserved lifecycle metadata while preventing junk entries from turning a
-	// complete list into an unbounded scan.
 	MaxSkillDirectoryEntries = MaxSkillsPerSource + 16
 
-	// MaxSkillResourceBytes bounds one model-facing bundled resource read. A
-	// resource is progressive-disclosure context, not an arbitrary binary
-	// transport; larger assets must be consumed by a purpose-built tool.
 	MaxSkillResourceBytes = 1 << 20
 
-	// Review commands use the delivery owner’s opaque, canonical operation identity.
 	ProposalRevisionPattern = `^[0-9a-f]{64}$`
 )
 
 var proposalRevisionPattern = regexp.MustCompile(ProposalRevisionPattern)
 
-// Scope identifies the Skill library that owns a proposal or active Skill.
 type Scope string
 
 const (
@@ -81,7 +62,6 @@ func (s Scope) Validate() error {
 	}
 }
 
-// ProposalOrigin identifies why the runtime created a proposal.
 type ProposalOrigin string
 
 const (
@@ -98,7 +78,6 @@ func (p ProposalOrigin) Validate() error {
 	}
 }
 
-// Lifecycle is the managed user library state of an approved Skill.
 type Lifecycle string
 
 const (
@@ -106,8 +85,6 @@ const (
 	Archived Lifecycle = "archived"
 )
 
-// Validate rejects lifecycle values that cannot be represented by the managed
-// library or protocol projections.
 func (l Lifecycle) Validate() error {
 	if l != Active && l != Archived {
 		return fmt.Errorf("skills: invalid lifecycle %q", l)
@@ -115,14 +92,12 @@ func (l Lifecycle) Validate() error {
 	return nil
 }
 
-// Entry describes one approved Skill in the managed user library.
 type Entry struct {
 	Name        string
 	Description string
 	Lifecycle   Lifecycle
 }
 
-// Validate checks one complete managed-library entry.
 func (e Entry) Validate() error {
 	if err := (skillspec.Frontmatter{Name: e.Name, Description: e.Description}).Validate(); err != nil {
 		return err
@@ -130,9 +105,8 @@ func (e Entry) Validate() error {
 	return e.Lifecycle.Validate()
 }
 
-// Proposal is immutable Skill content awaiting an explicit review decision.
-// Scope identifies the target library; Origin and SourceSession are runtime
-// provenance and must never be accepted from model-authored tool arguments.
+// Origin and SourceSession are runtime provenance and must never be accepted from
+// model-authored tool arguments.
 type Proposal struct {
 	Scope         Scope
 	Name          string
@@ -143,8 +117,6 @@ type Proposal struct {
 	Revises       bool
 }
 
-// A review names the original proposal command. Only its captured release can
-// authorize the immutable input already associated with that identity.
 type ProposalRef struct {
 	Scope    Scope
 	Name     string
@@ -155,7 +127,6 @@ func CommandRef(scope Scope, name, command string) ProposalRef {
 	return ProposalRef{Scope: scope, Name: name, Revision: command}
 }
 
-// Validate checks whether the reference can identify a stored proposal.
 func (p ProposalRef) Validate() error {
 	if err := p.Scope.Validate(); err != nil {
 		return err
@@ -169,8 +140,6 @@ func (p ProposalRef) Validate() error {
 	return nil
 }
 
-// ProposalReview contains the complete immutable content and provenance a human
-// needs to review before approving or rejecting a proposal.
 type ProposalReview struct {
 	Ref           ProposalRef
 	Description   string
@@ -180,8 +149,6 @@ type ProposalReview struct {
 	Revises       bool
 }
 
-// Validate checks the identity and complete reviewable content returned by a
-// provider. Revision identifies the retained originating command.
 func (p ProposalReview) Validate() error {
 	if err := p.Ref.Validate(); err != nil {
 		return err
@@ -193,7 +160,6 @@ func (p ProposalReview) Validate() error {
 	}).Validate()
 }
 
-// Validate checks proposal scope, provenance, frontmatter, and instructions.
 func (p Proposal) Validate() error {
 	if err := p.Scope.Validate(); err != nil {
 		return err
@@ -218,16 +184,10 @@ func (p Proposal) Validate() error {
 	return p.CheckSafety()
 }
 
-// dangerousSkillPattern carries only what a published Skill must not teach but
-// a single command may still legitimately be. Piping a download into a shell is
-// the standing example: it is how much of the world installs software, so it is
-// not a catastrophe to confirm before, and it is not something to publish as an
-// instruction. Everything irreversible is [destructive.Command]'s to know.
 var dangerousSkillPattern = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)\b(curl|wget)\b[^\n|]*\|\s*(sudo\s+)?(sh|bash|zsh)\b`),
 }
 
-// ProposalSafetyIssue classifies built-in proposal safety checks.
 type ProposalSafetyIssue string
 
 const (
@@ -235,7 +195,6 @@ const (
 	ProposalDangerousInstruction ProposalSafetyIssue = "dangerousInstruction"
 )
 
-// SafetyIssue reports whether proposal content contains a known destructive instruction.
 func (p Proposal) SafetyIssue() ProposalSafetyIssue {
 	content := p.Name + "\n" + p.Description + "\n" + p.Instructions
 	if destructive.Command(content) {

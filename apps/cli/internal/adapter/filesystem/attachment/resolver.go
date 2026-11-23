@@ -1,7 +1,3 @@
-// Package attachment turns local files into the runtime-neutral attachment
-// values accepted by the agent domain. It is a filesystem adapter: callers
-// depend on its small Resolver surface, while runtime implementations receive
-// only prompt.Attachment values and never learn how the CLI found them.
 package attachment
 
 import (
@@ -38,15 +34,11 @@ var (
 	ErrUnsupportedType = errors.New("attachment must be text or an image")
 )
 
-// Resolver resolves explicit paths and searches the workspace for completion.
-// Root is absolute but need not exist until a filesystem operation is requested,
-// which keeps session construction side-effect free and easy to test.
 type Resolver struct {
 	root     string
 	maxBytes int64
 }
 
-// PathMatch is one workspace-relative file completion.
 type PathMatch struct {
 	Path    string
 	Detail  string
@@ -62,8 +54,6 @@ func New(root string) (*Resolver, error) {
 	return &Resolver{root: abs, maxBytes: authoring.MaxAttachmentBytes}, nil
 }
 
-// Resolve validates and classifies one explicit path. Symlinks are resolved so
-// identity and duplicate detection refer to the same underlying file.
 func (r *Resolver) Resolve(ctx context.Context, input string) (authoring.Attachment, error) {
 	if err := context.Cause(ctx); err != nil {
 		return authoring.Attachment{}, err
@@ -118,8 +108,11 @@ func attachmentOpenError(input string, maximumBytes int64, err error) error {
 	}
 }
 
+// http.DetectContentType considers at most this many leading bytes.
+const contentSniffBytes = 512
+
 func readAttachmentHeader(file io.Reader, input string) ([]byte, error) {
-	header := make([]byte, 512)
+	header := make([]byte, contentSniffBytes)
 	n, err := io.ReadFull(file, header)
 	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 		return nil, fmt.Errorf("attachment: inspect content of %q: %w", input, err)
@@ -180,9 +173,6 @@ func attachmentKind(mimeType string) (protocol.ContentBlockType, bool) {
 	}
 }
 
-// Complete searches regular files below Root and returns fuzzy-ranked relative
-// paths. It does not follow directory symlinks, skips dependency/VCS internals,
-// and obeys cancellation during the walk.
 func (r *Resolver) Complete(ctx context.Context, query string) ([]PathMatch, error) {
 	search := completionSearch{
 		ctx: ctx, root: r.root, maxBytes: r.maxBytes,
@@ -224,7 +214,7 @@ func (c *completionSearch) walk() (err error) {
 	if c.maxVisited <= 0 {
 		return nil
 	}
-	c.visited = 1 // The workspace root is itself one visited entry.
+	c.visited = 1
 	pendingDirectories := []string{"."}
 	for len(pendingDirectories) > 0 && c.visited < c.maxVisited {
 		if cause := context.Cause(c.ctx); cause != nil {
@@ -304,9 +294,6 @@ func (c *completionSearch) visitFile(relative string, entry os.DirEntry) {
 	}
 }
 
-// completionFileInfo makes completion's best-effort policy explicit: a file
-// that vanishes, becomes unreadable, is not regular, or exceeds the resolver's
-// limit is simply not a candidate.
 func completionFileInfo(entry fs.DirEntry, maxBytes int64) (fs.FileInfo, bool) {
 	info, err := entry.Info()
 	if err != nil || !info.Mode().IsRegular() || info.Size() > maxBytes {

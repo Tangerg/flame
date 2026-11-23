@@ -24,7 +24,6 @@ type inputTokenCounter interface {
 	CountInputTokens(context.Context, *chat.Request) (int64, error)
 }
 
-// clientKind is the operation family a captured handle serves.
 type clientKind string
 
 const (
@@ -97,11 +96,8 @@ func constructClient(ctx context.Context, kind clientKind, input modelprovider.O
 	return result, nil
 }
 
-// The receipt and immutable connection snapshot commit together. A restart can
-// reconstruct this handle without consulting current credentials or defaults.
-// The durable snapshot alone decides whether a handle is usable: commands never
-// publish into the in-memory cache, so a close cannot be overtaken by a late
-// publication of the client it retired.
+// Commands never publish into the in-memory cache, so a close cannot be overtaken
+// by a late publication of the client it retired.
 func openClient[R any](ctx context.Context, s *store, method string, kind clientKind, command pluginmcp.Command[modelprovider.Open], project func(modelprovider.Handle, *client, modelprovider.Open) R) (R, error) {
 	var zero R
 	input, err := command.RequestInput()
@@ -167,8 +163,6 @@ func (s *store) reopenChat(ctx context.Context, method, originalMethod string, c
 	})
 }
 
-// originalChat reads the confirmed construction a reopen continues, with the
-// specification it was built from.
 func (s *store) originalChat(ctx context.Context, originalMethod string, originalID pluginmcp.CommandID) (modelprovider.Chat, modelprovider.Open, error) {
 	var storedMethod, snapshot string
 	var reply []byte
@@ -192,8 +186,6 @@ func (s *store) originalChat(ctx context.Context, originalMethod string, origina
 	return original, specification, nil
 }
 
-// sameConstruction proves the rebuilt client publishes the original facts,
-// differing only by its new handle.
 func sameConstruction(original modelprovider.Chat, handle modelprovider.Handle, restored modelprovider.Chat) error {
 	expected := original
 	expected.Handle = handle
@@ -211,9 +203,6 @@ func sameConstruction(original modelprovider.Chat, handle modelprovider.Handle, 
 	return nil
 }
 
-// acquire is the only path into the cache. It reads the durable snapshot under
-// the same lock closeClient takes to write the tombstone, so a cache entry can
-// only exist for a handle that was open when it was read.
 func (s *store) acquire(ctx context.Context, handle modelprovider.Handle, kind clientKind) (*client, func(), error) {
 	if err := handle.Validate(); err != nil {
 		return nil, nil, err
@@ -259,8 +248,6 @@ func (s *store) closeClient(ctx context.Context, handle modelprovider.Handle) er
 	}
 	s.mu.Lock()
 	entry := s.clients[handle.ID]
-	// The durable tombstone fences lazy reconstruction before accepted calls
-	// join. Existing users hold the concrete client, rather than re-reading it.
 	err := s.db.RunInTx(ctx, func(ctx context.Context) error {
 		_, err := s.db.Executor(ctx).ExecContext(ctx, `UPDATE clients SET snapshot=NULL WHERE id=?`, handle.ID)
 		return err
@@ -295,8 +282,8 @@ func (s *store) Close() error {
 func chatProjection(handle modelprovider.Handle, client *client, input modelprovider.Open, original pluginmcp.CommandID) modelprovider.Chat {
 	result := modelprovider.Chat{Handle: handle, Original: original, Provider: input.Connection.Provider, Model: input.Model, Streaming: client.stream != nil, TokenCounting: client.count != nil}
 	if metadata, ok := catalog.LookupModel(input.Connection.Provider, input.Model); ok {
-		copy := metadata.Clone()
-		result.Metadata = &copy
+		cloned := metadata.Clone()
+		result.Metadata = &cloned
 	}
 	return result
 }

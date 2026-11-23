@@ -10,12 +10,10 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/skilllearning"
-	app "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-// A captured command pins the provider's choices across Interaction recovery.
-// The host retains actual readers and verifies every returned name and source.
 type SkillCapture struct {
 	Command    string
 	Activation plugin.Activation
@@ -25,12 +23,9 @@ type DiscoverSkills func(context.Context, skilllearning.Candidates, *SkillCaptur
 type SkillSources struct {
 	Packages PackageSkills
 	Discover DiscoverSkills
-	// Capture is one execution's frozen discovery choice; nil reads the
-	// current catalog.
-	Capture *SkillCapture
+	Capture  *SkillCapture
 }
 
-// Validate reports whether both catalog owners are present.
 func (s SkillSources) Validate() error {
 	if lo.IsNil(s.Packages) || s.Discover == nil {
 		return errors.New("skill sources: package skills and discovery are required")
@@ -56,13 +51,14 @@ func (c *candidates) add(name, source string, scope skill.Scope, reader selected
 	}
 	return nil
 }
+
 func (c *candidates) directories(ctx context.Context, user, project *SkillSource) error {
 	for _, layer := range []struct {
 		source *SkillSource
-		origin app.SkillSource
+		origin workspaceapp.SkillSource
 		scope  skill.Scope
 	}{
-		{user, app.UserSkillSource(), skill.User}, {project, app.ProjectSkillSource(), skill.Project},
+		{user, workspaceapp.UserSkillSource(), skill.User}, {project, workspaceapp.ProjectSkillSource(), skill.Project},
 	} {
 		if layer.source == nil {
 			continue
@@ -79,9 +75,10 @@ func (c *candidates) directories(ctx context.Context, user, project *SkillSource
 	}
 	return nil
 }
+
 func (c *candidates) bundles(bundles []PackageSkillBundle, packages PackageSkills) error {
 	for _, bundle := range bundles {
-		origin, err := app.InstallationSkillSource(bundle.Dependency)
+		origin, err := workspaceapp.InstallationSkillSource(bundle.Dependency)
 		if err != nil {
 			return err
 		}
@@ -95,6 +92,7 @@ func (c *candidates) bundles(bundles []PackageSkillBundle, packages PackageSkill
 	}
 	return nil
 }
+
 func (c *candidates) selectReaders(ctx context.Context, sources SkillSources) (*resolvedSkills, error) {
 	slices.SortFunc(c.input.Items, func(a, b skilllearning.Candidate) int {
 		return cmp.Or(cmp.Compare(a.Name, b.Name), cmp.Compare(a.Source, b.Source))
@@ -106,12 +104,12 @@ func (c *candidates) selectReaders(ctx context.Context, sources SkillSources) (*
 	selected := &resolvedSkills{byName: make(map[string]selectedSkill)}
 	for _, choice := range result.Entries {
 		if _, duplicate := selected.byName[choice.Name]; duplicate {
-			return nil, app.ErrSkillUnavailable
+			return nil, workspaceapp.ErrSkillUnavailable
 		}
 		reader, found := c.readers[choice]
 		restored := sources.Capture != nil && sources.Capture.Restore
 		if !found && (choice.Source != "" || (!c.installed[choice.Name] && !restored)) {
-			return nil, app.ErrSkillUnavailable
+			return nil, workspaceapp.ErrSkillUnavailable
 		}
 		reader.packageCopy = c.installed[choice.Name]
 		selected.byName[choice.Name] = reader

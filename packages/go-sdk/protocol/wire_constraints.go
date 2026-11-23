@@ -16,21 +16,12 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// Generated node checks share the registry's rules. Only complete JSON-tree
-// validation is public so a caller cannot accidentally skip a nested constraint.
 type wireValidator interface {
 	validateWire() error
 }
 
-// ValidateWireTree validates every constrained DTO reachable through the JSON
-// representation of value. It is the delivery-boundary operation: requests,
-// responses, errors and events call it once at their root, and it composes the
-// generated node-local [wireValidator] implementations with precise JSON paths.
-//
-// Interface-valued payloads are intentionally opaque. They carry extension or
-// provider data whose schema is owned outside the first-party wire contract, so
-// recursively interpreting a concrete value hidden behind `any` would turn an
-// implementation detail into protocol.
+// Interface-valued payloads are intentionally opaque: their schema is owned
+// outside the first-party contract.
 func ValidateWireTree(value any) error {
 	root := reflect.ValueOf(value)
 	if !root.IsValid() {
@@ -76,8 +67,6 @@ func validateWireValue(value reflect.Value, path string, visiting map[wirePointe
 		defer delete(visiting, pointer)
 		value = value.Elem()
 	}
-	// An interface marks an intentionally opaque wire boundary. Do not unwrap it:
-	// Result, payload and Arguments may contain arbitrary third-party JSON.
 	if value.Kind() == reflect.Interface {
 		return nil
 	}
@@ -157,14 +146,6 @@ func uniqueFieldErrors(fields []FieldError) []FieldError {
 	return out
 }
 
-// ConstraintError reports which fields of a wire shape violated their contract.
-// Shape qualifies diagnostics without polluting [FieldError.Field]: request errors
-// still carry client-addressable paths such as "scope.type", while logs say
-// "ListItemsRequest.scope.type".
-//
-// Detail strings are programmer diagnostics, not UI copy — a client renders its
-// own localized message keyed by field + type, exactly as it
-// does for a ProblemData.type.
 type ConstraintError struct {
 	Shape  string
 	Fields []FieldError
@@ -182,15 +163,10 @@ func (c *ConstraintError) Error() string {
 	return strings.Join(parts, "; ")
 }
 
-// Enrich preserves the exact offending fields when a nested decoder returns the
-// error through the normal dispatcher error path.
 func (c *ConstraintError) Enrich(data *ProblemData) {
 	data.Errors = append(data.Errors, c.Fields...)
 }
 
-// collectWireViolations returns nil when there is nothing to report, so a
-// generated validator can compose independent rules without branching around
-// every check.
 func collectWireViolations(shape string, fields ...FieldError) error {
 	present := make([]FieldError, 0, len(fields))
 	for _, f := range fields {
@@ -223,11 +199,7 @@ type wireNumber interface {
 		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64
 }
 
-type wirePositiveNumber interface {
-	wireNumber | ~float32 | ~float64
-}
-
-func positiveNumber[Number wirePositiveNumber](field string, value Number) FieldError {
+func positiveNumber[Number wireNumeric](field string, value Number) FieldError {
 	number := float64(value)
 	if number <= 0 || math.IsNaN(number) || math.IsInf(number, 0) {
 		return FieldError{Field: field, Detail: "must be finite and greater than zero"}
@@ -235,11 +207,9 @@ func positiveNumber[Number wirePositiveNumber](field string, value Number) Field
 	return FieldError{}
 }
 
-// optionalPositiveScalarNumber treats zero as absence because encoding/json omits an
-// optional scalar at its zero value. A negative value is still present and
-// illegal. JSON Schema and the TypeScript validator apply minimum: 1 only when
-// the property exists, which is the same serialized contract.
-func optionalPositiveScalarNumber[Number wirePositiveNumber](field string, value Number) FieldError {
+// Zero is absence because encoding/json omits an optional scalar at its zero
+// value.
+func optionalPositiveScalarNumber[Number wireNumeric](field string, value Number) FieldError {
 	number := float64(value)
 	if number < 0 || math.IsNaN(number) || math.IsInf(number, 0) {
 		return FieldError{Field: field, Detail: "must be finite and greater than zero when present"}
@@ -247,7 +217,7 @@ func optionalPositiveScalarNumber[Number wirePositiveNumber](field string, value
 	return FieldError{}
 }
 
-func optionalPositiveNumber[Number wirePositiveNumber](field string, value *Number) FieldError {
+func optionalPositiveNumber[Number wireNumeric](field string, value *Number) FieldError {
 	if value == nil {
 		return FieldError{}
 	}
@@ -299,10 +269,6 @@ func optionalMaximumNumber[Number wireNumeric](field string, value *Number, maxi
 	return maximumNumber(field, *value, maximum)
 }
 
-// requiredItems rejects an absent or empty required array. Requiredness comes
-// from the DTO's JSON tag; the generator selects this helper for a field without
-// omitempty so the runtime enforces the same required + minItems contract as the
-// schema and generated client.
 func requiredItems[T any](field string, values []T) FieldError {
 	if values == nil {
 		return FieldError{Field: field, Detail: "is required"}
@@ -313,8 +279,6 @@ func requiredItems[T any](field string, values []T) FieldError {
 	return FieldError{}
 }
 
-// nonEmptyItems rejects an optional array that was sent with nothing in it. A
-// nil slice is the field's absence, which remains valid for an optional field.
 func nonEmptyItems[T any](field string, values []T) FieldError {
 	if values != nil && len(values) == 0 {
 		return FieldError{Field: field, Detail: "must not be empty"}
@@ -384,18 +348,6 @@ func identityItems[Identity ~string](field string, values []Identity) FieldError
 	return FieldError{}
 }
 
-func textPrefixItems[Identity ~string](field string, values []Identity, prefix string) FieldError {
-	for index, value := range values {
-		if !strings.HasPrefix(string(value), prefix) {
-			return FieldError{
-				Field:  fmt.Sprintf("%s[%d]", field, index),
-				Detail: fmt.Sprintf("must be prefixed by %q", prefix),
-			}
-		}
-	}
-	return FieldError{}
-}
-
 func textPatternItems[Identity ~string](field string, values []Identity, pattern string) FieldError {
 	for index, value := range values {
 		if violation := requiredTextPattern(
@@ -456,15 +408,6 @@ func optionalTextPattern(field, value, pattern string) FieldError {
 	return requiredTextPattern(field, value, pattern)
 }
 
-func optionalTextPointerPattern(field string, value *string, pattern string) FieldError {
-	if value == nil {
-		return FieldError{}
-	}
-	return requiredTextPattern(field, *value, pattern)
-}
-
-// nonEmptyProperties rejects an empty object map. nil remains a valid omission;
-// a present empty map is rejected by the same length check after decoding.
 func nonEmptyProperties[Value any](field string, values map[string]Value) FieldError {
 	if values != nil && len(values) == 0 {
 		return FieldError{Field: field, Detail: "must not be empty"}
@@ -472,10 +415,6 @@ func nonEmptyProperties[Value any](field string, values map[string]Value) FieldE
 	return FieldError{}
 }
 
-// uniqueItems rejects a repeated JSON value, so objects compare by content rather
-// than Go comparability or pointer identity. Deterministic encoding orders map
-// members, giving every representable value one key without a second equality
-// model.
 func uniqueItems[T any](field string, values []T) FieldError {
 	seen := make(map[string]bool, len(values))
 	for _, value := range values {
@@ -492,8 +431,8 @@ func uniqueItems[T any](field string, values []T) FieldError {
 	return FieldError{}
 }
 
-// closedEnum rejects a value outside a closed set. Go's decoder puts any string
-// into a named string type, so typing alone cannot enforce membership.
+// Go's decoder puts any string into a named string type, so typing alone cannot
+// enforce membership.
 func closedEnum(field, value string, values []string, optional bool) FieldError {
 	if value == "" && optional {
 		return FieldError{}
@@ -504,9 +443,6 @@ func closedEnum(field, value string, values []string, optional bool) FieldError 
 	return FieldError{Field: field, Detail: "must be one of " + strings.Join(values, ", ")}
 }
 
-// closedEnumItems applies the same membership rule to every element of an enum
-// array. Schema and TypeScript validate at the item boundary; returning the exact
-// index keeps Go diagnostics equally actionable.
 func closedEnumItems[Enum ~string](field string, items []Enum, values []string) FieldError {
 	for index, item := range items {
 		if !slices.Contains(values, string(item)) {
@@ -529,20 +465,21 @@ func unionTag(field, value string, literals []string, pattern string) FieldError
 	return FieldError{Field: field, Detail: "must be a known tag or match " + pattern}
 }
 
-func requiredWhen(applies bool, field string, value any) FieldError {
-	if applies && !wireFieldPresent(value, field) {
+func required(field string, value any) FieldError {
+	if !wireFieldPresent(value, field) {
 		return FieldError{Field: field, Detail: "is required"}
 	}
 	return FieldError{}
 }
 
-// requiredAnyWhen reports one rule-level violation when none of the alternative
-// fields is present. Keeping the alternatives in one diagnostic preserves the
-// fact that satisfying any one of them is sufficient.
-func requiredAnyWhen(applies bool, fields []string, value any) FieldError {
+func requiredWhen(applies bool, field string, value any) FieldError {
 	if !applies {
 		return FieldError{}
 	}
+	return required(field, value)
+}
+
+func requiredAny(fields []string, value any) FieldError {
 	for _, field := range fields {
 		if wireFieldPresent(value, field) {
 			return FieldError{}
@@ -567,8 +504,6 @@ func allowedValuesWhen(applies bool, field string, value any, allowed []string) 
 	}
 	actual, _, found := lookupWireValue(reflect.ValueOf(value), field)
 	if !found {
-		// Requiredness is a separate generated rule. Avoid reporting two different
-		// diagnostics for the same absent field.
 		return FieldError{}
 	}
 	if actual.Kind() != reflect.String || !slices.Contains(allowed, actual.String()) {
@@ -591,10 +526,6 @@ func wireFieldMatches(value any, path, pattern string) bool {
 	return err == nil && matched
 }
 
-// wireFieldPresent answers whether encoding/json would put a registered field on
-// the wire. The registry has already proved every path exists; this reflection is
-// only the shared runtime interpretation of presence, including nested pointers
-// and omitempty collections.
 func wireFieldPresent(value any, path string) bool {
 	field, optional, ok := lookupWireValue(reflect.ValueOf(value), path)
 	if !ok {

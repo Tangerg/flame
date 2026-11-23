@@ -3,6 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -22,9 +23,6 @@ func commandRuntimeProfile(t *testing.T) runtimebinding.Profile {
 	return profile
 }
 
-// executeCommand runs the CLI in memory and returns stdout, stderr and the command error.
-// Nothing here touches the process's own streams, which is what lets the tests
-// run in parallel and assert on exact output.
 func executeCommand(t *testing.T, rt Runtime, stdin string, args ...string) (string, string, error) {
 	t.Helper()
 	if rt == nil {
@@ -51,8 +49,14 @@ func executeCommandWithRuntime(
 	dependencies := Dependencies{
 		OpenRuntime:   func(context.Context, settings.Runtime) (Runtime, RuntimeProfile, error) { return runtime, profile, nil },
 		OpenWorkbench: func(string) (*workbench.Store, error) { return workbench.OpenMemory(workbench.Config{}) },
+		StartTerminal: func(context.Context, TerminalRequest) error {
+			return errors.New("the terminal is not part of command tests")
+		},
 	}
-	root := NewRoot(dependencies)
+	root, err := NewRoot(dependencies)
+	if err != nil {
+		t.Fatal(err)
+	}
 	root.SetOut(&out)
 	root.SetErr(&errb)
 	root.SetIn(strings.NewReader(stdin))
@@ -66,6 +70,6 @@ func executeCommandWithRuntime(
 		args = append([]string{"--runtime-mode", "embedded"}, args...)
 	}
 	root.SetArgs(args)
-	err := root.ExecuteContext(t.Context())
+	err = root.ExecuteContext(t.Context())
 	return out.String(), errb.String(), err
 }

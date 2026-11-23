@@ -6,8 +6,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// PreparedInput reads only command-owned values. Plain text is already frozen
-// in Message; attachments require the materialized blocks from before dispatch.
 // A missing attachment payload must never be reconstructed from its old path.
 func (m Message) PreparedInput(input []protocol.ContentBlock) ([]protocol.ContentBlock, error) {
 	if input == nil {

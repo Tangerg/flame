@@ -7,8 +7,8 @@ import (
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
+	"github.com/Tangerg/flame/plugins/web/internal/capture"
 	rpc "github.com/Tangerg/flame/plugins/web/internal/contract"
-	capture "github.com/Tangerg/flame/plugins/web/internal/domain"
 	"github.com/Tangerg/flame/plugins/web/internal/wire"
 	framecall "github.com/Tangerg/frame/call"
 	sdk "github.com/Tangerg/go-sdk/mcp"
@@ -33,13 +33,11 @@ func readTool[P, R any](name, description string, read func(context.Context, P) 
 		} else if _, refused := classify(err); refused {
 			kind, message = tool.FailureKindRejected, err.Error()
 		}
-		// Cache publication cannot create an unknown remote mutation outcome.
 		failure, failureErr := tool.NewFailure(tool.FailureConfig{Kind: kind, Output: tool.NewTextOutput(message), Cause: err})
 		return result, errors.Join(failure, failureErr)
 	})
 }
 
-// The Tool names the model sees, and the capability export the Runtime binds.
 const (
 	searchTool       = "web_search"
 	fetchTool        = "web_fetch"

@@ -13,8 +13,6 @@ import (
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// Validate checks one incomplete provider attempt before it can influence boot
-// recovery planning.
 func (o OpenModelInvocation) Validate() error {
 	if err := o.Purpose.Validate(); err != nil {
 		return err
@@ -45,8 +43,6 @@ func (o OpenModelInvocation) endpointObservedAt() (time.Time, error) {
 	return record.FinishedAt, nil
 }
 
-// Validate checks one incomplete Tool attempt and its Transcript Item identity
-// before it can influence boot recovery planning.
 func (o OpenToolInvocation) Validate() error {
 	if err := o.InvocationAttempt.Validate(); err != nil {
 		return err
@@ -54,8 +50,6 @@ func (o OpenToolInvocation) Validate() error {
 	return o.ItemID.Validate()
 }
 
-// validateOpenInvocationOwners proves each open attempt still belongs to its
-// active Run's current Segment; the journal writer admits only that Segment.
 func validateOpenInvocationOwners(
 	trees map[identity.RunID]recoveryRunTree,
 	models []OpenModelInvocation,
@@ -88,8 +82,6 @@ func validateOpenInvocationOwners(
 func validateOpenInvocationSegment(kind string, index int, attempt InvocationAttempt, activeRuns map[identity.RunID]rundomain.Run) error {
 	owner, active := activeRuns[attempt.RunID]
 	if !active {
-		// An operational row may outlive a Run already made terminal by an
-		// earlier atomic commit. Recovery still owns closing that orphan.
 		return nil
 	}
 	if attempt.SegmentID != owner.ActiveSegmentID() {
@@ -105,8 +97,6 @@ func validateOpenInvocationSegment(kind string, index int, attempt InvocationAtt
 	return nil
 }
 
-// InvocationAttempt locates one journaled attempt inside the Run Segment that
-// started it. The journal row's Session is its Run's Session by schema.
 type InvocationAttempt struct {
 	SessionID identity.SessionID
 	RunID     identity.RunID
@@ -115,7 +105,6 @@ type InvocationAttempt struct {
 	StartedAt time.Time
 }
 
-// Validate checks the attempt identity before it can influence recovery.
 func (a InvocationAttempt) Validate() error {
 	if err := a.SessionID.Validate(); err != nil {
 		return err
@@ -135,7 +124,7 @@ func (a InvocationAttempt) Validate() error {
 	return nil
 }
 
-func (a InvocationAttempt) compare(other InvocationAttempt) int {
+func compareInvocationAttempts(a, other InvocationAttempt) int {
 	return cmp.Or(
 		a.SessionID.Compare(other.SessionID),
 		a.RunID.Compare(other.RunID),
@@ -144,38 +133,27 @@ func (a InvocationAttempt) compare(other InvocationAttempt) int {
 	)
 }
 
-// OpenModelInvocation retains a committed logical start. Its physical endpoint
-// is optional because endpoint admission has its own durable boundary.
 type OpenModelInvocation struct {
 	InvocationAttempt
 	Purpose  rundomain.ModelCallPurpose
 	Endpoint *modelref.EndpointObservation
 }
 
-// OpenToolInvocation is an operational Tool attempt without a durable
-// terminal observation. ItemID binds the attempt back to its canonical
-// Transcript lifecycle without copying arguments or results into the journal.
 type OpenToolInvocation struct {
 	InvocationAttempt
 	ItemID identity.ItemID
 }
 
-// ModelInvocationRecovery closes a boot-abandoned outer operation. A known
-// physical response remains evidence under failure; absence remains unknown.
-// The state is implied by the recovery operation rather than stored as an
-// application enum in the persistence port.
 type ModelInvocationRecovery struct {
 	OpenModelInvocation
 	FinishedAt time.Time
 }
 
-// ToolInvocationRecovery marks one boot-abandoned Tool attempt incomplete.
 type ToolInvocationRecovery struct {
 	OpenToolInvocation
 	FinishedAt time.Time
 }
 
-// Transition is the journal transition that closes this attempt.
 func (t ToolInvocationRecovery) Transition() ToolInvocationCommit {
 	return ToolInvocationCommit{
 		CallID: t.CallID, ItemID: t.ItemID, SegmentID: t.SegmentID,

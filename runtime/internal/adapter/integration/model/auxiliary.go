@@ -7,11 +7,12 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 
 	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/scope/core/chat"
@@ -25,14 +26,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// AuxiliaryResolver selects the current utility-role model for each call.
-// Resolving at the boundary lets a role configuration change take effect without
-// rebuilding the owning worker. The caller releases the frozen capture after
-// all calls have joined; retained observers cannot retire before that boundary.
 type AuxiliaryResolver func(context.Context, AuxiliaryBudget) (SelectedChat, func() error, error)
 
-// AuxiliaryBudget is the caller-owned input/output envelope for a captured use
-// case. Every complete model-visible request must remain within it.
 type AuxiliaryBudget struct {
 	MaxInputBytes   int
 	MaxOutputTokens int64
@@ -45,15 +40,13 @@ func (b AuxiliaryBudget) Validate() error {
 	return nil
 }
 
-// SelectedChat captures the exact selection and model construction
-// together. Wrapping its model cannot detach or invent the selected identity.
 type SelectedChat struct {
 	admission catalog.Admission
 	resolved  ResolvedChat
 	limits    modelref.TokenLimits
 }
 
-func NewSelectedChat(selection modelchoice.Selection, resolved ResolvedChat) (SelectedChat, error) {
+func NewSelectedChat(selection flamemodel.Selection, resolved ResolvedChat) (SelectedChat, error) {
 	if err := selection.ValidateExact(); err != nil {
 		return SelectedChat{}, err
 	}
@@ -73,22 +66,21 @@ func NewSelectedChat(selection modelchoice.Selection, resolved ResolvedChat) (Se
 	}
 	return SelectedChat{admission: admission, resolved: resolved, limits: limits}, nil
 }
-func (m SelectedChat) Selection() modelchoice.Selection  { return m.admission.Selection() }
+
+func (m SelectedChat) Selection() flamemodel.Selection   { return m.admission.Selection() }
 func (m SelectedChat) Model() chat.Model                 { return m.resolved.Model() }
 func (m SelectedChat) TokenLimits() modelref.TokenLimits { return m.limits }
 func (m SelectedChat) Capture() (ProviderCapture, bool)  { return m.resolved.Capture() }
 func (m SelectedChat) Close(ctx context.Context) error   { return m.resolved.Close(ctx) }
+
 func (m SelectedChat) RequestFits(ctx context.Context, request *chat.Request) (bool, error) {
-	if m.resolved.fits == nil {
-		return true, nil
-	}
 	return m.resolved.fits(ctx, request)
 }
+
 func (m SelectedChat) InputTokenCounter() (InputTokenCounter, bool) {
 	return m.resolved.InputTokenCounter()
 }
 
-// AuxiliaryOperation is the product purpose an auxiliary span records.
 type AuxiliaryOperation string
 
 const (
@@ -96,9 +88,8 @@ const (
 	AuxiliaryCompaction AuxiliaryOperation = "compaction"
 )
 
-// AuxiliaryPrompt is the complete resource envelope for one auxiliary model request.
-// Input bytes and output tokens are deliberately mandatory: background
-// maintenance must never inherit a provider's context/output defaults.
+// Input bytes and output tokens are mandatory: background maintenance must never
+// inherit a provider's context or output defaults.
 type AuxiliaryPrompt struct {
 	Operation    AuxiliaryOperation
 	SystemPrompt string
@@ -127,8 +118,6 @@ func (p AuxiliaryPrompt) validate() error {
 	return nil
 }
 
-// auxiliaryFailureStage separates a model that answered unusably from a call
-// that never produced an answer; Scope's output contract draws that line.
 type auxiliaryFailureStage string
 
 const (
@@ -137,11 +126,6 @@ const (
 	failedResponse  auxiliaryFailureStage = "response"
 )
 
-// Complete resolves the live auxiliary selection and returns a complete text
-// generation inside the caller's resource envelope. A rejected or incomplete
-// generation cannot become a durable summary, memory, or skill proposal.
-// recordAuxiliaryFailure marks the span with the stage that failed; an invalid
-// answer from a call that ran is a response failure, not a calling one.
 func recordAuxiliaryFailure(span trace.Span, stage auxiliaryFailureStage, err error) {
 	if stage == failedCalling && errors.Is(err, chatclient.ErrInvalidOutput) {
 		stage = failedResponse
@@ -150,9 +134,9 @@ func recordAuxiliaryFailure(span trace.Span, stage auxiliaryFailureStage, err er
 	span.SetAttributes(attribute.String("auxiliary.failure_stage", string(stage)))
 	switch {
 	case errors.Is(err, context.Canceled):
-		span.SetAttributes(attribute.String("error.type", "canceled"))
+		span.SetAttributes(telemetry.ErrorTypeKey.String("canceled"))
 	case errors.Is(err, context.DeadlineExceeded):
-		span.SetAttributes(attribute.String("error.type", "deadline_exceeded"))
+		span.SetAttributes(telemetry.ErrorTypeKey.String("deadline_exceeded"))
 	}
 }
 
@@ -172,11 +156,9 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 	if err != nil {
 		return "", err
 	}
-	// The span carries what Scope cannot see: which product operation asked and
-	// how much input it spent. Request, usage, and finish-reason telemetry
-	// belongs to the model span Scope's middleware opens at the provider
-	// boundary, so this one does not record those facts a second time.
-	ctx, span := otel.Tracer("scope/flame/adapter/integration/model").Start(ctx, "auxiliary model",
+	// Request, usage and finish-reason telemetry belong to Scope's model span, so this
+	// span records only the product operation and the input it spent.
+	ctx, span := otel.Tracer("github.com/Tangerg/flame/runtime/internal/adapter/integration/model").Start(ctx, "auxiliary model",
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
 			attribute.String("auxiliary.operation", string(prompt.Operation)),
@@ -222,9 +204,6 @@ func (r AuxiliaryResolver) Complete(ctx context.Context, prompt AuxiliaryPrompt)
 	return text, nil
 }
 
-// AdmitRequest applies the selected model's known input/output envelope to the
-// complete request after context composition. A catalog miss retains unknown
-// capacity; it cannot manufacture a limit from the caller's byte budget.
 func (m SelectedChat) AdmitRequest(ctx context.Context, request *chat.Request) error {
 	if request == nil {
 		return errors.New("auxiliary model: request is required")
@@ -266,7 +245,7 @@ func (m SelectedChat) AdmitRequest(ctx context.Context, request *chat.Request) e
 			return errors.New("auxiliary model: selected provider returned a non-positive input count")
 		}
 	} else {
-		estimated, err := modelchoice.EstimateRequestTokens(request)
+		estimated, err := flamemodel.EstimateRequestTokens(request)
 		if err != nil {
 			return err
 		}
@@ -278,8 +257,6 @@ func (m SelectedChat) AdmitRequest(ctx context.Context, request *chat.Request) e
 	return nil
 }
 
-// WithModel retains the frozen selected identity, capacity and counter while
-// replacing only its call projection with a caller-owned decorator.
 func (m SelectedChat) WithModel(model chat.Model) (SelectedChat, error) {
 	resolved, err := m.resolved.WithModel(model)
 	if err != nil {
@@ -289,8 +266,6 @@ func (m SelectedChat) WithModel(model chat.Model) (SelectedChat, error) {
 	return m, nil
 }
 
-// PrepareRequest applies model-owned options before contributors and capacity
-// observe the same final request. Callers cannot replace a captured selection.
 func (m SelectedChat) PrepareRequest(request *chat.Request) (*chat.Request, error) {
 	if request == nil {
 		return nil, errors.New("auxiliary model: request is required")
@@ -313,8 +288,6 @@ func (m SelectedChat) PrepareRequest(request *chat.Request) (*chat.Request, erro
 	return prepared, nil
 }
 
-// AdmitInput validates the model-visible projection, never the authored source
-// that an input contributor may legitimately convert before model execution.
 func (m SelectedChat) AdmitInput(request *chat.Request) error {
 	if request == nil {
 		return errors.New("model: final request is required")

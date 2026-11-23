@@ -65,7 +65,7 @@ const TONE = {
 
 const SIZE = { xs: type.uiSm, sm: type.uiMd, md: type.uiMd } as const;
 
-export type TextButtonProps = Omit<ButtonPrimitiveProps, "children"> & {
+type TextButtonProps = Omit<ButtonPrimitiveProps, "children"> & {
   tone?: keyof typeof TONE;
   size?: keyof typeof SIZE;
   shape?: TextButtonShape;

@@ -12,25 +12,19 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
-// ChildFileTarget identifies a bounded collection of authored files. FileName
-// selects an exact document in each immediate child directory; Extension selects
-// non-hidden files directly in Path. Exactly one selector is required.
-// MaxEntries and MaxBytes are required hard bounds.
 type ChildFileTarget struct {
 	Key        string
 	Path       string
 	Boundary   string
 	FileName   string
-	Extension  string
 	MaxEntries int
 	MaxBytes   int64
 }
 
-// WatchChildFiles observes bounded file collections through one content-derived
-// baseline. Watches cover roots, admitted child directories and content aliases,
-// and missing roots' existing ancestors. Error reporting and callback lifetime
-// follow Watch.
 func WatchChildFiles(targets []ChildFileTarget, notify func([]string), report func(error)) (Observation, error) {
+	if notify == nil {
+		return nil, errors.New("observe child files: change notifier is required")
+	}
 	canonical, err := canonicalChildFileTargets(targets)
 	if err != nil {
 		return nil, err
@@ -53,7 +47,6 @@ type childFileTarget struct {
 	path             string
 	physicalBoundary string
 	fileName         string
-	extension        string
 	maxEntries       int
 	maxBytes         int64
 }
@@ -69,13 +62,7 @@ func canonicalChildFileTarget(index int, candidate ChildFileTarget) (childFileTa
 	if candidate.Path == "" || !filepath.IsAbs(candidate.Path) {
 		return childFileTarget{}, fmt.Errorf("observe child files: target %d path must be absolute", index)
 	}
-	if (candidate.FileName == "") == (candidate.Extension == "") {
-		return childFileTarget{}, fmt.Errorf("observe child files: target %d needs exactly one file selector", index)
-	}
-	if candidate.Extension != "" && (candidate.Extension == "." || !strings.HasPrefix(candidate.Extension, ".") || filepath.Base(candidate.Extension) != candidate.Extension) {
-		return childFileTarget{}, fmt.Errorf("observe child files: target %d extension must be a dotted suffix", index)
-	}
-	if candidate.FileName != "" && filepath.Base(candidate.FileName) != candidate.FileName {
+	if candidate.FileName == "" || filepath.Base(candidate.FileName) != candidate.FileName {
 		return childFileTarget{}, fmt.Errorf("observe child files: target %d filename must be one path element", index)
 	}
 	if candidate.MaxEntries <= 0 {
@@ -90,7 +77,7 @@ func canonicalChildFileTarget(index int, candidate ChildFileTarget) (childFileTa
 	}
 	return childFileTarget{
 		key: candidate.Key, path: filepath.Clean(candidate.Path), physicalBoundary: boundary,
-		fileName: candidate.FileName, extension: candidate.Extension, maxEntries: candidate.MaxEntries, maxBytes: candidate.MaxBytes,
+		fileName: candidate.FileName, maxEntries: candidate.MaxEntries, maxBytes: candidate.MaxBytes,
 	}, nil
 }
 
@@ -121,7 +108,7 @@ type childFileWatch struct {
 	roots     *observationRoots
 }
 
-func (t *childFileWatch) reconcile(initial bool, accepted acceptance) error {
+func (t *childFileWatch) reconcile(pass reconcilePass, accepted acceptance) error {
 	t.stateMu.Lock()
 	if t.closedLocked() {
 		t.stateMu.Unlock()
@@ -141,7 +128,7 @@ func (t *childFileWatch) reconcile(initial bool, accepted acceptance) error {
 			directories[directory] = struct{}{}
 		}
 		switch {
-		case initial:
+		case pass == baselinePass:
 			next[index] = state
 		case accepting:
 			next[index] = acceptChildFileChanges(candidate, t.baselines[index], state, accepted)
@@ -158,7 +145,7 @@ func (t *childFileWatch) reconcile(initial bool, accepted acceptance) error {
 	}
 	t.baselines = next
 	t.stateMu.Unlock()
-	if !accepting && len(changedKeys) > 0 && t.notify != nil {
+	if !accepting && len(changedKeys) > 0 {
 		t.notify(changedKeys)
 	}
 	return nil
@@ -232,36 +219,32 @@ func scanChildFileDirectory(
 	}
 	snapshot := childFileSnapshot{files: make(map[string]observedPath), overflow: overflow}
 	watchedPaths := []string{physical}
-	if !overflow {
-		for _, entry := range entries {
-			relative := entry.Name()
-			if candidate.extension != "" {
-				if entry.IsDir() || strings.HasPrefix(relative, ".") || !strings.HasSuffix(relative, candidate.extension) {
-					continue
-				}
-			} else {
-				if !entry.IsDir() {
-					continue
-				}
-				watchedPaths = append(watchedPaths, filepath.Join(physical, relative))
-				relative = filepath.Join(relative, candidate.fileName)
-			}
-			logical, observed, present, err := observeImmediateChildFile(candidate, physical, relative, roots)
-			if err != nil {
-				return childFileSnapshot{}, nil, err
-			}
-			if present {
-				snapshot.files[logical] = observed
-				watchedPaths = append(watchedPaths, observed.dependencies...)
-				if observed.physical != "" {
-					directory, err := nearestExistingDirectory(filepath.Dir(observed.physical))
-					if err != nil {
-						return childFileSnapshot{}, nil, err
-					}
-					watchedPaths = append(watchedPaths, directory)
-				}
-			}
+	if overflow {
+		return snapshot, watchedPaths, nil
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
 		}
+		watchedPaths = append(watchedPaths, filepath.Join(physical, entry.Name()))
+		relative := filepath.Join(entry.Name(), candidate.fileName)
+		logical, observed, present, err := observeImmediateChildFile(candidate, physical, relative, roots)
+		if err != nil {
+			return childFileSnapshot{}, nil, err
+		}
+		if !present {
+			continue
+		}
+		snapshot.files[logical] = observed
+		watchedPaths = append(watchedPaths, observed.dependencies...)
+		if observed.physical == "" {
+			continue
+		}
+		directory, err := nearestExistingDirectory(filepath.Dir(observed.physical))
+		if err != nil {
+			return childFileSnapshot{}, nil, err
+		}
+		watchedPaths = append(watchedPaths, directory)
 	}
 	return snapshot, watchedPaths, nil
 }

@@ -31,8 +31,9 @@ under the host's existing identity. To define different callable behavior, autho
 and publish a distinct contract with `pluginmcp.NewMethod` and
 `portable.NewCapability`.
 
-Item operations use `v2`. Snapshots project the backend-owned positive exact
-`Revision`; update, review and deletion require its observed `ExpectedRevision`.
+Item operations use `v3` and maintenance uses `v2`. Fields are camelCase. Items
+project the backend-owned positive exact `revision` without the private embedding;
+update, review and deletion require its observed `expectedRevision`.
 The former methods are removed. An implementation must reject stale intent and
 preserve original receipts across subsequent changes. The first-party private
 schema refuses revisionless directories; it does not migrate them implicitly.

@@ -6,6 +6,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
+const restoreTypeField = "restoreType"
+
 const (
 	SessionsList     Name = "sessions.list"
 	SessionsGet      Name = "sessions.get"
@@ -40,12 +42,9 @@ func registerSessions(registry *Registry) {
 
 	registry.query(MethodMeta{
 		Name: sessionsSnapshot, GoName: "GetSessionSnapshot",
-		Errors:       []string{protocol.ErrSessionNotFound.Error()},
-		Materializes: []Name{ItemsList, RunsList, InterruptsList, planGet, goalsGet},
-		CapabilityRules: []CapabilityRule{{
-			When:     []FieldCondition{{Field: "includeDescendants", Operator: OperatorPresent}},
-			Requires: []string{protocol.FeatureChildRuns},
-		}},
+		Errors:          []string{protocol.ErrSessionNotFound.Error()},
+		Materializes:    []Name{ItemsList, RunsList, InterruptsList, planGet, goalsGet},
+		CapabilityRules: descendantsRequireChildRuns(includeDescendantsParameter),
 	}, func(service interface {
 		GetSessionSnapshot(context.Context, protocol.GetSessionSnapshotRequest) (*protocol.SessionSnapshot, error)
 	}, ctx context.Context, request protocol.GetSessionSnapshotRequest) (*protocol.SessionSnapshot, error) {
@@ -63,9 +62,6 @@ func registerSessions(registry *Registry) {
 		commitCreateSession(context.Context, protocol.CreateSessionRequest, atomicOutcome) error
 	}).commitCreateSession))
 
-	// Setting workspace is a relocate, which is its own capability — hence a
-	// conditional rule: the rest of sessions.update stays available when relocate
-	// is off, instead of the whole method disappearing.
 	registry.command(MethodMeta{
 		Name: SessionsUpdate, GoName: "UpdateSession",
 		Errors: pluginProviderErrors(protocol.ErrSessionNotFound.
@@ -78,9 +74,6 @@ func registerSessions(registry *Registry) {
 				When:     []FieldCondition{{Field: "workspace", Operator: OperatorPresent}},
 				Requires: []string{protocol.FeatureRelocate},
 			},
-			// Present means "true" for an optional bool, so releasing isolation
-			// stays available on a build that cannot grant it — a Session carried
-			// here from a host that could must remain editable.
 			{
 				When:     []FieldCondition{{Field: "isolated", Operator: OperatorPresent}},
 				Requires: []string{protocol.FeatureIsolation},
@@ -119,10 +112,6 @@ func registerSessions(registry *Registry) {
 		commitForkSession(context.Context, protocol.ForkSessionRequest, atomicOutcome) error
 	}).commitForkSession))
 
-	// restoreType files/both rewind the working tree from a shadow-git snapshot,
-	// which needs features.checkpoints; the default history rollback needs nothing
-	// Two rules rather than one because the contract states the
-	// requirement per value, and a generated schema reads them as two if/then.
 	registry.command(MethodMeta{
 		Name: sessionsRollback, GoName: "RollbackSession",
 		Errors: []string{protocol.ErrSessionNotFound.
@@ -134,11 +123,11 @@ func registerSessions(registry *Registry) {
 		},
 		CapabilityRules: []CapabilityRule{
 			{
-				When:     []FieldCondition{{Field: "restoreType", Operator: OperatorEquals, Value: string(protocol.RestoreFiles)}},
+				When:     []FieldCondition{{Field: restoreTypeField, Operator: OperatorEquals, Value: string(protocol.RestoreFiles)}},
 				Requires: []string{protocol.FeatureCheckpoints},
 			},
 			{
-				When:     []FieldCondition{{Field: "restoreType", Operator: OperatorEquals, Value: string(protocol.RestoreBoth)}},
+				When:     []FieldCondition{{Field: restoreTypeField, Operator: OperatorEquals, Value: string(protocol.RestoreBoth)}},
 				Requires: []string{protocol.FeatureCheckpoints},
 			},
 		},

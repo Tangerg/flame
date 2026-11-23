@@ -1,4 +1,3 @@
-// Package skilllearning defines the installation-owned Skill learning and review workflow.
 package skilllearning
 
 import (
@@ -112,9 +111,11 @@ type Admission struct {
 func AdmitMethod() (*pluginmcp.Method[Proposal, Admission], error) {
 	return pluginmcp.NewMethod[Proposal, Admission](frame.MethodConfig{Name: "flame.skill-learning/admit.v1", Kind: frame.Query, Target: extension.ScopeCall, Description: "Validate a mined proposal against the source and user library admitted for this mining call."})
 }
+
 func (p Proposal) Draft(run Run) Draft {
 	return Draft{Library: run.Library, Scope: skill.User, Skill: p.Skill, Origin: skill.Mined, SourceSession: run.SessionID, Revises: p.Revises, Previous: p.Previous}
 }
+
 func Contract() (*plugincontract.Capability, error) {
 	mine, err := MineMethod()
 	if err != nil {

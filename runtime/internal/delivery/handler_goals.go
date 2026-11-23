@@ -5,33 +5,18 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
-
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// Goal operations drive an objective until completion, blocking, Run failure,
-// or an explicit user stop.
-
-type goalUseCases interface {
-	Start(ctx context.Context, sessionID identity.SessionID, objective string, selection modelchoice.Selection, capabilities run.Capabilities) (goal.Goal, error)
-	UpdateObjective(ctx context.Context, sessionID identity.SessionID, objective string, caller run.Capabilities) (goal.Goal, error)
-	Clear(ctx context.Context, sessionID identity.SessionID) error
-	Resume(ctx context.Context, sessionID identity.SessionID, caller run.Capabilities) (goal.Goal, error)
-	Stop(ctx context.Context, sessionID identity.SessionID) (goal.Goal, error)
-	Current(ctx context.Context, sessionID identity.SessionID) (goal.Goal, bool, error)
-}
-
-// UpdateGoal revises only the current objective (goals.update).
 func (s *Handler) UpdateGoal(ctx context.Context, in protocol.UpdateGoalRequest) (*protocol.Goal, error) {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return nil, parseErr
 	}
@@ -49,22 +34,20 @@ func (s *Handler) UpdateGoal(ctx context.Context, in protocol.UpdateGoalRequest)
 	return presentGoal(g)
 }
 
-// ClearGoal removes the current objective and stops its drive (goals.clear).
 func (s *Handler) ClearGoal(ctx context.Context, in protocol.GoalRequest) error {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return parseErr
 	}
 	return mapGoalErr(s.goals.Clear(ctx, sessionID))
 }
 
-// StartGoal opens and begins driving a goal for the session (goals.start).
 func (s *Handler) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (*protocol.Goal, error) {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return nil, parseErr
 	}
-	selection, err := modelchoice.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
+	selection, err := flamemodel.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
 		return nil, mapGoalErr(err)
 	}
@@ -79,9 +62,8 @@ func (s *Handler) StartGoal(ctx context.Context, in protocol.StartGoalRequest) (
 	return presentGoal(g)
 }
 
-// GetGoal returns the session's goal, or a nil result when it has none (goals.get).
 func (s *Handler) GetGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return nil, parseErr
 	}
@@ -95,9 +77,8 @@ func (s *Handler) GetGoal(ctx context.Context, in protocol.GoalRequest) (*protoc
 	return presentGoal(g)
 }
 
-// StopGoal pauses the session's goal and stops the loop (goals.stop).
 func (s *Handler) StopGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return nil, parseErr
 	}
@@ -108,9 +89,8 @@ func (s *Handler) StopGoal(ctx context.Context, in protocol.GoalRequest) (*proto
 	return presentGoal(g)
 }
 
-// ResumeGoal re-activates a paused or blocked goal (goals.resume).
 func (s *Handler) ResumeGoal(ctx context.Context, in protocol.GoalRequest) (*protocol.Goal, error) {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return nil, parseErr
 	}
@@ -142,9 +122,9 @@ func mapGoalErr(err error) error {
 	case errors.Is(err, goals.ErrNoGoal),
 		errors.Is(err, goal.ErrNotResumable),
 		errors.Is(err, goal.ErrNotEditable),
-		modelchoice.IsInvalid(err),
+		flamemodel.IsInvalid(err),
 		errors.Is(err, goal.ErrInvalid),
-		errors.Is(err, modelchoice.ErrUnsupported):
+		errors.Is(err, flamemodel.ErrUnsupported):
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	default:
 		return mapModelError(err)

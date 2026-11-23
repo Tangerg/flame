@@ -16,7 +16,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 const (
@@ -33,8 +33,8 @@ func TestMain(m *testing.M) {
 		runStdioProcessDescendant()
 		os.Exit(0)
 	case "nonzero-exit":
-		server := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "nonzero-exit-server", Version: "v1"}, nil)
-		_ = server.Run(context.Background(), &sdkmcp.StdioTransport{})
+		server := sdk.NewServer(&sdk.Implementation{Name: "nonzero-exit-server", Version: "v1"}, nil)
+		_ = server.Run(context.Background(), &sdk.StdioTransport{})
 		os.Exit(3)
 	default:
 		os.Exit(m.Run())
@@ -43,7 +43,7 @@ func TestMain(m *testing.M) {
 
 func TestStdioSessionCleanupKillsDescendants(t *testing.T) {
 	pidFile := t.TempDir() + "/descendant.pid"
-	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "process-owner-test", Version: "v1"}, nil)
+	client := sdk.NewClient(&sdk.Implementation{Name: "process-owner-test", Version: "v1"}, nil)
 	timeout := 2 * time.Second
 	session, cleanup, err := dial(t.Context(), t.Context(), client, &launch{config: ServerConfig{
 		Server: mcpserver.Server{
@@ -92,8 +92,8 @@ func runStdioProcessServer() {
 		_, _ = fmt.Fprintf(os.Stderr, "start descendant: %v\n", err)
 		os.Exit(2)
 	}
-	server := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "process-owner-server", Version: "v1"}, nil)
-	if err := server.Run(context.Background(), &sdkmcp.StdioTransport{}); err != nil {
+	server := sdk.NewServer(&sdk.Implementation{Name: "process-owner-server", Version: "v1"}, nil)
+	if err := server.Run(context.Background(), &sdk.StdioTransport{}); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "run MCP server: %v\n", err)
 		os.Exit(2)
 	}

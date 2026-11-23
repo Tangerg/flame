@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
@@ -17,13 +18,9 @@ const (
 	maxRuntimeReadLineBytes         = 1 << 20
 )
 
-// The limit is spelled once, by the constant; the model reads this text and
-// acts on the number in it.
 var errRuntimeReadFileTooLarge = fmt.Errorf(
-	"toolset: read file exceeds the %d MiB limit", maxRuntimeReadFileBytes>>20)
+	"toolset: read file exceeds the %d MiB limit", maxRuntimeReadFileBytes/filesystem.MiB)
 
-// runtimeReadExecutor declares Runtime's model-facing read envelope while the
-// filesystem reader remains the sole owner of path authority and bounded I/O.
 type runtimeReadExecutor struct {
 	next fs.Reader
 }
@@ -39,21 +36,14 @@ func newRuntimeReadTool(reader fs.Reader) (*fs.ReadTool, error) {
 	return tool, nil
 }
 
-// withDefiniteOutcome settles a failed call as this call's definite outcome.
-// Only wrap a tool that mutates nothing: reading is the whole contract of the
-// tools that use it, so a path the model got wrong, a file past the size cap, an
-// over-long line, a stamp that says to read the file again, an invalid search,
-// or a Skill that is not there is a failed call and nothing more. Unclassified,
-// the Host cannot prove the operation did not happen and settles the Run tree
-// as lost, which would let a mistyped path end the Session.
-//
-// Wrap outermost, so a guard stack in front of the tool is covered by one rule
-// rather than one per layer.
+// Only wrap a tool that mutates nothing: an unclassified failure leaves the Host
+// unable to prove the operation did not happen, so it settles the Run tree as
+// lost. Wrap outermost.
 func withDefiniteOutcome(inner toolcontract.Tool) toolcontract.Tool {
 	return decorateCall(inner, func(ctx context.Context, next toolcontract.Caller, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		output, err := next.Call(ctx, invocation)
 		if err == nil {
-			return output, err
+			return output, nil
 		}
 		if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 			return output, errors.Join(err, cause)
@@ -77,7 +67,7 @@ func (r runtimeReadExecutor) Read(ctx context.Context, input fs.ReadInput) (fs.R
 			return fs.ReadOutput{}, fmt.Errorf("%w: %w", errRuntimeReadFileTooLarge, err)
 		case errors.Is(err, fs.ErrLineTooLarge):
 			return fs.ReadOutput{}, fmt.Errorf(
-				"toolset: read %s: line %d exceeds the %d MiB limit: %w", input.Path, fs.LineNumber(err), maxRuntimeReadLineBytes>>20, err,
+				"toolset: read %s: line %d exceeds the %d MiB limit: %w", input.Path, fs.LineNumber(err), maxRuntimeReadLineBytes/filesystem.MiB, err,
 			)
 		default:
 			return fs.ReadOutput{}, err

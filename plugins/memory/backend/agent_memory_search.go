@@ -7,13 +7,13 @@ import (
 	"strings"
 
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
+	"github.com/Tangerg/flame/plugins/memory/internal/agentmemory"
 	"github.com/Tangerg/scope/core/jsonschema"
 	"github.com/samber/lo"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
-	agentmemory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 )
 
 const (

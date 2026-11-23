@@ -1,5 +1,3 @@
-// Package pluginpackage interprets Flame metadata in neutral Frame releases.
-// Frame owns archive admission, release identity, integrity and content claims.
 package pluginpackage
 
 import (
@@ -25,7 +23,6 @@ import (
 const maxPackageBytes int64 = 128 << 20
 const maxManifestBytes int64 = 4 << 20
 
-// Package-root manifest files the release format reads.
 const (
 	pluginManifestFile = "plugin.json"
 	mcpManifestFile    = "mcp.json"
@@ -64,8 +61,6 @@ func New(content distribution.Store, dataDirectory string, catalog releaseCatalo
 	return &Releases{content: content, dataDirectory: filepath.Join(parent, namespace), catalog: catalog}, nil
 }
 
-// Root is a display projection, not a content claim. Reads and process launch
-// retain an original Frame Lease before using this location.
 func (r *Releases) Root(digest framevalue.Digest) (string, error) {
 	if err := digest.Validate(); err != nil {
 		return "", errors.Join(plugin.ErrInvalid, err)
@@ -80,6 +75,7 @@ type Candidate struct {
 }
 
 func (c *Candidate) Release() plugin.Release { return c.release }
+
 func (c *Candidate) Publish(ctx context.Context) (plugin.Release, error) {
 	if _, err := c.lease.Directory(); err != nil {
 		return plugin.Release{}, err
@@ -89,12 +85,9 @@ func (c *Candidate) Publish(ctx context.Context) (plugin.Release, error) {
 	}
 	return c.releases.catalog.Get(ctx, c.release.Digest())
 }
+
 func (c *Candidate) Discard() error { return c.lease.Close() }
 
-// Materialize holds the neutral release before its bytes become visible. The
-// claim survives metadata publication until the installation workflow discards
-// this original candidate, including admission failures and response loss.
-// importSource holds a package directory or archive in content storage.
 func (r *Releases) importSource(ctx context.Context, source string, info os.FileInfo) (distribution.Lease, error) {
 	var lease distribution.Lease
 	var err error
@@ -166,8 +159,6 @@ func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Ca
 	return &Candidate{releases: r, lease: lease, release: release}, nil
 }
 
-// Reclaim collects content only. Immutable metadata remains an interpretation of
-// its original release for durable history; it never grants availability.
 func (r *Releases) Reclaim(ctx context.Context) error {
 	digests, err := r.content.Digests(ctx)
 	if err != nil {
@@ -202,6 +193,7 @@ func (r *Releases) readResource(ctx context.Context, installation plugin.Install
 	}
 	return content, err
 }
+
 func (r *Releases) ReadResource(ctx context.Context, installation plugin.Installation, name string) ([]byte, error) {
 	body, err := r.readResource(ctx, installation, name, maxPackageBytes)
 	if err != nil && !errors.Is(err, plugin.ErrInvalid) && errors.Join(ctx.Err(), context.Cause(ctx)) == nil {
@@ -217,7 +209,6 @@ func packageInputError(err error) error {
 	return err
 }
 
-// read applies a Flame format budget inside an already acquired content tree.
 func read(ctx context.Context, root *os.Root, name string, limit int64) (body []byte, err error) {
 	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return nil, cause
@@ -249,8 +240,6 @@ func read(ctx context.Context, root *os.Root, name string, limit int64) (body []
 	return body, errors.Join(ctx.Err(), context.Cause(ctx))
 }
 
-// Frame admits the archive against this exact local selection; a replacement
-// between selection and import must still contain the same pinned bytes.
 func localArchiveDigest(ctx context.Context, path string, expected os.FileInfo) (_ framevalue.Digest, err error) {
 	file, opened, err := filesystem.OpenFileExpected(path, expected, distribution.DefaultLimits().MaxArchiveBytes)
 	if err != nil {

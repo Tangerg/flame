@@ -15,9 +15,6 @@ const (
 	guardProtected   replayGuardKind = "protected"
 )
 
-// Guard binds one durable command identity to either an explicit lack of a
-// replay promise or one exact Runtime store and deadline. Its zero value is
-// invalid so queue-local state cannot be inferred from empty strings/times.
 type ReplayGuard struct {
 	kind      replayGuardKind
 	namespace string

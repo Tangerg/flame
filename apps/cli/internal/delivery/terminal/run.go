@@ -1,6 +1,3 @@
-// Package terminal is the interactive adapter for the Flame runtime. It owns
-// oolong state and translates user intent into the runtime port; neither the
-// domain model nor the Runtime binding adapter imports this package.
 package terminal
 
 import (
@@ -28,7 +25,8 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
-// Config describes one terminal application instance.
+// Every Runtime service is required; the negotiated RuntimeProfile alone
+// decides which of them the Runtime supports.
 type Config struct {
 	Runtime          Runtime
 	RuntimeProfile   RuntimeProfile
@@ -51,19 +49,37 @@ type Config struct {
 	InitialPrompt    string
 	PluginSources    []extensions.Source
 	Host             program.Host
-	Settings         *settings.Config
+	Settings         settings.Config
 	OpenWorkbench    func() (*workbench.Store, error)
-	// LocalDirectory fixes client-side authoring to this absolute directory.
-	// Runtime workspace references then remain opaque to this client.
-	// When empty, an embedded Runtime's Session workspace is also local.
-	LocalDirectory string
-	// DetachOnExit leaves shared Runtime execution alive when the terminal exits.
-	// Explicit cancellation still owns its acknowledgement and settlement.
-	DetachOnExit bool
+	LocalDirectory   string
+	DetachOnExit     bool
 }
 
-// Run opens and owns the terminal interface until the user leaves.
+func (c Config) validate() error {
+	for _, required := range []struct {
+		name  string
+		value any
+	}{
+		{"Runtime", c.Runtime}, {"RuntimeProfile", c.RuntimeProfile}, {"Workspaces", c.Workspaces},
+		{"Changes", c.Changes}, {"Transfers", c.Transfers}, {"Usage", c.Usage}, {"ModelConfig", c.ModelConfig},
+		{"Goals", c.Goals}, {"Skills", c.Skills}, {"MCP", c.MCP}, {"Plugins", c.Plugins},
+		{"DiagnosticTools", c.DiagnosticTools}, {"AuthoringContext", c.AuthoringContext},
+		{"Hooks", c.Hooks}, {"Feedback", c.Feedback},
+	} {
+		if required.value == nil {
+			return fmt.Errorf("terminal: %s is required", required.name)
+		}
+	}
+	if c.OpenWorkbench == nil {
+		return errors.New("terminal: OpenWorkbench is required")
+	}
+	return nil
+}
+
 func Run(ctx context.Context, cfg Config) (runErr error) {
+	if err := cfg.validate(); err != nil {
+		return err
+	}
 	prepared, err := prepareSession(ctx, cfg)
 	if err != nil {
 		return err
@@ -195,19 +211,13 @@ type sessionCommandRecovery struct {
 }
 
 func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
-	if cfg.Runtime == nil {
-		return preparedSession{}, errors.New("session: agent runtime is required")
-	}
-	profile, configured, bindings, err := validatedSessionConfig(cfg)
+	configured, bindings, err := validatedSessionConfig(cfg)
 	if err != nil {
 		return preparedSession{}, err
 	}
-	replayPolicy, err := mutation.PolicyFromProfile(profile, time.Now)
+	replayPolicy, err := mutation.NewReplayPolicy(cfg.RuntimeProfile.IdempotencyLimits(), time.Now)
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("session command replay policy: %w", err)
-	}
-	if cfg.OpenWorkbench == nil {
-		return preparedSession{}, errors.New("session: workbench factory is required")
 	}
 	authoring, err := cfg.OpenWorkbench()
 	if err != nil {
@@ -220,7 +230,7 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	if err != nil {
 		return preparedSession{}, errors.Join(err, authoring.Close())
 	}
-	prepared, err := openPreparedSession(ctx, cfg, profile, configured, bindings, authoring)
+	prepared, err := openPreparedSession(ctx, cfg, configured, bindings, authoring)
 	prepared.replayPolicy = replayPolicy
 	if err != nil {
 		return preparedSession{}, errors.Join(err, authoring.Close())
@@ -229,29 +239,19 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	return prepared, nil
 }
 
-func validatedSessionConfig(cfg Config) (RuntimeProfile, settings.Config, keyBindings, error) {
+func validatedSessionConfig(cfg Config) (settings.Config, keyBindings, error) {
 	if cfg.LocalDirectory != "" && !filepath.IsAbs(cfg.LocalDirectory) {
-		return nil, settings.Config{}, keyBindings{}, errors.New("session local directory is not absolute")
+		return settings.Config{}, keyBindings{}, errors.New("session local directory is not absolute")
 	}
-	profile := cfg.RuntimeProfile
-	if profile == nil {
-		return nil, settings.Config{}, keyBindings{}, errors.New("session runtime profile is required")
-	}
-	if err := profile.Validate(); err != nil {
-		return nil, settings.Config{}, keyBindings{}, fmt.Errorf("session runtime profile: %w", err)
-	}
-	configured := settings.Default()
-	if cfg.Settings != nil {
-		configured = cfg.Settings.Clone()
-	}
+	configured := cfg.Settings.Clone()
 	if err := configured.Validate(); err != nil {
-		return nil, settings.Config{}, keyBindings{}, fmt.Errorf("session settings: %w", err)
+		return settings.Config{}, keyBindings{}, fmt.Errorf("session settings: %w", err)
 	}
 	bindings, err := configuredKeyBindings(configured)
 	if err != nil {
-		return nil, settings.Config{}, keyBindings{}, err
+		return settings.Config{}, keyBindings{}, err
 	}
-	return profile, configured, bindings, nil
+	return configured, bindings, nil
 }
 
 func recoverSessionCommands(
@@ -287,7 +287,6 @@ func recoverSessionCommands(
 func openPreparedSession(
 	ctx context.Context,
 	cfg Config,
-	profile RuntimeProfile,
 	configured settings.Config,
 	bindings keyBindings,
 	authoring *workbench.Store,
@@ -314,9 +313,8 @@ func openPreparedSession(
 	if err != nil {
 		return preparedSession{}, err
 	}
-	// Activate last: it commits the existing draft, argv input, and confirmed
-	// rollback opening as one Session authoring transition. No later preparation
-	// step may fail after the one-time rollback report becomes unreachable.
+	// Activate last: no later preparation step may fail after the one-time rollback
+	// report becomes unreachable.
 	activation, err := authoring.ActivateSessionDraft(
 		opened.Session.ID, flameauthoring.Message{Text: cfg.InitialPrompt},
 	)
@@ -324,7 +322,7 @@ func openPreparedSession(
 		return preparedSession{}, fmt.Errorf("activate session draft: %w", err)
 	}
 	return preparedSession{
-		opened: opened, runtimeProfile: profile, attachments: attachments, keyBindings: bindings,
+		opened: opened, runtimeProfile: cfg.RuntimeProfile, attachments: attachments, keyBindings: bindings,
 		settings: configured, options: options,
 		workbench: authoring, draft: activation.Draft, editor: editor,
 		rollbackRecovery: activation.Rollback,
@@ -338,9 +336,6 @@ func authoringDirectory(localDirectory, workspace string) string {
 	return workspace
 }
 
-// announceStartup reports what recovery and plugin loading found. The status
-// row holds one message, so several notices go to the transcript together
-// instead of each replacing the one before it.
 func (a *app) announceStartup(notices ...string) {
 	notices = slices.DeleteFunc(notices, func(notice string) bool { return notice == "" })
 	switch len(notices) {

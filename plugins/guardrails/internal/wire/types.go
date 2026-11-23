@@ -1,7 +1,7 @@
 package wire
 
 import (
-	guardrail "github.com/Tangerg/flame/plugins/guardrails/internal/domain"
+	"github.com/Tangerg/flame/plugins/guardrails/internal/guardrail"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 

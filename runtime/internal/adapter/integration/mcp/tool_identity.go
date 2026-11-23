@@ -12,8 +12,6 @@ type remoteToolIdentity interface {
 	MCPToolIdentity() (sourceName, remoteName string)
 }
 
-// CapturedSource is a detached identity projection of the connection that
-// admitted a tool. It grants no connection or dispatch authority.
 type CapturedSource struct {
 	Config     ServerConfig
 	RemoteName string
@@ -21,7 +19,6 @@ type CapturedSource struct {
 
 func (s CapturedSource) SourceConfig() ServerConfig { return s.Config.Clone() }
 
-// Source reads the declaration through every product decorator.
 func Source(executable toolcontract.Tool) (CapturedSource, bool) {
 	source, ok := toolcontract.As[interface{ MCPSource() (CapturedSource, bool) }](executable)
 	if !ok {
@@ -30,10 +27,7 @@ func Source(executable toolcontract.Tool) (CapturedSource, bool) {
 	return source.MCPSource()
 }
 
-// IdentifyTool combines the server identity of the connection that admitted a
-// tool with the remote name Scope reports on its admitted executable. Public
-// Tool names are presentation labels and cannot identify policy. Absence is
-// valid for non-MCP Tools; malformed declarations remain errors.
+// Public Tool names are presentation labels and cannot identify policy.
 func IdentifyTool(executable toolcontract.Tool) (tool.Ref, bool, error) {
 	source, found := Source(executable)
 	if !found {

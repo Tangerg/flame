@@ -7,10 +7,6 @@ import (
 	"io"
 )
 
-// embeddingSpaceID fingerprints every non-secret client input that can select
-// a different vector coordinate system. Length framing preserves exact field
-// boundaries without admitting separator collisions. Credentials are excluded:
-// rotating an API key does not by itself invalidate persisted vectors.
 func embeddingSpaceID(providerID, model, baseURL string) string {
 	hash := sha256.New()
 	for _, field := range []string{providerID, model, baseURL} {

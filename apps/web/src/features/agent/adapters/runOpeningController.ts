@@ -16,7 +16,7 @@ interface RunOpeningControllerOptions {
   onRejected: () => void;
 }
 
-export interface RunOpeningController {
+interface RunOpeningController {
   isStarting: () => boolean;
   begin: <Result extends RunOpening>(
     run: (signal: AbortSignal) => Promise<RunOpeningResult<Result>>,

@@ -13,20 +13,17 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	framecall "github.com/Tangerg/frame/call"
 
 	"go.opentelemetry.io/otel/trace"
 )
 
-// storedOutcome carries no layout version. It decodes strictly against the
-// method's current result type, so a record this build cannot read is refused
-// as a stored-outcome failure rather than misread.
 type storedOutcome struct {
 	Value   jsontext.Value        `json:"value,omitzero"`
 	Problem *protocol.ProblemData `json:"problem,omitzero"`
 }
 
-// keyedCall is one keyed invocation of a replay-protected command.
 type keyedCall struct {
 	replay      *operation.Replay
 	method      *Method
@@ -34,10 +31,9 @@ type keyedCall struct {
 	fingerprint string
 }
 
-// ownedReplay settles a keyed call in the transaction that commits the command's
-// mutation instead of recording its response afterwards, so a lost
-// acknowledgement can never separate the two.
 type ownedReplay func(target any, ctx context.Context, parameters any, call keyedCall) protocol.OperationResult
+
+var errIdempotencyRebound = errors.New("idempotency key is already bound to another operation")
 
 func (e *Endpoint) replayOperation(ctx context.Context, method *Method, parameters any, key string, execute func() protocol.OperationResult) protocol.OperationResult {
 	fingerprint, err := operationFingerprint(method.Meta.Name, parameters)
@@ -66,13 +62,12 @@ func (e *Endpoint) replayOperation(ctx context.Context, method *Method, paramete
 	return call.result(ctx, payload, err)
 }
 
-// result projects the key's stored outcome, or why the key cannot serve one.
 func (c keyedCall) result(ctx context.Context, payload []byte, err error) protocol.OperationResult {
 	switch {
 	case err == nil:
 		return replayOutcome(c.method, payload)
 	case errors.Is(err, framecall.ErrConflict):
-		return failed(protocol.NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation"))
+		return failed(protocol.NewFailure(protocol.ErrIdempotencyConflict, errIdempotencyRebound.Error()))
 	case errors.Is(err, operation.ErrOutcomePending):
 		c.reportUnconfirmed(ctx, err)
 		return failed(protocol.NewFailure(protocol.ErrIdempotencyInProgress, operation.ErrOutcomePending.Error()))
@@ -84,7 +79,7 @@ func (c keyedCall) result(ctx context.Context, payload []byte, err error) protoc
 }
 
 func (c keyedCall) reportUnconfirmed(ctx context.Context, err error) {
-	slog.ErrorContext(ctx, "delivery: idempotency receipt is unconfirmed after a completed operation", "method", c.method.Meta.Name, "error", err)
+	slog.ErrorContext(ctx, "delivery: idempotency receipt is unconfirmed after a completed operation", telemetry.RPCMethod(c.method.Meta.Name.String()), telemetry.Error(err))
 	trace.SpanFromContext(ctx).RecordError(fmt.Errorf("idempotency: store %s replay: %w", c.method.Meta.Name, err))
 }
 
@@ -95,8 +90,6 @@ func (c keyedCall) invokeAtomic(ctx context.Context, commit func(atomicOutcome) 
 	return c.result(ctx, payload, err)
 }
 
-// atomicReplay settles a command whose owner commits its reply through one
-// atomic completion.
 func atomicReplay[Capability, Params any](commit func(Capability, context.Context, Params, atomicOutcome) error) func(Capability, context.Context, Params, keyedCall) protocol.OperationResult {
 	return func(owner Capability, ctx context.Context, in Params, call keyedCall) protocol.OperationResult {
 		return call.invokeAtomic(ctx, func(outcome atomicOutcome) error {
@@ -105,14 +98,11 @@ func atomicReplay[Capability, Params any](commit func(Capability, context.Contex
 	}
 }
 
-// atomicOutcome is a keyed command's borrowed completion and the method whose
-// result shape it stores.
 type atomicOutcome struct {
 	method   *Method
 	complete *operation.AtomicCompletion
 }
 
-// acknowledgement stores the empty reply of a command that returns nothing.
 func (o atomicOutcome) acknowledgement() operation.Reply[struct{}] {
 	return atomicReply(o.complete, func(struct{}) ([]byte, error) { return encodeAtomicResult(o.method, struct{}{}) })
 }
@@ -142,8 +132,6 @@ func (o atomicOutcome) commitCreation(ctx context.Context, creation sessions.Cre
 	return err
 }
 
-// settleRefusal stores a refusal the command returned before attempting its
-// write; a failed write attempt stays retryable.
 func (o atomicOutcome) settleRefusal(ctx context.Context, err error) error {
 	if err == nil || o.complete.Attempted() {
 		return err
@@ -157,7 +145,6 @@ func (o atomicOutcome) commitFailure(ctx context.Context, cause error) error {
 	})
 }
 
-// directReply keeps an unkeyed command's committed result as its reply.
 func directReply[T any](reply *T) operation.Reply[T] {
 	return func(ctx context.Context, write func(context.Context) (T, error)) error {
 		value, err := write(ctx)
@@ -169,7 +156,6 @@ func directReply[T any](reply *T) operation.Reply[T] {
 	}
 }
 
-// atomicReply stores a keyed command's encoded reply in its write's transaction.
 func atomicReply[T any](complete *operation.AtomicCompletion, encode func(T) ([]byte, error)) operation.Reply[T] {
 	return func(ctx context.Context, write func(context.Context) (T, error)) error {
 		return complete.Commit(ctx, func(tx context.Context) ([]byte, error) {
@@ -222,8 +208,6 @@ func encodeStoredOutcome(result protocol.OperationResult) ([]byte, error) {
 	return json.Marshal(stored, json.Deterministic(true))
 }
 
-// A replayed receipt must name the exact stored shape: the decoder refuses an
-// unknown member, a repeated one, and anything after the value.
 func decodeStoredJSON(encoded []byte, target any) error {
 	return json.Unmarshal(encoded, target, json.RejectUnknownMembers(true))
 }

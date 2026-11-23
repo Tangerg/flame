@@ -7,8 +7,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 )
 
-// InterruptResolution is a closed, immutable answer. Question content and Tool approval
-// never share fields; the settled transcript Item remains the durable owner.
 type InterruptResolution struct {
 	question *QuestionAnswer
 	approval *approval.Resolution

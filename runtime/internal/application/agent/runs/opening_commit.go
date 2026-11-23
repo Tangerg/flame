@@ -13,8 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// OpeningCommit is the atomic acceptance write-set for one fresh admission or
-// one continuation.
 type OpeningCommit struct {
 	commitID          CommitID
 	action            openingAction
@@ -22,7 +20,6 @@ type OpeningCommit struct {
 	events            []EventCommit
 }
 
-// openingAction is closed to admissionOpening and resumeOpening.
 type openingAction interface {
 	validate() error
 	owner() (identity.SessionID, identity.RunID, identity.SegmentID, error)
@@ -40,9 +37,6 @@ type resumeOpening struct {
 	acceptance *ResumeAcceptance
 }
 
-// OpeningSessionWrite is the Session change a fresh root admission commits with
-// its Run: the Session it creates, or the replacement it saves. It is closed to
-// SessionInsert and SessionSave.
 type OpeningSessionWrite interface{ openingSessionWrite() }
 
 type SessionInsert struct{ Session session.Session }
@@ -52,8 +46,6 @@ type SessionSave struct{ Replacement session.Replacement }
 func (SessionInsert) openingSessionWrite() {}
 func (SessionSave) openingSessionWrite()   {}
 
-// NewAdmissionOpeningCommit binds a fresh Run admission to every root-owned
-// Session or Actor fact and opening projection written in its transaction.
 func NewAdmissionOpeningCommit(
 	commitID CommitID,
 	admit run.Draft,
@@ -72,10 +64,6 @@ func NewAdmissionOpeningCommit(
 	return opening, nil
 }
 
-// WithCommandAcceptance binds an externally initiated command's immutable
-// acceptance to this opening, so the acceptance record commits
-// in the same transaction as the Run it names. It returns a new validated value
-// and never mutates the receiver.
 func (o OpeningCommit) WithCommandAcceptance(acceptance CommandAcceptance) (OpeningCommit, error) {
 	next := o
 	next.commandAcceptance = &acceptance
@@ -85,8 +73,6 @@ func (o OpeningCommit) WithCommandAcceptance(acceptance CommandAcceptance) (Open
 	return next, nil
 }
 
-// NewResumeOpeningCommit binds one complete tree continuation to the opening
-// projections written in the same transaction.
 func NewResumeOpeningCommit(
 	commitID CommitID,
 	resume run.TreeResumeDraft,
@@ -101,10 +87,6 @@ func NewResumeOpeningCommit(
 	return opening, nil
 }
 
-// WithResumeAcceptance binds the answer write-set a continuation opening accepts
-// in the same transaction: the consumed open interrupt set and its settled Item
-// replacements commit with the resumed tree. It returns a new validated value and
-// never mutates the receiver.
 func (o OpeningCommit) WithResumeAcceptance(acceptance ResumeAcceptance) (OpeningCommit, error) {
 	resume, ok := o.action.(resumeOpening)
 	if !ok {
@@ -129,13 +111,6 @@ func cloneOpeningResume(resume run.TreeResumeDraft) run.TreeResumeDraft {
 	return resume
 }
 
-// Validate proves that the opening is exactly one fresh admission or one tree
-// continuation and that every accompanying projection is limited to transcript
-// Items and/or provider conversation messages. Those projections are deliberately
-// independent: an application-authored Goal instruction may feed future model
-// context without becoming a user-visible Item. Persistence Port implementations
-// may reject unavailable stores or concurrent state changes, but they do not
-// reinterpret this application write-set.
 func (o OpeningCommit) Validate() error {
 	if err := o.commitID.Validate(); err != nil {
 		return fmt.Errorf("runs: opening: %w", err)
@@ -180,8 +155,6 @@ func (a admissionOpening) validate() error {
 	return nil
 }
 
-// validate proves the answer write-set names the exact tree this continuation
-// resumes.
 func (r resumeOpening) validate() error {
 	if err := r.draft.Validate(); err != nil {
 		return fmt.Errorf("runs: opening resume: %w", err)
@@ -237,9 +210,6 @@ func (o OpeningCommit) validateEvents() error {
 	return nil
 }
 
-// validateOpeningProjection limits admission/resume projections to the facts
-// that can exist before execution begins. Operational observations belong to
-// later authoritative EventCommits, even when they name the same Segment.
 func validateOpeningProjection(commit EventCommit) error {
 	if commit.State != StateUnchanged || commit.Run != nil ||
 		commit.ObsoleteCheckpointRootID != "" {
@@ -312,7 +282,6 @@ func (o OpeningCommit) ResumeAcceptance() (ResumeAcceptance, bool) {
 	return *resume.acceptance, true
 }
 
-// SessionWrite is nil when the opening changes no Session.
 func (o OpeningCommit) SessionWrite() OpeningSessionWrite {
 	admission, _ := o.action.(admissionOpening)
 	return admission.session
@@ -333,9 +302,6 @@ func (o OpeningCommit) CommandAcceptance() (CommandAcceptance, bool) {
 	return *o.commandAcceptance, true
 }
 
-// OwnerIdentity is the one rule for which Session, Run, and Segment an opening
-// opens, so the acceptance record, the commit receipt, and the input-item scan
-// cannot name different Runs for it.
 func (o OpeningCommit) OwnerIdentity() (sessionID identity.SessionID, runID identity.RunID, segmentID identity.SegmentID, err error) {
 	if o.action == nil {
 		return identity.SessionID{}, identity.RunID{}, identity.SegmentID{}, errors.New("runs: opening has no owner")
@@ -355,9 +321,6 @@ func (r resumeOpening) owner() (identity.SessionID, identity.RunID, identity.Seg
 	return root.SessionID(), root.ID(), root.ActiveSegmentID(), nil
 }
 
-// UserInputItemID is the one rule for which Item an opening accepted as its input,
-// so the acceptance record and the continuation binding cannot name different
-// Items. More than one root user input is a fault, not silently narrowed to one.
 func (o OpeningCommit) UserInputItemID() (identity.ItemID, error) {
 	_, root, _, err := o.OwnerIdentity()
 	if err != nil {
@@ -379,5 +342,4 @@ func (o OpeningCommit) UserInputItemID() (identity.ItemID, error) {
 	return id, nil
 }
 
-// Events returns isolated opening projections in their canonical order.
 func (o OpeningCommit) Events() []EventCommit { return cloneEventCommits(o.events) }

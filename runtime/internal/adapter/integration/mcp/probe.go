@@ -4,18 +4,15 @@ import (
 	"context"
 	"errors"
 
-	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-	"go.opentelemetry.io/otel/attribute"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
-// probe tests cfg with a throwaway client (mcp.servers.test). It reuses an
-// active OAuth sign-in for the same-named server this session, because an
-// anonymous probe of an OAuth-protected server would always 401 even though the
-// live connection is authorized; the probe must carry the session's token to
-// reflect reality. Falls back to a stateless (anonymous / bearer / headers)
-// probe when there's no live handler. Nil receiver is supported (no live set).
+// An anonymous probe of an OAuth-protected server would always 401 even though the
+// live connection is authorized, so the probe reuses the session's sign-in.
 func (c *connections) probe(ctx context.Context, cfg ServerConfig) error {
 	if cfg.OAuthHandler == nil && c != nil {
 		c.mu.Lock()
@@ -27,9 +24,6 @@ func (c *connections) probe(ctx context.Context, cfg ServerConfig) error {
 	return probe(ctx, cfg)
 }
 
-// probe dials cfg with a throwaway client, proves its tools are listable, and
-// closes the session; a connection test that touches no live state. Honors any
-// cfg.OAuthHandler so a probe can be authorized. Returns nil on success.
 func probe(ctx context.Context, cfg ServerConfig) (err error) {
 	if _, installed := cfg.Source.Origin().Installation(); installed {
 		return errors.New("mcp: probe requires a user server candidate")
@@ -39,10 +33,10 @@ func probe(ctx context.Context, cfg ServerConfig) (err error) {
 	}
 	cfg = cfg.Clone()
 	ctx, span := tracer.Start(ctx, "mcp.probe",
-		trace.WithAttributes(attribute.String("mcp.server.name", cfg.ID().String())))
+		trace.WithAttributes(telemetry.MCPServerKey.String(cfg.ID().String())))
 	defer span.End()
 
-	client := sdkmcp.NewClient(clientImplementation(), nil)
+	client := sdk.NewClient(clientImplementation(), nil)
 	session, cleanupSession, err := dial(ctx, ctx, client, &launch{config: cfg})
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())

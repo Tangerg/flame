@@ -5,10 +5,11 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	"github.com/Tangerg/flame/packages/go-sdk/capture"
 
@@ -21,13 +22,6 @@ import (
 
 const readBufferBytes = 64 << 10
 
-// These decorators enforce the readTracker invariant at the model boundary.
-// They resolve tool paths against the Run working directory, scope stamps to
-// the active session, and return an actionable result when a mutation is stale.
-
-// withReadTracking stamps a full-file fingerprint only when the same digest
-// brackets the successful read. The read may return a range, but any concurrent
-// whole-file change invalidates the call rather than authorizing unseen bytes.
 func withReadTracking(inner toolcontract.Tool, tr *readTracker, root *filesystemRoot) toolcontract.Tool {
 	if tr == nil {
 		return inner
@@ -42,7 +36,7 @@ func withReadTracking(inner toolcontract.Tool, tr *readTracker, root *filesystem
 			return toolcontract.Result{}, fmt.Errorf("track read path: %w", pathErr)
 		}
 		abs := filepath.Join(root.identity, path)
-		before, existedBefore, err := observeFingerprintExistingFile(ctx, root, path, maxRuntimeReadFileBytes)
+		before, existedBefore, err := observeFingerprintExistingFile(ctx, root, path)
 		if err != nil {
 			return toolcontract.Result{}, fmt.Errorf("track read %s: %w", request.Path, err)
 		}
@@ -50,7 +44,7 @@ func withReadTracking(inner toolcontract.Tool, tr *readTracker, root *filesystem
 		if err != nil {
 			return out, err
 		}
-		after, existsAfter, err := observeFingerprintExistingFile(ctx, root, path, maxRuntimeReadFileBytes)
+		after, existsAfter, err := observeFingerprintExistingFile(ctx, root, path)
 		if err != nil {
 			tr.forget(executionctx.SessionID(ctx), abs)
 			return out, fmt.Errorf("track read %s: %w", request.Path, err)
@@ -64,9 +58,6 @@ func withReadTracking(inner toolcontract.Tool, tr *readTracker, root *filesystem
 	})
 }
 
-// Only a stable read may establish read evidence. An admitted mutation consumes
-// it before dispatch: neither a write acknowledgement nor a later filesystem
-// observation proves what the model has read, including after a partial failure.
 func withMutationGuard(inner toolcontract.Tool, tr *readTracker, root *filesystemRoot) toolcontract.Tool {
 	if tr == nil {
 		return inner
@@ -98,7 +89,6 @@ func withMutationGuard(inner toolcontract.Tool, tr *readTracker, root *filesyste
 	})
 }
 
-// Only pre-dispatch checks have evidence that the mutable Tool did not run.
 func beforeCallFailure(ctx context.Context, cause error) error {
 	if cancelled := errors.Join(ctx.Err(), context.Cause(ctx)); cancelled != nil {
 		return errors.Join(cause, cancelled)
@@ -143,21 +133,15 @@ func mutationGuardMessage(verdict guardVerdict, path string) string {
 	}
 }
 
-// unreadableMutationMessage answers the one case where "read it first" is not
-// an instruction the model can follow: the read tool refuses the same file.
 func unreadableMutationMessage(path string) string {
 	return fmt.Sprintf(
 		"%s is larger than the %d MiB read limit, so its current contents cannot be confirmed before modifying it.",
-		path, maxRuntimeReadFileBytes>>20,
+		path, maxRuntimeReadFileBytes/filesystem.MiB,
 	)
 }
 
-// fingerprintExistingFile stamps a mutation target under the same bound the
-// read tool enforces. A larger file can never hold a read stamp, so hashing it
-// without that bound would spend the whole file to produce a fingerprint
-// nothing can match.
 func fingerprintExistingFile(ctx context.Context, root *filesystemRoot, path string) (contentFingerprint, bool, error) {
-	observation, exists, err := observeFingerprintExistingFile(ctx, root, path, maxRuntimeReadFileBytes)
+	observation, exists, err := observeFingerprintExistingFile(ctx, root, path)
 	return observation.fingerprint, exists, err
 }
 
@@ -166,7 +150,7 @@ type fingerprintObservation struct {
 	info        os.FileInfo
 }
 
-func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, path string, maxBytes int64) (_ fingerprintObservation, exists bool, err error) {
+func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, path string) (_ fingerprintObservation, exists bool, err error) {
 	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
 		return fingerprintObservation{}, false, cause
 	}
@@ -180,10 +164,10 @@ func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, p
 	if !preflight.Mode().IsRegular() {
 		return fingerprintObservation{}, false, fmt.Errorf("unsupported file mode %s", preflight.Mode().Type())
 	}
-	if maxBytes > 0 && preflight.Size() > maxBytes {
+	if preflight.Size() > maxRuntimeReadFileBytes {
 		return fingerprintObservation{}, false, fmt.Errorf("%w: file uses %d bytes", errRuntimeReadFileTooLarge, preflight.Size())
 	}
-	file, before, err := filesystem.OpenFileAtExpected(root.Root, path, preflight, maxBytes)
+	file, before, err := filesystem.OpenFileAtExpected(root.Root, path, preflight, maxRuntimeReadFileBytes)
 	if err != nil {
 		if errors.Is(err, filesystem.ErrFileTooLarge) {
 			return fingerprintObservation{}, false, fmt.Errorf("%w: file grew while opening: %w", errRuntimeReadFileTooLarge, err)
@@ -193,7 +177,7 @@ func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, p
 	defer func() {
 		err = errors.Join(err, file.Close())
 	}()
-	fingerprint, err := fingerprintContent(ctx, file, maxBytes)
+	fingerprint, err := fingerprintContent(ctx, file)
 	if err != nil {
 		return fingerprintObservation{}, false, err
 	}
@@ -211,23 +195,17 @@ func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, p
 	return fingerprintObservation{fingerprint: fingerprint, info: current}, true, nil
 }
 
-// fingerprintContent hashes the opened file, reading one byte past the limit
-// so a file that grew while open is refused rather than truncated.
-func fingerprintContent(ctx context.Context, file io.Reader, maxBytes int64) (contentFingerprint, error) {
+func fingerprintContent(ctx context.Context, file io.Reader) (contentFingerprint, error) {
 	hash := sha256.New()
 	contextReader, err := capture.NewReader(ctx, file)
 	if err != nil {
 		return contentFingerprint{}, err
 	}
-	var source io.Reader = contextReader
-	if maxBytes > 0 {
-		source = io.LimitReader(source, maxBytes+1)
-	}
-	written, err := io.CopyBuffer(hash, source, make([]byte, readBufferBytes))
+	written, err := io.CopyBuffer(hash, io.LimitReader(contextReader, maxRuntimeReadFileBytes+1), make([]byte, readBufferBytes))
 	if err != nil {
 		return contentFingerprint{}, err
 	}
-	if maxBytes > 0 && written > maxBytes {
+	if written > maxRuntimeReadFileBytes {
 		return contentFingerprint{}, fmt.Errorf("%w: file grew while fingerprinting", errRuntimeReadFileTooLarge)
 	}
 	var fingerprint contentFingerprint

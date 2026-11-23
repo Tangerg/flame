@@ -6,8 +6,6 @@ import (
 	"strings"
 )
 
-// diffSources runs the tracked-changes git diff for the mode and returns the
-// patch text plus the untracked file list (worktree mode only).
 func diffSources(ctx context.Context, dir, relPath string, mode Mode) (patch []byte, untracked []string, baseline Baseline, err error) {
 	repository, err := IsRepo(ctx, dir)
 	if err != nil {
@@ -24,9 +22,9 @@ func diffSources(ctx context.Context, dir, relPath string, mode Mode) (patch []b
 		if berr != nil {
 			return nil, nil, Baseline{}, berr
 		}
-		baseline = Baseline{Type: baselineMergeBase, Commit: base}
+		baseline = Baseline{Type: BaselineMergeBase, Commit: base}
 		args = append(args, base)
-	default: // Worktree
+	default:
 		head, headErr := runAllowingExitCode(ctx, dir, 1, "rev-parse", "--verify", "--quiet", "HEAD")
 		if headErr != nil {
 			return nil, nil, Baseline{}, headErr
@@ -37,10 +35,10 @@ func diffSources(ctx context.Context, dir, relPath string, mode Mode) (patch []b
 			if emptyErr != nil {
 				return nil, nil, Baseline{}, emptyErr
 			}
-			baseline = Baseline{Type: baselineEmptyTree}
+			baseline = Baseline{Type: BaselineEmptyTree}
 			args = append(args, strings.TrimSpace(string(empty)))
 		} else {
-			baseline = Baseline{Type: baselineHead, Commit: commit}
+			baseline = Baseline{Type: BaselineHead, Commit: commit}
 			args = append(args, commit)
 		}
 	}
@@ -63,7 +61,6 @@ func diffSources(ctx context.Context, dir, relPath string, mode Mode) (patch []b
 	return patch, untracked, baseline, nil
 }
 
-// mergeBase resolves the merge-base of HEAD with the default branch.
 func mergeBase(ctx context.Context, dir string) (string, error) {
 	baseTip, err := defaultBranchTip(ctx, dir)
 	if err != nil {
@@ -89,9 +86,8 @@ func mergeBase(ctx context.Context, dir string) (string, error) {
 	return base, nil
 }
 
-// defaultBranchTip resolves the selected branch tip: origin/HEAD → main → master.
-// Full refs prevent Git's short-name lookup from selecting a shadowing tag or
-// local branch instead of the chosen base.
+// Full refs keep Git's short-name lookup from selecting a shadowing tag or local
+// branch.
 func defaultBranchTip(ctx context.Context, dir string) (string, error) {
 	out, err := runAllowingExitCode(ctx, dir, 1, "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD")
 	if err != nil {

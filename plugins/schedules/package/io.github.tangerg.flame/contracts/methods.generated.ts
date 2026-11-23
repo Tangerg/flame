@@ -4,169 +4,169 @@ import type { JSONNumber } from "@frame/sdk/json";
 
 export type Ack = Record<string, never>;
 
-export type CreateV1Input = Draft;
+export type CreateV2Input = Draft;
 
-export interface CreateV1InputModelSelection {
+export interface CreateV2InputModelSelection {
   model: string;
   provider: string;
   reasoningEffort: string;
 }
 
-export type CreateV1Output = CreateV1OutputDomainSnapshot;
+export type CreateV2Output = CreateV2OutputScheduleSnapshot;
 
-export interface CreateV1OutputDomainSnapshot {
-  CWD: string;
-  CreatedAt: CreateV1OutputInstantTimestamp;
-  Cron: string;
-  ID: string;
-  Instructions: string;
-  LastRunAt?: CreateV1OutputInstantTimestamp;
-  ModelSelection: CreateV1OutputModelSelection;
-  NextRunAt?: CreateV1OutputInstantTimestamp;
-  Revision: JSONNumber;
-  TimeZone: string;
-  Title: string;
-}
+export type CreateV2OutputInstantTimestamp = string;
 
-export type CreateV1OutputInstantTimestamp = string;
-
-export interface CreateV1OutputModelSelection {
+export interface CreateV2OutputModelSelection {
   model: string;
   provider: string;
   reasoningEffort: string;
 }
 
-export type DeleteV1Input = DeleteV1InputWireItemInput;
-
-export interface DeleteV1InputWireItemInput {
-  ID: string;
+export interface CreateV2OutputScheduleSnapshot {
+  createdAt: CreateV2OutputInstantTimestamp;
+  cron: string;
+  cwd: string;
+  id: string;
+  instructions: string;
+  lastRunAt?: CreateV2OutputInstantTimestamp;
+  modelSelection: CreateV2OutputModelSelection;
+  nextRunAt?: CreateV2OutputInstantTimestamp;
+  revision: JSONNumber;
+  timeZone: string;
+  title: string;
 }
 
-export type DeleteV1Output = Ack;
+export type DeleteV2Input = DeleteV2InputWireItemInput;
+
+export interface DeleteV2InputWireItemInput {
+  id: string;
+}
+
+export type DeleteV2Output = Ack;
 
 export interface Draft {
-  CWD: string;
-  Cron: string;
-  Enabled: boolean;
-  Instructions: string;
-  ModelSelection: CreateV1InputModelSelection;
-  TimeZone: string;
-  Title: string;
+  cron: string;
+  cwd: string;
+  enabled: boolean;
+  instructions: string;
+  modelSelection: CreateV2InputModelSelection;
+  timeZone: string;
+  title: string;
 }
 
 export interface ListInput {
-  Cursor: string;
-  Limit?: JSONNumber;
+  cursor: string;
+  limit?: JSONNumber;
 }
 
-export type ListV1Input = ListInput;
+export type ListV2Input = ListInput;
 
-export type ListV1Output = Page;
+export type ListV2Output = Page;
 
-export interface ListV1OutputDomainSnapshot {
-  CWD: string;
-  CreatedAt: ListV1OutputInstantTimestamp;
-  Cron: string;
-  ID: string;
-  Instructions: string;
-  LastRunAt?: ListV1OutputInstantTimestamp;
-  ModelSelection: ListV1OutputModelSelection;
-  NextRunAt?: ListV1OutputInstantTimestamp;
-  Revision: JSONNumber;
-  TimeZone: string;
-  Title: string;
-}
+export type ListV2OutputInstantTimestamp = string;
 
-export type ListV1OutputInstantTimestamp = string;
-
-export interface ListV1OutputModelSelection {
+export interface ListV2OutputModelSelection {
   model: string;
   provider: string;
   reasoningEffort: string;
+}
+
+export interface ListV2OutputScheduleSnapshot {
+  createdAt: ListV2OutputInstantTimestamp;
+  cron: string;
+  cwd: string;
+  id: string;
+  instructions: string;
+  lastRunAt?: ListV2OutputInstantTimestamp;
+  modelSelection: ListV2OutputModelSelection;
+  nextRunAt?: ListV2OutputInstantTimestamp;
+  revision: JSONNumber;
+  timeZone: string;
+  title: string;
 }
 
 export interface ModelPatch {
-  Model?: string;
-  Provider?: string;
-  ReasoningEffort?: string;
+  model?: string;
+  provider?: string;
+  reasoningEffort?: string;
 }
 
 export interface Page {
-  NextCursor: string;
-  Rows: Array<ListV1OutputDomainSnapshot>;
+  nextCursor: string;
+  rows: Array<ListV2OutputScheduleSnapshot>;
 }
 
-export type RunNowV1Input = RunNowV1InputWireItemInput;
+export type RunNowV2Input = RunNowV2InputWireItemInput;
 
-export interface RunNowV1InputWireItemInput {
-  ID: string;
+export interface RunNowV2InputWireItemInput {
+  id: string;
 }
 
-export type RunNowV1Output = RunReference;
+export type RunNowV2Output = RunReference;
 
 export interface RunReference {
-  RunID: string;
-  SessionID: string;
+  runId: string;
+  sessionId: string;
 }
 
 export interface UpdateInput {
-  CWD?: string;
-  Cron?: string;
-  Enabled?: boolean;
-  ExpectedRevision: JSONNumber;
-  ID: string;
-  Instructions?: string;
-  ModelSelection: ModelPatch;
-  TimeZone?: string;
-  Title?: string;
+  cron?: string;
+  cwd?: string;
+  enabled?: boolean;
+  expectedRevision: JSONNumber;
+  id: string;
+  instructions?: string;
+  modelSelection: ModelPatch;
+  timeZone?: string;
+  title?: string;
 }
 
-export type UpdateV1Input = UpdateInput;
+export type UpdateV2Input = UpdateInput;
 
-export type UpdateV1Output = UpdateV1OutputDomainSnapshot;
+export type UpdateV2Output = UpdateV2OutputScheduleSnapshot;
 
-export interface UpdateV1OutputDomainSnapshot {
-  CWD: string;
-  CreatedAt: UpdateV1OutputInstantTimestamp;
-  Cron: string;
-  ID: string;
-  Instructions: string;
-  LastRunAt?: UpdateV1OutputInstantTimestamp;
-  ModelSelection: UpdateV1OutputModelSelection;
-  NextRunAt?: UpdateV1OutputInstantTimestamp;
-  Revision: JSONNumber;
-  TimeZone: string;
-  Title: string;
-}
+export type UpdateV2OutputInstantTimestamp = string;
 
-export type UpdateV1OutputInstantTimestamp = string;
-
-export interface UpdateV1OutputModelSelection {
+export interface UpdateV2OutputModelSelection {
   model: string;
   provider: string;
   reasoningEffort: string;
 }
 
+export interface UpdateV2OutputScheduleSnapshot {
+  createdAt: UpdateV2OutputInstantTimestamp;
+  cron: string;
+  cwd: string;
+  id: string;
+  instructions: string;
+  lastRunAt?: UpdateV2OutputInstantTimestamp;
+  modelSelection: UpdateV2OutputModelSelection;
+  nextRunAt?: UpdateV2OutputInstantTimestamp;
+  revision: JSONNumber;
+  timeZone: string;
+  title: string;
+}
+
 export interface MethodInputs {
-  "flame.schedules/create.v1": CreateV1Input;
-  "flame.schedules/delete.v1": DeleteV1Input;
-  "flame.schedules/list.v1": ListV1Input;
-  "flame.schedules/runNow.v1": RunNowV1Input;
-  "flame.schedules/update.v1": UpdateV1Input;
+  "flame.schedules/create.v2": CreateV2Input;
+  "flame.schedules/delete.v2": DeleteV2Input;
+  "flame.schedules/list.v2": ListV2Input;
+  "flame.schedules/runNow.v2": RunNowV2Input;
+  "flame.schedules/update.v2": UpdateV2Input;
 }
 export interface MethodOutputs {
-  "flame.schedules/create.v1": CreateV1Output;
-  "flame.schedules/delete.v1": DeleteV1Output;
-  "flame.schedules/list.v1": ListV1Output;
-  "flame.schedules/runNow.v1": RunNowV1Output;
-  "flame.schedules/update.v1": UpdateV1Output;
+  "flame.schedules/create.v2": CreateV2Output;
+  "flame.schedules/delete.v2": DeleteV2Output;
+  "flame.schedules/list.v2": ListV2Output;
+  "flame.schedules/runNow.v2": RunNowV2Output;
+  "flame.schedules/update.v2": UpdateV2Output;
 }
 export const METHODS = {
-  ["flame.schedules/create.v1"]: { kind: "command", target: "installation" },
-  ["flame.schedules/delete.v1"]: { kind: "command", target: "installation" },
-  ["flame.schedules/list.v1"]: { kind: "query", target: "installation" },
-  ["flame.schedules/runNow.v1"]: { kind: "command", target: "installation" },
-  ["flame.schedules/update.v1"]: { kind: "command", target: "installation" },
+  ["flame.schedules/create.v2"]: { kind: "command", target: "installation" },
+  ["flame.schedules/delete.v2"]: { kind: "command", target: "installation" },
+  ["flame.schedules/list.v2"]: { kind: "query", target: "installation" },
+  ["flame.schedules/runNow.v2"]: { kind: "command", target: "installation" },
+  ["flame.schedules/update.v2"]: { kind: "command", target: "installation" },
 } as const;
-export const CAPABILITY = {"protocol":"io.github.tangerg.flame/plugin/1","reference":"schedules","composition":"selection","scope":"installation","contract":"91cb75c41327ddba813eb774a2634241069009d9b744b46fa7a9fd76faa7b228"} as const;
-export const CAPABILITY_JSON = "{\"composition\":\"selection\",\"methods\":[{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.RHJhZnQ\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"Enabled\":{\"type\":\"boolean\"},\"Instructions\":{\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"Enabled\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"Enabled\":{\"type\":\"boolean\"},\"Instructions\":{\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"Enabled\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/create.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Cron\":{\"type\":\"string\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"LastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"NextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"CreatedAt\",\"Revision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Cron\":{\"type\":\"string\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"LastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"NextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"CreatedAt\",\"Revision\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.SXRlbUlucHV0\":{\"additionalProperties\":false,\"properties\":{\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/delete.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.QWNr\":{\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TGlzdElucHV0\":{\"additionalProperties\":false,\"properties\":{\"Cursor\":{\"type\":\"string\"},\"Limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"Cursor\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"Cursor\":{\"type\":\"string\"},\"Limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"Cursor\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.schedules/list.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Cron\":{\"type\":\"string\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"LastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"NextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"CreatedAt\",\"Revision\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.UGFnZQ\":{\"additionalProperties\":false,\"properties\":{\"NextCursor\":{\"type\":\"string\"},\"Rows\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q\"},\"type\":\"array\"}},\"required\":[\"Rows\",\"NextCursor\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"NextCursor\":{\"type\":\"string\"},\"Rows\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q\"},\"type\":\"array\"}},\"required\":[\"Rows\",\"NextCursor\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.SXRlbUlucHV0\":{\"additionalProperties\":false,\"properties\":{\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"ID\":{\"type\":\"string\"}},\"required\":[\"ID\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/runNow.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2FwcGxpY2F0aW9u.UnVuUmVmZXJlbmNl\":{\"additionalProperties\":false,\"properties\":{\"RunID\":{\"type\":\"string\"},\"SessionID\":{\"type\":\"string\"}},\"required\":[\"SessionID\",\"RunID\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"RunID\":{\"type\":\"string\"},\"SessionID\":{\"type\":\"string\"}},\"required\":[\"SessionID\",\"RunID\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA\":{\"additionalProperties\":false,\"properties\":{\"Model\":{\"type\":\"string\"},\"Provider\":{\"type\":\"string\"},\"ReasoningEffort\":{\"type\":\"string\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.VXBkYXRlSW5wdXQ\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"Enabled\":{\"type\":\"boolean\"},\"ExpectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"ExpectedRevision\",\"ModelSelection\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"Cron\":{\"type\":\"string\"},\"Enabled\":{\"type\":\"boolean\"},\"ExpectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"ExpectedRevision\",\"ModelSelection\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/update.v1\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.U25hcHNob3Q\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL2RvbWFpbg.c25hcHNob3RQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Cron\":{\"type\":\"string\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"LastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"NextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"CreatedAt\",\"Revision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"CWD\":{\"type\":\"string\"},\"CreatedAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Cron\":{\"type\":\"string\"},\"ID\":{\"type\":\"string\"},\"Instructions\":{\"type\":\"string\"},\"LastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"ModelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"NextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"Revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"TimeZone\":{\"type\":\"string\"},\"Title\":{\"type\":\"string\"}},\"required\":[\"ID\",\"Title\",\"Instructions\",\"CWD\",\"ModelSelection\",\"Cron\",\"TimeZone\",\"CreatedAt\",\"Revision\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/plugin/1\",\"reference\":\"schedules\",\"scope\":\"installation\"}";
+export const CAPABILITY = {"protocol":"io.github.tangerg.flame/plugin/1","reference":"schedules","composition":"selection","scope":"installation","contract":"c9e2bccd31657c2e7a0a513134c889b5ebee3fb26fd941c42db0f95debc549ae"} as const;
+export const CAPABILITY_JSON = "{\"composition\":\"selection\",\"methods\":[{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.RHJhZnQ\":{\"additionalProperties\":false,\"properties\":{\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"enabled\":{\"type\":\"boolean\"},\"instructions\":{\"type\":\"string\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"title\",\"instructions\",\"cwd\",\"modelSelection\",\"cron\",\"timeZone\",\"enabled\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"enabled\":{\"type\":\"boolean\"},\"instructions\":{\"type\":\"string\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"title\",\"instructions\",\"cwd\",\"modelSelection\",\"cron\",\"timeZone\",\"enabled\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/create.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.U25hcHNob3Q\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"lastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"nextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"instructions\",\"cwd\",\"modelSelection\",\"cron\",\"timeZone\",\"createdAt\",\"revision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"lastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"nextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"instructions\",\"cwd\",\"modelSelection\",\"cron\",\"timeZone\",\"createdAt\",\"revision\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.SXRlbUlucHV0\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/delete.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.QWNr\":{\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{},\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TGlzdElucHV0\":{\"additionalProperties\":false,\"properties\":{\"cursor\":{\"type\":\"string\"},\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"cursor\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"cursor\":{\"type\":\"string\"},\"limit\":{\"allOf\":[{\"maximum\":9223372036854775807,\"minimum\":-9223372036854775808}],\"type\":\"integer\"}},\"required\":[\"cursor\"],\"type\":\"object\"},\"kind\":\"query\",\"name\":\"flame.schedules/list.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.U25hcHNob3Q\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"lastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"nextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"instructions\",\"cwd\",\"modelSelection\",\"cron\",\"timeZone\",\"createdAt\",\"revision\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.UGFnZQ\":{\"additionalProperties\":false,\"properties\":{\"nextCursor\":{\"type\":\"string\"},\"rows\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.U25hcHNob3Q\"},\"type\":\"array\"}},\"required\":[\"rows\",\"nextCursor\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"nextCursor\":{\"type\":\"string\"},\"rows\":{\"items\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.U25hcHNob3Q\"},\"type\":\"array\"}},\"required\":[\"rows\",\"nextCursor\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.SXRlbUlucHV0\":{\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"string\"}},\"required\":[\"id\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/runNow.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxpbmc.UnVuUmVmZXJlbmNl\":{\"additionalProperties\":false,\"properties\":{\"runId\":{\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"}},\"required\":[\"sessionId\",\"runId\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"runId\":{\"type\":\"string\"},\"sessionId\":{\"type\":\"string\"}},\"required\":[\"sessionId\",\"runId\"],\"type\":\"object\"},\"target\":\"installation\"},{\"description\":\"\",\"input\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.VXBkYXRlSW5wdXQ\":{\"additionalProperties\":false,\"properties\":{\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"enabled\":{\"type\":\"boolean\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\",\"modelSelection\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"enabled\":{\"type\":\"boolean\"},\"expectedRevision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"id\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3dpcmU.TW9kZWxQYXRjaA\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"expectedRevision\",\"modelSelection\"],\"type\":\"object\"},\"kind\":\"command\",\"name\":\"flame.schedules/update.v2\",\"output\":{\"$defs\":{\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\":{\"type\":\"string\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.c2VsZWN0aW9uSlNPTltzdHJpbmdd\":{\"additionalProperties\":false,\"properties\":{\"model\":{\"type\":\"string\"},\"provider\":{\"type\":\"string\"},\"reasoningEffort\":{\"type\":\"string\"}},\"required\":[\"model\",\"provider\",\"reasoningEffort\"],\"type\":\"object\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.U25hcHNob3Q\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u\"},\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvc2NoZWR1bGVzL2ludGVybmFsL3NjaGVkdWxl.c25hcHNob3RQcm9qZWN0aW9u\":{\"additionalProperties\":false,\"properties\":{\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"lastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"nextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"instructions\",\"cwd\",\"modelSelection\",\"cron\",\"timeZone\",\"createdAt\",\"revision\"],\"type\":\"object\"}},\"$schema\":\"https://json-schema.org/draft/2020-12/schema\",\"additionalProperties\":false,\"properties\":{\"createdAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"cron\":{\"type\":\"string\"},\"cwd\":{\"type\":\"string\"},\"id\":{\"type\":\"string\"},\"instructions\":{\"type\":\"string\"},\"lastRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"modelSelection\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9tb2RlbA.U2VsZWN0aW9u\"},\"nextRunAt\":{\"$ref\":\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\"},\"revision\":{\"allOf\":[{\"maximum\":18446744073709551615,\"minimum\":0}],\"type\":\"integer\"},\"timeZone\":{\"type\":\"string\"},\"title\":{\"type\":\"string\"}},\"required\":[\"id\",\"title\",\"instructions\",\"cwd\",\"modelSelection\",\"cron\",\"timeZone\",\"createdAt\",\"revision\"],\"type\":\"object\"},\"target\":\"installation\"}],\"protocol\":\"io.github.tangerg.flame/plugin/1\",\"reference\":\"schedules\",\"scope\":\"installation\"}";

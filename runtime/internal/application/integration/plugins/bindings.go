@@ -15,9 +15,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// ContributionBinding captures one concrete implementation of a consumer contract.
-// Installation availability and composition choice remain with their own owners.
-
 type ContributionBinding struct {
 	InstallationID identity.InstallationID
 	ContributionID plugin.ContributionID
@@ -29,8 +26,6 @@ type ContributionBinding struct {
 	Activation     *plugin.Activation
 }
 
-// SameContribution compares the consumer's declared source independently of
-// the original execution graph attached after capture or checkpoint restoration.
 func (b ContributionBinding) SameContribution(other ContributionBinding) bool {
 	b.Activation = nil
 	other.Activation = nil

@@ -1,5 +1,5 @@
 import { TOOL_ICON_BY_NAME } from "@/lib/toolFamilies";
-export interface ToolIconContribution {
+interface ToolIconContribution {
   key: string;
   icon: string;
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// Workspace command options. A bare optionTerminator ends option parsing.
 const (
 	optionPrefix     = "--"
 	optionTerminator = "--"
@@ -32,7 +31,6 @@ const (
 
 const defaultPreviewLines = 80
 
-// exclusiveOptions admits at most one option of a mutually exclusive group.
 type exclusiveOptions struct {
 	group  string
 	chosen string
@@ -312,8 +310,6 @@ func parseWorkspaceReadSelection(argument string) (workspaceReadSelection, error
 	return selection, nil
 }
 
-// parseWorkspaceReadOptions consumes the leading options; the line bounds
-// stay separate because only their combination names a range.
 func parseWorkspaceReadOptions(cursor *commandOptionCursor, selection *workspaceReadSelection) (startLine, endLine *int, err error) {
 	for {
 		option, ok, err := cursor.Next()

@@ -1,7 +1,3 @@
-// Package keylock serializes work by key without a blocking mutex. A waiter
-// observes the holder's release signal through its own context, so a caller
-// whose request ended stops waiting instead of outliving it, and an unrelated
-// key never queues behind another key's work.
 package keylock
 
 import (
@@ -11,8 +7,6 @@ import (
 	"sync"
 )
 
-// Set owns one exclusion per key. The zero value is not usable; build one with
-// [NewSet]. Safe for concurrent use.
 type Set struct {
 	mu   sync.Mutex
 	held map[string]chan struct{}
@@ -20,9 +14,6 @@ type Set struct {
 
 func NewSet() *Set { return &Set{held: make(map[string]chan struct{})} }
 
-// Acquire reserves key until the returned release runs. Release is idempotent.
-// A context that ends while waiting retains its category and cause and
-// reserves nothing.
 func (s *Set) Acquire(ctx context.Context, key string) (func(), error) {
 	for {
 		s.mu.Lock()
@@ -54,9 +45,7 @@ func (s *Set) Acquire(ctx context.Context, key string) (func(), error) {
 	}
 }
 
-// AcquireAll reserves every distinct key in one stable order, so two callers
-// naming overlapping key sets cannot deadlock against each other. A context
-// that ends part-way releases what it already holds and reserves nothing.
+// A stable order so callers naming overlapping key sets cannot deadlock.
 func (s *Set) AcquireAll(ctx context.Context, keys ...string) (func(), error) {
 	ordered := slices.Clone(keys)
 	slices.Sort(ordered)

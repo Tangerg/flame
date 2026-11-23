@@ -57,12 +57,12 @@ func renderMarkdown(ctx context.Context, _ *sdk.ServerSession, cmd pluginmcp.Com
 				count--
 			}
 			chunk := body[:count]
-			if !yield(markdownEvent{Chunk: &chunk}, nil) {
+			if !yield(pluginmcp.StreamChunk[plugin.DocumentIdentity](chunk), nil) {
 				return
 			}
 			body = body[count:]
 		}
-		yield(markdownEvent{Result: &result}, nil)
+		yield(pluginmcp.StreamResult[string](result), nil)
 	}
 }
 

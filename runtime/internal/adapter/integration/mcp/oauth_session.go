@@ -16,10 +16,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// OAuthSessionStore binds each credential to the target that requested it and
-// fences credential writes by their authorization grant. Load finds only a
-// credential of the same target; Save and Remove must refuse a superseded
-// binding without changing its replacement.
 type oauthSessionStore interface {
 	BeginOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) (binding string, err error)
 	LoadOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) (payload []byte, binding string, found bool, err error)
@@ -29,9 +25,6 @@ type oauthSessionStore interface {
 
 var errStoredOAuthRejected = errors.New("mcp oauth: stored session was rejected; sign in again")
 
-// storedOAuthSession carries no layout version: it decodes strictly and
-// validates, so a session this build cannot read asks the user to sign in
-// again instead of being misread.
 type storedOAuthSession struct {
 	Config storedOAuthConfig `json:"config"`
 	Token  storedOAuthToken  `json:"token"`
@@ -270,9 +263,8 @@ func invalidateRejectedTokens(
 	}
 }
 
-// restoredOAuthHandler deliberately does not start an interactive browser flow
-// during boot. A rejected credential is removed and the dial is classified as
-// needsAuth; an explicit authorization attempt owns user interaction.
+// Boot never starts an interactive browser flow; an explicit authorization attempt
+// owns user interaction.
 type restoredOAuthHandler struct {
 	mu      sync.RWMutex
 	source  oauth2.TokenSource

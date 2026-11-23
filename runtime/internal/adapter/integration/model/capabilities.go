@@ -9,13 +9,13 @@ import (
 	framecall "github.com/Tangerg/frame/call"
 	"github.com/Tangerg/scope/core/chat"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	modelcatalog "github.com/Tangerg/flame/packages/go-sdk/model/catalog"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
-	modelsapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 
-	catalog "github.com/Tangerg/scope/models/catalog"
+	"github.com/Tangerg/scope/models/catalog"
 	"github.com/samber/lo"
 )
 
@@ -37,12 +37,12 @@ func NewCapabilities(adapters providerCapabilities) (*Capabilities, error) {
 	return &Capabilities{adapters: adapters}, nil
 }
 
-func (c *Capabilities) Profiles(ctx context.Context) ([]modelsapp.ProviderProfile, error) {
+func (c *Capabilities) Profiles(ctx context.Context) ([]modelapp.ProviderProfile, error) {
 	profiles, err := c.adapters.Profiles(ctx)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]modelsapp.ProviderProfile, 0, len(profiles))
+	result := make([]modelapp.ProviderProfile, 0, len(profiles))
 	for _, profile := range profiles {
 		converted, err := projectProviderProfile(profile)
 		if err != nil {
@@ -53,48 +53,49 @@ func (c *Capabilities) Profiles(ctx context.Context) ([]modelsapp.ProviderProfil
 	return result, nil
 }
 
-func (c *Capabilities) Profile(ctx context.Context, id string) (modelsapp.ProviderProfile, error) {
+func (c *Capabilities) Profile(ctx context.Context, id string) (modelapp.ProviderProfile, error) {
 	profile, err := c.adapters.Profile(ctx, id)
 	if err != nil {
-		return modelsapp.ProviderProfile{}, err
+		return modelapp.ProviderProfile{}, err
 	}
 	if profile.ID != id {
-		return modelsapp.ProviderProfile{}, errors.New("model: adapter returned a different provider")
+		return modelapp.ProviderProfile{}, errors.New("model: adapter returned a different provider")
 	}
 	return projectProviderProfile(profile)
 }
-func projectProviderProfile(profile modelprovider.Profile) (modelsapp.ProviderProfile, error) {
+
+func projectProviderProfile(profile modelprovider.Profile) (modelapp.ProviderProfile, error) {
 	if err := profile.Validate(); err != nil {
-		return modelsapp.ProviderProfile{}, err
+		return modelapp.ProviderProfile{}, err
 	}
 	meta, err := providerMetadata(profile)
 	if err != nil {
-		return modelsapp.ProviderProfile{}, err
+		return modelapp.ProviderProfile{}, err
 	}
-	models := make([]modelsapp.Model, 0, len(profile.Models))
+	models := make([]modelapp.Model, 0, len(profile.Models))
 	for _, entry := range profile.Models {
 		model, err := catalogModel(profile.ID, entry)
 		if err != nil {
-			return modelsapp.ProviderProfile{}, fmt.Errorf("model: catalog facts for %s/%s: %w", profile.ID, entry.ID, err)
+			return modelapp.ProviderProfile{}, fmt.Errorf("model: catalog facts for %s/%s: %w", profile.ID, entry.ID, err)
 		}
 		models = append(models, model)
 	}
-	return modelsapp.ProviderProfile{Metadata: meta, Models: models, Endpoint: profile.Endpoint}, nil
+	return modelapp.ProviderProfile{Metadata: meta, Models: models, Endpoint: profile.Endpoint}, nil
 }
 
-func (c *Capabilities) AdmitSelection(ctx context.Context, selection modelchoice.Selection) error {
+func (c *Capabilities) AdmitSelection(ctx context.Context, selection flamemodel.Selection) error {
 	if err := selection.ValidateExact(); err != nil {
 		return err
 	}
 	profile, err := c.adapters.Profile(ctx, selection.Provider())
 	if err != nil {
-		if errors.Is(err, modelsapp.ErrProviderUnsupported) {
-			return fmt.Errorf("%w: %w", modelchoice.ErrUnsupported, err)
+		if errors.Is(err, modelapp.ErrProviderUnsupported) {
+			return fmt.Errorf("%w: %w", flamemodel.ErrUnsupported, err)
 		}
 		return err
 	}
 	if profile.ID != selection.Provider() {
-		return modelsapp.ErrProviderUnsupported
+		return modelapp.ErrProviderUnsupported
 	}
 	if err := profile.Validate(); err != nil {
 		return err
@@ -123,9 +124,10 @@ func (c *Capabilities) Probe(ctx context.Context, entry provider.Provider) error
 		if refusal, ok := errors.AsType[*framecall.Refusal](err); ok {
 			switch modelprovider.FailureKind(refusal.Code) {
 			case modelprovider.InvalidCredentials:
-				return errors.Join(modelsapp.ErrProviderCredentialsRejected, err)
+				return errors.Join(modelapp.ErrProviderCredentialsRejected, err)
 			case modelprovider.Timeout:
 				return errors.Join(context.DeadlineExceeded, err)
+			case modelprovider.Internal, modelprovider.Canceled, modelprovider.RateLimited, modelprovider.ProviderRejected, modelprovider.ProviderUnavailable:
 			}
 		}
 		return err
@@ -140,10 +142,10 @@ func (c *Capabilities) ListModels(ctx context.Context, entry provider.Provider) 
 	}
 	ids, err := c.adapters.RemoteModels(ctx, connection)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", modelsapp.ErrModelDiscoveryFailed, err)
+		return nil, fmt.Errorf("%w: %w", modelapp.ErrModelDiscoveryFailed, err)
 	}
 	for _, id := range ids {
-		if _, err := modelchoice.NewModelIdentity(id); err != nil {
+		if _, err := flamemodel.NewModelIdentity(id); err != nil {
 			return nil, err
 		}
 	}
@@ -151,83 +153,72 @@ func (c *Capabilities) ListModels(ctx context.Context, entry provider.Provider) 
 	return slices.Compact(ids), nil
 }
 
-func providerMetadata(value modelprovider.Profile) (modelsapp.ProviderMetadata, error) {
-	authentication := modelsapp.ProviderAPIKeyRequired
+func providerMetadata(value modelprovider.Profile) (modelapp.ProviderMetadata, error) {
+	authentication := modelapp.ProviderAPIKeyRequired
 	if value.Authentication == modelprovider.KeyOptional {
-		authentication = modelsapp.ProviderAPIKeyOptional
+		authentication = modelapp.ProviderAPIKeyOptional
 	}
-	endpoint := modelsapp.ProviderEndpointOptional
+	endpoint := modelapp.ProviderEndpointOptional
 	if value.EndpointRequired {
-		endpoint = modelsapp.ProviderEndpointRequired
+		endpoint = modelapp.ProviderEndpointRequired
 	}
-	source := modelsapp.ProviderModelsBundled
+	source := modelapp.ProviderModelsBundled
 	if value.ModelSource == modelprovider.EndpointModels {
-		source = modelsapp.ProviderModelsEndpoint
+		source = modelapp.ProviderModelsEndpoint
 	}
-	embedding := modelsapp.NoEmbeddingCapability()
+	embedding := modelapp.NoEmbeddingCapability()
 	if value.Embedding != nil {
 		if value.Embedding.DefaultModel != "" {
 			var err error
-			embedding, err = modelsapp.EmbeddingCapabilityWithDefault(value.Embedding.DefaultModel)
+			embedding, err = modelapp.EmbeddingCapabilityWithDefault(value.Embedding.DefaultModel)
 			if err != nil {
-				return modelsapp.ProviderMetadata{}, err
+				return modelapp.ProviderMetadata{}, err
 			}
 		} else {
-			embedding = modelsapp.EmbeddingCapabilityWithoutDefault()
+			embedding = modelapp.EmbeddingCapabilityWithoutDefault()
 		}
 	}
-	return modelsapp.NewProviderMetadata(value.ID, authentication, endpoint, source, embedding)
+	return modelapp.NewProviderMetadata(value.ID, authentication, endpoint, source, embedding)
 }
 
-func catalogModel(providerID string, entry catalog.Model) (modelsapp.Model, error) {
+func catalogModel(providerID string, entry catalog.Model) (modelapp.Model, error) {
 	tokenLimits, err := catalogTokenLimits(entry)
 	if err != nil {
-		return modelsapp.Model{}, err
+		return modelapp.Model{}, err
 	}
-	details := &modelsapp.Details{
+	details := &modelapp.Details{
 		DisplayName: entry.DisplayName, TokenLimits: tokenLimits, KnowledgeCutoff: entry.KnowledgeCutoff, Deprecated: entry.Deprecated,
 		Reasoning: entry.Reasoning.Supported, ReasoningLevels: slices.Clone(entry.Reasoning.Levels), ReasoningDefault: entry.Reasoning.DefaultLevel,
-		Multimodal: entry.Modalities.AcceptsInput(catalog.ModalityImage), InputModalities: catalogModalities(entry.Modalities.Input),
-		OutputModalities: catalogModalities(entry.Modalities.Output), ToolUse: entry.ToolCall, StructuredOutput: entry.StructuredOutput,
+		Multimodal: entry.Modalities.AcceptsInput(catalog.ModalityImage), InputModalities: slices.Clone(entry.Modalities.Input),
+		OutputModalities: slices.Clone(entry.Modalities.Output), ToolUse: entry.ToolCall, StructuredOutput: entry.StructuredOutput,
 	}
 	for _, band := range entry.Pricing {
 		priced, err := catalogPriceBand(band)
 		if err != nil {
-			return modelsapp.Model{}, err
+			return modelapp.Model{}, err
 		}
 		details.Pricing = append(details.Pricing, priced)
 	}
-	return modelsapp.NewModel(providerID, entry.ID, details)
+	return modelapp.NewModel(providerID, entry.ID, details)
 }
 
-// catalogPriceBand reads each effective rate as the cost the catalog bills for
-// one million tokens of that kind, so the displayed card cannot disagree with
-// billing about defaults such as an absent cache rate.
-func catalogPriceBand(band catalog.Pricing) (modelsapp.PriceBand, error) {
+func catalogPriceBand(band catalog.Pricing) (modelapp.PriceBand, error) {
 	const million = 1_000_000
-	rates := make([]float64, 4)
-	for index, usage := range []chat.Usage{
-		{InputTokens: million},
-		{OutputTokens: million},
-		{InputTokens: million, CacheReadInputTokens: new(int64(million))},
-		{InputTokens: million, CacheWriteInputTokens: new(int64(million))},
+	price := modelapp.PriceBand{AboveInputTokens: band.Threshold}
+	for _, rate := range []struct {
+		target *float64
+		usage  chat.Usage
+	}{
+		{&price.InputPerMillion, chat.Usage{InputTokens: million}},
+		{&price.OutputPerMillion, chat.Usage{OutputTokens: million}},
+		{&price.CacheReadPerMillion, chat.Usage{InputTokens: million, CacheReadInputTokens: new(int64(million))}},
+		{&price.CacheWritePerMillion, chat.Usage{InputTokens: million, CacheWriteInputTokens: new(int64(million))}},
 	} {
-		rate, err := band.Cost(usage)
+		value, err := band.Cost(rate.usage)
 		if err != nil {
-			return modelsapp.PriceBand{}, fmt.Errorf("model catalog price: %w", err)
+			return modelapp.PriceBand{}, fmt.Errorf("model catalog price: %w", err)
 		}
-		rates[index] = rate
+		*rate.target = value
 	}
-	return modelsapp.PriceBand{
-		AboveInputTokens: band.Threshold, InputPerMillion: rates[0], OutputPerMillion: rates[1],
-		CacheReadPerMillion: rates[2], CacheWritePerMillion: rates[3],
-	}, nil
-}
-
-func catalogModalities(values []catalog.Modality) []string {
-	result := make([]string, len(values))
-	for index, value := range values {
-		result[index] = string(value)
-	}
-	return result
+	return price, nil
 }

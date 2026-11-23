@@ -6,7 +6,6 @@ import (
 	"slices"
 )
 
-// ResolutionIssue explains why one manifest cannot participate in activation.
 type ResolutionIssue struct {
 	PluginID string
 	Err      error

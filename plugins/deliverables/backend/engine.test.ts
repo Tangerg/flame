@@ -41,8 +41,8 @@ vi.mock("./office-release.json", async (original) => {
           arch,
           {
             ...target,
-            manifestSHA256: hash(officeFixture.manifest),
-            executableSHA256: hash(officeFixture.executable),
+            manifestSha256: hash(officeFixture.manifest),
+            executableSha256: hash(officeFixture.executable),
           },
         ]),
       ),

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	runapplication "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
+	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
@@ -70,14 +70,14 @@ func TestOneShotQueriesAcceptedStartAndResumeAfterDeliveryExpiry(t *testing.T) {
 	profile := connection.Profile()
 	limits := profile.Discovery().Capabilities.Limits.Idempotency
 	runtime := &lostOpeningAcknowledgements{Connection: connection, clock: time.Now(), advance: time.Duration(limits.RetentionSeconds+1) * time.Second}
-	policy, err := mutation.PolicyFromProfile(&profile, func() time.Time { return runtime.clock })
+	policy, err := mutation.NewReplayPolicy(profile.IdempotencyLimits(), func() time.Time { return runtime.clock })
 	if err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	command := authoring.StartRun{CommandID: mutation.NewCommandID(), SessionID: session.ID, Message: authoring.Message{Text: runtimefixture.DelegateApprovalProbe}, Options: authoring.RunOptions{Provider: "deepseek", Model: "deepseek-chat"}}
-	if err := runapplication.Execute(ctx, runapplication.Invocation{Runtime: runtime, Renderer: new(recoveryRenderer), ReplayPolicy: policy, ApproveAll: true, Start: command}); err != nil {
+	if err := runworkflow.Execute(ctx, runworkflow.Invocation{Runtime: runtime, Renderer: new(recoveryRenderer), ReplayPolicy: policy, ApproveAll: true, Start: command}); err != nil {
 		t.Fatal(err)
 	}
 	if len(runtime.starts) != 1 || len(runtime.resumes) != 1 || len(runtime.queries) != 4 || len(runtime.receipts) != 2 {

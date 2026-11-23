@@ -7,7 +7,7 @@ The composition root supplies one content Store and its shared Admission.
 
 Every installed directory or ZIP contains `manifest.json` and exactly the listed
 artifacts. `plugin.json` remains Flame's product metadata. Its
-namespace references a document with the public `plugin.DeclarationProtocol`;
+namespace references a document with the public `plugincontract.Protocol`;
 that version is independent of Frame's portable contract and transport versions.
 Legacy directories without the neutral manifest are refused.
 

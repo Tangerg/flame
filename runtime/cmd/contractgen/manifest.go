@@ -15,12 +15,6 @@ import (
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
 )
 
-// manifest is the machine-readable projection of the Contract Registry.
-//
-// Every field here is READ from the registry, never restated. That is the whole
-// value: a client, a schema, or a reviewer reads this file instead of grepping
-// the dispatcher, and `go generate` leaving a diff means the artifacts drifted
-// from the code — which is the only way to notice.
 type manifest struct {
 	ProtocolVersion     string                        `json:"protocolVersion"`
 	Features            []string                      `json:"features"`
@@ -65,20 +59,12 @@ type methodEntry struct {
 	Materializes []string `json:"materializes,omitempty"`
 }
 
-// errorRegistry is the single source for business error identity. Types is the
-// symbolic vocabulary clients branch on; each entry carries
-// the numeric classification, the default recovery action, whether waiting is
-// meaningful, and which methods may return it.
-//
-// The methods are DERIVED from the registrations rather than declared: every method
-// already lists the errors it returns, and a second list is a second answer.
 type errorRegistry struct {
 	Types    []errorEntry      `json:"types"`
 	RunTypes []runProblemEntry `json:"runChannelTypes"`
 	Inline   []string          `json:"inlineStatusTypes"`
 }
 
-// errorEntry is one published business error.
 type errorEntry struct {
 	Type              string   `json:"type"`
 	Code              int      `json:"code"`
@@ -87,8 +73,6 @@ type errorEntry struct {
 	Methods           []string `json:"methods,omitempty"`
 }
 
-// runProblemEntry is one problem that ends a Run, tool call or Item, with the
-// default next move a client offers when it does.
 type runProblemEntry struct {
 	Type     string `json:"type"`
 	Recovery string `json:"recoveryAction"`
@@ -110,9 +94,6 @@ type conditionRow struct {
 	Value    string                     `json:"value,omitempty"`
 }
 
-// eventEntry is the reliability classification derived from the
-// event type. It is emitted so a client can build its replay/dedup logic from
-// data instead of re-implementing the derivation table.
 type eventEntry struct {
 	Type          string `json:"type"`
 	Authoritative bool   `json:"authoritative"`
@@ -124,18 +105,11 @@ type topicEntry struct {
 	Feature string `json:"feature,omitempty"`
 }
 
-// carriedEntry says where on the wire a shape rides that no method frame reaches.
-// The carrier is part of the answer: a bare type list would publish the shape
-// without saying where a client would ever meet it.
 type carriedEntry struct {
 	Carrier string          `json:"carrier"`
 	Schema  *wiregen.Schema `json:"schema"`
 }
 
-// toolResultPresentationEntry binds a built-in identity to the exact object Presenter puts
-// in ToolInvocation.result. The binding matters as much as the shape: without
-// it a client cannot distinguish two valid result objects that ride in the same
-// opaque carrier.
 type toolResultPresentationEntry struct {
 	ToolName string          `json:"toolName"`
 	Schema   *wiregen.Schema `json:"schema"`
@@ -198,10 +172,7 @@ type invariantEntry struct {
 }
 
 func build(walked *schemaSet) (manifest, error) {
-	presentations, err := toolResultPresentations(walked)
-	if err != nil {
-		return manifest{}, err
-	}
+	presentations := toolResultPresentations(walked)
 	registry := delivery.Contract()
 	shapes := dispatch.WireShapes()
 	projectedMethods, err := methods(registry)
@@ -236,7 +207,7 @@ func httpEndpoints(walked *schemaSet) []httpEndpointEntry {
 		var response *wiregen.Schema
 		if endpoint.ResponseType != nil {
 			local := walked.walk(endpoint.ResponseType)
-			response = &wiregen.Schema{Ref: "schema.json" + local.Ref}
+			response = &wiregen.Schema{Ref: schemaBundleFile + local.Ref}
 		}
 		out = append(out, httpEndpointEntry{
 			Name:             endpoint.Name,
@@ -289,19 +260,11 @@ func methods(registry *delivery.Registry) ([]methodEntry, error) {
 }
 
 func errors(registry *delivery.Registry) errorRegistry {
-	// The codes come from the dispatcher's own wire-behavior table: the artifacts
-	// must publish the number the runtime actually sends, and a table here was a
-	// copy of it.
 	codes := dispatch.ProblemCodes()
 	return errorRegistry{
-		Types: errorTypes(registry, codes),
-		// The run/tool channels carry no numeric code — only a symbolic type
-		// They are listed so a client's copy table can be checked
-		// for completeness against the runtime rather than against a doc.
+		Types:    errorTypes(registry, codes),
 		RunTypes: runProblemTypes(),
-		// MCP status problems ride a query's own result instead of failing the
-		// call and carry no detail; their closed vocabulary is its enum owner.
-		Inline: mcpStatusProblemTypes(),
+		Inline:   mcpStatusProblemTypes(),
 	}
 }
 
@@ -352,8 +315,6 @@ func conditions(in []delivery.FieldCondition) []conditionRow {
 	return out
 }
 
-// runEvents derives event metadata from the owning registry,
-// so the artifact cannot disagree with the hub's replay buffer or the SSE id gate.
 func runEvents(shapes *dispatch.Shapes) []eventEntry {
 	var out []eventEntry
 	for _, union := range shapes.Unions() {
@@ -383,9 +344,6 @@ func topics(shapes *dispatch.Shapes) []topicEntry {
 	return out
 }
 
-// topicFeature reports the feature a topic's PRODUCTION depends on. files.changed
-// only exists for a client that registered watches; the rest are unconditional
-// used by the Runtime Protocol.
 func topicFeature(topic string) string {
 	if topic == string(protocol.RuntimeFilesChanged) {
 		return protocol.FeatureFileWatch
@@ -402,7 +360,7 @@ func carriedShapes(shapes *dispatch.Shapes, walked *schemaSet) []carriedEntry {
 	return out
 }
 
-func toolResultPresentations(walked *schemaSet) ([]toolResultPresentationEntry, error) {
+func toolResultPresentations(walked *schemaSet) []toolResultPresentationEntry {
 	contracts := toolset.PresentationContracts()
 	out := make([]toolResultPresentationEntry, 0, len(contracts))
 	for _, contract := range contracts {
@@ -411,7 +369,7 @@ func toolResultPresentations(walked *schemaSet) ([]toolResultPresentationEntry, 
 			Schema:   external(walked.walk(contract.ResultType)),
 		})
 	}
-	return out, nil
+	return out
 }
 
 func unions(shapes *dispatch.Shapes) []unionEntry {
@@ -482,9 +440,6 @@ func valueConstraints(shapes *dispatch.Shapes) []valueConstraintEntry {
 	return out
 }
 
-// errorTypes publishes one entry per business error: its code, the recovery action
-// declared beside its wire behavior, and the methods whose registrations say they
-// return it. Sorted by type so the artifact is stable.
 func errorTypes(registry *delivery.Registry, codes map[string]int) []errorEntry {
 	byType := make(map[string][]string, len(codes))
 	for _, meta := range registry.Metas() {
@@ -521,8 +476,6 @@ func methodNames(names []delivery.Name) []string {
 	return out
 }
 
-// problemCodes is the type→code map, read back from the published registry so the
-// OpenRPC document and the manifest cannot state different numbers.
 func problemCodes(registry *delivery.Registry) map[string]int {
 	out := make(map[string]int)
 	for _, entry := range errors(registry).Types {

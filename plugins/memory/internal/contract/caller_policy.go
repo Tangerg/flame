@@ -1,12 +1,10 @@
 package contract
 
 import (
-	app "github.com/Tangerg/flame/plugins/memory/internal/application"
-	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	"github.com/Tangerg/flame/plugins/memory/internal/agentmemory"
+	"github.com/Tangerg/flame/plugins/memory/internal/coordination"
 )
 
-// CallerPolicy publishes the resource envelope for the Memory workflow. Core
-// consumes generated values rather than importing private business capacity.
 type CallerPolicy struct {
 	SearchToolName         string `json:"searchToolName"`
 	MaxModelInputBytes     int    `json:"maxModelInputBytes"`
@@ -18,14 +16,23 @@ type CallerPolicy struct {
 	MaxCallbackOutputBytes int64  `json:"maxCallbackOutputBytes"`
 }
 
+// The embedding input is a JSON array of every visible text from both targets:
+// a code point escapes to at most six bytes, each string adds its quotes and a
+// separator, and the brackets add one byte beyond the last omitted separator.
+const (
+	memoryTargets                = 2
+	jsonEscapedBytesPerCodePoint = 6
+	jsonStringFramingBytes       = 3
+	jsonArrayFramingBytes        = 1
+)
+
 func ModelCallerPolicy() CallerPolicy {
-	// Six bytes per code point cover worst-case JSON escaping in both targets.
-	texts := memory.MaxVisiblePerTarget * 2
-	input := int64(texts)*(int64(memory.MaxContentCharacters)*6+3) + 1
+	texts := agentmemory.MaxVisiblePerTarget * memoryTargets
+	input := int64(texts)*(int64(agentmemory.MaxContentCharacters)*jsonEscapedBytesPerCodePoint+jsonStringFramingBytes) + jsonArrayFramingBytes
 	return CallerPolicy{
 		SearchToolName:     "search_memory",
-		MaxModelInputBytes: app.MaximumModelInputBytes, MaxModelOutputTokens: app.MaximumModelOutputTokens,
-		MaxModelCalls: app.MaximumModelCalls, MaxEmbeddingTexts: texts, MaxEmbeddingInputBytes: input,
+		MaxModelInputBytes: coordination.MaximumModelInputBytes, MaxModelOutputTokens: coordination.MaximumModelOutputTokens,
+		MaxModelCalls: coordination.MaximumModelCalls, MaxEmbeddingTexts: texts, MaxEmbeddingInputBytes: input,
 		MaxCallbackInputBytes: input + 64*1024, MaxCallbackOutputBytes: 64 * 1024 * 1024,
 	}
 }

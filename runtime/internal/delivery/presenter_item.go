@@ -12,7 +12,7 @@ import (
 func presentItem(item transcript.Item) protocol.Item {
 	out := protocol.Item{
 		ID: item.ID().String(), RunID: item.RunID().String(), Status: presentItemStatus(item.Status()),
-		Type: presentItemKind(item.Kind()),
+		Type: itemKinds.mustWire(item.Kind()),
 	}
 	payload := item.Body()
 	if _, isToolCall := payload.(transcript.ToolCallBody); !isToolCall {
@@ -85,7 +85,7 @@ func presentItemStart(item runs.ItemStart) protocol.Item {
 	identity := item.Identity()
 	out := protocol.Item{
 		ID: identity.ItemID.String(), RunID: identity.RunID.String(), Status: protocol.ItemStatusRunning,
-		Type: presentItemKind(item.Kind()),
+		Type: itemKinds.mustWire(item.Kind()),
 	}
 	call, ok := item.ToolCall()
 	if !ok {
@@ -110,11 +110,13 @@ func presentItemStatus(status transcript.ItemStatus) protocol.ItemStatus {
 	}
 }
 
-func presentItemKind(kind transcript.ItemKind) protocol.ItemType {
-	if !kind.Valid() {
-		panic("delivery: unknown transcript item kind")
-	}
-	return protocol.ItemType(kind)
+var itemKinds = wireVocabulary[transcript.ItemKind, protocol.ItemType]{
+	{transcript.UserMessage, protocol.ItemTypeUserMessage},
+	{transcript.AgentMessage, protocol.ItemTypeAgentMessage},
+	{transcript.Reasoning, protocol.ItemTypeReasoning},
+	{transcript.QuestionItem, protocol.ItemTypeQuestion},
+	{transcript.ToolCall, protocol.ItemTypeToolCall},
+	{transcript.Compaction, protocol.ItemTypeCompaction},
 }
 
 func presentContent(block transcript.ContentBlock) protocol.ContentBlock {

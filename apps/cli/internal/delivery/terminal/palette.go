@@ -48,25 +48,22 @@ func (a *app) showCommandPalette() {
 	a.status.note("choose a command")
 }
 
-// commandCategoryRank keeps the commands used to navigate and understand the
-// current conversation ahead of less frequent configuration commands. The
-// category label remains presentation data; ordering is an explicit product
-// policy rather than an accidental consequence of English spelling.
+// Built-in categories in palette order; extension-defined categories follow.
+var commandCategoryOrder = []string{
+	commandCategoryApplication,
+	commandCategoryTranscript,
+	commandCategorySessions,
+	commandCategoryComposer,
+	commandCategoryRuntime,
+	commandCategoryContext,
+	commandCategoryConnections,
+	commandCategoryWorkspace,
+	commandCategoryExtensions,
+}
+
 func commandCategoryRank(category string) int {
-	switch category {
-	case commandCategoryApplication:
-		return 0
-	case commandCategoryTranscript:
-		return 1
-	case commandCategorySessions:
-		return 2
-	case commandCategoryComposer:
-		return 3
-	case commandCategoryRuntime:
-		return 4
-	case commandCategoryExtensions:
-		return 5
-	default:
-		return 6
+	if rank := slices.Index(commandCategoryOrder, category); rank >= 0 {
+		return rank
 	}
+	return len(commandCategoryOrder)
 }

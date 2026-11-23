@@ -31,9 +31,6 @@ func parseStoredChildRunStart(raw string) (outcome runs.ChildRunStartOutcome, co
 	return outcome, true, nil
 }
 
-// ChildRunStartReservationRecord is SQLite's opaque technical record. Runtime
-// application semantics live in the segment adapter; storage only enforces
-// exact identity and compare-before-delete behavior.
 type ChildRunStartReservationRecord struct {
 	MemberID  string
 	SessionID identity.SessionID
@@ -44,12 +41,13 @@ type ChildRunStartReservationRecord struct {
 func (c ChildRunStartReservationRecord) same(other ChildRunStartReservationRecord) bool {
 	return c.MemberID == other.MemberID && c.SessionID == other.SessionID && c.CreatedAt.Equal(other.CreatedAt) && bytes.Equal(c.Payload, other.Payload)
 }
+
 func (c ChildRunStartReservationRecord) validate() error {
 	if err := runs.ValidateMember(c.MemberID); err != nil {
-		return fmt.Errorf("%w: %v", errInvalidChildRunStartReservation, err)
+		return fmt.Errorf("%w: %w", errInvalidChildRunStartReservation, err)
 	}
 	if err := c.SessionID.Validate(); err != nil {
-		return fmt.Errorf("%w: %v", errInvalidChildRunStartReservation, err)
+		return fmt.Errorf("%w: %w", errInvalidChildRunStartReservation, err)
 	}
 	if len(c.Payload) == 0 {
 		return fmt.Errorf("%w: payload", errInvalidChildRunStartReservation)
@@ -63,17 +61,14 @@ func (c ChildRunStartReservationRecord) validate() error {
 	return nil
 }
 
-// ChildRunStartReservationStore persists opaque child-start reservations and
-// their conclusive state. Rows intentionally survive conclusion so exact
-// publications remain idempotent without guessing from absence.
+// Rows survive conclusion so publications stay idempotent without guessing from
+// absence.
 type ChildRunStartReservationStore struct{ db *database }
 
 func newChildRunStartReservationStore(db *database) *ChildRunStartReservationStore {
 	return &ChildRunStartReservationStore{db: db}
 }
 
-// Reserve inserts one record or accepts an exact replay. Reusing MemberID with
-// different content is a durable identity conflict.
 func (c *ChildRunStartReservationStore) Reserve(ctx context.Context, record ChildRunStartReservationRecord) error {
 	return c.db.write(ctx, func(ctx context.Context) error {
 		if err := record.validate(); err != nil {
@@ -104,7 +99,6 @@ func (c *ChildRunStartReservationStore) Reserve(ctx context.Context, record Chil
 	})
 }
 
-// Concluded confirms the exact durable outcome without advancing a reservation.
 func (c *ChildRunStartReservationStore) Concluded(ctx context.Context, record ChildRunStartReservationRecord, outcome runs.ChildRunStartOutcome) (bool, error) {
 	if err := record.validate(); err != nil {
 		return false, err
@@ -125,10 +119,6 @@ func (c *ChildRunStartReservationStore) Concluded(ctx context.Context, record Ch
 	return concluded && stored == outcome, nil
 }
 
-// Conclude advances an exact reservation from reserved to one outcome. changed
-// is true only for the first conclusion. An exact replay of the same outcome
-// returns false; absence, different content, or a different prior outcome is a
-// conflict.
 func (c *ChildRunStartReservationStore) Conclude(ctx context.Context, record ChildRunStartReservationRecord, outcome runs.ChildRunStartOutcome) (bool, error) {
 	return scopedValue(ctx, c.db.write, func(ctx context.Context) (bool, error) {
 		if err := record.validate(); err != nil {
@@ -171,15 +161,10 @@ func (c *ChildRunStartReservationStore) Conclude(ctx context.Context, record Chi
 	})
 }
 
-// DeleteSession removes every callback receipt owned by one Session. Child
-// reservations are meaningful only while that Session's root execution tree is
-// live; root terminalization, rollback/restore, and Session deletion call this
-// inside their existing write-set so no concluded or reserve-before-abort row
-// outlives its owner.
 func (c *ChildRunStartReservationStore) DeleteSession(ctx context.Context, sessionID identity.SessionID) error {
 	return c.db.write(ctx, func(ctx context.Context) error {
 		if err := sessionID.Validate(); err != nil {
-			return fmt.Errorf("%w: %v", errInvalidChildRunStartReservation, err)
+			return fmt.Errorf("%w: %w", errInvalidChildRunStartReservation, err)
 		}
 		if _, err := c.db.connection(ctx).ExecContext(ctx, `DELETE FROM child_run_start_reservations WHERE session_id = ?`, sessionID); err != nil {
 			return fmt.Errorf("sqlite: delete Session child Run start reservations: %w", err)
@@ -187,6 +172,7 @@ func (c *ChildRunStartReservationStore) DeleteSession(ctx context.Context, sessi
 		return nil
 	})
 }
+
 func (c *ChildRunStartReservationStore) load(ctx context.Context, memberID string) (ChildRunStartReservationRecord, runs.ChildRunStartOutcome, bool, error) {
 	return scopedTriple(ctx, c.db.read, func(ctx context.Context) (ChildRunStartReservationRecord, runs.ChildRunStartOutcome, bool, error) {
 		var record ChildRunStartReservationRecord

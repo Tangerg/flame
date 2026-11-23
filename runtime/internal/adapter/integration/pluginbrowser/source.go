@@ -22,8 +22,6 @@ type resources interface {
 	ComponentModules(context.Context, plugin.Release, plugin.ContributionID) (*distribution.Module, error)
 }
 
-// Source projects an already approved component from Flame's immutable release.
-// It has no admission, Realm, instance or resource registry of its own.
 type Source struct {
 	installations plugins.Store
 	resources     resources

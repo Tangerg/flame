@@ -37,7 +37,7 @@ func (c *Cancellations) loadWaitingCancellationItems(ctx context.Context, plan *
 			continue
 		}
 		for _, drained := range continuation.DrainedTools {
-			item, _, err := drainedToolItem(itemsByID, continuation.RunID, drained)
+			item, err := drainedToolItem(itemsByID, continuation.RunID, drained)
 			if err != nil {
 				return fmt.Errorf("runs: waiting cancellation: %w", err)
 			}
@@ -47,8 +47,6 @@ func (c *Cancellations) loadWaitingCancellationItems(ctx context.Context, plan *
 	return nil
 }
 
-// pendingItems reads every Item a hand-off names; those Items, not the
-// hand-off, own what each interrupt asked and each drained Tool invoked.
 func pendingItems(ctx context.Context, items ItemProjection, pending Pending) (map[identity.ItemID]transcript.Item, error) {
 	itemsByID := make(map[identity.ItemID]transcript.Item)
 	for _, itemID := range pendingItemIDs(pending) {
@@ -99,6 +97,9 @@ func cancellationTargetRunIDs(subtree []cancellationRun) map[identity.RunID]stru
 }
 
 func validateWaitingCancellationSpawningItem(plan cancellationPlan, item transcript.Item) error {
+	if err := item.ValidateSpawns(plan.root.run.SessionID(), plan.target.run.Lineage().ParentRunID()); err != nil {
+		return fmt.Errorf("runs: waiting child Run %q: %w", plan.target.run.ID(), err)
+	}
 	switch {
 	case item.ID() != plan.target.run.Lineage().SpawnedByItemID():
 		return fmt.Errorf(
@@ -107,22 +108,6 @@ func validateWaitingCancellationSpawningItem(plan cancellationPlan, item transcr
 			item.ID(),
 			plan.target.run.Lineage().SpawnedByItemID(),
 		)
-	case item.SessionID() != plan.root.run.SessionID():
-		return fmt.Errorf(
-			"runs: spawning Item %q belongs to Session %q, want %q",
-			item.ID(),
-			item.SessionID(),
-			plan.root.run.SessionID(),
-		)
-	case item.RunID() != plan.target.run.Lineage().ParentRunID():
-		return fmt.Errorf(
-			"runs: spawning Item %q belongs to Run %q, want parent Run %q",
-			item.ID(),
-			item.RunID(),
-			plan.target.run.Lineage().ParentRunID(),
-		)
-	case item.Kind() != transcript.ToolCall:
-		return fmt.Errorf("runs: spawning Item %q is not a tool call", item.ID())
 	case item.Status() != transcript.ItemRunning:
 		return fmt.Errorf(
 			"runs: spawning Item %q is in status %s, want running",

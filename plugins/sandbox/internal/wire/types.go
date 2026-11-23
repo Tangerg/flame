@@ -1,7 +1,7 @@
 package wire
 
 import (
-	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
+	"github.com/Tangerg/flame/plugins/sandbox/internal/sandbox"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 

@@ -7,9 +7,11 @@ import (
 	"slices"
 	"time"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+
+	"github.com/Tangerg/scope/models/catalog"
 )
 
 type ProviderAuthenticationPolicy uint8
@@ -53,11 +55,9 @@ const (
 	embeddingSupportedWithDefault
 )
 
-// EmbeddingCapability is a closed provider capability. A default model can
-// only exist for a provider that actually has an embedding implementation.
 type EmbeddingCapability struct {
 	kind         embeddingCapabilityKind
-	defaultModel modelchoice.ModelIdentity
+	defaultModel flamemodel.ModelIdentity
 }
 
 func NoEmbeddingCapability() EmbeddingCapability {
@@ -69,7 +69,7 @@ func EmbeddingCapabilityWithoutDefault() EmbeddingCapability {
 }
 
 func EmbeddingCapabilityWithDefault(model string) (EmbeddingCapability, error) {
-	identity, err := modelchoice.NewModelIdentity(model)
+	identity, err := flamemodel.NewModelIdentity(model)
 	if err != nil {
 		return EmbeddingCapability{}, fmt.Errorf("models: default embedding model: %w", err)
 	}
@@ -81,7 +81,7 @@ func (c EmbeddingCapability) valid() bool {
 	case embeddingUnsupported, embeddingSupportedWithoutDefault:
 		return c.defaultModel.String() == ""
 	case embeddingSupportedWithDefault:
-		_, err := modelchoice.NewModelIdentity(c.defaultModel.String())
+		_, err := flamemodel.NewModelIdentity(c.defaultModel.String())
 		return err == nil
 	default:
 		return false
@@ -99,11 +99,8 @@ func (c EmbeddingCapability) DefaultModel() (string, bool) {
 	return c.defaultModel.String(), true
 }
 
-// ProviderMetadata is immutable policy captured from an installed catalog.
-// Closed endpoint, discovery, and embedding policies prevent the
-// contradictory combinations possible in the former public field bag.
 type ProviderMetadata struct {
-	id             modelchoice.ProviderIdentity
+	id             flamemodel.ProviderIdentity
 	authentication ProviderAuthenticationPolicy
 	endpoint       ProviderEndpointPolicy
 	models         ProviderModelSource
@@ -111,7 +108,7 @@ type ProviderMetadata struct {
 }
 
 func NewProviderMetadata(id string, authentication ProviderAuthenticationPolicy, endpoint ProviderEndpointPolicy, models ProviderModelSource, embedding EmbeddingCapability) (ProviderMetadata, error) {
-	identity, err := modelchoice.NewProviderIdentity(id)
+	identity, err := flamemodel.NewProviderIdentity(id)
 	if err != nil {
 		return ProviderMetadata{}, fmt.Errorf("models: provider identity: %w", err)
 	}
@@ -146,9 +143,6 @@ func (p ProviderMetadata) DiscoversModelsAtEndpoint() bool {
 
 func (p ProviderMetadata) Embedding() EmbeddingCapability { return p.embedding }
 
-// ConfigurationSatisfied applies captured provider policy to one registry entry.
-// A provider with optional authentication and a built-in endpoint is usable
-// without manufacturing a credential row.
 func (p ProviderMetadata) ConfigurationSatisfied(entry provider.Provider) bool {
 	if p.RequiresAPIKey() {
 		if _, configured := entry.Credential(); !configured {
@@ -163,18 +157,13 @@ func (p ProviderMetadata) ConfigurationSatisfied(entry provider.Provider) bool {
 	return true
 }
 
-// Model is the application-facing catalog record used by model selection. It
-// carries only provider capability facts needed by model-selection use cases.
 type Model struct {
-	selection modelchoice.Selection
+	selection flamemodel.Selection
 	details   *Details
 }
 
-// NewModel constructs one immutable application catalog record. Endpoint and
-// bundled catalog sources therefore cross the same admission boundary before
-// a model identity can reach a picker or generated response.
 func NewModel(providerID, modelID string, details *Details) (Model, error) {
-	selection, err := modelchoice.New(providerID, modelID)
+	selection, err := flamemodel.New(providerID, modelID)
 	if err != nil {
 		return Model{}, err
 	}
@@ -188,9 +177,6 @@ func (m Model) ID() string        { return m.selection.Model() }
 func (m Model) Provider() string  { return m.selection.Provider() }
 func (m Model) Details() *Details { return cloneDetails(m.details) }
 
-// Details is the static capability and commercial metadata known for a
-// model. A nil Details means a provider endpoint reported an otherwise unknown
-// model id, so callers can still select it without inventing capabilities.
 type Details struct {
 	DisplayName      string
 	TokenLimits      modelref.TokenLimits
@@ -200,18 +186,13 @@ type Details struct {
 	ReasoningLevels  []string
 	ReasoningDefault string
 	Multimodal       bool
-	InputModalities  []string
-	OutputModalities []string
+	InputModalities  []catalog.Modality
+	OutputModalities []catalog.Modality
 	ToolUse          bool
 	StructuredOutput bool
-	// Pricing is the model's rate card in ascending threshold order; empty
-	// means the catalog has no price for the model.
-	Pricing []PriceBand
+	Pricing          []PriceBand
 }
 
-// PriceBand is one effective per-million-token rate. It applies to a whole
-// call whose input exceeds AboveInputTokens; the first band starts at zero.
-// Zero-valued rates are free.
 type PriceBand struct {
 	AboveInputTokens     int64
 	InputPerMillion      float64
@@ -248,7 +229,7 @@ func validateReasoning(details *Details) error {
 	}
 	levels := make(map[string]struct{}, len(details.ReasoningLevels))
 	for _, level := range details.ReasoningLevels {
-		identity, err := modelchoice.NewReasoningEffortIdentity(level)
+		identity, err := flamemodel.NewReasoningEffortIdentity(level)
 		if err != nil {
 			return fmt.Errorf("models: reasoning level: %w", err)
 		}
@@ -259,7 +240,7 @@ func validateReasoning(details *Details) error {
 		levels[canonical] = struct{}{}
 	}
 	if details.ReasoningDefault != "" {
-		identity, err := modelchoice.NewReasoningEffortIdentity(details.ReasoningDefault)
+		identity, err := flamemodel.NewReasoningEffortIdentity(details.ReasoningDefault)
 		if err != nil {
 			return fmt.Errorf("models: default reasoning level: %w", err)
 		}

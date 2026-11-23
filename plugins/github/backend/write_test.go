@@ -51,15 +51,15 @@ func connectGitHubWrites(t *testing.T, path string, transport http.RoundTripper,
 		t.Fatal(err)
 	}
 	var once sync.Once
-	close := func() {
+	release := func() {
 		once.Do(func() {
 			if err := errors.Join(session.Close(), backend.Close(), store.db.Close()); err != nil {
 				t.Error(err)
 			}
 		})
 	}
-	t.Cleanup(close)
-	return c, session, close
+	t.Cleanup(release)
+	return c, session, release
 }
 
 func githubBinding(t *testing.T, session *sdk.ClientSession, contracts rpc.Contracts, method string) *pluginmcp.Binding {
@@ -110,7 +110,7 @@ func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
 					return upstream(201, issueJSON, nil), nil
 				}
 			})
-			c, session, close := connectGitHubWrites(t, path, transport, &token)
+			c, session, release := connectGitHubWrites(t, path, transport, &token)
 			if failure == "commit" {
 				if err := c.store.db.RunInTx(t.Context(), func(ctx context.Context) error {
 					_, err := c.store.db.Executor(ctx).ExecContext(ctx, `CREATE TRIGGER refuse_settlement BEFORE UPDATE OF reply ON commands WHEN NEW.reply IS NOT NULL BEGIN SELECT RAISE(FAIL,'fixture commit failed'); END`)
@@ -138,7 +138,7 @@ func TestUnknownGitHubWriteNeverRedispatchesAfterRestart(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			close()
+			release()
 			_, session, _ = connectGitHubWrites(t, path, roundTrip(func(*http.Request) (*http.Response, error) { calls++; return upstream(201, issueJSON, nil), nil }), &token)
 			if _, err := invokeGitHub(t, session, contracts, contracts.CreateIssue.Name(), "original", input); err == nil || calls != 1 {
 				t.Fatalf("restart redispatched unknown command: calls=%d %v", calls, err)

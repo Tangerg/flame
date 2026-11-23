@@ -1,6 +1,3 @@
-// Package format renders the few values the terminal and command renderers
-// both display, so a span, a grouped count, a dollar amount and a usage summary
-// read the same way wherever they appear.
 package format
 
 import (
@@ -11,8 +8,9 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-// Duration renders a span the way a person reads one: whole milliseconds below a
-// second, then seconds to one decimal.
+// Separator joins inline metadata wherever the CLI presents it.
+const Separator = " · "
+
 func Duration(d time.Duration) string {
 	if d < time.Second {
 		return strconv.FormatInt(d.Milliseconds(), 10) + "ms"
@@ -20,26 +18,42 @@ func Duration(d time.Duration) string {
 	return strconv.FormatFloat(d.Seconds(), 'f', 1, 64) + "s"
 }
 
-// Thousands groups an integer with comma separators, preserving a leading sign.
+const (
+	thousandsGroupDigits = 3
+	day                  = 24 * time.Hour
+)
+
+// Under a minute a duration is recent and carries no amount; otherwise it is
+// counted in its largest whole unit.
+func Elapsed(d time.Duration) (amount int, unit string, recent bool) {
+	switch {
+	case d < time.Minute:
+		return 0, "", true
+	case d < time.Hour:
+		return int(d / time.Minute), "m", false
+	case d < day:
+		return int(d / time.Hour), "h", false
+	default:
+		return int(d / day), "d", false
+	}
+}
+
 func Thousands(value int64) string {
 	digits := strconv.FormatInt(value, 10)
 	first := 0
 	if digits[0] == '-' {
 		first = 1
 	}
-	for i := len(digits) - 3; i > first; i -= 3 {
+	for i := len(digits) - thousandsGroupDigits; i > first; i -= thousandsGroupDigits {
 		digits = digits[:i] + "," + digits[i:]
 	}
 	return digits
 }
 
-// USD renders a dollar amount to four decimal places. Callers decide what an
-// absent amount means, since that fallback differs by surface.
 func USD(amount float64) string {
 	return "$" + strconv.FormatFloat(amount, 'f', 4, 64)
 }
 
-// Usage summarizes a Run's consumption; an empty usage renders nothing.
 func Usage(usage conversation.Usage) string {
 	if usage.Empty() {
 		return ""

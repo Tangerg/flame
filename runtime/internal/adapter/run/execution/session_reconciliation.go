@@ -100,19 +100,12 @@ func (i *interactionSession) reportUnknownEffects() bool {
 	i.state.unknownReported = true
 	process := i.state.process
 	i.state.mu.Unlock()
-	// Unknown effects need execution to stop, but cannot override cancellation
-	// already accepted by Scope. Both causes enter its ordered control queue;
-	// the immutable result decides which cause became authoritative. Scope
-	// exits the terminated process and keeps each Effect Unknown, so the
-	// terminal projection reports the loss with that evidence.
 	if err := process.Cancel(ctx, unresolvedEffectsStopReason); err != nil && !errors.Is(err, scoperun.ErrProcessFinished) {
 		i.reportProjectionFailure(err)
 	}
 	return true
 }
 
-// A receipt may resolve an Effect before its result projection is complete,
-// so model dispatch waits until the investigation that holds it finishes.
 func (i *interactionState) holdReceiptInvestigation() func() {
 	i.mu.Lock()
 	defer i.mu.Unlock()

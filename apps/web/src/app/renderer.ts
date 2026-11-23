@@ -1,8 +1,8 @@
-export interface MountedRenderer {
+interface MountedRenderer {
   unmount(): void;
 }
 
-export interface ClientRendererDependencies {
+interface ClientRendererDependencies {
   initializeClientHost(): Promise<void>;
   prepareWindowChrome(): Promise<void>;
   watchWindowChrome(): () => void;

@@ -13,8 +13,7 @@ import (
 	"golang.org/x/text/encoding"
 )
 
-// A call remains owned until its body is consumed, its context ends, or its
-// Client closes. A returned but unconsumed iterator must not retain a socket.
+// A returned but unconsumed iterator must not retain a socket.
 type remoteCall struct {
 	client    *Client
 	ctx       context.Context
@@ -46,14 +45,14 @@ func (r *Client) begin(parent context.Context) (*remoteCall, error) {
 	return call, nil
 }
 
-func (c *remoteCall) attach(body io.ReadCloser) error {
+func (c *remoteCall) attach(response *http.Response) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.closeDone != nil {
-		_ = body.Close()
+		_ = response.Body.Close()
 		return context.Cause(c.ctx)
 	}
-	c.body = body
+	c.body = response.Body
 	return nil
 }
 
@@ -103,8 +102,6 @@ func (c *remoteCall) readError(err error) error {
 	return err
 }
 
-// connectionLost reports a failure below HTTP: the stream ended early or the
-// network failed, as opposed to an answer the Runtime gave.
 func connectionLost(err error) bool {
 	_, socketError := errors.AsType[*net.OpError](err)
 	_, dnsError := errors.AsType[*net.DNSError](err)

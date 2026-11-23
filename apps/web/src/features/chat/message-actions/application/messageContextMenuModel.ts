@@ -6,12 +6,12 @@ import {
   canRegenerateMessage,
   canRollbackMessage,
 } from "@/features/chat/message-actions/application/messageActionAvailability";
-export interface MessageContextMenuCopyState {
+interface MessageContextMenuCopyState {
   canCopy: boolean;
   plain: string;
 }
 
-export interface MessageContextMenuModel {
+interface MessageContextMenuModel {
   copyMarkdown: boolean;
   copyPlain: boolean;
   user: {

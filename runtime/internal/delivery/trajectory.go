@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -16,12 +15,9 @@ const SessionsTrajectory Name = "sessions.trajectory"
 func registerSessionTrajectory(registry *Registry) {
 	registry.query(MethodMeta{
 		Name: SessionsTrajectory, GoName: "ListSessionTrajectory",
-		Materializes: []Name{RunsList, ItemsList, modelInvocationsList, modelInvocationsEndpoints},
-		Errors:       []string{protocol.ErrSessionNotFound.Error()},
-		CapabilityRules: []CapabilityRule{{
-			When:     []FieldCondition{{Field: "includeDescendants", Operator: OperatorPresent}},
-			Requires: []string{protocol.FeatureChildRuns},
-		}},
+		Materializes:    []Name{RunsList, ItemsList, modelInvocationsList, modelInvocationsEndpoints},
+		Errors:          []string{protocol.ErrSessionNotFound.Error()},
+		CapabilityRules: descendantsRequireChildRuns(includeDescendantsParameter),
 	}, func(service interface {
 		ListSessionTrajectory(context.Context, protocol.ListSessionTrajectoryRequest) (*protocol.Page[protocol.TrajectoryEntry], error)
 	}, ctx context.Context, request protocol.ListSessionTrajectoryRequest) (*protocol.Page[protocol.TrajectoryEntry], error) {
@@ -30,7 +26,7 @@ func registerSessionTrajectory(registry *Registry) {
 }
 
 func (s *Handler) ListSessionTrajectory(ctx context.Context, in protocol.ListSessionTrajectoryRequest) (*protocol.Page[protocol.TrajectoryEntry], error) {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return nil, parseErr
 	}

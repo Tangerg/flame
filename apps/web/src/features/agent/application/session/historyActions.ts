@@ -16,13 +16,11 @@ import { type AgentCommandOwner } from "@/features/agent/application/agentComman
 
 type RollbackRefusal = { status: "unavailable" } | { status: "inFlight" };
 
-export type SessionRollbackResult =
-  { status: "committed"; userInput?: AgentInput } | RollbackRefusal;
+type SessionRollbackResult = { status: "committed"; userInput?: AgentInput } | RollbackRefusal;
 
-export type SessionRegenerationResult =
-  { status: "submitted" | "noInput" | "notReady" } | RollbackRefusal;
+type SessionRegenerationResult = { status: "submitted" | "noInput" | "notReady" } | RollbackRefusal;
 
-export interface ActiveAgentConversation {
+interface ActiveAgentConversation {
   sessionId: string;
   messages: Message[];
 }

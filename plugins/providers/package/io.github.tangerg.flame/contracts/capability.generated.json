@@ -1568,7 +1568,7 @@
               "apiKey": {
                 "type": "string"
               },
-              "baseURL": {
+              "baseUrl": {
                 "type": "string"
               },
               "provider": {
@@ -1721,7 +1721,7 @@
               "apiKey": {
                 "type": "string"
               },
-              "baseURL": {
+              "baseUrl": {
                 "type": "string"
               },
               "provider": {
@@ -1948,7 +1948,7 @@
               "apiKey": {
                 "type": "string"
               },
-              "baseURL": {
+              "baseUrl": {
                 "type": "string"
               },
               "provider": {
@@ -1967,7 +1967,7 @@
           "apiKey": {
             "type": "string"
           },
-          "baseURL": {
+          "baseUrl": {
             "type": "string"
           },
           "provider": {
@@ -2941,7 +2941,7 @@
               "apiKey": {
                 "type": "string"
               },
-              "baseURL": {
+              "baseUrl": {
                 "type": "string"
               },
               "provider": {
@@ -2960,7 +2960,7 @@
           "apiKey": {
             "type": "string"
           },
-          "baseURL": {
+          "baseUrl": {
             "type": "string"
           },
           "provider": {

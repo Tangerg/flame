@@ -45,8 +45,6 @@ func define() (*plugincontract.Capability, error) {
 	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "flame.github.v1", Composition: plugincontract.Collection, Scope: extension.ScopeInstallation}, declared.methods...)
 }
 
-// declarations collects method descriptors, keeping every construction
-// failure so the whole capability is declared before it is checked.
 type declarations struct {
 	methods []frame.MethodDescriptor
 	errs    []error
@@ -61,7 +59,7 @@ func (d *declarations) add(method frame.MethodDescriptor, err error) {
 }
 
 func query[P, R any](name, description string) (frame.MethodDescriptor, error) {
-	method, err := pluginmcp.NewMethod[P, R](frame.MethodConfig{Name: "flame.github/" + name + ".v1", Kind: frame.Query, Target: extension.ScopeInstallation, Description: description})
+	method, err := pluginmcp.NewMethod[P, R](frame.MethodConfig{Name: methodName(name), Kind: frame.Query, Target: extension.ScopeInstallation, Description: description})
 	if err != nil {
 		return frame.MethodDescriptor{}, err
 	}
@@ -69,9 +67,11 @@ func query[P, R any](name, description string) (frame.MethodDescriptor, error) {
 }
 
 func command[P, R any](name, description string) (frame.MethodDescriptor, error) {
-	method, err := pluginmcp.NewMethod[P, R](frame.MethodConfig{Name: "flame.github/" + name + ".v1", Kind: frame.Command, Target: extension.ScopeInstallation, Description: description + " Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission."})
+	method, err := pluginmcp.NewMethod[P, R](frame.MethodConfig{Name: methodName(name), Kind: frame.Command, Target: extension.ScopeInstallation, Description: description + " Requires the user's intent and a configured token. Recovery reads the original receipt; an unknown outcome never permits resubmission."})
 	if err != nil {
 		return frame.MethodDescriptor{}, err
 	}
 	return method.Descriptor(), nil
 }
+
+func methodName(name string) string { return "flame.github/" + name + ".v1" }

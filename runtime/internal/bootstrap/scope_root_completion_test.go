@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
@@ -87,7 +88,7 @@ func TestScopeRootCompletionCrashHelper(t *testing.T) {
 	}
 
 	home := os.Getenv("FLAME_HOME")
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +270,7 @@ func assertRootCompletionAtCrash(t *testing.T, home string, original protocol.St
 	if got := scopeRootCompleted(readWaitingChildScopeLog(t, home)); got != committed {
 		t.Errorf("original Scope completion committed = %t at %s, want %t", got, cut, committed)
 	}
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}

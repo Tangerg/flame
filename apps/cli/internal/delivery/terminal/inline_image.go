@@ -56,8 +56,6 @@ func (t *terminalImagePresenter) transmit(ctx context.Context, theme kit.Theme, 
 	if err != nil {
 		return nil, fmt.Errorf("transmit %s: %w", alt, err)
 	}
-	// An accepted transmission settles exactly once, including cancellation. Read
-	// that settlement before deciding whether this owner can retain its resource.
 	result, ok := <-results
 	if !ok {
 		return nil, fmt.Errorf("transmit %s: upload ended without a result", alt)

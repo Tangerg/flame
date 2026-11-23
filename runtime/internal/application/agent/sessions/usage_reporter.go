@@ -10,14 +10,14 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/samber/lo"
 )
 
-// usageSource reads retained physical evidence from one snapshot. The callback
-// must not perform storage I/O while that snapshot owns the database connection.
+// The callback must not perform storage I/O while the snapshot owns the database
+// connection.
 type usageSource interface {
 	VisitEndpointInvocations(context.Context, identity.SessionID, time.Time, func(modelref.EndpointObservation) error) error
 }
@@ -33,10 +33,8 @@ type UsageCoverage struct {
 }
 
 type UsageBucket struct {
-	Key   string
-	Usage accounting.Totals
-	// RecordedCost sums the calls that were priced; it is available when any
-	// call was, even if others were not, unlike Usage's exact total.
+	Key          string
+	Usage        accounting.Totals
 	RecordedCost accounting.Cost
 	Coverage     UsageCoverage
 }
@@ -116,7 +114,7 @@ func (r *UsageReporter) collect(ctx context.Context, sessionID identity.SessionI
 			return fmt.Errorf("sessions: aggregate endpoint %q: %w", source.Invocation.ID, err)
 		}
 		model := observation.ServedModel()
-		if _, err := modelchoice.New(source.Invocation.Provider, model); err != nil {
+		if _, err := flamemodel.New(source.Invocation.Provider, model); err != nil {
 			return err
 		}
 		scope := "unattached"
@@ -201,14 +199,14 @@ func (u *usageAccumulator) addCall(observation modelref.EndpointObservation) err
 	return nil
 }
 
-func (u usageAccumulator) recordedCost() accounting.Cost {
+func (u *usageAccumulator) recordedCost() accounting.Cost {
 	if u.coverage.PricedCalls == 0 {
 		return accounting.Cost{}
 	}
 	return u.cost
 }
 
-func (u usageAccumulator) usage() accounting.Totals {
+func (u *usageAccumulator) usage() accounting.Totals {
 	value := accounting.Totals{Tokens: u.tokens}
 	if u.coverage.Calls > 0 && u.coverage.PricedCalls == u.coverage.Calls {
 		value.Cost = u.recordedCost()

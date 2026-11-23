@@ -38,7 +38,7 @@ func buildCallContributor(t *testing.T) string {
 
 func installCallContributor(t *testing.T, r *poMCPRuntime, binary, mode, trace string, contract *plugincontract.Capability) *protocol.PluginInstallation {
 	t.Helper()
-	declaration, err := json.Marshal(map[string]any{"protocol": pluginsdk.DeclarationProtocol, "contributions": []any{map[string]any{"id": "contributor", "server": "contributor", "export": "contributor", "contract": "io.github.tangerg.flame/contracts/contributor.json"}}})
+	declaration, err := json.Marshal(map[string]any{"protocol": plugincontract.Protocol, "contributions": []any{map[string]any{"id": "contributor", "server": "contributor", "export": "contributor", "contract": "io.github.tangerg.flame/contracts/contributor.json"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +193,6 @@ func TestInstalledToolProposalIsApprovedExecutedAndRetainedWithoutTransformRepla
 				r.poMCPTools(server, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 				if mode == "failed-proposal" {
 					waitCallContributorState(t, r, contributor.ID, protocol.MCPServerFailed)
-					// Startup can defer this probe while its captured source connects.
 					if err := r.host.application.workers.recovery.ReconcileStartup(t.Context()); err != nil {
 						t.Fatal(err)
 					}

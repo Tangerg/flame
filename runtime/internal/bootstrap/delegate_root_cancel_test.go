@@ -42,8 +42,6 @@ func testCancelDelegatedTree(t *testing.T, confirmed bool) {
 		meta := &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}}
 		switch {
 		case delegatedChild != "":
-			// Hold the child inside the provider call so the cancellation lands
-			// on a live Effect rather than between steps.
 			childEntered <- delegatedChild
 			<-ctx.Done()
 			if confirmed {

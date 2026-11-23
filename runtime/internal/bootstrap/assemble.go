@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
-	"github.com/Tangerg/flame/runtime/internal/adapter/run/recovery"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/segment"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
@@ -33,9 +32,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 )
 
-// assemble transfers acquired resources directly to the Runtime lifecycle.
-// Construction state stays on this stack; rollback uses the same shutdown owner
-// as a successfully opened Runtime and survives a caller's timeout.
 func assemble(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime, buildTools toolEnvironmentBuilder) (_ *Instance, err error) {
 	defer func() {
 		if err != nil {
@@ -69,13 +65,10 @@ func assemble(ctx context.Context, cfg assemblyConfig, lifetime *runtimeLifetime
 	if err != nil {
 		return nil, err
 	}
-	return buildAssemblyCore(ctx, cfg, lifetime, policy, workspaceServices, execution)
+	return buildAssemblyCore(cfg, lifetime, policy, workspaceServices, execution)
 }
 
-// buildAssemblyCore composes the Session/Run lifecycle from three complete
-// feature capsules. No intermediate locator is published to Delivery.
 func buildAssemblyCore(
-	ctx context.Context,
 	cfg assemblyConfig,
 	lifetime *runtimeLifetime,
 	policy policyComposition,
@@ -117,7 +110,6 @@ func buildAssemblyCore(
 	}
 	mcpCoordinator, pluginCoordinator := coordinators.mcp, coordinators.plugins
 
-	// Goal mode: the autonomous-execution loop driver over the run coordinator.
 	goalDriver, err := goals.NewDriver(
 		policy.goals,
 		runUseCases.openings,
@@ -132,10 +124,8 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct Goal driver: %w", err)
 	}
 	lifetime.goalDriver = goalDriver
-	// create_goal is the only Goal tool that needs the Driver. Inject the
-	// generic tool after Runs and the Driver exist. This must precede Run
-	// recovery because it is part of the exact Deployment configuration used
-	// to validate a durable executor checkpoint.
+	// Must precede Run recovery: it is part of the Deployment configuration that
+	// validates a durable executor checkpoint.
 	createGoalTool, newCreateErr := builtin.NewCreate(goalDriver)
 	if newCreateErr != nil {
 		return nil, fmt.Errorf("runtime: build create_goal: %w", newCreateErr)
@@ -206,8 +196,6 @@ func buildAssemblyCore(
 	return host, nil
 }
 
-// sessionAssembly is the Session lifecycle: retirement, admission, its write
-// stores and the coordinator over them.
 type sessionAssembly struct {
 	retirer       *sessions.ResourceRetirer
 	admissions    *ownership.Gate
@@ -228,24 +216,7 @@ func assembleSessions(cfg assemblyConfig, policy policyComposition, workspaceSer
 	if err != nil {
 		return sessionAssembly{}, fmt.Errorf("runtime: session admission: %w", err)
 	}
-	sessionStores, err := persistence.NewSessionStores(persistence.SessionStoresConfig{
-		ResourceRetirements: cfg.stores.ResourceRetirements,
-		CommandAcceptances:  cfg.stores.CommandAcceptances,
-		Sessions:            cfg.stores.Sessions,
-		Transcript:          cfg.stores.Transcript,
-		Interrupts:          cfg.stores.Interrupts,
-		Runs:                cfg.stores.Runs,
-		ExecutorCheckpoints: cfg.stores.ExecutorCheckpoints,
-		History:             execution.conversation.messages,
-		Plan:                cfg.stores.Plan,
-		ApprovalRules:       cfg.stores.ApprovalRules,
-		ApprovalModes:       cfg.stores.ApprovalModes,
-		ToolResults:         cfg.stores.ToolResults,
-		ChildRunStarts:      cfg.stores.ChildRunStarts,
-		Goals:               cfg.stores.Goals,
-		Tx:                  persistence.Transactor(cfg.stores.Transactor),
-		ReadSnapshot:        persistence.Transactor(cfg.stores.ReadSnapshot),
-	})
+	sessionStores, err := cfg.stores.SessionStores(execution.conversation.messages)
 	if err != nil {
 		return sessionAssembly{}, fmt.Errorf("runtime: session write-set stores: %w", err)
 	}
@@ -277,9 +248,6 @@ func assembleSessions(cfg assemblyConfig, policy policyComposition, workspaceSer
 	sessionDependencies.Mutations = cfg.stores.WorkspaceMutations
 	sessionDependencies.Retirer = retirer
 	sessionDependencies.Sandbox = execution.isolation
-	// The shared Goal/session mutation coordinator is created before either
-	// lifecycle owner. The Driver is constructed later because it consumes Runs;
-	// no Bootstrap proxy or post-construction mutation is needed.
 	goalMutations := goals.NewSessionMutations()
 	sessionDependencies.Goals = goalMutations
 	sessionCoordinator, err := sessions.New(sessionDependencies)
@@ -310,8 +278,6 @@ func assembleModels(cfg assemblyConfig, policy policyComposition, execution exec
 	return modelCoordinator, nil
 }
 
-// integrationAssembly is the MCP and plugin coordinators the delivery layer
-// drives.
 type integrationAssembly struct {
 	mcp          *mcpapp.Coordinator
 	plugins      *plugins.Coordinator
@@ -349,25 +315,8 @@ func assembleIntegrations(cfg assemblyConfig, lifetime *runtimeLifetime, policy 
 	return integrationAssembly{mcp: mcpCoordinator, plugins: pluginCoordinator, selections: pluginSelections, compositions: pluginCompositions}, nil
 }
 
-// assembleBootRecovery wires the recovery that settles work a previous
-// process left behind, before any new Run is admitted.
-func assembleBootRecovery(cfg assemblyConfig, execution executionComposition, cancellations *runs.Cancellations, admissionGate *ownership.Gate, goalDriver *goals.Driver, policy policyComposition) (*recovery.Persistence, *ownership.RecoveryCoordinator, error) {
-	recoveryPersistence, err := recovery.New(recovery.Config{
-		Sessions:            cfg.stores.Sessions,
-		Runs:                cfg.stores.Runs,
-		Interrupts:          cfg.stores.Interrupts,
-		Transcript:          cfg.stores.Transcript,
-		Messages:            execution.conversation.store,
-		GoalRuns:            cfg.stores.Goals,
-		ExecutorCheckpoints: cfg.stores.ExecutorCheckpoints,
-		ModelInvocations:    cfg.stores.ModelInvocations,
-		ToolInvocations:     cfg.stores.ToolInvocations,
-		ChildRunStarts:      cfg.stores.ChildRunStarts,
-		Tx:                  recovery.Transactor(cfg.stores.Transactor),
-	})
-	if err != nil {
-		return nil, nil, fmt.Errorf("runtime: boot recovery persistence: %w", err)
-	}
+func assembleBootRecovery(cfg assemblyConfig, execution executionComposition, cancellations *runs.Cancellations, admissionGate *ownership.Gate, goalDriver *goals.Driver, policy policyComposition) (*persistence.RecoveryStore, *ownership.RecoveryCoordinator, error) {
+	recoveryPersistence := cfg.stores.Recovery()
 	bootRecovery, err := runs.NewRecovery(
 		recoveryPersistence,
 		cancellations,
@@ -386,8 +335,6 @@ func assembleBootRecovery(cfg assemblyConfig, execution executionComposition, ca
 	return recoveryPersistence, ownershipRecovery, nil
 }
 
-// sessionResourceCleanups names the resource families a retired Session
-// generation owns; a disabled family has nothing to retire.
 func sessionResourceCleanups(checkpoints *workspaceadapter.Checkpoints, isolation workspaceIsolation) []sessions.Cleanup {
 	return []sessions.Cleanup{
 		{Resource: "checkpoints", Retire: checkpoints.DropSession},
@@ -395,13 +342,6 @@ func sessionResourceCleanups(checkpoints *workspaceadapter.Checkpoints, isolatio
 	}
 }
 
-// composeRuns builds the segment supervisor every Run segment opens on and the
-// run use cases that open them; the use cases share its identity allocation and
-// publication ordering.
-// composedRuns are the run use cases over the one segment supervisor that runs
-// every segment they open.
-// readServices are the read-side services Delivery projects: the workspace
-// browser and the Session queries, usage, feedback and exports.
 type readServices struct {
 	workspaceFiles     *workspace.Files
 	workspaceVCS       *workspace.VCS
@@ -473,7 +413,7 @@ func assembleReadServices(
 	trajectoryReader, err := persistence.NewTrajectoryExportReader(persistence.TrajectoryExportConfig{
 		Snapshots: sessionStores, Sessions: cfg.stores.Sessions, ModelInvocations: cfg.stores.ModelInvocations,
 		ToolInvocations: cfg.stores.ToolInvocations,
-		Annotations:     cfg.stores.Annotations, ReadSnapshot: persistence.Transactor(cfg.stores.ReadSnapshot),
+		Annotations:     cfg.stores.Annotations, ReadSnapshot: cfg.stores.ReadSnapshot,
 	})
 	if err != nil {
 		return readServices{}, fmt.Errorf("runtime: construct trajectory export reader: %w", err)
@@ -488,15 +428,12 @@ func assembleReadServices(
 	}, nil
 }
 
-// runFoundation is the Session lifecycle the Run lifecycle builds on.
 type runFoundation struct {
 	sessions    *sessions.Coordinator
 	admissions  *ownership.Gate
 	fileChanges func(workspace.FileChangeNotice)
 }
 
-// assembleRuns composes the Run lifecycle: segment effects and finalization,
-// openings, cancellation and the coordinator over them.
 func assembleRuns(
 	cfg assemblyConfig,
 	lifetime *runtimeLifetime,
@@ -506,9 +443,6 @@ func assembleRuns(
 	foundation runFoundation,
 ) (composedRuns, error) {
 	var err error
-	// The Run coordinator owns the Run lifecycle. Its driven persistence
-	// adapter receives only Domain/Application-decided Session values; generated
-	// title maintenance returns through the Session Application capability.
 	runEffectTasks := &taskgroup.Group{}
 	lifetime.runEffectTasks = runEffectTasks
 	runSegmentConfig := segment.Config{
@@ -655,9 +589,7 @@ func composeRuns(
 	return composedRuns{coordinator: coordinator, openings: openings, cancellations: cancellations, segments: segments}, nil
 }
 
-func startupRunRecovery(stores *persistence.Bundle, pluginCoordinator *plugins.Coordinator, runCoordinator *runs.Coordinator, recoveryPersistence *recovery.Persistence, executor *executionadapter.InteractionExecutor, ownershipRecovery *ownership.RecoveryCoordinator) func(context.Context) error {
-	// Startup effects run only after every constructor has succeeded, callback
-	// RPC is published and original execution protection has been reconciled.
+func startupRunRecovery(stores *persistence.Bundle, pluginCoordinator *plugins.Coordinator, runCoordinator *runs.Coordinator, recoveryPersistence *persistence.RecoveryStore, executor *executionadapter.InteractionExecutor, ownershipRecovery *ownership.RecoveryCoordinator) func(context.Context) error {
 	var recoveryMu sync.Mutex
 	recovered := false
 	prepared := false

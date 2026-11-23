@@ -8,12 +8,9 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// EventStream is the ordered event stream of one run segment. A stream yields
-// at most one non-nil error and then stops.
 type EventStream = iter.Seq2[RunEvent, error]
 
-// SegmentStream is an opened segment together with its event stream. Event IDs
-// are opaque tokens scoped to SegmentID; callers may retain and return them but
+// Event IDs are opaque tokens scoped to SegmentID; callers may return them but
 // must never parse or order them.
 type SegmentStream struct {
 	RunID       string
@@ -24,10 +21,6 @@ type SegmentStream struct {
 	Events      EventStream
 }
 
-// SubscribeRun rebinds one exact segment. AfterEventID is an opaque checkpoint
-// previously accepted from that segment. Empty means attach at its current head.
-// Snapshot requests coherent material and its successor tail, requires SessionID
-// for projection correlation, and cannot carry AfterEventID.
 type SubscribeRun struct {
 	SessionID    string
 	RunID        string
@@ -36,8 +29,6 @@ type SubscribeRun struct {
 	Snapshot     bool
 }
 
-// InterruptAnswer pairs a response with the pending item it answers. A resume
-// consumes the complete waiting set atomically.
 type InterruptAnswer struct {
 	ItemID string
 	Answer Answer
@@ -48,12 +39,9 @@ type ResumeRun struct {
 	RunID     string
 	Answers   []InterruptAnswer
 	Message   *authoring.Message
-	Input     []protocol.ContentBlock `json:"-"`
+	Input     []protocol.ContentBlock
 }
 
-// Equal reports whether two resume commands carry the same complete decision
-// set. Answer order is semantic because the command consumes the runtime's
-// ordered interrupt set atomically.
 func (r ResumeRun) Equal(other ResumeRun) bool {
 	if r.CommandID != other.CommandID || r.RunID != other.RunID || (r.Message == nil) != (other.Message == nil) || !slices.Equal(r.Input, other.Input) {
 		return false
@@ -66,9 +54,6 @@ func (r ResumeRun) Equal(other ResumeRun) bool {
 	})
 }
 
-// Clone detaches every mutable answer and optional message owned by a resume
-// command. Delivery adapters may retain the clone across retries or process
-// restarts without sharing the interrupt editor's draft state.
 func (r ResumeRun) Clone() ResumeRun {
 	r.Input = slices.Clone(r.Input)
 	answers := r.Answers

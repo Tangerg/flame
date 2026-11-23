@@ -22,6 +22,7 @@ func (s *exportTransfer) abort() error {
 	defer s.mu.Unlock()
 	return s.discard()
 }
+
 func (s *exportTransfer) discard() error {
 	var err error
 	if s.pending != nil {
@@ -69,6 +70,7 @@ func (s *exportTransfer) begin(name string, size int, picker exportDestinationPi
 	s.size = size
 	return id, nil
 }
+
 func (s *exportTransfer) appendChunk(id string, offset int, encoded string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -94,6 +96,7 @@ func (s *exportTransfer) appendChunk(id string, offset int, encoded string) erro
 	}
 	return nil
 }
+
 func (s *exportTransfer) finish(id string) (returned error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -110,6 +113,7 @@ func (s *exportTransfer) finish(id string) (returned error) {
 	}
 	return s.pending.publish()
 }
+
 func (s *exportTransfer) cancel(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

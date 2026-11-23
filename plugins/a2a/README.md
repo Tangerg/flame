@@ -11,8 +11,8 @@ Configure the private `agents` installation input with a JSON array:
 [
   {
     "name": "research",
-    "cardURL": "https://agents.example/research/.well-known/agent-card.json",
-    "allowedRPCOrigins": ["https://rpc.example"],
+    "cardUrl": "https://agents.example/research/.well-known/agent-card.json",
+    "allowedRpcOrigins": ["https://rpc.example"],
     "description": "Research assistant"
   }
 ]

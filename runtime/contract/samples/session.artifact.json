@@ -27,7 +27,7 @@
           {
             "processId": "process_source_01",
             "effectId": "effect_source_01",
-            "cause": "canceled",
+            "cause": "termination",
             "reason": "owner stopped",
             "detail": "external result is unconfirmed",
             "output": "{\"content\":[{\"kind\":\"text\",\"text\":\"observed before cancellation\"}],\"details\":{\"receipt\":9007199254740993}}"

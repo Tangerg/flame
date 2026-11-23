@@ -15,8 +15,6 @@ type archiveAdviceProjection struct {
 	InactiveSince *instant.Timestamp `json:"inactiveSince,omitzero"`
 }
 
-// Archival uses the caller's captured native instant. The declaration exposes
-// its standard JSON representation without introducing another clock.
 func (ArchiveRequest) JSONSchemaModel() any { return archiveRequestProjection{} }
 func (ArchiveAdvice) JSONSchemaModel() any  { return archiveAdviceProjection{} }
 

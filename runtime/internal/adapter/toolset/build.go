@@ -16,18 +16,8 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// This file is the tool-assembly entry point. It is the SOLE place that
-// constructs local tool adapters and wires them into the resolver, so the engine
-// CORE imports none of them; it receives the assembled [Built]. Tool capability
-// construction therefore stays outside Agent
-// execution (doc/ARCHITECTURE.md).
-
-// BuildConfig is the tool-environment construction input (the working-directory
-// scope + the capability tables). Driven by the runtime config.
 type BuildConfig struct {
-	GoalAvailable func(context.Context) (bool, error)
-	// Lifetime is the process-owned root for local capability resources that
-	// outlive the startup call and individual Tool invocations.
+	GoalAvailable    func(context.Context) (bool, error)
 	Lifetime         context.Context
 	UserHome         string
 	SkillSources     promptsource.SkillSources
@@ -43,44 +33,23 @@ type BuildConfig struct {
 	GoalReader       goalReader
 	GoalReporter     builtin.GoalOutcomeReporter
 
-	// MCPToolDisabled reports whether an identified MCP tool is hidden. The
-	// runtime updates the underlying policy after every registry change.
 	MCPToolDisabled func(tool.Ref) bool
 	RestoreMCP      func(context.Context, []tool.Ref, []plugin.Activation) ([]toolcontract.Tool, func() error, error)
 
-	// SandboxShell opts the shell tools into per-command OS isolation: each
-	// command runs in an in-place jail rooted at its own cwd (workspace-write
-	// only, network denied, $HOME hidden, env scrubbed). Off by default; on a
-	// host with no isolation backend enabling it fails the build (fail-closed).
-	SandboxShell bool
-	// SandboxReadOnlyPaths re-opens declared toolchain roots below the hidden
-	// home for reads (e.g. a language toolchain or dependency cache under $HOME)
-	// in every jail, including an isolated session's.
+	SandboxShell         bool
 	SandboxReadOnlyPaths []string
 }
 
-// goalReader supplies the Goal read model used by get_goal. Outcome-tool
-// availability is derived from immutable Run admission provenance instead of
-// mutable Goal state.
 type goalReader interface {
 	builtin.GoalReader
 }
 
-// Built is the assembled tool environment: the runtime-scope resolver (also the
-// diagnostic tool catalog) and its capability closers.
 type Built struct {
 	Resolver *Resolver
-	// Shells is the background-shell set the shell tools run over. Exposed so
-	// live-state reporting can inspect a session's still-running jobs (e.g. a
-	// post-compaction live-state reminder) without owning a second shell set.
-	Shells  *exec.Shells
-	Closers []func() error
+	Shells   *exec.Shells
+	Closers  []func() error
 }
 
-// Build constructs every capability adapter, assembles the resolver, and
-// returns the [Built] environment. Remote MCP connections are constructed by
-// their dedicated adapter before this function and supplied as an initial tool
-// snapshot; this package owns only the local capability lifecycle.
 func Build(config BuildConfig) (_ Built, err error) {
 	if config.Lifetime == nil {
 		return Built{}, errors.New("toolset: lifetime is required")
@@ -93,9 +62,6 @@ func Build(config BuildConfig) (_ Built, err error) {
 	}
 	tracker := newReadTracker()
 
-	// Isolated sessions jail their shell even when the global sandbox.shell
-	// opt-in is off, so a confiner failure refuses assembly only under that
-	// opt-in; otherwise the shell set keeps the cause for isolated commands.
 	confiner, confErr := sandbox.NewConfiner(config.UserHome, config.SandboxReadOnlyPaths)
 	shells, err := exec.NewShells(confiner, confErr, config.SandboxShell)
 	if err != nil {
@@ -112,30 +78,19 @@ func Build(config BuildConfig) (_ Built, err error) {
 		}
 	}()
 
-	// ask_user is a build-time Tool shared by root and delegated roles. A child
-	// question waits at the same durable tree boundary as child approval.
 	askUserTool, err := builtin.NewAskUser(config.Interrupt)
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build ask_user: %w", err)
 	}
 
-	// Plan mode and Plan state form one lifecycle. The family keeps
-	// exit_plan_mode bound to the exact store maintained by set_plan.
 	planFamily, err := builtin.BuildPlan(config.PlanMode, config.Plan, config.PlanAvailable, config.Interrupt)
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build Plan family: %w", err)
 	}
-	// read_tool_result reads back a tool output the runtime offloaded on
-	// eviction. Working-directory independent (keys off the session id), so built
-	// once and given to both roles.
 	toolResultTool, err := builtin.NewToolResultReader(config.ToolResults)
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build read_tool_result: %w", err)
 	}
-	// Goal state is working-directory independent and keyed by session. get_goal
-	// is always useful to the root Agent; report_goal_outcome is exposed only to
-	// Runs stamped with a Goal incarnation at admission. That immutable provenance
-	// keeps a parked deployment restorable even while the Goal is paused for HITL.
 	goalGetTool, err := builtin.NewGet(config.GoalReader)
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build get_goal: %w", err)

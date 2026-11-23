@@ -1609,7 +1609,55 @@
       "path": "github.com/Tangerg/flame/packages/go-sdk/filesystem",
       "imports": [
         "context",
+        "io/fs",
         "os"
+      ],
+      "constants": [
+        {
+          "name": "ExecutableBits",
+          "type": "fs.FileMode",
+          "value": "73"
+        },
+        {
+          "name": "MaxSymlinks",
+          "type": "untyped int",
+          "value": "40"
+        },
+        {
+          "name": "MiB",
+          "type": "untyped int",
+          "value": "1048576"
+        },
+        {
+          "name": "PrivateDirectoryMode",
+          "type": "fs.FileMode",
+          "value": "448"
+        },
+        {
+          "name": "PrivateExecutableMode",
+          "type": "fs.FileMode",
+          "value": "448"
+        },
+        {
+          "name": "PrivateFileMode",
+          "type": "fs.FileMode",
+          "value": "384"
+        },
+        {
+          "name": "ReadOnlyFileMode",
+          "type": "fs.FileMode",
+          "value": "256"
+        },
+        {
+          "name": "SharedDirectoryMode",
+          "type": "fs.FileMode",
+          "value": "493"
+        },
+        {
+          "name": "SharedFileMode",
+          "type": "fs.FileMode",
+          "value": "420"
+        }
       ],
       "variables": [
         {
@@ -2078,6 +2126,11 @@
           "value": "\"deny\""
         },
         {
+          "name": "ConfigurationPath",
+          "type": "untyped string",
+          "value": "\".flame/hooks.json\""
+        },
+        {
           "name": "FailureAdvisory",
           "type": "FailurePolicy",
           "value": "\"advisory\""
@@ -2539,6 +2592,11 @@
       ],
       "constants": [
         {
+          "name": "AuthoredDirectory",
+          "type": "untyped string",
+          "value": "\".flame\""
+        },
+        {
           "name": "DeclarationIDPattern",
           "type": "untyped string",
           "value": "\"^[a-z][a-z0-9._-]{0,63}$\""
@@ -2574,21 +2632,6 @@
           "value": "\"flame\""
         },
         {
-          "name": "RunPrefix",
-          "type": "untyped string",
-          "value": "\"run_\""
-        },
-        {
-          "name": "SegmentPrefix",
-          "type": "untyped string",
-          "value": "\"seg_\""
-        },
-        {
-          "name": "SessionPrefix",
-          "type": "untyped string",
-          "value": "\"ses_\""
-        },
-        {
           "name": "URISafeASCIIPattern",
           "type": "untyped string",
           "value": "\"^[A-Za-z0-9._:-]+$\""
@@ -2602,6 +2645,22 @@
         {
           "name": "InstallationIDPattern",
           "signature": "func() string"
+        },
+        {
+          "name": "NewItem",
+          "signature": "func(entropy string) (ItemID, error)"
+        },
+        {
+          "name": "NewRun",
+          "signature": "func(entropy string) (RunID, error)"
+        },
+        {
+          "name": "NewSegment",
+          "signature": "func(entropy string) (SegmentID, error)"
+        },
+        {
+          "name": "NewSession",
+          "signature": "func(entropy string) (SessionID, error)"
         },
         {
           "name": "ParseHostInstallation",
@@ -2665,10 +2724,6 @@
         },
         {
           "name": "ValidateRun",
-          "signature": "func(text string) error"
-        },
-        {
-          "name": "ValidateSegment",
           "signature": "func(text string) error"
         },
         {
@@ -3872,11 +3927,6 @@
       ],
       "constants": [
         {
-          "name": "DeclarationProtocol",
-          "type": "untyped string",
-          "value": "\"io.github.tangerg.flame/plugin/1\""
-        },
-        {
           "name": "FeedbackReference",
           "type": "untyped string",
           "value": "\"flame.feedback.v1\""
@@ -4885,6 +4935,12 @@
               "type": "[]frame.MethodDescriptor",
               "tag": "json:\"methods\""
             }
+          ],
+          "methods": [
+            {
+              "name": "Clone",
+              "signature": "func() CapabilityDescriptor"
+            }
           ]
         },
         {
@@ -5340,11 +5396,6 @@
           "value": "\"io.github.tangerg.flame/operations.invoke\""
         },
         {
-          "name": "MaxCommandIDCharacters",
-          "type": "untyped int",
-          "value": "256"
-        },
-        {
           "name": "ProcessProfile",
           "type": "host.Profile",
           "value": "\"flame-mcp\""
@@ -5498,10 +5549,6 @@
           "signature": "func() ([]byte, error)"
         },
         {
-          "name": "ReadReceipt",
-          "signature": "func[P, R any](ctx context.Context, session *mcp.ClientSession, id CommandID, method string, input P) (R, bool, error)"
-        },
-        {
           "name": "ReceiptQuery",
           "signature": "func() (*Method[ReceiptRequest, Receipt], error)"
         },
@@ -5512,10 +5559,6 @@
         {
           "name": "RequestInput",
           "signature": "func(ctx context.Context) (value.JSON, error)"
-        },
-        {
-          "name": "Resolve",
-          "signature": "func(ctx context.Context, session *mcp.ClientSession, name string) (*Binding, error)"
         },
         {
           "name": "ResolveCapability",
@@ -5530,8 +5573,16 @@
           "signature": "func(ctx context.Context) (int64, bool)"
         },
         {
+          "name": "StreamChunk",
+          "signature": "func[R, C any](chunk C) StreamValue[C, R]"
+        },
+        {
           "name": "StreamHost",
           "signature": "func[P, C, R any](ctx context.Context, ref CallbackRef, method *StreamingMethod[P, C, R], id CommandID, input P) iter.Seq2[StreamValue[C, R], error]"
+        },
+        {
+          "name": "StreamResult",
+          "signature": "func[C, R any](result R) StreamValue[C, R]"
         },
         {
           "name": "VerifyCapabilities",
@@ -5944,27 +5995,22 @@
             {
               "name": "CallHeader",
               "type": "string",
-              "tag": "json:\"CallHeader\""
+              "tag": "json:\"callHeader\""
             },
             {
               "name": "InvocationHeader",
               "type": "string",
-              "tag": "json:\"InvocationHeader\""
+              "tag": "json:\"invocationHeader\""
             },
             {
               "name": "InvocationMetadataKey",
               "type": "string",
-              "tag": "json:\"InvocationMetadataKey\""
+              "tag": "json:\"invocationMetadataKey\""
             },
             {
               "name": "ReceiptMethod",
               "type": "string",
-              "tag": "json:\"ReceiptMethod\""
-            },
-            {
-              "name": "MaxCommandIDCharacters",
-              "type": "int",
-              "tag": "json:\"maxCommandIDCharacters\""
+              "tag": "json:\"receiptMethod\""
             }
           ]
         },
@@ -6029,7 +6075,7 @@
           "methods": [
             {
               "name": "Contributions",
-              "signature": "func() ([]SetupContribution, error)"
+              "signature": "func() []SetupContribution"
             }
           ]
         },
@@ -6114,14 +6160,14 @@
         {
           "name": "StreamValue",
           "kind": "struct",
-          "fields": [
+          "methods": [
             {
               "name": "Chunk",
-              "type": "*C"
+              "signature": "func() (C, bool)"
             },
             {
               "name": "Result",
-              "type": "*R"
+              "signature": "func() (R, bool)"
             }
           ]
         },
@@ -6212,54 +6258,54 @@
           "value": "\"user\""
         },
         {
-          "name": "AddV2Method",
+          "name": "AddV3Method",
           "type": "untyped string",
-          "value": "\"flame.memory/add.v2\""
+          "value": "\"flame.memory/add.v3\""
         },
         {
-          "name": "AddV2OutputDomainItemSnapshotOriginAuto",
-          "type": "AddV2OutputDomainItemSnapshotOrigin",
+          "name": "AddV3OutputContractItemOriginAuto",
+          "type": "AddV3OutputContractItemOrigin",
           "value": "\"auto\""
         },
         {
-          "name": "AddV2OutputDomainItemSnapshotOriginUser",
-          "type": "AddV2OutputDomainItemSnapshotOrigin",
+          "name": "AddV3OutputContractItemOriginUser",
+          "type": "AddV3OutputContractItemOrigin",
           "value": "\"user\""
         },
         {
-          "name": "AddV2OutputDomainItemSnapshotScopeProject",
-          "type": "AddV2OutputDomainItemSnapshotScope",
+          "name": "AddV3OutputContractItemScopeProject",
+          "type": "AddV3OutputContractItemScope",
           "value": "\"project\""
         },
         {
-          "name": "AddV2OutputDomainItemSnapshotScopeUser",
-          "type": "AddV2OutputDomainItemSnapshotScope",
+          "name": "AddV3OutputContractItemScopeUser",
+          "type": "AddV3OutputContractItemScope",
           "value": "\"user\""
         },
         {
-          "name": "AddV2OutputDomainItemSnapshotStatusActive",
-          "type": "AddV2OutputDomainItemSnapshotStatus",
+          "name": "AddV3OutputContractItemStatusActive",
+          "type": "AddV3OutputContractItemStatus",
           "value": "\"active\""
         },
         {
-          "name": "AddV2OutputDomainItemSnapshotStatusPending",
-          "type": "AddV2OutputDomainItemSnapshotStatus",
+          "name": "AddV3OutputContractItemStatusPending",
+          "type": "AddV3OutputContractItemStatus",
           "value": "\"pending\""
         },
         {
-          "name": "AddV2OutputDomainItemSnapshotStatusRejected",
-          "type": "AddV2OutputDomainItemSnapshotStatus",
+          "name": "AddV3OutputContractItemStatusRejected",
+          "type": "AddV3OutputContractItemStatus",
           "value": "\"rejected\""
         },
         {
           "name": "CapabilityJSON",
           "type": "untyped string",
-          "value": "\"{\\\"composition\\\":\\\"selection\\\",\\\"methods\\\":[{\\\"description\\\":\\\"Add a human-authored memory item in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkSW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Content\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Content\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/add.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkUmVzdWx0\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Item\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\\\"}},\\\"required\\\":[\\\"Item\\\",\\\"Changed\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096},\\\"Revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\\\":{\\\"type\\\":\\\"number\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Item\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\\\"}},\\\"required\\\":[\\\"Item\\\",\\\"Changed\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Delete one memory item through its private owner.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbUlucHV0\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/delete.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWNr\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Read active memory items that can inform a Run.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbXNJbnB1dA\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"Project\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"Project\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"query\\\",\\\"name\\\":\\\"flame.memory/items.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096},\\\"Revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\\\":{\\\"type\\\":\\\"number\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\\\"},\\\"type\\\":\\\"array\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"List memory items visible in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TGlzdElucHV0\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Limit\\\":{\\\"maximum\\\":100,\\\"minimum\\\":1}}}],\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Cursor\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Limit\\\":{\\\"maximum\\\":100,\\\"minimum\\\":1}}}],\\\"properties\\\":{\\\"CWD\\\":{\\\"type\\\":\\\"string\\\"},\\\"Cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"Scope\\\",\\\"CWD\\\",\\\"Cursor\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"query\\\",\\\"name\\\":\\\"flame.memory/list.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UGFnZQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Capacity\\\":{\\\"maximum\\\":512,\\\"minimum\\\":512},\\\"Rows\\\":{\\\"maxItems\\\":100}}}],\\\"properties\\\":{\\\"Capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"NextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\\\"},\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"Rows\\\",\\\"NextCursor\\\",\\\"Capacity\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096},\\\"Revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\\\":{\\\"type\\\":\\\"number\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Capacity\\\":{\\\"maximum\\\":512,\\\"minimum\\\":512},\\\"Rows\\\":{\\\"maxItems\\\":100}}}],\\\"properties\\\":{\\\"Capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"NextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"Rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\\\"},\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"Rows\\\",\\\"NextCursor\\\",\\\"Capacity\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Extract and curate captured conversation under the private ledger and watermark.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"MessageCount\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"Transcript\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"MessageCount\\\",\\\"Transcript\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VJbnB1dA\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Conversation\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"SessionID\\\",\\\"Project\\\",\\\"Compacted\\\",\\\"Conversation\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Conversation\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"SessionID\\\",\\\"Project\\\",\\\"Compacted\\\",\\\"Conversation\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/maintain.v1\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VSZXN1bHQ\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"Published\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"Published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"Published\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Apply a human review decision to a pending memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UmV2aWV3SW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\",\\\"Decision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\",\\\"Decision\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/review.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWNr\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Rank active memories for the supplied project and query.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.U2VhcmNoSW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Query\\\":{\\\"type\\\":\\\"string\\\"},\\\"TopK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"Project\\\",\\\"Query\\\",\\\"TopK\\\",\\\"EmbeddingSpace\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Query\\\":{\\\"type\\\":\\\"string\\\"},\\\"TopK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"Project\\\",\\\"Query\\\",\\\"TopK\\\",\\\"EmbeddingSpace\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"query\\\",\\\"name\\\":\\\"flame.memory/search.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096},\\\"Revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\\\":{\\\"type\\\":\\\"number\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\\\"},\\\"type\\\":\\\"array\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Edit the current content or pin state of a memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.VXBkYXRlSW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"ExpectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Content\\\":{\\\"type\\\":\\\"string\\\"},\\\"ExpectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"ID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"ExpectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/update.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbVNuYXBzaG90\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.aXRlbVByb2plY3Rpb24\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096},\\\"Revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\\\":{\\\"type\\\":\\\"number\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"Content\\\":{\\\"maxLength\\\":4096},\\\"Revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"Content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"CreatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"Day\\\":{\\\"type\\\":\\\"string\\\"},\\\"Embedding\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZyYW1lL3ZhbHVl.TnVtYmVy\\\"},\\\"type\\\":\\\"array\\\"},\\\"EmbeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"ID\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2RvbWFpbg.SXRlbUlE\\\"},\\\"Origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"Pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"Project\\\":{\\\"type\\\":\\\"string\\\"},\\\"Revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"Scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"SessionID\\\":{\\\"type\\\":\\\"string\\\"},\\\"Status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"UpdatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"ID\\\",\\\"Revision\\\",\\\"Scope\\\",\\\"Project\\\",\\\"Content\\\",\\\"Origin\\\",\\\"Status\\\",\\\"Pinned\\\",\\\"SessionID\\\",\\\"Day\\\",\\\"CreatedAt\\\",\\\"UpdatedAt\\\",\\\"EmbeddingSpace\\\",\\\"Embedding\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"}],\\\"protocol\\\":\\\"io.github.tangerg.flame/plugin/1\\\",\\\"reference\\\":\\\"memory\\\",\\\"scope\\\":\\\"installation\\\"}\""
+          "value": "\"{\\\"composition\\\":\\\"selection\\\",\\\"methods\\\":[{\\\"description\\\":\\\"Add a human-authored memory item in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkSW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"content\\\":{\\\"type\\\":\\\"string\\\"},\\\"cwd\\\":{\\\"type\\\":\\\"string\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"cwd\\\",\\\"content\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"content\\\":{\\\"type\\\":\\\"string\\\"},\\\"cwd\\\":{\\\"type\\\":\\\"string\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"cwd\\\",\\\"content\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/add.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkUmVzdWx0\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"item\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"}},\\\"required\\\":[\\\"item\\\",\\\"changed\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"item\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"}},\\\"required\\\":[\\\"item\\\",\\\"changed\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Delete one memory item through its private owner.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbUlucHV0\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/delete.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWNr\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Read active memory items that can inform a Run.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbXNJbnB1dA\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"project\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"project\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"query\\\",\\\"name\\\":\\\"flame.memory/items.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"},\\\"type\\\":\\\"array\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"List memory items visible in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TGlzdElucHV0\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"limit\\\":{\\\"maximum\\\":100,\\\"minimum\\\":1}}}],\\\"properties\\\":{\\\"cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"cwd\\\":{\\\"type\\\":\\\"string\\\"},\\\"limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"cwd\\\",\\\"cursor\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"limit\\\":{\\\"maximum\\\":100,\\\"minimum\\\":1}}}],\\\"properties\\\":{\\\"cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"cwd\\\":{\\\"type\\\":\\\"string\\\"},\\\"limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"cwd\\\",\\\"cursor\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"query\\\",\\\"name\\\":\\\"flame.memory/list.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UGFnZQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"capacity\\\":{\\\"maximum\\\":512,\\\"minimum\\\":512},\\\"rows\\\":{\\\"maxItems\\\":100}}}],\\\"properties\\\":{\\\"capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"nextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"},\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"rows\\\",\\\"nextCursor\\\",\\\"capacity\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"capacity\\\":{\\\"maximum\\\":512,\\\"minimum\\\":512},\\\"rows\\\":{\\\"maxItems\\\":100}}}],\\\"properties\\\":{\\\"capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"nextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"},\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"rows\\\",\\\"nextCursor\\\",\\\"capacity\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Extract and curate captured conversation under the private ledger and watermark.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"messageCount\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"transcript\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"messageCount\\\",\\\"transcript\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VJbnB1dA\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"conversation\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"sessionId\\\",\\\"project\\\",\\\"compacted\\\",\\\"conversation\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"conversation\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"sessionId\\\",\\\"project\\\",\\\"compacted\\\",\\\"conversation\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/maintain.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VSZXN1bHQ\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"published\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"published\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Apply a human review decision to a pending memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UmV2aWV3SW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\",\\\"decision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\",\\\"decision\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/review.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWNr\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Rank active memories for the supplied project and query.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.U2VhcmNoSW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"embeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"query\\\":{\\\"type\\\":\\\"string\\\"},\\\"topK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"project\\\",\\\"query\\\",\\\"topK\\\",\\\"embeddingSpace\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"embeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"query\\\":{\\\"type\\\":\\\"string\\\"},\\\"topK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"project\\\",\\\"query\\\",\\\"topK\\\",\\\"embeddingSpace\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"query\\\",\\\"name\\\":\\\"flame.memory/search.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"},\\\"type\\\":\\\"array\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Edit the current content or pin state of a memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.VXBkYXRlSW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"type\\\":\\\"string\\\"},\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"type\\\":\\\"string\\\"},\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/update.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"}],\\\"protocol\\\":\\\"io.github.tangerg.flame/plugin/1\\\",\\\"reference\\\":\\\"memory\\\",\\\"scope\\\":\\\"installation\\\"}\""
         },
         {
-          "name": "DeleteV2Method",
+          "name": "DeleteV3Method",
           "type": "untyped string",
-          "value": "\"flame.memory/delete.v2\""
+          "value": "\"flame.memory/delete.v3\""
         },
         {
           "name": "ItemsInputScopeProject",
@@ -6272,43 +6318,43 @@
           "value": "\"user\""
         },
         {
-          "name": "ItemsV2Method",
+          "name": "ItemsV3Method",
           "type": "untyped string",
-          "value": "\"flame.memory/items.v2\""
+          "value": "\"flame.memory/items.v3\""
         },
         {
-          "name": "ItemsV2OutputDomainItemSnapshotOriginAuto",
-          "type": "ItemsV2OutputDomainItemSnapshotOrigin",
+          "name": "ItemsV3OutputContractItemOriginAuto",
+          "type": "ItemsV3OutputContractItemOrigin",
           "value": "\"auto\""
         },
         {
-          "name": "ItemsV2OutputDomainItemSnapshotOriginUser",
-          "type": "ItemsV2OutputDomainItemSnapshotOrigin",
+          "name": "ItemsV3OutputContractItemOriginUser",
+          "type": "ItemsV3OutputContractItemOrigin",
           "value": "\"user\""
         },
         {
-          "name": "ItemsV2OutputDomainItemSnapshotScopeProject",
-          "type": "ItemsV2OutputDomainItemSnapshotScope",
+          "name": "ItemsV3OutputContractItemScopeProject",
+          "type": "ItemsV3OutputContractItemScope",
           "value": "\"project\""
         },
         {
-          "name": "ItemsV2OutputDomainItemSnapshotScopeUser",
-          "type": "ItemsV2OutputDomainItemSnapshotScope",
+          "name": "ItemsV3OutputContractItemScopeUser",
+          "type": "ItemsV3OutputContractItemScope",
           "value": "\"user\""
         },
         {
-          "name": "ItemsV2OutputDomainItemSnapshotStatusActive",
-          "type": "ItemsV2OutputDomainItemSnapshotStatus",
+          "name": "ItemsV3OutputContractItemStatusActive",
+          "type": "ItemsV3OutputContractItemStatus",
           "value": "\"active\""
         },
         {
-          "name": "ItemsV2OutputDomainItemSnapshotStatusPending",
-          "type": "ItemsV2OutputDomainItemSnapshotStatus",
+          "name": "ItemsV3OutputContractItemStatusPending",
+          "type": "ItemsV3OutputContractItemStatus",
           "value": "\"pending\""
         },
         {
-          "name": "ItemsV2OutputDomainItemSnapshotStatusRejected",
-          "type": "ItemsV2OutputDomainItemSnapshotStatus",
+          "name": "ItemsV3OutputContractItemStatusRejected",
+          "type": "ItemsV3OutputContractItemStatus",
           "value": "\"rejected\""
         },
         {
@@ -6322,49 +6368,49 @@
           "value": "\"user\""
         },
         {
-          "name": "ListV2Method",
+          "name": "ListV3Method",
           "type": "untyped string",
-          "value": "\"flame.memory/list.v2\""
+          "value": "\"flame.memory/list.v3\""
         },
         {
-          "name": "ListV2OutputDomainItemSnapshotOriginAuto",
-          "type": "ListV2OutputDomainItemSnapshotOrigin",
+          "name": "ListV3OutputContractItemOriginAuto",
+          "type": "ListV3OutputContractItemOrigin",
           "value": "\"auto\""
         },
         {
-          "name": "ListV2OutputDomainItemSnapshotOriginUser",
-          "type": "ListV2OutputDomainItemSnapshotOrigin",
+          "name": "ListV3OutputContractItemOriginUser",
+          "type": "ListV3OutputContractItemOrigin",
           "value": "\"user\""
         },
         {
-          "name": "ListV2OutputDomainItemSnapshotScopeProject",
-          "type": "ListV2OutputDomainItemSnapshotScope",
+          "name": "ListV3OutputContractItemScopeProject",
+          "type": "ListV3OutputContractItemScope",
           "value": "\"project\""
         },
         {
-          "name": "ListV2OutputDomainItemSnapshotScopeUser",
-          "type": "ListV2OutputDomainItemSnapshotScope",
+          "name": "ListV3OutputContractItemScopeUser",
+          "type": "ListV3OutputContractItemScope",
           "value": "\"user\""
         },
         {
-          "name": "ListV2OutputDomainItemSnapshotStatusActive",
-          "type": "ListV2OutputDomainItemSnapshotStatus",
+          "name": "ListV3OutputContractItemStatusActive",
+          "type": "ListV3OutputContractItemStatus",
           "value": "\"active\""
         },
         {
-          "name": "ListV2OutputDomainItemSnapshotStatusPending",
-          "type": "ListV2OutputDomainItemSnapshotStatus",
+          "name": "ListV3OutputContractItemStatusPending",
+          "type": "ListV3OutputContractItemStatus",
           "value": "\"pending\""
         },
         {
-          "name": "ListV2OutputDomainItemSnapshotStatusRejected",
-          "type": "ListV2OutputDomainItemSnapshotStatus",
+          "name": "ListV3OutputContractItemStatusRejected",
+          "type": "ListV3OutputContractItemStatus",
           "value": "\"rejected\""
         },
         {
-          "name": "MaintainV1Method",
+          "name": "MaintainV2Method",
           "type": "untyped string",
-          "value": "\"flame.memory/maintain.v1\""
+          "value": "\"flame.memory/maintain.v2\""
         },
         {
           "name": "MaxCallbackInputBytes",
@@ -6412,9 +6458,9 @@
           "value": "\"reject\""
         },
         {
-          "name": "ReviewV2Method",
+          "name": "ReviewV3Method",
           "type": "untyped string",
-          "value": "\"flame.memory/review.v2\""
+          "value": "\"flame.memory/review.v3\""
         },
         {
           "name": "SearchToolName",
@@ -6422,83 +6468,83 @@
           "value": "\"search_memory\""
         },
         {
-          "name": "SearchV2Method",
+          "name": "SearchV3Method",
           "type": "untyped string",
-          "value": "\"flame.memory/search.v2\""
+          "value": "\"flame.memory/search.v3\""
         },
         {
-          "name": "SearchV2OutputDomainItemSnapshotOriginAuto",
-          "type": "SearchV2OutputDomainItemSnapshotOrigin",
+          "name": "SearchV3OutputContractItemOriginAuto",
+          "type": "SearchV3OutputContractItemOrigin",
           "value": "\"auto\""
         },
         {
-          "name": "SearchV2OutputDomainItemSnapshotOriginUser",
-          "type": "SearchV2OutputDomainItemSnapshotOrigin",
+          "name": "SearchV3OutputContractItemOriginUser",
+          "type": "SearchV3OutputContractItemOrigin",
           "value": "\"user\""
         },
         {
-          "name": "SearchV2OutputDomainItemSnapshotScopeProject",
-          "type": "SearchV2OutputDomainItemSnapshotScope",
+          "name": "SearchV3OutputContractItemScopeProject",
+          "type": "SearchV3OutputContractItemScope",
           "value": "\"project\""
         },
         {
-          "name": "SearchV2OutputDomainItemSnapshotScopeUser",
-          "type": "SearchV2OutputDomainItemSnapshotScope",
+          "name": "SearchV3OutputContractItemScopeUser",
+          "type": "SearchV3OutputContractItemScope",
           "value": "\"user\""
         },
         {
-          "name": "SearchV2OutputDomainItemSnapshotStatusActive",
-          "type": "SearchV2OutputDomainItemSnapshotStatus",
+          "name": "SearchV3OutputContractItemStatusActive",
+          "type": "SearchV3OutputContractItemStatus",
           "value": "\"active\""
         },
         {
-          "name": "SearchV2OutputDomainItemSnapshotStatusPending",
-          "type": "SearchV2OutputDomainItemSnapshotStatus",
+          "name": "SearchV3OutputContractItemStatusPending",
+          "type": "SearchV3OutputContractItemStatus",
           "value": "\"pending\""
         },
         {
-          "name": "SearchV2OutputDomainItemSnapshotStatusRejected",
-          "type": "SearchV2OutputDomainItemSnapshotStatus",
+          "name": "SearchV3OutputContractItemStatusRejected",
+          "type": "SearchV3OutputContractItemStatus",
           "value": "\"rejected\""
         },
         {
-          "name": "UpdateV2Method",
+          "name": "UpdateV3Method",
           "type": "untyped string",
-          "value": "\"flame.memory/update.v2\""
+          "value": "\"flame.memory/update.v3\""
         },
         {
-          "name": "UpdateV2OutputDomainItemSnapshotOriginAuto",
-          "type": "UpdateV2OutputDomainItemSnapshotOrigin",
+          "name": "UpdateV3OutputContractItemOriginAuto",
+          "type": "UpdateV3OutputContractItemOrigin",
           "value": "\"auto\""
         },
         {
-          "name": "UpdateV2OutputDomainItemSnapshotOriginUser",
-          "type": "UpdateV2OutputDomainItemSnapshotOrigin",
+          "name": "UpdateV3OutputContractItemOriginUser",
+          "type": "UpdateV3OutputContractItemOrigin",
           "value": "\"user\""
         },
         {
-          "name": "UpdateV2OutputDomainItemSnapshotScopeProject",
-          "type": "UpdateV2OutputDomainItemSnapshotScope",
+          "name": "UpdateV3OutputContractItemScopeProject",
+          "type": "UpdateV3OutputContractItemScope",
           "value": "\"project\""
         },
         {
-          "name": "UpdateV2OutputDomainItemSnapshotScopeUser",
-          "type": "UpdateV2OutputDomainItemSnapshotScope",
+          "name": "UpdateV3OutputContractItemScopeUser",
+          "type": "UpdateV3OutputContractItemScope",
           "value": "\"user\""
         },
         {
-          "name": "UpdateV2OutputDomainItemSnapshotStatusActive",
-          "type": "UpdateV2OutputDomainItemSnapshotStatus",
+          "name": "UpdateV3OutputContractItemStatusActive",
+          "type": "UpdateV3OutputContractItemStatus",
           "value": "\"active\""
         },
         {
-          "name": "UpdateV2OutputDomainItemSnapshotStatusPending",
-          "type": "UpdateV2OutputDomainItemSnapshotStatus",
+          "name": "UpdateV3OutputContractItemStatusPending",
+          "type": "UpdateV3OutputContractItemStatus",
           "value": "\"pending\""
         },
         {
-          "name": "UpdateV2OutputDomainItemSnapshotStatusRejected",
-          "type": "UpdateV2OutputDomainItemSnapshotStatus",
+          "name": "UpdateV3OutputContractItemStatusRejected",
+          "type": "UpdateV3OutputContractItemStatus",
           "value": "\"rejected\""
         }
       ],
@@ -6508,19 +6554,19 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "CWD",
-              "type": "string",
-              "tag": "json:\"CWD\""
-            },
-            {
               "name": "Content",
               "type": "string",
-              "tag": "json:\"Content\""
+              "tag": "json:\"content\""
+            },
+            {
+              "name": "Cwd",
+              "type": "string",
+              "tag": "json:\"cwd\""
             },
             {
               "name": "Scope",
               "type": "AddInputScope",
-              "tag": "json:\"Scope\""
+              "tag": "json:\"scope\""
             }
           ]
         },
@@ -6542,98 +6588,88 @@
             {
               "name": "Changed",
               "type": "bool",
-              "tag": "json:\"Changed\""
+              "tag": "json:\"changed\""
             },
             {
               "name": "Item",
-              "type": "*AddV2OutputDomainItemSnapshot",
-              "tag": "json:\"Item\""
+              "type": "*AddV3OutputContractItem",
+              "tag": "json:\"item\""
             }
           ]
         },
         {
-          "name": "AddV2OutputDomainItemID",
+          "name": "AddV3OutputAgentmemoryItemID",
           "kind": "defined",
           "underlying": "string"
         },
         {
-          "name": "AddV2OutputDomainItemSnapshot",
+          "name": "AddV3OutputContractItem",
           "kind": "struct",
           "fields": [
             {
               "name": "Content",
               "type": "string",
-              "tag": "json:\"Content\""
+              "tag": "json:\"content\""
             },
             {
               "name": "CreatedAt",
-              "type": "AddV2OutputInstantTimestamp",
-              "tag": "json:\"CreatedAt\""
+              "type": "AddV3OutputInstantTimestamp",
+              "tag": "json:\"createdAt\""
             },
             {
               "name": "Day",
               "type": "string",
-              "tag": "json:\"Day\""
+              "tag": "json:\"day\""
             },
             {
-              "name": "Embedding",
-              "type": "[]AddV2OutputValueNumber",
-              "tag": "json:\"Embedding\""
-            },
-            {
-              "name": "EmbeddingSpace",
-              "type": "string",
-              "tag": "json:\"EmbeddingSpace\""
-            },
-            {
-              "name": "ID",
-              "type": "AddV2OutputDomainItemID",
-              "tag": "json:\"ID\""
+              "name": "Id",
+              "type": "AddV3OutputAgentmemoryItemID",
+              "tag": "json:\"id\""
             },
             {
               "name": "Origin",
-              "type": "AddV2OutputDomainItemSnapshotOrigin",
-              "tag": "json:\"Origin\""
+              "type": "AddV3OutputContractItemOrigin",
+              "tag": "json:\"origin\""
             },
             {
               "name": "Pinned",
               "type": "bool",
-              "tag": "json:\"Pinned\""
+              "tag": "json:\"pinned\""
             },
             {
               "name": "Project",
               "type": "string",
-              "tag": "json:\"Project\""
+              "tag": "json:\"project\""
             },
             {
               "name": "Revision",
               "type": "value.Number",
-              "tag": "json:\"Revision\""
+              "tag": "json:\"revision\""
             },
             {
               "name": "Scope",
-              "type": "AddV2OutputDomainItemSnapshotScope",
-              "tag": "json:\"Scope\""
+              "type": "AddV3OutputContractItemScope",
+              "tag": "json:\"scope\""
             },
             {
-              "name": "SessionID",
+              "name": "SessionId",
               "type": "string",
-              "tag": "json:\"SessionID\""
+              "tag": "json:\"sessionId\""
             },
             {
               "name": "Status",
-              "type": "AddV2OutputDomainItemSnapshotStatus",
-              "tag": "json:\"Status\""
+              "type": "AddV3OutputContractItemStatus",
+              "tag": "json:\"status\""
             },
             {
               "name": "UpdatedAt",
-              "type": "AddV2OutputInstantTimestamp",
-              "tag": "json:\"UpdatedAt\""
+              "type": "AddV3OutputInstantTimestamp",
+              "tag": "json:\"updatedAt\""
             }
           ]
         },
         {
-          "name": "AddV2OutputDomainItemSnapshotOrigin",
+          "name": "AddV3OutputContractItemOrigin",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -6644,7 +6680,7 @@
           ]
         },
         {
-          "name": "AddV2OutputDomainItemSnapshotScope",
+          "name": "AddV3OutputContractItemScope",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -6655,7 +6691,7 @@
           ]
         },
         {
-          "name": "AddV2OutputDomainItemSnapshotStatus",
+          "name": "AddV3OutputContractItemStatus",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -6666,37 +6702,9 @@
           ]
         },
         {
-          "name": "AddV2OutputInstantTimestamp",
+          "name": "AddV3OutputInstantTimestamp",
           "kind": "defined",
           "underlying": "string"
-        },
-        {
-          "name": "AddV2OutputValueNumber",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Number",
-              "type": "value.Number"
-            }
-          ],
-          "methods": [
-            {
-              "name": "JSONSchemaModel",
-              "signature": "func() any"
-            },
-            {
-              "name": "MarshalJSON",
-              "signature": "func() ([]byte, error)"
-            },
-            {
-              "name": "String",
-              "signature": "func() string"
-            },
-            {
-              "name": "UnmarshalJSON",
-              "signature": "func(data []byte) error"
-            }
-          ]
         },
         {
           "name": "Conversation",
@@ -6705,17 +6713,17 @@
             {
               "name": "MessageCount",
               "type": "value.Number",
-              "tag": "json:\"MessageCount\""
+              "tag": "json:\"messageCount\""
             },
             {
               "name": "Transcript",
               "type": "string",
-              "tag": "json:\"Transcript\""
+              "tag": "json:\"transcript\""
             }
           ]
         },
         {
-          "name": "DeleteV2OutputContractAck",
+          "name": "DeleteV3OutputContractAck",
           "kind": "struct"
         },
         {
@@ -6725,12 +6733,12 @@
             {
               "name": "ExpectedRevision",
               "type": "value.Number",
-              "tag": "json:\"ExpectedRevision\""
+              "tag": "json:\"expectedRevision\""
             },
             {
-              "name": "ID",
+              "name": "Id",
               "type": "string",
-              "tag": "json:\"ID\""
+              "tag": "json:\"id\""
             }
           ]
         },
@@ -6741,12 +6749,12 @@
             {
               "name": "Project",
               "type": "string",
-              "tag": "json:\"Project\""
+              "tag": "json:\"project\""
             },
             {
               "name": "Scope",
               "type": "ItemsInputScope",
-              "tag": "json:\"Scope\""
+              "tag": "json:\"scope\""
             }
           ]
         },
@@ -6762,93 +6770,83 @@
           ]
         },
         {
-          "name": "ItemsV2Output",
+          "name": "ItemsV3Output",
           "kind": "defined",
-          "underlying": "[]*ItemsV2OutputDomainItemSnapshot"
+          "underlying": "[]*ItemsV3OutputContractItem"
         },
         {
-          "name": "ItemsV2OutputDomainItemID",
+          "name": "ItemsV3OutputAgentmemoryItemID",
           "kind": "defined",
           "underlying": "string"
         },
         {
-          "name": "ItemsV2OutputDomainItemSnapshot",
+          "name": "ItemsV3OutputContractItem",
           "kind": "struct",
           "fields": [
             {
               "name": "Content",
               "type": "string",
-              "tag": "json:\"Content\""
+              "tag": "json:\"content\""
             },
             {
               "name": "CreatedAt",
-              "type": "ItemsV2OutputInstantTimestamp",
-              "tag": "json:\"CreatedAt\""
+              "type": "ItemsV3OutputInstantTimestamp",
+              "tag": "json:\"createdAt\""
             },
             {
               "name": "Day",
               "type": "string",
-              "tag": "json:\"Day\""
+              "tag": "json:\"day\""
             },
             {
-              "name": "Embedding",
-              "type": "[]ItemsV2OutputValueNumber",
-              "tag": "json:\"Embedding\""
-            },
-            {
-              "name": "EmbeddingSpace",
-              "type": "string",
-              "tag": "json:\"EmbeddingSpace\""
-            },
-            {
-              "name": "ID",
-              "type": "ItemsV2OutputDomainItemID",
-              "tag": "json:\"ID\""
+              "name": "Id",
+              "type": "ItemsV3OutputAgentmemoryItemID",
+              "tag": "json:\"id\""
             },
             {
               "name": "Origin",
-              "type": "ItemsV2OutputDomainItemSnapshotOrigin",
-              "tag": "json:\"Origin\""
+              "type": "ItemsV3OutputContractItemOrigin",
+              "tag": "json:\"origin\""
             },
             {
               "name": "Pinned",
               "type": "bool",
-              "tag": "json:\"Pinned\""
+              "tag": "json:\"pinned\""
             },
             {
               "name": "Project",
               "type": "string",
-              "tag": "json:\"Project\""
+              "tag": "json:\"project\""
             },
             {
               "name": "Revision",
               "type": "value.Number",
-              "tag": "json:\"Revision\""
+              "tag": "json:\"revision\""
             },
             {
               "name": "Scope",
-              "type": "ItemsV2OutputDomainItemSnapshotScope",
-              "tag": "json:\"Scope\""
+              "type": "ItemsV3OutputContractItemScope",
+              "tag": "json:\"scope\""
             },
             {
-              "name": "SessionID",
+              "name": "SessionId",
               "type": "string",
-              "tag": "json:\"SessionID\""
+              "tag": "json:\"sessionId\""
             },
             {
               "name": "Status",
-              "type": "ItemsV2OutputDomainItemSnapshotStatus",
-              "tag": "json:\"Status\""
+              "type": "ItemsV3OutputContractItemStatus",
+              "tag": "json:\"status\""
             },
             {
               "name": "UpdatedAt",
-              "type": "ItemsV2OutputInstantTimestamp",
-              "tag": "json:\"UpdatedAt\""
+              "type": "ItemsV3OutputInstantTimestamp",
+              "tag": "json:\"updatedAt\""
             }
           ]
         },
         {
-          "name": "ItemsV2OutputDomainItemSnapshotOrigin",
+          "name": "ItemsV3OutputContractItemOrigin",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -6859,7 +6857,7 @@
           ]
         },
         {
-          "name": "ItemsV2OutputDomainItemSnapshotScope",
+          "name": "ItemsV3OutputContractItemScope",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -6870,7 +6868,7 @@
           ]
         },
         {
-          "name": "ItemsV2OutputDomainItemSnapshotStatus",
+          "name": "ItemsV3OutputContractItemStatus",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -6881,61 +6879,33 @@
           ]
         },
         {
-          "name": "ItemsV2OutputInstantTimestamp",
+          "name": "ItemsV3OutputInstantTimestamp",
           "kind": "defined",
           "underlying": "string"
-        },
-        {
-          "name": "ItemsV2OutputValueNumber",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Number",
-              "type": "value.Number"
-            }
-          ],
-          "methods": [
-            {
-              "name": "JSONSchemaModel",
-              "signature": "func() any"
-            },
-            {
-              "name": "MarshalJSON",
-              "signature": "func() ([]byte, error)"
-            },
-            {
-              "name": "String",
-              "signature": "func() string"
-            },
-            {
-              "name": "UnmarshalJSON",
-              "signature": "func(data []byte) error"
-            }
-          ]
         },
         {
           "name": "ListInput",
           "kind": "struct",
           "fields": [
             {
-              "name": "CWD",
-              "type": "string",
-              "tag": "json:\"CWD\""
-            },
-            {
               "name": "Cursor",
               "type": "string",
-              "tag": "json:\"Cursor\""
+              "tag": "json:\"cursor\""
+            },
+            {
+              "name": "Cwd",
+              "type": "string",
+              "tag": "json:\"cwd\""
             },
             {
               "name": "Limit",
               "type": "value.Number",
-              "tag": "json:\"Limit,omitzero\""
+              "tag": "json:\"limit,omitzero\""
             },
             {
               "name": "Scope",
               "type": "ListInputScope",
-              "tag": "json:\"Scope\""
+              "tag": "json:\"scope\""
             }
           ]
         },
@@ -6951,88 +6921,78 @@
           ]
         },
         {
-          "name": "ListV2OutputDomainItemID",
+          "name": "ListV3OutputAgentmemoryItemID",
           "kind": "defined",
           "underlying": "string"
         },
         {
-          "name": "ListV2OutputDomainItemSnapshot",
+          "name": "ListV3OutputContractItem",
           "kind": "struct",
           "fields": [
             {
               "name": "Content",
               "type": "string",
-              "tag": "json:\"Content\""
+              "tag": "json:\"content\""
             },
             {
               "name": "CreatedAt",
-              "type": "ListV2OutputInstantTimestamp",
-              "tag": "json:\"CreatedAt\""
+              "type": "ListV3OutputInstantTimestamp",
+              "tag": "json:\"createdAt\""
             },
             {
               "name": "Day",
               "type": "string",
-              "tag": "json:\"Day\""
+              "tag": "json:\"day\""
             },
             {
-              "name": "Embedding",
-              "type": "[]ListV2OutputValueNumber",
-              "tag": "json:\"Embedding\""
-            },
-            {
-              "name": "EmbeddingSpace",
-              "type": "string",
-              "tag": "json:\"EmbeddingSpace\""
-            },
-            {
-              "name": "ID",
-              "type": "ListV2OutputDomainItemID",
-              "tag": "json:\"ID\""
+              "name": "Id",
+              "type": "ListV3OutputAgentmemoryItemID",
+              "tag": "json:\"id\""
             },
             {
               "name": "Origin",
-              "type": "ListV2OutputDomainItemSnapshotOrigin",
-              "tag": "json:\"Origin\""
+              "type": "ListV3OutputContractItemOrigin",
+              "tag": "json:\"origin\""
             },
             {
               "name": "Pinned",
               "type": "bool",
-              "tag": "json:\"Pinned\""
+              "tag": "json:\"pinned\""
             },
             {
               "name": "Project",
               "type": "string",
-              "tag": "json:\"Project\""
+              "tag": "json:\"project\""
             },
             {
               "name": "Revision",
               "type": "value.Number",
-              "tag": "json:\"Revision\""
+              "tag": "json:\"revision\""
             },
             {
               "name": "Scope",
-              "type": "ListV2OutputDomainItemSnapshotScope",
-              "tag": "json:\"Scope\""
+              "type": "ListV3OutputContractItemScope",
+              "tag": "json:\"scope\""
             },
             {
-              "name": "SessionID",
+              "name": "SessionId",
               "type": "string",
-              "tag": "json:\"SessionID\""
+              "tag": "json:\"sessionId\""
             },
             {
               "name": "Status",
-              "type": "ListV2OutputDomainItemSnapshotStatus",
-              "tag": "json:\"Status\""
+              "type": "ListV3OutputContractItemStatus",
+              "tag": "json:\"status\""
             },
             {
               "name": "UpdatedAt",
-              "type": "ListV2OutputInstantTimestamp",
-              "tag": "json:\"UpdatedAt\""
+              "type": "ListV3OutputInstantTimestamp",
+              "tag": "json:\"updatedAt\""
             }
           ]
         },
         {
-          "name": "ListV2OutputDomainItemSnapshotOrigin",
+          "name": "ListV3OutputContractItemOrigin",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -7043,7 +7003,7 @@
           ]
         },
         {
-          "name": "ListV2OutputDomainItemSnapshotScope",
+          "name": "ListV3OutputContractItemScope",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -7054,7 +7014,7 @@
           ]
         },
         {
-          "name": "ListV2OutputDomainItemSnapshotStatus",
+          "name": "ListV3OutputContractItemStatus",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -7065,37 +7025,9 @@
           ]
         },
         {
-          "name": "ListV2OutputInstantTimestamp",
+          "name": "ListV3OutputInstantTimestamp",
           "kind": "defined",
           "underlying": "string"
-        },
-        {
-          "name": "ListV2OutputValueNumber",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Number",
-              "type": "value.Number"
-            }
-          ],
-          "methods": [
-            {
-              "name": "JSONSchemaModel",
-              "signature": "func() any"
-            },
-            {
-              "name": "MarshalJSON",
-              "signature": "func() ([]byte, error)"
-            },
-            {
-              "name": "String",
-              "signature": "func() string"
-            },
-            {
-              "name": "UnmarshalJSON",
-              "signature": "func(data []byte) error"
-            }
-          ]
         },
         {
           "name": "MaintenanceInput",
@@ -7104,22 +7036,22 @@
             {
               "name": "Compacted",
               "type": "bool",
-              "tag": "json:\"Compacted\""
+              "tag": "json:\"compacted\""
             },
             {
               "name": "Conversation",
               "type": "*Conversation",
-              "tag": "json:\"Conversation\""
+              "tag": "json:\"conversation\""
             },
             {
               "name": "Project",
               "type": "string",
-              "tag": "json:\"Project\""
+              "tag": "json:\"project\""
             },
             {
-              "name": "SessionID",
+              "name": "SessionId",
               "type": "string",
-              "tag": "json:\"SessionID\""
+              "tag": "json:\"sessionId\""
             }
           ]
         },
@@ -7130,7 +7062,7 @@
             {
               "name": "Published",
               "type": "bool",
-              "tag": "json:\"Published\""
+              "tag": "json:\"published\""
             }
           ]
         },
@@ -7141,17 +7073,17 @@
             {
               "name": "Capacity",
               "type": "value.Number",
-              "tag": "json:\"Capacity\""
+              "tag": "json:\"capacity\""
             },
             {
               "name": "NextCursor",
               "type": "string",
-              "tag": "json:\"NextCursor\""
+              "tag": "json:\"nextCursor\""
             },
             {
               "name": "Rows",
-              "type": "[]*ListV2OutputDomainItemSnapshot",
-              "tag": "json:\"Rows\""
+              "type": "[]*ListV3OutputContractItem",
+              "tag": "json:\"rows\""
             }
           ]
         },
@@ -7162,17 +7094,17 @@
             {
               "name": "Decision",
               "type": "ReviewInputDecision",
-              "tag": "json:\"Decision\""
+              "tag": "json:\"decision\""
             },
             {
               "name": "ExpectedRevision",
               "type": "value.Number",
-              "tag": "json:\"ExpectedRevision\""
+              "tag": "json:\"expectedRevision\""
             },
             {
-              "name": "ID",
+              "name": "Id",
               "type": "string",
-              "tag": "json:\"ID\""
+              "tag": "json:\"id\""
             }
           ]
         },
@@ -7188,7 +7120,7 @@
           ]
         },
         {
-          "name": "ReviewV2OutputContractAck",
+          "name": "ReviewV3OutputContractAck",
           "kind": "struct"
         },
         {
@@ -7198,113 +7130,103 @@
             {
               "name": "EmbeddingSpace",
               "type": "string",
-              "tag": "json:\"EmbeddingSpace\""
+              "tag": "json:\"embeddingSpace\""
             },
             {
               "name": "Project",
               "type": "string",
-              "tag": "json:\"Project\""
+              "tag": "json:\"project\""
             },
             {
               "name": "Query",
               "type": "string",
-              "tag": "json:\"Query\""
+              "tag": "json:\"query\""
             },
             {
               "name": "TopK",
               "type": "value.Number",
-              "tag": "json:\"TopK\""
+              "tag": "json:\"topK\""
             }
           ]
         },
         {
-          "name": "SearchV2Output",
+          "name": "SearchV3Output",
           "kind": "defined",
-          "underlying": "[]*SearchV2OutputDomainItemSnapshot"
+          "underlying": "[]*SearchV3OutputContractItem"
         },
         {
-          "name": "SearchV2OutputDomainItemID",
+          "name": "SearchV3OutputAgentmemoryItemID",
           "kind": "defined",
           "underlying": "string"
         },
         {
-          "name": "SearchV2OutputDomainItemSnapshot",
+          "name": "SearchV3OutputContractItem",
           "kind": "struct",
           "fields": [
             {
               "name": "Content",
               "type": "string",
-              "tag": "json:\"Content\""
+              "tag": "json:\"content\""
             },
             {
               "name": "CreatedAt",
-              "type": "SearchV2OutputInstantTimestamp",
-              "tag": "json:\"CreatedAt\""
+              "type": "SearchV3OutputInstantTimestamp",
+              "tag": "json:\"createdAt\""
             },
             {
               "name": "Day",
               "type": "string",
-              "tag": "json:\"Day\""
+              "tag": "json:\"day\""
             },
             {
-              "name": "Embedding",
-              "type": "[]SearchV2OutputValueNumber",
-              "tag": "json:\"Embedding\""
-            },
-            {
-              "name": "EmbeddingSpace",
-              "type": "string",
-              "tag": "json:\"EmbeddingSpace\""
-            },
-            {
-              "name": "ID",
-              "type": "SearchV2OutputDomainItemID",
-              "tag": "json:\"ID\""
+              "name": "Id",
+              "type": "SearchV3OutputAgentmemoryItemID",
+              "tag": "json:\"id\""
             },
             {
               "name": "Origin",
-              "type": "SearchV2OutputDomainItemSnapshotOrigin",
-              "tag": "json:\"Origin\""
+              "type": "SearchV3OutputContractItemOrigin",
+              "tag": "json:\"origin\""
             },
             {
               "name": "Pinned",
               "type": "bool",
-              "tag": "json:\"Pinned\""
+              "tag": "json:\"pinned\""
             },
             {
               "name": "Project",
               "type": "string",
-              "tag": "json:\"Project\""
+              "tag": "json:\"project\""
             },
             {
               "name": "Revision",
               "type": "value.Number",
-              "tag": "json:\"Revision\""
+              "tag": "json:\"revision\""
             },
             {
               "name": "Scope",
-              "type": "SearchV2OutputDomainItemSnapshotScope",
-              "tag": "json:\"Scope\""
+              "type": "SearchV3OutputContractItemScope",
+              "tag": "json:\"scope\""
             },
             {
-              "name": "SessionID",
+              "name": "SessionId",
               "type": "string",
-              "tag": "json:\"SessionID\""
+              "tag": "json:\"sessionId\""
             },
             {
               "name": "Status",
-              "type": "SearchV2OutputDomainItemSnapshotStatus",
-              "tag": "json:\"Status\""
+              "type": "SearchV3OutputContractItemStatus",
+              "tag": "json:\"status\""
             },
             {
               "name": "UpdatedAt",
-              "type": "SearchV2OutputInstantTimestamp",
-              "tag": "json:\"UpdatedAt\""
+              "type": "SearchV3OutputInstantTimestamp",
+              "tag": "json:\"updatedAt\""
             }
           ]
         },
         {
-          "name": "SearchV2OutputDomainItemSnapshotOrigin",
+          "name": "SearchV3OutputContractItemOrigin",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -7315,7 +7237,7 @@
           ]
         },
         {
-          "name": "SearchV2OutputDomainItemSnapshotScope",
+          "name": "SearchV3OutputContractItemScope",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -7326,7 +7248,7 @@
           ]
         },
         {
-          "name": "SearchV2OutputDomainItemSnapshotStatus",
+          "name": "SearchV3OutputContractItemStatus",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -7337,37 +7259,9 @@
           ]
         },
         {
-          "name": "SearchV2OutputInstantTimestamp",
+          "name": "SearchV3OutputInstantTimestamp",
           "kind": "defined",
           "underlying": "string"
-        },
-        {
-          "name": "SearchV2OutputValueNumber",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Number",
-              "type": "value.Number"
-            }
-          ],
-          "methods": [
-            {
-              "name": "JSONSchemaModel",
-              "signature": "func() any"
-            },
-            {
-              "name": "MarshalJSON",
-              "signature": "func() ([]byte, error)"
-            },
-            {
-              "name": "String",
-              "signature": "func() string"
-            },
-            {
-              "name": "UnmarshalJSON",
-              "signature": "func(data []byte) error"
-            }
-          ]
         },
         {
           "name": "UpdateInput",
@@ -7376,108 +7270,98 @@
             {
               "name": "Content",
               "type": "*string",
-              "tag": "json:\"Content,omitzero\""
+              "tag": "json:\"content,omitzero\""
             },
             {
               "name": "ExpectedRevision",
               "type": "value.Number",
-              "tag": "json:\"ExpectedRevision\""
+              "tag": "json:\"expectedRevision\""
             },
             {
-              "name": "ID",
+              "name": "Id",
               "type": "string",
-              "tag": "json:\"ID\""
+              "tag": "json:\"id\""
             },
             {
               "name": "Pinned",
               "type": "*bool",
-              "tag": "json:\"Pinned,omitzero\""
+              "tag": "json:\"pinned,omitzero\""
             }
           ]
         },
         {
-          "name": "UpdateV2OutputDomainItemID",
+          "name": "UpdateV3OutputAgentmemoryItemID",
           "kind": "defined",
           "underlying": "string"
         },
         {
-          "name": "UpdateV2OutputDomainItemSnapshot",
+          "name": "UpdateV3OutputContractItem",
           "kind": "struct",
           "fields": [
             {
               "name": "Content",
               "type": "string",
-              "tag": "json:\"Content\""
+              "tag": "json:\"content\""
             },
             {
               "name": "CreatedAt",
-              "type": "UpdateV2OutputInstantTimestamp",
-              "tag": "json:\"CreatedAt\""
+              "type": "UpdateV3OutputInstantTimestamp",
+              "tag": "json:\"createdAt\""
             },
             {
               "name": "Day",
               "type": "string",
-              "tag": "json:\"Day\""
+              "tag": "json:\"day\""
             },
             {
-              "name": "Embedding",
-              "type": "[]UpdateV2OutputValueNumber",
-              "tag": "json:\"Embedding\""
-            },
-            {
-              "name": "EmbeddingSpace",
-              "type": "string",
-              "tag": "json:\"EmbeddingSpace\""
-            },
-            {
-              "name": "ID",
-              "type": "UpdateV2OutputDomainItemID",
-              "tag": "json:\"ID\""
+              "name": "Id",
+              "type": "UpdateV3OutputAgentmemoryItemID",
+              "tag": "json:\"id\""
             },
             {
               "name": "Origin",
-              "type": "UpdateV2OutputDomainItemSnapshotOrigin",
-              "tag": "json:\"Origin\""
+              "type": "UpdateV3OutputContractItemOrigin",
+              "tag": "json:\"origin\""
             },
             {
               "name": "Pinned",
               "type": "bool",
-              "tag": "json:\"Pinned\""
+              "tag": "json:\"pinned\""
             },
             {
               "name": "Project",
               "type": "string",
-              "tag": "json:\"Project\""
+              "tag": "json:\"project\""
             },
             {
               "name": "Revision",
               "type": "value.Number",
-              "tag": "json:\"Revision\""
+              "tag": "json:\"revision\""
             },
             {
               "name": "Scope",
-              "type": "UpdateV2OutputDomainItemSnapshotScope",
-              "tag": "json:\"Scope\""
+              "type": "UpdateV3OutputContractItemScope",
+              "tag": "json:\"scope\""
             },
             {
-              "name": "SessionID",
+              "name": "SessionId",
               "type": "string",
-              "tag": "json:\"SessionID\""
+              "tag": "json:\"sessionId\""
             },
             {
               "name": "Status",
-              "type": "UpdateV2OutputDomainItemSnapshotStatus",
-              "tag": "json:\"Status\""
+              "type": "UpdateV3OutputContractItemStatus",
+              "tag": "json:\"status\""
             },
             {
               "name": "UpdatedAt",
-              "type": "UpdateV2OutputInstantTimestamp",
-              "tag": "json:\"UpdatedAt\""
+              "type": "UpdateV3OutputInstantTimestamp",
+              "tag": "json:\"updatedAt\""
             }
           ]
         },
         {
-          "name": "UpdateV2OutputDomainItemSnapshotOrigin",
+          "name": "UpdateV3OutputContractItemOrigin",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -7488,7 +7372,7 @@
           ]
         },
         {
-          "name": "UpdateV2OutputDomainItemSnapshotScope",
+          "name": "UpdateV3OutputContractItemScope",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -7499,7 +7383,7 @@
           ]
         },
         {
-          "name": "UpdateV2OutputDomainItemSnapshotStatus",
+          "name": "UpdateV3OutputContractItemStatus",
           "kind": "defined",
           "underlying": "string",
           "methods": [
@@ -7510,37 +7394,9 @@
           ]
         },
         {
-          "name": "UpdateV2OutputInstantTimestamp",
+          "name": "UpdateV3OutputInstantTimestamp",
           "kind": "defined",
           "underlying": "string"
-        },
-        {
-          "name": "UpdateV2OutputValueNumber",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Number",
-              "type": "value.Number"
-            }
-          ],
-          "methods": [
-            {
-              "name": "JSONSchemaModel",
-              "signature": "func() any"
-            },
-            {
-              "name": "MarshalJSON",
-              "signature": "func() ([]byte, error)"
-            },
-            {
-              "name": "String",
-              "signature": "func() string"
-            },
-            {
-              "name": "UnmarshalJSON",
-              "signature": "func(data []byte) error"
-            }
-          ]
         }
       ]
     },
@@ -7838,7 +7694,7 @@
             {
               "name": "BaseURL",
               "type": "string",
-              "tag": "json:\"baseURL,omitempty\""
+              "tag": "json:\"baseUrl,omitempty\""
             }
           ],
           "methods": [
@@ -9695,6 +9551,11 @@
           "value": "65536"
         },
         {
+          "name": "MaximumPluginFailureCodeCharacters",
+          "type": "untyped int",
+          "value": "256"
+        },
+        {
           "name": "MaximumResourceIdentityCharacters",
           "type": "untyped int",
           "value": "256"
@@ -10195,6 +10056,11 @@
           "value": "\"runtimeInstanceRootSegment\""
         },
         {
+          "name": "RequestMetaMember",
+          "type": "untyped string",
+          "value": "\"_meta\""
+        },
+        {
           "name": "RequirementFeature",
           "type": "CapabilityRequirementType",
           "value": "\"feature\""
@@ -10588,6 +10454,16 @@
           "name": "TrajectoryEntryRun",
           "type": "TrajectoryEntryType",
           "value": "\"run\""
+        },
+        {
+          "name": "UnresolvedAtRuntimeFailure",
+          "type": "UnresolvedEffectCause",
+          "value": "\"runtimeFailure\""
+        },
+        {
+          "name": "UnresolvedAtTermination",
+          "type": "UnresolvedEffectCause",
+          "value": "\"termination\""
         },
         {
           "name": "Version",
@@ -14100,7 +13976,7 @@
             {
               "name": "CostUSD",
               "type": "*float64",
-              "tag": "json:\"costUSD,omitzero\""
+              "tag": "json:\"costUsd,omitzero\""
             },
             {
               "name": "ID",
@@ -14847,6 +14723,10 @@
             }
           ],
           "methods": [
+            {
+              "name": "Clone",
+              "signature": "func() PluginCallOptions"
+            },
             {
               "name": "Metadata",
               "signature": "func() CallMetadata"
@@ -16001,20 +15881,6 @@
           ]
         },
         {
-          "name": "ProblemError",
-          "kind": "interface",
-          "methods": [
-            {
-              "name": "Error",
-              "signature": "func() string"
-            },
-            {
-              "name": "Problem",
-              "signature": "func() ProblemData"
-            }
-          ]
-        },
-        {
           "name": "Provider",
           "kind": "struct",
           "fields": [
@@ -16360,6 +16226,12 @@
               "name": "ClientCapabilities",
               "type": "*ClientCapabilities",
               "tag": "json:\"clientCapabilities,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "Clone",
+              "signature": "func() RequestMeta"
             }
           ]
         },
@@ -18309,7 +18181,7 @@
             },
             {
               "name": "Cause",
-              "type": "string",
+              "type": "UnresolvedEffectCause",
               "tag": "json:\"cause\""
             },
             {
@@ -18328,6 +18200,11 @@
               "tag": "json:\"output,omitempty\""
             }
           ]
+        },
+        {
+          "name": "UnresolvedEffectCause",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "UpdateGoalRequest",
@@ -19594,6 +19471,11 @@
           "name": "DefaultOrigin",
           "type": "untyped string",
           "value": "\"http://127.0.0.1:17171\""
+        },
+        {
+          "name": "ProductRootVariable",
+          "type": "untyped string",
+          "value": "\"FLAME_HOME\""
         }
       ],
       "variables": [
@@ -19632,12 +19514,12 @@
           "signature": "func(path string) (*Token, error)"
         },
         {
-          "name": "ReadToken",
-          "signature": "func(path string) (*Token, error)"
+          "name": "ProductRoot",
+          "signature": "func() (string, error)"
         },
         {
-          "name": "ResolveProductRoot",
-          "signature": "func(userHome string, configuredRoot string) (string, error)"
+          "name": "ReadToken",
+          "signature": "func(path string) (*Token, error)"
         },
         {
           "name": "RunnerExecutable",

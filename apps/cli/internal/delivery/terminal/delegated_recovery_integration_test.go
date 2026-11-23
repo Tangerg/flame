@@ -89,7 +89,7 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 					t.Fatal(err)
 				}
 				stagedCommand = "cli_33333333333333333333333333333333"
-				policy, policyErr := mutation.PolicyFromProfile(&profile, time.Now)
+				policy, policyErr := mutation.NewReplayPolicy(profile.IdempotencyLimits(), time.Now)
 				if policyErr != nil {
 					t.Fatal(policyErr)
 				}
@@ -117,13 +117,16 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 			}
 			host, stop, _ := runUIFromConfig(t, Config{
 				Runtime: backend, RuntimeProfile: &profile, Workspace: workspace,
-				SessionID: session.ID, OpenWorkbench: openWorkbench,
+				Workspaces: connection, Changes: connection, Transfers: connection, Usage: connection, ModelConfig: connection,
+				Goals: connection, Skills: connection, MCP: connection, Plugins: connection,
+				DiagnosticTools: connection.DiagnosticTools(), AuthoringContext: connection.AuthoringContext(),
+				Hooks: connection.Hooks(), Feedback: connection.Feedback(),
+				SessionID: session.ID, OpenWorkbench: openWorkbench, Settings: settings.Default(),
 			})
 			if !pendingAtStartup {
 				host.Shows(t, "Tool approval")
 				host.Press(input.Enter)
 			}
-			// Execution owns completion; the visibility budget only bounds rendering after it.
 			select {
 			case err := <-backend.rootFinished:
 				if err != nil {

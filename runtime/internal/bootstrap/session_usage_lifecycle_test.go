@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -35,14 +35,14 @@ func TestProtocolSessionUsageKeepsCompleteProviderModelIdentities(t *testing.T) 
 		t.Fatal(created.Failure)
 	}
 	sessionID := created.Value.(*protocol.Session).ID
-	model := strings.Repeat("模", modelchoice.MaximumModelIdentityCharacters)
+	model := strings.Repeat("模", flamemodel.MaximumModelIdentityCharacters)
 	providers := []string{
-		strings.Repeat("a", modelchoice.MaximumProviderIdentityCharacters),
-		strings.Repeat("o", modelchoice.MaximumProviderIdentityCharacters),
+		strings.Repeat("a", flamemodel.MaximumProviderIdentityCharacters),
+		strings.Repeat("o", flamemodel.MaximumProviderIdentityCharacters),
 	}
 	now := time.Date(2026, 10, 11, 1, 0, 0, 0, time.UTC)
 	for index, provider := range providers {
-		selection, err := modelchoice.New(provider, model)
+		selection, err := flamemodel.New(provider, model)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -13,20 +13,40 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/failure"
 )
 
-// prettyJSON indents a value the reader inspects as JSON. Unreadable bytes are
-// shown verbatim: a panel that hides a malformed payload hides the problem.
-// Indent reformats in place and will spend the caller's spare capacity, so the
-// projection it is handed is cloned rather than rewritten.
+const (
+	contentSectionTitle = "Content"
+	outputSectionTitle  = "Output"
+	genericToolLabel    = "tool"
+)
+
+// Indent reformats in place and may spend the caller's spare capacity, so the
+// projection is cloned first.
 func prettyJSON(encoded []byte) string {
 	formatted := jsontext.Value(bytes.Clone(encoded))
 	if err := formatted.Indent(jsontext.WithIndent("  ")); err != nil {
 		return string(encoded)
 	}
 	return string(formatted)
+}
+
+const (
+	argumentsSection = "Arguments"
+	resultSection    = "Result"
+)
+
+const (
+	codeLanguageJSON  = "json"
+	codeLanguageDiff  = "diff"
+	codeLanguagePlain = "text"
+)
+
+func jsonSection(title, text string) toolSection {
+	return toolSection{Title: title, Style: toolSectionCode, Language: codeLanguageJSON, Text: text}
 }
 
 type toolSectionStyle uint8
@@ -37,9 +57,6 @@ const (
 	toolSectionParagraph
 )
 
-// toolSection is one semantic region of a tool presentation. It deliberately
-// carries no Oolong component so inline blocks, the reader, and approvals can
-// project the same meaning at different sizes without sharing widget state.
 type toolSection struct {
 	Title       string
 	Style       toolSectionStyle
@@ -50,15 +67,11 @@ type toolSection struct {
 	Links       bool
 }
 
-// toolPresentation is the deterministic terminal meaning of one tool call.
 type toolPresentation struct {
 	Label    string
 	Sections []toolSection
 }
 
-// toolPresenter claims tool calls it understands and produces their semantic
-// presentation. Matchers are ordered; the first match wins and the built-in
-// generic presenter remains the final fallback.
 type toolPresenter struct {
 	ID      string
 	Matches func(conversation.ToolCall) bool
@@ -90,7 +103,7 @@ func presentShellTool(call conversation.ToolCall) toolPresentation {
 	return toolPresentation{
 		Label: shellToolLabel(call),
 		Sections: toolSections(call, toolSection{
-			Title: "Output", Style: toolSectionCode, Text: call.Output,
+			Title: outputSectionTitle, Style: toolSectionCode, Text: call.Output,
 		}),
 	}
 }
@@ -99,7 +112,7 @@ func presentEditTool(call conversation.ToolCall) toolPresentation {
 	return toolPresentation{
 		Label: toolKindLabel("edit", toolPrimary(call.Path, call.Summary)),
 		Sections: toolSections(call, toolSection{
-			Title: "Output", Style: toolSectionCode, Text: call.Output,
+			Title: outputSectionTitle, Style: toolSectionCode, Text: call.Output,
 		}),
 	}
 }
@@ -108,7 +121,7 @@ func presentReadTool(call conversation.ToolCall) toolPresentation {
 	return toolPresentation{
 		Label: toolKindLabel("read", toolPrimary(call.Path, call.Summary)),
 		Sections: toolSections(call, toolSection{
-			Title: "Content", Style: toolSectionCode, Language: languageForPath(call.Path), Text: call.Output, LineNumbers: true,
+			Title: contentSectionTitle, Style: toolSectionCode, Language: languageForPath(call.Path), Text: call.Output, LineNumbers: true,
 		}),
 	}
 }
@@ -126,7 +139,7 @@ func presentTaskTool(call conversation.ToolCall) toolPresentation {
 	return toolPresentation{
 		Label: toolKindLabel("task", strings.TrimSpace(call.Summary)),
 		Sections: toolSections(call, toolSection{
-			Title: "Result", Style: toolSectionParagraph, Text: call.Output,
+			Title: resultSection, Style: toolSectionParagraph, Text: call.Output,
 		}),
 	}
 }
@@ -135,13 +148,13 @@ func presentUnknownTool(call conversation.ToolCall) toolPresentation {
 	return toolPresentation{
 		Label: unknownToolLabel(call),
 		Sections: toolSections(call, toolSection{
-			Title: "Output", Style: toolSectionCode, Text: call.Output,
+			Title: outputSectionTitle, Style: toolSectionCode, Text: call.Output,
 		}),
 	}
 }
 
 func executionMetadata(call conversation.ToolCall) []string {
-	metadata := make([]string, 0, 3)
+	var metadata []string
 	if call.Safety != "" {
 		metadata = append(metadata, "safety   "+string(call.Safety))
 	}
@@ -157,8 +170,6 @@ func executionMetadata(call conversation.ToolCall) []string {
 	return metadata
 }
 
-// outputPageMetadata says which bytes of a shell's output this call shows and
-// whether the recording is complete.
 func outputPageMetadata(page builtin.CommandOutputPage) []string {
 	metadata := []string{fmt.Sprintf("output bytes [%d, %d)", page.Offset, page.NextOffset)}
 	if page.ShellID != "" {
@@ -177,35 +188,29 @@ func outputPageMetadata(page builtin.CommandOutputPage) []string {
 }
 
 func toolSections(call conversation.ToolCall, output toolSection) []toolSection {
-	sections := make([]toolSection, 0, 6)
+	var sections []toolSection
 	if metadata := executionMetadata(call); len(metadata) > 0 {
 		sections = append(sections, toolSection{
 			Title: "Execution", Style: toolSectionCode, Text: strings.Join(metadata, "\n"),
 		})
 	}
 	if call.ArgumentsText != "" {
-		sections = append(sections, toolSection{Title: "Arguments", Style: toolSectionCode, Text: call.ArgumentsText})
+		sections = append(sections, toolSection{Title: argumentsSection, Style: toolSectionCode, Text: call.ArgumentsText})
 	} else if len(call.ArgumentsJSON) != 0 {
-		sections = append(sections, toolSection{
-			Title: "Arguments", Style: toolSectionCode, Language: "json", Text: prettyJSON(call.ArgumentsJSON),
-		})
+		sections = append(sections, jsonSection(argumentsSection, prettyJSON(call.ArgumentsJSON)))
 	}
 	if strings.TrimSpace(output.Text) != "" {
 		sections = append(sections, output)
 	}
 	if len(call.ResultJSON) != 0 {
-		sections = append(sections, toolSection{
-			Title: "Result", Style: toolSectionCode, Language: "json", Text: prettyJSON(call.ResultJSON),
-		})
+		sections = append(sections, jsonSection(resultSection, prettyJSON(call.ResultJSON)))
 	}
 	if call.Problem != nil {
 		encoded, err := json.Marshal(call.Problem, json.Deterministic(true))
 		if err != nil {
 			encoded = []byte(failure.String(call.Problem))
 		}
-		sections = append(sections, toolSection{
-			Title: "Problem", Style: toolSectionCode, Language: "json", Text: prettyJSON(encoded),
-		})
+		sections = append(sections, jsonSection("Problem", prettyJSON(encoded)))
 	}
 	return sections
 }
@@ -290,7 +295,7 @@ func shellToolLabel(call conversation.ToolCall) string {
 func unknownToolLabel(call conversation.ToolCall) string {
 	name := strings.TrimSpace(call.Name)
 	if name == "" {
-		name = "tool"
+		name = genericToolLabel
 	}
 	return toolKindLabel(name, strings.TrimSpace(call.Summary))
 }
@@ -306,5 +311,5 @@ func toolKindLabel(kind, primary string) string {
 	if primary == "" {
 		return kind
 	}
-	return kind + " · " + primary
+	return kind + format.Separator + primary
 }

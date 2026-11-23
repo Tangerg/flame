@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/cmd"
 	"github.com/Tangerg/flame/apps/cli/internal/delivery/terminal"
-	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
 func newRuntimeOwnerAt(flameHome string) (*runtimebinding.Owner, error) {
@@ -60,33 +59,19 @@ func startTerminal(ctx context.Context, connection *runtimebinding.Connection, r
 	configured := request.Settings.Clone()
 	cfg := terminal.Config{
 		Runtime: connection, RuntimeProfile: profile,
-		Workspaces: connection, Changes: connection, Usage: connection, ModelConfig: connection,
+		Workspaces: connection, Changes: connection, Transfers: connection, Usage: connection, ModelConfig: connection,
+		Goals: connection, Skills: connection, MCP: connection, Plugins: connection,
 		DiagnosticTools:  connection.DiagnosticTools(),
 		AuthoringContext: connection.AuthoringContext(), Hooks: connection.Hooks(),
 		Feedback:      connection.Feedback(),
 		ClientVersion: cmd.Version(), SessionID: request.SessionID, Workspace: request.Workspace,
-		InitialPrompt: request.InitialPrompt, Settings: &configured,
+		InitialPrompt: request.InitialPrompt, Settings: configured,
 		PluginSources: []extensions.Source{sideload.New(configured.Plugins.Directories)},
 		OpenWorkbench: openWorkbench,
 	}
 	if configured.Runtime.Mode == settings.RuntimeRemote {
 		cfg.LocalDirectory = request.LocalDirectory
 		cfg.DetachOnExit = true
-	}
-	if profile.Supports(protocol.FeatureGoals) {
-		cfg.Goals = connection
-	}
-	if profile.Supports(protocol.FeatureSkills) {
-		cfg.Skills = connection
-	}
-	if profile.Supports(protocol.FeatureMCP) {
-		cfg.MCP = connection
-	}
-	if profile.Supports(protocol.FeaturePlugins) {
-		cfg.Plugins = connection
-	}
-	if profile.Supports(protocol.FeatureSessionExport) {
-		cfg.Transfers = connection
 	}
 	return terminal.Run(ctx, cfg)
 }

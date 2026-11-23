@@ -5,6 +5,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"iter"
+	"math"
 	"net"
 	"net/http"
 	"strconv"
@@ -125,7 +126,7 @@ func (s *store) stream(ctx context.Context, method string, command pluginmcp.Com
 	return func(yield func(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.StreamReceipt], error) bool) {
 		continuing := true
 		emit := func(delta chat.ResponseDelta) bool {
-			continuing = yield(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.StreamReceipt]{Chunk: (*scopewire.ResponseDelta)(&delta)}, nil)
+			continuing = yield(pluginmcp.StreamChunk[modelprovider.StreamReceipt](scopewire.ResponseDelta(delta)), nil)
 			return continuing
 		}
 		receipt, err := execute(ctx, s, method, command, modelprovider.ChatRequest.Validate, func(ctx context.Context, request modelprovider.ChatRequest) (modelprovider.StreamReceipt, func(), error) {
@@ -161,7 +162,7 @@ func (s *store) stream(ctx context.Context, method string, command pluginmcp.Com
 			yield(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.StreamReceipt]{}, err)
 			return
 		}
-		yield(pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.StreamReceipt]{Result: &receipt}, nil)
+		yield(pluginmcp.StreamResult[scopewire.ResponseDelta](receipt), nil)
 	}
 }
 
@@ -201,8 +202,6 @@ func failure(err error) *modelprovider.Failure {
 	return result
 }
 
-// httpFailureKind classifies a provider's HTTP refusal; a status outside the
-// error ranges stays an internal failure.
 func httpFailureKind(status int) modelprovider.FailureKind {
 	switch {
 	case status == http.StatusUnauthorized || status == http.StatusForbidden:
@@ -221,15 +220,16 @@ func httpFailureKind(status int) modelprovider.FailureKind {
 }
 
 func retryAfterMillis(header http.Header, now time.Time) int64 {
-	for _, value := range []struct {
-		name string
-		unit float64
-	}{{"Retry-After-Ms", 1}, {"Retry-After", 1000}} {
-		text := header.Get(value.name)
-		if quantity, err := strconv.ParseFloat(text, 64); err == nil && quantity >= 0 && quantity*value.unit < 1<<63 {
-			return int64(quantity * value.unit)
+	for _, field := range []struct {
+		name          string
+		millisPerUnit float64
+		acceptsDate   bool
+	}{{"Retry-After-Ms", 1, false}, {"Retry-After", float64(time.Second / time.Millisecond), true}} {
+		text := header.Get(field.name)
+		if quantity, err := strconv.ParseFloat(text, 64); err == nil && quantity >= 0 && quantity*field.millisPerUnit < math.MaxInt64 {
+			return int64(quantity * field.millisPerUnit)
 		}
-		if value.name == "Retry-After" {
+		if field.acceptsDate {
 			if when, err := http.ParseTime(text); err == nil {
 				return max(0, when.Sub(now).Milliseconds())
 			}

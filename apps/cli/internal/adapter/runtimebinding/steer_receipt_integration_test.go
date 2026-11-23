@@ -134,8 +134,6 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 				t.Logf("steer deadline: %s provider has not entered", name)
 			}
 		}
-		// Provider arrival and this fixture's classification are different facts:
-		// a request with missing Tools or changed result IDs must remain visible.
 		requestsMu.Lock()
 		requestSnapshot := slices.Clone(requests)
 		requestsMu.Unlock()
@@ -158,8 +156,6 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 			capture("after deadline", inspection)
 		}
 	}()
-	// The caller deadline ends observation without deciding the Runtime-owned Run's
-	// outcome. Capture live state before that boundary without consuming its events.
 	deadline, _ := ctx.Deadline()
 	inspected := make(chan struct{})
 	watchdog := time.AfterFunc(time.Until(deadline.Add(-time.Second)), func() {

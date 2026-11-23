@@ -71,7 +71,10 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 		return commandReply[R]{}, err
 	}
 	var value R
-	reply, err := invokeRawCommand(ctx, c, method, admitted, func(result framevalue.JSON) error {
+	route := commandRoute{method: method, input: admitted, resolve: resolve, target: func(binding plugins.ContributionBinding) framecall.Target {
+		return framecall.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}
+	}}
+	reply, err := invokeRawCommand(ctx, c, route, func(result framevalue.JSON) error {
 		if err := json.Unmarshal(result.Bytes(), &value, json.RejectUnknownMembers(true)); err != nil {
 			return err
 		}
@@ -79,9 +82,7 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 			return validate(value)
 		}
 		return nil
-	}, nil, resolve, collaborators, func(binding plugins.ContributionBinding) framecall.Target {
-		return framecall.Target{Scope: extension.ScopeInstallation, Reference: binding.InstallationID.String()}
-	})
+	}, collaborators)
 	if err != nil {
 		var zero R
 		value = zero
@@ -89,9 +90,9 @@ func invokeResolvedCommand[P, R any](ctx context.Context, c *CommandCalls, metho
 	return commandReply[R]{value: value, binding: reply.binding}, err
 }
 
-func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admitted framevalue.JSON, validate func(framevalue.JSON) error, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func() error, error), target func(plugins.ContributionBinding) framecall.Target) (_ commandReply[framevalue.JSON], returned error) {
+func invokeRawCommand(ctx context.Context, c *CommandCalls, route commandRoute, validate func(framevalue.JSON) error, collaborators func(context.Context, plugins.ContributionBinding, *sdk.ClientSession) (sdk.ParamsBase, func() error, error)) (_ commandReply[framevalue.JSON], returned error) {
 	var zero commandReply[framevalue.JSON]
-	record, err := c.admitCommandRoute(ctx, method, admitted, accepts, resolve, target, unaryCall)
+	record, err := c.admitCommandRoute(ctx, route, unaryCall)
 	if err != nil {
 		return zero, err
 	}
@@ -125,9 +126,6 @@ func invokeRawCommand(ctx context.Context, c *CommandCalls, method string, admit
 	return commandReply[framevalue.JSON]{value: result, binding: command.binding}, nil
 }
 
-// openedCommand is an admitted command bound to the activation that owns its
-// original effect. A prepared command takes effect only once dispatched; a
-// recovered one may already have.
 type openedCommand struct {
 	calls      *CommandCalls
 	record     plugin.CommandBinding
@@ -197,9 +195,6 @@ func (o *openedCommand) readReceipt(ctx context.Context) (framevalue.JSON, error
 	return result, err
 }
 
-// settle records the original outcome. A refusal is a known outcome; any other
-// failure, an invalid result or an unrecorded observation leaves the command
-// unconfirmed.
 func (o *openedCommand) settle(ctx context.Context, result framevalue.JSON, err error, validate func(framevalue.JSON) error) (framevalue.JSON, error) {
 	if _, refused := errors.AsType[*framecall.Refusal](err); err != nil && !refused {
 		return framevalue.JSON{}, errors.Join(plugin.ErrCommandUnconfirmed, err)
@@ -222,8 +217,6 @@ func (o *openedCommand) close() {
 	}
 }
 
-// Dispatch validates the original frozen graph under the owner's admission.
-// Preparing its actual session occurred outside this boundary.
 func (c *CommandCalls) admitDispatch(ctx context.Context, record plugin.CommandBinding) error {
 	if _, err := c.original(ctx, record); err != nil {
 		return err
@@ -235,7 +228,6 @@ func (c *CommandCalls) admitDispatch(ctx context.Context, record plugin.CommandB
 	return c.framework.ValidateBindingUnder(ctx, binding)
 }
 
-// NotifyChange carries no result and cannot advance another owner's data.
 func (c *CommandCalls) NotifyChange(ctx context.Context, contribution plugin.ContributionID) error {
 	actor, found := operation.ActorFrom(ctx)
 	if !found {
@@ -256,14 +248,25 @@ func (c *CommandCalls) NotifyChange(ctx context.Context, contribution plugin.Con
 	return nil
 }
 
-func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, admitted framevalue.JSON, accepts func(plugin.CommandBinding) error, resolve func(context.Context) (plugins.ContributionBinding, error), target func(plugins.ContributionBinding) framecall.Target, delivery callDelivery) (plugin.CommandBinding, error) {
+// A command route names the method and admitted input, how a new route picks its
+// contribution, which invocation target it captures, and what an existing route
+// must still satisfy.
+type commandRoute struct {
+	method  string
+	input   framevalue.JSON
+	resolve func(context.Context) (plugins.ContributionBinding, error)
+	target  func(plugins.ContributionBinding) framecall.Target
+	accepts func(plugin.CommandBinding) error
+}
+
+func (c *CommandCalls) admitCommandRoute(ctx context.Context, route commandRoute, delivery callDelivery) (plugin.CommandBinding, error) {
 	id := operation.Identity(ctx)
 	capture := func(binding plugins.ContributionBinding) (framecall.Invocation, error) {
-		return operation.Capture(ctx, target(binding))
+		return operation.Capture(ctx, route.target(binding))
 	}
-	command, found, err := c.routing.Find(ctx, id, method, admitted)
+	command, found, err := c.routing.Find(ctx, id, route.method, route.input)
 	if err == nil && !found {
-		command, err = c.bindCommandRoute(ctx, id, method, admitted, resolve, delivery, capture)
+		command, err = c.bindCommandRoute(ctx, id, route, delivery, capture)
 	}
 	if errors.Is(err, plugin.ErrCommandConflict) {
 		return plugin.CommandBinding{}, fmt.Errorf("managed plugin: %w", errors.Join(framecall.ErrConflict, err))
@@ -279,8 +282,8 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 	if invocation != record.Invocation {
 		return plugin.CommandBinding{}, errors.Join(framecall.ErrConflict, plugin.ErrCommandConflict)
 	}
-	if accepts != nil {
-		if err := accepts(record); err != nil {
+	if route.accepts != nil {
+		if err := route.accepts(record); err != nil {
 			return plugin.CommandBinding{}, err
 		}
 	}
@@ -290,11 +293,8 @@ func (c *CommandCalls) admitCommandRoute(ctx context.Context, method string, adm
 	return record, nil
 }
 
-// bindCommandRoute freezes a new command against the contribution resolve
-// selects. Discovery is network I/O outside installation admission, so the
-// admission rechecks the exact provider before persisting its contract.
-func (c *CommandCalls) bindCommandRoute(ctx context.Context, id, method string, admitted framevalue.JSON, resolve func(context.Context) (plugins.ContributionBinding, error), delivery callDelivery, capture func(plugins.ContributionBinding) (framecall.Invocation, error)) (*plugin.Command, error) {
-	candidate, err := resolve(ctx)
+func (c *CommandCalls) bindCommandRoute(ctx context.Context, id string, route commandRoute, delivery callDelivery, capture func(plugins.ContributionBinding) (framecall.Invocation, error)) (_ *plugin.Command, returned error) {
+	candidate, err := route.resolve(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -302,7 +302,7 @@ func (c *CommandCalls) bindCommandRoute(ctx context.Context, id, method string, 
 	if err != nil {
 		return nil, err
 	}
-	defer borrowed.Close()
+	defer func() { returned = errors.Join(returned, borrowed.Close()) }()
 	ctx = borrowed.Context()
 	required, err := plugincontract.ParseCapability(candidate.Contract.Bytes())
 	if err != nil {
@@ -312,7 +312,7 @@ func (c *CommandCalls) bindCommandRoute(ctx context.Context, id, method string, 
 	if err != nil {
 		return nil, err
 	}
-	binding, err := exported.Method(method)
+	binding, err := exported.Method(route.method)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +322,7 @@ func (c *CommandCalls) bindCommandRoute(ctx context.Context, id, method string, 
 	if binding.Descriptor().Kind != frame.Command {
 		return nil, errors.New("managed plugin: command requires a command contract")
 	}
-	if err := validateInput(ctx, binding, admitted); err != nil {
+	if err := validateInput(ctx, binding, route.input); err != nil {
 		return nil, err
 	}
 	activation, err := borrowed.Activation()
@@ -333,8 +333,8 @@ func (c *CommandCalls) bindCommandRoute(ctx context.Context, id, method string, 
 	if err != nil {
 		return nil, err
 	}
-	return c.routing.Bind(ctx, id, method, admitted, func(ctx context.Context) (plugins.CommandAdmission, error) {
-		current, err := resolve(ctx)
+	return c.routing.Bind(ctx, id, route.method, route.input, func(ctx context.Context) (plugins.CommandAdmission, error) {
+		current, err := route.resolve(ctx)
 		if err != nil {
 			return plugins.CommandAdmission{}, err
 		}

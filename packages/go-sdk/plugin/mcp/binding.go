@@ -14,10 +14,6 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-// Binding freezes one public operation contract against one concrete session.
-// Capability supplies Schema admission; the backend owns typed input admission
-// and the feature owns its business receipt.
-
 type Binding struct {
 	session    *sdk.ClientSession
 	method     *frame.Method
@@ -25,11 +21,9 @@ type Binding struct {
 	capability framevalue.Digest
 }
 
-// NewBinding accepts an already captured contract. The backend checks its exact
-// fingerprint before invocation; restoration does not discover a replacement.
 func NewBinding(session *sdk.ClientSession, descriptor frame.MethodDescriptor) (*Binding, error) {
 	if session == nil {
-		return nil, errors.New("plugin: client session is required")
+		return nil, errClientSessionRequired
 	}
 	method, err := frame.AdmitMethod(descriptor)
 	if err != nil {
@@ -43,8 +37,6 @@ func (b *Binding) Contract() framevalue.JSON          { return b.method.Identity
 
 var ErrInvalidInput = errors.New("plugin: input is not structurally admitted")
 
-// ValidateInput checks the exact backend's complete structural contract without
-// a command identity or business dispatch. Transport failure proves no refusal.
 func (b *Binding) ValidateInput(ctx context.Context, input framevalue.JSON) error {
 	if b == nil {
 		return errors.New("plugin: operation binding is required")
@@ -64,30 +56,6 @@ func (b *Binding) ValidateInput(ctx context.Context, input framevalue.JSON) erro
 		return fmt.Errorf("%w: %s", ErrInvalidInput, problem)
 	}
 	return nil
-}
-
-// Resolve discovers a published export for a new call. An original command
-// restores its captured descriptor with NewBinding instead.
-func Resolve(ctx context.Context, session *sdk.ClientSession, name string) (*Binding, error) {
-	description, err := Describe(ctx, session)
-	if err != nil {
-		return nil, err
-	}
-	var selected *frame.MethodDescriptor
-	seen := make(map[string]bool, len(description.Methods))
-	for _, descriptor := range description.Methods {
-		if seen[descriptor.Name] {
-			return nil, errors.New("plugin: duplicate published method")
-		}
-		seen[descriptor.Name] = true
-		if descriptor.Name == name {
-			selected = &descriptor
-		}
-	}
-	if selected == nil {
-		return nil, errors.New("plugin: operation export is not published")
-	}
-	return NewBinding(session, *selected)
 }
 
 func (b *Binding) invoke(ctx context.Context, id CommandID, input framevalue.JSON, meta sdk.ParamsBase) (*methodResult[jsontext.Value], error) {
@@ -125,11 +93,11 @@ func (b *Binding) invocationParams(ctx context.Context, id CommandID, input fram
 		return nil, errors.New("plugin: operation binding is required")
 	}
 	if b.method.Kind() == frame.Command {
-		if err := CommandID(id).Validate(); err != nil {
+		if err := id.Validate(); err != nil {
 			return nil, err
 		}
 	} else if id != "" {
-		return nil, errors.New("plugin: query must not carry a command identity")
+		return nil, errQueryCommandIdentity
 	}
 	if err := b.method.ValidateInput(input); err != nil {
 		return nil, fmt.Errorf("plugin: %s input: %w", b.method.Name(), err)
@@ -141,7 +109,6 @@ func (b *Binding) Invoke(ctx context.Context, id CommandID, input framevalue.JSO
 	return b.InvokeWithMetadata(ctx, id, input, sdk.ParamsBase{})
 }
 
-// InvokeWithMetadata keeps ephemeral call collaborators outside admitted input.
 func (b *Binding) InvokeWithMetadata(ctx context.Context, id CommandID, input framevalue.JSON, metadata sdk.ParamsBase) (framevalue.JSON, error) {
 	if b != nil && len(b.method.Descriptor().Stream) != 0 {
 		return framevalue.JSON{}, errors.New("plugin: streaming method requires streaming delivery")

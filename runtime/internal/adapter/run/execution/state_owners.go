@@ -5,15 +5,11 @@ import (
 	"time"
 )
 
-// interactionChildProjection serializes projection of completed Delegate
-// children with installation of a committed waiting-subtree replacement.
 type interactionChildProjection struct{ mu sync.Mutex }
 
 func (i *interactionChildProjection) lock()   { i.mu.Lock() }
 func (i *interactionChildProjection) unlock() { i.mu.Unlock() }
 
-// interactionSegmentClock owns the adapter-side start of the current product
-// Segment. The Agent Process may survive several resumed Segments.
 type interactionSegmentClock struct {
 	mu        sync.Mutex
 	startedAt time.Time

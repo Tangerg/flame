@@ -8,9 +8,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
-// mcpSourceIDQuery resolves one server identity to its mcp_sources row. It
-// takes the three values from [mcpSourceArgs] and yields NULL when the server
-// does not exist, which every referencing column refuses.
 const mcpSourceIDQuery = `(SELECT id FROM mcp_sources WHERE origin = ? AND installation_id IS ? AND name = ?)`
 
 func mcpSourceArgs(server mcpserver.ID) []any {
@@ -23,7 +20,6 @@ func mcpSourceArgs(server mcpserver.ID) []any {
 
 func noMCPSource() []any { return []any{nil, nil, nil} }
 
-// storedMCPSource scans the identity columns of a possibly absent source row.
 type storedMCPSource struct {
 	origin, installation, name sql.NullString
 }

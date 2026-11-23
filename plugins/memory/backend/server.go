@@ -4,37 +4,31 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	app "github.com/Tangerg/flame/plugins/memory/internal/application"
+	"github.com/Tangerg/flame/plugins/memory/internal/agentmemory"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
-	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	"github.com/Tangerg/flame/plugins/memory/internal/coordination"
 
 	framesqlite "github.com/Tangerg/frame/sqlite"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
 type store interface {
-	app.Store
-	app.CurationStore
-	app.ReadStore
+	coordination.Store
+	coordination.CurationStore
+	coordination.ReadStore
 }
 type capturedHistory struct{ conversation rpc.Conversation }
 
-func (h capturedHistory) Read(context.Context, string) (app.Conversation, error) {
-	return app.Conversation{MessageCount: h.conversation.MessageCount, Transcript: h.conversation.Transcript}, nil
-}
-func snapshots(items []memory.Item) []memory.ItemSnapshot {
-	result := make([]memory.ItemSnapshot, len(items))
-	for i, item := range items {
-		result[i] = item.Snapshot()
-	}
-	return result
+func (h capturedHistory) Read(context.Context, identity.SessionID) (coordination.Conversation, error) {
+	return coordination.Conversation{MessageCount: h.conversation.MessageCount, Transcript: h.conversation.Transcript}, nil
 }
 
-func registerServer(server *sdk.Server, db framesqlite.Database, store store, roots app.RootResolver) error {
+func registerServer(server *sdk.Server, db framesqlite.Database, store store, roots coordination.RootResolver) error {
 	contracts, err := rpc.NewContracts()
 	if err != nil {
 		return err
@@ -43,11 +37,11 @@ func registerServer(server *sdk.Server, db framesqlite.Database, store store, ro
 	if err != nil {
 		return err
 	}
-	review, err := app.New(app.Config{Store: store, Roots: roots})
+	review, err := coordination.New(coordination.Config{Store: store, Roots: roots})
 	if err != nil {
 		return err
 	}
-	read, err := app.NewReadModel(store, nil)
+	read, err := coordination.NewReadModel(store, nil)
 	if err != nil {
 		return err
 	}
@@ -86,12 +80,11 @@ func registerServer(server *sdk.Server, db framesqlite.Database, store store, ro
 	return backend.Publish()
 }
 
-// memoryServer serves the memory capability's queries and maintenance.
 type memoryServer struct {
 	db     framesqlite.Database
 	store  store
-	review *app.Coordinator
-	read   *app.ReadModel
+	review *coordination.Coordinator
+	read   *coordination.ReadModel
 }
 
 func (m memoryServer) list(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[rpc.ListInput]) (rpc.Page, error) {
@@ -100,39 +93,35 @@ func (m memoryServer) list(ctx context.Context, _ *sdk.ServerSession, command pl
 	if err != nil {
 		return rpc.Page{}, err
 	}
-	page, err := m.review.List(ctx, app.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: limit})
-	return rpc.Page{Rows: snapshots(page.Rows), NextCursor: page.NextCursor, Capacity: memory.MaxVisiblePerTarget}, err
+	page, err := m.review.List(ctx, coordination.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: limit})
+	return rpc.Page{Rows: rpc.NewItems(page.Rows), NextCursor: page.NextCursor, Capacity: agentmemory.MaxVisiblePerTarget}, err
 }
 
-func (m memoryServer) items(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[rpc.ItemsInput]) ([]memory.ItemSnapshot, error) {
+func (m memoryServer) items(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[rpc.ItemsInput]) ([]rpc.Item, error) {
 	items, err := m.read.Items(ctx, command.Input.Scope, command.Input.Project)
-	return snapshots(items), err
+	return rpc.NewItems(items), err
 }
 
-// search embeds through the caller's model callback only when the request
-// names an embedding space; otherwise it ranks lexically.
-func (m memoryServer) search(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[rpc.SearchInput]) ([]memory.ItemSnapshot, error) {
+func (m memoryServer) search(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[rpc.SearchInput]) ([]rpc.Item, error) {
 	input := command.Input
-	var resolve func(context.Context) (app.Embedder, error)
+	var resolve func(context.Context) (coordination.Embedder, error)
 	if input.EmbeddingSpace != "" {
 		grant, err := pluginmcp.CallbackFromContext(ctx)
 		if err != nil {
 			return nil, err
 		}
-		resolve = func(context.Context) (app.Embedder, error) {
+		resolve = func(context.Context) (coordination.Embedder, error) {
 			return remoteModels{grant: grant, space: input.EmbeddingSpace}, nil
 		}
 	}
-	read, err := app.NewReadModel(m.store, resolve)
+	read, err := coordination.NewReadModel(m.store, resolve)
 	if err != nil {
 		return nil, err
 	}
 	items, err := read.Search(ctx, input.Project, input.Query, input.TopK)
-	return snapshots(items), err
+	return rpc.NewItems(items), err
 }
 
-// maintain consolidates a compacted conversation into memory exactly once per
-// command, replaying the recorded reply for a retried command.
 func (m memoryServer) maintain(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[rpc.MaintenanceInput]) (rpc.MaintenanceResult, error) {
 	input := command.Input
 	admitted, err := command.RequestInput()
@@ -164,15 +153,19 @@ func (m memoryServer) maintain(ctx context.Context, _ *sdk.ServerSession, comman
 		}
 		return rpc.MaintenanceResult{}, prepared.Complete(ctx, reply)
 	}
-	curation, err := app.NewCuration(maintenancePublication{CurationStore: m.store, db: m.db, command: prepared})
+	curation, err := coordination.NewCuration(maintenancePublication{CurationStore: m.store, db: m.db, command: prepared})
 	if err != nil {
 		return rpc.MaintenanceResult{}, err
 	}
-	consolidator, err := app.NewMemoryConsolidator(capturedHistory{input.Conversation}, curation, remoteModels{grant: grant})
+	consolidator, err := coordination.NewMemoryConsolidator(capturedHistory{input.Conversation}, curation, remoteModels{grant: grant})
 	if err != nil {
 		return rpc.MaintenanceResult{}, err
 	}
-	published, err := consolidator.Consolidate(ctx, input.SessionID, input.Project)
+	sessionID, err := identity.ParseOptionalSession(input.SessionID)
+	var published bool
+	if err == nil {
+		published, err = consolidator.Consolidate(ctx, sessionID, input.Project)
+	}
 	if err != nil {
 		return pluginstorage.CompleteExternalCommand(ctx, prepared, classify, func(context.Context) (pluginstorage.CommandPlan[rpc.MaintenanceResult], error) {
 			return pluginstorage.CommandPlan[rpc.MaintenanceResult]{}, err
@@ -187,21 +180,21 @@ func (m memoryServer) maintain(ctx context.Context, _ *sdk.ServerSession, comman
 
 type toolSearch struct {
 	store store
-	roots app.RootResolver
+	roots coordination.RootResolver
 }
 
-func (s toolSearch) Search(ctx context.Context, project, query string, topK int) ([]memory.Item, error) {
+func (s toolSearch) Search(ctx context.Context, project, query string, topK int) ([]agentmemory.Item, error) {
 	project, err := s.roots.ResolveExistingDir(project)
 	if err != nil {
-		return nil, errors.Join(app.ErrWorkspaceUnavailable, err)
+		return nil, errors.Join(coordination.ErrWorkspaceUnavailable, err)
 	}
 	scope, err := pluginsdk.ToolContextFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var embed func(context.Context) (app.Embedder, error)
+	var embed func(context.Context) (coordination.Embedder, error)
 	if scope.EmbeddingSpace != "" {
-		embed = func(context.Context) (app.Embedder, error) {
+		embed = func(context.Context) (coordination.Embedder, error) {
 			grant, err := pluginmcp.CallbackFromContext(ctx)
 			if err != nil {
 				return nil, err
@@ -209,7 +202,7 @@ func (s toolSearch) Search(ctx context.Context, project, query string, topK int)
 			return remoteModels{grant: grant, space: scope.EmbeddingSpace}, nil
 		}
 	}
-	read, err := app.NewReadModel(s.store, embed)
+	read, err := coordination.NewReadModel(s.store, embed)
 	if err != nil {
 		return nil, err
 	}

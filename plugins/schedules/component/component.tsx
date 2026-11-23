@@ -81,7 +81,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
     setDeleting,
   } = useSchedules(context);
   const history = read.accepted?.history ?? [];
-  const paginated = Boolean(history.length) || Boolean(page?.NextCursor);
+  const paginated = Boolean(history.length) || Boolean(page?.nextCursor);
   const feedback = (notice || command) && (
     <ScheduleFeedback
       t={t}
@@ -181,14 +181,14 @@ export function Schedules({ context }: { context: ComponentContext }) {
           title={
             edit.basis
               ? t("editor.edit.title", {
-                  title: edit.basis.Title || t("editor.edit.untitled"),
+                  title: edit.basis.title || t("editor.edit.untitled"),
                 })
               : t("editor.new.title")
           }
           description={
             edit.basis
               ? t("editor.edit.description", {
-                  revision: String(edit.basis.Revision),
+                  revision: String(edit.basis.revision),
                 })
               : undefined
           }
@@ -226,18 +226,18 @@ export function Schedules({ context }: { context: ComponentContext }) {
               ref={titleElement}
               size="lg"
               aria-label={t("field.title")}
-              value={edit.draft.Title}
+              value={edit.draft.title}
               disabled={busy}
-              onChange={(event) => patch("Title", event.target.value)}
+              onChange={(event) => patch("title", event.target.value)}
             />
           </FormField>
           <FormField label={t("field.instructions")}>
             <TextArea
               aria-label={t("field.instructions")}
-              value={edit.draft.Instructions}
+              value={edit.draft.instructions}
               disabled={busy}
               rows={4}
-              onChange={(event) => patch("Instructions", event.target.value)}
+              onChange={(event) => patch("instructions", event.target.value)}
             />
           </FormField>
           <FormSection title={t("editor.section.timing.title")}>
@@ -247,18 +247,18 @@ export function Schedules({ context }: { context: ComponentContext }) {
                   size="lg"
                   aria-label={t("field.cron")}
                   placeholder="0 9 * * 1"
-                  value={edit.draft.Cron}
+                  value={edit.draft.cron}
                   disabled={busy}
-                  onChange={(event) => patch("Cron", event.target.value)}
+                  onChange={(event) => patch("cron", event.target.value)}
                 />
               </FormField>
               <FormField label={t("field.timeZone")}>
                 <TextField
                   size="lg"
                   aria-label={t("field.timeZone")}
-                  value={edit.draft.TimeZone}
+                  value={edit.draft.timeZone}
                   disabled={busy}
-                  onChange={(event) => patch("TimeZone", event.target.value)}
+                  onChange={(event) => patch("timeZone", event.target.value)}
                 />
               </FormField>
               <FormField label={t("field.workspace")}>
@@ -266,17 +266,17 @@ export function Schedules({ context }: { context: ComponentContext }) {
                   size="lg"
                   aria-label={t("field.workspace")}
                   placeholder={t("field.workspace.placeholder")}
-                  value={edit.draft.CWD}
+                  value={edit.draft.cwd}
                   disabled={busy}
-                  onChange={(event) => patch("CWD", event.target.value)}
+                  onChange={(event) => patch("cwd", event.target.value)}
                 />
               </FormField>
             </FormRow>
             <Checkbox
               label={t("status.enabled")}
-              checked={edit.draft.Enabled}
+              checked={edit.draft.enabled}
               disabled={busy}
-              onCheckedChange={(value) => patch("Enabled", value)}
+              onCheckedChange={(value) => patch("enabled", value)}
             />
           </FormSection>
           <FormSection title={t("editor.section.execution.title")}>
@@ -301,8 +301,8 @@ export function Schedules({ context }: { context: ComponentContext }) {
                           {
                             value: selectedKey,
                             label: t("model.existing", {
-                              provider: edit.draft.ModelSelection.provider,
-                              model: edit.draft.ModelSelection.model,
+                              provider: edit.draft.modelSelection.provider,
+                              model: edit.draft.modelSelection.model,
                               state: selectedModel?.deprecated
                                 ? t("model.deprecated")
                                 : t("model.unavailable"),
@@ -313,7 +313,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
                   ]}
                   onValueChange={(key) =>
                     patch(
-                      "ModelSelection",
+                      "modelSelection",
                       selection(
                         models.find(
                           (model) =>
@@ -328,8 +328,8 @@ export function Schedules({ context }: { context: ComponentContext }) {
                 <Select
                   size="lg"
                   label={t("field.reasoning")}
-                  value={edit.draft.ModelSelection.reasoningEffort || "default"}
-                  disabled={busy || !edit.draft.ModelSelection.model}
+                  value={edit.draft.modelSelection.reasoningEffort || "default"}
+                  disabled={busy || !edit.draft.modelSelection.model}
                   options={[
                     { value: "default", label: t("reasoning.default") },
                     ...(selectedModel?.capabilities?.reasoningLevels ?? []).map(
@@ -338,23 +338,23 @@ export function Schedules({ context }: { context: ComponentContext }) {
                         label: value,
                       }),
                     ),
-                    ...(edit.draft.ModelSelection.reasoningEffort &&
+                    ...(edit.draft.modelSelection.reasoningEffort &&
                     !selectedModel?.capabilities?.reasoningLevels?.includes(
-                      edit.draft.ModelSelection.reasoningEffort,
+                      edit.draft.modelSelection.reasoningEffort,
                     )
                       ? [
                           {
-                            value: edit.draft.ModelSelection.reasoningEffort,
+                            value: edit.draft.modelSelection.reasoningEffort,
                             label: t("reasoning.unavailable", {
-                              effort: edit.draft.ModelSelection.reasoningEffort,
+                              effort: edit.draft.modelSelection.reasoningEffort,
                             }),
                           },
                         ]
                       : []),
                   ]}
                   onValueChange={(value) =>
-                    patch("ModelSelection", {
-                      ...edit.draft.ModelSelection,
+                    patch("modelSelection", {
+                      ...edit.draft.modelSelection,
                       reasoningEffort: value === "default" ? "" : value,
                     })
                   }
@@ -390,7 +390,7 @@ export function Schedules({ context }: { context: ComponentContext }) {
           open
           role="alertdialog"
           title={t("delete.title", {
-            name: deleting.item.Title || deleting.item.ID,
+            name: deleting.item.title || deleting.item.id,
           })}
           description={t("delete.description")}
           closeLabel={t("delete.close")}
@@ -418,8 +418,8 @@ export function Schedules({ context }: { context: ComponentContext }) {
                 disabled={busy}
                 onClick={() =>
                   submit(
-                    "flame.schedules/delete.v1",
-                    { ID: deleting.item.ID },
+                    "flame.schedules/delete.v2",
+                    { id: deleting.item.id },
                     t("command.delete"),
                   )
                 }
@@ -483,17 +483,17 @@ export function Schedules({ context }: { context: ComponentContext }) {
             />
           )}
           {matching.map((item) => (
-            <ListRow key={item.ID}>
+            <ListRow key={item.id}>
               <RecordHeading
-                title={item.Title || t("untitled")}
+                title={item.title || t("untitled")}
                 actions={
                   <ActionMenu
                     label={t("actions.more", {
-                      name: item.Title || t("untitled"),
+                      name: item.title || t("untitled"),
                     })}
                     disabled={disabled}
                     finalFocus={
-                      command?.command.method === "flame.schedules/runNow.v1"
+                      command?.command.method === "flame.schedules/runNow.v2"
                         ? feedbackElement
                         : undefined
                     }
@@ -502,8 +502,8 @@ export function Schedules({ context }: { context: ComponentContext }) {
                         label: t("action.runNow"),
                         onSelect: () =>
                           submit(
-                            "flame.schedules/runNow.v1",
-                            { ID: item.ID },
+                            "flame.schedules/runNow.v2",
+                            { id: item.id },
                             t("command.runNow"),
                           ),
                       },
@@ -515,15 +515,15 @@ export function Schedules({ context }: { context: ComponentContext }) {
                           setEdit({
                             basis: structuredClone(item),
                             draft: {
-                              Title: item.Title,
-                              Instructions: item.Instructions,
-                              Cron: item.Cron,
-                              TimeZone: item.TimeZone,
-                              CWD: item.CWD,
-                              ModelSelection: structuredClone(
-                                item.ModelSelection,
+                              title: item.title,
+                              instructions: item.instructions,
+                              cron: item.cron,
+                              timeZone: item.timeZone,
+                              cwd: item.cwd,
+                              modelSelection: structuredClone(
+                                item.modelSelection,
                               ),
-                              Enabled: enabled(item),
+                              enabled: enabled(item),
                             },
                           });
                           setDeleting(undefined);
@@ -535,12 +535,12 @@ export function Schedules({ context }: { context: ComponentContext }) {
                           : t("action.enable"),
                         onSelect: () =>
                           submit(
-                            "flame.schedules/update.v1",
+                            "flame.schedules/update.v2",
                             {
-                              ID: item.ID,
-                              ExpectedRevision: item.Revision,
-                              Enabled: !enabled(item),
-                              ModelSelection: {},
+                              id: item.id,
+                              expectedRevision: item.revision,
+                              enabled: !enabled(item),
+                              modelSelection: {},
                             },
                             enabled(item)
                               ? t("command.disable")
@@ -566,12 +566,12 @@ export function Schedules({ context }: { context: ComponentContext }) {
                   </Badge>
                 }
               />
-              <RecordBody>{item.Instructions}</RecordBody>
+              <RecordBody>{item.instructions}</RecordBody>
               <Metadata>
                 {t("nextFiring.label")} ·{" "}
-                {item.NextRunAt !== undefined ? (
-                  <time dateTime={item.NextRunAt}>
-                    {dateTime.format(new Date(item.NextRunAt))}
+                {item.nextRunAt !== undefined ? (
+                  <time dateTime={item.nextRunAt}>
+                    {dateTime.format(new Date(item.nextRunAt))}
                   </time>
                 ) : (
                   t("nextFiring.none")
@@ -580,30 +580,30 @@ export function Schedules({ context }: { context: ComponentContext }) {
               <Disclosure title={t("details.title")}>
                 <Facts
                   values={[
-                    [t("fact.cron"), item.Cron],
-                    [t("fact.timeZone"), item.TimeZone],
-                    [t("fact.schedule"), item.ID],
-                    [t("fact.revision"), String(item.Revision)],
-                    [t("fact.workspace"), item.CWD || t("runtimeDefault")],
+                    [t("fact.cron"), item.cron],
+                    [t("fact.timeZone"), item.timeZone],
+                    [t("fact.schedule"), item.id],
+                    [t("fact.revision"), String(item.revision)],
+                    [t("fact.workspace"), item.cwd || t("runtimeDefault")],
                     [
                       t("field.model"),
-                      item.ModelSelection.provider && item.ModelSelection.model
-                        ? `${item.ModelSelection.provider}/${item.ModelSelection.model}`
+                      item.modelSelection.provider && item.modelSelection.model
+                        ? `${item.modelSelection.provider}/${item.modelSelection.model}`
                         : t("runtimeDefault"),
                     ],
                     [
                       t("field.reasoning"),
-                      item.ModelSelection.reasoningEffort || undefined,
+                      item.modelSelection.reasoningEffort || undefined,
                     ],
                     [
                       t("fact.lastFiring"),
-                      item.LastRunAt !== undefined
-                        ? dateTime.format(new Date(item.LastRunAt))
+                      item.lastRunAt !== undefined
+                        ? dateTime.format(new Date(item.lastRunAt))
                         : t("fact.neverFired"),
                     ],
                     [
                       t("fact.created"),
-                      dateTime.format(new Date(item.CreatedAt)),
+                      dateTime.format(new Date(item.createdAt)),
                     ],
                   ]}
                 />
@@ -627,10 +627,10 @@ export function Schedules({ context }: { context: ComponentContext }) {
               <Button
                 pending={read.loading && !busy}
                 focusableWhenDisabled={!busy}
-                disabled={busy || !page?.NextCursor}
+                disabled={busy || !page?.nextCursor}
                 onClick={(event) =>
                   void refresh(
-                    [...history, page!.NextCursor],
+                    [...history, page!.nextCursor],
                     event.currentTarget,
                   )
                 }
@@ -670,14 +670,14 @@ function ScheduleFeedback({
           <>
             <p role="status">
               {t("notice.accepted", {
-                run: notice.RunID,
-                session: notice.SessionID,
+                run: notice.runId,
+                session: notice.sessionId,
               })}
             </p>
             {openSession && (
               <Button
                 variant="soft"
-                onClick={() => openSession(notice.SessionID)}
+                onClick={() => openSession(notice.sessionId)}
               >
                 {t("notice.openSession")}
               </Button>

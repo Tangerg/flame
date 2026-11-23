@@ -20,9 +20,6 @@ type cancellationSettlement struct {
 	Outcome    jsontext.Value `json:"outcome"`
 }
 
-// cancellationReceipt stores a keyed CancelRun outcome through its deferred
-// replay record. A failed reservation is the replay's own outcome, never a
-// cancellation refusal to persist.
 type cancellationReceipt struct {
 	key        string
 	method     *Method
@@ -63,11 +60,6 @@ func (r *cancellationReceipt) Stage(ctx context.Context, ref runs.ExecutorRef, c
 	return nil
 }
 
-// replayCancellation stages a keyed cancellation's reply with the cancellation
-// itself and settles a reply a crashed owner left staged.
-// settleReplayedCancellation returns a staged cancellation's outcome, first
-// finishing its settlement when recovery found it pending. A child-run
-// outcome is refused before any settlement to a caller without the feature.
 func (s *Handler) settleReplayedCancellation(ctx context.Context, method *Method, runID string, data []byte, recoverPending bool) ([]byte, error) {
 	pending, response, err := decodeCancellationSettlement(method, runID, data)
 	if err != nil {
@@ -111,7 +103,6 @@ func (s *Handler) replayCancellation(ctx context.Context, in protocol.CancelRunR
 	}, func(data []byte, recoverPending bool) ([]byte, error) {
 		return s.settleReplayedCancellation(ctx, method, in.RunID, data, recoverPending)
 	})
-	// The failure this call observed keeps its cause; a replayed one is decoded.
 	if err == nil && observedFailure != nil && bytes.Equal(payload, encodedFailure) {
 		return failed(observedFailure)
 	}
@@ -119,7 +110,11 @@ func (s *Handler) replayCancellation(ctx context.Context, in protocol.CancelRunR
 	if replayed.Failure != nil {
 		return replayed
 	}
-	if replayed.Value.(*protocol.CancelRunResponse).RootRun != nil && !s.requestCanUseFeature(ctx, protocol.FeatureChildRuns) {
+	response, ok := replayed.Value.(*protocol.CancelRunResponse)
+	if !ok {
+		return failed(projectError(errors.New("idempotency: replayed cancellation has an unexpected result")))
+	}
+	if response.RootRun != nil && !s.requestCanUseFeature(ctx, protocol.FeatureChildRuns) {
 		return failed(projectError(wireCancellationError(runs.ErrChildRunNotAllowed)))
 	}
 	return replayed
@@ -134,16 +129,14 @@ func decodeCancellationSettlement(method *Method, runID string, data []byte) (ca
 	if reply.Failure != nil {
 		return pending, nil, fmt.Errorf("idempotency: invalid cancellation outcome: %w", reply.Failure)
 	}
-	result := reply.Value.(*protocol.CancelRunResponse)
-	if pending.ExecutorID == "" || result.Run.ID != runID ||
+	result, ok := reply.Value.(*protocol.CancelRunResponse)
+	if !ok || pending.ExecutorID == "" || result.Run.ID != runID ||
 		result.Run.Outcome == nil || result.Run.Outcome.Type != protocol.OutcomeCanceled {
 		return pending, nil, errors.New("idempotency: invalid cancellation settlement")
 	}
 	return pending, result, nil
 }
 
-// settleStagedCancellation finishes a cancellation a crashed owner left staged,
-// addressed by the Runs its stored reply names.
 func (s *Handler) settleStagedCancellation(ctx context.Context, executorID string, response *protocol.CancelRunResponse) error {
 	sessionID, err := identity.ParseSession(response.Run.SessionID)
 	if err != nil {

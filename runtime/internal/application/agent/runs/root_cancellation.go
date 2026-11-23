@@ -7,7 +7,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 type rootCancellation struct {
@@ -95,7 +94,7 @@ func (r *runTreeOwner) claimRootCancellation(ctx context.Context, intent *rootCa
 			r.mu.Unlock()
 			return rootCancellationClaim{}, fmt.Errorf(
 				"%w: child Run %q cancellation owns the tree",
-				rundomain.ErrSessionBusy,
+				run.ErrSessionBusy,
 				targetRunID,
 			)
 		}
@@ -103,7 +102,7 @@ func (r *runTreeOwner) claimRootCancellation(ctx context.Context, intent *rootCa
 			r.mu.Unlock()
 			return rootCancellationClaim{}, fmt.Errorf(
 				"%w: root Run cancellation already owns the tree",
-				rundomain.ErrSessionBusy,
+				run.ErrSessionBusy,
 			)
 		}
 		activation := r.activation
@@ -133,8 +132,6 @@ func (r *runTreeOwner) interruptCommitted() bool {
 	return r.interrupt.committed
 }
 
-// rootCancellationCommit stages a keyed root cancellation with the terminal
-// Run whose conversation mark only the terminal transaction resolves.
 type rootCancellationCommit struct {
 	executor ExecutorRef
 	receipt  CancellationReceipt

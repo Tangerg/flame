@@ -1,7 +1,7 @@
 package wire
 
 import (
-	routing "github.com/Tangerg/flame/plugins/modelrouter/internal/domain"
+	"github.com/Tangerg/flame/plugins/modelrouter/internal/routing"
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 

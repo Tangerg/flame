@@ -10,7 +10,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/packages/go-sdk/instant"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 
 	framecall "github.com/Tangerg/frame/call"
@@ -19,9 +19,6 @@ import (
 	"github.com/Tangerg/scope/core/embedding"
 )
 
-// EndpointKind names the provider operation a physical endpoint records. Chat
-// and embedding share one admission/evidence/accounting owner; each kind carries
-// exactly its own request and response payload.
 type EndpointKind string
 
 const (
@@ -34,12 +31,10 @@ func (k EndpointKind) Validate() error {
 	case EndpointChat, EndpointEmbedding:
 		return nil
 	default:
-		return errors.New("models: unknown endpoint kind")
+		return errors.New("modelref: unknown endpoint kind")
 	}
 }
 
-// EndpointRequest is the closed set of provider requests an endpoint admits.
-// The variant is the endpoint's kind, so a kind cannot disagree with its payload.
 type EndpointRequest interface {
 	Kind() EndpointKind
 	validate() error
@@ -55,14 +50,14 @@ func (EmbeddingEndpointRequest) Kind() EndpointKind { return EndpointEmbedding }
 
 func (r ChatEndpointRequest) validate() error {
 	if r.Chat == nil {
-		return errors.New("models: chat endpoint requires a chat request")
+		return errors.New("modelref: chat endpoint requires a chat request")
 	}
 	return r.Chat.Validate()
 }
 
 func (r EmbeddingEndpointRequest) validate() error {
 	if r.Embedding == nil {
-		return errors.New("models: embedding endpoint requires an embedding request")
+		return errors.New("modelref: embedding endpoint requires an embedding request")
 	}
 	return r.Embedding.Validate()
 }
@@ -75,8 +70,6 @@ func (r EmbeddingEndpointRequest) clone() EndpointRequest {
 	return EmbeddingEndpointRequest{Embedding: cloneEmbeddingRequest(r.Embedding)}
 }
 
-// EndpointResponse is the closed set of provider responses an endpoint can
-// settle with; it must be the variant of its invocation's request.
 type EndpointResponse interface {
 	Kind() EndpointKind
 	validate() error
@@ -85,6 +78,8 @@ type EndpointResponse interface {
 
 type ChatEndpointResponse struct{ Chat *chat.Response }
 
+var errNullEndpointResponse = errors.New("modelref: null endpoint response")
+
 type EmbeddingEndpointResponse struct{ Embedding *embedding.Response }
 
 func (ChatEndpointResponse) Kind() EndpointKind      { return EndpointChat }
@@ -92,14 +87,14 @@ func (EmbeddingEndpointResponse) Kind() EndpointKind { return EndpointEmbedding 
 
 func (r ChatEndpointResponse) validate() error {
 	if r.Chat == nil {
-		return errors.New("models: null endpoint response")
+		return errNullEndpointResponse
 	}
 	return r.Chat.Validate()
 }
 
 func (r EmbeddingEndpointResponse) validate() error {
 	if r.Embedding == nil {
-		return errors.New("models: null endpoint response")
+		return errNullEndpointResponse
 	}
 	return r.Embedding.Validate()
 }
@@ -115,8 +110,6 @@ func (r EmbeddingEndpointResponse) reportedUsage() *chat.Usage {
 	return embeddingReportedUsage(r.Embedding)
 }
 
-// EndpointInvocation is admission of one real provider request, distinct from
-// its logical calling operation. Its immutable input is persisted before I/O.
 type EndpointInvocation struct {
 	ID        string
 	Caller    framecall.Invocation
@@ -129,17 +122,12 @@ type EndpointInvocation struct {
 
 func (i EndpointInvocation) Kind() EndpointKind { return i.Request.Kind() }
 
-// MaximumInvocationIDCharacters bounds a model call identity, which is
-// URI-safe ASCII, so characters and bytes coincide.
 const MaximumInvocationIDCharacters = 256
 
-// endpointIDPrefix namespaces physical endpoint calls among invocation ids.
 const endpointIDPrefix = "endpoint_"
 
-// NewEndpointID names one physical endpoint call from opaque entropy.
 func NewEndpointID(entropy string) string { return endpointIDPrefix + entropy }
 
-// ValidateInvocationID admits exact physical or parent model-call identity.
 func ValidateInvocationID(value string) error {
 	return identity.ValidateURISafeASCII(value, MaximumInvocationIDCharacters)
 }
@@ -152,25 +140,21 @@ func (i EndpointInvocation) Validate() error {
 		return err
 	}
 	if i.Caller.Target.Scope != extension.ScopeCall || i.Caller.Target.Reference != i.Caller.ID || i.Caller.ID == i.ID || i.StartedAt.IsZero() {
-		return errors.New("models: endpoint invocation requires a distinct calling model operation")
+		return errors.New("modelref: endpoint invocation requires a distinct calling model operation")
 	}
-	if _, err := modelchoice.New(i.Provider, i.Model); err != nil {
+	if _, err := flamemodel.New(i.Provider, i.Model); err != nil {
 		return err
 	}
 	switch i.Request.(type) {
 	case nil:
-		return errors.New("models: endpoint invocation requires a request")
+		return errors.New("modelref: endpoint invocation requires a request")
 	case ChatEndpointRequest, EmbeddingEndpointRequest:
 		return i.Request.validate()
 	default:
-		return errors.New("models: endpoint request must be a value variant")
+		return errors.New("modelref: endpoint request must be a value variant")
 	}
 }
 
-// InvocationState is the durable observation of one model invocation, whether
-// a Run's logical call or one physical endpoint attempt. It is deliberately
-// smaller than a response: it distinguishes a call that never crossed the
-// provider boundary from one whose final projection became indeterminate.
 type InvocationState string
 
 const (
@@ -211,18 +195,15 @@ func (s InvocationState) rule() (EndpointEvidenceRule, error) {
 			return rule, nil
 		}
 	}
-	return EndpointEvidenceRule{}, errors.New("models: unknown endpoint state")
+	return EndpointEvidenceRule{}, errors.New("modelref: unknown endpoint state")
 }
 
 func (s InvocationState) Validate() error   { _, err := s.rule(); return err }
 func (s InvocationState) HasResponse() bool { rule, _ := s.rule(); return rule.Response }
 func (s InvocationState) Settled() bool     { rule, _ := s.rule(); return rule.Settled }
 
-// EndpointOutcome is the provider observation submitted for settlement. Admission
-// derives its state; a caller cannot label missing evidence as a known failure.
 type EndpointOutcome struct {
-	Cost accounting.Cost
-	// Response is nil when the provider's answer was never known.
+	Cost       accounting.Cost
 	Response   EndpointResponse
 	FinishedAt time.Time
 	Failure    string
@@ -237,10 +218,10 @@ func (o EndpointOutcome) State(invocation EndpointInvocation) (InvocationState, 
 		switch o.Response.(type) {
 		case ChatEndpointResponse, EmbeddingEndpointResponse:
 		default:
-			return "", errors.New("models: endpoint response must be a value variant")
+			return "", errors.New("modelref: endpoint response must be a value variant")
 		}
 		if o.Response.Kind() != invocation.Kind() {
-			return "", errors.New("models: endpoint response belongs to another request kind")
+			return "", errors.New("modelref: endpoint response belongs to another request kind")
 		}
 		if err := o.Response.validate(); err != nil {
 			return "", err
@@ -269,8 +250,6 @@ func (o EndpointOutcome) ReportedUsage() *chat.Usage {
 	return o.Response.reportedUsage()
 }
 
-// UsageMatchesResponse reports whether usage is exactly what a known response
-// reported: retained usage and the response evidence are one provider fact.
 func UsageMatchesResponse(usage *chat.Usage, response *chat.Response) bool {
 	var reported *chat.Usage
 	if response != nil && response.Metadata != nil {
@@ -286,9 +265,6 @@ func embeddingReportedUsage(response *embedding.Response) *chat.Usage {
 	return &chat.Usage{InputTokens: response.Metadata.Usage.InputTokens}
 }
 
-// EndpointRecord encodes an observation. Request and response JSON retain their
-// original numeric lexemes; normalized response and model facts are derived only
-// after this record is admitted by RestoreEndpointObservation.
 type EndpointRecord struct {
 	Cost           accounting.Cost
 	Usage          *chat.Usage
@@ -303,43 +279,39 @@ type EndpointRecord struct {
 	ResponseJSON   framevalue.JSON
 }
 
-// EndpointObservation owns one admitted, immutable physical request observation.
 type EndpointObservation struct {
 	record      EndpointRecord
 	response    *chat.Response
 	servedModel string
 }
 
-// decodeKnownResponse restores the provider's answer for the invocation's
-// kind, adopting the model it reports serving and returning the usage it
-// reports.
-func (o *EndpointObservation) decodeKnownResponse() (*chat.Usage, error) {
+func (o EndpointObservation) withKnownResponse() (EndpointObservation, *chat.Usage, error) {
 	raw := o.record.ResponseJSON.Bytes()
 	switch o.record.Invocation.Kind() {
 	case EndpointChat:
 		response, err := decodeEndpointResponse[chat.Response](raw)
 		if err != nil {
-			return nil, err
+			return EndpointObservation{}, nil, err
 		}
 		o.response = response
 		if response.Metadata == nil {
-			return nil, nil
+			return o, nil, nil
 		}
 		if response.Metadata.Model != "" {
 			o.servedModel = response.Metadata.Model
 		}
-		return response.Metadata.Usage, nil
+		return o, response.Metadata.Usage, nil
 	case EndpointEmbedding:
 		response, err := decodeEndpointResponse[embedding.Response](raw)
 		if err != nil {
-			return nil, err
+			return EndpointObservation{}, nil, err
 		}
 		if response.Metadata != nil && response.Metadata.Model != "" {
 			o.servedModel = response.Metadata.Model
 		}
-		return embeddingReportedUsage(response), nil
+		return o, embeddingReportedUsage(response), nil
 	default:
-		return nil, nil
+		return o, nil, nil
 	}
 }
 
@@ -352,7 +324,7 @@ func decodeEndpointResponse[R any, P interface {
 		return nil, err
 	}
 	if response == nil {
-		return nil, errors.New("models: null endpoint response")
+		return nil, errNullEndpointResponse
 	}
 	return response, P(response).Validate()
 }
@@ -363,11 +335,11 @@ func RestoreEndpointObservation(record EndpointRecord) (EndpointObservation, err
 		return zero, err
 	}
 	if (record.RunID.IsZero()) != record.SegmentID.IsZero() {
-		return zero, errors.New("models: endpoint execution association is incomplete")
+		return zero, errors.New("modelref: endpoint execution association is incomplete")
 	}
 	if !record.RunID.IsZero() {
 		if record.Invocation.SessionID.IsZero() {
-			return zero, errors.New("models: endpoint run has no session")
+			return zero, errors.New("modelref: endpoint run has no session")
 		}
 		if err := record.RunID.Validate(); err != nil {
 			return zero, err
@@ -387,13 +359,13 @@ func RestoreEndpointObservation(record EndpointRecord) (EndpointObservation, err
 	var reported *chat.Usage
 	if known {
 		var err error
-		reported, err = observation.decodeKnownResponse()
+		observation, reported, err = observation.withKnownResponse()
 		if err != nil {
 			return zero, err
 		}
 	}
 	if !reflect.DeepEqual(record.Usage, reported) {
-		return zero, errors.New("models: endpoint usage differs from known response")
+		return zero, errors.New("modelref: endpoint usage differs from known response")
 	}
 	if err := validateEndpointPrice(record.Cost, reported); err != nil {
 		return zero, err
@@ -407,35 +379,35 @@ func validateEndpointEvidence(state InvocationState, response bool, failure stri
 		return err
 	}
 	if startedAt.IsZero() {
-		return errors.New("models: endpoint admission time is required")
+		return errors.New("modelref: endpoint admission time is required")
 	}
 	if err := instant.Validate(startedAt); err != nil {
 		return err
 	}
 	if !rule.Settled {
 		if !finishedAt.IsZero() || response != rule.Response || (failure != "") != rule.Failure {
-			return errors.New("models: started endpoint carries completion")
+			return errors.New("modelref: started endpoint carries completion")
 		}
 		return nil
 	}
 	if finishedAt.IsZero() || finishedAt.Before(startedAt) {
-		return errors.New("models: endpoint completion time is invalid")
+		return errors.New("modelref: endpoint completion time is invalid")
 	}
 	if err := instant.Validate(finishedAt); err != nil {
 		return err
 	}
 	if rule.Response != response {
-		return errors.New("models: endpoint response differs from its state")
+		return errors.New("modelref: endpoint response differs from its state")
 	}
 	if rule.Failure != (failure != "") {
-		return errors.New("models: endpoint failure differs from its state")
+		return errors.New("modelref: endpoint failure differs from its state")
 	}
 	return nil
 }
 
 func validateEndpointPrice(cost accounting.Cost, usage *chat.Usage) error {
 	if _, priced := cost.USD(); priced && usage == nil {
-		return errors.New("models: endpoint price has no reported usage")
+		return errors.New("modelref: endpoint price has no reported usage")
 	}
 	return nil
 }
@@ -468,9 +440,6 @@ func cloneEmbeddingRequest(r *embedding.Request) *embedding.Request {
 	return &embedding.Request{Texts: slices.Clone(r.Texts), Options: r.Options.Clone()}
 }
 
-// InvocationPageAnchor is the (start time, invocation identity) position a
-// newest-first page of endpoint invocations ended at; a missing anchor is the
-// first page.
 type InvocationPageAnchor struct {
 	startedAt time.Time
 	id        string

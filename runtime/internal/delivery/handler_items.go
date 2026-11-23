@@ -14,10 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// wirePageError maps a read's page-request rejection onto invalid_params. A
-// cursor the read will not continue is a bad request, not a runtime failure:
-// letting it fall through to the unrecognized-error default would tell the client
-// the server broke and hide the one remedy — start from the first page.
 func wirePageError(err error) error {
 	if errors.Is(err, pagination.ErrInvalidCursor) ||
 		errors.Is(err, pagination.ErrInvalidCursorMaterial) ||
@@ -28,16 +24,6 @@ func wirePageError(err error) error {
 	return err
 }
 
-// ListItems returns a session's persisted history as durable Items
-// History is the completed Item sequence; there is no
-// separate Message type. The result is a Page[Item] (`data` + `nextCursor`)
-// plus the RunRefs needed to rebuild the run tree. When more items remain,
-// nextCursor carries an opaque token that the client passes back to continue.
-//
-// The source is the durable Item-history store (a required runtime
-// dependency): the exact Items the runtime streamed (same ids, runId,
-// text, createdAt). The page is cut by the query, so a long session's
-// history is not loaded to return a slice of it.
 func (s *Handler) ListItems(ctx context.Context, in protocol.ListItemsRequest) (*protocol.ListItemsResponse, error) {
 	limit, err := pagination.ParseLimit(in.Limit)
 	if err != nil {
@@ -82,15 +68,8 @@ func (s *Handler) ListItems(ctx context.Context, in protocol.ListItemsRequest) (
 	}, nil
 }
 
-// GetPlan returns the session's Plan projection — the same shape the run
-// stream publishes, so a client folding the stream and a client that just asked are
-// holding one value and not two descriptions of it.
-//
-// A session with no list yet answers with an absent Plan.state. That is a fact
-// rather than a gap: the panel renders empty, while a present empty state means an
-// explicit clear; only a session that does not exist is an error.
 func (s *Handler) GetPlan(ctx context.Context, in protocol.GetPlanRequest) (*protocol.Plan, error) {
-	sessionID, parseErr := wireIdentity("sessionId", in.SessionID, identity.ParseOptionalSession)
+	sessionID, parseErr := sessionParameter(in.SessionID)
 	if parseErr != nil {
 		return nil, parseErr
 	}
@@ -102,13 +81,6 @@ func (s *Handler) GetPlan(ctx context.Context, in protocol.GetPlanRequest) (*pro
 	return &snapshot, nil
 }
 
-// itemScopeFromWire reads the scope union. The tag decides which fields are read —
-// that is what a discriminated union means — so a field belonging to the other
-// variant is left alone rather than blended in. Endpoint validation has already
-// enforced the union's required and forbidden fields before this translation.
-//
-// A run scope is legal for a root or a child run, and it carries no sessionId: the
-// run's own record says where it lives.
 func itemScopeFromWire(scope protocol.ItemListScope) (sessions.ItemScope, error) {
 	switch scope.Type {
 	case protocol.ItemScopeSession:
@@ -131,9 +103,6 @@ func itemScopeFromWire(scope protocol.ItemListScope) (sessions.ItemScope, error)
 	}
 }
 
-// sequenceOrderFromWire reads the page direction, defaulting to oldest first: a
-// caller that says nothing gets the order the runtime produced, which is the one a
-// reducer can fold.
 func sequenceOrderFromWire(order protocol.ItemOrder) (transcript.SequenceOrder, error) {
 	switch order {
 	case "", protocol.ItemOrderAsc:
@@ -145,10 +114,6 @@ func sequenceOrderFromWire(order protocol.ItemOrder) (transcript.SequenceOrder, 
 	}
 }
 
-// wireItemScopeError maps a scope that names nothing onto the wire's own words. The
-// read refuses it rather than answering with an empty page, and the two subjects get
-// two errors because the client's next move differs: find the session, or find the
-// run.
 func wireItemScopeError(err error) error {
 	switch {
 	case errors.Is(err, session.ErrNotFound):

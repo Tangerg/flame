@@ -18,17 +18,22 @@ func author(proposal planworkflow.Proposal) (planworkflow.Decision, error) {
 	active := false
 	for _, step := range proposal.Steps {
 		if err := step.Validate(); err != nil {
-			return planworkflow.Decision{Refusal: err.Error()}, nil
+			return refuse(err.Error())
 		}
 		if step.Status == planworkflow.PlanStatusInProgress {
 			if active {
-				return planworkflow.Decision{Refusal: "at most one step may be in progress"}, nil
+				return refuse("at most one step may be in progress")
 			}
 			active = true
 		}
 	}
 	document, err := planworkflow.Seal(proposal)
 	return planworkflow.Decision{Document: &document}, err
+}
+
+// An invalid proposal is a workflow decision, not a provider failure.
+func refuse(reason string) (planworkflow.Decision, error) {
+	return planworkflow.Decision{Refusal: reason}, nil
 }
 
 func review(document planworkflow.Document) (string, error) {
@@ -46,6 +51,7 @@ func review(document planworkflow.Document) (string, error) {
 			mark = "[x]"
 		case planworkflow.PlanStatusInProgress:
 			mark = "[~]"
+		case planworkflow.PlanStatusPending:
 		}
 		fmt.Fprintf(&text, "%s %s\n", mark, step.Description)
 	}

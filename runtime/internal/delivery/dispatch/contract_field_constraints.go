@@ -10,94 +10,37 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// ConstraintKind is a value constraint a field's JSON type does not express.
 type ConstraintKind string
 
-// IdentityPattern is the JSON Schema/ECMAScript spelling of the domain's
-// printable, non-whitespace identity alphabet. Category C contains control,
-// format, surrogate, private-use, and unassigned code points; category Z
-// contains every separator. Empty is intentionally accepted for optional wire
-// members and is rejected separately where a member is required.
 const IdentityPattern = `^[^\p{C}\p{Z}]*$`
 
 const (
-	// ConstraintNonEmpty rejects the empty string. A required id whose value is ""
-	// names nothing, and every transport and generated client should refuse it in
-	// the same place rather than each handler deciding.
-	ConstraintNonEmpty ConstraintKind = "nonEmpty"
-	// ConstraintPositive rejects zero, negative values, NaN, and infinities. It
-	// applies to both integral identities/counts and real-valued limits.
-	ConstraintPositive ConstraintKind = "positive"
-	// ConstraintNonNegative rejects negative numeric values while preserving zero
-	// as the wire spelling of an omitted/unbounded limit.
-	ConstraintNonNegative ConstraintKind = "nonNegative"
-	// ConstraintNonEmptyItems rejects an empty array. An optional narrowing set
-	// already uses absence for "no narrower scope", while a required set names the
-	// minimum recovery or transaction unit. An empty third spelling has no useful
-	// meaning in either direction.
-	ConstraintNonEmptyItems ConstraintKind = "nonEmptyItems"
-	// ConstraintNonEmptyProperties rejects an empty object map. Secret-map
-	// replacement uses omission to preserve and a clear variant to remove, so an
-	// empty set value would be a third, ambiguous spelling of clear.
-	ConstraintNonEmptyProperties ConstraintKind = "nonEmptyProperties"
-	// ConstraintUniqueItems rejects a repeated element. A filter is a set, and a
-	// value listed twice means the caller believes it is asking something a set
-	// cannot express.
-	ConstraintUniqueItems ConstraintKind = "uniqueItems"
-	// ConstraintMinItems rejects an array shorter than FieldConstraint.Limit.
-	// Unlike ConstraintNonEmptyItems, its bound is part of the contract rather
-	// than the special distinction between omission and an explicitly empty set.
-	ConstraintMinItems ConstraintKind = "minItems"
-	// ConstraintMaxItems rejects an array longer than FieldConstraint.Limit.
-	ConstraintMaxItems ConstraintKind = "maxItems"
-	// ConstraintMaxLength rejects a string containing more Unicode code points
-	// than FieldConstraint.Limit, matching JSON Schema's length semantics.
-	ConstraintMaxLength ConstraintKind = "maxLength"
-	// ConstraintMaxItemLength applies the same Unicode code-point ceiling to
-	// every string member of an array.
-	ConstraintMaxItemLength ConstraintKind = "maxItemLength"
-	// ConstraintIdentity rejects whitespace, control, format, private-use and
-	// unassigned code points. Empty remains the spelling of an omitted optional
-	// identity; requiredness is declared separately with ConstraintNonEmpty.
-	ConstraintIdentity ConstraintKind = "identity"
-	// ConstraintIdentityItems applies ConstraintIdentity to every string member
-	// of an array.
-	ConstraintIdentityItems ConstraintKind = "identityItems"
-	// ConstraintMaxPropertyNameLength bounds every key of a string-keyed map.
+	ConstraintNonEmpty              ConstraintKind = "nonEmpty"
+	ConstraintPositive              ConstraintKind = "positive"
+	ConstraintNonNegative           ConstraintKind = "nonNegative"
+	ConstraintNonEmptyItems         ConstraintKind = "nonEmptyItems"
+	ConstraintNonEmptyProperties    ConstraintKind = "nonEmptyProperties"
+	ConstraintUniqueItems           ConstraintKind = "uniqueItems"
+	ConstraintMinItems              ConstraintKind = "minItems"
+	ConstraintMaxItems              ConstraintKind = "maxItems"
+	ConstraintMaxLength             ConstraintKind = "maxLength"
+	ConstraintMaxItemLength         ConstraintKind = "maxItemLength"
+	ConstraintIdentity              ConstraintKind = "identity"
+	ConstraintIdentityItems         ConstraintKind = "identityItems"
 	ConstraintMaxPropertyNameLength ConstraintKind = "maxPropertyNameLength"
-	// ConstraintIdentityPropertyNames applies ConstraintIdentity to every key of
-	// a string-keyed map.
 	ConstraintIdentityPropertyNames ConstraintKind = "identityPropertyNames"
-	// ConstraintPrefix rejects a string that does not start with
-	// FieldConstraint.Value. It is used for framed opaque identities whose prefix
-	// is part of the public wire contract even though the remainder is not parsed.
-	ConstraintPrefix ConstraintKind = "prefix"
-	// ConstraintPrefixItems applies ConstraintPrefix to every string member of
-	// an array whose entries share one framed identity namespace.
-	ConstraintPrefixItems ConstraintKind = "prefixItems"
-	// ConstraintPatternItems applies one exact regular-expression grammar to
-	// every string member of an array.
-	ConstraintPatternItems ConstraintKind = "patternItems"
-	// ConstraintPattern rejects a string that does not match the exact regular
-	// expression in FieldConstraint.Value. It is reserved for public wire
-	// identities whose canonical grammar is narrower than prefix + printable
-	// text, such as a fixed-width lowercase-hex namespace.
-	ConstraintPattern ConstraintKind = "pattern"
-	// ConstraintMinimum rejects a number smaller than FieldConstraint.Limit.
-	// It is inclusive, matching JSON Schema's minimum keyword.
-	ConstraintMinimum ConstraintKind = "minimum"
-	// ConstraintMaximum rejects a number greater than FieldConstraint.Limit.
-	// It is inclusive, matching JSON Schema's maximum keyword.
-	ConstraintMaximum ConstraintKind = "maximum"
+	ConstraintPrefix                ConstraintKind = "prefix"
+	ConstraintPatternItems          ConstraintKind = "patternItems"
+	ConstraintPattern               ConstraintKind = "pattern"
+	ConstraintMinimum               ConstraintKind = "minimum"
+	ConstraintMaximum               ConstraintKind = "maximum"
 )
 
-// Valid reports whether c names one supported field constraint.
 func (c ConstraintKind) Valid() bool {
 	_, _, ok := c.rule()
 	return ok
 }
 
-// constraintArgument is the single parameter a constraint kind takes.
 type constraintArgument uint8
 
 const (
@@ -107,7 +50,6 @@ const (
 	patternArgument
 )
 
-// constraintCarrier is the wire shape a constraint kind constrains.
 type constraintCarrier uint8
 
 const (
@@ -117,20 +59,14 @@ const (
 	arrayCarrier
 	objectCarrier
 	numberCarrier
-	// signedNumberCarrier excludes uint64, for which a lower bound is vacuous.
 	signedNumberCarrier
 )
 
-// rule is what a kind demands of its declaration; every declaration check
-// derives from it, so a new kind is described in exactly one place.
 func (c ConstraintKind) rule() (constraintArgument, constraintCarrier, bool) {
 	rule, known := constraintRules[c]
 	return rule.argument, rule.carrier, known
 }
 
-// constraintRules is the one statement of what each constraint kind takes and
-// which value shape carries it; validity and every declaration check derive
-// from it.
 var constraintRules = map[ConstraintKind]struct {
 	argument constraintArgument
 	carrier  constraintCarrier
@@ -142,7 +78,6 @@ var constraintRules = map[ConstraintKind]struct {
 	ConstraintPattern:               {patternArgument, stringCarrier},
 	ConstraintIdentityItems:         {noArgument, stringItemsCarrier},
 	ConstraintMaxItemLength:         {limitArgument, stringItemsCarrier},
-	ConstraintPrefixItems:           {prefixArgument, stringItemsCarrier},
 	ConstraintPatternItems:          {patternArgument, stringItemsCarrier},
 	ConstraintIdentityPropertyNames: {noArgument, stringKeysCarrier},
 	ConstraintMaxPropertyNameLength: {limitArgument, stringKeysCarrier},
@@ -206,7 +141,6 @@ func (c ConstraintKind) String() string {
 	return string(c)
 }
 
-// FieldConstraint is one field's value constraint. Field is a dotted JSON path.
 type FieldConstraint struct {
 	Field string
 	Kind  ConstraintKind
@@ -218,23 +152,15 @@ func (f FieldConstraint) String() string {
 	switch f.Kind {
 	case ConstraintMinItems, ConstraintMaxItems, ConstraintMaxLength, ConstraintMaxItemLength, ConstraintMaxPropertyNameLength, ConstraintMinimum, ConstraintMaximum:
 		return fmt.Sprintf("%s(%d)", f.Kind, f.Limit)
-	case ConstraintPrefix, ConstraintPrefixItems, ConstraintPattern, ConstraintPatternItems:
+	case ConstraintPrefix, ConstraintPattern, ConstraintPatternItems:
 		return fmt.Sprintf("%s(%s)", f.Kind, strconv.Quote(f.Value))
 	default:
 		return f.Kind.String()
 	}
 }
 
-// FieldConstraintSpec declares the value constraints of one wire shape.
-//
-// These are the checks reflection cannot see: that a string must be non-empty,
-// that a number must exceed or not fall below zero. Closed-enum membership is NOT declared here —
-// the enum's value set is already declared, so the check is derived from it, and
-// declaring it twice would let the two disagree.
-//
-// The declaration is the single source: the Go validator, the TypeScript validator
-// and the schema's minLength / minimum are all generated from it, which is what
-// makes the three equivalent by construction instead of by a reminder.
+// Closed-enum membership is not declared here: it is derived from the enum's value
+// set, and declaring it twice would let the two disagree.
 type FieldConstraintSpec struct {
 	GoType      reflect.Type
 	Constraints []FieldConstraint
@@ -362,6 +288,7 @@ func validateConstraintHelperAssignment(owner string, field protocol.WireField, 
 					"%s.%s constraint %s does not support a named string pointer",
 					owner, constraint.Field, constraint.Kind,
 				)
+			case ConstraintNonEmpty, ConstraintPositive, ConstraintNonNegative, ConstraintNonEmptyItems, ConstraintNonEmptyProperties, ConstraintUniqueItems, ConstraintMinItems, ConstraintMaxItems, ConstraintMaxItemLength, ConstraintIdentityItems, ConstraintMaxPropertyNameLength, ConstraintIdentityPropertyNames, ConstraintPatternItems, ConstraintMinimum, ConstraintMaximum:
 			}
 		}
 		if target.Kind() == reflect.Slice && target.Name() != "" {
@@ -371,6 +298,7 @@ func validateConstraintHelperAssignment(owner string, field protocol.WireField, 
 					"%s.%s constraint %s does not support a named slice pointer",
 					owner, constraint.Field, constraint.Kind,
 				)
+			case ConstraintNonEmpty, ConstraintPositive, ConstraintNonNegative, ConstraintNonEmptyItems, ConstraintNonEmptyProperties, ConstraintMinItems, ConstraintMaxLength, ConstraintIdentity, ConstraintIdentityItems, ConstraintMaxPropertyNameLength, ConstraintIdentityPropertyNames, ConstraintPrefix, ConstraintPattern, ConstraintMinimum, ConstraintMaximum:
 			}
 		}
 	}
@@ -420,8 +348,13 @@ func validateTextualConstraintProjection(owner string, field protocol.WireField,
 			owner, constraint.Field, constraint.Kind,
 		)
 	}
-	if (constraint.Kind == ConstraintIdentityItems || constraint.Kind == ConstraintPrefixItems) &&
-		declaredKind == reflect.Pointer {
+	if constraint.Kind == ConstraintPattern && declaredKind == reflect.Pointer {
+		return fmt.Errorf(
+			"%s.%s constraint %s does not support a pointer string",
+			owner, constraint.Field, constraint.Kind,
+		)
+	}
+	if constraint.Kind == ConstraintIdentityItems && declaredKind == reflect.Pointer {
 		return fmt.Errorf(
 			"%s.%s constraint %s does not support a pointer string array",
 			owner, constraint.Field, constraint.Kind,

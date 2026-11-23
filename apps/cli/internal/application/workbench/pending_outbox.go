@@ -9,14 +9,12 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// PendingRuns returns unacknowledged run-opening commands in authoring order.
 func (s *Store) PendingRuns(sessionID string) []PendingRun {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return clonePendingRunSlice(s.pendingRuns[sessionID])
 }
 
-// PendingResume returns the unacknowledged HITL command for one session.
 func (s *Store) PendingResume(sessionID string) (PendingResume, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -24,8 +22,6 @@ func (s *Store) PendingResume(sessionID string) (PendingResume, bool) {
 	return clonePendingResume(pending), ok
 }
 
-// StagePendingResume transfers a completed interrupt review into the durable
-// command outbox before delivery starts.
 func (s *Store) StagePendingResume(sessionID string, pending PendingResume, input *PreparedInput) error {
 	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
@@ -57,19 +53,6 @@ func (s *Store) StagePendingResume(sessionID string, pending PendingResume, inpu
 	return s.saveSessionStateWithResume(sessionID, s.drafts[sessionID], s.pendingRuns[sessionID], &pending)
 }
 
-// AcknowledgePendingResume retires exactly the command whose runtime response
-// was observed. A stale callback cannot delete a newer interrupt decision.
-func (s *Store) AcknowledgePendingResume(sessionID string, commandID authoring.CommandID) error {
-	return s.retirePendingResume(sessionID, commandID)
-}
-
-// RejectPendingResume releases a command after a definitive runtime refusal so
-// its review can be edited and submitted under a fresh identity.
-func (s *Store) RejectPendingResume(sessionID string, commandID authoring.CommandID) error {
-	return s.retirePendingResume(sessionID, commandID)
-}
-
-// claimPendingResumeLocked fences settlement to the original command identity.
 func (s *Store) claimPendingResumeLocked(sessionID string, commandID authoring.CommandID) (PendingResume, error) {
 	pending, exists := s.pendingResumes[sessionID]
 	if !exists || pending.Command.CommandID != commandID {
@@ -78,7 +61,7 @@ func (s *Store) claimPendingResumeLocked(sessionID string, commandID authoring.C
 	return pending, nil
 }
 
-func (s *Store) retirePendingResume(sessionID string, commandID authoring.CommandID) error {
+func (s *Store) RetirePendingResume(sessionID string, commandID authoring.CommandID) error {
 	if err := commandID.Validate(); err != nil {
 		return err
 	}
@@ -93,9 +76,6 @@ func (s *Store) retirePendingResume(sessionID string, commandID authoring.Comman
 	return s.saveSessionStateWithResume(sessionID, s.drafts[sessionID], s.pendingRuns[sessionID], nil)
 }
 
-// StagePendingRun atomically moves one draft into the durable runtime outbox.
-// A crash observes either the editable draft or the replayable command, never
-// an ownership gap between separate files.
 func (s *Store) StagePendingRun(pending PendingRun) error {
 	if pending.State != PendingRunQueued {
 		return fmt.Errorf("stage pending run: initial state must be %q", PendingRunQueued)
@@ -121,9 +101,6 @@ func (s *Store) StagePendingRun(pending PendingRun) error {
 	return s.saveSessionState(pending.Command.SessionID, authoring.Message{}, next)
 }
 
-// SavePendingRuns atomically replaces one session's ordered runtime outbox.
-// Queue edits use this boundary so reordering, replacement, and deletion are
-// crash-consistent with the next launch.
 func (s *Store) SavePendingRuns(sessionID string, commands []PendingRun) error {
 	if err := protocol.ValidateSessionID(sessionID); err != nil {
 		return err
@@ -169,9 +146,9 @@ func (s *Store) MarkPendingRunDispatching(
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	index := pendingRunIndex(s.pendingRuns[sessionID], commandID)
-	if index < 0 {
-		return errors.New("pending run is absent")
+	index, err := s.pendingRunLocked(sessionID, commandID)
+	if err != nil {
+		return err
 	}
 	current := s.pendingRuns[sessionID][index]
 	if current.State != PendingRunQueued {
@@ -185,9 +162,11 @@ func (s *Store) MarkPendingRunDispatching(
 	next := clonePendingRunSlice(s.pendingRuns[sessionID])
 	next[index].Command.Input = blocks
 	next[index].InputDigest = digest
-	if err := next[index].beginDispatch(replayGuard); err != nil {
+	dispatching, err := next[index].beginDispatch(replayGuard)
+	if err != nil {
 		return err
 	}
+	next[index] = dispatching
 	if next[index].State == s.pendingRuns[sessionID][index].State {
 		return nil
 	}
@@ -197,8 +176,6 @@ func (s *Store) MarkPendingRunDispatching(
 	return s.saveSessionState(sessionID, s.drafts[sessionID], next)
 }
 
-// MarkPendingRunCanceling durably records that a command with an uncertain
-// acknowledgement must be canceled as soon as its run identity is recovered.
 func (s *Store) MarkPendingRunCanceling(
 	sessionID string,
 	commandID authoring.CommandID,
@@ -212,18 +189,20 @@ func (s *Store) MarkPendingRunCanceling(
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	index := pendingRunIndex(s.pendingRuns[sessionID], commandID)
-	if index < 0 {
-		return "", errors.New("pending run is absent")
+	index, err := s.pendingRunLocked(sessionID, commandID)
+	if err != nil {
+		return "", err
 	}
 	if s.pendingRuns[sessionID][index].State == PendingRunCanceling {
 		return s.pendingRuns[sessionID][index].CancelCommandID, nil
 	}
 	next := clonePendingRunSlice(s.pendingRuns[sessionID])
-	cancelCommandID, err := next[index].beginCancellation(replayGuard)
+	canceling, err := next[index].beginCancellation(replayGuard)
 	if err != nil {
 		return "", err
 	}
+	next[index] = canceling
+	cancelCommandID := canceling.CancelCommandID
 	if err := validatePendingRunSequence(sessionID, next); err != nil {
 		return "", err
 	}
@@ -234,9 +213,6 @@ func (s *Store) MarkPendingRunCanceling(
 	return cancelCommandID, nil
 }
 
-// RequeuePendingRun turns a definitively refused runtime mutation back into an
-// ordinary FIFO entry. A new identity is mandatory: the runtime has already
-// bound the old key to its rejection outcome.
 func (s *Store) RequeuePendingRun(sessionID string, commandID authoring.CommandID) (authoring.CommandID, error) {
 	if err := commandID.Validate(); err != nil {
 		return "", err
@@ -246,15 +222,17 @@ func (s *Store) RequeuePendingRun(sessionID string, commandID authoring.CommandI
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	index := pendingRunIndex(s.pendingRuns[sessionID], commandID)
-	if index < 0 {
-		return "", errors.New("pending run is absent")
-	}
-	next := clonePendingRunSlice(s.pendingRuns[sessionID])
-	replacement, err := next[index].requeue()
+	index, err := s.pendingRunLocked(sessionID, commandID)
 	if err != nil {
 		return "", err
 	}
+	next := clonePendingRunSlice(s.pendingRuns[sessionID])
+	requeued, err := next[index].requeue()
+	if err != nil {
+		return "", err
+	}
+	next[index] = requeued
+	replacement := requeued.Command.CommandID
 	if err := validatePendingRunSequence(sessionID, next); err != nil {
 		return "", err
 	}
@@ -268,8 +246,6 @@ func (s *Store) RequeuePendingRun(sessionID string, commandID authoring.CommandI
 	return replacement, nil
 }
 
-// AcknowledgePendingRun retires only the command the caller actually observed.
-// The identity check prevents a late acknowledgement from deleting newer work.
 func (s *Store) AcknowledgePendingRun(sessionID string, commandID authoring.CommandID) error {
 	if err := commandID.Validate(); err != nil {
 		return err
@@ -296,4 +272,14 @@ func (s *Store) AcknowledgePendingRun(sessionID string, commandID authoring.Comm
 		return err
 	}
 	return s.saveSessionState(sessionID, s.drafts[sessionID], next)
+}
+
+var errPendingRunAbsent = errors.New("pending run is absent")
+
+func (s *Store) pendingRunLocked(sessionID string, commandID authoring.CommandID) (int, error) {
+	index := pendingRunIndex(s.pendingRuns[sessionID], commandID)
+	if index < 0 {
+		return -1, errPendingRunAbsent
+	}
+	return index, nil
 }

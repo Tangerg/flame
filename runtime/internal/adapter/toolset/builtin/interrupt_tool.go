@@ -13,11 +13,6 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// interruptTool projects a typed model call into a product Interrupt, parks on
-// Scope's input contract, and renders the resolved answer. Scope owns the
-// suspension, wait identity, and re-entry; the tool owns only the product
-// projection. plan builds the request and resolve renders the answer, so a
-// tool adds just those two product halves.
 type interruptTool[Args any] struct {
 	definition toolcontract.Definition
 	interrupt  runs.InterruptFunc
@@ -53,8 +48,6 @@ func (t *interruptTool[Args]) Definition() toolcontract.Definition {
 	}
 }
 
-// InputValidator admits arguments with the same strict decoder as Call, so Bind
-// rejects unknown members before the tool runs, matching tool.NewFunc.
 func (t *interruptTool[Args]) InputValidator() func([]byte) error {
 	return func(arguments []byte) error {
 		var args Args

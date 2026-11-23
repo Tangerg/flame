@@ -11,8 +11,6 @@ import (
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
-// A stopped writer cannot invent an Exit. Flame projects its own loss only
-// after Runtime.Close has joined external work and retained pending evidence.
 func (i *interactionSession) publishRuntimeFailure(cause error) error {
 	ctx, cancel := i.lifetime.publicationContext(context.Background())
 	defer cancel()
@@ -26,25 +24,16 @@ func (i *interactionSession) publishRuntimeFailure(cause error) error {
 	if err := i.capturePendingFailures(inspection); err != nil {
 		return err
 	}
-	members := i.runtimeFailureMembers(inspection)
 	var stopped *scoperun.RuntimeError
 	if !errors.As(cause, &stopped) {
 		return cause
 	}
-	for _, member := range members {
-		owner, _ := scoperun.ParseProcessID(member.MemberID)
-		i.state.mu.Lock()
-		managed := i.state.delegateChildren[owner]
-		i.state.mu.Unlock()
-		if managed != nil {
-			managed.mu.Lock()
-			projected := managed.segmentProjected
-			managed.mu.Unlock()
-			if projected {
-				continue
-			}
+	for _, owner := range i.runtimeFailureOwners(inspection) {
+		member, found := i.executorMemberByProcessID(owner)
+		if !found || i.state.projectedDelegate(owner) {
+			continue
 		}
-		end, err := i.runtimeFailureEnd(member, cause, stopped)
+		end, err := i.runtimeFailureEnd(owner, cause, stopped)
 		if err != nil {
 			return err
 		}
@@ -68,8 +57,6 @@ func (i *interactionSession) capturePendingFailures(inspection scoperun.TreeInsp
 	return nil
 }
 
-// captureSettlementFailure records the local diagnostic an uncertain
-// settlement carries, from its Failure or from a model settlement's payload.
 func (i *interactionSession) captureSettlementFailure(program scoperun.ProgramRef, effect scoperun.Effect, settled scoperun.EffectSettled) error {
 	if settled.Failure != nil {
 		i.effectFailures.record(settled.ID, errors.New(settled.Failure.Message()))
@@ -92,30 +79,22 @@ func (i *interactionSession) captureSettlementFailure(program scoperun.ProgramRe
 	return nil
 }
 
-func (i *interactionSession) runtimeFailureMembers(inspection scoperun.TreeInspection) []runs.ExecutorMember {
-	owners := make(map[string]runs.ExecutorMember)
+func (i *interactionSession) runtimeFailureOwners(inspection scoperun.TreeInspection) []scoperun.ProcessID {
+	seen := make(map[scoperun.ProcessID]bool)
+	var owners []scoperun.ProcessID
 	for _, process := range inspection.Processes {
-		member, found := i.executorMemberByProcessID(process.ID)
-		if found {
-			owners[member.MemberID] = member
+		if owner, found := i.memberOwner(process.ID); found && !seen[owner] {
+			seen[owner] = true
+			owners = append(owners, owner)
 		}
 	}
-	members := make([]runs.ExecutorMember, 0, len(owners))
-	for _, owner := range owners {
-		members = append(members, owner)
-	}
-	slices.SortFunc(members, func(a, b runs.ExecutorMember) int {
-		left, _ := scoperun.ParseProcessID(a.MemberID)
-		right, _ := scoperun.ParseProcessID(b.MemberID)
-		return int(right.Depth()) - int(left.Depth())
-	})
-	return members
+	slices.SortFunc(owners, func(a, b scoperun.ProcessID) int { return int(b.Depth()) - int(a.Depth()) })
+	return owners
 }
 
-func (i *interactionSession) runtimeFailureEnd(member runs.ExecutorMember, cause error, stopped *scoperun.RuntimeError) (runs.SegmentEnded, error) {
-	owner, _ := scoperun.ParseProcessID(member.MemberID)
-	effects, uncertainSubtree, err := i.unresolvedEvidence(member, stopped.PendingEffectIDs(), unresolvedCause{
-		name: "runtime_failure", reason: run.Diagnostic(cause), fallbackDetail: run.Diagnostic(stopped.Unwrap()),
+func (i *interactionSession) runtimeFailureEnd(owner scoperun.ProcessID, cause error, stopped *scoperun.RuntimeError) (runs.SegmentEnded, error) {
+	effects, uncertainSubtree, err := i.unresolvedEvidence(owner, stopped.PendingEffectIDs(), unresolvedCause{
+		cause: run.UnresolvedAtRuntimeFailure, reason: run.Diagnostic(cause), fallbackDetail: run.Diagnostic(stopped.Unwrap()),
 	})
 	if err != nil {
 		return runs.SegmentEnded{}, err
@@ -130,21 +109,17 @@ func (i *interactionSession) runtimeFailureEnd(member runs.ExecutorMember, cause
 	return runs.NewSegmentEnded(ending, 0).WithUnresolvedEffects(effects), nil
 }
 
-// unresolvedCause names why a set of Effects stayed Unknown.
 type unresolvedCause struct {
-	name, reason, fallbackDetail string
+	cause                  run.UnresolvedCause
+	reason, fallbackDetail string
 }
 
-// unresolvedEvidence projects the Unknown Effects that member owns and reports
-// whether any Effect in member's process subtree is unresolved.
-func (i *interactionSession) unresolvedEvidence(member runs.ExecutorMember, ids []scoperun.EffectID, why unresolvedCause) ([]run.UnresolvedEffect, bool, error) {
-	owner, _ := scoperun.ParseProcessID(member.MemberID)
+func (i *interactionSession) unresolvedEvidence(owner scoperun.ProcessID, ids []scoperun.EffectID, why unresolvedCause) ([]run.UnresolvedEffect, bool, error) {
 	var effects []run.UnresolvedEffect
 	uncertainSubtree := false
 	for _, id := range ids {
 		uncertainSubtree = uncertainSubtree || owner.Contains(id.Process)
-		source, found := i.executorMemberByProcessID(id.Process)
-		if !found || source.MemberID != member.MemberID {
+		if source, found := i.memberOwner(id.Process); !found || source != owner {
 			continue
 		}
 		observation := i.effectFailures.observations([]scoperun.EffectID{id})[0]
@@ -152,7 +127,7 @@ func (i *interactionSession) unresolvedEvidence(member runs.ExecutorMember, ids 
 			observation.Detail = why.fallbackDetail
 		}
 		effect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{
-			ProcessID: id.Process.String(), EffectID: id.String(), Cause: why.name,
+			ProcessID: id.Process.String(), EffectID: id.String(), Cause: why.cause,
 			Reason: why.reason, Detail: observation.Detail, Output: observation.Output,
 		})
 		if err != nil {

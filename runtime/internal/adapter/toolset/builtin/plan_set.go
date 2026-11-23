@@ -46,7 +46,7 @@ type setter struct{ plans planReplacer }
 
 func newSet(plans planReplacer) (toolcontract.Tool, error) {
 	if lo.IsNil(plans) {
-		return nil, errors.New("set_plan: Plan use cases are required")
+		return nil, fmt.Errorf("%s: Plan use cases are required", builtincontract.SetPlan)
 	}
 	return toolcontract.NewFunc[setArgs, string](
 		toolcontract.FuncConfig{Name: string(builtincontract.SetPlan), Description: setDescription},
@@ -57,7 +57,7 @@ func newSet(plans planReplacer) (toolcontract.Tool, error) {
 func (s *setter) set(ctx context.Context, args setArgs) (string, error) {
 	sessionID := executionctx.SessionID(ctx)
 	if sessionID.IsZero() {
-		return "", errors.New("set_plan: no active session")
+		return "", fmt.Errorf("%s: no active session", builtincontract.SetPlan)
 	}
 	steps := args.steps()
 	state, err := s.plans.Replace(ctx, sessionID, steps)

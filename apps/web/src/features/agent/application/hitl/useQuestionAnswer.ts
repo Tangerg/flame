@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useInterruptResume } from "@/features/agent/application/hitl/useInterruptResume";
 type QuestionAnswers = string[][];
 
-export interface QuestionAnswerSubmit {
+interface QuestionAnswerSubmit {
   submit: (answers: QuestionAnswers) => void;
   pending: boolean;
   submitted: boolean;

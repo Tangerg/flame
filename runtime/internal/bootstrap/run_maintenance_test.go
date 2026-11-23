@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginservices"
-	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/skills"
@@ -59,10 +58,7 @@ func TestInstalledSkillLearningUsesAdmittedSkillDocuments(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			store, err := persistence.NewConversationStore(cfg.stores.ChatHistory)
-			if err != nil {
-				t.Fatal(err)
-			}
+			store := cfg.stores.Conversations
 			const sessionID = "ses_mining"
 			if err := store.Write(t.Context(), testsupport.MustSessionID(sessionID),
 				chat.NewUserMessage(chat.NewTextPart("the test command changed")),

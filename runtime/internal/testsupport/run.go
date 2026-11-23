@@ -4,40 +4,32 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
 
-// RunMetricsInput names the values accepted by MustRunMetrics.
 type RunMetricsInput struct {
 	Usage          *accounting.Usage
 	Steps          int
 	ActiveDuration time.Duration
 }
 
-// DefaultModelSelection returns the deterministic model identity MustRestoreRun supplies when
-// a fixture omits one.
-func DefaultModelSelection() modelchoice.Selection {
-	selection, _ := modelchoice.New("anthropic", "claude")
+func DefaultModelSelection() flamemodel.Selection {
+	selection, _ := flamemodel.New("anthropic", "claude")
 	return selection
 }
 
-// MustModelSelection builds the exact provider/model pair a fixture names. A
-// pair that does not resolve is a broken fixture rather than a behavior under
-// test, so it panics like the rest of this package instead of reporting a
-// failure the test would have to interpret.
-func MustModelSelection(provider, model string) modelchoice.Selection {
-	selection, err := modelchoice.New(provider, model)
+func MustModelSelection(provider, model string) flamemodel.Selection {
+	selection, err := flamemodel.New(provider, model)
 	if err != nil {
 		panic(err)
 	}
 	return selection
 }
 
-// RunDraft supplies the deterministic model identity used by valid Run fixtures
-// when the behavior under test does not care which model executes the Run.
 func RunDraft(draft run.Draft) run.Draft {
 	if draft.ModelSelection.Provider() == "" && draft.ModelSelection.Model() == "" &&
 		draft.ModelSelection.ReasoningEffort() == "" {
@@ -46,8 +38,6 @@ func RunDraft(draft run.Draft) run.Draft {
 	return draft
 }
 
-// MustRunMetrics constructs valid metrics or panics. It is intended only for
-// fixtures whose validity is not the behavior under test.
 func MustRunMetrics(input RunMetricsInput) run.Metrics {
 	metrics, err := run.NewMetrics(input.Usage, input.Steps, input.ActiveDuration)
 	if err != nil {
@@ -56,8 +46,6 @@ func MustRunMetrics(input RunMetricsInput) run.Metrics {
 	return metrics
 }
 
-// MustRestoreRun constructs a valid Run or panics. Tests exercising invalid
-// snapshots must call run.Restore themselves and assert the returned error.
 func MustSessionID(text string) identity.SessionID {
 	id, err := identity.ParseSession(text)
 	if err != nil {
@@ -103,10 +91,10 @@ func MustRestoreRun(snapshot run.Snapshot) run.Run {
 
 func defaultRunIdentity(snapshot *run.Snapshot) {
 	if snapshot.ID.IsZero() {
-		snapshot.ID = MustRunID("run_fixture")
+		snapshot.ID = MustRunID(fixtureRunID)
 	}
 	if snapshot.SessionID.IsZero() {
-		snapshot.SessionID = MustSessionID("session_fixture")
+		snapshot.SessionID = MustSessionID(fixtureSessionID)
 	}
 	if snapshot.ModelSelection.Provider() == "" && snapshot.ModelSelection.Model() == "" &&
 		snapshot.ModelSelection.ReasoningEffort() == "" {
@@ -114,9 +102,6 @@ func defaultRunIdentity(snapshot *run.Snapshot) {
 	}
 }
 
-// defaultRunLifecycle derives a consistent state from what the fixture names:
-// an ending finishes the Run, a terminal Run has an ending, and only a
-// Running Run has an active Segment.
 func defaultRunLifecycle(snapshot *run.Snapshot) {
 	if snapshot.State == "" {
 		snapshot.State = run.Running
@@ -153,8 +138,6 @@ func defaultRunTimes(snapshot *run.Snapshot) {
 	}
 }
 
-// EndingFor returns a representative ending for outcome, for fixtures that
-// only care which way a Run ended.
 func EndingFor(outcome run.Outcome) run.Ending {
 	switch outcome {
 	case run.OutcomeCanceled:
@@ -178,12 +161,14 @@ func Usage(total accounting.Totals, byModel map[string]accounting.Totals) *accou
 	return &usage
 }
 
-// ChildLineage builds a child Run's lineage; an invalid edge set is a broken
-// fixture, so it panics.
 func ChildLineage(spawnedByItemID identity.ItemID, parentRunID, rootRunID identity.RunID) run.Lineage {
 	lineage, err := run.NewLineage(spawnedByItemID, parentRunID, rootRunID)
 	if err != nil {
 		panic(err)
 	}
 	return lineage
+}
+
+func MustIncarnation(text string) goalref.IncarnationID {
+	return must(goalref.ParseIncarnation(text))
 }

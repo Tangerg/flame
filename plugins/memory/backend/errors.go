@@ -4,31 +4,30 @@ import (
 	"errors"
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/plugins/memory/internal/agentmemory"
+	"github.com/Tangerg/flame/plugins/memory/internal/coordination"
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	framecall "github.com/Tangerg/frame/call"
 
-	app "github.com/Tangerg/flame/plugins/memory/internal/application"
-
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
-	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 )
 
-// errorCodes is ordered: an error joining several causes takes the first
-// code listed, so classification never depends on map iteration.
+// Ordered so an error joining several causes takes the first listed code,
+// independent of map iteration.
 var errorCodes = []struct {
 	code  string
 	cause error
 }{
-	{"workspace", app.ErrWorkspaceUnavailable},
-	{"not_found", memory.ErrNotFound},
-	{"not_visible", memory.ErrNotVisible},
-	{"not_pending", memory.ErrNotPending},
-	{"target_full", memory.ErrTargetFull},
-	{"duplicate_content", memory.ErrDuplicateContent},
-	{pluginmcp.InvalidInputCode, app.ErrInvalidInput},
-	{"invalid_facts", memory.ErrInvalidFacts},
-	{"revision_conflict", memory.ErrRevisionConflict},
+	{"workspace", coordination.ErrWorkspaceUnavailable},
+	{"not_found", agentmemory.ErrNotFound},
+	{"not_visible", agentmemory.ErrNotVisible},
+	{"not_pending", agentmemory.ErrNotPending},
+	{"target_full", agentmemory.ErrTargetFull},
+	{"duplicate_content", agentmemory.ErrDuplicateContent},
+	{pluginmcp.InvalidInputCode, coordination.ErrInvalidInput},
+	{"invalid_facts", agentmemory.ErrInvalidFacts},
+	{"revision_conflict", agentmemory.ErrRevisionConflict},
 	{"revision_exhausted", exactint.ErrExhausted},
 	{"cursor", pagination.ErrInvalidCursor},
 	{"limit", pagination.ErrInvalidLimit},

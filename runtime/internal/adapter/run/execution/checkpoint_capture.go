@@ -42,21 +42,21 @@ func (i *interactionSession) interactionCheckpointPayload(
 	if capture, found := i.selectedChat.Capture(); found {
 		provider = &capture
 	}
-	return encodeInteractionCheckpointPayload(
-		tree,
-		i.material.checkpointCalibrations(),
-		instructions,
-		pendingSteers,
-		pendingResumeInputs,
-		metadata,
-		executionOptions(i.start.ModelSelection, i.start.Options),
-		manifests,
-		i.skillDiscoveryCommands(),
-		handoff,
-		i.modelObservers,
-		i.modelContexts,
-		i.modelInputs,
-		i.toolProposals,
-		provider,
-	)
+	return interactionCheckpointCapture{
+		tree:                tree,
+		contextByProcess:    i.material.checkpointCalibrations(),
+		instructions:        instructions,
+		pendingSteers:       pendingSteers,
+		pendingResumeInputs: pendingResumeInputs,
+		toolCalls:           metadata,
+		options:             executionOptions(i.start.ModelSelection, i.start.Options),
+		mcpManifests:        manifests,
+		skillDiscoveries:    i.skillDiscoveryCommands(),
+		handoff:             handoff,
+		modelObservers:      i.modelObservers,
+		modelContexts:       i.modelContexts,
+		modelInputs:         i.modelInputs,
+		toolProposals:       i.toolProposals,
+		provider:            provider,
+	}.encode()
 }

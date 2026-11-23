@@ -11,9 +11,6 @@ import (
 	"time"
 )
 
-// writeModule lays down a tiny buildable Go module and returns its root. The
-// LSP operations are exercised against real gopls, so the fixture must be a
-// genuine module (gopls keys everything off go.mod).
 func writeModule(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -23,21 +20,19 @@ func writeModule(t *testing.T) string {
 		}
 	}
 	write("go.mod", "module example.com/lsptest\n\ngo 1.21\n")
-	// Line/char references below are 0-based, matching the wire.
-	write("main.go", "package main\n"+ // 0
-		"\n"+ // 1
-		"func Greet(name string) string {\n"+ // 2: decl of Greet at char 5
-		"\treturn \"hi \" + name\n"+ // 3
-		"}\n"+ // 4
-		"\n"+ // 5
-		"func main() {\n"+ // 6
-		"\t_ = Greet(\"world\")\n"+ // 7: use of Greet at char 5
-		"}\n") // 8
+	write("main.go", "package main\n"+
+		"\n"+
+		"func Greet(name string) string {\n"+
+		"\treturn \"hi \" + name\n"+
+		"}\n"+
+		"\n"+
+		"func main() {\n"+
+		"\t_ = Greet(\"world\")\n"+
+		"}\n")
 	write("bad.go", "package main\n\nfunc bad() {\n\tundefinedSymbol()\n}\n")
 	return root
 }
 
-// gopls is at minimum 3s of cold start; give the whole suite generous slack.
 func newTestServers(t *testing.T) *Servers {
 	t.Helper()
 	if _, err := exec.LookPath("gopls"); err != nil {
@@ -62,7 +57,6 @@ func TestServers_DefinitionAndHover(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Definition of Greet at its use site (main.go:7:5) → its declaration (line 2).
 	locs, err := servers.Definition(ctx, root, "main.go", Position{Line: 7, Character: 5})
 	if err != nil {
 		t.Fatalf("Definition: %v", err)
@@ -77,7 +71,6 @@ func TestServers_DefinitionAndHover(t *testing.T) {
 		t.Errorf("Definition uri = %q, want .../main.go", locs[0].URI)
 	}
 
-	// Hover at the same spot mentions the function.
 	hov, err := servers.Hover(ctx, root, "main.go", Position{Line: 7, Character: 5})
 	if err != nil {
 		t.Fatalf("Hover: %v", err)
@@ -91,7 +84,6 @@ func TestServers_Diagnostics(t *testing.T) {
 	servers := newTestServers(t)
 	root := writeModule(t)
 
-	// Cold gopls can take longer than one settle window to first analyze; poll.
 	var diags []Diagnostic
 	deadline := time.Now().Add(20 * time.Second)
 	for time.Now().Before(deadline) {

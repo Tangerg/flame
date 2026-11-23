@@ -16,9 +16,6 @@ import (
 
 const userMessageInset = 1
 
-// userMessageBlock gives the user's request a quiet surface without turning it
-// into a dialog. The transcript still owns scrolling, selection, and retention;
-// this block owns only the visual hierarchy of one durable message.
 type userMessageBlock struct {
 	box     kit.Box
 	message *kit.Entry
@@ -29,9 +26,11 @@ var (
 	_ text.Projector = (*userMessageBlock)(nil)
 )
 
-// selfSpeaker labels the operator's own turn. A block is styled as the
-// operator's exactly when it carries this label, so the two cannot disagree.
-const selfSpeaker = "you"
+const (
+	selfSpeaker      = "you"
+	assistantSpeaker = "flame"
+	reasoningSpeaker = "thinking"
+)
 
 func newUserMessageBlock(theme kit.Theme, speaker, body string) *userMessageBlock {
 	message := &kit.Entry{Theme: theme, Label: speaker, Body: kit.NewParagraph(body, theme.Text)}

@@ -120,7 +120,6 @@ func TestInstalledReviewsPointUsesCapturedCollaboratorsAndCurrentConsumerLifetim
 	r.must(delivery.MCPServersReconnect, protocol.MCPServerRequest{Server: consumerServer}, "refresh-original-consumer")
 	r.poMCPTools(&consumerServer, func(tools []protocol.MCPTool) bool { return len(tools) == 3 })
 	read(1)
-	// New point values cannot grant authority absent from the original setup.
 	second := activate(analyzerSource, "second-analyzer")
 	wait(second, "analyzer")
 	result := r.endpoint.Invoke(t.Context(), delivery.PluginsCall, request, protocol.CallMetadata{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.Version}})

@@ -5,8 +5,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-// sessionState owns the active Runtime projection and the lease that prevents
-// work started for an older Session from mutating its replacement.
 type sessionState struct {
 	current         conversation.Session
 	context         *sessionContextLease
@@ -19,9 +17,6 @@ type openingReceipt struct {
 	CommandID authoring.CommandID
 }
 
-// executionState owns the local observation lifetime. Opening retains the
-// acknowledged command association until projection or local settlement takes
-// over; Runtime owns the product lifecycle facts.
 type executionState struct {
 	conversation  *conversation.Conversation
 	opening       *openingReceipt
@@ -31,13 +26,10 @@ type executionState struct {
 	clock         activeDurationClock
 }
 
-func (e executionState) observing() bool {
+func (e *executionState) observing() bool {
 	return e.conversation.Busy() || e.following()
 }
 
-// observation is how this terminal watches the current Run: not at all,
-// following its event stream, or holding a projection it no longer trusts
-// after a local failure while the Run may still be running.
 type observation uint8
 
 const (
@@ -46,25 +38,23 @@ const (
 	observationFailed
 )
 
-func (e executionState) following() bool { return e.observation == observationFollowing }
+func (e *executionState) following() bool { return e.observation == observationFollowing }
 
-func (e executionState) projectionFailed() bool { return e.observation == observationFailed }
+func (e *executionState) projectionFailed() bool { return e.observation == observationFailed }
 
-// stopFollowing ends the stream without forgetting a failed projection.
 func (e *executionState) stopFollowing() {
 	if e.observation == observationFollowing {
 		e.observation = observationDetached
 	}
 }
 
-// trustProjection forgets a local failure once a fresh projection replaces it.
 func (e *executionState) trustProjection() {
 	if e.observation == observationFailed {
 		e.observation = observationDetached
 	}
 }
 
-func (e executionState) blocksAdmission() bool {
+func (e *executionState) blocksAdmission() bool {
 	return e.observing() || e.pendingCancel != nil
 }
 

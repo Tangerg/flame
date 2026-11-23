@@ -10,11 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// copyForkMaterial projects the selected terminal boundary into the child under
-// fresh global identities. A Session fork is one new aggregate, not a second
-// owner for the parent's Run/Item/blob primary keys. The remap happens here in
-// the use case so persistence only commits an already-coherent write set and no
-// client has to synthesize the history that the model received.
 func (c *Coordinator) copyForkMaterial(
 	source ForkMaterial,
 	child session.Session,
@@ -23,10 +18,7 @@ func (c *Coordinator) copyForkMaterial(
 	if len(boundary.RunIDs) == 0 {
 		return ForkMaterial{HistorySnapshot: HistorySnapshot{Session: child, Messages: boundary.Messages}}, nil
 	}
-	projection, err := newForkSnapshotProjection(c, source, child, boundary)
-	if err != nil {
-		return ForkMaterial{}, err
-	}
+	projection := newForkSnapshotProjection(c, source, child, boundary)
 	if err := projection.selectRuns(); err != nil {
 		return ForkMaterial{}, err
 	}
@@ -63,7 +55,7 @@ func newForkSnapshotProjection(
 	source ForkMaterial,
 	child session.Session,
 	boundary ForkBoundary,
-) (*forkSnapshotProjection, error) {
+) *forkSnapshotProjection {
 	childID := child.ID()
 	runByID := make(map[identity.RunID]run.Run, len(source.Runs))
 	for _, value := range source.Runs {
@@ -80,7 +72,7 @@ func newForkSnapshotProjection(
 		forked: ForkMaterial{
 			HistorySnapshot: HistorySnapshot{Session: child, Messages: boundary.Messages},
 		},
-	}, nil
+	}
 }
 
 func (projection *forkSnapshotProjection) selectRuns() error {

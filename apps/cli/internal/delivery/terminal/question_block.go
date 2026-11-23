@@ -10,10 +10,6 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
-// questionBlock separates an open human decision from its durable transcript
-// fact. A pending Question occupies its stable transcript position without
-// drawing an interrupt-looking prompt before the dialog owns input. Once the
-// runtime accepts the answer, the same block becomes visible in place.
 type questionBlock struct {
 	theme    kit.Theme
 	glyphs   kit.Glyphs

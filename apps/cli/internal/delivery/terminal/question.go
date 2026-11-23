@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
 	"github.com/Tangerg/oolong/ui/base"
@@ -12,6 +13,8 @@ import (
 	"github.com/Tangerg/oolong/ui/core/scene"
 	"github.com/Tangerg/oolong/ui/kit"
 )
+
+const questionChoiceRows = 5
 
 type questionnaire struct {
 	question  conversation.Question
@@ -47,6 +50,7 @@ type questionChoice struct {
 func offeredQuestionChoice(value string) questionChoice {
 	return questionChoice{kind: offeredChoice, value: value}
 }
+
 func customQuestionChoice() questionChoice  { return questionChoice{kind: customChoice} }
 func skippedQuestionChoice() questionChoice { return questionChoice{kind: skippedChoice} }
 
@@ -264,26 +268,36 @@ func (p *interruptPrompts) openQuestionField() {
 	p.showQuestionDialog(review, fields)
 }
 
-func (p *interruptPrompts) buildQuestionFields(response *questionResponse) ([]base.Field, error) {
+type questionFields struct {
+	answer base.Field
+	custom *base.Text
+}
+
+func (q questionFields) list() []base.Field {
+	if q.custom == nil {
+		return []base.Field{q.answer}
+	}
+	return []base.Field{q.answer, q.custom}
+}
+
+func (p *interruptPrompts) buildQuestionFields(response *questionResponse) (questionFields, error) {
 	specification := response.field
 	label := questionFieldLabel(specification)
 	switch specification.Kind {
 	case conversation.QuestionText:
-		return []base.Field{p.buildQuestionText(&response.text, label, "Leave empty to skip this field", func(value string) error {
+		return questionFields{answer: p.buildQuestionText(&response.text, label, "Leave empty to skip this field", func(value string) error {
 			return response.contract.ValidateField(response.index, textQuestionValues(value))
 		})}, nil
 	case conversation.QuestionSingle:
-		fields := []base.Field{p.buildQuestionSingle(response, specification, label)}
-		return p.appendCustomQuestionField(fields, response), nil
+		return questionFields{answer: p.buildQuestionSingle(response, specification, label), custom: p.buildCustomQuestionField(response)}, nil
 	case conversation.QuestionMulti:
-		fields := []base.Field{p.buildQuestionMulti(response, specification, label)}
-		return p.appendCustomQuestionField(fields, response), nil
+		return questionFields{answer: p.buildQuestionMulti(response, specification, label), custom: p.buildCustomQuestionField(response)}, nil
 	default:
-		return nil, errors.New("runtime returned an unsupported question field kind")
+		return questionFields{}, errors.New("runtime returned an unsupported question field kind")
 	}
 }
 
-func (p *interruptPrompts) buildQuestionText(value *string, label, placeholder string, check func(string) error) base.Field {
+func (p *interruptPrompts) buildQuestionText(value *string, label, placeholder string, check func(string) error) *base.Text {
 	field := base.NewText(base.TextConfig{Label: label, Placeholder: placeholder, Initial: *value, Check: check})
 	field.SetClipboard(p.clipboard)
 	return field
@@ -292,7 +306,7 @@ func (p *interruptPrompts) buildQuestionText(value *string, label, placeholder s
 func (p *interruptPrompts) buildQuestionSingle(response *questionResponse, specification conversation.QuestionField, label string) base.Field {
 	options := append(questionOptions(specification), base.Option[questionChoice]{Label: "Skip this field", Value: skippedQuestionChoice()})
 	field := base.NewSelect(base.SelectConfig[questionChoice]{
-		Label: label, Initial: response.single, Options: options, Rows: min(len(options), 5),
+		Label: label, Initial: response.single, Options: options, Rows: min(len(options), questionChoiceRows),
 		Same: sameQuestionChoice,
 	})
 	return field
@@ -301,18 +315,17 @@ func (p *interruptPrompts) buildQuestionSingle(response *questionResponse, speci
 func (p *interruptPrompts) buildQuestionMulti(response *questionResponse, specification conversation.QuestionField, label string) base.Field {
 	options := questionOptions(specification)
 	field := base.NewMultiSelect(base.MultiSelectConfig[questionChoice]{
-		Label: label, Initial: response.multiple, Options: options, Rows: min(len(options), 5),
+		Label: label, Initial: response.multiple, Options: options, Rows: min(len(options), questionChoiceRows),
 		Same: sameQuestionChoice,
 	})
 	return field
 }
 
-func (p *interruptPrompts) appendCustomQuestionField(fields []base.Field, response *questionResponse) []base.Field {
+func (p *interruptPrompts) buildCustomQuestionField(response *questionResponse) *base.Text {
 	if !response.field.AllowCustom {
-		return fields
+		return nil
 	}
-	placeholder := "One value when Other is selected; commas are kept"
-	return append(fields, p.buildQuestionText(&response.custom, "Custom answer", placeholder, nil))
+	return p.buildQuestionText(&response.custom, "Custom answer", "One value when Other is selected; commas are kept", nil)
 }
 
 func questionFieldLabel(specification conversation.QuestionField) string {
@@ -322,13 +335,13 @@ func questionFieldLabel(specification conversation.QuestionField) string {
 	return specification.Header + " — " + specification.Prompt
 }
 
-func (p *interruptPrompts) showQuestionDialog(review *questionnaire, fields []base.Field) {
+func (p *interruptPrompts) showQuestionDialog(review *questionnaire, fields questionFields) {
 	form := kit.FormConfig{
 		Behavior: base.FormConfig{
-			Fields: fields,
+			Fields: fields.list(),
 			Title: strings.Join(nonEmptyStrings([]string{
 				p.review.SubmissionFailure(),
-			}), " · "),
+			}), format.Separator),
 		},
 		Theme:  p.theme,
 		Glyphs: p.glyphs,
@@ -337,7 +350,7 @@ func (p *interruptPrompts) showQuestionDialog(review *questionnaire, fields []ba
 	response := review.response(review.current)
 	collect := func() questionResponse {
 		candidate := *response
-		switch field := fields[0].(type) {
+		switch field := fields.answer.(type) {
 		case *base.Text:
 			candidate.text = field.Text()
 		case *base.Select[questionChoice]:
@@ -347,8 +360,8 @@ func (p *interruptPrompts) showQuestionDialog(review *questionnaire, fields []ba
 		case *base.MultiSelect[questionChoice]:
 			candidate.multiple = field.Taken()
 		}
-		if candidate.field.AllowCustom && len(fields) > 1 {
-			candidate.custom = fields[len(fields)-1].(*base.Text).Text()
+		if fields.custom != nil {
+			candidate.custom = fields.custom.Text()
 		}
 		return candidate
 	}
@@ -379,7 +392,7 @@ func (p *interruptPrompts) showQuestionDialog(review *questionnaire, fields []ba
 		},
 		Theme:  p.theme,
 		Glyphs: p.glyphs,
-		Where:  formDialogPlacement(standardDialogWidth, len(fields), 18, dressed),
+		Where:  formDialogPlacement(standardDialogWidth, len(fields.list()), standardDialogHeight, dressed),
 	})
 	p.questionDialog = dialog
 	dialog.Show()
@@ -417,8 +430,6 @@ func (p *interruptPrompts) backOrCancelQuestionnaire() {
 	p.cancelQuestionnaire()
 }
 
-// closeQuestionnaire dismisses the open question and returns the review it
-// belonged to, if any.
 func (p *interruptPrompts) closeQuestionnaire() (*questionnaire, bool) {
 	review := p.questionnaire
 	if review == nil {
@@ -468,7 +479,7 @@ func questionOptions(field conversation.QuestionField) []base.Option[questionCho
 			label += " — " + option.Description
 		}
 		if option.Preview != "" {
-			label += " · " + option.Preview
+			label += format.Separator + option.Preview
 		}
 		out = append(out, base.Option[questionChoice]{Label: label, Value: offeredQuestionChoice(option.Label)})
 	}

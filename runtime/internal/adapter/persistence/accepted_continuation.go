@@ -8,20 +8,12 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-// acceptedContinuationStore persists the Run-owned binding that lets boot recovery
-// revive an accepted but not-yet-delivered continuation. It stores the exact
-// consumed interrupt hand-off so revival reconstructs the same tree; the answer
-// resolutions stay in the transcript. Put joins the acceptance transaction through
-// the context connection, so the binding and the answers it routes commit
-// together. The DB must have been opened via [Open].
 type acceptedContinuationStore struct{ db *database }
 
 func newAcceptedContinuationStore(db *database) *acceptedContinuationStore {
 	return &acceptedContinuationStore{db: db}
 }
 
-// acceptedContinuationRecord is SQLite's technical representation: the Session of
-// the accepted tree and the exact consumed interrupt hand-off it revives from.
 type acceptedContinuationRecord struct {
 	SessionID     identity.SessionID
 	Interrupt     pendingRecord
@@ -30,8 +22,8 @@ type acceptedContinuationRecord struct {
 	CanceledRunID identity.RunID
 }
 type acceptedSegmentRecord struct {
-	RunID     identity.RunID     `json:"run_id"`
-	SegmentID identity.SegmentID `json:"segment_id"`
+	RunID     identity.RunID     `json:"runId"`
+	SegmentID identity.SegmentID `json:"segmentId"`
 }
 
 func (s *acceptedContinuationStore) saveContinuation(ctx context.Context, record acceptedContinuationRecord) error {
@@ -54,6 +46,7 @@ func (s *acceptedContinuationStore) saveContinuation(ctx context.Context, record
 		return nil
 	})
 }
+
 func (s *acceptedContinuationStore) Delete(ctx context.Context, rootRunID identity.RunID) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		_, err := s.db.connection(ctx).ExecContext(ctx, `DELETE FROM accepted_continuations WHERE root_run_id = ?`, rootRunID)
@@ -74,9 +67,6 @@ func (s *acceptedContinuationStore) DeleteSubtreeCancellation(ctx context.Contex
 	})
 }
 
-// continuationRecords reads the rows filter selects. A retained continuation and
-// an accepted subtree cancellation share the table, told apart by whether the
-// row names a canceled Run.
 func (s *acceptedContinuationStore) continuationRecords(ctx context.Context, filter string, args ...any) ([]acceptedContinuationRecord, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]acceptedContinuationRecord, error) {
 		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT root_run_id, session_id, interrupt, segments, input_item_id,

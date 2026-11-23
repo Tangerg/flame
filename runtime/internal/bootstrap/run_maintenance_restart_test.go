@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 	"github.com/Tangerg/scope/models/catalog"
@@ -92,7 +93,7 @@ func TestRunMaintenanceUsesCommittedWorkAcrossRestart(t *testing.T) {
 	cfg.modelProviders = staticTestChatResolver{client: &client, metadata: &catalog.Model{
 		ID: limitedModelID, ToolCall: true, Limits: catalog.Limits{MaxInputTokens: limitedModelInput},
 		Modalities: catalog.Modalities{Input: []catalog.Modality{catalog.ModalityText}, Output: []catalog.Modality{catalog.ModalityText}},
-	}}
+	}, pricing: testsupport.Unpriced()}
 	cfg.approvalMode = approval.ModeYolo
 	if err := os.WriteFile(filepath.Join(cfg.defaultWorkspacePath, "fixture.txt"), []byte("read-only fixture"), 0600); err != nil {
 		t.Fatal(err)
@@ -138,7 +139,7 @@ func TestRunMaintenanceUsesCommittedWorkAcrossRestart(t *testing.T) {
 	if finished.Outcome == nil || finished.Outcome.Type != protocol.OutcomeCompleted {
 		t.Fatalf("resumed Run = %+v", finished.Outcome)
 	}
-	memories := readMemoryPage(runtime, memorycontract.ListInput{Scope: memorycontract.ListInputScopeProject, CWD: cfg.defaultWorkspacePath}).Data
+	memories := readMemoryPage(runtime, memorycontract.ListInput{Scope: memorycontract.ListInputScopeProject, Cwd: cfg.defaultWorkspacePath}).Data
 	if len(memories) != 1 || memories[0].Content != memoryFact || memoryCalls.Load() != 2 {
 		t.Errorf("memory from completed Run = %+v, model requests = %d", memories, memoryCalls.Load())
 	}

@@ -6,9 +6,9 @@ import {
   selectAgentSession,
   getActiveSessionId,
 } from "@/features/agent/application/session/activeSession";
-export type SessionStep = 1 | -1;
+type SessionStep = 1 | -1;
 
-export function stepAgentSession(
+function stepAgentSession(
   sessions: readonly AgentSessionSummary[],
   activeId: string,
   step: SessionStep,

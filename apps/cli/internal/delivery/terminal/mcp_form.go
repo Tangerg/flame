@@ -224,6 +224,7 @@ func (m *mcpScreens) showMCPFormStep(flow *mcpFormFlow) {
 		title = "Test MCP candidate"
 	case mcpFormUpdate:
 		title = "Configure MCP server · " + mcp.ServerLabel(flow.server.ID)
+	case mcpFormCreate:
 	}
 	step, total, label := flow.progress()
 	title += fmt.Sprintf(" · %d/%d", step, total)
@@ -234,7 +235,7 @@ func (m *mcpScreens) showMCPFormStep(flow *mcpFormFlow) {
 		},
 		Theme:  m.theme,
 		Glyphs: m.glyphs,
-		Where:  formDialogPlacement(wideDialogWidth, len(fields), 24, body),
+		Where:  formDialogPlacement(wideDialogWidth, len(fields), tallDialogHeight, body),
 	})
 	dialog.Controller().SetDescription(label)
 	flow.dialog = dialog
@@ -302,8 +303,8 @@ func (m *mcpScreens) submitMCPForm(flow *mcpFormFlow) {
 		started = m.tasks.admissionMutation(mcpOperation, submission.work, apply)
 	}
 	if !started {
-		flow.feedback("another MCP operation is running")
-		m.message("another MCP operation is running")
+		flow.feedback(mcpOperation.busy().Error())
+		m.message(mcpOperation.busy().Error())
 		return
 	}
 	flow.admitted(submission)
@@ -329,11 +330,13 @@ func (m *mcpScreens) showMCPFormSubmission(flow *mcpFormFlow, message string) {
 	}
 	title := "Submitting MCP form"
 	hints := []keymap.Action{base.Cancel}
-	if flow.state == mcpFormUncertain {
+	switch flow.state {
+	case mcpFormUncertain:
 		title = "Outcome unknown · Enter retries the original request"
 		hints = append([]keymap.Action{base.Submit}, hints...)
-	} else if flow.state == mcpFormBlocked {
+	case mcpFormBlocked:
 		title = "Outcome unknown · replay is unavailable"
+	case mcpFormEditing, mcpFormPending, mcpFormClosed:
 	}
 	form.Behavior.Title, form.Hints = title+"\n"+message, hints
 	body := kit.NewForm(form)
@@ -345,7 +348,7 @@ func (m *mcpScreens) showMCPFormSubmission(flow *mcpFormFlow, message string) {
 		},
 		Theme:  m.theme,
 		Glyphs: m.glyphs,
-		Where:  formDialogPlacement(wideDialogWidth, 0, 24, body),
+		Where:  formDialogPlacement(wideDialogWidth, 0, tallDialogHeight, body),
 	})
 	flow.dialog = dialog
 	flow.view = body
@@ -377,8 +380,6 @@ func (m *mcpScreens) mcpFormFields(flow *mcpFormFlow) ([]base.Field, []*base.Tex
 	return set.fields, set.secrets, set.collect
 }
 
-// mcpFieldSet builds one step's fields; collect copies every field back into
-// the draft it was built from.
 type mcpFieldSet struct {
 	clipboard base.Clipboard
 	fields    []base.Field

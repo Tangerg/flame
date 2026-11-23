@@ -51,9 +51,6 @@ func validateIssueEdit(input contractwire.UpdateIssueInput) error {
 	return nil
 }
 
-// validateIssueStateChange admits only the edits GitHub accepts: a reason
-// travels with the state it implies, and only a duplicate closure names the
-// canonical issue.
 func validateIssueStateChange(state *contractwire.State, reason *contractwire.StateReason, duplicateOf *int64) error {
 	if state != nil && !state.Valid() {
 		return invalidInput("issue state must be open or closed")

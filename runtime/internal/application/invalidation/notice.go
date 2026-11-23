@@ -1,57 +1,33 @@
-// Package invalidation carries the "this moved, read it again" notices a use case
-// publishes after a durable mutation or an unconfirmed remote command.
-//
-// The facts are application-owned: which resource may have moved, and
-// which of its members. Producers publish this semantic notice without choosing
-// a transport topic or presentation shape.
-//
-// A notice carries IDs and nothing else. A value in it would be a second source of
-// truth for something a query already answers, and the two would disagree the
-// moment one notice was coalesced or dropped — which this channel is explicitly
-// allowed to do.
+// A notice carries IDs only: a value would be a second source of truth that
+// disagrees once a notice is coalesced or dropped, which this channel may do.
 package invalidation
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"slices"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
-// Resource is what moved. It is a closed set projected exhaustively at the
-// publication boundary.
 type Resource string
 
 const (
-	// Resync means a different Runtime process committed to the shared durable
-	// store. The observer cannot recover the original use-case scope from
-	// SQLite's commit counter, so every subscribed read model must be re-read.
-	Resync  Resource = "resync"
-	Plugins Resource = "plugins"
-	// Sessions — a session was created, renamed, deleted, or its lifecycle moved.
-	Sessions Resource = "sessions"
-	// Runs — a run's lifecycle position changed (started, parked, resumed, ended).
-	Runs Resource = "runs"
-	// Interrupts — a waiting set opened, was answered, or was dropped.
+	Resync     Resource = "resync"
+	Plugins    Resource = "plugins"
+	Sessions   Resource = "sessions"
+	Runs       Resource = "runs"
 	Interrupts Resource = "interrupts"
-	// Goals — a session's autonomous goal changed.
-	Goals Resource = "goals"
-	// Plan — the session-scoped Plan projection was committed.
+	Goals      Resource = "goals"
 	Plan       Resource = "plan"
 	PluginData Resource = "pluginData"
-	// Hooks — a project's lifecycle-hook trust decision changed.
-	Hooks Resource = "hooks"
-	// Skills — the managed Skill library or proposal collection changed.
-	Skills Resource = "skills"
-	// MCP — an MCP server's durable configuration or live projection changed.
-	MCP Resource = "mcp"
-	// Models — provider configuration or a utility/embedding model role changed.
-	Models Resource = "models"
-	// Approvals — the default approval mode or remembered approval rules changed.
-	Approvals Resource = "approvals"
+	Hooks      Resource = "hooks"
+	Skills     Resource = "skills"
+	MCP        Resource = "mcp"
+	Models     Resource = "models"
+	Approvals  Resource = "approvals"
 )
 
-// Valid reports whether r belongs to the invalidation vocabulary.
 func (r Resource) Valid() bool {
 	return r == Plugins || r == Resync || r == Sessions || r == Runs || r == Interrupts ||
 		r == Goals || r == Plan || r == PluginData ||
@@ -66,9 +42,6 @@ func (r Resource) String() string {
 	return string(r)
 }
 
-// Notice marks potentially stale reads: the resource, and the members of it a reader can
-// narrow to. Empty ID sets mean "every member of this resource may be stale",
-// which is the honest answer when a mutation's scope is not enumerable.
 type Notice struct {
 	Resource   Resource
 	SessionIDs []identity.SessionID
@@ -76,7 +49,6 @@ type Notice struct {
 	Servers    []mcpserver.ID
 }
 
-// Clone returns an owned notice snapshot for publication boundaries.
 func (n Notice) Clone() Notice {
 	n.SessionIDs = slices.Clone(n.SessionIDs)
 	n.RunIDs = slices.Clone(n.RunIDs)
@@ -84,19 +56,14 @@ func (n Notice) Clone() Notice {
 	return n
 }
 
-// InSession is the notice for a resource that moved inside one session, optionally
-// naming the runs involved.
 func InSession(resource Resource, sessionID identity.SessionID, runIDs ...identity.RunID) Notice {
 	return Notice{Resource: resource, SessionIDs: sessionIDs(sessionID), RunIDs: slices.Clone(runIDs)}
 }
 
-// InSessions is the notice for a resource that moved in several sessions at
-// once, such as a bulk lifecycle mutation.
 func InSessions(resource Resource, ids ...identity.SessionID) Notice {
 	return Notice{Resource: resource, SessionIDs: slices.Clone(ids)}
 }
 
-// ForMCP is the notice for MCP registry and live-connection changes.
 func ForMCP(servers ...mcpserver.ID) Notice {
 	return Notice{Resource: MCP, Servers: slices.Clone(servers)}
 }
@@ -108,11 +75,8 @@ func sessionIDs(id identity.SessionID) []identity.SessionID {
 	return []identity.SessionID{id}
 }
 
-// Publish hands a use case's notices to the Runtime change stream. Every
-// composition installs one, so constructors require it.
 type Publish func(Notice)
 
-// Notify publishes each notice in order.
 func (p Publish) Notify(notices ...Notice) {
 	for _, notice := range notices {
 		p(notice.Clone())

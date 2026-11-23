@@ -1,4 +1,3 @@
-// LSP exposes language-server capabilities as one model tool.
 package main
 
 import (
@@ -13,10 +12,6 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// lspInput is the model-facing argument shape; [toolcontract.NewFunc] derives the
-// JSON schema from it and decodes calls back into it, so the advertised schema
-// and parsed value cannot drift. Only `operation` is structurally required —
-// which operand each operation needs is validated per-operation in the handler.
 type lspInput struct {
 	Operation LSPOperation `json:"operation" jsonschema_description:"Language-server query to run."`
 	Path      string       `json:"path,omitempty" jsonschema_description:"File path, absolute or relative to the workspace root. Required except for workspace-wide symbol searches."`
@@ -25,9 +20,6 @@ type lspInput struct {
 	Query     string       `json:"query,omitempty" jsonschema_description:"Symbol name or substring to search for. Required for workspace-wide symbol searches."`
 }
 
-// lspPosition is the validated, complete coordinate used inside the adapter.
-// Pointer presence belongs only to the model-facing DTO above; incomplete or
-// non-positive coordinates never reach the analyzer.
 type lspPosition struct {
 	line      int
 	character int

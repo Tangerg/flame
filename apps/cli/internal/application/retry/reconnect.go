@@ -7,13 +7,13 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-// ReconnectDelay retries classified transport failures for as long as the
-// observer remains alive. Only the delay is bounded, never the attempt count.
+const reconnectBaseDelay = 50 * time.Millisecond
+
 func ReconnectDelay(n int, failure error) (time.Duration, bool, error) {
 	if !IsReconnectable(failure) {
 		return 0, false, nil
 	}
-	delay, err := (Backoff{base: 50 * time.Millisecond, maximum: time.Second}).Delay(n)
+	delay, err := (Backoff{base: reconnectBaseDelay, maximum: time.Second}).Delay(n)
 	if err != nil {
 		return 0, false, err
 	}
@@ -23,8 +23,6 @@ func ReconnectDelay(n int, failure error) (time.Duration, bool, error) {
 	return delay, true, nil
 }
 
-// IsReconnectable reports whether another transport attempt can repair the
-// classified failure. Business, validation, and compatibility errors are permanent.
 func IsReconnectable(err error) bool {
 	return errors.Is(err, conversation.ErrDisconnected) || errors.Is(err, conversation.ErrCommandInProgress)
 }

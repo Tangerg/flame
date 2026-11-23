@@ -264,7 +264,7 @@ saving a command route. A malformed request never consumes its key; a later
 canonical input with that key can reach the business owner. The current backend
 protocol is the compiled `frame.CapabilityProtocol` in `frame`; rebuild the
 backend, contracts and components together. Flame's package declaration uses
-its separate `plugin.DeclarationProtocol`.
+Flame's `plugincontract.Protocol`.
 
 The backend's own tests preserve more than 4,096 real receipts, recover original
 success and refusal after restart, reject changed-input identity reuse, and check

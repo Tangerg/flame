@@ -1,6 +1,6 @@
 import { type ComponentType } from "react";
 import { defineExtensionPoint } from "@/extensions/contracts";
-export interface RouteSpec {
+interface RouteSpec {
   id: string;
   path: string;
   component: ComponentType;

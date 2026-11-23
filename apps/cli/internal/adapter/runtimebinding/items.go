@@ -76,7 +76,6 @@ func (i *itemProjection) project() error {
 	return nil
 }
 
-// A user message may carry attachments; an agent message carries only images.
 func (i *itemProjection) projectUserMessage() error {
 	text, attachments, err := projectContent(i.source.ID, i.source.Content)
 	if err != nil {
@@ -215,8 +214,6 @@ func projectTool(projection toolProjection) (conversation.ToolCall, error) {
 	return tool, nil
 }
 
-// toolStatus reads an incomplete call the user or a cancellation stopped as
-// canceled rather than failed.
 func (p toolProjection) toolStatus() (conversation.ToolStatus, error) {
 	switch p.status {
 	case protocol.ItemStatusRunning:

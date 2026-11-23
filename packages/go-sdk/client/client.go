@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -14,27 +15,22 @@ const defaultMaximumMessageBytes = 128 << 20
 
 var ErrClosed = errors.New("runtime client: closed")
 
-// ErrAcknowledgementUnknown marks a dispatched command whose acknowledgement
-// could not be established. Preserve its original input and idempotency identity;
-// this marker never authorizes an automatic retry or a new command identity.
+// ErrAcknowledgementUnknown never authorizes an automatic retry or a new command
+// identity: preserve the original input and idempotency identity.
 var ErrAcknowledgementUnknown = errors.New("runtime: command acknowledgement is unknown")
 
-// ErrDisconnected identifies lost transport observation. It may justify
-// reconnecting a read or subscription, never replaying an uncertain command.
+// ErrDisconnected may justify reconnecting a read or subscription, never
+// replaying an uncertain command.
 var ErrDisconnected = errors.New("runtime: disconnected")
 
-// RemoteConfig identifies an existing Runtime. Endpoint is an absolute HTTP(S)
-// base URL, including any reverse-proxy prefix, without credentials or a query.
 type RemoteConfig struct {
-	Endpoint string
-	Token    string
-	// Zero selects the client safety limit, including pre-discovery responses.
+	Endpoint        string
+	Token           string
 	MaxMessageBytes int
 }
 
-// Client consumes an existing Runtime through HTTP and SSE. It owns only its
-// connections; closing it never stops the Runtime or cancels an accepted Run.
-// Calls are safe concurrently. Construct with Connect and do not copy a Client.
+// Closing a Client never stops the Runtime or cancels an accepted Run. Calls are
+// safe concurrently; do not copy a Client.
 type Client struct {
 	endpoint        string
 	token           string
@@ -46,10 +42,25 @@ type Client struct {
 	calls           map[*remoteCall]struct{}
 }
 
-// Connect constructs a remote binding without spawning a Runtime or performing
-// discovery. The caller negotiates once through Discover with its capabilities.
-// ctx governs construction; each operation supplies its own lifetime.
 func Connect(ctx context.Context, cfg RemoteConfig) (*Client, error) {
+	transport, err := cloneDefaultTransport()
+	if err != nil {
+		return nil, err
+	}
+	return connect(ctx, cfg, transport)
+}
+
+// A private clone keeps this client's idle connections out of the process
+// default transport while using the standard dialing and proxy policy.
+func cloneDefaultTransport() (*http.Transport, error) {
+	transport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		return nil, fmt.Errorf("runtime: http.DefaultTransport is %T, not *http.Transport", http.DefaultTransport)
+	}
+	return transport.Clone(), nil
+}
+
+func connect(ctx context.Context, cfg RemoteConfig, transport *http.Transport) (*Client, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -69,10 +80,6 @@ func Connect(ctx context.Context, cfg RemoteConfig) (*Client, error) {
 	if cfg.MaxMessageBytes == 0 {
 		cfg.MaxMessageBytes = defaultMaximumMessageBytes
 	}
-
-	// A private clone keeps this client's idle connections out of the process
-	// default transport while using the standard dialing and proxy policy.
-	transport := http.DefaultTransport.(*http.Transport).Clone()
 	client := &Client{
 		endpoint: endpoint.CanonicalBase() + rpcPath, token: cfg.Token, calls: make(map[*remoteCall]struct{}),
 		maxMessageBytes: cfg.MaxMessageBytes,
@@ -84,9 +91,6 @@ func Connect(ctx context.Context, cfg RemoteConfig) (*Client, error) {
 	return client, nil
 }
 
-// ConnectCallback uses the ordinary typed Runtime binding over a captured
-// backend call. Its connection never uses a proxy, follows a redirect or
-// changes the owning call. Closing observation does not cancel an accepted Run.
 func ConnectCallback(ctx context.Context, ref pluginmcp.CallbackRef) (*Client, error) {
 	if err := ref.Validate(); err != nil {
 		return nil, err
@@ -95,17 +99,19 @@ func ConnectCallback(ctx context.Context, ref pluginmcp.CallbackRef) (*Client, e
 	if int64(limit) != ref.MaxResponseBytes {
 		return nil, errors.New("runtime: callback message capacity is not representable")
 	}
-	client, err := Connect(ctx, RemoteConfig{Endpoint: ref.Endpoint, Token: ref.Credential, MaxMessageBytes: limit})
+	transport, err := cloneDefaultTransport()
 	if err != nil {
 		return nil, err
 	}
-	client.http.Transport.(*http.Transport).Proxy = nil
+	transport.Proxy = nil
+	client, err := connect(ctx, RemoteConfig{Endpoint: ref.Endpoint, Token: ref.Credential, MaxMessageBytes: limit}, transport)
+	if err != nil {
+		return nil, err
+	}
 	client.callbackCall = ref.Call
 	return client, nil
 }
 
-// Close rejects new calls and joins cleanup of every outstanding request or stream.
-// Run cancellation remains the explicit CancelRun operation.
 func (r *Client) Close() error {
 	if r == nil {
 		return nil

@@ -1,7 +1,3 @@
-// Package transcript defines the canonical execution transcript and the
-// Run-timeline boundary invariant used by history, rollback, and fork. The
-// records are transport-neutral domain values; persistence and presentation
-// are concerns outside this package.
 package transcript
 
 import (
@@ -16,45 +12,23 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// --- run timeline (the rollback / fork boundary invariant) ---
-//
-// A Session's Runs form a wall-clock timeline: each root Run opens one execution,
-// optionally followed by child Runs it spawns (carrying
-// a SpawnedByItemID). A run's resume continuations are NOT separate nodes — they
-// share the run's stable id and collapse into its one record. Rollback and fork
-// both cut this timeline at a run boundary, so keeping a run
-// (with its child Runs) and dropping/copying from the next root on. That boundary
-// math is a domain invariant of the Run log; callers only map these canonical
-// values and sentinels to their own representation.
-
-// Boundary-resolution errors.
 var (
-	// ErrRunNotFound means the boundary run id isn't in the timeline.
 	ErrRunNotFound = errors.New("run not found in timeline")
-	// ErrNotRoot means a root-only boundary (rollback) addressed a child Run.
-	// Fork is lax and never returns this.
-	ErrNotRoot = errors.New("run is not a root run")
+	ErrNotRoot     = errors.New("run is not a root run")
 )
 
-// RunNode is one run's position in a session's timeline.
 type RunNode struct {
 	ID          identity.RunID
 	Lineage     run.Lineage
 	CreatedAt   time.Time
 	MessageMark run.MessageMark
-	Terminal    bool // whether the complete root tree can become portable
+	Terminal    bool
 }
 
-// IsRoot reports whether the Run opens an execution rather than representing a
-// delegated child.
 func (r RunNode) IsRoot() bool { return r.Lineage.IsRoot() }
 
-// Timeline is the domain view of a session's run log. It owns boundary math for
-// fork/rollback: callers lift source records into [RunNode] values, then
-// ask the timeline where the inclusive-keep split lands.
 type Timeline []RunNode
 
-// TimelineFromRuns projects durable Runs into their boundary-resolution value.
 func TimelineFromRuns(runs []run.Run) Timeline {
 	nodes := make(Timeline, len(runs))
 	for i, current := range runs {
@@ -67,7 +41,6 @@ func TimelineFromRuns(runs []run.Run) Timeline {
 	return nodes
 }
 
-// OpeningUserMessagesByRun returns the first user message recorded for each Run.
 func OpeningUserMessagesByRun(items []Item) map[identity.RunID][]ContentBlock {
 	out := make(map[identity.RunID][]ContentBlock)
 	for _, item := range items {
@@ -83,35 +56,18 @@ func OpeningUserMessagesByRun(items []Item) map[identity.RunID][]ContentBlock {
 	return out
 }
 
-// Boundary is the inclusive-keep split of a timeline at a run:
-//
-//   - KeepMessageMark: the watermark to keep — the MessageMark of the last kept
-//     tree's root, which ends after every child Run it spawned. Unknown when
-//     that tree is still in flight, and rollback then leaves the log intact.
-//   - KeepRunID: the run that watermark belongs to — the boundary's identity for
-//     the Session Plan recorded per run, which unlike the message log has
-//     no watermark of its own to seek to. It is deliberately the SAME node
-//     KeepMessageMark comes from: two answers to "where does this boundary sit" is one
-//     answer too many. Empty when nothing is kept (the whole timeline is dropped),
-//     which is a boundary before any run wrote anything.
-//   - Dropped: the runs at/after the boundary, in timeline order — the next root
-//     run plus everything after it (its child Runs) included.
 type Boundary struct {
 	KeepMessageMark run.MessageMark
 	KeepRunID       identity.RunID
 	Dropped         []RunNode
 }
 
-// PortableBoundary is a stable prefix that can seed another Session. A root
-// Run and every child it spawned become portable as one unit, so RunIDs and the
-// message watermark always describe the same complete trees.
 type PortableBoundary struct {
 	KeepMessageMark run.MessageMark
 	KeepRunID       identity.RunID
 	RunIDs          []identity.RunID
 }
 
-// DroppedRunIDs returns the dropped timeline node ids in boundary order.
 func (b Boundary) DroppedRunIDs() []identity.RunID {
 	ids := make([]identity.RunID, len(b.Dropped))
 	for i, node := range b.Dropped {
@@ -120,25 +76,17 @@ func (b Boundary) DroppedRunIDs() []identity.RunID {
 	return ids
 }
 
-// BoundaryAt computes the inclusive-keep split of this timeline at runID. It
-// orders a copy tree by tree and leaves the timeline untouched. runID==""
-// drops every run (KeepMessageMark 0 — clear to empty). A non-root runID is
-// [ErrNotRoot] and an unknown one is [ErrRunNotFound]: this is the rollback
-// split, and rollback addresses root Runs only. Fork cuts a portable prefix that
-// may name a child, which [Timeline.PortableBoundaryAt] owns.
 func (t Timeline) BoundaryAt(runID identity.RunID) (Boundary, error) {
 	nodes, err := t.ordered()
 	if err != nil {
 		return Boundary{}, err
 	}
-	return boundaryAtOrdered(nodes, runID, true)
+	if index := slices.IndexFunc(nodes, func(n RunNode) bool { return n.ID == runID }); index >= 0 && !nodes[index].IsRoot() {
+		return Boundary{}, fmt.Errorf("%w: %q", ErrNotRoot, runID)
+	}
+	return boundaryAtOrdered(nodes, runID)
 }
 
-// PortableBoundaryAt resolves a forkable prefix. A root and its child Runs are
-// admitted only when the entire tree is terminal. An empty runID chooses the
-// latest portable tree; an explicit non-portable target is ErrRunNotFound.
-// runTrees splits the ordered timeline into its Run trees, each a root
-// followed by its descendants; only a whole terminal tree is portable.
 func runTrees(nodes []RunNode) ([][]RunNode, error) {
 	var trees [][]RunNode
 	for start := 0; start < len(nodes); {
@@ -182,7 +130,7 @@ func (t Timeline) PortableBoundaryAt(runID identity.RunID) (PortableBoundary, er
 	if runID.IsZero() {
 		runID = portable[len(portable)-1].ID
 	}
-	boundary, err := boundaryAtOrdered(portable, runID, false)
+	boundary, err := boundaryAtOrdered(portable, runID)
 	if err != nil {
 		return PortableBoundary{}, err
 	}
@@ -198,10 +146,8 @@ func (t Timeline) PortableBoundaryAt(runID identity.RunID) (PortableBoundary, er
 	}, nil
 }
 
-// ordered lays the timeline out tree by tree: roots in creation order, each
-// followed by its own children in creation order. Ordering every Run by time
-// alone would let a child whose clock ties or precedes another root's land in
-// the wrong tree. Run identity breaks ties so the order is total.
+// Ordering by time alone would let a child whose clock ties another root's land in
+// the wrong tree; identity breaks ties.
 func (t Timeline) ordered() ([]RunNode, error) {
 	byTime := func(a, b RunNode) int { return cmp.Or(a.CreatedAt.Compare(b.CreatedAt), a.ID.Compare(b.ID)) }
 	var roots []RunNode
@@ -231,7 +177,7 @@ func (t Timeline) ordered() ([]RunNode, error) {
 	return nodes, nil
 }
 
-func boundaryAtOrdered(nodes []RunNode, runID identity.RunID, requireRoot bool) (Boundary, error) {
+func boundaryAtOrdered(nodes []RunNode, runID identity.RunID) (Boundary, error) {
 	if runID.IsZero() {
 		return Boundary{KeepMessageMark: run.MessageMarkAt(0), Dropped: nodes}, nil
 	}
@@ -242,13 +188,8 @@ func boundaryAtOrdered(nodes []RunNode, runID identity.RunID, requireRoot bool) 
 	if idx < 0 {
 		return Boundary{}, ErrRunNotFound
 	}
-	if requireRoot && !nodes[idx].IsRoot() {
-		return Boundary{}, fmt.Errorf("%w: %q", ErrNotRoot, runID)
-	}
 	for k := idx + 1; k < len(nodes); k++ {
 		if nodes[k].IsRoot() {
-			// Keep through t[k-1] (runID + its child Runs); drop from the next
-			// root on.
 			kept := keptTreeRoot(nodes[:k])
 			return Boundary{
 				KeepMessageMark: kept.MessageMark,
@@ -257,14 +198,10 @@ func boundaryAtOrdered(nodes []RunNode, runID identity.RunID, requireRoot bool) 
 			}, nil
 		}
 	}
-	// No root Run after runID — its tree is the latest, so
-	// there is nothing to drop / everything up to it is copied.
 	kept := keptTreeRoot(nodes)
 	return Boundary{KeepMessageMark: kept.MessageMark, KeepRunID: kept.ID}, nil
 }
 
-// keptTreeRoot is the root of the last tree in nodes. The tree's root ends it,
-// so the root alone holds the conversation watermark and Plan the boundary keeps.
 func keptTreeRoot(nodes []RunNode) RunNode {
 	for index := len(nodes) - 1; index >= 0; index-- {
 		if nodes[index].IsRoot() {

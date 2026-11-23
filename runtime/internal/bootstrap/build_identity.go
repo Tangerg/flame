@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 )
 
-// ExecutableBuildID returns the content identity of the running executable.
 func ExecutableBuildID() (string, error) {
 	path, err := os.Executable()
 	if err != nil {

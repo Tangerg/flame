@@ -36,4 +36,5 @@ func run(ctx context.Context, _ string) (err error) {
 	}
 	return server.Run(ctx, &sdk.StdioTransport{})
 }
+
 func main() { backend.Main("session export", run) }

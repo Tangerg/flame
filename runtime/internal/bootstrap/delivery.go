@@ -13,12 +13,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
-	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/http"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
-// runtimeApplication is the immutable application capsule owned by Instance. Delivery
-// receives its own consumer config; startup recovery and worker composition
-// remain inside Bootstrap.
 type runtimeApplication struct {
 	pluginsReady     <-chan struct{}
 	pluginControl    http.Handler
@@ -30,10 +28,8 @@ type runtimeApplication struct {
 	idempotencyStore operation.ReplayStore
 	callbacks        *pluginmcp.Callbacks
 	modelCallbacks   []pluginmcp.Callback
-	// recoverUncertainExecutions resolves crash-uncertain executions and
-	// reconciles abandoned ownership. It queries live plugin sessions, which a
-	// background plugin cannot serve until the callback RPC is published, so its
-	// owner must invoke it only after publishCallbacks.
+	// recoverUncertainExecutions queries live plugin sessions, which cannot be served until publishCallbacks,
+	// so its owner must invoke it only after that.
 	recoverUncertainExecutions func(context.Context) error
 }
 
@@ -92,12 +88,12 @@ func (h *runtimeApplication) newDeliveryEndpoint(
 }
 
 func (h *runtimeApplication) publishCallbacks(endpoint *delivery.Endpoint) error {
-	rpc, err := flamehttp.NewRPCHandler(endpoint)
+	rpc, err := runtimehttp.NewRPCHandler(endpoint)
 	if err != nil {
 		return err
 	}
 	mux := http.NewServeMux()
-	flamehttp.RegisterCallbackEndpoints(mux, rpc, flamehttp.NewPluginResourceHandler(endpoint))
+	runtimehttp.RegisterCallbackEndpoints(mux, rpc, runtimehttp.NewPluginResourceHandler(endpoint))
 	return h.callbacks.PublishRPC(mux, h.modelCallbacks...)
 }
 
@@ -116,7 +112,7 @@ func (h *runtimeApplication) startWorkers(ctx context.Context) workerJoins {
 			if err := h.recoverUncertainExecutions(ctx); err == nil {
 				break
 			} else if ctx.Err() == nil {
-				slog.ErrorContext(ctx, "runtime: original startup recovery is pending", "error", err)
+				slog.ErrorContext(ctx, "runtime: original startup recovery is pending", telemetry.Error(err))
 			}
 			select {
 			case <-ctx.Done():

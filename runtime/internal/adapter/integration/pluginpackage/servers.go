@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginprocess "github.com/Tangerg/flame/packages/go-sdk/plugin/process"
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
@@ -18,10 +19,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
-// Definitions and dispatch projections never repair the filesystem as a read effect.
-// Data preparation belongs to installation changes and connection activation.
-// Its outcome is not retained here: a backend that could not be prepared stays
-// unrealizable, and [Releases.Realize] observes that from the filesystem.
 func (r *Releases) Prepare(ctx context.Context, installation plugin.Installation, release plugin.Release) error {
 	if !installation.Enabled() {
 		return nil
@@ -48,10 +45,6 @@ func (r *Releases) Prepare(ctx context.Context, installation plugin.Installation
 	return failures
 }
 
-// Server realizes one declared server only as far as reach requires. Siblings
-// are never inspected: a call or a connection pays for its own target alone.
-// Enablement is reported, not enforced; refusing a disabled server belongs to
-// the registry's caller, and a disabled server is never prepared or realized.
 func (r *Releases) Server(ctx context.Context, installation plugin.Installation, release plugin.Release, local mcpserver.ServerName, reach plugins.Reach) (_ mcpserver.Server, _ bool, err error) {
 	declaration := release.Declaration()
 	index := slices.IndexFunc(declaration.Servers, func(server plugin.Server) bool { return server.Name == local })
@@ -87,6 +80,7 @@ func (r *Releases) Server(ctx context.Context, installation plugin.Installation,
 	}
 	return server, true, nil
 }
+
 func (r *Releases) prepareBackend(id identity.InstallationID, server plugin.Server) (err error) {
 	host, err := os.OpenRoot(filepath.Dir(r.dataDirectory))
 	if err != nil {
@@ -94,7 +88,7 @@ func (r *Releases) prepareBackend(id identity.InstallationID, server plugin.Serv
 	}
 	defer func() { err = errors.Join(err, host.Close()) }()
 	namespaceName := filepath.Base(r.dataDirectory)
-	if err := host.Mkdir(namespaceName, 0700); err != nil && !errors.Is(err, os.ErrExist) {
+	if err := host.Mkdir(namespaceName, filesystem.PrivateDirectoryMode); err != nil && !errors.Is(err, os.ErrExist) {
 		return fmt.Errorf("pluginpackage: create data namespace: %w", err)
 	}
 	info, err := host.Lstat(namespaceName)
@@ -109,7 +103,7 @@ func (r *Releases) prepareBackend(id identity.InstallationID, server plugin.Serv
 		return fmt.Errorf("pluginpackage: open data namespace: %w", err)
 	}
 	defer func() { err = errors.Join(err, namespace.Close()) }()
-	if err := namespace.Mkdir(id.String(), 0700); err != nil && !errors.Is(err, os.ErrExist) {
+	if err := namespace.Mkdir(id.String(), filesystem.PrivateDirectoryMode); err != nil && !errors.Is(err, os.ErrExist) {
 		return fmt.Errorf("pluginpackage: create installation data directory: %w", err)
 	}
 	data := r.dataRoot(id)
@@ -127,14 +121,12 @@ func (r *Releases) prepareBackend(id identity.InstallationID, server plugin.Serv
 	if err != nil {
 		return fmt.Errorf("pluginpackage: open installation data directory: %w", err)
 	}
-	if err := root.MkdirAll(filepath.FromSlash(workingDirectory.Path()), 0700); err != nil {
+	if err := root.MkdirAll(filepath.FromSlash(workingDirectory.Path()), filesystem.PrivateDirectoryMode); err != nil {
 		return errors.Join(fmt.Errorf("pluginpackage: create server working directory: %w", err), root.Close())
 	}
 	return root.Close()
 }
 
-// Definitions preserves declared membership without inspecting package or data
-// directories. An unresolved descriptor never grants connection authority.
 func (r *Releases) Definitions(ctx context.Context, installation plugin.Installation, release plugin.Release) ([]mcpserver.Server, error) {
 	dir, err := r.Root(release.Digest())
 	if err != nil {
@@ -159,8 +151,6 @@ func (r *Releases) Definitions(ctx context.Context, installation plugin.Installa
 	return result, nil
 }
 
-// Realize observes executable bytes and backends without advancing desired
-// configuration or live connections. Each backend has its own observed outcome.
 func (r *Releases) Realize(ctx context.Context, installation plugin.Installation, release plugin.Release) (_ plugins.Realization, err error) {
 	dir, err := r.Root(release.Digest())
 	if err != nil {
@@ -197,15 +187,11 @@ func (r *Releases) Realize(ctx context.Context, installation plugin.Installation
 	return result, nil
 }
 
-// declaredServer retains registry identity when configuration cannot produce a
-// complete descriptor. It never supplies enough authority to connect.
 func declaredServer(installation plugin.Installation, release plugin.Release, declaration plugin.Declaration, declared plugin.Server) (mcpserver.Server, error) {
 	source, err := installation.ServerSource(release, declared.Name)
 	if err != nil {
 		return mcpserver.Server{}, err
 	}
-	// An empty connection of the declared transport names how the server is
-	// reached while failing validation until configuration completes it.
 	var connection mcpserver.Connection = mcpserver.StdioConnection{}
 	if declared.Transport() == mcpserver.TransportStreamableHTTP {
 		connection = mcpserver.HTTPConnection{}
@@ -284,17 +270,15 @@ func descriptorServer(installation plugin.Installation, release plugin.Release, 
 	return server, nil
 }
 
-// realizeProcess completes a stdio connection with the Runtime-bound root and
-// data variables, the package's static environment, then the configured inputs, an inherited PATH unless one was
-// supplied, and its confined working directory.
 func realizeProcess(process mcpserver.StdioConnection, static map[string]string, declared plugin.Server, inputs plugin.ServerInputs, dir, data string) (mcpserver.Connection, error) {
 	process.Env = map[string]string{pluginprocess.RootVariable: dir, pluginprocess.DataVariable: data}
 	for key, value := range static {
 		process.Env[key] = plugin.ExpandPlaceholders(value, dir, data)
 	}
 	maps.Copy(process.Env, inputs.Env)
-	if !slices.ContainsFunc(slices.Collect(maps.Keys(process.Env)), func(key string) bool { return strings.EqualFold(key, "PATH") }) {
-		process.Env["PATH"] = os.Getenv("PATH")
+	const searchPath = "PATH"
+	if !slices.ContainsFunc(slices.Collect(maps.Keys(process.Env)), func(key string) bool { return strings.EqualFold(key, searchPath) }) {
+		process.Env[searchPath] = os.Getenv(searchPath)
 	}
 	workingDirectory, err := declared.WorkingDirectory()
 	if err != nil {
@@ -305,8 +289,6 @@ func realizeProcess(process mcpserver.StdioConnection, static map[string]string,
 	return process, nil
 }
 
-// realizeBackend checks that an enabled stdio descriptor's working directory
-// exists inside its boundary now; other descriptors need no backend.
 func realizeBackend(ctx context.Context, server mcpserver.Server, declared plugin.Server, dir, data string) error {
 	process, ok := server.Connection.(mcpserver.StdioConnection)
 	if !server.Enabled || !ok {
@@ -354,8 +336,6 @@ func hostNode() (localruntime.Node, error) {
 	return localruntime.NodeForExecutable(executable)
 }
 
-// locate resolves a working directory to the boundary it is confined to and
-// its path beneath that boundary.
 func locate(workingDirectory plugin.WorkingDirectory, dir, data string) (boundary, relative string) {
 	boundary = dir
 	if workingDirectory.Base() == plugin.DataBase {

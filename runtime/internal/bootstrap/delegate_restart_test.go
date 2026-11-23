@@ -300,12 +300,6 @@ func waitingSiblingModel() chat.Model {
 	return model
 }
 
-// TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther holds two children that
-// both need human input. The barrier publishes the wait that has already formed
-// and freezes the other branch at its next safe boundary, so cancelling the
-// published one must release its frozen sibling to raise its own question, and
-// answering that one must complete a tree whose durable conversation still
-// matches the model context it is reduced from.
 func TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
@@ -356,8 +350,6 @@ func TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	// The released sibling still has to take its own model turn before it can
-	// raise a question, so the barrier it forms is awaited rather than read.
 	var survivorRunID, survivorItemID string
 	deadline := time.Now().Add(lifecycleWaitBudget(t))
 	for survivorRunID == "" {
@@ -378,10 +370,6 @@ func TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther(t *testing.T) {
 	if survivorRunID == canceledRunID {
 		t.Fatalf("canceled sibling %s raised another question", canceledRunID)
 	}
-	// Answering the survivor closes the model round both siblings were declared
-	// in. The canceled sibling's Tool result has to reach the durable
-	// conversation in that round's call order, or the next model call reduces a
-	// context that no longer matches its own history.
 	_, resumed, err := api.ResumeRun(ctx, protocol.ResumeRunRequest{
 		RunID: started.RunID,
 		Responses: []protocol.InterruptResponse{{

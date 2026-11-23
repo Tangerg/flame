@@ -18,7 +18,7 @@ const TokenSchema = z.string().regex(/^[\x21-\x7e]*$/);
 export type RuntimeEndpointRejection =
   "invalid_url" | "unsupported_scheme" | "invalid_token" | "insecure_bearer" | "storage_failed";
 
-export type RuntimeEndpointChange =
+type RuntimeEndpointChange =
   | { kind: "applied"; endpoint: string; changed: boolean }
   | { kind: "rejected"; input: string; reason: RuntimeEndpointRejection };
 

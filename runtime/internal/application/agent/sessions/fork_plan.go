@@ -10,8 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
 )
 
-// ForkPlan is the atomic durable command for creating one child Session with
-// the complete visible history and Plan held by its resolved parent boundary.
 type ForkPlan struct {
 	parentID        identity.SessionID
 	history         HistorySnapshot
@@ -74,7 +72,6 @@ func ownForkPlanBoundaries(runs []run.Run, captures []RunPlanBoundary) ([]RunPla
 	return clonePlanBoundaries(captures), nil
 }
 
-// ParentID returns the canonical parent Session identity.
 func (f ForkPlan) ParentID() identity.SessionID { return f.parentID }
 
 func (f ForkPlan) History() HistorySnapshot { return f.history.clone() }

@@ -10,11 +10,8 @@ import (
 	"github.com/Tangerg/go-sdk/jsonrpc"
 )
 
-// DecodeRPCMessage rejects ambiguous JSON before the transport owner decodes it. The
-// SDK owns the JSON-RPC envelope semantics; this transport boundary first
-// rejects duplicate JSON members so one byte sequence cannot be interpreted as
-// two different requests by intermediaries that choose first-wins versus
-// last-wins decoding.
+// Duplicate members are rejected so one byte sequence cannot be read as two
+// different requests by first-wins and last-wins decoders.
 func DecodeRPCMessage(encoded []byte) (jsonrpc.Message, error) {
 	if err := validateSingleUnambiguousValue(encoded); err != nil {
 		return nil, err
@@ -32,13 +29,11 @@ func DecodeRPCMessage(encoded []byte) (jsonrpc.Message, error) {
 	return message, nil
 }
 
-// The envelope is walked as tokens rather than decoded into Go values: this
-// check only decides each value's kind, and a token decoder never converts a
-// number at all, so an id past IEEE-754's exact range is classified without
-// being read through float64.
+// Tokens are walked rather than decoded so an id past IEEE-754's exact range is
+// never read through float64.
 func validateJSONRPCEnvelope(encoded []byte) error {
 	parser := jsonEnvelopeParser{decoder: jsontext.NewDecoder(bytes.NewReader(encoded))}
-	if _, err := parser.value(true); err != nil {
+	if _, err := parser.value(envelopeLevel); err != nil {
 		return err
 	}
 	return nil
@@ -59,14 +54,22 @@ type jsonEnvelopeParser struct {
 	decoder *jsontext.Decoder
 }
 
-func (parser jsonEnvelopeParser) value(envelope bool) (jsonValueKind, error) {
+// Only the outermost object is the JSON-RPC envelope; nested objects are payload.
+type jsonLevel uint8
+
+const (
+	envelopeLevel jsonLevel = iota
+	payloadLevel
+)
+
+func (parser jsonEnvelopeParser) value(level jsonLevel) (jsonValueKind, error) {
 	token, err := parser.decoder.ReadToken()
 	if err != nil {
 		return jsonNull, err
 	}
 	switch token.Kind() {
 	case '{':
-		return parser.object(envelope)
+		return parser.object(level)
 	case '[':
 		return parser.array()
 	case '"':
@@ -82,7 +85,7 @@ func (parser jsonEnvelopeParser) value(envelope bool) (jsonValueKind, error) {
 	}
 }
 
-func (parser jsonEnvelopeParser) object(envelope bool) (jsonValueKind, error) {
+func (parser jsonEnvelopeParser) object(level jsonLevel) (jsonValueKind, error) {
 	members := make(jsonObjectMembers)
 	// PeekKind reports KindInvalid once the input cannot yield another token, so
 	// a truncated object leaves the loop and is reported by close rather than
@@ -93,11 +96,11 @@ func (parser jsonEnvelopeParser) object(envelope bool) (jsonValueKind, error) {
 			return jsonObject, err
 		}
 		members.add(member)
-		valueKind, err := parser.value(false)
+		valueKind, err := parser.value(payloadLevel)
 		if err != nil {
 			return jsonObject, err
 		}
-		if envelope && member == jsonRPCIDMember && valueKind != jsonString {
+		if level == envelopeLevel && member == jsonRPCIDMember && valueKind != jsonString {
 			return jsonObject, errors.New(
 				"JSON-RPC id must be a string; omit id for a notification",
 			)
@@ -106,7 +109,7 @@ func (parser jsonEnvelopeParser) object(envelope bool) (jsonValueKind, error) {
 	if err := parser.close('}', "JSON object is not closed"); err != nil {
 		return jsonObject, err
 	}
-	if envelope {
+	if level == envelopeLevel {
 		if err := members.validateEnvelope(); err != nil {
 			return jsonObject, err
 		}
@@ -127,7 +130,7 @@ func (parser jsonEnvelopeParser) memberName() (string, error) {
 
 func (parser jsonEnvelopeParser) array() (jsonValueKind, error) {
 	for parser.decoder.PeekKind() != ']' && parser.decoder.PeekKind() != jsontext.KindInvalid {
-		if _, err := parser.value(false); err != nil {
+		if _, err := parser.value(payloadLevel); err != nil {
 			return jsonArray, err
 		}
 	}
@@ -210,11 +213,6 @@ func (members jsonObjectMembers) rejectUnknown(envelopeKind string, allowed ...s
 	return nil
 }
 
-// validateSingleUnambiguousValue rejects the two shapes the JSON-RPC SDK's
-// decoder would otherwise resolve silently: a repeated object member, whose
-// meaning depends on whether a reader keeps the first or the last, and a second
-// top-level value after the message. The standard library's decoder refuses
-// duplicates by default and names the member and its location.
 func validateSingleUnambiguousValue(encoded []byte) error {
 	decoder := jsontext.NewDecoder(bytes.NewReader(encoded))
 	if _, err := decoder.ReadValue(); err != nil {

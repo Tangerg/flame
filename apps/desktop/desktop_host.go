@@ -21,8 +21,6 @@ type workingDirectoryPicker interface {
 	ChooseWorkingDirectory() (string, error)
 }
 
-// The native picker owns the write destination; IPC callers supply only a
-// basename and bytes, whole or streamed.
 type fileSaver interface {
 	SaveFile(suggestedFilename string, contents []byte) (bool, error)
 	exportDestinationPicker
@@ -36,9 +34,6 @@ type pathOpener interface {
 	OpenFile(path string) error
 }
 
-// nativeShell is the Wails surface the host drives. Wails needs the host as a
-// service before it creates the window and dialogs, so the shell is bound once,
-// complete, after construction and before the application runs.
 type nativeShell struct {
 	window        nativeWindow
 	reveal        func()
@@ -49,22 +44,16 @@ type nativeShell struct {
 	notifications systemNotifications
 }
 
-// Every exported method becomes a Wails IPC entry point. Keep composition methods
-// unexported; bridgegen derives its contract from these actual declarations.
 type DesktopHost struct {
 	transfer             exportTransfer
 	localRuntimeEndpoint string
 	localTokenPath       string
 	shell                *nativeShell
-	// Started in ServiceStartup; notificationsReady flips once, before the frontend
-	// can call, and is read from IPC goroutines afterwards.
-	notificationsReady atomic.Bool
+	notificationsReady   atomic.Bool
 }
 
 var errShellUnbound = errors.New("desktop host: native shell is not bound")
 
-// The endpoint and product root describe one deployment: the published token is read
-// only from that root, so the endpoint must name the Runtime that root belongs to.
 func newDesktopHost(productRoot, localRuntimeEndpoint string) (*DesktopHost, error) {
 	endpoint, err := loopbackRuntimeOrigin(localRuntimeEndpoint)
 	if err != nil {
@@ -81,8 +70,8 @@ func newDesktopHost(productRoot, localRuntimeEndpoint string) (*DesktopHost, err
 }
 
 // The frontend grants native filesystem access to exactly this origin, so only a
-// loopback IP literal qualifies; host names are never resolved. Errors omit the input
-// because it may carry credentials.
+// loopback IP literal qualifies and host names are never resolved. Errors omit the
+// input because it may carry credentials.
 func loopbackRuntimeOrigin(raw string) (string, error) {
 	endpoint, err := httporigin.ParseEndpoint(raw)
 	if err != nil {
@@ -113,13 +102,9 @@ func (d *DesktopHost) bind(shell nativeShell) error {
 }
 
 func defaultDesktopHost() (*DesktopHost, error) {
-	home, err := os.UserHomeDir()
+	root, err := localruntime.ProductRoot()
 	if err != nil {
-		return nil, fmt.Errorf("desktop host: resolve user home: %w", err)
-	}
-	root, err := localruntime.ResolveProductRoot(home, os.Getenv("FLAME_HOME"))
-	if err != nil {
-		return nil, fmt.Errorf("desktop host: resolve flame home: %w", err)
+		return nil, fmt.Errorf("desktop host: %w", err)
 	}
 	endpoint := os.Getenv("FLAME_LOCAL_RUNTIME_URL")
 	if endpoint == "" {
@@ -217,8 +202,6 @@ func (d *DesktopHost) ChooseWorkingDirectory() (string, error) {
 	return filepath.Clean(absolute), nil
 }
 
-// The bool distinguishes a completed write from user cancellation. The name is only a
-// suggestion for the native picker, so it is validated rather than rewritten.
 func (d *DesktopHost) SaveFile(suggestedFilename, contentBase64 string) (bool, error) {
 	contents, err := bridge.DecodeFileSave(suggestedFilename, contentBase64)
 	if err != nil {
@@ -261,8 +244,10 @@ func (d *DesktopHost) BeginFileSave(name string, size int) (string, error) {
 	}
 	return d.transfer.begin(name, size, d.shell.files)
 }
+
 func (d *DesktopHost) AppendFileSave(id string, offset int, encoded string) error {
 	return d.transfer.appendChunk(id, offset, encoded)
 }
+
 func (d *DesktopHost) FinishFileSave(id string) error { return d.transfer.finish(id) }
 func (d *DesktopHost) CancelFileSave(id string) error { return d.transfer.cancel(id) }

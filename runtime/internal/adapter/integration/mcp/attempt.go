@@ -10,22 +10,27 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 )
 
-// errSourceWithdrawn marks a configuration source that no longer permits a
-// connection. Only the current attempt may remove its live entry.
 var errSourceWithdrawn = errors.New("mcp: connection source withdrawn")
 
-// attempt owns connection admission before configuration or credential I/O.
-// Run releases the admission gate and joins the result; Close cancels it.
-// Shutdown also cancels and joins attempts whose gate was never released.
+// An authorization attempt adopts the OAuth handler it completed; a connection
+// attempt keeps the handler the server already holds.
+type attemptPurpose int
+
+const (
+	attemptConnect attemptPurpose = iota
+	attemptAuthorize
+)
+
 type attempt struct {
 	owner     *connections
 	target    *server
 	ctx       context.Context
 	cancel    context.CancelFunc
 	resolve   func(context.Context, mcpserver.ID) (*launchPermit, error)
-	authorize bool
+	purpose   attemptPurpose
 	withdrawn *sessionCloseAttempt
 	start     chan struct{}
 	done      chan struct{}
@@ -34,14 +39,14 @@ type attempt struct {
 }
 
 func (c *connections) beginConnect(ctx context.Context, name mcpserver.ID, resolve func(context.Context, mcpserver.ID) (*launchPermit, error)) (*attempt, error) {
-	return c.begin(ctx, name, resolve, false)
+	return c.begin(ctx, name, resolve, attemptConnect)
 }
 
 func (c *connections) beginAuthorize(ctx context.Context, name mcpserver.ID, resolve func(context.Context, mcpserver.ID) (*launchPermit, error)) (*attempt, error) {
-	return c.begin(ctx, name, resolve, true)
+	return c.begin(ctx, name, resolve, attemptAuthorize)
 }
 
-func (c *connections) begin(ctx context.Context, name mcpserver.ID, resolve func(context.Context, mcpserver.ID) (*launchPermit, error), authorize bool) (*attempt, error) {
+func (c *connections) begin(ctx context.Context, name mcpserver.ID, resolve func(context.Context, mcpserver.ID) (*launchPermit, error), purpose attemptPurpose) (*attempt, error) {
 	if ctx == nil || resolve == nil {
 		return nil, errors.New("mcp: attempt context and configuration source are required")
 	}
@@ -72,11 +77,11 @@ func (c *connections) begin(ctx context.Context, name mcpserver.ID, resolve func
 	}
 	attempt := &attempt{
 		owner: c, target: target, ctx: ctx, cancel: cancel, resolve: resolve,
-		authorize: authorize, withdrawn: c.retireSessionLocked(target.session),
+		purpose: purpose, withdrawn: c.retireSessionLocked(target.session),
 		start: make(chan struct{}), done: make(chan struct{}),
 	}
 	target.attempt = attempt
-	target.settle(nil, nil, mcpserver.ConnectionConnecting, "", nil)
+	target.markConnecting()
 	c.publishToolsLocked(name)
 	c.attempts.Add(1)
 	go attempt.run()
@@ -99,7 +104,7 @@ func (a *attempt) run() {
 	defer a.cancel()
 	a.err = a.execute()
 	if a.err != nil && !errors.Is(a.err, context.Canceled) {
-		slog.ErrorContext(a.ctx, "mcp: connection attempt failed", "server.name", a.target.name().String(), "error", a.err)
+		slog.ErrorContext(a.ctx, "mcp: connection attempt failed", telemetry.MCPServer(a.target.name().String()), telemetry.Error(a.err))
 	}
 	c := a.owner
 	c.mu.Lock()
@@ -108,7 +113,7 @@ func (a *attempt) run() {
 			// Detach by attempt identity; a stale source read cannot remove its successor.
 			c.removeLocked(a.target)
 		} else {
-			a.target.settle(nil, nil, mcpserver.ConnectionFailed, mcpserver.FailureConfiguration, a.err)
+			a.target.markFailed(mcpserver.FailureConfiguration, a.err)
 			a.target.attempt = nil
 			c.publishToolsLocked(a.target.id)
 		}
@@ -116,8 +121,6 @@ func (a *attempt) run() {
 	c.mu.Unlock()
 }
 
-// Attempts execute detached external code. A panic must still settle the
-// attempt and release shutdown waiters, as an ordinary connection failure does.
 func (a *attempt) execute() (err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -162,13 +165,12 @@ func (a *attempt) connect() (err error) {
 	if prepared.config.ID() != a.target.name() {
 		return errors.New("mcp: connection configuration source changed identity")
 	}
-	if a.authorize {
+	if a.purpose == attemptAuthorize {
 		return c.authorize(a, prepared)
 	}
 	return c.configure(a, prepared)
 }
 
-// currentAttempt is called with c.mu held.
 func (c *connections) currentAttempt(attempt *attempt) bool {
 	return c.find(attempt.target.name()) == attempt.target && attempt.target.attempt == attempt
 }
@@ -176,7 +178,7 @@ func (c *connections) currentAttempt(attempt *attempt) bool {
 func (c *connections) failAttempt(attempt *attempt, failure mcpserver.ConnectionFailure, cause error) {
 	c.mu.Lock()
 	if c.currentAttempt(attempt) {
-		attempt.target.settle(nil, nil, mcpserver.ConnectionFailed, failure, cause)
+		attempt.target.markFailed(failure, cause)
 		attempt.target.attempt = nil
 		c.publishToolsLocked(attempt.target.id)
 	}

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
-	app "github.com/Tangerg/flame/runtime/internal/application/integration/pluginbrowser"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/pluginbrowser"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 
@@ -46,8 +46,6 @@ func New(config Config) (*Service, error) {
 	return &Service{config: config, contract: contract.Ref()}, nil
 }
 
-// The browser reaches the control service either at an absolute HTTP(S)
-// endpoint or at a path on the page's own origin.
 func validControlEndpoint(raw string) bool {
 	if strings.ContainsAny(raw, "?#") {
 		return false
@@ -60,7 +58,7 @@ func validControlEndpoint(raw string) bool {
 	return err == nil && endpoint.URL().Path != ""
 }
 
-func (s *Service) Open(ctx context.Context, request app.OpenRequest) (app.Session, error) {
+func (s *Service) Open(ctx context.Context, request pluginbrowser.OpenRequest) (pluginbrowser.Session, error) {
 	var credentials framebrowser.Credentials
 	var err error
 	if request.Resume != nil {
@@ -69,15 +67,15 @@ func (s *Service) Open(ctx context.Context, request app.OpenRequest) (app.Sessio
 		credentials, err = s.config.Bridge.OpenRealm(ctx, request.OperationID, request.ResumeToken)
 	}
 	if err != nil {
-		return app.Session{}, consumerError(err)
+		return pluginbrowser.Session{}, consumerError(err)
 	}
 	if credentials.MaxMessageBytes < 1 || credentials.MaxMessageBytes > math.MaxInt {
-		return app.Session{}, frame.ErrInvalid
+		return pluginbrowser.Session{}, frame.ErrInvalid
 	}
-	return app.Session{Authority: credentials.Authority, Realm: credentials.Realm, Credential: credentials.Token, ControlEndpoint: s.config.ControlEndpoint, MaximumMessageBytes: int(credentials.MaxMessageBytes), ProofCapacity: s.config.ProofCapacity, PreparationCapacity: s.config.PreparationCapacity, PollInterval: s.config.PollInterval, ComponentContract: s.contract}, nil
+	return pluginbrowser.Session{Authority: credentials.Authority, Realm: credentials.Realm, Credential: credentials.Token, ControlEndpoint: s.config.ControlEndpoint, MaximumMessageBytes: int(credentials.MaxMessageBytes), ProofCapacity: s.config.ProofCapacity, PreparationCapacity: s.config.PreparationCapacity, PollInterval: s.config.PollInterval, ComponentContract: s.contract}, nil
 }
 
-func (s *Service) Acquire(ctx context.Context, request app.ComponentRequest) (framebrowser.UseGrant, error) {
+func (s *Service) Acquire(ctx context.Context, request pluginbrowser.ComponentRequest) (framebrowser.UseGrant, error) {
 	credentials, err := s.config.Bridge.Credentials(request.Realm)
 	if err != nil {
 		return framebrowser.UseGrant{}, consumerError(err)
@@ -111,4 +109,4 @@ func consumerError(err error) error {
 	}
 }
 
-var _ app.Service = (*Service)(nil)
+var _ pluginbrowser.Service = (*Service)(nil)

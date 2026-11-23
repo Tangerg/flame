@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 	"iter"
 	"sync/atomic"
@@ -10,7 +9,6 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
-	framevalue "github.com/Tangerg/frame/value"
 	"github.com/samber/lo"
 )
 
@@ -34,14 +32,9 @@ func BindPluginStreamingMethod[P, C, R any](caller PluginStreamer, binding Plugi
 	return &PluginStreamingMethod[P, C, R]{boundMethod: bound, caller: caller}, nil
 }
 
-// Stream freezes input and options before lazy delivery. The returned sequence
-// has one consumer and never resubmits or changes its captured binding.
 func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, options protocol.PluginCallOptions) iter.Seq2[pluginmcp.StreamValue[C, R], error] {
-	captured, err := captureStreamOptions(options)
-	var request protocol.CallPluginRequest
-	if err == nil {
-		request, err = m.request(input, captured)
-	}
+	captured := options.Clone()
+	request, err := m.request(input, captured)
 	var consumed atomic.Bool
 	return func(yield func(pluginmcp.StreamValue[C, R], error) bool) {
 		if !consumed.CompareAndSwap(false, true) {
@@ -62,9 +55,6 @@ func (m *PluginStreamingMethod[P, C, R]) Stream(ctx context.Context, input P, op
 	}
 }
 
-// deliver relays a stream's chunks and then its single final result. It
-// returns the failure that ends the stream; a consumer that stops early ends it
-// without one.
 func (m *PluginStreamingMethod[P, C, R]) deliver(events iter.Seq2[protocol.PluginStreamEvent, error], yield func(pluginmcp.StreamValue[C, R], error) bool) error {
 	if events == nil {
 		return m.contractBreach(nil)
@@ -88,7 +78,7 @@ func (m *PluginStreamingMethod[P, C, R]) deliver(events iter.Seq2[protocol.Plugi
 			if err != nil {
 				return m.contractBreach(err)
 			}
-			if !yield(pluginmcp.StreamValue[C, R]{Chunk: &chunk}, nil) {
+			if !yield(pluginmcp.StreamChunk[R](chunk), nil) {
 				return nil
 			}
 		case protocol.PluginStreamResult:
@@ -102,16 +92,6 @@ func (m *PluginStreamingMethod[P, C, R]) deliver(events iter.Seq2[protocol.Plugi
 	if final == nil {
 		return m.contractBreach(pluginmcp.ErrStreamUnconfirmed)
 	}
-	yield(pluginmcp.StreamValue[C, R]{Result: final}, nil)
+	yield(pluginmcp.StreamResult[C](*final), nil)
 	return nil
-}
-
-func captureStreamOptions(options protocol.PluginCallOptions) (protocol.PluginCallOptions, error) {
-	encoded, err := json.Marshal(options)
-	if err != nil {
-		return protocol.PluginCallOptions{}, err
-	}
-	var captured protocol.PluginCallOptions
-	err = json.Unmarshal(encoded, &captured, json.RejectUnknownMembers(true), framevalue.Numbers())
-	return captured, err
 }

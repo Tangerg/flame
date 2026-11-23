@@ -39,7 +39,7 @@ async function verifyNode(directory, target) {
     throw new Error("Node deployment executable path is redirected");
   if (!info.isFile() || (info.mode & 0o111) === 0)
     throw new Error("Node deployment requires a regular executable file");
-  if (hash(await readFile(executable)) !== target.executableSHA256)
+  if (hash(await readFile(executable)) !== target.executableSha256)
     throw new Error("Node deployment executable checksum mismatch");
   return executable;
 }
@@ -59,7 +59,7 @@ async function verifiedArchive(cache, target, offline) {
   await mkdir(cache, { recursive: true });
   const archive = join(cache, target.archive);
   if (await exists(archive)) {
-    if (hash(await readFile(archive)) === target.archiveSHA256) return archive;
+    if (hash(await readFile(archive)) === target.archiveSha256) return archive;
     if (offline) throw new Error("prepared Node artifact checksum mismatch");
   } else {
     if (offline)
@@ -74,7 +74,7 @@ async function verifiedArchive(cache, target, offline) {
   if (!response.ok)
     throw new Error(`Node artifact download failed (${response.status})`);
   const bytes = Buffer.from(await response.arrayBuffer());
-  if (hash(bytes) !== target.archiveSHA256)
+  if (hash(bytes) !== target.archiveSha256)
     throw new Error("downloaded Node artifact checksum mismatch");
   await cacheArchive(archive, bytes);
   return archive;

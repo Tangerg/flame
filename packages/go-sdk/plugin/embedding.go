@@ -17,8 +17,6 @@ type TextEmbeddings struct {
 	Vectors [][]float32 `json:"vectors"`
 }
 
-// TextEmbeddingMethod projects vectors from the captured embedding model. The
-// model adapter retains the complete provider response and endpoint evidence.
 func TextEmbeddingMethod() (*pluginmcp.Method[[]string, TextEmbeddings], error) {
 	return pluginmcp.NewMethod[[]string, TextEmbeddings](frame.MethodConfig{Name: "flame.model/embed-texts.v2", Kind: frame.Command, Target: extension.ScopeCall, Description: "Embed texts and identify the vector space captured by this exchange."})
 }
@@ -31,7 +29,7 @@ func CallTextEmbedding(ctx context.Context, ref pluginmcp.CallbackRef, id plugin
 	if err != nil {
 		return TextEmbeddings{}, err
 	}
-	vectors, err := pluginmcp.CallHost(ctx, ref, method, pluginmcp.CommandID(id), slices.Clone(texts))
+	vectors, err := pluginmcp.CallHost(ctx, ref, method, id, slices.Clone(texts))
 	if err != nil {
 		return TextEmbeddings{}, err
 	}
@@ -41,8 +39,6 @@ func CallTextEmbedding(ctx context.Context, ref pluginmcp.CallbackRef, id plugin
 	return vectors, nil
 }
 
-// NewTextEmbeddingCallback leaves admission and budgets with the calling owner.
-// Physical model evidence belongs to this child exchange, retaining its parent.
 func NewTextEmbeddingCallback(call func(context.Context, pluginmcp.Command[[]string]) (TextEmbeddings, error)) (pluginmcp.Callback, error) {
 	if call == nil {
 		return pluginmcp.Callback{}, errors.New("embedding call: model owner is required")

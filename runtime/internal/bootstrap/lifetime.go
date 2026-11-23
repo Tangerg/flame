@@ -33,9 +33,6 @@ type runtimeLifetime struct {
 	frameworkCauses *frame.CloseCauses
 }
 
-// lifetimePhase orders Runtime shutdown. Stopping is entered once, by the first
-// attempt; a failed attempt leaves it there so a retry joins the remaining
-// teardown instead of broadcasting cancellation again.
 type lifetimePhase uint8
 
 const (
@@ -79,14 +76,6 @@ type taskOwner interface {
 
 const runEffectDrainTimeout = 5 * time.Second
 
-// Close shuts the complete Runtime down in reverse dependency order.
-// The first caller starts one shutdown attempt that stops
-// producers, drains then cancels accepted maintenance, joins components, and
-// finally enters terminal resource teardown.
-// Each caller has a bounded wait, but its deadline cannot abandon or duplicate
-// that generation. A completed component error permits a later Close to start
-// one new generation. Terminal diagnostics remain the result of every later
-// Close without replaying resource teardown.
 func (i *Instance) Close() error {
 	return closeRuntimeLifetime(i.lifetime)
 }
@@ -157,8 +146,6 @@ func runShutdown(
 	finishShutdown(lifetime, attempt, settled, resourceErr)
 }
 
-// beginStopping reports whether this call moved a running lifetime to
-// stopping; only that call broadcasts shutdown.
 func (l *runtimeLifetime) beginStopping() bool {
 	l.closeMu.Lock()
 	defer l.closeMu.Unlock()
@@ -169,9 +156,6 @@ func (l *runtimeLifetime) beginStopping() bool {
 	return true
 }
 
-// broadcastShutdown stops new work everywhere before anything is joined.
-// Delivery is acquired after assembly, so a startup that fails before then
-// rolls back a graph that never had an endpoint to stop.
 func (l *runtimeLifetime) broadcastShutdown(components []shutdownComponent) {
 	if l.delivery != nil {
 		l.delivery.BeginShutdown()
@@ -189,8 +173,6 @@ func (l *runtimeLifetime) broadcastShutdown(components []shutdownComponent) {
 	}
 }
 
-// joinWork waits for recovery, components, run effects, delivery and the
-// executor, in the order each depends on the previous having stopped.
 func (l *runtimeLifetime) joinWork(ownerCtx context.Context, components []shutdownComponent) error {
 	if err := completion.Wait(ownerCtx, l.recoveryDone); err != nil {
 		return err
@@ -221,10 +203,6 @@ func (l *runtimeLifetime) joinWork(ownerCtx context.Context, components []shutdo
 	return nil
 }
 
-// drainRunEffects lets accepted best-effort work (notably Session title
-// generation) settle for a bounded window; run producers are already joined,
-// so nothing new is admitted. A stuck provider is then canceled through the
-// normal owner.
 func (l *runtimeLifetime) drainRunEffects(ownerCtx context.Context) error {
 	drainCtx, cancelDrain := context.WithTimeout(ownerCtx, runEffectDrainTimeout)
 	_ = l.runEffectTasks.Drain(drainCtx)
@@ -233,10 +211,6 @@ func (l *runtimeLifetime) drainRunEffects(ownerCtx context.Context) error {
 	return l.runEffectTasks.Wait(ownerCtx)
 }
 
-// teardownGraph is the one reverse-dependency teardown of every resource.
-// Host resources are acquired before tool resources, so concatenating them in
-// creation order lets the Sequence own the whole graph in one
-// self-continuing generation.
 func (l *runtimeLifetime) teardownGraph() *shutdownSequence {
 	l.closeMu.Lock()
 	defer l.closeMu.Unlock()

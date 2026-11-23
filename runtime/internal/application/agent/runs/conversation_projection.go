@@ -38,10 +38,6 @@ func TerminalConversation(
 	return appended, err
 }
 
-// terminalToolResult is the text an open tool call carries once its Run ended
-// without producing one. Every path that closes a parked or recovered tool call
-// takes it from here: the text reaches the model as the call's result, so two
-// spellings would make the same ended Run read as two different histories.
 func terminalToolResult(outcome run.Outcome, detail string) string {
 	var result string
 	switch outcome {
@@ -56,7 +52,6 @@ func terminalToolResult(outcome run.Outcome, detail string) string {
 	default:
 		result = "tool call ended without a result before the run finished"
 	}
-	// An ending detail is trimmed by its domain invariant.
 	if detail != "" && outcome == run.OutcomeCanceled {
 		result += ": " + detail
 	}

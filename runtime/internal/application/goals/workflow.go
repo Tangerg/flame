@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/goalworkflow"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 )
 
 type Workflow interface {
@@ -16,7 +17,7 @@ type Workflow interface {
 	DecideGoal(context.Context, extension.ContributionSource, goalworkflow.Request) (goalworkflow.AuthoredDecision, error)
 }
 
-func decideGoal(ctx context.Context, workflow Workflow, state goal.Snapshot, input goalworkflow.Request, incarnation string, now time.Time) (goal.Goal, bool, error) {
+func decideGoal(ctx context.Context, workflow Workflow, state goal.Snapshot, input goalworkflow.Request, incarnation goalref.IncarnationID, now time.Time) (goal.Goal, bool, error) {
 	if input.Signal != goalworkflow.Start {
 		current := state.WorkflowValue()
 		input.Current = &current
@@ -50,7 +51,8 @@ func decisionError(d goalworkflow.Decision) error {
 		return fmt.Errorf("%w: workflow refused %q", goal.ErrInvalid, d.Refusal)
 	}
 }
-func transition(ctx context.Context, w Workflow, current goal.Goal, input goalworkflow.Request, incarnation string, now time.Time) (goal.Goal, error) {
+
+func transition(ctx context.Context, w Workflow, current goal.Goal, input goalworkflow.Request, incarnation goalref.IncarnationID, now time.Time) (goal.Goal, error) {
 	next, changed, err := decideGoal(ctx, w, current.Snapshot(), input, incarnation, now)
 	if err == nil && !changed {
 		return goal.Goal{}, errors.New("goals: workflow omitted the requested transition")

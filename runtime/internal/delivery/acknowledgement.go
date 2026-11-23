@@ -14,8 +14,6 @@ const (
 	AcknowledgementPresence
 )
 
-// AcknowledgementMatch binds two wire fields whose separate shapes cannot prove
-// that the stream acknowledges the original request.
 type AcknowledgementMatch struct {
 	Request string
 	Result  string

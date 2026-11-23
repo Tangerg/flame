@@ -19,11 +19,9 @@ func (i *interactionSession) admitProcess(
 		return errors.New("execution: Interaction received an invalid Process admission")
 	}
 	relation := admission.ProcessID()
-	i.state.mu.Lock()
-	deployments := i.state.deployments
-	i.state.mu.Unlock()
-	if deployments == nil {
-		return errors.New("execution: Interaction deployments are unavailable")
+	deployments, err := i.state.boundDeployments()
+	if err != nil {
+		return err
 	}
 	if relation.Depth() == 0 {
 		if admission.ProgramRef() != deployments.root.ProgramRef() {
@@ -37,16 +35,12 @@ func (i *interactionSession) admitProcess(
 	if !deployments.managedChild(admission.ProgramRef()) {
 		return errors.New("execution: unmanaged child Process is outside the Runtime projection contract")
 	}
-	// The workflow's inner Interaction belongs to its already admitted task Run.
 	if deployments.interactionChild(admission.ProgramRef()) {
 		return nil
 	}
 	return i.admitDelegateChild(ctx, admission)
 }
 
-// admitDelegateChild binds a child Process to the Delegate call that spawned
-// it. The first admission reserves its child Run; a repeated one must restate
-// the same immutable identity.
 func (i *interactionSession) admitDelegateChild(ctx context.Context, admission scoperun.ProcessAdmission) error {
 	relation := admission.ProcessID()
 	parentID, _ := relation.Parent()
@@ -78,8 +72,6 @@ func (i *interactionSession) admitDelegateChild(ctx context.Context, admission s
 	return nil
 }
 
-// reserveChildRun commits the parent's Delegate call start, then asks the
-// product owner to reserve the child Run that this Process will execute.
 func (i *interactionSession) reserveChildRun(ctx context.Context, managed *managedDelegateCall, relation scoperun.ProcessID) (runs.ChildRunBinding, error) {
 	parent := i.executorMember(managed.parentRelation)
 	if err := i.commitFact(ctx, parent, managed.toolStart()); err != nil {

@@ -6,8 +6,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-// outputRunScope protects a renderer from mixing unrelated streams while allowing a
-// root stream to carry events from its negotiated child-run tree.
 type outputRunScope struct {
 	rootID  string
 	members map[string]conversation.RunLineage

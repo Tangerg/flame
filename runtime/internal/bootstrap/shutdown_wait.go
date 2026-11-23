@@ -7,9 +7,6 @@ import (
 
 const defaultShutdownWaitTimeout = 10 * time.Second
 
-// shutdownWaitPolicy is the caller-side wait budget for a process-owned
-// shutdown generation. It is always concrete and positive: cancellation of a
-// caller wait never doubles as cancellation of the underlying owner graph.
 type shutdownWaitPolicy struct {
 	timeout time.Duration
 }

@@ -1,4 +1,3 @@
-// Retry policies share the formula without sharing their independent tuning.
 export function cappedExponentialBackoffMs(
   exponent: number,
   baseMs: number,

@@ -14,6 +14,11 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
+const (
+	queuePreviewLines    = 3
+	queueButtonMinColumn = 8
+)
+
 func (q *queueDrawer) Place(space image.Point) layout.Placement {
 	if space.X <= 0 || space.Y <= 0 {
 		return layout.Placement{}
@@ -24,7 +29,7 @@ func (q *queueDrawer) Place(space image.Point) layout.Placement {
 	} else if entry, ok := q.selectedEntry(); ok {
 		lines := strings.Split(entry.Message.Text, "\n")
 		if len(lines) > 1 {
-			innerRows += min(len(lines), 3) + 1
+			innerRows += min(len(lines), queuePreviewLines) + 1
 		}
 	}
 	return layout.Placement{Anchor: layout.Bottom, Height: min(innerRows+2, space.Y)}
@@ -55,7 +60,7 @@ func (q *queueDrawer) Draw(frame scene.Frame) {
 }
 
 func (q *queueDrawer) title() string {
-	return "Queue · " + countedNoun(len(q.entries), "prompt")
+	return "Queue · " + countedNoun(len(q.entries), promptNoun)
 }
 
 func (q *queueDrawer) footer() string {
@@ -80,7 +85,7 @@ func (q *queueDrawer) drawEditor(frame scene.Frame, inner image.Rectangle) {
 	header := rows[0].Add(inner.Min)
 	label := "Editing queued prompt"
 	if attachments := len(entry.Message.Attachments); attachments > 0 {
-		label += " · keeps " + countedNoun(attachments, "attachment")
+		label += " · keeps " + countedNoun(attachments, attachmentNoun)
 	}
 	text.Of(label, q.theme.Heading).Truncate(header.Dx(), q.glyphs.Ellipsis).Draw(frame.View, header.Min.X, header.Min.Y)
 }
@@ -94,7 +99,7 @@ func (q *queueDrawer) drawEntries(frame scene.Frame) []queueHit {
 		frame.Text(0, 0, "No queued prompts.", q.theme.Muted)
 		return nil
 	}
-	hits := make([]queueHit, 0, queueDrawerVisibleRows*4)
+	var hits []queueHit
 	y := q.drawSelectedPreview(frame.View)
 	rows := min(queueDrawerVisibleRows, max(height-y, 0))
 	// Queue actions must stay visible with their selected entry after a resize.
@@ -122,7 +127,7 @@ func (q *queueDrawer) drawSelectedPreview(view grid.View) int {
 		if len(lines) > 1 && height >= 4 {
 			view.Text(0, 0, "Preview · full queued prompt", q.theme.Subtle.Merge(grid.Style{Attr: grid.Bold}))
 			y := 1
-			for _, line := range lines[:min(len(lines), 3)] {
+			for _, line := range lines[:min(len(lines), queuePreviewLines)] {
 				if y >= height-1 {
 					break
 				}
@@ -177,7 +182,7 @@ func (q *queueDrawer) drawActions(view grid.View, row image.Rectangle, id author
 	for _, button := range buttons {
 		buttonWidth := text.Width(button.label)
 		x := right - buttonWidth
-		if x < 8 {
+		if x < queueButtonMinColumn {
 			continue
 		}
 		style := rowStyle.Merge(q.theme.Muted)

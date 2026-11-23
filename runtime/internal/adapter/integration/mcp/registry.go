@@ -10,11 +10,10 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-// statuses returns one cached entry per server attached to the live projection
-// (connected and failed alike), in dial order.
 func (c *connections) statuses() []mcpserver.ConnectionStatus {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -30,9 +29,6 @@ func (c *connections) statuses() []mcpserver.ConnectionStatus {
 	return out
 }
 
-// detach removes a server from the live projection. Ordinary session teardown
-// belongs to connections. Managed retirement is requested from the Host, which
-// joins the actual resource after its original Uses have released.
 func (c *connections) detach(name mcpserver.ID) error {
 	c.mu.Lock()
 	if c.closed {
@@ -57,7 +53,7 @@ func (c *connections) removeLocked(target *server) {
 	c.publishToolsLocked(target.id)
 }
 
-func (c *connections) retireSessionLocked(session *sdkmcp.ClientSession) *sessionCloseAttempt {
+func (c *connections) retireSessionLocked(session *sdk.ClientSession) *sessionCloseAttempt {
 	attempt := c.beginSessionCloseLocked(session)
 	if attempt != nil {
 		if c.retirements == nil {
@@ -68,12 +64,8 @@ func (c *connections) retireSessionLocked(session *sdkmcp.ClientSession) *sessio
 	return attempt
 }
 
-// publishToolsLocked rebuilds the model-facing catalog from each connected
-// server's last verified tool snapshot and hands it to the sink. The caller
-// holds mu and has just changed a live outcome, so the sink observes exactly
-// the state Statuses reports. Network I/O stays outside this boundary, so
-// publication cannot turn caller cancellation or
-// another server's independent failure into a false catalog.
+// Network I/O stays outside this boundary so caller cancellation or another
+// server's failure cannot become a false catalog.
 func (c *connections) publishToolsLocked(changed ...mcpserver.ID) {
 	if c.onTools == nil {
 		return
@@ -91,12 +83,6 @@ func (c *connections) publishToolsLocked(changed ...mcpserver.ID) {
 	c.onTools(catalog, pending, changed)
 }
 
-// shutdown rejects new operations, joins admitted discovery and retires the
-// current catalog. The Host owns completion of managed instance retirement.
-// Ordinary ClientSession.Close consumes its transport closer even on error, so
-// that diagnostic is terminal for the connection owner's resource.
-// Every completed Shutdown returns the same aggregate result without repeating
-// cleanup; a caller's cancellation ends only its own wait.
 func (c *connections) shutdown(ctx context.Context) error {
 	if ctx == nil {
 		return errors.New("mcp: shutdown context is required")
@@ -160,7 +146,6 @@ func (c *connections) closeAll(attempt *shutdownAttempt) {
 	c.observers.Wait()
 
 	c.mu.Lock()
-	// Transfer joined retirement diagnostics into the immutable shutdown result.
 	for closeAttempt := range seen {
 		delete(c.retirements, closeAttempt)
 	}
@@ -169,7 +154,7 @@ func (c *connections) closeAll(attempt *shutdownAttempt) {
 	c.mu.Unlock()
 }
 
-func (c *connections) closeSession(ctx context.Context, session *sdkmcp.ClientSession) error {
+func (c *connections) closeSession(ctx context.Context, session *sdk.ClientSession) error {
 	if session == nil {
 		return nil
 	}
@@ -199,13 +184,13 @@ func (c *connections) closeSession(ctx context.Context, session *sdkmcp.ClientSe
 	return attempt.err
 }
 
-func (c *connections) beginSessionClose(session *sdkmcp.ClientSession) *sessionCloseAttempt {
+func (c *connections) beginSessionClose(session *sdk.ClientSession) *sessionCloseAttempt {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.beginSessionCloseLocked(session)
 }
 
-func (c *connections) beginSessionCloseLocked(session *sdkmcp.ClientSession) *sessionCloseAttempt {
+func (c *connections) beginSessionCloseLocked(session *sdk.ClientSession) *sessionCloseAttempt {
 	owned := c.sessions[session]
 	if owned == nil {
 		return nil
@@ -222,10 +207,6 @@ func (c *connections) beginSessionCloseLocked(session *sdkmcp.ClientSession) *se
 	return attempt
 }
 
-// closeOwnedSession keeps a defect inside an external session's closer from
-// ending the process and stranding every Shutdown waiting on this attempt. A
-// close that fails already lands in the attempt's error; a close that panics is
-// one of those.
 func closeOwnedSession(owned *ownedSession) (err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -236,25 +217,19 @@ func closeOwnedSession(owned *ownedSession) (err error) {
 }
 
 func (c *connections) closeSessionAttempt(
-	session *sdkmcp.ClientSession,
+	session *sdk.ClientSession,
 	owned *ownedSession,
 	attempt *sessionCloseAttempt,
 ) {
 	err := closeOwnedSession(owned)
 	if err != nil {
-		// A process that could not be stopped is a host resource leak. Shutdown
-		// still reports it, but the operator learns of it when it happens.
-		slog.ErrorContext(c.lifetime, "mcp: session retirement failed", "error", err)
+		slog.ErrorContext(c.lifetime, "mcp: session retirement failed", telemetry.Error(err))
 	}
 	c.mu.Lock()
 	if current := c.sessions[session]; current == owned && current.close == attempt {
-		// Ordinary close is one-shot. For managed entries this removes only
-		// the catalog observation; the Host retains original exit ownership.
 		delete(c.sessions, session)
 	}
 	if err == nil {
-		// Successful asynchronous retirement has no diagnostic to preserve for
-		// Shutdown; a failed attempt stays in retirements until it is reported.
 		delete(c.retirements, attempt)
 	}
 	attempt.err = err

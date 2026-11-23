@@ -18,7 +18,7 @@ interface RunCancellationControllerOptions<Response> {
   onSynchronizationFailed: (error: unknown) => void;
 }
 
-export interface RunCancellationController {
+interface RunCancellationController {
   cancel(runId: string): void;
   retire(): void;
 }

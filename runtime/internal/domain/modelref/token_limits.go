@@ -6,39 +6,20 @@ import (
 )
 
 var (
-	// errInvalidTokenLimits reports a non-positive published fact or a prompt
-	// maximum that exceeds a known context window.
-	errInvalidTokenLimits = errors.New("model token limits: invalid")
-	// errInvalidOutputReservation reports a non-positive explicit generation
-	// reservation. Absence is represented by [OutputReservation] zero value,
-	// never by the number zero.
-	errInvalidOutputReservation = errors.New("model token limits: invalid output reservation")
-	// errOutputTokenLimitExceeded reports an explicit generation request above
-	// the selected model's published output maximum.
-	errOutputTokenLimitExceeded = errors.New("model token limits: output maximum exceeded")
-	// errOutputReservationExhaustsContext reports an explicit output reservation
-	// that leaves no room for the non-empty model input.
+	errInvalidTokenLimits               = errors.New("model token limits: invalid")
+	errInvalidOutputReservation         = errors.New("model token limits: invalid output reservation")
+	errOutputTokenLimitExceeded         = errors.New("model token limits: output maximum exceeded")
 	errOutputReservationExhaustsContext = errors.New("model token limits: output reservation exhausts context")
 )
 
-// TokenLimitValues is the explicit construction input for [TokenLimits]. A nil
-// field means the provider did not publish that fact; every present value must
-// be strictly positive.
 type TokenLimitValues struct {
 	ContextWindow   *int64
 	MaxInputTokens  *int64
 	MaxOutputTokens *int64
 }
 
-// TokenLimits is the immutable provider-published context envelope for one
-// exact model. Its useful zero value means that no token-limit facts are known.
-// Presence is stored independently from numeric values so zero can never leak
-// into admission or compaction as an alternate spelling of "unknown".
-//
-// Input and output maxima are independent. Most chat providers count requested
-// output inside the context window, while some streaming/multimodal models
-// publish an output maximum larger than that window. That latter shape proves
-// the window is an input envelope for that model and must not be treated as a
+// Some streaming/multimodal models publish an output maximum larger than the
+// context window, so the window is an input envelope and must not be treated as a
 // shared input-plus-output budget.
 type TokenLimits struct {
 	contextWindow       int64
@@ -49,8 +30,6 @@ type TokenLimits struct {
 	maxOutputKnown      bool
 }
 
-// NewTokenLimits validates and freezes a model's published token-limit facts.
-// An empty value is valid and produces the explicitly unknown policy.
 func NewTokenLimits(values TokenLimitValues) (TokenLimits, error) {
 	limits := TokenLimits{}
 	if values.ContextWindow != nil {
@@ -71,9 +50,6 @@ func NewTokenLimits(values TokenLimitValues) (TokenLimits, error) {
 	return limits, nil
 }
 
-// validate checks the relationships that are knowable without inventing
-// provider defaults. An unknown total window leaves independent maxima usable
-// as facts, while a known total window bounds each maximum individually.
 func (t TokenLimits) validate() error {
 	for _, fact := range []struct {
 		name    string
@@ -102,37 +78,27 @@ func (t TokenLimits) validate() error {
 	return nil
 }
 
-// Unknown reports that the provider published no context-limit facts.
 func (t TokenLimits) Unknown() bool {
 	return !t.contextWindowKnown && !t.maxInputTokensKnown && !t.maxOutputKnown
 }
 
-// ContextWindow returns the provider-published context window and whether the
-// provider published it. See [TokenLimits] for shared-vs-input-only semantics.
 func (t TokenLimits) ContextWindow() (int64, bool) {
 	return t.contextWindow, t.contextWindowKnown
 }
 
-// MaxInputTokens returns the published independent prompt maximum and whether
-// the provider published it.
 func (t TokenLimits) MaxInputTokens() (int64, bool) {
 	return t.maxInputTokens, t.maxInputTokensKnown
 }
 
-// MaxOutputTokens returns the published independent generation maximum and
-// whether the provider published it.
 func (t TokenLimits) MaxOutputTokens() (int64, bool) {
 	return t.maxOutputTokens, t.maxOutputKnown
 }
 
-// OutputReservation is the optional explicit generation ceiling for one model
-// request. Its useful zero value means the caller did not request a ceiling.
 type OutputReservation struct {
 	tokens  int64
 	present bool
 }
 
-// NewOutputReservation validates and freezes one explicit generation ceiling.
 func NewOutputReservation(tokens int64) (OutputReservation, error) {
 	if tokens <= 0 {
 		return OutputReservation{}, fmt.Errorf(
@@ -143,12 +109,8 @@ func NewOutputReservation(tokens int64) (OutputReservation, error) {
 	return OutputReservation{tokens: tokens, present: true}, nil
 }
 
-// Tokens returns the requested output ceiling and whether one was requested.
 func (r OutputReservation) Tokens() (int64, bool) { return r.tokens, r.present }
 
-// InputCeiling returns the hard prompt ceiling after reserving an explicitly
-// requested output. The bool is false only when neither the provider input
-// maximum nor a total context reservation establishes a hard input ceiling.
 func (t TokenLimits) InputCeiling(reservation OutputReservation) (int64, bool, error) {
 	requestedOutput, requested := reservation.Tokens()
 	if requested && t.maxOutputKnown && requestedOutput > t.maxOutputTokens {

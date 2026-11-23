@@ -1,9 +1,9 @@
 import { type RuntimeAgentDriver } from "@/features/agent/adapters/runtimeDriver";
-export const DEFAULT_RPC_SESSION_ID = "ses_default";
+const DEFAULT_RPC_SESSION_ID = "ses_default";
 
-export type RpcAgentInput = Parameters<RuntimeAgentDriver["start"]>[0];
+type RpcAgentInput = Parameters<RuntimeAgentDriver["start"]>[0];
 
-export type RpcAgentStartOptions = Parameters<RuntimeAgentDriver["start"]>[1];
+type RpcAgentStartOptions = Parameters<RuntimeAgentDriver["start"]>[1];
 
 type RpcAgentRunId = Parameters<RuntimeAgentDriver["resume"]>[0];
 
@@ -39,7 +39,7 @@ export function activeRpcSessionId(sessionId: string | null | undefined): string
   return sessionId || DEFAULT_RPC_SESSION_ID;
 }
 
-export function rpcRunStartParams(
+function rpcRunStartParams(
   sessionId: string,
   input: RpcAgentInput,
   options: RpcAgentStartOptions,

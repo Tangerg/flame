@@ -9,14 +9,13 @@ import { normalizeUiFontSize, UI_FONT_SIZE_DEFAULT_PX } from "@flame/ui/typograp
 import { DEFAULT_MOTION, type VisualStyleMotion } from "@/lib/visualStyleMotion";
 export type Scheme = "dark" | "light";
 
-export interface AppearanceSnapshot {
+interface AppearanceSnapshot {
   scheme: Scheme;
   motionScale: number;
   motion: VisualStyleMotion;
   uiFontSize: number;
 }
 
-/** The current document paint, observed without owning its preferences. */
 export interface AppearanceProjection {
   read(): AppearanceSnapshot;
   subscribe(listener: () => void): () => void;

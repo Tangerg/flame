@@ -13,10 +13,7 @@ export async function loadPluginsForTest(...plugins: AnyPlugin[]): Promise<Host>
   return running;
 }
 
-export async function addPluginsForTest(
-  host: Host,
-  plugins: ReadonlyArray<AnyPlugin>,
-): Promise<void> {
+async function addPluginsForTest(host: Host, plugins: ReadonlyArray<AnyPlugin>): Promise<void> {
   if (!plugins.length) return;
   const change = host.change();
   for (const plugin of plugins) change.install(plugin, { id: crypto.randomUUID() });

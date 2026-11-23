@@ -10,14 +10,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/git/process"
 )
 
-// git runs one git command against the shadow GIT_DIR with cwd as the work tree
-// (workTree may be empty for repo-only operations like rev-parse). A fixed
-// identity + disabled signing keep commits independent of the user's global git
-// config. Selected path names stay literal so glob syntax cannot expand the
-// snapshot's admitted set.
-func (s *Store) git(ctx context.Context, gitDir, workTree string, args ...string) (string, error) {
-	output, err := s.gitOutput(ctx, gitDir, workTree, args...)
-	return strings.TrimSpace(string(output)), err
+// A fixed identity and disabled signing keep commits independent of the user's
+// global git config; path names stay literal so glob syntax cannot expand the
+// admitted set.
+func (s *Store) git(ctx context.Context, gitDir, workTree string, args ...string) error {
+	_, err := s.gitOutput(ctx, gitDir, workTree, args...)
+	return err
 }
 
 func (s *Store) gitOutput(ctx context.Context, gitDir, workTree string, args ...string) ([]byte, error) {
@@ -60,16 +58,12 @@ func (g *gitCommandError) Error() string {
 func (g *gitCommandError) ExitCode() int { return g.exitCode }
 
 func gitExitCode(err error) int {
-	// A raw process exit may accompany failed output admission or cancellation;
-	// only an admitted Git result can decide a repository predicate.
 	if exited, ok := errors.AsType[*gitCommandError](err); ok {
 		return exited.ExitCode()
 	}
 	return -1
 }
 
-// gitIn runs a git query inside the real repo at cwd (no shadow GIT_DIR), used
-// to discover what a new shadow repo can seed from. Returns trimmed stdout.
 func gitIn(ctx context.Context, cwd string, args ...string) (string, error) {
 	output, err := gitInOutput(ctx, cwd, args...)
 	return strings.TrimSpace(string(output)), err

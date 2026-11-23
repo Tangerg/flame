@@ -21,9 +21,6 @@ import (
 	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
-// P-O03: a standing approval binds the admitted release through the source
-// fingerprint, so selecting another release digest makes it stale and the next
-// call prompts again even though the server declaration is unchanged.
 func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 	var executions atomic.Int32
 	remote := sdk.NewServer(&sdk.Implementation{Name: "review", Version: "1"}, nil)
@@ -220,13 +217,10 @@ func TestPluginAcceptanceApprovalStaleAfterReleaseChange(t *testing.T) {
 	if sessions.Load() != before {
 		t.Fatal("release switch launched disabled code")
 	}
-	// The switch withdrew the old release's tools in the critical section that
-	// committed it, so no Run admitted after it can freeze them.
 	if tools := must(delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: &serverID}, "").(*protocol.Page[protocol.MCPTool]); len(tools.Data) != 0 {
 		t.Fatalf("release switch left the old release's tools live: %+v", tools.Data)
 	}
 	must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-second")
-	// Enabling the selected release dials it in the background.
 	if tool := awaitTool("second release"); tool.ModelName != modelName.Load().(string) {
 		t.Fatalf("release switch changed the model-visible name: %q", tool.ModelName)
 	}

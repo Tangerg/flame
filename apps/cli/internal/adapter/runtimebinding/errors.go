@@ -35,9 +35,6 @@ func (p projectedError) Unwrap() []error {
 	return []error{p.kind, p.source}
 }
 
-// runtimeContractViolation marks a response that cannot satisfy the protocol
-// negotiated at startup. Callers may retry transport and storage failures, but
-// the same malformed response cannot become valid through backoff.
 func runtimeContractViolation(format string, arguments ...any) error {
 	causes := []error{conversation.ErrIncompatibleRuntime}
 	for _, argument := range arguments {
@@ -111,11 +108,8 @@ func classifyError(err error) error {
 		kind = errors.Join(kind, authoring.ErrCommandOutcomeUnknown)
 	}
 	var problem *protocol.ProblemData
-	if source, ok := errors.AsType[protocol.ProblemError](err); ok {
+	if source, ok := errors.AsType[*protocol.Failure](err); ok {
 		data := source.Problem()
-		// The Runtime validates a problem before projecting it and falls back to
-		// an internal failure when it cannot; a second pass here would be the same
-		// generated validator one call frame later.
 		problem = failure.Clone(&data)
 	}
 	if kind == nil && problem == nil {

@@ -67,7 +67,6 @@ export const surface = stylex.defineVars({
   card: "var(--app-card-surface)",
   field: "var(--color-border)",
   fieldStrong: "var(--color-border-strong)",
-  fieldFocus: "var(--color-focus-ring)",
   controlEdge: "var(--color-control-edge)",
   accentBadge: "var(--color-accent-badge)",
   successBadge: "var(--color-success-badge)",

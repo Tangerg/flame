@@ -13,15 +13,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// runCleanupTimeout bounds request-detached Run teardown, so a stuck store or
-// executor cannot wedge cancellation.
 const runCleanupTimeout = 5 * time.Second
 
-// runTreeOwner is the root Segment's process-local ownership record. It holds the
-// lifecycle join, event journal, immutable executor bindings and the root-owned
-// cancellation arbiter; specialized behavior lives beside those concerns.
 type runTreeOwner struct {
-	// observation excludes a snapshot/tail handoff from commit-to-publication windows.
 	observation     sync.Mutex
 	mu              sync.Mutex
 	cancel          context.CancelFunc
@@ -42,13 +36,6 @@ type terminalRun struct {
 	cancellation CancellationID
 }
 
-// segmentActivation serializes the post-commit executor activation with root
-// cancellation. The durable Run becomes Running before BeginExecution crosses
-// the executor side-effect boundary, so cancellation must either win before
-// activation starts or wait for activation to finish; executing both calls at
-// once leaves neither side able to classify the resulting executor error.
-// activationPhase is where executor activation stands. It resolves once, either
-// through a started activation or directly when cancellation or rejection wins.
 type activationPhase uint8
 
 const (
@@ -64,10 +51,6 @@ type segmentActivation struct {
 	err   error
 }
 
-// newRunTreeOwner builds the root Segment's complete ownership record. Its
-// cancellation, task context, journal, completion barrier and activation gate
-// all exist before any caller can reach it, so no method has to repair a
-// half-built owner or answer for one that was never built.
 func newRunTreeOwner(cancel context.CancelFunc, taskContext context.Context, hub *journal) *runTreeOwner {
 	return &runTreeOwner{
 		cancel:          cancel,
@@ -79,9 +62,6 @@ func newRunTreeOwner(cancel context.CancelFunc, taskContext context.Context, hub
 	}
 }
 
-// beginExecution crosses the executor activation boundary exactly once. A root
-// cancellation that claimed the owner first suppresses activation and lets the
-// pump synthesize the canonical canceled terminal from the committed opening.
 func (r *runTreeOwner) beginExecution(
 	ctx context.Context,
 	begin func(context.Context) error,
@@ -111,12 +91,8 @@ func (r *runTreeOwner) beginExecution(
 	return false, err
 }
 
-// awaitActivation blocks until this Segment's detached executor activation
-// resolves, then reports a failed activation as a finished Run. A Run becomes
-// durably Running when its acceptance opening commits, before BeginExecution
-// crosses the executor boundary; a consumer that must reach the live executor
-// (steer) waits here so the activation window is not misread as a finished Run.
-// Context cancellation ends only the waiting request, never the Run.
+// A Run is durably Running before its executor activates, so steer waits here
+// instead of misreading the activation window as a finished Run.
 func (r *runTreeOwner) awaitActivation(ctx context.Context) error {
 	r.mu.Lock()
 	done := r.activation.done
@@ -157,8 +133,6 @@ func (r *runTreeOwner) committedRunTerminal(runID identity.RunID) (terminalRun, 
 	return terminal, found
 }
 
-// stop cancels the run context. Called on a true terminal (never on a parked
-// Run, whose live executor must stay alive for resume).
 func (r *runTreeOwner) stop() {
 	r.mu.Lock()
 	cancel := r.cancel
@@ -166,8 +140,6 @@ func (r *runTreeOwner) stop() {
 	cancel()
 }
 
-// wait joins the complete run boundary: terminal projection, registry removal,
-// synchronous maintenance, admission release, and journal closure.
 func (r *runTreeOwner) wait(ctx context.Context) error {
 	if err := completion.Wait(ctx, r.done); err != nil {
 		return err
@@ -175,16 +147,10 @@ func (r *runTreeOwner) wait(ctx context.Context) error {
 	return r.completionErr
 }
 
-// runCleanupContext bounds a run's durable cancel and never inherits the
-// caller's cancellation: teardown has to outlive the request that asked for it.
 func runCleanupContext(base context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.WithoutCancel(base), runCleanupTimeout)
 }
 
-// cleanupContext roots teardown on the run's detached owner context. The pump
-// can release — and cancel — its task owner immediately after requestCancel
-// stops runCtx, so cleanup keeps the owner's trace values without inheriting
-// that lifecycle cancellation.
 func (r *runTreeOwner) cleanupContext() (context.Context, context.CancelFunc) {
 	r.mu.Lock()
 	taskContext := r.taskContext

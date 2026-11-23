@@ -2,7 +2,7 @@ export type MessageActionMaterialization = "active" | "settled";
 
 export type MessageActionsVisibility = "absent" | "hidden" | "hover" | "pinned";
 
-export interface MessageActionsVisibilityInput {
+interface MessageActionsVisibilityInput {
   materialization: MessageActionMaterialization;
   isRunning: boolean;
   isLast: boolean;

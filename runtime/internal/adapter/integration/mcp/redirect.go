@@ -1,4 +1,3 @@
-// Package mcp enforces credential authority across HTTP request chains.
 package mcp
 
 import (
@@ -13,10 +12,6 @@ const maximumRedirects = 10
 
 var errCrossOriginRedirect = errors.New("mcp: cross-origin redirect blocked")
 
-// checkRedirect permits redirects only within the initial request's origin.
-// It is suitable for clients whose credential and endpoint authority must stay
-// inseparable; callers with an explicit multi-origin policy need their own
-// callback.
 func checkRedirect(request *http.Request, via []*http.Request) error {
 	if request == nil {
 		return errors.New("mcp: redirect request is nil")

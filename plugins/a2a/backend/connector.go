@@ -25,8 +25,6 @@ type connector struct {
 	agents map[string]agent
 }
 
-// A binding records where the original send occurred. Remote status is never
-// persisted here: it remains the remote agent's fact.
 type taskBinding struct {
 	Agent     string             `json:"agent"`
 	Authority framevalue.Digest  `json:"authority"`
@@ -119,7 +117,6 @@ func (c *connector) send(ctx context.Context, method, id string, input framevalu
 	return result, err
 }
 
-// maxMessageBytes bounds the one user message a send carries.
 const maxMessageBytes = 64 << 10
 
 func (c *connector) admitSend(input framevalue.JSON) (wire.SendRequest, agent, error) {

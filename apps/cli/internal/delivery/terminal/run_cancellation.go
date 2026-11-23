@@ -80,8 +80,6 @@ func (r *runs) stageOpeningCancellation() (workbench.PendingRun, bool, error) {
 	}
 	if pending, found := pendingRunByCommandID(r.workbench.PendingRuns(r.session.current.ID), entry.CommandID); found &&
 		pending.State == workbench.PendingRunQueued {
-		// Input preparation has not published a dispatch intent. Closing the
-		// operation owner will discard its result without a Runtime mutation.
 		return workbench.PendingRun{}, false, nil
 	}
 	cancelReplay, err := r.replayPolicy.NewGuard()
@@ -177,7 +175,7 @@ func (r *runs) retireCanceledStart(pending workbench.PendingRun) error {
 	if err := r.retireQueuedCommand(pending.Command.SessionID, pending.Command.CommandID); err != nil {
 		return fmt.Errorf("retire canceled start: %w", err)
 	}
-	r.status.note("canceled")
+	r.status.note(canceledActivity)
 	r.drainQueue()
 	return nil
 }
@@ -199,9 +197,6 @@ func (r *runs) cancelRuntime(target conversation.CancelRun) {
 	r.requestRuntimeCancellation(target, applyRuntimeSettlement)
 }
 
-// cancelRuntimePreservingFailure stops a run whose event stream has already been
-// rejected locally. The cancellation receipt proves cleanup, but only a cold
-// Session read can replace the now-untrustworthy transcript projection.
 func (r *runs) cancelRuntimePreservingFailure(target conversation.CancelRun) {
 	r.requestRuntimeCancellation(target, recoverProjectionFailure)
 }
@@ -260,9 +255,6 @@ func (r *runs) requestRuntimeCancellation(target conversation.CancelRun, policy 
 	})
 }
 
-// cancelRootRun makes cancellation idempotent at the terminal boundary. A run
-// may finish between the user's gesture and the control request; in that case
-// the authoritative snapshot that follows is the settlement of the same intent.
 func (r *runs) cancelRootRun(
 	ctx context.Context,
 	target conversation.CancelRun,
@@ -302,9 +294,6 @@ func (r *runs) handleRuntimeCancellation(
 		return
 	}
 	if err != nil {
-		// A rejected control request says nothing about the run itself. Keep the
-		// conversation and cancellation target intact so the user can retry while
-		// the runtime remains the source of truth for eventual settlement.
 		r.link.message("could not cancel run: " + err.Error())
 		return
 	}
@@ -324,16 +313,10 @@ func (r *runs) handleRuntimeCancellation(
 	if pending.policy == recoverProjectionFailure {
 		r.prompt.SetBusy(false)
 		r.syncAnimation()
-		// The stream was rejected after Runtime had accepted the command. A
-		// cancellation receipt cannot reconstruct durable Items that were never
-		// projected, so the authoritative snapshot is the queue-admission fence.
 		r.sessions.refreshInvalidatedSession(refreshSettlingRun)
 		return
 	}
-	// The receipt names only the root Run. Its children and open tool calls
-	// settle in the Runtime with their own outcomes, so the authoritative
-	// snapshot, not the root's outcome, replaces the projection.
-	r.status.note("canceled")
+	r.status.note(canceledActivity)
 	r.prompt.SetBusy(false)
 	r.syncAnimation()
 	r.sessions.refreshInvalidatedSession(refreshSettlingRun)
@@ -350,7 +333,7 @@ func (r *runs) retireCanceledRuntimeOwnership(runID string, openingCommandID aut
 	var err error
 	if r.workbench != nil {
 		if pending, ok := r.workbench.PendingResume(r.session.current.ID); ok && pending.Command.RunID == runID {
-			err = errors.Join(err, r.workbench.AcknowledgePendingResume(r.session.current.ID, pending.Command.CommandID))
+			err = errors.Join(err, r.workbench.RetirePendingResume(r.session.current.ID, pending.Command.CommandID))
 		}
 	}
 	if openingCommandID != "" {

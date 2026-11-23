@@ -9,10 +9,11 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
-	sdk "github.com/Tangerg/scope/skills"
+	skillspec "github.com/Tangerg/scope/skills"
 )
 
 type PackageSkillBundle struct {
@@ -21,8 +22,6 @@ type PackageSkillBundle struct {
 	Skills     []plugin.Skill
 }
 type PackageSkills interface {
-	// nil selects the current catalog; a non-nil slice restores only those
-	// exact retained content sources, including an explicitly empty set.
 	SkillBundles(context.Context, []plugin.Dependency) ([]PackageSkillBundle, error)
 	ReadSkillResource(context.Context, plugin.Dependency, string, string) ([]byte, error)
 }
@@ -31,23 +30,24 @@ type packageSkillSource struct {
 	authority PackageSkills
 }
 
-func (s *packageSkillSource) Lookup(ctx context.Context, name string) (sdk.Summary, error) {
-	if err := skillSourceContextError(ctx, "lookup"); err != nil {
-		return sdk.Summary{}, err
+func (s *packageSkillSource) Lookup(ctx context.Context, name string) (skillspec.Summary, error) {
+	if err := skillSourceContextError(ctx, skillSourceLookup); err != nil {
+		return skillspec.Summary{}, err
 	}
 	index := slices.IndexFunc(s.bundle.Skills, func(skill plugin.Skill) bool { return skill.Name == name })
 	if index < 0 {
-		return sdk.Summary{}, sdk.ErrSkillNotFound
+		return skillspec.Summary{}, skillspec.ErrSkillNotFound
 	}
 	skill := s.bundle.Skills[index]
-	return sdk.Summary{Name: skill.Name, Description: skill.Description}, nil
+	return skillspec.Summary{Name: skill.Name, Description: skill.Description}, nil
 }
-func (s *packageSkillSource) document(ctx context.Context, name string) (*sdk.Skill, []byte, error) {
-	if err := skillSourceContextError(ctx, "load"); err != nil {
+
+func (s *packageSkillSource) document(ctx context.Context, name string) (*skillspec.Skill, []byte, error) {
+	if err := skillSourceContextError(ctx, skillSourceLoad); err != nil {
 		return nil, nil, err
 	}
-	content, err := s.authority.ReadSkillResource(ctx, s.bundle.Dependency, name, sdk.SkillFile)
-	if cancelErr := skillSourceContextError(ctx, "load"); cancelErr != nil {
+	content, err := s.authority.ReadSkillResource(ctx, s.bundle.Dependency, name, skillspec.SkillFile)
+	if cancelErr := skillSourceContextError(ctx, skillSourceLoad); cancelErr != nil {
 		return nil, nil, errors.Join(err, cancelErr)
 	}
 	if err != nil {
@@ -59,16 +59,18 @@ func (s *packageSkillSource) document(ctx context.Context, name string) (*sdk.Sk
 	skill, err := skilldocument.Load(ctx, name, content)
 	return skill, content, err
 }
-func (s *packageSkillSource) Load(ctx context.Context, name string) (*sdk.Skill, error) {
+
+func (s *packageSkillSource) Load(ctx context.Context, name string) (*skillspec.Skill, error) {
 	skill, _, err := s.document(ctx, name)
 	return skill, err
 }
+
 func (s *packageSkillSource) OpenResource(ctx context.Context, name, resource string) (fs.File, error) {
-	if err := skillSourceContextError(ctx, "open resource"); err != nil {
+	if err := skillSourceContextError(ctx, skillSourceOpenResource); err != nil {
 		return nil, err
 	}
 	content, err := s.authority.ReadSkillResource(ctx, s.bundle.Dependency, name, resource)
-	if cancelErr := skillSourceContextError(ctx, "open resource"); cancelErr != nil {
+	if cancelErr := skillSourceContextError(ctx, skillSourceOpenResource); cancelErr != nil {
 		return nil, errors.Join(err, cancelErr)
 	}
 	if err != nil {
@@ -80,7 +82,6 @@ func (s *packageSkillSource) OpenResource(ctx context.Context, name, resource st
 	return &skillResourceBytes{Reader: bytes.NewReader(content), name: resource}, nil
 }
 
-// The returned file contains exactly the verified bytes; no pathname is reopened.
 type skillResourceBytes struct {
 	*bytes.Reader
 	name string
@@ -90,22 +91,22 @@ func (f *skillResourceBytes) Close() error               { return nil }
 func (f *skillResourceBytes) Stat() (fs.FileInfo, error) { return f, nil }
 func (f *skillResourceBytes) Name() string               { return f.name }
 func (f *skillResourceBytes) Size() int64                { return f.Reader.Size() }
-func (f *skillResourceBytes) Mode() fs.FileMode          { return 0400 }
+func (f *skillResourceBytes) Mode() fs.FileMode          { return filesystem.ReadOnlyFileMode }
 func (f *skillResourceBytes) ModTime() time.Time         { return time.Time{} }
 func (f *skillResourceBytes) IsDir() bool                { return false }
 func (f *skillResourceBytes) Sys() any                   { return nil }
 
-func (s *packageSkillSource) List(ctx context.Context) ([]sdk.Summary, error) {
-	if err := skillSourceContextError(ctx, "list"); err != nil {
+func (s *packageSkillSource) List(ctx context.Context) ([]skillspec.Summary, error) {
+	if err := skillSourceContextError(ctx, skillSourceList); err != nil {
 		return nil, err
 	}
-	result := make([]sdk.Summary, 0, len(s.bundle.Skills))
+	result := make([]skillspec.Summary, 0, len(s.bundle.Skills))
 	for _, skill := range s.bundle.Skills {
-		result = append(result, sdk.Summary{Name: skill.Name, Description: skill.Description})
+		result = append(result, skillspec.Summary{Name: skill.Name, Description: skill.Description})
 	}
 	return result, nil
 }
 
 func (s *packageSkillSource) documentPath(name string) string {
-	return filepath.Join(s.bundle.Root, name, sdk.SkillFile)
+	return filepath.Join(s.bundle.Root, name, skillspec.SkillFile)
 }

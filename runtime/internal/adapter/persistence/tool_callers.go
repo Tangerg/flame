@@ -7,7 +7,26 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+
+	framecall "github.com/Tangerg/frame/call"
+	framevalue "github.com/Tangerg/frame/value"
 )
+
+type storedToolCaller struct {
+	Invocation framecall.Invocation `json:"invocation"`
+	Tool       tool.Ref             `json:"tool"`
+	Release    framevalue.Digest    `json:"release"`
+	Authority  framevalue.Digest    `json:"authority"`
+}
+
+func storeToolCaller(value plugin.ToolCallerSnapshot) storedToolCaller {
+	return storedToolCaller{Invocation: value.Invocation, Tool: value.Tool, Release: value.Release, Authority: value.Authority}
+}
+
+func (s storedToolCaller) snapshot() plugin.ToolCallerSnapshot {
+	return plugin.ToolCallerSnapshot{Invocation: s.Invocation, Tool: s.Tool, Release: s.Release, Authority: s.Authority}
+}
 
 func (t *ToolInvocationStore) retainCaller(ctx context.Context, caller plugin.ToolCaller) error {
 	return t.db.write(ctx, func(ctx context.Context) error {
@@ -15,7 +34,7 @@ func (t *ToolInvocationStore) retainCaller(ctx context.Context, caller plugin.To
 			return err
 		}
 		value := caller.Snapshot()
-		encoded, err := json.Marshal(value)
+		encoded, err := json.Marshal(storeToolCaller(value))
 		if err != nil {
 			return err
 		}
@@ -33,6 +52,7 @@ func (t *ToolInvocationStore) retainCaller(ctx context.Context, caller plugin.To
 		return nil
 	})
 }
+
 func (t *ToolInvocationStore) ToolCaller(ctx context.Context, id string) (plugin.ToolCaller, bool, error) {
 	return scopedPair(ctx, t.db.read, func(ctx context.Context) (plugin.ToolCaller, bool, error) {
 		var encoded string
@@ -43,10 +63,11 @@ func (t *ToolInvocationStore) ToolCaller(ctx context.Context, id string) (plugin
 		if err != nil {
 			return plugin.ToolCaller{}, false, err
 		}
-		var value plugin.ToolCallerSnapshot
-		if err := json.Unmarshal([]byte(encoded), &value, json.RejectUnknownMembers(true)); err != nil {
+		var stored storedToolCaller
+		if err := json.Unmarshal([]byte(encoded), &stored, json.RejectUnknownMembers(true)); err != nil {
 			return plugin.ToolCaller{}, false, err
 		}
+		value := stored.snapshot()
 		caller, err := plugin.NewToolCaller(value)
 		if err != nil {
 			return plugin.ToolCaller{}, false, err

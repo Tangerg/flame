@@ -11,8 +11,6 @@ const (
 	recentDaysUsagePeriod
 )
 
-// UsageSummaryPeriod is either all runtime history or a positive recent-day window.
-// Its zero value is invalid, so every caller chooses the report scope.
 type UsageSummaryPeriod struct {
 	kind usageSummaryPeriodKind
 	days int

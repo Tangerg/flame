@@ -13,7 +13,7 @@ import (
 
 const maxAutoFormatFileBytes = codeintel.MaxDocumentBytes
 
-var errAutoFormatFileTooLarge = fmt.Errorf("auto-format: file exceeds the %d MiB limit", maxAutoFormatFileBytes>>20)
+var errAutoFormatFileTooLarge = fmt.Errorf("auto-format: file exceeds the %d MiB limit", maxAutoFormatFileBytes/filesystem.MiB)
 
 type autoFormatSource struct {
 	content string
@@ -61,9 +61,6 @@ func validateAutoFormatSource(info os.FileInfo) error {
 	return nil
 }
 
-// Scope owns atomic replacement, parent-directory handles, and preservation of
-// BOM, line endings, and mode. Formatting supplies only an exact-text edit of
-// the complete, bounded source it observed.
 func applyFormattedFile(ctx context.Context, root *filesystemRoot, executor *fs.LocalExecutor, path string, data []byte, source autoFormatSource) error {
 	if err := errors.Join(ctx.Err(), context.Cause(ctx)); err != nil {
 		return err

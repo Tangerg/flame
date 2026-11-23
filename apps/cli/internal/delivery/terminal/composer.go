@@ -21,14 +21,8 @@ const fileElement base.ElementKind = 1
 
 const draftPersistenceDelay = 150 * time.Millisecond
 
-// promptHistoryCapacity is the aggregate's retained semantic-message budget.
-// It is not caller configuration: every TUI session has the same bounded
-// recall behavior.
 const promptHistoryCapacity = 1000
 
-// composerContent is the prompt editor and the attachment behind each of its
-// file chips. Every chip in the editor has a backing attachment; message
-// refuses an editor whose chips lost theirs. The zero value is empty.
 type composerContent struct {
 	*kit.Editor
 	chips map[base.ElementID]authoring.Attachment
@@ -41,25 +35,18 @@ func (c *composerContent) Controller() *base.Editor {
 	return c.Editor.Controller()
 }
 
-// promptComposer owns the prompt being written: its editor content and
-// attachments, the session draft it autosaves, the prompt history it recalls
-// and the stashes it parks. It reports workbench health and notices through
-// the collaborators it was built with.
 type promptComposer struct {
 	composerContent
-	observe     func()
-	drafts      draftAutosave
-	history     promptHistory
-	attachments *attachment.Resolver
-	workbench   *workbench.Store
-	// editor edits the prompt in the configured external editor, in the
-	// terminal session and local directory it suspends to.
+	observe        func()
+	drafts         draftAutosave
+	history        promptHistory
+	attachments    *attachment.Resolver
+	workbench      *workbench.Store
 	editor         *draftEditor
 	terminal       program.Session
 	localDirectory string
 	session        *sessionState
-	// appendNote adds a labelled note to the current transcript.
-	appendNote func(label, body string)
+	appendNote     func(label, body string)
 
 	ctx      context.Context
 	after    func(time.Duration, func()) func()
@@ -67,12 +54,8 @@ type promptComposer struct {
 	notify   func(string)
 	report   func(workbenchConcern, error)
 	validate func(authoring.Message) error
-	// cleared runs after the composer empties, retiring input state that
-	// referred to the old content.
-	cleared func()
-	// busy reports an active Run, during which the prompt cannot be edited
-	// externally.
-	busy func() bool
+	cleared  func()
+	busy     func() bool
 }
 
 type attachmentInsertion struct {
@@ -99,9 +82,6 @@ func (d *draftObservation) Reset(sessionID string, message authoring.Message) {
 	d.ready = true
 }
 
-// promptHistory keeps semantic messages rather than rendered editor text. A
-// recalled prompt therefore restores attachment chips as attachments instead of
-// turning their labels into ordinary @words.
 type promptHistory struct {
 	entries []authoring.Message
 	at      int
@@ -156,10 +136,6 @@ func (p *promptHistory) Forward() (authoring.Message, bool) {
 	return p.entries[len(p.entries)-p.at].Clone(), true
 }
 
-// resolveAttachment performs every fallible check before the composer is
-// mutated. Completion acceptance can therefore commit the token replacement and
-// attachment chip as one successful UI transition instead of destroying the
-// user's token when resolution, duplicate detection, or capacity checks fail.
 func (c *promptComposer) resolveAttachment(path string) (attachmentInsertion, error) {
 	if c.attachments == nil {
 		return attachmentInsertion{}, errors.New("attachments are unavailable in this session")
@@ -241,8 +217,6 @@ func (c *composerContent) insertAttachments(items []authoring.Attachment) {
 	}
 }
 
-// detach removes the attachment argument names, or every attachment for
-// "all"; it returns the removed attachment's name, empty for all.
 func (c *composerContent) detach(argument string) (string, error) {
 	argument = strings.TrimSpace(argument)
 	if argument == "" {
@@ -343,7 +317,7 @@ func (c *composerContent) message() (authoring.Message, error) {
 	editor := c.Controller()
 	lines := strings.Split(editor.Text(), "\n")
 	elements := editor.Elements()
-	attachments, err := c.attachments(editor, elements)
+	attachments, err := c.attachments(elements)
 	if err != nil {
 		return authoring.Message{}, err
 	}
@@ -353,7 +327,7 @@ func (c *composerContent) message() (authoring.Message, error) {
 	return authoring.Message{Text: strings.Join(lines, "\n"), Attachments: attachments}, nil
 }
 
-func (c *composerContent) attachments(editor *base.Editor, elements []base.Element) ([]authoring.Attachment, error) {
+func (c *composerContent) attachments(elements []base.Element) ([]authoring.Attachment, error) {
 	attachments := make([]authoring.Attachment, 0, len(elements))
 	for _, element := range elements {
 		if element.Kind != fileElement {
@@ -396,15 +370,14 @@ func (c *promptComposer) clearComposer() {
 	c.cleared()
 }
 
-// clear empties the editor and forgets its undo history, so undo cannot bring
-// back a chip whose attachment was released.
+// Undo history is dropped so undo cannot bring back a chip whose attachment was
+// released.
 func (c *composerContent) clear() {
 	c.Controller().Clear()
 	c.Controller().ForgetHistory()
 	clear(c.chips)
 }
 
-// draft is the composer's message and whether it holds anything.
 func (c *composerContent) draft() (authoring.Message, bool, error) {
 	editor := c.Controller()
 	if editor.Empty() && len(editor.Elements()) == 0 {
@@ -439,17 +412,12 @@ func (c *promptComposer) persistDraft() error {
 	return err
 }
 
-// draftAutosave persists the composer's draft per session. It keeps the
-// draft last known to be persisted, so a settled burst that changed nothing
-// writes nothing, and the pending save of the current input burst.
 type draftAutosave struct {
 	store   *draftPersistence
 	saved   draftObservation
 	pending func()
 }
 
-// schedule saves capture's draft once input has been quiet for
-// draftPersistenceDelay; a new burst replaces the pending save.
 func (d *draftAutosave) schedule(after func(time.Duration, func()) func(), capture func() (string, authoring.Message, error), report func(error)) {
 	d.cancel()
 	d.pending = after(draftPersistenceDelay, func() {
@@ -473,7 +441,6 @@ func (d *draftAutosave) cancel() {
 	d.pending = nil
 }
 
-// save persists message now, replacing any pending save.
 func (d *draftAutosave) save(sessionID string, message authoring.Message) error {
 	d.cancel()
 	if err := d.store.Flush(sessionID, message); err != nil {
@@ -483,14 +450,10 @@ func (d *draftAutosave) save(sessionID string, message authoring.Message) error 
 	return nil
 }
 
-// adopt records message as already persisted for sessionID.
 func (d *draftAutosave) adopt(sessionID string, message authoring.Message) {
 	d.saved.Reset(sessionID, message)
 }
 
-// scheduleDraftPersistence marks authoring input in constant time. The complete
-// message is captured only after the input burst settles, so editing a long
-// prompt does not rebuild and clone its entire value after every key.
 func (c *promptComposer) scheduleDraftPersistence() {
 	if c.closed() {
 		return
@@ -505,8 +468,6 @@ func (c *promptComposer) saveDraft(message authoring.Message) error {
 	return c.drafts.save(c.session.current.ID, message)
 }
 
-// commitDraft makes a recoverable value durable before replacing the visible
-// composer. Callers retain their source value when persistence fails.
 func (c *promptComposer) commitDraft(message authoring.Message) error {
 	err := c.saveDraft(message)
 	c.report(workbenchDraft, err)
@@ -517,8 +478,6 @@ func (c *promptComposer) commitDraft(message authoring.Message) error {
 	return nil
 }
 
-// recoverDraft exposes an irreplaceable value before attempting persistence.
-// A failed save must not discard editor output or runtime recovery data.
 func (c *promptComposer) recoverDraft(message authoring.Message) error {
 	c.restoreComposer(message)
 	return c.persistDraft()

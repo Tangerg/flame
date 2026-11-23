@@ -11,20 +11,9 @@ import (
 	"github.com/samber/lo"
 )
 
-// WithInvalidations returns store wrapped so that every goal write that actually
-// landed publishes its session's goal invalidation.
-//
-// The wrapper exists because a goal changes from many places — the lifecycle
-// commands, each autonomous Run's settlement, the model's reported outcome, the
-// boot reconcile — and all of them go through these two writes. Publishing at the
-// write is what makes "a client is told whenever a goal moves" true by construction
-// instead of by every caller remembering; it is also why the 4-second poll this
-// replaces could be deleted rather than merely lengthened.
-//
-// A store write here is its own transaction, so returning means committed. The
-// session delete/rollback cascade clears goals inside a session write-set instead,
-// and that transaction publishes its own notices — one commit, one author, no
-// double signal.
+// Goals change from many places, all through these two writes, so publishing at
+// the write notifies clients of every move by construction. Session cascades clear
+// goals inside their own write-set and publish their own notices.
 func WithInvalidations(store Store, invalidations invalidation.Publish) (Store, error) {
 	if lo.IsNil(store) || invalidations == nil {
 		return nil, errors.New("goals: store and invalidations are required")

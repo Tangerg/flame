@@ -7,11 +7,14 @@ import (
 	"github.com/Tangerg/oolong/ui/base"
 	"github.com/Tangerg/oolong/ui/core/scene"
 
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/ui/core/input"
 	"github.com/Tangerg/oolong/ui/core/layout"
 	"github.com/Tangerg/oolong/ui/kit"
 )
+
+const timelineDialogHeight = 20
 
 type timelineEntry struct {
 	Run          conversation.Run
@@ -41,7 +44,7 @@ func newTimelinePane(theme kit.Theme, glyphs kit.Glyphs, jump func(timelineEntry
 		func(entry timelineEntry) string {
 			detail := string(entry.Run.Status)
 			if entry.Run.Model != "" {
-				detail = entry.Run.Model + " · " + detail
+				detail = entry.Run.Model + format.Separator + detail
 			}
 			if entry.Depth > 0 {
 				detail += " · parent " + shortIdentity(entry.Run.Lineage.ParentRunID())
@@ -119,7 +122,7 @@ func (t *timelinePane) Handle(event input.Event) bool {
 		if t.live {
 			return true
 		}
-		if entry, selected := t.picker.Current(); selected && t.fork != nil {
+		if entry, selected := t.picker.Current(); selected {
 			t.fork(entry)
 		}
 		return true
@@ -127,8 +130,6 @@ func (t *timelinePane) Handle(event input.Event) bool {
 	return false
 }
 
-// timelineDialog lists the current session's runs; choosing one jumps to it
-// or forks from it through the callbacks it was built with.
 type timelineDialog struct {
 	pane   *timelinePane
 	dialog *presentationDialog
@@ -151,7 +152,7 @@ func newTimelineDialog(stack *workspaceScene, theme kit.Theme, glyphs kit.Glyphs
 		},
 		Theme:  theme,
 		Glyphs: glyphs,
-		Where:  layout.Placement{Width: standardDialogWidth, Height: 20},
+		Where:  layout.Placement{Width: standardDialogWidth, Height: timelineDialogHeight},
 	})
 	t.pane.picker.cancel = t.dialog.Dismiss
 	return t
@@ -163,7 +164,6 @@ func (t *timelineDialog) show(runs []conversation.Run, live bool) {
 	t.dialog.Show()
 }
 
-// refresh follows run changes while the timeline is open.
 func (t *timelineDialog) refresh(runs []conversation.Run, live bool) {
 	if !t.dialog.Open() {
 		return
@@ -206,10 +206,12 @@ func (a *app) refreshOpenTimeline() {
 	a.timeline.refresh(a.runs.conversation().Runs(), a.runs.blocksAdmission())
 }
 
+const shortIdentityLength = 12
+
 func shortIdentity(identity string) string {
 	identity = strings.TrimSpace(identity)
-	if len(identity) <= 12 {
+	if len(identity) <= shortIdentityLength {
 		return identity
 	}
-	return identity[:12]
+	return identity[:shortIdentityLength]
 }

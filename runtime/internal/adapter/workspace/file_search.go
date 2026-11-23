@@ -15,12 +15,6 @@ import (
 	"github.com/Tangerg/scope/tools/textread"
 )
 
-// Grep searches the same finite, ignore-aware file catalog exposed by the
-// workspace browser. It scans in process so source, line, retained material,
-// cancellation, and coverage semantics remain owned by this product port
-// instead of inheriting a subprocess executor's post-hoc result slicing.
-// wantsMore reports whether the search still has source budget and, unless it
-// scans everything, room for another match.
 func (g *workspaceGrep) wantsMore() bool {
 	if g.remainingSource <= 0 {
 		return false
@@ -37,7 +31,7 @@ func (FileBrowser) Grep(ctx context.Context, root string, input workspaceapp.Gre
 	}
 	entries, err := SearchFiles(ctx, root, input.Path, "")
 	if err != nil {
-		if errors.Is(err, errListingTooLarge) {
+		if errors.Is(err, workspaceapp.ErrFileListTooLarge) {
 			return workspaceapp.GrepResult{}, errors.Join(workspaceapp.ErrGrepResultTooLarge, err)
 		}
 		return workspaceapp.GrepResult{}, err
@@ -267,9 +261,6 @@ func grepFile(
 	return result, nil
 }
 
-// rootRelativeFilePath converts a host path into a confined slash-separated
-// workspace identity. Canonicalizing both sides also rejects a candidate that
-// escapes through an in-root symlink.
 func rootRelativeFilePath(root, canonicalRoot, candidate string) (string, error) {
 	abs := candidate
 	if !filepath.IsAbs(abs) {
@@ -289,8 +280,6 @@ func rootRelativeFilePath(root, canonicalRoot, candidate string) (string, error)
 	return filepath.ToSlash(rel), nil
 }
 
-// Buffered text admission can stop before delivering a pending reader error.
-// These observations belong to actual I/O, regardless of the parser's result.
 type fileScanInput struct {
 	reader  io.Reader
 	bytes   int64

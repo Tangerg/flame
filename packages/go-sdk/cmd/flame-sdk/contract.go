@@ -4,11 +4,10 @@ import (
 	json "encoding/json/v2"
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/Tangerg/flame/packages/go-sdk/plugin"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
-
-	"os"
 )
 
 func runContract(args []string) error {
@@ -23,7 +22,6 @@ func runContract(args []string) error {
 	return writeModelContract(modelContractRole(*role))
 }
 
-// modelContractRole names a model contribution role a backend can implement.
 type modelContractRole string
 
 const (

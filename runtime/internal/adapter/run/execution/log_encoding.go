@@ -7,9 +7,6 @@ import (
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
-// Both arrays come from Scope's public Entry codec. Their immutable encoding
-// is retained with the acknowledged head, so extending the log need not parse
-// and encode every earlier model request again.
 func appendEntryJSON(previous string, added []byte) string {
 	var entries strings.Builder
 	entries.Grow(len(previous) + len(added))
@@ -21,8 +18,6 @@ func appendEntryJSON(previous string, added []byte) string {
 	return entries.String()
 }
 
-// Flame owns this storage envelope; Scope continues to encode every Entry and
-// decode the complete public Log. Only fixed JSON delimiters are written here.
 func encodeExecutionLog(root scoperun.ProcessID, entries string, prepared []preparedRequestWire) ([]byte, error) {
 	rootJSON, err := json.Marshal(root)
 	if err != nil {

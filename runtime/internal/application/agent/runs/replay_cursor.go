@@ -10,10 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 )
 
-// maximumReplayEpochBytes bounds the process-local authority carried inside
-// every replay cursor. crypto/rand.Text currently emits 26 RFC 4648 base32
-// bytes and may grow in a future Go release; this envelope leaves that room
-// without accepting an unbounded decoded identity.
 const maximumReplayEpochBytes = 128
 
 var (
@@ -22,8 +18,6 @@ var (
 	errReplaySequenceExhausted = errors.New("runs: replay sequence is exhausted")
 )
 
-// replayPosition is a point in one Run journal. It stays private because the
-// journal is the only authority that may mint, interpret, or compare one.
 type replayPosition struct {
 	epoch     replayEpoch
 	runID     identity.RunID
@@ -47,10 +41,6 @@ func (r replayPosition) validate() error {
 	return nil
 }
 
-// encodedReplayPosition is the token payload. It carries no layout version:
-// its epoch is minted per process, so only the build that issued a cursor can
-// ever honor it. The compact field names reduce the cost of carrying a cursor
-// on every published event; callers still treat the resulting token as opaque.
 type encodedReplayPosition struct {
 	Epoch     string             `json:"e"`
 	RunID     identity.RunID     `json:"r"`
@@ -58,9 +48,6 @@ type encodedReplayPosition struct {
 	Sequence  uint64             `json:"q"`
 }
 
-// newReplayEpoch mints the identity shared by every journal owned by one
-// Coordinator instance. Randomness prevents a restart from accepting a stale
-// cursor as current.
 type replayEpoch struct{ value string }
 
 func newReplayEpoch() replayEpoch { return replayEpoch{value: rand.Text()} }
@@ -78,7 +65,7 @@ func (r replayEpoch) String() string { return r.value }
 
 func encodeReplayCursor(position replayPosition) (string, error) {
 	if err := position.validate(); err != nil {
-		return "", fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
+		return "", fmt.Errorf("%w: %w", errMalformedReplayCursor, err)
 	}
 	token, err := pagination.EncodeToken(encodedReplayPosition{
 		Epoch: position.epoch.String(),
@@ -88,7 +75,7 @@ func encodeReplayCursor(position replayPosition) (string, error) {
 		if errors.Is(err, pagination.ErrTokenTooLarge) {
 			return "", errReplayCursorTooLarge
 		}
-		return "", fmt.Errorf("%w: encode: %v", errMalformedReplayCursor, err)
+		return "", fmt.Errorf("%w: encode: %w", errMalformedReplayCursor, err)
 	}
 	return token, nil
 }
@@ -103,19 +90,19 @@ func decodeReplayCursor(token string) (replayPosition, error) {
 	}
 	epoch, err := parseReplayEpoch(encoded.Epoch)
 	if err != nil {
-		return replayPosition{}, fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
+		return replayPosition{}, fmt.Errorf("%w: %w", errMalformedReplayCursor, err)
 	}
 	runID := encoded.RunID
 	if err := encoded.RunID.Validate(); err != nil {
-		return replayPosition{}, fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
+		return replayPosition{}, fmt.Errorf("%w: %w", errMalformedReplayCursor, err)
 	}
 	segmentID := encoded.SegmentID
 	if err := encoded.SegmentID.Validate(); err != nil {
-		return replayPosition{}, fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
+		return replayPosition{}, fmt.Errorf("%w: %w", errMalformedReplayCursor, err)
 	}
 	position := replayPosition{epoch: epoch, runID: runID, segmentID: segmentID, sequence: encoded.Sequence}
 	if err := position.validate(); err != nil {
-		return replayPosition{}, fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
+		return replayPosition{}, fmt.Errorf("%w: %w", errMalformedReplayCursor, err)
 	}
 	return position, nil
 }
@@ -127,9 +114,6 @@ func validateReplayEpochText(epoch string) error {
 	return nil
 }
 
-// validateReplayScope proves at journal construction that every cursor this
-// scope can mint fits the resource envelope. MaxUint64 is the longest sequence
-// spelling, so every earlier position is covered by this one admission.
 func validateReplayScope(scope streamScope) error {
 	_, err := encodeReplayCursor(replayPosition{
 		epoch: scope.Epoch, runID: scope.RunID, segmentID: scope.SegmentID,

@@ -11,11 +11,11 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	rpc "github.com/Tangerg/flame/plugins/knowledgebase/internal/contract"
-	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+	"github.com/Tangerg/flame/plugins/knowledgebase/internal/knowledge"
 	"github.com/Tangerg/flame/plugins/knowledgebase/internal/wire"
 
 	framecall "github.com/Tangerg/frame/call"
@@ -180,7 +180,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := pluginsdk.ModelContextRequest{Use: modelchoice.Interaction, Provider: "test", Model: "test", Request: chat.Request{Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("apple"))}}}
+	request := pluginsdk.ModelContextRequest{Use: flamemodel.Interaction, Provider: "test", Model: "test", Request: chat.Request{Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("apple"))}}}
 	request.UserMessage = new(request.Request.Messages[0].Clone())
 	request.Request.Messages = append(request.Request.Messages, chat.NewUserMessage(chat.NewTextPart("host-owned catalog tail")))
 	contextInput, err := framevalue.EncodeJSON(request)
@@ -205,7 +205,7 @@ func TestTypedToolAndContextEntriesRetrieveThroughTheSameHostEmbedding(t *testin
 	if calls.Load() != 4 {
 		t.Fatalf("unexpected embedding attempts: %d", calls.Load())
 	}
-	for _, use := range []modelchoice.Use{modelchoice.Utility, modelchoice.Independent} {
+	for _, use := range []flamemodel.Use{flamemodel.Utility, flamemodel.Independent} {
 		request.Use = use
 		input, err := framevalue.EncodeJSON(request)
 		if err != nil {

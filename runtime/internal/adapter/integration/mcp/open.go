@@ -7,14 +7,13 @@ import (
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel"
 )
 
-var tracer = otel.Tracer("scope/flame/adapter/integration/mcp")
+var tracer = otel.Tracer("github.com/Tangerg/flame/runtime/internal/adapter/integration/mcp")
 
-// newConnections validates the complete ledger before any owned attempt starts.
 func newConnections(ctx, lifetime context.Context, servers []ServerConfig, oauthSessions oauthSessionStore,
 	callbacks *pluginmcp.Callbacks,
 ) (*connections, error) {
@@ -38,7 +37,7 @@ func newConnections(ctx, lifetime context.Context, servers []ServerConfig, oauth
 		}
 	}
 	c := &connections{lifetime: lifetime, callbacks: callbacks, oauthSessions: oauthSessions,
-		sessions: make(map[*sdkmcp.ClientSession]*ownedSession)}
+		sessions: make(map[*sdk.ClientSession]*ownedSession)}
 	c.client = newClient(c.toolListChanged)
 	if err := c.cancellationErr(ctx); err != nil {
 		return nil, err
@@ -46,8 +45,6 @@ func newConnections(ctx, lifetime context.Context, servers []ServerConfig, oauth
 	return c, nil
 }
 
-// All initial admissions exist before any configuration I/O. A collaborator's
-// immediate handshake can therefore join its already owned dependency attempt.
 func (c *connections) start(servers []ServerConfig, configuration func(context.Context, mcpserver.ID) (*launchPermit, error)) (err error) {
 	defer func() {
 		if err != nil {

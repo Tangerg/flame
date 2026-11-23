@@ -7,23 +7,15 @@ import (
 	"os"
 )
 
-// ErrNoBase means mode=base has no default branch, HEAD commit, or common
-// ancestor. It is distinct from a missing repository, unavailable Git binary,
-// or failed query against existing repository state.
 var ErrNoBase = errors.New("git: cannot resolve base branch")
 
-// Mode selects what getDiff compares against.
 type Mode string
 
 const (
-	// Worktree = working-tree changes vs HEAD, INCLUDING untracked files.
 	Worktree Mode = "worktree"
-	// Base = changes vs the merge-base with the default branch (committed +
-	// working-tree tracked changes; untracked excluded).
-	Base Mode = "base"
+	Base     Mode = "base"
 )
 
-// RowType is the parser-owned classification of a unified-diff row.
 type RowType string
 
 const (
@@ -33,19 +25,15 @@ const (
 	RowDeleted RowType = "deleted"
 )
 
-// Row is one structured unified-diff row. Code is the line content without the
-// leading addition, deletion, or context marker.
 type Row struct {
 	Type      RowType
-	Text      string // hunk header text (Type=hunk)
+	Text      string
 	LeftLine  int
 	RightLine int
 	Code      string
 	NoNewline bool
 }
 
-// DiffFile is one file's parsed diff. Added/Removed are counted from the rows;
-// they are meaningless for a Binary file (Rows empty, caller omits the counts).
 type DiffFile struct {
 	Path         string
 	Status       Status
@@ -59,9 +47,9 @@ type DiffFile struct {
 type BaselineType string
 
 const (
-	baselineHead      BaselineType = "head"
-	baselineMergeBase BaselineType = "mergeBase"
-	baselineEmptyTree BaselineType = "emptyTree"
+	BaselineHead      BaselineType = "head"
+	BaselineMergeBase BaselineType = "mergeBase"
+	BaselineEmptyTree BaselineType = "emptyTree"
 )
 
 type Baseline struct {
@@ -88,20 +76,21 @@ type RawDiffResult struct {
 	Patch    string
 }
 
-// Diff returns a whole-file parsed projection for dir under the given mode,
-// optionally scoped to relPath (relative to dir). Worktree mode includes
-// untracked files through Git's no-index patch semantics. maxFiles, maxRows,
-// and maxBytes are hard pre-materialization boundaries; truncated reports a
-// complete-file cut. Repository and process sentinels remain distinguishable.
-func Diff(ctx context.Context, dir, relPath string, mode Mode, projection Projection, maxFiles, maxRows, maxBytes int) (DiffResult, error) {
+type DiffBudget struct {
+	Files int
+	Rows  int
+	Bytes int
+}
+
+func Diff(ctx context.Context, dir, relPath string, mode Mode, projection Projection, budget DiffBudget) (DiffResult, error) {
 	if projection != Rows && projection != Visual {
 		return DiffResult{}, fmt.Errorf("git: unsupported diff projection %q", projection)
 	}
-	patch, untracked, baseline, err := completeDiff(ctx, dir, relPath, mode, maxBytes)
+	patch, untracked, baseline, err := completeDiff(ctx, dir, relPath, mode, budget.Bytes)
 	if err != nil {
 		return DiffResult{}, err
 	}
-	parsed, err := parseUnifiedDiff(patch, maxFiles, maxRows, projection == Rows)
+	parsed, err := parseUnifiedDiff(patch, budget.Files, budget.Rows, projection == Rows)
 	if err != nil {
 		return DiffResult{}, err
 	}
@@ -117,9 +106,6 @@ func Diff(ctx context.Context, dir, relPath string, mode Mode, projection Projec
 	return result, nil
 }
 
-// RawDiff returns at most maxBytes of complete raw unified patch text. Worktree
-// mode appends per-untracked no-index patches so the raw view matches the
-// parsed one; an oversized aggregate fails instead of returning a partial patch.
 func RawDiff(ctx context.Context, dir, relPath string, mode Mode, maxBytes int) (RawDiffResult, error) {
 	patch, _, baseline, err := completeDiff(ctx, dir, relPath, mode, maxBytes)
 	if err != nil {

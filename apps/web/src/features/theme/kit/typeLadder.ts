@@ -4,7 +4,7 @@ import {
   UI_TYPE_STEPS,
   type UiTypeStep,
 } from "@flame/ui/typography";
-export type UiTypeLadder = Readonly<Record<UiTypeStep, number>>;
+type UiTypeLadder = Readonly<Record<UiTypeStep, number>>;
 
 const STEPS: Readonly<
   Record<
@@ -23,7 +23,7 @@ const STEPS: Readonly<
   "display-lg": { aboveProse: true, ratio: 1.714, floorPx: 0 },
 };
 
-export function uiTypeLadder(basePx: number | null | undefined): UiTypeLadder {
+function uiTypeLadder(basePx: number | null | undefined): UiTypeLadder {
   const base = normalizeUiFontSize(basePx);
   const ladder = {} as Record<UiTypeStep, number>;
   for (const step of UI_TYPE_STEPS) {

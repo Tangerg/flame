@@ -28,13 +28,11 @@ type promptReadFunc func([]byte) (int, error)
 
 func (f promptReadFunc) Read(buffer []byte) (int, error) { return f(buffer) }
 
-// pipedPrompt is a borrowed prompt source and the release its reader requires.
 type pipedPrompt struct {
 	reader io.Reader
 	close  func() error
 }
 
-// pipedPromptSource reports false for a terminal, which carries no piped prompt.
 func pipedPromptSource(ctx context.Context, input io.Reader) (pipedPrompt, bool, error) {
 	if cause := context.Cause(ctx); cause != nil {
 		return pipedPrompt{}, false, cause
@@ -54,29 +52,8 @@ func pipedPromptSource(ctx context.Context, input io.Reader) (pipedPrompt, bool,
 			return pipedPrompt{}, false, nil
 		}
 		if !info.Mode().IsRegular() {
-			// These deployment targets provide descriptor pollers. Other backends
-			// may use an uncancelable fallback or open the Windows console instead.
-			if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
-				return pipedPrompt{}, false, fmt.Errorf("piped prompts on %s require a context-aware reader", runtime.GOOS)
-			}
-			reader, err := cancelreader.NewReader(file)
-			if err != nil {
-				return pipedPrompt{}, false, fmt.Errorf("prepare stdin cancellation: %w", err)
-			}
-			done := make(chan struct{})
-			var cancelErr error
-			stop := context.AfterFunc(ctx, func() {
-				defer close(done)
-				if !reader.Cancel() {
-					cancelErr = errors.New("interrupt stdin read failed")
-				}
-			})
-			return pipedPrompt{reader: reader, close: func() error {
-				if !stop() {
-					<-done
-				}
-				return errors.Join(cancelErr, reader.Close())
-			}}, true, nil
+			prompt, err := cancelablePipedPrompt(ctx, file)
+			return prompt, err == nil, err
 		}
 		return pipedPrompt{reader: checkedPromptReader(ctx, file), close: noClose}, true, nil
 	}
@@ -86,6 +63,32 @@ func pipedPromptSource(ctx context.Context, input io.Reader) (pipedPrompt, bool,
 	default:
 		return pipedPrompt{}, false, errors.New("piped prompt source must provide context-aware reads")
 	}
+}
+
+// A pipe read blocks without honoring ctx, so the read is interrupted from
+// outside when ctx ends.
+func cancelablePipedPrompt(ctx context.Context, file promptFile) (pipedPrompt, error) {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		return pipedPrompt{}, fmt.Errorf("piped prompts on %s require a context-aware reader", runtime.GOOS)
+	}
+	reader, err := cancelreader.NewReader(file)
+	if err != nil {
+		return pipedPrompt{}, fmt.Errorf("prepare stdin cancellation: %w", err)
+	}
+	done := make(chan struct{})
+	var cancelErr error
+	stop := context.AfterFunc(ctx, func() {
+		defer close(done)
+		if !reader.Cancel() {
+			cancelErr = errors.New("interrupt stdin read failed")
+		}
+	})
+	return pipedPrompt{reader: reader, close: func() error {
+		if !stop() {
+			<-done
+		}
+		return errors.Join(cancelErr, reader.Close())
+	}}, nil
 }
 
 func checkedPromptReader(ctx context.Context, input io.Reader) io.Reader {

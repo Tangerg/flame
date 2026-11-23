@@ -6,8 +6,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// ApplyRunEvent validates and folds one event exactly once. It never assigns
-// ordering meaning to EventID; the stream order is the order of delivery.
 func (c *Conversation) ApplyRunEvent(envelope RunEvent) (EventAcceptance, error) {
 	if err := envelope.Validate(); err != nil {
 		return EventAcceptance{}, fmt.Errorf("conversation: %w", err)
@@ -50,9 +48,6 @@ func (c *Conversation) ApplyRunEvent(envelope RunEvent) (EventAcceptance, error)
 	return EventAcceptance{Applied: !ignored}, nil
 }
 
-// alreadyProjected reports the events whose fact the projection holds by
-// protocol design. An attached snapshot splits exactly from its tail, so no
-// other repeat is legitimate and any other duplicate fails to fold.
 func (c *Conversation) alreadyProjected(envelope RunEvent) (bool, error) {
 	event := envelope.Event
 	if item, ok := event.(PlanChanged); ok {
@@ -60,16 +55,13 @@ func (c *Conversation) alreadyProjected(envelope RunEvent) (bool, error) {
 		if stateErr != nil {
 			return false, fmt.Errorf("%w: %w", ErrInvalidTransition, stateErr)
 		}
-		// The Plan is a latest-value projection identified by its revision. The
-		// Runtime repeats the final Plan before segment.finished, and persists a
+		// The Runtime repeats the final Plan before segment.finished and persists a
 		// revision before publishing it, so a snapshot may already hold it.
 		if c.plan != nil && c.plan.State != nil && state.Revision <= c.plan.State.Revision {
 			return true, nil
 		}
 	}
 	if completed, ok := event.(BlockCompleted); ok && completed.Block.Kind == BlockQuestion {
-		// A resumed continuation re-completes each answered Question. A projection
-		// that already holds the answered Item, from a cold read, has nothing to fold.
 		if at, exists := c.index[BlockKey(completed.Block.RunID, completed.Block.ID)]; exists &&
 			c.blocks[at].Status != BlockStatusRunning && c.blocks[at].Equal(completed.Block) {
 			return true, nil
@@ -77,7 +69,6 @@ func (c *Conversation) alreadyProjected(envelope RunEvent) (bool, error) {
 	}
 	if delta, ok := event.(BlockDelta); ok && c.snapshotSegmentsByRun[envelope.RunID] == envelope.SegmentID {
 		if _, exists := c.index[BlockKey(envelope.RunID, delta.BlockID)]; !exists {
-			// The completed Item is authoritative and restores the block.
 			return true, nil
 		}
 	}
@@ -216,8 +207,8 @@ func (c *Conversation) applyBlockDelta(runID string, event BlockDelta) error {
 	block := &c.blocks[at]
 	switch block.Kind {
 	case BlockAssistant, BlockReasoning:
-		stream := c.textStreams[key]
-		if err := stream.Apply(event); err != nil {
+		stream, err := c.textStreams[key].Append(event)
+		if err != nil {
 			return fmt.Errorf("%w: block %s: %w", ErrInvalidTransition, event.BlockID, err)
 		}
 		c.textStreams[key] = stream
@@ -281,8 +272,6 @@ func (c *Conversation) applyBlockCompleted(runID string, event BlockCompleted) e
 	return c.completeBlock(event.Block)
 }
 
-// answersQuestion reports whether completed is the answered form of a Question
-// that parked unanswered: the only Item a resumed Run completes a second time.
 func answersQuestion(current, completed Block) bool {
 	if current.Kind != BlockQuestion || completed.Kind != BlockQuestion ||
 		current.Status == BlockStatusRunning || current.Question == nil || completed.Question == nil {
@@ -315,9 +304,6 @@ func (c *Conversation) applyPlanChanged(runID string, event PlanChanged) error {
 	return nil
 }
 
-// applySegmentFinished replaces the Run with the record Runtime committed at
-// the boundary. The fold checks only what the CLI composes across events: the
-// interrupt set assembled for the tree, and the blocks and members still open.
 func (c *Conversation) applySegmentFinished(runID string, event SegmentFinished) error {
 	if err := c.requireRunRunning(runID, "finish a segment"); err != nil {
 		return err

@@ -31,7 +31,7 @@ const styles = stylex.create({
   chevronInk: { flexShrink: 0, color: color.fgFaint },
 });
 
-export interface SelectTriggerProps extends Omit<
+interface SelectTriggerProps extends Omit<
   ButtonPrimitiveProps,
   "children" | "aria-label" | "aria-labelledby"
 > {

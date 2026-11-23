@@ -7,19 +7,20 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
-
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 const sessionsExportTrajectory Name = "sessions.exportTrajectory"
 
-type trajectoryExportUseCases interface {
-	Export(context.Context, identity.SessionID) (sessions.TrajectoryExport, error)
+var toolAttemptStates = wireVocabulary[runs.ToolInvocationState, protocol.ToolAttemptState]{
+	{runs.ToolInvocationStarted, protocol.ToolAttemptStarted},
+	{runs.ToolInvocationCompleted, protocol.ToolAttemptCompleted},
+	{runs.ToolInvocationIncomplete, protocol.ToolAttemptIncomplete},
 }
 
 func registerExportTrajectory(registry *Registry) {
@@ -39,7 +40,7 @@ func registerExportTrajectory(registry *Registry) {
 }
 
 func (s *Handler) ExportTrajectory(ctx context.Context, request protocol.ExportTrajectoryRequest) (*protocol.ExportTrajectoryResponse, error) {
-	sessionID, err := wireIdentity("sessionId", request.SessionID, identity.ParseSession)
+	sessionID, err := sessionParameter(request.SessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +148,7 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 		attempt := row.Invocation
 		out.ToolAttempts = append(out.ToolAttempts, protocol.ToolAttempt{
 			CallID: attempt.CallID, ItemID: attempt.ItemID.String(), RunID: row.RunID.String(), SegmentID: attempt.SegmentID.String(),
-			State: protocol.ToolAttemptState(attempt.State), StartedAt: attempt.StartedAt, SettledAt: attempt.FinishedAt,
+			State: toolAttemptStates.mustWire(attempt.State), StartedAt: attempt.StartedAt, SettledAt: attempt.FinishedAt,
 		})
 	}
 	for _, entry := range result.Evidence.Annotations {

@@ -14,9 +14,6 @@ import (
 	sdk "github.com/Tangerg/go-sdk/mcp"
 )
 
-// ProcessRequestFrameBytes bounds a NewProcessClient frame without opening a session.
-// The SDK's int64 request counter and, for streams, any valid callback grant
-// are included, so callers can reduce input before allocating or dispatching it.
 func ProcessRequestFrameBytes(ctx context.Context, contract *plugincontract.Capability, export, method string, id CommandID, input framevalue.JSON, metadata sdk.ParamsBase) (int, error) {
 	if contract == nil || !plugincontract.ValidExportName(export) {
 		return 0, errors.New("plugin: frame requires an exact capability export")
@@ -66,8 +63,6 @@ func ProcessRequestFrameBytes(ctx context.Context, contract *plugincontract.Capa
 	return len(frame) + 1, err
 }
 
-// NewProcessClient fixes the SDK profile used by installed process connections
-// and their request-capacity admission. Caller-specific clients use RegisterClient.
 func NewProcessClient() (*sdk.Client, error) {
 	client := sdk.NewClient(processClientInfo(), &sdk.ClientOptions{Capabilities: processClientCapabilities()})
 	if err := RegisterClient(client); err != nil {
@@ -75,9 +70,7 @@ func NewProcessClient() (*sdk.Client, error) {
 	}
 	return client, nil
 }
+
 func processClientInfo() *sdk.Implementation { return &sdk.Implementation{Name: "flame", Version: "1"} }
-func processClientCapabilities() *sdk.ClientCapabilities {
-	caps := &sdk.ClientCapabilities{RootsV2: &sdk.RootCapabilities{ListChanged: true}}
-	caps.Roots.ListChanged = true
-	return caps
-}
+
+func processClientCapabilities() *sdk.ClientCapabilities { return &sdk.ClientCapabilities{} }

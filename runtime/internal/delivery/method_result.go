@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// ValidateResult applies the catalog's result contract to an in-process value.
 func (m MethodMeta) ValidateResult(value any) error {
 	expected := m.resultType()
 	if expected.Kind() == reflect.Interface {
@@ -28,8 +27,6 @@ func (m MethodMeta) ValidateResult(value any) error {
 	return protocol.ValidateWireTree(value)
 }
 
-// DecodeResult preserves required fields and nullability before typed decoding
-// can erase them. Stored receipts and remote replies use this same contract.
 func (m MethodMeta) DecodeResult(encoded jsontext.Value) (any, error) {
 	if len(encoded) == 0 {
 		return nil, errors.New("result is absent")

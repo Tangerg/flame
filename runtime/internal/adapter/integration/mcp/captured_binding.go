@@ -9,9 +9,6 @@ import (
 	framehost "github.com/Tangerg/frame/host"
 )
 
-// ValidateCapturedBindingUnder accepts only a live catalog capture or a graph
-// retained by an original command/checkpoint owner. A serialized graph alone
-// cannot authorize a newly published execution.
 func (p *Pool) ValidateCapturedBindingUnder(ctx context.Context, activation plugin.Activation) error {
 	host := p.installed.host
 	if err := host.Admission().CheckAdmitted(ctx); err != nil {
@@ -34,7 +31,6 @@ func (p *Pool) ValidateCapturedBindingUnder(ctx context.Context, activation plug
 	return host.ValidateBindingUnder(ctx, binding)
 }
 
-// capturedObservation is the live installed session still serving activation.
 func (p *Pool) capturedObservation(activation plugin.Activation) *installedObservation {
 	p.inner.mu.Lock()
 	defer p.inner.mu.Unlock()
@@ -53,8 +49,6 @@ func (p *Pool) capturedObservation(activation plugin.Activation) *installedObser
 	return nil
 }
 
-// validateObservedPlan proves the captured session still runs the same plan on
-// a ready instance.
 func validateObservedPlan(ctx context.Context, host framehost.Host, captured *installedObservation, activation plugin.Activation) error {
 	binding, err := host.ValidatePlanUnder(ctx, captured.plan)
 	if err != nil {

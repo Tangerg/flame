@@ -1,9 +1,9 @@
 package persistence
 
 import (
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	json "encoding/json/v2"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
@@ -20,11 +20,12 @@ type unresolvedEffectRow struct {
 func encodeUnresolvedEffects(effects []run.UnresolvedEffect) (string, error) {
 	rows := make([]unresolvedEffectRow, 0, len(effects))
 	for _, e := range effects {
-		rows = append(rows, unresolvedEffectRow{ProcessID: e.ProcessID(), EffectID: e.EffectID(), Cause: e.Cause(), Reason: e.Reason(), Detail: e.Detail(), Output: e.Output()})
+		rows = append(rows, unresolvedEffectRow{ProcessID: e.ProcessID(), EffectID: e.EffectID(), Cause: string(e.Cause()), Reason: e.Reason(), Detail: e.Detail(), Output: e.Output()})
 	}
 	encoded, err := encodeStoredJSON(rows)
 	return string(encoded), err
 }
+
 func decodeUnresolvedEffects(encoded string) ([]run.UnresolvedEffect, error) {
 	var rows []unresolvedEffectRow
 	if err := decodeStoredJSON([]byte(encoded), &rows); err != nil {
@@ -40,7 +41,7 @@ func decodeUnresolvedEffects(encoded string) ([]run.UnresolvedEffect, error) {
 			}
 		}
 		effect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{
-			ProcessID: row.ProcessID, EffectID: row.EffectID, Cause: row.Cause, Reason: row.Reason, Detail: row.Detail, Output: output,
+			ProcessID: row.ProcessID, EffectID: row.EffectID, Cause: run.UnresolvedCause(row.Cause), Reason: row.Reason, Detail: row.Detail, Output: output,
 		})
 		if err != nil {
 			return nil, err

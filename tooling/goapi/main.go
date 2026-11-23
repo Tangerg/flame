@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 func main() {
@@ -43,10 +45,10 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(filepath.Dir(*out), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(*out), filesystem.SharedDirectoryMode); err != nil {
 		return err
 	}
-	return os.WriteFile(*out, append(data, '\n'), 0644)
+	return os.WriteFile(*out, append(data, '\n'), filesystem.SharedFileMode)
 }
 
 func fail(err error) {

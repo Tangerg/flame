@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 
-	knowledge "github.com/Tangerg/flame/plugins/knowledgebase/internal/domain"
+	"github.com/Tangerg/flame/plugins/knowledgebase/internal/knowledge"
 )
 
 func classify(err error) (string, bool) {

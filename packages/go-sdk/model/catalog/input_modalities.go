@@ -13,9 +13,8 @@ import (
 
 var ErrUnsupportedInputModality = errors.New("model: unsupported input modality")
 
-// AdmitInput rejects media that a known catalog model does not
-// accept. A catalog miss remains admissible because compatible endpoints may
-// expose private models whose capabilities are not available locally.
+// A catalog miss stays admissible because compatible endpoints may expose private
+// models whose capabilities are not available locally.
 func (a Admission) AdmitInput(messages []chat.Message) error {
 	selection := a.selection
 	if err := selection.ValidateExact(); err != nil {

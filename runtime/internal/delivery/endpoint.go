@@ -18,8 +18,6 @@ import (
 
 const maxIdempotencyKeyBytes = 255
 
-// Endpoint executes the one Runtime operation catalog independently of any
-// transport envelope.
 type Endpoint struct {
 	target               any
 	idempotency          *operation.Replay
@@ -28,32 +26,24 @@ type Endpoint struct {
 	validateStorage      func() error
 }
 
-// EndpointConfig supplies the durable operation owner and process lifetime.
 type EndpointConfig struct {
 	ValidateStorage      func() error
 	IdempotencyStore     operation.ReplayStore
 	IdempotencyNamespace string
-	// Lifetime ends every in-flight operation and stream owned by this Runtime
-	// instance. Required: accepted streams may outlive their request context and
-	// must still have one process-owned cancellation root.
-	Lifetime context.Context
+	Lifetime             context.Context
 }
 
-// NewEndpoint constructs the binding-neutral Runtime delivery endpoint.
 func NewEndpoint(target any, config EndpointConfig) (*Endpoint, error) {
-	if lo.IsNil(config.Lifetime) {
-		return nil, errors.New("delivery endpoint: lifetime is required")
+	if lo.IsNil(config.Lifetime) || config.ValidateStorage == nil {
+		return nil, errors.New("delivery endpoint: lifetime and storage ownership check are required")
 	}
 	replay, err := operation.NewReplay(config.IdempotencyStore)
 	if err != nil {
 		return nil, fmt.Errorf("delivery endpoint: %w", err)
 	}
-	var namespace operation.ReplayNamespace
-	if config.IdempotencyNamespace != "" {
-		namespace, err = operation.ParseReplayNamespace(config.IdempotencyNamespace)
-		if err != nil {
-			return nil, fmt.Errorf("delivery endpoint: idempotency namespace: %w", err)
-		}
+	namespace, err := operation.ParseReplayNamespace(config.IdempotencyNamespace)
+	if err != nil {
+		return nil, fmt.Errorf("delivery endpoint: idempotency namespace: %w", err)
 	}
 	return &Endpoint{
 		validateStorage:      config.ValidateStorage,
@@ -64,8 +54,6 @@ func NewEndpoint(target any, config EndpointConfig) (*Endpoint, error) {
 	}, nil
 }
 
-// BeginShutdown rejects new calls and cancels every accepted call or stream.
-// The Runtime owner follows it with AwaitShutdown before closing dependencies.
 func (e *Endpoint) BeginShutdown() {
 	if target, ok := e.target.(interface{ beginShutdown() }); ok {
 		target.beginShutdown()
@@ -73,10 +61,6 @@ func (e *Endpoint) BeginShutdown() {
 	e.invocations.BeginShutdown()
 }
 
-// AwaitShutdown waits until every accepted call or stream source has returned,
-// then persists every known idempotency outcome before its Store can close. It
-// does not begin shutdown so process owners can broadcast all cancellation
-// signals before joining any one component.
 func (e *Endpoint) AwaitShutdown(ctx context.Context) error {
 	if err := e.invocations.AwaitShutdown(ctx); err != nil {
 		return err
@@ -84,13 +68,9 @@ func (e *Endpoint) AwaitShutdown(ctx context.Context) error {
 	return e.idempotency.FlushPending(ctx)
 }
 
-// Invoke validates and executes the named operation through the catalog's
-// capability, idempotency and safe-problem policies.
 func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, options protocol.CallMetadata) protocol.OperationResult {
-	if e.validateStorage != nil {
-		if err := e.validateStorage(); err != nil {
-			return failed(projectError(err))
-		}
+	if err := e.validateStorage(); err != nil {
+		return failed(projectError(err))
 	}
 	ctx, release, admitted := e.invocations.Attach(ctx)
 	if !admitted {
@@ -109,10 +89,8 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	if err != nil {
 		return failed(projectError(err))
 	}
-	// Capability admission belongs to this request, not to the operation's stored
-	// outcome: a replay must not serve a result the caller could not have asked
-	// for, and a request refused for a missing declaration must not occupy the
-	// key a complete one retries with.
+	// A replay must not serve a result the caller could not have asked for, and a
+	// refused request must not occupy the key a complete one retries with.
 	if failure := e.enforceCapabilities(ctx, method.Meta, parameters); failure != nil {
 		return failed(failure)
 	}
@@ -125,8 +103,6 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 	return result
 }
 
-// admit resolves the method a request names and refuses it before any handler
-// or idempotency record can observe it.
 func (e *Endpoint) admit(ctx context.Context, name Name, parameters any, options protocol.CallMetadata) (*Method, *protocol.Failure) {
 	method, ok := contract.lookup(name)
 	if !ok {
@@ -161,9 +137,7 @@ func (e *Endpoint) admit(ctx context.Context, name Name, parameters any, options
 	return prepared, nil
 }
 
-// bind attaches the request's operation identity to its context. Run commands
-// carry caller-owned identity into their acceptance transaction, because a key
-// created only in the response cannot survive a lost acknowledgement.
+// A key created only in the response cannot survive a lost acknowledgement.
 func (e *Endpoint) bind(ctx context.Context, method *Method, parameters any, options protocol.CallMetadata) (context.Context, protocol.CallMetadata, error) {
 	options.IdempotencyKey = operation.ScopedKey(ctx, options.IdempotencyKey)
 	ctx = operation.Bind(ctx, e.idempotencyNamespace.String(), options.IdempotencyKey)
@@ -179,17 +153,12 @@ func (e *Endpoint) bind(ctx context.Context, method *Method, parameters any, opt
 	return withCommandIdentity(ctx, commandIdentity{key: options.IdempotencyKey, fingerprint: fingerprint}), options, nil
 }
 
-// dispatch routes a keyed call by its method's retry contract: a Run command
-// serializes through its opening acknowledgement, a response-replay method
-// answers from its first outcome, and every other call reaches the handler.
 func (e *Endpoint) dispatch(ctx context.Context, method *Method, parameters any, key string) protocol.OperationResult {
 	execute := func() protocol.OperationResult { return e.execute(ctx, method, parameters) }
 	switch {
 	case key == "":
 		return execute()
 	case method.Meta.Idempotency == IdempotencyOwnerRun:
-		// The durable Run acceptance remains the only command outcome authority;
-		// serialization never spans the stream lifetime.
 		releaseKey, err := e.idempotency.Serialize(ctx, key)
 		if err != nil {
 			return failed(projectError(err))
@@ -319,11 +288,6 @@ func failed(failure *protocol.Failure) protocol.OperationResult {
 	return protocol.OperationResult{Failure: failure}
 }
 
-// commandIdentity is the request's idempotency key and fingerprint. It reaches an
-// owner-run-stream handler through the context because the handler owns the
-// durable acceptance, while the key and fingerprint are the delivery boundary's to
-// state. The fingerprint is the one authoritative request fingerprint shared with
-// the replay store, so acceptance and replay cannot disagree on request identity.
 type commandIdentity struct {
 	key         string
 	fingerprint string
@@ -340,7 +304,6 @@ func commandIdentityFrom(ctx context.Context) (commandIdentity, bool) {
 	return identity, ok
 }
 
-// Call restores the typed result declared by a unary catalog entry.
 func (e *Endpoint) Call[Params, Response any](
 	ctx context.Context,
 	name Name,

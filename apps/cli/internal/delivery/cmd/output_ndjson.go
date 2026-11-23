@@ -13,12 +13,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// Consumers can read each event without waiting for the Run to end.
-//
-// The shape is the CLI's own output contract, not the runtime's wire format. A
-// caller here wants what happened, already folded; the wire additionally carries
-// segment identity, replay windows and dedup keys that exist to make a
-// reconnecting consumer correct and would be noise in a pipe.
 type ndjsonRenderer struct {
 	out   io.Writer
 	err   error
@@ -29,8 +23,6 @@ func newNDJSONRenderer(w io.Writer) *ndjsonRenderer {
 	return &ndjsonRenderer{out: w}
 }
 
-// Begin binds the stream to the accepted run without emitting a synthetic
-// event. The runtime's segment.started event remains the first output frame.
 func (n *ndjsonRenderer) Begin(run conversation.Run, _ authoring.RunOptions) error {
 	if n.err != nil {
 		return n.err
@@ -46,14 +38,6 @@ func (n *ndjsonRenderer) Begin(run conversation.Run, _ authoring.RunOptions) err
 	return nil
 }
 
-// eventRecord is one output line.
-//
-// One struct with optional members, rather than a type per event: this is a wire
-// shape, where a single discriminated object keeps a decoder's job simple and
-// lets a reader ignore what it does not use. Type is always set and is the only
-// field a consumer must switch on.
-// recordType names each machine-readable output record; scripts select records
-// by it, so it is part of the CLI's output contract.
 type recordType string
 
 const (
@@ -224,7 +208,6 @@ type modelUsageJSON struct {
 	CostUSD          *float64 `json:"costUsd,omitzero"`
 }
 
-// Render writes one line. As with [Text], the first error sticks.
 func (n *ndjsonRenderer) Render(envelope conversation.RunEvent) error {
 	if n.err != nil {
 		return n.err
@@ -248,10 +231,6 @@ func (n *ndjsonRenderer) Render(envelope conversation.RunEvent) error {
 	return n.err
 }
 
-// Reconcile emits a replacement snapshot frame. Unlike a runtime event it has
-// no eventId: consumers replace their durable projection with this frame, then
-// continue folding later segment events on top.
-// restoreScope rebinds the renderer to the Run tree the snapshot holds.
 func (n *ndjsonRenderer) restoreScope(snapshot conversation.SessionSnapshot) (conversation.Run, error) {
 	if err := snapshot.Validate(); err != nil {
 		return conversation.Run{}, err
@@ -443,8 +422,6 @@ func encodeInterrupt(interrupt conversation.Interrupt) *interruptJSON {
 	}
 }
 
-// Close reports the first write error, if any. There is nothing to flush: a line
-// is encoded per event.
 func (n *ndjsonRenderer) Close() error { return n.err }
 
 func encodeBlock(b conversation.Block) *blockFrame {

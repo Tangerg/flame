@@ -31,7 +31,6 @@ func (s *InterruptStore) List(ctx context.Context, sessionID identity.SessionID)
 	return pendingValues(records)
 }
 
-// ListOpen returns every open interrupt set across Sessions.
 func (s *InterruptStore) ListOpen(ctx context.Context) ([]runs.Pending, error) {
 	records, err := s.list(ctx, identity.SessionID{}, identity.RunID{}, nil, 0)
 	if err != nil {

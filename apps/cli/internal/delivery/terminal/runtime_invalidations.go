@@ -12,8 +12,13 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
+const (
+	runtimeRecoveryFirstDelay = 100 * time.Millisecond
+	runtimeRecoveryMaxDelay   = 5 * time.Second
+)
+
 var runtimeRecoveryBackoff = func() retry.Backoff {
-	backoff, err := retry.NewBackoff(100*time.Millisecond, 5*time.Second)
+	backoff, err := retry.NewBackoff(runtimeRecoveryFirstDelay, runtimeRecoveryMaxDelay)
 	if err != nil {
 		panic("invalid static runtime recovery backoff: " + err.Error())
 	}
@@ -114,8 +119,6 @@ func invalidationAffectsSession(event changefeed.Event, sessionID, runID string)
 	}
 }
 
-// sessionRefresh says why an invalidated session is reread: after a Runtime
-// change, or as the fence that settles a Run this client was following.
 type sessionRefresh uint8
 
 const (
@@ -125,10 +128,6 @@ const (
 
 func (r sessionRefresh) settles() bool { return r == refreshSettlingRun }
 
-// refreshInvalidatedSession normally defers replacement while a trusted live
-// stream owns the projection. A settlement fence means Runtime has already
-// returned a terminal fact, so the cold read must replace even a locally stale
-// running phase before queued work can be admitted.
 func (l *sessionLifecycle) refreshInvalidatedSession(purpose sessionRefresh) {
 	sessionID := l.state.current.ID
 	l.state.invalidated = false
@@ -138,9 +137,6 @@ func (l *sessionLifecycle) refreshInvalidatedSession(purpose sessionRefresh) {
 	apply := func(snapshot conversation.SessionSnapshot, err error) {
 		l.applyInvalidatedSessionRefresh(sessionID, purpose, snapshot, err)
 	}
-	// Every authoritative refresh fences queued Run admission. Settlement
-	// refreshes additionally replace an ordinary read already in flight so a
-	// weaker coalesced request cannot discard that obligation.
 	slot := sessionInvalidationOperation
 	if purpose.settles() {
 		slot = slot.superseding()
@@ -151,9 +147,6 @@ func (l *sessionLifecycle) refreshInvalidatedSession(purpose sessionRefresh) {
 	}
 }
 
-// applyInvalidatedSessionRefresh reconciles one authoritative read on the UI
-// loop after its operation lease has been released. Successful ordinary reads
-// explicitly reopen queued admission; failed reads leave invalidation asserted.
 func (l *sessionLifecycle) applyInvalidatedSessionRefresh(
 	sessionID string,
 	purpose sessionRefresh,
@@ -191,8 +184,6 @@ func (l *sessionLifecycle) applyInvalidatedSessionRefresh(
 	}
 }
 
-// failInvalidatedRefresh keeps the session invalidated. A session deleted
-// while this client sat idle is replaced instead of reported.
 func (l *sessionLifecycle) failInvalidatedRefresh(err error) {
 	l.state.invalidated = true
 	if errors.Is(err, conversation.ErrSessionNotFound) && l.runs.conversation().Phase() == conversation.Idle && !l.runs.following() {
@@ -203,8 +194,6 @@ func (l *sessionLifecycle) failInvalidatedRefresh(err error) {
 	l.root.message("refresh session after runtime change failed: " + err.Error())
 }
 
-// installRefreshedSnapshot installs only what the read changed: metadata
-// alone when the conversation and workspace still match.
 func (l *sessionLifecycle) installRefreshedSnapshot(snapshot conversation.SessionSnapshot) (changed, installed bool) {
 	conversationMatches := l.runs.conversation().MatchesSnapshot(snapshot)
 	sessionMatches := l.state.current.Equal(snapshot.Session)

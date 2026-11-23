@@ -6,8 +6,6 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// Discover handles runtime.discover. It is a stateless capability query, not a
-// lifecycle transition; business methods can run without calling it first.
 func (s *Handler) Discover(_ context.Context) (*protocol.DiscoverResponse, error) {
 	return &protocol.DiscoverResponse{
 		ProtocolVersion: protocol.Version,

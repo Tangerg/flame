@@ -3,7 +3,7 @@ import { initialLocale, localeToBcp47 } from "@/lib/i18n/locale";
 import { failureMessage } from "@/lib/diagnostics";
 import { startupCopy } from "./startupCopy.generated";
 
-export type BrowserStartupFailure =
+type BrowserStartupFailure =
   { status: "unsupported"; missing: readonly string[] } | { status: "failed"; cause: unknown };
 
 function browserDescription(target: string): string {

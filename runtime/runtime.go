@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
-	"slices"
 	"sync"
 
 	localruntime "github.com/Tangerg/flame/packages/local-runtime"
@@ -15,40 +13,24 @@ import (
 )
 
 var (
-	// ErrClosed is returned when an operation starts after Runtime shutdown has
-	// begun. An already-returned stream ends through its iterator instead.
 	ErrClosed = errors.New("runtime: closed")
 )
 
-// Config identifies the host paths used by one in-process Runtime.
 type Config struct {
-	// DataDirectory holds Runtime durability and must be absolute. One Runtime
-	// exclusively owns it from before initialization through complete shutdown.
-	DataDirectory string
-	// DefaultWorkspacePath is used when a request omits its workspace. Empty uses
-	// UserHomePath.
+	DataDirectory        string
 	DefaultWorkspacePath string
-	// UserHomePath anchors home-scoped instructions and workspace discovery.
-	// Empty takes one os.UserHomeDir snapshot during Open.
-	UserHomePath string
-	// ConfigDirectories are absolute search directories for config.yaml. The
-	// first existing file wins. Empty searches only DataDirectory; the in-process
-	// binding never reads process cwd.
-	ConfigDirectories []string
+	UserHomePath         string
+	ConfigDirectories    []string
 }
 
-// Runtime is a complete in-process Flame Runtime. It is safe for concurrent
-// calls. Do not copy a Runtime; Open always returns a pointer.
 type Runtime struct {
-	binding
 	mu       sync.RWMutex
 	stopping bool
 	instance *bootstrap.Instance
 }
 
-// Open constructs, recovers and starts one Runtime. The caller must Close it.
 func Open(ctx context.Context, cfg Config) (*Runtime, error) {
-	resolved, err := cfg.resolve()
+	resolved, err := cfg.withDefaults()
 	if err != nil {
 		return nil, err
 	}
@@ -75,52 +57,24 @@ func Open(ctx context.Context, cfg Config) (*Runtime, error) {
 	if err != nil {
 		return nil, err
 	}
-	runtime := &Runtime{instance: instance}
-	runtime.binding.caller = runtime
-	return runtime, nil
+	return &Runtime{instance: instance}, nil
 }
 
-func (c Config) resolve() (Config, error) {
-	if c.DataDirectory == "" {
-		return Config{}, errors.New("runtime: data directory is required")
-	}
-	if !filepath.IsAbs(c.DataDirectory) {
-		return Config{}, errors.New("runtime: data directory must be absolute")
-	}
-	userHome := c.UserHomePath
-	if userHome == "" {
-		var err error
-		userHome, err = os.UserHomeDir()
+func (c Config) withDefaults() (Config, error) {
+	if c.UserHomePath == "" {
+		userHome, err := os.UserHomeDir()
 		if err != nil {
 			return Config{}, fmt.Errorf("runtime: locate user home: %w", err)
 		}
+		c.UserHomePath = userHome
 	}
-	if userHome == "" || !filepath.IsAbs(userHome) {
-		return Config{}, errors.New("runtime: user home must be a non-empty absolute path")
+	if c.DefaultWorkspacePath == "" {
+		c.DefaultWorkspacePath = c.UserHomePath
 	}
-	workspace := c.DefaultWorkspacePath
-	if workspace == "" {
-		workspace = userHome
+	if len(c.ConfigDirectories) == 0 {
+		c.ConfigDirectories = []string{c.DataDirectory}
 	}
-	if !filepath.IsAbs(workspace) {
-		return Config{}, errors.New("runtime: default workspace path must be absolute")
-	}
-	directories := slices.Clone(c.ConfigDirectories)
-	if len(directories) == 0 {
-		directories = []string{c.DataDirectory}
-	}
-	for index, directory := range directories {
-		if directory == "" || !filepath.IsAbs(directory) {
-			return Config{}, errors.New("runtime: config directories must be non-empty absolute paths")
-		}
-		directories[index] = filepath.Clean(directory)
-	}
-	return Config{
-		DataDirectory:        filepath.Clean(c.DataDirectory),
-		DefaultWorkspacePath: filepath.Clean(workspace),
-		UserHomePath:         filepath.Clean(userHome),
-		ConfigDirectories:    directories,
-	}, nil
+	return c, nil
 }
 
 func (r *Runtime) endpoint() (*delivery.Endpoint, error) {
@@ -135,9 +89,6 @@ func (r *Runtime) endpoint() (*delivery.Endpoint, error) {
 	return r.instance.Endpoint(), nil
 }
 
-// Close stops new calls, ends subscriptions, joins Runtime-owned workers and
-// closes resources. Another Close joins or resumes incomplete teardown;
-// completed teardown retains its terminal diagnostics without repeating work.
 func (r *Runtime) Close() error {
 	if r == nil {
 		return nil

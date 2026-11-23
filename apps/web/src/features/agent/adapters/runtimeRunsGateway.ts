@@ -17,7 +17,7 @@ function runOpeningIdentity(method: "start" | "resume", params: unknown): string
   return stringifyJSON([`runs.${method}`, params]);
 }
 
-export interface RuntimeRunsGateway extends RpcRunsGateway {
+interface RuntimeRunsGateway extends RpcRunsGateway {
   replaceRuntimeGeneration(): void;
   dispose(): void;
 }

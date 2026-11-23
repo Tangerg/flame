@@ -1,9 +1,19 @@
 package runtimefixture
 
-import "github.com/Tangerg/flame/packages/go-sdk/protocol"
+import (
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
+	"github.com/Tangerg/flame/packages/go-sdk/mcpconnector"
+	"github.com/Tangerg/flame/packages/go-sdk/protocol"
+)
 
-// Discovery supplies a complete protocol response for consumer tests. Tests
-// customize advertised facts before negotiating them through the real adapter.
+const (
+	fixtureConcurrentRuns              = 4
+	fixtureIdempotencyRetentionSeconds = 600
+	fixtureReplayEvents                = 1024
+	fixtureWatchPaths                  = 64
+	fixtureWatchDirectoryEntries       = 1024
+)
+
 func Discovery() *protocol.DiscoverResponse {
 	return &protocol.DiscoverResponse{
 		ProtocolVersion: protocol.Version,
@@ -17,19 +27,16 @@ func Discovery() *protocol.DiscoverResponse {
 			StreamingMethods: []string{"runs.start", "runs.resume", "runs.subscribe"},
 			Features:         map[string]protocol.FeatureCapability{},
 			Limits: protocol.RuntimeLimits{
-				MaxConcurrentRuns:        new(4),
-				Idempotency:              protocol.IdempotencyLimits{RetentionSeconds: 600, Namespace: "idp_0123456789abcdef0123456789abcdef"},
-				RunReplay:                protocol.RunReplayLimits{Scope: protocol.ReplayScopeRuntimeInstanceRootSegment, MaxEvents: 1024, MaxBytes: 1 << 20},
-				MCPAuthorizationAttempts: protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: 600},
-				RuntimeSubscription:      protocol.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32, MaxPaths: 64, MaxDirectoryEntries: 1024, MaxFileBytes: 1 << 20},
+				MaxConcurrentRuns:        new(fixtureConcurrentRuns),
+				Idempotency:              protocol.IdempotencyLimits{RetentionSeconds: fixtureIdempotencyRetentionSeconds, Namespace: "idp_0123456789abcdef0123456789abcdef"},
+				RunReplay:                protocol.RunReplayLimits{Scope: protocol.ReplayScopeRuntimeInstanceRootSegment, MaxEvents: fixtureReplayEvents, MaxBytes: filesystem.MiB},
+				MCPAuthorizationAttempts: protocol.MCPAuthorizationAttemptLimits{RetentionSeconds: mcpconnector.AttemptRetentionSeconds},
+				RuntimeSubscription:      protocol.SubscriptionLimits{MaxTopics: protocol.MaxSubscriptionTopics, MaxWatches: protocol.MaxSubscriptionWatches, MaxPaths: fixtureWatchPaths, MaxDirectoryEntries: fixtureWatchDirectoryEntries, MaxFileBytes: filesystem.MiB},
 			},
 		},
 	}
 }
 
-// CompleteDiscovery advertises every published feature, and the client
-// agreement that opts into each one requiring it, as a complete Runtime
-// composition negotiated by the CLI would.
 func CompleteDiscovery() (*protocol.DiscoverResponse, *protocol.ClientCapabilities) {
 	discovery := Discovery()
 	client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{}}

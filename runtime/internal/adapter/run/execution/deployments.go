@@ -65,8 +65,6 @@ func (i *interactionDeploymentSet) managedChild(reference scoperun.ProgramRef) b
 	return found
 }
 
-// interactionChild is the inner model loop of a delegated task. The workflow
-// adapter owns the product child Run; its Interaction is execution machinery.
 func (i *interactionDeploymentSet) interactionChild(reference scoperun.ProgramRef) bool {
 	_, found := i.interactionChildren[reference]
 	return found
@@ -258,11 +256,8 @@ func (i *interactionDeploymentBuilder) buildAtDepth(ctx context.Context, depth i
 	return deployment, nil
 }
 
-// deferredCatalogMessage projects a layer's frozen deferred Tool catalog as
-// the last message of each of its model requests. It is a User message because
-// providers hoist System messages into the instruction block, which precedes
-// the conversation in the cache prefix; the Runtime context framing marks it
-// as Runtime context rather than user input.
+// A User message because providers hoist System messages into the instruction
+// block ahead of the cached conversation prefix.
 func deferredCatalogMessage(manifest toolset.Manifest) []corechat.Message {
 	catalog := manifest.DeferredCatalog()
 	if catalog == "" {
@@ -282,8 +277,6 @@ func (i *interactionDeploymentBuilder) layerIdentity(
 	return domaintool.GroupDelegated, delegatedDefinitionName(depth), delegatedDefinitionDescription
 }
 
-// delegatedDefinitionName names the interaction at one delegation depth; each
-// depth is a distinct agent definition under the root interaction's name.
 func delegatedDefinitionName(depth int) string {
 	return fmt.Sprintf("%s.delegate.depth%d", interactionDefinitionName, depth)
 }
@@ -307,7 +300,6 @@ func (i *interactionDeploymentBuilder) delegateLayer(
 
 func interactionTreeLimits(start runs.RootExecutionStart) scoperun.TreeLimits {
 	limits := scoperun.DefaultTreeLimits()
-	// Each delegated task is a workflow containing one Interaction child.
 	limits.MaxDepth = 2 * defaultDelegateDepth
 	limits.MaxActiveChildren = runs.MaxActiveChildRuns
 	if !start.ChildRunAdmissionEnabled {
@@ -330,9 +322,6 @@ func (i *InteractionExecutor) resolveInteractionManifest(
 		}
 		retained = &toolset.Retained{SkillDiscovery: checkpoint.skillDiscoveries[group], MCP: captured, Bindings: checkpoint.bindings, Resources: checkpoint.resources}
 	}
-	if i.config.ToolResolver == nil {
-		return toolset.Manifest{}, nil
-	}
 	manifest, err := i.config.ToolResolver.Manifest(ctx, group, retained)
 	if err != nil {
 		return toolset.Manifest{}, fmt.Errorf("execution: resolve Interaction %s Tools: %w", group, err)
@@ -349,7 +338,7 @@ func interactionInstructionContext(messages []corechat.Message) ([]corechat.Mess
 		if err := messages[index].Validate(); err != nil {
 			return nil, fmt.Errorf("execution: invalid Interaction instruction[%d]: %w", index, err)
 		}
-		_, found, decodeErr := readContextSources(messages[index].Metadata)
+		found, decodeErr := hasContextSources(messages[index].Metadata)
 		if decodeErr != nil {
 			return nil, fmt.Errorf("execution: decode Interaction instruction[%d] provenance: %w", index, decodeErr)
 		}

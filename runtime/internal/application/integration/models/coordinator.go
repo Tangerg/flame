@@ -1,6 +1,3 @@
-// Package models owns provider configuration, model admission and utility and
-// embedding roles. Installed adapters supply capability facts and execute probes;
-// Runtime retains configuration precedence and role persistence.
 package models
 
 import (
@@ -19,9 +16,6 @@ import (
 
 const defaultProviderProbeTimeout = 10 * time.Second
 
-// providerCatalog supplies one captured provider and model catalog. The
-// coordinator owns visible identity, public order, and the use-case policy that
-// consumes the projection. Slice results transfer ownership to the caller.
 type providerCatalog interface {
 	Profiles(context.Context) ([]ProviderProfile, error)
 	Profile(context.Context, string) (ProviderProfile, error)
@@ -34,66 +28,40 @@ type ProviderProfile struct {
 }
 
 var (
-	// ErrProviderUnsupported reports a provider id with no runtime implementation.
-	ErrProviderUnsupported = errors.New("models: provider is unsupported")
-	// ErrProviderBaseURLRequired reports a provider that cannot be configured
-	// without its endpoint.
+	ErrProviderUnsupported     = errors.New("models: provider is unsupported")
 	ErrProviderBaseURLRequired = errors.New("models: provider base URL is required")
-	// ErrProviderUnconfigured reports a supported provider missing required configuration.
-	ErrProviderUnconfigured = errors.New("models: provider is not configured")
-	// ErrProviderUpdateRequired reports a provider update with no changes.
-	ErrProviderUpdateRequired = errors.New("models: provider update has no changes")
-	// ErrEmbeddingUnsupported reports a provider with no embedding implementation.
-	ErrEmbeddingUnsupported = errors.New("models: provider does not support embeddings")
+	ErrProviderUnconfigured    = errors.New("models: provider is not configured")
+	ErrProviderUpdateRequired  = errors.New("models: provider update has no changes")
+	ErrEmbeddingUnsupported    = errors.New("models: provider does not support embeddings")
 )
 
-// providerProber validates a provider's credentials with one minimal live call
-// during a provider probe.
 type providerProber interface {
 	Probe(ctx context.Context, entry provider.Provider) error
 }
 
-// ProviderModelLister discovers a provider's available model identities by
-// probing a caller-configured endpoint whose model set is not in the static
-// catalog. Endpoint results are authoritative, including an empty list. The
-// adapter validates remote identities and collapses repeated identical IDs.
-// Implementations return unique identities; the coordinator verifies this port
-// contract and owns public ordering and metadata enrichment.
 type ProviderModelLister interface {
 	ListModels(ctx context.Context, entry provider.Provider) ([]string, error)
 }
 
-// ChatModelValidator verifies that a chat client can be built for
-// (provider, model) without exposing the concrete client.
 type ChatModelValidator interface {
 	ValidateChatModel(ctx context.Context, providerID, model string) error
 }
 
-// embeddingModelValidator validates that an embedding client can be built for
-// (provider, model) without exposing the concrete embedder.
 type embeddingModelValidator interface {
 	ValidateEmbeddingModel(ctx context.Context, providerID, model string) error
 }
 
-// roleSaver persists one model role across restarts.
 type roleSaver interface {
 	Save(ctx context.Context, role modelref.Role) error
 }
 
-// Coordinator owns provider configuration and durable model roles.
 type Coordinator struct {
-	providers ProviderRegistry
-	catalog   providerCatalog
-	prober    providerProber
-	lister    ProviderModelLister
-	// probeTimeout bounds the user-facing provider test independently of the
-	// terminal or transport lifetime. ProviderProber implementations must honor
-	// context cancellation like every other network port.
+	providers    ProviderRegistry
+	catalog      providerCatalog
+	prober       providerProber
+	lister       ProviderModelLister
 	probeTimeout time.Duration
 
-	// utility / embedding model roles: the live state shared with runtime
-	// consumers, the resolver that validates a new role, and the saver
-	// that persists it.
 	utilityRoleState *RoleState
 	utilityValidator ChatModelValidator
 	utilityStore     roleSaver
@@ -106,14 +74,11 @@ type Coordinator struct {
 	invalidations      invalidation.Publish
 }
 
-// Config bundles the Coordinator's dependencies.
 type Config struct {
-	Providers ProviderRegistry
-	Catalog   providerCatalog
-	Prober    providerProber
-	Lister    ProviderModelLister
-	// ProbeTimeout overrides the product deadline for focused compositions and
-	// tests. Zero or a negative value selects the product default.
+	Providers    ProviderRegistry
+	Catalog      providerCatalog
+	Prober       providerProber
+	Lister       ProviderModelLister
 	ProbeTimeout time.Duration
 
 	UtilityRoleState *RoleState
@@ -127,7 +92,6 @@ type Config struct {
 	Invalidations invalidation.Publish
 }
 
-// New returns a models Coordinator over cfg.
 func New(cfg Config) (*Coordinator, error) {
 	for _, required := range []struct {
 		name  string

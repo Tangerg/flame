@@ -375,7 +375,7 @@ function Observation({
         row.endpoint.caller.parent ?? t("value.unrecorded"),
       ],
       [t("fact.origin"), row.endpoint.caller.origin],
-      [t("fact.costUsd"), row.endpoint.costUSD ?? t("value.unpriced")],
+      [t("fact.costUsd"), row.endpoint.costUsd ?? t("value.unpriced")],
       [t("fact.settlement"), row.endpoint.settledAt ?? t("value.unrecorded")],
     );
     if (row.endpoint.failure) notes.push(row.endpoint.failure);

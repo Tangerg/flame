@@ -1,5 +1,5 @@
 import { copyText } from "@flame/ui";
-export interface RichClipboardText {
+interface RichClipboardText {
   plainText: string;
   htmlText?: string;
 }

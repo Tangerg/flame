@@ -1,6 +1,3 @@
-// Package fileobservation observes a bounded set of exact filesystem paths.
-// It owns notification mechanics, path identity, debouncing, and goroutine
-// lifetime; callers retain the meaning of each path through an opaque key.
 package fileobservation
 
 import (
@@ -15,37 +12,25 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
-// Target is one exact path and its caller-owned classification key. Boundary,
-// when non-empty, prevents a symlink target outside that physical root from
-// being read or watched. This mirrors filesystem consumers that confine aliases
-// to a selected scope. MaxBytes is required and bounds content hashing; larger
-// files remain observable through their metadata without being read.
 type Target struct {
-	Key      string
-	Path     string
-	Boundary string
-	MaxBytes int64
-	// MaxEntries enables observation of a directory's immediate entry metadata.
-	// It never follows child directories or reads child file contents.
+	Key        string
+	Path       string
+	Boundary   string
+	MaxBytes   int64
 	MaxEntries int
 }
 
-// Observation owns one live exact-path observation and can accept selected
-// identities as a new baseline when the caller has already published their
-// semantic change through another authoritative path.
 type Observation interface {
 	io.Closer
 	Accept(keys, identities []string) error
 }
 
-// Watch observes targets and calls notify with the distinct keys whose
-// externally visible filesystem state changed. Missing targets are supported:
-// their nearest existing ancestor is watched until the complete parent path is
-// created. report is required and receives the first background reconciliation
-// error in each outage while retries continue: it is the only place that outage
-// is observable. Close joins both callbacks before returning; callbacks must
-// return promptly and must not close the observation.
+// Callbacks must return promptly and must not close the observation; Close joins
+// both before returning.
 func Watch(targets []Target, notify func([]string), report func(error)) (Observation, error) {
+	if notify == nil {
+		return nil, errors.New("observe files: change notifier is required")
+	}
 	canonical, err := canonicalTargets(targets)
 	if err != nil {
 		return nil, err
@@ -71,16 +56,20 @@ type target struct {
 	maxEntries       int
 }
 
-// baselineWatch is a watcher whose first reconcile records the baseline that
-// later reconciles compare against.
+// The baseline pass records what exists without reporting it; every later pass
+// reports changes except the Runtime's own accepted writes.
+type reconcilePass int
+
+const (
+	baselinePass reconcilePass = iota
+	observedPass
+)
+
 type baselineWatch interface {
 	Observation
-	reconcile(initial bool, accepted acceptance) error
+	reconcile(pass reconcilePass, accepted acceptance) error
 }
 
-// startObservation opens the roots a canonical target set needs, records the
-// watcher's baseline and only then starts its lifecycle. Every refusal closes
-// the roots: written once, no watcher can forget that descriptor.
 func startObservation[T any, W baselineWatch](
 	label string,
 	canonical []T,
@@ -104,18 +93,15 @@ func startObservation[T any, W baselineWatch](
 		return nil, errors.Join(err, roots.Close())
 	}
 	w := assemble(lifecycle, roots)
-	if err := w.reconcile(true, acceptance{}); err != nil {
+	if err := w.reconcile(baselinePass, acceptance{}); err != nil {
 		return nil, errors.Join(lifecycle.abort(err), roots.Close())
 	}
 	lifecycle.start(func(accepted acceptance) error {
-		return w.reconcile(false, accepted)
+		return w.reconcile(observedPass, accepted)
 	})
 	return w, nil
 }
 
-// canonicalTargetSet maps each candidate through one, dropping repeats while
-// keeping first-seen order. Both watchers canonicalize this way; only what a
-// target is differs.
 func canonicalTargetSet[In any, Out comparable](targets []In, one func(int, In) (Out, error)) ([]Out, error) {
 	out := make([]Out, 0, len(targets))
 	seen := make(map[Out]struct{}, len(targets))
@@ -190,7 +176,7 @@ func (a acceptance) matches(candidate target, physical string) bool {
 	return a.identities[candidate.path] || (physical != "" && a.identities[physical])
 }
 
-func (w *watch) reconcile(initial bool, accepted acceptance) error {
+func (w *watch) reconcile(pass reconcilePass, accepted acceptance) error {
 	w.stateMu.Lock()
 	if w.closedLocked() {
 		w.stateMu.Unlock()
@@ -216,7 +202,7 @@ func (w *watch) reconcile(initial bool, accepted acceptance) error {
 		}
 		var changed bool
 		next[index], changed = advanceFingerprint(
-			initial, match, w.fingerprints[index], observed.fingerprint,
+			pass, match, w.fingerprints[index], observed.fingerprint,
 		)
 		if changed && !slices.Contains(changedKeys, candidate.key) {
 			changedKeys = append(changedKeys, candidate.key)
@@ -235,21 +221,12 @@ func (w *watch) reconcile(initial bool, accepted acceptance) error {
 	}
 	w.fingerprints = next
 	w.stateMu.Unlock()
-	if !accepting && len(changedKeys) > 0 && w.notify != nil {
+	if !accepting && len(changedKeys) > 0 {
 		w.notify(changedKeys)
 	}
 	return nil
 }
 
-// advanceFingerprint is the exact-file baseline policy. Initial sampling and
-// explicitly accepted identities advance immediately. During any acceptance
-// batch, unrelated targets retain their prior baseline so the next ordinary
-// resample still publishes their independently observed change.
-// acceptanceMatch says how one target relates to a write the watcher accepted:
-// nothing was accepted, something was and this target is not it, or this target
-// is exactly it. A target can only be the accepted write when there is one, so
-// the pair of booleans that used to say this could name a state that never
-// happens.
 type acceptanceMatch uint8
 
 const (
@@ -258,18 +235,14 @@ const (
 	acceptedWriteHere
 )
 
-// advanceFingerprint decides what one target's next fingerprint is and whether
-// the difference is worth reporting. A first pass and the write we accepted are
-// both adopted silently; while an accepted write is settling, every other
-// target holds what it had.
 func advanceFingerprint(
-	initial bool,
+	pass reconcilePass,
 	match acceptanceMatch,
 	previous fingerprint,
 	observed fingerprint,
 ) (fingerprint, bool) {
 	switch {
-	case initial || match == acceptedWriteHere:
+	case pass == baselinePass || match == acceptedWriteHere:
 		return observed, false
 	case match == acceptedWriteElsewhere:
 		return previous, false
@@ -344,35 +317,41 @@ func fingerprintPhysicalTarget(
 	if err != nil {
 		return observedPath{}, fmt.Errorf("observe files: inspect target %q: %w", physical, err)
 	}
-	var dependencies []string
 	if physicalInfo.Mode().IsRegular() {
-		dependencies = []string{physical}
-		if physicalInfo.Size() > candidate.maxBytes {
-			encoder.fileInfo(fingerprintFieldPhysicalInfo, physicalInfo)
-			encoder.state(fingerprintStateTooLarge)
-			return observedPath{fingerprint: encoder.sum(), physical: physical, dependencies: dependencies}, nil
+		if err := fingerprintRegularFile(encoder, observed, candidate, physical, physicalInfo); err != nil {
+			return observedPath{}, err
 		}
-		file, opened, openErr := observed.openFile(physicalInfo, candidate.maxBytes)
-		if openErr != nil {
-			return observedPath{}, fmt.Errorf("observe files: open %q: %w", physical, openErr)
-		}
-		encoder.fileInfo(fingerprintFieldPhysicalInfo, opened)
-		copyErr := encoder.content(file, opened.Size())
-		versionErr := verifyObservedFileVersion(observed, file, opened)
-		closeErr := file.Close()
-		if copyErr != nil || versionErr != nil || closeErr != nil {
-			return observedPath{}, fmt.Errorf("observe files: read %q: %w", physical, errors.Join(copyErr, versionErr, closeErr))
-		}
-	} else {
-		encoder.fileInfo(fingerprintFieldPhysicalInfo, physicalInfo)
-		if physicalInfo.IsDir() && candidate.maxEntries > 0 {
-			dependencies, err = fingerprintDirectory(encoder, observed, physical, candidate.maxEntries)
-			if err != nil {
-				return observedPath{}, err
-			}
+		return observedPath{fingerprint: encoder.sum(), physical: physical, dependencies: []string{physical}}, nil
+	}
+	encoder.fileInfo(fingerprintFieldPhysicalInfo, physicalInfo)
+	var dependencies []string
+	if physicalInfo.IsDir() && candidate.maxEntries > 0 {
+		dependencies, err = fingerprintDirectory(encoder, observed, physical, candidate.maxEntries)
+		if err != nil {
+			return observedPath{}, err
 		}
 	}
 	return observedPath{fingerprint: encoder.sum(), physical: physical, dependencies: dependencies}, nil
+}
+
+func fingerprintRegularFile(encoder *fingerprintEncoder, observed observedName, candidate target, physical string, info os.FileInfo) error {
+	if info.Size() > candidate.maxBytes {
+		encoder.fileInfo(fingerprintFieldPhysicalInfo, info)
+		encoder.state(fingerprintStateTooLarge)
+		return nil
+	}
+	file, opened, err := observed.openFile(info, candidate.maxBytes)
+	if err != nil {
+		return fmt.Errorf("observe files: open %q: %w", physical, err)
+	}
+	encoder.fileInfo(fingerprintFieldPhysicalInfo, opened)
+	copyErr := encoder.content(file, opened.Size())
+	versionErr := verifyObservedFileVersion(observed, file, opened)
+	closeErr := file.Close()
+	if copyErr != nil || versionErr != nil || closeErr != nil {
+		return fmt.Errorf("observe files: read %q: %w", physical, errors.Join(copyErr, versionErr, closeErr))
+	}
+	return nil
 }
 
 func fingerprintDirectory(encoder *fingerprintEncoder, observed observedName, physical string, limit int) (dependencies []string, err error) {

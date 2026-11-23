@@ -45,7 +45,7 @@ func NewContracts() (Contracts, error) {
 	if err != nil {
 		return Contracts{}, err
 	}
-	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "io.github.tangerg.flame.examples/reviews", Composition: plugincontract.Collection, Scope: "installation"}, list.Descriptor(), update.Descriptor(), analyzers.Descriptor())
+	contract, err := plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "io.github.tangerg.flame.examples/reviews", Composition: plugincontract.Collection, Scope: extension.ScopeInstallation}, list.Descriptor(), update.Descriptor(), analyzers.Descriptor())
 	if err != nil {
 		return Contracts{}, err
 	}

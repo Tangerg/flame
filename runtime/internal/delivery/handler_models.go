@@ -5,14 +5,13 @@ import (
 	"errors"
 	"time"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
+
+	"github.com/Tangerg/scope/models/catalog"
 )
 
-// ListModels projects the application-owned unique, ID-ordered model-discovery
-// result onto the protocol page. Authoritative discovery and catalog
-// enrichment all remain in application/integration/models.
 func (s *Handler) ListModels(ctx context.Context, in protocol.ListModelsRequest) (*protocol.Page[protocol.Model], error) {
 	models, err := s.models.ListModels(ctx, in.Provider)
 	if err != nil {
@@ -28,16 +27,11 @@ func (s *Handler) ListModels(ctx context.Context, in protocol.ListModelsRequest)
 	return protocol.NewPage(out), nil
 }
 
-// GetUtilityRole reports the (provider, model) the in-house maintenance
-// services run on — empty model when unset, meaning they run on the main Run
-// model (models.getUtilityRole).
 func (s *Handler) GetUtilityRole(_ context.Context) (*protocol.UtilityRole, error) {
 	role := s.models.UtilityRole()
 	return &protocol.UtilityRole{Provider: role.Provider(), Model: role.Model()}, nil
 }
 
-// SetUtilityRole points the maintenance services at a (provider, model),
-// validated and persisted by the application use case. Returns the stored role.
 func (s *Handler) SetUtilityRole(ctx context.Context, in protocol.UtilityRole) (*protocol.UtilityRole, error) {
 	role, err := s.models.SetUtilityRole(ctx, in.Provider, in.Model)
 	if err != nil {
@@ -46,16 +40,11 @@ func (s *Handler) SetUtilityRole(ctx context.Context, in protocol.UtilityRole) (
 	return &protocol.UtilityRole{Provider: role.Provider(), Model: role.Model()}, nil
 }
 
-// GetEmbeddingRole reports the optional (provider, model) for agent-memory ranking
-// embeds with — empty model when unset (the feature is off)
-// (models.getEmbeddingRole).
 func (s *Handler) GetEmbeddingRole(_ context.Context) (*protocol.EmbeddingRole, error) {
 	role := s.models.EmbeddingRole()
 	return &protocol.EmbeddingRole{Provider: role.Provider(), Model: role.Model()}, nil
 }
 
-// SetEmbeddingRole points the index at an (embedding-capable provider, model),
-// validated and persisted by the application use case. Returns the stored role.
 func (s *Handler) SetEmbeddingRole(ctx context.Context, in protocol.EmbeddingRole) (*protocol.EmbeddingRole, error) {
 	role, err := s.models.SetEmbeddingRole(ctx, in.Provider, in.Model)
 	if err != nil {
@@ -73,11 +62,11 @@ func mapModelError(err error) error {
 	}
 	if errors.Is(err, modelapp.ErrProviderUnsupported) ||
 		errors.Is(err, modelapp.ErrProviderBaseURLRequired) ||
-		errors.Is(err, modelchoice.ErrEndpointOverride) ||
+		errors.Is(err, flamemodel.ErrEndpointOverride) ||
 		errors.Is(err, modelapp.ErrProviderUnconfigured) ||
 		errors.Is(err, modelapp.ErrProviderUpdateRequired) ||
 		errors.Is(err, modelapp.ErrEmbeddingUnsupported) ||
-		modelchoice.IsInvalid(err) {
+		flamemodel.IsInvalid(err) {
 		return protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 	}
 	return err
@@ -98,8 +87,8 @@ func presentModel(model modelapp.Model) protocol.Model {
 			ReasoningLevels:       details.ReasoningLevels,
 			ReasoningDefaultLevel: details.ReasoningDefault,
 			Multimodal:            details.Multimodal,
-			InputModalities:       toWireModalities(details.InputModalities),
-			OutputModalities:      toWireModalities(details.OutputModalities),
+			InputModalities:       presentModalities(details.InputModalities),
+			OutputModalities:      presentModalities(details.OutputModalities),
 			ToolUse:               details.ToolUse,
 			StructuredOutput:      details.StructuredOutput,
 		},
@@ -131,13 +120,21 @@ func presentModel(model modelapp.Model) protocol.Model {
 	return out
 }
 
-func toWireModalities(in []string) []protocol.Modality {
+var modalities = wireVocabulary[catalog.Modality, protocol.Modality]{
+	{catalog.ModalityText, protocol.ModalityText},
+	{catalog.ModalityImage, protocol.ModalityImage},
+	{catalog.ModalityAudio, protocol.ModalityAudio},
+	{catalog.ModalityVideo, protocol.ModalityVideo},
+	{catalog.ModalityPDF, protocol.ModalityPDF},
+}
+
+func presentModalities(in []catalog.Modality) []protocol.Modality {
 	if len(in) == 0 {
 		return nil
 	}
 	out := make([]protocol.Modality, len(in))
 	for i, modality := range in {
-		out[i] = protocol.Modality(modality)
+		out[i] = modalities.mustWire(modality)
 	}
 	return out
 }

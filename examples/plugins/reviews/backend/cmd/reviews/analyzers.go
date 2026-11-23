@@ -6,6 +6,7 @@ import (
 
 	reviews "github.com/Tangerg/flame/examples/plugins/reviews/backend/contract"
 	runtimeclient "github.com/Tangerg/flame/packages/go-sdk/client"
+	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 
 	framecall "github.com/Tangerg/frame/call"
@@ -34,7 +35,7 @@ func analyzeReview(ctx context.Context, caller analyzerCaller, target framecall.
 		method, err := runtimeclient.BindPluginMethod(caller, runtimeclient.PluginBinding{
 			InstallationID: value.InstallationID, Digest: value.Digest,
 			Contribution: value.Value.Contribution, Contract: contracts.Capability,
-			Target: framecall.Target{Scope: "installation", Reference: value.InstallationID},
+			Target: framecall.Target{Scope: extension.ScopeInstallation, Reference: value.InstallationID},
 		}, contracts.Analyze)
 		if err != nil {
 			return reviews.Analysis{}, err

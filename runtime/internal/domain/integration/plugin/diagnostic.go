@@ -5,16 +5,11 @@ import (
 	"unicode/utf8"
 )
 
-// Diagnostic is one admission finding about package bytes. Findings are
-// derived once from an immutable release and travel with its declaration;
-// they report what admission isolated and never decide availability.
 type Diagnostic struct {
 	Component Component
 	Code      DiagnosticCode
 }
 
-// Component locates a finding in the portable package. Kinds that address an
-// authored member carry its exact authored name; the others carry none.
 type Component struct {
 	Kind ComponentKind
 	Name string
@@ -33,8 +28,6 @@ const (
 	ComponentSkill          ComponentKind = "skill"
 )
 
-// Named reports whether a component of this kind carries the exact authored
-// name of the member it addresses.
 func (k ComponentKind) Named() (bool, error) {
 	switch k {
 	case ComponentManifestField, ComponentExtensionField, ComponentContribution, ComponentMCPServer, ComponentSkill:
@@ -67,8 +60,6 @@ func (c DiagnosticCode) validate() error {
 	}
 }
 
-// Refusal is why a [Builder] refused one contribution, named by the
-// diagnostic a package adapter reports for it. It wraps [ErrInvalid].
 type Refusal struct {
 	Code  DiagnosticCode
 	cause error

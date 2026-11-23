@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
@@ -14,11 +15,19 @@ import (
 func (i *interactionSession) publishWaitingBoundary() bool {
 	i.state.mu.Lock()
 	process := i.state.process
-	if process == nil || i.state.phase == interactionFinished || i.state.boundary != interactionBoundaryInactive {
+	if process == nil || i.state.phase == interactionFinished || i.state.boundary != interactionBoundaryInactive ||
+		i.state.cancellationsInFlight > 0 {
 		i.state.mu.Unlock()
 		return false
 	}
+	captured := make(chan struct{})
+	i.state.barrierCapture = captured
 	i.state.mu.Unlock()
+	defer func() {
+		i.state.mu.Lock()
+		i.state.endBarrierCapture(captured)
+		i.state.mu.Unlock()
+	}()
 	ctx := i.lifetime.reconciling
 	snapshot, interruptions, found, err := i.captureHumanInputBarrier(ctx)
 	if err != nil {
@@ -28,8 +37,6 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	if !found {
 		return false
 	}
-	// Capture can settle a sibling that was still running at the preflight.
-	// Its product terminal must precede the waiting members from this cut.
 	if _, err := i.reconcileCompletedDelegateChildren(ctx); err != nil {
 		i.reportProjectionFailure(err)
 		return false
@@ -54,17 +61,18 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	}
 	i.state.holdBoundary(interactionBoundaryWaiting)
 	i.state.waitingCheckpoint = checkpoint.Clone()
+	i.state.endBarrierCapture(captured)
 	i.state.mu.Unlock()
 	published := i.lifetime.send(runs.ExecutorEvent{
 		Member:  i.executorMember(process.ID()),
 		Payload: barrier,
 	})
-	if published && i.lifecycleHooks != nil {
+	if published {
 		if err := i.lifecycleHooks.NotifyWaiting(
 			i.lifetime.execution, i.start.SessionID, i.start.WorkspaceCWD,
 		); err != nil {
 			slog.ErrorContext(i.lifetime.execution, "execution: notify waiting",
-				"session.id", i.start.SessionID, "error", err,
+				telemetry.SessionID(i.start.SessionID), telemetry.Error(err),
 			)
 		}
 	}
@@ -122,12 +130,16 @@ func (i *interactionSession) releaseContinuation(input *runs.CommittedUserInput)
 	i.state.mu.Unlock()
 }
 
-// holdBoundary leaves the inactive state for a crossed boundary and holds model
-// dispatch until releaseBoundary; the gate exists exactly while a boundary is
-// held. The caller holds mu.
 func (i *interactionState) holdBoundary(boundary interactionBoundary) {
 	i.boundary = boundary
 	i.boundaryGate = make(chan struct{})
+}
+
+func (i *interactionState) endBarrierCapture(captured chan struct{}) {
+	if i.barrierCapture == captured {
+		i.barrierCapture = nil
+		close(captured)
+	}
 }
 
 func (i *interactionState) releaseBoundary() {
@@ -136,8 +148,6 @@ func (i *interactionState) releaseBoundary() {
 	i.boundaryGate = nil
 }
 
-// continueExecution releases Effects woken by child cancellation only after the
-// replacement product Segment owns their projections. The caller holds mu.
 func (i *interactionState) continueExecution() {
 	i.waitingCheckpoint = runs.ExecutorCheckpoint{}
 	i.releaseBoundary()

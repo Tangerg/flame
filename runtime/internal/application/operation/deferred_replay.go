@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"sync/atomic"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 )
 
-// DeferredCompletion binds a committed write and its unfinished settlement to
-// one request. Only ReserveForRun authorizes effects outside that write transaction.
 type DeferredCompletion struct {
 	replay   *Replay
 	record   ReplayRecord
@@ -44,8 +43,6 @@ func (c *DeferredCompletion) Stage(ctx context.Context, write func(context.Conte
 	})
 }
 
-// Complete records a reserved outcome that requires no further settlement.
-// This owner can outlive the invocation that reserved the key.
 func (c *DeferredCompletion) Complete(ctx context.Context, payload []byte) error {
 	if !c.reserved.Load() {
 		return ErrClaimLost
@@ -75,8 +72,6 @@ func (c *DeferredCompletion) claim(ctx context.Context, runID identity.RunID) er
 	return ErrInProgress
 }
 
-// atomicResult answers from the record another invocation committed
-// atomically while this one executed.
 func (r *Replay) atomicResult(ctx context.Context, key, fingerprint string) ([]byte, error) {
 	previous, found, err := r.store.Lookup(ctx, key, fingerprint)
 	if err != nil {

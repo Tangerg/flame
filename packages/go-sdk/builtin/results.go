@@ -6,8 +6,6 @@ type CommandResult struct {
 	Page     *CommandOutputPage `json:"page,omitzero"`
 }
 
-// CommandOutputPage records the source byte range and original shell handle of
-// one captured log page. It grants no authority to replay or restart a command.
 type CommandOutputPage struct {
 	ShellID    string `json:"shellId,omitempty"`
 	Status     string `json:"status,omitempty"`
@@ -55,7 +53,6 @@ func (ChangeStatus) Values() []string {
 	return []string{string(Added), string(Deleted), string(Modified), string(Moved)}
 }
 
-// AppliedChange describes the tool's applied mutation, independently of VCS state.
 type AppliedChange struct {
 	Path    string       `json:"path"`
 	Status  ChangeStatus `json:"status"`

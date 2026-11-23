@@ -1,9 +1,3 @@
-// Package persistence hosts the SQLite-backed implementations of Runtime's storage
-// ports. Sessions, executor checkpoints, interrupts, history and providers share
-// one host database. Managed plugins supply their own schemas and private files.
-//
-// Driver: modernc.org/sqlite (pure Go). No CGO, cross-compilation
-// works out of the box.
 package persistence
 
 import (
@@ -19,8 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// Logical calls and physical endpoint attempts share one state vocabulary but
-// admit different evidence; endpoint_json distinguishes the two row kinds.
 func modelInvocationStatePredicate(logical []modelref.InvocationState, physical []modelref.InvocationState) string {
 	quote := func(values []string) string { return "'" + strings.Join(values, "','") + "'" }
 	left := make([]string, len(logical))
@@ -100,41 +92,10 @@ func currentSchema() []string {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_executor_checkpoints_session
 			ON executor_checkpoints(session_id)`,
-		// One row per root or child Run. state is the coarse admission position —
-		// 'running' | 'waiting' | 'finished' — and the partial unique index
-		// below is the durable "one non-terminal root Run tree per Session"
-		// guarantee. Descendants share that tree's admission and therefore do not
-		// compete for a second Session slot.
-		//
-		// outcome / ending explain WHY a Run stopped and are written by the
-		// lifecycle transition that makes them true: a terminal state and the
-		// facts explaining it land in one statement, so no row can claim one
-		// without the other. steps / active_duration_ns / usage are a different
-		// kind of fact — how much the Run has consumed — and are written by every
-		// commit from the first segment on, because a running Run costs money and
-		// a parked one has to report what it already spent.
-		//
-		// A Run's open interrupts are NOT here — the interrupts table owns them
-		// and a read composes them, because two copies of one park would be two
-		// answers to "what is this run waiting on".
-		//
-		// The capabilities column is the optional behavior admitted for the Run. The
-		// admission INSERT is its ONLY writer: no later statement names the column,
-		// which is how "frozen for the Run's whole life" is kept by construction
-		// rather than by a check that could be forgotten.
-		//
-		// message_mark is the conversation message count captured when a root Run
-		// finished and atomically rebased by every later compaction — the per-tree
-		// rollback/fork watermark fork{fromRunId} truncates to. NULL is
-		// run.UnknownMessageMark(): a Run that has not finished has no watermark yet,
-		// and a child never has one because its root ends the tree.
-		// commit_segment_id / commit_id are a technical receipt for the latest
-		// complete Application Run write-set: opening, event, waiting barrier,
-		// waiting-child cancellation, or terminal. An already-waiting command has
-		// no Segment and deliberately stores an empty commit_segment_id beside its
-		// unique commit_id. The command owner settles each boundary before issuing
-		// the next, so one marker is sufficient. Restore and recovery clear it
-		// because they did not execute that Application command.
+		// The partial unique index is the durable one-non-terminal-root-tree-per-Session
+		// guarantee. Open interrupts live in the interrupts table because two copies of
+		// one park would be two answers. The admission INSERT is the capabilities column's
+		// only writer, which keeps it frozen by construction.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS runs (
 			run_id             TEXT    PRIMARY KEY,
 			session_id         TEXT    NOT NULL,
@@ -193,9 +154,6 @@ func currentSchema() []string {
 			ON runs(parent_run_id) WHERE parent_run_id != ''`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_commit
 			ON runs(commit_id) WHERE commit_id != ''`,
-		// Attempt observations survive terminalization for trajectory inspection.
-		// Semantic response content and aggregate accounting stay in history_items
-		// and runs; deleting the owning Run also removes its invocation records.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS model_invocations (
 			logical_purpose TEXT CHECK (logical_purpose IS NULL OR logical_purpose IN ('%[3]s','%[4]s')),
 			call_id     TEXT    PRIMARY KEY,
@@ -232,8 +190,6 @@ func currentSchema() []string {
 		`CREATE INDEX IF NOT EXISTS idx_model_endpoint_ancestry ON model_invocations(json_extract(endpoint_json,'$.caller.parent'),started_at DESC,call_id DESC) WHERE endpoint_json IS NOT NULL`,
 		fmt.Sprintf(`CREATE INDEX IF NOT EXISTS idx_model_invocations_open
 			ON model_invocations(state) WHERE %s`, startedModelInvocationPredicate()),
-		// Attempts retain their Segment identity across waits; the final Tool Item
-		// cannot reconstruct the execution intervals that preceded continuation.
 		`CREATE TABLE IF NOT EXISTS installed_tool_callers (call_id TEXT PRIMARY KEY, caller_json TEXT NOT NULL CHECK(json_valid(caller_json)))`,
 		`CREATE TRIGGER IF NOT EXISTS immutable_installed_tool_caller BEFORE UPDATE ON installed_tool_callers BEGIN SELECT RAISE(ABORT,'installed Tool caller is immutable'); END`,
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS tool_invocations (
@@ -279,14 +235,6 @@ func currentSchema() []string {
 			BEGIN
 				SELECT RAISE(ABORT, 'model invocations must settle before run terminalization');
 			END`, string(run.Finished), startedModelInvocationPredicate()),
-		// child_run_start_reservations are invisible executor/application ACL
-		// records. They allocate product identity after a managed child admission
-		// but before the executor has conclusively initialized. The conclusive
-		// state is retained while the owning root tree is live so an exact callback
-		// replay is distinguishable from a missing reservation; root terminal and
-		// Session lifecycle write-sets delete that Session's rows, while boot
-		// recovery retires the prior process's complete callback ledger. Only
-		// started rows have a corresponding public Run.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS child_run_start_reservations (
 			member_id  TEXT PRIMARY KEY,
 			session_id TEXT NOT NULL,
@@ -301,12 +249,6 @@ func currentSchema() []string {
 		),
 		`CREATE INDEX IF NOT EXISTS idx_child_run_start_reservations_session
 			ON child_run_start_reservations(session_id)`,
-		// One root-owned row per parked Run tree. payload is the client-facing
-		// interrupt set; interrupt_bindings maps each item to the private executor
-		// boundary it answers; continuations carries every waiting Run's
-		// application/executor hand-off. All three are closed JSON values. Answer
-		// acceptance consumes (deletes) the row in the same transaction that opens
-		// the continuation; the next barrier inserts a fresh row.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS interrupts (
 			root_run_id        TEXT    PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
 			executor_id        TEXT    NOT NULL,
@@ -328,8 +270,6 @@ func currentSchema() []string {
 			ON interrupts(state, created_at, root_run_id)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_interrupts_root_member
 			ON interrupts(root_member_id)`,
-		// The original routing joins each accepted boundary to Scope's controls.
-		// A root can own one unsettled handoff across answers or child cancellation.
 		`CREATE TABLE IF NOT EXISTS accepted_continuations (
 			root_run_id TEXT PRIMARY KEY,
 			session_id  TEXT NOT NULL,
@@ -340,8 +280,6 @@ func currentSchema() []string {
 			FOREIGN KEY (root_run_id, session_id) REFERENCES runs(run_id, session_id) ON DELETE CASCADE,
 			FOREIGN KEY (canceled_run_id, session_id) REFERENCES runs(run_id, session_id) ON DELETE CASCADE
 		)`,
-		// The intent holds the Session, tree and original reply reservation across
-		// a Git checkout. History, receipt and intent release commit together.
 		`CREATE TABLE IF NOT EXISTS pending_workspace_mutations (
 			session_id     TEXT    PRIMARY KEY REFERENCES sessions(id) ON DELETE RESTRICT,
 			cwd            TEXT    NOT NULL,
@@ -350,8 +288,6 @@ func currentSchema() []string {
 			receipt_key    TEXT    UNIQUE REFERENCES idempotency_records(key) ON DELETE RESTRICT,
 			FOREIGN KEY (to_run_id, session_id) REFERENCES runs(run_id, session_id) ON DELETE RESTRICT
 		)`,
-		// Cleanup responsibility survives the Session and authorizes destruction
-		// only after the history transaction that inserted it has committed.
 		`CREATE TABLE IF NOT EXISTS committed_session_resource_retirements (
 			retirement_id TEXT PRIMARY KEY,
 			session_id TEXT NOT NULL UNIQUE
@@ -390,7 +326,6 @@ func currentSchema() []string {
             staged_digest TEXT REFERENCES plugin_releases(digest) CHECK (staged_digest IS NOT selected_digest),
             enabled INTEGER NOT NULL CHECK (enabled IN (0, 1))
         )`,
-		// Removing an installation cannot silently choose another provider.
 		`CREATE TABLE IF NOT EXISTS plugin_compositions (
 			reference TEXT PRIMARY KEY,
 			composition_json TEXT NOT NULL CHECK (json_valid(composition_json))
@@ -400,8 +335,6 @@ func currentSchema() []string {
             installation_id TEXT NOT NULL,
             contribution_id TEXT NOT NULL
         )`,
-		// Command routes survive installation removal; only unresolved routes
-		// retain release bytes. They never store the backend's business result.
 		`CREATE TABLE IF NOT EXISTS plugin_commands (
             id TEXT PRIMARY KEY CHECK (length(id) BETWEEN 1 AND 256),
             method TEXT NOT NULL CHECK (length(method) BETWEEN 1 AND 256),
@@ -421,8 +354,6 @@ func currentSchema() []string {
 		`CREATE TRIGGER IF NOT EXISTS plugin_command_phase BEFORE UPDATE OF phase ON plugin_commands
             WHEN NOT (NEW.phase=OLD.phase OR (OLD.phase='prepared' AND NEW.phase IN ('dispatched','retired')) OR (OLD.phase='dispatched' AND NEW.phase='observed'))
             BEGIN SELECT RAISE(ABORT,'command phase cannot regress'); END`,
-		// Installation state is relational: each configured input value and
-		// disabled component is one row owned by its installation.
 		`CREATE TABLE IF NOT EXISTS plugin_installation_values (
             installation_id TEXT NOT NULL REFERENCES plugin_installations(id) ON DELETE CASCADE,
             input_id TEXT NOT NULL CHECK (length(input_id) > 0),
@@ -435,10 +366,6 @@ func currentSchema() []string {
             name TEXT NOT NULL CHECK (length(name) > 0),
             PRIMARY KEY (installation_id, kind, name)
         )`,
-		// One row per MCP server identity: its origin and the name that origin
-		// chose. Every relation about a server references this row, so removing
-		// a user server or uninstalling a package removes its descriptor,
-		// exposure, credentials and standing approvals together.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_sources (
             id              INTEGER PRIMARY KEY,
             origin          TEXT NOT NULL CHECK (origin IN ('%[2]s', '%[3]s')),
@@ -446,17 +373,11 @@ func currentSchema() []string {
             name            TEXT NOT NULL CHECK (%[1]s),
             CHECK ((origin = '%[2]s') = (installation_id IS NULL)),
             UNIQUE (id, origin)
-        )`, serverNameCheck("name"), mcpserver.OriginUser, mcpserver.OriginInstallation),
+        )`, serverNameCheck(), mcpserver.OriginUser, mcpserver.OriginInstallation),
 		fmt.Sprintf(`CREATE UNIQUE INDEX IF NOT EXISTS idx_mcp_sources_user
             ON mcp_sources(name) WHERE origin = '%s'`, mcpserver.OriginUser),
 		fmt.Sprintf(`CREATE UNIQUE INDEX IF NOT EXISTS idx_mcp_sources_installation
             ON mcp_sources(installation_id, name) WHERE origin = '%s'`, mcpserver.OriginInstallation),
-		// The user's MCP registry (mcp.servers.create/update): one descriptor per
-		// user-origin source; the composite reference makes an installation
-		// source unable to carry a user descriptor. Args and the map columns
-		// (env/headers) are JSON. A nullable positive handshake timeout is
-		// nanoseconds (NULL means unbounded). transport is "stdio" |
-		// "streamableHttp".
 		`CREATE TABLE IF NOT EXISTS mcp_launch_grants (
 			sequence INTEGER PRIMARY KEY,
 			grant_id TEXT NOT NULL UNIQUE,
@@ -491,13 +412,12 @@ func currentSchema() []string {
             END`, mcpserver.MaxRemoteToolsPerServer),
 		mcpOAuthSessionsSchema(),
 		`CREATE TABLE IF NOT EXISTS messages (
-			seq             INTEGER PRIMARY KEY AUTOINCREMENT,
-			conversation_id TEXT    NOT NULL,
-			message         TEXT    NOT NULL
+			seq        INTEGER PRIMARY KEY AUTOINCREMENT,
+			session_id TEXT    NOT NULL,
+			message    TEXT    NOT NULL
 		)`,
-		`CREATE INDEX IF NOT EXISTS idx_messages_conversation
-			ON messages(conversation_id, seq)`,
-		// Repeated snapshots and Run boundaries refer to the same immutable authored content.
+		`CREATE INDEX IF NOT EXISTS idx_messages_session
+			ON messages(session_id, seq)`,
 		`CREATE TABLE IF NOT EXISTS plan_documents (
 			digest TEXT PRIMARY KEY NOT NULL,
 			steps TEXT NOT NULL
@@ -509,14 +429,10 @@ func currentSchema() []string {
 			revision INTEGER NOT NULL CHECK (revision BETWEEN %d AND %d),
 			updated_at INTEGER NOT NULL
 		)`, firstExactInteger, exactint.Maximum),
-		// A row means the session is in Plan mode; leaving Plan mode returns it to
-		// the current default permission mode. The row follows the owning session
-		// through the database FK lifecycle.
 		approvalDefaultModeSchema(),
 		`CREATE TABLE IF NOT EXISTS session_plan_modes (
 			session_id TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE
 		)`,
-		// A missing row has unknown history. A captured NULL is an unwritten Plan at a known boundary.
 		`CREATE TABLE IF NOT EXISTS plan_boundaries (
 			run_id TEXT PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
 			document TEXT REFERENCES plan_documents(digest),
@@ -528,10 +444,6 @@ func currentSchema() []string {
 			consumed INTEGER NOT NULL DEFAULT 0 CHECK(consumed IN (0,1))
 		)`,
 		`CREATE INDEX IF NOT EXISTS pending_goal_run_receipts ON goal_run_receipts(run_id) WHERE consumed=0`,
-		// One autonomous goal per session (Goal mode). The FK is the durable
-		// ownership invariant: a Goal cannot survive or be created after its
-		// Session. Its usage is not stored: it is folded from the incarnation's
-		// terminal Runs on read.
 		`CREATE TABLE IF NOT EXISTS goals (
 			session_id TEXT    PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
 			objective  TEXT    NOT NULL,
@@ -548,34 +460,20 @@ func currentSchema() []string {
 			created_at INTEGER NOT NULL,
 			updated_at INTEGER NOT NULL
 		)`,
-		// Persistent fine-grained approval rules. id is deterministic over
-		// (scope, scope_key, tool reference, subject); re-remembering replaces the
-		// decision and refreshes the source authority; scope_key is the session id
-		// / project dir / '' for global.
 		approvalRulesSchema(),
 		`CREATE INDEX IF NOT EXISTS idx_approval_rules_scope
 			ON approval_rules(scope, scope_key)`,
-		// Projects whose .flame/hooks.json is trusted to run. A cloned repo's
-		// project-scope hooks must NOT auto-execute (supply-chain RCE); the user
-		// trusts a project explicitly and the grant is recorded here. Global
-		// (~/.flame) hooks need no entry — they're the user's own.
+		// A cloned repo's project hooks must not auto-execute (supply-chain RCE); trust is
+		// granted explicitly per project.
 		`CREATE TABLE IF NOT EXISTS trusted_projects (
 			project_root TEXT PRIMARY KEY
 		)`,
-		// The namespace tells reconnecting clients whether a persisted
-		// Idempotency-Key belongs to this exact durable replay store. It is opaque,
-		// contains no path or credential, and survives process restarts while a
-		// deleted/recreated database receives a different identity.
 		`CREATE TABLE IF NOT EXISTS runtime_identity (
 			id                    INTEGER PRIMARY KEY CHECK (id = 1),
 			idempotency_namespace TEXT NOT NULL UNIQUE
 		)`,
 		fmt.Sprintf(`INSERT OR IGNORE INTO runtime_identity(id, idempotency_namespace)
 			VALUES (1, '%s' || lower(hex(randomblob(%d))))`, operation.ReplayNamespacePrefix, operation.ReplayNamespaceEntropyBytes),
-		// A live cancellation reservation references the original Run until its
-		// response commits. The Run's terminal transaction can settle it with a
-		// refusal even when its original requester has exited. A material reference
-		// dropped on deletion can never bind to an imported Run.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS idempotency_records (
 			key          TEXT PRIMARY KEY,
 			kind         TEXT NOT NULL CHECK (kind IN ('%[1]s','%[2]s','%[3]s','%[8]s')),
@@ -612,16 +510,11 @@ func currentSchema() []string {
 			ON idempotency_records(expires_at) WHERE expires_at IS NOT NULL`,
 		`CREATE INDEX IF NOT EXISTS idx_idempotency_records_material_run
 			ON idempotency_records(material_run_id) WHERE material_run_id IS NOT NULL`,
-		// Optional agent-memory embedding role. Single row, pinned by CHECK(id =
-		// 1); empty model leaves memory search keyword-only. The credential comes
-		// from the provider registry.
 		`CREATE TABLE IF NOT EXISTS embedding_role (
 			id        INTEGER PRIMARY KEY CHECK (id = 1),
 			provider  TEXT NOT NULL DEFAULT '',
 			model     TEXT NOT NULL DEFAULT ''
 		)`,
-		// A fork preserves result IDs embedded in model messages. The composite
-		// foreign key keeps Session-scoped lookup aligned with the owning Item.
 		`CREATE TABLE IF NOT EXISTS tool_result_blobs (
 			item_id     TEXT    PRIMARY KEY NOT NULL,
 			session_id  TEXT    NOT NULL,
@@ -641,9 +534,8 @@ func currentSchema() []string {
 		executorCheckpointResourcesSchema(),
 		`CREATE INDEX IF NOT EXISTS idx_executor_checkpoint_resources_installation
 			ON executor_checkpoint_resources(installation_id)`,
-		// Append-only quality signals submitted through feedback.create. They are
-		// deliberately not foreign-keyed: a user may report a general issue or
-		// submit feedback after the referenced runtime records are cleaned up.
+		// Deliberately not foreign-keyed: feedback may reference runtime records that were
+		// already cleaned up.
 		`CREATE TABLE IF NOT EXISTS session_annotations (
 			command_id TEXT PRIMARY KEY NOT NULL,
 			installation TEXT NOT NULL, release TEXT NOT NULL, contribution TEXT NOT NULL, contract TEXT NOT NULL,
@@ -656,9 +548,6 @@ func currentSchema() []string {
 	return stmts
 }
 
-// Every stored digest is one canonical SHA-256 spelling, and every stored
-// installation identity one canonical nonzero UUID, so the database refuses
-// what the domain could never decode.
 func digestCheck(column string) string {
 	return fmt.Sprintf("length(%[1]s) = %[2]d AND %[1]s NOT GLOB '*[^0-9a-f]*'", column, 2*sha256.Size)
 }
@@ -674,8 +563,8 @@ func installationIDCheck(column string) string {
 	return fmt.Sprintf("%[1]s GLOB '%[2]s' AND %[1]s <> '00000000-0000-0000-0000-000000000000'", column, glob.String())
 }
 
-func serverNameCheck(column string) string {
-	return fmt.Sprintf("length(%[1]s) BETWEEN 1 AND %[2]d AND %[1]s NOT GLOB '*[^a-z0-9._-]*' AND substr(%[1]s, 1, 1) GLOB '[a-z0-9]'", column, mcpserver.MaximumServerNameCharacters)
+func serverNameCheck() string {
+	return fmt.Sprintf("length(name) BETWEEN 1 AND %d AND name NOT GLOB '*[^a-z0-9._-]*' AND substr(name, 1, 1) GLOB '[a-z0-9]'", mcpserver.MaximumServerNameCharacters)
 }
 
 func pluginReleasesSchema() string {
@@ -685,21 +574,14 @@ func pluginReleasesSchema() string {
         )`, digestCheck("digest"))
 }
 
-// Server membership of a release is relational and written with the release,
-// so installation sources are derived from rows and never from the encoding
-// of the stored declaration.
 func pluginReleaseServersSchema() string {
 	return fmt.Sprintf(`CREATE TABLE IF NOT EXISTS plugin_release_servers (
             digest TEXT NOT NULL REFERENCES plugin_releases(digest) ON DELETE CASCADE,
             name TEXT NOT NULL CHECK (%s),
             PRIMARY KEY (digest, name)
-        )`, serverNameCheck("name"))
+        )`, serverNameCheck())
 }
 
-// OAuth owns an opaque, versioned payload in the MCP connection layer. A
-// credential is bound to the fingerprint of the OAuth target that requested
-// it, so a changed endpoint, header, release or grant simply stops matching;
-// removing a source removes its credentials.
 func mcpOAuthSessionsSchema() string {
 	return fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_oauth_sessions (
 			source_id   INTEGER PRIMARY KEY REFERENCES mcp_sources(id) ON DELETE CASCADE,

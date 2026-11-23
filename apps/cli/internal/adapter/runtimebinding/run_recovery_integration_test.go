@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	runapplication "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
+	runworkflow "github.com/Tangerg/flame/apps/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/apps/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
@@ -69,7 +69,7 @@ func TestRunningTreeRecoveryUsesTheRuntimeSnapshotAndSuccessorTail(t *testing.T)
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
-	recovered, err := runapplication.RecoverSegment(ctx, connection, session.ID, opened.RunID)
+	recovered, err := runworkflow.RecoverSegment(ctx, connection, session.ID, opened.RunID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestOneShotRecoversADelegatedApprovalBeforeResumingTheRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	profile := connection.Profile()
-	replayGuard, err := mutation.PolicyFromProfile(&profile, time.Now)
+	replayGuard, err := mutation.NewReplayPolicy(profile.IdempotencyLimits(), time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestOneShotRecoversADelegatedApprovalBeforeResumingTheRoot(t *testing.T) {
 	renderer := new(recoveryRenderer)
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
-	if err := runapplication.Execute(ctx, runapplication.Invocation{
+	if err := runworkflow.Execute(ctx, runworkflow.Invocation{
 		Runtime: runtime, Renderer: renderer, ReplayPolicy: replayGuard, ApproveAll: true, Start: authoring.StartRun{
 			SessionID: session.ID, Message: authoring.Message{Text: runtimefixture.DelegateApprovalProbe},
 			Options: authoring.RunOptions{Provider: "deepseek", Model: "deepseek-chat"},
@@ -160,8 +160,6 @@ func TestOneShotRecoversADelegatedApprovalBeforeResumingTheRoot(t *testing.T) {
 	}
 }
 
-// The durable barrier is committed, but this consumer loses the stream between
-// a child's interrupt and the root's suspension event.
 type interruptedRootStream struct {
 	*Connection
 	disconnected  bool
@@ -205,6 +203,7 @@ type recoveryRenderer struct{ events []conversation.RunEvent }
 func (*recoveryRenderer) Begin(conversation.Run, authoring.RunOptions) error { return nil }
 func (*recoveryRenderer) Reconcile(conversation.SessionSnapshot) error       { return nil }
 func (*recoveryRenderer) Close() error                                       { return nil }
+
 func (r *recoveryRenderer) Render(event conversation.RunEvent) error {
 	r.events = append(r.events, event.Clone())
 	return nil

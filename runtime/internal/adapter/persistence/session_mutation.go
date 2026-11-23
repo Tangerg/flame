@@ -12,8 +12,6 @@ import (
 	"github.com/Tangerg/frame/sqlite"
 )
 
-// Insert persists one already-decided initial Session. Identity, timestamps,
-// lineage, editable values, and revision all belong to the aggregate.
 func (s *SessionStore) Insert(ctx context.Context, value session.Session) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		firstRevision := exactint.First().Value()
@@ -27,9 +25,6 @@ func (s *SessionStore) Insert(ctx context.Context, value session.Session) error 
 	})
 }
 
-// Save persists an application-decided replacement iff expectedRevision is
-// still current. It never normalizes fields, reads a clock, applies a Patch, or
-// assigns the next revision.
 func (s *SessionStore) Save(ctx context.Context, change session.Replacement) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		expected, replacing := change.Expected()
@@ -70,7 +65,6 @@ func (s *SessionStore) Save(ctx context.Context, change session.Replacement) err
 	})
 }
 
-// Delete is idempotent. It joins an ambient transaction through sqlitebase.Connection(ctx).
 func (s *SessionStore) Delete(ctx context.Context, id identity.SessionID) error {
 	if err := validateResource("delete Session", id); err != nil {
 		return err
@@ -82,6 +76,7 @@ func (s *SessionStore) Delete(ctx context.Context, id identity.SessionID) error 
 		return nil
 	})
 }
+
 func (s *SessionStore) execInsert(ctx context.Context, executor sqlite.Executor, value session.Session) error {
 	snapshot := value.Snapshot()
 	titleSearch, err := session.NormalizeCatalogText(snapshot.Title)

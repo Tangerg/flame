@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestResolveProductRoot(t *testing.T) {
+func TestProductRootResolution(t *testing.T) {
 	home := t.TempDir()
 	configured := filepath.Join(t.TempDir(), " product root ")
 	for _, test := range []struct {
@@ -21,7 +21,7 @@ func TestResolveProductRoot(t *testing.T) {
 		{name: "whitespace configuration", home: home, configured: " "},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			root, err := ResolveProductRoot(test.home, test.configured)
+			root, err := resolveProductRoot(test.home, test.configured)
 			if test.want == "" {
 				if err == nil || root != "" {
 					t.Fatalf("invalid product root resolved as %q: %v", root, err)

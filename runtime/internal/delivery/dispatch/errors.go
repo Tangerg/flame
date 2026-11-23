@@ -82,8 +82,6 @@ func errorToRPC(err error) *jsonrpc.Error {
 	if err == nil {
 		return nil
 	}
-	// Nested transports may use the same JSON-RPC type with another vocabulary.
-	// Only Delivery's projected problem may define this Core response envelope.
 	return marshalFailure(protocol.ProjectError(err))
 }
 

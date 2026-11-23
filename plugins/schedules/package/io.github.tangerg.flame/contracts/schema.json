@@ -6,10 +6,10 @@
       "properties": {},
       "type": "object"
     },
-    "CreateV1Input": {
+    "CreateV2Input": {
       "$ref": "#/$defs/Draft"
     },
-    "CreateV1InputModelSelection": {
+    "CreateV2InputModelSelection": {
       "additionalProperties": false,
       "properties": {
         "model": {
@@ -29,37 +29,60 @@
       ],
       "type": "object"
     },
-    "CreateV1Output": {
-      "$ref": "#/$defs/CreateV1OutputDomainSnapshot"
+    "CreateV2Output": {
+      "$ref": "#/$defs/CreateV2OutputScheduleSnapshot"
     },
-    "CreateV1OutputDomainSnapshot": {
+    "CreateV2OutputInstantTimestamp": {
+      "type": "string"
+    },
+    "CreateV2OutputModelSelection": {
       "additionalProperties": false,
       "properties": {
-        "CWD": {
+        "model": {
           "type": "string"
         },
-        "CreatedAt": {
-          "$ref": "#/$defs/CreateV1OutputInstantTimestamp"
-        },
-        "Cron": {
+        "provider": {
           "type": "string"
         },
-        "ID": {
+        "reasoningEffort": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "model",
+        "provider",
+        "reasoningEffort"
+      ],
+      "type": "object"
+    },
+    "CreateV2OutputScheduleSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "createdAt": {
+          "$ref": "#/$defs/CreateV2OutputInstantTimestamp"
+        },
+        "cron": {
           "type": "string"
         },
-        "Instructions": {
+        "cwd": {
           "type": "string"
         },
-        "LastRunAt": {
-          "$ref": "#/$defs/CreateV1OutputInstantTimestamp"
+        "id": {
+          "type": "string"
         },
-        "ModelSelection": {
-          "$ref": "#/$defs/CreateV1OutputModelSelection"
+        "instructions": {
+          "type": "string"
         },
-        "NextRunAt": {
-          "$ref": "#/$defs/CreateV1OutputInstantTimestamp"
+        "lastRunAt": {
+          "$ref": "#/$defs/CreateV2OutputInstantTimestamp"
         },
-        "Revision": {
+        "modelSelection": {
+          "$ref": "#/$defs/CreateV2OutputModelSelection"
+        },
+        "nextRunAt": {
+          "$ref": "#/$defs/CreateV2OutputInstantTimestamp"
+        },
+        "revision": {
           "allOf": [
             {
               "maximum": 18446744073709551615,
@@ -68,110 +91,87 @@
           ],
           "type": "integer"
         },
-        "TimeZone": {
+        "timeZone": {
           "type": "string"
         },
-        "Title": {
+        "title": {
           "type": "string"
         }
       },
       "required": [
-        "ID",
-        "Title",
-        "Instructions",
-        "CWD",
-        "ModelSelection",
-        "Cron",
-        "TimeZone",
-        "CreatedAt",
-        "Revision"
+        "id",
+        "title",
+        "instructions",
+        "cwd",
+        "modelSelection",
+        "cron",
+        "timeZone",
+        "createdAt",
+        "revision"
       ],
       "type": "object"
     },
-    "CreateV1OutputInstantTimestamp": {
-      "type": "string"
+    "DeleteV2Input": {
+      "$ref": "#/$defs/DeleteV2InputWireItemInput"
     },
-    "CreateV1OutputModelSelection": {
+    "DeleteV2InputWireItemInput": {
       "additionalProperties": false,
       "properties": {
-        "model": {
-          "type": "string"
-        },
-        "provider": {
-          "type": "string"
-        },
-        "reasoningEffort": {
+        "id": {
           "type": "string"
         }
       },
       "required": [
-        "model",
-        "provider",
-        "reasoningEffort"
+        "id"
       ],
       "type": "object"
     },
-    "DeleteV1Input": {
-      "$ref": "#/$defs/DeleteV1InputWireItemInput"
-    },
-    "DeleteV1InputWireItemInput": {
-      "additionalProperties": false,
-      "properties": {
-        "ID": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "ID"
-      ],
-      "type": "object"
-    },
-    "DeleteV1Output": {
+    "DeleteV2Output": {
       "$ref": "#/$defs/Ack"
     },
     "Draft": {
       "additionalProperties": false,
       "properties": {
-        "CWD": {
+        "cron": {
           "type": "string"
         },
-        "Cron": {
+        "cwd": {
           "type": "string"
         },
-        "Enabled": {
+        "enabled": {
           "type": "boolean"
         },
-        "Instructions": {
+        "instructions": {
           "type": "string"
         },
-        "ModelSelection": {
-          "$ref": "#/$defs/CreateV1InputModelSelection"
+        "modelSelection": {
+          "$ref": "#/$defs/CreateV2InputModelSelection"
         },
-        "TimeZone": {
+        "timeZone": {
           "type": "string"
         },
-        "Title": {
+        "title": {
           "type": "string"
         }
       },
       "required": [
-        "Title",
-        "Instructions",
-        "CWD",
-        "ModelSelection",
-        "Cron",
-        "TimeZone",
-        "Enabled"
+        "title",
+        "instructions",
+        "cwd",
+        "modelSelection",
+        "cron",
+        "timeZone",
+        "enabled"
       ],
       "type": "object"
     },
     "ListInput": {
       "additionalProperties": false,
       "properties": {
-        "Cursor": {
+        "cursor": {
           "type": "string"
         },
-        "Limit": {
+        "limit": {
           "allOf": [
             {
               "maximum": 9223372036854775807,
@@ -182,76 +182,20 @@
         }
       },
       "required": [
-        "Cursor"
+        "cursor"
       ],
       "type": "object"
     },
-    "ListV1Input": {
+    "ListV2Input": {
       "$ref": "#/$defs/ListInput"
     },
-    "ListV1Output": {
+    "ListV2Output": {
       "$ref": "#/$defs/Page"
     },
-    "ListV1OutputDomainSnapshot": {
-      "additionalProperties": false,
-      "properties": {
-        "CWD": {
-          "type": "string"
-        },
-        "CreatedAt": {
-          "$ref": "#/$defs/ListV1OutputInstantTimestamp"
-        },
-        "Cron": {
-          "type": "string"
-        },
-        "ID": {
-          "type": "string"
-        },
-        "Instructions": {
-          "type": "string"
-        },
-        "LastRunAt": {
-          "$ref": "#/$defs/ListV1OutputInstantTimestamp"
-        },
-        "ModelSelection": {
-          "$ref": "#/$defs/ListV1OutputModelSelection"
-        },
-        "NextRunAt": {
-          "$ref": "#/$defs/ListV1OutputInstantTimestamp"
-        },
-        "Revision": {
-          "allOf": [
-            {
-              "maximum": 18446744073709551615,
-              "minimum": 0
-            }
-          ],
-          "type": "integer"
-        },
-        "TimeZone": {
-          "type": "string"
-        },
-        "Title": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "ID",
-        "Title",
-        "Instructions",
-        "CWD",
-        "ModelSelection",
-        "Cron",
-        "TimeZone",
-        "CreatedAt",
-        "Revision"
-      ],
-      "type": "object"
-    },
-    "ListV1OutputInstantTimestamp": {
+    "ListV2OutputInstantTimestamp": {
       "type": "string"
     },
-    "ListV1OutputModelSelection": {
+    "ListV2OutputModelSelection": {
       "additionalProperties": false,
       "properties": {
         "model": {
@@ -271,16 +215,72 @@
       ],
       "type": "object"
     },
+    "ListV2OutputScheduleSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "createdAt": {
+          "$ref": "#/$defs/ListV2OutputInstantTimestamp"
+        },
+        "cron": {
+          "type": "string"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "lastRunAt": {
+          "$ref": "#/$defs/ListV2OutputInstantTimestamp"
+        },
+        "modelSelection": {
+          "$ref": "#/$defs/ListV2OutputModelSelection"
+        },
+        "nextRunAt": {
+          "$ref": "#/$defs/ListV2OutputInstantTimestamp"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "type": "integer"
+        },
+        "timeZone": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "instructions",
+        "cwd",
+        "modelSelection",
+        "cron",
+        "timeZone",
+        "createdAt",
+        "revision"
+      ],
+      "type": "object"
+    },
     "ModelPatch": {
       "additionalProperties": false,
       "properties": {
-        "Model": {
+        "model": {
           "type": "string"
         },
-        "Provider": {
+        "provider": {
           "type": "string"
         },
-        "ReasoningEffort": {
+        "reasoningEffort": {
           "type": "string"
         }
       },
@@ -289,69 +289,69 @@
     "Page": {
       "additionalProperties": false,
       "properties": {
-        "NextCursor": {
+        "nextCursor": {
           "type": "string"
         },
-        "Rows": {
+        "rows": {
           "items": {
-            "$ref": "#/$defs/ListV1OutputDomainSnapshot"
+            "$ref": "#/$defs/ListV2OutputScheduleSnapshot"
           },
           "type": "array"
         }
       },
       "required": [
-        "Rows",
-        "NextCursor"
+        "rows",
+        "nextCursor"
       ],
       "type": "object"
     },
-    "RunNowV1Input": {
-      "$ref": "#/$defs/RunNowV1InputWireItemInput"
+    "RunNowV2Input": {
+      "$ref": "#/$defs/RunNowV2InputWireItemInput"
     },
-    "RunNowV1InputWireItemInput": {
+    "RunNowV2InputWireItemInput": {
       "additionalProperties": false,
       "properties": {
-        "ID": {
+        "id": {
           "type": "string"
         }
       },
       "required": [
-        "ID"
+        "id"
       ],
       "type": "object"
     },
-    "RunNowV1Output": {
+    "RunNowV2Output": {
       "$ref": "#/$defs/RunReference"
     },
     "RunReference": {
       "additionalProperties": false,
       "properties": {
-        "RunID": {
+        "runId": {
           "type": "string"
         },
-        "SessionID": {
+        "sessionId": {
           "type": "string"
         }
       },
       "required": [
-        "SessionID",
-        "RunID"
+        "sessionId",
+        "runId"
       ],
       "type": "object"
     },
     "UpdateInput": {
       "additionalProperties": false,
       "properties": {
-        "CWD": {
+        "cron": {
           "type": "string"
         },
-        "Cron": {
+        "cwd": {
           "type": "string"
         },
-        "Enabled": {
+        "enabled": {
           "type": "boolean"
         },
-        "ExpectedRevision": {
+        "expectedRevision": {
           "allOf": [
             {
               "maximum": 18446744073709551615,
@@ -360,95 +360,39 @@
           ],
           "type": "integer"
         },
-        "ID": {
+        "id": {
           "type": "string"
         },
-        "Instructions": {
+        "instructions": {
           "type": "string"
         },
-        "ModelSelection": {
+        "modelSelection": {
           "$ref": "#/$defs/ModelPatch"
         },
-        "TimeZone": {
+        "timeZone": {
           "type": "string"
         },
-        "Title": {
+        "title": {
           "type": "string"
         }
       },
       "required": [
-        "ID",
-        "ExpectedRevision",
-        "ModelSelection"
+        "id",
+        "expectedRevision",
+        "modelSelection"
       ],
       "type": "object"
     },
-    "UpdateV1Input": {
+    "UpdateV2Input": {
       "$ref": "#/$defs/UpdateInput"
     },
-    "UpdateV1Output": {
-      "$ref": "#/$defs/UpdateV1OutputDomainSnapshot"
+    "UpdateV2Output": {
+      "$ref": "#/$defs/UpdateV2OutputScheduleSnapshot"
     },
-    "UpdateV1OutputDomainSnapshot": {
-      "additionalProperties": false,
-      "properties": {
-        "CWD": {
-          "type": "string"
-        },
-        "CreatedAt": {
-          "$ref": "#/$defs/UpdateV1OutputInstantTimestamp"
-        },
-        "Cron": {
-          "type": "string"
-        },
-        "ID": {
-          "type": "string"
-        },
-        "Instructions": {
-          "type": "string"
-        },
-        "LastRunAt": {
-          "$ref": "#/$defs/UpdateV1OutputInstantTimestamp"
-        },
-        "ModelSelection": {
-          "$ref": "#/$defs/UpdateV1OutputModelSelection"
-        },
-        "NextRunAt": {
-          "$ref": "#/$defs/UpdateV1OutputInstantTimestamp"
-        },
-        "Revision": {
-          "allOf": [
-            {
-              "maximum": 18446744073709551615,
-              "minimum": 0
-            }
-          ],
-          "type": "integer"
-        },
-        "TimeZone": {
-          "type": "string"
-        },
-        "Title": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "ID",
-        "Title",
-        "Instructions",
-        "CWD",
-        "ModelSelection",
-        "Cron",
-        "TimeZone",
-        "CreatedAt",
-        "Revision"
-      ],
-      "type": "object"
-    },
-    "UpdateV1OutputInstantTimestamp": {
+    "UpdateV2OutputInstantTimestamp": {
       "type": "string"
     },
-    "UpdateV1OutputModelSelection": {
+    "UpdateV2OutputModelSelection": {
       "additionalProperties": false,
       "properties": {
         "model": {
@@ -465,6 +409,62 @@
         "model",
         "provider",
         "reasoningEffort"
+      ],
+      "type": "object"
+    },
+    "UpdateV2OutputScheduleSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "createdAt": {
+          "$ref": "#/$defs/UpdateV2OutputInstantTimestamp"
+        },
+        "cron": {
+          "type": "string"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "lastRunAt": {
+          "$ref": "#/$defs/UpdateV2OutputInstantTimestamp"
+        },
+        "modelSelection": {
+          "$ref": "#/$defs/UpdateV2OutputModelSelection"
+        },
+        "nextRunAt": {
+          "$ref": "#/$defs/UpdateV2OutputInstantTimestamp"
+        },
+        "revision": {
+          "allOf": [
+            {
+              "maximum": 18446744073709551615,
+              "minimum": 0
+            }
+          ],
+          "type": "integer"
+        },
+        "timeZone": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "instructions",
+        "cwd",
+        "modelSelection",
+        "cron",
+        "timeZone",
+        "createdAt",
+        "revision"
       ],
       "type": "object"
     }

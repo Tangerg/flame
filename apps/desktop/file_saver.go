@@ -22,6 +22,7 @@ func (w wailsFileSaver) SaveFile(suggestedFilename string, contents []byte) (boo
 	}
 	return true, nil
 }
+
 func (w wailsFileSaver) ChooseFileDestination(suggestedFilename string) (string, error) {
 	destination, err := w.dialogs.SaveFile().
 		CanCreateDirectories(true).

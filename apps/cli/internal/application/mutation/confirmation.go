@@ -1,5 +1,3 @@
-// Package mutation owns identity allocation and acknowledgement semantics for
-// idempotent commands.
 package mutation
 
 import (
@@ -12,8 +10,6 @@ import (
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 )
 
-// ErrReplayGuaranteeUnavailable fences a command whose stable identity can no
-// longer be proven replayable by the runtime that originally owned it.
 var ErrReplayGuaranteeUnavailable = errors.New("mutation replay guarantee is unavailable")
 
 const (
@@ -21,9 +17,6 @@ const (
 	acknowledgementRetryMaximum = time.Second
 )
 
-// AcknowledgementBackoff returns the shared retry schedule for a CLI command
-// whose durable outcome is uncertain. Returning a value prevents one caller
-// from mutating the policy observed by another.
 func AcknowledgementBackoff() retry.Backoff {
 	backoff, err := retry.NewBackoff(acknowledgementRetryBase, acknowledgementRetryMaximum)
 	if err != nil {
@@ -32,9 +25,8 @@ func AcknowledgementBackoff() retry.Backoff {
 	return backoff
 }
 
-// Outcome is the authoritative settlement state shared by every durable CLI
-// mutation. The zero value is invalid so an uninitialized result cannot be
-// mistaken for a deliberately preserved unknown outcome.
+// The zero value is invalid so an uninitialized result cannot be mistaken for a
+// deliberately preserved unknown outcome.
 type Outcome string
 
 const (
@@ -54,13 +46,8 @@ func (o Outcome) Valid() bool {
 
 func (o Outcome) String() string { return string(o) }
 
-// Admission runs immediately before each real mutation attempt. Durable
-// callers use it to enforce the runtime replay guarantee at the actual I/O
-// boundary rather than only when a recovery workflow begins.
 type Admission func() error
 
-// ReplayAdmission admits a durable command only while the connected Runtime
-// still owns the exact store and deadline recorded by its guard.
 func ReplayAdmission(policy ReplayPolicy, guard authoring.ReplayGuard) Admission {
 	return func() error {
 		if !policy.Replayable(guard) {
@@ -70,9 +57,6 @@ func ReplayAdmission(policy ReplayPolicy, guard authoring.ReplayGuard) Admission
 	}
 }
 
-// AcknowledgementUncertain reports whether a mutation may have committed even
-// though its acknowledgement was not observed. Callers must retry the same
-// command identity; a fresh identity could execute the user's intent twice.
 func AcknowledgementUncertain(err error) bool {
 	return errors.Is(err, conversation.ErrDisconnected) ||
 		errors.Is(err, conversation.ErrCommandInProgress) ||
@@ -80,10 +64,6 @@ func AcknowledgementUncertain(err error) bool {
 		errors.Is(err, context.DeadlineExceeded)
 }
 
-// OutcomeUnknown includes failures which cannot be retried against the current
-// runtime but still do not prove that an earlier attempt was refused. A store
-// mismatch is fenced before current-store admission; it says nothing about the
-// same command's outcome in the store that originally owned it.
 func OutcomeUnknown(err error) bool {
 	return AcknowledgementUncertain(err) ||
 		errors.Is(err, conversation.ErrCommandConflict) ||
@@ -94,12 +74,7 @@ func OutcomeUnknown(err error) bool {
 		errors.Is(err, ErrReplayGuaranteeUnavailable)
 }
 
-// ConfirmAdmitted retries one idempotent mutation until its acknowledgement is
-// observed, a definitive refusal arrives, or the owning context ends. The
-// attempt closure must capture and reuse the same mutation identity. Admission
-// runs immediately before every attempt, including the first; nil admits every
-// attempt.
-// An admission failure is an unknown outcome: an earlier call may have
+// An admission failure is an unknown outcome: an earlier attempt may have
 // committed even though its replay guarantee has since expired.
 func ConfirmAdmitted[T any](
 	ctx context.Context,

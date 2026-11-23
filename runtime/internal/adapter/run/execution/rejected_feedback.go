@@ -5,16 +5,11 @@ import (
 	"errors"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/scope/agent/interaction"
 	scoperun "github.com/Tangerg/scope/agent/run"
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// Scope's context request contains its committed local rejection feedback.
-// These proposals never emitted external effects, so SettledResults correctly
-// omits them. Publish their exact conversation results before another provider
-// sees them, without manufacturing an Effect reference or executing a Tool.
 func (i *interactionSession) commitRejectedToolFeedback(ctx context.Context, preparation modelCallSource, request *chat.Request) error {
 	if preparation.sequence < 2 {
 		return nil
@@ -31,12 +26,11 @@ func (i *interactionSession) commitRejectedToolFeedback(ctx context.Context, pre
 	if err != nil {
 		return err
 	}
-	for index, event := range pending {
-		fact := event.Payload.(runs.ToolResultsCommitted)
+	for index, result := range pending {
 		if index == len(pending)-1 {
-			fact.ModelResults = modelResults
+			result.committed.ModelResults = modelResults
 		}
-		if err := i.commitFact(ctx, event.Member, fact); err != nil {
+		if err := i.commitFact(ctx, result.member, result.committed); err != nil {
 			return err
 		}
 	}
@@ -71,8 +65,6 @@ func committedModelResponse(history scoperun.Log, process scoperun.ProcessID, se
 	return nil, nil
 }
 
-// rejectedFeedback pairs every proposal with its canonical feedback and
-// returns the rejection projections not yet committed, in call order.
 func (i *interactionSession) rejectedFeedback(
 	ctx context.Context,
 	process scoperun.ProcessID,
@@ -80,8 +72,8 @@ func (i *interactionSession) rejectedFeedback(
 	calls []chat.ToolCall,
 	settled map[uint32]bool,
 	results map[string]chat.ToolResult,
-) ([]runs.ExecutorEvent, []chat.ToolResult, error) {
-	var pending []runs.ExecutorEvent
+) ([]toolResultFact, []chat.ToolResult, error) {
+	var pending []toolResultFact
 	var modelResults []chat.ToolResult
 	for index, call := range calls {
 		result, found := results[call.ID]
@@ -96,16 +88,16 @@ func (i *interactionSession) rejectedFeedback(
 			return nil, nil, errors.New("execution: unexecuted Tool proposal has successful feedback")
 		}
 		entry := interaction.ResultEntry{ToolCallIndex: uint32(index), Call: call, Result: result, Disposition: interaction.ResultRejected}
-		event, err := i.toolResultProjection(process, sequence, entry)
+		projection, err := i.toolResultProjection(process, sequence, entry)
 		if err != nil {
 			return nil, nil, err
 		}
-		committed, err := i.executionTrees.ExecutionResultCommitted(ctx, i.start.SessionID, event.Payload.(runs.ToolResultsCommitted).Publication)
+		committed, err := i.executionTrees.ExecutionResultCommitted(ctx, i.start.SessionID, projection.committed.Publication)
 		if err != nil {
 			return nil, nil, err
 		}
 		if !committed {
-			pending = append(pending, event)
+			pending = append(pending, projection)
 		}
 	}
 	return pending, modelResults, nil

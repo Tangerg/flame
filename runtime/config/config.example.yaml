@@ -39,7 +39,7 @@ apiKey: ""
 # OpenAI-compatible endpoints normally include /v1; Azure OpenAI endpoints
 # must end in /openai/v1; Anthropic-compatible endpoints name the origin or
 # gateway prefix before the adapter-appended /v1. Overridden by FLAME_BASEURL.
-baseURL: ""
+baseUrl: ""
 
 # Tool-result eviction: a single tool output larger than this many bytes is
 # offloaded out of the conversation (stored in SQLite) and replaced inline by a

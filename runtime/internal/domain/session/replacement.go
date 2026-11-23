@@ -6,16 +6,12 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 )
 
-// Replacement binds one already-decided Session state to the exact aggregate
-// revision it follows. A restored Session that does not yet exist is represented
-// as an initial replacement whose expected revision is zero.
 type Replacement struct {
 	initial  bool
 	expected Session
 	state    Session
 }
 
-// InitialReplacement constructs one initial Session write at revision one.
 func InitialReplacement(state Session) (Replacement, error) {
 	replacement := Replacement{initial: true, state: state}
 	if err := replacement.Validate(); err != nil {
@@ -24,7 +20,6 @@ func InitialReplacement(state Session) (Replacement, error) {
 	return replacement, nil
 }
 
-// NextReplacement constructs one exact same-identity Session revision advance.
 func NextReplacement(expected, state Session) (Replacement, error) {
 	replacement := Replacement{expected: expected, state: state}
 	if err := replacement.Validate(); err != nil {
@@ -33,18 +28,12 @@ func NextReplacement(expected, state Session) (Replacement, error) {
 	return replacement, nil
 }
 
-// Expected returns the aggregate this replacement advances, or false for the
-// initial write of a Session.
 func (r Replacement) Expected() (Session, bool) {
 	return r.expected, !r.initial
 }
 
-// State returns the complete already-decided replacement aggregate.
 func (r Replacement) State() Session { return r.state }
 
-// Validate proves that r is either one initial aggregate or one exact
-// same-identity monotonic replacement. Each Session's own legality is settled
-// by the constructor or transition that produced it.
 func (r Replacement) Validate() error {
 	if r.state.ID().IsZero() {
 		return fmt.Errorf("%w: replacement carries no Session", ErrInvalid)

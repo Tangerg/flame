@@ -19,7 +19,6 @@ type RunEvidence interface {
 	SettleGoalRun(context.Context, goal.RunReceipt, *goal.Replacement) error
 }
 
-// RunSettler turns captured terminal Goal Runs into Goal decisions.
 type RunSettler struct {
 	evidence RunEvidence
 	publish  invalidation.Publish
@@ -32,8 +31,7 @@ func NewRunSettler(evidence RunEvidence, publish invalidation.Publish) (*RunSett
 	return &RunSettler{evidence: evidence, publish: publish}, nil
 }
 
-// Drain never holds the Run's terminal transaction across a plugin call. A
-// restart repeats an unacknowledged decision against the same immutable Run.
+// Drain never holds the Run's terminal transaction across a plugin call.
 func (r *RunSettler) Drain(ctx context.Context, store Store, workflow Workflow, sessionID identity.SessionID) error {
 	for {
 		if err := ctx.Err(); err != nil {

@@ -5,8 +5,6 @@ import (
 	"strconv"
 )
 
-// QueueEntryID is the stable, positive identity of one in-memory queue entry. Its
-// zero value is invalid; absence is represented by map/pointer presence.
 type QueueEntryID struct {
 	value uint64
 }

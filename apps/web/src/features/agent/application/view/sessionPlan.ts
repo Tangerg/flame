@@ -8,7 +8,7 @@ export type { PlanStep } from "@/features/agent/public/sessionView";
 
 const NO_STEPS: readonly PlanStep[] = Object.freeze([]);
 
-export function planSteps(plan: AgentPlan | undefined): readonly PlanStep[] {
+function planSteps(plan: AgentPlan | undefined): readonly PlanStep[] {
   const steps = plan?.steps;
   if (!steps || steps.length === 0) return NO_STEPS;
   return Object.freeze(steps.map((step) => Object.freeze({ ...step })));

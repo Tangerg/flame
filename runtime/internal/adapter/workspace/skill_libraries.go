@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
 
-// SkillLibraries confines publication to the admitted user or project root.
 type SkillLibraries struct {
 	user     *skillauthoring.Store
 	projects sync.Map
@@ -33,6 +32,7 @@ func (l *SkillLibraries) Library(_ context.Context, root string, scope skills.Sc
 	}
 	return store.Library(), nil
 }
+
 func (l *SkillLibraries) Preimage(ctx context.Context, root string, proposal skills.Proposal) (string, error) {
 	store, err := l.store(proposal.Scope, root)
 	if err != nil {
@@ -40,6 +40,7 @@ func (l *SkillLibraries) Preimage(ctx context.Context, root string, proposal ski
 	}
 	return store.Preimage(ctx, proposal)
 }
+
 func (l *SkillLibraries) Publish(ctx context.Context, root string, proposal skills.Proposal, previous, permit string) ([]string, error) {
 	store, err := l.store(proposal.Scope, root)
 	if err != nil {

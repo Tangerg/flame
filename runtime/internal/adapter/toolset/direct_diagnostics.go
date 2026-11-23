@@ -14,17 +14,14 @@ import (
 	"github.com/Tangerg/scope/tools/fs"
 )
 
-// openDirectTools owns the small, read-only capability set valid without an agent
-// process. Keep this list explicit: being available to a model does not make a
-// tool valid for a client-driven call.
 func openDirectTools(root string) (_ Manifest, err error) {
-	authority, executor, close, err := openFilesystem(root)
+	authority, executor, release, err := openFilesystem(root)
 	if err != nil {
 		return Manifest{}, fmt.Errorf("toolset: construct direct filesystem executor: %w", err)
 	}
 	defer func() {
 		if err != nil {
-			err = errors.Join(err, close())
+			err = errors.Join(err, release())
 		}
 	}()
 	readTool, err := newRuntimeReadTool(executor)
@@ -32,13 +29,9 @@ func openDirectTools(root string) (_ Manifest, err error) {
 		return Manifest{}, err
 	}
 	search := newRuntimeSearchTools(root)
-	return Manifest{Visible: []toolcontract.Tool{withWorkspacePath(readTool, authority), withWorkspacePath(search.glob, authority), withWorkspacePath(search.grep, authority)}, close: close}, nil
+	return Manifest{Visible: []toolcontract.Tool{withWorkspacePath(readTool, authority), withWorkspacePath(search.glob, authority), withWorkspacePath(search.grep, authority)}, close: release}, nil
 }
 
-// Only Scope-admitted inputs may be normalized: typed decoding and re-encoding
-// can erase invalid zero/null values or normalize field aliases before admission.
-// This adapter owns path identity and domain-error translation; LocalExecutor
-// independently enforces the filesystem capability.
 func normalizeDirectArguments(root, name string, invocation toolcontract.Invocation) (string, error) {
 	switch builtincontract.Name(name) {
 	case builtincontract.Read:
@@ -132,9 +125,6 @@ func directPath(root, path string) (string, error) {
 	return relative, nil
 }
 
-// directResult preserves a tool's structured JSON output when present and
-// otherwise exposes its raw textual result as a JSON string, matching the
-// protocol's best-effort JSON contract.
 func directResult(output toolcontract.Output) (tool.Result, error) {
 	if err := output.Validate(); err != nil {
 		return tool.Result{}, fmt.Errorf("toolset: invalid direct tool output: %w", err)

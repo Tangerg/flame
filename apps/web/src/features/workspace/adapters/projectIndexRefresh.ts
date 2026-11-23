@@ -10,9 +10,7 @@ export function installProjectIndexRefresh(): () => void {
   });
 }
 
-export function workspaceProjectRevision(
-  sessions: readonly AgentSessionSummary[] | undefined,
-): string {
+function workspaceProjectRevision(sessions: readonly AgentSessionSummary[] | undefined): string {
   return JSON.stringify(
     sessions?.map(({ id, workspace, time }) => [id, workspace.path, time]) ?? null,
   );

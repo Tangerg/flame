@@ -47,8 +47,6 @@ func TestPathGuardApplyPatchChecksAllTargets(t *testing.T) {
 	}
 }
 
-// TestGuardMutationPathConfinesWrites verifies the filesystem capability
-// boundary independently of Run isolation mode.
 func TestGuardMutationPathConfinesWrites(t *testing.T) {
 	work := t.TempDir()
 	outside := filepath.Join(t.TempDir(), "real-project", "main.go")

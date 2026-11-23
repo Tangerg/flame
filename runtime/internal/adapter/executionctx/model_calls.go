@@ -3,13 +3,11 @@ package executionctx
 import (
 	"context"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 )
 
-// modelCalls binds nested consumption to the admitted execution member. Finish
-// projects original physical evidence through that member's existing commit pump.
 type modelCalls interface {
-	Start(context.Context, string, modelchoice.Selection) (func(context.Context, error) error, error)
+	Start(context.Context, string, flamemodel.Selection) (func(context.Context, error) error, error)
 }
 
 type modelCallsKey struct{}
@@ -17,6 +15,7 @@ type modelCallsKey struct{}
 func WithModelCalls(ctx context.Context, calls modelCalls) context.Context {
 	return context.WithValue(ctx, modelCallsKey{}, calls)
 }
+
 func ModelCallsFromContext(ctx context.Context) modelCalls {
 	if ctx == nil {
 		return nil

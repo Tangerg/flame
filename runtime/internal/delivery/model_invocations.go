@@ -19,7 +19,7 @@ func (s *Handler) ListModelInvocations(ctx context.Context, in protocol.ListMode
 	if err != nil {
 		return nil, wirePageError(err)
 	}
-	runID, err := wireIdentity("runId", in.RunID, identity.ParseRun)
+	runID, err := runParameter(in.RunID)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func (s *Handler) ListModelInvocations(ctx context.Context, in protocol.ListMode
 }
 
 func presentModelInvocation(runID identity.RunID, row runs.ModelInvocationCommit) (protocol.ModelInvocation, error) {
-	out := protocol.ModelInvocation{FirstOutputLatencyMillis: row.FirstOutputLatencyMillis, CallID: row.CallID, RunID: runID.String(), SegmentID: row.SegmentID.String(), State: protocol.ModelInvocationState(row.State), StartedAt: row.StartedAt, SettledAt: row.FinishedAt}
+	out := protocol.ModelInvocation{FirstOutputLatencyMillis: row.FirstOutputLatencyMillis, CallID: row.CallID, RunID: runID.String(), SegmentID: row.SegmentID.String(), State: modelInvocationStates.mustWire(row.State), StartedAt: row.StartedAt, SettledAt: row.FinishedAt}
 	if row.KnownResponse != nil {
 		encoded, err := json.Marshal(row.KnownResponse)
 		if err != nil {

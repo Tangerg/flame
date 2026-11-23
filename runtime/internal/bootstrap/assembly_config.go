@@ -6,14 +6,13 @@ import (
 	"fmt"
 	"path/filepath"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/frame/process"
 	"github.com/samber/lo"
@@ -24,100 +23,46 @@ type modelProviderAdapters interface {
 	Profile(context.Context, string) (modelprovider.Profile, error)
 	RemoteModels(context.Context, modelprovider.Connection) ([]string, error)
 	Verify(context.Context, modelprovider.Connection) error
-	OpenChat(context.Context, modelchoice.Selection, modelprovider.Connection) (modeladapter.ResolvedChat, error)
-	RestoreChat(context.Context, modelchoice.Selection, *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error)
-	OpenEmbedding(context.Context, modelchoice.Selection, modelprovider.Connection) (modeladapter.ResolvedEmbedding, error)
+	OpenChat(context.Context, flamemodel.Selection, modelprovider.Connection) (modeladapter.ResolvedChat, error)
+	RestoreChat(context.Context, flamemodel.Selection, *modeladapter.ProviderCapture) (modeladapter.ResolvedChat, error)
+	OpenEmbedding(context.Context, flamemodel.Selection, modelprovider.Connection) (modeladapter.ResolvedEmbedding, error)
 }
 
-// Config supplies one complete storage graph and explicit host policy for construction.
 type assemblyConfig struct {
-	// Stores is the complete durable graph opened by persistence.Open.
-	// Bootstrap never assembles individual missing-store feature variants.
 	stores              *persistence.Bundle
 	processRunner       process.Runner
 	firstPartyDirectory string
 
-	// BuildID identifies the running executable at durable executor boundaries.
 	buildID string
 
-	// ModelProviders optionally substitutes the complete external adapter boundary.
-	// Production resolves the selected installed provider after MCP composition.
 	modelProviders modelProviderAdapters
 
-	// Pricing computes model usage cost for Runtime projections.
-	pricing accounting.Pricing
-
-	// SkillsUserDir is the user-scope Agent Skills directory. Tool resolution
-	// and workspace discovery consume it directly; it is not Agent execution
-	// state.
 	skillsUserDir string
 
-	// Maintenance overrides the default post-Run maintenance pipeline.
 	maintenance executionadapter.RunMaintenance
 
-	// Resources are one-shot process adapters whose ownership transfers to
-	// the Runtime lifecycle when construction starts. It bounds each Close
-	// call and releases resources
-	// only after background tasks and execution/tool capabilities have stopped;
-	// a returned error is retained as a diagnostic but cannot make a terminal
-	// Close replayable.
 	resources []terminalResource
 
-	// SandboxShell opts the shell tools into per-command OS isolation (an
-	// in-place jail rooted at the command's cwd: workspace-write only, network
-	// denied, $HOME hidden, env scrubbed). Off by default; on a host with no
-	// isolation backend it refuses assembly (fail-closed). SandboxReadOnlyPaths
-	// re-opens declared toolchain roots below the hidden home for reads.
 	sandboxShell         bool
 	sandboxReadOnlyPaths []string
 
-	// SandboxDir roots the ephemeral working copies for isolated runs — a session
-	// marked Isolated runs its tools in a throwaway copy of its project under
-	// this dir. Empty disables isolation (an isolated session's run is then
-	// refused, fail-closed). The copies are scratch: never snapshotted.
 	sandboxDir string
 
-	// ProviderRegistry is the runtime-mutable provider registry (per-provider
-	// credentials, persisted). Required; the composition root injects the
-	// sqlite-backed registry and seeds the configured provider into it.
 	providerRegistry models.ProviderRegistry
 
-	// ApprovalMode is the runtime approval stance until a user chooses one,
-	// which then persists. It must be explicit;
-	// [ComposeConfig] selects the product default [approval.ModeBalanced]. The
-	// empty or an unknown mode fails assembly.
 	approvalMode approval.Mode
 
-	// defaultSelection is the exact model a Run runs against when it doesn't
-	// pick one. providers.list / models.list are served from the registry +
-	// catalog, not this.
-	defaultSelection modelchoice.Selection
+	defaultSelection flamemodel.Selection
 
-	// CheckpointDir roots the per-session shadow-git repos backing run-boundary
-	// file snapshots (<FLAME_HOME>/runtime/checkpoints); the checkpoint adapter enables
-	// snapshots + file rollback only when git is present. Empty disables file
-	// checkpoints. The composition root sets it.
 	checkpointDir string
 
-	// UserHome is the process user's home directory. It anchors home-scoped
-	// instruction discovery and is resolved once by the outer process root.
 	userHome string
 
-	// DefaultWorkspacePath is the workspace selected when a request or saved
-	// schedule does not name one. It is a product default supplied by the outer
-	// process root, not the server process's current working directory.
 	defaultWorkspacePath string
 
-	// toolResultOffloadThreshold enables context eviction above this many
-	// bytes; nil disables it.
 	toolResultOffloadThreshold *int
 }
 
-// validateAssemblyConfig reports whether the construction-time bundle has
-// every capability required to assemble a Runtime. Bootstrap keeps this as a
-// construction function: Config is data at the composition boundary, not a
-// domain object with business behavior. Rejection precedes startup reconciliation
-// so an unusable collaborator cannot authorize changes to durable state.
 func validateAssemblyConfig(c assemblyConfig) error {
 	if c.stores == nil {
 		return errors.New("runtime: Stores is required")
@@ -143,9 +88,6 @@ func validateAssemblyConfig(c assemblyConfig) error {
 	return nil
 }
 
-// validatePaths requires the home, workspace and skills directories and lets
-// the sandbox and checkpoint directories default; every given path is
-// absolute.
 func (c assemblyConfig) validatePaths() error {
 	type configuredPath struct{ name, value string }
 	for _, required := range []configuredPath{

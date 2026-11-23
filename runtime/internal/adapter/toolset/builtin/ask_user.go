@@ -1,4 +1,3 @@
-// Ask user exposes ask_user over the runtime's resumable question flow.
 package builtin
 
 import (
@@ -17,10 +16,6 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// askUserArgs is the model-facing argument shape; [toolcontract.NewFunc] derives
-// the JSON schema from it and decodes calls back into it, so the advertised
-// schema and parsed value cannot drift. The handler maps its LLM-oriented names
-// into the application-owned [runs.QuestionPrompt] contract.
 type askUserArgs struct {
 	Questions []questionArg `json:"questions" jsonschema:"required,minItems=1" jsonschema_description:"The questions to ask the user."`
 }
@@ -50,16 +45,16 @@ type optionArg struct {
 	Description string `json:"description,omitempty" jsonschema_description:"Optional one-line explanation of the choice."`
 }
 
-func (a askUserArgs) toFields() []runs.QuestionFieldSpec {
-	fields := make([]runs.QuestionFieldSpec, len(a.Questions))
+func (a askUserArgs) toFields() []transcript.QuestionField {
+	fields := make([]transcript.QuestionField, len(a.Questions))
 	for i, q := range a.Questions {
-		var opts []runs.QuestionOptionSpec
-		for _, o := range q.Options {
-			opts = append(opts, runs.QuestionOptionSpec{Label: o.Label, Description: o.Description})
+		fields[i] = transcript.QuestionField{Prompt: q.Question, Header: q.Header, Kind: questioncontract.Text}
+		if len(q.Options) == 0 {
+			continue
 		}
-		fields[i] = runs.QuestionFieldSpec{
-			Prompt: q.Question, Header: q.Header, Options: opts,
-			Multiple: q.MultiSelect, AllowCustom: len(opts) > 0,
+		fields[i].Kind, fields[i].Multiple, fields[i].AllowCustom = questioncontract.Choice, q.MultiSelect, true
+		for _, o := range q.Options {
+			fields[i].Options = append(fields[i].Options, transcript.QuestionOption{Label: o.Label, Description: o.Description})
 		}
 	}
 	return fields
@@ -68,14 +63,11 @@ func (a askUserArgs) toFields() []runs.QuestionFieldSpec {
 func (a askUserArgs) arguments() (string, error) {
 	b, err := json.Marshal(a)
 	if err != nil {
-		return "", fmt.Errorf("ask_user: encode arguments: %w", err)
+		return "", fmt.Errorf("%s: encode arguments: %w", builtincontract.AskUser, err)
 	}
 	return string(b), nil
 }
 
-// NewAskUser builds the ask_user tool. First entry returns a Scope InputRequest
-// that parks the call; re-entry renders the human's structured answers at this
-// same call site.
 func NewAskUser(interrupt runs.InterruptFunc) (toolcontract.Tool, error) {
 	return newInterruptTool[askUserArgs](
 		toolcontract.FuncConfig{
@@ -98,10 +90,8 @@ func askUserPlan(_ context.Context, args askUserArgs) (runs.Interrupt, error) {
 		Arguments: arguments,
 		Fields:    args.toFields(),
 	}
-	// The interrupt contract owns the question rules; the schema only approximates
-	// them, so a refusal here is the model's argument rejected before anything parks.
 	if err := pending.Validate(); err != nil {
-		return nil, pluginsdk.DefiniteToolFailure(fmt.Errorf("ask_user: %w", err))
+		return nil, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: %w", builtincontract.AskUser, err))
 	}
 	return pending, nil
 }
@@ -111,11 +101,6 @@ func askUserResolve(_ context.Context, args askUserArgs, resolution run.Interrup
 	return answerText(in, resolution.Question().Answers()), nil
 }
 
-// answerText renders the human's answers as the tool's result text, pairing
-// each question with its answer by the same stable order. A
-// single question returns just its answer (no label noise); multiple questions
-// return "header: answer" lines so the model can tell them apart. Multi-select
-// answers are comma-joined.
 func answerText(in runs.QuestionPrompt, answers [][]string) string {
 	if len(in.Fields) == 1 {
 		return strings.Join(answers[0], "\n")

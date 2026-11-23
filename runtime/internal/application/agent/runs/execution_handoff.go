@@ -6,9 +6,6 @@ import (
 	"fmt"
 )
 
-// stagedExecutionHandoff is the unique owner of an executor after staging and
-// before a Segment accepts it. Transfer is irreversible; abandonment releases
-// the exact staged identity on a request-detached cleanup context.
 type stagedExecutionHandoff struct {
 	releases ExecutionReleaser
 	ref      ExecutorRef

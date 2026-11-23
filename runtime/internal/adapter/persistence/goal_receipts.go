@@ -10,12 +10,13 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 func (g *GoalStore) CaptureGoalRun(ctx context.Context, value run.Run) error {
 	return g.db.write(ctx, func(ctx context.Context) error {
-		if value.GoalIncarnationID() == "" {
+		if value.GoalIncarnationID().IsZero() {
 			return nil
 		}
 		if _, terminal := value.Outcome(); !terminal {
@@ -24,38 +25,41 @@ func (g *GoalStore) CaptureGoalRun(ctx context.Context, value run.Run) error {
 		_, err := g.db.connection(ctx).ExecContext(ctx, `INSERT INTO goal_run_receipts(run_id,expected_revision)
 		SELECT r.run_id,g.revision FROM runs r JOIN goals g ON g.session_id=r.session_id AND g.incarnation_id=r.goal_incarnation_id
 		WHERE r.run_id=? AND r.session_id=? AND r.goal_incarnation_id=? AND r.state=?
-		ON CONFLICT(run_id) DO NOTHING`, value.ID(), value.SessionID(), value.GoalIncarnationID(), run.Finished)
+		ON CONFLICT(run_id) DO NOTHING`, value.ID(), value.SessionID(), value.GoalIncarnationID().String(), run.Finished)
 		if err != nil {
 			return fmt.Errorf("sqlite: capture Goal Run receipt: %w", err)
 		}
 		return nil
 	})
 }
+
 func (g *GoalStore) PendingGoalRun(ctx context.Context, sessionID identity.SessionID) (goal.RunReceipt, bool, error) {
 	return scopedPair(ctx, g.db.read, func(ctx context.Context) (goal.RunReceipt, bool, error) {
 		var r goal.RunReceipt
+		var incarnation string
 		var finished int64
 		err := g.db.connection(ctx).QueryRowContext(ctx, `SELECT r.run_id,r.session_id,r.goal_incarnation_id,receipt.expected_revision,r.outcome,r.finished_at
 		FROM goal_run_receipts receipt JOIN runs r ON r.run_id=receipt.run_id
-		WHERE r.session_id=? AND receipt.consumed=0 ORDER BY r.finished_at,r.run_id LIMIT 1`, sessionID).Scan(&r.RunID, &r.SessionID, &r.IncarnationID, &r.Revision, &r.Outcome, &finished)
+		WHERE r.session_id=? AND receipt.consumed=0 ORDER BY r.finished_at,r.run_id LIMIT 1`, sessionID).Scan(&r.RunID, &r.SessionID, &incarnation, &r.Revision, &r.Outcome, &finished)
 		if errors.Is(err, sql.ErrNoRows) {
 			return goal.RunReceipt{}, false, nil
 		}
 		if err != nil {
 			return goal.RunReceipt{}, false, fmt.Errorf("sqlite: next Goal Run receipt: %w", err)
 		}
+		if r.IncarnationID, err = goalref.ParseIncarnation(incarnation); err != nil {
+			return goal.RunReceipt{}, false, fmt.Errorf("sqlite: decode Goal Run receipt incarnation: %w", err)
+		}
 		r.FinishedAt = time.Unix(0, finished).UTC()
 		return r, true, nil
 	})
 }
 
-// A competing user transition supersedes this receipt. A failed database
-// write rolls back the acknowledgment in the enclosing transaction.
 func (g *GoalStore) SettleGoalRun(ctx context.Context, receipt goal.RunReceipt, change *goal.Replacement) error {
 	return g.db.write(ctx, func(ctx context.Context) error {
 		result, err := g.db.connection(ctx).ExecContext(ctx, `UPDATE goal_run_receipts SET consumed=1
 			WHERE run_id=? AND expected_revision=? AND consumed=0 AND EXISTS(
-				SELECT 1 FROM runs r WHERE r.run_id=goal_run_receipts.run_id AND r.session_id=? AND r.goal_incarnation_id=?)`, receipt.RunID, receipt.Revision, receipt.SessionID, receipt.IncarnationID)
+				SELECT 1 FROM runs r WHERE r.run_id=goal_run_receipts.run_id AND r.session_id=? AND r.goal_incarnation_id=?)`, receipt.RunID, receipt.Revision, receipt.SessionID, receipt.IncarnationID.String())
 		if err != nil {
 			return err
 		}

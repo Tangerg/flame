@@ -90,23 +90,11 @@ import "C"
 
 import "unsafe"
 
-// nativeWindowChrome reports where the platform put the window's own controls, so
-// the header the app draws around them can be laid out against the real numbers
-// rather than against remembered ones.
-//
 // Web content cannot see AppKit's control geometry, and hiding the native buttons
-// would discard platform behavior such as the zoom button's tiling menu. Two
-// numbers cross the boundary, and they are the two the app cannot otherwise know:
-// where the cluster ends, which is where the header's first control may begin, and
-// the marks' center line, which is what that control centers on.
-//
-// Deliberately NOT the titlebar height, which would be the app's header height by
-// another name — that number belongs to the visual style, and handing the frame a
-// second claim on it would leave one value with two owners.
-//
-// The exact Wails window handle is passed in; inspecting an application-global
-// window list could select a sheet or file dialog. A nil handle means no window yet,
-// which is valid before creation and after destruction.
+// would discard platform behavior such as the zoom button's tiling menu. The
+// titlebar height deliberately stays with the visual style. The exact window
+// handle is passed because an application-global window list could select a sheet
+// or file dialog.
 func nativeWindowChrome(window unsafe.Pointer) (controlsCentreY, controlsInlineEnd float64, measured bool) {
 	metrics := C.windowChromeMetrics(window)
 	return float64(metrics.controlsCentreY), float64(metrics.controlsInlineEnd), metrics.measured != 0

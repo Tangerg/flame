@@ -19,6 +19,7 @@ import (
 
 const (
 	maximumStateBytes     = 16 << 20
+	sessionStateDirectory = "sessions"
 	sessionStateExtension = ".json"
 )
 
@@ -101,9 +102,6 @@ func (s *Store) loadDraftTransfer() error {
 }
 
 func (s *Store) load(name string, value any) error {
-	if s.persistence == nil {
-		return fs.ErrNotExist
-	}
 	body, err := s.persistence.Read(name, maximumStateBytes)
 	if err != nil {
 		return err
@@ -118,11 +116,9 @@ func decodeStateJSON(encoded []byte, value any) error {
 	return json.Unmarshal(encoded, value, stateJSONOptions)
 }
 
-// A durable state record names its own representations. encoding/json/v2 has no
-// decided JSON form for time.Duration and refuses to guess, so the store states
-// the one its files already contain: whole nanoseconds. Deterministic member
-// order keeps a rewritten file diffable, and an unknown member is a record this
-// build cannot honor rather than one to ignore.
+// encoding/json/v2 has no decided JSON form for time.Duration, so the store states
+// the one its files already contain: whole nanoseconds. An unknown member is a
+// record this build cannot honor.
 var stateJSONOptions = json.JoinOptions(
 	json.Deterministic(true),
 	json.RejectUnknownMembers(true),
@@ -156,10 +152,7 @@ func (s *Store) loadOptional(name string, value any) error {
 }
 
 func (s *Store) loadSessionStates() error {
-	if s.persistence == nil {
-		return nil
-	}
-	entries, err := s.persistence.ListFiles("sessions", sessionStateExtension)
+	entries, err := s.persistence.ListFiles(sessionStateDirectory, sessionStateExtension)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
@@ -183,7 +176,7 @@ func (s *Store) loadSessionStates() error {
 
 func (s *Store) loadSessionState(name string) (sessionState, error) {
 	var state sessionState
-	if err := s.load(filepath.Join("sessions", name), &state); err != nil {
+	if err := s.load(filepath.Join(sessionStateDirectory, name), &state); err != nil {
 		return sessionState{}, fmt.Errorf("load %s: %w", name, err)
 	}
 	if err := protocol.ValidateSessionID(state.SessionID); err != nil || name != filepath.Base(s.sessionStateName(state.SessionID)) {
@@ -269,7 +262,7 @@ func (s *Store) saveSessionStateRecord(
 	steer *PendingSteer,
 ) error {
 	if s.draftTransferBlocks(sessionID) {
-		return errors.New("session draft transfer requires recovery")
+		return errDraftTransferRecovery
 	}
 	return s.saveSessionStateRecordUnfenced(sessionID, draft, pending, resume, rollback, steer)
 }
@@ -288,7 +281,7 @@ func (s *Store) saveSessionStateRecordUnfenced(
 	if err := validateSessionDraft(draft); err != nil {
 		return err
 	}
-	if pending, exists := s.sessionDeletions[sessionID]; exists && pending.Phase == SessionDeletionConfirmed {
+	if pending, exists := s.sessionDeletions[sessionID]; exists && pending.Phase == CommandConfirmed {
 		return errors.New("session authoring state has been retired")
 	}
 	name := s.sessionStateName(sessionID)
@@ -313,31 +306,17 @@ func (s *Store) saveSessionStateRecordUnfenced(
 	return s.save(name, state, func() { s.publishSessionState(sessionID, draft, pending, resume, rollback, steer) })
 }
 
-// writable reports whether a durable write may proceed. An incomplete
-// transaction bars every further write until the Store is reopened, and a Store
-// with no persistence at all writes nowhere; both writers ask here so a barred
-// Store cannot be barred for one of them and open for the other.
-func (s *Store) writable() (bool, error) {
+func (s *Store) admitWrite() error {
 	if s.closed {
-		return false, errors.New("workbench is closed")
+		return errors.New("workbench is closed")
 	}
-	if s.writeBarrier != nil {
-		return false, s.writeBarrier
-	}
-	return s.persistence != nil, nil
+	return s.writeBarrier
 }
 
 func (s *Store) save(name string, value any, publish func()) error {
-	writable, err := s.writable()
-	if err != nil {
+	if err := s.admitWrite(); err != nil {
 		return &WriteError{Record: name, Result: commit.Result{Err: err}}
 	}
-	if !writable {
-		publish()
-		return nil
-	}
-	// A state file is read by a person and compared between runs, so the same
-	// value must produce the same bytes.
 	encoded, err := json.Marshal(
 		value,
 		jsontext.WithIndent("  "),
@@ -354,13 +333,8 @@ func (s *Store) save(name string, value any, publish func()) error {
 }
 
 func (s *Store) remove(name string, publish func()) error {
-	writable, err := s.writable()
-	if err != nil {
+	if err := s.admitWrite(); err != nil {
 		return &WriteError{Record: name, Result: commit.Result{Err: err}}
-	}
-	if !writable {
-		publish()
-		return nil
 	}
 	return s.acceptCommit(name, s.persistence.Remove(name), publish)
 }
@@ -381,7 +355,7 @@ func (s *Store) acceptCommit(name string, result commit.Result, publish func()) 
 		if result.Err == nil {
 			result.Err = errors.New("persistence did not confirm record durability")
 		}
-		s.blockWrites(fmt.Errorf("record %q durability is unconfirmed: %w", name, result.Err))
+		s.raiseWriteBarrier(fmt.Errorf("record %q durability is unconfirmed: %w", name, result.Err))
 	}
 	if result.Err != nil {
 		return &WriteError{Record: name, Result: result}
@@ -389,8 +363,6 @@ func (s *Store) acceptCommit(name string, result commit.Result, publish func()) 
 	return nil
 }
 
-// DispatchReady fences external effects that depend on this Store's command
-// identities. Receipt reads do not require another local publication.
 func (s *Store) DispatchReady() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -398,15 +370,12 @@ func (s *Store) DispatchReady() error {
 }
 
 func (s *Store) dispatchReadyLocked() error {
-	_, err := s.writable()
-	if err != nil {
+	if err := s.admitWrite(); err != nil {
 		return fmt.Errorf("%w: command record durability: %w", authoring.ErrCommandOutcomeUnknown, err)
 	}
 	return nil
 }
 
-// CancellationReady checks retained cancellation identities. A live Run can
-// still be stopped with an independent, process-owned cancellation intent.
 func (s *Store) CancellationReady(commandID authoring.CommandID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -422,8 +391,8 @@ func (s *Store) CancellationReady(commandID authoring.CommandID) error {
 
 func (s *Store) publishSessionState(sessionID string, draft authoring.Message, pending []PendingRun, resume *PendingResume, rollback *PendingSessionRollback, steer *PendingSteer) {
 	s.installSessionState(sessionID, draft, pending, resume, rollback, steer)
-	// Live publication has the complete outbox catalog. Cold restore trims only
-	// after all Sessions have loaded, so another Session's pinned history survives.
+	// Cold restore trims only after all Sessions have loaded, so another Session's
+	// pinned history survives.
 	s.history = s.trimHistory(s.history)
 }
 
@@ -458,16 +427,20 @@ func (s *Store) installSessionState(
 }
 
 func (s *Store) blockWrites(cause error) error {
+	s.raiseWriteBarrier(cause)
+	return errors.Join(cause, s.writeBarrier)
+}
+
+func (s *Store) raiseWriteBarrier(cause error) {
 	if s.writeBarrier == nil {
 		s.writeBarrier = fmt.Errorf(
 			"workbench persistence requires reopen after an incomplete transaction: %w",
 			cause,
 		)
 	}
-	return errors.Join(cause, s.writeBarrier)
 }
 
 func (s *Store) sessionStateName(sessionID string) string {
 	digest := sha256.Sum256([]byte(sessionID))
-	return filepath.Join("sessions", hex.EncodeToString(digest[:16])+sessionStateExtension)
+	return filepath.Join(sessionStateDirectory, hex.EncodeToString(digest[:16])+sessionStateExtension)
 }

@@ -11,26 +11,16 @@ import (
 )
 
 const (
-	// MaxAuthoredPromptDocumentBytes bounds one complete AGENTS.md document
-	// shared by filesystem discovery and its eventual consumer.
 	MaxAuthoredPromptDocumentBytes = 1 << 20
-	// MaxAgentDocumentsPerCascade and MaxAgentDocumentCascadeBytes bound the
-	// complete root-to-leaf instruction set before a model-facing projection.
-	MaxAgentDocumentsPerCascade  = 64
-	MaxAgentDocumentCascadeBytes = 4 << 20
+	MaxAgentDocumentsPerCascade    = 64
+	MaxAgentDocumentCascadeBytes   = 4 << 20
 )
 
 var (
-	// ErrPromptSourceTooLarge reports an authored document or complete source
-	// collection that cannot enter the management and execution projections.
 	ErrPromptSourceTooLarge = errors.New("workspace: prompt source too large")
-	// ErrInvalidPromptSource reports authored material that cannot be represented
-	// losslessly by the Runtime's UTF-8 prompt and JSON contracts.
-	ErrInvalidPromptSource = errors.New("workspace: invalid prompt source")
+	ErrInvalidPromptSource  = errors.New("workspace: invalid prompt source")
 )
 
-// ValidateAuthoredPromptDocumentSize lets filesystem readers reject an
-// already-oversized file before allocating its contents.
 func ValidateAuthoredPromptDocumentSize(size int64) error {
 	if size < 0 {
 		return fmt.Errorf("%w: document size cannot be negative", ErrInvalidPromptSource)
@@ -46,8 +36,8 @@ func ValidateAuthoredPromptDocumentSize(size int64) error {
 	return nil
 }
 
-// ValidateAuthoredPromptDocument checks the complete bytes after reading, so a
-// file that grows after stat cannot cross the same admission boundary.
+// Checked after reading so a file that grows after stat cannot cross the same
+// admission boundary.
 func ValidateAuthoredPromptDocument(document []byte) error {
 	if err := ValidateAuthoredPromptDocumentSize(int64(len(document))); err != nil {
 		return err
@@ -58,9 +48,6 @@ func ValidateAuthoredPromptDocument(document []byte) error {
 	return nil
 }
 
-// AgentDocScope identifies the layer that supplied an instruction document.
-// It is determined while walking the cascade and retained with the discovered
-// value so later use cases never reconstruct semantic scope from a path.
 type AgentDocScope string
 
 const (
@@ -69,19 +56,12 @@ const (
 	AgentDocScopeProjectRoot AgentDocScope = "projectRoot"
 )
 
-// AgentDocFile is the content read from one discovered AGENTS.md source. It
-// carries source identity, cascade provenance, and content; prompt rendering
-// remains an independent concern.
 type AgentDocFile struct {
 	Path    string
 	Content string
 	Scope   AgentDocScope
 }
 
-// ValidateAgentDocumentCascade protects every producer of AgentDocFile values,
-// including ones that do not use the normal filesystem discovery path. Each
-// source path appears once, and scopes advance in render order from home to
-// project root to cwd without returning to an earlier phase.
 func ValidateAgentDocumentCascade(files []AgentDocFile) error {
 	if len(files) > MaxAgentDocumentsPerCascade {
 		return fmt.Errorf(
@@ -151,7 +131,6 @@ func validateAuthoredPromptString(document string) error {
 	return nil
 }
 
-// SkillSource retains the single source selected by prompt resolution.
 type SkillSource struct {
 	scope      skills.Scope
 	dependency plugin.Dependency
@@ -160,17 +139,19 @@ type SkillSource struct {
 func ProjectSkillSource() SkillSource { return SkillSource{scope: skills.ScopeProject} }
 func UserSkillSource() SkillSource    { return SkillSource{scope: skills.ScopeUser} }
 
-// InstallationSkillSource names the exact release whose bundle supplied a Skill.
 func InstallationSkillSource(release plugin.Dependency) (SkillSource, error) {
 	if err := release.Validate(); err != nil {
 		return SkillSource{}, fmt.Errorf("workspace: installation Skill source: %w", err)
 	}
 	return SkillSource{dependency: release}, nil
 }
+
 func (s SkillSource) Scope() skills.Scope { return s.scope }
+
 func (s SkillSource) Installation() (plugin.Dependency, bool) {
 	return s.dependency, s.dependency.InstallationID.Validate() == nil
 }
+
 func (s SkillSource) Validate() error {
 	if _, found := s.Installation(); found {
 		return nil
@@ -184,7 +165,6 @@ type SkillSummary struct {
 	Source      SkillSource
 }
 
-// SkillDiscovery keeps malformed local bundles distinct from an empty catalog.
 type SkillDiscovery struct {
 	Skills      []SkillSummary
 	Diagnostics []SkillDiagnostic
@@ -195,7 +175,6 @@ type SkillDiagnostic struct {
 	Detail string
 }
 
-// SkillDetail describes the exact document selected by the execution resolver.
 type SkillDetail struct {
 	SkillSummary
 	Path         string

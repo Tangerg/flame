@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	"github.com/Tangerg/flame/packages/go-sdk/wiregen"
 
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
@@ -35,6 +36,7 @@ func newClientValues(set *schemaSet) (string, error) {
 		reflect.TypeFor[protocol.RunStatus](),
 		reflect.TypeFor[protocol.SessionStatus](),
 		reflect.TypeFor[builtin.ToolCategory](),
+		reflect.TypeFor[protocol.UnresolvedEffectCause](),
 		reflect.TypeFor[protocol.WorkspaceAvailability](),
 	} {
 		values, err := clientScalarValues(set, scalar)
@@ -102,8 +104,8 @@ export function toolPresentationForName(name: string) {
   return presentations.get(name);
 }
 `)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), filesystem.SharedDirectoryMode); err != nil {
 		return err
 	}
-	return os.WriteFile(path, []byte(out.String()), 0o644)
+	return os.WriteFile(path, []byte(out.String()), filesystem.SharedFileMode)
 }

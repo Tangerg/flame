@@ -9,8 +9,6 @@ import (
 	"github.com/Tangerg/frame/value"
 )
 
-// Scope owns each complete catalog model, including its time and pricing
-// codecs. Flame declares only the provider policy around that native envelope.
 type profileProjection struct {
 	ID               string               `json:"id"`
 	Authentication   Authentication       `json:"authentication"`

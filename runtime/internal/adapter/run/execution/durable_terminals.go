@@ -9,9 +9,6 @@ import (
 	scoperun "github.com/Tangerg/scope/agent/run"
 )
 
-// Scope's Exit proves that nothing of the process or its descendants is still
-// in flight; Unknown Effects stay Unknown. Its corresponding Run terminal
-// belongs in the same storage acknowledgement.
 func (i *interactionSession) terminalFacts(tree scoperun.Log) ([]runs.ExecutorEvent, []*managedDelegateCall, error) {
 	inspection, err := tree.Inspect()
 	if err != nil {
@@ -31,20 +28,14 @@ func (i *interactionSession) terminalFacts(tree scoperun.Log) ([]runs.ExecutorEv
 			i.state.mu.Lock()
 			managed := i.state.delegateChildren[snapshot.ID]
 			i.state.mu.Unlock()
-			if managed == nil {
-				continue
-			}
-			managed.mu.Lock()
-			projected := managed.segmentProjected
-			managed.mu.Unlock()
-			if projected {
+			if managed == nil || managed.projected() {
 				continue
 			}
 			children = append(children, managed)
 		}
 		duration := i.segmentClock.duration(snapshot.StartedAt, snapshot.FinishedAt)
 		member := i.executorMember(snapshot.ID)
-		fact, err := i.terminalFact(member, snapshot.ID, snapshot.Termination, unknown, duration)
+		fact, err := i.terminalFact(snapshot.ID, snapshot.Termination, unknown, duration)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -53,18 +44,15 @@ func (i *interactionSession) terminalFacts(tree scoperun.Log) ([]runs.ExecutorEv
 	return facts, children, nil
 }
 
-// Scope exits a terminated process while its Unknown Effects stay Unknown.
-// Their outcome is unconfirmed, so the Run keeps that evidence and is lost
-// unless a classified model failure already decided it.
-func (i *interactionSession) terminalFact(member runs.ExecutorMember, processID scoperun.ProcessID, termination scoperun.Termination, unknown []scoperun.EffectID, duration time.Duration) (runs.SegmentEnded, error) {
-	effects, uncertain, err := i.unresolvedEvidence(member, unknown, unresolvedCause{
-		name: "termination", reason: unresolvedTerminationDetail, fallbackDetail: unresolvedTerminationDetail,
-	})
+// Scope exits a terminated process while its Unknown Effects stay Unknown, so the
+// Run is lost unless a classified model failure already decided it.
+func (i *interactionSession) terminalFact(processID scoperun.ProcessID, termination scoperun.Termination, unknown []scoperun.EffectID, duration time.Duration) (runs.SegmentEnded, error) {
+	effects, uncertain, err := i.unresolvedEvidence(processID, unknown, unresolvedCause{cause: run.UnresolvedAtTermination})
 	if err != nil {
 		return runs.SegmentEnded{}, err
 	}
 	if uncertain {
-		var ending run.Ending = run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects, Detail: unresolvedTerminationDetail}}
+		var ending run.Ending = run.Lost{Loss: run.Loss{Reason: run.LossUnresolvedEffects}}
 		if classified, found := i.modelFailures.lookup(processID); found && i.lifetime.execution.Err() == nil {
 			ending = run.Failed{Failure: classified}
 		}
@@ -76,11 +64,6 @@ func (i *interactionSession) terminalFact(member runs.ExecutorMember, processID 
 	return runs.NewSegmentEnded(i.endingForProcess(processID, termination), duration), nil
 }
 
-const unresolvedTerminationDetail = "execution terminated with unresolved external effects"
-
-// retainedUnknownEffects lists the Effects whose last settlement in history is
-// Unknown and records their local diagnostics. Inspection drops such Effects
-// once their exited process is reaped; the history keeps them.
 func (i *interactionSession) retainedUnknownEffects(history scoperun.Log) ([]scoperun.EffectID, error) {
 	last := make(map[scoperun.EffectID]scoperun.EffectSettled)
 	var order []scoperun.EffectID

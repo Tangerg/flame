@@ -1,32 +1,23 @@
-// Package conversation owns the model-context message sequence independently
-// from Runs, transcript observations, and executor working state.
 package conversation
 
 import (
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"errors"
 	"fmt"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/scope/core/chat"
 )
 
 var (
-	// ErrInvalid reports a malformed conversation value.
-	ErrInvalid = errors.New("conversation: invalid")
-	// ErrNotEmpty reports an attempt to seed a conversation that already has
-	// messages. Seed is a fork/import operation, never append under another name.
+	ErrInvalid  = errors.New("conversation: invalid")
 	ErrNotEmpty = errors.New("conversation: seed requires an empty conversation")
 )
 
-// Conversation is an ownership-isolated model-context sequence. It contains no
-// persistence, Run, transcript, or executor state.
 type Conversation struct {
 	messages []chat.Message
 }
 
-// ValidateMessages borrows a sequence while checking the model-context contract.
-// Persistence and synchronous use cases can validate without changing representation.
 func ValidateMessages(messages []chat.Message) error {
 	for index, message := range messages {
 		if err := message.Validate(); err != nil {
@@ -36,7 +27,6 @@ func ValidateMessages(messages []chat.Message) error {
 	return nil
 }
 
-// New validates and copies borrowed messages into an immutable conversation.
 func New(messages []chat.Message) (Conversation, error) {
 	if err := ValidateMessages(messages); err != nil {
 		return Conversation{}, err
@@ -48,7 +38,6 @@ func New(messages []chat.Message) (Conversation, error) {
 	return Conversation{messages: owned}, nil
 }
 
-// Messages returns an ownership-isolated snapshot in model-context order.
 func (c Conversation) Messages() []chat.Message {
 	out := make([]chat.Message, len(c.messages))
 	for index, message := range c.messages {
@@ -57,10 +46,8 @@ func (c Conversation) Messages() []chat.Message {
 	return out
 }
 
-// Count returns the current message watermark.
 func (c Conversation) Count() int { return len(c.messages) }
 
-// Append returns the conversation extended by messages in model-context order.
 func (c Conversation) Append(messages ...chat.Message) (Conversation, error) {
 	addition, err := New(messages)
 	if err != nil {
@@ -74,21 +61,10 @@ func (c Conversation) Append(messages ...chat.Message) (Conversation, error) {
 
 func (c Conversation) HasOpenToolCalls() bool { return !indexOpenToolCalls(c.messages).empty() }
 
-// CloseOpenToolCalls returns the conversation with one error result appended
-// for every provider ToolCall that has no later ToolResult. The results are
-// ordered by the calls' first unresolved occurrence and share one Tool message,
-// matching the provider-neutral conversation protocol. A resolved call ID may
-// be reused by a later generation without reopening the former generation.
 func (c Conversation) CloseOpenToolCalls(result string) (Conversation, []chat.Message, error) {
 	return c.CloseOpenToolCallsWithResults(result, nil)
 }
 
-// CloseOpenToolCallsWithResults is CloseOpenToolCalls with authoritative
-// results for calls that completed out of order but could not yet be appended.
-// Every supplied result must match the latest unresolved generation. The final
-// Tool message follows provider call order and fills only the remaining calls
-// with the fallback error, so a terminal boundary preserves known output
-// without leaving a malformed model history.
 func (c Conversation) CloseOpenToolCallsWithResults(
 	result string,
 	completed []chat.ToolResult,
@@ -116,16 +92,13 @@ func (c Conversation) CloseOpenToolCallsWithResults(
 	return closed, appended, nil
 }
 
-// openToolCalls lists every opened ToolCall in order and maps each still-open
-// ID to the position that opened it. A provider may reuse a call ID after its
-// result, so only the entry at the recorded position is the open call.
 type openToolCalls struct {
 	ordered []chat.ToolCall
 	current map[string]int
 }
 
-func indexOpenToolCalls(messages []chat.Message) openToolCalls {
-	calls := openToolCalls{current: make(map[string]int)}
+func indexOpenToolCalls(messages []chat.Message) *openToolCalls {
+	calls := &openToolCalls{current: make(map[string]int)}
 	for _, message := range messages {
 		for _, part := range message.Parts {
 			calls.observe(part)
@@ -151,9 +124,9 @@ func (calls *openToolCalls) open(call chat.ToolCall) {
 	calls.ordered = append(calls.ordered, call)
 }
 
-func (calls openToolCalls) empty() bool { return len(calls.current) == 0 }
+func (calls *openToolCalls) empty() bool { return len(calls.current) == 0 }
 
-func (calls openToolCalls) close(
+func (calls *openToolCalls) close(
 	fallback string,
 	completed completedToolResults,
 ) ([]chat.ToolResult, error) {

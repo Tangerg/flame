@@ -9,8 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
-// mcpDefinitions supplies one desired configuration snapshot for startup.
-// Live availability is resolved by each admitted connection attempt.
 type mcpDefinitions interface {
 	Definitions(ctx context.Context) ([]mcpserver.Server, error)
 }
@@ -19,8 +17,6 @@ type mcpExposure interface {
 	ListExposure(ctx context.Context) ([]tool.Ref, error)
 }
 
-// mcpEnvironment is the boot-time MCP material: the application-owned live
-// exposure state and the enabled durable server definitions to connect.
 type mcpEnvironment struct {
 	exposure *mcpapp.ExposureState
 	servers  []mcpserver.Server

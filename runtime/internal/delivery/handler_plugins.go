@@ -14,25 +14,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-type pluginUseCases interface {
-	List(context.Context) ([]plugins.Inspection, error)
-	Install(context.Context, string) (plugins.Inspection, error)
-	Stage(context.Context, identity.InstallationID, string) (plugins.Inspection, error)
-	Select(context.Context, identity.InstallationID, framevalue.Digest) (plugins.Inspection, error)
-	Enable(context.Context, identity.InstallationID) (plugins.Inspection, error)
-	Disable(context.Context, identity.InstallationID) (plugins.Inspection, error)
-	Configure(context.Context, identity.InstallationID, framevalue.Digest, plugin.Configuration) (plugins.Inspection, error)
-	Uninstall(context.Context, identity.InstallationID) error
-	Component(context.Context, identity.InstallationID, framevalue.Digest, plugin.ContributionID) (plugin.ClientComponent, error)
-	Resource(context.Context, identity.InstallationID, framevalue.Digest, plugin.ContributionID, string) ([]byte, error)
-	Locale(context.Context, identity.InstallationID, framevalue.Digest, string) (map[string]string, error)
-}
-
-type selectionUseCases interface {
-	List(context.Context) ([]plugin.ProviderSelection, error)
-	Select(context.Context, plugin.SelectionRecord) (plugin.ProviderSelection, error)
-}
-
 func presentProviderSelection(value plugin.ProviderSelection) *protocol.PluginProviderSelection {
 	record := value.Snapshot()
 	return &protocol.PluginProviderSelection{Role: record.Role, InstallationID: record.Installation.String(), Contribution: record.Contribution.String()}
@@ -96,11 +77,8 @@ func wirePluginError(err error) error {
 	case errors.Is(err, plugin.ErrCommandRetired):
 		return protocol.NewFailure(protocol.ErrPluginCommandRetired, err.Error(), err)
 	case errors.Is(err, plugin.ErrCommandUnconfirmed):
-		// A lost acknowledgement leaves the command's outcome unknown: it must not be
-		// resubmitted or retargeted, so the category stays the non-retryable internal
-		// failure. The generic command path projects through protocol.ProjectError, which has
-		// no plugin spec and would otherwise mint a fresh internal error that drops
-		// the cause; join it so the unconfirmed cause stays reachable.
+		// protocol.ProjectError has no plugin spec and would mint a fresh internal error
+		// that drops the cause, so the unconfirmed cause is joined.
 		return protocol.NewFailure(protocol.ErrInternalError, err.Error(), err)
 	case errors.Is(err, plugin.ErrInvalid):
 		return protocol.InvalidParameters(err)
@@ -118,12 +96,14 @@ func wirePluginError(err error) error {
 		return err
 	}
 }
+
 func presentPluginResult(inspection plugins.Inspection, err error) (*protocol.PluginInstallation, error) {
 	if err != nil {
 		return nil, wirePluginError(err)
 	}
 	return presentInstallation(inspection)
 }
+
 func (s *Handler) ListPlugins(ctx context.Context) (*protocol.Page[protocol.PluginInstallation], error) {
 	records, err := s.plugins.List(ctx)
 	if err != nil {
@@ -139,9 +119,11 @@ func (s *Handler) ListPlugins(ctx context.Context) (*protocol.Page[protocol.Plug
 	}
 	return protocol.NewPage(result), nil
 }
+
 func (s *Handler) InstallPlugin(ctx context.Context, in protocol.InstallPluginRequest) (*protocol.PluginInstallation, error) {
 	return presentPluginResult(s.plugins.Install(ctx, in.Source))
 }
+
 func (s *Handler) StagePlugin(ctx context.Context, in protocol.StagePluginRequest) (*protocol.PluginInstallation, error) {
 	id, err := parseInstallationID(in.InstallationID)
 	if err != nil {
@@ -149,6 +131,7 @@ func (s *Handler) StagePlugin(ctx context.Context, in protocol.StagePluginReques
 	}
 	return presentPluginResult(s.plugins.Stage(ctx, id, in.Source))
 }
+
 func (s *Handler) SelectPlugin(ctx context.Context, in protocol.PluginReleaseRequest) (*protocol.PluginInstallation, error) {
 	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
 	if err != nil {
@@ -156,6 +139,7 @@ func (s *Handler) SelectPlugin(ctx context.Context, in protocol.PluginReleaseReq
 	}
 	return presentPluginResult(s.plugins.Select(ctx, id, digest))
 }
+
 func (s *Handler) ConfigurePlugin(ctx context.Context, in protocol.ConfigurePluginRequest) (*protocol.PluginInstallation, error) {
 	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
 	if err != nil {
@@ -205,6 +189,7 @@ func parseComponentChange(change protocol.PluginComponentChange) (plugin.Compone
 		return "", protocol.InvalidParameters(fmt.Errorf("plugin component change %q", change))
 	}
 }
+
 func (s *Handler) SetPluginEnablement(ctx context.Context, in protocol.SetPluginEnablementRequest) (*protocol.PluginInstallation, error) {
 	id, err := parseInstallationID(in.InstallationID)
 	if err != nil {
@@ -215,6 +200,7 @@ func (s *Handler) SetPluginEnablement(ctx context.Context, in protocol.SetPlugin
 	}
 	return presentPluginResult(s.plugins.Disable(ctx, id))
 }
+
 func (s *Handler) UninstallPlugin(ctx context.Context, in protocol.PluginRequest) error {
 	id, err := parseInstallationID(in.InstallationID)
 	if err != nil {

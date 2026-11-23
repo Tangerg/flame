@@ -18,8 +18,6 @@ const (
 
 var ErrWatchLimit = errors.New("workspace: file observation limit exceeded")
 
-// WatchScope names one workspace and exact paths relative to it. Key belongs to
-// the subscriber. An empty Paths set requests only Git metadata observation.
 type WatchScope struct {
 	Key   string
 	Root  string
@@ -32,9 +30,6 @@ type ObservationChange struct {
 	Paths []string
 }
 
-// FileWatcher owns bounded filesystem observation. A notification with no paths
-// invalidates the whole named workspace. A reported failure requires rebuilding
-// the observation; Close joins both callbacks.
 type FileWatcher interface {
 	Watch(scopes []WatchScope, notify func(ObservationChange), report func(error)) (io.Closer, error)
 }

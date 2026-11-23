@@ -14,7 +14,6 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// NewRecoveryCommit constructs one complete, immutable boot-recovery write-set.
 func NewRecoveryCommit(input RecoveryCommitInput) (RecoveryCommit, error) {
 	state := cloneRecoveryCommitInput(input)
 	commit := RecoveryCommit{state: state}
@@ -47,23 +46,18 @@ func cloneRecoveryConversationTransitions(
 	return owned
 }
 
-// LostRuns returns the exact child-before-parent Run replacements.
 func (r RecoveryCommit) LostRuns() []rundomain.Replacement {
 	return slices.Clone(r.state.LostRuns)
 }
 
-// ItemReplacements returns the Tool Items closed by recovery.
 func (r RecoveryCommit) ItemReplacements() []transcript.Replacement {
 	return slices.Clone(r.state.ItemReplacements)
 }
 
-// ConversationTransitions returns isolated lost-tree context closures.
 func (r RecoveryCommit) ConversationTransitions() []RecoveryConversationTransition {
 	return cloneRecoveryConversationTransitions(r.state.ConversationTransitions)
 }
 
-// ModelInvocations returns abandoned logical attempts with their known physical
-// evidence, if any. It never authorizes continuation or provider replay.
 func (r RecoveryCommit) ModelInvocations() []ModelInvocationRecovery {
 	return cloneRecoveryModels(r.state.ModelInvocations)
 }
@@ -72,40 +66,32 @@ func (r RecoveryCommit) IndependentEndpoints() []modelref.EndpointObservation {
 	return slices.Clone(r.state.IndependentEndpoints)
 }
 
-// ToolInvocations returns Tool attempts closed as incomplete.
 func (r RecoveryCommit) ToolInvocations() []ToolInvocationRecovery {
 	return slices.Clone(r.state.ToolInvocations)
 }
 
-// GoalRuns returns the lost Goal-owned root Runs, which the recovery
-// transaction also applies to their Sessions' Goals.
 func (r RecoveryCommit) GoalRuns() []rundomain.Run {
 	var charged []rundomain.Run
 	for _, lost := range r.state.LostRuns {
-		if value := lost.State(); value.GoalIncarnationID() != "" {
+		if value := lost.State(); !value.GoalIncarnationID().IsZero() {
 			charged = append(charged, value)
 		}
 	}
 	return charged
 }
 
-// DeleteInterrupts returns the lost root-owned Pending records to remove.
 func (r RecoveryCommit) DeleteInterrupts() []identity.RunID {
 	return slices.Clone(r.state.DeleteInterrupts)
 }
 
-// PreservedSessionIDs returns waiting Sessions whose checkpoints remain live.
 func (r RecoveryCommit) PreservedSessionIDs() []identity.SessionID {
 	return slices.Clone(r.state.PreservedSessionIDs)
 }
 
-// DeleteCheckpointSessionIDs returns lost Sessions whose checkpoints are obsolete.
 func (r RecoveryCommit) DeleteCheckpointSessionIDs() []identity.SessionID {
 	return slices.Clone(r.state.DeleteCheckpointSessionIDs)
 }
 
-// Validate proves that a boot-recovery write-set is self-contained and
-// owner-bound before its transaction begins.
 func (r RecoveryCommit) Validate() error {
 	state := r.state
 	lost, err := indexLostRuns(state.LostRuns)
@@ -147,15 +133,12 @@ func (r RecoveryCommit) Validate() error {
 	return validateRecoveryCheckpointDeletions(state.DeleteCheckpointSessionIDs, lostSessionIDs)
 }
 
-// lostRunTrees indexes lost Runs by identity and by the tree each belongs to.
 type lostRunTrees struct {
 	byID    map[identity.RunID]rundomain.Replacement
 	members map[identity.RunID][]rundomain.TreeMember
 	rootIDs []identity.RunID
 }
 
-// indexLostRuns admits each lost Run once and proves the set arrives in
-// canonical tree postorder, so every child settles before its parent.
 func indexLostRuns(lostRuns []rundomain.Replacement) (lostRunTrees, error) {
 	trees := lostRunTrees{
 		byID:    make(map[identity.RunID]rundomain.Replacement, len(lostRuns)),
@@ -201,8 +184,6 @@ func recoveredSessionSet(sessionIDs []identity.SessionID) (map[identity.SessionI
 	return recovered, nil
 }
 
-// validateIndependentEndpoints admits physical model evidence that belongs to
-// a lost Run but to no logical attempt being recovered.
 func validateIndependentEndpoints(observations []modelref.EndpointObservation, logical []ModelInvocationRecovery, lostByID map[identity.RunID]rundomain.Replacement) error {
 	seen := make(map[string]struct{}, len(observations))
 	for _, observation := range observations {
@@ -542,10 +523,6 @@ func (r RecoveryCommit) lostRootSessionIDs() []identity.SessionID {
 	return values
 }
 
-// RecoveredSessionIDs is the one derivation of which Sessions this recovery
-// owns, and so of which abandoned callback ledgers may be retired: every
-// preserved waiting Session plus the Session of every lost root. Validate
-// proves the result carries no repeat, so no reader has to defend against one.
 func (r RecoveryCommit) RecoveredSessionIDs() []identity.SessionID {
 	values := append(r.lostRootSessionIDs(), r.state.PreservedSessionIDs...)
 	slices.SortFunc(values, identity.SessionID.Compare)

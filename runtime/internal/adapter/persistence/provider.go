@@ -9,14 +9,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 )
 
-// ProviderStore persists only stored provider configuration. Effective
-// environment credentials belong to the registry decorator and never reach
-// this adapter. Nullable columns encode absence directly.
 type ProviderStore struct{ db *database }
 
 func newProviderStore(db *database) *ProviderStore {
 	return &ProviderStore{db: db}
 }
+
 func scanProvider(row scanRow) (provider.Provider, error) {
 	var (
 		id         string
@@ -51,15 +49,14 @@ func scanProvider(row scanRow) (provider.Provider, error) {
 	}
 	return entry, nil
 }
+
 func (p *ProviderStore) List(ctx context.Context) ([]provider.Provider, error) {
 	return scopedValue(ctx, p.db.read, func(ctx context.Context) ([]provider.Provider, error) {
 		rows, err := p.db.connection(ctx).QueryContext(ctx, `SELECT id, api_key, base_url FROM providers ORDER BY id`)
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list providers: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		var out []provider.Provider
 		for rows.Next() {
 			entry, scanErr := scanProvider(rows)
@@ -74,6 +71,7 @@ func (p *ProviderStore) List(ctx context.Context) ([]provider.Provider, error) {
 		return out, nil
 	})
 }
+
 func (p *ProviderStore) Get(ctx context.Context, id string) (provider.Provider, bool, error) {
 	return scopedPair(ctx, p.db.read, func(ctx context.Context) (provider.Provider, bool, error) {
 		entry, err := scanProvider(p.db.connection(ctx).QueryRowContext(ctx, `SELECT id, api_key, base_url FROM providers WHERE id = ?`, id))
@@ -86,6 +84,7 @@ func (p *ProviderStore) Get(ctx context.Context, id string) (provider.Provider, 
 		return entry, true, nil
 	})
 }
+
 func storedProviderValues(entry provider.Provider) (apiKey, baseURL any) {
 	if key, configured := entry.APIKey(); configured {
 		apiKey = key.Reveal()
@@ -96,9 +95,6 @@ func storedProviderValues(entry provider.Provider) (apiKey, baseURL any) {
 	return apiKey, baseURL
 }
 
-// Update serializes read/apply/write in one transaction so preserve/set/clear
-// remains atomic under concurrent mutations without exposing Change internals
-// to the storage adapter.
 func (p *ProviderStore) Update(ctx context.Context, id string, patch provider.Patch) (provider.Provider, error) {
 	var updated provider.Provider
 	err := p.db.write(ctx, func(txCtx context.Context) error {

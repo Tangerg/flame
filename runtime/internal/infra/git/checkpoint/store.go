@@ -10,15 +10,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/keylock"
 )
 
-// Store manages every Session/workspace shadow repository. It has two explicit
-// synchronization domains: treeLocks serialize Git commands that inspect or
-// mutate one shared working tree, while repoLocks serialize the lifecycle of one
-// Session's checkpoint set (including DropSession). Snapshot and Restore always
-// acquire tree then Session; DropSession touches only the Session, so the order
-// is deadlock-free. Run lifecycle separately keeps same-Session admission held
-// until a terminal Snapshot returns, preventing the next Run from crossing its
-// own checkpoint boundary. A workspace digest is only a filesystem-safe index;
-// each repository also persists and verifies the complete workspace identity.
+// Snapshot and Restore acquire the tree lock then the Session lock; DropSession
+// takes only the Session lock, so the order is deadlock-free.
 type Store struct {
 	root      string
 	treeLocks *keylock.Set

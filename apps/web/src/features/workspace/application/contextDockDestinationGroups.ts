@@ -2,7 +2,7 @@ import {
   type ContextDockDestinationScope,
   type WorkspaceViewSpec,
 } from "@/features/workspace/public/views";
-export interface ContextDockItem {
+interface ContextDockItem {
   viewId: string;
   title: string;
   icon?: string;

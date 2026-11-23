@@ -11,10 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/completion"
 )
 
-// shutdownSequence owns terminal resource steps in creation order. Shutdown starts one
-// reverse-order generation that outlives any individual caller deadline; this
-// lets a failed constructor return promptly without abandoning the dependency
-// graph once an in-flight closer eventually finishes.
 type shutdownSequence struct {
 	mu      sync.Mutex
 	steps   []*teardownStep
@@ -30,9 +26,6 @@ func newShutdownSequence(steps []*teardownStep) *shutdownSequence {
 	return &shutdownSequence{steps: slices.Clone(steps)}
 }
 
-// shutdown starts or joins the one terminal teardown generation. settled=false
-// means only that this caller stopped waiting; the sequence still owns and runs
-// the graph. settled=true returns the immutable aggregate diagnostic.
 func (s *shutdownSequence) shutdown(ctx context.Context) (settled bool, err error) {
 	if s == nil {
 		return true, nil
@@ -59,9 +52,6 @@ func (s *shutdownSequence) shutdown(ctx context.Context) (settled bool, err erro
 	return true, attempt.err
 }
 
-// runStep keeps one step's defect from abandoning the steps still owed. The
-// sequence exists to run every step and join what each reported; a panic is what
-// that step reported.
 func runStep(ctx context.Context, step *teardownStep) (err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {

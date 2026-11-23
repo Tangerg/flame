@@ -7,9 +7,6 @@ import (
 
 var errInvalidUsageSummaryPeriod = errors.New("sessions: usage summary period is invalid")
 
-// UsageSummaryPeriod is either all durable history or the preceding positive number
-// of calendar days. Its zero value is the named all-time period; numeric zero
-// never crosses the Application boundary as a disable switch.
 type UsageSummaryPeriod struct {
 	recent bool
 	days   int
@@ -24,8 +21,6 @@ func RecentUsageDays(days int) (UsageSummaryPeriod, error) {
 	return UsageSummaryPeriod{recent: true, days: days}, nil
 }
 
-// Since resolves the lower bound at one UTC observation. All-time returns a
-// zero time; recent periods subtract whole calendar days from now.
 func (p UsageSummaryPeriod) Since(now time.Time) (time.Time, error) {
 	if !p.recent {
 		if p.days != 0 {

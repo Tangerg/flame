@@ -31,7 +31,7 @@ function domainKey<T>(
   return point.normalizeKey ? point.normalizeKey(key) : key;
 }
 
-export interface ExtensionContribution<T> {
+interface ExtensionContribution<T> {
   update(value: T): void;
   [Symbol.dispose](): void;
 }

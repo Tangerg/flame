@@ -65,13 +65,13 @@ export function MemoryReport({
   canRestoreFocus(): boolean;
   t: Translate;
 }) {
-  const rows = page?.Rows ?? [];
+  const rows = page?.rows ?? [];
   const matching = rows.filter(
     (item) =>
-      (status === "all" || item.Status === status) &&
-      (origin === "all" || item.Origin === origin) &&
-      (!pinned || item.Pinned) &&
-      `${item.ID} ${item.Content} ${item.SessionID ?? ""}`
+      (status === "all" || item.status === status) &&
+      (origin === "all" || item.origin === origin) &&
+      (!pinned || item.pinned) &&
+      `${item.id} ${item.content} ${item.sessionId ?? ""}`
         .toLocaleLowerCase()
         .includes(search.toLocaleLowerCase()),
   );
@@ -86,9 +86,9 @@ export function MemoryReport({
               {t("footer.page", { page: pageNumber, count: rows.length })}
               {" · "}
               {t("catalog.summary", {
-                pending: rows.filter((item) => item.Status === "pending")
+                pending: rows.filter((item) => item.status === "pending")
                   .length,
-                active: rows.filter((item) => item.Status === "active").length,
+                active: rows.filter((item) => item.status === "active").length,
               })}
             </span>
           )
@@ -126,28 +126,28 @@ export function MemoryReport({
             )}
             {matching.map((item) => (
               <ListRow
-                key={item.ID}
-                data-memory-id={item.ID}
-                data-status={item.Status}
+                key={item.id}
+                data-memory-id={item.id}
+                data-status={item.status}
               >
-                <RecordBody>{item.Content}</RecordBody>
+                <RecordBody>{item.content}</RecordBody>
                 <Disclosure
                   title={
                     <RecordMeta>
                       <span>{t("record.details")}</span>
                       <Badge
-                        tone={item.Status === "pending" ? "warning" : "neutral"}
+                        tone={item.status === "pending" ? "warning" : "neutral"}
                       >
-                        {item.Status === "pending"
+                        {item.status === "pending"
                           ? t("status.pending")
                           : t("status.active")}
                       </Badge>
-                      {item.Pinned && <Badge>{t("pinned")}</Badge>}
+                      {item.pinned && <Badge>{t("pinned")}</Badge>}
                     </RecordMeta>
                   }
                   actions={
-                    <Toolbar label={t("actions.for", { id: item.ID })}>
-                      {item.Status === "pending" ? (
+                    <Toolbar label={t("actions.for", { id: item.id })}>
+                      {item.status === "pending" ? (
                         <>
                           <MemoryAction
                             result={resultFocus}
@@ -158,13 +158,13 @@ export function MemoryReport({
                             focusableWhenDisabled
                             onClick={() =>
                               command(
-                                "flame.memory/review.v2",
+                                "flame.memory/review.v3",
                                 {
-                                  ID: item.ID,
-                                  ExpectedRevision: item.Revision,
-                                  Decision: "approve",
+                                  id: item.id,
+                                  expectedRevision: item.revision,
+                                  decision: "approve",
                                 },
-                                { action: "approve", id: item.ID },
+                                { action: "approve", id: item.id },
                               )
                             }
                           >
@@ -180,13 +180,13 @@ export function MemoryReport({
                             focusableWhenDisabled
                             onClick={() =>
                               command(
-                                "flame.memory/review.v2",
+                                "flame.memory/review.v3",
                                 {
-                                  ID: item.ID,
-                                  ExpectedRevision: item.Revision,
-                                  Decision: "reject",
+                                  id: item.id,
+                                  expectedRevision: item.revision,
+                                  decision: "reject",
                                 },
-                                { action: "reject", id: item.ID },
+                                { action: "reject", id: item.id },
                               )
                             }
                           >
@@ -220,16 +220,16 @@ export function MemoryReport({
                 >
                   <Facts
                     values={[
-                      [t("fact.id"), item.ID],
-                      [t("fact.scope"), t(`scope.${item.Scope}`)],
+                      [t("fact.id"), item.id],
+                      [t("fact.scope"), t(`scope.${item.scope}`)],
                       [
                         t("fact.origin"),
-                        item.Origin === "auto"
+                        item.origin === "auto"
                           ? t("origin.auto")
                           : t("origin.user"),
                       ],
-                      [t("fact.session"), item.SessionID || undefined],
-                      [t("fact.day"), item.Day || undefined],
+                      [t("fact.session"), item.sessionId || undefined],
+                      [t("fact.day"), item.day || undefined],
                     ]}
                   />
                 </Disclosure>
@@ -262,7 +262,7 @@ function MemoryMenu({
   const [selectedCommand, setSelectedCommand] = useState(false);
   return (
     <ActionMenu
-      label={t("actions.more", { id: item.ID })}
+      label={t("actions.more", { id: item.id })}
       disabled={disabled}
       finalFocus={
         selectedCommand
@@ -275,17 +275,17 @@ function MemoryMenu({
       }
       items={[
         {
-          label: item.Pinned ? t("action.unpin") : t("action.pin"),
+          label: item.pinned ? t("action.unpin") : t("action.pin"),
           onSelect: () => {
             setSelectedCommand(true);
             command(
-              "flame.memory/update.v2",
+              "flame.memory/update.v3",
               {
-                ID: item.ID,
-                ExpectedRevision: item.Revision,
-                Pinned: !item.Pinned,
+                id: item.id,
+                expectedRevision: item.revision,
+                pinned: !item.pinned,
               },
-              { action: item.Pinned ? "unpin" : "pin", id: item.ID },
+              { action: item.pinned ? "unpin" : "pin", id: item.id },
             );
           },
         },

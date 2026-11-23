@@ -1108,7 +1108,7 @@ export interface ModelCapabilities {
 
 export interface ModelEndpointInvocation {
   caller: Invocation;
-  costUSD?: number;
+  costUsd?: number;
   failure?: string;
   id: string;
   kind: ModelEndpointKind;
@@ -2382,13 +2382,15 @@ export type TrajectoryEntryType = "run" | "model" | "endpoint" | "item";
 export type TransportKind = "http";
 
 export interface UnresolvedEffect {
-  cause: string;
+  cause: UnresolvedEffectCause;
   detail?: string;
   effectId: string;
   output?: string;
   processId: string;
   reason?: string;
 }
+
+export type UnresolvedEffectCause = "termination" | "runtimeFailure";
 
 export interface UpdateGoalRequest {
   objective: string;
@@ -2619,6 +2621,7 @@ export const WIRE_ENUMS = {
   ToolRefType: ["builtIn", "mcp"],
   TrajectoryEntryType: ["run", "model", "endpoint", "item"],
   TransportKind: ["http"],
+  UnresolvedEffectCause: ["termination", "runtimeFailure"],
   WorkspaceAvailability: ["available", "missing"],
 } as const;
 

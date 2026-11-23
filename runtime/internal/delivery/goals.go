@@ -45,7 +45,6 @@ func registerGoals(registry *Registry) {
 
 	registry.query(MethodMeta{
 		Name: goalsGet, GoName: "GetGoal", Errors: []string{protocol.ErrSessionNotFound.Error()},
-		// A session with no goal is not an error, so the published result admits null.
 		ResultNullable: true, CapabilityRules: requires(protocol.FeatureGoals),
 	}, func(service interface {
 		GetGoal(context.Context, protocol.GoalRequest) (*protocol.Goal, error)

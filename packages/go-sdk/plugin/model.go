@@ -43,7 +43,6 @@ func (f *ModelFailure) Is(target error) bool {
 	return f.Code == ModelCanceled && target == context.Canceled || f.Code == ModelDeadlineExceeded && target == context.DeadlineExceeded
 }
 
-// ModelMethod publishes Scope's complete exchange without a text-only projection.
 func ModelMethod() (*pluginmcp.Method[scopewire.Request, ModelResult], error) {
 	return pluginmcp.NewMethod[scopewire.Request, ModelResult](frame.MethodConfig{
 		Name: "flame.model/call.v1", Kind: frame.Command, Target: extension.ScopeCall,
@@ -59,15 +58,13 @@ func CallModel(ctx context.Context, ref pluginmcp.CallbackRef, id pluginmcp.Comm
 	if err != nil {
 		return nil, err
 	}
-	result, err := pluginmcp.CallHost(ctx, ref, method, pluginmcp.CommandID(id), scopewire.Request(*request.Clone()))
+	result, err := pluginmcp.CallHost(ctx, ref, method, id, scopewire.Request(*request.Clone()))
 	if err != nil {
 		return nil, err
 	}
 	return modelOutcome(result)
 }
 
-// NewModelCallback leaves command admission and resource policy with its caller.
-// Each command projects a call-scoped child identity, preserving origin/parent.
 func NewModelCallback(call func(context.Context, pluginmcp.Command[scopewire.Request]) (*chat.Response, error)) (pluginmcp.Callback, error) {
 	if call == nil {
 		return pluginmcp.Callback{}, errors.New("plugin: model call owner is required")

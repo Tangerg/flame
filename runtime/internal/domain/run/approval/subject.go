@@ -13,8 +13,7 @@ const (
 	SubjectGlob  SubjectType = "glob"
 )
 
-// Subject keeps the caller's literal command or path distinct from an explicitly
-// authored pattern. Metacharacters in a remembered invocation never widen it.
+// Metacharacters in a remembered invocation never widen it.
 type Subject struct {
 	Type  SubjectType
 	Value string

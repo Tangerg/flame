@@ -15,12 +15,9 @@ import (
 )
 
 const (
-	// MaximumDocumentBytes is the complete encoded size accepted by every CLI
-	// Session export/import boundary.
 	MaximumDocumentBytes = protocol.MaximumSessionArtifactBytes
 )
 
-// markdownFormatName is the spelled-out alias people type for Markdown.
 const markdownFormatName protocol.ExportFormat = "markdown"
 
 func ParseDocumentFormat(value string) (protocol.ExportFormat, error) {
@@ -45,8 +42,6 @@ func documentExtension(format protocol.ExportFormat) string {
 	}
 }
 
-// Document is an immutable Runtime-authored export. JSON documents are
-// round-trippable; Markdown documents are human-readable projections only.
 type Document struct {
 	format protocol.ExportFormat
 	body   []byte

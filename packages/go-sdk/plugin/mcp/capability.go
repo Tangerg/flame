@@ -18,8 +18,6 @@ type CapabilityExport struct {
 	Contract plugincontract.CapabilityDescriptor `json:"contract"`
 }
 
-// BindCapability associates the consumer contract with existing handlers.
-// The Backend remains the sole publication and invocation owner.
 func (b *Backend) BindCapability(name string, contract *plugincontract.Capability) error {
 	if b == nil || contract == nil || contract.Identity().Validate() != nil || !plugincontract.ValidExportName(name) {
 		return errors.New("plugin: backend, capability and valid export name are required")
@@ -43,8 +41,7 @@ func (b *Backend) BindCapability(name string, contract *plugincontract.Capabilit
 	return nil
 }
 
-// Called under the Backend read lock. A capability member cannot lose its
-// export identity by entering through a bare-method call, including lookup.
+// Called with the Backend read lock held.
 func (b *Backend) checkCapability(params *invokeParams) error {
 	member := params.Method
 	if member == ReceiptMethod {
@@ -78,9 +75,6 @@ type CapabilityBinding struct {
 	contract *plugincontract.Capability
 }
 
-// NewCapabilityBinding restores the originally captured contract and export.
-// The backend checks both before executing; restoration never discovers a new
-// provider. Installation/release retention belongs to the host routing owner.
 func NewCapabilityBinding(session *sdk.ClientSession, name string, contract *plugincontract.Capability) (*CapabilityBinding, error) {
 	if session == nil || contract == nil || contract.Identity().Validate() != nil || !plugincontract.ValidExportName(name) {
 		return nil, errors.New("plugin: session, capability and valid export name are required")
@@ -107,8 +101,6 @@ func ResolveCapability(ctx context.Context, session *sdk.ClientSession, name str
 	return binding, nil
 }
 
-// VerifyCapabilities admits the complete declared export set before an installed
-// entry's session or Tools can be published by the connection owner.
 func VerifyCapabilities(ctx context.Context, session *sdk.ClientSession, required []CapabilityExport) error {
 	description, err := Describe(ctx, session)
 	if err != nil {

@@ -11,15 +11,11 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// RetainedShell is an addressable command whose output may still need reading.
 type RetainedShell struct {
 	ID      string
 	Command string
 }
 
-// LiveStateSnapshot is non-durable process state an LLM history summary cannot
-// reconstruct. Durable Goal and Plan aggregates are refreshed separately before
-// every model call; retained OS resource handles belong in this reminder.
 type LiveStateSnapshot struct {
 	Shells []RetainedShell
 }
@@ -28,15 +24,8 @@ func (l LiveStateSnapshot) empty() bool {
 	return len(l.Shells) == 0
 }
 
-// LiveStateSnapshotter snapshots a session's retained execution state when a
-// compaction rewrites its history. It is deterministic (no model call). A nil
-// LiveStateSnapshotter disables the reminder.
 type LiveStateSnapshotter func(ctx context.Context, sessionID identity.SessionID) LiveStateSnapshot
 
-// liveStateReminder renders snap as a Runtime context message to append after a
-// compaction summary, or reports false when there is nothing retained to carry
-// over. The tool names it points at (read_shell_output / stop_shell) are the
-// stable names of the tools that own that state.
 func liveStateReminder(snap LiveStateSnapshot) (chat.Message, bool) {
 	if snap.empty() {
 		return chat.Message{}, false

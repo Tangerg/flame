@@ -8,11 +8,10 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	"github.com/samber/lo"
 )
 
-// AuthoredResource is the closed set of file-backed product resources whose
-// query projections can be changed by another process.
 type AuthoredResource string
 
 const (
@@ -20,13 +19,10 @@ const (
 	AuthoredSkills AuthoredResource = AuthoredResource(invalidation.Skills)
 )
 
-// Valid reports whether a is one externally authored product source.
 func (a AuthoredResource) Valid() bool {
 	return a == AuthoredHooks || a == AuthoredSkills
 }
 
-// InvalidationResource maps a to the same application-owned change
-// vocabulary. Invalid resources map to the invalid zero value.
 func (a AuthoredResource) InvalidationResource() invalidation.Resource {
 	if !a.Valid() {
 		return ""
@@ -34,20 +30,11 @@ func (a AuthoredResource) InvalidationResource() invalidation.Resource {
 	return invalidation.Resource(a)
 }
 
-// AuthoredScope is one canonical workspace identity and its project root.
-// Filesystem layout stays outside Application; these are the semantic roots
-// already used by the Hooks and Skills use cases.
 type AuthoredScope struct {
 	Workspace   string
 	ProjectRoot string
 }
 
-// AuthoredResourceWatcher adapts external filesystem state into semantic
-// resource changes. Implementations own filenames, cascades, notification
-// mechanisms, and symlink identity. Watch borrows scopes and resources for the
-// call; implementations own any retained observation configuration. report
-// receives the first failure of each background outage; it is the only place
-// an outage is observable, so the caller decides what it ends.
 type AuthoredResourceWatcher interface {
 	Watch(
 		scopes []AuthoredScope,
@@ -57,29 +44,20 @@ type AuthoredResourceWatcher interface {
 	) (AuthoredObservation, error)
 }
 
-// AuthoredChange identifies exact file-backed resource members that were
-// changed through an authoritative use case.
 type AuthoredChange struct {
 	Resource   AuthoredResource
 	Identities []string
 }
 
-// AuthoredObservation owns one live semantic resource observation. Accept
-// records exact members after another authoritative path announced the change.
-// Accept borrows changes for the call and does not mutate them.
 type AuthoredObservation interface {
 	io.Closer
 	Accept(changes []AuthoredChange) error
 }
 
-// identityInspector supplies the one live identity fact needed to distinguish
-// a nested workspace root from its project-discovery root.
 type identityInspector interface {
 	Inspect(path string) (Resolved, error)
 }
 
-// AuthoredWatch resolves client workspace identities before delegating the
-// external observation mechanism. It does not know transport topics.
 type AuthoredWatch struct {
 	scope      *Scope
 	workspaces identityInspector
@@ -107,9 +85,6 @@ func NewAuthoredWatch(scope *Scope, workspaces identityInspector, watcher Author
 	}, nil
 }
 
-// Watch starts one caller-owned observation. An empty cwd list still observes
-// the implementation's global resource scopes. cwds and resources are borrowed
-// for the call.
 func (a *AuthoredWatch) Watch(
 	cwds []string,
 	resources []AuthoredResource,
@@ -159,10 +134,6 @@ func (a *AuthoredWatch) Watch(
 	return managed, nil
 }
 
-// Accept records exact members changed by a workspace use case before its
-// invalidation is published. Failure is intentionally best-effort: the durable
-// mutation already committed, and a later callback is a safe duplicate rather
-// than grounds to report that commit as failed.
 func (a *AuthoredWatch) Accept(change AuthoredChange) {
 	if a == nil || len(change.Identities) == 0 {
 		return
@@ -175,7 +146,7 @@ func (a *AuthoredWatch) Accept(change AuthoredChange) {
 	a.mu.Unlock()
 	for _, observation := range active {
 		if err := observation.inner.Accept([]AuthoredChange{change}); err != nil {
-			slog.Warn("workspace: accept authored resource change", "resource", change.Resource, "error", err)
+			slog.Warn("workspace: accept authored resource change", slog.Any("resource", change.Resource), telemetry.Error(err))
 		}
 	}
 }
@@ -201,9 +172,6 @@ func (m *managedAuthoredObservation) Close() error {
 	return m.closeErr
 }
 
-// distinctAuthoredResources refuses a resource outside the closed set rather
-// than dropping it: a request that named only unknown resources would
-// otherwise start an observation that can never fire.
 func distinctAuthoredResources(resources []AuthoredResource) ([]AuthoredResource, error) {
 	out := make([]AuthoredResource, 0, len(resources))
 	for _, resource := range resources {

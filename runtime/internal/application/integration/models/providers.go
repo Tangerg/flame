@@ -12,11 +12,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/secrets"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	"go.opentelemetry.io/otel/trace"
 )
 
-// ProviderSummary is the application result for provider discovery and
-// configuration. It intentionally carries only the redacted credential view.
 type ProviderSummary struct {
 	ID                    string
 	BaseURL               *string
@@ -29,25 +28,17 @@ type ProviderSummary struct {
 	DefaultEmbeddingModel *string
 }
 
-// ProviderCredentialSummary is the redacted configured-credential state.
-// Absence is represented by a nil summary, never by an empty mask/source.
 type ProviderCredentialSummary struct {
 	Masked string
 	Source provider.KeySource
 }
 
-// UpdateProviderCommand carries already-validated domain changes. External
-// values are parsed before this boundary; this use case owns provider policy.
 type UpdateProviderCommand struct {
 	ID      string
 	APIKey  provider.Change[provider.APIKey]
 	BaseURL provider.Change[provider.BaseURL]
 }
 
-// ProviderTestOutcome is the complete client-relevant result of a live
-// credential probe. Unsupported provider remains a command error; all other
-// operational details stay in observability rather than becoming arbitrary
-// caller-visible error text.
 type ProviderTestOutcome string
 
 const (
@@ -62,8 +53,6 @@ var ErrProviderCredentialsRejected = errors.New("models: provider credentials re
 
 var ErrModelDiscoveryFailed = errors.New("models: model discovery failed")
 
-// ListProviders returns the supported-provider set annotated with its current
-// configuration. Registry-only unknown providers are intentionally omitted.
 func (c *Coordinator) ListProviders(ctx context.Context) ([]ProviderSummary, error) {
 	entries, err := c.providers.List(ctx)
 	if err != nil {
@@ -85,8 +74,6 @@ func (c *Coordinator) ListProviders(ctx context.Context) ([]ProviderSummary, err
 	return out, nil
 }
 
-// UpdateProvider validates and persists one supported provider, returning
-// its redacted stored result.
 func (c *Coordinator) UpdateProvider(ctx context.Context, cmd UpdateProviderCommand) (ProviderSummary, error) {
 	profile, err := c.catalog.Profile(ctx, cmd.ID)
 	if err != nil {
@@ -124,9 +111,6 @@ func (c *Coordinator) UpdateProvider(ctx context.Context, cmd UpdateProviderComm
 	return providerSummary(profile, entry), nil
 }
 
-// TestProvider checks that a supported, configured provider accepts a minimal
-// request. Its result is deliberately a stable use-case outcome; integration
-// diagnostics never become caller-visible data.
 func (c *Coordinator) TestProvider(ctx context.Context, id string) (ProviderTestOutcome, error) {
 	if err := ctx.Err(); err != nil {
 		return "", err
@@ -152,7 +136,7 @@ func (c *Coordinator) TestProvider(ctx context.Context, id string) (ProviderTest
 	}
 	if probeErr != nil {
 		trace.SpanFromContext(ctx).RecordError(probeErr)
-		slog.WarnContext(ctx, "models: provider test failed", "provider", id, "error", probeErr)
+		slog.WarnContext(ctx, "models: provider test failed", telemetry.ProviderID(id), telemetry.Error(probeErr))
 		switch {
 		case errors.Is(probeErr, context.DeadlineExceeded):
 			return ProviderTestTimedOut, nil
@@ -164,9 +148,6 @@ func (c *Coordinator) TestProvider(ctx context.Context, id string) (ProviderTest
 	return ProviderTestSucceeded, nil
 }
 
-// ListModels uses the provider's declared source of model identity. Endpoint
-// discovery is authoritative, including an empty result; the catalog only
-// enriches discovered identities with known metadata.
 func (c *Coordinator) ListModels(ctx context.Context, providerID string) ([]Model, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err

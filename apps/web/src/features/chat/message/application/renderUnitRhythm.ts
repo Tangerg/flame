@@ -1,7 +1,7 @@
 import { type MessageRenderUnit } from "@/features/agent/public/messagePresentation";
-export type UnitVoice = "process" | "prose" | "panel";
+type UnitVoice = "process" | "prose" | "panel";
 
-export function unitVoice(unit: MessageRenderUnit): UnitVoice {
+function unitVoice(unit: MessageRenderUnit): UnitVoice {
   if (unit.kind === "wave" || unit.kind === "toolGroup") return "process";
   switch (unit.block.kind) {
     case "text":
@@ -17,7 +17,7 @@ export function unitVoice(unit: MessageRenderUnit): UnitVoice {
   }
 }
 
-export type UnitSeam = "tight" | "close" | "apart" | "wide";
+type UnitSeam = "tight" | "close" | "apart" | "wide";
 
 const SEAM: Record<UnitVoice, Record<UnitVoice, UnitSeam>> = {
   process: { process: "tight", prose: "wide", panel: "apart" },

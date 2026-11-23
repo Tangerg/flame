@@ -6,24 +6,14 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/planworkflow"
 )
 
-// RunEvent is the params of the notifications.run.event notification —
-// the single downstream stream carrying segment / item / Plan events. RunID is
-// the stable logical run; SegmentID is the streamed
-// segment the event belongs to — a client scopes its stream tree +
-// reconnect-replay dedup to it. eventId is monotonic within one segment stream.
-//
-// There is no per-frame reliability flag. Authoritativeness and replayability
-// are protocol facts owned by the event type.
 type RunEvent struct {
 	RunID     string      `json:"runId"`
-	SegmentID string      `json:"segmentId"`          // seg_…
-	EventID   string      `json:"eventId"`            // evt_…
-	Timestamp time.Time   `json:"timestamp,omitzero"` // ISO-8601 (time.Time marshals to RFC3339)
+	SegmentID string      `json:"segmentId"`
+	EventID   string      `json:"eventId"`
+	Timestamp time.Time   `json:"timestamp,omitzero"`
 	Event     StreamEvent `json:"event"`
 }
 
-// StreamEventType discriminates the StreamEvent union.
-//
 //flame:enum
 type StreamEventType string
 
@@ -37,39 +27,18 @@ const (
 	StreamPlanUpdated     StreamEventType = "plan.updated"
 )
 
-// StreamEvent is a tag-discriminated union over downstream events. Type selects
-// which optional fields apply.
-//
-//	segment.started     → Run
-//	segment.progress    → Progress
-//	segment.finished    → Run, and Interrupts when that Run raised them
-//	item.started    → Item
-//	item.delta      → ItemID, Delta
-//	item.completed  → Item
-//	plan.updated    → Plan
 type StreamEvent struct {
 	Type StreamEventType `json:"type"`
 
-	// Run is the record a segment opened or ended with. On segment.finished it
-	// is the Run's durable state at that boundary — waiting, or finished with
-	// its outcome, metrics, and context footprint — so a client replaces its
-	// copy instead of deriving one from why the segment stopped.
-	Run      *RunRef      `json:"run,omitzero"`
-	Progress *RunProgress `json:"progress,omitzero"`
-	// Interrupts is the pending set the finishing Run raised itself. A waiting
-	// Run without them was suspended because another Run in its tree raised
-	// interrupts; they belong to that Run and appear once, on its frame.
-	Interrupts []Interrupt `json:"interrupts,omitempty"`
-	Item       *Item       `json:"item,omitzero"`
-	ItemID     string      `json:"itemId,omitempty"`
-	Delta      *ItemDelta  `json:"delta,omitzero"`
-	Plan       *Plan       `json:"plan,omitzero"`
+	Run        *RunRef      `json:"run,omitzero"`
+	Progress   *RunProgress `json:"progress,omitzero"`
+	Interrupts []Interrupt  `json:"interrupts,omitempty"`
+	Item       *Item        `json:"item,omitzero"`
+	ItemID     string       `json:"itemId,omitempty"`
+	Delta      *ItemDelta   `json:"delta,omitzero"`
+	Plan       *Plan        `json:"plan,omitzero"`
 }
 
-// Authoritative reports whether the event itself is a fact a client may fold.
-// It is deliberately separate from [StreamEvent.Replayable]: the current core
-// event set happens to give every authoritative frame a replay window, but
-// neither concept defines the other.
 func (s StreamEvent) Authoritative() bool {
 	switch s.Type {
 	case StreamSegmentStarted, StreamSegmentFinished,
@@ -80,9 +49,6 @@ func (s StreamEvent) Authoritative() bool {
 	}
 }
 
-// Replayable reports whether the Runtime-instance-local segment journal retains this
-// event and whether its HTTP frame receives an SSE id. Unknown events fail
-// closed and never enter the replay window.
 func (s StreamEvent) Replayable() bool {
 	switch s.Type {
 	case StreamSegmentStarted, StreamSegmentFinished,
@@ -93,25 +59,13 @@ func (s StreamEvent) Replayable() bool {
 	}
 }
 
-// RunProgress is the mid-run progress preview carried by a segment.progress
-// event. It previews the same run-cumulative figures
-// that land authoritatively on segment.finished.metrics, so it may run briefly
-// ahead of them but never contradicts them.
 type RunProgress struct {
-	Step  *int   `json:"step,omitzero"`
-	Usage *Usage `json:"usage,omitzero"`
-	// ContextTokens is the latest round's prompt-token count — the live
-	// context-window occupancy (how full the window is right now), distinct from
-	// the cumulative-over-rounds Usage.inputTokens (which only grows). Pair it
-	// with the served model's contextWindow (models.list) for an occupancy gauge;
-	// it drops after a compaction. Ephemeral, like the rest of RunProgress.
+	Step          *int      `json:"step,omitzero"`
+	Usage         *Usage    `json:"usage,omitzero"`
 	ContextTokens *int64    `json:"contextTokens,omitzero"`
 	Activity      *Activity `json:"activity,omitzero"`
 }
 
-// ActivityType names what a running segment is doing now. Clients word it in
-// their own language; the Runtime sends no display text.
-//
 //flame:enum
 type ActivityType string
 
@@ -122,54 +76,33 @@ const (
 	ActivityToolCall          ActivityType = "toolCall"
 )
 
-// Activity is the current action of a running segment. A toolCall activity
-// names the running ToolCall Item and its tool, so a client can word it
-// without having folded that Item.
 type Activity struct {
 	Type   ActivityType `json:"type"`
 	ItemID string       `json:"itemId,omitempty"`
 	Tool   string       `json:"tool,omitempty"`
 }
 
-// Plan is the Session's persisted latest Plan. A root Run publishes it through
-// plan.updated, and plan.get returns the same shape, so live and cold recovery cannot
-// describe the checklist differently. A segment that changed the Plan
-// republishes its final revision immediately before segment.finished; consumers fold
-// identical revision + content idempotently even though the fence has a fresh eventId.
-// State is absent when no Plan replacement has ever been written; a committed empty
-// State means the Plan was explicitly cleared. This keeps absence distinct without a
-// magic revision zero.
 type Plan struct {
 	SessionID string     `json:"sessionId"`
 	State     *PlanState `json:"state,omitzero"`
 }
 
-// PlanState is one committed whole-list replacement. Revision and UpdatedAt are
-// coupled to Steps as one value, so a frame cannot carry version metadata without
-// content or content without the version that orders it.
 type PlanState struct {
 	Revision  uint64     `json:"revision"`
 	Steps     []PlanStep `json:"steps"`
 	UpdatedAt time.Time  `json:"updatedAt,omitzero"`
 }
 
-// GetPlanRequest is the plan.get body — the cold read for the Plan projection.
 type GetPlanRequest struct {
 	SessionID string `json:"sessionId"`
 }
 
-// PlanStep is one Step of the session [Plan].
-// The Plan is replaced whole each set_plan, so ID is positional — a stable key
-// within a snapshot, not a durable identity. Status is
-// "pending" | "in_progress" | "completed".
 type PlanStep struct {
 	ID          string     `json:"id"`
 	Description string     `json:"description"`
 	Status      PlanStatus `json:"status"`
 }
 
-// PlanStatus is one Step's execution state.
-//
 //flame:enum
 type PlanStatus string
 
@@ -179,8 +112,6 @@ const (
 	PlanStatusCompleted  PlanStatus = PlanStatus(planworkflow.PlanStatusCompleted)
 )
 
-// ItemDeltaType discriminates the ItemDelta union.
-//
 //flame:enum
 type ItemDeltaType string
 
@@ -191,13 +122,6 @@ const (
 	DeltaToolOutput    ItemDeltaType = "toolOutput"
 )
 
-// ItemDelta is a tag-discriminated union over incremental updates. All delta
-// events are non-authoritative and non-replayable.
-//
-//	content       → Text
-//	reasoning     → Text
-//	toolArguments → ArgumentsTextDelta (partial JSON text; client repairs)
-//	toolOutput    → Text
 type ItemDelta struct {
 	Type ItemDeltaType `json:"type"`
 

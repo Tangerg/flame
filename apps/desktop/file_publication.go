@@ -6,18 +6,19 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 )
 
 type exportFile struct {
 	file        *os.File
 	destination string
 	mode        os.FileMode
-	// Closing revokes writes; the staging path stays owned until rename or removal is confirmed.
 	stagingPath string
 }
 
 func prepareExport(destination string) (*exportFile, error) {
-	mode := os.FileMode(0600)
+	mode := filesystem.PrivateFileMode
 	previous, err := os.Lstat(destination)
 	switch {
 	case err == nil:
@@ -73,7 +74,6 @@ func (f *exportFile) discard() error {
 	return errors.Join(closed, removed)
 }
 
-// Rename is the only publication point, including for exports delivered in chunks.
 func (f *exportFile) publish() error {
 	if f.file == nil {
 		return os.ErrClosed
@@ -90,6 +90,7 @@ func (f *exportFile) publish() error {
 	f.stagingPath = ""
 	return nil
 }
+
 func publishExport(destination string, content io.Reader) (returned error) {
 	f, err := prepareExport(destination)
 	if err != nil {

@@ -7,20 +7,13 @@ import (
 )
 
 const (
-	// MaxRemoteToolsPerServer bounds one complete tools/list projection from a
-	// single connected MCP server.
 	MaxRemoteToolsPerServer = 2_048
 
-	// MaxRemoteToolDescriptionBytes bounds model-visible prose attached to one
-	// remote tool descriptor.
 	MaxRemoteToolDescriptionBytes = 64 << 10
 )
 
-// errInvalidRemoteToolCatalog reports remote descriptor material that cannot
-// be admitted to Runtime's complete management and model-facing catalogs.
-var errInvalidRemoteToolCatalog = errors.New("mcp: invalid remote tool catalog")
+var errInvalidRemoteToolCatalog = errors.New("mcpserver: invalid remote tool catalog")
 
-// ValidateRemoteToolCount enforces the per-server complete-list bound.
 func ValidateRemoteToolCount(count int) error {
 	if count < 0 || count > MaxRemoteToolsPerServer {
 		return fmt.Errorf(
@@ -33,8 +26,6 @@ func ValidateRemoteToolCount(count int) error {
 	return nil
 }
 
-// ValidateRemoteToolDescription enforces the encoded remote-description
-// envelope before the text enters either catalog.
 func ValidateRemoteToolDescription(description string) error {
 	if !utf8.ValidString(description) {
 		return fmt.Errorf("%w: description is not valid UTF-8", errInvalidRemoteToolCatalog)

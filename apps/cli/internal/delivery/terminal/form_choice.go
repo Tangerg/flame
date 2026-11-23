@@ -2,8 +2,6 @@ package terminal
 
 import "fmt"
 
-// formChange is the presentation value for an optional replacement. It keeps
-// UI selection state distinct from every protocol's change-kind vocabulary.
 type formChange uint8
 
 const (

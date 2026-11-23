@@ -3,12 +3,10 @@ package testsupport
 import (
 	"time"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// MustRestoreSession fills irrelevant lifecycle defaults, restores snapshot, and
-// panics when the requested fixture is invalid.
 func MustRestoreSession(snapshot session.Snapshot) session.Session {
 	if snapshot.Workspace.Path() == "" {
 		snapshot.Workspace = MustWorkspace("/fixture")
@@ -32,7 +30,6 @@ func MustRestoreSession(snapshot session.Snapshot) session.Session {
 	return value
 }
 
-// MustWorkspace constructs a valid exact workspace value for test fixtures.
 func MustWorkspace(path string) session.Workspace {
 	workspace, err := session.NewWorkspace(path)
 	if err != nil {
@@ -41,8 +38,8 @@ func MustWorkspace(path string) session.Workspace {
 	return workspace
 }
 
-func fixtureSelection() modelchoice.Selection {
-	selection, err := modelchoice.New("test-provider", "test-model")
+func fixtureSelection() flamemodel.Selection {
+	selection, err := flamemodel.New("test-provider", "test-model")
 	if err != nil {
 		panic(err)
 	}

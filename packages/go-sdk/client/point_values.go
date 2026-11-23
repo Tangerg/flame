@@ -24,8 +24,6 @@ type PointValue[T any] struct {
 	Value          T
 }
 
-// ResolvePointValues checks the consumer's typed schema against its published
-// point before decoding immutable installed bindings into consumer-owned values.
 func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contract *plugincontract.Point, target framecall.Target, attributes any, order []protocol.PluginPointReference, options protocol.CallOptions) ([]PointValue[T], error) {
 	if lo.IsNil(caller) || contract == nil {
 		return nil, errors.New("runtime: point resolver and admitted contract are required")
@@ -62,8 +60,6 @@ func ResolvePointValues[T any](ctx context.Context, caller PointResolver, contra
 	return values, nil
 }
 
-// requirePointValueType refuses a consumer type whose schema is not exactly the
-// point's published value schema.
 func requirePointValueType[T any](contract *plugincontract.Point) error {
 	if err := framevalue.ValidateType(reflect.TypeFor[T]()); err != nil {
 		return err

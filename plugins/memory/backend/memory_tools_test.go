@@ -12,17 +12,18 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/exactint"
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/plugins/memory/internal/agentmemory"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
-	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
 
 	framecall "github.com/Tangerg/frame/call"
 
 	framevalue "github.com/Tangerg/frame/value"
 	sdk "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
-	tool "github.com/Tangerg/scope/core/tool"
+	"github.com/Tangerg/scope/core/tool"
 )
 
 func callMemoryModelTool(t *testing.T, session *sdk.ClientSession, project, id, name string, input any) (*sdk.CallToolResult, framevalue.JSON) {
@@ -107,9 +108,9 @@ func TestMemoryToolsShareTheOwnerAndRecoverOriginalResultsAfterRestart(t *testin
 	project := t.TempDir()
 	path := filepath.Join(t.TempDir(), "memory.db")
 	store, session, closeBackend := connectMemoryBackend(t, path)
-	add, addInput := callMemoryModelTool(t, session, project, "add", "add_memory", addMemoryArgs{Scope: memory.ScopeProject, Content: "original memory marker"})
+	add, addInput := callMemoryModelTool(t, session, project, "add", "add_memory", addMemoryArgs{Scope: agentmemory.ScopeProject, Content: "original memory marker"})
 	original := memoryToolValue[memoryView](t, add)
-	if original.ID == "" || original.Revision != 1 || original.Status != memory.StatusActive {
+	if original.ID == "" || original.Revision != 1 || original.Status != agentmemory.StatusActive {
 		t.Fatalf("added item: %+v", original)
 	}
 	update, updateInput := callMemoryModelTool(t, session, project, "update", "update_memory", updateMemoryArgs{Item: memoryItemArgs{Scope: original.Scope, ID: original.ID, ExpectedRevision: original.Revision}, Content: new("corrected memory marker"), Pinned: new(true)})
@@ -117,7 +118,7 @@ func TestMemoryToolsShareTheOwnerAndRecoverOriginalResultsAfterRestart(t *testin
 	if updated.ID != original.ID || updated.Revision != original.Revision+1 || !updated.Pinned {
 		t.Fatalf("updated item: %+v", updated)
 	}
-	human, err := callMemoryCapability[rpc.UpdateInput, memory.ItemSnapshot](t.Context(), session, memoryContract(t), "memory", rpc.Update, "human", rpc.UpdateInput{ID: updated.ID, ExpectedRevision: updated.Revision, Content: new("human memory marker")}, sdk.ParamsBase{})
+	human, err := callMemoryCapability[rpc.UpdateInput, rpc.Item](t.Context(), session, memoryContract(t), "memory", rpc.Update, "human", rpc.UpdateInput{ID: updated.ID, ExpectedRevision: updated.Revision, Content: new("human memory marker")}, sdk.ParamsBase{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +126,7 @@ func TestMemoryToolsShareTheOwnerAndRecoverOriginalResultsAfterRestart(t *testin
 	if !stale.IsError {
 		t.Fatal("stale model correction overwrote the human edit")
 	}
-	listed, _ := callMemoryModelTool(t, session, project, "list", "list_memories", listMemoryArgs{Scope: memory.ScopeProject})
+	listed, _ := callMemoryModelTool(t, session, project, "list", "list_memories", listMemoryArgs{Scope: agentmemory.ScopeProject})
 	page := memoryToolValue[memoryPage](t, listed)
 	if len(page.Memories) != 1 || page.Memories[0].Revision != human.Revision || page.Memories[0].Content != human.Content {
 		t.Fatalf("model and human reads disagree: %+v", page)
@@ -137,7 +138,7 @@ func TestMemoryToolsShareTheOwnerAndRecoverOriginalResultsAfterRestart(t *testin
 	}
 	remove, removeInput := callMemoryModelTool(t, session, project, "delete", "delete_memory", memoryItemArgs{Scope: original.Scope, ID: original.ID, ExpectedRevision: human.Revision})
 	memoryToolValue[rpc.Ack](t, remove)
-	items, err := store.List(t.Context(), memory.ScopeProject, original.Project)
+	items, err := store.List(t.Context(), agentmemory.ScopeProject, original.Project)
 	if err != nil || len(items) != 0 {
 		t.Fatalf("model removal did not reach the owner: %+v, %v", items, err)
 	}
@@ -175,30 +176,34 @@ func TestMemoryToolsReviewProposalsAndFenceTheCapturedProject(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now().UTC()
-	facts, err := store.AppendLedger(t.Context(), memory.FactBatch{Project: canonical, SessionID: "ses_review", Day: now.Format(time.DateOnly), Facts: []string{"proposal to approve", "proposal to reject"}, CapturedAt: now})
+	sessionID, err := identity.ParseSession("ses_review")
 	if err != nil {
 		t.Fatal(err)
 	}
-	publication, err := memory.NewPublication(canonical, memory.State{}, facts[len(facts)-1].Sequence, nil, []string{"proposal to approve", "proposal to reject"}, now)
+	facts, err := store.AppendLedger(t.Context(), agentmemory.FactBatch{Project: canonical, SessionID: sessionID, Day: now.Format(time.DateOnly), Facts: []string{"proposal to approve", "proposal to reject"}, CapturedAt: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publication, err := agentmemory.NewPublication(canonical, agentmemory.State{}, facts[len(facts)-1].Sequence, nil, []string{"proposal to approve", "proposal to reject"}, now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if published, err := store.Reconcile(t.Context(), publication); err != nil || !published {
 		t.Fatalf("publish proposals: %v, %v", published, err)
 	}
-	listed, _ := callMemoryModelTool(t, session, project, "proposals", "list_memories", listMemoryArgs{Scope: memory.ScopeProject})
+	listed, _ := callMemoryModelTool(t, session, project, "proposals", "list_memories", listMemoryArgs{Scope: agentmemory.ScopeProject})
 	page := memoryToolValue[memoryPage](t, listed)
 	if len(page.Memories) != 2 {
 		t.Fatalf("pending proposals are not manageable: %+v", page)
 	}
 	for _, item := range page.Memories {
-		decision := memory.ReviewApprove
+		decision := agentmemory.ReviewApprove
 		if strings.Contains(item.Content, "reject") {
-			decision = memory.ReviewReject
+			decision = agentmemory.ReviewReject
 		}
 		result, admitted := callMemoryModelTool(t, session, project, item.ID, "review_memory", reviewMemoryArgs{Item: memoryItemArgs{Scope: item.Scope, ID: item.ID, ExpectedRevision: item.Revision}, Decision: decision})
 		memoryToolValue[rpc.Ack](t, result)
-		id, err := memory.ParseItemID(item.ID)
+		id, err := agentmemory.ParseItemID(item.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -211,7 +216,7 @@ func TestMemoryToolsReviewProposalsAndFenceTheCapturedProject(t *testing.T) {
 			t.Fatalf("review receipt is unavailable: %+v, %v", output, err)
 		}
 	}
-	foreign, _, err := store.Add(t.Context(), memory.ScopeProject, other, "foreign fact", now)
+	foreign, _, err := store.Add(t.Context(), agentmemory.ScopeProject, other, "foreign fact", now)
 	if err != nil {
 		t.Fatal(err)
 	}

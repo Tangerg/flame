@@ -48,7 +48,6 @@ func (r *resumeBindingBuilder) addAnsweredApprovals(continuation treeContinuatio
 		if !ok || call.Approval == nil {
 			return fmt.Errorf("resume Tool approval %q has no accepted resolution", item.ID())
 		}
-		// Accepting the verdict leaves its Tool Item open until execution settles.
 		r.binding.drained = append(r.binding.drained, DrainedTool{ItemID: item.ID(), CallID: answer.ToolCallID})
 		r.binding.callItems[answer.ToolCallID] = item
 	}
@@ -58,7 +57,7 @@ func (r *resumeBindingBuilder) addAnsweredApprovals(continuation treeContinuatio
 func (r *resumeBindingBuilder) addTools(continuation treeContinuation, member Continuation) error {
 	r.binding.drained = append(r.binding.drained, member.DrainedTools...)
 	for _, drained := range member.DrainedTools {
-		item, _, err := drainedToolItem(continuation.items, member.RunID, drained)
+		item, err := drainedToolItem(continuation.items, member.RunID, drained)
 		if err != nil {
 			return fmt.Errorf("resume: %w", err)
 		}

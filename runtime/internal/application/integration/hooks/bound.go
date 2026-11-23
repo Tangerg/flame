@@ -7,7 +7,7 @@ import (
 
 	hookdata "github.com/Tangerg/flame/packages/go-sdk/hook"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/hookprovider"
-	domain "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 )
 
 type Evaluate func(context.Context, hookprovider.Evaluation) (hookprovider.Advice, error)
@@ -18,13 +18,28 @@ type Bound struct {
 	close    func() error
 }
 
-func NewBound(rules []hookdata.Hook, evaluate Evaluate, report func(context.Context, string, error), close func() error) *Bound {
-	return &Bound{rules: slices.Clone(rules), evaluate: evaluate, report: report, close: close}
+func NewBound(rules []hookdata.Hook, evaluate Evaluate, report func(context.Context, string, error), release func() error) (*Bound, error) {
+	if evaluate == nil || report == nil || release == nil {
+		return nil, errors.New("hooks: bound rules require an evaluator, a diagnostic sink and a release")
+	}
+	return &Bound{rules: slices.Clone(rules), evaluate: evaluate, report: report, close: release}, nil
 }
 
-func (b *Bound) Run(ctx context.Context, in hookdata.Input) domain.Decision {
-	if b == nil || b.evaluate == nil || len(b.rules) == 0 {
-		return domain.Decision{}
+// A workspace without lifecycle rules still gets a binding, so callers
+// never branch on its absence.
+func Unbound() *Bound {
+	return &Bound{
+		evaluate: func(context.Context, hookprovider.Evaluation) (hookprovider.Advice, error) {
+			return hookprovider.Advice{}, nil
+		},
+		report: func(context.Context, string, error) {},
+		close:  func() error { return nil },
+	}
+}
+
+func (b *Bound) Run(ctx context.Context, in hookdata.Input) domainhooks.Decision {
+	if len(b.rules) == 0 {
+		return domainhooks.Decision{}
 	}
 	projected, err := in.CommandProjection()
 	request := hookprovider.Evaluation{Rules: b.rules, Input: projected}
@@ -34,47 +49,35 @@ func (b *Bound) Run(ctx context.Context, in hookdata.Input) domain.Decision {
 		if in.Tool != nil {
 			request.Input.Tool = &hookdata.ToolInput{Name: in.Tool.Name}
 		}
-		b.diagnostic(ctx, "lifecycle event", err)
+		b.report(ctx, "lifecycle event", err)
 	}
 	advice, err := b.evaluate(ctx, request)
 	if err == nil {
 		err = advice.Validate()
 	}
 	if err != nil {
-		b.diagnostic(ctx, "lifecycle provider", err)
-		return domain.Decision{Verdict: domain.VerdictBlock, Reason: err.Error()}
+		b.report(ctx, "lifecycle provider", err)
+		return domainhooks.Decision{Verdict: domainhooks.VerdictBlock, Reason: err.Error()}
 	}
 	for _, issue := range advice.Diagnostics {
-		b.diagnostic(ctx, issue.Source, errors.New(issue.Message))
+		b.report(ctx, issue.Source, errors.New(issue.Message))
 	}
 	out := advice.Decision
-	verdict := domain.VerdictAllow
+	verdict := domainhooks.VerdictAllow
 	switch out.Verdict {
 	case hookdata.CommandDeny:
-		verdict = domain.VerdictBlock
+		verdict = domainhooks.VerdictBlock
 	case hookdata.CommandAsk:
-		verdict = domain.VerdictAsk
+		verdict = domainhooks.VerdictAsk
+	case hookdata.CommandAllow:
 	}
-	return domain.Decision{Verdict: verdict, Reason: out.Reason, InjectContext: out.InjectContext, RewriteArguments: out.RewriteArguments}
-}
-func (b *Bound) diagnostic(ctx context.Context, source string, err error) {
-	if b.report != nil {
-		b.report(ctx, source, err)
-	}
+	return domainhooks.Decision{Verdict: verdict, Reason: out.Reason, InjectContext: out.InjectContext, RewriteArguments: out.RewriteArguments}
 }
 
-// Inspection is the read-only view of a cwd's hooks for a management surface
-// (hooks.list): every discovered hook (trusted or not), the project
-// root that gates the project-scope ones, and whether it's currently trusted.
 type Inspection struct {
 	ProjectRoot    string
 	ProjectTrusted bool
 	Hooks          []hookdata.Hook
 }
 
-func (b *Bound) Close() error {
-	if b != nil && b.close != nil {
-		return b.close()
-	}
-	return nil
-}
+func (b *Bound) Close() error { return b.close() }

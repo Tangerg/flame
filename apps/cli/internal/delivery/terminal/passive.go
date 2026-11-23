@@ -6,8 +6,6 @@ import (
 	"github.com/Tangerg/oolong/ui/core/scene"
 )
 
-// passiveElement admits a measured, noninteractive drawing into the scene.
-// Interactive controls expose their own Element and never enter this boundary.
 func passiveElement(content interface {
 	grid.Drawable
 	HeightForWidth(int) int

@@ -4,21 +4,17 @@ import (
 	"errors"
 )
 
-// StreamedText owns the ordered text accumulated for one live block. The
-// Runtime publishes no block-position fact: event order is the only exact
-// ordering, so the value has one append-only representation.
 type StreamedText struct{ text string }
 
 func NewStreamedText(text string) StreamedText {
 	return StreamedText{text: text}
 }
 
-func (s *StreamedText) Apply(delta BlockDelta) error {
+func (s StreamedText) Append(delta BlockDelta) (StreamedText, error) {
 	if delta.Text == "" {
-		return errors.New("streamed text delta is empty")
+		return s, errors.New("streamed text delta is empty")
 	}
-	s.text += delta.Text
-	return nil
+	return StreamedText{text: s.text + delta.Text}, nil
 }
 
 func (s StreamedText) String() string { return s.text }

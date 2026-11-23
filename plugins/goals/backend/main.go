@@ -39,4 +39,5 @@ func run(ctx context.Context, _ string) (err error) {
 	}
 	return server.Run(ctx, &sdk.StdioTransport{})
 }
+
 func main() { backend.Main("goal workflow", run) }

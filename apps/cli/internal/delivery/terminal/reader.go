@@ -54,8 +54,6 @@ func (r *readerSelectionGesture) release() bool {
 
 func (r *readerSelectionGesture) cancel() { r.active = false }
 
-// readerPane owns one modal reading session: full semantic content, search,
-// selection, scrolling, and an optional live tool subscription.
 type readerPane struct {
 	theme     kit.Theme
 	glyphs    kit.Glyphs
@@ -143,8 +141,6 @@ func (r *readerPane) Open(target readerTarget) {
 	r.replace(target.document, readerAtTop)
 }
 
-// readerPlacement is where a replaced document opens: at its top, at the
-// reader's current place, or following its end.
 type readerPlacement uint8
 
 const (
@@ -153,9 +149,6 @@ const (
 	readerFollowsEnd
 )
 
-// placementFor keeps a reader that follows the end following it.
-// placementFor keeps a reader that follows the end there and otherwise
-// applies requested.
 func (r *readerPane) placementFor(requested readerPlacement) readerPlacement {
 	if r.scroll.FollowingEnd() {
 		return readerFollowsEnd
@@ -173,7 +166,7 @@ func (r *readerPane) replace(document readerDocument, placement readerPlacement)
 	var blocks []base.Block
 	presentation := blockPresentation{Theme: r.theme, Glyphs: r.glyphs, Syntax: r.syntax}
 	for _, section := range document.Sections {
-		rendered := renderToolSections(presentation, []toolSection{section}, false)
+		rendered := renderToolSections(presentation, []toolSection{section}, fullToolDetail)
 		for _, block := range rendered {
 			blocks = append(blocks, newReaderSectionBlock(r.theme, section.Title, block))
 		}
@@ -212,6 +205,7 @@ func (r *readerPane) resetContent(blocks []base.Block, placement readerPlacement
 		r.scroll.ToBottom()
 	case readerKeepsPlace:
 		r.scroll.Reveal(offset, offset+max(r.viewport.Value().Y, 1)-1)
+	case readerAtTop:
 	}
 	view.Element().SetPaint(r.drawBody)
 	view.Element().SetFocusable(func() bool { return false })
@@ -362,8 +356,6 @@ func (r *readerPane) handleMouse(mouse input.Mouse, handled, delivered bool) {
 	}
 }
 
-// releaseSelectionGesture copies a selection that a left press drew and the
-// reader received to the end.
 func (r *readerPane) releaseSelectionGesture(mouse input.Mouse, delivered bool) {
 	owned := mouse.Button == input.ButtonLeft && r.selectionGesture.release()
 	if mouse.Button != input.ButtonLeft {
@@ -444,7 +436,7 @@ func (r *readerPane) copy() {
 	if value == "" {
 		value = copyableRowsText(layout.Rows(layout.StartRow(), layout.Height()))
 	}
-	if value == "" || r.clipboard == nil || r.clipboard.Copy(value) != nil {
+	if value == "" || r.clipboard.Copy(value) != nil {
 		return
 	}
 	if r.onCopied != nil {

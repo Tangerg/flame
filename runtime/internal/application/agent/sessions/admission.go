@@ -9,36 +9,27 @@ import (
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// Admissions is the session lifecycle's view of the shared run and
-// working-tree admission state. A file rollback's checkout must see
-// both a sibling's segment admission and its already-live run on the same cwd.
 type Admissions interface {
 	AcquireSession(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error)
 	AcquireWorkspaceRollback(ctx context.Context, sessionID identity.SessionID) (release func(), ok bool, err error)
 	AcquireWorkingTreeMutation(cwd string) (release func(), ok bool, err error)
 }
 
-// WorkingTreeAdmission is a held working-tree slot. Release is idempotent
-// across value copies.
 type WorkingTreeAdmission struct {
 	release *releaseOnce
 }
 
-// Release drops the held working-tree slot.
 func (w WorkingTreeAdmission) Release() {
 	if w.release != nil {
 		w.release.run()
 	}
 }
 
-// Admission is a held single-writer slot. Release is idempotent across
-// value copies.
 type Admission struct {
 	SessionID identity.SessionID
 	release   *releaseOnce
 }
 
-// Release drops the held single-writer slot.
 func (a Admission) Release() {
 	if a.release != nil {
 		a.release.run()
@@ -56,8 +47,6 @@ func (r *releaseOnce) run() {
 	r.once.Do(r.fn)
 }
 
-// heldSessionAdmission builds a slot whose Release drops its owned
-// single-writer claim exactly once.
 func heldSessionAdmission(sessionID identity.SessionID, release func()) Admission {
 	return Admission{
 		SessionID: sessionID,
@@ -69,10 +58,6 @@ func heldWorkingTreeAdmission(release func()) WorkingTreeAdmission {
 	return WorkingTreeAdmission{release: newReleaseOnce(release)}
 }
 
-// ClaimIdleSession reserves a Session only when it has neither an in-process
-// writer nor a parked Run. Use it for operations whose result cannot remain
-// coherent with an existing executor continuation, such as export, import, or
-// editing execution workspace policy.
 func (c *Coordinator) ClaimIdleSession(ctx context.Context, sessionID identity.SessionID) (Admission, error) {
 	release, ok, leaseErr := c.admissions.AcquireSession(ctx, sessionID)
 	if leaseErr != nil {
@@ -94,9 +79,6 @@ func (c *Coordinator) ClaimIdleSession(ctx context.Context, sessionID identity.S
 	return admission, nil
 }
 
-// ClaimSessionMutation reserves a Session for a lifecycle write-set that
-// explicitly consumes or terminalizes any parked Run it finds. It deliberately
-// does not reject open interrupts; callers must own that disposition atomically.
 func (c *Coordinator) ClaimSessionMutation(ctx context.Context, sessionID identity.SessionID) (Admission, error) {
 	release, ok, leaseErr := c.admissions.AcquireSession(ctx, sessionID)
 	if leaseErr != nil {

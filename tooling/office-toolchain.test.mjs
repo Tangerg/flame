@@ -52,8 +52,8 @@ async function fixture(t) {
       arm64: {
         url: "https://registry.npmjs.org/office.tgz",
         integrity: `sha512-${hash(await readFile(archive), "sha512", "base64")}`,
-        manifestSHA256: hash(manifest),
-        executableSHA256: hash(files["bin/dsoffice"]),
+        manifestSha256: hash(manifest),
+        executableSha256: hash(files["bin/dsoffice"]),
       },
     },
   };

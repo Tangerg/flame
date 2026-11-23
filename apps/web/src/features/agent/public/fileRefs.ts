@@ -4,7 +4,7 @@ export interface FileRef {
   column: number;
 }
 
-export type RefSegment = string | FileRef;
+type RefSegment = string | FileRef;
 
 const FILE_EXT = new Set([
   "ts",

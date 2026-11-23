@@ -9,9 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 )
 
-// modelEnvironment is the composition-time graph shared by interactive model
-// execution, utility-model work, and embedding-backed search. Its live role
-// states let configuration changes take effect without rebuilding the Instance.
 type modelEnvironment struct {
 	chatResolver       *modeladapter.ObservedResolver
 	utilityRoleState   *models.RoleState
@@ -28,7 +25,7 @@ func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, callbacks *p
 	if err != nil {
 		return modelEnvironment{}, err
 	}
-	chatResolver, err := modeladapter.NewObservedResolver(resolver, cfg.stores.ModelInvocations, cfg.pricing)
+	chatResolver, err := modeladapter.NewObservedResolver(resolver, cfg.stores.ModelInvocations)
 	if err != nil {
 		return modelEnvironment{}, err
 	}
@@ -43,7 +40,7 @@ func buildModelEnvironment(ctx context.Context, cfg assemblyConfig, callbacks *p
 		return modelEnvironment{}, err
 	}
 	embeddingRoleState := models.NewRoleState(embeddingRole)
-	embeddingResolver, err := modeladapter.NewEmbeddingResolver(cfg.providerRegistry, providers, cfg.stores.ModelInvocations, cfg.pricing)
+	embeddingResolver, err := modeladapter.NewEmbeddingResolver(cfg.providerRegistry, providers, cfg.stores.ModelInvocations)
 	if err != nil {
 		return modelEnvironment{}, err
 	}

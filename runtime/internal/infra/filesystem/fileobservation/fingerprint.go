@@ -16,7 +16,6 @@ import (
 
 type fingerprint [sha256.Size]byte
 
-// The admitted read determines both the fingerprint and its kernel dependencies.
 type observedPath struct {
 	fingerprint  fingerprint
 	physical     string
@@ -47,9 +46,8 @@ const (
 	fingerprintStateTooLarge        fingerprintState = "too-large"
 )
 
-// fingerprintEncoder preserves every field boundary before hashing. This is
-// deliberately not delimiter-based: paths, link targets, and error text are
-// external input and may contain any legal filesystem byte.
+// Not delimiter-based: paths, link targets and error text may contain any legal
+// byte.
 type fingerprintEncoder struct {
 	digest hash.Hash
 }

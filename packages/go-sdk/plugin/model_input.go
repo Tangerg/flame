@@ -14,9 +14,6 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// ModelInputRequest carries one captured route and the current model-visible
-// input. Transformation grants no routing, Tool contract or execution authority.
-
 type ModelInputRequest struct {
 	Selection ModelSelection `json:"selection"`
 	Request   chat.Request   `json:"request"`
@@ -28,13 +25,13 @@ func (r ModelInputRequest) Validate() error {
 	}
 	return r.Request.Validate()
 }
+
 func ModelInputMethod() (*pluginmcp.Method[ModelInputRequest, scopewire.Request], error) {
 	return pluginmcp.NewMethod[ModelInputRequest, scopewire.Request](frame.MethodConfig{Name: "flame.model-input/transform.v1", Kind: frame.Query, Target: extension.ScopeCall, Description: "Transform the model-visible request before its final capacity admission while preserving the captured route and Tool contracts."})
 }
+
 func ModelInputContract() (*plugincontract.Capability, error) { return modelInputContract() }
 
-// The published contract is immutable. Checkpoint validation shares its compiled
-// schemas instead of repeating admission on every durable tree commit.
 var modelInputContract = publishedCapability(func() (*plugincontract.Capability, error) {
 	method, err := ModelInputMethod()
 	if err != nil {
@@ -43,8 +40,6 @@ var modelInputContract = publishedCapability(func() (*plugincontract.Capability,
 	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: "flame.model-input.v1", Composition: plugincontract.Decoration, Scope: extension.ScopeCall}, method.Descriptor())
 })
 
-// ValidateModelInput preserves facts owned by selection, Tool preparation and
-// the caller's resource envelope. The owner admits transformed media/capacity.
 func ValidateModelInput(original, transformed *chat.Request) error {
 	if original == nil || transformed == nil {
 		return errors.New("model input: original and transformed requests are required")

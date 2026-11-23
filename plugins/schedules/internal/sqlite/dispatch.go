@@ -5,10 +5,11 @@ import (
 	"database/sql"
 	"errors"
 
-	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/plugins/schedules/internal/schedule"
 )
 
-func (s *ScheduleStore) CapturedRun(ctx context.Context, id string) (schedule.RunRequest, error) {
+func (s *ScheduleStore) CapturedRun(ctx context.Context, id identity.RunID) (schedule.RunRequest, error) {
 	var result schedule.RunRequest
 	err := s.db.RunReadSnapshot(ctx, func(ctx context.Context) error {
 		occurrence, err := scanOccurrence(s.db.Executor(ctx).QueryRowContext(ctx,

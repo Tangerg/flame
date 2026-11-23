@@ -4,33 +4,31 @@ import (
 	"errors"
 
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
+	"github.com/Tangerg/flame/plugins/schedules/internal/schedule"
+	"github.com/Tangerg/flame/plugins/schedules/internal/scheduling"
 
-	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	framecall "github.com/Tangerg/frame/call"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
-	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
 )
 
-// modelInputCode reports a model selection the model contract rejects; it has
-// no single sentinel, so the table cannot name it.
 const modelInputCode = "model_input"
 
-// errorCodes is ordered: an error joining several causes takes the first
-// code listed, so classification never depends on map iteration.
+// Ordered so an error joining several causes takes the first listed code,
+// independent of map iteration.
 var errorCodes = []struct {
 	code  string
 	cause error
 }{
-	{"workspace", app.ErrWorkspaceUnavailable},
+	{"workspace", scheduling.ErrWorkspaceUnavailable},
 	{"not_found", schedule.ErrNotFound},
 	{"revision", schedule.ErrRevisionConflict},
 	{"cursor", pagination.ErrInvalidCursor},
 	{"limit", pagination.ErrInvalidLimit},
 	{"invalid_cron", schedule.ErrInvalidCron},
 	{"invalid_time_zone", schedule.ErrInvalidTimeZone},
-	{"model", modelchoice.ErrUnsupported},
+	{"model", flamemodel.ErrUnsupported},
 	{"instructions", schedule.ErrInstructionsRequired},
 	{"revision_required", schedule.ErrRevisionRequired},
 }
@@ -48,7 +46,7 @@ func classify(err error) (string, bool) {
 	if errors.Is(err, pluginmcp.ErrOutcomeUnconfirmed) {
 		return "", false
 	}
-	if modelchoice.IsInvalid(err) {
+	if flamemodel.IsInvalid(err) {
 		return modelInputCode, true
 	}
 	if failure, ok := errors.AsType[*framecall.Refusal](err); ok {

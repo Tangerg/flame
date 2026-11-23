@@ -21,9 +21,36 @@ import (
 
 var ErrStreamUnconfirmed = errors.New("plugin: stream final outcome is unconfirmed")
 
+// A stream yields chunks and then exactly one result. The constructors keep
+// every value one or the other; only the zero value, which accompanies an
+// error, carries neither.
 type StreamValue[C, R any] struct {
-	Chunk  *C
-	Result *R
+	chunk  *C
+	result *R
+}
+
+func StreamChunk[R, C any](chunk C) StreamValue[C, R] {
+	return StreamValue[C, R]{chunk: &chunk}
+}
+
+func StreamResult[C, R any](result R) StreamValue[C, R] {
+	return StreamValue[C, R]{result: &result}
+}
+
+func (v StreamValue[C, R]) Chunk() (C, bool) {
+	if v.chunk == nil {
+		var zero C
+		return zero, false
+	}
+	return *v.chunk, true
+}
+
+func (v StreamValue[C, R]) Result() (R, bool) {
+	if v.result == nil {
+		var zero R
+		return zero, false
+	}
+	return *v.result, true
 }
 
 type StreamingMethod[P, C, R any] struct{ contract *frame.Method }
@@ -64,7 +91,6 @@ func (m *StreamingMethod[P, C, R]) Descriptor() frame.MethodDescriptor {
 	return m.contract.Descriptor()
 }
 
-// streamFrameKind orders a stream: chunks, then exactly one result or error.
 type streamFrameKind string
 
 const (
@@ -98,51 +124,53 @@ func bindStreaming[P, C, R any](method *StreamingMethod[P, C, R], handler func(c
 			return nil, err
 		}
 		return func(yield func(streamValue, error) bool) {
-			final := false
-			var outcome streamValue
+			var outcome *streamValue
 			for item, err := range handler(ctx, session, command) {
-				if err != nil {
-					yield(streamValue{}, err)
-					return
+				if err == nil && outcome != nil {
+					err = errors.New("plugin: stream value after its result")
 				}
-				if final || (item.Chunk == nil) == (item.Result == nil) {
-					yield(streamValue{}, errors.New("plugin: invalid stream value ordering"))
-					return
-				}
-				frame := streamValue{Kind: streamChunk}
-				var data []byte
-				if item.Chunk != nil {
-					data, err = json.Marshal(item.Chunk)
-					if err == nil {
-						err = contract.ValidateChunk(data)
-					}
-				} else {
-					frame.Kind, final = streamResult, true
-					data, err = json.Marshal(item.Result)
-					if err == nil {
-						err = contract.ValidateOutput(data)
-					}
+				var frame streamValue
+				if err == nil {
+					frame, err = encodeStreamFrame(contract, item)
 				}
 				if err != nil {
 					yield(streamValue{}, err)
 					return
 				}
-				frame.Value = data
-				if final {
-					outcome = frame
+				if frame.Kind == streamResult {
+					outcome = &frame
 					continue
 				}
 				if !yield(frame, nil) {
 					return
 				}
 			}
-			if !final {
+			if outcome == nil {
 				yield(streamValue{}, ErrStreamUnconfirmed)
-			} else {
-				yield(outcome, nil)
+				return
 			}
+			yield(*outcome, nil)
 		}, nil
 	}}
+}
+
+func encodeStreamFrame[C, R any](contract *frame.Method, item StreamValue[C, R]) (streamValue, error) {
+	switch {
+	case item.chunk != nil:
+		data, err := json.Marshal(item.chunk)
+		if err == nil {
+			err = contract.ValidateChunk(data)
+		}
+		return streamValue{Kind: streamChunk, Value: data}, err
+	case item.result != nil:
+		data, err := json.Marshal(item.result)
+		if err == nil {
+			err = contract.ValidateOutput(data)
+		}
+		return streamValue{Kind: streamResult, Value: data}, err
+	default:
+		return streamValue{}, errors.New("plugin: stream value carries neither a chunk nor a result")
+	}
 }
 
 func serveCallbackStream(w http.ResponseWriter, r *http.Request, method boundMethod, wire *invokeParams, limits CallbackLimits) {
@@ -169,12 +197,13 @@ func serveCallbackStream(w http.ResponseWriter, r *http.Request, method boundMet
 	}
 }
 
-// StreamHost starts one delivery only when consumed. Closing iteration cancels it;
-// transport writes and reads provide bounded backpressure without an event queue.
-// eventStreamMediaType and sseDataPrefix are the SSE framing a streaming
-// callback speaks; the prefix counts against a line but not an event.
 const (
 	eventStreamMediaType = "text/event-stream"
+	jsonMediaType        = "application/json"
+	jsonNull             = "null"
+	headerAuthorization  = "Authorization"
+	headerContentType    = "Content-Type"
+	headerAccept         = "Accept"
 	sseDataPrefix        = "data: "
 )
 
@@ -216,7 +245,7 @@ func StreamHost[P, C, R any](ctx context.Context, ref CallbackRef, method *Strea
 				fail(err)
 				return
 			}
-			final = item.Result != nil
+			final = item.result != nil
 			if !yield(item, nil) {
 				return
 			}
@@ -237,14 +266,12 @@ func validateStreamRef(ref CallbackRef, contract *frame.Method, id CommandID) er
 	return nil
 }
 
-// openHostStream starts the callback request and admits only a confirmed event
-// stream bounded by the callback's response capacity.
 func openHostStream(call context.Context, ref CallbackRef, contract *frame.Method, id CommandID, admitted framevalue.JSON) (*sse.Reader, io.Closer, error) {
 	request, err := newHostRequest(call, ref, contract, id, admitted)
 	if err != nil {
 		return nil, nil, err
 	}
-	request.Header.Set("Accept", eventStreamMediaType)
+	request.Header.Set(headerAccept, eventStreamMediaType)
 	response, err := callbackClient.Do(request)
 	if err != nil {
 		return nil, nil, err
@@ -278,16 +305,16 @@ func decodeStreamFrame[C, R any](method *frame.Method, data []byte) (StreamValue
 		if err := method.ValidateChunk(frame.Value); err != nil {
 			return item, err
 		}
-		item.Chunk = new(C)
-		if err := json.Unmarshal(frame.Value, item.Chunk, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
+		item.chunk = new(C)
+		if err := json.Unmarshal(frame.Value, item.chunk, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
 			return StreamValue[C, R]{}, err
 		}
 	case streamResult:
 		if err := method.ValidateOutput(frame.Value); err != nil {
 			return item, err
 		}
-		item.Result = new(R)
-		if err := json.Unmarshal(frame.Value, item.Result, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
+		item.result = new(R)
+		if err := json.Unmarshal(frame.Value, item.result, json.RejectUnknownMembers(true), framevalue.Numbers()); err != nil {
 			return StreamValue[C, R]{}, err
 		}
 	case streamError:

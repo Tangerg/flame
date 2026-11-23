@@ -27,7 +27,7 @@ const SIZE_TYPE: Record<TagSize, (typeof type)[keyof typeof type]> = {
   md: type.uiMd,
 };
 
-export type TagProps = {
+type TagProps = {
   size?: TagSize;
   ink?: TagInk;
   children?: ReactNode;

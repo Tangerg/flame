@@ -29,7 +29,7 @@ func (w *workbenchHealth) update(concern workbenchConcern, err error) bool {
 	return true
 }
 
-func (w workbenchHealth) problem() string {
+func (w *workbenchHealth) problem() string {
 	for _, problem := range w.problems {
 		if problem != "" {
 			return problem
@@ -38,10 +38,6 @@ func (w workbenchHealth) problem() string {
 	return ""
 }
 
-// enterSession drops failures owned by the previous authoring projection while
-// retaining application-wide workbench health such as prompt-history writes.
-// Destination outboxes are reconciled after installation and report their own
-// failures, so carrying source-session errors would misidentify the new owner.
 func (w *workbenchHealth) enterSession() {
 	for concern := range workbenchSessionConcernCount {
 		w.problems[concern] = ""

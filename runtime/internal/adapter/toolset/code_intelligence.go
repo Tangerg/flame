@@ -13,14 +13,10 @@ import (
 	"github.com/Tangerg/scope/tools/fs"
 )
 
-// CodeIntelligence acquires the selected backend; none is selected when the
-// user has chosen no provider, which is not a failure.
 type CodeIntelligence interface {
 	AcquireCodeIntelligence(context.Context) (CodeIntelligenceUse, bool, error)
 }
 
-// A use retains one selected backend and the original invocation's cancellation
-// through baseline capture, formatting, file commit and final diagnostics.
 type CodeIntelligenceUse interface {
 	Format(codeintel.Document) (codeintel.Transformation, error)
 	Inspect(codeintel.Inspection) (codeintel.Report, error)
@@ -74,8 +70,6 @@ func appendCodeIntelligenceNotices(output toolcontract.Output, notices []string)
 	return appendToolOutputText(output, "\n\nCode intelligence:\n"+strings.Join(notices, "\n"))
 }
 
-// codeReview formats and diagnoses the files one Tool call mutates. Its
-// notices are advisory: a backend failure never fails the Tool call itself.
 type codeReview struct {
 	use      CodeIntelligenceUse
 	root     *filesystemRoot
@@ -87,8 +81,6 @@ func (r *codeReview) notice(format string, args ...any) {
 	r.notices = append(r.notices, fmt.Sprintf(format, args...))
 }
 
-// baseline records each existing file's problems before the call, so the
-// final report names only problems the call introduced.
 func (r *codeReview) baseline(ctx context.Context, paths []string) map[string][]string {
 	baseline := make(map[string][]string, len(paths))
 	for _, path := range paths {

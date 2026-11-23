@@ -12,8 +12,6 @@ const (
 	TrajectoryEntryItem     TrajectoryEntryType = "item"
 )
 
-// TrajectoryEntry projects one durable source record at read time. OccurredAt
-// orders source observations; it is not a global event sequence or a causal edge.
 type TrajectoryEntry struct {
 	Type       TrajectoryEntryType      `json:"type"`
 	OccurredAt time.Time                `json:"occurredAt"`

@@ -11,9 +11,9 @@ import (
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/timezone"
-	app "github.com/Tangerg/flame/plugins/schedules/internal/application"
 	rpc "github.com/Tangerg/flame/plugins/schedules/internal/contract"
-	schedule "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/plugins/schedules/internal/schedule"
+	"github.com/Tangerg/flame/plugins/schedules/internal/scheduling"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 
 	framesqlite "github.com/Tangerg/frame/sqlite"
@@ -22,18 +22,15 @@ import (
 )
 
 type store interface {
-	app.ManagementStore
-	app.WorkerStore
+	scheduling.ManagementStore
+	scheduling.WorkerStore
 	QueueManual(context.Context, schedule.RunRequest) error
-	PendingManual(context.Context, string, int) ([]schedule.RunRequest, error)
-	AcceptRun(context.Context, string) error
-	CapturedRun(context.Context, string) (schedule.RunRequest, error)
+	PendingManual(context.Context, identity.RunID, int) ([]schedule.RunRequest, error)
+	AcceptRun(context.Context, identity.RunID) error
+	CapturedRun(context.Context, identity.RunID) (schedule.RunRequest, error)
 }
 
-func registerServer(server *sdk.Server, db framesqlite.Database, store store, paths app.CWDResolver, connect runConnector) (*pluginmcp.Backend, error) {
-	if connect == nil {
-		return nil, errors.New("schedules: Runtime Run connector is required")
-	}
+func registerServer(server *sdk.Server, db framesqlite.Database, store store, paths scheduling.CWDResolver) (*pluginmcp.Backend, error) {
 	contracts, err := rpc.NewContracts()
 	if err != nil {
 		return nil, err
@@ -43,16 +40,16 @@ func registerServer(server *sdk.Server, db framesqlite.Database, store store, pa
 		return nil, err
 	}
 
-	coordinator, err := app.New(app.Dependencies{Store: store, Paths: paths, NewScheduleID: func() string { return schedule.IDPrefix + uuid.NewString() }})
+	coordinator, err := scheduling.New(scheduling.Dependencies{Store: store, Paths: paths, NewScheduleID: func() string { return schedule.IDPrefix + uuid.NewString() }})
 	if err != nil {
 		return nil, err
 	}
-	scanner, err := app.NewScanner(store, store, func() string { return identity.SessionPrefix + uuid.NewString() }, func() string { return identity.RunPrefix + uuid.NewString() })
+	scanner, err := scheduling.NewScanner(store, store, newRunIdentity)
 	if err != nil {
 		return nil, err
 	}
-	commands := toolCommands{coordinator: coordinator, db: db, store: store, connect: connect}
-	modelTools, err := buildSchedules(commands, commands.RunNow)
+	commands := toolCommands{coordinator: coordinator, db: db, store: store}
+	modelTools, err := buildSchedules(commands)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +60,7 @@ func registerServer(server *sdk.Server, db framesqlite.Database, store store, pa
 	if err != nil {
 		return nil, err
 	}
-	handlers := scheduleServer{db: db, store: store, coordinator: coordinator, scanner: scanner, connect: connect}
+	handlers := scheduleServer{db: db, store: store, coordinator: coordinator, scanner: scanner}
 	if err := errors.Join(
 		pluginstorage.RegisterReceipts(backend, db),
 		toolReceipts.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[pluginmcp.ReceiptRequest]) (pluginsdk.ToolReceipt, error) {
@@ -71,8 +68,8 @@ func registerServer(server *sdk.Server, db framesqlite.Database, store store, pa
 		}),
 		contracts.List.RegisterServer(backend, classify, handlers.list),
 		registerManagementCommands(backend, db, contracts, coordinator),
-		contracts.RunNow.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ItemInput]) (app.RunReference, error) {
-			return runNow(ctx, db, store, connect, command)
+		contracts.RunNow.RegisterServer(backend, classify, func(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ItemInput]) (scheduling.RunReference, error) {
+			return runNow(ctx, db, store, command)
 		}),
 	); err != nil {
 		return nil, err
@@ -89,14 +86,11 @@ func registerServer(server *sdk.Server, db framesqlite.Database, store store, pa
 	return backend, nil
 }
 
-// scheduleServer serves the schedules capability and starts its background
-// worker when Runtime activates the background contribution.
 type scheduleServer struct {
 	db          framesqlite.Database
 	store       store
-	coordinator *app.Coordinator
-	scanner     *app.Scanner
-	connect     runConnector
+	coordinator *scheduling.Coordinator
+	scanner     *scheduling.Scanner
 }
 
 func (s scheduleServer) list(ctx context.Context, _ *sdk.ServerSession, command pluginmcp.Command[wire.ListInput]) (wire.Page, error) {
@@ -113,14 +107,8 @@ func (s scheduleServer) list(ctx context.Context, _ *sdk.ServerSession, command 
 	return wire.Page{Rows: rows, NextCursor: page.NextCursor}, err
 }
 
-// setup starts the background scanner for this capability's background
-// contribution, bound to the Runtime that activated it. A Runtime that is not
-// this database's target is refused rather than scheduled against.
 func (s scheduleServer) setup(ctx context.Context, setup pluginmcp.Setup) (io.Closer, error) {
-	values, err := setup.Contributions()
-	if err != nil {
-		return nil, err
-	}
+	values := setup.Contributions()
 	for _, value := range values {
 		if value.Export != wire.CapabilityReference || value.Background == nil {
 			continue
@@ -129,7 +117,7 @@ func (s scheduleServer) setup(ctx context.Context, setup pluginmcp.Setup) (io.Cl
 		if err != nil {
 			return nil, err
 		}
-		host, close, err := s.connect(ctx, ref)
+		host, release, err := connectRunHost(ctx, ref)
 		if err != nil {
 			return nil, err
 		}
@@ -138,11 +126,11 @@ func (s scheduleServer) setup(ctx context.Context, setup pluginmcp.Setup) (io.Cl
 			err = pluginstorage.CheckRuntimeTarget(ctx, s.db, namespace)
 		}
 		if err != nil {
-			return nil, errors.Join(err, close())
+			return nil, errors.Join(err, release())
 		}
-		background, err := newBackground(ctx, s.db, s.store, s.scanner, host, value.ID, *value.Background, close)
+		background, err := newBackground(ctx, s.db, s.store, s.scanner, host, value.ID, *value.Background, release)
 		if err != nil {
-			return nil, errors.Join(err, close())
+			return nil, errors.Join(err, release())
 		}
 		return background, nil
 	}
@@ -150,15 +138,15 @@ func (s scheduleServer) setup(ctx context.Context, setup pluginmcp.Setup) (io.Cl
 }
 
 type toolCommands struct {
-	coordinator *app.Coordinator
+	coordinator *scheduling.Coordinator
 	db          framesqlite.Database
 	store       store
-	connect     runConnector
 }
 
 func (t toolCommands) ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[schedule.Schedule], error) {
 	return t.coordinator.ListPage(ctx, cursor, limit)
 }
+
 func (t toolCommands) Create(ctx context.Context, _ createScheduleArgs) (schedule.Schedule, error) {
 	id, err := pluginsdk.ToolCommandID(ctx)
 	if err != nil {
@@ -184,6 +172,7 @@ func (t toolCommands) Create(ctx context.Context, _ createScheduleArgs) (schedul
 	}
 	return schedule.Restore(value)
 }
+
 func (t toolCommands) Update(ctx context.Context, _ updateScheduleArgs) (schedule.Schedule, error) {
 	id, err := pluginsdk.ToolCommandID(ctx)
 	if err != nil {
@@ -206,16 +195,16 @@ func (t toolCommands) Update(ctx context.Context, _ updateScheduleArgs) (schedul
 	return schedule.Restore(value)
 }
 
-func (t toolCommands) RunNow(ctx context.Context, _ wire.ItemInput) (app.RunReference, error) {
+func (t toolCommands) RunNow(ctx context.Context, _ wire.ItemInput) (scheduling.RunReference, error) {
 	id, err := pluginsdk.ToolCommandID(ctx)
 	if err != nil {
-		return app.RunReference{}, err
+		return scheduling.RunReference{}, err
 	}
 	admitted, err := pluginmcp.RequestInput(ctx)
 	if err != nil {
-		return app.RunReference{}, err
+		return scheduling.RunReference{}, err
 	}
-	value, err := captureManual(ctx, t.db, t.store, t.connect, manualCommand{id: id, admitted: admitted})
+	value, err := captureManual(ctx, t.db, t.store, manualCommand{id: id, admitted: admitted})
 	return value, decodeError(err)
 }
 
@@ -236,4 +225,13 @@ func (t toolCommands) Delete(ctx context.Context, _ deleteScheduleArgs) error {
 		return pluginstorage.NewCommandPlan(wire.Ack{}, apply)
 	})
 	return decodeError(err)
+}
+
+func newRunIdentity() (identity.SessionID, identity.RunID, error) {
+	sessionID, err := identity.NewSession(uuid.NewString())
+	if err != nil {
+		return identity.SessionID{}, identity.RunID{}, err
+	}
+	runID, err := identity.NewRun(uuid.NewString())
+	return sessionID, runID, err
 }

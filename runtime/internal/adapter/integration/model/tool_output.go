@@ -1,9 +1,9 @@
 package model
 
 import (
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"strings"
+
+	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/scope/core/content"
 )

@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 
 	framevalue "github.com/Tangerg/frame/value"
 	"github.com/Tangerg/scope/agent/interaction"
@@ -19,9 +20,6 @@ import (
 )
 
 func (i *interactionSession) investigateToolReceipts(ctx context.Context) (int, error) {
-	if i.toolResults == nil {
-		return 0, nil
-	}
 	root := i.state.processHandle()
 	if root == nil {
 		return 0, runs.ErrExecutorNotLive
@@ -120,7 +118,7 @@ func (i *interactionSession) investigateToolReceipt(ctx context.Context, tree sc
 	failure, knownFailure := toolcontract.ClassifyFailure(queryErr)
 	if queryErr != nil && !knownFailure || output == nil {
 		if queryErr != nil {
-			slog.WarnContext(ctx, "execution: original Tool result is inconclusive", "call.id", metadata.Start.CallID, "error", queryErr)
+			slog.WarnContext(ctx, "execution: original Tool result is inconclusive", telemetry.ToolCallID(metadata.Start.CallID), telemetry.Error(queryErr))
 		}
 		return false, nil
 	}

@@ -66,8 +66,6 @@ func (d *draftEditor) Edit(ctx context.Context, session program.Session, workspa
 	return readEditedDraft(path)
 }
 
-// writeEditorDraft stores original in a private temporary file and returns its
-// path. A failed write leaves no file behind.
 func writeEditorDraft(original string) (_ string, err error) {
 	temporary, err := os.CreateTemp("", "flame-prompt-*.md")
 	if err != nil {
@@ -79,7 +77,7 @@ func writeEditorDraft(original string) (_ string, err error) {
 			_ = os.Remove(path)
 		}
 	}()
-	if err := temporary.Chmod(0o600); err != nil {
+	if err := temporary.Chmod(filesystem.PrivateFileMode); err != nil {
 		_ = temporary.Close()
 		return "", fmt.Errorf("protect editor draft: %w", err)
 	}
@@ -97,8 +95,6 @@ func writeEditorDraft(original string) (_ string, err error) {
 	return path, nil
 }
 
-// readEditedDraft reads back the file the editor saved, refusing one that was
-// replaced, grew past the message limit or changed while it was read.
 func readEditedDraft(path string) (string, error) {
 	source, err := os.Lstat(path)
 	if err != nil {
@@ -157,8 +153,6 @@ func validateEditedDraft(info os.FileInfo) error {
 	return nil
 }
 
-// editExternally replaces the prompt text with what the configured editor
-// saves, keeping the prompt's attachments.
 func (c *promptComposer) editExternally() error {
 	if c.busy() {
 		return errors.New("finish or cancel the active run before opening an external editor")

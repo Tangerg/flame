@@ -22,8 +22,6 @@ import (
 
 const installedCommandsName = "installed-commands.json"
 
-// PendingInstalledCommand retains client intent, never a business outcome.
-// Recovery uses this exact request before discovering any current provider.
 type PendingInstalledCommand struct {
 	Intent    string
 	CommandID authoring.CommandID
@@ -31,8 +29,7 @@ type PendingInstalledCommand struct {
 	Replay    authoring.ReplayGuard
 }
 
-// Input is binary in the local record so formatting cannot change accepted
-// request bytes. The remaining fields are projections of the captured binding.
+// Input stays binary so formatting cannot change accepted request bytes.
 type installedCommandRecord struct {
 	Intent         string                `json:"intent"`
 	CommandID      authoring.CommandID   `json:"commandId"`
@@ -181,8 +178,6 @@ type InstalledCaller interface {
 	CallPlugin(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error)
 }
 
-// ExecuteInstalledCommand stages the complete request before I/O. An unresolved intent always
-// resumes its original request, including after restart or provider replacement.
 func ExecuteInstalledCommand(ctx context.Context, caller InstalledCaller, store *Store, intent string, policy mutation.ReplayPolicy, prepare func(context.Context) (protocol.CallPluginRequest, error)) error {
 	if store == nil {
 		return ErrUnavailable

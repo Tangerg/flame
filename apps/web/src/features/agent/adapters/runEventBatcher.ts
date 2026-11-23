@@ -5,7 +5,7 @@ type CancelFrame = (handle: number) => void;
 
 const MAXIMUM_RUN_EVENTS_PER_FRAME = 256;
 
-export interface RunEventBatcher {
+interface RunEventBatcher {
   enqueue(event: RunEvent): void;
   flush(): void;
   dispose(): void;

@@ -11,9 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
-// ToolResultIDPattern is the public wire grammar shared with generated
-// protocol validators for portable offloaded-result records, and the only
-// statement of it: uppercase unpadded base32, 2 to 64 characters.
 const ToolResultIDPattern = `^[A-Z2-7]{2,64}$`
 
 var toolResultIDExpression = regexp.MustCompile(ToolResultIDPattern)
@@ -23,11 +20,8 @@ var (
 	ErrToolResultIdentityConflict = errors.New("transcript: tool-result identity conflict")
 )
 
-// ToolResultID is the opaque identity copied from an offload preview into
-// later result reads and portable session exports.
 type ToolResultID string
 
-// ParseToolResultID validates raw before admitting it as an offloaded-result identity.
 func ParseToolResultID(raw string) (ToolResultID, error) {
 	id := ToolResultID(raw)
 	if err := id.Validate(); err != nil {
@@ -38,7 +32,6 @@ func ParseToolResultID(raw string) (ToolResultID, error) {
 
 func (i ToolResultID) String() string { return string(i) }
 
-// Validate bounds imported or model-supplied identifiers by [ToolResultIDPattern].
 func (i ToolResultID) Validate() error {
 	if !toolResultIDExpression.MatchString(string(i)) {
 		return fmt.Errorf("%w: %q does not match %s", errInvalidToolResultID, string(i), ToolResultIDPattern)
@@ -46,9 +39,6 @@ func (i ToolResultID) Validate() error {
 	return nil
 }
 
-// A rich Tool result keeps its structured value in the transcript even when
-// model-visible text moves to a blob. Only a plain text replacement hydrates
-// the transcript from that blob.
 type ToolResultRef struct {
 	ID        ToolResultID
 	ModelOnly bool
@@ -87,8 +77,6 @@ type ToolResultOffload struct {
 	Body string
 }
 
-// ToolResultBlob is the portable body of one transcript Item. Its Session
-// scopes the ID because forks preserve IDs already embedded in model messages.
 type ToolResultBlob struct {
 	ID        ToolResultID
 	SessionID identity.SessionID

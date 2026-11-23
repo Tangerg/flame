@@ -17,11 +17,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// hooksRelPath is the cascade filename. Global lives at ~/.flame/hooks.json; a
-// project's lives at <dir>/.flame/hooks.json for any dir from the project root
-// down to the cwd.
-const hooksRelPath = ".flame/hooks.json"
-
 func discover(ctx context.Context, input hookprovider.Discovery) ([]hook.Hook, error) {
 	if err := input.Validate(); err != nil {
 		return nil, err
@@ -31,13 +26,13 @@ func discover(ctx context.Context, input hookprovider.Discovery) ([]hook.Hook, e
 	}
 	cascade := hookCascade{seen: make(map[string]struct{})}
 	if input.Home != "" {
-		if err := cascade.add(ctx, filepath.Join(input.Home, hooksRelPath), hook.ScopeGlobal); err != nil {
+		if err := cascade.add(ctx, filepath.Join(input.Home, hook.ConfigurationPath), hook.ScopeGlobal); err != nil {
 			return nil, err
 		}
 	}
 	if input.IncludeProject {
 		for _, dir := range projectChain(filepath.Clean(input.CWD), filepath.Clean(input.ProjectRoot)) {
-			if err := cascade.add(ctx, filepath.Join(dir, hooksRelPath), hook.ScopeProject); err != nil {
+			if err := cascade.add(ctx, filepath.Join(dir, hook.ConfigurationPath), hook.ScopeProject); err != nil {
 				return nil, err
 			}
 		}
@@ -48,8 +43,6 @@ func discover(ctx context.Context, input hookprovider.Discovery) ([]hook.Hook, e
 	return cascade.hooks, nil
 }
 
-// hookCascade collects hooks from global to innermost project file, reading
-// each file once and bounding the whole cascade.
 type hookCascade struct {
 	hooks []hook.Hook
 	seen  map[string]struct{}
@@ -83,8 +76,6 @@ func (c *hookCascade) add(ctx context.Context, path string, scope hook.Scope) er
 	return nil
 }
 
-// projectChain lists the directories from the project root down to cwd, so an
-// inner project file follows the files that enclose it.
 func projectChain(cwd, root string) []string {
 	chain := []string{cwd}
 	for dir := cwd; dir != root; {
@@ -95,7 +86,6 @@ func projectChain(cwd, root string) []string {
 	return chain
 }
 
-// hooksFile is the validated wire shape of one hooks.json file.
 type hooksFile struct {
 	Hooks []hookWire `json:"hooks"`
 }

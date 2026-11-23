@@ -13,7 +13,7 @@ interface EndpointBindings {
   storage: KeyValueStore;
 }
 
-export type ReplaceRuntimeEndpoint = (commit: () => void) => void;
+type ReplaceRuntimeEndpoint = (commit: () => void) => void;
 
 export function bindRuntimeEndpointConfiguration(
   ctx: EndpointBindings,

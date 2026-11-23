@@ -178,7 +178,7 @@
 :focus-visible:not([data-chrome-focus]):not([contenteditable]),
 [data-chrome-focus][aria-invalid="true"]:focus-visible:not([contenteditable]),
 [data-slot="reading-list"]:has(> .reading-focus-edge:focus-visible) {
-  outline: 1.5px solid var(--color-focus-ring);
+  outline: var(--focus-ring);
   outline-offset: 1px;
 }
 [data-chrome-focus]:not([aria-invalid="true"]):not(
@@ -190,10 +190,10 @@
     [data-chrome-focus]
   ):not([contenteditable]):not([data-focus-outset]),
 [data-slot="reading-list"]:has(> .reading-focus-edge:focus-visible) {
-  outline-offset: calc(-1 * var(--focus-inset-edge));
+  outline-offset: var(--focus-inset-offset);
 }
 [data-focus-proxy]:is(:focus-visible, :has(:focus-visible)) {
-  outline: 1.5px solid var(--color-focus-ring);
+  outline: var(--focus-ring);
   outline-offset: 1px;
 }
 /* Keep the inset perimeter outside Legend's measured viewport. */
@@ -659,9 +659,16 @@
 }
 
 :root {
+  --focus-ring: 1.5px solid var(--color-focus-ring);
   --focus-inset-edge: 2px;
+  --focus-inset-offset: calc(-1 * var(--focus-inset-edge));
   --touch-target: 44px;
   --control-target-min: 0px;
+}
+@media (forced-colors: active) {
+  :root {
+    --focus-ring: 1.5px solid Highlight;
+  }
 }
 
 @media (pointer: coarse) {

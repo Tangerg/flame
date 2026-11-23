@@ -11,7 +11,7 @@ import { TextButton } from "@/ui/index";
 import { Button, Badge, IconButton, PanelSection, ScrollRegion, vocab } from "@flame/ui";
 import { writeToClipboard } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n/index";
-import { useInstalledPlugins } from "@/extensions/kernel";
+import { useLoadedPluginNames } from "@/extensions/kernel";
 import { usePluginErrorStore } from "@/extensions/errors";
 import {
   color,
@@ -82,7 +82,7 @@ const pp = stylex.create({
 
 export function PluginsPane() {
   const t = useT();
-  const installed = useInstalledPlugins();
+  const loaded = useLoadedPluginNames();
   const log = usePluginErrorStore((s) => s.log);
   const clearFor = usePluginErrorStore((s) => s.clearFor);
   const loadedRef = useRef<HTMLSpanElement>(null);
@@ -95,7 +95,7 @@ export function PluginsPane() {
     else errorsByPlugin.set(err.plugin, [err]);
   }
 
-  const rows = [...new Set([...installed, ...errorsByPlugin.keys()])].sort((a, b) => {
+  const rows = [...new Set([...loaded, ...errorsByPlugin.keys()])].sort((a, b) => {
     const ea = errorsByPlugin.get(a)?.length ?? 0;
     const eb = errorsByPlugin.get(b)?.length ?? 0;
     if (ea !== eb) return eb - ea;

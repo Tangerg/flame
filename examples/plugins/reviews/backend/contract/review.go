@@ -41,13 +41,8 @@ func (Update) JSONSchemaConstraints() jsonschema.Constraints {
 	}}
 }
 
-// ValidateChange runs inside the receipt owner. Structurally admitted business
-// refusals must retain the same original outcome through both command entrances.
-func (u Update) ValidateChange() error {
-	if u.ID == "" || len(u.ID) > maxReviewIDBytes || !utf8.ValidString(u.ID) || u.ExpectedRevision < 1 || u.ExpectedRevision > exactint.Maximum || !validStatus(u.Status) {
-		return errors.New("reviews: invalid update")
-	}
-	return nil
+func (u Update) ValidChange() bool {
+	return u.ID != "" && len(u.ID) <= maxReviewIDBytes && utf8.ValidString(u.ID) && u.ExpectedRevision >= 1 && u.ExpectedRevision <= exactint.Maximum && validStatus(u.Status)
 }
 
 type Outcome string

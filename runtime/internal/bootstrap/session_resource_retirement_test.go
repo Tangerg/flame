@@ -12,7 +12,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/sandbox"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
@@ -76,6 +76,7 @@ func (r *retirementResources) DropSession(ctx context.Context, id identity.Sessi
 	}
 	return nil
 }
+
 func (r *retirementResources) Discard(id identity.SessionID) error {
 	if r.discardErr != nil {
 		return r.discardErr
@@ -136,7 +137,7 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 			t.Error(err)
 		}
 	})
-	stores, _, _ := newWriteSetStores(t, db.Bundle)
+	stores := newWriteSetStores(t, db.Bundle)
 	isolator, err := workspaceadapter.NewIsolator(root, filepath.Join(db.DataDirectory, "sandbox"), nil)
 	if err != nil {
 		t.Fatal(err)
@@ -176,9 +177,9 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 		t.Fatal(err)
 	}
 	coordinator, err := sessions.New(sessions.Dependencies{
-		Sessions: stores.sessions, Interrupts: stores.interrupts, Transcript: stores.transcript, Runs: stores.runs, Now: time.Now,
+		Sessions: stores.bundle.Sessions, Interrupts: stores.bundle.Interrupts, Transcript: stores.bundle.Transcript, Runs: stores.bundle.Runs, Now: time.Now,
 		Snapshots: stores.SessionStores, MaterialSnapshots: stores.SessionStores, Writes: writes,
-		Plan:           sessions.PlanServices{Boundaries: stores.plan, Replacements: mustPlanCoordinator(sessions.PlanDependencies{Store: stores.plan, Now: time.Now})},
+		Plan:           sessions.PlanServices{Boundaries: stores.bundle.Plan, Replacements: mustPlanCoordinator(sessions.PlanDependencies{Store: stores.bundle.Plan, Now: time.Now})},
 		TransientState: retirementTransient{}, ExecutionReleaser: retirementTransient{},
 		Paths: workspaceadapter.Resolver{}, Models: acceptedModelSelections{}, DefaultModelSelection: testsupport.DefaultModelSelection(),
 		Checkpoints: resources, Sandbox: resources, Goals: goals.NewSessionMutations(),
@@ -201,8 +202,8 @@ func (f *retirementFixture) seed(t *testing.T) sessions.PortableSnapshot {
 		t.Fatalf("git init: %v: %s", err, out)
 	}
 	original := bootstrapSession("ses_retirement", "original", f.workspace)
-	insertBootstrapSession(t, f.stores.sessions, original)
-	if err := f.stores.runs.Restore(t.Context(), restoredRun(original.ID().String(), "run_boundary", time.Now().UTC())); err != nil {
+	insertBootstrapSession(t, f.stores.bundle.Sessions, original)
+	if err := f.stores.bundle.Runs.Restore(t.Context(), restoredRun(original.ID().String(), "run_boundary", time.Now().UTC())); err != nil {
 		t.Fatal(err)
 	}
 	if err := f.stores.history.Seed(t.Context(), original.ID(), []chat.Message{chat.NewUserMessage(chat.NewTextPart("original history"))}); err != nil {
@@ -228,7 +229,7 @@ func (f *retirementFixture) seed(t *testing.T) sessions.PortableSnapshot {
 
 func (f *retirementFixture) assertOriginalBoundary(t *testing.T) {
 	t.Helper()
-	current, err := f.stores.sessions.Get(t.Context(), testsupport.MustSessionID("ses_retirement"))
+	current, err := f.stores.bundle.Sessions.Get(t.Context(), testsupport.MustSessionID("ses_retirement"))
 	if err != nil || current.Title() != "original" {
 		t.Fatalf("original Session = %+v, %v", current.Snapshot(), err)
 	}
@@ -245,7 +246,7 @@ func (f *retirementFixture) assertOriginalBoundary(t *testing.T) {
 	if body, err := os.ReadFile(filepath.Join(f.workspace, "material.txt")); err != nil || string(body) != "boundary\n" {
 		t.Fatalf("restored file = %q, %v", body, err)
 	}
-	if _, pending, err := f.stores.retirements.Lookup(t.Context(), current.ID()); err != nil || pending {
+	if _, pending, err := f.stores.bundle.ResourceRetirements.Lookup(t.Context(), current.ID()); err != nil || pending {
 		t.Fatalf("refused transaction authorized cleanup: %t, %v", pending, err)
 	}
 }
@@ -277,8 +278,8 @@ func TestSessionWriteRefusalPreservesRealFileCheckpoints(t *testing.T) {
 				}
 				_, err = f.restoreSession(t.Context(), portable)
 			case "conflicting run":
-				insertBootstrapSession(t, f.stores.sessions, bootstrapSession("ses_other", "other", f.workspace))
-				if err := f.stores.runs.Restore(t.Context(), restoredRun("ses_other", "run_conflict", time.Now().UTC())); err != nil {
+				insertBootstrapSession(t, f.stores.bundle.Sessions, bootstrapSession("ses_other", "other", f.workspace))
+				if err := f.stores.bundle.Runs.Restore(t.Context(), restoredRun("ses_other", "run_conflict", time.Now().UTC())); err != nil {
 					t.Fatal(err)
 				}
 				portable.Runs[0].ID = testsupport.MustRunID("run_conflict")
@@ -311,7 +312,7 @@ func TestCommittedResourceCleanupFailureFencesReplacement(t *testing.T) {
 					if err := f.deleteSession(t.Context(), "ses_retirement"); err != nil {
 						t.Fatalf("committed delete reported unexecuted: %v", err)
 					}
-					if _, err := f.stores.sessions.Get(t.Context(), testsupport.MustSessionID("ses_retirement")); !errors.Is(err, session.ErrNotFound) {
+					if _, err := f.stores.bundle.Sessions.Get(t.Context(), testsupport.MustSessionID("ses_retirement")); !errors.Is(err, session.ErrNotFound) {
 						t.Fatalf("deleted Session = %v", err)
 					}
 				} else {
@@ -323,7 +324,7 @@ func TestCommittedResourceCleanupFailureFencesReplacement(t *testing.T) {
 						t.Fatalf("restore result = %+v", view)
 					}
 				}
-				pending, found, err := f.stores.retirements.Lookup(t.Context(), testsupport.MustSessionID("ses_retirement"))
+				pending, found, err := f.stores.bundle.ResourceRetirements.Lookup(t.Context(), testsupport.MustSessionID("ses_retirement"))
 				if err != nil || !found {
 					t.Fatalf("committed responsibility = %v, %v", found, err)
 				}
@@ -331,10 +332,10 @@ func TestCommittedResourceCleanupFailureFencesReplacement(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := f.stores.retirements.Complete(t.Context(), wrong.Retirement()); err != nil {
+				if err := f.stores.bundle.ResourceRetirements.Complete(t.Context(), wrong.Retirement()); err != nil {
 					t.Fatal(err)
 				}
-				if actual, found, err := f.stores.retirements.Lookup(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || !found || actual != pending {
+				if actual, found, err := f.stores.bundle.ResourceRetirements.Lookup(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || !found || actual != pending {
 					t.Fatalf("wrong generation cleared responsibility: %+v, %v, %v", actual, found, err)
 				}
 				if release, ok, err := f.gate.AcquireSession(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || ok {
@@ -347,7 +348,7 @@ func TestCommittedResourceCleanupFailureFencesReplacement(t *testing.T) {
 					admission.Release()
 					t.Fatalf("Run crossed pending cleanup: %t, %v", ok, err)
 				}
-				if err := f.stores.runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{SessionID: testsupport.MustSessionID("ses_retirement"), RunID: testsupport.MustRunID("run_new"), SegmentID: testsupport.MustSegmentID("seg_new"), CreatedAt: time.Now().UTC()})); !errors.Is(err, run.ErrSessionBusy) {
+				if err := f.stores.bundle.Runs.Admit(t.Context(), testsupport.RunDraft(run.Draft{SessionID: testsupport.MustSessionID("ses_retirement"), RunID: testsupport.MustRunID("run_new"), SegmentID: testsupport.MustSegmentID("seg_new"), CreatedAt: time.Now().UTC()})); !errors.Is(err, run.ErrSessionBusy) {
 					t.Fatalf("durable admission crossed pending cleanup: %v", err)
 				}
 				if _, err := f.restoreSession(t.Context(), portable); !errors.Is(err, run.ErrSessionBusy) {
@@ -356,18 +357,16 @@ func TestCommittedResourceCleanupFailureFencesReplacement(t *testing.T) {
 				if err := f.retirer.RecoverPending(t.Context(), f.gate); err != nil {
 					t.Fatalf("one Session's cleanup failure stopped recovery: %v", err)
 				}
-				if _, found, err := f.stores.retirements.Lookup(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || !found {
+				if _, found, err := f.stores.bundle.ResourceRetirements.Lookup(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || !found {
 					t.Fatalf("failed cleanup released its fence: %v, %v", found, err)
 				}
-				// The fault clears while the process keeps running: the next
-				// exclusive admission settles the fence without a restart.
 				f.resources.dropErr, f.resources.discardErr = nil, nil
 				if release, ok, err := f.gate.AcquireSession(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || !ok {
 					t.Fatalf("recovered cleanup still fences the Session: %t, %v", ok, err)
 				} else {
 					release()
 				}
-				if _, found, err := f.stores.retirements.Lookup(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || found {
+				if _, found, err := f.stores.bundle.ResourceRetirements.Lookup(t.Context(), testsupport.MustSessionID("ses_retirement")); err != nil || found {
 					t.Fatalf("completed responsibility = %v, %v", found, err)
 				}
 				if err := f.resources.Restore(t.Context(), testsupport.MustSessionID("ses_retirement"), f.workspace, testsupport.MustRunID("run_boundary")); !errors.Is(err, sessions.ErrCheckpointUnavailable) {
@@ -410,7 +409,7 @@ func TestCommittedResourceRetirementCrashRecovery(t *testing.T) {
 			if !errors.As(err, &exited) || exited.ExitCode() != 77 {
 				t.Fatalf("crash cut %s: %v\n%s", cut, err, output)
 			}
-			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: filepath.Join(root, "data")})
+			stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: filepath.Join(root, "data"), ValidateDirectory: persistencefixture.UnleasedDirectory})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -454,6 +453,6 @@ func TestCommittedResourceRetirementCrashRecovery(t *testing.T) {
 
 type acceptedModelSelections struct{}
 
-func (acceptedModelSelections) AdmitSelection(context.Context, modelchoice.Selection) error {
+func (acceptedModelSelections) AdmitSelection(context.Context, flamemodel.Selection) error {
 	return nil
 }

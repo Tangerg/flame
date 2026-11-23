@@ -81,9 +81,6 @@ func acceptedReleaseBoundary(cut interactionHandoff, tree scoperun.TreeInspectio
 	return paused, releaseStarted, nil
 }
 
-// A committed child cancellation retires its product member before Scope drains
-// the subtree. Its old waits and subsequent cancellation progress cannot constrain
-// delivery or restoration of the surviving accepted handoff.
 func acceptedRetiredProcesses(cut interactionHandoff, head scoperun.Log, children map[scoperun.ProcessID]*managedDelegateCall) map[scoperun.ProcessID]bool {
 	retiredRoots := make(map[scoperun.ProcessID]bool)
 	for id, child := range children {

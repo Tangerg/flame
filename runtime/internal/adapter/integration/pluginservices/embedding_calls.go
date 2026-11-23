@@ -7,15 +7,11 @@ import (
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	framecall "github.com/Tangerg/frame/call"
-
-	"github.com/samber/lo"
 )
 
-// EmbeddingRoleCallback publishes the configured role on ordinary installed
-// callbacks. A feature's optional fallback and work budget stay with its caller.
-func EmbeddingRoleCallback(resolve func(context.Context) (models.TextEmbedder, error)) (pluginmcp.Callback, error) {
+func EmbeddingRoleCallback(resolve func(context.Context) (*modeladapter.Embedder, bool, error)) (pluginmcp.Callback, error) {
 	if resolve == nil {
 		return pluginmcp.Callback{}, errors.New("embedding call: role resolver is required")
 	}
@@ -23,15 +19,12 @@ func EmbeddingRoleCallback(resolve func(context.Context) (models.TextEmbedder, e
 		if string(command.ID) == executionctx.InvocationOwner(ctx) {
 			return pluginsdk.TextEmbeddings{}, errors.New("embedding call: independent invocation cannot claim its executing owner identity")
 		}
-		model, err := resolve(ctx)
+		model, configured, err := resolve(ctx)
 		if err != nil {
 			return pluginsdk.TextEmbeddings{}, err
 		}
-		if model == nil {
+		if !configured {
 			return pluginsdk.TextEmbeddings{}, &framecall.Refusal{Code: refusalModelRoleUnconfigured, Message: "embedding call: role is not configured"}
-		}
-		if lo.IsNil(model) {
-			return pluginsdk.TextEmbeddings{}, errors.New("embedding call: resolved role is typed nil")
 		}
 		defer func() { returned = errors.Join(returned, model.Close(context.WithoutCancel(ctx))) }()
 		vectors, err := model.Embed(ctx, command.Input)

@@ -3,10 +3,11 @@ package terminal
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/oolong/ui/core/content"
-	"github.com/Tangerg/oolong/ui/core/scene"
 	"io"
 	"slices"
+
+	"github.com/Tangerg/oolong/ui/core/content"
+	"github.com/Tangerg/oolong/ui/core/scene"
 
 	"github.com/Tangerg/flame/apps/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/extensions/highlight"
@@ -17,6 +18,8 @@ import (
 	"github.com/Tangerg/oolong/ui/core/keymap"
 	"github.com/Tangerg/oolong/ui/kit"
 )
+
+const minimumTranscriptRetain = 4
 
 type transcriptView struct {
 	theme  kit.Theme
@@ -99,7 +102,6 @@ type trackedToolGroup struct {
 func (t *transcriptView) ToggleDetails() {
 	first := t.firstEntry()
 	// #nosec G115 -- Transcript.Len is non-negative and cannot exceed the
-	// addressable in-memory slice backing the transcript.
 	end := first + transcriptEntryID(t.content.Len())
 	expand, hasTool := false, false
 	for _, tracked := range t.toolViews {
@@ -156,7 +158,7 @@ func newTranscriptView(
 	c := &transcriptView{
 		theme: theme, glyphs: glyphs, wheel: wheel,
 		look: markdownLook(theme, locale, syntax), syntax: syntax,
-		search: newTranscriptSearch(), retain: max(retain, 4), details: details,
+		search: newTranscriptSearch(), retain: max(retain, minimumTranscriptRetain), details: details,
 		clipboard: clipboard, entries: make(map[transcriptEntryID]*transcriptEntry),
 		tools: make(map[string]liveTool), textStreams: make(map[string]*liveText),
 		pendingQuestions: make(map[string]trackedQuestion),
@@ -205,28 +207,34 @@ func (t *transcriptView) Draw(frame scene.Frame) {
 	paintReadingSelection(window.Body, window.BodyFrom, window.Content, selection, t.theme.Selection)
 	matches, current := t.search.presentationFor(window.Content)
 	paintReadingMatches(window.Body, window.BodyFrom, matches, current, t.theme)
-	if t.selected != nil {
-		if entry := t.entries[*t.selected]; entry != nil {
-			top, height, ok := window.Content.Extent(entry.nativeID)
-			if ok && window.Content.Width() > transcriptEntryInset {
-				style := t.theme.Subtle
-				if t.focused {
-					style = t.theme.Accent
-				}
-				visible := window.Body.Visible()
-				for row := max(top-window.BodyFrom, visible.Min.Y); row < min(top+height-window.BodyFrom, visible.Max.Y); row++ {
-					window.Body.Text(0, row, t.glyphs.Vertical.String(), style)
-				}
-			}
-		}
-	}
+	t.paintSelectionMarker(window)
 	if t.content.Len() == 0 && t.entrance != nil {
 		t.entrance.Draw(frame.View)
 	}
 }
 
-// SetEntrance installs a presentation-only projection that is consumed by the
-// first transcript block or reset. It is not part of retained transcript state.
+func (t *transcriptView) paintSelectionMarker(window base.TranscriptView) {
+	if t.selected == nil {
+		return
+	}
+	entry := t.entries[*t.selected]
+	if entry == nil {
+		return
+	}
+	top, height, ok := window.Content.Extent(entry.nativeID)
+	if !ok || window.Content.Width() <= transcriptEntryInset {
+		return
+	}
+	style := t.theme.Subtle
+	if t.focused {
+		style = t.theme.Accent
+	}
+	visible := window.Body.Visible()
+	for row := max(top-window.BodyFrom, visible.Min.Y); row < min(top+height-window.BodyFrom, visible.Max.Y); row++ {
+		window.Body.Text(0, row, t.glyphs.Vertical.String(), style)
+	}
+}
+
 func (t *transcriptView) SetEntrance(entrance grid.Drawable) {
 	t.entrance = entrance
 	t.Element().Invalidate()
@@ -388,186 +396,6 @@ func (t *transcriptView) finishMarkdown(id transcriptEntryID, block *markdownBlo
 	t.settleEntry(id)
 }
 
-func (t *transcriptView) mutateTrackedTool(tracked trackedTool, mutate func(mutableToolBlock)) bool {
-	before := tracked.block.Expanded()
-	mutate(tracked.block)
-	t.projectEntry(tracked.id)
-	return t.focused && t.isSelected(tracked.id) && before && !tracked.block.Expanded()
-}
-
-func (t *transcriptView) appendCompleted(block conversation.Block) error {
-	rendered, err := t.present(block)
-	if err != nil {
-		return err
-	}
-	if block.Kind == conversation.BlockTool {
-		if tool, grouped := groupedTool(rendered); grouped {
-			t.addGroupedTool(block.RunID, tool)
-			t.refreshSearch()
-			return nil
-		}
-	}
-	t.sealToolGroup()
-	for _, item := range rendered {
-		mutable, isMutable := item.(mutableToolBlock)
-		if isMutable {
-			mutable.SetExpanded(t.details)
-		}
-		question, isPendingQuestion := item.(*questionBlock)
-		isPendingQuestion = isPendingQuestion && !question.answered()
-		key := ""
-		if isPendingQuestion {
-			key = conversation.BlockKey(block.RunID, block.ID)
-			if _, exists := t.pendingQuestions[key]; exists {
-				return fmt.Errorf("terminal transcript: question block %s completed twice", block.ID)
-			}
-		}
-		state := settledEntry
-		if isPendingQuestion {
-			state = liveEntry
-		}
-		id := t.place(item, state)
-		t.history.Append(block.RunID, id)
-		if isPendingQuestion {
-			t.pendingQuestions[key] = trackedQuestion{runID: block.RunID, id: id, block: question}
-		}
-		if isMutable {
-			t.toolViews = append(t.toolViews, trackedToolView{id: id, block: mutable})
-		}
-	}
-	t.refreshSearch()
-	return nil
-}
-
-func (t *transcriptView) beginTool(block conversation.Block) error {
-	key := conversation.BlockKey(block.RunID, block.ID)
-	if _, exists := t.tools[key]; exists {
-		return fmt.Errorf("terminal transcript: tool block %s started twice", block.ID)
-	}
-	if _, exists := t.textStreams[key]; exists {
-		return fmt.Errorf("terminal transcript: block %s is already a live text block", block.ID)
-	}
-	rendered, err := t.present(block)
-	if err != nil {
-		return err
-	}
-	if tool, grouped := groupedTool(rendered); grouped {
-		group := t.addGroupedTool(block.RunID, tool)
-		tracked := trackedTool{id: group.id, block: tool}
-		t.tools[key] = liveTool{runID: block.RunID, blocks: []trackedTool{tracked}, group: group}
-		t.refreshSearch()
-		return nil
-	}
-	t.sealToolGroup()
-	live := liveTool{runID: block.RunID}
-	for _, item := range rendered {
-		mutable, isMutable := item.(mutableToolBlock)
-		if isMutable {
-			mutable.SetExpanded(t.details)
-		}
-		id := t.place(item, liveEntry)
-		t.history.Append(block.RunID, id)
-		live.ids = append(live.ids, id)
-		if isMutable {
-			tracked := trackedTool{id: id, block: mutable}
-			live.blocks = append(live.blocks, tracked)
-			t.toolViews = append(t.toolViews, trackedToolView{id: id, block: mutable})
-		}
-	}
-	t.tools[key] = live
-	t.refreshSearch()
-	return nil
-}
-
-func groupedTool(rendered []base.Block) (*toolBlock, bool) {
-	if len(rendered) != 1 {
-		return nil, false
-	}
-	tool, ok := rendered[0].(*toolBlock)
-	return tool, ok && groupableTool(tool.call)
-}
-
-func (t *transcriptView) addGroupedTool(runID string, tool *toolBlock) *trackedToolGroup {
-	group := t.activeToolGroup
-	if group == nil || group.runID != runID {
-		t.sealToolGroup()
-		block := newToolGroupBlock(t.theme, t.glyphs, t.details)
-		block.Add(tool)
-		group = &trackedToolGroup{runID: runID, block: block}
-		group.id = t.place(block, liveEntry)
-		t.history.Append(runID, group.id)
-		t.toolViews = append(t.toolViews, trackedToolView{id: group.id, block: block})
-		t.activeToolGroup = group
-		return group
-	}
-	group.block.Add(tool)
-	t.projectEntry(group.id)
-	return group
-}
-
-func (t *transcriptView) sealToolGroup() {
-	group := t.activeToolGroup
-	if group == nil {
-		return
-	}
-	group.block.Seal()
-	t.projectEntry(group.id)
-	t.activeToolGroup = nil
-	t.finishToolGroupIfReady(group)
-}
-
-func (t *transcriptView) finishToolGroupIfReady(group *trackedToolGroup) {
-	if group != nil && group.block.ReadyToFinish() {
-		t.settleEntry(group.id)
-	}
-}
-
-// SealToolGroups closes the trailing adjacency window after a cold snapshot.
-// A live event stream closes it naturally on the next semantic boundary.
-func (t *transcriptView) SealToolGroups() { t.sealToolGroup() }
-
-func (t *transcriptView) present(block conversation.Block) ([]base.Block, error) {
-	var present func(blockPresentation, conversation.Block) []base.Block
-	switch block.Kind {
-	case conversation.BlockUser:
-		present = presentUser
-	case conversation.BlockAssistant:
-		present = presentMarkdown("flame")
-	case conversation.BlockReasoning:
-		present = presentMarkdown("thinking")
-	case conversation.BlockQuestion:
-		present = presentQuestion
-	case conversation.BlockTool:
-		present = presentTool
-	case conversation.BlockNotice:
-		present = presentNotice
-	case conversation.BlockError:
-		present = presentFailure
-	default:
-		return nil, fmt.Errorf("terminal transcript: no presenter for block kind %q", block.Kind)
-	}
-	return presentSafely(present, blockPresentation{
-		Theme: t.theme, Glyphs: t.glyphs, Look: t.look, Syntax: t.syntax,
-		Tools: defaultToolPresenters(), Speaker: t.history.Speaker(block), Image: t.presentImage,
-	}, block)
-}
-
-func (t *transcriptView) presentImage(image conversation.InlineImage) base.Block {
-	if t.images != nil {
-		return t.images.Present(t.theme, image)
-	}
-	return fallbackInlineImage(t.theme, image)
-}
-
-func presentSafely(presenter func(blockPresentation, conversation.Block) []base.Block, presentation blockPresentation, block conversation.Block) (rendered []base.Block, err error) {
-	defer func() {
-		if recovered := recover(); recovered != nil {
-			err = fmt.Errorf("terminal transcript: presenter for %q panicked: %v", block.Kind, recovered)
-		}
-	}()
-	return presenter(presentation, block), nil
-}
-
 func (t *transcriptView) Append(block base.Block) {
 	t.sealToolGroup()
 	t.append(block)
@@ -579,7 +407,6 @@ func (t *transcriptView) append(block base.Block) transcriptEntryID {
 	return id
 }
 
-// transcriptEntryState says whether a placed entry still receives live updates.
 type transcriptEntryState uint8
 
 const (

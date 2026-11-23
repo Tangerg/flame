@@ -13,16 +13,11 @@ import (
 	"github.com/samber/lo"
 )
 
-// Registry is the single catalog of Runtime operations. It owns both the
-// machine-readable method facts and the binding-neutral typed invocation.
 type Registry struct {
 	byName map[Name]*Method
 	names  []Name
 }
 
-// Method combines immutable contract metadata with one type-erased invocation
-// closure. Type erasure exists only at this private narrow waist; registrations
-// and public bindings remain fully typed.
 type Method struct {
 	Meta        MethodMeta
 	invoke      func(any, context.Context, any) rawResult
@@ -54,9 +49,6 @@ func (r *Registry) add(meta MethodMeta, invoke func(any, context.Context, any) r
 	return method
 }
 
-// withOwnedReplay lets the command's owner settle a keyed call together with its
-// mutation. Like invocation, it names the capability it needs rather than the
-// Handler type.
 func (m *Method) withOwnedReplay[Capability, Params any](settle func(Capability, context.Context, Params, keyedCall) protocol.OperationResult) {
 	if m.Meta.Params != reflect.TypeFor[Params]() || m.Meta.Idempotency != idempotencyReplayResponse {
 		panic(fmt.Sprintf("operation: %s cannot settle its own replay for %s", m.Meta.Name, reflect.TypeFor[Params]()))
@@ -66,7 +58,11 @@ func (m *Method) withOwnedReplay[Capability, Params any](settle func(Capability,
 		if !ok {
 			return failed(projectError(fmt.Errorf("operation: target cannot settle %s", m.Meta.Name)))
 		}
-		return settle(capability, ctx, parameters.(Params), call)
+		params, ok := parameters.(Params)
+		if !ok {
+			return failed(projectError(fmt.Errorf("operation: %s received %T parameters", m.Meta.Name, parameters)))
+		}
+		return settle(capability, ctx, params, call)
 	}
 }
 
@@ -75,7 +71,6 @@ func (r *Registry) lookup(name Name) (*Method, bool) {
 	return method, ok
 }
 
-// Lookup returns an immutable snapshot of one method's metadata.
 func (r *Registry) Lookup(name Name) (MethodMeta, bool) {
 	method, ok := r.lookup(name)
 	if !ok {
@@ -84,7 +79,6 @@ func (r *Registry) Lookup(name Name) (MethodMeta, bool) {
 	return cloneMethodMeta(method.Meta), true
 }
 
-// Metas lists every method's metadata in registration order.
 func (r *Registry) Metas() []MethodMeta {
 	out := make([]MethodMeta, 0, len(r.names))
 	for _, name := range r.names {
@@ -110,7 +104,6 @@ func cloneCapabilityRules(rules []CapabilityRule) []CapabilityRule {
 	return out
 }
 
-// StreamMethods lists methods that return an acknowledgement followed by events.
 func (r *Registry) StreamMethods() []string {
 	var out []string
 	for _, name := range r.names {
@@ -121,8 +114,6 @@ func (r *Registry) StreamMethods() []string {
 	return out
 }
 
-// query registers one unary read operation and derives its complete method
-// semantics from the typed handler.
 func (r *Registry) query[Capability, Params, Response any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Response, error),
@@ -134,7 +125,6 @@ func (r *Registry) query[Capability, Params, Response any](
 	r.registerUnary(meta, call)
 }
 
-// command registers one unary mutation with response replay semantics.
 func (r *Registry) command[Capability, Params, Response any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Response, error),
@@ -148,8 +138,6 @@ func (r *Registry) command[Capability, Params, Response any](
 	return r.registerUnary(meta, call)
 }
 
-// extension resolves the consumer's admitted method before delivery chooses
-// query or owner-committed command policies. No caller-supplied kind is accepted.
 func (r *Registry) extension[Capability, Params, Response any](meta MethodMeta, classify func(Params) (OperationKind, error), prepare func(Capability, context.Context, Params) (OperationKind, func(context.Context) (Response, error), error)) {
 	meta.Kind = kindUnary
 	meta.Result = reflect.TypeFor[Response]()
@@ -260,7 +248,6 @@ func (r *Registry) registerUnary[Capability, Params, Response any](
 	})
 }
 
-// commandAck registers one unary mutation whose success carries no data.
 func (r *Registry) commandAck[Capability, Params any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) error,
@@ -286,7 +273,6 @@ func (r *Registry) commandAck[Capability, Params any](
 	})
 }
 
-// subscription registers one live stream that starts from current state.
 func (r *Registry) subscription[Capability, Params, Ack, Event any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
@@ -305,9 +291,6 @@ func (r *Registry) registerSubscription[Capability, Params, Ack, Event any](
 	r.registerStream(meta, call)
 }
 
-// runSubscription registers a stream that may replay retained Run events from
-// an opaque cursor. Runtime-wide invalidation subscriptions use subscription:
-// reconnecting those streams deliberately resyncs instead of replaying history.
 func (r *Registry) runSubscription[Capability, Params, Ack, Event any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
@@ -316,10 +299,6 @@ func (r *Registry) runSubscription[Capability, Params, Ack, Event any](
 	r.registerSubscription(meta, call)
 }
 
-// runStreamOwnerCommand registers a Run-opening command whose durable acceptance
-// the application commits in the opening transaction. Delivery keeps no competing
-// replay record; a same-key retry re-enters the handler, which returns the
-// original opening and re-attaches its live stream from the run identity.
 func (r *Registry) runStreamOwnerCommand[Capability, Params, Ack, Event any](
 	meta MethodMeta,
 	call func(Capability, context.Context, Params) (Ack, iter.Seq2[Event, error], error),
@@ -374,8 +353,6 @@ func eraseEventType[Event any](events iter.Seq2[Event, error]) iter.Seq2[any, er
 	}
 }
 
-// The protocol's page vocabulary: a cursor request names cursor and limit, and
-// a page result names data and nextCursor.
 const (
 	cursorField     = "cursor"
 	limitField      = "limit"
@@ -383,8 +360,6 @@ const (
 	nextCursorField = "nextCursor"
 )
 
-// paginationOf distinguishes cursor reads from bounded collection reads using
-// the actual request and response shapes.
 func paginationOf(params, result reflect.Type) (PaginationKind, error) {
 	if params == nil {
 		return paginationNone, errors.New("params type is required")
@@ -420,8 +395,6 @@ func paginationOf(params, result reflect.Type) (PaginationKind, error) {
 	}
 }
 
-// isPageResult reports whether a result declares the page shape, refusing one
-// that declares only half of it.
 func isPageResult(result reflect.Type) (bool, error) {
 	if result == nil {
 		return false, nil
@@ -446,6 +419,4 @@ func isPageResult(result reflect.Type) (bool, error) {
 	}
 }
 
-// Contract returns the Runtime operation catalog. Registration is package-local
-// and runs once at init, so a consumer of this value can only read it.
 func Contract() *Registry { return contract }

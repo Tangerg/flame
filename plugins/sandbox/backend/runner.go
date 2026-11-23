@@ -11,7 +11,7 @@ import (
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	processsandbox "github.com/Tangerg/flame/packages/go-sdk/sandbox"
-	sandbox "github.com/Tangerg/flame/plugins/sandbox/internal/domain"
+	"github.com/Tangerg/flame/plugins/sandbox/internal/sandbox"
 	"github.com/Tangerg/flame/plugins/sandbox/internal/wire"
 
 	"github.com/Tangerg/frame/sqlite"

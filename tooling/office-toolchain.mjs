@@ -49,7 +49,7 @@ async function verify(directory, target) {
   const manifest = join(directory, "prebuilds.json");
   if (
     (await lstat(manifest)).isSymbolicLink() ||
-    (await hash(manifest)) !== target.manifestSHA256
+    (await hash(manifest)) !== target.manifestSha256
   )
     throw new Error("Office release manifest checksum mismatch");
   const { files } = JSON.parse(await readFile(manifest, "utf8"));

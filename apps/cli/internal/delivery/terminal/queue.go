@@ -7,11 +7,17 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/apps/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/apps/cli/internal/delivery/format"
 	"github.com/Tangerg/flame/apps/cli/internal/domain/authoring"
 
 	"github.com/Tangerg/oolong/ui/core/grid"
 	"github.com/Tangerg/oolong/ui/core/text"
 	"github.com/Tangerg/oolong/ui/kit"
+)
+
+const (
+	attachmentNoun = "attachment"
+	promptNoun     = "prompt"
 )
 
 const (
@@ -88,7 +94,7 @@ func queueEntryLabel(entry authoring.QueueEntry) string {
 		attachments--
 	}
 	if attachments > 0 {
-		label += " · " + countedNoun(attachments, "attachment")
+		label += format.Separator + countedNoun(attachments, attachmentNoun)
 	}
 	return label
 }
@@ -204,9 +210,6 @@ func (r *runs) retryQueuedDispatchSettlement(commandID authoring.CommandID) {
 	)
 }
 
-// retryCanceledRuntimeOwnership is the cancellation counterpart to ordinary
-// acknowledgement settlement. It retries both a pending HITL decision and the
-// exact opening command, because either can remain after a partial state write.
 func (r *runs) retryCanceledRuntimeOwnership(runID string, commandID authoring.CommandID) {
 	r.retryAuthoringSettlement(
 		ownershipSettlementOperation,
@@ -215,10 +218,6 @@ func (r *runs) retryCanceledRuntimeOwnership(runID string, commandID authoring.C
 	)
 }
 
-// retryAuthoringSettlement owns transient local-commit recovery for the active
-// session. The settlement itself always runs on the UI thread: it may update
-// both a durable workbench aggregate and its in-memory projection atomically
-// from the application's point of view.
 func (r *runs) retryAuthoringSettlement(slot operationSlot, settle func() error, finish func()) {
 	if settle == nil || r.tasks.operations.Active(slot) {
 		return
@@ -285,10 +284,9 @@ func pendingRunByCommandID(pending []workbench.PendingRun, commandID authoring.C
 	return workbench.PendingRun{}, false
 }
 
-// queueSendBlocked reports why a queued prompt cannot be promoted now.
 func (r *runs) queueSendBlocked() error {
 	if r.tasks.operations.Active(sessionChangeOperation) {
-		return errors.New("wait for the current session change to finish")
+		return sessionChangeOperation.busy()
 	}
 	if !r.execution.blocksAdmission() && r.runtimeChangeBlocksRunAdmission() {
 		return errors.New("wait for the pending runtime change before sending a queued prompt")
@@ -296,8 +294,6 @@ func (r *runs) queueSendBlocked() error {
 	return nil
 }
 
-// dispatchPromoted sends the promoted entry: an active Run is canceled first,
-// and an idle session dispatches it at once.
 func (r *runs) dispatchPromoted() error {
 	if r.execution.blocksAdmission() {
 		r.cancel()

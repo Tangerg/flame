@@ -8,10 +8,8 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// The public protocol represents schemas as objects. A schema states its bounds
-// as numeric literals, so [framevalue.Numbers] keeps each one as written: a
-// maximum or multipleOf rounded through float64 would publish a constraint the
-// Tool never declared.
+// framevalue.Numbers keeps schema bounds as written: a maximum rounded through
+// float64 would publish a constraint the Tool never declared.
 func presentToolSchema(definition toolcontract.Definition) (map[string]any, error) {
 	if err := definition.Validate(); err != nil {
 		return nil, fmt.Errorf("delivery: tool definition: %w", err)

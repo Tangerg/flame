@@ -11,9 +11,6 @@ const agentDocPromptMaxBytes = 32 * 1024
 
 const agentDocPromptHeader = "## Project context (from AGENTS.md cascade)"
 
-// agentDocumentsPrompt formats discovered files for the agent system prompt. The
-// provenance marker and byte budget are part of the model-facing prompt, not
-// the agent-document domain value.
 type agentDocumentsPrompt struct {
 	text    string
 	sources contextSources

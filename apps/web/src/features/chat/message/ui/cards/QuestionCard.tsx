@@ -136,7 +136,6 @@ const qc = stylex.create({
 interface Props {
   sessionId: string;
   status: BlockStatus;
-  /** The Run to resume; present only while this question awaits an answer. */
   resumeRunId?: string;
   itemId?: string;
   questions: QuestionItem[];

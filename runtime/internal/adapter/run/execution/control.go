@@ -27,8 +27,8 @@ func steerSignalID(itemID identity.ItemID) (scoperun.SignalID, error) {
 	return scoperun.ParseSignalID("steer:" + itemID.String())
 }
 
-// Application retains the exact user note. Scope receives a bounded diagnostic
-// in a separate namespace so that user text cannot impersonate an executor stop.
+// Scope receives a bounded diagnostic in a separate namespace so user text cannot
+// impersonate an executor stop.
 func scopeCancellationReason(reason string) string {
 	return run.Diagnostic(errors.New("run cancellation: " + reason))
 }
@@ -46,10 +46,6 @@ func cancellationFromTermination(termination scoperun.Termination) (runs.Cancell
 	return runs.ParseCancellationID(token)
 }
 
-// awaitDispatchSegment keeps Scope-owned work behind the product transaction
-// that opens its next Segment and behind any receipt investigation. Scope owns
-// cancellation of the supplied context; session release can also unblock the
-// gates without creating another tree owner.
 func (i *interactionSession) awaitDispatchSegment(ctx context.Context) error {
 	i.state.mu.Lock()
 	gates := [...]chan struct{}{i.state.boundaryGate, i.state.investigationGate}
@@ -69,9 +65,6 @@ func (i *interactionSession) awaitDispatchSegment(ctx context.Context) error {
 	return context.Cause(ctx)
 }
 
-// stopModelProcess ends only the member whose model call cannot continue.
-// Scope preserves unmarked model errors as unknown external outcomes; Runtime
-// owns the decision to stop and retains its provider failure separately.
 func (i *interactionSession) stopModelProcess(ctx context.Context, processID scoperun.ProcessID) error {
 	process, found := i.engine.Process(processID)
 	if !found {
@@ -132,9 +125,6 @@ func steerSignal(prepared runs.PreparedSteer) (scoperun.SignalID, scoperun.Signa
 	return signalID, signal, nil
 }
 
-// deliverSteer delivers a steer Signal exactly once. A Signal Scope already
-// admitted is a duplicate whose receipt is that admission; a pending one must
-// be the same steer, or the command key was reused.
 func (i *interactionSession) deliverSteer(ctx context.Context, process *scoperun.Handle[scoperun.Payload], signalID scoperun.SignalID, signal scoperun.Signal, prepared runs.PreparedSteer) error {
 	i.state.mu.Lock()
 	prior, present := i.state.pendingSteers[signalID]

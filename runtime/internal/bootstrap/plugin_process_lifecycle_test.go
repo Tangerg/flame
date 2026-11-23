@@ -52,7 +52,7 @@ func TestBlockedStdioPluginReleasesProcessAfterRestartAndDisable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String()})
+	endpoint, err := delivery.NewEndpoint(api, delivery.EndpointConfig{Lifetime: t.Context(), IdempotencyStore: cfg.stores.Idempotency, IdempotencyNamespace: cfg.stores.IdempotencyNamespace.String(), ValidateStorage: cfg.stores.ValidateDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}

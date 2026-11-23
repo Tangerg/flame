@@ -20,8 +20,6 @@ func readArtifact(t *testing.T, dir, name string) []byte {
 	return content
 }
 
-// TestProtocolVersionAgreesEverywhere checks every machine-readable statement of
-// the current protocol version against the code owner.
 func TestProtocolVersionAgreesEverywhere(t *testing.T) {
 	root := moduleRoot(t)
 
@@ -39,14 +37,6 @@ func TestProtocolVersionAgreesEverywhere(t *testing.T) {
 		t.Errorf("manifest protocol %q != code %q", manifest.ProtocolVersion, protocol.Version)
 	}
 
-	// Canonical samples are another published statement. A client copies them
-	// — that is what a canonical sample is for — so one naming a retired version
-	// hands out a handshake the runtime refuses. The shape gate cannot see it: the
-	// schema constrains the field's type, never which date is current.
-	//
-	// The client's own constant is NOT read here: it is generated from the same
-	// code, so gate 1 already holds it. Test fixtures are not read either — a
-	// refusal test has to be able to name a version this build rejects.
 	samples, err := filepath.Glob(filepath.Join(root, "contract", "samples", "*.json"))
 	if err != nil {
 		t.Fatalf("glob canonical samples: %v", err)
@@ -73,11 +63,8 @@ func TestProtocolVersionAgreesEverywhere(t *testing.T) {
 	}
 }
 
-// protocolVersionKeys are the wire's only spellings of a protocol version.
 var protocolVersionKeys = []string{"protocolVersion"}
 
-// collectProtocolVersions walks decoded JSON for values stated under those keys, so
-// a sample added later is swept without anyone remembering to list it.
 func collectProtocolVersions(node any) []string {
 	switch typed := node.(type) {
 	case map[string]any:

@@ -11,18 +11,14 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 )
 
-// ConversationCompactionPlan is the complete cross-aggregate write-set for one
-// history rewrite. Runs includes non-terminal records unchanged so persistence
-// can reject a lifecycle transition that raced the plan instead of committing
-// history and Run projections derived from different snapshots.
+// Runs includes unchanged non-terminal records so persistence can reject a
+// lifecycle transition that raced the plan.
 type ConversationCompactionPlan struct {
 	sessionID  identity.SessionID
 	compaction conversation.Compaction
 	runs       []run.Replacement
 }
 
-// newConversationCompactionPlan binds one conversation rewrite to the exact
-// same-Session Run set from which its watermark replacements were derived.
 func newConversationCompactionPlan(
 	sessionID identity.SessionID,
 	compaction conversation.Compaction,
@@ -53,16 +49,12 @@ func newConversationCompactionPlan(
 	}, nil
 }
 
-// SessionID returns the exact conversation owner.
 func (p ConversationCompactionPlan) SessionID() identity.SessionID { return p.sessionID }
 
-// Compaction returns the validated coordinate transformation.
 func (p ConversationCompactionPlan) Compaction() conversation.Compaction { return p.compaction }
 
-// Runs returns an isolated snapshot of the exact Run replacements.
 func (p ConversationCompactionPlan) Runs() []run.Replacement { return slices.Clone(p.runs) }
 
-// ConversationCompactionStore joins the decided rewrite to its owning event transaction.
 type ConversationCompactionStore interface {
 	ApplyCompaction(context.Context, ConversationCompactionPlan) error
 }

@@ -8,6 +8,8 @@ import (
 	"github.com/Tangerg/oolong/ui/kit"
 )
 
+const minimumCopyWidth = 40
+
 type entryDisclosure uint8
 
 const (
@@ -27,14 +29,11 @@ func disclosureOf(tool toolDisclosure) entryDisclosure {
 	}
 }
 
-// transcriptSelection is what prompt help shows about the selected entry; a
-// nil selection means no entry is selected.
 type transcriptSelection struct {
 	disclosure entryDisclosure
 	readable   bool
 }
 
-// A press on the first row of a tool entry toggles its details on click.
 type transcriptPressTarget struct {
 	entry  transcriptEntryID
 	header bool
@@ -132,8 +131,6 @@ func (t *transcriptView) selectAt(index int) bool {
 	return true
 }
 
-// selectionSource separates keyboard navigation, which reveals the entry and
-// drops any text selection, from a pointer press that keeps both in place.
 type selectionSource uint8
 
 const (
@@ -223,10 +220,6 @@ func (t *transcriptView) setSelectedExpanded(expanded bool) bool {
 	})
 }
 
-// mutateSelectedDisclosure owns the layout invariant for keyboard-operated tool
-// details. Both expansion and collapse can move the selected entry relative to
-// the viewport, so every actual height change remeasures and reveals the same
-// stable block identity before another command can target it.
 func (t *transcriptView) mutateSelectedDisclosure(mutate func(toolDisclosure)) bool {
 	if t.selected == nil {
 		return true
@@ -271,7 +264,7 @@ func (t *transcriptView) copy(value string) {
 	if value == "" {
 		return
 	}
-	if t.clipboard == nil || t.clipboard.Copy(value) != nil {
+	if t.clipboard.Copy(value) != nil {
 		return
 	}
 	if t.onCopy != nil {
@@ -316,7 +309,7 @@ func (t *transcriptView) readerTargetForSelected() (readerTarget, bool) {
 	if !ok {
 		return readerTarget{}, false
 	}
-	width := max(t.content.Layout().Width()-transcriptEntryInset, 40)
+	width := max(t.content.Layout().Width()-transcriptEntryInset, minimumCopyWidth)
 	value := copyableRowsText(copyable.Rows(width))
 	if strings.TrimSpace(value) == "" {
 		return readerTarget{}, false

@@ -62,9 +62,10 @@ That strict declaration names each independent contribution ID, its contract fil
 server and export. Composition belongs to the consumer contract. Multiple
 contributions may share one backend; selection never equates their IDs with the
 server name. Installation reads these files without executing package code.
-The declaration uses the public `plugin.DeclarationProtocol`, currently
-`io.github.tangerg.flame/plugin/1`. This Flame metadata version is independent of
-the Frame portable descriptor and transport versions.
+The declaration uses the public `plugincontract.Protocol`, currently
+`io.github.tangerg.flame/plugin/1`, the same Flame plugin protocol identity its
+contracts carry. It is independent of the Frame portable descriptor and transport
+versions.
 
 A callable contribution may declare named `requires` entries with `id`, a local
 `contract` resource path and `optional`. Resolution uses exact admitted contracts:

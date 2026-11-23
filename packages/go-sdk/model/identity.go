@@ -88,7 +88,7 @@ func ValidateSelection(provider, model, reasoningEffort string) error {
 
 func validateIdentity(value string, maximumCharacters int, identityError error) error {
 	if err := identity.ValidateText(value, maximumCharacters); err != nil {
-		return fmt.Errorf("%w: %v", identityError, err)
+		return fmt.Errorf("%w: %w", identityError, err)
 	}
 	return nil
 }

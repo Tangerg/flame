@@ -29,23 +29,24 @@ func snapshotTranscriptEntry(entry *transcriptEntry) *transcriptEntry {
 	return newTranscriptEntry(entry.theme, entry.glyphs, snapshotTranscriptBlock(entry.content))
 }
 
-// Product presenters may keep observing Runtime facts. A reading window receives
-// only detached passive values; a completed tool can therefore change disclosure
-// without revising an immutable Oolong item behind its owner's back.
+func snapshotToolBlock(block *toolBlock) *toolBlock {
+	copied := *block
+	copied.call = block.call.Clone()
+	copied.body = slices.Clone(block.body)
+	copied.observers = readerDocumentObservers{}
+	return &copied
+}
+
 func snapshotTranscriptBlock(block base.Block) base.Block {
 	switch value := block.(type) {
 	case *toolBlock:
-		copied := *value
-		copied.call = value.call.Clone()
-		copied.body = slices.Clone(value.body)
-		copied.observers = readerDocumentObservers{}
-		return &copied
+		return snapshotToolBlock(value)
 	case *toolGroupBlock:
 		copied := *value
 		copied.observers = readerDocumentObservers{}
 		copied.tools = make([]*toolBlock, len(value.tools))
 		for index, tool := range value.tools {
-			copied.tools[index] = snapshotTranscriptBlock(tool).(*toolBlock)
+			copied.tools[index] = snapshotToolBlock(tool)
 		}
 		return &copied
 	case *questionBlock:
@@ -71,8 +72,6 @@ func (entry *transcriptEntry) passive() *transcriptEntry {
 	return entry.projection
 }
 
-// retainReadingIntent captures where the reader is before the window is
-// rebuilt, so the rebuilt window can return there.
 func (t *transcriptView) retainReadingIntent() transcriptReadingIntent {
 	intent := transcriptReadingIntent{follow: true}
 	if t.windowIntent != nil {
@@ -104,13 +103,11 @@ func (t *transcriptView) retainReadingIntent() transcriptReadingIntent {
 	return intent
 }
 
-// resetWindow opens an empty window that follows the newest entry.
 func (t *transcriptView) resetWindow() {
 	t.selectionIntent = nil
 	t.installWindow(transcriptReadingIntent{follow: true})
 }
 
-// rebuildWindow replaces the window and returns the reader to where they were.
 func (t *transcriptView) rebuildWindow() { t.installWindow(t.retainReadingIntent()) }
 
 func (t *transcriptView) installWindow(intent transcriptReadingIntent) {
@@ -160,26 +157,31 @@ func (t *transcriptView) restoreReadingIntent(intent transcriptReadingIntent) {
 	t.windowIntent = &intent
 	if intent.follow {
 		t.scroll.ToBottom()
-	} else {
-		t.scroll.ToTop()
-		offset := intent.offset
-		if intent.anchor != 0 {
-			offset = 0
-			for _, id := range t.order {
-				if id == intent.anchor {
-					offset += intent.anchorOffset
-					break
-				}
-				if id > intent.anchor {
-					break
-				}
-				if body := t.entries[id].passive(); body != nil {
-					offset += body.HeightForWidth(intent.width)
-				}
-			}
-		}
-		t.scroll.Reveal(offset, offset+max(intent.height, 1)-1)
+		return
 	}
+	t.scroll.ToTop()
+	offset := t.intentOffset(intent)
+	t.scroll.Reveal(offset, offset+max(intent.height, 1)-1)
+}
+
+// An anchored intent survives re-layout by re-measuring the entries above its anchor.
+func (t *transcriptView) intentOffset(intent transcriptReadingIntent) int {
+	if intent.anchor == 0 {
+		return intent.offset
+	}
+	offset := 0
+	for _, id := range t.order {
+		if id == intent.anchor {
+			return offset + intent.anchorOffset
+		}
+		if id > intent.anchor {
+			return offset
+		}
+		if body := t.entries[id].passive(); body != nil {
+			offset += body.HeightForWidth(intent.width)
+		}
+	}
+	return offset
 }
 
 func (t *transcriptView) projectSelection(layout base.TranscriptLayout, intent *transcriptSelectionIntent) (base.TextRange, bool) {

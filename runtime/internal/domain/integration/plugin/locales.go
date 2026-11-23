@@ -13,8 +13,6 @@ import (
 const MaxLocaleTagBytes = 128
 const maxLocales = 32
 
-// baseLocale is the language of a declaration's own strings, so a package
-// cannot also declare it as a translation.
 var baseLocale = language.English
 
 type Locale struct {
@@ -55,7 +53,6 @@ func (i Installation) AuthorizeLocale(release Release, digest framevalue.Digest,
 	return Locale{}, fmt.Errorf("%w: locale %q", ErrNotFound, tag)
 }
 
-// undeterminedBase is the base of "und", which names no language.
 var undeterminedBase, _, _ = language.Und.Raw()
 
 func validTranslationTag(value string) bool {

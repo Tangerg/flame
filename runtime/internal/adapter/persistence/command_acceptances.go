@@ -9,22 +9,15 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// commandAcceptanceStore writes immutable Run-owned receipts in their product
-// transaction. Deleting original Run material retires its reference permanently;
-// importing the same Run ID cannot bind that receipt to replacement material.
 type commandAcceptanceStore struct{ db *database }
 
 func newCommandAcceptanceStore(db *database) *commandAcceptanceStore {
 	return &commandAcceptanceStore{db: db}
 }
 
-// Save records acceptance under the global command key. Re-observing a Steer
-// receipt in later Scope heads is allowed only when its entire immutable value
-// matches. Other reuse fails the surrounding product transaction.
 func (s *commandAcceptanceStore) Save(ctx context.Context, acceptance runs.CommandAcceptance) error {
 	return s.db.write(ctx, func(ctx context.Context) error {
 		if err := acceptance.Validate(); err != nil {
@@ -32,37 +25,12 @@ func (s *commandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 		}
 		var steerInput []byte
 		if acceptance.Operation == runs.CommandSteerInput {
-			var err error
-			steerInput, err = encodeUserContent(acceptance.SteerInput)
-			if err != nil {
+			recorded, err := s.admitSteer(ctx, acceptance)
+			if err != nil || recorded {
 				return err
 			}
-			record, err := s.Lookup(ctx, acceptance.Key)
-			if err != nil {
+			if steerInput, err = encodeUserContent(acceptance.SteerInput); err != nil {
 				return err
-			}
-			if record.Use == runs.CommandKeyForeign {
-				return runs.ErrCommandKeyConflict
-			}
-			if record.Use == runs.CommandKeyAccepted {
-				previous := record.Acceptance
-				if !previous.Equal(acceptance) {
-					return runs.ErrCommandKeyConflict
-				}
-				return nil
-			}
-			current, found, err := newRunStore(s.db).Run(ctx, acceptance.RunID)
-			if err != nil {
-				return err
-			}
-			if !found || current.SessionID() != acceptance.SessionID {
-				return runs.ErrRunNotFound
-			}
-			if current.State() != run.Running {
-				return runs.ErrRunFinished
-			}
-			if current.ActiveSegmentID() != acceptance.SegmentID {
-				return runs.ErrStaleSegment
 			}
 		}
 		_, err := s.db.connection(ctx).ExecContext(ctx, `INSERT INTO idempotency_records(
@@ -75,6 +43,33 @@ func (s *commandAcceptanceStore) Save(ctx context.Context, acceptance runs.Comma
 	})
 }
 
+// Runs inside the recording write: the Steer use case checked the live Segment
+// earlier, but only this transaction can see the Run the acceptance commits to.
+func (s *commandAcceptanceStore) admitSteer(ctx context.Context, acceptance runs.CommandAcceptance) (recorded bool, err error) {
+	record, err := s.Lookup(ctx, acceptance.Key)
+	if err != nil {
+		return false, err
+	}
+	switch record.Use {
+	case runs.CommandKeyForeign:
+		return false, runs.ErrCommandKeyConflict
+	case runs.CommandKeyAccepted:
+		if !record.Acceptance.Equal(acceptance) {
+			return false, runs.ErrCommandKeyConflict
+		}
+		return true, nil
+	case runs.CommandKeyUnused:
+	}
+	current, found, err := newRunStore(s.db).Run(ctx, acceptance.RunID)
+	if err != nil {
+		return false, err
+	}
+	if !found || current.SessionID() != acceptance.SessionID {
+		return false, runs.ErrRunNotFound
+	}
+	return false, runs.RequireRunningSegment(current, acceptance.SegmentID)
+}
+
 func (s *commandAcceptanceStore) SessionSteerInputs(ctx context.Context, sessionID identity.SessionID) ([]runs.CommandAcceptance, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) ([]runs.CommandAcceptance, error) {
 		rows, err := s.db.connection(ctx).QueryContext(ctx, `SELECT key FROM idempotency_records
@@ -83,16 +78,16 @@ func (s *commandAcceptanceStore) SessionSteerInputs(ctx context.Context, session
 		if err != nil {
 			return nil, err
 		}
+		defer rows.Close()
 		var keys []string
 		for rows.Next() {
 			var key string
 			if err := rows.Scan(&key); err != nil {
-				_ = rows.Close()
 				return nil, err
 			}
 			keys = append(keys, key)
 		}
-		if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		if err := rows.Err(); err != nil {
 			return nil, err
 		}
 		var inputs []runs.CommandAcceptance
@@ -110,10 +105,6 @@ func (s *commandAcceptanceStore) SessionSteerInputs(ctx context.Context, session
 	})
 }
 
-// Lookup resolves a command record by its key. A run_acceptance projects the
-// immutable acceptance and whether its original material is still referenced; a
-// generic response variant reports that the key belongs to another operation; an
-// absent key reports neither. It performs no mutation and starts no Run.
 func (s *commandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.CommandAcceptanceRecord, error) {
 	return scopedValue(ctx, s.db.read, func(ctx context.Context) (runs.CommandAcceptanceRecord, error) {
 		var (
@@ -156,8 +147,6 @@ func (s *commandAcceptanceStore) Lookup(ctx context.Context, key string) (runs.C
 	})
 }
 
-// withAcceptedMaterial attaches the Run the acceptance produced and, for an
-// applied steer, the Item that carried it.
 func (s *commandAcceptanceStore) withAcceptedMaterial(ctx context.Context, record runs.CommandAcceptanceRecord, materialRun identity.RunID) (runs.CommandAcceptanceRecord, error) {
 	acceptance := record.Acceptance
 	current, found, err := newRunStore(s.db).Run(ctx, materialRun)

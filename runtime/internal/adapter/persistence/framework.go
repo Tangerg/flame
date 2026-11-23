@@ -12,16 +12,11 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// The framework authority and original Flame business owners share one file
-// and one admission. The installation tables are indexes of committed Host
-// records; only the Host's transaction can advance them.
-
-// flameOwner names Flame's schema among the framework store's owners.
 const flameOwner = "flame"
 
 func openFrameworkDatabase(ctx context.Context, path string) (sqlite.Store, framehost.Admission, *InstallationStore, error) {
 	admission := framehost.NewAdmission()
-	owner := &frameworkOwner{}
+	owner := &frameworkOwner{admission: admission}
 	store, err := sqlite.Open(ctx, sqlite.Config{
 		Path: path, Admission: admission,
 		Owners: []sqlite.OwnerSchema{{
@@ -50,23 +45,20 @@ func openFrameworkDatabase(ctx context.Context, path string) (sqlite.Store, fram
 	return store, admission, owner.installations, nil
 }
 
-// frameworkOwner answers the framework store for Flame's schema. The store
-// calls it only after Open returns, once db and installations are bound.
 type frameworkOwner struct {
 	db            *database
+	admission     framehost.Admission
 	installations *InstallationStore
 }
 
-// references reports the releases of installation that pending checkpoints
-// and commands still depend on.
 func (o *frameworkOwner) references(ctx context.Context, executor sqlite.Reader, installation framehost.InstallationID) ([]framevalue.Digest, error) {
 	var releases []framevalue.Digest
 	err := o.db.withReader(ctx, executor, func(ctx context.Context) error {
-		checkpoints, err := newExecutorCheckpointStore(o.db).PendingCheckpointDependencies(ctx)
+		checkpoints, err := newExecutorCheckpointStore(o.db, o.admission).PendingCheckpointDependencies(ctx)
 		if err != nil {
 			return err
 		}
-		commands, err := newPluginCommandStore(o.db, nil).PendingCommandDependencies(ctx)
+		commands, err := pendingCommandDependencies(ctx, o.db)
 		if err != nil {
 			return err
 		}
@@ -80,8 +72,6 @@ func (o *frameworkOwner) references(ctx context.Context, executor sqlite.Reader,
 	return releases, err
 }
 
-// projectInstallation mirrors a framework installation change into Flame's
-// table, keeping a staged release across a change that kept the release.
 func (o *frameworkOwner) projectInstallation(ctx context.Context, executor sqlite.Executor, change framehost.InstallationChange) error {
 	return o.db.withExecutor(ctx, executor, func(ctx context.Context) error {
 		if change.After == nil {

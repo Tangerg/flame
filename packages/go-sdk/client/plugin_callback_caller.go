@@ -12,8 +12,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// PluginCallbackCaller binds background work to setup's activation and nested
-// operations to their calling-owner callback, preserving original context.
 type PluginCallbackCaller struct{ activation pluginmcp.CallbackRef }
 
 func NewPluginCallbackCaller(activation pluginmcp.CallbackRef) (*PluginCallbackCaller, error) {
@@ -50,8 +48,6 @@ func (c *PluginCallbackCaller) reference(ctx context.Context) (pluginmcp.Callbac
 	return ref, nil
 }
 
-// StreamPlugin captures the original callback and envelope before returning a
-// lazy sequence. Its empty opening conveys no remote business acknowledgement.
 func (c *PluginCallbackCaller) StreamPlugin(ctx context.Context, request protocol.CallPluginRequest, options protocol.PluginCallOptions) (struct{}, iter.Seq2[protocol.PluginStreamEvent, error], error) {
 	ref, err := c.reference(ctx)
 	if err != nil {
@@ -65,10 +61,7 @@ func (c *PluginCallbackCaller) StreamPlugin(ctx context.Context, request protoco
 		return struct{}{}, nil, err
 	}
 	request.Input = string(input.Bytes())
-	options, err = captureStreamOptions(options)
-	if err != nil {
-		return struct{}{}, nil, err
-	}
+	options = options.Clone()
 	var consumed atomic.Bool
 	return struct{}{}, func(yield func(protocol.PluginStreamEvent, error) bool) {
 		if !consumed.CompareAndSwap(false, true) {

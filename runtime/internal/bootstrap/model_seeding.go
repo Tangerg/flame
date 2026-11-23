@@ -9,11 +9,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-// seedConfiguredProvider writes config-file provider values only when the
-// durable registry has no row for that provider. Any existing row represents
-// an explicit runtime-owned value, including cleared credential/endpoint
-// fields, and wins as a whole. Callers must pass the unoverlaid durable
-// registry so an environment credential cannot masquerade as stored state.
+// Callers must pass the unoverlaid durable registry so an environment credential
+// cannot masquerade as stored state.
 func seedConfiguredProvider(ctx context.Context, registry models.ProviderRegistry, cfg config.Settings) error {
 	id := cfg.DefaultSelection.Provider()
 	_, ok, err := registry.Get(ctx, id)
@@ -50,11 +47,6 @@ type utilityRoleSeedStore interface {
 	Save(ctx context.Context, role modelref.Role) error
 }
 
-// seedUtilityRole writes the config-file utility model into the store on first
-// run (when no row exists yet), pinned to the default provider. A role already
-// persisted via models.setUtilityRole is left untouched — runtime edits win
-// over the config file. An empty / identical-to-main UtilityModel seeds
-// nothing (maintenance then runs on the main model).
 func seedUtilityRole(ctx context.Context, store utilityRoleSeedStore, cfg config.Settings) error {
 	_, present, err := store.Load(ctx)
 	if err != nil {

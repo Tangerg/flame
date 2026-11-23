@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/internal/testsupport/persistencefixture"
 
 	"github.com/Tangerg/flame/packages/go-sdk/builtin"
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
@@ -26,7 +27,7 @@ func TestOffloadedToolResultCommitsWithItsItem(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(home, "large.txt"), []byte(body), 0600); err != nil {
 		t.Fatal(err)
 	}
-	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home})
+	stores, err := persistence.Open(t.Context(), persistence.Config{DataDirectory: home, ValidateDirectory: persistencefixture.UnleasedDirectory})
 	if err != nil {
 		t.Fatal(err)
 	}

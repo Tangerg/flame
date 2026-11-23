@@ -6,24 +6,14 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
-// ToolCallInput is the pure policy input for one tool call. The arguments
-// themselves are not policy input: this gate decides from the call's safety
-// class, the scope of the file mutation it declares, and the shell command it
-// would run.
 type ToolCallInput struct {
-	Mode Mode
-	// RequireApproval is a PreToolUse hook's escalation: force a prompt for a
-	// call the mode would otherwise pass. The hook's own block and rewrite
-	// decisions are applied at the Tool boundary that runs it, not here.
+	Mode            Mode
 	RequireApproval bool
 	SafetyClass     tool.SafetyClass
 	FileMutation    tool.FileMutationScope
 	ShellCommand    string
 }
 
-// ToolCallPlan is the approval policy's verdict before any HITL interrupt is
-// executed: pass, deny, or prompt. The call payload stays with the caller that
-// supplied it — this gate never rewrites arguments.
 type ToolCallPlan struct {
 	action      GateAction
 	denial      DenialCause
@@ -38,8 +28,6 @@ func (t ToolCallPlan) SafetyClass() tool.SafetyClass { return t.safetyClass }
 func (t ToolCallPlan) Risk() tool.RiskLevel          { return t.risk }
 func (t ToolCallPlan) PromptCause() PromptCause      { return t.promptCause }
 
-// DenialCause is the policy source of a refusal. The wording a denied call
-// reports belongs to the caller that presents it.
 type DenialCause string
 
 const (
@@ -47,7 +35,6 @@ const (
 	DenialRememberedRule DenialCause = "rememberedRule"
 )
 
-// PromptCause is the policy fact an approval surface explains to a user.
 type PromptCause string
 
 const (
@@ -65,13 +52,9 @@ const (
 func (t ToolCallInput) Plan() ToolCallPlan {
 	plan := ToolCallPlan{safetyClass: t.SafetyClass}
 	action := GateFor(t.SafetyClass, t.Mode)
-	// Bypass-immune escalation: a call dangerous enough (a mutation escaping the
-	// workspace, or a high-confidence catastrophic shell command) is confirmed
-	// even under a mode that would auto-pass it (Yolo, or Balanced for
-	// file mutations). This override is not defeated by "approve everything" — the
-	// same seam a PreToolUse hook's Ask uses to force a prompt, but
-	// tool/argument-driven and built in. A remembered approval still lets a repeat
-	// call through.
+	// Bypass-immune escalation: a mutation escaping the workspace or a high-confidence
+	// catastrophic shell command is confirmed even under an auto-pass mode; a
+	// remembered approval still lets a repeat through.
 	immunity := tool.BypassImmunityFor(t.FileMutation, t.ShellCommand)
 	if action == GatePass && (t.RequireApproval || immunity != tool.BypassAllowed) {
 		action = GatePrompt
@@ -87,6 +70,7 @@ func (t ToolCallInput) Plan() ToolCallPlan {
 			plan.risk = tool.RiskHigh
 			plan.promptCause = promptCauseForBypassImmunity(immunity)
 		}
+	case GatePass:
 	}
 	return plan
 }
@@ -110,7 +94,6 @@ func (t ToolCallPlan) ApplyRule(decision Decision) (ToolCallPlan, error) {
 	return ToolCallPlan{action: GatePass, safetyClass: t.safetyClass}, nil
 }
 
-// DecisionOf maps an approve/deny boolean to the approval domain's verdict.
 func DecisionOf(approved bool) Decision {
 	if approved {
 		return Allow

@@ -7,17 +7,13 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
 
-// The Run row's JSON columns. Token accounting, a failure classification, and
-// frozen capabilities are read and written whole with the row, never queried
-// across, so they remain focused values instead of expanding into incidental
-// columns. Their explicit adapter rows keep Go field names from defining the
-// durable format.
 type runAccountingRow struct {
 	Reported         *runUsageRow `json:"reported,omitzero"`
 	UnreportedModels []string     `json:"unreportedModels,omitempty"`
@@ -42,16 +38,13 @@ type runModelRowUse struct {
 	CostNanoUSD      *int64 `json:"costNanoUsd,omitzero"`
 }
 
-// runCapabilitiesRow is the Run's frozen optional behavior. Interrupt types are
-// stored under their canonical names rather than ordinals, so inserting a type
-// into the enum cannot silently re-label stored rows.
+// Interrupt types are stored by canonical name, not ordinal, so inserting a type
+// cannot re-label stored rows.
 type runCapabilitiesRow struct {
 	ChildRuns      bool                      `json:"childRuns,omitzero"`
 	InterruptTypes []rundomain.InterruptType `json:"interruptTypes,omitempty"`
 }
 
-// encodeRunCapabilities returns the empty string for no optional capabilities,
-// keeping one representation instead of both null and an empty object.
 func encodeRunCapabilities(capabilities rundomain.Capabilities) (string, error) {
 	if err := capabilities.Validate(); err != nil {
 		return "", fmt.Errorf("encode run capabilities: %w", err)
@@ -101,8 +94,6 @@ type runProblemRow struct {
 	RetryAfterSeconds int                   `json:"retryAfterSeconds,omitzero"`
 }
 
-// metricsValues are one Run's accumulated consumption, encoded and ready to bind
-// to a statement. An empty usage string means the Run has recorded none yet.
 type metricsValues struct {
 	steps      int
 	durationNs int64
@@ -167,8 +158,6 @@ func runUsageRowOf(usage *accounting.Usage) *runUsageRow {
 	return row
 }
 
-// runEndingRow is the stored ending. The outcome column names the variant;
-// this record holds only that variant's facts.
 type runEndingRow struct {
 	Detail  string         `json:"detail,omitempty"`
 	Failure *runProblemRow `json:"failure,omitzero"`
@@ -254,11 +243,8 @@ func decodeRunEnding(outcome, encoded string) (rundomain.Ending, error) {
 	}
 }
 
-// pendingReadPolicy says whether an Waiting Run must have its root-owned
-// Pending set. Ordinary reads require it because a complete parked
-// Run is inseparable from that set. Boot recovery is the one exception: it must
-// still be able to read and terminalize a row whose pending set was lost in the
-// crash it is repairing.
+// Boot recovery is the one reader that may see a Waiting Run without its pending
+// set: it must terminalize a row whose set was lost in the crash.
 type pendingReadPolicy uint8
 
 const (
@@ -266,19 +252,10 @@ const (
 	allowMissingPendingSet
 )
 
-// scanRun decodes one complete Run row plus the joined open-interrupt payload.
-//
-// The fine [rundomain.State] is rebuilt from the coarse admission state and
-// the terminal reason beside it rather than stored a second time, and the
-// terminal facts are materialized exactly when the state says they exist — the
-// equivalence [rundomain.Run.Validate] enforces on the way in.
 func scanRun(row scanRow) (rundomain.Run, error) {
 	return scanRunRow(row, requirePendingSet)
 }
 
-// scanRunForRecovery uses the same complete durable Run decoder as every normal
-// read, but tolerates the one broken relation reconciliation exists to repair:
-// an Waiting row whose root-owned pending set is missing.
 func scanRunForRecovery(row scanRow) (rundomain.Run, error) {
 	return scanRunRow(row, allowMissingPendingSet)
 }
@@ -312,7 +289,6 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 	return value, nil
 }
 
-// runRow is one stored Run as its columns hold it.
 type runRow struct {
 	id                identity.RunID
 	sessionID         identity.SessionID
@@ -354,7 +330,7 @@ func (r runRow) snapshot() (rundomain.Snapshot, error) {
 	if err != nil {
 		return rundomain.Snapshot{}, fmt.Errorf("run %q: %w", r.id, err)
 	}
-	selection, err := modelchoice.NewWithReasoningEffort(r.provider, r.model, r.reasoningEffort)
+	selection, err := flamemodel.NewWithReasoningEffort(r.provider, r.model, r.reasoningEffort)
 	if err != nil {
 		return rundomain.Snapshot{}, fmt.Errorf("decode run %q model selection: %w", r.id, err)
 	}
@@ -362,9 +338,13 @@ func (r runRow) snapshot() (rundomain.Snapshot, error) {
 	if err != nil {
 		return rundomain.Snapshot{}, fmt.Errorf("decode run %q metrics: %w", r.id, err)
 	}
+	goalIncarnationID, _, err := goalref.ParseOptionalIncarnation(r.goalIncarnationID)
+	if err != nil {
+		return rundomain.Snapshot{}, fmt.Errorf("decode run %q goal incarnation: %w", r.id, err)
+	}
 	snapshot := rundomain.Snapshot{
 		SessionID: r.sessionID, ID: r.id, State: state, Lineage: lineage, ModelSelection: selection,
-		GoalIncarnationID: r.goalIncarnationID, ActiveSegmentID: r.activeSegmentID,
+		GoalIncarnationID: goalIncarnationID, ActiveSegmentID: r.activeSegmentID,
 		Metrics: metrics, ContextTokens: r.contextTokens,
 		Capabilities: capabilities,
 		CreatedAt:    time.Unix(0, r.createdAt).UTC(), UpdatedAt: time.Unix(0, r.updatedAt).UTC(),
@@ -384,10 +364,6 @@ func (r runRow) snapshot() (rundomain.Snapshot, error) {
 	return snapshot, nil
 }
 
-// validatePendingSet proves a waiting Run joins an intact root-owned pending
-// set. A Run carries no interrupts of its own, so the joined column is read
-// only to prove the set decodes: saying so here names the Run instead of
-// failing later wherever that set is finally read.
 func (r runRow) validatePendingSet(policy pendingReadPolicy) error {
 	if !r.interruptsSuspended.Valid {
 		if policy == requirePendingSet {
@@ -475,7 +451,6 @@ func (row runProblemRow) failure() (rundomain.Failure, error) {
 	return rundomain.Failure{Kind: row.Kind, Detail: row.Detail, DocURL: row.DocURL, RetryAfter: retryAfter}, nil
 }
 
-// messageMarkValue stores an unknown watermark as NULL.
 func messageMarkValue(mark rundomain.MessageMark) any {
 	if count, known := mark.Count(); known {
 		return count

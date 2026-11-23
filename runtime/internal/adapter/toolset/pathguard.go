@@ -7,31 +7,15 @@ import (
 	"path/filepath"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )
 
-// protectedDirs are directory names the agent must never modify, even when
-// they sit inside the workspace. Mutating .git (a hook, the
-// config) is a remote-code-execution / repo-hijack vector, so the VCS
-// metadata directory is carved read-only regardless of approval mode — the
-// standard invariant enforced on writable roots. A model that needs
-// to change version-control state uses the shell/git tooling, not a raw
-// file mutation. Kept as a list so other state dirs can join if needed.
-var protectedDirs = []string{".git"}
+// Mutating Git metadata (a hook, the config) is a remote-code-execution vector,
+// so it stays read-only regardless of approval mode.
+var protectedDirs = []string{git.MetadataDirectory}
 
-// withPathGuard wraps a file-mutating tool so a target whose
-// resolved path lies inside a [protectedDirs] directory is refused with a
-// model-facing Scope rejection instead of executed. A definite refusal keeps
-// the model able to adapt without publishing successful execution or unknown
-// effects. Resolution uses the canonical physical path, so a
-// traversal or symlink that lands in a protected directory is caught too. Apply it as
-// the OUTERMOST wrap so the check gates before any staleness/diagnostics work.
-//
-// It also translates the filesystem capability's immutable workspace boundary
-// into a model-facing refusal before any staleness or diagnostics work begins.
-// Shell/git capabilities remain the explicit route for operations outside the
-// workspace.
 func withPathGuard(inner toolcontract.Tool, root *filesystemRoot) toolcontract.Tool {
 	return decorateCall(inner, func(ctx context.Context, next toolcontract.Caller, invocation toolcontract.Invocation) (toolcontract.Result, error) {
 		paths, err := mutationPaths(inner, invocation)
@@ -54,7 +38,6 @@ func withPathGuard(inner toolcontract.Tool, root *filesystemRoot) toolcontract.T
 	})
 }
 
-// guardMutationPath checks protected directories through the pinned root.
 func guardMutationPath(root *filesystemRoot, path string) (refusal string, ok bool) {
 	resolved, err := resolveRootPath(root, path)
 	if errors.Is(err, fs.ErrPathOutsideRoot) {
@@ -69,10 +52,6 @@ func guardMutationPath(root *filesystemRoot, path string) (refusal string, ok bo
 	return "", true
 }
 
-// protectedDirHit returns the [protectedDirs] name when abs lies inside one
-// (any path component matches), else "". Walks up via filepath.Base/Dir so
-// it is separator-agnostic and matches a protected dir at any depth (a
-// nested repo's .git included).
 func protectedDirHit(abs string) string {
 	for p := abs; ; {
 		if base := filepath.Base(p); slices.Contains(protectedDirs, base) {

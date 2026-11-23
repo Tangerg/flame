@@ -6,17 +6,16 @@ import (
 	"fmt"
 	"time"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/packages/go-sdk/pagination"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
-	scheduleapp "github.com/Tangerg/flame/plugins/schedules/internal/application"
-	scheduledomain "github.com/Tangerg/flame/plugins/schedules/internal/domain"
+	"github.com/Tangerg/flame/plugins/schedules/internal/schedule"
+	"github.com/Tangerg/flame/plugins/schedules/internal/scheduling"
 	"github.com/Tangerg/flame/plugins/schedules/internal/wire"
 	framecall "github.com/Tangerg/frame/call"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
-	"github.com/samber/lo"
 )
 
 type createScheduleArgs struct {
@@ -82,27 +81,12 @@ type scheduleView struct {
 	CreatedAt       string `json:"created_at,omitempty"`
 }
 
-// Receipted execution must own the original Tool input before Domain projection.
-type scheduleOperations interface {
-	ListPage(ctx context.Context, cursor string, limit pagination.RequestedLimit) (pagination.Page[scheduledomain.Schedule], error)
-	Create(ctx context.Context, input createScheduleArgs) (scheduledomain.Schedule, error)
-	Update(ctx context.Context, input updateScheduleArgs) (scheduledomain.Schedule, error)
-	Delete(ctx context.Context, input deleteScheduleArgs) error
-}
-
 type scheduleManagementTools struct {
-	operations scheduleOperations
-	manual     func(context.Context, wire.ItemInput) (scheduleapp.RunReference, error)
+	operations toolCommands
 }
 
-func buildSchedules(operations scheduleOperations, manual func(context.Context, wire.ItemInput) (scheduleapp.RunReference, error)) ([]toolcontract.Tool, error) {
-	if lo.IsNil(operations) {
-		return nil, errors.New("schedules: tool operations are required")
-	}
-	if manual == nil {
-		return nil, errors.New("schedules: manual Run operation is required")
-	}
-	t := &scheduleManagementTools{operations: operations, manual: manual}
+func buildSchedules(operations toolCommands) ([]toolcontract.Tool, error) {
+	t := &scheduleManagementTools{operations: operations}
 	list, err := toolcontract.NewFunc[listScheduleArgs, scheduleListResponse](
 		toolcontract.FuncConfig{
 			Name:        listSchedulesTool,
@@ -141,7 +125,7 @@ func buildSchedules(operations scheduleOperations, manual func(context.Context, 
 	if err != nil {
 		return nil, err
 	}
-	manualRun, err := toolcontract.NewFunc[wire.ItemInput, scheduleapp.RunReference](
+	manualRun, err := toolcontract.NewFunc[wire.ItemInput, scheduling.RunReference](
 		toolcontract.FuncConfig{Name: runScheduleTool, Description: "Immediately run an existing schedule once, only when the user asks. Set ID to the exact schedule_id from list_schedules. Captures its current definition through the same durable manual Run operation; returned SessionID and RunID identify accepted work, not completed execution."},
 		t.run,
 	)
@@ -171,19 +155,18 @@ func (s *scheduleManagementTools) create(ctx context.Context, in createScheduleA
 	return scheduleResponse{Schedule: viewSchedule(created)}, nil
 }
 
-// draft reads an omitted zone from the host, whose zone is the person's own.
-func (in createScheduleArgs) draft(hostTimeZone func() (string, error)) (scheduledomain.Draft, error) {
-	selection, err := modelchoice.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
+func (in createScheduleArgs) draft(hostTimeZone func() (string, error)) (schedule.Draft, error) {
+	selection, err := flamemodel.NewWithReasoningEffort(in.Provider, in.Model, in.ReasoningEffort)
 	if err != nil {
-		return scheduledomain.Draft{}, fmt.Errorf("create_schedule: %w", err)
+		return schedule.Draft{}, fmt.Errorf("create_schedule: %w", err)
 	}
 	timeZone := in.TimeZone
 	if timeZone == "" {
 		if timeZone, err = hostTimeZone(); err != nil {
-			return scheduledomain.Draft{}, fmt.Errorf("create_schedule: %w: %w; set time_zone", scheduledomain.ErrInvalidTimeZone, err)
+			return schedule.Draft{}, fmt.Errorf("create_schedule: %w: %w; set time_zone", schedule.ErrInvalidTimeZone, err)
 		}
 	}
-	return scheduledomain.Draft{
+	return schedule.Draft{
 		Title:          in.Title,
 		Instructions:   in.Instructions,
 		CWD:            in.WorkspacePath,
@@ -202,12 +185,12 @@ func (s *scheduleManagementTools) update(ctx context.Context, in updateScheduleA
 	return scheduleResponse{Schedule: viewSchedule(value)}, nil
 }
 
-func (in updateScheduleArgs) command() scheduleapp.UpdateCommand {
-	return scheduleapp.UpdateCommand{ID: in.ScheduleID, ExpectedRevision: in.ExpectedRevision, Patch: scheduleapp.Patch{Title: in.Title, Instructions: in.Instructions, CWD: in.WorkspacePath, Cron: in.Cron, TimeZone: in.TimeZone, Enabled: in.Enabled, ModelSelection: modelchoice.Patch{Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort}}}
+func (in updateScheduleArgs) command() scheduling.UpdateCommand {
+	return scheduling.UpdateCommand{ID: in.ScheduleID, ExpectedRevision: in.ExpectedRevision, Patch: scheduling.Patch{Title: in.Title, Instructions: in.Instructions, CWD: in.WorkspacePath, Cron: in.Cron, TimeZone: in.TimeZone, Enabled: in.Enabled, ModelSelection: flamemodel.Patch{Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort}}}
 }
 
-func (s *scheduleManagementTools) run(ctx context.Context, in wire.ItemInput) (scheduleapp.RunReference, error) {
-	value, err := s.manual(ctx, in)
+func (s *scheduleManagementTools) run(ctx context.Context, in wire.ItemInput) (scheduling.RunReference, error) {
+	value, err := s.operations.RunNow(ctx, in)
 	return value, commandFailure(runScheduleTool, err)
 }
 
@@ -226,7 +209,6 @@ const (
 	runScheduleTool    = "run_schedule"
 )
 
-// Command refusals are definite; unknown storage or acceptance failures are not.
 func commandFailure(name string, cause error) error {
 	if cause == nil {
 		return nil
@@ -236,13 +218,13 @@ func commandFailure(name string, cause error) error {
 		return err
 	}
 	_, receipted := errors.AsType[*framecall.Refusal](err)
-	if _, refused := classify(cause); errors.Is(err, scheduleapp.ErrRefused) || receipted || refused {
+	if _, refused := classify(cause); errors.Is(err, scheduling.ErrRefused) || receipted || refused {
 		return pluginsdk.DefiniteToolFailure(err)
 	}
 	return err
 }
 
-func viewSchedule(sc scheduledomain.Schedule) scheduleView {
+func viewSchedule(sc schedule.Schedule) scheduleView {
 	return scheduleView{
 		ScheduleID:      sc.ID(),
 		Revision:        sc.Revision(),

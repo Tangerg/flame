@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/plugin/modelprovider"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
-	models "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	modelapp "github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -27,10 +27,10 @@ import (
 	"github.com/google/uuid"
 )
 
-func (p *ModelProviders) OpenEmbedding(ctx context.Context, selection modelchoice.Selection, connection modelprovider.Connection) (_ models.ResolvedEmbedding, returned error) {
+func (p *ModelProviders) OpenEmbedding(ctx context.Context, selection flamemodel.Selection, connection modelprovider.Connection) (_ modeladapter.ResolvedEmbedding, returned error) {
 	use, profile, err := p.openUse(ctx, connection)
 	if err != nil {
-		return models.ResolvedEmbedding{}, err
+		return modeladapter.ResolvedEmbedding{}, err
 	}
 	defer func() {
 		if returned != nil {
@@ -39,25 +39,25 @@ func (p *ModelProviders) OpenEmbedding(ctx context.Context, selection modelchoic
 	}()
 	ctx, leave, err := use.enter(ctx)
 	if err != nil {
-		return models.ResolvedEmbedding{}, err
+		return modeladapter.ResolvedEmbedding{}, err
 	}
 	defer leave()
 	if profile.Embedding == nil {
-		return models.ResolvedEmbedding{}, modelapp.ErrEmbeddingUnsupported
+		return modeladapter.ResolvedEmbedding{}, modelapp.ErrEmbeddingUnsupported
 	}
 	method, err := modelprovider.OpenEmbeddingMethod()
 	if err != nil {
-		return models.ResolvedEmbedding{}, err
+		return modeladapter.ResolvedEmbedding{}, err
 	}
 	opened, err := providerMethod(ctx, use, method, uuid.NewString(), modelprovider.Open{Connection: connection, Model: selection.Model()})
 	if err != nil {
-		return models.ResolvedEmbedding{}, err
+		return modeladapter.ResolvedEmbedding{}, err
 	}
 	use.handle = opened.Handle
 	if err := opened.Validate(); err != nil || opened.Provider != selection.Provider() || opened.Model != selection.Model() {
-		return models.ResolvedEmbedding{}, errors.New("model providers: invalid embedding construction")
+		return modeladapter.ResolvedEmbedding{}, errors.New("model providers: invalid embedding construction")
 	}
-	return models.NewResolvedEmbedding(&providerEmbedding{use: use}, opened.Space, models.Pricing(profile.ID, profile.Models), use.Close)
+	return modeladapter.NewResolvedEmbedding(&providerEmbedding{use: use}, opened.Space, modeladapter.Pricing(profile.ID, profile.Models), use.Close)
 }
 
 func (p *ModelProviders) RemoteModels(ctx context.Context, connection modelprovider.Connection) (_ []string, returned error) {
@@ -140,8 +140,6 @@ func (p *streamingProviderChat) Stream(ctx context.Context, request *chat.Reques
 
 type providerStream = iter.Seq2[pluginmcp.StreamValue[scopewire.ResponseDelta, modelprovider.StreamReceipt], error]
 
-// openStream admits the request and binds the provider's stream method on a
-// borrowed session. Release returns the borrow, then leaves the provider use.
 func (p *streamingProviderChat) openStream(ctx context.Context, request *chat.Request) (_ providerStream, _ func() error, err error) {
 	if err := p.use.admitRequest(ctx, request); err != nil {
 		return nil, nil, err
@@ -191,9 +189,6 @@ func (p *streamingProviderChat) openStream(ctx context.Context, request *chat.Re
 	return method.StreamWithMetadata(borrowed.Context(), binding, p.use.owner.config.Callbacks, limits, pluginmcp.CommandID(caller.ID), input, sdk.ParamsBase{}), release, nil
 }
 
-// relayProviderStream forwards deltas as they arrive, but holds the finishing
-// delta until the provider's receipt confirms the exact response: a consumer
-// can promote a generation as soon as it sees that delta.
 func relayProviderStream(sender *modelStreamSender, stream providerStream) {
 	var received chat.ResponseAccumulator
 	var terminal *chat.ResponseDelta
@@ -202,8 +197,8 @@ func relayProviderStream(sender *modelStreamSender, stream providerStream) {
 			sender.fail(unconfirmedProvider(err))
 			return
 		}
-		if value.Chunk != nil {
-			delta := (*chat.ResponseDelta)(value.Chunk)
+		if chunk, ok := value.Chunk(); ok {
+			delta := (*chat.ResponseDelta)(&chunk)
 			if err := received.Add(delta); err != nil {
 				sender.fail(unconfirmedProvider(err))
 				return
@@ -225,17 +220,22 @@ func relayProviderStream(sender *modelStreamSender, stream providerStream) {
 				return
 			}
 		}
-		if err := value.Result.VerifyResponse(response); err != nil {
+		receipt, ok := value.Result()
+		if !ok {
+			sender.fail(unconfirmedProvider(pluginmcp.ErrStreamUnconfirmed))
+			return
+		}
+		if err := receipt.VerifyResponse(response); err != nil {
 			sender.fail(unconfirmedProvider(err))
 			return
 		}
 		if terminal != nil && !sender.send(terminal, nil) {
 			return
 		}
-		sender.fail(providerFailure(value.Result.Failure))
+		sender.fail(providerFailure(receipt.Failure))
 		return
 	}
-	sender.fail(unconfirmedProvider(errors.New("model provider: missing stream outcome")))
+	sender.fail(unconfirmedProvider(pluginmcp.ErrStreamUnconfirmed))
 }
 
 type providerCounter struct{ use *providerUse }
@@ -325,6 +325,7 @@ func providerFailure(failure *modelprovider.Failure) error {
 		kind = run.FailureProviderRejected
 	case modelprovider.ProviderUnavailable:
 		kind = run.FailureProviderUnavailable
+	case modelprovider.Internal:
 	}
 	var delay time.Duration
 	if kind.AllowsRetryAfter() {
@@ -354,6 +355,7 @@ func (u *providerUse) futureRequestFits(ctx context.Context, request *chat.Reque
 	}
 	return u.requestFits(ctx, request)
 }
+
 func (u *providerUse) requestFits(ctx context.Context, request *chat.Request) (bool, error) {
 	if request == nil {
 		return false, errors.New("model provider: request is required")
@@ -378,6 +380,7 @@ func (u *providerUse) requestFits(ctx context.Context, request *chat.Request) (b
 	}
 	return true, nil
 }
+
 func (u *providerUse) admitRequest(ctx context.Context, request *chat.Request) error {
 	fits, err := u.requestFits(ctx, request)
 	if err != nil {

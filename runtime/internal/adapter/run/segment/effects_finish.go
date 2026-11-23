@@ -13,6 +13,7 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
+	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -20,37 +21,34 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const (
+	titleMaintenance      = "title"
+	checkpointMaintenance = "checkpoint"
+)
+
 type sessionTitles interface {
 	PrepareGeneratedTitle(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) (*sessions.GeneratedTitle, error)
 }
 
-// checkpoints anchors the working tree at a terminal run boundary.
 type checkpoints interface {
 	Snapshot(ctx context.Context, sessionID identity.SessionID, cwd string, runID identity.RunID) error
 }
 
-// taskLauncher starts request-detached work owned by its component lifecycle.
 type taskLauncher interface {
 	Start(parent context.Context, task func(context.Context)) bool
 }
 
-// TitleMaintenance is the generated-title capability.
 type TitleMaintenance struct {
 	Sessions sessionTitles
 	Model    modeladapter.AuxiliaryResolver
 	Tasks    taskLauncher
 }
 
-// FinalizerConfig declares the two post-segment maintenance features. A
-// Runtime without file checkpoints supplies checkpoints that snapshot nothing.
 type FinalizerConfig struct {
 	Checkpoints checkpoints
 	Titles      TitleMaintenance
 }
 
-// Finalizer owns post-boundary maintenance. It is deliberately separate from
-// durable Effects because neither title generation nor workspace snapshots
-// participate in the Run transaction.
 type Finalizer struct {
 	checkpoints   checkpoints
 	sessionTitles sessionTitles
@@ -82,13 +80,8 @@ func NewFinalizer(cfg FinalizerConfig) (*Finalizer, error) {
 	}, nil
 }
 
-// Finish establishes the terminal file boundary before returning, then starts
-// title generation off the live path. The checkpoint is a sequencing fence: the
-// run admission remains held by the caller until it completes, so a following
-// run cannot write into the preceding run's snapshot. Title generation does not
-// define the file boundary and may continue asynchronously. A parked Run skips
-// the checkpoint, but it can still title its Session from the immutable opening
-// user text so a waiting conversation remains discoverable after process exit.
+// The checkpoint is a sequencing fence: admission stays held until it completes so
+// a following run cannot write into this run's snapshot.
 func (f *Finalizer) Finish(ctx context.Context, fin runs.Finish) error {
 	needsSnapshot := !fin.Parked && fin.WorkspaceCWD != ""
 	needsTitle := strings.TrimSpace(fin.OpeningUserText) != ""
@@ -99,7 +92,7 @@ func (f *Finalizer) Finish(ctx context.Context, fin runs.Finish) error {
 	ctx = executionctx.WithInvocationOwner(ctx, "")
 	var errs []error
 	if needsSnapshot {
-		if err := observeSegmentMaintenance(ctx, fin, "checkpoint", func(ctx context.Context) error {
+		if err := observeSegmentMaintenance(ctx, fin, checkpointMaintenance, func(ctx context.Context) error {
 			return f.snapshot(ctx, fin.SessionID, fin.WorkspaceCWD, fin.RunID)
 		}); err != nil {
 			errs = append(errs, err)
@@ -118,27 +111,25 @@ func (f *Finalizer) Finish(ctx context.Context, fin runs.Finish) error {
 	}
 	if !f.tasks.Start(ctx, func(ctx context.Context) {
 		defer claim.Release()
-		// The async title error has no caller to return to; without this the
-		// span is its only report and reaches no operator.
-		if err := observeSegmentMaintenance(ctx, fin, "title", func(ctx context.Context) error {
+		if err := observeSegmentMaintenance(ctx, fin, titleMaintenance, func(ctx context.Context) error {
 			return f.title(ctx, claim, fin.SessionID, fin.OpeningUserText)
 		}); err != nil {
-			slog.WarnContext(ctx, "segment: maintain session title", "run.id", fin.RunID, "error", err)
+			slog.WarnContext(ctx, "segment: maintain session title", telemetry.RunID(fin.RunID), telemetry.Error(err))
 		}
 	}) {
 		claim.Release()
 		rejected := fmt.Errorf("segment: maintenance for run %q was rejected during shutdown", fin.RunID)
-		errs = append(errs, observeSegmentMaintenance(ctx, fin, "title", func(context.Context) error { return rejected }))
+		errs = append(errs, observeSegmentMaintenance(ctx, fin, titleMaintenance, func(context.Context) error { return rejected }))
 	}
 	return errors.Join(errs...)
 }
 
 func observeSegmentMaintenance(ctx context.Context, fin runs.Finish, operation string, maintenance func(context.Context) error) error {
-	ctx, span := otel.Tracer(runsegmentTracerName).Start(ctx, "run segment maintenance",
+	ctx, span := otel.Tracer(instrumentationName).Start(ctx, "run segment maintenance",
 		trace.WithSpanKind(trace.SpanKindInternal),
 		trace.WithAttributes(
-			attribute.String("run.id", fin.RunID.String()),
-			attribute.String("gen_ai.conversation.id", fin.SessionID.String()),
+			telemetry.RunIDKey.String(fin.RunID.String()),
+			telemetry.SessionIDKey.String(fin.SessionID.String()),
 			attribute.String("maintenance.operation", operation),
 			attribute.Bool("run.parked", fin.Parked),
 		),

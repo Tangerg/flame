@@ -11,9 +11,8 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 )
 
-// Runtime is the terminal's complete consumer surface. Feature-specific
-// capabilities remain separate so an unavailable negotiated feature is nil
-// instead of a partially functioning Runtime method set.
+// Feature-specific capabilities stay separate so an unavailable negotiated feature
+// is nil instead of a partially functioning method set.
 type Runtime interface {
 	PrepareInput(context.Context, authoring.Message) ([]protocol.ContentBlock, error)
 	ListSessions(context.Context, conversation.SessionQuery) (conversation.SessionPage, error)
@@ -30,7 +29,6 @@ type Runtime interface {
 	SubscribeRun(context.Context, conversation.SubscribeRun) (conversation.SegmentStream, error)
 	SteerRun(context.Context, authoring.SteerRun) (protocol.SteerRunResponse, error)
 	CancelRun(context.Context, conversation.CancelRun) (conversation.RunCancellation, error)
-	// ListModels may return discovered models and provider-specific errors together.
 	ListModels(context.Context) ([]protocol.Model, error)
 	ApprovalPolicy
 }
@@ -106,8 +104,6 @@ type Skills interface {
 	Reject(context.Context, workspace.SkillProposalReference) error
 }
 
-// Plugins lists installations and calls their contributions. A call carrying
-// a command identity is the durable dispatch of a staged mutation.
 type Plugins interface {
 	ListPlugins(context.Context) ([]protocol.PluginInstallation, error)
 	CallPlugin(context.Context, protocol.CallPluginRequest, authoring.CommandID) (*protocol.CallPluginResponse, error)

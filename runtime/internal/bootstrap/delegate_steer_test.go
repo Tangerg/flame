@@ -13,16 +13,6 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 )
 
-// TestSteeringARootMidDelegationLandsAfterTheChildResult steers a root Run while
-// its delegated child is still executing.
-//
-// Steering is addressed to a tree, and the tree's root is the only member that
-// owns the conversation the guidance belongs to — runs.steer refuses a child
-// outright. So a steer submitted while the root is parked on a delegate Tool
-// has to survive the wait and arrive at the root's next model request, behind
-// the Tool result that request was made to carry. Landing it earlier would put
-// a User turn between a Tool call and its result, which is a model context no
-// provider is required to accept.
 func TestSteeringARootMidDelegationLandsAfterTheChildResult(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
@@ -102,8 +92,6 @@ func TestSteeringARootMidDelegationLandsAfterTheChildResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Accepted while the root is parked on the delegate Tool: a tree with work in
-	// flight is exactly when a user reaches for steering.
 	if _, steerErr := api.SteerRun(ctx, protocol.SteerRunRequest{
 		RunID:             started.RunID,
 		ExpectedSegmentID: root.ActiveSegmentID,
@@ -139,8 +127,6 @@ func TestSteeringARootMidDelegationLandsAfterTheChildResult(t *testing.T) {
 			steerAt, toolResultAt)
 	}
 
-	// The child is not separately steerable: the conversation the guidance joins
-	// belongs to the root.
 	childRunID := ""
 	for _, event := range observed {
 		if event.RunID != started.RunID {
@@ -154,8 +140,6 @@ func TestSteeringARootMidDelegationLandsAfterTheChildResult(t *testing.T) {
 		RunID: childRunID, ExpectedSegmentID: "seg_child",
 		Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: guidance}},
 	})
-	// By name, not by any failure: a wrong segment id or a finished run would
-	// also refuse, and neither would say that the child is the wrong addressee.
 	if !errors.Is(steerErr, protocol.ErrRunNotRoot) {
 		t.Fatalf("steering a child Run = %v, want run_not_root", steerErr)
 	}

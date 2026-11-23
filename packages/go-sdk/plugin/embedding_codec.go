@@ -8,8 +8,6 @@ import (
 	"github.com/Tangerg/frame/value"
 )
 
-// Vectors are binary32 model outputs. Their wire projection contains explicit
-// JSON numbers; conversion to binary32 occurs only at this model boundary.
 type embeddingProjection struct {
 	Space   string           `json:"space"`
 	Vectors [][]value.Number `json:"vectors"`

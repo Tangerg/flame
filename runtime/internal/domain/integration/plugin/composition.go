@@ -20,8 +20,6 @@ type CompositionRecord struct {
 	Members  []CompositionMember
 }
 
-// OrderedComposition owns consumer-selected outer-to-inner order. Releases are
-// captured when a call binds, so editing this choice cannot retarget that call.
 type OrderedComposition struct{ record CompositionRecord }
 
 func NewOrderedComposition(record CompositionRecord) (OrderedComposition, error) {

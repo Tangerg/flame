@@ -16,33 +16,20 @@ func newTranscriptStore(db *database) *TranscriptStore {
 	return &TranscriptStore{db: db}
 }
 
-// AppendItem records a new Item. Re-appending the identical Item is a no-op;
-// any other Item under the same identity is a conflict, because only a named
-// transition may change a durable Item.
 func (t *TranscriptStore) AppendItem(ctx context.Context, item transcript.Item) error {
 	return t.writeItem(ctx, item, appendPrecondition(), nil)
 }
 
-// ReplaceItem atomically replaces expected with its decided state only while
-// the durable Item still equals the immutable value the application planned
-// against. This is the transcript-side compare-and-swap used by tree
-// transformations: a racing continuation can never have its newer completion
-// overwritten by a cancellation built from an older parked projection.
+// A racing continuation's newer completion can never be overwritten by a
+// cancellation built from an older parked projection.
 func (t *TranscriptStore) ReplaceItem(ctx context.Context, change transcript.Replacement) error {
 	return t.writeItem(ctx, change.State(), replacePrecondition(change.Expected()), change.ToolResult())
 }
 
-// SettleItem applies a ToolCall settlement. Its running state is durable only
-// when a park or child admission wrote it, so an absent row means that state
-// never left the executor; a present row must still equal it.
 func (t *TranscriptStore) SettleItem(ctx context.Context, settlement transcript.Replacement) error {
 	return t.writeItem(ctx, settlement.State(), settlePrecondition(settlement.Expected()), settlement.ToolResult())
 }
 
-// itemPrecondition is the durable row a writer planned against: none for a new
-// Item, otherwise the exact Item it read. A settlement also admits an absent
-// row because its running state is durable only when a park or child admission
-// wrote it.
 type itemPrecondition struct {
 	expected     *transcript.Item
 	admitsAbsent bool
@@ -58,8 +45,6 @@ func settlePrecondition(expected transcript.Item) itemPrecondition {
 	return itemPrecondition{expected: &expected, admitsAbsent: true}
 }
 
-// admit reports whether the durable row already holds item, or why the planned
-// write no longer applies.
 func (p itemPrecondition) admit(item, current transcript.Item, found bool) (bool, error) {
 	switch {
 	case !found && !p.admitsAbsent:
@@ -115,8 +100,6 @@ func (t *TranscriptStore) writeItem(ctx context.Context, item transcript.Item, p
 	})
 }
 
-// storedItem reads one Item as written, with an offloaded result still its
-// preview, which is the form every writer holds.
 func (t *TranscriptStore) storedItem(ctx context.Context, itemID identity.ItemID) (transcript.Item, bool, error) {
 	return scopedPair(ctx, t.db.read, func(ctx context.Context) (transcript.Item, bool, error) {
 		var stored storedTranscriptRow
@@ -170,8 +153,6 @@ func (t *TranscriptStore) writeToolResult(ctx context.Context, itemID identity.I
 	return nil
 }
 
-// Item resolves one durable transcript Item by its globally unique identity.
-// The returned value is the same fully hydrated projection as List/Page reads.
 func (t *TranscriptStore) Item(ctx context.Context, itemID identity.ItemID) (transcript.Item, bool, error) {
 	return scopedPair(ctx, t.db.read, func(ctx context.Context) (transcript.Item, bool, error) {
 		if err := itemID.Validate(); err != nil {
@@ -190,8 +171,6 @@ func (t *TranscriptStore) Item(ctx context.Context, itemID identity.ItemID) (tra
 	})
 }
 
-// DeleteRun removes one run's items from a session's history. The Run's own row
-// belongs to the run store; this store owns the item log.
 func (t *TranscriptStore) DeleteRun(ctx context.Context, sessionID identity.SessionID, runID identity.RunID) error {
 	if err := validateResource("delete history Run", sessionID); err != nil {
 		return err
@@ -206,6 +185,7 @@ func (t *TranscriptStore) DeleteRun(ctx context.Context, sessionID identity.Sess
 		return nil
 	})
 }
+
 func (t *TranscriptStore) DeleteSession(ctx context.Context, sessionID identity.SessionID) error {
 	if err := validateResource("delete history Session", sessionID); err != nil {
 		return err
@@ -219,7 +199,6 @@ func (t *TranscriptStore) DeleteSession(ctx context.Context, sessionID identity.
 	})
 }
 
-// List returns a session's whole item history in durable append order.
 func (t *TranscriptStore) List(ctx context.Context, sessionID identity.SessionID) ([]transcript.Item, error) {
 	sequenced, err := t.PageSessionItems(ctx, sessionID, transcript.OldestFirst, 0, 0)
 	if err != nil {
@@ -232,9 +211,6 @@ func (t *TranscriptStore) List(ctx context.Context, sessionID identity.SessionID
 	return out, nil
 }
 
-// ListStored returns a session's Items as written, in durable append order:
-// an offloaded Tool result keeps its preview instead of the joined body. A
-// portable Session snapshot captures this form beside the bodies it offloads.
 func (t *TranscriptStore) ListStored(ctx context.Context, sessionID identity.SessionID) ([]transcript.Item, error) {
 	return scopedValue(ctx, t.db.read, func(ctx context.Context) ([]transcript.Item, error) {
 		rows, err := t.db.connection(ctx).QueryContext(ctx, `SELECT `+storedTranscriptColumns+` `+storedTranscriptFrom+`
@@ -243,9 +219,7 @@ func (t *TranscriptStore) ListStored(ctx context.Context, sessionID identity.Ses
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list stored history items: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		var out []transcript.Item
 		for rows.Next() {
 			var stored storedTranscriptRow
@@ -269,15 +243,6 @@ func (t *TranscriptStore) ListStored(ctx context.Context, sessionID identity.Ses
 	})
 }
 
-// PageSessionItems returns one page of a session's history along the durable
-// sequence, in the direction order names. fromSequence is the position a previous
-// page ended at; zero is no anchor, which is exact because the sequence is
-// 1-based — so the same zero means "from the beginning" reading forwards and "from
-// the end" reading backwards. A zero limit reads to the end.
-//
-// The bound is applied by the query, not by the caller: seeking past an anchor and
-// stopping at a limit is what keeps a long session's history out of memory when
-// only a page of it was asked for.
 func (t *TranscriptStore) PageSessionItems(ctx context.Context, sessionID identity.SessionID, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error) {
 	if err := validateResource("page Session history", sessionID); err != nil {
 		return nil, err
@@ -285,9 +250,6 @@ func (t *TranscriptStore) PageSessionItems(ctx context.Context, sessionID identi
 	return t.pageItems(ctx, `h.session_id = ?`, sessionID, order, fromSequence, limit)
 }
 
-// PageRunItems is the same page over one run's own items. The run id needs no
-// session beside it: it identifies exactly one run, and a run belongs to one
-// session.
 func (t *TranscriptStore) PageRunItems(ctx context.Context, runID identity.RunID, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error) {
 	if err := validateResource("page Run history", runID); err != nil {
 		return nil, err
@@ -295,9 +257,6 @@ func (t *TranscriptStore) PageRunItems(ctx context.Context, runID identity.RunID
 	return t.pageItems(ctx, `h.run_id = ?`, runID, order, fromSequence, limit)
 }
 
-// PageRunTreeItems returns one Run's items plus every descendant's, using the
-// durable parent edge as the subtree authority. The transcript never infers
-// lineage from event order or spawning-item contents.
 func (t *TranscriptStore) PageRunTreeItems(ctx context.Context, runID identity.RunID, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error) {
 	if err := validateResource("page Run-tree history", runID); err != nil {
 		return nil, err
@@ -315,6 +274,7 @@ func (t *TranscriptStore) PageRunTreeItems(ctx context.Context, runID identity.R
 		SELECT run_id FROM subtree
 	)`, runID, order, fromSequence, limit)
 }
+
 func (t *TranscriptStore) pageItems(ctx context.Context, scope string, subject any, order transcript.SequenceOrder, fromSequence int64, limit int) ([]transcript.SequencedItem, error) {
 	return scopedValue(ctx, t.db.read, func(ctx context.Context) ([]transcript.SequencedItem, error) {
 		if err := order.Validate(); err != nil {
@@ -345,9 +305,7 @@ func (t *TranscriptStore) pageItems(ctx context.Context, scope string, subject a
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: list history items: %w", err)
 		}
-		defer func() {
-			_ = rows.Close()
-		}()
+		defer rows.Close()
 		var out []transcript.SequencedItem
 		for rows.Next() {
 			var stored storedTranscriptRow

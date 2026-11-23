@@ -17,12 +17,12 @@ var (
 	ErrChanged      = errors.New("file input: source changed")
 )
 
-// The limit and observed size remain available for consumer presentation
-// without changing the shared rejection identity.
 type FileSizeLimitError struct {
 	Size  int64
 	Limit int64
 }
+
+var errRootRequired = errors.New("file input: root is required")
 
 func (s FileSizeLimitError) Error() string {
 	return fmt.Sprintf("file input: source uses %d bytes; limit is %d", s.Size, s.Limit)
@@ -30,7 +30,6 @@ func (s FileSizeLimitError) Error() string {
 
 func (s FileSizeLimitError) Unwrap() error { return ErrFileTooLarge }
 
-// A zero limit leaves size admission to the caller.
 func OpenFile(path string, maximumBytes int64) (*os.File, os.FileInfo, error) {
 	return open(
 		func() (os.FileInfo, error) { return os.Stat(path) },
@@ -39,15 +38,13 @@ func OpenFile(path string, maximumBytes int64) (*os.File, os.FileInfo, error) {
 	)
 }
 
-// The caller's earlier lstat/stat decision stays authoritative across the open boundary.
 func OpenFileExpected(path string, expected os.FileInfo, maximumBytes int64) (*os.File, os.FileInfo, error) {
 	return openExpected(expected, func() (*os.File, error) { return openPath(path) }, maximumBytes)
 }
 
-// File admission must retain the root's traversal and symlink confinement.
 func OpenFileAt(root *os.Root, name string, maximumBytes int64) (*os.File, os.FileInfo, error) {
 	if root == nil {
-		return nil, nil, errors.New("file input: root is required")
+		return nil, nil, errRootRequired
 	}
 	return open(
 		func() (os.FileInfo, error) { return root.Stat(name) },
@@ -63,7 +60,7 @@ func OpenFileAtExpected(
 	maximumBytes int64,
 ) (*os.File, os.FileInfo, error) {
 	if root == nil {
-		return nil, nil, errors.New("file input: root is required")
+		return nil, nil, errRootRequired
 	}
 	return openExpected(expected, func() (*os.File, error) { return openRootPath(root, name) }, maximumBytes)
 }
@@ -129,9 +126,8 @@ func validate(info os.FileInfo, maximumBytes int64) error {
 	return nil
 }
 
-// SameVersion reports whether two observations identify the same unchanged
-// filesystem object. It is stricter than os.SameFile because content readers
-// also depend on size, mode, and modification time remaining stable.
+// Stricter than os.SameFile because content readers also depend on size, mode and
+// modification time remaining stable.
 func SameVersion(left, right os.FileInfo) bool {
 	return left != nil && right != nil &&
 		os.SameFile(left, right) &&
@@ -140,20 +136,17 @@ func SameVersion(left, right os.FileInfo) bool {
 		left.ModTime().Equal(right.ModTime())
 }
 
-// VerifyPathVersion reports whether file and path still identify the unchanged
-// regular file returned by OpenFile or OpenFileExpected. Call it after consuming a
-// complete value so an in-place mutation or path replacement cannot publish a
-// torn snapshot.
+// Call it after consuming a complete value so an in-place mutation or path
+// replacement cannot publish a torn snapshot.
 func VerifyPathVersion(file *os.File, opened os.FileInfo, path string) error {
 	return verifyVersion(file, opened, func() (os.FileInfo, error) {
 		return os.Stat(path)
 	})
 }
 
-// VerifyAtVersion is VerifyPathVersion for a name confined beneath root.
 func VerifyAtVersion(file *os.File, opened os.FileInfo, root *os.Root, name string) error {
 	if root == nil {
-		return errors.New("file input: root is required")
+		return errRootRequired
 	}
 	return verifyVersion(file, opened, func() (os.FileInfo, error) {
 		return root.Stat(name)

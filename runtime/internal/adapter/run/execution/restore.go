@@ -21,8 +21,6 @@ func hasUnknownEffects(process scoperun.ProcessInspection) bool {
 }
 
 func (i *interactionSession) validateContinuationTree(ctx context.Context, continuation runs.ExecutionContinuation, checkpoint interactionCheckpointState, accepted bool) error {
-	// A retained Unknown settlement is a restorable fact to the Engine; refusing
-	// to resume on top of one is this Runtime's policy, so it stays here.
 	inspection, err := checkpoint.tree.Inspect()
 	if err != nil {
 		return err
@@ -135,11 +133,9 @@ func (i *interactionSession) restoredExecutionMembers(
 	snapshots map[scoperun.ProcessID]scoperun.ProcessInspection,
 	rootID scoperun.ProcessID,
 ) (map[scoperun.ProcessID]runs.ExecutionMember, error) {
-	i.state.mu.Lock()
-	deployments := i.state.deployments
-	i.state.mu.Unlock()
-	if deployments == nil {
-		return nil, errors.New("execution: Interaction deployments are unavailable")
+	deployments, err := i.state.boundDeployments()
+	if err != nil {
+		return nil, err
 	}
 	members := make(map[scoperun.ProcessID]runs.ExecutionMember, len(continuation.Members))
 	for _, member := range continuation.Members {
@@ -197,9 +193,9 @@ func (i *interactionSession) restoreDelegateCalls(
 	snapshots map[scoperun.ProcessID]scoperun.ProcessInspection,
 	members map[scoperun.ProcessID]runs.ExecutionMember,
 ) (map[delegateCallIdentity]*managedDelegateCall, map[scoperun.ProcessID]*managedDelegateCall, error) {
-	deployments := i.state.deployments
-	if deployments == nil {
-		return nil, nil, errors.New("execution: Interaction programs are unavailable")
+	deployments, err := i.state.boundDeployments()
+	if err != nil {
+		return nil, nil, err
 	}
 	calls := make(map[delegateCallIdentity]*managedDelegateCall)
 	children := make(map[scoperun.ProcessID]*managedDelegateCall)
@@ -252,8 +248,6 @@ func nearestProductMember(process scoperun.ProcessID, members map[scoperun.Proce
 	return runs.ExecutionMember{}, false
 }
 
-// delegateChildSnapshot is the child Process the attribution names, keyed
-// under its parent exactly as the interaction state recorded it.
 func delegateChildSnapshot(snapshots map[scoperun.ProcessID]scoperun.ProcessInspection, parentID scoperun.ProcessID, child interaction.DelegateAttribution) (scoperun.ProcessInspection, error) {
 	childSnapshot, exists := snapshots[child.ProcessID()]
 	if !exists {
@@ -327,14 +321,10 @@ func restoreManagedDelegateCall(
 		callID:            callID,
 		binding:           binding, childProcessID: child.ProcessID(),
 		parentToolFinished: !pending,
-		// Closed children have already published their product terminal. Scope
-		// retains their result until the waiting parent can commit its Tool batch.
-		segmentProjected: !survives,
+		segmentProjected:   !survives,
 	}, nil
 }
 
-// parentToolPending reports whether the parent still awaits the delegating
-// Tool call, and refuses one that names a different model call.
 func parentToolPending(parent runs.ExecutionMember, callID runs.InvocationID, sourceCallID string) (bool, error) {
 	for _, drained := range parent.DrainedTools {
 		if drained.CallID != callID.String() {

@@ -2,9 +2,6 @@ package bootstrap
 
 import "sync"
 
-// notificationRelay synchronously connects an in-process producer to one
-// observer. It is composition wiring: values published before observation are
-// intentionally dropped, and installing a new observer replaces the old one.
 type notificationRelay[T any] struct {
 	publish func(T)
 	observe func(func(T))

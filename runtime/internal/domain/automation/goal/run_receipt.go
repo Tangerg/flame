@@ -1,18 +1,18 @@
 package goal
 
 import (
-	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"time"
+
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
-// A receipt addresses one committed terminal Run at the Goal version present
-// when it ended. The terminal Run remains the owner of its outcome and usage.
 type RunReceipt struct {
 	RunID         identity.RunID
 	SessionID     identity.SessionID
-	IncarnationID string
+	IncarnationID goalref.IncarnationID
 	Revision      uint64
 	Outcome       run.Outcome
 	FinishedAt    time.Time

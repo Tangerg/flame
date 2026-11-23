@@ -40,7 +40,6 @@ func parseMCPServerName(raw string) (mcpserver.ServerName, error) {
 	return name, nil
 }
 
-// mcpServerIDFromWire is the only translation of a wire server identity.
 func mcpServerIDFromWire(in protocol.MCPServerID) (mcpserver.ID, error) {
 	var origin mcpserver.Origin
 	switch in.Origin.Type {

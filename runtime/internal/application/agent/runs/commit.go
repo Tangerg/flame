@@ -18,35 +18,25 @@ import (
 type StateChange string
 
 const (
-	// StateUnchanged is the meaningful zero value: the commit advances other
-	// durable Run facts without moving the lifecycle state.
 	StateUnchanged   StateChange = ""
 	StateSuspend     StateChange = "suspend"
 	StateTerminalize StateChange = "terminalize"
 )
 
-// ModelInvocationCommit is one monotonic transition in the durable invocation
-// journal. StartedAt is repeated on terminal transitions so persistence can
-// compare the exact attempt instead of updating whichever row happens to share
-// CallID.
+// StartedAt repeats on terminal transitions so persistence compares the exact
+// attempt rather than any row sharing CallID.
 type ModelInvocationCommit struct {
 	Purpose                  run.ModelCallPurpose
 	KnownResponse            *corechat.Response
 	FirstOutputLatencyMillis *int64
-	// Usage is the provider's own report for this call, so an unsupported
-	// breakdown stays absent rather than being stored as a reported zero.
-	Usage      *corechat.Usage
-	CallID     string
-	SegmentID  identity.SegmentID
-	State      modelref.InvocationState
-	StartedAt  time.Time
-	FinishedAt time.Time
+	Usage                    *corechat.Usage
+	CallID                   string
+	SegmentID                identity.SegmentID
+	State                    modelref.InvocationState
+	StartedAt                time.Time
+	FinishedAt               time.Time
 }
 
-// ToolInvocationState records whether one model-requested Tool call has only
-// started, reached a definite result, or was closed without one at a Run
-// boundary. Final Tool content still has exactly one owner: the Transcript Item
-// committed beside the terminal transition.
 type ToolInvocationState string
 
 const (
@@ -55,18 +45,14 @@ const (
 	ToolInvocationIncomplete ToolInvocationState = "incomplete"
 )
 
-// Valid reports whether t belongs to the durable Tool-invocation journal.
 func (t ToolInvocationState) Valid() bool {
 	return t == ToolInvocationStarted || t == ToolInvocationCompleted || t == ToolInvocationIncomplete
 }
 
-// Settled reports a Tool attempt that reached its boundary, with or without a
-// definite result.
 func (t ToolInvocationState) Settled() bool {
 	return t == ToolInvocationCompleted || t == ToolInvocationIncomplete
 }
 
-// String returns the durable Tool-invocation state name.
 func (t ToolInvocationState) String() string {
 	if !t.Valid() {
 		return "invalid"
@@ -74,9 +60,6 @@ func (t ToolInvocationState) String() string {
 	return string(t)
 }
 
-// ToolInvocationCommit is the durable pre-call/terminal attempt transition for
-// one canonical Tool Item. ItemID connects the operational start boundary to
-// the eventual Transcript projection without copying arguments or result data.
 type ToolInvocationCommit struct {
 	Caller     *plugin.ToolCaller
 	CallID     string
@@ -114,9 +97,6 @@ func (t ToolInvocationCommit) Validate() error {
 	return validateAttemptTiming("Tool invocation", t.State.Settled(), t.StartedAt, t.FinishedAt)
 }
 
-// validateAttemptTiming requires every attempt to have started, an unsettled
-// one to carry no finish time, and a settled one to finish no earlier than it
-// started.
 func validateAttemptTiming(subject string, settled bool, startedAt, finishedAt time.Time) error {
 	switch {
 	case startedAt.IsZero():
@@ -150,9 +130,6 @@ func (m ModelInvocationCommit) Validate() error {
 	return validateAttemptTiming("model invocation", m.State.Settled(), m.StartedAt, m.FinishedAt)
 }
 
-// validateEvidence admits only what the outcome can carry: latency needs a
-// definite outcome, usage needs a known response, and a known response can
-// only explain a failed call.
 func (m ModelInvocationCommit) validateEvidence() error {
 	if m.FirstOutputLatencyMillis != nil && (*m.FirstOutputLatencyMillis < 0 || !m.State.HasResponse()) {
 		return errors.New("runs: first output latency requires a nonnegative measurement and a definite model outcome")
@@ -187,46 +164,26 @@ type EventCommit struct {
 	ToolResults       []corechat.ToolResult
 	RunID             identity.RunID
 	SessionID         identity.SessionID
-	// SegmentID owns the complete event write-set, including projections that do
-	// not otherwise carry segment identity. Persistence admits the transaction
-	// only while this exact Segment is still active for the Run.
-	SegmentID identity.SegmentID
-	// CommitID is the stable identity of one immutable top-level CommitEvent
-	// write-set. Persistence records it inside that transaction, allowing a lost
-	// COMMIT receipt to be reconciled without treating another Segment or write
-	// attempt as success. Nested opening and tree-barrier projections must leave
-	// it empty because their parent commit owns the complete transaction identity;
-	// the top-level CommitEvent port boundary requires it.
-	CommitID CommitID
-	State    StateChange
-	Items    []ItemWrite
-	// ConversationMessages are the provider-neutral messages this root
-	// execution made durable for future model context. Conversation and
-	// Transcript remain separate projections: the former feeds later model
-	// calls, while the latter owns user-visible Run history.
-	ConversationMessages []corechat.Message
-	// ModelInvocations, ToolInvocations, and Progress are application
-	// observations committed in the same transaction as the semantic Transcript
-	// Items derived from one authoritative executor fact.
-	ModelInvocations []ModelInvocationCommit
-	ToolInvocations  []ToolInvocationCommit
-	// Progress is the running Run as the domain advanced it at a model-response
-	// boundary. Persistence writes it fenced to its active Segment and does not
-	// re-derive the advance.
-	Progress               *run.Run
-	Run                    *run.Run
-	rootCancellation       *rootCancellationCommit
-	childCancellation      *childCancellationCommit
-	cancellation           CancellationID
-	winningCancellationKey string
-	// ObsoleteCheckpointRootID identifies the executor checkpoint aggregate the
-	// root Run terminal makes obsolete. Child terminal commits leave it empty.
+	SegmentID         identity.SegmentID
+	// Nested opening and tree-barrier projections leave it empty: their parent commit
+	// owns the transaction identity.
+	CommitID                 CommitID
+	State                    StateChange
+	Items                    []ItemWrite
+	ConversationMessages     []corechat.Message
+	ModelInvocations         []ModelInvocationCommit
+	ToolInvocations          []ToolInvocationCommit
+	Progress                 *run.Run
+	Run                      *run.Run
+	rootCancellation         *rootCancellationCommit
+	childCancellation        *childCancellationCommit
+	cancellation             CancellationID
+	winningCancellationKey   string
 	ObsoleteCheckpointRootID string
 }
 
 func (e EventCommit) WinningCancellationKey() string { return e.winningCancellationKey }
 
-// clone returns an ownership-isolated copy of one complete event write-set.
 func (e EventCommit) clone() EventCommit {
 	if e.ExecutionContext != nil {
 		e.ExecutionContext = new(e.ExecutionContext.Clone())
@@ -244,8 +201,8 @@ func (e EventCommit) clone() EventCommit {
 			e.ModelInvocations[index].FirstOutputLatencyMillis = new(*latency)
 		}
 		if usage := e.ModelInvocations[index].Usage; usage != nil {
-			copy := usage.Clone()
-			e.ModelInvocations[index].Usage = &copy
+			cloned := usage.Clone()
+			e.ModelInvocations[index].Usage = &cloned
 		}
 	}
 	e.ToolInvocations = slices.Clone(e.ToolInvocations)
@@ -279,8 +236,6 @@ func cloneCommitMessages(messages []corechat.Message) []corechat.Message {
 	return owned
 }
 
-// Validate proves that one event projection is owner-bound and that any Goal
-// charge is exactly the accounting fact implied by its terminal Run.
 func (e EventCommit) Validate() error {
 	for _, validate := range []func() error{
 		e.validateToolResults,
@@ -556,16 +511,11 @@ func (e EventCommit) validateLifecycle() error {
 	if e.Run.ID() != e.RunID || e.Run.SessionID() != e.SessionID {
 		return errors.New("runs: event commit Run ownership differs from its envelope")
 	}
-	// A terminalize commit may still carry an unresolved conversation watermark:
-	// the reducer cannot know the final count, and the terminal transaction
-	// resolves it while committing. Every other terminal fact is the Run's own.
 	return nil
 }
 
-// ChargesGoal reports whether this commit terminalizes a Goal-owned root Run,
-// whose transaction also applies that Run to the Session's Goal.
 func (e EventCommit) ChargesGoal() bool {
-	return e.State == StateTerminalize && e.Run != nil && e.Run.GoalIncarnationID() != ""
+	return e.State == StateTerminalize && e.Run != nil && !e.Run.GoalIncarnationID().IsZero()
 }
 
 func (e EventCommit) isEmpty() bool {

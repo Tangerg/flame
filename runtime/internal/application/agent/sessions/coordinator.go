@@ -1,12 +1,3 @@
-// Package sessions owns Session lifecycle orchestration and its durable product
-// projections: Plan transitions, transcript and Run queries, usage reports, and
-// feedback recording. Cross-domain lifecycle changes such as rollback, delete,
-// restore, fork, and child-Run purge commit as one write-set, so a mid-sequence
-// failure leaves no half-mutated Session.
-//
-// Responsibility-named coordinators keep command and read ports narrow; there
-// is no package-wide service facade. These rules remain independent of request
-// decoding, presentation, and stream management.
 package sessions
 
 import (
@@ -18,7 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -30,10 +21,6 @@ import (
 	"github.com/samber/lo"
 )
 
-// Store is the coordinator's consumer-owned Session persistence port. Domain
-// behavior decides every initial or replacement aggregate; the Store only
-// inserts that initial value or saves an exact replacement with CAS.
-// Read results belong to the caller; later store calls must not mutate them.
 type Store interface {
 	List(ctx context.Context) ([]session.Session, error)
 	ListPage(ctx context.Context, read session.CatalogRead) ([]session.Session, error)
@@ -42,103 +29,50 @@ type Store interface {
 	Save(ctx context.Context, replacement session.Replacement) error
 }
 
-// modelAdmitter validates an exact model choice before it becomes durable
-// Session policy.
 type modelAdmitter interface {
-	AdmitSelection(ctx context.Context, selection modelchoice.Selection) error
+	AdmitSelection(ctx context.Context, selection flamemodel.Selection) error
 }
 
-// InterruptStore is the lifecycle coordinator's read view of open HITL
-// interrupt. Consuming an interrupt is part of the run coordinator's atomic
-// segment-opening commit; deleting one is part of an atomic write-set
-// ([WriteSets.ApplyRollback] / ApplyDelete / ApplyTerminal), not a lone call.
 type InterruptStore interface {
 	List(ctx context.Context, sessionID identity.SessionID) ([]runs.Pending, error)
 	Get(ctx context.Context, runID identity.RunID) (runs.Pending, bool, error)
 }
 
-// TranscriptStore is the lifecycle coordinator's read view of a session's item
-// history. The Runs those items belong to come from [RunStore] — one record, one
-// owner — and the coordinator reads both inside one storage transaction when it
-// needs them to agree.
-// List transfers its result to the caller without retaining mutable aliases.
 type TranscriptStore interface {
 	List(ctx context.Context, sessionID identity.SessionID) ([]transcript.Item, error)
 }
 
-// A rollback can rewind only to the Plan captured by the kept Run. A missing
-// capture carries no authority to replace the current Plan.
 type planBoundaries interface {
 	Boundary(ctx context.Context, runID identity.RunID) (plan.Document, bool, error)
 }
 
-// RunStore is the lifecycle coordinator's read view of a session's Runs. Every
-// boundary it computes — a rollback target, a fork point, an abandoned park — is
-// derived from the Run timeline, so it reads the Runs themselves rather than
-// inferring them from the items they produced.
 type RunStore interface {
 	runs.ToolResultPublications
 	runReader
-	// ListNonTerminalRuns returns the durable activity facts for every Session in
-	// admission order in one read. Session list pages filter this set to their own
-	// IDs; keeping the read batched avoids one Run query per visible Session.
 	ListNonTerminalRuns(ctx context.Context) ([]run.Run, error)
 }
 
-// WriteSets are the atomic durable write-sets the coordinator commits through the
-// persistence boundary: each applies its whole multi-store mutation in ONE
-// transaction, so the coordinator never stitches a transaction across table-CRUD
-// calls with the boundary hidden in the context. The application decides
-// the plan; the implementation executes it atomically, enriching nothing.
 type WriteSets interface {
-	// ApplyFork branches a child session off the plan's parent, seeds its chat log
-	// and visible Run/Item/tool-result projection with the resolved history prefix,
-	// and seeds its Plan with the boundary value — atomically — returning the
-	// already-decided child aggregate.
 	ApplyFork(ctx context.Context, plan ForkPlan) (session.Session, error)
-	// ApplyRollback truncates the chat log to the boundary, drops each
-	// past-boundary run, republishes the boundary's plan projection, and
-	// terminalizes an abandoned parked run — atomically. Delegated work is
-	// already represented by child Runs in the same session.
 	ApplyRollback(ctx context.Context, plan RollbackPlan) error
-	// ApplyRestore recreates a session under its original id and replaces its
-	// whole history (clear old session-owned projections + seed decoded
-	// messages/runs/items), while applying any predecided Plan CAS — atomically.
 	ApplyRestore(ctx context.Context, plan RestorePlan) error
-	// ApplyDelete removes all durable state for the addressed session —
-	// transcript, chat log, plan, session approval rules, interrupts, admission
-	// rows, and the session row — atomically.
 	ApplyDelete(ctx context.Context, plan DeletePlan) error
-	// ApplyTerminal ends a parked run: it persists the terminal transcript
-	// projection, drops the open interrupt, and closes admission — atomically.
 	ApplyTerminal(ctx context.Context, plan TerminalPlan, winningCancellationKey string) error
 }
 
-// SnapshotReader returns the canonical session aggregate from one storage
-// transaction. The returned snapshot belongs to the caller; the reader must not
-// retain mutable aliases to its collections or nested data.
 type SnapshotReader interface {
 	ReadSnapshot(ctx context.Context, sessionID identity.SessionID) (Snapshot, error)
 }
 
 type sessionSnapshots interface {
 	SnapshotReader
-	// Fork needs history and its original Plan boundaries from the same read.
 	ReadForkMaterial(ctx context.Context, sessionID identity.SessionID) (ForkMaterial, error)
 }
 
-// MaterialSnapshotReader returns the live Session read model from one storage
-// transaction. Unlike the portable archive snapshot, it includes active Runs,
-// open interrupts, and the Plan's ordering metadata.
-// The returned snapshot and its nested data belong to the caller.
 type MaterialSnapshotReader interface {
 	ReadMaterialSnapshot(ctx context.Context, sessionID identity.SessionID) (MaterialSnapshot, error)
 }
 
-// transientState releases process-local facts when the durable Session, its
-// effective model context, or its shared working tree changes. Whole-Session
-// deletion also retires lifecycle markers; restore and rollback retain those
-// markers while discarding only context-derived authority.
 type transientState interface {
 	QuiesceSession(sessionID identity.SessionID) error
 	QuiesceWorkspace(root string) error
@@ -148,10 +82,8 @@ type transientState interface {
 }
 
 type HistorySnapshot struct {
-	Session  session.Session
-	Messages []chat.Message
-	// Items are stored Items: an offloaded Tool result carries the preview that
-	// replaced its body, and ToolResults own the bodies.
+	Session     session.Session
+	Messages    []chat.Message
 	Items       []transcript.Item
 	Runs        []run.Run
 	ToolResults []transcript.ToolResultBlob
@@ -159,44 +91,22 @@ type HistorySnapshot struct {
 
 type Snapshot struct {
 	HistorySnapshot
-	// Plan is the session-scoped Plan as a semantic VALUE — items only, no
-	// revision and no update time. Those are this runtime's ordering tokens: a
-	// snapshot that carried them could hand a restored value a position in the
-	// revision space that the restoring runtime never issued, and a client would
-	// then ignore the newer value as stale.
 	Plan       []plan.Step
 	PlanSource extension.ContributionSource
 }
 
-// WorkspaceCheckpoints is the coordinator's view of a session's working-tree
-// checkpoint store (shadow git): Restore checks out the tree to a run-boundary
-// snapshot — the filesystem half of a file rollback — and DropSession
-// discards the predecessor's snapshots under a committed resource retirement.
-// Restore is reentrant (checking out an already-restored tree is a no-op), so
-// the recoverable operation can re-drive it at boot. A disabled store or missing
-// snapshot surfaces as [ErrCheckpointUnavailable]; unarchived material blocking
-// the target surfaces as [ErrCheckpointConflict]. A checkout that may have
-// changed only part of the tree surfaces as [ErrCheckpointRestoreIncomplete].
-// Implementations translate storage failures into these use-case errors.
 type WorkspaceCheckpoints interface {
 	Restore(ctx context.Context, sessionID identity.SessionID, cwd string, runID identity.RunID) error
-	// DropSession executes an already-committed resource retirement. The
-	// mutation owner retains responsibility and admission until cleanup succeeds.
 	DropSession(ctx context.Context, sessionID identity.SessionID) error
 }
 
-// sandboxDiscarder destroys the isolated copy owned by the addressed Session.
-// It must also reach that Session's managed scratch namespace after restart.
 type sandboxDiscarder interface {
 	Discard(sessionID identity.SessionID) error
 }
 
-// goalMutationGuard serializes a session write-set with Goal lifecycle
-// commands. It owns the complete commit boundary: afterCommit runs exactly
-// once after commit succeeds, even when quiescing an affected Goal fails.
-// A returned error is always the commit's — settlement after a successful
-// commit is recorded rather than returned, so a caller cannot project a
-// committed mutation as one that never happened.
+// afterCommit runs exactly once after commit succeeds; settlement after a
+// successful commit is recorded rather than returned so a committed mutation is
+// never reported as failed.
 type goalMutationGuard interface {
 	WithSessionMutation(
 		ctx context.Context,
@@ -207,32 +117,21 @@ type goalMutationGuard interface {
 }
 
 type workspaceMutations interface {
-	// Record commits ownership before checkout. A retry may adopt the same intent.
 	Record(ctx context.Context, m WorkspaceMutation) (bool, error)
-	// Complete commits the history, receipt and release of the exact intent together.
 	Complete(ctx context.Context, m WorkspaceMutation, write func(context.Context) ([]byte, error)) error
 	ListPending(ctx context.Context) ([]WorkspaceMutation, error)
 }
 
-// resourceRetirements exposes only committed cleanup responsibilities. Their
-// creation belongs to the same write-set that retires the Session history.
 type resourceRetirements interface {
 	Lookup(context.Context, identity.SessionID) (ResourceRetirement, bool, error)
 	ListPending(context.Context) ([]ResourceRetirement, error)
 	Complete(context.Context, ResourceRetirement) error
 }
 
-// executionReleaser is the engine-neutral resource lifecycle slice the Session
-// coordinator uses when delete or rollback abandons parked executions. Product
-// resume, cancel, and steer orchestration belongs to application/agent/runs.
 type executionReleaser interface {
 	Release(ctx context.Context, ref runs.ExecutorRef) error
 }
 
-// Coordinator executes session/run lifecycle write-sets across the domain
-// stores, coordinates single-writer run admission (the per-session and
-// per-working-tree slots), and tears down the executor behind an abandoned Run.
-// It owns the lifetime of work derived from a Session's current history.
 type Coordinator struct {
 	sessions              Store
 	interrupts            InterruptStore
@@ -246,32 +145,17 @@ type Coordinator struct {
 	executionReleaser     executionReleaser
 	paths                 workspaceResolver
 	models                modelAdmitter
-	defaultModelSelection modelchoice.Selection
-	// checkpoints restores the working tree to a run-boundary checkpoint for a
-	// file rollback; a Runtime without checkpoints rejects the restore as
-	// [ErrCheckpointUnavailable].
-	checkpoints WorkspaceCheckpoints
-	// sandbox destroys a session's isolated working copy when its execution
-	// policy or durable history stops owning that scratch state.
-	sandbox sandboxDiscarder
-	// goals serializes a session write-set with Goal lifecycle commands and
-	// quiesces its loop after a successful commit.
-	goals goalMutationGuard
-	// mutations is the recoverable operation log guarding a file+history
-	// rollback across the working tree and the durable history.
-	mutations workspaceMutations
-	retirer   *ResourceRetirer
-	// admissions is shared with Runs and owns the process-local session and
-	// working-tree facts.
-	admissions Admissions
-	titles     titleClaims
-	// invalidations tell clients a committed session mutation moved something they hold.
-	// Every notice is published from a post-commit boundary, never from the commit
-	// itself: a signal for a transaction that then rolled back would send every
-	// listener to re-read state that never changed.
-	invalidations invalidation.Publish
-	// rollbackReceipts renders a keyed file rollback's reply, including one a
-	// restarted Runtime settles during recovery.
+	defaultModelSelection flamemodel.Selection
+	checkpoints           WorkspaceCheckpoints
+	sandbox               sandboxDiscarder
+	goals                 goalMutationGuard
+	mutations             workspaceMutations
+	retirer               *ResourceRetirer
+	admissions            Admissions
+	titles                titleClaims
+	// Notices are published post-commit: a signal for a rolled-back transaction would
+	// send listeners to re-read unchanged state.
+	invalidations    invalidation.Publish
 	rollbackReceipts RollbackReceiptEncoder
 	now              func() time.Time
 	newID            func() identity.SessionID
@@ -279,9 +163,6 @@ type Coordinator struct {
 	newItemID        func() identity.ItemID
 }
 
-// Dependencies is the collaborator set [New] wires into a Coordinator. Durable
-// mutations cross one cohesive WriteSets transaction; reads and process-local
-// cleanup are independent ports rather than accessor methods on a store bag.
 type Dependencies struct {
 	Sessions              Store
 	Interrupts            InterruptStore
@@ -295,30 +176,21 @@ type Dependencies struct {
 	ExecutionReleaser     executionReleaser
 	Paths                 workspaceResolver
 	Models                modelAdmitter
-	DefaultModelSelection modelchoice.Selection
+	DefaultModelSelection flamemodel.Selection
 	Checkpoints           WorkspaceCheckpoints
 	Sandbox               sandboxDiscarder
 	Goals                 goalMutationGuard
 	Mutations             workspaceMutations
 	Retirer               *ResourceRetirer
 	Admissions            Admissions
-	// Invalidations publishes post-commit invalidations for the session projections a
-	// mutation moved.
-	Invalidations invalidation.Publish
-	// RollbackReceipts is delivery's encoding of a file rollback reply.
-	RollbackReceipts RollbackReceiptEncoder
-	// Now supplies Session construction and replacement time.
-	Now func() time.Time
-	// NewID returns one complete Session identity, including its type prefix.
-	NewID func() identity.SessionID
-	// Forks copy durable transcript facts under fresh global identities. The
-	// Session use case owns the remap; composition only supplies entropy-bearing
-	// identifiers in each resource namespace.
-	NewRunID  func() identity.RunID
-	NewItemID func() identity.ItemID
+	Invalidations         invalidation.Publish
+	RollbackReceipts      RollbackReceiptEncoder
+	Now                   func() time.Time
+	NewID                 func() identity.SessionID
+	NewRunID              func() identity.RunID
+	NewItemID             func() identity.ItemID
 }
 
-// New returns a Coordinator over deps.
 func New(deps Dependencies) (*Coordinator, error) {
 	required := []struct {
 		name  string
@@ -388,8 +260,6 @@ func New(deps Dependencies) (*Coordinator, error) {
 	}, nil
 }
 
-// ClaimWorkingTreeMutation reserves exclusive access to cwd's working tree for a
-// destructive mutation such as file rollback.
 func (c *Coordinator) ClaimWorkingTreeMutation(cwd string) (WorkingTreeAdmission, bool, error) {
 	release, ok, err := c.admissions.AcquireWorkingTreeMutation(cwd)
 	if err != nil || !ok {

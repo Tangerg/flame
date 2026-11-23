@@ -192,8 +192,6 @@ func requireSubmittedInputSequence(t *testing.T, binary string, size ptytest.Siz
 	if written, writeStringErr := io.WriteString(session, test.input); writeStringErr != nil || written != len(test.input) {
 		t.Fatalf("write input = (%d, %v), want %d bytes", written, writeStringErr, len(test.input))
 	}
-	// This item appears only after the runtime receives the submission, so it
-	// proves Enter was decoded separately from the preceding input bytes.
 	waitForVisibleTerminalText(t, session, "Reproduce the flake")
 	quitInteractiveSession(t, session)
 	screen, err := session.Transcript().Screen()
@@ -301,8 +299,6 @@ func TestInteractiveTerminalCompletesMixedInterruptReviewThroughPTY(t *testing.T
 	if err := session.Resize(minimal); err != nil {
 		t.Fatal(err)
 	}
-	// The restored size differs from the original, so the redraw does not
-	// depend on the program observing the transient minimal size.
 	restored := ptytest.Size{Cols: size.Cols + 4, Rows: size.Rows + 2}
 	if err := session.Resize(restored); err != nil {
 		t.Fatal(err)
@@ -317,8 +313,6 @@ func TestInteractiveTerminalCompletesMixedInterruptReviewThroughPTY(t *testing.T
 	quitInteractiveSession(t, session)
 }
 
-// TestMixedInterruptPTYRuntime is launched as the child process above. The
-// environment guard keeps the ordinary package test run non-interactive.
 func TestMixedInterruptPTYRuntime(t *testing.T) {
 	if os.Getenv("FLAME_PTY_TEST_SCENARIO") != mixedInterruptPTYScenario {
 		return
@@ -330,10 +324,10 @@ func TestMixedInterruptPTYRuntime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := terminal.Run(t.Context(), terminal.Config{
+	if err := terminal.Run(t.Context(), fixtureTerminalConfig(backend, profile, terminal.Config{
 		OpenWorkbench: func() (*workbench.Store, error) { return workbenchFactory("")("") },
-		Runtime:       backend, RuntimeProfile: profile, Workspace: t.TempDir(),
-	}); err != nil {
+		Workspace:     t.TempDir(), Settings: settings.Default(),
+	})); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -380,7 +374,6 @@ func TestInteractiveTerminalCanStartANewRunAfterCancelingInterruptReview(t *test
 	quitInteractiveSession(t, session)
 }
 
-// TestCancelReentryPTYRuntime is launched as the child process above.
 func TestCancelReentryPTYRuntime(t *testing.T) {
 	if os.Getenv("FLAME_PTY_TEST_SCENARIO") != cancelReentryPTYScenario {
 		return
@@ -404,10 +397,10 @@ func TestCancelReentryPTYRuntime(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := terminal.Run(t.Context(), terminal.Config{
+	if err := terminal.Run(t.Context(), fixtureTerminalConfig(backend, profile, terminal.Config{
 		OpenWorkbench: func() (*workbench.Store, error) { return workbenchFactory("")("") },
-		Runtime:       backend, RuntimeProfile: profile, Workspace: t.TempDir(),
-	}); err != nil {
+		Workspace:     t.TempDir(), Settings: settings.Default(),
+	})); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -528,15 +521,6 @@ func waitForVisibleTerminalText(t *testing.T, session *ptytest.Session, tokens .
 	return screen
 }
 
-func containsEvery(value string, tokens []string) bool {
-	for _, token := range tokens {
-		if !strings.Contains(value, token) {
-			return false
-		}
-	}
-	return true
-}
-
 func quitInteractiveSession(t *testing.T, session *ptytest.Session) {
 	t.Helper()
 	if _, err := io.WriteString(session, "\x11\x11"); err != nil {
@@ -567,7 +551,7 @@ func TestFlameProcess(t *testing.T) {
 	if os.Getenv("FLAME_TEST_PROCESS") != "1" {
 		return
 	}
-	flameHome, err := flameHomeDirectory()
+	flameHome, err := localruntime.ProductRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -595,9 +579,9 @@ func TestFlameProcess(t *testing.T) {
 		StartTerminal: func(ctx context.Context, request cmd.TerminalRequest) error {
 			announce()
 			configured := request.Settings.Clone()
-			return terminal.Run(ctx, terminal.Config{
-				Runtime: runtime, RuntimeProfile: profile, SessionID: request.SessionID, Workspace: request.Workspace,
-				InitialPrompt: request.InitialPrompt, Settings: &configured,
+			return terminal.Run(ctx, fixtureTerminalConfig(runtime, profile, terminal.Config{
+				SessionID: request.SessionID, Workspace: request.Workspace,
+				InitialPrompt: request.InitialPrompt, Settings: configured,
 				OpenWorkbench: func() (*workbench.Store, error) {
 					partition, err := request.Settings.Runtime.AuthoringPartition()
 					if err != nil {
@@ -605,7 +589,7 @@ func TestFlameProcess(t *testing.T) {
 					}
 					return openWorkbench(partition)
 				},
-			})
+			}))
 		},
 		OpenWorkbench: openWorkbench,
 	}
@@ -655,7 +639,7 @@ func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T)
 	if profile.Discovery.ProtocolVersion == "" || profile.Discovery.ServerInfo.Name == "" || len(profile.Discovery.Capabilities.RuntimeTopics) == 0 {
 		t.Fatalf("incomplete in-process runtime profile: %+v", profile)
 	}
-	data, err := localruntime.DataDirectoryAt(filepath.Join(flameHome, "runtime"))
+	data, err := localruntime.DataDirectoryUnder(flameHome)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -663,8 +647,6 @@ func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T)
 		t.Fatalf("runtime database = (%v, %v), want regular file", info, err)
 	}
 
-	// A second process opening the same store proves the first process completed
-	// owner teardown and released the Runtime's store resources.
 	sessions := decodeCommandJSON[struct {
 		Items []jsontext.Value `json:"items"`
 	}](t, runTestBinary(t, binary, environment, "sessions", "ls", "--json"), "in-process session page")
@@ -677,8 +659,6 @@ func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T)
 	}
 }
 
-// isolatedProductHome is the FLAME_HOME the test environment assigns, which
-// must differ from the ambient home so the child cannot touch it.
 func isolatedProductHome(t *testing.T, environment []string, ambient string) string {
 	t.Helper()
 	for _, entry := range environment {
@@ -843,4 +823,14 @@ func assertOptionalTerminalMode(t *testing.T, transcript []byte, enabled bool, m
 	}
 	ptytest.RequireNotContains(t, transcript, mode.On)
 	ptytest.RequireNotContains(t, transcript, mode.Off)
+}
+
+// The fixture refuses every Runtime service beyond Sessions and Runs.
+func fixtureTerminalConfig(runtime *runtimefixture.Runtime, profile terminal.RuntimeProfile, config terminal.Config) terminal.Config {
+	config.Runtime, config.RuntimeProfile = runtime, profile
+	config.Workspaces, config.Changes, config.Transfers = runtime, runtime, runtime
+	config.Usage, config.ModelConfig, config.Goals, config.Skills = runtime, runtime, runtime, runtime
+	config.MCP, config.Plugins, config.DiagnosticTools = runtime, runtime, runtimefixture.UnsupportedDiagnostics{}
+	config.AuthoringContext, config.Hooks, config.Feedback = runtime, runtime, runtime
+	return config
 }

@@ -22,8 +22,6 @@ func (i *interactionSession) sendExecutorRequest(
 	return i.lifetime.sendAuthoritative(ctx, event)
 }
 
-// reconcileCompletedDelegateChildren projects terminal children in postorder.
-// Event listeners only wake this check; public Process state is authoritative.
 func (i *interactionSession) reconcileCompletedDelegateChildren(
 	ctx context.Context,
 ) (bool, error) {
@@ -60,9 +58,6 @@ func (i *interactionSession) reconcileCompletedDelegateChildren(
 	return progressed, nil
 }
 
-// delegateProjectionOrder projects the deepest children first, then by
-// parent and the position of the delegating call, so a parent's Tool batch
-// sees its children's terminals.
 func delegateProjectionOrder(left, right *managedDelegateCall) int {
 	if depth := int(right.parentRelation.Depth()+1) - int(left.parentRelation.Depth()+1); depth != 0 {
 		return depth
@@ -79,8 +74,6 @@ func delegateProjectionOrder(left, right *managedDelegateCall) int {
 	return strings.Compare(left.childProcessID.String(), right.childProcessID.String())
 }
 
-// projectFinishedDelegate publishes the terminal of a child the inspection
-// saw finish, once.
 func (i *interactionSession) projectFinishedDelegate(ctx context.Context, inspection scoperun.TreeInspection, managed *managedDelegateCall) (bool, error) {
 	managed.mu.Lock()
 	processID := managed.childProcessID
@@ -170,7 +163,7 @@ func (i *interactionSession) projectDelegateTerminal(
 	if err != nil {
 		return false, fmt.Errorf("execution: read delegated child terminal: %w", err)
 	}
-	end, err := i.terminalFact(member, result.ProcessID(), result.Termination(), unknown, duration)
+	end, err := i.terminalFact(result.ProcessID(), result.Termination(), unknown, duration)
 	if err != nil {
 		return false, fmt.Errorf("execution: project delegated child terminal: %w", err)
 	}

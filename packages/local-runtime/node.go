@@ -16,11 +16,11 @@ import (
 	"strings"
 )
 
+const executableBits = 0o111
+
 //go:embed node-release.json
 var nodeReleaseJSON []byte
 
-// Node is the immutable launch projection of the distribution's selection.
-// Package bytes never supply an interpreter path or flags.
 type Node struct {
 	command      string
 	distribution string
@@ -34,9 +34,9 @@ type nodeRelease struct {
 	Arguments []string `json:"arguments"`
 	Targets   map[string]struct {
 		Archive          string `json:"archive"`
-		ArchiveSHA256    string `json:"archiveSHA256"`
+		ArchiveSHA256    string `json:"archiveSha256"`
 		Executable       string `json:"executable"`
-		ExecutableSHA256 string `json:"executableSHA256"`
+		ExecutableSHA256 string `json:"executableSha256"`
 	} `json:"targets"`
 }
 
@@ -48,8 +48,6 @@ func nodeSelection() (nodeRelease, error) {
 	return release, nil
 }
 
-// NodeTarget projects the original immutable companion selection to package
-// authoring. It names the interpreter bytes, not a process or installed package.
 type NodeTarget struct {
 	OS               string
 	Arch             string
@@ -101,8 +99,6 @@ func (n Node) ExecutableDigest() string        { return n.expected }
 func (n Node) Identity() string                { return n.identity }
 func (n Node) Arguments(entry string) []string { return append(slices.Clone(n.arguments), entry) }
 
-// Verify refuses missing or altered companions before any plugin is evaluated.
-// A deployment is replaced only while quiescent, never underneath this launch.
 func (n Node) Verify(ctx context.Context) (err error) {
 	if n.command == "" {
 		return errors.New("node companion: distribution selection is required")
@@ -135,7 +131,7 @@ func (n Node) Verify(ctx context.Context) (err error) {
 	if !os.SameFile(selected, info) {
 		return errors.New("node companion: executable changed while opening")
 	}
-	if !info.Mode().IsRegular() || runtime.GOOS != "windows" && info.Mode().Perm()&0111 == 0 {
+	if !info.Mode().IsRegular() || runtime.GOOS != "windows" && info.Mode().Perm()&executableBits == 0 {
 		return errors.New("node companion: executable must be a regular executable file")
 	}
 	digest, err := executableDigest(ctx, file)
@@ -148,8 +144,6 @@ func (n Node) Verify(ctx context.Context) (err error) {
 	return nil
 }
 
-// executableDigest hashes the opened executable, stopping between chunks when
-// the caller gives up on a large distribution.
 func executableDigest(ctx context.Context, file io.Reader) (string, error) {
 	hash := sha256.New()
 	buffer := make([]byte, 64<<10)

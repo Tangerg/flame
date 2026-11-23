@@ -1,4 +1,3 @@
-// Package extensions owns discovered slash commands and their plugin lifetimes.
 package extensions
 
 import (
@@ -25,11 +24,8 @@ func (s registrationSequence) successor() (registrationSequence, bool) {
 	return s + 1, true
 }
 
-// Capability names a permission explicitly declared by an executable plugin.
 type Capability string
 
-// HostNamespace names the terminal host's own contributions. No sideloaded
-// plugin may claim it or an identity inside it.
 const HostNamespace = "terminal"
 
 const CommandsCapability Capability = HostNamespace + ".commands"
@@ -62,9 +58,6 @@ func (d *disposal) dispose() error {
 	return d.err
 }
 
-// Scope owns command registrations made during one plugin setup transaction.
-// The scope is sealed when setup returns; plugins cannot attach ownership to a
-// completed or rolling-back installation transaction.
 type Scope struct {
 	mu              sync.Mutex
 	plugin          string
@@ -81,7 +74,6 @@ func (s *Scope) seal() []disposable {
 	return slices.Clone(s.disposables)
 }
 
-// Plugin is one cohesive set of contributions.
 type Plugin struct {
 	ID           string
 	Version      string
@@ -91,16 +83,12 @@ type Plugin struct {
 	Setup        func(*Scope) error
 }
 
-// loadedPlugin is a successfully initialized plugin. dispose unloads it in reverse
-// registration order.
 type loadedPlugin struct {
 	once        sync.Once
 	disposables []disposable
 	err         error
 }
 
-// dispose unloads a plugin. Every cleanup runs even when another returns an
-// error or panics; the joined result is stable across repeated calls.
 func (l *loadedPlugin) dispose() error {
 	l.once.Do(func() {
 		var failures []error
@@ -123,8 +111,6 @@ func disposeSafely(disposable disposable) (err error) {
 	return disposable.dispose()
 }
 
-// load validates and initializes one plugin. Setup is transactional: a failure
-// rolls back everything contributed before the error.
 func load(registry *commandRegistry, plugin Plugin) (*loadedPlugin, error) {
 	if registry == nil {
 		return nil, errors.New("extensions: registry is required")
@@ -189,7 +175,6 @@ func (r *commandRegistry) claim(plugin string) (disposable, error) {
 	}}, nil
 }
 
-// ContributeCommand attaches one validated command to this plugin's lifetime.
 func (s *Scope) ContributeCommand(command SlashCommand) error {
 	if s == nil || s.registry == nil {
 		return errors.New("extensions: plugin scope is required")
@@ -247,7 +232,6 @@ func (r *commandRegistry) remove(name string, sequence registrationSequence) {
 	}
 }
 
-// OwnedCommand retains the provider identity needed to cancel execution before unload.
 type OwnedCommand struct {
 	PluginID string
 	Command  SlashCommand

@@ -1,7 +1,5 @@
 package dispatch
 
-// JSON-RPC numeric codes are a binding concern. Client code branches on the
-// symbolic problem type from protocol.ProblemData, never on these values.
 const (
 	codeInvalidRequest         = -32600
 	codeMethodNotFound         = -32601

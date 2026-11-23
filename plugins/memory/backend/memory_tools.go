@@ -12,14 +12,14 @@ import (
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	pluginstorage "github.com/Tangerg/flame/packages/go-sdk/plugin/sqlite"
-	app "github.com/Tangerg/flame/plugins/memory/internal/application"
+	"github.com/Tangerg/flame/plugins/memory/internal/agentmemory"
 	rpc "github.com/Tangerg/flame/plugins/memory/internal/contract"
-	memory "github.com/Tangerg/flame/plugins/memory/internal/domain"
+	"github.com/Tangerg/flame/plugins/memory/internal/coordination"
 
 	framecall "github.com/Tangerg/frame/call"
 	framesqlite "github.com/Tangerg/frame/sqlite"
 	"github.com/Tangerg/scope/core/jsonschema"
-	tool "github.com/Tangerg/scope/core/tool"
+	"github.com/Tangerg/scope/core/tool"
 )
 
 const (
@@ -31,29 +31,29 @@ const (
 )
 
 type memoryView struct {
-	ID        string            `json:"id"`
-	Revision  uint64            `json:"revision"`
-	Scope     memory.Scope      `json:"scope"`
-	Project   string            `json:"project,omitzero"`
-	Content   string            `json:"content"`
-	Origin    memory.Origin     `json:"origin"`
-	Status    memory.Status     `json:"status"`
-	Pinned    bool              `json:"pinned"`
-	SessionID string            `json:"session_id,omitzero"`
-	UpdatedAt instant.Timestamp `json:"updated_at" jsonschema:"format=date-time"`
+	ID        string             `json:"id"`
+	Revision  uint64             `json:"revision"`
+	Scope     agentmemory.Scope  `json:"scope"`
+	Project   string             `json:"project,omitzero"`
+	Content   string             `json:"content"`
+	Origin    agentmemory.Origin `json:"origin"`
+	Status    agentmemory.Status `json:"status"`
+	Pinned    bool               `json:"pinned"`
+	SessionID string             `json:"session_id,omitzero"`
+	UpdatedAt instant.Timestamp  `json:"updated_at" jsonschema:"format=date-time"`
 }
 
-func viewMemory(item memory.Item) memoryView {
+func viewMemory(item agentmemory.Item) memoryView {
 	return memoryView{ID: item.ID().String(), Revision: item.Revision(), Scope: item.Scope(), Project: item.Project(),
 		Content: item.Content(), Origin: item.Origin(), Status: item.Status(), Pinned: item.Pinned(),
-		SessionID: item.SessionID(), UpdatedAt: instant.Timestamp{Time: item.UpdatedAt()}}
+		SessionID: item.SessionID().String(), UpdatedAt: instant.Timestamp{Time: item.UpdatedAt()}}
 }
 
 type memoryResults struct {
 	Memories []memoryView `json:"memories"`
 }
 
-func memorySearchResults(items []memory.Item) memoryResults {
+func memorySearchResults(items []agentmemory.Item) memoryResults {
 	views := make([]memoryView, len(items))
 	for index, item := range items {
 		views[index] = viewMemory(item)
@@ -62,13 +62,13 @@ func memorySearchResults(items []memory.Item) memoryResults {
 }
 
 type listMemoryArgs struct {
-	Scope  memory.Scope `json:"scope" jsonschema_description:"Project memory visible in the current workspace, or user memory shared across workspaces."`
-	Cursor string       `json:"cursor,omitzero" jsonschema_description:"Opaque next_cursor returned by list_memories; omit for the first page."`
-	Limit  *int         `json:"limit,omitzero" jsonschema:"minimum=1"`
+	Scope  agentmemory.Scope `json:"scope" jsonschema_description:"Project memory visible in the current workspace, or user memory shared across workspaces."`
+	Cursor string            `json:"cursor,omitzero" jsonschema_description:"Opaque next_cursor returned by list_memories; omit for the first page."`
+	Limit  *int              `json:"limit,omitzero" jsonschema:"minimum=1"`
 }
 
 func (listMemoryArgs) JSONSchemaConstraints() jsonschema.Constraints {
-	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{"limit": {Maximum: new(float64(memory.MaxManagementPageItems))}}}
+	return jsonschema.Constraints{Properties: map[string]jsonschema.Constraints{"limit": {Maximum: new(float64(agentmemory.MaxManagementPageItems))}}}
 }
 
 type memoryPage struct {
@@ -78,14 +78,14 @@ type memoryPage struct {
 }
 
 type addMemoryArgs struct {
-	Scope   memory.Scope `json:"scope" jsonschema_description:"Use project for a fact about the current workspace, or user for a user preference shared across workspaces."`
-	Content string       `json:"content" jsonschema:"minLength=1"`
+	Scope   agentmemory.Scope `json:"scope" jsonschema_description:"Use project for a fact about the current workspace, or user for a user preference shared across workspaces."`
+	Content string            `json:"content" jsonschema:"minLength=1"`
 }
 
 type memoryItemArgs struct {
-	Scope            memory.Scope `json:"scope"`
-	ID               string       `json:"id" jsonschema:"minLength=1"`
-	ExpectedRevision uint64       `json:"expected_revision" jsonschema:"minimum=1" jsonschema_description:"Exact revision returned by search_memory or list_memories. Reread after a revision conflict; never guess the current revision."`
+	Scope            agentmemory.Scope `json:"scope"`
+	ID               string            `json:"id" jsonschema:"minLength=1"`
+	ExpectedRevision uint64            `json:"expected_revision" jsonschema:"minimum=1" jsonschema_description:"Exact revision returned by search_memory or list_memories. Reread after a revision conflict; never guess the current revision."`
 }
 
 func (memoryItemArgs) JSONSchemaConstraints() jsonschema.Constraints {
@@ -99,16 +99,16 @@ type updateMemoryArgs struct {
 }
 
 type reviewMemoryArgs struct {
-	Item     memoryItemArgs        `json:"item"`
-	Decision memory.ReviewDecision `json:"decision"`
+	Item     memoryItemArgs             `json:"item"`
+	Decision agentmemory.ReviewDecision `json:"decision"`
 }
 
 type memoryTools struct {
-	coordinator *app.Coordinator
+	coordinator *coordination.Coordinator
 	db          framesqlite.Database
 }
 
-func buildMemoryTools(coordinator *app.Coordinator, db framesqlite.Database) ([]tool.Tool, error) {
+func buildMemoryTools(coordinator *coordination.Coordinator, db framesqlite.Database) ([]tool.Tool, error) {
 	if coordinator == nil || !db.Valid() {
 		return nil, errors.New("memory: coordinator and database are required")
 	}
@@ -139,7 +139,7 @@ func buildMemoryTools(coordinator *app.Coordinator, db framesqlite.Database) ([]
 func memoryToolCWD(ctx context.Context) (string, error) {
 	scope, err := pluginsdk.ToolContextFromContext(ctx)
 	if err != nil {
-		return "", errors.Join(app.ErrWorkspaceUnavailable, err)
+		return "", errors.Join(coordination.ErrWorkspaceUnavailable, err)
 	}
 	return scope.CWD, nil
 }
@@ -153,11 +153,11 @@ func (t memoryTools) list(ctx context.Context, input listMemoryArgs) (memoryPage
 	if err != nil {
 		return memoryPage{}, pluginsdk.DefiniteToolFailure(err)
 	}
-	page, err := t.coordinator.List(ctx, app.ListInput{Scope: input.Scope, CWD: cwd, Cursor: input.Cursor, Limit: limit})
+	page, err := t.coordinator.List(ctx, coordination.ListInput{Scope: input.Scope, CWD: cwd, Cursor: input.Cursor, Limit: limit})
 	if err != nil {
 		return memoryPage{}, pluginsdk.DefiniteToolFailure(err)
 	}
-	return memoryPage{Memories: memorySearchResults(page.Rows).Memories, NextCursor: page.NextCursor, Capacity: memory.MaxVisiblePerTarget}, nil
+	return memoryPage{Memories: memorySearchResults(page.Rows).Memories, NextCursor: page.NextCursor, Capacity: agentmemory.MaxVisiblePerTarget}, nil
 }
 
 func (t memoryTools) add(ctx context.Context, _ addMemoryArgs) (memoryView, error) {

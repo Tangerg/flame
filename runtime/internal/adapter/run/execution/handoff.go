@@ -14,28 +14,26 @@ import (
 	"github.com/Tangerg/scope/core/jsonschema"
 )
 
-// These immutable Scope projections identify the original handoff. They cannot
-// restore a tree: only the acknowledged execution-tree head carries that state.
 type interactionHandoffWire struct {
-	RootID    string                       `json:"root_id"`
+	RootID    string                       `json:"rootId"`
 	Processes []interactionProgressWire    `json:"processes"`
 	Inputs    []interactionInputTargetWire `json:"inputs"`
 }
 
 type interactionProgressWire struct {
-	ProcessID       string          `json:"process_id"`
-	ParentID        string          `json:"parent_id,omitempty"`
-	OwnerID         string          `json:"owner_id"`
+	ProcessID       string          `json:"processId"`
+	ParentID        string          `json:"parentId,omitempty"`
+	OwnerID         string          `json:"ownerId"`
 	Status          scoperun.Status `json:"status"`
-	PreparedEffects uint64          `json:"prepared_effects"`
+	PreparedEffects uint64          `json:"preparedEffects"`
 }
 
 type interactionInputTargetWire struct {
-	MemberID            string         `json:"member_id"`
-	ProcessID           string         `json:"process_id"`
-	RequestID           string         `json:"request_id"`
-	WaitKey             string         `json:"wait_key"`
-	ApprovalInputSchema jsontext.Value `json:"approval_input_schema,omitempty"`
+	MemberID            string         `json:"memberId"`
+	ProcessID           string         `json:"processId"`
+	RequestID           string         `json:"requestId"`
+	WaitKey             string         `json:"waitKey"`
+	ApprovalInputSchema jsontext.Value `json:"approvalInputSchema,omitempty"`
 }
 
 type interactionInputTarget struct {
@@ -104,8 +102,6 @@ func (i *interactionSession) encodeInteractionHandoff(tree scoperun.Log) (*inter
 	return wire, nil
 }
 
-// decodeHandoffProgress reads each Process's progress in canonical order; every
-// Process is owned by a product member that contains it.
 func decodeHandoffProgress(values []interactionProgressWire) (map[scoperun.ProcessID]interactionProgressWire, map[scoperun.ProcessID]struct{}, error) {
 	progress := make(map[scoperun.ProcessID]interactionProgressWire, len(values))
 	processes := make(map[scoperun.ProcessID]struct{}, len(values))
@@ -129,7 +125,6 @@ func decodeHandoffProgress(values []interactionProgressWire) (map[scoperun.Proce
 	return progress, processes, nil
 }
 
-// validateHandoffTree proves the Processes form one tree under root.
 func validateHandoffTree(root scoperun.ProcessID, progress map[scoperun.ProcessID]interactionProgressWire, processes map[scoperun.ProcessID]struct{}) error {
 	if _, found := processes[root]; !found {
 		return errors.New("handoff root is absent")

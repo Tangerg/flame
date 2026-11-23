@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/packages/go-sdk/identity"
+	questioncontract "github.com/Tangerg/flame/packages/go-sdk/question"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -69,7 +71,7 @@ func (s answerCrashTrees) SaveExecutionTree(ctx context.Context, update runs.Exe
 func answerCrashExecutor(t *testing.T, trees executionJournal, workspace string) *InteractionExecutor {
 	t.Helper()
 	question := newQuestionTool(t, "fixture_ask", "Ask for a value.",
-		[]runs.QuestionFieldSpec{{Prompt: "Which value?"}},
+		[]transcript.QuestionField{{Prompt: "Which value?", Kind: questioncontract.Text}},
 		func(resolution run.InterruptResolution) (string, error) {
 			file, err := os.OpenFile(filepath.Join(workspace, "effects.txt"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 			if err != nil {
@@ -154,7 +156,9 @@ func TestAnswerReceiptsSurviveAbruptRestart(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 			defer cancel()
 			command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestAnswerDeliveryCrashHelper$")
-			command.Env = append(os.Environ(), "FLAME_TEST_ANSWER_CRASH="+strconv.Itoa(count), "FLAME_TEST_ANSWER_WORKSPACE="+workspace)
+			// The child is killed mid-run, so its own t.TempDir cleanup never runs;
+			// the parent owns every directory the child creates.
+			command.Env = append(os.Environ(), "TMPDIR="+testsupport.TempDirectory(t), "FLAME_TEST_ANSWER_CRASH="+strconv.Itoa(count), "FLAME_TEST_ANSWER_WORKSPACE="+workspace)
 			output, err := command.CombinedOutput()
 			var exit *exec.ExitError
 			if !errors.As(err, &exit) || exit.ExitCode() != answerCrashExit {

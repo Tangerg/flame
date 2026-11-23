@@ -8,19 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 
+	"github.com/Tangerg/flame/packages/go-sdk/filesystem"
 	pluginsdk "github.com/Tangerg/flame/packages/go-sdk/plugin"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
 )
 
-// maxSymlinkDepth bounds symlink resolution the way the kernel MAXSYMLINKS does,
-// turning an unbounded or cyclic chain into a clear error instead of a hang.
-const maxSymlinkDepth = 40
-
-// Name retains Scope's absolute-input namespace. identity captures the physical
-// workspace name once for shared lock/stamp keys and protected-root policy;
-// neither projection can reopen or replace the retained directory authority.
 type filesystemRoot struct {
 	*os.Root
 	identity string
@@ -49,8 +44,6 @@ func openFilesystemRoot(directory string) (*filesystemRoot, error) {
 	return &filesystemRoot{Root: root, identity: identity}, nil
 }
 
-// The manifest owns both handles. Every host inspection and Scope operation
-// starts from the same directory authority, even if its pathname is replaced.
 func openFilesystem(directory string) (*filesystemRoot, *fs.LocalExecutor, func() error, error) {
 	root, err := openFilesystemRoot(directory)
 	if err != nil {
@@ -60,13 +53,10 @@ func openFilesystem(directory string) (*filesystemRoot, *fs.LocalExecutor, func(
 	if err != nil {
 		return nil, nil, nil, errors.Join(err, root.Close())
 	}
-	close := sync.OnceValue(func() error { return errors.Join(executor.Close(), root.Close()) })
-	return root, executor, close, nil
+	release := sync.OnceValue(func() error { return errors.Join(executor.Close(), root.Close()) })
+	return root, executor, release, nil
 }
 
-// rootRelative interprets the public Scope path vocabulary for host policy.
-// os.Root and Scope still own filesystem confinement; this lexical projection
-// alone is not permission to open a path.
 func rootRelative(root string, path string) (string, error) {
 	if path == "~" || strings.HasPrefix(path, "~/") {
 		return "", errors.New("toolset: use an absolute or workspace-relative path instead of home shorthand")
@@ -84,9 +74,6 @@ func rootRelative(root string, path string) (string, error) {
 	return filepath.Clean(path), nil
 }
 
-// resolveRootPath discovers aliases for protected-directory policy and shared
-// path locks. It never reopens root.Name(). Missing suffixes are valid mutation
-// targets; links are inspected through the same root used by Scope.
 func resolveRootPath(root *filesystemRoot, path string) (string, error) {
 	path, err := rootRelative(root.Name(), path)
 	if err != nil {
@@ -115,8 +102,8 @@ func resolveRootPath(root *filesystemRoot, path string) (string, error) {
 			continue
 		}
 		links++
-		if links > maxSymlinkDepth {
-			return "", errors.New("too many symbolic links")
+		if links > filesystem.MaxSymlinks {
+			return "", fmt.Errorf("toolset: resolve %q: %w", path, syscall.ELOOP)
 		}
 		target, err := root.Readlink(candidate)
 		if err != nil {

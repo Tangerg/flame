@@ -25,20 +25,13 @@ const (
 	sandboxProcessWaitDelay = time.Second
 )
 
-// checkBackend reports whether this host has a working isolation backend. macOS
-// Seatbelt is the only one today; its absence is the fail-closed signal.
 func checkBackend() error {
 	if _, err := os.Stat(sandboxExecPath); err != nil {
-		return fmt.Errorf("%w: %s: %v", ErrUnavailable, sandboxExecPath, err)
+		return fmt.Errorf("%w: %s: %w", ErrUnavailable, sandboxExecPath, err)
 	}
 	return nil
 }
 
-// seatbeltCommand assembles the confined [Command] that runs command under a
-// Seatbelt jail rooted at root: root is the only writable subtree, the reads are
-// governed by the profile, and the environment is scrubbed. It is the single
-// confinement core shared by the in-place [Confiner] and the isolated-copy
-// [Workspace] runner. root and command are pre-validated by the caller.
 func seatbeltCommand(root, command string, readOnly, hidden []string) Command {
 	return Command{
 		Name: sandboxExecPath,
@@ -47,12 +40,6 @@ func seatbeltCommand(root, command string, readOnly, hidden []string) Command {
 	}
 }
 
-// seatbeltProfile builds the SBPL policy confining writes to writableRoot.
-// Later rules win in SBPL, so the ordering is deliberate: permit host reads,
-// deny the user's home, re-open declared toolchain roots, then grant read+write
-// to the workspace last — a workspace nested under home is therefore re-opened
-// read+write by the final rule. Network is denied by omission (deny default +
-// no network rule). Writes remain workspace-only.
 func seatbeltProfile(writableRoot string, readOnlyPaths, hiddenPaths []string) string {
 	var profile strings.Builder
 	profile.WriteString("(version 1)\n(deny default)\n")
@@ -75,9 +62,6 @@ func seatbeltProfile(writableRoot string, readOnlyPaths, hiddenPaths []string) s
 	return profile.String()
 }
 
-// scrubbedEnv is the minimal environment a jailed command runs with. HOME and
-// TMPDIR are pinned to the writable root so tools that key off them land inside
-// the jail; every other parent variable (credentials, tokens) is dropped.
 func scrubbedEnv(root string) []string {
 	return []string{
 		"HOME=" + root,
@@ -87,9 +71,6 @@ func scrubbedEnv(root string) []string {
 	}
 }
 
-// seatbeltRunner runs a command to completion, buffered, inside an isolated
-// [Workspace] copy. It shares [seatbeltCommand] with the in-place [Confiner]:
-// one confinement policy, two execution styles.
 type seatbeltRunner struct {
 	readOnlyPaths []string
 	hiddenPaths   []string
@@ -150,10 +131,6 @@ func (s seatbeltRunner) Run(ctx context.Context, dir string, input toolshell.Inp
 		Duration:             time.Since(started),
 		CancellationObserved: runCtx.Err() != nil,
 	}
-	// A non-zero exit is an execution fact, not a failure, and Scope's Executor
-	// contract keeps every available fact on the error path too: reading the
-	// status before deciding what to return is what stops a failed group
-	// cleanup from reporting the command as having exited zero.
 	var runErr error
 	if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 		out.ExitCode = exitErr.ExitCode()

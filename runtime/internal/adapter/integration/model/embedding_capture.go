@@ -17,9 +17,9 @@ type ResolvedEmbedding struct {
 	close   func(context.Context) error
 }
 
-func NewResolvedEmbedding(model embedding.Model, space string, pricing accounting.Pricing, close func(context.Context) error) (ResolvedEmbedding, error) {
-	if lo.IsNil(model) || strings.TrimSpace(space) == "" || close == nil {
-		return ResolvedEmbedding{}, errors.New("model: embedding client, vector space and lifetime are required")
+func NewResolvedEmbedding(model embedding.Model, space string, pricing accounting.Pricing, release func(context.Context) error) (ResolvedEmbedding, error) {
+	if lo.IsNil(model) || strings.TrimSpace(space) == "" || pricing == nil || release == nil {
+		return ResolvedEmbedding{}, errors.New("model: embedding client, vector space, pricing and lifetime are required")
 	}
-	return ResolvedEmbedding{model: model, space: space, pricing: pricing, close: close}, nil
+	return ResolvedEmbedding{model: model, space: space, pricing: pricing, close: release}, nil
 }

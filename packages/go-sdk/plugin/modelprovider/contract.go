@@ -1,5 +1,3 @@
-// Package modelprovider publishes the installed model-adapter boundary.
-// The caller retains selection, admission, accounting and recovery authority.
 package modelprovider
 
 import (
@@ -17,7 +15,7 @@ import (
 
 	"github.com/Tangerg/flame/packages/go-sdk/extension"
 	"github.com/Tangerg/flame/packages/go-sdk/httporigin"
-	modelchoice "github.com/Tangerg/flame/packages/go-sdk/model"
+	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	plugincontract "github.com/Tangerg/flame/packages/go-sdk/plugin/contract"
 	pluginmcp "github.com/Tangerg/flame/packages/go-sdk/plugin/mcp"
 	"github.com/Tangerg/flame/packages/go-sdk/scopewire"
@@ -59,18 +57,18 @@ type EmbeddingProfile struct {
 }
 
 type Profile struct {
-	ID               string                     `json:"id"`
-	Authentication   Authentication             `json:"authentication"`
-	Endpoint         modelchoice.EndpointPolicy `json:"endpoint,omitzero"`
-	EndpointRequired bool                       `json:"endpointRequired"`
-	ModelSource      ModelSource                `json:"modelSource"`
-	DefaultModel     string                     `json:"defaultModel,omitempty"`
-	Embedding        *EmbeddingProfile          `json:"embedding,omitzero"`
-	Models           []catalog.Model            `json:"models"`
+	ID               string                    `json:"id"`
+	Authentication   Authentication            `json:"authentication"`
+	Endpoint         flamemodel.EndpointPolicy `json:"endpoint,omitzero"`
+	EndpointRequired bool                      `json:"endpointRequired"`
+	ModelSource      ModelSource               `json:"modelSource"`
+	DefaultModel     string                    `json:"defaultModel,omitempty"`
+	Embedding        *EmbeddingProfile         `json:"embedding,omitzero"`
+	Models           []catalog.Model           `json:"models"`
 }
 
 func (p Profile) Validate() error {
-	if _, err := modelchoice.NewProviderIdentity(p.ID); err != nil {
+	if _, err := flamemodel.NewProviderIdentity(p.ID); err != nil {
 		return err
 	}
 	if p.Authentication != KeyRequired && p.Authentication != KeyOptional {
@@ -88,7 +86,7 @@ func (p Profile) Validate() error {
 func (p Profile) validateDefaultModels() error {
 	switch p.ModelSource {
 	case BundledModels:
-		if _, err := modelchoice.NewModelIdentity(p.DefaultModel); err != nil {
+		if _, err := flamemodel.NewModelIdentity(p.DefaultModel); err != nil {
 			return err
 		}
 	case EndpointModels:
@@ -99,7 +97,7 @@ func (p Profile) validateDefaultModels() error {
 		return errors.New("model provider: invalid model source")
 	}
 	if p.Embedding != nil && p.Embedding.DefaultModel != "" {
-		if _, err := modelchoice.NewModelIdentity(p.Embedding.DefaultModel); err != nil {
+		if _, err := flamemodel.NewModelIdentity(p.Embedding.DefaultModel); err != nil {
 			return err
 		}
 	}
@@ -112,7 +110,7 @@ func (p Profile) validateCatalog() error {
 		if err := model.Validate(); err != nil {
 			return err
 		}
-		if _, err := modelchoice.NewModelIdentity(model.ID); err != nil {
+		if _, err := flamemodel.NewModelIdentity(model.ID); err != nil {
 			return err
 		}
 		if _, exists := seen[model.ID]; exists {
@@ -123,12 +121,10 @@ func (p Profile) validateCatalog() error {
 	return nil
 }
 
-// Connection is an immutable credential snapshot, not another mutable registry.
-// It crosses only the private installed-backend channel.
 type Connection struct {
 	Provider string `json:"provider"`
 	APIKey   string `json:"apiKey,omitempty"`
-	BaseURL  string `json:"baseURL,omitempty"`
+	BaseURL  string `json:"baseUrl,omitempty"`
 }
 
 func (c Connection) Format(state fmt.State, _ rune) {
@@ -136,7 +132,7 @@ func (c Connection) Format(state fmt.State, _ rune) {
 }
 
 func (c Connection) Validate() error {
-	if _, err := modelchoice.NewProviderIdentity(c.Provider); err != nil {
+	if _, err := flamemodel.NewProviderIdentity(c.Provider); err != nil {
 		return err
 	}
 	if strings.ContainsFunc(c.APIKey, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }) {
@@ -160,14 +156,12 @@ func (o Open) Validate() error {
 	if err := o.Connection.Validate(); err != nil {
 		return err
 	}
-	_, err := modelchoice.NewModelIdentity(o.Model)
+	_, err := flamemodel.NewModelIdentity(o.Model)
 	return err
 }
 
 var handleExpression = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
-// HandleID is an opaque 256-bit capability for one opened client, spelled in
-// lowercase hexadecimal; possession of it is the only authority to call.
 type HandleID string
 
 func NewHandleID() (HandleID, error) {
@@ -204,10 +198,10 @@ type Chat struct {
 }
 
 func (c Chat) Validate() error {
-	if _, err := modelchoice.NewProviderIdentity(c.Provider); err != nil {
+	if _, err := flamemodel.NewProviderIdentity(c.Provider); err != nil {
 		return err
 	}
-	if _, err := modelchoice.NewModelIdentity(c.Model); err != nil {
+	if _, err := flamemodel.NewModelIdentity(c.Model); err != nil {
 		return err
 	}
 	if err := errors.Join(c.Handle.Validate(), c.Original.Validate()); err != nil {
@@ -241,10 +235,10 @@ func (e Embedder) Validate() error {
 	if err := e.Handle.Validate(); err != nil {
 		return err
 	}
-	if _, err := modelchoice.NewProviderIdentity(e.Provider); err != nil {
+	if _, err := flamemodel.NewProviderIdentity(e.Provider); err != nil {
 		return err
 	}
-	if _, err := modelchoice.NewModelIdentity(e.Model); err != nil {
+	if _, err := flamemodel.NewModelIdentity(e.Model); err != nil {
 		return err
 	}
 	if strings.TrimSpace(e.Space) == "" {
@@ -267,8 +261,6 @@ type EmbeddingRequest struct {
 	Request jsontext.Value `json:"request"`
 }
 
-// Scope's embedding codec owns admission of this complete envelope. Keeping it
-// opaque avoids deriving a competing schema for a custom native codec.
 func (r EmbeddingRequest) Native() (*embedding.Request, error) {
 	if err := r.Handle.Validate(); err != nil {
 		return nil, err
@@ -296,8 +288,6 @@ func (FailureKind) JSONSchemaEnum() []string {
 	return []string{string(Internal), string(Canceled), string(Timeout), string(InvalidCredentials), string(RateLimited), string(ProviderRejected), string(ProviderUnavailable)}
 }
 
-// Failure preserves execution evidence separately from the failure category.
-// No category or receipt authorizes another provider dispatch.
 type Failure struct {
 	Kind             FailureKind                `json:"kind"`
 	Execution        coreinvocation.FailureKind `json:"execution"`
@@ -371,8 +361,6 @@ func (r TokenCount) Validate() error {
 	return nil
 }
 
-// The typed handle contains only a private pointer to the admitted schema.
-// Copying the handle preserves client ownership without compiling the schema again.
 func declaredMethod[T any](compile func(frame.MethodConfig) (*T, error), config frame.MethodConfig) func() (*T, error) {
 	admitted := sync.OnceValues(func() (*T, error) { return compile(config) })
 	return func() (*T, error) {
@@ -434,8 +422,6 @@ func EmbedMethod() (*pluginmcp.Method[EmbeddingRequest, EmbeddingResult], error)
 	return embedMethod()
 }
 
-// Checkpoints need the exact contract identity on every commit. Caching only
-// immutable JSON leaves each executable contract and its method handles private.
 func ContractIdentity() (framevalue.JSON, error) { return contractIdentity() }
 
 var contractIdentity = sync.OnceValues(func() (framevalue.JSON, error) {
@@ -471,7 +457,7 @@ func Contract() (*plugincontract.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	close, err := CloseMethod()
+	release, err := CloseMethod()
 	if err != nil {
 		return nil, err
 	}
@@ -491,5 +477,5 @@ func Contract() (*plugincontract.Capability, error) {
 	if err != nil {
 		return nil, err
 	}
-	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: Reference, Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, profiles.Descriptor(), remote.Descriptor(), verify.Descriptor(), openChat.Descriptor(), openEmbedding.Descriptor(), reopenChat.Descriptor(), close.Descriptor(), call.Descriptor(), stream.Descriptor(), count.Descriptor(), embed.Descriptor())
+	return plugincontract.NewCapability(plugincontract.CapabilityConfig{Reference: Reference, Composition: plugincontract.Selection, Scope: extension.ScopeInstallation}, profiles.Descriptor(), remote.Descriptor(), verify.Descriptor(), openChat.Descriptor(), openEmbedding.Descriptor(), reopenChat.Descriptor(), release.Descriptor(), call.Descriptor(), stream.Descriptor(), count.Descriptor(), embed.Descriptor())
 }

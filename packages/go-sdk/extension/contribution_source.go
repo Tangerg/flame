@@ -7,8 +7,6 @@ import (
 	framevalue "github.com/Tangerg/frame/value"
 )
 
-// ContributionSource binds a value to the contribution that authored it, even
-// when the application's default selection later points elsewhere.
 type ContributionSource struct {
 	InstallationID string `json:"installationId"`
 	Release        string `json:"release"`
@@ -28,7 +26,6 @@ func (s ContributionSource) Validate() error {
 	return nil
 }
 
-// A contract reference lets archive readers interpret the captured bytes after the author is withdrawn.
 type AnnotationSource struct {
 	ContributionSource
 	ContractReference string `json:"contractRef"`

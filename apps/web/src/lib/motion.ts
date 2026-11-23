@@ -2,7 +2,7 @@ import { selectionTransition } from "@flame/ui";
 import { type Transition } from "motion/react";
 import { useMemo } from "react";
 import { useAppearanceProjection, type AppearanceProjection } from "@/lib/appearance";
-export function createMotion(appearance: AppearanceProjection) {
+function createMotion(appearance: AppearanceProjection) {
   function scaled(duration: "fastMs" | "mediumMs" | "slowMs"): Transition {
     const t = {} as Transition;
     Object.defineProperty(t, "duration", {
