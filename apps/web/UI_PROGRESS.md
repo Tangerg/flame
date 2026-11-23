@@ -52272,6 +52272,19 @@ Left as correct, not a defect: the palette input does not take Home/End for
 first/last option — for an editable combobox the ARIA APG assigns Home/End to the
 text cursor, which is the current behavior; list navigation stays on the arrows.
 
+### Shortcuts as plain hints in the command menu (2026-11-24)
+
+Every command row drew each shortcut key in its own grey cap (`⌘` `W`,
+`⇧` `⌘` `]`), so the palette carried two or three chips per row. macOS menus
+show shortcuts as plain secondary text. `CommandMenu` now renders the
+whole combo as one `Kbd variant="inline"`, the grammar the sidebar search
+row already used. That variant moves from `ui2xs` to `uiXs` because both
+hints were undersized next to their labels. The query field's `esc` cap
+and the Shortcuts settings pane keep caps, where keys are the subject.
+Native `overlay=commands` in EN/light and ZH/dark shows right-aligned
+`⌘ W`, `⇧ ⌘ ]` text, and the sidebar hint reads `⌘ K`. Web typecheck
+passes.
+
 ### Complete command names and visible view handoff (2026-11-06)
 
 Qualified from `db2e4c0ff` after fresh remote/local main merges. The original

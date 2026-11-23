@@ -33,7 +33,7 @@ const styles = stylex.create({
 
 const SIZE: Record<KbdVariant, ReturnType<typeof stylex.create>[string]> = {
   cap: type.uiSm,
-  inline: type.ui2xs,
+  inline: type.uiXs,
 };
 
 export function Kbd({

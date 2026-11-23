@@ -20,7 +20,7 @@ import {
 } from "@/features/workspace/public/navigation";
 import { matchCommands } from "@/features/command/menu/application/commandMatches";
 import { useCommandMenuStore } from "@/features/command/menu/application/commandMenuState";
-import { color, leading, space } from "@flame/ui/tokens.stylex";
+import { color, leading } from "@flame/ui/tokens.stylex";
 const cmd = stylex.create({
   glyph: { flexShrink: 0, color: color.fgMuted },
   glyphSlot: { height: "var(--icon-sm)", width: "var(--icon-sm)", flexShrink: 0 },
@@ -31,7 +31,7 @@ const cmd = stylex.create({
     overflowWrap: "anywhere",
     lineHeight: leading.body,
   },
-  keys: { display: "flex", flexShrink: 0, alignItems: "center", gap: space.s1 },
+  keys: { flexShrink: 0 },
 });
 
 interface CommandChoice {
@@ -114,13 +114,9 @@ export function CommandMenu() {
               )}
               <span {...stylex.props(cmd.label)}>{choice.label}</span>
               {choice.combo && (
-                <span {...stylex.props(cmd.keys)}>
-                  {formatForDisplay(normalizeHotkey(choice.combo), { parts: true }).map(
-                    (part, index) => (
-                      <Kbd key={index}>{part}</Kbd>
-                    ),
-                  )}
-                </span>
+                <Kbd variant="inline" {...stylex.props(cmd.keys)}>
+                  {formatForDisplay(normalizeHotkey(choice.combo))}
+                </Kbd>
               )}
             </>
           ),
