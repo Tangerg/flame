@@ -34842,6 +34842,16 @@ benchmark, full backend suite, VoiceOver speech, OS IME, RTL or quantitative
 contrast measurement ran for this local opt-in change. Continue with actual
 remaining task paths; whole-product acceptance remains open.
 
+### Skill rows without a repeated glyph (2026-11-24)
+
+Every row in the Skills catalog repeated the same book glyph, which only
+restated the tab title. `SkillRow` no longer passes an icon to
+`RecordSummary`. Names and descriptions now sit on the record list's inset,
+the same edge Settings rows use under their section headings. Scope words
+stay plain text beside the name. Native `dock-skills-catalog`: 80 rows read
+name, scope and description, each with its chevron. Plugin typecheck,
+published resource check and `check-i18n` pass.
+
 ### Skills catalog query and reading return
 
 This feedback G02/G04 batch starts from frozen base

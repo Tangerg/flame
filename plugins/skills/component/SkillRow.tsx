@@ -1,5 +1,4 @@
 import { useRef, type ReactNode } from "react";
-import { BookOpen } from "@flame/icons/react";
 import { type Translate } from "@flame/component-sdk";
 
 import {
@@ -32,7 +31,6 @@ export function SkillRow({
   const element = useRef<HTMLElement>(null);
   const summary = (
     <RecordSummary
-      icon={BookOpen}
       title={item.name}
       description={item.description}
       status={
