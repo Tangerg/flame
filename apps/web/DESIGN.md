@@ -580,8 +580,13 @@ vocabulary they share is what follows.
 
 A tool call is **a line, not a card**. It renders through
 `AgentActivityDisclosure` at `shell="line"`: an identity glyph, the intent, an
-optional mono detail, and trailing meta — a diff stat, a duration, a running dot.
-No fill, no hairline, no radius, because it has no surface of its own.
+optional detail, the disclosure chevron, and trailing meta — a diff stat, a
+duration, a running dot. The row reads as one sentence: the chevron trails the
+detail instead of separating verb from object, and the detail truncates before
+the verb. The detail takes the voice of its source — mono for paths, commands
+and identifiers, the body face for task summaries and questions. No fill, no
+hairline, no radius, because it has no surface of its own; expanded rows are
+grouped by indentation, without a rail.
 
 Every invocation takes the neutral tone whatever its safety class or outcome. The
 material result earns a surface only once the row is opened; colouring the

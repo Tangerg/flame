@@ -30,16 +30,14 @@ export function NarrativeWave({ messageId, units, facts, ctx, renderUnit }: Prop
   const t = useT();
   const [open, setOpen] = useState(false);
   const tools = waveToolCalls(units, facts.toolCalls);
-  const summary = summarizeActivity(t, tools);
-  const steps = t("agent.steps", { count: waveStepCount(units) });
+  const summary = summarizeActivity(t, tools) || t("agent.steps", { count: waveStepCount(units) });
 
   return (
     <AgentActivityDisclosure
       shell="line"
       contentInset="rows"
       icon={waveGlyph(units, tools)}
-      label={<ToolActivitySummary label={summary || steps} tools={tools} />}
-      trailing={summary ? steps : undefined}
+      label={<ToolActivitySummary label={summary} tools={tools} />}
       open={open}
       onOpenChange={setOpen}
     >

@@ -46453,6 +46453,40 @@ and unrelated processes remain preserved. This documentation-only receipt change
 no accepted product source. Continue from fresh content/Dock task evidence; retain
 this shared diagnostic-layout owner rather than reopening the completed repair.
 
+### Tool rows read as one sentence (2026-11-24)
+
+Native captures of `tool-shells` and `dock-subagents` showed three issues on the
+main reading axis. The disclosure chevron sat between verb and object
+(`Read › runtime/…/store.go`), which reads as a breadcrumb. The wave summary
+repeated its per-kind counts as `6 steps` on a right edge different from the row
+meta. Delegated task titles rendered in the mono data voice. Expanded rows also
+carried a vertical rail.
+
+- `AgentActivityDisclosure` (`apps/web/src/ui/agent/activity-disclosure.tsx`)
+  orders glyph, label, detail, chevron, spacer, meta. Codex's activity header
+  uses the same order: summary, stats, then the toggle. An inline detail
+  truncates first; the label keeps its natural width up to 60%. Stacked details
+  keep the chevron with the verb. Expanded rows keep the same 24 px inset
+  without the rail.
+- `NarrativeWave` no longer shows the step count beside a per-kind summary. The
+  count remains the label when a wave has no tool calls.
+- The fold projection (`features/agent/application/fold/projections.ts`) now
+  owns the label voice. Task summaries, user questions and shell descriptions
+  are `prose`; paths stay `path`; identifiers, queries and commands stay machine
+  text. `CapturedToolResult.fnKind` widens to `"path" | "prose"`; existing
+  readers compare only against `"path"`.
+
+Native, EN/light/14 px, 1439 × 899: `tool-shells` expands to rows such as
+`Read runtime/internal/session/store.go ›` and `Run the session suite go test
+./internal/session/... ›` with one meta edge. Tab then Return expands the Read
+row and focuses its trigger, with the full path below. In `dock-subagents`,
+`Delegated Audit Agent Framework ownership ›` uses the body face, and the long
+delegation truncates its title, not `Delegated`.
+
+Checks: Web, SDK and plugin typecheck, SDK tests (11), Web contract tests
+(6 files / 112) and published resource rebuild. The inset focus ring still
+touches the trailing meta at the row's end edge; this predates the batch.
+
 ## Tool row action context
 
 Single and grouped Tool row actions now reference their existing visible summary.

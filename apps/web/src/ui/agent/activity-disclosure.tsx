@@ -81,10 +81,12 @@ const styles = stylex.create({
     alignItems: "center",
     color: "var(--row-ink)",
   },
+  // An inline detail gives way before the verb it qualifies.
+  labelBeforeDetail: { flexShrink: 0, maxWidth: "60%" },
   detail: {
     display: "flex",
     minWidth: 0,
-    flex: 1,
+    flex: "0 1 auto",
     alignItems: "center",
     lineHeight: leading.snug,
     color: "var(--row-detail-ink)",
@@ -123,13 +125,7 @@ const styles = stylex.create({
     paddingLeft: space.s0_5,
     paddingRight: space.s2,
   },
-  bodyLine: {
-    marginInlineStart: space.s2,
-    borderInlineStartWidth: "var(--control-edge-width)",
-    borderInlineStartStyle: "solid",
-    borderInlineStartColor: surface.field,
-    paddingInlineStart: "calc(var(--spacing) * 4 - var(--control-edge-width))",
-  },
+  bodyLine: { paddingInlineStart: space.s6 },
   bodyCard: { paddingInline: space.s3 },
   bodyRows: { paddingBlock: space.s1_5 },
 });
@@ -268,10 +264,26 @@ export function AgentActivityDisclosure({
           </span>
           <span
             data-slot="agent-activity-label"
-            {...stylex.props(styles.label, vocab.truncate, skin.text)}
+            {...stylex.props(
+              styles.label,
+              vocab.truncate,
+              skin.text,
+              detail != null && !stackDetail && styles.labelBeforeDetail,
+            )}
           >
             {label}
           </span>
+          {detail != null && (
+            <span
+              {...stylex.props(
+                styles.detail,
+                stackDetail ? stackedActivityDetail.detail : vocab.truncate,
+                skin.text,
+              )}
+            >
+              {detail}
+            </span>
+          )}
           {disclosable && (
             <span
               aria-hidden
@@ -282,19 +294,7 @@ export function AgentActivityDisclosure({
               <Icon name="chevron-down" size="xs" />
             </span>
           )}
-          {detail != null ? (
-            <span
-              {...stylex.props(
-                styles.detail,
-                stackDetail ? stackedActivityDetail.detail : vocab.truncate,
-                skin.text,
-              )}
-            >
-              {detail}
-            </span>
-          ) : (
-            preview == null && <span aria-hidden {...stylex.props(styles.spacer)} />
-          )}
+          {preview == null && <span aria-hidden {...stylex.props(styles.spacer)} />}
           {trailing != null && (
             <span {...stylex.props(styles.trailing, type.uiXs)}>{trailing}</span>
           )}

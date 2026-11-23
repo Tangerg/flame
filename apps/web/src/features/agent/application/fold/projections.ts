@@ -96,40 +96,43 @@ function firstLine(v: unknown): string | undefined {
   return s ? s.split("\n", 1)[0] : undefined;
 }
 
-function nameLabel(tool: AgentToolInvocation): string | undefined {
+function nameLabel(tool: AgentToolInvocation): LabelSource | undefined {
   const a = tool.arguments;
+  const machine = (text: string | undefined) =>
+    text === undefined ? undefined : { text, kind: "machine" as const };
   switch (builtinToolName(tool)) {
     case "ask_user": {
       const first = Array.isArray(a.questions) ? asRecord(a.questions[0]) : undefined;
-      return firstLine(first?.question);
+      const question = firstLine(first?.question);
+      return question === undefined ? undefined : { text: question, kind: "prose" };
     }
     case "read_shell_output":
     case "stop_shell":
-      return asString(a.shell_id);
+      return machine(asString(a.shell_id));
     case "read_tool_result":
-      return asString(a.result_id);
+      return machine(asString(a.result_id));
     case "load_skill":
     case "propose_skill":
-      return asString(a.name);
+      return machine(asString(a.name));
     case "read_skill_resource": {
       const name = asString(a.name);
       const path = asString(a.path);
-      return name && path ? `${name}/${path}` : (name ?? path);
+      return machine(name && path ? `${name}/${path}` : (name ?? path));
     }
     case "search_tools":
-      return asString(a.query);
+      return machine(asString(a.query));
     default:
       return undefined;
   }
 }
 
-function toolLabel(tool: AgentToolInvocation): string {
-  return labelSource(tool).text;
+function toolLabelFields(tool: AgentToolInvocation): Pick<ToolCall, "fn" | "fnKind"> {
+  const { text, kind } = labelSource(tool);
+  return kind === "machine" ? { fn: text } : { fn: text, fnKind: kind };
 }
 
-function toolLabelKind(tool: AgentToolInvocation): "path" | "text" {
-  return labelSource(tool).path ? "path" : "text";
-}
+// The source decides the voice: task summaries and questions are prose, not data.
+type LabelSource = { text: string; kind: "path" | "prose" | "machine" };
 
 function oneLine(text: string): string {
   if (!text.includes("\n")) return text;
@@ -137,40 +140,39 @@ function oneLine(text: string): string {
   return first?.trim() ?? text.replace(/\s+/g, " ").trim();
 }
 
-function labelSource(tool: AgentToolInvocation): { text: string; path: boolean } {
+function labelSource(tool: AgentToolInvocation): LabelSource {
   const source = rawLabelSource(tool);
-  return { text: oneLine(source.text), path: source.path };
+  return { ...source, text: oneLine(source.text) };
 }
 
-function rawLabelSource(tool: AgentToolInvocation): { text: string; path: boolean } {
+function rawLabelSource(tool: AgentToolInvocation): LabelSource {
   const byName = nameLabel(tool);
-  if (byName) return { text: byName, path: false };
+  if (byName) return byName;
   const a = tool.arguments ?? {};
+  const named = { text: tool.name, kind: "machine" as const };
   switch (tool.category) {
-    case "shell":
-      return {
-        text: asString(a.description) || asString(a.command) || tool.name || "command",
-        path: false,
-      };
+    case "shell": {
+      const description = asString(a.description);
+      return description
+        ? { text: description, kind: "prose" }
+        : { text: asString(a.command) || tool.name || "command", kind: "machine" };
+    }
     case "edit": {
-      const path = asString(a.path);
-      if (path) return { text: path, path: true };
-      const single = patchToolResult(tool.result)?.changes?.[0]?.path;
-      return single === undefined ? { text: tool.name, path: false } : { text: single, path: true };
+      const path = asString(a.path) || patchToolResult(tool.result)?.changes?.[0]?.path;
+      return path ? { text: path, kind: "path" } : named;
     }
     case "search":
-      return { text: asString(a.query) || asString(a.pattern) || "search", path: false };
+      return { text: asString(a.query) || asString(a.pattern) || "search", kind: "machine" };
     case "read": {
       const path = asString(a.path);
-      return path === undefined ? { text: tool.name, path: false } : { text: path, path: true };
+      return path === undefined ? named : { text: path, kind: "path" };
     }
-    case "task":
-      return {
-        text: asString(a.summary) || firstLine(a.instructions) || tool.name,
-        path: false,
-      };
+    case "task": {
+      const summary = asString(a.summary) || firstLine(a.instructions);
+      return summary ? { text: summary, kind: "prose" } : named;
+    }
     default:
-      return { text: tool.name || "tool", path: false };
+      return { text: tool.name || "tool", kind: "machine" };
   }
 }
 
@@ -291,8 +293,7 @@ export function projectToolCall(
     ...(item.tool.source ? { source: item.tool.source } : {}),
     ...(item.tool.category !== undefined ? { category: item.tool.category } : {}),
     ...(item.tool.resultShape !== undefined ? { resultShape: item.tool.resultShape } : {}),
-    fn: toolLabel(item.tool),
-    ...(toolLabelKind(item.tool) === "path" ? { fnKind: "path" as const } : {}),
+    ...toolLabelFields(item.tool),
     // Live starts precede raw argument deltas; durable Items already contain
     // the complete accepted arguments and must not lose them to the summary.
     args:

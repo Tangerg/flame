@@ -79,7 +79,7 @@ export interface CapturedToolResult {
   readonly runId: string;
   readonly name: string;
   readonly fn: string;
-  readonly fnKind?: "path";
+  readonly fnKind?: "path" | "prose";
   readonly args: string;
   readonly status: "running" | "ok" | "err" | "denied";
   readonly resultShape?: ResultShape;
