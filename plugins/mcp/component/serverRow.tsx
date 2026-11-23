@@ -166,14 +166,16 @@ export function ServerRow({ context, settings, server, t }: ServerRowProps) {
           t={t}
         />
       )}
-      <Disclosure title={t("mcp.tools.title", { server: server.id.name })}>
-        <ToolControls
-          context={context}
-          settings={settings}
-          server={server.id}
-          t={t}
-        />
-      </Disclosure>
+      {server.toolCount !== 0 && (
+        <Disclosure title={t("mcp.tools.title", { server: server.id.name })}>
+          <ToolControls
+            context={context}
+            settings={settings}
+            server={server.id}
+            t={t}
+          />
+        </Disclosure>
+      )}
       {editing && (
         <div id={panelId}>
           <ServerForm
