@@ -273,8 +273,13 @@ limits and process owner; no GUI, network or child-process permission is added.
 Its release manifest and executable are verified before invocation, and its
 report identifies the pinned LibreOffice core and native package versions.
 
-The private LibreOffice profile disables macros, active content and external-link
-updates and sets `OOXMLRecalcMode=0`, the engine's always-recalculate-on-load mode.
+The private LibreOffice profile disables macros and external-link updates and sets
+`OOXMLRecalcMode=0`, the engine's always-recalculate-on-load mode. It leaves
+`DisableActiveContent` unset. LibreOffice loads charts as embedded objects, and
+that switch renders every chart blank. Package admission already refuses OLE,
+ActiveX, macros, external data and fields, so the only embedded objects that
+reach the renderer are admitted chart workbooks. The sandbox still denies
+network access and child processes.
 The Office adapter prepares that profile and captures its invocation and output
 paths together. The rendering owner retains confinement, resource limits and
 cleanup of the invocation directory.

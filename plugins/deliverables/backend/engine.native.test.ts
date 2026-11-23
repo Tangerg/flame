@@ -43,6 +43,13 @@ native.each(["docx", "xlsx", "pptx"] as const)(
         result.files.filter((file) => file.mime === "image/png"),
       ).toHaveLength(result.report.pages.length);
       expect(result.report.extractedText.trim()).not.toBe("");
+      // Text that only the catalog's chart draws; a blank chart frame omits it.
+      const chartText = {
+        docx: undefined,
+        xlsx: "Quarterly revenue",
+        pptx: "Revenue (USD million)",
+      }[format];
+      if (chartText) expect(result.report.extractedText).toContain(chartText);
       expect(result.report.fontStatus).toBe("unverified");
     } finally {
       await engine.close();
@@ -196,6 +203,9 @@ native(
       ).toEqual([]);
       const text = result.report.extractedText;
       expect(text.split("Revenue grew 12%")).toHaveLength(3);
+      for (const value of ["North", "South", "Converted"])
+        expect(text.split(value)).toHaveLength(3);
+      expect(text).not.toContain("Q1");
       expect(text).not.toContain("Appendix detail");
     } finally {
       await engine.close();

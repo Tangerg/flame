@@ -8,11 +8,12 @@ import { LIMITS } from "../contracts/limits";
 import type { PrivateDirectory } from "./confinement";
 import release from "./office-release.json";
 
+// DisableActiveContent stays unset: it blanks every chart, and admission already
+// refuses the active payloads it would block.
 const PROFILE = `<?xml version="1.0" encoding="UTF-8"?>
 <oor:items xmlns:oor="http://openoffice.org/2001/registry">
 <item oor:path="/org.openoffice.Office.Common/Security/Scripting">
 <prop oor:name="DisableMacrosExecution" oor:op="fuse"><value>true</value></prop>
-<prop oor:name="DisableActiveContent" oor:op="fuse"><value>true</value></prop>
 </item>
 <item oor:path="/org.openoffice.Office.Calc/Content/Update">
 <prop oor:name="Link" oor:op="fuse"><value>1</value></prop>
