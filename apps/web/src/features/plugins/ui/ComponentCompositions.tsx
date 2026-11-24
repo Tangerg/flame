@@ -3,6 +3,7 @@ import { asyncDisposeSymbol } from "dougong";
 import { parseJSON, stringifyJSON } from "@frame/sdk/json";
 import { type FlameClient } from "@flame/runtime-client";
 import {
+  type ComponentScope,
   type PluginInstallation,
   type ResolvePluginPointRequest,
 } from "@flame/runtime-client/wire";
@@ -55,6 +56,33 @@ function identity(value: ComponentReference): string {
   return `${value.installationId}/${value.digest}/${value.componentId}`;
 }
 
+// A composed component cannot choose its own target; its scope reads the one
+// the composing host captured.
+const CAPTURED_SCOPE_CONTEXT: Partial<Record<ComponentScope, keyof CompositionContext>> = {
+  workspace: "workspace",
+  session: "sessionId",
+  file: "file",
+  toolResult: "toolResult",
+};
+
+function assertCapturedScope(scope: ComponentScope, context: CompositionContext): void {
+  const key = CAPTURED_SCOPE_CONTEXT[scope];
+  if (key && !context[key])
+    throw new Error(`The composed component requires captured ${scope} context.`);
+}
+
+function composedValue(source: string): ComponentValue {
+  const value = parseJSON(source);
+  if (
+    !value ||
+    typeof value !== "object" ||
+    !("component" in value) ||
+    typeof value.component !== "string"
+  )
+    throw new Error("The component point value must name a local component.");
+  return { component: value.component, props: value.props };
+}
+
 // Runtime owns contribution membership and order. This adapter only realizes
 // exact component bindings and keeps the captured parent context/lifetime.
 export class ComponentCompositions {
@@ -104,14 +132,7 @@ export class ComponentCompositions {
             row.presentation === "admitted",
         );
         if (!installation) throw new Error("The composed plugin release is no longer available.");
-        const value = parseJSON(binding.value);
-        if (
-          !value ||
-          typeof value !== "object" ||
-          !("component" in value) ||
-          typeof value.component !== "string"
-        )
-          throw new Error("The component point value must name a local component.");
+        const value = composedValue(binding.value);
         const entry = installation.selected.components.find(
           (row) => row.id === value.component && row.placement === "export",
         );
@@ -128,13 +149,7 @@ export class ComponentCompositions {
           throw new Error(
             `Component composition cycle: ${[...ancestry, reference].map(identity).join(" -> ")}`,
           );
-        if (
-          (entry.scope === "workspace" && !context.workspace) ||
-          (entry.scope === "session" && !context.sessionId) ||
-          (entry.scope === "file" && !context.file) ||
-          (entry.scope === "toolResult" && !context.toolResult)
-        )
-          throw new Error(`The composed component requires captured ${entry.scope} context.`);
+        assertCapturedScope(entry.scope, context);
         const contribution = installation.selected.contributions.find(
           (row) => row.id === entry.contribution,
         );
@@ -158,7 +173,7 @@ export class ComponentCompositions {
           valueSource: binding.value,
           key: `${binding.installationId}/${binding.digest}/${binding.contribution}`,
           reference,
-          value: { component: value.component, props: value.props },
+          value,
           binding: contribution
             ? {
                 installationId: binding.installationId,

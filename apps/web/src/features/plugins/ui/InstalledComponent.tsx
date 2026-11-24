@@ -43,6 +43,7 @@ import {
 } from "@/features/notifications/public/notifier";
 import { type FlameClient } from "@flame/runtime-client";
 import {
+  type ComponentScope,
   type PluginClientComponent,
   type PluginOperationBinding,
 } from "@flame/runtime-client/wire";
@@ -547,12 +548,21 @@ function SessionComponent(props: InstalledComponentProps) {
 export function InstalledComponent({
   scope,
   ...props
-}: InstalledComponentProps & { scope: string }) {
-  if (scope === "client") return <ClientComponent {...props} />;
-  if (scope === "session") return <SessionComponent {...props} />;
-  if (scope === "workspace") return <WorkspaceComponent {...props} />;
-  if (scope === "installation") return <RenderingComponent {...props} />;
-  throw new Error("The component context scope is unsupported.");
+}: InstalledComponentProps & { scope: ComponentScope }) {
+  switch (scope) {
+    case "client":
+      return <ClientComponent {...props} />;
+    case "session":
+      return <SessionComponent {...props} />;
+    case "workspace":
+      return <WorkspaceComponent {...props} />;
+    case "installation":
+      return <RenderingComponent {...props} />;
+    // These render only from a target the host captured, never from a placement.
+    case "file":
+    case "toolResult":
+      throw new Error("The component context scope is unsupported.");
+  }
 }
 
 // A renderer receives the exact accepted read; navigation never changes its data.
