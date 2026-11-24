@@ -1,3 +1,4 @@
+import { type ReactNode } from "react";
 import { type ComponentContext } from "@flame/component-sdk";
 import { Refresh, Plus } from "@flame/icons/react";
 import {
@@ -25,19 +26,21 @@ import {
   Toolbar,
   isImeKey,
 } from "@flame/ui";
-import { type Scope } from "./types";
+import { type Edit, type Scope } from "./types";
 import { MemoryDeleteConfirmation } from "./MemoryDeleteConfirmation";
 import { MemoryReport } from "./MemoryReport";
 import { MemoryFeedback } from "./MemoryFeedback";
 import { useMemory } from "./useMemory";
 // Installed component bundles use host UI styles without StyleX compilation.
 const EDITOR_STYLE = { maxHeight: "40dvh" };
+type MemoryState = ReturnType<typeof useMemory>;
+
 export function Memory({ context }: { context: ComponentContext }) {
+  const memory = useMemory(context);
   const {
     t,
     edit,
     locked,
-    setEdit,
     closeEditor,
     editorElement,
     scope,
@@ -45,13 +48,14 @@ export function Memory({ context }: { context: ComponentContext }) {
     project,
     read,
     pending,
-    observerSignal,
-    load,
-    beginEdit,
+    showPage,
+    addItem,
+    editItem,
+    removeItem,
+    deleteEdited,
     setSearch,
     clearFilters,
-    clearFeedback,
-    setScope,
+    changeScope,
     searchElement,
     search,
     filtersOpen,
@@ -72,12 +76,13 @@ export function Memory({ context }: { context: ComponentContext }) {
     recordFeedback,
     recordResult,
     canRestoreFocus,
-  } = useMemory(context);
+  } = memory;
   // Outside a Project, Memory's project scope keys on the Session's folder.
   const scopeLabel = (value: Scope) =>
     value === "project" && !context.project ? "folder" : value;
   const recordCommand = unknown?.source === "record" ? unknown : undefined;
   const recovering = unknown?.source === "editor";
+  const noTarget = !project && cwd === undefined;
   const editFeedback = (editorFeedback || recovering) && (
     <MemoryFeedback
       canRestoreFocus={canRestoreFocus}
@@ -131,26 +136,15 @@ export function Memory({ context }: { context: ComponentContext }) {
                   aria-label={t("refresh")}
                   size="md"
                   pending={read.loading}
-                  disabled={(!project && cwd === undefined) || pending}
-                  onClick={() => {
-                    const owner = observerSignal();
-                    if (owner) void load(owner, current?.cursors);
-                  }}
+                  disabled={noTarget || pending}
+                  onClick={() => showPage(current?.cursors)}
                 />
                 <Button
                   variant={edit ? "outline" : "primary"}
                   size="md"
-                  disabled={
-                    locked || (!project && cwd === undefined) || Boolean(edit)
-                  }
+                  disabled={locked || noTarget || Boolean(edit)}
                   focusableWhenDisabled
-                  onClick={(event) => {
-                    beginEdit({
-                      type: "add",
-                      content: "",
-                      opener: event.currentTarget,
-                    });
-                  }}
+                  onClick={(event) => addItem(event.currentTarget)}
                 >
                   <Icon glyph={Plus} size="sm" /> {t("add")}
                 </Button>
@@ -168,13 +162,7 @@ export function Memory({ context }: { context: ComponentContext }) {
                   },
                   { value: "user", label: t("segment.user") },
                 ]}
-                onChange={(value) => {
-                  if (locked || edit) return;
-                  setSearch("");
-                  clearFilters();
-                  clearFeedback();
-                  setScope(value as Scope);
-                }}
+                onChange={(value) => changeScope(value as Scope)}
                 disabled={locked || Boolean(edit)}
               />
             </Hang>
@@ -252,110 +240,24 @@ export function Memory({ context }: { context: ComponentContext }) {
         <MemoryDeleteConfirmation
           ref={editorElement}
           item={edit.item}
-
           feedback={editFeedback}
           pending={pending}
           locked={locked}
           recovering={recovering}
           aborted={context.signal.aborted}
           cancel={() => closeEditor()}
-          confirm={
-            recovering
-              ? reconcile
-              : () =>
-                  change(
-                    "flame.memory/delete.v3",
-                    { id: edit.item.id, expectedRevision: edit.item.revision },
-                    { action: "delete", id: edit.item.id },
-                    "editor",
-                  )
-          }
+          confirm={recovering ? reconcile : deleteEdited}
           t={t}
         />
       ) : edit ? (
-        <RecordForm
-          ref={editorElement}
-          aria-label={edit.type === "add" ? t("add") : t("edit")}
-          data-focus-unit=""
-        >
-          <RecordGroup>
-            <RecordTitle>
-              {edit.type === "add" ? t("add") : t("edit")}
-            </RecordTitle>
-            {edit.type === "update" && (
-              <RecordMeta>
-                <span>{t(`scope.${scopeLabel(edit.item.scope)}`)}</span>
-                <span>{edit.item.id}</span>
-              </RecordMeta>
-            )}
-            <FormField label={t("content.label")}>
-              <TextArea
-                aria-label={t("content.label")}
-                autoFocus
-                rows={2}
-                autosize
-                style={EDITOR_STYLE}
-                value={edit.content}
-                pending={locked}
-                onChange={(event) =>
-                  setEdit({ ...edit, content: event.target.value })
-                }
-              />
-            </FormField>
-          </RecordGroup>
-          <FormActions label={t("save.actions.label")} feedback={editFeedback}>
-            <Button
-              disabled={locked}
-              focusableWhenDisabled
-              variant="ghost"
-              onClick={() => closeEditor()}
-            >
-              {t("cancel")}
-            </Button>
-            <Button
-              variant="primary"
-              pending={pending}
-              disabled={
-                recovering
-                  ? context.signal.aborted
-                  : locked ||
-                    !edit.content.trim() ||
-                    (edit.type === "update" &&
-                      edit.content.trim() === edit.item.content)
-              }
-              focusableWhenDisabled={locked}
-              onClick={
-                recovering
-                  ? reconcile
-                  : () =>
-                      edit.type === "add"
-                        ? change(
-                            "flame.memory/add.v3",
-                            {
-                              scope,
-                              cwd: cwd ?? "",
-                              ...(project ? { project: project.id } : {}),
-                              content: edit.content.trim(),
-                            },
-                            { action: "add", scope },
-                            "editor",
-                          )
-                        : change(
-                            "flame.memory/update.v3",
-                            {
-                              id: edit.item.id,
-                              expectedRevision: edit.item.revision,
-                              content: edit.content.trim(),
-                            },
-                            { action: "edit", id: edit.item.id },
-                            "editor",
-                          )
-              }
-            >
-              {recovering ? t("feedback.check") : t("save")}
-            </Button>
-          </FormActions>
-        </RecordForm>
+        <MemoryEditor
+          {...memory}
+          edit={edit}
+          feedback={editFeedback}
+          recovering={recovering}
+          aborted={context.signal.aborted}
+          scopeLabel={scopeLabel}
+        />
       ) : null}
       {(current || recordFeedback || recordCommand) && (
         <>
@@ -387,21 +289,8 @@ export function Memory({ context }: { context: ComponentContext }) {
             resultFocus={recordResult}
             authoring={Boolean(edit)}
             disabled={locked || read.loading || Boolean(read.error)}
-            edit={(item, opener) => {
-              beginEdit({
-                type: "update",
-                item: structuredClone(item),
-                content: item.content,
-                opener,
-              });
-            }}
-            remove={(item, opener) => {
-              beginEdit({
-                type: "delete",
-                item: structuredClone(item),
-                opener,
-              });
-            }}
+            edit={editItem}
+            remove={removeItem}
             command={(method, input, intent) =>
               change(method, input, intent, "record")
             }
@@ -416,15 +305,12 @@ export function Memory({ context }: { context: ComponentContext }) {
                     pending={read.loading}
                     focusableWhenDisabled
                     disabled={pending || current.cursors.length === 1}
-                    onClick={(event) => {
-                      const owner = observerSignal();
-                      if (owner)
-                        void load(
-                          owner,
-                          current.cursors.slice(0, -1),
-                          event.currentTarget,
-                        );
-                    }}
+                    onClick={(event) =>
+                      showPage(
+                        current.cursors.slice(0, -1),
+                        event.currentTarget,
+                      )
+                    }
                   >
                     {t("pages.previous")}
                   </Button>
@@ -432,15 +318,12 @@ export function Memory({ context }: { context: ComponentContext }) {
                     pending={read.loading}
                     focusableWhenDisabled
                     disabled={pending || !current.page.nextCursor}
-                    onClick={(event) => {
-                      const owner = observerSignal();
-                      if (owner)
-                        void load(
-                          owner,
-                          [...current.cursors, current.page.nextCursor],
-                          event.currentTarget,
-                        );
-                    }}
+                    onClick={(event) =>
+                      showPage(
+                        [...current.cursors, current.page.nextCursor],
+                        event.currentTarget,
+                      )
+                    }
                   >
                     {t("pages.next")}
                   </Button>
@@ -450,5 +333,89 @@ export function Memory({ context }: { context: ComponentContext }) {
         </>
       )}
     </Panel>
+  );
+}
+
+function MemoryEditor({
+  t,
+  edit,
+  feedback,
+  recovering,
+  aborted,
+  scopeLabel,
+  locked,
+  pending,
+  editorElement,
+  setEdit,
+  closeEditor,
+  saveEdit,
+  reconcile,
+}: Pick<
+  MemoryState,
+  | "t"
+  | "locked"
+  | "pending"
+  | "editorElement"
+  | "setEdit"
+  | "closeEditor"
+  | "saveEdit"
+  | "reconcile"
+> & {
+  edit: Exclude<Edit, { type: "delete" }>;
+  feedback: ReactNode;
+  recovering: boolean;
+  aborted: boolean;
+  scopeLabel: (value: Scope) => string;
+}) {
+  const title = edit.type === "add" ? t("add") : t("edit");
+  const unchanged =
+    edit.type === "update" && edit.content.trim() === edit.item.content;
+  return (
+    <RecordForm ref={editorElement} aria-label={title} data-focus-unit="">
+      <RecordGroup>
+        <RecordTitle>{title}</RecordTitle>
+        {edit.type === "update" && (
+          <RecordMeta>
+            <span>{t(`scope.${scopeLabel(edit.item.scope)}`)}</span>
+            <span>{edit.item.id}</span>
+          </RecordMeta>
+        )}
+        <FormField label={t("content.label")}>
+          <TextArea
+            aria-label={t("content.label")}
+            autoFocus
+            rows={2}
+            autosize
+            style={EDITOR_STYLE}
+            value={edit.content}
+            pending={locked}
+            onChange={(event) =>
+              setEdit({ ...edit, content: event.target.value })
+            }
+          />
+        </FormField>
+      </RecordGroup>
+      <FormActions label={t("save.actions.label")} feedback={feedback}>
+        <Button
+          disabled={locked}
+          focusableWhenDisabled
+          variant="ghost"
+          onClick={() => closeEditor()}
+        >
+          {t("cancel")}
+        </Button>
+        <Button
+          variant="primary"
+          pending={pending}
+          disabled={
+            recovering ? aborted : locked || !edit.content.trim() || unchanged
+          }
+          focusableWhenDisabled={locked}
+          onClick={recovering ? reconcile : saveEdit}
+        >
+          {recovering ? t("feedback.check") : t("save")}
+        </Button>
+      </FormActions>
+    </RecordForm>
   );
 }

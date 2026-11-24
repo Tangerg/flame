@@ -21,6 +21,7 @@ import {
   type MethodOutputs,
 } from "../package/io.github.tangerg.flame/contracts/methods.generated";
 import {
+  type MemoryItem,
   type MutationName,
   type Scope,
   type Read,
@@ -265,6 +266,31 @@ export function useMemory(context: ComponentContext) {
   function clearFeedback() {
     setOutcomes({});
   }
+  function changeScope(next: Scope) {
+    if (locked || edit) return;
+    setSearch("");
+    clearFilters();
+    clearFeedback();
+    setScope(next);
+  }
+  function addItem(opener: HTMLElement) {
+    beginEdit({ type: "add", content: "", opener });
+  }
+  function editItem(item: MemoryItem, opener: HTMLElement) {
+    beginEdit({
+      type: "update",
+      item: structuredClone(item),
+      content: item.content,
+      opener,
+    });
+  }
+  function removeItem(item: MemoryItem, opener: HTMLElement) {
+    beginEdit({ type: "delete", item: structuredClone(item), opener });
+  }
+  function showPage(cursors?: string[], pageControl?: HTMLElement) {
+    const owner = observerSignal();
+    if (owner) void load(owner, cursors, pageControl);
+  }
   function observerSignal(): AbortSignal | undefined {
     const owner = lifetime.current;
     if (!owner || owner.signal.aborted || context.signal.aborted) return;
@@ -330,6 +356,38 @@ export function useMemory(context: ComponentContext) {
       });
     }
   }
+  function saveEdit() {
+    if (!edit || edit.type === "delete") return;
+    const content = edit.content.trim();
+    if (edit.type === "add")
+      change(
+        "flame.memory/add.v3",
+        {
+          scope,
+          cwd: cwd ?? "",
+          ...(project ? { project: project.id } : {}),
+          content,
+        },
+        { action: "add", scope },
+        "editor",
+      );
+    else
+      change(
+        "flame.memory/update.v3",
+        { id: edit.item.id, expectedRevision: edit.item.revision, content },
+        { action: "edit", id: edit.item.id },
+        "editor",
+      );
+  }
+  function deleteEdited() {
+    if (edit?.type !== "delete") return;
+    change(
+      "flame.memory/delete.v3",
+      { id: edit.item.id, expectedRevision: edit.item.revision },
+      { action: "delete", id: edit.item.id },
+      "editor",
+    );
+  }
   function reconcile() {
     const owner = observerSignal();
     if (!owner || command.phase !== "unknown") return;
@@ -361,13 +419,15 @@ export function useMemory(context: ComponentContext) {
     project,
     read,
     pending,
-    observerSignal,
-    load,
-    beginEdit,
+    showPage,
+    addItem,
+    editItem,
+    removeItem,
+    saveEdit,
+    deleteEdited,
     setSearch,
     clearFilters,
-    clearFeedback,
-    setScope,
+    changeScope,
     searchElement,
     search,
     filtersOpen,
