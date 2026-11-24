@@ -21,13 +21,36 @@ import {
 } from "@/features/agent/adapters/wireInput";
 import { type RuntimeAccess } from "@/features/connection/public/runtime";
 import { type AgentSharedMaterial } from "@/features/agent/application/session/sharedMaterial";
-import { runtimeSessionMaterial } from "@/features/agent/adapters/runtimeSessionMaterial";
-import { runtimeItem } from "@/features/agent/adapters/runtimeAgentFacts";
+import {
+  mergeRecordedCommand,
+  recoveredCommandBelongs,
+  runtimeSessionMaterial,
+  unresolvedOpening,
+  unresolvedSteer,
+  type RecoveredOpening,
+} from "@/features/agent/adapters/runtimeSessionMaterial";
 import { toAgentSessionSummary } from "@/features/agent/adapters/runtimeSessionSummary";
 import { type AgentCommands } from "@/features/agent/application/agentCommandOwner";
 import { type createAgentSessionUsage } from "@/features/agent/application/session/sessionUsage";
 
 type RuntimeCapabilities = Pick<RuntimeAccess["capabilities"], "hasCapability">;
+
+function openingRetry(sessionId: string, command: RecoveredOpening) {
+  return {
+    sessionId,
+    retry: async (signal: AbortSignal) => {
+      const opening = await command.retry({ signal });
+      return {
+        ...opening,
+        result: {
+          runId: asRunId(opening.result.runId),
+          segmentId: asSegmentId(opening.result.segmentId),
+          ...(opening.result.userItemId ? { userItemId: asItemId(opening.result.userItemId) } : {}),
+        },
+      };
+    },
+  };
+}
 
 class RuntimeAgentGateway implements AgentRuntimeGateway {
   constructor(
@@ -131,112 +154,20 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
       const unresolvedOpenings: AgentOpeningCommand[] = [];
       const unresolvedSteers: AgentUnresolvedSteer[] = [];
       const acknowledge: Array<() => void> = [];
-      const runIDs = new Set(snapshot.runs.map((run) => run.id));
+      const runIds = new Set(snapshot.runs.map((run) => run.id));
       for (const command of commands) {
+        if (!recoveredCommandBelongs(command, sessionId, runIds)) continue;
+        if (command.operation !== "steer")
+          generation.retries.set(command.idempotencyKey, openingRetry(sessionId, command));
         const { observation } = command;
-        const belongs =
-          observation.type === "recorded"
-            ? observation.acceptance.sessionId === sessionId
-            : command.operation === "start"
-              ? (command.params.sessionId ?? command.params.newSession?.sessionId) === sessionId
-              : runIDs.has(command.params.runId);
-        if (!belongs) continue;
-
-        if (command.operation !== "steer") {
-          generation.retries.set(command.idempotencyKey, {
-            sessionId,
-            retry: async (retrySignal: AbortSignal) => {
-              const opening = await command.retry({ signal: retrySignal });
-              return {
-                ...opening,
-                result: {
-                  runId: asRunId(opening.result.runId),
-                  segmentId: asSegmentId(opening.result.segmentId),
-                  ...(opening.result.userItemId
-                    ? { userItemId: asItemId(opening.result.userItemId) }
-                    : {}),
-                },
-              };
-            },
-          });
-        }
         if (observation.type === "recorded") {
-          const receipt = observation.acceptance;
           acknowledge.push(observation.acknowledge);
-          if (command.operation !== "resume") {
-            material.recoveredInputs ??= [];
-            material.recoveredInputs.push({
-              idempotencyKey: command.idempotencyKey,
-              input: contentBlocksToAgentInput(command.params.input),
-              acceptance: {
-                status: receipt.type,
-                sessionId: receipt.sessionId,
-                runId: receipt.runId,
-                ...(receipt.userItemId ? { userItemId: receipt.userItemId } : {}),
-              },
-              acknowledge: observation.acknowledge,
-            });
-          }
-          if (command.operation === "steer") {
-            if (receipt.type === "accepted" && receipt.appliedItem) {
-              const applied = receipt.appliedItem;
-              if (!material.snapshot.items.some((item) => item.id === applied.id))
-                material.snapshot.items.push(runtimeItem(applied));
-            }
-            if (receipt.userItemId && receipt.input) {
-              material.snapshot.steerInputs ??= [];
-              if (
-                !material.snapshot.steerInputs.some(
-                  (pending) => pending.userItemId === receipt.userItemId,
-                )
-              )
-                material.snapshot.steerInputs.push({
-                  runId: receipt.runId,
-                  userItemId: receipt.userItemId,
-                  input: contentBlocksToAgentInput(receipt.input),
-                  receipt: receipt.type,
-                });
-            }
-          }
-          continue;
-        }
-        if (command.operation === "steer") {
+          mergeRecordedCommand(material, command, observation);
+        } else if (command.operation === "steer") {
           if (observation.type === "unknown")
             console.warn("[session] original steer query failed:", observation.cause);
-          unresolvedSteers.push({
-            idempotencyKey: command.idempotencyKey,
-            userItemId: command.userItemId,
-            runId: command.params.runId,
-            input: contentBlocksToAgentInput(command.params.input),
-            retry: () => command.retry(),
-          });
-          continue;
-        }
-        const request =
-          command.operation === "start"
-            ? {
-                operation: "start" as const,
-                input: contentBlocksToAgentInput(command.params.input),
-                options: {
-                  provider: command.params.provider,
-                  model: command.params.model,
-                  reasoningEffort: command.params.reasoningEffort,
-                },
-                ...(command.params.params ? { generation: { ...command.params.params } } : {}),
-              }
-            : {
-                operation: "resume" as const,
-                runId: command.params.runId,
-                ...(command.params.input
-                  ? { input: contentBlocksToAgentInput(command.params.input) }
-                  : {}),
-                responses: command.params.responses,
-              };
-        unresolvedOpenings.push({
-          ...request,
-          idempotencyKey: command.idempotencyKey,
-          receipt: observation.type,
-        });
+          unresolvedSteers.push(unresolvedSteer(command));
+        } else unresolvedOpenings.push(unresolvedOpening(command, observation.type));
       }
       material.unresolvedSteers = unresolvedSteers;
       material.unresolvedOpenings = unresolvedOpenings;
