@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type ComponentPropsWithRef,
+  type CSSProperties,
   type KeyboardEvent,
   type Ref,
   type RefObject,
@@ -36,27 +37,41 @@ import {
 } from "@/features/workspace/application/navigation";
 import { useDirectory } from "@/features/workspace/application/fileTree";
 import type { WorkspaceFileEntry } from "@/features/workspace/application/workspaceQueries";
-import { space, color, radius, surface, type as typeStep } from "@flame/ui/tokens.stylex";
+import { space, color, layout, radius, surface, type as typeStep } from "@flame/ui/tokens.stylex";
 const styles = stylex.create({
   // The virtualizer sizes rows to the scroller's full width, so the inline inset lives on rows.
   tree: { minHeight: 0, height: "100%", overflow: "auto", paddingBlock: space.s2 },
+  // Rows put the chevron column on the Dock's text edge and bleed their fill past it by the
+  // shared row inset (see RecordGroup); each level indents by one chevron slot so a child's
+  // chevron sits under its parent's icon.
   row: {
     display: "flex",
-    marginInline: space.s2,
+    marginInline: `calc(${layout.compactGutter} - ${space.s3})`,
     alignItems: "center",
     gap: space.s1_5,
     minHeight: "2rem",
-    paddingInline: space.s2,
+    paddingInline: space.s3,
+    paddingInlineStart: `calc(${space.s3} + var(--tree-depth, 0) * (var(--icon-xs) + ${space.s1_5}))`,
     paddingBlock: space.s1,
     borderRadius: radius.sm,
     color: color.fg,
     outlineOffset: "-2px",
     backgroundColor: { default: "transparent", "[aria-current]": surface.selected },
   },
+  // Files keep an empty chevron slot so every icon in a level shares one line.
+  chevron: { display: "flex", flexShrink: 0, width: "var(--icon-xs)" },
+  // As in Disclosure: the chevron stroke, not its box, sits on the column edge. The closed
+  // stroke starts about 5/16 into its box, the open one 3/16.
+  chevronGlyph: { position: "relative", insetInlineStart: "calc(var(--icon-xs) * -0.3125)" },
+  chevronGlyphOpen: { insetInlineStart: "calc(var(--icon-xs) * -0.1875)" },
   name: { flex: 1, overflowWrap: "anywhere" },
-  loading: { marginInline: space.s2 },
-  // Statuses start on the rows' text edge: row margin plus row padding.
-  statuses: { flexShrink: 0, maxHeight: "40vh", overflow: "auto", paddingInline: space.s4 },
+  loading: { marginInline: layout.compactGutter },
+  statuses: {
+    flexShrink: 0,
+    maxHeight: "40vh",
+    overflow: "auto",
+    paddingInline: layout.compactGutter,
+  },
 });
 type Directory = ReturnType<typeof useDirectory>;
 function More({ query }: { query: Directory }) {
@@ -174,12 +189,21 @@ function Item({
             aria-busy={directory && query.isFetching ? true : undefined}
             {...stylex.props(styles.row, typeStep.uiSm)}
             title={change?.previousPath ? `${change.previousPath} → ${entry.path}` : entry.path}
-            style={{ paddingInlineStart: `calc(${level - 1} * 1rem)` }}
+            style={{ "--tree-depth": level - 1 } as CSSProperties}
           >
-            {directory && (
-              <TreeButton slot="chevron">
-                <Icon name={isExpanded ? "chevron-down" : "chevron-right"} size="xs" />
+            {directory ? (
+              <TreeButton slot="chevron" {...stylex.props(styles.chevron)}>
+                <Icon
+                  name={isExpanded ? "chevron-down" : "chevron-right"}
+                  size="xs"
+                  className={
+                    stylex.props(styles.chevronGlyph, isExpanded && styles.chevronGlyphOpen)
+                      .className
+                  }
+                />
               </TreeButton>
+            ) : (
+              <span aria-hidden="true" {...stylex.props(styles.chevron)} />
             )}
             <Icon name={directory ? "folder" : fileIconName(entry.path)} size="sm" />
             <span {...stylex.props(styles.name)}>

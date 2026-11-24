@@ -2695,6 +2695,35 @@ wrap, lands on the fill line; mid-line controls keep their gaps. Native
 `dock-schedules` shows the search and `Add schedule` fills on one edge;
 Trajectory, Usage and Skills are unchanged.
 
+Dock and Files step (2026-11-25):
+
+- Every Dock body reserves a 2 px inset focus edge, so panel text sat 2 px
+  right of the tab labels. The tab strip now adds that edge to its leading
+  padding; tab text and panel text share one line.
+- The Files tree's level offset was an inline `padding-inline-start` that
+  replaced the row padding, so root rows had none: the selected fill hugged
+  the icon and the tree sat 8 px left of every other panel. Rows now put the
+  chevron column on the panel edge and bleed their fill by 12 px like list
+  rows; files keep an empty chevron slot so file and folder icons share one
+  column, and each level indents by one slot so a child's chevron sits under
+  its parent's icon. The chevron stroke, not its box, is on the edge (closed
+  and open glyphs start at different depths, so each has its own pull).
+- The file viewer header's back chevron sat 12 px inside the edge and the
+  directory and line count started under the file icon. The back button
+  hangs so its stroke starts the line, and `ViewHeader` gains an `icon`
+  column so the name, directory and count share one text edge.
+- The conversation header switched to its wide 20 px gutter on window width
+  while the transcript widens on the conversation pane's width; with the
+  Dock open the title sat 8 px right of the prose and the diff totals 8 px
+  inside the user bubble's edge. The header now follows the `conversation`
+  container like the transcript.
+
+Native `dock-files`, `dock-file` and `dock-schedules` show the tab label,
+chevrons or field glyphs and panel text on one line; the chat header's
+`scope` and `+25 −9` meet the prose and bubble edges. The full-width file
+view still sits 2 px inside its window title for the same focus edge, and
+centered full-width panels do not share the title's line by design.
+
 ### Composer suggestions open where they can be read (2026-11-24)
 
 Typing `@` or `/` in a Session's Composer opened Lexical's typeahead below

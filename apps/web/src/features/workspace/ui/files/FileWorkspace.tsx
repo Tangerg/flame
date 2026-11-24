@@ -78,8 +78,12 @@ const WINDOW_RADIUS = 200;
 const fp = stylex.create({
   workspace: { display: "flex", flex: 1, flexDirection: "column", minWidth: 0, minHeight: 0 },
   hidden: { display: "none" },
-  identity: { display: "flex", alignItems: "center", gap: space.s1_5, minWidth: 0 },
-  identityIcon: { flexShrink: 0, color: color.fgFaint },
+  // The back chevron's stroke, not its button, starts the header's column edge (as
+  // Disclosure's does); its hover fill bleeds like a row's.
+  back: {
+    marginInlineStart:
+      "calc((var(--icon-sm) - var(--control-height-sm)) / 2 - var(--icon-sm) * 0.3125)",
+  },
   // The header never shrinks, so a long name is bounded here; the directory below completes it.
   identityName: {
     display: "-webkit-box",
@@ -833,14 +837,15 @@ function FilePreview({
           icon={iconGlyph("chevron-left")}
           size="sm"
           aria-label={t("file.backToFiles")}
+          styles={fp.back}
           data-chrome-focus=""
           onClick={closeWorkspaceFile.bind(null, workspaceAccess)}
         />
       }
+      icon={<Icon name={icon} size="sm" />}
       identity={
-        <span title={viewer.path} {...stylex.props(fp.identity)}>
-          <Icon name={icon} size="sm" className={stylex.props(fp.identityIcon).className} />
-          <span {...stylex.props(fp.identityName)}>{name}</span>
+        <span title={viewer.path} {...stylex.props(fp.identityName)}>
+          {name}
         </span>
       }
       sub={sub}

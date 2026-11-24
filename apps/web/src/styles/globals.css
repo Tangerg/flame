@@ -535,6 +535,13 @@ body:has([data-slot="notification-toast"])
     padding-inline-start: max(var(--reading-gutter-wide), var(--window-controls-gutter));
   }
 }
+/* The conversation header follows the transcript's own gutter (readingColumn), which widens
+   with the conversation pane, not the window: with the Dock open they differ. */
+@container conversation (max-width: 639.98px) {
+  .agent-surface-header {
+    padding-inline: var(--reading-gutter);
+  }
+}
 
 .agent-drawer-header {
   padding-inline-start: var(--window-controls-gutter);
@@ -619,9 +626,10 @@ body:has([data-slot="notification-toast"])
   background: transparent;
 }
 
+/* Dock bodies reserve the inset focus edge, so tab labels add it to land on the body text edge. */
 .agent-context-dock > .agent-surface-header:first-child {
   gap: calc(var(--spacing) * 1);
-  padding-inline: calc(var(--layout-compact-gutter) - var(--dock-tab-inset))
+  padding-inline: calc(var(--layout-compact-gutter) + var(--focus-inset-edge) - var(--dock-tab-inset))
     var(--dock-control-span);
   background: var(--app-dock-tabstrip-surface);
 }

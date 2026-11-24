@@ -5,13 +5,21 @@ import { type as typeStep } from "@flame/ui/tokens.stylex";
 import { viewStyles as vs } from "@/features/workspace/ui/viewStyles";
 export interface ViewHeaderProps {
   navigation?: ReactNode;
+  icon?: ReactNode;
   identity?: ReactNode;
   sub?: ReactNode;
   controls?: ReactNode;
   actions?: ReactNode;
 }
 
-export function ViewHeader({ navigation, identity, sub, controls, actions }: ViewHeaderProps) {
+export function ViewHeader({
+  navigation,
+  icon,
+  identity,
+  sub,
+  controls,
+  actions,
+}: ViewHeaderProps) {
   if (
     navigation === undefined &&
     identity === undefined &&
@@ -25,7 +33,14 @@ export function ViewHeader({ navigation, identity, sub, controls, actions }: Vie
       <div {...stylex.props(vs.headerHeading)}>
         {navigation}
         {(identity !== undefined || sub !== undefined) && (
-          <div {...stylex.props(vs.headerIdentity, typeStep.uiSm)}>
+          <div
+            {...stylex.props(
+              vs.headerIdentity,
+              icon !== undefined && vs.headerIdentityWithIcon,
+              typeStep.uiSm,
+            )}
+          >
+            {icon !== undefined && <span {...stylex.props(vs.headerIcon)}>{icon}</span>}
             {identity !== undefined && <span {...stylex.props(vs.headerName)}>{identity}</span>}
             {sub !== undefined && (
               <span {...stylex.props(vs.headerMetadata, vocab.muted, typeStep.uiXs)}>{sub}</span>
