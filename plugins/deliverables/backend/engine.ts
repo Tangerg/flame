@@ -122,6 +122,14 @@ function configuration(environment: NodeJS.ProcessEnv): Configuration {
   return { tools, roots, issues };
 }
 
+function hasErrorCode(cause: unknown, ...codes: string[]): boolean {
+  return (
+    cause instanceof Error &&
+    "code" in cause &&
+    codes.includes(cause.code as string)
+  );
+}
+
 async function privateDirectory(path: string): Promise<void> {
   await mkdir(path, { mode: 0o700 });
 }
@@ -161,11 +169,7 @@ async function readOutput(
       constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK,
     );
   } catch (cause) {
-    if (
-      cause instanceof Error &&
-      "code" in cause &&
-      (cause.code === "ENOENT" || cause.code === "ELOOP")
-    )
+    if (hasErrorCode(cause, "ENOENT", "ELOOP"))
       throw new Refusal(
         "engine_output_missing",
         "The rendering process did not produce the required regular output file.",
@@ -235,6 +239,80 @@ function png(bytes: Uint8Array): void {
 
 function digest(bytes: Uint8Array): string {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+function pageCount(pdfinfo: string): number {
+  const match = /^Pages:\s+([1-9][0-9]*)\s*$/m.exec(pdfinfo);
+  const count = match ? Number(match[1]) : NaN;
+  if (!Number.isSafeInteger(count) || count < 1 || count > LIMITS.renderPages)
+    throw new Refusal(
+      "engine_page_limit",
+      `The PDF must contain between 1 and ${LIMITS.renderPages} pages.`,
+    );
+  return count;
+}
+
+function textChecks(text: string, truncated: boolean): Check[] {
+  const checks: Check[] = [];
+  if (truncated)
+    checks.push({
+      code: "text_truncated",
+      severity: "warning",
+      message:
+        "Extracted text exceeds the retained text limit; the page previews remain the complete visual evidence.",
+    });
+  if (!text.trim())
+    checks.push({
+      code: "text_empty",
+      severity: "warning",
+      message:
+        "No searchable text was observed; inspect the page previews for image-only or missing content.",
+    });
+  if (text.includes("\ufffd"))
+    checks.push({
+      code: "text_replacement_character",
+      severity: "warning",
+      message:
+        "Extracted text contains replacement characters; verify the corresponding glyphs on the page previews.",
+    });
+  return checks;
+}
+
+async function installedExecutable(
+  configured: string,
+  roots: readonly string[],
+): Promise<string | undefined> {
+  try {
+    const path = await realpath(configured);
+    const info = await lstat(path);
+    if (
+      !info.isFile() ||
+      info.isSymbolicLink() ||
+      !roots.some((root) => within(root, path))
+    )
+      return undefined;
+    await access(path, constants.X_OK);
+    return path;
+  } catch {
+    return undefined;
+  }
+}
+
+async function requireConfinement(): Promise<void> {
+  const confinement =
+    process.platform === "linux"
+      ? ["/usr/bin/bwrap", "/usr/bin/prlimit"]
+      : ["/usr/bin/sandbox-exec", DARWIN_SHELL, "/bin/ps"];
+  for (const path of confinement) {
+    try {
+      await access(path, constants.X_OK);
+    } catch {
+      throw new Refusal(
+        "engine_unavailable",
+        "The required native confinement or resource-limit tool is unavailable.",
+      );
+    }
+  }
 }
 
 export class Engine {
@@ -335,17 +413,7 @@ export class Engine {
           [inputPDF],
           owned,
         );
-        const match = /^Pages:\s+([1-9][0-9]*)\s*$/m.exec(info.stdout);
-        const count = match ? Number(match[1]) : NaN;
-        if (
-          !Number.isSafeInteger(count) ||
-          count < 1 ||
-          count > LIMITS.renderPages
-        )
-          throw new Refusal(
-            "engine_page_limit",
-            `The PDF must contain between 1 and ${LIMITS.renderPages} pages.`,
-          );
+        const count = pageCount(info.stdout);
         const files: RenderFile[] = [
           {
             filename: "rendered.pdf",
@@ -356,37 +424,21 @@ export class Engine {
         const pages: EngineRenderReport["pages"] = [];
         let size = pdfBytes.byteLength;
         for (let number = 1; number <= count; number += 1) {
-          owned.throwIfAborted();
-          const name = `page-${String(number).padStart(4, "0")}`;
-          const prefix = join(directory.output, name);
-          await this.#command(
+          const preview = await this.#pagePreview(
             directory,
             tools.pdftoppm,
-            [
-              "-f",
-              String(number),
-              "-l",
-              String(number),
-              "-singlefile",
-              "-scale-to",
-              String(LIMITS.previewPixels),
-              "-png",
-              inputPDF,
-              prefix,
-            ],
+            inputPDF,
+            number,
+            LIMITS.renderBytes - size,
             owned,
-            Math.min(LIMITS.previewFileBytes, LIMITS.renderBytes - size),
           );
-          const image = await readOutput(
-            `${prefix}.png`,
-            Math.min(LIMITS.previewFileBytes, LIMITS.renderBytes - size),
-          );
-          png(image);
-          size += image.byteLength;
-          const filename = `${name}.png`;
-          files.push({ filename, mime: ASSET_MIME.png, bytes: image });
-          pages.push({ number, filename });
-          await rm(`${prefix}.png`);
+          size += preview.bytes.byteLength;
+          files.push({
+            filename: preview.filename,
+            mime: ASSET_MIME.png,
+            bytes: preview.bytes,
+          });
+          pages.push({ number, filename: preview.filename });
         }
         const checks: Check[] = [
           {
@@ -406,63 +458,16 @@ export class Engine {
           engines.push(
             await this.#version("pdftotext", tools, directory, owned),
           );
-          const textPath = join(directory.output, "extracted.txt");
-          await this.#command(
+          const extraction = await this.#extractText(
             directory,
             tools.pdftotext,
-            [
-              "-f",
-              "1",
-              "-l",
-              String(count),
-              "-layout",
-              "-enc",
-              "UTF-8",
-              inputPDF,
-              textPath,
-            ],
+            inputPDF,
+            count,
+            LIMITS.renderBytes - size,
             owned,
-            Math.min(LIMITS.fileBytes, LIMITS.renderBytes - size),
           );
-          // Empty text is a valid observation for an image-only PDF.
-          const text = await readOutput(
-            textPath,
-            Math.min(LIMITS.fileBytes, LIMITS.renderBytes - size),
-            true,
-          );
-          const truncated = text.byteLength > LIMITS.renderTextBytes;
-          try {
-            extractedText = new TextDecoder("utf-8", { fatal: true }).decode(
-              text.subarray(0, LIMITS.renderTextBytes),
-              { stream: truncated },
-            );
-          } catch {
-            throw new Refusal(
-              "engine_text_invalid",
-              "The extracted text is not valid UTF-8.",
-            );
-          }
-          if (truncated)
-            checks.push({
-              code: "text_truncated",
-              severity: "warning",
-              message:
-                "Extracted text exceeds the retained text limit; the page previews remain the complete visual evidence.",
-            });
-          if (!extractedText.trim())
-            checks.push({
-              code: "text_empty",
-              severity: "warning",
-              message:
-                "No searchable text was observed; inspect the page previews for image-only or missing content.",
-            });
-          if (extractedText.includes("\ufffd"))
-            checks.push({
-              code: "text_replacement_character",
-              severity: "warning",
-              message:
-                "Extracted text contains replacement characters; verify the corresponding glyphs on the page previews.",
-            });
+          extractedText = extraction.text;
+          checks.push(...textChecks(extraction.text, extraction.truncated));
         } else
           checks.push({
             code: "text_unavailable",
@@ -657,26 +662,49 @@ export class Engine {
     const config = this.#configuration;
     const system =
       process.platform === "linux" ? SYSTEM_ROOTS.linux : SYSTEM_ROOTS.darwin;
+    await this.#admitReadRoots(system, signal);
+    const roots = [...system, ...config.roots];
+    const tools = { ...config.tools };
+    for (const key of Object.keys(tools) as Tool[]) {
+      if (!tools[key]) continue;
+      signal.throwIfAborted();
+      const path = await installedExecutable(tools[key], roots);
+      if (!path)
+        throw new Refusal(
+          "engine_configuration",
+          `${SETTINGS[key]} must identify an executable inside an admitted installation root.`,
+        );
+      tools[key] = path;
+    }
+    await requireConfinement();
+    return {
+      ...tools,
+      office: tools.office
+        ? await Office.load(tools.office, roots, signal)
+        : undefined,
+    };
+  }
+
+  // Every read root is mounted into the renderer, so none may expose private plugin data.
+  async #admitReadRoots(
+    system: readonly string[],
+    signal: AbortSignal,
+  ): Promise<void> {
+    const configuredRoots = this.#configuration.roots;
     const data = await realpath(this.#data);
     if (data !== this.#data || !(await lstat(data)).isDirectory())
       throw new Refusal(
         "engine_private_directory",
         "The plugin data directory must be canonical.",
       );
-    for (const root of [...system, ...SYSTEM_FILES, ...config.roots]) {
+    for (const root of [...system, ...SYSTEM_FILES, ...configuredRoots]) {
       signal.throwIfAborted();
-      const configured = config.roots.includes(root);
+      const configured = configuredRoots.includes(root);
       let canonical: string;
       try {
         canonical = await realpath(root);
       } catch (cause) {
-        if (
-          configured ||
-          !(cause instanceof Error) ||
-          !("code" in cause) ||
-          cause.code !== "ENOENT"
-        )
-          throw cause;
+        if (configured || !hasErrorCode(cause, "ENOENT")) throw cause;
         canonical = root;
       }
       if (
@@ -690,48 +718,6 @@ export class Engine {
           "An installation read root is noncanonical or overlaps private plugin data.",
         );
     }
-    const tools = { ...config.tools };
-    for (const key of Object.keys(tools) as Tool[]) {
-      if (!tools[key]) continue;
-      signal.throwIfAborted();
-      try {
-        const path = await realpath(tools[key]);
-        const info = await lstat(path);
-        if (
-          !info.isFile() ||
-          info.isSymbolicLink() ||
-          ![...system, ...config.roots].some((root) => within(root, path))
-        )
-          throw new Error("outside installation roots");
-        await access(path, constants.X_OK);
-        tools[key] = path;
-      } catch {
-        throw new Refusal(
-          "engine_configuration",
-          `${SETTINGS[key]} must identify an executable inside an admitted installation root.`,
-        );
-      }
-    }
-    const confinement =
-      process.platform === "linux"
-        ? ["/usr/bin/bwrap", "/usr/bin/prlimit"]
-        : ["/usr/bin/sandbox-exec", DARWIN_SHELL, "/bin/ps"];
-    for (const path of confinement) {
-      try {
-        await access(path, constants.X_OK);
-      } catch {
-        throw new Refusal(
-          "engine_unavailable",
-          "The required native confinement or resource-limit tool is unavailable.",
-        );
-      }
-    }
-    return {
-      ...tools,
-      office: tools.office
-        ? await Office.load(tools.office, [...system, ...config.roots], signal)
-        : undefined,
-    };
   }
 
   async #directory(signal: AbortSignal): Promise<PrivateDirectory> {
@@ -740,12 +726,7 @@ export class Engine {
     try {
       await privateDirectory(base);
     } catch (cause) {
-      if (!(
-        cause instanceof Error &&
-        "code" in cause &&
-        cause.code === "EEXIST"
-      ))
-        throw cause;
+      if (!hasErrorCode(cause, "EEXIST")) throw cause;
     }
     await checkedDirectory(base);
     const root = await mkdtemp(join(base, "invocation-"));
@@ -851,6 +832,86 @@ export class Engine {
       name: tool === "office" ? "LibreOffice" : `Poppler ${tool}`,
       version,
     };
+  }
+
+  async #pagePreview(
+    directory: PrivateDirectory,
+    pdftoppm: string,
+    inputPDF: string,
+    number: number,
+    remainingBytes: number,
+    signal: AbortSignal,
+  ): Promise<{ filename: string; bytes: Uint8Array }> {
+    signal.throwIfAborted();
+    const name = `page-${String(number).padStart(4, "0")}`;
+    const prefix = join(directory.output, name);
+    const maximum = Math.min(LIMITS.previewFileBytes, remainingBytes);
+    await this.#command(
+      directory,
+      pdftoppm,
+      [
+        "-f",
+        String(number),
+        "-l",
+        String(number),
+        "-singlefile",
+        "-scale-to",
+        String(LIMITS.previewPixels),
+        "-png",
+        inputPDF,
+        prefix,
+      ],
+      signal,
+      maximum,
+    );
+    const bytes = await readOutput(`${prefix}.png`, maximum);
+    png(bytes);
+    await rm(`${prefix}.png`);
+    return { filename: `${name}.png`, bytes };
+  }
+
+  async #extractText(
+    directory: PrivateDirectory,
+    pdftotext: string,
+    inputPDF: string,
+    count: number,
+    remainingBytes: number,
+    signal: AbortSignal,
+  ): Promise<{ text: string; truncated: boolean }> {
+    const textPath = join(directory.output, "extracted.txt");
+    const maximum = Math.min(LIMITS.fileBytes, remainingBytes);
+    await this.#command(
+      directory,
+      pdftotext,
+      [
+        "-f",
+        "1",
+        "-l",
+        String(count),
+        "-layout",
+        "-enc",
+        "UTF-8",
+        inputPDF,
+        textPath,
+      ],
+      signal,
+      maximum,
+    );
+    // Empty text is a valid observation for an image-only PDF.
+    const bytes = await readOutput(textPath, maximum, true);
+    const truncated = bytes.byteLength > LIMITS.renderTextBytes;
+    try {
+      const text = new TextDecoder("utf-8", { fatal: true }).decode(
+        bytes.subarray(0, LIMITS.renderTextBytes),
+        { stream: truncated },
+      );
+      return { text, truncated };
+    } catch {
+      throw new Refusal(
+        "engine_text_invalid",
+        "The extracted text is not valid UTF-8.",
+      );
+    }
   }
 
   async #office(

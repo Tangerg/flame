@@ -105,71 +105,63 @@ type CellProjection =
 
 export function cellValue(cell: XmlNode, strings: string[]): CellProjection {
   const value = cell.children.find((node) => isSheetElement(node, "v"))?.text;
-  let projected: CellProjection;
   switch (cell.attributes.t) {
     case "inlineStr": {
       const inline = cell.children.find((node) => isSheetElement(node, "is"));
       if (!inline) throw new Error("inline string cell has no string content");
-      projected = { type: "string", value: stringItemText(inline) };
-      break;
+      return { type: "string", value: stringItemText(inline) };
     }
-    case "s": {
-      if (
-        !value ||
-        !/^(?:0|[1-9][0-9]*)$/u.test(value) ||
-        strings[Number(value)] === undefined
-      )
-        throw new Error("spreadsheet references a missing shared string");
-      projected = { type: "string", value: strings[Number(value)]! };
-      break;
-    }
+    case "s":
+      return { type: "string", value: sharedString(value, strings) };
     case "b":
       if (value !== "0" && value !== "1")
         throw new Error("invalid spreadsheet boolean value");
-      projected = { type: "boolean", value: value === "1" };
-      break;
+      return { type: "boolean", value: value === "1" };
     case "e":
-      projected = { type: "error", value: value ?? "" };
-      break;
+      return { type: "error", value: value ?? "" };
     case "str":
     case "d":
-      projected = { type: "string", value: value ?? "" };
-      break;
+      return { type: "string", value: value ?? "" };
     case undefined:
     case "n":
-      if (value === undefined || value === "") projected = { type: "blank" };
-      else {
-        if (
-          !/^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/u.test(
-            value,
-          ) ||
-          !Number.isFinite(Number(value))
-        )
-          throw new Error("invalid numeric spreadsheet cell");
-        try {
-          projected = {
-            type: "number",
-            value: projectNumber(parseJSON(value)),
-          };
-        } catch (error) {
-          if (!(
-            error instanceof SyntaxError ||
-            error instanceof RangeError ||
-            error instanceof TypeError
-          ))
-            throw error;
-          projected = {
-            type: "number",
-            value,
-            representation: "native_decimal",
-          };
-        }
-      }
-      break;
+      return value === undefined || value === ""
+        ? { type: "blank" }
+        : numericCell(value);
     default:
       throw new Error("unsupported spreadsheet cell value type");
   }
-  return projected;
+}
+
+function sharedString(index: string | undefined, strings: string[]): string {
+  const value =
+    index && /^(?:0|[1-9][0-9]*)$/u.test(index)
+      ? strings[Number(index)]
+      : undefined;
+  if (value === undefined)
+    throw new Error("spreadsheet references a missing shared string");
+  return value;
+}
+
+// A decimal that JSON cannot carry exactly keeps its native spreadsheet text.
+function numericCell(value: string): CellProjection {
+  if (
+    !/^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/u.test(
+      value,
+    ) ||
+    !Number.isFinite(Number(value))
+  )
+    throw new Error("invalid numeric spreadsheet cell");
+  try {
+    return { type: "number", value: projectNumber(parseJSON(value)) };
+  } catch (error) {
+    if (!(
+      error instanceof SyntaxError ||
+      error instanceof RangeError ||
+      error instanceof TypeError
+    ))
+      throw error;
+    return { type: "number", value, representation: "native_decimal" };
+  }
 }
 
 export function workbookSheets(
