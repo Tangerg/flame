@@ -2753,6 +2753,12 @@ Dock and Files step (2026-11-25):
   a fact the layout cannot (search matches titles only, hook file locations,
   why a file has no preview, why providers are empty) stay.
 
+- A plain `Disclosure` summary (`Release details`, `Accounting details`,
+  `Comparison details`, `About client diagnostics`) drew its hover fill flush
+  against the chevron, the one fill in a panel that did not bleed. A plain
+  summary is text, so hover and a consumer's focus marker now change its ink
+  only; row disclosures keep their bleeding fill.
+
 Native `dock-files`, `dock-file` and `dock-schedules` show the tab label,
 chevrons or field glyphs and panel text on one line; the chat header's
 `scope` and `+25 −9` meet the prose and bubble edges. The full-width file

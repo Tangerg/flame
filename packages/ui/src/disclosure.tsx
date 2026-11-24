@@ -46,6 +46,9 @@ const styles = stylex.create({
     paddingBlock: space.s1,
     paddingInline: 0,
   },
+  // A plain summary is text with a chevron on the column edge; a hover or open
+  // fill would have to start at the chevron, so it only changes ink.
+  plainTrigger: { backgroundColor: "transparent" },
   // The chevron drawing starts 6/16 into its box; pull it back so the stroke,
   // not the box, sits on the column edge the label's column starts from.
   leadGlyph: { marginInlineStart: "calc(var(--icon-xs, 12px) * -0.3125)" },
@@ -124,7 +127,7 @@ export function Disclosure({
               styles={
                 variant === "row"
                   ? [styles.trigger, styles.rowTrigger]
-                  : styles.trigger
+                  : [styles.trigger, styles.plainTrigger]
               }
             />
           }
