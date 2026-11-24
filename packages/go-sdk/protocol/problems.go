@@ -20,6 +20,7 @@ var problemSpecs = mustProblemSpecs([]problemSpec{
 	frameworkProblem(ErrMethodNotFound, RecoveryStop),
 	frameworkProblem(ErrInvalidParams, RecoveryStop),
 	declaredProblem(ErrSessionNotFound, RecoveryRefetch),
+	declaredProblem(ErrProjectNotFound, RecoveryRefetch),
 	declaredProblem(ErrRunNotFound, RecoveryRefetch),
 	declaredProblem(ErrItemNotFound, RecoveryRefetch),
 	declaredProblem(ErrPluginUnavailable, RecoveryPromptUser),

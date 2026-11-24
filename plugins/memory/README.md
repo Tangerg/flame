@@ -58,8 +58,11 @@ the shared user scope. `add_memory`, `update_memory`, `delete_memory` and
 Writes require the user's corresponding intent. Update and review compose an
 `item` object containing scope, ID and observed revision with their change fields;
 delete consumes that same item object directly. The item contract alone owns its
-revision bound. Item mutations carry the scope and observed revision; project scope always resolves the captured Run workspace,
-and a model cannot supply a different workspace path. User memory remains shared.
+revision bound. Item mutations carry the scope and observed revision. Project scope
+resolves the Run's captured Flame Project, or its workspace directory when the
+Session belongs to none; a model cannot supply a different target. Directory
+memories therefore never reach a Project implicitly, and two Projects sharing one
+repository keep separate memory. User memory remains shared.
 The original Tool JSON, result or business refusal commits in the same private
 receipt database as the mutation. Read-only recovery returns that original
 outcome after later edits, deletion or backend restart without redispatching.
@@ -92,7 +95,7 @@ match. This remains a bounded lexical fallback, not a second semantic model or a
 guarantee that a positively ranked item answers the question.
 
 Text embedding now uses the public SDK `flame.model/embed-texts.v2` callback.
-Workspace and optional vector-space identity use `plugin.ToolContext`; callback
+Workspace, Project and optional vector-space identity use `plugin.ToolContext`; callback
 credentials travel only in the existing public callback metadata. The private
 Memory scope codec and embedding method are deleted. Rebuild Runtime and this
 backend together; no legacy metadata reader is retained. This changes neither

@@ -52,6 +52,13 @@ func WorkspaceCWD(ctx context.Context) (string, bool) {
 	return "", false
 }
 
+func Project(ctx context.Context) identity.ProjectID {
+	if scope, ok := Scope(ctx); ok {
+		return scope.Project
+	}
+	return identity.ProjectID{}
+}
+
 func Isolated(ctx context.Context) bool {
 	scope, ok := Scope(ctx)
 	return ok && scope.Isolated

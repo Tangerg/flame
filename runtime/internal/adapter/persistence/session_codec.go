@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-const sessionColumns = `id, title, title_search, workspace_path, workspace_search, parent_id, created_at, updated_at, provider, model, reasoning_effort, favorite, isolated, revision`
+const sessionColumns = `id, title, title_search, workspace_path, workspace_search, project_id, parent_id, created_at, updated_at, provider, model, reasoning_effort, favorite, isolated, revision`
 
 func rowToSession(scanner interface {
 	Scan(dest ...any) error
@@ -27,7 +28,7 @@ func rowToSession(scanner interface {
 		workspaceSearch string
 	)
 	if err := scanner.Scan(
-		&snapshot.ID, &snapshot.Title, &titleSearch, &workspacePath, &workspaceSearch, &snapshot.ParentID,
+		&snapshot.ID, &snapshot.Title, &titleSearch, &workspacePath, &workspaceSearch, &snapshot.Project, &snapshot.ParentID,
 		&createdAtNanos, &updatedAtNanos, &provider, &model, &reasoningEffort,
 		&favoriteInt, &isolatedInt, &snapshot.Revision,
 	); err != nil {
@@ -66,4 +67,13 @@ func rowToSession(scanner interface {
 		return session.Session{}, err
 	}
 	return value, nil
+}
+
+// A Session outside any Project stores NULL so the foreign key never names an
+// empty identity.
+func storedProject(id identity.ProjectID) any {
+	if id.IsZero() {
+		return nil
+	}
+	return id.String()
 }

@@ -6,6 +6,7 @@ func buildContract() *Registry {
 	registry := newRegistry()
 	registerLifecycle(registry)
 	registerSessions(registry)
+	registerProjects(registry)
 	registerRuns(registry)
 	registerInterrupts(registry)
 	registerPlan(registry)

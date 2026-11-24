@@ -16,6 +16,7 @@ import type {
   ClosePluginBrowserRealmRequest,
   ConfigurePluginRequest,
   CreateMCPAuthorizationAttemptRequest,
+  CreateProjectRequest,
   CreateSessionRequest,
   DeleteSessionRequest,
   Diff,
@@ -32,6 +33,7 @@ import type {
   ForkSessionRequest,
   GetDiffRequest,
   GetPlanRequest,
+  GetProjectRequest,
   GetRunAcceptanceRequest,
   GetRunRequest,
   GetSessionRequest,
@@ -55,6 +57,7 @@ import type {
   ListModelEndpointsRequest,
   ListModelInvocationsRequest,
   ListModelsRequest,
+  ListProjectsRequest,
   ListRunsRequest,
   ListSessionTrajectoryRequest,
   ListSessionsRequest,
@@ -82,6 +85,7 @@ import type {
   PageOfPluginOperationBinding,
   PageOfPluginPointBinding,
   PageOfPluginProviderSelection,
+  PageOfProject,
   PageOfProvider,
   PageOfRunRef,
   PageOfSession,
@@ -103,6 +107,7 @@ import type {
   PluginRequest,
   PluginResource,
   PluginResourceLease,
+  Project,
   Provider,
   ProviderTestResult,
   ReadFileRequest,
@@ -147,6 +152,7 @@ import type {
   TestProviderRequest,
   UpdateGoalRequest,
   UpdateMCPServerRequest,
+  UpdateProjectRequest,
   UpdateProviderRequest,
   UpdateSessionRequest,
   UsageSummary,
@@ -194,6 +200,10 @@ const METHOD_NAMES = [
   "sessions.rollback",
   "sessions.export",
   "sessions.import",
+  "projects.list",
+  "projects.get",
+  "projects.create",
+  "projects.update",
   "modelInvocations.endpoints",
   "modelInvocations.list",
   "runs.start",
@@ -323,6 +333,10 @@ const VALUE_METHOD_NAMES = [
   "sessions.rollback",
   "sessions.export",
   "sessions.import",
+  "projects.list",
+  "projects.get",
+  "projects.create",
+  "projects.update",
   "modelInvocations.endpoints",
   "modelInvocations.list",
   "runs.start",
@@ -509,6 +523,34 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "sessions.import": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "projects.list": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "cursor",
+  },
+  "projects.get": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "projects.create": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "projects.update": {
     operation: "command",
     response: "unary",
     idempotency: "replayResponse",
@@ -1464,6 +1506,10 @@ export interface WireShapes {
   "sessions.rollback": { params: RollbackSessionRequest; result: RollbackSessionResponse };
   "sessions.export": { params: ExportSessionRequest; result: ExportSessionResponse };
   "sessions.import": { params: ImportSessionRequest; result: ImportSessionResponse };
+  "projects.list": { params: ListProjectsRequest; result: PageOfProject };
+  "projects.get": { params: GetProjectRequest; result: Project };
+  "projects.create": { params: CreateProjectRequest; result: Project };
+  "projects.update": { params: UpdateProjectRequest; result: Project };
   "modelInvocations.endpoints": { params: ListModelEndpointsRequest; result: PageOfModelEndpointInvocation };
   "modelInvocations.list": { params: ListModelInvocationsRequest; result: PageOfModelInvocation };
   "runs.start": { params: StartRunRequest; result: StartRunResponse };

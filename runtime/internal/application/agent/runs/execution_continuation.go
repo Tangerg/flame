@@ -113,6 +113,7 @@ func waitingContinuationFromPending(
 		Capabilities:      root.Capabilities(),
 		GoalIncarnationID: root.GoalIncarnationID(),
 		Workspace:         sess.Workspace().Path(),
+		Project:           sess.Project(),
 		Isolated:          sess.Isolated(),
 	})
 }

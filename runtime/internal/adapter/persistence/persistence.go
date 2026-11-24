@@ -31,6 +31,7 @@ type Bundle struct {
 	CommitPluginReferences PluginReferenceTransactor
 
 	Sessions              *SessionStore
+	Projects              *ProjectStore
 	Runs                  *RunStore
 	CommandAcceptances    *commandAcceptanceStore
 	WorkspaceMutations    *WorkspaceMutationStore
@@ -118,6 +119,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 			return db.read(ctx, read)
 		},
 		Sessions:              newSessionStore(db),
+		Projects:              &ProjectStore{db: db},
 		Runs:                  newRunStore(db),
 		CommandAcceptances:    newCommandAcceptanceStore(db),
 		WorkspaceMutations:    &WorkspaceMutationStore{db: db, receipts: receipts},

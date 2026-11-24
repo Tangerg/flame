@@ -19,6 +19,7 @@ type ExecutionScope struct {
 	SessionID         identity.SessionID
 	CWD               string
 	WorkspaceCWD      string
+	Project           identity.ProjectID
 	Isolated          bool
 	GoalIncarnationID goalref.IncarnationID
 }

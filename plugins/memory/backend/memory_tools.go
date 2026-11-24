@@ -136,16 +136,16 @@ func buildMemoryTools(coordinator *coordination.Coordinator, db framesqlite.Data
 	return []tool.Tool{list, add, update, remove, review}, nil
 }
 
-func memoryToolCWD(ctx context.Context) (string, error) {
+func memoryToolLocation(ctx context.Context) (coordination.Location, error) {
 	scope, err := pluginsdk.ToolContextFromContext(ctx)
 	if err != nil {
-		return "", errors.Join(coordination.ErrWorkspaceUnavailable, err)
+		return coordination.Location{}, errors.Join(coordination.ErrWorkspaceUnavailable, err)
 	}
-	return scope.CWD, nil
+	return coordination.Location{CWD: scope.CWD, Project: scope.Project}, nil
 }
 
 func (t memoryTools) list(ctx context.Context, input listMemoryArgs) (memoryPage, error) {
-	cwd, err := memoryToolCWD(ctx)
+	location, err := memoryToolLocation(ctx)
 	if err != nil {
 		return memoryPage{}, pluginsdk.DefiniteToolFailure(err)
 	}
@@ -153,7 +153,7 @@ func (t memoryTools) list(ctx context.Context, input listMemoryArgs) (memoryPage
 	if err != nil {
 		return memoryPage{}, pluginsdk.DefiniteToolFailure(err)
 	}
-	page, err := t.coordinator.List(ctx, coordination.ListInput{Scope: input.Scope, CWD: cwd, Cursor: input.Cursor, Limit: limit})
+	page, err := t.coordinator.List(ctx, coordination.ListInput{Scope: input.Scope, Location: location, Cursor: input.Cursor, Limit: limit})
 	if err != nil {
 		return memoryPage{}, pluginsdk.DefiniteToolFailure(err)
 	}
@@ -162,11 +162,11 @@ func (t memoryTools) list(ctx context.Context, input listMemoryArgs) (memoryPage
 
 func (t memoryTools) add(ctx context.Context, _ addMemoryArgs) (memoryView, error) {
 	return memoryToolCommand(ctx, t.db, addMemoryTool, func(ctx context.Context, input addMemoryArgs) (pluginstorage.CommandPlan[memoryView], error) {
-		cwd, err := memoryToolCWD(ctx)
+		location, err := memoryToolLocation(ctx)
 		if err != nil {
 			return pluginstorage.CommandPlan[memoryView]{}, err
 		}
-		mutation, err := t.coordinator.PrepareAdd(ctx, input.Scope, cwd, input.Content)
+		mutation, err := t.coordinator.PrepareAdd(ctx, input.Scope, location, input.Content)
 		if err != nil {
 			return pluginstorage.CommandPlan[memoryView]{}, err
 		}
@@ -175,11 +175,11 @@ func (t memoryTools) add(ctx context.Context, _ addMemoryArgs) (memoryView, erro
 }
 
 func (t memoryTools) authorize(ctx context.Context, input memoryItemArgs) error {
-	cwd, err := memoryToolCWD(ctx)
+	location, err := memoryToolLocation(ctx)
 	if err != nil {
 		return err
 	}
-	_, err = t.coordinator.Item(ctx, input.Scope, cwd, input.ID)
+	_, err = t.coordinator.Item(ctx, input.Scope, location, input.ID)
 	return err
 }
 

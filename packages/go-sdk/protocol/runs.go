@@ -116,6 +116,7 @@ type RunSessionOpening struct {
 	RunID     string        `json:"runId"`
 	Title     string        `json:"title"`
 	Workspace *WorkspaceRef `json:"workspace,omitzero"`
+	ProjectID string        `json:"projectId,omitempty"`
 }
 
 type StartRunRequest struct {

@@ -43,6 +43,10 @@ func (s *SessionStore) list(ctx context.Context, filter session.CatalogFilter, a
 			predicates = append(predicates, `workspace_path = ?`)
 			args = append(args, workspacePath)
 		}
+		if project, present := filter.Project(); present {
+			predicates = append(predicates, `project_id = ?`)
+			args = append(args, project.String())
+		}
 		if after != nil {
 			favorite := boolToInt(after.Favorite())
 			updatedAt := after.UpdatedAt().UnixNano()

@@ -14,14 +14,14 @@ import (
 const managementPageNamespace = "agentMemory.management"
 
 type ListInput struct {
-	Scope  agentmemory.Scope
-	CWD    string
-	Cursor string
-	Limit  pagination.RequestedLimit
+	Scope    agentmemory.Scope
+	Location Location
+	Cursor   string
+	Limit    pagination.RequestedLimit
 }
 
 func (c *Coordinator) List(ctx context.Context, input ListInput) (pagination.Page[agentmemory.Item], error) {
-	project, err := c.project(input.Scope, input.CWD)
+	project, err := c.project(input.Scope, input.Location)
 	if err != nil {
 		return pagination.Page[agentmemory.Item]{}, err
 	}

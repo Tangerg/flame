@@ -296,7 +296,7 @@ func registerRunValues(s *Shapes) {
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.RunSessionOpening](),
-		Constraints: append(requiredResourceIdentity("sessionId"), requiredResourceIdentity("runId")...),
+		Constraints: append(append(requiredResourceIdentity("sessionId"), requiredResourceIdentity("runId")...), resourceIdentity("projectId")...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.GenerationParams](),

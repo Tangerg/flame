@@ -22,6 +22,8 @@ const (
 	contextSourceLifecycleHook  contextSourceKind = "lifecycle_hook"
 	contextSourceRecalledMemory contextSourceKind = "recalled_memory"
 	contextSourceSessionGoal    contextSourceKind = "session_goal"
+	// The reference names the Project revision whose instructions the Run used.
+	contextSourceProjectInstructions contextSourceKind = "project_instructions"
 )
 
 type contextPurpose string
@@ -44,7 +46,8 @@ func (c contextSourceKind) purpose() contextPurpose {
 		return contextPurposeData
 	case contextSourceBasePrompt,
 		contextSourceAgentDocument,
-		contextSourceLifecycleHook:
+		contextSourceLifecycleHook,
+		contextSourceProjectInstructions:
 		return contextPurposeInstruction
 	default:
 		return ""

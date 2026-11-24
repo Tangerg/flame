@@ -65,6 +65,8 @@ func runtimeEventFor(notice invalidation.Notice) (protocol.RuntimeEvent, bool) {
 		return protocol.RuntimeEvent{Type: protocol.RuntimeModelsChanged}, true
 	case invalidation.Approvals:
 		return protocol.RuntimeEvent{Type: protocol.RuntimeApprovalsChanged}, true
+	case invalidation.Projects:
+		return protocol.RuntimeEvent{Type: protocol.RuntimeProjectsChanged}, true
 	default:
 		return protocol.RuntimeEvent{}, false
 	}

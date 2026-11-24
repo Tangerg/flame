@@ -10,6 +10,9 @@
         "cwd": {
           "type": "string"
         },
+        "project": {
+          "type": "string"
+        },
         "scope": {
           "allOf": [
             {
@@ -400,6 +403,9 @@
             }
           ],
           "type": "integer"
+        },
+        "project": {
+          "type": "string"
         },
         "scope": {
           "allOf": [

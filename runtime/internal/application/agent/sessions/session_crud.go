@@ -22,6 +22,7 @@ type Patch struct {
 	Title            *string
 	ModelSelection   flamemodel.Patch
 	WorkspacePath    *string
+	Project          *identity.ProjectID
 	Favorite         *bool
 	Isolated         *bool
 	ExpectedRevision uint64
@@ -42,6 +43,9 @@ func (p Patch) clone() Patch {
 	}
 	if p.WorkspacePath != nil {
 		p.WorkspacePath = new(*p.WorkspacePath)
+	}
+	if p.Project != nil {
+		p.Project = new(*p.Project)
 	}
 	if p.Favorite != nil {
 		p.Favorite = new(*p.Favorite)
@@ -64,14 +68,6 @@ func (c *Coordinator) InspectWorkspace(cwd string) (workspaceapp.Resolved, error
 	return c.paths.Inspect(cwd)
 }
 
-func (c *Coordinator) Create(ctx context.Context, title, cwd string) (session.Session, error) {
-	creation, err := c.PrepareCreate(ctx, title, cwd)
-	if err != nil {
-		return session.Session{}, err
-	}
-	return creation.apply(ctx)
-}
-
 type Creation struct {
 	value   session.Session
 	View    View
@@ -90,8 +86,8 @@ func (c Creation) apply(ctx context.Context) (session.Session, error) {
 	return c.value, nil
 }
 
-func (c *Coordinator) PrepareCreate(ctx context.Context, title, cwd string) (Creation, error) {
-	created, _, err := c.prepareInitial(ctx, c.newID(), title, cwd, flamemodel.Selection{})
+func (c *Coordinator) PrepareCreate(ctx context.Context, title, cwd string, project identity.ProjectID) (Creation, error) {
+	created, _, err := c.prepareInitial(ctx, c.newID(), title, cwd, project, flamemodel.Selection{})
 	if err != nil {
 		return Creation{}, err
 	}
@@ -106,6 +102,7 @@ func (c *Coordinator) PrepareOpening(
 	ctx context.Context,
 	id identity.SessionID,
 	title, cwd string,
+	project identity.ProjectID,
 	selection flamemodel.Selection,
 ) (current session.Session, initial *session.Session, err error) {
 	_, err = c.Get(ctx, id)
@@ -115,7 +112,7 @@ func (c *Coordinator) PrepareOpening(
 	if !errors.Is(err, session.ErrNotFound) {
 		return session.Session{}, nil, err
 	}
-	return c.prepareInitial(ctx, id, title, cwd, selection)
+	return c.prepareInitial(ctx, id, title, cwd, project, selection)
 }
 
 func (c *Coordinator) DefaultModelSelection() flamemodel.Selection {
@@ -127,10 +124,14 @@ func (c *Coordinator) prepareInitial(
 	id identity.SessionID,
 	title string,
 	cwd string,
+	project identity.ProjectID,
 	selection flamemodel.Selection,
 ) (session.Session, *session.Session, error) {
 	workspace, err := c.resolveSessionWorkspace(cwd)
 	if err != nil {
+		return session.Session{}, nil, err
+	}
+	if err := c.requireProject(ctx, project); err != nil {
 		return session.Session{}, nil, err
 	}
 	if !selection.Configured() {
@@ -143,12 +144,22 @@ func (c *Coordinator) prepareInitial(
 		return session.Session{}, nil, fmt.Errorf("sessions: initial model selection is not admitted: %w", admitErr)
 	}
 	created, err := session.New(session.Draft{
-		ID: id, Title: title, Workspace: workspace, Selection: selection, CreatedAt: c.now(),
+		ID: id, Title: title, Workspace: workspace, Project: project, Selection: selection, CreatedAt: c.now(),
 	})
 	if err != nil {
 		return session.Session{}, nil, err
 	}
 	return created, &created, nil
+}
+
+// Projects are never deleted, so an existence check before the write cannot be
+// invalidated by the time the membership commits.
+func (c *Coordinator) requireProject(ctx context.Context, id identity.ProjectID) error {
+	if id.IsZero() {
+		return nil
+	}
+	_, err := c.projects.Get(ctx, id)
+	return err
 }
 
 // A committed execution-policy change must not inherit processes, context evidence
@@ -171,7 +182,14 @@ func (c *Coordinator) Update(ctx context.Context, id identity.SessionID, patch P
 	if err != nil {
 		return err
 	}
-	if workspace != nil || patch.Isolated != nil {
+	if patch.Project != nil {
+		if err := c.requireProject(ctx, *patch.Project); err != nil {
+			return err
+		}
+	}
+	// A Run reads the Project with the workspace whenever a Segment opens, so
+	// both change only while no Run can observe them.
+	if workspace != nil || patch.Isolated != nil || patch.Project != nil {
 		admission, err := c.ClaimIdleSession(ctx, id)
 		if err != nil {
 			return err
@@ -188,7 +206,7 @@ func (c *Coordinator) Update(ctx context.Context, id identity.SessionID, patch P
 	}
 	updated, changed, err := current.Edit(patch.ExpectedRevision, session.Patch{
 		Title: patch.Title, Selection: selection, Workspace: workspace,
-		Favorite: patch.Favorite, Isolated: patch.Isolated,
+		Project: patch.Project, Favorite: patch.Favorite, Isolated: patch.Isolated,
 	}, c.now())
 	if err != nil {
 		return err

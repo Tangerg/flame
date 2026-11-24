@@ -46,6 +46,18 @@ func (r *Client) ExportSession(ctx context.Context, request protocol.ExportSessi
 func (r *Client) ImportSession(ctx context.Context, request protocol.ImportSessionRequest, options protocol.CommandOptions) (*protocol.ImportSessionResponse, error) {
 	return r.invoke[protocol.ImportSessionRequest, *protocol.ImportSessionResponse](ctx, "sessions.import", request, options.Metadata())
 }
+func (r *Client) ListProjects(ctx context.Context, request protocol.ListProjectsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Project], error) {
+	return r.invoke[protocol.ListProjectsRequest, *protocol.Page[protocol.Project]](ctx, "projects.list", request, options.Metadata())
+}
+func (r *Client) GetProject(ctx context.Context, request protocol.GetProjectRequest, options protocol.CallOptions) (*protocol.Project, error) {
+	return r.invoke[protocol.GetProjectRequest, *protocol.Project](ctx, "projects.get", request, options.Metadata())
+}
+func (r *Client) CreateProject(ctx context.Context, request protocol.CreateProjectRequest, options protocol.CommandOptions) (*protocol.Project, error) {
+	return r.invoke[protocol.CreateProjectRequest, *protocol.Project](ctx, "projects.create", request, options.Metadata())
+}
+func (r *Client) UpdateProject(ctx context.Context, request protocol.UpdateProjectRequest, options protocol.CommandOptions) (*protocol.Project, error) {
+	return r.invoke[protocol.UpdateProjectRequest, *protocol.Project](ctx, "projects.update", request, options.Metadata())
+}
 func (r *Client) ListModelEndpoints(ctx context.Context, request protocol.ListModelEndpointsRequest, options protocol.CallOptions) (*protocol.Page[protocol.ModelEndpointInvocation], error) {
 	return r.invoke[protocol.ListModelEndpointsRequest, *protocol.Page[protocol.ModelEndpointInvocation]](ctx, "modelInvocations.endpoints", request, options.Metadata())
 }

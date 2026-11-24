@@ -26,13 +26,14 @@ const (
 	MCP        Resource = "mcp"
 	Models     Resource = "models"
 	Approvals  Resource = "approvals"
+	Projects   Resource = "projects"
 )
 
 func (r Resource) Valid() bool {
 	return r == Plugins || r == Resync || r == Sessions || r == Runs || r == Interrupts ||
 		r == Goals || r == Plan || r == PluginData ||
 		r == Hooks || r == Skills || r == MCP || r == Models ||
-		r == Approvals
+		r == Approvals || r == Projects
 }
 
 func (r Resource) String() string {

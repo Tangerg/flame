@@ -19,6 +19,7 @@ var rpcCodeSpecs = mustRPCCodeSpecs([]rpcCodeSpec{
 	{protocol.ErrMethodNotFound.Error(), codeMethodNotFound},
 	{protocol.ErrInvalidParams.Error(), codeInvalidParams},
 	{protocol.ErrSessionNotFound.Error(), codeSessionNotFound},
+	{protocol.ErrProjectNotFound.Error(), codeProjectNotFound},
 	{protocol.ErrRunNotFound.Error(), codeRunNotFound},
 	{protocol.ErrItemNotFound.Error(), codeItemNotFound},
 	{protocol.ErrPluginUnavailable.Error(), codePluginUnavailable},

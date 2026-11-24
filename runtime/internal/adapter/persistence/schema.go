@@ -63,12 +63,24 @@ func currentSchema() []string {
 		`CREATE TABLE IF NOT EXISTS execution_trees (root_id TEXT PRIMARY KEY, session_id TEXT NOT NULL, writer TEXT NOT NULL, sequence TEXT NOT NULL, commit_id TEXT NOT NULL, commit_digest TEXT NOT NULL, digest TEXT NOT NULL, payload BLOB NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS execution_tree_commits (root_id TEXT NOT NULL REFERENCES execution_trees(root_id) ON DELETE CASCADE, commit_id TEXT NOT NULL, digest TEXT NOT NULL, PRIMARY KEY(root_id, commit_id))`,
 		`CREATE INDEX IF NOT EXISTS idx_execution_trees_session ON execution_trees(session_id)`,
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS projects (
+			id           TEXT    PRIMARY KEY,
+			name         TEXT    NOT NULL CHECK (name <> ''),
+			instructions TEXT    NOT NULL DEFAULT '',
+			archived     INTEGER NOT NULL DEFAULT %[4]d CHECK (archived IN (%[4]d, %[5]d)),
+			created_at   INTEGER NOT NULL,
+			updated_at   INTEGER NOT NULL,
+			revision     INTEGER NOT NULL CHECK (revision BETWEEN %[2]d AND %[3]d)
+		)`, firstExactInteger, firstExactInteger, exactint.Maximum, storedFalse, storedTrue),
+		`CREATE INDEX IF NOT EXISTS idx_projects_catalog
+			ON projects(archived, updated_at DESC, id DESC)`,
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS sessions (
 			id          TEXT    PRIMARY KEY,
 			title       TEXT    NOT NULL,
 			title_search TEXT    NOT NULL,
 			workspace_path TEXT    NOT NULL CHECK (workspace_path <> ''),
 			workspace_search TEXT  NOT NULL CHECK (workspace_search <> ''),
+			project_id  TEXT    REFERENCES projects(id),
 			parent_id   TEXT    NOT NULL DEFAULT '',
 			created_at  INTEGER NOT NULL,
 			updated_at  INTEGER NOT NULL,
@@ -83,6 +95,8 @@ func currentSchema() []string {
 			ON sessions(updated_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_sessions_parent
 			ON sessions(parent_id)`,
+		`CREATE INDEX IF NOT EXISTS idx_sessions_project
+			ON sessions(project_id) WHERE project_id IS NOT NULL`,
 		`CREATE TABLE IF NOT EXISTS executor_checkpoints (
 			root_member_id TEXT    PRIMARY KEY,
 			session_id      TEXT    NOT NULL,

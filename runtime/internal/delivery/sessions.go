@@ -53,7 +53,7 @@ func registerSessions(registry *Registry) {
 
 	registry.command(MethodMeta{
 		Name: SessionsCreate, GoName: "CreateSession",
-		Errors: pluginProviderErrors(protocol.ErrWorkspaceUnavailable.Error()),
+		Errors: pluginProviderErrors(protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrProjectNotFound.Error()),
 	}, func(service interface {
 		CreateSession(context.Context, protocol.CreateSessionRequest) (*protocol.Session, error)
 	}, ctx context.Context, request protocol.CreateSessionRequest) (*protocol.Session, error) {
@@ -67,6 +67,8 @@ func registerSessions(registry *Registry) {
 		Errors: pluginProviderErrors(protocol.ErrSessionNotFound.
 			Error(), protocol.ErrRevisionConflict.
 			Error(), protocol.ErrWorkspaceUnavailable.
+			Error(), protocol.ErrProjectNotFound.
+			Error(), protocol.ErrSessionBusy.
 			Error(),
 		),
 		CapabilityRules: []CapabilityRule{

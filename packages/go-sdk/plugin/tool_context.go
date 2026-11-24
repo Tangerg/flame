@@ -12,13 +12,16 @@ import (
 
 const ToolContextMetadataKey = "io.github.tangerg.flame/tool-context.v1"
 
+// Project is the Run's captured Project identity, empty when its Session belongs
+// to none. Project-scoped plugins key on it instead of inferring from CWD.
 type ToolContext struct {
 	CWD            string `json:"cwd"`
+	Project        string `json:"project,omitzero"`
 	EmbeddingSpace string `json:"embeddingSpace,omitzero"`
 }
 
 func (c ToolContext) Validate() error {
-	if strings.TrimSpace(c.CWD) == "" || !utf8.ValidString(c.CWD) || !utf8.ValidString(c.EmbeddingSpace) {
+	if strings.TrimSpace(c.CWD) == "" || !utf8.ValidString(c.CWD) || !utf8.ValidString(c.Project) || !utf8.ValidString(c.EmbeddingSpace) {
 		return errors.New("plugin: captured Tool workspace is required")
 	}
 	return nil

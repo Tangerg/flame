@@ -13,6 +13,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	"github.com/Tangerg/flame/runtime/internal/domain/project"
 	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	framecall "github.com/Tangerg/frame/call"
 
@@ -111,6 +112,12 @@ func (o atomicOutcome) sessionView(response func(*protocol.Session) any) operati
 	return atomicReply(o.complete, func(result sessions.View) ([]byte, error) {
 		view := presentSession(result)
 		return encodeAtomicResult(o.method, response(&view))
+	})
+}
+
+func (o atomicOutcome) project() operation.Reply[project.Project] {
+	return atomicReply(o.complete, func(result project.Project) ([]byte, error) {
+		return encodeAtomicResult(o.method, presentProject(result))
 	})
 }
 

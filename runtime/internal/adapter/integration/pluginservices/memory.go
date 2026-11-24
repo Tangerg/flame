@@ -185,7 +185,7 @@ func (m *Memory) MaintainMemory(ctx context.Context, input execution.RunMaintena
 		return err
 	}
 	request := memorycontract.MaintenanceInput{
-		SessionId: input.SessionID.String(), Project: input.WorkspaceCWD, Compacted: compacted,
+		SessionId: input.SessionID.String(), Project: input.MemoryTarget, Compacted: compacted,
 		Conversation: &memorycontract.Conversation{MessageCount: count, Transcript: modeladapter.RenderTranscript(messages)},
 	}
 	_, err = invokeResolvedCommand[memorycontract.MaintenanceInput, memorycontract.MaintenanceResult](operation.Start(ctx, extension.Automatic, automaticOperationNamespace, uuid.NewString()), m.commands, memorycontract.MaintainV2Method, request, nil, func(context.Context) (plugins.ContributionBinding, error) { return binding, nil }, func(ctx context.Context, _ plugins.ContributionBinding, original *sdk.ClientSession) (sdk.ParamsBase, func() error, error) {

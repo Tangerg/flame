@@ -245,6 +245,14 @@
           }
         },
         {
+          "name": "projectId",
+          "schema": {
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
           "name": "_meta",
           "schema": {
             "$ref": "#/components/schemas/RequestMeta"
@@ -269,6 +277,7 @@
           },
           "cursor": {},
           "limit": {},
+          "projectId": {},
           "search": {},
           "workspace": {
             "$ref": "#/components/schemas/WorkspaceRef"
@@ -426,6 +435,14 @@
           }
         },
         {
+          "name": "projectId",
+          "schema": {
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
           "name": "title",
           "schema": {
             "type": "string"
@@ -456,6 +473,10 @@
         {
           "code": -32005,
           "message": "workspace_unavailable"
+        },
+        {
+          "code": -32048,
+          "message": "project_not_found"
         }
       ],
       "x-flame-kind": "unary",
@@ -468,6 +489,7 @@
           "_meta": {
             "$ref": "#/components/schemas/RequestMeta"
           },
+          "projectId": {},
           "title": {},
           "workspace": {
             "$ref": "#/components/schemas/WorkspaceRef"
@@ -514,6 +536,12 @@
           "name": "workspace",
           "schema": {
             "$ref": "#/components/schemas/WorkspaceRef"
+          }
+        },
+        {
+          "name": "project",
+          "schema": {
+            "$ref": "#/components/schemas/SessionProjectChange"
           }
         },
         {
@@ -589,6 +617,14 @@
           "message": "workspace_unavailable"
         },
         {
+          "code": -32048,
+          "message": "project_not_found"
+        },
+        {
+          "code": -32018,
+          "message": "session_busy"
+        },
+        {
           "code": -32006,
           "message": "capability_not_negotiated"
         }
@@ -635,6 +671,9 @@
           "favorite": {},
           "isolated": {},
           "model": {},
+          "project": {
+            "$ref": "#/components/schemas/SessionProjectChange"
+          },
           "provider": {},
           "reasoningEffort": {},
           "sessionId": {},
@@ -1064,6 +1103,259 @@
       }
     },
     {
+      "name": "projects.list",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "limit",
+          "schema": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        {
+          "name": "cursor",
+          "schema": {
+            "type": "string",
+            "maxLength": 65536
+          }
+        },
+        {
+          "name": "archived",
+          "schema": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/PageOfProject"
+        }
+      },
+      "x-flame-kind": "unary",
+      "x-flame-operation": "query",
+      "x-flame-idempotency": "none",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "cursor",
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "archived": {},
+          "cursor": {},
+          "limit": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/ListProjectsRequest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "projects.get",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "projectId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/Project"
+        }
+      },
+      "errors": [
+        {
+          "code": -32048,
+          "message": "project_not_found"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "query",
+      "x-flame-idempotency": "none",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "projectId": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/GetProjectRequest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "projects.create",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        },
+        {
+          "name": "instructions",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/Project"
+        }
+      },
+      "x-flame-kind": "unary",
+      "x-flame-operation": "command",
+      "x-flame-idempotency": "replayResponse",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "instructions": {},
+          "name": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/CreateProjectRequest"
+          }
+        ]
+      }
+    },
+    {
+      "name": "projects.update",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "projectId",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
+          "name": "expectedRevision",
+          "required": true,
+          "schema": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        {
+          "name": "name",
+          "schema": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        {
+          "name": "instructions",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "archived",
+          "schema": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "#/components/schemas/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/Project"
+        }
+      },
+      "errors": [
+        {
+          "code": -32048,
+          "message": "project_not_found"
+        },
+        {
+          "code": -32019,
+          "message": "revision_conflict"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "command",
+      "x-flame-idempotency": "replayResponse",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-requestFrame": {
+        "properties": {
+          "_meta": {
+            "$ref": "#/components/schemas/RequestMeta"
+          },
+          "archived": {},
+          "expectedRevision": {},
+          "instructions": {},
+          "name": {},
+          "projectId": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/UpdateProjectRequest"
+          }
+        ]
+      }
+    },
+    {
       "name": "modelInvocations.endpoints",
       "paramStructure": "by-name",
       "params": [
@@ -1296,6 +1588,10 @@
         {
           "code": -32002,
           "message": "session_not_found"
+        },
+        {
+          "code": -32048,
+          "message": "project_not_found"
         },
         {
           "code": -32018,
@@ -9185,6 +9481,7 @@
       },
       "RunSessionOpening": {
         "properties": {
+          "projectId": {},
           "runId": {},
           "sessionId": {},
           "title": {},
@@ -9236,6 +9533,18 @@
         "allOf": [
           {
             "$ref": "schema.json#/$defs/SessionArtifact"
+          }
+        ]
+      },
+      "SessionProjectChange": {
+        "properties": {
+          "projectId": {},
+          "type": {}
+        },
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/SessionProjectChange"
           }
         ]
       },

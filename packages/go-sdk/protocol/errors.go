@@ -86,6 +86,7 @@ var (
 	ErrInvalidParams                   = errors.New("invalid_params")
 	ErrProviderError                   = errors.New("provider_error")
 	ErrSessionNotFound                 = errors.New("session_not_found")
+	ErrProjectNotFound                 = errors.New("project_not_found")
 	ErrRunNotFound                     = errors.New("run_not_found")
 	ErrItemNotFound                    = errors.New("item_not_found")
 	ErrWorkspaceUnavailable            = errors.New("workspace_unavailable")

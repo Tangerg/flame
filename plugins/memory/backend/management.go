@@ -16,7 +16,7 @@ import (
 func registerManagementCommands(backend *pluginmcp.Backend, db framesqlite.Database, contracts rpc.Contracts, review *coordination.Coordinator) error {
 	return errors.Join(
 		pluginstorage.RegisterCommand(backend, db, contracts.Add, classify, func(ctx context.Context, _ *sdk.ServerSession, input rpc.AddInput) (pluginstorage.CommandPlan[rpc.AddResult], error) {
-			mutation, err := review.PrepareAdd(ctx, input.Scope, input.CWD, input.Content)
+			mutation, err := review.PrepareAdd(ctx, input.Scope, coordination.Location{CWD: input.CWD, Project: input.Project}, input.Content)
 			if err != nil {
 				return pluginstorage.CommandPlan[rpc.AddResult]{}, err
 			}

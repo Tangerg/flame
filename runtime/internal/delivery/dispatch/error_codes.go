@@ -47,4 +47,5 @@ const (
 	codePluginUnavailable               = -32045
 	codePluginChanged                   = -32046
 	codePluginCommandRetired            = -32047
+	codeProjectNotFound                 = -32048
 )

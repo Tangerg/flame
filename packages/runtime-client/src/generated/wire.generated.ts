@@ -139,6 +139,7 @@ export const PROBLEM_CODES = {
   "plugin_not_found": -32040,
   "plugin_stale": -32043,
   "plugin_unavailable": -32045,
+  "project_not_found": -32048,
   "prompt_source_too_large": -32038,
   "provider_error": -32001,
   "replay_cursor_invalid": -32027,
@@ -191,6 +192,7 @@ export const PROBLEM_RECOVERY = {
   "plugin_not_found": "promptUser",
   "plugin_stale": "promptUser",
   "plugin_unavailable": "promptUser",
+  "project_not_found": "refetch",
   "prompt_source_too_large": "promptUser",
   "provider_error": "promptUser",
   "replay_cursor_invalid": "resubscribe",
@@ -480,7 +482,13 @@ export interface CreateMCPAuthorizationAttemptRequest {
   server: MCPServerID;
 }
 
+export interface CreateProjectRequest {
+  instructions?: string;
+  name: string;
+}
+
 export interface CreateSessionRequest {
+  projectId?: string;
   title?: string;
   workspace?: WorkspaceRef;
 }
@@ -666,6 +674,10 @@ export interface GetDiffRequest {
 
 export interface GetPlanRequest {
   sessionId: string;
+}
+
+export interface GetProjectRequest {
+  projectId: string;
 }
 
 export interface GetRunAcceptanceRequest {
@@ -916,6 +928,12 @@ export interface ListModelsRequest {
   provider: string;
 }
 
+export interface ListProjectsRequest {
+  archived?: boolean;
+  cursor?: string;
+  limit?: number;
+}
+
 export interface ListRunsRequest {
   cursor?: string;
   includeDescendants?: boolean;
@@ -934,6 +952,7 @@ export interface ListSessionTrajectoryRequest {
 export interface ListSessionsRequest {
   cursor?: string;
   limit?: number;
+  projectId?: string;
   search?: string;
   workspace?: WorkspaceRef;
 }
@@ -1216,6 +1235,8 @@ export type PageOfPluginOperationBinding = Page<PluginOperationBinding>;
 export type PageOfPluginPointBinding = Page<PluginPointBinding>;
 
 export type PageOfPluginProviderSelection = Page<PluginProviderSelection>;
+
+export type PageOfProject = Page<Project>;
 
 export type PageOfProvider = Page<Provider>;
 
@@ -1678,6 +1699,7 @@ export type ProblemData =
   | { type: "plugin_not_found"; detail?: string; docUrl?: string }
   | { type: "plugin_stale"; detail?: string; docUrl?: string }
   | { type: "plugin_unavailable"; detail?: string; docUrl?: string }
+  | { type: "project_not_found"; detail?: string; docUrl?: string }
   | { type: "prompt_source_too_large"; detail?: string; docUrl?: string }
   | { type: "provider_error"; detail?: string; docUrl?: string }
   | { type: "provider_rejected"; detail?: string; docUrl?: string }
@@ -1703,6 +1725,16 @@ export type ProblemData =
   | { type: "vcs_unavailable"; detail?: string; docUrl?: string }
   | { type: "workspace_unavailable"; detail?: string; docUrl?: string }
   | { detail?: string; docUrl?: string; retryAfterSeconds?: number; type: `plugin:${string}/${string}` };
+
+export interface Project {
+  archived?: boolean;
+  createdAt: string;
+  id: string;
+  instructions?: string;
+  name: string;
+  revision: number;
+  updatedAt: string;
+}
 
 export interface Provider {
   baseUrl?: string;
@@ -1934,6 +1966,7 @@ export interface RunReplayLimits {
 export type RunReplayScope = "runtimeInstanceRootSegment";
 
 export interface RunSessionOpening {
+  projectId?: string;
   runId: string;
   sessionId: string;
   title: string;
@@ -1977,7 +2010,7 @@ export interface RuntimeEventNotification {
   event: RuntimeEvent;
 }
 
-export type RuntimeEventType = "files.changed" | "skills.changed" | "mcp.changed" | "plugins.changed" | "plugins.dataChanged" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "resync";
+export type RuntimeEventType = "files.changed" | "skills.changed" | "mcp.changed" | "plugins.changed" | "plugins.dataChanged" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "projects.changed" | "resync";
 
 export interface RuntimeInfo {
   endpoints: RuntimeInfoEndpoints;
@@ -2015,7 +2048,7 @@ export interface RuntimeSubscribeRequest {
 export interface RuntimeSubscribeResponse {
 }
 
-export type RuntimeTopic = "files.changed" | "skills.changed" | "mcp.changed" | "plugins.changed" | "plugins.dataChanged" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed";
+export type RuntimeTopic = "files.changed" | "skills.changed" | "mcp.changed" | "plugins.changed" | "plugins.dataChanged" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "projects.changed";
 
 export type SafetyClass = "safe" | "write" | "exec" | "network";
 
@@ -2068,6 +2101,7 @@ export interface Session {
   id: string;
   isolated?: boolean;
   model: string;
+  projectId?: string;
   provider: string;
   reasoningEffort?: string;
   revision: number;
@@ -2097,6 +2131,12 @@ export interface SessionArtifact {
   toolResults: ArtifactToolResult[];
   version: number;
 }
+
+export type SessionProjectChange =
+  | { type: "set"; projectId: string }
+  | { type: "clear" };
+
+export type SessionProjectChangeType = "set" | "clear";
 
 export interface SessionSnapshot {
   goal?: Goal;
@@ -2405,6 +2445,14 @@ export interface UpdateMCPServerRequest {
   server: MCPServerID;
 }
 
+export interface UpdateProjectRequest {
+  archived?: boolean;
+  expectedRevision: number;
+  instructions?: string;
+  name?: string;
+  projectId: string;
+}
+
 export interface UpdateProviderRequest {
   apiKey?: ProviderConfigChange;
   baseUrl?: ProviderConfigChange;
@@ -2416,6 +2464,7 @@ export interface UpdateSessionRequest {
   favorite?: boolean;
   isolated?: boolean;
   model?: string;
+  project?: SessionProjectChange;
   provider?: string;
   reasoningEffort?: string;
   sessionId: string;
@@ -2602,9 +2651,10 @@ export const WIRE_ENUMS = {
   RunOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
   RunReplayScope: ["runtimeInstanceRootSegment"],
   RunStatus: ["running", "waiting", "finished"],
-  RuntimeEventType: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "resync"],
-  RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed"],
+  RuntimeEventType: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed", "resync"],
+  RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed"],
   SafetyClass: ["safe", "write", "exec", "network"],
+  SessionProjectChangeType: ["set", "clear"],
   SessionStatus: ["running", "waiting", "idle"],
   SkillLifecycle: ["active", "archived"],
   SkillProposalOrigin: ["requested", "mined"],

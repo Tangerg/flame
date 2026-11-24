@@ -203,11 +203,13 @@ func (c *Openings) startRoot(ctx context.Context, cmd StartCommand) (result Star
 	}
 	draft.CWD = execCWD
 	draft.WorkspaceCWD = preparation.session.Workspace().Path()
+	draft.Project = preparation.session.Project()
 	draft.Isolated = isolated
 	draft.WorkingContext, err = c.workingContexts.ComposeWorkingContext(ctx, WorkingContextInput{
 		SessionID:    preparation.session.ID(),
 		CWD:          execCWD,
 		WorkspaceCWD: draft.WorkspaceCWD,
+		Project:      draft.Project,
 		PromptText:   preparation.promptText,
 		Seed:         draft.WorkingContext,
 	})
@@ -428,7 +430,7 @@ func (c *Openings) resolveSession(
 	if cmd.NewSession != nil {
 		return c.sessionCreator.PrepareOpening(
 			ctx, cmd.NewSession.SessionID, cmd.NewSession.Title,
-			cmd.NewSession.CWD, selection,
+			cmd.NewSession.CWD, cmd.NewSession.Project, selection,
 		)
 	}
 	sess, err := c.sessionReader.Get(ctx, cmd.SessionID)

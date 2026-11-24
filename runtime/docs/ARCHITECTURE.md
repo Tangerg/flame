@@ -8,7 +8,8 @@ Runtime owns Session, Run, Segment, Item, Interrupt, execution, persistence, rec
 
 The main aggregate relationships are:
 
-- A Session owns the durable workspace and selection context for Runs.
+- A Session owns the durable workspace and selection context for Runs, and its membership in at most one Project.
+- A Project groups continuing work independently of any directory. It owns its name, instructions and archive state; each Run captures its Session's Project with the workspace when a Segment opens. See [Project ownership](../../docs/decisions/project-ownership.md).
 - A Run owns one logical execution lifecycle.
 - A Segment is one active interval of a Run; interruption and resume create another Segment without creating another logical Run.
 - Items are durable observable history. Streaming deltas are replaceable previews.

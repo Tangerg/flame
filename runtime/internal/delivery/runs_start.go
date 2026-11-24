@@ -14,6 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/domain/project"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -57,7 +58,11 @@ func (s *Handler) StartRun(ctx context.Context, in protocol.StartRunRequest) (*p
 		if err != nil {
 			return nil, nil, err
 		}
-		command.NewSession = &runs.SessionOpening{SessionID: sessionID, RunID: runID, Title: in.NewSession.Title, CWD: s.sessionWorkspacePath(in.NewSession.Workspace)}
+		project, err := wireIdentity("newSession.projectId", in.NewSession.ProjectID, identity.ParseOptionalProject)
+		if err != nil {
+			return nil, nil, err
+		}
+		command.NewSession = &runs.SessionOpening{SessionID: sessionID, RunID: runID, Title: in.NewSession.Title, CWD: s.sessionWorkspacePath(in.NewSession.Workspace), Project: project}
 	}
 	if actor, present := operation.ActorFrom(ctx); present {
 		command.Actor = &actor
@@ -159,6 +164,8 @@ func wireRunStartErr(err error) error {
 		return pluginChanged(err)
 	case errors.Is(err, session.ErrNotFound):
 		return protocol.ErrSessionNotFound
+	case errors.Is(err, project.ErrNotFound):
+		return protocol.ErrProjectNotFound
 	default:
 		return mapModelError(err)
 	}

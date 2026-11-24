@@ -814,9 +814,9 @@ Endpoint observations expose the original optional Segment in the Core protocol.
 ## Tool context and text embeddings
 
 `WithToolContext` projects a captured `ToolContext` into ordinary MCP Tool
-metadata. `ToolContextFromContext` admits that same closed current shape. Workspace
-and optional vector-space identity come from the calling owner, outside model
-arguments; callback authority remains only in `pluginmcp.CallbackMetadata` and
+metadata. `ToolContextFromContext` admits that same closed current shape. Workspace,
+the Run's captured Project and optional vector-space identity come from the calling
+owner, outside model arguments; callback authority remains only in `pluginmcp.CallbackMetadata` and
 `pluginmcp.CallbackFromContext`. Setting Tool context cannot mutate an earlier caller's
 metadata. There is no standing model grant inside the context record.
 

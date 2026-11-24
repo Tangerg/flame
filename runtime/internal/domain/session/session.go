@@ -23,26 +23,30 @@ type Draft struct {
 	ID        identity.SessionID
 	Title     string
 	Workspace Workspace
+	Project   identity.ProjectID
 	Selection flamemodel.Selection
 	CreatedAt time.Time
 }
 
+// A zero Project in a present patch removes the Session from its Project.
 type Patch struct {
 	Title     *string
 	Selection *flamemodel.Selection
 	Workspace *Workspace
+	Project   *identity.ProjectID
 	Favorite  *bool
 	Isolated  *bool
 }
 
 func (p Patch) Empty() bool {
-	return p.Title == nil && p.Selection == nil && p.Workspace == nil && p.Favorite == nil && p.Isolated == nil
+	return p.Title == nil && p.Selection == nil && p.Workspace == nil && p.Project == nil && p.Favorite == nil && p.Isolated == nil
 }
 
 type Snapshot struct {
 	ID        identity.SessionID
 	Title     string
 	Workspace Workspace
+	Project   identity.ProjectID
 	Selection flamemodel.Selection
 	ParentID  identity.SessionID
 	CreatedAt time.Time
@@ -56,6 +60,7 @@ type Session struct {
 	id        identity.SessionID
 	title     string
 	workspace Workspace
+	project   identity.ProjectID
 	selection flamemodel.Selection
 	parentID  identity.SessionID
 	createdAt time.Time
@@ -69,7 +74,7 @@ func New(draft Draft) (Session, error) {
 	createdAt := draft.CreatedAt.UTC()
 	snapshot := Snapshot{
 		ID: draft.ID, Title: strings.TrimSpace(draft.Title),
-		Workspace: draft.Workspace, Selection: draft.Selection,
+		Workspace: draft.Workspace, Project: draft.Project, Selection: draft.Selection,
 		CreatedAt: createdAt, UpdatedAt: createdAt, Revision: exactint.First().Value(),
 	}
 	return Restore(snapshot)
@@ -82,7 +87,7 @@ func Restore(snapshot Snapshot) (Session, error) {
 	}
 	value := Session{
 		id: snapshot.ID, title: snapshot.Title, workspace: snapshot.Workspace,
-		selection: snapshot.Selection, parentID: snapshot.ParentID,
+		project: snapshot.Project, selection: snapshot.Selection, parentID: snapshot.ParentID,
 		createdAt: snapshot.CreatedAt.UTC(),
 		updatedAt: snapshot.UpdatedAt.UTC(),
 		favorite:  snapshot.Favorite, isolated: snapshot.Isolated,
@@ -126,6 +131,9 @@ func (s Session) Apply(patch Patch, updatedAt time.Time) (next Session, changed 
 		}
 		next.workspace = *patch.Workspace
 	}
+	if patch.Project != nil {
+		next.project = *patch.Project
+	}
 	if patch.Favorite != nil {
 		next.favorite = *patch.Favorite
 	}
@@ -159,7 +167,7 @@ func (s Session) Fork(id identity.SessionID, title string, createdAt time.Time) 
 	}
 	createdAt = createdAt.UTC()
 	return Restore(Snapshot{
-		ID: id, Title: title, Workspace: s.workspace, ParentID: s.id,
+		ID: id, Title: title, Workspace: s.workspace, Project: s.project, ParentID: s.id,
 		CreatedAt: createdAt, UpdatedAt: createdAt,
 		Selection: s.selection, Isolated: s.isolated, Revision: exactint.First().Value(),
 	})
@@ -239,7 +247,7 @@ func (s Session) validate() error {
 
 func (s Session) Snapshot() Snapshot {
 	return Snapshot{
-		ID: s.id, Title: s.title, Workspace: s.workspace, Selection: s.selection,
+		ID: s.id, Title: s.title, Workspace: s.workspace, Project: s.project, Selection: s.selection,
 		ParentID: s.parentID, CreatedAt: s.createdAt, UpdatedAt: s.updatedAt,
 		Favorite: s.favorite, Isolated: s.isolated, Revision: s.revision.Value(),
 	}
@@ -250,6 +258,9 @@ func (s Session) ID() identity.SessionID { return s.id }
 func (s Session) Title() string { return s.title }
 
 func (s Session) Workspace() Workspace { return s.workspace }
+
+// Project is zero when the Session belongs to none.
+func (s Session) Project() identity.ProjectID { return s.project }
 
 func (s Session) Selection() flamemodel.Selection { return s.selection }
 
@@ -266,7 +277,7 @@ func (s Session) Isolated() bool { return s.isolated }
 func (s Session) Revision() uint64 { return s.revision.Value() }
 
 func (s Session) sameValue(other Session) bool {
-	return s.id == other.id && s.title == other.title && s.workspace == other.workspace &&
+	return s.id == other.id && s.title == other.title && s.workspace == other.workspace && s.project == other.project &&
 		s.selection.Equal(other.selection) && s.parentID == other.parentID &&
 		s.createdAt.Equal(other.createdAt) && s.favorite == other.favorite &&
 		s.isolated == other.isolated

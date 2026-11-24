@@ -19,11 +19,14 @@ const (
 	Maintain = "flame.memory/maintain.v2"
 )
 
+// Project, when set, is the caller's Flame Project and replaces CWD as the project
+// target.
 type ListInput struct {
-	Scope  agentmemory.Scope `json:"scope"`
-	CWD    string            `json:"cwd"`
-	Cursor string            `json:"cursor"`
-	Limit  *int              `json:"limit,omitzero"`
+	Scope   agentmemory.Scope `json:"scope"`
+	CWD     string            `json:"cwd"`
+	Project string            `json:"project,omitempty"`
+	Cursor  string            `json:"cursor"`
+	Limit   *int              `json:"limit,omitzero"`
 }
 
 func (ListInput) JSONSchemaConstraints() jsonschema.Constraints {
@@ -88,6 +91,7 @@ func (Page) JSONSchemaConstraints() jsonschema.Constraints {
 type AddInput struct {
 	Scope   agentmemory.Scope `json:"scope"`
 	CWD     string            `json:"cwd"`
+	Project string            `json:"project,omitempty"`
 	Content string            `json:"content"`
 }
 type AddResult struct {

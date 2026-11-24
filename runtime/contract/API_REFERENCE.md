@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-30.2` · 105 methods
+Protocol `2026-10-30.2` · 109 methods
 
 ## Methods
 
@@ -17,16 +17,20 @@ Protocol `2026-10-30.2` · 105 methods
 | `sessions.list` | query | unary | none | none | cursor | — | — | — |
 | `sessions.get` | query | unary | none | none | none | — | — | `session_not_found` |
 | `sessions.snapshot` | query | unary | none | none | none | `items.list`, `runs.list`, `interrupts.list`, `plan.get`, `goals.get` | `childRuns` | `session_not_found`, `capability_not_negotiated` |
-| `sessions.create` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `workspace_unavailable` |
-| `sessions.update` | command | unary | replayResponse | none | none | — | `relocate`, `isolation` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `revision_conflict`, `workspace_unavailable`, `capability_not_negotiated` |
+| `sessions.create` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `workspace_unavailable`, `project_not_found` |
+| `sessions.update` | command | unary | replayResponse | none | none | — | `relocate`, `isolation` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `revision_conflict`, `workspace_unavailable`, `project_not_found`, `session_busy`, `capability_not_negotiated` |
 | `sessions.delete` | command | unary | replayResponse | none | none | — | — | `session_not_found` |
 | `sessions.fork` | command | unary | replayResponse | none | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `run_not_found` |
 | `sessions.rollback` | command | unary | replayResponse | none | none | — | `checkpoints` | `session_not_found`, `run_not_found`, `session_busy`, `checkpoint_unavailable`, `checkpoint_conflict`, `capability_not_negotiated` |
 | `sessions.export` | query | unary | none | none | none | — | `sessionExport` | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `session_busy`, `export_too_large`, `capability_not_negotiated` |
 | `sessions.import` | command | unary | replayResponse | none | none | — | `sessionExport` | `session_busy`, `export_too_large`, `capability_not_negotiated` |
+| `projects.list` | query | unary | none | none | cursor | — | — | — |
+| `projects.get` | query | unary | none | none | none | — | — | `project_not_found` |
+| `projects.create` | command | unary | replayResponse | none | none | — | — | — |
+| `projects.update` | command | unary | replayResponse | none | none | — | — | `project_not_found`, `revision_conflict` |
 | `modelInvocations.endpoints` | query | unary | none | none | cursor | — | — | `capability_not_negotiated` |
 | `modelInvocations.list` | query | unary | none | none | cursor | — | — | `run_not_found`, `capability_not_negotiated` |
-| `runs.start` | command | stream | ownerRun | run | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
+| `runs.start` | command | stream | ownerRun | run | none | — | — | `plugin_unavailable`, `plugin_stale`, `session_not_found`, `project_not_found`, `session_busy`, `session_has_active_run`, `prompt_source_too_large`, `unsupported_mime`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.resume` | command | stream | ownerRun | run | none | — | — | `run_not_found`, `interrupt_not_open`, `capability_not_negotiated`, `plugin_changed` |
 | `runs.subscribe` | subscription | stream | none | run | none | — | — | `run_not_found`, `run_not_root`, `run_waiting`, `run_finished`, `stale_segment`, `replay_cursor_invalid`, `replay_unavailable`, `capability_not_negotiated` |
 | `runs.cancel` | command | unary | replayResponse | none | none | — | — | `run_not_found`, `run_finished`, `session_busy`, `capability_not_negotiated` |
@@ -197,6 +201,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `plugin_not_found` | — | `detail`, `docUrl` |
 | `plugin_stale` | — | `detail`, `docUrl` |
 | `plugin_unavailable` | — | `detail`, `docUrl` |
+| `project_not_found` | — | `detail`, `docUrl` |
 | `prompt_source_too_large` | — | `detail`, `docUrl` |
 | `provider_error` | — | `detail`, `docUrl` |
 | `provider_rejected` | — | `detail`, `docUrl` |
@@ -311,6 +316,13 @@ publish one namespaced pattern branch without weakening first-party tags.
 | tag | required | optional |
 | --- | --- | --- |
 | `set` | `value` | — |
+| `clear` | — | — |
+
+### `SessionProjectChange`
+
+| tag | required | optional |
+| --- | --- | --- |
+| `set` | `projectId` | — |
 | `clear` | — | — |
 
 ### `MCPOrigin`
@@ -574,7 +586,13 @@ TypeScript validator from this single registry projection.
 | `Session` | `reasoningEffort` | `maxLength(32)` |
 | `Session` | `revision` | `positive` |
 | `Session` | `revision` | `maximum(9007199254740991)` |
+| `Session` | `projectId` | `identity` |
+| `Session` | `projectId` | `maxLength(256)` |
 | `ListSessionsRequest` | `search` | `maxLength(1024)` |
+| `ListSessionsRequest` | `projectId` | `identity` |
+| `ListSessionsRequest` | `projectId` | `maxLength(256)` |
+| `CreateSessionRequest` | `projectId` | `identity` |
+| `CreateSessionRequest` | `projectId` | `maxLength(256)` |
 | `GetSessionRequest` | `sessionId` | `nonEmpty` |
 | `GetSessionRequest` | `sessionId` | `identity` |
 | `GetSessionRequest` | `sessionId` | `maxLength(256)` |
@@ -616,6 +634,24 @@ TypeScript validator from this single registry projection.
 | `UpdateSessionRequest` | `model` | `maxLength(256)` |
 | `UpdateSessionRequest` | `reasoningEffort` | `identity` |
 | `UpdateSessionRequest` | `reasoningEffort` | `maxLength(32)` |
+| `Project` | `id` | `nonEmpty` |
+| `Project` | `id` | `identity` |
+| `Project` | `id` | `maxLength(256)` |
+| `Project` | `name` | `pattern("\\S")` |
+| `Project` | `revision` | `positive` |
+| `Project` | `revision` | `maximum(9007199254740991)` |
+| `GetProjectRequest` | `projectId` | `nonEmpty` |
+| `GetProjectRequest` | `projectId` | `identity` |
+| `GetProjectRequest` | `projectId` | `maxLength(256)` |
+| `CreateProjectRequest` | `name` | `pattern("\\S")` |
+| `UpdateProjectRequest` | `projectId` | `nonEmpty` |
+| `UpdateProjectRequest` | `projectId` | `identity` |
+| `UpdateProjectRequest` | `projectId` | `maxLength(256)` |
+| `UpdateProjectRequest` | `expectedRevision` | `positive` |
+| `UpdateProjectRequest` | `expectedRevision` | `maximum(9007199254740991)` |
+| `UpdateProjectRequest` | `name` | `nonEmpty` |
+| `SessionProjectChange` | `projectId` | `identity` |
+| `SessionProjectChange` | `projectId` | `maxLength(256)` |
 | `SessionTrajectory` | `schemaVersion` | `minimum(4)` |
 | `SessionTrajectory` | `schemaVersion` | `maximum(4)` |
 | `ArtifactSession` | `id` | `nonEmpty` |
@@ -754,6 +790,8 @@ TypeScript validator from this single registry projection.
 | `RunSessionOpening` | `runId` | `nonEmpty` |
 | `RunSessionOpening` | `runId` | `identity` |
 | `RunSessionOpening` | `runId` | `maxLength(256)` |
+| `RunSessionOpening` | `projectId` | `identity` |
+| `RunSessionOpening` | `projectId` | `maxLength(256)` |
 | `GenerationParams` | `temperature` | `nonNegative` |
 | `GenerationParams` | `temperature` | `maximum(2)` |
 | `GenerationParams` | `maxTokens` | `positive` |

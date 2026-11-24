@@ -39,7 +39,7 @@ func (a agentMemorySearchRequest) normalized() (query string, limit int, err err
 }
 
 type agentMemorySearch interface {
-	Search(ctx context.Context, project, query string, topK int) ([]agentmemory.Item, error)
+	Search(ctx context.Context, query string, topK int) ([]agentmemory.Item, error)
 }
 
 type agentMemorySearcher struct {
@@ -67,12 +67,7 @@ func (a *agentMemorySearcher) run(ctx context.Context, req agentMemorySearchRequ
 	if err != nil {
 		return memoryResults{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: %w", rpc.ModelCallerPolicy().SearchToolName, err))
 	}
-	scope, err := pluginsdk.ToolContextFromContext(ctx)
-	if err != nil {
-		return memoryResults{}, pluginsdk.DefiniteToolFailure(err)
-	}
-	cwd := scope.CWD
-	items, err := a.search.Search(ctx, cwd, query, limit)
+	items, err := a.search.Search(ctx, query, limit)
 	if err != nil {
 		return memoryResults{}, pluginsdk.DefiniteToolFailure(fmt.Errorf("%s: %w", rpc.ModelCallerPolicy().SearchToolName, err))
 	}

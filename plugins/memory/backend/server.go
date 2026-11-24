@@ -93,7 +93,7 @@ func (m memoryServer) list(ctx context.Context, _ *sdk.ServerSession, command pl
 	if err != nil {
 		return rpc.Page{}, err
 	}
-	page, err := m.review.List(ctx, coordination.ListInput{Scope: input.Scope, CWD: input.CWD, Cursor: input.Cursor, Limit: limit})
+	page, err := m.review.List(ctx, coordination.ListInput{Scope: input.Scope, Location: coordination.Location{CWD: input.CWD, Project: input.Project}, Cursor: input.Cursor, Limit: limit})
 	return rpc.Page{Rows: rpc.NewItems(page.Rows), NextCursor: page.NextCursor, Capacity: agentmemory.MaxVisiblePerTarget}, err
 }
 
@@ -183,12 +183,12 @@ type toolSearch struct {
 	roots coordination.RootResolver
 }
 
-func (s toolSearch) Search(ctx context.Context, project, query string, topK int) ([]agentmemory.Item, error) {
-	project, err := s.roots.ResolveExistingDir(project)
-	if err != nil {
-		return nil, errors.Join(coordination.ErrWorkspaceUnavailable, err)
-	}
+func (s toolSearch) Search(ctx context.Context, query string, topK int) ([]agentmemory.Item, error) {
 	scope, err := pluginsdk.ToolContextFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	project, err := coordination.ProjectTarget(s.roots, coordination.Location{CWD: scope.CWD, Project: scope.Project})
 	if err != nil {
 		return nil, err
 	}

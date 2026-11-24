@@ -25,6 +25,7 @@ type WorkspaceEventType =
   | "hooks.changed"
   | "models.changed"
   | "approvals.changed"
+  | "projects.changed"
   | "resync";
 
 type WorkspaceTopic = Exclude<WorkspaceEventType, "resync">;
@@ -143,6 +144,8 @@ export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalid
     case "approvals.changed":
       return ["approvalMode", "approvalRules"];
     case "plugins.dataChanged":
+      return [];
+    case "projects.changed":
       return [];
     case "resync": {
       if (!ev.topics?.length) return ["all"];

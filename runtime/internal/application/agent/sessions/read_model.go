@@ -31,6 +31,7 @@ type View struct {
 	ID              identity.SessionID
 	Title           string
 	Workspace       WorkspaceView
+	Project         identity.ProjectID
 	Provider        string
 	Model           string
 	ReasoningEffort string
@@ -173,15 +174,6 @@ func (c *Coordinator) View(ctx context.Context, id identity.SessionID) (View, er
 	return c.viewForSession(ctx, value)
 }
 
-func (c *Coordinator) CreateView(ctx context.Context, title, cwd string) (View, error) {
-	creation, err := c.PrepareCreate(ctx, title, cwd)
-	if err != nil {
-		return View{}, err
-	}
-	_, err = creation.apply(ctx)
-	return creation.View, err
-}
-
 func (c *Coordinator) viewForSession(ctx context.Context, value session.Session) (View, error) {
 	activities, err := c.Activities(ctx, []identity.SessionID{value.ID()})
 	if err != nil {
@@ -231,6 +223,7 @@ func (c *Coordinator) view(value session.Session, activity Activity) (View, erro
 		Workspace: WorkspaceView{
 			Path: workspace.Path, ProjectRoot: workspace.ProjectRoot, Missing: workspace.Missing,
 		},
+		Project:         value.Project(),
 		Provider:        selection.Provider(),
 		Model:           selection.Model(),
 		ReasoningEffort: selection.ReasoningEffort(),

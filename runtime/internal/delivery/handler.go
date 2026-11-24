@@ -7,6 +7,7 @@ import (
 	"github.com/Tangerg/flame/packages/go-sdk/protocol"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/projects"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
@@ -37,6 +38,7 @@ type HandlerConfig struct {
 	RunCancellations   *runs.Cancellations
 	RunStreams         *runs.Segments
 	Queries            *sessions.QueryCoordinator
+	Projects           *projects.Coordinator
 	Usage              *sessions.UsageReporter
 	Feedback           *feedback.Recorder
 	TrajectoryExports  *sessions.TrajectoryExporter
@@ -81,6 +83,7 @@ type Handler struct {
 	runCancellations   *runs.Cancellations
 	runStreams         *runs.Segments
 	queries            *sessions.QueryCoordinator
+	projects           *projects.Coordinator
 	usage              *sessions.UsageReporter
 	feedback           *feedback.Recorder
 	trajectoryExports  *sessions.TrajectoryExporter
@@ -147,6 +150,7 @@ func (c HandlerConfig) validate() error {
 		{name: "RunOpenings", value: c.RunOpenings},
 		{name: "RunCancellations", value: c.RunCancellations},
 		{name: "Queries", value: c.Queries},
+		{name: "Projects", value: c.Projects},
 		{name: "Usage", value: c.Usage},
 		{name: "Feedback", value: c.Feedback},
 		{name: "TrajectoryExports", value: c.TrajectoryExports},
@@ -234,6 +238,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		runCancellations:         cfg.RunCancellations,
 		runStreams:               cfg.RunStreams,
 		queries:                  cfg.Queries,
+		projects:                 cfg.Projects,
 		usage:                    cfg.Usage,
 		feedback:                 cfg.Feedback,
 		trajectoryExports:        cfg.TrajectoryExports,

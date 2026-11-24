@@ -19,6 +19,7 @@ import (
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/projects"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/goals"
@@ -140,6 +141,12 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, err
 	}
+	projectCoordinator, err := projects.New(projects.Config{
+		Store: cfg.stores.Projects, NewID: newProjectID, Now: time.Now, Invalidations: policy.invalidations.publish,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("runtime: construct Project coordinator: %w", err)
+	}
 	recoverUncertain := startupRunRecovery(cfg.stores, pluginCoordinator, runCoordinator, recoveryPersistence, execution.executor, ownershipRecovery)
 	host := &Instance{
 		application: &runtimeApplication{
@@ -164,6 +171,7 @@ func buildAssemblyCore(
 				FileChanges:            fileChanges.observe,
 				Invalidations:          policy.invalidations.observe,
 				Queries:                readServices.queries,
+				Projects:               projectCoordinator,
 				Usage:                  readServices.usage,
 				Feedback:               readServices.feedback,
 				TrajectoryExports:      readServices.trajectoryExports,
@@ -231,6 +239,7 @@ func assembleSessions(cfg assemblyConfig, policy policyComposition, workspaceSer
 		TransientState:        execution.transientSessions,
 		ExecutionReleaser:     execution.executor,
 		Paths:                 workspaceadapter.Resolver{},
+		Projects:              cfg.stores.Projects,
 		Models:                execution.models.capabilities,
 		DefaultModelSelection: cfg.defaultSelection,
 		Checkpoints:           workspaceServices.checkpoints,

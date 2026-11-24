@@ -73,6 +73,7 @@ func invalidInputContent(index int, err error) error {
 type SessionOpening struct {
 	SessionID  identity.SessionID
 	Title, CWD string
+	Project    identity.ProjectID
 	RunID      identity.RunID
 }
 

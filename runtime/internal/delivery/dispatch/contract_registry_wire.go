@@ -17,6 +17,7 @@ func buildShapes() *Shapes {
 	registerTrajectoryObservationConstraints(s)
 	registerItemUnions(s)
 	registerProviderUnions(s)
+	registerProjectUnions(s)
 	registerMCPUnions(s)
 	registerPluginUnions(s)
 	registerToolRefUnion(s)
@@ -150,6 +151,7 @@ func registerCarriedShapes(s *Shapes) {
 func registerValueConstraints(s *Shapes) {
 	registerCollectionValues(s)
 	registerSessionValues(s)
+	registerProjectValues(s)
 	registerArtifactValues(s)
 	registerRunValues(s)
 	registerTrajectoryValues(s)

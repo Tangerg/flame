@@ -104,6 +104,7 @@ func (i interactionCheckpointState) restoredStart(continuation runs.ExecutionCon
 		RunID:                    continuation.RootRunID,
 		CWD:                      continuation.Workspace,
 		WorkspaceCWD:             continuation.Workspace,
+		Project:                  continuation.Project,
 		Isolated:                 continuation.Isolated,
 		GoalIncarnationID:        continuation.GoalIncarnationID,
 		ModelSelection:           continuation.RootModelSelection(),

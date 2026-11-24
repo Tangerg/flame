@@ -18,6 +18,7 @@ const (
 	RuntimeHooksChanged      RuntimeEventType = "hooks.changed"
 	RuntimeModelsChanged     RuntimeEventType = "models.changed"
 	RuntimeApprovalsChanged  RuntimeEventType = "approvals.changed"
+	RuntimeProjectsChanged   RuntimeEventType = "projects.changed"
 	RuntimeResync            RuntimeEventType = "resync"
 )
 
@@ -37,6 +38,7 @@ const (
 	TopicHooksChanged      = RuntimeTopic(RuntimeHooksChanged)
 	TopicModelsChanged     = RuntimeTopic(RuntimeModelsChanged)
 	TopicApprovalsChanged  = RuntimeTopic(RuntimeApprovalsChanged)
+	TopicProjectsChanged   = RuntimeTopic(RuntimeProjectsChanged)
 )
 
 func RuntimeTopics() []RuntimeTopic {
@@ -44,7 +46,7 @@ func RuntimeTopics() []RuntimeTopic {
 		TopicFilesChanged, TopicSkillsChanged, TopicMCPChanged, TopicPluginsChanged, TopicPluginDataChanged,
 		TopicSessionsChanged, TopicRunsChanged, TopicPlanChanged, TopicGoalsChanged,
 		TopicInterruptsChanged, TopicHooksChanged,
-		TopicModelsChanged, TopicApprovalsChanged,
+		TopicModelsChanged, TopicApprovalsChanged, TopicProjectsChanged,
 	}
 }
 

@@ -60,6 +60,7 @@ import type {
   UpdateProviderRequest,
   UpdateGoalRequest,
   CreateSessionRequest,
+  CreateProjectRequest,
   Diff,
   ExportFormat,
   ExportSessionResponse,
@@ -81,6 +82,7 @@ import type {
   ListItemsResponse,
   ListRunsRequest,
   ListSessionsRequest,
+  ListProjectsRequest,
   ListSessionTrajectoryRequest,
   MCPAuthorizationAttempt,
   MCPServer,
@@ -106,6 +108,7 @@ import type {
   RunAcceptance,
   GetRunAcceptanceRequest,
   Plan,
+  Project,
   Session,
   SessionArtifact,
   SessionSnapshot,
@@ -121,6 +124,7 @@ import type {
   RuntimeSubscribeRequest,
   RuntimeSubscribeResponse,
   UpdateSessionRequest,
+  UpdateProjectRequest,
   UpdateMCPServerRequest,
   SessionUsage,
   UsageSummary,
@@ -270,6 +274,12 @@ export interface Methods {
       signal?: AbortSignal,
     ) => Promise<ExportTrajectoryResponse>;
     import: (artifact: SessionArtifact) => MutationPromise<ImportSessionResponse>;
+  };
+  projects: {
+    list: (query?: ListProjectsRequest, signal?: AbortSignal) => AutoPagingPromise<Page<Project>>;
+    get: (projectId: string, signal?: AbortSignal) => Promise<Project>;
+    create: (params: CreateProjectRequest) => MutationPromise<Project>;
+    update: (params: UpdateProjectRequest) => MutationPromise<Project>;
   };
   modelInvocations: {
     endpoints: (
@@ -773,6 +783,12 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
         call("sessions.import", {
           artifact,
         }),
+    },
+    projects: {
+      list: (query, signal) => call("projects.list", query ?? {}, { signal }),
+      get: (projectId, signal) => call("projects.get", { projectId }, { signal }),
+      create: (params) => call("projects.create", params),
+      update: (params) => call("projects.update", params),
     },
     modelInvocations: {
       endpoints: (query, signal) => call("modelInvocations.endpoints", query, { signal }),

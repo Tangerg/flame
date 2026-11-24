@@ -30,19 +30,45 @@ When you change files, show the change. When a tool returns an
 error, read the message and adjust — don't blindly retry. If a
 task is ambiguous, ask one focused question rather than guess.`
 
+// MemoryTarget is the Memory project target of a Run: its Project when the
+// Session has one, otherwise its workspace directory, so directory memories never
+// reach a Project implicitly.
+func MemoryTarget(project identity.ProjectID, workspaceCWD string) string {
+	if !project.IsZero() {
+		return project.String()
+	}
+	if strings.TrimSpace(workspaceCWD) == "" {
+		return ""
+	}
+	return filepath.Clean(workspaceCWD)
+}
+
 func (w *WorkingContextComposer) composeSystemMessage(
 	ctx context.Context,
 	executionCWD, workspaceCWD string,
+	projectID identity.ProjectID,
 ) (corechat.Message, error) {
 	var prompt promptComposition
 	prompt.append(
 		basePrompt,
 		contextSourceBasePrompt.source("builtin:flame"),
 	)
+	if !projectID.IsZero() {
+		current, err := w.config.Projects.Get(ctx, projectID)
+		if err != nil {
+			return corechat.Message{}, fmt.Errorf("execution: load Project instructions: %w", err)
+		}
+		if instructions := current.Instructions(); instructions != "" {
+			prompt.append(
+				"## Project instructions: "+current.Name()+"\n\n"+instructions,
+				contextSourceProjectInstructions.source(projectID.String()+"@"+strconv.FormatUint(current.Revision(), 10)),
+			)
+		}
+	}
 
 	var pinned []MemoryPromptItem
-	if project := strings.TrimSpace(workspaceCWD); project != "" {
-		items, err := w.config.AgentMemory.Items(ctx, memorycontract.ItemsInputScopeProject, filepath.Clean(project))
+	if target := MemoryTarget(projectID, workspaceCWD); target != "" {
+		items, err := w.config.AgentMemory.Items(ctx, memorycontract.ItemsInputScopeProject, target)
 		if err != nil {
 			return corechat.Message{}, fmt.Errorf("execution: load project pinned memory: %w", err)
 		}

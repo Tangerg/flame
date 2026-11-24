@@ -23,6 +23,8 @@ func (e ExportTrajectoryRequest) validateWire() error {
 func (l ListSessionsRequest) validateWire() error {
 	return collectWireViolations("ListSessionsRequest",
 		maxLength("search", l.Search, 1024),
+		identity("projectId", l.ProjectID),
+		maxLength("projectId", l.ProjectID, 256),
 		optionalPositiveNumber("limit", l.Limit),
 		maxLength("cursor", l.Cursor, 65536),
 	)
@@ -41,6 +43,13 @@ func (g GetSessionSnapshotRequest) validateWire() error {
 		requiredText("sessionId", g.SessionID),
 		identity("sessionId", g.SessionID),
 		maxLength("sessionId", g.SessionID, 256),
+	)
+}
+
+func (c CreateSessionRequest) validateWire() error {
+	return collectWireViolations("CreateSessionRequest",
+		identity("projectId", c.ProjectID),
+		maxLength("projectId", c.ProjectID, 256),
 	)
 }
 
@@ -101,6 +110,38 @@ func (e ExportSessionRequest) validateWire() error {
 		identity("sessionId", e.SessionID),
 		maxLength("sessionId", e.SessionID, 256),
 		closedEnum("format", string(e.Format), []string{"md", "json"}, true),
+	)
+}
+
+func (l ListProjectsRequest) validateWire() error {
+	return collectWireViolations("ListProjectsRequest",
+		optionalPositiveNumber("limit", l.Limit),
+		maxLength("cursor", l.Cursor, 65536),
+	)
+}
+
+func (g GetProjectRequest) validateWire() error {
+	return collectWireViolations("GetProjectRequest",
+		requiredText("projectId", g.ProjectID),
+		identity("projectId", g.ProjectID),
+		maxLength("projectId", g.ProjectID, 256),
+	)
+}
+
+func (c CreateProjectRequest) validateWire() error {
+	return collectWireViolations("CreateProjectRequest",
+		requiredTextPattern("name", c.Name, "\\S"),
+	)
+}
+
+func (u UpdateProjectRequest) validateWire() error {
+	return collectWireViolations("UpdateProjectRequest",
+		requiredText("projectId", u.ProjectID),
+		identity("projectId", u.ProjectID),
+		maxLength("projectId", u.ProjectID, 256),
+		positiveNumber("expectedRevision", u.ExpectedRevision),
+		maximumNumber("expectedRevision", u.ExpectedRevision, 9007199254740991),
+		optionalText("name", u.Name),
 	)
 }
 
@@ -279,7 +320,7 @@ func (r RuntimeSubscribeRequest) validateWire() error {
 	return collectWireViolations("RuntimeSubscribeRequest",
 		requiredItems("topics", r.Topics),
 		uniqueItems("topics", r.Topics),
-		closedEnumItems("topics", r.Topics, []string{"files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed"}),
+		closedEnumItems("topics", r.Topics, []string{"files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed"}),
 	)
 }
 
@@ -627,7 +668,7 @@ func (p ProblemData) validateWire() error {
 		maximumNumber("retryAfterSeconds", p.RetryAfterSeconds, 9223372036),
 		nonEmptyItems("requiredCapabilities", p.RequiredCapabilities),
 		uniqueItems("requiredCapabilities", p.RequiredCapabilities),
-		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_conflict", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "export_too_large", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_credentials", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_owned_by_installation", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "plugin_changed", "plugin_command_retired", "plugin_disabled", "plugin_in_use", "plugin_not_found", "plugin_stale", "plugin_unavailable", "prompt_source_too_large", "provider_error", "provider_rejected", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_not_found", "run_not_root", "run_waiting", "session_busy", "session_has_active_run", "session_not_found", "skill_not_found", "skill_unavailable", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
+		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_conflict", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "export_too_large", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_credentials", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_owned_by_installation", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "plugin_changed", "plugin_command_retired", "plugin_disabled", "plugin_in_use", "plugin_not_found", "plugin_stale", "plugin_unavailable", "project_not_found", "prompt_source_too_large", "provider_error", "provider_rejected", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_not_found", "run_not_root", "run_waiting", "session_busy", "session_has_active_run", "session_not_found", "skill_not_found", "skill_unavailable", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
 		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "requiredCapabilities", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "errors", p),
@@ -751,6 +792,10 @@ func (p ProblemData) validateWire() error {
 		forbiddenWhen(wireFieldEquals(p, "type", "plugin_unavailable"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "plugin_unavailable"), "errors", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "plugin_unavailable"), "activeRun", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "project_not_found"), "requiredCapabilities", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "project_not_found"), "retryAfterSeconds", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "project_not_found"), "errors", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "project_not_found"), "activeRun", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "prompt_source_too_large"), "requiredCapabilities", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "prompt_source_too_large"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "prompt_source_too_large"), "errors", p),
@@ -1154,6 +1199,16 @@ func (p ProviderConfigChange) validateWire() error {
 	)
 }
 
+func (s SessionProjectChange) validateWire() error {
+	return collectWireViolations("SessionProjectChange",
+		identity("projectId", s.ProjectID),
+		maxLength("projectId", s.ProjectID, 256),
+		closedEnum("type", string(s.Type), []string{"set", "clear"}, false),
+		requiredWhen(wireFieldEquals(s, "type", "set"), "projectId", s),
+		forbiddenWhen(wireFieldEquals(s, "type", "clear"), "projectId", s),
+	)
+}
+
 func (m MCPOrigin) validateWire() error {
 	return collectWireViolations("MCPOrigin",
 		optionalTextPattern("installationId", m.InstallationID, "^(?:[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|000000[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|0000000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-00[1-9a-f][0-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-000[1-9a-f]-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000[1-9a-f][0-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-000000000[1-9a-f][0-9a-f][0-9a-f]|00000000-0000-0000-0000-0000000000[1-9a-f][0-9a-f]|00000000-0000-0000-0000-00000000000[1-9a-f])$"),
@@ -1487,8 +1542,8 @@ func (r RuntimeEvent) validateWire() error {
 		maxItemLength("sessionIds", r.SessionIDs, 256),
 		identityItems("runIds", r.RunIDs),
 		maxItemLength("runIds", r.RunIDs, 256),
-		closedEnum("type", string(r.Type), []string{"files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "resync"}, false),
-		closedEnumItems("topics", r.Topics, []string{"files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed"}),
+		closedEnum("type", string(r.Type), []string{"files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed", "resync"}, false),
+		closedEnumItems("topics", r.Topics, []string{"files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed"}),
 		requiredWhen(wireFieldEquals(r, "type", "files.changed"), "sequence", r),
 		requiredWhen(wireFieldEquals(r, "type", "files.changed"), "paths", r),
 		forbiddenWhen(wireFieldEquals(r, "type", "files.changed"), "names", r),
@@ -2081,6 +2136,8 @@ func (s Session) validateWire() error {
 		maxLength("reasoningEffort", s.ReasoningEffort, 32),
 		positiveNumber("revision", s.Revision),
 		maximumNumber("revision", s.Revision, 9007199254740991),
+		identity("projectId", s.ProjectID),
+		maxLength("projectId", s.ProjectID, 256),
 		closedEnum("status", string(s.Status), []string{"running", "waiting", "idle"}, false),
 		required("createdAt", s),
 		required("updatedAt", s),
@@ -2377,6 +2434,17 @@ func (p PageQuery) validateWire() error {
 	)
 }
 
+func (p Project) validateWire() error {
+	return collectWireViolations("Project",
+		requiredText("id", p.ID),
+		identity("id", p.ID),
+		maxLength("id", p.ID, 256),
+		requiredTextPattern("name", p.Name, "\\S"),
+		positiveNumber("revision", p.Revision),
+		maximumNumber("revision", p.Revision, 9007199254740991),
+	)
+}
+
 func (s SessionTrajectory) validateWire() error {
 	return collectWireViolations("SessionTrajectory",
 		minimumNumber("schemaVersion", s.SchemaVersion, 4),
@@ -2470,6 +2538,8 @@ func (r RunSessionOpening) validateWire() error {
 		requiredText("runId", r.RunID),
 		identity("runId", r.RunID),
 		maxLength("runId", r.RunID, 256),
+		identity("projectId", r.ProjectID),
+		maxLength("projectId", r.ProjectID, 256),
 	)
 }
 
@@ -2971,7 +3041,7 @@ func (s ServerCapabilities) validateWire() error {
 		uniqueItems("streamingMethods", s.StreamingMethods),
 		textPatternItems("streamingMethods", s.StreamingMethods, "\\S"),
 		closedEnumItems("runEvents", s.RunEvents, []string{"segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"}),
-		closedEnumItems("runtimeTopics", s.RuntimeTopics, []string{"files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed"}),
+		closedEnumItems("runtimeTopics", s.RuntimeTopics, []string{"files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed"}),
 	)
 }
 

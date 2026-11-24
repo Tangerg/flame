@@ -20,3 +20,7 @@ func mustIdentity[ID any](id ID, err error) ID {
 }
 
 func newItemID() identity.ItemID { return mustIdentity(identity.NewItem(uuid.NewString())) }
+
+func newProjectID() identity.ProjectID {
+	return mustIdentity(identity.NewProject(uuid.NewString()))
+}

@@ -27,12 +27,14 @@ type (
 	runKind     struct{}
 	segmentKind struct{}
 	itemKind    struct{}
+	projectKind struct{}
 )
 
 func (sessionKind) name() string { return "session" }
 func (runKind) name() string     { return "run" }
 func (segmentKind) name() string { return "segment" }
 func (itemKind) name() string    { return "item" }
+func (projectKind) name() string { return "project" }
 
 type ID[K kind] struct{ text string }
 
@@ -41,6 +43,7 @@ type (
 	RunID     = ID[runKind]
 	SegmentID = ID[segmentKind]
 	ItemID    = ID[itemKind]
+	ProjectID = ID[projectKind]
 )
 
 func parseID[K kind](text string) (ID[K], error) {
@@ -62,11 +65,13 @@ func ParseSession(text string) (SessionID, error) { return parseID[sessionKind](
 func ParseRun(text string) (RunID, error)         { return parseID[runKind](text) }
 func ParseSegment(text string) (SegmentID, error) { return parseID[segmentKind](text) }
 func ParseItem(text string) (ItemID, error)       { return parseID[itemKind](text) }
+func ParseProject(text string) (ProjectID, error) { return parseID[projectKind](text) }
 
 func ParseOptionalSession(text string) (SessionID, error) { return parseOptionalID[sessionKind](text) }
 func ParseOptionalRun(text string) (RunID, error)         { return parseOptionalID[runKind](text) }
 func ParseOptionalSegment(text string) (SegmentID, error) { return parseOptionalID[segmentKind](text) }
 func ParseOptionalItem(text string) (ItemID, error)       { return parseOptionalID[itemKind](text) }
+func ParseOptionalProject(text string) (ProjectID, error) { return parseOptionalID[projectKind](text) }
 
 func (id ID[K]) String() string { return id.text }
 

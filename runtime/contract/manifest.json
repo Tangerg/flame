@@ -129,7 +129,8 @@
       "errors": [
         "plugin_unavailable",
         "plugin_stale",
-        "workspace_unavailable"
+        "workspace_unavailable",
+        "project_not_found"
       ]
     },
     {
@@ -146,6 +147,8 @@
         "session_not_found",
         "revision_conflict",
         "workspace_unavailable",
+        "project_not_found",
+        "session_busy",
         "capability_not_negotiated"
       ],
       "features": [
@@ -238,6 +241,49 @@
       ]
     },
     {
+      "goName": "ListProjects",
+      "name": "projects.list",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "cursor"
+    },
+    {
+      "goName": "GetProject",
+      "name": "projects.get",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "project_not_found"
+      ]
+    },
+    {
+      "goName": "CreateProject",
+      "name": "projects.create",
+      "kind": "unary",
+      "operation": "command",
+      "idempotency": "replayResponse",
+      "replayCursor": "none",
+      "pagination": "none"
+    },
+    {
+      "goName": "UpdateProject",
+      "name": "projects.update",
+      "kind": "unary",
+      "operation": "command",
+      "idempotency": "replayResponse",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "project_not_found",
+        "revision_conflict"
+      ]
+    },
+    {
       "goName": "ListModelEndpoints",
       "name": "modelInvocations.endpoints",
       "kind": "unary",
@@ -274,6 +320,7 @@
         "plugin_unavailable",
         "plugin_stale",
         "session_not_found",
+        "project_not_found",
         "session_busy",
         "session_has_active_run",
         "prompt_source_too_large",
@@ -2257,6 +2304,18 @@
         ]
       },
       {
+        "type": "project_not_found",
+        "code": -32048,
+        "recoveryAction": "refetch",
+        "methods": [
+          "projects.get",
+          "projects.update",
+          "runs.start",
+          "sessions.create",
+          "sessions.update"
+        ]
+      },
+      {
         "type": "prompt_source_too_large",
         "code": -32038,
         "recoveryAction": "promptUser",
@@ -2299,6 +2358,7 @@
           "goals.start",
           "goals.stop",
           "goals.update",
+          "projects.update",
           "sessions.update",
           "skills.proposals.approve",
           "skills.proposals.reject"
@@ -2359,7 +2419,8 @@
           "sessions.export",
           "sessions.exportTrajectory",
           "sessions.import",
-          "sessions.rollback"
+          "sessions.rollback",
+          "sessions.update"
         ]
       },
       {
@@ -3572,6 +3633,13 @@
           ]
         },
         {
+          "tag": "project_not_found",
+          "optional": [
+            "detail",
+            "docUrl"
+          ]
+        },
+        {
           "tag": "prompt_source_too_large",
           "optional": [
             "detail",
@@ -4158,6 +4226,21 @@
           "tag": "set",
           "required": [
             "value"
+          ]
+        },
+        {
+          "tag": "clear"
+        }
+      ]
+    },
+    {
+      "type": "SessionProjectChange",
+      "discriminator": "type",
+      "variants": [
+        {
+          "tag": "set",
+          "required": [
+            "projectId"
           ]
         },
         {
@@ -7190,6 +7273,14 @@
         {
           "field": "revision",
           "constraint": "maximum(9007199254740991)"
+        },
+        {
+          "field": "projectId",
+          "constraint": "identity"
+        },
+        {
+          "field": "projectId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -7199,6 +7290,27 @@
         {
           "field": "search",
           "constraint": "maxLength(1024)"
+        },
+        {
+          "field": "projectId",
+          "constraint": "identity"
+        },
+        {
+          "field": "projectId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "CreateSessionRequest",
+      "rules": [
+        {
+          "field": "projectId",
+          "constraint": "identity"
+        },
+        {
+          "field": "projectId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -7408,6 +7520,103 @@
         {
           "field": "reasoningEffort",
           "constraint": "maxLength(32)"
+        }
+      ]
+    },
+    {
+      "type": "Project",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "id",
+          "constraint": "identity"
+        },
+        {
+          "field": "id",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "name",
+          "constraint": "pattern(\"\\\\S\")"
+        },
+        {
+          "field": "revision",
+          "constraint": "positive"
+        },
+        {
+          "field": "revision",
+          "constraint": "maximum(9007199254740991)"
+        }
+      ]
+    },
+    {
+      "type": "GetProjectRequest",
+      "rules": [
+        {
+          "field": "projectId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "projectId",
+          "constraint": "identity"
+        },
+        {
+          "field": "projectId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "CreateProjectRequest",
+      "rules": [
+        {
+          "field": "name",
+          "constraint": "pattern(\"\\\\S\")"
+        }
+      ]
+    },
+    {
+      "type": "UpdateProjectRequest",
+      "rules": [
+        {
+          "field": "projectId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "projectId",
+          "constraint": "identity"
+        },
+        {
+          "field": "projectId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "expectedRevision",
+          "constraint": "positive"
+        },
+        {
+          "field": "expectedRevision",
+          "constraint": "maximum(9007199254740991)"
+        },
+        {
+          "field": "name",
+          "constraint": "nonEmpty"
+        }
+      ]
+    },
+    {
+      "type": "SessionProjectChange",
+      "rules": [
+        {
+          "field": "projectId",
+          "constraint": "identity"
+        },
+        {
+          "field": "projectId",
+          "constraint": "maxLength(256)"
         }
       ]
     },
@@ -8069,6 +8278,14 @@
         },
         {
           "field": "runId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "projectId",
+          "constraint": "identity"
+        },
+        {
+          "field": "projectId",
           "constraint": "maxLength(256)"
         }
       ]

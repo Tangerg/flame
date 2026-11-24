@@ -17,6 +17,7 @@ type RunMaintenanceInput struct {
 	RootRunID    identity.RunID
 	SessionID    identity.SessionID
 	WorkspaceCWD string
+	MemoryTarget string
 }
 
 type RunMaintenanceResult struct {
@@ -38,6 +39,7 @@ func (i *interactionSession) maintainCompletedRoot() {
 		RootRunID:    i.start.RunID,
 		SessionID:    i.start.SessionID,
 		WorkspaceCWD: i.start.WorkspaceCWD,
+		MemoryTarget: MemoryTarget(i.start.Project, i.start.WorkspaceCWD),
 	})
 	for _, err := range result.Errors {
 		if err != nil {

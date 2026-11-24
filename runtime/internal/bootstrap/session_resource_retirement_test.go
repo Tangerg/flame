@@ -181,7 +181,7 @@ func openRetirementFixture(t *testing.T, root, cut string) *retirementFixture {
 		Snapshots: stores.SessionStores, MaterialSnapshots: stores.SessionStores, Writes: writes,
 		Plan:           sessions.PlanServices{Boundaries: stores.bundle.Plan, Replacements: mustPlanCoordinator(sessions.PlanDependencies{Store: stores.bundle.Plan, Now: time.Now})},
 		TransientState: retirementTransient{}, ExecutionReleaser: retirementTransient{},
-		Paths: workspaceadapter.Resolver{}, Models: acceptedModelSelections{}, DefaultModelSelection: testsupport.DefaultModelSelection(),
+		Paths: workspaceadapter.Resolver{}, Projects: stores.bundle.Projects, Models: acceptedModelSelections{}, DefaultModelSelection: testsupport.DefaultModelSelection(),
 		Checkpoints: resources, Sandbox: resources, Goals: goals.NewSessionMutations(),
 		Mutations: db.WorkspaceMutations, Retirer: retirer, Admissions: gate,
 		NewID: newSessionID, NewRunID: newRunID, NewItemID: newItemID,

@@ -55,6 +55,7 @@ type WorkingContextInput struct {
 	SessionID    identity.SessionID
 	CWD          string
 	WorkspaceCWD string
+	Project      identity.ProjectID
 	PromptText   string
 	Seed         []corechat.Message
 }
@@ -157,6 +158,7 @@ type sessionCreator interface {
 		ctx context.Context,
 		id identity.SessionID,
 		title, cwd string,
+		project identity.ProjectID,
 		selection flamemodel.Selection,
 	) (session.Session, *session.Session, error)
 }
@@ -189,6 +191,7 @@ type RootExecutionStart struct {
 	RunID                    identity.RunID
 	CWD                      string
 	WorkspaceCWD             string
+	Project                  identity.ProjectID
 	Isolated                 bool
 	ModelSelection           flamemodel.Selection
 	Options                  *corechat.Options
@@ -216,6 +219,7 @@ type ExecutionContinuation struct {
 	Capabilities      run.Capabilities
 	GoalIncarnationID goalref.IncarnationID
 	Workspace         string
+	Project           identity.ProjectID
 	Isolated          bool
 }
 

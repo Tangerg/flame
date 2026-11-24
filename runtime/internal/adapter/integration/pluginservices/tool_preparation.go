@@ -97,6 +97,7 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pl
 	if !attached {
 		return nil, nil, errors.New("memory: Run workspace is required")
 	}
+	project := executionctx.Project(ctx).String()
 	ref, found, err := mcp.IdentifyTool(source)
 	if err != nil {
 		return nil, nil, err
@@ -107,7 +108,7 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pl
 	_, remote, _ := ref.MCP()
 	if remote.String() != memorycontract.SearchToolName {
 		metadata := sdk.ParamsBase{}
-		if err := metadata.Set(pluginsdk.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: cwd}); err != nil {
+		if err := metadata.Set(pluginsdk.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: cwd, Project: project}); err != nil {
 			return nil, nil, err
 		}
 		return installedToolCall(ctx, source.WithCallMetadata(metadata), invalidations), func() error { return nil }, nil
@@ -140,7 +141,7 @@ func prepareMemoryTool(ctx context.Context, source mcp.Executable, callbacks *pl
 	if err != nil {
 		return nil, nil, errors.Join(err, release())
 	}
-	if err := metadata.Set(pluginsdk.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: cwd, EmbeddingSpace: space}); err != nil {
+	if err := metadata.Set(pluginsdk.ToolContextMetadataKey, pluginsdk.ToolContext{CWD: cwd, Project: project, EmbeddingSpace: space}); err != nil {
 		return nil, nil, errors.Join(err, release())
 	}
 	return installedToolCall(ctx, source.WithCallMetadata(metadata), invalidations), release, nil

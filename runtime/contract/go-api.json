@@ -588,6 +588,10 @@
               "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CommandOptions) (*protocol.MCPServer, error)"
             },
             {
+              "name": "CreateProject",
+              "signature": "func(ctx context.Context, request protocol.CreateProjectRequest, options protocol.CommandOptions) (*protocol.Project, error)"
+            },
+            {
               "name": "CreateSession",
               "signature": "func(ctx context.Context, request protocol.CreateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
             },
@@ -650,6 +654,10 @@
             {
               "name": "GetPluginCommand",
               "signature": "func(ctx context.Context, request protocol.PluginCommandRequest, options protocol.CallOptions) (*protocol.CallPluginRequest, error)"
+            },
+            {
+              "name": "GetProject",
+              "signature": "func(ctx context.Context, request protocol.GetProjectRequest, options protocol.CallOptions) (*protocol.Project, error)"
             },
             {
               "name": "GetRun",
@@ -754,6 +762,10 @@
             {
               "name": "ListPlugins",
               "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginInstallation], error)"
+            },
+            {
+              "name": "ListProjects",
+              "signature": "func(ctx context.Context, request protocol.ListProjectsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Project], error)"
             },
             {
               "name": "ListProviders",
@@ -954,6 +966,10 @@
             {
               "name": "UpdateMCPServer",
               "signature": "func(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) (*protocol.MCPServer, error)"
+            },
+            {
+              "name": "UpdateProject",
+              "signature": "func(ctx context.Context, request protocol.UpdateProjectRequest, options protocol.CommandOptions) (*protocol.Project, error)"
             },
             {
               "name": "UpdateProvider",
@@ -2651,6 +2667,10 @@
           "signature": "func(entropy string) (ItemID, error)"
         },
         {
+          "name": "NewProject",
+          "signature": "func(entropy string) (ProjectID, error)"
+        },
+        {
           "name": "NewRun",
           "signature": "func(entropy string) (RunID, error)"
         },
@@ -2679,6 +2699,10 @@
           "signature": "func(text string) (ItemID, error)"
         },
         {
+          "name": "ParseOptionalProject",
+          "signature": "func(text string) (ProjectID, error)"
+        },
+        {
           "name": "ParseOptionalRun",
           "signature": "func(text string) (RunID, error)"
         },
@@ -2689,6 +2713,10 @@
         {
           "name": "ParseOptionalSession",
           "signature": "func(text string) (SessionID, error)"
+        },
+        {
+          "name": "ParseProject",
+          "signature": "func(text string) (ProjectID, error)"
         },
         {
           "name": "ParseRun",
@@ -2800,6 +2828,11 @@
           "name": "ItemID",
           "kind": "alias",
           "underlying": "ID[itemKind]"
+        },
+        {
+          "name": "ProjectID",
+          "kind": "alias",
+          "underlying": "ID[projectKind]"
         },
         {
           "name": "RunID",
@@ -4571,6 +4604,11 @@
               "tag": "json:\"cwd\""
             },
             {
+              "name": "Project",
+              "type": "string",
+              "tag": "json:\"project,omitzero\""
+            },
+            {
               "name": "EmbeddingSpace",
               "type": "string",
               "tag": "json:\"embeddingSpace,omitzero\""
@@ -6300,7 +6338,7 @@
         {
           "name": "CapabilityJSON",
           "type": "untyped string",
-          "value": "\"{\\\"composition\\\":\\\"selection\\\",\\\"methods\\\":[{\\\"description\\\":\\\"Add a human-authored memory item in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkSW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"content\\\":{\\\"type\\\":\\\"string\\\"},\\\"cwd\\\":{\\\"type\\\":\\\"string\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"cwd\\\",\\\"content\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"content\\\":{\\\"type\\\":\\\"string\\\"},\\\"cwd\\\":{\\\"type\\\":\\\"string\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"cwd\\\",\\\"content\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/add.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkUmVzdWx0\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"item\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"}},\\\"required\\\":[\\\"item\\\",\\\"changed\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"item\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"}},\\\"required\\\":[\\\"item\\\",\\\"changed\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Delete one memory item through its private owner.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbUlucHV0\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/delete.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWNr\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Read active memory items that can inform a Run.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbXNJbnB1dA\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"project\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"project\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"query\\\",\\\"name\\\":\\\"flame.memory/items.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"},\\\"type\\\":\\\"array\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"List memory items visible in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TGlzdElucHV0\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"limit\\\":{\\\"maximum\\\":100,\\\"minimum\\\":1}}}],\\\"properties\\\":{\\\"cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"cwd\\\":{\\\"type\\\":\\\"string\\\"},\\\"limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"cwd\\\",\\\"cursor\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"limit\\\":{\\\"maximum\\\":100,\\\"minimum\\\":1}}}],\\\"properties\\\":{\\\"cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"cwd\\\":{\\\"type\\\":\\\"string\\\"},\\\"limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"cwd\\\",\\\"cursor\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"query\\\",\\\"name\\\":\\\"flame.memory/list.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UGFnZQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"capacity\\\":{\\\"maximum\\\":512,\\\"minimum\\\":512},\\\"rows\\\":{\\\"maxItems\\\":100}}}],\\\"properties\\\":{\\\"capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"nextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"},\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"rows\\\",\\\"nextCursor\\\",\\\"capacity\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"capacity\\\":{\\\"maximum\\\":512,\\\"minimum\\\":512},\\\"rows\\\":{\\\"maxItems\\\":100}}}],\\\"properties\\\":{\\\"capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"nextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"},\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"rows\\\",\\\"nextCursor\\\",\\\"capacity\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Extract and curate captured conversation under the private ledger and watermark.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"messageCount\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"transcript\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"messageCount\\\",\\\"transcript\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VJbnB1dA\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"conversation\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"sessionId\\\",\\\"project\\\",\\\"compacted\\\",\\\"conversation\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"conversation\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"sessionId\\\",\\\"project\\\",\\\"compacted\\\",\\\"conversation\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/maintain.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VSZXN1bHQ\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"published\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"published\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Apply a human review decision to a pending memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UmV2aWV3SW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\",\\\"decision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\",\\\"decision\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/review.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWNr\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Rank active memories for the supplied project and query.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.U2VhcmNoSW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"embeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"query\\\":{\\\"type\\\":\\\"string\\\"},\\\"topK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"project\\\",\\\"query\\\",\\\"topK\\\",\\\"embeddingSpace\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"embeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"query\\\":{\\\"type\\\":\\\"string\\\"},\\\"topK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"project\\\",\\\"query\\\",\\\"topK\\\",\\\"embeddingSpace\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"query\\\",\\\"name\\\":\\\"flame.memory/search.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"},\\\"type\\\":\\\"array\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Edit the current content or pin state of a memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.VXBkYXRlSW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"type\\\":\\\"string\\\"},\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"type\\\":\\\"string\\\"},\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/update.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"}],\\\"protocol\\\":\\\"io.github.tangerg.flame/plugin/1\\\",\\\"reference\\\":\\\"memory\\\",\\\"scope\\\":\\\"installation\\\"}\""
+          "value": "\"{\\\"composition\\\":\\\"selection\\\",\\\"methods\\\":[{\\\"description\\\":\\\"Add a human-authored memory item in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkSW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"content\\\":{\\\"type\\\":\\\"string\\\"},\\\"cwd\\\":{\\\"type\\\":\\\"string\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"cwd\\\",\\\"content\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"content\\\":{\\\"type\\\":\\\"string\\\"},\\\"cwd\\\":{\\\"type\\\":\\\"string\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"cwd\\\",\\\"content\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/add.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWRkUmVzdWx0\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"item\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"}},\\\"required\\\":[\\\"item\\\",\\\"changed\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"changed\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"item\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"}},\\\"required\\\":[\\\"item\\\",\\\"changed\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Delete one memory item through its private owner.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbUlucHV0\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/delete.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWNr\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Read active memory items that can inform a Run.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbXNJbnB1dA\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"project\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"project\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"query\\\",\\\"name\\\":\\\"flame.memory/items.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"},\\\"type\\\":\\\"array\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"List memory items visible in the requested scope.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TGlzdElucHV0\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"limit\\\":{\\\"maximum\\\":100,\\\"minimum\\\":1}}}],\\\"properties\\\":{\\\"cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"cwd\\\":{\\\"type\\\":\\\"string\\\"},\\\"limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"cwd\\\",\\\"cursor\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"limit\\\":{\\\"maximum\\\":100,\\\"minimum\\\":1}}}],\\\"properties\\\":{\\\"cursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"cwd\\\":{\\\"type\\\":\\\"string\\\"},\\\"limit\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"scope\\\",\\\"cwd\\\",\\\"cursor\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"query\\\",\\\"name\\\":\\\"flame.memory/list.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UGFnZQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"capacity\\\":{\\\"maximum\\\":512,\\\"minimum\\\":512},\\\"rows\\\":{\\\"maxItems\\\":100}}}],\\\"properties\\\":{\\\"capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"nextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"},\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"rows\\\",\\\"nextCursor\\\",\\\"capacity\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"capacity\\\":{\\\"maximum\\\":512,\\\"minimum\\\":512},\\\"rows\\\":{\\\"maxItems\\\":100}}}],\\\"properties\\\":{\\\"capacity\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"nextCursor\\\":{\\\"type\\\":\\\"string\\\"},\\\"rows\\\":{\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"},\\\"type\\\":\\\"array\\\"}},\\\"required\\\":[\\\"rows\\\",\\\"nextCursor\\\",\\\"capacity\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Extract and curate captured conversation under the private ledger and watermark.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"messageCount\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"},\\\"transcript\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"messageCount\\\",\\\"transcript\\\"],\\\"type\\\":\\\"object\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VJbnB1dA\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"conversation\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"sessionId\\\",\\\"project\\\",\\\"compacted\\\",\\\"conversation\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"compacted\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"conversation\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.Q29udmVyc2F0aW9u\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"sessionId\\\",\\\"project\\\",\\\"compacted\\\",\\\"conversation\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/maintain.v2\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.TWFpbnRlbmFuY2VSZXN1bHQ\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"published\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"published\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"published\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Apply a human review decision to a pending memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.UmV2aWV3SW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\",\\\"decision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"decision\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"approve\\\",\\\"reject\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\",\\\"decision\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/review.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.QWNr\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{},\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Rank active memories for the supplied project and query.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.U2VhcmNoSW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"embeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"query\\\":{\\\"type\\\":\\\"string\\\"},\\\"topK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"project\\\",\\\"query\\\",\\\"topK\\\",\\\"embeddingSpace\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"properties\\\":{\\\"embeddingSpace\\\":{\\\"type\\\":\\\"string\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"query\\\":{\\\"type\\\":\\\"string\\\"},\\\"topK\\\":{\\\"allOf\\\":[{\\\"maximum\\\":9223372036854775807,\\\"minimum\\\":-9223372036854775808}],\\\"type\\\":\\\"integer\\\"}},\\\"required\\\":[\\\"project\\\",\\\"query\\\",\\\"topK\\\",\\\"embeddingSpace\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"query\\\",\\\"name\\\":\\\"flame.memory/search.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"items\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\"},\\\"type\\\":\\\"array\\\"},\\\"target\\\":\\\"installation\\\"},{\\\"description\\\":\\\"Edit the current content or pin state of a memory item.\\\",\\\"input\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.VXBkYXRlSW5wdXQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"type\\\":\\\"string\\\"},\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"expectedRevision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"type\\\":\\\"string\\\"},\\\"expectedRevision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"id\\\":{\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"}},\\\"required\\\":[\\\"id\\\",\\\"expectedRevision\\\"],\\\"type\\\":\\\"object\\\"},\\\"kind\\\":\\\"command\\\",\\\"name\\\":\\\"flame.memory/update.v3\\\",\\\"output\\\":{\\\"$defs\\\":{\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\":{\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\":{\\\"allOf\\\":[{\\\"pattern\\\":\\\"^mem_[0-9a-f]{32}$\\\"}],\\\"type\\\":\\\"string\\\"},\\\"go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2NvbnRyYWN0.SXRlbQ\\\":{\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"}},\\\"$schema\\\":\\\"https://json-schema.org/draft/2020-12/schema\\\",\\\"additionalProperties\\\":false,\\\"allOf\\\":[{\\\"properties\\\":{\\\"content\\\":{\\\"maxLength\\\":4096},\\\"revision\\\":{\\\"maximum\\\":9.007199254740991e+15}}}],\\\"properties\\\":{\\\"content\\\":{\\\"pattern\\\":\\\"\\\\\\\\S\\\",\\\"type\\\":\\\"string\\\"},\\\"createdAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"},\\\"day\\\":{\\\"type\\\":\\\"string\\\"},\\\"id\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BsdWdpbnMvbWVtb3J5L2ludGVybmFsL2FnZW50bWVtb3J5.SXRlbUlE\\\"},\\\"origin\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"auto\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"pinned\\\":{\\\"type\\\":\\\"boolean\\\"},\\\"project\\\":{\\\"type\\\":\\\"string\\\"},\\\"revision\\\":{\\\"allOf\\\":[{\\\"maximum\\\":18446744073709551615,\\\"minimum\\\":0}],\\\"minimum\\\":1,\\\"type\\\":\\\"integer\\\"},\\\"scope\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"project\\\",\\\"user\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"sessionId\\\":{\\\"type\\\":\\\"string\\\"},\\\"status\\\":{\\\"allOf\\\":[{\\\"enum\\\":[\\\"active\\\",\\\"pending\\\",\\\"rejected\\\"]}],\\\"type\\\":\\\"string\\\"},\\\"updatedAt\\\":{\\\"$ref\\\":\\\"#/$defs/go_Z2l0aHViLmNvbS9UYW5nZXJnL2ZsYW1lL3BhY2thZ2VzL2dvLXNkay9pbnN0YW50.VGltZXN0YW1w\\\"}},\\\"required\\\":[\\\"id\\\",\\\"revision\\\",\\\"scope\\\",\\\"project\\\",\\\"content\\\",\\\"origin\\\",\\\"status\\\",\\\"pinned\\\",\\\"sessionId\\\",\\\"day\\\",\\\"createdAt\\\",\\\"updatedAt\\\"],\\\"type\\\":\\\"object\\\"},\\\"target\\\":\\\"installation\\\"}],\\\"protocol\\\":\\\"io.github.tangerg.flame/plugin/1\\\",\\\"reference\\\":\\\"memory\\\",\\\"scope\\\":\\\"installation\\\"}\""
         },
         {
           "name": "DeleteV3Method",
@@ -6562,6 +6600,11 @@
               "name": "Cwd",
               "type": "string",
               "tag": "json:\"cwd\""
+            },
+            {
+              "name": "Project",
+              "type": "*string",
+              "tag": "json:\"project,omitzero\""
             },
             {
               "name": "Scope",
@@ -6901,6 +6944,11 @@
               "name": "Limit",
               "type": "value.Number",
               "tag": "json:\"limit,omitzero\""
+            },
+            {
+              "name": "Project",
+              "type": "*string",
+              "tag": "json:\"project,omitzero\""
             },
             {
               "name": "Scope",
@@ -10191,6 +10239,11 @@
           "value": "\"plugins.changed\""
         },
         {
+          "name": "RuntimeProjectsChanged",
+          "type": "RuntimeEventType",
+          "value": "\"projects.changed\""
+        },
+        {
           "name": "RuntimeResync",
           "type": "RuntimeEventType",
           "value": "\"resync\""
@@ -10234,6 +10287,16 @@
           "name": "SessionArtifactVersion",
           "type": "untyped int",
           "value": "32"
+        },
+        {
+          "name": "SessionProjectClear",
+          "type": "SessionProjectChangeType",
+          "value": "\"clear\""
+        },
+        {
+          "name": "SessionProjectSet",
+          "type": "SessionProjectChangeType",
+          "value": "\"set\""
         },
         {
           "name": "SessionStatusIdle",
@@ -10421,6 +10484,11 @@
           "value": "\"plugins.changed\""
         },
         {
+          "name": "TopicProjectsChanged",
+          "type": "RuntimeTopic",
+          "value": "\"projects.changed\""
+        },
+        {
           "name": "TopicRunsChanged",
           "type": "RuntimeTopic",
           "value": "\"runs.changed\""
@@ -10592,6 +10660,10 @@
         },
         {
           "name": "ErrPluginUnavailable",
+          "type": "error"
+        },
+        {
+          "name": "ErrProjectNotFound",
           "type": "error"
         },
         {
@@ -11718,6 +11790,22 @@
           ]
         },
         {
+          "name": "CreateProjectRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Instructions",
+              "type": "string",
+              "tag": "json:\"instructions,omitempty\""
+            }
+          ]
+        },
+        {
           "name": "CreateSessionRequest",
           "kind": "struct",
           "fields": [
@@ -11725,6 +11813,11 @@
               "name": "Workspace",
               "type": "*WorkspaceRef",
               "tag": "json:\"workspace,omitzero\""
+            },
+            {
+              "name": "ProjectID",
+              "type": "string",
+              "tag": "json:\"projectId,omitempty\""
             },
             {
               "name": "Title",
@@ -12387,6 +12480,17 @@
               "name": "SessionID",
               "type": "string",
               "tag": "json:\"sessionId\""
+            }
+          ]
+        },
+        {
+          "name": "GetProjectRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ProjectID",
+              "type": "string",
+              "tag": "json:\"projectId\""
             }
           ]
         },
@@ -13296,6 +13400,21 @@
           ]
         },
         {
+          "name": "ListProjectsRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "PageQuery",
+              "type": "PageQuery"
+            },
+            {
+              "name": "Archived",
+              "type": "bool",
+              "tag": "json:\"archived,omitzero\""
+            }
+          ]
+        },
+        {
           "name": "ListRunsRequest",
           "kind": "struct",
           "fields": [
@@ -13357,6 +13476,11 @@
               "name": "Workspace",
               "type": "*WorkspaceRef",
               "tag": "json:\"workspace,omitzero\""
+            },
+            {
+              "name": "ProjectID",
+              "type": "string",
+              "tag": "json:\"projectId,omitempty\""
             }
           ]
         },
@@ -15881,6 +16005,47 @@
           ]
         },
         {
+          "name": "Project",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Instructions",
+              "type": "string",
+              "tag": "json:\"instructions,omitempty\""
+            },
+            {
+              "name": "Archived",
+              "type": "bool",
+              "tag": "json:\"archived,omitzero\""
+            },
+            {
+              "name": "CreatedAt",
+              "type": "time.Time",
+              "tag": "json:\"createdAt\""
+            },
+            {
+              "name": "UpdatedAt",
+              "type": "time.Time",
+              "tag": "json:\"updatedAt\""
+            },
+            {
+              "name": "Revision",
+              "type": "uint64",
+              "tag": "json:\"revision\""
+            }
+          ]
+        },
+        {
           "name": "Provider",
           "kind": "struct",
           "fields": [
@@ -16707,6 +16872,11 @@
               "name": "Workspace",
               "type": "*WorkspaceRef",
               "tag": "json:\"workspace,omitzero\""
+            },
+            {
+              "name": "ProjectID",
+              "type": "string",
+              "tag": "json:\"projectId,omitempty\""
             }
           ]
         },
@@ -17062,6 +17232,11 @@
               "tag": "json:\"workspace\""
             },
             {
+              "name": "ProjectID",
+              "type": "string",
+              "tag": "json:\"projectId,omitempty\""
+            },
+            {
               "name": "CreatedAt",
               "type": "time.Time",
               "tag": "json:\"createdAt,omitzero\""
@@ -17174,6 +17349,27 @@
               "tag": "json:\"planSource,omitzero\""
             }
           ]
+        },
+        {
+          "name": "SessionProjectChange",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Type",
+              "type": "SessionProjectChangeType",
+              "tag": "json:\"type\""
+            },
+            {
+              "name": "ProjectID",
+              "type": "string",
+              "tag": "json:\"projectId,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "SessionProjectChangeType",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "SessionSnapshot",
@@ -18254,6 +18450,37 @@
           ]
         },
         {
+          "name": "UpdateProjectRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ProjectID",
+              "type": "string",
+              "tag": "json:\"projectId\""
+            },
+            {
+              "name": "ExpectedRevision",
+              "type": "uint64",
+              "tag": "json:\"expectedRevision\""
+            },
+            {
+              "name": "Name",
+              "type": "*string",
+              "tag": "json:\"name,omitzero\""
+            },
+            {
+              "name": "Instructions",
+              "type": "*string",
+              "tag": "json:\"instructions,omitzero\""
+            },
+            {
+              "name": "Archived",
+              "type": "*bool",
+              "tag": "json:\"archived,omitzero\""
+            }
+          ]
+        },
+        {
           "name": "UpdateProviderRequest",
           "kind": "struct",
           "fields": [
@@ -18297,6 +18524,11 @@
               "name": "Workspace",
               "type": "*WorkspaceRef",
               "tag": "json:\"workspace,omitzero\""
+            },
+            {
+              "name": "Project",
+              "type": "*SessionProjectChange",
+              "tag": "json:\"project,omitzero\""
             },
             {
               "name": "Provider",
@@ -19729,6 +19961,10 @@
               "signature": "func(ctx context.Context, request protocol.MCPServerCandidate, options protocol.CommandOptions) (*protocol.MCPServer, error)"
             },
             {
+              "name": "CreateProject",
+              "signature": "func(ctx context.Context, request protocol.CreateProjectRequest, options protocol.CommandOptions) (*protocol.Project, error)"
+            },
+            {
               "name": "CreateSession",
               "signature": "func(ctx context.Context, request protocol.CreateSessionRequest, options protocol.CommandOptions) (*protocol.Session, error)"
             },
@@ -19791,6 +20027,10 @@
             {
               "name": "GetPluginCommand",
               "signature": "func(ctx context.Context, request protocol.PluginCommandRequest, options protocol.CallOptions) (*protocol.CallPluginRequest, error)"
+            },
+            {
+              "name": "GetProject",
+              "signature": "func(ctx context.Context, request protocol.GetProjectRequest, options protocol.CallOptions) (*protocol.Project, error)"
             },
             {
               "name": "GetRun",
@@ -19895,6 +20135,10 @@
             {
               "name": "ListPlugins",
               "signature": "func(ctx context.Context, options protocol.CallOptions) (*protocol.Page[protocol.PluginInstallation], error)"
+            },
+            {
+              "name": "ListProjects",
+              "signature": "func(ctx context.Context, request protocol.ListProjectsRequest, options protocol.CallOptions) (*protocol.Page[protocol.Project], error)"
             },
             {
               "name": "ListProviders",
@@ -20095,6 +20339,10 @@
             {
               "name": "UpdateMCPServer",
               "signature": "func(ctx context.Context, request protocol.UpdateMCPServerRequest, options protocol.CommandOptions) (*protocol.MCPServer, error)"
+            },
+            {
+              "name": "UpdateProject",
+              "signature": "func(ctx context.Context, request protocol.UpdateProjectRequest, options protocol.CommandOptions) (*protocol.Project, error)"
             },
             {
               "name": "UpdateProvider",

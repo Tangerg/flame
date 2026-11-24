@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -84,11 +83,10 @@ func NewMemoryConsolidator(store messageReader, memory *Curation, client complet
 }
 
 // Pending folds must run even when extraction is skipped so an earlier failed publication can recover.
-func (m *MemoryConsolidator) Consolidate(ctx context.Context, sessionID identity.SessionID, cwd string) (bool, error) {
-	if sessionID.IsZero() || cwd == "" {
+func (m *MemoryConsolidator) Consolidate(ctx context.Context, sessionID identity.SessionID, project string) (bool, error) {
+	if sessionID.IsZero() || project == "" {
 		return false, nil
 	}
-	project := filepath.Clean(cwd)
 	messages, err := m.history.Read(ctx, sessionID)
 	if err != nil {
 		return false, fmt.Errorf("memory extraction: read session %q: %w", sessionID, err)

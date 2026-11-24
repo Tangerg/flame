@@ -35,6 +35,7 @@ func registerRuns(registry *Registry) {
 	registry.runStreamOwnerCommand(MethodMeta{
 		Name: RunsStart, GoName: "StartRun",
 		Errors: pluginProviderErrors(protocol.ErrSessionNotFound.
+			Error(), protocol.ErrProjectNotFound.
 			Error(), protocol.ErrSessionBusy.
 			Error(), protocol.ErrSessionHasActiveRun.
 			Error(), protocol.ErrPromptSourceTooLarge.

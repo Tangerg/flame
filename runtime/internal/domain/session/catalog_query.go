@@ -16,20 +16,21 @@ type catalogFilterKind uint8
 
 const (
 	allCatalogEntries catalogFilterKind = iota + 1
-	searchCatalogEntries
-	workspaceCatalogEntries
-	searchWorkspaceCatalogEntries
+	filteredCatalogEntries
 )
 
+// A filtered catalog carries at least one criterion; the closed kind keeps the
+// zero value from reading as "all entries".
 type CatalogFilter struct {
 	kind      catalogFilterKind
 	search    string
 	workspace string
+	project   identity.ProjectID
 }
 
 func AllCatalogEntries() CatalogFilter { return CatalogFilter{kind: allCatalogEntries} }
 
-func NewCatalogFilter(search string, workspace *Workspace) (CatalogFilter, error) {
+func NewCatalogFilter(search string, workspace *Workspace, project identity.ProjectID) (CatalogFilter, error) {
 	normalizedSearch, err := NormalizeCatalogText(strings.TrimSpace(search))
 	if err != nil {
 		return CatalogFilter{}, fmt.Errorf("session: catalog search: %w", err)
@@ -47,17 +48,13 @@ func NewCatalogFilter(search string, workspace *Workspace) (CatalogFilter, error
 		}
 		workspacePath = workspace.Path()
 	}
-
-	switch {
-	case normalizedSearch != "" && workspacePath != "":
-		return CatalogFilter{kind: searchWorkspaceCatalogEntries, search: normalizedSearch, workspace: workspacePath}, nil
-	case normalizedSearch != "":
-		return CatalogFilter{kind: searchCatalogEntries, search: normalizedSearch}, nil
-	case workspacePath != "":
-		return CatalogFilter{kind: workspaceCatalogEntries, workspace: workspacePath}, nil
-	default:
-		return CatalogFilter{}, errors.New("session: filtered catalog requires search or workspace")
+	if normalizedSearch == "" && workspacePath == "" && project.IsZero() {
+		return CatalogFilter{}, errors.New("session: filtered catalog requires search, workspace or project")
 	}
+	return CatalogFilter{
+		kind: filteredCatalogEntries, search: normalizedSearch,
+		workspace: workspacePath, project: project,
+	}, nil
 }
 
 func NormalizeCatalogText(value string) (string, error) {
@@ -72,20 +69,18 @@ func NormalizeCatalogText(value string) (string, error) {
 
 func (f CatalogFilter) Validate() error {
 	switch f.kind {
-	case allCatalogEntries, searchCatalogEntries, workspaceCatalogEntries, searchWorkspaceCatalogEntries:
+	case allCatalogEntries, filteredCatalogEntries:
 		return nil
 	default:
 		return errors.New("session: catalog filter mode is unknown")
 	}
 }
 
-func (f CatalogFilter) Search() (string, bool) {
-	return f.search, f.kind == searchCatalogEntries || f.kind == searchWorkspaceCatalogEntries
-}
+func (f CatalogFilter) Search() (string, bool) { return f.search, f.search != "" }
 
-func (f CatalogFilter) WorkspacePath() (string, bool) {
-	return f.workspace, f.kind == workspaceCatalogEntries || f.kind == searchWorkspaceCatalogEntries
-}
+func (f CatalogFilter) WorkspacePath() (string, bool) { return f.workspace, f.workspace != "" }
+
+func (f CatalogFilter) Project() (identity.ProjectID, bool) { return f.project, !f.project.IsZero() }
 
 func (f CatalogFilter) CursorIdentity() []string {
 	var identity []string
@@ -94,6 +89,9 @@ func (f CatalogFilter) CursorIdentity() []string {
 	}
 	if workspace, ok := f.WorkspacePath(); ok {
 		identity = append(identity, "workspace", workspace)
+	}
+	if project, ok := f.Project(); ok {
+		identity = append(identity, "project", project.String())
 	}
 	return identity
 }

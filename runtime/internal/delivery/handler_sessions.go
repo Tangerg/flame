@@ -15,12 +15,16 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/operation"
+	projectdomain "github.com/Tangerg/flame/runtime/internal/domain/project"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
 func wireSessionErr(err error) error {
 	if errors.Is(err, session.ErrNotFound) {
 		return protocol.ErrSessionNotFound
+	}
+	if errors.Is(err, projectdomain.ErrNotFound) {
+		return protocol.ErrProjectNotFound
 	}
 	if errors.Is(err, session.ErrTitleRequired) {
 		return protocol.NewFailure(protocol.ErrInvalidParams, "title must not be empty", err)
@@ -54,8 +58,12 @@ func (s *Handler) ListSessions(ctx context.Context, q protocol.ListSessionsReque
 		}
 		workspace = &value
 	}
-	if q.Search != "" || q.Workspace != nil {
-		filter, err = session.NewCatalogFilter(q.Search, workspace)
+	project, err := wireIdentity("projectId", q.ProjectID, identity.ParseOptionalProject)
+	if err != nil {
+		return nil, err
+	}
+	if q.Search != "" || q.Workspace != nil || !project.IsZero() {
+		filter, err = session.NewCatalogFilter(q.Search, workspace, project)
 		if err != nil {
 			return nil, protocol.NewFailure(protocol.ErrInvalidParams, err.Error(), err)
 		}
@@ -210,17 +218,38 @@ func (s *Handler) updateSession(ctx context.Context, in protocol.UpdateSessionRe
 		path := in.Workspace.Path
 		cwd = &path
 	}
-	err := s.sessions.Update(ctx, sessionID, sessions.Patch{
+	project, err := sessionProjectChange(in.Project)
+	if err != nil {
+		return err
+	}
+	err = s.sessions.Update(ctx, sessionID, sessions.Patch{
 		Title: in.Title,
 		ModelSelection: flamemodel.Patch{
 			Provider: in.Provider, Model: in.Model, ReasoningEffort: in.ReasoningEffort,
 		},
 		WorkspacePath:    cwd,
+		Project:          project,
 		Favorite:         in.Favorite,
 		Isolated:         in.Isolated,
 		ExpectedRevision: in.ExpectedRevision,
 	}, complete)
 	return wireSessionMutationErr(err, sessionID)
+}
+
+// Clearing is an explicit change so an absent field and leaving a Project cannot
+// share one wire value.
+func sessionProjectChange(change *protocol.SessionProjectChange) (*identity.ProjectID, error) {
+	if change == nil {
+		return nil, nil
+	}
+	if change.Type == protocol.SessionProjectClear {
+		return new(identity.ProjectID{}), nil
+	}
+	id, err := wireIdentity("project.projectId", change.ProjectID, identity.ParseProject)
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
 }
 
 func completeSessionView(command func(operation.Reply[sessions.View]) error) (*protocol.Session, error) {
@@ -253,7 +282,15 @@ func (s *Handler) commitForkSession(ctx context.Context, in protocol.ForkSession
 }
 
 func (s *Handler) prepareCreate(ctx context.Context, in protocol.CreateSessionRequest) (sessions.Creation, error) {
-	return s.sessions.PrepareCreate(ctx, in.Title, s.sessionWorkspacePath(in.Workspace))
+	project, err := wireIdentity("projectId", in.ProjectID, identity.ParseOptionalProject)
+	if err != nil {
+		return sessions.Creation{}, err
+	}
+	creation, err := s.sessions.PrepareCreate(ctx, in.Title, s.sessionWorkspacePath(in.Workspace), project)
+	if errors.Is(err, projectdomain.ErrNotFound) {
+		return sessions.Creation{}, protocol.ErrProjectNotFound
+	}
+	return creation, err
 }
 
 func (s *Handler) prepareFork(ctx context.Context, in protocol.ForkSessionRequest) (sessions.Creation, error) {
@@ -292,6 +329,7 @@ func presentSession(view sessions.View) protocol.Session {
 		ID:              view.ID.String(),
 		Title:           view.Title,
 		Workspace:       presentWorkspaceInfo(view.Workspace.Path, view.Workspace.ProjectRoot, view.Workspace.Missing),
+		ProjectID:       view.Project.String(),
 		Provider:        view.Provider,
 		Model:           view.Model,
 		ReasoningEffort: view.ReasoningEffort,

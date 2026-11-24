@@ -267,7 +267,7 @@ func (i *InteractionExecutor) BeginRoot(_ context.Context, ref runs.ExecutorRef)
 func rootExecutionScope(start runs.RootExecutionStart) runs.ExecutionScope {
 	return runs.ExecutionScope{
 		SessionID: start.SessionID, CWD: start.CWD, WorkspaceCWD: start.WorkspaceCWD,
-		Isolated: start.Isolated, GoalIncarnationID: start.GoalIncarnationID,
+		Project: start.Project, Isolated: start.Isolated, GoalIncarnationID: start.GoalIncarnationID,
 	}
 }
 

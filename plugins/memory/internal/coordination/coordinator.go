@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Tangerg/flame/packages/go-sdk/identity"
 	"github.com/Tangerg/flame/plugins/memory/internal/agentmemory"
 	"github.com/Tangerg/flame/plugins/memory/internal/management"
 	"github.com/samber/lo"
@@ -53,8 +54,8 @@ func New(cfg Config) (*Coordinator, error) {
 	return &Coordinator{store: cfg.Store, roots: cfg.Roots, now: now}, nil
 }
 
-func (c *Coordinator) Item(ctx context.Context, scope agentmemory.Scope, cwd, id string) (agentmemory.Item, error) {
-	project, err := c.project(scope, cwd)
+func (c *Coordinator) Item(ctx context.Context, scope agentmemory.Scope, location Location, id string) (agentmemory.Item, error) {
+	project, err := c.project(scope, location)
 	if err != nil {
 		return agentmemory.Item{}, err
 	}
@@ -106,8 +107,8 @@ func (c *Coordinator) PrepareDelete(ctx context.Context, id string, expectedRevi
 	return c.store.PrepareDelete(ctx, itemID, expectedRevision)
 }
 
-func (c *Coordinator) PrepareAdd(ctx context.Context, scope agentmemory.Scope, cwd, content string) (management.Mutation, error) {
-	project, err := c.project(scope, cwd)
+func (c *Coordinator) PrepareAdd(ctx context.Context, scope agentmemory.Scope, location Location, content string) (management.Mutation, error) {
+	project, err := c.project(scope, location)
 	if err != nil {
 		return management.Mutation{}, err
 	}
@@ -118,19 +119,42 @@ func (c *Coordinator) PrepareAdd(ctx context.Context, scope agentmemory.Scope, c
 	return c.store.PrepareAdd(ctx, scope, project, content, c.now())
 }
 
-func (c *Coordinator) project(scope agentmemory.Scope, cwd string) (string, error) {
+func (c *Coordinator) project(scope agentmemory.Scope, location Location) (string, error) {
 	if err := scope.Validate(); err != nil {
 		return "", errors.Join(ErrInvalidInput, err)
 	}
 	if scope == agentmemory.ScopeUser {
 		return "", nil
 	}
-	project, err := c.roots.ResolveExistingDir(cwd)
+	project, err := ProjectTarget(c.roots, location)
 	if err != nil {
-		return "", errors.Join(ErrWorkspaceUnavailable, err)
+		return "", err
 	}
 	if err := agentmemory.ValidateTarget(scope, project); err != nil {
 		return "", err
+	}
+	return project, nil
+}
+
+// Location is where a caller works: its Flame Project when its Session has one,
+// otherwise its workspace directory.
+type Location struct {
+	CWD     string
+	Project string
+}
+
+// ProjectTarget keys project-scoped memory by the Flame Project when present, so a
+// directory's memories never reach a Project that happens to share it.
+func ProjectTarget(roots RootResolver, location Location) (string, error) {
+	if location.Project != "" {
+		if _, err := identity.ParseProject(location.Project); err != nil {
+			return "", errors.Join(ErrInvalidInput, err)
+		}
+		return location.Project, nil
+	}
+	project, err := roots.ResolveExistingDir(location.CWD)
+	if err != nil {
+		return "", errors.Join(ErrWorkspaceUnavailable, err)
 	}
 	return project, nil
 }

@@ -35,17 +35,20 @@ func registerSessionConditions(s *Shapes) {
 func registerSessionValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.Session](),
-		Constraints: append(append(append(requiredResourceIdentity("id"),
+		Constraints: append(append(append(append(requiredResourceIdentity("id"),
 			[]FieldConstraint{
 				{Field: "provider", Kind: ConstraintNonEmpty},
 				{Field: "model", Kind: ConstraintNonEmpty},
-			}...), modelSelectionIdentities()...), exactRevision()...),
+			}...), modelSelectionIdentities()...), exactRevision()...), resourceIdentity("projectId")...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.ListSessionsRequest](),
-		Constraints: []FieldConstraint{{
+		Constraints: append([]FieldConstraint{{
 			Field: "search", Kind: ConstraintMaxLength, Limit: session.MaximumCatalogSearchCharacters,
-		}},
+		}}, resourceIdentity("projectId")...),
+	})
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.CreateSessionRequest](), Constraints: resourceIdentity("projectId"),
 	})
 	for _, request := range []reflect.Type{
 		typeOf[protocol.GetSessionRequest](),

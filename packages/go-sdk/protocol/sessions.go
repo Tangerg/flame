@@ -24,6 +24,7 @@ type Session struct {
 	Model           string        `json:"model"`
 	ReasoningEffort string        `json:"reasoningEffort,omitempty"`
 	Workspace       WorkspaceInfo `json:"workspace"`
+	ProjectID       string        `json:"projectId,omitempty"`
 	CreatedAt       time.Time     `json:"createdAt,omitzero"`
 	UpdatedAt       time.Time     `json:"updatedAt,omitzero"`
 	Favorite        bool          `json:"favorite,omitzero"`
@@ -35,6 +36,7 @@ type ListSessionsRequest struct {
 	PageQuery
 	Search    string        `json:"search,omitempty"`
 	Workspace *WorkspaceRef `json:"workspace,omitzero"`
+	ProjectID string        `json:"projectId,omitempty"`
 }
 
 type GetSessionRequest struct {
@@ -62,19 +64,21 @@ type DeleteSessionRequest struct {
 
 type CreateSessionRequest struct {
 	Workspace *WorkspaceRef `json:"workspace,omitzero"`
+	ProjectID string        `json:"projectId,omitempty"`
 	Title     string        `json:"title,omitempty"`
 }
 
 type UpdateSessionRequest struct {
-	SessionID        string        `json:"sessionId"`
-	ExpectedRevision uint64        `json:"expectedRevision"`
-	Title            *string       `json:"title,omitzero"`
-	Workspace        *WorkspaceRef `json:"workspace,omitzero"`
-	Provider         *string       `json:"provider,omitzero"`
-	Model            *string       `json:"model,omitzero"`
-	ReasoningEffort  *string       `json:"reasoningEffort,omitzero"`
-	Favorite         *bool         `json:"favorite,omitzero"`
-	Isolated         *bool         `json:"isolated,omitzero"`
+	SessionID        string                `json:"sessionId"`
+	ExpectedRevision uint64                `json:"expectedRevision"`
+	Title            *string               `json:"title,omitzero"`
+	Workspace        *WorkspaceRef         `json:"workspace,omitzero"`
+	Project          *SessionProjectChange `json:"project,omitzero"`
+	Provider         *string               `json:"provider,omitzero"`
+	Model            *string               `json:"model,omitzero"`
+	ReasoningEffort  *string               `json:"reasoningEffort,omitzero"`
+	Favorite         *bool                 `json:"favorite,omitzero"`
+	Isolated         *bool                 `json:"isolated,omitzero"`
 }
 
 type ForkSessionRequest struct {

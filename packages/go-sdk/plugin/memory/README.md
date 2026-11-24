@@ -22,7 +22,9 @@ mutations, persistence and original command receipts.
 
 The generated caller policy publishes `SearchToolName`. Runtime supplies the
 narrow embedding grant only to that remote Tool. Other Memory Tools receive the
-captured workspace without model authority; they do not depend on an embedder.
+captured workspace and Project without model authority; they do not depend on an
+embedder. Project scope keys on the captured Project when the Session has one and
+on the workspace directory otherwise; `list` and `add` accept the same `project`.
 
 Author exports carry the implementation, component and package resources. This
 public contract comes from their pinned, vendored Go SDK module. Running their

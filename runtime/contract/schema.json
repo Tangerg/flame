@@ -1815,9 +1815,29 @@
         "server"
       ]
     },
+    "CreateProjectRequest": {
+      "type": "object",
+      "properties": {
+        "instructions": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
     "CreateSessionRequest": {
       "type": "object",
       "properties": {
+        "projectId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
         "title": {
           "type": "string"
         },
@@ -2751,6 +2771,20 @@
       },
       "required": [
         "sessionId"
+      ]
+    },
+    "GetProjectRequest": {
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        }
+      },
+      "required": [
+        "projectId"
       ]
     },
     "GetRunAcceptanceRequest": {
@@ -4614,6 +4648,22 @@
         "provider"
       ]
     },
+    "ListProjectsRequest": {
+      "type": "object",
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "cursor": {
+          "type": "string",
+          "maxLength": 65536
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
     "ListRunsRequest": {
       "type": "object",
       "properties": {
@@ -4678,6 +4728,11 @@
         "limit": {
           "type": "integer",
           "minimum": 1
+        },
+        "projectId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
         "search": {
           "type": "string",
@@ -6503,6 +6558,24 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/PluginProviderSelection"
+          }
+        },
+        "nextCursor": {
+          "type": "string",
+          "maxLength": 65536
+        }
+      },
+      "required": [
+        "data"
+      ]
+    },
+    "PageOfProject": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Project"
           }
         },
         "nextCursor": {
@@ -9093,6 +9166,20 @@
             "requiredCapabilities": false,
             "retryAfterSeconds": false,
             "type": {
+              "const": "project_not_found"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "activeRun": false,
+            "errors": false,
+            "requiredCapabilities": false,
+            "retryAfterSeconds": false,
+            "type": {
               "const": "prompt_source_too_large"
             }
           },
@@ -9433,6 +9520,47 @@
             "type"
           ]
         }
+      ]
+    },
+    "Project": {
+      "type": "object",
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "createdAt",
+        "id",
+        "name",
+        "revision",
+        "updatedAt"
       ]
     },
     "Provider": {
@@ -10702,6 +10830,11 @@
     "RunSessionOpening": {
       "type": "object",
       "properties": {
+        "projectId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
         "runId": {
           "type": "string",
           "minLength": 1,
@@ -11277,6 +11410,7 @@
         "hooks.changed",
         "models.changed",
         "approvals.changed",
+        "projects.changed",
         "resync"
       ]
     },
@@ -11412,7 +11546,8 @@
         "interrupts.changed",
         "hooks.changed",
         "models.changed",
-        "approvals.changed"
+        "approvals.changed",
+        "projects.changed"
       ]
     },
     "SafetyClass": {
@@ -11611,6 +11746,11 @@
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
+        "projectId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
         "provider": {
           "type": "string",
           "minLength": 1,
@@ -11740,6 +11880,50 @@
         "session",
         "toolResults",
         "version"
+      ]
+    },
+    "SessionProjectChange": {
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "type": {
+          "$ref": "#/$defs/SessionProjectChangeType"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "type": {
+              "const": "set"
+            }
+          },
+          "required": [
+            "projectId",
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "projectId": false,
+            "type": {
+              "const": "clear"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        }
+      ]
+    },
+    "SessionProjectChangeType": {
+      "type": "string",
+      "enum": [
+        "set",
+        "clear"
       ]
     },
     "SessionSnapshot": {
@@ -13453,6 +13637,36 @@
         "server"
       ]
     },
+    "UpdateProjectRequest": {
+      "type": "object",
+      "properties": {
+        "archived": {
+          "type": "boolean"
+        },
+        "expectedRevision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "instructions": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "projectId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        }
+      },
+      "required": [
+        "expectedRevision",
+        "projectId"
+      ]
+    },
     "UpdateProviderRequest": {
       "type": "object",
       "properties": {
@@ -13492,6 +13706,9 @@
           "minLength": 1,
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "project": {
+          "$ref": "#/$defs/SessionProjectChange"
         },
         "provider": {
           "type": "string",

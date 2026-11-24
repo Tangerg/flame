@@ -63,6 +63,7 @@ export type WireTypeName =
   | "ContentBlockType"
   | "ContributionSource"
   | "CreateMCPAuthorizationAttemptRequest"
+  | "CreateProjectRequest"
   | "CreateSessionRequest"
   | "DeleteSessionRequest"
   | "Diff"
@@ -101,6 +102,7 @@ export type WireTypeName =
   | "GenerationParams"
   | "GetDiffRequest"
   | "GetPlanRequest"
+  | "GetProjectRequest"
   | "GetRunAcceptanceRequest"
   | "GetRunRequest"
   | "GetSessionRequest"
@@ -150,6 +152,7 @@ export type WireTypeName =
   | "ListModelEndpointsRequest"
   | "ListModelInvocationsRequest"
   | "ListModelsRequest"
+  | "ListProjectsRequest"
   | "ListRunsRequest"
   | "ListSessionTrajectoryRequest"
   | "ListSessionsRequest"
@@ -216,6 +219,7 @@ export type WireTypeName =
   | "PageOfPluginOperationBinding"
   | "PageOfPluginPointBinding"
   | "PageOfPluginProviderSelection"
+  | "PageOfProject"
   | "PageOfProvider"
   | "PageOfRunRef"
   | "PageOfSession"
@@ -298,6 +302,7 @@ export type WireTypeName =
   | "PluginValueChange"
   | "PluginValueChangeType"
   | "ProblemData"
+  | "Project"
   | "Provider"
   | "ProviderConfigChange"
   | "ProviderConfigChangeType"
@@ -367,6 +372,8 @@ export type WireTypeName =
   | "Session"
   | "SessionAnnotation"
   | "SessionArtifact"
+  | "SessionProjectChange"
+  | "SessionProjectChangeType"
   | "SessionSnapshot"
   | "SessionStatus"
   | "SessionTrajectory"
@@ -424,6 +431,7 @@ export type WireTypeName =
   | "UnresolvedEffectCause"
   | "UpdateGoalRequest"
   | "UpdateMCPServerRequest"
+  | "UpdateProjectRequest"
   | "UpdateProviderRequest"
   | "UpdateSessionRequest"
   | "Usage"
@@ -1033,7 +1041,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   CreateMCPAuthorizationAttemptRequest: object({
     server: ref(() => CHECKS.MCPServerID),
   }, ["server"]),
+  CreateProjectRequest: object({
+    instructions: text(),
+    name: allOf([text(), pattern("\\S")]),
+  }, ["name"]),
   CreateSessionRequest: object({
+    projectId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     title: text(),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, []),
@@ -1317,6 +1330,9 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   GetPlanRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
+  GetProjectRequest: object({
+    projectId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+  }, ["projectId"]),
   GetRunAcceptanceRequest: object({
     key: allOf([text(), minLength(1), maxLength(255)]),
     namespace: allOf([text(), minLength(1), pattern("^idp_[0-9a-f]{32}$")]),
@@ -1937,6 +1953,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ListModelsRequest: object({
     provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["provider"]),
+  ListProjectsRequest: object({
+    archived: flag(),
+    cursor: allOf([text(), maxLength(65536)]),
+    limit: allOf([integer(), minimum("1")]),
+  }, []),
   ListRunsRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
     includeDescendants: flag(),
@@ -1953,6 +1974,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ListSessionsRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
     limit: allOf([integer(), minimum("1")]),
+    projectId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     search: allOf([text(), maxLength(1024)]),
     workspace: ref(() => CHECKS.WorkspaceRef),
   }, []),
@@ -2512,6 +2534,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["data"]),
   PageOfPluginProviderSelection: object({
     data: array(ref(() => CHECKS.PluginProviderSelection)),
+    nextCursor: allOf([text(), maxLength(65536)]),
+  }, ["data"]),
+  PageOfProject: object({
+    data: array(ref(() => CHECKS.Project)),
     nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfProvider: object({
@@ -3329,6 +3355,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         errors: absent(),
         requiredCapabilities: absent(),
         retryAfterSeconds: absent(),
+        type: literal("project_not_found"),
+      }, ["type"]),
+      fields({
+        activeRun: absent(),
+        errors: absent(),
+        requiredCapabilities: absent(),
+        retryAfterSeconds: absent(),
         type: literal("prompt_source_too_large"),
       }, ["type"]),
       fields({
@@ -3496,6 +3529,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["type"]),
     ]),
   ]),
+  Project: object({
+    archived: flag(),
+    createdAt: text(),
+    id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    instructions: text(),
+    name: allOf([text(), pattern("\\S")]),
+    revision: allOf([integer(), minimum("1"), maximum("9007199254740991")]),
+    updatedAt: text(),
+  }, ["createdAt", "id", "name", "revision", "updatedAt"]),
   Provider: object({
     baseUrl: text(),
     configured: flag(),
@@ -3861,6 +3903,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["maxBytes", "maxEvents", "scope"]),
   RunReplayScope: enumOf(["runtimeInstanceRootSegment"]),
   RunSessionOpening: object({
+    projectId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     title: text(),
@@ -4093,7 +4136,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   RuntimeEventNotification: object({
     event: ref(() => CHECKS.RuntimeEvent),
   }, ["event"]),
-  RuntimeEventType: enumOf(["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "resync"]),
+  RuntimeEventType: enumOf(["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed", "resync"]),
   RuntimeInfo: object({
     endpoints: ref(() => CHECKS.RuntimeInfoEndpoints),
     protocolVersion: text(),
@@ -4123,7 +4166,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     watches: array(ref(() => CHECKS.WatchSpec)),
   }, ["topics"]),
   RuntimeSubscribeResponse: object({}, []),
-  RuntimeTopic: enumOf(["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed"]),
+  RuntimeTopic: enumOf(["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "plugins.dataChanged", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "projects.changed"]),
   SafetyClass: enumOf(["safe", "write", "exec", "network"]),
   SearchCoverage: object({
     remainingFiles: integer(),
@@ -4168,6 +4211,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     isolated: flag(),
     model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+    projectId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
     reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
     revision: allOf([integer(), minimum("1"), maximum("9007199254740991")]),
@@ -4195,6 +4239,22 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     toolResults: array(ref(() => CHECKS.ArtifactToolResult)),
     version: allOf([integer(), minimum("32"), maximum("32")]),
   }, ["items", "messages", "runs", "session", "toolResults", "version"]),
+  SessionProjectChange: allOf([
+    object({
+      projectId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      type: ref(() => CHECKS.SessionProjectChangeType),
+    }, []),
+    oneOf([
+      fields({
+        type: literal("set"),
+      }, ["projectId", "type"]),
+      fields({
+        projectId: absent(),
+        type: literal("clear"),
+      }, ["type"]),
+    ]),
+  ]),
+  SessionProjectChangeType: enumOf(["set", "clear"]),
   SessionSnapshot: object({
     goal: ref(() => CHECKS.Goal),
     interrupts: array(ref(() => CHECKS.PendingInterruptSet)),
@@ -4672,6 +4732,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
     server: ref(() => CHECKS.MCPServerID),
   }, ["server"]),
+  UpdateProjectRequest: object({
+    archived: flag(),
+    expectedRevision: allOf([integer(), minimum("1"), maximum("9007199254740991")]),
+    instructions: text(),
+    name: allOf([text(), minLength(1)]),
+    projectId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+  }, ["expectedRevision", "projectId"]),
   UpdateProviderRequest: object({
     apiKey: ref(() => CHECKS.ProviderConfigChange),
     baseUrl: ref(() => CHECKS.ProviderConfigChange),
@@ -4683,6 +4750,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       favorite: flag(),
       isolated: flag(),
       model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      project: ref(() => CHECKS.SessionProjectChange),
       provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
       reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
       sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -4843,6 +4911,10 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "sessions.rollback": ref(() => CHECKS.RollbackSessionRequest),
   "sessions.export": ref(() => CHECKS.ExportSessionRequest),
   "sessions.import": ref(() => CHECKS.ImportSessionRequest),
+  "projects.list": ref(() => CHECKS.ListProjectsRequest),
+  "projects.get": ref(() => CHECKS.GetProjectRequest),
+  "projects.create": ref(() => CHECKS.CreateProjectRequest),
+  "projects.update": ref(() => CHECKS.UpdateProjectRequest),
   "modelInvocations.endpoints": ref(() => CHECKS.ListModelEndpointsRequest),
   "modelInvocations.list": ref(() => CHECKS.ListModelInvocationsRequest),
   "runs.start": ref(() => CHECKS.StartRunRequest),
@@ -4958,6 +5030,10 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "sessions.rollback": ref(() => CHECKS.RollbackSessionResponse),
   "sessions.export": ref(() => CHECKS.ExportSessionResponse),
   "sessions.import": ref(() => CHECKS.ImportSessionResponse),
+  "projects.list": ref(() => CHECKS.PageOfProject),
+  "projects.get": ref(() => CHECKS.Project),
+  "projects.create": ref(() => CHECKS.Project),
+  "projects.update": ref(() => CHECKS.Project),
   "modelInvocations.endpoints": ref(() => CHECKS.PageOfModelEndpointInvocation),
   "modelInvocations.list": ref(() => CHECKS.PageOfModelInvocation),
   "runs.start": ref(() => CHECKS.StartRunResponse),

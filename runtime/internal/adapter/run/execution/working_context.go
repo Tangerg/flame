@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	"github.com/Tangerg/flame/runtime/internal/domain/project"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/telemetry"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -25,11 +26,16 @@ var errPromptRejected = errors.New("execution: prompt rejected by lifecycle hook
 
 type WorkingContextConfig struct {
 	UserHome          string
+	Projects          projectReader
 	AgentMemory       agentMemoryReader
 	AgentMemorySearch agentMemorySearcher
 	Plan              planReader
 	Goal              goalReader
 	Hooks             workingContextHookResolver
+}
+
+type projectReader interface {
+	Get(ctx context.Context, id identity.ProjectID) (project.Project, error)
 }
 
 type workingContextHookResolver interface {
@@ -51,6 +57,7 @@ func NewWorkingContextComposer(config WorkingContextConfig) (*WorkingContextComp
 		name  string
 		value any
 	}{
+		{"project reader", config.Projects},
 		{"memory reader", config.AgentMemory},
 		{"memory searcher", config.AgentMemorySearch},
 		{"plan reader", config.Plan},
@@ -99,11 +106,11 @@ func (w *WorkingContextComposer) ComposeWorkingContext(
 		return nil, applyToErr
 	}
 
-	system, err := w.composeSystemMessage(ctx, input.CWD, input.WorkspaceCWD)
+	system, err := w.composeSystemMessage(ctx, input.CWD, input.WorkspaceCWD, input.Project)
 	if err != nil {
 		return nil, err
 	}
-	if recalled, found, recallErr := w.recallPart(ctx, input.WorkspaceCWD, input.PromptText); recallErr != nil {
+	if recalled, found, recallErr := w.recallPart(ctx, MemoryTarget(input.Project, input.WorkspaceCWD), input.PromptText); recallErr != nil {
 		return nil, recallErr
 	} else if found {
 		seed[len(seed)-1].Parts = append(seed[len(seed)-1].Parts, recalled)
@@ -294,17 +301,17 @@ func (w *WorkingContextComposer) runObserveOnlyHook(
 
 func (w *WorkingContextComposer) recallPart(
 	ctx context.Context,
-	cwd string,
+	target string,
 	query string,
 ) (corechat.Part, bool, error) {
-	if strings.TrimSpace(query) == "" || strings.TrimSpace(cwd) == "" {
+	if strings.TrimSpace(query) == "" || target == "" {
 		return corechat.Part{}, false, nil
 	}
 	ctx, span := recallTracer.Start(ctx, "memory.recall")
 	defer span.End()
 	items, err := w.config.AgentMemorySearch.Search(
 		ctx,
-		filepath.Clean(cwd),
+		target,
 		query,
 		recalledMemoryTopK,
 	)

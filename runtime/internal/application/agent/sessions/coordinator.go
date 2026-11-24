@@ -12,6 +12,7 @@ import (
 	flamemodel "github.com/Tangerg/flame/packages/go-sdk/model"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/domain/project"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -27,6 +28,10 @@ type Store interface {
 	Get(ctx context.Context, id identity.SessionID) (session.Session, error)
 	Insert(ctx context.Context, value session.Session) error
 	Save(ctx context.Context, replacement session.Replacement) error
+}
+
+type projectReader interface {
+	Get(ctx context.Context, id identity.ProjectID) (project.Project, error)
 }
 
 type modelAdmitter interface {
@@ -144,6 +149,7 @@ type Coordinator struct {
 	transientState        transientState
 	executionReleaser     executionReleaser
 	paths                 workspaceResolver
+	projects              projectReader
 	models                modelAdmitter
 	defaultModelSelection flamemodel.Selection
 	checkpoints           WorkspaceCheckpoints
@@ -175,6 +181,7 @@ type Dependencies struct {
 	TransientState        transientState
 	ExecutionReleaser     executionReleaser
 	Paths                 workspaceResolver
+	Projects              projectReader
 	Models                modelAdmitter
 	DefaultModelSelection flamemodel.Selection
 	Checkpoints           WorkspaceCheckpoints
@@ -211,6 +218,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		{"session transient state", deps.TransientState},
 		{"execution releaser", deps.ExecutionReleaser},
 		{"workspace resolver", deps.Paths},
+		{"project reader", deps.Projects},
 		{"model admitter", deps.Models},
 		{"admissions", deps.Admissions},
 		{"workspace checkpoints", deps.Checkpoints},
@@ -242,6 +250,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 		transientState:        deps.TransientState,
 		executionReleaser:     deps.ExecutionReleaser,
 		paths:                 deps.Paths,
+		projects:              deps.Projects,
 		models:                deps.Models,
 		defaultModelSelection: deps.DefaultModelSelection,
 		checkpoints:           deps.Checkpoints,
