@@ -8,6 +8,7 @@ import { type AgentCommands } from "@/features/agent/application/agentCommandOwn
 import { type createAgentSessionUsage } from "@/features/agent/application/session/sessionUsage";
 import { type AgentSharedMaterial } from "@/features/agent/application/session/sharedMaterial";
 import { type InterruptResponseCoordinator } from "@/features/agent/application/hitl/interruptResponseCoordinator";
+import { type ApprovalActionRegistry } from "@/features/agent/application/hitl/approvalActions";
 import { type NotificationFeed } from "@/features/notifications/public/notifications";
 export interface AgentDependencies {
   readonly notifications: NotificationFeed;
@@ -19,4 +20,5 @@ export interface AgentDependencies {
   readonly usage: ReturnType<typeof createAgentSessionUsage>;
   readonly sharedMaterial: AgentSharedMaterial;
   readonly interrupts: InterruptResponseCoordinator;
+  readonly approvalActions: ApprovalActionRegistry;
 }

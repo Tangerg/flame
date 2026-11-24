@@ -5,50 +5,11 @@ import {
   type RememberScope,
 } from "@/features/agent/domain/hitl";
 import { useInterruptResume } from "@/features/agent/application/hitl/useInterruptResume";
+import { useAgentDependencies } from "@/features/agent/application/agentContext";
+import { type ApprovalActions } from "@/features/agent/application/hitl/approvalActions";
 export interface ApprovalSubmitOptions {
   editedArgs?: Record<string, unknown>;
   rememberScope?: RememberScope;
-}
-
-interface ApprovalActions {
-  approve: () => void;
-  decline: () => void;
-}
-
-interface ApprovalActionEntry {
-  owner: InterruptRef;
-  actions: ApprovalActions;
-}
-
-class ApprovalActionRegistry {
-  readonly #entries = new Map<string, ApprovalActionEntry>();
-
-  register(owner: InterruptRef, actions: ApprovalActions): () => void {
-    const key = this.#key(owner);
-    const entry = { owner, actions };
-    this.#entries.set(key, entry);
-    return () => {
-      if (this.#entries.get(key) === entry) this.#entries.delete(key);
-    };
-  }
-
-  find(owner: InterruptRef): ApprovalActions | undefined {
-    return this.#entries.get(this.#key(owner))?.actions;
-  }
-
-  #key(owner: InterruptRef): string {
-    return JSON.stringify([owner.sessionId, owner.rootRunId, owner.itemId]);
-  }
-}
-
-const approvalActionRegistry = new ApprovalActionRegistry();
-
-function registerApprovalActions(ref: InterruptRef, actions: ApprovalActions): () => void {
-  return approvalActionRegistry.register(ref, actions);
-}
-
-export function getApprovalActions(ref: InterruptRef): ApprovalActions | undefined {
-  return approvalActionRegistry.find(ref);
 }
 
 interface ApprovalSubmit {
@@ -81,12 +42,13 @@ export function useApprovalSubmit(
     [resume],
   );
 
+  const { approvalActions } = useAgentDependencies();
   const registerActions = useCallback(
     (actions: ApprovalActions) => {
       if (!rootRunId || !itemId) return () => undefined;
-      return registerApprovalActions({ sessionId, rootRunId, itemId }, actions);
+      return approvalActions.register({ sessionId, rootRunId, itemId }, actions);
     },
-    [itemId, rootRunId, sessionId],
+    [approvalActions, itemId, rootRunId, sessionId],
   );
 
   return { submit, pending, submitted, registerActions };

@@ -1,6 +1,5 @@
 import { type AgentDependencies } from "@/features/agent/application/agentDependencies";
 
-import { getApprovalActions } from "@/features/agent/application/hitl/useApprovalSubmit";
 import { type ApprovalDecision } from "@/features/agent/domain/hitl";
 import { resumeInterrupt } from "@/features/agent/application/hitl/useInterruptResume";
 
@@ -40,7 +39,11 @@ export function submitPendingApproval(
   if (!oi || !interrupt) return hasPendingApproval;
 
   const itemId = interrupt.itemId;
-  const actions = getApprovalActions({ sessionId: sid, rootRunId: oi.rootRunId, itemId });
+  const actions = agentAccess.approvalActions.find({
+    sessionId: sid,
+    rootRunId: oi.rootRunId,
+    itemId,
+  });
   if (actions) {
     if (decision === "approve") actions.approve();
     else actions.decline();

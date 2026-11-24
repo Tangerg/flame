@@ -14,6 +14,7 @@ import { createAgentCommands } from "@/features/agent/application/agentCommandOw
 import { createAgentSessionUsage } from "@/features/agent/application/session/sessionUsage";
 import { createAgentSharedMaterial } from "@/features/agent/application/session/sharedMaterial";
 import { InterruptResponseCoordinator } from "@/features/agent/application/hitl/interruptResponseCoordinator";
+import { ApprovalActionRegistry } from "@/features/agent/application/hitl/approvalActions";
 import { createAgentSessionStore } from "@/features/agent/adapters/agentSessionStore";
 import { createAgentStore } from "@/features/agent/adapters/agentStore";
 import { createAgentState } from "@/features/agent/adapters/agentStatePorts";
@@ -64,6 +65,7 @@ export function composeAgent(
     usage,
   );
   const interrupts = new InterruptResponseCoordinator(state.view);
+  const approvalActions = new ApprovalActionRegistry();
   const defaultSession = createAgentDefaultSession(
     navigation,
     () => ({ agentAccess: dependencies, projection, sessions, retries: gateway.retries }),
@@ -83,6 +85,7 @@ export function composeAgent(
     usage,
     sharedMaterial,
     interrupts,
+    approvalActions,
   };
   let access = createAgentAccess(dependencies);
   const stops: Array<() => void> = [];
