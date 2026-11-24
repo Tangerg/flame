@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"maps"
 	"os"
 	"path/filepath"
@@ -17,6 +18,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
+	"github.com/Tangerg/frame/distribution"
 )
 
 func (r *Releases) Prepare(ctx context.Context, installation plugin.Installation, release plugin.Release) error {
@@ -156,16 +159,13 @@ func (r *Releases) Realize(ctx context.Context, installation plugin.Installation
 	if err != nil {
 		return plugins.Realization{}, fmt.Errorf("pluginpackage: release directory: %w", err)
 	}
-	lease, verifyErr := r.content.Acquire(ctx, release.Digest())
-	if cause := errors.Join(ctx.Err(), context.Cause(ctx)); cause != nil {
-		cause = errors.Join(cause, verifyErr)
-		if lease.Valid() {
-			cause = errors.Join(cause, lease.Close())
-		}
-		return plugins.Realization{}, cause
-	}
-	if verifyErr != nil {
+	lease, err := r.content.Acquire(ctx, release.Digest())
+	switch {
+	case err == nil:
+	case errors.Is(err, distribution.ErrIntegrity), errors.Is(err, distribution.ErrInvalid), errors.Is(err, fs.ErrNotExist):
 		return plugins.Realization{Release: plugins.ReleaseUnavailable}, nil
+	default:
+		return plugins.Realization{}, fmt.Errorf("pluginpackage: acquire release %s: %w", release.Digest(), err)
 	}
 	defer func() { err = errors.Join(err, lease.Close()) }()
 	result := plugins.Realization{Release: plugins.ReleaseAvailable}

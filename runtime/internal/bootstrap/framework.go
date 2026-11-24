@@ -261,19 +261,16 @@ func (r *frameworkRecovery) restore(ctx context.Context) error {
 		r.stores.Admission.RequireRecovery(err)
 		return errors.Join(framehost.ErrRecoveryRequired, err)
 	}
+	// Browser executions of an earlier authority epoch may stay unproven: their
+	// Realms resume with cleanup-only credentials and cannot admit work, and a
+	// reloaded or closed window never sends their original proofs. Their execution
+	// protection still retains the release content they were planned from.
 	err := r.stores.Admission.Recover(ctx, func() error {
 		pending, err := r.stores.PluginUses.Pending(ctx)
 		if err != nil {
 			return err
 		}
 		if len(pending) != 0 {
-			return framehost.ErrRecoveryRequired
-		}
-		dependencies, err := r.stores.Frame.ExecutionDependencies(ctx)
-		if err != nil {
-			return err
-		}
-		if len(dependencies) != 0 {
 			return framehost.ErrRecoveryRequired
 		}
 		return nil

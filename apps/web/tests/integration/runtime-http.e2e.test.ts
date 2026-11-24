@@ -30,6 +30,9 @@ import {
   onTestFinished,
   vi,
 } from "vitest";
+import { componentExport } from "@flame/component-sdk/runtime-profile";
+import { defineUnit, FrameError, Lifetime, Service } from "@frame/sdk";
+import { ControlPump, HTTPControl, Runtime } from "@frame/sdk/browser";
 import { createFlameClient, type FlameClient } from "@flame/runtime-client";
 import { RpcError } from "@flame/runtime-client";
 import { asRunId, asSegmentId, asSessionId, type SessionId } from "@flame/runtime-client";
@@ -1327,6 +1330,73 @@ for await (const line of lines) {
     }
     await expect(client.plugins.readLocale(request)).resolves.toEqual({ messages });
   }, 30_000);
+
+  it("admits plugins after SIGKILL while a vanished window still holds a component", async () => {
+    if (!client) throw new Error("runtime client was not initialized");
+    const installation = (await client.plugins.list()).data.find(
+      (item) => item.selected.name === "flame.trajectory",
+    )!;
+    const entry = installation.selected.components.find((value) => value.id === "trajectory")!;
+    const session = await client.plugins.openBrowserRealm({
+      operationId: crypto.randomUUID(),
+      resumeToken: crypto.randomUUID() + crypto.randomUUID(),
+    });
+    const windowLifetime = new Lifetime("vanished-window");
+    const contract = new Service(session.componentContract);
+    const realm = new Runtime({
+      authority: session.authority,
+      realm: session.realm,
+      proofCapacity: session.proofCapacity,
+      control: new HTTPControl({
+        endpoint: new URL(session.controlEndpoint, baseUrl).href,
+        credential: session.credential,
+        maximumMessageBytes: session.maximumMessageBytes,
+        lifetime: windowLifetime.branch("control"),
+      }),
+      load: (unit) =>
+        defineUnit({
+          id: unit.instance.source.unitId,
+          imports: {},
+          exports: { [componentExport]: contract },
+          setup: () => ({ [componentExport]: () => null }),
+        }),
+      remote: () => {
+        throw new FrameError("contract_mismatch", "components declare no portable imports");
+      },
+    });
+    const pumping = new AbortController();
+    onTestFinished(() => pumping.abort());
+    void new ControlPump(realm, {
+      intervalMilliseconds: session.pollIntervalMilliseconds,
+      preparationCapacity: session.preparationCapacity,
+      onError: () => {},
+    })
+      .run(pumping.signal)
+      .catch(() => {});
+    const grant = await client.plugins.acquireComponent({
+      installationId: installation.id,
+      digest: installation.selected.digest,
+      componentId: entry.id,
+      operationId: crypto.randomUUID(),
+      realm: session.realm,
+    });
+    await realm.accept(grant);
+    // A closed or reloaded window sends no exit proof for the component it held.
+    windowLifetime.beginClose();
+
+    await client.close();
+    client = undefined;
+    await killRuntimeProcess();
+    await startRuntimeProcess();
+    client = createRuntimeClient();
+    negotiated = (await client.runtime.discover()).capabilities;
+    await awaitManagedOwners();
+
+    const readiness = await fetch(`${baseUrl}/v2/health/ready`);
+    expect(await readiness.json()).toMatchObject({ checks: { plugins: "ok" } });
+    const restored = (await client.plugins.list()).data.find((item) => item.id === installation.id);
+    expect(restored?.presentation).toBe("admitted");
+  }, 60_000);
 
   it("reads the shipped Memory backend page and resumes private facts after withdrawal", async () => {
     if (!client) throw new Error("runtime client was not initialized");
