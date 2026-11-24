@@ -44,57 +44,56 @@ func (s *Handler) ListWorkspaceFileChanges(ctx context.Context, in protocol.Work
 }
 
 func (s *Handler) GetWorkspaceDiff(ctx context.Context, in protocol.GetDiffRequest) (*protocol.Diff, error) {
-	switch in.Format {
-	case "", protocol.DiffFormatRows, protocol.DiffFormatRaw, protocol.DiffFormatVisual:
-	default:
-		return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown diff format %q", in.Format))
+	input, err := workspaceDiffInput(in)
+	if err != nil {
+		return nil, err
 	}
-	base := false
+	diff, err := s.workspaceVCS.Diff(ctx, input)
+	if err != nil {
+		return nil, wireWorkspaceError(err)
+	}
+	return presentDiff(diff)
+}
+
+func workspaceDiffInput(in protocol.GetDiffRequest) (workspaceapp.DiffInput, error) {
+	format, known := diffFormats.domain(in.Format)
+	if !known && in.Format != "" {
+		return workspaceapp.DiffInput{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown diff format %q", in.Format))
+	}
+	var base bool
 	switch in.Mode {
 	case "", protocol.DiffModeWorktree:
 	case protocol.DiffModeBase:
 		base = true
 	default:
-		return nil, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown mode %q", in.Mode))
+		return workspaceapp.DiffInput{}, protocol.NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown mode %q", in.Mode))
 	}
 	if in.Format == protocol.DiffFormatRaw && in.Limit != nil {
-		return nil, protocol.NewFailure(protocol.ErrInvalidParams, "limit is only valid for rows or visual format")
+		return workspaceapp.DiffInput{}, protocol.NewFailure(protocol.ErrInvalidParams, "limit is only valid for rows or visual format")
 	}
 	rowLimit := workspaceapp.DefaultDiffRowLimit()
 	if in.Limit != nil {
-		explicit, limitErr := workspaceapp.NewDiffRowLimit(*in.Limit)
-		if limitErr != nil {
-			return nil, wireWorkspaceError(limitErr)
+		explicit, err := workspaceapp.NewDiffRowLimit(*in.Limit)
+		if err != nil {
+			return workspaceapp.DiffInput{}, wireWorkspaceError(err)
 		}
 		rowLimit = explicit
 	}
-	format, known := diffFormats.domain(in.Format)
-	if !known && in.Format != "" {
-		return nil, protocol.NewFailure(protocol.ErrInvalidParams, "unknown diff format")
-	}
-	diff, err := s.workspaceVCS.Diff(ctx, workspaceapp.DiffInput{
+	return workspaceapp.DiffInput{
 		CWD: in.Workspace.Path, Path: in.Path, Base: base, Format: format, RowLimit: rowLimit,
-	})
-	if err != nil {
-		return nil, wireWorkspaceError(err)
-	}
+	}, nil
+}
+
+func presentDiff(diff workspaceapp.Diff) (*protocol.Diff, error) {
 	baseline := protocol.DiffBaseline{Type: diffBaselines.mustWire(diff.Baseline.Type), Commit: diff.Baseline.Commit}
 	if diff.Format == workspaceapp.DiffFormatRaw {
 		return &protocol.Diff{Type: protocol.DiffFormatRaw, Baseline: baseline, Patch: &diff.Patch}, nil
 	}
 	budget := protocol.DiffBudget{Files: diff.Budget.Files, Rows: diff.Budget.Rows, Bytes: diff.Budget.Bytes}
 	if diff.Format == workspaceapp.DiffFormatVisual {
-		manifest := make([]protocol.WorkspaceFileChange, 0, len(diff.Files))
-		for _, file := range diff.Files {
-			status, ok := presentFileStatus(file.Status)
-			if !ok {
-				return nil, fmt.Errorf("workspace.diff.get: unsupported file status %q", file.Status)
-			}
-			entry := protocol.WorkspaceFileChange{Path: file.Path, Status: status, PreviousPath: file.PreviousPath, Binary: file.Binary}
-			if !file.Binary {
-				entry.Added, entry.Removed = new(file.Added), new(file.Removed)
-			}
-			manifest = append(manifest, entry)
+		manifest, err := presentDiffManifest(diff.Files)
+		if err != nil {
+			return nil, err
 		}
 		return &protocol.Diff{Type: protocol.DiffFormatVisual, Baseline: baseline, Visual: &protocol.VisualDiff{
 			Patch: diff.Patch, Manifest: manifest, Truncated: diff.Truncated, Budget: budget,
@@ -107,6 +106,22 @@ func (s *Handler) GetWorkspaceDiff(ctx context.Context, in protocol.GetDiffReque
 	return &protocol.Diff{Type: protocol.DiffFormatRows, Baseline: baseline, Rows: &protocol.DiffRows{
 		Files: files, Truncated: diff.Truncated, Budget: budget,
 	}}, nil
+}
+
+func presentDiffManifest(files []workspaceapp.FileDiff) ([]protocol.WorkspaceFileChange, error) {
+	manifest := make([]protocol.WorkspaceFileChange, 0, len(files))
+	for _, file := range files {
+		status, ok := presentFileStatus(file.Status)
+		if !ok {
+			return nil, fmt.Errorf("workspace.diff.get: unsupported file status %q", file.Status)
+		}
+		entry := protocol.WorkspaceFileChange{Path: file.Path, Status: status, PreviousPath: file.PreviousPath, Binary: file.Binary}
+		if !file.Binary {
+			entry.Added, entry.Removed = new(file.Added), new(file.Removed)
+		}
+		manifest = append(manifest, entry)
+	}
+	return manifest, nil
 }
 
 func presentDiffFiles(files []workspaceapp.FileDiff) ([]protocol.FileDiff, error) {

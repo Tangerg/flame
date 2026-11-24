@@ -276,6 +276,12 @@ func (s Session) Isolated() bool { return s.isolated }
 
 func (s Session) Revision() uint64 { return s.revision.Value() }
 
+// The workspace and isolation decide where a Session's processes run and what
+// they may touch; Sessions that differ in either cannot share that state.
+func (s Session) SharesExecutionPolicy(other Session) bool {
+	return s.workspace == other.workspace && s.isolated == other.isolated
+}
+
 func (s Session) sameValue(other Session) bool {
 	return s.id == other.id && s.title == other.title && s.workspace == other.workspace && s.project == other.project &&
 		s.selection.Equal(other.selection) && s.parentID == other.parentID &&

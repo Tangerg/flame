@@ -28,6 +28,12 @@ type Patch struct {
 	ExpectedRevision uint64
 }
 
+// A Run reads the Project with the workspace whenever a Segment opens, so
+// both change only while no Run can observe them.
+func (p Patch) changesRunScope() bool {
+	return p.WorkspacePath != nil || p.Isolated != nil || p.Project != nil
+}
+
 func (p Patch) clone() Patch {
 	if p.Title != nil {
 		p.Title = new(*p.Title)
@@ -184,9 +190,7 @@ func (c *Coordinator) Update(ctx context.Context, id identity.SessionID, patch P
 			return err
 		}
 	}
-	// A Run reads the Project with the workspace whenever a Segment opens, so
-	// both change only while no Run can observe them.
-	if workspace != nil || patch.Isolated != nil || patch.Project != nil {
+	if patch.changesRunScope() {
 		admission, err := c.ClaimIdleSession(ctx, id)
 		if err != nil {
 			return err
@@ -217,7 +221,7 @@ func (c *Coordinator) Update(ctx context.Context, id identity.SessionID, patch P
 	if err != nil {
 		return fmt.Errorf("sessions: prepare Session replacement: %w", err)
 	}
-	if current.Workspace() != updated.Workspace() || current.Isolated() != updated.Isolated() {
+	if !current.SharesExecutionPolicy(updated) {
 		if err := c.retireExecutionPolicy(id); err != nil {
 			return err
 		}
