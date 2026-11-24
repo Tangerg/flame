@@ -308,7 +308,6 @@
   "composer.folder.add": "Ordner hinzufügen",
   "composer.folder.required": "Wähle einen Ordner aus, um fortzufahren",
   "providers.setup.title": "Modell-Provider verbinden",
-  "providers.setup.sub": "Konfiguriere einen Modell-Provider, um loszulegen — die Authentifizierung hängt vom Provider ab.",
   "providers.setup.action": "Provider konfigurieren",
   "settings.title": "Einstellungen",
   "settings.searchPlaceholder": "Einstellungen suchen…",

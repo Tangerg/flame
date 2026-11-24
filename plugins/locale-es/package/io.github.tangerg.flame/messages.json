@@ -313,7 +313,6 @@
   "composer.folder.add": "Añadir carpeta",
   "composer.folder.required": "Selecciona una carpeta para continuar",
   "providers.setup.title": "Conecta un proveedor de modelos",
-  "providers.setup.sub": "Configura un proveedor de modelos para empezar — la autenticación depende del proveedor.",
   "providers.setup.action": "Configurar proveedor",
   "settings.title": "Ajustes",
   "settings.searchPlaceholder": "Buscar ajustes…",

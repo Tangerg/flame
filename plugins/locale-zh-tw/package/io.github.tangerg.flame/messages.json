@@ -307,7 +307,6 @@
   "composer.folder.add": "新增資料夾",
   "composer.folder.required": "選擇資料夾後繼續",
   "providers.setup.title": "接入一個模型 provider",
-  "providers.setup.sub": "設定模型 provider 即可開始對話 —— 是否需要驗證由 provider 自身決定。",
   "providers.setup.action": "前往設定 provider",
   "settings.title": "設定",
   "settings.searchPlaceholder": "搜尋設定…",

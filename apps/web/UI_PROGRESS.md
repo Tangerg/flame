@@ -26137,6 +26137,14 @@ rules precedence note, the Connection reconnect note and the token storage
 hint. Native Settings → Approvals shows `Mode` directly above Safe, Balanced
 and Auto.
 
+The new-session provider prompt (`ProviderSetupPrompt`) drops `Configure a
+model provider to start chatting — authentication depends on the provider.`
+between `Connect a model provider` and `Configure a provider`; it restated
+both and used `chat` for a Session. `providers.setup.sub` leaves all eight
+catalogs. Not observed natively: no Lab host installs the provider-setup
+plugin, and the real app shows it only without a configured provider. Web
+typecheck and `check:locales` pass.
+
 Two more surfaces: the Brand assets section drops `A little flame with a
 curious, friendly presence.` and Saved usage reports drops `Immutable copies
 of core accounting reports. Live accounting is unaffected.` Both restated

@@ -312,7 +312,6 @@
   "composer.folder.add": "添加文件夹",
   "composer.folder.required": "选择文件夹后继续",
   "providers.setup.title": "接入一个模型 provider",
-  "providers.setup.sub": "配置模型 provider 即可开始对话 —— 是否需要认证由 provider 自身决定。",
   "providers.setup.action": "去配置 provider",
   "settings.title": "设置",
   "settings.searchPlaceholder": "搜索设置…",

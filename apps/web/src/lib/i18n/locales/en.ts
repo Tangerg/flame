@@ -346,8 +346,6 @@ export const en: Record<string, string> = {
   "composer.folder.add": "Add folder",
   "composer.folder.required": "Select a folder to continue",
   "providers.setup.title": "Connect a model provider",
-  "providers.setup.sub":
-    "Configure a model provider to start chatting — authentication depends on the provider.",
   "providers.setup.action": "Configure a provider",
   "settings.title": "Settings",
   "settings.searchPlaceholder": "Search settings…",

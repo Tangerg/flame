@@ -303,7 +303,6 @@
   "composer.folder.add": "フォルダーを追加",
   "composer.folder.required": "続行するにはフォルダーを選択してください",
   "providers.setup.title": "モデルプロバイダーを接続",
-  "providers.setup.sub": "モデルプロバイダーを設定すると会話を開始できます — 認証要件はプロバイダーごとに異なります。",
   "providers.setup.action": "プロバイダーを設定",
   "settings.title": "設定",
   "settings.searchPlaceholder": "設定を検索…",

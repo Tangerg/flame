@@ -303,7 +303,6 @@
   "composer.folder.add": "폴더 추가",
   "composer.folder.required": "계속하려면 폴더를 선택하세요",
   "providers.setup.title": "모델 제공자 연결",
-  "providers.setup.sub": "모델 제공자를 구성하면 대화를 시작할 수 있습니다 — 인증 요구 사항은 제공자마다 다릅니다.",
   "providers.setup.action": "제공자 구성",
   "settings.title": "설정",
   "settings.searchPlaceholder": "설정 검색…",

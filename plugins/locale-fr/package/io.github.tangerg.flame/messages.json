@@ -313,7 +313,6 @@
   "composer.folder.add": "Ajouter un dossier",
   "composer.folder.required": "Sélectionnez un dossier pour continuer",
   "providers.setup.title": "Connecter un fournisseur de modèle",
-  "providers.setup.sub": "Configurez un fournisseur de modèle pour commencer — l'authentification dépend du fournisseur.",
   "providers.setup.action": "Configurer un fournisseur",
   "settings.title": "Paramètres",
   "settings.searchPlaceholder": "Rechercher dans les paramètres…",
