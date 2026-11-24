@@ -779,7 +779,7 @@ export function WorkspaceDiff({ context }: { context: ComponentContext }) {
               mode={query.mode}
               readingOverview={readingOverview}
               loading={read.loading}
-              failed={Boolean(read.error)}
+              failed={Boolean(read.error && accepted)}
               refreshRef={refreshButton}
               onShowFiles={showFiles}
               onMode={(mode) =>

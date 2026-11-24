@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import * as stylex from "@stylexjs/stylex";
-import { color, space, type, weight } from "@flame/ui/tokens.stylex";
+import { color, layout, space, type, weight } from "@flame/ui/tokens.stylex";
 import { CatalogList, type CatalogPickerGroup } from "@/ui/atoms/index";
 import { cn } from "@/lib/classNames";
 const styles = stylex.create({
@@ -9,7 +9,10 @@ const styles = stylex.create({
     minHeight: 0,
     height: "100%",
     flexDirection: "column",
-    padding: space.s4,
+    // Dock views sit inside a reserved focus edge; the catalog adds it so its text
+    // starts on the same line as theirs and the tab labels'.
+    paddingInline: `calc(${layout.compactGutter} + var(--focus-inset-edge))`,
+    paddingBlock: space.s4,
   },
   // Search and option fills bleed by the rows' inset; their text keeps the title's edge.
   catalog: { display: "flex", flex: 1, minHeight: 0, marginInline: `calc(-1 * ${space.s2})` },

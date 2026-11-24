@@ -2737,6 +2737,14 @@ Dock and Files step (2026-11-25):
   the asset tiles. The group adds nothing for one static row and is gone:
   the swatch starts on `Brand color`'s edge and `Copy HEX` ends on the tiles'.
 
+- The Dock panel catalog is not a view body, so it lacked the reserved
+  focus edge and sat 2 px left of every view and tab label; it now adds the
+  edge to its inline padding.
+- Workspace diff's scope toolbar said `Read failed` beside Refresh while the
+  body's alert, right below, named the failure in full. The toolbar keeps
+  the short status only when retained files are shown under the alert (and
+  the reader keeps it, where the alert can be scrolled away).
+
 Native `dock-files`, `dock-file` and `dock-schedules` show the tab label,
 chevrons or field glyphs and panel text on one line; the chat header's
 `scope` and `+25 −9` meet the prose and bubble edges. The full-width file
