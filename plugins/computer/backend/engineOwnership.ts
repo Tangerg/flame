@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { open, rename, unlink } from "node:fs/promises";
+import { open, rename, unlink, type FileHandle } from "node:fs/promises";
 import { dirname } from "node:path";
 
 interface OwnershipRecord {
@@ -62,6 +62,44 @@ async function syncDirectory(path: string): Promise<void> {
   }
 }
 
+// Records hold four bounded fields; anything larger was not written here.
+const RECORD_BYTES = 4096;
+
+function validRecord(value: unknown): value is OwnershipRecord {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.keys(value).sort().join(",") !== "nativeTurn,owner,pid,platform"
+  )
+    return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.owner === "string" &&
+    /^[a-f0-9-]{36}$/.test(record.owner) &&
+    record.platform === process.platform &&
+    (record.pid === null ||
+      (Number.isSafeInteger(record.pid) && Number(record.pid) > 0)) &&
+    (record.nativeTurn === null || validNativeTurn(record.nativeTurn))
+  );
+}
+
+// Reads one byte past the limit so a file grown after stat is detected.
+async function readBounded(file: FileHandle, limit: number): Promise<Buffer> {
+  const buffer = Buffer.alloc(limit + 1);
+  let length = 0;
+  while (length < buffer.length) {
+    const { bytesRead } = await file.read(
+      buffer,
+      length,
+      buffer.length - length,
+    );
+    if (bytesRead === 0) break;
+    length += bytesRead;
+  }
+  return buffer.subarray(0, length);
+}
+
 async function readRecord(path: string): Promise<OwnershipRecord | undefined> {
   let file;
   try {
@@ -79,43 +117,19 @@ async function readRecord(path: string): Promise<OwnershipRecord | undefined> {
   }
   try {
     const stat = await file.stat();
-    if (!stat.isFile() || stat.size > 4096)
+    if (!stat.isFile() || stat.size > RECORD_BYTES)
       throw new Error("computer: invalid engine ownership record");
-    const buffer = Buffer.alloc(4097);
-    let length = 0;
-    while (length < buffer.length) {
-      const { bytesRead } = await file.read(
-        buffer,
-        length,
-        buffer.length - length,
-      );
-      if (bytesRead === 0) break;
-      length += bytesRead;
-    }
-    if (length > 4096)
+    const bytes = await readBounded(file, RECORD_BYTES);
+    if (bytes.length > RECORD_BYTES)
       throw new Error("computer: engine ownership record exceeds capacity");
-    const record = JSON.parse(
-      new TextDecoder("utf-8", { fatal: true }).decode(
-        buffer.subarray(0, length),
-      ),
-    ) as Record<string, unknown>;
-    if (
-      !record ||
-      typeof record !== "object" ||
-      Array.isArray(record) ||
-      Object.keys(record).sort().join(",") !==
-        "nativeTurn,owner,pid,platform" ||
-      typeof record.owner !== "string" ||
-      !/^[a-f0-9-]{36}$/.test(record.owner) ||
-      record.platform !== process.platform ||
-      (record.pid !== null &&
-        (!Number.isSafeInteger(record.pid) || Number(record.pid) <= 0)) ||
-      (record.nativeTurn !== null && !validNativeTurn(record.nativeTurn))
-    )
+    const record: unknown = JSON.parse(
+      new TextDecoder("utf-8", { fatal: true }).decode(bytes),
+    );
+    if (!validRecord(record))
       throw new Error(
         "computer: engine ownership requires manual reconciliation",
       );
-    return record as unknown as OwnershipRecord;
+    return record;
   } catch (cause) {
     throw new Error(
       "computer: engine ownership requires manual reconciliation",
