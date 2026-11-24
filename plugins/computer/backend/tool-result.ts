@@ -160,6 +160,94 @@ function restorePortable(
   }
 }
 
+type ContentOf<T extends ContentBlock["type"]> = Extract<
+  ContentBlock,
+  { type: T }
+>;
+
+function annotationEnvelope(
+  annotation: NonNullable<ContentBlock["annotations"]>,
+): JSONRecord {
+  return {
+    ...(annotation.audience?.length ? { audience: annotation.audience } : {}),
+    ...(annotation.lastModified
+      ? { lastModified: annotation.lastModified }
+      : {}),
+    ...(annotation.priority !== undefined
+      ? { priority: annotation.priority }
+      : {}),
+  };
+}
+
+function resourceLinkPart(
+  content: ContentOf<"resource_link">,
+  envelope: JSONRecord,
+): ToolContent {
+  absoluteURI(content.uri);
+  if (content.title) envelope.title = content.title;
+  if (content.description) envelope.description = content.description;
+  if (content.size !== undefined) envelope.size = content.size;
+  if (content.icons?.length)
+    envelope.icons = content.icons.map((icon) => ({
+      src: icon.src,
+      ...(icon.mimeType ? { mimeType: icon.mimeType } : {}),
+      ...(icon.sizes?.length ? { sizes: icon.sizes } : {}),
+      ...(icon.theme ? { theme: icon.theme } : {}),
+    }));
+  return {
+    kind: "media",
+    media: {
+      metadata: {},
+      ...(content.mimeType ? { mime: mime(content.mimeType) } : {}),
+      source: { kind: "uri", uri: content.uri },
+      ...(content.name ? { name: content.name } : {}),
+    },
+  };
+}
+
+function embeddedResourcePart(
+  content: ContentOf<"resource">,
+  envelope: JSONRecord,
+): ToolContent {
+  const resource = content.resource;
+  const text = Object.hasOwn(resource, "text");
+  if (!resource.uri || text === Object.hasOwn(resource, "blob"))
+    throw new Error(
+      "computer: embedded resource requires one text or blob payload",
+    );
+  const origin: JSONRecord = { uri: resource.uri };
+  const resourceMeta = metadata(resource._meta);
+  if (Object.keys(resourceMeta).length) origin._meta = resourceMeta;
+  envelope.resource = origin;
+  if (!text)
+    return {
+      kind: "media",
+      media: bytes(string(record(resource).blob), resource.mimeType),
+    };
+  const value = string(record(resource).text);
+  if (!value)
+    throw new Error("computer: embedded resource text cannot be empty");
+  if (resource.mimeType) origin.mimeType = resource.mimeType;
+  return { kind: "text", text: value };
+}
+
+function contentPart(content: ContentBlock, envelope: JSONRecord): ToolContent {
+  switch (content.type) {
+    case "text":
+      return { kind: "text", text: content.text };
+    case "image":
+    case "audio":
+      return {
+        kind: "media",
+        media: bytes(content.data, mime(content.mimeType)),
+      };
+    case "resource_link":
+      return resourceLinkPart(content, envelope);
+    case "resource":
+      return embeddedResourcePart(content, envelope);
+  }
+}
+
 function projectContent(content: ContentBlock): ToolContent | undefined {
   const meta = metadata(content._meta);
   if (content.type === "text" && !content.text) {
@@ -168,81 +256,13 @@ function projectContent(content: ContentBlock): ToolContent | undefined {
     return undefined;
   }
   const envelope: JSONRecord = { type: content.type };
-  if (content.annotations) {
-    const annotation = content.annotations;
-    envelope.annotations = {
-      ...(annotation.audience?.length ? { audience: annotation.audience } : {}),
-      ...(annotation.lastModified
-        ? { lastModified: annotation.lastModified }
-        : {}),
-      ...(annotation.priority !== undefined
-        ? { priority: annotation.priority }
-        : {}),
-    };
-  }
-  let part: ToolContent;
-  switch (content.type) {
-    case "text":
-      part = { kind: "text", text: content.text };
-      break;
-    case "image":
-    case "audio":
-      part = {
-        kind: "media",
-        media: bytes(content.data, mime(content.mimeType)),
-      };
-      break;
-    case "resource_link": {
-      absoluteURI(content.uri);
-      part = {
-        kind: "media",
-        media: {
-          metadata: {},
-          ...(content.mimeType ? { mime: mime(content.mimeType) } : {}),
-          source: { kind: "uri", uri: content.uri },
-          ...(content.name ? { name: content.name } : {}),
-        },
-      };
-      if (content.title) envelope.title = content.title;
-      if (content.description) envelope.description = content.description;
-      if (content.size !== undefined) envelope.size = content.size;
-      if (content.icons?.length)
-        envelope.icons = content.icons.map((icon) => ({
-          src: icon.src,
-          ...(icon.mimeType ? { mimeType: icon.mimeType } : {}),
-          ...(icon.sizes?.length ? { sizes: icon.sizes } : {}),
-          ...(icon.theme ? { theme: icon.theme } : {}),
-        }));
-      break;
-    }
-    case "resource": {
-      const resource = content.resource;
-      const text = Object.hasOwn(resource, "text");
-      if (!resource.uri || text === Object.hasOwn(resource, "blob"))
-        throw new Error(
-          "computer: embedded resource requires one text or blob payload",
-        );
-      const origin: JSONRecord = { uri: resource.uri };
-      const resourceMeta = metadata(resource._meta);
-      if (Object.keys(resourceMeta).length) origin._meta = resourceMeta;
-      if (text) {
-        const value = string(record(resource).text);
-        if (!value)
-          throw new Error("computer: embedded resource text cannot be empty");
-        part = { kind: "text", text: value };
-        if (resource.mimeType) origin.mimeType = resource.mimeType;
-      } else {
-        part = {
-          kind: "media",
-          media: bytes(string(record(resource).blob), resource.mimeType),
-        };
-      }
-      envelope.resource = origin;
-      break;
-    }
-  }
+  if (content.annotations)
+    envelope.annotations = annotationEnvelope(content.annotations);
+  const part = contentPart(content, envelope);
   restorePortable(part, content, meta);
   if (content._meta !== undefined) envelope._meta = meta;
+  // Only plain text with nothing else to carry round-trips without the
+  // original MCP envelope.
   if (
     content.type !== "text" ||
     Object.keys(meta).length ||
