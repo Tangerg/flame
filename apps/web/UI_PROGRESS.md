@@ -50474,6 +50474,12 @@ published resource checks pass.
 MCP servers follows: `Import from JSON` and `Add server` stay leading as
 the pane's create actions and Refresh moves to the trailing edge.
 
+Diagnostics also printed `Last buffer read` under the tabs after every
+successful read. Like Diff's loaded status, that resting confirmation is now
+announced but not drawn; `Showing the last accepted read.` stays visible
+when a refresh fails. Native `dock-diagnostics-recorded` goes from the
+tabs straight to the first trace.
+
 ### Model picker without a rail rule or a resting ring (2026-11-24)
 
 The Composer model picker drew a vertical rule between its provider rail and

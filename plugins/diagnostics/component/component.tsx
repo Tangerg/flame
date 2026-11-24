@@ -293,7 +293,10 @@ export function Diagnostics({ context }: { context: ComponentContext }) {
       )}
       {read.snapshot && (
         <>
-          <Metadata role="status">
+          <Metadata
+            role="status"
+            className={read.error ? undefined : "sr-only"}
+          >
             {t(read.error ? "observations.stale" : "observations.accepted")}
           </Metadata>
           <DiagnosticsReport
