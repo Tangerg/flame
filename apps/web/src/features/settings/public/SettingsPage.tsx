@@ -16,7 +16,9 @@ import { useSettingsPanes } from "@/features/settings/public/panes";
 import { color, layout, space, type as typeStep } from "@flame/ui/tokens.stylex";
 const sp = stylex.create({
   body: { display: "flex", flexDirection: "column", gap: layout.sectionGap, minWidth: 0 },
-  search: { padding: space.s4 },
+  // The search fill shares the rail items' fill edge and its glyph their text edge.
+  search: { paddingBlock: space.s4, paddingInline: space.s3 },
+  searchField: { paddingInline: space.s2 },
   empty: {
     display: "flex",
     flexDirection: "column",
@@ -169,6 +171,7 @@ function SettingsRailHeader({
         }}
         placeholder={searchPlaceholder}
         aria-label={searchPlaceholder}
+        styles={sp.searchField}
       />
     </div>
   );

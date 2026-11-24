@@ -2662,6 +2662,11 @@ stays inside the card. The sidebar (icons on one line, labels and section
 titles on the next) and the Composer (placeholder on the add glyph, message
 actions on the prose edge) already measured aligned and are unchanged.
 
+The Settings rail search sat 4 px inside the rail item fills with its glyph
+9 px right of the item text. Its wrapper now uses the rail's 12 px inset and
+the field the items' 8 px padding: search and item fills span 14–246 px, and
+the glyph lands on the item text (23 / 22 px).
+
 ### Composer suggestions open where they can be read (2026-11-24)
 
 Typing `@` or `/` in a Session's Composer opened Lexical's typeahead below
