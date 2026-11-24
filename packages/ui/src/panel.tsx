@@ -239,9 +239,13 @@ const styles = stylex.create({
   },
 });
 
-type PanelDensity = "compact" | "page";
+export type PanelDensity = "compact" | "page";
 
 const PanelHostContext = createContext<PanelDensity | null>(null);
+
+export function usePanelHostDensity(): PanelDensity | null {
+  return useContext(PanelHostContext);
+}
 
 export function PanelHost({
   density = "compact",

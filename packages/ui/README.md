@@ -212,6 +212,11 @@ the spacing reserved for a visible display title. Standalone pages omit the
 provider and keep their display title. The former `hosted` boolean is removed;
 the host selects the density without changing the content instance.
 Portable components do not inspect viewport width or create another placement state.
+`usePlacement` reads the facts that belong to a mount site rather than the app:
+`PanelHost` density, `ContentVisibility` and the heading level. A host that renders
+a subtree in a separate React root, such as an installed component, reads them at
+the mount site and re-provides them with `Placed`; otherwise that subtree repeats
+its view title and keeps popups open while hidden.
 `FilterBar` owns the control zone in three meanings, in reading order: the
 growing search column (whose fill hangs by the row bleed, so its glyph keeps
 the column edge), the page `actions` after it, and the refining filters as

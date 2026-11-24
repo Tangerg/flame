@@ -167,6 +167,7 @@ export { selectionTransition } from "./selection-motion";
 export { Switch } from "./switch";
 export { Slider } from "./slider";
 export { ContentVisibility, useContentVisible } from "./content-visibility";
+export { Placed, usePlacement, type Placement } from "./placement";
 export {
   useHiddenRootRetirement,
   useHiddenPopupRelease,

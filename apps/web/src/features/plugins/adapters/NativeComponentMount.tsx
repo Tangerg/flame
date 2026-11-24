@@ -16,7 +16,7 @@ import {
   type SourceComponent,
 } from "@/features/plugins/adapters/componentModules";
 import * as stylex from "@stylexjs/stylex";
-import { useContentVisible } from "@flame/ui";
+import { Placed, useContentVisible, usePlacement, type Placement } from "@flame/ui";
 
 const styles = stylex.create({ container: { display: "contents" } });
 const ComponentUse = createContext<Use | undefined>(undefined);
@@ -87,9 +87,12 @@ export function NativeComponentMount({ acquire, wrap, report, ...input }: Props)
     | undefined
   >(undefined);
   const latest = useRef(input);
+  const placement = usePlacement();
+  const latestPlacement = useRef<Placement>(placement);
   const [failure, setFailure] = useState<{ error: unknown }>();
   useLayoutEffect(() => {
     latest.current = input;
+    latestPlacement.current = placement;
     if (!visible) focused.current = null;
   });
   useLayoutEffect(() => {
@@ -157,7 +160,7 @@ export function NativeComponentMount({ acquire, wrap, report, ...input }: Props)
             onError: fail,
             wrap: (children) => (
               <ComponentUse.Provider value={acquisition.use}>
-                {wrap(children)}
+                {wrap(<Placed placement={latestPlacement.current}>{children}</Placed>)}
               </ComponentUse.Provider>
             ),
           },
@@ -184,7 +187,7 @@ export function NativeComponentMount({ acquire, wrap, report, ...input }: Props)
     const owned = current.current;
     if (owned)
       void owned.mount.render(ownedInput(input, owned.acquisition, owned.projection)).catch(report);
-  }, [input, report]);
+  }, [input, report, placement]);
   if (failure) throw failure.error;
   return (
     <div
