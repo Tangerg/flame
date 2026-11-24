@@ -381,20 +381,15 @@ function createPackageReconciler(
         });
         const id = packageScopedId(installation.id, entry.id);
         const action = actionPlacement(placement);
+        const surfaceless =
+          placement === "clientEffect" || placement === "sharedClientEffect" || !!action;
         const PlacedComponent = () => (
           <ComponentBoundary
             scope={componentFailureScope(component, generation)}
             reload={() => modules.reload()}
+            report={surfaceless ? modules.report : undefined}
           >
-            <Suspense
-              fallback={
-                placement === "clientEffect" ||
-                placement === "sharedClientEffect" ||
-                action ? null : (
-                  <ComponentLoading />
-                )
-              }
-            >
+            <Suspense fallback={surfaceless ? null : <ComponentLoading />}>
               <View />
             </Suspense>
           </ComponentBoundary>

@@ -17,6 +17,7 @@ export const en: Record<string, string> = {
   "packages.module.failed": "The plugin view could not be loaded or displayed.",
   "packages.module.unavailable": "The plugin is unavailable.",
   "packages.module.reload": "Reload window",
+  "packages.reloadRequired": "The Runtime restarted. Reload the window to restore plugins.",
   "packages.module.resolvingWorkspace": "Resolving the current workspace…",
   "packages.module.selectWorkspace": "Choose a Session with a workspace to view this page.",
   "packages.providers.title": "Provider selections",

@@ -13,6 +13,7 @@
   "packages.module.failed": "無法載入或顯示插件頁面。",
   "packages.module.unavailable": "插件目前無法使用。",
   "packages.module.reload": "重新載入視窗",
+  "packages.reloadRequired": "Runtime 已重新啟動，重新載入視窗以恢復外掛。",
   "packages.module.resolvingWorkspace": "正在解析目前工作區…",
   "packages.module.selectWorkspace": "請選擇包含工作區的 Session 來查看此頁面。",
   "packages.providers.title": "提供者選擇",

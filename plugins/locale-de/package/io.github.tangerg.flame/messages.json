@@ -13,6 +13,7 @@
   "packages.module.failed": "Die Plugin-Ansicht konnte nicht geladen oder angezeigt werden.",
   "packages.module.unavailable": "Das Plugin ist nicht verfügbar.",
   "packages.module.reload": "Fenster neu laden",
+  "packages.reloadRequired": "Die Runtime wurde neu gestartet. Lade das Fenster neu, um die Plugins wiederherzustellen.",
   "packages.module.resolvingWorkspace": "Aktueller Arbeitsbereich wird ermittelt…",
   "packages.module.selectWorkspace": "Wählen Sie eine Session mit Arbeitsbereich, um diese Seite anzuzeigen.",
   "packages.providers.title": "Anbieterauswahl",

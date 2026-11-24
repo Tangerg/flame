@@ -74,6 +74,9 @@ export class ComponentBoundary extends Component<
     resetKey?: unknown;
     onFailure?: () => void;
     reload?: () => Promise<void>;
+    // Effects and toolbar actions have no surface to recover in, so their
+    // failure goes to plugin diagnostics instead of displacing the host layout.
+    report?: (error: unknown, diagnostics: string) => void;
   },
   { failure: ComponentFailure | null; resetKey: unknown }
 > {
@@ -88,18 +91,16 @@ export class ComponentBoundary extends Component<
     return { failure: { error } };
   }
   override componentDidCatch(error: unknown, info: ErrorInfo) {
-    this.setState({
-      failure: {
-        error,
-        diagnostics: [
-          failureDiagnostics(this.props.scope, error),
-          `react component stack: ${info.componentStack ?? "unavailable"}`,
-        ].join("\n"),
-      },
-    });
+    const diagnostics = [
+      failureDiagnostics(this.props.scope, error),
+      `react component stack: ${info.componentStack ?? "unavailable"}`,
+    ].join("\n");
+    this.setState({ failure: { error, diagnostics } });
+    this.props.report?.(error, diagnostics);
     this.props.onFailure?.();
   }
   override render() {
+    if (this.state.failure && this.props.report) return null;
     return this.state.failure ? (
       <>
         {this.props.fallback}

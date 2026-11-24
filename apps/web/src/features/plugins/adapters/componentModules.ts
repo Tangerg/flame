@@ -73,18 +73,29 @@ export class ComponentModules {
   // Concurrent acquisitions can hold every browser connection to the Runtime origin
   // and starve the pump they wait for, so the Realm admits one at a time.
   #admissions: Promise<unknown> = Promise.resolve();
+  // A cleanup-only Realm keeps its evaluated modules, so only a controlled
+  // window reload can restore its components.
+  #reloadRequired = false;
+  readonly #reloadListeners = new Set<() => void>();
 
   constructor(wrap: (children: ReactNode) => ReactNode = (children) => children) {
     this.#wrap = wrap;
   }
 
-  readonly report = (error: unknown): void => {
-    reportPluginError("installed-components", "other", error);
+  readonly report = (error: unknown, diagnostics?: string): void => {
+    reportPluginError("installed-components", "other", error, diagnostics);
   };
 
   disconnect(): void {
     this.#runtime?.disconnect();
   }
+
+  readonly reloadRequired = (): boolean => this.#reloadRequired;
+
+  readonly subscribeReloadRequired = (listener: () => void): (() => void) => {
+    this.#reloadListeners.add(listener);
+    return () => this.#reloadListeners.delete(listener);
+  };
 
   async #connect(client: FlameClient, endpoint: string, generation: object): Promise<void> {
     if (this.#closed) throw new FrameError("closed", "browser plugin bootstrap is closed");
@@ -250,11 +261,16 @@ export class ComponentModules {
     scope.lifetime.signal.throwIfAborted();
     await this.#connect(client, endpoint, generation);
     scope.lifetime.signal.throwIfAborted();
-    if (this.#runtime!.connection === "cleanupOnly")
+    if (this.#runtime!.connection === "cleanupOnly") {
+      if (!this.#reloadRequired) {
+        this.#reloadRequired = true;
+        for (const listener of this.#reloadListeners) listener();
+      }
       throw new FrameError(
         "reload_required",
         "the previous browser authority requires a controlled Realm reload",
       );
+    }
     const request = Object.freeze({
       installationId: installation.id,
       digest: installation.selected.digest,
@@ -378,7 +394,8 @@ export class ComponentModules {
   async #close(): Promise<void> {
     if (this.#connection) await this.#connection;
     if (this.#session && this.#runtime) {
-      if (!this.#sealed) {
+      // The Host seals a Realm before it grants a cleanup-only channel.
+      if (!this.#sealed && this.#runtime.connection !== "cleanupOnly") {
         this.#closingMutation = this.#closingMutation
           ? this.#closingMutation.retry()
           : this.#client!.plugins.closeBrowserRealm({ realm: this.#session.realm });

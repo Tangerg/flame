@@ -27,6 +27,9 @@ export function createInstalledPlugins(
   return {
     access,
     reload: () => modules.reload(),
+    reloadRequired: modules.reloadRequired,
+    subscribeReloadRequired: modules.subscribeReloadRequired,
+    report: modules.report,
     start(
       ctx: Pick<PluginContext<{}>, "contributions" | "lifetime" | "logger">,
       runtime: RuntimeStream,

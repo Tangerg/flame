@@ -13,6 +13,7 @@
   "packages.module.failed": "プラグインのビューを読み込みまたは表示できません。",
   "packages.module.unavailable": "プラグインは利用できません。",
   "packages.module.reload": "ウィンドウを再読み込み",
+  "packages.reloadRequired": "Runtime が再起動しました。ウィンドウを再読み込みするとプラグインが復元されます。",
   "packages.module.resolvingWorkspace": "現在のワークスペースを解決中…",
   "packages.module.selectWorkspace": "このページを表示するには、ワークスペースを持つ Session を選択してください。",
   "packages.providers.title": "プロバイダーの選択",

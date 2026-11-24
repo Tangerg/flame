@@ -1,7 +1,9 @@
 import { type InstalledPluginsOwner } from "@/features/plugins/adapters/installedPlugins";
 import { lazy } from "react";
 import { RUNTIME_STREAM } from "@/features/connection/public/services";
+import { contributeLayout } from "@/extensions/contributeHelpers";
 import { definePlugin } from "@/extensions/definePlugin";
+import { RealmReloadNotice } from "@/features/plugins/ui/RealmReloadNotice";
 import { registerSettingsPane } from "@/features/settings/public/registerSettingsPane";
 import { PLUGINS_PANE } from "@/features/settings/public/paneIDs";
 const PluginsPane = lazy(() =>
@@ -15,6 +17,11 @@ export function createInstalledPluginLoader(installed: InstalledPluginsOwner) {
     name: "flame.builtin.installed-plugin-loader",
     requires: { runtime: RUNTIME_STREAM },
     setup(ctx) {
+      contributeLayout(ctx.contributions, "composer.overlay.top", {
+        id: "installed-plugins-reload",
+        order: -20,
+        component: () => <RealmReloadNotice owner={installed} />,
+      });
       installed.start(ctx, ctx.dependencies.runtime);
       ctx.lifetime.defer(installed.dispose);
     },

@@ -13,6 +13,7 @@
   "packages.module.failed": "La vue du plugin ne peut pas être chargée ou affichée.",
   "packages.module.unavailable": "Le plugin est indisponible.",
   "packages.module.reload": "Recharger la fenêtre",
+  "packages.reloadRequired": "Le Runtime a redémarré. Rechargez la fenêtre pour restaurer les plugins.",
   "packages.module.resolvingWorkspace": "Résolution de l’espace de travail actuel…",
   "packages.module.selectWorkspace": "Choisissez une Session avec un espace de travail pour afficher cette page.",
   "packages.providers.title": "Sélection des fournisseurs",

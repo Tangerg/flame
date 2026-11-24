@@ -13,6 +13,7 @@
   "packages.module.failed": "无法加载或显示插件页面。",
   "packages.module.unavailable": "插件当前不可用。",
   "packages.module.reload": "重新加载窗口",
+  "packages.reloadRequired": "Runtime 已重启，重新加载窗口以恢复插件。",
   "packages.module.resolvingWorkspace": "正在解析当前工作区…",
   "packages.module.selectWorkspace": "请选择包含工作区的 Session 来查看此页面。",
   "packages.providers.title": "提供者选择",

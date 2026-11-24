@@ -433,7 +433,12 @@ Installed component recovery keeps Reload window focusable while its original
 cleanup gate is pending. The shared pending button blocks repeat activation;
 refused cleanup retains the recovery action and diagnostics without reclaiming
 later input focus. Render failure and retired resources use this same recovery
-boundary. Component retirement and actual window reload keep their existing owners.
+boundary. Client effects and toolbar actions have no surface to recover in, so
+their failures go to plugin diagnostics and leave the host layout unchanged.
+After a Runtime restart the Host has already sealed the cleanup-only Realm, so
+Reload window delivers its proofs without sealing it again, and a notice above
+the Composer offers the same reload. Component retirement and actual window
+reload keep their existing owners.
 
 An independently mounted component's render failure returns lost owned focus to
 its existing reading host before fallback appears. Later outside focus, explicit
