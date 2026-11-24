@@ -18,7 +18,12 @@ import {
   TextField,
   Toolbar,
 } from "@flame/ui";
-import { PermissionRequest } from "../contracts/elicitation";
+import {
+  fieldChoices,
+  PermissionRequest,
+  type FieldChoice,
+  type PermissionPersistence,
+} from "../contracts/elicitation";
 import type { Approval, ReplyInput } from "./types";
 import { externalURL, Source } from "./result";
 
@@ -39,29 +44,142 @@ function initialValues(request: PermissionRequest): Record<string, DraftValue> {
   );
 }
 
-function choices(field: Field) {
-  if (field.type === "string") {
-    if ("oneOf" in field)
-      return field.oneOf.map((item) => ({
-        value: item.const,
-        label: item.title,
-      }));
-    if ("enum" in field)
-      return field.enum.map((value, index) => ({
-        value,
-        label:
-          "enumNames" in field ? (field.enumNames?.[index] ?? value) : value,
-      }));
-  }
-  if (field.type === "array") {
-    if ("anyOf" in field.items)
-      return field.items.anyOf.map((item) => ({
-        value: item.const,
-        label: item.title,
-      }));
-    return field.items.enum.map((value) => ({ value, label: value }));
-  }
-  return undefined;
+const PERSISTENCE_LABEL: Record<PermissionPersistence, string> = {
+  session: "approval.session",
+  always: "approval.always",
+};
+
+// date-time stays a text field: the contract requires an offset that
+// datetime-local cannot express.
+const FORMAT_INPUT_TYPE = {
+  email: "email",
+  uri: "url",
+  date: "date",
+  "date-time": "text",
+} as const;
+
+interface ControlProps<Value extends DraftValue> {
+  title: string;
+  value: DraftValue | undefined;
+  update(value: Value | undefined): void;
+  disabled: boolean;
+}
+
+function ChoiceSet({
+  title,
+  options,
+  value,
+  update,
+  disabled,
+}: ControlProps<string[]> & { options: FieldChoice[] }) {
+  const selected = Array.isArray(value) ? value : [];
+  return (
+    <FormSection title={title}>
+      {options.map((option) => (
+        <Checkbox
+          key={option.value}
+          label={option.label}
+          checked={selected.includes(option.value)}
+          disabled={disabled}
+          onCheckedChange={(checked) =>
+            update(
+              checked
+                ? [...selected, option.value]
+                : selected.filter((item) => item !== option.value),
+            )
+          }
+        />
+      ))}
+    </FormSection>
+  );
+}
+
+function BooleanSelect({
+  title,
+  value,
+  update,
+  disabled,
+  t,
+}: ControlProps<boolean> & { t: Translate }) {
+  return (
+    <Select
+      label={title}
+      value={value === undefined ? "unset" : value ? "true" : "false"}
+      disabled={disabled}
+      options={[
+        { value: "unset", label: t("approval.choose") },
+        { value: "true", label: t("approval.true") },
+        { value: "false", label: t("approval.false") },
+      ]}
+      onValueChange={(selected) =>
+        update(selected === "unset" ? undefined : selected === "true")
+      }
+    />
+  );
+}
+
+function ChoiceSelect({
+  title,
+  options,
+  value,
+  update,
+  disabled,
+  t,
+}: ControlProps<string> & { options: FieldChoice[]; t: Translate }) {
+  const selected = options.findIndex((option) => option.value === value);
+  return (
+    <Select
+      label={title}
+      value={selected < 0 ? "" : String(selected)}
+      disabled={disabled}
+      options={[
+        { value: "", label: t("approval.choose") },
+        ...options.map((option, index) => ({
+          value: String(index),
+          label: option.label,
+        })),
+      ]}
+      onValueChange={(selected) =>
+        update(selected === "" ? undefined : options[Number(selected)]!.value)
+      }
+    />
+  );
+}
+
+function TextControl({
+  id,
+  field,
+  title,
+  value,
+  update,
+  disabled,
+  required,
+  described,
+}: ControlProps<string> & {
+  id: string;
+  field: Field;
+  required: boolean;
+  described: boolean;
+}) {
+  const format = "format" in field ? field.format : undefined;
+  return (
+    <FormField label={title}>
+      <TextField
+        id={id}
+        type={format ? FORMAT_INPUT_TYPE[format] : "text"}
+        inputMode={
+          field.type === "number" || field.type === "integer"
+            ? "decimal"
+            : undefined
+        }
+        value={typeof value === "string" ? value : ""}
+        disabled={disabled}
+        required={required}
+        aria-describedby={described ? `${id}-description` : undefined}
+        onChange={(event) => update(event.target.value)}
+      />
+    </FormField>
+  );
 }
 
 function PermissionField({
@@ -84,97 +202,26 @@ function PermissionField({
   const id = useId();
   const title =
     (field.title ?? name) + (required ? t("approval.required") : "");
-  const options = choices(field);
+  const options = fieldChoices(field);
   const description = field.description;
-  let control;
-  if (field.type === "array" && options) {
-    const selected = Array.isArray(value) ? value : [];
-    control = (
-      <FormSection title={title}>
-        {options.map((option) => (
-          <Checkbox
-            key={option.value}
-            label={option.label}
-            checked={selected.includes(option.value)}
-            disabled={disabled}
-            onCheckedChange={(checked) =>
-              update(
-                checked
-                  ? [...selected, option.value]
-                  : selected.filter((item) => item !== option.value),
-              )
-            }
-          />
-        ))}
-      </FormSection>
-    );
-  } else if (field.type === "boolean") {
-    control = (
-      <Select
-        label={title}
-        value={value === undefined ? "unset" : value ? "true" : "false"}
-        disabled={disabled}
-        options={[
-          { value: "unset", label: t("approval.choose") },
-          { value: "true", label: t("approval.true") },
-          { value: "false", label: t("approval.false") },
-        ]}
-        onValueChange={(selected) =>
-          update(selected === "unset" ? undefined : selected === "true")
-        }
-      />
-    );
-  } else if (options) {
-    const selected = options.findIndex((option) => option.value === value);
-    control = (
-      <Select
-        label={title}
-        value={selected < 0 ? "" : String(selected)}
-        disabled={disabled}
-        options={[
-          { value: "", label: t("approval.choose") },
-          ...options.map((option, index) => ({
-            value: String(index),
-            label: option.label,
-          })),
-        ]}
-        onValueChange={(selected) =>
-          update(selected === "" ? undefined : options[Number(selected)]!.value)
-        }
-      />
-    );
-  } else {
-    const format = "format" in field ? field.format : undefined;
-    control = (
-      <FormField label={title}>
-        <TextField
-          id={id}
-          type={
-            format === "email"
-              ? "email"
-              : format === "date"
-                ? "date"
-                : format === "uri"
-                  ? "url"
-                  : "text"
-          }
-          inputMode={
-            field.type === "number" || field.type === "integer"
-              ? "decimal"
-              : undefined
-          }
-          value={typeof value === "string" ? value : ""}
-          disabled={disabled}
-          required={required}
-          aria-describedby={description ? `${id}-description` : undefined}
-          onChange={(event) => update(event.target.value)}
-        />
-      </FormField>
-    );
-  }
+  const control = { title, value, update, disabled };
   return (
     <RecordGroup>
-      {control}
+      {field.type === "array" && options ? (
+        <ChoiceSet {...control} options={options} />
+      ) : field.type === "boolean" ? (
+        <BooleanSelect {...control} t={t} />
+      ) : options ? (
+        <ChoiceSelect {...control} options={options} t={t} />
+      ) : (
+        <TextControl
+          {...control}
+          id={id}
+          field={field}
+          required={required}
+          described={description !== undefined}
+        />
+      )}
       {description && (
         <Metadata id={`${id}-description`}>{description}</Metadata>
       )}
@@ -211,7 +258,7 @@ export function ApprovalForm({
 
   async function answer(
     action: "accept" | "decline" | "cancel",
-    persist?: "session" | "always",
+    persist?: PermissionPersistence,
   ) {
     if (disabled) return;
     setError(undefined);
@@ -320,24 +367,16 @@ export function ApprovalForm({
         >
           {t(native ? "approval.once" : "approval.accept")}
         </Button>
-        {native?.persist.includes("session") && (
+        {native?.persist.map((scope) => (
           <Button
+            key={scope}
             disabled={disabled}
             focusableWhenDisabled
-            onClick={() => void answer("accept", "session")}
+            onClick={() => void answer("accept", scope)}
           >
-            {t("approval.session")}
+            {t(PERSISTENCE_LABEL[scope])}
           </Button>
-        )}
-        {native?.persist.includes("always") && (
-          <Button
-            disabled={disabled}
-            focusableWhenDisabled
-            onClick={() => void answer("accept", "always")}
-          >
-            {t("approval.always")}
-          </Button>
-        )}
+        ))}
         <Button
           disabled={disabled}
           focusableWhenDisabled

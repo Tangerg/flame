@@ -8,6 +8,7 @@ import {
   TitledSingleSelectEnumSchemaSchema,
   UntitledMultiSelectEnumSchemaSchema,
   TitledMultiSelectEnumSchemaSchema,
+  type ElicitRequestFormParams,
   type ElicitRequestParams,
   type ElicitResult,
   type PrimitiveSchemaDefinition,
@@ -18,11 +19,19 @@ import { LIMITS } from "./limits";
 
 export class InvalidPermission extends Error {}
 
+export const PERMISSION_PERSISTENCE = ["session", "always"] as const;
+export type PermissionPersistence = (typeof PERMISSION_PERSISTENCE)[number];
+
 export interface NativePermission {
   readonly app: string;
   readonly riskLevel?: string;
   readonly subtitle?: string;
-  readonly persist: readonly ("session" | "always")[];
+  readonly persist: readonly PermissionPersistence[];
+}
+
+export interface FieldChoice {
+  readonly value: string;
+  readonly label: string;
 }
 
 function object(value: unknown): value is Record<string, unknown> {
@@ -148,7 +157,54 @@ function numberSchema(field: FieldDefinition<"integer" | "number">): z.ZodType {
   return schema;
 }
 
-function stringChoices(field: FieldDefinition<"string">): string[] | undefined {
+function stringChoices(
+  field: FieldDefinition<"string">,
+): FieldChoice[] | undefined {
+  if ("oneOf" in field)
+    return field.oneOf.map((item) => ({
+      value: item.const,
+      label: item.title,
+    }));
+  if ("enum" in field)
+    return field.enum.map((value, index) => ({
+      value,
+      label:
+        ("enumNames" in field ? field.enumNames?.[index] : undefined) ?? value,
+    }));
+  return undefined;
+}
+
+function arrayChoices(field: FieldDefinition<"array">): FieldChoice[] {
+  return "anyOf" in field.items
+    ? field.items.anyOf.map((item) => ({
+        value: item.const,
+        label: item.title,
+      }))
+    : field.items.enum.map((value) => ({ value, label: value }));
+}
+
+// MCP spells a closed choice set as enum, enum with enumNames, oneOf or anyOf;
+// validation and the console read it through this one projection.
+export function fieldChoices(
+  field: PrimitiveSchemaDefinition,
+): FieldChoice[] | undefined {
+  if (field.type === "string") return stringChoices(field);
+  if (field.type === "array") return arrayChoices(field);
+  return undefined;
+}
+
+function distinctValues(choices: FieldChoice[]): string[] {
+  const values = choices.map((choice) => choice.value);
+  if (!values.length || new Set(values).size !== values.length)
+    throw new InvalidPermission(
+      "computer: permission choices must be distinct",
+    );
+  return values;
+}
+
+function stringChoiceValues(
+  field: FieldDefinition<"string">,
+): string[] | undefined {
   if ("enum" in field && "oneOf" in field)
     throw new InvalidPermission(
       "computer: permission choices require one representation",
@@ -161,21 +217,12 @@ function stringChoices(field: FieldDefinition<"string">): string[] | undefined {
     throw new InvalidPermission(
       "computer: permission choice labels must match their values",
     );
-  const choices =
-    "enum" in field
-      ? field.enum
-      : "oneOf" in field
-        ? field.oneOf.map((item) => item.const)
-        : undefined;
-  if (choices && (!choices.length || new Set(choices).size !== choices.length))
-    throw new InvalidPermission(
-      "computer: permission choices must be distinct",
-    );
-  return choices;
+  const choices = stringChoices(field);
+  return choices && distinctValues(choices);
 }
 
 function stringSchema(field: FieldDefinition<"string">): z.ZodType {
-  const choices = stringChoices(field);
+  const choices = stringChoiceValues(field);
   bounds(
     "minLength" in field ? field.minLength : undefined,
     "maxLength" in field ? field.maxLength : undefined,
@@ -207,14 +254,7 @@ function stringSchema(field: FieldDefinition<"string">): z.ZodType {
 
 function arraySchema(field: FieldDefinition<"array">): z.ZodType {
   bounds(field.minItems, field.maxItems, true);
-  const choices =
-    "enum" in field.items
-      ? field.items.enum
-      : field.items.anyOf.map((item) => item.const);
-  if (!choices.length || new Set(choices).size !== choices.length)
-    throw new InvalidPermission(
-      "computer: permission choices must be distinct",
-    );
+  const choices = distinctValues(arrayChoices(field));
   if (field.minItems !== undefined && field.minItems > choices.length)
     throw new InvalidPermission(
       "computer: permission requires more distinct selections than it offers",
@@ -225,82 +265,97 @@ function arraySchema(field: FieldDefinition<"array">): z.ZodType {
   return schema.refine((value) => new Set(value).size === value.length);
 }
 
+function admittedRequest(raw: unknown): ElicitRequestParams {
+  const parsed = ElicitRequestParamsSchema.safeParse(raw);
+  if (!parsed.success || !object(raw))
+    throw new InvalidPermission("computer: unsupported permission request", {
+      cause: parsed.error,
+    });
+  const request = raw as ElicitRequestParams;
+  knownFields(
+    raw,
+    request.mode === "url"
+      ? ["mode", "message", "url", "elicitationId", "_meta"]
+      : ["mode", "message", "requestedSchema", "_meta"],
+  );
+  return request;
+}
+
+function assertOpenableURL(raw: string): void {
+  const url = new URL(raw);
+  if (
+    !["https:", "http:"].includes(url.protocol) ||
+    url.username ||
+    url.password
+  )
+    throw new InvalidPermission(
+      "computer: permission URL must be HTTP or HTTPS without credentials",
+    );
+}
+
+function formContent(
+  requestedSchema: ElicitRequestFormParams["requestedSchema"],
+): z.ZodType {
+  knownFields(requestedSchema, ["type", "properties", "required"]);
+  const properties = Object.entries(requestedSchema.properties);
+  const required = new Set(requestedSchema.required ?? []);
+  if (
+    properties.length > LIMITS.maxPermissionFields ||
+    required.size !== (requestedSchema.required?.length ?? 0) ||
+    [...required].some(
+      (name) => !Object.hasOwn(requestedSchema.properties, name),
+    )
+  )
+    throw new InvalidPermission("computer: invalid permission form fields");
+  return z.strictObject(
+    Object.fromEntries(
+      properties.map(([name, field]) => {
+        const schema = fieldSchema(field);
+        return [name, required.has(name) ? schema : schema.optional()];
+      }),
+    ),
+  );
+}
+
+// Codex marks approvals for its own computer-use tool calls with this metadata;
+// only such an empty form offers persistence scopes.
+function nativePermission(
+  request: ElicitRequestFormParams,
+): NativePermission | undefined {
+  const meta = request._meta;
+  const tool = meta?.tool_params;
+  if (
+    Object.keys(request.requestedSchema.properties).length ||
+    meta?.codex_approval_kind !== "mcp_tool_call" ||
+    meta.connector_id !== "computer-use" ||
+    !object(tool) ||
+    typeof tool.app !== "string" ||
+    !tool.app
+  )
+    return undefined;
+  const offered = new Set(Array.isArray(meta.persist) ? meta.persist : []);
+  const subtitle = meta.warningSubtitle ?? meta.subtitle;
+  return freeze({
+    app: tool.app,
+    ...(typeof meta.riskLevel === "string"
+      ? { riskLevel: meta.riskLevel }
+      : {}),
+    ...(typeof subtitle === "string" ? { subtitle } : {}),
+    persist: PERMISSION_PERSISTENCE.filter((scope) => offered.has(scope)),
+  });
+}
+
 export class PermissionRequest {
   readonly request: ElicitRequestParams;
   readonly native?: NativePermission;
   readonly #content?: z.ZodType;
 
   constructor(requestJSON: string) {
-    const raw = boundedJSON(requestJSON);
-    const parsed = ElicitRequestParamsSchema.safeParse(raw);
-    if (!parsed.success || !object(raw))
-      throw new InvalidPermission("computer: unsupported permission request", {
-        cause: parsed.error,
-      });
-    const request = raw as ElicitRequestParams;
-    knownFields(
-      raw,
-      request.mode === "url"
-        ? ["mode", "message", "url", "elicitationId", "_meta"]
-        : ["mode", "message", "requestedSchema", "_meta"],
-    );
-    if (request.mode === "url") {
-      const url = new URL(request.url);
-      if (
-        !["https:", "http:"].includes(url.protocol) ||
-        url.username ||
-        url.password
-      )
-        throw new InvalidPermission(
-          "computer: permission URL must be HTTP or HTTPS without credentials",
-        );
-    } else {
-      const { requestedSchema } = request;
-      knownFields(requestedSchema, ["type", "properties", "required"]);
-      const properties = Object.entries(requestedSchema.properties);
-      const required = new Set(requestedSchema.required ?? []);
-      if (
-        properties.length > 64 ||
-        required.size !== (requestedSchema.required?.length ?? 0) ||
-        [...required].some(
-          (name) => !Object.hasOwn(requestedSchema.properties, name),
-        )
-      )
-        throw new InvalidPermission("computer: invalid permission form fields");
-      this.#content = z.strictObject(
-        Object.fromEntries(
-          properties.map(([name, field]) => {
-            const schema = fieldSchema(field);
-            return [name, required.has(name) ? schema : schema.optional()];
-          }),
-        ),
-      );
-      const meta = request._meta;
-      const tool = meta?.tool_params;
-      if (
-        !properties.length &&
-        !required.size &&
-        meta?.codex_approval_kind === "mcp_tool_call" &&
-        meta.connector_id === "computer-use" &&
-        object(tool) &&
-        typeof tool.app === "string" &&
-        tool.app
-      ) {
-        const offered = new Set(
-          Array.isArray(meta.persist) ? meta.persist : [],
-        );
-        const subtitle = meta.warningSubtitle ?? meta.subtitle;
-        this.native = freeze({
-          app: tool.app,
-          ...(typeof meta.riskLevel === "string"
-            ? { riskLevel: meta.riskLevel }
-            : {}),
-          ...(typeof subtitle === "string" ? { subtitle } : {}),
-          persist: (["session", "always"] as const).filter((value) =>
-            offered.has(value),
-          ),
-        });
-      }
+    const request = admittedRequest(boundedJSON(requestJSON));
+    if (request.mode === "url") assertOpenableURL(request.url);
+    else {
+      this.#content = formContent(request.requestedSchema);
+      this.native = nativePermission(request);
     }
     this.request = freeze(request);
     Object.freeze(this);
@@ -335,7 +390,7 @@ export class PermissionRequest {
         if (
           !this.native ||
           !this.native.persist.includes(
-            value._meta.persist as "session" | "always",
+            value._meta.persist as PermissionPersistence,
           )
         )
           throw new InvalidPermission(
